@@ -37,6 +37,7 @@ written. The falsifying inputs are fixtures measured in this tree and re-runnabl
 | **MUT-NO-TARGET-TEST** | Implements form 3b's group test but drops the target test | **t412**'s three absorb siblings | `d8c91d907` / `63435427c` / `57d2f3ae3` each carry `t412` in a trailing group while merging **into `WT-mx-tag-edges`**; without the target test all three attribute, and `t412` reads `landed` for the wrong reason |
 | **MUT-HARDCODED-DEVELOP** | Spells `develop` as form 3b's target instead of deriving it from the resolved landed ref | a fixture whose resolved ref is not `develop` | Invisible in this repository's M1-only window — measured on `origin/main` `7ad9f8534`: **0** of 101 merge subjects target `develop` with a card-bearing group and **0** target `main`, so the hardcoding and the correct derivation are behaviourally identical there (this refutes the audit's inference that the window distinguishes them). The defect is permanent downstream: a repository integrating on `main` gets nothing from form 3b, and one integrating on a third name gets false attributions. AC-TLA-003 clause 6 is the only falsifier |
 | **MUT-NO-FORM-3C** | Omits form 3c (`merge: <card>`), the largest missed family | **t79** | `merge: t79 — glm_task delegation family (branch WT-t80)`. The family is 31 subjects and 12 otherwise-unattributed ids; omitting it returns the under-count from 7 to 19 |
+| **MUT-PAREN-END-ANCHOR** | Anchors form 2's card-bearing group at **end of subject** (`)$`), omitting form 2b — the shape every version through 0.3.0 carried | **t210** on the pinned corpus | `feat(kanban): moai todo pr — read-only card-to-PR and landed link (t210) (#1628)`. Measured at HEAD `012d9680a` over `7835148d3`: the shape occurs **43** times carrying **40** distinct ids, of which **39** are attributed by no other form (`comm -23` against the five-form set) — and the same pattern returns **43** on `origin/main`, the ref M1's window walks. The omission is **silent at the operator's eye level**: the card simply reads `not-landed`. It passed every criterion at version 0.3.0, where the §F positive controls were `t401` (form 2, `)$`-exact) and `t440` (form 1) — both shapes the enumeration already handled. This is the vacuity class plan-audit iter-3 D3-1 named |
 | **MUT-FIRST-TOKEN-OF-GROUP** | Widens form 2 to accept a card token as the **first** token of a trailing group — the remedy §A.4.2 declines | **t80** | `(branch WT-t80)` — the only card token in the group is a **branch name**, so the widening attributes a card that did not land, on a commit belonging to t79. The failure is silent, unlike the under-count it would fix |
 | **MUT-SILENT-FALLBACK** | Resolves correctly but discloses nothing | any invocation below level 1 | verdict line carries no ref, stderr carries no level |
 
@@ -62,15 +63,27 @@ When the predicate is asked about `t237`,
 Then the answer is `not-landed`.
 Red against: **MUT-WHOLE-MESSAGE** (t237 fixture).
 
-**AC-TLA-002** (maps REQ-TLA-001, REQ-TLA-002, REQ-TLA-004) — trailing parenthetical, both directions.
+**AC-TLA-002** (maps REQ-TLA-001, REQ-TLA-002, REQ-TLA-004) — trailing parenthetical, three directions.
 Given a subject closing with `(t401)`,
 When the predicate is asked about `t401`,
 Then the answer is `landed`;
 And Given a subject in which `t443` appears mid-subject while the subject's own trailing attribution
 is `(t461)`,
 When the predicate is asked about `t443`,
-Then the answer is `not-landed`.
-Red against: **MUT-SUBJECT-ONLY** (t443 fixture).
+Then the answer is `not-landed`;
+And Given a subject closing with a card-bearing group followed by a pull-request reference group —
+`feat(kanban): moai todo pr — read-only card-to-PR and landed link (t210) (#1628)`, §A.4 form 2b —
+When the predicate is asked about `t210`,
+Then the answer is `landed`.
+Red against: **MUT-SUBJECT-ONLY** (t443 fixture) and **MUT-PAREN-END-ANCHOR** (t210 fixture).
+
+Clause 3 was added at version 0.4.0 to close plan-audit iter-3 D3-1: before it, an implementation
+anchoring the card-bearing group at end-of-subject passed every criterion in this file while
+answering `not-landed` for **43 subjects carrying 40 distinct ids, 39 of them attributed by no other
+form** — this repository's dominant pull-request landing path, and present in the same count on
+`origin/main`, the ref M1's window walks. `t210` is a valid falsifier because it is in form 2b's
+uniquely-attributed set (39, per the AC-TLA-005 map): under forms 1/2/3a/3b/3c it reads
+`not-landed`, under form 2b it reads `landed`.
 
 **AC-TLA-003** (maps REQ-TLA-001, REQ-TLA-002, REQ-TLA-004, REQ-TLA-013) — merge subject, six
 directions. Clauses 4-6 were added at version 0.3.0 to close plan-audit iter-2 D1 and D3: before
@@ -159,7 +172,7 @@ Red against: **MUT-WHOLE-MESSAGE**.
 **AC-TLA-005** (maps REQ-TLA-002) — the form enumeration is one place, and every entry in it has a
 falsifier.
 Given the repaired implementation,
-When the §A.4 attributing shapes (forms 1, 2, 3a, 3b, 3c) **and the non-attribution rule** are
+When the §A.4 attributing shapes (forms 1, 2, 2b, 3a, 3b, 3c) **and the non-attribution rule** are
 located by grep,
 Then they are declared in exactly one named symbol or table;
 And When any ONE of them is removed from that declaration,
@@ -168,8 +181,9 @@ holding (plan-audit iter-2 D1: form 3b had no falsifier, and neither did form 3a
 
 | Removed | Criterion that goes red | Falsifying id | Ids that form alone attributes |
 |---|---|---|---|
-| form 1 (scope) | AC-TLA-001 clause 1 | t440 | 42 |
+| form 1 (scope) | AC-TLA-001 clause 1 | t440 | 41 |
 | form 2 (trailing paren) | AC-TLA-002 clause 1 | t401 | 77 |
+| form 2b (trailing paren before a reference group) | AC-TLA-002 clause 3 | t210 | 39 |
 | form 3a (`Merge card`) | AC-TLA-003b clause 1 | t244 | 1 |
 | form 3b (integration-targeted merge) | AC-TLA-003 clause 4 | t412 | 1 |
 | form 3c (`merge:`) | AC-TLA-003b clause 3 | t79 | 12 |
@@ -177,9 +191,14 @@ holding (plan-audit iter-2 D1: form 3b had no falsifier, and neither did form 3a
 | derived target (REQ-TLA-013) | AC-TLA-003 clause 6 | the `release/v9` fixture | n/a (a derivation) |
 
 The "ids that form alone attributes" column is the measured basis of each falsifier and is the check
-a future editor re-runs before adding a sixth form: a form whose column reads **0** has no falsifier
-available from the corpus, and adding it would reintroduce exactly the vacuity this table exists to
-close.
+a future editor re-runs before adding a further form: a form whose column reads **0** has no
+falsifier available from the corpus, and adding it would reintroduce exactly the vacuity this table
+exists to close.
+
+The column is **relative to the rest of the table**, so admitting a form recomputes it: at version
+0.4.0 form 2b took `t230` out of form 1's exclusive set, moving form 1 from 42 to 41. Both figures
+are measured at HEAD `012d9680a` over the pinned corpus `7835148d3` by intersecting each form's
+extracted id set against the union of the others (`comm -23`).
 
 **AC-TLA-006** (maps REQ-TLA-005) — argv construction is asserted against the implementation.
 Given the tripwire test,
@@ -340,6 +359,10 @@ Then the census fails — proving the census observes the path rather than passi
   removing the entry and observing the named criterion go red, not by reading the map.
 - `moai todo pr` re-run in this tree after M1: the two `origin/main` false positives (t237, t312) no
   longer read `landed`, and the two true positives (t401, t440) still do against `origin/develop`.
+- **A form 2b positive control is included, and is not optional (plan-audit iter-3 D3-1).** `t210`
+  reads `landed`. Version 0.3.0's controls were `t401` (form 2, `)$`-exact) and `t440` (form 1) —
+  both shapes the enumeration already handled — so this gate was satisfiable while 39 ids landing
+  through this repository's dominant pull-request path read `not-landed`.
 - No file under `.moai/reports/t472/` modified.
 - **Non-gating (plan-audit D7):** `plan.md` M3 item 2 (extending the `todo pr` outcome documentation
   to state the repaired predicate's limit) maps to no REQ-TLA and to no criterion above, and is

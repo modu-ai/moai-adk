@@ -38,8 +38,65 @@ Card t472. Worktree `.claude/worktrees/t472`, branch `WT-landed-drift-detect`.
   - **iter-2 D5 (minor) — ACCEPTED.** The diff-stat figure re-measured 1569 at this HEAD (1101 →
     1301 → 1569 across three trees) and is now in R4 form: command first, value parenthesized and
     dated as a reference.
-- Tier M. **13** requirements (REQ-TLA-001..013), 12 acceptance criteria (AC-TLA-001..012, with
-  AC-TLA-003b paired to AC-TLA-003 per the AC sub-ID convention). Ceiling 16/16 — both in budget.
+- **Version 0.4.0 — plan-audit iteration-3 remediation, D3-1 ONLY (operator decision).** Iteration 3
+  returned PASS-WITH-DEBT **0.8375**, down 0.0375 from iteration 2, which fired `spec-workflow.md:160`'s
+  score-regression STOP condition alongside the three-iteration ceiling. The operator scoped this
+  remediation to D3-1 and left D3-2 through D3-5 as accepted debt. Measured at HEAD `012d9680a` over the
+  pinned corpus `7835148d3` with a binary built from this tree
+  (`go build -o <scratch>/moai-spec4 ./cmd/moai`, rc=0 — not the installed build, ~190 commits behind;
+  VCI §2.2).
+  - **iter-3 D3-1 (major, blocking) — ACCEPTED.** Form 2's `)$` anchor silently excluded its own
+    position with a pull-request reference group appended. Reproduced independently here: `43`
+    subjects, `40` distinct ids, `39` attributed by no other form. **Form 2b** adopted (single card
+    token in the card-bearing group, exactly one trailing `(#NNNN)` reference group). Attributed set
+    `270 → 309`; unattributed-but-subject-present `77 → 38`. AC-TLA-002 gains clause 3 with the `t210`
+    fixture and the new mutant `MUT-PAREN-END-ANCHOR`; the AC-TLA-005 map gains form 2b's row (39) and
+    form 1's exclusive column is corrected `42 → 41` (`t230` is now shared). `plan.md` §D's tolerance
+    ground is **withdrawn**, not repaired — see the debt list below. §F Definition of Done gains a
+    form-2b positive control, because version 0.3.0's controls (`t401`, `t440`) were both shapes the
+    enumeration already handled.
+
+### Debt this SPEC enters run-phase with
+
+**[HARD] No fourth plan-audit will verify the 0.4.0 change.** The audit budget is spent (three
+iterations, score regressing). A reader who needs to check the D3-1 fix runs these two commands
+against the pinned corpus `7835148d3` instead — they are the whole verification surface for it:
+
+    grep -cE '\([^()]*t[0-9]+[^()]*\) \(#[0-9]+\)$' <pinned-corpus subjects>   → 43
+    ... ids extracted, sort -u, comm -23 against the five-form attributed set  → 39
+
+Five items are carried into run-phase unfixed and are recorded here so no reader mistakes silence
+for absence:
+
+1. **D3-2 — `t311` unclassified.** Its sole subject occurrence is
+   `merge(WT-codex-init): integrate card t340 … (closes t311)`. `acceptance.md` §D claims the
+   multi-card trailing groups were ruled on "id by id"; `t311` is ruled on nowhere. It is neither
+   confirmed as a further under-count nor as a correctly-unattributed note.
+2. **D3-3 — the merge denominator is wrong.** `spec.md` §A.4's preamble says "414 of them merges".
+   414 is the count of subjects *beginning* `Merge`; the actual merge-commit count at that corpus is
+   **661**. 247 merge commits — all 31 form-3c subjects among them — sit outside the denominator the
+   merge-shape survey is described against.
+3. **D3-4 — the "nine targets" list prints eleven.** Two entries
+   (`worktree-agent-a205e7a01ec2e0f27`, `worktree-agent-a350b7a40faaf39c6`) are merge **sources**, not
+   targets, and do not reproduce under the extraction command quoted beside the list. The rule the
+   list illustrates is unaffected; the list is.
+4. **D3-5 — `plan.md` §D overstates the sixth-form rejection rule.** It reads "reject it if that count
+   is 0", which is stronger than this SPEC's own practice: REQ-TLA-013's row reads `n/a` and is
+   falsified by a constructed `release/v9` fixture. A zero column means "no *corpus* falsifier
+   exists", not "no falsifier exists".
+5. **The standing residual — classified only to a floor.** The named-shape under-count is **at least
+   10** and the subject-present-but-unattributed population is **38**. Neither number is a total:
+   nobody — author, auditor, or lane — has classified the 38 exhaustively, and every round so far has
+   raised the figure (1 → 19 → 7 → ≥10). The **live-queue status of the newly-surfaced ids is
+   unmeasured** by this author. The lane's committed evidence
+   (`.moai/reports/t472/axis-bf-measurement.md`, iter-3 section) records that 38 of them appear in
+   neither table of the disk store — a reading consistent with the known `moai todo` / disk-store
+   split, and therefore establishing nothing either way about whether those cards are live.
+
+- Tier M. **13** requirements (REQ-TLA-001..013), **13** unique acceptance-criterion identifiers
+  (AC-TLA-001..012 plus AC-TLA-003b, paired to AC-TLA-003 per the AC sub-ID convention). Ceiling
+  16/16 — both in budget. Version 0.4.0 added no REQ and no AC identifier: the new form is covered by
+  REQ-TLA-001/002/004 and falsified by a third clause absorbed into AC-TLA-002.
 - Milestone order fixed [HARD]: M1 (axis F, the attribution predicate) before M2 (axes A+B, the ref
   chain and its disclosure) — ground in `spec.md` §A.7 and `plan.md` §A.3.
 - Ref-chain option **A3** selected; A1, A2, A4 rejected with recorded grounds in `plan.md` §A.1.

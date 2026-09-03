@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-LANDING-ATTRIBUTION-001
 title: "The landed verdict: an attribution-position predicate, and a ref chain that asks the branch this repository actually integrates on"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-04
@@ -24,6 +24,7 @@ related_specs:
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.4.0 | 2026-09-04 | Plan-audit iteration-3 remediation, **D3-1 only** — an operator decision taken after iteration 3 returned PASS-WITH-DEBT 0.8375 (down 0.0375, firing `spec-workflow.md:160`'s STOP condition alongside the three-iteration ceiling). **There will be no fourth audit**; this change is verified by the two commands quoted in §A.4.2 rather than by another round. Measured in this tree at HEAD `012d9680a` against the pinned corpus `7835148d3`, with a binary built from this tree. **Form 2b added** — form 2's own position with a pull-request reference group appended, which form 2's `)$` anchor silently excluded: 43 subjects, 40 distinct ids, **39 attributed by no other form**. Attributed set **270 → 309**; subject-present-but-unattributed **77 → 38**; the named-shape under-count is restated as a **floor of at least 10, explicitly not a total** — the residual has never been exhaustively classified by author, auditor, or lane. `plan.md` §D's tolerance ground ("all seven are archived-era, impact nil") is **withdrawn as false** and re-argued on the failure direction alone. AC-TLA-002 gains clause 3 (fixture `t210`, form 2b's uniquely-attributed set = 39); the AC-TLA-005 map gains form 2b's row and form 1's column is corrected 42 → 41 (`t230` is now shared). Counts unchanged: **13 REQ / 13 AC** (Tier M ceiling 16/16). D3-2 through D3-5 are recorded as accepted debt in `progress.md` and are deliberately NOT fixed here. |
 | 0.3.0 | 2026-09-04 | Plan-audit iteration-2 remediation, measured in this tree at HEAD `75e63d6f2` against the **pinned corpus commit** `7835148d3` (5,837 subjects, 414 merges). iter-2 D1: form 3b gains a single-token restriction and a falsifying criterion built on `t412` (AC-TLA-003 clauses 4-5). iter-2 D2: the recorded under-count "exactly one card" is **withdrawn** — measured `>= 19` under four named missed shapes; **form 3c** (card-led local merge, `merge: <card>` — 31 subjects, 100% precision) is added, taking the residual to **7**, and `plan.md` §D's tolerance is re-argued at 7 rather than at 1. iter-2 D3: form 3b's target is stated as **derived from the resolved landed ref**, with AC-TLA-003 clause 6 falsifying a hardcoded `develop`; the audit's M1-window claim is **refuted by measurement** (§A.7). iter-2 D4: the non-attribution rule is restated **contraposed** on target mismatch; the `WT-` prefix becomes an illustration. iter-2 D5 handled in `progress.md`. Counts: **13 REQ / 12 AC** (REQ-TLA-013 added for the derived target; covered by AC-TLA-003 clause 6 — Tier M ceiling 16/16, so both stay in budget). |
 | 0.2.0 | 2026-09-03 | Plan-audit iteration-1 remediation, measured in this tree at HEAD `e227871b4` against `origin/develop` `7835148d3` (5,837 subjects). D1 (BLOCKING) closed: §A.4 form 3 was an occurrence test and is replaced by two positional shapes (3a, 3b) plus an explicit non-attribution rule for absorb-direction merges; `MUT-MERGE-ANY-TOKEN` added to the mutant set. D2 citation corrected and its residual re-stated as measured-disjoint. D4/D5/D6/D7/D8/D9 dispositions recorded in `acceptance.md`, `plan.md`, and `progress.md`. Requirement and criterion counts unchanged at 12/12. |
 | 0.1.0 | 2026-09-03 | Initial plan-phase authoring (card t472), measured in worktree `.claude/worktrees/t472` at HEAD `4bcac7079` (branch `WT-landed-drift-detect`). Two axes, merged by lead verdict into one SPEC: the attribution predicate (axis F) and the ref chain plus its disclosure (axes A+B). Every figure below is carried from this lane's own committed measurements at `.moai/reports/t472/premise-recheck.md` and `.moai/reports/t472/axis-bf-measurement.md`, or re-run in this tree and cited beside the command. |
@@ -128,7 +129,7 @@ subject-occurrence cases (`673d3d8a0`, `0d26f8a00`) the queried card appears in 
 not the card the commit belongs to. The discriminator is therefore not *occurrence*, nor
 *occurrence in the subject*, but **attribution position**.
 
-### A.4 The attributing positions — five positional shapes
+### A.4 The attributing positions — six positional shapes
 
 Every shape below is a **position**, not an occurrence. A card token that appears anywhere else in a
 subject attributes nothing. Three non-attributing positions are named explicitly, because each is a
@@ -148,12 +149,25 @@ Counts measured over the pinned commit `7835148d3`, 5,837 subjects, 414 of them 
 |---|---|---|---|---|
 | 1 | Conventional-commit scope | `<type>(<card>):` **at subject start** | 290 | `docs(t440): record develop-absorb re-measure evidence` |
 | 2 | Trailing parenthetical | `(<card>)` or `(card <card>)` **closing the subject**, the group carrying nothing else | 869 | `... refresh catalog moai whole-tree hash (t447)` |
+| 2b | Trailing parenthetical **before a reference group** | a card-bearing parenthetical group carrying **exactly one** card token, followed by a **reference group** `(#NNNN)` that closes the subject — form 2's own position with a pull-request reference appended | 43 | `feat(kanban): moai todo pr — read-only card-to-PR and landed link (t210) (#1628)` |
 | 3a | Merge, card-led (`Merge card`) | subject **begins** `Merge card <card>` | 5 | `Merge card t440 (WT-delivery-notice-docs) into develop: ...` |
 | 3b | Merge, integration-targeted | the merge's **named target is the branch the resolved landed ref names** (§A.4.1), AND the subject's trailing parenthetical group carries **exactly one** card token | 76 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
 | 3c | Merge, card-led (`merge:`) | subject **begins** `merge: <card>` — the local-merge spelling of 3a | 31 | `merge: t106 — todo queue resolves to the primary checkout from worktrees — review-PASS` |
 
 Forms 3a and 3c are one shape in two spellings: the card is the **first token after the merge
 verb**. They are listed apart only because the two spellings anchor differently.
+
+Form 2b is likewise form 2 in a second spelling, and is listed apart for the same reason: form 2
+anchors the card-bearing group at **end of subject**, and that anchor is what form 2b's subjects
+fail. Form 2b relaxes the anchor by **exactly one** trailing group, and that group must be a
+reference group `(#NNNN)` carrying no card token — it does not relax "the group carrying nothing
+else" into "anything may follow". The single-card-token restriction is form 3b's, applied here for
+the same reason: without it the group `(branch WT-t80)` would attribute a branch name. Measured over
+the pinned corpus, the restriction costs nothing on this form's own subject set — **0** of the 43
+groups names two distinct cards:
+
+    <pinned-corpus subjects> | grep -oE '\([^()]*t[0-9]+[^()]*\) \(#[0-9]+\)$' \
+      | grep -cE '\bt[0-9]+\b.*\bt[0-9]+\b'                          → 0
 
 **[HARD] The non-attribution rule, stated as a target mismatch (plan-audit iter-2 D4).** A merge
 subject that **names a target** attributes no card **unless that target is the branch the resolved
@@ -269,8 +283,37 @@ group. That widening is rejected on a corpus instance: `merge: t79 — glm_task 
 to t79. The under-count is loud; that false positive would be silent, and silence is the failure
 direction this SPEC exists to remove.
 
-The residual 7 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D at 7 rather
-than at 1.
+**The second repair: form 2b, and the third correction of this figure (plan-audit iter-3 D3-1).**
+The 7 above was wrong too, and wrong in the same way — the classification of the residual has never
+been exhaustive on any iteration, this one included. The audit named a shape neither the author nor
+the lane had classified: form 2's own position with a pull-request reference appended, which form
+2's `)$` anchor silently excludes. Re-measured in this tree at HEAD `012d9680a` over the pinned
+corpus `7835148d3`, with a binary built from this tree (`go build ./cmd/moai`, VCI §2.2):
+
+    grep -cE '\([^()]*t[0-9]+[^()]*\) \(#[0-9]+\)$' <pinned-corpus subjects>          →  43
+    ... the same, ids extracted, sort -u                                              →  40
+    ... of those, ids attributed by none of forms 1/2/3a/3b/3c (comm -23)             →  39
+
+Adopting form 2b moves the attributed set **270 → 309** and the subject-present-but-unattributed
+population **77 → 38**:
+
+    ids appearing anywhere in a subject                                               → 347
+    ids attributed under forms 1/2/2b/3a/3b/3c                                        → 309
+    subject-present but attributed by no form                                         →  38
+
+**[HARD] The residual is a FLOOR, not a total.** The named-shape under-count now stands at **at least
+10** — the 7 above, plus `t311` (`merge(WT-codex-init): integrate card t340 … (closes t311)`) and
+`t121` / `t128` (`merge(lane-1): t121 …`), two further shapes the audit named and this version does
+not adopt. It is stated as a floor because **nobody has classified the 38 exhaustively** — not this
+author across three versions, not the auditor across three iterations, not the lane. Every round has
+raised the figure (1 → 19 → 7 → ≥10) because each round classified the part of the residual it
+happened to notice. A reader who needs a total must classify all 38; the command that produces them
+is the `comm -23` above. Their live-queue status is likewise **unmeasured** (`moai todo` and the
+disk store are known to disagree), so no operational-impact figure is derivable from this number
+either.
+
+The floor of 10 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D on the
+failure **direction** rather than on any dating or impact claim about the residual.
 
 ### A.5 The ref: the repository already knows the answer
 
