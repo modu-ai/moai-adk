@@ -1,0 +1,5 @@
+--- FAIL: TestInboxCap_RotatesOverCapInbox (0.00s)
+    inbox_lifecycle_test.go:201: archive generation .1 not created: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxCap_RotatesOverCapInbox720658035/001/.moai/lessons-inbox.jsonl.1: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.752s
+FAIL

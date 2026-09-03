@@ -177,15 +177,15 @@ flowchart TD
 
 マイルストーン Mn の AC 行がすべて PASS になり、それらの行の交差検証も PASS で返ってきたら、`manager-lead` は次のマイルストーンに進む前に 3 つのステップを踏みます。この手順は **既存のツールだけを組み合わせます** — 新しい Go コードも、新しいフックも、新しい CLI サブコマンドも作りません。
 
-1. **証拠の永続化** — 各 AC の検証コマンド出力を `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` にリダイレクトします。`/tmp` は OS が消去するため使いません。監査時点でそのパスが実際に開けて初めて、引用された根拠が有効になります。証拠を取得できなかった AC は `PASS` ではなく `GAP` と表記します。
-2. **フォールド行の追加** — `progress.md` §E.2 に既存の行フォーマットのまま 1 行を追記します: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`。`M<n>:` という接頭辞は `internal/spec/era.go` の §E 見出しマッチャーと衝突しないよう選んだ形であり、マッチャーに手を入れずに共存できます。
+1. **証拠の保存とエクスポート** — 各 AC の検証コマンド出力を `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` にリダイレクトします。`/tmp` は OS が消去するため使いませんが、`/tmp` を生き延びることと監査時点で開けることは別の話です — このディレクトリは gitignore された**マシンローカルのスクラッチ**です。AC 行が証拠を引用する前に、判定を決めた行を追跡対象のパス `.moai/reports/<card-id>/` へエクスポートし、引用ではそのファイル 1 つを名指しします。証拠を取得できなかった AC は `PASS` ではなく `GAP` と表記します。
+2. **フォールド行の追加** — `progress.md` §E.2 に既存の行フォーマットのまま 1 行を追記します: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/M<n>-report.md | fold-at: <ISO-8601>`。`M<n>:` という接頭辞は `internal/spec/era.go` の §E 見出しマッチャーと衝突しないよう選んだ形であり、マッチャーに手を入れずに共存できます。
 3. **`/compact` の実行** — 保持する項目を明示して圧縮します: retain-current-milestone (いま終えたマイルストーンとそのフォールド行)、retain-fold-rows (§E.2 にある過去のフォールド行すべて)、retain-armed-goal (`/moai goal` で設定した条件があればその条件)。
 
 フォールド後の不変条件は 2 つです。圧縮後のトークン使用量が圧縮前より減っていること、そして同時にモデル別のハンドオフ閾値 (1M 系は 50%、200K/256K 系は 90%) を下回っていることです。減っていなければ失敗したフォールドとして扱い、計画を立て直します。サブエージェントのコンテキストで `/compact` が使えない場合は blocker レポートを返し、オーケストレーターに代わりに圧縮してもらうか、`/clear` と再開メッセージで迂回します。
 
 ```mermaid
 flowchart TD
-    MN["マイルストーン Mn 完了<br>AC すべて PASS + 交差検証 PASS"] --> S1["ステップ 1: 証拠の永続化<br>.moai/state/verify/session/"]
+    MN["マイルストーン Mn 完了<br>AC すべて PASS + 交差検証 PASS"] --> S1["ステップ 1: スクラッチへ保存<br>その後 .moai/reports/card-id/ へエクスポート"]
     S1 --> S2["ステップ 2: フォールド行の追加<br>progress.md §E.2"]
     S2 --> S3["ステップ 3: /compact の実行<br>retain 指示 3 種"]
     S3 --> CHECK{"使用量が減り<br>閾値未満?"}

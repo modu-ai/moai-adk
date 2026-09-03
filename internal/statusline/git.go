@@ -30,18 +30,21 @@ func (c *gitCollector) CollectGitStatus(ctx context.Context) (*GitStatusData, er
 
 	data := &GitStatusData{Available: true}
 
-	branch, err := c.repo.CurrentBranch()
-	if err != nil {
-		slog.Debug("git branch collection failed", "error", err)
-		// Continue with empty branch; non-fatal
-	}
-	data.Branch = branch
-
+	// Status already asks for the branch in the same git spawn, so ask it
+	// first and take the answer from there. CurrentBranch stays the fallback
+	// for the two cases the header cannot answer: a failed status, and a
+	// detached HEAD (which the header reports as no branch at all).
 	status, err := c.repo.Status()
 	if err != nil {
 		slog.Debug("git status collection failed", "error", err)
 		// Return partial data with branch only
+		data.Branch = c.currentBranch()
 		return data, nil
+	}
+
+	data.Branch = status.Branch
+	if data.Branch == "" {
+		data.Branch = c.currentBranch()
 	}
 
 	data.Modified = len(status.Modified)
@@ -51,4 +54,15 @@ func (c *gitCollector) CollectGitStatus(ctx context.Context) (*GitStatusData, er
 	data.Behind = status.Behind
 
 	return data, nil
+}
+
+// currentBranch is the fallback branch query. A failure is non-fatal and
+// yields the empty branch name, exactly as before.
+func (c *gitCollector) currentBranch() string {
+	branch, err := c.repo.CurrentBranch()
+	if err != nil {
+		slog.Debug("git branch collection failed", "error", err)
+		// Continue with empty branch; non-fatal
+	}
+	return branch
 }

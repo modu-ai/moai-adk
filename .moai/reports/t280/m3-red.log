@@ -1,0 +1,5 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/inbox_test.go:12:2: "github.com/spf13/cobra" imported and not used
+internal/cli/inbox_test.go:26:9: undefined: newInboxCmd
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
