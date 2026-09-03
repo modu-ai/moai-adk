@@ -87,3 +87,41 @@
 ## 결정 요청
 
 없음 — 카드 범위 안에서 판단 가능한 결정만 내렸다. 리드 판독 대상: 본 판정서 + 커밋 3건.
+
+---
+
+## Sync-phase 기록 (manager-docs, 2026-09-03)
+
+sync_commit_sha: pending-backfill-t297-sync — 커밋은 자기 SHA를 인용할 수 없으므로 placeholder. 실측값은 레인 완료 보고에 첨부.
+
+### 판독한 것
+
+- 본 판정서 전문 + 브랜치 커밋 3건(`5ed9d2d75` → `7e91cc04c` → `ea9ae0c00`) — sync의 §-수준 결정이 판정서와 모숫값 없음을 확인.
+- CHANGELOG 관례: [Unreleased] §Fixed의 Class B 선례(card t236, `#1640` 형식), §Added의 no-SPEC 선례(card t295, card t287).
+- docs-site: `cli-reference/profile.md` 4 locale에 이번 변경으로 거짓이 된 문장 존재 — "`projects:` 목록은 프로젝트가 늘어날수록 함께 늘어나며, 정리해 주는 명령은 아직 없습니다" (ko:111 / en:111 / ja:109 / zh:109). `cli-reference/worktree.md` 4 locale의 clean 섹션에는 ledger 회수 동작이 미기재.
+
+### CHANGELOG 결정
+
+[Unreleased] §Fixed 최상단에 엔트리 추가 — t236 Class B 선례 형식(bold 제목 + `(card t297, Class B — no SPEC)`), 본문 영어. B12 자가시험:
+
+1. Pre-emission grep `grep -c 't297' CHANGELOG.md` → 1. 그 1건은 t293 엔트리(SPEC-STATUSLINE-PROFILE-RESPECT-001) 안의 "follow-up card t297" 예고 참조(AC-009 DEFERRED 기록)로, 카드 t297 자체 엔트리가 아니다. 규칙의 목적(병렬 sync 세션의 중복 엔트리 방지)에 반하지 않음을 판독하고 진행.
+2. AC count match — Class B는 acceptance.md가 없어 N/A. SPEC artifacts 미창조 (dispatch 경계 준수).
+3. File path verification — 엔트리가 claim하는 `internal/profile/profile.go`, `internal/cli/worktree/`, `.moai/reports/t297/`, docs-site 8파일 존재를 `ls`로 확인.
+
+### docs-site / README 결정
+
+수정했다 (defer 아님). 근거: (a) t412 선례 — sync 단계에서 now-false가 된 docs-site 행을 4-locale로 수정한 전례, (b) 거짓이 된 사용자 문장("정리 명령 없음")을 남기는 것보다 작은 수정(8파일, 각 1-3문장)이 맞다, (c) hns-oss-docs-i18n-rules 규칙 준수 — ko-canonical 문장 교체, 4-locale 동시 수정. 내용:
+
+- `cli-reference/profile.md` ×4 locale: 제약 노트의 증가·무정리 문장 → "워크트리 실행은 등록 프로젝트 항목에 합쳐져 프로젝트당 1행 유지, 프로젝트 디렉터리가 사라진 항목은 `moai worktree clean`으로 정리"로 교체.
+- `cli-reference/worktree.md` ×4 locale: clean 섹션 도입부에 ledger 회수 설명 추가 (사라진 프로젝트 디렉터리의 항목 prune + 제거 건수 stdout 출력, `remove`/`done`의 동일 회수).
+- README 4개: `worktree clean`·`launch.yaml` 언급 grep 0건 — 수정 표면 없음.
+- docs-site에는 템플릿 미러가 없어 Template-First 의무 없음. Mermaid 방향·이모지·URL blacklist·버전 SSOT 해당 없음 (다이어그램·버전 문자열 미변경).
+
+### Sync 시점 재측정
+
+- `golangci-lint run internal/profile/... internal/cli/worktree/...` → `0 issues.`
+- `go vet ./internal/profile/ ./internal/cli/worktree/` → exit 0
+
+### 커밋 경계
+
+sync 커밋 1건 = CHANGELOG.md + docs-site 8파일 + 본 섹션. `internal/` 소스 미접촉 (run phase 소관), SPEC artifacts 미창조 (Class B), push 없음 (통합 창은 리드 소관).
