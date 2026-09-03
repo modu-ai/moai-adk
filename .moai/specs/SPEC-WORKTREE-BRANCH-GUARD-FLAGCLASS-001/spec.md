@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -78,9 +78,26 @@ table names only MUTATION forms, and a Query-vs-mutate discrimination bullet
 permits read-only `git branch` queries (bare list, `--list`, `-v`/`-vv`,
 `--show-current`, `--contains`/`--merged`/`--points-at`). The CODE already
 implements the query half of that discrimination but not the full mutation
-half. This SPEC makes the code's flag-class discrimination match the
-doctrine's — closing the under-match axis without reopening the over-match
-axis.
+half. This SPEC EXTENDS the mutation class beyond the doctrine's literal
+v1.3.2 flag enumeration: the v1.3.2 Query-vs-mutate bullet itself states
+that `-f`/`-u` force/upstream forms "sit outside the flag class and pass …
+extending the flag class is a policy change, not a doc correction"
+(`main-checkout-branch-guard.md:90-95`). This SPEC makes that policy
+change — extending the mutation class per the forbidden table's
+shared-state rationale, with the M1 measurement (not the table's literal
+text) as the classification authority — and lands the matching bounded
+doctrine update in the same card (REQ-WBG-F-009) so doc and code share one
+discrimination, closing the under-match axis without reopening the
+over-match axis.
+
+**Doctrine disposition (audit iteration 1, D1):** resolved via the
+bounded-update path — M3 adds the newly-covered mutation forms to the
+v1.3.2 Query-vs-mutate bullet and forbidden-table row 2's flag
+enumeration. The alternative (a named residual + follow-up card) was
+rejected: leaving the doctrine asserting "`-f`/`-u` … pass" while the
+guard denies them recreates exactly the doc-code shared-discrimination
+break the dispatching mandate named, and the edit is one bullet plus one
+table row — proportionate to the card.
 
 ## §B. Scope
 
@@ -89,7 +106,9 @@ axis.
 1. **The `git branch` branch-state pattern only** (`branch_guard.go:120`):
    widen/distinguish the flag discrimination so every MUTATION form of
    `git branch` denies in the primary checkout and every QUERY form stays
-   allowed, mirroring the v1.3.2 doc discrimination.
+   allowed — EXTENDING the v1.3.2 mutation class per its shared-state
+   rationale (the M1 measurement is the classification authority), not
+   merely re-implementing its literal six-flag enumeration.
 2. **Full-flag-token classification.** Long flags classified by their
    complete token, never by substring — `--format` ≠ `--force`, and
    `--contains` / `--merged` / `--no-merged` must not be denied via the
@@ -105,6 +124,12 @@ axis.
    prefix `BRANCH_GUARD_VIOLATION:`, primary-vs-worktree discriminant,
    fail-open semantics (deny only on positive evidence; uncertainty → allow
    + audit-log append).
+6. **Bounded doctrine alignment edit (M3, audit iteration 1 D1)**: update
+   the v1.3.2 Query-vs-mutate bullet
+   (`main-checkout-branch-guard.md:90-95`) and forbidden-table row 2's
+   flag enumeration to name the newly-denied mutation forms —
+   Template-First (template copy first, local mirror in the same commit,
+   sanitized-pair parity) — so doc and code share one discrimination.
 
 ### Out of Scope — Non-branch patterns
 
@@ -124,12 +149,14 @@ axis.
   remain under-matched — the documented correct direction for a fail-open
   guard.
 
-### Out of Scope — Doctrine bump
+### Out of Scope — Doctrine changes beyond the bounded alignment bullet
 
-- `main-checkout-branch-guard.md` is already at v1.3.2 with the intended
-  discrimination wording; no doctrine edit is required by this SPEC. If M1's
-  measurement contradicts the v1.3.2 permitted list, a blocker report — not
-  a doctrine edit — is the escalation path.
+- The M3 doctrine edit (REQ-WBG-F-009) is bounded to the Query-vs-mutate
+  bullet and forbidden-table row 2's flag enumeration. Restructuring the
+  permitted list, adding new sections, renumbering the rule, or any
+  detail-companion rewrite is out of scope. If M1's measurement contradicts
+  the v1.3.2 permitted list, a blocker report — not a broader doctrine
+  edit — is the escalation path.
 
 ### Out of Scope — CLAUDE.local.md friction-note hygiene
 
@@ -139,22 +166,30 @@ axis.
 
 ## §C. Requirements (GEARS notation)
 
-### REQ-WBG-F-001 — Doctrine-mirroring flag discrimination (Ubiquitous)
+### REQ-WBG-F-001 — Class-extended flag discrimination (Ubiquitous)
 
 The `git branch` branch-state guard SHALL classify command forms by a
-mutation-vs-query flag discrimination that mirrors the v1.3.2 doctrine
-stub: a form is denied in the primary checkout if and only if it presents a
-mutating flag or a bare branch-name creation operand, and a form presenting
-only query flags is allowed.
+mutation-vs-query flag discrimination that EXTENDS the v1.3.2 doctrine
+stub's mutation class per its shared-state rationale (the v1.3.2 bullet's
+own literal enumeration covers only `-d/-D/-m/-M/-c/-C` + bare creation
+and explicitly leaves `-f`/`-u` outside): a form is denied in the primary
+checkout if and only if it presents a mutating flag or a bare branch-name
+creation operand, and a form presenting only query flags is allowed. The
+M1 measurement matrix is the classification authority for every form.
 
 ### REQ-WBG-F-002 — Mutation forms denied (Event-detected)
 
 **When** a `git branch` command presents any mutating flag — at minimum
-`-f`, `--force`, `-d`, `-D`, `-m`, `-M`, `-c`, `-C`, `-u`, `--set-upstream`,
-`--set-upstream-to`, `--unset-upstream`, `-t`, `--track`, `--no-track`,
-`--edit-description`, or any combined short-flag cluster containing one of
-`d/D/m/M/c/C/f` — the guard SHALL deny it in the primary checkout with the
-`BRANCH_GUARD_VIOLATION:` sentinel prefix. A bare branch-name creation
+`-f`, `--force`, `-d`, `--delete`, `-D`, `-m`, `--move`, `-M`, `-c`,
+`--copy`, `-C`, `-u`, `--set-upstream`, `--set-upstream-to`,
+`--unset-upstream`, `-t`, `--track`, `--no-track`, `--edit-description`,
+or any combined short-flag cluster containing one of `d/D/m/M/c/C/f` — the
+guard SHALL deny it in the primary checkout with the
+`BRANCH_GUARD_VIOLATION:` sentinel prefix. An `=`-attached long-flag value
+(`--set-upstream-to=<upstream>`, `--track=<mode>`) SHALL classify by the
+flag name before the `=`. Creation modifiers without an own mutation flag
+(`--recurse-submodules`, `--create-reflog`) are covered by the bare-operand
+creation rule, not enumerated separately. A bare branch-name creation
 operand (`git branch <name>`, `git branch <name> <start-point>`) SHALL
 continue to deny.
 
@@ -207,18 +242,35 @@ launch, and `MOAI_BRANCH_GUARD_EXEMPT=1` is read from the hook process's
 own environment (spawned before the guarded command runs, so exporting it
 inside the command is a no-op).
 
+### REQ-WBG-F-009 — Bounded doctrine alignment (Ubiquitous)
+
+The doctrine rule `.claude/rules/moai/workflow/main-checkout-branch-guard.md`
+SHALL, by M3 completion, describe the extended mutation class — its
+Query-vs-mutate bullet (lines 90-95) and forbidden-table row 2's flag
+enumeration name the newly-denied forms — so the doctrine no longer
+asserts that `-f`/`-u` forms pass. The edit SHALL land Template-First,
+with the sanitized-pair mirror
+(`internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`)
+kept in parity in the same commit.
+
 ## §D. Constraints
 
-- **Tier M artifact set** (4 plan-phase files: spec / plan / acceptance /
-  progress) — the dispatch labeled the card Tier S but mandated
-  acceptance.md with the full expected measurement matrix; the artifact-set
-  tier is therefore M with Tier-S scope discipline (matcher + tests only).
+- **Tier M** (3-artifact set: spec / plan / acceptance, plus progress.md
+  as the all-tier lifecycle record) — the dispatch labeled the card Tier S
+  but mandated acceptance.md with the full expected measurement matrix; the
+  artifact-set tier is therefore M with Tier-S scope discipline (matcher +
+  tests + the bounded doctrine bullet only).
 - **Class B defect card (kanban)**: cause established by synthetic
   measurement during t458; the run phase lands the fix, not a redesign.
 - **verification-claim-integrity + verification-completeness**: every AC
-  carries a RED-now cell pinned to tree `d592b0551` (the plan-phase probe
-  output in acceptance.md §D.0) and a green path naming the milestone that
-  flips it; no classification claim rests on estimation.
+  carries a RED-now cell or an explicit green-now characterization cell —
+  AC-001/002/004/009 carry RED-now cells (pinned to tree `d592b0551` via
+  acceptance.md §D.0, or to the audit-iteration-1 git 2.50.1 live probes,
+  or — for the REQ-WBG-F-009 doctrine assertion — to the v1.3.2 file text
+  itself); AC-003/005/006/007/008 are green-now characterization pairs.
+  Cells not yet measured are labeled inferred-pending-M1 and are measured
+  by the M1 run before the fix class is decided; no classification claim
+  rests on estimation.
 - **Fail-open doctrine** (Bash Risk-Amplifier WARN-ONLY, FAIL-OPEN): no new
   blocking on uncertainty paths.
 - **Go code/comments in English**; table-driven tests; package
@@ -231,21 +283,22 @@ inside the command is a no-op).
 
 | AC | Subject | Verifiable by |
 |----|---------|---------------|
-| AC-WBG-F-001 | Full expected matrix: every mutation form → deny, every query form → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
+| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-23) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
 | AC-WBG-F-002 | Combined short-flag clusters containing d/D/m/M/c/C/f → deny (`-df`, `-fm`, `-vD`) | Matrix cells with RED-now on `d592b0551` |
 | AC-WBG-F-003 | Query allowlist regression: `--list develop -v`, `-vv`, `--merged`, `--no-merged`, `--points-at`, `--format`, `--contains` → allow | Matrix cells (green-now; must stay green post-fix) |
 | AC-WBG-F-004 | Whole-token classification: `--format` allow vs `--force` deny; `--contains`/`--merged`/`--no-merged` allow despite embedded letters | Matrix cells |
 | AC-WBG-F-005 | Preserved surfaces: existing deny tests (`branch_guard_test.go:234-245`) + sentinel + discriminant + fail-open tests all stay green | Existing + M3 test run |
 | AC-WBG-F-006 | Opt-in gate: disabled default → no pattern evaluation, no deny | Existing `pre_tool_branch_guard_optin_test.go` stays green |
 | AC-WBG-F-007 | Fail-open preserved: non-git cwd / missing git / rev-parse failure → allow + audit entry | Existing fail-open tests stay green |
-| AC-WBG-F-008 | Exemption-axes conditions encoded as documented test conditions | M3 condition tests / test-doc comments |
+| AC-WBG-F-008 | Exemption-axes conditions encoded as documented test conditions (+ subagent-shaped negative-path cell, D7) | M3 condition tests / test-doc comments |
+| AC-WBG-F-009 | Doctrine alignment: v1.3.2 Query-vs-mutate bullet + table row 2 enumeration name the extended mutation class; sanitized-pair mirror in parity | M3 doctrine edit (Template-First) + parity check |
 
 ## §F. Cross-References
 
 - `internal/hook/branch_guard.go:120` — the pattern under fix;
   `:59-111` the discrimination rationale comment block (t42 `-c`/`-C`
   completion + accepted combined-short-flag residual this SPEC closes);
-  `:196` `matchBranchStateCommand`; `:210` exemption env read;
+  `:194` `matchBranchStateCommand`; `:210` exemption env read;
   `:238-246` fail-open contract; `branchGuardViolationPrefix` at `:50`.
 - `internal/hook/branch_guard_test.go:234-245` (deny axis pins),
   `:308-320` (query allowlist pins), `:610-660` (sentinel + origin test).
@@ -253,7 +306,8 @@ inside the command is a no-op).
   axes tests — AC-REQ-6a/6b of -OPTIN-001).
 - `.claude/rules/moai/workflow/main-checkout-branch-guard.md` v1.3.2 —
   doctrine SSOT (§ Rules forbidden table row 2; § Permitted bullet 1;
-  § Mechanical enforcement Query-vs-mutate discrimination bullet).
+  § Mechanical enforcement Query-vs-mutate discrimination bullet, lines
+  90-95 — the "`-f`/`-u` … pass" sentence REQ-WBG-F-009 updates).
 - `.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md` —
   enforcer implementation detail (exemption reachability caveat).
 - Predecessors: SPEC-WORKTREE-BRANCH-GUARD-001 (completed),
@@ -272,3 +326,15 @@ inside the command is a no-op).
   axis clean in source; CLAUDE.local.md §4.1 friction note treated as
   stale-pending-M1). Fix scoped to the single `git branch` pattern + tests;
   all other patterns and guard surfaces preserved.
+- 2026-09-03 v0.2.0 — audit iteration 1 revision (verdict FAIL 0.79 →
+  fixes applied, re-audit pending): D1 "mirrors v1.3.2" reworded to
+  "extends"; doctrine disposition resolved as the bounded-update path
+  (REQ-WBG-F-009 added, M3 scope). D2 matrix extended with M-20..M-23
+  (`--delete`/`--move`/`--copy`, detached `--set-upstream-to`, attached
+  `--track=` — auditor-measured live on git 2.50.1); M-14 annotated as a
+  measured non-target; REQ-002 flag list extended; AC-001 count updated.
+  D3 plan §G fix shapes replaced with the corrected first-token +
+  `=`-split discrimination rule. D4 evidence labels scoped (RED-now vs
+  green-now characterization; measured vs inferred-pending-M1). D5
+  tier-set wording (3 artifacts + progress.md). D6 citation :196→:194.
+  D7 AC-008 negative-path cell adopted.

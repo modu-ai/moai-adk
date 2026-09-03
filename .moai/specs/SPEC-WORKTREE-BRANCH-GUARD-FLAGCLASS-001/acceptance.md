@@ -54,12 +54,15 @@ plan-phase pin of the same fact.
 ## §D.1 Expected measurement matrix (target, post-M2)
 
 Each cell: `deny` = guard denies in the primary checkout with
-`BRANCH_GUARD_VIOLATION:` prefix; `allow` = guard allows. "Pre-fix" column
-is the measured current state (from §D.0 and the existing pinned tests).
+`BRANCH_GUARD_VIOLATION:` prefix; `allow` = guard allows. The "Pre-fix"
+column carries one of two labels: **measured** (§D.0 probe, existing
+pinned tests, or the audit-iteration-1 live git 2.50.1 probes) or
+**inferred-pending-M1** (token-shape inference; the M1 run measures it
+before the fix class is decided — never treated as a measurement).
 
 ### Mutation forms → deny
 
-| # | Command form | Pre-fix (measured) | Post-fix expected |
+| # | Command form | Pre-fix (measured / inferred-pending-M1) | Post-fix expected |
 |---|---|---|---|
 | M-01 | `git branch feature` (bare creation) | deny (pinned test) | deny |
 | M-02 | `git branch newbranch oldstart` | deny (pinned test) | deny |
@@ -67,30 +70,43 @@ is the measured current state (from §D.0 and the existing pinned tests).
 | M-04 | `git branch -m renamed` / `-M renamed` | deny (pinned test) | deny |
 | M-05 | `git branch -c copied` / `-C copied` | deny (pinned test) | deny |
 | M-06 | `git branch -f topic abc1234` | allow (§D.0) | **deny** |
-| M-07 | `git branch -f topic` (create at HEAD) | allow (same token shape as M-06) | **deny** |
+| M-07 | `git branch -f topic` (create at HEAD) | allow (inferred-pending-M1; same token shape as M-06) | **deny** |
 | M-08 | `git branch --force topic abc1234` | allow (§D.0) | **deny** |
 | M-09 | `git branch -df old` | allow (§D.0) | **deny** |
 | M-10 | `git branch -fm renamed` | allow (§D.0) | **deny** |
 | M-11 | `git branch -vD old` | allow (§D.0) | **deny** |
 | M-12 | `git branch -u origin/main topic` | allow (§D.0) | **deny** |
 | M-13 | `git branch --set-upstream-to=origin/main topic` | allow (§D.0) | **deny** |
-| M-14 | `git branch --set-upstream origin/main topic` | allow (token shape; not probed — M1 adds the cell) | **deny** |
+| M-14 | `git branch --set-upstream origin/main topic` — **measured non-target**: git 2.50.1 rejects at parse time (`fatal: the '--set-upstream' option is no longer supported`, auditor-measured) | allow (inferred-pending-M1) | **deny** (fail-closed-safe classification pin — the cell tests the guard's classification of a removed-in-modern-git form, not live git behavior; kept so a future reader knows why the form is absent from live-git coverage) |
 | M-15 | `git branch --unset-upstream topic` | allow (§D.0) | **deny** |
 | M-16 | `git branch -t topic origin/main` | allow (§D.0) | **deny** |
-| M-17 | `git branch --track topic origin/main` | allow (token shape; M1 adds) | **deny** |
-| M-18 | `git branch --no-track topic origin/main` | allow (token shape; M1 adds) | **deny** |
-| M-19 | `git branch --edit-description topic` | allow (§D.0) | **deny** |
+| M-17 | `git branch --track topic origin/main` | allow (inferred-pending-M1) | **deny** |
+| M-18 | `git branch --no-track topic origin/main` | allow (inferred-pending-M1) | **deny** |
+| M-19 | `git branch --edit-description topic` | allow (measured, §D.0) | **deny** |
+| M-20 | `git branch --delete old` — auditor-measured live on git 2.50.1: deleted a branch, exit 0 (throwaway probe repo); passes the guard today (`--`-prefixed → `[^\s-]` fails) | allow (measured, audit iter 1) | **deny** |
+| M-21 | `git branch --move renamed` / `git branch --copy copied` — documented long forms of `-m`/`-c` (`git branch -h`) | allow (inferred-pending-M1; `--`-prefixed → `[^\s-]` fails today) | **deny** |
+| M-22 | `git branch --set-upstream-to origin/main topic` (space-separated value) — auditor-measured live on git 2.50.1: succeeded (branch set up to track) | allow (measured, audit iter 1) | **deny** |
+| M-23 | `git branch --track=direct topic <base>` (attached value) — auditor-measured on git 2.50.1: parses (failed only on upstream resolution) | allow (measured, audit iter 1) | **deny** |
 
-Rationale for M-12..M-19 (config-mutation forms): they mutate branch state
-(upstream tracking, description, creation modifiers) without being
-ref-pointer rewrites; the doctrine's forbidden-table rationale ("leaves a
-branch other sessions did not expect" / shared-state mutation) covers them.
-Their classification is asserted by the matrix (measured at M1), never by
-this rationale alone.
+Rationale for M-12..M-23 (config-mutation and long-form mutation forms):
+they mutate branch state (upstream tracking, description, creation
+modifiers, or the same mutations as the short flags via their documented
+long forms) without being limited to ref-pointer rewrites; the doctrine's
+forbidden-table rationale ("leaves a branch other sessions did not expect"
+/ shared-state mutation) covers them. Their classification is asserted by
+the matrix (measured at M1, or by the audit-iteration-1 live probes), never
+by this rationale alone.
+
+Non-enumerated creation modifiers (`--recurse-submodules`,
+`--create-reflog`) are covered by the bare-operand creation rule
+(REQ-WBG-F-002), not enumerated as separate cells. Git prefix-abbreviation
+forms (`git branch --dele x`, any unambiguous long-flag prefix) classify as
+unknown → allow under full-token matching — an accepted residual inherent
+to the fail-open direction (E-5).
 
 ### Query forms → allow
 
-| # | Command form | Pre-fix (measured) | Post-fix expected |
+| # | Command form | Pre-fix (measured / inferred-pending-M1) | Post-fix expected |
 |---|---|---|---|
 | Q-01 | `git branch` (bare) | allow (pinned test) | allow |
 | Q-02 | `git branch --list` / `--list develop -v` | allow (pinned + §D.0) | allow |
@@ -102,8 +118,8 @@ this rationale alone.
 | Q-08 | `git branch --no-merged main` | allow (§D.0) | allow |
 | Q-09 | `git branch --points-at HEAD` | allow (§D.0) | allow |
 | Q-10 | `git branch --format %(refname)` | allow (§D.0) | allow |
-| Q-11 | `git branch --sort=-committerdate` | allow (token shape; M1 adds) | allow |
-| Q-12 | `git branch -q` / `-i` | allow (token shape; M1 adds) | allow |
+| Q-11 | `git branch --sort=-committerdate` | allow (inferred-pending-M1) | allow |
+| Q-12 | `git branch -q` / `-i` | allow (inferred-pending-M1) | allow |
 
 ### Whole-token discrimination pairs (REQ-WBG-F-004)
 
@@ -116,9 +132,12 @@ this rationale alone.
 
 - **AC-WBG-F-001 (matrix convergence)** — Given the M1 matrix test from
   §D.1 exists with doctrine-based expectations, When it runs on the post-M2
-  tree, Then every cell matches its expected classification (19/19
-  mutation→deny, 12/12 query→allow). RED-now: §D.0 (10 cells fail on
-  `d592b0551`). Green path: M2.
+  tree, Then every cell matches its expected classification (23/23 mutation
+  cells → deny — M-21 carries the two documented long forms `--move`/
+  `--copy`; 12/12 query cells → allow). RED-now: §D.0 (10 cells fail on
+  `d592b0551`) plus the audit-iteration-1 live measurements (M-20/M-22/M-23
+  confirmed passing the guard on git 2.50.1); M-07/M-14/M-17/M-18/M-21 are
+  inferred-pending-M1. Green path: M2.
 - **AC-WBG-F-002 (combined short-flag clusters)** — Given a `git branch`
   command with a combined short-flag cluster containing `d/D/m/M/c/C/f`
   (`-df`, `-fm`, `-vD`), When evaluated in the primary checkout, Then the
@@ -166,7 +185,22 @@ this rationale alone.
   requires test-condition documentation, NOT code change. Green-now
   (`pre_tool_branch_guard_optin_test.go:140-175` proves both axes fire when
   the values ARE delivered); M3 adds the unreachable-from-subagent
-  condition documentation.
+  condition documentation. Strengthening (D7, audit iteration 1): M3
+  additionally adds a negative-path condition test — a subagent-shaped
+  `HookInput` (no `AgentType`, env unset) issuing a mutating
+  `git branch -f` in the primary checkout asserts the deny stands — making
+  the unreachability condition executable rather than comment-only. Still a
+  small test-condition addition; no production code change.
+
+- **AC-WBG-F-009 (doctrine alignment)** — Given the doctrine stub at v1.3.2
+  whose Query-vs-mutate bullet (`main-checkout-branch-guard.md:90-95`)
+  asserts `-f`/`-u` force/upstream forms "sit outside the flag class and
+  pass" (RED-now: the assertion exists in the file read on this tree and
+  will misdescribe the post-M2 guard), When M3 completes, Then that bullet
+  and forbidden-table row 2's flag enumeration name the extended mutation
+  class, and the sanitized-pair template mirror
+  (`internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`)
+  is in parity in the same commit. Green path: M3.
 
 ## §D.3 Edge cases
 
@@ -182,7 +216,10 @@ this rationale alone.
   `branch_guard_quoted_test.go`).
 - **E-5 unknown/exotic flags**: a flag in neither set classifies as query
   → allow (fail-open direction; under-match is the documented correct
-  direction for unclassifiable forms).
+  direction for unclassifiable forms). This includes git
+  prefix-abbreviation forms (`git branch --dele x`): full-token matching
+  cannot classify abbreviated long flags — named residual inherent to the
+  fail-open direction.
 - **E-6 compound commands**: `git branch -f x y && git status` → the
   `git branch` segment still matches (existing scan semantics; no change).
 
@@ -196,4 +233,7 @@ this rationale alone.
 - All ACs reported PASS with the attribution triple (command + verbatim
   output + HEAD SHA) in progress.md §E.2; M1's RED output preserved
   verbatim (E8-class TDD evidence).
-- No file outside `internal/hook/` + this SPEC directory touched.
+- No file outside `internal/hook/`, this SPEC directory, and the two
+  doctrine-rule copies (template
+  `internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`
+  + local mirror, same-commit parity) touched.

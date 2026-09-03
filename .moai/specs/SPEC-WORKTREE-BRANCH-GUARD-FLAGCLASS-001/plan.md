@@ -17,6 +17,11 @@
   expect" rationale (a `-f` pointer rewrite is worse than a `-d` delete),
   and the M1 measurement — not the table's literal text — is the
   classification authority.
+- Doctrine disposition (audit iteration 1, D1): the doctrine update is IN
+  scope as a bounded M3 edit (REQ-WBG-F-009) — one bullet + one table-row
+  enumeration, Template-First with sanitized-pair parity. Leaving v1.3.2
+  asserting "`-f`/`-u` … pass" post-fix would recreate the doc-code
+  shared-discrimination break the dispatch mandate named.
 - Plan-phase ground truth (already measured on `d592b0551`; verbatim output
   preserved in acceptance.md §D.0): 10 mutation forms pass the matcher
   today; all probed query forms already pass (allowed).
@@ -45,7 +50,10 @@
 - **B8 Working-tree hygiene** — this card's worktree also holds the SPEC
   artifacts; stage by explicit pathspec, never `git add -A`.
 - **B10 Scope discipline** — touch only `branch_guard.go`, its test files,
-  and this SPEC directory. No doctrine files, no CLAUDE.local.md.
+  this SPEC directory, and the bounded doctrine edit's two copies (template
+  `internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`
+  + local mirror, same commit). No CLAUDE.local.md, no other doctrine or
+  detail-companion edits.
 - Regex hazards specific to this fix (see §E technical approach):
   `--force` vs `--format` prefix collision; `--contains`/`--merged`/
   `--no-merged` embedded-letter collision with any `[dDmMcCf]`-style class;
@@ -122,38 +130,71 @@ flips to green in this milestone.
    explicitly; both exemption axes fire only for main-thread
    `claude --agent` launches / hook-process env, unreachable from
    tool-spawned subagents. These are documented conditions, NOT code
-   changes.
-4. Verify: `go test ./internal/hook/ -count=1` + `golangci-lint run`
+   changes. Per D7 (audit iteration 1): also add the small negative-path
+   condition test — subagent-shaped `HookInput` (no `AgentType`, env
+   unset) + mutating `git branch -f` → deny stands.
+4. Bounded doctrine alignment (REQ-WBG-F-009 / AC-009): update the v1.3.2
+   Query-vs-mutate bullet (`main-checkout-branch-guard.md:90-95`) and
+   forbidden-table row 2's flag enumeration to name the extended mutation
+   class (`-f`/`--force`, `-u`/`--set-upstream-to`/`--unset-upstream`,
+   `--delete`/`--move`/`--copy`, `-t`/`--track`/`--no-track`,
+   `--edit-description`, combined clusters) — Template-First (template
+   copy first, local mirror in the same commit, sanitized-pair parity).
+   Bounded to that bullet + row; nothing else in the rule changes.
+5. Verify: `go test ./internal/hook/ -count=1` + `golangci-lint run`
    (affected scope only); report per the 5-section evidence format.
 
 Milestones M1→M2→M3 are strictly sequential (M2 needs M1's matrix; M3 needs
 M2's fix). No further milestones — Tier-S scope discipline.
 
-## §G Technical approach (fix-class options, decided by M1)
+## §G Technical approach (fix shape — corrected at audit iteration 1, D3)
 
-Two candidate fix shapes; M1's matrix decides:
+Both original sketch shapes were defective as written: (1) the sketched
+regex's trailing `[^\s-]` after the optional flag group cannot match any
+long-mutation-flag-with-operand form (independent trace: `--force topic`,
+`-f topic`, `--unset-upstream topic`, `--track topic …`, `-vD old` all
+fail to match); (2) the token sketch's unqualified "bare non-flag token →
+create/deny" would deny pinned query cells whose query flags take operands
+(`--contains HEAD`, `--merged main`, `--list develop -v`, `--format
+%(refname)`). The corrected discrimination rule the M2 fix implements:
 
-1. **Regex widening (minimal).** Keep a single regex entry; extend the flag
-   alternation to cover long mutation flags and multi-char short clusters,
-   e.g. shape: `\bgit\s+branch\s+(--force\b|--set-upstream(-to)?(=\S*)?\b|--unset-upstream\b|--edit-description\b|--track\b|--no-track\b|-[dDmMcCf]\S*|-u\S*\s+\S+|-[dDmMcC]\s+)?[^\s-]`
-   — with the whole-token rule that any `--long` flag NOT in the mutation
-   set is a query flag and must not match. Hazards: the `--format`/`--force`
-   prefix collision requires full-token anchors (`\b` or `[\s=]`); embedded
-   letters in `--contains`/`--merged`/`--no-merged` forbid any bare
-   character-class scan of long flags.
-2. **Token-level discriminator (clearer).** Replace the single `git branch`
-   regex entry with a small matcher function for the `git branch` prefix:
-   tokenize the command tail, classify each token (`--long` exact-match
-   against the mutation set vs the query set; `-xyz` cluster → mutate iff it
-   contains any of `dDmMcCf` or is `-u`; bare non-flag token → create/deny;
-   unknown flag → treat as query, fail-open). This expresses REQ-WBG-F-004
-   directly and is the recommended shape if the regex grows beyond
-   readable form; it must slot into `branchStatePatterns`' matching surface
-   without changing the other entries.
+**Deny iff either holds for the token stream after `git branch`** (after
+quoted-span collapse, `(?i)`):
 
-Either shape must keep the quoted-span collapse (see
-`branch_guard_quoted_test.go`) and `(?i)` behavior intact for the `git
-branch` entry.
+1. **First-token creation**: the FIRST token after `git branch` is a
+   non-flag operand (`git branch <name> [start-point]`) — creation. Later
+   non-flag tokens are operands of preceding flags, NOT creations.
+2. **Mutating flag anywhere**: any token is a mutating flag —
+   - a short-flag cluster containing any of `d D m M c C f`, or equal to
+     `u` (e.g. `-d`, `-df`, `-vD`, `-u`, `-f`);
+   - a long flag whose name — taken as the full token, split at `=` first
+     when an attached value is present (`--set-upstream-to=origin/main` →
+     name `--set-upstream-to`) — exactly matches a member of the mutation
+     set: `--force`, `--delete`, `--move`, `--copy`, `--set-upstream`,
+     `--set-upstream-to`, `--unset-upstream`, `--track`, `--no-track`,
+     `--edit-description`.
+
+**Everything else allows**: query long flags (`--list`, `--show-current`,
+`--contains`, `--merged`, `--no-merged`, `--points-at`, `--format`,
+`--sort`, …) and their value operands; query short clusters (`-v`, `-vv`,
+`-a`, `-r`, `-q`, `-i`); unknown flags (fail-open, E-5 — including git
+prefix-abbreviation long flags, a named residual).
+
+Per-flag operand-consumption semantics matter in both directions: a query
+flag's operand (`--contains HEAD`, `--format %(refname)`, `--list
+develop`) must not be read as a creation operand (rule 1 is first-token
+only), and a mutation flag's operand (`--delete old`,
+`--set-upstream-to origin/main topic`) must not make the token fail to
+match (rule 2 is token-membership, not a trailing anchor). Long-flag
+classification splits on `=` BEFORE name matching, so `--format` never
+prefixes into `--force`, and the embedded letters in
+`--contains`/`--merged`/`--no-merged` are never scanned.
+
+Implementation may be a single regex or a small token classifier slotting
+into the `branchStatePatterns` matching surface — M1's matrix decides
+which; either must preserve quoted-span collapse (see
+`branch_guard_quoted_test.go`) and `(?i)` for the `git branch` entry, and
+must not change the other pattern entries.
 
 ## §H Anti-patterns
 
@@ -169,8 +210,8 @@ branch` entry.
 
 ## §I Cross-references
 
-- spec.md §C REQ-WBG-F-001..008; acceptance.md §D.1 matrix + §D.0 RED-now
-  baseline.
+- spec.md §C REQ-WBG-F-001..009; acceptance.md §D.1 matrix (incl. audit
+  iteration-1 cells M-20..M-23) + §D.0 RED-now baseline.
 - `verification-completeness.md` §2 two-cell adoption discipline (RED-now
   cell = acceptance.md §D.0 probe output on `d592b0551`; green path = M2).
 - gitflow lane protocol (`.claude/rules/local/gitflow-lane-protocol.md`) —
