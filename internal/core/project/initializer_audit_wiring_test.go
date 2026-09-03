@@ -25,14 +25,14 @@ func TestInit_FallbackPathPersistsAuditBlock(t *testing.T) {
 	init := NewInitializer(nil, nil, nil)
 
 	opts := InitOptions{
-		ProjectRoot:      root,
-		ProjectName:      "audit-proj",
-		DevelopmentMode:  "tdd",
-		AuditConfigSet:   true,
-		AuditModel:       "claude",
-		AuditGateClaude:  "required",
-		AuditGateCodex:   "advisory",
-		AuditGateGLM:     "off",
+		ProjectRoot:       root,
+		ProjectName:       "audit-proj",
+		DevelopmentMode:   "tdd",
+		AuditConfigSet:    true,
+		AuditModel:        "claude",
+		AuditGateClaude:   "required",
+		AuditGateCodex:    "advisory",
+		AuditGateGLM:      "off",
 		CodexAuditEnabled: true,
 	}
 	if _, err := init.Init(context.Background(), opts); err != nil {

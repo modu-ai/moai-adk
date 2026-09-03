@@ -156,9 +156,9 @@ type ChainEvent struct {
 
 // CompletionEdge is a convenience view of a completion-edge event for display.
 type CompletionEdge struct {
-	ParentNode       string `json:"parent_node"`
-	ChildNode        string `json:"child_node"`
+	ParentNode         string `json:"parent_node"`
+	ChildNode          string `json:"child_node"`
 	CompletedMilestone string `json:"completed_milestone"`
-	CompletedAt      string `json:"completed_at"`
-	NextResumeTarget string `json:"next_resume_target"`
+	CompletedAt        string `json:"completed_at"`
+	NextResumeTarget   string `json:"next_resume_target"`
 }

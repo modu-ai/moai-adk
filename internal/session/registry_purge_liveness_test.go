@@ -11,7 +11,7 @@ import (
 // livenessProbeFake is the per-PID probe outcome table the liveness-aware
 // purge tests install. A pid absent from the table probes as (dead, true).
 type livenessProbeFake struct {
-	alive       map[int]bool
+	alive        map[int]bool
 	undetermined map[int]bool
 }
 

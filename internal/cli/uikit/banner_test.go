@@ -92,12 +92,12 @@ func TestPrintBanner_OutputFormat(t *testing.T) {
 	// stacks above the compact band, so the composed PrintBanner surface now also
 	// carries the logo's first-row signature (███╗   ███╗) — REQ-TUXIU-050/054.
 	expectedStrings := []string{
-		"███╗   ███╗",  // Restored logo signature (stacked above the compact band)
-		"MoAI",         // Banner should contain MoAI
-		"v1.2.3",       // Version pill
-		"Agentic",      // Description text
-		"Development",  // Description text
-		"Kit",          // Description text
+		"███╗   ███╗", // Restored logo signature (stacked above the compact band)
+		"MoAI",        // Banner should contain MoAI
+		"v1.2.3",      // Version pill
+		"Agentic",     // Description text
+		"Development", // Description text
+		"Kit",         // Description text
 	}
 
 	for _, expected := range expectedStrings {

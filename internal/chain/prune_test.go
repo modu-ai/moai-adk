@@ -19,10 +19,10 @@ func TestChainPruneAgeThreshold(t *testing.T) {
 
 	// Old exited node (no session_id backfill → exited).
 	_ = store.Append(ChainEvent{
-		EventType:  EventNodeEnter,
-		NodeID:     "old-node",
-		Depth:      1,
-		EnteredAt:  oldTime.Format(time.RFC3339),
+		EventType: EventNodeEnter,
+		NodeID:    "old-node",
+		Depth:     1,
+		EnteredAt: oldTime.Format(time.RFC3339),
 	})
 
 	// Active node (has session_id).
@@ -270,9 +270,9 @@ func TestChainPruneMultipleOldNodes(t *testing.T) {
 // TestIsExitedNode verifies the exited-node classification.
 func TestIsExitedNode(t *testing.T) {
 	tests := []struct {
-		name    string
-		events  []ChainEvent
-		exited  bool
+		name   string
+		events []ChainEvent
+		exited bool
 	}{
 		{
 			name:   "skeleton no session",
@@ -308,10 +308,10 @@ func TestIsExitedNode(t *testing.T) {
 func TestSummarizeNode(t *testing.T) {
 	events := []ChainEvent{
 		{
-			EventType:   EventNodeEnter,
-			NodeID:      "N1",
+			EventType:    EventNodeEnter,
+			NodeID:       "N1",
 			ParentNodeID: "N0",
-			Depth:       2,
+			Depth:        2,
 			WorktreePath: "/tmp/wt",
 			SpecID:       "SPEC-X",
 			EnteredAt:    "2026-08-13T10:00:00Z",
