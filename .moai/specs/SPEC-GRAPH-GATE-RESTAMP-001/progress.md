@@ -23,6 +23,21 @@
      정정 전이라면 규칙 A·B 모두 발화하지 않아 규칙 C(absent)로 떨어져 AC-5가 구조적으로 실패.
 - 인수 기준 신설: **AC-7** (미추적 본문 픽스처 → 규칙 A로 해석, verdict는 `absent`가 아님). 기존 AC 번호
   재부여 없음 (AC-1~AC-6 그대로).
+- 정정 라운드 3 (2026-09-04, manager-develop 하류 발견 → 레인 결정). `spec.md` §B.4 / §D.1의 **거짓 문장
+  2건을 본문에서 정정**했다(주석 덧붙이기 아님).
+  1. §B.4 거짓: "모든 기존 픽스처가 본문을 미추적으로 남긴다" → 실제로는 헬퍼가 두 겹이며 안쪽
+     `writeCodemapsProvenanceBlock`은 본문을 쓰지 않는다(본문-부재 픽스처 존재). 확인함.
+  2. §D.1 거짓: "본문-부재는 `codemaps directory missing` 분기가 이미 처분한다" → 그 분기는
+     `os.Stat(dir).IsDir()`(`check.go:285`)이라 `provenance.json`만 든 디렉터리는 통과한다. 확인함.
+  - 결정: 규칙 C를 **C1(본문 부재 → absent, 오류 nil, exit 1) / C2(앵커 미해석 → absent + 오류, exit 2)**로
+    분리. C1의 선례는 `internal/graph/check_citations.go` `docs == 0` 분기(absent, 오류 없음) — 확인함.
+  - 레인 실측 인용(HEAD `2649fe296`): `TestCheckFreshness_DescribedRootsScopeFidelity`와
+    `TestGraphCheckCmd_AbsentExitsOne` 2건이 규칙 C의 **시스템 오류** 때문에 실패. 두 실패 모두 absent
+    판정이 아니라 오류 반환을 문제 삼는다. `spec.md` §B.5에 기록.
+  - **AC-4 재작성**(C1 형태 + "어떤 앵커 해석 결과도 fresh가 아니다" 불변식 + C2 도달 불가 선언·픽스처
+    금지), **AC-5 개정**(허가된 픽스처 편집 정확히 1건:
+    `TestCheckFreshness_DescribedRootsScopeFidelity`에 미추적 `modules.md` 부여, 단언·이름·판별식 불변).
+    AC 번호 재부여 없음.
 - 코드는 작성하지 않았다. `provenance.json`은 만지지 않았다.
 
 ## §E.2 Run-phase Evidence
@@ -124,65 +139,160 @@ codemaps 층 판정: `value=146` `threshold=40` `verdict=stale`,
 `git status --porcelain .moai/project/codemaps/` → 무출력. `provenance.json`은 바이트 불변이며
 `moai graph stamp codemaps`는 이 트리에서 한 번도 실행하지 않았다.
 
-### E.2.7 블로커 — `spec.md` §B.4 / §D.1이 규칙 C의 도달면을 잘못 측정했다
+### E.2.7 블로커와 그 해소 — `spec.md` §B.4 / §D.1의 도달면 오측정
 
-**AC-4와 AC-5가 현재 SPEC 문면 그대로는 동시에 만족될 수 없다.** 배차문의 STOP 지시에 따라
-임의 이탈 없이 여기서 판단을 리드에게 되돌린다.
+**블로커(레인 제기, 2026-09-04).** AC-4와 AC-5가 당시 SPEC 문면 그대로는 동시에 만족될 수 없었다.
+배차문의 STOP 지시에 따라 임의 이탈 없이 판단을 리드에게 되돌렸다.
 
-- `spec.md` §B.4: *"모든 기존 codemaps 층 픽스처에서 본문은 미추적 상태다"* — **거짓**. 이 측정은
-  `writeCodemapsProvenance`(본문 `modules.md`를 씀)만 보고, 본문을 전혀 쓰지 않는
+- `spec.md` §B.4: *"모든 기존 codemaps 층 픽스처에서 본문은 미추적 상태다"* — 거짓. 이 측정은
+  `writeCodemapsProvenance`(본문 `modules.md`를 씀)만 보고, 본문을 전혀 쓰지 않는 안쪽 헬퍼
   `writeCodemapsProvenanceBlock` 직접 호출 픽스처를 세지 않았다.
-- `spec.md` §D.1: *"[규칙 C에 닿는] 그 경우는 앞선 'codemaps directory missing' 분기가 이미
-  absent로 처분한다"* — **거짓**. 디렉터리는 존재하고 그 안에 `provenance.json` 하나만 있는 상태가
-  가능하며, `os.Stat(dir).IsDir()` 분기는 이를 통과시킨다. 그 상태가 곧 규칙 C다.
+- `spec.md` §D.1: *"[규칙 C에 닿는] 그 경우는 앞선 'codemaps directory missing' 분기가 이미 absent로
+  처분한다"* — 거짓. `os.Stat(dir).IsDir()` 분기는 `provenance.json` 하나만 든 디렉터리를 통과시킨다.
 
-영향 범위(측정): 정확히 기존 테스트 2건. 둘 다 codemaps 디렉터리에 `provenance.json`만 있고 본문
-`*.md`가 없는 픽스처이며, 수리 전에는 `fresh`/`value=0`이었다.
+영향 범위(측정): 기존 테스트 정확히 2건. 둘 다 본문 없는 픽스처이며 수리 전에는 `fresh`/`value=0`이었다.
 
-| 테스트 | 관측 |
+| 테스트 | 관측(HEAD `2649fe296`) |
 |---|---|
-| `internal/graph/check_regression_lock_test.go` `TestCheckFreshness_DescribedRootsScopeFidelity` | `CheckFreshness: codemaps stamp 80bf120351cd not comparable in this checkout: no commit in the stamped history touches the codemaps body` |
-| `internal/cli/graph_check_test.go` `TestGraphCheckCmd_AbsentExitsOne` | `absent layers must exit 1, got graph check: codemaps stamp 61195101480e not comparable in this checkout: …` |
+| `internal/graph/check_regression_lock_test.go` `TestCheckFreshness_DescribedRootsScopeFidelity` | `CheckFreshness: codemaps stamp … not comparable in this checkout: no commit in the stamped history touches the codemaps body` |
+| `internal/cli/graph_check_test.go` `TestGraphCheckCmd_AbsentExitsOne` | `absent layers must exit 1, got graph check: codemaps stamp … not comparable …` |
 
-두 테스트 모두 codemaps 본문을 주제로 삼지 않는다(각각 described_roots 범위 충실성, CLI absent
-종료코드). 본문 없는 모양은 우발적이다.
+**해소(리드 판정, spec.md v0.1.3).** 두 실패 중 어느 쪽도 **absent 판정이 틀렸다**고 말하지 않았다.
+둘 다 **시스템 오류가 틀렸다**고 말했다. 그래서 규칙 C를 확정된 관측과 실패한 측정으로 가른다 —
+1/2 종료코드 계약이 이미 싣고 있는 구분이다.
 
-규칙 C가 실제로 도달 가능한 유일한 상태가 **"본문이 양쪽 트리 어디에도 없음"**임을 확인했다. AC-4가
-예시로 든 두 형태는 모두 규칙 C에 닿지 않는다 — 얕은 이력의 경계 커밋은 root로 취급돼
-`git log -1 <S> -- <본문>`이 그 커밋 자신을 반환하고, "초기 커밋 이후 본문 무변경" 역시 root 커밋이
-모든 파일을 추가로 보고하므로 같은 이유로 비지 않는다.
+| 갈래 | 조건 | 처분 |
+|---|---|---|
+| C1 | 본문 집합이 비어 있음(작업 트리·S 양쪽) | `verdict=absent` + 본문 부재 reason, **오류 nil** → exit 1 |
+| C2 | 본문은 존재하나 앵커 미해석(이력 절단) | `verdict=absent` + 시스템 오류 → exit 2 (불변) |
 
-선택지(리드 판정 사항, 레인이 고르지 않는다):
+C1은 발명이 아니라 형제 층과의 정합이다 — `internal/graph/check_citations.go` `checkCitations`의
+`docs == 0` 분기가 이미 absent + 오류 없음으로 처분한다. C1이 없는 상태가 오히려 두 층의 분기였다.
+이 트리에서 실제로 확인됐다: 수리 후 그 픽스처의 citations 행은 `no codemaps documents to check`,
+codemaps 행은 `no codemaps documents to anchor on` — 같은 사실을 같은 처분으로 말한다.
 
-1. **기존 테스트 2건의 픽스처에 커밋된 codemaps 본문 1개를 추가한다.** 두 테스트의 단언과 주제는
-   불변이고 우발적 모양만 바뀐다. 비용: "기존 테스트를 SPEC 요구 없이 수정하지 않는다"는 계약과
-   AC-5 문면에 대한 명시적 예외 승인 필요. 변경량은 두 파일 합쳐 수 줄.
-2. **본문 부재를 제3의 앵커 소스 토큰으로 분기한다**(예: `no-body-present`, 앵커 = S). 기존 동작이
-   보존되나 REQ-GGR-009의 토큰 집합이 넓어지므로 `manager-spec` 경유 SPEC 개정이 필요하고, 그러면
-   규칙 C는 도달 불가가 되어 AC-4가 픽스처를 갖지 못한다.
-3. **`spec.md` §B.4 / §D.1 / AC-4 / AC-5를 `manager-spec`이 정정**한 뒤 이 카드로 재위임.
+### E.2.8 C1/C2 분리의 RED → GREEN
 
-어느 선택지든 `spec.md` §B.4의 측정 오류와 §D.1의 도달면 오류는 기록 정정이 필요하다 — 판정이
-어느 쪽으로 나든 그 두 문장은 거짓인 채로 남기 때문이다.
+**RED (분리 전, 규칙 C가 한 갈래이던 코드).** AC-4를 C1 형태로 재작성한 직후 관측했다.
+
+```
+$ go test ./internal/graph/ -run TestCheckCodemaps_BodyAbsentIsAbsentWithoutError -count=1 -v   # RC=1
+    check_restamp_anchor_test.go:242: an absent body is a determinate observation, not a failed
+    measurement — want a nil error, got: codemaps stamp 613498e70e36 not comparable in this
+    checkout: no commit in the stamped history touches the codemaps body
+--- FAIL: TestCheckCodemaps_BodyAbsentIsAbsentWithoutError (0.66s)
+```
+
+전문: `.moai/reports/t478/red-ac4-c1-before-split.txt`. 재작성한 AC-4가 분리 전 코드에서 통과하지
+않는다는 것 — 즉 공허하지 않다는 것 — 이 이 관측의 요지다.
+
+**GREEN (분리 후).**
+
+```
+$ go test ./internal/graph/ -run 'TestCheckCodemaps_' -count=1 -v   # RC=0
+--- PASS: TestCheckCodemaps_BareRestampStaysStale
+--- PASS: TestCheckCodemaps_UncommittedRegenerationIsFresh
+--- PASS: TestCheckCodemaps_CommittedRegenerationIsFresh
+--- PASS: TestCheckCodemaps_RuleBAnchorIsAncestorOfStamp
+--- PASS: TestCheckCodemaps_BodyAbsentIsAbsentWithoutError
+--- PASS: TestCheckCodemaps_UntrackedBodyResolvesViaRuleA
+--- PASS: TestCheckCodemaps_DirtyPathCarriesNoAnchor
+ok  	github.com/modu-ai/moai-adk/internal/graph	11.985s
+```
+
+전문: `.moai/reports/t478/green-after-c1c2-split.txt`.
+
+**뮤턴트 3 — C1을 시스템 오류로 되돌리기(분리 자체의 판별식).** 실제로 적용해 실행하고 되돌렸다.
+
+```
+$ go test ./internal/cli/ -run TestGraphCheckCmd_AbsentExitsOne -count=1 -v   # RC=1
+    graph_check_test.go:271: absent layers must exit 1, got graph check: codemaps stamp
+    115259995ad1 not comparable in this checkout: no codemaps documents to anchor on
+--- FAIL: TestGraphCheckCmd_AbsentExitsOne
+$ go test ./internal/graph/ -run TestCheckCodemaps_BodyAbsentIsAbsentWithoutError -count=1   # RC=1
+    check_restamp_anchor_test.go:242: … want a nil error, got: … no codemaps documents to anchor on
+```
+
+전문: `.moai/reports/t478/mutant-3-c1-as-system-error.txt`. 되돌린 뒤 `go build ./...` RC=0.
+
+**C2는 픽스처를 만들지 않는다 — 선언된 미검증이다.** 얕은 경계 커밋과 루트 커밋 모두 모든 파일을
+ADDED로 보고하므로, 본문이 존재하는 한 규칙 B의 `git log -1 <S> -- <본문>`은 비지 않는다. 즉 C2에
+도달하는 git 상태가 없다. 도달하지 못하는 픽스처의 초록은 공허한 초록이므로(`plan.md` §G 안티패턴),
+C2는 fail-closed 분기로 코드에 남기고 그 근거를 `check.go`의 `errNoBodyCommit` 주석에 적어 둔다.
+
+### E.2.9 허가된 픽스처 편집 — 정확히 1건
+
+- **`TestGraphCheckCmd_AbsentExitsOne` — 편집하지 않았다.** 리드의 예측대로 C1 하에서 **무수정으로
+  통과**하는 것을 먼저 확인했다(`.moai/reports/t478/absent-exits-one-unmodified-pass.txt`, RC=0).
+  가정하지 않고 측정한 뒤 손대지 않았다.
+- **`TestCheckFreshness_DescribedRootsScopeFidelity` — 픽스처에 미추적 `modules.md` 1개 추가.**
+  `writeCodemapsProvenance`가 이미 쓰는 것과 같은 모양이다. 규칙 A를 타고 S에 앵커되어 기존 단언이
+  그대로 성립한다. **단언·이름·뮤턴트 판별식(하드코딩된 `DefaultDescribedRoots`)은 바꾸지 않았다.**
+  편집 전 `RC=1`(`.moai/reports/t478/scope-fidelity-before-fixture-edit.txt`) → 편집 후 `RC=0`
+  (`…/scope-fidelity-after-fixture-edit.txt`).
+
+다른 어떤 기존 테스트도 수정하지 않았다.
+
+### E.2.10 검증 배치 (재실행, 분리 후)
+
+| 명령 | 결과 |
+|---|---|
+| `go build ./...` | RC=0, 무출력 |
+| `go vet ./internal/graph/... ./internal/cli/...` | RC=0, 무출력 |
+| `gofmt -l <변경 4파일>` | 무출력 |
+| `go test ./internal/graph/... -count=1` | **RC=0** — `ok internal/graph 24.676s`, `ok internal/graph/symbol 0.580s` |
+| `go test ./internal/cli/... -count=1` | RC=1 — 실패 **1건뿐**이며 `TestBinaryLag_DoctorCheckNameSetIsUnchanged`(이 카드와 무관, 아래) |
+
+블로커였던 2건은 이제 통과한다. `TestGraphCheckCmd_AbsentExitsOne`은 `internal/cli` 실패 목록에서
+사라졌고, `TestCheckFreshness_DescribedRootsScopeFidelity`는 `internal/graph` RC=0에 포함된다.
+
+### E.2.11 종단 검증 재실행 (AC-6 — 파이프 없는 종료코드 판독)
+
+```
+$ go build -o ./bin/moai ./cmd/moai
+$ ./bin/moai graph check --json > /tmp/t478-e2e2.json 2>/tmp/t478-e2e2.err
+$ echo $?
+1
+```
+
+codemaps 층: `value=146` `threshold=40` `verdict=stale`,
+`content_anchor=ad272be20abff9e4f3b1b363fce3e48dac4c5132`,
+`content_anchor_source=working-tree-differs-from-stamp`. 사람 가독 출력에도
+`  measured from: ad272be20 (working-tree-differs-from-stamp)` 한 줄이 실린다.
+전문: `.moai/reports/t478/e2e-graph-check.json`, `…/e2e-graph-check-text.txt`.
+
+`git status --porcelain .moai/project/codemaps/` → 무출력. `provenance.json`은 바이트 불변이며
+`moai graph stamp codemaps`는 이 트리에서 한 번도 실행하지 않았다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_status: blocked
-run_blocker: "spec.md §B.4 / §D.1 measurement error — AC-4 and AC-5 cannot both hold as written (progress.md §E.2.7)"
+run_status: complete
 run_commit_sha: pending-backfill
-ac_pass_count: 6      # AC-1, AC-2a, AC-2b, AC-3, AC-6, AC-7
+ac_pass_count: 7      # AC-1, AC-2a, AC-2b, AC-3, AC-4(C1), AC-5, AC-6, AC-7 — AC-2는 a/b 두 하위로 셈
 ac_fail_count: 0
-ac_blocked_count: 2   # AC-4 (fixture collides with AC-5), AC-5 (2 pre-existing tests red)
+ac_deliberately_unfixtured: 1   # C2 — 도달 가능한 git 상태가 없다(progress.md §E.2.8). fail-closed로 코드에 남김
 preserve_list_post_run_count: 0
 new_warnings_or_lints_introduced: 0   # go vet RC=0, gofmt clean
 cross_platform_build:
   darwin_native: "go build ./... RC=0"
   windows_cross: not-run
-total_run_phase_files: 3
-m1_to_mN_commit_strategy: "single M1 commit; M2/M3 folded in — the work is one coherent unit and is BLOCKED pending the §E.2.7 decision"
+total_run_phase_files: 4   # internal/graph/check.go, internal/graph/check_restamp_anchor_test.go,
+                           # internal/graph/check_regression_lock_test.go(허가된 픽스처 편집 1건),
+                           # internal/cli/graph_check.go
+m1_to_mN_commit_strategy: "M1 착지 후 블로커 제기 → 리드가 spec.md v0.1.3로 §B.4/§D.1 정정 → C1/C2 분리를 후속 커밋으로 착지. 두 커밋 모두 t478을 명시"
+blocker_raised_and_resolved:
+  raised_at_commit: 2649fe296
+  clause: "spec.md §B.4 (fixture survey) + §D.1 (rule-C reachability) — 둘 다 거짓"
+  resolution: "spec.md v0.1.3 — 규칙 C를 C1(absent, 오류 nil, exit 1) / C2(absent + 오류, exit 2)로 분리"
+  detail: "progress.md §E.2.7"
+sanctioned_fixture_edits: 1   # TestCheckFreshness_DescribedRootsScopeFidelity — 미추적 modules.md 추가.
+                              # 단언·이름·뮤턴트 판별식 불변. AbsentExitsOne은 무수정 통과(측정 확인)
 pre_existing_red_not_attributable_to_this_card:
-  - "internal/cli TestBinaryLag_DoctorCheckNameSetIsUnchanged (RED at HEAD cd28923f2, measured)"
+  - test: "internal/cli TestBinaryLag_DoctorCheckNameSetIsUnchanged"
+    status: "RED at HEAD cd28923f2 — 이 카드 착수 전부터 붉다"
+    evidence: ".moai/reports/t478/baseline-cli-binarylag-red-at-head.txt"
+    method: "check.go/graph_check.go를 git show HEAD:로 되돌리고 신규 테스트 파일을 치운 트리에서 동일 실패 확인. 같은 실행에서 TestGraphCheckCmd_AbsentExitsOne은 PASS"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal

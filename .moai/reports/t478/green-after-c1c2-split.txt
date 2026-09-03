@@ -1,0 +1,44 @@
+=== RUN   TestCheckCodemaps_Absent
+=== RUN   TestCheckCodemaps_Absent/1_codemaps_directory_missing
+=== RUN   TestCheckCodemaps_Absent/2_provenance_file_missing
+=== RUN   TestCheckCodemaps_Absent/3_provenance_unparseable
+=== RUN   TestCheckCodemaps_Absent/4_described_root_invalid
+=== RUN   TestCheckCodemaps_Absent/5_dirty_path,_roots_unreadable
+=== RUN   TestCheckCodemaps_Absent/6_clean_stamp_carries_no_commit_sha
+=== RUN   TestCheckCodemaps_Absent/7_stamped_commit_not_comparable
+--- PASS: TestCheckCodemaps_Absent (2.65s)
+    --- PASS: TestCheckCodemaps_Absent/1_codemaps_directory_missing (0.36s)
+    --- PASS: TestCheckCodemaps_Absent/2_provenance_file_missing (0.38s)
+    --- PASS: TestCheckCodemaps_Absent/3_provenance_unparseable (0.37s)
+    --- PASS: TestCheckCodemaps_Absent/4_described_root_invalid (0.38s)
+    --- PASS: TestCheckCodemaps_Absent/5_dirty_path,_roots_unreadable (0.37s)
+    --- PASS: TestCheckCodemaps_Absent/6_clean_stamp_carries_no_commit_sha (0.38s)
+    --- PASS: TestCheckCodemaps_Absent/7_stamped_commit_not_comparable (0.39s)
+=== RUN   TestCheckCodemaps_Contribution
+=== RUN   TestCheckCodemaps_Contribution/inheriting_merge_contributes_nothing_while_the_cumulative_is_red
+=== RUN   TestCheckCodemaps_Contribution/no_first_parent_reports_the_contribution_absent,_never_0
+--- PASS: TestCheckCodemaps_Contribution (1.81s)
+    --- PASS: TestCheckCodemaps_Contribution/inheriting_merge_contributes_nothing_while_the_cumulative_is_red (1.19s)
+    --- PASS: TestCheckCodemaps_Contribution/no_first_parent_reports_the_contribution_absent,_never_0 (0.62s)
+=== RUN   TestCheckCodemaps_DrivingPaths
+=== RUN   TestCheckCodemaps_DrivingPaths/over_the_display_bound,_the_listing_truncates_and_declares_the_overflow
+=== RUN   TestCheckCodemaps_DrivingPaths/under_the_display_bound,_every_driving_path_is_listed_and_nothing_is_omitted
+--- PASS: TestCheckCodemaps_DrivingPaths (1.19s)
+    --- PASS: TestCheckCodemaps_DrivingPaths/over_the_display_bound,_the_listing_truncates_and_declares_the_overflow (0.58s)
+    --- PASS: TestCheckCodemaps_DrivingPaths/under_the_display_bound,_every_driving_path_is_listed_and_nothing_is_omitted (0.61s)
+=== RUN   TestCheckCodemaps_BareRestampStaysStale
+--- PASS: TestCheckCodemaps_BareRestampStaysStale (0.97s)
+=== RUN   TestCheckCodemaps_UncommittedRegenerationIsFresh
+--- PASS: TestCheckCodemaps_UncommittedRegenerationIsFresh (0.91s)
+=== RUN   TestCheckCodemaps_CommittedRegenerationIsFresh
+--- PASS: TestCheckCodemaps_CommittedRegenerationIsFresh (1.12s)
+=== RUN   TestCheckCodemaps_RuleBAnchorIsAncestorOfStamp
+--- PASS: TestCheckCodemaps_RuleBAnchorIsAncestorOfStamp (1.07s)
+=== RUN   TestCheckCodemaps_BodyAbsentIsAbsentWithoutError
+--- PASS: TestCheckCodemaps_BodyAbsentIsAbsentWithoutError (0.67s)
+=== RUN   TestCheckCodemaps_UntrackedBodyResolvesViaRuleA
+--- PASS: TestCheckCodemaps_UntrackedBodyResolvesViaRuleA (0.59s)
+=== RUN   TestCheckCodemaps_DirtyPathCarriesNoAnchor
+--- PASS: TestCheckCodemaps_DirtyPathCarriesNoAnchor (0.42s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/graph	11.985s

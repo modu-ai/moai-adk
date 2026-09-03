@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/mx"
@@ -216,11 +217,20 @@ func TestCheckCodemaps_RuleBAnchorIsAncestorOfStamp(t *testing.T) {
 	}
 }
 
-// AC-4 — unmeasurable stays absent, with a system error. Not fresh, not
-// stale. The fixture: a codemaps directory holding ONLY provenance.json, so
-// the body is identical to the stamp's (both empty) AND no commit in the
-// stamp's history ever touched it — rule C by construction.
-func TestCheckCodemaps_UnresolvableAnchorIsAbsentPlusError(t *testing.T) {
+// AC-4 — no anchor-resolution outcome ever yields `fresh` (REQ-GGR-007).
+// C1 is the reachable witness: the codemaps directory holds only
+// provenance.json, so the body set is empty in the working tree AND at the
+// stamp. That is a DETERMINATE OBSERVATION, not a failed measurement — there
+// is simply nothing to describe — so it reports absent WITHOUT a system
+// error (exit 1), matching how the sibling citations layer already disposes
+// of its doc-less state (checkCitations, `docs == 0`).
+//
+// C2 (bodies exist, no anchor resolves) is deliberately NOT covered by a
+// fixture: a shallow boundary commit and a root commit both report every
+// file as ADDED, so `git log -1 <S> -- <body>` is non-empty whenever bodies
+// exist, and no git state reaches C2. It stays in the code fail-closed. A
+// fixture pretending to reach it would be a vacuous green (plan.md §G).
+func TestCheckCodemaps_BodyAbsentIsAbsentWithoutError(t *testing.T) {
 	th := DefaultThresholds()
 	root := newCheckFixture(t)
 
@@ -228,17 +238,21 @@ func TestCheckCodemaps_UnresolvableAnchorIsAbsentPlusError(t *testing.T) {
 	stampAt(t, root, head) // creates the dir with provenance.json only
 
 	rep, err := checkCodemaps(root, th)
-	if err == nil {
-		t.Fatalf("an unresolvable anchor must surface a system error, got verdict %q value %d", rep.Verdict, rep.Value)
+	if err != nil {
+		t.Fatalf("an absent body is a determinate observation, not a failed measurement — want a nil error, got: %v", err)
 	}
 	if rep.Verdict != VerdictAbsent {
-		t.Errorf("verdict = %q, want %q — neither fresh nor stale is acceptable here", rep.Verdict, VerdictAbsent)
+		t.Errorf("verdict = %q, want %q", rep.Verdict, VerdictAbsent)
 	}
 	if rep.Verdict == VerdictFresh {
-		t.Error("an unmeasurable layer reported fresh — the exact failure REQ-GGR-007 forbids")
+		t.Error("an unanchorable layer reported fresh — the exact failure REQ-GGR-007 forbids")
 	}
-	if rep.Reason == "" {
-		t.Error("absent verdict carries no reason string")
+	if !strings.Contains(rep.Reason, "codemaps document") {
+		t.Errorf("reason = %q, want it to name the body absence", rep.Reason)
+	}
+	if rep.ContentAnchor != "" || rep.ContentAnchorSource != "" {
+		t.Errorf("C1 reported anchor %q/%q, want both empty — no anchor was resolved",
+			rep.ContentAnchor, rep.ContentAnchorSource)
 	}
 }
 

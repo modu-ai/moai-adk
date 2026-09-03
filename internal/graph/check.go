@@ -205,10 +205,29 @@ func codemapsBodyPathspec() []string {
 	}
 }
 
-// errNoBodyCommit is rule C: the stamp's own history holds no commit that
-// touched the codemaps body, so no measurement window can be resolved. The
-// layer is reported absent with a system error — never fresh (REQ-GGR-007).
-var errNoBodyCommit = errors.New("no commit in the stamped history touches the codemaps body")
+// Rule C splits on determinate-observation vs failed-measurement — the same
+// distinction the 1/2 exit-code contract already carries (spec.md §D.1).
+var (
+	// errCodemapsBodyAbsent is C1: there is no codemaps body at all, in the
+	// working tree or at the stamp. Nothing is being described, so freshness
+	// is unjudgeable — but that is something OBSERVED, not a measurement that
+	// failed, so it carries NO system error (exit 1). The sibling citations
+	// layer disposes of its doc-less state the same way (checkCitations,
+	// `docs == 0`); without this split the codemaps layer would diverge from
+	// its sibling (REQ-GGR-006).
+	errCodemapsBodyAbsent = errors.New("no codemaps documents to anchor on")
+	// errNoBodyCommit is C2: bodies exist, yet no anchor resolves (truncated
+	// history). The measurement failed, so the layer is absent WITH a system
+	// error (exit 2, REQ-GGR-006a).
+	//
+	// No fixture reaches C2, and that is recorded rather than papered over: a
+	// shallow boundary commit and a root commit both report every file as
+	// ADDED, so the rule-B log is non-empty whenever bodies exist. The branch
+	// is kept deliberately fail-closed — if some future git state does reach
+	// it, absent-plus-error is the safe disposition and fresh is never one
+	// (REQ-GGR-007).
+	errNoBodyCommit = errors.New("no commit in the stamped history touches the codemaps body")
+)
 
 // resolveContentAnchor answers WHERE the described-source diff should be
 // measured from, given the stamped sha S. The stamp itself is the wrong
@@ -251,6 +270,21 @@ func resolveContentAnchor(projectRoot, stampedSHA string) (anchor, source string
 	}
 	if sha := strings.TrimSpace(logged); sha != "" {
 		return sha, AnchorSourceLastBodyChange, nil
+	}
+
+	// Rule C. Which of the two it is turns on whether any codemaps body
+	// exists at all. Reaching here means rule A did not fire, so the working
+	// tree's body set is identical to the stamp's — which is what makes it
+	// legitimate to measure the near side rather than re-reading the stamp's
+	// tree. The untracked half is the listing rule A already computed; the
+	// tracked half is the same ls-files idiom minus --others, so no third git
+	// convention is introduced (plan.md §C).
+	tracked, err = gitOutput(projectRoot, append([]string{"ls-files", "--"}, body...)...)
+	if err != nil {
+		return "", "", fmt.Errorf("git ls-files (codemaps body): %w", err)
+	}
+	if !hasNonBlankLine(tracked) && !hasNonBlankLine(untracked) {
+		return "", "", errCodemapsBodyAbsent
 	}
 	return "", "", errNoBodyCommit
 }
@@ -358,12 +392,20 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	}
 	anchor, anchorSource, err := resolveContentAnchor(projectRoot, pv.CommitSHA)
 	if err != nil {
-		// Unmeasurable, in either of two ways: git could not resolve the
-		// stamped commit at all (bad revision / shallow history), or the
-		// stamp's history holds no body change point (rule C). Both report
-		// the layer unmeasured and surface a system error — never a verdict
-		// on a window that was never established.
 		rep.Verdict = VerdictAbsent
+		if errors.Is(err, errCodemapsBodyAbsent) {
+			// C1 — a determinate observation, NOT a failed measurement:
+			// there is no codemaps prose to be stale about. Absent with no
+			// system error (exit 1), matching the citations layer's doc-less
+			// disposition. Reporting it as exit 2 would call an answer a
+			// failure (REQ-GGR-006).
+			rep.Reason = "no codemaps documents to anchor on — freshness-unjudgeable, not fresh"
+			return rep, nil
+		}
+		// C2, or git could not resolve the stamped commit at all (bad
+		// revision / shallow history): the measurement failed, so the layer
+		// is unmeasured and the system error surfaces — never a verdict on a
+		// window that was never established.
 		if errors.Is(err, errNoBodyCommit) {
 			rep.Reason = "codemaps body has no change point in the stamped history (unmeasured, system error follows)"
 		} else {

@@ -8,7 +8,7 @@
       "threshold": 40,
       "verdict": "stale",
       "contribution": 2,
-      "contribution_base": "456665e8d59ef62aab1ce159a25dc265141d0109",
+      "contribution_base": "cd28923f2fa24241d7bfc4668f8a6bbdd4b81945",
       "content_anchor": "ad272be20abff9e4f3b1b363fce3e48dac4c5132",
       "content_anchor_source": "working-tree-differs-from-stamp",
       "driving_paths": [
