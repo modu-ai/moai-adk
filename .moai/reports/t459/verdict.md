@@ -153,3 +153,17 @@ session_drain_test.sh   ALL SESSION DRAIN TESTS PASSED
 - 재현 자체를 다시 돌리지는 않았다. R1/R2/R3 은 `5107bbfff` 기준 관측이고, 이번에 다시 확인한 것은
   **가드가 흡수 후에도 살아 있다**는 것(`backlog_check_test.sh` 의 t459 케이스 PASS)까지다.
   전이 재현의 재실행은 회귀 테스트 `internal/hook/t459_repro_test.go` 가 `internal/hook` 통과로 대신한다.
+
+### 미추적 스크래치 처분 — `commit-msg.txt` 삭제 (2026-09-03)
+
+`.moai/reports/t459/commit-msg.txt` 는 미추적 상태로 남아 있었다. 판정 근거:
+
+```
+git log -1 --format=%B 0a5a01378 > /tmp/t459-msg-landed.txt
+diff /tmp/t459-msg-landed.txt .moai/reports/t459/commit-msg.txt
+→ 34d33 < (빈 줄 1개)   # git 이 붙이는 말미 개행 외에는 차이 없음
+```
+
+즉 이 파일은 **이미 착지한 커밋 `0a5a01378` 의 메시지 원문 그대로**이며, 증거가 아니라 그 커밋을
+만들 때 쓴 작성용 스크래치다. 같은 내용이 커밋 메시지로 영구 보존돼 있으므로 사본을 남길 이유가 없다 —
+삭제한다. 관측 사실은 이 절이 보존한다(조용히 지우지 않는다).
