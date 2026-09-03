@@ -373,3 +373,187 @@ Files: `.claude/settings.json`.
   terminal): the Tier M threshold correction, the three executed mutants
   (N1-M unsatisfiability, N2-M six-vs-four surfaces, N3-M blanket line), and the
   seven findings that produced v0.3.0
+- `.moai/reports/t469/plan-summary.md` — the v0.4.0 amendment evidence record
+  (card t469): the re-measured divergence, the pre-existence proof, and the
+  class-scope measurement
+
+---
+
+## §I — v0.4.0 Completed-SPEC Amendment Plan (2026-09-03, card t469)
+
+> This section is the plan-phase payload for an **in-place amendment of the
+> completed SPEC**. The run phase applies the exact texts in §I.4 to `spec.md`
+> and `acceptance.md`. No other AC of this SPEC is re-opened, re-verified, or
+> re-scored; card t216's landing stands as delivered.
+
+### §I.1 The conflict
+
+REQ-HWD-013 ("byte-identical at closure") and REQ-HWD-014 (no forbidden content
+classes in template copies) are **simultaneously unsatisfiable for any file
+whose LOCAL copy carries a forbidden-class token**: the template copy is
+required to strip the token (REQ-HWD-014, neutrality doctrine `.moai/docs/
+template-internal-isolation-doctrine.md` §25.1, CI guard
+`.github/workflows/template-neutrality-check.yaml`) and therefore cannot stay
+byte-identical (REQ-HWD-013). AC-HWD-015 — "diff reports no difference for
+every file M3 touches" — is the criterion where the contradiction becomes
+observable, and it is FALSE as written for one of the three M3 files.
+
+This was not introduced by later neutrality work. The same single-line strip
+divergence already existed at `a239cf050` (an ancestor of HEAD), so the conflict
+coexists with this SPEC's own authoring (v0.1.0, 2026-08-24) rather than
+post-dating it. The two requirements were promoted together in v0.2.0 (audit
+D12) without the interaction being noticed.
+
+### §I.2 Re-measured evidence (this plan phase, this tree, `@a1d7598ac`)
+
+Every load-bearing number below was re-measured in this plan phase, not carried
+from the lane's report. Commands and verbatim outputs are in
+`.moai/reports/t469/plan-summary.md`.
+
+| # | Claim | This phase's measurement |
+|---|---|---|
+| E1 | Two of the three M3 files are byte-identical local↔template | `diff -q` → `hook-independence.md` IDENTICAL, `agent-common-protocol.md` IDENTICAL |
+| E2 | `agent-common-protocol-reference.md` differs at exactly one line, wholly the neutrality strip | `diff` → `275c275`; local ends `remain inline there (SPEC-SYNC-PARALLEL-DOCS-001 A9).`, template ends `remain inline there.` |
+| E3 | The divergence pre-exists at `a239cf050` | both blobs extracted (`git show a239cf050:<path>` → `/tmp`), diffed → the SAME `275c275` line pair; `git merge-base --is-ancestor a239cf050 HEAD` → exit 0 |
+| E4 | The conflict is a class property | 47 of the local/template pairs under the five managed roots (`.claude/rules/moai`, `.claude/agents/moai`, `.claude/skills/moai`, `.claude/commands/moai`, `.claude/output-styles/moai`) differ; 24 of those 47 carry a forbidden-class token (SPEC ID / REQ token / card number / 40-hex SHA) in their diff lines |
+| E5 | The amended check passes the real tree and fails its mutants | the §I.4 command → exit 0 on the three real files; mutant (i) editorial text on the token-bearing line → `MISMATCH`, exit 1; mutant (iii) mirror-only edit → exit 1; mutant (ii) template-side token insert → exit 0 **by design**, caught by AC-HWD-016 (7 SPEC-ID hits observed on the mutant template copy) |
+
+### §I.3 Shape decisions
+
+**In-place amendment, not a separate amendment SPEC.** This SPEC's own HISTORY
+carries two in-place amendments (v0.2.0, v0.3.0) — the precedent is established.
+The contradiction lives in THIS SPEC's requirement pair (REQ-HWD-013 ×
+REQ-HWD-014); routing the fix through a second SPEC would leave the completed
+SPEC's requirement layer silently self-contradictory while the fix landed
+elsewhere, and would add a full plan-run-sync ceremony to a change whose run
+phase is two file edits plus one command re-run.
+
+**Scope (a): the amendment stays scoped to the three M3 files** ("files this
+SPEC edits" — REQ-HWD-013's existing scope is untouched). The 24-pair class
+measurement (E4) motivates the fix but does not widen it: a strip-aware mirror
+invariant across ALL managed pairs is a general neutrality-doctrine obligation
+owned by the doctrine, not by a hook-drift SPEC. It is recorded in
+`spec.md`'s Out of Scope section by this amendment (§I.4 A1 payload). Minimal
+change, and the general form's risk profile (normalization over 47 pairs
+including settings templates) is a different audit than this one.
+
+**Machine-check design: single plain `perl` invocation** — no shell loop, no
+process substitution. Both are load-bearing in this repository: worktree-guarded
+sessions reject compound commands and `<( )` substitution, so a checker written
+in either form is unrunnable by the very sessions most likely to judge it. The
+command normalizes forbidden-class tokens (SPEC ID, REQ token, card number,
+40-hex SHA — the regex classes AC-HWD-016 scans, plus the adjacent revision
+token consumed by the parenthetical form) on BOTH sides, then compares. The
+`make build` ordering clause of the original AC is moved to prose: the ordering
+was executed at M3 delivery and is not re-observable; binary freshness is
+already bound mechanically by AC-HWD-005 and AC-HWD-012, both of which run
+`bin/moai`.
+
+### §I.4 Run-phase payloads (exact texts)
+
+**A1 — `spec.md`:** frontmatter `version: "0.4.0"`, `updated: 2026-09-03`;
+prepend this HISTORY row:
+
+> `| 0.4.0 | 2026-09-03 | manager-spec | Completed-SPEC amendment (card t469) — AC-HWD-015 strip-aware mirror identity. REQ-HWD-013's "byte-identical at closure" and REQ-HWD-014's forbidden-class ban are simultaneously unsatisfiable for any file whose LOCAL copy carries a forbidden-class token: the template copy must strip it (REQ-HWD-014) and therefore cannot stay byte-identical (REQ-HWD-013). Observed on agent-common-protocol-reference.md:275 — local ends "there (SPEC-SYNC-PARALLEL-DOCS-001 A9).", template ends "there." — and the same single-line divergence measured in both blobs at a239cf050 (ancestor of HEAD), so the conflict coexists with this SPEC's authoring rather than post-dating it. Class measurement: 47 of the managed-root local/template pairs differ and 24 of the 47 carry forbidden-class tokens in their diff lines — a class property, not a one-file accident; the amendment stays scoped to the three M3 files and the general strip-aware invariant is recorded out of scope. Fix: REQ-HWD-013 reworded to normalized identity; AC-HWD-015 rewritten around ONE machine-checkable command (single plain perl invocation, exit 0/1, worktree-guard-safe) that normalizes forbidden-class tokens on both sides before comparing; three mutants constructed and executed (editorial text on the token-bearing line → exit 1; template-side token insert → absorbed by design, closed by AC-HWD-016; mirror-only edit → exit 1). No retroactive re-judgment: t216's landing stands, no other AC re-opened. |`
+
+**A2 — `spec.md` §B:** replace REQ-HWD-013's body with:
+
+```
+- **REQ-HWD-013** (Ubiquitous) — Every template-managed file this SPEC edits
+  shall be edited at its `internal/template/templates/` source first and
+  mirrored afterwards, and the two copies shall be identical at closure after
+  normalization of the forbidden-class tokens REQ-HWD-014 requires the template
+  copy to omit.
+
+  > Amended v0.4.0 (card t469). "Byte-identical" was unsatisfiable together with
+  > REQ-HWD-014 for any file whose local copy carries a forbidden-class token —
+  > observed on `agent-common-protocol-reference.md:275`, pre-existing at
+  > `a239cf050`. The acceptance-side check is AC-HWD-015.
+```
+
+**A3 — `spec.md` §F Exclusions:** append this H3 after the existing
+`### Out of Scope — MX index staleness semantics` block:
+
+```
+### Out of Scope — strip-aware mirror invariant beyond this SPEC's files
+
+- A general strip-aware (normalize-then-compare) mirror check across ALL
+  template-managed pairs (47 differing pairs measured 2026-09-03, 24 carrying
+  forbidden-class tokens). This amendment normalizes only the three files
+  REQ-HWD-013 scopes; the fleet-wide invariant belongs to the
+  template-neutrality doctrine (`.moai/docs/template-internal-isolation-doctrine.md`
+  §25) or a dedicated follow-up SPEC.
+```
+
+**A4 — `acceptance.md`:** replace the AC-HWD-015 block (heading through its
+`Harness correction:` bullet) with:
+
+```
+### AC-HWD-015 — Template-First order was followed (strip-aware mirror identity)
+
+**Given** the commit(s) delivering M3,
+**When** each file M3 touches is compared against its
+`internal/template/templates/` twin with the forbidden-class tokens normalized
+on BOTH sides (the stripping REQ-HWD-014 mandates for the template copy),
+**Then** the normalized contents are identical for every file M3 touches —
+`hook-independence.md`, `agent-common-protocol.md`, and
+`agent-common-protocol-reference.md` — judged by ONE command, run from the
+project root, whose exit status separates PASS (0) from FAIL (1):
+
+```bash
+perl -e 'local $/; my $rc=0; for my $f (@ARGV){ open my $L,"<",$f or die "open $f: $!"; open my $T,"<","internal/template/templates/$f" or die "open tmpl $f: $!"; my ($a,$b)=(<$L>,<$T>); for ($a,$b){ s/\s*\((?:SPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*|REQ-[A-Z][A-Z0-9]*)-[0-9]{3}(?:\s+[A-Z][0-9]{1,2})?\)//g; s/\s*\b(?:SPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*|REQ-[A-Z][A-Z0-9]*)-[0-9]{3}\b//g; s/\s*\bt[0-9]{2,3}\b//g; s/\s*\b[0-9a-f]{40}\b//g; } if ($a ne $b){ print "MISMATCH $f\n"; $rc=1; } } exit $rc' \
+  .claude/rules/moai/development/hook-independence.md \
+  .claude/rules/moai/core/agent-common-protocol.md \
+  .claude/rules/moai/core/agent-common-protocol-reference.md
+```
+
+The original criterion's `make build` ordering clause was executed at M3
+delivery and is not re-observable after the fact; binary freshness stays bound
+mechanically by AC-HWD-005 and AC-HWD-012, both of which run `bin/moai` — stale
+unless the build ran.
+
+- `Pre-impl observed (v0.4.0):` `@a1d7598ac` — raw `diff -q` local vs template:
+  `hook-independence.md` → IDENTICAL; `agent-common-protocol.md` → IDENTICAL;
+  `agent-common-protocol-reference.md` → DIFFERS at exactly one line (275),
+  wholly the neutrality strip `(SPEC-SYNC-PARALLEL-DOCS-001 A9)`. The unamended
+  criterion is FALSE for the third file as written and cannot be made true
+  without violating REQ-HWD-014. The command above → exit 0 (PASS) on all three
+  real files. Raw commands and verbatim outputs:
+  `.moai/reports/t469/plan-summary.md`.
+- `Mutant:` **three constructed and executed.** (i) *Non-token editorial text
+  inserted on the token-bearing line* — `MISMATCH`, exit 1: normalization
+  absorbs only forbidden-class tokens and their parenthetical wrapper, never
+  neighboring prose. (ii) *Forbidden token inserted into the template copy* —
+  the mirror check absorbs it by design (exit 0) because the normalized
+  comparison is direction-agnostic on token runs; the compensating control is
+  AC-HWD-016, which observed 7 SPEC-ID hits on the mutant template copy — the
+  pair of criteria closes the space; either alone does not. (iii) *Edit only the
+  local mirror* — `MISMATCH`, exit 1. No claim that the space is exhausted.
+- `Harness correction:` [HARD] construct at least mutant (i) and observe the
+  exit 1 before trusting the command's passing output — a normalized comparison
+  that has only ever been seen passing has not been shown to detect anything.
+```
+
+**A5 — re-run the §I.4 command** after the edits and record exit 0 in
+`progress.md` §E.1 as the amendment's plan→run hand-off signal. The run phase
+commits `spec.md` + `acceptance.md` by explicit pathspec.
+
+### §I.5 Residual risks for the plan-audit
+
+1. **Normalization over-absorption on token-bearing lines.** The check deletes
+   parentheticals whose identifiable content is a forbidden token. A local-side
+   parenthetical and a template-side parenthetical could differ in ways the
+   normalizer cannot see (mutant ii's absorption, generalized). The compensating
+   control is AC-HWD-016 on the template side; the local side is unguarded in
+   the same way the unamended AC was. Judged acceptable at this scope (three
+   files, one known token-bearing line); the fleet-wide SPEC, if ever opened,
+   should tighten this.
+2. **Internal-date class not normalized.** AC-HWD-016's forbidden classes
+   include "internal date", which has no agreed regex; the normalization covers
+   the four regex classes only. If a future strip removes a date, the mirror
+   check will report MISMATCH for a divergence that is neutrality-mandated —
+   the same false-FAIL shape as the defect being amended, one class over.
+3. **`updated` field collision.** The frontmatter already carries
+   `updated: 2026-09-03` from v0.3.0; A1's bump is a no-op for that field. If
+   the SPEC lifecycle lint expects `updated` to move per amendment, there is
+   nothing to move — verify, don't assume.
