@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
@@ -236,5 +237,186 @@ func inMemCombinedScopeClose(commits []commitRecord, specID string) bool {
 		}
 	}
 
+	return false
+}
+
+// inMemBodyDeclaredClose is the THIRD judgment axis in the FALLBACK-ONLY slot: it
+// recognizes a close that was declared in a commit's BODY because the subject could
+// not carry the target SPEC-ID (SPEC-DRIFT-CLOSE-BODY-001, REQ-DCB-001).
+//
+// The measured instance is e979a4d13, `chore(SPEC group C): Mx-phase close (...)`:
+// the subject names an arbitrary combined scope, so ExtractSPECIDs yields nothing
+// and the stage-2 re-filter of inMemImpliedStatus drops the commit. The walker keeps
+// descending, meets an older `docs(...)` commit, and reports `in-progress` for a
+// SPEC that is genuinely closed.
+//
+// It sits beside inMemCombinedScopeClose rather than replacing it: that fallback
+// answers the scope-PREFIX shape (`chore(SPEC-CCSYNC): ... (CLAUDEMD + TOOLCAT)`),
+// which is reachable from the subject alone. This one answers the shape where the
+// subject derives from no SPEC-ID at all and only the body names the SPEC.
+//
+// Two gates bound the candidate window:
+//
+//	gate (a) the commit SUBJECT must NOT name specID. A subject that does name it
+//	         belongs to the primary walk, and re-deciding it here would breach the
+//	         behavior-preservation invariant (REQ-DCB-006, §5.4 condition 2).
+//	gate (b) the body-line predicate (bodyDeclaresClose) must find a declaration.
+//
+// There is deliberately NO subject-side close-signal filter. closeInfixMatch was the
+// obvious candidate and was REJECTED BY MEASUREMENT: it admits only `3-phase close` /
+// `4-phase close` / `mx-phase audit-ready`, and the confirmed target subject reads
+// `Mx-phase close` — 2 of the 6 measured close commits, this card's own target among
+// them, fail that filter (spec.md §5.4). Widening the constant set would change
+// shouldSkipCommitTitle, the combined-scope gate and ClassifyPRTitle at once, which
+// is a REQ-DCB-006 violation. The discriminating weight therefore rests entirely on
+// the body-line predicate, as §5.4 condition 1 requires; gate (a) is a cheap
+// candidate reducer, not a discriminator.
+//
+// The candidate window mirrors the primary walk bit-for-bit — full-message substring
+// match, newest-first, capped at gitLogWindowSize matches — so no new subprocess is
+// introduced (SPEC-SESSIONSTART-PERF-001 REQ-SSP-001).
+//
+// @MX:NOTE: [AUTO] body-declared close — third FALLBACK-ONLY axis; the output is
+//
+//	`completed` or no verdict, never any other status (REQ-DCB-005).
+//
+// @MX:REASON: SPEC-DRIFT-CLOSE-BODY-001 REQ-DCB-001/002/003/006 — the reverse-direction
+//
+//	risk (a false `completed` frontmatter absolved by one body mention) is held by
+//	bodyDeclaresClose alone, so any widening of that predicate reopens candidate A,
+//	which was rejected for exactly that reason (spec.md §5, §5.2).
+func inMemBodyDeclaredClose(commits []commitRecord, specID string) bool {
+	matched := 0
+
+	for _, c := range commits { // newest-first
+		if !strings.Contains(c.fullMsg, specID) {
+			continue
+		}
+
+		matched++
+		if matched > gitLogWindowSize {
+			break
+		}
+
+		// gate (a): a subject naming the full ID is the primary walk's to classify.
+		if commitMatchesSPECID(c.subject, specID) {
+			continue
+		}
+
+		// gate (b): the body-line predicate.
+		if bodyDeclaresClose(c.fullMsg, specID) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// bodyListMarkerPattern matches the leading list markers a declaration line may
+// carry in a commit body. The set is deliberately narrow: `-`, `*` and `+` followed
+// by whitespace, and nothing else. A blockquote `>` is not a list marker, and
+// stripping one would let quoted text be read as a declaration.
+var bodyListMarkerPattern = regexp.MustCompile(`^[ \t]*[-*+][ \t]+`)
+
+// conventionalSubjectPattern requires a line to LOOK like a conventional-commit
+// subject before it is fed to the classification chain: a lowercase type, an
+// optional parenthesized scope, then `: `.
+//
+// This precondition is load-bearing rather than cosmetic, and fixture line 7 proves
+// it. That line is prose from 80dea9684 which both names SPEC-INTERNAL-TEST-002 (as
+// the FOLLOW-UP owner of residual debt — the opposite of a close) and contains the
+// literal `3-phase close`. ClassifyPRTitle checks the close infix BEFORE the prefix
+// loop (transitions.go), so feeding raw prose to the chain returns `completed` for
+// it. Requiring the conventional-commit shape first is what makes spec.md §5.3's
+// "the line is itself a conventional-commit subject" a mechanical condition rather
+// than an implicit one.
+var conventionalSubjectPattern = regexp.MustCompile(`^[a-z]+(\([^)]*\))?: `)
+
+// bodyDeclaredCloseDenyKeys are leading keys that can never introduce a close
+// declaration (REQ-DCB-004). The shape predicates below already reject them, so this
+// is a second lock rather than the only one: it exists so a later widening of either
+// shape cannot silently readmit a dependency reference.
+var bodyDeclaredCloseDenyKeys = []string{"depends_on:", "related:", "supersedes:", "blocked_by:"}
+
+// bodyDeclaresClose reports whether body contains a line declaring specID closed.
+//
+// It sweeps the WHOLE body and returns true on the first QUALIFYING line. Stopping
+// at the first line of the right SHAPE would be wrong, and 7beda68a5 is the measured
+// proof: its body names SPEC-WORKTREE-ENTRY-STRATEGY-001 on eight lines, of which
+// exactly one — line 117 of 181 — is the close. A first-shape-match implementation
+// stops at line 1 (`* fix(...): M1 web auto-toggles ...`), reads `implemented`, and
+// never sees the close. No qualifying line means NO VERDICT, which is not the same
+// as a verdict of "not closed".
+//
+// Two measured declaration shapes (spec.md §5.3); one hit on either is enough:
+//
+//	A — verdict list: `- SPEC-XXX-001: Mx verdict EVALUATE-PASS`. After the list
+//	    marker the line starts with the full ID and the very next byte is `:`. The
+//	    colon is not decoration: 51d18d3fe carries
+//	    `SPEC-INTERNAL-SECURITY-001 f3193bac8 / SPEC-HANDOFF-GOALFIX-001`, a line that
+//	    exists only because an enumeration wrapped at column 72 — it starts with a
+//	    full ID and declares nothing. Without the colon requirement the verdict would
+//	    turn on where a line happened to wrap.
+//
+//	B — squash sub-subject: `* docs(SPEC-XXX-001): sync-phase artifacts — 3-phase
+//	    close`. A squash merge moves each original subject into the body, so these are
+//	    lines the primary walk WOULD have adopted had they stayed subjects. They are
+//	    therefore re-classified by the existing, already-validated chain
+//	    (shouldSkipCommitTitle → commitMatchesSPECID → ClassifyPRTitle) rather than by
+//	    a second text predicate, which keeps the judgment surface this SPEC opens as
+//	    small as possible. A line qualifies ONLY when that chain returns `completed`;
+//	    `implemented`, `in-progress`, `draft`, a skip and an unknown prefix are all
+//	    non-declarations.
+//
+// The skip filter is applied, NOT bypassed (plan.md §B-3). `chore(spec):` /
+// `chore(specs):` metadata sweeps and SPEC-ID-scoped backfill chores are excluded
+// from lifecycle inference by AC-LSCSK-003 and REQ-DCA-002; letting a body line reach
+// a conclusion the same text would be denied as a subject would reopen that guard
+// through the back door.
+func bodyDeclaresClose(body, specID string) bool {
+	for _, raw := range strings.Split(body, "\n") {
+		line := strings.TrimRight(raw, " \t\r")
+
+		stripped := strings.TrimSpace(bodyListMarkerPattern.ReplaceAllString(line, ""))
+		if stripped == "" {
+			continue
+		}
+
+		if hasDeclarationDenyKey(stripped) {
+			continue
+		}
+
+		// shape A — full ID at line start, immediately followed by ':'.
+		if strings.HasPrefix(stripped, specID+":") {
+			return true
+		}
+
+		// shape B — a conventional-commit subject the existing chain calls a close.
+		if !conventionalSubjectPattern.MatchString(strings.ToLower(stripped)) {
+			continue
+		}
+		if shouldSkipCommitTitle(stripped) {
+			continue
+		}
+		if !commitMatchesSPECID(stripped, specID) {
+			continue
+		}
+		if _, status, err := ClassifyPRTitle(stripped); err == nil && status == "completed" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// hasDeclarationDenyKey reports whether the line opens with a key that references
+// another SPEC rather than closing one (REQ-DCB-004).
+func hasDeclarationDenyKey(stripped string) bool {
+	lower := strings.ToLower(stripped)
+	for _, key := range bodyDeclaredCloseDenyKeys {
+		if strings.HasPrefix(lower, key) {
+			return true
+		}
+	}
 	return false
 }
