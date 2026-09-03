@@ -67,3 +67,31 @@ $ go test -count=1 -timeout 900s ./internal/cli/             → (별도 기록)
 - 상속된 `agents-emit-check` 적색은 그대로다 — 리드 판정으로 **t443 소관**이며 이 카드가
   고치지 않는다. `make build` 가 막히면 `bin/moai` 가 동결되고 doctor 의 `Agent Emit Embed`
   가 stale embed 를 보고해 doctor 테스트가 실패하는 하류까지 같은 뿌리다(lane-1 확정).
+
+## 통합 창 재측정 (lane-3, 2026-09-03 창 보유)
+
+로컬 `develop` `5189502ef` 를 흡수했다(`origin/develop` `7835148d3` 대비 ahead 9). 병합 커밋
+`7e3e12e66`, 충돌 0. 직전 재측정 기준 `4e4607abe` 는 이미 조상이었고, 이는 가정이 아니라
+`git merge-base --is-ancestor` 로 확인한 값이다.
+
+범위는 추정하지 않고 도출했다. 카드의 코드 델타는 `internal/statusline` 과 `internal/cli` 두
+패키지다. 역의존은 `go list` 의 `Imports` + `TestImports` 를 `internal/statusline` 으로 걸러
+얻었고, 그 결과 `internal/hook` · `internal/profile` · `internal/settings` · `internal/web` 가
+붙었다. 파일 델타는 이 범위의 하한이지 상한이 아니다.
+
+| 명령 | 결과 |
+|---|---|
+| `go build ./...` | rc=0 |
+| `go test ./internal/statusline/... ./internal/hook/... ./internal/profile/... ./internal/settings/... ./internal/web/...` | rc=0, 17개 패키지 ok |
+| `go test -timeout 600s ./internal/cli/...` | rc=0, 17개 패키지 ok (`internal/cli` 431.808s) — 원문은 `window-remeasure-cli.log` |
+| `go vet ./internal/statusline/... ./internal/cli/...` | rc=0 |
+
+미검증: darwin/windows 매트릭스와 전체 스위트는 여기서 돌리지 않았다. 그 판정은 리드의 일괄
+push 뒤 develop head 에서 CI 가 낸다 — 부하 걸린 로컬 머신의 전체 스위트는 코드가 아니라
+머신을 재는 일이다.
+
+잔여 위험: 이 측정이 재는 것은 병합 트리 하나뿐이다. 이 카드 뒤이자 리드의 push 앞에 다른
+레인이 develop 에 병합하면 CI 가 실제로 판정하는 트리가 달라지므로, 이 결과는 `7e3e12e66`
+에 대한 증거이지 최종 develop 에 대한 증거가 아니다.
+
+상속된 적색(`agents-emit-check` = t443 소관)은 이 창에서도 그대로이며 이 카드가 고치지 않는다.
