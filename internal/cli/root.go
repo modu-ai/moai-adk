@@ -258,4 +258,10 @@ func init() {
 	// submission, plus the retry-queue verbs. The verdict rides the stdout
 	// JSON; the exit code signals tool failure only.
 	rootCmd.AddCommand(newFeedbackCmd())
+
+	// SPEC-INBOX-DRAIN-GAP-001 M3: register the `moai inbox` lifecycle surface
+	// (status + manual drain). The collector's write-time cap is the passive
+	// half; these two manual verbs are the active half (REQ-IBX-010: no other
+	// scheduling or opportunistic surface exists).
+	rootCmd.AddCommand(newInboxCmd())
 }

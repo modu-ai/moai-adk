@@ -76,6 +76,14 @@ type InitOptions struct {
 	// answer and emitting the key would only add noise.
 	FeedbackAutoSubmit *bool // feedback.auto_submit
 
+	// ProjectContinuation mirrors wizard.WizardResult.ProjectContinuation and
+	// persists to workflow.project.continuation at init
+	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010). Empty means the question
+	// was never asked (--non-interactive), and an unasked question writes
+	// nothing: the template already ships `continuation: card`, so restating it
+	// would only add a line that changes nothing.
+	ProjectContinuation string // workflow.project.continuation
+
 	// SPEC-WT-DOC-001 workflow toggle opt-in surface. The *Set trackers are
 	// false on the zero value so a non-interactive / flag-absent init leaves the
 	// deployed template default untouched (distributed default-off). An explicit
