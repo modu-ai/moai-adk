@@ -1,0 +1,304 @@
+=== RUN   TestEnsureMCPTableCreatesWhenAbsent
+--- PASS: TestEnsureMCPTableCreatesWhenAbsent (0.00s)
+=== RUN   TestEnsureMCPTableNoToolEnumeration
+--- PASS: TestEnsureMCPTableNoToolEnumeration (0.00s)
+=== RUN   TestEnsureMCPTableUserTableUntouched
+--- PASS: TestEnsureMCPTableUserTableUntouched (0.00s)
+=== RUN   TestEnsureMCPTableOtherServersPreserved
+--- PASS: TestEnsureMCPTableOtherServersPreserved (0.00s)
+=== RUN   TestEnsureMCPTableIdempotent
+--- PASS: TestEnsureMCPTableIdempotent (0.00s)
+=== RUN   TestRenderHooks_FreshProjectCoversAdaptedEvents
+--- PASS: TestRenderHooks_FreshProjectCoversAdaptedEvents (0.00s)
+=== RUN   TestRenderHooks_CommandsResolveToDispatcherArgs
+--- PASS: TestRenderHooks_CommandsResolveToDispatcherArgs (0.00s)
+=== RUN   TestRenderHooks_SessionEndTimeoutCap
+--- PASS: TestRenderHooks_SessionEndTimeoutCap (0.00s)
+=== RUN   TestRenderHooks_OtherEventTimeouts
+--- PASS: TestRenderHooks_OtherEventTimeouts (0.00s)
+=== RUN   TestRenderHooks_TopLevelKeysWhitelisted
+--- PASS: TestRenderHooks_TopLevelKeysWhitelisted (0.00s)
+=== RUN   TestRenderHooks_IdempotentBytes
+--- PASS: TestRenderHooks_IdempotentBytes (0.00s)
+=== RUN   TestRenderHooks_MergePreservesUserEntries
+--- PASS: TestRenderHooks_MergePreservesUserEntries (0.00s)
+=== RUN   TestRenderHooks_MixedEntryKeepsUserHandlersOnly
+--- PASS: TestRenderHooks_MixedEntryKeepsUserHandlersOnly (0.00s)
+=== RUN   TestEnsureStatusLineAppendWithoutTrailingNewline
+--- PASS: TestEnsureStatusLineAppendWithoutTrailingNewline (0.00s)
+=== RUN   TestRenderHooks_ValidationGateRejectsViolatingUserKeys
+--- PASS: TestRenderHooks_ValidationGateRejectsViolatingUserKeys (0.00s)
+=== RUN   TestInspectMCPTableAbsent
+--- PASS: TestInspectMCPTableAbsent (0.00s)
+=== RUN   TestInspectMCPTableCanonical
+--- PASS: TestInspectMCPTableCanonical (0.00s)
+=== RUN   TestInspectMCPTableDrifted
+--- PASS: TestInspectMCPTableDrifted (0.00s)
+=== RUN   TestInspectMCPTableSectionBoundary
+--- PASS: TestInspectMCPTableSectionBoundary (0.00s)
+=== RUN   TestSidecarRoundTrip
+--- PASS: TestSidecarRoundTrip (0.00s)
+=== RUN   TestSidecarAbsentIsNotError
+--- PASS: TestSidecarAbsentIsNotError (0.00s)
+=== RUN   TestWireWritesSidecarOnlyOnHooksWrite
+--- PASS: TestWireWritesSidecarOnlyOnHooksWrite (0.00s)
+=== RUN   TestWireReestablishesMissingSidecar
+--- PASS: TestWireReestablishesMissingSidecar (0.00s)
+=== RUN   TestParseSkillEntriesEmpty
+--- PASS: TestParseSkillEntriesEmpty (0.00s)
+=== RUN   TestParseSkillEntriesCanonicalOrder
+--- PASS: TestParseSkillEntriesCanonicalOrder (0.00s)
+=== RUN   TestParseSkillEntriesReversedKeyOrder
+--- PASS: TestParseSkillEntriesReversedKeyOrder (0.00s)
+=== RUN   TestParseSkillEntriesEnabledAbsentIsUnspecified
+--- PASS: TestParseSkillEntriesEnabledAbsentIsUnspecified (0.00s)
+=== RUN   TestParseSkillEntriesEnabledQuoted
+--- PASS: TestParseSkillEntriesEnabledQuoted (0.00s)
+=== RUN   TestParseSkillEntriesWhitespaceTolerance
+--- PASS: TestParseSkillEntriesWhitespaceTolerance (0.00s)
+=== RUN   TestParseSkillEntriesSectionBoundary
+--- PASS: TestParseSkillEntriesSectionBoundary (0.00s)
+=== RUN   TestParseSkillEntriesLaterTablePathDoesNotLeak
+--- PASS: TestParseSkillEntriesLaterTablePathDoesNotLeak (0.00s)
+=== RUN   TestParseSkillEntriesComments
+--- PASS: TestParseSkillEntriesComments (0.00s)
+=== RUN   TestParseSkillEntriesCRLF
+--- PASS: TestParseSkillEntriesCRLF (0.00s)
+=== RUN   TestParseSkillEntriesMultilineStringPhantom
+--- PASS: TestParseSkillEntriesMultilineStringPhantom (0.00s)
+=== RUN   TestParseSkillEntriesMultilineStringCloses
+--- PASS: TestParseSkillEntriesMultilineStringCloses (0.00s)
+=== RUN   TestParseSkillEntriesInlineMultilineNotOpened
+--- PASS: TestParseSkillEntriesInlineMultilineNotOpened (0.00s)
+=== RUN   TestParseSkillEntriesSimilarHeaderRejected
+--- PASS: TestParseSkillEntriesSimilarHeaderRejected (0.00s)
+=== RUN   TestStatusLineDefaultIsCanonicalFive
+--- PASS: TestStatusLineDefaultIsCanonicalFive (0.00s)
+=== RUN   TestStatusLineDefaultSubsetOfAllowlist
+--- PASS: TestStatusLineDefaultSubsetOfAllowlist (0.00s)
+=== RUN   TestStatusLineDefaultHasNoParseAliases
+--- PASS: TestStatusLineDefaultHasNoParseAliases (0.00s)
+=== RUN   TestStatusLineAllowlistMatchesCanonicalSet
+--- PASS: TestStatusLineAllowlistMatchesCanonicalSet (0.00s)
+=== RUN   TestStatusLineMergeBranchNoTuiAppendsAtEOF
+--- PASS: TestStatusLineMergeBranchNoTuiAppendsAtEOF (0.00s)
+=== RUN   TestStatusLineMergeBranchTuiWithoutKeyInsertsAfterHeader
+--- PASS: TestStatusLineMergeBranchTuiWithoutKeyInsertsAfterHeader (0.00s)
+=== RUN   TestStatusLineMergeBranchExistingKeyBytePreserved
+--- PASS: TestStatusLineMergeBranchExistingKeyBytePreserved (0.00s)
+=== RUN   TestStatusLineMergeNestedAndForeignTablesNotFooled
+--- PASS: TestStatusLineMergeNestedAndForeignTablesNotFooled (0.00s)
+=== RUN   TestStatusLineMergeIdempotent
+--- PASS: TestStatusLineMergeIdempotent (0.00s)
+=== RUN   TestWireCreatesAllArtifacts
+--- PASS: TestWireCreatesAllArtifacts (0.00s)
+=== RUN   TestWireFirstTrustGuidance
+--- PASS: TestWireFirstTrustGuidance (0.00s)
+=== RUN   TestWireReTrustGuidanceOnContentChange
+--- PASS: TestWireReTrustGuidanceOnContentChange (0.00s)
+=== RUN   TestWireNoReTrustGuidanceOnNoChange
+--- PASS: TestWireNoReTrustGuidanceOnNoChange (0.00s)
+=== RUN   TestWireIdempotentFilesSha
+--- PASS: TestWireIdempotentFilesSha (0.00s)
+=== RUN   TestWireValidationRefusalWritesNothing
+--- PASS: TestWireValidationRefusalWritesNothing (0.00s)
+=== RUN   TestWireUnparseableExistingWarnsAndContinues
+--- PASS: TestWireUnparseableExistingWarnsAndContinues (0.00s)
+=== RUN   TestRefreshWiringAbsentFilesNoop
+--- PASS: TestRefreshWiringAbsentFilesNoop (0.00s)
+=== RUN   TestRefreshWiringExistingFilesRefreshed
+--- PASS: TestRefreshWiringExistingFilesRefreshed (0.00s)
+=== RUN   TestWirePreservesUserConfigTableAndEntries
+--- PASS: TestWirePreservesUserConfigTableAndEntries (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	1.499s
+=== RUN   TestValidatorRejectsVersionKey
+=== PAUSE TestValidatorRejectsVersionKey
+=== RUN   TestValidatorAcceptsMeasuredGoodShape
+=== PAUSE TestValidatorAcceptsMeasuredGoodShape
+=== RUN   TestValidatorAcceptsDescription
+=== PAUSE TestValidatorAcceptsDescription
+=== RUN   TestValidatorRejectsPerLevelUnknownKeys
+=== PAUSE TestValidatorRejectsPerLevelUnknownKeys
+=== RUN   TestValidatorNamesKeyAndLevelInMessage
+=== PAUSE TestValidatorNamesKeyAndLevelInMessage
+=== RUN   TestValidatorReportsMalformedConfig
+=== PAUSE TestValidatorReportsMalformedConfig
+=== RUN   TestRecordDiscardsWritesSinkRecord
+=== PAUSE TestRecordDiscardsWritesSinkRecord
+=== RUN   TestRecordDiscardsMirrorsToStderrWhenNotBlocking
+=== PAUSE TestRecordDiscardsMirrorsToStderrWhenNotBlocking
+=== RUN   TestRecordDiscardsSilentOnStderrWhenHookBlocked
+=== PAUSE TestRecordDiscardsSilentOnStderrWhenHookBlocked
+=== RUN   TestRecordDiscardsNoOpOnEmpty
+=== PAUSE TestRecordDiscardsNoOpOnEmpty
+=== RUN   TestRecordDiscardsAppends
+=== PAUSE TestRecordDiscardsAppends
+=== RUN   TestDispatcherArgsExist
+=== PAUSE TestDispatcherArgsExist
+=== RUN   TestEventTableRowCount
+=== PAUSE TestEventTableRowCount
+=== RUN   TestEventTableMapping
+=== PAUSE TestEventTableMapping
+=== RUN   TestAdaptedRowCount
+=== PAUSE TestAdaptedRowCount
+=== RUN   TestResolveAdapted
+=== PAUSE TestResolveAdapted
+=== RUN   TestResolveRecognizedButUnadapted
+=== PAUSE TestResolveRecognizedButUnadapted
+=== RUN   TestResolveUnknownEvent
+=== PAUSE TestResolveUnknownEvent
+=== RUN   TestResolveErrorNamesReceivedValue
+=== PAUSE TestResolveErrorNamesReceivedValue
+=== RUN   TestGoldenPayloadsParse
+=== PAUSE TestGoldenPayloadsParse
+=== RUN   TestGoldenToolNameNormalized
+=== PAUSE TestGoldenToolNameNormalized
+=== RUN   TestGoldenStopCarriesStopHookActive
+=== PAUSE TestGoldenStopCarriesStopHookActive
+=== RUN   TestGoldenSessionEndOmitsModelFields
+=== PAUSE TestGoldenSessionEndOmitsModelFields
+=== RUN   TestGoldensAreTracked
+=== PAUSE TestGoldensAreTracked
+=== RUN   TestContinueFalseRewritesToDecisionBlock
+=== PAUSE TestContinueFalseRewritesToDecisionBlock
+=== RUN   TestContinueFalseWithoutStopReasonGetsDefaultReason
+=== PAUSE TestContinueFalseWithoutStopReasonGetsDefaultReason
+=== RUN   TestContinueTrueIsNotRewritten
+=== PAUSE TestContinueTrueIsNotRewritten
+=== RUN   TestSystemMessageRoutedToAdditionalContext
+=== PAUSE TestSystemMessageRoutedToAdditionalContext
+=== RUN   TestSystemMessageDiscardedWhereNoChannel
+=== PAUSE TestSystemMessageDiscardedWhereNoChannel
+=== RUN   TestDiscardRecordCarriesNoContent
+=== PAUSE TestDiscardRecordCarriesNoContent
+=== RUN   TestWorkingKeysPassThroughByteIdentical
+=== PAUSE TestWorkingKeysPassThroughByteIdentical
+=== RUN   TestDiscardBranchCountMatchesTested
+=== PAUSE TestDiscardBranchCountMatchesTested
+=== RUN   TestPreToolUseStderrIsBlockingReason
+=== PAUSE TestPreToolUseStderrIsBlockingReason
+=== RUN   TestStopStderrIsContinuationPrompt
+=== PAUSE TestStopStderrIsContinuationPrompt
+=== RUN   TestTwoClassesAreDistinct
+=== PAUSE TestTwoClassesAreDistinct
+=== RUN   TestUnmeasuredClassIsAnnotated
+=== PAUSE TestUnmeasuredClassIsAnnotated
+=== RUN   TestExcludedEventsHaveNoClass
+=== PAUSE TestExcludedEventsHaveNoClass
+=== RUN   TestClassifyStderrDoesNotDefault
+=== PAUSE TestClassifyStderrDoesNotDefault
+=== CONT  TestValidatorRejectsVersionKey
+=== CONT  TestGoldenPayloadsParse
+=== RUN   TestGoldenPayloadsParse/PreToolUse
+=== CONT  TestDiscardRecordCarriesNoContent
+=== PAUSE TestGoldenPayloadsParse/PreToolUse
+=== RUN   TestGoldenPayloadsParse/PostToolUse
+=== PAUSE TestGoldenPayloadsParse/PostToolUse
+=== RUN   TestGoldenPayloadsParse/SessionStart
+=== PAUSE TestGoldenPayloadsParse/SessionStart
+=== RUN   TestGoldenPayloadsParse/SessionEnd
+=== PAUSE TestGoldenPayloadsParse/SessionEnd
+=== RUN   TestGoldenPayloadsParse/Stop
+=== CONT  TestExcludedEventsHaveNoClass
+=== CONT  TestClassifyStderrDoesNotDefault
+--- PASS: TestExcludedEventsHaveNoClass (0.00s)
+=== CONT  TestGoldenSessionEndOmitsModelFields
+=== CONT  TestUnmeasuredClassIsAnnotated
+--- PASS: TestUnmeasuredClassIsAnnotated (0.00s)
+=== CONT  TestGoldenStopCarriesStopHookActive
+--- PASS: TestClassifyStderrDoesNotDefault (0.00s)
+=== CONT  TestGoldensAreTracked
+=== CONT  TestStopStderrIsContinuationPrompt
+--- PASS: TestStopStderrIsContinuationPrompt (0.00s)
+=== CONT  TestRecordDiscardsAppends
+--- PASS: TestValidatorRejectsVersionKey (0.00s)
+=== CONT  TestResolveErrorNamesReceivedValue
+--- PASS: TestResolveErrorNamesReceivedValue (0.00s)
+=== CONT  TestResolveUnknownEvent
+--- PASS: TestResolveUnknownEvent (0.00s)
+=== CONT  TestResolveRecognizedButUnadapted
+--- PASS: TestResolveRecognizedButUnadapted (0.00s)
+=== CONT  TestResolveAdapted
+--- PASS: TestResolveAdapted (0.00s)
+=== CONT  TestAdaptedRowCount
+--- PASS: TestAdaptedRowCount (0.00s)
+=== CONT  TestEventTableMapping
+--- PASS: TestEventTableMapping (0.00s)
+=== CONT  TestEventTableRowCount
+--- PASS: TestEventTableRowCount (0.00s)
+=== CONT  TestDispatcherArgsExist
+=== CONT  TestTwoClassesAreDistinct
+--- PASS: TestTwoClassesAreDistinct (0.00s)
+=== CONT  TestGoldenToolNameNormalized
+--- PASS: TestDiscardRecordCarriesNoContent (0.00s)
+=== CONT  TestValidatorReportsMalformedConfig
+--- PASS: TestValidatorReportsMalformedConfig (0.00s)
+=== CONT  TestRecordDiscardsNoOpOnEmpty
+=== CONT  TestPreToolUseStderrIsBlockingReason
+--- PASS: TestPreToolUseStderrIsBlockingReason (0.00s)
+=== CONT  TestRecordDiscardsSilentOnStderrWhenHookBlocked
+--- PASS: TestGoldensAreTracked (0.00s)
+=== CONT  TestRecordDiscardsMirrorsToStderrWhenNotBlocking
+=== CONT  TestDiscardBranchCountMatchesTested
+--- PASS: TestDiscardBranchCountMatchesTested (0.00s)
+=== CONT  TestRecordDiscardsWritesSinkRecord
+=== CONT  TestWorkingKeysPassThroughByteIdentical
+--- PASS: TestGoldenStopCarriesStopHookActive (0.00s)
+=== CONT  TestValidatorRejectsPerLevelUnknownKeys
+=== CONT  TestContinueFalseRewritesToDecisionBlock
+--- PASS: TestWorkingKeysPassThroughByteIdentical (0.00s)
+=== CONT  TestValidatorNamesKeyAndLevelInMessage
+--- PASS: TestValidatorNamesKeyAndLevelInMessage (0.00s)
+=== CONT  TestValidatorAcceptsDescription
+--- PASS: TestContinueFalseRewritesToDecisionBlock (0.00s)
+=== CONT  TestValidatorAcceptsMeasuredGoodShape
+--- PASS: TestValidatorAcceptsDescription (0.00s)
+=== CONT  TestSystemMessageDiscardedWhereNoChannel
+--- PASS: TestValidatorAcceptsMeasuredGoodShape (0.00s)
+=== CONT  TestSystemMessageRoutedToAdditionalContext
+--- PASS: TestSystemMessageDiscardedWhereNoChannel (0.00s)
+=== CONT  TestContinueTrueIsNotRewritten
+--- PASS: TestSystemMessageRoutedToAdditionalContext (0.00s)
+=== CONT  TestContinueFalseWithoutStopReasonGetsDefaultReason
+--- PASS: TestContinueTrueIsNotRewritten (0.00s)
+=== PAUSE TestGoldenPayloadsParse/Stop
+--- PASS: TestContinueFalseWithoutStopReasonGetsDefaultReason (0.00s)
+--- PASS: TestGoldenSessionEndOmitsModelFields (0.00s)
+=== RUN   TestValidatorRejectsPerLevelUnknownKeys/top_level
+=== PAUSE TestValidatorRejectsPerLevelUnknownKeys/top_level
+=== RUN   TestValidatorRejectsPerLevelUnknownKeys/entry_level
+=== RUN   TestGoldenPayloadsParse/UserPromptSubmit
+=== PAUSE TestValidatorRejectsPerLevelUnknownKeys/entry_level
+=== RUN   TestValidatorRejectsPerLevelUnknownKeys/hook_level
+=== PAUSE TestGoldenPayloadsParse/UserPromptSubmit
+=== PAUSE TestValidatorRejectsPerLevelUnknownKeys/hook_level
+=== CONT  TestGoldenPayloadsParse/PreToolUse
+=== CONT  TestValidatorRejectsPerLevelUnknownKeys/top_level
+--- PASS: TestDispatcherArgsExist (0.00s)
+=== CONT  TestValidatorRejectsPerLevelUnknownKeys/entry_level
+=== CONT  TestGoldenPayloadsParse/SessionEnd
+=== CONT  TestValidatorRejectsPerLevelUnknownKeys/hook_level
+--- PASS: TestValidatorRejectsPerLevelUnknownKeys (0.00s)
+    --- PASS: TestValidatorRejectsPerLevelUnknownKeys/top_level (0.00s)
+    --- PASS: TestValidatorRejectsPerLevelUnknownKeys/entry_level (0.00s)
+    --- PASS: TestValidatorRejectsPerLevelUnknownKeys/hook_level (0.00s)
+=== CONT  TestGoldenPayloadsParse/SessionStart
+=== CONT  TestGoldenPayloadsParse/UserPromptSubmit
+=== CONT  TestGoldenPayloadsParse/Stop
+=== CONT  TestGoldenPayloadsParse/PostToolUse
+--- PASS: TestRecordDiscardsSilentOnStderrWhenHookBlocked (0.00s)
+--- PASS: TestGoldenToolNameNormalized (0.00s)
+--- PASS: TestGoldenPayloadsParse (0.00s)
+    --- PASS: TestGoldenPayloadsParse/UserPromptSubmit (0.00s)
+    --- PASS: TestGoldenPayloadsParse/PreToolUse (0.00s)
+    --- PASS: TestGoldenPayloadsParse/SessionStart (0.00s)
+    --- PASS: TestGoldenPayloadsParse/SessionEnd (0.00s)
+    --- PASS: TestGoldenPayloadsParse/PostToolUse (0.00s)
+    --- PASS: TestGoldenPayloadsParse/Stop (0.00s)
+--- PASS: TestRecordDiscardsMirrorsToStderrWhenNotBlocking (0.00s)
+--- PASS: TestRecordDiscardsNoOpOnEmpty (0.00s)
+--- PASS: TestRecordDiscardsAppends (0.00s)
+--- PASS: TestRecordDiscardsWritesSinkRecord (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/codexadapter	2.170s

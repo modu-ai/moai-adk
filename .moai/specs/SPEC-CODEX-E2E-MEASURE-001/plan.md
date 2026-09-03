@@ -2,6 +2,7 @@
 id: SPEC-CODEX-E2E-MEASURE-001
 title: "Implementation plan — codex-axis e2e measurement"
 version: "0.1.0"
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
