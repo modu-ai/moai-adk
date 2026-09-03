@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -206,21 +206,27 @@ option-prefixed creation forms (`git branch -- <name>`,
 creation modifiers (`--recurse-submodules`, `--create-reflog`) appearing
 alongside a creation operand — including `git branch --create-reflog
 <name>` (M-30). Value-consuming query flags consume their operands
-WITHOUT triggering creation. General arity rule: a long flag is
-value-consuming iff git documents it as taking a value — the pinned
-value-taking set is `--contains`, `--no-contains`, `--merged`,
-`--no-merged`, `--points-at`, `--format`, `--sort`, `--color`, `--abbrev`,
-`--column`; `--list` and `--show-current` are list-action selectors that
-take no value — and their SPACE-SEPARATED value forms
-(`git branch --sort committerdate`, `git branch --no-contains HEAD`,
-`git branch --column always`, `git branch --abbrev 12`) consume the
-following token rather than reading it as a creation operand. The short
-flag `-l` is the SHORT-FORM LIST SELECTOR (`git branch -l lpattern` —
-measured rc 0, no branch created: a live filter, unlike M-25's measured
-`-v <name>` = create), and list actions are VARIADIC: once a list action
-is selected (`--list` or `-l`), ALL remaining positionals are consumed as
-filter patterns (`git branch -l foo bar`, `git branch --list foo bar`),
-none read as a creation operand. A bare branch-name creation operand
+WITHOUT triggering creation. General arity rule (gate-#3 L1): a long flag
+with a REQUIRED space-separated value consumes the following token —
+pinned space-consuming set: `--contains`, `--no-contains`, `--merged`,
+`--no-merged`, `--points-at`, `--format`, `--sort`
+(`git branch --sort committerdate`, `git branch --no-contains HEAD`).
+ATTACHED-ONLY optional-value flags — `--color`, `--abbrev`, `--column`
+(`[=<value>]` bracket notation in the measured usage table) — consume a
+space-separated token NEVER: an attached `=<value>` is consumed, but a
+following space-separated token is a positional, i.e. a CREATION operand
+(measured at gate #3: `git branch --color colprobe` → rc 0, branch
+`colprobe` created — M-31). `--list` and `--show-current` are list-action
+selectors that take no value. The short flag `-l` is the SHORT-FORM LIST
+SELECTOR (`git branch -l lpattern` — measured rc 0, no branch created: a
+live filter, unlike M-25's measured `-v <name>` = create), and
+list/FILTER mode is VARIADIC (gate-#3 L3): it is selected by `--list`,
+`-l`, OR any filter selector (`--contains`, `--no-contains`, `--merged`,
+`--no-merged`, `--points-at`), and once selected ALL remaining positionals
+are consumed as filter patterns (`git branch -l foo bar`,
+`git branch --list foo bar`, and — measured rc 0, output `* main` —
+`git branch --contains HEAD main`, Q-16), none read as a creation
+operand. A bare branch-name creation operand
 (`git branch <name>`, `git branch <name> <start-point>`) SHALL continue to
 deny.
 
@@ -327,7 +333,7 @@ kept in parity in the same commit.
 | AC | Subject | Verifiable by |
 |----|---------|---------------|
 | AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-30) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
-| AC-WBG-F-002 | Combined short-flag clusters containing d/D/m/M/c/C/f → deny (`-df`, `-fm`, `-vD`) | Matrix cells with RED-now on `d592b0551` |
+| AC-WBG-F-002 | Combined short-flag clusters containing `d/D/m/M/c/C/f/t/u` → deny (`-df`, `-fm`, `-vD`, `-vt`, mid-cluster `-vux`) | Matrix cells (incl. M-33) with RED-now |
 | AC-WBG-F-003 | Query allowlist regression: `--list develop -v`, `-vv`, `--merged`, `--no-merged`, `--points-at`, `--format`, `--contains` → allow | Matrix cells (green-now; must stay green post-fix) |
 | AC-WBG-F-004 | Whole-token classification: `--format` allow vs `--force` deny; `--contains`/`--merged`/`--no-merged` allow despite embedded letters | Matrix cells |
 | AC-WBG-F-005 | Preserved surfaces: existing deny tests (`branch_guard_test.go:234-245`) + sentinel + discriminant + fail-open tests all stay green | Existing + M3 test run |
@@ -428,3 +434,23 @@ kept in parity in the same commit.
   value-taking set vs list-action selectors (`--list`/`--show-current`
   take no value). Expected-RED unchanged (Q-15 green-now; no new mutation
   rows).
+- 2026-09-03 v0.6.0 — gate #3 final bounded round (lead adjudication:
+  option 1, one bounded fix round; [HARD] gate #4 is unconditional
+  terminal and any finding outside the three visited dimensions —
+  spelling/arity/selector — forces scope reduction; accordingly this
+  round applies ONLY the measured L1-L3 corrections, no new grammar
+  territory): L1 `--color`/`--abbrev`/`--column` reclassified as
+  ATTACHED-ONLY optional-value flags (a space-separated token after them
+  is a creation operand — measured: `git branch --color colprobe` created
+  `colprobe`, rc 0); wrong inline examples `--column always` /
+  `--abbrev 12` corrected; cells M-31/M-32 (deny) + Q-17 attached-form
+  allow pin. Error attribution recorded: the misclassification entered via
+  the auditor's own gate-#1 G1 prescription. L2 M-33 `-vux` mid-cluster-u
+  cell added (codex-measured completed mutation); stale AC-002 cluster-set
+  text swept to `d/D/m/M/c/C/f/t/u` in spec §E and acceptance §D.2. L3
+  variadic rule widened: list/FILTER mode is also selected by the filter
+  selectors (`--contains`/`--no-contains`/`--merged`/`--no-merged`/
+  `--points-at`) — measured `git branch --contains HEAD main` rc 0 output
+  `* main`; Q-16 cell added, closing an over-match regression the v0.5.0
+  H1 edit introduced. Counts: M-rows 33 (37 variants), Q-rows 17,
+  expected RED 28 rows / 29 variants.

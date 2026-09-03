@@ -99,6 +99,9 @@ measures the guard directly.
 | M-28 | `git branch --no-force nfbranch` — auditor-measured on git 2.50.1: created a branch (confirmed via `--list`) | allow (git-form liveness measured, audit iter 2; guard-allow inferred — measured in full at M1) | **deny** |
 | M-29 | `git branch -vt vtbranch main` — auditor-measured on git 2.50.1: "branch 'vtbranch' set up to track 'main'" (real mutation; exercises the cluster-containing-`t` scan) | allow (git-form liveness measured, run-gate G5; guard-allow inferred — measured in full at M1) | **deny** |
 | M-30 | `git branch --create-reflog <name>` (creation modifier + operand; exercises the modifier-creation path) | allow (inferred-pending-M1; `--`-prefixed → `[^\s-]` fails today) | **deny** |
+| M-31 | `git branch --color colprobe` — ATTACHED-ONLY optional-value flag: the space-separated token is a positional/creation operand; measured at gate #3: rc 0, branch `colprobe` created (confirmed in `--list`) | allow (git-form liveness measured, gate #3; guard-allow inferred — measured in full at M1) | **deny** |
+| M-32 | `git branch --abbrev 12 <name>` — same attached-only class (`--abbrev` takes its value attached; `<n>` then `<name>` are positionals, `<name>` a creation operand) | allow (inferred-pending-M1) | **deny** |
+| M-33 | `git branch -vux main x` — mid-cluster-`u` cluster; codex-measured completed mutation ("branch 'main' set up to track 'x'"), parse-acceptance corroborated by the auditor's `-vu main` probe | allow (mutation measured at gate #3; guard-allow inferred — measured in full at M1) | **deny** |
 
 Rationale for M-12..M-28 (config-mutation, long-form, attached-spelling,
 and option-prefixed creation forms): they mutate branch state (upstream
@@ -150,6 +153,8 @@ inherent to the fail-open direction (E-5).
 | Q-13 | `git branch --sort committerdate` (SPACE-SEPARATED value — pins the arity rule: the value token must be consumed, not read as a creation operand) | allow (inferred-pending-M1) | allow |
 | Q-14 | `git branch --no-contains HEAD` (space-separated value; same arity pin; `--color`/`--abbrev`/`--column` value forms covered by the same rule) | allow (inferred-pending-M1) | allow |
 | Q-15 | `git branch -l lpattern` (SHORT-FORM list selector — auditor-measured rc 0, no branch created: a live filter, unlike M-25's measured `-v <name>` = create; list actions are variadic — `-l foo bar` / `--list foo bar` consume ALL remaining positionals as patterns) | allow (git-form liveness measured, gate #2; guard-allow inferred from the flag-token mechanism — measured in full at M1) | allow |
+| Q-16 | `git branch --contains HEAD main` — measured at gate #3: rc 0, output `* main` (a live FILTER; filter selectors `--contains`/`--no-contains`/`--merged`/`--no-merged`/`--points-at` select list/filter mode for remaining positionals too — positionals after the consumed value are patterns, not creations) | allow (git-form liveness measured, gate #3; guard-allow inferred — measured in full at M1) | allow |
+| Q-17 | `git branch --color=always` (ATTACHED-ONLY optional value consumed, no positional → query; pins L1's attached-only category — contrast M-31) | allow (inferred-pending-M1) | allow |
 
 ### Whole-token discrimination pairs (REQ-WBG-F-004)
 
@@ -162,20 +167,22 @@ inherent to the fail-open direction (E-5).
 
 - **AC-WBG-F-001 (matrix convergence)** — Given the M1 matrix test from
   §D.1 exists with doctrine-based expectations, When it runs on the post-M2
-  tree, Then every cell matches its expected classification (30/30 mutation
-  cells → deny; 15/15 query cells → allow). Variant count: M-03/M-04/M-05
+  tree, Then every cell matches its expected classification (33/33 mutation
+  cells → deny; 17/17 query cells → allow). Variant count: M-03/M-04/M-05
   and M-21 each carry two command forms (`-d`/`-D`, `-m`/`-M`, `-c`/`-C`,
-  `--move`/`--copy`), so 34 command variants across 30 mutation rows.
+  `--move`/`--copy`), so 37 command variants across 33 mutation rows.
   RED-now: §D.0 (10 guard-level cells on `d592b0551`) plus the
   audit-iteration live git 2.50.1 measurements (M-20/M-22/M-23/M-24
-  git-form liveness, M-25..M-29 confirmed mutations/creations) and the
-  inferred-pending-M1 cells (M-07/M-14/M-17/M-18/M-21/M-30); expected M1
-  RED = the 25 pre-fix allow rows (26 command variants). Green path: M2.
+  git-form liveness, M-25..M-29 and M-31/M-33 confirmed
+  mutations/creations) and the
+  inferred-pending-M1 cells (M-07/M-14/M-17/M-18/M-21/M-30/M-32); expected M1
+  RED = the 28 pre-fix allow rows (29 command variants). Green path: M2.
 - **AC-WBG-F-002 (combined short-flag clusters)** — Given a `git branch`
-  command with a combined short-flag cluster containing `d/D/m/M/c/C/f`
-  (`-df`, `-fm`, `-vD`), When evaluated in the primary checkout, Then the
-  guard denies with the `BRANCH_GUARD_VIOLATION:` prefix. RED-now: §D.0.
-  Green path: M2.
+  command with a combined short-flag cluster containing `d/D/m/M/c/C/f/t/u`
+  (`-df`, `-fm`, `-vD`, `-vt`, and mid-cluster `-vux` — M-29/M-33 pin the
+  `t` and `u` scans), When evaluated in the primary checkout, Then the
+  guard denies with the `BRANCH_GUARD_VIOLATION:` prefix. RED-now: §D.0 +
+  gate-#3 M-33. Green path: M2.
 - **AC-WBG-F-003 (query allowlist regression)** — Given any §D.1 query
   form, When evaluated in the primary checkout pre- and post-fix, Then the
   guard allows it in both (no over-match regression; the CLAUDE.local.md

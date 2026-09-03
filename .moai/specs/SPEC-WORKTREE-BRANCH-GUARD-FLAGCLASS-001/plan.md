@@ -98,10 +98,10 @@ Create a permanent table-driven Go test (e.g.
 deny/matched, query → allow/unmatched). Run it on the pre-fix tree:
 
 - Expected observation: every pre-fix allow row in acceptance.md §D.1
-  FAILs (RED — the defect). As of v0.4.0 that is 25 rows / 26 command
+  FAILs (RED — the defect). As of v0.6.0 that is 28 rows / 29 command
   variants (§D.0's 10 guard-level measurements + audit-measured git-form
-  liveness M-20/M-22/M-23/M-24/M-25..M-29 + inferred-pending-M1
-  M-07/M-14/M-17/M-18/M-21/M-30). All query cells (Q-01..Q-15) and
+  liveness M-20/M-22/M-23/M-24/M-25..M-29/M-31/M-33 + inferred-pending-M1
+  M-07/M-14/M-17/M-18/M-21/M-30/M-32). All query cells (Q-01..Q-17) and
   existing deny cells PASS (green-now). §D.1 is the normative expectation
   authority — the M1 run's row set is read against §D.1, never against
   this count.
@@ -185,21 +185,27 @@ quoted-span collapse, `(?i)`):
    on git 2.50.1) and creation modifiers (`--recurse-submodules`,
    `--create-reflog`) alongside a creation operand — including
    `git branch --create-reflog <name>` (M-30). Value-consumption arity
-   rule (run-gate G1, refined at gate #2 by H1/H4): a long flag is
-   value-consuming iff git documents it as taking a value — the pinned
-   value-taking set is `--contains`, `--no-contains`, `--merged`,
-   `--no-merged`, `--points-at`, `--format`, `--sort`, `--color`,
-   `--abbrev`, `--column`; `--list` and `--show-current` are list-action
-   selectors taking NO value — and their space-separated value forms
-   (`git branch --sort committerdate`, `git branch --no-contains HEAD`)
-   consume the following token → allow (`--contains HEAD`,
-   `--merged main`, `--list develop -v`, `--sort committerdate` stay
-   green; Q-13/Q-14 pin the space-separated forms). The short flag `-l`
-   is the SHORT-FORM LIST SELECTOR (`git branch -l lpattern` — measured
-   rc 0, no branch created: a live filter, unlike `-v <name>` = create),
-   and list actions are VARIADIC: once `--list` or `-l` is selected, ALL
-   remaining positionals are consumed as filter patterns
-   (`git branch -l foo bar`, `git branch --list foo bar`); Q-15 pins it.
+   rule (run-gate G1, refined at gate #2 by H1/H4, corrected at gate #3
+   by L1/L3): a long flag with a REQUIRED space-separated value consumes
+   the following token — pinned space-consuming set: `--contains`,
+   `--no-contains`, `--merged`, `--no-merged`, `--points-at`, `--format`,
+   `--sort` (`git branch --sort committerdate`,
+   `git branch --no-contains HEAD`). ATTACHED-ONLY optional-value flags —
+   `--color`, `--abbrev`, `--column` — consume a space-separated token
+   NEVER: an attached `=<value>` is consumed, but a following
+   space-separated token is a positional/creation operand (measured:
+   `git branch --color colprobe` created `colprobe`, rc 0 — M-31/M-32);
+   `git branch --color=always` (attached, no positional) is a query
+   (Q-17). `--list` and `--show-current` are list-action selectors taking
+   NO value. The short flag `-l` is the SHORT-FORM LIST SELECTOR
+   (`git branch -l lpattern` — measured rc 0, no branch created: a live
+   filter, unlike `-v <name>` = create), and list/FILTER mode is VARIADIC:
+   selected by `--list`, `-l`, OR any filter selector (`--contains`,
+   `--no-contains`, `--merged`, `--no-merged`, `--points-at`) — ALL
+   remaining positionals after the selector's consumed value are filter
+   patterns (`git branch -l foo bar`, `git branch --list foo bar`,
+   `git branch --contains HEAD main` — measured rc 0, output `* main`,
+   Q-16); Q-15 pins `-l`.
    Sibling resolved by measurement: `git branch -a <name>` is
    git-rejected (rc 128) → fail-closed-safe, not an over-match concern.
    Note: `git branch -v vbranch`
