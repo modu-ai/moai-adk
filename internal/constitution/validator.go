@@ -45,9 +45,9 @@ const (
 
 // validZoneClasses is the set of allowed values for the zone_class 4-enum.
 var validZoneClasses = map[string]bool{
-	"frozen-canonical":      true,
-	"frozen-safety":         true,
-	"evolvable-tuning":      true,
+	"frozen-canonical":       true,
+	"frozen-safety":          true,
+	"evolvable-tuning":       true,
 	"evolvable-experimental": true,
 }
 
