@@ -62,7 +62,7 @@ m1_to_mN_commit_strategy: 2 commits — M1 (sentence + draft->in-progress transi
 phase: sync
 tier: S
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 6069087cd
 sync_status: complete
 b12_self_test_a: PASS — pre-emission grep -c 'SPEC-LANE-PUSH-DOC-001' CHANGELOG.md returned 0 (no duplicate entry); post-edit count 1
 b12_self_test_b: PASS — 5 distinct ACs (AC-001..AC-005, spec.md §3) all covered in progress.md §E.2 (5/5 PASS); acceptance.md intentionally absent per Tier S policy
