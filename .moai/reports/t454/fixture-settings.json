@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "FileChanged": [
+      {
+        "matcher": ".env|.envrc|.gitignore",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/log.sh\" S1_TEMPLATE", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/log.sh\" S2_CATCHALL_REGEX", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "t454-fc-runtime",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/log.sh\" S3_LITERAL_ALWAYS", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "env[k]eys",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/log.sh\" S4_REGEX_CLASS", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

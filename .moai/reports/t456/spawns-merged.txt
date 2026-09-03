@@ -1,0 +1,2 @@
+rev-parse --git-dir --show-toplevel
+status --porcelain --branch
