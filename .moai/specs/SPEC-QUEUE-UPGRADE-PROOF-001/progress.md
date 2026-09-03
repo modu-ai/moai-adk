@@ -114,7 +114,7 @@ per C-2. No full local suite was run. No test spawns background load (C-4).
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill
+sync_commit_sha: 305a39bd6
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-QUEUE-UPGRADE-PROOF-001' CHANGELOG.md -> 0 (no duplicate; emission proceeded)"
 b12_self_test_b: "distinct AC identifiers in acceptance.md -> 11; CHANGELOG entry states 11 (match)"
@@ -146,7 +146,8 @@ G5, and the downgrade-export directory hole) — information that exists nowhere
 a release reader would find it if the entry were omitted.
 
 **`sync_commit_sha` placeholder.** Written as the canonical `pending-backfill`
-in the sync commit itself and backfilled in a following commit. A commit cannot
+in the sync commit itself and backfilled to `305a39bd6` in this following
+commit. A commit cannot
 cite its own hash; leaving the slot EMPTY is not the alternative, because the
 SPEC is `completed` once this commit lands and nothing would ever schedule the
 repair.
