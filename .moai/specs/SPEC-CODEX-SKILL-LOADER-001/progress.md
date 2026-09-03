@@ -171,7 +171,7 @@ red)이며, 지배 규칙(프로젝트 중립성 가드)보다 엄격하다.
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7ff7f590d
 sync_status: complete-clean
 changelog_entry_position: "[Unreleased] → ### Changed (top of section)"
 changelog_duplicate_precheck: "grep -c 'SPEC-CODEX-SKILL-LOADER-001' CHANGELOG.md → 0"
@@ -206,11 +206,14 @@ settings_json_exclusion:
     its deleted hook matchers is another in-flight card's subject. Neither
     staged nor reverted — both would erase an observed fact.
 sync_commit_sha_backfill:
-  owed: true
+  owed: false
+  placeholder_written_in: 7ff7f590d
+  backfilled_by: this commit
   note: >-
-    A commit cannot cite its own hash. The slot above carries the canonical
-    placeholder and is backfilled by the immediately following commit on this
-    branch.
+    A commit cannot cite its own hash. The sync commit 7ff7f590d wrote the
+    canonical placeholder pending-backfill-sync into the slot above; this
+    immediately following commit replaces it with the real SHA. The two-commit
+    shape is the record of that constraint, not drift.
 ```
 
 ## §E.0 Plan-phase closure — residual risk
