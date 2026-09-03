@@ -130,3 +130,23 @@ cmd-prefix arm exit=0
 ## 후속 제안 (이 카드 범위 밖)
 
 `run.md` 의 정규 `ac_converge` 조건문에 `model:` 접두사를 붙여 낱말 의존을 끊는 것. 이는 발견성 편집이 아니라 **무장되는 조건 자체의 변경**이고, `TestRunmdAcConvergeProseMatchesFixture` 와 `TestAC009_*` 가 그 텍스트를 고정하고 있어 별도 카드가 맞다.
+
+---
+
+## 병합 준비 부기 — catalog 해시 재생성이 흡수한 남의 누락분
+
+이 카드의 `internal/template/catalog.yaml` 한 줄(`moai` 엔트리 해시)은 **두 원인을 함께 덮는다.** 착지 후 이 줄이 t436 단독 산물로 읽히면 t191 이 catalog 를 빠뜨렸다는 사실이 사라지므로 여기 남긴다.
+
+| # | 원인 | 근거 |
+|---|---|---|
+| 1 | 이 카드가 `.claude/skills/moai/workflows/goal.md` 를 수정 | `git diff --stat develop HEAD -- .claude/skills/moai/` → 1 file, +34/-1 |
+| 2 | **develop 자체의 미재생성분** — t191 `aed638b8b` 가 `workflows/project.md` 와 `project/doc-generation.md` 를 얹으며 `catalog.yaml` 미접촉 | `git log --oneline <base>..develop -- internal/template/catalog.yaml` → 병합 커밋 `d77adf6b2` 1건뿐(재생성 아님). develop 저장값 `3fff7dba…` 가 갱신되지 않은 채 남아 있음 |
+
+두 원인은 같은 엔트리를 가리키므로 한 번의 재생성이 둘을 함께 해소한다:
+
+```
+go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai
+go test ./internal/template/ -run 'TestCatalogHashCoversSkillSubfiles' -count=1   # ok
+```
+
+`--entry moai` 로 충분함을 표적 테스트로 확인했다(위 명령 rc=0). 실패 메시지가 안내하는 `--all` 은 쓰지 않았다 — `--all` 은 `sync-auditor` 엔트리까지 재생성해 **t443 소관의 드리프트를 이 카드가 조용히 덮어버리기** 때문이다. 소관을 흐리지 않는 쪽을 골랐다.
