@@ -164,9 +164,15 @@ load is an exposure condition, not the cause, and the race is present regardless
 pass was not evidence of a flake; it is explained by the siblings not overlapping when run alone.
 The earlier full-suite green does not mean the race was absent then, only that it did not fire.
 
-Owned by card t295, which introduced these tests. Deliberately not repaired here — out of this
-card's scope, and the fix (drop `t.Parallel()`, or replace global assignment with injection) is the
-owning card's call.
+**No owner.** Card t295 introduced these tests, but it is closed: it appears in neither the live
+queue nor the dropped list (`moai todo list --limit 0`, `--dropped`), and its commit is an ancestor
+of `origin/develop` (`git merge-base --is-ancestor a05b9c4d8 refs/remotes/origin/develop` → rc 0).
+A closed card whose work has landed cannot be an owner, so naming it as one would send the next
+reader to open a card that is not there. Recorded as a card candidate instead.
+
+Deliberately not repaired here — out of this card's scope. The fix is small and stated so the
+candidate is actionable: drop `t.Parallel()` from the three siblings, or replace the global
+assignment with injection so there is nothing shared to race on.
 
 ## How the re-measurement scope was chosen
 
