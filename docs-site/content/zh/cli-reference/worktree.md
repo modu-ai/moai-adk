@@ -77,7 +77,7 @@ moai worktree remove <path>
 moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 ```
 
-不带标志运行时,只 prune stale 的工作树引用。
+不带标志运行时,只 prune stale 的工作树引用。启动台账(`~/.moai/claude-profiles/launch.yaml` 的 `projects:` 条目)中项目目录已消失的条目也会一并清理,并输出移除的条目数。`moai worktree remove` 和 `moai worktree done` 同样会回收其所弃置树对应的条目。
 
 | 标志 | 说明 |
 |--------|------|
