@@ -161,4 +161,35 @@ m5_handoff:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Added 섹션 말미 (SPEC-PRECOMMIT-GATE-SCOPE-001 1건, 사전 중복 grep 0 히트)"
+b12_self_test_a: "grep -c 'SPEC-PRECOMMIT-GATE-SCOPE-001' CHANGELOG.md → 0 (커밋 전, 중복 없음 확인)"
+b12_self_test_b: "acceptance.md AC 식별자 10건 (AC-001..AC-010, grep + sort -u 실측) — CHANGELOG 항목은 키 단위 서술로 10 AC 전체를 커버"
+b12_self_test_c: "CHANGELOG가 언급하는 경로 실존 확인 — .moai/config/sections/gate.yaml (internal/template/templates/.moai/config/ 동일), .git_hooks/pre-commit 마커 호출 실측"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (sync 커밋 탑승, updated: 2026-09-03 유지)"
+  plan_md: "상태축 없음 (Artifact Statelessness — status 필드 부재, 무변경)"
+  acceptance_md: "상태축 없음 (동일, 무변경)"
+canary_compliance_check:
+  docs_code_match: "gate.pre_commit.enabled 기본 false / MOAI_PRECOMMIT=1 마커 한정 / moai web Gate 패널이 정확히 .moai/config/sections/gate.yaml 기록 — §E.2 M1/M2 구현과 문서 서술 일치"
+  template_neutrality: "sync 단계에서 internal/template/templates/** 변경 0 (git status 실측) — 중립 CI 가드 무자극"
+```
+
+### 동기화 산출물
+
+- CHANGELOG.md — [Unreleased] Added에 사용자 가시 변경 1항목 추가 (신설 opt-in 키, 기본 동작 변경, `moai web` 토글).
+- docs-site `/moai gate` 페이지 4-locale 확장 (ko/en/ja/zh — ko 캐논, 동일 구조): 새 `##` 섹션 1개 —
+  `gate.pre_commit.enabled` 키, `.moai/config/sections/gate.yaml` opt-in, `MOAI_PRECOMMIT=1`
+  마커 한정 동작, `moai web` Gate 패널 경로, `SKIP_MOAI_PRECOMMIT=1` 우회. 기존 섹션 재작성 없음(범위 최소).
+  - ko: `docs-site/content/ko/utility-commands/moai-gate.md` (섹션 8 → 9)
+  - en: `docs-site/content/en/utility-commands/moai-gate.md` (9 → 10)
+  - ja: `docs-site/content/ja/utility-commands/moai-gate.md` (9 → 10)
+  - zh: `docs-site/content/zh/utility-commands/moai-gate.md` (9 → 10)
+- README 4-locale: gate 설정 키를 나열하는 섹션 부재 실측 (`gate.yaml` 언급은 ast_grep_gate 버전노트 1곳뿐) —
+  건드리지 않음(부재는 유효 결과).
+- 검증 증거: `.moai/reports/t461/hugo_build_sync.log` — `hugo --gc --minify` exit 0, WARN/ERROR 0행,
+  4-locale 패리티 grep `gate.pre_commit.enabled` 4파일 × 2히트 동일.
+

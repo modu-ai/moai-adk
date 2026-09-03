@@ -2,7 +2,7 @@
 id: SPEC-PRECOMMIT-GATE-SCOPE-001
 title: "Pre-commit heavy gate scope defect — project-wide quality gate must not block commits on unrelated pre-existing failures"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
