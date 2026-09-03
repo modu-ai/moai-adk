@@ -55,7 +55,7 @@ func writeGatePreCommitFixture(t *testing.T, gateYAML string) string {
 
 // runGateInFixture points the gate at the fixture and runs runGate, returning
 // the error plus everything the run wrote to stderr.
-func runGateInFixture(t *testing.T, root string) (error, string) {
+func runGateInFixture(t *testing.T, root string) (string, error) {
 	t.Helper()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	var errOut bytes.Buffer
@@ -63,7 +63,7 @@ func runGateInFixture(t *testing.T, root string) (error, string) {
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&errOut)
 	err := runGate(cmd, nil)
-	return err, errOut.String()
+	return errOut.String(), err
 }
 
 // TestRunGatePreCommitMarkerSkipsHeavyGate is the AC-009 contrast's first
@@ -74,7 +74,7 @@ func TestRunGatePreCommitMarkerSkipsHeavyGate(t *testing.T) {
 	root := writeGatePreCommitFixture(t, "")
 	t.Setenv(config.EnvPreCommitMarker, "1")
 
-	err, errOut := runGateInFixture(t, root)
+	errOut, err := runGateInFixture(t, root)
 	if err != nil {
 		t.Fatalf("runGate under marker + default opt-out returned error: %v\nstderr: %s", err, errOut)
 	}
@@ -95,7 +95,7 @@ func TestRunGateStandaloneUnchanged(t *testing.T) {
 	root := writeGatePreCommitFixture(t, "")
 	t.Setenv(config.EnvPreCommitMarker, "")
 
-	err, _ := runGateInFixture(t, root)
+	_, err := runGateInFixture(t, root)
 	if err == nil {
 		t.Fatal("standalone moai gate passed on a project with a failing test — the existing contract regressed")
 	}
@@ -111,7 +111,7 @@ func TestRunGatePreCommitOptInRunsHeavyGate(t *testing.T) {
 	root := writeGatePreCommitFixture(t, "gate:\n  pre_commit:\n    enabled: true\n")
 	t.Setenv(config.EnvPreCommitMarker, "1")
 
-	err, _ := runGateInFixture(t, root)
+	_, err := runGateInFixture(t, root)
 	if err == nil {
 		t.Fatal("opted-in pre-commit gate passed despite the failing project-wide test — the heavy steps did not run")
 	}
@@ -128,7 +128,7 @@ func TestRunGatePreCommitOptInPassingProjectPasses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err, errOut := runGateInFixture(t, root)
+	errOut, err := runGateInFixture(t, root)
 	if err != nil {
 		t.Fatalf("opted-in gate on a healthy project returned error: %v\nstderr: %s", err, errOut)
 	}
@@ -141,7 +141,7 @@ func TestRunGateGateDisabledStillShortCircuitsUnderMarker(t *testing.T) {
 	root := writeGatePreCommitFixture(t, "gate:\n  enabled: false\n")
 	t.Setenv(config.EnvPreCommitMarker, "1")
 
-	err, _ := runGateInFixture(t, root)
+	_, err := runGateInFixture(t, root)
 	if err != nil {
 		t.Fatalf("gate.enabled=false under the marker returned error: %v", err)
 	}
