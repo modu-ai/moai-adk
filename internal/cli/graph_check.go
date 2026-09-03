@@ -50,9 +50,12 @@ for untracked layers (fresh-worktree state); the bootstrap a CI job performs
 
 Metrics (per layer, by tracking status):
   codemaps   described-source-diff         files whose content differs from
-                                          the stamped generation commit
-                                          (endpoint diff; reverted churn
-                                          counts zero)
+                                          the content anchor — the point the
+                                          codemaps body last actually changed,
+                                          not the stamped commit (endpoint
+                                          diff; reverted churn counts zero).
+                                          A re-stamp over an untouched body
+                                          therefore does not reset the window.
   mx-index   inventory-content-diff        scanner-read files whose content
                                           hash differs from the stamped
                                           inventory
@@ -147,6 +150,17 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 // The contribution is REPORTED here, never gated on — the exit code is still
 // decided by the cumulative count alone.
 func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
+	// The measurement window comes first: without it a reader cannot tell
+	// which two points the count spans, and the codemaps layer no longer
+	// measures from the stamped commit (SPEC-GRAPH-GATE-RESTAMP-001).
+	// Reported only — the exit code is still decided by the count alone.
+	if l.ContentAnchor != "" {
+		anchor := l.ContentAnchor
+		if len(anchor) > 9 {
+			anchor = anchor[:9]
+		}
+		_, _ = fmt.Fprintf(errs, "  measured from: %s (%s)\n", anchor, l.ContentAnchorSource)
+	}
 	switch {
 	case l.Contribution != nil:
 		base := l.ContributionBase

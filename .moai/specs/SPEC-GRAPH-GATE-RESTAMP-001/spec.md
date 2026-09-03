@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-GATE-RESTAMP-001
 title: "codemaps 게이트의 맨손 재스탬프 위조-초록 차단 — 측정 기점을 본문 최종 변경 커밋으로 이동"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-09-04
 updated: 2026-09-04
 author: manager-spec
