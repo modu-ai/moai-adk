@@ -517,3 +517,34 @@ $ git diff --stat c323bb491..HEAD (M2까지) + 워킹트리
 
 둘 다 spec.md 본문 수정이 필요한 사안이 아니다(전자는 구현이 이미 만족, 후자는 §5.3이 예견한 절차의 정상 작동).
 
+---
+
+## 절차 사고 기록 — 워크트리 index.lock 반복 경합 (리드 보고 대상)
+
+이 트리의 `index.lock`이 run-phase 동안 **세 번** 커밋/스테이징을 막았다. 기록 의무에 따라 관측한 것만 적는다.
+
+| 시점 | 명령 | 결과 |
+|---|---|---|
+| M1 스테이징 | `git add …` | `Unable to create … index.lock: File exists`. 직후 `ls` → **없음**(과도적) |
+| M3 스테이징 (17:44~18:01) | `git add …` | 같은 실패. lock이 **17분간 존속** |
+| M3 커밋 (18:02) | `git commit -F …` | 같은 실패. 직후 `ls` → **없음** |
+
+17분 존속 건에 대한 staleness 근거 3종을 측정했다:
+
+```
+$ ls -l /Users/goos/MoAI/moai-adk-go/.git/worktrees/t410/index.lock
+-rw-r--r--  1 goos  staff  0 Sep  3 17:44 …           ← 0바이트, mtime 고정 (18:01 시점 17분 경과)
+$ ps -eo pid,etime,command | grep '[g]it '
+(이 저장소를 대상으로 하는 git 프로세스 0건 — 목록은 전부 다른 저장소: mo.ai.kr, moai-cowork)
+$ lsof /Users/goos/MoAI/moai-adk-go/.git/worktrees/t410/index.lock
+(출력 없음 — 이 파일을 열고 있는 프로세스 없음)
+```
+
+세 근거가 일치해 **stale lock**으로 판정하고 제거했다(`rm -f`). 제거 대상은 **이 워크트리 전용** index lock이며 공유 브랜치 상태가 아니다. 제거 직후 `git status`가 정상 응답했고 스테이징이 통과했다.
+
+그런데 **그 직후 커밋이 다시 같은 오류로 실패**했고, 재확인 시점(18:02:45)에는 lock이 또 없었다. 즉 실제 상황은 "죽은 lock 하나"가 아니라 **짧게 lock을 잡았다 놓는 행위자가 주기적으로 존재한다**는 것이다 — 17분 존속 건은 그 행위자가 남긴 잔재였을 가능성이 높다. 행위자는 특정하지 못했다(다른 Claude 세션의 statusline, SessionStart 훅, 또는 외부 도구).
+
+재시도 판단: 실패한 명령이 **커밋**이고, 재시도 전에 `git rev-parse --short HEAD` = `c7126f526`(M2 그대로) · `git log -1 --format=%s` = M2 subject로 **효과가 착지하지 않았음을 확인**한 뒤 한 번 재시도해 통과했다. 부작용 있는 명령의 애매한 실패는 상태를 먼저 관측하고 효과 부재가 확인될 때만 재시도한다는 규율(`agent-common-protocol.md` § Error Recovery)에 따른 것이다.
+
+**리드에게 보고할 사항**: 이 워크트리에 대해 정체 불명의 행위자가 간헐적으로 git index lock을 잡는다. 이 카드의 작업은 영향을 받지 않았으나(모든 커밋 착지 확인), 병합 창에서 같은 경합이 나면 병합 커밋 직전 `HEAD` 재판독 규율이 더 중요해진다.
+
