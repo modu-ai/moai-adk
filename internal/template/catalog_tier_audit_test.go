@@ -413,51 +413,90 @@ func TestManifestHashFormat(t *testing.T) {
 			continue
 		}
 
-		// Hash stability check: re-compute hash from the source file and compare.
+		// Hash stability check: re-compute hash from the source and compare.
 		fsPath := strings.TrimPrefix(e.Path, "templates/")
 		fsPath = strings.TrimSuffix(fsPath, "/")
 
-		var hashSourcePath string
 		stat, statErr := fs.Stat(fsys, fsPath)
 		if statErr != nil {
 			t.Errorf("CATALOG_ENTRY_ORPHAN: %s path=%q not in FS, cannot verify hash", e.Name, e.Path)
 			continue
 		}
 
+		// Directory entries (skill directories) hash as a whole deployed tree
+		// via ComputeDirTreeHash — the same aggregation the generator uses
+		// (t323); SKILL.md-only verification would green a tree whose deployed
+		// sub-files drifted. File entries hash their single file.
+		var computedHash, hashSource string
 		if stat.IsDir() {
-			// Skill directory: hash the root SKILL.md or skill.md
-			for _, candidate := range []string{"SKILL.md", "skill.md"} {
-				candidatePath := fsPath + "/" + candidate
-				if _, err2 := fs.Stat(fsys, candidatePath); err2 == nil {
-					hashSourcePath = candidatePath
-					break
-				}
-			}
-			if hashSourcePath == "" {
-				t.Errorf("CATALOG_HASH_INVALID: %s is a directory but has no SKILL.md/skill.md for hashing", e.Name)
+			var treeErr error
+			computedHash, treeErr = ComputeDirTreeHash(fsys, fsPath)
+			if treeErr != nil {
+				t.Errorf("cannot compute tree hash for %q: %v", fsPath, treeErr)
 				continue
 			}
+			hashSource = fsPath + "/ (whole tree)"
 		} else {
-			hashSourcePath = fsPath
+			rawContent, readErr := fs.ReadFile(fsys, fsPath)
+			if readErr != nil {
+				t.Errorf("cannot read %q for hash verification: %v", fsPath, readErr)
+				continue
+			}
+			sum := sha256.Sum256(NormalizeForHash(rawContent))
+			computedHash = hex.EncodeToString(sum[:])
+			hashSource = fsPath
 		}
-
-		rawContent, readErr := fs.ReadFile(fsys, hashSourcePath)
-		if readErr != nil {
-			t.Errorf("cannot read %q for hash verification: %v", hashSourcePath, readErr)
-			continue
-		}
-
-		normalized := NormalizeForHash(rawContent)
-		sum := sha256.Sum256(normalized)
-		computedHash := hex.EncodeToString(sum[:])
 
 		if computedHash != e.Hash {
 			t.Errorf("CATALOG_HASH_UNSTABLE: %s stored hash=%s, computed hash=%s (source=%s)",
-				e.Name, e.Hash, computedHash, hashSourcePath)
+				e.Name, e.Hash, computedHash, hashSource)
 		}
 	}
 
 	t.Logf("audited %d catalog entries for hash validity", len(entries))
+}
+
+// TestCatalogHashCoversSkillSubfiles pins the t323 closure of the SKILL.md-only
+// hash gap: a skill directory entry is deployed as a whole tree
+// (//go:embed all:templates), so its catalog hash must cover every regular
+// file under the directory — ComputeDirTreeHash — not just the root SKILL.md.
+// Before t323 the deployed sub-files (modules/, references/, scripts/,
+// workflows/, schemas/, ...) sat entirely outside the catalog's integrity
+// claim: 274 files across 34 directory entries changed the deployment without
+// moving any catalog value.
+func TestCatalogHashCoversSkillSubfiles(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+	cat := loadCatalog(t)
+
+	checked := 0
+	for _, e := range allCatalogEntries(cat) {
+		fsPath := strings.TrimPrefix(e.Path, "templates/")
+		fsPath = strings.TrimSuffix(fsPath, "/")
+
+		stat, statErr := fs.Stat(fsys, fsPath)
+		if statErr != nil || !stat.IsDir() {
+			continue // file entries hash their single file directly
+		}
+
+		want, treeErr := ComputeDirTreeHash(fsys, fsPath)
+		if treeErr != nil {
+			t.Fatalf("ComputeDirTreeHash(%q): %v", fsPath, treeErr)
+		}
+		if e.Hash != want {
+			t.Errorf("CATALOG_HASH_SKINNY: %s hash=%s does not cover the deployed directory tree (whole-tree hash %s) — run gen-catalog-hashes.go --all (card t323)", e.Name, e.Hash, want)
+		}
+		checked++
+	}
+
+	if checked == 0 {
+		t.Fatal("no directory entries swept — the check asserted nothing")
+	}
+	t.Logf("audited %d directory entries for whole-tree hash coverage", checked)
 }
 
 // TestWorkflowTriggerCoverage walks .claude/skills/moai/workflows/*.md files

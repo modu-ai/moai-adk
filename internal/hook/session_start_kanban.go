@@ -227,5 +227,9 @@ func kanbanCompanionNotice(label, lang string) string {
 	if _, _, ok := kanban.SplitCompanionLabel(label); !ok {
 		return ""
 	}
-	return fmt.Sprintf(kanbanMessagesFor(lang).companionJoin, label)
+	// Card t224: the standing spawn authority rides the join notice — the
+	// companion is an orchestrator for its card and must not be frozen out of
+	// spawning by the runtime's default agent-usage guidance. English-only;
+	// see lane_spawn_authority.go.
+	return fmt.Sprintf(kanbanMessagesFor(lang).companionJoin, label) + "\n\n" + laneSpawnAuthority
 }

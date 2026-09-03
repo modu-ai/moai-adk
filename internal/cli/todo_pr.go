@@ -68,15 +68,35 @@ var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (str
 // landed state. Read-only, fail-open, one `gh` query.
 func newTodoPRCmd() *cobra.Command {
 	var jsonOutput bool
-	// The landed ref is RESOLVED, not constant: a project that integrates on
-	// a branch other than the default asks the question about its own branch,
-	// and the help text names the ref the check will actually use rather than
-	// a default that may not apply here.
-	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "pr [<id>]",
 		Short: "Report each card's open pull request or landed state (read-only)",
-		Long: `Report, for every queued card, whether an open pull request already
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var only string
+			if len(args) == 1 {
+				only = normalizeTodoRef(args[0])
+			}
+			return runTodoPR(cmd, only, jsonOutput)
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOutput, "json", false,
+		"Emit the link outcomes as JSON on stdout")
+	withResolvedLandedRef(cmd, func(landedRef string) {
+		cmd.Long = todoPRLong(landedRef)
+	})
+	return cmd
+}
+
+// todoPRLong renders `todo pr`'s help body against the ref the landing
+// question will actually be asked about.
+//
+// The ref is RESOLVED, not constant: a project that integrates on a branch
+// other than the default asks the question about its own branch, and the help
+// text names the ref the check will actually use rather than a default that
+// may not apply here. It is resolved lazily — see withResolvedLandedRef.
+func todoPRLong(landedRef string) string {
+	return `Report, for every queued card, whether an open pull request already
 delivers it or whether its work has already landed on ` + landedRef + `.
 
 The verb writes NOTHING: no card field, no finding, no cache, no lock. It
@@ -98,19 +118,7 @@ Five outcomes, distinguishable by kind alone:
 
 The landed check is local git and keeps working when gh does not. When gh is
 absent, unauthenticated, or offline the link column renders empty, the
-degradation is noted on stderr, and the exit code stays 0.`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var only string
-			if len(args) == 1 {
-				only = normalizeTodoRef(args[0])
-			}
-			return runTodoPR(cmd, only, jsonOutput)
-		},
-	}
-	cmd.Flags().BoolVar(&jsonOutput, "json", false,
-		"Emit the link outcomes as JSON on stdout")
-	return cmd
+degradation is noted on stderr, and the exit code stays 0.`
 }
 
 // runTodoPR renders the link view. Every exit path is exit 0 unless the queue

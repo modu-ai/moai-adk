@@ -253,12 +253,14 @@ func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReaso
 // unit-tested — the wire carries this session-level derived value (the documented
 // delivery-granularity limitation, research.md §D).
 //
-// Shim consumption is now MEASURED (t175, .moai/reports/t175/measurements.md §3):
-// the z.ai Anthropic-compat shim honors the Anthropic `thinking` parameter
-// (thinking blocks returned; depth scales with the budget) and silently IGNORES
-// a top-level z.ai-style `reasoning_effort` field. The live session's own
-// thinking-block responses are indirect end-to-end evidence that the
-// env→reasoning chain is live; no claim is made here about delivered spend.
+// Reasoning delivery is MEASURED, with a direction reversal recorded after this
+// SPEC closed: the null-controlled live differential (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; four runs)
+// proved the top-level `reasoning_effort` request field is the effective
+// delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound) while the
+// thinking-budget request object is IGNORED (null 1.02). The earlier t175 shim
+// probe (.moai/reports/t175/measurements.md §3) reported the opposite direction
+// and is superseded by that record. No claim is made here about delivered spend.
 func SessionGLMReasoningState() GLMReasoningState {
 	return glmReasoningMax
 }
@@ -311,4 +313,99 @@ func IsGLMBackend(cfg config.LLMConfig) bool {
 		return true
 	}
 	return cfg.Mode == config.LLMModeGLM
+}
+
+// --- GLM tier-slot resolution (SPEC-GLM-EFFORT-SLOT) ---
+
+// GLM tier slot names. A slot is the ANTHROPIC_DEFAULT_<SLOT>_MODEL channel a
+// Claude model alias routes through under a GLM backend; each slot carries its
+// own GLM model id (llm.glm.models.*) and its own stored reasoning effort
+// (llm.glm.effort.*).
+const (
+	GLMSlotHigh   = "high"
+	GLMSlotMedium = "medium"
+	GLMSlotLow    = "low"
+	GLMSlotFable  = "fable"
+
+	// modelContextSuffix1M is the Claude Code native context-window modifier
+	// carried as a trailing token on an alias ("opus[1m]"). It is not part of
+	// the alias and is split off before slot lookup.
+	modelContextSuffix1M = "[1m]"
+)
+
+// GLMSlotForModel resolves the GLM tier slot serving a Claude model alias or
+// canonical id: opus feeds the high slot, sonnet medium, haiku low, fable
+// fable. This is the ONE alias/slot mapping in the tree — it mirrors setGLMEnv's
+// ANTHROPIC_DEFAULT_*_MODEL assignments, and every per-slot lookup (model id,
+// stored effort) funnels through it so the two cannot drift apart.
+//
+// The trailing "[1m]" context-window suffix is split before lookup, and a
+// canonical claude-* id is reverse-mapped through ModelAliasFromCanonicalID.
+// An empty model, a raw GLM id (not an alias), or a routing alias that owns no
+// tier slot (opusplan) resolves "" — the caller decides its own fallback.
+func GLMSlotForModel(model string) string {
+	if model == "" {
+		return ""
+	}
+	base := strings.TrimSuffix(model, modelContextSuffix1M)
+	switch ModelAliasFromCanonicalID(base) {
+	case "opus":
+		return GLMSlotHigh
+	case "sonnet":
+		return GLMSlotMedium
+	case "haiku":
+		return GLMSlotLow
+	case "fable":
+		return GLMSlotFable
+	default:
+		return ""
+	}
+}
+
+// GLMSlotEffortForModel returns the stored per-tier effort (llm.glm.effort.*)
+// of the slot serving the given Claude model, or "" when the model claims no
+// slot (the caller then falls back to its prefs/model_policy chain unchanged).
+func GLMSlotEffortForModel(effort config.GLMTierEffort, model string) string {
+	switch GLMSlotForModel(model) {
+	case GLMSlotHigh:
+		return effort.High
+	case GLMSlotMedium:
+		return effort.Medium
+	case GLMSlotLow:
+		return effort.Low
+	case GLMSlotFable:
+		return effort.Fable
+	default:
+		return ""
+	}
+}
+
+// GLMSlotModelOrHigh returns the GLM model id (llm.glm.models.*) of the slot
+// serving the given Claude model, falling back to the high slot when the model
+// claims no slot.
+//
+// It is the model half of the slot pair whose effort half is
+// GLMSlotEffortForModel, and it exists because the reasoning-effort collapse is
+// MODEL-keyed (glm-5.3-flash accepts reasoning_effort: max only, so it pins
+// every effort to max — CollapseClaudeEffortToGLMForModel). Keying that collapse
+// to the high slot while the effort is read from another slot silently discards
+// the stored value: a fable slot on glm-5.3 with effort.fable=low wires as max
+// because the high slot happens to be flash. Both halves must read the same
+// slot.
+//
+// The high-slot fallback preserves the pre-existing behaviour for a session
+// that resolves to no slot (empty, raw GLM id, opusplan): that path keyed on
+// llm.glm.models.high before this resolver existed and still does.
+func GLMSlotModelOrHigh(models config.GLMModels, model string) string {
+	switch GLMSlotForModel(model) {
+	case GLMSlotMedium:
+		return models.Medium
+	case GLMSlotLow:
+		return models.Low
+	case GLMSlotFable:
+		return models.Fable
+	default:
+		// high slot, and the no-slot fallback.
+		return models.High
+	}
 }
