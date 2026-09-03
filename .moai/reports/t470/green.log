@@ -1,0 +1,6 @@
+=== RUN   TestTodoComposedUpgrade_FromLegacyV312Layout
+--- PASS: TestTodoComposedUpgrade_FromLegacyV312Layout (0.59s)
+=== RUN   TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive
+--- PASS: TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive (0.45s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.475s
