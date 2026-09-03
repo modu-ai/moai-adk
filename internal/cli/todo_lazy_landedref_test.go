@@ -2,10 +2,12 @@ package cli
 
 import (
 	"bytes"
-	"os"
+	"context"
+	"io"
 	"strings"
 	"testing"
 
+	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -108,6 +110,27 @@ func TestUsageNamesTheResolvedLandedRef(t *testing.T) {
 	}
 }
 
+// manCmdRegistered runs a throwaway root command through the real fang.Execute
+// with the given options and reports whether fang added its hidden `man`
+// subcommand. It probes the BUILT command tree, which is the surface that
+// decides whether .Long gets a second consumer.
+func manCmdRegistered(t *testing.T, opts ...fang.Option) bool {
+	t.Helper()
+	root := &cobra.Command{Use: "probe", Run: func(*cobra.Command, []string) {}}
+	root.SetArgs([]string{})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	if err := fang.Execute(context.Background(), root, opts...); err != nil {
+		t.Fatalf("fang.Execute on the probe root: %v", err)
+	}
+	for _, c := range root.Commands() {
+		if c.Name() == "man" {
+			return true
+		}
+	}
+	return false
+}
+
 // TestLandedRefDeferralHasExactlyOneConsumerSurface guards the coupling this
 // deferral CREATED.
 //
@@ -120,23 +143,38 @@ func TestUsageNamesTheResolvedLandedRef(t *testing.T) {
 // TestLandedRefNotMaterializedAtConstruction documents that emptiness; it
 // cannot protect against this, because it asserts the very state that would be
 // wrong. It would stay green while the man pages shipped blank. This test is
-// the protection: the failure lands on whoever removes the option, and it names
-// what breaks rather than merely what changed.
+// the protection: the failure lands on whoever admits the second consumer, and
+// it names what breaks rather than merely what changed.
 //
-// It reads the source rather than the built command because fang.Option values
-// are functions and cannot be compared. That is a real limit — a rename that
-// preserved the behaviour would trip it, and an equivalent option spelled
-// differently would not. It sits here, beside the deferral it protects, so the
-// reader who changes the deferral meets the constraint.
+// The probe is behavioural: it runs the real fangOptions() through the real
+// fang.Execute on a throwaway root and asks whether fang registered its `man`
+// command — the command whose RunE hands the tree to mango, which reads .Long.
+// It binds the PROPERTY (the fang surface registers no second .Long consumer)
+// rather than the spelling of an option literal, so any equivalent way of
+// disabling man pages satisfies it and any way of enabling them trips it.
+//
+// The control assertion exists because the guard is a negative: if an upstream
+// fang change stopped registering `man` under ANY configuration, the guard
+// would pass forever while asserting nothing. The control fails loudly instead.
+//
+// The limit that REMAINS: this binds fang's man surface only. A second reader
+// of .Long arriving by another route — a `cobra/doc` generator wired up
+// elsewhere, or a hand-rolled man/markdown emitter — is not bound here.
 func TestLandedRefDeferralHasExactlyOneConsumerSurface(t *testing.T) {
-	src, err := os.ReadFile("fang.go")
-	if err != nil {
-		t.Fatalf("read fang.go: %v", err)
+	// Control: with no options, fang MUST register `man`. Without this the
+	// assertion below could pass while asserting nothing.
+	if !manCmdRegistered(t) {
+		t.Fatal("control failed: fang.Execute with no options did NOT register a `man` command.\n" +
+			"This probe no longer detects fang's man surface, so the guard below has gone blind —\n" +
+			"it would pass whether or not moai enables man pages. Re-derive the probe against the\n" +
+			"current fang version before trusting this test again.")
 	}
-	if !strings.Contains(string(src), "fang.WithoutManpage()") {
-		t.Error("fang.WithoutManpage() is gone from fang.go, which admits a SECOND reader of .Long.\n" +
+
+	// The guard: the real configuration must admit no man surface.
+	if manCmdRegistered(t, fangOptions()...) {
+		t.Error("fangOptions() now yields a fang `man` command, which admits a SECOND reader of .Long.\n" +
 			"`todo pr` and `todo done` defer their .Long until the help function runs (todo.go, withResolvedLandedRef),\n" +
 			"so cobra's man generator — which reads .Long directly and runs no help function — would emit them EMPTY.\n" +
-			"Enabling man pages therefore means populating .Long on that path too, not just deleting this option.")
+			"Enabling man pages therefore means populating .Long on that path too, not just flipping this option.")
 	}
 }

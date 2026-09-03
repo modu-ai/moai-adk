@@ -18,7 +18,7 @@
 │    ok      Binary Freshness       development build (no commit metadata)                                                                             │
 │    ok      MCP Scope Duplicates   no MCP configuration found (project or global)                                                                     │
 │    ok      MCP Server Version     no running moai MCP server recorded                                                                                │
-│    ok      Agent Emit Embed       not applicable: no committed agent-emit artifacts (not a MoAI project root)                                        │
+│    ok      Agent Emit Embed   not applicable: no committed agent-emit artifacts                                                                        │
 │    warn    Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │    ok      Harness 5-Layer        .moai/harness/ not present (no harness configured)                                                                 │
 │    ok      Migration              current version 0                                                                                                  │
@@ -29,6 +29,8 @@
 │  Workspace ---                                                                                                                                       │
 │    STATUS  CHECK                 MESSAGE                                                                                                             │
 │    warn    Hooks Config          .claude/hooks/ not found — hook handlers unavailable                                                                │
+│    warn    Hook Wiring           not checked: .claude/settings.json not found                                                                        │
+│    ok      Hook Delivery         skipped — no .claude/settings.json in this project                                                                  │
 │    ok      Hook opt-in:          disabled                                                                                                            │
 │    warn    Slash Commands        .claude/commands/ not found — slash commands unavailable                                                            │
 │    warn    Skills Allowlist      .claude/skills/ not found                                                                                           │
@@ -39,8 +41,8 @@
 │    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                            │
 │    warn    Glamour Cache         glamour not integrated                                                                                              │
 │    ok      Codex Wiring          not wired (claude-only project) — skipped                                                                           │
-│    3 ok, 8 warn, 0 fail                                                                                                                              │
+│    4 ok, 9 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│   Pass 17    Warn 11    Fail 0                                                                                                                       │
+│   Pass 18    Warn 12    Fail 0                                                                                                                       │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

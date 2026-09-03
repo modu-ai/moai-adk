@@ -84,28 +84,61 @@ dependency. The key reading is **row (a)** (the positive signal) and **row (d)**
 | (d) `jq` dependency | YES (graceful degrade) | **NO** (git/grep/awk only) | YES (graceful degrade) |
 | (e) `${CLAUDE_PROJECT_DIR:-$PWD}` root-fallback | YES | YES | YES |
 | (f) `set -e` convention | YES | YES | YES |
-| (g) configured timeout | 5s (PostToolUse) | 60s (Stop) | 10s (TaskCompleted) — **dormant / not wired** |
+| (g) configured timeout | 5s (PostToolUse) | 60s (Stop) | 10s (TaskCompleted) — **not registered in any settings surface** |
 
-> **Row (g) caveat — `team-ac-verify.sh` is dormant.** The TaskCompleted gate is
-> not registered in the live hook configuration: `grep -c 'team-ac-verify'
-> .claude/settings.json` → 0. It is forward-looking (activates only under harness
-> `thorough` + team mode prerequisites). Its 10s timeout is the configured value
-> *should it be wired*, not an active timeout today. Do not read row (g) as
-> evidence the gate is active.
+> **Row (g) caveat — `team-ac-verify.sh` is not registered.** The TaskCompleted
+> gate appears in no settings surface: `grep -c 'team-ac-verify'
+> .claude/settings.json` → 0, and the shipped settings template carries no entry
+> for it either. **No configuration flag activates it** — raising the harness
+> level or enabling team mode changes nothing, because there is nothing
+> registered for those prerequisites to gate. Whether it should be wired is an
+> open decision, not a pending prerequisite. Its 10s timeout is the value it
+> *would* carry if wired, not an active timeout today. Do not read row (g) as
+> evidence the gate is active, and do not read it as registered-but-gated.
 
-> **Other intentionally-dormant surfaces.** The dormant pattern above is not
-> unique to `team-ac-verify.sh`; the following surfaces are also shipped
-> forward-looking, with no live registration:
->
-> - `Notification` / `TaskCreated` / `Elicitation` / `ElicitationResult` — retired
->   obs-only events: the Go handlers and wrappers (`handle-notification.sh`,
->   `handle-task-created.sh`, `handle-elicitation.sh`, `handle-elicitation-result.sh`)
->   are kept, but these events are deliberately NOT registered in settings —
->   a guard test enforces their absence. Do not re-register them.
-> - `handle-worktree-create.sh` / `handle-worktree-remove.sh` — worktree
->   lifecycle wrappers; dormant, no settings registration; activation deferred.
-> - `moai hook spec-status` CLI subcommand — dormant (no wrapper, no
->   registration); activation deferred to the lifecycle sync-gate work.
+### 4.0 Present-but-unwired wrappers — per-script disposition
+
+A wrapper on disk that no settings entry names is **not thereby dead**. Three of
+the surfaces below are reached through a path a `settings.json` view cannot see,
+and calling them dead would be a measurement artefact of where one looked. Each
+present-but-unwired wrapper therefore carries its own disposition rather than a
+shared "dormant" label, which conflated reachable, retired, and undecided.
+
+| Wrapper | Disposition | Basis |
+|---|---|---|
+| `chain-event.sh` | `reachable-via-template-settings` | Registered in the shipped settings template. A project initialized before that entry existed does not carry it, so the chain ledger's completion edge is never recorded in that checkout until its settings are re-rendered. |
+| `handle-agent-hook.sh` | `reachable-via-agent-frontmatter` | Registered in agent frontmatter `hooks:` blocks, not in settings. A settings-only view cannot see those registrations and will misreport this wrapper as unwired. |
+| `handle-session-start-compact.sh` | `reachable-via-in-binary-registry` | Production firing rides the session-start wrapper through the in-binary registry. This wrapper is the manual / isolated surface and is deliberately left unregistered so the event does not fire twice. |
+| `handle-elicitation.sh` | `dead-by-decision` | Retired obs-only event. Handler and wrapper are kept; registration is deliberately absent and a guard test enforces that absence. Do not re-register. |
+| `handle-elicitation-result.sh` | `dead-by-decision` | Retired obs-only event, on the same terms as the row above. |
+| `handle-notification.sh` | `dead-by-decision` | Retired obs-only event, on the same terms. |
+| `handle-task-created.sh` | `dead-by-decision` | Retired obs-only event, on the same terms. |
+| `handle-worktree-create.sh` | `dead-by-decision` | Deregistered after a recorded regression: the runtime treats the create event as having an active creator and read the observer handler's empty-object reply as a path. |
+| `handle-worktree-remove.sh` | `dead-by-decision` | Deregistered alongside the create-side wrapper, for the same recorded regression. |
+| `handle-session-start-navigator.sh` | `open-question` | Registered in no settings surface, so it cannot fire. Whether it should, and on which event, is an open decision — not a deferred prerequisite. |
+| `team-ac-verify.sh` | `open-question` | Registered in no settings surface, so no configuration flag activates it. Whether team mode should fire it is an open decision — see the row (g) caveat above. |
+
+**Reading the table.** `reachable-*` means the wrapper does fire, through the
+named path; a settings-only audit that reports it as unwired is measuring the
+wrong surface. `dead-by-decision` means the absence is deliberate and enforced —
+re-registering is a regression, not a fix. `open-question` means nobody has
+decided; the wrapper is inert until someone does, and no flag changes that.
+
+**None of these wrappers may be deleted.** All have template twins, two are
+pinned by guard tests, and an upgrade migration strips their entries from user
+settings. Removal is a distributed act with effects outside this repository.
+
+**Two counting corrections.** (a) The live settings file registers **33 hook
+entries across 20 events**. A `grep -c '"type": "command"'` over it returns
+**34** — the extra occurrence is the `statusLine` block, which is not a hook.
+Anyone re-deriving the number from that grep will otherwise conclude this
+document is wrong. (b) `handle-agent-hook.sh` is registered through **agent
+frontmatter**, not settings; a settings-only count omits it by construction.
+
+**Not a wrapper, same shape.** The `moai hook spec-status` CLI subcommand is
+also dormant — no wrapper, no registration — with activation deferred to the
+lifecycle sync-gate work. It is listed here for completeness and is not one of
+the wrappers above.
 
 ### 4.1 Positive signal — the governance layer does NOT share mode A
 

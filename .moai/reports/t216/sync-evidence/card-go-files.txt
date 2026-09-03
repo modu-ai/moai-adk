@@ -1,0 +1,13 @@
+internal/cli/binary_lag_test.go
+internal/cli/doctor.go
+internal/cli/doctor_hook_wiring.go
+internal/cli/doctor_hook_wiring_test.go
+internal/cli/hook_entry_parity_test.go
+internal/cli/mx_index.go
+internal/cli/mx_index_test.go
+internal/cli/mx_query.go
+internal/cli/mx_query_test.go
+internal/hook/session_start.go
+internal/hook/session_start_mx_test.go
+internal/template/hook_entries.go
+internal/template/hook_entries_test.go
