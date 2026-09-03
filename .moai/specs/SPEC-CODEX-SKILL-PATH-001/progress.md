@@ -114,7 +114,21 @@ m1_to_mN_commit_strategy: "per-milestone commits: M1 9e8e19946, M2 fa72e39a8, M3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: "pending-backfill-sync"   # backfilled with the real sync-commit SHA in the immediately following commit (D3 self-reference workaround)
+sync_status: complete
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-CODEX-SKILL-PATH-001' CHANGELOG.md → 0 before append (duplicate guard PASS)"
+b12_self_test_b_ac_count_match: "8 AC identifiers in spec.md §D (Tier S inline SSOT; no acceptance.md by design) == 8 referenced in the CHANGELOG entry"
+b12_self_test_c_file_path_verification: "ls verified: internal/cli/doctor_codex.go, internal/cli/doctor_codex_test.go, internal/codexwiring/skills.go — all present"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Fixed (topmost entry)"
+frontmatter_status_transitions:
+  - "spec.md: in-progress → completed on the single sync commit (3-phase close merged; spec.md frontmatter status + updated only, no body edits)"
+user_facing_docs_judgment: "NO README/docs-site change — the delta is an advisory-behavior refinement inside `moai doctor`'s stale-skill check; the doctor's user-facing contract ('reports stale entries') is unchanged in wording, only its false-positive behavior on non-absolute path shapes changed. docs-site documents doctor at the command level, not the per-finding advisory level."
+canary_compliance_check: "n/a — SPEC defines no forward-looking canary policy"
+```
+
+Backfill record: the follow-up commit `docs(SPEC-CODEX-SKILL-PATH-001): backfill sync_commit_sha=<real> (t468)` replaces the placeholder above with the sync commit's real SHA.
 
 ## §F Phase 4 Mode Selection
 

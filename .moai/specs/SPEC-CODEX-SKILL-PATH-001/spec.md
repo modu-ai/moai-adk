@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILL-PATH-001
 title: "Codex stale-skill checker path-shape resolution — home-relative expansion, relative/odd-form classification, and an isolated reproduction fixture"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
