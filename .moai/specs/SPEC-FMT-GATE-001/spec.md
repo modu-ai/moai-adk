@@ -2,7 +2,7 @@
 id: SPEC-FMT-GATE-001
 title: "활성 Go 포맷 게이트 도입 — CI Lint 잡 gofmt 검증 (card t465)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec

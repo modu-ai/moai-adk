@@ -108,4 +108,29 @@ m1_to_mN_commit_strategy: "M1 단일 activation 커밋(리드 결정 D1) + 문�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### B12 CHANGELOG emission discipline — pre-emission grep clean, entry emitted
+
+`grep -c 'SPEC-FMT-GATE-001' CHANGELOG.md` → `0` (no parallel-session duplicate). AC count cross-check: heading form `grep -cE '^### AC-FG-' acceptance.md` → `6`, token sweep `grep -oE 'AC-…' | sort -u | wc -l` → `6` — equal, matching `ac_pass_count: 6` in §E.3. Every path named in the CHANGELOG entry exists on this tree (`.github/workflows/ci.yml`, `Makefile`, `pkg/version/version.go`, `.moai/reports/t465/`).
+
+### CHANGELOG decision — entry emitted, per repo precedent
+
+Repo-internal/dev-infra SPECs DO get `[Unreleased] → Added` entries on this repo, even test-only closes with zero production changes. Precedent entry: **SPEC-LLMCFG-PRESERVE-001 (card t239)** — "test-only close, zero production changes" — carries a full entry; also **SPEC-CODEMAPS-ACCURACY-001 (t304)**, repo-internal tooling. This SPEC's gate is dogfood-infra (REQ-FG-005: template surface untouched, no user-facing behaviour), so no docs-site or README edit is warranted — the workflow scan found no user-facing surface change and the entry above states that explicitly.
+
+### Close convention followed
+
+The t191 pattern (`SPEC-PROJECT-CONTINUATION-KEY-001`, commit `c7ac03fe8`): spec.md frontmatter is the single status carrier (plan.md/acceptance.md are stateless on the status axis and carry no frontmatter here — no transition applied, none fabricated); `sync_commit_sha` is written as the canonical `pending-backfill-sync` placeholder in the sync commit (a commit cannot cite its own SHA — schema D3 backfill exemption) and backfilled by a follow-up docs-scoped commit. Close-commit subject follows the repo precedent `docs(SPEC-{ID}): sync-phase artifacts — 3-phase close (card tNNN)`.
+
+### §D.5 final tip recording
+
+Activation SHA `a95939df5` (recorded §E.2). Final branch tip at sync-open: `350107589` (this run, this tree, branch `WT-format-gate-zero` — measured 2026-09-03). The sync commit and its backfill land above this SHA; the terminal tip is the backfill commit itself, which cannot name its own SHA — it is reported to the lead in the lane completion report and becomes a stable post-hoc endpoint there, per the same self-referential-hazard pattern as `sync_commit_sha`.
+
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill-sync   # named by the follow-up backfill commit (schema D3 placeholder)
+sync_status: complete
+changelog_entry_emitted: true            # [Unreleased] → Added; precedent SPEC-LLMCFG-PRESERVE-001
+ac_pass_count_at_sync: 6                 # unchanged from §E.3 — sync touched no code surface
+docs_site_or_readme_edits: none          # REQ-FG-005 — no user-facing surface changed
+final_branch_tip_at_sync_open: 350107589 # §D.5 — activation a95939df5; terminal tip = backfill commit (see §D.5 note above)
+preserve_list_post_sync_count: 0         # internal/template/templates/** untouched by sync
+```
