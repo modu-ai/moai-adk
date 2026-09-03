@@ -1153,3 +1153,82 @@ residual_risk:
   - "AC-HWD-015 correction (this section): the criterion's literal wording ('empty for all three files') is unsatisfiable in the presence of template-neutrality stripping on agent-common-protocol-reference.md. The interpretation applied — the card's own edit must land identically on both sides, with only a pre-existing neutrality-driven residual permitted — preserves what the criterion protects, but it is an interpretation the plan should state explicitly rather than leave implicit."
   - "gofmt drift (this section): 153 repo-wide files are gofmt-dirty, none touched by this card. The drift is real and pre-existing (owned by card t457); a future contributor diffing gofmt output against a stale copy of this repo without re-scoping to their own changed-file set would misattribute the drift to their own work."
 ```
+
+### §E.4.1 — re-measurement on the merge tree
+
+The figures in §E.4 above were measured at `58990a6c6`, before this branch
+absorbed local `develop`. A pre-merge measurement is not evidence about a merged
+tree, so everything below was re-run after the merge commit `8c6eab926`
+(absorbing develop `c73f2a316`). One conflict was resolved in that merge —
+CHANGELOG.md, pure add-add at the head of `[Unreleased]`, both sides kept.
+
+```yaml
+measured_at_head: e5161dd1e
+merge_commit: 8c6eab926
+absorbed: local develop c73f2a316
+static:
+  go_build: exit 0
+  go_vet: exit 0
+  gofmt: >-
+    154 files repo-wide (up one from 153 pre-merge). Intersection with this
+    card's 13 .go files is still EMPTY, measured with `comm -12` on both sorted
+    lists, neither operand empty. Zero attributable to this card; owned by t457.
+  golangci_lint: >-
+    1 issue — errcheck at internal/template/catalog_tree_hash.go:60. NOT this
+    card's file: `git log --no-merges 8c6eab926^2..8c6eab926^1 -- <that file>`
+    returns 0 commits on this branch's side, and the file's last commit is
+    e795eb6b5 (t441). Inherited from develop.
+suites:
+  - internal/hook (root, serial): ok 54.210s, exit 0 — merge-hook-root.log
+  - internal/mx: ok 12.953s, exit 0 — merge-mx-template.log
+  - internal/cli subpackages (16): all ok — merge-cli-sub.log
+  - internal/cli (root, serial): 9 FAIL — merge-cli-root-2.log
+  - internal/template: 2 FAIL — merge-mx-template.log
+  - internal/template/agentemit: 1 FAIL — merge-mx-template.log
+
+regression_found_and_fixed_by_this_card:
+  test: TestHookEntryParity_NoDivergenceEitherDirection
+  what: >-
+    develop widened the settings template's PostToolUse matcher from
+    `Write|Edit|MultiEdit` to `Write|Edit|MultiEdit|EnterWorktree|ExitWorktree`
+    (template line 129). This project's `.claude/settings.json` stayed on the old
+    matcher, so M1's parity property was false on the merge tree. The test
+    reported `4 template-only, 4 project-only` — one matcher covering four
+    entries (handle-post-tool.sh plus three if-scoped
+    status-transition-ownership.sh entries), not four independent drifts.
+  fix: e5161dd1e — one line in .claude/settings.json; TestHookEntryParity ok 1.027s
+  significance: >-
+    This is the case for re-measuring rather than carrying figures forward. The
+    property M1 landed a test to protect went false when the tree moved, and
+    only a merge-tree run could see it.
+
+inherited_red_not_this_card: 12
+inherited_red_detail: >-
+  All 12 failures share ONE root cause, established by an executed probe rather
+  than inferred. Chain: 4244c4a06 (t386/t387) edited
+  .claude/agents/moai/sync-auditor.md without running `make agents-emit`, so the
+  committed .codex/agents/moai/sync-auditor.toml no longer matches its emission.
+  That makes `make agents-emit-check` fail, which blocks `make build`, which
+  leaves bin/moai frozen at 58990a6c6 — and the doctor check `Agent Emit Embed`
+  judges a BUILT BINARY against the committed emission set
+  (internal/cli/doctor_agentemit_embed.go header), so it reports a stale embed
+  naming manager-docs.toml and manager-lead.toml. Nine doctor tests fail on that
+  single check. The other three are the same family read directly:
+  TestGoldenCommittedArtifactsMatchEmission (sync-auditor.toml), and
+  TestCatalogHashCoversSkillSubfiles + TestManifestHashFormat (catalog hashes for
+  the `moai` skill tree and the `sync-auditor` agent).
+inherited_red_probe: >-
+  A FIRST probe regenerated sync-auditor.toml alone and the doctor tests still
+  failed, which read as "the emit drift is not the cause". That was a FALSE
+  NEGATIVE from an incomplete intervention: the check judges bin/moai, and the
+  probe never rebuilt it. Completing the intervention (`make agents-emit` then
+  `make build`, both exit 0) turned the doctor tests green — probe-doctor-full.log,
+  exit 0. The probe was then reverted: the repair also regenerates
+  internal/template/catalog.yaml, a surface another card owns, so this card does
+  not land it. Recording the wrong first reading deliberately — reported as
+  reasoned, it would have misattributed the defect.
+inherited_red_attribution_check: >-
+  `git log --no-merges 8c6eab926^2..8c6eab926^1 -- '*manager-docs*' '*manager-lead*'
+  '*.codex*' internal/template/catalog.yaml` returns 0 commits. This card's side
+  of the merge touches none of the named files.
+```
