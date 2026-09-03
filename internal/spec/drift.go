@@ -237,8 +237,25 @@ func detectDrift(baseDir string, deps driftDeps) (*DriftReport, error) {
 		//	close는 per-SPEC window에 없으므로 (full-ID 미명명) scope-prefix 조회만이 도달 가능.
 		//	additive-only: exact-token primary walk는 불변, fallback은 primary가
 		//	completed/terminal을 못 줄 때만 fire (genuine-⑤ 보호).
+		//
+		// (①b) body-declared close (FALLBACK-ONLY, SPEC-DRIFT-CLOSE-BODY-001) — the
+		// same slot, a third axis. The combined-scope lookup above reaches a close
+		// whose subject names a scope-PREFIX derived from the SPEC-ID; it cannot
+		// reach one whose subject names an arbitrary group (`chore(SPEC group C)`)
+		// with the SPEC named only in the body. That is the e979a4d13 shape, and it
+		// is why SPEC-V3R6-SESSION-HANDOFF-AUTO-001 read as a drift while being
+		// genuinely closed.
+		//
+		// Order is load-bearing: the existing fallback is consulted FIRST and this
+		// axis only when it declines, so no case the combined-scope matcher already
+		// decided changes hands (REQ-DCB-006). Both are additive and both can only
+		// produce `completed` — no body line can introduce any other status
+		// (REQ-DCB-005), which is what keeps the reverse-direction exposure bounded
+		// to the body-line predicate documented at inMemBodyDeclaredClose.
 		if a.status == "completed" && gitStatus != "completed" && !isTerminalStatus(gitStatus) {
 			if inMemCombinedScopeClose(commits, a.specID) {
+				gitStatus = "completed"
+			} else if inMemBodyDeclaredClose(commits, a.specID) {
 				gitStatus = "completed"
 			}
 		}

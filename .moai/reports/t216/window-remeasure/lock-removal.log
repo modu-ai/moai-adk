@@ -1,0 +1,48 @@
+=== develop worktree index.lock removal (lane-1, card t216)
+=== authorized by lead-1 after 3 failed merge attempts; verdict A
+
+--- BEFORE 2026-09-03 18:03:23
+-rw-r--r--@ 1 goos  staff  1328584 Sep  3 17:30 /Users/goos/MoAI/moai-adk-go/.git/worktrees/develop/index
+-rw-r--r--@ 1 goos  staff        0 Sep  3 17:35 /Users/goos/MoAI/moai-adk-go/.git/worktrees/develop/index.lock
+
+--- step1: cwd of every live git process (lsof -c git -a -d cwd -Fpn)
+p68004
+fcwd
+n/Users/goos/MoAI/mo.ai.kr
+p68067
+fcwd
+n/Users/goos/MoAI/mo.ai.kr
+p68078
+fcwd
+n/Users/goos/MoAI/mo.ai.kr
+p79230
+fcwd
+n/Users/goos/actions-runner-modu-ai/_work/mo.ai.kr/mo.ai.kr
+p84154
+fcwd
+n/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t471
+
+=> CORRECTION: the blanket claim first written here ("ZERO with cwd inside moai-adk-go")
+   was contradicted by the very probe printed above it: pid 84154 held
+   cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t471 (another lane's worktree).
+   It had exited by the re-probe at 18:03:54. The claim that actually decides this
+   removal is narrower and held on BOTH probes:
+   => live git processes with cwd = .claude/worktrees/develop : 0
+      (18:03:23 probe and 18:03:54 re-probe; the second also showed 0 anywhere
+       under moai-adk-go, i.e. pid 84154 was transient)
+=> lock mtime 17:35 unchanged across 28 min and 3 merge attempts (17:59, 18:00, 18:00)
+=> lock created 5 min AFTER index (17:30) and never renamed over it => abandoned
+
+--- REMOVAL 2026-09-03 18:04 (rm rc=0, this one file only)
+rm .git/worktrees/develop/index.lock
+
+--- AFTER
+2026-09-03 18:11:53
+ls: /Users/goos/MoAI/moai-adk-go/.git/worktrees/develop/index.lock: No such file or directory
+git status --porcelain in develop worktree: rc=0, empty output
+develop HEAD before merge: 515fa4acd (unchanged across all 3 failed attempts)
+merge --no-ff WT-hook-wiring-drift => 52d3f7a49, 68 files, 0 paths outside expected roots
+
+--- NOT TOUCHED
+.git/worktrees/t468/index.lock was left alone. Observed absent at 18:04 —
+removed by another actor, not by this lane.

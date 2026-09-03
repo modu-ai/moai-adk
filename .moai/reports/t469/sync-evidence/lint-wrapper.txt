@@ -1,0 +1,8 @@
+SEVERITY  CODE                FILE                                             LINE  MESSAGE
+--------  ----                ----                                             ----  -------
+WARNING   ModalityMalformed   .moai/specs/SPEC-ACHWD-STRIP-EXEMPT-001/spec.md  24    REQ REQ-ASE-001: EARS modality violation — SHALL missing or format mismatch: "The amendment payloads A1–A5 defined in"
+WARNING   CoverageIncomplete  .moai/specs/SPEC-ACHWD-STRIP-EXEMPT-001/spec.md  24    REQ REQ-ASE-001 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-ACHWD-STRIP-EXEMPT-001/spec.md  28    REQ REQ-ASE-002 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-ACHWD-STRIP-EXEMPT-001/spec.md  33    REQ REQ-ASE-003 is not referenced by any AC
+
+0 error(s), 4 warning(s)
