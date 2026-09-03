@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WORKTREE-FLAG-RACE-001
 title: "Implementation plan — the four-sibling seam race"
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-09-03
 author: manager-spec (card t464)
 ---
@@ -47,8 +47,10 @@ The asymmetry is why this is decided first and recorded.
 - The RED capture is **truncated** — it panicked before exhausting `-count=20` (`spec.md` §A.2). The
   panic is a second face of the same root cause, so a repair that removes the race warnings but
   leaves the panic is not done. AC-WFR-001b greps for both.
-- The card text undercounted the siblings (three, actually four). Any run-phase step that works
-  from the card text rather than from `spec.md` §A.3 will miss `_NoFlagIsNoop`.
+- **The card body is wrong in two places and will not be corrected** (lead ruling). `spec.md` §A.7
+  is the consolidated record; this SPEC is canonical for run-phase. Any step that works from the
+  card text rather than from `spec.md` will (①) miss `_NoFlagIsNoop`, and (②) look for both sides
+  of every racing pair inside the test file and fail to find them.
 - `internal/cli` is a slow package. Whole-package runs need `-timeout 600s`.
 
 ## §D Tier classification

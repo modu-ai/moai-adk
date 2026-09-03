@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WORKTREE-FLAG-RACE-001
 title: "Acceptance criteria — the four-sibling seam race"
-version: "0.1.1"
+version: "0.1.2"
 created: 2026-09-03
 author: manager-spec (card t464)
 ---

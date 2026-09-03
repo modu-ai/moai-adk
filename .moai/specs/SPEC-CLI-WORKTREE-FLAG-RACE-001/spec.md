@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WORKTREE-FLAG-RACE-001
 title: "Four parallel sibling tests write two shared package-level seams — an ownerless confirmed DATA RACE in internal/cli/worktree_branch_flag_test.go"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -23,7 +23,8 @@ related_specs:
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-03 | manager-spec (card t464) | Initial draft. Scope corrected from the card text: FOUR sibling tests, not three (`_NoFlagIsNoop` was the omitted one). Both repair options carried; no winner declared — the choice is deferred to run-phase per explicit lead instruction. |
-| 0.1.1 | 2026-09-03 | manager-spec (card t464) | Plan-audit iteration 1 repairs D1-D3 + D8. Text-only; no scope, requirement, or design change, and the A-vs-B decision stays open. **D1**: withdrew the false "every race frame lands in the test file" claim — the production seam `worktree_branch_flag.go` is a frame 5× (report lines 291 `:70`, 461/920/1288/1361 `:74`); §A.2 now states writes-in-tests / reads-through-production-seam, matching §A.4, and adds the omitted frames `:69` and `:175`. **D2**: F1 and the §C exclusion overstated the gap and contradicted §A.5 — the package-wide scan WAS performed (two independent function-body scans, zero out-of-file hits); reworded to state what was observed, retaining only the syntactic-match residual. **D3**: remapped REQ-WFR-003 from AC-WFR-005 (compile-only, executes nothing) to AC-WFR-001b + AC-WFR-002 + AC-WFR-004. **D8**: the RED run panicked before exhausting `-count=20` (report line 1344, `FAIL … 1.543s`), so 23 is recorded as a floor, and the panic is recorded as a second manifestation of the same root cause with its own GREEN check. |
+| 0.1.1 | 2026-09-03 | manager-spec (card t464) | Plan-audit iteration 1 repairs D1-D3 + D8. Text-only; no scope, requirement, or design change, and the A-vs-B decision stays open. **D1**: withdrew the false "every race frame lands in the test file" claim — the production seam `worktree_branch_flag.go` is a frame 5× (report lines 291 `:70`, 461/920/1288/1361 `:74`); §A.2 now states writes-in-tests / reads-through-production-seam, matching §A.4, and adds the omitted frames `:69` and `:175`. The same error is present in the **card t464 body** (its "레이스 쌍 … `:130` 쓰기 ↔ `:162` 읽기" wording), so this is a card-text error the SPEC diverges from, not only a SPEC-internal one — recorded as divergence ② in §A.7 (added in v0.1.2). **D2**: F1 and the §C exclusion overstated the gap and contradicted §A.5 — the package-wide scan WAS performed (two independent function-body scans, zero out-of-file hits); reworded to state what was observed, retaining only the syntactic-match residual. **D3**: remapped REQ-WFR-003 from AC-WFR-005 (compile-only, executes nothing) to AC-WFR-001b + AC-WFR-002 + AC-WFR-004. **D8**: the RED run panicked before exhausting `-count=20` (report line 1344, `FAIL … 1.543s`), so 23 is recorded as a floor, and the panic is recorded as a second manifestation of the same root cause with its own GREEN check. |
+| 0.1.2 | 2026-09-03 | manager-spec (card t464) | Text-only, per lead instruction. Added **§A.7 Divergence from the card text**, consolidating both places where this SPEC disagrees with card `t464`'s body: ① three siblings vs the measured four (omitted: `_NoFlagIsNoop`, line 65), and ② the card's claim that the racing pairs lie wholly inside the test file vs the measured reads reaching through the production seam `worktree_branch_flag.go:70`/`:74` (a frame 5×). Records that the lead reproduced both, accepted them as **card-body** errors, and ruled the card body stays as written while this SPEC is canonical for run-phase. Divergence ② changes the description only — the judgment (not a production defect) is unchanged. No scope, requirement, AC, or design change; the A-vs-B decision stays open. |
 
 ---
 
@@ -94,6 +95,8 @@ so it is a participant in the race and not a bystander. Line 69 is load-bearing:
 `t.Error` inside its stub closure, and it is the frame that panics the run when another sibling
 reaches that stub after `_NoFlagIsNoop` has completed (§A.2).
 
+This is **divergence ①** from the card body; see §A.7 for the consolidated record of both.
+
 ### A.4 The mechanism
 
 The four siblings run concurrently with each other. Each overwrites the shared package globals with
@@ -123,6 +126,27 @@ Folding t464 into t278 was proposed and **rejected**; the lead accepted this lan
 environment-dependent, cause not yet localized. `t464` reproduces **100% locally under `-race`**
 with the cause pinned to a named file and specific line numbers, so it needs no
 environment-narrowing investigation — the work t278 exists to do is already done here.
+
+### A.7 Divergence from the card text
+
+[HARD] **This SPEC disagrees with card `t464`'s body in two places, and this SPEC is the
+canonical source for run-phase.** The lead reproduced both divergences, accepted them as errors in
+the **card body** rather than in this SPEC, and ruled that the card body is a queue record which
+stays as written — so a reader who opens card `t464` later will still see the original wording.
+This subsection exists so that reader is not misled.
+
+| # | What the card body says | What was measured | Where the evidence lives |
+|---|---|---|---|
+| ① | **Three** sibling tests | **Four**. The card omits `TestResolveWorktreeExistingBranch_NoFlagIsNoop` (line 65), whose frames `67/68/69/72` appear in the RED output — a participant, not a bystander. | §A.3 |
+| ② | The racing pairs lie wholly inside the test file — its wording: "레이스 쌍 `worktree_branch_flag_test.go:130` 쓰기 ↔ `:162` 읽기, `:102` 쓰기 ↔ `:130` 읽기" | The racing **writes** are in the test file, but the racing **reads reach through the production seam** `worktree_branch_flag.go:70` / `:74`, which appears as a frame **5×** in the RED output (`uniq -c` → `46 main_test.go`, `52 worktree_branch_flag_test.go`, `5 worktree_branch_flag.go`). | §A.2 |
+
+**Divergence ② changes the description, not the judgment.** This is still **not** a production
+defect: the seam is the call path through which one sibling reaches another sibling's stub, exactly
+as §A.4 describes. What was wrong was the claim that the race is confined to the test file — a
+run-phase implementer working from that claim would look for both sides of every pair inside
+`worktree_branch_flag_test.go` and not find them.
+
+Neither divergence changes scope, requirements, or the open A-vs-B repair decision.
 
 ---
 
