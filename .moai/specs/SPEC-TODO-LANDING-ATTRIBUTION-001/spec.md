@@ -1,10 +1,10 @@
 ---
 id: SPEC-TODO-LANDING-ATTRIBUTION-001
 title: "The landed verdict: an attribution-position predicate, and a ref chain that asks the branch this repository actually integrates on"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-03
-updated: 2026-09-03
+updated: 2026-09-04
 author: manager-spec (card t472)
 priority: P1
 phase: "v3.2.0 target"
@@ -24,6 +24,7 @@ related_specs:
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3.0 | 2026-09-04 | Plan-audit iteration-2 remediation, measured in this tree at HEAD `75e63d6f2` against the **pinned corpus commit** `7835148d3` (5,837 subjects, 414 merges). iter-2 D1: form 3b gains a single-token restriction and a falsifying criterion built on `t412` (AC-TLA-003 clauses 4-5). iter-2 D2: the recorded under-count "exactly one card" is **withdrawn** — measured `>= 19` under four named missed shapes; **form 3c** (card-led local merge, `merge: <card>` — 31 subjects, 100% precision) is added, taking the residual to **7**, and `plan.md` §D's tolerance is re-argued at 7 rather than at 1. iter-2 D3: form 3b's target is stated as **derived from the resolved landed ref**, with AC-TLA-003 clause 6 falsifying a hardcoded `develop`; the audit's M1-window claim is **refuted by measurement** (§A.7). iter-2 D4: the non-attribution rule is restated **contraposed** on target mismatch; the `WT-` prefix becomes an illustration. iter-2 D5 handled in `progress.md`. Counts: **13 REQ / 12 AC** (REQ-TLA-013 added for the derived target; covered by AC-TLA-003 clause 6 — Tier M ceiling 16/16, so both stay in budget). |
 | 0.2.0 | 2026-09-03 | Plan-audit iteration-1 remediation, measured in this tree at HEAD `e227871b4` against `origin/develop` `7835148d3` (5,837 subjects). D1 (BLOCKING) closed: §A.4 form 3 was an occurrence test and is replaced by two positional shapes (3a, 3b) plus an explicit non-attribution rule for absorb-direction merges; `MUT-MERGE-ANY-TOKEN` added to the mutant set. D2 citation corrected and its residual re-stated as measured-disjoint. D4/D5/D6/D7/D8/D9 dispositions recorded in `acceptance.md`, `plan.md`, and `progress.md`. Requirement and criterion counts unchanged at 12/12. |
 | 0.1.0 | 2026-09-03 | Initial plan-phase authoring (card t472), measured in worktree `.claude/worktrees/t472` at HEAD `4bcac7079` (branch `WT-landed-drift-detect`). Two axes, merged by lead verdict into one SPEC: the attribution predicate (axis F) and the ref chain plus its disclosure (axes A+B). Every figure below is carried from this lane's own committed measurements at `.moai/reports/t472/premise-recheck.md` and `.moai/reports/t472/axis-bf-measurement.md`, or re-run in this tree and cited beside the command. |
 
@@ -31,6 +32,14 @@ related_specs:
 > **about** a moving ref (`origin/main`, `origin/develop`, `refs/remotes/origin/HEAD`) travels with the
 > command that produced it and is re-measured rather than re-cited by a later reader
 > (`verification-claim-integrity.md` §2.1, remedy R4).
+>
+> **The corpus is pinned to a commit, not to a branch name (VCI §2.1 remedy R1).** Every count below
+> is measured over the commit `7835148d3` and is cited as such. That pin is not decoration: at
+> version 0.2.0 `origin/develop` resolved to `7835148d3`; re-read at version 0.3.0
+> (`git rev-parse origin/develop`, 2026-09-04) it resolves to `25a3212a9`, and `7835148d3` remains
+> an ancestor (`git merge-base --is-ancestor 7835148d3 25a3212a9`, rc=0). A reader re-running these
+> commands against the branch name will measure a different corpus and should; a reader checking
+> **these** figures runs them against `7835148d3`.
 
 ---
 
@@ -119,27 +128,71 @@ subject-occurrence cases (`673d3d8a0`, `0d26f8a00`) the queried card appears in 
 not the card the commit belongs to. The discriminator is therefore not *occurrence*, nor
 *occurrence in the subject*, but **attribution position**.
 
-### A.4 The attributing positions — four positional shapes
+### A.4 The attributing positions — five positional shapes
 
 Every shape below is a **position**, not an occurrence. A card token that appears anywhere else in a
-subject — mid-sentence, inside a branch name, inside a dependency or absorb note — attributes
-nothing. Counts re-measured at `origin/develop` `7835148d3`, 5,837 subjects, 414 of them merges.
+subject attributes nothing. Three non-attributing positions are named explicitly, because each is a
+place a loosened discriminator would immediately misread:
+
+- **mid-sentence** — `docs(t263): … remedy sequenced behind t216` attributes t263, not t216;
+- **inside a branch name** — `merge: t79 — glm_task delegation family (branch WT-t80)` attributes
+  t79, not t80, and `Merge branch 'WT-t250-followup' into develop — card t279 …` attributes t279,
+  not t250. A branch name lives inside the subject, so an occurrence test reads it as an
+  attribution; it is a **name for a place work happened**, never a claim about which card landed;
+- **inside a dependency or absorb note** — `(t387 depends on t386 convention doc)`,
+  `(card t36, absorbs t2)`.
+
+Counts measured over the pinned commit `7835148d3`, 5,837 subjects, 414 of them merges.
 
 | # | Form | Positional rule | Observed | Example |
 |---|---|---|---|---|
 | 1 | Conventional-commit scope | `<type>(<card>):` **at subject start** | 290 | `docs(t440): record develop-absorb re-measure evidence` |
-| 2 | Trailing parenthetical | `(<card>)` or `(card <card>)` **closing the subject** | 869 | `... refresh catalog moai whole-tree hash (t447)` |
-| 3a | Merge, card-led | subject **begins** `Merge card <card>` | 5 | `Merge card t440 (WT-delivery-notice-docs) into develop: ...` |
-| 3b | Merge, integration-targeted | the merge's **named target is the branch the landed ref resolves to**, AND the card token lies **inside the subject's trailing parenthetical group** | 76 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
+| 2 | Trailing parenthetical | `(<card>)` or `(card <card>)` **closing the subject**, the group carrying nothing else | 869 | `... refresh catalog moai whole-tree hash (t447)` |
+| 3a | Merge, card-led (`Merge card`) | subject **begins** `Merge card <card>` | 5 | `Merge card t440 (WT-delivery-notice-docs) into develop: ...` |
+| 3b | Merge, integration-targeted | the merge's **named target is the branch the resolved landed ref names** (§A.4.1), AND the subject's trailing parenthetical group carries **exactly one** card token | 76 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
+| 3c | Merge, card-led (`merge:`) | subject **begins** `merge: <card>` — the local-merge spelling of 3a | 31 | `merge: t106 — todo queue resolves to the primary checkout from worktrees — review-PASS` |
 
-**[HARD] The non-attribution rule.** A merge whose named target is a **card worktree branch**
-(`WT-…`) attributes **no card**, in any position. Such a merge absorbs work into a card's branch; the
-subject of the sentence is a branch, not a card, and its parenthetical is a dependency note or an
-absorb record rather than an attribution. Measured: **21** absorb-direction merges carry a card token
-inside a trailing parenthetical group and are excluded by this rule alone.
+Forms 3a and 3c are one shape in two spellings: the card is the **first token after the merge
+verb**. They are listed apart only because the two spellings anchor differently.
 
-    git log origin/develop --format=%s | grep -E '^Merge ' | grep -E 'into WT-' \
+**[HARD] The non-attribution rule, stated as a target mismatch (plan-audit iter-2 D4).** A merge
+subject that **names a target** attributes no card **unless that target is the branch the resolved
+landed ref names**. A merge into anything else — a card worktree branch, an agent worktree, a
+release branch — absorbs work rather than landing it: the subject of the sentence is a branch, and
+its parenthetical is a dependency note or an absorb record.
+
+Version 0.2.0 wrote this rule as a `WT-…` **prefix** test. That keyed it on a branch-naming
+convention this SPEC does not own (it belongs to `kanban-dispatch.md` § Isolation is entered, never
+provisioned) and which **this repository's own history violates**. Merge targets over the pinned
+corpus that are card or agent worktree branches yet carry no `WT-` prefix — extracted from the
+subject stream with `grep -E '^[Mm]erge' | grep -ohE ' into [A-Za-z0-9/_.-]+' | sed -E 's/ into //' | sort -u`:
+
+    worktree-t166, worktree-t176,
+    worktree-agent-{a205e7a01ec2e0f27, a350b7a40faaf39c6, a66650c94c57df3f8,
+                    a6a00e00dfdb5f0ee, ab81b7087bc743f02, ad55b5fbe632611a7},
+    t403, t78, t86
+
+Nine targets, and **three carry no prefix at all** (`t403`, `t78`, `t86`) — no prefix rule of any
+spelling reaches those. The contraposed form is strictly stronger, costs nothing, and is form 3b's
+own target test read the other way; `WT-…` survives only as an illustration.
+
+No false attribution results from the prefix form **today** — none of the nine subjects carries a
+card-bearing trailing group — so this was soundness rather than a live defect. It is repaired
+because the shipped surface is `moai todo`, which reaches repositories whose branch names MoAI does
+not prescribe. Measured exclusions under the repaired rule, unchanged for the `WT-`-shaped majority:
+
+    <pinned-corpus subjects> | grep -E '^Merge ' | grep -E 'into WT-' \
       | grep -oE '\([^()]*\)$' | grep -cE 't[0-9]+'        → 21
+
+#### A.4.1 Form 3b's target is derived, never spelled
+
+[HARD] Form 3b's target is **the branch the resolved landed ref names** — derived at evaluation time
+from the ref the resolver returns (the §B.2 chain once M2 lands; the un-repaired resolver before
+that). It is **not** the literal string `develop`. An implementation that spells `develop` into the
+form is wrong in every repository whose integration branch is not `develop`, permanently and
+silently: it invents attributions from `into develop` merges the repository never made, and misses
+every merge into the branch it actually integrates on. **AC-TLA-003 clause 6 is the falsifier**, and
+§A.7 records what the form yields during the M1-only window.
 
 **Why 3b, and not "a merge subject naming the card" (plan-audit D1).** Version 0.1.0 wrote form 3 as
 *"a merge subject naming the card"* — an **occurrence** test, and therefore the exact reading §A.3
@@ -153,19 +206,71 @@ caught by no attributing form at all. Two of them state the case:
 The first names **t387 and t386**, as a dependency note; the second names **t280 and t239**, as an
 absorb record. Neither is an attribution, and both are excluded by the non-attribution rule above.
 
-**What the repair costs and what it buys, measured.** Under forms 1/2/3a the attributed-id set is
-**257**; form 3b adds exactly **one** further id — `t412`, whose only landing evidence is the merge
-`b6231290d ... into develop (card t412 — SPEC-MX-TAG-EDGES-001)`, whose trailing group carries text
-after the card id and so escapes form 2's `)$` anchor. Set total **258**.
+**Why "exactly one" token in form 3b's group (plan-audit iter-2 D1).** Version 0.2.0 admitted **any**
+token lying inside the trailing group, which contradicted this section's own preamble: a group
+reading `(card t500 — absorb t280, includes t239)` would attribute all three — the occurrence
+reading relocated inside a parenthesis. The single-token restriction removes the contradiction at
+**zero measured cost**: of the 76 `into develop` merges whose trailing group carries a card token,
+**none** names two distinct cards (per-line distinct-token count over the extracted groups → 0
+lines). The shape is nevertheless real in the corpus at large — **8** trailing groups name two or
+more distinct cards (`(t46/t73/t74)`, `(card t36, absorbs t2)`, `(t333/t347)`, `(t387 depends on
+t386 convention doc)`, …) — so the restriction guards a population that exists, merely not yet on
+this form's own subject set.
 
-    comm -13 <attributed under 1/2/3a> <attributed under 3b>   → t412   (exactly one line)
+#### A.4.2 What the enumeration costs — the under-count, measured
 
-One under-count survives and is recorded rather than hidden: **t250** is attributed on `develop` only
-by `6786c3fa4 t250: graph freshness ... (#1648)` — a bare `t250:` prefix, which is none of the four
-shapes. It will read `not-landed`. That failure direction is **loud** (an operator who knows the card
-landed sees `not-landed`), which is the direction `plan.md` §D already accepts for a fifth
-convention; the alternative — widening to catch it — is the occurrence reading this SPEC exists to
-remove.
+**What form 3b buys.** Under forms 1/2/3a the attributed-id set is **257**; form 3b adds exactly
+**one** further id — `t412`, whose only landing evidence is the merge `b6231290d ... into develop
+(card t412 — SPEC-MX-TAG-EDGES-001)`, whose trailing group carries text after the card id and so
+escapes form 2's `)$` anchor. Set total **258**. Its three sibling subjects (`d8c91d907`,
+`63435427c`, `57d2f3ae3`) all merge **into `WT-mx-tag-edges`** and attribute nothing.
+
+**The claim version 0.2.0 made about the cost was wrong and is withdrawn (plan-audit iter-2 D2).**
+It recorded *"one under-count survives — t250"*. Re-derived over the pinned corpus at HEAD
+`75e63d6f2`, with a binary built from this tree:
+
+    ids appearing anywhere in a subject                              → 347
+    ids attributed under forms 1/2/3a/3b                             → 258
+    subject-present but attributed by no form                        →  89
+
+Of those 89, the ids whose subject evidence sits in an **attributing-shaped position the four forms
+miss** — classified by naming the shape, not by eyeballing the list — number **at least 19**:
+
+| Missed shape | Ids | Example subject |
+|---|---|---|
+| card-led local merge, `merge: <card>` | t106 t110 t113 t114 t32 t36 t56 t59 t69 t79 t98 t99 (12) | `merge: t114 — always-loaded budget trim 76680→75297 …` |
+| bare `<card>:` prefix | t225 t250 (2) | `t250: graph freshness, symbol layer, and MCP code queries (#1648)` |
+| non-exact trailing group | t46 t68 t73 t74 (4) | `merge: anchor-session guards for worktree disposal + registry CWD relocation (t46/t73/t74)` |
+| legacy `worktree-` merge, card-led after the colon | t40 (1) | `Merge branch 'worktree-t40': t40 — moai update observability (3 quiet failures)` |
+
+Nineteen, not one — a **19×** error, on a figure `plan.md` §D used as its ground for accepting the
+loud-failure direction. The audit that found the defect measured **7**; the two sets differ because
+it did not name the `merge: <card>` family, which is the largest of the four.
+
+**The repair: form 3c, adopted on measurement.** The `merge: <card>` family is not a stray — it is a
+convention used **31** times, and in **31 of 31** subjects the first token after `merge: ` is the
+card the merge delivers (every subject read). It is a position (subject start), so admitting it
+readmits no occurrence reading. Adopting it moves the attributed set **258 → 270** and takes the
+named-shape under-count **19 → 7**:
+
+    ids attributed under forms 1/2/3a/3b/3c                          → 270
+    residual named-shape under-count                                 →   7
+      t225 t250 (bare prefix) · t40 (legacy worktree- merge) · t46 t68 t73 t74 (non-exact group)
+
+Form 3c under-counts in one measured way, and loudly: a multi-card merge (`merge: t85+t94 …`,
+`merge: t92+t93 …`, `merge: t77+t64 …`) attributes only its first card. Three such subjects exist;
+the second card in each is attributed elsewhere in the corpus.
+
+**The widening this SPEC declines, and the measured ground for declining it.** The remaining 7 would
+mostly be recovered by widening form 2 to accept a card token as the **first** token of a trailing
+group. That widening is rejected on a corpus instance: `merge: t79 — glm_task delegation family
+(branch WT-t80)` closes with the group `(branch WT-t80)`, whose only card token is **t80** — a
+**branch name**. A widening that reads it attributes a card that did not land, on a commit belonging
+to t79. The under-count is loud; that false positive would be silent, and silence is the failure
+direction this SPEC exists to remove.
+
+The residual 7 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D at 7 rather
+than at 1.
 
 ### A.5 The ref: the repository already knows the answer
 
@@ -222,6 +327,32 @@ false-positive population from 2 to 9** (§A.2). Nine cards would then read land
 operator trusts, seven of them wrongly. The predicate is repaired first, and the ref chain is laid
 on top of a predicate that can bear it. This decision binds the milestone order in `plan.md`.
 
+**What form 3b yields in the M1-only window (plan-audit iter-2 D3), measured.** The ordering creates
+a window in which M1's repaired predicate runs against the **un-repaired** resolver, so the landed
+ref is still `DefaultLandedRef = "origin/main"` (`prlink_landed.go:41,74-80`). The audit inferred
+from the rule — and recorded the inference as a Gap, having measured no `origin/main` corpus — that
+a `develop`-hardcoding implementation would attribute all 76 `into develop` merges in that window
+while a correct one attributes none. **That inference does not hold on this repository, and the
+refutation is a measurement rather than an argument.** The predicate walks `git log <ref>`, so in
+the window it walks `origin/main`'s history, not `develop`'s:
+
+    <origin/main 7ad9f8534 subjects>                                  → 4,457
+      of which merge subjects                                         →   101
+      'into develop' merges with a card-bearing trailing group        →     0
+      'into main'    merges with a card-bearing trailing group        →     0
+
+Form 3b contributes **exactly zero attributions either way** in the window: a hardcoded-`develop`
+implementation and a ref-derived one are behaviourally identical here. The window is therefore not
+where the target-derivation defect bites, and the [HARD] ordering — which rests on the measured 2→9
+growth — is untouched by it.
+
+**The defect the audit found is real, and it is permanent rather than windowed.** A repository whose
+integration branch is `main` — the default this tool ships against — gets nothing from a
+`develop`-spelled form 3b, and a repository using some third name gets false attributions from
+`into develop` merges it never made. That is why §A.4.1 states the derivation as [HARD] and
+AC-TLA-003 clause 6 falsifies a spelled target by varying the resolved ref, rather than by relying
+on a window in which the two implementations cannot be told apart.
+
 ---
 
 ## §B Requirements
@@ -236,11 +367,13 @@ Notation: GEARS. Requirement IDs are stable; milestone assignment is in `plan.md
 
 - **REQ-TLA-002** (Ubiquitous) — The set of attributing positions shall be exactly the positional
   shapes enumerated in §A.4 — conventional-commit scope (form 1), trailing parenthetical, bare and
-  `card`-prefixed (form 2), card-led merge subject (form 3a), and integration-targeted merge subject
-  whose trailing parenthetical group carries the card token (form 3b) — and shall include §A.4's
-  non-attribution rule: a merge whose named target is a card worktree branch (`WT-…`) shall attribute
-  no card. No shape shall be expressed as a bare occurrence test — "the subject contains the token"
-  is not a position, and admitting it reintroduces REQ-TLA-001's defect through the enumeration. The
+  `card`-prefixed, carrying nothing else in the group (form 2), card-led merge subject in its
+  `Merge card` spelling (form 3a) and its `merge:` spelling (form 3c), and integration-targeted
+  merge subject whose trailing parenthetical group carries **exactly one** card token (form 3b) —
+  and shall include §A.4's non-attribution rule in its contraposed form: a merge subject that names
+  a target shall attribute no card unless that target is the branch the resolved landed ref names.
+  No shape shall be expressed as a bare occurrence test — "the subject contains the token" is not a
+  position, and admitting it reintroduces REQ-TLA-001's defect through the enumeration. The
   enumeration and its non-attribution rule shall live in one named place in the implementation, so a
   further form is a reviewable one-place diff.
 
@@ -258,6 +391,14 @@ Notation: GEARS. Requirement IDs are stable; milestone assignment is in `plan.md
 - **When** the landed query cannot be evaluated — no git, no such ref, a query error — the querier
   shall answer `unknown` rather than `not-landed` (**REQ-TLA-006**, event-detected; preserves the
   three-valued contract of `SPEC-TODO-LANDING-STATE-001`).
+
+- **REQ-TLA-013** (Ubiquitous) — Form 3b's target, and the non-attribution rule's target comparison,
+  shall be **derived from the resolved landed ref** at evaluation time, and shall not be a
+  compiled-in branch name (§A.4.1). This is stated as its own requirement rather than folded into
+  REQ-TLA-002 because it is the one clause of the enumeration whose violation is invisible in this
+  repository's own corpus during the M1-only window (§A.7) and permanent in any repository whose
+  integration branch is not `develop`. Numbered last, and listed here at the end of the M1 block,
+  because the twelve preceding ids are stable across versions (`spec.md` §B notation).
 
 ### B.2 Milestone 2 — the ref chain and its disclosure (axes A+B)
 

@@ -45,10 +45,28 @@ as an accepted risk is itself the defect (VCI §1).
 The naive repair ("match the subject only") was measured insufficient: it leaves 2 of the 7
 `develop` false positives standing, because those are other cards' subjects mentioning the queried
 card (`spec.md` §A.3). The discriminator is the **position at which the card is attributed**; the
-positional shapes (forms 1, 2, 3a, 3b) and the non-attribution rule for absorb-direction merges are
-enumerated in `spec.md` §A.4. Form 3 was repaired from an occurrence test to two positional shapes at
-version 0.2.0 (plan-audit D1) — the occurrence wording admitted 146 merge subjects against 5
-attributing ones and is now the named mutant `MUT-MERGE-ANY-TOKEN`.
+positional shapes (forms 1, 2, 3a, 3b, 3c) and the non-attribution rule are enumerated in `spec.md`
+§A.4. Form 3 was repaired from an occurrence test to two positional shapes at version 0.2.0
+(plan-audit iter-1 D1) — the occurrence wording admitted 146 merge subjects against 5 attributing
+ones and is now the named mutant `MUT-MERGE-ANY-TOKEN`.
+
+Version 0.3.0 made three further corrections, each on a measurement rather than a preference
+(plan-audit iter-2 D1/D2/D3/D4):
+
+- **Form 3c added** — the `merge: <card>` local-merge spelling, 31 subjects with the delivering card
+  as the first token in 31 of 31. It is the largest family the four-form enumeration missed, and
+  admitting it takes the measured under-count from 19 cards to 7 (`spec.md` §A.4.2).
+- **Form 3b narrowed and its target made derived** — the group must carry exactly one card token,
+  and the target is read from the resolved landed ref rather than spelled `develop`
+  (`spec.md` §A.4.1, REQ-TLA-013). Both were unfalsified before; AC-TLA-003 clauses 4-6 now falsify
+  them.
+- **The non-attribution rule contraposed** — target mismatch rather than a `WT-` prefix, because
+  nine merge targets in this repository's own history are card or agent worktrees carrying no `WT-`
+  prefix, three of them no prefix at all.
+
+Every entry in the enumeration now has a falsifier, and the per-form "ids this form alone
+attributes" column in `acceptance.md` AC-TLA-005 is the check a sixth form must pass before it is
+added: a form measuring 0 there cannot be falsified from the corpus.
 
 **Open shape decision, deferred to run-phase but named here so review sees it:** whether the
 shapes are expressed as a widened `git log --grep` pattern, or as a subject-level filter applied
@@ -71,11 +89,21 @@ predicate first means the ref correction lands on a predicate that can bear it.
 A run-phase that reverses this order, or that lands M2 alongside M1 in one commit, has not delivered
 this SPEC.
 
+**The ordering was challenged at plan-audit iteration 2 and survives on a measurement.** The audit
+argued that the M1-only window makes a correct form-3b implementation indistinguishable from a
+`develop`-hardcoding one, and treated that as a reason the target derivation could not be left to
+run-phase. Re-measured on `origin/main` `7ad9f8534` (`spec.md` §A.7): **0** of its 101 merge subjects
+target `develop` with a card-bearing trailing group, and 0 target `main`, so form 3b contributes
+nothing either way in the window and the two implementations are behaviourally identical there. The
+window is real and harmless; the derivation defect is real and **permanent downstream**, which is
+why it is closed by REQ-TLA-013 + AC-TLA-003 clause 6 rather than by disturbing this ordering. The
+ordering's own ground — the measured 2→9 false-positive growth — is untouched.
+
 ---
 
 ## §B Milestones
 
-### M1 — the attribution predicate (REQ-TLA-001..006)
+### M1 — the attribution predicate (REQ-TLA-001..006, REQ-TLA-013)
 
 Priority: High. Blocks M2.
 
@@ -85,8 +113,18 @@ Priority: High. Blocks M2.
    - **MUT-SUBJECT-ONLY** — the naive subject match. Falsified by the t216 and t443 fixtures.
    - **MUT-MERGE-ANY-TOKEN** — form 3 read as an occurrence test. Falsified by `9a3837b5c`
      (t386/t387) and `c4ae1ecbd` (t284), via AC-TLA-003's third clause.
-2. Express the §A.4 shapes **and the non-attribution rule** in one named place (REQ-TLA-002), and
-   build the query argv in the single exported builder (REQ-TLA-005).
+   - **MUT-NO-FORM-3B / MUT-NO-FORM-3A / MUT-NO-FORM-3C** — an enumeration entry silently omitted.
+     Falsified by `t412` (AC-TLA-003 clause 4), `t244` (AC-TLA-003b clause 1), and `t79`
+     (AC-TLA-003b clause 3) respectively — the one id each form alone attributes.
+   - **MUT-GROUP-ANY-TOKEN / MUT-NO-TARGET-TEST** — form 3b's group read as an occurrence set, or
+     its target test dropped. Falsified by `t412`'s three absorb siblings (AC-TLA-003 clause 5).
+   - **MUT-HARDCODED-DEVELOP** — form 3b's target spelled rather than derived. Falsified only by
+     AC-TLA-003 clause 6, which varies the resolved ref; no corpus fixture distinguishes it.
+   - **MUT-FIRST-TOKEN-OF-GROUP** — the declined widening. Falsified by `t80` (AC-TLA-003b clause 4).
+2. Express the §A.4 shapes **and the non-attribution rule** in one named place (REQ-TLA-002), with
+   form 3b's target and the rule's target comparison derived from the resolved landed ref rather
+   than spelled (REQ-TLA-013), and build the query argv in the single exported builder
+   (REQ-TLA-005).
 3. Assert both directions on every criterion: a title-attributed commit reads `landed`, and a
    body-mention-only commit reads `not-landed`. A one-directional suite lets "everything is landed"
    pass and is not acceptable evidence.
@@ -137,9 +175,10 @@ Priority: Medium. Mechanical; ordered last deliberately.
 | Risk | Direction | Mitigation |
 |---|---|---|
 | A widened regex silently matches nothing | A predicate that answers `not-landed` for every card is byte-identical to a working one that found nothing | Positive control in every criterion (REQ-TLA-001 green direction), plus the retained tripwire |
-| The three enumerated forms miss a fourth convention in use | Under-counts true positives — cards read `not-landed` and stay open | Failure is loud (a card the operator knows landed reads not-landed) rather than silent; the enumeration lives in one place so a fourth form is a one-line diff (REQ-TLA-002) |
+| The five enumerated forms miss a sixth convention in use | Under-counts true positives — cards read `not-landed` and stay open | Failure is loud rather than silent; the enumeration lives in one place so a sixth form is a one-place diff (REQ-TLA-002). **A sixth form is admitted only on the AC-TLA-005 falsifier check**: measure the ids that form alone would attribute, and reject it if that count is 0 — a form with no unique contribution cannot be falsified from the corpus, which is the vacuity iter-2 D1 found in form 3b |
+| Form 3b's target is spelled rather than derived | Silent: invents attributions in a repository that never merged `into develop`, and misses every merge into the branch it does integrate on | REQ-TLA-013 states the derivation as [HARD]; AC-TLA-003 clause 6 falsifies a spelled target by resolving the ref to something other than `develop`. Note the M1-only window does **not** falsify it — measured on `origin/main` `7ad9f8534`, 0 of 101 merge subjects target `develop` or `main` with a card-bearing group, so the two implementations are behaviourally identical there (`spec.md` §A.7) |
 | Level 2 disagrees with the operator's intent because another surface wrote `origin/HEAD` | The landed verdict follows a value MoAI itself maintains | Measured disjoint (§A.1 above): the writer fires only on a non-empty key, level 2 only on an empty one. The residual is bounded to a future change that breaks that disjointness; REQ-TLA-011's disclosure names the answering level either way, so the operator sees the source rather than inferring it |
-| Narrowing §A.4 form 3 under-counts a genuine landing | A card whose landing merge uses a fifth shape reads `not-landed` | Measured cost at `origin/develop` `7835148d3`: exactly **one** card (`t250`, attributed by a bare `t250:` prefix). The failure is **loud** — an operator who knows the card landed sees `not-landed` — which is the direction the row below already accepts. Widening to catch it means readmitting the occurrence reading |
+| Narrowing §A.4 under-counts a genuine landing | A card whose landing subject uses a shape the enumeration does not carry reads `not-landed` | **Re-measured at version 0.3.0, and the previous figure was wrong by 19× (plan-audit iter-2 D2).** Version 0.2.0 recorded "exactly one card (`t250`)"; the measured under-count over the pinned corpus `7835148d3` is **at least 19**, across four named shapes (`spec.md` §A.4.2). Adopting form 3c removes the largest of the four and takes the residual to **7** — `t225`, `t250` (bare prefix), `t40` (legacy `worktree-` merge), `t46`, `t68`, `t73`, `t74` (non-exact trailing group). The tolerance argument is re-made at 7, not carried over from 1: the failure is **loud** (an operator who knows the card landed sees `not-landed`), all seven are archived-era ids so today's operational impact is nil, and the one widening that would recover most of them is measurably unsafe — it reads the branch name in `(branch WT-t80)` as an attribution, which is a **silent** false positive. Trading a loud under-count for a silent over-count is the wrong direction for this SPEC |
 | M2 landed without M1 | 7 wrong closures become reachable | §A.3, stated as a [HARD] ordering decision with its measured ground |
 
 ---
