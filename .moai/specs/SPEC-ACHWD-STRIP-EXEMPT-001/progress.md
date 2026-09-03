@@ -89,9 +89,9 @@ _<pending run-phase>_
 
 ```yaml
 sync_status: complete
-sync_commit_sha: pending-backfill-sync   # backfilled here; the sync commit cannot
-                                         # cite its own SHA (SHA placeholder backfill
-                                         # exemption, spec-frontmatter-schema.md § D3)
+sync_commit_sha: 17b447240   # backfilled here; the sync commit cannot cite its
+                             # own SHA (SHA placeholder backfill exemption,
+                             # spec-frontmatter-schema.md § D3)
 sync_complete_at: 2026-09-03
 measured_at_head: 820db6cf9
 ```

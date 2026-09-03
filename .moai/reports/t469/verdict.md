@@ -1,7 +1,7 @@
 # Card t469 — Sync-Phase Completion Verdict
 
 Card: t469 — AC-HWD-015 strip-aware mirror amendment (SPEC-ACHWD-STRIP-EXEMPT-001 wrapper over SPEC-HOOK-WIRING-DRIFT-001 v0.4.0)
-Branch: `WT-achwd-strip-exempt` · Sync commit: `<sync-commit-sha>` (backfilled below)
+Branch: `WT-achwd-strip-exempt` · Sync commit: `17b447240`
 Date: 2026-09-03
 
 ## Claim
