@@ -52,6 +52,18 @@ moai doctor [OPTIONS]
 
 이 추정치는 `moai clean --home`이 쓰는 것과 **같은 스캐너**를 호출하므로, doctor가 말하는 숫자와 clean이 실제로 지우는 목록이 어긋나지 않습니다. 자세한 내용은 [홈 디렉터리 위생](/ko/advanced/home-hygiene)에 있습니다.
 
+## Hook Delivery 진단 {{< new-badge v3.1.4 >}}
+
+`moai update` 는 템플릿이 새로 추가한 훅 항목을 기존 프로젝트의 `.claude/settings.json` 에 넣지 못한 채 조용히 넘어갈 수 있습니다. **Hook Delivery** 검사는 이런 누락을 찾아냅니다. 프로젝트가 이미 가지고 있는 훅 이벤트 키 안에서, 배포 템플릿에는 있는데 프로젝트 설정에는 없는 항목을 비교해 보고합니다.
+
+| 보고 내용 | 설명 |
+|-----------|------|
+| 누락된 항목 | `hooks.PreToolUse missing handle-pre-tool.sh (matcher AskUserQuestion)` 형태로 이벤트 키와 매처까지 알려 줍니다 |
+| 수정 방법 | 이름이 지정된 이벤트 키 아래에, 사용 중인 moai 버전의 템플릿 설정에서 해당 블록을 복사해 넣도록 안내합니다 |
+| 업데이트 후 점검 | `moai update` 뒤 관리 파일이 삭제되지 않았는지 확인하는 명령(`git status --porcelain \| grep '^ D'`)을 제시합니다 — 걸리면 `git restore -- <경로>` 로 되돌린 뒤 항목을 다시 넣습니다 |
+
+이 검사는 읽기 전용입니다 — `.claude/settings.json` 을 절대 쓰지 않습니다. 템플릿이 처음 제공하는 이벤트 키와 사용자가 직접 만든 항목은 누락으로 세지 않고, opt-out 된 항목도 요구하지 않습니다(템플릿은 프로젝트의 `hook.opt_in.enabled` 설정을 반영해 렌더링됩니다). 모든 항목이 일치하면 `ok` 를 보고합니다.
+
 ## 종료 코드
 
 스크립트나 CI 래퍼에서 `moai doctor` 를 부를 때는 요약 줄이 아니라 종료 코드를 읽습니다.

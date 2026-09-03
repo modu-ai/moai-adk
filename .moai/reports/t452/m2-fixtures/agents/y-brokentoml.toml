@@ -1,0 +1,6 @@
+# M2 instrument control Y — syntactically INVALID TOML.
+# Purpose: separate "the directory is read and the error is silent" from
+# "the directory is not read at all in this codex mode". A parser cannot
+# silently accept this; if codex still says nothing, the path is unread here.
+name = "probe-y-brokentoml
+description = ''' unterminated
