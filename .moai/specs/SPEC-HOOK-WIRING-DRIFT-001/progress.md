@@ -997,25 +997,47 @@ a template surface. The new test is Go source under `internal/cli/`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — M2 and M4 complete AND re-measured on the merge tree;
-M3 and M1 not started>_
-
 ```yaml
 run_status: complete
 milestones_complete: [M1, M2, M3, M4]
 milestones_remaining: []
-measured_at_head: e8050c135
+measured_at_head: 58990a6c6
 measured_at_head_note: >-
-  merge commit absorbing origin/develop (18ba3cddb) into WT-hook-wiring-drift,
-  plus the two test repairs recorded in §E.2 "M2 + M4 — re-measurement after
-  the develop absorption". The M2/M4 evidence sections above remain attributed
-  to bf9aef6f3 / 1e75032b3; do not read their figures as current.
-binary_attribution: bin/moai built from this tree, Commit=e8050c135
+  Re-measured at sync-phase entry on the current branch tip, which carries all
+  four milestones. The prior signal cited e8050c135 — a tree five commits behind
+  this one, predating the M3 disposition commits (84e41675f / 75fd14e9c /
+  06b9b354d) and the M1 parity commit (58990a6c6) — so its figures could not
+  have observed M1 or M3. That attribution defect was found by this lane at
+  sync-phase entry and is corrected here. The per-milestone §E.2 evidence
+  sections above remain attributed to their own commits; do not read their
+  figures as current.
+binary_attribution: bin/moai rebuilt from this tree via `make build`, Commit=58990a6c6
+measurement_discipline: >-
+  Suites were run SERIALLY, one package tree at a time. A first attempt ran
+  internal/cli concurrently with internal/hook and BOTH root packages panicked
+  on `test timed out` (internal/hook 602.553s at a 600s limit; internal/cli
+  905.074s at a 900s limit) with zero `--- FAIL` lines — contention, not defect.
+  Those contended runs are recorded as discarded, not as failures.
 suites:
-  - internal/cli: ok 407.595s, 0 FAIL, EXIT=0
-  - internal/hook: ok 35.376s (pre-repair; repairs are cli-only)
-  - internal/mx: ok 5.044s
-static: go build / go vet / GOOS=windows go vet exit 0; gofmt clean; golangci-lint 0 issues
+  - internal/cli (root, serial): ok 679.238s, exit 0 — .moai/reports/t216/sync-evidence/cli-root-serial.log
+  - internal/hook (root, serial): ok 45.564s, exit 0 — .moai/reports/t216/sync-evidence/hook-root-serial.log
+  - internal/cli subpackages (16): all ok — .moai/reports/t216/sync-evidence/cli-58990a6c6.log
+  - internal/hook subpackages (10): all ok — .moai/reports/t216/sync-evidence/hook-mx-template-58990a6c6.log
+  - internal/mx: ok 26.756s
+  - internal/template: ok 186.566s (DoD-required suite)
+  - internal/template/agentemit: ok (cached)
+static:
+  go_build: exit 0
+  go_vet: exit 0
+  goos_windows_vet: exit 0
+  golangci_lint: "0 issues (./internal/cli/... ./internal/hook/... ./internal/template/...)"
+  gofmt: >-
+    NOT clean repo-wide — `gofmt -l internal cmd pkg` lists 153 files. ZERO of
+    them are files this card changed: the card touches 13 .go files and the
+    intersection of the two sets is empty, measured with `comm -12` on both
+    sorted lists (neither operand empty: 153 and 13). The drift is pre-existing
+    and repo-wide; card t457 owns it. The prior signal's unqualified "gofmt
+    clean" was wrong at repo scope and is corrected to this scoped claim.
 open_gaps: [M4-gap-2 mutant capture, M4-gap-3 stale-index path, edges-refresh landing rate unmeasured]
 ```
 
