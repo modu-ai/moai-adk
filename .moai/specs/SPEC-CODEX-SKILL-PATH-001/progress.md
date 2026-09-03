@@ -116,7 +116,7 @@ m1_to_mN_commit_strategy: "per-milestone commits: M1 9e8e19946, M2 fa72e39a8, M3
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: "pending-backfill-sync"   # backfilled with the real sync-commit SHA in the immediately following commit (D3 self-reference workaround)
+sync_commit_sha: "135e325f5"   # backfilled in the immediately following commit (D3 self-reference workaround)
 sync_status: complete
 b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-CODEX-SKILL-PATH-001' CHANGELOG.md → 0 before append (duplicate guard PASS)"
 b12_self_test_b_ac_count_match: "8 AC identifiers in spec.md §D (Tier S inline SSOT; no acceptance.md by design) == 8 referenced in the CHANGELOG entry"
@@ -128,7 +128,7 @@ user_facing_docs_judgment: "NO README/docs-site change — the delta is an advis
 canary_compliance_check: "n/a — SPEC defines no forward-looking canary policy"
 ```
 
-Backfill record: the follow-up commit `docs(SPEC-CODEX-SKILL-PATH-001): backfill sync_commit_sha=<real> (t468)` replaces the placeholder above with the sync commit's real SHA.
+Backfill record: commit `docs(SPEC-CODEX-SKILL-PATH-001): backfill sync_commit_sha=135e325f5 (t468)` replaces the placeholder above with the sync commit's real SHA (`135e325f5`).
 
 ## §F Phase 4 Mode Selection
 
