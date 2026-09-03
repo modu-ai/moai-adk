@@ -1,0 +1,7 @@
+-C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t305 rev-parse --path-format=absolute --git-dir --git-common-dir
+-C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t305 rev-parse --path-format=absolute --git-dir --git-common-dir
+rev-parse --git-dir
+rev-parse --show-toplevel
+symbolic-ref --short HEAD
+status --porcelain
+rev-list --count --left-right @{upstream}...HEAD
