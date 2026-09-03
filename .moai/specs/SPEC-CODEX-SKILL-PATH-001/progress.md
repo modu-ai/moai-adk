@@ -68,7 +68,7 @@ Regression: `go test ./internal/cli/ -run 'TestCheckCodexWiring' -count=1` → `
 ### E3 — Coverage (informational vs 85%)
 
 - `go test -cover ./internal/codexwiring/ -count=1` → `ok … coverage: 88.2% of statements` (tree `aa6c97580`)
-- `go test -cover ./internal/cli/` → full-package run exceeds the local single-command budget (first attempt FAILED on the default 10m test timeout at 601.349s — the package's known long suite floor, aggravated by coverage instrumentation); retry with `-timeout=25m` in flight at §E.3 write time. Package-level number to be read from CI if the local retry does not complete.
+- `go test -cover -timeout=25m ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 608.802s coverage: 80.5% of statements` (exit 0, tree `aa6c97580`). The full package suite PASSES under coverage — an earlier attempt FAILED only on the default 10m test timeout (601.349s), the package's known long-suite floor, not on any test. 80.5% is the pre-existing package-wide figure (the touched code's behavior is covered by the 27-test selector set, all green); the 85% package target remains the quality.yaml SSOT concern for the package as a whole, not a regression introduced by this SPEC.
 
 ### E4 — Subagent boundary
 
