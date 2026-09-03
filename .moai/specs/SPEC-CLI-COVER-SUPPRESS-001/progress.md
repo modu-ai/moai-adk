@@ -51,3 +51,19 @@ residual_risk:
   does not self-adjudicate the gate.
 - Worktree `.claude/worktrees/t481` is kept (branch unpushed per dispatch); `.claude/worktrees/t474`
   untouched.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_status: complete
+sync_complete_at: 2026-09-04
+sync_commit_sha: pending-backfill   # D3 placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+carried_in_sync_commit:
+  - spec.md          # in-progress -> completed frontmatter transition (status only; body untouched)
+  - progress.md      # this §E.4 signal
+untouched_by_sync: "plan.md / acceptance.md bodies (plan-phase content); all source trees — report-only card, zero source changes"
+changelog_decision: "no CHANGELOG entry — report-only investigation with zero user-facing changes; the deliverable is .moai/reports/t481/verdict.md"
+ac_matrix: "§E.2 (4 PASS) — unchanged by sync"
+gaps: "none new at sync — the §E.3 gaps list stands"
+```
+

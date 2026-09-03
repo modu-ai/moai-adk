@@ -2,7 +2,7 @@
 id: SPEC-CLI-COVER-SUPPRESS-001
 title: "internal/cli coverage suppression claim — measured mechanism verdict, post-t477 coverage sweep, and CLAUDE.local.md §6 target judgment (report-only investigation)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-04
 updated: 2026-09-04
 author: manager-spec
