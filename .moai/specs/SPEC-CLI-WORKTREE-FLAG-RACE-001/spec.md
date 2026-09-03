@@ -2,7 +2,7 @@
 id: SPEC-CLI-WORKTREE-FLAG-RACE-001
 title: "Four parallel sibling tests write two shared package-level seams — an ownerless confirmed DATA RACE in internal/cli/worktree_branch_flag_test.go"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-04
 author: manager-spec (card t464)

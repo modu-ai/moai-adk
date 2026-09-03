@@ -224,4 +224,12 @@ CI's full-suite verdict on the pushed head (lead's batch push, repository rule).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: "pending-backfill-sync"
+
+Sync-phase activities, on the single sync commit: the `[Unreleased]` CHANGELOG entry for the
+race repair (duplicate-checked — `grep -c 'SPEC-CLI-WORKTREE-FLAG-RACE-001' CHANGELOG.md` → 0
+before the entry was added, per the B12 emission discipline); the lead's adjudication (option
+(b)) recorded into §E.2 as a measured carried debt and into §E.3 as the resolved state of the
+AC matrix; and the `in-progress → completed` frontmatter transition riding this commit per the
+3-phase close. The `sync_commit_sha` value above is the canonical placeholder — a commit cannot
+cite its own hash — and is backfilled in a follow-up commit.
