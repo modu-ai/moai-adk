@@ -22,11 +22,12 @@
 
 ### 게이트 질문의 답 — 왜 통과해 왔는가
 
-- **CI Lint job** (`.github/workflows/ci.yml:422-458`): `golangci-lint run` (v2.1.6). `.golangci.yml`은 `default: none` + errcheck/govet/ineffassign/staticcheck/unused 5개 — **gofmt/goimports 포매터 미활성**. CI에 gofmt 잡은 별도로 없음. → 포맷은 처음부터 검사 대상이 아니었다.
+- **CI Lint job** (`.github/workflows/ci.yml:422-458`): `golangci-lint run` (v2.1.6). `.golangci.yml`은 `default: none` + errcheck/govet/ineffassign/staticcheck/unused 5개 — **gofmt/goimports 포매터 미활성**. CI에 gofmt 잡은 별도로 없음.
 - **`moai gate`** (`internal/cli/gate.go`): gofmt/format 언급 0회 → 포맷 무검사.
-- **pre-commit fast-subset** (`internal/cli/hook_install_precommit.go`, gofmt -l on staged — 2026-07-05 `52b5e4bf5` 도입): 설치기만 존재, **본 리포 `.git/hooks/pre-commit` 미설치** → 본 리포에선 한 번도 작동한 적 없음. 배포(사용자 프로젝트) 계층용.
-- 최근 커밋 파일들(`gate_graph_freshness_test.go`, `inbox_lifecycle_test.go`)은 gofmt-클린 — 부채는 훅/의식 도입 이전 대량 착지분.
-- **결론: 게이트가 없어서 쌓였다.** 게이트가 없는 한 `gofmt -w` 한 번으로는 다시 쌓인다 (Residual-risk 권고 참조).
+- **pre-commit fast-subset** (`internal/cli/hook_install_precommit.go`, gofmt -l on staged — 2026-07-05 `52b5e4bf5` 도입): **훅 파일은 설치돼 있다** — `primary .git/hooks/pre-commit` (3245 B, 2026-08-19 21:53, gofmt 6회 참조). **그러나 리포 로컬 설정 `.git/config`의 `core.hooksPath = /dev/null`이 훅 검색 경로를 무효화해 실행되지 않는다** (본 워크트리에서 `git rev-parse --git-path hooks` → `/dev/null`로 측정). 즉 설치와 활성화가 분리된 상태. 추가로 훅이 활성화돼도 `SKIP_MOAI_PRECOMMIT=1` 환경변수로 우회 가능 — 우회 경로가 남아 있으면 활성화만으로는 게이트가 아니다.
+- ⚠️ 측정 함정 기록: 워크트리 세션에서 `ls .git/hooks/`는 **항상 실패한다** — 워크트리의 `.git`는 gitdir 포인터 파일이므로. 훅 존재 확인은 `git rev-parse --git-common-dir`/primary 경로로. 본 verdict 초판은 이 함정으로 "미설치"로 잘못 적었다가 리드 대조로 정정했다.
+- 최근 커밋 파일들(`gate_graph_freshness_test.go`, `inbox_lifecycle_test.go`)은 gofmt-클린 — **훅이 작동해서가 아니라**(실행 무효 상태) 최근 착지 레인들이 클린하게 들여온 것. 8/19 이전 대량 착지분이 그대로 부채로 남았다.
+- **결론: 현재 활성인 포맷 게이트는 0개다.** CI·`moai gate`에는 포맷 검사가 없고, 설치된 pre-commit 훅은 `core.hooksPath=/dev/null`로 실행 무효. 게이트가 없는 한 `gofmt -w` 한 번으로는 다시 쌓인다 (Residual-risk 권고 참조).
 
 ### 파일 분류 (배차 지시: 생성/의도적 미포맷 팄별)
 
@@ -42,7 +43,7 @@
 
 ### 사전 존재 실패 3표면 (gofmt 무관, 대조로 확정)
 
-`TestManifestHashFormat`(template), `TestGoldenCommittedArtifactsMatchEmission`(template/agentemit), `TestCatalogHashParity`(spec) — 전부 `sync-auditor.md` catalog 해시 1건(stored `f1b4487f…` ≠ computed `545d03d9…`). **gofmt 변경 없는 develop 팁 원본 트리(/tmp/t457-devtip)에서 동일 실패 재현** → 내 변경과 무관. 알려진 잔여 드리프트(`4244c4a06` 소관 운영자 큐, lane-14 기록과 일치) — 본 카드 소관 아님.
+`TestManifestHashFormat`(template), `TestGoldenCommittedArtifactsMatchEmission`(template/agentemit), `TestCatalogHashParity`(spec) — 전부 `sync-auditor.md` catalog 해시 1건(stored `f1b4487f…` ≠ computed `545d03d9…`). **gofmt 변경 없는 develop 팁 원본 트리(/tmp/t457-devtip)에서 동일 실패 재현** → 내 변경과 무관. 소관은 t443(lane-14)이며 본 카드보다 앞 순번이라 그 착지 후 소멸 예상 (리드 판정).
 
 ## Baseline-attribution
 
@@ -58,6 +59,6 @@
 
 ## Residual-risk
 
-- **재축적**: 게이트 부재가 해소되지 않으면 gofmt 미포맷은 다시 쌓인다. 권고(운영자 결정 사항, 본 카드 범위 밖): (a) `.golangci.yml`에 `formatters.enable: [gofmt]` 추가(로컬↔CI 셋 일치 원칙 유지), 또는 (b) CI에 `gofmt -l` step 추가, 또는 (c) 본 리포에 pre-commit 설치기 적용. (a)가 `.golangci.yml`의 "로컬과 CI가 같은 셋" 취지와 부합.
-- **병합 충돌**: 154파일 대량 리포맷이라 미착지 대기 카드들(t436·t438·t454, lane-9 8장 등)과 창 병합 시 충돌 가능. 본 브랜치는 미푸시 유일본 — 창 순서 판단은 리드 소관.
+- **재축적**: 활성 포맷 게이트가 0개라 gofmt 미포맷은 다시 쌓인다. 권고(운영자 결정 사항, 본 카드 범위 밖) — **t457 착지 직후가 켜는 시점**(그 전에 켜면 CI가 154건 전부 적색): (a) `.golangci.yml`에 `formatters.enable: [gofmt]` 추가(로컬↔CI 셋 일치 원칙 부합, 가장 작음), 또는 (b) CI에 `gofmt -l` step 추가, 또는 (c) `core.hooksPath=/dev/null` 해제로 설치된 pre-commit 훅 활성화 — 단 `SKIP_MOAI_PRECOMMIT=1` 우회가 남아 활성화만으로는 완전하지 않음.
+- **통합 순서**: 리드 판정으로 **마지막**(lane-13(t442·t449) → … → lane-7(t458) → 본 카드). 근거: 재포맷은 재실행으로 해소되는 유일한 충돌 종류 — 마지막에 들어가면 뒤 카드 12장의 개별 흡수가 필요 없고 본 카드가 전부 흡수한 뒤 `gofmt -w` 재실행으로 끝난다. **창을 받으면 흡수 후 `gofmt -l` 재측정 → 재포맷 커밋** — 현 커밋(`1444583bf`)을 그대로 병합하면 충돌. 본 커밋 베이스는 `5107bbfff`이며 로컬 develop은 계속 진행 중(리드 기준 `d63dee78d` 미푸시 11) — 흡수 필수.
 - testdata 2건은 포맷 적용해 파서 테스트 통과를 확인했으나, 향후 테스트가 "포맷 안 된 입력"을 기대로 바뀌면 재조정 필요할 수 있음.
