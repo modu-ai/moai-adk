@@ -154,8 +154,42 @@ Measured: `git show develop:internal/cli/doctor.go | grep -c 'Hook Delivery'` �
 carries it); `git diff develop --stat -- internal/cli/binary_lag_test.go internal/cli/doctor.go`
 → **empty** (this branch touches neither file). The failure is **pre-existing on develop**
 (t466 landed without updating the binary-lag guard allowlist) and is unreachable by this card's
-diff: fixing it here would violate the REQ-WFR-005 fence. **Adjudication requested from the lead**
-(see §E.3).
+diff: fixing it here would violate the REQ-WFR-005 fence. Adjudicated by the lead 2026-09-04 —
+see the carried-debt record below and §E.3.
+
+**F3 resolved.** `spec.md` §F3 recorded that the RED never completed a full 20-iteration run
+(it panicked). The fresh RED at `6a56c96bd` completed **all 20 iterations** — 30 warnings,
+no panic — so the measured shape's behaviour across a full run is now observed, and the
+GREEN ran the same shape to completion as well.
+
+### Carried Debt — AC-WFR-004's binary-lag limb (lead adjudication (b), 2026-09-04)
+
+**What follows is not a record of something this card chose not to fix; it is a measurement
+that the failing test is outside this card's reach.** AC-WFR-004 is judged PASS on its race
+axis (0 `WARNING: DATA RACE` across both package `-race` runs, 16/16 subpackages ok); the
+binary-lag limb is carried as a debt with its attribution pinned below, owned by card **t466**
+(SPEC-UPDATE-HOOK-DELIVERY-001), routed to the operator by the lead under that card's
+ownership.
+
+1. **The failing test and its reason, one line.** `TestBinaryLag_DoctorCheckNameSetIsUnchanged`
+   (internal/cli/binary_lag_test.go:205): *"this SPEC added doctor check name Hook Delivery;
+   REQ-BLV-009 rewires the existing Binary Freshness item and registers no new name"* — the
+   guard rejects `"Hook Delivery"`, the doctor check name card t466 added.
+2. **The attribution evidence, two lines** (measured by the lead in the develop worktree at
+   `624bb4c55`, independently of this lane):
+   - `git show HEAD:internal/cli/doctor.go | grep -c 'Hook Delivery'` → **1** — develop
+     carries the check t466 added;
+   - `git grep -A12 'namesAddedAfterBaseline = ' -- 'internal/cli/*.go'` → the allowlist
+     carries exactly one entry, `"hookWiringCheckName"` (t216) — t466's check name was never
+     registered.
+   The two together are the pre-existing defect: develop added a check and the guard's
+   allowlist did not follow.
+3. **The unreachable-by-this-diff ruling and its reason.** `git diff develop --stat --
+   internal/cli/binary_lag_test.go internal/cli/doctor.go` → **empty**: this card's diff
+   touches neither guard file. The only repair from here — adding `"Hook Delivery"` to
+   `namesAddedAfterBaseline` — would put a new file inside this card's `internal/cli/` diff
+   and violate the REQ-WFR-005 fence, i.e. it would repair another card's work inside a card
+   forbidden from reaching it. The repair therefore rides t466's ownership, not this card.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -174,15 +208,14 @@ the lane cannot repair it without violating REQ-WFR-005.
 | AC-WFR-005 | **PASS** (SHOULD) | `GOOS=linux/windows go vet` both rc=0. |
 | AC-WFR-006 | **PASS** | Option A + criteria recorded above, written before the first edit. |
 
-**Blocker/adjudication for the lead** — AC-WFR-004's failing test is owned by card **t466**
-(SPEC-UPDATE-HOOK-DELIVERY-001), which landed `checkHookDelivery` under the name `"Hook Delivery"`
-without registering it in `namesAddedAfterBaseline` (binary_lag_test.go:184, which lists only
-t216's `hookWiringCheckName`). Options: (a) a small follow-up card under t466's ownership to add
-`"Hook Delivery"` to the allowlist (one line + the same class of test the guard already carries);
-(b) a lead ruling that AC-WFR-004 be judged on the race axis only — 0 race warnings across the
-package — with the binary-lag failure recorded as a carried pre-existing debt. This lane takes
-neither action on its own authority: (a) is outside the fence, (b) is a verdict reserved to the
-lead.
+**Blocker adjudicated by the lead (2026-09-04): option (b).** AC-WFR-004 is judged on the race
+axis — the package-wide `-race` runs show **0 `WARNING: DATA RACE`** — so AC-WFR-004 records
+**PASS on its own axis**, with the binary-lag failure carried as a debt whose attribution is
+measured below (see §E.2 Carried Debt). The lead independently re-measured the attribution in
+the develop worktree at `624bb4c55` (not by citing this lane's report): `Hook Delivery` present
+in develop's doctor.go (count 1), allowlist carries exactly one entry (`"hookWiringCheckName"`).
+The follow-up-card path (option (a)) is not rejected — it is not this lane's act; the lead
+routes it to the operator separately under t466's ownership.
 
 **Standing regression evidence** (REQ-WFR-006): `go test ./internal/cli/ -run TestResolveWorktreeExistingBranch -count=20 -race` — RED at `6a56c96bd` (exit 1, 30 warnings) → GREEN at `76f2165a1` (exit 0, 0 warnings). Reproduce with either persisted capture in `.moai/reports/t464/`.
 
