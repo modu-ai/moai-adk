@@ -54,11 +54,29 @@ import (
 // 76,210 을 넘어 트립하므로, 착지 후 여유 135(상향 직후 271 − t196 몫 136)를 남기는
 // 76,400 으로 올린다. 근본 해결은 여전히 위 문단의 대형 룰 다이어트다.
 //
-// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,400) standing in for the always-loaded rule diet
-// @MX:CEILING: 0.18% headroom — 135 tokens of 76,400 once t196 lands (271 before it); one always-loaded clause consumes it
-// @MX:UPGRADE: drop this raise when the large always-loaded rule diet (stub + lazy loading) lands
+// 상향 근거(2026-09-03, t453): 위 DEBT 가 예고한 포화 트립이 터졌다 — develop 팁
+// 400f37eb9 실측 76,939(예산 76,400 초과 539). 보정 커밋 b9efb3626(t421) 이후 표면
+// 성장 +810 토큰은 전부 착지 카드의 교리 조항이며 전수 귀속됐다: t196 AGENTS.md
+// 역량 결속표 +136(직전 상향이 예상했던 바로 그것), t224 레인 spawn 권한 5표면 착지
+// +554(kanban-dispatch +267 / agent-common-protocol +192 / moai-constitution +95),
+// t386 감사 산출물 컨벤션 +100, t236 graph_shortest_path 카탈로그 갱신 +20.
+// 세 갈래 대안을 모두 측정으로 기각했다: ① 측정 대상 변경 — 17개 열거 항목이 배포
+// 표면(룰 트리+3슬롯)과 일치하며 t368 로고 건 같은 주입되지 않는 외래물 계수가
+// 없다(열거 밖 주입물인 CLAUDE.local.md는 범위 설계상 부외 — 단방향 신실성).
+// ② 문서 축소 — 유일한
+// de-dup 후보(t224 agent-common-protocol 재진술)는 5표면 의도 설계로 확인되어
+// 기각; 이번 성장분에 지방 없음. ③ 상한 — 가드의 자기 정의는 다이어트의 조용한
+// 회귀 트립와이어이지 착지 교리의 성장 상한이 아니므로, 소모 조항 전수 열거를 붙인
+// 보정으로 정당하다. 폭은 실측 76,939 + 여유 261(최근 조항 20~367 tok 대비 단일
+// 조항분) = 77,200. 참고: 창 대기 브랜치 8개는 표면 추가분 0(real diff) — 이
+// 상향이 창 재측정을 재트립시키지 않는다. 다음 트립에 자동 정당성은 없다 — 그
+// 트립이 다이어트 카드의 착수 근거다.
+//
+// @MX:DEBT: [AUTO] temporary budget raise chain (76,000 -> 76,210 -> 76,400 -> 77,200) standing in for the always-loaded rule diet
+// @MX:CEILING: 0.34% headroom — 261 tokens of 77,200; one always-loaded clause consumes it
+// @MX:UPGRADE: drop this raise chain when the large always-loaded rule diet (stub + lazy loading) lands — measured targets: output-style moai.md 16.5K tok, kanban-dispatch.md 8.6K, agent-common-protocol.md 6.7K, verification-claim-integrity.md 6.3K (t453 measurement)
 // @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
-const AlwaysLoadedTokenBudget = 76400
+const AlwaysLoadedTokenBudget = 77200
 
 // CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.
 // codex는 프로젝트 지시문을 바이트 상한 아래에서 읽고 초과분을 **조용히** 잘라낸다 —
