@@ -91,9 +91,20 @@
 ### AC-CSL-012 — 템플릿 중립성
 
 **Given** `internal/template/templates/` 아래에 변경이 있을 때,
-**When** 변경 파일 목록을 `$BASELINE_SHA`(plan.md §C.0) 기준으로 먼저 세고(`git diff --name-only "$BASELINE_SHA" -- internal/template/templates/ | wc -l`) 그 파일들에 대해 `SPEC-`, 4 자리 연도 형태의 날짜, 40/7 자리 커밋 해시, `/Users/` 를 grep 하면,
+**When** 변경 파일 목록을 `$BASELINE_SHA`(plan.md §C.0) 기준으로 먼저 세고(`git diff --name-only "$BASELINE_SHA" -- internal/template/templates/ | wc -l`) **그 diff 가 더한 줄**(`git diff "$BASELINE_SHA" -- internal/template/templates/ | grep '^+' | grep -v '^+++'`)에 대해 `SPEC-`, 4 자리 연도 형태의 날짜, 40/7 자리 커밋 해시, `/Users/` 를 grep 하면,
 **Then** 스윕한 파일 수가 **1 이상**이고 매치가 0 이다. 셀렉터가 살아 있음을 보이는 대조군(금지 토큰 하나를 실제로 담은 표현으로 같은 grep 을 돌린 결과)이 함께 기록된다.
 **[HARD] 스윕 대상이 0 이면 해당 없음으로 판정한다** — 분기 B 는 이 트리 아래를 하나도 바꾸지 않으므로 여기서 PASS 를 기록하면 빈 집합의 초록을 판정으로 올리는 것이 된다(AC-CSL-011 의 대조군 조항이 같은 형태를 이미 막고 있다).
+
+**[정정 기록 — grep 대상 축소]** 이 판정은 원래 **변경 파일 전체**를 grep 했다. 그 형태는 틀렸다. 이 회차가 `internal/template/templates/` 아래에서 건드린 파일은 `.codex/agents/moai/sync-auditor.toml` 하나인데, 그 파일 60 번째 줄의 `SPEC: {SPEC-ID}` 는 보고서 서식의 **자리표시자**이지 SPEC ID 가 아니며 이 작업 이전부터 있던 내용이다. 판정의 의도는 "이 작업이 템플릿 트리에 SPEC-ID 토큰을 **새로 들여놓지 않았다**" 인데, 파일 전체를 훑으면 건드리지도 않은 기존 내용 때문에 아무리 옳게 작업해도 빨간불이 켜진다 — 지배 규칙보다 엄격해서 생긴 틀린 이유의 적색이다. 그래서 grep **대상**만 diff 가 더한 줄로 좁혔다.
+
+측정(baseline `c529b2e4aaf5148aee7e6c67649bf392837bbb06`):
+
+- `git show c529b2e4a:internal/template/templates/.codex/agents/moai/sync-auditor.toml | grep -c 'SPEC: {SPEC-ID}'` → `1` (baseline 에 이미 있음)
+- `git diff c529b2e4a -- internal/template/templates/.codex/agents/moai/sync-auditor.toml | grep '^+' | grep -c 'SPEC-'` → `0` (이 diff 는 그런 줄을 더하지 않았음)
+
+프로젝트 자체 중립성 가드도 초록이었다 — `go test ./internal/template/ -count=1` 종료코드 0 (`TestTemplateNeutralityAudit`, `TestTemplateNoInternalContentLeak` 포함).
+
+**바뀌지 않은 것**: 금지 토큰 집합(`SPEC-`, 4 자리 연도 형태의 날짜, 40/7 자리 커밋 해시, `/Users/`), "스윕한 파일 수가 **1 이상**" 이라는 문턱, 셀렉터가 살아 있음을 보이는 대조군 기록 의무, 위 [HARD] 해당 없음 조항. 좁힌 것은 grep 의 **대상**뿐이며, 그 밖을 좁히면 완화가 된다.
 
 ### AC-CSL-013 — `CODEX_HOME` 존중과 오류 접힘 금지
 

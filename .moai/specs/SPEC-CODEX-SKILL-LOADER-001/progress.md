@@ -70,18 +70,28 @@ moai-probe-agents
 (18:15:11 / 18:15:28 / 18:15:47)보다 **앞서므로** 그 명령들이 쓴 것이 아니다. 무엇이
 썼는지 확정하지 못했다. 스테이징하지 않고 워킹 트리에 남겨 리드 판단에 맡긴다.
 
+### [HARD] 병합 순서 제약 — 흡수하는 사람이 먼저 읽을 것
+
+**t443 이 t452 보다 먼저 `develop` 에 병합된다.** 두 브랜치가 `internal/template/catalog.yaml`
+과 `internal/template/templates/.codex/agents/moai/sync-auditor.toml` 을 함께 고치는데, t452
+쪽의 두 파일 변경은 의무 명령(`make agents-emit` / `make build`)의 **부산물**이고 t443 은 그
+수리가 카드 범위 전부다. 흡수 시 커밋에서 그 파일들을 빼려 해서는 안 되며(AC-CSL-008 이
+요구한 초록이 워킹 트리에만 남는다), 충돌 시 처리와 병합 트리 재측정 의무를 포함한 전문은
+`.moai/reports/t452/merge-order-constraint.md` 에 있다. 흡수·병합을 수행하는 주체는 그 문서를
+먼저 읽는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-09-03
 run_commit_sha: 9a09452ee
-run_status: complete-with-one-ac-fail
+run_status: complete-clean
 baseline_sha: c529b2e4aaf5148aee7e6c67649bf392837bbb06
 codex_version_observed: "codex-cli 0.152.1"
 branch_recorded: A
 inconclusive_occurred: false
-ac_pass_count: 7
-ac_fail_count: 1
+ac_pass_count: 8
+ac_fail_count: 0
 ac_not_applicable_count: 5
 ac_inconclusive_count: 0
 preserve_list_post_run_count: 0
@@ -108,7 +118,7 @@ m1_to_mN_commit_strategy: single-run-commit
 | AC-CSL-009 | PASS | `skill-loader` 행 rationale 첫 줄에 `codex-cli 0.152.1`. 최상단 `codex_measured_version` 은 `"0.147.0"` 으로 **의도적으로 유지**했고 그 사실과 이유(재측정한 필드는 이 한 축뿐이라 선행 7 개까지 덮으면 갖지 않은 커버리지를 주장하게 됨)를 `m3-verdict.md` 에 기록했다 — 조용한 미갱신과 구분된다 |
 | AC-CSL-010 | PASS | `shasum -a 256 ~/.codex/config.toml` 이 프로브 전후 동일(`8adec56f…4ae7`), `find ~/.codex/skills -maxdepth 1 -mindepth 1` 도 동일(`.system`, `hatch-pet`). 프로브가 쓴 `CODEX_HOME` 은 `/tmp/t452-m2/codexhome` 으로 명령 문면에서 확인된다 |
 | AC-CSL-011 | **해당 없음** | `git diff --name-only "$BASELINE_SHA" -- '*.go'` → 0 건. 스윕 대상이 비어 교집합의 0 이 아무것도 주장하지 않는다. 셀렉터 생존 대조군은 기록했다(write-family 4771 매치, `skills.config` 44 매치) — `m4-verdict.md` |
-| AC-CSL-012 | **FAIL** | 스윕 대상 1 건(`…/.codex/agents/moai/sync-auditor.toml`)으로 1 이상은 충족하나, `SPEC-` grep 이 **1 매치**를 낸다 → 문면상 FAIL. 매치는 60 행 `SPEC: {SPEC-ID}` 로, 보고 서식의 **자리표시자**이며 baseline 의 `.md` 원본·미러에 그대로 있었고 이 diff 가 더한 줄이 아니다. 프로젝트 자체 가드 두 개는 초록이다(아래 주석) |
+| AC-CSL-012 | PASS | (최초 FAIL → 조문 결함 확인 → 조문 축소 → 재판정 PASS. 경위는 아래 주석) 수정된 조문 문면으로 재측정: 스윕한 파일 수 **1**(조문의 "1 이상" 충족 — 빈 스윕이 아니다), 더한 줄에 대한 금지 토큰 매치 **0**. 대조군은 금지 토큰 4 종(`SPEC-`, 날짜, 40 자리 해시, `/Users/`)을 각각 한 줄씩 투입해 **4 매치**를 관측했다 — 4 종 셀렉터가 모두 살아 있고, 좁히기가 과하지 않았음을 양방향으로 보인다. 뮤턴트는 되돌려 커밋본과 바이트 동일함을 확인했다. 전문: `.moai/reports/t452/ac012-mutant-verdict.md` |
 | AC-CSL-013 | **해당 없음** | 두 대상 집합이 모두 빈다 — 커밋한 프로브 **스크립트** 0 건(이 회차가 커밋한 `m2-fixtures/*.toml`·`SKILL.md` 는 실행 가능한 스크립트가 아니라 데이터다), 새로 추가된 `os.Stat` 사용처 0 건(Go 변경 0). 주어 없는 PASS 는 빈 스윕의 초록이므로 적지 않는다 |
 
 ### 완료 정의 대조 (분기 A 경로)
@@ -117,23 +127,45 @@ m1_to_mN_commit_strategy: single-run-commit
 - AC-CSL-006 과 AC-CSL-007 중 정확히 하나가 PASS ✔ (007 PASS / 006 해당 없음)
 - `inconclusive` 는 어느 판정에도 적지 않았다 ✔ (AC-CSL-002 에만 열려 있고 발생하지 않음)
 
-### AC-CSL-012 FAIL 에 대한 판정 주석 — **범위 밖 수정이 필요하다**
+### AC-CSL-012 — FAIL → 조문 결함 확인 → 축소 → PASS (경위 기록)
 
-FAIL 을 완화하지 않고 그대로 적되, 원인 귀속을 함께 남긴다.
+행렬은 처음부터 초록이지 않았다. 네 단계를 거쳤고, 그 사실을 지우지 않는다.
 
-- 실패시킨 토큰은 `SPEC: {SPEC-ID}` 자리표시자다. `git show $BASELINE_SHA:…/sync-auditor.md`
-  와 그 템플릿 미러 양쪽에 이미 있었고, 이 회차의 diff 가 더한 줄("Export mandate" 문단)
-  에는 없다.
-- 프로젝트 자체의 중립성 기구는 **초록**이다:
-  `go test ./internal/template/... -run 'TestTemplateNeutralityAudit'` → exit 0,
-  `… -run 'TestTemplateNoInternalContentLeak'` → exit 0. 둘 다 `internal/template`
-  패키지에서 실제로 실행됐다(`ok  github.com/modu-ai/moai-adk/internal/template`);
-  같은 출력의 `agentemit` 줄에 붙은 `[no tests to run]` 은 그 패키지에 대상 테스트가
-  없다는 뜻이므로 판정 근거로 쓰지 않았다.
-- 즉 이것은 이 작업이 만든 중립성 위반이 아니라, 판정 셀렉터(`SPEC-` 문자열)가
-  자리표시자까지 잡는 **과다 매칭**이다. 셀렉터를 좁히는 것은 `acceptance.md` 본문
-  수정이므로 이 에이전트의 소관이 아니다 — manager-spec 재위임 대상이며, 리드 판단을
-  기다린다.
+**1단계 — FAIL 로 보고했다(완화하지 않음).** 조문 문면대로 재면 `SPEC-` grep 이 1 매치를
+냈다. 매치는 `…/.codex/agents/moai/sync-auditor.toml` 60 행의 `SPEC: {SPEC-ID}` 로, 보고
+서식의 **자리표시자**다. `git show $BASELINE_SHA:…/sync-auditor.md` 와 그 템플릿 미러 양쪽에
+이미 있었고, 이 회차의 diff 가 더한 줄("Export mandate" 문단)에는 없다. 프로젝트 자체의
+중립성 기구는 **초록**이었다 — `go test ./internal/template/... -run 'TestTemplateNeutralityAudit'`
+→ exit 0, `… -run 'TestTemplateNoInternalContentLeak'` → exit 0, 둘 다 `internal/template`
+패키지에서 실제로 실행됐다(`ok  github.com/modu-ai/moai-adk/internal/template`). 같은 출력의
+`agentemit` 줄에 붙은 `[no tests to run]` 은 그 패키지에 대상 테스트가 없다는 뜻이므로 판정
+근거로 쓰지 않았다.
+
+**2단계 — 리드가 조문 자체를 결함으로 판정했다.** 조문의 의도는 "이 작업이 템플릿 트리에
+금지 토큰을 **새로 들여놓지 않았다**" 인데, grep 대상이 변경 **파일 전체**였다. 건드리지도
+않은 기존 줄 때문에 아무리 옳게 작업해도 적색이 켜지는 형태 — 틀린 이유의 적색(wrong-reason
+red)이며, 지배 규칙(프로젝트 중립성 가드)보다 엄격하다.
+
+**3단계 — 축소는 조문 본문에 보이게 기록했다.** manager-spec 이 grep **대상**만 diff 가 더한
+줄(`git diff "$BASELINE_SHA" -- internal/template/templates/ | grep '^+' | grep -v '^+++'`)로
+좁혔다. 조용한 수리가 아니라 `acceptance.md` AC-CSL-012 블록 안의
+`**[정정 기록 — grep 대상 축소]**` 문단으로 남겼다 — 무엇이 왜 좁혀졌고 무엇이 그대로인지가
+조문을 읽는 사람에게 그대로 보인다. **바뀌지 않은 것**: 금지 토큰 집합, "스윕한 파일 수 1
+이상" 문턱, 대조군 기록 의무, `[HARD]` 해당 없음 조항. 폭발 반경은 12 삽입 / 1 삭제, 두 헌크
+(`@@ -94 +94 @@`, `@@ -97,0 +98,11 @@`) 모두 AC-CSL-012 블록 안이다.
+
+**4단계 — 양방향 뮤턴트 프로브로 공허하지 않음을 확인한 뒤 PASS.** 축소된 조문이 그냥 항상
+초록인 조문이 되었을 수 있으므로, 조문을 고친 주체(manager-spec)와 분리된 오케스트레이터가
+직접 두 방향을 측정했다. 방향 A(현 트리) 스윕 1 · 매치 0, 방향 B(뮤턴트) 금지 토큰 4 종을
+각각 한 줄씩 투입해 매치 4 — 한 종이라도 죽어 있었다면 4 미만, 좁히기가 과했다면 0 이 나왔을
+자리다. 뮤턴트는 되돌린 뒤 `git diff` 무출력으로 바이트 동일함을 확인했다(되돌림 도중 BSD
+`sed` 가 마지막 줄을 한 줄만 지운 실패 1 건을 관측했고, 그 기록도 남겼다). 전문:
+`.moai/reports/t452/ac012-mutant-verdict.md`.
+
+**남는 것(Gap).** 좁힌 대상이 `^+` 줄이므로 **삭제로만 이뤄진 중립성 위반은 이 조문이 잡지
+못한다.** 원래 조문은 파일 전체를 봤으므로 이 축을 우연히 덮고 있었고, 이번 축소로 사라졌다.
+판정의 의도와는 무관한 축이라 의도적 축소로 남기지만, 덮이던 것이 사라졌다는 사실 자체는
+숨기지 않는다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
