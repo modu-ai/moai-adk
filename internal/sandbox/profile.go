@@ -18,7 +18,9 @@ import (
 //
 // @MX:ANCHOR: [AUTO] generateSBPL is the primary macOS profile generator
 // @MX:REASON: Fan_in >= 3: SeatbeltBackend.Profile, TestProfile_GenerateSBPL,
-//             TestSeatbelt_SBPLDeterministic, doctor_sandbox.go --profile flag
+//
+//	TestSeatbelt_SBPLDeterministic, doctor_sandbox.go --profile flag
+//
 // @MX:SPEC: SPEC-V3R2-RT-003 REQ-004/010/021/041
 func GenerateSBPL(opts SandboxOptions) (string, error) {
 	// Input validation — null bytes break SBPL
@@ -101,7 +103,9 @@ func GenerateSBPL(opts SandboxOptions) (string, error) {
 //
 // @MX:ANCHOR: [AUTO] GenerateBwrapArgs is the primary Linux bwrap argument generator
 // @MX:REASON: Fan_in >= 3: BubblewrapBackend.Exec, TestBubblewrap_ArgsDeterministic,
-//             TestProfile_GenerateBwrapArgs, TestProfile_DeterministicChecksum_100Runs
+//
+//	TestProfile_GenerateBwrapArgs, TestProfile_DeterministicChecksum_100Runs
+//
 // @MX:SPEC: SPEC-V3R2-RT-003 REQ-004/011/021/041
 func GenerateBwrapArgs(opts SandboxOptions) ([]string, error) {
 	// Input validation

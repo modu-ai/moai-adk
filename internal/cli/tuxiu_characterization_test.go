@@ -45,7 +45,7 @@ var (
 	tuxTSISO      = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z`)
 	tuxTSCompact  = regexp.MustCompile(`\d{8}_\d{6}`)
 	tuxStepsRE    = regexp.MustCompile(`\d+/\d+ steps`)   // progress-bar label + "N/M steps complete" reporter
-	tuxReporterRE = regexp.MustCompile(`^○ .+?: `)         // reporter/phase "○ Name: gerund..." lines
+	tuxReporterRE = regexp.MustCompile(`^○ .+?: `)        // reporter/phase "○ Name: gerund..." lines
 	tuxPillBrkt   = strings.NewReplacer("[", "", "]", "") // NO_COLOR pill brackets [label] -> label
 )
 

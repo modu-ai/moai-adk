@@ -41,8 +41,8 @@ func TestWriteSnapshot_CopiesRenderedSections(t *testing.T) {
 	t.Parallel()
 	projectRoot := t.TempDir()
 	rendered := map[string]string{
-		"system.yaml":  "version: \"3.0.1\"\n",
-		"quality.yaml": "test_coverage_target: 80\n",
+		"system.yaml":     "version: \"3.0.1\"\n",
+		"quality.yaml":    "test_coverage_target: 80\n",
 		"nested/foo.yaml": "key: value\n",
 	}
 	writeSections(t, projectRoot, rendered)
