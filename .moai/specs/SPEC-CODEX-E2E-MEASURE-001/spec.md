@@ -2,7 +2,7 @@
 id: SPEC-CODEX-E2E-MEASURE-001
 title: "Codex-axis e2e measurement: test-surface execution inventory + named e2e journey gap report"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec

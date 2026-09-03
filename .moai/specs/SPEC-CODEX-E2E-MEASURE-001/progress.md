@@ -88,4 +88,42 @@ adjacent_cards: {t451: landed, t452: not-landed}
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill-sync    # canonical placeholder — a commit cannot cite its own SHA; backfilled by the follow-up docs-scoped commit
+sync_branch: WT-codex-e2e
+sync_worktree: .claude/worktrees/t462
+spec_id: SPEC-CODEX-E2E-MEASURE-001
+card: t462
+close_convention: 3-phase close (merged status transition on the single sync commit; no separate Mx chore commit)
+changelog_entry: true                     # [Unreleased] → Added, top of list; subject follows repo precedent (t239 / t304 dev-infra measurement cards also get entries)
+changelog_entry_position: "CHANGELOG.md line ~12, first bullet under [Unreleased] → Added"
+b12_self_test_a: PASS                     # pre-emission grep `grep -c SPEC-CODEX-E2E-MEASURE-001 CHANGELOG.md` → 0 before add; 1 after (single entry, no duplicate)
+b12_self_test_b: PASS                     # AC count: `grep -oE 'AC-CEM-[0-9]+' acceptance.md | sort -u | wc -l` → 12; entry states "12 acceptance criteria (11 PASS, 1 PASS-WITH-DEBT)" — match
+b12_self_test_c: PASS                     # path verification: all paths named in the entry ls-verified on this tree (spec.md, progress.md, positive-control.md, inventory-run.md, gap-inventory.md, e2e/cli/tux3_journeys.sh)
+frontmatter_status_transitions:
+  spec.md:       {from: in-progress, to: completed, fields_touched: [status, updated]}
+  plan.md:       {from: in-progress, to: completed, fields_touched: [status, updated]}
+  acceptance.md: {from: in-progress, to: completed, fields_touched: [status, updated]}
+  progress.md:   n/a   # this file carries no YAML frontmatter (heading-only document); §E.4 signal authored instead
+body_edits: none                           # spec/plan/acceptance bodies untouched (§A–§H)
+mx_tag_validation: sync sub-step PASS      # measurement card — no new production symbols; no @MX:NOTE/WARN/ANCHOR obligations introduced; run-phase test files carry none required
+terminal_tip_note: >-
+  The backfill commit is the terminal tip and cannot name itself. Sync-open tip recorded
+  here: 7dac3569f (branch WT-codex-e2e at sync-phase entry, tree clean). The terminal tip
+  SHA is reported in the lane completion report.
+```
+
+### Sync-phase what-was-done log
+
+1. Precedent check: CHANGELOG grep for `SPEC-LLMCFG-PRESERVE-001` (t239) and
+   `SPEC-CODEMAPS-ACCURACY-001` (t304) — both present under `[Unreleased] → Added`,
+   establishing that repo-internal / test-only measurement cards receive entries.
+   Decision: emit an entry for this measurement card (zero production changes), matching
+   the t239/t304 shape (spec link, sync-close framing, deliverables, AC tally, 🗿 MoAI footer).
+2. B12 self-tests a/b/c — outputs above, all PASS before staging.
+3. CHANGELOG entry written; explicit pathspec staging; HEAD + branch re-read in the commit turn.
+4. §E.4 authored (this block) + frontmatter `status`/`updated` transitioned on all four
+   artifacts in the same sync commit (merged close — `in-progress → completed`).
+5. Backfill commit replaces `pending-backfill-sync` with the sync commit SHA.
