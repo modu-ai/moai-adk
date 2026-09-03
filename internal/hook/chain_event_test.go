@@ -22,13 +22,13 @@ func TestChainEventHook(t *testing.T) {
 	storePath := filepath.Join(chainDir, "events.jsonl")
 	store, _ := chain.NewStore(storePath)
 	_ = store.Append(chain.ChainEvent{
-		EventType:   chain.EventNodeEnter,
-		NodeID:      "N1",
+		EventType:    chain.EventNodeEnter,
+		NodeID:       "N1",
 		WorktreePath: "/tmp/wt-1",
 		ParentNodeID: "N0",
-		Depth:       1,
-		SessionID:   "sess-hook-test",
-		Milestone:   "M2",
+		Depth:        1,
+		SessionID:    "sess-hook-test",
+		Milestone:    "M2",
 		ResumeTarget: "Continue M3",
 	})
 

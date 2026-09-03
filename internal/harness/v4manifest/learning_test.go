@@ -18,10 +18,10 @@ import (
 func learningManifest() Manifest {
 	m := validManifest()
 	m.Learning = &LearningBlock{
-		Enabled:            true,
-		Tier:               LearningTierAutoUpdate,
-		ConfidenceFloor:    0.70,
-		MaxFindingsPerRun:  5,
+		Enabled:           true,
+		Tier:              LearningTierAutoUpdate,
+		ConfidenceFloor:   0.70,
+		MaxFindingsPerRun: 5,
 	}
 	return m
 }
@@ -140,11 +140,11 @@ func TestLearningTierVocabulary(t *testing.T) {
 	}
 
 	invalidTiers := []string{
-		"recommendation",     // parallel vocabulary PIPE-REPAIR removed (AP-1)
-		"approval_required",  // parallel vocabulary PIPE-REPAIR removed (AP-1)
-		"auto",               // truncated
-		"RULE",               // wrong case
-		"",                   // empty is accepted as unset (EC-1 partial block policy)
+		"recommendation",    // parallel vocabulary PIPE-REPAIR removed (AP-1)
+		"approval_required", // parallel vocabulary PIPE-REPAIR removed (AP-1)
+		"auto",              // truncated
+		"RULE",              // wrong case
+		"",                  // empty is accepted as unset (EC-1 partial block policy)
 	}
 	for _, tier := range invalidTiers {
 		t.Run("invalid/"+tier, func(t *testing.T) {

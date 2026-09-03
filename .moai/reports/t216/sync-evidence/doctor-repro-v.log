@@ -1,0 +1,6 @@
+=== RUN   TestRunDoctor_Verbose
+    coverage_improvement_test.go:777: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_Verbose (9.53s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	10.544s
+FAIL

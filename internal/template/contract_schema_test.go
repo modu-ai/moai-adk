@@ -34,7 +34,7 @@ func TestContractSchemaVerification(t *testing.T) {
 
 			// Verify Contract section exists
 			if !strings.Contains(string(content), "## Behavioral Contract (SEMAP)") &&
-			   !strings.Contains(string(content), "## Contract") {
+				!strings.Contains(string(content), "## Contract") {
 				t.Error("Agent file must contain a ## Contract section")
 			}
 
@@ -61,7 +61,7 @@ func TestContractSchemaVerification(t *testing.T) {
 			for _, line := range lines {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "## Behavioral Contract") ||
-				   strings.HasPrefix(trimmed, "## Contract") {
+					strings.HasPrefix(trimmed, "## Contract") {
 					inContractSection = true
 					continue
 				}
@@ -161,7 +161,7 @@ func TestContractAssertionsNaturalLanguage(t *testing.T) {
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "## Behavioral Contract") ||
-		   strings.HasPrefix(trimmed, "## Contract") {
+			strings.HasPrefix(trimmed, "## Contract") {
 			inContractSection = true
 			continue
 		}
@@ -186,7 +186,7 @@ func TestContractAssertionsNaturalLanguage(t *testing.T) {
 		if len(line) > 0 && !strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "*") {
 			// This is likely an assertion
 			if strings.Contains(line, "func ") || strings.Contains(line, "return ") ||
-			   strings.Contains(line, "if ") || strings.Contains(line, "var ") {
+				strings.Contains(line, "if ") || strings.Contains(line, "var ") {
 				t.Errorf("Contract assertion appears to be code, not natural language: %s", line)
 			}
 		}

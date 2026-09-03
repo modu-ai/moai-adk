@@ -1,0 +1,16 @@
+ok  	github.com/modu-ai/moai-adk/internal/goal	0.441s
+--- FAIL: TestCatalogHashCoversSkillSubfiles (0.11s)
+    catalog_tier_audit_test.go:491: CATALOG_HASH_SKINNY: moai hash=4fff480f6f93dcc1e1178b4401f8107fec46813499fe4844dc686f3f6cfb495c does not cover the deployed directory tree (whole-tree hash 66656746e543efb75ac365fca68f601baa08fb55bfa88b1f24399dd0ccd4b687) — run gen-catalog-hashes.go --all (card t323)
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+--- FAIL: TestManifestHashFormat (0.11s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: moai stored hash=4fff480f6f93dcc1e1178b4401f8107fec46813499fe4844dc686f3f6cfb495c, computed hash=66656746e543efb75ac365fca68f601baa08fb55bfa88b1f24399dd0ccd4b687 (source=.claude/skills/moai/ (whole tree))
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: sync-auditor stored hash=f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0, computed hash=545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f (source=.claude/agents/moai/sync-auditor.md)
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	37.880s
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    golden_test.go:109: .codex/agents/moai/sync-auditor.toml: committed artifact differs from emission (sha256 mismatch) — regenerate or stop hand-editing
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit	0.960s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+FAIL
