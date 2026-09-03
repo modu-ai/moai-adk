@@ -74,7 +74,7 @@ moai-probe-agents
 
 ```yaml
 run_complete_at: 2026-09-03
-run_commit_sha: pending-backfill
+run_commit_sha: 9a09452ee
 run_status: complete-with-one-ac-fail
 baseline_sha: c529b2e4aaf5148aee7e6c67649bf392837bbb06
 codex_version_observed: "codex-cli 0.152.1"
