@@ -33,19 +33,21 @@ cards without re-deriving them.
   state at ITS base and records which of them (if either) had landed at measurement time.
 - **Evidence root**: `.moai/reports/t462/` (layout in §F).
 
-### Plan-phase inventory baseline (both axes, measured at `e9c6a8564`)
+### Plan-phase inventory baseline (three axes, measured at `e9c6a8564`)
 
 | Axis | Command (verbatim) | Count |
 |---|---|---|
-| Filename | `find internal/cli -name '*codex*_test.go' \| wc -l` | 38 |
+| Filename | `find internal -name '*codex*_test.go' \| wc -l` (repo-wide; 38 in `internal/cli` + 3 elsewhere: `internal/web/mcp_codex_surface_test.go`, `internal/web/codex_card_sentinel_test.go`, `internal/template/codex_agents_deploy_test.go` — the three sit in packages the (A) execution reaches via its recursive patterns) | 41 |
 | Filename | `find internal/codexwiring -name '*_test.go' \| wc -l` | 6 |
 | Dependency | `find internal/codexadapter -name '*_test.go' \| wc -l` (whole package missed by the filename glob) | 7 |
 | Dependency | `grep -rlE 'runCodexReviewGate\|CodexAudit\|codex_task\|codex_setup\|codex_job\|codex-review-gate\|CodexWiring\|resolveCodexHomeDir\|codexCmd\|codexadapter\|codexwiring\|codexRunner' internal/ --include='*_test.go' \| grep -v -E '/[a-z0-9_]*codex[a-z0-9_]*_test\.go$' \| grep -v '^internal/codexwiring/\|^internal/codexadapter/' \| wc -l` | 22 |
 | Lexicon | `grep -ril 'codex' internal/ --include='*_test.go'` minus filename axis minus codex packages minus dependency axis (the residual "delta", classified by per-file ref count) | 50 (27 behavioral ≥5 refs, 23 incidental 1–4 refs) |
-| **Union** | filename ∪ dependency ∪ lexicon | **123** |
+| **Union** | filename (41 + 6) ∪ dependency (7 + 22) ∪ lexicon (50) | **126** |
 
-The lead's relayed "44 files" is confirmed as the **filename-glob lower bound** (38 + 6 = 44), not
-the full surface. The dependency axis adds `internal/codexadapter` wholesale (7 files) and 22
+The lead's relayed "44 files" is confirmed as the **`internal/cli`-scoped filename-glob lower
+bound** (38 + 6 = 44), not the full surface; the repo-wide filename glob raises that axis to 47
+(41 codex-named + 6 `internal/codexwiring`), union 126. The dependency axis adds
+`internal/codexadapter` wholesale (7 files) and 22
 symbol/import-referencing files spread across `internal/cli` (16), `internal/core/project` (2),
 `internal/hook` (1), `internal/mcp` (1), `internal/template` (1), `internal/web` (1). The lexicon
 axis (case-insensitive `codex`, not caught by either axis above) adds 50 further files — 27 with
@@ -71,7 +73,7 @@ patterns (REQ-CEM-003/012/013).
 
 ## §B Definitions
 
-- **Codex-axis test surface**: the 123-file three-axis union above (filename ∪ dependency ∪
+- **Codex-axis test surface**: the 126-file three-axis union above (filename ∪ dependency ∪
   lexicon). Execution coverage is by recursive package pattern, so subpackages
   (`internal/cli/wizard`, `internal/template/agentemit`) are included by construction.
 - **Integration-style check**: any command whose behavior depends on `CODEX_HOME` resolution
@@ -95,9 +97,11 @@ patterns (REQ-CEM-003/012/013).
 - **REQ-CEM-001** (Ubiquitous) — The run-phase report shall pin every measurement to the tree SHA
   it was taken at, and a measurement whose SHA cannot be named shall be recorded as a Gap, not a
   Claim.
-- **REQ-CEM-002** (When) — When the run phase begins, the executor shall re-measure both
-  inventory axes with the §A commands and record any drift against the plan-phase counts
-  (44 filename / 29 dependency / 73 union) before executing any test.
+- **REQ-CEM-002** (When) — When the run phase begins, the executor shall re-measure all three
+  inventory axes with the §A commands and record any drift against the plan-phase counts (47
+  filename = 41 codex-named repo-wide + 6 codexwiring / 29 dependency = 7 codexadapter + 22
+  symbol-axis / 50 lexicon delta = 27 behavioral + 23 incidental / **126 union**) before
+  executing any test.
 - **REQ-CEM-003** (Where) — Where a package is wholly codex-owned, the executor shall execute
   `internal/codexwiring` and `internal/codexadapter` whole with
   `go test -count=1 -v ./internal/codexwiring/... ./internal/codexadapter/...`, recording exit
@@ -156,7 +160,7 @@ Acceptance criteria (Given-When-Then, binary-testable): `acceptance.md` in this 
 
 | File | Content | Owning phase |
 |---|---|---|
-| `inventory-baseline.md` | Plan-phase two-axis inventory (per-file list, exact commands, SHA `e9c6a8564`) | plan (authored with this SPEC) |
+| `inventory-baseline.md` | Plan-phase three-axis inventory (per-file list, exact commands, SHA `e9c6a8564`) | plan (authored with this SPEC) |
 | `inventory-run.md` | Run-phase re-measurement + drift vs baseline | run |
 | `positive-control.md` | Broken-fixture detection evidence (must precede any accepted zero-verdict) | run |
 | `execution-log.md` | Prong A: per-package command, exit code, duration, swept count, SKIP inventory of live tests | run |
@@ -175,8 +179,8 @@ Acceptance criteria (Given-When-Then, binary-testable): `acceptance.md` in this 
   measured surface.
 
 ### Out of Scope — Full-suite local verification
-- `go test ./...` and any package outside the codex-axis union beyond what REQ-CEM-003 names.
-  Full-suite verdicts belong to CI.
+- `go test ./...` and any package outside the codex-axis union beyond what
+  REQ-CEM-003/012/013 name. Full-suite verdicts belong to CI.
 
 ### Out of Scope — Adjacent-card work
 - t451 (doctor codex-wiring silence) and t452 (codex skill-axis absence) are measured-state
@@ -188,3 +192,4 @@ Acceptance criteria (Given-When-Then, binary-testable): `acceptance.md` in this 
 |---|---|---|
 | 2026-09-03 | manager-spec | Plan-phase creation (card t462, lane-6, Factory Mode). Two-axis inventory baseline measured at `e9c6a8564`; machine-state ground truth re-verified with drift vs relayed numbers recorded in §A. |
 | 2026-09-03 | manager-spec | Plan-audit iter-1 repair (D1–D11): lexicon axis added (union 73→123), recursive execution patterns (REQ-CEM-012/013), live-gate semantics corrected to three distinct gates + `MOAI_SKIP_LIVE_CODEX` default (REQ-CEM-014), compound REQs tightened (003/005/009/010), 17→16 count fix. |
+| 2026-09-03 | manager-spec | Iter-2 label-consistency pass (R1/R2/R5, text-only): filename axis raised to repo-wide (41 codex-named + 6 codexwiring = 47; union 123→126 — 3 codex-named files outside `internal/cli` were in no axis), stale two-axis/44/73 phrasings swept, §G scope ref updated to REQ-CEM-003/012/013. |

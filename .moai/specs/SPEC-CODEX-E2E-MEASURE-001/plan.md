@@ -22,7 +22,9 @@ Card t462 (lane-6, Factory Mode). Base `e9c6a8564`, branch `WT-codex-e2e`, workt
 1. **The lead's 44 is a lower bound.** Filename glob = 44 (38 `internal/cli` + 6
    `internal/codexwiring`); dependency axis adds `internal/codexadapter` (7, whole package)
    + 22 symbol-referencing files in 6 packages; lexicon axis adds 50 more (27 behavioral, 23
-   incidental) → three-axis union 123 (spec.md §A).
+   incidental) → three-axis union 126 (spec.md §A; filename axis is the REPO-WIDE glob
+   `find internal -name '*codex*_test.go'` = 41 — 3 codex-named files live outside
+   `internal/cli` — plus 6 `internal/codexwiring`).
 2. **Relayed machine-state numbers drift.** "49 moai skills all enabled=false" NOT reproduced:
    0 `[skills.*]` sections exist; 18 `[plugins."moai-*"]` blocks all `enabled = true`;
    `~/.codex/skills/` = `.system` + `hatch-pet` only. Core premise (deployment never happened)
@@ -88,7 +90,7 @@ Ordered by decision-reversibility — the execution-surface decision first, mech
 
 ### M2 — Inventory re-measurement (HIGH)
 Run the §A commands verbatim (all three axes + the lexicon-delta classification count); write
-`inventory-run.md`; record drift vs 44 / 7+22 / 50 (27+23) / union 123. If the base moved past
+`inventory-run.md`; record drift vs 41+6 / 7+22 / 50 (27+23) / union 126. If the base moved past
 `e9c6a8564` (t451/t452 landing), re-pin and re-measure — do not report stale counts.
 
 ### M3 — Positive control (HIGH, ordering gate)

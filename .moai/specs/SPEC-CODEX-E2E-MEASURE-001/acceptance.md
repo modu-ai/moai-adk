@@ -19,7 +19,8 @@ lane rebases, never silently).
 ### Prong A — execution and judgment
 
 - **AC-CEM-001** (MUST, maps REQ-CEM-002) — inventory re-measured. Given the plan-phase baseline (44
-  filename / 7+22 dependency / 50 lexicon delta (27+23) / union 123 at `e9c6a8564`), when the
+  filename = 41 codex-named repo-wide + 6 codexwiring / 7+22 dependency / 50 lexicon delta
+  (27+23) / union 126 at `e9c6a8564`), when the
   run phase begins, then `.moai/reports/t462/inventory-run.md` exists, contains the spec.md §A
   commands verbatim with their run-phase counts, the tree SHA each was taken at, and an explicit
   drift statement per axis. RED: a missing drift statement, or a SHA-less count.

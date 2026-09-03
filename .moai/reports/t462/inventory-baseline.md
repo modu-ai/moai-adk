@@ -5,14 +5,21 @@ Measured: 2026-09-03, plan phase. SPEC: `.moai/specs/SPEC-CODEX-E2E-MEASURE-001/
 
 ## 1. Three-axis test inventory (per spec.md §A; axis 3 added in audit iter-1 repair)
 
-### Axis 1 — filename glob (the lead's 44, confirmed as lower bound)
+### Axis 1 — filename glob (raised to repo-wide in iter-2 R5)
 
-Commands (verbatim, as run):
+Commands (verbatim, as run; the first is the ORIGINAL cli-scoped form whose output is preserved
+for lineage, the second is the repo-wide form that is now the axis-1 definition):
 
 ```
-find internal/cli -name '*codex*_test.go' | wc -l          → 38
+find internal/cli -name '*codex*_test.go' | wc -l          → 38   (original, cli-scoped)
+find internal -name '*codex*_test.go' | wc -l              → 41   (repo-wide: 38 cli + 3 below)
 find internal/codexwiring -name '*_test.go' | wc -l        → 6
 ```
+
+The 3 codex-named files outside `internal/cli` (invisible to the original cli-scoped glob):
+`internal/web/mcp_codex_surface_test.go`, `internal/web/codex_card_sentinel_test.go`,
+`internal/template/codex_agents_deploy_test.go` — execution-covered via the recursive
+`./internal/web/...` / `./internal/template/...` patterns (REQ-CEM-013).
 
 38 `internal/cli` files: codex_audit_gate_unmet, codex_auth_ladder, codex_contract_fixture_unix,
 codex_contract_fixture_windows, codex_contract_link, codex_contract, codex_findings_parse,
@@ -96,7 +103,12 @@ audit_option_desc}_test.go`, `internal/template/{skill_dir_token_guard}_test.go`
 
 ### Union
 
-**123 test files** = 44 (filename) + 7 (codexadapter) + 22 (symbol axis) + 50 (lexicon delta).
+**126 test files** = 47 (filename: 41 codex-named repo-wide + 6 codexwiring) + 7 (codexadapter)
++ 22 (symbol axis) + 50 (lexicon delta). The 3 codex-named files outside `internal/cli`
+(`internal/web/mcp_codex_surface_test.go`, `internal/web/codex_card_sentinel_test.go`,
+`internal/template/codex_agents_deploy_test.go` — added in iter-2 R5; the original axis-1 glob
+was scoped to `internal/cli`) sit in packages the (A) execution reaches via its recursive
+patterns, so they are execution-covered by construction.
 The (A) execution surface is defined by RECURCIVE package patterns
 (`./internal/cli/...`, `./internal/template/...`, plus the named whole packages), so every
 subpackage the lexicon axis reaches runs by construction.
