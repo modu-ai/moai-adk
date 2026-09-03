@@ -79,3 +79,72 @@ git log --oneline e79c010b8..develop -- internal/cli/doctor_codex.go \
   이 카드의 델타가 그 패키지들을 의존하지 않으므로 범위 밖으로 뒀다.
 - 이 재측정은 로컬 develop `e9c6a8564` 기준이다. 창 호명 시점에 develop이 더
   움직였다면 무효이며, 그때 다시 잰다.
+
+---
+
+## 2차 흡수·재측정 (base 스테일화 대응)
+
+1차 재측정이 646초 도는 사이 develop이 5커밋 전진했다(t458 착지, `3bdd5a803`).
+스테일 기준으로 창에 들어가지 않고 흡수 후 전 범위를 다시 돌렸다.
+
+| 항목 | 값 |
+|---|---|
+| 흡수 후 HEAD | `801318559` |
+| 흡수분 | t458 — `.claude/rules/moai/workflow/main-checkout-branch-guard.md` + 템플릿 미러 + 리포트 |
+| 재측정 | `go test ./internal/cli/ ./internal/codexwiring/... ./cmd/moai/... -timeout 1800s` |
+| 결과 | rc=0 · `internal/cli` ok **501.041s** · `codexwiring` ok 1.042s · `cmd/moai` no test files |
+
+원본 출력: `remeasure-cli-2.log`.
+
+### 부수 발견 — develop 상속 레드 (소관 t453, 이 카드 아님)
+
+병합 트리 `801318559`에서 `internal/config`가 레드다.
+
+```
+go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v
+token_budget_guard_test.go:69: always-loaded surface = 77104 tokens
+                               (budget 76400, headroom -704, 17 entries)
+--- FAIL: TestAlwaysLoadedTokenBudget (0.12s)
+```
+
+귀속: 이 카드 것이 아니다.
+
+```
+git diff --name-only develop HEAD -- .claude/rules → 0 files
+```
+
+t451의 델타는 Go 5파일 + `.moai/reports/t451/**`뿐이고 always-loaded 표면을 한 건도
+건드리지 않는다. 이 트리의 `.claude/rules`가 develop과 바이트 동일하므로 77,104는
+develop 자신의 수치이며, develop에 합류하는 모든 레인이 이 레드를 상속한다.
+
+원인은 리드가 develop 워크트리에서 직접 재어 닫았다 — t458이 그 구간의 유일한
+always-loaded 표면 변경이고, 6395 → 7055바이트(Δ660)가 76,939 → 77,104(Δ165)에
+대응한다(660/165 = 4.0 바이트/토큰). 내가 "가설"로 표시했던 것이 리드의 측정으로
+확정됐다. 수리 소관은 t453(lane-9, 상한 77,200 → 적용 후 여유 96).
+
+리드 판정: 이름 밝혀 제외하고 진입 — `TestAlwaysLoadedTokenBudget`, 소관 t453, 상속.
+
+## 3차 흡수 (재측정 생략 — 근거 첨부)
+
+2차 재측정이 501초 도는 사이 develop이 다시 5커밋 전진했다(t440 착지, `4c3b1653c`).
+흡수했고(HEAD `07f0d39b1`), **이번에는 재측정을 생략했다.** 근거는 인상이 아니라 측정이다.
+
+```
+git diff --name-only 801318559 07f0d39b1 -- internal cmd pkg   → 0 files
+git diff --name-only 801318559 07f0d39b1 | wc -l               → 9   (대조군)
+```
+
+전체 델타는 9건인데 `internal/`·`cmd/`·`pkg/` 하위는 0건 — 즉 필터가 조용한 것이
+아니라 컴파일 대상이 실제로 불변이다. 흡수분 9건은 전부 `docs-site/content/**`와
+`.moai/reports/t440/**`다. `internal/template/templates`(임베드 대상)도 `internal/`
+하위이므로 같은 검사에 포함돼 0으로 확인됐고, `.claude/rules`도 델타에 없어 토큰 예산
+표면 역시 불변이다.
+
+따라서 `801318559`에서 얻은 501.041s 초록이 `07f0d39b1`에 그대로 이월된다.
+
+## 이 카드가 겪은 구조적 성질
+
+`internal/cli`는 626~788s 대역이고, 이 리포의 develop은 그보다 짧은 간격으로 움직인다.
+**오래 걸리는 재측정은 그 자체가 자기 base를 낡게 만든다.** 무한 추격을 피하는 방법은
+매번 다시 도는 것이 아니라, 새 델타가 컴파일 대상을 건드렸는지 먼저 재고 그 측정으로
+재실행 여부를 판정하는 것이다 — 위 3차가 그 적용례다.
