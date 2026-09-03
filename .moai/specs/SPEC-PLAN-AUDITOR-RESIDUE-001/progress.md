@@ -52,7 +52,7 @@ AC 매트릭스(모두 이번 실행, 커밋 직전 작업 트리에서 재측�
 
 ```yaml
 run_complete_at: "2026-09-03"
-run_commit_sha: "pending-backfill-run"   # 최종 커밋 후 리드/랜딩 단계에서 backfill
+run_commit_sha: "c27cc4d1c"   # run-phase 최종 커밋 — D3 패턴 백필 (선례: SPEC-CODEX-SKILL-PATH-001 등 완료 SPEC 전반, 최종 커밋 기록 관례)
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
@@ -73,4 +73,22 @@ not_repaired_inherited_reds:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+spec_id: SPEC-PLAN-AUDITOR-RESIDUE-001
+sync_complete_at: "2026-09-03"
+sync_commit_sha: "pending-backfill"   # D3 2-commit pattern — 실제 SHA는 직후 백필 커밋에서 기입
+sync_status: complete
+changelog_entry_position: emitted
+b12_self_test_a: "grep -c SPEC-PLAN-AUDITOR-RESIDUE-001 CHANGELOG.md → 0 (exit 1) — 중복 없음 확인 후 1건 추가"
+b12_self_test_b: "AC 식별자 8건 (AC-001..AC-008, acceptance.md §D 매트릭스 sort -u 실측) = CHANGELOG 서술 카운트 8/8 일치"
+b12_self_test_c: "CHANGELOG 인용 경로 전부 실존 — .claude/agents/moai/plan-auditor.md, internal/template/templates/.claude/agents/moai/plan-auditor.md, .moai/docs/audit-artifact-convention.md ls 확인"
+frontmatter_status_transitions:
+  - "in-progress → implemented → completed (단일 sync 커밋, spec.md status: completed, updated: 2026-09-03)"
+canary_compliance_check:
+  spec_body_untouched: true        # spec.md/plan.md/acceptance.md 본문 무변경 — frontmatter status/updated만
+  evidence_path_exported: ".moai/reports/t450/ (plan-audit.md, run-evidence-raw-outputs.md — 브랜치 커밋済)"
+  docs_site_scheduled: false       # 본 SPEC 계획에 docs-site 작업 없음 — 사용자 대면 제품 동작 변경 없음, 부재는 유효 결과
+  mx_tag_validation: sync sub-step — 문서/템플릿 편집 대상 @MX 어노테이션 요건 해당 없음 (마크다운 전용 변경)
+```
+
+CHANGELOG 판정: **발행(entry)** — plan-auditor 에이전트 정의는 템플릿 배포물이라 사용자 대면 표면이고, 판정문 반출 계약 변경(Export mandate + Side-talk 조항)은 배포 사용자의 plan-audit 워크플로에 직접 영향을 준다. maintainer-facing 규약 문서 변경은 그에 수반하는 보조 변경이다. `### Changed` 절에 1건 추가.

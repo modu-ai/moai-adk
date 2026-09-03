@@ -2,7 +2,7 @@
 id: SPEC-PLAN-AUDITOR-RESIDUE-001
 title: "plan-auditor 조항 잔여 — t387 곁말 규약 반영 + t386 반출 조항 plan-auditor 측 적용 (카드 t450)"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
