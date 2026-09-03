@@ -33,3 +33,20 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+2026-09-03 run-phase entry (lane dispatch: Kickoff 승인 통과, lead-1). Phase 1 스킵 근거: plan-audit iter-2 PASS 0.9375 (Tier S 문턱 0.75 상회) + 산출물 해시 불변(plan 커밋 8650286b8, 트리 clean) + 판정 PASS — 3조건 전부 충족.
+
+Input parameters: tier S · scope 3 code files (`internal/cli/doctor_codex.go`, `internal/cli/doctor_codex_test.go`, `internal/codexwiring/skills.go` 주석 1건) · domains 1 (Go backend, internal/cli) · file language mix 100% Go · concurrency benefit LOW (coding-heavy) · Agent Teams 미요청 (--team 없음).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | 의미 변경 수반(분류 로직 + 테스트) — typo/단일행 아님 |
+| serial | **yes** | coding-heavy 단일 도메인; Anthropic coding-task parallelism caveat; M1(RED)→M2(GREEN)→M3 마일스톤 체인이 본질적으로 순차 |
+| fanout | no | coding-heavy — 병렬화 주의권 고지 단일 도메인 |
+| sweep | no | 3파일, 기계적-균일 변환이 아닌 의미 작업; ~30파일 미달 |
+
+Decision: serial (단일 manager-develop spawn, cycle_type=tdd)
+
+Justification: Tier S coding-heavy SPEC이 단일 도메인에 머물고 마일스톤 체인이 엄격히 순차(RED fixture → GREEN 분류기 → 보고 스윕)라서 manager-develop 1회 위임이 §E 귀속 행렬과 함께 전 체인을 운반한다. Boundary case 없음 — 결정트리 기본 분기.
