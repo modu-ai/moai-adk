@@ -266,7 +266,28 @@ mechanically and provenance claims rot.
   written under this rule follow the two-cell pair of §2, and the evidence rows state the defect
   forms their clauses prohibit.
 
+## 6. Prediction-ledger metrics — count survival, not detection
+
+[ZONE:Evolvable] [HARD] A prediction ledger that scores a rule's effectiveness (a
+prediction/verified pair per rule, recorded at authoring and judged a round later) writes each
+prediction as a count of defects **surviving to adoption** — defects that reached an approved
+artifact or a passing gate — never as "zero audit findings". The audit-finding count moves the
+WRONG way for this purpose: the better the audit layer works, the more findings it reports on an
+unchanged defect-production rate, so "0 findings" reads as failure precisely when the rule and
+the audit layer are both working. Two different events are being conflated: **a defect occurred**
+(detection — the audit layer working) and **a defect survived to adoption** (the rule failing).
+An occurrence count may be recorded, but only as an inverse-sign auxiliary indicator kept
+separate from the survival count, and every expectation in the ledger states which of the two it
+measures.
+
+> Evidence: observed as a six-row prediction ledger whose predictions read "0 audit findings";
+> all six rows verified false in a round where the audit layer was demonstrably working — running
+> the probes the rule prescribes and citing the rule by name — while only a minority of the
+> detected defects had actually survived to adoption. The ledger's own defect note split the two
+> events after the fact; this section is that split promoted so the next ledger is written
+> right-side-up.
+
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Classification: Path-scoped doctrine rule — binds verification-artifact authoring (checks, gates, acceptance criteria, rules, assertions); changes no gate semantics.
