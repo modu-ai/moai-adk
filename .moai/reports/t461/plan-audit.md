@@ -100,3 +100,63 @@ SPEC의 사실 기반은 실측 전건 적중이고 요구사항·AC 품질은 �
 1. **(운영자)** Implementation Kickoff Approval 게이트에서 축 (a)/(b)를 확정한다. (b) 권고의 근거는 본 감사에서 실측으로 유효 확인됐다(§4-(i)). (b) 확정 시 opt-in 메커니즘 1~3 중 하나를 같은 라운드에서 확정한다.
 2. **(manager-spec, 델타 수정)** plan.md:70 마커를 확정 기록으로 대체한다. (b) 확정 시 REQ-003/AC-001에 pre-commit opt-in 키를 반영한다(D2). REQ-001 커버 AC를 반영한다(D3). D4/D5는 임의.
 3. **(plan-auditor)** iteration 2는 본 보고서의 D1~D3 델타 재감사로 한정한다(Regression Check 포함). 전면 재감사 불요.
+
+---
+
+# Iteration 2 — Delta Re-audit (2026-09-03, Tier M ceiling 2/2)
+
+- 대상: iter-1 결함 D1~D5 델타 + 신설 web 축(REQ-009/AC-010/plan M2/제약 7-8) + D5 재판정 + 미해소 질문 2건
+- 트리 귀속: HEAD `4060b1dbe` (lane의 plan-phase 산출물 단일 커밋) 위의 **미커밋 수정 4파일**(`git status --porcelain`: spec/plan/acceptance/progress 전부 M) — 본 감사는 작업 트리 상태를 심판하며, 커밋은 레인이 판정 후 수행
+- **판정: PASS**
+- 종합 점수: **1.0** (Clarity 1.0 / Completeness 1.0 / Testability 1.0 / Traceability 1.0 — monotonic ≥ 0.875 ✓, Tier M 임계 0.80 ✓)
+
+## Iter-2 Must-Pass 결과
+
+| MP | 결과 | 근거 |
+|----|------|------|
+| MP-1 | **PASS** | REQ-001~009 연속(spec.md:77,81,89,93,97,101,105,109,113), AC-001~010 연속(acceptance.md:11~84) — 공백·중복 0 |
+| MP-2 | **PASS** | 9/9 REQ GEARS 5패턴 적합. REQ-009 "Where … shall"(spec.md:115, Capability gate). REQ-003 "Event-detected"는 D5 판정대로 정캐논(아래). REQ-002 라벨의 axis-conditional 잔존은 D6(경미)로 별도 기록 — 진술문 자체는 적합 |
+| MP-3 | **PASS** | frontmatter 12 필동 불변·적합, HISTORY 수리 행 추가(spec.md:24) |
+| MP-4 | N/A | 불변 |
+| MP-5 | **PASS** | 관련 SPEC 3건 불변, 전부 completed |
+| MP-6 | **PASS** | 성장한 spec.md에서 `grep -c syscall` = 0 → 자동 통과 |
+| MP-7 | **PASS** | 정확 그렙 `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` → plan.md 0매치, research.md 부재(Tier M 정상). SPEC 디렉터리 전체의 유일 관련 텍스트는 spec.md:24 HISTORY의 "plan.md NEEDS CLARIFICATION 해소" — 해소 사실의 역사 기록이지 미해소 마커가 아니며, MP-7 스캔 범위(plan.md/research.md) 밖 |
+
+## Iter-2 결함 델타
+
+- **D1 RESOLVED (was BLOCKING)** — plan.md:70 마커 리터럴 소멸(그렙 실측 0매치). plan.md:66-78 `### 확정된 설계 (Implementation Kickoff Approval — 운영자 결정, 2026-09-03)`에 3건 기록: ① 축 (b), ② 메커니즘 1(`MOAI_PRECOMMIT=1` 환경 마커 + 신규 키 `gate.pre_commit.enabled`는 마커 하에서만 존중, 단독 `moai gate` 불변, 새 서브커맨드 없음, 러너 분기점 1개, 기각 사유 포함), ③ REQ-009 `moai web` 편집 표면(저장 경로 정확히 `.moai/config/sections/gate.yaml`). plan.md:78 axis-conditional 해제 선언. progress.md `open_decisions` 제거 → `decisions_recorded` 3건 전환.
+- **D2 RESOLVED (was SHOULD-FIX)** — spec.md:91 REQ-003이 경로 + 4키(`gate.pre_commit.enabled` 포함) 명시, `SKIP_MOAI_PRECOMMIT=1` 유지. acceptance.md:16-18 AC-001이 5문자열 grep 기계판정 + `SKIP_MOAI_PRECOMMIT=1` 유지 절. AC-001의 Given이 opt-in 상태로 정합화됨.
+- **D3 RESOLVED (was SHOULD-FIX)** — acceptance.md:75-82 신설 **AC-009** — REQ-001 커버. 마커 유/무 대비(`MOAI_PRECOMMIT=1 moai gate` → exit 0·heavy 미실행 vs 마커 없는 단독 → 기존 계약대로 실패)가 커밋 단위 계약의 기계적 증명. 이진 판정형. spec.md:127 성공 기준에도 REQ-001 항목 추가.
+- **D4 RESOLVED (bonus, was MINOR/optional)** — spec.md:28-33 `### 범위 요약 (WHAT)` 신설.
+- **D5 CLOSED — auditor-error (기각 인정, 변경 없음)** — 반박 실측 확인: `.claude/skills/moai-workflow-spec/SKILL.md` 5패턴 표 제5행이 문자 그대로 `Event-detected (replaces IF/THEN)`이고, `.claude/skills/moai-foundation-core/SKILL.md`(~:113)도 "Event-detected (replaces the deprecated conditional modality)"로 열거. 정캐논 확산 6개 스킬 파일. REQ-003(실패 메시지 요구)은 불요조건 감지 시 대응 — Event-detected 조형 그 자체다. iter-1의 나의 지적은 저장소 정캐논이 아닌 일반 하네스 루브릭 목록에 근거한 **감사자 오류**였다.
+- **D6 신설 — MINOR / optional** — spec.md:81 REQ-002 부제 "(Event-driven, axis-conditional)"과 :85-87 인용블록이 축 (a)/(b) 분기를 현재형으로 기술 — 축 확정(plan.md:78 해제 선언, acceptance.md는 갱신) 후 미스윕된 표기. cross-file 개정 스윕 미완료형(verification-completeness §3 패턴). AC 통과 조건에는 영향 0. 수리: REQ-002 부제/블록을 확정 사후 서술로 1회 정리(임의).
+- **D7 신설 — MINOR / optional** — plan.md M2 단계 목록이 seam 라우팅 등록면 2곳을 명명하지 않는다: `RouteForSection`(`internal/settings/sectionroute.go:113`)이 "gate"에 `RouteSeam`을 반환해야 하고 `sectionRootKeys`(sectionwrite.go)에 "gate" 화이트리스트가 필요. 누락 시 `WriteSectionViaSeam`이 "not seam-writable" 오류로 **요란하게 실패**하므로 침묵 결함이 될 수 없고 AC-010(2)이 가시 적적으로 잡는다. run-phase 착지 시 자기 검출.
+
+## Web 축 사실 주장 실측 (전건 확인 — SPEC 주장과 불일치 0)
+
+| 주장 | 검증 명령·출력 | 판정 |
+|------|----------------|------|
+| `SectionGate` 부재 (오늘) | `internal/settings/schema.go:26-63` SectionID 상수 목록 — identity/language/launch/statusline/quality/git_convention/quality_extras/git_strategy/llm/workflow/harness/ralph/feedback/observability/security/handoff/cache/report/mcp/crosssession — **gate 없음** | 확인. run-phase에서 신설 필요하다는 plan M2 전제 참 |
+| `schemaSectionMetas()` | `schemaform.go:199` (plan은 :201 — 2행 drift, 심볼 인용 관례 범위) | 확인 |
+| `parseSchemaForm` + `__present` companion | `schemaform.go:288` 주석 "companion(name+\"__present\") 패턴으로 'unchecked → false'와 '미제출 → preserve'", `:298` 함수 | 확인 |
+| `schemaEditableField` 자격 | `schemaform.go:280-281` `Persist.Kind == PersistSeam \|\| PersistTypedSection` | 확인 — 위 FieldDef는 편집 대상 자격 보유 |
+| workflow_agents 은닉 = 레지스트리 부재 | `agent_settings_test.go` (d) 블록(~:97, 폼 컨트롤 미렌더 단언) + `TestWorkflowAgentsWebSubmissionIgnored`(~:235, 제출 무시·workflow.yaml 불변) | 확인 — 노출은 FieldDef 등록으로 충분, 별도 플래그 불필요 |
+| `WriteSectionViaSeam` 저장 경로 | `sectionwrite.go:52` — `filepath.Join(projectRoot, ".moai", "config", "sections", section+".yaml")` + `yamlpatch.PatchFile`(주석 보존) → section="gate"면 정확히 gate.yaml | 확인 |
+| 명명 중복(`git_strategy.<mode>.hooks.pre_commit`) | `validation.go:318+` `checkStringField` 다수 사용 | 확인 — 제약 8 + REQ-009 명명-중복 주의 블록의 근거 성립 |
+
+## 미해소 질문 2건 — run-phase 위임 적절성 판정
+
+1. **게이트 패널 배치(신규 탭 vs 기존 탭)** — **수용.** 표현층 결정이고 AC-010은 노출+저장 경로+i18n 라벨을 심판하며 배치는 통과 조건이 아니다. plan M2 단계 2가 지배 선례(이름 기반 배치, 영속화 경로 불변)를 명명해 위임의 형태가 규율돼 있다. 스키마·영속화라는 역전하기 어려운 결정은 M1/M2에 구속돼 있으므로 배치 위임이 역전가능성 순서를 훼손하지 않는다.
+2. **REQ-006 메커니즘(병합 vs 소거 제외)** — **수용.** AC-004가 결과(값 생존 — 손편집·web 작성 모두)를 기계 판정하고(plan.md M1 "어느 쪽이든 AC-004가 기계 판정한다"), 두 후보 모두 같은 이진 AC로 귀속된다. 이것은 운영자가 결정할 미해소 질문이 아니라 승인된 결과 계약 안의 구현 전략 선택이다 — NEEDS CLARIFICATION 형태가 아니다.
+
+## Iter-2 Gaps
+
+- `go test` 미실행(감사 읽기전용) — AC-009/AC-010의 RED는 run-phase M4 몫. 본 감사는 계약의 판정 가능성만 심판.
+- `schemaSectionMetas` :201 vs 실측 :199 등 줄번호 미세 drift 1건 — 심볼 인용 관례 범위 내.
+- 크로스모델 2차 감사(`audit_multi`) 미호출 — iter-1과 동일.
+- iter-1에서 지적했던 `git-strategy.yaml` 재적용 전례 대비(REQ-006이 기계 AC를 갖는 이유)는 코드 변경으로 검증할 단계가 아니므로 plan 차원에서만 확인.
+
+## Iter-2 판정 근거 요약
+
+MP-7 해소(유일한 must-pass 장애 제거) + iter-1 결함 D1~D4 전건 해소 + D5 감사자 오류로 정정 + web 축의 5건 코드 주장 전건 실측 확인 + 미해소 질문 2건 모두 AC 심판형 위임으로 적절. 잔여 D6/D7는 optional 등급의 경미 항목으로 PASS 판정에 영향 없음(M6 — optional 발견 목록이 FAIL을 만들지 않는다). run-phase 진입 가능.
+

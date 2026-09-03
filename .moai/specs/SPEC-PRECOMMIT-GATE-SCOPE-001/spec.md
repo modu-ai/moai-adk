@@ -21,8 +21,16 @@ related_specs: [SPEC-PRECOMMIT-001, SPEC-PRETOOL-GATE-MOVE-001, SPEC-PRECOMMIT-P
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-09-03 | manager-spec | plan-phase 최초 작성 (card t461, Class C / Tier M) |
+| 2026-09-03 | manager-spec | 수리 라운드: 운영자 결정 3건 반영 (축 (b) + 메커니즘 1 + moai web 편집 표면). REQ-003 키 확장, REQ-009 신설, plan.md NEEDS CLARIFICATION 해소, AC-009/AC-010 신설, AC-004 web 작성값 흡수 |
 
 ## A. 배경 (Background)
+
+### 범위 요약 (WHAT)
+
+pre-commit heavy gate(`moai gate` 호출)의 기본 동작을 프로젝트 전역 강제에서 **pre-commit 맥락 한정
+기본 OFF + `gate.pre_commit.enabled` opt-in**으로 전환하고, 그 키를 `moai web` 설정 화면에서 편집
+가능하게 하며, 실패 메시지가 실제 remedy 키를 안내하게 한다. 무관한 기존 실패가 커밋을 막는 결함
+(SPEC-PRETOOL-GATE-MOVE-001 진입)을 제거한다. HOW(메커니즘 상세)는 plan.md, 판정은 acceptance.md.
 
 `moai update`가 자동 설치하는 git pre-commit 훅(`internal/template/templates/.git_hooks/pre-commit`)은
 후반부에서 `command -v moai` 성공 시 **무조건** `moai gate`를 실행한다. `moai gate`는 16개 프로그래밍
@@ -80,7 +88,7 @@ When a pre-existing project-wide quality failure unrelated to the staged change 
 
 ### REQ-003 — 실패 메시지가 실제 remedy를 안내한다 (Event-detected, 축 (c) — 무조건)
 
-When the heavy gate fails in the pre-commit context, the hook shall print a failure message that names, in addition to `SKIP_MOAI_PRECOMMIT=1`, the config path `.moai/config/sections/gate.yaml` and the three keys `gate.enabled`, `gate.skip_tests`, `gate.disabled_steps`.
+When the heavy gate fails in the pre-commit context, the hook shall print a failure message that names, in addition to `SKIP_MOAI_PRECOMMIT=1`, the config path `.moai/config/sections/gate.yaml` and the four keys `gate.pre_commit.enabled`, `gate.enabled`, `gate.skip_tests`, `gate.disabled_steps`.
 
 ### REQ-004 — opt-in 시에만 heavy gate가 실행된다 (Capability gate, 축 (b) 메커니즘)
 
@@ -102,12 +110,25 @@ While `moai` is absent from PATH, the pre-commit hook shall skip the heavy gate 
 
 The hook's fast-subset staged-scope go vet step (its staged-file collection and `go vet $BT_TAGS $PKGS` invocation semantics) shall remain semantically unchanged by this SPEC.
 
+### REQ-009 — `moai web` 설정 표면에서 편집 가능 (Capability gate, 운영자 지시)
+
+Where the `moai web` settings UI is running, the settings surface shall expose `gate.pre_commit.enabled` as an editable field and shall persist changes to exactly `.moai/config/sections/gate.yaml`.
+
+> **명명 중복 주의 (naming-overlap hazard)** — 기존 `pre_commit` 키는 전부
+> `git_strategy.<mode>.hooks.pre_commit`(문자열 필드, `internal/config/validation.go`
+> `checkStringField` 3곳, `internal/cli/hook_install_precommit.go`의 config-agnostic 주석이
+> 참조)이다. 이는 `git_strategy.*` 하위 트리로, 본 SPEC의 `gate.pre_commit.enabled`와는
+> **다른 subtree**다. run-phase는 두 키를 혼동하지 않는다 — web 표면·게이트 러너·훅은 오직
+> `gate.pre_commit.enabled`만 다룬다.
+
 ## C. 성공 기준 (Success Criteria)
 
 - 기존 실패 1건이 있는 프로젝트에서 무관한 변경의 커밋이 기본 동작으로 성공한다 (REQ-002).
-- heavy gate 실패 메시지에 `.moai/config/sections/gate.yaml`, `gate.enabled`, `gate.skip_tests`, `gate.disabled_steps`가 모두 등장한다 (REQ-003, grep 기계판정).
+- pre-commit 마커 하에서 `gate.pre_commit.enabled`가 거짓이면 heavy gate가 실행되지 않는다 (REQ-001).
+- heavy gate 실패 메시지에 `.moai/config/sections/gate.yaml`과 `gate.pre_commit.enabled`, `gate.enabled`, `gate.skip_tests`, `gate.disabled_steps`가 모두 등장한다 (REQ-003, grep 기계판정).
 - `TestPreCommitTemplateMatchesConstant`가 통과한다 (REQ-005).
-- 사용자가 고친 gate.yaml이 `moai update` 후에도 유지된다 (REQ-006).
+- 사용자가 고치거나(손편집·`moai web` 경로 모두) gate.yaml이 `moai update` 후에도 유지된다 (REQ-006).
+- `moai web` 설정 화면에서 `gate.pre_commit.enabled`를 편집하면 gate.yaml에 반영된다 (REQ-009).
 - fast-subset go vet 단계의 의미가 불변이다 (REQ-008).
 
 ## Out of Scope — t237 (go vet module-resolution defect)
