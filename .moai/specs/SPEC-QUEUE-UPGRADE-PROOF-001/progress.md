@@ -75,7 +75,7 @@ Full 5-section evidence, with every command's verbatim output, lives at
 
 ```yaml
 run_complete_at: 2026-09-03
-run_commit_sha: pending-backfill
+run_commit_sha: d2675d57b
 run_status: complete
 ac_pass_count: 11
 ac_fail_count: 0
@@ -113,3 +113,74 @@ per C-2. No full local suite was run. No test spawns background load (C-4).
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Decision: `serial` (one `manager-develop` spawn; `direct` / `fanout` / `sweep` all rejected — see the evaluation table below).
+
+**Recorded late — stated rather than backdated.** The orchestration rule requires
+this section be written BEFORE the first run-phase `Agent()` spawn. It was not;
+it is written after the spawn returned. The record below is the decision that was
+actually made at spawn time, and the ordering defect is recorded here rather than
+concealed by silence.
+
+**Input parameters**
+
+| Parameter | Value |
+|---|---|
+| Tier | M |
+| Scope (files) | 1 new `_test.go` + SPEC artifacts + evidence |
+| Domain count | 1 (Go test authoring in `internal/cli/`) |
+| File language mix | Go (test-only) + markdown |
+| Concurrency benefit | LOW — single-file coding-heavy authoring |
+
+**Mode evaluation**
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| `direct` | no | Not trivial: a composed-path proof plus a RED/GREEN mutation cycle is not a typo or single-line edit |
+| `serial` | **yes** | Single domain, coding-heavy, one deliverable file — the default fallback, and the coding-task parallelism caveat points here |
+| `fanout` | no | 1 domain, not ≥3; work is coding-heavy, not research-heavy |
+| `sweep` | no | 1 file, not ≥~30; the work is semantic authoring, not a uniform mechanical transform |
+
+**Decision: `serial`** — one `manager-develop` spawn (model `opus`, resolved via
+`moai model profile --json` under the active `medium` profile).
+
+**Justification.** The deliverable is a single Go test file whose fixture shape
+and mutation seam are judgment calls, not mechanical edits. Fan-out would split
+one coherent authoring decision across agents with nothing to gain, and the
+coding-task parallelism caveat makes the sequential path the safe default for
+coding work. Implementation Kickoff Approval was obtained before the spawn
+(dispatcher's ruling on card `t470`, 2026-09-03, 4-card batch approval).
+
+## §G Orchestrator Independent Verification
+
+The lane orchestrator re-executed the deliverable rather than accepting the
+implementer's report. Commands run in this worktree at HEAD `df2410ed5`:
+
+| Check | Command | Observed |
+|---|---|---|
+| Non-production change | `git diff --name-only 6765a75c0..HEAD -- internal/ \| grep -v '_test\.go$' \| wc -l` | `0` |
+| Changed-path classification | `git diff --stat 6765a75c0..HEAD` | 14 paths: 1 `_test.go`, 6 SPEC artifacts, 7 under `.moai/reports/t470/` |
+| Test re-run (independent) | `go test ./internal/cli/ -run 'TestTodoComposedUpgrade' -count=1 -v -timeout 600s` | both tests `=== RUN` + `--- PASS`; `ok … 1.566s`; selector matched 2 (non-zero swept set) |
+| Mutation seam disarmed | `grep -n 'seedLegacyV312Layout(t,\|assertPreUpgradeState(t,'` | 4 call sites, all passing `false` |
+| F1 fixture fidelity | `grep -n '"version"\|"last_seq"\|"items"\|"findings"\|"archived"'` | F1 (`:43`) carries the three keys only; `findings`/`archived` appear solely in the F2 literal (`:283-286`) |
+| Formatting | `gofmt -l internal/cli/todo_composed_upgrade_test.go` | no output |
+| Verdict structure | `grep -n '^## ' .moai/reports/t470/verdict.md` | Claim / Evidence / Baseline-attribution / Gaps / Residual-risk — all five present |
+
+**AC-QUP-008 corroboration (independent, orchestrator-side).** The live queue at
+the derived primary checkout `/Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.db`
+measured `ecefa722b3b1181a8864e02ff0257301ed368d3f652b439f35b20521004d802f` /
+`1788422246 368640` both immediately before and immediately after the independent
+re-run above. A second controlled window, run by a different actor than the one
+that authored the tests, therefore also left the file byte-identical. This does
+not close the run-wide gap the verdict records — the mid-run change remains
+attributed to a foreign actor by inference, not proof — but it is a second
+independent observation on the same side.
+
+**Residual defect the orchestrator is not closing.** The mutation seam
+(`preCreateCurrentDir` / `currentDirPreCreated`) is committed code, `false` at
+every call site, with no mechanical guard against one being flipped and left
+flipped — which would silently disarm `AC-QUP-002`'s precondition. Recorded, not
+repaired: repairing it would add production-shaped scaffolding to a card whose
+`REQ-QUP-009` forbids exactly that.
