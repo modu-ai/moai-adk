@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -111,7 +111,10 @@ table row — proportionate to the card.
    merely re-implementing its literal six-flag enumeration. "Every" is
    exact up to the named fail-open residual: git prefix-abbreviation
    forms (`git branch --dele x`) classify as unknown → allow (acceptance
-   §D.1 note + E-5).
+   §D.1 note + E-5), and the `git -C <path> branch …` wrapper shape
+   breaks `git branch` adjacency in the matcher and escapes the CWD
+   discriminant (pre-existing, outside this card's change surface —
+   REQ-005 pins patterns and discriminant; named follow-up-card material).
 2. **Full-flag-token classification.** Long flags classified by their
    complete token, never by substring — `--format` ≠ `--force`, and
    `--contains` / `--merged` / `--no-merged` must not be denied via the
@@ -186,8 +189,11 @@ M1 measurement matrix is the classification authority for every form.
 `-f`, `--force`, `-d`, `--delete`, `-D`, `-m`, `--move`, `-M`, `-c`,
 `--copy`, `-C`, `-u`, `--set-upstream`, `--set-upstream-to`,
 `--unset-upstream`, `-t`, `--track`, `--no-track`, `--edit-description`,
-or any short-flag cluster beginning with `u` (the attached-value spelling
-`-u<upstream>`) or containing one of `d/D/m/M/c/C/f/t` — the guard SHALL
+or any short-flag cluster containing any of `d/D/m/M/c/C/f/t/u` —
+leading or mid-cluster `u` alike (`git branch -umain topic` parses and
+reaches upstream-setting logic; `git branch -vu main` parsed and
+`git branch -vux` completed a mutation, both measured — and no query
+short flag contains `u`, per the measured usage table) — the guard SHALL
 deny it in the primary checkout with the `BRANCH_GUARD_VIOLATION:`
 sentinel prefix. An `=`-attached long-flag value
 (`--set-upstream-to=<upstream>`, `--track=<mode>`) SHALL classify by the
@@ -201,23 +207,30 @@ creation modifiers (`--recurse-submodules`, `--create-reflog`) appearing
 alongside a creation operand — including `git branch --create-reflog
 <name>` (M-30). Value-consuming query flags consume their operands
 WITHOUT triggering creation. General arity rule: a long flag is
-value-consuming iff git documents it as taking a value; the enumerated set
-is the pinned instance set — `--list`, `--contains`, `--no-contains`,
-`--merged`, `--no-merged`, `--points-at`, `--format`, `--sort`, `--color`,
-`--abbrev`, `--column`, `--show-current` — and their SPACE-SEPARATED
-value forms (`git branch --sort committerdate`,
-`git branch --no-contains HEAD`, `git branch --column always`,
-`git branch --abbrev 12`) consume the following token rather than reading
-it as a creation operand. A bare branch-name creation operand
+value-consuming iff git documents it as taking a value — the pinned
+value-taking set is `--contains`, `--no-contains`, `--merged`,
+`--no-merged`, `--points-at`, `--format`, `--sort`, `--color`, `--abbrev`,
+`--column`; `--list` and `--show-current` are list-action selectors that
+take no value — and their SPACE-SEPARATED value forms
+(`git branch --sort committerdate`, `git branch --no-contains HEAD`,
+`git branch --column always`, `git branch --abbrev 12`) consume the
+following token rather than reading it as a creation operand. The short
+flag `-l` is the SHORT-FORM LIST SELECTOR (`git branch -l lpattern` —
+measured rc 0, no branch created: a live filter, unlike M-25's measured
+`-v <name>` = create), and list actions are VARIADIC: once a list action
+is selected (`--list` or `-l`), ALL remaining positionals are consumed as
+filter patterns (`git branch -l foo bar`, `git branch --list foo bar`),
+none read as a creation operand. A bare branch-name creation operand
 (`git branch <name>`, `git branch <name> <start-point>`) SHALL continue to
 deny.
 
 ### REQ-WBG-F-003 — Query forms allowed (Event-detected)
 
 **When** a `git branch` command presents only query flags — bare `git branch`,
-`--list`, `-v`, `-vv`, `-a`, `-r`, `--show-current`, `--contains`,
-`--merged`, `--no-merged`, `--points-at`, `--format`, `--sort`, `-q`,
-`-i` — the guard SHALL allow it in the primary checkout.
+`--list`, `-l` (short list selector), `-v`, `-vv`, `-a`, `-r`,
+`--show-current`, `--contains`, `--merged`, `--no-merged`, `--points-at`,
+`--format`, `--sort`, `-q`, `-i` — the guard SHALL allow it in the primary
+checkout.
 
 ### REQ-WBG-F-004 — Whole-token long-flag classification (Ubiquitous)
 
@@ -400,3 +413,18 @@ kept in parity in the same commit.
   v0.3.0; 34 at v0.4.0). G4 AC-008 Then-clause split per-axis (env
   uncontested / AgentType M3-capture-decides). G3 §B headline qualified
   with the abbreviation-prefix residual.
+- 2026-09-03 v0.5.0 — gate re-execution #2 revision (FAIL 0.89,
+  trajectory 0.79→0.83→0.88→0.89; G1-G5 all verified RESOLVED — the
+  corrected rule passed a full 44-cell trace): H1 `-l` short-form list
+  selector named + variadic list-action rule (list actions consume ALL
+  remaining positionals) + Q-15 cell; `-a <name>` sibling noted
+  git-rejected (rc 128, fail-closed-safe). H3 cluster rule widened:
+  "beginning with u" → "containing any of d/D/m/M/c/C/f/t/u" (mid-cluster
+  `u` measured mutating via `-vux`; no query short flag contains `u`).
+  H5 `git -C <path> branch …` wrapper shape added to the named residual
+  list as follow-up-card material (pre-existing, outside REQ-005-pinned
+  surfaces). H2 stale "not enumerated as separate cells" clause swept
+  (`--create-reflog` is M-30). H4 arity wording de-conflated:
+  value-taking set vs list-action selectors (`--list`/`--show-current`
+  take no value). Expected-RED unchanged (Q-15 green-now; no new mutation
+  rows).

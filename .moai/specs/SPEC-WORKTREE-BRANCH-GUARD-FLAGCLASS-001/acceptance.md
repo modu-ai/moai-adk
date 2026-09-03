@@ -116,14 +116,20 @@ operand-free inquiry forms (Q-03), and the operand-bearing form is
 creation per git's measured semantics. The REQ-WBG-F-009 bullet wording
 names operand-free inquiry forms accordingly.
 
-Non-enumerated creation modifiers (`--recurse-submodules`,
-`--create-reflog`) are covered by the positional-creation rule
-(REQ-WBG-F-002: a non-flag operand is a creation when no list action is
-selected and the operand is not a value-taking flag's operand), not
-enumerated as separate cells. Git prefix-abbreviation
+Creation modifiers alongside a creation operand are covered by the
+positional-creation rule (REQ-WBG-F-002: a non-flag operand is a creation
+when no list action is selected and the operand is not a value-taking
+flag's operand); `--create-reflog <name>` is enumerated as M-30, while
+`--recurse-submodules` is covered by the rule without a separate cell.
+Sibling resolved by measurement: `git branch -a <name>` is git-rejected
+(rc 128, auditor-measured) → fail-closed-safe classification, not an
+over-match concern. Git prefix-abbreviation
 forms (`git branch --dele x`, any unambiguous long-flag prefix) classify as
-unknown → allow under full-token matching — an accepted residual inherent
-to the fail-open direction (E-5).
+unknown → allow under full-token matching, and the `git -C <path> branch
+…` wrapper shape breaks `git branch` adjacency in the matcher and escapes
+the CWD discriminant (pre-existing, pinned outside this card's change
+surface by REQ-005 — follow-up-card material) — accepted residuals
+inherent to the fail-open direction (E-5).
 
 ### Query forms → allow
 
@@ -143,6 +149,7 @@ to the fail-open direction (E-5).
 | Q-12 | `git branch -q` / `-i` | allow (inferred-pending-M1) | allow |
 | Q-13 | `git branch --sort committerdate` (SPACE-SEPARATED value — pins the arity rule: the value token must be consumed, not read as a creation operand) | allow (inferred-pending-M1) | allow |
 | Q-14 | `git branch --no-contains HEAD` (space-separated value; same arity pin; `--color`/`--abbrev`/`--column` value forms covered by the same rule) | allow (inferred-pending-M1) | allow |
+| Q-15 | `git branch -l lpattern` (SHORT-FORM list selector — auditor-measured rc 0, no branch created: a live filter, unlike M-25's measured `-v <name>` = create; list actions are variadic — `-l foo bar` / `--list foo bar` consume ALL remaining positionals as patterns) | allow (git-form liveness measured, gate #2; guard-allow inferred from the flag-token mechanism — measured in full at M1) | allow |
 
 ### Whole-token discrimination pairs (REQ-WBG-F-004)
 
@@ -156,7 +163,7 @@ to the fail-open direction (E-5).
 - **AC-WBG-F-001 (matrix convergence)** — Given the M1 matrix test from
   §D.1 exists with doctrine-based expectations, When it runs on the post-M2
   tree, Then every cell matches its expected classification (30/30 mutation
-  cells → deny; 14/14 query cells → allow). Variant count: M-03/M-04/M-05
+  cells → deny; 15/15 query cells → allow). Variant count: M-03/M-04/M-05
   and M-21 each carry two command forms (`-d`/`-D`, `-m`/`-M`, `-c`/`-C`,
   `--move`/`--copy`), so 34 command variants across 30 mutation rows.
   RED-now: §D.0 (10 guard-level cells on `d592b0551`) plus the
