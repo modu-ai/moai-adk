@@ -85,4 +85,42 @@ m1_to_mN_commit_strategy: per-milestone
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_\<pending sync-phase\>_
+**Claim** — 이 SPEC의 문서 표면은 CHANGELOG 항목 1건뿐이다. `docs-site`·`README`·`.moai/docs/`에 drift/close 규약을 서술하는 사용자 표면은 없으며, frontmatter 전이는 `spec.md`에 한정된다(Tier S — `plan.md`는 frontmatter 없음).
+
+**Evidence**
+
+- `grep -c 'SPEC-DRIFT-CLOSE-BODY-001' CHANGELOG.md` (편집 전) → `0` — 중복 없음, B12 self-test 1 통과.
+- AC 카운터: `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-DRIFT-CLOSE-BODY-001/spec.md | sort -u` → `AC-DCB-001`..`AC-DCB-007` (7개, `AC-LSCSK-003`은 이 SPEC 소유가 아닌 인접 인용문 안 문자열이라 제외). `progress.md` §E.2의 `ac_pass_count: 7`과 일치.
+- 파일 경로 검증: CHANGELOG 항목이 인용한 7개 경로(`internal/spec/drift.go`, `internal/spec/drift_index.go`, `internal/spec/drift_close_body_test.go`, `spec.md`, `run-evidence.md`, `plan-audit-verdict.md`, `SPEC-ERA-H3-NARROWING-001/spec.md`) 전부 `ls`로 존재 확인 — B12 self-test 3 통과.
+- 문서 표면 조사: `grep -rln "close.*convention\|conventional-commit.*close\|drift.*close\|closeInfixMatch\|GitImpliedStatus" --include="*.md" .moai/docs/ docs-site/ README*` → 2건. 둘 다 직접 읽어 대조: `docs-site/content/en/getting-started/windows-guide.md:9`는 "closes that gap"(WSL이 경로 차이를 없앤다는 뜻, drift와 무관), `docs-site/content/en/core-concepts/verification-claim-integrity.md`의 6건은 전부 `verification-claim-integrity.md`의 "SPEC이 close debt다" 같은 예시 문구(이 SPEC이 아니라 VCI §1.1 surface 3의 일반 예시) — 둘 다 오탐. **drift/close 규약을 서술하는 사용자 문서 표면은 없다.**
+- `internal/spec/CLAUDE.md` 존재 확인: `ls internal/spec/CLAUDE.md` → not found. 이 패키지에 로컬 CLAUDE.md가 없으므로 갱신 대상도 없다.
+
+**Baseline-attribution** — 전부 이 워크트리(`.claude/worktrees/t410`, 브랜치 `WT-drift-false-positive`)에서, run-phase 종결 HEAD `2954db755`를 기준으로 측정. `git status --porcelain` 확인은 이 절 작성 직전 실행.
+
+**Gaps** — `internal/spec/*.md` 이외의 코드 주석에 close-subject 규약을 설명하는 부분이 있는지는 grep 패턴 범위 밖이라 전수 스캔하지 않았다(대상은 `.md` 파일로 한정). `spec-frontmatter-schema.md`(항상 로드되는 규칙)의 "Close-subject full-ID mandate" 절은 이 SPEC이 다루는 subject 판정과 인접하지만 본문 조회는 다루지 않으므로 갱신 대상이 아니라고 판단했다 — 판단이지 규칙 전문을 재독해 확정한 것은 아니다.
+
+**Residual-risk** — CHANGELOG 항목은 이 SPEC 저자가 작성한 요약이며, 별도 리뷰어가 원문 대비 과장·누락을 검증하지 않았다. 18행 해제 목록 자체(SHA·subject·본문 줄)는 run-evidence.md 원장에만 있고 CHANGELOG에는 요약 수치(196→178, 18/0)만 반영했다 — 상세 대조가 필요하면 원장을 봐야 한다.
+
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: "pending-backfill"   # a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-DRIFT-CLOSE-BODY-001' CHANGELOG.md (pre-emission) -> 0, no duplicate from a parallel session"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' spec.md | sort -u -> 7 distinct AC-DCB-* ids, matching progress.md §E.2 ac_pass_count: 7"
+b12_self_test_c: "ls on every path cited in the CHANGELOG entry -> all 7 present (3 source, spec.md, 2 report artifacts, 1 sibling SPEC spec.md)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Fixed, first entry (immediately after the section header)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close on this sync commit); updated: 2026-09-03 (unchanged date, same-day close)"
+  plan_md: "no status field (Tier S plan.md carries no frontmatter status axis per spec-frontmatter-schema.md § Artifact Statelessness)"
+  progress_md: "not transitioned - progress.md carries no status: field per the schema (body sections only)"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC fixes a drift-detector defect; it does not define a forward-looking convention with a self-consuming first-run test"
+docs_sync: "no user-facing doc surface describes the drift close-body convention. Scanned: README*.md, .moai/docs/, docs-site/ -> 2 pattern hits, both read by hand and confirmed unrelated (windows-guide.md WSL prose; verification-claim-integrity.md generic defect-claim examples). CHANGELOG.md is the only surface touched"
+tests:
+  affected_packages: "run-phase already verified internal/spec + 31 dependent packages (see §E.2/§E.3); this sync touched no source, only docs + frontmatter"
+  full_suite: "NOT RUN locally per instruction; CI owns the full-suite verdict on push"
+push_state: "not pushed, not merged - lead pushes in batch and performs the develop merge later, per dispatch"
+```
+
+**이월 부채 확인 — D4·D6은 이 sync가 건드리지 않는다.** run-phase 원장이 기록한 두 문서-층 결함(D4: REQ-DCB-002가 `inMemImpliedStatus` 오류 경로까지 주장; D6: Tier 파일 모집단·초과 시 동작)은 `spec.md`/`plan.md` **본문** 편집이 필요하고, manager-docs에게는 금지된 표면이다. 구현을 막지 않으므로 blocker를 올리지 않고 기록으로만 남긴다 — 필요하면 후속 카드가 manager-spec에게 재위임한다.
