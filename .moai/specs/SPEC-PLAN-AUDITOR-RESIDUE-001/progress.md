@@ -76,7 +76,7 @@ not_repaired_inherited_reds:
 ```yaml
 spec_id: SPEC-PLAN-AUDITOR-RESIDUE-001
 sync_complete_at: "2026-09-03"
-sync_commit_sha: "pending-backfill"   # D3 2-commit pattern — 실제 SHA는 직후 백필 커밋에서 기입
+sync_commit_sha: "4fb90a1cd"   # sync 커밋 실측 SHA — D3 2-commit pattern 백필
 sync_status: complete
 changelog_entry_position: emitted
 b12_self_test_a: "grep -c SPEC-PLAN-AUDITOR-RESIDUE-001 CHANGELOG.md → 0 (exit 1) — 중복 없음 확인 후 1건 추가"
