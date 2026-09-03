@@ -1,0 +1,16 @@
+=== RUN   TestInboxStatus_ReportsAllFields
+--- PASS: TestInboxStatus_ReportsAllFields (0.00s)
+=== RUN   TestInboxStatus_CuratorRegime
+--- PASS: TestInboxStatus_CuratorRegime (0.00s)
+=== RUN   TestInboxCmdRegisteredOnRoot
+=== PAUSE TestInboxCmdRegisteredOnRoot
+=== RUN   TestInboxDrain_StandardInstallRotates
+--- PASS: TestInboxDrain_StandardInstallRotates (0.00s)
+=== RUN   TestInboxDrain_EmptyInboxNothingToRotate
+--- PASS: TestInboxDrain_EmptyInboxNothingToRotate (0.00s)
+=== RUN   TestInboxDrain_CuratorRefusal
+--- PASS: TestInboxDrain_CuratorRefusal (0.00s)
+=== CONT  TestInboxCmdRegisteredOnRoot
+--- PASS: TestInboxCmdRegisteredOnRoot (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.042s

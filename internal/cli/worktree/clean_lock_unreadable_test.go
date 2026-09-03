@@ -45,14 +45,14 @@ func unreadableLockEnv(t *testing.T, tree, branch string) *[]string {
 }
 
 // TestCleanStale_UnreadableLockSourceRemovesNothing is the --stale limb of the
-// fail-closed contract: the sweep removes nothing and says why.
+// fail-closed contract: the sweep removes nothing and says why — and ends with
+// the distinguished preservation signal (exit 2, card t231 / REQ-WR-016 as
+// revised) instead of a silent success.
 func TestCleanStale_UnreadableLockSourceRemovesNothing(t *testing.T) {
 	removed := unreadableLockEnv(t, "/wt/lock-unreadable", "feat/lock-unreadable")
 
 	out, err := runStaleClean(t, map[string]string{"stale": "true", "yes": "true"})
-	if err != nil {
-		t.Fatalf("runClean must stay non-blocking (REQ-WR-016), got error: %v", err)
-	}
+	assertDegradedSignal(t, err)
 	if len(*removed) != 0 {
 		t.Fatalf("an unreadable lock source must remove nothing; removed %v", *removed)
 	}
@@ -68,9 +68,7 @@ func TestCleanMergedOnly_UnreadableLockSourceRemovesNothing(t *testing.T) {
 	removed := unreadableLockEnv(t, "/wt/merged-lock-unreadable", "feat/merged-lock-unreadable")
 
 	out, err := runStaleClean(t, map[string]string{"merged-only": "true"})
-	if err != nil {
-		t.Fatalf("runClean must stay non-blocking (REQ-WR-016), got error: %v", err)
-	}
+	assertDegradedSignal(t, err)
 	if len(*removed) != 0 {
 		t.Fatalf("an unreadable lock source must remove nothing; removed %v", *removed)
 	}
@@ -81,14 +79,14 @@ func TestCleanMergedOnly_UnreadableLockSourceRemovesNothing(t *testing.T) {
 
 // TestCleanStale_JSONReportsUndeterminedAnchor keeps the inventory and the
 // sweep the same evaluation (REQ-WR-012): a degraded run reports the anchor as
-// undetermined rather than as a negative, and carries the keep reason.
+// undetermined rather than as a negative, carries the keep reason, and still
+// ends with the exit-2 signal (card t231) — after stdout has carried the
+// complete report.
 func TestCleanStale_JSONReportsUndeterminedAnchor(t *testing.T) {
 	removed := unreadableLockEnv(t, "/wt/json-lock-unreadable", "feat/json-lock-unreadable")
 
 	out, err := runStaleClean(t, map[string]string{"stale": "true", "json": "true"})
-	if err != nil {
-		t.Fatalf("runClean error: %v", err)
-	}
+	assertDegradedSignal(t, err)
 	if len(*removed) != 0 {
 		t.Fatalf("the reporting path must remove nothing; removed %v", *removed)
 	}
@@ -105,5 +103,27 @@ func TestCleanStale_JSONReportsUndeterminedAnchor(t *testing.T) {
 	}
 	if !strings.Contains(got[0].KeepReason, "cause=lock-source-unreadable") {
 		t.Errorf("keep_reason must name the cause, got %q", got[0].KeepReason)
+	}
+}
+
+// assertDegradedSignal pins the degraded-run error contract: the error carries
+// the intentional exit code 2 (not cobra's default 1) and names the cause.
+// The preservation half of the old contract is unchanged — the callers assert
+// zero removals separately — what changed is that a degraded run is no longer
+// indistinguishable from a clean one by exit status alone.
+func assertDegradedSignal(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("a degraded run must end with the exit-2 preservation signal (card t231), got nil")
+	}
+	var eec *ExitCodeError
+	if !errors.As(err, &eec) {
+		t.Fatalf("degraded-run error must be an *ExitCodeError, got %T: %v", err, err)
+	}
+	if eec.ExitCode() != 2 {
+		t.Fatalf("degraded-run exit code = %d, want 2", eec.ExitCode())
+	}
+	if !strings.Contains(eec.Error(), "lock source unreadable") {
+		t.Errorf("the signal must name the cause, got %q", eec.Error())
 	}
 }

@@ -75,7 +75,7 @@ Three capability areas:
 
 ### Core Workflows
 
-Three workflows: project initialization, documentation generation from SPEC, template performance optimization. Each follows a 3-step pattern (configure → execute → review results).
+Three workflows: project initialization, documentation generation from SPEC, template performance optimization. Each follows a 3-step pattern (configure → execute → review results). The initialization and settings interviews walk the question structure defined in [schemas/tab_schema.json](schemas/tab_schema.json).
 
 See [core workflow walkthroughs](references/workflows.md) for detailed step-by-step procedures.
 

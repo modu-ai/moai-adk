@@ -1,0 +1,5 @@
+--- FAIL: TestInboxDrain_StandardInstallRotates (0.00s)
+    inbox_test.go:126: drain did not rotate: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxDrain_StandardInstallRotates637961975/001/.moai/lessons-inbox.jsonl.1: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.896s
+FAIL
