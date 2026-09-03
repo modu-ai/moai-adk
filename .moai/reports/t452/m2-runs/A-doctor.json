@@ -1,0 +1,382 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "1788426747s since unix epoch",
+  "overallStatus": "warning",
+  "codexVersion": "0.152.1",
+  "checks": {
+    "app_server.status": {
+      "id": "app_server.status",
+      "category": "app-server",
+      "status": "ok",
+      "summary": "background server is not running",
+      "details": {
+        "control socket": "/private/tmp/t452-m2/codexhome/app-server-control/app-server-control.sock",
+        "daemon state dir": "/private/tmp/t452-m2/codexhome/app-server-daemon",
+        "mode": "ephemeral",
+        "pid file": "/private/tmp/t452-m2/codexhome/app-server-daemon/app-server.pid (missing)",
+        "settings": "/private/tmp/t452-m2/codexhome/app-server-daemon/settings.json (missing)",
+        "status": "not running",
+        "update-loop pid file": "/private/tmp/t452-m2/codexhome/app-server-daemon/app-server-updater.pid (missing)"
+      },
+      "remediation": null,
+      "durationMs": 1
+    },
+    "auth.credentials": {
+      "id": "auth.credentials",
+      "category": "auth",
+      "status": "ok",
+      "summary": "auth is configured",
+      "details": {
+        "auth file": "/private/tmp/t452-m2/codexhome/auth.json",
+        "auth storage mode": "File",
+        "stored API key": "false",
+        "stored ChatGPT tokens": "true",
+        "stored agent identity": "false",
+        "stored auth mode": "chatgpt"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "config.load": {
+      "id": "config.load",
+      "category": "config",
+      "status": "ok",
+      "summary": "config loaded",
+      "details": {
+        "CODEX_HOME": "/private/tmp/t452-m2/codexhome",
+        "config.toml": [
+          "/private/tmp/t452-m2/codexhome/config.toml",
+          "missing"
+        ],
+        "cwd": "/private/tmp/t452-m2/proj",
+        "enabled feature flags": "shell_tool, view_image, sleep_tool, unified_exec, unified_exec_zsh_fork, shell_snapshot, content_item_kinds, code_mode_host, terminal_resize_reflow, sqlite, hooks, enable_request_compression, unbounded_connection_retries, multi_agent, apps, tool_search_always_defer_mcp_tools, tool_suggest, plugins, in_app_browser, in_app_chat, in_app_dictation, in_app_local_automation, in_app_updates, browser_use, browser_use_full_cdp_access, browser_use_external, computer_use, remote_plugin, plugin_sharing, image_generation, resize_all_images, item_ids, skill_mcp_dependency_install, skill_search, mentions_v2, steer, guardian_approval, goals, collaboration_modes, tool_call_mcp_elicitation, auth_elicitation, personality, fast_mode, tui_app_server, remote_compaction_v2, compaction_image_budget, workspace_dependencies",
+        "feature flag overrides": "none",
+        "feature flags enabled": "47",
+        "log dir": "/private/tmp/t452-m2/codexhome/log",
+        "mcp servers": "0",
+        "model": "<default>",
+        "model provider": "openai",
+        "sqlite home": "/private/tmp/t452-m2/codexhome"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "desktop.app.version": {
+      "id": "desktop.app.version",
+      "category": "desktop",
+      "status": "ok",
+      "summary": "the desktop application is installed",
+      "details": {
+        "log directory": "$HOME/Library/Logs/com.openai.codex",
+        "running": "false",
+        "version": "26.730.61639"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "desktop.app_server.handshake": {
+      "id": "desktop.app_server.handshake",
+      "category": "desktop",
+      "status": "ok",
+      "summary": "the desktop application is not running",
+      "details": {},
+      "remediation": null,
+      "durationMs": 0
+    },
+    "desktop.security.enforcement": {
+      "id": "desktop.security.enforcement",
+      "category": "desktop",
+      "status": "warning",
+      "summary": "the desktop security assessment was unavailable",
+      "details": {},
+      "remediation": "check access to macos gatekeeper diagnostics",
+      "durationMs": 0
+    },
+    "git.environment": {
+      "id": "git.environment",
+      "category": "git",
+      "status": "ok",
+      "summary": "git version 2.50.1 (Apple Git-155)",
+      "details": {
+        "PATH git #1": "/usr/bin/git",
+        "PATH git entries": "1",
+        "git build options": "git version 2.50.1 (Apple Git-155); cpu: arm64; no commit associated with this build; sizeof-long: 8; sizeof-size_t: 8; shell-path: /bin/sh; feature: fsmonitor--daemon; libcurl: 8.7.1; zlib: 1.2.12; SHA-1: SHA1_DC; SHA-256: SHA256_BLK",
+        "git exec path": "/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core",
+        "git version": "git version 2.50.1 (Apple Git-155)",
+        "repo detected": "false",
+        "selected git": "/usr/bin/git"
+      },
+      "remediation": null,
+      "durationMs": 700
+    },
+    "installation": {
+      "id": "installation",
+      "category": "install",
+      "status": "ok",
+      "summary": "installation looks consistent",
+      "details": {
+        "PATH codex #1": "/Users/goos/.local/bin/codex",
+        "current executable": "/Users/goos/.local/bin/codex",
+        "install context": "other (package /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin, bin /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/bin, resources /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/codex-resources, path /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/codex-path)",
+        "managed by bun": "false",
+        "managed by npm": "false",
+        "managed by pnpm": "false",
+        "managed package root": "not set"
+      },
+      "remediation": null,
+      "durationMs": 23
+    },
+    "mcp.config": {
+      "id": "mcp.config",
+      "category": "mcp",
+      "status": "ok",
+      "summary": "no MCP servers configured",
+      "details": {},
+      "remediation": null,
+      "durationMs": 0
+    },
+    "network.env": {
+      "id": "network.env",
+      "category": "network",
+      "status": "ok",
+      "summary": "network-related environment looks readable",
+      "details": {
+        "managed proxy": "not configured",
+        "proxy env vars": "none",
+        "respect system proxy": "disabled",
+        "system proxy": "direct"
+      },
+      "remediation": null,
+      "durationMs": 1
+    },
+    "network.provider_reachability": {
+      "id": "network.provider_reachability",
+      "category": "reachability",
+      "status": "ok",
+      "summary": "active provider endpoints are reachable over HTTP",
+      "details": {
+        "ChatGPT inference URL": "https://chatgpt.com/backend-api/<redacted> reachable (HTTP 405)",
+        "desktop assets CDN": "https://chatgpt.com/backend-api/<redacted> reachable (HTTP 200)",
+        "reachability mode": "ChatGPT auth"
+      },
+      "remediation": null,
+      "durationMs": 1428
+    },
+    "network.websocket_reachability": {
+      "id": "network.websocket_reachability",
+      "category": "websocket",
+      "status": "ok",
+      "summary": "Responses WebSocket handshake succeeded",
+      "details": {
+        "DNS": "2 IPv4, 0 IPv6, first IPv4",
+        "auth mode": "chatgpt",
+        "connect timeout": "15000 ms",
+        "endpoint": "wss://chatgpt.com/backend-api/<redacted>",
+        "handshake result": "HTTP 101 Switching Protocols",
+        "model provider": "openai",
+        "provider name": "OpenAI",
+        "proxy env vars": "none",
+        "reasoning header": "false",
+        "server model present": "false",
+        "supports websockets": "true",
+        "wire API": "responses"
+      },
+      "remediation": null,
+      "durationMs": 1999
+    },
+    "runtime.provenance": {
+      "id": "runtime.provenance",
+      "category": "runtime",
+      "status": "ok",
+      "summary": "running local build on macos-aarch64",
+      "details": {
+        "commit": "unknown",
+        "current executable": "/Users/goos/.local/bin/codex",
+        "install method": "other (package /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin, bin /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/bin, resources /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/codex-resources, path /Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/codex-path)",
+        "platform": "macos-aarch64",
+        "version": "0.152.1"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "runtime.search": {
+      "id": "runtime.search",
+      "category": "search",
+      "status": "ok",
+      "summary": "search is OK (bundled)",
+      "details": {
+        "search command": "/Users/goos/.codex/packages/standalone/releases/0.152.1-aarch64-apple-darwin/codex-path/rg",
+        "search command readiness": "file exists",
+        "search provider": "bundled"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "sandbox.helpers": {
+      "id": "sandbox.helpers",
+      "category": "sandbox",
+      "status": "ok",
+      "summary": "sandbox configuration is readable",
+      "details": {
+        "approval policy": "OnRequest",
+        "codex-linux-sandbox helper": "none",
+        "execve wrapper helper": "/private/tmp/t452-m2/codexhome/tmp/arg0/codex-arg00Bt9tQ/codex-execve-wrapper",
+        "filesystem sandbox": "restricted",
+        "network sandbox": "restricted"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "security.endpoint": {
+      "id": "security.endpoint",
+      "category": "security",
+      "status": "ok",
+      "summary": "no supported endpoint protection detected",
+      "details": {
+        "endpoint products": "none detected"
+      },
+      "remediation": null,
+      "durationMs": 27
+    },
+    "state.paths": {
+      "id": "state.paths",
+      "category": "state",
+      "status": "ok",
+      "summary": "state paths and databases are inspectable",
+      "details": {
+        "CODEX_HOME": "/private/tmp/t452-m2/codexhome (dir)",
+        "active rollout files": "5 files, 338886 total bytes, 67777 average bytes",
+        "archived rollout files": "0 files, 0 total bytes, 0 average bytes",
+        "goals DB": "/private/tmp/t452-m2/codexhome/goals_1.sqlite (file)",
+        "goals DB integrity": "ok",
+        "log DB": "/private/tmp/t452-m2/codexhome/logs_2.sqlite (file)",
+        "log DB integrity": "ok",
+        "log dir": "/private/tmp/t452-m2/codexhome/log (missing)",
+        "memories DB": "/private/tmp/t452-m2/codexhome/memories_1.sqlite (file)",
+        "memories DB integrity": "ok",
+        "queue DB": "/private/tmp/t452-m2/codexhome/queue_1.sqlite (file)",
+        "queue DB integrity": "ok",
+        "sqlite home": "/private/tmp/t452-m2/codexhome (dir)",
+        "state DB": "/private/tmp/t452-m2/codexhome/state_5.sqlite (file)",
+        "state DB integrity": "ok",
+        "thread history DB": "/private/tmp/t452-m2/codexhome/thread_history_1.sqlite (file)",
+        "thread history DB integrity": "ok"
+      },
+      "remediation": null,
+      "durationMs": 1356
+    },
+    "state.rollout_db_parity": {
+      "id": "state.rollout_db_parity",
+      "category": "threads",
+      "status": "ok",
+      "summary": "rollout files and state DB thread inventory agree",
+      "details": {
+        "default model provider": "openai",
+        "rollout DB active files": "5",
+        "rollout DB active rows": "5",
+        "rollout DB archive mismatches": "0",
+        "rollout DB archived files": "0",
+        "rollout DB archived rows": "0",
+        "rollout DB duplicate DB paths": "0",
+        "rollout DB duplicate rollout thread ids": "0",
+        "rollout DB malformed file names": "0",
+        "rollout DB missing active rows": "0",
+        "rollout DB missing archived rows": "0",
+        "rollout DB model providers": "openai=5",
+        "rollout DB rows": "5",
+        "rollout DB scan cap reached": "false",
+        "rollout DB scan errors": "0",
+        "rollout DB sources": "exec=5",
+        "rollout DB stale rows": "0"
+      },
+      "remediation": null,
+      "durationMs": 1327
+    },
+    "system.disk": {
+      "id": "system.disk",
+      "category": "disk",
+      "status": "ok",
+      "summary": "sufficient free disk space (1504.7 GiB)",
+      "details": {
+        "CODEX_HOME available": "1504.7 GiB",
+        "failure threshold": "1.0 GiB",
+        "warning threshold": "5.0 GiB",
+        "worktree available": "1504.7 GiB"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "system.environment": {
+      "id": "system.environment",
+      "category": "system",
+      "status": "ok",
+      "summary": "OS language ko-KR",
+      "details": {
+        "EDITOR": "not set",
+        "LANG": "en_US.UTF-8",
+        "LESS": "set",
+        "PAGER": "set",
+        "VISUAL": "not set",
+        "os": "Mac OS 26.6.2 [64-bit]",
+        "os language": "ko-KR",
+        "os type": "Mac OS",
+        "os version": "26.6.2"
+      },
+      "remediation": null,
+      "durationMs": 37
+    },
+    "terminal.env": {
+      "id": "terminal.env",
+      "category": "terminal",
+      "status": "ok",
+      "summary": "terminal metadata was detected",
+      "details": {
+        "COLORTERM": "truecolor",
+        "TERM_PROGRAM": "Orca",
+        "color output": "disabled (stdout is not a terminal)",
+        "effective locale": "en_US.UTF-8",
+        "stderr is terminal": "false",
+        "stdin is terminal": "false",
+        "stdout is terminal": "false",
+        "terminal": "unknown",
+        "terminal size": "80x24",
+        "terminal version": "1.4.190"
+      },
+      "remediation": null,
+      "durationMs": 55
+    },
+    "terminal.title": {
+      "id": "terminal.title",
+      "category": "title",
+      "status": "ok",
+      "summary": "terminal title default",
+      "details": {
+        "terminal title activity": "true",
+        "terminal title items": "activity, project-name",
+        "terminal title project source": "project config",
+        "terminal title project value": "proj",
+        "terminal title source": "default"
+      },
+      "remediation": null,
+      "durationMs": 0
+    },
+    "updates.status": {
+      "id": "updates.status",
+      "category": "updates",
+      "status": "ok",
+      "summary": "update configuration is locally consistent",
+      "details": {
+        "check for update on startup": "true",
+        "latest version": "0.153.0",
+        "latest version status": "newer version is available",
+        "update action": "manual or unknown",
+        "version cache": [
+          "/private/tmp/t452-m2/codexhome/version.json",
+          "missing"
+        ]
+      },
+      "remediation": null,
+      "durationMs": 126
+    }
+  }
+}

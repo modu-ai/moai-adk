@@ -1,0 +1,19 @@
+Reading additional input from stdin...
+OpenAI Codex v0.152.1
+--------
+workdir: /tmp/t452-m2/proj
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: none
+reasoning summaries: none
+session id: 01a06681-3e18-7812-bab1-ac712fdd8e23
+--------
+user
+Reply with exactly: PING
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+PING
+tokens used
+7,952
