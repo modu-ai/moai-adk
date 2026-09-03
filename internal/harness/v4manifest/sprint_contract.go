@@ -57,7 +57,7 @@ func DecideEvaluator(profile TaskProfile, contract SprintContract) EvaluatorDeci
 			rationale += " (" + profile.ComplexitySignals + ")"
 		}
 		return EvaluatorDecision{
-			Invoked:  false,
+			Invoked:   false,
 			Rationale: rationale,
 		}
 	}

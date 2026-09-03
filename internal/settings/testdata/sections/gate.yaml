@@ -1,0 +1,12 @@
+# Reduced stand-in for the shipped gate.yaml (settings testdata): same key
+# shape, plus a comment block and a non-modeled key the seam write must
+# preserve.
+gate:
+  # Outer switch for the quality gate.
+  enabled: true
+  skip_tests: false
+  disabled_steps: {}
+  # Pre-commit context opt-in.
+  pre_commit:
+    enabled: false
+  user_only_key: keep-me

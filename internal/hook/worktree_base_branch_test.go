@@ -21,12 +21,12 @@ import (
 
 // worktreeBaseBranchFakes records seam invocations for one test.
 type worktreeBaseBranchFakes struct {
-	primary       bool     // what the primary-checkout discriminant reports
-	configured    string   // what the alignment-entry (configured-value) seam returns
-	originHead    string   // what the origin/HEAD read seam returns
-	originHeadErr error    // ... or its error
-	resolvable    bool     // what the shared resolvability predicate reports
-	setHeadErr    error    // what the write seam returns
+	primary       bool   // what the primary-checkout discriminant reports
+	configured    string // what the alignment-entry (configured-value) seam returns
+	originHead    string // what the origin/HEAD read seam returns
+	originHeadErr error  // ... or its error
+	resolvable    bool   // what the shared resolvability predicate reports
+	setHeadErr    error  // what the write seam returns
 
 	entryCalls      int      // alignment-entry read seam invocation count (AC-WBR-016)
 	originHeadCalls int      // origin/HEAD read seam invocation count

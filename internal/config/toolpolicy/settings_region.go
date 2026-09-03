@@ -12,10 +12,10 @@ import (
 // keys Claude Code may introduce are preserved by the parse-modify-serialize
 // strategy (Raw map), never dropped.
 type PermissionsBlock struct {
-	DefaultMode string            `json:"defaultMode,omitempty"`
-	Allow       []string          `json:"allow"`
-	Ask         []string          `json:"ask,omitempty"`
-	Deny        []string          `json:"deny,omitempty"`
+	DefaultMode string                     `json:"defaultMode,omitempty"`
+	Allow       []string                   `json:"allow"`
+	Ask         []string                   `json:"ask,omitempty"`
+	Deny        []string                   `json:"deny,omitempty"`
 	Raw         map[string]json.RawMessage `json:"-"`
 }
 

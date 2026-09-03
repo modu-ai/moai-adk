@@ -191,7 +191,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 }
 
 // queuedBacklogCount returns the number of cards waiting in the backlog queue
-// under root — the same .moai/state/todo/backlog.json the `moai todo` CLI
+// under root — the same .moai/state/todo/backlog.db the `moai todo` CLI
 // operates (internal/cli/todo.go todoBacklogPath). Since the t85 factory lead
 // loop reads the same count, the path shape and the queued-only counting live
 // in ONE shared place — kanban.QueuedBacklogCountForRoot (BacklogStore.
@@ -227,5 +227,9 @@ func kanbanCompanionNotice(label, lang string) string {
 	if _, _, ok := kanban.SplitCompanionLabel(label); !ok {
 		return ""
 	}
-	return fmt.Sprintf(kanbanMessagesFor(lang).companionJoin, label)
+	// Card t224: the standing spawn authority rides the join notice — the
+	// companion is an orchestrator for its card and must not be frozen out of
+	// spawning by the runtime's default agent-usage guidance. English-only;
+	// see lane_spawn_authority.go.
+	return fmt.Sprintf(kanbanMessagesFor(lang).companionJoin, label) + "\n\n" + laneSpawnAuthority
 }

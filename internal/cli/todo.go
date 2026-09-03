@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -88,18 +89,63 @@ func todoLandedRef() string {
 	return kanban.LandedRefFor(resolveTodoQueueRoot())
 }
 
+// todoLandedRefOnce resolves the landed ref at most once per process, and only
+// when something actually asks for it.
+//
+// Resolving it eagerly is what made the resolution expensive out of all
+// proportion to its use: cobra builds the WHOLE command tree at process start,
+// so every `moai <anything>` invocation — `moai statusline`, once per render,
+// included — paid a `git rev-parse` for each command that named the ref in its
+// help text, for help it was never going to print. Worse, the root resolution
+// takes the ADOPTING entry point, which can write to the filesystem; that has
+// no business firing on a pure render path.
+var todoLandedRefOnce = sync.OnceValue(todoLandedRef)
+
+// withResolvedLandedRef defers the parts of cmd's help surface that name the
+// landed ref until help is actually rendered, and applies them at most once.
+//
+// The help function is the hook because `--help` returns before RunE, so a
+// PreRun hook would silently drop the resolved ref from the printed text. The
+// usage function is hooked for the same reason on the error path, which prints
+// flag usage without printing help.
+//
+// Both delegate up to the PARENT's function rather than naming a renderer,
+// because the effective one differs between the fang-wrapped binary and the
+// in-process test path; resolving it at call time keeps both intact.
+func withResolvedLandedRef(cmd *cobra.Command, apply func(ref string)) {
+	var once sync.Once
+	resolve := func() { once.Do(func() { apply(todoLandedRefOnce()) }) }
+
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		resolve()
+		if p := c.Parent(); p != nil {
+			p.HelpFunc()(c, args)
+			return
+		}
+		_ = c.Usage()
+	})
+	cmd.SetUsageFunc(func(c *cobra.Command) error {
+		resolve()
+		if p := c.Parent(); p != nil {
+			return p.UsageFunc()(c)
+		}
+		return nil
+	})
+}
+
 // newTodoCmd creates the `moai todo` parent command.
 func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.json.
+		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.db.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
-to and reads the same file the lead and the foreman loop see. A project
-without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.json
-instead.
+to and reads the same store the lead and the foreman loop see. A project
+without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.db
+instead. A backlog.json sitting beside the database is NOT the queue — it is
+an export or a legacy leftover, and its contents can be arbitrarily stale.
 
 The backlog is the operator's queue: entry into the board is the operator's
 act (add), and picking the next card is the operator's act too (next <n>).
@@ -416,29 +462,10 @@ func newTodoListCmd() *cobra.Command {
 func newTodoDoneCmd() *cobra.Command {
 	var expect string
 	var requireLanded bool
-	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "done <n>",
 		Short: "Archive a card out of the backlog queue by id",
-		Long: `Move the addressed card out of the live queue as one locked write.
-
-The card and every finding naming it move into the archive rather than being
-discarded, so ` + "`moai todo undone <n>`" + ` restores both. Archived rows are invisible
-to every live-queue reader (` + "`list`, `next`, `why`, `analyze`" + `, the counts).
-
-` + "`--expect <prefix>`" + ` refuses unless the addressed card's text starts with the
-prefix — the guard against closing the wrong card.
-
-` + "`--require-landed`" + ` refuses unless a commit on ` + landedRef + ` names the card.
-It is OPT-IN and honestly limited: it answers "has anything naming this card
-landed on that ref", NOT "has this card's last step landed", so it cannot tell a
-run commit from a sync commit. Absent the flag no landing query runs at all.
-
-Every successful invocation prints one landing verdict on stdout —
-` + "`done <id> landing=landed|not-landed|unknown`" + `. Without the flag the verdict is
-` + "`unknown`" + `, because no query ran: "the guard passed" and "the guard did not
-run" are different facts and no longer the same bytes.`,
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
@@ -484,9 +511,36 @@ run" are different facts and no longer the same bytes.`,
 	}
 	cmd.Flags().StringVar(&expect, "expect", "",
 		"Refuse unless the card text starts with this prefix")
-	cmd.Flags().BoolVar(&requireLanded, "require-landed", false,
-		"Refuse unless a commit on "+landedRef+" names the card (opt-in; see --help for its limit)")
+	cmd.Flags().BoolVar(&requireLanded, "require-landed", false, "")
+	withResolvedLandedRef(cmd, func(landedRef string) {
+		cmd.Long = todoDoneLong(landedRef)
+		cmd.Flags().Lookup("require-landed").Usage =
+			"Refuse unless a commit on " + landedRef + " names the card (opt-in; see --help for its limit)"
+	})
 	return cmd
+}
+
+// todoDoneLong renders `todo done`'s help body against the ref the landing
+// guard will actually ask about. Resolved lazily — see withResolvedLandedRef.
+func todoDoneLong(landedRef string) string {
+	return `Move the addressed card out of the live queue as one locked write.
+
+The card and every finding naming it move into the archive rather than being
+discarded, so ` + "`moai todo undone <n>`" + ` restores both. Archived rows are invisible
+to every live-queue reader (` + "`list`, `next`, `why`, `analyze`" + `, the counts).
+
+` + "`--expect <prefix>`" + ` refuses unless the addressed card's text starts with the
+prefix — the guard against closing the wrong card.
+
+` + "`--require-landed`" + ` refuses unless a commit on ` + landedRef + ` names the card.
+It is OPT-IN and honestly limited: it answers "has anything naming this card
+landed on that ref", NOT "has this card's last step landed", so it cannot tell a
+run commit from a sync commit. Absent the flag no landing query runs at all.
+
+Every successful invocation prints one landing verdict on stdout —
+` + "`done <id> landing=landed|not-landed|unknown`" + `. Without the flag the verdict is
+` + "`unknown`" + `, because no query ran: "the guard passed" and "the guard did not
+run" are different facts and no longer the same bytes.`
 }
 
 // todoRequireLanded answers the opt-in landing question for id.

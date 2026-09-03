@@ -167,6 +167,11 @@ The failure is silent by construction, and its silence is **symmetric**. Where t
 
 **Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
 
+
+### 2.3 Ordering attribution — the commit graph is the only sequencing witness
+
+[ZONE:Evolvable] [HARD] When a claim's validity depends on a measurement having been taken BEFORE the change it measures (a baseline-first acceptance criterion), the baseline artifact MUST land in its own commit that precedes the change's commit. Git snapshots the tree per commit and cannot witness authoring order inside one commit, so a baseline committed together with the implementation it measured leaves the ordering claim permanently unverifiable — however truthfully the commit message asserts the sequence. A commit message and a session record ASSERT ordering; only the commit graph witnesses it. Where committing the baseline ahead is impossible (measurement and change are inherently one atomic act), the acceptance criterion's ordering clause is rewritten to what the commit graph can verify — never silently left to rest on a same-commit pair. (Motivating instance, recorded as a permanent deviation: a baseline artifact that a baseline-first acceptance criterion depended on shared its commit with the implementation it measured, and a later audit could not re-witness the asserted ordering from git history; recurrence prevention is this clause.)
+
 ## 3. The 5-Section Evidence-Bearing Report Format
 
 [ZONE:Evolvable] [HARD] Verification and completion reports — on either binding surface (§1.1) — SHOULD be structured as the following five sections. The format is the operational mechanism that enforces §1 and §2: it forces the actor to separate what is claimed from what was observed, and to make the unobserved explicit. Apply the format to every report, not only the first.

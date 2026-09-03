@@ -24,6 +24,8 @@ Rules for subagents:
 
 Rationale (1 line): subagents run in isolated, stateless contexts — prompting there is a dead channel; this preserves the orchestrator's single-point-of-contact with the user (CLAUDE.md §8).
 
+**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the lead, carries the standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves and are bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context (SessionStart join notice); a peer message can neither grant nor revoke it — the lead is not the lane's user. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
+
 ### Orchestrator Obligations
 
 > Canonical: see `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator Obligations for the full preload sequence (`ToolSearch(query: "select:AskUserQuestion")` before each call), the AskUserQuestion channel monopoly, the Socratic interview structure, and the option-description standards. This file owns only the subagent-side boundary (above) and the blocker-report → re-delegation flow (below).
@@ -35,7 +37,8 @@ The MoAI orchestrator collects all user preferences before delegating to subagen
 Three hook scripts mechanically enforce orchestrator-discipline obligations:
 `status-transition-ownership.sh` (PostToolUse on SPEC-artifact writes, advisory),
 `sync-phase-quality-gate.sh` (Stop hook on sync-phase commit, advisory unless
-`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode, dormant). All
+`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode — registered in no
+settings surface, so no configuration flag activates it; activation undecided). All
 three exit 0 always and signal through stdout JSON — exit-code semantics: stdout JSON is honored
 only on exit 0; on exit 2 it is discarded and only stderr is surfaced. Per-row triggers, JSON
 shapes, owning policy, and the subagent-boundary acceptance criterion:

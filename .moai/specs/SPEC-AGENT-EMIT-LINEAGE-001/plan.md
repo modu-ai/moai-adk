@@ -15,14 +15,17 @@ v0.3.0 까지 이 절은 영향 파일을 **"3-5"** 로 추정했다. 그 추정
 | # | 파일 | 신규/편집 | 무엇을 하는가 | 어느 마일스톤 |
 |---|---|---|---|---|
 | 1 | `Makefile` | 편집 | `.PHONY` 행에 `agents-emit` + 새 검사 타깃 추가(`:16`), `build` 선행에 드리프트 검사 추가(`:23`), `embed-check` 타깃 신설 | M1·M2·M3 |
-| 2 | `internal/cli/doctor_<name>.go` | **신규** | 임베드 축 판정 본체 + doctor 항목. 이 리포의 doctor 항목은 파일 1개에 사는 것이 규약이다(`doctor_mcp_version.go`, `doctor_disk.go`, `doctor_hook.go` …) | M1 |
+| 2 | `internal/cli/doctor_<name>.go` | **신규** | 임베드 축 판정 본체 + doctor 항목. 파일 1개 형태는 규약이 아니라 선택 형태다 — doctor 13개 그룹 중 자기 파일을 가진 것은 2개(`doctor_mcp_version.go`, `doctor_disk.go`)이고, 6개는 `doctor.go` 안에 인라인으로 산다(측정: 48c35a4d4). 어느 쪽이든 Tier M 이다 | M1 |
 | 3 | `internal/cli/doctor_<name>_test.go` | **신규** | 위 본체의 테스트. 같은 규약(`doctor_mcp_version_test.go` 등 모든 doctor 항목이 짝 테스트를 갖는다) | M1 |
 | 4 | `internal/cli/doctor.go` | 편집 | 항목 등록 1행. 등록 지점은 `moaiChecks` 슬라이스이며, 선례가 `:201` 에 있다(`{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }}`) | M1 |
 | 5 | `CLAUDE.local.md` | 편집 | 편집 절차 명문화(REQ-AEL-006). 배포 템플릿 중립성(§25) 때문에 템플릿 트리에는 넣지 않는다 | M3 |
+| 6 | `internal/cli/testdata/doctor-light.golden` | 편집 | doctor 출력 골든 고정본. doctor 항목 행 추가나 그룹 카운터 변경 시 재생성된다(7842 bytes, 측정: 48c35a4d4) | M1 |
+| 7 | `internal/cli/testdata/doctor-dark.golden` | 편집 | 동일 — 다크 테마 골든 | M1 |
+| 8 | `internal/cli/testdata/doctor-nocolor.golden` | 편집 | 동일 — 색상 비출력 골든 | M1 |
 
-**5건.** 이 세션에서 확인한 사실 두 가지가 2·3·4 를 뒷받침한다: doctor 항목은 파일 1개 + 짝 테스트 1개로 살고(`ls internal/cli/doctor*.go`), 등록은 `doctor.go` 의 슬라이스 1행이다(`grep -n 'checkMCPServerVersion' internal/cli/doctor.go` → `:201`). `internal/cli/doctor_golden_test.go` 는 항목 이름 목록을 고정하지 않으므로(같은 세션 grep, 0 히트) 여섯 번째 편집 파일이 되지 않는다.
+**8건.** 이 세션에서 확인한 사실들이 2·3·4 를 뒷받침한다: doctor 항목은 이 리포에서 규약이 아니라 공존하는 두 형태다 — 13개 그룹 중 자기 파일을 가진 것은 2개(`doctor_mcp_version.go`, `doctor_disk.go`)이고 6개는 `doctor.go` 안에 인라인으로 산다 — 어느 쪽도 Tier M 이며 선택 가능한 형태다(측정: 48c35a4d4). 등록은 `doctor.go` 의 슬라이스 1행이다(`grep -n 'checkMCPServerVersion' internal/cli/doctor.go` → `:201`). `internal/cli/doctor_golden_test.go` 의 테스트 소스는 항목 이름 목록을 고정하지 않지만(같은 세션 grep, 0 히트), 골든 고정본 3본(위 6-8행)은 항목 추가 시 반드시 재생성되므로 편집 파일 열거에 포함한다.
 
-**하한이다, 상한이 아니다.** `make embed-check` 는 `BIN=<path>` 로 임의 바이너리를 겨눠야 하는데 `moai doctor` 에는 그 파라미터가 없다. run-phase 가 이를 별도 진입점(예: `internal/template/scripts/` 의 `go run` 스크립트, `gen-catalog-hashes.go` 선례)으로 푸는 형태를 고르면 파일이 6-7 건으로 는다. 그 경우 `module:` 에 해당 패키지를 추가해야 한다 — 형태가 바뀌면 `module:` 도 함께 바뀐다.
+**하한이다, 상한이 아니다.** `make embed-check` 는 `BIN=<path>` 로 임의 바이너리를 겨눠야 하는데 `moai doctor` 에는 그 파라미터가 없다. run-phase 가 이를 별도 진입점(예: `internal/template/scripts/` 의 `go run` 스크립트, `gen-catalog-hashes.go` 선례)으로 푸는 형태를 고르면 파일이 9-10 건으로 는다. 그 경우 `module:` 에 해당 패키지를 추가해야 한다 — 형태가 바뀌면 `module:` 도 함께 바뀐다.
 
 ### B.2 산술과 판정
 
@@ -31,7 +34,7 @@ SSOT(`.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier) 인
 > | S (Simple) | < 300 LOC | **< 5 files** | **2 files**: spec.md + plan.md (AC inline in spec.md §3) | 0.75 |
 > | M (Medium) | 300 - 1000 LOC | **5 - 15 files** | **3 files**: spec.md + plan.md + acceptance.md | 0.80 |
 
-- 파일 수 **5**. Tier S 의 조건은 `< 5` 이므로 `5 < 5` 는 **거짓** → Tier S 실격. `5` 는 Tier M 의 밴드 `5 - 15` 에 **정확히 들어간다**.
+- 파일 수 **8**. Tier S 의 조건은 `< 5` 이므로 `8 < 5` 는 **거짓** → Tier S 실격. `8` 은 Tier M 의 밴드 `5 - 15` 안에 들어간다(측정: 48c35a4d4).
 - LOC 추정은 여전히 `< 300` 으로 Tier M 의 밴드(`300 - 1000`) 아래다. 두 축이 갈리지만 판정은 M 이다: SSOT 가 LOC 열을 "Scope **guidance**" 로, 파일 수를 조건으로 적고 있고, Tier S 자격은 두 축의 **연언**(`< 300 LOC` AND `< 5 files`)이라 한쪽만 깨져도 실격이기 때문이다. 승격 방향으로 트는 것이 이 리포가 명시한 안티패턴("오버헤드를 피하려고 큰 SPEC 을 S 로 분류")의 반대 방향이기도 하다.
 - 마일스톤 **3**(M1-M3), 헌장성 **없음**(빌드 배선 + doctor 항목 + 문서. ZONE 규칙·에이전트 계약을 바꾸지 않는다).
 
@@ -74,7 +77,7 @@ SSOT(`.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier) 인
 - **2순위 폴백(바이너리에 임베드 자산 덤프 경로 추가)은 폐기했다.** 실행 불가능해서가 아니라 **불필요해서**다: 1순위가 성립한 이상, 유지자 전용 검사 하나를 위해 배포되는 바이너리에 CLI 표면을 더하는 것은 순수한 표면 확대다. run-phase 는 이것을 재설계하지 말고 없는 것으로 취급한다.
 - 스크래치는 `$TMPDIR` 하위. 저장소 트리에 아무것도 쓰지 않는다(REQ-AEL-002 가 이 검사를 **직접** 구속한다 — v0.2.0 에서 주어를 넓혔다). 이 조항은 형식이 아니다: 위 추출은 스크래치에 프로젝트 전체를 배포하는 무거운 쓰기이며, 감사는 git init 과 훅 설치가 동반되는 것을 관측했다.
 
-종료 조건: AC-AEL-003 의 뮤턴트가 **죽는다**(RED 관측 + 원복 후 GREEN). 같은 뮤턴트에 기존 `TestEmbedFSPresenceAndByteEquality` 를 걸어 **여전히 통과함**을 기록으로 남긴다 — 새 검사가 기존 검사가 못 보던 축을 실제로 본다는 대조군이다. 여기에 v0.2.0 이 더한 두 게이트를 함께 만족해야 한다(감사 D3): **비교 기수 보고**(대체 대상인 `golden_test.go:285` 의 `count != 11` 단언에 대응하는 조항) 와 **바이너리 부재 시 실패 종료**. 둘 다 없으면 부분 성공한 추출이 조용히 통과한다.
+종료 조건: AC-AEL-003 의 뮤턴트가 **죽는다**(RED 관측 + 원복 후 GREEN). 같은 뮤턴트에 기존 `TestEmbedFSPresenceAndByteEquality` 를 걸어 **여전히 통과함**을 기록으로 남긴다 — 새 검사가 기존 검사가 못 보던 축을 실제로 본다는 대조군이다. 여기에 v0.2.0 이 더한 두 게이트를 함께 만족해야 한다(감사 D3): **비교 기수 보고**(대체 대상인 `internal/template/agentemit/golden_test.go:284-285` 의 `count != 11` 단언에 대응하는 조항; 측정: 48c35a4d4) 와 **바이너리 부재 시 실패 종료**. 둘 다 없으면 부분 성공한 추출이 조용히 통과한다.
 
 **자동 호출 지점 — 결정됨(운영자, v0.3.0): (iii) `moai doctor` 항목으로 편입한다.** `make embed-check` verb 자체는 어느 안에서도 M1 산출물로 남는다. 갈린 것은 자동 트리거뿐이었고, 두 근거가 이를 취향이 아니라 측정으로 못박는다.
 

@@ -87,14 +87,14 @@ func TestIsHex8(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]bool{
-		"a1b2c3d4": true,
-		"00000000": true,
-		"ffffffff": true,
-		"A1B2C3D4": false, // uppercase not accepted by isHex8 itself
-		"g1b2c3d4": false, // 'g' not hex
-		"a1b2c3d":  false, // 7 chars
+		"a1b2c3d4":  true,
+		"00000000":  true,
+		"ffffffff":  true,
+		"A1B2C3D4":  false, // uppercase not accepted by isHex8 itself
+		"g1b2c3d4":  false, // 'g' not hex
+		"a1b2c3d":   false, // 7 chars
 		"a1b2c3d45": false, // 9 chars
-		"":         false,
+		"":          false,
 	}
 	for in, want := range tests {
 		if got := isHex8(in); got != want {

@@ -1,0 +1,29 @@
+=== RUN   TestPrecommitE2EDefaultAllowsUnrelatedCommit
+    precommit_gate_scope_e2e_test.go:97: commit blocked under the default posture (AC-002 violated):
+        fatal: not a git repository (or any of the parent directories): .git
+--- FAIL: TestPrecommitE2EDefaultAllowsUnrelatedCommit (0.02s)
+=== RUN   TestPrecommitE2EOptInBlocksAndGuides
+    precommit_gate_scope_e2e_test.go:121: failure output missing remedy string ".moai/config/sections/gate.yaml":
+        fatal: not a git repository (or any of the parent directories): .git
+    precommit_gate_scope_e2e_test.go:121: failure output missing remedy string "gate.pre_commit.enabled":
+        fatal: not a git repository (or any of the parent directories): .git
+    precommit_gate_scope_e2e_test.go:121: failure output missing remedy string "gate.enabled":
+        fatal: not a git repository (or any of the parent directories): .git
+    precommit_gate_scope_e2e_test.go:121: failure output missing remedy string "gate.skip_tests":
+        fatal: not a git repository (or any of the parent directories): .git
+    precommit_gate_scope_e2e_test.go:121: failure output missing remedy string "gate.disabled_steps":
+        fatal: not a git repository (or any of the parent directories): .git
+    precommit_gate_scope_e2e_test.go:121: failure output missing remedy string "SKIP_MOAI_PRECOMMIT=1":
+        fatal: not a git repository (or any of the parent directories): .git
+--- FAIL: TestPrecommitE2EOptInBlocksAndGuides (0.02s)
+=== RUN   TestPrecommitE2EExplicitOptOutAllowsCommit
+    precommit_gate_scope_e2e_test.go:132: commit blocked despite explicit pre_commit.enabled: false:
+        fatal: not a git repository (or any of the parent directories): .git
+--- FAIL: TestPrecommitE2EExplicitOptOutAllowsCommit (0.02s)
+=== RUN   TestPrecommitE2ENoMoaiOnPathPasses
+    precommit_gate_scope_e2e_test.go:142: commit blocked with moai absent from PATH (AC-007 violated):
+        fatal: not a git repository (or any of the parent directories): .git
+--- FAIL: TestPrecommitE2ENoMoaiOnPathPasses (0.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.001s
+FAIL

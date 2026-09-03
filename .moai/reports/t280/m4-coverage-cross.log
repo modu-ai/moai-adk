@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.788s	coverage: 3.8% of statements in ./internal/hook
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.994s	coverage: 0.6% of statements in ./internal/hook

@@ -319,7 +319,7 @@ func TestNewHumanOversight(t *testing.T) {
 		t.Fatal("NewHumanOversight returned nil")
 	}
 	// Dry-run mode always approves without prompting.
- approved, err := h.Approve(&AmendmentProposal{RuleID: "CONST-V3R2-099", Before: "a", After: "b"}, true)
+	approved, err := h.Approve(&AmendmentProposal{RuleID: "CONST-V3R2-099", Before: "a", After: "b"}, true)
 	if err != nil {
 		t.Errorf("Approve dry-run: %v", err)
 	}

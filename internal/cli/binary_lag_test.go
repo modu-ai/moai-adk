@@ -165,6 +165,26 @@ func exprSource(fset *token.FileSet, src []byte, e ast.Expr) string {
 	return string(src[start:end])
 }
 
+// namesAddedAfterBaseline lists doctor check names registered by LATER SPECs,
+// which this guard must not attribute to REQ-BLV-009.
+//
+// The guard's subject is the binary-lag SPEC's own delta: it pins that
+// REQ-BLV-009 rewires "Binary Freshness" and registers no new name. Because it
+// measures against a FIXED baseline SHA rather than against that SPEC's own
+// commits, every later SPEC that legitimately adds a check trips it — a false
+// positive with respect to the stated intent. Naming the additions here keeps
+// the freeze in force for every other name (an unlisted addition, and any
+// removal, still fails) while letting a later SPEC's own tests own its check.
+//
+// Bumping lagBaselineSHA would be the wrong fix: it would silence every other
+// drift accumulated since the baseline, not just this one entry.
+//
+//   - hookWiringCheckName — SPEC-HOOK-WIRING-DRIFT-001 M2, the "Hook Wiring"
+//     drift diagnostic.
+var namesAddedAfterBaseline = map[string]bool{
+	"hookWiringCheckName": true,
+}
+
 func TestBinaryLag_DoctorCheckNameSetIsUnchanged(t *testing.T) {
 	before, err := exec.Command("git", "show", lagBaselineSHA+":internal/cli/doctor.go").Output()
 	if err != nil {
@@ -179,10 +199,11 @@ func TestBinaryLag_DoctorCheckNameSetIsUnchanged(t *testing.T) {
 	afterNames := checkNamesFromSource(t, after)
 
 	for name := range afterNames {
-		if !beforeNames[name] {
-			t.Errorf("this SPEC added doctor check name %s; REQ-BLV-009 rewires the existing "+
-				"\"Binary Freshness\" item and registers no new name", name)
+		if beforeNames[name] || namesAddedAfterBaseline[name] {
+			continue
 		}
+		t.Errorf("this SPEC added doctor check name %s; REQ-BLV-009 rewires the existing "+
+			"\"Binary Freshness\" item and registers no new name", name)
 	}
 	for name := range beforeNames {
 		if !afterNames[name] {
