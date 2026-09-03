@@ -113,9 +113,12 @@ type ModeProfile struct {
 	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
 	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
 	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
-	// Manual-mode git-flow keys. These have NO Go consumer — they are
-	// pass-through fields whose only job is to survive a typed load-and-save
-	// round trip (SPEC-WORKTREE-BASEREF-001 REQ-WBR-013 / AC-WBR-014).
+	// Manual-mode git-flow keys. ReleaseBranchPrefix and RCVersionFormat have
+	// no Go consumer — they are pass-through fields whose only job is to
+	// survive a typed load-and-save round trip (SPEC-WORKTREE-BASEREF-001
+	// REQ-WBR-013 / AC-WBR-014). DevelopBranch gained one (card t449): the
+	// `moai integration acquire` record resolves its branch default through
+	// LoadGitFlowDevelopBranch.
 	//
 	// Measured before they existed: saving git_strategy through the typed path
 	// re-marshals this struct, so a `worktree_base_branch` edit made from the
