@@ -151,7 +151,7 @@ func TestGeneratePreviews_MissingLiveDocSkipped(t *testing.T) {
 	}
 	// One real draft + one live doc; the other live doc is absent.
 	draftPath := filepath.Join(draftDir, "capability-map.md")
-	livePath := filepath.Join(draftDir + "-live", "capability-map.md")
+	livePath := filepath.Join(draftDir+"-live", "capability-map.md")
 	if err := os.MkdirAll(filepath.Dir(livePath), 0o755); err != nil {
 		t.Fatal(err)
 	}

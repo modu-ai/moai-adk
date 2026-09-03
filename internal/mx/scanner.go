@@ -410,14 +410,14 @@ func (s *Scanner) parseTag(filePath string, lineNum int, content string, rawLine
 	}
 
 	return Tag{
-		Kind:         kind,
-		File:         filePath,
-		Line:         lineNum,
-		Body:         body,
-		AnchorID:     anchorID,
-		ContentHash:  hashTagLine(rawLine),
-		CreatedBy:    "scanner", // TODO: Detect if human-created
-		LastSeenAt:   time.Now(),
+		Kind:        kind,
+		File:        filePath,
+		Line:        lineNum,
+		Body:        body,
+		AnchorID:    anchorID,
+		ContentHash: hashTagLine(rawLine),
+		CreatedBy:   "scanner", // TODO: Detect if human-created
+		LastSeenAt:  time.Now(),
 	}, nil
 }
 
