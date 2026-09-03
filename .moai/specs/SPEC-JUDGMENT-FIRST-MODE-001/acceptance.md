@@ -391,8 +391,15 @@ recorded by the observer, *When* the JSONL log is read, *Then* zero rows carry
   record. It MUST be accompanied by `pull-window.jsonl.provenance.md` stating: the **source
   absolute path**; the **asking session's `session_id`**; the **collection interval** (the `timestamp`
   of the first and last exported row); the **row count** and the **`label_present: true` count** as
-  measured at export time; and the **export command**. An artifact without that record is an
-  unattributed claim under `verification-claim-integrity.md` §2 — a Gap, never a Claim.
+  measured at export time; the asking session's own count of `AskUserQuestion` calls issued during
+  the interval (**`calls_issued`** — a value the asking session knows without the observer); and the
+  **export command**. A `session_start` timestamp and a matcher SHA are deliberately **not** part of
+  the record: the exported window's own existence and row counts already prove the wired-session
+  condition, so those fields would be confirmation stamps gating nothing, and fields that gate
+  nothing leave the impression verification finished when it did not
+  (`.moai/reports/t401/provenance-eligibility-options.md`, Option A rejection). An artifact without
+  that record is an unattributed claim under `verification-claim-integrity.md` §2 — a Gap, never a
+  Claim.
 - Verify, both halves required:
   1. `jq -s '[.[] | select(.mode=="pull")] | {n: length, violations: ([.[] | select(.label_present==true)] | length)}' .moai/reports/t401/pull-window.jsonl`
      returning `n >= 20` and `violations == 0`.
@@ -400,11 +407,25 @@ recorded by the observer, *When* the JSONL log is read, *Then* zero rows carry
      recorded in that file equal to the artifact's actual row count
      (`wc -l < .moai/reports/t401/pull-window.jsonl`). A disagreement is a gap: it means the record
      describes a different export than the one being read.
-- RED-now, both halves, re-measured in this tree at `HEAD 6352897a5`:
+  3. The provenance's `calls_issued` contrasted with the artifact's `rows_recorded` (its actual row
+     count) under a four-way reading rule: `rows_recorded == calls_issued` → the window covers the
+     interval and the sample stands; `rows_recorded == 0` with `calls_issued > 0` → the observer was
+     not wired into that session (exactly the negative observation the lead session recorded on
+     2026-09-02: 4 calls issued, 0 rows anywhere); `0 < rows_recorded < calls_issued` → partial row
+     loss — the window is a **Gap** and must not be read as a sample; `rows_recorded >
+     calls_issued` → rows from other sessions are mixed in — split by `session_id` before any
+     reading. The three mismatch states are observable signals, never silent passes: without this
+     contrast, observer non-wiring and partial row loss read silently as "no violations".
+- RED-now, all three halves, re-measured in this tree at `HEAD 095f2799b` (the provenance-amendment
+  commit's parent; the amendment changes only SPEC artifacts, so the probe subjects are identical
+  in both trees):
   1. `ls .moai/logs/ | grep -c askuser` → `0`; exit code `1`.
   2. `ls .moai/reports/t401/pull-window.jsonl.provenance.md` →
      `ls: .moai/reports/t401/pull-window.jsonl.provenance.md: No such file or directory`; exit code
      `1`.
+  3. Half 3 is red for the same reason as half 2: the provenance record that would carry
+     `calls_issued` does not exist, so the contrast it asserts has no input and cannot be read —
+     there is no sample, no record, and no issued-call count to contrast.
   Red on both halves because no observer log exists and nothing has been exported, so there is no
   sample and no record of one; the criterion is unmet. (An absent log is a gap, and a gap is red; it
   is never read as `violations == 0`.)
@@ -432,6 +453,15 @@ label, *Then* it records `label_present: true`; and on one that does not, `false
   3. `ls .moai/reports/t401/baseline-push-window.jsonl.provenance.md` → exit code `0`, **and** the
      row count recorded in that file equal to the artifact's actual row count
      (`wc -l < .moai/reports/t401/baseline-push-window.jsonl`).
+  4. The provenance's `calls_issued` contrasted with the artifact's `rows_recorded` (its actual row
+     count) under the same four-way reading rule as AC-JFM-018 half 3: `rows_recorded ==
+     calls_issued` → the window covers the interval and the control sample stands;
+     `rows_recorded == 0` with `calls_issued > 0` → the observer was not wired into that session
+     (the 2026-09-02 negative observation: 4 calls issued, 0 rows anywhere); `0 < rows_recorded <
+     calls_issued` → partial row loss — the window is a **Gap** and must not be read as a control
+     sample; `rows_recorded > calls_issued` → rows from other sessions are mixed in — split by
+     `session_id` before any reading. The mismatch states are observable signals, never silent
+     passes.
 - **The exported artifact carries its provenance, or it asserts nothing.** This window too is
   collected by the session that actually asks and whose observer is actually wired — the lead session
   under kanban division of labour, never the card's lane, which issues no `AskUserQuestion` calls at
@@ -444,12 +474,18 @@ label, *Then* it records `label_present: true`; and on one that does not, `false
   MUST therefore be accompanied by `baseline-push-window.jsonl.provenance.md` recording: the
   **source absolute path**; the **asking session's `session_id`**; the **collection interval** (the
   `timestamp` of the first and last exported row); the **row count** and the **`label_present: true`
-  count** as measured at export time; and the **export command**. A copied JSONL with no record of
+  count** as measured at export time; the asking session's own count of `AskUserQuestion` calls
+  issued during the interval (**`calls_issued`** — a value the asking session knows without the
+  observer); and the **export command**. A `session_start` timestamp and a matcher SHA are
+  deliberately **not** part of the record (Option A rejection,
+  `.moai/reports/t401/provenance-eligibility-options.md`) — confirmation stamps gating nothing. A
+  copied JSONL with no record of
   which session collected it, from which tree, over which interval, is an unattributed claim under
   `verification-claim-integrity.md` §2 — and a positive control read from an unattributed sample
   asserts nothing, exactly as this criterion says of a detector never observed firing.
-- RED-now, all three halves (halves 2 and 3 re-measured in this tree at `HEAD 6352897a5`; half 1
-  stands as measured at `ad272be20`, unchanged by this amendment):
+- RED-now, all four halves (halves 2-4 re-measured in this tree at `HEAD 095f2799b` — the
+  provenance-amendment commit's parent, whose probe subjects are identical to the amendment
+  commit's; half 1 stands as measured at `ad272be20`, unchanged by this amendment):
   1. `go test ./internal/hook/... -run 'AskUserQuestionObserver' -count=1` →
      `ok  	github.com/modu-ai/moai-adk/internal/hook	0.562s [no tests to run]` — the **first of 11** lines, the `[no tests to run]` token holding on all 11 (re-measured, `wc -l` → `11`, `grep -c '[no tests to run]'` → `11`, `0` `FAIL` lines); exit code `0` —
      empty swept set.
@@ -459,6 +495,9 @@ label, *Then* it records `label_present: true`; and on one that does not, `false
      `ls: .moai/reports/t401/baseline-push-window.jsonl.provenance.md: No such file or directory`;
      exit code `1`. Requiring provenance grows this cell from one absent file to **two**: the
      artifact and its record are both missing, and either one missing keeps the criterion red.
+  4. Red for the same reason as half 3: the provenance record that would carry `calls_issued` does
+     not exist, so the contrast it asserts has no input — no control sample, no record, and no
+     issued-call count to contrast.
 - Green path: M0, before M1 amends any doctrine. The ordering is load-bearing and is why M0 leads
   the plan: once the convention lands there is no window left in which a live `label_present: true`
   row can be produced (plan.md §F preamble).

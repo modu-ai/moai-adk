@@ -71,6 +71,19 @@ Open items carried into the audit and the Implementation Kickoff Approval gate:
 
 No code written, no commit, no push in this phase.
 
+**Provenance amendment (0.2.3, 2026-09-03).** Adopted from the decision document
+`.moai/reports/t401/provenance-eligibility-options.md`: **Option A rejected** — no `session_start`,
+no matcher SHA in the provenance record (reason recorded in REQ-JFM-025: the exported window's own
+existence and row counts already prove the wired-session condition; confirmation stamps gating
+nothing leave a finished-verification impression); **Option C adopted** — `calls_issued` (the asking
+session's own count of `AskUserQuestion` calls issued during the interval) added to REQ-JFM-025's
+provenance enumeration, with AC-JFM-018 half 3 / AC-JFM-023 half 4 asserting the four-way
+`rows_recorded` vs `calls_issued` contrast: observer non-wiring and partial row loss become
+observable mismatch signals, never silent passes (detectable, not eliminated). Version bumped
+0.2.2 → 0.2.3; REQ count unchanged at 25 (rides REQ-JFM-025's existing enumeration). Affected
+RED-now cells re-measured and re-pinned to `HEAD 095f2799b`. The §E.1 audit-ready verdict line is
+deliberately NOT refreshed here — it is refreshed after the audit this amendment will receive.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

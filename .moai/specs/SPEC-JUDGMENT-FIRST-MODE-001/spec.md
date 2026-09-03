@@ -1,10 +1,10 @@
 ---
 id: SPEC-JUDGMENT-FIRST-MODE-001
 title: "Judgment-first mode: withhold the recommendation until it is asked for (card t401, issue #1683 item 2)"
-version: "0.2.2"
+version: "0.2.3"
 status: draft
 created: 2026-09-02
-updated: 2026-09-02
+updated: 2026-09-03
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -23,6 +23,7 @@ tier: L
 | 0.1.0 | 2026-09-02 | manager-spec | Initial Tier L authoring: recommendation-mode axis, six surfaces, runtime observer, vacuity falsifier. |
 | 0.2.0 | 2026-09-02 | manager-spec | Iteration-1 plan-audit revision (D1-D12). Verification layer rebuilt as measured two-cell RED-now/green-path adoption; `pull` label-withholding scope widened from decision-type-only to every `AskUserQuestion` (D3 — the runtime cannot distinguish the class); positive-detection requirement REQ-JFM-024 added (D4); S4/S5 coordinates corrected (D9); REQ-JFM-007/008 given concrete shapes; `.github/` template premise corrected (D8). |
 | 0.2.1 | 2026-09-02 | manager-spec | Iteration-2 scoped fix pass (D-N1, D-N2, D-N4 blocking; D-N3, D-N5, D-N6 optional). AC-JFM-013's candidate selector made case-insensitive so S1's first-named coordinate `askuser-protocol.md:64` (capital `F` in `**First option label**`) enters the swept set; baseline re-measured 23 → 25 in this tree and `:64` added to the required-`conditioned` row list. design.md's S4/S5 per-surface cells brought onto the 0.2.0 concrete forms. Five mis-cited constraint ids corrected (CONST-3 → REQ-JFM-015 / §B.2; CONST-2 → REQ-JFM-022). Abridged `go test` stdout cells annotated with their line counts; the D3 widening flagged for the kickoff gate in the SPEC body; AC-JFM-021 given an explicit swept-count floor. |
+| 0.2.3 | 2026-09-03 | manager-spec | Provenance amendment per the decision document `.moai/reports/t401/provenance-eligibility-options.md` (Option A rejection + Option C adoption): REQ-JFM-025's provenance enumeration extended with `calls_issued` (the asking session's own count of `AskUserQuestion` calls issued during the interval), with AC-JFM-018/023 asserting a four-way `rows_recorded` vs `calls_issued` contrast (observer non-wiring and partial row loss become observable mismatches, never silent passes). `session_start` and a matcher SHA deliberately NOT added — self-proving condition, confirmation stamps gating nothing. REQ count unchanged at 25 (rides REQ-JFM-025's existing enumeration; no new REQ). Affected RED-now cells re-measured and re-pinned. |
 | 0.2.2 | 2026-09-02 | manager-spec | Iteration-3 narrow fix pass (D-N7 blocking; D-N8 optional), operator-authorized beyond the Tier L iteration ceiling to close one finding. The written rule at `acceptance.md` that let a swept candidate be classed `unconditioned-by-design` for absence from §B.1's coordinate table is **removed**: REQ-JFM-016 states a reachability test, not a membership test, and the SPEC's own two admitted precedents (`run.md:137`, `branch-origin-protocol.md:25` — both outside S1-S6) already use the consequence test. `plan/spec-assembly.md:212` (the Implementation Kickoff Approval `(권장)`-first clause — the same clause as `run.md:137`, one file over) and `plan/spec-assembly.md:353` (the sole implementing site of Frozen `CONST-V3R5-035`, whose doctrine site `branch-origin-protocol.md:25` M1 already conditions) added to the required-`conditioned` list with inline reasons; M1 given a `spec-assembly.md` edit-surface row plus its template mirror (verified to exist and be byte-identical to the live file); §E.1 rewritten as a four-coordinate contradiction inventory. Any residual `unconditioned-by-design` judgment is now a blocker report to the orchestrator, not a run-phase classification. AC-JFM-013's RED-now cell re-measured at `ad272be20` with two added coverage controls (`:212`, `:353` — both present in the swept set). AC-JFM-007 given a four-element ordered `Verify` so the S5 sequence is pinned by a criterion (D-N8). |
 
 ## §A Context and Problem
@@ -303,15 +304,26 @@ is entirely unfollowed.
 **REQ-JFM-025** (Where — capability gate) — Where the recorded-window evidence is collected by a
 session other than the one implementing the SPEC, the exported artifact shall carry a provenance
 record naming the source absolute path, the asking session's `session_id`, the collection interval,
-the row count and the `label_present: true` count measured at export time, and the export command;
-and the acceptance criteria shall assert both the artifact and its provenance. The window is
+the row count and the `label_present: true` count measured at export time, the asking session's
+own count of `AskUserQuestion` calls issued during the interval (`calls_issued` — a value the
+asking session knows without the observer), and the export command; and the acceptance criteria
+shall assert both the artifact and its provenance, including the contrast between
+`calls_issued` and the recorded row count. The window is
 collected by the session that actually asks and whose observer is actually wired — under the kanban
 division of labour the lead session, which owns the operator channel, and never the card's lane,
 which issues no `AskUserQuestion` calls at all; and a session already running when the
 `AskUserQuestion` matcher was added does not pick the matcher up, so the collecting session is one
 started after the matcher landed — and its rows land under that session's `CLAUDE_PROJECT_DIR`
 (its cwd when unset), which is generally not the card worktree. An exported copy whose origin is unrecorded is an unattributed
-claim, and a criterion read from it asserts nothing.
+claim, and a criterion read from it asserts nothing. A `session_start` timestamp and a matcher
+SHA are deliberately **not** part of this record: the exported window's own existence and row
+counts already prove the wired-session condition, so those fields would be confirmation stamps
+gating nothing — and fields that gate nothing leave the impression verification finished when it
+did not (decision: `.moai/reports/t401/provenance-eligibility-options.md`, Option A rejection).
+The residual sample-bias hole — an unwired session leaves no rows at all, which `session_start`
+cannot reach in principle — is handled by `calls_issued`, which makes observer non-wiring and
+partial row loss observable rather than silently reading as "no violations"; it does not
+eliminate them.
 
 ## §D Constraints
 
