@@ -58,7 +58,7 @@ Verification: the command above (Bash timeout ≥ 600000ms; `go test -timeout` �
 
 **AC-PVM-012 — Release-coordination line carried (file check, not a test)**
 Given the SPEC's closing (run-phase completion report and progress.md §E.3), When the lead reads them, Then both carry this one line: **t230's landing precondition is satisfied (`32d2221fa` + `539349c5b` are develop ancestors); the remaining "at least one release must pass after t230's landing before this ships" is a deployment-time concern owned by release card t204 and does not block this SPEC's phases.**
-Verification: `grep -c 't204' .moai/specs/SPEC-PRECOMMIT-VET-MONOREPO-001/progress.md` ≥ 1 in the §E.3 close record.
+Verification: `sed -n '/^## §E.3/,/^## §E.4/p' .moai/specs/SPEC-PRECOMMIT-VET-MONOREPO-001/progress.md | grep -c 'release card t204'` ≥ 1 — scoped to the §E.3 close record only. The §E.1 plan-phase pre-mention and the §E.3 placeholder's own "naming t204" scaffolding phrase do not satisfy this check (measured 0 on the plan-phase tree); only the mandated sentence form `release card t204`, as quoted in this AC, flips it.
 
 ## §4 Quality gates
 
