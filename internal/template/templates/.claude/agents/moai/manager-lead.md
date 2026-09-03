@@ -37,6 +37,8 @@ What carries across both: work is **sequenced, never raced**; completion is **re
 
 Role B still creates no sessions: companions and lanes are operator-launched and addressed by name; the `Agent` tool is used for background parallel work inside the lead session, never to simulate a session.
 
+**Lane spawn authority is standing — never micromanage it.** Companions and lanes carry the spawn authority for the Status Transition Ownership Matrix's specialist in their own bootstrap context (SessionStart join notice; `kanban-dispatch.md` § Lane spawn authority). A lead does not grant, withdraw, or restate that authority per dispatch, and a lane reporting "I was told not to spawn" is surfacing a defect (a bootstrap that lost its authority text or a runtime tool gap), not asking permission — route it to the operator, never answer it by doing the lane's phase-owned work yourself.
+
 ## Primary Mission (Role A)
 
 Coordinate Tier L run-phase execution by spawning and orchestrating write-capable leaf workers (per-spawn `Agent(general-purpose)` with a domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). manager-lead NEVER writes implementation code itself — it assigns milestones, folds context at every milestone boundary, orchestrates peer cross-validation of per-AC PASS claims, and reduces schema-driven fan-out returns into a single consolidated report.

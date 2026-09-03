@@ -811,6 +811,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// exists for the resolving session, raise the runtime Stop-hook block cap so
 	// the infinite loop persists. Best-effort + fail-open (never blocks launch).
 	launchEnv = injectStopHookBlockCapForGoal(context.Background(), launchEnv, launchProjectRoot(), resolveLaunchSessionID(""))
+	// SPEC-CHAIN-CORE-001 REQ-CHAIN-005 (Path A): record the worktree spawn
+	// boundary on the chain ledger and hand the node ID to the child
+	// environment. Fail-open — never blocks the launch (card t242).
+	launchEnv = injectChainNodeForLaunch(passThrough, launchEnv, os.Stderr)
 	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 }
 

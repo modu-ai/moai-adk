@@ -215,9 +215,21 @@ grep -q 'USAGE'            "$RUN_DIR/j5-help.out"; check "J5 USAGE header presen
 grep -q 'COMMANDS'         "$RUN_DIR/j5-help.out"; check "J5 COMMANDS group header present" $?
 grep -q 'PROJECT COMMANDS' "$RUN_DIR/j5-help.out"; check "J5 PROJECT COMMANDS group header present" $?
 grep -q 'TOOLS'            "$RUN_DIR/j5-help.out"; check "J5 TOOLS group header present" $?
-! grep -Eq '█|�block|_____|\\\\ /|ASCII' "$RUN_DIR/j5-help.out"; check "J5 no large ASCII-art logo" $?
+# The logo is INTENDED on the explicit root-help surface as of REQ-TUXIU-055 /
+# AC-TUXIU-024 (restored in b1ea545e2): `moai --help` / `-h` / `help` carry it,
+# subcommand help does not, and no-args prints it exactly once. The predicate
+# side of that contract is unit-tested over all 6 arg shapes in
+# internal/cli/fang_roothelp_test.go; what a unit test cannot see is whether the
+# logo actually RENDERS on the real surface, which is this journey's half.
+grep -q '█' "$RUN_DIR/j5-help.out"; check "J5 restored logo present on root help (REQ-TUXIU-055)" $?
+# The pre-USAGE banner is now logo + prose. The logo is a fixed asset with its
+# own SSOT guards, so the original 12-line compactness budget is kept where it
+# still means something: the NON-logo prose. Relaxing the whole-banner bound to
+# accommodate the logo would have retired the guard rather than updated it.
 BANNER_LINES=$(awk '/USAGE/{exit} {n++} END{print n+0}' "$RUN_DIR/j5-help.out")
-[ "$BANNER_LINES" -le 12 ]; check "J5 compact banner (<=12 lines before USAGE, got $BANNER_LINES)" $?
+LOGO_LINES=$(awk '/USAGE/{exit} /█|═/{n++} END{print n+0}' "$RUN_DIR/j5-help.out")
+PROSE_LINES=$((BANNER_LINES - LOGO_LINES))
+[ "$PROSE_LINES" -le 12 ]; check "J5 compact banner prose (<=12 non-logo lines before USAGE, got $PROSE_LINES of $BANNER_LINES)" $?
 ! grep -Eiq 'warning|deprecat' "$RUN_DIR/j5-help.out"; check "J5 stdout free of warnings" $?
 j_end J5 "$RUN_DIR/j5-help.out"
 

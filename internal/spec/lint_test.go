@@ -969,3 +969,117 @@ func TestEARSModalityRule_MessageContainsDocsURL(t *testing.T) {
 		t.Errorf("expected Message to contain docs URL substring %q, got %q", "adk.mo.ai.kr", msg)
 	}
 }
+
+// TestLinter_SpecsDirMissingSpecFile_BothDirections verifies the discovery
+// blind spot in BOTH directions, in one test, because either half alone is
+// ambiguous: seeing the previously-invisible directory could equally mean the
+// discovery path was widened OR that a rule was switched off, and only the
+// second half tells those apart.
+//
+// Direction A (the hole closes): a SPEC-*/ directory carrying no spec.md is
+// surfaced as a SpecsDirMissingSpecFile warning. Before the fix such a
+// directory escaped both filters — discoverSPECs globs SPEC-*/spec.md and so
+// never visited it, while the foreign-entry check exempted it for being named
+// SPEC-*.
+//
+// Direction B (nothing was switched off): a legitimate SPEC directory is NOT
+// flagged, is STILL discovered (discovery was not widened — ListDocs returns
+// exactly the two well-formed SPECs and not the malformed one), and its
+// per-SPECDoc rules STILL fire (the missing-coverage fixture keeps producing
+// CoverageIncomplete).
+func TestLinter_SpecsDirMissingSpecFile_BothDirections(t *testing.T) {
+	root := t.TempDir()
+	specsDir := filepath.Join(root, ".moai", "specs")
+	if err := os.MkdirAll(specsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	plant := func(dirName, fixture string) {
+		t.Helper()
+		dst := filepath.Join(specsDir, dirName)
+		if err := os.MkdirAll(dst, 0755); err != nil {
+			t.Fatal(err)
+		}
+		content, err := os.ReadFile(specPath(fixture))
+		if err != nil {
+			t.Fatalf("failed to read fixture %q: %v", fixture, err)
+		}
+		if err := os.WriteFile(filepath.Join(dst, "spec.md"), content, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Legitimate, clean.
+	plant("SPEC-VALID-001", "valid")
+	// Legitimate, and known to trip a per-SPECDoc rule — the probe that shows
+	// the rules still run rather than having been silenced.
+	plant("SPEC-LIVE-001", "missing-coverage")
+
+	// The blind directory: SPEC-named, real content, but no spec.md — exactly
+	// the shape of .moai/specs/SPEC-V3R4-CC2X-ADOPT-001/ in this repo.
+	blindDir := filepath.Join(specsDir, "SPEC-BLIND-001")
+	if err := os.MkdirAll(blindDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(blindDir, "research.md"), []byte("---\nstatus: draft\n---\n# Research\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := spec.NewLinter(spec.LinterOptions{
+		RegistryPath: testRegistryPath(),
+		BaseDir:      specsDir,
+	})
+
+	// Auto-discovery path (nil paths) is what runs the directory-level check.
+	report, err := linter.Lint(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// --- Direction A: the blind directory is now visible ---
+	missing := findingsForCode(report.Findings, "SpecsDirMissingSpecFile")
+	if len(missing) != 1 {
+		t.Fatalf("expected exactly 1 SpecsDirMissingSpecFile (SPEC-BLIND-001), got %d: %v", len(missing), missing)
+	}
+	if !strings.Contains(missing[0].Message, "SPEC-BLIND-001") {
+		t.Errorf("expected the finding to name SPEC-BLIND-001, got: %v", missing[0])
+	}
+	if missing[0].Severity != spec.SeverityWarning {
+		t.Errorf("expected SpecsDirMissingSpecFile severity warning, got %s", missing[0].Severity)
+	}
+
+	// --- Direction B: the well-formed directories were not collateral ---
+	for _, f := range missing {
+		if strings.Contains(f.Message, "SPEC-VALID-001") || strings.Contains(f.Message, "SPEC-LIVE-001") {
+			t.Errorf("a well-formed SPEC directory must not be flagged, got: %v", f)
+		}
+	}
+	// A SPEC-named directory must never be reported as a foreign entry —
+	// the two codes address different defects and must not overlap.
+	for _, f := range findingsForCode(report.Findings, "SpecsDirForeignEntry") {
+		if strings.Contains(f.Message, "SPEC-BLIND-001") {
+			t.Errorf("SPEC-BLIND-001 must be reported as SpecsDirMissingSpecFile, not SpecsDirForeignEntry: %v", f)
+		}
+	}
+
+	// Discovery was NOT widened: only the two spec.md-bearing directories are
+	// parsed as SPEC documents, and the malformed one is still not among them.
+	records, err := spec.ListDocs(root)
+	if err != nil {
+		t.Fatalf("ListDocs failed: %v", err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("expected discovery to return exactly 2 SPEC docs, got %d: %v", len(records), records)
+	}
+	for _, r := range records {
+		if strings.Contains(r.Path, "SPEC-BLIND-001") {
+			t.Errorf("discovery must not have been widened onto a nonexistent spec.md: %v", r.Path)
+		}
+	}
+
+	// The per-SPECDoc rules still fire on a discovered SPEC — this is what
+	// separates "made the directory visible" from "switched the rules off".
+	if !containsCode(report.Findings, "CoverageIncomplete") {
+		t.Error("expected CoverageIncomplete to still fire on SPEC-LIVE-001; its absence would mean the per-SPECDoc rules were silenced, not that the blind spot was closed")
+	}
+}
