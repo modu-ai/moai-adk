@@ -40,7 +40,7 @@ run_complete_at: 2026-09-04
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: pending-backfill-sync (t485 close — this commit; backfilled next)
 
 - sync 범위: CHANGELOG/README/docs-site 변경 없음(사용자 대면 변화 0 —
   조사 카드). 본 SPEC 문서 상태 전환과 증거 커밋이 sync 몫이다.

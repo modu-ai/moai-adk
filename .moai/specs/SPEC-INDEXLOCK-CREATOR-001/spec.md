@@ -2,7 +2,7 @@
 id: SPEC-INDEXLOCK-CREATOR-001
 title: "index.lock Contention Creator Identification — Failure-Instant Capture Attribution"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-04
 updated: 2026-09-04
 author: lane-15
