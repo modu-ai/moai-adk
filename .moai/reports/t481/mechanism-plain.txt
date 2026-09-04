@@ -1,0 +1,7 @@
+--- FAIL: TestMul (0.00s)
+    bad_test.go:8: Mul(2,3) = 6, want 7 (deliberate failure)
+FAIL
+coverage: 100.0% of statements
+FAIL	t481mech/bad	0.414s
+ok  	t481mech/ok	0.727s	coverage: 100.0% of statements
+FAIL
