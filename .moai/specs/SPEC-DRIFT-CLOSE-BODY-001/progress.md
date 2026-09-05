@@ -142,3 +142,16 @@ push_state: "not pushed, not merged - lead pushes in batch and performs the deve
 **Gaps** — 12개 밖 패키지는 돌리지 않았다(전체 스위트는 부하 규율상 의도적 미실행 — 판정은 CI 몫). `internal/cli` 재실행은 30분 한도에서 한 번뿐이라 부하에 따른 재현성은 관측하지 않았다.
 
 **Residual-risk** — `internal/cli`의 첫 미판정이 순수한 시간 초과인지, 이 카드와 무관한 지연 회귀인지는 구분하지 않았다. 30분 한도 재실행이 초록이므로 전자로 본다.
+
+### §E.4.2 재종결 — 0.4.0 amendment (카드 t484)
+
+**재종결 배경** — 이 SPEC은 `status: completed`로 종결된 뒤 카드 t484에서 운영자 승인을 받아 제자리 수정(in-place amendment)을 거쳤다. frontmatter는 `amendment_of: self` + `version: 0.4.0`이며, 수정 사유·범위·간극 조정은 `spec.md` HISTORY `## Amendments` 절에 기록돼 있다(판정서 `.moai/reports/t484/verdict.md`). amendment는 `completed → in-progress` 전환을 만들었으므로, 이 sync 커밋이 소유한 `in-progress → implemented → completed` 전환(`spec-frontmatter-schema.md` § Status Transition Ownership Matrix)으로 SPEC을 다시 `completed`로 닫는다. `version:`은 0.4.0에 그대로 둔다 — 버전은 amendment가 이미 소유했고 재종결은 버전을 올리지 않는다.
+
+- 이 SPEC은 0 소스 파일 변경(문서 전용)이라 CHANGELOG 항목을 만들지 않는다 — develop의 t481 종결이 세운 선례를 따른다
+- `updated:`는 2026-09-05(amendment일) 그대로다
+
+```yaml
+sync_commit_sha: "pending-backfill"
+```
+
+커밋은 자기 해시를 인용할 수 없으므로 자리표시자를 두고, 후속 backfill 커밋(`chore(SPEC-DRIFT-CLOSE-BODY-001): backfill sync_commit_sha …`)이 실제 SHA로 채운다. §E.4 초판의 `run_commit_sha: pending-backfill`(62·77행)은 run-phase 기록이라 이번 backfill 대상이 아니다.
