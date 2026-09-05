@@ -151,7 +151,7 @@ push_state: "not pushed, not merged - lead pushes in batch and performs the deve
 - `updated:`는 2026-09-05(amendment일) 그대로다
 
 ```yaml
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "76631690b"
 ```
 
 커밋은 자기 해시를 인용할 수 없으므로 자리표시자를 두고, 후속 backfill 커밋(`chore(SPEC-DRIFT-CLOSE-BODY-001): backfill sync_commit_sha …`)이 실제 SHA로 채운다. §E.4 초판의 `run_commit_sha: pending-backfill`(62·77행)은 run-phase 기록이라 이번 backfill 대상이 아니다.
