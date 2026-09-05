@@ -1,0 +1,7 @@
+this card's S1 (release-integrate, both spellings): 18 subjects, 18 distinct ids
+  spellings: 10 WT- / 8 worktree-
+
+lead's population  merge(WT-...)      : total 73 | no card token anywhere 9 | token only in scope 10 | token elsewhere too 54
+both spellings     merge(WT|worktree-): total 81 | no card token anywhere 9 | token only in scope 18 | token elsewhere too 54
+
+S1 ids: t119 t130 t131 t132 t133 t134 t135 t137 t139 t141 t142 t143 t144 t145 t146 t147 t148 t149
