@@ -179,10 +179,21 @@ func exprSource(fset *token.FileSet, src []byte, e ast.Expr) string {
 // Bumping lagBaselineSHA would be the wrong fix: it would silence every other
 // drift accumulated since the baseline, not just this one entry.
 //
+// An entry is written as the SOURCE TEXT of the registry entry's name
+// expression, because that is what checkNamesFromSource extracts. The two
+// shapes are not interchangeable: a check registered through a constant is
+// listed bare (hookWiringCheckName), while one registered as a string literal
+// keeps its quotes as characters (`"Hook Delivery"`). Listing a literal-named
+// check without the quotes matches nothing, so the guard stays red while
+// looking fixed.
+//
 //   - hookWiringCheckName — SPEC-HOOK-WIRING-DRIFT-001 M2, the "Hook Wiring"
 //     drift diagnostic.
+//   - `"Hook Delivery"` — t466, the hook-delivery workspace diagnostic
+//     (doctor.go registers it as a string literal, hence the quotes).
 var namesAddedAfterBaseline = map[string]bool{
 	"hookWiringCheckName": true,
+	`"Hook Delivery"`:     true,
 }
 
 func TestBinaryLag_DoctorCheckNameSetIsUnchanged(t *testing.T) {

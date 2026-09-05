@@ -551,29 +551,59 @@ wrapper is 0 bytes (`find .claude/hooks/moai -name '*.sh' -size 0 | wc -l` → 0
 - `Harness correction:` n/a — a direct inventory comparison. The clauses were
   derived from the mutants above rather than from a constructed failing run.
 
-### AC-HWD-015 — Template-First order was followed
+### AC-HWD-015 — Template-First order was followed (strip-aware mirror identity)
 
 **Given** the commit(s) delivering M3,
-**When** the local mirror and the template source are diffed,
-**Then** `diff` reports no difference for **every** file M3 touches —
+**When** each file M3 touches is compared against its
+`internal/template/templates/` twin with the forbidden-class tokens normalized
+on BOTH sides (the stripping REQ-HWD-014 mandates for the template copy),
+**Then** the normalized contents are identical for every file M3 touches —
 `hook-independence.md`, `agent-common-protocol.md`, and
-`agent-common-protocol-reference.md` — and `make build` was run between the
-template edit and the mirror.
+`agent-common-protocol-reference.md` — judged by ONE command, run from the
+project root, whose exit status separates PASS (0) from FAIL (1):
 
-- `Pre-impl observed:` `@4842760a7` — `diff -q` local mirror vs template source
-  for `hook-independence.md` → rc=0, **IDENTICAL**. The criterion asserts the
-  property is preserved across three files now, not one; its falsifying case is an
-  edit landing in only one side of any pair.
-- `Mutant:` **three attempted, all fail.** (i) *Edit only the local mirror* —
-  the diff is non-empty → fails. (ii) *Edit only the template, skip the mirror* —
-  the same diff fails in the other direction. (iii) *Edit both but skip
-  `make build`* — the diff passes, since it compares source to mirror and not
-  either to the binary; this is closed by the second Then clause, and by
-  AC-HWD-012's and AC-HWD-005's use of `bin/moai`, which is stale unless the build
-  ran. No claim is made that the space is exhausted — these are the three
-  attempted.
-- `Harness correction:` [HARD] verify by checking that an intentionally
-  template-only edit **fails** the mirror diff before the mirror is written.
+```bash
+perl -e 'local $/; my $rc=0; for my $f (@ARGV){ open my $L,"<",$f or die "open $f: $!"; open my $T,"<","internal/template/templates/$f" or die "open tmpl $f: $!"; my ($a,$b)=(<$L>,<$T>); for ($a,$b){ s/\s*\((?:SPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*|REQ-[A-Z][A-Z0-9]*)-[0-9]{3}(?:\s+[A-Z][0-9]{1,2})?\)//g; s/\s*\b(?:SPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*|REQ-[A-Z][A-Z0-9]*)-[0-9]{3}\b//g; s/\s*\bt[0-9]{2,3}\b//g; s/\s*\b[0-9a-f]{40}\b//g; } if ($a ne $b){ print "MISMATCH $f\n"; $rc=1; } } exit $rc' \
+  .claude/rules/moai/development/hook-independence.md \
+  .claude/rules/moai/core/agent-common-protocol.md \
+  .claude/rules/moai/core/agent-common-protocol-reference.md
+```
+
+The original criterion's `make build` ordering clause was executed at M3
+delivery and is not re-observable after the fact; binary freshness stays bound
+mechanically by AC-HWD-005 and AC-HWD-012, both of which run `bin/moai` — stale
+unless the build ran.
+
+- `Pre-impl observed (v0.4.0):` `@a1d7598ac` — raw `diff -q` local vs template:
+  `hook-independence.md` → IDENTICAL; `agent-common-protocol.md` → IDENTICAL;
+  `agent-common-protocol-reference.md` → DIFFERS at exactly one line (275),
+  wholly the neutrality strip `(SPEC-SYNC-PARALLEL-DOCS-001 A9)`. The unamended
+  criterion is FALSE for the third file as written and cannot be made true
+  without violating REQ-HWD-014. The command above → exit 0 (PASS) on all three
+  real files. Raw commands and verbatim outputs:
+  `.moai/reports/t469/plan-summary.md`.
+- `Mutant:` **four constructed and executed.** (i) *Non-token editorial text
+  inserted on the token-bearing line* — `MISMATCH`, exit 1: normalization
+  absorbs only forbidden-class tokens and their parenthetical wrapper, never
+  neighboring prose. (ii) *Forbidden token inserted into the template copy* —
+  shape-dependent, measured both ways: (ii-bare) a bare ` (SPEC-AUDIT-FAKE-001
+  A9)` appended on the otherwise-shared line → exit 0, absorbed by the
+  normalized comparison, which is direction-agnostic on token runs — in this
+  shape the compensating control is AC-HWD-016, and the neutrality scan
+  observed a non-zero SPEC-ID count on the mutant template copy, so the pair of
+  criteria closes the absorbed shape; (ii-prose) the same token wrapped in its
+  own prose line (`Cross-reference: see (SPEC-AUDIT-FAKE-001 A9) for detail.`)
+  → `MISMATCH`, exit 1 — the mirror check catches it directly, no
+  compensating control needed. (iii) *Edit only the local mirror* —
+  `MISMATCH`, exit 1. Record correction: the "7 SPEC-ID hits" figure in the
+  iteration-1 plan record was the real LOCAL file's own token count (local 7 /
+  template 0), produced by a wholesale-copy mutant — the template copy made
+  byte-identical to the local file — not by an absorbed insertion; it is
+  corrected here so the transplanted record carries the actual construction.
+  No claim that the space is exhausted.
+- `Harness correction:` [HARD] construct at least mutant (i) and observe the
+  exit 1 before trusting the command's passing output — a normalized comparison
+  that has only ever been seen passing has not been shown to detect anything.
 
 ### AC-HWD-016 — the template edits are neutrality-clean
 
