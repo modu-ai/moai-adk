@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a065fb-8d7b-7402-8499-0253df0b3d92"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"imagegen\nopenai-docs\nplugin-creator\nskill-creator\nskill-installer\nagent-browser\naside-browser\ncomputer-use\nfind-skills\nhiggsfield-game-generation\nhiggsfield-generate\nhiggsfield-marketplace-cards\nhiggsfield-product-photoshoot\nhiggsfield-soul-id\nhiggsfield-video-explainer\nhiggsfield-websites\nnotion-cli\norca-cli\norca-linear\norca-per-workspace-env\norchestration"}}
+{"type":"turn.completed","usage":{"input_tokens":16926,"cached_input_tokens":11136,"cache_write_input_tokens":0,"output_tokens":105,"reasoning_output_tokens":0}}
