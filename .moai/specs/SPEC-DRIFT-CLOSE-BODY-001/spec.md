@@ -1,10 +1,10 @@
 ---
 id: SPEC-DRIFT-CLOSE-BODY-001
 title: "본문 선언 close 인식 — subject가 못 담은 close로 생기는 drift 오탐 차단"
-version: "0.3.0"
+version: "0.4.0"
 status: completed
 created: 2026-09-03
-updated: 2026-09-03
+updated: 2026-09-05
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -12,6 +12,7 @@ module: "internal/spec"
 lifecycle: spec-anchored
 tags: "drift, lifecycle, close-convention, false-positive, internal-spec"
 tier: S
+amendment_of: SPEC-DRIFT-CLOSE-BODY-001
 ---
 
 # SPEC-DRIFT-CLOSE-BODY-001 — 본문 선언 close 인식
@@ -23,6 +24,17 @@ tier: S
 | 0.1.0 | 2026-09-03 | manager-spec | 최초 작성 (Tier S). 카드 t410. 근거는 `.moai/reports/t410/discovery.md`(R1~R4) — 카드 문면이 아니라 재현 |
 | 0.2.0 | 2026-09-03 | manager-spec | **초판 술어 2건이 실측으로 기각됐다.** ① 후보 게이트를 subject `closeInfixMatch`로 잡은 것 — 실측 close 커밋 6개 중 4개만 통과하고 **확정 대상 `e979a4d13`(`mx-phase close` ≠ `mx-phase audit-ready`)이 탈락**해 AC-DCB-004가 구조적으로 실패했다(§5.4 신설, REQ-DCB-003 재작성). ② 본문 술어를 "줄 선두 SPEC-ID"로만 잡은 것 — squash 하위 subject 모양(전체 close 커밋의 다수)을 통째로 놓치고, 72열 접힘으로 생긴 연속 줄(`51d18d3fe`)을 오탐한다. 두 모양(A `<ID>:` / B conventional-commit subject) + `:` 요구로 정정하고 실측 10줄 픽스처를 §5.3에 못박음. 조사의 TIGHT 15에서 오탐 3건 추가 확인(`fb8aff006`×2 · `80dea9684`) — §6에 반영 |
 | 0.3.0 | 2026-09-03 | manager-spec | **plan-audit(t410, PASS-WITH-DEBT 0.80) 차단 결함 3건 + 문서 내 모순 2건 상환.** **D1** AC-DCB-007 1항의 `^[-+].*^status:`가 두 grep 방언에서 각각 과대매칭/공허 — 이 머신 실측(BSD grep, 픽스처 6줄)에서 산문 1줄을 포함한 3건을 매치했고 정정 술어 `^[-+]status:`는 실제 frontmatter 변경 2줄만 매치했다. 술어 교체 + RED 실측 의무(임시 편집 → 기대 `2` → 복귀) + 빈-diff 0 거부(기준 SHA 명시)를 명문화. **D2** 모양 B의 스캔 의미 미정의 — `7beda68a5` 본문 실측 재현(`SPEC-WORKTREE-ENTRY-STRATEGY-001` 명명 줄 8개 중 `completed`는 117번 1개뿐)으로 "첫 모양-B 줄 반환" 뮤턴트가 기존 10줄 픽스처를 통과함을 확인. REQ-DCB-003에 `ClassifyPRTitle == completed` 자격 + 전수 훑기를 명시하고, 픽스처를 순서 있는 11·12 쌍으로 확장(10줄 → 12줄), AC-DCB-002 뮤테이션 의무에 3번째 뮤턴트 추가. **D3** REQ-DCB-005 대응 AC 부재 — §5.1의 "구조적 보장" 논거가 모양 B 도입으로 무효화됨을 §5.1에 기록하고, AC를 새로 만들지 않고 AC-DCB-003에 (d) 케이스로 병합(Tier S AC 상한 8 유지, 7개 그대로). **D5** §5 후보표 행 B의 `closeInfixMatch` 근거와 §5.2의 낡은 포인터를 §5.4 기각 결과에 맞춰 정정. **D7** AC-DCB-002 Given에 fallback 도달 전제(frontmatter `completed` + 1차 워크 비-terminal 비-`completed`) 추가. **부채로 남김**: D4(REQ-DCB-002가 `inMemImpliedStatus` 오류 경로까지 주장 — 효과는 무해, REQ 2개+§4 동시 수정이 필요해 run-phase 원장 처리), D6(plan.md Tier 파일 모집단·초과 시 동작). 아울러 frontmatter `version:`이 0.1.0에 머물러 HISTORY(0.2.0)와 어긋나 있던 것을 함께 바로잡는다 |
+| 0.4.0 | 2026-09-05 | manager-spec | **in-place amendment (카드 t484).** t410 sync-audit F1·F5 + plan-audit D4·D6 상환 — 넷 모두 트리 `a825183dd`에서 재측정되어 생존함을 확인(판정서 `.moai/reports/t484/verdict.md`). D4: REQ-DCB-002 문면을 "상태를 **반환했고**"로 좁히고 오류 경로를 §4에 신설. F5: §5.2에 모양 A 꼬리 무제약 잔여(반대 방향)를 기록. F1-②: REQ-DCB-007·AC-DCB-007을 manager-spec 재위임 경유로 개정. D6: plan.md §A에 파일 수 모집단 정의와 범위 안 초과 시 동작을 추가. 사유·범위·간극 조정은 아래 `## Amendments` |
+
+## Amendments
+
+**0.4.0 (2026-09-05, 카드 t484) — in-place amendment**
+
+- **직전 완료 버전**: 0.3.0 (`status: completed`)
+- **prior_completed_sha**: `c1a389036` — progress.md §E.4 `sync_commit_sha`에서 검증했다(해당 파일은 읽기 전용 입력이다)
+- **사유 (rationale)**: 카드 t484에서 t410 sync-audit F1·F5와 plan-audit D4·D6를 상환한다. 네 항목 모두 문서 층 결함이며 트리 `a825183dd`에서 전부 재측정되어 여전히 생존함이 확인됐다(판정서: `.moai/reports/t484/verdict.md`). D4·D6을 당시 run-phase가 보류한 사유는 `spec.md`/`plan.md` 본문이 manager-develop에게 금지된 표면이었기 때문이고, 이 amendment가 그때 약속된 manager-spec 재위임 경로다. F1의 지시 결함(AC가 run-phase에게 다른 SPEC 편집을 직접 지시)도 같은 경로로 개정한다.
+- **범위 (scope)**: spec.md REQ-DCB-002, REQ-DCB-007, AC-DCB-007, §4(오류 경로 신설), §5.2(반대 방향 잔여); plan.md §A(모집단 정의·초과 시 동작).
+- **간극 조정 기록**: HISTORY 0.3.0 D1 행은 "REQ 2개+§4"라 적었고 원장 스케치(`run-evidence.md:480`)는 REQ-DCB-002+§4만 명시했다. 이 amendment가 확정한 편집 대상 REQ는 **REQ-DCB-002와 REQ-DCB-007** 두 개다 — 0.3.0 시점에는 F1-②(REQ-DCB-007 개정)가 알려지지 않았다. REQ-DCB-006은 문면 수정이 불필요했다: 오류 경로가 그 요구(동작 보존)의 결과라는 사실은 §4의 새 항목이 교차 참조로 담는다.
 
 ## 1. 배경
 
@@ -85,7 +97,7 @@ t382(`SPEC-ERA-H3-NARROWING-001`)는 원인을 둘로 적었다. 재현은 그�
 
 **REQ-DCB-001** — drift 판정기는, close 커밋의 **본문**에 close가 선언되고 그 커밋의 subject가 대상 SPEC-ID를 담지 못한 경우에도, 해당 SPEC의 git 함의 상태를 `completed`로 추론해야 한다(shall).
 
-**REQ-DCB-002** — While frontmatter가 `completed`이고 1차 워크가 `completed`도 terminal 상태도 내지 못한 동안, 판정기는 본문 선언 close 조회를 수행해야 한다. 그 밖의 상태 조합에서는 조회하지 않는다(FALLBACK-ONLY).
+**REQ-DCB-002** — While frontmatter가 `completed`이고 1차 워크가 상태를 **반환했고** 그 값이 `completed`도 terminal 상태도 아닌 동안, 판정기는 본문 선언 close 조회를 수행해야 한다. 그 밖의 상태 조합에서는 조회하지 않는다(FALLBACK-ONLY). 오류를 반환한 갈래는 "반환하지 않은" 경우다 — 그곳에서는 조회가 발화하지 않는다(§4의 오류 경로 항목, 0.4.0 amendment).
 
 **REQ-DCB-003** — Where 후보 커밋의 subject가 대상 SPEC-ID를 담지 않을 때에 한해, 판정기는 그 커밋의 본문에서 §5.3이 정의한 두 모양(A: `<full-ID>:` 줄 선두 / B: conventional-commit subject 줄)의 줄만 close 선언으로 취급해야 한다. 모양 B는 기존 필터 체인이 그 줄에 대해 `ClassifyPRTitle == completed`를 낼 때에**만** close 선언이며, 그 밖의 분류(`implemented`·`in-progress`·`draft`·`skip`·`unknown`)는 close 선언이 아니다. subject 쪽 close 신호를 후보 게이트로 쓸 경우 §5.4의 세 조건을 만족해야 하며, `closeInfixMatch` 단독 사용은 금지한다(측정으로 기각 — 확정 대상 `e979a4d13`을 떨어뜨린다). 그리고 조회는 자격 있는 줄을 만날 때까지 **본문 전체를 훑어야 하며**, 자격 없는 줄에서 판정을 종료해서는 안 된다 — 자격 있는 줄이 하나라도 있으면 close 선언이고 하나도 없으면 무판정이다(§5.3).
 
@@ -95,7 +107,7 @@ t382(`SPEC-ERA-H3-NARROWING-001`)는 원인을 둘로 적었다. 재현은 그�
 
 **REQ-DCB-006** — 판정기의 1차 워크(2단 subject 재필터)와 기존 combined-scope prefix fallback의 동작은 변경되지 않아야 한다(shall). 본문 조회는 오직 추가 경로다.
 
-**REQ-DCB-007** — When run-phase가 drift 표의 어떤 행의 판정을 바꾸면, 구현은 그 행을 **행별로** close 커밋 SHA와 함께 원장에 기록해야 한다. 그리고 t382의 원인 서술 정정은 `SPEC-ERA-H3-NARROWING-001`의 HISTORY 한 줄로만 남기고, 그 SPEC의 `status`와 AC 판정은 건드리지 않는다.
+**REQ-DCB-007** — When run-phase가 drift 표의 어떤 행의 판정을 바꾸면, 구현은 그 행을 **행별로** close 커밋 SHA와 함께 원장에 기록해야 한다. 그리고 t382의 원인 서술 정정은 `SPEC-ERA-H3-NARROWING-001`의 HISTORY 한 줄로만 남기고, 그 SPEC의 `status`와 AC 판정은 건드리지 않는다. 그 정정 편집 자체는 run-phase가 직접 수행하지 않는다(0.4.0) — run-phase는 blocker를 보고하고 오케스트레이터가 manager-spec에 재위임하며, 다른 SPEC의 본문(HISTORY 행과 `version:`/`updated:` 포함)은 manager-spec이 편집한다.
 
 ## 3. 인수 기준 (Tier S — 인라인)
 
@@ -176,6 +188,7 @@ t382(`SPEC-ERA-H3-NARROWING-001`)는 원인을 둘로 적었다. 재현은 그�
   git diff -U0 -- .moai/specs/SPEC-ERA-H3-NARROWING-001/spec.md | grep -cE '^[-+]status:'
   ```
 
+- **수행 채널 (0.4.0 amendment)**: 이 정정 편집은 manager-spec이 오케스트레이터 재위임을 거쳐 수행한다. run-phase는 blocker를 보고할 뿐 다른 SPEC의 본문을 직접 편집하지 않는다 — 아래 세 판정은 그렇게 수행된 편집의 결과에 그대로 적용된다.
 - **Then** 다음을 모두 만족한다.
   1. 위 명령의 출력이 **`0`**이다 — `status: completed`가 그대로다.
   2. 변경은 HISTORY 표의 새 행 1개와 `version:`/`updated:` 두 필드에 국한된다.
@@ -183,7 +196,7 @@ t382(`SPEC-ERA-H3-NARROWING-001`)는 원인을 둘로 적었다. 재현은 그�
 - **술어에 `^`는 줄 선두 하나뿐이다.** 패턴 중간에 `^`를 두면(`^[-+].*^status:`) 판정이 grep 방언에 따라 갈린다 — BSD grep은 중간 `^`를 빈 문자열로 소거해 본문 어디서든 `status:`를 언급하는 산문 줄까지 매치하고(과대매칭), GNU grep ERE에서는 만족 불가능한 앵커라 항상 0건을 내 무조건 통과한다(공허). 어느 쪽도 "변경된 `status:` 프론트매터 줄이 없다"가 아니다. 위 술어는 두 방언에서 같은 판정을 내며, `+++`/`---` diff 헤더와 "status" 문자열을 담은 HISTORY 표 행(`| ... |`)을 매치하지 않는다.
 - **공허 방지 ① — RED 실측 의무**: 초록을 보고하기 전에 붉은 것을 본다. `SPEC-ERA-H3-NARROWING-001/spec.md`의 `status: completed`를 일시적으로 `status: implemented`로 바꾸고 같은 명령을 실행해 출력이 **`2`**(`-status:` 한 줄 + `+status:` 한 줄)임을 확인한 뒤 되돌린다. 세 실행(초록 → 붉음 → 되돌린 초록)의 축자 출력을 원장에 남긴다. RED를 본 적 없는 초록은 아무것도 주장하지 않는다.
 - **공허 방지 ② — 빈 diff로 나온 0을 인정하지 않는다**: 판정 시점에 t382 편집이 이미 커밋됐다면 워킹트리가 깨끗해서 0이 나온다. 그 경우 `git diff -U0 <편집 직전 SHA> -- <경로> | grep -cE '^[-+]status:'` 로 재측정하고, 잰 기준 SHA를 원장에 적는다. 같은 diff에 대해 `grep -cE '^[-+]'` 가 0이 아님(= 대조 대상이 실재함)을 함께 보인다.
-- 근거: 이 정정은 `status:`를 바꾸지 않으므로 amendment 절차 대상이 아니다(`spec-frontmatter-schema.md` § Non-transition frontmatter corrections — 소유자 `manager-spec`).
+- 근거: 이 정정은 `status:`를 바꾸지 않으므로 amendment 절차 대상이 아니며, 수행 주체는 manager-spec이다(`spec-frontmatter-schema.md` § Non-transition frontmatter corrections — 소유자 `manager-spec`). 0.4.0 amendment는 지시 문면을 이 근거의 인용 규약과 일치시켰다 — 초판은 run-phase에게 직접 편집을 지시함으로써 자기 근거와 어긋났다(t410 sync-audit F1).
 
 ## 4. 범위 밖
 
@@ -193,6 +206,13 @@ t382(`SPEC-ERA-H3-NARROWING-001`)는 원인을 둘로 적었다. 재현은 그�
 
 - 새 `chore(SPEC-XXX-NNN): ... close` 백필 커밋을 만들지 않는다
 - 기존 close 커밋의 메시지를 재작성하지 않는다
+
+### Out of Scope — `inMemImpliedStatus` 오류 경로
+
+`inMemImpliedStatus`가 오류를 내면 `DetectDrift`는 ① 블록(본문 선언 close 조회)에 도달하기 전에 `continue`한다. 따라서 오류 갈래에서는 본문 조회가 발화하지 않는다 — REQ-DCB-002(0.4.0)의 "상태를 **반환했고**" 문면이 이 갈래를 요구 범위에서 제외한다. 이는 REQ-DCB-006(1차 워크 동작 보존)의 결과이며 방향은 보수적이다: 오류 창은 놓침(무판정)이지 거짓 해제가 아니다. 코드를 바꾸지 않는다 — 이 부채(plan-audit D4)의 수리는 요구 문면을 좁힌 이 amendment 자체다.
+
+- 오류 갈래에서 조회가 발화하도록 `drift.go`의 `continue` 배치를 바꾸지 않는다
+- 오류 케이스에 대한 새 테스트를 추가하지 않는다
 
 ### Out of Scope — close 규약의 기계적 강제
 
@@ -240,6 +260,8 @@ t382의 착지는 유효하다. AC 판정, 상태, 본문 결론을 소급해 �
 ### 5.2 이 선택이 지불하는 대가 — 정직하게
 
 fallback은 frontmatter가 `completed`일 때만 발화하고 출력도 `completed`뿐이다. 따라서 **판정기가 frontmatter와 불일치할 여지가 그만큼 줄어든다**. 반대 방향 오류(frontmatter가 거짓 `completed`인데 본문 언급 한 줄로 무죄 방면되는 것)가 이 수리의 실질 위험이며, **REQ-DCB-003 / §5.3의 두 모양 술어**(모양 A의 줄 선두 + `:` 요구, 모양 B의 `ClassifyPRTitle == completed` 자격)와 AC-DCB-002의 뮤테이션 의무 3종이 그것을 겨눈다. REQ-DCB-004는 그 술어가 반드시 떨어뜨려야 할 최소 집합(`depends_on:` / `related:` 선행 키)을 못박는다.
+
+모양 A 쪽에는 술어가 걷지 못하는 잔여가 하나 더 있다(0.4.0 — 카드 t484, 판정서 F5). 모양 A(`<ID>:` 줄 선두)는 **콜론 뒤 본문을 전혀 제약하지 않는다**. 그래서 subject에 close가 있는 커밋의 본문에 비-close 성격의 `<ID>:` 줄이 하나 있으면 그 SPEC이 해제될 수 있다. t410 감사의 코퍼스 전수 스캔은 이 형태를 18줄 찾았고 실제 오해제는 0건이었다 — 오늘의 0은 close 커밋 본문 작성 관행의 함수이지 술어의 성질이 아니다. `drift_index.go`의 코드 주석이 같은 내용을 이미 정직하게 적고 있다.
 
 기존 combined-scope fallback이 이미 같은 성질을 갖고 있으므로 이 SPEC이 **새로운** 약점을 여는 것은 아니다. 다만 그 약점이 닿는 행 수를 늘린다. 이 사실을 기록해 두는 이유는, 나중에 술어를 넓히자는 제안이 왔을 때 그것이 무엇을 무르게 하는지 읽히게 하기 위해서다.
 
