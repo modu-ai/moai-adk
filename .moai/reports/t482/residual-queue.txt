@@ -1,0 +1,43 @@
+live queue rows   : 54
+archived rows     : 142
+
+    t2  absent
+   t21  absent
+   t40  absent
+   t46  absent
+   t68  absent
+   t73  absent
+   t74  absent
+   t80  absent
+   t94  absent
+  t121  absent
+  t123  absent
+  t124  absent
+  t128  absent
+  t129  absent
+  t131  absent
+  t132  absent
+  t133  absent
+  t134  absent
+  t135  absent
+  t137  absent
+  t139  absent
+  t141  absent
+  t142  absent
+  t143  absent
+  t144  absent
+  t147  absent
+  t148  absent
+  t149  absent
+  t155  absent
+  t157  absent
+  t158  absent
+  t216  archived
+  t225  absent
+  t250  absent
+  t311  absent
+  t409  archived
+  t443  archived
+  t460  archived
+
+summary: {'absent': 34, 'archived': 4}

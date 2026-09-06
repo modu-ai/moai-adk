@@ -19,7 +19,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
-	"github.com/modu-ai/moai-adk/internal/graph"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -43,33 +42,6 @@ type sessionStartHandler struct {
 	// TestMain seam exists to prevent (SPEC-TEMPDIR-CLEANUP-RACE-001
 	// REQ-TCR-001).
 	syncDeferredScans bool
-
-	// deferredEdgesRefresh is the cli-injected edges-layer refresh
-	// (SPEC-GRAPH-REPORT-001 REQ-GR-010). nil on every pre-M4 construction —
-	// the deferred edges step (probe included) is skipped, so existing call
-	// sites keep their exact behavior.
-	deferredEdgesRefresh DeferredEdgesRefresh
-}
-
-// DeferredEdgesRefresh rebuilds the derived edges layer of projectDir. It is
-// the dependency-injection seam that lets the deferred SessionStart step run
-// a refresh without internal/hook importing internal/cli (compile-time cycle
-// — cli imports hook): the cli layer populates it with a thin wrapper around
-// its own single rebuild path, never a fork of it.
-type DeferredEdgesRefresh func(projectDir string) error
-
-// WithDeferredEdgesRefresh injects the deferred edges-layer refresh. The
-// deferred step probes staleness through the EXPORTED graph predicates and
-// invokes this seam only when the edges layer moved (REQ-GR-010).
-//
-// Like every deferred step, the refresh is fire-and-forget at the
-// process-lifetime axis: the deferred goroutine may be killed when the hook
-// process exits (the pattern's own documented limitation), so the refresh is
-// best-effort — idempotent and self-healing on the next staleness check,
-// with the query-time refresh as the liveness guarantee. A durable-worker
-// redesign is deliberately out of scope.
-func WithDeferredEdgesRefresh(fn DeferredEdgesRefresh) Option {
-	return func(h *sessionStartHandler) { h.deferredEdgesRefresh = fn }
 }
 
 // Option configures a SessionStart handler at construction time.
@@ -329,20 +301,6 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		driftTimeout := sessionStartDriftTimeout
 		projectDir := input.ProjectDir
 
-		// SPEC-GRAPH-REPORT-001 REQ-GR-010: deferred edges-layer refresh
-		// staleness snapshot. Composed from the EXPORTED predicates —
-		// graph.EdgesSourcesMoved is EdgesSourcesMovedFor over the DEFAULT
-		// edges artifact, which is exactly the artifact the deferred path
-		// refreshes — and computed synchronously (cheap fingerprint probe,
-		// cheap stat + fingerprint only, never a full walk) so the goroutine
-		// reads a snapshot, never a racing re-probe. A nil seam (every
-		// pre-M4 construction) skips the probe AND the step.
-		edgesStale := false
-		if h.deferredEdgesRefresh != nil {
-			edgesStale = graph.EdgesSourcesMoved(projectDir) ||
-				graph.MXIndexNeedsRefresh(projectDir, graph.DefaultThresholds().MXIndexChangedFiles)
-		}
-
 		if h.asyncDeferredScans() {
 			// Production path: spawn a background goroutine and join with a
 			// short bounded deadline.
@@ -351,7 +309,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// this goroutine) so the deferred goroutine never reads the
 			// package-level var. nil in production.
 			completed := snapshotDeferredScanCompleted()
-			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed, edgesStale)
+			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed)
 
 			// Timeout-bound join. On receive, merge the advisory keys into
 			// `data` before the final marshal so they ship in this session's
@@ -369,9 +327,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				// the channel is buffered — but it does NOT run to completion:
 				// this is a short-lived CLI process, so once Handle returns the
 				// process exits and the runtime tears the goroutine down
-				// wherever it happens to be. Nothing dispatched there may be
-				// relied on to finish — including the edges refresh, which is
-				// dispatched from it and is best-effort for that reason.
+				// wherever it happens to be.
 				slog.Debug("session start: deferred advisory scan exceeded join bound (non-blocking)",
 					"bound", deferredScanJoinBound.String())
 			}
@@ -384,13 +340,6 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
 			if len(advisory) > 0 {
 				maps.Copy(data, advisory)
-			}
-			// Edges refresh runs after the advisory keys are merged — a
-			// durable side effect, never a delay on advisory delivery. On
-			// this inline path the process does not exit underneath it, so
-			// it runs to completion.
-			if edgesStale {
-				h.runDeferredEdgesRefresh(projectDir)
 			}
 		}
 	}
@@ -714,20 +663,11 @@ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) ma
 // results are safe because they are only ever consumed through the buffered
 // channel before that point; a side effect that must land belongs in the
 // process that needs it.
-//
-// `edgesStale` (computed synchronously by the caller via the exported graph
-// predicates, SPEC-GRAPH-REPORT-001 REQ-GR-010) gates the deferred
-// edges-layer refresh: after the advisory send, the goroutine invokes the
-// injected seam. Best-effort and fail-open — a failure logs and the session
-// proceeds. It is a durable side effect dispatched from this goroutine and
-// therefore subject to the tear-down above; see the SPEC-HOOK-WIRING-DRIFT-001
-// §G follow-up.
 func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 	projectDir string,
 	driftFn func(context.Context, string) (int, error),
 	driftTimeout time.Duration,
 	completed chan struct{},
-	edgesStale bool,
 ) <-chan map[string]any {
 	resultCh := make(chan map[string]any, 1)
 	go func() {
@@ -735,35 +675,9 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 			defer close(completed)
 		}
 		advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
-		// Send advisories FIRST (buffered channel → never blocks even after
-		// the join bound elapses), THEN run the edges refresh as a
-		// best-effort durable side effect.
 		resultCh <- advisory
-		if edgesStale {
-			h.runDeferredEdgesRefresh(projectDir)
-		}
 	}()
 	return resultCh
-}
-
-// runDeferredEdgesRefresh invokes the injected edges-layer refresh,
-// best-effort and fail-open (SPEC-GRAPH-REPORT-001 REQ-GR-010/011): a failure
-// is logged and the session start proceeds — the prior artifact stays intact
-// and the next staleness check self-heals. A nil seam (pre-M4 construction)
-// is a no-op; callers gate on edgesStale but the guard lives here too so the
-// step is safe from any future call site.
-//
-// @MX:NOTE: [AUTO] deferred edges refresh — fail-open, fire-and-forget at process lifetime (SPEC-GRAPH-REPORT-001)
-func (h *sessionStartHandler) runDeferredEdgesRefresh(projectDir string) {
-	if h.deferredEdgesRefresh == nil {
-		return
-	}
-	if err := h.deferredEdgesRefresh(projectDir); err != nil {
-		slog.Warn("session start (deferred): edges refresh failed (fail-open)",
-			"error", err.Error(),
-			"project_dir", projectDir,
-		)
-	}
 }
 
 // computeDeferredAdvisory runs the four heavy advisory scans and returns

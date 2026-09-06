@@ -243,10 +243,11 @@ func TestShrinkGuard_GenuineDeletionProceeds(t *testing.T) {
 	}
 }
 
-// REQ-GR-009 — the deferred path inherits the guard through the M4-wrapped
-// refreshEdgesArtifact (wrapped, never forked): the wrapper returns the typed
-// refusal and writes nothing.
-func TestShrinkGuard_DeferredPathInheritsRefusal(t *testing.T) {
+// REQ-GR-008/009 — the rebuild path itself carries the guard: the refresh
+// returns the typed refusal and writes nothing. The SessionStart deferred
+// wrapper that used to sit on top of this was removed (card t483, t448
+// Option-1); the query-path consumer (graph.go) hits the same refusal here.
+func TestShrinkGuard_RefreshEdgesArtifactInheritsRefusal(t *testing.T) {
 	root := shrinkCallsFixture(t)
 	if err := runGraphBuildOn(t, root); err != nil {
 		t.Fatalf("initial build: %v", err)
@@ -257,19 +258,19 @@ func TestShrinkGuard_DeferredPathInheritsRefusal(t *testing.T) {
 	metaFile := filepath.Join(root, ".moai", "project", "graph", graph.MetaFileName)
 	edgesSHA, metaSHA := fileSHA(t, edgesFile), fileSHA(t, metaFile)
 
-	err := deferredEdgesRefresh(root)
+	_, err := refreshEdgesArtifact(root, edgesFile)
 	var refuse *graph.ShrinkRefusalError
 	if !errors.As(err, &refuse) {
-		t.Fatalf("the deferred wrapper must surface the typed shrink refusal, got: %v", err)
+		t.Fatalf("the refresh must surface the typed shrink refusal, got: %v", err)
 	}
 	if !strings.Contains(refuse.Error(), "rootlevel.go") {
 		t.Errorf("refusal must name the unscanned source, got: %v", refuse)
 	}
 	if got := fileSHA(t, edgesFile); got != edgesSHA {
-		t.Error("refused deferred refresh must leave edges.jsonl byte-identical")
+		t.Error("refused refresh must leave edges.jsonl byte-identical")
 	}
 	if got := fileSHA(t, metaFile); got != metaSHA {
-		t.Error("refused deferred refresh must leave the meta sidecar byte-identical")
+		t.Error("refused refresh must leave the meta sidecar byte-identical")
 	}
 }
 
