@@ -348,7 +348,7 @@ Three measured grounds: **(a) the residual population is open** — `t409` enter
 `t460` 2026-09-03, so new shapes were entering up to two days before the corpus pin; an enumeration
 can close for the past, never for the future. **(b) Expanding the largest residual shape — S1, the
 release-integrate merge scope (`merge(WT-…)` / `merge(worktree-…)` integrating into a release
-branch; named in full below) — into a form collides with §A.4's own [HARD] branch-name
+branch; named in full above) — into a form collides with §A.4's own [HARD] branch-name
 non-attribution rule**, the same silent over-count direction this SPEC already rejects at
 `(branch WT-t80)`. The collision is technically escapable — the merge scope and a trailing
 parenthetical are different positions, so a seventh form reading the scope token would not import
