@@ -229,9 +229,45 @@ it is swept for clauses mandating a `(Recommended)` / `(권장)` **first** optio
 candidate is classified in a recorded ledger, and the two coordinates this SPEC names are classed
 `conditioned`.
 
-- Sweep window (this is the definition the 0.1.0 criterion lacked): **the matched physical line**.
-  Chosen because it is the one boundary two implementers cannot draw differently, and because every
-  candidate this tree contains is a single-line paragraph or list item (measured below).
+- Sweep window (this is the definition the 0.1.0 criterion lacked): **the enclosing markdown block
+  of the matched line**. The block is drawn mechanically — scan up and down from the matched line
+  and stop at the nearest of:
+  1. a blank line;
+  2. a heading (`^#{1,6} `);
+  3. a code-fence delimiter (a line whose first non-space characters are three backticks);
+  4. a line starting a list item (`^\s*(?:[-*+]|\d+\.)\s`) — scanning **up**, that line is the
+     block's first line and the scan stops there; scanning **down**, that line is excluded;
+  5. a table row (`^\s*\|`) other than the matched line itself.
+
+  So a wrapped paragraph is all of its physical lines; a list item is its own line plus its wrapped
+  continuation lines but not its siblings; a table row is a single line. Two implementers drawing
+  this window from the same file land on the same span.
+
+  **Why the window is no longer the matched physical line.** The 0.2.2 text fixed it there and
+  justified it in plan.md §F M1 with the claim that "every candidate this tree actually contains is
+  a single-line paragraph or list item (measured)". That claim was **false**, and the run phase
+  falsified it: `.claude/skills/moai/workflows/plan/spec-assembly.md:212` is a continuation line of
+  a wrapped `[HARD]` paragraph spanning roughly `:208`-`:214`. REQ-JFM-016's unit is a **clause**;
+  a physical line is not one. Under the line window the criterion's only available pass route was
+  rewriting the paragraph as one long line so the token would land inside the measuring instrument
+  — and a PASS obtained that way shows that a token sits on a line, not that the doctrine is
+  conditioned. The long line at `spec-assembly.md:212` is left exactly as the run phase wrote it:
+  it is the honest artifact of the mismatch and the evidence for this repair. **Do not "fix" it.**
+
+- **Carrier form — where the conditioning may live.** A row is `conditioned` when EITHER (a) a mode
+  reference appears anywhere in its window, OR (b) the clause at that coordinate is one this SPEC
+  **forbids editing**, and the ledger row **names the coordinate where the conditioning text
+  actually lives** — that named carrier being itself verifiable. Form (b) is not a relaxation; it
+  is what §B.2 already decided (the Frozen `CONST-V3R5-035` text keeps its wording as the push-mode
+  branch and a pull-mode branch is added beside it), stated here so the run phase does not have to
+  invent it. Two rows take form (b), and for the same reason:
+  `branch-origin-protocol.md:25` (carrier: the adjacent pull branch at `:26`) and
+  `zone-registry.md:869` (carrier: `branch-origin-protocol.md:25-26` and `spec-assembly.md:353`).
+  A line-local or block-local test would score both red **forever**, because REQ-JFM-015 / §B.2
+  forbid the edit that would turn them green — a criterion no correct work can satisfy is the
+  *impossible* direction `verification-completeness.md` §2 names, not a strict one.
+  Form (b) requires no edit to `zone-registry.md`, so it does **not** conflict with AC-JFM-012's
+  empty-diff invariant.
 - Verify, in order:
   1. `grep -rn -E '\(Recommended\)|\(권장\)' .claude/rules .claude/skills .claude/output-styles | grep -iE '\bfirst\b|첫 |먼저' > .moai/reports/t401/ac013-candidates.txt`
   2. `wc -l < .moai/reports/t401/ac013-candidates.txt` — the **swept count**, which MUST be > 0
@@ -239,11 +275,28 @@ candidate is classified in a recorded ledger, and the two coordinates this SPEC 
   3. `.moai/reports/t401/ac013-ledger.md` carries exactly that many rows, each classed
      `conditioned` or `unconditioned-by-design: <reason>`, with no unclassified remainder; and the
      rows for `.claude/rules/moai/core/askuser-protocol.md:64` (S1's first coordinate, named at
-     spec.md §B and plan.md M1), any other `askuser-protocol.md` (S1) row, and
+     spec.md §B and plan.md M1), any other `askuser-protocol.md` (S1) row,
      `.claude/skills/moai/workflows/run.md:137`,
-     `.claude/skills/moai/workflows/plan/spec-assembly.md:212`, and
-     `.claude/skills/moai/workflows/plan/spec-assembly.md:353` are all `conditioned`. Each
-     line-named coordinate carries its reason inline:
+     `.claude/skills/moai/workflows/plan/spec-assembly.md:212`,
+     `.claude/skills/moai/workflows/plan/spec-assembly.md:353`, and
+     `.claude/rules/moai/core/zone-registry.md:869` are all `conditioned`.
+
+     **Each required coordinate is identified by its anchor text, not by its line number.** The
+     line numbers below were measured at `82edb9109` and are a locating aid that decays on the
+     next insert; the anchor phrase is the assertion. Where the two disagree, grep the anchor and
+     use the line the content is actually on.
+
+     | Required coordinate (as of `82edb9109`) | Anchor text (the assertion) |
+     |---|---|
+     | `askuser-protocol.md:64` | `**First option label**` |
+     | `askuser-protocol.md:265` | `Step 2: Compose AskUserQuestion round` |
+     | `run.md:137` | `first option marked "(Recommended)"` |
+     | `spec-assembly.md:212` | the phrase: or the (권장) first-option label |
+     | `spec-assembly.md:353` | the phrase: First option: the recommended Choice with (권장) suffix |
+     | `zone-registry.md:869` | the line beginning: clause: "Skill body BODP gate |
+     | `branch-origin-protocol.md:25` | `[ZONE:Frozen] [HARD] Skill body BODP gate MUST follow` |
+
+     Each named coordinate carries its reason inline:
      - `askuser-protocol.md:64` — the coordinate a section-scoped companion criterion
        (AC-JFM-004) does not reach: AC-JFM-004 is satisfied inside § Recommendation Placement
        Principles, while `:64` lives in § Socratic Interview Structure.
@@ -258,8 +311,16 @@ candidate is classified in a recorded ledger, and the two coordinates this SPEC 
        (`branch-origin-protocol.md:25` — plan.md M1, AC-JFM-012); leaving its only
        implementation unconditioned would make the change half-applied, so that after M1 the
        doctrine withholds the label under `pull` while `:353` mandates it unconditionally.
+     - `zone-registry.md:869` — the Frozen `CONST-V3R5-035` `clause:` string. Admitted on the
+       **carrier form** above: its conditioning lives at `branch-origin-protocol.md:25-26` (the
+       doctrine site) and `spec-assembly.md:353` (the implementing site), both of which this
+       criterion already requires to be `conditioned`. It is `conditioned` for exactly the reason
+       `branch-origin-protocol.md:25` is — same shape, same carrier chain — and classing the two
+       differently was an artifact of the retired line window, not a real distinction. Nothing in
+       this classing requires editing `zone-registry.md`, so AC-JFM-012's empty-diff invariant is
+       untouched.
 
-     All four are admitted on the **consequence** test REQ-JFM-016 states — "any such clause
+     The first four are admitted on the **consequence** test REQ-JFM-016 states — "any such clause
      **reachable from the six surfaces**" — not on membership in §B.1's S1 coordinate table.
      The table enumerates S1's known instances; it is not S1's definition, and the sweep exists
      precisely to find instances the table missed. Using the table as the scope test would be
@@ -289,13 +350,17 @@ candidate is classified in a recorded ledger, and the two coordinates this SPEC 
   6. Coverage control on the third — `grep -c 'plan/spec-assembly.md:353' /tmp/ac013c.txt` →
      `1`; exit code `0`.
 
-  Red on both halves: zero conditioned candidates and no ledger. **Five** candidates in that set
+  Red on both halves: zero conditioned candidates and no ledger. **Six** candidates in that set
   are coordinates this SPEC must condition — `.claude/rules/moai/core/askuser-protocol.md:64`,
   `.claude/rules/moai/development/branch-origin-protocol.md:25`,
   `.claude/skills/moai/workflows/run.md:137`,
-  `.claude/skills/moai/workflows/plan/spec-assembly.md:212`, and
-  `.claude/skills/moai/workflows/plan/spec-assembly.md:353` — and all five are currently
-  unconditioned, which is the `[HARD]`-clause contradiction spec.md §E.1 names.
+  `.claude/skills/moai/workflows/plan/spec-assembly.md:212`,
+  `.claude/skills/moai/workflows/plan/spec-assembly.md:353`, and
+  `.claude/rules/moai/core/zone-registry.md:869` — and all six are currently
+  unconditioned, which is the `[HARD]`-clause contradiction spec.md §E.1 names. Two of the six —
+  `branch-origin-protocol.md:25` and `zone-registry.md:869` — are conditioned via a **carrier**
+  rather than in their own window (see the carrier form above), so the count is of coordinates the
+  SPEC must condition, not of edits it must make.
 
   **No candidate may be classed `unconditioned-by-design` on the ground that it is absent from
   §B.1's coordinate table.** The scope test is REQ-JFM-016's reachability criterion, not table
@@ -303,18 +368,30 @@ candidate is classified in a recorded ledger, and the two coordinates this SPEC 
   supplied. Where the run phase judges that a swept row genuinely warrants
   `unconditioned-by-design`, that judgment is a **blocker report to the orchestrator**, resolved
   at the Implementation Kickoff Approval gate or a re-delegation — never a classification the run
-  phase makes on its own authority and passes on. The single standing exception is the one this
-  SPEC states and grounds elsewhere: `zone-registry.md:869`, the Frozen `clause:` string
-  REQ-JFM-015 / §B.2 forbids editing, whose conditionalization lives in
-  `branch-origin-protocol.md` instead.
-- Why a ledger rather than a zero-count: requiring a mode reference on *every* candidate would be
-  wrong. `zone-registry.md:869` is the Frozen `clause:` string REQ-JFM-015 / §B.2 forbids editing, and its
-  conditionalization lives in `branch-origin-protocol.md` instead. A zero-count criterion would
-  force an edit the SPEC prohibits.
-- Green path: M1. Swept count ≥ 25 with a ledger row per candidate, and all five named
+  phase makes on its own authority and passes on. There is now **no standing exception**: the row
+  the 0.2.2 text carved out (`zone-registry.md:869`) is `conditioned` under the carrier form, so
+  the two-class contract has no third ground and needs none.
+- Why a ledger rather than a zero-count: requiring a mode reference **inside every candidate's own
+  window** would be wrong. Two coordinates carry the SPEC's own no-edit constraint
+  (`zone-registry.md:869`, `branch-origin-protocol.md:25`) and are conditioned by a carrier
+  elsewhere; a window-local zero-count criterion would demand an edit REQ-JFM-015 / §B.2
+  prohibits, which is a criterion no correct work can satisfy. The ledger records the carrier
+  instead.
+- **Re-sweep obligation (run-phase task — named here, not performed here).** The window only
+  widens: a matched line is always inside its own block, so **every row already classed
+  `conditioned` on a window-local token stays `conditioned`** and needs no re-check. The rows
+  classed `unconditioned-by-design` were judged against the retired narrower window and MUST be
+  re-checked against the block — a row whose block carries a mode reference outside the matched
+  line becomes `conditioned`. Concretely, against the existing ledger
+  (`.moai/reports/t401/ac013-ledger.md`, 26 rows: 8 `conditioned`, 18 `unconditioned-by-design`,
+  0 escalated): the 8 survive as authored; the 18 are re-checked; and row 4
+  (`zone-registry.md:869`) moves to `conditioned` under the carrier form. The re-sweep is
+  run-phase work under this criterion, not plan-phase work.
+- Green path: M1. Swept count ≥ 25 with a ledger row per candidate, and all six named
   coordinates — `askuser-protocol.md:64`, `branch-origin-protocol.md:25`, `run.md:137`,
-  `spec-assembly.md:212`, `spec-assembly.md:353` — classed `conditioned`. This is the criterion that mechanically closes the
-  two-`[HARD]`-clause contradiction (spec.md §E.1).
+  `spec-assembly.md:212`, `spec-assembly.md:353`, `zone-registry.md:869` — classed `conditioned`,
+  each on a window-local token or on a named carrier. This is the criterion that mechanically
+  closes the two-`[HARD]`-clause contradiction (spec.md §E.1).
 
 ## §D.5 Runtime observer
 

@@ -166,10 +166,21 @@ diff <(sed -n '/Report-Before-Ask/,/^## /p' .claude/rules/moai/core/askuser-prot
 ```
 
 **The AC-JFM-013 sweep, with its window defined.** The 0.1.0 criterion turned on "within the
-enclosing clause" and never said what a clause is, leaving the sweep unbounded. The window is now
-fixed as **the matched physical line**, chosen because it is the only boundary two implementers
-cannot draw differently, and because every candidate this tree actually contains is a
-single-line paragraph or list item (measured). The candidate set is mechanical:
+enclosing clause" and never said what a clause is, leaving the sweep unbounded. 0.2.2 fixed the
+window at **the matched physical line** and justified it with the claim that "every candidate this
+tree actually contains is a single-line paragraph or list item (measured)". **That claim was
+false.** The run phase falsified it: `plan/spec-assembly.md:212` is a continuation line of a
+wrapped `[HARD]` paragraph spanning roughly `:208`-`:214`, so the line window cut a clause in half
+— and the only route to a PASS was rewriting the paragraph as one long line so the token would land
+inside the measuring instrument. A criterion whose only pass route is writing to fit the instrument
+proves nothing.
+
+The window is therefore **the enclosing markdown block of the matched line**, with the boundary
+rule stated mechanically in acceptance.md AC-JFM-013 (blank line / heading / code fence / list
+marker / table row). The window is a superset of the line, so it only widens what counts as
+conditioning; it never narrows it. The long line the run phase wrote at `spec-assembly.md:212`
+stays as it is — it is the evidence for this repair, not a defect to tidy. The candidate set is
+mechanical:
 
 ```bash
 grep -rn -E '\(Recommended\)|\(권장\)' .claude/rules .claude/skills .claude/output-styles \
@@ -178,15 +189,19 @@ wc -l < .moai/reports/t401/ac013-candidates.txt          # swept count — MUST 
 grep -c 'recommendation_mode' .moai/reports/t401/ac013-candidates.txt
 ```
 
-Requiring a mode reference on **every** candidate line would be wrong — `zone-registry.md:869` is
-the Frozen `clause:` string that REQ-JFM-015 / spec.md §B.2 forbids editing, and its conditionalization lives in
-`branch-origin-protocol.md` instead. So the criterion is a **classification ledger**, not a
-zero-count: `.moai/reports/t401/ac013-ledger.md` carries one row per candidate line, each classed
-`conditioned` or `unconditioned-by-design: <reason>`, with the row count equal to the swept count
-and no unclassified remainder. The coordinates this SPEC names — `askuser-protocol.md:64` (S1's
-first coordinate, one of the two contradicting `[HARD]` clauses named above), any other
-`askuser-protocol.md` S1 row, `run.md:137`, `plan/spec-assembly.md:212`, and
-`plan/spec-assembly.md:353` — must all land in `conditioned`.
+Requiring a mode reference **inside every candidate's own window** would be wrong —
+`zone-registry.md:869` is the Frozen `clause:` string that REQ-JFM-015 / spec.md §B.2 forbids
+editing, and its conditionalization lives in `branch-origin-protocol.md` instead. So the criterion
+is a **classification ledger**, not a zero-count: `.moai/reports/t401/ac013-ledger.md` carries one
+row per candidate, each classed `conditioned` or `unconditioned-by-design: <reason>`, with the row
+count equal to the swept count and no unclassified remainder. A row is `conditioned` either on a
+window-local mode reference or on a **named carrier** — a coordinate this SPEC forbids editing,
+whose conditioning text lives at a coordinate the ledger row names (acceptance.md AC-JFM-013,
+carrier form). The coordinates this SPEC names — `askuser-protocol.md:64` (S1's first coordinate,
+one of the two contradicting `[HARD]` clauses named above), any other `askuser-protocol.md` S1 row,
+`run.md:137`, `plan/spec-assembly.md:212`, `plan/spec-assembly.md:353`, and `zone-registry.md:869`
+(carrier form) — must all land in `conditioned`. Coordinates are identified by anchor text;
+line numbers are a locating aid measured at `82edb9109`.
 
 The two `spec-assembly.md` coordinates are admitted on REQ-JFM-016's **reachability** test, the
 same consequence test that admits `run.md:137` and `branch-origin-protocol.md:25` (both of which
