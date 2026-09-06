@@ -228,7 +228,7 @@ Measured in the worktree `.claude/worktrees/t401`, branch `WT-analysis-pull`, pa
 | AC-JFM-012 | `git diff ad272be20 -- .claude/rules/moai/core/zone-registry.md` | empty; exit `0` | PASS |
 | AC-JFM-012 (companion) | `grep -c 'recommendation_mode' .claude/rules/moai/development/branch-origin-protocol.md` | `1` | PASS |
 | AC-JFM-013 | sweep → `wc -l < .moai/reports/t401/ac013-candidates.txt` | `26` (pre-edit `25`; the 26th is the pull branch this milestone added at `branch-origin-protocol.md:26`, which itself matches the selector) | swept count > 0 |
-| AC-JFM-013 (ledger) | `grep -c '^| [0-9]* | \`' .moai/reports/t401/ac013-ledger.md` | `26` rows = swept count; 7 `conditioned`, 18 `unconditioned-by-design`, **1 escalated** | **FAIL** — one unclassified remainder (see below) |
+| AC-JFM-013 (ledger) | `grep -c '^| [0-9]* | \`' .moai/reports/t401/ac013-ledger.md` | `26` rows = swept count; 8 `conditioned`, 18 `unconditioned-by-design`, **0 escalated** | PASS |
 
 All five coordinates AC-JFM-013 requires in `conditioned` are `conditioned`:
 `askuser-protocol.md:64`, `askuser-protocol.md:265` (the other surviving S1 row, `:217` at base),
@@ -236,21 +236,29 @@ All five coordinates AC-JFM-013 requires in `conditioned` are `conditioned`:
 `recommendation_mode` on the matched line; `branch-origin-protocol.md:25` is conditioned by the
 adjacent pull branch at `:26` because REQ-JFM-015 / §B.2 require its text verbatim.
 
-**AC-JFM-013 is FAIL, deliberately.** `.claude/skills/moai/SKILL.md:350` carries an independent
-`[HARD]` clause — "All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
-The first option MUST always be the recommended choice, clearly marked with '(Recommended)'
-suffix" — with no SSOT citation and the broadest reach in the swept set. It meets REQ-JFM-016's
-reachability test, and `.claude/skills/moai/SKILL.md` is not in M1's declared edit surface. Neither
-available class is honest: `conditioned` would require an out-of-scope edit, and
-`unconditioned-by-design` would rest on scope absence rather than a design ground. Escalated as a
-blocker; ledger § Blocker carries the recommended resolution.
+**AC-JFM-013 was FAIL at first close and is now PASS.** `.claude/skills/moai/SKILL.md:350` carries
+an independent `[HARD]` clause — "All AskUserQuestion calls throughout MoAI workflows MUST follow
+these rules: The first option MUST always be the recommended choice, clearly marked with
+'(Recommended)' suffix" — with no SSOT citation and the broadest reach in the swept set. It meets
+REQ-JFM-016's reachability test but sat outside M1's declared edit surface, so neither available
+class was honest and the row was escalated rather than classified. The **operator approved the
+scope expansion**, adding that file and its template mirror to M1; the line is now conditioned
+under minimum-scope discipline (block header, bullet order, and second bullet untouched). Two
+alternatives were considered and rejected: replacing the rule with an SSOT citation, and splitting
+to a separate card. Row 6's membership clause was struck by orchestrator adjudication, with ground
+(a) surviving on a consequence test. Ledger § Resolutions carries both.
 
-**Template mirrors.** All 4 changed files were byte-identical to their
-`internal/template/templates/` mirrors before the edit and are byte-identical after it
-(`diff -q` × 5, including the untouched `zone-registry.md`). The 85 added template lines were
-scanned for SPEC IDs, REQ / AC tokens, `CLAUDE.local` references, absolute `/Users/` paths, ISO
-dates, and 9-40 hex SHAs: zero hits, with a catch-all control confirming the pipeline reached data
-(85 `^+` lines, 8 carrying `recommendation_mode`).
+**Template mirrors.** Five of the six M1 file pairs were byte-identical before the edit and are
+byte-identical after it (`diff -q` rc=0). **`.claude/skills/moai/SKILL.md` is the exception and was
+already divergent by design at `ad272be20`**: 39 differing lines — the live copy uses
+`${CLAUDE_SKILL_DIR}` where the template uses literal `.claude/skills/moai/` paths, and the live
+copy carries a `Last Updated:` line the template deliberately lacks. Mirroring that pair by `cp`
+would have destroyed all 39 and injected an internal date into the template, breaching REQ-JFM-022,
+so the edit was applied to each copy by hand. Parity evidence: the pair differs by exactly 39 lines
+both before and after the edit, and `recommendation_mode` appears in **0** of the differing lines —
+the conditioning landed identically on both sides and added no divergence. The added template lines
+were scanned for SPEC IDs, REQ / AC tokens, `CLAUDE.local` references, absolute `/Users/` paths, ISO
+dates, and 9-40 hex SHAs: zero hits, with a catch-all control confirming the pipeline reached data.
 
 **M0's baseline window is still outstanding, and M1 has now closed half of its stated condition.**
 M0's code landed at `d5caf2d8e` (`internal/hook/askuser_observer.go`, the `pre_tool.go` branch, the
@@ -269,14 +277,14 @@ verified here.
 ```yaml
 run_phase: M1 only (M2-M6 not entered)
 run_commit_sha: <backfill — this record is committed within the M1 commit>
-run_status: partial — M1 edits complete, AC-JFM-013 blocked on one escalated row
-ac_pass_count: 8
-ac_fail_count: 1
-ac_blocked_count: 1
+run_status: complete for M1 — all M1 criteria green; AC-JFM-009 carries an M2-owned half
+ac_pass_count: 10
+ac_fail_count: 0
+ac_blocked_count: 0
 preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20
 cross_platform_build: not applicable — markdown-only milestone, no Go code changed
 new_warnings_or_lints_introduced: none — no code changed
-total_run_phase_files: 10   # 4 doctrine + 4 template mirrors + 2 ledger artifacts
+total_run_phase_files: 12   # 5 doctrine + 5 template mirrors + 2 ledger artifacts
 m1_to_mN_commit_strategy: one commit per milestone; M1 is a single commit
 ```
 
