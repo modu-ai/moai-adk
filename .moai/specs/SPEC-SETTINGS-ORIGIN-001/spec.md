@@ -2,7 +2,7 @@
 id: SPEC-SETTINGS-ORIGIN-001
 title: "Dirty .claude/settings.json working-copy writer attribution — code-path inventory, external inflow, and recurrence prevention"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-05
 updated: 2026-09-06
 author: manager-spec (card t487)

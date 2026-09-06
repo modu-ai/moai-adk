@@ -43,4 +43,11 @@ constraints_honored: cross-tree git 0 (guard) · byte-preserve (t334 dirty recor
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-06
+sync_commit_sha: "pending-backfill-sync"
+sync_status: completed
+b12_self_test_a: n/a — no CHANGELOG emission (see disposition below)
+b12_self_test_b: n/a — no AC-count comparison applicable without a CHANGELOG entry
+b12_self_test_c: n/a — no file paths claimed in a CHANGELOG entry
+
+**Sync summary** — Sync scope: spec.md frontmatter transition only (`status: in-progress → implemented → completed` merged close + `updated: 2026-09-06` refresh; no body content of spec.md / plan.md / acceptance.md touched) plus this §E.4 authoring, on the single sync commit. CHANGELOG disposition: N/A — no CHANGELOG.md entry emitted. This SPEC is a Tier S read-only investigation with zero production code changes (SPEC §5); the run output is analysis + evidence files under `.moai/reports/t487/` (verdict.md, sweep/, preserved-copies/), which is a local-only surface that ships to no distributed template, binary, or docs-site consumer. With no shipped product surface changed, there is no user-visible entry to record; no sync-gate rule mandates a CHANGELOG entry for investigation-only SPECs with no product-surface delta. Verdict evidence path: `.moai/reports/t487/verdict.md` (5 sections + lane addendum L1-L3). The `sync_commit_sha` field above carries the sanctioned `pending-backfill-sync` placeholder (D3 pattern — a commit cannot cite its own SHA) and is backfilled with the real sync commit SHA in the immediately following backfill commit.
