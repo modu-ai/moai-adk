@@ -538,6 +538,12 @@ boundary.
 - This is recorded here as **measured context only**. The surface belongs to card **t359**, which is
   picked and carries plan-audit iteration-1 redesign items. Authoring requirements against it here
   would duplicate a live card.
+- **The enumeration of §A.4 is a transitional instrument, and card t359 is its sole termination
+  path** (card t486, from t482 §5.2(1) and §6 recommendation 4). Landing-time recording of landing
+  evidence — the merging side writing what it observed into the store, and the predicate reading
+  that — is what ends the enumeration debt; expanding the enumeration further is mitigation, not
+  resolution. Further enumeration rounds are **not the plan**; §A.4.2's non-closure property is
+  why.
 
 ### Out of Scope — axis D, the blank card-to-SPEC link
 
