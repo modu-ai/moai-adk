@@ -2,7 +2,7 @@
 id: SPEC-BINLAG-KEYGUARD-001
 title: 허용목록 키가 실재하는지 기계가 판정한다 — 따옴표 탈락으로 조용히 무효가 된 엔트리 적발
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-09-04
 updated: 2026-09-06
 author: manager-spec

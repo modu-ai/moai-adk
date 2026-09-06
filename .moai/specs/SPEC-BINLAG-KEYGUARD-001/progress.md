@@ -728,7 +728,33 @@ m1_to_mN_commit_strategy: single-commit # M1 하나로 종결 (729060e63)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-06
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다. 후속 커밋에서 backfill
+sync_status: complete
+b12_self_test_a: pass                    # 사전 중복 grep: grep -c 'SPEC-BINLAG-KEYGUARD-001' CHANGELOG.md -> 0 (append 전)
+b12_self_test_b: pass                    # AC 수 일치: acceptance.md 고유 AC-ID 9개 == CHANGELOG 인용 9
+b12_self_test_c: pass                    # CHANGELOG가 주장한 파일 경로 5개 전부 ls 확인
+changelog_entry_position: "[Unreleased] / ### Added 최상단 (CHANGELOG.md:12)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"    # updated: 2026-09-06 (이미 동일 날짜)
+  plan_md: not-applicable                # status: 필드 없음
+  acceptance_md: not-applicable          # status: 필드 없음
+  progress_md: not-applicable            # frontmatter 없음 (본문 머리말만)
+canary_compliance_check:
+  applicable: false                      # 이 SPEC은 자기 sync가 시험할 forward-looking 정책을 정의하지 않는다
+verification_rerun_at_sync:
+  command_1: "go test ./internal/cli/ -run TestBinaryLag -count=1 -timeout 600s -v"
+  verdict_1: "[no tests to run] 계수 0 / '--- PASS: TestBinaryLag_AllowlistKeysAreLiveNames ' 계수 1 / SKIP 0 / FAIL 0"
+  command_2: "go vet ./internal/cli/..."
+  verdict_2: "exit 0, 출력 0바이트"
+  command_3: "git diff --stat 93fb36344..HEAD -- internal/ pkg/ cmd/"
+  verdict_3: "internal/cli/binary_lag_test.go | 70 ++ — 소스 변경 파일 1개"
+docs_surface_touched: none               # 내부 테스트 가드. docs-site / README / locale 파일 0
+template_tree_touched: none              # internal/template/templates/ 변경 0 — make build 불필요
+pushed: false                            # 레인은 push하지 않는다. 공개는 리드의 일괄 행위
+card_evidence: .moai/reports/t479/verdict.md
+```
 
 ---
 
