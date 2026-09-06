@@ -60,7 +60,7 @@ known_deviation: always-loaded 순증 +141 토큰 — 목표(≤ 0) 미달, 사�
 
 sync_status: complete
 sync_complete_at: 2026-09-06
-sync_commit_sha: pending-backfill-sync   # 이 커밋은 자신의 해시를 인용할 수 없다 — 후속 커밋에서 백필 (D3 placeholder-backfill exemption, SPEC-LEAD-DEBOTTLENECK-001 `f5e2f07cb` 선례와 동일 형태)
+sync_commit_sha: 94a940d03
 three_phase_close: "`in-progress → implemented → completed` 를 이 sync 커밋에 병합 — 별도 Mx chore 커밋 없음. spec.md frontmatter는 `status: completed` + `updated: 2026-09-06` 만 변경, 본문 무편집. plan.md/acceptance.md는 `status:` 필드 자체가 없어 `updated:` 만 갱신 (SPEC-BINLAG-KEYGUARD-001 CHANGELOG 항목 선례와 동일 서술)."
 changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added — 최상단 신규 항목 (편집 전 `grep -c 'SPEC-LEAD-DEPUTY-001' CHANGELOG.md` → 0, 중복 없음 확인 후 삽입)"
 
