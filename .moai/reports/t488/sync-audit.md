@@ -117,3 +117,121 @@ FAIL	github.com/modu-ai/moai-adk/internal/kanban	2.190s
 ---
 
 판정 소유권: 이 PASS는 sync-auditor의 것이며 위임되지 않았다. 위 모든 수치는 HEAD `3c0abee98`의 트리에 대해 이번 세션에서 실행한 명령의 출력이다.
+
+---
+
+# §9 델타 확인 — 수리 이후 (`3c0abee98` → `b3d0091f3`)
+
+**위 §1-§H 본문은 손대지 않았다.** 그것은 `3c0abee98`에서 발견된 것의 기록이고, 발견이 수리된 뒤에 판정서를 고쳐 쓰면 그것은 더 이상 증거가 아니다. 이 절은 그 위에 얹는 델타 확인이며, 판정을 재산정하지 않는다.
+
+감사 트리: `.claude/worktrees/t488` · 브랜치 `WT-premerge-drift-assert` · HEAD `b3d0091f3c6da5d855244e5dc613845f3fcffa4f` · 시작·종료 시점 `git status --porcelain` 무출력.
+델타 범위: 커밋 6개(`65146f0f6`, `1a34c51ef`, `25069d992`, `318d098c4`, `955e5190c`, `b3d0091f3`), Go 파일 5개 + 문서.
+
+## §9.1 F1 — 닫혔다. 직접 재발화로 확인
+
+수리는 세 줄이 아니었고, 그 편이 옳다. `preserveSettingsDriftCopy`가 **경로가 아니라 바이트를 받는다**(`settings_drift.go:412`). 경로 인자는 두 번째 읽기를 *허용*하지만 바이트 인자는 그것을 표현할 수 없다 — 방어를 주석이 아니라 시그니처에 넣은 것이다.
+
+**두-읽기 모양을 직접 복원해 RED를 관측했다.** `AssessSettingsDrift`의 preserve 호출에 신선한 `os.ReadFile(result.Path)`를 끼워 넣었더니, 먼저 **컴파일이 거부했다**:
+
+```
+internal/kanban/settings_drift.go:296:2: declared and not used: data
+FAIL	github.com/modu-ai/moai-adk/internal/kanban [build failed]
+```
+
+이것은 기록되지 않은 성질이고, 기록할 값이 있다. 두-읽기 회귀를 심으려면 **한 번 읽은 버퍼를 명시적으로 버려야** 한다(`_ = data`). 즉 테스트가 잡기 전에 타입 시스템이 먼저 막는다. `_ = data`로 뮤턴트를 완성한 뒤의 RED:
+
+```
+=== RUN   TestLedgerDigestDescribesThePreservedBytes
+    settings_drift_test.go:780: the ledger digest does not describe the preserved bytes:
+         ledger:    8d39bb027e9dc2f980612460729cf754be386c725ff0a300baa217faa1859028
+         preserved: 92733cfa5e922781efae8739382ca015c9a34dc6b84a6783b8d0180e50eb5652
+    settings_drift_test.go:784: ledger size_bytes 22 does not match the preserved copy's 38 bytes
+    settings_drift_test.go:789: preserved copy is not the content that was measured
+--- FAIL: TestLedgerDigestDescribesThePreservedBytes (1.17s)
+```
+
+`f1-double-read.txt`의 두 다이제스트와 **바이트 단위로 같다**. 기록된 증거가 재현 가능하다.
+복원: `shasum -a 256 internal/kanban/settings_drift.go` = `990ef494cffa4b15ad63acb53b4bc8525bd2b088aae8b9c69f1434f1bb4190b2`(뮤턴트 이전 값과 동일), `git status --porcelain` 무출력.
+
+**이음매(seam)는 건전하다.**
+
+- **프로덕션 nil 보장 — 읽어서가 아니라 훑어서.** `grep -rn "settingsDriftPreserveTestHook" --include='*.go' .`의 대입은 두 곳뿐이고 **둘 다 `_test.go`**다(`settings_drift_test.go:743` 대입, `:749` `t.Cleanup`으로 nil 복원). 비-테스트 파일의 대입 0건. 호출 지점(`settings_drift.go:306`)은 nil 가드가 있고, Go에서 nil `func()` 호출은 패닉이므로 그 가드가 "nil이면 동작이 바이트 동일"을 의도가 아닌 사실로 만든다.
+- **선례는 실재한다.** `integrationLockMutationTestHook`이 같은 패키지의 `integration_lock.go:83`(주석)·`:95`(선언)·`:254`(nil 가드 호출)에 있다. 이음매를 발명한 것이 아니라 옆집 것을 그대로 따랐다.
+- **패키지 전역 변수인데 병렬 오염이 없는가 — 추론이 아니라 실측으로 답했다.** `go test ./internal/kanban/ -count=1 -race` → **`ok … 147.594s`**. race 보고 0건, 실패 0건. Go의 병렬 테스트 스케줄링을 근거로 "안전할 것"이라 논증할 수도 있었지만, 그것은 추론이다. 잰 결과가 깨끗하다.
+
+**대조 세 개는 옳은 세 개다.** ① 두 내용이 실제로 다름(`:738`) — 없으면 단정이 어느 쪽이든 참이 된다. ② 훅이 **정확히 1회** 발화(`:759`) — `!= 1`이라 미발화와 중복발화를 **둘 다** 잡는다(`> 0`이었다면 후자를 놓쳤다). ③ 끼어든 쓰기가 실제로 착지(`:762-766`) — 훅이 돌았어도 쓰기가 실패했으면 단정은 공허하다. 세 개가 서로 다른 공허 경로를 막으며 겹치지 않는다.
+
+**판정: 결함을 닫았다. 이전(relocate)이 아니다.**
+
+## §9.2 F4 — 닫혔다. 순서도 성립한다
+
+두 표면, 두 sentinel(`integration_settings_drift.go:55-63`). `preflight`은 `errSettingsDriftDetected`를 반환한다.
+
+**순서 주장은 실측으로 성립한다.** `integration_settings_drift_report_test.go`에서 정체성 단정이 `:174`(자기 sentinel)·`:177`(acquire sentinel 아님), 문구 단정이 `:186`·`:189` — 구조가 먼저, 문구가 나중이다. 두 sentinel은 서로 다른 `errors.New` 값이므로 `errors.Is`가 동일성 비교로 갈라낸다. 양방향(`preflight`은 거절을 주장하지 않고 / `acquire`는 거절을 주장한다)을 한 테스트에서 함께 잰 것도 옳다 — 한쪽만 쟀다면 acquire가 조용해지는 다른 결함이 이 테스트를 통과했을 것이다.
+
+**문구 단정은 남길 값이 있다 — 축이 다르기 때문이다.** sentinel 단정은 **정체성**을 고정하고, 문구 단정은 **내용**을 고정한다. `errSettingsDriftDetected`의 메시지를 나중에 누군가 "refused"를 담은 문장으로 고쳐도 정체성 단정은 여전히 통과하고, 그때 잡는 것은 문구 단정뿐이다. 중복이 아니라 다른 회귀를 막는다. 게다가 테스트가 자기 한계를 주석에 적어 두었다("다르게 표현된 거짓 주장은 여전히 통과한다") — 근사임을 알고 쓰는 근사는 과잉 주장이 아니다. **남기기를 권고한다.**
+
+명사가 아니라 주장을 금지하도록 좁힌 것도 옳다. `no integration window was taken`은 정직한 설명이지 거짓 주장이 아니며, 명사 `window`를 금지했다면 정직한 문장이 테스트에 막혔을 것이다.
+
+## §9.3 F5 / F2 / F3
+
+- **F5** — `integration.go`가 스윕 목록에 들어갔다(`integration_settings_drift_exitcode_test.go:30-33`). 이번 실행에서 스윕 테스트 통과. §1에서 이미 살아 있는 결함 0을 세워 두었으므로 커버리지 간극만 닫혔다.
+- **F2** — 리드 목록에 없었으나 **가장 철저히** 닫혔다. 재생성한 인용이 현재 트리에서 전부 해석된다(실측: `settings_drift_test.go:537/780/784/789`, `integration_settings_drift_report_test.go:174/177/186/189` 모두 해당 단정 줄). 재생성된 `m6-executor-bypassed.txt`가 **537행을 인용**하는데, 이는 §M에서 내가 독립적으로 재발화했을 때 발화한 바로 그 행이다. 여기에 `mutants/README.md`가 각 항목에 **줄 번호와 별개로 안정 앵커**(테스트 함수명 + 단정 문구)를 주고, 이전 세대 로그가 왜 틀렸는지(+14/+16)를 지우지 않고 기록했다. 요구한 것보다 나은 처분이다.
+- **F3** — `CHANGELOG.md`의 `A new read-only verb` → `A new verb`. 닫혔다.
+
+## §9.4 수리가 새로 만든 것
+
+코드 쪽은 없다. 문서 쪽에 하나 있고, 하나는 자기충족성 간극이다.
+
+- **G1** [Low] [**blocking — 창 진입 전 정정 권고**] `CHANGELOG.md:12` 말미가 여전히 `backfilled to 199d2777be085033a96d89cc45466d11ef4a37b9`라고 적는다. 그런데 `progress.md` §E.4는 그 값을 **superseded, invalidated**로 명시하고 `955e5190c86c88605efcaaf41bd002005516ed51`을 sync 커밋으로 기록한다. 실측: `grep -c '199d2777b' CHANGELOG.md` → 1, `grep -c '955e5190c' CHANGELOG.md` → 0. **같은 카드의 두 커밋된 기록이 "무엇이 이 카드를 닫았는가"에 대해 서로 다른 답을 하고, 한쪽이 다른 쪽의 값을 무효라고 부른다.** 재마감이 §E.4는 갱신했으나 그것을 반사하는 CHANGELOG 문장은 갱신하지 않았다. 이 항목이 이미 세 번 겪은 계열("이미 움직인 상태를 기술한 문장")의 **네 번째**다. SHA 하나 바꾸면 닫힌다.
+- **G2** [Low] [optional] §E.4의 재측정이 `HEAD 318d098c4` 기준이라고 적혀 있으나 현재 HEAD는 `b3d0091f3`이고, 그 사이 두 커밋이 코드를 건드리지 않았다는 **증거를 아티팩트가 스스로 담지 않는다**. 내가 재서 확인했다 — `git diff --name-only 318d098c4..HEAD -- '*.go'` 무출력, `git diff --stat 318d098c4..HEAD`는 `progress.md` 한 파일뿐. 거짓 주장이 아니라 독자 자기충족성의 간극이다(리드 질문 3의 답이 여기에 걸린다). 한 줄 추가로 닫힌다.
+- **G3** [Very Low] [optional] §E.4 「Template-First check」가 `git diff --stat 256b30fa5..HEAD`를 인용하는데 `HEAD`는 움직이는 앵커다. 원래도 그랬으나 HEAD가 6커밋 더 가면서 오해 소지가 커졌다. 미러 동일성 자체는 이번에도 재확인했다(`diff -q` 두 쌍 exit 0).
+
+**회귀 없음 — 잰 결과.** `go build ./...` rc=0 · `go test ./internal/kanban/ -count=1 -race` → `ok … 147.594s` · `go test ./internal/cli/ -run 'SettingsDrift|Acquire|Preflight|ExitCode' -count=1` → `ok … 25.298s` · `go vet` 무출력 rc=0 · `gofmt -l internal/{kanban,cli,config}/` 무출력 · `golangci-lint run --timeout=3m` → `0 issues.` · 감시 대상 여전히 단일(`grep -c 'settings.local.json'` → 두 파일 모두 0) · 미러 두 쌍 바이트 동일.
+
+## §9.5 §E.4 재측정의 건전성 (리드 질문 3)
+
+**건전하다.** 세 가지가 옳게 되어 있다.
+
+1. **소비가 아니라 재실행을 골랐다.** 두 수리 커밋 어느 쪽도 전 패키지 실행을 인용하지 않았으므로, 소비할 귀속 가능한 증거가 애초에 없었다. `agent-common-protocol.md`의 attributable diff-check는 세 조건이 모두 맞을 때만 소비를 허용하고 어긋나면 재실행하라고 말한다 — 어긋났고, 재실행했다. 규칙대로다.
+2. **폐기된 값을 지우지 않고 남겼다.** `sync_commit_sha` 줄에 `Superseded prior value: 199d2777b…`가 인라인으로 붙어 있다. 조용히 덮어쓰면 재마감이 있었다는 사실 자체가 사라진다.
+3. **순서 결함을 사실로 진술했다.** "두 write-capable 에이전트를 한 트리에 배차했다"를 명시하고, 구조적 수정("sync 마감은 마지막에 간다")까지 적었다. 비난이 아니라 사실 진술이며, 재현을 막는 형태다.
+
+독자 자기충족성은 **G2 하나를 제외하면** 성립한다 — 인용된 명령과 그 출력이 그대로 있어 누구도 물어볼 필요가 없다.
+
+## §9.6 원래 F4 판정에 붙이는 정정 (리드 질문 4)
+
+**재산정이 아니라, 논거 하나를 정정한다.** §F의 F4 항목에 나는 severity Low를 주면서 그 근거로 "이것은 기록이 아니라 에러 문자열"이라는 구별을 썼다. **그 구별은 성립하지 않는다.** REQ-PSD-009가 금지하는 것은 *일어나지 않은 행위를 주장하는 것*이고, 그 금지는 주장을 나르는 매체가 JSON 필드인지 사람이 읽는 문장인지를 구별하지 않는다. 오히려 사람이 읽는 표면 쪽이 스키마의 제약을 받지 않아 더 쉽게 거짓말한다.
+
+내 원문은 같은 문단에서 "이 카드가 lock 레코드에 대해 [HARD]로 금지한 모양이 한 층 위에서 재현된 것"이라고 **정확히 관측해 놓고도**, 그 관측이 severity를 끌어올리게 두지 않았다. 리드의 승격이 옳았다.
+
+§7의 종합 판정과 차원 점수는 그대로 둔다 — 그것은 `3c0abee98`에 대한 판정이고, 이 정정은 그 옆에 선다.
+
+## §9.7 알려진 red (리드 질문 5)
+
+**아무것도 움직이지 않았다.** `b3d0091f3`에서 이번에 실행:
+
+```
+token_budget_guard_test.go:69: always-loaded surface = 77801 tokens (budget 77600, headroom -201, 17 entries)
+```
+
+§1에서 `3c0abee98`에 대해 잰 값과 **표면·예산·초과분 세 수치가 전부 동일**하다. 델타 6커밋 중 `.claude/` 아래를 건드린 것이 없으므로 예상과 일치한다. `AlwaysLoadedTokenBudget`은 여전히 손대지 않았고, 인상을 권고하지 않는다는 §B의 입장도 그대로다.
+
+## §9.8 창 진입 준비 상태
+
+**G1을 정정하면 준비됐다.** 그 외 모든 축이 정리됐다 — 코드 회귀 0(race 포함), 세 수리 모두 제기한 결함을 닫았고 이전시키지 않았으며, F1은 타입 시그니처가 회귀를 컴파일 단계에서 막는 데까지 갔고, F2는 요구 이상으로 닫혔고, §E.4는 재측정이 건전하며 순서 결함을 숨기지 않았다.
+
+G1은 SHA 하나짜리 편집이지만 **병합 전에 하는 편이 옳다**: 같은 카드의 두 커밋된 기록이 서로 모순하며 한쪽이 다른 쪽을 무효라고 부르는 상태이고, `done` 이후에는 그것을 고칠 계기가 생기지 않는다. 이 판정은 그 정정을 **권고**하며, 창을 잡을지는 리드의 결정이다.
+
+## §9.9 이번 델타 라운드에서 보지 않은 것
+
+- **커버리지 재측정.** `internal/kanban` 86.3% / `internal/cli` 80.6% / 신규 파일 83.2% · 90.8%는 §1에서 `3c0abee98`에 대해 실측했고, 델타 이후 **다시 재지 않았다**. 훅 분기와 새 테스트가 더해졌으므로 수치는 소폭 움직였을 수 있다. 미검증으로 남긴다.
+- **`internal/cli` 전 하위 패키지 실행.** 이번에는 drift·acquire·preflight·exitcode 필터로만 돌렸다(25.3s). §E.4가 인용한 전체 실행(389s)은 재현하지 않았고, 그 인용을 소비하지도 않았다 — 내가 잰 것은 필터된 범위뿐이다.
+- **크로스 플랫폼 빌드**(`GOOS=windows`/`linux`) — 델타에서도 재실행하지 않았다.
+- **뮤턴트 M1-M5·M7의 재발화.** 재생성된 로그의 인용 줄이 해석되는 것은 확인했으나, 뒤집어 본 것은 이번에도 M6(§M)과 F1(§9.1) 둘뿐이다.
+- **`955e5190c` 재마감 커밋 자체의 문서 diff 전문.** §E.4 최종 상태를 읽었을 뿐, 재마감이 §E.2·§E.3에 가한 편집을 줄 단위로 대조하지는 않았다.
+- **G1의 파급 범위.** CHANGELOG의 그 문장 하나만 확인했고, 다른 아티팩트가 `199d2777b`를 sync 커밋으로 인용하는지는 전수 훑지 않았다.
+
+---
+
+델타 확인 소유권: 이 §9는 sync-auditor의 것이다. 위 모든 수치는 HEAD `b3d0091f3`의 트리에 대해 이번 세션에서 실행한 명령의 출력이며, 건네받은 값을 옮긴 것은 없다.
