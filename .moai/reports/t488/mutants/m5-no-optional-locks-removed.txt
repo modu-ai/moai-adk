@@ -1,0 +1,14 @@
+--- FAIL: TestSettingsDriftPredicateIgnoresOtherFile (0.45s)
+    settings_drift_test.go:200: positive control: recorded 0 occurrences of "git --no-optional-locks status --porcelain -- .claude/settings.json", want exactly 1
+        recorded: [git status --porcelain -- .claude/settings.json]
+--- FAIL: TestSettingsDriftPredicatePass (0.45s)
+    settings_drift_test.go:178: positive control: recorded 0 occurrences of "git --no-optional-locks status --porcelain -- .claude/settings.json", want exactly 1
+        recorded: [git status --porcelain -- .claude/settings.json]
+--- FAIL: TestSettingsDriftPredicateArgvRecordedAtExecutionBoundary (0.45s)
+    settings_drift_test.go:256: recorded argv:
+         got: "git status --porcelain -- .claude/settings.json"
+        want: "git --no-optional-locks status --porcelain -- .claude/settings.json"
+    settings_drift_test.go:270: --no-optional-locks absent from executed argv "git status --porcelain -- .claude/settings.json"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.933s
+FAIL
