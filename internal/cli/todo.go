@@ -568,9 +568,16 @@ landed on that ref", NOT "has this card's last step landed", so it cannot tell a
 run commit from a sync commit. Absent the flag no landing query runs at all.
 
 Every successful invocation prints one landing verdict on stdout —
-` + "`done <id> landing=landed|not-landed|unknown`" + `. Without the flag the verdict is
+` + "`done <id> landing=landed|not-landed|unknown`" + `, with ` + "`ref=<answering ref>`" + `
+appended when ` + "`--require-landed`" + ` ran — without the flag no query ran, so
+no ref answered and none is named — and the ` + "`done <id> `" + ` prefix every
+existing reader keys off is preserved. Without the flag the verdict is
 ` + "`unknown`" + `, because no query ran: "the guard passed" and "the guard did not
-run" are different facts and no longer the same bytes.`
+run" are different facts and no longer the same bytes. When the answering
+ref came from BELOW the configured ` + "`git_strategy.worktree_base_branch`" + ` — the
+repository's own recorded default or the compiled-in fallback — the chain
+level that supplied it is disclosed on stderr; a configured project gets
+no such notice.`
 }
 
 // todoRequireLanded answers the opt-in landing question for id.
