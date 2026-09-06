@@ -58,4 +58,25 @@ known_deviation: always-loaded 순증 +141 토큰 — 목표(≤ 0) 미달, 사�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-09-06
+sync_commit_sha: pending-backfill-sync   # 이 커밋은 자신의 해시를 인용할 수 없다 — 후속 커밋에서 백필 (D3 placeholder-backfill exemption, SPEC-LEAD-DEBOTTLENECK-001 `f5e2f07cb` 선례와 동일 형태)
+three_phase_close: "`in-progress → implemented → completed` 를 이 sync 커밋에 병합 — 별도 Mx chore 커밋 없음. spec.md frontmatter는 `status: completed` + `updated: 2026-09-06` 만 변경, 본문 무편집. plan.md/acceptance.md는 `status:` 필드 자체가 없어 `updated:` 만 갱신 (SPEC-BINLAG-KEYGUARD-001 CHANGELOG 항목 선례와 동일 서술)."
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added — 최상단 신규 항목 (편집 전 `grep -c 'SPEC-LEAD-DEPUTY-001' CHANGELOG.md` → 0, 중복 없음 확인 후 삽입)"
+
+### B12 self-test (3건, 커밋 전 실행)
+
+- pre_emission_grep: `grep -c 'SPEC-LEAD-DEPUTY-001' CHANGELOG.md` → `0` (삽입 전)
+- ac_count_match: `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-LEAD-DEPUTY-001/acceptance.md | sort -u | wc -l` → `10` (AC-LDP-001~010); CHANGELOG 항목이 "10건 AC-LDP-001..010" 을 명기 — 일치. **0은 아니었다** — 실측치이며 공허 비교가 아니다.
+- file_path_verification: `ls`로 확인 — `.claude/rules/moai/workflow/kanban-dispatch.md` · `kanban-dispatch-detail.md` · `.claude/agents/moai/manager-lead.md` (+ 템플릿 미러 3본) · `internal/template/templates/.codex/agents/moai/manager-lead.toml` · `internal/template/catalog.yaml` 전부 존재 확인
+
+### 문서 표면 점검 — 무엇을 고쳤고 무엇을 고치지 않았나
+
+- **CHANGELOG.md**: 갱신 — `[Unreleased] > ### Added` 최상단에 본 SPEC 신규 1건 삽입 (본 progress.md와 같은 커밋)
+- **README.md (4로케일: ko/en/ja/zh)**: 무편집 — `grep -ni 'manager-lead\|kanban-dispatch\|deputy' README*.md` 재측정 결과 6줄 히트(실측, 최초 "0 히트"로 적었던 것은 오기 — grep 명령을 `-l`(파일명만)로 잘못 돌려 `-i` 없이 재확인하지 않은 실수였고, 이 문장을 쓰기 전에 바로잡았다). 히트는 전부 `manager-lead` 링크·요약 표 행 1개(각 로케일당 2줄)이며, 이 SPEC이 추가한 상주 deputy·`RECOMMEND:` 경로·idle 통지 어느 것도 언급하지 않는다 — 기존 문장이 이 SPEC으로 거짓이 되지 않았으므로 편집 대상이 아니다.
+- **docs-site (adk.mo.ai.kr)**: 무편집 — `docs-site/content/{ko,en,ja,zh}/advanced/manager-lead.md` 4파일이 존재하고(실측, grep 전 `ls`로 확인 없이 "0 히트"라 적은 것도 위와 같은 오기), en판은 Role B(디스패치 사이클) 절에서 "parallel work ... is pushed out as background Agent() spawns"(41행)를 서술한다 — 상주 deputy 1개를 특정하지 않는 일반 서술이라 이 SPEC 이후에도 참이다. `grep -ni 'deputy\|resident\|idle'` 를 이 파일에 돌리면 0(en/ko 확인) — 새 메커니즘이 아직 문서화되지 않았다는 뜻이지, 지금 있는 문장이 거짓이 됐다는 뜻이 아니다. 과제 지침의 "거짓으로 만드는 구체적 문장" 기준을 충족하는 문장을 찾지 못해 무편집으로 남긴다 — 신설 상주 deputy 절 자체를 이 문서에 추가할지는 이 카드의 범위 밖(docs-site 보강은 별도 카드 후보).
+- **`.moai/docs/*.md`**: 무편집 — 이 SPEC이 직접 편집한 대상(`kanban-dispatch.md`/`manager-lead.md` 자체가 `.claude/rules/moai/workflow/`·`.claude/agents/moai/` 아래에 있고, `.moai/docs/`는 별도 트리)이 편집 원본이므로 외부 참조 문서 갱신이 불요하다.
+
+sync_scope: "markdown-only — `kanban-dispatch.md`(+detail) · `manager-lead.md` · 템플릿 미러 3본 · `.codex` toml 방출(C2→C3) · `catalog.yaml` 해시 1행 · SPEC 4파일 frontmatter(`status:`/`updated:`) · `CHANGELOG.md`. `internal/`·`pkg/`·`cmd/` 비접촉 — run-evidence.md AC-LDP-009 실측(`git diff --name-only internal/ pkg/ cmd/ | grep '\.go$' | wc -l` → 0)."
+known_deviation_carried_forward: "always-loaded 표면 순증 +141 토큰/+564 B(§E.2 실측) — sync-phase에서 재론·상쇄 시도를 하지 않았다. 가드는 편집 전(-123)에도 편집 후(-264)에도 FAIL이며, 이 카드는 적자를 깊게 했을 뿐 만들지 않았다. 상환은 이 카드 밖(t473 미푸시 브랜치, t492) 소관 — §E.2 원문 그대로 보존, 문구를 부드럽게 하지 않았다."
+
