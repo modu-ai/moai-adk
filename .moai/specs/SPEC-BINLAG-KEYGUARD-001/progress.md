@@ -730,7 +730,7 @@ m1_to_mN_commit_strategy: single-commit # M1 하나로 종결 (729060e63)
 
 ```yaml
 sync_complete_at: 2026-09-06
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다. 후속 커밋에서 backfill
+sync_commit_sha: 72e6e380f              # backfill 완료 (sync 커밋 자신은 자기 해시를 인용할 수 없다)
 sync_status: complete
 b12_self_test_a: pass                    # 사전 중복 grep: grep -c 'SPEC-BINLAG-KEYGUARD-001' CHANGELOG.md -> 0 (append 전)
 b12_self_test_b: pass                    # AC 수 일치: acceptance.md 고유 AC-ID 9개 == CHANGELOG 인용 9
