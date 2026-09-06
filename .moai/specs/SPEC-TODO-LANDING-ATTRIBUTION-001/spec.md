@@ -301,19 +301,47 @@ population **77 → 38**:
     ids attributed under forms 1/2/2b/3a/3b/3c                                        → 309
     subject-present but attributed by no form                                         →  38
 
-**[HARD] The residual is a FLOOR, not a total.** The named-shape under-count now stands at **at least
-10** — the 7 above, plus `t311` (`merge(WT-codex-init): integrate card t340 … (closes t311)`) and
-`t121` / `t128` (`merge(lane-1): t121 …`), two further shapes the audit named and this version does
-not adopt. It is stated as a floor because **nobody has classified the 38 exhaustively** — not this
-author across three versions, not the auditor across three iterations, not the lane. Every round has
-raised the figure (1 → 19 → 7 → ≥10) because each round classified the part of the residual it
-happened to notice. A reader who needs a total must classify all 38; the command that produces them
-is the `comm -23` above. Their live-queue status is likewise **unmeasured** (`moai todo` and the
-disk store are known to disagree), so no operational-impact figure is derivable from this number
-either.
+**[HARD] The residual is a FLOOR, not a total — since card t482, a measured floor.** The 38 have
+since been classified exhaustively — every id, by shape — by card t482's audit
+(`.moai/reports/t482/verdict.md` §4, verdict line "합계 38 = C 5 + M 28 + A 5"; raw 38-id dump in
+`.moai/reports/t482/residual-evidence.txt`; measured 2026-09-04 in tree `.claude/worktrees/t482` at
+HEAD `25a3212a9`, against this SPEC's pinned corpus `7835148d3`): **5 correct exclusions (C) + 28
+clear omissions (M) + 5 judgment-deferred (A) = 38**. The clear-omission floor this section carried
+as "at least 10" therefore stands at **28 measured** — the v0.4.0 floor understated the measured
+clear omissions by 2.8×. 28 is still a floor, and this is not a closure: the 5 judgment-deferred ids
+(`t311`, `t158`, `t460`, `t155`, `t157`) were decided on subject evidence alone, were never opened
+to diff level, and opening them can only raise M — to at most 33 — never lower it. The round history
+now reads 1 → 19 → 7 → ≥10 → 28 measured; every round raised the figure because each round
+classified the part of the residual it happened to notice. The residual's live-queue status,
+unmeasured at v0.4.0, is likewise measured by the same audit — 34 of the 38 absent from the queue
+store, 4 archived, 0 live (verdict.md §2.5) — which bounds the residual's *current* operational
+impact near zero and closes nothing.
 
-The floor of 10 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D on the
+The floor of 28 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D on the
 failure **direction** rather than on any dating or impact claim about the residual.
+
+**[HARD] The enumeration does not close — a property, not a count (card t486, from t482 §5.1).**
+Three measured grounds: **(a) the residual population is open** — `t409` entered 2026-09-01 and
+`t460` 2026-09-03, so new shapes were entering up to two days before the corpus pin; an enumeration
+can close for the past, never for the future. **(b) Expanding the largest residual shape — S1, the
+release-integrate merge scope (`merge(WT-…)` / `merge(worktree-…)` integrating into a release
+branch; named in full below) — into a form collides with §A.4's own [HARD] branch-name
+non-attribution rule**, the same silent over-count direction this SPEC already rejects at
+`(branch WT-t80)`. The collision is technically escapable — the merge scope and a trailing
+parenthetical are different positions, so a seventh form reading the scope token would not import
+the t80 false positive — but the escape makes the rule read *"a branch name is never an attribution,
+except in this position"*, and a rule with positional exceptions is no longer a ground of judgment
+but a post-hoc list of judgment outcomes. **(c) The structural bypass — attributing a card from
+inside a merge scope via ancestor propagation — is refuted by the corpus**: `git log d2ad26c90^2
+--not d2ad26c90^1` yields one commit carrying no card token, so the t143 merge has no inheritable
+attribution to propagate (verdict.md §2.6). The method's bias is itself measured: S1's true size is
+18, of which 4 ids accidentally matched other forms and were therefore excluded from the residual —
+**searching for a shape by reading only the residual list systematically underestimates that
+shape's true size**, and the three rounds that re-counted the residual each time (1 → 19 → 7 → ≥10)
+were exactly that under-counting procedure. The residual count is consequently not a number a
+future round could be asked to shrink: a further round that re-counts the residual repeats the
+defect this paragraph records, and the enumeration debt's termination path is card t359, not
+another round (§D).
 
 ### A.5 The ref: the repository already knows the answer
 
