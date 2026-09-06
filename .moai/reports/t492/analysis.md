@@ -297,3 +297,132 @@ diff before.tsv after.tsv
 | `.moai/reports/t492/section-sizes.sh` | 파일의 `##`/`###` 절 바이트 (코드 펜스 인식) |
 | `.moai/reports/t492/companion-check.sh` | always-loaded 각 룰의 companion 존재·크기 |
 | `.moai/reports/t492/breakdown.tsv` | 17 entries 항목별 바이트/토큰 (트리 `cc78d1479`) |
+| `.moai/reports/t492/build-{stub,companion}.sh` | live 쌍에 적용한 이관(먼저 실행) |
+| `.moai/reports/t492/build-mirror.sh` | 위 둘을 하나로 합친 판 — 템플릿 미러에 적용. 처리 대상 stub 에서 블록을 뽑으므로 중립화 미러가 자기 문구를 유지한다 |
+| `.moai/reports/t492/sync-companion-meta.py` | companion 3개 메타 갱신 — 대상 문자열 부재 시 종료코드 1(무음 no-op 방지) |
+| `.moai/reports/t492/moved-block-{A,B}-*.md` | 이관된 원문 2블록 (감사용) |
+| `.moai/reports/t492/stub-pointer.md` · `companion-insert-header{,-template}.md` | 신설 문단 원문 |
+
+---
+
+## 8. C2 실행 기록 (운영자 승인 후 · 보수층 한정)
+
+승인 범위: **C2 보수층**. 공격층(R1–R4 표 이관)은 승인 범위 밖이므로 **손대지 않았다** — R1–R4 표와 비용표는 stub 에 그대로 있다.
+
+### 8.1 순서 귀속 (VCI §2.3 — 이 편집이 고치는 바로 그 파일의 조항)
+
+baseline 은 **변경 커밋보다 앞선 자기 커밋 `4113cb667`**(§0 Evidence 의 가드 원문 `77723 … headroom -123 … FAIL`)에 이미 착지해 있었다. 커밋 그래프가 순서의 증인이며, 이 문서의 주장은 같은 커밋 쌍에 얹혀 있지 않다.
+
+### 8.2 가드 전/후 원문
+
+**전** (트리 `cc78d1479`, `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -count=1 -v`):
+
+```
+    token_budget_guard_test.go:69: always-loaded surface = 77723 tokens (budget 77600, headroom -123, 17 entries)
+--- FAIL: TestAlwaysLoadedTokenBudget (0.01s)
+```
+
+**후** (같은 명령, 같은 워크트리, 편집 후):
+
+```
+    token_budget_guard_test.go:69: always-loaded surface = 75483 tokens (budget 77600, headroom 2117, 17 entries)
+--- PASS: TestAlwaysLoadedTokenBudget (0.00s)
+```
+
+**−123 → +2,117**. entries 는 17 로 불변(파일 신설·삭제 없음).
+
+### 8.3 절감 실측이 예측과 다른 이유 — 전수 귀속
+
+| 항목 | 바이트 |
+|---|---:|
+| 이관(4 tests + 5 instances + L1–L7 + divergence) | −9,555 |
+| 신설 [HARD] companion 포인터 | +600 |
+| `the predicate below` → `the predicate` (지시 대상 소실 수정) | −6 |
+| **stub 순증** | **−8,961** |
+
+stub 26,629 → 17,668 B. 토큰 `floor(26629/4)=6657` → `floor(17668/4)=4417`, **Δ = −2,240**. 가드 실측 `77,723 → 75,483 = −2,240` 과 일치한다.
+
+**예측치 −2,389 는 포인터 비용(600 B ≈ 150 tok)을 계산에 넣지 않은 값이었다.** 실측이 예측보다 149 토큰 적다. 예측을 폐기하고 실측을 쓴다.
+
+### 8.4 [HARD] 잔류 의무 문면 확인 — lane-3 경고 대응
+
+> 「가드는 항목 수를 세지 내용을 세지 않는다. stub 이 지나치게 얇아져 의무가 companion 에만 남는 이관은 가드를 통과하면서 실질을 잃는다.」
+
+**기계적 확인 — 이관 블록의 의무 문장 개수:**
+
+```
+grep -c '\[HARD\]' moved-block-A-four-tests.md moved-block-B-instances-limits-divergence.md
+  → 0, 0
+grep -c 'MUST'     moved-block-A-four-tests.md moved-block-B-instances-limits-divergence.md
+  → 0, 0
+```
+
+**이관된 9,555 B 안에 [HARD] 도 MUST 도 하나도 없다.** 옮겨간 것은 절차·사례·탐지한계뿐이다.
+
+**stub 의 `[HARD]` 총수: 7 → 8** (`git show HEAD:<stub> | grep -c` vs 현재). 하나도 빠지지 않았고 신설 포인터가 하나 늘었다.
+
+**잔류 4건 문면 인용** (`.claude/rules/moai/core/verification-claim-integrity.md`, 편집 후 행번호):
+
+- **:50** — `[ZONE:Evolvable] [HARD] A claim decided against a **moving ref** … carries no baseline in the sense §2 requires.`
+- **:54** *(신설)* — `[HARD] The predicate is applied, not recalled. Before remediating any moving-ref or moving-coordinate claim, read `verification-claim-integrity-detail.md` § Moving-ref predicate and run its four tests in order; they return one of two classes — **ANCHOR** … or **SUBJECT** … Reaching a remedy below without having run the tests is indiscriminate pinning by another name.`
+- **:58** — `[HARD] The tests return a **class**; the class does not name the remedy. There are **two classes and four remedies** — ANCHOR selects between R1 and R2, SUBJECT between R3 and R4.`
+- **:94** — `- **The reason is mandatory and non-empty.** A bare marker would make "silence the warning" cheaper than "pin the SHA", inverting the incentive this clause sets.`
+
+신설 포인터가 두 클래스 이름(ANCHOR / SUBJECT)을 stub 안에서 정의하므로, 아래 R1–R4 표의 `Class` 열은 tests 가 없어도 stub 만으로 읽힌다.
+
+### 8.5 목적지 사전 확인 — 「지우기 전에 이미 있는지부터 재라」
+
+편집 전 `verification-claim-integrity-detail.md`(6,860 B)의 `^#` 헤딩 전수:
+
+```
+# Verification-Claim Integrity — Detail Companion
+## What each of the five sections contains       (### Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)
+## Cross-references (each remains the single source of truth for its own subject)
+## Worked example — defect-claim hazard
+## Worked example — retention-claim hazard
+```
+
+**§2.1 관련 내용 없음.** 중복 착지 없이 순증으로 붙였다(6,860 → 17,278 B).
+
+### 8.6 끊어진 인용 확인
+
+`.claude/rules/` 전체에서 이관된 하위절(`grounded instances` / `the four tests` / `Detection limits`)을 인용하는 파일: **0건**(VCI 두 파일 제외). rules 트리 안 dangling 참조 없음.
+
+리포 전체로 넓히면 `CHANGELOG.md` 와 SPEC 문서들이 이 하위절들을 언급하나, **그것들은 당시 착지 사실의 역사 기록이므로 고치지 않는다** — 고치면 기록이 거짓이 된다.
+
+### 8.7 템플릿 미러 — Template-First [HARD]
+
+`internal/template/templates/.claude/rules/moai/core/` 의 두 미러에 **같은 이관을 적용**했다. `build-mirror.sh` 는 처리 대상 파일에서 블록을 뽑으므로 미러의 중립화 문구(Instance 2 / Instance 4)가 보존된 채 companion 으로 함께 이동했다. companion 헤더는 카드 id 를 뺀 중립판(`companion-insert-header-template.md`)을 썼다.
+
+**미러 정합 전수 귀속** (`diff live template | grep -c '^[<>]'`):
+
+| | 편집 전 | 편집 후 |
+|---|---:|---:|
+| stub | 25 | 21 |
+| companion | 4 | 10 |
+| **합** | **29** | **31** |
+
+`31 = 29 − 4(중립화 2쌍이 stub→companion 이동) + 4(같은 2쌍이 companion 에 도착) + 2(헤더 중립화, 의도적 신설)`. **모든 diff 라인이 귀속된다.**
+
+> 이 정합 확인 과정에서 **자체 결함 1건을 적발해 수정**했다: `§ §2.1` 중복 기호 수정을 live 에만 적용하고 미러에는 적용하지 않아 두 파일이 갈렸다(원인: 미러 빌드가 읽는 포인터 원본 파일이 미수정 상태였음). diff 라인수가 기대치와 2줄 어긋난 것이 단서였다. 포인터 원본과 미러 양쪽을 고쳐 21/10 으로 정렬했다.
+
+### 8.8 검증
+
+```
+go test ./internal/template/... ./internal/config/...
+ok  github.com/modu-ai/moai-adk/internal/template            24.936s
+ok  github.com/modu-ai/moai-adk/internal/template/agentemit    1.473s
+ok  github.com/modu-ai/moai-adk/internal/config               4.253s
+ok  github.com/modu-ai/moai-adk/internal/config/atomicfile     0.773s
+ok  github.com/modu-ai/moai-adk/internal/config/toolpolicy     1.791s
+```
+
+`make build` 실행 — `catalog.yaml updated successfully (12899 bytes)` 후 `git status` 에 `internal/template/catalog.yaml` 변경 없음(카탈로그는 agents/skills 를 덮고 rules 는 덮지 않는다).
+
+**미검증**: 전 패키지 스위트는 로컬에서 돌리지 않았다(§4.1 규율). 전수 판정은 CI 몫이다.
+
+### 8.9 이 실행이 만들지 못한 것
+
+- **여유 +2,117 은 t471 델타(+564 B ≈ +141 tok, 리드 전달)를 반영하지 않은 값이다.** t471 이 착지하면 +2,117 − 141 ≈ +1,976 이 된다. **다만 그 −141 은 내가 재지 않았고 리드가 전한 값이므로 내 측정이 아니다** — 착지 후 재측정이 필요하다.
+- t473 의 +1,044 도 이 트리에 없다. 셋이 모두 착지하면 여유는 대략 +3,000 대가 되나, **그 합산은 예측이지 측정이 아니다.**
+- **표면 성장은 계속된다.** 하루 +493 전례가 있으므로 이 여유는 영구적이지 않다. C1(−3,693) 이 다음 상환 수단으로 남아 있다.
