@@ -196,6 +196,76 @@ var namesAddedAfterBaseline = map[string]bool{
 	`"Hook Delivery"`:     true,
 }
 
+// TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of
+// namesAddedAfterBaseline is a name checkNamesFromSource actually extracts from
+// the CURRENT doctor.go.
+//
+// The failure it prevents: allowlist keys are compared against the extracted set
+// verbatim, and that set mixes two shapes — a constant-registered check appears
+// as a bare identifier, a literal-registered one keeps its quotes as characters.
+// A key written in the wrong shape matches nothing, so it allows nothing. The
+// sibling guard then stays red while the allowlist looks fixed, and its message
+// blames a name drift that never happened: cause and symptom come apart. Nothing
+// else reports this, because a map key matching nothing is indistinguishable
+// from a key not yet needed.
+//
+// Both directions are live, because the allowlist carries both shapes side by
+// side and the next author copies one of them. Reporting only that a key failed
+// would be no better than "something is wrong" — the message has to name which
+// direction the mistake went.
+//
+// This guard reads only the current doctor.go. It deliberately shares no input
+// with TestBinaryLag_DoctorCheckNameSetIsUnchanged, which parses a historical
+// blob and skips when that blob is unreachable: a guard that skips in a shallow
+// clone is absent exactly where a fresh checkout most needs it.
+func TestBinaryLag_AllowlistKeysAreLiveNames(t *testing.T) {
+	src, err := os.ReadFile("doctor.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := checkNamesFromSource(t, src)
+
+	substantive := 0
+	for _, allowed := range namesAddedAfterBaseline {
+		if allowed {
+			substantive++
+		}
+	}
+	if substantive == 0 {
+		t.Fatal("namesAddedAfterBaseline holds no substantive key, so this guard checked " +
+			"nothing; a green over an empty subject asserts nothing about key shape")
+	}
+
+	for key := range namesAddedAfterBaseline {
+		if live[key] {
+			continue
+		}
+		inner := ""
+		quoted := len(key) >= 2 && strings.HasPrefix(key, `"`) && strings.HasSuffix(key, `"`)
+		if quoted {
+			inner = key[1 : len(key)-1]
+		}
+		switch {
+		case quoted && live[inner]:
+			// Both operands are rendered with %q. Rendering one of them plainly
+			// would print the same characters for two different set elements,
+			// and a message that cannot separate them names no direction.
+			t.Errorf("allowlist key %q matches no registered check name, but %q does: the "+
+				"quotes were ADDED. doctor.go registers this check through a constant "+
+				"identifier, so write the entry as a plain string key %q.", key, inner, inner)
+		case !quoted && live[`"`+key+`"`]:
+			t.Errorf("allowlist key %q matches no registered check name, but %q does: the "+
+				"quotes were STRIPPED. doctor.go registers this check as a string literal "+
+				"and checkNamesFromSource keeps those quotes as characters, so write the "+
+				"entry as a backtick raw string: `%s`.", key, `"`+key+`"`, `"`+key+`"`)
+		default:
+			t.Errorf("allowlist key %q matches no registered check name in doctor.go at "+
+				"all, in either quoting shape; it allows nothing and is provably inert. "+
+				"Remove it, or correct it to a name checkNamesFromSource extracts.", key)
+		}
+	}
+}
+
 func TestBinaryLag_DoctorCheckNameSetIsUnchanged(t *testing.T) {
 	before, err := exec.Command("git", "show", lagBaselineSHA+":internal/cli/doctor.go").Output()
 	if err != nil {
