@@ -86,6 +86,35 @@ agenda**. The lane does not ratify and does not revert; this repair touches reco
 the code. The M0 pre-landing baseline row (REQ-JFM-024's `push`-mode control window) is
 **still uncollected**.
 
+**Operator decision on the pre-gate M0 landing (2026-09-06): RATIFIED, not reverted.** The
+gate-ordering violation recorded in the paragraph above **stands as a violation** — ratification
+approves what happened; it does not make it not have happened, and it is **not a precedent**. The
+next SPEC that lands code before its Kickoff gate opens is a fresh violation and is escalated as
+one.
+
+Why revert was rejected, stated so the reasoning is auditable rather than assumed: reverting kills
+the observer, and with it the `AC-JFM-023` half-2 collection window that is **already accumulating**
+(3 rows at the time the decision was taken, 8 rows measured 2026-09-06T08:32Z — see §E.2). The
+landed code **observes and changes nothing else**: it appends a row per `AskUserQuestion` PreToolUse
+event and has no other effect on the tool call, so the cost of leaving it in place is a log file,
+while the cost of removing it is the loss of a pre-landing baseline that exists only in that window.
+
+Decision route: escalated as a lane blocker report to the lead session, raised by the lead to the
+operator, decision returned through the lead and confirmed with the operator in the lane session
+before this record was written. The lane did not open the operator gate itself
+(`feedback_lane_cannot_open_operator_gate`).
+
+Re-measured in this tree at `HEAD 928da5dc3`, 2026-09-06:
+
+```
+$ git merge-base --is-ancestor d5caf2d8e origin/develop ; echo rc=$?
+rc=0
+```
+
+Two run-phase obligations follow from the ratification and are NOT yet discharged: the M0
+pre-landing baseline row is still uncollected (unchanged from the paragraph above), and this
+ratification does not retroactively authorize any further pre-gate landing.
+
 **Provenance amendment (0.2.3, 2026-09-03).** Adopted from the decision document
 `.moai/reports/t401/provenance-eligibility-options.md`: **Option B rejected** (the doc's own form:
 안 A + 안 C, 안 B 기각) — no `session_start`,
@@ -119,6 +148,69 @@ IS committed on this branch under `.moai/reports/t401/e2e/` (`payload.json`,
 `installed-v2/.moai/reports/t401/wire-shape-check.md`), landing with the pre-gate M0 commit
 series — see the recorded gate-ordering violation in §E.1. This annotation points at that
 evidence; it is not the formal §E.2 population._
+
+### `calls_issued` self-report defect — mitigation chosen (2026-09-06, before first code edit)
+
+**The defect.** `AC-JFM-018` half 3 / `AC-JFM-023` half 4 contrast `rows_recorded` (produced by the
+observer) against `calls_issued`, which `acceptance.md:400` enumerates as *"a value the asking
+session knows without the observer"* — its independence from the observer is recorded as an
+advantage and its **lack of any independent source** is recorded nowhere. With no independent
+source, an asking session that writes `calls_issued` to match `rows_recorded` satisfies
+`acceptance.md:417` (`rows_recorded == calls_issued` → the window covers the interval), and the two
+mismatch states the contrast exists to expose — partial row loss (`:417`) and observer non-wiring
+(`:418`) — pass silently. The contrast asserts nothing against the one party able to falsify it.
+
+**Chosen mitigation: option 1 — bind `calls_issued` to an independent source**, with option 2
+(record the limitation as an explicit gap in the cell) as the fallback where the source cannot be
+resolved. Not option 2 alone.
+
+**Why option 1 rather than option 2, and why the choice is not an assumption.** Option 1 was not
+adopted because it sounds stronger; it was adopted because the independent source was **measured to
+exist and to agree** before the choice was made. The asking session's transcript records one
+`tool_use` entry per `AskUserQuestion` call, written by the runtime rather than declared by the
+session, which makes it independent in the sense the contrast requires. Measured in this session
+(`session_id 98e78ea5-aded-4e8a-93db-014842a32f3b`), 2026-09-06:
+
+```
+$ grep -o '"name":"AskUserQuestion"' \
+    ~/.moai/claude-profiles/moai-adk/projects/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t401/98e78ea5-aded-4e8a-93db-014842a32f3b.jsonl \
+  | wc -l
+       5
+$ grep -c '98e78ea5-aded-4e8a-93db-014842a32f3b' \
+    /Users/goos/MoAI/moai-adk-go/.moai/logs/askuser-observations.jsonl
+5
+```
+
+Transcript-derived count 5, observer-derived count 5, agreeing on a session whose calls were issued
+by this lane rather than staged. Had they disagreed, option 2 would have been the correct choice.
+
+**Two hazards the run-phase implementation MUST handle; both were measured, not predicted.**
+
+1. **The transcript is not under `~/.claude/projects/`.** A session launched with a custom
+   `--settings` file writes its transcript under the profile directory instead — here
+   `~/.moai/claude-profiles/moai-adk/projects/`. `find ~/.claude -name '98e78ea5*'` returned nothing
+   (rc=0, empty). A recipe that hardcodes the default path resolves `calls_issued = 0`, which reads
+   as `rows_recorded > calls_issued` — `acceptance.md:418`'s "rows from other sessions are mixed in"
+   branch — i.e. a **wrong diagnosis, not a visible failure**. The resolution MUST therefore fail
+   loudly when no transcript is located, and fall back to option 2 (explicit gap) rather than
+   emitting a zero.
+2. **The transcript directory is keyed by cwd.** The directory name encodes the worktree path
+   (`…-Users-goos-MoAI-moai-adk-go--claude-worktrees-t401`). This session worked in
+   `.claude/worktrees/develop` before `.claude/worktrees/t401`, and only one file was found, of
+   1,002,764 bytes — consistent with the transcript following the session, but **whether it follows
+   or splits across directories was not measured**. A session that changes worktree mid-window may
+   have its transcript split; the resolution MUST search all candidate directories rather than one.
+
+**Gaps in this measurement, stated so the run phase does not inherit them as settled.** n=1 session,
+`push` mode only — the `pull`-mode window (`AC-JFM-018`) was not measured. The
+follow-or-split question above is open. No interval filtering was applied: the counts are
+whole-session, whereas the criteria contrast counts *over the collection interval*, so the
+implementation must add timestamp bounding that this probe did not exercise.
+
+**Scope note.** This mitigation changes `acceptance.md` cell content (the provenance enumeration
+and the four-way reading rule), which is `manager-spec`-owned body content under the Status
+Transition Ownership Matrix. The run phase returns a blocker report for the cell edit rather than
+performing it directly.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
