@@ -159,3 +159,45 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged by lane-8 (card t472, lead-1 dispatch) before the first run-phase `Agent()` spawn.
+
+**Kickoff approval: PASSED.** Granted by the operator during the plan phase but undeliverable —
+the owning lane-3 session was gone and the lead's dispatch to it failed unreachable. Re-delivered
+via the lead's t472 dispatch (2026-09-06). The operator verdict riding the same gate: remediation
+scope was D3-1 only (already closed as form 2b in v0.4.0), the five recorded debts stay debt, and
+there is **no fourth plan-audit round**.
+
+**Phase 1 Plan Audit Gate: skip taken.** The three skip conditions, all satisfied:
+1. Final-iteration verdict is **PASS-WITH-DEBT 0.8375** (iteration 3 of 3; the score-regression
+   STOP fired and the operator ruled no fourth round — the explicit-override path of the retry
+   contract).
+2. Score 0.8375 ≥ the Tier M threshold 0.80.
+3. **Plan-artifact hash unchanged since the verdict** — the develop absorb merge (develop
+   `3084f1071` → HEAD `c43c07c3d`) touched no SPEC artifact; the measured explosion radius is
+   exactly 7 files: this SPEC's 4 artifacts plus the 3 report files under `.moai/reports/t472/`,
+   none modified by the absorb.
+
+| Input | Value |
+|---|---|
+| tier | M (13 REQ / 13 AC) |
+| scope (files) | 3 Go source files + their tests: `internal/kanban/prlink_landed.go`, `internal/cli/todo.go`, `internal/cli/todo_pr.go` |
+| domain count | 1 (Go backend CLI) |
+| file language mix | Go |
+| concurrency benefit | LOW (coding-heavy) |
+| agent-team prereqs | not requested |
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | semantic multi-file change, not a typo-scale fix |
+| **serial** | **YES** | coding-heavy (Anthropic parallelism caveat); single domain, 3 files; one manager-develop carries M1→M2→M3 with per-milestone commits under the [HARD] M1-before-M2 ordering |
+| fanout | no | no independent multi-domain research surface |
+| sweep | no | not a ≥30-file mechanical-uniform transform |
+
+**Decision: serial**
+
+Justification: the acceptance criteria are per-form unit tests over one package boundary, so a
+single coherent author beats fan-out reconciliation; the [HARD] milestone order (M1 predicate
+before M2 ref chain, `spec.md` §A.7) makes the work serial by construction.

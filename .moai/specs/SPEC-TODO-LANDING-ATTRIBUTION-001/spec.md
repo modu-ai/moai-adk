@@ -2,9 +2,9 @@
 id: SPEC-TODO-LANDING-ATTRIBUTION-001
 title: "The landed verdict: an attribution-position predicate, and a ref chain that asks the branch this repository actually integrates on"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-09-03
-updated: 2026-09-04
+updated: 2026-09-06
 author: manager-spec (card t472)
 priority: P1
 phase: "v3.2.0 target"
