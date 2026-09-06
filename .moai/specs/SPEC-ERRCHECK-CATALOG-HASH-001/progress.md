@@ -77,7 +77,7 @@ AC verdicts (all PASS; each pointer resolves inside `.moai/reports/t489/verdict.
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 5ad9c0b51
 sync_status: completed
 ```
 
