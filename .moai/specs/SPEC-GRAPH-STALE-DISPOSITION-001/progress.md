@@ -52,7 +52,7 @@ Final post-commit state measurement, taken 2026-09-07 in this worktree at HEAD `
 sync_status: completed
 spec_id: SPEC-GRAPH-STALE-DISPOSITION-001
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7a737a880
 sync_subject: docs(SPEC-GRAPH-STALE-DISPOSITION-001): sync-phase — 3-phase close, completed (t493)
 frontmatter_status_transitions:
   - in-progress -> implemented -> completed   # full transition rides the single sync commit
