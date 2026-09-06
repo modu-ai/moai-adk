@@ -172,3 +172,40 @@ t480의 6대 소거(tracked 전 이력 ask축·생성기 전환·릴리스 템�
 | AC-006 | PASS | 본 문서(5 섹션) |
 | AC-007 | PASS | 정량·부정 주장 전항에 명령+출력 병기, 빈 출력≠0 명시(스윕 NOFILE 0건은 실측) |
 | AC-008 | PASS | E7 — t480 재실행 0건, fingerprint는 가설로만 사용 |
+
+## lane-8 후속 측정 (run 종결 후 레인-레벨 추가, 2026-09-06)
+
+> 아래는 manager-develop의 run 판정(HEAD `c8086a384` 시점 판정서 본문)에 레인이 나란히 붙인 정정·추가 측정이다. 본문 원문은 지우지 않는다(`판정 옳아도 논거 갈림` 정격).
+
+### L1 — Gap 1 해소: npm TS 선행판 실측 → 소거
+
+run은 Gap 1을 "web 도구 없어 미검증 — 레인 플래그"로 남겼다. 레인(웹 도구 보유)이 webReader로 닫았다:
+
+```
+$ webReader https://www.npmjs.com/package/moai-adk
+  moai-adk v0.2.29 · TypeScript · 최종 배포 약 1년 전 · repo: modu-ai/moai-adk
+$ webReader https://api.github.com/repos/modu-ai/moai-adk/git/trees/main?recursive=1
+  .claude/settings.json blob 존재 (665d646e…, 9,248B) — TS 시대 산출물이 repo 루트에 커밋돼 있음
+$ webReader https://raw.githubusercontent.com/modu-ai/moai-adk/main/.claude/settings.json
+```
+
+실측 형상(TS 시대): 최상위 키 순서 `cleanupPeriodDays, env, permissions, hooks, statusLine, outputStyle, companyAnnouncements, enabledPlugins` — `$schema`·`skillListingBudgetFraction`·`respectGitignore`·`showThinkingSummaries` **모두 부재**; 훅은 Python(`uv run … .py`, `.sh` 아님); `permissions.ask` 19엔트리; `outputStyle: "R2-D2"`.
+
+→ dirty 지문($schema 선행 11-키 Go-시대 집합·`.sh` 훅·narrow matcher·sto=1)과 **전축 불일치**. npm TS 선행판은 dirty 출처 후보에서 소거된다(Gap 1 닫힘). 단 HEAD 1상태만 실측했으므로 TS 히스토리컬 버전별 템플릿은 잔여 가능성으로 남는다 — 우선순위 낮음: dirty 사본이 전부 Go-시대 마커($schema URL·skillListingBudgetFraction 0.02 등)를 지니므로 TS-시대 출처와는 내용적으로 모순.
+
+### L2 — t334 dirty 사본 보존 반출 (Gap 6 정정)
+
+```
+$ cp <t334>/.claude/settings.json .moai/reports/t487/preserved-copies/settings.json.t334-dirty
+$ md5 -q .moai/reports/t487/preserved-copies/settings.json.t334-dirty
+4f455d9425a396d38c202f2614bc918f   ← 원본 지문과 정확 일치 (원본 트리는 건드리지 않음)
+```
+
+- 시크릿 스캔: 히트 3건 전부 오탐 — `"Read(./secrets/**)"`(l.135)·`"Edit(./secrets/**)"`(l.139)는 권한 항목의 경로 토큰, 40자+ 문자열 1건은 훅 경로(`ta**sk-c**ompleted.sh`의 `sk-c` 부분매치). **실제 시크릿 0건 → 커밋 가능.**
+- env 키 4개는 현재 템플릿(`settings.json.tmpl` l.409-419, `MOAI_CONFIG_SOURCE` l.412)과 동일 집합 — dirty 전용 추가 키 없음.
+- t334 vs t452-dirty 정규화 비교(레인 실측): 두 변종은 같은 패밀리, 유일한 정규화 차이는 `ask` 리스트 1곳(`[]` vs `["Bash(sudo:*)"]`).
+- 이 반출로 본문 Gap 6("현존하며 미보존")은 해소된다. 원본 t334 트리는 [HARD]대로 미수정·미삭제.
+
+### L3 — birth==mtime 통째 교체 서명 + 03:00시 관찰
+
+t334 파일의 birth time == mtime(2026-08-28 03:00:07)이며 트리 생성(2026-08-27 23:59:04)보다 3시간 뒤다. in-place 수정이었다면 birth가 트리 생성시각에 남아야 하므로, birth==mtime은 **temp+rename 통째 교체** 서명이다 — E2의 "세션 중간 쓰기(a)" 판정을 교체 방식 차원에서 강화한다. 또한 t334 쓰기(03:00:07)와 t452 dirty 쓰기 창(2026-09-04 03:52 병합 직전, t480 기록)이 심야 시간대에서 겹친다 — 2 포인트라 **과결론 금지**, 관찰만 기록한다.
