@@ -247,7 +247,7 @@ known_preexisting_red: TestAlwaysLoadedTokenBudget (HEAD 256b30fa5에서 이미 
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 199d2777be085033a96d89cc45466d11ef4a37b9
 sync_status: complete
 b12_self_test_a: "grep -c 'PREMERGE-SETTINGS-DRIFT-001' CHANGELOG.md → 0 (pre-emission; count taken BEFORE this commit's own entry was appended)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-PREMERGE-SETTINGS-DRIFT-001/acceptance.md | sort -u | wc -l → 13 (AC-PSD-001..013, distinct identifiers); CHANGELOG entry states '13 acceptance criteria' — counts match"
