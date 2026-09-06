@@ -32,7 +32,7 @@ Key findings (detail + verbatim evidence in verdict.md):
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-06
-run_commit_sha: pending-backfill-run
+run_commit_sha: 19422aa6e
 run_status: run-complete (all 8 AC PASS by inspection of verdict.md; evidence-only close per SPEC §5 — no code, no test gate applicable)
 ac_pass_count: 8
 ac_fail_count: 0
