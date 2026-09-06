@@ -66,7 +66,7 @@ The justification is never "it is faster": speed is the effect of skipping the c
 
 A cross-session message is a nudge, never the delegation itself: delivery is not guaranteed, and a delivered message consumes the recipient's quota like a typed prompt. No dispatch depends on a message arriving. The disk record — card admitted, picked, done — moves the board; an unanswered message changes nothing.
 
-Two properties of that nudge channel bear on dispatch. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`, opt-in and one-shot), which spares the lead a polling loop — but [HARD] the notice is not the completion signal. A lane goes idle when it finishes, when it stops at a permission prompt, and when it dies; the notice cannot separate those, so it tells the lead *when to read the evidence* and nothing about what the evidence says. The card still advances on the evidence, per § Completion is read, never trusted. **And a nudge can be refused outright under fan-out**: nudging every lane inside one turn is a rapid burst, and the runtime refuses past the inbox's capacity rather than dropping silently (`cross-session-messaging.md` § Configuration surface). Read the send result; a refusal costs the board nothing, because the queue already carries the delegation.
+Two properties of that nudge channel bear on dispatch. **A lane can be asked to report when it next goes idle** (`SendMessage` `notify_when_idle`, opt-in and one-shot), which spares the lead a polling loop — but [HARD] the notice is not the completion signal. A lane goes idle when it finishes, when it stops at a permission prompt, and when it dies; the notice cannot separate those, so it tells the lead *when to read the evidence* and nothing about what the evidence says — a scheduling hint (`cross-session-messaging.md` § An idle notice is a scheduling hint). The card still advances on the evidence, per § Completion is read, never trusted. **And a nudge can be refused outright under fan-out**: nudging every lane inside one turn is a rapid burst, and the runtime refuses past the inbox's capacity rather than dropping silently (`cross-session-messaging.md` § Configuration surface). Read the send result; a refusal costs the board nothing, because the queue already carries the delegation.
 
 ### Dispatch language
 
@@ -95,13 +95,17 @@ lens: --security --deep
 
 ## Deputy dispatch surface
 
-The `-k`/`-f` lead session MAY spawn manager-lead as its **coordination deputy** — an UNNAMED background `Agent()` that takes dispatch sends, bounded CI-watch polls, CodeRabbit two-condition reads, first-pass evidence reading, and summary reporting off the lead's serial turn loop. The deputy's full delegable/retained matrix lives in the agent itself (`manager-lead.md` § Deputy dispatch surface); this stub restates only the boundary that binds the board.
+[HARD] **The deputy is resident, not optional.** Before the batch's first lane dispatch, the `-k`/`-f` lead session spawns exactly one UNNAMED background `Agent()` running manager-lead as its **coordination deputy** and keeps it for the batch. Its delegable/retained matrix lives in the agent itself (`manager-lead.md` § Deputy dispatch surface); this stub carries only the boundary that binds the board.
+
+[HARD] **A completion report reaches the lead as a `RECOMMEND:` summary, not as raw reading batches** — the deputy does the raw-tree read and names the paths it read. Turn occupancy moves; the lead's own evidence-read before advancing a card does not (§ Completion is read, never trusted).
+
+[HARD] **Round-report measurement and drafting are the deputy's; the asserted figures are the lead's** — every figure names its measurer, and an unattributed one is a defect. The report is per-round files plus an index, each round touching only its own file and the index.
 
 [HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai todo` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the lead session. A deputy recommendation (`RECOMMEND:`-prefixed) is never a verdict; a delegation requesting a retained act is refused and returned as a blocker report.
 
-[HARD] **Nothing structural moves with the delegation.** The queue on disk remains the delegation channel — a deputy's `SendMessage` is a nudge, never the delegation itself — completion remains evidence the lead read, and the verdict's home remains the lead. The deputy reads and reports; the lead decides.
+[HARD] **Nothing structural moves with the delegation.** The queue stays the channel, completion stays evidence the lead read, and the verdict's home stays the lead. The deputy reads and reports; the lead decides.
 
-What the deputy does in the background, what returns to the lead's turn, and the delivery-shape verification it performs: `kanban-dispatch-detail.md` § The lead works through manager-lead.
+What the deputy does in the background, what returns to the lead's turn, the idle-notice request that replaces a polling loop, and the delivery-shape verification it performs: `kanban-dispatch-detail.md` § The lead works through manager-lead.
 
 ## Completion is read, never trusted
 
