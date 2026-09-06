@@ -2,7 +2,7 @@
 id: SPEC-PREMERGE-SETTINGS-DRIFT-001
 title: "병합 창 진입 전 카드 워크트리의 tracked .claude/settings.json drift 단정 — 검출·보존·거절"
 version: "0.6.2"
-status: draft
+status: in-progress
 created: 2026-09-06
 updated: 2026-09-06
 author: manager-spec (card t488)
