@@ -63,7 +63,6 @@ func TestSplitWorktreeBranchFlag(t *testing.T) {
 }
 
 func TestResolveWorktreeExistingBranch_NoFlagIsNoop(t *testing.T) {
-	t.Parallel()
 	original := launcherWorktreeMaterialize
 	launcherWorktreeMaterialize = func(string, string, string, io.Writer) error {
 		t.Error("materialize must not run without --branch")
@@ -93,7 +92,6 @@ func (r *branchMaterializeRecorder) materialize(projectRoot, name, branch string
 }
 
 func TestResolveWorktreeExistingBranch_WiresAndStrips(t *testing.T) {
-	t.Parallel()
 	dir := t.TempDir()
 	originalFind := findProjectRootFn
 	originalMat := launcherWorktreeMaterialize
@@ -123,7 +121,6 @@ func TestResolveWorktreeExistingBranch_WiresAndStrips(t *testing.T) {
 }
 
 func TestResolveWorktreeExistingBranch_RejectsBadUsage(t *testing.T) {
-	t.Parallel()
 	originalFind := findProjectRootFn
 	originalMat := launcherWorktreeMaterialize
 	rec := &branchMaterializeRecorder{}
@@ -158,7 +155,6 @@ func TestResolveWorktreeExistingBranch_RejectsBadUsage(t *testing.T) {
 }
 
 func TestResolveWorktreeExistingBranch_MaterializeErrorPropagates(t *testing.T) {
-	t.Parallel()
 	originalFind := findProjectRootFn
 	originalMat := launcherWorktreeMaterialize
 	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }

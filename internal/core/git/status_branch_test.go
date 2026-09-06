@@ -96,7 +96,7 @@ func TestStatusBranchHeaderShapes(t *testing.T) {
 	gitFixture(t, repo, "checkout", "-q", "main")
 
 	remote := filepath.Join(base, "remote.git")
-	gitFixture(t, base, "init", "-q", "--bare", remote)
+	gitFixture(t, base, "init", "-q", "--bare", "-b", "main", remote)
 	gitFixture(t, repo, "remote", "add", "origin", remote)
 	gitFixture(t, repo, "push", "-q", "-u", "origin", "main")
 	if got, want := statusHeader(t, repo), "## main...origin/main"; got != want {
@@ -232,7 +232,7 @@ func TestStatusAheadBehindFromHeader(t *testing.T) {
 	gitFixture(t, repo, "commit", "-qm", "one")
 
 	remote := filepath.Join(base, "remote.git")
-	gitFixture(t, base, "init", "-q", "--bare", remote)
+	gitFixture(t, base, "init", "-q", "--bare", "-b", "main", remote)
 	gitFixture(t, repo, "remote", "add", "origin", remote)
 	gitFixture(t, repo, "push", "-q", "-u", "origin", "main")
 
@@ -312,7 +312,7 @@ func TestNewRepositoryErrorTaxonomy(t *testing.T) {
 	}
 
 	barePath := filepath.Join(base, "bare.git")
-	gitFixture(t, base, "init", "-q", "--bare", barePath)
+	gitFixture(t, base, "init", "-q", "--bare", "-b", "main", barePath)
 	bare, bareErr := NewRepository(barePath)
 	if bareErr == nil {
 		t.Fatalf("NewRepository on a bare repository returned %v and no error", bare)

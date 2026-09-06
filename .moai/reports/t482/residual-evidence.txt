@@ -1,0 +1,121 @@
+==== t2 (2 subject(s))
+    merge: t36 — in-run calibrated latency bounds (internal/timing) for branch-guard + observer timing tests — review-PASS(hub) · riders R1(checkout.go anchor)+R2(ratio range doc) — absorbs t2
+    test(timing): add in-run calibrated latency bounds; rewire branch-guard and observer timing tests (card t36, absorbs t2)
+
+==== t21 (1 subject(s))
+    merge: t56 — companion naming bare-role + numeric bump, t21 dissolved — lead-verified(허브 미경유, 워커 관례)
+
+==== t40 (1 subject(s))
+    Merge branch 'worktree-t40': t40 — moai update observability (3 quiet failures)
+
+==== t46 (2 subject(s))
+    merge: anchor-session guards for worktree disposal + registry CWD relocation (t46/t73/t74)
+    merge: anchor-session guard on worktree done/remove/clean/PR-merge cleanup (t46 + t73)
+
+==== t68 (1 subject(s))
+    merge: Factory Mode -f N worker fan-out (t68, SPEC-FACTORY-WORKER-FANOUT-001)
+
+==== t73 (2 subject(s))
+    merge: anchor-session guards for worktree disposal + registry CWD relocation (t46/t73/t74)
+    merge: anchor-session guard on worktree done/remove/clean/PR-merge cleanup (t46 + t73)
+
+==== t74 (1 subject(s))
+    merge: anchor-session guards for worktree disposal + registry CWD relocation (t46/t73/t74)
+
+==== t80 (2 subject(s))
+    merge: t79 — glm_task delegation family (branch WT-t80)
+    Merge branch 'release/v3.1.1' into WT-t80
+
+==== t94 (1 subject(s))
+    merge: t85+t94 — factory lead loop on -k N + concurrency-cap rationale (branch WT-t85)
+
+==== t121 (1 subject(s))
+    merge(lane-1): t121 미러 드리프트 해소 + t123 모션 원칙 + t124 design-audit 스위트
+
+==== t123 (1 subject(s))
+    merge(lane-1): t121 미러 드리프트 해소 + t123 모션 원칙 + t124 design-audit 스위트
+
+==== t124 (1 subject(s))
+    merge(lane-1): t121 미러 드리프트 해소 + t123 모션 원칙 + t124 design-audit 스위트
+
+==== t128 (1 subject(s))
+    merge(lane-1): t128 크로스세션 주소 판별자 + t129 worktree-create 무음 실패 수정
+
+==== t129 (1 subject(s))
+    merge(lane-1): t128 크로스세션 주소 판별자 + t129 worktree-create 무음 실패 수정
+
+==== t131 (1 subject(s))
+    merge(WT-t131): integrate into release/v3.1.1
+
+==== t132 (1 subject(s))
+    merge(worktree-t132): integrate into release/v3.1.1
+
+==== t133 (1 subject(s))
+    merge(worktree-t133): integrate into release/v3.1.1
+
+==== t134 (1 subject(s))
+    merge(worktree-t134): integrate into release/v3.1.1
+
+==== t135 (1 subject(s))
+    merge(worktree-t135): integrate into release/v3.1.1
+
+==== t137 (1 subject(s))
+    merge(worktree-t137): integrate into release/v3.1.1
+
+==== t139 (1 subject(s))
+    merge(worktree-t139): integrate into release/v3.1.1
+
+==== t141 (1 subject(s))
+    merge(worktree-t141): integrate into release/v3.1.1
+
+==== t142 (1 subject(s))
+    merge(WT-t142): integrate into release/v3.1.1
+
+==== t143 (1 subject(s))
+    merge(WT-t143): integrate into release/v3.1.1
+
+==== t144 (1 subject(s))
+    merge(WT-t144): integrate into release/v3.1.1
+
+==== t147 (1 subject(s))
+    merge(WT-t147): integrate into release/v3.1.1
+
+==== t148 (1 subject(s))
+    merge(WT-t148): integrate into release/v3.1.1
+
+==== t149 (1 subject(s))
+    merge(WT-t149): integrate into release/v3.1.1
+
+==== t155 (1 subject(s))
+    stamp-t155-updated
+
+==== t157 (1 subject(s))
+    merge-t157-anthropic-ssot
+
+==== t158 (1 subject(s))
+    docs(reports): record the t158 verdict
+
+==== t216 (1 subject(s))
+    docs(t263): die-at-exit reproduced (0/5) — remedy sequenced behind t216
+
+==== t225 (1 subject(s))
+    t225: pin cross-model audit backend model+effort via workflow.audit (SPEC-V3R6-AUDIT-MODEL-PIN-001) (#1642)
+
+==== t250 (4 subject(s))
+    Merge branch 'WT-t250-followup' into develop — card t279 AC-GF-022 ordering deviation record (operator decision A)
+    Merge branch 'WT-t250-followup' into develop — card t279 CR #1665 thread dispositions (SPEC evidence corrections, 13 threads)
+    merge: origin/main into WT-t250-followup (t279)
+    t250: graph freshness, symbol layer, and MCP code queries (SPEC-V3R6-GRAPH-FRESHNESS-001) (#1648)
+
+==== t311 (1 subject(s))
+    merge(WT-codex-init): integrate card t340 — moai init codex wiring gate (SPEC-CODEX-INIT-001) + codemaps regeneration for the launcher and init surfaces (closes t311)
+
+==== t409 (1 subject(s))
+    docs(rules): diet the shared-flag-slot constraint to its stub essentials — card t409
+
+==== t443 (1 subject(s))
+    chore(catalog): revert sync-auditor hash to develop value — t443 jurisdiction (t461)
+
+==== t460 (1 subject(s))
+    chore(git): t460 verdict — WT-lane-spawn-authority out-of-ancestry absorb commit is content-free, branch deletable
+

@@ -1,0 +1,12 @@
+=== RUN   TestGraphCheckCmd_AbsentExitsOne
+2026/09/04 07:03:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_AbsentExitsOne2231150347/001/.moai/config/sections
+    graph_check_test.go:271: absent layers must exit 1, got graph check: codemaps stamp 115259995ad1 not comparable in this checkout: no codemaps documents to anchor on
+--- FAIL: TestGraphCheckCmd_AbsentExitsOne (0.50s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.373s
+FAIL
+--- FAIL: TestCheckCodemaps_BodyAbsentIsAbsentWithoutError (0.68s)
+    check_restamp_anchor_test.go:242: an absent body is a determinate observation, not a failed measurement — want a nil error, got: codemaps stamp 931f69a2a0d2 not comparable in this checkout: no codemaps documents to anchor on
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	1.205s
+FAIL

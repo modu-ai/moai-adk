@@ -1,0 +1,64 @@
+package spec
+
+import (
+	"os/exec"
+	"strings"
+	"testing"
+)
+
+// t410 probe: trace the getGitImpliedStatus walker over the exact --grep window
+// for SPEC-V3R6-SESSION-HANDOFF-AUTO-001, reporting per-line why each commit was
+// skipped or adopted. Read-only: shells out to git log exactly as the detector
+// does and re-applies the detector's own filters.
+//
+// This exists to test t382's stated cause 1 ("--grep matches bodies, so a
+// DIFFERENT SPEC's plan commit 7cffb9717 is adopted as newest") against the
+// code, rather than carrying that claim forward on trust.
+func TestT410_TraceWalker(t *testing.T) {
+	const specID = "SPEC-V3R6-SESSION-HANDOFF-AUTO-001"
+
+	branch := cachedMainBranch()
+	out, err := exec.Command("git", "log", branch, "--oneline", "--no-merges",
+		"--grep="+specID, "-50").Output()
+	if err != nil {
+		t.Skipf("git log unavailable: %v", err)
+	}
+
+	t.Logf("branch=%s", branch)
+	adopted := ""
+	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		sha, subject := parts[0], parts[1]
+
+		if shouldSkipCommitTitle(subject) {
+			t.Logf("SKIP  %s  [skip-pattern]        %s", sha, subject)
+			continue
+		}
+		if !commitMatchesSPECID(subject, specID) {
+			ids := ExtractSPECIDs(subject)
+			t.Logf("SKIP  %s  [subject lacks id]    %s   extracted=%v", sha, subject, ids)
+			continue
+		}
+		_, status, cerr := ClassifyPRTitle(subject)
+		if cerr != nil {
+			t.Logf("SKIP  %s  [classify error]      %s   err=%v", sha, subject, cerr)
+			continue
+		}
+		if status == "" {
+			t.Logf("SKIP  %s  [empty status]        %s", sha, subject)
+			continue
+		}
+		t.Logf("ADOPT %s  [status=%s]  %s", sha, status, subject)
+		if adopted == "" {
+			adopted = sha + " -> " + status
+		}
+		break
+	}
+	t.Logf("WALKER RESULT: %s", adopted)
+
+	got, gerr := getGitImpliedStatus(specID)
+	t.Logf("getGitImpliedStatus(%s) = %q, err=%v", specID, got, gerr)
+}
