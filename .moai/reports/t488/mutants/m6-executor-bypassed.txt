@@ -1,8 +1,5 @@
-=== RUN   TestAssessSettingsDriftPreservesAndLedgers
-=== PAUSE TestAssessSettingsDriftPreservesAndLedgers
-=== CONT  TestAssessSettingsDriftPreservesAndLedgers
-    settings_drift_test.go:521: primary-root HEAD moved: "7fbd3d1b72782bd15d3427fdb210c404d5bbf0bb" -> "0bad8155a48d727b074f24a0fce56f184df7f5b2" (a committed preserved copy lands here, not in the target tree)
---- FAIL: TestAssessSettingsDriftPreservesAndLedgers (1.56s)
+--- FAIL: TestAssessSettingsDriftPreservesAndLedgers (1.69s)
+    settings_drift_test.go:537: primary-root HEAD moved: "e19e3a623bf9872b96c022212b85c2d4332adf55" -> "649810e527694fed4b8c7e07cfaa02d089616b51" (a committed preserved copy lands here, not in the target tree)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/kanban	2.149s
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	2.148s
 FAIL

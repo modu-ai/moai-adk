@@ -283,15 +283,31 @@ func AssessSettingsDrift(p SettingsDriftParams) SettingsDriftResult {
 	}
 
 	result.Bypassed = p.Bypassed
-	sum, size, hashErr := hashSettingsDriftSource(result.Path)
-	if hashErr != nil {
-		result.PreserveErr = hashErr
+	// ONE read. The hash, the size and the preserved bytes all come from this
+	// single buffer, and nothing re-reads the file afterwards.
+	//
+	// This is not defensive tidiness. The premise of this whole gate is that
+	// something writes that file unpredictably — it is why REQ-PSD-006 forbids
+	// an automatic restore. Hashing one read and copying a second would let
+	// the ledger's digest describe bytes the preserved copy does not contain,
+	// and the preserved copy's fingerprint is exactly the evidence a later
+	// reader compares a third instance against. A silently wrong fingerprint
+	// is worse than no fingerprint, because it is trusted.
+	data, sum, size, readErr := readAndHashSettingsDriftSource(result.Path)
+	if readErr != nil {
+		result.PreserveErr = readErr
 		return result
 	}
 	result.SHA256 = sum
 	result.SizeBytes = size
 
-	preserved, preserveErr := preserveSettingsDriftCopy(p.Root, p.Card, p.Branch, result.Path, sum)
+	// The interleaving point, between the measurement and the write. Nil in
+	// production; see the hook's declaration.
+	if settingsDriftPreserveTestHook != nil {
+		settingsDriftPreserveTestHook()
+	}
+
+	preserved, preserveErr := preserveSettingsDriftCopy(p.Root, p.Card, p.Branch, data, sum)
 	if preserveErr != nil {
 		result.PreserveErr = preserveErr
 	} else {
@@ -324,14 +340,33 @@ func errText(err error) string {
 	return err.Error()
 }
 
-func hashSettingsDriftSource(path string) (string, int64, error) {
+// readAndHashSettingsDriftSource reads the drifted file ONCE and returns the
+// bytes alongside their digest and length. Every downstream value — the ledger
+// digest, the reported size, the preserved copy — is derived from the returned
+// buffer, so no second read can make them disagree.
+func readAndHashSettingsDriftSource(path string) ([]byte, string, int64, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- path is <worktree>/.claude/settings.json
 	if err != nil {
-		return "", 0, fmt.Errorf("settings-drift: read %s: %w", path, err)
+		return nil, "", 0, fmt.Errorf("settings-drift: read %s: %w", path, err)
 	}
 	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]), int64(len(data)), nil
+	return data, hex.EncodeToString(sum[:]), int64(len(data)), nil
 }
+
+// settingsDriftPreserveTestHook is a nil-by-default, TEST-ONLY interleaving
+// point invoked once between reading the drifted file and writing the
+// preserved copy. It exists so the single-read invariant can be CONSTRUCTED
+// rather than waited for: the window between a hash and a copy is
+// microseconds, and a criterion that waits for a concurrent writer to land in
+// it has no stop rule.
+//
+// This is the same seam, for the same reason, as
+// integrationLockMutationTestHook next door. It is unexported and
+// package-level, so only `package kanban` can assign it, and no non-test file
+// does. Every production path leaves it nil, and the call site is nil-guarded
+// — invoking a nil func() panics in Go, so the guard is what makes "with the
+// hook nil, behaviour is byte-for-byte unchanged" true rather than intended.
+var settingsDriftPreserveTestHook func()
 
 // settingsDriftLabel names the preserved copy's owner: the card id when the
 // caller supplied one, else the branch, else `unknown`. `unknown` is not a
@@ -374,14 +409,13 @@ func sanitizeSettingsDriftLabel(s string) string {
 // three components, and only the suffix makes "an earlier copy is never
 // overwritten" decidable rather than probable. O_EXCL is what makes the loop
 // safe against a concurrent second writer rather than merely sequential.
-func preserveSettingsDriftCopy(root, card, branch, source, sum string) (string, error) {
+// It takes the BYTES rather than the source path deliberately: a path would
+// license a second read, and the digest recorded beside the copy would then be
+// a digest of different bytes than the copy holds.
+func preserveSettingsDriftCopy(root, card, branch string, data []byte, sum string) (string, error) {
 	dir := SettingsDriftDir(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("settings-drift: create %s: %w", dir, err)
-	}
-	data, err := os.ReadFile(source) // #nosec G304 -- source is <worktree>/.claude/settings.json
-	if err != nil {
-		return "", fmt.Errorf("settings-drift: read %s: %w", source, err)
 	}
 
 	short := sum

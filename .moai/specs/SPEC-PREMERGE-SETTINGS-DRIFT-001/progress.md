@@ -222,6 +222,34 @@ git이 `core.quotePath` 기본값으로 그 이름을 따옴표로 감싸고 개
 
 **관측하지 않은 채 남긴 것.** `--allow-settings-drift`와 `--force`를 **동시에** 준 경로는 테스트하지 않았다. 코드상 두 값은 독립 변수이고 서로의 분기를 건드리지 않지만, 그것은 **읽어서 안 것이지 재서 안 것이 아니다.** 증거를 보고한 뒤에 테스트를 덧붙이는 것보다 미검증으로 이름을 남기는 편이 정직한 마감이라 그대로 둔다. doctrine 문구 3곳도 사람이 읽고 판단할 대상이라 기계 검증이 없고, 미러 동일성(`diff -q`)만 확인했다.
 
+### sync-audit 지적 2건 수리 (PASS 0.906 후속)
+
+**F1 [Medium] — 원장의 sha256이 보존 사본에 없는 바이트를 기술할 수 있었다.** 착지본은 파일을 **두 번** 읽었다: `hashSettingsDriftSource(result.Path)`로 해시를 재고, `preserveSettingsDriftCopy`가 `os.ReadFile(source)`로 다시 읽어 복사했다. 그 사이에 누군가 쓰면 원장의 digest와 보존 사본의 바이트가 갈린다.
+
+이론적 경합이 아니다. **그 파일을 예측 불가능하게 쓰는 무언가가 있다는 것이 이 카드의 전제 자체이며**, REQ-PSD-006이 자동 복원을 금지하는 이유가 그것이다. 보존 사본의 지문은 뒤에 세 번째 인스턴스가 나왔을 때 대조할 증거인데, 그 지문이 조용히 틀리면 증거가 아니라 함정이 된다 — 없는 것보다 나쁘다, 신뢰받기 때문이다.
+
+수리: **한 번만 읽는다.** `readAndHashSettingsDriftSource`가 바이트·digest·크기를 한 버퍼에서 함께 돌려주고, `preserveSettingsDriftCopy`는 경로가 아니라 **바이트를 받는다**(경로를 받으면 두 번째 읽기를 허용하는 서명이 된다).
+
+**반증 가능하게 만들었다.** 정적 픽스처는 한 번 읽기와 두 번 읽기를 구별하지 못한다 — 사이에 아무도 쓰지 않으면 두 값이 일치하기 때문이다. 그래서 간섭을 **구성했다**: 같은 패키지의 `integrationLockMutationTestHook` 선례를 그대로 따라, 측정과 쓰기 사이에 nil 기본값 테스트 훅(`settingsDriftPreserveTestHook`)을 두고 테스트가 그 지점에서 원본을 다른 내용으로 덮어쓴다. 한 번 읽기에서는 두 값이 모두 훅 이전 바이트를 기술해 일치하고, 두 번 읽기에서는 갈린다. 그 갈림이 단정이다.
+
+RED 실측(`f1-double-read.txt`) — 두 번 읽기를 복원한 상태:
+
+```
+settings_drift_test.go:780: the ledger digest does not describe the preserved bytes:
+     ledger:    8d39bb027e9dc2f980612460729cf754be386c725ff0a300baa217faa1859028
+     preserved: 92733cfa5e922781efae8739382ca015c9a34dc6b84a6783b8d0180e50eb5652
+    the file was read twice, and something wrote to it in between
+settings_drift_test.go:784: ledger size_bytes 22 does not match the preserved copy's 38 bytes
+```
+
+테스트에는 대조 3개가 앞선다: 두 내용이 실제로 다르다, 훅이 정확히 1회 발화했다, 간섭 쓰기가 실제로 착지했다. 셋 중 하나라도 빠지면 단정이 공허해진다.
+
+**F2 [Low-Med] — 뮤턴트 로그의 줄 번호가 아무 데도 닿지 않았다.** 로그 5건의 앵커가 배포 트리 대비 +14/+16 어긋나 있었다. 원인은 로그를 만든 뒤 테스트 파일이 ~30줄 늘어난 것이다. RED는 진짜였고 앵커는 아니었다 — plan 단계에서 수리한 dangling-SHA 인용과 같은 계열이다: **검증 가능성을 주장하는 기록은 아직 해소되는 것을 인용해야 한다.**
+
+수리: 테스트 파일이 최종 상태가 된 뒤 **여덟 로그 전부를 재생성**했다. 모든 뮤턴트는 소스 파일에 가하고 발화 단정은 테스트 파일에 있으므로, 소스 편집이 테스트 파일 줄을 밀지 않아 앵커가 정확히 해소된다. 아울러 `.moai/reports/t488/mutants/README.md`를 추가해 뮤턴트별 **안정 앵커**(테스트 함수명 + 단정 문구)를 줄 번호와 나란히 적었다 — 뒤에 줄이 밀려도 인용이 살아남는다.
+
+교차 확인: 감사자가 M6을 독립적으로 재-flip해 `settings_drift_test.go:537`에서 발화시켰고, 재생성한 `m6-executor-bypassed.txt`도 **537**로 일치한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -229,6 +257,7 @@ run_complete_at: 2026-09-06
 run_commit_sha: 63e8e900d          # M1; 본 §E.2/§E.3 기록은 그 뒤 M2 커밋
 run_status: complete
 ac_pass_count: 20                  # AC-PSD-001..013 (007은 a/b/c/d-1..d-4, 009는 2변형, 013은 2변형으로 행 분해)
+sync_audit: PASS 0.906             # F1(Medium)/F2(Low-Med) 수리 완료; F3은 sync 소관, F4-F7 optional
 ac_fail_count: 0
 preserve_list_post_run_count: 0    # t334 워크트리 무수정 — 읽지도 않았다
 l44_pre_commit_fetch: n/a          # push 없음, 원격 접촉 없음(레인 규율)

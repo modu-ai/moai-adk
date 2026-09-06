@@ -709,6 +709,87 @@ func TestAssessSettingsDriftCleanTree(t *testing.T) {
 	}
 }
 
+// TestLedgerDigestDescribesThePreservedBytes pins the single-read invariant:
+// the digest recorded in the ledger must describe the bytes the preserved copy
+// actually holds.
+//
+// A static fixture cannot see the difference between one read and two — both
+// produce agreeing values when nothing writes in between. So the interleaving
+// is CONSTRUCTED: the test hook fires at the point between the measurement and
+// the write and overwrites the source with different content, which is the
+// very thing this gate exists because something does unpredictably.
+//
+// Under one read, both values describe the pre-hook bytes and agree. Under two
+// reads, the digest describes the pre-hook bytes and the copy holds the
+// post-hook bytes, and they disagree. That divergence is the assertion.
+//
+// The hook is package-level state, so this test does not run in parallel.
+func TestLedgerDigestDescribesThePreservedBytes(t *testing.T) {
+	worktree, root, _ := driftFixture(t)
+	source := filepath.Join(worktree, SettingsDriftWatchedPath)
+
+	const interleaved = "{\n  \"written-by-someone-else\": true\n}\n"
+	original, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("read source: %v", err)
+	}
+	// Control: the two contents must actually differ, or the assertion below
+	// holds whether or not the file was re-read.
+	if string(original) == interleaved {
+		t.Fatalf("control: the interleaved content equals the original; the test would pass either way")
+	}
+
+	fired := 0
+	settingsDriftPreserveTestHook = func() {
+		fired++
+		if writeErr := os.WriteFile(source, []byte(interleaved), 0o644); writeErr != nil {
+			t.Errorf("interleaving write: %v", writeErr)
+		}
+	}
+	t.Cleanup(func() { settingsDriftPreserveTestHook = nil })
+
+	result := AssessSettingsDrift(SettingsDriftParams{
+		Dir: worktree, Root: root, Card: "t488", Branch: "main", Runner: NewExecRunner(),
+	})
+	if result.PreserveErr != nil {
+		t.Fatalf("preserve error: %v", result.PreserveErr)
+	}
+	// Control: the interleaving actually happened. Without this, a hook that
+	// was never invoked would leave the assertion asserting nothing.
+	if fired != 1 {
+		t.Fatalf("control: the interleaving hook fired %d times, want exactly 1", fired)
+	}
+	if after, readErr := os.ReadFile(source); readErr != nil {
+		t.Fatalf("re-read source: %v", readErr)
+	} else if string(after) != interleaved {
+		t.Fatalf("control: the interleaving write did not land; source is %q", after)
+	}
+
+	preserved, err := os.ReadFile(result.PreservedPath)
+	if err != nil {
+		t.Fatalf("read preserved: %v", err)
+	}
+	preservedSum := sha256.Sum256(preserved)
+	preservedHex := hex.EncodeToString(preservedSum[:])
+
+	rows := readLedger(t, root)
+	if len(rows) != 1 {
+		t.Fatalf("ledger rows: got %d, want 1", len(rows))
+	}
+	if rows[0].SHA256 != preservedHex {
+		t.Errorf("the ledger digest does not describe the preserved bytes:\n ledger:    %s\n preserved: %s\nthe file was read twice, and something wrote to it in between",
+			rows[0].SHA256, preservedHex)
+	}
+	if rows[0].SizeBytes != int64(len(preserved)) {
+		t.Errorf("ledger size_bytes %d does not match the preserved copy's %d bytes", rows[0].SizeBytes, len(preserved))
+	}
+	// The preserved copy is the pre-hook content, which is what a later reader
+	// comparing a third instance needs it to be.
+	if string(preserved) != string(original) {
+		t.Errorf("preserved copy is not the content that was measured\n got: %q\nwant: %q", preserved, original)
+	}
+}
+
 // TestSettingsDriftLabelFallsBackWithoutBreakingThePath pins the preserved
 // copy's label. The branch fallback is the case that would otherwise turn a
 // preserve into a write to a directory that does not exist: a branch name
