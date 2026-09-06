@@ -1,0 +1,13 @@
+# M2 probe E — skills key given as a scalar string, not an array.
+# Type-shape probe: the sandbox_mode precedent is that codex names the accepted
+# form on a bad value.
+name = "probe-e-scalar"
+description = '''
+M2 probe agent E. skills value is a bare string. Sentinel AGENT-E-SCALAR-9f35.
+'''
+developer_instructions = '''
+You are M2 probe agent E. Reply with exactly: PROBE-E-OK
+'''
+skills = "moai-probe-m2skill"
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"
