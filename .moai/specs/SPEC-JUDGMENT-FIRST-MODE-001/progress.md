@@ -212,9 +212,73 @@ and the four-way reading rule), which is `manager-spec`-owned body content under
 Transition Ownership Matrix. The run phase returns a blocker report for the cell edit rather than
 performing it directly.
 
+### M1 — the pull convention in doctrine (2026-09-07)
+
+Measured in the worktree `.claude/worktrees/t401`, branch `WT-analysis-pull`, parent HEAD
+`129fe8b88`, against base tree `ad272be20`.
+
+| Criterion | Command | Actual output | Status |
+|---|---|---|---|
+| AC-JFM-004 | `grep -n 'recommendation_mode' .claude/rules/moai/core/askuser-protocol.md` | 4 lines: `:64`, `:117`, `:120`, `:265`; `:117`/`:120` sit inside § Recommendation Placement Principles (`:87`-`:154`) | PASS |
+| AC-JFM-004 (companion) | `grep -c 'Adaptive strength' .claude/rules/moai/core/askuser-protocol.md` | `1` | PASS |
+| AC-JFM-009 | `grep -c '^### On-request emission' .claude/rules/moai/core/askuser-protocol.md` | `1` | PASS-WITH-DEBT — the heading exists; the "referenced from both banner rules" half lands in M2, which owns `moai.md` |
+| AC-JFM-010 | `git diff ad272be20 -- .claude/rules/moai/core/askuser-protocol.md .claude/rules/moai/workflow/orchestration-mode-selection.md` | 3 hunks, all in `askuser-protocol.md` (`@@ -61,7`, `@@ -102,7`, `@@ -214,7`); none touches § Option Description Standards (`:74`-`:86`), § Report-Before-Ask Gate, or § Requested-Deliverable Primacy; `orchestration-mode-selection.md` diff empty | PASS |
+| AC-JFM-010 (section byte-equality) | `sed -n '/Report-Before-Ask/,/^## /p'` on current vs `ad272be20`, compared as files | `diff_exit=0`, 44 lines extracted (non-empty, so not a vacuous compare) | PASS |
+| AC-JFM-011 | `grep -c 'Detect → Explain → Ask'`, `grep -c "An LLM 'best practice' is not a policy"`, `grep -c 'When uncertain, escalate. Never downgrade.'` | `1`, `1`, `1` | PASS |
+| AC-JFM-012 | `git diff ad272be20 -- .claude/rules/moai/core/zone-registry.md` | empty; exit `0` | PASS |
+| AC-JFM-012 (companion) | `grep -c 'recommendation_mode' .claude/rules/moai/development/branch-origin-protocol.md` | `1` | PASS |
+| AC-JFM-013 | sweep → `wc -l < .moai/reports/t401/ac013-candidates.txt` | `26` (pre-edit `25`; the 26th is the pull branch this milestone added at `branch-origin-protocol.md:26`, which itself matches the selector) | swept count > 0 |
+| AC-JFM-013 (ledger) | `grep -c '^| [0-9]* | \`' .moai/reports/t401/ac013-ledger.md` | `26` rows = swept count; 7 `conditioned`, 18 `unconditioned-by-design`, **1 escalated** | **FAIL** — one unclassified remainder (see below) |
+
+All five coordinates AC-JFM-013 requires in `conditioned` are `conditioned`:
+`askuser-protocol.md:64`, `askuser-protocol.md:265` (the other surviving S1 row, `:217` at base),
+`run.md:137`, `plan/spec-assembly.md:212`, `plan/spec-assembly.md:353`. Six of the seven carry
+`recommendation_mode` on the matched line; `branch-origin-protocol.md:25` is conditioned by the
+adjacent pull branch at `:26` because REQ-JFM-015 / §B.2 require its text verbatim.
+
+**AC-JFM-013 is FAIL, deliberately.** `.claude/skills/moai/SKILL.md:350` carries an independent
+`[HARD]` clause — "All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
+The first option MUST always be the recommended choice, clearly marked with '(Recommended)'
+suffix" — with no SSOT citation and the broadest reach in the swept set. It meets REQ-JFM-016's
+reachability test, and `.claude/skills/moai/SKILL.md` is not in M1's declared edit surface. Neither
+available class is honest: `conditioned` would require an out-of-scope edit, and
+`unconditioned-by-design` would rest on scope absence rather than a design ground. Escalated as a
+blocker; ledger § Blocker carries the recommended resolution.
+
+**Template mirrors.** All 4 changed files were byte-identical to their
+`internal/template/templates/` mirrors before the edit and are byte-identical after it
+(`diff -q` × 5, including the untouched `zone-registry.md`). The 85 added template lines were
+scanned for SPEC IDs, REQ / AC tokens, `CLAUDE.local` references, absolute `/Users/` paths, ISO
+dates, and 9-40 hex SHAs: zero hits, with a catch-all control confirming the pipeline reached data
+(85 `^+` lines, 8 carrying `recommendation_mode`).
+
+**M0's baseline window is still outstanding, and M1 has now closed half of its stated condition.**
+M0's code landed at `d5caf2d8e` (`internal/hook/askuser_observer.go`, the `pre_tool.go` branch, the
+`settings.json.tmpl` matcher), but `.moai/reports/t401/baseline-push-window.jsonl` does not exist.
+plan.md §F M0 states "Do not proceed to M1 until the baseline row exists", and defines the window as
+one recorded while "M1/M2 have not amended the doctrine" — which this commit ends on this branch.
+The repository config is still `push` (`recommendation_mode` absent from `.moai/config/`, so it
+resolves to `push`; M3 has not run). The live log in the primary checkout currently reads:
+`wc -l` → `8`, `grep -c '"label_present":true'` → `8`, so a window meeting the ≥5-rows /
+≥1-positive floor appears collectible — but the copy is an M0 deliverable owned by the asking
+(lead) session, not a run-phase act, and no attribution beyond §E.2's earlier session record was
+verified here.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_phase: M1 only (M2-M6 not entered)
+run_commit_sha: <backfill — this record is committed within the M1 commit>
+run_status: partial — M1 edits complete, AC-JFM-013 blocked on one escalated row
+ac_pass_count: 8
+ac_fail_count: 1
+ac_blocked_count: 1
+preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20
+cross_platform_build: not applicable — markdown-only milestone, no Go code changed
+new_warnings_or_lints_introduced: none — no code changed
+total_run_phase_files: 10   # 4 doctrine + 4 template mirrors + 2 ledger artifacts
+m1_to_mN_commit_strategy: one commit per milestone; M1 is a single commit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

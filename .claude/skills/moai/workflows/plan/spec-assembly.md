@@ -209,7 +209,7 @@ that enriches the review surface for the Implementation Kickoff Approval gate.
 and score-independent. The plan HTML report
 ENRICHES the review surface (inline prose → rich HTML); it does NOT replace the
 gate, does NOT auto-bypass it, and does NOT relax its three canonical options
-(run-phase entry / further review / abort) or the `(권장)` first-option label. A
+(run-phase entry / further review / abort) or the `(권장)` first-option label (withheld under `recommendation_mode: pull`; the gate itself is unchanged). A
 plan-auditor PASS or a high skip-eligible score does NOT substitute for the gate.
 This emission step is additive only (AP-4).
 
@@ -350,7 +350,7 @@ Steps:
 2. **AskUserQuestion Gate** — Orchestrator-only HARD (see `.claude/rules/moai/core/askuser-protocol.md`):
    - Preload: `ToolSearch(query: "select:AskUserQuestion")`.
    - Options (max 4, conversation_language=ko):
-     - First option: the recommended Choice with `(권장)` suffix; description = the rationale from the matrix.
+     - First option: the recommended Choice with `(권장)` suffix; description = the rationale from the matrix. Under `recommendation_mode: pull` the `(권장)` suffix is withheld and no option carries a preference claim, while the rationale still travels in the description (`.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles).
      - Remaining options: the other Choice values (e.g. when Recommended is `ChoiceMain`, present `ChoiceStacked` and `ChoiceContinue`).
    - The "Other" option is auto-appended by Claude Code.
    - User response yields the chosen Choice + base branch.
