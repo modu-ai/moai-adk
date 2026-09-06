@@ -350,7 +350,7 @@ m1_to_mN_commit_strategy: "M1 2b07aa010 -> M2 00148e239 -> M3 c779a0a15; strict 
 
 ```yaml
 sync_complete_at: 2026-09-06
-sync_commit_sha: "pending-backfill-sync"   # placeholder — backfilled with the real SHA in the immediately following commit (a commit cannot cite its own SHA)
+sync_commit_sha: "775f97fc1"   # the sync close commit; backfilled in the immediately following commit (a commit cannot cite its own SHA)
 sync_status: complete
 changelog_entry: none   # repo convention carries NO card-level CHANGELOG entries (release-time surface); grep count for this SPEC-ID in CHANGELOG.md = 0, deliberately kept at 0
 docs_sync: docs-site 4-locale moai-todo.md — verdict-line format (ref suffix + stderr level disclosure) and the attribution-position predicate description updated in ko/en/ja/zh in one commit
