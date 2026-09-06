@@ -2,7 +2,7 @@
 id: SPEC-SPECLINT-ARTIFACT-STATUS-001
 title: "Remove forbidden status field from SPEC-CODEX-E2E-MEASURE-001 sibling artifacts to clear 2 spec-lint ERRORs"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-09-06
 updated: 2026-09-07
 author: manager-spec

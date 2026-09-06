@@ -56,4 +56,9 @@ AC verdicts (each judged in `.moai/reports/t490/verdict.md`; all measured by lan
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: pending-backfill-sync
+sync_status: completed
+
+Close summary: two-line repair shipped — removed the forbidden `status: completed` field from the `SPEC-CODEX-E2E-MEASURE-001` sibling artifacts (`plan.md` and `acceptance.md` frontmatter), the only two ERROR-severity spec-lint findings (`ArtifactStatusFieldForbidden`). Single-step `draft → completed` transition carried by this close commit (the run phase never committed an intermediate state — intended shape for this card). Evidence: `.moai/reports/t490/verdict.md`, progress.md §E.2/§E.3, plan-audit verdict `.moai/reports/t490/plan-audit.md` (PASS 0.94, delta-confirmed under operator exception). `sync_commit_sha` is the canonical `pending-backfill-sync` placeholder per the D3 backfill exemption (spec-frontmatter-schema.md § SHA placeholder backfill exemption); the lane backfills the real SHA in a follow-up commit.
+
+CHANGELOG skip rationale: no CHANGELOG entry is emitted for this SPEC. The repair is a two-line internal SPEC-metadata fix (frontmatter field removal in a sibling SPEC's plan/acceptance artifacts) with no user-facing behavior change, so it does not meet the CHANGELOG emission bar. This note is the decision record (lane judgment, precedent t487/t472/t489).
