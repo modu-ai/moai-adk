@@ -67,6 +67,18 @@ func TestCheckFreshness_DescribedRootsScopeFidelity(t *testing.T) {
 		DescribedRoots: []string{"internal"},
 		GeneratedBy:    "codemaps-gen",
 	})
+	// The inner helper writes provenance.json only, and a codemaps directory
+	// with no body is C1 — absent, unjudgeable, nothing being described
+	// (SPEC-GRAPH-GATE-RESTAMP-001 §D.1). This test is about described-roots
+	// SCOPE fidelity and says nothing about the body, so the fixture gets the
+	// body shape writeCodemapsProvenance already writes: an untracked
+	// modules.md, which takes rule A and anchors at the stamp. Every
+	// assertion below is unchanged, and so is the mutant this test
+	// discriminates (hardcoded DefaultDescribedRoots).
+	if err := os.WriteFile(filepath.Join(root, ".moai", "project", "codemaps", "modules.md"),
+		[]byte("# modules\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Changes OUTSIDE the described roots must not count.
 	for _, p := range []string{"cmd/tool/main.go", "pkg/lib/lib.go"} {
