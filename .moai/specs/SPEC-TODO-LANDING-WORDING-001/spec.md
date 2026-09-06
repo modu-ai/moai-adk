@@ -2,7 +2,7 @@
 id: SPEC-TODO-LANDING-WORDING-001
 title: "Five measured wording amendments to SPEC-TODO-LANDING-ATTRIBUTION-001: the 28-floor, the S1 name, non-closure as a property, the t359 termination path, and form 3b casing"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec (card t486)

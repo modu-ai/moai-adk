@@ -74,4 +74,18 @@ evidence_export: .moai/reports/t486/run-evidence.md   # uncommitted per card con
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: completed
+spec_id: SPEC-TODO-LANDING-WORDING-001
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync
+sync_subject: docs(SPEC-TODO-LANDING-WORDING-001): sync-phase — 3-phase close, completed (t486)
+frontmatter_status_transitions:
+  - in-progress -> implemented -> completed   # full transition rides the single sync commit
+changelog_entry: none   # SPEC-documents-only card; no shipped artifact, no user-facing surface
+b12_self_test_a:
+  pre_emission_grep: not-applicable   # no CHANGELOG entry emitted (B12 halted at skip-decision)
+b12_self_test_c:
+  file_path_verification: not-applicable   # no file paths claimed in a CHANGELOG entry
+```
+
