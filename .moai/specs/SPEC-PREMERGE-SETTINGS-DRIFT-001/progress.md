@@ -4,7 +4,7 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-09-06
-artifacts: spec.md + plan.md + acceptance.md + progress.md (Tier M) — v0.6.1
+artifacts: spec.md + plan.md + acceptance.md + progress.md (Tier M) — v0.6.2
 baseline: worktree `.claude/worktrees/t488`, branch `WT-premerge-drift-assert`
 spec_id_check: `[[ "SPEC-PREMERGE-SETTINGS-DRIFT-001" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]]` → `PASS` (실행 출력)
 open_clarifications: 0 — 미해결 `[NEEDS CLARIFICATION:` 마커 0건. 기본 자세는 운영자 결정으로 계열 (가) 기본 OFF + 켜면 거절(2026-09-06), 킬 스위치 키는 `workflow.settings_drift_gate.enabled` 새 블록. 두 결정에 묶여 있던 다섯 곳 전부 처리됨(plan.md §B D2 표).
@@ -63,7 +63,9 @@ $ grep -n 'settings_drift_gate' plan.md
 
 그래서 marker 1 관련 편집은 **중복 적용하지 않았다.** 이미 적용된 결정을 다시 쓰면 v0.4.0에서 함께 처리한 다섯 곳(§ marker 1 종결 표)이 어긋날 위험만 생긴다. 같은 이유로 REQ-PSD-014 3상태 명명, REQ-PSD-016, `AC-PSD-013`도 v0.4.0 산물이며 이 회차에서 손대지 않았다.
 
-이 회차의 실제 변경은 하나다(아래). 다만 이 범위 주장은 **기계 비교로 뒷받침되지 않는다** — v0.4.0은 커밋된 적이 없어 그 내용이 남아 있지 않고, 따라서 v0.4.0 → v0.5.0 델타는 편집을 수행한 쪽의 판독이다. 커밋 `dea4be776`(plan 산출물 4개 + 판정서 4개) 이후로는 기계 비교가 가능하다. — M3 픽스처 항목에 **"bare 원격은 만들되 브랜치 push를 잊는" 실수 모양**과 구성 직후 `ls-remote` 비어 있지 않음 확인을 명시했다. 원격 생성은 눈에 보이는 단계이고 push는 잊기 쉬운 단계인데 잊어도 오류가 나지 않아서, 이 확인이 없으면 `AC-PSD-007(d-3)`의 push 반증이 조용히 무검사 상태로 남는다.
+이 회차의 실제 변경은 하나다 — M3 픽스처 항목에 **"bare 원격은 만들되 브랜치 push를 잊는" 실수 모양**과 구성 직후 `ls-remote` 비어 있지 않음 확인을 명시했다. 원격 생성은 눈에 보이는 단계이고 push는 잊기 쉬운 단계인데 잊어도 오류가 나지 않아서, 이 확인이 없으면 `AC-PSD-007(d-3)`의 push 반증이 조용히 무검사 상태로 남는다.
+
+다만 위 "변경은 하나"라는 범위 주장은 **기계 비교로 뒷받침되지 않는다** — v0.4.0은 커밋된 적이 없어 그 내용이 남아 있지 않고, 따라서 v0.4.0 → v0.5.0 델타는 편집을 수행한 쪽의 판독이다. 커밋 `d02db303b`(plan 산출물 4개 + 판정서 4개) 이후로는 기계 비교가 가능하다.
 
 ### marker 1 종결 (2026-09-06) — 운영자 결정 [v0.4.0에서 적용]
 
