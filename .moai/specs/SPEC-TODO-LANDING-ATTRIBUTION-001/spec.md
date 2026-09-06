@@ -320,6 +320,20 @@ impact near zero and closes nothing.
 The floor of 28 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D on the
 failure **direction** rather than on any dating or impact claim about the residual.
 
+**The residual's largest single shape, named: S1 — the release-integrate merge scope (card t486,
+from t482 §4.1).** Subject **begins** `merge(WT-…)` or `merge(worktree-…)`, the merge integrates
+into a **release branch** (e.g. `merge(WT-t143): integrate into release/v3.1.1`, the other spelling
+`merge(worktree-t132): …`), and the card token appears ONLY inside the merge scope — the branch
+name — never as an attribution. Two figures name it and they measure different things
+(`.moai/reports/t482/s1-reconcile.txt`; verdict.md §4.1): **shape size 18 subjects / 18 distinct
+ids** (spellings: 10 `WT-` / 8 `worktree-`) and **residual contribution 14** — the other 4 of the 18
+(`t119 t130 t145 t146`) are attributed by other forms elsewhere in the corpus and so never entered
+the residual. S1 passed unnamed through this SPEC's three author versions and three plan-audit
+iterations; it is named here so the next reader does not rediscover it. **[HARD] NAMING ONLY — the
+operator explicitly rejected adopting S1 as a form** (verdict.md §5.1 cause 2; §9 판정 1): a rule
+that reads `merge(WT-t131):` as attributing t131 attributes a **branch name** — a positional
+exception the §A.4 non-attribution rule must not pay for. No attribution form is added.
+
 **[HARD] The enumeration does not close — a property, not a count (card t486, from t482 §5.1).**
 Three measured grounds: **(a) the residual population is open** — `t409` entered 2026-09-01 and
 `t460` 2026-09-03, so new shapes were entering up to two days before the corpus pin; an enumeration
