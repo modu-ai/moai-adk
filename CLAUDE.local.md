@@ -346,7 +346,7 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리드의 창 지명만이 근거다.
 - 창을 받으면: `moai integration acquire --name <lane>` → 본인 워크트리에서 `git merge origin/develop` 흡수 → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
-- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 로컬 develop 병합(창 경유 `git push origin develop`)이 **유일한** 공개 경로다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리드가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
 - sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 develop에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
 

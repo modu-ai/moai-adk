@@ -116,7 +116,6 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		return fmt.Errorf("moai web must run inside a MoAI project: %w", perr)
 	}
 
-
 	// web.Run 위임 전 대상 포트를 확보한다: stale moai 인스턴스는 회수하고
 	// 외부 프로세스는 보호(에러). --no-reuse면 회수를 건너뛴다.
 	// SPEC-SESSION-WORKTREE-001 (REQ-SW-015): the worktree is filesystem

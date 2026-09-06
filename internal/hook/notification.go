@@ -5,8 +5,9 @@
 // checked FIRST as defense-in-depth.
 // SPEC-V3R6-HOOK-ASYNC-EXPAND-001 M4 (REQ-HAE-004): dual-gate conditional async —
 // when BOTH hook.opt_in.enabled (Gate 1, HOI master) AND observability.enabled
-// (Gate 2, REQ-OBS-005 master) are true, the payload-logging side-effect
-// executes in a background goroutine bounded by asyncDeadline (5s). When either
+// (Gate 2, REQ-OBS-005 master) are true, the payload-logging side-effect is
+// DISPATCHED to a background goroutine carrying an asyncDeadline (5s) ctx.
+// Dispatched, not delivered: see the spawn-site note in Handle. When either
 // gate is false, the handler returns the empty payload immediately with NO
 // goroutine spawned (zero-overhead path).
 package hook
@@ -75,6 +76,14 @@ func (h *notificationHandler) Handle(_ context.Context, input *HookInput) (*Hook
 	}
 
 	// All gates pass → async logging side-effect.
+	//
+	// asyncDeadline is not the outcome that decides this goroutine's fate.
+	// `moai hook` is a one-shot process: it exits once the main handler
+	// returns, and exit kills the goroutine wherever it has reached — the
+	// deadline only ever fires when the process outlives it, which the hook
+	// process does not. Treat the emission below as best-effort, not as
+	// deferred-but-guaranteed. Same shape as file_changed.go; see the longer
+	// note there for the measurement.
 	asyncCtx, cancel := context.WithTimeout(context.Background(), asyncDeadline)
 	h.wg.Add(1)
 	go func() {

@@ -1,0 +1,22 @@
+SEVERITY  CODE                FILE                                            LINE  MESSAGE
+--------  ----                ----                                            ----  -------
+WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  121   REQ REQ-HWD-001: EARS modality violation — SHALL missing or format mismatch: "The project's `.claude/settings.json` hook-entry"
+WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  132   REQ REQ-HWD-003: EARS modality violation — SHALL missing or format mismatch: "When an operator runs `moai doctor`, the"
+WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  158   REQ REQ-HWD-005: EARS modality violation — SHALL missing or format mismatch: "When the settings template cannot be"
+WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  183   REQ REQ-HWD-009: EARS modality violation — SHALL missing or format mismatch: "When `moai mx query` detects that the"
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  121   REQ REQ-HWD-001 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  125   REQ REQ-HWD-002 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  132   REQ REQ-HWD-003 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  138   REQ REQ-HWD-004 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  158   REQ REQ-HWD-005 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  165   REQ REQ-HWD-006 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  171   REQ REQ-HWD-007 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  177   REQ REQ-HWD-008 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  183   REQ REQ-HWD-009 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  187   REQ REQ-HWD-010 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  191   REQ REQ-HWD-011 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  197   REQ REQ-HWD-012 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  210   REQ REQ-HWD-013 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  225   REQ REQ-HWD-014 is not referenced by any AC
+
+0 error(s), 18 warning(s)

@@ -1,0 +1,10 @@
+# M2 probe A — control: no skills key at all.
+name = "probe-a-baseline"
+description = '''
+M2 probe agent A. Carries no skills key. Sentinel AGENT-A-BASELINE-9f31.
+'''
+developer_instructions = '''
+You are M2 probe agent A. Reply with exactly: PROBE-A-OK
+'''
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"

@@ -1,0 +1,4 @@
+--- FAIL: TestBinaryLag_DoctorCheckNameSetIsUnchanged (0.05s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.395s
+FAIL

@@ -20,14 +20,14 @@ func TestAppendReadNegativeEvidence_RoundTrip(t *testing.T) {
 
 	ts := time.Date(2026, 7, 12, 14, 3, 0, 0, time.UTC)
 	entry := NegativeEvidence{
-		PatternKey:           "feature+plan+autopilot+success",
-		Outcome:              NegativeEvidenceRejected,
-		Timestamp:            ts,
-		EvidenceCountAtEvent: 7,
-		CooldownUntil:        ts.Add(NegativeEvidenceCooldown),
+		PatternKey:            "feature+plan+autopilot+success",
+		Outcome:               NegativeEvidenceRejected,
+		Timestamp:             ts,
+		EvidenceCountAtEvent:  7,
+		CooldownUntil:         ts.Add(NegativeEvidenceCooldown),
 		NewEvidenceSinceEvent: 0,
-		MachineSignalRef:     "lineage:manifest.jsonl#ln=42",
-		GateOrigin:           GateOriginL3,
+		MachineSignalRef:      "lineage:manifest.jsonl#ln=42",
+		GateOrigin:            GateOriginL3,
 	}
 
 	if err := AppendNegativeEvidence(path, entry); err != nil {

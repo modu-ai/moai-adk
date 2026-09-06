@@ -72,7 +72,7 @@ func TestRenderCacheHit(t *testing.T) {
 // # REQ-TEF-007
 func TestCacheHitSegmentToggle(t *testing.T) {
 	data := &StatusData{
-		Metrics:   MetricsData{Available: true, Model: "Opus"},
+		Metrics:    MetricsData{Available: true, Model: "Opus"},
 		CacheUsage: &CurrentUsageInfo{CacheReadTokens: 2000, CacheCreationTokens: 5000},
 	}
 
