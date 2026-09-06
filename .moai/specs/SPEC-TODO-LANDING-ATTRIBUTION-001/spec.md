@@ -151,7 +151,7 @@ Counts measured over the pinned commit `7835148d3`, 5,837 subjects, 414 of them 
 | 2 | Trailing parenthetical | `(<card>)` or `(card <card>)` **closing the subject**, the group carrying nothing else | 869 | `... refresh catalog moai whole-tree hash (t447)` |
 | 2b | Trailing parenthetical **before a reference group** | a card-bearing parenthetical group carrying **exactly one** card token, followed by a **reference group** `(#NNNN)` that closes the subject — form 2's own position with a pull-request reference appended | 43 | `feat(kanban): moai todo pr — read-only card-to-PR and landed link (t210) (#1628)` |
 | 3a | Merge, card-led (`Merge card`) | subject **begins** `Merge card <card>` | 5 | `Merge card t440 (WT-delivery-notice-docs) into develop: ...` |
-| 3b | Merge, integration-targeted | the merge's **named target is the branch the resolved landed ref names** (§A.4.1), AND the subject's trailing parenthetical group carries **exactly one** card token | 76 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
+| 3b | Merge, integration-targeted | the merge's **named target is the branch the resolved landed ref names** (§A.4.1), AND the subject's trailing parenthetical group carries **exactly one** card token | 77 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
 | 3c | Merge, card-led (`merge:`) | subject **begins** `merge: <card>` — the local-merge spelling of 3a | 31 | `merge: t106 — todo queue resolves to the primary checkout from worktrees — review-PASS` |
 
 Forms 3a and 3c are one shape in two spellings: the card is the **first token after the merge
@@ -224,12 +224,21 @@ absorb record. Neither is an attribution, and both are excluded by the non-attri
 token lying inside the trailing group, which contradicted this section's own preamble: a group
 reading `(card t500 — absorb t280, includes t239)` would attribute all three — the occurrence
 reading relocated inside a parenthesis. The single-token restriction removes the contradiction at
-**zero measured cost**: of the 76 `into develop` merges whose trailing group carries a card token,
+**zero measured cost**: of the 77 `into develop` merges whose trailing group carries a card token,
 **none** names two distinct cards (per-line distinct-token count over the extracted groups → 0
 lines). The shape is nevertheless real in the corpus at large — **8** trailing groups name two or
 more distinct cards (`(t46/t73/t74)`, `(card t36, absorbs t2)`, `(t333/t347)`, `(t387 depends on
 t386 convention doc)`, …) — so the restriction guards a population that exists, merely not yet on
 this form's own subject set.
+
+**The merge verb's casing is latitude, not prescription (card t486, from t482 §2.4).** Form 3b's
+definition — named integration target, exactly one card token in the trailing group — does not
+prescribe the merge verb's casing, and an implementation shall not add a case restriction the
+corpus refutes: `^[Mm]erge … into develop` counts **77** where `^Merge …` counts **76**, and the one
+diverging subject is `merge: WT-ci-test-observability into develop (t358)`
+(`.moai/reports/t482/form3b-delta.txt`). That subject's trailing group `(t358)` carries exactly one
+card token and the subject is attributed by form 2 regardless, so the residual is invariant under
+the 76 → 77 correction — 347 / 309 / 38 and the 28-floor of §A.4.2 do not move (verdict.md §2.4).
 
 #### A.4.2 What the enumeration costs — the under-count, measured
 
