@@ -70,8 +70,11 @@ func TestLandedRefFor(t *testing.T) {
 
 // AC-TLS-001 — the resolved ref reaches the argv the check actually runs. The
 // ref is an INPUT to the builder, so a caller cannot forget to thread it.
-func TestLandedGrepArgs_CarriesTheResolvedRef(t *testing.T) {
-	args, err := LandedGrepArgs("origin/develop", "t293")
+// SPEC-TODO-LANDING-ATTRIBUTION-001 renamed the builder to LandedSubjectArgs:
+// the query is a subject stream, and the card id is matched positionally on
+// the Go side rather than interpolated into a --grep pattern.
+func TestLandedSubjectArgs_CarriesTheResolvedRef(t *testing.T) {
+	args, err := LandedSubjectArgs("origin/develop")
 	if err != nil {
 		t.Fatalf("argv: %v", err)
 	}
@@ -81,14 +84,15 @@ func TestLandedGrepArgs_CarriesTheResolvedRef(t *testing.T) {
 	if slices.Contains(args, "origin/main") {
 		t.Errorf("argv %v still names the hardcoded default", args)
 	}
-	// The engine flag survives the signature change — the silent-empty guard
-	// this SPEC inherits is not weakened by threading a ref through.
-	if !slices.Contains(args, LandedRegexpEngineFlag) {
-		t.Errorf("argv %v lost %s", args, LandedRegexpEngineFlag)
+	// The subject-stream shape survives the signature change — the
+	// silent-empty guard this SPEC inherits is not weakened by threading a
+	// ref through.
+	if !slices.Contains(args, LandedSubjectFormatFlag) {
+		t.Errorf("argv %v lost %s", args, LandedSubjectFormatFlag)
 	}
 	// An empty ref falls back rather than emitting an empty argv element,
 	// which git would read as the working tree.
-	back, backErr := LandedGrepArgs("", "t293")
+	back, backErr := LandedSubjectArgs("")
 	if backErr != nil {
 		t.Fatalf("argv (empty ref): %v", backErr)
 	}

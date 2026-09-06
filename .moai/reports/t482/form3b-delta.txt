@@ -1,0 +1,5 @@
+variant A (^[Mm]erge ... into develop): 77
+variant B (^Merge    ... into develop): 76
+
+subjects in A but not in B:
+    merge: WT-ci-test-observability into develop (t358)

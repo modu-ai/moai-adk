@@ -57,7 +57,9 @@ func ComputeDirTreeHash(fsys fs.FS, dir string) (string, error) {
 	sort.Slice(entries, func(i, j int) bool { return entries[i].rel < entries[j].rel })
 	h := sha256.New()
 	for _, e := range entries {
-		fmt.Fprintf(h, "%s:%s\n", e.rel, e.sum)
+		// h is a hash.Hash whose Write never returns an error per the
+		// stdlib contract, so this error is structurally always nil.
+		_, _ = fmt.Fprintf(h, "%s:%s\n", e.rel, e.sum)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
