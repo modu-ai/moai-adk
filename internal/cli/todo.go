@@ -89,6 +89,26 @@ func todoLandedRef() string {
 	return kanban.LandedRefFor(resolveTodoQueueRoot())
 }
 
+// todoLandedRefResolved is todoLandedRef with its provenance: which chain
+// level answered. The `todo done` verdict discloses levels below the
+// configured key (REQ-TLA-011) — a ref the repository supplied through its
+// own recorded default rather than through configuration is the exceptional
+// path, and a silent fallback is exactly how the wrong-ref answer hid.
+func todoLandedRefResolved() (string, kanban.LandedRefLevel) {
+	return kanban.LandedRefForWithLevel(resolveTodoQueueRoot())
+}
+
+// todoRefLevelSource names where a chain level's answer came from, for the
+// disclosure line.
+func todoRefLevelSource(level kanban.LandedRefLevel) string {
+	switch level {
+	case kanban.LandedRefOriginHEAD:
+		return "refs/remotes/origin/HEAD"
+	default:
+		return "the compiled-in default"
+	}
+}
+
 // todoLandedRefOnce resolves the landed ref at most once per process, and only
 // when something actually asks for it.
 //
@@ -469,6 +489,9 @@ func newTodoDoneCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			// Resolved once, up front, so the query, the verdict line, and the
+			// disclosure all name the same ref (todoLandedRef's contract).
+			ref, refLevel := todoLandedRefResolved()
 			// Unknown until a query answers otherwise. Absent the flag no
 			// query runs at all, and `unknown` is the honest report of that.
 			verdict := kanban.LandingUnknown
@@ -490,7 +513,7 @@ func newTodoDoneCmd() *cobra.Command {
 						id, todoTextPrefix(rec.Items[at].Text), expect)
 				}
 				if requireLanded {
-					answer, err := todoRequireLanded(cmd, id)
+					answer, err := todoRequireLanded(cmd, id, ref, refLevel)
 					if err != nil {
 						return err
 					}
@@ -504,8 +527,15 @@ func newTodoDoneCmd() *cobra.Command {
 			// One line per act, carrying exactly one landing verdict — a second
 			// line would give an operator script two records for one event.
 			// The suffix preserves the `done <id>` prefix every existing
-			// reader keys off.
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
+			// reader keys off. The answering ref is appended (REQ-TLA-010)
+			// only when a landing query actually ran: without the flag no ref
+			// answered, and naming one would dress "the guard did not run" up
+			// as "the guard answered against ref X".
+			if requireLanded {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s ref=%s\n", id, verdict, ref)
+			} else {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
+			}
 			return nil
 		},
 	}
@@ -557,8 +587,19 @@ run" are different facts and no longer the same bytes.`
 // this SPEC. Making it answer the right question needs a persisted
 // landing-state field, which is a separate card's scope; this ships the seam
 // and says plainly what it can and cannot answer (spec.md §A.4).
-func todoRequireLanded(cmd *cobra.Command, id string) (kanban.LandingAnswer, error) {
-	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: todoLandedRef()}
+func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel kanban.LandedRefLevel) (kanban.LandingAnswer, error) {
+	// The answering level is disclosed when it sits BELOW the configured key:
+	// a ref the repository supplied through refs/remotes/origin/HEAD or the
+	// compiled-in default is the exceptional path, and the operator sees the
+	// source rather than inferring it (REQ-TLA-011). A configured project
+	// (level 1) gets no notice — the exceptional path is what the notice
+	// marks, not every path.
+	if refLevel != kanban.LandedRefConfigured {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"note: landed ref %s was supplied by chain level %d (%s) — this project does not configure git_strategy.worktree_base_branch\n",
+			ref, refLevel, todoRefLevelSource(refLevel))
+	}
+	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: ref}
 	answer, err := q.Landed(id)
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),

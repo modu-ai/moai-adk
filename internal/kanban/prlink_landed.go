@@ -31,8 +31,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // LandedSubjectFormatFlag is the query shape the landed check is built on: a
@@ -71,28 +69,18 @@ const (
 )
 
 // LandedRefFor returns the ref the landed question should be asked about for
-// the project rooted at projectRoot: `origin/<worktree_base_branch>` when the
-// project configures one, and DefaultLandedRef when it does not.
+// the project rooted at projectRoot, resolved through the three-level chain
+// (REQ-TLA-007): the configured integration branch, then the repository's own
+// recorded default, then DefaultLandedRef. The chain lives in
+// prlink_landedref.go; this wrapper preserves the historical one-argument
+// signature for callers that need only the ref.
 //
 // "Has this landed?" means "is it in the branch this project integrates on".
 // For a project that integrates on `develop`, asking `origin/main` answers a
 // question nobody posed and answers it wrongly.
-//
-// Every failure path yields DefaultLandedRef, inheriting the neutral-empty
-// ruling of config.LoadWorktreeBaseBranch: a project whose configuration
-// cannot be read behaves as one that never configured the key.
-//
-// The resolution chain that consults the repository's own recorded default
-// lives in prlink_landedref.go (SPEC-TODO-LANDING-ATTRIBUTION-001 M2) and is
-// deliberately NOT part of this milestone: the [HARD] ordering lands the
-// repaired predicate first, because correcting the ref first would grow the
-// false-positive population from 2 to 9 (spec.md §A.7).
 func LandedRefFor(projectRoot string) string {
-	base := strings.TrimSpace(config.LoadWorktreeBaseBranch(projectRoot))
-	if base == "" {
-		return DefaultLandedRef
-	}
-	return "origin/" + base
+	ref, _ := LandedRefForWithLevel(projectRoot)
+	return ref
 }
 
 // CommandRunner runs one subprocess and returns its combined stdout. It is
