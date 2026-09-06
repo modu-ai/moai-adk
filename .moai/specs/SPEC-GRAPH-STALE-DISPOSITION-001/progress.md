@@ -46,4 +46,19 @@ m1_to_mN_commit_strategy: single-M1-commit
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Final post-commit state measurement, taken 2026-09-07 in this worktree at HEAD `cc9137e3d`, judging build `./bin/moai` (tree-built): `./bin/moai graph check` reports codemaps fresh 15/40, mx-index fresh 0/1, edges stale 2 ("source set(s) moved: reports, specs"), citations fresh, rc=1. Edges is stale again because the card's own report commit moved two edges source sets (`.moai/reports/t493/` added, `.moai/specs/SPEC-GRAPH-STALE-DISPOSITION-001/spec.md` frontmatter transitioned) — this is the disposition SPEC's own conclusion in action: a derived artifact goes stale each time its sources move; correct reporting, not a defect. Deliberately NOT re-run (`mx scan`/`graph build`) to chase it green; the regenerated artifacts (`bin/`, `.moai/state/mx-index.json`, `.moai/project/graph/*`) stay untracked and uncommitted.
+
+```yaml
+sync_status: completed
+spec_id: SPEC-GRAPH-STALE-DISPOSITION-001
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync
+sync_subject: docs(SPEC-GRAPH-STALE-DISPOSITION-001): sync-phase — 3-phase close, completed (t493)
+frontmatter_status_transitions:
+  - in-progress -> implemented -> completed   # full transition rides the single sync commit
+changelog_entry: none   # zero production code changed; disposition SPEC with no user-facing surface
+b12_self_test_a:
+  pre_emission_grep: not-applicable   # no CHANGELOG entry emitted (B12 halted at skip-decision)
+b12_self_test_c:
+  file_path_verification: not-applicable   # no file paths claimed in a CHANGELOG entry
+```
