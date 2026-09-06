@@ -44,7 +44,7 @@ constraints_honored: cross-tree git 0 (guard) · byte-preserve (t334 dirty recor
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-06
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "c7da0d522"
 sync_status: completed
 b12_self_test_a: n/a — no CHANGELOG emission (see disposition below)
 b12_self_test_b: n/a — no AC-count comparison applicable without a CHANGELOG entry
