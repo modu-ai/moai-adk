@@ -42,10 +42,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// errSettingsDriftRefused is the sentinel a refused acquire returns. The
-// caller-facing detail is written to stdout before the return, so the refusal
-// report survives regardless of how the shell renders the error.
-var errSettingsDriftRefused = errors.New("release-integration window refused: the caller's tree has a modified tracked " + kanban.SettingsDriftWatchedPath)
+// The two surfaces get two sentinels, and the reason is this card's own rule.
+//
+// REQ-PSD-009 forbids stamping a bypass onto a lock record when there was no
+// refusal to bypass, because a record must not describe an act that did not
+// happen. `preflight` takes no window, so an error telling its caller that a
+// window was REFUSED breaks the same rule one layer up — in the text a human
+// reads rather than in a JSON field. Sharing one sentinel between a verb that
+// refuses a window and a verb that never touches one is what made the output
+// say it.
+//
+// The caller-facing detail is written to stdout before either is returned, so
+// the report survives regardless of how the shell renders the error.
+var (
+	// errSettingsDriftRefused is returned by `acquire` when the refusal layer
+	// is on and it declines to record the window.
+	errSettingsDriftRefused = errors.New("release-integration window refused: the caller's tree has a modified tracked " + kanban.SettingsDriftWatchedPath)
+
+	// errSettingsDriftDetected is returned by `preflight`, which reports a
+	// verdict and takes nothing. It is the non-zero exit a script keys on —
+	// a convenience signal, never the verdict, which is the status field.
+	errSettingsDriftDetected = errors.New("settings drift detected: a modified tracked " + kanban.SettingsDriftWatchedPath + " (no integration window was taken; see the report above)")
+)
 
 // settingsDriftGateEnabled reports whether the REFUSAL layer is on for the
 // project rooted at root (workflow.settings_drift_gate.enabled, distributed
@@ -208,7 +226,7 @@ signal, not the verdict — read the status field.`,
 				return err
 			}
 			if result.Status == kanban.SettingsDriftDetected {
-				return errSettingsDriftRefused
+				return errSettingsDriftDetected
 			}
 			return nil
 		},

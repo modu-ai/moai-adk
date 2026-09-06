@@ -250,6 +250,29 @@ settings_drift_test.go:784: ledger size_bytes 22 does not match the preserved co
 
 교차 확인: 감사자가 M6을 독립적으로 재-flip해 `settings_drift_test.go:537`에서 발화시켰고, 재생성한 `m6-executor-bypassed.txt`도 **537**로 일치한다.
 
+### sync-audit optional 2건 수리 (F4·F5, 리드 지시로 승격)
+
+**F4 — `preflight`이 잡은 적 없는 창을 거절했다고 말했다.** `errSettingsDriftRefused` sentinel을 `acquire`와 공유한 탓에, 창을 전혀 건드리지 않는 `preflight`이 `release-integration window refused …`를 냈다. **이 카드가 REQ-PSD-009에 [HARD]로 써 넣은 규칙을 자기 출력에서 어긴 것이다** — "우회할 거절이 없는데 우회로 적으면 기록이 거짓말을 한다". 같은 문장이 이 출력을 그대로 정죄한다. 다른 점은 층뿐이다: lock 레코드의 JSON 필드가 아니라 사람이 읽는 문장이다.
+
+수리: sentinel을 둘로 나눴다. `acquire`는 `errSettingsDriftRefused`(창을 실제로 거절한다), `preflight`은 `errSettingsDriftDetected`(판정만 내고 아무것도 가져가지 않는다).
+
+**단정을 두 겹으로 세웠다.** 문언 검사는 거짓말을 잡지만 그 자체가 근사다 — 다르게 쓴 거짓 주장은 빠져나간다. 그래서 **sentinel 동일성**을 앞에 놓았다: 값이 하나면 두 표면을 동시에 만족시킬 어떤 문구도 없으므로, 이것이 위조 불가능한 축이다. 문언 검사는 그 위에 얹는다 — 스크립트가 키로 삼는 것은 sentinel이고, 거짓말을 할 수 있는 것은 문장 쪽이기 때문이다. 양방향으로 단정한다: `preflight`은 거절을 주장하지 않아야 하고, `acquire`는 여전히 주장해야 한다.
+
+**초안 단정이 과했고, 그것을 고쳤다.** 처음에는 "`window`라는 낱말이 없을 것"으로 적었는데, 수리본의 `no integration window was taken`은 **더 정직한 해명**이지 거짓 주장이 아니다. 즉 초안은 명사를 금지하고 있었고 금지해야 할 것은 **주장**이었다. `refused`를 금지하는 형태로 좁혔고, 이 완화가 근사임을 테스트 주석에 적었다.
+
+RED 실측(`f4-preflight-sentinel.txt`) — 공유 sentinel을 복원한 상태, 최종 단정 4개가 전부 발화:
+
+```
+integration_settings_drift_report_test.go:174: preflight did not return its own sentinel: release-integration window refused: …
+integration_settings_drift_report_test.go:177: preflight returned the acquire refusal sentinel, so its text describes a refusal that never happened: …
+integration_settings_drift_report_test.go:186: preflight's error claims a refusal, but it takes no window to refuse: …
+integration_settings_drift_report_test.go:189: preflight's error does not name what it actually found: …
+```
+
+**F5 — 종료 코드 스윕 목록에 `internal/cli/integration.go`를 추가했다(1줄).** 거절을 호출자에게 전파하는 acquire 배선이 그 파일에 있으므로 게이트의 일부다. 감사가 카드가 손댄 Go 파일 12개 전량 독립 스윕으로 **살아 있는 결함 0**을 이미 확인했으므로 이것은 버그 수리가 아니라 커버리지 간극 메우기다. 추가 후 스윕은 여전히 통과한다(`integration.go`에 `ExitCode`/`ExitError`/`$?` 0건, 측정 확인).
+
+**F6·F7은 optional 유지에 동의한다.** F6(0바이트 dirty 파일에서 `size_bytes` 키가 빠져 JSON이 비대칭)은 소비자가 없어 유계이고, F7(`--allow-settings-drift` + `--force` 동시 경로 무검증)은 §E.2에 이미 미검증으로 이름을 남긴 항목이라 후속 카드가 맞다 — 증거 보고 뒤에 테스트를 덧붙이는 것보다 이름을 남기는 편이 정직하다는 처분이 그대로 유효하다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -257,7 +280,8 @@ run_complete_at: 2026-09-06
 run_commit_sha: 63e8e900d          # M1; 본 §E.2/§E.3 기록은 그 뒤 M2 커밋
 run_status: complete
 ac_pass_count: 20                  # AC-PSD-001..013 (007은 a/b/c/d-1..d-4, 009는 2변형, 013은 2변형으로 행 분해)
-sync_audit: PASS 0.906             # F1(Medium)/F2(Low-Med) 수리 완료; F3은 sync 소관, F4-F7 optional
+sync_audit: PASS 0.906             # F1/F2 수리 완료, F4/F5도 리드 지시로 수리; F3은 sync 소관, F6/F7은 optional 유지
+last_code_change_after_sync_close: 1a34c51ef, <this commit>  # §E.4의 "M1 이후 .go 변경 0" 귀속은 재측정 필요 — manager-docs 소관
 ac_fail_count: 0
 preserve_list_post_run_count: 0    # t334 워크트리 무수정 — 읽지도 않았다
 l44_pre_commit_fetch: n/a          # push 없음, 원격 접촉 없음(레인 규율)

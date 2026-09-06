@@ -134,6 +134,78 @@ func TestPreflightHumanReportRendersOnTheNonJSONPath(t *testing.T) {
 	}
 }
 
+// TestPreflightDoesNotClaimAWindowItNeverTook — sync-audit F4.
+//
+// `preflight` takes no integration window. An error text saying one was
+// REFUSED describes an act that did not happen, and this card already wrote
+// that prohibition into REQ-PSD-009 for the lock record: recording a bypass
+// where there was no refusal to bypass makes the record lie. The same sentence
+// condemns this output, one layer up, so the two surfaces get two sentinels.
+//
+// Both directions are asserted together. A test that only forbade the word in
+// preflight would pass if the acquire path stopped saying it too, which would
+// be a different defect wearing this one's clothes.
+func TestPreflightDoesNotClaimAWindowItNeverTook(t *testing.T) {
+	dirty := dirtyDriftWorktree(t)
+	root := t.TempDir()
+
+	out, err := runIntegration(t, root, "preflight", "--card", "t488", dirty)
+
+	// Positive control: the command ran and reported THIS run's verdict. An
+	// assertion about the wording of an error that was never produced, or
+	// about an empty buffer, asserts nothing.
+	if err == nil {
+		t.Fatalf("preflight produced no error on a drifted tree; the wording assertions below would have no subject\noutput: %s", out)
+	}
+	if strings.TrimSpace(err.Error()) == "" {
+		t.Fatalf("preflight's error text is empty; a 'does not contain' assertion over it is vacuous")
+	}
+	if !strings.Contains(out, "settings drift: DRIFT") {
+		t.Fatalf("control: preflight did not emit this run's verdict\noutput: %s", out)
+	}
+
+	// The assertions this test exists for, structural first.
+	//
+	// Sentinel identity is what cannot be faked: one shared error value is the
+	// defect, and no wording can satisfy both surfaces at once. The text check
+	// sits on top of it because the sentinel is what a script keys on and the
+	// text is what a human reads, and only the second one can lie.
+	if !errors.Is(err, errSettingsDriftDetected) {
+		t.Errorf("preflight did not return its own sentinel: %v", err)
+	}
+	if errors.Is(err, errSettingsDriftRefused) {
+		t.Errorf("preflight returned the acquire refusal sentinel, so its text describes a refusal that never happened: %v", err)
+	}
+	// Wording: the false claim is a REFUSAL, not the word "window" — saying
+	// "no integration window was taken" is the honest clarification, and an
+	// earlier draft of this test wrongly forbade it. This forbids the claim,
+	// not the noun. It is a mechanization of "do not describe an act that did
+	// not happen", not a proof of it: a differently-worded false claim would
+	// still get past, which is why the sentinel assertion above leads.
+	if strings.Contains(strings.ToLower(err.Error()), "refused") {
+		t.Errorf("preflight's error claims a refusal, but it takes no window to refuse: %q", err.Error())
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "drift") {
+		t.Errorf("preflight's error does not name what it actually found: %q", err.Error())
+	}
+
+	// The other direction: acquire DOES refuse a window, and must say so.
+	worktree := dirtyDriftWorktree(t)
+	root2 := t.TempDir()
+	writeDriftGateConfig(t, root2, true)
+
+	out2, err2 := runIntegrationIn(t, worktree, root2, "acquire", "--session", "sess-lane8")
+	if err2 == nil {
+		t.Fatalf("control: acquire did not refuse with the refusal layer on\noutput: %s", out2)
+	}
+	if !errors.Is(err2, errSettingsDriftRefused) {
+		t.Errorf("acquire did not return the refusal sentinel: %v", err2)
+	}
+	if !strings.Contains(strings.ToLower(err2.Error()), "refused") {
+		t.Errorf("acquire refused a window but its error does not say so: %q", err2.Error())
+	}
+}
+
 // TestPreflightDefaultsToTheCurrentTree covers the no-argument path, which is
 // how a lane standing in its own worktree would call it.
 func TestPreflightDefaultsToTheCurrentTree(t *testing.T) {

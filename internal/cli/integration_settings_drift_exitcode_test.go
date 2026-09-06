@@ -27,6 +27,10 @@ func settingsDriftSourceFiles() []string {
 	return []string{
 		"../kanban/settings_drift.go",
 		"../kanban/settings_drift_test.go",
+		// integration.go carries the acquire wiring that propagates the
+		// refusal to the caller — part of the gate, so part of the sweep
+		// (sync-audit F5, a coverage gap rather than a live defect).
+		"integration.go",
 		"integration_settings_drift.go",
 		"integration_settings_drift_test.go",
 		"integration_settings_drift_report_test.go",
