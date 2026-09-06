@@ -1,0 +1,19 @@
+  15612  .claude/output-styles/moai/moai.md
+   8567  .claude/rules/moai/workflow/kanban-dispatch.md
+   6707  .claude/rules/moai/core/agent-common-protocol.md
+   6657  .claude/rules/moai/core/verification-claim-integrity.md
+   5455  .claude/rules/moai/core/askuser-protocol.md
+   5299  .claude/rules/moai/workflow/session-handoff.md
+   4941  CLAUDE.md
+   4126  .claude/rules/moai/core/moai-constitution.md
+   4083  .claude/rules/moai/workflow/cross-session-messaging.md
+   3693  AGENTS.md
+   2220  .claude/rules/moai/workflow/context-window-management.md
+   1745  .claude/rules/moai/workflow/cache-aware-execution.md
+   1734  .claude/rules/moai/workflow/main-checkout-branch-guard.md
+   1731  .claude/rules/moai/workflow/goal-directive.md
+   1600  .claude/rules/moai/core/moai-mcp-tools.md
+   1398  .claude/rules/moai/workflow/skill-routing.md
+    988  .claude/rules/moai/core/native-idiom-and-register.md
+------------------------------------------------------------
+  76556  TOTAL  (17 entries)  rev=eacdc31d7

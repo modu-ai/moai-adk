@@ -884,6 +884,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		IntegrationLock: IntegrationLockConfig{
 			Enabled: false,
 		},
+		// The pre-merge settings.json drift gate ships with its REFUSAL layer
+		// off, and only that layer: detection, preservation and the ledger row
+		// run on every acquire regardless. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		SettingsDriftGate: SettingsDriftGateConfig{
+			Enabled: false,
+		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
 		// and advisory always run; a maintainer opts into denial via local
 		// config. Template neutrality: no `enabled: true` anywhere under
