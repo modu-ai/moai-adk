@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 720d71689cddb17185b046de94c91b56cc42107d816a7fa11316f3030152284d
+              hash: 169cf43a94c81c56adeac8c596c5dcaa1169543db044275c73f31f28b03de897
               version: 1.0.0
             - name: manager-spec
               tier: core
