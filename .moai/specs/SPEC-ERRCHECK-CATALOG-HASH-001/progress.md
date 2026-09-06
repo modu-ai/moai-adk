@@ -55,8 +55,41 @@ Post-correction compile check (lane-run): `go build ./internal/template/` — si
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: PASS
+measured_at_tree: 175619586
+verdict_artifact: .moai/reports/t489/verdict.md
+measurer: lane-15 session (all commands run and measured by the lane; this agent implemented the edit only)
+ac_pass_count: 5
+ac_fail_count: 0
+new_warnings_or_lints_introduced: 0
+```
+
+AC verdicts (all PASS; each pointer resolves inside `.moai/reports/t489/verdict.md` at tree
+`175619586`):
+
+- AC-GREEN — PASS → verdict.md (Run B: `0 issues.`)
+- AC-MUTANT — PASS → verdict.md (Run C: exactly 1 errcheck finding at `catalog_tree_hash.go:60:14`; Run D re-confirmed `0 issues.`)
+- AC-ORDERING — PASS → verdict.md (RED baseline commit precedes the fix commit on the card branch)
+- AC-SCOPE — PASS → verdict.md (linter-only verification; diff shape `_, _ =` + comment; no `//nolint` in `git diff 615d18c1f..HEAD -- '*.go'`)
+- AC-EVIDENCE — PASS → verdict.md (evidence committed under `.moai/reports/t489/`; every card-branch commit carries `t489`)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_commit_sha: pending-backfill-sync
+sync_status: completed
+```
+
+Close summary (card t489, sync commit carries the `draft → completed` transition — the run phase
+never committed an intermediate `in-progress` state; the single close commit shape is intended):
+
+- Fix shipped: `_, _ =` discard of the structurally-nil `fmt.Fprintf` error in
+  `internal/template/catalog_tree_hash.go` (one line + comment; no behavior change).
+- Evidence: `.moai/reports/t489/verdict.md` (primary), §E.2/§E.3 above (all AC PASS).
+- SHA placeholder backfill (D3): a commit cannot cite its own SHA; `pending-backfill-sync` is the
+  canonical placeholder and the real SHA is backfilled in a follow-up commit by the lane.
+
+CHANGELOG skip rationale: the source change is a single-line internal lint repair with no
+user-facing behavior change, so no `CHANGELOG.md` entry is emitted (precedent: t487 / t472).
+This note is the record of that decision.

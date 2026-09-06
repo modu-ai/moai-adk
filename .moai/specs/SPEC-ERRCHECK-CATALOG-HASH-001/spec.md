@@ -2,7 +2,7 @@
 id: SPEC-ERRCHECK-CATALOG-HASH-001
 title: "errcheck: discard fmt.Fprintf return value in catalog tree hash"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-09-06
 updated: 2026-09-06
 author: manager-spec
