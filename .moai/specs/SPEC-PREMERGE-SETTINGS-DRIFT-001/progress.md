@@ -130,11 +130,95 @@ unchanged_dimensions: 범위 규율(감시 대상 `.claude/settings.json` 단일
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+측정 트리: `.claude/worktrees/t488` · 브랜치 `WT-premerge-drift-assert` · M1 커밋 `63e8e900d`(그 부모 `256b30fa5`).
+아래 모든 판정은 일치 줄 수·파일 바이트·기록된 argv 문자열로 내렸다. 종료 코드로 내린 판정은 하나도 없다.
+
+### AC 매트릭스
+
+| AC | 검증 | Actual Output | Status |
+|---|---|---|---|
+| AC-PSD-001 적중 | `TestSettingsDriftPredicateHit` (F2) | `ok internal/kanban` — 뮤턴트 1에서 `match count: got 0, want 1` 로 뒤집힘 | PASS |
+| AC-PSD-002 통과 | `TestSettingsDriftPredicatePass` (F1) | 양성 대조(예상 술어 호출 정확히 1건) 성립 후 `matchCount==0`, raw `""` | PASS |
+| AC-PSD-003 경로 오지정 | `TestSettingsDriftPredicateIgnoresOtherFile` (F3) | 대조 성립 후 0. 뮤턴트 3에서 `recorded 0 occurrences of "…-- .claude/settings.json"` 로 뒤집힘 | PASS |
+| AC-PSD-004 경로 누락 | `TestSettingsDriftPredicateScopedToWatchedPath` (F4) | 1. 뮤턴트 4에서 `got 2, want 1`, raw `" M .claude/settings.json\n M README.md"` | PASS |
+| AC-PSD-005 argv 고정 | `TestSettingsDriftPredicateArgvRecordedAtExecutionBoundary` | 기록된 argv `git --no-optional-locks status --porcelain -- .claude/settings.json`, 플래그 index < `status` index | PASS |
+| AC-PSD-006 종료 코드 미의존 | `TestSettingsDriftVerdictNeverReadsAnExitCode` | 스윕 5파일 전부 판독·비어 있지 않음·구현 심볼 확인 후 `ExitCode`/`ExitError`/`$?` 0건. 대조 뮤턴트에서 `../kanban/settings_drift.go:320 reads an exit code` 로 뒤집힘 | PASS |
+| AC-PSD-007 (a) 보존 | `TestAssessSettingsDriftPreservesAndLedgers` | 보존 사본이 `<root>/.moai/state/settings-drift/` 아래, 원본과 바이트 일치(원본 비어 있지 않음을 먼저 확인) | PASS |
+| AC-PSD-007 (b) 원장 | 같은 테스트 | `ledger.jsonl` 정확히 1줄, `preserved_path`·`sha256`·`size_bytes`·`worktree`·`match_count`·`card` 일치 | PASS |
+| AC-PSD-007 (c) 충돌 접미 | `TestAssessSettingsDriftDoesNotOverwriteOnCollision` | 같은 카드·같은 내용 연속 2회 → 보존 파일 2개, 원장 2줄, 두 경로 상이 | PASS |
+| AC-PSD-007 (d-1) 양성 대조 | 같은 테스트 | 기록 목록 비어 있지 않고 예상 술어 호출 정확히 1건 | PASS |
+| AC-PSD-007 (d-2) 기록 위 부재 | 같은 테스트 | 기록 목록 토큰에 `commit`/`push` 0건 | PASS |
+| AC-PSD-007 (d-3) 직접 관측 | 같은 테스트 | 사전 대조: 두 루트 HEAD 모두 40자·서로 상이, `ls-remote` 사전 출력 비어 있지 않고 `refs/heads/main` 포함. 전후 3값 동일. **뮤턴트 6에서 `primary-root HEAD moved: "7fbd3d1b…" -> "0bad8155…"` 로 뒤집힘** — 대상 트리 HEAD는 움직이지 않았으므로 양쪽 루트를 재라는 요구가 실측으로 필요조건이었음이 확인됨 | PASS |
+| AC-PSD-007 (d-4) 미스테이징 | 같은 테스트 | `git diff --cached --name-only` 정상 종료(대조: 미실행/퇴화 구별에 그침), 출력에 `settings-drift` 0건 | PASS |
+| AC-PSD-008 원본 불변 | `TestAssessSettingsDriftLeavesOriginalUntouched` | 사전 sha256 64자 hex·사전 파일 목록 비어 있지 않음 확인 후 sha256 불변·파일 수 불변, 기록에 트리 수정 명령 0건 | PASS |
+| AC-PSD-009 거절이 창을 안 잡음 | `TestAcquireRefusesOnDriftWithGateEnabled` | 대조: 명령이 실제로 실행돼 거절 출력 생성, sha256·보존 경로 포함. `integration-lock.json` 미생성. **뮤턴트 2에서 `acquire succeeded on a drifted tree`(lock 생성) 로 뒤집힘** | PASS |
+| AC-PSD-009 사전 lock 변형 | `TestAcquireRefusalLeavesAnExistingLockByteIdentical` | 사전 lock 비어 있지 않고 보유자 이름 포함 확인 후 전후 바이트 동일 | PASS |
+| AC-PSD-010 우회 기록 | `TestAcquireBypassIsRecorded` / `TestAcquireForceIsNotASettingsDriftBypass` | lock에 `settings_drift_bypass`·`settings_drift_preserved`, 출력에 보존 경로 + `bypass`. `--force`만 준 실행은 여전히 거절되고 lock 미생성 | PASS |
+| AC-PSD-011 실패 ≠ 통과 | `TestPreflightUndeterminedOnPredicateFailure` (F5) | `status == "undetermined"`(적극 단정), `match_count` 키 부재, `error` 비어 있지 않음 | PASS |
+| AC-PSD-012 보존 실패 ≠ 통과 | `TestPreflightKeepsDriftVerdictWhenPreservationFails` | `status == "drift"`, `match_count == 1`, `preserve_error` 비어 있지 않음 | PASS |
+| AC-PSD-013 (a)-(d) 기본 자세 | `TestAcquireDefaultPostureObservesWithoutRefusing` | workflow.yaml 자체를 두지 않은 기본 설정. 창 기록됨 + 보존 사본 바이트 일치 + 원장 1줄 + 출력에 drift·보존 경로. lock에 우회 표시 없음 | PASS |
+| AC-PSD-013 (e) | `TestAcquireDefaultPostureWithAllowFlagIsIdentical` | 같은 기본 설정 + `--allow-settings-drift` → (a)-(d) 동일, lock에 우회 표시 **없음** | PASS |
+
+### 뮤턴트 6종 — 전부 뒤집어 RED를 실측
+
+출력 원본: `.moai/reports/t488/mutants/`.
+
+| # | 뮤턴트 | 포착기 | 관측된 RED |
+|---|---|---|---|
+| 1 | 술어 삭제(항상 0) | F2 / AC-PSD-001 | `match count: got 0, want 1` (`m1-predicate-deleted.txt`) |
+| 2 | 판정 반전 | AC-PSD-009 (게이트) | `acquire succeeded on a drifted tree with the refusal layer on` (`m2-verdict-inverted-gate.txt`). 같은 파일에 F1이 초록으로 남는다는 plan.md M2의 예측도 실측으로 확인 |
+| 3 | 경로를 `.claude/settings.local.json`으로 오지정 | F2/F3 + argv | `recorded 0 occurrences` + argv 불일치 (`m3-path-misspecified.txt`) |
+| 4 | 경로 인자 누락 | F4 | `got 2, want 1 (2 means the pathspec was dropped)` (`m4-pathspec-dropped.txt`) |
+| 5 | `--no-optional-locks` 제거 | 실행 경계 argv | `--no-optional-locks absent from executed argv` (`m5-no-optional-locks-removed.txt`) |
+| 6 | 게이트 경로에서 실행기 우회 | AC-PSD-007(d-3) | `primary-root HEAD moved` (`m6-executor-bypassed.txt`). (d-1)/(d-2)는 통과했다 — 기록을 읽지 않는 단정만이 잡았다 |
+
+추가 대조 1건: AC-PSD-006 스윕 자체를 뮤턴트로 뒤집어 RED 확인(`m7-exitcode-sweep-control.txt`) — 0히트가 공허하지 않음을 보였다.
+
+### 픽스처 결함 1건 — 대조가 잡았다
+
+`TestAssessSettingsDriftPreservesAndLedgers`의 두-루트 대조가 초회 전체 패키지 실행에서 발화했다: `control: the two roots resolve to the same HEAD "dc4cf481…"`. 원인은 두 픽스처 저장소의 트리·저자·메시지·타임스탬프가 모두 같아 커밋 SHA가 일치한 것이다. 대조가 옳았다 — 한 값에 대한 두 단정은 한 단정이다. 픽스처를 내용으로 구분(`newFixtureRepoNamed`)해 수리했고, `-count=5` 반복으로 재현 없음을 확인했다.
+
+### 검증 명령과 결과
+
+| 명령 | 결과 |
+|---|---|
+| `go test ./internal/kanban/... -count=1` | `ok github.com/modu-ai/moai-adk/internal/kanban 136.700s` |
+| `go test ./internal/cli/... -count=1` | 전 하위 패키지 `ok` (비-ok 줄 0건) |
+| `go test ./internal/template/... -count=1` | `ok` (중립성 감사 포함) |
+| `go test ./internal/config/... -count=1` | `TestAlwaysLoadedTokenBudget` 1건 FAIL — 아래 참조. 그 외 전부 `ok` |
+| `go vet ./internal/cli/... ./internal/kanban/... ./internal/config/...` | 출력 없음 |
+| `golangci-lint run ./internal/cli/... ./internal/kanban/... ./internal/config/...` | `0 issues.` |
+| `GOOS=windows GOARCH=amd64 go build ./...` / `GOOS=linux …` | 출력 없음 |
+| `GOOS=windows GOARCH=amd64 go vet ./internal/kanban/... ./internal/cli/` | 출력 없음(테스트까지 컴파일됨) |
+
+커버리지: `internal/kanban` 86.3%, `internal/cli` 80.6%(패키지 기존 수준). 신규 파일 단위 — `internal/kanban/settings_drift.go` 83.2%(109/131), `internal/cli/integration_settings_drift.go` 90.8%(69/76). 미커버 잔여는 전부 I/O 실패 분기다.
+
+### 알려진 red 1건 — 본 카드가 만든 것이 아니다
+
+`TestAlwaysLoadedTokenBudget`은 착수 시점 HEAD `256b30fa5`에서 이미 실패하고 있었다: `always-loaded surface = 77723 tokens (budget 77600, headroom -123)`. 이 측정의 표면은 `.claude/rules/moai/**`(paths 무제한) + `CLAUDE.md` + `AGENTS.md` + 출력 스타일이며, 착수 시점의 본 카드 변경은 전부 `internal/` 아래였으므로 이 수치는 HEAD의 값이다(`budget-baseline-before-m6.txt`).
+
+M6이 always-loaded 파일 하나(`kanban-dispatch.md`)에 [HARD] 한 줄을 더해 77723 → **77801**(+78)이 됐다(`budget-after-m6.txt`). 초과분이 123 → 201로 커졌다. 상세 기술은 always-loaded가 아닌 detail companion(`kanban-dispatch-detail.md`, paths 제한 있음)에 넣어 stub 증가분을 최소화했고, stub 문장은 세 차례 압축했다. 예산 상수(`AlwaysLoadedTokenBudget`)는 **건드리지 않았다** — 본 SPEC이 승인한 범위가 아니고, 내가 만들지 않은 123 토큰 초과를 이 카드 안으로 흡수하는 셈이 되기 때문이다. 리드 판단 사항으로 올린다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-06
+run_commit_sha: 63e8e900d          # M1; 본 §E.2/§E.3 기록은 그 뒤 M2 커밋
+run_status: complete
+ac_pass_count: 20                  # AC-PSD-001..013 (007은 a/b/c/d-1..d-4, 009는 2변형, 013은 2변형으로 행 분해)
+ac_fail_count: 0
+preserve_list_post_run_count: 0    # t334 워크트리 무수정 — 읽지도 않았다
+l44_pre_commit_fetch: n/a          # push 없음, 원격 접촉 없음(레인 규율)
+l44_post_push_fetch: n/a           # push 없음
+new_warnings_or_lints_introduced: 0 # golangci-lint 0 issues, go vet 무출력
+cross_platform_build:
+  darwin_arm64: pass               # make build
+  linux_amd64: pass                # GOOS=linux go build ./...
+  windows_amd64: pass              # GOOS=windows go build ./... + go vet(테스트 컴파일 포함)
+total_run_phase_files: 19          # 신규 7 + 수정 12(테스트·문서·미러 포함)
+m1_to_mN_commit_strategy: M1 단일 구현 커밋 + M2 증거 기록 커밋
+known_preexisting_red: TestAlwaysLoadedTokenBudget (HEAD 256b30fa5에서 이미 -123; M6이 +78)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
