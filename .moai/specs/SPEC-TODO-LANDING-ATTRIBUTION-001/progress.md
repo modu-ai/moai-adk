@@ -150,11 +150,201 @@ remains closed as a gap; no further whole-corpus lint attempt is made from this 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run by manager-develop (cycle_type=tdd), 2026-09-06, in worktree `.claude/worktrees/t472`, branch
+`WT-landed-drift-detect`, starting at HEAD `c43c07c3d`. Implementation commits: M1 `2b07aa010`
+→ M2 `00148e239` → M3 `c779a0a15`, in that order ([HARD] ordering held; no combined M1+M2 commit).
+No push, no PR, no branch creation (repo-local override, dispatch B9).
+
+### E.2.1 Open design decision (plan.md §A.2) — RESOLVED: Go-side subject filter
+
+The six shapes are expressed as a Go-side positional matcher over `git log <ref> --format=%s`,
+NOT as a widened `--grep`. Grounds, all measured or structural:
+
+1. Forms 2b/3b require "exactly one DISTINCT card token in the group" — a set property (count of
+   distinct tokens), not a pure regex property. Form 3b's target comparison is against the branch
+   DERIVED from the resolved ref (REQ-TLA-013) — a comparison, not a pattern.
+2. git has no subject-only `--grep`; a widened whole-message pattern re-admits bodies.
+3. A regex's failure mode is silent (unmatched pattern ≡ not-landed — the hazard
+   `prlink_landed.go`'s own header was written about). A Go-side matcher is inspectable and
+   unit-testable per form.
+
+REQ-TLA-005 holds: ONE exported argv builder, `LandedSubjectArgs(ref)`; the tripwire
+(`TestLandedSubjectArgs_Tripwire`) calls that symbol and asserts its output.
+
+**Non-attribution rule keying — run-phase resolution, measured.** The rule ("a merge subject that
+names a target attributes no card unless the target is the branch the resolved landed ref names")
+keys on git's merge-COMMIT subject spelling (capital-`Merge`). Keying on lowercase `merge:`
+subjects too would lose **t78** — `merge: wire audit_multi cross-model convergence into /moai
+review verdict step (t78)` — whose " into " is prose and whose sole attribution is form 2's
+trailing group: measured, the lowercase-inclusive gate scores **308** attributed / **39**
+unattributed over the pinned corpus, against the contract's 309/38. The capital-only gate
+reproduces 309/38 exactly AND satisfies AC-TLA-003 clause 3 (t284 not attributed by the absorb
+merge `c4ae1ecbd`). Both variants were measured with throwaway transcriptions before the
+implementation was written; the enumeration lives in `landedSubjectForms` + `subjectAttribution`
+(one named place, REQ-TLA-002), with the rule's keying documented there.
+
+### E.2.2 Corpus reproduction (constraint D8) — REPRODUCED EXACTLY
+
+Reference (Python transcription, `.moai/reports/t482/forms.py`), run from the worktree root:
+
+    $ git log 7835148d3 --format=%s | python3 .moai/reports/t482/forms.py
+    subjects                              : 5837
+    ids appearing anywhere in a subject   : 347
+    ids attributed (forms 1/2/2b/3a/3b/3c): 309
+    subject-present but unattributed      : 38
+    per-form subject counts               : {'1': 290, '2': 869, '2b': 43, '3a': 5, '3b': 77, '3c': 31}
+
+    RESIDUAL: t2 t21 t40 t46 t68 t73 t74 t80 t94 t121 t123 t124 t128 t129 t131 t132 t133 t134 t135
+    t137 t139 t141 t142 t143 t144 t147 t148 t149 t155 t157 t158 t216 t225 t250 t311 t409 t443 t460
+
+Implementation (Go predicate over the same subject stream), committed as
+`TestLandedPredicate_PinnedCorpusReproduction` (skips honestly when the pinned commit is absent —
+a shallow clone yields a skip, never a vacuous green):
+
+    $ go test ./internal/kanban/ -run TestLandedPredicate_PinnedCorpusReproduction -v
+    === RUN   TestLandedPredicate_PinnedCorpusReproduction
+    --- PASS: TestLandedPredicate_PinnedCorpusReproduction (0.17s)
+
+The test asserts 347 mentioned / 309 attributed / 38 residual AND pins the residual id SET (the
+38 ids above, embedded) — the partition, not merely the counts. **No divergence; no id list to
+report.** The attributed set is also invariant to single-attribution-per-subject semantics (the
+predicate answers for ONE queried card) versus the reference's union semantics — measured equal
+before implementation, via a throwaway transcription of both semantics.
+
+### E.2.3 RED evidence (TDD; acceptance.md §E gate)
+
+Pre-GREEN, against the tree as received (whose shipped predicate IS MUT-WHOLE-MESSAGE, whose
+resolver IS MUT-CONFIG-ONLY, whose silent fallback IS MUT-SILENT-FALLBACK):
+
+    $ go test ./internal/kanban/ -run 'TestLandedPredicate|TestLandedRefFor_Chain'
+    --- FAIL: TestLandedPredicate_Form1_ConventionalScope (0.27s)
+        prlink_landed_forms_test.go:96: t237 = "landed", want "not-landed" — a body mention is not an attribution
+    --- FAIL: TestLandedPredicate_Form2_TrailingParenthetical (0.28s)
+        prlink_landed_forms_test.go:120: t443 = "landed", want "not-landed" — a mid-subject mention attributes nothing (MUT-SUBJECT-ONLY)
+    --- FAIL: TestLandedPredicate_Form3_Merges (0.95s)
+        --- FAIL: .../clause_1_and_2: t216 = "landed", want "not-landed"
+        --- FAIL: .../clause_3: t386 = "landed", want "not-landed" — MUT-MERGE-ANY-TOKEN
+                          t387 = "landed", want "not-landed"
+                          t284 = "landed", want "not-landed"
+        --- FAIL: .../clause_5: t412 = "landed", want "not-landed" — MUT-NO-TARGET-TEST
+        --- FAIL: .../clause_6: t901 = "landed", want "not-landed" — MUT-HARDCODED-DEVELOP fixture
+    --- FAIL: TestLandedPredicate_Form3a_3c_CardLedMerges (0.36s)
+        prlink_landed_forms_test.go:237: t80 = "landed", want "not-landed" — a branch name inside a group attributes nothing
+    --- FAIL: TestLandedPredicate_BodyMentionNeverAttributes (0.39s)
+        t555 = "landed", want "not-landed" ; t777 = "landed", want "not-landed"
+    --- FAIL: TestLandedRefFor_ChainLevel2_OriginHEAD (0.02s → fixed fixture, then):
+        prlink_landedref_chain_test.go:53: LandedRefFor = "origin/main", want "origin/develop" — level 2 reads the repository's own recorded default (MUT-CONFIG-ONLY)
+
+    $ go test ./internal/cli/ -run 'TestTodoDone_VerdictNamesRef|TestTodoDone_DisclosesLevel3|TestTodoDone_NoDisclosureAtLevel1|TestTodoDone_WithoutFlagNoRefNamed'
+    --- FAIL: TestTodoDone_VerdictNamesRefAndDisclosesLevel2 (0.28s)
+        todo_done_ref_test.go:67: stdout = "done t1 landing=landed\n", want the answering ref named (AC-TLA-010)
+        todo_done_ref_test.go:70: stderr = "", want the answering chain level disclosed (AC-TLA-011)
+    --- FAIL: TestTodoDone_DisclosesLevel3 (0.21s)
+        stdout = "done t1 landing=landed\n", want the default ref named as the answerer ; stderr = ""
+    --- FAIL: TestTodoDone_NoDisclosureAtLevel1 (0.20s)
+        stdout = "done t1 landing=landed\n", want the configured ref named
+
+(Verbatim lines preserved above except where ellipsed for width; every elided line is a repeat of
+a shown line for a sibling id. The full raw output existed in the run transcript.)
+
+**Honesty note on the mutant corpus.** The pre-repair tree embodies exactly ONE named mutant
+(MUT-WHOLE-MESSAGE), so only its RED is genuinely pre-GREEN. The remaining mutants are
+INTERMEDIATE defective implementations that do not exist on any tree before GREEN; their failures
+were observed as post-GREEN **mutation probes** — the implementation was temporarily mutated to
+each defective shape, the named criterion was run, the verbatim red was captured, and the mutant
+was reverted (`git status` clean before and after; `git diff` empty at the end of the probe
+sequence). This satisfies verification-completeness §1.1 (each instrument's failure observed on a
+known failing input) and is recorded here as probes, not as pre-GREEN runs.
+
+| Probe (mutant injected) | Criterion that went red (verbatim tail) |
+|---|---|
+| MUT-SUBJECT-ONLY (any token in subject attributes) | `t443 = "landed", want "not-landed" — a mid-subject mention attributes nothing (MUT-SUBJECT-ONLY)` + `t461 = "not-landed", want "landed"` + clause 3/5/6 reds |
+| MUT-GROUP-ANY-TOKEN + MUT-NO-TARGET-TEST (3b group read as occurrence set; target test dropped) | `t387 = "landed" ... (MUT-MERGE-ANY-TOKEN)` ; `t284 = "landed" ...` ; clause 5: `t412 = "landed", want "not-landed" — same card, wrong target ... (MUT-NO-TARGET-TEST)` |
+| MUT-NO-FORM-2B / MUT-PAREN-END-ANCHOR (form 2b disabled) | `t210 = "not-landed", want "landed" — form 2b: a card group before one reference group (MUT-NO-FORM-2B)` |
+| MUT-HARDCODED-DEVELOP (literal `develop` in 3b + rule) | clause 6: `t900 = "not-landed", want "landed"` ; `t901 = "landed", want "not-landed"` — both directions |
+| MUT-NO-FORM-3A + MUT-NO-FORM-3C (card-led shapes disabled) | `t244 = "not-landed", want "landed" ... (MUT-NO-FORM-3A)` ; `t79 = "not-landed", want "landed" ... (MUT-NO-FORM-3C)` |
+| MUT-FIRST-TOKEN-OF-GROUP (form 2 widened to first token of any trailing group) | `t80 = "landed", want "not-landed" — a branch name inside a group attributes nothing` — the silent false positive §A.4.2 declines (also mutated form-2's anchor shape: `t401 = "not-landed"`, `t461 = "not-landed"`) |
+
+All probes reverted; final tree byte-identical to the M3 commit (`git status --short` → only the
+pre-existing untracked `.moai/reports/t472/run-handoff-2026-09-06.md`).
+
+### E.2.4 Definition-of-Done checks (acceptance.md §F)
+
+Live `todo pr` re-run in this tree (binary built from THIS tree, `go build -o /tmp/moai-t472-verify
+./cmd/moai`; the verb is read-only and wrote nothing):
+
+    $ /tmp/moai-t472-verify todo pr --json   (filtered to the DoD ids)
+    t237 no-link        (was the measured false positive — no longer reads landed)
+    t312 no-link        (was the second origin/main false positive)
+    t401 landed         (true positive survives — against origin/develop, which the
+                         M2 chain now selects via refs/remotes/origin/HEAD)
+    rows_total 57
+
+t440, t210, t216, t443 are absent from the live queue (57 rows scanned), so their DoD evidence is
+carried by the pinned-corpus test (neither t440 nor t210 is in the pinned residual — t210's
+form-2b positive control holds corpus-wide) and by the fixture tests that assert t440 and t210 in
+both directions. t440's `docs(t440): …` subject is form 1's own example in spec.md §A.4.
+
+### E.2.5 Verification batch (attributable; HEAD `c779a0a15` unless noted)
+
+- **Full scoped suites** (this tree; NOT a local full-repo run — CI's verdict is the full suite):
+
+      $ go test ./internal/kanban/   → ok  github.com/modu-ai/moai-adk/internal/kanban  139.796s
+      $ go test ./internal/cli/      → ok  github.com/modu-ai/moai-adk/internal/cli     309.916s
+
+- **Coverage** (E3): `go test -cover ./internal/kanban/` → `coverage: 86.7% of statements` — ≥ 85%
+  package target. (cli package not re-measured with -cover; its suite is 310s and the dispatch
+  scoped E3 to kanban.)
+- **Cross-platform** (E2): `go build ./...` rc=0; `GOOS=windows GOARCH=amd64 go build ./...` rc=0
+  (both re-run after M1 and after M2; final at M3 tree).
+- **Lint** (E5): `golangci-lint run --timeout=2m ./internal/kanban/... ./internal/cli/...` →
+  `0 issues.` — identical to the pre-flight baseline (`0 issues.`), so **zero new lint issues**.
+- **Subagent boundary** (E4): `grep -rn 'AskUserQuestion' internal/kanban internal/cli/todo.go
+  internal/cli/todo_pr.go | grep -v _test.go | grep -v '// '` → empty (rc=1).
+- **go vet**: clean on both touched packages.
+- **Push state** (E6): three commits on `WT-landed-drift-detect`, NOT pushed — by design (repo-local
+  override; integration is the lead's develop-merge window).
+- **Pre-existing fixture update, SPEC-justified**: three CLI test stubs keyed landing answers on
+  the card id inside the query argv. The subject-stream query no longer carries the id (the
+  predicate matches stream-side — the defect being the argv's per-card grep), so the stubs plan
+  answers per call; one stub subject (`abc1234 landed t2`) was rewritten to an attributing
+  position — its old mid-subject mention is precisely what M1 stopped reading as a landing. All
+  other cli tests pass unmodified.
+
+### E.2.6 Debt and scope discipline
+
+- D3-2 (t311), D3-3 (merge denominator 661), D3-4 (nine-targets list), D3-5 (plan §D wording), and
+  the standing residual floor remain debt, untouched. The corpus test PINS the residual as
+  measured; it does not classify it.
+- SPEC body content of spec.md/plan.md/acceptance.md: unmodified. Frontmatter writes limited to
+  spec.md `status: draft→in-progress` + `updated: 2026-09-06` on the M1 commit. progress.md §E.2/§E.3
+  authored here; §E.4 untouched (manager-docs).
+- PRESERVE held: internal/statusline/** untouched (its `LandedRefFor` call site inherits the chain
+  through the shared resolver — a behavior change of the resolver, not of its code);
+  .moai/reports/t472/** untouched except the pre-existing untracked handoff note;
+  .moai/reports/t482/** only read (forms.py executed; it writes residual.json under its own
+  directory); template trees untouched. Files changed overall: 3 implementation files
+  (prlink_landed.go, prlink_landedref.go, todo.go) + 1 doc string (todo_pr.go help body) + 8 test
+  files.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-06
+run_commit_sha: c779a0a15   # M3, the last implementation commit; the evidence commit carrying this section follows it
+run_status: complete
+ac_pass_count: 13           # AC-TLA-001..012 + AC-TLA-003b
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # files under PRESERVE modified: none
+l44_pre_commit_fetch: n/a   # repo-local override: no push path; lead performs develop integration
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0   # baseline 0 issues -> 0 issues
+cross_platform_build:
+  host: pass                # go build ./... rc=0
+  windows_amd64: pass       # GOOS=windows GOARCH=amd64 go build ./... rc=0
+total_run_phase_files: 12   # 4 impl (incl. 1 new) + 8 test (3 new, 5 updated)
+m1_to_mN_commit_strategy: "M1 2b07aa010 -> M2 00148e239 -> M3 c779a0a15; strict [HARD] order held; no combined commit; no push (repo-local override)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
