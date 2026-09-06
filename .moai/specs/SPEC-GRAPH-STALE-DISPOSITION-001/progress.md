@@ -1,0 +1,24 @@
+# progress.md — SPEC-GRAPH-STALE-DISPOSITION-001
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+```yaml
+plan_status: audit-ready
+plan_complete_at: 2026-09-07
+tier: S
+artifacts: [spec.md, plan.md, progress.md]
+card: t493
+branch: WT-graph-mxindex-edges
+```
+
+## §E.2 Run-phase Evidence
+
+_<pending run-phase>_
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
