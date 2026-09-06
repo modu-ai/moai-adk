@@ -297,4 +297,80 @@ pre_existing_red_not_attributable_to_this_card:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-06
+sync_commit_sha: self-referential-see-note
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-GRAPH-GATE-RESTAMP-001' CHANGELOG.md → 0 (중복 없음 · 발행 가능)"
+b12_self_test_b: "acceptance.md 고유 AC 식별자 7개(AC-1..AC-7). CHANGELOG 항목이 'Seven acceptance criteria PASS'로 같은 수를 참조 — 0이 아닌 실측값"
+b12_self_test_c: "CHANGELOG가 주장하는 경로 8개 전부 ls 확인: spec.md · plan.md · progress.md · internal/graph/check_restamp_anchor_test.go · internal/graph/check_regression_lock_test.go · internal/cli/graph_check.go · internal/cli/doctor.go · .moai/reports/t478/lane-verification.md"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Fixed 최상단 (line 353, 종전 최상단 t467 항목 앞)"
+frontmatter_status_transitions:
+  spec_md: "status in-progress → completed, updated 2026-09-04 → 2026-09-06"
+  plan_md: "N/A — frontmatter 블록 없음(첫 줄이 H1). 없는 블록을 만들지 않았다"
+  acceptance_md: "N/A — 같음"
+  progress_md: "N/A — 같음"
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC은 전방 정책을 정의하지 않는다 — 게이트 측정 기점 변경 1건이다"
+```
+
+### 검증 (sync-phase 자체 측정 · 전부 로컬 · CI 아님)
+
+| 명령 | 관측 |
+|---|---|
+| `go build ./...` | `RC=0` |
+| `go test ./internal/graph/... -count=1` | `RC=0` — `ok github.com/modu-ai/moai-adk/internal/graph 27.770s` · `ok .../internal/graph/symbol 0.568s` |
+| `git status --porcelain .moai/project/codemaps/` | 무출력 — `provenance.json` 바이트 불변(codemaps 재생성·재스탬프 미실행) |
+| `wc -l docs-site/content/*/cli-reference/graph.md` | ko/en/ja/zh 전부 114행 |
+| `grep -c '^#' ...graph.md` | 4본 전부 표제 8개 — 로케일 구조 대조 성립 |
+
+### 문서 동기화 — 무엇을 고쳤고 무엇을 두었나
+
+`docs-site/content/{ko,en,ja,zh}/cli-reference/graph.md` 4본만 손댔다. 다른 사용자 표면에는
+이 변경으로 거짓이 되는 문장이 없다: `grep -rln 'described-source-diff\|graph stamp\|graph check\|Graph Freshness'`
+를 `docs-site/` · `README*.md` · `.moai/docs/` · `.github/workflows/` 에 돌려 나온 것은 위 4본과
+`.github/workflows/graph-freshness.yml` 뿐이고, 워크플로는 산문이 아니라 종료코드 계약을 소비하는데
+그 계약은 이번에 바뀌지 않았다.
+
+로케일마다 동일하게 고친 문장 3곳:
+
+1. "스탬프된 생성 커밋 이후 달라진 묘사 대상 파일 수" → "콘텐츠 앵커 이후" — 측정 기점이 옮겨졌으므로
+   종전 서술은 그대로 거짓이 된다.
+2. "`moai graph check`가 codemaps 층을 판정하는 근거가 이 기록" → "이 기록을 출발점으로 콘텐츠 앵커를
+   찾아 판정" — 스탬프는 이제 앵커 해결의 입력이지 측정 기점 자체가 아니다.
+3. `--commit` merge-base 근거 문단에 한정절 1문장 추가 — 실제 측정 기점이 그 커밋보다 앞설 수 있다.
+   종전 문장의 "다른 PR이 머지한 변경까지 내 드리프트로 세지 않는다"가 앵커 도입 후 경계 사례에서
+   더는 무조건 참이 아니기 때문이다.
+
+추가한 문단 1개(로케일마다 1개): 규칙 A/B, `content_anchor` · `content_anchor_source` 노출 위치,
+그리고 붉은 게이트를 만난 사람이 필요로 하는 처방 — 스탬프를 다시 찍지 말고 `/moai codemaps` 로
+본문을 다시 만든 뒤 스탬프하라.
+
+일부러 문서화하지 않은 것:
+
+- **C2 분기의 fail-closed 처분**. 도달 가능한 git 상태가 없다는 측정에 근거한 내부 사정이라 사용자
+  문서의 표면이 아니다. SPEC 과 CHANGELOG 에만 남긴다.
+- **`--json` 스키마의 필드 전수 열거**. 기존 문서가 다른 필드도 산문으로만 다루므로 같은 형식을 지켰다.
+- **`.github/workflows/graph-freshness.yml`**. 워크플로 자체는 변경 0이다.
+
+### Gaps — 이 sync 에서 재지 않은 것
+
+- **`hugo build` 미실행.** docs-site 가 초록으로 빌드되는지 이 문서는 아무것도 주장하지 않는다.
+- **`go test ./...` 미실행**(레인 규율). `internal/cli` 의 기존 red
+  `TestBinaryLag_DoctorCheckNameSetIsUnchanged` 는 이 카드 착수 전부터 붉고 이 카드가 건드리지 않은
+  `internal/cli/doctor.go` 를 읽는다 — sync-phase 에서 재실행하지 않았고, 여전히 붉은 채로 남아 있다.
+- **`golangci-lint`, Windows/Linux 크로스 빌드 미실행.**
+- **CI 판정 없음.** 브랜치는 미푸시이며 이 트리의 어떤 수치도 CI 관측이 아니다.
+- **ja/zh 문장 원어민 검수 없음.** ko/en 에서 파생했다.
+
+### Residual-risk
+
+- docs-site 4본은 빌드로 검증되지 않았다. 표·shortcode·프론트매터를 건드리지 않은 산문 편집이라
+  위험은 낮지만 0은 아니다 — 배포 시 드러난다.
+- **`sync_commit_sha` 는 값이 아니라 표식이다.** 커밋은 자기 자신의 해시를 담을 수 없다 — sync 커밋
+  SHA 를 이 파일에 적으면 그 편집이 곧 커밋을 다시 만들어 적어 둔 값을 즉시 거짓으로 만든다(amend 로
+  접어도 마찬가지다: amend 는 새 SHA 를 만들고, 파일 안의 값은 이미 사라진 커밋을 가리킨다). 그래서
+  §E.3 의 `run_commit_sha: pending-backfill` 과 같은 처분을 따라 값 자리에 표식을 둔다. 이 SPEC 의
+  sync 커밋을 식별하는 근거는 커밋 그래프다: 이 파일의 §E.4 를 도입한 커밋이 그것이며,
+  `git log --oneline -- .moai/specs/SPEC-GRAPH-GATE-RESTAMP-001/progress.md` 의 최신 항목으로 읽는다.
