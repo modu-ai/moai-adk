@@ -109,9 +109,15 @@ Five outcomes, distinguishable by kind alone:
              confidence inferred — read off a single PR body
   ambiguous  several open PR bodies carry it; every candidate is listed and
              none is chosen
-  landed     no open PR carries it, and ` + landedRef + ` history names it.
-             It means SOMETHING naming the card landed on that ref — NOT that
-             the card's last step landed
+  landed     no open PR carries it, and ` + landedRef + ` history carries a
+             commit whose SUBJECT ATTRIBUTES the card — a conventional-commit
+             scope, a trailing parenthetical credit (with or without a
+             pull-request reference after it), or an integration-targeted
+             merge. It means something ATTRIBUTING the card landed on that
+             ref — NOT that the card's last step landed. A body mention, a
+             mid-sentence mention, a branch name, and a dependency note do
+             NOT count: attribution is a POSITION in the subject, never a
+             token occurring anywhere in a message
   no-link    nobody has started this
   unknown    the landing question could not be asked (no such ref, no git, a
              failed query). This is NOT evidence of not-landed
