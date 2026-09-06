@@ -151,7 +151,7 @@ Counts measured over the pinned commit `7835148d3`, 5,837 subjects, 414 of them 
 | 2 | Trailing parenthetical | `(<card>)` or `(card <card>)` **closing the subject**, the group carrying nothing else | 869 | `... refresh catalog moai whole-tree hash (t447)` |
 | 2b | Trailing parenthetical **before a reference group** | a card-bearing parenthetical group carrying **exactly one** card token, followed by a **reference group** `(#NNNN)` that closes the subject — form 2's own position with a pull-request reference appended | 43 | `feat(kanban): moai todo pr — read-only card-to-PR and landed link (t210) (#1628)` |
 | 3a | Merge, card-led (`Merge card`) | subject **begins** `Merge card <card>` | 5 | `Merge card t440 (WT-delivery-notice-docs) into develop: ...` |
-| 3b | Merge, integration-targeted | the merge's **named target is the branch the resolved landed ref names** (§A.4.1), AND the subject's trailing parenthetical group carries **exactly one** card token | 76 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
+| 3b | Merge, integration-targeted | the merge's **named target is the branch the resolved landed ref names** (§A.4.1), AND the subject's trailing parenthetical group carries **exactly one** card token | 77 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
 | 3c | Merge, card-led (`merge:`) | subject **begins** `merge: <card>` — the local-merge spelling of 3a | 31 | `merge: t106 — todo queue resolves to the primary checkout from worktrees — review-PASS` |
 
 Forms 3a and 3c are one shape in two spellings: the card is the **first token after the merge
@@ -224,12 +224,21 @@ absorb record. Neither is an attribution, and both are excluded by the non-attri
 token lying inside the trailing group, which contradicted this section's own preamble: a group
 reading `(card t500 — absorb t280, includes t239)` would attribute all three — the occurrence
 reading relocated inside a parenthesis. The single-token restriction removes the contradiction at
-**zero measured cost**: of the 76 `into develop` merges whose trailing group carries a card token,
+**zero measured cost**: of the 77 `into develop` merges whose trailing group carries a card token,
 **none** names two distinct cards (per-line distinct-token count over the extracted groups → 0
 lines). The shape is nevertheless real in the corpus at large — **8** trailing groups name two or
 more distinct cards (`(t46/t73/t74)`, `(card t36, absorbs t2)`, `(t333/t347)`, `(t387 depends on
 t386 convention doc)`, …) — so the restriction guards a population that exists, merely not yet on
 this form's own subject set.
+
+**The merge verb's casing is latitude, not prescription (card t486, from t482 §2.4).** Form 3b's
+definition — named integration target, exactly one card token in the trailing group — does not
+prescribe the merge verb's casing, and an implementation shall not add a case restriction the
+corpus refutes: `^[Mm]erge … into develop` counts **77** where `^Merge …` counts **76**, and the one
+diverging subject is `merge: WT-ci-test-observability into develop (t358)`
+(`.moai/reports/t482/form3b-delta.txt`). That subject's trailing group `(t358)` carries exactly one
+card token and the subject is attributed by form 2 regardless, so the residual is invariant under
+the 76 → 77 correction — 347 / 309 / 38 and the 28-floor of §A.4.2 do not move (verdict.md §2.4).
 
 #### A.4.2 What the enumeration costs — the under-count, measured
 
@@ -301,19 +310,61 @@ population **77 → 38**:
     ids attributed under forms 1/2/2b/3a/3b/3c                                        → 309
     subject-present but attributed by no form                                         →  38
 
-**[HARD] The residual is a FLOOR, not a total.** The named-shape under-count now stands at **at least
-10** — the 7 above, plus `t311` (`merge(WT-codex-init): integrate card t340 … (closes t311)`) and
-`t121` / `t128` (`merge(lane-1): t121 …`), two further shapes the audit named and this version does
-not adopt. It is stated as a floor because **nobody has classified the 38 exhaustively** — not this
-author across three versions, not the auditor across three iterations, not the lane. Every round has
-raised the figure (1 → 19 → 7 → ≥10) because each round classified the part of the residual it
-happened to notice. A reader who needs a total must classify all 38; the command that produces them
-is the `comm -23` above. Their live-queue status is likewise **unmeasured** (`moai todo` and the
-disk store are known to disagree), so no operational-impact figure is derivable from this number
-either.
+**[HARD] The residual is a FLOOR, not a total — since card t482, a measured floor.** The 38 have
+since been classified exhaustively — every id, by shape — by card t482's audit
+(`.moai/reports/t482/verdict.md` §4, verdict line "합계 38 = C 5 + M 28 + A 5"; raw 38-id dump in
+`.moai/reports/t482/residual-evidence.txt`; measured 2026-09-04 in tree `.claude/worktrees/t482` at
+HEAD `25a3212a9`, against this SPEC's pinned corpus `7835148d3`): **5 correct exclusions (C) + 28
+clear omissions (M) + 5 judgment-deferred (A) = 38**. The clear-omission floor this section carried
+as "at least 10" therefore stands at **28 measured** — the v0.4.0 floor understated the measured
+clear omissions by 2.8×. 28 is still a floor, and this is not a closure: the 5 judgment-deferred ids
+(`t311`, `t158`, `t460`, `t155`, `t157`) were decided on subject evidence alone, were never opened
+to diff level, and opening them can only raise M — to at most 33 — never lower it. The round history
+now reads 1 → 19 → 7 → ≥10 → 28 measured; every round raised the figure because each round
+classified the part of the residual it happened to notice. The residual's live-queue status,
+unmeasured at v0.4.0, is likewise measured by the same audit — 34 of the 38 absent from the queue
+store, 4 archived, 0 live (verdict.md §2.5) — which bounds the residual's *current* operational
+impact near zero and closes nothing.
 
-The floor of 10 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D on the
+The floor of 28 therefore stands as an accepted, measured cost, re-argued in `plan.md` §D on the
 failure **direction** rather than on any dating or impact claim about the residual.
+
+**The residual's largest single shape, named: S1 — the release-integrate merge scope (card t486,
+from t482 §4.1).** Subject **begins** `merge(WT-…)` or `merge(worktree-…)`, the merge integrates
+into a **release branch** (e.g. `merge(WT-t143): integrate into release/v3.1.1`, the other spelling
+`merge(worktree-t132): …`), and the card token appears ONLY inside the merge scope — the branch
+name — never as an attribution. Two figures name it and they measure different things
+(`.moai/reports/t482/s1-reconcile.txt`; verdict.md §4.1): **shape size 18 subjects / 18 distinct
+ids** (spellings: 10 `WT-` / 8 `worktree-`) and **residual contribution 14** — the other 4 of the 18
+(`t119 t130 t145 t146`) are attributed by other forms elsewhere in the corpus and so never entered
+the residual. S1 passed unnamed through this SPEC's three author versions and three plan-audit
+iterations; it is named here so the next reader does not rediscover it. **[HARD] NAMING ONLY — the
+operator explicitly rejected adopting S1 as a form** (verdict.md §5.1 cause 2; §9 판정 1): a rule
+that reads `merge(WT-t131):` as attributing t131 attributes a **branch name** — a positional
+exception the §A.4 non-attribution rule must not pay for. No attribution form is added.
+
+**[HARD] The enumeration does not close — a property, not a count (card t486, from t482 §5.1).**
+Three measured grounds: **(a) the residual population is open** — `t409` entered 2026-09-01 and
+`t460` 2026-09-03, so new shapes were entering up to two days before the corpus pin; an enumeration
+can close for the past, never for the future. **(b) Expanding the largest residual shape — S1, the
+release-integrate merge scope (`merge(WT-…)` / `merge(worktree-…)` integrating into a release
+branch; named in full above) — into a form collides with §A.4's own [HARD] branch-name
+non-attribution rule**, the same silent over-count direction this SPEC already rejects at
+`(branch WT-t80)`. The collision is technically escapable — the merge scope and a trailing
+parenthetical are different positions, so a seventh form reading the scope token would not import
+the t80 false positive — but the escape makes the rule read *"a branch name is never an attribution,
+except in this position"*, and a rule with positional exceptions is no longer a ground of judgment
+but a post-hoc list of judgment outcomes. **(c) The structural bypass — attributing a card from
+inside a merge scope via ancestor propagation — is refuted by the corpus**: `git log d2ad26c90^2
+--not d2ad26c90^1` yields one commit carrying no card token, so the t143 merge has no inheritable
+attribution to propagate (verdict.md §2.6). The method's bias is itself measured: S1's true size is
+18, of which 4 ids accidentally matched other forms and were therefore excluded from the residual —
+**searching for a shape by reading only the residual list systematically underestimates that
+shape's true size**, and the three rounds that re-counted the residual each time (1 → 19 → 7 → ≥10)
+were exactly that under-counting procedure. The residual count is consequently not a number a
+future round could be asked to shrink: a further round that re-counts the residual repeats the
+defect this paragraph records, and the enumeration debt's termination path is card t359, not
+another round (§D).
 
 ### A.5 The ref: the repository already knows the answer
 
@@ -496,6 +547,12 @@ boundary.
 - This is recorded here as **measured context only**. The surface belongs to card **t359**, which is
   picked and carries plan-audit iteration-1 redesign items. Authoring requirements against it here
   would duplicate a live card.
+- **The enumeration of §A.4 is a transitional instrument, and card t359 is its sole termination
+  path** (card t486, from t482 §5.2(1) and §6 recommendation 4). Landing-time recording of landing
+  evidence — the merging side writing what it observed into the store, and the predicate reading
+  that — is what ends the enumeration debt; expanding the enumeration further is mitigation, not
+  resolution. Further enumeration rounds are **not the plan**; §A.4.2's non-closure property is
+  why.
 
 ### Out of Scope — axis D, the blank card-to-SPEC link
 
