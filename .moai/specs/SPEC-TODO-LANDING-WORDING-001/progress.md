@@ -78,7 +78,7 @@ evidence_export: .moai/reports/t486/run-evidence.md   # uncommitted per card con
 sync_status: completed
 spec_id: SPEC-TODO-LANDING-WORDING-001
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 82c55077c
 sync_subject: docs(SPEC-TODO-LANDING-WORDING-001): sync-phase — 3-phase close, completed (t486)
 frontmatter_status_transitions:
   - in-progress -> implemented -> completed   # full transition rides the single sync commit
