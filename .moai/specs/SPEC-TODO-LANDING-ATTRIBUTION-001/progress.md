@@ -348,7 +348,24 @@ m1_to_mN_commit_strategy: "M1 2b07aa010 -> M2 00148e239 -> M3 c779a0a15; strict 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-06
+sync_commit_sha: "pending-backfill-sync"   # placeholder — backfilled with the real SHA in the immediately following commit (a commit cannot cite its own SHA)
+sync_status: complete
+changelog_entry: none   # repo convention carries NO card-level CHANGELOG entries (release-time surface); grep count for this SPEC-ID in CHANGELOG.md = 0, deliberately kept at 0
+docs_sync: docs-site 4-locale moai-todo.md — verdict-line format (ref suffix + stderr level disclosure) and the attribution-position predicate description updated in ko/en/ja/zh in one commit
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (on the sync commit; the 3-phase close)"
+  updated: "2026-09-06"
+  plan_acceptance_frontmatter: none — both artifacts are stateless on the status axis per spec-frontmatter-schema.md (no status field present, none added)
+b12_self_test:
+  changelog_preemission_grep: 0   # grep -c 'SPEC-TODO-LANDING-ATTRIBUTION-001' CHANGELOG.md -> 0; emission correctly skipped
+  acceptance_ac_count: 13         # AC-TLA-001..012 + AC-TLA-003b (sub-ID convention; the generic numeric-only grep pattern reports 12 and misses the 003b sub-ID)
+  changelog_ac_match: n/a         # no CHANGELOG entry emitted (repo convention), so no AC-count cross-check applies
+canary_compliance_check:
+  body_edits: 0   # spec.md/plan.md/acceptance.md body untouched; frontmatter status/updated only
+  preserve: internal/**, templates, .moai/reports/t472/**, .moai/reports/t482/** untouched
+```
 
 ## §F Phase 4 Mode Selection
 
