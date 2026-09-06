@@ -1,0 +1,9 @@
+--- FAIL: TestSettingsDriftPredicateScopedToWatchedPath (0.48s)
+    settings_drift_test.go:220: match count: got 2, want 1 (2 means the pathspec was dropped)
+        raw: " M .claude/settings.json\n M README.md"
+--- FAIL: TestSettingsDriftPredicateIgnoresOtherFile (0.49s)
+    settings_drift_test.go:200: positive control: recorded 0 occurrences of "git --no-optional-locks status --porcelain -- .claude/settings.json", want exactly 1
+        recorded: [git --no-optional-locks status --porcelain]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.941s
+FAIL

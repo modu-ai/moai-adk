@@ -2,9 +2,9 @@
 id: SPEC-LEAD-DEPUTY-001
 title: "리드 세션 직렬 병목 해소 — 상주 deputy 채택 (채택·보고 위임·idle 통지)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-09-03
-updated: 2026-09-03
+updated: 2026-09-06
 author: manager-spec (card t471)
 priority: P1
 phase: "v3.1.5 target"
