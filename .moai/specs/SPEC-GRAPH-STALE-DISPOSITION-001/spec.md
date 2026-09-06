@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-STALE-DISPOSITION-001
 title: "Graph freshness gate stale-verdict disposition — correct-reporting verdict, regeneration demonstration, and mutant RED proof"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
