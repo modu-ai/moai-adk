@@ -1,0 +1,1 @@
+verdict=gated marker=0 name=0 rc=0 out=24806 err=0 capture=/tmp/t502-selftest-27J2flj1/lab/copy/home-lit/.probe-capture/out

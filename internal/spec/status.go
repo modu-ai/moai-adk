@@ -85,31 +85,38 @@ func ParseStatus(specDir string) (string, error) {
 	return parseStatusFromContent(string(content))
 }
 
-// updateStatusInContent detects format and updates status field
+// updateStatusInContent detects format and updates status field.
+//
+// SPEC-STATUS-DRYRUN-001 R2 (REQ-003/REQ-004): frontmatter-anchored. A
+// document carrying a frontmatter block is updated INSIDE that block only
+// (update the status: line, or insert one when absent) — body content
+// (version-history tables, backticked prose) is never modified. The legacy
+// body table/list update paths survive only for documents with no frontmatter
+// block, so frontmatter-less Format D/E SPECs keep reconciling.
 func updateStatusInContent(content, newStatus string) (string, error) {
 	lines := strings.Split(content, "\n")
 
-	// Read first 30 lines for format detection
+	// R2: frontmatter-anchored write (REQ-003). Malformed (unterminated)
+	// frontmatter is treated as no frontmatter and takes the legacy path.
+	if _, _, ok := frontmatterBlock(lines); ok {
+		return updateStatusInYAML(lines, newStatus)
+	}
+
+	// Legacy fallback (REQ-004): body formats, first-30-line sample gating.
 	sampleLines := lines
 	if len(sampleLines) > 30 {
 		sampleLines = sampleLines[:30]
 	}
 	sample := strings.Join(sampleLines, "\n")
 
-	// Format detection (order matters: check more specific patterns first)
 	if strings.Contains(sample, "| 상태 |") || strings.Contains(sample, "| Status |") {
-		// Table format (Format E) - check before YAML since tables may have ---
+		// Table format (Format E)
 		return updateStatusInTable(lines, newStatus)
 	}
 
 	if strings.Contains(sample, "- **Status**:") || strings.Contains(sample, "- **상태**:") {
 		// Markdown list format (Format D)
 		return updateStatusInMarkdownList(lines, newStatus)
-	}
-
-	if strings.Contains(sample, "---") {
-		// YAML frontmatter (Format A/B)
-		return updateStatusInYAML(lines, newStatus)
 	}
 
 	// No frontmatter - add YAML frontmatter (Format F)
@@ -240,34 +247,63 @@ func addYAMLFrontmatter(content, newStatus string) (string, error) {
 	return frontmatter + content, nil
 }
 
-// parseStatusFromContent extracts status from content
+// frontmatterBlock locates the YAML frontmatter block: a "---" line at the
+// document head followed by a closing "---" line. It returns the inclusive
+// start and end line indexes. A document whose frontmatter block is unterminated
+// is treated as having none (legacy fallback applies; no panic).
+//
+// @MX:ANCHOR: [AUTO] shared frontmatter-block locator for status read/write paths
+// @MX:REASON: both parseStatusFromContent and updateStatusInContent anchor on this predicate (SPEC-STATUS-DRYRUN-001 R1/R2); a change here moves the read AND write anchor at once
+func frontmatterBlock(lines []string) (start, end int, ok bool) {
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return 0, 0, false
+	}
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			return 0, i, true
+		}
+	}
+	return 0, 0, false
+}
+
+// parseStatusFromContent extracts status from content.
+//
+// SPEC-STATUS-DRYRUN-001 R1 (REQ-001/REQ-002): frontmatter-anchored. When the
+// document carries a frontmatter block with a status: key, that key is the
+// status and the body is never consulted — body history tables (`| Version |
+// Date | Status | Notes |` headers) and backticked prose are NOT status
+// carriers. The legacy body table/list formats apply only as a fallback for
+// documents with no frontmatter status (Format D/E), with the first-30-line
+// sample gating preserved for the fallback attempt.
 func parseStatusFromContent(content string) (string, error) {
 	lines := strings.Split(content, "\n")
 
-	// Read first 30 lines
+	// R1: frontmatter-anchored read (REQ-001). A frontmatter block without a
+	// status: key falls through to the legacy body formats (REQ-002).
+	// R1: frontmatter-anchored read (REQ-001). A frontmatter block without a
+	// status: key falls through to the legacy body formats (REQ-002).
+	if start, end, ok := frontmatterBlock(lines); ok {
+		if status, found := parseStatusFromYAML(lines[start : end+1]); found {
+			return status, nil
+		}
+	}
+
+	// Legacy fallback (REQ-002): body table / markdown list. Sample gating is
+	// kept for the fallback attempt only.
 	sampleLines := lines
 	if len(sampleLines) > 30 {
 		sampleLines = sampleLines[:30]
 	}
 	sample := strings.Join(sampleLines, "\n")
 
-	// Try table format first (most specific pattern)
 	if strings.Contains(sample, "| 상태 |") || strings.Contains(sample, "| Status |") {
 		if status, found := parseStatusFromTable(lines); found {
 			return status, nil
 		}
 	}
 
-	// Try Markdown list format
 	if strings.Contains(sample, "- **Status**:") || strings.Contains(sample, "- **상태**:") {
 		if status, found := parseStatusFromMarkdownList(lines); found {
-			return status, nil
-		}
-	}
-
-	// Try YAML frontmatter
-	if strings.Contains(sample, "---") {
-		if status, found := parseStatusFromYAML(lines); found {
 			return status, nil
 		}
 	}
@@ -275,7 +311,8 @@ func parseStatusFromContent(content string) (string, error) {
 	return "", fmt.Errorf("could not parse status from spec.md")
 }
 
-// parseStatusFromYAML extracts status from YAML frontmatter
+// parseStatusFromYAML extracts the status: value from the lines of a YAML
+// frontmatter block (lines[start:end] inclusive per frontmatterBlock).
 func parseStatusFromYAML(lines []string) (string, bool) {
 	inFrontmatter := false
 
