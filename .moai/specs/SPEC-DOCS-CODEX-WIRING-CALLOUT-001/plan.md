@@ -24,7 +24,7 @@ tier: M
 ### A.1 결정 우선순위 (변경 가능성 높은 순 — 검토 집중 지점)
 
 1. **절 배치** — Hook Delivery 뒤·종료 코드 앞 (REQ-DWC-003). ko 66행 경계, 4로케일 동일 상대 위치.
-2. **절 제목·배지 형태** — ko `## Codex Wiring 진단 {{< new-badge v3.1.4 >}}` / en `## Codex Wiring check {{< new-badge v3.1.4 >}}` / ja `## Codex Wiring 診断 {{< new-badge v3.1.4 >}}` / zh `## Codex Wiring 诊断 {{< new-badge v3.1.4 >}}`. **배지를 v3.1.3으로 "수정" 금지** (spec §1.5).
+2. **절 제목·배지 형태** — ko `## Codex Wiring 진단 {{< new-badge v3.1.4 >}}` / en `## Codex Wiring check {{< new-badge v3.1.4 >}}` / ja `## Codex Wiring 診断 {{< new-badge v3.1.4 >}}` / zh `## Codex Wiring 诊断 {{< new-badge v3.1.4 >}}`. **배지를 v3.1.3으로 "수정" 금지** (spec §1.5). zh 헤딩이 `诊断`(診斷의 간체) 인 것은 ko 정본 용어 '진단'의 직접 한자 대응을 따른 것이다 — zh 페이지 본문에서 '诊断' 은 9회 관측된 용어이고, 기존 H2 일부의 `检查` 는 '점검' 계열이라 다른 어휘다 (plan-audit iter1 D2 — 근거 명시).
 3. **fatal 케이스 서술 수위** — 유일 fatal인 `enabled` 형태 불량을 절의 핵심 경고로, 나머지는 조언형 목록으로.
 4. **크로스링크 형태** — locale 접두 절대경로 `/ko|en|ja|zh/advanced/codex-dual-harness` (기존 링크 관례: ko doctor.md 53행 `/ko/advanced/home-hygiene`).
 5. (기계적) 표 구성·문장 다듬기 — 마지막에.

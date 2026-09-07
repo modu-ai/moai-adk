@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-CODEX-WIRING-CALLOUT-001
 title: "docs-site moai doctor 페이지에 Codex Wiring 진단 콜아웃 4로케일 반영"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-08
 updated: 2026-09-08
@@ -19,6 +19,7 @@ tier: M
 ## HISTORY
 
 - 0.1.0 (2026-09-08): plan-phase 최초 작성. 카드 t535 (Class C, Tier M — 원인은 이미 확립돼 있다). 워크트리 t535 (branch `WT-docs-codex-callout`, baseline `a849d99d2` = origin/develop tip)에서 이번 실행으로 격차를 재측정해 §1에 고정했다 (VCI §2). 원인은 이미 확립돼 있다 — `moai doctor` 의 "Codex Wiring" 진단이 v3.1.4 문서화 콜아웃 관례 시대에 배포됐는데 docs-site 에 콜아웃 절이 없다. 작업은 docs-site 4로케일 `cli-reference/doctor.md` 에 H2 절을 하나씩 추가하는 것뿐이다.
+- 0.2.0 (2026-09-08): plan-audit iter1 **PASS 0.86** (Tier M 기준 0.80, 반복 1/3 — `.moai/reports/t535/plan-audit-iter1.md`). 차단 D1 + 선택 D2–D4 적용. D1: acceptance §D.1 추적 맵에 `AC-DWC-002→REQ-DWC-014` 보완 + `REQ-DWC-015→AC-DWC-013` 간접 적용 선언. D2: plan §A.2 에 zh 헤딩 `诊断` 용어 근거 명시(ko 정본 한자 대응 + 본문 9회 관측). D3: REQ-DWC-010 에 progress.md 라이프사이클 기록 예외 명시(AC-DWC-013 정합). D4: acceptance §A 에 공유 RED-now 셀 규약 명시. 오탈자 2건(`moa doctor`→`moai doctor`, Class 라벨)과 가드 거부형 루프 명령 2곳의 평문 분해는 iter1 이전 커밋(`80401bece`)에서 이미 적용됨.
 
 ## 1. 문제 — 측정된 형태
 
@@ -99,7 +100,7 @@ SPEC-DOCS-V313-CATCHUP-001 (카드 t274, status: completed 2026-08-26)이 CHANGE
 - **REQ-DWC-007** (Ubiquitous): The section shall cross-link to the per-locale Codex Dual Harness page using the locale-prefixed absolute path form (`/ko/advanced/codex-dual-harness`, `/en/advanced/codex-dual-harness`, `/ja/advanced/codex-dual-harness`, `/zh/advanced/codex-dual-harness`) — 대상 페이지는 4로케일 모두 실재(이번 실행 관측).
 - **REQ-DWC-008 (shall not)**: The badge for this section shall not read `v3.1.3` — the check ships first in v3.1.4 (§1.5 귀속 근거 유지). Rewriting the badge to match a v3.1.3-era reading of the docs is a false attribution and a review-blocking defect.
 - **REQ-DWC-009 (While)**: While this SPEC is in run phase, docs-site conventions shall hold: no decorative body emoji (`{{< icon ... >}}` shortcode만 허용); Mermaid는 도입 시 TD-only; URLs는 `adk.mo.ai.kr` 허용 리스트만; 강조 표기 간격 규칙(`**단어** (Word)` — 괄호는 마커 밖); facts·figures·commands·code blocks는 로케일 간 verbatim 보존.
-- **REQ-DWC-010 (While)**: While this SPEC is in run phase, the harness shall not modify any Go source under `internal/`/`pkg/`/`cmd/`, any template under `internal/template/templates/`, any `docs-site/layouts/`/`shortcodes/` file, any sidebar/menu/nav file (`_meta.yaml`, `data/menu/main.yaml`, `menu.html` — doctor 페이지는 이미 메뉴에 있다), or any other docs page. The write surface is exactly the four doctor.md files.
+- **REQ-DWC-010 (While)**: While this SPEC is in run phase, the harness shall not modify any Go source under `internal/`/`pkg/`/`cmd/`, any template under `internal/template/templates/`, any `docs-site/layouts/`/`shortcodes/` file, any sidebar/menu/nav file (`_meta.yaml`, `data/menu/main.yaml`, `menu.html` — doctor 페이지는 이미 메뉴에 있다), or any other docs page. The write surface is exactly the four doctor.md files (본 SPEC 디렉터리의 progress.md 등 라이프사이클 진행 기록은 콘텐츠 쓰기 표면이 아니므로 이 제한 밖이다 — AC-DWC-013 과의 정합, plan-audit iter1 D3).
 - **REQ-DWC-011 (When)**: When a behavioral claim in the section cannot be traced to `internal/cli/doctor_codex.go` (or `internal/cli/clean.go` for the ghost-collection verb), the claim shall be dropped or reworded to its observed citation — no invented behavior enters user documentation.
 - **REQ-DWC-012 (When)**: When run-phase work begins, the §1.1 absence cell shall be re-verified against the then-current tree with `/usr/bin/grep -rn 'Codex Wiring' docs-site/` — no carry-over from plan-phase observations (VCI §2).
 - **REQ-DWC-013 (When)**: When the run phase completes, the hns-oss-docs-verify axes shall report zero NEW violations — (1) warning-free hugo build, (2) 4-locale section-count parity (doctor.md H2 = 8 ×4), (3) URL-blacklist grep 0 hits, (4) Mermaid LR/RL 0 hits, (5) body-emoji scan 0 new hits. Axes already green at the baseline stay green.

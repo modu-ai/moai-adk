@@ -19,6 +19,7 @@ tier: M
 - 부재 판정 명령은 `/usr/bin/grep` — 이 리포 셸 `grep` 은 ugrep 래퍼로 부재 판정을 무효화할 수 있다 (REQ-DWC-014).
 - RED-now 셀의 귀속 baseline: 워크트리 t535, branch `WT-docs-codex-callout`, tree SHA `a849d99d2` (full `a849d99d2421cc43fb15fef35c61c74da279cb03`), 관측일 2026-09-08. 이 문서에 개별 pin이 없는 AC 는 이 문서 수준 pin에 묶인다 (verification-completeness §2.1).
 - 각 AC는 RED-now 셀 + green 경로 셀의 쌍이다. green 경로는 명시한 마일스톤이 뒤집는다.
+- AC-DWC-004..014 의 RED-now 셀은 §D 도입부의 baseline 관측(부재 0히트·H2 7×4·대조군 2×4·절 순서)을 **공유 셀**로 참조해 유지된다 — 각 셀이 RED를 다시 쓰지 않는 것은 의도다: 같은 관측을 반복 인용하면 실측이 사본으로 희석된다. 공유 셀은 문서 수준 pin(`a849d99d2`)에 묶이고 모두 이번 트리에서 재실행 가능한 형태다 (plan-audit iter1 D4 명시).
 
 ## §D AC Matrix (14 — Tier M 상한 16 이내)
 
@@ -84,7 +85,8 @@ tier: M
 
 - release-blocking: AC-DWC-001, 003, 004, 005, 006, 007, 008, 013, 014 (결함 본질·허위 귀속 방지·코드 충실)
 - regression-guard: AC-DWC-002, 009, 010, 011, 012 (베이스라인 유지·관례 스윕 — RED가 규약상 항상 재실행 가능하나 일부는 음성 증거 성격)
-- 추적: AC-DWC-001→REQ-DWC-012·014 / 003→REQ-DWC-002 / 004→REQ-DWC-002·008 / 005→REQ-DWC-003 / 006→REQ-DWC-007 / 007→REQ-DWC-004·011 / 008→REQ-DWC-005 / 009→REQ-DWC-006 / 010→REQ-DWC-009 / 011→REQ-DWC-009 / 012→REQ-DWC-013 / 013→REQ-DWC-010 / 014→REQ-DWC-001
+- 추적: AC-DWC-001→REQ-DWC-012·014 / 002→REQ-DWC-014 (대조군·baseline 유지는 부재 검증 규약의 양성 needle 축) / 003→REQ-DWC-002 / 004→REQ-DWC-002·008 / 005→REQ-DWC-003 / 006→REQ-DWC-007 / 007→REQ-DWC-004·011 / 008→REQ-DWC-005 / 009→REQ-DWC-006 / 010→REQ-DWC-009 / 011→REQ-DWC-009 / 012→REQ-DWC-013 / 013→REQ-DWC-010 / 014→REQ-DWC-001
+- REQ-DWC-015 (t538 표면 미흡수) 는 AC-DWC-013 (쓰기 표면 4파일 한정) 을 통해 간접 적용된다 — 4파일 밖 변경 금지가 곧 t538 소관 표면의 미흡수 집행이다. plan-audit iter1 D1 에서 선언된다.
 
 ## §D.2 경계 케이스
 
