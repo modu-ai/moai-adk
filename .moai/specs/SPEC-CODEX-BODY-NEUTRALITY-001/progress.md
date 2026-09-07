@@ -127,7 +127,7 @@ M4 재생성 **후**의 TOML 실측:
 
 ```yaml
 run_complete_at: 2026-09-07
-run_commit_sha: pending-backfill
+run_commit_sha: 321111fe5   # M3+M4 = run-phase 최종 커밋. 마일스톤 분리 3커밋의 마지막이며 M1 `7b4ba4491` · M2 `c3ea4670e` 가 선행한다.
 run_status: complete
 ac_pass_count: 14
 ac_fail_count: 0
