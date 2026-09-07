@@ -42,4 +42,13 @@ m1_to_mn_commit_strategy: per-milestone commits (M1 e7d2a1658, M2 6ae337e60, M3 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_commit_sha: pending-backfill-sync (backfill owed — a commit cannot cite its own SHA; backfilled in the follow-up commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+b12_self_test_a: SPEC-ID pre-emission grep count = 0 (safe to emit; rc=1, no prior entry)
+b12_self_test_b: AC count match — acceptance.md distinct AC identifiers = 13, CHANGELOG entry references the 13-AC close (run report: ac_pass_count 13 / ac_fail_count 0, read from .moai/reports/t503/run-evidence.md)
+b12_self_test_c: file-path verification — CHANGELOG-named paths (`internal/template/commandemit`, `.agents/skills/moai-<command>/SKILL.md`, `templates/.gitignore`, root `.gitignore`) confirmed present on this tree
+changelog_entry_position: [Unreleased] ### Added, first bullet
+frontmatter_status_transitions: spec.md in-progress → completed (merged 3-phase close; updated: 2026-09-07 unchanged); plan.md / acceptance.md stateless on the status axis per spec-frontmatter-schema.md § Artifact Statelessness — no status field to transition
+canary_compliance_check: n/a — this SPEC defines no forward-looking policy its own sync tests
+mx_tag_validation: 16/16 published bodies retain the verbatim `Use Skill("moai")` boundary line (run-phase verified); no @MX tag repair needed on the sync surface
+user_facing_docs_note: DEFERRED — broader user-guide / docs-site documentation of the codex skill publication surface is out of this phase's scope; the SPEC's own doc requirement (R-007 / D5, CLAUDE.local.md §2 pointer) landed in M4. docs-site 4-locale + hugo-build discipline is a separate surface (per card t503 dispatch, docs-site/ not touched in this phase)
