@@ -113,6 +113,8 @@ boundary_check:
 prune_regression:
   population_command: "go test -list 'TestPruneCodexSkillEntries|TestJudgeCodexSkillEntry|TestRunCleanCodexSkills' ./internal/cli/..."
   population: 13          # 0이 아님 — 셀렉터가 0개를 고르면 `ok` 를 찍는다
+  population_measured_twice: [f6ed23a9c계열, fabb5b000]   # run 시작·착지 tip 양쪽에서 13
+  population_pinned_into_criterion: true                   # AC-CSD-040 본문에 값+명령 기입(리드 지시)
   pass_lines: 22          # 서브테스트 포함 실제 `--- PASS` 행 수
   verdict: ok
 verification:

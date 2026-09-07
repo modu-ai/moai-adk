@@ -121,7 +121,14 @@
   - **인자 없는 형태 → 거짓 음성.** 스테이지되지 않은 변경만 보고하므로 커밋된 트리에서 항상 빈 목록을 내고, 파서를 실제로 고쳐 커밋한 뒤에도 무조건 통과한다.
   - **브랜치명을 base로 쓰면 → 거짓 양성.** 브랜치는 움직이므로 분기 이후 그쪽에 들어온 남의 커밋이 내 변경으로 보고된다. 가설이 아니라 **실측된 사례다**: 리드가 이 카드의 트리에서 base를 `develop` 으로 두고 `internal/` 을 훑어 파일 3개(`internal/cli/codex_task.go`, 그 failcause 테스트, `internal/template/agentemit/agents-codex.yaml`)를 얻었고 경계 위반으로 보였으나, 같은 범위의 커밋 목록이 비어 있어 이 브랜치의 어떤 커밋도 `internal/` 을 건드리지 않았음이 확인됐다 — 세 파일은 분기 이후 `develop` 이 앞서간 11개 커밋의 것이었다. 통합 브랜치가 앞서갈수록 이 오탐은 잦아진다.
 - **Then** 목록에 `internal/codexwiring/skills.go` 와 `internal/cli/codex_skills_prune.go` 가 **없다**.
-- **그리고** 기존 prune 테스트가 통과한다: `go test -run 'TestPruneCodexSkillEntries|TestJudgeCodexSkillEntry|TestRunCleanCodexSkills' ./internal/cli/...` 의 **훑은 테스트 수가 0이 아님**을 먼저 확인한다(셀렉터가 0개를 고르면 `ok` 를 찍는다 — 그 초록은 아무것도 주장하지 않는다). 기대 모집단 수는 run-phase 시작 시점에 `go test -list` 로 실측해 여기에 적어 고정한다.
+- **그리고** 기존 prune 테스트가 통과한다: `go test -run 'TestPruneCodexSkillEntries|TestJudgeCodexSkillEntry|TestRunCleanCodexSkills' ./internal/cli/...` 의 **훑은 테스트 수가 0이 아님**을 먼저 확인한다(셀렉터가 0개를 고르면 `ok` 를 찍는다 — 그 초록은 아무것도 주장하지 않는다). 기대 모집단 수는 **13** 이다 — run-phase 에서 실측해 여기에 적어 고정한 값이며, 추정도 반입도 아니다.
+
+  ```
+  $ go test -list 'TestPruneCodexSkillEntries|TestJudgeCodexSkillEntry|TestRunCleanCodexSkills' ./internal/cli/... | grep -c '^Test'
+  13
+  ```
+
+  두 번 쟀고 두 번 다 13이다: run-phase 시작 시점(`f6ed23a9c` 계열 트리)과 구현이 착지한 tip(`fabb5b000`). 이 카드는 prune 셀렉터에 걸리는 테스트를 하나도 추가하지 않았으므로 값이 움직이지 않는 것이 기대되는 결과다. **0이 나왔다면 그것은 적을 값이 아니라 셀렉터가 틀렸다는 발견이다** — 0개를 고른 셀렉터도 `ok` 를 찍기 때문이다.
 - maps REQ-CSD-050, REQ-CSD-051
 
 ## §F 재측정 게이트 [HARD]
