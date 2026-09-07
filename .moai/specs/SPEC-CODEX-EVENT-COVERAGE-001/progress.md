@@ -65,4 +65,21 @@ Quality gates (D.2): `go test -cover ./internal/codexadapter/ ./internal/codexwi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: PENDING_THIS_COMMIT
+sync_status: complete
+changelog_entry: CHANGELOG.md [Unreleased] §Added — SPEC-CODEX-EVENT-COVERAGE-001 bullet (b12 pre-emission grep 0, AC inventory 11 distinct IDs all PASS, file paths ls-verified)
+docs_surfaces_assessed: docs-site/content/{en,ko,ja,zh}/advanced/codex-dual-harness.md updated (12-event table, 0.153.4 basis, SubagentStart/Stop adapted + RenderHooks install, honest trigger-not-achieved verdicts); README{,.ko,.ja,.zh}.md — no codex hook-event enumeration (grep rc=1), no update needed; hugo build verified warning-free post-edit
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed (single sync commit, 3-phase close)
+  plan.md: no status field (frontmatter carries none); updated already 2026-09-07
+  acceptance.md: no status field; updated already 2026-09-07
+  progress.md: no frontmatter (E.1-E.4 signal file)
+mx_tag_validation: sync sub-step — no new exported surface this phase (docs+frontmatter only); run-phase M1/M3 annotations stand as landed
+b12_self_test_a: pre-emission grep SPEC-CODEX-EVENT-COVERAGE-001 in CHANGELOG.md = 0
+b12_self_test_b: distinct AC ids in acceptance.md = 11 (AC-CEV-001..006, 010..013, 020), all PASS in §E.2
+b12_self_test_c: CHANGELOG-cited paths (docs-site 4 locales, campaign record) ls-verified before commit
+```
+
+Note: `sync_commit_sha` is stamped on the sync commit itself (chicken-and-egg); the commit message and this file's landing prove the binding. Observation carried to the lead: §E.3 `ac_pass_count: 10` enumerates 11 PASS ACs (001..006, 010..013, 020) — §E.2/§E.3 are manager-develop-owned and left unmodified.

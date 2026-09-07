@@ -2,7 +2,7 @@
 id: SPEC-CODEX-EVENT-COVERAGE-001
 title: "Codex hook 이벤트 커버리지 — Interrupt 12번째 행 추가(M1) + 미adapted 5종+Interrupt 런타임 발화 실측 캠페인(M2)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
