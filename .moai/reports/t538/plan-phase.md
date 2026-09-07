@@ -63,3 +63,8 @@
 
 - 리드 배차 전제의 나머지 절반(desktop 지원)은 실재했으나 **v3.1.3 이 아니라 v3.1.0대 부채** — SPEC 이 이 귀속을 정확히 적어야 훗날 감사가 헷갈리지 않는다
 - ko·ja 가 완비인 경로(어느 커밋에서)를 역추적하지 않았다 — 현재 트리 상태만이 카드의 근거이며 추적은 본 카드 불요
+
+## 정정 부기 (2026-09-08, plan-audit iter1의 F2·F4 접수분 — 초판은 지우지 않고 덧붙임)
+
+- **F4 (행수)**: 재측정 `/usr/bin/wc -l` = 64 ×4 — 초판의 "각 64행" 표기는 본 방식으로 유지된다. 감사 보고서의 "실측 63행"은 산출 방식이 기재돼 있지 않아 불일치로 기록 (본 파일의 64는 wc -l 기준임을 명시).
+- **F2 (deferral 문장 계보 과장)**: G1 "결함의 성격" 문단의 「SPEC-DESKTOP-NATIVE-E2E-001 이 제거하라고 명시한 deferral 문장이 en·zh 에 생존」은 과장이었다 — 해당 SPEC 이 verbatim 제거를 명시한 문장("There is no opt-in automation path for `desktop-native`")의 대상은 workflow·agent 트리였고, en:170·zh:170 의 문장("native-desktop automation is not yet provided…")은 **같은 취지(deferral 통지)의 별개 문장**이다. 결함의 성격 자체(en·zh 문서가 이미 착지한 기능의 부재를 주장)는 동일하게 성립하며 G1 범위 판정은 변함없다.
