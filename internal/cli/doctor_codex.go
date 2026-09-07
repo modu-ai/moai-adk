@@ -818,7 +818,8 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 		return codexFinding{}, false
 	}
 
-	var missingEnabled, missingDisabled, missingUnspecified, indeterminate int
+	var missingEnabled, missingDisabled, missingUnspecified, missingNonBoolean int
+	var missingUnknownState, indeterminate int
 	var relativeCount, oddlyFormed int
 	for _, e := range entries {
 		if e.Path == "" {
@@ -861,13 +862,31 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 			// observed, and reporting one as missing would advise deleting a
 			// registration on a guess.
 		case errors.Is(serr, fs.ErrNotExist):
+			// One arm per declared state, and NO state reached by the
+			// `default:` (SPEC-CODEX-STALE-SPLIT-FOURTH-001, REQ-SSF-001).
+			// The three-arm form this replaces sent SkillEnabledNonBoolean
+			// down `default:` into `missingUnspecified`, so an entry that
+			// DECLARES `enabled` was reported as declaring no key — the same
+			// entry then carried two names in one run, `unspecified` here and
+			// `nonBoolean` in codexEnabledShapeFinding.
+			//
+			// Go does not force exhaustiveness over an int enum, so the
+			// `default:` is retained for a state added later — but it counts
+			// into its own unknown-state counter and is reported as such,
+			// never folded into a named bucket. A fifth state is then loud
+			// rather than silently absorbed, which is the defect being fixed
+			// reproduced one state later.
 			switch e.Enabled {
 			case codexwiring.SkillEnabledTrue:
 				missingEnabled++
 			case codexwiring.SkillEnabledFalse:
 				missingDisabled++
-			default:
+			case codexwiring.SkillEnabledUnspecified:
 				missingUnspecified++
+			case codexwiring.SkillEnabledNonBoolean:
+				missingNonBoolean++
+			default:
+				missingUnknownState++
 			}
 		default:
 			// Permission denied, a symlink loop, an I/O error: the path's
@@ -879,7 +898,7 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 			indeterminate++
 		}
 	}
-	missing := missingEnabled + missingDisabled + missingUnspecified
+	missing := missingEnabled + missingDisabled + missingUnspecified + missingNonBoolean + missingUnknownState
 	unresolvedShape := relativeCount + oddlyFormed
 	if missing == 0 && unresolvedShape == 0 {
 		// No missing path and no unresolvable shape: nothing to say. An
@@ -893,16 +912,40 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 	// is quantified rather than summed away — but it is reported as DECLARED:
 	// an entry with no `enabled` key is counted as unspecified rather than
 	// folded into either side, because Codex's default for an absent key is
-	// not observed anywhere in this repository. The remove directive is
-	// bound to the missing segment alone: relative and oddly-formed entries
-	// are reported per classification and never advised away.
+	// not observed anywhere in this repository. That reasoning is about
+	// SILENCE, and it holds only for the absent-key population.
+	//
+	// An entry that DECLARES `enabled` with a value codex will not accept is
+	// not silent — something was said, and codex rejects it — so it gets its
+	// own member rather than borrowing the word for saying nothing
+	// (SPEC-CODEX-STALE-SPLIT-FOURTH-001 §A). `unspecified` keeps its
+	// original population and its original meaning; only the fourth state
+	// moves.
+	//
+	// The fourth member renders UNCONDITIONALLY, `0 non-boolean` included
+	// (REQ-SSF-004): the parenthesis is a partition of the leading count and
+	// is read by summing it, so a conditionally-rendered member would make
+	// "no such entries this run" and "no such bucket in this build" produce
+	// identical bytes.
+	//
+	// The remove directive is bound to the missing segment alone: relative
+	// and oddly-formed entries are reported per classification and never
+	// advised away.
 	detail := fmt.Sprintf(
 		"%s declares %d [[skills.config]] %s",
 		cfgPath, len(entries), pluralCodexEntries(len(entries)))
 	if missing > 0 {
 		detail += fmt.Sprintf(
-			"; %d with a path that no longer exists (%d enabled, %d disabled, %d unspecified) — remove the stale entries or restore the skill files",
-			missing, missingEnabled, missingDisabled, missingUnspecified)
+			"; %d with a path that no longer exists (%d enabled, %d disabled, %d unspecified, %d non-boolean) — remove the stale entries or restore the skill files",
+			missing, missingEnabled, missingDisabled, missingUnspecified, missingNonBoolean)
+	}
+	if missingUnknownState > 0 {
+		// Unreachable while SkillEnabled has four states. It exists so a
+		// fifth one is REPORTED rather than folded into a named bucket, and
+		// so the four members above keep summing to the leading count.
+		detail += fmt.Sprintf(
+			"; a further %d declare an `enabled` state this check does not recognise",
+			missingUnknownState)
 	}
 	if relativeCount > 0 {
 		detail += fmt.Sprintf(

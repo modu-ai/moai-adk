@@ -1,0 +1,27 @@
+EXP_ROOT=/tmp/t502-HTmXMiC0
+version=codex-cli 0.153.4
+S_LIT=/tmp/t502-HTmXMiC0/proj-S/.agents/skills/t502probe/SKILL.md
+S_RES=/tmp/t502-HTmXMiC0/proj-S/.claude/skills/t502probe/SKILL.md
+C_LIT=/tmp/t502-HTmXMiC0/proj-C/.agents/skills/t502probe/SKILL.md
+C_RES=/tmp/t502-HTmXMiC0/proj-C/.claude/skills/t502probe/SKILL.md
+link=lrwxr-xr-x@ 1 goos  wheel  30 Sep  7 17:52 /tmp/t502-HTmXMiC0/proj-S/.agents/skills/t502probe -> ../../.claude/skills/t502probe
+hash_before=9f6e3a953880630afcfa6a40abe846b785e8fc0067e17b3a7ec1d513f71ca33a  /Users/goos/.codex/config.toml
+hash_after=9f6e3a953880630afcfa6a40abe846b785e8fc0067e17b3a7ec1d513f71ca33a  /Users/goos/.codex/config.toml
+notouch=IDENTICAL
+---cells---
+S0	out=24919	err=0	rc=0	marker=1	name=1
+Split	out=24922	err=0	rc=0	marker=1	name=1
+Spres	out=24922	err=0	rc=0	marker=1	name=1
+Slit	out=24759	err=0	rc=0	marker=0	name=0
+Sres	out=24759	err=0	rc=0	marker=0	name=0
+C0	out=24919	err=0	rc=0	marker=1	name=1
+Cplit	out=24922	err=0	rc=0	marker=1	name=1
+Cpres	out=24922	err=0	rc=0	marker=1	name=1
+Clit	out=24759	err=0	rc=0	marker=0	name=0
+Cres	out=24921	err=0	rc=0	marker=1	name=1
+---stderr-nonempty---
+---S0-marker-context (which path does codex report?)---
+po (including private repos). (file: r1/skill-installer/SKILL.md)\n- t502probe: T502MARKER probe skill for SPEC-CODEX-SKILL-DISABL
+---C0-marker-context---
+po (including private repos). (file: r1/skill-installer/SKILL.md)\n- t502probe: T502MARKER probe skill for SPEC-CODEX-SKILL-DISABL
+---S0-roots-table---

@@ -1101,6 +1101,7 @@ func defaultInterviewConfig() InterviewConfig {
 			MaxRounds:         3,
 			QuestionsPerRound: 3,
 		},
+		RecommendationMode: "push",
 		SkipConditions: []string{
 			"resume_spec_id_present",
 			"skip_interview_flag",
