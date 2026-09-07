@@ -204,4 +204,77 @@ m1_to_mN_commit_strategy: single-commit  # M1-M5 landed as one commit; no push (
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_status: audit-ready
+b12_self_test_a: pass                    # grep -c 'SPEC-CODEX-MIRROR-DOCTOR-001' CHANGELOG.md → 0 before emission (no duplicate)
+b12_self_test_b: pass                    # 15 distinct AC ids in acceptance.md == 15 rows in the §E.2 matrix == 15 referenced in the entry (non-zero, not a vacuous 0==0)
+b12_self_test_c: pass                    # every path named in the CHANGELOG entry verified present with ls (8/8 OK)
+changelog_entry_position: "[Unreleased] › Added, first bullet"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (status + updated only)"
+  plan.md: "n/a — carries no status: field (grep -c '^status:' → 0)"
+  acceptance.md: "n/a — carries no status: field (grep -c '^status:' → 0)"
+  progress.md: "n/a — no frontmatter block"
+canary_compliance_check: n/a             # this SPEC declares no forward-looking policy for its own sync to test
+mx_tag_validation:
+  doctor_codex_go_mx_count_at_base: 0    # grep -c '@MX' on git show ace1c5440:internal/cli/doctor_codex.go
+  doctor_codex_go_mx_count_now: 0        # grep -c '@MX' on the working copy
+  verdict: "no MX regression — the file has never carried an @MX tag; this card neither added nor removed one"
+  indicated_but_not_applied: "an @MX:WARN on the path-literal drift (doctor_codex.go:62-69) is indicated; NOT applied — the sync dispatch fences Go source as out of scope, and the risk is already carried in a source comment and in the follow-up-card record"
+  mandatory_anchors_owed: 0              # inspectSkillMirror and codexMirrorObservations each have exactly 1 non-test caller (fan_in 1 < 3)
+docs_site_4_locale_sync: not-required    # judgment recorded below
+files_changed_this_phase: 2              # CHANGELOG.md, progress.md (+ spec.md frontmatter transition)
+```
+
+### Sync-phase judgment — docs-site (adk.mo.ai.kr)
+
+**Not required, and deliberately not started.** This card adds an advisory observation to a doctor
+row that already exists (`Codex Wiring`); it introduces no command, no flag, no config key, and no
+workflow the published guides describe. A user's interaction surface is unchanged — they run
+`moai doctor` exactly as before and may now see one more line in it. A grep for the mirror's own
+path across the published docs corpus returns nothing (`grep -rn '\.agents/' --include='*.md'
+.claude/rules .moai/docs CLAUDE.md CLAUDE.local.md AGENTS.md` → no matches, root-cause.md Claim 3),
+so there is no existing page whose text this change makes wrong. Were a page judged necessary, the
+4-locale obligation (ko/en/ja/zh, same PR) makes it its own card rather than a tail on this one —
+so nothing was started here.
+
+### Carried forward from §E.2 — three facts the close does not smooth away
+
+These are recorded verbatim in §E.2 above and are cited, not re-summarized, so that neither the
+CHANGELOG entry nor this signal weakens them:
+
+1. **A real regression was caused and repaired at the fixture** (§E.2 "Regression found and repaired
+   during GREEN"). `wireProjectForDoctor` produced a wired project with no `.agents/skills` — the
+   exact state REQ-CMD-004 reports — so 16 existing tests inherited a mirror-absent finding. The
+   repair created an empty `.agents/skills` in the helper and preserved the former body verbatim as
+   `wireProjectWithoutMirror`; no existing assertion was edited.
+2. **RED-now was insufficient for the three absence guards, and mutation testing supplied what it
+   could not** (§E.2 "Mutation probes"). AC-CMD-001 / 007 / 010 assert that text or state does *not*
+   appear, which an absent feature satisfies trivially. The first AC-CMD-001 mutant leaked into
+   `Detail` — empty in the mirror-absent state — and was **not** caught; that miss is a fact about
+   the guard's boundary and stays in the record rather than being replaced by the sharpened mutant
+   that did catch.
+3. **The `.agents/skills` path literal is hardcoded in the doctor while the producer's
+   `mirrorSkillsRelDir` is unexported** (`internal/cli/doctor_codex.go:62-69`). If the producer
+   moves its layout, the doctor silently emits a *wrong* "mirror absent" finding. Per lead
+   direction this vulnerability is stated explicitly rather than fixed here, and is a candidate for
+   its own card.
+
+### Unverified at close (carried forward, not narrowed)
+
+- **Windows runtime behaviour.** `GOOS=windows GOARCH=amd64 go build ./...` exits 0, but a
+  cross-build compiles no tests, so the copy-mode path and the symlink-skip branches were never
+  *executed* on Windows.
+- **The full repository suite.** Only `./internal/cli/...` was run, per the lane's load discipline.
+  The full-suite verdict is CI's, on the integrated head — not this lane's to assert.
+- **Codex CLI's actual reaction to a dangling or partial mirror.** Nothing here observes it; every
+  message the check emits is an action directive, never a claim about Codex.
+
+### Section-numbering note
+
+No `## §E.5` section is authored. `spec-frontmatter-schema.md` § progress.md Section Map records
+§E.5 as **RETIRED** (folded into §E.4; retained in `era.go` only for backward-compat classification
+of pre-redesign SPECs), with an explicit "do NOT author new §E.5 sections". MX Tag validation is
+therefore folded into the `mx_tag_validation` block above, as the 3-phase close prescribes.

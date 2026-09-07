@@ -2,7 +2,7 @@
 id: SPEC-CODEX-MIRROR-DOCTOR-001
 title: "moai doctor reports .agents/skills mirror state"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
