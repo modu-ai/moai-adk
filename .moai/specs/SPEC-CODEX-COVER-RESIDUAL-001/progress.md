@@ -99,3 +99,5 @@ _&lt;pending run-phase&gt;_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _&lt;pending sync-phase&gt;_
+
+- 2026-09-07 plan-audit iter-2 PASS 0.9375 (`.moai/reports/t519/plan-audit-iter2.md`); remaining minor F5 (acceptance.md:60 M1→M1b) and F6 (plan.md:37, spec.md:148 four→five files) fixed by the lane directly (one-word edits; distinct-file count re-verified = 5). Advisory A6 (withCodexSession overwrites codexLookPath — never combine it with a t.Fatal LookPath guard in one test) carried into the run-phase delegation as a constraint.

@@ -57,7 +57,7 @@ Requirement coverage: REQ-CCR-001 → AC-001/002 · REQ-CCR-002 → AC-003 · RE
 
 - Verify: `go test -count=1 -run 'TestRunCodexReviewGate_EmptyStdinFailsOpen' -v ./internal/cli/`
 - Expect: one `--- PASS:` line for that test.
-- Adopted via mutant **M1** (§D).
+- Adopted via mutant **M1b** (§D).
 
 ### AC-CCR-003 — happy path allows without consulting codex [RB]
 

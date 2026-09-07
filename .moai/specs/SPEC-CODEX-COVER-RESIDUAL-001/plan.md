@@ -34,7 +34,7 @@ Tier **M** (3-file set + §E skeleton). The dispatch named Tier S; the rationale
 
 Reuse as-is (no modification):
 
-Every location below is grep-verified against this worktree. The helpers live in **four** files, not one — the count matters, because a helper sought in the wrong file invites a duplicate definition, and every one of these identifiers is package-level, so a duplicate fails to compile at package scope.
+Every location below is grep-verified against this worktree. The helpers live in **five** files, not one — the count matters, because a helper sought in the wrong file invites a duplicate definition, and every one of these identifiers is package-level, so a duplicate fails to compile at package scope.
 
 | Seam / helper | Location (verified) | Use |
 |---|---|---|
