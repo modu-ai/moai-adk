@@ -134,6 +134,43 @@ $ grep -c '^--- FAIL' .moai/reports/t495/pkg-full.txt   → 0
 codex 가 설치돼 있어 라이브 테스트 3본이 실제로 돌기 때문이다 — CI 에서는 그 3본이
 skip 되므로 이 소요 시간은 CI 를 대표하지 않는다.
 
+### E6 — 병합 트리 재측정 (통합 창, lane-2)
+
+창 시점 재판독: `origin/develop` = `ace1c5440` (변동 없음), **로컬** `develop` = `a4aecc4a2`
+(미푸시 14). 리드가 관측한 tip 은 후자이므로 흡수 대상은 로컬 develop 이다.
+
+```
+$ git merge --no-ff develop     → 충돌 0, merge commit c2b092001 (tree 1e69c3951)
+   18 files changed, 2284 insertions(+), 14 deletions(-)
+   — 전부 문서·SPEC·리포트(t491 / t494 / SPEC-CC-GD124-001 / 룰 2본).
+     이 카드의 반경(internal/cli Go + Makefile)과 겹치는 파일 0건.
+```
+
+병합 트리에서:
+
+```
+$ gofmt -l internal/cli/                                → (무출력)
+$ go vet ./internal/cli/                                → rc=0
+$ go test ./internal/cli/... -count=1 -timeout 900s     → rc=0
+ok  	github.com/modu-ai/moai-adk/internal/cli	446.156s
+… 17 packages ok …
+$ grep -c '^--- FAIL' .moai/reports/t495/pkg-full-merged.txt   → 0
+```
+
+전문: `.moai/reports/t495/pkg-full-merged.txt`.
+
+**베이스 실행과의 대조** — 패키지 집합이 동일함을 값이 아니라 집합 비교로 확인했다:
+
+```
+$ diff <(grep '^ok' pkg-full.txt | awk '{print $2}') \
+       <(grep '^ok' pkg-full-merged.txt | awk '{print $2}')   → (차이 없음)
+$ grep -c '^ok' 양쪽                                            → 17 / 17
+```
+
+**정정**: 이 판정서의 초기 E5 절과 리드 보고에 "18 하위 패키지"라 적었으나 실측은
+**17**이다. 두 실행 모두 17이며 집합도 동일하다. 원 서술을 지우지 않고 여기 정정을
+붙인다 — 결론(rc=0, FAIL 0)은 영향받지 않지만 인용한 수치는 틀렸었다.
+
 ## Baseline-attribution
 
 모든 수치는 이 실행에서, 이 트리(`.claude/worktrees/t495`, base `ace1c5440`)에 대해
