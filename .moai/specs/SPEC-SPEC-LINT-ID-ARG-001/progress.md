@@ -429,4 +429,62 @@ verification_branch: WT-spec-lint-axes
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: <pending>          # 이 §E.4 를 실은 sync 커밋. 커밋은 자기 SHA 를 담을 수 없어 placeholder 로 착지한 뒤 backfill 한다
+sync_backfill_commit_sha: <pending>
+sync_status: completed
+b12_self_test_a: pass               # 사전 중복 grep — `grep -c 'SPEC-SPEC-LINT-ID-ARG-001' CHANGELOG.md` → 0 (게시 전)
+b12_self_test_b: pass               # AC 수 대조 — acceptance.md 고유 AC 식별자 13 = §E.3 의 식별자 13 (PASS 12 + PASS-WITH-DEBT 1)
+b12_self_test_c: pass               # CHANGELOG 가 인용한 경로 전부 `ls` 로 존재 확인
+changelog_entry_position: "[Unreleased] › ### Added, 형제 SPEC-SPEC-LINT-BLIND-AXES-001 항목 바로 아래"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-08)"
+  plan_md: "status 필드 없음 — 전이 대상 아님. updated: 2026-09-07 → 2026-09-08 갱신"
+  acceptance_md: "status 필드 없음 — 전이 대상 아님. updated 는 이미 2026-09-08 이라 이 sync 가 쓴 바이트가 없다"
+  progress_md: "frontmatter 없음 — 전이 대상 아님"
+canary_compliance_check: not_applicable
+verification_tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+verification_branch: WT-spec-lint-axes
+verification_head_at_measurement: c05d256cc
+```
+
+### 이 sync 실행이 닫은 run-phase 미측정 3건
+
+전문·증거 경로는 형제 SPEC 과 **같은 실행에서 같은 명령으로** 얻은 것이므로 한 곳에만 둔다: `.moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/progress.md` §E.4. 요지와 이 SPEC 고유분만 여기 싣는다.
+
+| 축 | 관측 | 증거 |
+|---|---|---|
+| **E5 — lint** | `golangci-lint run ./internal/spec/... ./internal/cli/...` → `0 issues.` rc=0. `golangci-lint config path` → `.golangci.yml`(설정 부재로 인한 공허한 통과가 아니다) | `.moai/reports/t518/sync/golangci-lint.txt` |
+| **E5 — vet** | `go vet` 같은 범위 무출력 rc=0 | `.moai/reports/t518/sync/go-vet.txt` |
+| **E2 — 교차 빌드** | windows/amd64 · linux/amd64 `go build ./...` 양쪽 rc=0 | `.moai/reports/t518/sync/cross-build.txt` |
+| **E3 — 커버리지** | 이 SPEC 이 만든 `internal/cli/specid`: `coverage: 100.0% of statements` rc=0 | `.moai/reports/t518/sync/coverage-specid.txt` |
+
+- **[HARD] 교차 빌드는 비테스트 코드만 컴파일한다.** 테스트를 컴파일하지도 실행하지도 않으므로, 이 rc=0 은 「컴파일된다」까지이며 「windows/linux 에서 동작한다」도 「테스트가 통과한다」도 세우지 않는다. 초록 테스트 실행보다 훨씬 적게 세운다.
+- **`internal/cli` 커버리지는 미측정이다.** 그 패키지 테스트는 실측 424s 이고 `-cover` 는 그보다 느리다 — 로컬 전부-스위트 부하 규율에 따라 전 패키지 판정은 CI 몫으로 남긴다. **미측정이며 통과가 아니다.** 이 SPEC 의 주 write surface 인 `internal/cli/spec_lint.go` 의 커버리지 수치는 따라서 **이 실행에 존재하지 않는다.**
+
+### 이 sync 실행이 만든 사용자향 문서
+
+- `docs-site/content/{ko,en,ja,zh}/cli-reference/spec.md` — 인자 서명을 `moai spec lint [spec.md...]` → `[SPEC-ID | path/to/spec.md | SPEC directory ...]` 로 고치고(로케일당 색인 표 1곳 + 코드 블록 1곳), 인자 3형태 표와 **해석 실패 = 인자 오류(종료 코드 3)** 규칙을 실었다. 4-locale 동시 갱신, H2 수 8 로 네 로케일 동일, `hugo --logLevel warn` 무경고 rc=0.
+- **README 4본은 고치지 않았다 — 잰 결과다.** `grep -c 'spec lint'` → 네 파일 전부 0. `moai spec` 언급은 로케일당 1행의 하위명령 요약 행뿐이고 인자를 서술하지 않으므로 이 카드가 낡게 만든 문장이 없다.
+
+### [HARD] run-phase 에서 그대로 넘어오는 부채와 미검증 — 이 sync 가 해소하지 않았다
+
+1. **`AC-SLI-009` 갈래 ② 는 PASS-WITH-DEBT 로 남는다.** 기준은 「다섯 호출부가 인용된 출력에서 **실제로 실행됐음**」을 요구했으나, 커밋된 전/후 두 캡처(`mb1-before-tests.txt` · `mb1-after-tests.txt`)는 **패키지 단위 `ok` 줄만** 싣는다. `spec_view.go:46` · `spec_status.go:72` · `spec_close.go:108` · `kanban/board_store.go:268,360` · `kanban/status_read.go:109` 가 그 실행에서 지나갔다는 것은 **출력에서 보이지 않으며, 캡처 창(함수 추가 전 트리)은 닫혔다 — 소급 충족 불가능하다.** 패키지 초록은 그 안의 특정 경로가 실행됐다는 사실보다 약하다. **부채이지 PASS 가 아니다.**
+2. **`AC-SLI-008` 의 뮤턴트는 한 번도 발화된 적이 없다.** 요구된 변형(이 카드의 착지 커밋 하나에서 `internal/spec/` 아래 파일을 한 글자 바꾸기)은 **공유 브랜치의 이력 재작성**을 요구하므로 발화시키지 않았다. **미검증으로 남긴다 — 「자명하다」를 통과 사유로 쓰지 않는다.** 뮤턴트 총계는 14 중 CAUGHT 13 · NOT CAUGHT 1(M4, 방어 두 겹 중 한 겹만 벗긴 변형) · 미발화 1(이 항목).
+3. **`TestGateCmd_SecondRunWaitsForFirst` 의 밀리초 동일성 단언은 잠복 flake 로 남는다.** 부하 아래 1회 실패 → `7dc9cd0cf` 재실행에서 통과. 이 카드의 diff 가 그 테스트도 `internal/cli/gate_lock*.go` 다섯 파일도 건드리지 않음은 확인됐다(빈 diff). **「기존 결함이며 무해하다」로 승격시키지 않는다** — 초록 한 번은 그 단언의 경계 조건을 바꾸지 않는다.
+4. **manager-spec 후속 F-B1~F-B4 는 `acceptance.md` v0.6.0 에서 닫혔다**(커밋 `c05d256cc`). sync 는 그 본문을 다시 열지 않았다.
+
+### Gaps — 이 sync 실행이 관측하지 않은 것
+
+- **`internal/cli` 커버리지 · 전체 스위트 미실행.** 이 카드는 push 하지 않았으므로 **CI 판정은 아직 존재하지 않는다.** 전 패키지 판정은 리드의 일괄 push 이후 CI 가 낸다.
+- **AC 테스트를 이름 단위로 재실행하지 않았다.** 이 sync 는 `internal/spec` 패키지 초록(90.5% 커버리지 동반)과 `internal/cli/specid` 초록만 관측했고, `internal/cli` 의 `spec_lint_test.go` 는 이 실행에서 돌리지 않았다.
+- **인자 3형태를 이 실행에서 손으로 호출해 보지 않았다.** 문서를 코드(`internal/cli/spec_lint.go` 의 `Use`/`Long` 축자)에 맞춰 썼을 뿐, `moai spec lint SPEC-XXX` 를 실제로 실행한 관측은 이 sync 에 없다.
+- **docs-site 내부 링크 무결성 검사 미실행.**
+
+### Residual-risk — 관측했음에도 여전히 틀릴 수 있는 것
+
+- **lint `0 issues.` 는 이 트리·이 HEAD·이 두 패키지의 성질이다.** 병합 트리에서 다시 재면 달라질 수 있다.
+- **`internal/cli/specid` 100% 는 도달률이지 단언의 질이 아니다.** 그 패키지는 작고, 100% 는 남은 결함의 부재를 뜻하지 않는다.
+- **문서가 인용한 종료 코드 3 계약은 코드 주석과 `Use` 문자열에서 읽은 것이다.** 이 sync 는 실행으로 확인하지 않았다(위 Gaps).
+- **docs-site 4-locale 문안은 인자 계약이 뒤에 바뀌면 조용히 낡는다** — 그것을 잡는 기계 검사는 없다.

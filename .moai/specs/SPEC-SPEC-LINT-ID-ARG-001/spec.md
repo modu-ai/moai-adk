@@ -2,7 +2,7 @@
 id: SPEC-SPEC-LINT-ID-ARG-001
 title: "spec lint의 인자 계약 — 형제 서브커맨드와 어긋난 인자 모양, 그리고 그 어긋남이 만드는 가짜 결함"
 version: "0.6.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-08
 author: manager-spec

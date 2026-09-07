@@ -3,7 +3,7 @@ id: SPEC-SPEC-LINT-ID-ARG-001
 title: "구현 계획 — spec lint 인자 계약"
 version: "0.5.0"
 created: 2026-09-07
-updated: 2026-09-07
+updated: 2026-09-08
 ---
 
 # 구현 계획

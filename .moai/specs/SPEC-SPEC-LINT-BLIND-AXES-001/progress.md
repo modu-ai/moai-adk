@@ -977,4 +977,69 @@ $ (카드 자신의 non-merge 커밋 8개의 git show --name-only) | grep gate_l
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: <pending>          # 이 §E.4 를 실은 sync 커밋. 커밋은 자기 SHA 를 담을 수 없어 placeholder 로 착지한 뒤 backfill 한다 (§E.3 의 run_record_commit_sha 와 같은 절차)
+sync_backfill_commit_sha: <pending>
+sync_status: completed
+b12_self_test_a: pass               # 사전 중복 grep — `grep -c 'SPEC-SPEC-LINT-BLIND-AXES-001' CHANGELOG.md` → 0 (게시 전)
+b12_self_test_b: pass               # AC 수 대조 — acceptance.md 의 고유 AC 식별자 18 중 픽스처 축자 토큰 2개(AC-BLI-001 · AC-X-001, 둘 다 인용된 실물 표 행)를 뺀 16 = §E.3 ac_pass_count 16
+b12_self_test_c: pass               # CHANGELOG 가 인용한 경로 6개 전부 `ls` 로 존재 확인
+changelog_entry_position: "[Unreleased] › ### Added, 최상단 (형제 SPEC-SPEC-LINT-ID-ARG-001 항목 바로 위)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-08)"
+  plan_md: "status 필드 없음 — 전이 대상 아님. updated 는 이미 2026-09-08 이라 이 sync 가 쓴 바이트가 없다"
+  acceptance_md: "status 필드 없음 — 전이 대상 아님. updated 는 이미 2026-09-08 이라 이 sync 가 쓴 바이트가 없다"
+  progress_md: "frontmatter 없음 — 전이 대상 아님"
+canary_compliance_check: not_applicable   # 이 SPEC 은 자기 sync 가 검사할 전방 정책을 정의하지 않는다
+verification_tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+verification_branch: WT-spec-lint-axes
+verification_head_at_measurement: c05d256cc
+```
+
+### 이 sync 실행이 닫은 run-phase 미측정 3건
+
+run-phase 는 이 셋을 `not_measured` 로 적었다 — 통과로 적지 않은 것이 옳았고, 여기서 실측으로 대체한다. 세 명령 전부 이 트리(`git rev-parse --show-toplevel` 을 같은 호출에서 확인), HEAD `c05d256cc`.
+
+| 축 | 명령 | 관측 | 증거 |
+|---|---|---|---|
+| **E5 — lint** | `golangci-lint run ./internal/spec/... ./internal/cli/...` | `0 issues.` · rc=0 | `.moai/reports/t518/sync/golangci-lint.txt` |
+| **E5 — vet** | `go vet ./internal/spec/... ./internal/cli/...` | 무출력 · rc=0 | `.moai/reports/t518/sync/go-vet.txt` |
+| **E2 — 교차 빌드** | `GOOS=windows GOARCH=amd64 go build ./...` · `GOOS=linux GOARCH=amd64 go build ./...` | 양쪽 rc=0 | `.moai/reports/t518/sync/cross-build.txt` |
+| **E3 — 커버리지** | `go test ./internal/spec/... -cover -count=1` | `ok … 67.800s coverage: 90.5% of statements` · rc=0 | `.moai/reports/t518/sync/coverage-spec.txt` |
+
+- **커버리지 90.5% 는 `quality.yaml` 의 `test_coverage_target: 85` 를 넘는다.** 목표 미달이 아니다.
+- **[HARD] 교차 빌드가 세우는 것은 좁다.** `go build` 는 비테스트 코드만 컴파일한다 — 테스트 파일을 컴파일하지도, 실행하지도 않는다. 따라서 이 rc=0 두 개는 **「windows/linux 에서 이 코드가 컴파일된다」**까지이며, **「windows/linux 에서 동작한다」도 「테스트가 통과한다」도 아니다.** 초록 테스트 실행보다 훨씬 적게 세운다.
+- **`golangci-lint` 설정은 실제로 잡혔다**: `golangci-lint config path` → `.golangci.yml`. 설정 부재로 인한 공허한 `0 issues.` 가 아니다.
+- **`internal/cli` 커버리지는 재지 않았다** — 그 패키지 테스트는 실측 424s 이고(§E.3 「해소(한정적)」의 레인 재실행), `-cover` 는 그보다 느리다. 로컬 전부-스위트 부하 규율(CLAUDE.local.md §4/§6)에 따라 전 패키지 판정은 CI 몫으로 남긴다. **미측정이며 통과가 아니다.** 형제 SPEC 이 만든 `internal/cli/specid` 는 따로 쟀다: `coverage: 100.0%` (`.moai/reports/t518/sync/coverage-specid.txt`).
+
+### 이 sync 실행이 만든 사용자향 문서
+
+- `docs-site/content/{ko,en,ja,zh}/cli-reference/spec.md` — `moai spec lint` 절. 인자 서명을 `[spec.md...]` → `[SPEC-ID | path/to/spec.md | SPEC directory ...]` 로 고치고(색인 표 + 코드 블록, 로케일당 2곳), 인자 3형태 표와 자문 코드 두 개(`ModalityUnjudged` · `REQTableRowsRejected`)를 더했다. **4-locale 동시 갱신**(ko 정본 → en/ja/zh), H2 수 8 로 네 로케일 동일. 검증: `hugo --logLevel warn` 무경고 rc=0 (`.moai/reports/t518/sync/hugo-build.txt`), `docs-site/public/sitemap.xml` 생성 확인.
+- **README 4본은 고치지 않았다 — 잰 결과다.** `grep -c 'spec lint' README{,.ko,.ja,.zh}.md` → 전부 **0**. `moai spec` 언급은 로케일당 1행뿐이며(`README.md:742` 꼴의 `| \`moai spec <audit|archive|lint|list|new>\` |` 요약 행) 인자·출력을 서술하지 않으므로 이 카드가 낡게 만든 문장이 없다. **표면이 없어서 안 고친 것이지, 안 찾아본 것이 아니다.**
+
+### [HARD] run-phase 에서 그대로 넘어오는 한계 — 이 sync 가 해소하지 않았다
+
+sync 가 게이트 셋을 닫았다고 해서 아래가 닫히지 않는다. 사라지면 다음 독자가 카드를 실제보다 깨끗하게 읽는다.
+
+1. **M1 의 여섯 줄 증감은 원인 분해가 불가능하다.** 옛 값의 판독 기준이 글로 남아 있지 않아 기준 변경 · 코퍼스 증가 · 본문 수정으로 갈리지 않으며, **M1 을 다시 돌려도 회복되지 않는다.** (§E.2 M1 · `spec.md` §A)
+2. **M1 blast-radius 하네스가 카드 t362 의 추적되는 증거 파일을 덮어쓴다.** `decomposeReportRelPath` 가 `.moai/reports/t362/m2-gate0-decomposition.txt` 에 쓴다 — 실측(1085 → 4018) 후 되돌렸으나 **고치지 않았고 후속 카드도 아직 발행되지 않았다.** `spec.md` §I 에 후속 카드 발행 요청으로만 남아 있다. **재실행하는 누구나 재현한다.**
+3. **`TestGateCmd_SecondRunWaitsForFirst` 의 밀리초 동일성 단언은 잠복 flake 로 남는다.** 부하 아래 1회 실패했고 `7dc9cd0cf` 재실행에서 통과했다. 이 카드의 diff 가 그 테스트도 대상 파일(`internal/cli/gate_lock*.go` 다섯 파일, 빈 diff)도 건드리지 않음은 확인됐다. **「기존 결함이며 무해하다」로 승격시키지 않는다** — 초록 한 번은 그 단언의 경계 조건을 바꾸지 않는다.
+4. **AC-SLB-003 의 변별력 제한은 이 실행에서도 다시 재지 않았다.** M-A1 이 적은 「narrow 가 코퍼스 전체에서 `LegacyEARSKeyword` 7건만 낸다」는 그 시점 코퍼스의 값이며, 지금도 7인지는 미측정이다.
+5. **AC-SLB-004 는 부재 단언이므로 M-A1 뮤턴트 표와 짝으로만 읽는다.**
+6. **`ModalityUnjudged` 481 은 「깨진 481건」이 아니라 「의견 없음」의 모집단 크기다.** 그 안에서 잘 쓰인 것과 깨진 것의 분리는 갈래 A(후속) 소관이며 이 카드는 하지 않았다.
+7. **주석은 컴파일되지 않는다.** M5 가 더한 두 주석의 정확성은 어떤 테스트도, 이 sync 의 어떤 게이트도 판정하지 않는다.
+
+### Gaps — 이 sync 실행이 관측하지 않은 것
+
+- **`internal/cli` 커버리지 미측정**(위 이유). **전체 스위트 미실행** — 로컬 전부-스위트는 금지돼 있고, 전 패키지 판정은 CI 가 push 후 깨끗한 환경에서 낸다. 이 카드는 push 하지 않았으므로 **CI 판정은 아직 존재하지 않는다.**
+- **`internal/spec` 테스트를 개별 이름으로 재실행하지 않았다.** 패키지 `ok` 는 그 안의 특정 AC 테스트가 셀렉터에 잡혔음보다 약하다.
+- **`hugo` 무경고 빌드는 링크 정합성을 세우지 않는다.** 내부 링크 무결성 검사는 돌리지 않았다.
+- **docs-site 문안의 로케일 자연스러움은 기계 검증 대상이 아니다** — 네 로케일 문안은 사람 판독 몫으로 남는다.
+
+### Residual-risk — 관측했음에도 여전히 틀릴 수 있는 것
+
+- **lint `0 issues.` 는 이 트리·이 HEAD·이 두 패키지의 성질이다.** 병합 트리에서 다시 재면 달라질 수 있다.
+- **교차 빌드 rc=0 은 테스트를 컴파일하지 않는다**(위 [HARD]). windows 특유의 경로·파일시스템 거동은 이 신호가 전혀 덮지 않는다.
+- **커버리지 90.5% 는 도달률이지 단언의 질이 아니다.** 실행된 줄이 곧 판정된 줄은 아니다.
+- **docs-site 4-locale 문안은 코드가 아니라 문서다.** 인자 계약이 뒤에 바뀌면 이 네 파일은 조용히 낡는다 — 그것을 잡는 기계 검사는 없다.
