@@ -161,7 +161,14 @@ coverage_internal_cli: 81.1%     # sync-audit 이 측정(F5). 프로필 임계 8
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_status: audit-ready
+sync_audit: PASS-WITH-DEBT 83.8 (sync-audit.md; F1-F4 repaired in 2c5c05fe6)
+docs_scope: CHANGELOG + SPEC close (operator gate-sync-2)
+sync_commit_sha: pending-backfill-sync   # this commit cannot cite its own hash; backfilled in a following commit
+merge_status: local develop merge pending (lead window)
+```
 
 - plan_complete_at: 2026-09-07T17:34:14Z
 - plan_status: audit-ready
