@@ -2,13 +2,81 @@
 # 판정: 생존 (세 seam 모두) — 수리하지 않음, 후속 카드 요청 대상 (AC-CBD-009)
 # 세 seam 을 한 창에서 함께 주입했다(같은 후보군, 서로 다른 패키지).
 
-## 씨앗 5a — internal/cli/branch_protection.go:65
-  before: out, err := gh.Run(ctx, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
-  after : gh.Run(context.Background(), …)
-$ go test ./internal/cli/ -list BranchProtection -count=1 → 5
-$ go test ./internal/cli/ -run  BranchProtection -count=1 -timeout 1800s → ok  0.862s
-판정: **생존**.
-귀속: internal/cli/branch_protection_test.go:26 (stubGhClient.Run) :34 (RunWithStdin)
+## 씨앗 5a — [무효 · 정정됨] internal/cli/branch_protection.go:65
+
+**이 씨앗의 기록은 무효다(void).** sync-audit F1 [High] 이 적발했다.
+
+`:65` 는 `DiscoverOwnerRepo`(`branch_protection.go:64`) 내부이고, 이 함수는 **저장소 전체에
+호출자가 없다**:
+```
+$ /usr/bin/grep -rn 'DiscoverOwnerRepo' --include='*.go' .
+./internal/cli/branch_protection.go:62:// DiscoverOwnerRepo derives owner+repo by invoking `gh repo view --json nameWithOwner`.
+./internal/cli/branch_protection.go:64:func DiscoverOwnerRepo(ctx context.Context, gh GhClient) (owner, repo string, err error) {
+                                        ← 정의 2줄뿐. 호출자 0건.
+```
+도달성 프로브(감사자 실행, `sync-audit-m3-5a-reach.log`):
+```
+$ sed -i '' '65s|^\t|\tpanic("REACHPROBE"); |' internal/cli/branch_protection.go
+$ go test ./internal/cli/ -run BranchProtection -count=1 -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.846s      ← panic 미발생 = 미도달
+```
+
+따라서 원래 기록한 `ok 0.862s (-list 5)` 는 **생존이 아니다.** 뮤턴트가 살아남은 것이 아니라
+**실행되지 않았다.** 도달하지 못한 뮤턴트는 생존도 사망도 아닌 **무판정**이며, 무판정을
+"생존" 으로 적은 것이 결함이었다. `-list 5` 가 M3 씨앗 중 최소값이었던 것 자체가 신호였는데
+그때 읽지 못했다.
+
+아래 5a′ 가 이 자리를 대체하는 정본이다. `DiscoverOwnerRepo` 가 죽은 공개 코드라는 사실은
+별개의 관찰이므로 후속 카드 요청(F7)에 부기한다.
+
+## 씨앗 5a′ — [정본] 살아 있는 두 seam: branch_protection.go:122 · :158
+
+`stubGhClient` 가 실제로 사용되는 자리. 감사자(sync-audit F1)가 도달성을 먼저 세우고
+그 위에서 뮤턴트를 재측정했다. 아래 출력은 전부 그 재측정의 것이다.
+
+### 도달성 증명 먼저 (판정의 전제 — F6 교훈)
+
+`:122` 가 `:158` 을 가리므로 프로브를 분리 실행했다.
+```
+$ sed -i '' '122s|^\t|\tpanic("REACH122"); |' internal/cli/branch_protection.go
+$ go test ./internal/cli/ -run PreflightGh -count=1 -timeout 600s
+--- FAIL: TestPreflightGh_Authed (0.00s)
+panic: REACH122 [recovered, repanicked]
+	...cli.PreflightGh(...)  .../internal/cli/branch_protection.go:122
+	...cli.TestPreflightGh_Authed(...)  .../internal/cli/branch_protection_test.go:143
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.921s          ← 도달 확인
+   (로그: sync-audit-5a-reach-preflight.log)
+
+$ sed -i '' '158s|^\t|\tpanic("REACH158"); |' internal/cli/branch_protection.go
+$ go test ./internal/cli/ -run BranchProtection -count=1 -timeout 600s
+--- FAIL: TestApplyBranchProtection_Success (0.00s)
+panic: REACH158 [recovered, repanicked]
+	...cli.ApplyBranchProtection(...)  .../internal/cli/branch_protection.go:158
+	...cli.TestApplyBranchProtection_Success(...)  .../internal/cli/branch_protection_test.go:176
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.868s          ← 도달 확인
+   (로그: sync-audit-5a-reach158.log)
+```
+
+### 도달이 선 뒤에야 뮤턴트
+
+```
+  seam :122 (PreflightGh)
+  before: _, err := gh.Run(ctx, "auth", "status")
+  after : _, err := gh.Run(context.Background(), "auth", "status")
+
+  seam :158 (ApplyBranchProtection)
+  before: _, err = gh.RunWithStdin(ctx, json, "api", "-X", "PUT", apiPath, "--input", "-")
+  after : _, err = gh.RunWithStdin(context.Background(), json, "api", "-X", "PUT", apiPath, "--input", "-")
+
+$ go test ./internal/cli/ -run PreflightGh      -count=1 -timeout 600s → ok  0.887s   (-list 2)
+$ go test ./internal/cli/ -run BranchProtection -count=1 -timeout 600s → ok  0.688s   (-list 5)
+   (로그: sync-audit-5a-live-preflight.log · sync-audit-5a-live-apply.log)
+```
+
+판정: **생존** — 이번에는 도달이 증명된 위에서의 생존이다.
+결론(생존)은 원래 기록과 같지만, **그 결론을 세운 증거가 달라졌다.** 원래 증거는 공허했다.
+
+귀속: internal/cli/branch_protection_test.go:26 (stubGhClient.Run) :34 (stubGhClient.RunWithStdin)
 
 ## 씨앗 5b — internal/github/pr_reviewer.go:110
   before: prDetails, err = r.gh.PRView(ctx, prNumber)
@@ -30,3 +98,29 @@ $ go test ./internal/guardstate/... -count=1 -timeout 600s → ok  0.228s
 귀속: internal/guardstate/axis_test.go:28 (fakeQuerier.RunsForSubject) :36 (AllRuns)
 
 $ (되돌림) 세 씨앗 모두 git diff --stat 무출력으로 확인 (git status --short 도 무출력)
+
+---
+
+## 절차 정정 — 도달성은 판정의 전제다 (F1 이 강제한 단계)
+
+M3 절차(plan §F)는 "실물에서 컨텍스트를 소비하는 지점을 하나 고른다 → 뮤턴트를 주입한다 →
+테스트를 돌린다 → 생존/사망을 기록한다" 였다. 이 절차에는 **도달성 확인 단계가 없었고**,
+그 구멍으로 씨앗 5a 가 통과했다.
+
+[HARD] **생존 판정은 도달성을 먼저 세운 뒤에만 채택한다.**
+
+```
+0. 도달성 프로브 — 주입할 그 줄에 panic 을 넣고 같은 셀렉터를 돌린다.
+   panic 이 발생하면 도달. 발생하지 않으면 그 씨앗은 아무것도 재지 못하므로 폐기한다.
+1. (프로브 되돌림)
+2. 도달이 선 뒤에야 뮤턴트를 주입한다.
+3. 생존/사망을 기록한다.
+```
+
+근거: **도달하지 못한 뮤턴트가 내는 초록은 생존이 아니라 무판정이다.** 둘은 출력이 같아서
+(`ok`) 구별되지 않으며, 구별하는 유일한 관측이 도달성 프로브다.
+
+이 구멍은 AC-CBD-011(공허성 가드)이 한 층 아래에서 뚫린 사례이기도 하다 — 씨앗 5a 는
+`-list 5 > 0` 으로 AC 문언을 **충족하면서** 아무것도 재지 못했다. `-list > 0` 은
+"테스트가 존재한다" 를 보장할 뿐 "그 테스트가 이 줄을 지나간다" 를 보장하지 않는다.
+후속 SPEC 의 AC 는 이 전제를 명시해야 한다(후속 카드 요청 F8).

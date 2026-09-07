@@ -23,14 +23,31 @@ $ go test ./internal/core/project/... -count=1 -timeout 600s → ok  ...internal
 
 $ go test ./internal/cli/ -list Update  -count=1 → 161 ;  -run Update  → ok  15.564s
 $ go test ./internal/cli/ -list Mirror  -count=1 →  32 ;  -run Mirror  → ok   4.384s
-$ go test ./internal/cli/update/merge/ -list . -count=1 → 51 ; 전체 → ok  0.321s
 
-판정: **생존** (161 + 32 + 51 건 어느 셀렉터도 잡지 못함).
+도달성 (감사자, sync-audit-reach-4b-{mirror,update}.log) — 두 분기 모두 확인:
+  :42 → panic REACHPROBE42 (`-run Mirror`)   :37 → panic REACHPROBE37 (`-run Update`)
 
-귀속 구성원 (12건):
+판정: **생존** (161 + 32 건 어느 셀렉터도 잡지 못함, 도달 증명 위에서).
+
+귀속 구성원 (10건):
   internal/cli/update_clean_install_test.go:47 :58 :1069 :1076
   internal/cli/update_clean_install_config_preserve_test.go:39 :73
   internal/cli/update_mirror_notice_test.go:51 :58 :69 :75
-  internal/cli/update/merge/merge_test.go:621 :626
+
+### [정정 · sync-audit F2] merge 두 행은 이 씨앗에 귀속되지 않는다
+
+최초 작성본은 `internal/cli/update/merge/merge_test.go:621 :626` 을 이 씨앗에 귀속하고
+`go test ./internal/cli/update/merge/ → ok 0.321s (-list 51)` 을 근거로 나열했다.
+**그 근거는 무효다** — `deployWithMirrorNotice` 는 package `cli` 의 비공개 함수이고
+`merge_test.go` 는 package `merge` 이므로, merge 테스트 바이너리는 이 seam 을 컴파일조차
+하지 않는다. 51건이 초록이었던 것은 뮤턴트를 견뎌서가 아니라 뮤턴트가 그 바이너리에
+존재하지 않았기 때문이다.
+
+두 행의 정본 판정은 `m3-merge.log` 에 있다: **seam 부재 / 측정 불가**
+(package merge 의 유일한 Deployer 소비 함수 `merge.go:306 AnalyzeMergeChanges` 는 컨텍스트
+파라미터가 없고 `ListTemplates()` 만 부른다; `.Deploy(` / `.ValidateAll(` 호출은 프로덕션·테스트
+모두 0건).
+
+따라서 후보군 4 의 20건은 **18 생존 + 2 seam 부재**로 분해된다.
 
 $ (되돌림) 두 씨앗 모두 git diff --stat 무출력으로 확인

@@ -17,8 +17,15 @@
 2. **M2**: GLM audit 경로에 취소 가드가 없었고, 그 원인은 프로덕션이 아니라 **대역**이었다.
    가드를 세웠고, 채택 근거는 커버리지가 아니라 **뮤턴트 삼단**(생존 → 수리 → 사망)이다.
    프로덕션 코드는 0줄 바뀌었다.
-3. **M3**: 다섯 후보군 84건 전부가 뮤턴트 판정에 귀속된다. 미측정 0건.
-   **측정만 했고 수리하지 않았다** — 생존 49 · 검출 34 · seam 부재 1.
+3. **M3**: 다섯 후보군 84건 전부가 근거를 갖는다 — **뮤턴트 판정 81건 + seam 부재 3건**,
+   판정 공백 0건. **측정만 했고 수리하지 않았다** — 생존 47 · 검출 34 · seam 부재 3.
+
+   > **정정 (sync-audit F1·F2)**: 최초 작성본은 "미측정 0건 · 생존 49 · seam 부재 1" 이라고
+   > 적었다. 그 진술은 **거짓이었다.** 씨앗 5a 는 호출자가 없는 죽은 함수에 들어가 아무것도
+   > 재지 못했고(F1), 씨앗 4b 의 merge 근거는 패키지 경계를 넘지 못했다(F2). 도달하지 못한
+   > 뮤턴트의 `ok` 는 생존이 아니라 **무판정**이다. 75·76행은 감사자가 살아 있는 seam
+   > `:122`·`:158` 에서 도달을 증명한 뒤 재측정해 같은 결론(생존)을 세웠고, 73·74행은
+   > seam 부재로 재분류했다. 상세: §2 M3 표 · §4 Gap 1b/1c.
 4. **전역**: 모든 `-run` 인용에 `-list` 건수가 붙어 있고 0건 셀렉터 근거는 없다.
    뮤턴트 잔재 0. 부재 주장은 전부 `/usr/bin/grep`. 커밋 제목 전부에 `t539`.
 
@@ -105,14 +112,69 @@ $ /usr/bin/grep -E '^- `internal/[^`]+_test\.go:[0-9]+` `' .moai/specs/SPEC-CTX-
 | 1 update | `update/orchestrator.go:55` `updater.Download(ctx→Background)` | 88 | `ok 6.334s` | **생존** |
 | 1 update | (씨앗 없음 — `IsUpdateAvailable(string)` 에 ctx 파라미터 부재) | — | — | seam 부재 / 옳게 눈멂 |
 | 2 statusline | `statusline/builder.go:362` `gitProvider.CollectGitStatus` | 318 | `ok 23.423s` | **생존** |
-| 3a LSP agg | `lsp/aggregator/aggregator.go:174` `client.GetDiagnostics(qCtx→Background)` | 19 | `FAIL 0.495s` ×2 | **검출** |
+| 3a LSP agg | `lsp/aggregator/aggregator.go:175` `client.GetDiagnostics(qCtx→Background)` | 19 | `FAIL 0.495s` ×2 | **검출** |
 | 3b LSP core | `lsp/core/manager.go:366` `c.Start(ctx→Background)` | 97 | `ok 0.305s` | **생존** |
 | 3c LSP transport | `lsp/transport/request.go:53` `t.Call(ctx→Background)` | 32 | `FAIL 180.201s` (행) | **검출** |
 | 4a template | `core/project/initializer.go:434` `deployer.Deploy` | 118 | `ok 1.609s` | **생존** |
-| 4b template | `cli/mirror_notice.go:37,:42` `Deploy`/`DeployWithResult` | 161·32·51 | `ok` ×3 | **생존** |
-| 5a gh | `cli/branch_protection.go:65` `gh.Run` | 5 | `ok 0.862s` | **생존** |
+| 4b template | `cli/mirror_notice.go:37,:42` `Deploy`/`DeployWithResult` | 161·32 | `ok` ×2 | **생존** (10행) |
+| 4b′ merge | (seam 부재 — `merge.go:306` 에 ctx 파라미터 없음) | 51* | — | **측정 불가** (2행, F2) |
+| ~~5a gh~~ | ~~`cli/branch_protection.go:65` `gh.Run`~~ | ~~5~~ | ~~`ok 0.862s`~~ | **무효 — 무도달 (F1)** |
+| 5a′ gh | `cli/branch_protection.go:122` `gh.Run` (`PreflightGh`) | 2 | `ok 0.887s` (도달 증명 후) | **생존** |
+| 5a″ gh | `cli/branch_protection.go:158` `gh.RunWithStdin` (`ApplyBranchProtection`) | 5 | `ok 0.688s` (도달 증명 후) | **생존** |
 | 5b gh | `github/pr_reviewer.go:110` `gh.PRView` | 136 | `ok 0.244s` | **생존** |
 | 5c gh | `guardstate/evaluate.go:180` `q.RunsForSubject` | 47 | `ok 0.228s` | **생존** |
+
+\* 51 은 merge 패키지가 초록임을 확인한 수치일 뿐 73·74행에 대해 **아무것도 주장하지 않는다**
+(그 수치를 씨앗 4b 의 근거로 나열한 것이 F2 의 결함이었다). 로그: `list-merge.log` · `m3-merge.log`.
+
+**씨앗 5a 무효 판정의 근거 (F1 [High])** — 뮤턴트는 실행되지 않았다:
+```
+$ /usr/bin/grep -rn 'DiscoverOwnerRepo' --include='*.go' .
+./internal/cli/branch_protection.go:62:   // 주석
+./internal/cli/branch_protection.go:64:   func DiscoverOwnerRepo(...)
+                                          ← 정의뿐, 호출자 0건
+
+$ sed -i '' '65s|^\t|\tpanic("REACHPROBE"); |' internal/cli/branch_protection.go
+$ go test ./internal/cli/ -run BranchProtection -count=1 -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.846s     ← panic 미발생 = 미도달
+```
+**보정 재측정 — 도달성을 먼저 세우고 그 위에서 뮤턴트** (감사자 실행):
+```
+$ sed -i '' '122s|^\t|\tpanic("REACH122"); |' … ; go test -run PreflightGh
+--- FAIL: TestPreflightGh_Authed (0.00s)
+panic: REACH122 [recovered, repanicked]
+	...cli.PreflightGh(...)  internal/cli/branch_protection.go:122          ← 도달
+$ sed -i '' '158s|^\t|\tpanic("REACH158"); |' … ; go test -run BranchProtection
+--- FAIL: TestApplyBranchProtection_Success (0.00s)
+panic: REACH158 [recovered, repanicked]
+	...cli.ApplyBranchProtection(...)  internal/cli/branch_protection.go:158 ← 도달
+
+# 도달이 선 뒤 뮤턴트 (gh.Run / gh.RunWithStdin 의 ctx → context.Background())
+$ go test ./internal/cli/ -run PreflightGh      -count=1 -timeout 600s → ok 0.887s  (-list 2)
+$ go test ./internal/cli/ -run BranchProtection -count=1 -timeout 600s → ok 0.688s  (-list 5)
+```
+로그: `sync-audit-5a-reach-preflight.log` · `sync-audit-5a-reach158.log` ·
+`sync-audit-5a-live-preflight.log` · `sync-audit-5a-live-apply.log` ·
+`sync-audit-m3-5a.log` · `sync-audit-m3-5a-reach.log`.
+결론(생존)은 같으나 **그것을 세운 증거가 달라졌다** — 원래 증거는 공허했다.
+
+**F2 seam 부재의 근거** — package merge 안에 잴 대상이 없다:
+```
+$ /usr/bin/grep -rn 'Deploy\|Deployer' internal/cli/update/merge/*.go | /usr/bin/grep -v '_test.go'
+internal/cli/update/merge/merge.go:306:func AnalyzeMergeChanges(deployer template.Deployer, projectRoot string) …
+                                        ← ctx 파라미터 없음, ListTemplates() 만 부른다
+$ /usr/bin/grep -n '\.Deploy(\|\.ValidateAll(' internal/cli/update/merge/merge.go internal/cli/update/merge/base.go
+grep_exit=1     ← 프로덕션 호출 0건
+$ /usr/bin/grep -n '\.Deploy(\|\.ValidateAll(' internal/cli/update/merge/*_test.go
+grep_exit=1     ← 이 패키지 자신의 테스트에서도 0건
+```
+
+**도달성 프로브 전수** (감사자, `sync-audit-reach-*.log`) — 생존 씨앗 8자리 중 5a 만 미도달:
+1 update `orchestrator.go:55` 도달 · 2 statusline `builder.go:362` 도달 ·
+3b lsp/core `manager.go:366` 도달(×5) · 4a project `initializer.go:434` 도달 ·
+4b `mirror_notice.go:42` 도달(`-run Mirror`) · `:37` 도달(`-run Update`) ·
+5b github `pr_reviewer.go:110` 도달 · 5c guardstate `evaluate.go:180` 도달 ·
+**5a `branch_protection.go:65` 미도달 → 무효**.
 
 검출된 두 자리의 축자 출력:
 ```
@@ -163,19 +225,42 @@ $ golangci-lint run --timeout=8m           → "0 issues."   (기준선도 "0 is
 
 ## 4. Gaps — 관측하지 **않은** 것
 
-1. **84건 개별 뮤턴트는 측정하지 않았다.** 씨앗은 11개이고, 나머지 구성원은 같은 seam 뒤에
+1. **84건 개별 뮤턴트는 측정하지 않았다.** 씨앗은 12개이고, 나머지 구성원은 같은 seam 뒤에
    있다는 이유로 **귀속**됐다. "84건 전부에 판정이 귀속된다"(AC-CBD-008 의 문언)는 참이지만,
    "84건 전부가 자기 뮤턴트를 가졌다"는 **거짓**이다. 상세는 `m3-attribution.md` §Gaps.
+
+1b. **[F1 정정] 씨앗 5a 는 아무것도 재지 못했고, 그 사실을 run-phase 는 놓쳤다.**
+   `branch_protection.go:65` 는 호출자 0건인 죽은 함수 안이라 `-run BranchProtection` 이
+   그 줄을 실행할 수 없었다. 그런데도 `ok 0.862s` 를 **생존**으로 기록했다 — 도달하지 못한
+   뮤턴트의 초록과 진짜 생존은 출력이 같아서(`ok`) 구별되지 않으며, 구별하는 유일한 관측은
+   도달성 프로브인데 M3 절차에 그 단계가 없었다. `-list 5` 가 씨앗 중 최소값이었던 것이
+   신호였으나 읽지 못했다. 감사자가 살아 있는 seam `:122`·`:158` 에서 도달을 증명하고
+   재측정해 같은 결론(생존)을 세웠다. **결론은 유지되고 증거는 교체됐다.**
+
+1c. **[F2 정정] 귀속표 73·74행은 씨앗 4b 에 귀속될 수 없었다.**
+   `deployWithMirrorNotice` 는 package `cli` 의 비공개 함수이고 `merge_test.go` 는
+   package `merge` 라, merge 테스트 바이너리는 그 seam 을 컴파일조차 하지 않는다. 근거로
+   나열했던 `ok 0.321s (-list 51)` 는 그 뮤턴트에 대해 아무것도 재지 않았다. package merge
+   안에 대체 seam 을 찾았으나 없다(`AnalyzeMergeChanges` 는 ctx 파라미터가 없고
+   `.Deploy(`/`.ValidateAll(` 호출은 프로덕션·테스트 모두 0건) → **seam 부재 / 측정 불가**로
+   재분류했다. 로그 `m3-merge.log`.
+
+1d. **[절차 결함] M3 절차에 도달성 확인 단계가 없었다.** 1b 는 그 구멍의 결과다. 정정된 절차는
+   "주입할 줄에 `panic` 프로브 → 같은 셀렉터가 실패해야 도달 → 되돌림 → 그 뒤에야 뮤턴트" 이며
+   `m3-attribution.md` § 절차 정정과 `m3-gh-client.log` § 절차 정정에 [HARD] 로 적었다.
+   AC-CBD-011 의 `-list > 0` 공허성 가드는 이 층을 지키지 못한다(후속 카드 요청 F8).
 2. **후보군 2 의 형제 seam 2개**(`builder.go:373` updateProvider, `:388` usageProvider)는
    개별 측정하지 않았다. gitProvider seam 1건만 실측이다.
 3. **후보군 5 의 `mockGHClient` 6 메서드 중 5개**(`PRCreate`/`PRMerge`/`PRChecks`/`Push`/
    `IsAuthenticated`)는 뮤턴트가 지나가지 않았다. `PRView` 만 실측이다.
 4. **전체 스위트를 로컬에서 돌리지 않았다** (`go test ./...` 금지, CLAUDE.local.md §4·§6).
    전 패키지 판정은 CI 몫이다. 이 카드가 돌린 것은 건드린 패키지뿐이다.
-5. **루트 `internal/cli` 패키지의 커버리지 수치는 관측하지 못했다.** 백그라운드 출력이 꼬리만
-   보존해 하위 패키지 6개 수치만 남았다. 재측정하지 않은 것은 AC-CBD-014 가 커버리지 단독
-   채택을 금지하고 이 카드의 채택이 뮤턴트로 판정되기 때문이다 — 그러나 "측정하지 않기로
-   했다"와 "측정했다"는 다른 사실이므로 여기 Gap 으로 남긴다. (§6 E3)
+5. ~~**루트 `internal/cli` 커버리지 미관측.**~~ **[F5 로 닫힘]** 감사자가 측정했다:
+   `go test -cover ./internal/cli/ -count=1 -timeout 1800s` → `ok ... 552.001s coverage: 81.1%
+   of statements` (`sync-audit-cover-cli.log`). 프로필 임계 85% 미달이나 **이 카드가 만든
+   회귀가 아니다** — 프로덕션 문장 0줄 변경 + 테스트 순증이므로 분모가 같고
+   `coverage(HEAD) ≥ coverage(dbc1f7125)` 가 기계적으로 성립한다. 임계를 올리는 일은 이 카드의
+   범위가 아니며, 물려받은 baseline 을 이 카드의 결함으로 계상하지 않는다(`AGENTS.md` §1). (§6 E3)
 6. **`-run 'GLM|Audit|Converg'` 합성 셀렉터 형태로는 돌리지 않았다.** 이 세션의 Bash 가드가
    따옴표 안 정규식 교대(alternation)를 거부해 세 셀렉터를 개별 실행했다. 세 실행의 합집합은
    합성 셀렉터의 상위집합이므로 판정은 보존되지만, **명령 문자열 자체는 AC 문언과 다르다.**
@@ -217,7 +302,7 @@ $ golangci-lint run --timeout=8m           → "0 issues."   (기준선도 "0 is
 | AC-CBD-005 | PASS | 가드 후 같은 뮤턴트 | `--- FAIL: TestGLMAudit_CancelledContext_IsNotSwallowed (0.45s)` · 되돌림 후 `ok` |
 | AC-CBD-006 | PASS | `-run TestGLMTask` | `ok 1.276s` · `-list 16` · 기존 가드 파일 diff 0 |
 | AC-CBD-007 | PASS | 3 셀렉터 + `-list` 파일 보존 | `ok`×3 · 225/101/32 (감소 없음) · `mcp_glm_test.go` diff 0줄 |
-| AC-CBD-008 | PASS | 열거 계수 + 귀속표 대조 | `wc -l = 84` · 미측정 0건 · `m3-attribution.md` |
+| AC-CBD-008 | **PASS-WITH-DEBT** | 열거 계수 + 귀속표 대조 | `wc -l = 84` · **뮤턴트 판정 81 + seam 부재 3 = 84**, 판정 공백 0건 · `m3-attribution.md` · `m3-merge.log`. 최초의 "미측정 0건" 진술은 F1(무도달 씨앗)·F2(패키지 경계)로 정정됨 |
 | AC-CBD-009 | PASS | 생존 후보 수리 diff 부재 + 후속 카드 요청 | 프로덕션 diff 0 · 후속 카드 요청 §7 에 6항목 |
 | AC-CBD-010 | PASS | 검출 후보 수리 diff 부재 + 판정 기록 | 3a·3c CLOSE ("위층이 본다") · `m3-lsp.log` |
 | AC-CBD-011 | PASS | 모든 `-run` 인용에 `-list` 동반 | 이 문서의 모든 셀렉터 인용에 건수 기재 · 0건 셀렉터 근거 0 |
@@ -248,15 +333,21 @@ ok  .../internal/cli/wizard          7.768s  coverage: 92.0% of statements
 ok  .../internal/cli/worktree        9.672s  coverage: 87.1% of statements
 ```
 
-**루트 `internal/cli` 패키지의 커버리지 수치는 관측하지 못했다.** 백그라운드 출력 파일이 꼬리만
-보존해 `coverage:` 줄이 6개(하위 패키지)만 남았고, 이 카드가 실제로 건드린 루트 패키지의 줄은
-그 안에 없다. 재실행하면 얻을 수 있으나 하지 않았다 — **커버리지는 이 카드의 채택 근거가
-아니기 때문이다**(AC-CBD-014, plan §G 첫 항목: "커버리지를 채택 증거로 쓰기"가 명시적 안티패턴).
-대역을 충실하게 만들면 커버리지가 오를 수 있으나 그것은 "대역이 무언가를 잡았다"와 다른 사실이다.
-채택은 §2 의 뮤턴트 삼단이 판정했다.
+run-phase 는 루트 `internal/cli` 수치를 관측하지 못했다(백그라운드 출력이 꼬리만 보존).
+**[F5] sync-audit 이 그 간극을 닫았다**:
+```
+$ go test -cover ./internal/cli/ -count=1 -timeout 1800s
+ok  	github.com/modu-ai/moai-adk/internal/cli	552.001s	coverage: 81.1% of statements
+   (sync-audit-cover-cli.log)
+```
+프로필 임계 85% 미달 → sync-audit 의 Craft 차원 FAIL(75/100). 다만 **이 카드가 만든 회귀가
+아니다**: 프로덕션 문장 0줄 변경 + 테스트 124줄 순증이므로 분모가 동일하고
+`coverage(HEAD) ≥ coverage(dbc1f7125)` 가 성립한다. 물려받은 baseline 을 카드의 결함으로
+계상하지 않는다(`AGENTS.md` §1 baseline 귀속).
 
-관측된 것: 하위 패키지 6개 수치(전부 87% 이상) · exit 0 · FAIL 0건.
-관측되지 않은 것: 루트 `internal/cli` 수치 (§4 Gap 5 로 이월).
+**커버리지는 여전히 이 카드의 채택 근거가 아니다**(AC-CBD-014, plan §G 첫 항목: "커버리지를
+채택 증거로 쓰기" 가 명시적 안티패턴). 채택은 §2 의 뮤턴트 삼단이 판정했다. 이 수치는
+기록이지 게이트가 아니다.
 
 ### E4 — 서브에이전트 경계 grep
 ```
@@ -277,7 +368,11 @@ NEW: 0건
 ```
 6fe7a4141  test(t539): M1 pin the discriminator and sweep artifacts (SPEC-CTX-BLIND-DOUBLE-001)
 a9a50254e  test(t539): M2 guard the GLM audit path against a dead context (SPEC-CTX-BLIND-DOUBLE-001)
-(+ M3 커밋 — 아래 §8)
+f83ed0c04  test(t539): M3 measure the five candidate groups with mutants, repair none (SPEC-CTX-BLIND-DOUBLE-001)
+73a588054  (오케스트레이터 검증 배치)
++ sync-audit F1~F4 정정 커밋 (§8)
+
+$ git log --format=%s dbc1f7125..HEAD | /usr/bin/grep -cv 't539'   → 0   (누락 0건)
 ```
 **push 없음.** 레인 규율상 `WT-*` 브랜치는 push 하지 않으며 통합은 리드 소관이다.
 
@@ -307,13 +402,19 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	1.468s
 | F1 | `internal/update` | `update/orchestrator.go:55` `o.updater.Download(ctx, info)` | 3 | `m3-update.log` |
 | F2 | `internal/statusline` | `statusline/builder.go:362` `b.gitProvider.CollectGitStatus(ctx)` (+ 미측정 형제 seam `:373` `:388`) | 4 | `m3-statusline.log` |
 | F3 | `internal/lsp/core` | `lsp/core/manager.go:366` `c.Start(ctx)` | 12 | `m3-lsp.log` |
-| F4 | `internal/core/project` + `internal/cli` + `internal/cli/update/merge` | `core/project/initializer.go:434` · `cli/mirror_notice.go:37,:42` | 20 | `m3-template-deployer.log` |
-| F5 | `internal/cli` + `internal/github` + `internal/guardstate` | `cli/branch_protection.go:65` · `github/pr_reviewer.go:110` · `guardstate/evaluate.go:180` | 10 | `m3-gh-client.log` |
+| F4 | `internal/core/project` + `internal/cli` | `core/project/initializer.go:434` · `cli/mirror_notice.go:37,:42` | 18 | `m3-template-deployer.log` |
+| F5 | `internal/cli` + `internal/github` + `internal/guardstate` | `cli/branch_protection.go:122` (`PreflightGh`) · `:158` (`ApplyBranchProtection`) · `github/pr_reviewer.go:110` · `guardstate/evaluate.go:180` | 10 | `m3-gh-client.log` · `sync-audit-5a-live-*.log` |
 | F6 | (설계 관찰, 대역 아님) | `internal/update/checker.go:325` `IsUpdateAvailable(current string)` 가 컨텍스트를 받지 않고 내부에서 `CheckLatest(context.Background())` 를 부른다 — 호출자의 컨텍스트가 이 경로에 도달할 수 없다 | — | `m3-update.log` 씨앗 B |
+| **F7** | `internal/cli` (죽은 코드) | `branch_protection.go:64` `DiscoverOwnerRepo` 는 저장소 전체에 **호출자가 0건**인 공개 함수다. 공개 심볼이라 컴파일러가 잡지 않는다. `/moai clean` 또는 별도 카드 대상 | — | `sync-audit.md` F9 · `m3-gh-client.log` 씨앗 5a |
+| **F8** | (절차/AC 개선) | 뮤턴트 절차에 **도달성 전제**를 AC 문언으로 넣는다 — *"생존 판정은 같은 줄에 `panic` 프로브를 넣었을 때 같은 셀렉터가 실패함을 보인 뒤에만 채택한다."* AC-CBD-011 의 `-list > 0` 은 이 층을 지키지 못한다(씨앗 5a 가 `-list 5` 로 문언을 충족하며 아무것도 재지 못했다) | — | `sync-audit.md` F1·F6 |
+| **F9** | `internal/cli/update/merge` (측정 불가 2건) | 귀속표 73·74행(`mockDeployer.Deploy`/`.ValidateAll`)은 package merge 안에 소비 seam 이 없어 이 카드에서 잴 수 없었다. 이 두 대역이 지켜야 할 컨텍스트 축이 **있어야 하는지**(즉 `AnalyzeMergeChanges` 가 ctx 를 받아야 하는지)는 설계 질문이며 별도 카드 소관 | 2 | `m3-merge.log` |
 
-각 후속 카드의 권장 진입 형태: 이 카드의 M2 를 그대로 반복한다 — 해당 seam 에 뮤턴트를 넣어
-**생존을 먼저 재확인**하고, 충실한 대역으로 가드를 세운 뒤, 같은 뮤턴트가 **죽는 것**을 보인다.
-F2 는 형제 seam 2개의 개별 측정부터 시작한다(이 카드는 대표성을 측정하지 않았다).
+각 후속 카드의 권장 진입 형태: 이 카드의 M2 를 그대로 반복하되, **0단계로 도달성 프로브를
+먼저 돌린다**(F8 이 강제하는 단계 — 이 카드의 씨앗 5a 가 그것 없이 무판정을 생존으로 적었다).
+도달이 선 뒤 해당 seam 에 뮤턴트를 넣어 **생존을 재확인**하고, 충실한 대역으로 가드를 세운 뒤,
+같은 뮤턴트가 **죽는 것**을 보인다.
+F2 는 형제 seam 2개(`:373` `:388`)의 개별 측정부터 시작한다(이 카드는 대표성을 측정하지 않았다).
+F5 는 `mockGHClient` 6 메서드 중 `PRView` 만 실측이므로 나머지 5개의 개별 측정이 남아 있다.
 
 ---
 
@@ -323,6 +424,11 @@ F2 는 형제 seam 2개의 개별 측정부터 시작한다(이 카드는 대표
 |---|---|
 | `6fe7a4141` | `test(t539): M1 pin the discriminator and sweep artifacts (SPEC-CTX-BLIND-DOUBLE-001)` |
 | `a9a50254e` | `test(t539): M2 guard the GLM audit path against a dead context (SPEC-CTX-BLIND-DOUBLE-001)` |
-| (M3) | `test(t539): M3 measure the five candidate groups with mutants, repair none (SPEC-CTX-BLIND-DOUBLE-001)` |
+| `f83ed0c04` | `test(t539): M3 measure the five candidate groups with mutants, repair none (SPEC-CTX-BLIND-DOUBLE-001)` |
+| `73a588054` | 오케스트레이터 검증 배치 (run-phase 증거 재확인) |
+| (이 커밋) | `docs(spec): t539 sync-audit F1–F4 repairs — reachability-corrected gh seam, merge rows measured, line/SHA fixes (SPEC-CTX-BLIND-DOUBLE-001)` |
+
+run-phase 종단 커밋은 `f83ed0c04` 다(`progress.md` §E.3 `run_commit_sha`). `73a588054` 는
+그 뒤의 검증 배치이고, 이 커밋은 sync-audit 정정이다.
 
 push 하지 않았다.

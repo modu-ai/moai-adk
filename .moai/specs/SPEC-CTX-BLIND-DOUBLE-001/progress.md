@@ -62,34 +62,52 @@ M2 로그: `.moai/reports/t539/m2-mutant.log`. **프로덕션 코드 변경 0줄
 
 ### M3 — 다섯 후보군 84건 뮤턴트 판정 (측정만, 수리 없음)
 
-씨앗 11개, 후보군 5개. 판정: **생존 49 · 검출 34 · seam 부재 1 = 84**.
+씨앗 12개, 후보군 5개. 판정: **생존 47 · 검출 34 · seam 부재 3 = 84**.
+
+> **sync-audit F1·F2·F3 정정 반영 (HEAD `73a588054`)**. 최초 기록은 "생존 49 · seam 부재 1 ·
+> 미측정 0건 · 씨앗 11" 이었다. 씨앗 5a 는 무도달로 **무효**, 73·74행은 패키지 경계로 **seam 부재**
+> 재분류, 3a 의 줄 번호는 `:174` → `:175`. 상세: `verdict.md` §4 Gap 1b/1c/1d.
 
 | 씨앗 | 주입 지점 | `-list` | 관측 출력 | 판정 |
 |---|---|---:|---|---|
-| 1A | `update/orchestrator.go:55` | 88 | `ok 6.334s` | 생존 |
+| 1A | `update/orchestrator.go:55` | 88 | `ok 6.334s` (도달 확인) | 생존 |
 | 1B | (씨앗 없음 — `IsUpdateAvailable(string)` 에 ctx 파라미터 부재) | — | 인터페이스 시그니처 | seam 부재 |
-| 2 | `statusline/builder.go:362` | 318 | `ok 23.423s` | 생존 |
-| 3a | `lsp/aggregator/aggregator.go:174` | 19 | `FAIL 0.495s` — `got 1 diagnostics, want 0` 외 1건 | **검출** |
-| 3b | `lsp/core/manager.go:366` | 97 | `ok 0.305s` | 생존 |
+| 2 | `statusline/builder.go:362` | 318 | `ok 23.423s` (도달 확인) | 생존 |
+| 3a | `lsp/aggregator/aggregator.go:175` | 19 | `FAIL 0.495s` — `got 1 diagnostics, want 0` 외 1건 | **검출** |
+| 3b | `lsp/core/manager.go:366` | 97 | `ok 0.305s` (도달 확인) | 생존 |
 | 3c | `lsp/transport/request.go:53` | 32 | `FAIL 180.201s` — `TestCallWithTimeout_DeadlineExceeded` 행(hang) | **검출** |
-| 4a | `core/project/initializer.go:434` | 118 | `ok 1.609s` | 생존 |
-| 4b | `cli/mirror_notice.go:37,:42` | 161·32·51 | `ok 15.564s` / `ok 4.384s` / `ok 0.321s` | 생존 |
-| 5a | `cli/branch_protection.go:65` | 5 | `ok 0.862s` | 생존 |
-| 5b | `github/pr_reviewer.go:110` | 136 | `ok 0.244s` | 생존 |
-| 5c | `guardstate/evaluate.go:180` | 47 | `ok 0.228s` | 생존 |
+| 4a | `core/project/initializer.go:434` | 118 | `ok 1.609s` (도달 확인) | 생존 |
+| 4b | `cli/mirror_notice.go:37,:42` | 161·32 | `ok 15.564s` / `ok 4.384s` (두 분기 도달 확인) | 생존 (10행) |
+| 4b′ | (seam 부재 — `merge.go:306 AnalyzeMergeChanges` 에 ctx 파라미터 없음) | — | `.Deploy(`/`.ValidateAll(` 호출 0건 | **seam 부재** (73·74행, F2) |
+| ~~5a~~ | ~~`cli/branch_protection.go:65`~~ | ~~5~~ | ~~`ok 0.862s`~~ — `DiscoverOwnerRepo` 호출자 0건, panic 프로브 미발생 | **무효 · 무도달 (F1)** |
+| 5a′ | `cli/branch_protection.go:122` (`PreflightGh`) | 2 | `panic: REACH122` 도달 증명 후 `ok 0.887s` | 생존 |
+| 5a″ | `cli/branch_protection.go:158` (`ApplyBranchProtection`) | 5 | `panic: REACH158` 도달 증명 후 `ok 0.688s` | 생존 |
+| 5b | `github/pr_reviewer.go:110` | 136 | `ok 0.244s` (도달 확인) | 생존 |
+| 5c | `guardstate/evaluate.go:180` | 47 | `ok 0.228s` (도달 확인) | 생존 |
+
+**절차 정정 [HARD]**: 생존 판정은 **도달성을 먼저 세운 뒤에만** 채택한다 — 주입할 줄에 `panic`
+프로브를 넣어 같은 셀렉터가 실패함을 보이고, 되돌린 뒤에야 뮤턴트를 넣는다. 도달하지 못한
+뮤턴트의 `ok` 는 생존이 아니라 **무판정**이며 둘은 출력이 같아 구별되지 않는다. M3 절차에 이
+단계가 없어 씨앗 5a 가 통과했다.
 
 | AC | 검증 명령 | 관측 출력 | 판정 |
 |---|---|---|---|
-| AC-CBD-008 | `/usr/bin/grep -E '^- \`internal/[^\`]+_test\.go:[0-9]+\` \`' plan.md \| wc -l` + 귀속표 대조 | `84` · 미측정 **0건** · 로그 5개 + `m3-attribution.md` 실재 | PASS |
-| AC-CBD-009 | 생존 후보 수리 diff 부재 + 후속 카드 요청 | 프로덕션 diff 0줄 · `verdict.md` §7 에 후속 카드 요청 6항목(F1~F6) | PASS |
+| AC-CBD-008 | `/usr/bin/grep -E '^- \`internal/[^\`]+_test\.go:[0-9]+\` \`' plan.md \| wc -l` + 귀속표 대조 | `84` · **뮤턴트 판정 81 + seam 부재 3**, 판정 공백 0건 · 로그 6개 + `m3-attribution.md` 실재 | **PASS-WITH-DEBT** (F1·F2 정정) |
+| AC-CBD-009 | 생존 후보 수리 diff 부재 + 후속 카드 요청 | 프로덕션 diff 0줄 · `verdict.md` §7 에 후속 카드 요청 **9항목**(F1~F9) | PASS |
 | AC-CBD-010 | 검출 후보 수리 diff 부재 + 판정 기록 | 3a·3c CLOSE "옳게 눈멂 / 위층이 컨텍스트를 본다" · `m3-lsp.log` | PASS |
 
 M3 로그: `m3-update.log` · `m3-statusline.log` · `m3-lsp.log` · `m3-template-deployer.log` ·
-`m3-gh-client.log` · 귀속표 `m3-attribution.md`.
+`m3-gh-client.log` · `m3-merge.log` · 귀속표 `m3-attribution.md` ·
+감사자 증거 `sync-audit.md` + `sync-audit-*.log`.
 
-**귀속의 한계(과장하지 않는다)**: 씨앗은 11개이고 나머지 구성원은 같은 seam 뒤에 있다는 이유로
+**귀속의 한계(과장하지 않는다)**: 씨앗은 12개이고 나머지 구성원은 같은 seam 뒤에 있다는 이유로
 귀속됐다. "84건 전부에 판정이 귀속된다"는 참이지만 "84건 전부가 자기 뮤턴트를 가졌다"는 거짓이다
 (`m3-attribution.md` §Gaps, `verdict.md` §4).
+
+**최초 기록이 틀렸던 두 자리(sync-audit 적발)**: ① 씨앗 5a 는 호출자 0건인 죽은 함수에 들어가
+아무것도 재지 못했는데 그 `ok` 를 생존으로 적었다 — 도달성 프로브가 없어 무판정과 생존을
+구별하지 못했다. ② 73·74행은 패키지 경계를 넘지 못하는 씨앗에 귀속돼 있었다. 둘 다 이 커밋에서
+정정했고, ①은 감사자의 보정 재측정으로 **결론은 유지·증거는 교체**됐다.
 
 ### 전역
 
@@ -112,10 +130,13 @@ M3 로그: `m3-update.log` · `m3-statusline.log` · `m3-lsp.log` · `m3-templat
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run   # M3 커밋은 자기 SHA 를 참조할 수 없다 (D3 backfill 창)
+run_commit_sha: f83ed0c04          # run-phase 종단 커밋 (M3). D3 backfill 창에서 확정 — sync-audit F4
+verification_commit_sha: 73a588054 # 오케스트레이터 검증 배치 (run-phase 증거 재확인)
+sync_audit_repair_commit: (이 커밋)  # sync-audit F1~F4 정정
 run_status: complete
-ac_pass_count: 12        # AC-CBD-004..015
+ac_pass_count: 12        # AC-CBD-004..015 (AC-CBD-008 은 PASS-WITH-DEBT)
 ac_fail_count: 0
+ac_pass_with_debt_count: 1   # AC-CBD-008 — "미측정 0건" 문언이 F1·F2 로 정정됨
 ac_regression_guard_count: 3   # AC-CBD-001..003 — 통과로 기록하지 않음 (undecidable disposition)
 preserve_list_post_run_count: 0   # PRESERVE 목록 위반 0
 l44_pre_commit_fetch: n/a         # WT 브랜치는 push 하지 않는다 (레인 규율) — fetch/divergence 판정 불필요
@@ -131,8 +152,11 @@ production_code_lines_changed: 0 # 불변식 — git diff 로 확인
 m1_to_mN_commit_strategy: milestone 당 1커밋 (M1 / M2 / M3), 전 제목에 t539, push 없음
 evidence_root: .moai/reports/t539/
 verdict: .moai/reports/t539/verdict.md   # 5절 형식 (Claim/Evidence/Baseline-attribution/Gaps/Residual-risk)
-followup_card_requests: 6        # F1~F6 (verdict.md §7) — 생존 뮤턴트는 수리하지 않고 후속 카드로
-known_gaps: 7                    # verdict.md §4 — 최대 항목: 84건 개별 뮤턴트 미측정(씨앗 11개로 귀속)
+sync_audit: .moai/reports/t539/sync-audit.md   # PASS-WITH-DEBT 83.8 — F1~F4 blocking, 이 커밋에서 정정
+followup_card_requests: 9        # F1~F9 (verdict.md §7) — 생존 뮤턴트는 수리하지 않고 후속 카드로
+known_gaps: 10                   # verdict.md §4 (1·1b·1c·1d 포함) — 최대 항목: 84건 개별 뮤턴트 미측정(씨앗 12개로 귀속)
+coverage_internal_cli: 81.1%     # sync-audit 이 측정(F5). 프로필 임계 85% 미달이나 이 카드가 만든
+                                 # 회귀 아님 — 프로덕션 0줄 변경 + 테스트 순증이므로 분모 동일
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal

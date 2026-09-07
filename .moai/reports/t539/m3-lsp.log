@@ -2,7 +2,10 @@
 # 판정: seam 별로 갈린다 — aggregator 검출 / core 생존 / transport 검출
 # 이 후보군은 서로 다른 호출자 seam 을 셋 가지므로 seam 마다 하나씩 주입했다(plan §F 절차 1).
 
-## 씨앗 3a — internal/lsp/aggregator/aggregator.go:174  → **검출(사망)**
+## 씨앗 3a — internal/lsp/aggregator/aggregator.go:175  → **검출(사망)**
+# [줄 번호 정정 · sync-audit F3] 최초 작성본은 :174 로 적었으나 174행은 `var getErr error`,
+# seam 은 175행이다. 인용한 before/after 텍스트가 유일해 재현은 막히지 않았고, 감사자가
+# 175행에서 재주입해 아래 두 실패 메시지의 축자 일치를 확인했다(sync-audit-m3-3a.log).
 프로덕션이 컨텍스트를 인터페이스로 넘기는 지점:
   diags, getErr = client.GetDiagnostics(qCtx, path)    ← core.Client
   (qCtx = context.WithTimeout(ctx, a.queryTimeout), aggregator.go:143)
