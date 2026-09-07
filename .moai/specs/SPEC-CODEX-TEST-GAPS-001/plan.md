@@ -1,10 +1,10 @@
 # SPEC-CODEX-TEST-GAPS-001 — Implementation Plan
 
-Tier S | cycle_type recommendation: ddd (ANALYZE-PRESERVE-IMPROVE — characterization-test work over existing, behaviorally-frozen code; zero production diffs mandated by REQ-CTG-009) | harness: minimal (single package, tests only, scoped verification recipe)
+Tier M | cycle_type recommendation: ddd (ANALYZE-PRESERVE-IMPROVE — characterization-test work over existing, behaviorally-frozen code; zero production diffs mandated by REQ-CTG-009) | harness: standard (tests-only single-package scope, but 12 REQ/12 AC and a cross-platform process test put this above the Tier S ceiling)
 
 ## A. Context
 
-Card t501. The card's original premise (6 uncovered codex clusters from a name-citation scan) was mechanically refuted on the execution axis before dispatch; spec.md §B records both axes and the measured residue. This plan covers only that residue: 7 test items in `internal/cli/`, no production changes.
+Card t501. The card's original premise (6 uncovered codex clusters from a name-citation scan) was mechanically refuted on the execution axis before dispatch; spec.md §B records both axes and the measured residue. This plan covers only that residue: 8 test items in `internal/cli/`, no production changes.
 
 Existing idioms to reuse (verified present in the worktree at authoring time):
 
@@ -39,11 +39,11 @@ Verification recipe (scoped; run from the worktree root):
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout 700s -coverprofile=/tmp/t501_cover_after.out ./internal/cli/
 ```
 
-- Bash tool timeout: set to the 600,000ms ceiling and run in foreground; if the package exceeds the wall-time budget, split by test pattern (`-run 'TestTerminateCodexProcessDirect|TestCodexIDMatches|...'`) for the iterating loop, and run the full-package scoped command once at the end for the completion measurement (REQ-CTG-010).
-- E1: full scoped command exits rc=0 with the package `ok` line observed.
+- **Background-run note (600s foreground ceiling)**: the measured full-package suite took 515.6s, inside the Bash tool's 600s foreground ceiling but with little headroom — a loaded machine pushes it over. The full scoped run is therefore executed as a worktree background task: output redirected to a log file (`.moai/state/verify/t501/cover-after.log`), exit code read from the log/`echo $?` line after completion. While iterating, use `-run` pattern scoping (foreground-safe, seconds not minutes): `-run 'TestTerminateCodexProcess|TestCodexIDMatches|...'`.
+- E1: full scoped command exits rc=0 with the package `ok` line observed (read from the log file, verbatim).
 - E2: `gofmt -l internal/cli/` prints nothing for touched files; `go vet ./internal/cli/` exits 0; `golangci-lint run internal/cli/...` clean on touched files.
-- E3: extract per-function coverage from the fresh profile (`go tool cover -func=/tmp/t501_cover_after.out`) and confirm exactly ONE 0.0% function among the 118 — `(realCodexConn).pid` (REQ-CTG-010). Cite the verbatim extract line.
-- E4: `git diff --name-only` shows only `*_test.go` paths (REQ-CTG-009).
+- E3: extract per-function coverage from the fresh profile (`go tool cover -func=/tmp/t501_cover_after.out`) and confirm ZERO 0.0% functions among the 118 (REQ-CTG-010). Cite the verbatim extract lines.
+- E4: zero-production-diff gate as a base-pinned UNION check (REQ-CTG-009, AC-CTG-009): the union of `git diff --name-only <FIX-ROUND-BASE-SHA>..HEAD` and `git status --short`, filtered to non-test `.go` paths, is empty. `<FIX-ROUND-BASE-SHA>` is the fix-round commit SHA the lane lands — read it at commit time (`git rev-parse --short HEAD`) and cite it verbatim in the evidence.
 
 ## F. Milestones (priority-ordered per the lead's directive: U2/U3 first; ordered by decision-reversibility — the cross-platform approach decision lands in M1 because it is the least reversible choice in this SPEC)
 
@@ -76,16 +76,21 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 - File: extend `mcp_codex_test.go`.
 - Construct via the production fail-open shape (`codexHandshakeFailure` or direct struct literal), assert `Error()` equals `cause.Error()` and `Unwrap()` returns `cause` (assert both `errors.Is`/`errors.As` reachability through the wrap).
 
-### M6 — [U7] error arms: codexGatePrintf + defaultCodexInitGenerator (REQ-CTG-005, REQ-CTG-006) — Priority Low
+### M6 — realCodexConn.pid direct test (REQ-CTG-012) — Priority Medium
+
+- File: extend `mcp_codex_test.go`.
+- Direct method call, same package, no subprocess: three receivers — `&realCodexConn{}` → 0; `&realCodexConn{cmd: &exec.Cmd{}}` → 0; `cmd.Process` from `os.FindProcess(os.Getpid())` → that pid. Provenance: the plan-audit refuted the original "live-session-gated" skip rationale by direct read of mcp_codex.go:494-499; the surface is same-package constructible. Uses the host process's own pid as a harmless positive value — no process is spawned or signalled.
+
+### M7 — [U7] error arms: codexGatePrintf + defaultCodexInitGenerator (REQ-CTG-005, REQ-CTG-006) — Priority Low
 
 - File: extend `codex_init_test.go` (seam-injection idioms already live there).
 - `codexGatePrintf`: an `io.Writer` whose write returns an error → silent return, no panic (assert via recovery-free contract: the call returns and any panic fails the test naturally).
 - `defaultCodexInitGenerator`: inject a `codexwiring.Wire` failure path per the existing seam; assert the returned error wraps the cause (`errors.Is` reaches the sentinel), not a bare pass-through.
 
-### M7 — Completion re-measurement + skip-record verification (REQ-CTG-008, REQ-CTG-010) — Priority High
+### M8 — Completion re-measurement + skip-record verification (REQ-CTG-008, REQ-CTG-010) — Priority High
 
-- Run the §E full scoped command; extract per-function coverage; confirm exactly ONE remaining 0.0% function (`(realCodexConn).pid`).
-- Confirm spec.md §D skip record is intact and matches the final profile (no new 0.0% functions appeared).
+- Run the §E full scoped command as a background task (§E background-run note); extract per-function coverage; confirm ZERO remaining 0.0% functions among the 118.
+- Confirm spec.md §D skip record is intact (exactly the two remaining surfaces) and matches the final profile (no new 0.0% functions appeared).
 
 ## G. Anti-Patterns (must NOT do)
 

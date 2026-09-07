@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-TEST-GAPS-001
 title: "Codex uncovered-surface test reinforcement — terminateCodexProcess, codexIDMatches, awaitCodexResponse cancel arm, HTML-comment import fixtures, error arms, delegation contract"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -11,7 +11,7 @@ phase: "v3.1.4 target"
 module: internal/cli
 lifecycle: spec-anchored
 era: V3R6
-tier: S
+tier: M
 tags: "codex, testing, coverage, test-gaps, internal-cli, characterization"
 related_specs: [SPEC-CODEX-WIRING-001, SPEC-CODEX-SESSION-MSG-001]
 ---
@@ -21,6 +21,7 @@ related_specs: [SPEC-CODEX-WIRING-001, SPEC-CODEX-SESSION-MSG-001]
 ## A. History
 
 - 2026-09-07 — v0.1.0 — Card t501 plan-phase. Authored from a mechanically-refuted investigation: the card's original premise ("6 uncovered clusters") was confirmed on the name-citation axis and refuted on the execution axis. SPEC narrowed to the genuine residue (7 test items + 1 documented-skip record). Evidence: `.moai/reports/t501/{namegrep-counts,coverage-perfunc,coverage-run.log}`.
+- 2026-09-07 — v0.2.0 — Plan-audit iteration 1 fix round (score 0.875, FAIL on 5 blocking instrument defects). Tier S→M (artifact set + REQ/AC counts exceeded the Tier S ceiling). `(realCodexConn).pid` removed from the documented-skip record — the rationale was refuted by direct read of mcp_codex.go:494-499 (a 3-branch field read, same-package constructible); an 8th test item (REQ-CTG-012) covers it. Completion AC retargeted to ZERO remaining 0.0% functions. AC verification verbs hardened against empty-sweep green; zero-diff gate rewritten as a base-SHA-pinned union check. Quality-gate constraint promoted to REQ-CTG-011 (was an orphaned AC). Census denominators clarified (114 unique names vs 118 coverprofile rows).
 
 ## B. Refuted-Premise Narrative (audit trail — why this SPEC is small)
 
@@ -33,6 +34,8 @@ The card originated from a function-name-based citation scan claiming 6 clusters
 - Evidence: `.moai/reports/t501/namegrep-counts.txt`
 
 ### B.2 Axis 2 — actual execution: REFUTED AT SCALE
+
+Census denominators (stated once, used throughout): **114** is the count of unique function names in the 6 target files — the name-citation denominator (§B.1). **118** is the count of function rows in the coverprofile extract (`.moai/reports/t501/coverage-perfunc.txt`) — the execution denominator; the difference of 4 is method names duplicated across receiver types, which the profile counts once per receiver.
 
 Per-function coverage was measured with the domain's mechanical tool:
 
@@ -92,7 +95,15 @@ The six "clusters" are behaviorally tested via existing idioms (interface fakes 
 
 ### REQ-CTG-010 — completion re-measurement [Priority High]
 
-**When** the run phase completes, a fresh coverprofile over `./internal/cli/` shall show exactly ONE remaining 0.0% function among the 118 measured functions — `(realCodexConn).pid` (mcp_codex.go:494), documented live-gated per §D.
+**When** the run phase completes, a fresh coverprofile over `./internal/cli/` shall show ZERO remaining 0.0% functions among the 118 measured function rows: all four originally-0.0% surfaces — `terminateCodexProcess`, `(realCodexConn).pid` (REQ-CTG-012), `(codexSessionError).Error`, `(codexSessionError).Unwrap` (REQ-CTG-007) — are covered by this SPEC's test items.
+
+### REQ-CTG-011 — quality-gate constraint [Priority High]
+
+**While** the run phase executes, the touched test files shall pass `go vet`, `golangci-lint run`, and `gofmt` clean, and the full diff shall remain tests-only (consistent with REQ-CTG-009).
+
+### REQ-CTG-012 — realCodexConn.pid direct test [Priority Medium]
+
+**When** a direct method-call test constructs `realCodexConn` in the same package (mcp_codex.go:494-499 — a 3-branch field read: `cmd == nil` → 0; `cmd.Process == nil` → 0; else `cmd.Process.Pid`), the test suite shall assert all 3 branches — `&realCodexConn{}`, `&realCodexConn{cmd: &exec.Cmd{}}`, and a `cmd.Process` obtained via `os.FindProcess(os.Getpid())` — with no subprocess spawn.
 
 ## D. Documented-Skip Record
 
@@ -100,9 +111,10 @@ These surfaces are deliberately NOT tested by this SPEC. The record is the deliv
 
 | Surface | Location | Reason |
 |---|---|---|
-| `(realCodexConn).pid` | mcp_codex.go:494 | Live-session-gated: a `realCodexConn` exists only under opt-in live probes against a running codex app-server; not reachable from hermetic unit tests. |
 | `writeCodexRequest` / `writeCodexEnvelope` marshal-error arms | mcp_codex.go | Dead-in-practice: envelopes are built from JSON-safe literals; the marshal error path cannot be reached with values the production callers construct. |
 | `terminateCodexProcess` FindProcess-error arm | codex_job_control.go:94 | Platform-unreachable on darwin/linux for integer pids: `os.FindProcess` never fails for a valid integer pid on these platforms. |
+
+> Note: `(realCodexConn).pid` was removed from this record in v0.2.0 — its former "live-session-gated" rationale was refuted by direct read of the source (same-package constructible; no subprocess needed). It is now a test item (REQ-CTG-012).
 
 ## E. Constraints
 
