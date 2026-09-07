@@ -51,6 +51,26 @@ const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
 // user opts in explicitly.
 const initCodexAdvice = "run moai init --agent codex"
 
+// mirrorRedeployAdvice is the skill-mirror action directive
+// (SPEC-CODEX-MIRROR-DOCTOR-001 §4). The FORCED form is deliberate: the
+// routine `moai update --yes` was measured to leave a deleted mirror at zero
+// entries on a version-matched project, because the version-match
+// short-circuit returns before the deploy step that owns mirror creation.
+// This exact invocation restored it (root-cause.md Claim 2).
+const mirrorRedeployAdvice = "run moai update --templates-only --force --yes"
+
+// mirrorSkillsRelDir / canonicalSkillsRelDir are the mirror layout.
+//
+// They restate the producer's paths as literals rather than importing them:
+// package template's own mirrorSkillsRelDir and mirrorLinkTarget are
+// unexported, and exporting them is outside this SPEC's scope. The drift risk
+// that follows — the producer moving its layout without this reader noticing —
+// is recorded rather than closed, and is a candidate for its own card.
+var (
+	mirrorSkillsRelDir    = filepath.Join(".agents", "skills")
+	canonicalSkillsRelDir = filepath.Join(".claude", "skills")
+)
+
 // codexHomeConfigDisplay / codexHomeConfigEnvDisplay are how the user-layer
 // config is NAMED in a finding summary. The symbolic form keeps the summary
 // inside the width band; the exact resolved path rides in Detail, where the
@@ -181,6 +201,21 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)"))
 			}
 		}
+
+		// Skill mirror. `.agents/skills` is what makes the MoAI skill catalog
+		// reachable from Codex CLI, which does not scan `.claude/skills`. It
+		// is created at deploy time only, and its outcome is consumed only by
+		// the two deploy-time notice callers — so on a version-matched project
+		// a missing or broken mirror is invisible and self-perpetuating, and
+		// nothing but this row surfaces it.
+		//
+		// Inspected in the WIRED branch only (REQ-CMD-008). The unwired branch
+		// already carries initCodexAdvice, whose deploy creates the mirror; a
+		// second directive there would double-nag a project that never opted
+		// in.
+		mirrorProblems, mirrorDetail := codexMirrorObservations(inspectSkillMirror(root))
+		problems = append(problems, mirrorProblems...)
+		extraDetail = append(extraDetail, mirrorDetail...)
 	}
 
 	// User-layer skill registrations. Reached only when Codex is in play at
@@ -210,6 +245,162 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 // ride in Message unchanged.
 func plainCodexFinding(text string) codexFinding {
 	return codexFinding{summary: text, detail: text}
+}
+
+// skillMirrorState is what one read of `.agents/skills` observed.
+//
+// The state model is deliberately separate from the finding/detail split that
+// consumes it: WHICH states warrant a Message finding is the decision most
+// likely to be revisited, so it lives one call site away (plan.md §D M1).
+//
+// dirPresent and dirIndeterminate are distinct on purpose. "I read the
+// directory and it is not there" and "I could not read the directory" are
+// different observations, and only the first may raise the absent finding —
+// an unobserved absence is never reported as absent (REQ-CMD-010).
+type skillMirrorState struct {
+	dirPresent       bool
+	dirIndeterminate bool
+	dirReadErr       error
+	dangling         []string
+	copyMode         int
+	unmirrored       int
+	indeterminate    int
+}
+
+// inspectSkillMirror reads the mirror at root and returns what it observed.
+// It READS only — no create, repair, replace, or remove, on any path
+// (REQ-CMD-002). Every read error folds into an indeterminate count and never
+// into a count that drives a finding.
+func inspectSkillMirror(root string) skillMirrorState {
+	var st skillMirrorState
+
+	mirrorDir := filepath.Join(root, mirrorSkillsRelDir)
+	entries, err := os.ReadDir(mirrorDir)
+	switch {
+	case err == nil:
+		st.dirPresent = true
+	case errors.Is(err, fs.ErrNotExist):
+		// Genuinely absent: the one state that may raise the absent finding.
+		return st
+	default:
+		// Permission denied, a symlink loop, an I/O error: the mirror's state
+		// is indeterminate, NOT absent.
+		st.dirIndeterminate = true
+		st.dirReadErr = err
+		return st
+	}
+
+	mirrored := make(map[string]struct{}, len(entries))
+	for _, e := range entries {
+		mirrored[e.Name()] = struct{}{}
+		entryPath := filepath.Join(mirrorDir, e.Name())
+
+		info, lerr := os.Lstat(entryPath)
+		if lerr != nil {
+			st.indeterminate++
+			continue
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			if info.IsDir() {
+				// The copy fallback's materialization. Functional, and the
+				// expected shape wherever symlink creation is unavailable.
+				st.copyMode++
+			}
+			// A regular file occupying a mirror path is a shape no
+			// requirement classifies; counting it as anything would assert
+			// something this check has no basis for.
+			continue
+		}
+		// Stat follows the link, resolving the producer's RELATIVE link body
+		// against the mirror directory exactly as the OS does for Codex.
+		_, serr := os.Stat(entryPath)
+		switch {
+		case serr == nil:
+		case errors.Is(serr, fs.ErrNotExist):
+			st.dangling = append(st.dangling, e.Name())
+		default:
+			st.indeterminate++
+		}
+	}
+
+	canonical, cerr := os.ReadDir(filepath.Join(root, canonicalSkillsRelDir))
+	if cerr != nil {
+		if !errors.Is(cerr, fs.ErrNotExist) {
+			st.indeterminate++
+		}
+		return st
+	}
+	for _, e := range canonical {
+		if !e.IsDir() {
+			continue
+		}
+		if _, ok := mirrored[e.Name()]; !ok {
+			st.unmirrored++
+		}
+	}
+	return st
+}
+
+// codexMirrorObservations splits an observed mirror state into the two
+// registers: findings that reach Message, and detail-only counts that reach
+// Detail alone.
+//
+// Two states are findings, and only two. An absent mirror means Codex sees no
+// MoAI skills at all, and a dangling entry claims a skill that is not there —
+// both mechanically decidable, both unrepaired between deploys.
+//
+// Copy-mode and unmirrored counts are reported and never warned. Copy mode is
+// the CORRECT materialization on a symlink-less host, so warning on it would
+// hand those users a permanent row for a working mirror. And the denominator
+// an unmirrored finding would need — the set of skills a deploy actually
+// mirrored — is not observable from here, so a count-based finding would warn
+// on a project carrying locally-authored skills that no deploy ever touched.
+func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
+	var problems []codexFinding
+	var detail []string
+
+	switch {
+	case st.dirIndeterminate:
+		detail = append(detail, fmt.Sprintf(
+			"%s could not be read (%v) — mirror state not checked, and NOT reported as absent",
+			mirrorSkillsRelDir, st.dirReadErr))
+		return problems, detail
+	case !st.dirPresent:
+		problems = append(problems, codexFinding{
+			summary: fmt.Sprintf("%s mirror absent — %s", mirrorSkillsRelDir, mirrorRedeployAdvice),
+			detail: fmt.Sprintf(
+				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time only, and a routine `moai update` on a version-matched project does not restore it, so %s",
+				mirrorSkillsRelDir, canonicalSkillsRelDir, mirrorRedeployAdvice),
+		})
+		return problems, detail
+	}
+
+	if n := len(st.dangling); n > 0 {
+		problems = append(problems, codexFinding{
+			summary: fmt.Sprintf("%s: %d dangling mirror %s — %s",
+				mirrorSkillsRelDir, n, pluralCodexEntries(n), mirrorRedeployAdvice),
+			detail: fmt.Sprintf(
+				"%s: %d %s are symlinks whose %s target no longer exists (%s) — %s",
+				mirrorSkillsRelDir, n, pluralCodexEntries(n), canonicalSkillsRelDir,
+				strings.Join(st.dangling, ", "), mirrorRedeployAdvice),
+		})
+	}
+	if st.copyMode > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s materialized as a real directory (copy fallback — functional, but a copy does not follow later updates to %s)",
+			mirrorSkillsRelDir, st.copyMode, pluralCodexEntries(st.copyMode), canonicalSkillsRelDir))
+	}
+	if st.unmirrored > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s with no %s entry (reported, not a finding: the set a deploy actually mirrored is not observable here)",
+			canonicalSkillsRelDir, st.unmirrored, pluralCodexEntries(st.unmirrored), mirrorSkillsRelDir))
+	}
+	if st.indeterminate > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s could not be read — not checked, and NOT counted as dangling",
+			mirrorSkillsRelDir, st.indeterminate, pluralCodexEntries(st.indeterminate)))
+	}
+	return problems, detail
 }
 
 // joinCodexSummaries renders the Message, bounded by codexMessageWidthCeiling.
