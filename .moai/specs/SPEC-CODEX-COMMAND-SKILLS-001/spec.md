@@ -89,8 +89,8 @@ state.
 **When** the emitter runs, each published skill shall carry (a) a name derived from its
 command name as `moai-<command name>`, used consistently as both the directory name and the
 frontmatter `name` value, and (b) a `description` equal to the language-neutral English
-variant of that command's own `description` frontmatter (the unconditional `{{else}}` branch
-of the locale-conditional template), carrying no Go template syntax.
+variant of that command's own `description` frontmatter (extraction mechanism: plan.md M1),
+carrying no Go template syntax.
 
 ### R-004 — Name-collision refusal (Event-detected) `[card HARD]`
 
@@ -153,7 +153,8 @@ the user project, the deployer shall leave it untouched and report the skip (the
 The full AC matrix (Given-When-Then, each AC naming its verifying command) lives in
 `acceptance.md`. Coverage map: R-001→AC-001; R-002→AC-002; R-003→AC-003, AC-004;
 R-004→AC-005; R-005→AC-006, AC-007; R-006→AC-008, AC-009; R-007→AC-010; R-008→AC-011;
-R-009→AC-012; R-010→AC-013; R-011→AC-009.
+R-009→AC-012; R-010→AC-009; R-011→AC-009. (AC-013 is the cross-platform build gate, B1 —
+not an R-coverage target.)
 
 ## §E Dependencies and Related Work
 

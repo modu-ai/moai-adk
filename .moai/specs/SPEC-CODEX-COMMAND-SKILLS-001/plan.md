@@ -68,6 +68,12 @@ tier: M
   `.claude/*` and `.moai/config` — not `.agents/`. Verify during M3 that the published
   skills survive `moai update` (they are template-managed files, tracked in the manifest
   like other regular template files — unlike mirror symlinks, which are untracked).
+- **Catalog membership not required (measured, plan-audit iteration 1)**: published skills
+  need no `catalog.yaml` entry — `SlimFS` hides only non-core catalog entries and passes
+  non-catalog paths through unchanged (`slim_fs.go:4,67-83`), and
+  `TestAllSkillsInCatalog` scopes to `.claude/skills` only
+  (`catalog_tier_audit_test.go:106`), so the `.agents/skills/moai-<command>` subtree
+  deploys identically in full and slim mode with no catalog edit.
 
 ## §C Pre-flight (run before M1)
 
@@ -108,6 +114,13 @@ published body's known defect — it instructs a Claude-only `Skill("moai")` cal
 RECORDED as a boundary flag in the emitter's per-skill report (build log / test output),
 not repaired. This keeps this SPEC's diff purely additive and makes t497's repair a
 body-layer change that automatically propagates through regeneration.
+Generated-file header placement: unlike agentemit (whose header is a body-level comment),
+the generated header here lives INSIDE the YAML frontmatter block of the emitted
+`SKILL.md` — the body must stay byte-identical to the source body for AC-006's
+byte-compare, so any generated marker cannot be a body-level comment. (Codex skill
+frontmatter documents `name`/`description`; the header line joins the frontmatter as an
+additional comment-style key or YAML comment — exact form fixed at M1, constrained by
+AC-004's no-template-syntax check and AC-006's body byte-compare.)
 
 **D4. Freshness/validation — the agents-emit pattern, mirrored.**
 - Golden test in the emitter package, dual-mode: regeneration verb sets an env switch
@@ -132,8 +145,13 @@ scope).
 Per `manager-develop-prompt-template.md` §E: AC binary matrix (E1) over
 `acceptance.md`, cross-platform build (E2), coverage of the new emitter package ≥85% (E3),
 subagent-boundary grep N/A (no AskUserQuestion surface), lint (E5), tree state (E6), RED
-evidence (E8) for the collision-guard and drift-check tests (each RED observed on a
-constructed failing input before GREEN — verification-completeness §1.1/§2).
+evidence (E8) for exactly two ACs — AC-005 (collision guard, TDD fixture) and AC-010
+(drift check, mutate-a-committed-artifact) — each RED observed on a constructed failing
+input before GREEN (verification-completeness §1.1/§2). AC-008 is regression-guard
+(green-from-birth: the shipped mirror already skip-and-reports non-symlink occupants,
+`skill_mirror.go:198-207`, and mirror names derive from `.claude/skills` with 0/16
+measured overlap), so it carries NO RED-first obligation — fabricating one would require
+modifying PRESERVE-listed code.
 
 ## §F Milestones (ordered by decision-reversibility: data-shape decisions first)
 
@@ -148,11 +166,23 @@ constructed failing input before GREEN — verification-completeness §1.1/§2).
   of `build`; regeneration idempotence verified (R-008); drift RED observed (mutate one
   committed artifact → check exits 1 with the remediation pointer).
 - **M3 — Deploy coexistence + distribution (Priority Medium).** Fresh-init verification
-  (AC-013): a project initialized from the built binary carries all 16 published skills;
-  mirror coexistence test (AC-009): mirror creation neither clobbers published dirs nor
-  vice versa; `moai update` survival check; deploy-side skip-and-report for user-owned
-  occupants (R-011) — implemented only if the existing manifest/update path does not
-  already provide it (blocker report first if a deploy.go change is needed).
+  (AC-009): a project initialized from the built binary carries all 16 published skills;
+  mirror coexistence test (AC-008): mirror creation neither clobbers published dirs nor
+  vice versa; `moai update` survival check.
+  **R-011 update-mode protection — EXPECTED deploy.go change, not a contingency.**
+  Measured (plan-audit iteration 1, this tree): `deployer.go:234` gates ALL provenance
+  checks behind `if !d.forceUpdate`, so update-mode deploy overwrites any file at a
+  template path unconditionally (:242 "template_managed files are safe to overwrite");
+  only init mode is protected (:229-248). M3 therefore PLANS the update-side change: a
+  path-scoped provenance check that survives `forceUpdate` for the published-skill paths
+  (overwrite our own template-managed `moai-<command>` entries as today — that is how
+  updates deliver content — but skip-and-report an entry the manifest does not track as
+  template_managed). The plan.md §A.5 PRESERVE listing of `skill_mirror.go` stands; the
+  change is in `deployer.go`'s walk. Namespace interaction to respect: §24.4's
+  template-managed `moai-*` convention covers `.claude/skills/moai-*`; the published
+  skills live under `.agents/skills/` — record in the change that the new path scope is
+  `.agents/skills/moai-<command>` specifically, so the §24.4 classification of
+  `.claude/skills` names is untouched.
 - **M4 — Boundary flag + docs + neutrality (Priority Medium).** Per-skill boundary flag in
   the emission report (R-005); `CLAUDE.local.md` section pointer (D5); neutrality audit
   green over the new subtree (AC-012); CHANGELOG deferred to sync phase.
@@ -178,3 +208,16 @@ constructed failing input before GREEN — verification-completeness §1.1/§2).
   dir, description authoring, lifecycle cleanup).
 - acceptance.md — AC-001..AC-013 with verifying commands.
 - Prior art: `.moai/reports/t494/codex-doc-survey.md` §2/§4 (t494 worktree; do not modify).
+
+## §I Repair-round 1 decisions (plan-audit iteration 1, verdict FAIL 0.75)
+
+- **D1 applied** (spec.md coverage map: R-010→AC-009; AC-013 annotated as the B1 build gate).
+- **D2 applied** (M3 coexistence ref → AC-008).
+- **D3 applied** (AC-008 reclassified regression-guard; DoD + §E RED lists name AC-005 + AC-010 only).
+- **D4 applied** (M3 carries the measured `deployer.go:234` forceUpdate fact; the R-011
+  update-side change is the planned path, with the §24.4 namespace note).
+- **D5 applied** (D3: generated header lives inside the YAML frontmatter block).
+- **D7 applied** (AC-004 tightened to a counted, non-empty-sweep assertion).
+- **D6 applied** (AC-011 verify made order-independent via snapshot-diff form).
+- **D9 applied** (R-003 requirement sentence no longer names the `{{else}}` branch; the
+  extraction mechanism lives in plan.md M1 / acceptance.md AC-004, the correct layers).

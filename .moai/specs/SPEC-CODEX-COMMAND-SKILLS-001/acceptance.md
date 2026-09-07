@@ -52,8 +52,13 @@ spot check): `grep -r '^name: moai-' internal/template/templates/.agents/skills/
 **Then** it equals the English (`{{else}}`) variant of the source command description
 (`todo.md`: its plain description), and no emitted file contains Go template syntax.
 
-Verify: `grep -rl '{{' internal/template/templates/.agents/skills/` → no output. Content
-equality asserted by the golden test (AC-011's dual-mode comparison pins the bytes).
+Verify (two commands; the first guarantees the swept set is non-empty so the second's `0`
+is a real assertion, not an empty-sweep pass — verification-completeness §1.1):
+`find internal/template/templates/.agents/skills -name SKILL.md | wc -l` → `16`, then
+`grep -rl '{{' internal/template/templates/.agents/skills/ | wc -l` → `0`. Content
+equality asserted by the golden test (AC-011's dual-mode comparison pins the bytes); the
+run-phase emitter-package fixture test (AC-003's set-equality check) carries the real
+weight for description fidelity — this grep is the drift net, not the proof.
 
 ### AC-005 — Collision refusal (R-004) `[RED-first required]`
 
@@ -88,7 +93,7 @@ Claude-only tooling, and the published body still contains the verbatim
 Verify: `grep -rl 'Use Skill("moai")' internal/template/templates/.agents/skills/ | wc -l` → `16`;
 boundary-flag presence asserted in the emitter-package test.
 
-### AC-008 — Layout coexistence (R-006)
+### AC-008 — Layout coexistence (R-006) `[regression-guard]`
 
 **Given** a deploy fixture containing both mirror entries (`.agents/skills/<canonical-skill>`
 symlinks) and the 16 published directories
@@ -96,8 +101,16 @@ symlinks) and the 16 published directories
 **Then** no published directory is modified or removed, and no mirror entry is
 created/overwritten under a `moai-<command>` name.
 
-Verify: `go test ./internal/template/... -run TestMirrorCommandSkillCoexistence` (GREEN;
-RED-first on a constructed fixture where the mirror would clobber).
+Verify: `go test ./internal/template/... -run TestMirrorCommandSkillCoexistence` → GREEN.
+
+Classification: **regression-guard, NOT RED-first** — the red is unobservable against
+shipped code. The mirror already skip-and-reports non-symlink occupants ("Never remove or
+overwrite it — skip and report", `skill_mirror.go:198-207`), and mirror names derive from
+the `.claude/skills` walk whose name set has 0/16 measured overlap with the published
+`moai-<command>` names, so every fixture the real mirror runs against starts green. A RED
+observation would require modifying PRESERVE-listed code or stubbing the mirror (asserting
+nothing about shipped code) — both prohibited. This AC therefore guards the coexistence
+seam green across future changes and carries no E8 obligation.
 
 ### AC-009 — Deploy-side user-file safety + fresh-init distribution (R-011, R-010)
 
@@ -108,8 +121,13 @@ and where a user-owned entry pre-occupies one such path, deploy leaves it and re
 skip.
 
 Verify: init fixture test in `internal/template` or `internal/cli` (fresh `t.TempDir()`
-project); occupancy case via the mirror's existing skip semantics or the R-011 addition —
-if a `deploy.go` change proves necessary, that is a blocker report first (plan.md M3).
+project). The init-mode occupancy half rides the existing provenance path
+(`deployer.go:229-248`, already protected). The update-mode occupancy half is the EXPECTED
+`deployer.go` change planned in M3 (plan.md D4/M3: `deployer.go:234` currently gates all
+provenance checks behind `!forceUpdate`) — its test asserts skip-and-report for an
+untracked entry under `.agents/skills/moai-<command>` while template-managed published
+entries still overwrite normally; a blocker report is required only if the change's shape
+diverges from the M3 plan.
 
 ### AC-010 — Drift check: red observed, then green (R-007) `[RED-first required]`
 
@@ -128,9 +146,10 @@ Verify: the three observations recorded in E1/E8 (mutate → rc=1 + message; reg
 **When** `make <EMIT>` runs twice consecutively
 **Then** the second run produces a byte-identical tree.
 
-Verify: `make <EMIT> && git status --porcelain internal/template/templates/ | wc -l` → `0`
-(after the first run committed the artifacts, the second changes nothing); golden
-comparison test (`TestGoldenCommittedArtifactsMatchEmission` pattern) GREEN.
+Verify (order-independent — no reliance on prior commit state): snapshot the published
+tree (`cp -R internal/template/templates/.agents/skills /tmp/t503-snap`), run
+`make <EMIT>`, then `diff -r /tmp/t503-snap internal/template/templates/.agents/skills` →
+empty. Golden comparison test (`TestGoldenCommittedArtifactsMatchEmission` pattern) GREEN.
 
 ### AC-012 — Template neutrality over the emitted subtree (R-009)
 
@@ -169,5 +188,6 @@ Verify: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` 
 ## §D.3 Definition of Done
 
 All 13 ACs PASS with E1 matrix evidence (command + verbatim output + tree SHA); RED-first
-evidence present for AC-005, AC-008, AC-010; neutrality audit green; no byte changed under
-the §A.5 PRESERVE list.
+evidence present for exactly AC-005 and AC-010 (AC-008 is regression-guard — no E8
+obligation; AC-002 likewise); neutrality audit green; no byte changed under the §A.5
+PRESERVE list.
