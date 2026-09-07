@@ -67,7 +67,7 @@ Quality gates (D.2): `go test -cover ./internal/codexadapter/ ./internal/codexwi
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: PENDING_THIS_COMMIT
+sync_commit_sha: 732609dcfb36d67b598b4d1ee9c7190aac1a893f (authored as PENDING_THIS_COMMIT at sync-commit time, backfilled post-commit per the D3 SHA-placeholder backfill pattern)
 sync_status: complete
 changelog_entry: CHANGELOG.md [Unreleased] §Added — SPEC-CODEX-EVENT-COVERAGE-001 bullet (b12 pre-emission grep 0, AC inventory 11 distinct IDs all PASS, file paths ls-verified)
 docs_surfaces_assessed: docs-site/content/{en,ko,ja,zh}/advanced/codex-dual-harness.md updated (12-event table, 0.153.4 basis, SubagentStart/Stop adapted + RenderHooks install, honest trigger-not-achieved verdicts); README{,.ko,.ja,.zh}.md — no codex hook-event enumeration (grep rc=1), no update needed; hugo build verified warning-free post-edit
@@ -82,4 +82,4 @@ b12_self_test_b: distinct AC ids in acceptance.md = 11 (AC-CEV-001..006, 010..01
 b12_self_test_c: CHANGELOG-cited paths (docs-site 4 locales, campaign record) ls-verified before commit
 ```
 
-Note: `sync_commit_sha` is stamped on the sync commit itself (chicken-and-egg); the commit message and this file's landing prove the binding. Observation carried to the lead: §E.3 `ac_pass_count: 10` enumerates 11 PASS ACs (001..006, 010..013, 020) — §E.2/§E.3 are manager-develop-owned and left unmodified.
+Note: `sync_commit_sha` cannot cite its own hash inside the sync commit itself, so it was authored as the `PENDING_THIS_COMMIT` placeholder in `732609dcfb36d67b598b4d1ee9c7190aac1a893f` and backfilled to the real SHA in a follow-up commit (D3 backfill window, `spec-frontmatter-schema.md` § SHA placeholder backfill exemption). Observation carried to the lead: §E.3 `ac_pass_count: 10` enumerates 11 PASS ACs (001..006, 010..013, 020) — §E.2/§E.3 are manager-develop-owned and left unmodified (accept-as-disclosed per sync-audit).
