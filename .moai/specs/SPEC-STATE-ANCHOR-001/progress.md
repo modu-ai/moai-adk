@@ -169,9 +169,77 @@ ok  github.com/modu-ai/moai-adk/internal/cli	37.162s
 
 **축 A 코드 diff**: 생산 코드 변경 0 — M4 신규 파일은 테스트 1개(`internal/cli/todo_axisa_guard_test.go`)뿐. D10의 「코드 변경 금지」는 가드 행위의 변경 금지로 읽었다(AC-SA-009의 「테스트로 고정」·AC-SA-011의 뮤턴트 보관 지시가 테스트 추가를 요구하므로); 가드 코드(e7a078970 착지분)는 무접촉.
 
+### M5 — 배치 검증 (§C 재측정 + AC 전수 판정)
+
+**§C 전 행 재측정** (2026-09-07, 최종 HEAD `e0196a517` — 아래 M5 커밋 직전 기준):
+- `git rev-parse --short HEAD` = `e0196a517`, `git branch --show-current` = `WT-state-write-locus`; `git merge-base --is-ancestor 0b1e27877 HEAD` = 참 (진입 시 흡수 상태 유지).
+- B1 committed RED probe → C0 테스트로 상시화, GREEN (아래 AC-SA-001).
+- `grep -n "\.ProjectDir" internal/statusline/context_usage.go` → 무출력 → **수리 후** `resolveStateAnchor` 경유로 교체됨 (아래 grep 집합).
+- `grep -n "liveTodoQueueRootReason" internal/cli/todo_test.go` → 존재 (가드 무접촉).
+- canary baseline: `/bin/ls ~/.moai/todo | wc -l` = **343 (작업 전) → 343 (전 마일스톤 종료 후)** — 신규 디렉터 0.
+- 기존 테스트 무파괴 baseline → 최종 전수 GREEN (아래).
+
+**AC-SA-012 단일 시접 관측 grep 집합** (M5 확정분):
+1. `grep -rn "resolveProjectDir\|resolveSessionDir" internal/statusline/` → 코드 매치 0 (유일 매치는 state_anchor_test.go:29의 RED 이력 기록 주석). 전 멤버의 current_dir 앵커 유산 제거 완료.
+2. `grep -n "resolveStateAnchor" internal/statusline/builder.go internal/statusline/backlog.go internal/statusline/state_anchor.go` → 정확히 4매치: 정의(`state_anchor.go:22`) + B1 쓰기(`builder.go:181`) + B3 goal 읽기(`builder.go:292`) + B2 board root(`backlog.go:31`).
+3. `grep -rn "Getwd" internal/statusline/*.go | grep -v _test` → `builder.go:439`(extractProjectDirectory — 표시, 불변 D2)·`memory.go:73`(LLM yaml 워크업, 상태 무관)·`version.go:113`(버전 수집, 상태 무관) — 상태 쓰기·읽기 경로의 Getwd 앵커 0.
+4. `grep -rn "CurrentDir" internal/statusline/*.go | grep -v _test` → 표시 유도(`builder.go:428-429`)와 시접 입력(`state_anchor.go:27`)뿐 — REQ-SA-002의 「git 해석의 기점」으로만 사용.
+5. `grep -n "stateanchor\." internal/cli/deps.go` → `:178 FromDirectory(cwd)` — B4도 동일 시접.
+6. 보너스: `internal/stateanchor/stateanchor.go` 자체에 `Getwd` 없음(M2에서 폴백 제거) — 시접 내부에도 cwd 앵커 경로 없음.
+
+**AC-SA-008 B5/B6 불변** (명령: `git diff 0b1e27877..HEAD --stat -- internal/hook/ internal/session/`): **빈 출력** — SPEC 기준 트리 대비로도, 흡수 기점 `36b1aff8f` 대비로도 0. `internal/hook/`·`internal/session/` 무접촉 확인.
+
+**AC-SA-006/007 불변 유지 증거**: AC-SA-006 = `TestDisplaySegmentUnchangedByAnchorRepair` PASS(M1 기록, 발산 입력 코퍼스) + `extractProjectDirectory`(builder.go:415-438) 무변경. AC-SA-007 = throttle·silent-failure 기존 테스트(`context_usage_test.go` TestWriteContextUsage_*·`session_telemetry_payload_test.go` throttle군) 무수정 통과 — 아래 전 패키지 run에 포함.
+
+**최종 스코프 게이트** (명령: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/stateanchor/ ./internal/statusline/ ./internal/config/ -count=1` + `go test ./internal/cli/ -run TestTodo -count=1` + `go vet ./internal/statusline/... ./internal/stateanchor/... ./internal/config/... ./internal/cli/...` + `golangci-lint run` 동일 스코프 + `GOOS=windows GOARCH=amd64 go build ./internal/...`):
+
+```
+ok  github.com/modu-ai/moai-adk/internal/stateanchor	1.144s
+ok  github.com/modu-ai/moai-adk/internal/statusline	15.674s
+ok  github.com/modu-ai/moai-adk/internal/config	2.702s
+ok  github.com/modu-ai/moai-adk/internal/cli	69.115s   ( -run TestTodo )
+VET_OK
+0 issues.
+GOOS_WINDOWS_OK
+```
+
+**AC 판정 매트릭스 (최종)**:
+
+| AC | 판정 | 1차 증거 |
+|---|---|---|
+| AC-SA-001 | **PASS** | C0 RED → M1 GREEN (`TestContextUsageAnchorsToProjectDir`) |
+| AC-SA-002 | **PASS** | M2 RED → GREEN (`TestBoardRootResolvesThroughStateAnchor`, B2b 경로 단언 포함) |
+| AC-SA-003 | **PASS** | M2 RED → GREEN (`TestGoalArmedReadsFromStateAnchor`) |
+| AC-SA-004 | **PASS** | M3 2단 RED → GREEN (`TestConfigCacheAnchorsToProject`) |
+| AC-SA-005 | **PASS** | M1 RED → GREEN (`TestNoProjectNoState`) |
+| AC-SA-006 | **PASS** | `TestDisplaySegmentUnchangedByAnchorRepair` + `extractProjectDirectory` 무변경 |
+| AC-SA-007 | **PASS** | throttle 기존 테스트 무수정 통과 (전 패키지 run) |
+| AC-SA-008 | **PASS** | `git diff 0b1e27877..HEAD -- internal/hook/ internal/session/` 빈 출력 |
+| AC-SA-009 | **PASS** | 가드 3형제 PASS + 판별식 표면 고정 |
+| AC-SA-010 | **PASS** | canary 스윕: 198 pass entries, 오염 0, N=0 자기실패 도구 커밋 |
+| AC-SA-011 | **PASS** | 뮤턴트 오염 1 엔트리 관측 (`TestGuardBypassMutant_ObserveHomePollution`) |
+| AC-SA-012 | **PASS** | 위 grep 집합 1-6 |
+
+**12/12 PASS. 미해결 결함·차단 0.**
+
+**GH #1694 회신 초안 재료 (sync-phase 인계)**: (a) 원인 — statusline이 세션 원격청구 텔레메트리를 stdin `current_dir`에 기록(세션이 cd한 디렉터마다 stray `.moai` 1개, 제보 226개와 직접 일치; config-cache 150건은 그 stray를 뒤따른 B4); (b) 수리 — 단일 상태-앵커 시접(`internal/stateanchor`, REQ-SA-002 체인)으로 B1/B2(+B2b)/B3/B4 전부를 프로젝트 루트에 고정, 무프로젝트는 쓰기 생략; (c) 제보자 환경의 226개 stray `.moai`는 사용자 측 정리 대상(Out of Scope) — 안내는 sync 단계에서 확정.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — M5에서 확정>_
+run_complete_at: 2026-09-07
+run_commit_sha: "pending-backfill-run"
+run_status: complete
+ac_pass_count: 12
+ac_fail_count: 0
+preserve_list_post_run_count: 0 (PRESERVE 대상 — extractProjectDirectory·B5/B6·throttle·축 A 가드 — 전부 무변경, AC-SA-006/007/008/009로 입증)
+l44_pre_commit_fetch: n/a (레인 로컬 브랜치 — push는 리드 일괄 소관, repo-local git-flow)
+l44_post_push_fetch: n/a (동일)
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues, go vet clean — 4개 접촉 패키지)
+cross_platform_build.darwin: pass (로컬 전 패키지 빌드+테스트)
+cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64 go build ./internal/...)
+cross_platform_build.linux: pending-ci (CI 매트릭스 판정 몫)
+total_run_phase_files: 17 (신규 4: stateanchor.go/.go 테스트, statusline state_anchor.go/테스트, config state_anchor_test.go, cli todo_axisa_guard_test.go + 수정 10 + SPEC 산출물 3)
+m1_to_mN_commit_strategy: per-milestone commits (M1 6e0c6625a / M2 ee680220d / M3 1150d1f14 / M4 e0196a517 / M5 본 커밋), card id t510 전 커밋 명기
 
 
 ## §E.4 Sync-phase Audit-Ready Signal
