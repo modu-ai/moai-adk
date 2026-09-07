@@ -14,6 +14,24 @@
     - `/usr/bin/grep -o "SVG060\|SVG070" docs-site/content/<locale>/advanced/skill-guide.md | wc -l` → ko `2` · en `2` · ja `2` · zh `2`
   - 산출물이 두 행인 이유: 두 규칙 계열(접근성-이름 / 커넥터-기하)을 각각 한 문단으로 나눠 서술했기 때문이며, 이는 plan.md M3 이 스스로 지시한 "사실문 1-2행 추가"를 따른 것이다. 잘못 세는 검사에서 더 큰 수를 얻으려고 행을 나눈 것이 아니다.
 
+- 2026-09-08: AC-011 검증식 정정 — **전체-브랜치 diff** 에서 **의도 대상 범위(`docs-site`·`CHANGELOG.md`) 한정 diff** 로. 기준선(bar)은 그대로 10개다.
+  - before: `git diff --name-only bce6d7e08..HEAD`
+  - after: `git diff --name-only bce6d7e08..HEAD -- docs-site CHANGELOG.md`
+  - **옛 읽기는 실패했다.** HEAD `fbc9cc6b1` 에서 옛 검증식은 `18` 을 내고 기준은 `10` 이다. 따라서 이 정정은 위 AC-008 정정과 **같은 종류가 아니다**. AC-008 은 옛 읽기와 새 읽기 양쪽에서 기준이 충족되어 판정에 영향을 주지 않았으나, 이 건은 판정에 직접 영향을 준다.
+  - 초과 8개 경로(레인 오케스트레이터가 이 트리, `fbc9cc6b1` 에서 `git diff --name-only bce6d7e08..HEAD -- ':!docs-site' ':!CHANGELOG.md'` 로 실측):
+    - `.moai/reports/t538/hugo-build.log`
+    - `.moai/reports/t538/plan-audit-iter1.md`
+    - `.moai/reports/t538/plan-audit-iter2.md`
+    - `.moai/reports/t538/plan-phase.md`
+    - `.moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/acceptance.md`
+    - `.moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/plan.md`
+    - `.moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/progress.md`
+    - `.moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/spec.md`
+    - 여덟 개 모두 규약을 따르는 카드라면 구조적으로 만들어 내는 산출물이다.
+  - **계수가 움직였다**: 같은 검증식이 HEAD `bbc37b729` 에서 `17`, HEAD `fbc9cc6b1` 에서 `18` 이다. 카드가 자기 장부(진행 기록·증거)를 쓰는 동안 전체-브랜치 계수는 계속 늘어나며, sync 커밋이 한 번 더 늘린다. 즉 **어떤 고정 수치도 이 검증식의 기준이 될 수 없고, 규약을 따르는 어떤 카드도 이 기준을 충족할 수 없다.** 이 카드에서만 실패하는 것이 아니라 도달 불가능한 계측기다.
+  - 의도 대상 실측(HEAD `fbc9cc6b1`): `git diff --name-only bce6d7e08..HEAD -- docs-site CHANGELOG.md` → `10`, 그 10개가 명시된 집합과 정확히 일치한다(`CHANGELOG.md` · e2e en/zh · doctor ko/ja/zh · skill-guide ko/en/ja/zh). 기준의 CHANGELOG 절반도 성립한다: `/usr/bin/grep -c "t538" CHANGELOG.md` → `1`, 해당 항목은 `[Unreleased]` → `### Added` 최상단에 있다.
+  - **이 정정은 작성자가 아니라 리드가 승인했다.** AC-008 정정에 쓰인 작성자 측 안전 조건(옛 읽기와 새 읽기 양쪽에서 기준이 충족될 것)이 이 건에서는 성립하지 않기 때문이다. 조건을 완화한 것이 아니라, 승인 주체가 바뀐 것이다.
+
 ## §D AC Matrix
 
 | AC | 소관 | 검증 | 기대 (baseline → after) |
@@ -28,7 +46,7 @@
 | AC-008 | G4 | skill-guide ×4 SVG060/070 언급 — 출현 수 계수 (`grep -o` + `wc -l`) (RED-now) | 0 → ≥2 (각) |
 | AC-009 | 경계 | ko·ja e2e 무변경 + 배지 추가 없음 | — |
 | AC-010 | 빌드 | hugo exit 0 · WARN/ERROR 0 | — |
-| AC-011 | 착지 | 4-로케일 동일 착지 + CHANGELOG t538 항목 | — |
+| AC-011 | 착지 | 4-로케일 동일 착지 — `docs-site`·`CHANGELOG.md` 범위 한정 diff (전체-브랜치 diff 아님, §D.11) + CHANGELOG t538 항목 | — |
 
 ## §D.1 AC-001 — en deferral 문장 제거 (RED-now)
 
@@ -91,8 +109,9 @@
 
 ## §D.11 AC-011 — 4-로케일 동일 착지 + CHANGELOG
 
-- **When** `git diff --name-only bce6d7e08..HEAD` 및 `/usr/bin/grep -n "t538" CHANGELOG.md`
-- **Then** 변경 파일 집합이 10개로 한정된다: e2e en·zh(2) + doctor ko·ja·zh(3) + skill-guide ×4 + `CHANGELOG.md`(1) — ko·ja e2e 및 Codex Wiring 절 미포함. CHANGELOG 에는 `[Unreleased]` → `### Added` **최상단**에 `t538` 카드 id + G2 두-로케일 정정 명시 항목이 ≥1건 있다(t535 선례 = `### Added` 직하 배치 — `### Docs` 섹션은 현행 [Unreleased] 에 부재, plan-audit iter1 D6 정정). 전체 집합은 하나의 커밋 체인(REQ-011).
+- **When** `git diff --name-only bce6d7e08..HEAD -- docs-site CHANGELOG.md` 및 `/usr/bin/grep -n "t538" CHANGELOG.md`
+- **Then** 범위 한정 diff 의 변경 파일 집합이 10개이며, 그 10개가 다음 집합과 정확히 일치한다: e2e en·zh(2) + doctor ko·ja·zh(3) + skill-guide ×4 + `CHANGELOG.md`(1) — ko·ja e2e 및 Codex Wiring 절 미포함. CHANGELOG 에는 `[Unreleased]` → `### Added` **최상단**에 `t538` 카드 id + G2 두-로케일 정정 명시 항목이 ≥1건 있다(t535 선례 = `### Added` 직하 배치 — `### Docs` 섹션은 현행 [Unreleased] 에 부재, plan-audit iter1 D6 정정). 전체 집합은 하나의 커밋 체인(REQ-011).
+- **보고 항목(기준 아님)**: `git diff --name-only bce6d7e08..HEAD` 의 전체-브랜치 계수는 참고 수치로만 기록한다. 이 계수는 계획·증거 산출물을 포함하며 카드가 자기 장부를 쓰는 동안 계속 증가하므로 어떤 고정 수치도 기준이 될 수 없다. 판정에는 쓰지 않는다(경위: HISTORY 2026-09-08 AC-011 항목).
 
 ## §E Edge Cases
 
