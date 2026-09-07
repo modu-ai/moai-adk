@@ -1,8 +1,6 @@
 package statusline
 
 import (
-	"os"
-
 	"github.com/modu-ai/moai-adk/internal/stateanchor"
 )
 
@@ -36,23 +34,3 @@ func resolveStateAnchor(input *StdinData) string {
 	return stateanchor.Resolve(s)
 }
 
-// resolveSessionDir is the PRE-REPAIR session-directory chain (formerly
-// resolveProjectDir: current_dir → legacy CWD → os.Getwd). It is retained
-// only for the members whose flip to the state anchor is sequenced behind
-// their own observed RED (plan §D8): B2 board root and B3 goal read flip in
-// M2, B4 in M3. It is NOT an anchor — B1 (the telemetry write) already goes
-// through resolveStateAnchor. Deleted once the last member flips (AC-SA-012).
-func resolveSessionDir(input *StdinData) string {
-	if input != nil {
-		if input.Workspace != nil && input.Workspace.CurrentDir != "" {
-			return input.Workspace.CurrentDir
-		}
-		if input.CWD != "" {
-			return input.CWD
-		}
-	}
-	if cwd, err := os.Getwd(); err == nil {
-		return cwd
-	}
-	return ""
-}

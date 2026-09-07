@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -176,5 +177,111 @@ func TestDisplaySegmentUnchangedByAnchorRepair(t *testing.T) {
 	}
 	if strings.Contains(out, "📁 "+filepath.Base(visited)) {
 		t.Errorf("rendered directory segment shows the visited basename %q — display must not follow the session's current dir:\n%s", filepath.Base(visited), out)
+	}
+}
+
+// initGitRepoStatusline prepares dir as a minimal git repository — enough for
+// the anchor's git walk-up to answer (rev-parse needs init, not a commit).
+func initGitRepoStatusline(t *testing.T, dir string) {
+	t.Helper()
+	cmd := exec.Command("git", "-C", dir, "init", "--quiet")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init %s: %v\n%s", dir, err, out)
+	}
+}
+
+// normalizeRepoRoot resolves the macOS temp-tree symlink spelling: git
+// --path-format=absolute reports /private/var/... where t.TempDir() handed
+// out /var/folders/... (the same dual-spelling queueRootInsideTemp handles).
+func normalizeRepoRoot(t *testing.T, root string) string {
+	t.Helper()
+	if resolved, err := filepath.EvalSymlinks(root); err == nil {
+		return resolved
+	}
+	return root
+}
+
+// TestBoardRootResolvesThroughStateAnchor — AC-SA-002 (B2 + B2b). Given a
+// session with no worktree.original_cwd whose current_dir is a SUBDIRECTORY
+// of the project, the board root resolves through the state anchor (the git
+// common directory's parent), not the visited subdirectory. The github-counts
+// consumers share the same boardRoot (builder.go), so the repair carries B2b
+// under the anchor too — an independent current_dir anchor would be a repair
+// failure (verdict 부칙: B2b has no anchor of its own).
+//
+// RED before the M2 flip: the pre-repair fallback returned the raw session
+// directory, so the board root was the visited subdirectory.
+func TestBoardRootResolvesThroughStateAnchor(t *testing.T) {
+	root := t.TempDir()
+	initGitRepoStatusline(t, root)
+	root = normalizeRepoRoot(t, root)
+	sub := filepath.Join(root, "deep", "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// No original_cwd, no project_dir — chain step 3 (git walk-up) must answer.
+	input := &StdinData{Workspace: &WorkspaceInfo{CurrentDir: sub}}
+	if got := resolveBoardRoot(input); got != root {
+		t.Errorf("board root = %q, want the state anchor %q (not the visited subdir)", got, root)
+	}
+
+	// B2b: github counts cache derives from the SAME board root.
+	got := githubCachePath(resolveBoardRoot(input))
+	if want := filepath.Join(root, ".moai", "state", "github", "counts.json"); got != want {
+		t.Errorf("github cache path = %q, want %q (same anchor-fed board root)", got, want)
+	}
+
+	// And: original_cwd keeps its place as chain step 2 — a worktree session
+	// resolves to the primary checkout without a git spawn.
+	wtInput := &StdinData{
+		Workspace: &WorkspaceInfo{CurrentDir: filepath.Join(root, ".claude", "worktrees", "card-x")},
+		Worktree:  &WorktreeInfo{OriginalCwd: root},
+	}
+	if got := resolveBoardRoot(wtInput); got != root {
+		t.Errorf("worktree session board root = %q, want %q (chain step 2)", got, root)
+	}
+}
+
+// TestGoalArmedReadsFromStateAnchor — AC-SA-003 (B3, the read-side defect).
+// Given an armed goal state seeded under the PROJECT root and a session whose
+// current_dir is a subdirectory of that project, the render still sees the
+// goal (GoalArmed=true) — a cd'd session must not lose the project's goal
+// state. Visibility change (verdict Residual-risk 3): this repair INTENDS
+// that a cd'd session now sees the goal it could not see before.
+//
+// RED before the M2 flip: the goal read anchored to the raw session dir, so
+// the armed file at the project root was invisible.
+func TestGoalArmedReadsFromStateAnchor(t *testing.T) {
+	root := t.TempDir()
+	initGitRepoStatusline(t, root)
+	root = normalizeRepoRoot(t, root)
+	sub := filepath.Join(root, "deep", "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	goalDir := filepath.Join(root, ".moai", "state", "goal")
+	if err := os.MkdirAll(goalDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(goalDir, "sess-goal-cd.json"), []byte(`{"status":"armed"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	in := StdinData{
+		SessionID: "sess-goal-cd",
+		Workspace: &WorkspaceInfo{CurrentDir: sub},
+		ContextWindow: &ContextWindowInfo{
+			ContextWindowSize: 256000,
+			UsedPercentage:    new(90.0),
+		},
+	}
+	b := &defaultBuilder{
+		renderer: NewRenderer("default", true, nil),
+		mode:     ModeDefault,
+	}
+	data := b.collectAll(context.Background(), &in)
+	if !data.GoalArmed {
+		t.Errorf("GoalArmed = false — the cd'd session cannot see the project's armed goal at %s", goalDir)
 	}
 }

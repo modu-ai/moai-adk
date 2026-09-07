@@ -253,7 +253,7 @@ func BenchmarkPhaseInstantCollectors(b *testing.B) {
 		boardRoot := resolveBoardRoot(input)
 		_ = resolveBacklogCounts(boardRoot)
 		_ = resolveGitHubCounts(boardRoot)
-		_ = resolveGoalArmed(resolveSessionDir(input), input.SessionID)
+		_ = resolveGoalArmed(resolveStateAnchor(input), input.SessionID)
 	}
 }
 
@@ -354,7 +354,7 @@ func TestProfilePhaseDistributions(t *testing.T) {
 			boardRoot := resolveBoardRoot(parsed)
 			_ = resolveBacklogCounts(boardRoot)
 			_ = resolveGitHubCounts(boardRoot)
-			_ = resolveGoalArmed(resolveSessionDir(parsed), parsed.SessionID)
+			_ = resolveGoalArmed(resolveStateAnchor(parsed), parsed.SessionID)
 		}},
 		{"snapshot_write", func() {
 			writeContextUsage(resolveStateAnchor(parsed), profWarmSessionID, 2000, MemoryData{}, handoffGuideStage(nil), "Opus", "high")

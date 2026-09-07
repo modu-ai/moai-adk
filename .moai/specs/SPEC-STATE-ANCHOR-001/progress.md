@@ -75,6 +75,48 @@ ok  	github.com/modu-ai/moai-adk/internal/statusline	0.573s
 
 **알려진 환경 플레이크 (본 SPEC 변경 무관)**: `TestResolveBacklogCounts_LatencyBudget`가 기계 부하 시 sqlite p95 스파이크(2.7s)로 실패 가능 — 격리 재실행 2회 모두 `ok`(중앙값 1.85ms < 10ms 예산). `git status --porcelain`으로 backlog_sqlite/kanban/store 무접촉 확인. M5에서 재측정.
 
+### M2 — B2/B3 흡수 (AC-SA-002·003 GREEN, B2b 운반, B7 재판정)
+
+B2 RED (명령: `go test ./internal/statusline/ -run TestBoardRootResolvesThroughStateAnchor -count=1`, 플립 전):
+
+```
+--- FAIL: TestBoardRootResolvesThroughStateAnchor (0.20s)
+    state_anchor_test.go:226: board root = "/private/var/folders/.../TestBoardRootResolvesThroughStateAnchor3399397510/001/deep/sub", want the state anchor ".../001" (not the visited subdir)
+    state_anchor_test.go:232: github cache path = ".../001/deep/sub/.moai/state/github/counts.json", want ".../001/.moai/state/github/counts.json" (same anchor-fed board root)
+FAIL
+```
+
+B3 RED (명령: `go test ./internal/statusline/ -run TestGoalArmedReadsFromStateAnchor -count=1`, 해당 호출점만 임시 역전 상태 — 아래 순서 비고 참조):
+
+```
+--- FAIL: TestGoalArmedReadsFromStateAnchor (0.16s)
+    state_anchor_test.go:285: GoalArmed = false — the cd'd session cannot see the project's armed goal at .../TestGoalArmedReadsFromStateAnchor3419912556/001/.moai/state/goal
+FAIL
+```
+
+GREEN (명령: `go test ./internal/statusline/ -run 'TestBoardRootResolvesThroughStateAnchor|TestGoalArmedReadsFromStateAnchor|TestResolveBoardRoot_PrefersPrimaryCheckoutOverWorktree' -count=1 -v`):
+
+```
+--- PASS: TestResolveBoardRoot_PrefersPrimaryCheckoutOverWorktree (0.28s)
+--- PASS: TestBoardRootResolvesThroughStateAnchor (0.35s)
+--- PASS: TestGoalArmedReadsFromStateAnchor (0.31s)
+ok  github.com/modu-ai/moai-adk/internal/statusline	1.469s
+```
+
+- **B2b 운반 확인**: `builder.go`의 `boardRoot := resolveBoardRoot(input)` 하나가 `resolveGitHubCounts`·`maybeRefreshGitHubCounts`·landed에 함께 흐르고, AC-SA-002 테스트가 `githubCachePath(boardRoot) == <anchor>/.moai/state/github/counts.json`을 단언 (PASS) — 독립 앵커 없음.
+- **순서 비고 (정직 기록)**: builder.go의 goal 읽기 호출점은 M1 커밋에 실수로 함께 플립돼 있었다. §D8 이행을 위해 M2에서 해당 호출점만 `resolveSessionDir`로 임시 역전하여 위 B3 RED를 관측한 뒤 복원했다 — RED 관측은 최종 트리와 그 한 호출점만 다른 상태에서 얻어졌다.
+- **goal 소비자 3 좌표 체크리스트** (plan M2): ① `builder.go:292`(생산) — 플립 완료, ② `handoff_goal_suppress_test.go` — 렌더러 수준 테스트(data.GoalArmed 직접 설정)로 앵커 무관 확인, ③ `profile_bench_test.go` — `resolveStateAnchor`로 플립 완료.
+
+**B7 범위 재판정 (판정서 부칙 지시 이행) — 결과: 범위 밖 유지.** 근거: `internal/hook/memo/writer.go` `Write(projectDir, …)`는 projectDir을 호출자 파라미터로 받고, 호출자(hook 사슬)는 `CLAUDE_PROJECT_DIR` env 우선 → Getwd 폴백(`cwd_fallback:true` 마커)으로 해석한다 — 훅 맥락의 앵커는 env에서 오지 세션이 cd한 current_dir에서 오지 않는다. 관측 계수 7건은 프로젝트당 compact 시점 기록 형태(방문 디렉터당 1레코드 오염 아님)와 일치. R1 시접(stdin 세션 맥락)에는 훅 사슬 대응물이 없으므로 흡수는 plan 확장(REQ-SA-008) 소관이며, AC-SA-008의 diff-0 가드가 계속 지킨다.
+
+**M2 설계 노트 — stateanchor의 프로세스-cwd 폴백 제거 (M1 착지분 수정)**: M2에서 최소-stdin Build 테스트 2건(TestBuilder_SetMode·TestBuilder_Build_NoNewline)이 **운영자 실제 리포의 백로그를 렌더링에 끌어들인 실패**(4번째 줄 `🔄 TODO: 19/39`)를 관측했다 — 원인은 M1이 시접에 넣은 nil-input Getwd 폴백이 git 워크업을 타고 워크트리의 프라이머리(실제 리포)에 도달한 것. 수리: 폴백 제거 — 「디렉터 맥락이 없으면 앵커도 없다」(REQ-SA-003 엄격 돕기)로 테스트가 구성상 헤르메틱해진다. 생산 영향: stdin에 디렉터 필드가 전혀 없는 렌더(board·goal·telemetry 모두 skip)는 REQ-SA-003 스킵 경로 그 자체다. `resolveSessionDir`도 마지막 멤버 플립과 함께 삭제(AC-SA-012 유산 제거 — M5 grep으로 재확인).
+
+**M2 의도된 변경 갱신 테스트 목록**:
+1. `session_identity_test.go` TestResolveBoardRoot_PrefersPrimaryCheckoutOverWorktree — primary 케이스를 리터럴 경로 fixture에서 실제 git fixture 서브디렉터 워크업으로 교체 (리터럴 "/repo"는 git 해석에 응답 불가).
+2. `stateanchor_test.go` TestResolve_EmptySessionResolvesViaProcessCWD → TestResolve_EmptySessionIsEmpty 재작성 (위 설계 노트의 폴백 제거 반영).
+
+전 패키지 무파괴 (명령: `go test ./internal/statusline/ -count=1`): `ok github.com/modu-ai/moai-adk/internal/statusline 20.575s` (위 2건의 갱신분 제외 미갱신 무실패). `go test ./internal/stateanchor/ -count=1`: `ok ... 1.544s`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M5에서 확정>_

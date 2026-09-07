@@ -24,7 +24,6 @@
 package stateanchor
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
@@ -52,9 +51,12 @@ type Session struct {
 
 // Resolve returns the state anchor for a session context, following the
 // fixed REQ-SA-002 precedence: ProjectDir → OriginalCwd → a git resolution
-// of CurrentDir (or CWD, or finally the process working directory, which
-// feeds the walk-up only). Returns "" when nothing resolves — callers skip
-// the state write and carry on (REQ-SA-003).
+// of CurrentDir (or CWD). Returns "" when nothing resolves — callers skip
+// the state write and carry on (REQ-SA-003). A context with no directory
+// fields at all resolves to "": the process working directory is
+// deliberately NOT consulted, so a render whose payload carries no location
+// can never reach the operator's real checkout through the resolver —
+// no directory context, no anchor.
 //
 // @MX:ANCHOR: [AUTO] single state-anchor seam — every state read/write member resolves through here
 // @MX:REASON: SPEC-STATE-ANCHOR-001 REQ-SA-001/002; the fixed precedence chain is the repair for GH #1694 and member-specific anchors are the defect being removed
@@ -69,14 +71,6 @@ func Resolve(s Session) string {
 	dir := s.CurrentDir
 	if dir == "" {
 		dir = s.CWD
-	}
-	if dir == "" {
-		// A context with no directory fields at all still git-resolves from
-		// the process working directory — the cwd feeds the git walk-up, so
-		// this can never reintroduce a cwd-anchored write.
-		if cwd, err := os.Getwd(); err == nil {
-			dir = cwd
-		}
 	}
 	return FromDirectory(dir)
 }

@@ -17,19 +17,18 @@ type BacklogCounts struct {
 //
 // This is NOT always the session's working directory. `.moai/state/` is
 // gitignored, so it exists only in the primary checkout — a session working
-// inside a worktree finds nothing there. Claude Code hands us the primary's
-// path as `worktree.original_cwd`, so the worktree case is resolved from the
-// payload rather than by shelling out to git, which would put a subprocess on
-// every status render.
+// inside a worktree finds nothing there.
+//
+// SPEC-STATE-ANCHOR-001 (M2): the board root IS the state anchor. The
+// resolver absorbs both cases the old body handled by hand: a worktree
+// session's original_cwd (chain step 2) and the git walk-up that finds the
+// primary checkout from any subdirectory (chain step 3 — previously the raw
+// session directory, the B2 mis-anchor the RED test observed). The github
+// counts consumers read the same root (B2b carries automatically). The git
+// spawn cost lands only on the fallback path: worktree sessions resolve from
+// the payload, and project_dir-first sessions never reach git.
 func resolveBoardRoot(input *StdinData) string {
-	if input != nil && input.Worktree != nil && input.Worktree.OriginalCwd != "" {
-		return input.Worktree.OriginalCwd
-	}
-	// SPEC-STATE-ANCHOR-001 M2 will flip this to resolveStateAnchor(input),
-	// absorbing the original_cwd priority above as chain step 2 — the flip is
-	// sequenced behind the observed RED (plan §D8), so the pre-repair
-	// session-dir fallback is retained until then.
-	return resolveSessionDir(input)
+	return resolveStateAnchor(input)
 }
 
 // resolveBacklogCounts counts the backlog by state under boardRoot.

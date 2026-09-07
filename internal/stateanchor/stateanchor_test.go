@@ -84,19 +84,16 @@ func TestResolve_NonGitDirectoryIsEmpty(t *testing.T) {
 	}
 }
 
-// TestResolve_EmptySessionResolvesViaProcessCWD pins the nil-input behavior:
-// a context with no directory fields falls to the process cwd feeding the
-// git walk-up. Under `go test` the process cwd is this package directory —
-// inside the moai-adk-go repository — so the resolution succeeds and equals
-// the directory-resolved anchor of the same cwd.
-func TestResolve_EmptySessionResolvesViaProcessCWD(t *testing.T) {
-	got := Resolve(Session{})
-	want := FromDirectory(mustGetwd(t))
-	if got == "" {
-		t.Fatalf("Resolve() = \"\" — the process-cwd walk-up did not answer inside the repository")
-	}
-	if got != want {
-		t.Errorf("Resolve() = %q, want %q (cwd walk-up == FromDirectory(cwd))", got, want)
+// TestResolve_EmptySessionIsEmpty pins the hermeticity guard: a context with
+// no directory fields resolves to "" — the process cwd is deliberately NOT
+// consulted, so a payload-less render can never reach the operator's real
+// checkout through the resolver (learned in M2: the walk-up from the test
+// process cwd landed on the real repository's board).
+func TestResolve_EmptySessionIsEmpty(t *testing.T) {
+	t.Parallel()
+
+	if got := Resolve(Session{}); got != "" {
+		t.Errorf("Resolve(empty) = %q, want \"\" (no directory context, no anchor)", got)
 	}
 }
 
@@ -139,13 +136,4 @@ func TestFromDirectory_EmptyIsEmpty(t *testing.T) {
 	if got := FromDirectory(""); got != "" {
 		t.Errorf("FromDirectory(\"\") = %q, want \"\"", got)
 	}
-}
-
-func mustGetwd(t *testing.T) string {
-	t.Helper()
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	return cwd
 }
