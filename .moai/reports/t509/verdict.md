@@ -535,3 +535,69 @@ A4는 이제 「이론적 결함」이 아니라 **재현되는 결함**이다. 
 - **어느 코드 경로가 썼는지 특정하지 않았다.** 서버 기동인지, `/settings` GET 렌더인지, 아니면 config 로더의 정규화 저장인지 가르지 않았다. A4의 첫 측정이 이것이어야 한다.
 - **`llm.yaml`도 재작성됐는지 모른다** — 이 워크트리에서 `llm.yaml`은 gitignore라 `git status`에 안 잡힌다. §4.2가 코드로 지적한 「무조건 재작성」이 실제로 그 파일에도 일어났는지는 **이번 관측으로 확인되지 않는다.**
 - 다른 config 파일이 바뀌었는지는 `git status`가 보여준 2개까지만 안다.
+
+---
+
+## 11. §9.7의 블로커가 풀렸다 — 크로스 섹션 패널은 **이미 있다**
+
+§9.7은 "크로스 섹션 패널이 현재 구조에서 가능한지 재지 않았다 — A2 착수 전 첫 측정이어야 한다"고 적었다. **쟀다. 가능하다. 선례까지 있다.**
+
+### 11.1 이미 도는 선례 — `git-worktree` 패널
+
+`internal/web/schemaform.go:231-236`:
+
+```go
+{
+    ID: settings.SectionGitStrategy, PanelID: "git-worktree", Icon: "folder-git",
+    Title: "Git & Worktree", ...
+    Fields: append(settings.SectionFields(settings.SectionGitStrategy), worktreeFields...), Extras: true,
+},
+```
+
+`worktreeFields`는 `partitionWorkflowFields()`가 **`workflow` 섹션**에서 떼어낸 것인데(`:204`), 이 패널의 `ID`는 **`SectionGitStrategy`**다. 즉 **한 패널이 두 섹션의 필드를 이미 함께 렌더하고 있고, 그게 배포되어 돌고 있다.**
+
+그리고 audit 패널 주석(`:236-238`)이 규칙을 명시한다:
+
+> The audit panel's persistence section stays SectionWorkflow: **the tab is a render placement, the section is the write route (AP-4).**
+
+### 11.2 그리고 쓰기는 **필드별**로 라우팅된다 — 패널과 무관하다
+
+`internal/settings/sectionapply.go:30-60`:
+
+```go
+for _, name := range names {
+    f, ok := Field(name)
+    ...
+    switch f.Persist.Kind {
+    case PersistSeam:
+        seamEdits[f.Persist.Section] = append(seamEdits[f.Persist.Section],
+            yamlpatch.KeyEdit{Path: f.Persist.Path, Value: edits[name]})
+    case PersistTypedSection:
+        typedEdits = append(typedEdits, f)
+        ...
+```
+
+저장 경로가 참조하는 것은 **각 필드 자신의 `Persist.Section` / `Persist.Path`**다. 패널의 `ID`는 쓰기에 관여하지 않는다. `seamEdits`가 **필드의 섹션별로** 묶이므로, 한 패널에서 온 편집이 서로 다른 섹션 파일로 갈라져 저장된다.
+
+### 11.3 그래서 A2는 막힌 데가 없다
+
+codex 필드 15개는 `workflow`(seam)와 `mcp`(seam) 두 섹션에 걸치는데, **둘 다 seam이라 같은 경로로 각자의 파일에 저장된다.** 새 기제가 필요 없다:
+
+1. `isCodexFieldName` — `isAuditFieldName`(`:169-170`)의 복제. 다만 접두가 하나가 아니라 여럿이다(`workflow.audit.codex.` · `workflow.codex.` · `mcp.codex.` · `mcp.tools.codex_`).
+2. 파티션 함수 — `partitionWorkflowFields`(`:185-199`)를 codex 축으로 확장하거나, `mcp` 섹션에도 같은 형태를 하나 더 둔다.
+3. 패널 1개 추가 — `git-worktree`가 하는 것과 같은 형태로 두 섹션 필드를 `append`.
+4. i18n 키(`tab.codex.title` / `.desc`) + 아이콘.
+
+**Tier는 S~M이 맞다.** 새 설정 키 0, 새 저장 기제 0, 새 config 파일 0.
+
+### 11.4 남은 설계 결정 — 이건 측정이 아니라 판단이다
+
+- **어디까지 모을 것인가.** MCP 툴 토글 6개(`codex_audit`·`codex_task`·`codex_setup`·`codex_job_*`)는 "codex 설정"이기도 하지만 "MCP 도구 목록"이기도 하다. 다 가져오면 MCP 탭이 비고, 안 가져오면 codex 탭이 반쪽이 된다.
+- **원본 탭에서 뺄 것인가 둘 다 둘 것인가.** Audit 탭은 workflow에서 **뺐다**(`:49` "moved off the workflow tab"). 같은 선례를 따르면 빼야 하는데, `audit.codex.*`를 Audit 탭에서 빼면 이번엔 Audit 탭이 반쪽이 된다 — codex/glm 대칭이 깨진다.
+- 이 둘은 UX 판단이라 운영자 몫으로 남긴다.
+
+### 11.5 이 절이 안 본 것
+
+- **실제로 패널을 하나 만들어보지 않았다.** `git-worktree` 선례와 `ApplySchemaEdits`의 필드별 라우팅으로 "가능하다"를 판정했지, 코드를 써서 확인하지 않았다.
+- **`mcp` 섹션이 `partitionWorkflowFields`와 같은 파티션 함수를 가질 수 있는지** 재지 않았다. `SectionFields(SectionMCP)`가 그대로 쓰이는지, 이미 나뉘어 있는지 확인하지 않았다.
+- `Extras: true`가 무엇을 하는지 모른다 — audit 패널에는 없고 다른 패널들에는 있다. 새 패널에 필요한지 판정하지 않았다.
