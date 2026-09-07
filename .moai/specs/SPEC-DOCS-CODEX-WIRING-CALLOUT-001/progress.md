@@ -41,7 +41,25 @@ write_surface: docs-site/content/{ko,en,ja,zh}/cli-reference/doctor.md (+28×4)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: "pending-backfill-sync"   # placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+sync_status: completed
+changelog_entry_position: "[Unreleased] → Added (top of list)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  updated: 2026-09-08
+  plan_acceptance: stateless (no status field — untouched)
+b12_self_test_a: PASS (grep -c 'SPEC-DOCS-CODEX-WIRING-CALLOUT-001' CHANGELOG.md → 0 before emission)
+b12_self_test_b: PASS (acceptance.md §D distinct AC count = 14; CHANGELOG entry references 14)
+b12_self_test_c: PASS (all cited paths verified: docs-site/content/{ko,en,ja,zh}/cli-reference/doctor.md, .moai/reports/t535/)
+canary_compliance_check:
+  write_surface: "docs-site/content/{ko,en,ja,zh}/cli-reference/doctor.md (+28×4) — CHANGELOG + spec.md frontmatter status/updated + progress.md §E.4 in sync phase"
+  scope_creep: none
+  docs_site_edits_in_sync_phase: none (run-phase carried the content)
+```
+
+Backfill note: `sync_commit_sha` resolves to the real sync-commit SHA in the immediately following commit (`chore(SPEC-DOCS-CODEX-WIRING-CALLOUT-001): backfill sync_commit_sha (t535)`).
 
 ## §F Phase 4 Mode Selection
 
