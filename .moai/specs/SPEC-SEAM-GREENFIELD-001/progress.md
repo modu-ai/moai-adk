@@ -152,7 +152,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 RED b6bd0d011 / M2 fix e365c
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-08
-sync_commit_sha: "pending-backfill-sync"   # D3 백필 규약 — sync 커밋은 자신의 SHA를 인용할 수 없음; 후속 커밋에서 실측값으로 교체
+sync_commit_sha: "5a3db057b"   # D3 백필 확정값 — sync 본체 커밋 `docs(SPEC-SEAM-GREENFIELD-001): sync-phase artifacts — 3-phase close [t544]`
 sync_status: complete
 changelog_entry: CHANGELOG.md [Unreleased] `### Fixed` 첫 항목 — t517 항목에 out-of-scope로 기록됐던 관측("a missing mcp.yaml still makes a full-form save return 500")의 수리로서 서술
 b12_self_test_a: pass (pre-emission grep — `grep -c 'SPEC-SEAM-GREENFIELD-001' CHANGELOG.md` = 0, 병렬 BATCH-SYNC 중복 없음)
