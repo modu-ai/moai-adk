@@ -156,7 +156,8 @@ sync_audit_verdict: "FAIL 89.0 @ 43e820663 (independent sync-auditor); verdict +
 sync_audit_disposition:
   f1_blocking: "REPAIRED at bc651da28 - three sites spell the enabled emission, not one; the insert branch (the total-outage shape) had no test. Evidence is a MUTANT-6 contrast, not a RED-then-GREEN: the branch was already correct, so no pre-implementation failure exists"
   f2_advisory: "CLOSED FOR FREE at 13ae49a05 - writing the F1 fixture in CRLF covered reshapeLike's CR branch (332.36: 0 -> 1); MUTANT-7 shows the test discriminates, because line coverage asserts nothing"
-  f3_to_f12: "TEN advisories remain OPEN and UNOWNED. Not addressed by this close. Do not read the two repairs above as covering them"
+  open_advisories: "THIRTEEN remain OPEN and UNOWNED: F3-F12 (ten, round 1) + F13-F15 (three, raised by round 2). Not addressed by this close. Do not read the repairs above as covering them"
+  round2: "FAIL 90.8 @ f269edbc2 (.moai/reports/t502/sync-audit-round2.md). Its sole blocking finding F0 - the open-advisory count read nine where F3-F12 is ten - was repaired at 35d6c7404. Round 2 independently re-injected the mutants and reproduced the counterfactual; it also raised F13-F15"
 b12_self_test_a: "grep -c 'SPEC-CODEX-SKILL-DISABLE-001' CHANGELOG.md -> 1. NOTE the changed meaning: this is a re-close editing the EXISTING bullet in place, not a fresh emission, so the pre-emission 0 of the first close does not apply. 1 = exactly one entry, still no duplicate"
 b12_self_test_b: "grep -c '^### AC-CSD' acceptance.md -> 17 (non-zero; matches the AC matrix row count; recorded Tier-M budget exception per plan.md §F.1, NOT an error). REQ: grep -c '^- \\*\\*REQ-CSD-' spec.md -> 16"
 b12_self_test_c: "every path named in the t502 CHANGELOG bullet verified with ls -> 9/9 present"
@@ -193,9 +194,13 @@ evidence_dir: .moai/state/verify/t502-resync/   # first close: .moai/state/verif
 ### Gaps — sync-phase가 관측하지 **않은** 것
 
 - **뮤턴트 7종 중 하나도 재주입하지 않았다.** 뮤턴트 1-5 는 인용된 실패 문구가 실재함을 대조했고(줄 번호는 재닫기에서 옮겨졌다 — 모드 축 486 → 544), MUTANT-6·7 은 **구현 커밋 본문의 기록**과 그 단언이 실재함(222·230·233행)이 근거다. 셋 다 재주입해 RED를 본 것이 아니다 — 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다. §G 체크 근거 표 2·2b·2c 행이 이 한계를 행별로 명시한다.
-- **MUTANT-6·7 의 관측 주체는 구현 에이전트다.** 재닫기 에이전트가 독립적으로 확인한 것은 테스트의 실재와 스위트 초록까지이며, 「이 뮤턴트를 넣으면 이 테스트만 붉다」는 대조 자체는 재현하지 않았다. 제3자 재주입은 더 강한 근거이므로 남겨 둔다.
-- **advisory 열 건(F3-F12)은 열린 채 소관 미배정이다.** 이 닫기는 그 중 어느 것도 건드리지 않았다 — blocking 1건 수리와 F2 가 픽스처로 딸려 닫힌 것이 전부다. 전문은 `.moai/reports/t502/sync-audit.md`.
-- **`golangci-lint` 를 이 HEAD 에서 돌리지 않았다.** 첫 닫기의 exit 0 은 `43e820663` 의 측정이며, 그 이후 두 커밋을 덮지 않는다. 위 yaml 이 이를 fresh measurement 가 아니라 carried-over 로 적는다. vet 만 이 HEAD 에서 모듈 전체(`./...`)로 재측정됐다.
+- **MUTANT-6·7 은 이제 제3자가 재주입해 확인했다 — 이 간극은 해소됐다.** 재닫기 시점의 근거는 구현 커밋의 기록과 단언의 실재까지였고, 위 두 항목이 그 한계를 적는다. **2차 sync-audit(`.moai/reports/t502/sync-audit-round2.md`, 앵커 `f269edbc2`)이 그 대조를 독립적으로 재현했다**: 발행 지점 **셋 각각**에 뮤턴트를 넣어 저마다 자기 테스트를 붉힌다(MUTANT-6 삽입 분기 → `…InsertsMissingEnabledKey`, MUTANT-R 재작성 분기 → `…UpdatesExistingEntry`, MUTANT-A append 조립 → `…AppendsOneEntryWithFalse` + `…PreservesSurroundings`), MUTANT-7 은 `reshapeLike` 의 CR 계승을 지워 같은 새 테스트를 붉힌다. 기준선은 `EXIT=0 PASS=17 FAIL=0`.
+- **결정적인 것은 반사실 대조다.** `43e820663` 시점 테스트 파일을 되돌려 놓고 **같은** MUTANT-6 을 넣으면 `EXIT=0 PASS=16 FAIL=0` — 수리 전에는 삽입 지점 발행을 지워도 초록이었다는 1차의 주장이 **논증이 아니라 실측으로** 재현된다. 이것이 뮤턴트 근거를 「구현 에이전트가 기록함」에서 「제3자가 재현함」으로 끌어올린다.
+- **감사관은 감사 트리에 뮤턴트를 넣지 않았다.** `rsync` 스크래치 사본에서 수행했고, 대상 3파일의 sha256 동일을 먼저 확인했다(`codex_skills_disable.go` `8819ef6d…`, `_test.go` `c50a724d…`, `codexwiring/skills.go` `2be7579f…`). `internal/` 무수정 — 그래서 이 재현은 위 「재주입은 위임 경계 밖」과 충돌하지 않는다.
+- **advisory 열세 건이 열린 채 소관 미배정이다** — 1차의 **F3-F12 열 건**(`.moai/reports/t502/sync-audit.md`)에 2차가 올린 **F13-F15 세 건**(`sync-audit-round2.md`)이 더해진다. 이 닫기는 그 중 어느 것도 건드리지 않았다 — 1차 blocking 수리와 F2 가 픽스처로 딸려 닫힌 것, 그리고 2차 blocking(F0, 수치 오산)의 수리가 전부다. **2차가 새 advisory 를 올렸으므로 「열 건」은 `35d6c7404` 시점까지만 참이었다**: 같은 절이 같은 이유로 두 번 어긋난 셈이라, 이 수치는 판정서를 다시 세어 고쳤다.
+- **`golangci-lint` 판정을 이 HEAD 에서 **어느 쪽도** 갖고 있지 않다.** 닫기의 exit 0 은 `43e820663` 의 측정이라 carried-over 로 적혀 있고, 2차 감사관도 돌리지 않았다(2차 「보지 않은 것」 목록). 즉 이월된 값이 있을 뿐 현재 트리의 lint 관측은 없다. vet 만 이 HEAD 에서 모듈 전체(`./...`)로 재측정됐다.
+- **최종 트리에서 E2E 를 재관측한 주체가 없다.** 닫기가 `13ae49a05` 에서, 1차 감사가 `43e820663` 에서 각각 재현했으나 **`f269edbc2` 이후로는 어느 쪽도 돌리지 않았다**. 간극으로 닫지 않고 기록만 하는 이유는 그 사이 소스 diff 가 **주석·문서 전용(실행문 0줄)** 이기 때문이다 — 판단의 근거를 함께 적으므로 다음 독자가 누락만 보고 재실행 여부를 스스로 정할 수 있다. **이 절이 모든 차원을 최종 트리에서 재관측했다는 뜻으로 읽혀서는 안 된다.**
+- **이 §E.4 가 인용하는 `.moai/state/verify/t502-resync/` 는 추적되지 않는다**(2차 F15). `.gitignore` 가 `.moai/state/` 를 무시하므로 워크트리를 폐기하면 그 경로는 해소되지 않는다 — 판정서 본문과 이 산출물은 커밋돼 있어 핵심 기록은 남지만, **인용 경로의 내구성은 이 카드 고유가 아닌 계통적 위험**으로 열려 있다.
 - **전체 테스트 스위트 미실행 · 크로스플랫폼 빌드 미실행.** 둘 다 CI 몫이며 run-phase Gap 그대로다.
 - **문서 표면은 CHANGELOG 하나다.** README·docs-site 4개 로케일에 이 verb 를 싣지 않았다 — 위임이 지목한 산출물이 CHANGELOG 였고, 문서 사이트 항목 추가는 이 카드의 범위 밖이다. 자매 카드 t506(`moai clean --codex-skills`)이 docs-site 페이지를 동반한 전례가 있으므로, **후속 카드로 남길 가치가 있는 간극**으로 기록한다.
 
@@ -204,4 +209,4 @@ evidence_dir: .moai/state/verify/t502-resync/   # first close: .moai/state/verif
 - **CHANGELOG 항목의 서술은 run-phase 측정에 의존한다.** 게이트 성질(realpath 비교), 금지 표기 3종, `enabled` 필수성은 모두 선행 측정 보고서에서 온 것이고 sync-phase가 재현한 것은 2셀 게이트와 E2E 두 축이다.
 - **단일 codex 버전(0.153.4).** sync-phase 재현도 같은 버전이다 — 버전 드리프트는 여전히 미관측이다.
 - **한 번 낡았던 닫기는 다시 낡을 수 있다.** 이 닫기가 기술하는 트리는 `13ae49a05` 이며, 이 커밋 뒤에 코드가 착지하면 같은 방식으로 다시 어긋난다. 판별식은 `git diff --name-only <닫기커밋>..HEAD | grep '\.go$'` 이 무출력인지다.
-- **advisory 열 건이 열린 채 남는다.** 그 중 어느 것도 blocking 으로 승격되지 않았으나, F4(Windows 거절 가드 무테스트)와 F5(skip 이 rc=0)는 CHANGELOG 가 이름 붙여 출하한 성질에 걸려 있어 **문서가 주장하는 것과 테스트가 지는 것 사이의 간극**으로 남는다.
+- **advisory 열세 건이 열린 채 남는다.** 그 중 어느 것도 blocking 으로 승격되지 않았으나, F4(Windows 거절 가드 무테스트)와 F5(skip 이 rc=0)는 CHANGELOG 가 이름 붙여 출하한 성질에 걸려 있어 **문서가 주장하는 것과 테스트가 지는 것 사이의 간극**으로 남는다. 2차가 올린 F13·F14 도 같은 축이다 — 주석이 국소 사실에서 전역 안전 성질을 끌어내거나, 헤더가 실제보다 넓게 말한다. 1차 blocking 이 지적한 모양의 잔재이며 거짓 주장은 아니어서 advisory 에 머문다.
