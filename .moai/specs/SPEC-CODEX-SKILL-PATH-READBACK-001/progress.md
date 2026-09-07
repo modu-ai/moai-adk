@@ -56,12 +56,29 @@ M2 owns the two one-line conversions.
 - `golangci-lint run --timeout=2m ./internal/cli/` → `0 issues.`
 - Full package suite NOT run locally (the `internal/cli` 1800s floor belongs to M3's AC-CSRB-010 run; the full-suite verdict is CI's).
 
-### §E.2 AC matrix (run-phase, as of M1)
+### M2 — the two one-line conversions (STEP 0 collision repair + production diff)
+
+**STEP 0 — test symbol collision repair (commit `b78d2e425`, BEFORE any M2 edit).**
+- The absorb merge `2d1dad058` (origin/develop `c72dc1baf`, carrying t563's doctor stat seam + its test file) broke the package test binary's compilation: both this card's test and the absorbed `doctor_codex_stale_skill_test.go:331` declared a package-scope type `statRecorder` (theirs carries a `paths` field — `rec.paths` cascade).
+- Enumeration of ALL 9 package-scope identifiers of this card's two test files against every other `*_test.go` in the package: exactly ONE collision (`statRecorder`); the other 8 CLEAN.
+- Repair: rename to `pruneReadbackStatRecorder` in THIS card's file only; the absorbed file and production files untouched.
+- Evidence: `.moai/reports/t562/step0-symbol-enumeration.md`. Post-rename M1 state verified unchanged (SeparatorConversion FAIL, guards PASS, vet clean).
+
+**AC-CSRB-002 — GREEN observed (the M2 commit).**
+- Command: `go test ./internal/cli/ -run 'TestJudgeCodexSkillEntry_(SeparatorConversion|ClassifiesDeclaredFormBeforeConversion|HomeRelativeStatTargetStaysNative|EligibilityGatingPins)|TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard' -count=1 -timeout 1800s -v` → exit 0.
+- `TestJudgeCodexSkillEntry_SeparatorConversion`: FAIL at M1 → **PASS at M2**. All guards stayed PASS.
+- Production diff: exactly the two one-line conversions — `judgeCodexSkillEntry` and `codexStaleSkillFinding`, `codexPathAbsolute` branch only, `statPath = fromConfigPath(e.Path, configPathSeparator)`. Home-relative branches untouched.
+- **AC-CSRB-007 re-anchored attribution**: doctor_codex.go now CARRIES t563's `osStatFn` seam via the absorb (provenance `c72dc1baf`, two call sites `:459`/`:857`). This card's diff to the file adds ZERO `osStatFn` tokens — measured `git diff b78d2e425 -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'` → `0` pre-commit; re-measured post-commit via `git show` (see session report / `green-csrb-002-m2.md`).
+- **Doctor guard counters IDENTICAL to the M1 baseline**: the only diff between `ac-csrb-006-baseline.log` and `green-csrb-002-m2.log` is the per-run TempDir path; every counter phrase byte-identical. Expected — darwin `sep='/'` makes the conversion the identity; a moved counter would have meant a darwin-visible behaviour change.
+- **Coexistence with absorbed t563 tests**: `TestCodexStaleSkillFinding_|TestInspectSkillMirror_` scoped run → 27 PASS (26 absorbed + this card's guard), 0 FAIL.
+- Evidence: `.moai/reports/t562/green-csrb-002-m2.log` + `green-csrb-002-m2.md`. vet rc=0; golangci-lint `0 issues.`
+
+### §E.2 AC matrix (run-phase, as of M2)
 
 | AC | Status | Evidence |
 |---|---|---|
 | AC-CSRB-001 | PASS | `ac-csrb-001.txt` |
-| AC-CSRB-002 | RED-now observed (M2 flips to GREEN) | `red-csrb-002.log`, `red-csrb-002.md` |
+| AC-CSRB-002 | RED-now observed at M1 → **GREEN at M2** | `red-csrb-002.log`, `red-csrb-002.md`, `green-csrb-002-m2.log`, `green-csrb-002-m2.md` |
 | AC-CSRB-003 | GREEN-before guard (mutant = reorder, M3) | scoped run, this milestone |
 | AC-CSRB-004 | GREEN-before guard (mutant = blanket-wrap, M3) | scoped run, this milestone |
 | AC-CSRB-005 | GREEN-before guard (pins; verdicts only, no deletion) | scoped run, this milestone |
@@ -71,11 +88,11 @@ M2 owns the two one-line conversions.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_status: partial   # M1 complete; M2 and M3 pending the lead's go
+run_status: partial   # M1 + M2 (incl. STEP-0 repair) complete; M3 pending the lead's go
 run_complete_at: ""
-run_commit_sha: pending-backfill-m1   # this M1 commit; backfilled in the M2 commit per the D3 exemption
-ac_pass_count: 1        # AC-CSRB-001 PASS (002's RED-now is its M1 cell, not a failure)
-ac_fail_count: 0        # 002's RED is the EXPECTED pre-implementation state, not a FAIL
+run_commit_sha: pending-backfill-m2   # the M2 production-diff commit; backfilled in the M3 commit per the D3 exemption
+ac_pass_count: 2        # AC-CSRB-001 PASS; AC-CSRB-002 flipped RED→GREEN at M2
+ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: performed at commit time (see M1 report)
 l44_post_push_fetch: n/a — no push (lane reports merge SHA; push is the lead's)
@@ -84,7 +101,7 @@ cross_platform_build:
   darwin_native: "go build ./... rc=0 (AC-CSRB-001)"
   windows: "not yet run — M3 (AC-CSRB-009) scope"
 total_run_phase_files: 4   # two new test files, two new evidence md/log pairs + ac-csrb-001.txt + this file (see commit)
-m1_to_mN_commit_strategy: one commit per milestone (M1 tests+evidence; M2 the two-line production diff; M3 mutants+pins+verification)
+m1_to_mN_commit_strategy: one commit per milestone plus a standalone STEP-0 repair commit (M1 tests+evidence f1654c924; STEP-0 rename b78d2e425; M2 the two-line production diff + GREEN evidence; M3 mutants+pins+verification)
 ```
 
 ## PRESERVE carried forward
