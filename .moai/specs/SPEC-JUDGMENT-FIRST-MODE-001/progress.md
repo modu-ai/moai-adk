@@ -149,6 +149,19 @@ IS committed on this branch under `.moai/reports/t401/e2e/` (`payload.json`,
 series — see the recorded gate-ordering violation in §E.1. This annotation points at that
 evidence; it is not the formal §E.2 population._
 
+### Implementation Kickoff Approval — passed (recorded 2026-09-07, at continuation handover)
+
+The Implementation Kickoff Approval gate **passed**; run-phase work proceeded under it. The
+gate-passing event itself carries no independent timestamp in this record — the evidence is
+(a) the lead session's confirmation at the 2026-09-07 continuation dispatch ("이 SPEC 은 이미
+kickoff 승인을 통과해 run 이 진행 중이고" — the M0-ratification agenda item was resolved by the
+operator's RATIFIED decision recorded above), and (b) the run-phase commits themselves
+(`56a21342c`/`82edb9109` M1, `846b38b28` M2, `a12beb541` escalation resolution), which land only
+inside an approved run. A resumed run that was interrupted mid-phase is a continuation, not a
+fresh run-phase entry — the lead re-confirmed at dispatch that the gate is not re-run. **This
+paragraph exists to close the record gap the lead asked about at handover; it adds no new
+authorization.**
+
 ### `calls_issued` self-report defect — mitigation chosen (2026-09-06, before first code edit)
 
 **The defect.** `AC-JFM-018` half 3 / `AC-JFM-023` half 4 contrast `rows_recorded` (produced by the
@@ -290,20 +303,109 @@ same banner rules and therefore need the same pull-mode branch. Measured at HEAD
 rules exist only in `moai.md`. `moai-easy.md` does define an AskUserQuestion banner (its "Quick
 Question" banner) but states no first-option label rule, which the catch-all control confirms.
 
+**The M2 edit itself (commit `846b38b28`, 2026-09-07 11:39).** Additive-only: 13 insertions in
+`moai.md` — the S2 Discovery `Next action` pull row (4-locale), the S4 Insight `Your call:` slot
+(en/ko catalogue + 4-locale rows + banner body line + [HARD] rule), pull-mode [HARD] withholding
+branches on S2/S3 (`Epic Stats`, `Epic Status`), and the S6 mode-conditional phrasing. Sibling
+styles untouched. Mirrors measured byte-identical before and after (control at `ad272be20`).
+
+### M2 AC re-verification (2026-09-07, at continuation handover — M2 landed with no AC matrix in this record)
+
+M2's own commit carried no AC re-verification table in this file. Re-measured at HEAD
+`b2c3d6c03` (parent `a12beb541`):
+
+| AC | Command | Output | Status |
+|---|---|---|---|
+| AC-JFM-005 | `grep -c 'recommendation_mode' .claude/output-styles/moai/moai.md` | `5` (≥2 required) | PASS |
+| AC-JFM-005 (scope) | `git diff ad272be20 -- .claude/output-styles/moai/moai.md` hunk scan | 7 hunks, all on the named S2-S5 fields + locale tables | PASS |
+| AC-JFM-006 | `grep -c 'Your call:' .claude/output-styles/moai/moai.md` | `4` (≥1 required); body-slot line at `:359` inside the Insight frame | PASS |
+| AC-JFM-007 | `grep -c 'Pause.*Retry as-is.*Alt approach.*Abort+preserve' .claude/output-styles/moai/moai.md` | **`0`** (≥1 required) | **FAIL → repaired (below)** |
+| AC-JFM-007 | `grep -c 'A. Retry as-is' .claude/output-styles/moai/moai.md` | **`2`** (0 required) | **FAIL → repaired (below)** |
+| AC-JFM-008 | `grep -n 'recommendation_mode' .claude/rules/moai/workflow/context-window-management.md` | `:84` (inside the Pre-clear announcement step 4) | PASS |
+| AC-JFM-009 | `grep -c 'On-request emission' .claude/output-styles/moai/moai.md` | **`0`** at `1fb802d09` (exit 1; ≥1 in **each** of both banner rules required) | **FAIL → repaired (below)** |
+
+### S5 — AC-JFM-007 FAIL found and repaired (2026-09-07, this session)
+
+Re-running the M2 criteria at handover surfaced **AC-JFM-007 FAIL**: the cost-ordered sequence
+grep returned `0` and the old `A. Retry as-is` ordering remained (2 hits). M2 (`846b38b28`) had
+implemented S5 as a **re-sort prohibition** plus mode-conditional labels — the exact
+"an order that does not signal a preference" alternative **REQ-JFM-008 explicitly rejects**
+("The rule is stated as an applicable ordering, not as 'an order that does not signal a
+preference', so that two readers produce the same order twice"). plan.md §F M2's shorthand
+"preference-neutral option ordering on Error Recovery" is the wording both readings can claim;
+the REQ and the criterion resolve it: **the options are re-ordered by increasing cost.**
+
+Repair (commit `1fb802d09`, both the live file and its template mirror):
+
+1. `moai.md:607` option line re-ordered to `A. Pause  B. Retry as-is  C. Alt approach  D. Abort+preserve`.
+2. The M2 [HARD] clause rewritten to state the cost-ordering rule as the applicable ordering,
+   keeping pull-mode label suppression and the push-mode first-option-label signal; prohibited
+   is re-sorting **away from the cost order** (desirability sorting, both modes).
+3. `:208` phrase listing, `:260` 4-locale table row, `:313` self-check listing aligned to the
+   same cost sequence.
+
+Post-repair measurement: sequence grep = `4`; `A. Retry as-is` = `0`; mirror pair `diff -q`
+clean (IDENTICAL); edited lines carry 0 SPEC/REQ/AC tokens.
+
+### S2/S3 — AC-JFM-009 FAIL found and repaired (2026-09-07, this session, commit `9b657b8f5`)
+
+The same re-verification pass surfaced a **second** M2 non-fulfillment: **AC-JFM-009**
+(release-blocking) requires "both banner rules in `moai.md` referencing that section by name",
+and `grep -c 'On-request emission' moai.md` returned **0** at `1fb802d09`. M2 had written
+restore-on-request **behavior** into the S2 clause ("An explicit user request for a
+recommendation restores the `Recommended action` form") but never cited the section the
+criterion names.
+
+Repair (commit `9b657b8f5`, live file + template mirror):
+
+1. S2 Discovery [HARD] clause: the restore-on-request sentence now cites
+   `.claude/rules/moai/core/askuser-protocol.md` § On-request emission.
+2. S3 Epic Stats and Epic Status [HARD] clauses: an explicit request-for-a-named-next-step
+   sentence added, citing the same section.
+
+Post-repair measurement: `On-request emission` name references = `3` (S2 + S3×2 — the "both
+banner rules" condition met); heading grep = `1`; mirror pair `diff -q` clean (IDENTICAL);
+edited lines carry 0 SPEC/REQ/AC tokens.
+
+**Pattern noted for the record, twice in one milestone is not chance**: M2 landed behaviors
+correctly but under-verified its own criteria — AC-JFM-007 (wrong alternative implemented) and
+AC-JFM-009 (behavior present, named citation absent) both survived M2's commit. The M1 record
+carried a full AC matrix; M2's did not. The re-verification pass this session ran is the cheap
+guard against exactly that shape, and its table above now covers every M2-owned criterion.
+
+### M3 — AC-JFM-013 escalation resolution (commit `a12beb541`, 2026-09-07 11:49; NOT plan.md §F M3)
+
+**Label clarification first**: the "M3" in commit `a12beb541`'s subject names the escalation
+resolution below, **not** plan.md §F M3 (the `interview.recommendation_mode` config key), which
+is **still unentered**. Reading `git log` alone would conflate the two.
+
+The AC-JFM-013 re-sweep escalated two `harness.md` coordinates whose conditioning required an
+out-of-scope edit; the operator approved resolution 1 (`a12beb541`, per its own message):
+`:190` (Tier-4 Application Gate step 5) and `:75` (Canonical Four-Option Pattern lead-in) are
+now pull-mode conditioned in both the live file and its template mirror. Ledger counts moved
+**9/16/1 → 11/15/0** (conditioned/unconditioned/escalated; rows 18 and 20) — AC-JFM-013's
+"no unclassified remainder" condition is met. The open SPEC-body question the re-sweep recorded
+was **closed** in this session (commit `b2c3d6c03`, `ac013-ledger.md` § Resolution): `:83`
+(Bias prevention) needs no conditioning and may not receive one (AC-JFM-010 protects it
+byte-unchanged; under `pull` it is satisfied vacuously); the "any other `askuser-protocol.md`
+(S1) row" clause is defective in both readings and its wording precision is carried to the lead
+as a SPEC-body blocker for the next manager-spec touch. AC-JFM-013 stands **satisfied as
+measured**.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_phase: M1 only (M2-M6 not entered)
-run_commit_sha: <backfill — this record is committed within the M1 commit>
-run_status: complete for M1 — all M1 criteria green; AC-JFM-009 carries an M2-owned half
-ac_pass_count: 10
-ac_fail_count: 0
+run_phase: resumed 2026-09-07 — M0 ratified, M1 done, M2 done (2 of its 5 criteria repaired this session), AC-JFM-013 escalation resolved + open question closed; plan.md §F M3 (config key), M4, M5, M6 NOT entered
+run_commit_sha: 9b657b8f5 (latest; per-milestone records ride their own commits — a12beb541 escalation resolution, b2c3d6c03 ledger resolution, 1fb802d09 AC-JFM-007 repair, 9b657b8f5 AC-JFM-009 repair)
+run_status: in progress — kick-off NOT re-run (continuation of an interrupted run, lead-confirmed at dispatch); prior "M1 only" signal superseded by the M2 + repair records above
+ac_pass_count: 14   # M1's 10 + AC-JFM-005 + AC-JFM-006 + AC-JFM-007 (after 1fb802d09) + AC-JFM-008; AC-JFM-009 green after 9b657b8f5 → recounted at run close; full matrix re-measured before sync
+ac_fail_count: 0    # the two handover FAILs (AC-JFM-007, AC-JFM-009) are repaired as recorded in §E.2
 ac_blocked_count: 0
-preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20
-cross_platform_build: not applicable — markdown-only milestone, no Go code changed
-new_warnings_or_lints_introduced: none — no code changed
-total_run_phase_files: 12   # 5 doctrine + 5 template mirrors + 2 ledger artifacts
-m1_to_mN_commit_strategy: one commit per milestone; M1 is a single commit
+preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20 (re-verify at run close)
+cross_platform_build: not applicable — markdown-only milestones so far; M3 (config key) changes Go and re-fires this obligation
+new_warnings_or_lints_introduced: none — no Go code changed so far
+total_run_phase_files: 17   # 5 doctrine + 2 output-styles pair + context-window pair + harness pair + settings pair + ledger artifacts (recount at run close)
+m1_to_mN_commit_strategy: one commit per milestone/repair; records backfilled this session
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
