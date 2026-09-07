@@ -261,7 +261,7 @@ m1_to_mN_commit_strategy: "one commit per milestone, M4 item 1 first so its RED 
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 9c22d420e
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'CODEX-ENABLED-FATAL' CHANGELOG.md → 0 (pre-emission; no duplicate entry from a parallel BATCH-SYNC session)"
 b12_self_test_b: "grep -oE 'AC-CEF-[0-9]+' .moai/specs/SPEC-CODEX-ENABLED-FATAL-001/acceptance.md | sort -u | wc -l → 16; CHANGELOG entry cites '16 acceptance criteria (AC-CEF-001..016), 16 PASS / 0 FAIL' — count matches"
