@@ -23,8 +23,8 @@ import (
 //
 // The states are kept distinct deliberately. Collapsing "no key" onto false
 // asserts a default Codex does NOT apply — measured on codex-cli 0.153.4, an
-// entry omitting the key makes codex exit 1 with ``missing field `enabled` in
-// `skills.config` ``, so there is no default to collapse onto. The reading is
+// entry omitting the key makes codex exit 1 with “missing field `enabled` in
+// `skills.config` “, so there is no default to collapse onto. The reading is
 // reported as DECLARED; what codex then does with it is the doctor's finding to
 // state, not this parser's.
 //
@@ -65,7 +65,7 @@ type SkillEntry struct {
 	// not assume absoluteness. An entry that declares no path key yields
 	// the empty string.
 	Path string
-	// Enabled is the declared enabled flag, tri-state (see SkillEnabled).
+	// Enabled is the declared enabled flag, four-state (see SkillEnabled).
 	Enabled SkillEnabled
 	// StartLine is the 0-based index of the entry's header line, and EndLine
 	// the exclusive end of its extent, both indexing the slice
@@ -157,7 +157,7 @@ func JoinConfigLines(lines []string, term LineTerm) []byte {
 //
 //   - "reading it as false DEMOTES a live registration" — FALSIFIED by
 //     measurement. On codex-cli 0.153.4, `enabled = "true"` makes `codex mcp
-//     list` exit 1 with ``invalid type: string "true", expected a boolean``.
+//     list` exit 1 with “invalid type: string "true", expected a boolean“.
 //     There is no live registration to demote, because codex refuses to load
 //     the config at all. The argument weighed two readings of a working config;
 //     the config does not work. And the reversal does not do what the argument
