@@ -57,7 +57,7 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 	}
 
 	itemRows, err := e.db.QueryContext(ctx,
-		`SELECT id, text, added_at, spec_id, state FROM items ORDER BY seq`)
+		`SELECT id, text, added_at, spec_id, state, landing FROM items ORDER BY seq`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
@@ -65,8 +65,9 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 	for itemRows.Next() {
 		var it BacklogItem
 		var specID sql.NullString
+		var landing sql.NullString
 		var state string
-		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state); err != nil {
+		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing); err != nil {
 			return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -74,6 +75,20 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 			// spec id round-trips as JSON null, never as an omitted key.
 			v := specID.String
 			it.SpecID = &v
+		}
+		if landing.Valid {
+			// A PRESENT value that will not decode is surfaced, never
+			// silently dropped: the encoder is the column's only writer and
+			// refuses every invalid shape, so an undecodable value is
+			// external corruption. Dropping it would lose the operator's
+			// record on the next write — the read would return nil, and the
+			// whole-record write-back would then store that nil as NULL.
+			// Loud is recoverable by hand; silent loss is not.
+			ev, decErr := DecodeLandingEvidence(landing.String)
+			if decErr != nil {
+				return nil, fmt.Errorf("load backlog %s: item %s: %w", e.dbPath, it.ID, decErr)
+			}
+			it.Landing = &ev
 		}
 		it.State = BacklogState(state)
 		rec.Items = append(rec.Items, it)
@@ -271,10 +286,20 @@ func (e *backlogEngine) writeRecord(ctx context.Context, rec *BacklogRecord) (er
 		if it.SpecID != nil {
 			specID = *it.SpecID
 		}
+		// The landing column is written ONLY through this seam, so
+		// REQ-TLE-006's "absence is NULL" is a property of the type rather
+		// than a discipline each call site keeps: LandingEvidenceValue(nil)
+		// yields nil, and a present record is refused here if it carries a
+		// SHA without provenance or a provenance the SPEC does not define.
+		var landing any
+		if landing, err = LandingEvidenceValue(it.Landing); err != nil {
+			err = fmt.Errorf("write backlog %s: item %s: %w", e.dbPath, it.ID, err)
+			return err
+		}
 		// seq = 1-based array position: the ordering contract (REQ-TOSQ-004).
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO items(seq, id, text, added_at, spec_id, state) VALUES (?, ?, ?, ?, ?, ?)`,
-			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State)); err != nil {
+			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing); err != nil {
 			err = mapBacklogWriteError(e.dbPath, it.ID, err)
 			return err
 		}
