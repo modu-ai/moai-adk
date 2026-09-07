@@ -64,28 +64,6 @@ kickoff: pending — Implementation Kickoff Approval 게이트 대기 중 (이 �
 - `workflow.yaml` (O1에 없던 추가 관측): `effort: high`→`effort:` 값 소실 2건, `failure_pattern_detection`/`auto_merge`/`tmux_preferred`/`enabled` true→false 전환, `codex.*`/`todo.enabled` 신규 추가
 - **[sync-audit F4 정정 (advisory 채택, 2026-09-07)]** 위 workflow.yaml 손상의 기제 서사 "중복 폼값 첫-값 채택"은 **정정한다** — 감사 실측(`.moai/reports/t517/sync-audit.md` F4): 렌더 페이지의 동명 name 54건은 전부 radio 세그먼트 그룹이고 브라우저는 그룹당 checked 1개만 제출하므로, 커밋된 POST 빌더를 동일 페이지에 재실행해도 121필드 중 중복 이름 0건 — 첫-값 채택이 발화할 중복 제출 자체가 도구 구조상 성립하지 않는다. 지지되는 기제는 "false 폴백"이다: OFF 라디오가 `name=''`을 제출 → bool 파서가 "false"로 해석 → absent-key upsert가 `enabled: false` 키를 생성(true→false 전환·신규 키 추가가 그 증거). `effort: high`→값 소실 2건의 기제는 선결함 트리 재관측이 불가해 **미해결**로 남는다. REQ-WWS-006 가드 자체는 스키마 요구로 정당하며 본 정정은 기제 서사만 귀속한다.
 
-### sync-audit F1 수리 — absent 극성 결함 (2026-09-07, post-close 수리)
-
-**결함**: 수리 (i)(b)의 "absent IS false" 가정이 default-ON-when-absent bool에서 거짓 — `workflow.todo.enabled`(`TodoEnabled()` absent⇒enabled, `internal/config/todo_enabled.go`)와 `mcp.tools.*.enabled` 24종(fail-open)에서 콘솔의 명시 OFF 저장이 값-불변 게이트에 스킵돼 무음 무효(`schema_sections.go` 극성 주석과 충돌).
-
-**수리**: (1) `FieldDef.AbsentDefault` 신설 — 부재 키의 런타임 유효 기본값을 필드에 선언(`withAbsentDefault` 옵트인, todo+mcp 24종 적용). (2) `ApplySchemaEdits`의 absent-스킵을 **유효 기본값 인지**로 교체 — absent && 제출값 == 유효 기본값(선언 없으면 "false") → 스킵, ≠ → 기록. 기존 default-off 키 게이트 동작은 불변.
-
-**RED-first (커밋된 수리 코드 이전 트리, verbatim: `.moai/reports/t517/evidence/RED-f1-absent-polarity.log`)**:
-
-| 테스트 | 판정 | 내용 |
-|---|---|---|
-| `TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites` | FAIL (RED) | todo.enabled absent + OFF 제출 → 스킵되어 기록 없음 (결함 재현) |
-| `TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites` | FAIL (RED) | mcp 부재 툴 + OFF 제출 → 스킵 (결함 재현) |
-| `TestApplySchemaEditsAbsentDefaultOnBoolTrueIsNoOp` | FAIL (RED) | todo.enabled absent + ON 제출 → 키 생성 (no-op이어야 함 — 감사 권고 (b)) |
-| `TestAbsentDefaultPolarityDeclared` | PASS | 극성 선언 존재 확인 (데이터 전제) |
-
-**GREEN + 양성 통제 재확인**: 상기 4건 전부 PASS로 전환. 기존 5건 수리의 양성 통제 무손상 — `TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp`(gate default-off 유지)·`TestApplySchemaEditsSeamAbsentKeyTrueStillWrites`·`TestApplySchemaEditsValueInvariantTouchesNothing`(AC-003/004)·`TestApplySchemaEditsGitStrategyRealChangeStillRewrites`(AC-004 양성 통제) 전부 PASS.
-
-**뮤턴트-D (극성 뒤집기) 포착**: 선언된 극성을 무시하고 전부 default-off로 판정하는 변형 적용 → `TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites`·`TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites` RED 확인 후 복원.
-
-**계약 갱신 동반**: `TestApplySchemaEditsAllFieldsRoundTrip`은 F1 수리로 바뀐 계약(absent default-on bool의 "true" 제출 = no-op)을 반영해 bool 제출값을 극성 기반으로 갱신 — default-on 필드는 "false"를 제출해 실변경을 운동시킨다.
-
-**잔여 (감사 Residual Risk 인정 분)**: absent default-on bool의 **렌더 극성**(부재 ⇒ OFF 표시 vs 런타임 enabled) 발산은 본 수리 범위 밖 — 렌더를 유효 기본값으로 시딩하는 정렬은 후속 카드 권장.
 - `gate.yaml`: `pre_commit.enabled: false` 신규 추가
 - `user/language/quality/git-convention.yaml`: diff 없음 — `Save()`가 무조건 재기록하되 **내용 동일 round-trip**(mtime만 변화, §D.2 내용 기준 판정상 무차이)
 
@@ -185,6 +163,41 @@ verbatim RED 출력: `.moai/reports/t517/evidence/RED-settings-write-safety.log`
 | AC-WWS-006 | **PASS** | 중복 폼값 가드 | RED → GREEN (**모든 중복 reject** — 동의 여부 무관, 문서화된 규칙; 커밋된 테스트도 동의값 reject를 고정 — sync-audit F2 정정) |
 | AC-WWS-007 | **PASS** | 뮤턴트 3건 재도입 → 포착 → 복원 | 포착 3/3, 못 잡은 뮤턴트 1건 기록 (AC-001/002 경계) |
 | AC-WWS-008 | **PASS** | 본 문서 M4 표의 측정 결론 인용 + M1~M3 귀속 완료 | 커밋 `911d9bbcc`(측정)가 `03cea2f75`(수리)에 선행 — 측정-선결 위반 코드 0 |
+
+### sync-audit F1 수리 — absent 극성 결함 (2026-09-07, post-close 수리)
+
+**결함**: 수리 (i)(b)의 "absent IS false" 가정이 default-ON-when-absent bool에서 거짓 — `workflow.todo.enabled`(`TodoEnabled()` absent⇒enabled, `internal/config/todo_enabled.go`)와 `mcp.tools.*.enabled` 24종(fail-open)에서 콘솔의 명시 OFF 저장이 값-불변 게이트에 스킵돼 무음 무효(`schema_sections.go` 극성 주석과 충돌).
+
+**수리**: (1) `FieldDef.AbsentDefault` 신설 — 부재 키의 런타임 유효 기본값을 필드에 선언(`withAbsentDefault` 옵트인, todo+mcp 24종 적용). (2) `ApplySchemaEdits`의 absent-스킵을 **유효 기본값 인지**로 교체 — absent && 제출값 == 유효 기본값(선언 없으면 "false") → 스킵, ≠ → 기록. 기존 default-off 키 게이트 동작은 불변.
+
+**RED-first (verbatim: `.moai/reports/t517/evidence/RED-f1-absent-polarity.log`; 트리 귀속 — sync-audit F5-D 정정: 측정 시 트리는 커밋 `43f9ab202` + 미커밋 극성 선언 편집(FieldDef/withAbsentDefault/테스트 3건) 상태였고 동작 게이트는 미수리였다. 중간 상태는 커밋 불가 특성상 working-tree 측정이며 해당 트리는 소멸 — §D.1 4요소 중 트리 SHA는 이 상태 기술로 대체한다)**:
+
+| 테스트 | 판정 | 내용 |
+|---|---|---|
+| `TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites` | FAIL (RED) | todo.enabled absent + OFF 제출 → 스킵되어 기록 없음 (결함 재현) |
+| `TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites` | FAIL (RED) | mcp 부재 툴 + OFF 제출 → 스킵 (결함 재현) |
+| `TestApplySchemaEditsAbsentDefaultOnBoolTrueIsNoOp` | FAIL (RED) | todo.enabled absent + ON 제출 → 키 생성 (no-op이어야 함 — 감사 권고 (b)) |
+| `TestAbsentDefaultPolarityDeclared` | PASS | 극성 선언 존재 확인 (데이터 전제) |
+
+**GREEN + 양성 통제 재확인**: 상기 4건 전부 PASS로 전환. 기존 5건 수리의 양성 통제 무손상 — `TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp`·`TestApplySchemaEditsSeamAbsentKeyTrueStillWrites`·`TestApplySchemaEditsValueInvariantTouchesNothing`(AC-003/004)·`TestApplySchemaEditsGitStrategyRealChangeStillRewrites`(AC-004 양성 통제) 전부 PASS.
+
+**뮤턴트-D (극성 뒤집기) 포착**: 선언된 극성을 무시하고 전부 default-off로 판정하는 변형 적용 → `TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites`·`TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites` RED 확인 후 복원.
+
+**계약 갱신 동반**: `TestApplySchemaEditsAllFieldsRoundTrip`은 F1 수리로 바뀐 계약(absent default-on bool의 "true" 제출 = no-op)을 반영해 bool 제출값을 극성 기반으로 갱신 — default-on 필드는 "false"를 제출해 실변경을 운동시킨다.
+
+### sync-audit F1-D 수리 — 렌더-게이트 극성 일치 (2026-09-07, post-close 수리)
+
+**결함** (델타 감사 `.moai/reports/t517/sync-audit-delta.md`): F1 게이트 수리에 렌더 절반이 따라오지 않았다 — 일반 스키마 bool 렌더(`fieldsets.templ` schemaFieldWidget)가 `SchemaValues[name] == "true"`로 checked 판정해 **absent를 OFF로 렌더**하는 반면 게이트는 absent를 ON으로 해석. 기계 실험: todo 블록 없는 workflow.yaml에 렌더 산출 무접촉 폼 본문(`__present=1` + `enabled=`)을 POST /save → `todo: enabled: false` 생성(이 카드의 원래 결함 부류 재도입) + 명시 ON 저장은 스킵 무효. mcp 24종은 자체 렌더(mcpToolRow `!= "false"`)가 일치해 무영향.
+
+**수리 (1식)**: 렌더 checked 산출에 absent 시 `AbsentDefault` 반영 — `SchemaValues[f.Name] == "true" || (SchemaValues[f.Name] == "" && f.AbsentDefault == "true")`. 렌더와 게이트가 같은 극성을 보게 된다. 생성물 `fieldsets_templ.go` 재생성 확인(`templ generate -path ./internal/web`, 생성 식에 수리 반영 실측).
+
+**전체 경로 가드 (RED-first, verbatim: `.moai/reports/t517/evidence/RED-f1d-render-polarity.log`, exit 1)**: `TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical` — **렌더→파서→게이트 루프 전체**를 통과한다: (1) GET /settings로 실제 렌더를 받아 absent 키의 checked 라디오 값을 읽고 (2) 그 값 + companion으로 POST /save (3) workflow.yaml byte-identical assert. 수리 전 트리에서는 렌더가 OFF를 보여줘 빈 값이 제출되고 게이트가 `todo: enabled: false`를 기록해 FAIL(RED) — ApplySchemaEdits 직접 호출 3건이 이 루프를 못 지나가던 빈틈이 이 테스트가 메운다. 수리 후: 렌더가 ON을 보여주고 그 재제출은 게이트가 스킵 → **byte-identical (GREEN)**.
+
+**F3-D 정정**: `testdata/sections/gate.yaml`에서 `pre_commit.enabled` 블록을 제거 — `TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp`/`TrueStillWrites` 2건이 명칭대로 default-off **absent** 분기를 실제 검증하게 됨(이전 fixture는 키가 존재해 present-key 경로만 검증 — MUTANT-D가 이 테스트들을 못 건드린 이유). 정정 후 settings 전체 스위트 GREEN.
+
+**F4-D 정정**: `gofmt -w`로 델타 테스트 파일 2건 포맷 이탈 수리. **F5-D 정정**: 상기 F1 RED-first 트리 귀속 노트 참조.
+
+**잔여 (감사 Residual Risk 인정 분)**: 렌더 정렬 후에도 "콘솔 표시(부재=ON)와 파일 부재"의 관계는 추상적 — 사용자가 ON을 저장해도 파일에 아무것도 생기지 않는다(런타임 동등하므로 무해, UI 관점 혼란 여지 — 후속 카드 권장).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

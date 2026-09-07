@@ -94,8 +94,8 @@ func TestApplySchemaEditsValueInvariantTouchesNothing(t *testing.T) {
 	}
 
 	err = ApplySchemaEdits(root, map[string]string{
-		"git_strategy.mode":    "team",               // fixture's persisted value — value-invariant
-		"feedback.repository":  "modu-ai/moai-adk",   // fixture's persisted value — value-invariant
+		"git_strategy.mode":   "team",             // fixture's persisted value — value-invariant
+		"feedback.repository": "modu-ai/moai-adk", // fixture's persisted value — value-invariant
 	})
 	if err != nil {
 		t.Fatalf("ApplySchemaEdits: %v", err)

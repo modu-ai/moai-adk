@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -61,7 +62,7 @@ func TestHandleSaveValueInvariantLeavesSectionsByteIdentical(t *testing.T) {
 
 	form := url.Values{
 		"__profile":                     {"default"},
-		"git_strategy.mode":             {"team"},            // fixture's persisted value — unchanged
+		"git_strategy.mode":             {"team"},             // fixture's persisted value — unchanged
 		"feedback.repository":           {"modu-ai/moai-adk"}, // fixture's persisted value — unchanged
 		"feedback.auto_submit__present": {"1"},                // submitted unchecked → false = persisted value
 	}
@@ -111,6 +112,70 @@ func TestHandleSaveGitStrategyRealChangeStillRewrites(t *testing.T) {
 	}
 	if !strings.Contains(string(after), "mode: personal") {
 		t.Errorf("positive control failed: changed git_strategy value not persisted:\n%s", after)
+	}
+}
+
+// TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical carries
+// sync-audit F1-D through the RENDER→PARSE→GATE loop: it asks the real
+// renderer what it shows for an ABSENT default-ON bool, submits exactly that
+// state back (the untouched-save scenario — the user changed nothing and
+// clicked Save), and requires the tracked section file to stay
+// byte-identical. Unlike the ApplySchemaEdits-direct polarity tests, this
+// walks the full loop the defect lived in: the pre-repair renderer drew the
+// absent key as OFF, the untouched save submitted the empty value, the gate
+// recorded it as a real change, and `todo: enabled: false` appeared —
+// silently disabling the runtime guidance.
+func TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The audit-experiment fixture: a workflow.yaml with NO todo block (the
+	// near-universal state — the distributed template ships none).
+	before := "workflow:\n    project:\n        continuation: card\n"
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
+	a.recordLastProfile = func(string) error { return nil }
+	h := a.routes()
+
+	// 1. Render, and read back what the renderer shows for the absent key.
+	getRec := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	getRec.Host = "127.0.0.1:8080"
+	getRes := httptest.NewRecorder()
+	h.ServeHTTP(getRes, getRec)
+	if getRes.Code != http.StatusOK {
+		t.Fatalf("GET /settings status = %d, want 200", getRes.Code)
+	}
+	checkedValue := ""
+	for _, m := range regexp.MustCompile(`name="workflow.todo.enabled" value="([^"]*)" checked`).FindAllStringSubmatch(getRes.Body.String(), -1) {
+		checkedValue = m[1] // the checked radio's submitted value (last wins, browser-identical)
+	}
+	if checkedValue == "" {
+		t.Fatal("renderer shows no checked radio for the absent default-ON key — expected ON (value=1) after the polarity repair")
+	}
+
+	// 2. Submit exactly the rendered state (companion + checked value).
+	form := url.Values{
+		"__profile":                      {"default"},
+		"workflow.todo.enabled__present": {"1"},
+		"workflow.todo.enabled":          {checkedValue},
+	}
+	rec := servePost(t, h, "/save", form)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("untouched save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
+	}
+
+	// 3. The untouched save must not touch the tracked file.
+	after, err := os.ReadFile(filepath.Join(dir, "workflow.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != before {
+		t.Errorf("untouched rendered submission rewrote the tracked section file (no-op expected)\n--- before ---\n%s\n--- after ---\n%s", before, after)
 	}
 }
 

@@ -1,0 +1,17 @@
+=== RUN   TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical
+    write_safety_test.go:158: untouched rendered submission rewrote the tracked section file (no-op expected)
+        --- before ---
+        workflow:
+            project:
+                continuation: card
+        
+        --- after ---
+        workflow:
+            project:
+                continuation: card
+            todo:
+                enabled: false
+--- FAIL: TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.680s
+FAIL
