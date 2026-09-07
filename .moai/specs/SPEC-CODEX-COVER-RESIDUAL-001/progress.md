@@ -345,10 +345,24 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin_arm64: pass
   windows_amd64: pass
-total_run_phase_files: 5    # 2 test files, 2 SPEC artifacts, 3 evidence files under .moai/reports/t519 (mutants.md + 2 coverage + 1 sweep log)
+total_run_phase_files: 8    # measured: `git diff --name-only 21a52d507..HEAD | wc -l` -> 8.
+                            # 2 test files + 2 SPEC artifacts (spec.md frontmatter, progress.md)
+                            # + 4 evidence files under .moai/reports/t519 (mutants.md, sweep log,
+                            # coverage-after-targets.txt, coverage-after-run.log).
+                            # First written as 5, which contradicted its own itemisation; corrected
+                            # against the command above rather than re-counted by hand.
 m1_to_mN_commit_strategy: "one commit per milestone; M1 4ed5011c4, M2 a26feb41e, M3 this commit; no push (lane integrates through the lead's window)"
 pushed: false
 ```
+
+### Corrections recorded, not silently fixed
+
+- **Commit message typo in `22915e790`**: the body reads `HandleCadexReviewGate` where it means
+  `HandleCodexReviewGate`. Not amended — `--amend` is forbidden on this branch by plan §D
+  constraint 7 — so it is recorded here instead. The affected sentence is the S1 skip proof, whose
+  substance is unchanged and is stated correctly in §E.2.d.
+- **`total_run_phase_files` was first written as 5**, contradicting its own itemisation. Corrected
+  to the measured 8 in the block above, with the counting command cited.
 
 ### Gaps — what was NOT observed
 
