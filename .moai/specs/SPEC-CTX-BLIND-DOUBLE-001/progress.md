@@ -48,7 +48,17 @@ M1 로그: `.moai/reports/t539/m1-rerun.log`. 코드 변경 0줄.
 
 ### M2 — GLM audit 경로 취소 가드
 
-_<pending M2>_
+| AC | 검증 명령 | 관측 출력 | 판정 |
+|---|---|---|---|
+| AC-CBD-004 | 가드 없이 `mcp_glm.go:305` 뮤턴트 주입 → `-run GLM` / `-run Audit` / `-run Converg` | `ok 11.610s` · `ok 31.061s` · `ok 1.314s` (**생존**) · `-list` 223/99/32 · 되돌림 후 `git diff --stat` 무출력 | PASS |
+| AC-CBD-005 | 가드 추가 후 같은 뮤턴트 재주입 | `--- FAIL: TestGLMAudit_CancelledContext_IsNotSwallowed (0.45s)` — `a cancelled audit returned the canned success verdict "pass"` (**사망**) · 넓은 셀렉터 `-run GLM`/`-run Audit` 도 FAIL · 되돌림 후 초록 | PASS |
+| AC-CBD-006 | `go test ./internal/cli/ -run TestGLMTask -count=1 -timeout 1800s` | `ok 1.276s` · `-list` 16 · `glm_task_bg_context_test.go` diff 0줄 | PASS |
+| AC-CBD-007 | 세 셀렉터 재실행 + `-list` 로그 보존 | `ok 8.837s` / `ok 20.907s` / `ok 0.980s` · `-list` 225/101/32 (기준선 223/99/32 대비 **감소 없음**, +2/+2/+0) · `list-{GLM,Audit,Converg}.log` 실재 · `mcp_glm_test.go` diff 0줄(`stubGLMDoer` 눈먼 채 유지) | PASS |
+
+부가 측정: `-run GLM -race` → `ok 11.937s` · `go vet ./internal/cli/...` → exit 0 · `golangci-lint ./internal/cli/...` → `0 issues.`
+
+M2 로그: `.moai/reports/t539/m2-mutant.log`. **프로덕션 코드 변경 0줄** — `:305` 은 처음부터
+`NewRequestWithContext` 였다. 없던 것은 가드다. 신규 파일은 `internal/cli/mcp_glm_audit_ctx_test.go` 하나.
 
 ### M3 — 다섯 후보군 84건 뮤턴트 판정 (측정만, 수리 없음)
 
