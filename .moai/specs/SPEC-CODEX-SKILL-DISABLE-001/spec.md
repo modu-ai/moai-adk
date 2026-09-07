@@ -41,24 +41,23 @@ t504가 그 수단이 실재함을 실측했다. `[[skills.config]]` 배열-테�
 
 ## §C 요구사항 (GEARS)
 
+> Tier M 예산: 요구사항 16개 이하. 아래는 정확히 16개다. 세부 조항을 늘리는 대신 한 조항이 한 성질을 통째로 지도록 묶었다.
+
 ### C.1 기본 비활성 — 요청하지 않은 쓰기는 없다
 
-- **REQ-CSD-001** (Ubiquitous) — moai는 사용자가 비활성화 동사를 **직접 호출한 경우가 아니면** `~/.codex/config.toml` 에 `[[skills.config]]` 를 쓰지 않아야 한다(shall not).
-- **REQ-CSD-002** (Ubiquitous) — 이 기능은 프로젝트 설정 키로 구동되지 않아야 한다(shall not). 사용자의 HOME에 대한 쓰기는 그 순간 사용자가 요청한 것이어야 하며, 프로젝트 설정 파일이 대신 요청할 수 없다.
-- **REQ-CSD-003** (Ubiquitous) — 이 동사는 사용자가 쓰기 대상 계층을 **호출문에서 명시**했을 때에만 실행되어야 한다.
+- **REQ-CSD-001** (Ubiquitous) — moai는 사용자가 비활성화 동사를 **직접 호출하고 쓰기 대상 계층을 호출문에서 명시한 경우가 아니면** `~/.codex/config.toml` 에 `[[skills.config]]` 를 쓰지 않아야 한다(shall not). 이 기능은 프로젝트 설정 키로 구동되지 않아야 한다(shall not) — 사용자 HOME에 대한 쓰기는 그 순간 사용자가 요청한 것이어야 하며, 프로젝트 설정 파일이 대신 요청할 수 없다.
 
 ### C.2 이름 해석 — 지목은 이름으로, 발행은 경로로
 
-- **REQ-CSD-010** (Event-driven) — **When** 사용자가 스킬 이름을 지목하면, 해석기는 그 이름을 실존하는 `SKILL.md` 절대 경로 하나로 해석해야 한다.
-- **REQ-CSD-011** (Event-driven) — **When** 해석이 실패하면(어떤 후보 루트에도 해당 `SKILL.md` 가 없으면), 동사는 거절하고 **아무것도 쓰지 않아야** 한다. 죽은 경로 엔트리를 발행하는 것은 t506이 청소 중인 유령 49건을 한 건 더 만드는 일이다.
-- **REQ-CSD-012** (Event-driven) — **When** 한 이름이 둘 이상의 후보 루트에서 해석되면, 동사는 모호성을 보고하고 사용자가 경로를 확정할 때까지 쓰지 않아야 한다.
-- **REQ-CSD-013** (Ubiquitous) — 해석된 경로는 **파일 모양**(`SKILL.md` 로 끝나는)이어야 한다. 디렉터 모양 경로를 발행해서는 안 된다(shall not) — 실측상 게이트가 묶이지 않아 조용히 무효인 엔트리가 된다.
+- **REQ-CSD-010** (Event-driven) — **When** 사용자가 스킬 이름을 지목하면, 해석기는 그 이름을 실존하는 `SKILL.md` 절대 경로 **하나**로 해석해야 한다.
+- **REQ-CSD-011** (Event-driven) — **When** 해석이 실패하거나(후보 루트 어디에도 없음, 또는 미러 `.agents/skills/` 자체가 없음) 둘 이상에서 해석되면(모호), 동사는 거절하고 **아무것도 쓰지 않아야** 하며, 세 경우를 **서로 구별되는 사유**로 이름 붙여 보고하고 종료 코드 0으로 끝나야 한다. 미러 부재는 이상 상태가 아니다 — 미러는 배포 실행이 만드는 산물이지 체크아웃이 만드는 것이 아니다(이 저장소에서도 실측상 부재, `ls .agents/skills` exit 1). 죽은 경로 엔트리를 발행하는 것은 t506이 청소 중인 유령 49건을 한 건 더 만드는 일이다.
+- **REQ-CSD-012** (Ubiquitous) — 해석된 경로는 **파일 모양**(`SKILL.md` 로 끝나는)이어야 한다. 디렉터 모양 경로를 발행해서는 안 된다(shall not) — 실측상 게이트가 묶이지 않아 조용히 무효인 엔트리가 된다.
+- **REQ-CSD-013** (Ubiquitous) — 발행하는 경로 모양은 프로젝트가 취할 수 있는 **모든 미러 모드에서 게이트에 묶이는 것으로 측정된** 모양이어야 한다. 한 모드에서 유효하고 다른 모드에서 관성인 모양을 발행해서는 안 된다(shall not) — 그것이 t504가 막으려는 조용한 무효 엔트리의 정확한 부류다.
 
 ### C.3 발행 내용 — 스키마 하드 에러를 만들지 않는다
 
-- **REQ-CSD-020** (Ubiquitous) — 발행하는 모든 엔트리는 `path` 와 `enabled` 두 키를 **모두** 가져야 한다.
+- **REQ-CSD-020** (Ubiquitous) — 발행하는 모든 엔트리는 `path` 와 `enabled` 를 **둘 다** 가져야 하며, 비활성화 발행의 `enabled` 값은 `false` 여야 한다.
 - **REQ-CSD-021** (Unwanted) — 동사는 `enabled` 키가 없는 엔트리를 쓰지 않아야 한다(shall not). 하나라도 쓰이면 그 사용자의 codex 전체가 시작 실패한다.
-- **REQ-CSD-022** (Ubiquitous) — 비활성화 발행의 `enabled` 값은 `false` 여야 한다.
 
 ### C.4 병합 — 멱등하고 비파괴적
 
@@ -69,17 +68,14 @@ t504가 그 수단이 실재함을 실측했다. `[[skills.config]]` 배열-테�
 
 ### C.5 실패 시 무쓰기 · 백업 · dry-run
 
-- **REQ-CSD-040** (Ubiquitous) — 기본 실행은 **dry-run** 이어야 한다. 실제 쓰기는 명시적 `--force` 에서만 일어나야 한다.
-- **REQ-CSD-041** (Event-driven) — **When** 쓰기가 실행되면, 쓰기 **이전에** 원본 사본이 `<cfg>.bak-<UTC RFC3339-compact>` (mode 0600)으로 남아야 하고, 원본의 sha256이 출력되어야 한다.
-- **REQ-CSD-042** (Event-driven) — **When** 해석·병합·백업 중 어느 단계라도 실패하면, 대상 파일은 **바이트 불변**이어야 한다.
-- **REQ-CSD-043** (Event-driven) — **When** codex home이 해석되지 않거나 config가 없거나 읽히지 않으면, 동사는 그 사실을 말하고 fail-open으로 종료해야 한다(에러가 아니다).
-- **REQ-CSD-044** (Ubiquitous) — 동사는 대상이 되지 않은 이유·건너뛴 이유를 항목별로 보고해야 한다. 침묵은 사용자에게 아무것도 가르치지 않는다.
+- **REQ-CSD-040** (Ubiquitous) — 기본 실행은 **dry-run** 이어야 한다. 실제 쓰기는 명시적 `--force` 에서만, 그리고 쓰기 **이전에** 원본 사본이 `<cfg>.bak-<UTC RFC3339-compact>` (mode 0600)으로 남고 원본 sha256이 출력된 뒤에만 일어나야 한다.
+- **REQ-CSD-041** (Event-driven) — **When** 어느 단계라도 실패하면 대상 파일은 **바이트 불변**이어야 한다. codex home 미해석·config 부재·읽기 실패는 에러가 아니라 사유를 말하고 fail-open으로 끝나야 한다.
+- **REQ-CSD-042** (Ubiquitous) — 동사는 대상이 되지 않은 이유·건너뛴 이유를 항목별로, 서로 구별되게 보고해야 한다. 침묵은 사용자에게 아무것도 가르치지 않는다.
 
 ### C.6 경계
 
-- **REQ-CSD-050** (Ubiquitous) — `internal/codexwiring/skills.go` 는 읽기 전용으로 유지되어야 한다. 발행기는 새 파일에 놓이고, 기존 파서의 `ParseSkillEntries` / `SplitConfigLines` / `JoinConfigLines` 를 **소비만** 해야 한다.
+- **REQ-CSD-050** (Ubiquitous) — `internal/codexwiring/skills.go` 는 읽기 전용으로 유지되어야 한다. 발행기는 새 파일에 놓여 기존 파서의 `ParseSkillEntries` / `SplitConfigLines` / `JoinConfigLines` 를 **소비만** 해야 하며, 순수 함수(내용 in → 내용 out + 판정)와 I/O 러너는 분리되어야 한다.
 - **REQ-CSD-051** (Unwanted) — 이 SPEC의 구현은 `internal/cli/codex_skills_prune.go` 의 동작을 바꾸지 않아야 한다(shall not).
-- **REQ-CSD-052** (Ubiquitous) — 순수 함수(내용 in → 내용 out + 항목별 판정)와 I/O 러너는 분리되어야 한다.
 
 ## §D 범위 밖
 
@@ -110,3 +106,4 @@ t504가 그 수단이 실재함을 실측했다. `[[skills.config]]` 배열-테�
 - `.moai/reports/t504/skills-config-path-shape.md` — 채택된 셀 행렬(IV/N/V4-V7/D1f·D2f·D1d·D2d), F1(`enabled` 필수), 노터치 해시 쌍
 - `internal/cli/codex_skills_prune.go` — 쌍둥이 쓰기 경로의 모양(dry-run 기본, `--force`, 선백업, 항목별 판정 보고)
 - `internal/codexwiring/skills.go:9` — 읽기 전용 선언(docstring)
+- `internal/template/skill_mirror.go:198-245` (`mirrorOneSkill`) — 미러 결과가 한 모양이 아니라는 실측 근거(symlink / copy / skipped / failed). REQ-CSD-011·REQ-CSD-013의 출처
