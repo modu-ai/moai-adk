@@ -457,6 +457,17 @@ type WorkflowConfig struct {
 	// BranchGuard — same opt-in shape, same default-OFF neutrality.
 	IntegrationLock IntegrationLockConfig `yaml:"integration_lock"`
 
+	// SettingsDriftGate gates the REFUSAL layer of the pre-merge
+	// `.claude/settings.json` drift assertion run by `moai integration
+	// acquire`. Default false: detection, preservation and the ledger row run
+	// on every acquire regardless of this value, and only the refusal is
+	// opt-in. Sibling of BranchGuard — same opt-in shape, same default-OFF
+	// neutrality. Deliberately NOT a sub-key of IntegrationLock: that flag's
+	// own contract scopes it to the PreToolUse deny layer, and one flag gating
+	// two refusals at two different surfaces cannot say which one a maintainer
+	// meant to turn off.
+	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -655,6 +666,18 @@ type BranchGuardConfig struct {
 // `moai integration` CLI that writes it, are unaffected by this flag: only the
 // DENY layer is gated, exactly as BranchGuard gates only its deny.
 type IntegrationLockConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in
+// gate for the REFUSAL layer of the pre-merge `.claude/settings.json` drift
+// assertion. When Enabled is false (the distributed default) `moai integration
+// acquire` still runs the predicate, still preserves a drifted working copy,
+// still appends the ledger row and still reports — it simply records the
+// window instead of refusing it. Only the refusal is gated: an implementation
+// that skipped detection while the flag is off would remove the very property
+// the default-OFF posture was chosen for, and would pass every other check.
+type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
