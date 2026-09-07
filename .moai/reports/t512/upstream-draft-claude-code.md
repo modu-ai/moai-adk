@@ -58,7 +58,8 @@ there is correct behavior.
 ## Reproduction
 
 Any worktree-isolated session; a single `cat`-with-quoted-delimiter-heredoc
-whose body contains a `{...}` line reproduces the refusal deterministically.
-The companion repo (moai-adk) keeps a pinned evidence ledger with the verbatim
-refusal, both probes, and the non-execution proof (target file absent) should
-more detail help.
+whose body contains a `{...}` line reproduced the refusal in every observed
+session (the maintainer reproduction session here, plus the reporter's
+independent observations). The companion repo (moai-adk) keeps a pinned
+evidence ledger with the verbatim refusal, both probes, and the non-execution
+proof (target file absent) should more detail help.
