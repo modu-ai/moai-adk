@@ -16,7 +16,7 @@ Template-First cycle does not apply (spec.md §B.4). `make build` still matters 
 
 | # | Issue | Consequence for this plan |
 |---|---|---|
-| B-1 | One form wraps every panel; `PostFormValue` reads the first value only | Any duplicated `name` loses an edit silently. Drives M1's read-only shape and M4's guards |
+| B-1 | One form wraps every panel; `PostFormValue` reads the first value only | A field rendered as a control in **two panels** loses an edit silently. Name repetition alone is normal — every bool is a radio pair sharing one name (`boolSegment`, `fieldsets.templ:365-375`). Drives M1's read-only shape and M4's guards |
 | B-2 | Bool fields carry a hidden `<name>__present` companion, and a lone companion is read as `false` | The mirror must emit neither the control nor the companion |
 | B-3 | `moai web` rewrites tracked config files on start / GET, without a save | Do not repair. Record and hand to t517 (REQ-WCP-011) |
 | B-4 | Tab switching is CSS-or-JS, unmeasured | Blocks the disabled-input variant. Not measured here either — it is the gate on a follow-up card, not on this one |
@@ -55,27 +55,41 @@ This is the decision a reviewer is most likely to want different, so it lands fi
 - Decide grouping within the panel. Baseline: three groups in this order — audit pins
   (`workflow.audit.codex.*`, `workflow.audit.gates.codex`), codex opt-ins (`workflow.codex.*`),
   MCP tool enablement (`mcp.tools.codex_*.enabled`) — followed by the probe readout.
-- Decide whether `workflow.audit.model` (the shared audit backend selector, not codex-owned) is
-  mirrored. Baseline: yes, marked as shared, because a codex user reading "is codex the audit
-  backend here?" needs it; it is the one row whose inclusion is a judgement rather than a
-  derivation.
+- `workflow.audit.model` is **decided, not open**: it is mirrored, as the single declared exception,
+  labelled as the shared audit backend selector (spec.md §C.1 / REQ-WCP-005). It carries no `codex`
+  token, so no predicate reaches it; this plan does not re-open that.
 - Write the mirror predicate over `settings.AllFields()` plus `mcpcat.MoaiMCPTools()`. It must
-  return a non-empty set and must be the panel's only source of rows.
+  return exactly the 11 codex-token fields and must be the panel's only source of rows apart from
+  the one named exception.
 
-Decides: AC-WCP-006, AC-WCP-007.
+Decides: AC-WCP-006, AC-WCP-007, AC-WCP-014.
 
 ### M2 — the tab and the panel wiring
 
 - Add `{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex"}` to `consoleTabs()`
-  (`internal/web/schemaform.go:34`). Decide placement in the order — baseline: immediately after
-  `audit`, since that is where its most-consulted values live.
+  (`internal/web/schemaform.go:34`). Placement: immediately after `audit`, where its most-consulted
+  values live. **This placement is load-bearing for the tests**: `panelHTML`
+  (`tab_layout_test.go:76-88`) slices from a panel's marker to the *next* marker, falling back to
+  end-of-document for the last panel, so a codex panel placed last would silently widen every
+  panel-scoped assertion to cover the rest of the page. AC-WCP-002 pins "not last" so a later
+  reordering cannot quietly do this.
 - Add `case "codex": @fieldsetCodex(view)` to the `root.templ` panel switch. The generic
   `fieldsetSchemaSection` default branch renders inputs and must not be used.
-- Pick an icon from the existing `icons.templ` cases — a name with no `case` renders nothing.
+- Icon: hardcode an existing `iconAt` case inside `fieldsetCodex`. It cannot be declared anywhere
+  else — `consoleTab` (`schemaform.go:26-30`) has no `Icon` field, and `Icon` lives on
+  `schemaSectionMeta`, which the next bullet forbids adding. A name with no `case` renders nothing
+  and fails no test (precedent: `Icon: "shield-check"`, `schemaform.go:270`, has no case in
+  `icons.templ`), so pick a name that exists — `check-circle`, `panel-bottom`, and `rocket` are
+  among those that do.
+- Add an explicit `case "codex": return nil` to `settingsTabFieldNames`
+  (`internal/web/settings_shell.go:135-157`), with a comment naming the reason (the panel owns no
+  fields — spec.md §C.2). The `default` branch already yields zero via the empty panel meta; the
+  explicit case makes zero a decision rather than an accident, and keeps the rail-equals-header
+  contract true by construction.
 - Do **not** add a `schemaSectionMeta` entry and do **not** touch `partitionWorkflowFields`; the
   panel owns no fields and removes none (spec.md §B.2).
 
-Decides: AC-WCP-001, AC-WCP-002.
+Decides: AC-WCP-001, AC-WCP-002, AC-WCP-013.
 
 ### M3 — probe readout
 
@@ -87,17 +101,19 @@ Decides: AC-WCP-008.
 
 ### M4 — the guards (mechanical, but load-bearing)
 
-- `TestCodexPanel_NoNamedFormElements` — slice the rendered page to the `panel-codex` region and
-  assert zero `name=` occurrences, asserting the `__present` companion's absence as its own
+- `TestCodexPanel_NoNamedFormElements` — slice the rendered page with `panelHTML(t, html, "codex")`
+  and assert zero `name="` occurrences, asserting the `__present` companion's absence as its own
   sub-check.
-- `TestSettingsPage_NoDuplicateFormNames` — a whole-page invariant: no `name` value appears twice
-  in the rendered form. This is the guard that actually forecloses the B-1 loss, for this panel and
-  for any future one.
-- `TestCodexMirrorCoverage` — every registry field matching the codex predicate has a row, and the
-  row count is non-zero (a zero-count pass would be vacuous).
+- `TestCodexMirrorFieldsStayOnOwningPanel` — the invariant that actually forecloses the B-1 loss:
+  for each mirrored field, its `name="…"` count over the whole page equals its count inside its
+  **owning** panel. Reuse the `assertPanelFields` shape (`tab_layout_test.go:90-103`); do **not**
+  write a form-wide name-uniqueness check, which is unimplementable (spec.md §B.1).
+- `TestCodexMirrorCoverage` — compare the predicate's output against an independent pinned list of
+  the 11 codex-token field names, both directions (set equality), plus a drift arm asserting no
+  `settings.AllFields()` entry containing `codex` sits outside that list.
 - Establish the mutants explicitly (acceptance.md §D.2), observe RED, revert.
 
-Decides: AC-WCP-003, AC-WCP-004, AC-WCP-005.
+Decides: AC-WCP-003, AC-WCP-004, AC-WCP-005, AC-WCP-006.
 
 ### M5 — i18n (mechanical)
 
