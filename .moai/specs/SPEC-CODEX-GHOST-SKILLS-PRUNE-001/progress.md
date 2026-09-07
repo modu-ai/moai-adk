@@ -147,7 +147,7 @@ evidence_path: .moai/reports/t506/run-evidence.md
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다 — 후속 커밋에서 백필
+sync_commit_sha: 79fabac42               # 백필 완료 — sync 커밋은 자기 해시를 인용할 수 없어 자리표시자를 거쳤다
 sync_status: complete
 b12_self_test_a: pass                    # grep -c 'SPEC-CODEX-GHOST-SKILLS-PRUNE-001' CHANGELOG.md → 0 (중복 없음)
 b12_self_test_b: pass                    # acceptance.md 고유 AC 17개 == CHANGELOG 가 주장하는 17개
