@@ -412,4 +412,59 @@ measurement_branch: WT-home-fallback
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+측정 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536` · 브랜치 `WT-home-fallback` · sync 진입 HEAD `4e99fc785`. 이 절의 모든 인용은 반출된 `.moai/reports/t536/` 파일과 이번 회차 명령 출력만 지목한다.
+
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill       # 이 커밋은 자기 해시를 인용할 수 없다 (D3 백필 창)
+sync_status: audit-ready
+
+ac_pass_count: 8                        # AC-THG-001..008 — acceptance.md §D 매트릭스가 SSOT
+ac_fail_count: 0
+ac_pass_with_debt: 1                    # AC-THG-002 — darwin PASS, 리눅스 셀은 CI 몫
+
+b12_self_test_a: "grep -c 'SPEC-TODO-HOME-TEMP-GUARD-001' CHANGELOG.md → 0 (중복 없음, 방출 진행)"
+b12_self_test_b: "/usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10. 0 이 아니므로 공허하지 않다. 10 중 8 이 본 SPEC 소유(AC-THG-001..008)이고 2 는 교차-SPEC 인용(AC-SA-011 · AC-WTQ-006)이다 — CHANGELOG 가 적는 수는 8 이며 §D 매트릭스·§D.0 커버리지 선언과 일치한다"
+b12_self_test_c: "ls 로 실재 확인 — internal/kanban/temp_origin.go · internal/kanban/todo_root.go · internal/cli/todo.go · internal/kanban/todo_root_temp_guard_test.go · internal/kanban/todo_root_nontemp_copy_test.go · .moai/reports/t536/guard-boundary.md · .moai/reports/t536/m3/d8-literal.diff · .moai/reports/t536/m3/d8-card.diff — 8/8 존재"
+
+changelog_entry_position: "[Unreleased] → ### Fixed 첫 항목 (CHANGELOG.md:375). Fixed 로 분류한 근거: 이 카드가 닫는 것은 생산 폴백이 도달 불가능한 고아 큐를 만드는 결함이다. 형제 하드닝 카드 t537(SPEC-STATE-ANCHOR-VALIDATE-001)도 같은 절에 있다"
+
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-08). status 와 updated 두 필드만 — 본문 무수정"
+  plan_md: "해당 없음 — frontmatter 없음 (status 축 stateless)"
+  acceptance_md: "해당 없음 — frontmatter 없음 (status 축 stateless)"
+  progress_md: "해당 없음 — 진행 기록은 본문 절에 있고 frontmatter 를 쓰지 않는다"
+
+canary_compliance_check:
+  applicable: false
+  reason: "본 SPEC 은 sync 가 스스로 시험할 전방위 정책(canary)을 정의하지 않는다. 가드의 판별 증거는 run-phase 뮤턴트/대조군이며 §E.2 M3 과 guard-boundary.md 에 있다"
+
+docs_surface:
+  readme: "무변경 — README 의 `moai todo` 언급 6건은 전부 큐 운영(카드 추가·목록·칸반 배선)이고 큐 루트 해석을 말하지 않는다"
+  docs_site: "무변경. 다만 4로케일 `utility-commands/moai-todo.md` 가 「git 메타데이터가 없는 프로젝트는 ~/.moai/todo/<project-key>/ 에 큐를 둔다」는 문장을 담고 있고(ko:215), 이 가드가 그 문장을 임시 루트 base 에 대해 **좁힌다** — 거짓이 되는 모집단이 생겼다. 내부 가드 범위의 sync 커밋 안에서 4로케일 문장을 손보는 대신 문서 정확도 후속으로 기록한다(아래 Gaps)"
+
+verification_this_run:
+  scope: "마크다운 3파일(CHANGELOG.md · progress.md · spec.md frontmatter)만 편집 — 컴파일 대상 무변경이므로 go test 재실행 없음. 근거: 이 회차 편집 파일 목록이 컴파일 단위를 포함하지 않는다"
+  package_verdict_source: "§E.2 M3 재측정분 (batchC1-stamped.txt · batchC2-stamped.txt · pkg-*.txt) — 이 회차가 다시 재지 않았고, 재지 않았음을 여기 적는다"
+
+evidence_root: .moai/reports/t536/
+guard_boundary_report: .moai/reports/t536/guard-boundary.md
+measurement_tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+measurement_head: 4e99fc785
+measurement_branch: WT-home-fallback
+```
+
+### 미검증 (Gaps) — sync
+
+- **리눅스 · 윈도우 셀 미측정.** run-phase 전체가 darwin/arm64 단일 셀이고 sync 가 그것을 바꾸지 않았다. AC-THG-002 의 리눅스 셀(`/tmp` 이 실디렉터리이고 `/private/tmp` 이 없는 환경)은 CI 몫이며, **레인은 push 하지 않으므로 이 카드 안에서는 CI 결과를 인용할 수 없다** — 없는 것이 아니라 이 트리에서 도달 불가다.
+- **`GOOS=windows` 크로스빌드는 테스트 파일을 컴파일하지 않는다.** `go build` 는 non-test 패키지만 본다. windows exit=0 은 이 카드의 **테스트**가 windows 에서 컴파일된다는 근거가 아니다.
+- **전 패키지 스위트 · 린트 미실행.** `internal/kanban` · `internal/web` · `internal/cli` 3개만 돌렸다(저장소 규율상 로컬 `go test ./...` 금지). `golangci-lint` 는 실행하지 않았고 `go vet` 만 돌렸다. 두 판정 모두 CI 소관이다.
+- **D8 고정-SHA 기준점이 낡았다 — 수리하지 않고 기록한다.** `plan.md` §F M3 의 문자 그대로의 명령 `git diff 412c8cb14..HEAD -- internal/statusline/ internal/config/ internal/hook/ internal/session/ internal/stateanchor/` 은 **무변경이 아니다**(18,650 bytes / 6파일 — `.moai/reports/t536/m3/d8-literal.diff`). 원인은 범위 오염이다: `412c8cb14` 는 `6b71fdaa5` 의 develop 흡수 **이전**이라 형제 카드(t401 · t537)의 작업이 범위에 들어온다. 카드 귀속 범위 `6b71fdaa5..HEAD` 로 재측정하면 **0 bytes**(`.moai/reports/t536/m3/d8-card.diff`, 빈 파일)이므로 D8 이 방어하는 성질 — 이 카드가 접촉 금지 경로를 건드리지 않았다 — 은 **성립한다**. `plan.md` 본문은 manager-docs 소관이 아니라 고치지 않았다.
+- **docs-site 문장 하나가 좁아진 채 남아 있다.** 위 `docs_surface.docs_site` 참조. 4로케일(ko/en/ja/zh) `utility-commands/moai-todo.md`. 편집 여부는 리드 판단 사항으로 넘긴다.
+
+### 잔여 위험 (Residual risk) — sync
+
+- **D8 류 판정식은 재발한다.** 고정 SHA 를 기준으로 쓴 무변경 판정은 그 SHA 가 흡수 이전이면 범위에 남의 작업이 섞인다. 후속 카드에서는 카드 귀속 범위(흡수 병합 이후)로 쓰는 편이 옳다 — 이 카드는 그 형태를 실측으로 한 번 더 확인했을 뿐 규칙으로 만들지 않았다.
+- **CHANGELOG 항목의 AC 수 8 은 매트릭스 판독에 의존한다.** B12 자가시험 (b) 의 원시 계수는 10 이고, 8 은 그중 교차-SPEC 인용 2건(AC-SA-011 · AC-WTQ-006)을 제외한 값이다. 그 제외 판단이 틀리면 CHANGELOG 의 수가 틀린다 — 그래서 원시 계수와 제외 근거를 위 자가시험 칸에 함께 남겼다.
+- **`sync_commit_sha` 는 이 커밋에서 `pending-backfill` 이다.** 뒤따르는 커밋이 실 SHA 로 채우기 전까지 이 절은 자기 커밋을 지목하지 못한다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+- **가드 경계 보고는 테스트 한 건에 걸려 있다.** `TestGuardBypassMutant_ObserveHomePollution` 이 약화되면 route (i) 대조군이 인용하는 「오염 0」의 의미도 함께 약해진다(§E.2 M3 잔여 위험과 같은 항목이며 sync 가 바꾸지 않았다).
