@@ -1257,11 +1257,24 @@ type ContextTokenBudget struct {
 // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
-	ClarityThreshold int           `yaml:"clarity_threshold"`
-	Enabled          bool          `yaml:"enabled"`
-	Plan             InterviewMode `yaml:"plan"`
-	Project          InterviewMode `yaml:"project"`
-	SkipConditions   []string      `yaml:"skip_conditions"`
+	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	Enabled            bool          `yaml:"enabled"`
+	Plan               InterviewMode `yaml:"plan"`
+	Project            InterviewMode `yaml:"project"`
+	RecommendationMode string        `yaml:"recommendation_mode"`
+	SkipConditions     []string      `yaml:"skip_conditions"`
+}
+
+// ResolvedRecommendationMode returns the resolved recommendation-mode axis:
+// "pull" only when the key holds exactly "pull"; "push" otherwise — including
+// when the key is absent, empty, or unrecognized (REQ-JFM-002, REQ-JFM-003).
+// The raw value stays on RecommendationMode, so an unrecognized setting is
+// recorded verbatim rather than silently discarded.
+func (c InterviewConfig) ResolvedRecommendationMode() string {
+	if c.RecommendationMode == "pull" {
+		return "pull"
+	}
+	return "push"
 }
 
 // InterviewMode holds per-mode interview settings.
