@@ -1,7 +1,7 @@
 ---
 id: SPEC-STATE-ANCHOR-001
 title: "상태 앵커 단일 시접 — cwd 오염 수리(GH #1694) + 홈 오염 정지 검증"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -24,6 +24,7 @@ issue_number: 1694
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-07 | manager-spec | 최초 작성 — 카드 t510 plan-phase. 판정서 `.moai/reports/t510/verdict.md`의 수리 방향을 SPEC으로 전사. 축 B 수리(단일 상태-앵커 시접) + 축 A 검증 전용 AC + 홈 폴백 가드를 운영자 미결 결정으로 표면화 |
+| 0.1.1 | 2026-09-07 | manager-spec | plan-audit iter1 (FAIL 0.85, `plan-audit.md`) 반영 — **차단 D1/D2**: 표시 경로 서술을 기존 `extractProjectDirectory` 불변으로 교정(REQ-SA-004·§3·plan D2·M1·AC-SA-006/012). 초기 전사의 「표시는 current_dir에서 유도」는 판정서 산문의 오류였고 트리는 반대(1순위 `project_dir`) — 결론(불변)은 옳고 논거를 정정. AC-SA-006 골든 코퍼스에 발산 입력(`project_dir`≠`current_dir`) 추가. **advisory**: 부칙 B2b(github counts)/B7(session-memo) 전사(§1.1·REQ-SA-001·AC-SA-002·M2), AC-SA-002~005 등급 라벨 정밀화, AC-SA-011 뮤턴트 맥락을 비git temp로 교정(§A-5 사슬), M2 무파괴 정의 + goal 소비자 3 좌표 |
 
 카드: **t510** (Class B · Tier M · 외부 재현 GH #1694). 측정 기준 트리: `.claude/worktrees/t510`, 브랜치 `WT-state-write-locus` @ `0b1e27877` (= origin/develop, 세션 시작 시 fetch로 재확인). 모든 코드 좌표와 RED 근거는 이 트리의 것이다.
 
@@ -40,11 +41,13 @@ moai의 런타임 상태 파일이 **의도하지 않은 자리에 쓰인다**. 
 | # | 쓰기/읽기 표면 | 좌표 | 현재 앵커 소스 | 착지 위치 |
 |---|---|---|---|---|
 | B1 | 세션 텔레메트리 쓰기 | `internal/statusline/context_usage.go:176` `writeContextUsage` / `:278` `resolveProjectDir` (호출 `builder.go:178`) | stdin `workspace.current_dir` → `input.CWD` → `os.Getwd()` — **`workspace.project_dir`은 후보에 없음** (`types.go:184`에 필드 존재), git 해석 없음 | `<앵커>/.moai/state/context-usage/<sid>.json` 매 렌더 |
-| B2 | landed 카운트 | `internal/statusline/landed.go:78` `landedCachePath` / `:118` `maybeRefreshLandedCounts` (호출 `builder.go:274` → `backlog.go:24` `resolveBoardRoot`) | `worktree.original_cwd` 있으면 그것 — **없으면 B1과 동일 current_dir 사슬** | `<앵커>/.moai/state/landed/counts.json` |
+| B2 | landed 카운트 | `internal/statusline/landed.go:78` `landedCachePath` / `:118` `maybeRefreshLandedCounts` (호출 `builder.go:255` `resolveBoardRoot`) | `worktree.original_cwd` 있으면 그것 — **없으면 B1과 동일 current_dir 사슬** | `<앵커>/.moai/state/landed/counts.json` | github counts(B2b)가 이 단일 boardRoot를 함께 공급 — 독립 앵커 없음 (아래 경계 밖 문단) |
 | B3 | goal 상태 **읽기** | `internal/statusline/builder.go:286` | B1과 동일 리졸버 | 읽기: `<앵커>/.moai/state/goal/...` — cd한 세션이 프로젝트 루트가 아닌 곳에서 읽음 |
 | B4 | config 캐시 | `internal/config/cache.go:58` `cacheFilePath(<configDir>/state/config-cache.json)` ← `manager.go:74` `LoadWithCache` | CLI 사슬의 configDir(코드 전반에서 env → Getwd 패턴; **정확한 유도 지점은 미확정 — run-phase RED 테스트가 고정할 것**, 판정서 Gaps) | `<configDir>/state/config-cache.json` |
 
 경계 밖 멤버: **B5**(훅 계열, `internal/hook/path_resolve.go:66` 외 — 훅 맥락에선 env 우선이라 저위험)와 **B6**(세션 레지스트리, `internal/session/registry.go:174` — cwd는 엔트리 필드일 뿐 쓰기 앵커가 아님)은 판정서가 read-only-noted로 분류했고 본 SPEC이 건드리지 않는다(§6).
+
+판정서 부칙(B-표 v2)의 증보 두 건도 이 경계에 함께 반영한다(plan-audit D3): **B2b**(github counts 캐시, `state/github/counts.json`)는 독립 앵커가 없다 — `builder.go:255`의 `boardRoot := resolveBoardRoot(input)` 하나가 `resolveGitHubCounts`/`maybeRefreshGitHubCounts`(`builder.go:265/267`)·landed에 같이 흐르므로 **B2 수리가 B2b를 자동으로 운반**하고, R1 시접의 적용 대상은 B1·B2(+B2b)·B3·B4다. **B7**(session-memo, `internal/hook/memo/writer.go`)은 부칙이 "run-phase에서 범위 재판정"을 지시했다 — 재판정 전까지는 REQ-SA-008·AC-SA-008의 diff-0 가드가 기계적으로 지킨다(plan.md §F M2).
 
 ### 1.2 축 A — 홈 오염 (이미 수리돼 있다 — 검증만 남는다)
 
@@ -73,7 +76,7 @@ moai의 런타임 상태 파일이 **의도하지 않은 자리에 쓰인다**. 
 "렌더가 깨지지 않는다"만 요구하면 다음 구현들이 전부 통과하면서 결함을 남긴다.
 
 1. **부분 수리** — B1만 고치고 B2/B3/B4를 남긴다. 4멤버 각각의 행동 AC(AC-SA-001..004)가 멤버별로 재므로 탐지된다.
-2. **표시에까지 앵커를 퍼뜨리는 수리** — `project_dir`을 상태 앵커와 표시 이름에 동시에 적용하면 statusline 표시가 바뀐다. 읽기·쓰기·표시의 관심 분리(판정서 Residual-risk 3)가 요구사항이며 AC-SA-006이 잡는다.
+2. **표시 경로를 건드리는 수리** — 수리가 `extractProjectDirectory`(`builder.go:415-438`)를 수정하거나 표시 소스를 상태 앵커에 묶으면 statusline 표시가 바뀐다. 표시 유도는 이미 `project_dir` 1순위이므로 **그대로 두는 것**이 요구사항이다(§4 REQ-SA-004 정정 참조). 읽기·쓰기·표시의 관심 분리(판정서 Residual-risk 3)가 요구사항이며 AC-SA-006이 잡는다.
 3. **throttle 제거** — 앵커 수리를 하며 write-if-changed skip을 잃으면 렌더당 디스크 쓰기가 돌아온다. AC-SA-007.
 4. **skip 경로가 소란을 피우는 것** — 무프로젝트에서 쓰기 생략이 오류 로그나 렌더 실패로 이어지면 "no project, no state"이 아니다. AC-SA-005가 "정상 완료"까지 재며.
 5. **부재 가드의 공허 통과** — canary 스윕 0-오염은 셀렉터가 0개 테스트를 돌려도 초록이다. swept count 명시(AC-SA-010) + 뮤턴트 오염 관측(AC-SA-011)으로 닫는다.
@@ -82,7 +85,7 @@ moai의 런타임 상태 파일이 **의도하지 않은 자리에 쓰인다**. 
 
 ### 수리 — 축 B (R1: 단일 상태-앵커 시접)
 
-- **REQ-SA-001** (Ubiquitous) — The statusline and CLI state surfaces shall resolve the **state anchor** — the project root under which `.moai/state/` is read and written — through a single shared resolver; no member (B1 telemetry write, B2 board root, B3 goal read, B4 config cache) shall derive its own anchor from the session's current directory.
+- **REQ-SA-001** (Ubiquitous) — The statusline and CLI state surfaces shall resolve the **state anchor** — the project root under which `.moai/state/` is read and written — through a single shared resolver; no member (B1 telemetry write, B2 board root — covering both its landed and github-counts consumers, B3 goal read, B4 config cache) shall derive its own anchor from the session's current directory.
 - **REQ-SA-002** (Ubiquitous) — The shared state-anchor resolver shall resolve the anchor in this fixed precedence: stdin `workspace.project_dir`, then `worktree.original_cwd`, then a git resolution of the anchor directory reusing `gitcore.ResolveGitDirs` (the git common directory's parent — one root for every checkout and worktree of the repository, the `primaryCheckoutRoot` shape).
 - **REQ-SA-003** (Event-driven) — **When** the anchor cannot be resolved (no `project_dir`, no `original_cwd`, and the directory is not inside a git repository), the writer shall skip the state write silently — no project, no state — and the render shall complete normally.
 - **REQ-SA-006** (Event-driven) — **When** the statusline reads the armed-goal state (B3), it shall read it from the anchored root, not from the session's current directory — a session that has cd'd elsewhere still sees the project's goal state.
@@ -90,7 +93,9 @@ moai의 런타임 상태 파일이 **의도하지 않은 자리에 쓰인다**. 
 
 ### 보존 — 수리가 파괴해서는 안 되는 것
 
-- **REQ-SA-004** (Unwanted) — The repair shall not change what the statusline displays: the display-name derivation (basename for rendering) shall remain sourced from the session's current directory, kept separate from the state anchor.
+> **정정 (v0.1.1, plan-audit D1)** — 트리 관측이 판정서 산문에 우선한다(본 SPEC의 전사 원칙상 정정은 예외가 아니라 의무). 표시 유도는 이미 `extractProjectDirectory`(`internal/statusline/builder.go:415-438`)가 `project_dir`을 1순위로 쓰고 있다(`types.go:184` 주석 "(used for display)"). 판정서 수리 방향 1의 "표시용 basename은 종전대로 current_dir에서"는 산문 오류였고 판정서에는 정정이 부쳐졌다 — **결론(표시 불변)은 옳고, 아래 REQ의 논거만 교정됐다.**
+
+- **REQ-SA-004** (Unwanted) — The repair shall not change what the statusline displays: the display-name derivation (basename for rendering) shall remain the existing `extractProjectDirectory` behavior (`builder.go:415-438`: `project_dir` > `current_dir` > `CWD` > `os.Getwd()`) untouched, and the repair shall not modify that function; the display derivation stays separate from the state anchor (REQ-SA-002 chain).
 - **REQ-SA-005** (Unwanted) — The repair shall preserve the write-if-changed throttle and the best-effort silent-failure semantics of every repaired writer (REQ-THRESHOLD-009/REQ-THRESHOLD-012 semantics preserved).
 - **REQ-SA-008** (Unwanted) — The repair shall not modify B5 (hook-family state: `internal/hook/path_resolve.go`, `file_changed.go`) or B6 (session registry: `internal/session/registry.go`); the verdict classified both read-only-noted, and a change is permitted only after a plan amendment demonstrates R1's seam cannot hold without it.
 

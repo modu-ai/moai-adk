@@ -45,7 +45,7 @@
 ## §D 구속 조건 (재논의 금지)
 
 - **D1 — 앵커 우선순위 체인은 고정이다.** `project_dir` → `worktree.original_cwd` → git common-dir 해석(`gitcore.ResolveGitDirs` 재사용, `primaryCheckoutRoot` 형태) → 실패 시 `""`. 중간 단계 삽입·순서 변경은 요구사항 변경이다(REQ-SA-002).
-- **D2 — 표시는 불변이다.** statusline 표시 세그먼트의 디렉터 이름 유도(basename)는 `current_dir`에서 계속 따로따로 한다. `project_dir`을 표시에까지 퍼뜨리는 수리는 금지(REQ-SA-004). 읽기·쓰기·표시의 관심 분리는 판정서 Residual-risk 3의 요구다.
+- **D2 — 표시는 불변이다.** 표시 유도는 기존 `extractProjectDirectory`(`builder.go:415-438`: `project_dir` > `current_dir` > `CWD` > `Getwd`, 1순위 `project_dir` — `types.go:184` "(used for display)")이고, **수리는 이 함수를 수정하지 않는다**(REQ-SA-004, plan-audit D1). v0.1.0의 「current_dir에서 계속 유도」 서술은 판정서 산문의 오류 전사였다 — 글자대로 이행하면 표시 경로를 *변경*하는 오히려 금지된 행위가 됐을 것이다. 금지되는 것은 표시 경로의 변경 자체다. 읽기·쓰기·표시의 관심 분리는 판정서 Residual-risk 3의 요구다.
 - **D3 — throttle과 silent-failure는 보존이다.** write-if-changed skip과 best-effort 무소음(REQ-THRESHOLD-009/012) 의미론을 잃는 수리는 금지(REQ-SA-005).
 - **D4 — B5/B6 불변.** `internal/hook/**`, `internal/session/**`은 변경 금지. R1 시접이 반드시 그들을 건드려야 한다는 것이 입증되면 blocker 보고로 plan을 확장한 뒤에만 재검토한다(REQ-SA-008).
 - **D5 — 테스트 격리는 t.TempDir()뿐이다.** 어떤 테스트도 개발자 실제 HOME에 쓰지 않는다(CLAUDE.local.md §6 HARD). HOME 교체가 필요한 테스트는 비-parallel 서브테스트에서만 `t.Setenv`로 한다(Go가 parallel 조합을 panic으로 차단한다 — §13의 병렬 오염 위험을 기계적으로 회피하는 경로). canary 스윕은 canary HOME에서만 판정하고 **실제 HOME을 측정 대상으로 삼지 않는다** — 측정 행위 자체가 오염을 만들면 안 된다(D12).
@@ -82,7 +82,7 @@
 ### M1 — 상태-앵커 리졸버 시접 + B1 GREEN
 
 - `internal/statusline`(또는 그보다 낮은 공유 위치로의 이동이 자연스러우면 그렇게 — 단, 이동은 M1 내 최소로)에 단일 상태-앵커 리졸버를 둔다. 우선순위: `project_dir` → `worktree.original_cwd` → `gitcore.ResolveGitDirs` common-dir 부모 → `""`(REQ-SA-002).
-- B1 `resolveProjectDir`를 리졸버로 교체한다. `current_dir`/`input.CWD`/`os.Getwd()`는 상태 쓰기 앵커 후보에서 **제거**되고, 표시 이름 유도용으로만 남는다(D2).
+- B1 `resolveProjectDir`를 리졸버로 교체한다. `current_dir`/`input.CWD`/`os.Getwd()`는 상태 쓰기 앵커 후보에서 **제거**되고, 기존 표시 유도(`extractProjectDirectory` — 불변, D2)에만 남는다.
 - C0 테스트 GREEN. 무프로젝트 케이스(AC-SA-005)의 RED→GREEN도 같이 관측한다.
 - 기존 statusline 테스트 전수 통과 유지(§C 마지막 행 baseline).
 
@@ -92,9 +92,11 @@
 
 - B2: `resolveBoardRoot`(`backlog.go:24`)가 리졸버를 통해 board root를 얻는다. `worktree.original_cwd` 우선은 리졸버 체인의 2단계로 **흡수**된다(별도 유산 제거). RED: `original_cwd` 없이 `current_dir` = 서브디렉터인 입력에서 현재 board root가 서브디렉터인 것을 테스트로 관측(RED) → 수리 후 앵커에서 해석(GREEN).
 - B3: `builder.go:286`의 goal 읽기가 리졸버의 앵커에서 읽는다. RED: goal 상태를 프로젝트 루트에 시드하고 `current_dir` = 서브디렉터로 렌더 → 현재는 못 봄(RED) → 수리 후 GoalArmed=true(GREEN).
-- **가시성 변화 주의**(판정서 Residual-risk 3): B3 수리는 "cd한 세션이 goal을 보게 된다"는 사용자 가시성 변화를 수반한다 — 의도된 수리이지만, 기존에 cwd 기반 읽기에 의존하던 테스트·소비자가 있는지 M2에서 확인한다.
+- **B2b 자동 운반 확인**: AC-SA-002가 github counts 경로를 함께 단언한다 — `boardRoot` 하나가 landed·github 양쪽을 공급하므로 B2 수리가 B2b를 운반한다(판정서 부칙, `builder.go:255/265/267`).
+- **B7 범위 재판정 지시**(판정서 부칙): session-memo(`internal/hook/memo/writer.go`)는 훅 사슬 정리와 함께 **run-phase 범위 재판정 대상**이다 — 재판정 전까지는 AC-SA-008의 diff-0 가드가 지킨다. 새 멤버 수리를 열지 않는다.
+- **가시성 변화 주의**(판정서 Residual-risk 3): B3 수리는 "cd한 세션이 goal을 보게 된다"는 사용자 가시성 변화를 수반한다 — 의도된 수리이며, goal 읽기의 소비자는 3 좌표가 전부다: `builder.go:286`(생산), `handoff_goal_suppress_test.go`, `profile_bench_test.go:256/357`. 이 3 좌표를 체크리스트로 확인한다.
 
-**M2 종료 조건**: AC-SA-002·003 GREEN, 기존 테스트 무파괴.
+**M2 종료 조건**: AC-SA-002·003 GREEN. **무파괴 정의**(plan-audit D6): 의도된 변경으로 **갱신되는** 테스트(B3 가시성 변화 수반분)는 §E.2에 목록화하고, 무파괴는 「**미갱신** 테스트 무실패」로 판정한다.
 
 ### M3 — B4 (config 캐시)
 
@@ -124,7 +126,7 @@
 
 - **셀렉터 0매치 초록** — canary 스윕이 0개 테스트를 돌려도 "0 오염"으로 통과시키는 것. swept count N>0 강제(AC-SA-010).
 - **실제 HOME 측정** — AC 판정을 개발자 실제 HOME에서 수행해 오염을 재생산하거나 mtime을 더럽히는 것(D5/D12). 판정서 A-7의 read-sweep 오염 전례.
-- **표시까지의 앵커 전파** — `project_dir`을 렌더 표시에 쓰는 것(D2). 표시는 `current_dir` 기반 유지.
+- **표시 경로 건드리기** — `extractProjectDirectory`를 수정하거나 표시 소스를 상태 앵커에 묶는 것(D2, plan-audit D1). 표시는 기존 동작(`project_dir` 1순위, `builder.go:415-438`) 그대로 유지.
 - **부분 수리** — B1만 고치는 것. 멤버 4곳 전부가 시접을 거쳐야 REQ-SA-001 충족이다.
 - **전체 스위트 로컬 실행** — `go test ./...` 금지(D6). 패키지 범위만.
 - **축 A 코드 접촉** — 가드를 "개선"하거나 폴백을 "고치는" 것(D10/D11). 둘 다 본 SPEC 밖이다.

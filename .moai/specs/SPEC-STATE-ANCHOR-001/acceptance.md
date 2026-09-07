@@ -2,7 +2,7 @@
 
 측정 기준 트리: `.claude/worktrees/t510` @ `0b1e27877` (`WT-state-write-locus`). 아래 RED 값 중 B1은 판정서 `.moai/reports/t510/verdict.md` §B-2에서 **이 트리에서 실제로 관측된 값**이며, B2/B3/B4의 RED는 plan.md §D8에 따라 run-phase가 멤버별 committed RED 테스트로 관측할 예정 형태다(채택 판정은 관측 후).
 
-등급 용어: **blocking** = RED-now 셀 + green path 셀을 갖춘 릴리스 게이트. **regression-guard** = 기준 트리에서 이미 GREEN이라 RED-now 셀을 가질 수 없는 회귀 방어(verification-completeness §2의 undecidable disposition 적용 — release-blocking 자격 없음, 기록도 pass로 남기지 않는다). 축 A의 3건(AC-SA-009/010/011)이 regression-guard다 — 판정서 Claim 2: 축 A는 이미 수리돼 있다.
+등급 용어: **blocking** = RED-now 셀 + green path 셀을 갖춘 릴리스 게이트. **regression-guard** = 기준 트리에서 이미 GREEN이라 RED-now 셀을 가질 수 없는 회귀 방어(verification-completeness §2의 undecidable disposition 적용 — release-blocking 자격 없음, 기록도 pass로 남기지 않는다). 축 A의 3건(AC-SA-009/010/011)이 regression-guard다 — 판정서 Claim 2: 축 A는 이미 수리돼 있다. 라벨 「blocking (RED 관측 전 — 채택은 run-phase)」(plan-audit D4)은 RED가 **예정형**인 AC-SA-002~005에 붙는다: 예상 RED 형태 + 코드 근거를 기록해두고 실제 RED 관측(채택)은 run-phase 마일스톤이 수행한다 — plan.md §D8(멤버별 committed RED)과 §E E8이 그 관측을 기계적으로 강제한다.
 
 ---
 
@@ -11,10 +11,10 @@
 | AC | 요구사항 | RED (현재 트리) | GREEN (목표) | 등급 |
 |---|---|---|---|---|
 | AC-SA-001 | REQ-SA-001, 002, 007 | 레코드가 visited(A)에 착지, project(B) 무오염 — 판정서 §B-2 실측 | 레코드가 B에만 착지, A 무오염 | blocking |
-| AC-SA-002 | REQ-SA-001, 002 | `original_cwd` 없이 서브디렉터 cd → board root가 서브디렉터 (M2 RED 관측 예정) | board root가 상태 앵커 | blocking |
-| AC-SA-003 | REQ-SA-006 | goal 시드 + 서브디렉터 cd → GoalArmed=false (M2 RED 관측 예정) | GoalArmed=true | blocking |
-| AC-SA-004 | REQ-SA-001 | configDir 유도가 cwd 좌주 (M3 RED가 유도 지점 먼저 고정) | 캐시가 프로젝트 앵커에 착지, cwd 무오염 | blocking |
-| AC-SA-005 | REQ-SA-003 | 비git 디렉터에서도 상태 생성 (M1 RED 관측 예정) | 쓰기 생략 + 렌더 정상 완료 | blocking |
+| AC-SA-002 | REQ-SA-001, 002 | `original_cwd` 없이 서브디렉터 cd → board root가 서브디렉터 (M2 RED 관측 예정) | board root가 상태 앵커 (+ github counts 경로) | blocking (RED 관측 전 — 채택은 run-phase) |
+| AC-SA-003 | REQ-SA-006 | goal 시드 + 서브디렉터 cd → GoalArmed=false (M2 RED 관측 예정) | GoalArmed=true | blocking (RED 관측 전 — 채택은 run-phase) |
+| AC-SA-004 | REQ-SA-001 | configDir 유도가 cwd 좌주 (M3 RED가 유도 지점 먼저 고정) | 캐시가 프로젝트 앵커에 착지, cwd 무오염 | blocking (RED 관측 전 — 채택은 run-phase) |
+| AC-SA-005 | REQ-SA-003 | 비git 디렉터에서도 상태 생성 (M1 RED 관측 예정) | 쓰기 생략 + 렌더 정상 완료 | blocking (RED 관측 전 — 채택은 run-phase) |
 | AC-SA-006 | REQ-SA-004 | (불변 대상 — 변화 없음이 현재 상태) | 표시 세그먼트 출력 수리 전후 동일 | blocking |
 | AC-SA-007 | REQ-SA-005 | (불변 대상 — 현재 동작) | throttle + silent-failure 유지, 기존 테스트 통과 | blocking |
 | AC-SA-008 | REQ-SA-008 | (불변 대상 — diff 0이 현재 상태) | `internal/hook/`, `internal/session/` diff 0 | blocking |
@@ -56,6 +56,7 @@ ok  github.com/modu-ai/moai-adk/internal/statusline  0.437s
 - **When** backlog/landed 세그먼트가 board root를 해석하면,
 - **Then** board root는 상태 앵커(리졸버 결과)에서 나온다 — 서브디렉터가 아니다.
 - **And** `worktree.original_cwd`가 **있는** 경우 기존 동작(그것을 우선)이 유지된다 — 이는 리졸버 체인 2단계로 흡수된다.
+- **And** github counts(`builder.go:265/267`)가 같은 `boardRoot`(`builder.go:255`)에서 공급되므로, 수리 후 github 캐시(`state/github/counts.json`)도 앵커 아래에 착지한다 — github 캐시를 visited 디렉터나 별도 위치에 쓰는 수리는 실패다(B2b — 판정서 부칙: 독립 앵커 없음, B2 수리가 운반).
 
 판정 명령: `go test ./internal/statusline/ -run TestBoardRootResolvesThroughStateAnchor -count=1`
 
@@ -99,13 +100,13 @@ ok  github.com/modu-ai/moai-adk/internal/statusline  0.437s
 
 ### AC-SA-006 — 표시는 불변이다
 
-- **Given** 동일 stdin 입력에 대해 수리 전(기준 `0b1e27877`) 렌더 출력의 디렉터 표시 세그먼트가 기록돼 있고,
-- **When** 수리 후 동일 입력으로 렌더하면,
-- **Then** 디렉터 표시 세그먼트(basename 유도 포함)의 출력이 동일하다 — 표시 이름은 `current_dir`에서 계속 유도된다.
+- **Given** 동일 stdin 입력에 대해 수리 전(기준 `0b1e27877`) 렌더 출력의 디렉터 표시 세그먼트가 기록돼 있고, 골든 코퍼스에 **`project_dir`(A) ≠ `current_dir`(B)인 입력이 포함된다**(AC-SA-001과 같은 2디렉터 fixture 재사용 — 표시 소스가 실제로 갈라지는 지점이 이 입력뿐이므로, 동일-디렉터 입력만 담으면 오지시 이행도 골든을 통과한다 / plan-audit D2), 그리고,
+- **When** 수리 후 코퍼스 입력으로 렌더하면,
+- **Then** 디렉터 표시 세그먼트(basename 유도 포함)의 출력이 동일하다 — 표시 유도는 기존 `extractProjectDirectory`(`builder.go:415-438`, `project_dir` 1순위) 그대로이며 수리가 이 함수를 수정하지 않는다(plan-audit D1 정정 — v0.1.0의 「current_dir에서 유도」 서술은 판정서 산문 오류였다).
 
-판정 명령: 기존 렌더 표시 테스트 전수 + 필요시 골든 비교 1건 추가. `go test ./internal/statusline/...`
+판정 명령: 기존 렌더 표시 테스트 전수 + 발산 입력 골든 비교 1건 추가. `go test ./internal/statusline/...`
 
-**RED**: 없음(불변 대상 — 현재 상태가 곧 기준). **GREEN (M1 이후 유지)**: 기존 테스트 무파괴로 입증. `project_dir`을 표시에까지 퍼뜨리는 mutant(spec.md §3 mutant 2)가 이 AC에서 걸린다.
+**RED**: 없음(불변 대상 — 현재 상태가 곧 기준). **GREEN (M1 이후 유지)**: 기존 테스트 무파괴 + 발산 입력 포함 코퍼스 PASS로 입증. 표시 경로를 건드리는 mutant(spec.md §3 mutant 2)가 이 AC에서 걸린다.
 
 ### AC-SA-007 — throttle과 silent-failure가 보존된다
 
@@ -151,7 +152,7 @@ ok  github.com/modu-ai/moai-adk/internal/statusline  0.437s
 ### AC-SA-011 — 가드의 무효화는 관측 가능하다 (뮤턴트 증명 · regression-guard의 채택 증거)
 
 - **Given** 가드를 우회하는 뮤턴트 헬퍼(`newTodoCmd()`를 직접 Execute, `runTodo` 게이트 경유 안 함)가 있고,
-- **When** 뮤턴트가 canary HOME에서 live-like 저장소 컨텍스트로 todo 명령을 실행하면,
+- **When** 뮤턴트가 canary HOME에서 **`CLAUDE_PROJECT_DIR`가 비git temp 디렉터를 가리키는 컨텍스트**로 todo 명령을 실행하면(판정서 §A-5 기전 사슬 형태 — git 해석 실패 → HOME 폴백 → 큐 생성. git repo 맥락이면 git 해석이 fixture 리포로 가서 HOME 오염이 나지 않는다 / plan-audit D5),
 - **Then** canary `HOME/.moai/todo` 아래 오염 디렉터가 **생성되는 것이 관측된다** — 이 관측이 "AC-SA-010의 0이 가드 덕분"임을 판별하는 유일한 증거다.
 - **And** 오염을 만들지 못한 뮤턴트가 있으면 그 사실과 시도 형태를 함께 보고한다 — 그것이 가드의 **경계**(무엇까지 잡는가)를 그린다(REQ-SA-011).
 
@@ -163,7 +164,7 @@ ok  github.com/modu-ai/moai-adk/internal/statusline  0.437s
 
 - **Given** 수리가 착지한 트리가 있고,
 - **When** 4멤버(B1 쓰기 / B2 board root / B3 goal 읽기 / B4 캐시 경로 소유자)의 앵커 획득 경로를 코드로 검사하면,
-- **Then** 모두 단일 리졸버 함수(또는 그 반환값)를 거치고, 상태 쓰기·읽기 경로에서 `current_dir` 기반 앵커 유산(`input.CWD`/`os.Getwd` 앵커 후보)이 제거됐다 — `current_dir`는 표시 유도에만 남는다.
+- **Then** 모두 단일 리졸버 함수(또는 그 반환값)를 거치고, 상태 쓰기·읽기 경로에서 `current_dir` 기반 앵커 유산(`input.CWD`/`os.Getwd` 앵커 후보)이 제거됐다 — `current_dir`는 기존 표시 유도(`extractProjectDirectory` — 불변)에만 남는다.
 
 판정 명령: `grep -n "ProjectDir\|resolveStateAnchor" internal/statusline/context_usage.go` 등 멤버별 판독 + 표시 경로에 current_dir 잔존 확인. run-phase M5가 관측 방법(구체 grep 집합)을 확정해 §E.2에 기록한다.
 
