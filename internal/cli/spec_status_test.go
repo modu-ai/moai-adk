@@ -186,6 +186,73 @@ func TestSyncGitSpecStatuses_InvalidStatusSkippedLoudly(t *testing.T) {
 	}
 }
 
+// M4 sweep: a SPEC-ID present in git history but absent from .moai/specs/ is
+// counted as not-found and never written.
+func TestSyncGitSpecStatuses_SpecNotInSpecsDirCountedNotFound(t *testing.T) {
+	projectRoot := initSyncGitFixture(t, "SPEC-GHOST-001", "draft")
+
+	// Remove the SPEC dir the fixture created — the git history still names it.
+	if err := os.RemoveAll(filepath.Join(projectRoot, ".moai", "specs", "SPEC-GHOST-001")); err != nil {
+		t.Fatalf("failed to remove spec dir: %v", err)
+	}
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return projectRoot, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--yes"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "skipped SPEC-GHOST-001: not found in .moai/specs/") {
+		t.Errorf("expected not-found skip line, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "1 not found") {
+		t.Errorf("expected not-found count in summary, got: %s", out.String())
+	}
+}
+
+// M4 sweep: a git history with no SPEC-IDs short-circuits with the
+// no-SPEC-IDs message and writes nothing.
+func TestSyncGitSpecStatuses_NoSpecIDsInGitLog(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	run := func(args ...string) {
+		out, err := exec.Command("git", args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	run("-C", tmpDir, "init", "-q", "-b", "main")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed only", "--allow-empty")
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return tmpDir, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--yes"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "No SPEC-IDs found in git log.") {
+		t.Errorf("expected no-SPEC-IDs message, got: %s", out.String())
+	}
+}
+
 // SPEC-STATUS-DRYRUN-001 AC-010 (REQ-008): help text stays accurate for the
 // --sync-git + --dry-run combination.
 func TestSpecStatusHelpText_DryRunAccurate(t *testing.T) {
