@@ -22,7 +22,7 @@ The screen has three parts. The **rail** on the left stacks the six areas vertic
 | Kanban | `/kanban` | Chain session board plus the four-column SPEC pipeline |
 | Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
 | Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
-| Settings | `/settings` | Profile preferences and project sections (11 tabs) |
+| Settings | `/settings` | Profile preferences and project sections (14 tabs) |
 | Todo | `/todo` | The backlog queue, read-only — every card in all three states |
 
 What sits at the right of the appbar depends on the area. The five observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
@@ -125,7 +125,7 @@ One discipline shows up all over the screen.
 
 The settings area is the only place in the console that writes files. It defines no validation rules of its own and calls the **same validation and persistence layer** as the terminal wizard (`moai profile`, `moai update -c`). That is why editing from either side produces the same result.
 
-Choosing Settings in the rail unfolds eleven tabs below it as a vertical list.
+Choosing Settings in the rail unfolds fourteen tabs below it as a vertical list.
 
 1. **Identity** — display name and project-level identity fields
 2. **Language** — conversation, commit message, code comment and documentation language
@@ -134,12 +134,27 @@ Choosing Settings in the rail unfolds eleven tabs below it as a vertical list.
 5. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
 6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
 7. **Audit** — the audit model and the per-backend gates
-8. **Agents** — per-agent profile and model assignment
-9. **Report** — report format and output preferences
-10. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
-11. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
+8. **Codex** — a **read-only mirror** gathering the twelve scattered codex settings onto one screen: the audit backend and the codex pins, the codex opt-ins, the codex MCP tool toggles, and the detected binary. Nothing is edited here; each row links to the tab that actually owns the value
+9. **Agents** — per-agent profile and model assignment
+10. **Report** — report format and output preferences
+11. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
+12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
+13. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
+14. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
 
 The number beside each tab is how many fields that tab renders. A tab with errors carries a warning mark instead of the number, so the list itself tells you which tab to open.
+
+### Why the Codex tab is read-only
+
+The codex settings were split between the Audit tab and the MCP tab. Answering "how does this project use codex?" meant visiting two tabs and reading values that never appeared together. The Codex tab puts them on one screen.
+
+**Showing without editing is a chosen trade-off, not an unfinished state.** Every panel in the settings area lives inside a single `<form>`, and the save path reads only the **first** value submitted under a given name. Render the same setting as a control in two panels and the edit made in the later panel is **discarded with no warning**. A bool setting is worse still: its hidden companion field, standing alone, is read as an *explicit false*, so merely opening this page and saving would switch six MCP tool toggles off.
+
+So the Codex tab renders values and links, and creates no input element carrying a name. Every setting stays declared, rendered and editable on its owning tab. "Fixing" this page into editable inputs later would reintroduce exactly that loss.
+
+**Nothing new was configured.** No new configuration key, no new persistence route, no new file under `.moai/config`. The settings already existed; only the place to see them together is new.
+
+The MCP tool toggles are often empty on disk, and the console reads an empty value as **on**. Rather than interpreting that emptiness itself — which would make this page a second classifier — the tab prints `(unset)` and states the fact in the group heading: an unset value reads as enabled, and only an explicit `false` turns a tool off.
 
 ### Widget honesty
 

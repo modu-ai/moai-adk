@@ -2,7 +2,7 @@
 id: SPEC-WEB-CODEX-PANEL-001
 title: "moai web console — codex tab as a read-only mirror of the scattered codex settings"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

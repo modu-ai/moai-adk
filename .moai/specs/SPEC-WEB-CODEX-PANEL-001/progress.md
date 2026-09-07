@@ -155,4 +155,40 @@ templ_generate_drift: 0                # run from internal/web (from the repo ro
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # backfilled post-commit per the D3 SHA-placeholder pattern
+sync_status: complete
+changelog_entry: CHANGELOG.md [Unreleased] §Added — SPEC-WEB-CODEX-PANEL-001 bullet, inserted at the TOP of §Added (newest-first, matching the section's existing order)
+changelog_entry_position: first bullet under "### Added" in "## [Unreleased]"
+docs_surfaces_assessed: |
+  docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md — UPDATED (tab count, codex list entry,
+    new "why the Codex tab is read-only" subsection). 4-locale parity held: 206 lines / 13 h2 / 4 h3 each.
+  README{.ko,,.ja,.zh}.md — UPDATED (settings tab enumeration + tab count in the §moai web console
+    section and the command table). 4-file parity held: 837 lines / 12 h2 each.
+  docs-site/content/{ko,en,ja,zh}/cli-reference/web.md — NOT updated. It carries a stale "9 tabs"
+    figure that predates this card (it was already wrong at 11 tabs before the codex tab existed).
+    Recorded as a carried-forward gap rather than repaired here, per the card's do-not-fix-defects boundary.
+verification:
+  go_build: "go build ./... → rc=0"
+  go_test: "go test ./internal/web/ ./internal/settings/ -count=1 → rc=0; ok internal/web 4.322s, ok internal/settings 0.424s"
+  hugo_build: "hugo build --quiet (from docs-site/) → rc=0, 0 bytes of output (warning-free)"
+  docs_i18n_check: "DOCS_I18N_STRICT=1 scripts/docs-i18n-check.sh → rc=0; Errors 0 / Warnings 0; 153 .md per locale"
+  mermaid_direction: "grep -nE 'flowchart LR|graph LR' over the 4 console pages → rc=1 (no matches)"
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed (single sync commit, 3-phase close); updated already 2026-09-07
+  plan.md: no frontmatter block (heading-first document) — nothing to transition
+  acceptance.md: no frontmatter block (heading-first document) — nothing to transition
+  progress.md: no frontmatter (E.1-E.4 signal file)
+mx_tag_validation: sync sub-step — sync phase authored no code and no new exported surface (docs + frontmatter only); the run-phase annotations stand as landed
+b12_self_test_a: "grep -c 'SPEC-WEB-CODEX-PANEL-001' CHANGELOG.md before emission = 0 (no duplicate entry)"
+b12_self_test_b: "distinct AC ids in acceptance.md = 14 (AC-WCP-001..014), none carrying a [RETIRED]/[REF] marker; matches the 14/14 PASS recorded in §E.2. Non-zero, so the comparison is not vacuous"
+b12_self_test_c: "every path named in the CHANGELOG entry verified present before commit — codexmirror.go, fieldsets_codex.templ, fieldsets_codex_templ.go, codex_panel_test.go, schemaform.go, settings_shell.go, root.templ, assets/i18n.js, mcp_console_test.go, tab_layout_test.go all OK"
+carried_forward_not_closed:
+  - "AC-WCP-013 rail arm is literally unsatisfiable — shell.templ prints a count span unconditionally, so the rail shows 0 and cannot show no-count. Only the panel header omits a count, which is what was done."
+  - "MU-6 is caught by no Go test. CI cannot see it; the guard lives only while someone runs `grep -c 'case \"codex\"' internal/web/settings_shell.go` by hand."
+  - "The six MCP tool bools read empty from disk while the console treats empty as on. The panel renders an `(unset)` placeholder plus a factual group note rather than becoming a second classifier — a follow-up may specify the value explicitly."
+  - "Page-wide-first-occurrence anchoring: TestMCPConsoleWriteCapableTextDistinction broke because the mirror repeats the MCP key chips earlier in tab order. Repaired by scoping to the MCP panel. The generalisation — every assertion anchored on a page-wide first occurrence carries this exposure — is a sweep candidate for a separate card, not closed here."
+  - "docs-site cli-reference/web.md carries a stale settings-tab count (9) in all four locales, predating this card. Not repaired (card boundary); a doc-accuracy card should sweep it."
+  - "moai web write-safety (t517) — no sighting during sync either; no `.moai/config/**` path appeared in `git status --short` at any point. Absence of observation, not evidence of absence: no real server was started."
+```
