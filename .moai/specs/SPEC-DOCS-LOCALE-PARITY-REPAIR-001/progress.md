@@ -149,7 +149,7 @@ open_items:
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync       # backfill 예정 (sync 커밋은 자기 해시를 인용할 수 없다)
+sync_commit_sha: 7b951a240                  # sync 커밋 직후 커밋에서 backfill 한 값 — 커밋은 자기 해시를 인용할 수 없으므로 이 값은 후속 커밋에서만 기입될 수 있다
 sync_status: completed
 verified_at_head: 91fd27bb6
 changelog_entry_position: "[Unreleased] → Added (최상단) — run 페이즈 커밋 bbc37b729 에서 이미 기입됨. sync 페이즈는 CHANGELOG 를 쓰지 않는다."
@@ -208,7 +208,7 @@ canary_compliance_check:
   changelog_edits_in_sync_phase: none
 ```
 
-Backfill 예정: `sync_commit_sha` 는 sync 커밋 직후 커밋에서 실제 SHA 로 채운다.
+Backfill 완료: `sync_commit_sha` 는 sync 커밋 직후 커밋에서 실제 SHA `7b951a240` 으로 채웠다. 남은 자리표시자는 없다.
 
 ## Phase Log
 
@@ -219,3 +219,4 @@ Backfill 예정: `sync_commit_sha` 는 sync 커밋 직후 커밋에서 실제 SH
 | 2026-09-08 | run | M1-G1·M2-G2G3·M3-G4-CHANGELOG 착지(HEAD `bbc37b729`, 베이스 `bce6d7e08`). RED-now 6건 편집 전 RED 확인·편집 후 GREEN. AC 11건 중 10건 PASS, AC-011 은 의도된 대상 한정 PASS. hugo exit 0·WARN/ERROR 0·4-로케일 빌드. i18n 게이트 9파일 전건 0(catch-all 대조군으로 도달 확인, 앞선 거짓 0 원인 기록). 미해결 2건: AC-008 검증식 결함(카드 내 수리, 판정 불변) · AC-011 검증식 결함(미수리, 리드 보고). |
 | 2026-09-08 | run (AC-011 검증식 개정) | AC-011 검증식을 전체-브랜치 diff 에서 범위 한정 diff(`-- docs-site CHANGELOG.md`)로 개정, 기준선 10 불변. 근거는 전체-브랜치 계수의 17(`bbc37b729`)→18(`fbc9cc6b1`) 이동 — 카드가 자기 장부를 쓰는 동안 계수가 증가하므로 규약을 따르는 어떤 카드도 도달할 수 없고, 결함은 카드가 아니라 계측기에 있다. 옛 읽기에서는 18 대 10 으로 FAIL 이었고 AC-008 의 저자 측 안전 조건이 성립하지 않아 **리드가 재측정 후 승인**했다. 전체-브랜치 계수는 §D.11 에 보고 항목(기준 아님)으로 존치. 개정식 아래 AC-011 은 10 — 명명된 집합과 정확히 일치. AC 11/11 PASS. |
 | 2026-09-08 | sync | 3-페이즈 병합 종결. CHANGELOG 항목은 run 페이즈(`bbc37b729`)에서 이미 `[Unreleased]` → `### Added` 최상단에 놓였으므로 sync 는 CHANGELOG 를 쓰지 않는다(B12 중복 방지 — `/usr/bin/grep -c "t538" CHANGELOG.md` → 1). `spec.md` frontmatter `in-progress → completed`(status·updated 만), `progress.md` §E.4 신호 기입. HEAD `91fd27bb6` 기준 AC 11/11 PASS · hugo exit 0 · i18n 게이트 9파일 전건 0(대조군 확인) · 착지 계수 10(명명된 집합과 정확히 일치). 검증식 결함 2건은 카드 안에서 수리 완료(AC-008 저자 승인·판정 불변, AC-011 리드 승인·옛 읽기 FAIL). SVG 규칙 구간 구분자(ko en dash vs 파생 ASCII 하이픈)는 알려진 수용 편차로 기록하고 미수리. `sync_commit_sha` 는 `pending-backfill-sync` 자리표시자로 두고 후속 커밋에서 채운다. |
+| 2026-09-08 | sync (SHA backfill) | §E.4 `sync_commit_sha` 를 자리표시자 `pending-backfill-sync` 에서 실제 sync 커밋 `7b951a240` 으로 채웠다. 커밋은 자기 해시를 인용할 수 없으므로 이 기입은 sync 커밋 직후 커밋에서만 가능하다. SHA 는 이 워크트리에서 `git log --oneline -1` 과 `git log -1 --name-only --format=%H` 로 직접 재확인했고, 해당 커밋이 `progress.md` 와 `spec.md` 를 건드린 3-페이즈 종결 커밋임을 확인했다. 같은 취지의 예고문(§E.4 말미)도 완료형으로 고쳤다. 이 커밋의 쓰기 범위는 `progress.md` 한 파일이다. |
