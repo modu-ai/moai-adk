@@ -1164,3 +1164,66 @@ git rev-list --count --left-right 0b1e27877...HEAD → 0  16
 - `go vet`은 안 돌렸다. 기준선 세 축에 넣지 않았다.
 - 테스트는 **두 패키지만** 돌렸다(`internal/web`, `internal/settings`). 전체 스위트는 로컬에서 돌리지 않는다는 이 리포의 규율에 따른 것이고, 전 패키지 판정은 CI 몫이다.
 - `templ generate`의 **버전**을 고정해 확인하지 않았다. `go run github.com/a-h/templ/cmd/templ`이 go.mod에서 해석하는 판을 썼고, CI가 같은 판을 쓰는지는 재지 않았다.
+
+---
+
+## 20. run 완료 — AC 14/14 · 뮤턴트 8/8 RED · 그리고 **SPEC 반증 5건**
+
+### 20.1 내 독립 검증
+
+구현 커밋 `dc817ff65`·`d8f92092a`. 아래는 **내가 다시 돌린 것**이고 구현 측 보고의 인용이 아니다.
+
+| 축 | 결과 |
+|---|---|
+| `go build ./...` | **rc=0** |
+| `go test ./internal/web/ ./internal/settings/` | `ok 4.431s` · `ok 0.531s` |
+| `go vet ./internal/web/ ./internal/settings/` | **rc=0** |
+| codex 테스트 12개 | 전부 PASS, **실행 12개**(0이 아니므로 공허하지 않음) |
+
+**금지선 유지 확인**: `schemaform.go`가 바뀌었으나 변경은 **탭 등록 10줄뿐**이고 `parseSchemaForm`은 무접촉(`git diff … | grep -c '(PostFormValue|func parseSchemaForm)'` → **0**). `.moai/config` 무접촉.
+
+**진단 오탐 1건**: LSP가 `zz_t509dup_test.go` 등 뮤턴트 잔재와 미정의 심볼 5개를 보고했으나, `git status` 빈 출력 · `ls internal/web/zz_*` no matches · `go build` rc=0. **워크트리에서 LSP 진단이 낡는 알려진 형태**다. 도구가 아니라 실행으로 판정했다.
+
+### 20.2 [최중요] SPEC이 명시하지 않은 결합이 **실제로 깨졌다**
+
+`internal/web/mcp_console_test.go`의 `TestMCPConsoleWriteCapableTextDistinction`이 실패했다. 원인:
+
+그 테스트는 `strings.Index(body, chip)`로 **페이지 전체 첫 등장** key chip에 창을 앵커한다. codex 미러는 같은 chip을 **탭 순서상 더 앞에서** 되풀이하므로, 창이 배지도 컨트롤도 없는 미러 행에 내려앉아 **"MCP 표면이 열화됐다"**고 보고했다 — MCP 표면은 전혀 안 바뀌었는데.
+
+수리는 **범위 축소이지 약화가 아니다**:
+```diff
+-	body := renderConsolePage(t)
++	body := panelHTML(t, renderConsolePage(t), "mcp")
+```
+그 테스트가 원래 말하려던 패널로 창을 좁혔다. 프로덕션 코드·저장 경로 무접촉이고, 이유가 주석으로 그 자리에 남았다.
+
+**일반화 — 후속 카드 후보다.**
+> **not-last 규칙은 `panelHTML` 소비자만 보호한다.** 미러가 복제하는 것은 `name`이 아니라 **텍스트**이므로, **페이지 전체 첫-등장 앵커를 쓰는 기존 단언은 전부 같은 위험을 갖는다.**
+
+SPEC의 커플링 목록에 이 파일이 없었고, 하필 `AC-WCP-009`가 이 테스트로 "소유 탭 불변"을 판정한다. 감사 3회가 못 잡은 것을 **첫 실행이 잡았다** — 그래서 「아무도 실행한 적 없다」가 §18.6의 [HARD] 고지였던 것이다.
+
+### 20.3 SPEC 반증 나머지 4건 (구현 측 보고, 내가 재현하지 않음)
+
+| # | 반증 |
+|---|---|
+| 2 | **`AC-WCP-013`의 레일 팔은 문자 그대로 만족 불가능하다.** `shell.templ:156`이 모든 탭에 무조건 `<span class="count">`를 찍으므로 레일은 **`0`을 보여주지 카운트 부재를 보여주지 못한다.** 괄호의 `(zero)`를 정본으로 읽고 진행. "카운트를 말하지 않는다"가 가능한 곳은 패널 헤더뿐이라 거기서만 생략. 레일까지 없애려면 전 탭에 영향 가는 변경이라 범위 밖 |
+| 3 | **`AC-WCP-011`은 커밋 전에는 다른 질문에 답한다.** `git diff origin/develop...HEAD`는 커밋된 이력만 본다 — 구현 커밋 전에 돌리면 경로 9개(plan 산출물뿐)에 `filter_rc=1`로 **통과처럼 보이지만 구현에 대해 아무것도 재지 않는다.** §D.4가 구제하나 기준 자체가 "run-phase 커밋 이후"를 말했어야 한다. 커밋 후 재관측(경로 20개) |
+| 4 | **`REQ-WCP-005`의 "and the shared MCP tool catalogue"는 하중을 받는 구절이다.** predicate를 `strings.Contains(name,"codex")` 한 줄로 썼다면 `AC-WCP-006`의 두 팔이 **바이트 동일한 계산**이 되어 레지스트리 스윕 팔이 독립 oracle이 아니게 되고, MU-3은 적용할 팔이 없어 **작성 불가**가 된다. SPEC이 이를 가정하지만 경고하지 않는다 |
+| 5 | **MU-6을 잡는 것은 어떤 Go 테스트도 아니다.** count 팔은 초록이고 `grep -c 'case "codex"' settings_shell.go`만 적색이다. 즉 **CI는 이 뮤턴트를 못 잡고**, 가드는 누군가 그 grep을 손으로 돌릴 때만 산다. SPEC이 의도한 분리이나 **잔여 위험**으로 남는다 |
+
+### 20.4 SPEC이 결정하지 않아 구현 측이 정한 것 1건
+
+`REQ-WCP-003`은 "current value as read from disk"인데, MCP 도구 bool 6개는 **디스크 값이 보통 비어 있고 콘솔 의미론은 "비었으면 켜짐"**이다. 원시 빈 값을 그대로 두면 "꺼짐"으로 읽히고, 유효값을 계산하면 패널이 **두 번째 분류기**가 된다(`REQ-WCP-006`이 probe에 대해 금지하는 바로 그것).
+
+절충: `(unset)` 플레이스홀더 + 그룹 머리글에 "비어 있으면 켜진 것으로 읽는다"는 사실 문구. **후속에서 명시할 값이 있다.**
+
+### 20.5 t517 — 목격 없음, 그러나 부재 증거는 아니다
+
+작업 전 구간에서 `git status --short`에 `.moai/config/**`가 한 번도 나타나지 않았다. **다만 실제 서버를 띄운 적이 없다**(모든 테스트가 자기 `t.TempDir()` 루트를 만든다). 이것은 **결함이 없다는 증거가 아니라 관측이 없다는 사실**이다 — §10의 관측은 서버를 띄웠을 때 나왔다.
+
+### 20.6 안 본 것
+
+- 구현 측의 AC별 출력을 **전부 재현하지는 않았다.** 빌드·테스트·vet·codex 테스트 12개·금지선·mcp 수리 성질을 재현했고, 나머지 AC 판정과 뮤턴트 8건은 구현 측 보고다.
+- **`moai web`을 띄워 눈으로 보지 않았다.** 렌더는 테스트가 판정했다.
+- `golangci-lint`를 내가 돌리지 않았다(구현 측이 `0 issues.` 보고).
+- 전체 스위트 미실행 — CI 몫.
