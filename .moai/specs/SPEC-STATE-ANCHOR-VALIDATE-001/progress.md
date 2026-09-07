@@ -81,7 +81,7 @@ Note: 6건 중 `TestResolve_OriginalCwdValidReturned`은 happy-path 회귀 가�
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run
+run_commit_sha: 5df939476
 run_status: green
 ac_pass_count: 8
 ac_fail_count: 0
