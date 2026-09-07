@@ -18,8 +18,31 @@
 
 **[LEDGER-BASE]** (baseline) 명령: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook/ -run 'TestDangerousRemoval' -count=1` · verbatim: `ok  	github.com/modu-ai/moai-adk/internal/hook	0.669s` · exit 0 · §R.1
 
-**[LEDGER-MUT-A]** (런 페이즈 채움 — 뮤턴트 A: C1 라인 재추가 → `make build` → 허용 방향 3테스트 RED 출력 verbatim + 원복 확인)
-**[LEDGER-MUT-B]** (런 페이즈 채움 — 뮤턴트 B: `dangerousRemovalTarget` 호출 블록 임시 제거 → 차단 방향 2테스트 RED 출력 verbatim + 원복 확인)
+**[LEDGER-MUT-A]** (런 페이즈 실행·기록 — 뮤턴트 A, 사후 backfill)
+- 변형: 커밋 `34794215f` 위에 C1 라인 템플릿 재추가 → `make build` exit 0
+- 관측: `go test ./internal/hook/ -run 'TestDangerousRemovalDeployed_Allows' -count=1` (스윕 4종) — verbatim RED (전문 `.moai/reports/t511/red-mutant-a.txt`):
+```
+--- FAIL: TestDangerousRemovalDeployed_AllowsDeepPathHeredocDataMention (0.00s)
+--- FAIL: TestDangerousRemovalDeployed_AllowsUnquotedDataMention (0.00s)
+--- FAIL: TestDangerousRemovalDeployed_AllowsScratchCleanupExecution (0.00s)
+--- PASS: TestDangerousRemovalDeployed_AllowsQuotedDataMention (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.650s
+```
+- 판정: 스윕 4종 중 정확히 3종 RED 복귀, `AllowsQuotedDataMention`만 GREEN 유지(quote folding — 예상 동작). 재추가된 extras 라인이 배포 policy 경로로 다시 발화함을 관측 — REQ-RGE-006/007의 판별 증거 성립(테스트가 extras 병합을 실제 로드한다).
+- green 복원 측: 재추가 라인 원복 + `make build` exit 0 → 동일 스윕 GREEN 복귀(progress.md §E.2 GREEN 표, AC-001~004 PASS). 원복 후 `git status --porcelain`은 의도된 파일만, 뮤턴트 상태로 커밋한 것 없음. 귀속: 변이 실행 트리 `34794215f`(+재추가, 미커밋), base 계보 `0b1e27877`.
+
+**[LEDGER-MUT-B]** (런 페이즈 실행·기록 — 뮤턴트 B, 사후 backfill)
+- 변형: 커밋 `34794215f` 위에 `checkBashCommand`의 `dangerousRemovalTarget` 호출 블록 임시 주석 처리
+- 관측: 차단 방향 2테스트 스윕 — verbatim RED (전문 `.moai/reports/t511/red-mutant-b.txt`):
+```
+--- FAIL: TestDangerousRemovalDeployed_DeniesProtectedTargetsAllOrders (0.02s)
+--- FAIL: TestDangerousRemovalDeployed_DeniesHeredocBodyProtectedTarget (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.688s
+```
+- 판정: 11형태 보호 대상 전부 `decision = ""`(허용)로 전락, heredoc 본문 보호 대상도 허용 — M1 후 extras가 없는 상태에서 차단이 **전적으로 구조 체크에 의존**하며, 그 호출이 사라지면 전면 우회됨이 입증. AC-RGE-005/006의 차단이 공허하지 않음을 가르는 RED.
+- green 복원 측: 주석 해제 원복 → `git diff 0b1e27877..HEAD -- internal/hook/pre_tool.go` 무출력(바이트 동일 복원, progress.md §E.2 34행), 뮤턴트 상태로 커밋한 것 없음. 귀속: 변이 실행 트리 `34794215f`(+주석, 미커밋), base 계보 `0b1e27877`.
 
 사후 감사 개정에서 추가된 셀 (post-audit, 동일 트리 `0b1e27877` 재판독 후 측정):
 
