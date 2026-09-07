@@ -183,7 +183,7 @@ m1_to_mN_commit_strategy: "마일스톤별 분리 커밋 (M1 / M2 / M3+M4). 증�
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: bf2458ed7   # 3-phase close 커밋(`spec.md` 전환 + 이 §E.4 신호 + CHANGELOG 1건). 이 값을 채우는 backfill 커밋과 §E.3 `run_commit_sha` backfill `979708115` 이 뒤따른다.
 sync_status: complete
 b12_self_test_a: pass   # grep -c 'SPEC-CODEX-BODY-NEUTRALITY-001' CHANGELOG.md → 0 (착수 전, 중복 없음)
 b12_self_test_b: pass   # acceptance.md 고유 AC 식별자 14 == CHANGELOG 기재 14 (0 이 아님을 확인)
@@ -236,6 +236,8 @@ AC-CBN-002 · 008 · 011 · 012 는 명령 재실행이 아니라 판독으로 �
 이 카드는 좌표 오류를 3회 냈고(그중 1건은 감사자 적발), 마지막 라운드는 좌표 대신 절 번호를 인용해 4번째를 막았다. 그래서 이 절은 **움직일 수 있는 `file:line` 을 새로 만들지 않는다** — 심볼·절 번호로 건다.
 
 - 알려진 잔존 1건: `.moai/reports/t497/measurement.md` 가 미러 도달 경로를 `internal/template/skill_mirror.go:4-5,52,171` 로 인용한다. 이 트리 실측에서 `:171` 은 `mirrorSkills` 의 `@MX:ANCHOR` 주석 줄이고, `func (d *deployer) mirrorSkills` 자체는 `:178` 이다. develop 흡수 후 좌표는 밀린다(t503 이 앞쪽에 줄을 넣었고, 그 커밋 자신이 미러 거동은 불변이라 적는다) — **실질 전제는 그대로다.** 그 파일은 plan-phase 증거 기록이므로 여기서 다시 쓰지 않고, 심볼 앵커(`skill_mirror.go` 의 `mirrorSkills` 와 그 `@MX:ANCHOR` 주석 · 파일 머리말 4-5행의 자기 서술 · `mirrorSkillsRelDir` 상수)를 이 줄에 남겨 다음 독자가 좌표 없이 찾게 한다.
+
+  - **[정정 — 위 문단의 「좌표는 밀린다」 판정은 틀렸다. 원문은 지우지 않고 여기 나란히 붙인다.]** 위 문단은 `measurement.md` 의 `:171` 을 **함수 선언**과 대조해 "인용이 어긋난다"고 읽었으나, 그 인용이 가리키는 것은 처음부터 **`@MX:ANCHOR` 주석 줄**이다 — 이 트리 실측에서 주석이 `:171`, 함수가 `:178` 이고, `measurement.md` 가 적은 값은 `:171` 이므로 주석과 정확히 일치한다. 즉 대조 대상이 어긋난 것이지 인용이 어긋난 것이 아니다. 흡수 후 좌표도 같은 방식으로 다시 쟀다: `git show origin/develop:internal/template/skill_mirror.go`(`origin/develop` = `d4162b368`)에서 주석은 `:179`, 함수는 `:186` 이다. 따라서 흡수 후 인용 좌표는 **`:179` 로 정확히 착지하며**, 그 값은 이 카드에 처음 들어온 원래 수치와 같다 — 이 §E.4 가 그것을 「어긋난다」고 뒤집은 것이 오류였다. **`measurement.md` 는 고칠 것이 없고 이 카드는 그 파일을 건드리지 않는다**(plan-phase 증거 기록). 결론이 뒤집혀도 **실질 전제는 영향을 받지 않는다** — t503 자신의 커밋이 미러 거동은 불변이라 적으므로 `spec.md` §B.6 의 스킬 미러 의존은 그대로 성립한다. 위 문단이 남긴 심볼 앵커 지침도 그대로 유효하다(좌표가 맞더라도 심볼로 거는 편이 다음 흡수를 견딘다).
 
 ### docs-site 판정 — 페이지를 만들지 않는다
 
