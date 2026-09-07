@@ -2,7 +2,7 @@
 id: SPEC-CODEX-COVER-RESIDUAL-001
 title: "Codex coverage residual — runCodexReviewGate RunE wiring tests + (codexSessionHandle).pid nil-guard arm"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

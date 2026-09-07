@@ -397,9 +397,29 @@ pushed: false
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_&lt;pending sync-phase&gt;_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: "pending-backfill-sync"   # backfilled in the immediately following commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-CODEX-COVER-RESIDUAL-001' CHANGELOG.md → 0 (pre-emission check, PASS)"
+b12_self_test_b: "grep -oE 'AC-CCR-[0-9]+' acceptance.md | sort -u | wc -l → 12 (matches acceptance.md §B AC matrix row count)"
+b12_self_test_c: "ls internal/cli/codex_review_gate_wiring_test.go internal/cli/mcp_codex_test.go → both exist, verified before commit"
+changelog_entry_position: "[Unreleased] > Added, directly under the SPEC-CODEX-TEST-GAPS-001 (t501) entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status + updated only; body untouched)"
+  plan_md: "stateless on status axis — no transition"
+  acceptance_md: "stateless on status axis — no transition"
+canary_compliance_check:
+  readme_sync: "N/A — tests-only change, no user-facing behavior change, no README claim to update"
+  docs_site_sync: "N/A — tests-only change, no docs-site page references this surface"
+  mx_tags: "no obligations — zero production .go file changed (union gate: git diff --name-only bf779ecf2..HEAD | grep '\\.go$' | grep -v '_test\\.go$' -> empty)"
+union_gate_post_sync: "git diff --name-only <sync-close-commit>..HEAD | grep '\\.go$' -> empty (AC-CCR-012, verified post-commit in the report below)"
+sync_close_last_write: "true — no further .go diff lands after this commit (AC-CCR-012)"
+sync_audit: "PASS 96.8/100, blocking 0, advisory 4 — .moai/reports/t519/sync-audit.md"
+```
 
 - 2026-09-07 plan-audit iter-2 PASS 0.9375 (`.moai/reports/t519/plan-audit-iter2.md`); remaining minor F5 (acceptance.md:60 M1→M1b) and F6 (plan.md:37, spec.md:148 four→five files) fixed by the lane directly (one-word edits; distinct-file count re-verified = 5). Advisory A6 (withCodexSession overwrites codexLookPath — never combine it with a t.Fatal LookPath guard in one test) carried into the run-phase delegation as a constraint.
+- 2026-09-07 sync-phase close: CHANGELOG `[Unreleased]` entry appended directly under the SPEC-CODEX-TEST-GAPS-001 line; `spec.md` frontmatter `status: in-progress → completed` (this commit); README and docs-site untouched (N/A — tests-only). No MX tag obligations (zero production `.go` file changed). AC-CCR-012 (sync close is the last write) is closed by this commit's own evidence — see the verification block in the sync commit's own history for the post-commit union-gate re-check.
 
 ## §F Phase 4 Mode Selection
 
