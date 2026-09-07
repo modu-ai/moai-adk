@@ -59,6 +59,21 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 
 **M1 커밋 범위**: `internal/settings/yamlpatch/yamlpatch_test.go`(AC-001 + AC-002 가드), `internal/web/write_safety_test.go`(AC-004 가드), spec.md `draft → in-progress` 전환.
 
+### M2 — 수리 (2026-09-08, 커밋 트리 기준 기술)
+
+**M2-1 — 수리 본체** (`internal/settings/yamlpatch/yamlpatch.go`)
+
+- `atomicWrite`의 무조건 stat-fail을 분기: stat 오류가 `os.IsNotExist`를 만족하면 패키지 단일 정의점 `defaultFilePerm = 0644`(spec.md §4)로 진행, 그 외 stat 오류는 기존 `yamlpatch: stat %s: %w` 래핑 유지 (REQ-1/REQ-2/REQ-3). Chmod는 `mode` 변수(원본 보존 또는 absent 기본)를 쓴다 — temp+rename 구조 무변경 (REQ-4).
+- `@MX:NOTE` + `@MX:SPEC: SPEC-SEAM-GREENFIELD-001` 태그로 absent 계약 문서화.
+
+**M2-2 — AC-003 기대 전환**: `TestYAMLPatchAtomicWriteErrors/"stat missing target"`을 absent greenfield 생성 성공 + 0644 + 내용 반영 기대로 재작성. 형제 `"read-only directory"` 서브테스트는 무수정 GREEN 유지 (수리 후 실행에서 PASS 확인).
+
+**M2-3 — plan-phase 식별 누락 발견·수리**: M2 회귀 실행(`go test ./internal/settings/... ./internal/web/...`)에서 `TestYAMLPatchErrors/"missing file"`(`yamlpatch_test.go:243`)이 absent PatchFile 오류를 기대하는 **결함-인코딩 테스트 2번째 사례**로 발견됐다 — plan-phase C8이 이 곳을 놓쳤다(수리 후 RED로 남아 수리를 가렸을 것이다). AC-003과 동일 클래스로 수리와 함께 absent greenfield 생성 기대로 재작성했다. SPEC body 수정 불요 — 재작성 파일은 delegation 명시 범위 안(`yamlpatch_test.go`)이고 방향은 SPEC 수리 방향과 동일하다.
+
+**M2-4 — 뮤턴트 B 판별 가드 신설**: `internal/settings/yamlpatch/atomicwrite_mode_unix_test.go`(`//go:build !windows`) — `TestAtomicWriteAbsentModeUmaskIndependent`: umask 0077에서도 absent 생성 모드가 0644임을 단정. temp+rename+chmod는 umask가 결과에 스며들지 않지만 absent 브랜치가 직접 `os.WriteFile`로 대체되는 뮤턴트는 0600을 남겨 이 가드에 잡힌다 (M3 뮤턴트 B의 사전 설계된 판별 증거; REQ-4의 관측 가능한 형태). umask는 프로세스 전역이므로 비병렬 테스트로 작성 — 병렬 테스트들은 비병렬 완료 후 재개되므로 창이 겹치지 않는다.
+
+**M2 GREEN 확인**: `go test ./internal/settings/... ./internal/web/...` → `ok` 4패키지 (이 트리, M2 적용 후). M1의 두 RED 가드(TestPatchFileGreenfieldCreation / TestHandleSaveGreenfieldSectionCreation) 모두 PASS로 뒤집힘 — verbatim은 M4 §E.1 최종 판정에서 재측정해 귀속한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관.>_

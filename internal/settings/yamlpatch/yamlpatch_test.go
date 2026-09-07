@@ -231,16 +231,28 @@ func TestYAMLPatchEmptyEditsIsNoop(t *testing.T) {
 	}
 }
 
-// TestYAMLPatchErrors는 오류 경로를 검증한다: 파일 부재, 파싱 불가, 빈 경로,
-// 스칼라가 아닌 대상(매핑) 교체 시도.
+// TestYAMLPatchErrors는 오류 경로를 검증한다: 파싱 불가, 빈 경로,
+// 스칼라가 아닌 대상(매핑) 교체 시도. "missing file"은
+// SPEC-SEAM-GREENFIELD-001 수리와 함께 재작성됐다 — absent 대상은 greenfield
+// 생성으로 뒤집힌다(AC-003과 동일 클래스; plan-phase C8이 이 곳을 놓쳤다가
+// M2 회귀 실행에서 발견됐다 — absent 파일의 PatchFile 오류를 기대하던 서브테스트가
+// 수리 후 RED로 남아 수리를 가리던 것을 expected-greenfield로 전환).
 func TestYAMLPatchErrors(t *testing.T) {
 	t.Parallel()
 
 	t.Run("missing file", func(t *testing.T) {
 		t.Parallel()
-		err := PatchFile(filepath.Join(t.TempDir(), "nope.yaml"), []KeyEdit{{Path: []string{"a"}, Value: "1"}})
-		if err == nil {
-			t.Fatal("want error for missing file")
+		// Absent target is greenfield (REQ-1): the first edit creates the file.
+		path := filepath.Join(t.TempDir(), "nope.yaml")
+		if err := PatchFile(path, []KeyEdit{{Path: []string{"a"}, Value: "1"}}); err != nil {
+			t.Fatalf("PatchFile on absent target: %v", err)
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), "a: 1") {
+			t.Errorf("edit not persisted in greenfield file, got:\n%s", raw)
 		}
 	})
 
@@ -429,16 +441,32 @@ func TestAtomicWriteStatErrorNotWidened(t *testing.T) {
 	}
 }
 
-// TestYAMLPatchAtomicWriteErrors는 atomicWrite의 오류 분기를 직접 검증한다:
-// 대상 파일 부재(stat 실패) + 쓰기 불가 디렉터리(temp 생성 실패).
+// TestYAMLPatchAtomicWriteErrors는 atomicWrite의 오류 분기를 직접 검증한다.
+// "stat missing target"은 SPEC-SEAM-GREENFIELD-001 AC-003에 따라 재작성됐다 —
+// 수리 전에는 absent 대상의 오류를 기대값으로 인코딩해 결함을 지켰으므로,
+// 수리와 함께 absent greenfield 생성 성공 + 0644 기대로 뒤집혔다 (REQ-1/REQ-2).
+// "read-only directory" 서브테스트(temp 생성 실패 계열)는 무수정 GREEN이다.
 func TestYAMLPatchAtomicWriteErrors(t *testing.T) {
 	t.Parallel()
 
 	t.Run("stat missing target", func(t *testing.T) {
 		t.Parallel()
-		err := atomicWrite(filepath.Join(t.TempDir(), "gone.yaml"), []byte("a: 1\n"))
-		if err == nil {
-			t.Fatal("want error when target file does not exist")
+		// Absent target is greenfield (REQ-1): the write creates the file at
+		// the documented default mode (REQ-2), mirroring the read layer.
+		path := filepath.Join(t.TempDir(), "gone.yaml")
+		if err := atomicWrite(path, []byte("a: 1\n")); err != nil {
+			t.Fatalf("atomicWrite on absent target: %v", err)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0o644 {
+			t.Errorf("absent-target file mode = %o, want 644 (defaultFilePerm)", got)
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil || string(raw) != "a: 1\n" {
+			t.Errorf("created file content = %q (err %v), want %q", raw, err, "a: 1\n")
 		}
 	})
 
