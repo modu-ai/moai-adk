@@ -2,7 +2,7 @@
 id: SPEC-CODEX-ENABLED-FATAL-001
 title: "Codex [[skills.config]].enabled fatal-shape detection in moai doctor"
 version: 0.2.0
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
