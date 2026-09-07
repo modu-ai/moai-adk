@@ -244,22 +244,34 @@ func TestReadContextUsage_Corrupt(t *testing.T) {
 	}
 }
 
-// TestResolveProjectDir_Chain — the workspace/CWD resolution chain and the
-// nil-input CWD fallback (design §D.2).
-func TestResolveProjectDir_Chain(t *testing.T) {
+// TestResolveStateAnchor_Chain — the REQ-SA-002 precedence chain as seen from
+// the statusline adapter (SPEC-STATE-ANCHOR-001). Replaces the former
+// TestResolveProjectDir_Chain: the old chain anchored the state write to
+// workspace.current_dir — the GH #1694 defect — and was removed.
+func TestResolveStateAnchor_Chain(t *testing.T) {
 	t.Parallel()
 
-	// workspace.current_dir wins.
-	if got := resolveProjectDir(&StdinData{Workspace: &WorkspaceInfo{CurrentDir: "/ws/cur"}, CWD: "/legacy"}); got != "/ws/cur" {
-		t.Errorf("workspace.current_dir should win, got %q", got)
+	// Chain step 1: workspace.project_dir wins — a session that cd'd away
+	// still anchors to its project root.
+	if got := resolveStateAnchor(&StdinData{
+		Workspace: &WorkspaceInfo{CurrentDir: "/ws/visited", ProjectDir: "/proj"},
+		CWD:       "/legacy",
+	}); got != "/proj" {
+		t.Errorf("workspace.project_dir should win, got %q", got)
 	}
-	// legacy cwd when workspace absent.
-	if got := resolveProjectDir(&StdinData{CWD: "/legacy"}); got != "/legacy" {
-		t.Errorf("legacy cwd fallback, got %q", got)
+	// Chain step 2: worktree.original_cwd when project_dir is absent.
+	if got := resolveStateAnchor(&StdinData{
+		Workspace: &WorkspaceInfo{CurrentDir: "/primary/.claude/worktrees/card-x"},
+		Worktree:  &WorktreeInfo{OriginalCwd: "/primary"},
+		CWD:       "/legacy",
+	}); got != "/primary" {
+		t.Errorf("worktree.original_cwd should be chain step 2, got %q", got)
 	}
-	// nil input → os.Getwd() (non-empty in a normal test env).
-	if got := resolveProjectDir(nil); got == "" {
-		t.Errorf("nil input should fall back to os.Getwd(), got empty")
+	// Chain step 3 miss: no project_dir, no original_cwd, and a current_dir
+	// outside any git repository resolves to "" — the caller skips the state
+	// write (REQ-SA-003). A literal /ws path is deliberately not a repo.
+	if got := resolveStateAnchor(&StdinData{Workspace: &WorkspaceInfo{CurrentDir: "/ws/visited-only"}}); got != "" {
+		t.Errorf("non-git current_dir must not anchor, got %q", got)
 	}
 }
 

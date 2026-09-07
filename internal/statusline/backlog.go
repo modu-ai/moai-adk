@@ -25,7 +25,11 @@ func resolveBoardRoot(input *StdinData) string {
 	if input != nil && input.Worktree != nil && input.Worktree.OriginalCwd != "" {
 		return input.Worktree.OriginalCwd
 	}
-	return resolveProjectDir(input)
+	// SPEC-STATE-ANCHOR-001 M2 will flip this to resolveStateAnchor(input),
+	// absorbing the original_cwd priority above as chain step 2 — the flip is
+	// sequenced behind the observed RED (plan §D8), so the pre-repair
+	// session-dir fallback is retained until then.
+	return resolveSessionDir(input)
 }
 
 // resolveBacklogCounts counts the backlog by state under boardRoot.

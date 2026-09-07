@@ -253,7 +253,7 @@ func BenchmarkPhaseInstantCollectors(b *testing.B) {
 		boardRoot := resolveBoardRoot(input)
 		_ = resolveBacklogCounts(boardRoot)
 		_ = resolveGitHubCounts(boardRoot)
-		_ = resolveGoalArmed(resolveProjectDir(input), input.SessionID)
+		_ = resolveGoalArmed(resolveSessionDir(input), input.SessionID)
 	}
 }
 
@@ -288,7 +288,7 @@ func BenchmarkPhaseSnapshotWrite(b *testing.B) {
 
 	b.ResetTimer()
 	for i := range b.N {
-		writeContextUsage(resolveProjectDir(input), profWarmSessionID, 1000+i%2, *mem, handoffGuideStage(nil), "Opus", "high")
+		writeContextUsage(resolveStateAnchor(input), profWarmSessionID, 1000+i%2, *mem, handoffGuideStage(nil), "Opus", "high")
 	}
 }
 
@@ -354,10 +354,10 @@ func TestProfilePhaseDistributions(t *testing.T) {
 			boardRoot := resolveBoardRoot(parsed)
 			_ = resolveBacklogCounts(boardRoot)
 			_ = resolveGitHubCounts(boardRoot)
-			_ = resolveGoalArmed(resolveProjectDir(parsed), parsed.SessionID)
+			_ = resolveGoalArmed(resolveSessionDir(parsed), parsed.SessionID)
 		}},
 		{"snapshot_write", func() {
-			writeContextUsage(resolveProjectDir(parsed), profWarmSessionID, 2000, MemoryData{}, handoffGuideStage(nil), "Opus", "high")
+			writeContextUsage(resolveStateAnchor(parsed), profWarmSessionID, 2000, MemoryData{}, handoffGuideStage(nil), "Opus", "high")
 		}},
 		{"render", func() { _ = builder.renderer.Render(collected, ModeDefault) }},
 	}
