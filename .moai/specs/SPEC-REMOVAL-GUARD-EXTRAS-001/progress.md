@@ -84,7 +84,19 @@ sync-phase 인도 항목 (manager-docs):
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(pending — manager-docs; sync_commit_sha는 sync 커밋 이후 backfill)
+sync_status: audit-ready
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync (실제 SHA는 직후 커밋에서 backfill — D3 자기참조 면제)
+evidence_path: .moai/reports/t511/
+
+sync 페이즈 인도 실측 (manager-docs):
+
+1. **docs-site 4로케일 갱신 (F4)** — `docs-site/content/{ko,en,ja,zh}/advanced/config-sections.md` 각 131행의 제거된 정규식 예시 1행을 같은 변경에서 제거 (주변 산문은 로케일별 자연 문장 유지, 예시와 배포 주장 문장만 제거). 게이트 실측: `grep -rnF 'rm\s+-rf' docs-site/content/` → 무출력, exit 1 (0매치). hugo 재빌드·내비게이션 설정 변경 없음
+2. **CHANGELOG** — `[Unreleased]` § Fixed에 발행. 발행 전 중복 카운트 `grep -c 'SPEC-REMOVAL-GUARD-EXTRAS-001' CHANGELOG.md` → 0 실측 (신규 발행). 프레이밍: "배포 보안 템플릿 extras에서 대체된 위험 제거 정규식 제거" + `(#1658)` `(#1686)` + 구조 체크(dangerousRemovalTarget, develop 기착 — 본 브랜치 pre_tool.go diff 0)가 단독으로 서는 점 명시
+3. **spec.md frontmatter** — `status: in-progress → completed` (status 행 1행만; 본문·HISTORY 무변경)
+4. **reporter 답변 초안** — `.moai/reports/t511/reporter-replies.md` 2건 (jjjh7401 #1658, hansooha #1686). GitHub 게시 없음 — 리드 배치 push 착지 후 별도 소관이며, 커밋 순서상 본 close 커밋 이후에 착지한다
+
+MX 태그 판정: 본 sync 변경(마크다운 문서·yaml 예시 1행 제거)에 Go 소스·내보내기 함수 변화가 없어 추가 태그 0건 — "no tags required" 판정.
 
 ## §F Phase 4 Mode Selection
 

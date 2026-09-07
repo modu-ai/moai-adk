@@ -2,7 +2,7 @@
 id: SPEC-REMOVAL-GUARD-EXTRAS-001
 title: "Remove superseded rm removal regex from deployed security extras and test the deployed policy"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
