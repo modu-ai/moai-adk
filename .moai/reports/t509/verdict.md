@@ -1101,3 +1101,66 @@ $ git diff --name-only c068667ad d4162b368 -- <저장 경로 3파일>
 **Go 테스트·빌드·vet·templ-generate가 plan 단계 전체에서 한 번도 안 돌았다.** 감사관도 안 돌렸고 나도 안 돌렸다. `AC-WCP-012`의 green-build arm은 **run 단계가 첫 실행**이다. `progress.md`에 알려진 공백으로 기록됐다 — 놀람이 아니라 예고로 도착하도록.
 
 그리고 수리 델타는 **git으로 분리 불가**하다(iter2가 미커밋 트리를 감사했고 수리 커밋이 v0.2.0과 수리를 함께 담았다). 이미 통과한 v0.2.0 표면 중 `AC-WCP-012`/`AC-WCP-009`/`§D.2` 밖은 재검토되지 않았다.
+
+---
+
+## 19. run 진입 — 기준선 (구현 착수 **전에** 잰 것)
+
+Implementation Kickoff Approval 획득(운영자, 2026-09-07, 리드 세션). 병합 순서도 운영자가 확정: **run·sync 후 창 한 번.**
+
+### 19.1 왜 기준선을 먼저 잡는가
+
+`AC-WCP-012`의 green-build arm은 **run이 첫 실행**이다(§18.6). 지금 초록인지 모르는 상태에서 구현하면, **내 변경이 깨뜨린 것과 원래 빨갛던 것을 구분할 수 없다** — 그 순간 run 판정 전체가 오염된다. 리드가 이 계획을 [HARD]로 승격했다.
+
+### 19.2 기준선 — 세 축 전부 초록
+
+흡수 후 트리(`725071d91`, develop `0b1e27877` 포함) 기준:
+
+| 축 | 명령 | 결과 |
+|---|---|---|
+| 빌드 | `go build ./...` | **rc=0** |
+| 테스트 | `go test ./internal/web/ ./internal/settings/ -count=1` | `ok internal/web 3.960s` · `ok internal/settings 0.624s` |
+| templ 드리프트 | `templ generate` (from `internal/web/`) + `git status` | **드리프트 0** |
+
+**그러므로 이후 나오는 빨강은 내 것이다.**
+
+### 19.3 [내 오류] templ 드리프트 가드는 **cwd 민감**하다 — 가짜 빨강을 내가 만들었다
+
+처음에 `templ generate`를 **리포 루트에서** 돌렸다. 결과: 생성 파일 7개, **386 insert / 386 delete** 드리프트. 하마터면 "기준선이 빨갛다"고 보고할 뻔했다.
+
+차이의 성질을 보니 전부 한 종류였다:
+
+```diff
+-  return templ.Error{..., FileName: `icons.templ`, Line: 108, Col: 44}
++  return templ.Error{..., FileName: `internal/web/icons.templ`, Line: 108, Col: 44}
+```
+
+`templ generate`가 `FileName:`을 **실행 디렉터리 기준 상대 경로**로 적는다. 커밋된 파일은 `internal/web/`에서 생성됐고, 나는 루트에서 돌렸다. **트리가 틀린 게 아니라 내 호출 위치가 틀렸다.**
+
+판별:
+```
+git restore internal/web/        → 0 파일
+cd internal/web && templ generate → 드리프트 0
+```
+
+**교훈**: 드리프트 가드는 **생성 시점의 cwd를 재현해야** 한다. 재현하지 않으면 386줄짜리 오탐이 나오고, 그것은 "코드가 낡았다"가 아니라 "내가 다른 자리에서 쟀다"이다. §1.2에서 내가 이미 한 번 밟은 형태 — **잰 대상을 명시하지 않은 측정** — 의 변형이다. run 단계와 CI가 이 가드를 돌릴 때 같은 자리에 서야 한다.
+
+### 19.4 [정정] §18.4의 흡수 값이 틀렸다
+
+§18.4에 "로컬 develop `098a631b3`(흡수 시점)"이라 적었다. **틀렸다.** 실제로 들어온 것은 `0b1e27877`이다.
+
+원인: tip을 읽은 시점(`098a631b3`, 15:27)과 `git merge develop`을 실행한 시점 사이에 develop이 한 번 더 전진했고(`0b1e27877`, 15:36), **머지는 내가 읽은 값이 아니라 그 순간의 develop을 가져갔다.**
+
+```
+git merge-base --is-ancestor 098a631b3 0b1e27877 → YES  (098 이 먼저)
+git merge-base --is-ancestor 0b1e27877 HEAD      → YES  (내 HEAD 가 이미 포함)
+git rev-list --count --left-right 0b1e27877...HEAD → 0  16
+```
+
+손해는 없다 — 더 많이 흡수했고 충돌 0이며 지금 develop과 완전히 동기다. **그러나 보고한 값이 실제 입력이 아니었다.** 이 리포가 [HARD]로 적은 「커밋·푸시 직전에 HEAD를 다시 읽어라, 턴 앞에서 읽은 값을 쓰지 마라」의 정확한 사례이고, 내가 그것을 밟았다.
+
+### 19.5 이 절이 안 본 것
+
+- `go vet`은 안 돌렸다. 기준선 세 축에 넣지 않았다.
+- 테스트는 **두 패키지만** 돌렸다(`internal/web`, `internal/settings`). 전체 스위트는 로컬에서 돌리지 않는다는 이 리포의 규율에 따른 것이고, 전 패키지 판정은 CI 몫이다.
+- `templ generate`의 **버전**을 고정해 확인하지 않았다. `go run github.com/a-h/templ/cmd/templ`이 go.mod에서 해석하는 판을 썼고, CI가 같은 판을 쓰는지는 재지 않았다.
