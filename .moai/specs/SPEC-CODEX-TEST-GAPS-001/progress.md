@@ -131,7 +131,7 @@ evidence_dir: .moai/state/verify/t501/
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: "pending-backfill-sync"   # D3 backfill exemption — a commit cannot cite its own SHA
+sync_commit_sha: "82674b94c"   # backfilled from pending-backfill-sync (D3 exemption); sync commit 82674b94c
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-CODEX-TEST-GAPS-001' CHANGELOG.md → 0 (pre-emission); entry appended once, then 1"
 b12_self_test_b: "distinct AC ids in acceptance.md = 12 (AC-CTG-001..012); CHANGELOG entry references the same 12"
