@@ -97,7 +97,7 @@ m1_to_mN_commit_strategy: M1 committed RED (`3b39eef8f`) / M2 GREEN + 계약 갱
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 5ac52d254
 sync_status: green
 b12_self_test_a: `grep -c 'SPEC-STATE-ANCHOR-VALIDATE-001' CHANGELOG.md` → `0` (exit 1) — 중복 진입 가드 통과, 진입 허용
 b12_self_test_b: `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → `8` (AC-SAV-001..008) — CHANGELOG 진입 명시 수 8과 일치
