@@ -79,6 +79,15 @@ entries:
     measure: verdict-rendered
 
   - kind: github-workflow
+    locator: .github/workflows/judgment-first-consistency.yaml
+    events: [pull_request]
+    window: 60d
+    # Path-gated on the judgment-first doctrine surfaces; a PR that does not
+    # touch them never runs it (card t401 added the workflow without this
+    # entry — the census caught the omission).
+    measure: fired-with-effect
+
+  - kind: github-workflow
     locator: .github/workflows/label-sync.yml
     events: [workflow_dispatch, push]
     window: 180d
