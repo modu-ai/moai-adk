@@ -797,8 +797,9 @@ func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	var findings []Finding
 	for _, req := range doc.REQs {
 		sev, adv := reqFindingSeverity(req, SeverityError)
-		// Existing legacy check (unchanged) — emits error when SHALL is missing.
-		if isModalityMalformed(req.Text) {
+		switch judgeModality(req.Text) {
+		case modalityJudgedMalformed:
+			// Existing legacy check (unchanged) — emits error when SHALL is missing.
 			findings = append(findings, Finding{
 				File:     doc.Path,
 				Line:     req.Line,
@@ -806,6 +807,33 @@ func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 				Advisory: adv,
 				Code:     "ModalityMalformed",
 				Message:  fmt.Sprintf("REQ %s: EARS modality violation — SHALL missing or format mismatch: %q", req.ID, req.Text),
+			})
+		case modalityUnjudged:
+			// SPEC-SPEC-LINT-BLIND-AXES-001 REQ-SLB-006/007/008 (axis 2, branch B).
+			//
+			// The check has NO OPINION about this text, and says so. Before this
+			// code existed the same situation produced nothing at all, which is
+			// byte-identical to what a well-formed requirement produces.
+			//
+			// [HARD] Advisory is set HERE, for the whole code, and NOT through
+			// reqFindingSeverity. That is not a second severity axis on the REQ
+			// entry: severity still has exactly one entry-keyed decision point
+			// (Widened), and this is a per-CODE property — a signal that only
+			// reports "not judged" must never gate a build, whatever the entry
+			// it sits on. CoverageRule and MovingRefUnpinnedRule set Advisory at
+			// their emission sites for the same reason.
+			//
+			// The message states the absence positively. "No finding" was the
+			// defect; a finding whose text hedges would reproduce it in prose.
+			findings = append(findings, Finding{
+				File:     doc.Path,
+				Line:     req.Line,
+				Severity: SeverityWarning,
+				Advisory: true, // reports, never gates — see the block above
+				Code:     "ModalityUnjudged",
+				Message: fmt.Sprintf(
+					"REQ %s: modality NOT JUDGED — the text opens with none of the English modality keywords (WHEN/WHILE/WHERE/IF/THE) and carries no SHALL token, so this linter has no opinion about it. This is NOT a claim that the requirement is malformed, and it is NOT a claim that it is well formed: %q",
+					req.ID, req.Text),
 			})
 		}
 		// NEW: GEARS migration warning for legacy IF/THEN patterns.
@@ -825,27 +853,114 @@ func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	return findings
 }
 
-// isModalityMalformed checks if REQ text violates EARS modality
-func isModalityMalformed(text string) bool {
-	upper := strings.ToUpper(text)
+// --- Modality judgment — SPEC-SPEC-LINT-BLIND-AXES-001 axis 2, branch B ----
+//
+// THE DEFECT THIS REPLACES. isModalityMalformed read five ENGLISH prefixes and
+// returned false for everything else. For a Korean requirement that false was
+// indistinguishable from "well formed": the function had no opinion, and having
+// no opinion looked exactly like approving. A reader could not tell "no
+// requirement is malformed here" from "no requirement here was ever judged".
+//
+// THE REPAIR IS TO ANNOUNCE, NOT TO JUDGE. Branch A — accepting `해야 한다` /
+// `해서는 안 된다` as SHALL equivalents and grading Korean modality on them — is
+// OUT of scope by operator decision (spec.md §E, §I): a lexicon that decides a
+// verdict is the same kind of decision the discriminator axis already made this
+// round, and two of them in one round makes neither reviewable. What lands here
+// is the third verdict: UNJUDGED, emitted as its own advisory finding code so
+// the count of unjudgeable requirements becomes readable. That count is this
+// milestone's deliverable and it sizes the follow-up card.
+//
+// WHAT MAKES A TEXT JUDGEABLE. Two things, and neither is a Korean lexicon:
+//
+//   - one of the five English modality prefixes, which selects the existing
+//     malformed/conforming verdict unchanged; or
+//   - a SHALL token anywhere in the text, matched at a WORD BOUNDARY.
+//
+// The second is the ONLY reason a Korean requirement is judged at all, and it
+// judges nothing about Korean: the corpus writes `…해야 한다(SHALL)`, so the
+// SHALL the existing lexicon already knows is right there, parenthesized. This
+// is why REQ-SLB-014's word-boundary repair is INSIDE branch B rather than an
+// extension of it — with the old leading-space contact condition `(SHALL)` is
+// invisible, every such requirement is miscounted as unjudgeable, and the count
+// that is this milestone's deliverable is wrong from the start.
+//
+// WHAT IS STILL NOT JUDGED, DELIBERATELY. A requirement with neither a prefix
+// nor a SHALL token gets no verdict — it gets the announcement. An English
+// sentence with a SHALL but no prefix (`System shall X`) is treated as
+// conforming, exactly as before; widening the prefix set is not this card's.
 
-	if strings.HasPrefix(upper, "WHEN ") && !strings.Contains(upper, " SHALL") {
-		return true
+// shallWordPattern matches SHALL as a WHOLE WORD in already-uppercased text.
+//
+// It replaces `strings.Contains(upper, " SHALL")` (REQ-SLB-014). That form
+// required a LEADING SPACE, so it missed SHALL at the start of the string and
+// SHALL after any punctuation — including `…(SHALL)`, the shape the corpus
+// actually writes. It also accepted " SHALLOW" as a SHALL. Both directions
+// move corpus figures, and both movements are published in the milestone
+// record rather than silently absorbed.
+var shallWordPattern = regexp.MustCompile(`\bSHALL\b`)
+
+// modalityPrefixes are the five ENGLISH modality openers the judgment knows.
+// They are listed ONCE: inlining the contact condition at five call sites is
+// how a later round forgets one, and that omission would be silent — the same
+// failure shape this file is repairing.
+var modalityPrefixes = []string{"WHEN ", "WHILE ", "WHERE ", "IF ", "THE "}
+
+// modalityVerdict is the tri-state result of the modality check. The third
+// state is the point: before this SPEC there were only two, and "not judged"
+// was reported as "conforming".
+type modalityVerdict int
+
+const (
+	// modalityJudgedConforming — the text was judged and carries SHALL.
+	modalityJudgedConforming modalityVerdict = iota
+	// modalityJudgedMalformed — the text was judged and SHALL is missing.
+	modalityJudgedMalformed
+	// modalityUnjudged — the check has no opinion about this text. It is NOT
+	// a claim that the text is wrong, and it MUST NOT be reported as a claim
+	// that the text is right.
+	modalityUnjudged
+)
+
+func (v modalityVerdict) String() string {
+	switch v {
+	case modalityJudgedMalformed:
+		return "malformed"
+	case modalityUnjudged:
+		return "unjudged"
+	default:
+		return "conforming"
 	}
-	if strings.HasPrefix(upper, "WHILE ") && !strings.Contains(upper, " SHALL") {
-		return true
+}
+
+// judgeModality returns the tri-state modality verdict for one REQ text.
+func judgeModality(text string) modalityVerdict {
+	upper := strings.ToUpper(text)
+	hasShall := shallWordPattern.MatchString(upper)
+
+	for _, prefix := range modalityPrefixes {
+		if strings.HasPrefix(upper, prefix) {
+			if hasShall {
+				return modalityJudgedConforming
+			}
+			return modalityJudgedMalformed
+		}
 	}
-	if strings.HasPrefix(upper, "WHERE ") && !strings.Contains(upper, " SHALL") {
-		return true
+	if hasShall {
+		return modalityJudgedConforming
 	}
-	if strings.HasPrefix(upper, "IF ") && !strings.Contains(upper, " SHALL") {
-		return true
-	}
-	// Ubiquitous format: Must start with "The [system] SHALL"
-	if strings.HasPrefix(upper, "THE ") && !strings.Contains(upper, " SHALL") {
-		return true
-	}
-	return false
+	return modalityUnjudged
+}
+
+// isModalityMalformed reports whether REQ text was JUDGED and found malformed.
+//
+// [HARD] A false from this function no longer means "well formed" — it means
+// "not malformed", which now includes "not judged". Callers that need the
+// difference MUST read judgeModality. The blast-radius harness in
+// lint_req_widen_decompose_test.go is a legitimate caller: it counts the
+// findings EARSModalityRule would emit under this code, which is exactly this
+// predicate.
+func isModalityMalformed(text string) bool {
+	return judgeModality(text) == modalityJudgedMalformed
 }
 
 // isLegacyEARSPattern returns true ONLY for IF ... THEN REQs.

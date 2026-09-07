@@ -155,6 +155,150 @@ golangci-lint run ./internal/spec/...  → rc=0, "0 issues."
 - **본문 셀 선택의 대가**: 정의 표가 뒤에 노트 열을 덧붙이면 본문 대신 노트가 `Text`가 된다. 이 트리에서 그런 모양은 관측되지 않았고, 항목은 어차피 자문이다.
 - **L1의 선택된 놓침은 그대로다**: `SPEC-INIT-001`의 `| REQ-N-001 | … 않아야 한다 |`는 여전히 기각된다. 결재된 대가이며, **어휘를 넓혀 고치지 않는다.** 다만 이 놓침이 REQ-SLB-005(기각의 관측 가능성)로 이름을 갖게 되는 것은 M-A1 범위 밖이므로, **현재는 여전히 조용한 미수집**이다 — 이 카드가 고치려는 결함이 그 행에 대해서는 아직 남아 있다.
 
+### M-A2 — 축 2 갈래 B: 무판정 발화 + SHALL 접촉 조건 단어 경계화 (카드 t518, cycle_type=tdd)
+
+착수 시점 트리: 워크트리 `.claude/worktrees/t518`, 브랜치 `WT-spec-lint-axes`, HEAD `6cfcfef00`(M-A1 착지분). **갈래 A(한국어 modality 판정)는 손대지 않았다** — 결재로 후속 카드에 넘어갔고, 이 마일스톤은 한국어 어휘를 한 글자도 세우지 않는다.
+
+**변경한 파일 1개**: `internal/spec/lint.go` — ① `isModalityMalformed`를 3상태 `judgeModality`로 대체(conforming / malformed / **unjudged**) ② SHALL 접촉 조건을 `strings.Contains(upper, " SHALL")` → `\bSHALL\b` 단어 경계 매치로 교체(REQ-SLB-014) ③ `EARSModalityRule.Check`에 `ModalityUnjudged` 발화 지점 추가. 테스트 `internal/spec/lint_modality_unjudged_test.go`(신규). `lint_req_table.go`·`lint_req_widen.go`는 손대지 않았고(M-A1 소관), `internal/cli`도 손대지 않았다(형제 SPEC 소관).
+
+**확정된 무판정 코드 이름: `ModalityUnjudged`** (AC-SLB-008 주석이 M3 산출물에 기록하라고 요구한 값). 등급은 warning + `Advisory: true`, 발화 지점에서 코드 단위로 정한다.
+
+**판정 가능성의 두 경로 — 어느 쪽도 한국어 어휘가 아니다.** ① 영어 modality 접두사 다섯 개 중 하나로 시작 → 기존 malformed/conforming 판정을 그대로 탄다. ② 본문 어디든 **단어 경계 SHALL 토큰**이 있음 → conforming. 둘 다 아니면 `ModalityUnjudged`. 경로 ②가 한국어 요구사항을 판정 가능하게 만드는 유일한 이유이며, 그것이 판정하는 것은 한국어가 아니라 **기존 어휘가 이미 알고 있던 SHALL 토큰**이다 — 코퍼스가 `…해야 한다(SHALL)` 꼴로 괄호 안에 그 토큰을 이미 쓰고 있다. 옛 접촉 조건(선행 공백 요구)으로는 `(SHALL)`이 보이지 않아 그런 요구사항이 전부 「판정 불가」로 오집계되므로, **REQ-SLB-014의 교체가 없으면 이 마일스톤의 산출물인 「정확한 판정 불가 건수」가 처음부터 틀린 수가 된다.** 이것이 접촉 조건 교체가 갈래 B 안쪽인 실측된 이유다(SPEC §I가 가설로 적어 둔 것을 여기서 실측으로 바꾼다).
+
+#### AC 판정표
+
+| AC | REQ | 판정 | 실측 근거 |
+|---|---|---|---|
+| AC-SLB-006a | 003 · 006 | **PASS** | `TestModality_EnglishControlStillJudged` — 영어 SHALL 누락 요구사항에서 `ModalityMalformed` 1건 · `ModalityUnjudged` 0건(회귀 없음) |
+| AC-SLB-006b | 006 | **PASS** | `TestModality_KoreanControlAnnounced` — 한국어 동일 결함에서 두 코드 중 **정확히 하나**(Unjudged 1 · Malformed 0). 「둘 다 0」은 `t.Fatalf`로 분리해 FAIL 사유를 구분했다. 영어/한국어 코드 집합이 실제로 갈리는 것을 **단언으로** 확인 |
+| AC-SLB-007 | 006 · 007 | **PASS** | `TestModality_SilenceDiffersFromConformance` — acceptance.md §C 축자 픽스처 2종. 적합(`…해야 한다(SHALL).`) Unjudged 0 · Malformed 0, 판정 불가(`…구현 재량에 맡긴다.`) Unjudged 1, 두 finding 집합이 다름 |
+| AC-SLB-008 | 007 | **PASS** | `TestModality_UnjudgedIsAdvisory` — severity warning + `Advisory: true`, error 등급 0건, `--strict`에서 `HasErrors()` false. **픽스처가 narrow 목록형이라 `Widened=false`임을 먼저 단언한다** — 자문 표시가 t385 넓힘 경로에서 온 것이 아님을 배제하기 위해서다 |
+| AC-SLB-008b | 008 | **PASS** | `TestModality_UnjudgedIsNotReportedConforming` — `judgeModality`의 반환값을 직접 읽어 판정 불가 본문이 `modalityJudgedConforming`이 **아님**을 단언한다. 부재(=finding 0건)로 추론하지 않는다 — 부재가 곧 결함의 모양이기 때문이다 |
+| AC-SLB-012 | 014 | **PASS(단, 축자 픽스처 1종 결함 발견 — 아래)** | `TestModality_ShallContactIsWordBoundary` — 세 픽스처 전부 Malformed 0 · Unjudged 0. 가드를 만드는 것은 **교정 픽스처 1종뿐**이며, 그 사실이 `oldShallContact` 헬퍼로 기계 단언돼 있다. 수치 공표 갈래는 아래 「코퍼스 이동」 |
+| AC-SLB-010 | 002 · 010 | **PASS(완결)** | M-A1의 「부분 PASS」 남은 절반. `TestModality_AdvisoryDoesNotLeakIntoErrors` — 표 유래(Widened) + 무판정(코드 단위 자문) 두 자문 경로를 한 픽스처에서 동시에 발화시키고 error 등급 0 · strict `HasErrors()` false를 단언. 픽스처가 실제로 양쪽을 갖는지(table≥1 AND list≥1)를 먼저 단언한다 |
+
+**이 마일스톤이 잡지 않은 AC**: 005(기각의 관측 가능성 — 판단은 아래 별도 절) · 009(재계수 = M4). 001a/001b/001c/002/003/004/011은 M-A1이 이미 잡았다.
+
+#### [HARD] acceptance.md §C의 AC-SLB-012 축자 픽스처 한 종은 가드를 만들 수 없다 — 기계로 확인했다
+
+acceptance.md가 「선행 공백 없는 형」으로 축자 고정한 줄은
+
+```
+- **REQ-FX-011** — When the tool runs, the system shall report.(SHALL)
+```
+
+인데, 이 본문은 `the system shall`에서 이미 **선행 공백이 붙은 SHALL을 갖는다**. 즉 옛 접촉 조건(`strings.Contains(upper, " SHALL")`)도 이 줄을 적합으로 판정하므로, 뮤턴트를 되돌려도 이 픽스처는 계속 0건이고 **RED를 만들지 못한다**. acceptance.md가 이 픽스처에 기대한 뮤턴트 가드(「선행 공백 없는 형에서 ModalityMalformed가 1건이 되어야 한다」)는 쓰인 그대로는 성립하지 않는다.
+
+이것은 이 카드가 두 번 경고한 「매치하지 않는 대조군은 대조군이 아니다」와 같은 모양이므로, 산문으로 적지 않고 **테스트가 기계로 단언한다**: `oldShallContact(verbatim011)`가 참임을 `TestModality_ShallContactIsWordBoundary`가 확인한다. 축자 픽스처는 **지우지 않고 그대로 남겼고**(SPEC에 대한 증거이므로), 가드를 실제로 만드는 교정 픽스처를 하나 더 세웠다:
+
+```
+- **REQ-FXB-011** — When the tool runs, the tool reports.(SHALL)
+```
+
+이 본문은 SHALL 출현이 괄호 안 하나뿐이라 옛 조건은 놓치고 단어 경계 조건은 본다. 뮤턴트 M2가 이 픽스처에서만 RED를 만든다. **acceptance.md는 수정하지 않았다**(run-phase 소관 밖) — 이 발견은 후속 결재 사항으로 남긴다.
+
+#### 뮤턴트 9건 + 재실행 1건 — 잡히지 않은 것도 적는다
+
+증거: `.moai/reports/t518/mutants-MA2.txt`(1차) · `.moai/reports/t518/mutants-MA2-m8-rerun.txt`(M8 재실행), 재현: `python3 .moai/reports/t518/mutants-MA2.py`. **`-run` 필터 없이 `internal/spec` 패키지 전체를 돌린다** — 「이 마일스톤의 가드가 잡았다」와 「기존 테스트가 잡았다」는 다른 사실이고, 필터를 걸면 그 구분이 보이지 않는다.
+
+| 뮤턴트 | 결과 | RED가 된 테스트 |
+|---|---|---|
+| M1 무판정 발화 제거 | CAUGHT | 006b · 007 · 008 · 008b · 010 |
+| M2 접촉 조건을 선행 공백형으로 되돌림 | CAUGHT | 012 · 007 · 008b · census · **M-A1의 `TestTableCollection_CorpusListFindingsUnchanged`** |
+| M3 무판정 판정을 conforming으로 흡수(3번째 상태 소거) | CAUGHT | 006b · 007 · 008 · 008b · 010 · census |
+| M4 무판정 finding의 `Advisory` 제거 | CAUGHT | 008 · 010 · M-A1 코퍼스 단언 |
+| M5 무판정 finding을 error 등급으로 승격 | CAUGHT | 008 · 010 |
+| M6 [경계] 단어 경계를 맨 부분문자열로 넓힘(SHALLOW가 SHALL로 셈) | CAUGHT | 012 |
+| M7 [경계] SHALL 토큰 경로 제거(접두사만 판정 가능) | CAUGHT | 007 · 008b · M-A1 코퍼스 단언 |
+| M8 [경계] 영어 접두사 하나 삭제(`"THE "`) | **1차 NOT CAUGHT → 가드 신설 후 CAUGHT** | (1차: 없음) → `TestModality_EveryEnglishPrefixIsStillJudged` |
+| M9 [경계] 접두사 매칭을 원문(대소문자 보존)에 걸기 | CAUGHT | 006a · 006b · 012 · 008b · M-A1 `TestTableCollection_AdvisoryDoesNotGate` |
+
+**[HARD] M8은 1차에서 패키지 전체를 초록으로 통과했다 — 지우지 않고 적는다.** 이 마일스톤의 픽스처가 전부 `When`으로 시작했고 기존 EARS 테스트도 Ubiquitous 접두사 삭제를 잡지 못했다. 삭제된 채였다면 `The system does X` 꼴 요구사항 전부가 malformed에서 **조용히 unjudged로 재분류**됐을 것이다 — 이 카드가 고치는 결함과 정확히 같은 모양의, 코드가 아니라 **계측의** 사각이다. 다섯 접두사 각각에 SHALL 없는 본문을 걸고 malformed를 요구하는 `TestModality_EveryEnglishPrefixIsStillJudged`를 신설해 CAUGHT로 바꿨다(재실행 exit=1, RED 1건). **기록을 남기는 이유**: 지금 CAUGHT인 것은 가드를 나중에 붙였기 때문이지 처음부터 있었기 때문이 아니다.
+
+M2·M4·M7·M9가 M-A1의 코퍼스 단언을 RED로 만든 것도 적어 둔다 — M-A1이 「변별력이 7건과 순서 의존 위험에 한정된다」고 유보를 달았던 그 단언이, 축 2 변경에 대해서는 실제로 물성을 가졌다.
+
+#### 코퍼스 이동 — 옛 값과 새 값을 나란히 (AC-SLB-012 둘째 갈래 · REQ-SLB-014)
+
+**[HARD] 두 값 모두 같은 트리·같은 모집단에서 재유도했다. 설치본 바이너리는 쓰지 않았다** — M-A1이 실측한 대로 설치본(`v3.1.2-1490-ge79c010b8`)은 이 트리와 다른 소스이고, 그것으로 잰 baseline은 `MovingRefUnpinned`에서 어긋난다. 「이전」은 `git archive HEAD`로 뽑은 소스에서 빌드했고, 「이후」는 작업 트리에서 빌드했다.
+
+```
+# 이전(HEAD 6cfcfef00 소스 빌드), 파이프 없음, rc=0
+/tmp/t518-MA2-head/moai-head spec lint   →  0 error(s), 4394 warning(s)
+# 이후(작업 트리 빌드), 파이프 없음, rc=0
+/tmp/t518-MA2-after-moai spec lint       →  0 error(s), 4617 warning(s)
+```
+
+증거: `.moai/reports/t518/lint-before-MA2.txt` · `.moai/reports/t518/lint-after-MA2.txt`. 「이전」 4394는 M-A1이 기록한 착지 후 값과 일치한다(저장된 숫자를 재사용한 것이 아니라, 같은 방법으로 다시 재서 같은 값이 나왔다).
+
+| 코드 | 이전(옛 값) | 이후(새 값) | 증감 |
+|---|---|---|---|
+| `ModalityUnjudged` | **0**(코드 자체가 없었음) | **460** | **+460** |
+| `ModalityMalformed` | **412** | **175** | **−237** |
+| CoverageIncomplete | 3637 | 3637 | 0 |
+| MovingRefUnpinned | 115 | 115 | 0 |
+| StatusTransitionInvalid | 102 | 102 | 0 |
+| LegacyEARSKeyword | 48 | 48 | 0 |
+| MissingExclusions | 26 | 26 | 0 |
+| StatusGitConsistency | 18 | 18 | 0 |
+| FrontmatterInvalid | 14 | 14 | 0 |
+| StatusTokenUnrecognized | 7 | 7 | 0 |
+| SyncSHASlotFormat | 6 | 6 | 0 |
+| InvalidREQID | 6 | 6 | 0 |
+| SpecsDirMissingSpecFile | 2 | 2 | 0 |
+| OwnershipTransitionInvalid | 1 | 1 | 0 |
+| **합계** | **4394** | **4617** | **+223** |
+| **error 등급 합** | **0** | **0** | **0** |
+
+−237 + 460 = +223. 잔여 미귀속 0.
+
+**−237의 귀속 — 전부 접촉 조건 교체다.** 두 출력의 `ModalityMalformed` finding 집합을 (파일, 행) 키로 대조하면 **사라진 것 237건, 새로 생긴 것 0건**이다. 사라진 237건 전부가 「단어 경계 SHALL 있음 AND 선행 공백 SHALL 없음」을 만족한다(`\bSHALL\b` 매치 참 · `" SHALL"` 매치 거짓, 237/237). 접두사를 가진 항목은 절대 unjudged가 될 수 없으므로(판정 경로 ①), 이 −237이 무판정 코드 신설로 흘러간 것이 아님도 구조적으로 성립한다.
+
+**SHALL 바로 앞 문자의 분포(237건)**: `*` 231건 · `(` 3건 · `` ` `` 3건. 즉 실제 코퍼스에서 옛 조건이 놓치던 지배적 모양은 SPEC이 예상한 `(SHALL)` 괄호형이 **아니라 마크다운 볼드 표기**였다. 괄호형은 3건뿐이다. 예상과 실측이 다르므로 실측을 적는다.
+
+**반대 방향(교체가 새로 켜는 쪽)은 이 코퍼스에서 0이다.** 옛 조건은 `" SHALLOW"`를 SHALL로 인정했고 새 조건은 인정하지 않는다 — 그런 항목이 있었다면 `ModalityMalformed`가 늘었어야 하는데 새로 생긴 것은 0건이다. 즉 **이 코퍼스에는 SHALLOW형 오인이 없었다**. 이 방향은 코퍼스가 아니라 단위 테스트(M6 뮤턴트)가 지킨다.
+
+**+460의 귀속**: 460건 전부 새로 드러난 것이다(접두사가 없으므로 옛 코드에서는 `false`를 돌려주고 아무 finding도 내지 않았다). 출처 필드(REQ-SLB-013) 기준 분해는 **표 수집 유래 5건 · 목록 유래 455건**이며, 표 유래 5건은 전부 `SPEC-INIT-001`이다. 78개 SPEC 디렉터리에 걸쳐 있고 상위는 `SPEC-HARNESS-CLI-COVERAGE-001` 22 · `SPEC-HARNESS-EVOLVE-003` 22 · `SPEC-CODEX-BODY-NEUTRALITY-001` 16이다.
+
+**독립 유도 일치**: 두 바이너리 출력의 차분(−237 / +460)과, 출하 Go 코드가 코퍼스를 직접 순회해 낸 census(`TestModality_CorpusUnjudgedCensus`: `REQ entries=3985 | unjudged=460 (78 SPEC dirs; 5 table-sourced, 455 list-sourced) | malformed=175 | conforming=3350 | recovered by word boundary=237`)가 두 수치 모두에서 일치한다. 서로 다른 두 경로(출력 파싱 / 코드 직독)가 같은 값을 낸다.
+
+**이 마일스톤의 산출물 — 판정 불가 요구사항의 정확한 건수는 460이다** (수집된 REQ 항목 3,985개 중, 78개 SPEC 디렉터리에 분포). 이 수가 갈래 A 후속 카드의 크기를 정한다. **저장하지 않는다** — census 테스트가 매 실행 재유도하며, 위 수치는 이 시점의 재유도값이지 코퍼스의 성질이 아니다.
+
+**종료 코드 계약은 움직이지 않았다(REQ-SLB-010)**: `spec lint` 기본 모드는 이전·이후 모두 rc=0, `--strict`는 이전·이후 모두 rc=1이며 두 실행 모두 ERROR 등급 출력 행이 0이다. `ModalityUnjudged`가 자문이므로 strict 승격 대상이 아니고, strict의 rc=1은 이 변경 **이전부터** 비자문 warning들이 만들고 있던 상태다.
+
+#### AC-SLB-005(기각의 관측 가능성)의 소관 — 이 마일스톤이 아니라 별도 마일스톤으로 미룬다
+
+M-A1이 「전용 finding 코드와 발화 지점이 필요하며 수집기 범위 밖」이라며 남긴 항목이다. 이 마일스톤은 발화 지점을 만드는 일을 했으므로 후보였고, **미루기로 판단했다.** 근거 셋:
+
+1. **소관이 축 1이다.** AC-SLB-005는 acceptance.md **§B(축 1)**에 있고 그 Given이 AC-SLB-004의 기각 픽스처다. 기각을 관측 가능하게 하려면 기각한 행을 기록하는 쪽, 즉 `lint_req_table.go`의 판별식(`isTableDefinitionRow`)이 바뀌어야 한다 — 축 2 변경이 필요로 하는 범위가 아니다.
+2. **한 측정에 두 원인이 섞인다.** 코퍼스의 기각 행은 787건이다(M-A1 census). 같은 회차에 발화하면 +460과 +787이 한 재측정에 겹쳐 들어오고, REQ-SLB-009가 요구하는 **출처별 귀속**이 코드별 귀속으로만 남는다. 이 카드가 두 번 데인 자리가 정확히 「총량은 나오되 귀속이 나오지 않는」 상태다.
+3. **결정이 하나 남아 있다.** 787건을 REQ 단위로 발화할지 표 단위로 접을지는 설계 결정이고, 그 선택이 코퍼스 수치를 세 자릿수로 움직인다. 축 2 착지와 묶으면 두 결정이 한 diff에서 리뷰된다.
+
+**소관 지정: M-A2b(축 1 — 기각의 관측 가능성), M4(재계수) 이전에 실행.** M4보다 뒤로 가면 재계수가 끝난 뒤 코퍼스가 다시 움직여 재계수를 다시 해야 한다. 그때까지 `SPEC-INIT-001`의 `| REQ-N-001 | … 않아야 한다 |` 행은 **여전히 조용한 미수집**이며, M-A1이 적은 그 유보는 이 마일스톤에서도 해소되지 않았다.
+
+#### 검증 명령 (전부 파이프 없이 rc 판독, 범위는 `internal/spec`)
+
+```
+go test ./internal/spec/...            → rc=0, ok  github.com/modu-ai/moai-adk/internal/spec  70.786s
+go vet ./internal/spec/...             → rc=0, 무출력
+gofmt -l internal/spec/                → rc=0, 무출력
+golangci-lint run ./internal/spec/...  → rc=0, "0 issues."
+```
+
+증거: `.moai/reports/t518/gotest-MA2.txt`. **전체 스위트는 로컬에서 돌리지 않았다**(CLAUDE.local.md §4). 전 패키지 판정은 CI 몫이며 이 레인은 push하지 않는다.
+
+뮤턴트 복원 후 작업 트리에서 바이너리를 다시 빌드해 코퍼스를 재측정했고, 코드별 분포가 기록된 「이후」와 **완전히 동일**함을 확인했다(4617, 13개 코드 전부 일치) — 뮤턴트 실행이 소스를 남기지 않았다는 증거다.
+
+#### RED 증거
+
+`.moai/reports/t518/red-MA2.txt`. 2단계로 잡았다: ① 신규 심볼 미정의로 인한 빌드 실패(약한 RED) ② 옛 의미를 새 모양에 담은 스텁(`judgeModality`가 conforming/malformed 2상태만)을 넣어 **단언 수준 RED**를 다시 채취. 기록된 것은 ②이며, 6개 테스트가 「무판정 0건」·「두 픽스처의 finding 집합이 같음」·「단어 경계가 괄호형 SHALL을 인정하지 않음」으로 각각 실패했다. `TestModality_EnglishControlStillJudged`는 이 단계에서 이미 GREEN이다 — 회귀 없음을 재는 대조군이므로 옳다.
+
+#### 잔여 위험 (관측된 것만)
+
+- **`ModalityUnjudged` 460건은 자문이지만 소음이다.** `spec lint` 기본 출력이 4394 → 4617로 늘었다(+5.1%). 등급상 게이트를 흔들지 않고, 그 가시성이 이 카드의 성과이기도 하지만, 갈래 A가 착지하기 전까지는 460건이 계속 출력에 남는다. 이 대가는 결재된 것이다(spec.md §I 「받아들인 대가」).
+- **판정 경로 ②의 사각**: 접두사가 없고 SHALL이 있는 **영어** 문장(`System shall X`)은 conforming으로 처리된다 — 옛 코드와 동일한 처리이며 이 카드가 넓히지 않았다. 코퍼스에서 이 모양이 몇 건인지는 재지 않았다(미측정, 갈래 A 소관).
+- **`(SHALL)` 인정의 부작용은 재지 않았다.** 단어 경계 조건은 `SHALL NOT`·`shall not`도 SHALL 존재로 인정한다(옛 조건도 그랬다 — 선행 공백이 있으므로). 즉 Unwanted 요구사항의 부정형을 적합으로 읽는 성질은 이 교체가 만든 것이 **아니라 원래 있던 것**이며, 이 카드는 그것을 바꾸지 않았다.
+- **acceptance.md §C의 축자 픽스처 1종이 가드를 만들지 못한다**(위 절). 코드가 아니라 기준 문서의 결함이므로 run-phase에서 고치지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
