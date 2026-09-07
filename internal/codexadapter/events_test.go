@@ -6,13 +6,14 @@ import (
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
-// TestEventTableRowCount pins the table size. REQ-1 enumerates eleven Codex
-// events; asserting the count means a dropped row fails here rather than
-// silently shrinking coverage (AC-REQ-1a).
+// TestEventTableRowCount pins the table size. The Codex hook event set
+// enumerates twelve events (SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-001);
+// asserting the count means a dropped row fails here rather than silently
+// shrinking coverage.
 func TestEventTableRowCount(t *testing.T) {
 	t.Parallel()
 
-	const wantRows = 11
+	const wantRows = 12
 	if got := len(EventTable); got != wantRows {
 		t.Fatalf("EventTable rows = %d, want %d", got, wantRows)
 	}
@@ -38,6 +39,7 @@ func TestEventTableMapping(t *testing.T) {
 		hook.EventPermissionRequest: {"permission-request", false},
 		hook.EventSubagentStart:     {"subagent-start", false},
 		hook.EventSubagentStop:      {"subagent-stop", false},
+		hook.EventType("Interrupt"): {"", false},
 	}
 
 	if len(want) != len(EventTable) {
@@ -95,7 +97,7 @@ func TestResolveAdapted(t *testing.T) {
 func TestResolveRecognizedButUnadapted(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"PreCompact", "PostCompact", "PermissionRequest", "SubagentStart", "SubagentStop"} {
+	for _, name := range []string{"PreCompact", "PostCompact", "PermissionRequest", "SubagentStart", "SubagentStop", "Interrupt"} {
 		_, err := Resolve(name)
 		if err == nil {
 			t.Errorf("Resolve(%s) error = nil, want refusal", name)
@@ -107,6 +109,29 @@ func TestResolveRecognizedButUnadapted(t *testing.T) {
 		if IsUnknownEvent(err) {
 			t.Errorf("Resolve(%s) classified as unknown; it is recognized-but-unadapted", name)
 		}
+	}
+}
+
+// TestResolveInterruptNoCounterpart asserts the Interrupt refusal carries the
+// unadapted class AND a truthful message: Interrupt has no MoAI dispatcher
+// counterpart, so the message must not assert that a dispatcher argument
+// exists (SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-003) — the generic unadapted
+// format's "dispatcher arg %q exists" clause is false for an empty arg.
+func TestResolveInterruptNoCounterpart(t *testing.T) {
+	t.Parallel()
+
+	_, err := Resolve("Interrupt")
+	if err == nil {
+		t.Fatal("Resolve(Interrupt) error = nil, want refusal")
+	}
+	if !IsUnadapted(err) {
+		t.Fatalf("Resolve(Interrupt) error = %v, want an unadapted refusal", err)
+	}
+	if IsUnknownEvent(err) {
+		t.Fatal("Resolve(Interrupt) classified as unknown; it is recognized-but-unadapted")
+	}
+	if msg := err.Error(); contains(msg, "dispatcher arg") {
+		t.Fatalf("Resolve(Interrupt) message asserts a dispatcher arg exists, but Interrupt has none: %q", msg)
 	}
 }
 

@@ -35,19 +35,27 @@ type EventRow struct {
 	Adapted bool
 }
 
+// CodexEventInterrupt is the Codex-only interrupt event. It is defined in
+// this package rather than internal/hook because it has no Claude-side hook
+// counterpart — internal/hook is the Claude-side dispatcher vocabulary, and
+// nothing under internal/hook is modified (REQ-7,
+// SPEC-CODEX-HOOK-ADAPTER-001; SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-002).
+const CodexEventInterrupt hook.EventType = "Interrupt"
+
 // EventTable is the complete Codex event set and its dispatcher counterparts.
 //
-// All eleven Codex events have a counterpart: MoAI's dispatcher registers a
-// subcommand for each. Excluding an event from adaptation is therefore a
-// scoping decision about measurement coverage, never an absence of a
-// counterpart — an earlier draft of the SPEC asserted the absence and was
-// wrong.
+// The table carries all twelve documented Codex hook events. Eleven of them
+// have a MoAI dispatcher counterpart: MoAI's dispatcher registers a
+// subcommand for each. Interrupt is the exception — it is Codex-only and has
+// no MoAI dispatcher counterpart, so its DispatcherArg is the empty string,
+// the marker for "no counterpart".
 //
 // Six rows are adapted: the events with both a payload capture and observed
-// behavior. Four are held back for lack of any measurement, and SubagentStop is
-// held back because it was measured NOT to fire — delegation surfaces as
-// PostToolUse with a tool_name beginning "collaboration", so mapping it would
-// wire a dead path.
+// behavior. Four are held back for lack of any measurement, SubagentStop is
+// held back because it was measured NOT to fire on codex-cli 0.147.0 —
+// delegation surfaces as PostToolUse with a tool_name beginning
+// "collaboration" — with 0.153.4 re-verification pending (M2 campaign), and
+// Interrupt is held back because there is no dispatcher path to map it to.
 var EventTable = []EventRow{
 	{hook.EventPreToolUse, "pre-tool", true},
 	{hook.EventPostToolUse, "post-tool", true},
@@ -61,6 +69,8 @@ var EventTable = []EventRow{
 	{hook.EventPermissionRequest, "permission-request", false},
 	{hook.EventSubagentStart, "subagent-start", false},
 	{hook.EventSubagentStop, "subagent-stop", false},
+
+	{CodexEventInterrupt, "", false},
 }
 
 // ErrUnknownEvent marks a name absent from EventTable.
@@ -83,6 +93,12 @@ func Resolve(codexEvent string) (string, error) {
 			continue
 		}
 		if !row.Adapted {
+			if row.DispatcherArg == "" {
+				// No MoAI dispatcher counterpart (Interrupt): asserting a
+				// dispatcher arg exists would be false.
+				return "", fmt.Errorf("%w: %q (no MoAI dispatcher counterpart; this milestone does not adapt it)",
+					ErrUnadapted, codexEvent)
+			}
 			return "", fmt.Errorf("%w: %q (dispatcher arg %q exists; this milestone does not adapt it)",
 				ErrUnadapted, codexEvent, row.DispatcherArg)
 		}
