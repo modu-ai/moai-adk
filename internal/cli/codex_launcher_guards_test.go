@@ -247,9 +247,12 @@ func TestCodexSpecFiles_ExecPrimitivesCodexOnly(t *testing.T) {
 			// The row is the EXPECTATION, not an allowance: a table row
 			// whose file has lost every call site must also fail — otherwise
 			// a file could drift to zero sites (or to a differently-shaped
-			// one) and the stale row would pass vacuously.
+			// one) and the stale row would pass vacuously. This generalizes
+			// t495's launcher floor (3840ff028): a zero-match scan on a
+			// table row is exactly the vacuous-green shape that floor
+			// guarded, now enforced for every table row.
 			if len(matches) == 0 {
-				t.Errorf("%s: expected-first-argument row %s found no process-start primitive — the table must track the source", name, want)
+				t.Errorf("%s: expected-first-argument row %s found no process-start primitive — the table must track the source (a zero-match scan is the vacuous-green shape t495's floor guarded)", name, want)
 				continue
 			}
 			for _, m := range matches {
@@ -259,7 +262,9 @@ func TestCodexSpecFiles_ExecPrimitivesCodexOnly(t *testing.T) {
 			}
 			continue
 		}
-		// Zero-call-site rows are positive assertions.
+		// Zero-call-site files are positive assertions — the t495-era
+		// "codex_readiness.go starts processes" check generalized to every
+		// file outside the table.
 		if len(matches) != 0 {
 			t.Errorf("%s starts processes but has no expected-first-argument row in codexExecFirstArg: %v — update the table", name, matches)
 		}

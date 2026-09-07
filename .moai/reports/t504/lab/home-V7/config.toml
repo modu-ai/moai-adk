@@ -1,0 +1,4 @@
+# t504 cell V7: neutral existing DIRECTORY + enabled = true
+[[skills.config]]
+path = "/tmp/t504-hOuB8eKd/neutral/t504probe"
+enabled = true

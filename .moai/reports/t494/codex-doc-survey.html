@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>t494 — codex 공식 문서 기반 moai 배선 조사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+  --sans:"Noto Sans KR",system-ui,-apple-system,sans-serif;
+  --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px; --radius-panel:12px; --radius-row:8px;
+  --border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);
+  font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px;
+  max-width:1140px;margin:0 auto;padding:0 24px}
+nav.side{position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto;
+  padding:32px 0;font-size:13.5px}
+nav.side .navtitle{font-family:var(--mono);font-size:11px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--g500);margin-bottom:12px}
+nav.side a{display:block;padding:5px 10px;color:var(--g700);text-decoration:none;
+  border-left:2px solid var(--g300);line-height:1.45}
+nav.side a:hover{color:var(--clay-d);border-left-color:var(--clay);background:var(--g100)}
+main{padding:32px 0 96px;min-width:0}
+h1{font-family:var(--serif);font-size:32px;line-height:1.3;margin:0 0 8px;font-weight:700}
+h2{font-family:var(--serif);font-size:23px;margin:56px 0 8px;padding-top:14px;
+  border-top:var(--border);font-weight:700}
+h3{font-family:var(--serif);font-size:17.5px;margin:30px 0 6px;font-weight:700}
+p{margin:12px 0}
+.sub{color:var(--g500);font-size:14.5px;margin:0 0 26px}
+.lead{background:var(--g100);border-left:3px solid var(--olive);
+  padding:14px 18px;border-radius:0 var(--radius-row) var(--radius-row) 0;margin:14px 0 20px}
+.lead p{margin:0}
+.lead p+p{margin-top:9px}
+code{font-family:var(--mono);font-size:.86em;background:var(--g100);
+  padding:1.5px 5px;border-radius:4px;word-break:break-word}
+pre{font-family:var(--mono);font-size:12.8px;line-height:1.65;background:var(--slate);
+  color:#EDEBE4;padding:15px 17px;border-radius:var(--radius-row);overflow-x:auto;margin:14px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--g300);vertical-align:top}
+th{font-weight:700;background:var(--g100);font-size:12.5px;letter-spacing:.02em}
+tbody tr:hover{background:var(--paper)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+blockquote{margin:14px 0;padding:12px 18px;background:var(--paper);
+  border:var(--border);border-left:3px solid var(--clay);border-radius:0 var(--radius-row) var(--radius-row) 0;
+  font-size:14.5px;color:var(--g700)}
+blockquote p{margin:6px 0}
+.callout{border:var(--border);border-radius:var(--radius-panel);padding:16px 20px;margin:20px 0;background:var(--paper)}
+.callout .ct{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--clay-d);margin-bottom:7px;font-weight:500}
+.callout.warn{background:#FCF6F3;border-color:var(--clay)}
+.callout.term{background:var(--g100);border-style:dashed}
+.callout.term .ct{color:var(--olive)}
+.callout p:first-of-type{margin-top:0}
+.callout p:last-child{margin-bottom:0}
+details{border:var(--border);border-radius:var(--radius-row);padding:0;margin:12px 0;background:var(--paper)}
+details[open]{background:var(--paper)}
+summary{cursor:pointer;padding:12px 16px;font-weight:700;font-size:15px;list-style:none;
+  display:flex;align-items:baseline;gap:9px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";color:var(--clay);font-size:12px;flex:none;transition:transform .15s}
+details[open] summary::before{transform:rotate(90deg)}
+details>*:not(summary){padding-left:16px;padding-right:16px}
+details>*:last-child{padding-bottom:14px}
+.meta{width:100%;border:var(--border);border-radius:var(--radius-panel);
+  overflow:hidden;margin:22px 0 30px;font-size:14px;background:var(--paper)}
+.meta td{border-bottom:1px solid var(--g300);padding:9px 14px}
+.meta tr:last-child td{border-bottom:none}
+.meta td:first-child{width:150px;color:var(--g500);font-size:12.5px;background:var(--g100)}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:2.5px 8px;
+  border-radius:999px;border:1px solid var(--g300);background:var(--g100);color:var(--g700);
+  white-space:nowrap;line-height:1.5}
+.pill.ok{border-color:var(--olive);color:#4C5B3A;background:#F1F4EC}
+.pill.gap{border-color:var(--clay);color:var(--clay-d);background:#FCF1EC}
+.pill.no{border-color:var(--g500);color:var(--g500)}
+pre.mermaid{background:var(--paper);color:var(--slate);border:var(--border);
+  text-align:center;padding:18px}
+figure{margin:22px 0;border:var(--border);border-radius:var(--radius-panel);
+  padding:18px 20px 12px;background:var(--paper)}
+figure svg{display:block;width:100%;height:auto;overflow:visible}
+figcaption{font-size:12.5px;color:var(--g500);margin-top:10px;line-height:1.6}
+ul,ol{margin:12px 0;padding-left:22px}
+li{margin:6px 0}
+a{color:var(--clay-d)}
+hr{border:none;border-top:var(--border);margin:40px 0}
+.foot{margin-top:56px;padding-top:18px;border-top:var(--border);
+  font-size:13px;color:var(--g500)}
+.foot a{color:var(--g700)}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 18px}
+  nav.side{position:static;max-height:none;padding:24px 0 0;
+    border-bottom:var(--border);margin-bottom:8px}
+  nav.side a{display:inline-block;border-left:none;border-bottom:2px solid var(--g300);
+    margin:0 6px 6px 0}
+  h1{font-size:26px}
+}
+@media print{
+  nav.side{display:none}
+  .wrap{display:block;max-width:none;padding:0}
+  body{background:#fff;font-size:11pt}
+  pre{background:#f4f4f2;color:#111;border:1px solid #ccc}
+  details{page-break-inside:avoid}
+  details:not([open])>*:not(summary){display:block}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:8pt;color:#666}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="side">
+  <div class="navtitle">목차</div>
+  <a href="#tldr">한눈에</a>
+  <a href="#howto">어떻게 조사했나</a>
+  <a href="#repro">리드 실측 재현</a>
+  <a href="#cover">커버리지 한 장</a>
+  <a href="#ax1">축 1 · 커스텀 프롬프트</a>
+  <a href="#ax2">축 2 · 훅 이벤트</a>
+  <a href="#ax3">축 3 · skills.config</a>
+  <a href="#ax4">축 4 · agents TOML</a>
+  <a href="#ax5">축 5 · MCP / statusline</a>
+  <a href="#cards">카드 후보 18건</a>
+  <a href="#verdict">판정서</a>
+  <a href="#selfcheck">직접 확인해볼 것</a>
+  <a href="#sources">출처</a>
+</nav>
+
+<main>
+
+<h1>codex 공식 문서 기반 moai 배선 조사</h1>
+<p class="sub">카드 t494 · 조사 전용 (코드 수정 0) · 2026-09-07</p>
+
+<table class="meta">
+  <tr><td>트리</td><td><code>.claude/worktrees/t494</code> · 브랜치 <code>WT-codex-doc-survey</code> · HEAD <code>ace1c5440</code></td></tr>
+  <tr><td>관측 대상</td><td><strong>codex-cli 0.153.4</strong> (<code>codex --version</code>)</td></tr>
+  <tr><td>종전 판정 기준</td><td>SPEC-CODEX-SKILL-LOADER-001 = <strong>0.152.1</strong> · <code>agents-codex.yaml</code> 매니페스트 = <strong>0.147.0</strong></td></tr>
+  <tr><td>산출</td><td>판정서 1본. 후속 구현 카드(t496 · t502)의 입력</td></tr>
+</table>
+
+<div class="callout term">
+  <div class="ct">먼저 — 이 문서에 계속 나오는 말들</div>
+  <p><strong>codex-cli</strong> — OpenAI가 만든 터미널용 AI 코딩 도구예요. Claude Code와 같은 자리에 있는 경쟁 도구라고 보면 됩니다. moai는 이 둘 <em>양쪽</em>에 붙는 것을 목표로 해요.</p>
+  <p><strong>배선 (wiring)</strong> — moai가 codex 쪽 설정 파일에 자기 정보를 써 넣어, codex가 moai를 알아보게 만드는 일. 전기 배선처럼 "연결해 두는 작업"입니다.</p>
+  <p><strong>훅 (hook)</strong> — 특정 순간마다 자동으로 불려 나가는 작은 프로그램. "세션이 시작되면 이걸 실행해라" 같은 약속이에요.</p>
+  <p><strong>TOML</strong> — 설정 파일을 적는 문법 하나. codex는 JSON이 아니라 이걸 씁니다.</p>
+  <p><strong>deprecated</strong> — "아직 동작하긴 하는데, 이제 쓰지 마세요"라고 공식적으로 표시된 상태. 곧 사라질 수 있다는 예고입니다.</p>
+</div>
+
+<h2 id="tldr">한눈에</h2>
+
+<div class="lead">
+  <p>이 카드는 운영자 지시 "codex 최신 공식 문서를 기반으로 moai codex 기능을 다시 개발하라"의 <strong>1단계</strong>입니다. 뭘 만들지 정하기 전에, <em>codex가 실제로 무엇을 제공하는지</em>부터 공식 문서로 확정하는 일이에요.</p>
+  <p>중요한 배경 하나. 앞선 조사가 "codex는 <code>~/.codex/prompts</code>로 커스텀 커맨드를 읽는다"고 썼다가 <strong>출처가 없어 철회</strong>했습니다. 그래서 이번엔 근거를 리포 안에서 찾지 않고, <strong>리포 밖 공식 문서</strong>에서 가져왔습니다.</p>
+</div>
+
+<p>결론 일곱 줄:</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:30px">#</th><th>확정한 사실</th><th style="width:92px">상태</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>리드가 준 실측 4건은 이 트리에서 <strong>전부 재현</strong>됐다</td><td><span class="pill ok">일치</span></td></tr>
+<tr><td>2</td><td>커스텀 프롬프트(<code>~/.codex/prompts</code>)는 <strong>실재하지만 deprecated</strong>. 공식 대체는 스킬</td><td><span class="pill">정합</span></td></tr>
+<tr><td>3</td><td>공식 훅 이벤트는 <strong>12종</strong>, moai는 <strong>11종</strong>. 빠진 건 <code>Interrupt</code> 하나</td><td><span class="pill gap">간극</span></td></tr>
+<tr><td>4</td><td><code>[[skills.config]]</code>는 <strong>실재하는 공식 키</strong>이고 "끄는 수단"으로 문서화돼 있다</td><td><span class="pill gap">재검토</span></td></tr>
+<tr><td>5</td><td>스킬 탐색 경로는 <code>.codex/skills</code>가 아니라 <strong><code>.agents/skills</code></strong> — moai는 <strong>이미 거기 미러한다</strong></td><td><span class="pill ok">이미 됨</span></td></tr>
+<tr><td>6</td><td>agents TOML 필수 3필드는 11본 전부 충족. <code>model</code>·<code>[agents]</code>는 미배선</td><td><span class="pill gap">간극</span></td></tr>
+<tr><td>7</td><td>codex <strong>플러그인 표면 전체가 미사용</strong> — 표면은 살아 있는데 moai만 안 쓴다</td><td><span class="pill gap">최대 기회</span></td></tr>
+</tbody>
+</table></div>
+
+<div class="callout warn">
+  <div class="ct">t502에 직접 걸리는 한 문장</div>
+  <p>종전에 <code>[[skills.config]]</code> 작업을 기각한 판정은 <strong>codex-cli 0.152.1</strong> 기준이고, 그때 이 키의 성질은 "확인되지 않음"이었습니다. 그런데 <strong>현행 문서는 이 키를 <code>path</code> + <code>enabled</code> 두 필드로 명시 문서화</strong>합니다.</p>
+  <p>즉 <strong>그때는 옳았고, 지금은 재검토 대상</strong>입니다. 다만 두 공식 페이지가 <code>path</code> 값 모양을 서로 다르게 적고 있어(파일이냐 폴더냐), 그 모호성을 실측으로 먼저 닫아야 합니다.</p>
+</div>
+
+<h2 id="howto">어떻게 조사했나</h2>
+
+<div class="lead">
+  <p>조사 방법 자체가 이 카드의 절반입니다. 앞선 조사가 실패한 이유가 "방법"이었거든요.</p>
+</div>
+
+<pre class="mermaid">
+flowchart TD
+  A["운영자 지시<br/>codex 공식문서 기반 개발"] --> B["1단계 = 이 카드 t494<br/>공식 문서 확정"]
+  B --> C{"근거를 어디서<br/>가져올 것인가"}
+  C -->|"리포 안에서 찾기<br/>(앞선 조사)"| D["출처 없음 → 철회"]
+  C -->|"리포 밖 공식 문서<br/>(이번 카드)"| E["WebSearch 로 후보 찾기"]
+  E --> F["WebFetch 로 본문 실제 읽기"]
+  F --> G{"본문을 읽었는가"}
+  G -->|"아니오 (검색 요약만)"| H["인용하지 않음"]
+  G -->|"예"| I["인용 + 원문 그대로"]
+  I --> J["로컬 0.153.4 실제 표면과 대조"]
+  J --> K["차이 5축 + 카드 후보 18건"]
+  D -.->|"교훈"| C
+</pre>
+
+<noscript>
+  <p><strong>조사 흐름</strong>: 운영자 지시 → 이 카드가 1단계(공식 문서 확정) → 근거를 어디서 가져올지가 갈림길. 앞선 조사는 리포 안에서 찾다가 출처가 없어 철회했고, 이번엔 리포 밖으로 나가 <code>WebSearch</code>로 후보를 찾은 뒤 <code>WebFetch</code>로 <em>본문을 실제로 읽은</em> URL만 인용했습니다. 읽지 못한 페이지는 인용하지 않았습니다. 그다음 로컬 codex-cli 0.153.4의 실제 표면과 대조해 5축의 차이와 카드 후보 18건을 뽑았습니다.</p>
+</noscript>
+
+<p>규칙 셋을 스스로에게 걸었습니다.</p>
+
+<ol>
+<li><strong>URL을 지어내지 않는다.</strong> 검색 결과에 나온 주소만 쓰고, 그중에서도 <code>WebFetch</code>로 본문이 실제로 읽힌 것만 인용했습니다. 검색 요약만 있는 페이지는 이 문서에 없습니다.</li>
+<li><strong>부재 주장에는 대조군을 붙인다.</strong> "0건입니다"는 검사가 고장 나도 똑같이 0건이 나옵니다. 그래서 "반드시 있어야 할 것"을 같은 방법으로 함께 세서, 검사 자체가 살아 있음을 보였습니다.</li>
+<li><strong>없으면 없다고 쓴다.</strong> 안 잰 것은 판정서 §Gaps에 10건 전부 열거했습니다. "지원한다"를 추측으로 쓰지 않았습니다.</li>
+</ol>
+
+<div class="callout warn">
+  <div class="ct">문서 버전에 관한 한계 — 반드시 읽어 주세요</div>
+  <p>OpenAI 공식 문서에는 <strong>버전 스탬프가 없습니다</strong>. 그래서 이 문서의 인용은 "codex-cli 0.153.4를 위한 문서"가 아니라 <strong>2026-09-07에 조회한 현행 문서</strong>입니다.</p>
+  <p>문서가 CLI보다 앞설 수도, 뒤질 수도 있습니다. 로컬 0.153.4의 실제 표면과 대조해 어긋나지 않음을 확인한 항목만 "정합"이라 적었고, 대조하지 못한 항목은 판정서 §Gaps에 남겼습니다.</p>
+</div>
+
+<h2 id="repro">리드 실측 재현</h2>
+
+<div class="lead">
+  <p>리드가 실측값 4건을 주면서 "재현할 것, 인용 금지"라고 했습니다. 남이 잰 숫자를 그대로 옮겨 적으면 그건 내 측정이 아니거든요. 네 건 모두 이 트리에서 다시 쟀고, 전부 일치했습니다.</p>
+</div>
+
+<div class="tw"><table>
+<thead><tr><th style="width:44px">#</th><th>주장</th><th>내가 관측한 것</th><th style="width:60px">판정</th></tr></thead>
+<tbody>
+<tr><td>M1</td><td><code>codex/prompts</code>·<code>prompts_dir</code> 리포 전체 0히트</td><td><code>hits=0</code> · <strong>대조군</strong> <code>codex_task</code> → 115파일</td><td><span class="pill ok">일치</span></td></tr>
+<tr><td>M2</td><td>템플릿 <code>.codex/</code> 하위는 <code>agents/moai/</code>뿐</td><td>디렉터리 3개뿐 — <code>.codex</code>, <code>.codex/agents</code>, <code>.codex/agents/moai</code></td><td><span class="pill ok">일치</span></td></tr>
+<tr><td>M3</td><td><code>/moai</code> 커맨드 16본</td><td>16 (15 <code>.md.tmpl</code> + <code>todo.md</code>)</td><td><span class="pill ok">일치</span></td></tr>
+<tr><td>M4</td><td>11종 중 6종만 adapted</td><td><code>true</code>=6, <code>false</code>=5, 합 11</td><td><span class="pill ok">일치</span></td></tr>
+</tbody>
+</table></div>
+
+<details>
+<summary>M4에 한 가지 정정 — 재현하려다 없는 결함을 만들 수 있는 지점</summary>
+<p>리드는 "<code>Adapted: true</code>인 것이 6종"이라 적었습니다. 의미는 정확합니다. 그런데 실제 Go 코드에서 그 세 번째 값은 <strong>이름 없는 위치 인자</strong>예요 — <code>{hook.EventPreToolUse, "pre-tool", true}</code> 이런 모양입니다.</p>
+<p>그래서 누가 검증하려고 <code>grep -c 'Adapted:'</code>를 돌리면 <strong>0</strong>이 나옵니다. 그러면 "테이블이 비었다"는 없는 결함이 생겨요. 실체는 <code>internal/codexadapter/events.go:52-64</code>이고, 세는 방법은 <code>grep -c 'true},'</code> 쪽입니다.</p>
+</details>
+
+<h2 id="cover">커버리지 한 장</h2>
+
+<div class="lead">
+  <p>축별로 "codex가 공식적으로 제공하는 표면" 대비 "moai가 실제로 쓰고 있는 양"입니다. 막대가 짧을수록 안 쓰고 있는 표면이 넓다는 뜻이고, 그게 곧 확장 여지예요.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 720 262" role="img" aria-label="공식 표면 대비 moai 배선 커버리지 막대 그래프">
+  <line x1="228" y1="14" x2="228" y2="238" stroke="#D1CFC5" stroke-width="1"/>
+  <line x1="228" y1="238" x2="700" y2="238" stroke="#D1CFC5" stroke-width="1"/>
+
+  <!-- 1: 훅 이벤트 열거 11/12 -->
+  <text x="220" y="34" text-anchor="end" font-family="Noto Sans KR,sans-serif" font-size="12.5" fill="#3D3D3A">훅 이벤트 열거</text>
+  <rect x="228" y="22" width="432" height="17" fill="#F0EEE6"/>
+  <rect x="228" y="22" width="396" height="17" fill="#788C5D"/>
+  <text x="670" y="34" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#3D3D3A">11/12</text>
+
+  <!-- 2: 훅 adapted 6/11 -->
+  <text x="220" y="76" text-anchor="end" font-family="Noto Sans KR,sans-serif" font-size="12.5" fill="#3D3D3A">훅 실제 연결(adapted)</text>
+  <rect x="228" y="64" width="432" height="17" fill="#F0EEE6"/>
+  <rect x="228" y="64" width="236" height="17" fill="#D97757"/>
+  <text x="670" y="76" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#3D3D3A">6/11</text>
+
+  <!-- 3: agents 필수 3필드 11/11 -->
+  <text x="220" y="118" text-anchor="end" font-family="Noto Sans KR,sans-serif" font-size="12.5" fill="#3D3D3A">agents 필수 3필드</text>
+  <rect x="228" y="106" width="432" height="17" fill="#F0EEE6"/>
+  <rect x="228" y="106" width="432" height="17" fill="#788C5D"/>
+  <text x="670" y="118" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#3D3D3A">11/11</text>
+
+  <!-- 4: MCP 필드 3/18 -->
+  <text x="220" y="160" text-anchor="end" font-family="Noto Sans KR,sans-serif" font-size="12.5" fill="#3D3D3A">MCP 서버 설정 필드</text>
+  <rect x="228" y="148" width="432" height="17" fill="#F0EEE6"/>
+  <rect x="228" y="148" width="72" height="17" fill="#D97757"/>
+  <text x="670" y="160" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#3D3D3A">3/18</text>
+
+  <!-- 5: skills.config 쓰기 0 -->
+  <text x="220" y="202" text-anchor="end" font-family="Noto Sans KR,sans-serif" font-size="12.5" fill="#3D3D3A">skills.config 발행</text>
+  <rect x="228" y="190" width="432" height="17" fill="#F0EEE6"/>
+  <rect x="228" y="190" width="2" height="17" fill="#87867F"/>
+  <text x="670" y="202" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#87867F">0 (읽기만)</text>
+
+  <!-- 6: plugin 0 -->
+  <text x="220" y="232" text-anchor="end" font-family="Noto Sans KR,sans-serif" font-size="12.5" fill="#3D3D3A">플러그인 표면</text>
+  <rect x="228" y="220" width="432" height="17" fill="#F0EEE6"/>
+  <rect x="228" y="220" width="2" height="17" fill="#87867F"/>
+  <text x="670" y="232" font-family="JetBrains Mono,monospace" font-size="11.5" fill="#87867F">0 (미사용)</text>
+
+  <text x="228" y="256" font-family="Noto Sans KR,sans-serif" font-size="11" fill="#87867F">초록 = 대체로 정합 · 주황 = 간극 · 회색 = 완전 미사용</text>
+</svg>
+<figcaption>가로축은 "공식 표면 중 moai가 쓰는 비율". 분모는 전부 공식 문서에서 센 값, 분자는 이 트리에서 센 값입니다. 아래 각 축에 세는 명령을 적어 뒀어요.</figcaption>
+</figure>
+
+<h2 id="ax1">축 1 · 커스텀 프롬프트 / 커맨드 표면</h2>
+
+<div class="lead">
+  <p><strong>묻는 것</strong>: <code>/moai plan</code> 같은 moai의 슬래시 커맨드 16본을 codex 쪽에도 그대로 노출할 수 있을까? 그러려면 codex가 "사용자가 만든 커맨드"를 어디서 읽는지 알아야 합니다.</p>
+  <p><strong>답</strong>: 그런 자리는 있었지만 <strong>지금은 쓰지 말라고 공식적으로 표시</strong>돼 있고, 대신 <strong>스킬</strong>을 쓰라고 합니다.</p>
+</div>
+
+<h3>공식 문서가 말하는 것</h3>
+
+<blockquote>
+<p><strong>Deprecation Status:</strong> Custom prompts are deprecated. The documentation explicitly states: "Use skills for reusable prompts."</p>
+<p><strong>Directory Location:</strong> Custom prompts are stored in <code>~/.codex/prompts/</code>.<br>
+<strong>Invocation Syntax:</strong> <code>/prompts:promptname</code> in both the Codex CLI and IDE extension.<br>
+<strong>Placeholder Rules:</strong> <code>$1</code>–<code>$9</code>, named <code>$FILE</code> (<code>KEY=value</code>), <code>$ARGUMENTS</code>, <code>$$</code> for a literal <code>$</code>.</p>
+<p>Custom prompts "require explicit invocation and live in your local Codex home directory... they're not shared through your repository."</p>
+</blockquote>
+
+<p>스킬 쪽 호출 규약은 이렇습니다:</p>
+
+<blockquote>
+<p>In Codex, invoke skills explicitly using the <code>$</code> sigil: <code>$skill-name</code> or <code>/skills</code> to browse available skills.</p>
+</blockquote>
+
+<h3>현재 moai와의 차이</h3>
+
+<p>차이가 아니라 <strong>정합</strong>입니다. moai는 <code>~/.codex/prompts</code>에 아무것도 쓰지 않고(M1 = 0히트), 그게 문서 권고와 같은 방향이에요.</p>
+
+<details>
+<summary>실제로 확인한 것 — 이 머신의 <code>~/.codex/</code> 안</summary>
+<p><code>~/.codex/prompts</code>는 <strong>없습니다</strong>(<code>ls</code> → No such file or directory). 대신 <code>~/.codex/skills</code>와 <code>~/.codex/plugins</code>가 <strong>있습니다</strong>. 문서가 말하는 이동 방향("프롬프트 → 스킬")이 실제 디스크에도 그대로 찍혀 있는 셈이에요.</p>
+<p>다만 이건 <strong>이 머신 한 대의 관측</strong>입니다. 규약 판정은 문서 인용에 기댔습니다.</p>
+</details>
+
+<h3>앞선 조사는 왜 틀렸나</h3>
+
+<div class="callout">
+  <div class="ct">되풀이하지 않기 위한 기록</div>
+  <p>앞선 Explore는 "<code>~/.codex/prompts/*.md</code>가 그 메커니즘"이라 썼다가 <strong>출처 없음으로 철회</strong>했습니다. 이번 조사 결과, 그 진술은 <strong>절반만 틀렸습니다</strong>.</p>
+  <p>그런 메커니즘은 <strong>실재했고 지금도 문서에 남아 있습니다</strong>. 다만 deprecated고 스킬로 대체됐죠. 즉 <strong>철회는 옳았지만 이유가 달랐습니다</strong> — 근거가 없던 것이지, 사실이 없던 것이 아니었어요.</p>
+  <p>실패의 원인은 <strong>근거를 리포 안에서 찾으려 한 것</strong>입니다. codex의 규약은 codex 쪽 문서에 있지 moai 리포에 있을 이유가 없거든요. 이 카드가 리포 밖으로 나간 이유가 그것입니다.</p>
+</div>
+
+<h3>카드 후보</h3>
+
+<div class="tw"><table>
+<thead><tr><th style="width:52px">후보</th><th>내용</th><th style="width:74px">권고</th></tr></thead>
+<tbody>
+<tr><td><strong>C1</strong></td><td><code>/moai</code> 16본을 codex <strong>스킬</strong>로 발행하는 emitter 붙이기. moai는 이미 <code>.agents/skills/</code> 미러를 만들고 있으니(축 3), 커맨드 본문을 스킬 모양으로 내보내는 발행기만 있으면 됩니다</td><td><span class="pill ok">채택</span></td></tr>
+<tr><td><strong>C2</strong></td><td><code>~/.codex/prompts</code>에 발행하기</td><td><span class="pill gap">기각</span></td></tr>
+</tbody>
+</table></div>
+
+<p>C2를 기각한 이유는 둘입니다. deprecated 표면이고, 사용자 홈에 쓰는 방식이라 <strong>리포로 공유가 안 됩니다</strong> — 문서가 직접 그 점을 지적하며 스킬을 대안으로 지목합니다.</p>
+
+<h2 id="ax2">축 2 · 훅 이벤트 전체 목록</h2>
+
+<div class="lead">
+  <p><strong>묻는 것</strong>: codex가 "이 순간에 프로그램을 불러 준다"고 약속하는 순간이 총 몇 개이고, moai는 그중 몇 개를 잡고 있나?</p>
+  <p><strong>답</strong>: 공식 <strong>12개</strong>, moai가 열거한 건 <strong>11개</strong>. 빠진 하나는 <code>Interrupt</code>입니다.</p>
+</div>
+
+<h3>공식 문서가 말하는 것</h3>
+
+<blockquote>
+<p>The documentation lists these hook events: <code>SessionStart</code>, <code>SessionEnd</code>, <code>SubagentStart</code>, <code>SubagentStop</code>, <code>PreToolUse</code>, <code>PermissionRequest</code>, <code>PostToolUse</code>, <code>PreCompact</code>, <code>PostCompact</code>, <code>UserPromptSubmit</code>, <code>Stop</code>, and <code>Interrupt</code>.</p>
+</blockquote>
+
+<details>
+<summary>훅이 어디서 읽히고, 어떤 모양으로 적히는지 (원문 인용)</summary>
+<blockquote>
+<p>Codex discovers hooks from these paths: <code>~/.codex/hooks.json</code>, <code>~/.codex/config.toml</code>, <code>&lt;repo&gt;/.codex/hooks.json</code>, <code>&lt;repo&gt;/.codex/config.toml</code>.</p>
+<p>"If more than one hook source exists, Codex loads all matching hooks." · "Higher-precedence config layers don't replace lower-precedence hooks."</p>
+</blockquote>
+<p>설정 파일 안에 직접 적는 형태:</p>
+<pre><code>[[hooks.SessionStart]]
+matcher = "startup|resume"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "python3 ~/.codex/hooks/session_start.py"</code></pre>
+<p>동기(기본)는 "Codex waits for a command hook to finish", 배경(<code>"async": true</code>)은 끝나면 다음 안전한 지점에 결과를 전달하며 <strong>세션당 동시 8개</strong>가 상한입니다.</p>
+<p>훅이 받는 공통 입력: <code>session_id</code>, <code>transcript_path</code>, <code>cwd</code>, <code>hook_event_name</code>, <code>model</code>, <code>permission_mode</code>. 돌려주는 판정은 종료코드 <code>0</code>=성공 / <code>2</code>=차단이고, 차단은 이런 모양입니다:</p>
+<pre><code>{ "hookSpecificOutput": {
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "reason text" } }</code></pre>
+</details>
+
+<h3>현재 moai와의 차이 — 4가지</h3>
+
+<p><strong>차이 1 — <code>Interrupt</code>가 없습니다.</strong></p>
+
+<div class="callout">
+  <div class="ct">워크드 예시 — "없다"를 어떻게 증명했나</div>
+  <p>부재는 증명하기 까다롭습니다. 검사가 고장 나도 똑같이 "없음"이 나오거든요. 그래서 <strong>두 번</strong> 셌습니다.</p>
+  <pre><code>$ grep -rn 'EventInterrupt' internal/
+→ 0히트                          ← 찾는 것
+
+$ grep -rn 'EventStop\b' internal/hook/*.go
+→ internal/hook/audit_test.go:493 …   ← 대조군: 반드시 있어야 할 것</code></pre>
+  <p>대조군이 검출됐으니 <strong>검사 자체는 살아 있습니다</strong>. 그러므로 첫 줄의 0히트는 진짜 0입니다. moai가 열거한 11종은 <code>internal/codexadapter/events.go:52-64</code>에 있고, 공식 12종과 대조하면 정확히 <code>Interrupt</code> 하나가 빕니다.</p>
+</div>
+
+<p><strong>차이 2 — adapted 6종은 문서 기준이 아니라 측정 기준입니다.</strong> 이건 결함이 아니에요. 소스 주석(<code>events.go:40-51</code>)이 직접 밝힙니다: 나머지 5종을 뺀 것은 "상대가 없어서"가 아니라 <strong>측정 커버리지에 대한 판단</strong>이고, <code>SubagentStop</code>은 <strong>발화하지 않는 것으로 측정</strong>됐다고요(위임이 <code>tool_name</code>이 <code>collaboration</code>으로 시작하는 <code>PostToolUse</code>로 나타남).</p>
+
+<p>이 서술은 문서에 <code>SubagentStop</code>이 정식 이벤트로 남아 있는 사실과 <strong>모순되지 않습니다</strong> — 문서는 이벤트의 <em>존재</em>를, 주석은 이 배선에서의 <em>발화 여부</em>를 말하니까요. 다만 그 측정은 0.152.1 이전 것이라 <strong>0.153.4에서 다시 잴 가치</strong>가 있습니다.</p>
+
+<p><strong>차이 3 — 커맨드 형태는 정합.</strong> <code>internal/codexwiring/hooks.go:104</code>가 <code>moai hook &lt;arg&gt; --harness codex</code>를 <code>.codex/hooks.json</code>에 씁니다. 문서의 <code>type="command"</code> 규약, 파일 경로 규약과 모두 맞습니다.</p>
+
+<p><strong>차이 4 — <code>async</code> / <code>matcher</code> 미사용.</strong> moai가 발행하는 핸들러에 이 둘이 실린다는 근거를 찾지 못했습니다. 다만 <strong>없다고 단정하지는 않습니다</strong> — 판정서 §Gaps에 미관측으로 남겼습니다.</p>
+
+<h3>카드 후보</h3>
+
+<div class="tw"><table>
+<thead><tr><th style="width:52px">후보</th><th>내용</th><th style="width:74px">권고</th></tr></thead>
+<tbody>
+<tr><td><strong>H1</strong></td><td><code>Interrupt</code>를 테이블에 <em>미adapted</em> 행으로 추가. 12종 열거를 문서와 맞추고, 실제 연결 여부는 측정 뒤에 결정</td><td><span class="pill ok">채택·소</span></td></tr>
+<tr><td><strong>H2</strong></td><td>미adapted 5종을 0.153.4에서 재측정(특히 <code>SubagentStop</code>). 판정이 뒤집히면 6종 → 최대 11종으로 확장</td><td><span class="pill ok">채택·중</span></td></tr>
+<tr><td><strong>H3</strong></td><td>배경 훅(<code>async</code>) 도입 — 동시 8개 상한을 넘기지 않는 설계가 전제</td><td><span class="pill">조건부</span></td></tr>
+<tr><td><strong>H4</strong></td><td><code>allow_managed_hooks_only</code> (기업 배포용 관리형 훅)</td><td><span class="pill no">보류</span></td></tr>
+</tbody>
+</table></div>
+
+<h2 id="ax3">축 3 · <code>[[skills.config]]</code> 규약</h2>
+
+<div class="lead">
+  <p><strong>묻는 것</strong>: moai의 스킬들을 codex에 보이게 하려면 <code>[[skills.config]]</code>라는 설정 항목을 써야 하나?</p>
+  <p><strong>답</strong>: <strong>아니요 — 방향이 반대입니다.</strong> 스킬을 <em>보이게</em> 하는 건 <strong>경로 관례</strong>이고, 이 키는 스킬을 <strong>끄는</strong> 수단입니다. 그리고 moai는 이미 그 경로 관례를 지키고 있습니다.</p>
+</div>
+
+<h3>공식 문서가 말하는 것 — 탐색 경로</h3>
+
+<div class="callout warn">
+  <div class="ct">가장 중요한 정정</div>
+  <p>codex가 스킬을 찾는 자리는 <code>.codex/skills</code>가 <strong>아니라</strong> <code>.agents/skills</code>입니다. 이름이 <code>.codex</code>로 시작하지 않아요.</p>
+</div>
+
+<div class="tw"><table>
+<thead><tr><th style="width:90px">Scope</th><th>Path</th></tr></thead>
+<tbody>
+<tr><td>REPO</td><td><code>$CWD/.agents/skills</code></td></tr>
+<tr><td>REPO</td><td><code>$CWD/../.agents/skills</code></td></tr>
+<tr><td>REPO</td><td><code>$REPO_ROOT/.agents/skills</code></td></tr>
+<tr><td>USER</td><td><code>$HOME/.agents/skills</code></td></tr>
+<tr><td>ADMIN</td><td><code>/etc/codex/skills</code></td></tr>
+<tr><td>SYSTEM</td><td>Bundled with Codex</td></tr>
+</tbody>
+</table></div>
+
+<details>
+<summary>스킬 폴더 모양과 필수 프론트매터 (원문 인용)</summary>
+<pre><code>my-skill/
+├── SKILL.md (Required)
+├── scripts/ (Optional)
+├── references/ (Optional)
+├── assets/ (Optional)
+└── agents/openai.yaml (Optional)</code></pre>
+<pre><code>---
+name: skill-name
+description: Explain exactly when this skill should and should not trigger.
+---</code></pre>
+</details>
+
+<h3>공식 문서가 말하는 것 — 이 키의 용도</h3>
+
+<blockquote>
+<p>To disable skills without deletion, use this in <code>~/.codex/config.toml</code>:</p>
+<pre style="background:none;color:inherit;padding:0;margin:8px 0"><code>[[skills.config]]
+path = "/path/to/skill/SKILL.md"
+enabled = false</code></pre>
+</blockquote>
+
+<p>설정 레퍼런스 쪽 필드 정의:</p>
+
+<blockquote>
+<p><strong><code>[[skills.config]]</code></strong> — Array of skill configurations: <code>path</code> (string, path to skill folder), <code>enabled</code> (boolean)</p>
+</blockquote>
+
+<div class="callout warn">
+  <div class="ct">문서 두 곳이 서로 다르게 적습니다</div>
+  <p>같은 <code>path</code> 키를 두고, 스킬 작성 문서는 <strong><code>SKILL.md</code> 파일</strong>을 가리키는 예시를 보여 주고, 설정 레퍼런스는 <strong>"path to skill folder"</strong>(폴더)라고 적습니다.</p>
+  <p>어느 쪽이 참인지 <strong>측정하지 않았습니다</strong>. 이 축을 구현하는 카드는 <strong>이 모호성을 실측으로 먼저 닫아야 합니다</strong>(카드 S1). 문서만 보고 한쪽을 골라 구현하면 조용히 아무 스킬도 안 걸리는 배선이 나올 수 있어요.</p>
+</div>
+
+<h3>현재 moai와의 차이</h3>
+
+<p><strong>정합 1 — 미러는 이미 옳은 자리에 있습니다.</strong></p>
+
+<div class="callout">
+  <div class="ct">워크드 예시 — moai가 실제로 만드는 것</div>
+  <p><code>internal/template/skill_mirror.go:52</code>:</p>
+  <pre><code>var mirrorSkillsRelDir = filepath.Join(".agents", "skills")</code></pre>
+  <p>파일 머리말(<code>:4-5</code>)이 이유를 직접 적습니다 — codex는 <code>.claude/skills/</code>를 보지 않고 <code>&lt;repo&gt;/.agents/skills/</code>를 스캔하므로, 배포하는 스킬마다 이런 <strong>심볼릭 링크</strong>(원본을 가리키는 바로가기)를 만듭니다:</p>
+  <pre><code>.agents/skills/&lt;name&gt;  →  ../../.claude/skills/&lt;name&gt;</code></pre>
+  <p>링크를 못 만드는 플랫폼에서는 실제 폴더 복사로 폴백합니다. 진입점은 <code>WithSkillMirror</code>이고 배포당 1회 돕니다(<code>:171</code>).</p>
+  <p>그러니까 <strong>"moai에 codex 스킬 배선이 없다"는 진술은 거짓입니다.</strong> 있습니다 — 다만 설정 키가 아니라 <strong>경로 관례</strong>를 통한 것입니다.</p>
+</div>
+
+<p><strong>차이 1 — <code>[[skills.config]]</code>는 읽기만 하고 쓰지 않습니다.</strong> <code>internal/codexwiring/skills.go</code>가 자기 주석(<code>:9</code>)에 "READ-ONLY by construction — nothing here writes"라고 적어 뒀습니다. 소비처는 <code>moai doctor</code>의 권고 표면뿐(<code>internal/cli/doctor_codex.go:303,363,475</code>)이고, <strong>발행자는 없습니다</strong>.</p>
+
+<p><strong>차이 2 — 종전 판정의 유효 범위.</strong> 이게 t502의 핵심입니다.</p>
+
+<details open>
+<summary>SPEC-CODEX-SKILL-LOADER-001이 실제로 기록한 것</summary>
+<ul>
+<li>상태는 <code>completed</code>, 관측 버전은 <code>codex_version_observed: "codex-cli 0.152.1"</code> (<code>progress.md:90</code>).</li>
+<li>판정 요지: <code>&lt;repo&gt;/.agents/skills/&lt;name&gt;/SKILL.md</code>는 <strong>실제로 로드된다</strong>(두 독립 탐침으로 확인).</li>
+<li>반면 <code>skills</code> 키의 세 성질(존재 · 값 모양 · 잘못된 값에서의 동작)은 <strong>전부 "확인되지 않음"</strong>으로 남았습니다(AC-CSL-004).</li>
+<li>그래서 <code>skill-loader</code> 매니페스트 행은 <code>documented-drop</code>으로 처리됐습니다 — 이번 회차엔 구현하지 않겠다고 <em>기록하고</em> 뺀 것이지, 조용히 뺀 게 아닙니다.</li>
+<li>매니페스트 최상단 <code>codex_measured_version</code>은 <code>"0.147.0"</code>으로 <strong>의도적으로 유지</strong>됐습니다(<code>agents-codex.yaml:14</code>). 이번에 잰 축이 하나뿐인데 최상단을 올리면 <em>갖지 않은 커버리지를 주장하게 되기</em> 때문이라고 <code>progress.md:118</code>에 적혀 있습니다. 정직한 처리예요.</li>
+</ul>
+<p><strong>그래서 무엇이 바뀌었나</strong>: 0.152.1 시점에 "확인되지 않음"이던 축이, 현행 문서에서는 <code>path</code> + <code>enabled</code>로 <strong>명시 문서화</strong>됐습니다. <strong>그때의 기각은 옳았고, 지금은 재검토 대상</strong>입니다.</p>
+</details>
+
+<p><strong>차이 3 — 용도의 방향.</strong> 문서상 이 키는 <strong>끄는 수단</strong>이지 <em>등록</em> 수단이 아닙니다. 등록은 경로 관례가 합니다. 따라서 moai가 이 테이블에 쓸 이유는 "스킬을 보이게 하려고"가 아니라 <strong>"특정 스킬을 끄려고"</strong>일 때뿐입니다.</p>
+
+<details>
+<summary>참고 — 유령 등록 49건</summary>
+<p>SPEC은 저자 머신의 <code>~/.codex/config.toml</code>에 <strong>존재하지 않는 경로를 가리키는 <code>[[skills.config]]</code> 49건</strong>이 남아 있었고, 이는 Go 이전 버전 moai가 남긴 죽은 장부라고 기록합니다. <code>moai doctor</code>가 이걸 stale로 보고는 하는데, 치우지는 않습니다(<code>doctor_codex.go:363</code>). 카드 S3의 근거예요.</p>
+</details>
+
+<h3>카드 후보</h3>
+
+<div class="tw"><table>
+<thead><tr><th style="width:52px">후보</th><th>내용</th><th style="width:74px">권고</th></tr></thead>
+<tbody>
+<tr><td><strong>S1</strong></td><td><code>path</code> 값 모양(파일 vs 폴더)을 실측으로 확정. 두 형태를 각각 넣고 <code>codex debug prompt-input</code>으로 로드 여부 판정. <strong>다른 모든 skills.config 작업의 선행 조건</strong></td><td><span class="pill ok">채택</span></td></tr>
+<tr><td><strong>S3</strong></td><td>유령 <code>[[skills.config]]</code> 정리 verb — doctor가 탐지만 하고 치우지 않으니</td><td><span class="pill ok">채택·소</span></td></tr>
+<tr><td><strong>S4</strong></td><td>매니페스트 <code>codex_measured_version</code>을 0.153.4로 올리는 <strong>전수 재측정</strong>. 지금의 축별 개별 기록은 정직하지만 축이 늘수록 읽기 어려워집니다</td><td><span class="pill ok">채택</span></td></tr>
+<tr><td><strong>S2</strong></td><td>선택적 비활성화 발행. <code>moai update</code>가 사용자 스킬을 끄는 건 침습적이라 기본 비활성 + 명시적 opt-in</td><td><span class="pill">조건부</span></td></tr>
+</tbody>
+</table></div>
+
+<h2 id="ax4">축 4 · agents TOML 소비 규약</h2>
+
+<div class="lead">
+  <p><strong>묻는 것</strong>: moai는 자기 에이전트 11개를 codex용 TOML 파일로 이미 내보내고 있습니다. 그 파일들이 공식 규격에 맞나? 그리고 안 쓰고 있는 필드는 뭔가?</p>
+  <p><strong>답</strong>: <strong>필수 3필드는 11본 전부 맞습니다.</strong> 다만 선택 필드 <code>model</code>, 에이전트별 <code>skills.config</code>, 그리고 전역 <code>[agents]</code> 테이블이 통째로 비어 있습니다.</p>
+</div>
+
+<h3>공식 문서가 말하는 것</h3>
+
+<blockquote>
+<p><strong>File Locations</strong> — Personal agents: <code>~/.codex/agents/</code> · Project-scoped agents: <code>.codex/agents/</code></p>
+<p><strong>Required Fields</strong> — Every custom agent file must include: <code>name</code>, <code>description</code>, <code>developer_instructions</code>.</p>
+</blockquote>
+
+<pre><code>name = "pr_explorer"
+description = "Read-only codebase explorer for gathering evidence before changes."
+model = "gpt-5.3-codex-spark"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+developer_instructions = """
+Stay in exploration mode. Trace execution paths, cite files and symbols.
+"""</code></pre>
+
+<blockquote>
+<p><strong>Built-in Agents</strong> — <code>default</code>, <code>worker</code>, <code>explorer</code></p>
+<p><strong>Optional Config Keys in Agent Files</strong> — <code>model</code>, <code>model_reasoning_effort</code>, <code>sandbox_mode</code>, <code>mcp_servers</code>, <code>skills.config</code></p>
+<p><strong>Global <code>[agents]</code> Table</strong> — <code>enabled</code>, <code>interrupt_message</code>, <code>max_concurrent_threads_per_session</code>, <code>max_threads</code>, <code>default_subagent_model</code>, <code>default_subagent_reasoning_effort</code></p>
+<p><strong>Precedence</strong> — "Precedence resolves from explicit spawn values, then <code>[agents]</code> defaults, then parent values."</p>
+</blockquote>
+
+<h3>현재 moai와의 차이</h3>
+
+<p><strong>정합 1 — 경로와 필수 3필드는 일치합니다.</strong> <code>internal/template/templates/.codex/agents/moai/*.toml</code> <strong>11본</strong> 전부 <code>name</code> / <code>description</code> / <code>developer_instructions</code>를 갖습니다. 대표 헤더(<code>manager-lead.toml:1-6</code>):</p>
+
+<pre><code># Generated by the MoAI agent dual-publication emitter; regenerate, do not edit.
+# Neutral source: .claude/agents/moai/manager-lead.md (body carried verbatim).
+name = "manager-lead"
+description = '''</code></pre>
+
+<div class="tw"><table>
+<thead><tr><th>공식이 허용하는 것</th><th>moai가 실제로 내보내는 양</th><th style="width:74px">상태</th></tr></thead>
+<tbody>
+<tr><td>필수 <code>name</code>/<code>description</code>/<code>developer_instructions</code></td><td>11본 / 11본</td><td><span class="pill ok">정합</span></td></tr>
+<tr><td>선택 <code>model_reasoning_effort</code></td><td>11본 전부</td><td><span class="pill ok">사용</span></td></tr>
+<tr><td>선택 <code>sandbox_mode</code></td><td>11본 전부</td><td><span class="pill ok">사용</span></td></tr>
+<tr><td>선택 <code>mcp_servers</code></td><td>3본 (<code>manager-develop</code>·<code>manager-docs</code>·<code>manager-lead</code>)</td><td><span class="pill">부분</span></td></tr>
+<tr><td>선택 <code>model</code></td><td><strong>0본</strong></td><td><span class="pill gap">미사용</span></td></tr>
+<tr><td>선택 <code>skills.config</code></td><td><strong>0본</strong></td><td><span class="pill gap">미사용</span></td></tr>
+<tr><td>전역 <code>[agents]</code> 테이블</td><td><strong>미배선</strong></td><td><span class="pill gap">공백</span></td></tr>
+</tbody>
+</table></div>
+
+<details>
+<summary><code>model</code>을 안 싣는 게 왜 눈에 띄는가</summary>
+<p>문서상 <code>model</code>을 비우면 서브에이전트는 부모의 모델을 <strong>상속</strong>합니다("the subagent inherits the parent agent's model"). 그러니 그 자체로 잘못된 건 아니에요.</p>
+<p>눈에 띄는 이유는 <strong>비대칭</strong>입니다. moai는 Claude 쪽에서는 에이전트를 띄울 때마다 모델을 명시 주입하는 규율을 갖고 있습니다(<code>agent-common-protocol.md</code> § Per-Spawn Model Injection). 같은 정책이 codex 쪽에는 실려 있지 않아요.</p>
+<p>이게 <strong>의도인지 누락인지 판정하지 않았습니다</strong> — 근거를 찾지 못했고, 없다고 단정하지도 않았습니다. 카드 A3이 그 판정입니다.</p>
+</details>
+
+<h3>카드 후보</h3>
+
+<div class="tw"><table>
+<thead><tr><th style="width:52px">후보</th><th>내용</th><th style="width:74px">권고</th></tr></thead>
+<tbody>
+<tr><td><strong>A1</strong></td><td><strong>전역 <code>[agents]</code> 테이블 발행.</strong> <code>default_subagent_model</code>·<code>default_subagent_reasoning_effort</code>·<code>max_concurrent_threads_per_session</code>은 moai가 Claude 쪽에 <em>이미 갖고 있는</em> 정책(모델 프로파일, fanout 상한)의 codex 대응물입니다. 배선 공백이 가장 큰 축</td><td><span class="pill ok">채택·중</span></td></tr>
+<tr><td><strong>A2</strong></td><td>에이전트별 <code>skills.config</code> 스코핑. moai는 에이전트마다 <code>skills:</code> 프론트매터를 이미 갖고 있어 소스가 존재합니다</td><td><span class="pill ok">채택·중</span></td></tr>
+<tr><td><strong>A3</strong></td><td><code>model</code> 미발행이 의도인지 누락인지 판정</td><td><span class="pill">조사</span></td></tr>
+<tr><td><strong>A4</strong></td><td><code>[agents.&lt;name&gt;].config_file</code> 커스텀 롤 등록 — 파일 자동 발견이 이미 되므로 추가 이득 불분명</td><td><span class="pill no">보류</span></td></tr>
+</tbody>
+</table></div>
+
+<h2 id="ax5">축 5 · MCP / statusline 최신 스키마</h2>
+
+<div class="lead">
+  <p><strong>MCP</strong>(Model Context Protocol)는 AI 도구가 외부 프로그램의 기능을 빌려 쓰는 표준 통로예요. moai는 자기 자신을 그런 통로로 codex에 등록해 둡니다. <strong>statusline</strong>은 터미널 아래쪽에 뜨는 상태 표시줄이고요.</p>
+  <p><strong>답</strong>: MCP 등록은 적법하지만 <strong>18개 필드 중 3개만</strong> 씁니다. 그리고 <strong>플러그인이라는 표면 전체가 통째로 미사용</strong>입니다 — 여기가 이번 조사 최대의 발견입니다.</p>
+</div>
+
+<h3>공식 문서가 말하는 것</h3>
+
+<p><strong><code>[mcp_servers.&lt;id&gt;]</code> 전체 필드</strong>:</p>
+
+<blockquote>
+<p><code>command</code>, <code>args</code>, <code>cwd</code>, <code>env</code> (map), <code>env_vars</code> (array), <code>url</code> (for HTTP servers), <code>bearer_token_env_var</code>, <code>http_headers</code>, <code>http_headers_helper</code>, <code>enabled</code>, <code>required</code>, <code>startup_timeout_sec</code>, <code>tool_timeout_sec</code>, <code>enabled_tools</code>, <code>disabled_tools</code>, <code>default_tools_approval_mode</code>, <code>tools.&lt;tool&gt;.approval_mode</code>, <code>tools.&lt;tool&gt;.output_token_limit</code></p>
+</blockquote>
+
+<p>최상위 테이블 전체: <code>[agents]</code>, <code>[mcp_servers.&lt;id&gt;]</code>, <code>[permissions.&lt;name&gt;]</code>, <code>[[skills.config]]</code>, <code>[hooks]</code>, <code>[tui]</code>, <code>[otel]</code>.</p>
+
+<h3>현재 moai와의 차이</h3>
+
+<p><strong>정합 1 — MCP 등록은 적법하고 보수적입니다.</strong> <code>internal/codexwiring/configtoml.go:11-22</code>가 <strong>없을 때만</strong> 이걸 씁니다:</p>
+
+<pre><code>[mcp_servers.moai]
+command = "moai"
+args = ["mcp-server"]
+default_tools_approval_mode = "writes"</code></pre>
+
+<p><code>writes</code>를 고른 근거가 소스 주석에 있습니다 — 승인이 필요한 도구 집합이 <em>도구 이름 목록</em>이 아니라 <em>서버가 붙인 읽기전용 표시</em>를 타게 하려는 것. 좋은 선택입니다.</p>
+
+<p><strong>차이 2 — statusline 허용목록은 문서로 검증할 수 없습니다.</strong></p>
+
+<div class="callout">
+  <div class="ct">"없다"를 정직하게 쓴 자리</div>
+  <p><code>configtoml.go:25-40</code>의 <strong>29토큰</strong> 허용목록은 codex <em>소스 코드의 열거형</em>에서 뜬 것이고, 그 사실이 SPEC-CODEX-WIRING-001 §A.6에 기록돼 있다고 주석이 밝힙니다. 코드에서 실측한 개수도 <strong>29</strong>로 주석과 일치합니다.</p>
+  <p>그런데 이번 조사에서 <strong>공식 문서는 이 토큰들을 열거하지 않았습니다</strong>. 고급 설정 문서를 읽었지만 "does not enumerate valid status-line item identifiers or tokens"였어요.</p>
+  <p>그러니 이 목록은 <strong>문서로는 검증 불가</strong>합니다. 결함은 아닙니다 — 주석 자체가 "no blind upstream tracking; additions are an explicit judgment at documentation-refresh time"라고 정책을 밝혀 뒀거든요. <strong>기록된 선택</strong>입니다. 다만 갱신 시점을 정하는 트리거가 없어서, 그게 카드 M3입니다.</p>
+</div>
+
+<p><strong>차이 3 — 플러그인 표면 전체가 미배선입니다.</strong> 이번 조사 최대의 발견입니다.</p>
+
+<div class="callout warn">
+  <div class="ct">워크드 예시 — 표면은 살아 있고 moai만 안 쓴다</div>
+  <pre><code>$ git grep -lE 'codex-plugin' -- internal/ pkg/ cmd/
+→ 0히트                        ← moai 쪽
+
+$ git grep -l 'codexwiring' -- internal/
+→ 22파일                       ← 대조군: 검사는 살아 있음</code></pre>
+  <p>반면 로컬 codex-cli 0.153.4에는 <code>codex plugin {add,list,marketplace,remove}</code>가 <strong>실재</strong>하고, <code>~/.codex/plugins/cache/</code> 아래엔 마켓플레이스가 <strong>9개나 이미 깔려</strong> 있습니다(<code>moai-cowork</code> 포함).</p>
+</div>
+
+<p>왜 이게 큰가. 플러그인은 <strong>스킬 + MCP + 훅을 한 묶음으로 배포</strong>하는 공식 경로입니다. 지금 moai는 이 셋을 <strong>제각각 다른 방법</strong>으로 사용자 트리에 밀어 넣고 있어요:</p>
+
+<div class="tw"><table>
+<thead><tr><th>무엇을</th><th>지금 방식 (3중 침습)</th><th>플러그인이면</th></tr></thead>
+<tbody>
+<tr><td>스킬</td><td><code>.agents/skills/</code>에 심볼릭 링크 생성</td><td rowspan="3" style="vertical-align:middle;background:#F1F4EC"><strong>설치 단위 하나</strong><br><code>.codex-plugin/plugin.json</code></td></tr>
+<tr><td>MCP</td><td>사용자 <code>.codex/config.toml</code> 편집</td></tr>
+<tr><td>훅</td><td><code>.codex/hooks.json</code> 편집</td></tr>
+</tbody>
+</table></div>
+
+<div class="callout warn">
+  <div class="ct">정정 — t507이 실측으로 추가 (2026-09-07). 위 표는 지우지 않았습니다</div>
+  <p>위 표는 설치 단위를 <code>.codex-plugin/plugin.json</code> 하나로만 적어 <strong>두 층을 구분하지 않았습니다</strong>. 실측(codex-cli 0.153.4, <code>.moai/reports/t507/verdict.md</code>)에서 층이 갈립니다:</p>
+  <ul>
+    <li><strong>플러그인 매니페스트</strong> = <code>.codex-plugin/plugin.json</code> — <strong>수용됩니다.</strong> 위 표는 이 층에서 정확합니다.</li>
+    <li><strong>마켓플레이스 루트</strong> = <code>.agents/plugins/marketplace.json</code> 또는 <code>.claude-plugin/marketplace.json</code>. <strong><code>.codex-plugin/</code>을 마켓플레이스 루트로 두면 거부됩니다</strong> — <code>marketplace root does not contain a supported manifest</code>, EXIT=1.</li>
+  </ul>
+  <p>즉 이 표만 보고 <code>.codex-plugin/</code>에 마켓플레이스를 만들려 하면 <strong>첫 명령에서 막힙니다.</strong> 플러그인 하나로 끝나는 것이 아니라 <strong>마켓플레이스가 별도로, 다른 경로에</strong> 필요합니다.</p>
+</div>
+
+<details>
+<summary>플러그인 매니페스트가 실제로 어떻게 생겼는지 (원문 인용)</summary>
+<blockquote>
+<p>"Only <code>plugin.json</code> belongs in <code>.codex-plugin/</code>. Keep <code>skills/</code>, <code>hooks/</code>, <code>assets/</code>, <code>.mcp.json</code>, and <code>.app.json</code> at the plugin root."</p>
+</blockquote>
+<pre><code>{
+  "name": "my-plugin", "version": "0.1.0", "description": "...",
+  "skills": "./skills/", "mcpServers": "./.mcp.json",
+  "apps": "./.app.json", "hooks": "./hooks/hooks.json",
+  "interface": { "displayName": "...", "category": "...",
+                 "capabilities": ["Read","Write"] }
+}</code></pre>
+<p>자체 배포용 마켓플레이스도 리포 안에 둘 수 있습니다:</p>
+<blockquote>
+<p><strong>Marketplace file locations</strong> — Repo: <code>$REPO_ROOT/.agents/plugins/marketplace.json</code> · Personal: <code>~/.agents/plugins/marketplace.json</code></p>
+</blockquote>
+<pre><code>codex plugin marketplace add owner/repo
+codex plugin marketplace add ./local-marketplace-root
+codex plugin marketplace list / upgrade / remove &lt;name&gt;</code></pre>
+</details>
+
+<h3>카드 후보</h3>
+
+<div class="tw"><table>
+<thead><tr><th style="width:52px">후보</th><th>내용</th><th style="width:74px">권고</th></tr></thead>
+<tbody>
+<tr><td><strong>M2</strong></td><td><strong>moai를 codex 플러그인으로 패키징.</strong> 3중 침습을 설치 단위 하나로 대체할 수 있는 <strong>유일한 공식 경로</strong>. 규모가 커서 별도 SPEC 권장</td><td><span class="pill ok">채택·대</span></td></tr>
+<tr><td><strong>M1</strong></td><td><code>[mcp_servers.moai]</code>에 <code>tool_timeout_sec</code> 추가 — 위임 도구의 장시간 실행이 <em>실제로</em> 문제였는지 먼저 확인</td><td><span class="pill ok">채택·소</span></td></tr>
+<tr><td><strong>M3</strong></td><td>statusline 허용목록의 <strong>갱신 트리거</strong>를 카드로 만들기. 지금은 정책만 있고 계기가 없음</td><td><span class="pill ok">채택·소</span></td></tr>
+<tr><td><strong>M4</strong></td><td><code>notify</code>(지원 이벤트 1개뿐) · <code>[permissions]</code> · <code>[otel]</code></td><td><span class="pill no">보류</span></td></tr>
+</tbody>
+</table></div>
+
+<h2 id="cards">카드 후보 18건</h2>
+
+<div class="lead">
+  <p>다섯 축에서 나온 후보 전부입니다. "선행 조건"이 비어 있으면 지금 바로 시작할 수 있다는 뜻이에요.</p>
+</div>
+
+<div class="tw"><table>
+<thead><tr><th style="width:46px">후보</th><th style="width:34px">축</th><th>내용</th><th style="width:60px">권고</th><th style="width:42px">규모</th><th style="width:78px">선행</th></tr></thead>
+<tbody>
+<tr><td><strong>M2</strong></td><td>5</td><td>moai를 codex 플러그인으로 패키징</td><td><span class="pill ok">채택</span></td><td>대</td><td>없음</td></tr>
+<tr><td><strong>A1</strong></td><td>4</td><td><code>[agents]</code> 전역 테이블 발행</td><td><span class="pill ok">채택</span></td><td>중</td><td>없음</td></tr>
+<tr><td><strong>S1</strong></td><td>3</td><td><code>skills.config</code> <code>path</code> 값 모양 실측</td><td><span class="pill ok">채택</span></td><td>소</td><td>없음</td></tr>
+<tr><td><strong>H2</strong></td><td>2</td><td>미adapted 5종 0.153.4 재측정</td><td><span class="pill ok">채택</span></td><td>중</td><td>없음</td></tr>
+<tr><td><strong>C1</strong></td><td>1</td><td><code>/moai</code> 16본의 codex 스킬 발행</td><td><span class="pill ok">채택</span></td><td>중</td><td>S1</td></tr>
+<tr><td><strong>A2</strong></td><td>4</td><td>에이전트별 <code>skills.config</code> 스코핑</td><td><span class="pill ok">채택</span></td><td>중</td><td>S1</td></tr>
+<tr><td><strong>H1</strong></td><td>2</td><td><code>Interrupt</code> 이벤트 행 추가</td><td><span class="pill ok">채택</span></td><td>소</td><td>없음</td></tr>
+<tr><td><strong>S4</strong></td><td>3</td><td>매니페스트 전수 재측정 → 0.153.4</td><td><span class="pill ok">채택</span></td><td>중</td><td>H2·S1</td></tr>
+<tr><td><strong>A3</strong></td><td>4</td><td><code>model</code> 미발행 판정</td><td><span class="pill">조사</span></td><td>소</td><td>없음</td></tr>
+<tr><td><strong>S3</strong></td><td>3</td><td>유령 <code>skills.config</code> 정리 verb</td><td><span class="pill ok">채택</span></td><td>소</td><td>없음</td></tr>
+<tr><td><strong>M1</strong></td><td>5</td><td><code>tool_timeout_sec</code></td><td><span class="pill ok">채택</span></td><td>소</td><td>문제 확인</td></tr>
+<tr><td><strong>M3</strong></td><td>5</td><td>statusline 허용목록 갱신 트리거</td><td><span class="pill ok">채택</span></td><td>소</td><td>없음</td></tr>
+<tr><td><strong>S2</strong></td><td>3</td><td>선택적 스킬 비활성화 발행</td><td><span class="pill">조건부</span></td><td>중</td><td>S1</td></tr>
+<tr><td><strong>H3</strong></td><td>2</td><td>배경 훅(<code>async</code>)</td><td><span class="pill">조건부</span></td><td>중</td><td>H2</td></tr>
+<tr><td><strong>C2</strong></td><td>1</td><td><code>~/.codex/prompts</code> 발행</td><td><span class="pill gap">기각</span></td><td>—</td><td>deprecated</td></tr>
+<tr><td><strong>A4</strong></td><td>4</td><td><code>[agents.&lt;name&gt;].config_file</code></td><td><span class="pill no">보류</span></td><td>—</td><td>이득 불분명</td></tr>
+<tr><td><strong>H4</strong></td><td>2</td><td><code>allow_managed_hooks_only</code></td><td><span class="pill no">보류</span></td><td>—</td><td>수요 없음</td></tr>
+<tr><td><strong>M4</strong></td><td>5</td><td><code>notify</code>/<code>[permissions]</code>/<code>[otel]</code></td><td><span class="pill no">보류</span></td><td>—</td><td>이득 작음</td></tr>
+</tbody>
+</table></div>
+
+<div class="callout">
+  <div class="ct">두 갈래로 요약하면</div>
+  <p><strong>가장 짧은 경로 — H1 → S1 → A1.</strong> 셋 다 선행 조건이 없고 규모가 작거나 중간입니다. 바로 착수 가능해요.</p>
+  <p><strong>가장 큰 이득 — M2.</strong> 배포 방식 자체를 바꾸는 일이라 카드가 아니라 <strong>SPEC 발주 여부부터가 운영자 판단</strong>으로 보입니다.</p>
+</div>
+
+<h2 id="verdict">판정서</h2>
+
+<h3>주장 (Claim)</h3>
+<ol>
+<li>리드 실측 4건은 이 트리에서 전부 재현된다.</li>
+<li>codex의 커스텀 프롬프트는 실재하나 <strong>deprecated</strong>이고 공식 대체는 <strong>스킬</strong>이다.</li>
+<li>공식 훅 이벤트는 <strong>12종</strong>, moai는 <strong>11종</strong> — 누락은 <code>Interrupt</code> 하나.</li>
+<li><code>[[skills.config]]</code>는 공식 문서화된 실재 키(<code>path</code>+<code>enabled</code>)이며 <strong>비활성화 수단</strong>으로 기술된다. moai는 읽기만 하고 쓰지 않는다.</li>
+<li>스킬 탐색 경로는 <code>.agents/skills</code>이고, moai는 <strong>이미 그 경로에 미러를 만든다</strong>.</li>
+<li>agents TOML 필수 3필드를 11본이 모두 충족한다. <code>model</code>·<code>skills.config</code>·<code>[agents]</code>는 미배선.</li>
+<li>codex 플러그인 표면은 0.153.4에 실재하며 moai는 <strong>전혀 쓰지 않는다</strong>.</li>
+</ol>
+
+<h3>증거 (Evidence)</h3>
+<ul>
+<li>재현 명령과 출력은 각 축에 명령·<code>file:line</code>과 함께 인용.</li>
+<li>부재 주장 3건은 <strong>대조군을 동반</strong>: <code>M1 0</code> ↔ <code>codex_task 115파일</code> · <code>EventInterrupt 0</code> ↔ <code>EventStop 검출</code> · <code>codex-plugin 0</code> ↔ <code>codexwiring 22파일</code>.</li>
+<li>공식 인용 <strong>7페이지 전부 <code>WebFetch</code>로 본문을 읽었다</strong>. 검색 요약만 있는 페이지는 인용하지 않았다.</li>
+<li>서브에이전트가 만든 리포 인벤토리의 핵심 4건은 <strong>내가 직접 재측정해 일치를 확인</strong>했다. 재측정하지 않은 항목은 Gaps에 든다.</li>
+</ul>
+
+<h3>기준 귀속 (Baseline)</h3>
+<ul>
+<li>트리: <code>.claude/worktrees/t494</code>, HEAD <code>ace1c5440</code>, <code>origin/develop</code>과 델타 <code>0 0</code>.</li>
+<li>CLI: <code>codex --version</code> → <code>codex-cli 0.153.4</code>.</li>
+<li>문서: 2026-09-07 조회본. 버전 스탬프 없음.</li>
+</ul>
+
+<h3>미관측 (Gaps) — 10건</h3>
+
+<div class="lead">
+  <p>"안 잰 것"을 빠짐없이 적는 게 이 절의 목적입니다. 여기 없는 것을 다음 카드가 근거로 삼으면 안 됩니다.</p>
+</div>
+
+<ol>
+<li><code>skills.config</code>의 <code>path</code> 값 모양(파일 vs 폴더) — 두 공식 페이지가 서로 다르게 기술. <strong>실측 안 함</strong> → S1</li>
+<li>미adapted 5종의 0.153.4 발화 여부 — 종전 관측은 0.152.1 이전 것 → H2</li>
+<li><code>Interrupt</code>의 실제 발화 조건과 페이로드 — 목록에 있다는 것만 확인</li>
+<li>moai가 발행하는 훅 핸들러의 <code>matcher</code>/<code>async</code> 유무 — 근거를 못 찾았을 뿐, 없다고 단정 안 함</li>
+<li>agents TOML에 <code>model</code>을 안 싣는 것이 의도인지 — 판정 안 함</li>
+<li>codex 빌트인 <code>explorer</code>가 Claude <code>Explore</code>를 갈음하는지 — 추론일 뿐 측정 안 함</li>
+<li>statusline 29토큰이 0.153.4 소스 열거형과 아직 일치하는지 — 문서가 열거하지 않아 문서로는 검증 불가, 소스도 확인 안 함</li>
+<li>서브에이전트 인벤토리 중 내가 재측정하지 않은 항목 — 결론을 지지하는 데 쓰지 않았거나 보조적으로만 씀</li>
+<li>플러그인 설치가 기존 3중 침습을 실제로 대체 가능한지 — M2는 <strong>문서상 가능성이지 실증이 아님</strong></li>
+<li>로컬 <code>config.toml</code>의 <code>notify = [..., "turn-ended"]</code> — 문서는 <code>agent-turn-complete</code> 하나만 적는데 실제 파일엔 다른 값. 조사 안 함</li>
+</ol>
+
+<h3>잔여 위험 (Residual risk)</h3>
+<ul>
+<li>문서에 버전 스탬프가 없어 <strong>0.153.4와 문서 사이 시차</strong>를 배제할 수 없다. 문서가 앞설 수도, 뒤질 수도 있다.</li>
+<li><code>learn.chatgpt.com</code>으로의 이전이 진행 중이라 문서 구조가 또 바뀌면 인용 URL이 깨질 수 있다. 원 주소를 함께 남긴 이유다.</li>
+<li>로컬 <code>~/.codex/</code> 상태는 <strong>이 머신 한 대의 관측</strong>이다. 규약 판정은 문서 인용에 기댔다.</li>
+<li>카드 표의 "규모"는 <strong>판단이지 측정이 아니다</strong>.</li>
+</ul>
+
+<h2 id="selfcheck">직접 확인해볼 것</h2>
+
+<div class="lead">
+  <p>이 보고서를 믿지 않고 직접 재보고 싶다면, 아래 네 줄이면 핵심이 다 확인됩니다. 워크트리 <code>.claude/worktrees/t494</code> 안에서 돌리세요.</p>
+</div>
+
+<pre><code># 1. 훅 이벤트가 정말 11종인가 (공식은 12종)
+awk '/^var EventTable/,/^}/' internal/codexadapter/events.go | grep -c '},'
+
+# 2. Interrupt 가 정말 없는가 — 대조군과 함께
+grep -rn 'EventInterrupt' internal/ ; echo "--- 대조군 ---"
+grep -rn 'EventStop\b' internal/hook/*.go | head -2
+
+# 3. 스킬 미러가 정말 .agents/skills 로 가는가
+grep -n 'agents.*skills' internal/template/skill_mirror.go | head -3
+
+# 4. 플러그인 표면을 정말 안 쓰는가 — 대조군과 함께
+git grep -lE 'codex-plugin' -- internal/ pkg/ cmd/ | wc -l   # 0 이어야 함
+git grep -l 'codexwiring' -- internal/ | wc -l               # 0 이 아니어야 함</code></pre>
+
+<p>그리고 공식 문서 쪽은 <strong>주소를 직접 열어 보는 것</strong>이 가장 확실합니다 — 아래 출처의 링크가 전부 제가 실제로 본문을 읽은 페이지입니다.</p>
+
+<h2 id="sources">출처</h2>
+
+<p>전부 <code>WebFetch</code>로 <strong>본문을 실제로 읽은</strong> 페이지입니다. <code>developers.openai.com/codex/*</code>는 308로 <code>learn.chatgpt.com/docs/*</code>에 이전됐고, 원 주소도 함께 남깁니다.</p>
+
+<ul>
+<li><a href="https://learn.chatgpt.com/docs/custom-prompts">Custom Prompts</a> — 원 주소 <a href="https://developers.openai.com/codex/custom-prompts">developers.openai.com/codex/custom-prompts</a></li>
+<li><a href="https://learn.chatgpt.com/docs/build-skills">Build skills</a> — 원 주소 <a href="https://developers.openai.com/codex/skills">developers.openai.com/codex/skills</a></li>
+<li><a href="https://learn.chatgpt.com/docs/hooks">Hooks</a> — 원 주소 <a href="https://developers.openai.com/codex/hooks">developers.openai.com/codex/hooks</a></li>
+<li><a href="https://learn.chatgpt.com/docs/config-file/config-reference">Configuration Reference</a> — 원 주소 <a href="https://developers.openai.com/codex/config-reference">developers.openai.com/codex/config-reference</a></li>
+<li><a href="https://learn.chatgpt.com/docs/config-file/config-advanced">Advanced Configuration</a></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/subagents.md">Subagents</a> — 원 주소 <a href="https://developers.openai.com/codex/subagents.md">developers.openai.com/codex/subagents.md</a></li>
+<li><a href="https://developers.openai.com/plugins/build/plugins">Package your plugin</a></li>
+<li><a href="https://learn.chatgpt.com/docs/plugins">Plugins</a> — 원 주소 <a href="https://developers.openai.com/codex/plugins">developers.openai.com/codex/plugins</a></li>
+</ul>
+
+<div class="foot">
+  <p>카드 t494 · 조사 전용 · 코드/템플릿 수정 0 · 마크다운 원본: <code>.moai/reports/t494/codex-doc-survey.md</code></p>
+  <p>브랜치 <code>WT-codex-doc-survey</code> · 커밋 <code>e38b9d5ca</code> · 후속 카드 t496 · t502의 입력</p>
+</div>
+
+</main>
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:      "#FAF9F5",
+      primaryTextColor:  "#141413",
+      primaryBorderColor:"#D97757",
+      lineColor:         "#87867F",
+      secondaryColor:    "#E3DACC",
+      tertiaryColor:     "#F0EEE6",
+      fontFamily:        "Noto Sans KR, sans-serif"
+    }
+  });
+</script>
+</body>
+</html>
