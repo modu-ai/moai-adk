@@ -175,7 +175,10 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	if data.Effort != nil {
 		effort = data.Effort.Level
 	}
-	writeContextUsage(resolveProjectDir(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort)
+	// The state anchor (SPEC-STATE-ANCHOR-001 REQ-SA-001): the telemetry
+	// record lands under the project root the shared resolver returns — never
+	// under a directory the session merely visited (the GH #1694 repair).
+	writeContextUsage(resolveStateAnchor(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort)
 
 	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)
@@ -283,7 +286,10 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 	// file read); a read error or non-armed status leaves GoalArmed=false
 	// (markers shown, backward compat).
 	if input != nil {
-		data.GoalArmed = resolveGoalArmed(resolveProjectDir(input), input.SessionID)
+		// B3 (SPEC-STATE-ANCHOR-001 REQ-SA-006): the goal state is read from
+		// the anchored root, so a session that cd'd elsewhere still sees the
+		// project's goal state.
+		data.GoalArmed = resolveGoalArmed(resolveStateAnchor(input), input.SessionID)
 	}
 
 	// Extract active worktree path from workspace (REQ-CC297-003, Claude Code 2.1.97+)

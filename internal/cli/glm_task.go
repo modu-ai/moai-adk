@@ -210,9 +210,17 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		return toolErr(glmTaskToolName, err), nil
 	}
 
-	// The live entry is the cancel handle: revoking this context aborts the
-	// in-flight HTTP call the job goroutine waits on.
-	jobCtx, cancel := context.WithCancel(ctx)
+	// The job must outlive the REQUEST. The MCP host ends the request context
+	// the moment the handler returns, which for background=true is
+	// immediately, so a job derived from it dies within milliseconds of being
+	// created — every time. WithoutCancel detaches the job from that end while
+	// carrying the request's values through; only the cancellation is dropped.
+	//
+	// The WithCancel layered ON TOP is not decoration: it is the handle stored
+	// in glmLiveJobs, and revoking it aborts the in-flight HTTP call the job
+	// goroutine waits on. Handing the goroutine a bare WithoutCancel context
+	// would fix the death and silently sever glm_job_cancel.
+	jobCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	glmLiveJobs.Store(rec.ID, cancel)
 
 	if _, err := registry.update(rec.ID, func(r *GLMJobRecord) { r.Status = glmJobStatusRunning }); err != nil {

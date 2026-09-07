@@ -1,0 +1,93 @@
+=== fixture git log (main) ===
+7b49634 Merge branch 'side'
+5b8305d docs(SPEC-EMDASH-001): sync-phase artifacts — 3-phase close
+ab8dc39 feat(SPEC-EMDASH-001): M1 implementation
+4d80668 feat(SPEC-PROSE-001): M1 implementation
+9064628 feat(SPEC-DEMO-001): M1 implementation
+bc83f88 chore: seed specs
+
+=== [1] spec status --list  (#1693 read-side: expect frontmatter values, NOT Notes) ===
+SPEC-ID                        Status          Modified
+--------------------------------------------------------------------------------
+SPEC-DEMO-001                  Notes           2026-09-07 16:23
+SPEC-EMDASH-001                completed       2026-09-07 16:23
+SPEC-PROSE-001                 Notes           2026-09-07 16:23
+
+=== [2] spec drift  (#1693 drift-side: false DRIFT records) ===
+SPEC-ID                        Frontmatter          Git-Implied          Drift?    
+-------------------------------------------------------------------------------------
+SPEC-DEMO-001                  Notes                implemented          DRIFT     
+SPEC-EMDASH-001                completed            completed            aligned   
+SPEC-PROSE-001                 Notes                implemented          DRIFT     
+-------------------------------------------------------------------------------------
+Summary: 2/3 SPECs have status drift
+--- drift-cache.json ---
+{
+  "head_sha": "7b49634621a1ad8a3b50b5c97ce3e996c89aa130",
+  "computed_at": "2026-09-07T07:23:51Z",
+  "count": 2,
+  "records": [
+    {
+      "SPECID": "SPEC-DEMO-001",
+      "FrontmatterStatus": "Notes",
+      "GitImpliedStatus": "implemented",
+      "Drifted": true
+    },
+    {
+      "SPECID": "SPEC-EMDASH-001",
+      "FrontmatterStatus": "completed",
+      "GitImpliedStatus": "completed",
+      "Drifted": false
+    },
+    {
+      "SPECID": "SPEC-PROSE-001",
+      "FrontmatterStatus": "Notes",
+      "GitImpliedStatus": "implemented",
+      "Drifted": true
+    }
+  ]
+}
+=== [3] hashes BEFORE sync-git --dry-run ===
+739d71260d54d71b76be4da50822916c401d35dcd388eb4b3f728dfe23112350  /tmp/t513-repro/fixture/.moai/specs/SPEC-DEMO-001/spec.md
+7927ee00ea7ccd1f351986abeddf889844200d83fca1fef1c2cdc09efd87b4a7  /tmp/t513-repro/fixture/.moai/specs/SPEC-EMDASH-001/spec.md
+02b0c23fd5e4bbe92d3edb651252cbf647de37b4885ac6bf214a9cf18f2e8bde  /tmp/t513-repro/fixture/.moai/specs/SPEC-PROSE-001/spec.md
+--- git status (expect empty) ---
+
+=== [4] spec status --sync-git --dry-run --yes  (#1692: must write NOTHING) ===
+  skipped SPEC-EMDASH-001: already completed
+  SPEC-PROSE-001: Notes → implemented
+  SPEC-DEMO-001: Notes → implemented
+
+Summary: updated 2, skipped 1 (already done), 0 not found
+
+=== [5] hashes AFTER (defect: DEMO/PROSE changed) ===
+64f28236f6388737a2b5a1a10e445fbdc1261a3e463640d4833e24d34285ec04  /tmp/t513-repro/fixture/.moai/specs/SPEC-DEMO-001/spec.md
+7927ee00ea7ccd1f351986abeddf889844200d83fca1fef1c2cdc09efd87b4a7  /tmp/t513-repro/fixture/.moai/specs/SPEC-EMDASH-001/spec.md
+74584002fca67e47db3ec989b87916f3a990c6a4418c12e0b2ac38307742252c  /tmp/t513-repro/fixture/.moai/specs/SPEC-PROSE-001/spec.md
+--- git status (defect: two M lines) ---
+ M .moai/specs/SPEC-DEMO-001/spec.md
+ M .moai/specs/SPEC-PROSE-001/spec.md
+
+=== [6] corruption shape ===
+diff --git a/.moai/specs/SPEC-DEMO-001/spec.md b/.moai/specs/SPEC-DEMO-001/spec.md
+index 35c9233..a5cf84e 100644
+--- a/.moai/specs/SPEC-DEMO-001/spec.md
++++ b/.moai/specs/SPEC-DEMO-001/spec.md
+@@ -5,6 +5,6 @@ status: completed
+ 
+ ## HISTORY
+ 
+-| Version | Date | Status | Notes |
++| Version | Date | Status | implemented |
+ |---|---|---|---|
+ | 0.1.0 | 2026-01-01 | draft | initial |
+diff --git a/.moai/specs/SPEC-PROSE-001/spec.md b/.moai/specs/SPEC-PROSE-001/spec.md
+index 557b14c..ca2e54d 100644
+--- a/.moai/specs/SPEC-PROSE-001/spec.md
++++ b/.moai/specs/SPEC-PROSE-001/spec.md
+@@ -5,4 +5,4 @@ status: draft
+ 
+ ## HISTORY
+ 
+-- HISTORY is kept as a bullet list, not a `| Version | Date | Status | Notes |` table, to stay clear of the status-locator parse artifact.
++- HISTORY is kept as a bullet list, not a `| Version | Date | Status | implemented |` table, to stay clear of the status-locator parse artifact.

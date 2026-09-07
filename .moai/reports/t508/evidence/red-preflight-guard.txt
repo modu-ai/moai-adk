@@ -1,0 +1,9 @@
+=== RUN   TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal
+    doctor_codex_enabled_test.go:37: status = ok, want CheckFail — codex cannot start on this config: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+    doctor_codex_enabled_test.go:41: finding never names the `enabled` key: {Name:Codex Wiring Status:ok Message:wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical) Detail:}
+--- FAIL: TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal (0.06s)
+=== RUN   TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet
+--- PASS: TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet (0.14s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.580s
+FAIL

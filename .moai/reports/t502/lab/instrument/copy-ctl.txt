@@ -1,0 +1,1 @@
+verdict=exposed marker=1 name=1 rc=0 out=24986 err=0 capture=/tmp/t502-selftest-27J2flj1/lab/copy/home-ctl/.probe-capture/out
