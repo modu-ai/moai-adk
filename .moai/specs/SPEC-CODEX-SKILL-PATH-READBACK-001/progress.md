@@ -157,6 +157,23 @@ below. Logs: `mutant-bypass.log`, `mutant-blanket-wrap.log`, `mutant-reorder.log
 --timeout=5m ./internal/cli/...` → `0 issues.` (`quality-gates-m3.log`). Full repository suite NOT run
 locally — that verdict is CI's, on the pushed head.
 
+**Tree attribution (lead's CWD-drift warning, applied post-hoc).** `/Users/goos/moai/moai-adk-go` and
+`/Users/goos/MoAI/moai-adk-go` are ONE directory under two spellings (identical dev:inode
+`16777231:253706617`); the real hazard axis is worktree → primary drift. Measured: of the files this
+card reads, only `doctor_codex.go` exists in BOTH trees with different content (`osStatFn` count: 0 in
+the primary at `main`, 2 in the worktree) — the one read where drift would have succeeded silently.
+Every recorded M3 value was RE-MEASURED with the tree pinned absolutely (`git -C <abs>`, `go -C <abs>`,
+absolute file paths) and **all reproduced identically**; the AC-CSRB-008 predicate "paths outside
+`internal/cli/` + `.moai/` = 0" was additionally counted rather than eyeballed. Two measurements were
+not re-executed and are attributed by positive witness instead: the AC-CSRB-010 suite log carries a
+test name that exists in ZERO files of the primary checkout, and the probe logs carry go panic stack
+frames printing the worktree path verbatim. Recorded as gap G8, not silently kept.
+Evidence: `tree-attribution-remeasure.log`, `ac-csrb-006-remeasure.log`, `run-m3.md` §7.
+
+All line citations in this card's M3 evidence (`codex_skills_prune.go:76/:83/:101`,
+`doctor_codex.go:861`) are pinned to tree `.claude/worktrees/t562`, branch `WT-codex-read-inverse`,
+SHA `4aa8915ee` — unchanged at `757ef601f`, since M3 added zero production lines.
+
 ### §E.2 AC matrix (run-phase, complete)
 
 | AC | Status | Evidence |

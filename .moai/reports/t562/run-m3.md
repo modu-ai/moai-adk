@@ -332,6 +332,15 @@ new finding.
 **G7 — no independent check of the `--- SKIP: ` 30.** The skipped tests were counted but not
 enumerated or attributed; nothing here claims they are the same 30 as any prior run.
 
+**G8 — two measurements were tree-attributed by witness rather than re-executed.** After the lead's
+CWD-drift warning, every recorded value was re-measured with the tree pinned absolutely (§7.3) except
+two: the AC-CSRB-010 suite run and the probe/mutant runs. Neither was re-executed. Their tree is
+established by a positive witness inside the artifact itself — a test name that exists nowhere in the
+primary checkout, and go panic stack frames printing the worktree path verbatim (§7.4). That is
+attribution evidence, not a fresh execution: it establishes WHERE the recorded run happened, and says
+nothing further about whether a fresh run today would reproduce it. For AC-CSRB-010 specifically, a
+re-run would in any case be measured against the same lower-bound BEFORE described in G1.
+
 ---
 
 ## 5. Residual-risk
@@ -372,3 +381,122 @@ enumerated or attributed; nothing here claims they are the same 30 as any prior 
 | AC-CSRB-010 | PASS against a lower-bound BEFORE (see G1) | `ac-csrb-010.log`, `ac-010.log` |
 
 Mutant ledger: **4 injected, 4 caught, 0 missed, 0 committed, 0 surviving in the tree.**
+
+---
+
+## 7. Addendum — tree attribution (lead's CWD hazard warning, and its correction)
+
+The lead first reported the hazard as two checkouts differing by one letter's case, then corrected
+the premise: the two spellings are **one directory**, and the real axis is worktree → primary drift.
+The prescription was unchanged, so all four items are applied here. **Re-measured in this run, with
+every read pinned to an absolute tree path** (`tree-attribution-remeasure.log`).
+
+### 7.1 The three paths, measured
+
+```
+$ stat -f '%d:%i  %N' <worktree> /Users/goos/MoAI/moai-adk-go /Users/goos/moai/moai-adk-go
+16777231:3137769831  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562
+16777231:253706617   /Users/goos/MoAI/moai-adk-go
+16777231:253706617   /Users/goos/moai/moai-adk-go
+```
+
+The two spellings share a dev:inode — one directory, two names, exactly as the correction says. The
+worktree is a distinct directory. Their git identities differ, and that difference is the
+discriminator every measurement below leans on:
+
+| Path | branch | HEAD |
+|---|---|---|
+| `.../.claude/worktrees/t562` | `WT-codex-read-inverse` | `757ef601f` (M3 commit; the mutant window ran at `4aa8915ee`) |
+| `/Users/goos/MoAI/moai-adk-go` (both spellings) | `main` | `7ad9f8534` |
+
+### 7.2 Where drift would have been silent, measured rather than assumed
+
+```
+internal/cli/codex_skills_prune.go                primary=ABSENT   worktree=EXISTS
+internal/cli/codex_skills_prune_readback_test.go  primary=ABSENT   worktree=EXISTS
+internal/cli/codex_config_path.go                 primary=ABSENT   worktree=EXISTS
+internal/cli/doctor_codex.go                      primary=EXISTS   worktree=EXISTS   ← the silent one
+```
+
+`doctor_codex.go` is the one file this card measures that exists in **both** trees with **different
+content**: `/usr/bin/grep -c 'osStatFn'` gives **0** in the primary and **2** in the worktree. A
+drifted provenance-context read would therefore have returned a plausible `0` with no error — the
+exact failure shape the lead names. The other reads fail loudly (file absent), so they were never at
+risk of quiet corruption.
+
+This cuts the other way as attribution evidence: the recorded values **1** (control, on a file the
+primary does not have) and **2** (provenance, where the primary holds 0) are producible only in the
+worktree.
+
+### 7.3 Re-measurement results — every value reproduced
+
+| Measurement | Originally recorded | Re-measured with absolute pinning | Match |
+|---|---|---|---|
+| AC-CSRB-007 delta (`git -C <wt> show c007e5409 --format='' -- doctor_codex.go \| grep -c osStatFn`) | 0 | 0 | ✓ |
+| AC-CSRB-007 added-lines-only | 0 | 0 | ✓ |
+| AC-CSRB-007 positive control (`codex_skills_prune.go`) | 1 | 1 | ✓ |
+| AC-CSRB-007 provenance context (`doctor_codex.go`) | 2 | 2 | ✓ |
+| AC-CSRB-007 per-commit sweep (6 card commits) | all 0 | all 0 | ✓ |
+| absorb merge `2d1dad058` first-parent | 2 | 2 | ✓ |
+| AC-CSRB-008 `CARD_BASE` | `c72dc1baf` | `c72dc1baf` | ✓ |
+| AC-CSRB-008 changed-path count | 31 | 31 | ✓ |
+| AC-CSRB-008 `codexwiring` probe | empty | 0 lines | ✓ |
+| AC-CSRB-008 paths outside `internal/cli/` + `.moai/` | (implied 0) | **0**, measured directly | ✓ |
+| AC-CSRB-008 PRESERVE diff `2d1dad058..4aa8915ee` | empty | 0 lines, control 10 | ✓ |
+| AC-CSRB-006 guard (`go -C <wt> test …`) | PASS, normalized diff empty | PASS, normalized diff empty | ✓ |
+| AC-CSRB-009 native build | rc=0 | rc=0 | ✓ |
+| AC-CSRB-009 `GOOS=windows` build | rc=0 | rc=0 | ✓ |
+| AC-CSRB-009 `GOOS=windows` vet | rc=0 | rc=0 | ✓ |
+
+The AC-CSRB-008 row "paths outside the two roots = 0" is new: the original record listed all 31
+paths and judged them by reading, which is a human comparison. It is now a counted predicate.
+
+### 7.4 Attribution of the two measurements NOT re-executed
+
+**AC-CSRB-010's suite run** (`ac-010.log`, 18,820 lines) was not re-executed — a ~12-minute run —
+because a positive witness settles its tree without one:
+
+```
+TestJudgeCodexSkillEntry_SeparatorConversion  in PRIMARY tree  = 0 files
+                                               in WORKTREE     = 1 file
+                                               in ac-010.log   = 2 occurrences
+```
+
+The test name does not exist anywhere in the primary checkout, so a drifted suite could not have
+emitted it. The log contains it, therefore the log came from this worktree.
+
+**The probe and mutant runs** carry their tree in the recorded output itself — the go panic stack
+frames print absolute paths:
+
+```
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:83
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:101
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:76
+```
+
+That is the worktree path verbatim, in the artifact, for all three probe sites.
+
+### 7.5 Line-citation provenance (prescription item 3)
+
+Every line citation in this document — `codex_skills_prune.go:76` (classify switch), `:83` (absolute-
+branch conversion), `:101` (stat call), and `doctor_codex.go:861` (the seam-mutant injection point) —
+is measured in:
+
+> **tree** `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562` · **branch** `WT-codex-read-inverse`
+> · **SHA** `4aa8915ee` (the mutant-window HEAD; M3 added zero production lines, so these line
+> numbers are unchanged at the M3 commit `757ef601f`)
+
+A line citation decays like a HEAD reading; it is pinned here rather than left bare.
+
+### 7.6 Why no earlier measurement had drifted
+
+The session's working directory was never changed — no `cd` was issued at any point — and the first
+command of the run printed `git rev-parse --show-toplevel` as the worktree. More usefully, every
+batch that touched git printed `git rev-parse --short HEAD` as `4aa8915ee` and
+`git branch --show-current` as `WT-codex-read-inverse`; a drifted command would have printed
+`7ad9f8534` / `main`. That discriminator was present in the record before the warning arrived, and
+the re-measurement above confirms it independently rather than resting on it.
+
+**Nothing was quietly kept and nothing was quietly dropped**: every value was re-measured except the
+two in §7.4, whose tree is established by a positive witness in the artifact itself, and both
+exceptions are named here rather than left implicit.
