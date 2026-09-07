@@ -1,0 +1,442 @@
+method	astgrep/analyzer_test.go:36	mockExecutor	Execute	context.Context ctx	no
+funclit	binlag/binlag_test.go:166	-	-	context.Context (unnamed)	
+method	cli/audit_pin_live_test.go:108	teeGLMDoer	Do	*http.Request req	yes
+funclit	cli/binary_lag_test.go:38	-	-	context.Context (unnamed)	
+method	cli/branch_protection_test.go:26	stubGhClient	Run	context.Context _	
+method	cli/branch_protection_test.go:34	stubGhClient	RunWithStdin	context.Context _	
+method	cli/cg_mode_hardening_test.go:32	recordingSessionManager	Create	context.Context _	
+method	cli/cg_mode_hardening_test.go:36	recordingSessionManager	InjectEnv	context.Context _	
+method	cli/cg_mode_hardening_test.go:43	recordingSessionManager	ClearEnv	context.Context _	
+method	cli/cg_mode_hardening_test.go:45	recordingSessionManager	InjectSensitiveEnv	context.Context _	
+method	cli/codex_auth_ladder_test.go:57	countingLoginStatusRunner	run	context.Context _	
+method	cli/codex_job_control_test.go:54	hangingCodexSession	start	context.Context (unnamed)	
+funclit	cli/codex_launcher_readout_test.go:241	-	-	context.Context (unnamed)	
+funclit	cli/codex_launcher_readout_test.go:247	-	-	context.Context (unnamed)	
+funclit	cli/codex_launcher_readout_test.go:253	-	-	context.Context (unnamed)	
+funclit	cli/codex_launcher_readout_test.go:262	-	-	context.Context (unnamed)	
+method	cli/codex_live_protocol_probe_test.go:86	probeRunner	start	context.Context ctx	yes
+method	cli/codex_protocol_liveness_test.go:174	fixedConnSessionRunner	start	context.Context (unnamed)	
+funclit	cli/codex_readiness_test.go:64	-	-	context.Context (unnamed)	
+method	cli/codex_rpc_error_test.go:31	stubCodexRunner	run	context.Context (unnamed)	
+funclit	cli/codex_verdict_divergence_test.go:91	-	-	context.Context _	
+funclit	cli/coverage_fixes_test.go:838	-	-	context.Context _	
+funclit	cli/coverage_improvement_test.go:412	-	-	context.Context ctx	no
+funclit	cli/coverage_improvement_test.go:4556	-	-	context.Context ctx	no
+funclit	cli/coverage_test.go:105	-	-	context.Context _	
+funclit	cli/coverage_test.go:315	-	-	context.Context _	
+funclit	cli/coverage_test.go:34	-	-	context.Context _	
+funclit	cli/coverage_test.go:391	-	-	context.Context _	
+funclit	cli/coverage_test.go:509	-	-	context.Context _	
+method	cli/deps_coverage_test.go:26	stubObservabilityRegistry	Dispatch	context.Context (unnamed)	
+funclit	cli/github_integration_test.go:129	-	-	context.Context _	
+funclit	cli/github_integration_test.go:27	-	-	context.Context _	
+funclit	cli/github_test.go:137	-	-	context.Context _	
+method	cli/github_test.go:19	mockGHIssueParser	ParseIssue	context.Context ctx	yes
+funclit	cli/github_test.go:69	-	-	context.Context _	
+method	cli/glm_task_bg_context_test.go:48	ctxAwareGLMDoer	Do	*http.Request req	yes
+method	cli/glm_task_test.go:55	blockingGLMDoer	Do	*http.Request req	yes
+method	cli/goal_wiring_test.go:259	fakeRunner	Run	context.Context _	
+method	cli/hook_e2e_test.go:20	spyRegistry	Dispatch	context.Context _	
+method	cli/hook_harness_codex_test.go:50	codexHarnessRegistry	Dispatch	context.Context _	
+method	cli/init_update_notice_test.go:417	fakeUpdateChecker	CheckLatest	context.Context (unnamed)	
+method	cli/loop_test.go:155	stubDecisionEngine	Decide	context.Context _	
+method	cli/loop_test.go:65	noopFeedbackGenerator	Collect	context.Context _	
+method	cli/mcp_audit_multi_test.go:40	recordingCallerMulti	call	context.Context ctx	no
+funclit	cli/mcp_build_identity_test.go:109	-	-	context.Context (unnamed)	
+funclit	cli/mcp_build_identity_test.go:120	-	-	context.Context (unnamed)	
+method	cli/mcp_build_identity_test.go:72	binlagStub	compare	context.Context _	
+funclit	cli/mcp_codex_test.go:336	-	-	context.Context _	
+method	cli/mcp_codex_test.go:40	fakeCodexRunner	run	context.Context _	
+funclit	cli/mcp_codex_test.go:501	-	-	context.Context _	
+funclit	cli/mcp_codex_test.go:509	-	-	context.Context _	
+method	cli/mcp_codex_test.go:80	fakeCodexSession	start	context.Context (unnamed)	
+method	cli/mcp_convergence_test.go:275	recordingCaller	call	context.Context _	
+funclit	cli/mcp_convergence_test.go:369	-	-	context.Context _	
+method	cli/mcp_glm_test.go:34	stubGLMDoer	Do	*http.Request req	yes
+funclit	cli/mcp_project_root_codex_test.go:344	-	-	context.Context _	
+method	cli/mcp_project_root_codex_test.go:39	capturedCodexParams	rpc	context.Context _	
+funclit	cli/misc_coverage_test.go:227	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:262	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:297	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:332	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:395	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:431	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:465	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:500	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:535	-	-	context.Context _	
+funclit	cli/misc_coverage_test.go:570	-	-	context.Context _	
+method	cli/mock_test.go:46	mockHookRegistry	Dispatch	context.Context ctx	yes
+method	cli/mock_test.go:66	mockUpdateChecker	CheckLatest	context.Context ctx	yes
+method	cli/mock_test.go:85	mockUpdateOrchestrator	Update	context.Context ctx	yes
+method	cli/mock_test.go:97	mockHandler	Handle	context.Context _	
+method	cli/run_audit_gate_integration_test.go:53	deterministicAuditor	Audit	context.Context _	
+method	cli/team_run_audit_gate_test.go:23	mockTeamCreator	Create	context.Context _	
+method	cli/update/merge/merge_test.go:621	mockDeployer	Deploy	context.Context ctx	no
+method	cli/update/merge/merge_test.go:626	mockDeployer	ValidateAll	context.Context ctx	no
+method	cli/update_clean_install_config_preserve_test.go:39	overwritingDeployer	Deploy	context.Context ctx	no
+method	cli/update_clean_install_config_preserve_test.go:73	overwritingDeployer	ValidateAll	context.Context ctx	no
+method	cli/update_clean_install_test.go:1069	gitignoreClobberingDeployer	Deploy	context.Context ctx	no
+method	cli/update_clean_install_test.go:1076	gitignoreClobberingDeployer	ValidateAll	context.Context ctx	no
+method	cli/update_clean_install_test.go:47	stubDeployer	Deploy	context.Context ctx	no
+method	cli/update_clean_install_test.go:58	stubDeployer	ValidateAll	context.Context ctx	no
+method	cli/update_mirror_notice_test.go:46	mirrorReportingDeployer	Deploy	context.Context ctx	yes
+method	cli/update_mirror_notice_test.go:51	mirrorReportingDeployer	DeployWithResult	context.Context _	
+method	cli/update_mirror_notice_test.go:58	mirrorReportingDeployer	ValidateAll	context.Context _	
+method	cli/update_mirror_notice_test.go:69	plainDeployer	Deploy	context.Context _	
+method	cli/update_mirror_notice_test.go:75	plainDeployer	ValidateAll	context.Context _	
+funclit	cli/update_test.go:2336	-	-	context.Context ctx	no
+funclit	cli/update_version_test.go:251	-	-	*http.Request r	yes
+funclit	cli/update_version_test.go:263	-	-	*http.Request r	no
+funclit	cli/update_version_test.go:274	-	-	context.Context ctx	yes
+funclit	cli/update_version_test.go:508	-	-	*http.Request r	no
+funclit	cli/update_version_test.go:514	-	-	context.Context ctx	yes
+funclit	cli/update_version_test.go:559	-	-	*http.Request r	no
+funclit	cli/web_session_worktree_test.go:53	-	-	context.Context ctx	no
+method	config/sunset_notice_test.go:23	bufferHandler	Enabled	context.Context _	
+method	config/sunset_notice_test.go:25	bufferHandler	Handle	context.Context _	
+method	core/project/initializer_mirror_notice_test.go:33	mirrorResultDeployer	Deploy	context.Context ctx	yes
+method	core/project/initializer_mirror_notice_test.go:38	mirrorResultDeployer	DeployWithResult	context.Context _	
+method	core/project/initializer_mirror_notice_test.go:45	mirrorResultDeployer	ValidateAll	context.Context _	
+method	core/project/initializer_test.go:26	mockDeployer	Deploy	context.Context _	
+method	core/project/initializer_test.go:39	mockDeployer	ValidateAll	context.Context _	
+method	core/project/initializer_test.go:49	capturingDeployer	Deploy	context.Context _	
+method	core/project/initializer_test.go:56	capturingDeployer	ValidateAll	context.Context _	
+method	core/project/initializer_test.go:780	trackingMockDeployer	Deploy	context.Context _	
+method	core/project/initializer_test.go:812	trackingMockDeployer	ValidateAll	context.Context _	
+method	core/quality/validators_test.go:20	mockLSPClient	CollectDiagnostics	context.Context ctx	yes
+method	core/quality/validators_test.go:42	mockGitManager	LastCommitMessage	context.Context ctx	no
+method	core/quality/validators_test.go:49	mockGitManager	DiagnosticHistory	context.Context ctx	no
+method	core/quality/worktree_validator_test.go:16	mockGate	Validate	context.Context _	
+method	core/quality/worktree_validator_test.go:20	mockGate	ValidatePrinciple	context.Context _	
+funclit	github/gh_client_test.go:113	-	-	context.Context _	
+funclit	github/gh_client_test.go:133	-	-	context.Context _	
+funclit	github/gh_client_test.go:150	-	-	context.Context _	
+funclit	github/gh_client_test.go:178	-	-	context.Context _	
+funclit	github/gh_client_test.go:201	-	-	context.Context _	
+funclit	github/gh_client_test.go:218	-	-	context.Context _	
+funclit	github/gh_client_test.go:22	-	-	context.Context _	
+funclit	github/gh_client_test.go:235	-	-	context.Context _	
+funclit	github/gh_client_test.go:249	-	-	context.Context _	
+funclit	github/gh_client_test.go:264	-	-	context.Context _	
+funclit	github/gh_client_test.go:286	-	-	context.Context _	
+funclit	github/gh_client_test.go:307	-	-	context.Context _	
+funclit	github/gh_client_test.go:339	-	-	context.Context _	
+funclit	github/gh_client_test.go:353	-	-	context.Context _	
+funclit	github/gh_client_test.go:370	-	-	context.Context _	
+funclit	github/gh_client_test.go:39	-	-	context.Context _	
+funclit	github/gh_client_test.go:390	-	-	context.Context _	
+funclit	github/gh_client_test.go:410	-	-	context.Context _	
+funclit	github/gh_client_test.go:427	-	-	context.Context _	
+funclit	github/gh_client_test.go:444	-	-	context.Context _	
+funclit	github/gh_client_test.go:458	-	-	context.Context _	
+funclit	github/gh_client_test.go:477	-	-	context.Context _	
+funclit	github/gh_client_test.go:495	-	-	context.Context _	
+funclit	github/gh_client_test.go:524	-	-	context.Context _	
+funclit	github/gh_client_test.go:56	-	-	context.Context _	
+funclit	github/gh_client_test.go:564	-	-	context.Context _	
+funclit	github/gh_client_test.go:583	-	-	context.Context _	
+funclit	github/gh_client_test.go:601	-	-	context.Context _	
+funclit	github/gh_client_test.go:626	-	-	context.Context _	
+funclit	github/gh_client_test.go:83	-	-	context.Context _	
+method	github/gh_test.go:31	mockGHClient	PRCreate	context.Context _	
+method	github/gh_test.go:35	mockGHClient	PRView	context.Context _	
+method	github/gh_test.go:40	mockGHClient	PRMerge	context.Context _	
+method	github/gh_test.go:48	mockGHClient	PRChecks	context.Context _	
+method	github/gh_test.go:53	mockGHClient	Push	context.Context _	
+method	github/gh_test.go:59	mockGHClient	IsAuthenticated	context.Context _	
+funclit	github/integration_test.go:429	-	-	context.Context _	
+funclit	github/integration_test.go:497	-	-	context.Context _	
+funclit	github/issue_close_integration_test.go:150	-	-	context.Context _	
+funclit	github/issue_close_integration_test.go:188	-	-	context.Context _	
+funclit	github/issue_close_integration_test.go:259	-	-	context.Context _	
+funclit	github/issue_close_integration_test.go:43	-	-	context.Context _	
+funclit	github/issue_closer_test.go:130	-	-	context.Context _	
+funclit	github/issue_closer_test.go:162	-	-	context.Context _	
+funclit	github/issue_closer_test.go:196	-	-	context.Context c	yes
+funclit	github/issue_closer_test.go:23	-	-	context.Context _	
+funclit	github/issue_closer_test.go:248	-	-	context.Context _	
+funclit	github/issue_closer_test.go:286	-	-	context.Context _	
+funclit	github/issue_closer_test.go:311	-	-	context.Context _	
+funclit	github/issue_closer_test.go:337	-	-	context.Context _	
+funclit	github/issue_closer_test.go:351	-	-	context.Context _	
+funclit	github/issue_closer_test.go:60	-	-	context.Context _	
+funclit	github/issue_closer_test.go:96	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:101	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:115	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:129	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:144	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:171	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:29	-	-	context.Context _	
+funclit	github/issue_parser_exec_test.go:56	-	-	context.Context _	
+method	github/issue_parser_test.go:15	mockIssueParser	ParseIssue	context.Context ctx	yes
+funclit	github/issue_parser_test.go:189	-	-	context.Context _	
+method	github/pr_merger_test.go:18	mockPRReviewer	Review	context.Context _	
+method	github/pr_reviewer_test.go:18	mockQualityGate	Validate	context.Context _	
+method	github/pr_reviewer_test.go:22	mockQualityGate	ValidatePrinciple	context.Context _	
+funclit	github/secret_test.go:120	-	-	context.Context ctx	no
+funclit	github/secret_test.go:139	-	-	context.Context ctx	no
+funclit	github/secret_test.go:157	-	-	context.Context ctx	no
+method	github/secret_test.go:24	MockGHSecretExecutor	RunGH	context.Context ctx	yes
+method	github/secret_test.go:31	MockGHSecretExecutor	RunGHOutput	context.Context ctx	yes
+method	github/secret_test.go:38	MockGHSecretExecutor	RunGHWithStdin	context.Context ctx	yes
+funclit	github/secret_test.go:50	-	-	context.Context ctx	no
+funclit	github/secret_test.go:73	-	-	context.Context ctx	no
+funclit	github/secret_test.go:92	-	-	context.Context ctx	no
+method	goal/evaluate_bounds_test.go:20	scriptedReader	Run	context.Context _	
+method	goal/evaluate_infinite_test.go:14	neverSatisfiedRunner	Run	context.Context _	
+method	goal/evaluate_snapshot_test.go:16	countingRunner	Run	context.Context ctx	yes
+method	goal/evaluate_snapshot_test.go:29	fakeSnapshotSource	Lookup	context.Context _	
+method	goal/evaluate_test.go:19	fakeRunner	Run	context.Context _	
+method	goal/evaluate_unsatisfiable_test.go:14	exit127Runner	Run	context.Context _	
+method	guardliveness/evaluator_test.go:131	blockingProducer	Produce	context.Context _	
+method	guardliveness/evaluator_test.go:23	countingProducer	Produce	context.Context _	
+method	guardstate/axis_test.go:28	fakeQuerier	RunsForSubject	context.Context _	
+method	guardstate/axis_test.go:36	fakeQuerier	AllRuns	context.Context (unnamed)	
+funclit	guardstate/forge_query_test.go:23	-	-	context.Context _	
+funclit	hook/auto_update_test.go:124	-	-	context.Context ctx	yes
+funclit	hook/auto_update_test.go:160	-	-	context.Context ctx	yes
+funclit	hook/auto_update_test.go:32	-	-	context.Context ctx	no
+funclit	hook/auto_update_test.go:39	-	-	context.Context ctx	no
+funclit	hook/auto_update_test.go:46	-	-	context.Context ctx	no
+funclit	hook/auto_update_test.go:53	-	-	context.Context ctx	no
+funclit	hook/auto_update_test.go:97	-	-	context.Context ctx	yes
+funclit	hook/handoff_inject_test.go:714	-	-	context.Context _	
+method	hook/mx/validator_fanin_source_test.go:28	fakeSource	EvidenceBacked	context.Context _	
+method	hook/official_protocol_fix_test.go:35	slowSuccessHandler	Handle	context.Context _	
+method	hook/official_protocol_fix_test.go:48	ctxAwareHandler	Handle	context.Context ctx	yes
+funclit	hook/post_tool_astgrep_test.go:126	-	-	context.Context _	
+funclit	hook/post_tool_astgrep_test.go:139	-	-	context.Context _	
+funclit	hook/post_tool_astgrep_test.go:155	-	-	context.Context _	
+method	hook/post_tool_astgrep_test.go:26	mockFileAnalyzer	ScanFile	context.Context ctx	yes
+funclit	hook/post_tool_astgrep_test.go:56	-	-	context.Context _	
+method	hook/post_tool_feedback_channel_test.go:18	mockDiagnosticsCollectorWithLSP	GetDiagnostics	context.Context _	
+funclit	hook/post_tool_test.go:1002	-	-	context.Context _	
+funclit	hook/post_tool_test.go:1028	-	-	context.Context _	
+funclit	hook/post_tool_test.go:1033	-	-	context.Context _	
+funclit	hook/post_tool_test.go:1070	-	-	context.Context _	
+method	hook/post_tool_test.go:493	mockDiagnosticsCollector	GetDiagnostics	context.Context ctx	yes
+funclit	hook/post_tool_test.go:511	-	-	context.Context _	
+funclit	hook/post_tool_test.go:570	-	-	context.Context _	
+funclit	hook/post_tool_test.go:613	-	-	context.Context _	
+funclit	hook/post_tool_test.go:701	-	-	context.Context _	
+funclit	hook/post_tool_test.go:739	-	-	context.Context _	
+funclit	hook/post_tool_test.go:775	-	-	context.Context _	
+funclit	hook/post_tool_test.go:812	-	-	context.Context _	
+funclit	hook/post_tool_test.go:868	-	-	context.Context _	
+funclit	hook/post_tool_test.go:898	-	-	context.Context _	
+funclit	hook/post_tool_test.go:932	-	-	context.Context _	
+funclit	hook/post_tool_test.go:964	-	-	context.Context _	
+method	hook/pre_tool_scan_config_test.go:31	countingScanFacade	ScanFile	context.Context _	
+method	hook/registry_test.go:22	mockHandler	Handle	context.Context _	
+method	hook/registry_test.go:35	slowHandler	Handle	context.Context ctx	yes
+funclit	hook/security/ast_grep_test.go:493	-	-	context.Context _	
+method	hook/session_end_fanin_source_test.go:24	recordingSource	EvidenceBacked	context.Context _	
+funclit	hook/session_start_binary_lag_test.go:141	-	-	context.Context (unnamed)	
+funclit	hook/session_start_binary_lag_test.go:20	-	-	context.Context (unnamed)	
+method	hook/session_start_guard_liveness_render_test.go:45	failingProducer	Produce	context.Context (unnamed)	
+method	hook/session_start_guard_liveness_test.go:22	countingGuardProducer	Produce	context.Context _	
+funclit	hook/session_start_guard_liveness_wiring_test.go:70	-	-	context.Context (unnamed)	
+method	hook/session_start_guard_liveness_wiring_test.go:85	producerFunc	Produce	context.Context ctx	yes
+funclit	hook/session_start_parallel_test.go:124	-	-	context.Context ctx	yes
+funclit	hook/session_start_parallel_test.go:202	-	-	context.Context ctx	yes
+funclit	hook/session_start_parallel_test.go:245	-	-	context.Context ctx	yes
+funclit	hook/session_start_parallel_test.go:61	-	-	context.Context ctx	yes
+funclit	hook/session_start_timebox_test.go:35	-	-	context.Context ctx	yes
+funclit	hook/session_start_timebox_test.go:62	-	-	context.Context (unnamed)	
+funclit	hook/session_start_timebox_test.go:78	-	-	context.Context (unnamed)	
+funclit	hook/session_start_timebox_test.go:94	-	-	context.Context (unnamed)	
+method	hook/shutdown_test.go:23	lastTraceHandler	Handle	context.Context _	
+method	loop/aggregator_feedback_test.go:18	mockDiagnosticsAggregator	GetDiagnostics	context.Context ctx	no
+funclit	loop/controller_test.go:135	-	-	context.Context _	
+funclit	loop/controller_test.go:163	-	-	context.Context _	
+funclit	loop/controller_test.go:190	-	-	context.Context _	
+funclit	loop/controller_test.go:230	-	-	context.Context _	
+funclit	loop/controller_test.go:251	-	-	context.Context _	
+funclit	loop/controller_test.go:298	-	-	context.Context _	
+funclit	loop/controller_test.go:317	-	-	context.Context _	
+funclit	loop/controller_test.go:354	-	-	context.Context _	
+funclit	loop/controller_test.go:388	-	-	context.Context _	
+funclit	loop/controller_test.go:426	-	-	context.Context _	
+funclit	loop/controller_test.go:475	-	-	context.Context _	
+funclit	loop/controller_test.go:494	-	-	context.Context _	
+method	loop/controller_test.go:53	mockFeedbackGenerator	Collect	context.Context _	
+funclit	loop/controller_test.go:533	-	-	context.Context _	
+funclit	loop/controller_test.go:569	-	-	context.Context _	
+funclit	loop/controller_test.go:603	-	-	context.Context _	
+funclit	loop/controller_test.go:630	-	-	context.Context _	
+method	loop/controller_test.go:64	blockingFeedbackGenerator	Collect	context.Context ctx	yes
+funclit	loop/controller_test.go:672	-	-	context.Context _	
+funclit	loop/controller_test.go:709	-	-	context.Context _	
+method	loop/controller_test.go:74	mockDecisionEngine	Decide	context.Context ctx	yes
+funclit	loop/controller_test.go:742	-	-	context.Context _	
+funclit	loop/controller_test.go:761	-	-	context.Context _	
+funclit	loop/controller_test.go:789	-	-	context.Context _	
+funclit	loop/controller_test.go:823	-	-	context.Context _	
+funclit	loop/controller_test.go:857	-	-	context.Context _	
+funclit	loop/controller_test.go:99	-	-	context.Context _	
+method	loop/go_feedback_test.go:19	mockBridge	GetDiagnostics	context.Context ctx	no
+method	lsp/aggregator/aggregator_test.go:157	blockingClient	Start	context.Context _	
+method	lsp/aggregator/aggregator_test.go:158	blockingClient	Shutdown	context.Context _	
+method	lsp/aggregator/aggregator_test.go:159	blockingClient	OpenFile	context.Context _	
+method	lsp/aggregator/aggregator_test.go:160	blockingClient	DidSave	context.Context _	
+method	lsp/aggregator/aggregator_test.go:161	blockingClient	FindReferences	context.Context _	
+method	lsp/aggregator/aggregator_test.go:164	blockingClient	GotoDefinition	context.Context _	
+method	lsp/aggregator/aggregator_test.go:171	blockingClient	GetDiagnostics	context.Context _	
+method	lsp/aggregator/aggregator_test.go:184	blockingRouter	RouteFor	context.Context _	
+method	lsp/aggregator/aggregator_test.go:201	errorClient	Start	context.Context _	
+method	lsp/aggregator/aggregator_test.go:202	errorClient	Shutdown	context.Context _	
+method	lsp/aggregator/aggregator_test.go:203	errorClient	OpenFile	context.Context _	
+method	lsp/aggregator/aggregator_test.go:204	errorClient	DidSave	context.Context _	
+method	lsp/aggregator/aggregator_test.go:205	errorClient	FindReferences	context.Context _	
+method	lsp/aggregator/aggregator_test.go:208	errorClient	GotoDefinition	context.Context _	
+method	lsp/aggregator/aggregator_test.go:215	errorClient	GetDiagnostics	context.Context _	
+method	lsp/aggregator/aggregator_test.go:224	errorRouter	RouteFor	context.Context _	
+method	lsp/aggregator/aggregator_test.go:29	fakeClient	Start	context.Context _	
+method	lsp/aggregator/aggregator_test.go:30	fakeClient	Shutdown	context.Context _	
+method	lsp/aggregator/aggregator_test.go:31	fakeClient	OpenFile	context.Context _	
+method	lsp/aggregator/aggregator_test.go:32	fakeClient	DidSave	context.Context _	
+method	lsp/aggregator/aggregator_test.go:33	fakeClient	FindReferences	context.Context _	
+method	lsp/aggregator/aggregator_test.go:36	fakeClient	GotoDefinition	context.Context _	
+method	lsp/aggregator/aggregator_test.go:417	dispatchRouter	RouteFor	context.Context _	
+method	lsp/aggregator/aggregator_test.go:434	switchableRouter	RouteFor	context.Context ctx	yes
+method	lsp/aggregator/aggregator_test.go:44	fakeClient	GetDiagnostics	context.Context _	
+method	lsp/aggregator/aggregator_test.go:464	slowClient	Start	context.Context _	
+method	lsp/aggregator/aggregator_test.go:465	slowClient	Shutdown	context.Context _	
+method	lsp/aggregator/aggregator_test.go:466	slowClient	OpenFile	context.Context _	
+method	lsp/aggregator/aggregator_test.go:467	slowClient	DidSave	context.Context _	
+method	lsp/aggregator/aggregator_test.go:468	slowClient	FindReferences	context.Context _	
+method	lsp/aggregator/aggregator_test.go:471	slowClient	GotoDefinition	context.Context _	
+method	lsp/aggregator/aggregator_test.go:478	slowClient	GetDiagnostics	context.Context ctx	yes
+method	lsp/aggregator/aggregator_test.go:56	fakeRouter	RouteFor	context.Context _	
+funclit	lsp/core/client_stderr_drain_test.go:105	-	-	context.Context _	
+method	lsp/core/client_stderr_drain_test.go:45	nilStderrLauncher	Launch	context.Context _	
+method	lsp/core/client_stderr_drain_test.go:66	largeStderrLauncher	Launch	context.Context _	
+method	lsp/core/client_test.go:125	fakeTransport	Call	context.Context ctx	no
+method	lsp/core/client_test.go:143	fakeTransport	Notify	context.Context ctx	no
+method	lsp/core/client_test.go:38	fakeSupervisor	Watch	context.Context ctx	yes
+method	lsp/core/client_test.go:80	fakeLauncher	Launch	context.Context ctx	no
+method	lsp/core/document_test.go:37	fakeNotifyTransport	Call	context.Context _	
+method	lsp/core/document_test.go:49	fakeNotifyTransport	Notify	context.Context _	
+method	lsp/core/manager_test.go:32	fakeClient	Start	context.Context _	
+method	lsp/core/manager_test.go:43	fakeClient	Shutdown	context.Context _	
+method	lsp/core/manager_test.go:51	fakeClient	OpenFile	context.Context _	
+method	lsp/core/manager_test.go:52	fakeClient	DidSave	context.Context _	
+method	lsp/core/manager_test.go:53	fakeClient	GetDiagnostics	context.Context _	
+method	lsp/core/manager_test.go:56	fakeClient	FindReferences	context.Context _	
+method	lsp/core/manager_test.go:59	fakeClient	GotoDefinition	context.Context _	
+method	lsp/core/queries_test.go:45	fakeQueryTransport	Call	context.Context ctx	yes
+method	lsp/core/queries_test.go:70	fakeQueryTransport	Notify	context.Context _	
+method	lsp/hook/diagnostics_test.go:18	mockLSPClient	Diagnostics	context.Context ctx	no
+method	lsp/hook/diagnostics_test.go:416	mockFallbackDiagnostics	RunFallback	context.Context ctx	no
+method	lsp/transport/error_transport_test.go:28	mockRPCConn	Call	context.Context _	
+method	lsp/transport/error_transport_test.go:32	mockRPCConn	Notify	context.Context _	
+method	lsp/transport/request_test.go:149	blockingTransport	Call	context.Context ctx	yes
+method	lsp/transport/request_test.go:154	blockingTransport	Notify	context.Context _	
+method	lsp/transport/transport_test.go:31	fakeTransport	Call	context.Context ctx	no
+method	lsp/transport/transport_test.go:47	fakeTransport	Notify	context.Context ctx	no
+method	mx/fanin_lsp_test.go:23	mockLSPReferencesClient	FindReferences	context.Context _	
+method	mx/fanin_test.go:22	mockFanInCounter	Count	context.Context _	
+method	runtime/audit_gate_test.go:21	mockAuditor	Audit	context.Context _	
+method	statusline/builder_test.go:21	mockGitProvider	CollectGitStatus	context.Context _	
+method	statusline/builder_test.go:31	mockUpdateProvider	CheckUpdate	context.Context _	
+method	statusline/builder_test.go:40	slowGitProvider	CollectGitStatus	context.Context ctx	yes
+method	statusline/builder_test.go:543	mockUsageProvider	CollectUsage	context.Context _	
+method	statusline/forge_spawn_gate_test.go:151	fakeGitProvider	CollectGitStatus	context.Context _	
+funclit	statusline/landed_test.go:245	-	-	context.Context _	
+funclit	statusline/landed_test.go:273	-	-	context.Context _	
+funclit	statusline/landed_test.go:298	-	-	context.Context _	
+funclit	statusline/landed_test.go:319	-	-	context.Context _	
+funclit	statusline/landed_test.go:374	-	-	context.Context _	
+funclit	statusline/landed_test.go:401	-	-	context.Context _	
+funclit	statusline/update_test.go:121	-	-	context.Context _	
+funclit	statusline/update_test.go:153	-	-	context.Context _	
+funclit	statusline/update_test.go:58	-	-	context.Context _	
+funclit	statusline/update_test.go:87	-	-	context.Context _	
+funclit	statusline/usage_test.go:1048	-	-	*http.Request _	
+funclit	statusline/usage_test.go:1086	-	-	*http.Request _	
+funclit	statusline/usage_test.go:1155	-	-	*http.Request _	
+funclit	statusline/usage_test.go:435	-	-	*http.Request r	yes
+funclit	statusline/usage_test.go:516	-	-	*http.Request r	no
+funclit	statusline/usage_test.go:554	-	-	*http.Request _	
+funclit	statusline/usage_test.go:856	-	-	*http.Request _	
+funclit	statusline/usage_test.go:993	-	-	*http.Request r	yes
+method	template/deployer_bench_test.go:99	baselineDeployer	deployBaseline	context.Context ctx	yes
+funclit	tmux/detector_test.go:104	-	-	context.Context _	
+funclit	tmux/detector_test.go:20	-	-	context.Context _	
+funclit	tmux/detector_test.go:27	-	-	context.Context _	
+funclit	tmux/detector_test.go:58	-	-	context.Context _	
+funclit	tmux/detector_test.go:65	-	-	context.Context _	
+funclit	tmux/detector_test.go:72	-	-	context.Context _	
+funclit	tmux/session_integration_test.go:18	-	-	context.Context _	
+funclit	tmux/session_integration_test.go:88	-	-	context.Context _	
+funclit	tmux/session_sensitive_test.go:107	-	-	context.Context _	
+funclit	tmux/session_sensitive_test.go:155	-	-	context.Context _	
+funclit	tmux/session_sensitive_test.go:35	-	-	context.Context _	
+funclit	tmux/session_sensitive_test.go:76	-	-	context.Context _	
+funclit	tmux/session_test.go:129	-	-	context.Context _	
+funclit	tmux/session_test.go:148	-	-	context.Context _	
+funclit	tmux/session_test.go:167	-	-	context.Context _	
+funclit	tmux/session_test.go:18	-	-	context.Context _	
+funclit	tmux/session_test.go:195	-	-	context.Context _	
+funclit	tmux/session_test.go:226	-	-	context.Context _	
+funclit	tmux/session_test.go:263	-	-	context.Context _	
+funclit	tmux/session_test.go:294	-	-	context.Context _	
+funclit	tmux/session_test.go:324	-	-	context.Context _	
+funclit	tmux/session_test.go:364	-	-	context.Context _	
+funclit	tmux/session_test.go:395	-	-	context.Context _	
+funclit	tmux/session_test.go:428	-	-	context.Context _	
+funclit	tmux/session_test.go:450	-	-	context.Context _	
+funclit	tmux/session_test.go:471	-	-	context.Context _	
+funclit	tmux/session_test.go:504	-	-	context.Context _	
+funclit	tmux/session_test.go:52	-	-	context.Context _	
+funclit	tmux/session_test.go:523	-	-	context.Context _	
+funclit	tmux/session_test.go:88	-	-	context.Context _	
+funclit	update/checker_test.go:107	-	-	*http.Request r	no
+funclit	update/checker_test.go:123	-	-	*http.Request r	no
+funclit	update/checker_test.go:141	-	-	*http.Request r	no
+funclit	update/checker_test.go:157	-	-	*http.Request r	no
+funclit	update/checker_test.go:22	-	-	*http.Request r	no
+funclit	update/checker_test.go:314	-	-	*http.Request r	no
+funclit	update/checker_test.go:375	-	-	*http.Request r	no
+funclit	update/checker_test.go:415	-	-	*http.Request r	no
+funclit	update/checker_test.go:440	-	-	*http.Request r	no
+funclit	update/checker_test.go:482	-	-	*http.Request r	no
+funclit	update/checker_test.go:511	-	-	*http.Request r	no
+funclit	update/checker_test.go:55	-	-	*http.Request r	no
+funclit	update/checker_test.go:551	-	-	*http.Request r	no
+funclit	update/checker_test.go:572	-	-	*http.Request r	no
+funclit	update/checker_test.go:627	-	-	*http.Request r	no
+funclit	update/checker_test.go:644	-	-	*http.Request r	no
+funclit	update/checker_test.go:665	-	-	*http.Request r	no
+funclit	update/checker_test.go:689	-	-	*http.Request r	no
+funclit	update/checker_test.go:724	-	-	*http.Request r	yes
+funclit	update/checksum_mandatory_test.go:133	-	-	*http.Request r	no
+funclit	update/checksum_mandatory_test.go:157	-	-	*http.Request r	no
+funclit	update/checksum_mandatory_test.go:194	-	-	*http.Request r	no
+funclit	update/checksum_mandatory_test.go:228	-	-	*http.Request r	no
+funclit	update/checksum_mandatory_test.go:46	-	-	*http.Request r	no
+method	update/orchestrator_test.go:19	mockChecker	CheckLatest	context.Context ctx	no
+method	update/orchestrator_test.go:33	mockUpdater	Download	context.Context ctx	no
+method	update/orchestrator_test.go:37	mockUpdater	Replace	context.Context ctx	no
+funclit	update/updater_test.go:113	-	-	*http.Request r	no
+funclit	update/updater_test.go:135	-	-	*http.Request r	no
+funclit	update/updater_test.go:161	-	-	*http.Request r	no
+funclit	update/updater_test.go:34	-	-	*http.Request r	no
+funclit	update/updater_test.go:506	-	-	*http.Request r	no
+funclit	update/updater_test.go:553	-	-	*http.Request r	no
+funclit	update/updater_test.go:83	-	-	*http.Request r	no
+funclit	verify/source_test.go:114	-	-	context.Context (unnamed)	
+funclit	verify/source_test.go:137	-	-	context.Context ctx	yes
+funclit	verify/source_test.go:158	-	-	context.Context (unnamed)	
+funclit	verify/source_test.go:25	-	-	context.Context (unnamed)	
+funclit	verify/source_test.go:55	-	-	context.Context (unnamed)	
+funclit	verify/source_test.go:81	-	-	context.Context (unnamed)	
+funclit	verify/source_test.go:91	-	-	context.Context (unnamed)	
+funclit	web/codex_panel_test.go:318	-	-	context.Context _	
+funclit	web/codex_panel_test.go:338	-	-	context.Context _	
+funclit	web/mcp_codex_surface_test.go:42	-	-	context.Context _	
+method	workflow/worktree_orchestrator_test.go:43	mockWorktreeValidator	Validate	context.Context _	
+method	workflow/worktree_orchestrator_test.go:47	mockWorktreeValidator	ValidateWithConfig	context.Context _	
+method	workflow/worktree_orchestrator_test.go:62	mockPhaseExecutor	ExecutePlan	context.Context _	
+method	workflow/worktree_orchestrator_test.go:67	mockPhaseExecutor	ExecuteRun	context.Context _	
+method	workflow/worktree_orchestrator_test.go:72	mockPhaseExecutor	ExecuteSync	context.Context _	

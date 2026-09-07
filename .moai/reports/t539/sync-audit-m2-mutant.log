@@ -1,0 +1,33 @@
+=== RUN   TestGLMAudit_RequestCarriesTheDiff
+--- PASS: TestGLMAudit_RequestCarriesTheDiff (0.30s)
+=== RUN   TestGLMAudit_NoMaterialIsInconclusiveNotAVerdict
+--- PASS: TestGLMAudit_NoMaterialIsInconclusiveNotAVerdict (0.04s)
+=== RUN   TestGLMAudit_CancelledContext_IsNotSwallowed
+    mcp_glm_audit_ctx_test.go:89: a cancelled audit returned the canned success verdict "pass" — the request reached the transport detached from its context (check http.NewRequestWithContext at mcp_glm.go:305)
+--- FAIL: TestGLMAudit_CancelledContext_IsNotSwallowed (0.36s)
+=== RUN   TestGLMAudit_LiveContext_StillReachesTheDoer
+--- PASS: TestGLMAudit_LiveContext_StillReachesTheDoer (0.36s)
+=== RUN   TestGLMAudit_FailOpenOnMissingKey
+--- PASS: TestGLMAudit_FailOpenOnMissingKey (0.00s)
+=== RUN   TestGLMAudit_StubReturnsVerdict
+--- PASS: TestGLMAudit_StubReturnsVerdict (0.34s)
+=== RUN   TestGLMAudit_HitsZaiEndpointDirectly
+--- PASS: TestGLMAudit_HitsZaiEndpointDirectly (0.35s)
+=== RUN   TestGLMAudit_NoDiffFailsOpenInconclusive
+=== RUN   TestGLMAudit_NoDiffFailsOpenInconclusive/clean_tree_yields_an_empty_diff
+=== RUN   TestGLMAudit_NoDiffFailsOpenInconclusive/non-git_root_cannot_produce_a_diff
+--- PASS: TestGLMAudit_NoDiffFailsOpenInconclusive (0.39s)
+    --- PASS: TestGLMAudit_NoDiffFailsOpenInconclusive/clean_tree_yields_an_empty_diff (0.35s)
+    --- PASS: TestGLMAudit_NoDiffFailsOpenInconclusive/non-git_root_cannot_produce_a_diff (0.03s)
+=== RUN   TestGLMAudit_FailOpenOnHTTPError
+--- PASS: TestGLMAudit_FailOpenOnHTTPError (0.39s)
+=== RUN   TestGLMAudit_FailOpenOnMalformedResponse
+--- PASS: TestGLMAudit_FailOpenOnMalformedResponse (0.35s)
+=== RUN   TestGLMAudit_FailOpenOnUnauthenticatedStatus
+--- PASS: TestGLMAudit_FailOpenOnUnauthenticatedStatus (0.35s)
+=== RUN   TestGLMAudit_NoAskUserQuestion
+    mcp_glm_test.go:357: structural guard lives in mcp_audit_test.go package-wide grep
+--- SKIP: TestGLMAudit_NoAskUserQuestion (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.947s
+FAIL
