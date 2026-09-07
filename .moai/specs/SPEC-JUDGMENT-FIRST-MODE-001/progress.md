@@ -481,7 +481,8 @@ measured**.
 run_phase: resumed 2026-09-07 — M0 ratified, M1 done, M2 done (2 of its 5 criteria repaired this session), AC-JFM-013 escalation resolved + open question closed, M3 (config key) done, M4 (CI guard, both directions) done, M5 (distribution close-out) done; M6 collection window OPEN — pull sample 0/20, AC-JFM-018 RED by measurement, NOT a pass
 run_commit_sha: <this milestone commit — M5/M6 record + catalog.yaml regenerate; prior chain: a12beb541, b2c3d6c03, 1fb802d09, 9b657b8f5, 099c7bbe4, 8b4896bcb, 8f03bcb08>
 run_status: blocked on M6 only — the falsifier window needs ≥20 real pull-mode AskUserQuestion rows to accumulate in live sessions (repo switched to pull in M3); no lane work can produce them; export deferred to the session that closes the window (see §E.2 M6)
-ac_pass_count: 17   # M1's 10 + AC-JFM-005/006/007/008/009 (repaired green) + AC-JFM-002 (M3) + AC-JFM-017 (M4) + AC-JFM-001/020/021/022-class guards green in M5 sweep; AC-JFM-023 green (baseline rows exist); AC-JFM-018 RED (window open); full matrix re-measured before sync
+ac_pass_count: 16   # M1's 10 + AC-JFM-005/006/007/008/009 (repaired green) + AC-JFM-002 (M3) + AC-JFM-017 (M4) + AC-JFM-001/020/021/022-class guards green in M5 sweep; AC-JFM-018 RED (window open); AC-JFM-023 carry-open (sync-audit F1 — corrected, see below); full matrix re-measured before sync
+ac_fail_count: 2    # AC-JFM-018 (falsifier window open) + AC-JFM-023 (baseline export + calls_issued 4-way contrast not performed — the 20-row primary log is a mixed-session sample the criterion requires to be split by session_id and contrasted before it asserts anything)
 ac_fail_count: 0    # the two handover FAILs (AC-JFM-007, AC-JFM-009) are repaired as recorded in §E.2
 ac_blocked_count: 0
 preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20 (re-verify at run close)
@@ -495,9 +496,9 @@ m1_to_mN_commit_strategy: one commit per milestone/repair; records backfilled th
 
 ```yaml
 sync_commit_sha: 7670cedfe   # backfilled — a commit cannot cite its own hash; the canonical D3 exemption applies (placeholder `pending-backfill-sync` landed with the sync commit itself)
-sync_status: closed with AC-JFM-018 RED by measurement — NOT a pass on that criterion
-ac_pass_count: 22
-ac_fail_count: 1    # AC-JFM-018 — vacuity falsifier; pull-mode denominator 0 rows; collection window OPEN at close
+sync_status: closed with AC-JFM-018 AND AC-JFM-023 RED by measurement — NOT passes; corrected at the sync-audit (F1)
+ac_pass_count: 21
+ac_fail_count: 2    # AC-JFM-018 — vacuity falsifier; pull-mode denominator 0 rows; collection window OPEN at close. AC-JFM-023 — the positive control's required export (baseline-push-window.jsonl) + provenance + calls_issued 4-way contrast were NOT performed; the 20-row primary log is a mixed-session sample (8+ session_ids) and the criterion forbids reading a positive control from an unattributed sample. Corrected from an earlier 22/23 that carried 023 as a pass (sync-audit finding F1). The export/contrast joins t547's scope.
 ac_blocked_count: 0
 release_gate_note: "AC-JFM-018 is release-blocking and was closed RED. The SPEC closes on the lead's operator-backed (a) path — land M0–M5 now, close the falsifier in a follow-up card — but any release relying on this SPEC's falsifier evidence MUST wait for that follow-up to close. This note is the carry-mark; **the owner is follow-up card t547** (issued with operator approval; entry-gated on the develop merge that turns the primary checkout's config to pull)."
 three_phase_close: "in-progress → completed on spec.md frontmatter rides this sync commit; sync_commit_sha backfilled next commit"

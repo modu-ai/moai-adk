@@ -3,12 +3,15 @@
 card: t401 · SPEC-JUDGMENT-FIRST-MODE-001 v0.2.4 · Tier L · gitflow lane (develop integration via lead's window)
 worktree `.claude/worktrees/t401` · branch `WT-analysis-pull`
 
-**The close, in one sentence:** 22/23 acceptance criteria PASS; **AC-JFM-018 (vacuity falsifier,
-release-blocking) is RED by measurement and stays RED at close** — the falsifier's pull-mode
-denominator is empty (0 rows) and its ≥20-row collection window opened at close; **the collection
-is owned by follow-up card t547 (issued with operator approval, entry-gated on the develop merge
-that turns the primary checkout's config to `pull`)**, and no release relying on the falsifier
-evidence may precede t547's close. The release gate (t204) reads this path: verdict Gaps → t547.
+**The close, in one sentence:** **21/23 acceptance criteria PASS** (corrected from an earlier
+22/23 at the sync-audit — AC-JFM-023 had been carried as a pass without its required export and
+calls_issued contrast); **AC-JFM-018 (vacuity falsifier) and AC-JFM-023 (positive control) are
+both RED by measurement and stay RED at close** — the falsifier's pull-mode denominator is empty
+(0 rows) and its ≥20-row collection window opened at close, and the positive control's required
+baseline export + session-split `calls_issued` contrast was not performed; **both are owned by
+follow-up card t547 (issued with operator approval, entry-gated on the develop merge that turns
+the primary checkout's config to `pull`)**, and no release relying on the falsifier evidence may
+precede t547's close. The release gate (t204) reads this path: verdict Gaps → t547.
 
 ## Claim
 
@@ -50,6 +53,14 @@ form was denied by the permission guard and not retried) before any merge surfac
    merge — the observer follows the asking session's own tree's config, so rows stay `push` until
    the merge lands `pull` at the primary). The export + REQ-JFM-025 provenance (`rows_recorded`
    vs `calls_issued`) is t547's first act on entry.
+2. **AC-JFM-023 was originally carried as a pass — that was wrong, and the sync-audit (F1)
+   caught it.** The criterion requires the M0 baseline sample exported to
+   `baseline-push-window.jsonl` with its provenance and a `calls_issued` four-way contrast; none
+   of that was performed. The 20-row primary log is a mixed-session sample (8+ session_ids) —
+   the criterion's own rule says a positive control read from an unattributed sample asserts
+   nothing, and the rows must be split by session_id and contrasted before any reading. The
+   count in every surface was corrected 22/23 → 21/23, and the baseline export + session-split
+   contrast joined t547's scope.
 2. **The re-measurement at the integration window.** Behind = 1,058+ vs `origin/develop` at
    dispatch; every doctrine coordinate this SPEC cites must be re-taken when the lead's window
    merges this branch into `develop` (the lead absorbs `origin/develop` at that time). The
