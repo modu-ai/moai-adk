@@ -512,7 +512,7 @@ func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
 		problems = append(problems, codexFinding{
 			summary: fmt.Sprintf("%s mirror absent — %s", mirrorSkillsRelDir, mirrorRedeployAdvice),
 			detail: fmt.Sprintf(
-				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time only, and a routine `moai update` on a version-matched project does not restore it, so %s",
+				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time, and `moai update` now repairs it in projects whose recorded template_version is at or above the release that introduced it; where it is still absent after an update, %s",
 				mirrorSkillsRelDir, canonicalSkillsRelDir, mirrorRedeployAdvice),
 		})
 		return problems, detail

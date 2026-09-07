@@ -1,0 +1,17 @@
+# M2 mutation RED evidence — SPEC-WEB-ANCHOR-SCOPE-001 (AC-WAS-005)
+# command: unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -run 'TestMCPConsoleWriteCapableTextDistinction' ./internal/web/
+# tree: bf779ecf2 (branch WT-anchor-scope-sweep, worktree .claude/worktrees/t527)
+# mutation in place: internal/web/mcp_console_test.go:87 reverted to pre-t509 whole-body form `body := renderConsolePage(t)` (repaired form: `body := panelHTML(t, renderConsolePage(t), "mcp")`)
+# timestamp: 2026-09-07T18:26:30Z (test log timestamps)
+# exit code: 1 (RED observed — the discriminator's failure mode is detectable; mutant caught)
+# stdout/stderr below verbatim, captured via redirection in this run on this tree:
+
+2026/09/07 18:26:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMCPConsoleWriteCapableTextDistinction877471745/001/.moai/config/sections
+2026/09/07 18:26:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMCPConsoleWriteCapableTextDistinction877471745/001/.moai/config/sections
+2026/09/07 18:26:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMCPConsoleWriteCapableTextDistinction877471745/001/.moai/config/sections
+--- FAIL: TestMCPConsoleWriteCapableTextDistinction (0.02s)
+    mcp_console_test.go:131: write-capable tool "codex_task" is missing the text write-capable marker in its row
+    mcp_console_test.go:131: write-capable tool "codex_job_cancel" is missing the text write-capable marker in its row
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	1.218s
+FAIL
