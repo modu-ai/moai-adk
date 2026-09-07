@@ -127,8 +127,8 @@ _<pending run-phase — populated at M-final>_
 
 - Close type: 3-phase close (plan→run→sync) — single sync commit carrying CHANGELOG entry +
   progress.md §E.4 + spec.md frontmatter `status: in-progress → completed` (updated: 2026-09-08).
-  `sync_commit_sha: "pending-backfill-sync"` (D3 placeholder — real SHA backfilled in the
-  follow-up commit; a commit cannot cite its own hash).
+  `sync_commit_sha: "96d06ba67"` (backfilled per the D3 exemption — the sync commit cannot cite
+  its own hash, so the placeholder written there was replaced by this follow-up commit).
 - Milestone commit SHAs: M1 characterization `08361d0ee` · seam swap `bca046150` ·
   M2 observation + identity proof `02d8be597`.
 - **Identity proof (AC-SEAM-005, REQ-004, re-confirmed from §E.2's own run)**: 25 fixtures /
