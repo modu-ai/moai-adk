@@ -1,0 +1,76 @@
+# M3 후보군 3 — LSP 클라이언트/라우터/트랜스포트 (구성원 46) · t539
+# 판정: seam 별로 갈린다 — aggregator 검출 / core 생존 / transport 검출
+# 이 후보군은 서로 다른 호출자 seam 을 셋 가지므로 seam 마다 하나씩 주입했다(plan §F 절차 1).
+
+## 씨앗 3a — internal/lsp/aggregator/aggregator.go:174  → **검출(사망)**
+프로덕션이 컨텍스트를 인터페이스로 넘기는 지점:
+  diags, getErr = client.GetDiagnostics(qCtx, path)    ← core.Client
+  (qCtx = context.WithTimeout(ctx, a.queryTimeout), aggregator.go:143)
+
+뮤턴트:
+  before: diags, getErr = client.GetDiagnostics(qCtx, path)
+  after : diags, getErr = client.GetDiagnostics(context.Background(), path)
+
+$ go test ./internal/lsp/aggregator/ -list . -count=1        → grep -c '^Test' = 19
+$ go test ./internal/lsp/aggregator/... -count=1 -timeout 180s
+--- FAIL: TestGetDiagnostics_timeout_returnsEmptyWhenNoCache (0.20s)
+    aggregator_test.go:553: timeout (no cache): got 1 diagnostics, want 0
+--- FAIL: TestGetDiagnostics_timeout_returnsCachedOnSlowUpstream (0.30s)
+    aggregator_test.go:530: got message "fresh", want "stale cached" (stale cache)
+FAIL	github.com/modu-ai/moai-adk/internal/lsp/aggregator	0.495s
+
+판정: **검출**. 대역(slowClient 등)이 컨텍스트를 읽지 않더라도, 그 **위층**이 읽는다 —
+aggregator 의 per-query 타임아웃과 서킷 브레이커(`cb.Call(qCtx, …)`)가 컨텍스트를 소비하므로
+(d) 축("대역이 컨텍스트를 보는 유일한 층인가")이 **거짓**이다. 눈멂이 아무것도 가리지 않는다.
+→ **옳게 눈멂 / 위층이 컨텍스트를 본다** 로 CLOSE (AC-CBD-010). 수리하지 않는다.
+
+이것이 M1 이 세운 교훈("판독은 (d) 축에서 틀린다")의 재현이다 — research.md §6 은 이 후보를
+순위 상위의 수리 후보로 **추정**했으나, 실측은 그 추정을 기각했다.
+
+귀속 구성원 (31건, 전부 aggregator_test.go):
+  :29 :30 :31 :32 :33 :36 :44 (fakeClient 7)  :56 (fakeRouter)
+  :157 :158 :159 :160 :161 :164 :171 (blockingClient 7)  :184 (blockingRouter)
+  :201 :202 :203 :204 :205 :208 :215 (errorClient 7)  :224 (errorRouter)
+  :417 (dispatchRouter)
+  :464 :465 :466 :467 :468 :471 (slowClient 6)
+
+## 씨앗 3b — internal/lsp/core/manager.go:366  → **생존**
+  before: if err := c.Start(ctx); err != nil {
+  after : if err := c.Start(context.Background()); err != nil {
+
+$ go test ./internal/lsp/core/ -list . -count=1     → grep -c '^Test' = 97
+$ go test ./internal/lsp/core/... -count=1 -timeout 180s → ok  ...internal/lsp/core  0.305s
+
+판정: **생존**. 클라이언트 기동이 자기 컨텍스트에서 분리돼도 97건 중 누구도 보지 못한다.
+후속 카드 요청 대상(AC-CBD-009). 수리하지 않는다.
+
+귀속 구성원 (12건):
+  internal/lsp/core/manager_test.go:32 :43 :51 :52 :53 :56 :59   (fakeClient 7)
+  internal/lsp/core/document_test.go:37 :49                       (fakeNotifyTransport 2)
+  internal/lsp/core/queries_test.go:70                            (fakeQueryTransport 1)
+  internal/lsp/core/client_stderr_drain_test.go:45 :66            (Launcher 2)
+
+## 씨앗 3c — internal/lsp/transport/request.go:53  → **검출(사망)**
+  before: err := t.Call(ctx, method, params, result)
+  after : err := t.Call(context.Background(), method, params, result)
+
+$ go test ./internal/lsp/transport/ -list . -count=1  → grep -c '^Test' = 32
+$ go test ./internal/lsp/transport/... -count=1 -timeout 180s
+  TestCallWithTimeout_DeadlineExceeded 가 반환하지 않아 패키지 타임아웃(180s)으로 패닉:
+  github.com/modu-ai/moai-adk/internal/lsp/transport.CallWithTimeout(...)
+      .../internal/lsp/transport/request.go:53 +0x94
+  ...transport_test.TestCallWithTimeout_DeadlineExceeded(...)
+      .../internal/lsp/transport/request_test.go:116 +0x90
+FAIL	github.com/modu-ai/moai-adk/internal/lsp/transport	180.201s
+
+판정: **검출**. `blockingTransport` 는 컨텍스트를 읽지 않지만, 컨텍스트를 떼면 그 블로킹이
+영원해져 테스트가 끝나지 않는다 — 즉 이 자리의 가드는 단언이 아니라 **완료 자체**다.
+research.md 가 (a) 근거로 적은 `request.go:70` `ctx.Err()`(isContextErr)와 `:53` 의 전달이
+실제로 컨텍스트를 소비하는 층이므로 (d) 가 거짓이다.
+→ **옳게 눈멂 / 위층이 컨텍스트를 본다** 로 CLOSE (AC-CBD-010).
+
+귀속 구성원 (3건):
+  internal/lsp/transport/error_transport_test.go:28 :32   (mockRPCConn 2)
+  internal/lsp/transport/request_test.go:154              (blockingTransport 1)
+
+$ (되돌림) 세 씨앗 모두 git diff --stat 무출력으로 확인

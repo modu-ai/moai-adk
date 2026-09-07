@@ -1,0 +1,32 @@
+# M3 후보군 5 — gh 클라이언트 (구성원 10) · t539
+# 판정: 생존 (세 seam 모두) — 수리하지 않음, 후속 카드 요청 대상 (AC-CBD-009)
+# 세 seam 을 한 창에서 함께 주입했다(같은 후보군, 서로 다른 패키지).
+
+## 씨앗 5a — internal/cli/branch_protection.go:65
+  before: out, err := gh.Run(ctx, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
+  after : gh.Run(context.Background(), …)
+$ go test ./internal/cli/ -list BranchProtection -count=1 → 5
+$ go test ./internal/cli/ -run  BranchProtection -count=1 -timeout 1800s → ok  0.862s
+판정: **생존**.
+귀속: internal/cli/branch_protection_test.go:26 (stubGhClient.Run) :34 (RunWithStdin)
+
+## 씨앗 5b — internal/github/pr_reviewer.go:110
+  before: prDetails, err = r.gh.PRView(ctx, prNumber)
+  after : prDetails, err = r.gh.PRView(context.Background(), prNumber)
+$ go test ./internal/github/ -list . -count=1 → 136
+$ go test ./internal/github/... -count=1 -timeout 600s
+  ok  github.com/modu-ai/moai-adk/internal/github           0.244s
+  ok  github.com/modu-ai/moai-adk/internal/github/workflow  0.587s
+판정: **생존**. 실물 `github/gh.go` 는 :327/:354 에서 `exec.CommandContext(ctx, …)` 로
+컨텍스트를 실제로 소비하므로 (a) 는 참 — (c) 가 성립하는 자리인데도 136건이 보지 못한다.
+귀속: internal/github/gh_test.go:31 :35 :40 :48 :53 :59 (mockGHClient 6)
+
+## 씨앗 5c — internal/guardstate/evaluate.go:180
+  before: return q.RunsForSubject(ctx, entry.Locator)
+  after : return q.RunsForSubject(context.Background(), entry.Locator)
+$ go test ./internal/guardstate/ -list . -count=1 → 47
+$ go test ./internal/guardstate/... -count=1 -timeout 600s → ok  0.228s
+판정: **생존**.
+귀속: internal/guardstate/axis_test.go:28 (fakeQuerier.RunsForSubject) :36 (AllRuns)
+
+$ (되돌림) 세 씨앗 모두 git diff --stat 무출력으로 확인 (git status --short 도 무출력)
