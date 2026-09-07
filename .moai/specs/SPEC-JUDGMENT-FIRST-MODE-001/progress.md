@@ -493,4 +493,23 @@ m1_to_mN_commit_strategy: one commit per milestone/repair; records backfilled th
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash — backfilled in the immediately following commit (canonical D3 exemption)
+sync_status: closed with AC-JFM-018 RED by measurement — NOT a pass on that criterion
+ac_pass_count: 22
+ac_fail_count: 1    # AC-JFM-018 — vacuity falsifier; pull-mode denominator 0 rows; collection window OPEN at close
+ac_blocked_count: 0
+release_gate_note: "AC-JFM-018 is release-blocking and was closed RED. The SPEC closes on the lead's operator-backed (a) path — land M0–M5 now, close the falsifier in a follow-up card — but any release relying on this SPEC's falsifier evidence MUST wait for that follow-up to close. This note is the carry-mark; the follow-up card is the owner."
+three_phase_close: "in-progress → completed on spec.md frontmatter rides this sync commit; sync_commit_sha backfilled next commit"
+```
+
+**The RED carried into close, stated so no reader mistakes it.** AC-JFM-018 (vacuity falsifier,
+release-blocking) did not pass. The pull-mode denominator is empty — 0 recorded `mode: "pull"`
+rows, because the repository switched to `recommendation_mode: pull` in M3 on the same day the
+window opened. 22/23 criteria are green (the matrix above, each measured this session). The
+falsifier needs ≥20 real pull-mode `AskUserQuestion` rows to accumulate in live orchestrator
+sessions — observation time, not lane work. Per plan.md §F M6, the below-floor sample is
+recorded as a gap and never reported as a pass; the export artifact (`pull-window.jsonl` +
+REQ-JFM-025 provenance) is deliberately deferred to the session that closes the window, because
+exporting it now would manufacture the empty-set `violations: 0` reading plan.md explicitly
+warns against.

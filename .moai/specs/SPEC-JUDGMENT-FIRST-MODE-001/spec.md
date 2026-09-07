@@ -2,9 +2,9 @@
 id: SPEC-JUDGMENT-FIRST-MODE-001
 title: "Judgment-first mode: withhold the recommendation until it is asked for (card t401, issue #1683 item 2)"
 version: "0.2.4"
-status: in-progress
+status: completed
 created: 2026-09-02
-updated: 2026-09-07
+updated: 2026-09-08
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
