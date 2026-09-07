@@ -157,7 +157,7 @@ templ_generate_drift: 0                # run from internal/web (from the repo ro
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # backfilled post-commit per the D3 SHA-placeholder pattern
+sync_commit_sha: be968543f   # authored as pending-backfill-sync at sync-commit time, backfilled post-commit per the D3 SHA-placeholder pattern
 sync_status: complete
 changelog_entry: CHANGELOG.md [Unreleased] §Added — SPEC-WEB-CODEX-PANEL-001 bullet, inserted at the TOP of §Added (newest-first, matching the section's existing order)
 changelog_entry_position: first bullet under "### Added" in "## [Unreleased]"
