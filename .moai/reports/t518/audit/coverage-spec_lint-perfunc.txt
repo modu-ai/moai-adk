@@ -1,0 +1,8 @@
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:21:			newSpecLintCmd				67.6%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:135:			printTable				87.5%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:187:			resolveLintTargets			87.0%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:247:			argumentError				100.0%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:257:			hasPathSignal				100.0%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:264:			expandSpecDirArg			100.0%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:273:			detectBaseDir				100.0%
+github.com/modu-ai/moai-adk/internal/cli/spec_lint.go:282:			detectRegistryPath			75.0%

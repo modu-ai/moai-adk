@@ -1,0 +1,17 @@
+== three documented argument shapes, exercised end-to-end (the sync declared this a Gap) ==
+anchor: HEAD 4360db373
+
+ID form            : rc=0
+path form          : rc=0
+directory form     : rc=0
+mixed ID + path    : rc=0
+unresolvable ID    : rc=3 (want 3)
+  stderr: spec lint: no SPEC document found for "SPEC-NO-SUCH-THING-001" (tried: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-NO-SUCH-THING-001/spec.md)
+
+-- --strict does not escalate the two new advisory codes (real corpus SPECs) --
+REQTableRowsRejected-only SPEC-BINLAG-INVOCATION-001 --strict : rc=0
+ModalityUnjudged-only SPEC-CODEX-BODY-NEUTRALITY-001 --strict : rc=0
+
+-- dogfood: the tool on its own two SPECs --
+SPEC-SPEC-LINT-BLIND-AXES-001 : 0 error(s), 14 warning(s)
+SPEC-SPEC-LINT-ID-ARG-001     : 0 error(s), 9 warning(s)
