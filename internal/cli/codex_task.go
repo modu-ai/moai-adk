@@ -68,6 +68,25 @@ func codexTaskTimeoutMessage() string {
 		" (the bound codex_task imposes on its own turns); the turn was abandoned and the session torn down"
 }
 
+// codexTaskCallerEndedMessage names the CALLER's context as what ended the turn
+// (t514 / GH #1687). It exists because the timeout wording above was reported
+// for turns that ended in milliseconds: both causes reach the same select arm,
+// and naming only the bound sent every diagnosis toward slow models and slow
+// networks when the turn had never been given a chance to run.
+//
+// The distinction is drawn from the PARENT context rather than the derived one:
+// the derived context reports DeadlineExceeded for the caller's deadline and
+// for ours alike, so only the parent's own error separates them.
+func codexTaskCallerEndedMessage(cause error) string {
+	reason := "cancelled by the caller"
+	if errors.Is(cause, context.DeadlineExceeded) {
+		reason = "cancelled when the caller's own deadline expired"
+	}
+	return "codex_task turn was " + reason + ", well before the " +
+		config.DefaultCodexTaskTimeout.String() +
+		" bound codex_task imposes on its own turns; the turn was abandoned and the session torn down"
+}
+
 // runCodexTaskTurn drives ONE task turn under a deadline the tool imposes
 // itself (REQ-CX2-017).
 //
@@ -85,7 +104,8 @@ func codexTaskTimeoutMessage() string {
 // two goroutines would put two exec.Cmd.Wait calls in flight on the same
 // process.
 func runCodexTaskTurn(ctx context.Context, session *codexSessionHandle, params map[string]any) (ReviewOutput, error) {
-	ctx, cancel := context.WithTimeout(ctx, config.DefaultCodexTaskTimeout)
+	parent := ctx
+	ctx, cancel := context.WithTimeout(parent, config.DefaultCodexTaskTimeout)
 	defer cancel()
 
 	type turnOutcome struct {
@@ -102,12 +122,19 @@ func runCodexTaskTurn(ctx context.Context, session *codexSessionHandle, params m
 	case outcome := <-done:
 		return outcome.out, outcome.err
 	case <-ctx.Done():
+		// Our bound fired only if the parent is still alive; otherwise the
+		// caller ended the turn and the bound is not what happened to it.
 		msg := codexTaskTimeoutMessage()
+		nextStep := "re-run with a narrower prompt, or raise the codex_task bound"
+		if parentErr := parent.Err(); parentErr != nil {
+			msg = codexTaskCallerEndedMessage(parentErr)
+			nextStep = "re-run with a context that outlives the turn; the codex_task bound was never reached"
+		}
 		return ReviewOutput{
 			Verdict:   VerdictInconclusive,
 			Summary:   msg,
 			Findings:  []Finding{},
-			NextSteps: []string{"re-run with a narrower prompt, or raise the codex_task bound"},
+			NextSteps: []string{nextStep},
 		}, errors.New(msg)
 	}
 }
@@ -279,7 +306,14 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		return toolErr(codexTaskToolName, err), nil
 	}
 
-	go runCodexBackgroundJob(ctx, registry, rec.ID, session, turnParams)
+	// The job is DETACHED from the request context (t514 / GH #1687). The MCP
+	// host ends that context when the handler returns, and for background=true
+	// the handler returns immediately — so a job handed the request context was
+	// cancelled within milliseconds of being created, every time, and reported
+	// the failure as a 10-minute bound expiry. Values (the progress token among
+	// them) are carried through; only the cancellation is dropped. The turn
+	// stays bounded by the codex_task timeout runCodexTaskTurn applies.
+	go runCodexBackgroundJob(context.WithoutCancel(ctx), registry, rec.ID, session, turnParams)
 
 	result.Status = codexJobStatusRunning
 	result.JobID = rec.ID
