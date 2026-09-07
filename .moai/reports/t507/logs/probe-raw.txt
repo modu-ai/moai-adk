@@ -1,0 +1,110 @@
+t507 — codex plugin manifest acceptance probe, raw transcript
+codex version: codex-cli 0.153.4  (/Users/goos/.local/bin/codex)
+date (UTC): 2026-09-07
+isolation: CODEX_HOME=<scratchpad>/{p1,p3..p7,g1,g1b,g2,g3}; the user's real ~/.codex was never
+           passed to any probe command. Verified after the first arm: the probe home contained a
+           freshly created config.toml and nothing was written to ~/.codex.
+
+================================================================
+STAGE 1 — marketplace root manifest form
+command shape: CODEX_HOME=<probe home> codex plugin marketplace add <fixture dir>
+each fixture dir carries exactly ONE manifest file.
+================================================================
+
+--- f1  .codex-plugin/marketplace.json
+Error: invalid marketplace file `<fixtures>/f1-codexplugin-mkt`: marketplace root does not contain a supported manifest
+EXIT=1
+
+--- f2  .claude-plugin/marketplace.json
+Added marketplace `t507probe` from <fixtures>/f2-claudeplugin-mkt.
+Installed marketplace root: <fixtures>/f2-claudeplugin-mkt
+EXIT=0
+
+--- f3  marketplace.json  (repo root)
+Error: invalid marketplace file `<fixtures>/f3-root-mkt`: marketplace root does not contain a supported manifest
+EXIT=1
+
+--- f4  .codex-plugin/plugin.json
+Error: invalid marketplace file `<fixtures>/f4-codexplugin-plugin`: marketplace root does not contain a supported manifest
+EXIT=1
+
+--- f5  codex-marketplace.json
+Error: invalid marketplace file `<fixtures>/f5-codexmarketplace`: marketplace root does not contain a supported manifest
+EXIT=1
+
+--- f6  .agents/marketplace.json
+Error: invalid marketplace file `<fixtures>/f6-agents-mkt`: marketplace root does not contain a supported manifest
+EXIT=1
+
+--- f7  .agents/plugins/marketplace.json      [NOT TESTED BY t90]
+Added marketplace `t507probe` from <fixtures>/f7-agents-plugins-mkt.
+Installed marketplace root: <fixtures>/f7-agents-plugins-mkt
+EXIT=0
+
+================================================================
+STAGE 2 — plugin manifest form, inside an accepted marketplace
+marketplace file held constant at .agents/plugins/marketplace.json for all three arms;
+only the plugin's own manifest location differs.
+command shape: marketplace add -> plugin list -> plugin add probe-plugin@t507probe
+================================================================
+
+--- g1  plugins/probe-plugin/.codex-plugin/plugin.json
+marketplace add:
+  Added marketplace `t507probe` from <fixtures>/g1-plugin-codexmanifest.
+  EXIT=0
+plugin list:
+  Marketplace `t507probe`
+  <fixtures>/g1-plugin-codexmanifest/.agents/plugins/marketplace.json
+
+  PLUGIN                  STATUS         VERSION  SOURCE
+  probe-plugin@t507probe  not installed           <fixtures>/g1-plugin-codexmanifest/plugins/probe-plugin
+  EXIT=0
+plugin add:
+  Added plugin `probe-plugin` from marketplace `t507probe`.
+  Installed plugin root: <probe home>/plugins/cache/t507probe/probe-plugin/0.0.1
+  EXIT=0
+
+--- g2  plugins/probe-plugin/.claude-plugin/plugin.json
+marketplace add:
+  Added marketplace `t507probe` from <fixtures>/g2-plugin-claudemanifest.
+  EXIT=0
+plugin list:
+  PLUGIN                  STATUS         VERSION  SOURCE
+  probe-plugin@t507probe  not installed           <fixtures>/g2-plugin-claudemanifest/plugins/probe-plugin
+  EXIT=0
+plugin add:
+  Added plugin `probe-plugin` from marketplace `t507probe`.
+  Installed plugin root: <probe home>/plugins/cache/t507probe/probe-plugin/0.0.1
+  EXIT=0
+
+--- g3  plugins/probe-plugin/   (NO manifest anywhere)   [NEGATIVE CONTROL]
+marketplace add:
+  Added marketplace `t507probe` from <fixtures>/g3-plugin-nomanifest.
+  EXIT=0
+plugin add:
+  Error: missing plugin.json
+
+  Caused by:
+      missing plugin.json
+  EXIT=1
+
+The negative control is what makes g1 and g2 non-vacuous: the plugin manifest IS read at
+install time, so "both accepted" is a measured acceptance, not an unread field.
+
+================================================================
+STAGE 3 — what the install actually delivers
+================================================================
+
+--- g1b: g1 re-run after adding skills/probe-skill/SKILL.md to the plugin source
+plugin add: EXIT=0
+installed plugin root contents:
+  <plugin-root>/.codex-plugin/plugin.json
+  <plugin-root>/skills/probe-skill/SKILL.md
+
+--- <probe home>/config.toml after a successful install (g1)
+[marketplaces.t507probe]
+source_type = "local"
+source = "<fixtures>/g1-plugin-codexmanifest"
+
+[plugins."probe-plugin@t507probe"]
+enabled = true
