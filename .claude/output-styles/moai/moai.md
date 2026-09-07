@@ -242,7 +242,6 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Preconditions header | `Preconditions:` | `전제 검증:` |
 | Complete: Deliverables | `Deliverables:` | `산출물:` |
 
-
 The rows above are representative, not exhaustive. Every surface that has produced a violation — the full label catalogue and the banner-body prose catalogue — lives in `.claude/rules/moai/core/output-style-localization-catalogue.md`, which loads when the output style itself is edited. A label absent from the sample above is still bound by the [HARD] obligation.
 
 **Fallback rule for locales not in the table.** The catalogue above and the Cut-line Marker / Header translation tables further down render concrete text for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in these tables (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
