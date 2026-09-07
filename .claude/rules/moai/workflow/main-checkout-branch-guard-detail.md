@@ -52,6 +52,21 @@ flows. The hook applies the doctrine conditionally.
   subcommands (push/pop/apply/drop). The genuinely dangerous forms
   (switch/checkout/branch/reset --hard/rebase/bare+mutating stash/actual
   merge) remain matched.
+- **Query-vs-mutate flag classification (v1.3.3)**: the `git branch` matcher
+  denies a mutating flag anywhere — `-f`/`--force`, `-d`/`--delete`,
+  `-m`/`--move`, `-c`/`--copy` (and their uppercase forms),
+  `-u`/`--set-upstream-to`/`--unset-upstream`, `-t`/`--track`,
+  `--edit-description` — or a short-flag cluster containing any of
+  `d/D/m/M/c/C/f/t/u` (`-df`, `-vD`, `-vux`), or a positional branch-name
+  operand with no list action selected. Creation is denied bare and
+  option-prefixed alike: `git branch <name>`, `git branch -q <name>`,
+  `git branch --no-force <name>` — a query flag plus a name operand still
+  creates a branch. Read-only queries pass: bare `git branch`, `--list`/`-l`
+  (mid-cluster too, e.g. `-al`), operand-free `-v`/`-vv`/`-a`/`-r`,
+  `--show-current`, and the filter/format/sort flags with their operands
+  (`--contains HEAD main` is a filter pattern, not a creation). Unclassifiable
+  forms — git prefix-abbreviations such as `--dele` — under-match and pass;
+  under-matching an unclassifiable form is the accepted fail-open direction.
 - **Deny reason sentinel**: every deny emitted by this path carries the
   prefix `BRANCH_GUARD_VIOLATION:` so the orchestrator can pattern-match the
   source without parsing the full reason string.
