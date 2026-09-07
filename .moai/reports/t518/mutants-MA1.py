@@ -8,7 +8,11 @@ the guard (acceptance.md §A rule 4).
 Read-only with respect to the corpus. It edits three source files in place and
 restores each from a backup after every run.
 """
-import subprocess, shutil, sys, os, re
+import os
+import re
+import shutil
+import subprocess
+import sys
 
 # worktree root = four levels up from .moai/reports/t518/<this file>
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
