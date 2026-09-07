@@ -72,7 +72,7 @@ Before invoking `AskUserQuestion`, preload the schema:
 ToolSearch(query: "select:AskUserQuestion")
 ```
 
-Then invoke with at least three options (Apply / Defer / Reject — additional options permitted), the first option marked `(권장)` or `(Recommended)`:
+Then invoke with at least three options (Apply / Defer / Reject — additional options permitted), the first option marked `(권장)` or `(Recommended)` — this is the `push`-mode form, and the fenced example below illustrates it; while `interview.recommendation_mode` is `pull` the same option set is invoked with the suffix withheld from every option (SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles → Recommendation mode):
 
 ```
 AskUserQuestion({
@@ -187,7 +187,7 @@ Operations:
    - `.claude/rules/moai/`
    If any prefix matches, append a JSONL entry to `.moai/harness/learning-history/frozen-guard-violations.jsonl` with at minimum: ISO-8601 timestamp, the attempted target path, the proposal id (as calling subject), and a rejection rationale. Then move the proposal to `.moai/harness/learning-history/rejected/` and stop. Do NOT raise an error to the user; the rejection is silent except for the audit log.
 4. **Layer 3 (Contradiction Detector) pre-screen**: Out of scope for the foundation release. Downstream `the harness lifecycle policy` introduces principle-based scoring; this workflow body documents the contract assertion and treats Layer 3 as a no-op pass-through for the foundation release.
-5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards.
+5. **Tier-4 Application Gate**: `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern from the section above. While `interview.recommendation_mode` is `push`, the first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards; while it is `pull`, the suffix is withheld from every option and none is described more favorably than the facts justify. The gate still fires and the option set is unchanged in both modes — only the preference claim is withheld. SSOT for the mode branch: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles → Recommendation mode.
 6. **On `Apply` selection**:
    - **Layer 2 (Canary Check)**: Out of scope for the foundation release. Downstream `the harness lifecycle policy` introduces multi-objective scoring with score-drop check; the workflow body treats Layer 2 as a no-op pass-through for the foundation release. The constitution §5 L2 layer remains documented as the binding contract.
    - **Create snapshot**: Create directory `.moai/harness/learning-history/snapshots/<ISO-DATE>/` (ISO-8601 timestamp). For each file the proposal will touch, Read the current contents, compute a content hash, and Write a byte-identical copy into the snapshot directory. Write `manifest.json` recording absolute target paths and content hashes. The snapshot MUST be complete before any modification of the target file.

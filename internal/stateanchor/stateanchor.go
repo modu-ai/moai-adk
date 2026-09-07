@@ -24,6 +24,7 @@
 package stateanchor
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
@@ -51,21 +52,27 @@ type Session struct {
 
 // Resolve returns the state anchor for a session context, following the
 // fixed REQ-SA-002 precedence: ProjectDir → OriginalCwd → a git resolution
-// of CurrentDir (or CWD). Returns "" when nothing resolves — callers skip
-// the state write and carry on (REQ-SA-003). A context with no directory
-// fields at all resolves to "": the process working directory is
-// deliberately NOT consulted, so a render whose payload carries no location
-// can never reach the operator's real checkout through the resolver —
-// no directory context, no anchor.
+// of CurrentDir (or CWD). A session-derived candidate (chain steps 1 and 2)
+// is returned only when it validates (isAnchorCandidate): an absolute path
+// naming an existing directory. A candidate that fails validation does not
+// fail the resolution — the chain falls through to the next step, preserving
+// the REQ-SA-003 graceful degradation (a stale project_dir must not switch
+// the state writes off; the original_cwd and the git walk-up still get their
+// chance). Returns "" when nothing resolves — callers skip the state write
+// and carry on (REQ-SA-003). A context with no directory fields at all
+// resolves to "": the process working directory is deliberately NOT
+// consulted, so a render whose payload carries no location can never reach
+// the operator's real checkout through the resolver — no directory context,
+// no anchor.
 //
 // @MX:ANCHOR: [AUTO] single state-anchor seam — every state read/write member resolves through here
 // @MX:REASON: SPEC-STATE-ANCHOR-001 REQ-SA-001/002; the fixed precedence chain is the repair for GH #1694 and member-specific anchors are the defect being removed
 // @MX:SPEC: SPEC-STATE-ANCHOR-001
 func Resolve(s Session) string {
-	if s.ProjectDir != "" {
+	if isAnchorCandidate(s.ProjectDir) {
 		return s.ProjectDir
 	}
-	if s.OriginalCwd != "" {
+	if isAnchorCandidate(s.OriginalCwd) {
 		return s.OriginalCwd
 	}
 	dir := s.CurrentDir
@@ -73,6 +80,25 @@ func Resolve(s Session) string {
 		dir = s.CWD
 	}
 	return FromDirectory(dir)
+}
+
+// isAnchorCandidate reports whether a session-derived anchor candidate
+// qualifies: an absolute path (filepath.IsAbs) that names an existing
+// directory (os.Stat succeeding with directory mode). An empty value means
+// "absent" — it fails trivially and the chain falls through, unchanged from
+// the pre-validation behavior (REQ-SAV-003). The candidate is returned
+// verbatim on success: no EvalSymlinks rewriting of the anchor value
+// (REQ-SAV-006), and no git membership check — the git budget belongs to
+// chain step 3 (REQ-SAV-004). Any Stat error (including absence) rejects the
+// candidate; it is a rejected candidate, not a process error.
+//
+// @MX:SPEC: SPEC-STATE-ANCHOR-VALIDATE-001
+func isAnchorCandidate(path string) bool {
+	if path == "" || !filepath.IsAbs(path) {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // FromDirectory resolves the anchor from a directory alone — the CLI chain's

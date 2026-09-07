@@ -82,7 +82,7 @@ The orchestrator MUST proactively recognize the model-specific boundary and prep
 1. Stop initiating new large tool calls or `Agent()` delegations
 2. Persist all in-flight progress to `.moai/specs/<SPEC-ID>/progress.md`
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
-4. Recommend `/clear` via natural-language guidance (status announcement, not a question — `AskUserQuestion` not required)
+4. Recommend `/clear` via natural-language guidance (status announcement, not a question — `AskUserQuestion` not required). This is the `push`-mode phrasing. While `interview.recommendation_mode` is `pull`, the announcement **states the observation and the available action without recommending**: it reports the measured usage against the model-specific threshold and names `/clear` as the action that resets it, leaving the decision to the user. The announcement still fires — the mode changes its phrasing, never whether the threshold is surfaced — and it remains a status announcement rather than a question in both modes. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 [ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient (locale renderings per `session-handoff.md` § Localization Table — do not redefine a parallel format here):
 ```

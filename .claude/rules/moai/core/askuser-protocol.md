@@ -61,7 +61,7 @@ When a Stage 1 Clarify trigger is satisfied (see §Ambiguity Triggers and Except
 
 1. **Round limit**: Maximum 4 questions per `AskUserQuestion` call (Claude Code hard limit)
 2. **Option limit**: Maximum 4 options per question (Claude Code hard limit)
-3. **First option label**: MUST carry the `(권장)` (Korean) or `(Recommended)` (English) suffix to signal the recommended choice
+3. **First option label**: MUST carry the `(권장)` (Korean) or `(Recommended)` (English) suffix to signal the recommended choice — this is the `push`-mode branch; while `interview.recommendation_mode` is `pull` the suffix is withheld from every option (§ Recommendation Placement Principles → Recommendation mode)
 4. **Language**: All question text, option labels, and option descriptions MUST be in the user's `conversation_language` (read from `.moai/config/sections/language.yaml`)
 5. **Round progression**: Each subsequent round MUST narrow ambiguity by building on previous answers — repeating the same question is prohibited
 6. **Termination condition**: Rounds continue until intent clarity reaches 100%; the interview MUST NOT end prematurely
@@ -102,7 +102,55 @@ principles bind its placement; reasoning, evidence base, and worked detail live 
    which the recommendation holds, so the user can reject it immediately when it does not apply.
 5. **Adaptive strength.** High estimated proficiency → weak recommendation (disclose the inferred
    preference, omit the label). Low proficiency → label plus transparent rationale. Proficiency
-   unknown → no inferred-preference label at all.
+   unknown → no inferred-preference label at all. Principle 5 is the label-suppressing condition
+   the mode axis below generalizes — from an inferred proficiency estimate to an explicit operator
+   setting.
+
+### Recommendation mode
+
+The five principles above state the `push` branch — the distributed default, and the resolved
+behavior whenever the key below is absent, empty, or unrecognized. `pull` is the judgment-first
+branch. The axis generalizes principle 5 rather than adding a parallel mechanism.
+
+```yaml
+interview:
+  recommendation_mode: push   # push (default) | pull (judgment-first)
+```
+
+[ZONE:Evolvable] [HARD] While `recommendation_mode` is `pull`, the orchestrator MUST omit the
+`(권장)` / `(Recommended)` suffix from **every** option label on **every** `AskUserQuestion` call,
+and MUST NOT re-encode the same preference through option ordering, description wording, or
+`preview` content. The obligation is deliberately unscoped by question class: the tool payload
+carries no question-type field, so an obligation scoped to a class the runtime cannot distinguish
+could not be measured.
+
+The mode is resolved at output-composition time, per surface — never latched at session start. A
+mode change therefore takes effect on the next composed output and never rewrites, recalls, or
+re-renders a round already emitted.
+
+`pull` withholds a recommendation and nothing else. The observation, the evidence, the enumerated
+options, and every gate and evidence obligation stated elsewhere in this file remain binding and
+unmodified in both modes — including the mandatory, score-independent Implementation Kickoff
+Approval gate, which under `pull` asks the same question with an unlabeled first option.
+
+### On-request emission
+
+[ZONE:Evolvable] [HARD] When the user explicitly asks for a recommendation, a preference, or an
+analysis, the orchestrator MUST emit the withheld recommendation on the requested surface, in the
+same form it would carry under `push` — the `(권장)` / `(Recommended)` label included where the
+request concerns an `AskUserQuestion` round. `pull` defers a recommendation until it is asked for;
+it does not abolish it.
+
+### The three adopted conditions
+
+These bind every `pull`-mode composition:
+
+1. **Detect → Explain → Ask, but never decide.** Withholding a recommendation never withholds the
+   underlying observation, the evidence, or the enumerated options.
+2. **An LLM 'best practice' is not a policy.** A model-inferred default MUST NOT be presented as an
+   established project rule.
+3. **When uncertain, escalate. Never downgrade.** Where it is unclear which option holds, the
+   decision goes to the user — never to a silently-applied default.
 
 ## Preview Field Standards
 
@@ -214,7 +262,7 @@ Classify the ambiguity by **user blind spot** (Known-Knowns / Known-Unknowns / U
 ```
 Trigger detected
   → Step 1: ToolSearch(query: "select:AskUserQuestion")   [deferred tool preload]
-  → Step 2: Compose AskUserQuestion round (≤4 Q, ≤4 options, (권장) first, conversation_language)
+  → Step 2: Compose AskUserQuestion round (≤4 Q, ≤4 options, (권장) first under recommendation_mode: push — withheld under pull, conversation_language)
   → Step 3: Send AskUserQuestion, collect responses
   → Step 4: Assess intent clarity (100% required)
   → Step 5: If <100%: go to Step 1 with narrowed questions
