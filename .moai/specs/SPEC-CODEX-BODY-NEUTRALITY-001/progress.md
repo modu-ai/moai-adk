@@ -75,15 +75,109 @@ directive 토큰별: `Skill(` 45 · `Agent(` 7 · `TaskUpdate` 3 · `TaskCreate`
 
 ### M3 — 중립 소스 본문 개정
 
-_<pending>_
+편집 대상은 `internal/template/templates/.claude/agents/moai/*.md` 뿐이다(REQ-CBN-008). 저장소 루트 사본 `.claude/agents/moai/*.md` 는 열지 않았고, 그 경로가 변경 목록에 나타나지 않는 것이 그 증거다.
+
+| 소스 좌표 | 처분 |
+|---|---|
+| `manager-develop.md:103,128` | `task-list` 능력 이름 + 부재 시 산문 보고로 고쳐 씀 |
+| `e2e-tester.md:146` | 같음 |
+| `manager-design.md:115` | 사다리 문면 **유지**, 직후에 `design-sync` 부재 시 행동 1문단 추가 |
+| `manager-lead.md:36,44,64,66,179,200,268` | M2 가 directive 로 판정한 7줄 전부 — `subagent-spawn` 능력 이름을 부르게 고쳐 씀. **줄 병합 없음**(7줄 그대로 7줄). `:44` 뒤에 harness note 1문단 추가 |
+| `AGENTS.md` 두 사본 | 결속표 문단에 `Skill("<name>")` 덮개 1문단. 두 사본 **바이트 동일** |
+| `invoke Skill(` 41줄 | **손대지 않음** |
+
+소스↔TOML 대응(위치 짝짓기, 이 실행 실측): `36↔29 · 44↔37 · 64↔57 · 66↔59 · 179↔172 · 200↔193 · 268↔261`.
+
+**개정 중 자체 적발 1건.** 첫 초안이 `task-list` 줄에 "(Claude harness: `TaskUpdate`)" 라는 대응 표기를 남겼는데, 그 표기가 그대로 TOML 에 실려 AC-CBN-005 의 `Task* → 0` 을 깨뜨린다. 능력 이름만 남기고 도구 토큰을 뺐다. `subagent-spawn` 쪽은 `Agent(` 에 0-기대값이 없으므로 "(Claude harness: `Agent(...)`)" 표기를 유지했다 — 두 부류의 처분이 갈리는 이유는 AC 가 다르기 때문이지 원칙이 달라서가 아니다.
+
+M4 재생성 **후**의 TOML 실측:
+
+| # | 명령 | 기대 | 실측 | 판정 |
+|---|---|---|---|---|
+| ① | `grep -rhoE 'Task(Create\|Update\|List\|Get)' …/*.toml \| wc -l` | 0 (발생) | `0` | PASS |
+| ② | `grep -rn 'task-list' …/*.toml \| wc -l` | ≥3 (줄) | `3` — `e2e-tester.toml:139` · `manager-develop.toml:90` · `manager-develop.toml:115` | PASS |
+| ③ | `grep -c 'subagent-spawn' …/manager-lead.toml` | ≥ N (=7) | `8` (7 지시 줄 + harness note) | PASS (M ≥ N) |
+| ④ | `grep -oE '(^\|[^/])design-sync' …/manager-design.toml \| wc -l` | ≥1 (발생) | `3` | PASS |
+| ⑤ | `grep -c 'default = DesignSync tool push' …/manager-design.toml` | 1 불변 | `1` | PASS |
+| ⑥ | `grep -c '\.agents/skills' AGENTS.md` | ≥1 | `2` | PASS |
+| ⑦ | `grep -c '\.agents/skills' internal/template/templates/AGENTS.md` | ⑥ 과 같은 값 | `2` | PASS |
+| ⑧ | `grep -rhoE 'invoke Skill\(' …/*.toml \| wc -l` | 41 불변 | `41` | PASS |
+| ⑨ | `grep -rhoE 'AskUserQuestion' …/*.toml \| wc -l` | 4 불변 | `4` | PASS |
+
+착수 전 실측(RED): ① 4 · ② 0 · ③ 0 · ④ 0 · ⑥ 0 · ⑦ 0. ⑤⑧⑨ 는 전면 치환을 막는 불변 대조.
+
+개정 후 합집합 모집단은 84 → **82** 이며 그 차가 전부 귀속된다: `Task*` 4 → 0 (−4), `DesignSync` 6 → 7 (+1, 부재 시 행동 문단), `Agent(` 25 → 26 (+1, harness note), `Skill(` 45 불변, `AskUserQuestion` 4 불변 → 45+26+0+7+4 = 82.
 
 ### M4 — 골든 재생성과 반경 확인
 
-_<pending>_
+- 재생성: `AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/...`
+- **첫 실행은 FAIL 했고 그것이 정상이다.** `TestEmbedFSPresenceAndByteEquality` 가 4본에 대해 "embedded bytes differ from committed" 를 냈는데, 임베드 바이트는 **컴파일 시점**에 굳고 파일 재작성은 그 뒤에 일어나므로 같은 실행 안에서는 어긋날 수밖에 없다. 재컴파일되는 다음 실행에서 해소됐다 — 임베드 축과 emit 축은 서로 다른 질문에 답한다.
+
+| # | 명령 | 기대 | 실측 | 판정 |
+|---|---|---|---|---|
+| ① | `go test ./internal/template/agentemit/...` (UPDATE 없이) | PASS | `ok  github.com/modu-ai/moai-adk/internal/template/agentemit` | PASS |
+| ② | 변경 경로 집합 ↔ `spec.md` §C.5 11줄 `diff` | 무출력 rc 0 (집합 동일성) | 양변 **11**, diff 무출력 **rc 0** | PASS |
+| ③ | ② 의 두 필터가 걸러낸 나머지 | 전부 두 증거 접두 | 4개 전부 `.moai/reports/t497/` 또는 `.moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` | PASS |
+
+**② 의 모집단은 「미커밋 변경」이 아니라 「이 카드가 만든 변경 전체」다.** 증거를 재측정 앞에 커밋하는 규율(`acceptance.md` §F) 때문에 M1·M2 산출이 이미 커밋돼, 작업 트리 상태만 보면 10줄이 나오고 11번째(`SPEC-CODEX-SKILL-NEUTRAL-001/spec.md`)가 빠진 것처럼 읽힌다. 그래서 카드 착수 HEAD `76263a02e` 이후의 추적 파일 변경 목록과 현재 작업 트리 상태를 합집합으로 놓고 대조했다 — 11 ↔ 11, diff rc 0.
+
+경로 추출에서 오프셋 오류를 두 번 만났다(M2 ③ 의 74 ≠ 81, M4 ② 의 21 ≠ 11). 두 번째는 상태 목록의 `XY path` 형식(공백+M+공백)을 접두 제거 정규식이 못 벗겨 생겼고, `plan.md` §F M4 ② 가 처음부터 지정한 `awk '{print $NF}'` 로 바꾸자 11줄이 됐다. **두 번 다 실패가 시끄러웠다** — 잘못된 셀렉터가 조용한 초록을 내지 않고 눈에 띄는 불일치를 냈다는 것이 기록할 만한 성질이며, 그래서 두 시도를 모두 남긴다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-07
+run_commit_sha: pending-backfill
+run_status: complete
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run  # 레인은 통합 브랜치를 push 하지 않는다 — 통합은 창에서 리드 소관
+l44_post_push_fetch: not-run   # 같은 이유
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  status: not-applicable
+  note: "Go 소스 변경 0 — 문서·템플릿·생성물 변경뿐이다. GOOS 매트릭스 빌드는 판정 대상이 없어 돌리지 않았다(Gap 에 명시)."
+total_run_phase_files: 15   # 산출 11 + 증거 4
+m1_to_mN_commit_strategy: "마일스톤별 분리 커밋 (M1 / M2 / M3+M4). 증거는 재측정 앞에 커밋."
+```
+
+### AC PASS/FAIL 행렬 (AC-CBN-001..014)
+
+| AC | 판정 | 검증 명령 | 축자 출력 |
+|---|---|---|---|
+| AC-CBN-001 | PASS | 분류 행 수 / 모집단 / 좌표 diff | `84` / `84` / diff 무출력 rc 0 (양변 81) |
+| AC-CBN-002 | PASS | 분류표 세 좌표 행 판독 + 모집단 재측정 | `sync-auditor:131` prose·`prohibition` · `plan-auditor:146` prose·`orchestrator` **2행** · `super-advisor:62` prose·`orchestrator`. 모집단 `3` 줄 / `4` 발생 |
+| AC-CBN-003 | PASS | `grep -rhoE 'invoke Skill\(' … \| wc -l` | `41` |
+| AC-CBN-004 | PASS | `grep -rhoE 'AskUserQuestion' … \| wc -l` | `4` |
+| AC-CBN-005 | PASS | `Task*` 계수 + `task-list` 좌표 | `0` / 좌표 `3` 개 |
+| AC-CBN-006 | PASS | (a)(b)(c)(d) 를 한 판정에서 | `11` / `3` / `3` / `0` — (b)==(c) 성립 |
+| AC-CBN-007 | PASS | 두 사본 표 구역 `diff` | 무출력, rc 0 (파일 바이트도 양쪽 15415) |
+| AC-CBN-008 | PASS | 표 첫 칸 ↔ `tool_classes` 값 집합 | `question-channel` · `task-list` · `design-sync` — 셋 다 원소, 새 어휘 0 |
+| AC-CBN-009 | PASS | `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` | `always-loaded surface = 74695 tokens (budget 77600, headroom 2905, 17 entries)` / `--- PASS`. **셀렉터 1매치**. 덮개 비용 160 tokens, 여유 양수 유지 |
+| AC-CBN-010 | PASS | `go test ./internal/template/agentemit/...` | `ok  github.com/modu-ai/moai-adk/internal/template/agentemit` |
+| AC-CBN-011 | PASS | 반경 집합 동일성 | 11 ↔ 11, diff 무출력 rc 0. 루트 사본 `.claude/agents/moai/*.md` 는 목록에 없음 |
+| AC-CBN-012 | PASS | 실행한 명령 목록 판독 | `./internal/template/agentemit/...` 와 `./internal/config/` **두 범위만**. 전체 스위트 형태 **0회** |
+| AC-CBN-013 | PASS | N / M 을 한 판정에서 | `N=7` (`29 37 57 59 172 193 261`, 경계 표본 `37 57 59 193` 전부 포함) · `M=8` ≥ N · 착수 전 `M=0` |
+| AC-CBN-014 | PASS | 부재 시 행동 / 사다리 불변 | `3` (착수 전 0) / `1` |
+
+부가 가드(같은 `./internal/config/` 범위, 셀렉터 1매치): `TestCodexContractByteCeiling` → `contract document AGENTS.md = 15415 bytes (ceiling 24576, headroom 9161)`, 템플릿 사본 동일값 → PASS. plan-audit A4 는 「이 가드가 고정 검증 범위에서 돌지 않는다」고 적었으나 **그 전제가 틀렸다** — 가드는 `internal/config` 안에 있어 고정 범위가 도달한다. 다만 `-run 'TestAlwaysLoadedTokenBudget$'` 셀렉터로는 선택되지 않으므로 명시적으로 함께 돌렸다.
+
+기타: 미해결 마커 `grep -rnE '\[NEEDS[[:space:]]CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → 무출력 **rc 1**. `gofmt -l internal/` → 무출력 rc 0 (Go 소스 변경 0).
+
+### Gaps
+
+- 코덱스 런타임 실거동을 이 트리에서 프로브하지 않았다. M1 의 부재 판정은 매니페스트 rationale **문면** 판정이다.
+- 크로스 플랫폼 빌드(`GOOS=windows`)를 돌리지 않았다 — Go 소스 변경이 0 이라 판정 대상이 없다.
+- 전체 스위트를 돌리지 않았다(REQ-CBN-014 의 요구). 전 패키지 판정은 CI 몫이다.
+- M5(미러 스킬 77파일)는 착수하지 않았다 — 운영자가 후속 카드 분리로 확정.
+- plan-audit 잔여 부채 A3·A5·A6·A7·A8·A9·A10 은 손대지 않았다(전부 optional, 감사가 FAIL 근거가 아니라고 명시). 그중 A8(형제 SPEC 의 세 번째 스테일 「4행」)은 v0.3.1 HISTORY 항목 안에 있어 **이력 재작성이 되므로 의도적으로 두었다**.
+
+### Residual-risk
+
+- `manager-lead.toml:172` 를 directive 로 판정한 것은 수동태 문장의 행위자 귀속 판단이다. 틀렸다면 산문이 능력 이름을 부르게 된 것이고(무해하지만 불필요), 반대 방향의 실패는 코덱스에 Claude 스폰을 지시하는 줄이 남는 것이다 — 불확실할 때 directive 로 기우는 쪽이 보수적이다.
+- 덮개 문장이 always-loaded 예산을 160 tokens 소비했다(여유 3065 → 2905). 예산은 여전히 양수지만 이 표면의 추가 확장은 여유를 다시 재고 시작해야 한다.
+- `.agents/skills` 미러 도달 주장은 `skill_mirror.go` 의 자기 서술("makes every skill this run deployed reachable from BOTH paths")과 `agents-codex.yaml` 의 skill-roots 측정 기록에 근거한다. 이 트리에서 배포를 실행해 미러를 눈으로 확인하지는 않았다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
