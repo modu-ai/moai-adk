@@ -137,7 +137,7 @@ Merge-base for every revision comparison: `git merge-base origin/develop HEAD` �
 
 ```yaml
 run_complete_at: 2026-09-07
-run_commit_sha: <backfill — the single run-phase commit on WT-codex-model-config>
+run_commit_sha: dc817ff65        # the implementation commit; this line is a follow-up backfill commit
 run_status: complete
 ac_pass_count: 14
 ac_fail_count: 0
@@ -147,7 +147,7 @@ new_warnings_or_lints_introduced: 0   # golangci-lint run ./internal/web/... ./i
 cross_platform_build:
   darwin_arm64: pass                   # go build ./... rc=0 on this host
   other_platforms: not_measured        # CI owns the matrix; no GOOS cross-build run in this lane
-total_run_phase_files: 11              # 7 modified + 4 added (2 of them templ-generated)
+total_run_phase_files: 11              # code only: 7 modified + 4 added (2 of them templ-generated); spec.md + progress.md ride the same commit
 m1_to_mN_commit_strategy: single commit — the card is one milestone; M1..M6 land together
 verification_scope: ./internal/web/ ./internal/settings/   # full suite is CI's, per the lane rule
 templ_generate_drift: 0                # run from internal/web (from the repo root it rewrites every FileName)
