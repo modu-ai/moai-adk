@@ -24,14 +24,14 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check embed-check fmt-check
+.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-check fmt-check
 
 all: lint test build ## Run lint, test, and build
 
 templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
 	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
 
-build: agents-emit-check templ-generate ## Build the binary
+build: agents-emit-check commands-emit-check templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
@@ -47,6 +47,17 @@ agents-emit: ## Regenerate the .codex/agents/moai TOMLs from the neutral .md lay
 agents-emit-check: ## Verify the committed .codex TOMLs match the .md source layer (read-only; never regenerates)
 	@AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
 		|| { printf 'agent-emit drift: committed .codex/agents/moai/*.toml differ from the .md source layer — run `make agents-emit`\n' >&2; exit 1; }
+
+commands-emit: ## Regenerate the .agents/skills/moai-<command> SKILL.md artifacts from the command sources
+	COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
+# Read-only drift check for the published command skills, in the same
+# position as agents-emit-check. It NEVER writes: regeneration stays behind
+# the explicit `commands-emit` verb, and COMMAND_EMIT_UPDATE is scrubbed so
+# an inherited value cannot flip this into the regeneration branch.
+commands-emit-check: ## Verify the committed published command skills match the command source layer (read-only; never regenerates)
+	@COMMAND_EMIT_UPDATE= go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
+		|| { printf 'command-skill drift: committed .agents/skills/moai-*/SKILL.md differ from the command source layer — run `make commands-emit`\n' >&2; exit 1; }
 
 # Embed-axis judgment point: compares the .codex artifacts carried by an
 # ALREADY-BUILT binary against the committed ones. It deliberately has no
