@@ -209,3 +209,36 @@ which **AC-JFM-010 forbids**, since it requires § Option Description Standards 
 conflict resolves only by reading "(S1)" as narrowing the set to §B.1's coordinate table, and the
 same criterion elsewhere calls using that table as the scope test **circular**. Recorded as a
 SPEC-body question, not resolved here.
+
+### Resolution of the open question (2026-09-07, session following the lead's continuation order)
+
+Measured before writing: the sweep's `askuser-protocol.md` rows are exactly three — `:64`
+(`**First option label**`, `conditioned` via M1's push-mode branch), `:83` (`**Bias prevention**`),
+`:265` (`Step 2: Compose AskUserQuestion round`, `conditioned` via M1's push-mode branch). All
+three verified by direct read at HEAD `a12beb541`.
+
+The question resolves into two parts:
+
+1. **`:83` does not need conditioning, and no edit may give it one.** The Bias prevention clause
+   does not mandate a first-option label; it regulates where the recommendation signal may live
+   *when one exists* ("conveyed exclusively through the label suffix on the first option"). Under
+   `pull` no option carries a preference claim, so the clause is satisfied vacuously — the same
+   consequence-test verdict row 6 already carries. Conditioning it would require editing a clause
+   AC-JFM-010 protects byte-unchanged, turning AC-JFM-010 into a violated criterion for no
+   behavioral gain. Row 6's `unconditioned-by-design` stands.
+
+2. **The clause "any other `askuser-protocol.md` (S1) row" is defective in both readings, and the
+   fix is a SPEC-body edit — manager-spec's surface, not the run phase's.** Read as "every
+   `askuser-protocol.md` row in the sweep" it demands `:83` conditioning — the impossible
+   direction AC-JFM-010 forbids. Read as "any row at §B.1's S1 coordinates" it revives the
+   membership test 0.2.2 explicitly removed. The clause's practical intent is already
+   discharged — all three swept coordinates are classified, two `conditioned`, reasons recorded —
+   so what remains is wording precision only. Logged to the lead as a SPEC-body blocker: replace
+   the clause with the reachability form (or pin the three coordinates explicitly) at the next
+   manager-spec touch.
+
+**Disposition: the question is CLOSED as resolved-as-measured.** AC-JFM-013 is satisfied on the
+sweep + ledger the criterion defines — every swept candidate carries a class, no unclassified
+remainder, all named coordinates `conditioned`. The wording defect is a SPEC-body debt carried to
+the lead, not an unmet criterion condition; reading it as blocking would be the wrong-reason red
+(the work this criterion measures is done; the debt lives in the sentence describing it).
