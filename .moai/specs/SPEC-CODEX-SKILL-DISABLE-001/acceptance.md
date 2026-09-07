@@ -143,11 +143,28 @@
 
 ## §G Definition of Done
 
-- [ ] §A~§E 전 AC가 테스트로 표현되고 통과
-- [ ] AC-CSD-001의 뮤턴트 3종, AC-CSD-002·AC-CSD-031의 뮤턴트가 실제로 잡힘(잡힌 사실을 출력으로 인용)
-- [ ] AC-CSD-003 E2E가 `probe.sh` 로 마커 1 → 0 을 보임
-- [ ] AC-CSD-040의 prune 테스트 모집단 수가 `go test -list` 로 실측돼 기준에 적혀 있음
-- [ ] AC-CSD-050 재측정 2셀 통과 + 버전 스탬프
-- [ ] `go test ./internal/cli/... ./internal/codexwiring/...` 통과 (전체 스위트는 CI 몫)
-- [ ] `go vet ./...` · `golangci-lint run` 무경고
-- [ ] plan.md 에 미해결 clarification 마커 0건 (`grep -c 'NEEDS CLARIFICATION' plan.md` → 0)
+- [x] §A~§E 전 AC가 테스트로 표현되고 통과
+- [x] AC-CSD-001의 뮤턴트 3종, AC-CSD-002·AC-CSD-031의 뮤턴트가 실제로 잡힘(잡힌 사실을 출력으로 인용)
+- [x] AC-CSD-003 E2E가 `probe.sh` 로 마커 1 → 0 을 보임
+- [x] AC-CSD-040의 prune 테스트 모집단 수가 `go test -list` 로 실측돼 기준에 적혀 있음
+- [x] AC-CSD-050 재측정 2셀 통과 + 버전 스탬프
+- [x] `go test ./internal/cli/... ./internal/codexwiring/...` 통과 (전체 스위트는 CI 몫)
+- [x] `go vet ./...` · `golangci-lint run` 무경고
+- [x] plan.md 에 미해결 clarification 마커 0건 (`grep -c 'NEEDS CLARIFICATION' plan.md` → 0)
+
+### 체크 근거 — sync-phase가 무엇을 직접 관측했는가
+
+체크 표시는 run-phase 보고를 옮겨 적은 것이 아니다. sync-phase가 이 트리(`f6550020f`)에서 다시 실행한 명령과 그 출력이 근거이며, **직접 재현하지 않은 항목은 그 사실을 여기 적는다**.
+
+| 항목 | sync-phase가 실행한 것 | 관측 |
+|---|---|---|
+| 1 (전 AC) | `go test -list '<16개 테스트명 OR-패턴>' ./internal/cli/` → `grep '^Test' \| wc -l` | **16** — 기준 행렬이 이름 붙인 테스트 16개가 **전부 실재**한다(0이 아니고, 요청 수와 정확히 일치). 없는 이름을 고른 셀렉터도 `ok` 를 찍으므로 이 대조가 패키지 초록의 전제다. 나머지 2개(AC-CSD-003·050)는 스크립트 기준이며 아래 3·5행에서 직접 재현했다 |
+| 2 (뮤턴트) | `sed -n '163,166p;172,180p;484,488p' internal/cli/codex_skills_disable_test.go` | 인용된 실패 문구 4종이 인용된 줄 번호(165·174·178·486)에 **그대로 존재**한다 — 인용문이 지어낸 것이 아님이 확인된다. **직접 재현하지 않은 것**: 뮤턴트를 다시 주입해 RED를 보지는 않았다. 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다. 이 체크는 run-phase 관측 + sync-phase의 인용 대조로 성립한다 |
+| 3 (E2E) | `bash .moai/reports/t502/e2e-verb.sh copy` | **직접 재현.** `marker=1 → marker=0`, `expect=… result=MATCH` ×2, `post-run config mode: 644`, 재실행 후 `entries declaring the path: 1`, `E2E PASS`, exit 0 |
+| 4 (모집단) | `go test -list 'TestPruneCodexSkillEntries\|TestJudgeCodexSkillEntry\|TestRunCleanCodexSkills' ./internal/cli/... \| grep -c '^Test'` | **13** — 세 번째 독립 측정이며 기준 본문에 박힌 값과 일치 |
+| 5 (재측정 게이트) | `codex --version` · `bash .moai/reports/t502/probe.sh selftest` | **직접 재현.** `codex-cli 0.153.4`, `symlink literal_false=gated` · `copy literal_false=gated` 2셀 + `copy resolved_false=exposed` 대조, 실사용 config sha256 전후 동일, `SELFTEST PASS`, exit 0 |
+| 6 (테스트) | `go test ./internal/cli/... ./internal/codexwiring/...` | exit 0, 18개 패키지 `ok`(`internal/cli` 474.735s) |
+| 7 (vet·lint) | `go vet ./...` · `golangci-lint run ./internal/cli/... ./internal/codexwiring/...` | 각각 exit 0 / 출력 0줄, `0 issues.`. **범위 표기**: vet은 모듈 전체, lint는 **영향 패키지 한정**이다(전체 lint는 돌리지 않았다) |
+| 8 (마커) | `grep -c 'NEEDS CLARIFICATION' plan.md` | **0** |
+
+증거 파일: `.moai/state/verify/t502-sync/`(`gotest.txt` · `vet-full.txt` · `lint.txt` · `e2e-copy.txt` · `regate-rerun.txt` · `ac-testlist.txt`).

@@ -145,4 +145,47 @@ m1_to_mN_commit_strategy: "M1(재측정 게이트) 선행 → 구현 단일 커�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # the close lands in the sync commit itself; a SHA cannot name the commit that carries it
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-CODEX-SKILL-DISABLE-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry)"
+b12_self_test_b: "grep -c '^### AC-CSD' acceptance.md -> 17 (non-zero; matches the AC matrix row count). REQ: grep -c '^- \\*\\*REQ-CSD-' spec.md -> 16"
+b12_self_test_c: "every path named in the CHANGELOG entry verified with ls -> 9/9 present"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first bullet (line 12)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit; 3-phase close)"
+  plan_md: "no YAML frontmatter in this artifact - nothing to transition"
+  acceptance_md: "no YAML frontmatter in this artifact - nothing to transition"
+  progress_md: "no YAML frontmatter in this artifact - nothing to transition"
+  updated_field: "spec.md updated: 2026-09-07 (already the sync-commit date; unchanged)"
+canary_compliance_check: not_applicable   # this SPEC defines no forward-looking policy its own sync tests
+verification:
+  tests: "go test ./internal/cli/... ./internal/codexwiring/... -> exit 0 (18 packages ok, internal/cli 474.735s)"
+  vet: "go vet ./... -> exit 0, 0 lines of output (module-wide)"
+  lint: "golangci-lint run ./internal/cli/... ./internal/codexwiring/... -> exit 0, '0 issues.' (affected packages only)"
+  spec_lint: "moai spec lint .moai/specs/SPEC-CODEX-SKILL-DISABLE-001/spec.md -> exit 0, 'No findings'"
+  spec_audit: "mcp__moai__spec_audit(filter_spec=SPEC-CODEX-SKILL-DISABLE-001) -> modern_era_clean 1, drift INFO only (EraAutoDetected V3R6)"
+  full_suite: "CI's job - no local full suite (CLAUDE.local.md §4)"
+sync_phase_independent_reproductions:
+  e2e: "bash .moai/reports/t502/e2e-verb.sh copy -> exit 0, marker 1 -> 0, mode 644 preserved, re-run entries=1, E2E PASS"
+  regate: "bash .moai/reports/t502/probe.sh selftest @ codex-cli 0.153.4 -> 2 cells gated + inert-notation control, live config sha256 unchanged, SELFTEST PASS"
+  prune_population: "go test -list '<prune selector>' ./internal/cli/... | grep -c '^Test' -> 13 (third independent measurement)"
+  ac_test_name_existence: "go test -list '<16 AC test names>' ./internal/cli/ | grep '^Test' | wc -l -> 16 (all named tests exist; a selector matching none also prints ok)"
+  boundary: "diff --name-only bf779ecf2..HEAD | grep '^internal/' -> 4 files; --stat on internal/codexwiring/skills.go and internal/cli/codex_skills_prune.go -> empty (byte-unchanged)"
+dod_boxes_ticked: 8
+dod_boxes_left_unticked: 0
+evidence_dir: .moai/state/verify/t502-sync/
+```
+
+### Gaps — sync-phase가 관측하지 **않은** 것
+
+- **뮤턴트 5종을 재주입하지 않았다.** 인용된 실패 문구 4종이 인용된 줄 번호에 그대로 존재함은 대조했으나, 다시 넣어 RED를 보지는 않았다 — 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다. §G 체크 근거 표 2행이 이 한계를 명시한다.
+- **lint 범위는 영향 패키지 한정이다.** `golangci-lint run` 을 저장소 전체로 돌리지 않았다. vet 만 모듈 전체(`./...`)다.
+- **전체 테스트 스위트 미실행 · 크로스플랫폼 빌드 미실행.** 둘 다 CI 몫이며 run-phase Gap 그대로다.
+- **문서 표면은 CHANGELOG 하나다.** README·docs-site 4개 로케일에 이 verb 를 싣지 않았다 — 위임이 지목한 산출물이 CHANGELOG 였고, 문서 사이트 항목 추가는 이 카드의 범위 밖이다. 자매 카드 t506(`moai clean --codex-skills`)이 docs-site 페이지를 동반한 전례가 있으므로, **후속 카드로 남길 가치가 있는 간극**으로 기록한다.
+
+### Residual-risk
+
+- **CHANGELOG 항목의 서술은 run-phase 측정에 의존한다.** 게이트 성질(realpath 비교), 금지 표기 3종, `enabled` 필수성은 모두 선행 측정 보고서에서 온 것이고 sync-phase가 재현한 것은 2셀 게이트와 E2E 두 축이다.
+- **단일 codex 버전(0.153.4).** sync-phase 재현도 같은 버전이다 — 버전 드리프트는 여전히 미관측이다.
