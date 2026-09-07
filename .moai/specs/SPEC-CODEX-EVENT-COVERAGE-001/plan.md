@@ -12,7 +12,7 @@ author: manager-spec
 ## A. 컨텍스트
 
 - 카드 t496 (Class C) · 트리 `.claude/worktrees/t496` · development_mode: tdd (`quality.yaml:2`)
-- 대상: `internal/codexadapter/events.go` (테이블+Resolve), 테스트 2종, 그리고 M2 캠페인(코드 무변경, 런 페이즈 실행)
+- 대상: `internal/codexadapter/events.go` (테이블+Resolve), 테스트 파일 3종(codexadapter 2개 갱신 + codexwiring/hooks_test.go 신설 테스트 — M1 파일 목록 참조), 그리고 M2 캠페인(코드 무변경, 런 페이즈 실행)
 - 본 트리 재측정 완료(2026-09-07): `EventInterrupt` grep 0히트(대조군 EventStop 검출), EventTable 6+5=11행, `internal/cli/hook.go`에 interrupt 서브커맨드 0히트, `codexwiring/hooks.go:99-100`의 `!row.Adapted` skip 확인, `codex --version` → `codex-cli 0.153.4`
 
 ## B. 알려진 이슈
@@ -118,4 +118,4 @@ M2 처분이 adapt-now로 표시한 이벤트만: 테이블 행 `Adapted` true �
 
 ## H. 상호 참조
 
-- spec.md §C (본 트리 측정 근거 M1-M5) · acceptance.md (AC 전문) · `.moai/reports/t494/codex-doc-survey.md` §3 (입력, 재측정됨) · `.moai/reports/t83/precondition-measurement.md` (0.147.0 캠페인 선례)
+- spec.md §C (본 트리 측정 근거 M1-M5) · acceptance.md (AC 전문) · `.moai/reports/t494/codex-doc-survey.md` §3 (12종 열거의 근거인 외부 문서 주장 — 본 트리 재측정 불가, §C M6 참조; M2 캠페인이 설계된 후속 검증) · `.moai/reports/t83/precondition-measurement.md` (0.147.0 캠페인 선례)

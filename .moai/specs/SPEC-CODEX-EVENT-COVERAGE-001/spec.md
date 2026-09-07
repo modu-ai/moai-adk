@@ -66,7 +66,7 @@ moai의 Codex 어댑터는 `internal/codexadapter/events.go`의 `EventTable`로 
 
 ## C. 제약
 
-- 구현 최소성: M1의 최소 변경은 테이블 1행 + 어댑터 내 이름 상수 1개 + Resolve 메시지 조건 처리 + 테스트 갱신 2곳 + doc comment 수정이다. 이 개념적 크기의 ~3배를 넘는 plan은 과잉 설계다.
+- 구현 최소성: M1의 최소 변경은 테이블 1행 + 어댑터 내 이름 상수 1개 + Resolve 메시지 조건 처리 + 테스트 파일 3종 갱신/신설(plan M1 파일 목록 참조) + doc comment 수정이다. 이 개념적 크기의 ~3배를 넘는 plan은 과잉 설계다.
 - `code_comments: en` — 모든 코드 주석/ doc comment는 영어.
 - 캠페인은 런 페이즈에서 실행하며, plan 페이즈에서 이를 검증 실행하지 않는다.
 - 측정 귀속: 캠페인 판정 each는 실행한 명령 + 관측 출력과 함께 기록된다(verification-claim-integrity §2).
