@@ -1,17 +1,16 @@
+# RED recapture — sync-audit F2-f (overlay experiment B, 2026-09-07)
+#
+# COMMAND: go test -count=1 -run TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical -v ./internal/web/
+# EXIT CODE: 1
+# TREE: commit 6639e7ecb (HEAD, committed repair) + WORKING-TREE OVERLAY reverting fieldsets_templ.go:925 to the
+#   pre-repair expression (SchemaValues[f.Name] == "true") — templ source untouched, generated artifact only.
+# OVERLAY STATE: the intermediate tree is commit-impossible (a working-tree measurement); after recapture the overlay
+#   was reverted, the same command verified GREEN, and git diff on fieldsets_templ.go re-checked clean.
+#
+--- verbatim output below ---
 === RUN   TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical
-    write_safety_test.go:158: untouched rendered submission rewrote the tracked section file (no-op expected)
-        --- before ---
-        workflow:
-            project:
-                continuation: card
-        
-        --- after ---
-        workflow:
-            project:
-                continuation: card
-            todo:
-                enabled: false
+    write_safety_test.go:158: renderer shows no checked radio for the absent default-ON key — expected ON (value=1) after the polarity repair
 --- FAIL: TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical (0.01s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/web	0.680s
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.703s
 FAIL

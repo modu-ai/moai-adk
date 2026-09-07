@@ -14,6 +14,7 @@ package settings
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -291,7 +292,11 @@ func TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp(t *testing.T) {
 
 // TestApplySchemaEditsSeamAbsentKeyTrueStillWrites is the companion control
 // for the absent-key branch: a bool field absent on disk submitting "true"
-// IS a real change (the key must be created).
+// IS a real change (the key must be created). The assertion is scoped to the
+// pre_commit block (sync-audit F1-f): a bare strings.Contains("enabled: true")
+// was already satisfied by the fixture's top-level gate.enabled: true, so the
+// test passed vacuously — only a match INSIDE the pre_commit block proves the
+// write happened.
 func TestApplySchemaEditsSeamAbsentKeyTrueStillWrites(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -301,8 +306,11 @@ func TestApplySchemaEditsSeamAbsentKeyTrueStillWrites(t *testing.T) {
 		t.Fatalf("ApplySchemaEdits: %v", err)
 	}
 	after := readSection(t, root, "gate")
-	if !strings.Contains(after, "enabled: true") {
-		t.Errorf("absent-key + true submission not persisted:\n%s", after)
+	m := regexp.MustCompile(`(?m)^\s*pre_commit:\s*$\n^\s+enabled: (\S+)`).FindStringSubmatch(after)
+	if m == nil {
+		t.Errorf("absent-key + true submission did not create the pre_commit block:\n%s", after)
+	} else if m[1] != "true" {
+		t.Errorf("pre_commit.enabled = %q, want \"true\":\n%s", m[1], after)
 	}
 }
 
