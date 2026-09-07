@@ -2,7 +2,7 @@
 id: SPEC-CODEMAPS-REFRESH-002
 title: "Codemaps 최신성 재발 종결: 누락 단위 편입 · 변경 구간 재기술 · 재스탬프"
 version: "0.1.4"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec

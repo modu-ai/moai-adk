@@ -171,4 +171,63 @@ open_items:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+측정 트리: 워크트리 `.claude/worktrees/t475`, 브랜치 `WT-codemaps-stale`, 측정 시점 HEAD `27ec1ce44`.
+
+### 사용자 대면 문서 판정 — 변경 없음
+
+```
+$ git diff --name-only 52f863f36 HEAD -- README.md 'README.*' docs/ docs-site/ internal/ pkg/ cmd/ '*.go' .moai/config/
+(무출력)
+```
+
+변경 경로 26개 전부가 `.moai/project/codemaps/` · `.moai/reports/t475/` · `.moai/specs/SPEC-CODEMAPS-REFRESH-002/` 세 접두사 안에 있다. CLI 동작·템플릿 내용·사용자 워크플로가 바뀌지 않았으므로 README 4로케일과 docs-site 는 동기화 대상이 아니다. README 의 `codemaps` 언급 2건(`README.md:322`, `README.md:715`)은 `/moai codemaps` **명령**을 가리키며 이 카드가 만진 `.moai/project/codemaps/` **산출물**을 가리키지 않는다.
+
+### 게이트 재측정 (sync 시점)
+
+```
+$ ./bin/moai graph check ; echo EXIT=$?
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=absent  (mx-index absent (untracked runtime artifact — fresh worktree state))
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=absent  (edges.jsonl absent (untracked derived artifact — fresh worktree state))
+citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
+EXIT=1
+```
+
+run 시점(§E.2 M5)과 동일. `EXIT=1` 은 `absent` 두 계층 탓이며 AC-CM2-010 이 합격 저해 요인이 아니라고 명시한다.
+
+### frontmatter 전이 — 실제 필드가 있는 곳에만
+
+`status:` 필드는 **spec.md 하나에만 존재한다**(`/usr/bin/grep -n '^status:' plan.md acceptance.md` → 무출력, exit 1). progress.md 는 frontmatter 자체가 없다(`grep -c '^---$'` → 0). 따라서 4-아티팩트 일괄 전이는 이 SPEC 에서 **spec.md 1건**으로 실현된다 — 나머지 3개에 없는 필드를 새로 만들지 않았다.
+
+### B12 자가 점검 — 규범 정규식이 1개 적게 센다
+
+자가 점검 (b)의 정본 정규식 `AC-([A-Z0-9]+-)*[0-9]+` 는 `AC-CM2-003a` 의 접미 `a` 를 떨어뜨려 `AC-CM2-003` 과 중복시키므로 **12** 를 낸다. 접미사를 허용한 `AC-([A-Z0-9]+-)*[0-9]+[a-z]?` 는 **13** 을 내고, progress.md §E.3 AC 매트릭스 행 수(`/usr/bin/grep -cE '^\| AC-CM2-[0-9]+a? \|'`)도 **13** 이다. 대조는 13 = 13 으로 성립한다. 12 를 그대로 썼다면 CHANGELOG 가 AC 1개를 누락한 채 통과했을 것이다 — 리드 이관 사항.
+
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync   # 자기 해시를 스스로 실을 수 없다 — 직후 커밋에서 채운다(schema D3 backfill 예외)
+sync_status: complete
+b12_self_test_a: "pass — /usr/bin/grep -c 'SPEC-CODEMAPS-REFRESH-002' CHANGELOG.md → 0 (사전), 1 (사후). 중복 진입 없음"
+b12_self_test_b: "pass — 접미사 허용 정규식 13 = §E.3 AC 매트릭스 행 13. 정본 정규식은 12 를 내며 AC-CM2-003a 를 잃는다(위 절)"
+b12_self_test_c: "pass — CHANGELOG 진입이 인용한 경로 6개 전부 ls exit 0: .moai/specs/SPEC-CODEMAPS-REFRESH-002/spec.md · .moai/project/codemaps · .moai/reports/t475 · internal/graph/check.go · .claude/skills/moai/workflows/codemaps.md · .claude/agents/moai"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Changed, 섹션 첫 항목 (line 278)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase 병합 종결)"
+  plan_md: "해당 없음 — status 필드 부재"
+  acceptance_md: "해당 없음 — status 필드 부재"
+  progress_md: "해당 없음 — frontmatter 부재"
+  updated_field: "3개 파일 전부 2026-09-08 (이미 동일, 변경 없음)"
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC 은 전방 정책을 정의하지 않는다 — 산출물은 codemaps 문서와 재스탬프뿐이고 sync 가 자기 테스트할 정책 조항이 없다"
+user_facing_docs_changed: false
+user_facing_docs_evidence: "변경 경로 필터(README/docs/docs-site/internal/pkg/cmd/*.go/.moai/config) 무출력 — 위 절의 명령과 출력"
+mx_tag_validation:
+  applicable: false
+  reason: "Go 프로덕션 코드 diff 0줄 (REQ-CM2-012) — @MX 주석을 실을 표면이 없다"
+open_items_carried_forward:
+  - "fold 판정 단위가 여전히 히트-0 인지를 직접 묻는 AC 가 없다 — AC-CM2-007 의 전제로만 간접적으로 걸린다. run 이 자기 신고한 §A.3(a1) 위반 1건은 검출·되돌림·기록됐다(verdict.md 관측 ②). 이 sync 는 사후 AC 편집으로 간극을 닫지 않았다 — 후속 카드 재료이며 처분은 운영자 몫"
+  - "B12 자가 점검 (b) 정본 정규식이 접미 문자 AC-ID 를 흡수한다 — 이 SPEC 에서 13 → 12. 규범 수정은 이 카드 범위 밖"
+  - "graph check 종료 코드는 신규 워크트리에서 absent 계층 탓에 1 로 남는다 — 판정면은 계층 verdict (verdict.md 관측 ① 부수)"
+  - "임계 40 과 재스탬프 주기 관계는 verdict.md 관측 ① 이 리드 소비용으로 수출했다. 이 카드는 설정을 바꾸지 않았다"
+```
