@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-CODEX-PANEL-001
 title: "moai web console — codex tab as a read-only mirror of the scattered codex settings"
-version: "0.3.0"
+version: "0.4.0"
 status: completed
 created: 2026-09-07
 updated: 2026-09-07
@@ -22,10 +22,168 @@ related_specs: [SPEC-MCP-CONSOLE-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-WEB-CO
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4.0 | 2026-09-07 | Post-close Amendments record (§ Amendments below). Additive only: no requirement, criterion, or mutant text above or in `acceptance.md` is rewritten, and `status` stays `completed` — this is a record correction, not the `completed → in-progress` amendment transition of `spec-frontmatter-schema.md` § Status Transition Ownership Matrix. Six records: three the lead directed be closed in the SPEC's own text (AC-WCP-013's literally unsatisfiable rail arm, REQ-WCP-005's load-bearing catalogue clause, MU-6's absence from CI), and three execution findings (the unnamed page-wide-first-occurrence coupling that broke on first run, AC-WCP-011's pre-commit timing, and the `(unset)` judgement the SPEC left open). None of the six was reachable by the three plan-audit rounds that produced PASS 0.89: no `go build`, `go test`, `go vet`, or `templ generate` had run against this SPEC at any point in plan phase, and that was recorded as a known gap before run began (`progress.md` §E.1, closing paragraph). |
 | 0.3.0 | 2026-09-07 | Plan-audit iteration 3 repairs (`.moai/reports/t509/plan-audit-iter3.md`, PASS 0.89 — trajectory 0.69 → 0.84 → 0.89). Two blocking findings, both in `acceptance.md`: the AC-WCP-012 command block now writes **every deciding step literally**, including the `diff` that issues the verdict (the one step still left as prose — in the criterion whose own subject is a tool that behaves differently from how it looks); and the MU-8 mutant row now names **which mechanism bites per target**, since dropping the receiver group empties only `handleSave` and the two plain functions need the typo mechanism instead. This HISTORY row and the version bump are themselves the third finding: at 0.2.0 the document described a state two rounds behind its content. |
 | 0.2.1 | 2026-09-07 | Plan-audit iteration 2 repairs (`.moai/reports/t509/plan-audit-iter2.md`, 0.84 over the 0.80 threshold; FAIL on the retry-contract regression clause, not on score). AC-WCP-012's extractor anchor made receiver-tolerant **and** gated on a non-zero extraction count per side per target — `handleSave` is a method, so the prior anchor matched nothing and both sides extracted zero lines, which `diff` reports as `IDENTICAL`: a vacuous pass on the function guarding REQ-WCP-011. MU-8 added to pin the mis-anchor mutant. AC-WCP-011's baseline moved to an explicitly computed `git merge-base`, closing the moving-tip hazard while it was still latent. AC-WCP-009 repaired in the same pass as within the defect's blast radius (it delegates its verification to AC-WCP-012's recipe). |
 | 0.2.0 | 2026-09-07 | Plan-audit iteration 1 repairs (`.moai/reports/t509/plan-audit.md`, FAIL 0.69, no must-pass failure — all findings in the verification layer). §B.1's loss mechanism corrected from "a repeated `name`" to "a field submitted from two panels", after re-reading `boolSegment` in this tree; the `workflow.audit.model` inclusion decision closed here in §C.1 instead of being left open in the plan; §C.2 + REQ-WCP-012 added for the rail-count coupling the first draft named nowhere. |
 | 0.1.0 | 2026-09-07 | Initial draft from card t509, axis B1. Every constraint traces to `.moai/reports/t509/verdict.md` — §9 (the real gap), §11 (cross-section panels are already supported), §13 (the measured duplicate-`name` blocker), §14 (mechanism A and its six contract clauses). Three premises carried in the dispatch were re-measured against this tree and two of them needed correcting; see §B. |
+
+## Amendments
+
+Post-close records. Each states what the original text asserted, what execution
+established, and what a later reader should do about it. **The originals above and in
+`acceptance.md` are untouched by design** — the record of what was believed is the point,
+and a silently-corrected requirement teaches nothing about how it came to be wrong.
+
+Scope of this section: `status` remains `completed`, and no `amendment_of` field is
+declared, because this is a record correction rather than the
+`completed → in-progress (amendment)` transition. Cross-surface notes for the three
+criterion-layer records (A1, A3, A5) are appended at `acceptance.md` §D.6, which likewise
+adds text and rewrites none.
+
+### A1 — REQ-WCP-012 / AC-WCP-013: the rail arm is literally unsatisfiable
+
+**Asserted.** AC-WCP-013 requires the rail subnav entry for `codex` to "show no field
+count (zero)", and REQ-WCP-012 requires the rail count for the codex tab to be zero.
+
+**Established by execution.** `internal/web/shell.templ:156` renders
+`<span class="count">{ itoa(t.Fields) }</span>` **unconditionally, for every tab**. The
+rail can therefore show `0`; it cannot show *no count*. The two readings the criterion's
+own wording admits — "show no field count" and the parenthesised "(zero)" — are not
+equivalent on this template, and only the second is reachable.
+
+**What was done.** The parenthesised `(zero)` was taken as canonical: the rail shows `0`,
+and the count is omitted where omission is actually possible — the **panel header**,
+which states no count at all. Removing the span from the rail would change the shared tab
+template and so alter every tab's rendering; that was left out of scope, and remains out
+of scope.
+
+**For a later reader.** The satisfiable statement of this criterion is: *the rail entry
+for `codex` reports `0`, the panel header states no count, and the two therefore agree* —
+which is what the in-code rail-equals-header contract of `settingsTabFieldCount` (§C.2)
+actually asks for. Anyone wanting literal count-absence in the rail is proposing a change
+to the shared tab template, which is a different card.
+
+### A2 — REQ-WCP-005: "and the shared MCP tool catalogue" is load-bearing, not descriptive
+
+**Asserted.** REQ-WCP-005 says the mirrored rows "shall be produced by a predicate over
+`settings.AllFields()` **and the shared MCP tool catalogue**". The clause reads as a
+description of where the fields come from.
+
+**Established by execution.** It is a constraint on the predicate's *structure*, and
+dropping it silently destroys AC-WCP-006 and MU-3. A one-line
+`strings.Contains(name, "codex")` predicate satisfies every word of the requirement except
+that clause — and it makes AC-WCP-006's two arms (the predicate's output, and the registry
+sweep for names containing `codex`) a **byte-identical computation**. The registry-sweep
+arm then stops being the independent oracle §C.1 calls it, and MU-3 ("drop the
+`mcp.tools.codex_` arm") becomes **unwritable**, because a single-substring predicate has
+no arm to drop. §D.3 routes REQ-WCP-009's entire coverage through that sweep arm, so the
+collapse takes a requirement's only non-circular carrier with it.
+
+**For a later reader.** A structured predicate — matching registry fields by their declared
+shape and the MCP tool fields through `mcpcat.MoaiMCPTools()` — is what keeps the two arms
+distinct. An implementer who "simplifies" the predicate to a substring test satisfies the
+requirement's words while removing the guard that makes it checkable, and nothing announces
+it: every test still passes.
+
+### A3 — MU-6 is caught by no Go test; the guard is manual
+
+**Asserted.** §D.2 lists MU-6 (remove the `case "codex"` from `settingsTabFieldNames`,
+falling back to `default`) and predicts that only AC-WCP-013's explicit-case arm bites,
+the count arm staying green. The prediction was correct and was observed correct
+(`progress.md` §E.2, mutants table).
+
+**Established by execution, and absent from the SPEC.** The consequence of that
+correctness is that **CI cannot see this mutant**. The count arm is a Go test —
+`TestCodexTabRailCount` asserts `settingsTabFieldNames("codex")` is empty and
+`settingsTabFieldCount("codex", …)` is `0` — and under the `default` branch both remain
+true, so the test stays green. The only red signal is
+`grep -c 'case "codex"' internal/web/settings_shell.go` returning `0`, and no test runs
+that grep. The guard is therefore **live only while a human runs it by hand**.
+
+**Disposition.** The separation is intended: asserting the explicit case apart from the
+count is what makes the decision-versus-fallback distinction falsifiable at all (§C.2).
+What was missing is the residual risk, recorded here rather than left implicit — this
+criterion has no automated carrier. A later card may promote the grep into a
+source-reading Go assertion in `internal/web`, closing the gap without changing what the
+criterion means.
+
+### A4 — The page-wide-first-occurrence coupling the SPEC did not name
+
+**What broke.** On first execution, `TestMCPConsoleWriteCapableTextDistinction`
+(`internal/web/mcp_console_test.go`) failed. It anchors each row window on
+`strings.Index(body, chip)` — the **page-wide first occurrence** of a tool's key chip —
+and the codex mirror repeats those chips *earlier in tab order*. The window landed on a
+mirror row, which carries neither a badge nor a control, and the test reported the MCP
+surface degraded when it had not changed at all.
+
+**The repair, and why it is not a weakening.** The body was scoped to
+`panelHTML(t, renderConsolePage(t), "mcp")` — the panel the test was always about. No
+production code and no save path was touched. The assertion now reads the surface it names.
+
+**The generalisation, which belongs here because the SPEC's coupling list (§F) omitted
+this file.** The not-last rule (AC-WCP-002) protects only `panelHTML` consumers, and what
+a mirror duplicates is **text**, not a `name`. So every assertion anchored on a page-wide
+first occurrence carries the same exposure, whether or not form elements are involved.
+The lead measured the population: **34 such sites across 15 files**, against **2
+`panelHTML` consumer files** — the lead's measurement, recorded with that attribution
+rather than re-derived here.
+
+**Ownership.** Card **t527** owns the sweep and depends on this card landing: with no
+mirror present all 34 sites are green, so the sweep has nothing to observe until the
+mirror exists.
+
+### A5 — AC-WCP-011 answers a different question before the run-phase commit
+
+**Asserted.** AC-WCP-011 pins three steps — base ref resolves, diff non-empty,
+config-surface filter matches nothing — and §D.4 requires all three observed separately.
+
+**Established by execution.** `git diff --name-only <base>...HEAD` reads **committed
+history only**. Run before the run-phase commit it saw **9 paths, all of them plan
+artifacts**, and returned `filter_rc=1`: a full three-step pass that measured nothing
+whatsoever about the implementation. Every step behaved exactly as specified; the
+criterion was answering a question about a tree that did not yet contain the work.
+
+§D.4's closing-tree clause ("decided by a command that was actually run in the closing
+tree") rescues it, which is why this is a wording defect and not a false pass. The
+criterion should have said **"after the run-phase commit"** in its own text.
+
+**Post-commit re-observation** (the close-time measurement, at run-phase HEAD):
+`ref_resolves_rc=0`; **20** changed paths, of which `grep -cE 'internal/web/'` → **11** as
+the control proving the filter was not simply broken; `filter_rc=1`.
+
+**Re-measured for this record**, in this tree at `c891d50ab`: `ref_resolves_rc=0`;
+`git diff --name-only origin/develop...HEAD | wc -l` → **29**; `grep -cE 'internal/web/'`
+→ **11**; `filter_rc=1`. The `internal/web/` control is unchanged; the total moved from 20
+to 29 because the sync commit and this record's own commits landed after the run-phase
+observation. That drift is itself worth recording: **the path count is a moving figure and
+is not pinnable**, so a later reader comparing against `20` should expect disagreement and
+read the `internal/web/` control and `filter_rc` instead. Both arms that decide anything —
+the non-empty check and the filter — are stable under the drift.
+
+### A6 — A judgement the SPEC left open, decided by the implementer
+
+**The gap.** REQ-WCP-003 requires each mirror row to show "the field's current value **as
+read from disk**". The six `mcp.tools.codex_*.enabled` bools read **empty** from disk,
+while the console's own semantics treat empty as **on**.
+
+**Why neither literal reading works.** Rendering the raw empty value shows the user
+something that reads as "off" for six tools that are on. Computing the effective value
+makes the panel a **second classifier** — precisely what REQ-WCP-006 forbids the panel
+from doing to probe output, one data source over.
+
+**What the implementer decided.** An `(unset)` placeholder
+(`codexMirrorUnsetI18nKey = "tab.codex.value.unset"`, rendered at
+`internal/web/fieldsets_codex.templ:61`) plus a factual note in the group header — "An
+unset value reads as enabled; only an explicit false turns a tool off."
+(`internal/web/codexmirror.go:183`). The panel states the disk fact and the rule, and
+classifies nothing.
+
+**Status.** This is a **decision taken**, not a requirement met: REQ-WCP-003 as written
+does not choose among the three options, and the choice is not derivable from it. It is
+worth making explicit in a follow-up — either by extending REQ-WCP-003 to name the
+empty-value case, or by giving the six tool fields an explicit on-disk default so the
+question stops arising.
 
 ## §A Background
 

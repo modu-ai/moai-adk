@@ -394,3 +394,28 @@ The codex tab renders every codex setting with its current value and a route to 
 no form element in it carries a `name`; no mirrored field renders as a control in more than one
 panel; the Audit and MCP tabs are untouched; the rail count and the panel header agree; four locales
 carry the new keys; and no configuration key, persistence route, or config file was added.
+
+## §D.6 Amendments (post-close, additive)
+
+Execution disproved parts of three criteria and one mutant row. **Nothing above is
+rewritten** — every criterion, mutant, and severity row stands as it was written and
+audited, because the record of what was believed is what makes the correction legible.
+The full records live in `spec.md` § Amendments; the entries below are the pointers a
+reader of *this* file needs at the criterion they are reading.
+
+The three plan-audit rounds could not have caught any of these: no `go build`, `go test`,
+`go vet`, or `templ generate` ran against this SPEC at any point in plan phase, which was
+recorded as a known gap before run began (`progress.md` §E.1, closing paragraph).
+
+| Entry | Subject | Correction |
+|---|---|---|
+| A1 | **AC-WCP-013**, rail arm | Literally unsatisfiable as written. `internal/web/shell.templ:156` prints a count span unconditionally for every tab, so the rail can show `0` but cannot show *no count*. The parenthesised `(zero)` was taken as canonical and the count omitted in the panel header, the only place omission is possible. Removing the span from the rail touches every tab and was left out of scope. The satisfiable statement: the rail reports `0`, the header states no count, and the two agree. |
+| A3 | **MU-6** | Caught by no Go test. `TestCodexTabRailCount` stays green under the `default` branch — which is exactly what §D.2 predicts and what was observed — so **CI cannot see this mutant**. Only `grep -c 'case "codex"' internal/web/settings_shell.go` goes red, and no test runs it. The separation is intended; the residual risk is that this criterion has no automated carrier. |
+| A5 | **AC-WCP-011**, timing | `git diff --name-only <base>...HEAD` reads committed history only. Run before the run-phase commit it saw 9 paths — all plan artifacts — and returned `filter_rc=1`: a three-step pass measuring nothing about the implementation. §D.4's closing-tree clause rescues it; the criterion should have said **"after the run-phase commit"**. Post-commit re-observation: `ref_resolves_rc=0`, 20 changed paths, `grep -cE 'internal/web/'` → 11 as the control, `filter_rc=1`. Re-measured at `c891d50ab` the total reads 29 while the `internal/web/` control still reads 11 — the path count is a moving figure and is not pinnable; read the control and `filter_rc`, not the total. |
+| A4 | coupling not listed in `spec.md` §F | `TestMCPConsoleWriteCapableTextDistinction` anchors on the page-wide first occurrence of a key chip and the mirror repeats those chips earlier in tab order, so it reported the MCP surface degraded when it had not changed. Repaired by scoping to `panelHTML(…, "mcp")` — a scope correction, not a weakening. Generalisation: the not-last rule protects only `panelHTML` consumers, and a mirror duplicates **text** rather than a `name`, so every page-wide-first-occurrence anchor carries the same exposure. Card **t527** owns the sweep. |
+| A6 | **REQ-WCP-003**, empty disk values | The six `mcp.tools.codex_*.enabled` bools read empty from disk while the console treats empty as on. Raw empty reads as "off"; computing the effective value would make the panel a second classifier (REQ-WCP-006). The implementer rendered an `(unset)` placeholder plus a factual group-header note — a decision taken, not a requirement met. |
+
+A2 (`REQ-WCP-005`'s catalogue clause is load-bearing) has no criterion-layer pointer here
+by design: its subject is AC-WCP-006's independence and MU-3's writability, both of which
+are correct as written. What was missing was the warning in the requirement, and that
+belongs in `spec.md`.
