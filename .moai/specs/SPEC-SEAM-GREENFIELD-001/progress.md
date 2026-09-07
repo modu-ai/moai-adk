@@ -121,7 +121,7 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 
 **M4-4 lint**: `golangci-lint run --timeout=2m ./internal/settings/... ./internal/web/...` → 최종 **0 issues, exit 0** (`M4-lint.log`). NEW 이슈 1건 발생·즉시 수리: `atomicwrite_mode_unix_test.go:22 SA4032` — `//go:build !windows` 파일 안의 `runtime.GOOS == "windows"` 죽은 분기. 빌드 태그가 이미 배제하므로 분기 제거로 수리.
 
-**M4-5 커버리지** (`M4-coverage.log`, 이 트리): yamlpatch **82.5%** / settings **90.6%** / web **67.0%**.
+**M4-5 커버리지**: yamlpatch **82.5%** / settings **90.6%** / web **67.0%**. (귀속 정정 — sync-audit F1: `M4-coverage.log`는 M4 경과 트리의 81.4% 낡은 채득이었다. 82.5%는 최종 트리 `bfebf14c5` HEAD 재측정값 — `go test -count=1 -cover ./internal/settings/yamlpatch/` → `coverage: 82.5% of statements`, 본 런 2026-09-08. sync-audit이 독립 재측정으로 동일 확인.)
 - 수정 함수 `atomicWrite` 72.0%(함수 단위) — 수리가 만진 stat/mode 분기(absent·ENOTDIR·present 3경로)는 전부 커버. 패키지 85% 문턱 미달 gap은 (a) `tmp.Write`/`tmp.Close`/`os.Chmod` 실패 주입 경로 3분기 — 자연 주입이 비현실적인 I/O 실패 계열로 수정 전부터 존재, (b) 미수정 함수 `setScalar` 25.0% — 본 SPEC 범위 밖.
 - M4에서 rename 실패 분기를 자연 주입 테스트로 커버(`TestAtomicWriteRenameFailure` — 대상이 디렉터리면 rename 실패 + temp 잔재 없음 단정): atomicWrite 64.0%→72.0%.
 - web 67.0%는 소스 변경 0(테스트만 추가)이므로 baseline 대비 감소 불가 — 추가 테스트는 커버리지를 올리는 방향으로만 작동.
@@ -162,7 +162,7 @@ frontmatter_status_transitions:
   spec.md: "in-progress → completed" (본 sync 커밋에 병합 — 3-phase close; status + updated만 변경. updated는 2026-09-08 기유)
   plan.md / acceptance.md: 해당 없음 — plan.md는 status 필드 미보유(Artifact Statelessness), acceptance.md는 미존재(Tier S)
 mx_tag_pass:
-  result: no-additions — run-phase M2가 이미 `@MX:NOTE: [AUTO]`(absent→create+0644 계약, REQ-1..4 문서화) + `@MX:SPEC: SPEC-SEAM-GREENFIELD-001` 서브라인을 atomicWrite에 착지했고(yamlpatch.go:368-374), defaultFilePerm 상수 주석(359-363)이 §4 기각 근거를 문서화한다. [AUTO] 접두사·code_comments(en) 준수 확인 — 중복 추가는 태그 스팸이므로 생략
+  result: no-additions — run-phase M2가 이미 `@MX:NOTE: [AUTO]`(absent→create+0644 계약, REQ-1..4 문서화) + `@MX:SPEC: SPEC-SEAM-GREENFIELD-001` 서브라인을 atomicWrite에 착지했고(yamlpatch.go:368-374), defaultFilePerm 상수 주석(359-363)이 §4 기각 근거를 문서화한다. [AUTO] 접두사 준수 확인 — 중복 추가는 태그 스팸이므로 생략. (귀속 정정 — sync-audit F3: 신규 상수·함수 주석은 한국어다 — 파일 기존 주석 스타일과의 일관 선택이며, 종전 "code_comments(en) 준수" 문구는 과장이므로 철회한다.)
 sync_phase_verification:   # 측정 트리 df50ab04e — 본 sync 커밋의 변경은 .md 3파일뿐이므로 Go 소스 트리는 커밋 전후 동일하다
   go_test: pass — `go test -count=1 ./internal/settings/yamlpatch/` → `ok  github.com/modu-ai/moai-adk/internal/settings/yamlpatch 0.359s`, exit 0
   go_vet: pass — `go vet ./internal/settings/yamlpatch/` → 무출력, exit 0
