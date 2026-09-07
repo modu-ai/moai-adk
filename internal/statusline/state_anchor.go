@@ -33,4 +33,3 @@ func resolveStateAnchor(input *StdinData) string {
 	}
 	return stateanchor.Resolve(s)
 }
-
