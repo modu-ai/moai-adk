@@ -1,0 +1,13 @@
+{
+  "name": "t507probe",
+  "owner": "moai-t507",
+  "plugins": [
+    {
+      "name": "probe-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/probe-plugin"
+      }
+    }
+  ]
+}
