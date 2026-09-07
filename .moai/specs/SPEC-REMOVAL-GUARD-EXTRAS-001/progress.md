@@ -71,7 +71,7 @@ measured_baseline: 라이브 RED 3클래스(heredoc 데이터·unquoted 데이�
 
 run_status: audit-ready
 run_complete_at: 2026-09-07
-run_commit_sha: pending-backfill-run
+run_commit_sha: 6871218aa (M3 — run phase spans 85dd4a718 / 34794215f / 6871218aa; backfilled by the following commit per the D3 self-reference exemption)
 evidence_path: .moai/reports/t511/ (RED 3건·GREEN 스윕 1건)
 sweep_count: 10 PASS / 0 FAIL (`-run 'TestDangerousRemoval'`)
 new_defects: lint 0 · vet 0 · 경계 grep 신규 도입 0
