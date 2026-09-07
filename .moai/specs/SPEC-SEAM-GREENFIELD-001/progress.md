@@ -134,7 +134,7 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: "pending-backfill-run"   # D3 placeholder — M4 커밋 자체 SHA는 자기 참조 불가, follow-up 커밋에서 backfill
+run_commit_sha: "5fabf55d6"   # M4 verdict 커밋 — placeholder에서 backfill (D3 규약, manager-develop 소관)
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
