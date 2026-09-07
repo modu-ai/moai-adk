@@ -113,7 +113,7 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 
 ### M4 — 범위 한정 판정 (2026-09-08)
 
-**M4-1 scoped 테스트**: `go test -count=1 ./internal/settings/... ./internal/web/...` → `ok` 4패키지(settings 2.156s / agentfm 1.270s / yamlpatch 1.322s / web 8.416s). 증거 `M4-scoped-tests.log` (이 트리, M3 커밋 상태).
+**M4-1 scoped 테스트**: `go test -count=1 ./internal/settings/... ./internal/web/...` → `ok` 4패키지(settings 2.156s / agentfm 1.270s / yamlpatch 1.322s / web 8.416s). 증거 `M4-scoped-tests.log` (측정 시점 M3 커밋 트리). **최종 커밋 트리 `ada4eda3b`에서 동일 커맨드 재측정** → `ok` 4패키지, 증거 `M4-final-scoped-tests.log` — M4의 테스트 파일 2건 추가·수리 이후의 트리에서도 GREEN 유지.
 
 **M4-2 크로스플랫폼 빌드**: `GOOS=windows GOARCH=amd64 go build ./internal/...` → exit 0. 증거 `M4-crossbuild-windows.log`. absent-mode 코드는 GOOS-neutral 형태(defaultFilePerm 상수 + os.Chmod — POSIX 비트를 컴파일 타임 분기 없이 다룸).
 
