@@ -33,11 +33,51 @@ notes: >
 
 ## §E.2 Run-phase Evidence
 
-(run 페이즈에서 manager-develop 작성)
+측정 좌표: 브랜치 `WT-guard-heredoc`, base `6a46c0edb`, run 커밋 M1 `504d6457c` · M2 `b482942fc` · M3 `76c296623`.
+
+> **집행 주체 특기**: run 페이즈는 manager-develop 위임으로 시작했으나 GLM 백엔드
+> 레이트리밋(HTTP 429)으로 4회 중도 종료됐다(마지막 2회는 각각 5시간 한도·즉시
+> 재발). 위임 에이전트는 사전 점검·M1 삽입·GREEN 앵커 1차 측정까지 완료한 상태로
+> 멈췄고, 남은 구간(미러 정합·뮤턴트 관찰·M2/M3·커밋·§E)은 운영자의 「계속 진행」
+> 지시 아래 오케스트레이터가 직접 집행했다. 위임 에이전트의 기여(삽입 본문,
+> 앵커 1차 측정)는 그대로 유지됐고 본 섹션의 수치는 전부 오케스트레이터 재측정이다.
+
+### M1 — 독트린 삽입 + 미러 패리티 + 뮤턴트 관찰
+
+| 항목 | 측정 | 결과 |
+|------|------|------|
+| 미러 정합 (위임 에이전트의 드리프트 정정 후) | `cmp` live vs mirror | **exit 0** — 드리프트는 505행 1단어(behaviour→behavior, T1 초안 원문 기준 live가 정답)뿐이었다 |
+| 미러 drift 테스트 | `go test ./internal/template/ -run TestRuleTemplateMirrorDrift -count=1` | **ok** (0.470s) |
+| 뮤턴트 관찰 [AC-WGHD-001] | 미러에 알려진 차이 재삽입 → `cmp` | **differ: char 44091, line 505, rc=1** |
+| 뮤턴트 관찰 (계속) | drift 테스트 (뮤턴트 상태) | **FAIL** (0.505s) — 기계가 비대칭을 잡는다 |
+| 복원 (재편집, git restore 미사용) | 재편집 후 `cmp` + drift 테스트 | **exit 0** + **ok** (0.258s) |
+
+### GREEN 앵커 (사전 RED `6a46c0edb` 핀 → 삽입 후, 파이프 없는 rc)
+
+| 앵커 | RED-now (사전, 핀) | GREEN (M1 후) | 판정 |
+|------|-------------------|----------------|------|
+| `grep -c "brace expansion"` | 0 / rc=1 | **3** / rc=0 (≥2 충족 — quoted 2 + unquoted 1) | PASS |
+| `grep -c "unquoted"` | 0 / rc=1 | **2** / rc=0 (≥1 충족) | PASS |
+| `grep -c "re-measured"` | — (≥1) | **1** / rc=0 | PASS |
+| 중립성 `grep -cE "1659\|SPEC-WORKTREE-GUARD-HEREDOC"` (템플릿 사본) | — (0 요구) | **0** / rc=1 | PASS |
+
+### M2/M3 초안
+
+- `reporter-reply-1659.md` (M2, 한국어): 4요소 충족 — ①분석 검증+매트릭스 인용(트리 핀 병기) ②소속=바이너리(리포 독트린 :481 인용, branch_guard 아님 :485) ③우회=Write 도구·단순 명령 분할(약화 조언 없음) ④업스트림 초안 안내·게시는 원격 착지 후(초안 명시). 어조: 제보자 진단의 검증으로 시작, 우회는 도움, 업스트림은 발견의 대변(리드 [HARD] 반영).
+- `upstream-draft-claude-code.md` (M3, 영문): 5요소 충족 — 매트릭스 verbatim / provable-inertness 논증(제보자 credit) / 수정 방향 1(quoted 본문 중괄호 접기) / 수정 방향 2(거부 문면이 구문 지목) / 제보자 credit. 범위 제한 준수(스크립트 파일 우회 요청 없음, unquoted 동작 변경 요청 없음). **게시는 리드 몫 — 초안 전용.**
+
+### 범위 증명
+
+`git diff --stat 6a46c0edb..HEAD` — 변경 파일: 독트린 2본(live+미러), SPEC 5종, 리포트 4종(원장+판정서+초안 2). **Go 소스 변경 0건**, `branch_guard.go`/훅 무접촉. E2/E3(go build·커버리지)은 문서 전용 SPEC이라 대상 없음 — 정직 표기. `go test ./internal/template/ -run TestRuleTemplateMirrorDrift` 만 유일한 Go 게이트(위 표 ok).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-(run 페이즈에서 manager-develop 작성)
+run_status: audit-ready
+run_complete_at: 2026-09-07
+run_commit_sha: 76c296623 (M3 — run phase spans 504d6457c / b482942fc / 76c296623)
+evidence_path: .moai/reports/t512/ (재현 원장 · plan-audit 판정서 · 초안 2종)
+anchor_green: brace expansion=3 · unquoted=2 · re-measured=1 · 중립성=0 (전부 rc 동반 재측정, HEAD 76c296623)
+new_defects: 0 (Go 변경 없음 — 미러 패리티·drift 테스트가 유일 게이트, 양쪽 ok)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
