@@ -117,7 +117,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: ad390185637655a3b7e68ff5c0fd3c9258559a6bfc01aa72d3243838de94d2f0
+              hash: f3c720e3ba6101f265dfe4968f7c6baf2b07ee9e53ff268061eb02bad728eb52
               version: 1.0.0
             - name: manager-docs
               tier: core
@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 169cf43a94c81c56adeac8c596c5dcaa1169543db044275c73f31f28b03de897
+              hash: a5d6809ef6131ffb22342a51297906ff0670128d5c3335183e9e7c1b66a7305e
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -152,12 +152,12 @@ catalog:
             - name: manager-design
               tier: core
               path: templates/.claude/agents/moai/manager-design.md
-              hash: fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a
+              hash: 3863fa6a6b4748985468ee51637de389475ec8bbebb4f4f424d0feed40aae0e2
               version: 1.0.0
             - name: e2e-tester
               tier: core
               path: templates/.claude/agents/moai/e2e-tester.md
-              hash: 910a13c9857493611eb0ee6f434bc2b5abd40c49bc25df5d48bb2ab88bea87d8
+              hash: 9a8894afaf84e3f03e21ebcf1a859f2561f1a7fb9de2dad114cd089b00c604f0
               version: 1.0.0
     optional_packs:
         backend:
