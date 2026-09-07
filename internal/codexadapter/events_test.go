@@ -37,8 +37,8 @@ func TestEventTableMapping(t *testing.T) {
 		hook.EventPreCompact:        {"compact", false},
 		hook.EventPostCompact:       {"post-compact", false},
 		hook.EventPermissionRequest: {"permission-request", false},
-		hook.EventSubagentStart:     {"subagent-start", false},
-		hook.EventSubagentStop:      {"subagent-stop", false},
+		hook.EventSubagentStart:     {"subagent-start", true},
+		hook.EventSubagentStop:      {"subagent-stop", true},
 		hook.EventType("Interrupt"): {"", false},
 	}
 
@@ -61,12 +61,13 @@ func TestEventTableMapping(t *testing.T) {
 	}
 }
 
-// TestAdaptedRowCount pins the adapted subset at six — the events with both a
-// payload capture and observed behavior (SPEC §B).
+// TestAdaptedRowCount pins the adapted subset at eight — the six events
+// adapted on the 0.147.0 measurement basis plus SubagentStart/SubagentStop,
+// which the 0.153.4 campaign (t496) measured FIRING.
 func TestAdaptedRowCount(t *testing.T) {
 	t.Parallel()
 
-	const wantAdapted = 6
+	const wantAdapted = 8
 	got := 0
 	for _, row := range EventTable {
 		if row.Adapted {
@@ -78,26 +79,39 @@ func TestAdaptedRowCount(t *testing.T) {
 	}
 }
 
-// TestResolveAdapted routes the six adapted events to their dispatcher
-// argument (AC-REQ-1a).
+// TestResolveAdapted routes the adapted events to their dispatcher argument
+// (AC-REQ-1a). SubagentStart/SubagentStop joined the adapted set after the
+// 0.153.4 campaign measured them firing (SPEC-CODEX-EVENT-COVERAGE-001 M3).
 func TestResolveAdapted(t *testing.T) {
 	t.Parallel()
 
-	arg, err := Resolve("PreToolUse")
-	if err != nil {
-		t.Fatalf("Resolve(PreToolUse) error = %v, want nil", err)
-	}
-	if arg != "pre-tool" {
-		t.Fatalf("Resolve(PreToolUse) = %q, want %q", arg, "pre-tool")
+	for _, tc := range []struct {
+		event string
+		arg   string
+	}{
+		{"PreToolUse", "pre-tool"},
+		{"SubagentStart", "subagent-start"},
+		{"SubagentStop", "subagent-stop"},
+	} {
+		arg, err := Resolve(tc.event)
+		if err != nil {
+			t.Fatalf("Resolve(%s) error = %v, want nil", tc.event, err)
+		}
+		if arg != tc.arg {
+			t.Fatalf("Resolve(%s) = %q, want %q", tc.event, arg, tc.arg)
+		}
 	}
 }
 
-// TestResolveRecognizedButUnadapted asserts the five unadapted events are
-// refused as recognized — distinguishable from an unknown name (AC-REQ-1a).
+// TestResolveRecognizedButUnadapted asserts the unadapted events are refused
+// as recognized — distinguishable from an unknown name (AC-REQ-1a). After the
+// 0.153.4 campaign the set is the two compaction events (trigger not achieved
+// in a non-interactive run), PermissionRequest (approval request never raised
+// non-interactively), and Interrupt (no MoAI dispatcher counterpart).
 func TestResolveRecognizedButUnadapted(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"PreCompact", "PostCompact", "PermissionRequest", "SubagentStart", "SubagentStop", "Interrupt"} {
+	for _, name := range []string{"PreCompact", "PostCompact", "PermissionRequest", "Interrupt"} {
 		_, err := Resolve(name)
 		if err == nil {
 			t.Errorf("Resolve(%s) error = nil, want refusal", name)

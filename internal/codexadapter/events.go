@@ -8,8 +8,10 @@
 // this package sits in FRONT of the dispatcher rather than inside it, and
 // nothing under internal/hook is modified (SPEC-CODEX-HOOK-ADAPTER-001 REQ-7).
 //
-// Measurement basis: codex-cli 0.147.0. See
-// .moai/reports/t83/precondition-measurement.md and -round3.md.
+// Measurement basis: codex-cli 0.147.0
+// (.moai/reports/t83/precondition-measurement.md and -round3.md), re-measured
+// on codex-cli 0.153.4 by the t496 firing campaign
+// (.moai/reports/t496/codex-event-campaign.md).
 package codexadapter
 
 import (
@@ -50,12 +52,20 @@ const CodexEventInterrupt hook.EventType = "Interrupt"
 // no MoAI dispatcher counterpart, so its DispatcherArg is the empty string,
 // the marker for "no counterpart".
 //
-// Six rows are adapted: the events with both a payload capture and observed
-// behavior. Four are held back for lack of any measurement, SubagentStop is
-// held back because it was measured NOT to fire on codex-cli 0.147.0 —
-// delegation surfaces as PostToolUse with a tool_name beginning
-// "collaboration" — with 0.153.4 re-verification pending (M2 campaign), and
-// Interrupt is held back because there is no dispatcher path to map it to.
+// Eight rows are adapted: the six with a payload capture and observed behavior
+// on the 0.147.0 basis, plus SubagentStart/SubagentStop, which the 0.153.4
+// campaign measured FIRING with payloads captured (agent_id / agent_type on
+// both; SubagentStop additionally carries agent_transcript_path,
+// stop_hook_active, last_assistant_message — it reverses the 0.147.0
+// observation that SubagentStop never fires).
+//
+// PreCompact/PostCompact are held back: compaction could not be triggered in
+// a non-interactive run (264,808 input tokens max under the 1,048,576-char
+// input cap produced no compaction) — trigger-not-achieved, not not-fired.
+// PermissionRequest is held back on the same distinction: three non-interactive
+// configurations never raised an approval request (interactive TUI untested).
+// Interrupt is held back because it has no MoAI dispatcher counterpart to map
+// to, even though it was measured firing on SIGINT.
 var EventTable = []EventRow{
 	{hook.EventPreToolUse, "pre-tool", true},
 	{hook.EventPostToolUse, "post-tool", true},
@@ -63,12 +73,12 @@ var EventTable = []EventRow{
 	{hook.EventSessionEnd, "session-end", true},
 	{hook.EventStop, "stop", true},
 	{hook.EventUserPromptSubmit, "user-prompt-submit", true},
+	{hook.EventSubagentStart, "subagent-start", true},
+	{hook.EventSubagentStop, "subagent-stop", true},
 
 	{hook.EventPreCompact, "compact", false},
 	{hook.EventPostCompact, "post-compact", false},
 	{hook.EventPermissionRequest, "permission-request", false},
-	{hook.EventSubagentStart, "subagent-start", false},
-	{hook.EventSubagentStop, "subagent-stop", false},
 
 	{CodexEventInterrupt, "", false},
 }
