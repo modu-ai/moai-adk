@@ -54,11 +54,22 @@ import (
 // 76,210 을 넘어 트립하므로, 착지 후 여유 135(상향 직후 271 − t196 몫 136)를 남기는
 // 76,400 으로 올린다. 근본 해결은 여전히 위 문단의 대형 룰 다이어트다.
 //
-// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,400) standing in for the always-loaded rule diet
-// @MX:CEILING: 0.18% headroom — 135 tokens of 76,400 once t196 lands (271 before it); one always-loaded clause consumes it
-// @MX:UPGRADE: drop this raise when the large always-loaded rule diet (stub + lazy loading) lands
+// 상향 근거(2026-09-07, t401 SPEC-JUDGMENT-FIRST-MODE-001): 위 문단이 예고한
+// "다음에 always-loaded 파일을 늘리는 카드는 이 가드에 부딪힌다"가 실제로 발생했다.
+// M1 이 askuser-protocol.md 에 pull-mode convention(§ Recommendation Placement
+// Principles → Recommendation mode + On-request emission + 조건화 편집)을,
+// M2 가 moai.md 배너 절들과 context-window-management.md S6 에 withholding branch를
+// 얹었고, 후속 수리(S5 비용순 재정렬, S2/S3 On-request emission 명시 참조)가
+// moai.md 를 더 키웠다. 가드 실측 78,211 토큰(초과 1,811) — 운영자가 승인한
+// judgment-first 이행의 고유 텍스트라 트림할 수 없으므로, 289(0.37%) 여유를 남기는
+// 78,500 으로 올린다. 남은 마일스톤(M4 CI guard, M5 배포 close-out, sync)은
+// always-loaded 표면을 늘리지 않는다. 근본 해결은 여전히 대형 룰 다이어트다.
+//
+// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,400 -> 78,500) standing in for the always-loaded rule diet
+// @MX:CEILING: 0.37% headroom — 289 tokens of 78,500 after the t401 raise; one added always-loaded clause consumes it
+// @MX:UPGRADE: drop both raises when the large always-loaded rule diet (stub + lazy loading) lands
 // @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
-const AlwaysLoadedTokenBudget = 76400
+const AlwaysLoadedTokenBudget = 78500
 
 // CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.
 // codex는 프로젝트 지시문을 바이트 상한 아래에서 읽고 초과분을 **조용히** 잘라낸다 —
