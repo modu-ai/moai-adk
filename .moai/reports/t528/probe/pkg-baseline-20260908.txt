@@ -1,0 +1,7 @@
+52f863f36
+--- git status (내 반경) ---
+?? .moai/reports/t528/
+?? .moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/
+--- go test ./internal/spec/... -count=1 ---
+ok  	github.com/modu-ai/moai-adk/internal/spec	83.212s
+EXIT=0
