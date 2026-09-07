@@ -431,8 +431,8 @@ verification_branch: WT-spec-lint-axes
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: <pending>          # 이 §E.4 를 실은 sync 커밋. 커밋은 자기 SHA 를 담을 수 없어 placeholder 로 착지한 뒤 backfill 한다
-sync_backfill_commit_sha: <pending>
+sync_commit_sha: a90f3d024          # 이 §E.4 를 실은 sync 커밋. 커밋은 자기 SHA 를 담을 수 없어 placeholder 로 착지한 뒤 backfill 한다
+sync_backfill_commit_sha: self   # 이 파일이 실린 backfill 커밋 자신 — 커밋은 자기 SHA 를 담을 수 없다. `git log` 에서 a90f3d024 의 바로 다음 커밋이다
 sync_status: completed
 b12_self_test_a: pass               # 사전 중복 grep — `grep -c 'SPEC-SPEC-LINT-ID-ARG-001' CHANGELOG.md` → 0 (게시 전)
 b12_self_test_b: pass               # AC 수 대조 — acceptance.md 고유 AC 식별자 13 = §E.3 의 식별자 13 (PASS 12 + PASS-WITH-DEBT 1)
