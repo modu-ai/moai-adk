@@ -41,3 +41,4 @@ _<pending sync-phase>_
 | 일시 | 페이즈 | 내용 |
 |---|---|---|
 | 2026-09-08 | plan | 측정 SSOT(`plan-phase.md`) 인용 기반 SPEC 4종 생성. baseline 재관측 완료(en:170 deferral 1건, zh:170 1건, ja/zh 예시 4행, 강조위반 ko:41·ja:39·zh:39 각 1건/en 0건, skill-guide SVG0 언급 0건). 리드 추가지시 2건(전제-정정 기록·G4 1행 근거)과 코디네이터 정정 2회(G3 = 3행 한정·괄호 마커 밖, t535 신규 절 불가침) 반영. |
+| 2026-09-08 | plan (iter1 수리) | plan-audit iter1 **FAIL 0.71**(`.moai/reports/t538/plan-audit-iter1.md` @ `86c8023b6`) → D1-D6 전건 수리 + F1·F2 수리, F3~F6 각하 기록(spec.md HISTORY). version 0.2.0. 핵심 실측 정정: doctor 예시행 블록-한정 앵커(ja/zh 0, 표행 2), zh 원어 토큰 `原生桌面`, CHANGELOG 배치 `### Added` 직하. 재감사는 결함 delta 범위로 iteration 2/2. |

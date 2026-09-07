@@ -12,7 +12,7 @@
 | AC-003 | G1 | en·zh 플래그 행 desktop-native (RED-now) | 0 → ≥1 (각) |
 | AC-004 | G1 | en·zh desktop-native 총 히트 (플래그+3-OS+자동감지) | 0 → ≥4 (각) |
 | AC-005 | G1 | en·zh 표 행 수 = ko 패리티 | 불일치 → 동일 |
-| AC-006 | G2 | ja·zh doctor 예시행 2줄 (RED-now) | 0 → 2 (각) |
+| AC-006 | G2 | ja·zh doctor 예시행 2줄 (RED-now, 예시 블록 한정) | 블록 한정 0 → 2 · 전체 파일 2 → 4 (각) |
 | AC-007 | G3 | 전체-파일 bold-내부-괄호 스캔 (RED-now) | ko/ja/zh 1 → 0, en 0 유지 |
 | AC-008 | G4 | skill-guide ×4 SVG060/070 언급 (RED-now) | 0 → ≥2 (각) |
 | AC-009 | 경계 | ko·ja e2e 무변경 + 배지 추가 없음 | — |
@@ -43,17 +43,17 @@
 - **When** `/usr/bin/grep -ci "desktop-native" <en|zh moai-e2e.md>`
 - **Then** 각 `0` → `≥4` (플래그 1 + 3-OS 매트릭스 3 + 자동감지 마커 행 1 이상). 내용은 ko:78-80·:98 정본 파생, 표 형태 참조는 ja:78-80.
 
-## §D.5 AC-005 — 표 행 수 패리티 (ko 정본 대비)
+## §D.5 AC-005 — 표 행 수 패리티 + 호스트 OS 규칙 문단 (ko 정본 대비)
 
-- **Given** ko `moai-e2e.md` 는 201행·완비 상태다.
-- **When** `/usr/bin/grep -c '^|' docs-site/content/{ko,en,zh}/utility-commands/moai-e2e.md` 를 각 로케일별 비교
-- **Then** after 상태에서 en·zh 의 표 행 총수가 ko 와 동일하다(±0). 호스트 OS 규칙 문단 존재는 헤딩 패리티로 보강: `/usr/bin/grep -c '^#'` 가 4-로케일 동일.
+- **Given** ko `moai-e2e.md` 는 201행·완비 상태다. 헤딩 수는 4-로케일 이미 18로 동일하므로 헤딩 패리티는 호스트-OS 문단(평문, ko:84)을 못 잡는다 — 문단 존재는 전용 원어-토큰 grep 으로 판정한다 (plan-audit iter1 D2 정정).
+- **When** `/usr/bin/grep -c '^|' docs-site/content/{ko,en,zh}/utility-commands/moai-e2e.md` 로케일별 비교 · `/usr/bin/grep -c '^#'` 4-로케일 비교 · 호스트-OS 문단: ko `/usr/bin/grep -c "호스트 OS 규칙" docs-site/content/ko/utility-commands/moai-e2e.md`, ja `/usr/bin/grep -c "ホスト OS ルール" docs-site/content/ja/utility-commands/moai-e2e.md`, en `/usr/bin/grep -c "host OS rule" docs-site/content/en/utility-commands/moai-e2e.md`, zh — ko 정본 파생 문구 기준, 파생 시점 트리에서 확정 후 기록 (zh 자연어 문장이므로 이 SPEC 시점엔 존재 검증 불가 — 문서화된 확정 절차)
+- **Then** after 상태에서 en·zh 표 행 총수가 ko 와 동일(±0), 헤딩 수 4-로케일 동일 유지, 호스트-OS 토큰: ko `1` (baseline 유지 — 무변경 증명), ja `1` (동일), en `≥1` (0 → 신규), zh `≥1` (0 → 신규, 확정 토큰으로).
 
-## §D.6 AC-006 — ja·zh doctor 예시행 (RED-now)
+## §D.6 AC-006 — ja·zh doctor 예시행 (RED-now, 예시 블록 한정)
 
-- **Given** ja:106-111·zh:106-111 예시 블록이 `moai doctor hook` 에서 끝나 4행이다 (실측).
-- **When** `/usr/bin/grep -c "moai doctor permission\|moai doctor sandbox" docs-site/content/ja/cli-reference/doctor.md docs-site/content/zh/cli-reference/doctor.md`
-- **Then** 각 `0` → `2`. 구성은 ko:120-121·en:118-119 정본과 동등, 주석은 각 로케일 자연어.
+- **Given** ja:106-111·zh:106-111 예시 블록이 `moai doctor hook` 에서 끝나 4행이다 (실측). **주의**: 파일 전체 스캔은 명령 표 행(ja·zh :32-33, 행두 `|`)도 세므로 기대값이 다르다 — 전체 파일 기준 ja·zh baseline 2, 표행은 수리 후에도 불변 (plan-audit iter1 D1 정정).
+- **When** (블록 한정 — 행두 앵커로 fenced 예시행만 계수, 표 행 배제) `/usr/bin/grep -cE '^moai doctor (permission|sandbox)' docs-site/content/ja/cli-reference/doctor.md docs-site/content/zh/cli-reference/doctor.md` 및 (전체 파일 — 표행 포함) `/usr/bin/grep -c "moai doctor permission\|moai doctor sandbox" <같은 두 파일>`
+- **Then** 앵커 패턴: 각 `0` → `2`. 전체 파일: 각 `2` → `4` (증분 +2는 전부 예시 블록 — 표행 불변의 증명). 구성은 ko:120-121·en:118-119 정본과 동등, 주석은 각 로케일 자연어.
 
 ## §D.7 AC-007 — 전체-파일 강조 간격 스캔 (RED-now)
 
@@ -75,20 +75,21 @@
 
 ## §D.10 AC-010 — hugo 빌드 게이트
 
-- **When** `hugo --source docs-site --quiet; echo $?` (또는 hns-oss-docs-verify 레시피의 빌드 절차)
-- **Then** exit `0`, WARN `0`, ERROR `0`. 추가로 verify 레시피의 Mermaid TD-only grep·URL 블랙리스트 grep·본문 이모지 스캔 통과.
+- **When** `hugo --source docs-site 2>&1 | /usr/bin/grep -ciE "WARN|ERROR"; hugo --source docs-site >/dev/null 2>&1; echo $?` (plan-audit iter1 F1 — `--quiet` 은 WARN/ERROR 계수 출력을 억제하므로 미사용)
+- **Then** WARN/ERROR 매치 행 `0`, hugo exit `0`. 추가로 verify 레시피의 Mermaid TD-only grep·URL 블랙리스트 grep·본문 이모지 스캔 통과.
 
 ## §D.11 AC-011 — 4-로케일 동일 착지 + CHANGELOG
 
 - **When** `git diff --name-only bce6d7e08..HEAD` 및 `/usr/bin/grep -n "t538" CHANGELOG.md`
-- **Then** 변경 파일 집합이 10개로 한정된다: e2e en·zh(2) + doctor ko·ja·zh(3) + skill-guide ×4 + `CHANGELOG.md`(1) — ko·ja e2e 및 Codex Wiring 절 미포함. CHANGELOG 에는 `[Unreleased]` → `### Docs` → `### Added` 최상단에 `t538` 카드 id + G2 두-로케일 정정 명시 항목이 ≥1건 있다. 전체 집합은 하나의 커밋 체인(REQ-011).
+- **Then** 변경 파일 집합이 10개로 한정된다: e2e en·zh(2) + doctor ko·ja·zh(3) + skill-guide ×4 + `CHANGELOG.md`(1) — ko·ja e2e 및 Codex Wiring 절 미포함. CHANGELOG 에는 `[Unreleased]` → `### Added` **최상단**에 `t538` 카드 id + G2 두-로케일 정정 명시 항목이 ≥1건 있다(t535 선례 = `### Added` 직하 배치 — `### Docs` 섹션은 현행 [Unreleased] 에 부재, plan-audit iter1 D6 정정). 전체 집합은 하나의 커밋 체인(REQ-011).
 
 ## §E Edge Cases
 
-1. **en vs zh 표현 분기**: zh 파생 시 en 문장 복사 금지 — zh 자연어 검증(원어 토큰 桌面原生 계열 존재 확인).
+1. **en vs zh 표현 분기**: zh 파생 시 en 문장 복사 금지 — zh 자연어 검증(원어 토큰 `原生桌面` 계열 존재 확인 — D4 정정 토큰).
 2. **표 열 구조**: en/zh 매트릭스는 ja:78-80 의 열 구조(도구/폴백/비고)와 ko 내용의 합성 — 열 수 불일치 시 AC-005 가 잡는다.
 3. **간격 수리의 과잉 적용**: REQ-008 패턴이 doctor.md 밖 다른 페이지에서 발견돼도 본 SPEC 범위 밖이다 (파일-내부 정규화 한정).
 4. **`grep -c` 종료코드**: 히트 0이면 grep 은 exit 1 — 판정은 출력 카운트로, exit 코드로 하지 않는다.
+5. **zh 원어 토큰**: zh 페이지의 기존 용어 계열은 `原生桌面`(zh:170 `原生桌面应用`·`原生桌面自动化` 실측 1행)이다 — `桌面原生` 이 아님 (plan-audit iter1 D4 정정). zh 파생은 이 기존 용어를 따른다.
 
 ## §F Quality Gate (harness: standard)
 
@@ -100,5 +101,5 @@
 ## §G Definition of Done
 
 1. AC-001~AC-011 전부 PASS (커맨드 출력 인용).
-2. RED-now AC 4건(AC-001·002·003·006·007·008)이 baseline 값과 after 값 쌍으로 기록됨.
+2. RED-now AC 6건(AC-001·002·003·006·007·008)이 baseline 값과 after 값 쌍으로 기록됨.
 3. `.moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/progress.md` §E.2 에 run 페이즈 증거 적재.

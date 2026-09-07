@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-LOCALE-PARITY-REPAIR-001
 title: "docs-site locale-parity repair — e2e desktop-native en/zh stale + doctor ja/zh examples + legacy emphasis spacing + skill-guide SVG rules"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-08
 updated: 2026-09-08
@@ -22,6 +22,19 @@ related_specs: [SPEC-DESKTOP-NATIVE-E2E-001, SPEC-DOCS-V313-CATCHUP-001, SPEC-DO
 - 2026-09-08: 카드 t538 착수. 리드 배차 전제("docs-site 4-locale 에 v3.1.3 변경사항 없음")는 측정-선행 스윕에서 절반 정정됨 — 본 SPEC §B.1 참조.
 - 2026-09-08: 측정 근거 `.moai/reports/t538/plan-phase.md` (이 워크트리 `bce6d7e08` = origin/develop 팁에서 실측). 본 SPEC 과 측정 파일이 어긋나면 **측정 파일이 이긴다**.
 - 2026-09-08: plan 페이즈 아티팩트 4종 생성 (status: draft).
+- 2026-09-08: plan-audit iter1 **FAIL 0.71** (Tier M 문턱 0.80) — `.moai/reports/t538/plan-audit-iter1.md` (커밋 `86c8023b6`) 결함 D1-D6 수리 → version 0.2.0.
+  - D1: AC-006 기대값 정정(전체 파일 2→4 각) + 예시 블록 한정 행두-앵커 판정 추가(`^moai doctor (permission|sandbox)` — 표행 배제, ja/zh baseline 0 실측).
+  - D2: REQ-005(호스트 OS 규칙 문단)에 실효 검증 부여 — AC-005에 원어-토큰 grep 병합(ko `호스트 OS 규칙`·ja `ホスト OS ルール` baseline 1 실측, en `host OS rule`, zh 파생 시점 확정 절차).
+  - D3: plan.md AC 색인 전면 재정렬(acceptance.md 실번호).
+  - D4: REQ-012 zh 토큰 `桌面原生`→`原生桌面` 계열(zh:170 실측 기존 용어).
+  - D5: RED-now AC 계수 4건→6건 정정.
+  - D6: CHANGELOG 배치 `[Unreleased] → ### Added` 최상단으로 정정(`### Docs` 섹션은 현행 [Unreleased] 부재 — t535 선례 = 직하 배치).
+  - F1 수리: AC-010 `--quiet` 제거, WARN/ERROR 행 계수로 판정.
+  - F2 수리: §C G1 문장을 "명시한 제거 대상"이 아닌 "지연 동안 생존" 서술로 정밀화.
+  - F3 각하(기록): REQ-004/008/013의 shall+shall-not 복합은 GEARS 통합 복합절 형식 내 복합으로 유지 — MP-2 통과 판정과 일치.
+  - F4 각하(기록): 측정 파일(plan-phase.md)의 codex-dual-harness "각 64행"은 63행이 실측 — 존재 주장 자체는 참. 측정 SSOT는 소관 밖이라 본 SPEC에서 정정하지 않으며, 후속 터치 시 정정 대상으로 기록.
+  - F5 각하(기록, 대응 절차 추가): ko skill-guide :167-177의 기존 내부-경로 오염은 본 카드 불요 — plan.md §G에 G4 파생자가 해당 스타일을 모방하지 말라는 경고 추가. docs 위생 카드로 분리 권고.
+  - F6 각하(기록): `hns-oss-docs-run` 문법-오류 전제는 배차 지시문 기재 사항이며 감사자 실측(find 히트 0)으로 본체 미확인 — 금지 자체는 방향상 안전하게 유지하고, run 페이즈 진입 시 리드가 러너 실물 확인으로 전제를 확정하는 것으로 기록.
 
 ## §B 전제 정정 및 귀속 (audit 오귀속 방지 — 본 절은 REQ 보다 먼저 읽힌다)
 
@@ -54,7 +67,7 @@ G1 (e2e desktop-native en/zh 스테일)의 부채는 **v3.1.0대** 것으로, `S
 | "대상 없음" 절 | ✅ :176 라우팅 | ✅ :176 | ❌ :170 deferral notice 잔존 | ❌ :170 동일(中文) |
 | 호스트 OS 규칙 문단 | ✅ 매트릭스 직후 | ✅ | ❌ | ❌ |
 
-en:170 은 기능이 착지한 뒤에도 "OS-level native-desktop automation **is not yet provided**"라고 기능 부재를 주장하는 부정확 문서다. zh:170 도 "原生桌面自动化尚未提供"로 동일. **ko·ja 는 이미 완비 — 무변경.** ja 는 desktop-native 표 형태의 참조 렌더링으로 사용한다.
+en:170 은 기능이 착지한 뒤에도 "OS-level native-desktop automation **is not yet provided**"라고 기능 부재를 주장하는 부정확 문서다. zh:170 도 "原生桌面自动化尚未提供"로 동일. 이는 `SPEC-DESKTOP-NATIVE-E2E-001` 의 docs-site 동기화가 지연되는 동안 생존한 문장이다(plan-audit iter1 F2 — 동일 SPEC 이 제거를 지시한 verbatim 문장은 다른 표면의 것이므로 "명시한 제거 대상"이 아닌 "지연 동안 생존"으로 서술). **ko·ja 는 이미 완비 — 무변경.** ja 는 desktop-native 표 형태의 참조 렌더링으로 사용한다.
 
 ### G2 — doctor.md 예시 블록 ja·zh 2줄 부족
 
@@ -108,7 +121,7 @@ ko `advanced/skill-guide.md` 의 기존 svg-infographic 문맥에 v3.1.3 의 (a)
 
 ### REQ-010 — CHANGELOG 항목
 
-**When** 수리 집합이 착지할 때, `CHANGELOG.md` 의 `[Unreleased]` → `### Docs` → `### Added` 최상단에 수리 집합을 커버하는 항목 1건이 삽입돼야 하며(shall), 그 항목은 카드 id `t538` 과 G2 의 두-로케일(ja·zh) 정정 범위를 명시해야 한다(shall).
+**When** 수리 집합이 착지할 때, `CHANGELOG.md` 의 `[Unreleased]` → `### Added` 최상단에 수리 집합을 커버하는 항목 1건이 삽입돼야 하며(shall — t535 선례의 `### Added` 직하 배치; `### Docs` 섹션은 현행 [Unreleased] 에 부재), 그 항목은 카드 id `t538` 과 G2 의 두-로케일(ja·zh) 정정 범위를 명시해야 한다(shall).
 
 ### REQ-011 — 4-로케일 동일 착지 [HARD]
 
@@ -116,7 +129,7 @@ ko `advanced/skill-guide.md` 의 기존 svg-infographic 문맥에 v3.1.3 의 (a)
 
 ### REQ-012 — 검증 도구 규율
 
-본 SPEC 의 모든 검증 grep 은 `/usr/bin/grep` 을 사용해야 한다(shall — 셸 `grep` 은 ugrep 래퍼로 `-I`/`--ignore-files` 기본값 때문에 파일을 조용히 건너뛴다). ko·ja·zh 존재 단정에는 원어 토큰(데스크탑-네이티브 / デスクトップネイティブ / 桌面原生)을 사용해야 한다(shall — ASCII 토큰 `desktop-native` 는 ko·ja 산문에 플래그 행 외엔 나오지 않는다).
+본 SPEC 의 모든 검증 grep 은 `/usr/bin/grep` 을 사용해야 한다(shall — 셸 `grep` 은 ugrep 래퍼로 `-I`/`--ignore-files` 기본값 때문에 파일을 조용히 건너뛴다). ko·ja·zh 존재 단정에는 원어 토큰(ko `데스크탑-네이티브` / ja `デスクトップネイティブ` / zh `原生桌面` 계열)을 사용해야 한다(shall — ASCII 토큰 `desktop-native` 는 ko·ja 산문에 플래그 행 외엔 나오지 않고, zh 페이지의 기존 용어 계열은 `原生桌面`이다 — `桌面原生` 이 아님, zh:170 실측).
 
 ### REQ-013 — 실행 주체
 
