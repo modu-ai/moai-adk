@@ -31,6 +31,7 @@
 - **When** `--force` 로 동사를 실행하면
 - **Then** verb가 만든 config를 그대로 겨눈 프로브가 실행 전 `--expect exposed`, 실행 후 `--expect gated` 로 각각 **exit 0** 이다 (마커 1 → 0).
 - **기구**: `.moai/reports/t502/probe.sh probe --codex-home <verb가 쓴 home> --project <픽스처> --skill <name> --expect exposed|gated` — `--entry-path`/`--enabled` 를 주지 않으면 그 config를 **다시 쓰지 않고 그대로 읽는다**(불일치 시 exit 3). 픽스처는 같은 스크립트의 `fixture` 서브커맨드로 만든다.
+- **기구의 검증 상태**: 측정 에이전트가 `--selftest` 로 검증했고 증거는 `.moai/reports/t502/lab/instrument/` 에 보관돼 있다(셀별 판정 6건 — `symlink-lit.txt` = `verdict=gated marker=0`, `copy-res.txt` = `verdict=exposed marker=1` — 및 판정서의 `SELFTEST PASS`). **이 SPEC 저자가 독립적으로 재실행하지는 않았다.** 제3자 재실행은 더 강한 근거이므로 남겨 두되, 부채가 아니라 선택적 강화다. selftest의 채택 게이트는 차단 검출만이 아니라 **무해한 엔트리를 차단으로 오인하지 않음**(복사 모양에서 해소 표기가 여전히 노출)까지 요구하므로, 이 계측기는 「무엇이든 gated로 부르는 도구」가 아님이 셀로 확인된 상태다.
 - maps REQ-CSD-013
 
 ## §B 이름 해석 — 세 실패는 서로 다른 종료 코드를 갖는다
