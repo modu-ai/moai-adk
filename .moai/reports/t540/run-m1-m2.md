@@ -202,6 +202,10 @@ $ golangci-lint run --timeout=5m ./internal/cli/...
 
 ### 2.9 AC-CSPS-008 — scope pin (control first)
 
+Captured at `dc71e8ef9` (the M2 commit), **before** this report and the `progress.md` update landed
+— so a re-run at a later HEAD legitimately shows more control rows. The probe is what the criterion
+asserts, and it is empty at every HEAD on this branch.
+
 ```
 $ git merge-base origin/develop HEAD
 9ce7926377236aa837294cce9a214cb545751e7c

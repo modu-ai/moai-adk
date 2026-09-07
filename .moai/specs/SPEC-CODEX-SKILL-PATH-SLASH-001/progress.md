@@ -34,7 +34,7 @@ Card base re-derived at read time: `9ce7926377236aa837294cce9a214cb545751e7c`.
 | AC-CSPS-006 | PASS | `go test ./internal/cli/... -timeout 1800s -v > ac-006.log; /usr/bin/grep -c -- '--- PASS: '` | `rc=0`, AFTER `6902` vs BASE `6886`, `--- FAIL: ` count `0`; predicate `AFTER>=BEFORE AND AFTER>0` satisfied; +16 delta == tests added |
 | AC-CSPS-007 arm 1 | PASS | `go test ./internal/cli/ -run 'TestUpsertCodexSkillDisableUpdatesExistingBackslashEntry' -timeout 1800s -v` | `--- PASS` — RED before: `action = 3 (… cannot carry verbatim …), want updated` |
 | AC-CSPS-007 arm 2 | PASS | `go test ./internal/cli/ -run 'TestUpsertCodexSkillDisableSkipsMixedShapeDuplicates' -timeout 1800s -v` | `--- PASS` — RED before: reason was the verbatim-refusal, not the 2-entry duplicate skip |
-| AC-CSPS-008 | PASS (filter-liveness discriminator only; the parser-touch mutant is M4's) | `git diff --name-only <re-derived base>..HEAD -- internal/codexwiring/skills.go` | empty probe under a 13-row non-zero control |
+| AC-CSPS-008 | PASS (filter-liveness discriminator only; the parser-touch mutant is M4's) | `git diff --name-only <re-derived base>..HEAD -- internal/codexwiring/skills.go` | empty probe under a non-zero control (13 rows at `dc71e8ef9`; the control grows as later evidence commits land, the probe stays empty) |
 
 ### Invariants
 
