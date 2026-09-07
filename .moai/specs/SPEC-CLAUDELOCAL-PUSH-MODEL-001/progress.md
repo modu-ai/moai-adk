@@ -207,7 +207,7 @@ sha256 일치 · 660줄 · AC-CLPM-005 대조군 3건. 백업은 **열거나 dif
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill
+run_commit_sha: 4af14489a
 run_status: audit-ready
 card: t531
 branch: WT-claudelocal-push-model
