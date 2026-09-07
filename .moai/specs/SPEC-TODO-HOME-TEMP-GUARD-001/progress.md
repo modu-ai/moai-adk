@@ -377,6 +377,59 @@ M2 가 만들었던 `TestTodoStoreClaims_NoStaleGoSourceSite` FAIL 은 해소된
   흡수 이전이면 범위에 남의 작업이 섞인다. 후속 카드에서 D8 류 판정식은 **카드
   귀속 범위**(흡수 병합 이후)로 쓰는 편이 옳다.
 
+### M4 — sync-audit F1 수리: 생산 임시 루트 집합의 회귀 가드
+
+**Claim.** `defaultTempRoots()` 가 돌려주는 **집합 자체**를 판정하는 테스트를 추가했다
+(`internal/kanban/temp_origin_test.go` `TestDefaultTempRoots_Membership`). 감사자가
+잡히지 않는다고 보고한 뮤턴트 M-AUD-2(`defaultTempRoots` → `{os.TempDir()}`)가 이제
+RED 로 잡힌다. **생산 코드는 한 줄도 고치지 않았다** — F1 은 동작 결함이 아니라 회귀
+방어 부재이므로 수리 대상은 테스트 층이다.
+
+**Evidence** (전문은 `.moai/reports/t536/f1-repair/`).
+
+| 무엇 | 명령 | 관측 | 경로 |
+|---|---|---|---|
+| RED (뮤턴트 주입 상태) | `go test ./internal/kanban/ -run TestDefaultTempRoots_Membership -count=1 -v` | `--- FAIL` · `fixed temp root "/tmp" missing` · `"/var/folders" missing` · `has 1 members, want 3` · exit=1 | `f1-repair/02-red-under-mutant.txt` |
+| GREEN (복원 상태) | 같은 명령 | `--- PASS` · exit=0 · 집합 `["/var/folders/.../T/" "/tmp" "/var/folders"]` | `f1-repair/04-green.txt` |
+| 스윕 계수 | 위 명령의 `=== RUN` 행 수 | **1** (0매치 셀렉터도 `ok` 를 찍으므로 세어서 확인) | `f1-repair/08-sweep-count.txt` |
+| kanban 스위트 | `go test ./internal/kanban/ -count=1` | `ok ... 142.793s` exit=0 | `f1-repair/05-kanban-suite.txt` |
+| cli 스위트 | `go test ./internal/cli/ -count=1 -timeout 900s` | `ok ... 423.611s` exit=0 | `f1-repair/06-cli-suite.txt` |
+| vet · gofmt | `go vet ./internal/kanban/ ./internal/cli/` · `gofmt -l <touched>` | vet exit=0, 출력 없음 · gofmt 출력 없음 | `f1-repair/07-vet-gofmt.txt` |
+
+**복원 검증 (주입/복원 쌍).** 주입 상태의 `git diff -- internal/kanban/temp_origin.go`
+는 **비어 있지 않았고**(02 파일 머리), 복원 후 같은 명령은 **빈 출력**이다 — 두 관측이
+쌍을 이루므로 빈 diff 는 「복원됐다」이지 「필터가 아무 데도 닿지 않았다」가 아니다.
+sha256 도 주입 전 baseline 과 바이트 동일:
+`0ed1a6d408b1e2fc214890697f97c469bf43d1646ddc3c2072c9abb9fc645cbd`
+(`f1-repair/01-baseline-hash.txt` · `f1-repair/03-restore-verification.txt`). 이 값은
+감사자가 기록한 baseline(`0ed1a6d4…`)과도 일치한다 — 독립 재확인이다.
+뮤턴트는 트리에 살려두지 않았고 `.moai/reports/t536/mutants/mutant-AUD2-rootset.go.txt`
+로 보존했다(`.go` 가 아니므로 `go build ./...` 에 합류하지 않는다).
+
+**설계 근거 — 왜 분류가 아니라 집합을 묻는가.** 기존 테스트는 전부 생산 집합에
+*의존하는 분류*를 물었고, 분류는 다른 수단으로도 만족된다 — 그래서 M-AUD-2 가 전
+스위트를 초록으로 통과했다. 이 테스트는 `TempOriginReason` 을 거치지 않고
+`defaultTempRoots()` 의 반환값을 직접 판정한다. 고정 원소(`/tmp`, `/var/folders`)는
+리터럴로 단언하고, **플랫폼 가변 원소인 `os.TempDir()` 는 값을 박지 않고 존재만**
+단언한다(값을 박으면 집합이 아니라 기계를 재게 된다). 원소 수 3 을 함께 물어 **추가**를
+막고, `/var/tmp` 부재는 spec.md §8 이 명시한 제외이므로 별도로 단언한다 —
+`TMPDIR` 이 `/var/tmp` 를 가리키는 경우만 가변 원소로서 예외 처리한다.
+`TempRootsFn` 이음매는 **쓰지 않는다**: 그 이음매는 픽스처가 `t.TempDir()` 를 벗어나기
+위한 것이고, 여기서 판정 대상은 이음매가 되돌아가는 **기본값** 자체다.
+
+**Gaps — M4.** linux/windows 셀 미측정(darwin/arm64 한 대). `golangci-lint` 미실행.
+`go test ./...` 미실행(저장소 규율상 금지) — `internal/kanban` · `internal/cli` 2개
+패키지만 봤다. `internal/web` 은 이 회차에서 재측정하지 않았다(테스트 파일 1개 추가가
+그 패키지에 도달하지 않는다).
+
+**Residual risk — M4.** ① 원소 수 3 단언은 **추가**를 막지만, 세 원소를 유지한 채
+*값을 바꾸는* 변형(예: `/var/folders` → `/var/folder`)은 리터럴 단언 두 건이 막고
+`os.TempDir()` 자리는 막지 않는다 — 그 자리는 정의상 가변이다. ② F1 은 다섯 번째
+시도에서 나온 뮤턴트였다; 이 수리는 그 하나를 닫을 뿐 뮤턴트 공간을 전수하지 않는다.
+③ 감사 F2(`sync_commit_sha` 백필)·F3(docs-site 4로케일 추적 주체)는 이 회차의 소관이
+아니며 미상환이다.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

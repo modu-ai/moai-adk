@@ -3,7 +3,8 @@ package kanban
 // temp_origin_test.go — SPEC-TODO-HOME-TEMP-GUARD-001 M1: the temporary-origin
 // discriminant's own tests. Producing acceptance criteria: AC-THG-002 (the two
 // symlink spellings classify alike), AC-THG-004 (fail-open), AC-THG-006 (the
-// boundary is component-wise), plus the REQ-THG-009 seam's two M1 exit clauses
+// boundary is component-wise) plus the positive direction of REQ-THG-002's
+// set-definition clause (sync-audit F1), plus the REQ-THG-009 seam's two M1 exit clauses
 // — that a test can stub the temp-root set at all, and that the stub is read at
 // CALL time rather than snapshotted at package init.
 //
@@ -13,6 +14,7 @@ package kanban
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -136,6 +138,64 @@ func TestTempOrigin_ComponentBoundary(t *testing.T) {
 			t.Errorf("/tmpfoo classified temporary (reason %q)", reason)
 		}
 	})
+}
+
+// TestDefaultTempRoots_Membership — REQ-THG-002's set-definition clause, the
+// positive direction (sync-audit F1).
+//
+// Every other test in this package judges a CLASSIFICATION that happens to
+// depend on the production root set, and a classification can be satisfied by
+// other means: the audit's M-AUD-2 mutant reduced defaultTempRoots() to
+// {os.TempDir()} alone and the whole internal/kanban + internal/cli suite still
+// passed green. That mutant is not equivalent — the same probe run against both
+// versions flips /tmp/t203-probe from isTemp=true reason="/tmp" to
+// isTemp=false reason="", and that path is the origin of the single production
+// contamination this SPEC recovered (~/.moai/todo/t203-probe-d7a16ea2). So this
+// test judges the returned set ITSELF; it deliberately does not go through
+// TempOriginReason, and it does not touch the TempRootsFn seam — the seam exists
+// so fixtures can escape t.TempDir(), whereas the subject here is the DEFAULT
+// the seam falls back to.
+//
+// AC-THG-006's production-root subtest asks only the NEGATIVE direction
+// (/tmpfoo is outside /tmp), which the mutant also satisfies. This is the
+// positive one.
+func TestDefaultTempRoots_Membership(t *testing.T) {
+	got := defaultTempRoots()
+
+	// The two FIXED members, asserted by literal value. /tmp is not redundant
+	// with os.TempDir(): on this project's reference machine os.TempDir()
+	// reports /var/folders/..., so dropping /tmp withdraws exactly the case the
+	// guard was built for.
+	for _, want := range []string{"/tmp", "/var/folders"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("fixed temp root %q missing from defaultTempRoots() = %q", want, got)
+		}
+	}
+
+	// os.TempDir() is the PLATFORM-VARIABLE member: its value differs by
+	// platform and by TMPDIR, so its presence is asserted while its spelling is
+	// only recorded. Hard-coding a value here would make this test measure the
+	// machine rather than the set.
+	if !slices.Contains(got, os.TempDir()) {
+		t.Errorf("os.TempDir() = %q missing from defaultTempRoots() = %q", os.TempDir(), got)
+	}
+	t.Logf("os.TempDir() on this platform: %q; full set: %q", os.TempDir(), got)
+
+	// Exactly three members. Combined with the two assertions above, this is
+	// what closes ADDITIONS — a fourth root would widen the guard, and a false
+	// positive silently withdraws a real project's queue.
+	if len(got) != 3 {
+		t.Errorf("defaultTempRoots() has %d members, want 3: %q", len(got), got)
+	}
+
+	// /var/tmp is deliberately EXCLUDED (spec.md §8): it survives reboots, so
+	// the "the directory later disappears" premise is weak there while a
+	// long-lived real project under it is likelier. The carve-out below is not
+	// a weakening — where TMPDIR itself names /var/tmp the entry is the
+	// platform-variable member above, not a fixed one.
+	if slices.Contains(got, "/var/tmp") && os.TempDir() != "/var/tmp" {
+		t.Errorf("/var/tmp present in defaultTempRoots() = %q; spec.md §8 excludes it", got)
+	}
 }
 
 // TestTempRootsSeam_ReadAtCallTime — REQ-THG-009, and the M1 exit condition's
