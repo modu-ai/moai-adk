@@ -230,13 +230,19 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 		// destination. This prevents overwriting user-created or
 		// programmatically-generated files (e.g., config YAMLs from Step 2
 		// of init, or pre-existing CLAUDE.md).
-		// Skip this check in forceUpdate mode (used for template updates).
-		if !d.forceUpdate {
+		// Skip this check in forceUpdate mode (used for template updates) —
+		// EXCEPT on published-skill paths (R-011): update mode exists to
+		// refresh template-managed content, not to overwrite a user-owned
+		// file that happens to sit at a published-skill path. There the
+		// provenance check survives forceUpdate, and a skip is reported.
+		protectedScope := isPublishedSkillPath(destRelPath)
+		if !d.forceUpdate || protectedScope {
 			if _, statErr := os.Stat(destPath); statErr == nil {
 				// File exists — check manifest for provenance
 				if entry, found := m.GetEntry(destRelPath); found {
 					if entry.Provenance == manifest.UserModified || entry.Provenance == manifest.UserCreated {
 						// Respect user files
+						result.recordProtectedSkip(destRelPath)
 						return nil
 					}
 					// template_managed files are safe to overwrite (re-init / update)
@@ -244,6 +250,7 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 					// Existing file not tracked in manifest — record as user_created and skip
 					templateHash := manifest.HashBytes(content)
 					_ = m.Track(destRelPath, manifest.UserCreated, templateHash)
+					result.recordProtectedSkip(destRelPath)
 					return nil
 				}
 			}

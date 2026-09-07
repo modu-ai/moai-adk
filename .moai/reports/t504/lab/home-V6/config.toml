@@ -1,0 +1,4 @@
+# t504 cell V6: nonexistent path + enabled = true
+[[skills.config]]
+path = "/tmp/t504-hOuB8eKd/neutral/absent/t504probe/SKILL.md"
+enabled = true

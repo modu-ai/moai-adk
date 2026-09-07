@@ -23,8 +23,33 @@ import (
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
 )
 
-// wireProjectForDoctor wires a fresh temp project and returns its root.
+// wireProjectForDoctor wires a fresh temp project doctor should find HEALTHY,
+// and returns its root.
+//
+// It carries a skill mirror because a real `moai init --agent codex` project
+// does: wiring and the template deploy that creates `.agents/skills` happen on
+// the same run. A wired root WITHOUT a mirror is a state the mirror diagnostic
+// reports (SPEC-CODEX-MIRROR-DOCTOR-001 REQ-CMD-004), so leaving it out here
+// would make every test in this file that only wants a quiet baseline carry an
+// unrelated finding.
+//
+// The mirror is an EMPTY directory rather than a populated one, and no
+// `.claude/skills` is created: a project with no skills has nothing to mirror,
+// which observes as neither a finding nor a detail count. It also needs no
+// symlink, so this fixture does not become windows-skipped for every caller.
+// A test that wants the mirror ABSENT uses wireProjectWithoutMirror.
 func wireProjectForDoctor(t *testing.T) string {
+	t.Helper()
+	root := wireProjectWithoutMirror(t)
+	if err := os.MkdirAll(filepath.Join(root, ".agents", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// wireProjectWithoutMirror wires a fresh temp project and returns its root,
+// leaving `.agents/skills` absent — the state REQ-CMD-004 reports on.
+func wireProjectWithoutMirror(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	var out, warn bytes.Buffer
@@ -935,6 +960,492 @@ func TestCodexSkillPath_ExpansionUsesUserHomeSeam(t *testing.T) {
 	}
 	if strings.Contains(check.Message+" "+codexDetailText(check), "stale skill") {
 		t.Errorf("seam-pinned ~ entries produced a stale finding: %+v", check)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SPEC-CODEX-MIRROR-DOCTOR-001 — `.agents/skills` mirror-state diagnostic.
+//
+// Every test below builds its own mirror fixture under t.TempDir(): `.agents/`
+// is gitignored in this repository, so there is no in-repo mirror to read
+// (plan.md §C.1).
+// ---------------------------------------------------------------------------
+
+// The two user-visible strings the ACs pin, written as LITERALS rather than as
+// references to the implementation's own constants. Comparing a message
+// against the constant that produced it is tautological; comparing it against
+// the text the acceptance criteria name is not.
+const (
+	testMirrorRedeployDirective = "moai update --templates-only --force --yes"
+	testMirrorDetailPhrase      = "does not scan .claude/skills"
+)
+
+// mirrorEntryKind is how one fixture mirror entry is materialized.
+type mirrorEntryKind int
+
+const (
+	// mirrorEntryLive is a relative symlink whose target exists.
+	mirrorEntryLive mirrorEntryKind = iota
+	// mirrorEntryDangling is a relative symlink whose target does not exist.
+	mirrorEntryDangling
+	// mirrorEntryRealDir is a real directory occupying the mirror path — the
+	// copy fallback's materialization (skill_mirror.go MirrorModeCopy).
+	mirrorEntryRealDir
+)
+
+// mirrorEntrySpec is one entry to build under `.agents/skills`.
+type mirrorEntrySpec struct {
+	name string
+	kind mirrorEntryKind
+}
+
+// writeSkillMirror builds `.claude/skills/<canonical...>` and the `.agents/
+// skills` entries per spec under root. It mirrors the producer's own layout:
+// the link body is the RELATIVE "../../.claude/skills/<name>" that
+// skill_mirror.go's mirrorLinkTarget emits, so a fixture link resolves exactly
+// as a real one does.
+//
+// Skips on a host that cannot create symlinks, using this file's existing
+// idiom — a fixture the host cannot build asserts nothing.
+func writeSkillMirror(t *testing.T, root string, canonical []string, entries []mirrorEntrySpec) {
+	t.Helper()
+	needsSymlink := false
+	for _, e := range entries {
+		if e.kind != mirrorEntryRealDir {
+			needsSymlink = true
+		}
+	}
+	if needsSymlink && runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs privileges on windows")
+	}
+
+	claudeSkills := filepath.Join(root, ".claude", "skills")
+	if err := os.MkdirAll(claudeSkills, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range canonical {
+		if err := os.MkdirAll(filepath.Join(claudeSkills, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	mirrorDir := filepath.Join(root, ".agents", "skills")
+	if err := os.MkdirAll(mirrorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		dst := filepath.Join(mirrorDir, e.name)
+		if e.kind == mirrorEntryRealDir {
+			if err := os.MkdirAll(dst, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		if err := os.Symlink("../../.claude/skills/"+e.name, dst); err != nil {
+			t.Skipf("symlink unsupported here: %v", err)
+		}
+	}
+}
+
+// mirrorTreeListing records the shape of both skill trees as a lexically
+// ordered path + mode + link-target listing. WalkDir never follows a symlink,
+// so the listing records the LINK rather than what it points at — which is
+// what a read-only assertion has to compare.
+func mirrorTreeListing(t *testing.T, root string) string {
+	t.Helper()
+	var sb strings.Builder
+	for _, rel := range []string{".agents", ".claude"} {
+		base := filepath.Join(root, rel)
+		werr := filepath.WalkDir(base, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				// The error text IS the recorded state: a tree that could not
+				// be walked before must be equally unwalkable after.
+				fmt.Fprintf(&sb, "%s WALK-ERR %v\n", p, err)
+				return nil
+			}
+			info, ierr := d.Info()
+			if ierr != nil {
+				fmt.Fprintf(&sb, "%s INFO-ERR %v\n", p, ierr)
+				return nil
+			}
+			target := ""
+			if info.Mode()&os.ModeSymlink != 0 {
+				target, _ = os.Readlink(p)
+			}
+			fmt.Fprintf(&sb, "%s %s %s\n", p, info.Mode().String(), target)
+			return nil
+		})
+		if werr != nil {
+			fmt.Fprintf(&sb, "%s ROOT-ERR %v\n", base, werr)
+		}
+	}
+	return sb.String()
+}
+
+// TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow is AC-CMD-001, the
+// regression this change most plausibly causes (REQ-CMD-003).
+//
+// It SUPPLEMENTS — and does not replace — TestCheckCodexWiring_ClaudeOnly
+// MachineStaysSilent, which guards the same un-nagging invariant against a
+// different intruder (the home-layer skills.config sub-check). This one guards
+// it against the mirror sub-check: a claude-only user must gain no new text.
+func TestCheckCodexWiring_ClaudeOnlyMachineNoMirrorRow(t *testing.T) {
+	stubCodexLookup(t, true, false) // codex NOT on PATH
+	stubCodexHome(t, t.TempDir())
+
+	root := t.TempDir() // no .codex/ wiring, no .agents/skills
+	check := checkCodexWiring(root, true)
+
+	if check.Status != uikit.CheckOK {
+		t.Errorf("claude-only machine status = %v, want OK: %+v", check.Status, check)
+	}
+	if !strings.Contains(check.Message, "not wired (claude-only project)") {
+		t.Errorf("informational-skip message changed: %q", check.Message)
+	}
+	both := strings.ToLower(check.Message + " " + codexDetailText(check))
+	for _, forbidden := range []string{".agents", "mirror"} {
+		if strings.Contains(both, forbidden) {
+			t.Errorf("claude-only machine was nagged about the mirror (%q present): %+v", forbidden, check)
+		}
+	}
+}
+
+// TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy is AC-CMD-003
+// (REQ-CMD-004): on a WIRED project an absent mirror means Codex sees no MoAI
+// skills at all, and a routine `moai update` was measured not to restore it
+// (root-cause.md Claim 2) — so the summary carries the FORCED re-deploy.
+func TestCheckCodexWiring_MirrorAbsentAdvisesRedeploy(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	root := wireProjectWithoutMirror(t)
+	check := checkCodexWiring(root, false)
+
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("absent mirror on a wired project status = %v, want Warn: %+v", check.Status, check)
+	}
+	for _, want := range []string{".agents/skills", testMirrorRedeployDirective} {
+		if !strings.Contains(check.Message, want) {
+			t.Errorf("Message missing %q (Detail is --verbose-only): %q", want, check.Message)
+		}
+	}
+}
+
+// TestCheckCodexWiring_DanglingMirrorEntriesCounted is AC-CMD-004
+// (REQ-CMD-005): an entry claiming a skill that is not there. Nothing repairs
+// it between deploys, so it is a finding and the COUNT rides in the summary.
+func TestCheckCodexWiring_DanglingMirrorEntriesCounted(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	root := wireProjectForDoctor(t)
+	writeSkillMirror(t, root, []string{"moai-live"}, []mirrorEntrySpec{
+		{name: "moai-live", kind: mirrorEntryLive},
+		{name: "moai-gone-a", kind: mirrorEntryDangling},
+		{name: "moai-gone-b", kind: mirrorEntryDangling},
+	})
+
+	check := checkCodexWiring(root, false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("dangling entries status = %v, want Warn: %+v", check.Status, check)
+	}
+	if !strings.Contains(check.Message, "2") {
+		t.Errorf("Message does not name the dangling count 2: %q", check.Message)
+	}
+	if !strings.Contains(check.Message, testMirrorRedeployDirective) {
+		t.Errorf("Message missing the re-deploy directive: %q", check.Message)
+	}
+}
+
+// TestCheckCodexWiring_CopyModeDetailOnly is AC-CMD-005 (REQ-CMD-006). A real
+// directory in a mirror path is the copy fallback: FUNCTIONAL, and the
+// expected materialization wherever symlink creation is unavailable. Warning
+// on it would hand every such user a permanent row for a working mirror — the
+// un-nagging invariant failing by a different door.
+func TestCheckCodexWiring_CopyModeDetailOnly(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	root := wireProjectForDoctor(t)
+	writeSkillMirror(t, root, []string{"moai-linked", "moai-copied"}, []mirrorEntrySpec{
+		{name: "moai-linked", kind: mirrorEntryLive},
+		{name: "moai-copied", kind: mirrorEntryRealDir},
+	})
+
+	check := checkCodexWiring(root, true)
+	if check.Status != uikit.CheckOK {
+		t.Fatalf("copy-mode entry was escalated to a finding: %+v", check)
+	}
+	detail := codexDetailText(check)
+	if !strings.Contains(detail, "1") || !strings.Contains(detail, "copy") {
+		t.Errorf("Detail does not report the copy-mode count: %q", detail)
+	}
+	if strings.Contains(strings.ToLower(check.Message), "copy") {
+		t.Errorf("copy-mode text leaked into Message: %q", check.Message)
+	}
+}
+
+// TestCheckCodexWiring_UnmirroredSkillsDetailOnly is AC-CMD-006 (REQ-CMD-007).
+// The correct denominator — "skills THIS deploy mirrored" — is not observable
+// from doctor, and a project may legitimately carry locally-authored skills no
+// deploy ever mirrored. Counted, reported, never warned.
+func TestCheckCodexWiring_UnmirroredSkillsDetailOnly(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	root := wireProjectForDoctor(t)
+	writeSkillMirror(t, root,
+		[]string{"moai-mirrored", "local-one", "local-two"},
+		[]mirrorEntrySpec{{name: "moai-mirrored", kind: mirrorEntryLive}})
+
+	check := checkCodexWiring(root, true)
+	if check.Status != uikit.CheckOK {
+		t.Fatalf("unmirrored skills were escalated to a finding: %+v", check)
+	}
+	if !strings.Contains(codexDetailText(check), "2") {
+		t.Errorf("Detail does not report the unmirrored count 2: %q", check.Detail)
+	}
+	if strings.Contains(check.Message, ".agents/skills") {
+		t.Errorf("unmirrored text leaked into Message: %q", check.Message)
+	}
+}
+
+// TestCheckCodexWiring_UnwiredNoMirrorNag is AC-CMD-007 (REQ-CMD-008, plus the
+// unwired clause of REQ-CMD-006/007). Codex is installed but the project never
+// opted in: the existing init directive already points at a deploy that
+// creates the mirror, so a second directive here would double-nag.
+//
+// Sub-case (b) pins the unwired clause: a mirror in a REPORTABLE state still
+// produces nothing, because the inspector is never called outside the wired
+// branch.
+func TestCheckCodexWiring_UnwiredNoMirrorNag(t *testing.T) {
+	cases := []struct {
+		name        string
+		buildMirror bool
+	}{
+		{name: "no_mirror_directory", buildMirror: false},
+		{name: "reportable_mirror_still_silent", buildMirror: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stubCodexLookup(t, true, true) // codex FOUND, project unwired
+			stubCodexHome(t, t.TempDir())
+
+			root := t.TempDir()
+			if tc.buildMirror {
+				writeSkillMirror(t, root, []string{"moai-live"}, []mirrorEntrySpec{
+					{name: "moai-live", kind: mirrorEntryLive},
+					{name: "moai-copied", kind: mirrorEntryRealDir},
+					{name: "moai-gone", kind: mirrorEntryDangling},
+				})
+			}
+
+			check := checkCodexWiring(root, true)
+			if !strings.Contains(check.Message, initCodexAdvice) {
+				t.Errorf("existing unwired directive missing: %q", check.Message)
+			}
+			both := check.Message + " " + codexDetailText(check)
+			if strings.Contains(both, ".agents/skills") {
+				t.Errorf("unwired project was nagged about the mirror: %+v", check)
+			}
+			if strings.Contains(both, testMirrorRedeployDirective) {
+				t.Errorf("unwired project got the re-deploy directive: %+v", check)
+			}
+		})
+	}
+}
+
+// TestCheckCodexWiring_MirrorUnreadableIndeterminate is AC-CMD-008
+// (REQ-CMD-010): an unobserved absence is never reported as absent. The
+// fixture is this file's existing symlink-loop idiom rather than a chmod 0o000
+// directory, which was measured to break t.TempDir() cleanup.
+func TestCheckCodexWiring_MirrorUnreadableIndeterminate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs privileges on windows")
+	}
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	// wireProjectWithoutMirror, so `.agents/skills` is free for the loop link
+	// to occupy — an existing directory would make os.Symlink fail EEXIST and
+	// skip the test, leaving this AC unmet.
+	root := wireProjectWithoutMirror(t)
+	if err := os.MkdirAll(filepath.Join(root, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mirrorDir := filepath.Join(root, ".agents", "skills")
+	sibling := filepath.Join(root, ".agents", "loop-sibling")
+	if err := os.Symlink(sibling, mirrorDir); err != nil {
+		t.Skipf("symlink unsupported here: %v", err)
+	}
+	if err := os.Symlink(mirrorDir, sibling); err != nil {
+		t.Skipf("symlink unsupported here: %v", err)
+	}
+	// Control assertion: without it this AC could pass on a host where the
+	// loop resolved, asserting nothing.
+	if _, err := os.ReadDir(mirrorDir); err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("symlink loop did not produce a non-ENOENT read error: %v", err)
+	}
+
+	check := checkCodexWiring(root, true)
+	if strings.Contains(check.Message, testMirrorRedeployDirective) {
+		t.Errorf("an unreadable mirror was reported as absent: %+v", check)
+	}
+	if !strings.Contains(codexDetailText(check), "not checked") {
+		t.Errorf("Detail does not record the indeterminate condition: %q", check.Detail)
+	}
+}
+
+// TestCheckCodexWiring_MirrorSummaryWidth is AC-CMD-009 clause (a): each
+// mirror summary stays inside the width band STANDALONE, so it never widens
+// the panel on its own. Each fixture raises exactly one mirror finding and no
+// other, which is what makes the measurement standalone by construction.
+func TestCheckCodexWiring_MirrorSummaryWidth(t *testing.T) {
+	cases := []struct {
+		name  string
+		build func(t *testing.T, root string)
+	}{
+		{name: "absent", build: func(*testing.T, string) {}},
+		{name: "dangling", build: func(t *testing.T, root string) {
+			writeSkillMirror(t, root, []string{"moai-live"}, []mirrorEntrySpec{
+				{name: "moai-live", kind: mirrorEntryLive},
+				{name: "moai-gone", kind: mirrorEntryDangling},
+			})
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stubCodexLookup(t, true, true)
+			stubCodexHome(t, t.TempDir())
+			root := wireProjectWithoutMirror(t)
+			tc.build(t, root)
+
+			check := checkCodexWiring(root, false)
+			if check.Status != uikit.CheckWarn {
+				t.Fatalf("premise broken — expected exactly one mirror finding: %+v", check)
+			}
+			if strings.Contains(check.Message, "see --verbose") {
+				t.Fatalf("premise broken — the summary was not measured standalone: %q", check.Message)
+			}
+			if n := utf8.RuneCountInString(check.Message); n > codexMessageWidthCeiling {
+				t.Errorf("mirror summary is %d runes, over the %d ceiling: %q", n, codexMessageWidthCeiling, check.Message)
+			}
+		})
+	}
+}
+
+// TestCheckCodexWiring_MirrorCheckIsReadOnly is AC-CMD-010 (REQ-CMD-002) and
+// the ONLY mechanical guard on the read-only boundary: repair on read would
+// make doctor a writer of a surface the deploy path owns.
+func TestCheckCodexWiring_MirrorCheckIsReadOnly(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	root := wireProjectForDoctor(t)
+	writeSkillMirror(t, root,
+		[]string{"moai-live", "moai-copied", "local-unmirrored"},
+		[]mirrorEntrySpec{
+			{name: "moai-live", kind: mirrorEntryLive},
+			{name: "moai-gone", kind: mirrorEntryDangling},
+			{name: "moai-copied", kind: mirrorEntryRealDir},
+		})
+
+	before := mirrorTreeListing(t, root)
+	_ = checkCodexWiring(root, true)
+	after := mirrorTreeListing(t, root)
+
+	if before != after {
+		t.Errorf("the check mutated the skill trees\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+// TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop is AC-CMD-013
+// (REQ-CMD-009 clause b): the mirror summary is appended to `problems` and so
+// participates in the existing tail-drop UNCHANGED — the bound is a shared
+// resource, and a new finding must not be exempted from it.
+func TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop(t *testing.T) {
+	t.Run("tail_drop_keeps_the_lead_and_detail_keeps_everything", func(t *testing.T) {
+		stubCodexLookup(t, true, true)
+		stubCodexHome(t, writeCodexHomeConfig(t, []codexSkillEntrySpec{
+			{Path: absentSkillPath(t, "moai-a"), EnabledKey: "true"},
+		}))
+
+		root := wireProjectWithoutMirror(t) // absent mirror => the mirror finding
+		check := checkCodexWiring(root, false)
+		if check.Status != uikit.CheckWarn {
+			t.Fatalf("premise broken — expected two findings: %+v", check)
+		}
+		// Premise control: the two summaries must actually overflow, or this
+		// test asserts nothing about tail-drop.
+		if !strings.Contains(check.Message, "see --verbose") {
+			t.Fatalf("premise broken — the joined summaries did not exceed %d runes, so no tail-drop occurred: %q",
+				codexMessageWidthCeiling, check.Message)
+		}
+
+		if n := utf8.RuneCountInString(check.Message); n > codexMessageWidthCeiling {
+			t.Errorf("truncated Message is still %d runes, over the %d ceiling: %q", n, codexMessageWidthCeiling, check.Message)
+		}
+		if !strings.HasSuffix(check.Message, codexOverflowMarker(1)) {
+			t.Errorf("Message does not end with the overflow marker naming 1 dropped summary: %q", check.Message)
+		}
+		// The dropped finding survives in Detail — including its directive.
+		detail := codexDetailText(check)
+		for _, want := range []string{testMirrorRedeployDirective, "stale"} {
+			if !strings.Contains(detail, want) {
+				t.Errorf("Detail dropped %q; it must carry the full text of every finding: %q", want, detail)
+			}
+		}
+	})
+
+	t.Run("lead_summary_exception_stays_unreachable_for_mirror_summaries", func(t *testing.T) {
+		// joinCodexSummaries emits a single over-ceiling lead summary whole
+		// rather than truncating its own directive. AC-CMD-009 asserts every
+		// mirror summary is under the ceiling standalone, so mirror summaries
+		// never enter that branch — this sub-case makes the unreachability
+		// OBSERVED rather than assumed.
+		stubCodexLookup(t, true, true)
+		stubCodexHome(t, t.TempDir()) // no home config => no second finding
+
+		check := checkCodexWiring(wireProjectWithoutMirror(t), false)
+		if check.Status != uikit.CheckWarn {
+			t.Fatalf("premise broken — expected the lone mirror finding: %+v", check)
+		}
+		if strings.Contains(check.Message, "see --verbose") {
+			t.Errorf("a lone mirror finding produced an overflow marker: %q", check.Message)
+		}
+		if n := utf8.RuneCountInString(check.Message); n > codexMessageWidthCeiling {
+			t.Errorf("the lead-summary exception was entered: %d runes > %d: %q", n, codexMessageWidthCeiling, check.Message)
+		}
+	})
+}
+
+// TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters is AC-CMD-014
+// (REQ-CMD-001): the observation rides the EXISTING row in the file's existing
+// two-register shape. Clause 3 is asserted on the RENDERED output, never on
+// check.Detail: the verbose gate lives at the render layer
+// (doctor_render.go:134-137), while the Detail field is assigned regardless.
+func TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	check := checkCodexWiring(wireProjectWithoutMirror(t), true)
+	if check.Name != "Codex Wiring" {
+		t.Errorf("the mirror observation renamed the row: %q", check.Name)
+	}
+	if !strings.Contains(check.Message, ".agents/skills") {
+		t.Errorf("summary register empty of the mirror observation: %q", check.Message)
+	}
+	if !strings.Contains(codexDetailText(check), testMirrorDetailPhrase) {
+		t.Errorf("detail register carries no fuller mirror text: %q", check.Detail)
+	}
+
+	var buf bytes.Buffer
+	rendered := renderDoctorGroups(&buf, []checkGroup{{
+		title:  "Codex",
+		checks: []DiagnosticCheck{check},
+	}}, false, resolveTheme())
+	if strings.Contains(rendered, testMirrorDetailPhrase) {
+		t.Errorf("Detail text rendered without --verbose: %q", rendered)
 	}
 }
 

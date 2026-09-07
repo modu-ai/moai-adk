@@ -1,0 +1,10 @@
+---D-series---
+D2f	out=24914	err=0	rc=0	marker=1	name=1
+D1f	out=24754	err=0	rc=0	marker=0	name=0
+D2d	out=24914	err=0	rc=0	marker=1	name=1
+D1d	out=24914	err=0	rc=0	marker=1	name=1
+---D-stderr---
+---D2f-marker-context---
+rnal pages. (file: r1/orchestration/SKILL.md)\n- t504probe: T504MARKER probe skill for SPEC-CODEX-SKILLCONFIG-SHAPE-001. (file: r0
+---notouch-recheck---
+c45741c10c3e844ae2fe768787338cfdc659dc41b2e2b75db83f5ebf8638e01a  /Users/goos/.codex/config.toml
