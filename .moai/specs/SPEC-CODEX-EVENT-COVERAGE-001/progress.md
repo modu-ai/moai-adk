@@ -4,7 +4,7 @@
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-07
-- tier: M (spec.md / plan.md / acceptance.md / progress.md = 4 artifacts)
+- tier: M (3 plan artifacts: spec.md / plan.md / acceptance.md + progress.md 추적 파일)
 - plan-phase measurements: spec.md §C 표 M1-M5 (본 트리 실행 명령+관측 포함)
 - open items: 없음 — [NEEDS CLARIFICATION] 마커 없음
 

@@ -13,12 +13,12 @@ author: manager-spec
 
 ### M1 (Axis A)
 
-- **AC-CEV-001** (maps REQ-CEV-001) — **Given** 본 트리의 `internal/codexadapter/events.go` **When** `awk '/^var EventTable/,/^}/' internal/codexadapter/events.go | grep -c 'true},'` 와 `'false},'` 를 실행 **Then** 합계 12이고 `false}=6` (기존 5 + Interrupt 1), `true}=6`.
+- **AC-CEV-001** (maps REQ-CEV-001) — **Given** M1 구현 후 트리의 `internal/codexadapter/events.go` **When** `awk '/^var EventTable/,/^}/' internal/codexadapter/events.go | grep -c 'true},'` 와 `'false},'` 를 실행 **Then** 합계 12이고 `false}=6` (기존 5 + Interrupt 1), `true}=6`.
 - **AC-CEV-002** (maps REQ-CEV-002, REQ-CEV-005) — **Given** M1 구현 후 트리 **When** `grep -rn 'EventInterrupt' internal/ | grep -v _test | grep -v codexadapter` 를 실행 **Then** 매치 0행 (internal/hook 무변경 회귀 판별식, REQ-CEV-002/005).
 - **AC-CEV-003** (maps REQ-CEV-003) — **Given** `Resolve("Interrupt")` **When** `go test ./internal/codexadapter/ -run 'TestResolve' -v` 실행 **Then** Interrupt 케이스가 `ErrUnadapted` 래핑과 "메시지가 `dispatcher arg` 존재를 단언하지 않음"을 모두 단언하는 테스트가 GREEN (REQ-CEV-003).
 - **AC-CEV-004** (maps REQ-CEV-001, REQ-CEV-003) — **Given** M1 구현 후 **When** `go test ./internal/codexadapter/ ./internal/codexwiring/` 실행 **Then** `TestDispatcherArgsExist`가 갱신돼 GREEN이고, `TestEventTableRowCount`는 12를 단언 (REQ-CEV-001, §D1).
 - **AC-CEV-005** (maps REQ-CEV-004) — **Given** M1 구현 전후의 RenderHooks **When** 동일 입력에 대한 `RenderHooks` 출력의 Interrupt 키 존재를 단언하는 테스트(신설 1개: Interrupt 행이 설치 바이트에 나타나지 않음)를 실행 **Then** GREEN — `.codex/hooks.json` 설치 표면 불변 (REQ-CEV-004).
-- **AC-CEV-006** (maps REQ-CEV-006) — **Given** M1 이후 `events.go` **When** doc comment를 읽음 **Then** "All eleven" 문자열과 "Six rows are adapted" 고정 수치가 남아 있지 않다: `grep -c 'All eleven' internal/codexadapter/events.go` → 0 (REQ-CEV-006).
+- **AC-CEV-006** (maps REQ-CEV-006) — **Given** M1 이후 `internal/codexadapter/events.go` **When** 아래 3개 명령을 실행 **Then** (1) `grep -c 'All eleven' internal/codexadapter/events.go` → 0, (2) `grep -c 'never an absence of' internal/codexadapter/events.go` → 0 (M1 후 Interrupt는 정확히 부재로 제외되므로 events.go:41-44의 그 문장은 거짓이 된다), (3) 갱신된 doc comment 블록이 `Interrupt`를 언급하며 그 `no MoAI dispatcher counterpart` 성격을 기재한다. 단, "Six rows are adapted" 문구는 M1 후에도 참(6 adapted 불변)이므로 그 삭제를 요구하지 않는다 — 대신 adapted/held-back census가 Interrupt의 사유를 포함해 12행 전체를 셈한다 (REQ-CEV-006).
 
 ### M2 (Axis B — 캠페인 기록 기반, 런 페이즈)
 
@@ -48,5 +48,5 @@ author: manager-spec
 1. AC-CEV-001~006 전부 GREEN (M1) — 명령+출력이 progress.md §E.2에 귀속
 2. AC-CEV-010~013 전부 충족 (M2) — 캠페인 기록 경로가 progress.md에 기재
 3. AC-CEV-020 충족 (M3 조건 판정 기록 포함)
-4. `internal/hook` diff 0행 (REQ-CEV-005 — `git diff --stat HEAD -- internal/hook/` 공허)
+4. `internal/hook` diff 0행 (REQ-CEV-005 — `git diff --stat $(git merge-base HEAD origin/develop)..HEAD -- internal/hook/` 공허. HEAD 대상 diff로는 이 브랜치에 이미 커밋된 변경을 못 잡으므로 merge-base 비교가 판별식이다)
 5. TRUST 5 — Tested(영향 패키지), Readable/Unified(주석 en·gofmt), Secured(연산자 설정 무변경), Trackable(Conventional Commit)

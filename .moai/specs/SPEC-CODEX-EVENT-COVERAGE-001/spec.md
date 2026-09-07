@@ -18,7 +18,7 @@ related_specs: [SPEC-CODEX-HOOK-ADAPTER-001, SPEC-CODEX-WIRING-001]
 # SPEC-CODEX-EVENT-COVERAGE-001 — Codex hook 이벤트 커버리지 (Interrupt 행 + 발화 실측 캠페인)
 
 > 카드: **t496** (Class C) · 선행: `SPEC-CODEX-HOOK-ADAPTER-001`(어댑터·REQ-7 불변), `SPEC-CODEX-WIRING-001`(hooks.json 설치)
-> 조사 입력(인용 아님 — 본 트리에서 재측정함): `.moai/reports/t494/codex-doc-survey.md` §3 (sibling worktree t494)
+> 조사 입력: `.moai/reports/t494/codex-doc-survey.md` §3 (sibling worktree t494 — **본 트리·primary 체크아웃 어디에도 이 파일이 존재하지 않는다**). 본 트리에서 재측정한 것은 §C의 M1-M5(트리 내 사실)뿐이며, **공식 12종 열거는 t494 §3이 인용한 외부 문서 주장으로서 본 트리에서 재측정 불가**하다.
 
 ## HISTORY
 
@@ -30,7 +30,7 @@ related_specs: [SPEC-CODEX-HOOK-ADAPTER-001, SPEC-CODEX-WIRING-001]
 
 moai의 Codex 어댑터는 `internal/codexadapter/events.go`의 `EventTable`로 Codex 훅 이벤트를 MoAI 디스패처 서브커맨드에 사상한다. 두 개의 독립 축이 있다.
 
-- **Axis A (M1)** — Codex 공식 문서가 훅 이벤트 12종을 열거한다(SessionStart, SessionEnd, SubagentStart, SubagentStop, PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, UserPromptSubmit, Stop, Interrupt). moai의 EventTable은 11종을 열거하며, 누락은 정확히 `Interrupt` 하나다.
+- **Axis A (M1)** — Codex 공식 문서가 훅 이벤트 12종을 열거한다(SessionStart, SessionEnd, SubagentStart, SubagentStop, PreToolUse, PermissionRequest, PostToolUse, PreCompact, PostCompact, UserPromptSubmit, Stop, Interrupt). **이 열거의 근거는 t494 §3이다(외부 문서 주장 — 본 트리 재측정 불가).** moai의 EventTable은 11종을 열거하며(본 트리에서 재측정, §C M2), 누락은 t494 열거 대비 정확히 `Interrupt` 하나다.
 - **Axis B (M2)** — EventTable의 `Adapted=false` 5종(PreCompact, PostCompact, PermissionRequest, SubagentStart, SubagentStop)은 "counterpart 부재" 주장이 아니라 **측정 커버리지 결정**(events.go:38-51 doc comment, 0.147.0 시대 `.moai/reports/t83/precondition-measurement.md`)이다. 이 5종+Interrupt가 codex-cli 0.153.4에서 실제로 발화하는지를 실행 기반으로 재측정하고, 이벤트별로 적응(extension) 또는 미발화 문서화를 결정한다.
 
 ### 본 트리 재측정 근거 (2026-09-07, 이 워크트리에서 실행)
@@ -42,13 +42,14 @@ moai의 Codex 어댑터는 `internal/codexadapter/events.go`의 `EventTable`로 
 | M3 | 디스패처에 interrupt 서브커맨드 없음 | `grep -n 'interrupt\|Interrupt' internal/cli/hook.go` | 매치 0행 |
 | M4 | 설치기는 Adapted=false 행을 건너뛴다 | `internal/codexwiring/hooks.go:97-100` 직독 | `if !row.Adapted { continue }` 존재 확인 |
 | M5 | 이번 머신 codex-cli | `codex --version` | `codex-cli 0.153.4` |
+| M6 | 공식 12종 열거의 근거 | — (측정 아님) | t494 §3의 외부 문서 주장을 채택. sibling worktree 밖에서 그 파일이 존재하지 않으므로 본 트리 재측정 불가 — M2의 실행 기반 캠페인이 이 전제의 설계된 후속 검증이다 |
 
 ## B. 요구 (GEARS)
 
 ### B.1 Axis A — Interrupt 이벤트 (M1)
 
 - **REQ-CEV-001 (Ubiquitous)** — `EventTable` shall carry exactly 12 rows: the existing 11 plus one row whose `CodexEvent` is `"Interrupt"`, `DispatcherArg` is the empty string, and `Adapted` is false.
-- **REQ-CEV-002 (Ubiquitous)** — The Interrupt event-name constant shall be defined in package `internal/codexadapter` (e.g. `CodexEventInterrupt hook.EventType = "Interrupt"`), and no `EventInterrupt` constant shall be added to `internal/hook`. 근거: `events.go:8-9`의 불변 — "this package sits in FRONT of the dispatcher rather than inside it, and nothing under internal/hook is modified (SPEC-CODEX-HOOK-ADAPTER-001 REQ-7)". additive 상수라도 REQ-7의 문자 위반이고, internal/hook은 Claude 측 이벤트 어휘이므로 Codex 전용 이름이 들어가면 의도도 위반한다. `hook.EventType`은 string 타입이므로 어댑터가 직접构造 가능하다.
+- **REQ-CEV-002 (Ubiquitous)** — The Interrupt event-name constant shall be defined in package `internal/codexadapter` (e.g. `CodexEventInterrupt hook.EventType = "Interrupt"`), and no `EventInterrupt` constant shall be added to `internal/hook`. 근거: `events.go:8-9`의 불변 — "this package sits in FRONT of the dispatcher rather than inside it, and nothing under internal/hook is modified (SPEC-CODEX-HOOK-ADAPTER-001 REQ-7)". additive 상수라도 REQ-7의 문자 위반이고, internal/hook은 Claude 측 이벤트 어휘이므로 Codex 전용 이름이 들어가면 의도도 위반한다. `hook.EventType`은 string 타입이므로 어댑터가 직접 생성할 수 있다.
 - **REQ-CEV-003 (Event-driven)** — **When** `Resolve` receives `"Interrupt"`, it shall return an error wrapping `ErrUnadapted` whose message does NOT assert that a dispatcher argument exists (the current format `(dispatcher arg %q exists; ...)` is false for an empty arg). `ErrUnadapted`의 의도적 재사용을 채택한다 — "recognized but not adapted by this milestone"은 Interrupt에도 여전히 참이고(공식 12종에 인식됨, 본 마일스톤이 적응 안 함), 소비자가 두 refusal을 구별할 필요가 현재 없어 3번째 센티널은 API 표면만 늘린다(plan.md §D1). 메시지가 뉘앙스를 운반한다.
 - **REQ-CEV-004 (Event-driven)** — **When** `RenderHooks` renders `.codex/hooks.json`, it shall not install any handler for the Interrupt row (기존 `!row.Adapted` skip 경로가 그대로 지켜야 한다 — M1이 설치 표면을 바꾸지 않는다).
 - **REQ-CEV-005 (Unwanted)** — M1 shall not register any new `moai hook` dispatcher subcommand, and shall not modify any file under `internal/hook/`.
@@ -89,7 +90,7 @@ moai의 Codex 어댑터는 `internal/codexadapter/events.go`의 `EventTable`로 
 
 - `SPEC-CODEX-HOOK-ADAPTER-001` — 어댑터 패키지 창설, REQ-7 불변("nothing under internal/hook is modified")의 출처
 - `SPEC-CODEX-WIRING-001` — hooks.json 렌더/설치(REQ-CW-005 merge model, REQ-CW-003 whitelist gate)
-- 입력 리포트(측정은 본 SPEC이 재수행): `.moai/reports/t494/codex-doc-survey.md` §3, `.moai/reports/t83/precondition-measurement.md`
+- 입력 리포트: `.moai/reports/t494/codex-doc-survey.md` §3 (12종 열거의 근거 — sibling worktree 존재, 본 트리 무존재) · `.moai/reports/t83/precondition-measurement.md` (0.147.0 캠페인 선례). §C M1-M5의 트리 내 사실만 본 SPEC이 재측정했다.
 
 ## F. Out of Scope
 
