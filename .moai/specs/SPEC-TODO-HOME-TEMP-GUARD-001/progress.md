@@ -469,7 +469,7 @@ measurement_branch: WT-home-fallback
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill       # 이 커밋은 자기 해시를 인용할 수 없다 (D3 백필 창)
+sync_commit_sha: 029ab039f              # D3 백필 창 상환분 — sync 커밋은 자기 해시를 인용할 수 없어 후속 커밋이 채웠다
 sync_status: audit-ready
 
 ac_pass_count: 8                        # AC-THG-001..008 — acceptance.md §D 매트릭스가 SSOT
