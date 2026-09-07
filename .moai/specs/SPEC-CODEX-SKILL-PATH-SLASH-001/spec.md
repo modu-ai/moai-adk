@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILL-PATH-SLASH-001
 title: "Codex skills.config path slash normalization — make `moai codex skills disable` operable on Windows without emitting a TOML escape"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
