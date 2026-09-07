@@ -184,3 +184,47 @@ Every measurement above was taken in this worktree, in this run.
 4. **Downstream consumers of the three-member phrase.** The preflight grep covered `*.go`. A
    non-Go consumer — a docs page, a shell script, a fixture outside Go — that matches the old
    three-member parenthesis would not have been found by that scan.
+
+---
+
+## Orchestrator review of deviation 1 — the fifth counter is necessary, not surplus
+
+The implementer flagged `default: missingUnknownState++` as possibly "more machinery than a Tier S
+card should add" and asked for a reviewer's judgment. Reviewed against the code, in this tree:
+
+```
+$ grep -n 'missing :=' internal/cli/doctor_codex.go
+901:	missing := missingEnabled + missingDisabled + missingUnspecified + missingNonBoolean + missingUnknownState
+```
+
+`missing` **is** the sum of the arms, and it is what the leading `%d with a path that no longer
+exists` renders. So the alternative — omitting `default:` entirely — is not the simpler option it
+looks like: a state added later would increment nothing, drop out of the sum, and make the leading
+count **understate the number of entries whose paths are genuinely absent**. That is the failure
+this card's own judgment section rejected when it turned down "drop non-boolean entries from the
+advisory count": *it trades a wrong label for a wrong number, and the number is what the "remove the
+stale entries" directive is sized against.*
+
+Omitting the arm would reproduce that rejected shape one state later. Keeping it preserves the
+invariant the parenthesis depends on — the members sum to the leading count — under a change nobody
+has made yet.
+
+**The concern was that it is untested (gap 5), and that part stands**: the clause is unreachable at
+four states, so its text has never been printed and its correctness rests on reading. That is a real
+gap, correctly recorded. But it is the cost of a guard against a future edit, not evidence that the
+guard is surplus — and roughly three lines is a proportionate price for keeping a rendered count
+honest.
+
+**Do not strip it in review.** A reviewer seeing an unreachable branch and deleting it would be
+removing the only thing standing between a fifth state and a silently wrong leading count.
+
+## Orchestrator note — the SPEC's milestone order and its Definition of Done disagreed
+
+`plan.md` §F orders M1 → M2 → M3, while `acceptance.md` §D.4 requires AC-SSF-001's RED captured
+BEFORE the M1 render change. Those cannot both be followed. The implementer took §D.4 — correctly:
+a RED reconstructed after the change is not an observation — and reported the tension rather than
+silently reordering.
+
+This is a defect in the SPEC as authored, not in the implementation. Recorded here because the
+same shape (a plan and a gate that disagree about order) is cheap to reproduce and was not caught
+by plan-audit.

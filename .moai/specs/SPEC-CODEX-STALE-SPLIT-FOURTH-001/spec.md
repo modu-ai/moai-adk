@@ -2,7 +2,7 @@
 id: SPEC-CODEX-STALE-SPLIT-FOURTH-001
 title: "Stale-path advisory split gains a fourth bucket for the non-boolean `enabled` state"
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

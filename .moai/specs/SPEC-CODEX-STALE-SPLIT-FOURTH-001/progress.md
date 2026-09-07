@@ -152,4 +152,43 @@ m1_to_mN_commit_strategy: "two commits — a9c9a275d (M2 RED guard, test only) t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**CHANGELOG.md.** Added under `### Fixed` in `[Unreleased]`, immediately after the
+SPEC-CODEX-ENABLED-FATAL-001 entry (topically adjacent — same check, same file). B12 self-tests:
+(1) pre-emission `grep -c 'SPEC-CODEX-STALE-SPLIT-FOURTH-001' CHANGELOG.md` → `1` (no prior
+duplicate); (2) AC count `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → `8`,
+matching the CHANGELOG's stated "8 acceptance criteria" and the 7 MUST-PASS / 1 regression-guard
+split cited from acceptance.md §D.2 verbatim; (3) every file path cited in the entry
+(`internal/cli/doctor_codex.go`, `.moai/reports/t534/{run-evidence,reproduction}.md`) verified via
+`ls` before commit.
+
+**README / docs-site.** Neither documents the stale-path advisory message or its bucket split.
+Control: `grep -n "moai doctor" README.md` → 3 matches (the tool is documented broadly), so the
+zero below is an observed absence, not an unreached scan.
+
+```
+$ grep -rn "with a path that no longer exists\|Codex Wiring" README.md README.ko.md README.ja.md README.zh.md
+(no output, exit 1)
+$ grep -rln "Codex Wiring\|codex.*wiring" docs-site/content
+docs-site/content/en/advanced/codex-dual-harness.md
+$ grep -n "enabled\|non-boolean\|unspecified\|stale" docs-site/content/en/advanced/codex-dual-harness.md
+(no relevant match — the page covers the skills mirror, not the wiring diagnostic's message bodies)
+```
+
+The docs-site `codex-dual-harness.md` page exists and mentions "Codex Wiring" once, but not this
+advisory's message content. This gap is **already owned**: card t535 covers the missing docs-site
+Codex Wiring callout (4-locale). No docs-site edit made here — recorded, not actioned, per the
+dispatch instruction to avoid duplicating t535's scope.
+
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # cannot cite its own hash; backfilled in the following commit
+sync_status: audit-ready
+b12_self_test_a: PASS   # pre-emission grep = 1, no duplicate
+b12_self_test_b: PASS   # AC count 8 == CHANGELOG claim (7 MUST-PASS + 1 regression guard)
+b12_self_test_c: PASS   # all cited file paths verified via ls
+changelog_entry_position: "### Fixed, immediately after SPEC-CODEX-ENABLED-FATAL-001"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (this sync commit)"
+canary_compliance_check:
+  applicable: false   # this SPEC defines no forward-looking policy that its own sync tests
+```
