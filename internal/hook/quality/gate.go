@@ -1158,6 +1158,15 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	if dir := resolveQualityProjectDir(*g.config, "QualityGate.runStep"); dir != "" {
 		cmd.Dir = dir
 	}
+	// cmd.Dir is not, on its own, isolation. Left nil, cmd.Env hands the child
+	// the caller's whole environment — and when the caller is the git
+	// pre-commit hook that environment carries GIT_DIR / GIT_INDEX_FILE, which
+	// outrank the working directory. A project test suite whose fixtures make
+	// throwaway commits then wrote them into the repository being committed to
+	// (GH #1691). Scrubbing the repository-location variables makes cmd.Dir the
+	// only repository scoping a step carries; see step_git_env.go for why the
+	// identity and behaviour variables deliberately survive.
+	cmd.Env = stepEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
