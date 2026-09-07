@@ -2,7 +2,7 @@
 id: SPEC-CODEX-E2E-GUARD-001
 title: "Codex init-to-doctor end-to-end verdict, launcher guard coverage expansion, and statusline mutant proof"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

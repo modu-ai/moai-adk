@@ -126,7 +126,30 @@ m1_to_mN_commit_strategy: "single run-phase commit carrying M1-M5 (evidence-firs
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-09-07"
+sync_commit_sha: "pending-backfill-sync"   # canonical D3 placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+sync_status: "complete"
+b12_self_test_a_duplicate_gate: "grep -c 'SPEC-CODEX-E2E-GUARD-001' CHANGELOG.md → 0 (pre-emission), entry emitted once"
+b12_self_test_b_ac_count: "acceptance.md live AC identifiers: 8 (AC-CEG-001..007 + AC-CL-007 cross-ref to SPEC-CODEX-LAUNCHER-001); CHANGELOG entry states 7/7 AC-CEG matrix with AC-CL-007 cross-referenced, no double-claim"
+b12_self_test_c_file_paths: "internal/cli/doctor_codex_e2e_test.go, internal/cli/codex_launcher_guards_test.go — both verified present via ls before emission"
+changelog_entry_position: "first bullet under [Unreleased] → Added"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (full transition on the single sync commit)"
+  plan_md: "n/a — no status field (artifact statelessness)"
+  acceptance_md: "n/a — no status field"
+  progress_md: "n/a — no status field"
+updated_field_refresh: "spec.md updated: 2026-09-07 (unchanged date, refreshed on the sync commit)"
+ac_ceg_004_verdict: "PASS — sync-owned AC; AC matrix 7/7"
+docs_site_readme_disposition: "no edits — test-only internal surface; no user-facing behavior changed"
+canary_compliance_check:
+  template_tree_touched: false
+  mx_tags_added_at_run: 0   # test-only helpers, no exported surface — nothing to annotate; confirmed in sync
+  mx_sync_contradiction: false
+spec_body_edits: "none — spec.md/plan.md/acceptance.md bodies untouched (frontmatter status: + updated: only)"
+run_commit_sha: "pending-backfill-run"   # set at run phase; resolved to 667509ac9 in the backfill commit
+```
+
 
 ## §F Phase 4 Mode Selection
 
