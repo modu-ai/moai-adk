@@ -208,6 +208,42 @@ total_run_phase_files: 31   # 16 in the committed run-phase commits (4 internal/
 m1_to_mN_commit_strategy: one commit per milestone plus a standalone STEP-0 repair commit (M1 tests+evidence f1654c924; STEP-0 rename b78d2e425; M2 the two-line production diff c007e5409 + GREEN evidence; M3 mutants+pins+verification — M3's production diff is ZERO lines, all mutants reverted)
 ```
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in the following commit per spec-frontmatter-schema.md D3
+sync_status: complete
+b12_self_test_a: "pre-emission grep — /usr/bin/grep -c 'SPEC-CODEX-SKILL-PATH-READBACK-001' CHANGELOG.md -> 0 (no duplicate; emission proceeds)"
+b12_self_test_b: "AC count vs acceptance.md (SSOT) — /usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 11 raw uniques, of which AC-CGM-011 (acceptance.md:203) is a CROSS-SPEC reference to t533 layer 2, not an AC of this SPEC. Live count for this SPEC = 10 (AC-CSRB-001..010), matching the §E.3 ac_pass_count and the CHANGELOG entry's stated 10. Reserved-token markers ([RETIRED]/[REF]): 0 occurrences, so no marked-identifier exclusion applies and the count is unambiguous."
+b12_self_test_c: "file-path verification — ls of every path named in the CHANGELOG entry (internal/cli/codex_skills_prune.go, internal/cli/doctor_codex.go, internal/cli/codex_config_path.go, internal/cli/codex_skills_prune_readback_test.go, internal/cli/codex_stale_skill_readback_test.go, .moai/specs/SPEC-CODEX-SKILL-PATH-SLASH-001/spec.md, .moai/reports/t562/run-m3.md) -> all present, exit 0"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Fixed, first bullet (immediately above SPEC-DOCTOR-STAT-SEAM-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed, merged into this single sync commit (status + updated only; §A-§H body untouched)"
+  plan_md: "n/a — measured: plan.md carries NO YAML frontmatter block, so it has no status: field to transition (artifact statelessness, spec-frontmatter-schema.md)"
+  acceptance_md: "n/a — measured: acceptance.md carries NO YAML frontmatter block (its line-14 '---' is a horizontal rule), so it has no status: field to transition"
+  progress_md: "n/a — progress.md records phase state in body sections (§E.1-§E.4), not in frontmatter; §E.2/§E.3 run-phase content untouched by this sync"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync phase would test; the change is two one-line production conversions in internal/cli"
+docs_synchronized: "none — no user-facing document (README 4-locale set, docs-site ko/en/ja/zh) describes the path-separator readback behaviour; verified by grep over docs-site/content/**/{moai-clean,doctor}.md and README*.md for separator/backslash/Windows path statements. No doc change was manufactured to look complete."
+gaps_carried_into_sync:
+  - "G1 (load-bearing): no t562-own AC-CSRB-010 BEFORE baseline; .moai/reports/t562/ac-010-base.log does not exist and the pre-absorb tree is gone. BEFORE 6886 is t540's capture at tree b4ce67468 (same command) and is a STRICT LOWER BOUND. AC-CSRB-010 is PASS against a lower bound; acceptance.md's 'expected delta accounted' clause is only partially satisfied. Residual risk R1: up to 52 silently-lost tests would still satisfy AFTER >= BEFORE, and FAIL: 0 does not close it."
+  - "G2: no Windows runtime observation — GOOS=windows build rc=0 and GOOS=windows vet rc=0 are compile/type-check level only; a GOOS cross-build does not compile *_test.go."
+  - "G3: the seam mutant was enforced as an uncommitted working-tree change, so the demonstrated property is that the delta discriminant flips 0->1, not that a committed form flips the fixed-SHA command (insensitive to later commits by construction). The commit axis is covered by the per-commit sweep, 6/6 = 0."
+  - "G4: full repository suite not run locally (CI's verdict, on the pushed head)."
+  - "G5: no -race run."
+  - "G6: the doctor guard exercises the darwin identity path only."
+  - "G7: 30 SKIPs counted but not enumerated or attributed."
+  - "G8: two measurements (the AC-CSRB-010 suite run and the probe/mutant runs) were tree-attributed by positive witness rather than re-executed under absolute tree pinning. Witness establishes WHERE the recorded run happened; it says nothing about whether a fresh run would reproduce it."
+```
+
+Sync-phase scope actually performed: CHANGELOG `[Unreleased]` → `### Fixed` entry (drafted after reading
+`internal/cli/codex_skills_prune.go` and `internal/cli/doctor_codex.go`, not from plan.md prose), this
+§E.4 block, and the frontmatter `in-progress → implemented → completed` transition on `spec.md` — the
+only artifact of the four that carries a `status:` field (measured, not assumed). No SPEC body content
+(`§A`–`§H` of spec.md / plan.md / acceptance.md) was modified.
+
 ## PRESERVE carried forward
 
 - `internal/cli/codex_config_path.go`, `codex_config_path_test.go`, `codex_skills_disable.go`,

@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILL-PATH-READBACK-001
 title: "Codex ghost-skill readers consume the t540 path seam — declared config paths convert to host form before stat"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
