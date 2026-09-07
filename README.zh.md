@@ -746,7 +746,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
-| `moai clean [--home]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`。默认是 dry-run，要加 `--force` 才真正删除 |
+| `moai clean [--home] [--codex-skills]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`；加上 `--codex-skills` 则从 `~/.codex/config.toml` 删除那些声明路径已被证明不存在的 `[[skills.config]]` 注册。一次只能选一个范围。默认是 dry-run，要加 `--force` 才真正删除 |
 | `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、14 标签页设置 |
 
 > 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)

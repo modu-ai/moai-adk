@@ -746,7 +746,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
 | `moai memory <doctor\|archive>` | 에이전트 메모리 점검과 오래된 항목 보관 |
 | `moai tokens record` | 풀별 토큰 사용 원장 기록 |
-| `moai clean [--home]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치운다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
+| `moai clean [--home] [--codex-skills]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치우고, `--codex-skills`를 붙이면 `~/.codex/config.toml`에서 선언된 경로가 부재로 증명된 `[[skills.config]]` 등록을 지운다. 스코프는 한 번에 하나만 고른다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
 | `moai web` | 웹 콘솔 — 6개 화면(Overview · Kanban · Specs · Monitor · Settings · Todo), 14-탭 설정 |
 
 > 전체 49개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
