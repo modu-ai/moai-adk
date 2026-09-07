@@ -77,20 +77,29 @@
 
 ### AC-CPW-002 — 반쪽 배선 + codex 부재 → 잔소리 없이 사실만
 
-- **Given** AC-CPW-001과 같은 프로젝트, 단 (i) `codexWiringLookPath`가 `codex`에 대해 오류를 돌려주도록 고정, (ii) **`stubCodexHome`이 낡은 `[[skills.config]]` 항목을 하나 이상 선언한 home으로 고정**(감사 D2 — 이걸 고정하지 않으면 깨끗한 CI에서만 초록이고 실사용 머신에서 Status가 뒤집히는 구현이 통과한다. 이 파일 기존 시험 29곳이 예외 없이 고정하고 있으므로 발명이 아니라 정합이다)
+- **Given** AC-CPW-001과 같은 프로젝트, `codexWiringLookPath`는 `codex`에 대해 오류를 돌려주도록 고정. 사용자 계층 home은 **두 하위 케이스로 나눠 각각 고정**한다:
+  - **(i) 깨끗한 home** — `stubCodexHome(t, t.TempDir())`. `~/.codex/config.toml`이 없으므로 `codexStaleSkillFinding`은 fail-open으로 소견 0건
+  - **(ii) 낡은 home** — `stubCodexHome(t, writeCodexHomeConfig(t, …))`로 존재하지 않는 경로를 가리키는 `[[skills.config]]` 항목을 하나 이상 선언(감사 D2)
+  > **왜 둘 다 재는가 — 그리고 왜 (ii)를 버리면 안 되는가.** 올바른 구현에서는 이 갈래가 사용자 계층 훑기에 도달하지 않으므로(REQ-CPW-011) `problems`가 비고, **home 내용과 무관하게** 같은 Message가 나온다. 즉 등가 단언은 두 하위 케이스에서 **모두** 성립해야 한다. (ii)를 빼고 (i)만 재면 훑기로 흘려보내는 구현(§D.3 M7)이 깨끗한 CI에서 초록으로 통과하고 실사용 머신에서만 뒤집힌다 — 감사 D2가 지적한 바로 그 형태다.
+  >
+  > **진단 가능성은 픽스처를 약화시켜서가 아니라 하위 케이스를 갈라서 얻는다**: (i)만 실패 → 리터럴 자체가 달라졌다(M6 / M6′ 계열). (ii)만 실패 → 사용자 계층 훑기가 새어 들어왔다(M7). 둘 다 실패 → 구현이 이 갈래를 아예 다르게 처리한다(M1 계열)
+  >
+  > 헬퍼 확인(읽음): `stubCodexHome`(`internal/cli/doctor_codex_test.go:76`)은 home 해석기를 주어진 경로로 돌릴 뿐이라 `t.TempDir()`를 주면 깨끗한 home이 되고, 낡은 항목은 `writeCodexHomeConfig`(`:95`) + `absentSkillPath`(`:132`)가 만든다. 두 픽스처가 분리돼 있으므로 M7이 등가 시험을 통째로 오염시키지 않는다
 - **When** `checkCodexWiring(root, false)`를 호출하면
 - **Then**
-  - (a) `check.Status == uikit.CheckOK` — **낡은 항목이 선언된 home 아래에서도** 그렇다(REQ-CPW-011)
+  - (a) `check.Status == uikit.CheckOK` — **두 하위 케이스 모두**, 즉 낡은 항목이 선언된 home 아래에서도 그렇다(REQ-CPW-011). 근거(읽음): `internal/cli/doctor_codex.go:193-201` — `problems`가 하나라도 차면 Status가 `CheckWarn`이 되고 Message는 `joinCodexSummaries(problems)`로 `"; "` 이어붙은 문자열이 된다. 따라서 (a)와 (d)는 같은 사실의 두 얼굴이다
   - (b) `check.Message`가 Codex agent 정의의 존재를 진술
   - (c) `check.Message + check.Detail`에 `claude-only`가 **0회**
-  - (d) **`check.Message`가 시험 파일에 적힌 리터럴 한 개와 정확히 같다**(등가 단언, allowlist):
+  - (d) **`check.Message`가 시험 파일에 적힌 리터럴 한 개와 정확히 같다 — 두 하위 케이스 모두에서**(등가 단언, allowlist):
     ```go
     const wantHalfWiredAbsentMessage = "<run-phase에서 확정한 문구>"   // 시험 파일 쪽 리터럴
     if check.Message != wantHalfWiredAbsentMessage { t.Errorf(...) }
     ```
     금지 목록(denylist)이 아니라 **허용 목록**이다. 어떤 패러프레이즈를 새로 발명하든 리터럴과 다르므로 **원리상 하나도 통과하지 못한다**(REQ-CPW-009). 이 파일의 기존 관용구와도 맞는다 — `internal/cli/doctor_codex.go`는 프로젝트별 가변부가 없는 갈래의 Message를 이미 평문 리터럴로 못박고(`:101` unwired-skip, `:195` wired-OK) 경로 같은 가변부는 Detail로 내린다. 조치 문구를 이름 붙인 상수로 두는 관례도 이미 있다(`reTrustAdvice` `:46`, `initCodexAdvice` `:52`)
-  - (d′) **그 리터럴 자체가 부분문자열 `moai init` / `run ` / `install`을 담지 않는다** — 등가 단언 위에 얹는 값싼 모양 검사. 등가만으로는 "리터럴로 무엇을 골랐는가"를 구속하지 못하므로, 알려진 지시문 형태는 기계가 즉시 잡는다
-    > **잔여분과 그 처분(정직하게 적는다).** 등가 단언은 *구현이 리터럴에서 벗어나는 것*을 완전히 막지만, *리터럴로 지시문을 고르는 것* 자체는 막지 못한다 — 그것은 run-phase 저자의 한 번의 선택이다. 다만 그 선택은 이제 **한 곳에, 한 줄로, diff에 보이게** 모인다(시험 파일의 리터럴 + 구현의 상수, 둘이 함께 바뀌어야 초록). 검토자가 읽어야 할 지점이 체크리스트 항목이 아니라 코드 한 줄이 된 것이 이 전환의 실질이다. (d′)의 세 토큰은 그 한 줄에 대한 자동 1차 검사다
+  - (d′) **그 리터럴 자체가 부분문자열 `moai init` / `run ` / `install`을 담지 않는다**
+    > **(d)와 (d′)는 약한 검사와 강한 검사의 중복이 아니라 — 서로 다른 대상을 잰다.** (d)는 *런타임 Message가 리터럴에서 벗어났는가*를 재고, (d′)는 *그 리터럴로 무엇을 골랐는가*를 잰다. (d)가 아무리 강해도 (d′)의 대상에는 닿지 못한다: 저자가 지시문을 리터럴로 고르고 시험 리터럴도 같게 적으면 (d)는 초록이다.
+    >
+    > **남는 잔여분.** (d′)의 세 토큰 열거는 알려진 형태만 잡으므로, 그것을 모두 피한 새 지시문을 리터럴로 고르는 경우는 여전히 열려 있다. 그 선택은 run-phase 저자의 한 번의 판단이며, 이제 **한 곳에, 한 줄로, diff에 보이게** 모인다(구현 상수 + 시험 리터럴이 함께 바뀌어야 초록). 검토 지점이 반증하기 어려운 체크리스트 항목에서 diff에 보이는 코드 한 줄로 옮겨간 것이 이 전환의 실질이다 — 구멍이 사라진 것이 아니라
   - (e) `check.Message + check.Detail`에 `[[skills.config]]` 유래 소견이 등장하지 않는다 — 사용자 계층 훑기가 이 갈래에 도달하지 않았다는 관측(REQ-CPW-011)
 - **RED-now** (트리 `ace1c5440`) — 두 관측(§D.0):
   - 관측 1 — 명령: `go test ./internal/cli/ -run TestCheckCodexWiring_HalfWiredCodexAbsent`
@@ -135,6 +144,7 @@
 - **Given** 반쪽 배선 프로젝트를, **두 PATH 갈래 모두**에 대해(양쪽 다 `stubCodexHome` 고정)
 - **When** `checkCodexWiring`을 호출하면
 - **Then** 두 갈래 각각에서 `utf8.RuneCountInString(check.Message) <= codexMessageWidthCeiling`(113)이며, `--verbose` 렌더에서도 패널 폭이 밴드를 벗어나지 않는다
+  > **등가 단언에 흡수시키지 않고 별도로 두는 이유(리드 질의 2).** 부재 갈래에서는 폭이 리터럴 하나의 성질이 되므로 이 기준이 **덧붙는 값**은 작다(등가가 이미 그 문자열을 고정한다). 그러나 **codex 존재 갈래는 흡수할 수 없다** — 그 갈래는 `joinCodexSummaries`로 여러 소견이 `"; "`로 이어붙어 Message가 만들어지므로(`internal/cli/doctor_codex.go:193-201`), 반쪽 소견이 사용자 계층 소견과 합쳐지는 순간 길이가 리터럴의 성질이 아니게 된다. 폭 상한이 실제로 하중을 받는 곳이 바로 거기다. 따라서 AC-CPW-007은 **두 갈래를 함께 재는 하나의 기준으로 유지**하고, 부재 갈래분은 값싼 중복으로 남긴다
 - **판정 명령**(신규 1 = 게이트, 기존 2 = 회귀 가드):
   - 신규(게이트): `go test ./internal/cli/ -run TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand -v`
   - 기존(가드): `go test ./internal/cli/ -run 'TestCheckCodexWiring_(MessageWidthStaysInBand|RenderedPanelStaysInBand)' -v`
@@ -191,8 +201,8 @@
 | M4 | codex **부재** 갈래 Message 끝에 `— run moai init --agent codex`를 붙인다 | `..._HalfWiredCodexAbsent`(`moai init` 부재) | REQ-CPW-009 |
 | M5 | 반쪽 갈래 Message를 200 rune로 늘린다 | `..._HalfWiredMessageWidthStaysInBand` | REQ-CPW-008 |
 | **M6** | codex **부재** 갈래 Message를 감사가 실증한 **패러프레이즈 지시문**으로 심는다 — 정확히: `` codex agent definitions present, no wiring files — `moai init --agent codex` wires them `` | `..._HalfWiredCodexAbsent`(Then (d) 등가 단언 — 리터럴과 다르므로 즉시 FAIL) | REQ-CPW-009 |
-| **M6′** | 세 금지 토큰을 **모두 피한** 지시문을 심는다 — 예: `codex agent definitions present, no wiring files — wire them once codex is available` | `..._HalfWiredCodexAbsent`(Then (d) 등가 단언) | REQ-CPW-009 |
-| **M7** | codex 부재 갈래를 조기 반환시키지 않고 본 경로로 흘려보내 `codexStaleSkillFinding`(`internal/cli/doctor_codex.go:189` 호출, 함수 `:376`)이 돌게 한다 | `..._HalfWiredCodexAbsent`(Then (a) `CheckOK` + (e) skills 소견 부재 — **낡은 항목이 선언된 home 아래에서**) | REQ-CPW-003, REQ-CPW-011 |
+| **M6′** | 세 금지 토큰을 **모두 피한** 지시문을 심는다 — 예: `codex agent definitions present, no wiring files — wire them once codex is available` | `..._HalfWiredCodexAbsent` 두 하위 케이스 모두(Then (d) 등가 단언 — 리터럴과 다르므로 즉시 FAIL) | REQ-CPW-009 |
+| **M7** | codex 부재 갈래를 조기 반환시키지 않고 본 경로로 흘려보내 `codexStaleSkillFinding`(`internal/cli/doctor_codex.go:189` 호출, 함수 `:376`)이 돌게 한다 | `..._HalfWiredCodexAbsent`의 **하위 케이스 (ii)만** — Then (a) `CheckOK` · (d) 등가 · (e) 소견 부재가 함께 깨진다. 하위 케이스 (i)는 초록으로 남는데, **그 비대칭이 곧 진단**이다(깨끗한 home에서는 fail-open이라 증상이 없다 = 이 결함이 CI에서 안 보이는 이유 그 자체) | REQ-CPW-003, REQ-CPW-011 |
 
 > **뮤턴트 이름 대조**(혼선 방지): 감사 iter2 판정서는 패러프레이즈 뮤턴트를 `M4′`, 사용자 계층 훑기 뮤턴트를
 > `M6`으로 불렀다. 이 문서는 번호를 이어 붙여 각각 **M6 / M7**로 쓴다. 대상은 동일하다.
@@ -211,7 +221,7 @@
 
 - [ ] 릴리스 게이트 시험 5건(AC-CPW-001 / -002 / -005 / -006 / -007): 판정 명령 실행 후 **세 가지 동시 확인** — `--- PASS`, `[no tests to run]` 부재, 그리고 §D.0 관측 2의 grep이 `1` 이상. 출력 그대로 `progress.md` §E.2에 인용
 - [ ] 회귀 가드 3건(AC-CPW-003 / -004 / -008): 판정 명령 실행 + 출력 인용
-- [ ] AC-CPW-009 뮤턴트 **7종** 각각 RED 관측 → 원복 → `git diff --stat internal/cli/` 빈 출력 확인. **M6·M7의 RED는 이번 라운드 수리의 합격 조건이므로 생략 불가**
+- [ ] AC-CPW-009 뮤턴트 **8종** 각각 RED 관측 → 원복 → `git diff --stat internal/cli/` 빈 출력 확인. **M6·M6′·M7의 RED는 이번 라운드 수리의 합격 조건이므로 생략 불가**
 - [ ] `go test ./internal/cli/... ./internal/codexwiring/...` 통과 (전체 스위트는 CI 몫 — CLAUDE.local.md §4)
 - [ ] `go vet ./internal/cli/... ./internal/codexwiring/...` 통과
 - [ ] `gofmt -l internal/cli internal/codexwiring` 빈 출력
