@@ -31,6 +31,8 @@ Decision: serial
 
 Justification: the fix touches one parse/write module plus its CLI consumer with tight inter-file coupling (shared `ParseStatus`); a single sequential `manager-develop` spawn with the full Section A-E delegation brief minimizes coordination cost and write-conflict risk inside the card worktree. `serial` is the default fallback for coding-heavy work per the decision tree.
 
+Kickoff: Implementation Kickoff Approval granted by operator 2026-09-07 (AskUserQuestion); progression mode: autonomous (ac_converge armed at run-phase entry).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

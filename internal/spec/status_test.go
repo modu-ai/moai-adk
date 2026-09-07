@@ -459,6 +459,166 @@ No status anywhere.
 	}
 }
 
+// SPEC-STATUS-DRYRUN-001 AC-001/AC-002 (i): a frontmattered SPEC whose body
+// carries a version-history table header `| Version | Date | Status | Notes |`
+// must resolve from the frontmatter status — never from the header cell.
+func TestParseStatus_FrontmatterAnchored_HistoryTableHeader(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-DEMO-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-DEMO-001
+status: completed
+---
+
+## HISTORY
+
+| Version | Date | Status | Notes |
+|---|---|---|---|
+| 0.1.0 | 2026-01-01 | draft | initial |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "completed" {
+		t.Errorf("ParseStatus = %q, want %q (frontmatter must win over body table header)", status, "completed")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-002 (ii): the backticked-prose variant — a body
+// line merely mentioning the header shape inside a code span must never be
+// returned as the SPEC status.
+func TestParseStatus_FrontmatterAnchored_BacktickedProse(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-PROSE-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-PROSE-001
+status: draft
+---
+
+## HISTORY
+
+- HISTORY is kept as a bullet list, not a ` + "`| Version | Date | Status | Notes |`" + ` table.
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "draft" {
+		t.Errorf("ParseStatus = %q, want %q (backticked prose must never be the status)", status, "draft")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 REQ-002 edge: a frontmatter block that exists but
+// carries no status: key falls back to the legacy body formats.
+func TestParseStatus_FrontmatterWithoutStatusKey_FallsBackToBody(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-FM-NOSTATUS-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-FM-NOSTATUS-001
+title: "No status key"
+---
+
+| Field | Value |
+|-------|-------|
+| Status | draft |
+| Priority | P1 |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "draft" {
+		t.Errorf("ParseStatus = %q, want %q (frontmatter without status key must fall back to body)", status, "draft")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 edge case: malformed (unterminated) frontmatter is
+// treated as no frontmatter; the legacy fallback applies and nothing panics.
+func TestParseStatus_MalformedFrontmatter_FallsBackToBody(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-BAD-FM-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-BAD-FM-001
+status: draft
+
+| Status | implemented |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "implemented" {
+		t.Errorf("ParseStatus = %q, want %q (unterminated frontmatter must fall back to body table)", status, "implemented")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-005 (read): legacy English body table without any
+// frontmatter block still resolves via the fallback path.
+func TestParseStatus_LegacyTableFallback_NoFrontmatter(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-LEGACY-TBL-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `# Test SPEC
+
+| Field | Value |
+|-------|-------|
+| Status | draft |
+| Priority | P1 |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "draft" {
+		t.Errorf("ParseStatus = %q, want %q (legacy fallback must survive)", status, "draft")
+	}
+}
+
 // TestSpecIDPattern tests the SPEC-ID extraction regex pattern
 func TestSpecIDPattern(t *testing.T) {
 	// This test documents the expected pattern
