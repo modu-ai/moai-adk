@@ -18,9 +18,21 @@ is the two-line seam swap.
 
 ## §B Known Issues
 
-- `codexStaleSkillFinding` has ZERO direct tests (verified: defined `:815`, called `:319`, no test
-  references in `internal/cli/*_test.go`). Everything the swap changes in site B is currently
-  unpinned.
+- `codexStaleSkillFinding` has zero name-invoked (unit-level) tests (verified: defined `:815`,
+  called `:319`, no `*_test.go` calls it by name) — but every observable bucket is ALREADY pinned
+  indirectly through `checkCodexWiring` by real-fixture tests: `TestCodexSkillPath_{HomeRelative
+  ExistingNotMissing:896, HomeRelativeMissingStillCounted:917, RelativeNotMissingDistinct
+  Classification:942, RelativeOnlyNonDestructiveFinding:970, BackslashAndOtherUserHomeNotMissing
+  :993, AbsoluteExistingAndMissing:1020, RealMissingWithSymlinkLoopIndeterminate:1051,
+  ExpansionUsesUserHomeSeam:1090}` and the `TestCheckCodexWiring_{StaleHomeSkillsReported:247,
+  EmptyPathEntryNotCountedMissing:311, UnspecifiedEnabledReportedSeparately:363,
+  NonBooleanEnabledCountedSeparatelyInStaleSplit:399, IndeterminateStatNotMissing:498,
+  DirectoryPathNotMissing:535}` family, plus `TestCheckCodexWiring_Mirror*` (:1259-1569) for site
+  A. What is genuinely unpinned is exactly what the seam adds: (a) stat-ARGUMENT observability —
+  no test sees which path was stat'ed — and (b) portable stat-failure injection. M1 therefore adds
+  STRUCT-level direct pinning (finer-grained than the existing rendered-Message/Detail assertions,
+  which can coincide while the `codexFinding` struct differs); it does NOT duplicate the existing
+  bucket fixtures — M2 reuses them as the pre/post identity comparison set.
 - The seam is a package-level variable with an `@MX:WARN` (`update_preserve_inventory.go:53`):
   reassigning tests MUST NOT call `t.Parallel()` — a concurrent reassignment is a data race.
 - The mirror-check half of site A has existing indirect coverage only (via `doctor_codex_test.go`
@@ -28,8 +40,11 @@ is the two-line seam swap.
 
 ## §C Pre-flight
 
-1. Confirm worktree state before first commit: `git rev-parse --short HEAD` → base `ef10a2524`
-   (re-read immediately before every commit per AGENTS.md §2).
+1. Confirm worktree LINEAGE before first commit: `git merge-base --is-ancestor ef10a2524 HEAD`
+   (exit 0 required) and `git branch --show-current` → `WT-doctor-stat-shim`. The recorded base is
+   an ancestor assertion, NOT a literal HEAD equality — HEAD has already advanced past the base
+   (plan-phase artifacts landed; facts re-confirmed at `45b590c24`; origin/develop tip `9dddac882`).
+   Re-read HEAD immediately before every commit per AGENTS.md §2.
 2. Confirm measured facts still hold on THIS tree: `grep -n 'os\.Stat(' internal/cli/doctor_codex.go`
    → exactly `:459` and `:857`; `grep -cn 'osStatFn' internal/cli/doctor_codex.go` → 0;
    `grep -n 'os\.Lstat(' internal/cli/doctor_codex.go` → `:441` (must survive the swap).
@@ -63,19 +78,31 @@ output persisted under `.moai/state/verify/` or `.moai/reports/t563/`.
 Priority order (no time estimates). M1 first — it is the change-likelihood-heavy half (new test
 code pinning unpinned behavior); M2 is the mechanical two-line swap it de-risks.
 
-### M1 — Characterization tests (priority: High, commit 1)
+### M1 — Unit-level characterization tests (priority: High, commit 1)
 
-- Add `codexStaleSkillFinding` characterization tests (new file, e.g.
-  `doctor_codex_stale_skill_test.go`): real fixtures in `t.TempDir()` covering every bucket —
-  resolves (file AND directory, since directories resolve by design), missing (per-`Enabled`-state
-  arms), home-relative expanded, unresolvable-home → indeterminate, relative → `relativeCount`
-  (never stat'ed), oddly-formed → `oddlyFormed` (never stat'ed), empty path skipped. Assertions
-  come from REAL fixture states — no seam injection exists yet (that is the point of M1).
-- Add any missing mirror-check characterization the M2 output-identity proof needs (fixture states
-  driving resolve / dangling / indeterminate at site A, asserted through `inspectSkillMirror`'s
-  current results).
+- Add DIRECT unit tests for `codexStaleSkillFinding` (new file, e.g.
+  `doctor_codex_stale_skill_test.go`), names pinned to the `TestCodexStaleSkillFinding_*`
+  convention: real fixtures in `t.TempDir()` asserting the classification buckets at the STRUCT
+  level (the `codexFinding` fields) — resolves (file AND directory, since directories resolve by
+  design), missing (per-`Enabled`-state arms), home-relative expanded, unresolvable-home →
+  indeterminate, relative → `relativeCount` (never stat'ed), oddly-formed → `oddlyFormed` (never
+  stat'ed), empty path skipped. This is struct-level direct pinning, FINER-grained than the
+  existing indirect `checkCodexWiring` suite's rendered Message/Detail assertions (rendered
+  strings can coincide while the `codexFinding` struct differs). It SUPPLEMENTS the existing
+  `TestCodexSkillPath_*` / `TestCheckCodexWiring_*` fixtures — it does not duplicate them; the
+  existing suite (already covered by the pre-flight `-run 'Codex'` baseline) is the M2
+  identity-proof comparison set (AC-SEAM-005), which strengthens it.
+- The unresolvable-home → indeterminate arm is driven by overriding the existing `userHomeDirFn`
+  seam (`stubCodexHome`, `doctor_codex_test.go:103`; serial per C4) — real fixtures alone cannot
+  reach it, because a failed home makes `codexUserSkillConfig` skip the entry loop entirely
+  (`ok=false` before any stat). The plan's no-injection property is scoped to the STAT seam only;
+  the home seam is fair game in M1.
+- Add `TestInspectSkillMirror_*` characterization for any mirror-check state the M2
+  output-identity proof needs (resolve / dangling / indeterminate via `inspectSkillMirror`).
 - Tests must PASS on the unmodified tree — that is their definition. Commit message carries `t563`.
-- Exit: scoped run green (`go test ./internal/cli/ -run 'StaleSkill|SkillMirror' -count=1 -timeout 1800s`).
+- Exit: `go test ./internal/cli/ -run 'TestCodexStaleSkillFinding_|TestInspectSkillMirror_'
+  -count=1 -timeout 1800s` green AND the evidence records the swept-test COUNT with the test names
+  (> 0) — an empty-sweep green (`ok ... 0.00s`, 0 tests matched) is NOT exit success.
 
 ### M2 — Seam swap + observation tests + identity proof (priority: High, commit 2)
 

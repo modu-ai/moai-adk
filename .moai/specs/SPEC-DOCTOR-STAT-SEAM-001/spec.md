@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCTOR-STAT-SEAM-001
 title: "Route doctor_codex stat calls through the osStatFn seam"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-08
 updated: 2026-09-08
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-08 | manager-spec | Initial plan-phase draft — card t563, class C (scope decision: both sites), Tier S |
+| 0.2.0 | 2026-09-08 | manager-spec | Revision 1 — resolves plan-audit D1-D4 (PASS-WITH-CONDITIONS 0.94): D1 site-B coverage narrative corrected (indirect suite acknowledged; gap re-scoped to stat-argument observability + portable injection); D2 pre-flight ancestry assertion; D3 no-injection claim scoped to the STAT seam; D5 t540 pending-ID note. D4 lives in plan.md M1 |
 
 ## §1 Problem Statement
 
@@ -40,9 +41,15 @@ appears **0 times** in `doctor_codex.go`: doctor is the exception, not the absen
 The consequence is testability, not behavior: tests cannot observe WHAT was stat'ed, cannot inject
 a stat failure portably (the seam exists precisely because POSIX permission bits are not modeled on
 Windows and are bypassed by root), and cannot run mutant-style assertions on the stat path
-arguments. Concretely, `codexStaleSkillFinding` has ZERO direct tests today (verified: defined
-`:815`, called `:319`, no test references), and the t540 arm-A red had to be scoped down to the
-prune site for exactly this reason (motivation only — see §3.3).
+arguments. `codexStaleSkillFinding` has zero NAME-INVOKED (unit-level) tests today — defined
+`:815`, called `:319`, no `*_test.go` calls it by name — but its observable buckets are already
+pinned INDIRECTLY through `checkCodexWiring` by real-fixture tests (`TestCodexSkillPath_*`,
+`doctor_codex_test.go:896-1090`, plus the `TestCheckCodexWiring` stale-split and mirror families).
+The gap the seam closes is therefore narrower than "untested": stat-ARGUMENT observability (no test
+can see WHICH path was stat'ed) and portable stat-failure injection (site B currently reaches its
+indeterminate arm only through a symlink-loop workaround). The t540 arm-A red was scoped down to
+the prune site for the MISSING SEAM — the injection gap, not the test count (motivation only — see
+§3.3).
 
 This card routes BOTH doctor stat sites through `osStatFn`. It is an observability change, not a
 behavior change.
@@ -83,8 +90,11 @@ implementation, by definition.
 
 When the seam-swap commit lands, a characterization test suite pinning `codexStaleSkillFinding`'s
 current behavior — the classification buckets resolves / missing / relative / oddly-formed /
-indeterminate, asserted from real fixture states in `t.TempDir()` (no seam injection is available
-before the swap) — shall already exist in the commit graph: committed before the swap commit, and
+indeterminate, asserted from real fixture states in `t.TempDir()` — shall already exist in the
+commit graph. The no-injection property is scoped to the STAT seam only (the separate
+`userHomeDirFn` home seam already exists and MAY be overridden, serially, to reach the
+unresolvable-home arm, which real fixtures alone cannot drive). The suite shall precede the swap
+commit in the graph and pass on the unmodified tree: committed before the swap commit, and
 passing on the unmodified tree. Characterization tests pin current behavior; they are not required
 to be RED-first, and their point is to PASS before the swap exists. Any additional mirror-check
 characterization the output-identity proof (REQ-004) needs lands in the same characterization
@@ -159,5 +169,7 @@ never as a deliverable, an acceptance criterion, or a claimed outcome.
   `update_preserve_inventory.go:439`
 - Seam-override test pattern: `internal/cli/codex_skills_prune_test.go:55-57`,
   `internal/cli/update_preserve_partial_test.go:84-86`
-- Motivation (reference only, NOT a deliverable): t540 spec.md §G gap 5
+- Motivation (reference only, NOT a deliverable): t540 spec.md §G gap 5 — t540's SPEC-ID is
+  pending; substitute the final ID here when its SPEC materializes under `.moai/specs/`. The
+  motivation-only discipline of §3.3 is unchanged either way.
 - Card: t563 · worktree `.claude/worktrees/t563` · branch `WT-doctor-stat-shim` · base `ef10a2524`
