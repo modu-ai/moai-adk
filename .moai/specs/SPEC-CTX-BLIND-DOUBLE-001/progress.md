@@ -33,7 +33,30 @@ D11(감사 보고서 경로 관례)은 오케스트레이터 재량으로 남겼
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+> 증거 정본은 `.moai/reports/t539/verdict.md`(5절 형식). 이 표는 AC 별 판정만 옮긴다.
+> 모든 `-run` 셀렉터 인용에는 같은 셀렉터의 `-list` 건수가 붙는다(REQ-CBD-013).
+
+### M1 — 판별식 확정 + 스윕 산출물 고정
+
+| AC | 분류 | 검증 명령 | 관측 출력 | 판정 |
+|---|---|---|---|---|
+| AC-CBD-001 | regression-guard | `/usr/bin/grep -n '판별식' research.md` | `92:## 4. 판별식 — 네 축 (SPEC 확정본)` + `101:**수리 대상 = (c) ∧ (d).**` + `99:` (d) 축 근거 `codex_task.go:124` | 깨지지 않음 (통과로 기록하지 않음) |
+| AC-CBD-002 | regression-guard | `go run .moai/reports/t539/ctxsweep/main.go internal` → `cmp` + `awk` 재집계 | `cmp_exit=0`(바이트 동일) · method 127/26/29 · funclit 196/52/12 · `/usr/bin/grep -rl ctxsweep internal/` → exit 1(무출력) | 깨지지 않음 |
+| AC-CBD-003 | regression-guard | `/usr/bin/grep -n '옳게 눈멂\|teeGLMDoer' research.md` | `89:` goal 러너 참조 0건 · `182/183:` goal fakeRunner + hook 핸들러 · `57:` teeGLMDoer 위임 예외 | 깨지지 않음 |
+
+M1 로그: `.moai/reports/t539/m1-rerun.log`. 코드 변경 0줄.
+
+### M2 — GLM audit 경로 취소 가드
+
+_<pending M2>_
+
+### M3 — 다섯 후보군 84건 뮤턴트 판정 (측정만, 수리 없음)
+
+_<pending M3>_
+
+### 전역
+
+_<pending M3 종료>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -47,3 +70,10 @@ _<pending sync-phase>_
 - plan_status: audit-ready
 - plan_audit: iteration 2/2 · 0.91 · must-pass 7/7 · E1/E2 literal fixes applied by orchestrator (verified by grep)
 - kickoff_approval: 2026-09-08 operator — approved, autonomous progression
+
+## Phase 4 Mode Selection
+
+- date: 2026-09-08 · tier: M · harness: standard · development_mode: tdd
+- mode: serial (sub-agent) — single manager-develop spawn, milestones M1→M2→M3 in order; mutants require an exclusive writer per tree, which rules out parallel write-capable agents
+- progression: autonomous (operator, kickoff gate) — carried by orchestrator continuation; `/moai goal` NOT armed (background-agent waits would spin idle turns against the stop-goal evaluator; arm-only hazard per goal-directive.md)
+- plan audit gate: plan-audit.md iteration 2/2 · 0.91 · must-pass 7/7 (read, not trusted: E1/E2 literal fixes verified by grep in this session)

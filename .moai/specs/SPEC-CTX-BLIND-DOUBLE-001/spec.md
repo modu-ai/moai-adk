@@ -2,7 +2,7 @@
 id: SPEC-CTX-BLIND-DOUBLE-001
 title: "컨텍스트를 무시하는 테스트 대역이 컨텍스트 결함을 가린다 — 판별식을 세우고 뮤턴트로 판정한다"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: GOOS
