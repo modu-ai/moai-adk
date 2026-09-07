@@ -1,0 +1,45 @@
+2026/09/08 03:28:05 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/.moai/config/sections
+2026/09/08 03:28:05 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInitNonInteractiveDeferredUpdateNotice1620929450/002/noninteractive-proj/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+2026/09/08 03:28:06 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/.moai/config/sections
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently2223276541/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunUpdate_ThreeRunIdempotency_V3Project3649265489/001/.agency.archived
+  Warning: user-modified pre-commit hook was replaced; previous hook backed up at .git/hooks/pre-commit.bak.20260907T182808Z
+--- FAIL: TestUpdateSubsystem_HomeSeamReach (0.02s)
+    --- FAIL: TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context (0.02s)
+panic: REACHPROBE37 [recovered, repanicked]
+
+goroutine 339 [running]:
+testing.tRunner.func1.2({0x105400d80, 0x1056443c0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x105400d80?, 0x1056443c0?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.deployWithMirrorNotice({0x10565ff78?, 0x1058a2460?}, {0x10565ffe8?, 0x2467f88b3b60?}, {0x2467f93dab80?, 0x7d?}, {0x105666690?, 0x2467f8ed0ff0?}, 0x2467f8b4c8c0?, {0x105653448, ...})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/mirror_notice.go:37 +0xc8
+github.com/modu-ai/moai-adk/internal/cli.runCleanReinstall({_, _}, {_, _}, {0x0, {0x105653fe0, 0x1058a2460}, {0x0, 0x0}, {0x10565ffe8, ...}, ...})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_clean_install.go:455 +0x1710
+github.com/modu-ai/moai-adk/internal/cli.TestUpdateSubsystem_HomeSeamReach.func1(0x2467f8f2f8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_home_seam_test.go:68 +0x128
+testing.tRunner(0x2467f8f2f8c8, 0x10563c220)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 338
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.495s
+FAIL

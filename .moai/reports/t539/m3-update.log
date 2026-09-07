@@ -1,0 +1,39 @@
+# M3 후보군 1 — update 체커/업데이터 (구성원 4) · t539
+# 판정: 생존 (수리하지 않음 — 후속 카드 요청 대상, AC-CBD-009)
+
+## 씨앗 A — internal/update/orchestrator.go:55 (구성원 3건 담당)
+프로덕션이 컨텍스트를 인터페이스로 넘기는 지점:
+  o.updater.Download(ctx, info)          ← Updater 인터페이스(types.go:48), 대역이 구현하는 그 인터페이스
+
+뮤턴트(컴파일되는 최소 변이):
+  before: downloadPath, err := o.updater.Download(ctx, info)
+  after : downloadPath, err := o.updater.Download(context.Background(), info)
+
+$ git diff --stat                                → internal/update/orchestrator.go | 2 +-
+$ go test ./internal/update/ -list . -count=1     → grep -c '^Test' = 88
+$ go test ./internal/update/... -count=1          → ok  github.com/modu-ai/moai-adk/internal/update  6.334s
+
+판정: **생존**. 88건 어느 것도 Download 가 자기 컨텍스트에서 분리된 것을 보지 못한다.
+귀속 구성원:
+  internal/update/orchestrator_test.go:19  mockChecker.CheckLatest
+  internal/update/orchestrator_test.go:33  mockUpdater.Download
+  internal/update/orchestrator_test.go:37  mockUpdater.Replace
+
+$ (되돌림) git diff --stat                        → 무출력
+
+## 씨앗 B — 없음 (구성원 1건: 컨텍스트가 이 seam 을 건너지 않는다)
+
+internal/cli/init_update_notice_test.go:417  fakeUpdateChecker.CheckLatest
+
+프로덕션 경로를 읽으면(`internal/cli/init_update_notice.go:108` defaultDeferredUpdateCheck):
+  available, info, err := deps.UpdateChecker.IsUpdateAvailable(current)
+`IsUpdateAvailable(current string)` 는 **컨텍스트 파라미터가 없다**(internal/update/checker.go:325).
+실물 구현은 자기 안에서 `c.CheckLatest(context.Background())` 를 부른다(checker.go:326) —
+즉 이 경로에서는 **프로덕션 자신이 이미 컨텍스트를 만들어 쓰며, 호출자의 컨텍스트가 대역에 도달하지 않는다.**
+
+따라서 이 구성원에는 "컨텍스트를 떨어뜨리는" 뮤턴트를 주입할 자리가 없다. 떨어뜨릴 컨텍스트가
+seam 을 건너지 않기 때문이다. (c) 축이 성립하지 않으므로 (c)∧(d) 도 성립하지 않는다 —
+**옳게 눈멂**(AC-CBD-010 계열). 근거는 판독이 아니라 인터페이스 시그니처라는 기계적 사실이다.
+
+주의: `IsUpdateAvailable` 이 컨텍스트를 받지 않는 것 자체는 별개의 설계 관찰이며, 이 카드의
+측정 대상(대역의 눈멂)이 아니다. 그 관찰은 후속 카드 요청에 부기한다.
