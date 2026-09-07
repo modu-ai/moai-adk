@@ -61,6 +61,33 @@ Result recorded at run time by the lane — see §E.2. Known candidate defect fr
 
 3 milestones → 1 card (t519). No milestone requires a new card.
 
+### Plan-audit iteration 1 — fix round
+
+Verdict: **FAIL score=0.775** (Tier M threshold 0.80; blocking 4, advisory 5). Report: `.moai/reports/t519/plan-audit-iter1.md`, audited on tree `faa76fa7e`. All seven must-pass criteria passed; the FAIL was driven by the aggregate score, and three of the four blocking findings were the same defect — a Given clause written from a sibling test's *intent* rather than its *text*, dropping a seam the sibling actually carries.
+
+Every finding was re-verified against the source before editing rather than accepted on the report's word, because the auditor's own Gaps section states it executed no tests and its predictions are control-flow reasoning. The verification is recorded below alongside each fix.
+
+| Finding | Artifact:line changed | What changed | Source verification |
+|---|---|---|---|
+| F1 | acceptance.md AC-CCR-004 Given + rationale; plan.md §F M1 step 5 | The fixture now swaps **all three** codex seams under one `t.Cleanup`, with the `codexLookPath` line copied verbatim; plan.md carries the block as a code fence. Added the reason: without it the test does a real PATH lookup and its verdict depends on the host. | `var codexLookPath = exec.LookPath` confirmed at mcp_codex.go:368; the three-seam precedent confirmed at codex_review_gate_test.go:152-164; `HandleCodexReviewGate` consults it at step 4 (codex_review_gate.go:78), before the session starts. |
+| F2 | acceptance.md AC-CCR-003 Given + new rationale paragraph; ledger row M2; plan.md §F M1 step 4 | Added `withChangeDetector(t, true)` and stated why it must not be dropped as redundant: without it the mutated handler ALLOWs at step 3 on the non-git temp dir and M2 is vacuous. | The precedent pairing confirmed at codex_review_gate_test.go:40-46 (comment "even with changes present…"); the non-git-dir-yields-false assertion confirmed at codex_review_gate_test.go:312-314. |
+| F3 | acceptance.md §B matrix row AC-CCR-002; ledger rows M1 and new M1b; plan.md §F M1 step 7 + M1 exit line | Split the row: M1 keeps the `fmt.Fprintf` deletion and is bound to AC-CCR-001 only; new **M1b** replaces codex_review_gate.go:188 with `return err` and is AC-CCR-002's adoption basis. | Confirmed by reading codex_review_gate.go:184-189 — `err` is in scope inside the `if err != nil` block, so the edit compiles; empty stdin does produce a non-nil `err` (`json.Unmarshal` on empty input), so M1b flips AC-CCR-002 as well as AC-CCR-001. |
+| F4 | plan.md §A.4 table (rewritten, 12 rows); spec.md §E constraint 3 | Every Location cell corrected and the file count stated: the helpers live in **four** files. `stubCodexRunner` moved to `codex_rpc_error_test.go:29`, a file neither artifact had named. | All 12 locations grep-verified in this worktree: `withChangeDetector` codex_review_gate_test.go:28; `writeWorkflowYAML` :33 / `assertAllowJSON` :157 in multi_review_gate_wiring_test.go; `withCodexRunner` :56, `withCodexLookPath` :63, `fakeCodexSession` :74, `fakeCodexConn` :88, `withCodexSession` :108, `codexSessionScript` :123, `errFakeCodexCrash` :408 in mcp_codex_test.go; `stubCodexRunner` codex_rpc_error_test.go:29; `fakeCodexConnPID` codex_jobs_test.go:31. |
+
+Advisories:
+
+| Advisory | Disposition | Where |
+|---|---|---|
+| A1 — leave the ≥90.0% threshold alone | **Honoured** (it recommends changing nothing) | no edit; the threshold is untouched |
+| A2 — no `t.Parallel()` in the six new tests | **Applied** | plan.md §D constraint 10, with the seam-race reason and the sibling-file evidence |
+| A3 — M5a's RED arrives as a panic | **Applied** | acceptance.md AC-CCR-010, third bullet: run M5a in isolation and record the panic trace beside the `--- FAIL:` line |
+| A4 — spec.md has no scope heading | **Declined.** The fix would edit spec.md prose, outside the acceptance.md / plan.md surface this round authorises, and scope is already carried precisely by §B.2's Disposition column and §F. Re-raise at iteration 2 if the auditor still finds it material. | no edit |
+| A5 — `moai spec lint` fails on a directory argument | **Declined as a SPEC change.** It is a linter defect, already pre-recorded in §E.1 and reproduced by the auditor. Belongs in `/moai feedback`, not this SPEC. | no edit |
+
+One defect neither the audit nor the original pass caught, found while applying the above and fixed in the same round: spec.md REQ-CCR-003 pointed at `§D.1` (the coverage-ceiling derivation) where it meant `§D.2` (the vacuous-mutant record). Corrected at spec.md:92.
+
+Post-fix re-verification on this tree: `moai spec lint .moai/specs/SPEC-CODEX-COVER-RESIDUAL-001/spec.md` → `✓ No findings — all SPEC documents are valid`. Counts unchanged at 10 REQ / 12 AC; ledger grew from 9 rows to 10 with M1b. No production `.go` file touched.
+
 ## §E.2 Run-phase Evidence
 
 _&lt;pending run-phase&gt;_

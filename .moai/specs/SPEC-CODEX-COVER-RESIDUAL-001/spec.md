@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-COVER-RESIDUAL-001
 title: "Codex coverage residual — runCodexReviewGate RunE wiring tests + (codexSessionHandle).pid nil-guard arm"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -21,6 +21,7 @@ related_specs: [SPEC-CODEX-TEST-GAPS-001, SPEC-MOAI-MCP-SERVER-001]
 ## A. History
 
 - 2026-09-07 — v0.1.0 — Card t519 plan-phase. Split out of the lane-7 t501 verdict (`.moai/reports/t501/verdict.md` §Gaps/§Residual-risk): two residual codex surfaces the t501 6-file scan never reached. Tier classified **M**, not S — see §A.1.
+- 2026-09-07 — v0.2.0 — Plan-audit iteration 1 fix round (FAIL, score 0.775 against the Tier M threshold of 0.80; 4 blocking, 5 advisory). All four blocking findings were fixture-specification defects sharing one root cause: three Given clauses were written from the *intent* of a sibling test rather than from its *text*, dropping a seam the sibling actually carries. F1 — AC-CCR-004 gained the mandatory `codexLookPath` swap (its verdict was host-dependent without it). F2 — AC-CCR-003 gained `withChangeDetector(t, true)`, without which its sole adoption mutant M2 could not fire. F3 — the M1 ledger row was split, with the new M1b carrying AC-CCR-002's adoption (M1 flips only AC-CCR-001). F4 — the seam-location table was corrected against grep: the helpers live in four files, and `stubCodexRunner` is in `codex_rpc_error_test.go`, a file neither artifact had named. Advisories A2 (no `t.Parallel()`) and A3 (M5a's RED arrives as a panic) applied; A1 is a recommendation to change nothing and was honoured; A4 and A5 declined with reasons recorded in progress.md. Scope, requirements, and the ≥90.0% coverage threshold are unchanged.
 
 ### A.1 Tier classification note (deviation recorded)
 
@@ -88,7 +89,7 @@ The comment therefore describes a symmetry that was asserted but never built —
 
 **When** `HandleCodexReviewGate` returns a non-nil error (gate enabled, reviewable change present, codex session start failing), the command shall emit an empty ALLOW, return no error from `Execute()`, and write a `codex-review-gate: error:`-prefixed diagnostic to stderr (codex_review_gate.go:193-197).
 
-**While** authoring this test, the test shall assert the **stderr** diagnostic, because both the error arm and the success arm emit byte-identical `{}` on stdout — a stdout-only assertion cannot separate them (see §D.1).
+**While** authoring this test, the test shall assert the **stderr** diagnostic, because both the error arm and the success arm emit byte-identical `{}` on stdout — a stdout-only assertion cannot separate them (see §D.2).
 
 ### REQ-CCR-004 — RunE BLOCK propagation [Priority High]
 
@@ -144,7 +145,7 @@ The obvious mutant for the handler-error arm — emitting `out` instead of `&hoo
 
 1. Tests only — zero diffs to non-test `.go` files (REQ-CCR-007).
 2. All code and comments in English (repo standard, `code_comments: en`).
-3. Reuse the existing hermetic seams; do **not** add new production seams or new shared test infrastructure. Available and sufficient: `withChangeDetector` / `withCodexLookPath` / `withCodexRunner` / `withCodexSession` / `codexSessionScript` / `fakeCodexSession{startErr}` / `stubCodexRunner` (codex_review_gate_test.go, mcp_codex_test.go), plus `writeWorkflowYAML` and `assertAllowJSON` (multi_review_gate_wiring_test.go, package-level and reusable).
+3. Reuse the existing hermetic seams; do **not** add new production seams or new shared test infrastructure. They are spread across **four** files, all package-level and reusable: `withChangeDetector` (codex_review_gate_test.go); `writeWorkflowYAML` and `assertAllowJSON` (multi_review_gate_wiring_test.go); `withCodexLookPath` / `withCodexRunner` / `withCodexSession` / `codexSessionScript` / `fakeCodexSession` / `fakeCodexConn` / `errFakeCodexCrash` (mcp_codex_test.go); `stubCodexRunner` (codex_rpc_error_test.go); `fakeCodexConnPID` (codex_jobs_test.go). Per-identifier line numbers are in plan.md §A.4.
 4. `newGateCmd` (multi_review_gate_wiring_test.go:102) is hard-wired to `runMultiReviewGate` and MUST NOT be modified or reused; the codex side needs its own constructor under a distinct name.
 5. Verification is scoped: `go test ./internal/cli/` only, with a timeout budget ≥600s (baseline measured 473.7s). NEVER `go test ./...` locally — CI runs the full suite.
 6. The env scrub travels with the command in one compound invocation (`unset … && go test …`); a separate `unset` does not carry into the next Bash call.

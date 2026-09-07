@@ -23,7 +23,7 @@ A Go test selector that matches zero tests **exits 0 and prints `ok`**. It is by
 | AC | Requirement | Class | Adoption basis |
 |---|---|---|---|
 | AC-CCR-001 | REQ-CCR-001 | RB | mutant M1 |
-| AC-CCR-002 | REQ-CCR-001 | RB | mutant M1 |
+| AC-CCR-002 | REQ-CCR-001 | RB | mutant M1b |
 | AC-CCR-003 | REQ-CCR-002 | RB | mutant M2 |
 | AC-CCR-004 | REQ-CCR-003 | RB | mutant M3a / M3b |
 | AC-CCR-005 | REQ-CCR-004 | RB | mutant M4 |
@@ -61,9 +61,11 @@ Requirement coverage: REQ-CCR-001 → AC-001/002 · REQ-CCR-002 → AC-003 · RE
 
 ### AC-CCR-003 — happy path allows without consulting codex [RB]
 
-**Given** a temp project written by `writeWorkflowYAML` carrying `workflow:\n  codex:\n    review_gate:\n      enabled: false`, and `codexLookPath` swapped to a function that calls `t.Fatal` if reached,
+**Given** a temp project written by `writeWorkflowYAML` carrying `workflow:\n  codex:\n    review_gate:\n      enabled: false`, `withChangeDetector(t, true)`, and `codexLookPath` swapped via `withCodexLookPath` to a function that calls `t.Fatal` if reached,
 **When** the command is executed with a well-formed payload `{"session_id":…,"project_dir":<dir>}`,
 **Then** `Execute()` returns nil, stdout decodes to an ALLOW, and the `t.Fatal` guard is never reached.
+
+`withChangeDetector(t, true)` is not decoration and must not be dropped as redundant. It is inert on the green path — with the gate disabled, `HandleCodexReviewGate` returns at step 1 (codex_review_gate.go:69) long before the detector is consulted at step 3 — but it is what makes mutant M2 able to fire. Without it, the production detector runs `git status` against the `t.TempDir()` that `writeWorkflowYAML` returns, which is not a git repository, so it returns false (codex_review_gate.go:129-132) and the mutated handler ALLOWs at step 3 before ever reaching `codexLookPath`. The precedent pairs them for exactly this reason, with the comment "even with changes present…" (codex_review_gate_test.go:41), and the in-repo assertion that a non-git dir yields false is codex_review_gate_test.go:312-314.
 
 - Verify: `go test -count=1 -run 'TestRunCodexReviewGate_HappyPathAllow' -v ./internal/cli/`
 - Expect: one `--- PASS:` line for that test.
@@ -71,9 +73,11 @@ Requirement coverage: REQ-CCR-001 → AC-001/002 · REQ-CCR-002 → AC-003 · RE
 
 ### AC-CCR-004 — handler error fails open, with the reason on stderr [RB]
 
-**Given** the gate enabled in the temp project's `workflow.yaml`, `withChangeDetector(t, true)`, `codexSession` swapped to `&fakeCodexSession{startErr: errFakeCodexCrash}`, and `codexRunner` swapped to `stubCodexRunner{}`,
+**Given** the gate enabled in the temp project's `workflow.yaml`, `withChangeDetector(t, true)`, and **all three** codex seams swapped together under one `t.Cleanup` — `codexRunner = stubCodexRunner{}`, `codexLookPath = func(string) (string, error) { return "/fake/codex", nil }`, `codexSession = &fakeCodexSession{startErr: errFakeCodexCrash}` — copied verbatim from `TestReviewGate_FailOpenOnCodexError` (codex_review_gate_test.go:154-158),
 **When** the command is executed with a well-formed payload naming that project,
 **Then** `Execute()` returns nil, stdout decodes to an ALLOW, and stderr contains `codex-review-gate: error:`.
+
+The `codexLookPath` swap is mandatory, not one of three interchangeable seams. The production default is `var codexLookPath = exec.LookPath` (mcp_codex.go:368) and `HandleCodexReviewGate` consults it at step 4 (codex_review_gate.go:78) **before** the session is started, so an unswapped fixture performs a real PATH lookup for a `codex` binary. On a host that has one the lookup succeeds and the test passes; on a host that does not, step 4 returns ALLOW with a nil error (codex_review_gate.go:80), `gateErr` is nil, the RunE takes the success path, no `codex-review-gate: error:` reaches stderr, and the test fails. That is a local-green / CI-red split, and it would also make the M3a/M3b RED evidence recorded on a developer machine unreproducible in CI.
 
 The stderr assertion is load-bearing, not decorative: both the error branch and the success branch write byte-identical `{}` to stdout, so a stdout-only test passes under the naive mutant and asserts nothing about this arm (spec.md §D.2).
 
@@ -160,6 +164,7 @@ The package-wide figure is recorded alongside but is not part of this criterion 
 
 - Verify: `.moai/specs/SPEC-CODEX-COVER-RESIDUAL-001/progress.md` §E.2 carries one evidence block per ledger row, each with a verbatim `--- FAIL:` line.
 - A row whose recorded mutant turned out not to change the verdict is recorded as vacuous with a replacement mutant named, per REQ-CCR-008. A vacuous mutant left in the ledger unreplaced fails this criterion.
+- **M5a is the one row whose RED does not look like the others.** Deleting the nil guard makes the nil-receiver call dereference a nil pointer, so the failure arrives as a runtime panic that also aborts the remaining tests in the same binary. Go still emits the `--- FAIL:` line ahead of the panic trace, so the criterion is satisfiable as written — but run M5a in isolation (`-run 'TestCodexSessionHandlePid'`) and record the panic trace alongside the `--- FAIL:` line, so the evidence block is not mistaken for a truncated or corrupted capture.
 
 ### AC-CCR-011 — quality gate clean [RG]
 
@@ -183,8 +188,9 @@ Each mutant is an edit to a production source file, applied only long enough to 
 
 | ID | Target | Edit | Expected effect |
 |---|---|---|---|
-| M1 | codex_review_gate.go:186-188 | delete the `fmt.Fprintf` stderr diagnostic line | AC-CCR-001's stderr assertion fails. (Alternative if a stronger signal is wanted: replace line 188 with `return err`, which makes `Execute()` error and fails both AC-CCR-001 and AC-CCR-002.) |
-| M2 | codex_review_gate.go:191 | replace `enabled := readCodexReviewGateEnabled(projectDir)` with `enabled := true` | the codex path is entered, the `t.Fatal` guard in `withCodexLookPath` fires, AC-CCR-003 fails |
+| M1 | codex_review_gate.go:186 | delete the `fmt.Fprintf` stderr diagnostic line | AC-CCR-001's stderr assertion fails. Does **not** fire AC-CCR-002, which asserts only a nil `Execute()` error and an ALLOW on stdout — hence M1b. |
+| M1b | codex_review_gate.go:188 | replace `return emitHookOutput(cmd.OutOrStdout(), &hook.HookOutput{})` with `return err` | `Execute()` returns non-nil on both the malformed and the empty payload, so AC-CCR-001 **and** AC-CCR-002 fail. `err` is in scope inside the `if err != nil` block, so the edit compiles. This is AC-CCR-002's adoption basis. |
+| M2 | codex_review_gate.go:191 | replace `enabled := readCodexReviewGateEnabled(projectDir)` with `enabled := true` | the codex path is entered, the `t.Fatal` guard in `withCodexLookPath` fires, AC-CCR-003 fails. **Detectable only because AC-CCR-003's fixture carries `withChangeDetector(t, true)`** — without it the mutated handler ALLOWs at step 3 on the non-git temp dir and this mutant is vacuous. Confirm the RED is the `t.Fatal` guard message, not a passing run. |
 | M3a | codex_review_gate.go:195 | delete the `fmt.Fprintln` stderr diagnostic line | AC-CCR-004's stderr assertion fails |
 | M3b | codex_review_gate.go:196 | replace `return emitHookOutput(...)` with `return gateErr` | `Execute()` returns an error, AC-CCR-004's fail-open assertion fails |
 | M3-vac | codex_review_gate.go:196 | emit `out` instead of `&hook.HookOutput{}` | **known vacuous — do not use as adoption evidence.** `HandleCodexReviewGate` returns its empty `allow` value alongside the error, so both forms serialize to `{}` and no stdout assertion can separate them (spec.md §D.2). |

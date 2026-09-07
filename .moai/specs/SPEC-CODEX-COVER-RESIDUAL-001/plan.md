@@ -34,16 +34,24 @@ Tier **M** (3-file set + §E skeleton). The dispatch named Tier S; the rationale
 
 Reuse as-is (no modification):
 
-| Seam / helper | Location | Use |
+Every location below is grep-verified against this worktree. The helpers live in **four** files, not one — the count matters, because a helper sought in the wrong file invites a duplicate definition, and every one of these identifiers is package-level, so a duplicate fails to compile at package scope.
+
+| Seam / helper | Location (verified) | Use |
 |---|---|---|
 | `withChangeDetector(t, bool)` | codex_review_gate_test.go:28 | drive the self-gate |
-| `withCodexLookPath(t, fn)` | codex_review_gate_test.go | assert codex is not consulted |
-| `withCodexRunner(t, runner)` | codex_review_gate_test.go | runner injection |
-| `withCodexSession(t, script)` + `codexSessionScript(...)` | codex_review_gate_test.go | drive ALLOW / BLOCK verdicts |
-| `&fakeCodexSession{startErr: errFakeCodexCrash}` + `stubCodexRunner{}` | codex_review_gate_test.go:152-164 | the handler-error arm |
 | `writeWorkflowYAML(t, body)` | multi_review_gate_wiring_test.go:33 | isolated temp project root |
 | `assertAllowJSON(t, stdout)` | multi_review_gate_wiring_test.go:157 | the ALLOW contract |
-| `fakeCodexConn` + `fakeCodexConnPID` | mcp_codex_test.go:88, codex_jobs_test.go:31 | the pid conn arm |
+| `withCodexRunner(t, runner)` | mcp_codex_test.go:56 | runner injection |
+| `withCodexLookPath(t, fn)` | mcp_codex_test.go:63 | assert codex is not consulted |
+| `fakeCodexSession` (type) | mcp_codex_test.go:74 | the handler-error arm, via `{startErr: …}` |
+| `fakeCodexConn` (type) | mcp_codex_test.go:88 | the pid conn arm |
+| `withCodexSession(t, lines)` | mcp_codex_test.go:108 | drive ALLOW / BLOCK verdicts |
+| `codexSessionScript(reviewText)` | mcp_codex_test.go:123 | build the BLOCK script |
+| `errFakeCodexCrash` | mcp_codex_test.go:408 | the session start error |
+| `fakeCodexConnPID` (= 424242) | codex_jobs_test.go:31 | the pid expected value |
+| `stubCodexRunner{}` (type) | **codex_rpc_error_test.go:29** | the handler-error arm's runner |
+
+The three-seam block AC-CCR-004 copies is `TestReviewGate_FailOpenOnCodexError` at codex_review_gate_test.go:152-164; the seam *definitions* it uses are the rows above, not that file.
 
 ### A.5 PRESERVE list — do not modify
 
@@ -110,6 +118,7 @@ Expected: root is this worktree, HEAD descends from `bf779ecf2`, branch is `WT-c
 7. **Never `--no-verify`, never `--amend`, never force-push.** The lane does not push at all.
 8. **Every mutant is reverted before the commit that lands its test.**
 9. Code and comments in English (`code_comments: en`).
+10. **No `t.Parallel()` in any of the six new tests.** All six mutate package-level seam variables (`codexSession`, `codexLookPath`, `codexRunner`, `reviewGateChangeDetector`), so parallel execution races on shared state and produces a flaky, order-dependent verdict. The three sibling files already observe this — `grep -rn 't.Parallel()'` across codex_review_gate_test.go, multi_review_gate_wiring_test.go and mcp_codex_test.go returns nothing — but the constraint was unstated until now, and CLAUDE.local.md §6 records a prior incident of this class.
 
 ## §F Milestones
 
@@ -122,13 +131,23 @@ Closes the 0.0%. New file `internal/cli/codex_review_gate_wiring_test.go`, mirro
 1. Add `newCodexGateCmd(stdin string) (*cobra.Command, *bytes.Buffer, *bytes.Buffer)` — a throwaway `&cobra.Command{Use: "codex-review-gate", RunE: runCodexReviewGate, SilenceUsage: true}` with `SetIn`/`SetOut`/`SetErr` bound to in-memory buffers.
 2. `TestRunCodexReviewGate_InvalidStdinFailsOpen` (AC-CCR-001) — stdin `{not json`.
 3. `TestRunCodexReviewGate_EmptyStdinFailsOpen` (AC-CCR-002) — empty stdin.
-4. `TestRunCodexReviewGate_HappyPathAllow` (AC-CCR-003) — `writeWorkflowYAML` with the gate disabled, plus a `withCodexLookPath` `t.Fatal` guard.
-5. `TestRunCodexReviewGate_HandlerErrorFailsOpen` (AC-CCR-004) — gate enabled, `withChangeDetector(t, true)`, `fakeCodexSession{startErr}` + `stubCodexRunner{}`; assert the stderr diagnostic.
+4. `TestRunCodexReviewGate_HappyPathAllow` (AC-CCR-003) — `writeWorkflowYAML` with the gate disabled, **`withChangeDetector(t, true)`**, plus a `withCodexLookPath` `t.Fatal` guard. The detector swap is inert on the green path and is what keeps mutant M2 detectable; do not drop it as redundant (acceptance.md AC-CCR-003).
+5. `TestRunCodexReviewGate_HandlerErrorFailsOpen` (AC-CCR-004) — gate enabled, `withChangeDetector(t, true)`, then **all three** codex seams swapped together under one `t.Cleanup`, copied verbatim from codex_review_gate_test.go:154-158:
+
+   ```go
+   prevRunner, prevLook, prevSess := codexRunner, codexLookPath, codexSession
+   codexRunner = stubCodexRunner{}
+   codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+   codexSession = &fakeCodexSession{startErr: errFakeCodexCrash}
+   t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
+   ```
+
+   Assert the stderr diagnostic. Omitting the `codexLookPath` line makes the verdict depend on whether the host has a `codex` binary on PATH (acceptance.md AC-CCR-004).
 6. `TestRunCodexReviewGate_BlockVerdictPropagates` (AC-CCR-005) — gate enabled, `withChangeDetector(t, true)`, `withCodexSession(t, codexSessionScript("- [P1] found issues"))`; decode stdout and assert `decision == "block"` with a non-empty reason.
-7. Work mutants M1, M2, M3a, M3b, M4 one at a time: apply, observe RED, record verbatim output, revert, observe GREEN.
+7. Work mutants M1, M1b, M2, M3a, M3b, M4 one at a time: apply, observe RED, record verbatim output, revert, observe GREEN. M1 fires AC-CCR-001 only; M1b is AC-CCR-002's adoption basis. M3-vac is pre-recorded as vacuous and is not run as adoption evidence.
 8. Commit: `test(SPEC-CODEX-COVER-RESIDUAL-001): M1 runCodexReviewGate wiring tests (t519)`.
 
-Exit: AC-CCR-001..005 PASS; mutants M1-M4 recorded RED-then-GREEN; `git status --short` clean of production sources.
+Exit: AC-CCR-001..005 PASS; mutants M1, M1b, M2, M3a, M3b, M4 recorded RED-then-GREEN; `git status --short` clean of production sources.
 
 ### M2 — Axis 2: the pid nil-guard arm (Priority Medium)
 
