@@ -746,7 +746,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |
-| `moai clean [--home]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist. Dry run by default; `--force` to actually delete |
+| `moai clean [--home] [--codex-skills]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist; with `--codex-skills` it removes the `[[skills.config]]` registrations in `~/.codex/config.toml` whose declared path is provably absent. Exactly one scope per invocation. Dry run by default; `--force` to actually delete |
 | `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 11-tab settings |
 
 > All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
