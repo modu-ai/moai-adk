@@ -181,7 +181,7 @@ dispatch instruction to avoid duplicating t535's scope.
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: 1b027e311
 sync_status: audit-ready
 b12_self_test_a: PASS   # pre-emission grep = 1, no duplicate
 b12_self_test_b: PASS   # AC count 8 == CHANGELOG claim (7 MUST-PASS + 1 regression guard)
