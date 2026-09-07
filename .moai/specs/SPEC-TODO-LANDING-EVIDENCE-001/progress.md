@@ -78,7 +78,115 @@ newly written assertion should be accompanied by the mutation that reds it befor
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — the stored shape
+
+Verbatim command + output pairs: **`.moai/reports/t359/m1-evidence.md`**. This section carries the
+verdict and its attribution; that file carries the material.
+
+**Claim.** M1 is complete. The schema-freeze guard now pins exact ordered
+`(name, type, notnull, dflt_value)` tuple sequences on `items` AND `archived_items`, asserted per
+table; `landing TEXT` (nullable, no default) is added to both by an idempotent `ALTER` at engine
+open, placed after `backlogDDL` and before the `schema_version` switch, with idempotence decided by
+reading `pragma_table_info` rather than by catching SQLite's `duplicate column name`. The DDL const
+is deliberately unedited. `schema_version` stays `"1"`; the `items.state` CHECK is byte-identical.
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| AC-TLE-001 — `items` column shape | **PASS** | `TestBacklogLanding_ItemsColumnShape` |
+| AC-TLE-002 — `archived_items` column shape, asserted independently | **PASS** | `TestBacklogLanding_ArchivedItemsColumnShape` |
+| AC-TLE-003 — migration idempotent, rewrites nothing | **PASS** | `TestBacklogLanding_MigrationIsIdempotent`; its stated RED (unconditional `ALTER`) also observed |
+| AC-TLE-019a — `items` plant | **PASS** (guard FAILED under plant, reverted) | evidence file § Step 5 |
+| AC-TLE-019b — `archived_items` plant, alone | **PASS** (guard FAILED under plant, reverted) | evidence file § Step 5 |
+| AC-TLE-019c — tuple plant (`TEXT NOT NULL DEFAULT ''`) | **PASS** (guard FAILED under plant, reverted) | evidence file § Step 5 |
+| AC-TLE-004 | **NOT CLAIMED by M1** — see Gaps | — |
+
+**Evidence.** Four observations carry the milestone, in this order:
+
+1. **Step 0 — the decayed baseline was re-measured, not cited.** AC-TLE-019's decay note warns the
+   guard is owned by `SPEC-TODO-ARCHIVE-QUERY-001`. Both plants left the CURRENT (unextended) guard
+   GREEN in this tree at `903bcc03c`, so the column-blindness premise holds and the SPEC's recorded
+   RED was not relied on.
+2. **Step 1 — the extended guard was written against the PRE-change tuples and observed GREEN**
+   before `landing` existed (`plan.md` §B.1 ordering).
+3. **Step 2 — the same guard FAILED on both tables** once the `ALTER` landed and before the
+   expectations were updated. This is the demonstration that the assertion is not merely written to
+   match what was built.
+4. **Step 5 — each §D.2 plant was applied alone, observed FAILING, and reverted**, with the
+   before/after SHA-1 of `backlog_sqlite.go` recorded per plant (all three return to
+   `01872b7bc1050b33aa1ee9eb3c326c726d4207c6`). No mutant survived.
+
+**Baseline-attribution.**
+
+- **Tree**: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch `WT-landing-evidence`,
+  confirmed by `git rev-parse --show-toplevel`. (`/Users/goos/moai/moai-adk-go` is the SAME tree
+  under a second spelling — same `dev:inode`, and git resolves it to the uppercase path — so the
+  real hazard is worktree → primary drift. The discriminant is that the primary sits at a different
+  HEAD and branch.)
+- **Pre-change baseline HEAD `903bcc03c`**, measured by the lane before any edit:
+  `go test ./internal/kanban/... -count=1` → rc=0; `go test ./internal/cli/... -count=1 -timeout 600s`
+  → rc=0. Any red after the M1 edits is therefore attributable to them.
+- **Post-M1 HEAD `3bcb0c33a`** (3 files, +374/−3): `gofmt -l internal/kanban/` → no output;
+  `go vet ./internal/kanban/...` → rc=0; `go test ./internal/kanban/... -count=1` →
+  `ok github.com/modu-ai/moai-adk/internal/kanban 137.728s`.
+- **Follow-up HEAD `2dacb1d83`** (SQL-finding response, no behavior change):
+  `go vet ./internal/kanban/...` → rc=0; `go test ./internal/kanban/... -count=1` →
+  `ok ... 137.483s`.
+
+**Gaps** — what was explicitly NOT observed:
+
+- **AC-TLE-004 is NOT claimed by M1.** Its Given-When requires `moai todo landed`, which does not
+  exist until M3. It was not attempted and nothing here asserts it (`plan.md` §F M1.4).
+- **`internal/cli` was NOT re-run after the M1 edits.** It was green at baseline `903bcc03c`; only
+  `internal/kanban` was re-measured post-change, per the lane-local verification scope. CI owns the
+  full-suite verdict.
+- **Step 0 establishes column-blindness only at `903bcc03c`, in THIS tree.** It says nothing about
+  the guard's state in any other tree, on develop, or at any other commit.
+- **The CWD attribution for the pre-correction batches is a discriminant argument, not a direct
+  per-call observation.** No `pwd` was taken before each early batch; the argument is that the two
+  trees differ in HEAD and branch (`WT-landing-evidence` vs `main`), and every bare `git` call in
+  those batches returned the worktree's values. A batch that produced no git output carries no
+  independent proof of where it ran. `pwd` was measured directly only after the tree-identity
+  correction landed.
+- **No non-darwin build or test run.** darwin/arm64 only; `ALTER TABLE` and `pragma_table_info` were
+  not exercised on another GOOS.
+- **`golangci-lint` was not run** — only `gofmt -l` and `go vet`.
+- **No JSON⇄SQLite round trip or parity comparison was exercised** (M5 / AC-TLE-017 scope).
+- **Per-plant hashes cover `backlog_sqlite.go` only**; no plant modified a test file, and the
+  tree-level `git status --short` is the substitute evidence.
+
+**Residual-risk** — what could still be wrong despite the above:
+
+- **The column is live in the schema but carried by no read or write path.** `backlog_migrate.go`
+  uses explicit column lists that do not mention `landing`, so once M2/M3 begin writing values, a
+  JSON export → SQLite import round trip would drop them silently until M5 closes it.
+- **Concurrent first-open is unproven.** Two processes opening a pre-change database at once could
+  both see the column absent and both issue the `ALTER`; the loser fails its open.
+  `SetMaxOpenConns(1)` and `_txlock=immediate` do not serialize across processes. Not exercised, not
+  covered by any criterion.
+- **The guard is now a maintenance coupling.** Any future column on either table breaks
+  `TestTodoHistoryAddsNoSchemaChange` by design; a hurried reader may update the expected string
+  rather than ask why it fired.
+- **Steps 2 and 3 share one commit** (`plan.md` §F M1.3), so the intermediate FAILURE exists in no
+  commit — it is a transcript observation, captured live and in order. The evidence file is its only
+  durable carrier.
+- **Two `pragma_table_info` queries are added to every engine open.** Open latency was not measured
+  before or after.
+- **The SQL finding was real but the site was not dangerous — two claims that must not collapse into
+  one.** A PostToolUse check reported string-concatenated SQL. It was NOT a false positive: a real
+  concatenation existed (`` `SELECT count(*) FROM ` + table `` in `rowCount`) and was removed in
+  `2dacb1d83`. It was also NOT dangerous: the helper was test-local, its `table` parameter had one
+  caller passing the literal `"items"`, and no runtime value could reach it. The removal's
+  justification is simplification — the parameter earned nothing — not security. Recording only the
+  first claim would make a bookkeeping error about where the reader had looked read as a
+  narrowly-averted incident.
+- **A lane worker overrode an orchestrator instruction on its own reading of the evidence.** The lead
+  instructed that the finding was a false positive and the code be left as it was; the lane had
+  already changed it, judged on re-reading that the finding pointed at a site the lead had not
+  inspected, and reported the divergence rather than conforming. The lead retracted the
+  false-positive call on review and accepted the deviation. Recorded because a good outcome is
+  exactly the circumstance in which the fact of a deviation gets smoothed away — and the next
+  deviation, with a worse outcome, would then have no baseline to be judged against. Full record:
+  `.moai/reports/t359/m1-evidence.md` § Disposition.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
