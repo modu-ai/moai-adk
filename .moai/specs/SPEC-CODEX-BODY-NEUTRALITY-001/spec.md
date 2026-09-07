@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-BODY-NEUTRALITY-001
 title: "코덱스 에이전트 TOML 본문의 하네스 중립화 — 행위 지시만 고르고 산문은 남긴다"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -18,6 +18,8 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 # SPEC-CODEX-BODY-NEUTRALITY-001 — 에이전트 본문 축 중립화
 
 ## HISTORY
+
+- 2026-09-07 (plan-phase 수리 라운드 2, v0.2.1) — `.moai/reports/t497/plan-audit.md` iteration 2/2(FAIL 0.85, must-pass 7건 전부 PASS/N-A, D1-D10 전부 RESOLVED, 회귀 없음)의 **차단 2건 + 저비용 권고 2건**만 좁혀 수리했다. **N1** — 세 곳(`spec.md` §F · `plan.md` §E · `acceptance.md` §F)의 마커 검증이 `grep -rn 'NEEDS'` 를 쓰는 바람에 **그 주장을 담은 문장 자신을 3줄로 세어** 명령이 자기 주장을 반증했고, `acceptance.md` 쪽은 완료 정의 항목이라 카드가 자기 DoD 를 만족할 수 없었다. 셀렉터를 마커 모양 `\[NEEDS[[:space:]]CLARIFICATION` 으로 바꿔 **셀렉터 자신이 마커가 되지 않게** 했다. **N2** — REQ-CBN-009 의 `manager-lead` 부류가 손 열거한 4좌표로 닫혀 있었으나 그 파일의 `Agent(` 모집단은 10줄이고 최소 `:172` 가 REQ-CBN-002 의 주어 규칙상 같은 부류로 읽힌다. 부류를 **좌표에서 성질로** 옮기고(§B.4 · REQ-CBN-009), AC-CBN-013 을 상수 4 가 아니라 **M2 분류표의 directive 행 수 N** 에 묶었다. **A1** — `moai-mcp` rationale 의 `unavailable` 낱말 트랩을 §A.2 정정 2 와 `plan.md` M1 에 명시. **A2** — `[^/]design-sync` 를 `(^|[^/])design-sync` 로(줄 머리 발생 누락 = 거짓 RED). 나머지 권고 A3-A8 은 감사가 FAIL 근거가 아니라고 명시했으므로 기록된 부채로 남긴다. **v0.2.0 의 다른 어느 부분도 손대지 않았다** — 적대적 라운드를 통과한 문면을 다시 여는 것이 새 결함의 최대 원천이기 때문이다.
 
 - 2026-09-07 (plan-phase 수리 라운드, v0.2.0) — `.moai/reports/t497/plan-audit.md`(iteration 1/2, FAIL 0.63, MP-7 FAIL)에 대한 수리. 좌표·기대값·경로를 이 트리 `845dd65af` 에서 전부 재측정했다. 바뀐 것: §A.2 정정 2 가 「M1 산출 대상」에서 **트리 안 증거로 해소된 결론**으로(D1) · §B.4 좌표표가 발생/줄 단위를 붙인 정정본으로(D3) · §B.1/§B.2 가 M1 을 프로브에서 문서 정정으로(D1) · §C.5 변경 반경이 문자 그대로의 파일 집합으로(D5) · REQ-CBN-008 경로가 전체 경로로(D7) · REQ-CBN-009 가 지시 부류 셋 전부를 구속하도록(D6) · REQ-CBN-016 신설 · §B.6/§D 가 표본 미확인 전제를 함께 싣도록(D8). 미해결 마커 2건은 각각 **철회**(①, 답이 트리에 있었다)와 **운영자 결정 기록으로 전환**(②, §D)했고, 마커 토큰은 본문 어디에도 남기지 않았다(MP-7 은 토큰 존재만으로 실패한다). 유지한 것: 84 라는 기준선 수치, 「없는 것은 에이전트-TOML 필드이지 능력이 아니다」라는 §B.1 전제, 전면 치환을 막는 불변 대조 설계(AC-CBN-003/004/005).
 - 2026-09-07 (plan-phase, v0.1.0) — 카드 t497 의 plan 산출물. 기준선은 `.moai/reports/t497/measurement.md`(커밋 `c9b226b22`, 트리 `.claude/worktrees/t497`, base `ace1c5440`)이며, 이 SPEC 작성 중 같은 트리에서 재측정해 **세 건을 정정**했다(§A.2). 카드 본문이 제안한 설계 6건 중 **D1 은 상당 부분 뒤집혔다**(§B.1) — 결속표의 행 집합은 고를 수 있는 설계가 아니라 완결된 SPEC-CODEX-SKILL-NEUTRAL-001 REQ-CSN-003 이 못박은 **파생 기준**이기 때문이다.
@@ -54,6 +56,8 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 1. **네 번째 행의 정체는 커밋돼 있다.** SPEC-CODEX-SKILL-NEUTRAL-001 §B.D7 이 자기 예산 측정의 근거로 지목하는 후보 표가 `.moai/reports/t196/csn003-table-4row.txt`(373 B — §B.D7 이 인용하는 바로 그 수치)에 그대로 있고, 그 4번째 행은 **`cross-session-messaging`** 이다.
 2. **그 행은 파생 기준상 존재하지 않는 것이 옳다.** `agents-codex.yaml` 의 `cross-session-messaging` rationale(`:151-159`): "The Codex **counterpart rides the moai MCP broker** (session_msg_register/list/send/poll)". 대응물이 존재한다 ⇒ 능력 존재 ⇒ 행 없음.
 3. **전수 대조가 같은 결론을 낸다.** `tool_classes` 값 집합 11개 전부에 rationale 판별식을 적용하면 능력 부재는 `task-list`("no known Codex equivalent") · `design-sync`("no Codex equivalent") · `question-channel`(실측 — "codex reported it unavailable") **3건**이고, 이는 현재 `AGENTS.md` 에 실린 바로 그 3행이다.
+
+**[HARD] 판별식이 갈리는 유일한 클래스 — `moai-mcp` 는 「능력 존재」다.** 그 rationale 은 `unavailable` 이라는 낱말을 싣지만(`agents-codex.yaml:181-182` — "Per-tool filtering inside one MCP server is unavailable"), 부재한 것은 **한 서버 안의 도구별 필터링**이지 MCP 능력 자체가 아니다. 같은 rationale 이 `[mcp_servers.moai]` 테이블로 **서버 수준 부여가 성립한다**고 적고 있고 disposition 은 `emit-field` 다(`:171-183`). 판별식은 **낱말이 아니라 verdict** 다 — rationale 이 대응물의 존재를 서술하면 `present`. 낱말 `unavailable` 로 키를 잡으면 부재가 3 이 아니라 **4** 로 나오고 AC-CBN-006 의 `(b) == (c)` 가 깨진다. 11개 클래스 중 두 읽기가 갈리는 자리는 여기뿐이므로 이름을 붙여 둔다.
 
 → **실린 3행은 REQ-CSN-003 의 이미 올바른 파생값이고, 스테일한 것은 REQ-CSN-003 문면의 "현재 측정값 4행" 이다.** M1 은 프로브가 아니라 **파생 근거의 명문화 + 그 문면 정정**이다(§B.1). **미해결 마커 ①**(프로브 불가 시 대체 처분)은 이 해소로 **철회**한다 — 운영자가 결정할 것이 남아 있지 않다.
 
@@ -110,9 +114,15 @@ Gap: 위 판정은 rationale **문면** 판정이다. 각 능력의 코덱스 �
 | `plan-auditor.toml:146` | `AskUserQuestion` | **2** | prose | `orchestrator` | "**The orchestrator MUST** resolve each marked topic via `AskUserQuestion`". 주어가 이 에이전트가 아니다. |
 | `super-advisor.toml:62` | `AskUserQuestion` | 1 | prose | `orchestrator` | "the orchestrator … escalates to the user via `AskUserQuestion`". 같은 형태. |
 | `manager-develop.toml:64,65,66` | `Agent(` | 3 | prose | `orchestrator` | 위임 라우팅 표의 **목적지 칸**(`per-spawn Agent(general-purpose) …`). 오케스트레이터가 어디로 보내는지의 서술이며 `AskUserQuestion` 토큰은 이 파일에 **0건**이다. |
-| `manager-lead.toml:37,57,59,193` | `Agent(` | 4 | **directive** | `this-agent` | manager-lead 가 **자기 행위로** 리프 워커를 스폰하는 줄. 범위 안. |
+| `manager-lead.toml:37,57,59,193` | `Agent(` | 4 | **directive** | `this-agent` | manager-lead 가 **자기 행위로** 리프 워커를 스폰하는 줄. 범위 안. **경계 표본이지 모집단이 아니다** — 이 파일의 `Agent(` 모집단은 10줄이며 지시 집합의 확정은 M2 소관(아래 [HARD] 두 문단). |
 
 **`subject` 열은 세 값을 갖는다** — `this-agent` · `orchestrator` · `prohibition`. 금지 서술을 두 값 중 하나로 밀어 넣으면 분류가 거짓이 된다.
+
+**[HARD] 위 표는 경계 표본이다 — 닫는 판별식은 손 열거가 아니라 M2 분류표다.** `manager-lead.toml` 의 `Agent(` 모집단은 이 트리 실측으로 `grep -c 'Agent(' internal/template/templates/.codex/agents/moai/manager-lead.toml` → **10 줄**(좌표 `7 23 29 37 57 59 130 172 193 261`)이고, 표가 든 4줄은 그중 **판정이 갈리는 경계를 보이기 위한 표본**이다. 10 → 4 의 좁힘을 이 절에서 손으로 확정하지 않는다 — 손으로 열거한 좌표 집합을 모집단인 양 쓰는 것이 앞 라운드 D3 이 이름 붙인 결함이고, 여기서 확정하면 같은 실수의 재발이다.
+
+**닫는 판별식은 REQ-CBN-002 하나뿐이며, 그것을 전수에 적용하는 자리는 M2 분류표다.** M2 는 발생 84 / 서로 다른 줄 81 전수를 분류하고 그 좌표 대응을 `diff` 로 증명하므로(`plan.md` §F M2 ③), 이 파일의 10줄 중 **미분류로 남을 수 있는 줄은 없다**. 따라서 「manager-lead 의 지시 줄 집합」은 M2 분류표에서 `file = manager-lead.toml` · `token = Agent(` · `verdict = directive` 인 행 집합으로 **성질로** 정의되고, REQ-CBN-009 와 AC-CBN-013 은 그 집합에 묶인다.
+
+**M2 가 반드시 판정해야 하는 두 줄 — 이 SPEC 은 판정하지 않는다.** `:172`("At Tier M/L milestones, every AC … is re-run by a second read-only `Agent(general-purpose)`")는 표에 실린 `:57` 과 **같은 행위**를 능력 목록이 아니라 절차로 다시 적은 줄이고, `:261`("Domain consultation … → leaf worker as `Agent(general-purpose)` with domain whitelist")은 이 에이전트에게 주는 라우팅 지시다. 둘 다 REQ-CBN-002 의 주어 규칙상 `this-agent` 로 읽힐 소지가 크지만, **판정은 M2 의 몫이다** — 여기서 미리 못박으면 그것이 다시 손 열거다. 중립 소스 좌표는 각각 `manager-lead.md:179` · `manager-lead.md:268`(이 트리 실측; 소스 ↔ TOML 대응은 `44↔37 · 64↔57 · 66↔59 · 179↔172 · 200↔193 · 268↔261`).
 
 `AskUserQuestion` 3줄을 모두 범위 밖으로 두는 근거는 하나다: 오케스트레이터가 코덱스로 구동될 때는 **이미 존재하는 `question-channel` 결속행**이 그 행동을 지배하므로, 본문에서 도구 이름을 지우면 그 행이 가리킬 대상이 사라진다.
 
@@ -120,7 +130,7 @@ Gap: 위 판정은 rationale **문면** 판정이다. 각 능력의 코덱스 �
 
 `design-sync` 행도 이미 있다. 본문의 지시 자리는 `manager-design.toml:109`(중립 소스 `manager-design.md:115`)의 우선순위 사다리("(1) default = DesignSync tool push")다. `DesignSync Tool Contract` 절(11 methods)은 계약 서술이므로 산문이다. 사다리 **문면은 그대로 두고**, 그 근처에 `design-sync` 능력 부재 시 행동을 한 문단으로 붙인다.
 
-착수 전 실측(이 트리 `845dd65af`): 사다리 줄은 `grep -c 'default = DesignSync tool push'` → **1**; `manager-design.toml` 의 `design-sync` 4건은 **전부 `/design-sync` 슬래시 커맨드**이고 능력 클래스 이름으로 쓰인 형태는 `grep -oE '[^/]design-sync' … | wc -l` → **0**. 따라서 「능력 이름을 부르는 문단이 생겼는가」는 슬래시 커맨드와 섞이지 않고 판정된다.
+착수 전 실측(이 트리 `845dd65af`): 사다리 줄은 `grep -c 'default = DesignSync tool push'` → **1**; `manager-design.toml` 의 `design-sync` 4건은 **전부 `/design-sync` 슬래시 커맨드**이고 능력 클래스 이름으로 쓰인 형태는 `grep -oE '(^|[^/])design-sync' … | wc -l` → **0**(`[^/]` 만으로는 줄 **머리**의 `design-sync` 를 못 잡으므로 `(^|` 갈래를 함께 둔다 — 두 형태 모두 착수 전 실측 0). 따라서 「능력 이름을 부르는 문단이 생겼는가」는 슬래시 커맨드와 섞이지 않고 판정된다.
 
 ### B.6 D6 채택하되 분리 권고 — 77개 미러 스킬 파일
 
@@ -151,7 +161,7 @@ Gap: 위 판정은 rationale **문면** 판정이다. 각 능력의 코덱스 �
 ### C.3 축 C — 본문 개정
 
 - **REQ-CBN-008** — 개정은 중립 소스 **`internal/template/templates/.claude/agents/moai/*.md`** 본문에 들어가야 한다. 이 경로가 emitter 의 입력이다(`internal/template/agentemit/golden_test.go:31-34` — `templatesDir = "../templates"` + `agentMDRoot = ".claude/agents/moai"`). 저장소 루트 사본 `.claude/agents/moai/*.md` 를 원본으로 편집해서는 안 되며(완결 SPEC-CODEX-SKILL-NEUTRAL-001 REQ-CSN-012 의 금지), `.codex/agents/moai/*.toml` 을 직접 편집해서도 안 된다.
-- **REQ-CBN-009** — **When** 한 줄이 「행위 지시」로 판정된다, 그 줄은 도구 이름 대신 능력 클래스 이름을 부르거나, 능력 부재 시의 대체 행동을 함께 적어야 한다. 이 SPEC 이 식별한 지시 부류는 **셋이며 전부 구속된다**: `Task*` 3줄(`task-list`) · `manager-lead` 자기 스폰 4줄(`subagent-spawn`) · `manager-design` 우선순위 사다리(`design-sync`). 어느 하나를 건너뛴 상태는 REQ-CBN-009 미충족이다.
+- **REQ-CBN-009** — **When** 한 줄이 「행위 지시」로 판정된다, 그 줄은 도구 이름 대신 능력 클래스 이름을 부르거나, 능력 부재 시의 대체 행동을 함께 적어야 한다. 이 SPEC 이 식별한 지시 부류는 **셋이며 전부 구속된다**: `Task*` 3줄(`task-list`) · **M2 분류표가 `manager-lead.toml` 의 `Agent(` 줄 중 `verdict = directive` · `subject = this-agent` 로 판정한 줄 전부**(`subagent-spawn`) · `manager-design` 우선순위 사다리(`design-sync`). 가운데 부류는 **좌표가 아니라 성질로** 정의된다 — §B.4 의 네 좌표는 그 성질을 만족함이 확인된 경계 표본일 뿐이고, 모집단은 `grep -c 'Agent(' …/manager-lead.toml` → **10 줄**이며, 10 → 지시 집합의 좁힘은 REQ-CBN-002 를 전수에 적용하는 M2 가 수행한다. 어느 하나를 건너뛴 상태는 REQ-CBN-009 미충족이다.
 - **REQ-CBN-010** — **While** 한 줄이 「산문 언급」으로 판정돼 있다, 개정자는 그 줄의 문면을 바꾸어서는 안 된다.
 - **REQ-CBN-011** — `invoke Skill("<name>")` 41줄의 문면은 유지되어야 한다. 그 41줄의 덮개는 문면 개정이 아니라 `AGENTS.md` 두 사본에 실리는 한 문장이며, 그 문장은 코덱스 하네스가 같은 스킬을 `.agents/skills/<name>/SKILL.md` 에서 읽는다는 사실을 적어야 한다.
 - **REQ-CBN-012** — **When** 개정이 끝난다, 골든 재생성이 실행되어 TOML 이 중립 소스와 정합해야 한다.
@@ -232,6 +242,6 @@ AC 의 SSOT 는 `acceptance.md` 이고, 각 판정이 자기 행에 `maps REQ-�
 ## §F. 자기 검증
 
 - 기준선 재측정: `.moai/reports/t497/measurement.md`(`c9b226b22`) + 이 SPEC 작성 중 같은 트리 재실행. 정정 3건은 §A.2. 수리 라운드에서 §B.4 좌표·§C.5 반경·덮개 기준선을 `845dd65af` 에서 다시 쟀다.
-- 미해결 마커: **0건.** ① 은 §A.2 정정 2 의 해소로 철회, ② 는 §D 의 운영자 결정 기록으로 전환했다. 검증: `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → 무출력.
+- 미해결 마커: **0건.** ① 은 §A.2 정정 2 의 해소로 철회, ② 는 §D 의 운영자 결정 기록으로 전환했다. 검증(이 실행에서 실행): `grep -rnE '\[NEEDS[[:space:]]CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → **무출력, rc 1**. 셀렉터를 `'NEEDS'` 로 넓게 잡으면 이 문장 자신이 걸려 **명령이 자기 주장을 반증한다**(§G AP-6). 마커 모양을 요구하되 그 요구를 `[[:space:]]` 로 표기해, 셀렉터가 스스로 마커가 되지 않게 한다.
 - SPEC ID 정규식: `[[ "SPEC-CODEX-BODY-NEUTRALITY-001" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]]` → `PASS`.
 - ID 유일성: `ls -d .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001` → `No such file or directory`(작성 전 실측).

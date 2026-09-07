@@ -131,18 +131,30 @@ sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md | grep -c '^| [a-z]'
 - **When** 실행한 명령 목록을 읽으면,
 - **Then** `go test ./...` 형태의 전체 스위트 실행이 없다. `./internal/template/agentemit/...` 와 `./internal/config/`(예산 가드) 두 범위만 나타난다.
 
-### AC-CBN-013 — `Agent(` 축의 지시 4줄이 능력 이름을 부른다 (must-pass) · maps REQ-CBN-009
+### AC-CBN-013 — `manager-lead` 의 지시 줄이 **전부** 능력 이름을 부른다 (must-pass) · maps REQ-CBN-009
 
-- **Given** M3·M4 가 끝났다,
-- **When** `grep -c 'subagent-spawn' internal/template/templates/.codex/agents/moai/manager-lead.toml` 을 돌리면,
-- **Then** 출력이 **4 이상**(줄 단위)이고, 분류표에서 `manager-lead.toml:37,57,59,193` 네 좌표가 `verdict=directive` · `subject=this-agent` 로 판정돼 있다. 착수 전 실측 **0** — 아무것도 하지 않으면 통과할 수 없다.
+- **Given** M2 분류표(`.moai/reports/t497/body-classification.md`)가 있고 M3·M4 가 끝났다,
+- **When** 같은 판정에서 두 값을 재면,
+
+  ```
+  N = grep -cE '^\| [^|]*manager-lead\.toml \| [0-9]+ \| Agent\( \| directive \|' \
+        .moai/reports/t497/body-classification.md
+  M = grep -c 'subagent-spawn' \
+        internal/template/templates/.codex/agents/moai/manager-lead.toml
+  ```
+
+- **Then** 세 조건이 모두 성립한다. (a) **N ≥ 4** 이고, §B.4 가 경계 표본으로 든 `37,57,59,193` 네 좌표가 그 directive 행 집합에 **전부** 들어 있다. (b) **M ≥ N** — 개정된 줄 수가 분류가 지시로 센 줄 수 이상이다. (c) 착수 전 실측 **M = 0** — 아무것도 하지 않으면 통과할 수 없다.
+- **왜 상수 4 가 아니라 N 인가.** 상수 4 에 묶으면 이 파일의 나머지 6줄 중 하나가 지시로 판정돼도 판정은 초록으로 남는다 — 코덱스 하네스에 클로드 서브에이전트 스폰을 지시하는 줄이 그대로 살아 있는데도. 그것이 이 SPEC 이 막으려는 바로 그 실패다. N 에 묶으면 M2 가 지시로 센 줄이 하나라도 개정되지 않은 순간 (b) 가 깨진다. 모집단은 이 트리 실측 `grep -c 'Agent(' …/manager-lead.toml` → **10** 이고, M2 ③ 이 81줄 전수 좌표 대응을 `diff` 로 증명하므로 그 10줄 중 미분류로 남는 줄은 없다.
+- **[HARD] 개정은 지시 줄을 병합하지 않는다.** 두 지시 줄을 한 줄로 합치면 M < N 이 되어 (b) 가 **거짓 RED** 를 낸다. 병합이 필요하다고 판단되면 그것은 설계 변경이므로 상신 대상이지, 판정을 느슨하게 할 사유가 아니다.
+- **셀렉터는 M2 표기에 묶인다.** N 의 셀렉터는 분류표의 `token` 열이 합집합 패턴의 **리터럴 토큰**(`Agent(`)을 그대로 싣는다는 전제 위에 있다(`plan.md` §F M2 열 정의). 표기가 다르면 N 이 0 이 되어 (a) 가 먼저 깨지므로, 이 어긋남은 조용히 통과하지 않는다.
 - **결속행 참조를 만들지 않는다.** `subagent-spawn` 은 능력 존재로 확정됐으므로 결속표에 행이 없다(`spec.md` §A.2 정정 2). 네 줄은 능력 이름을 부르고 코덱스 쪽 대체 행동을 본문에 직접 적는다.
 
 ### AC-CBN-014 — `manager-design` 사다리에 능력 부재 시 행동이 붙었다 (must-pass) · maps REQ-CBN-009
 
 - **Given** M3·M4 가 끝났다,
-- **When** `grep -oE '[^/]design-sync' internal/template/templates/.codex/agents/moai/manager-design.toml | wc -l` 과 `grep -c 'default = DesignSync tool push' …/manager-design.toml` 을 같은 판정에서 돌리면,
+- **When** `grep -oE '(^|[^/])design-sync' internal/template/templates/.codex/agents/moai/manager-design.toml | wc -l` 과 `grep -c 'default = DesignSync tool push' …/manager-design.toml` 을 같은 판정에서 돌리면,
 - **Then** 앞은 **1 이상**(발생 단위, 착수 전 실측 **0**), 뒤는 **1 불변**(사다리 문면 무손상). 앞의 셀렉터가 `[^/]` 를 요구하는 이유: 이 파일의 기존 `design-sync` 4건은 **전부 `/design-sync` 슬래시 커맨드**이므로 맨 `grep -c 'design-sync'` 는 착수 전에도 4를 내어 공허하다.
+- **`(^|` 갈래가 없으면 안 되는 이유.** `[^/]design-sync` 만 쓰면 토큰 **앞에 한 글자**를 요구하므로 줄 **머리**에 오는 `design-sync` 를 못 잡는다. 요구한 문단이 실재해도 0 이 나와 **거짓 RED** 가 된다 — 안전한 방향의 결함이지만(거짓 PASS 는 만들지 않는다) run-phase 왕복을 한 번 문다. 두 형태 모두 착수 전 실측 **0** 이므로 기대값은 바뀌지 않는다.
 
 ---
 
@@ -170,5 +182,5 @@ sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md | grep -c '^| [a-z]'
 - AC-CBN-001..014 전부 PASS, 각 판정에 명령·축자 출력·단위(발생 수 / 줄 수)가 붙어 있다.
 - `.moai/reports/t497/body-classification.md` 와 `capability-absence.md` 가 존재하고 커밋돼 있다(증거는 재측정 **앞에** 커밋한다 — 그래야 트리 동일성 델타가 성립한다).
 - `SPEC-CODEX-SKILL-NEUTRAL-001` REQ-CSN-003 의 「현재 측정값 4행」이 3행으로 정정되고 그 SPEC HISTORY 에 Amendments 1행이 남아 있다(AC-CBN-006 (d)).
-- 미해결 마커 **0건** — `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` 무출력. ① 은 철회, ② 는 `spec.md` §D 의 운영자 결정 기록으로 전환됐다(`plan.md` §E).
+- 미해결 마커 **0건** — `grep -rnE '\[NEEDS[[:space:]]CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` 가 **무출력·rc 1**(이 실행에서 실행). 셀렉터 자신이 마커 모양이 아니므로 이 완료 정의 항목이 자기 자신을 세지 않는다 — 넓은 `'NEEDS'` 로 잡으면 이 줄이 걸려 완료 정의가 영원히 불만족이 된다. ① 은 철회, ② 는 `spec.md` §D 의 운영자 결정 기록으로 전환됐다(`plan.md` §E).
 - M5(미러 스킬 77파일)는 운영자가 착수를 지시하지 않는 한 완료 정의에 들어가지 않는다.

@@ -47,7 +47,7 @@ git status --short              # 착수 시 추적 파일 수정 0 이어야 �
 - **① 코덱스 능력 부재 측정 가능 여부 — 철회.** 물음 자체가 사라졌다. 부재 판정은 코덱스 프로브가 아니라 `agents-codex.yaml` rationale 을 판별식으로 삼는 문면 대조로 답해지며, 그 대조는 이미 끝났다(§B-2 · `spec.md` §A.2 정정 2). 운영자가 결정할 것이 남아 있지 않으므로 마커가 아니라 **결론**이다.
 - **② M5 미러 스킬 77파일 착수 여부 — 운영자 결정으로 기록.** 이것은 트리 증거로 결정되지 않는 진짜 범위 결정이다. 기본값(**분리**)과 대안(**이 카드에서 착수**)을 대가와 함께 `spec.md` §D 마지막 절에 적었다. 레인은 Implementation Kickoff Approval 에서 그 두 갈래를 그대로 상신하고, 답이 없으면 기본값이 선다.
 
-검증: `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → **무출력**(수리 전 실측: `plan.md:45` · `plan.md:46` 2건).
+검증(이 실행에서 실행): `grep -rnE '\[NEEDS[[:space:]]CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → **무출력, rc 1**. 셀렉터는 **마커 모양**(`[NEEDS` + 공백 + `CLARIFICATION`)을 요구하고, 여기에 적힌 형태는 그 사이가 `[[:space:]]` 라 **자기 자신에 매치하지 않는다**. 종전의 `grep -rn 'NEEDS'` 는 이 검증 문장 자신을 세어 3줄을 냈다 — §G AP-6(자기참조 수치)을 이 SPEC 의 자기검증에 그대로 저지른 꼴이었다. 수리 전 마커 실측(v0.1.0): `plan.md:45` · `plan.md:46` 2건.
 
 ---
 
@@ -70,6 +70,7 @@ git status --short              # 착수 시 추적 파일 수정 0 이어야 �
   sed -n '/^tool_classes:/,/^$/p' internal/template/agentemit/agents-codex.yaml \
     | grep -oE ': [a-z-]+$' | sed 's/^: //' | sort -u
   ```
+  **[HARD] 트랩 1건 — `moai-mcp` 는 `present` 로 판정된다.** 11개 중 유일하게 rationale 이 `unavailable` 이라는 낱말을 실은 채 능력이 존재하는 클래스다(부재한 것은 서버 안 도구별 필터링). 판정은 낱말이 아니라 `spec.md` §A.2 정정 2 의 verdict 판별식으로 한다 — 낱말로 키를 잡으면 아래 ② 가 **3 이 아니라 4** 를 내고 ③ 과 갈린다.
 - 산출 2: `SPEC-CODEX-SKILL-NEUTRAL-001` `spec.md` REQ-CSN-003 문면의 **"현재 측정값 4행" → "현재 측정값 3행"** 정정 + 그 SPEC HISTORY 에 Amendments 1행(정정 근거와 이 SPEC ID). 요구사항의 **의미는 바꾸지 않는다** — 파생 기준 문장은 그대로 두고 스테일한 실측 수치만 갈아쓴다. 같은 파일 `:266` 의 「4행 = 373 B」는 후보 표의 크기 측정 기록이므로 **손대지 않는다.**
 
 검증 명령 · 기대 출력(사전 고정). **①②④⑤ 는 착수 전 트리에서 기대 출력을 내지 못한다 — 아무것도 하지 않으면 M1 은 통과할 수 없다.**
@@ -91,6 +92,7 @@ git status --short              # 착수 시 추적 파일 수정 0 이어야 �
 ### M2 — 84건 전수 분류 (우선순위 High)
 
 - 산출: `.moai/reports/t497/body-classification.md` — 84행 표. 열은 `file` · `line` · `token` · `verdict(directive|prose)` · `subject(this-agent|orchestrator|prohibition|n/a)` · `rationale`. `subject` 는 **세 값 + n/a** 다(`spec.md` §B.4 — 금지 서술을 두 값 중 하나로 밀어 넣으면 분류가 거짓이 된다).
+- **[HARD] `token` 열은 ② 합집합 패턴의 리터럴 토큰을 그대로 싣는다** — `Agent(` · `Skill(` · `AskUserQuestion` · `DesignSync` · `TaskCreate` · `TaskUpdate` · `TaskList` · `TaskGet`. AC-CBN-013 의 N 셀렉터가 이 표기에 묶여 있다(다른 표기를 쓰면 N 이 0 이 되어 그 AC 가 먼저 깨진다).
 - 판정 규칙은 `spec.md` §B.4.
 
 | # | 명령 | 기대 출력 | 착수 전 실측 |
@@ -112,7 +114,7 @@ M2 가 `directive` 로 판정한 항목만 고친다. **편집 대상은 `intern
 | `manager-develop.md:103,128` (Task\*) | `task-list` 능력 이름으로 고쳐 씀 |
 | `e2e-tester.md:146` (Task\*) | 같음 |
 | `manager-design.md:115` 우선순위 사다리 | 사다리 **문면 유지** + `design-sync` 부재 시 행동 1문단 추가 |
-| `manager-lead.md:44,64,66,200` 자기 스폰 4줄 | `subagent-spawn` 능력 이름을 부르도록 고쳐 씀. **결속행 참조는 만들지 않는다** — `subagent-spawn` 은 능력 존재이므로 행이 없다 |
+| `manager-lead.md` 에서 **M2 가 `directive` 로 판정한 `Agent(` 줄 전부** | `subagent-spawn` 능력 이름을 부르도록 고쳐 씀. 좌표가 아니라 **성질**로 정의된 부류다(`spec.md` §B.4 · REQ-CBN-009). §B.4 경계 표본 = 소스 `44,64,66,200`(TOML `37,57,59,193`); M2 가 반드시 판정할 추가 후보 = 소스 `179,268`(TOML `172,261`). **줄을 병합하지 않는다**(AC-CBN-013 (b)). **결속행 참조는 만들지 않는다** — `subagent-spawn` 은 능력 존재이므로 행이 없다 |
 | `AGENTS.md` 두 사본 결속표 문단 | `invoke Skill(` 41줄의 덮개 1문장 추가(`.agents/skills/<name>/SKILL.md`). 두 사본을 **같은 내용으로** |
 | `invoke Skill(` 41줄 자체 | **손대지 않음** |
 
@@ -122,8 +124,8 @@ M2 가 `directive` 로 판정한 항목만 고친다. **편집 대상은 `intern
 |---|---|---|---|
 | ① | `grep -rhoE 'Task(Create\|Update\|List\|Get)' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **0** (발생 단위) | 4 발생 / 3 줄 (RED) |
 | ② | `grep -rn 'task-list' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **3 이상** (줄 단위) | **0** (RED) |
-| ③ | `grep -c 'subagent-spawn' internal/template/templates/.codex/agents/moai/manager-lead.toml` | **4 이상** (줄 단위) | **0** (RED) |
-| ④ | `grep -oE '[^/]design-sync' internal/template/templates/.codex/agents/moai/manager-design.toml \| wc -l` | **1 이상** (발생 단위) | **0** — 기존 4건은 전부 `/design-sync` 슬래시 커맨드 (RED) |
+| ③ | `grep -c 'subagent-spawn' internal/template/templates/.codex/agents/moai/manager-lead.toml` | **N 이상** (줄 단위 — N = M2 분류표의 `manager-lead.toml` · `Agent(` · `directive` 행 수, N ≥ 4. 상수 4 가 아닌 이유는 AC-CBN-013) | **0** (RED) |
+| ④ | `grep -oE '(^\|[^/])design-sync' internal/template/templates/.codex/agents/moai/manager-design.toml \| wc -l` | **1 이상** (발생 단위) | **0** — 기존 4건은 전부 `/design-sync` 슬래시 커맨드 (RED). `(^\|` 갈래는 줄 머리 발생을 놓쳐 생기는 거짓 RED 를 막는다(AC-CBN-014) |
 | ⑤ | `grep -c 'default = DesignSync tool push' internal/template/templates/.codex/agents/moai/manager-design.toml` | **1 불변** | 1 |
 | ⑥ | `grep -c '\.agents/skills' AGENTS.md` | **1 이상** | **0** (RED) |
 | ⑦ | `grep -c '\.agents/skills' internal/template/templates/AGENTS.md` | ⑥ 과 **같은 값** | 0 (RED) |
