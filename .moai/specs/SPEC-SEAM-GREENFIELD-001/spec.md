@@ -19,7 +19,7 @@ related_specs: [SPEC-WEB-WRITE-SAFETY-001, SPEC-MCP-CONSOLE-001, SPEC-PRECOMMIT-
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
-| 0.1.0 | 2026-09-08 | GOOS | 최초 draft. 카드 t544 (Class B — 결함, 원인 특정 완료). 결함 체인 6곳 plan-phase 직접 확인(트리 `52f863f36`, 2026-09-08). 카드 전제 대비 정정 2건: (1) 디스패치의 `TestPatchFileValueInvariantPreservesBytes` 인용은 드리프트 — 해당 이름의 테스트는 실재하지 않고 주석 참조만 존재(`yamlpatch.go:58`); (2) 기존 서브테스트 `TestYAMLPatchAtomicWriteErrors/"stat missing target"`(`yamlpatch_test.go:383-389`)가 결함 동작을 기대값으로 인코딩 중 — 수리 시 기대를 뒤집어 재작성하는 것이 통제 유지가 아니라 통계의 일부다. |
+| 0.1.0 | 2026-09-08 | GOOS | 최초 draft. 카드 t544 (Class B — 결함, 원인 특정 완료). 결함 체인 6곳 plan-phase 직접 확인(트리 `52f863f36`, 2026-09-08). 카드 전제 대비 정정 1건: 기존 서브테스트 `TestYAMLPatchAtomicWriteErrors/"stat missing target"`(`yamlpatch_test.go:383-389`)가 결함 동작을 기대값으로 인코딩 중 — 수리 시 기대를 뒤집어 재작성하는 것이 통제 유지가 아니라 통계의 일부다. 디스패치의 `TestPatchFileValueInvariantPreservesBytes` 인용은 유효했다 — 테스트는 settings 패키지 외부 테스트 `internal/settings/write_safety_test.go:29`에 실재한다(plan-phase 초안의 부재 판정은 grep 범위가 yamlpatch 패키지에 한정돼 settings 패키지 테스트를 놓친 오판정이었고, 후속 커밋에서 수리됐다). |
 
 ---
 
@@ -112,7 +112,7 @@ When a mutant probe reverts the fix and a guard fails to catch the reversion, th
 
 ### AC-005 — 통제군: 기존 불변 무손상
 
-- **Given** 존재하는 섹션 파일들, **When** 현행 스칼라 치환·upsert·다중 편집 흐름이 실행, **Then** 실존 통제 테스트군이 GREEN을 유지한다 — `TestYAMLPatchScalarReplace_WorkflowFixture`, `TestYAMLPatchPreservesQuotedStyle`, `TestYAMLPatchPreservesTypedScalars`, `TestYAMLPatchMultiEditSingleWrite`(`yamlpatch_test.go`) + `TestApplySchemaEditsSeamRoundTrip`, `TestApplySchemaEditsGateSeamRoundTrip`, `TestApplySchemaEditsAllFieldsRoundTrip`(`internal/settings`). (정정: 디스패치가 인용한 `TestPatchFileValueInvariantPreservesBytes`는 실재하지 않는다 — `yamlpatch.go:58` 주석 참조만 존재하며, 본 SPEC은 실존 테스트명으로 통제군을 재고정했다.)
+- **Given** 존재하는 섹션 파일들, **When** 현행 스칼라 치환·upsert·다중 편집 흐름이 실행, **Then** 실존 통제 테스트군이 GREEN을 유지한다 — PatchFile 직접 통제군 `TestPatchFileValueInvariantPreservesBytes`(`write_safety_test.go:29`), `TestPatchFileScalarChangePreservesPresentation`(`:52`), `TestPatchFileSpliceFallsBackForUpsert`(`:320`), `TestPatchFileSpliceQuotedScalarChange`(`:341`) + yamlpatch 패키지 `TestYAMLPatchScalarReplace_WorkflowFixture`, `TestYAMLPatchPreservesQuotedStyle`, `TestYAMLPatchPreservesTypedScalars`, `TestYAMLPatchMultiEditSingleWrite`(`yamlpatch_test.go`) + settings 스키마 패밀리 `TestApplySchemaEditsSeamRoundTrip`, `TestApplySchemaEditsGateSeamRoundTrip`, `TestApplySchemaEditsAllFieldsRoundTrip`(`internal/settings`).
 
 ### AC-006 — 뮤턴트 채득 의무 (RED 진실의 판별 증거)
 

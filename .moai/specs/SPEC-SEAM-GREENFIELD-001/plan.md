@@ -22,7 +22,7 @@ tier: S
 ## §B Known Issues (본 SPEC 도메인 관련만)
 
 - **B-a (기대 전환 대상)**: `TestYAMLPatchAtomicWriteErrors/"stat missing target"`(`internal/settings/yamlpatch/yamlpatch_test.go:383-389`)가 absent 대상 오류를 기대값으로 인코딩 중 — 수리와 **함께** 재작성해야 한다. 재작성을 잊으면 수리 후 이 테스트가 RED로 남아 수리를 가린다.
-- **B-b (드리프트 인용)**: `TestPatchFileValueInvariantPreservesBytes`라는 테스트는 실재하지 않는다(`yamlpatch.go:58` 주석 참조만). 통제군은 실존 테스트명으로 재고정됐다(spec.md AC-005).
+- **B-b (부재 판정의 스캔 범위)**: plan-phase 초안이 "`TestPatchFileValueInvariantPreservesBytes`는 실재하지 않는다"고 판정한 것은 오판정이었다 — grep 범위가 yamlpatch 패키지에 한정돼 settings 패키지 외부 테스트를 보지 못했다. 실재 위치: `internal/settings/write_safety_test.go:29`. PatchFile 직접 통제군은 그 파일의 4건이다(`:29`·`:52`·`:320`·`:341` — spec.md AC-005). 부재 주장은 스캔 범위를 명시하고, 그 범위 밖의 패키지까지 확장해 재측정해야 한다.
 - **B-c (vacuous-green)**: 웹 가드의 제출이 값-불변 no-op이면 C6 게이트(`internal/settings/sectionapply.go:56-80`)가 조용히 건너뛰어 수리 없이도 통과한다. 실변경 제출 형태만 유효하다(spec.md AC-004).
 - **B-d (부재-가드 채택 규율)**: absence-guard AC는 RED-now만으로 채택될 수 없다 — 뮤턴트가 유일한 판별 증거이고, 못 잡은 뮤턴트도 기록해야 가드의 경계가 그려진다(spec.md REQ-8/AC-006; `.claude/rules/moai/development/verification-completeness.md` §2).
 - **B-e (셸 grep)**: 이 트리의 셸 `grep`은 ugrep 래퍼로 조용히 건너뛴다 — 부재 주장 증거는 `/usr/bin/grep` 또는 `-a`로 채득한다.

@@ -12,7 +12,7 @@ plan_artifacts:
   - .moai/specs/SPEC-SEAM-GREENFIELD-001/plan.md
 plan_baseline_tree: "52f863f36"   # plan-phase 산출물 저작 기준 트리 (WT-save-absent-file)
 tier: S
-notes: "근거 앵커 8곳 spec.md §1.2 직접 확인(트리 52f863f36). 카드 전제 정정 2건 — HISTORY 0.1.0 및 plan.md §B-a/§B-b. run-phase 착수 시 §C content-token 재검증 선행."
+notes: "근거 앵커 8곳 spec.md §1.2 직접 확인(트리 52f863f36). 카드 전제 정정 1건 — 결함을 인코딩한 기존 서브테스트(plan.md §B-a, AC-003). 통제군 존재 오판정 수리 1건 — TestPatchFileValueInvariantPreservesBytes는 write_safety_test.go:29에 실재(plan.md §B-b, AC-005, HISTORY). run-phase 착수 시 §C content-token 재검증 선행."
 ```
 
 ## §E.2 Run-phase Evidence
