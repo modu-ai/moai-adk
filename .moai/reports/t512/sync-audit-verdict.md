@@ -105,3 +105,5 @@ Every figure above was measured in this run, in this session, against this workt
 | **Harmonic mean** | **0.96** | |
 
 **Verdict: PASS** (Tier M threshold cleared; no must-fail finding. The three Minor findings — CHANGELOG source-scope wording, M3 "deterministically", draft-posting obligation — are recorded for the lead; none blocks the close. The M3 softening is worth one line before the draft is ever submitted.)
+
+**Post-verdict tool re-verification (lead advisory, 2026-09-07)**: this shell's `grep` is a ugrep wrapper that silently skips binary-suspected and gitignored files, so every plain-`grep` 0 in this card was re-measured with `/usr/bin/grep` before window entry. Results identical: the refusal sentence hits exactly one file under `internal/` + `.claude/hooks/` — the doctrine markdown itself (`internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md`), zero `.go`/`.sh` source hits; template neutrality 0/rc=1; anchors 3 and 2 unchanged. The ownership finding ("no repository source implements or configures this check") survives the tooling correction.
