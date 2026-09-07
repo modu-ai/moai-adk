@@ -431,7 +431,7 @@ AC 식별자를 새로 만들지 않고 기존 AC-SLB-005를 구체화했으므�
 - 창을 열기 전과 닫은 뒤 `git status --porcelain`을 각각 읽었고, 두 번 모두 미추적 1건(`.moai/reports/t518/ma3-merged-spec-tests.txt`)뿐이었다. 이 경로는 `.moai/reports/` 아래라 lint 코퍼스(`.moai/specs/`)에 들어가지 않는다. `git rev-parse HEAD`도 창 전후로 같은 값이었다.
 - 측정 명령은 전부 전경에서 하나씩 돌렸다 — 배경 작업을 만들지 않았으므로 측정 중 트리에 쓰는 것이 없다.
 - **원격은 이 앵커 이후 `bce6d7e08`까지 움직였다.** 재흡수는 하지 않았다 — 측정 도중 코퍼스를 갈아 끼우면 비교 대상 자체가 사라진다. 앵커가 낡은 것이 아니라 의도적으로 고정된 것임을 뒤에 읽는 사람이 알도록 적어 둔다.
-- **이 기록 자체가 코퍼스 안에 있다 — 그래서 쓴 뒤 다시 쟀다.** 이 §E.2 M-A3 절을 `progress.md`에 쓴 직후 같은 바이너리로 재실행: `0 error(s), 4757 warning(s)`(rc=0). 총계는 움직이지 않았고, 이 SPEC 디렉터리의 기여도 `spec.md`의 `CoverageIncomplete` 14건 그대로다 — `progress.md`는 0건을 낸다. 본문이 `origin/develop`·`bce6d7e08`을 언급하지만 `MovingRefUnpinned`는 115에서 움직이지 않았다.
+- **이 기록 자체가 코퍼스 안에 있다 — 그래서 쓴 뒤 다시 쟀다.** 이 §E.2 M-A3 절을 `progress.md`에 쓴 직후 같은 바이너리로 재실행: `0 error(s), 4757 warning(s)`(rc=0). 총계는 움직이지 않았고, 이 SPEC 디렉터리의 기여도 `spec.md`의 `CoverageIncomplete` 14건 그대로다 — `progress.md`는 0건을 낸다. 본문이 `origin/develop`·`bce6d7e08`을 언급하지만 `MovingRefUnpinned`는 115에서 움직이지 않았다. 그 재실행 뒤에 이 절을 두 번 더 손봤으므로(이 줄과 증거 표) **커밋된 상태에서 세 번째로 다시 쟀다**: 역시 `0 error(s), 4757 warning(s)`, 15개 코드 카운트 전부 일치(`diff` 무출력). 한 번의 판독은 순간의 관측이라는 성질이 이 절 자신에게도 걸린다.
 
 #### 계측기 — 설치된 바이너리는 쓰지 않았다
 
