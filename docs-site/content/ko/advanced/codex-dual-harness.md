@@ -30,9 +30,9 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을 
 
 ## `internal/codexadapter` — 훅 어댑터 라이브러리
 
-두 하네스의 훅 표면은 거의 같지만 완전히 같지는 않습니다. 실측(codex-cli 0.147.0 기준)에서 갈린 지점은 정확히 두 가지: 하네스가 넘기는 **이벤트 이름**, 그리고 codex가 선언은 하지만 실제로는 반응하지 않는 **출력 키 세 개**(`systemMessage`·`continue`·`stopReason`)입니다. 나머지는 전부 동일하게 측정됐으므로, `internal/codexadapter`는 디스패처 **앞에** 앉는 얇은 번역층이고 `internal/hook`은 건드리지 않습니다.
+두 하네스의 훅 표면은 거의 같지만 완전히 같지는 않습니다. 실측(codex-cli 0.153.4 기준)에서 갈린 지점은 정확히 두 가지: 하네스가 넘기는 **이벤트 이름**, 그리고 codex가 선언은 하지만 실제로는 반응하지 않는 **출력 키 세 개**(`systemMessage`·`continue`·`stopReason`)입니다. 나머지는 전부 동일하게 측정됐으므로, `internal/codexadapter`는 디스패처 **앞에** 앉는 얇은 번역층이고 `internal/hook`은 건드리지 않습니다.
 
-### 11-이벤트 표
+### 12-이벤트 표
 
 | Codex 이벤트 | MoAI 디스패처 인자 | 이 마일스톤에서 적응? |
 |---|---|---|
@@ -42,19 +42,20 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을 
 | SessionEnd | `session-end` | 예 |
 | Stop | `stop` | 예 |
 | UserPromptSubmit | `user-prompt-submit` | 예 |
-| PreCompact | `compact` | 아니오 — 측정 없음 |
-| PostCompact | `post-compact` | 아니오 — 측정 없음 |
-| PermissionRequest | `permission-request` | 아니오 — 측정 없음 |
-| SubagentStart | `subagent-start` | 아니오 — 측정 없음 |
-| SubagentStop | `subagent-stop` | 아니오 — 실측에서 발화되지 않음 |
+| PreCompact | `compact` | 아니오 — 비대화형 실행에서 압축이 한 번도 촉발되지 않음 |
+| PostCompact | `post-compact` | 아니오 — 비대화형 실행에서 압축이 한 번도 촉발되지 않음 |
+| PermissionRequest | `permission-request` | 아니오 — 비대화형 실행에서 승인 요청이 발화되지 않음 |
+| SubagentStart | `subagent-start` | 예 |
+| SubagentStop | `subagent-stop` | 예 |
+| Interrupt | — (대응물 없음) | 아니오 — SIGINT에서 발화; 적응에는 새 디스패처 서브커맨드 필요(후속 카드) |
 
-11개 전부에 디스패처 대응물이 존재합니다. 적응에서 제외하는 것은 측정 커버리지에 관한 범위 결정이지 대응물의 부재가 아닙니다. SubagentStop이 특별한 이유: 실측에서 **한 번도 발화되지 않았습니다** — codex에서 위임은 도구 이름이 "collaboration"으로 시작하는 PostToolUse로 드러나므로, 이를 연결하면 절대 흐르지 않는 경로에 선을 얹는 셈입니다.
+열두 개 이벤트를 다룹니다: 열한 개에는 디스패처 대응물이 존재하고, 공식 문서화된 12번째 이벤트 `Interrupt`는 대응물이 생길 때까지 별도의 no-counterpart 메시지로 인식 후 거부됩니다. codex-cli 0.153.4 실측에서 `SubagentStart`와 `SubagentStop`은 **발화가 확인됐고**(SubagentStop이 발화하지 않는다는 이전 0.147.0 관측을 뒤집은 결과) 지금은 적응됐습니다 — `RenderHooks`가 사용자 `.codex/hooks.json`에 `moai hook subagent-start --harness codex`와 `moai hook subagent-stop --harness codex` 줄을 심습니다. compact·permission 계열은 추정이 아니라 정직한 근거로 보류됐습니다: 비대화형 `codex exec` 실행은 압축에 도달하지 못했고(측정된 입력 상한 1,048,576자 대비 최선 264,808 입력 토큰) 승인 요청도 끌어내지 못했습니다 — "발화하지 않는다"가 아니라 **촉발 미달성**으로 기록됩니다.
 
-미적응 이벤트는 묵살되지 않고 **거부**됩니다. 미확인 이벤트(오타)와 인식되었으나 이번엔 다루지 않는 이벤트(범위 결정)가 서로 다른 오류로 구분되므로, 운영자는 실수와 결정을 가려낼 수 있습니다. 설정 검증기는 알 수 없는 키 위반을 첫 번째에서 멈추지 않고 **전부 수집해** 한꺼번에 보여줍니다.
+미적응 이벤트는 묵살되지 않고 **거부**됩니다. 미확인 이벤트(오타)와 인식되었으나 다루지 않는 이벤트(범위 결정 또는 `Interrupt`처럼 대응물 부재)가 서로 다른 오류로 구분되므로, 운영자는 실수와 결정을 가려낼 수 있습니다. 설정 검증기는 알 수 없는 키 위반을 첫 번째에서 멈추지 않고 **전부 수집해** 한꺼번에 보여줍니다.
 
-### 아직 호출부가 없다
+### 지금 호출부는 어디인가
 
-{{< icon warning warn >}} 이 패키지는 라이브러리로 출하된 상태이고 **아무것도 이것을 호출하지 않습니다**. `--agent` 설정 생성기(생성된 codex 설정 파일에 어댑터를 배선하는 뒤따르는 카드)가 연결을 완성합니다. 지금 시점에서 이 문서는 배선이 될 자리의 지도이지, 켜진 스위치의 사용 설명서가 아닙니다.
+어댑터는 더 이상 호출부가 없는 상태가 아닙니다 — `RenderHooks`가 적응된 서브에이전트 훅 두 줄(`moai hook subagent-start --harness codex`, `moai hook subagent-stop --harness codex`)을 사용자 `.codex/hooks.json`에 기록합니다. 나머지 이벤트는 여전히 `--agent` 설정 생성기(생성된 codex 설정 파일에 어댑터를 배선하는 후속 카드)를 기다리므로, 그 범위에서는 이 문서가 배선이 될 자리의 지도로 남습니다.
 
 ## 다음 단계
 

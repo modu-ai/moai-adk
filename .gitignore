@@ -131,6 +131,10 @@ logs/*
 # re-include the template subtree excluded by the bare .codex/ rule above.
 !internal/template/templates/.codex/
 .agents/
+# Template-distributed Codex command-skill publications ARE committed
+# (SPEC-CODEX-COMMAND-SKILLS-001); re-include the template subtree excluded
+# by the bare .agents/ rule above.
+!internal/template/templates/.agents/
 # AGENTS.md is NOT ignored: the root file is this repository's tracked contract
 # document, and the template mirror ships it to users.
 

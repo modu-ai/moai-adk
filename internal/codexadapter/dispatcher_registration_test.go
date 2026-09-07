@@ -38,6 +38,14 @@ func TestDispatcherArgsExist(t *testing.T) {
 	}
 
 	for _, row := range EventTable {
+		if row.DispatcherArg == "" {
+			// Interrupt has no MoAI dispatcher counterpart; an empty arg is
+			// the marker (SPEC-CODEX-EVENT-COVERAGE-001 §D1). An empty arg
+			// would trivially fail the registration lookup, so skip it — the
+			// assertion stays meaningful only for rows that claim a
+			// registration.
+			continue
+		}
 		if !registered[row.DispatcherArg] {
 			t.Errorf("%s maps to dispatcher arg %q, which is not registered in %s",
 				row.CodexEvent, row.DispatcherArg, dispatcherSourceRel)

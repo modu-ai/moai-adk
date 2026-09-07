@@ -65,6 +65,44 @@ func TestRenderHooks_FreshProjectCoversAdaptedEvents(t *testing.T) {
 	}
 }
 
+// TestRenderHooks_InterruptNeverInstalled verifies the Interrupt row (added
+// unadapted by SPEC-CODEX-EVENT-COVERAGE-001 M1) never reaches the install
+// surface: the rendered document carries no Interrupt event key and no
+// Interrupt handler command, so adding the row changed nothing in
+// .codex/hooks.json (AC-CEV-005, REQ-CEV-004).
+func TestRenderHooks_InterruptNeverInstalled(t *testing.T) {
+	rendered, err := RenderHooks(nil)
+	if err != nil {
+		t.Fatalf("RenderHooks(nil): %v", err)
+	}
+	var doc struct {
+		Hooks map[string]json.RawMessage `json:"hooks"`
+	}
+	if err := json.Unmarshal(rendered, &doc); err != nil {
+		t.Fatalf("parse rendered hooks: %v\n%s", err, rendered)
+	}
+	if _, ok := doc.Hooks["Interrupt"]; ok {
+		t.Errorf("Interrupt event key rendered into hooks.json — the unadapted row must be skipped:\n%s", rendered)
+	}
+	if strings.Contains(string(rendered), "Interrupt") {
+		t.Errorf("rendered bytes mention Interrupt anywhere (event key or handler):\n%s", rendered)
+	}
+	// Merged renders over an existing document carry the same guarantee.
+	merged, err := RenderHooks([]byte(`{"hooks":{"Interrupt":[{"hooks":[{"type":"command","command":"user-interrupt-hook"}]}]}}`))
+	if err != nil {
+		t.Fatalf("RenderHooks(existing Interrupt doc): %v", err)
+	}
+	var mdoc struct {
+		Hooks map[string]json.RawMessage `json:"hooks"`
+	}
+	if err := json.Unmarshal(merged, &mdoc); err != nil {
+		t.Fatalf("parse merged hooks: %v", err)
+	}
+	if _, ok := mdoc.Hooks["Interrupt"]; !ok {
+		t.Errorf("user-owned Interrupt entry dropped by the merge — only MoAI's own unadapted row must be skipped:\n%s", merged)
+	}
+}
+
 // TestRenderHooks_CommandsResolveToDispatcherArgs verifies every emitted
 // handler command is `moai hook <arg> --harness codex` with <arg> exactly the
 // EventTable's dispatcher arg for that event (AC-CW-002b, REQ-CW-002).
