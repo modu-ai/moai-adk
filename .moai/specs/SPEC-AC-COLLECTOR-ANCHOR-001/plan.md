@@ -8,7 +8,7 @@
 
 ## §A 맥락
 
-`ParseAcceptanceCriteria`가 AC 절 안에서 도달한 선언 줄 1167개(판별식 B, 정본 기준선) 중 216개(18.5%)만 수용한다. 사용자에게 드러나는 자리는 `moai spec view <ID> --acceptance`이며, 101개 SPEC이 `No acceptance criteria found`를 출력한다.
+`ParseAcceptanceCriteria`가 AC 절 안에서 도달한 선언 줄 1167개(판별식 B, 정본 기준선) 중 216개(18.5%)만 수용한다. 사용자에게 드러나는 자리는 `moai spec view <ID>`이며, 101개 SPEC이 `No acceptance criteria found`를 출력한다.
 
 **정본 기준선은 판별식 B다**(`spec.md` §1.1). 보존된 프로브(`probe/ac_anchor_probe_test.go:30`)가 B이고, §1.4가 B만 받는 단어 꼬리 7건이 전부 진짜 선언임을 실측했기 때문이다. 종전 판본이 인용하던 판별식 A 계열 `1160 / 944 / 100`은 삭제된 프로브의 기록이며 **재유도 불가**로 강등됐다.
 
@@ -164,14 +164,14 @@ B.1 numeric-tail candidate: covered = 1128  UNCOVERED = 39
 
 | M | 내용 | 우선도 | 근거 REQ |
 |---|---|---|---|
-| **M0** | **파서를 건드리기 전에** 대조군과 측정 도구를 고정한다. (a) `probe/ac_anchor_probe_test.go`를 `internal/spec/`의 **커밋된 테스트**로 승격한다. (b) 「이전 상태」 산출물 셋 — 18개 대조군 목록(`probe/positive-needle.txt`, 이미 존재)과 파일별 루트 AC 집합, 분모 목록(`probe/filelist.txt`, 이미 존재), 넓힘 전 `moai spec view --acceptance` 하드 에러 건수 — 을 남긴다. (c) 판정 명령이 `[no tests to run]`을 내지 않음을 확인한다 | High | REQ-ACA-001-014, -015, -016 |
+| **M0** | **파서를 건드리기 전에** 대조군과 측정 도구를 고정한다. (a) `probe/ac_anchor_probe_test.go`를 `internal/spec/`의 **커밋된 테스트**로 승격한다. (b) 「이전 상태」 산출물 셋 — 18개 대조군 목록(`probe/positive-needle.txt`, 이미 존재)과 파일별 루트 AC 집합, 분모 목록(`probe/filelist.txt`, 이미 존재), 넓힘 전 `moai spec view` 하드 에러 건수 — 을 남긴다. (c) 판정 명령이 `[no tests to run]`을 내지 않음을 확인한다 | High | REQ-ACA-001-014, -015, -016 |
 | **M1** | §B의 네 축을 반영한 앵커를 `parseSingleACLine`에 구현한다 | High | REQ-ACA-001-001, -002, -003, -004, -005 |
 | **M2** | 넓힌 파서를 코퍼스에 태워 수용/도달 비를 재측정한다. 잔여 거절과 미포함 건수를 분해하고 §1.4의 39건과 비교한다. **판별식 · 트리 SHA · 분모 목록을 함께 인용한다** | High | REQ-ACA-001-008, -016 |
 | **M3** | **M0의 before-image와 비교한다** — 18개 파일이 여전히 같은 AC 집합을 내는지, 하위 ID 접미 의미론과 `autoWrapSingle` 트리 모양이 보존되는지, 괄호 한정어 소비가 REQ 매핑을 움직이지 않는지 | High | REQ-ACA-001-007, -002 |
 | **M4** | 뮤턴트 탐침으로 경계를 그린다. 각 뮤턴트의 적발 기대를 사전 선언하고, 미적발 건을 경계 기록으로 보존한다 | High | REQ-ACA-001-010 |
 | **M5** | 섹션 스코핑 불변을 픽스처로 증명한다 — AC 절 밖 선언 줄이 여전히 수집되지 않음 | High | REQ-ACA-001-006 |
 | **M6** | **과수용을 잰다** — 새로 수용된 줄 ≥30건을 열람하고 비선언 건수와 줄을 기록한다. 코퍼스에서 뽑은 비-AC 불릿 픽스처가 계속 거절됨을 보인다 | High | REQ-ACA-001-012 |
-| **M7** | `moai spec view --acceptance`가 오늘 blind인 SPEC 중 하나를 실제로 렌더함을 보인다. 아울러 **중복 ID를 고의로 만든 픽스처에서 계측이 하드 에러를 실제로 잡아냄을 먼저 보인 뒤**, 코퍼스 전체에 `spec view`를 돌려 하드 에러 건수를 before-image(0)와 비교한다 — 0이 아니면 카드를 멈추고 보고한다 | High | REQ-ACA-001-001, -013 |
+| **M7** | `moai spec view`가 오늘 blind인 SPEC 중 하나를 실제로 렌더함을 보인다. 아울러 **중복 ID를 고의로 만든 픽스처에서 계측이 하드 에러를 실제로 잡아냄을 먼저 보인 뒤**, 코퍼스 전체에 `spec view`를 돌려 하드 에러 집합을 before-image(**442**, 전부 `acceptance criteria section not found` — 헤딩 축의 기존 조건)와 비교한다 — 기준선에 **없던** 건이 1건이라도 나오면 카드를 멈추고 보고한다 | High | REQ-ACA-001-001, -013 |
 | **M8** | 라이브 코퍼스에서 `CoverageRule` finding 전후 delta를 계측하고, 증가분이 있으면 설명한다. `lint.go` · `spec_view.go` 바이트 동일성을 확인한다 | Medium | REQ-ACA-001-009, -011, -013 |
 
 **순서의 근거.** M0이 맨 앞인 것이 이 개정의 핵심 변경이다(감사 D2). 종전 판본은 M1이 구현, M2가 대조군 수립이었고 — 그러면 「이전 상태」를 **넓힌 파서로** 재게 되어 무회귀 판정이 자기 자신과의 비교가 된다(항상 초록). AC-ACA-001-002가 스스로 금지한 순서를 계획이 지시하고 있었다.
@@ -185,7 +185,7 @@ M0의 (b) 산출물 중 **넷은 이미 존재하고 이 개정이 before-image�
 | 중복 ID / 폐기 줄 (넓힘 전·후) | `probe/duplicate-20260908.txt` | 둘 다 **0 / 0** |
 | 패키지 테스트 착수 상태 | `probe/pkg-baseline-20260908.txt` | `EXIT=0`, FAIL 0, panic/timeout 0, cached 0 |
 
-넷 다 트리 `52f863f36` — **파서 편집 이전** — 에서 잡혔다. M0이 남길 것은 파일별 루트 AC 집합 하나다(`spec view` 하드 에러 before-image는 중복 실측 0으로 이미 세워졌으나, M7이 실제 CLI 실행으로 확인한다).
+넷 다 트리 `52f863f36` — **파서 편집 이전** — 에서 잡혔다. M0이 남길 것은 파일별 루트 AC 집합 하나다(`spec view` 하드 에러 before-image는 종전에 중복 실측의 0을 옮겨 적은 것이었다. M0이 실제 CLI를 코퍼스 전체에 돌려 **442**를 세웠고 — `.moai/reports/t528/probe/before/specview-before-20260908.md` — M7은 넓힌 파서로 같은 사냥을 반복해 그 442 대비 델타를 낸다).
 
 M4(뮤턴트)를 M3 뒤에 둔 것은 회귀 대조군이 서 있어야 뮤턴트 적발이 「무엇을 깨뜨렸는지」로 읽히기 때문이다. M6(과수용)은 M2 재측정 결과에서 표본을 뽑으므로 M2 뒤다. M8은 착지 직전 — 병합할 tip에서 재는 것이 의미 있는 유일한 시점이다.
 
@@ -253,5 +253,5 @@ Tier 판정은 리드 몫이다. 프론트매터의 `tier: M`은 작업값이다
 - `internal/spec/parser.go` — `findACSectionStart` / `buildTree` / `hasIDSuffix` / `autoWrapSingle`
 - `internal/spec/lint.go:915` — `collectAllREQIDs` (읽기 전용)
 - `internal/spec/lint_coverage_sibling.go` — 두 스코핑의 정당화 머리주석
-- `internal/cli/spec_view.go:72` — `moai spec view --acceptance`
+- `internal/cli/spec_view.go:72` — `moai spec view`
 - SPEC-COVERAGE-RULE-SCOPE-001 — 같은 파싱 경로의 REQ 쪽 선행 SPEC

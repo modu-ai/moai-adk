@@ -44,10 +44,10 @@ ID 형태는 **현행 파서가 이미 받아들이는 4분절 숫자 꼬리**�
 | AC-ACA-001-009 | REQ-ACA-001-005 | 구분자 집합 `:` / `—` / `–` | must-pass |
 | AC-ACA-001-010 | REQ-ACA-001-009 | `CoverageRule` finding 전후 delta 계측 | must-pass |
 | AC-ACA-001-011 | REQ-ACA-001-010 | 뮤턴트 탐침 — 사전 선언 + 미적발 보존 | must-pass |
-| AC-ACA-001-012 | REQ-ACA-001-001 | `moai spec view --acceptance` 실제 렌더 | should-pass |
+| AC-ACA-001-012 | REQ-ACA-001-001 | `moai spec view` 실제 렌더 | should-pass |
 | AC-ACA-001-013 | (전 REQ 공통) | 패키지 테스트 초록 · 전체 스위트 로컬 금지 | must-pass (no-op 트리에서도 통과) |
 | AC-ACA-001-014 | REQ-ACA-001-012 | **과수용 실측** — 새 수용분 표본 ≥30 열람 + 비-AC 불릿 픽스처 | must-pass (계측 의무) |
-| AC-ACA-001-015 | REQ-ACA-001-013 | **CLI 하드 에러 0** — `spec view`가 새 `parse error:`를 내지 않음 | must-pass (수가 판정) |
+| AC-ACA-001-015 | REQ-ACA-001-013 | **CLI 하드 에러 델타 0** — `spec view`가 기준선(442)에 없던 `parse error:`를 내지 않음 | must-pass (수가 판정) |
 | AC-ACA-001-016 | REQ-ACA-001-014, -016 | **측정 무결성** — 커밋된 프로브 + 비공허 실행 + 재측정 3요소 인용 | must-pass (도구 무결성) |
 
 **AC는 16건이다 — Tier M 상한과 같다.** `spec-workflow.md` § SPEC Complexity Tier가 Tier M에 REQ 16 / AC 16을 각각 상한으로 둔다. 개정 초안은 새 AC 5건을 전부 독립 항으로 두어 18건이 됐고, 상한을 2건 넘겼다. Tier를 L로 올리는 대신 **중복을 접었다**:
@@ -287,7 +287,7 @@ git diff --stat -- internal/spec/lint.go
 
 **금지**: 뮤턴트를 돌린 **뒤에** 적발 기대를 적는 것. 그것은 판정이 아니라 사후 합리화다(`plan.md` §H).
 
-### §D.12 AC-ACA-001-012 — `moai spec view --acceptance` 실제 렌더 (REQ-ACA-001-001)
+### §D.12 AC-ACA-001-012 — `moai spec view` 실제 렌더 (REQ-ACA-001-001)
 
 사용자에게 보이는 결함이 실제로 닫혔는지 보이는 자리다. 코퍼스 통계는 이것을 대신하지 못한다.
 
@@ -296,7 +296,7 @@ git diff --stat -- internal/spec/lint.go
 **When** 넓힌 파서를 빌드한 뒤
 
 ```
-moai spec view <지목한 SPEC-ID> --acceptance
+moai spec view <지목한 SPEC-ID>
 ```
 
 **Then** 출력이 `No acceptance criteria found in <ID>`가 **아니고**, 실제 AC 항목이 렌더된다. 명령과 출력 앞 몇 줄을 verbatim으로 남긴다.
@@ -351,13 +351,15 @@ go test ./internal/spec/... -count=1
 
 **통과 판정**: 오탐 건수의 **크기**가 아니라 **기록의 완결성**이다. 오탐이 있어도 표본·건수·줄이 기록되면 PASS이며, 크기 문제는 `plan.md` §F의 Tier L 격상 조건으로 넘어간다. 표본을 열람하지 않고 「문제없어 보인다」로 적으면 FAIL이다.
 
-### §D.15 AC-ACA-001-015 — CLI 하드 에러 0 (REQ-ACA-001-013)
+### §D.15 AC-ACA-001-015 — CLI 하드 에러 델타 0 (REQ-ACA-001-013)
 
 이 카드가 고치겠다고 지목한 명령이 기준선보다 **나빠지지 않음**을 보는 자리다. 운영자 판정 2026-09-08: **측정만, 수리는 별도 후속 카드.**
 
-기전은 `spec.md` §1.3이 정본이다. 요지: `lint.go:636`이 오류를 버리므로 lint 경로는 이 위험에 눈이 멀어 있고, `internal/cli/spec_view.go:80-86`의 `default: return fmt.Errorf("parse error: %w", err)`가 `DuplicateAcceptanceID`와 깊이 초과를 **명령 전체의 실패**로 만든다. 넓힘이 어떤 SPEC에서 중복 ID를 새로 만들면, 그 SPEC의 `moai spec view --acceptance`는 오늘의 `No acceptance criteria found`(무해)에서 **하드 에러**로 바뀐다.
+기전은 `spec.md` §1.3이 정본이다. 요지: `lint.go:636`이 오류를 버리므로 lint 경로는 이 위험에 눈이 멀어 있고, `internal/cli/spec_view.go:80-86`의 `default: return fmt.Errorf("parse error: %w", err)`가 `DuplicateAcceptanceID`와 깊이 초과를 **명령 전체의 실패**로 만든다. 넓힘이 어떤 SPEC에서 중복 ID를 새로 만들면, 그 SPEC의 `moai spec view`는 오늘의 `No acceptance criteria found`(무해)에서 **하드 에러**로 바뀐다.
 
-**재료는 이미 0으로 실측됐다.** `probe/duplicate-20260908.txt`(`EXIT=0`, 트리 `52f863f36`): §B.1 후보 문법이 현재 코퍼스에서 만드는 중복 ID는 넓힘 전후 모두 `files with duplicate ids = 0, dropped lines = 0`. 운영자가 정한 통과 조건은 **오늘 달성 가능한 상태로 측정됐다** — 희망이 아니다.
+**재료는 이미 0으로 실측됐다.** `probe/duplicate-20260908.txt`(`EXIT=0`, 트리 `52f863f36`): §B.1 후보 문법이 현재 코퍼스에서 만드는 중복 ID는 넓힘 전후 모두 `files with duplicate ids = 0, dropped lines = 0`.
+
+[HARD] **그 0은 중복 ID 재료의 수이지 CLI 하드 에러의 before-image가 아니다.** 종전 판본은 두 수를 같은 것으로 취급해 하드 에러 before-image를 `0`으로 못박았다. run 단계가 실제로 CLI를 코퍼스 전체에 돌려 잰 값은 **442**이며(`.moai/reports/t528/probe/before/specview-before-20260908.md`, 트리 `52f863f36`, 분모 807), 442건 전부가 `acceptance criteria section not found` — 즉 이 카드가 건드리지 않기로 한 **헤딩 축**의 기존 조건이다. 여기에 파서를 통과하지 못하는 `_archive/` 경로 6건이 따로 있으며 이들은 애초에 파서에 도달하지 않는다. 따라서 이 AC의 판정은 **442 대비 델타**이고, 넓힘이 새로 만들 수 있는 중복/깊이 부류는 그 안에서 별도로 감시한다.
 
 [HARD] **그리고 바로 그 0이 이 AC를 공허하게 만들 수 있다.** 재료가 없으면 「하드 에러 수 == 0」은 구현이 없어도 통과하고, 측정이 아예 돌지 않아도 똑같이 통과한다. 그래서 이 AC는 **두 단계**이며, 순서가 판정의 일부다.
 
@@ -367,17 +369,17 @@ go test ./internal/spec/... -count=1
 
 **Then** 계측이 하드 에러를 **실제로 잡아낸다.** 명령과 verbatim 출력을 남긴다. **탐지기가 발화함을 보이지 못하면 아래 코퍼스 측정은 아무것도 주장하지 않으며, 이 AC는 FAIL이다.**
 
-**Given** (탐지기 발화가 확인된 뒤) 넓힘 전 하드 에러 before-image `0`과, 넓힌 파서로 빌드한 바이너리
+**Given** (탐지기 발화가 확인된 뒤) 넓힘 전 하드 에러 before-image `442`와 그 442건의 SPEC-ID 집합, 그리고 넓힌 파서로 빌드한 바이너리
 
-**When** 코퍼스 전체의 각 SPEC에 대해 `moai spec view <ID> --acceptance`를 실행하고 `parse error:`로 끝나는 건수를 세면
+**When** 코퍼스 전체의 각 SPEC에 대해 `moai spec view <ID>`를 실행하고 `parse error:`로 끝나는 건수를 세면
 
-**Then** 그 수가 **0**이다. 명령·집계 방법·측정 트리 SHA를 함께 남긴다.
+**Then** 기준선 442에 **없던** 하드 에러가 **0건**이다 — 판정은 총량이 아니라 집합 차다. 아울러 `DuplicateAcceptanceID`·깊이 초과 부류가 **0건**임을 따로 보인다(넓힘이 새로 만들 수 있는 유일한 부류다). 명령·집계 방법·측정 트리 SHA를 함께 남긴다.
 
-**And** 0이 아니면 **카드를 멈추고 리드에게 보고한다.** 여기서 고치지 않는다 — `internal/cli/spec_view.go`는 이 카드가 편집하지 않는 파일이며, 그 바이트 동일성은 AC-ACA-001-007과 같은 방식으로 확인한다(`git diff --stat -- internal/cli/spec_view.go`가 무출력).
+**And** 델타가 0이 아니면 **카드를 멈추고 리드에게 보고한다.** 여기서 고치지 않는다 — `internal/cli/spec_view.go`는 이 카드가 편집하지 않는 파일이며, 그 바이트 동일성은 AC-ACA-001-007과 같은 방식으로 확인한다(`git diff --stat -- internal/cli/spec_view.go`가 무출력).
 
-**등급 주석**: 다른 계측 AC와 달리 여기서는 **수 자체가 판정**이다. 「쟀고 기록했다」로는 부족하다 — 0이 아닌 상태로 착지하면 사용자에게 보이는 표면이 기준선보다 나빠지기 때문이다. 동시에 **0이라는 사실만으로도 부족하다** — 양성 대조군 없이는 그 0이 「재료가 없다」인지 「탐지기가 안 돈다」인지 갈리지 않는다.
+**등급 주석**: 다른 계측 AC와 달리 여기서는 **수 자체가 판정**이다. 「쟀고 기록했다」로는 부족하다 — 0이 아닌 상태로 착지하면 사용자에게 보이는 표면이 기준선보다 나빠지기 때문이다. 동시에 **0이라는 사실만으로도 부족하다** — 양성 대조군 없이는 그 0이 「재료가 없다」인지 「탐지기가 안 돈다」인지 갈리지 않는다. 그리고 판정하는 0은 **총량이 아니라 442 대비 델타**다. 총량 0을 요구하면 이 카드가 건드리지 않기로 한 축의 기존 조건 때문에 착지가 불가능해진다.
 
-**Gap**: 실제 `moai spec view`를 코퍼스 전체에 돌린 적은 아직 없다. 지금까지의 0은 **중복 ID 재료**를 잰 값이며(그 경로의 유일한 입력이지만), CLI 실행 자체로 확인한 값이 아니다 — M7이 실행으로 확인한다.
+**Gap(해소됨)**: 이 절이 적어둔 간극 — 「실제 `moai spec view`를 코퍼스 전체에 돌린 적이 없다」 — 은 M0의 before-image 실측이 닫았다(442, 산출물 위 참조). 남은 간극은 넓힌 파서로 같은 사냥을 한 번 더 돌리는 것이며 M7이 잰다.
 
 ### §D.16 AC-ACA-001-016 — 측정 무결성: 프로브 비공허성 + 재측정 3요소 (REQ-ACA-001-014, REQ-ACA-001-016)
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AC-COLLECTOR-ANCHOR-001
 title: "인라인 AC 수집기 항목 문법 앵커 — 진행 기록"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-develop
@@ -534,3 +534,53 @@ total_run_phase_files: 5
 production_files_changed: 1
 m1_to_mN_commit_strategy: "M0 control commit -> M1 RED+GREEN -> M2/M3/M6 -> M4-M8 evidence"
 ```
+
+---
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-AC-COLLECTOR-ANCHOR-001' CHANGELOG.md -> 0 (no duplicate entry)"
+b12_self_test_b: "grep -oE 'AC-ACA-001-[0-9]+' acceptance.md | sort -u | wc -l -> 16; matches the 16 AC referenced in the CHANGELOG entry"
+b12_self_test_c: "every file path cited in the CHANGELOG entry verified present via ls (8/8 OK)"
+changelog_entry_position: "[Unreleased] / ### Fixed — first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged in-progress -> implemented -> completed on this single sync commit)"
+  plan_md: "no status: field (artifact statelessness) — untouched"
+  acceptance_md: "no status: field (artifact statelessness) — untouched"
+  progress_md: "in-progress -> completed (field pre-existed; progress.md sits outside the four-artifact statelessness set per spec-frontmatter-schema.md)"
+  updated_field: "2026-09-08 in spec.md and progress.md — already the sync date, no change required"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync would test"
+verification:
+  command: "go test ./internal/spec/... -count=1 -timeout 1200s"
+  exit_code: 0
+  fail_count: 0
+  panic_or_timeout_count: 0
+  cached_count: 0
+  output: "ok  github.com/modu-ai/moai-adk/internal/spec  71.168s"
+  tree: "d7c7a5479 + uncommitted SPEC doc corrections (pre-sync-commit)"
+boundary_reverification:
+  lint_go: "absent from git diff --stat 52f863f36..HEAD --name-only"
+  spec_view_go: "absent from git diff --stat 52f863f36..HEAD --name-only"
+  production_files_changed: 1
+docs_decision: "no documentation change required — see the sync report below"
+```
+
+### Sync-phase docs decision
+
+문서 변경은 없다. 근거는 둘이다.
+
+1. **CLI 표면이 그대로다.** docs-site `cli-reference/spec.md` 4개 로케일이 이 명령을
+   `moai spec view <SPEC-ID>` — 「수용 기준을 트리 구조로 조회」 — 로 적고 있으며, 이 카드는
+   플래그·출력 모양·명령 문법을 하나도 바꾸지 않는다. 바뀐 것은 **어떤 선언 줄이 수집되는가**뿐이다.
+   기존 서술은 여전히 정확하다.
+2. **인라인 AC 항목 문법을 서술하는 사용자 문서가 없다.** `core-concepts/spec-based-dev.md`가
+   드는 AC 예시는 전부 헤딩형(`### AC-01: …`)이며, 그것은 이 카드가 §4에서 명시적으로
+   건드리지 않기로 한 **헤딩 축**이다. 넓힌 항목 문법을 기술하는 문서 자리는 존재하지 않는다.
+
+없는 문서를 새로 만드는 것은 이 카드의 범위가 아니다.
