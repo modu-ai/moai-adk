@@ -1,14 +1,16 @@
 # Plan-Phase Audit — SPEC-DOCTOR-STAT-SEAM-001 (card t563)
 
 - Auditor: plan-auditor (independent)
-- Iteration: 1/1 (Tier S ceiling)
-- Tree: worktree `.claude/worktrees/t563`, branch `WT-doctor-stat-shim`, HEAD `45b590c24`, base `ef10a2524` (verified ancestor of HEAD; origin/develop tip has since advanced to `9dddac882`)
+- Iteration: 2/2 (Tier S ceiling) — iter 1 PASS-WITH-CONDITIONS 0.94 @ `45b590c24`; iter 2 re-audit of the revision delta @ `aa4e89ae4`
+- Tree: worktree `.claude/worktrees/t563`, branch `WT-doctor-stat-shim`, HEAD `aa4e89ae4` (parent `45b590c24`), base `ef10a2524` (ancestor — re-verified at iter 2)
 - Artifacts read: `spec.md` + `plan.md` + `acceptance.md` + `progress.md` (Tier S input contract; acceptance.md present per the orchestrator's explicit deliverable list, deviation documented in progress.md §E.1)
 - Reasoning context from the SPEC author: none supplied. No M1 isolation note required.
 
-## Verdict: PASS-WITH-CONDITIONS
+## Verdict: **PASS** (final, iteration 2)
 
-Overall Score: **0.94** (Tier S PASS threshold 0.75 — exceeded)
+Overall Score: **1.00** (iter 1: 0.94; Tier S PASS threshold 0.75 — exceeded; no score regression, no STOP signal)
+
+Conditions status: all four blocking conditions (D1-D4) verified RESOLVED against the revised artifacts; D5 (optional) also resolved; D6 (optional) recorded, no action. Regression sweep found no new defects — two cosmetic residuals recorded below, neither rubric-relevant.
 
 Conditions (all doc-level corrections; resolve before run-phase entry):
 1. **D1 (major)** — plan.md §B "Everything the swap changes in site B is currently unpinned" is factually false; rewrite the premise and re-scope M1's framing.
@@ -17,6 +19,8 @@ Conditions (all doc-level corrections; resolve before run-phase entry):
 4. **D4 (minor)** — M1 exit selector `'StaleSkill|SkillMirror'` matches no existing test name; pin the new-test naming convention or the exit gate can sweep zero.
 
 D5/D6 are optional and do not gate run-phase entry.
+
+> **[ITERATION 2 — ALL CONDITIONS RESOLVED — see the Iteration 2 record at the end of this report for the final PASS verdict and per-D evidence.]**
 
 ---
 
@@ -94,3 +98,63 @@ N/A — iteration 1.
 All four blocking defects are prose-level corrections in plan.md and spec.md; none changes the SPEC's direction, its AC set, or its feasibility. The change itself (two-line seam swap + characterization-first ordering + output-identity proof) is well-conceived: the GEARS layer is clean, the AC set is mechanically judgeable, the ordering witness (AC-SEAM-002) is correctly specified (characterization commit strictly before the seam commit, both carrying `t563`, with M1's passing run as evidence), and the grep AC (AC-SEAM-001) provably distinguishes `os.Stat` from `os.Lstat` (case + prefix; verified zero comment mentions of `os.Stat` in the file) and is paired with the Lstat-survival assertion so the two assertions together prove discrimination. The identity AC (AC-SEAM-005) pins the comparison subject (finding set + text + detail strings) and the mechanism (M1 suite unmodified + pre-flight baseline on shared fixtures) — concrete, not taste. Every card-t563 hard rule has a covering AC: scope-settled (§3.1 + AC-SEAM-001), observability-not-behavior (AC-SEAM-005), characterization-first with commit-graph witness (AC-SEAM-002), scoped verification (AC-SEAM-007), t540 motivation-only (§3.3 + §4 + plan §G).
 
 Route D1-D4 back to manager-spec as a single annotation-cycle revision; re-audit is scoped to the D1-D4 delta only (plan.md §B/§C.1/§F-M1, spec.md §1/REQ-005).
+
+---
+---
+
+# Iteration 2 — Re-audit Record (revision `aa4e89ae4`)
+
+Scope: per the Retry Loop Contract, this iteration re-audits ONLY the enumerated defect delta from iteration 1 (D1-D4 blocking + D5/D6 optional) plus a regression sweep over the revised surfaces. Revision commit `aa4e89ae4` (parent `45b590c24`, doc-only: spec.md, plan.md, progress.md — acceptance.md untouched; this report file also updated in the same commit). Frontmatter `version: 0.1.0 → 0.2.0` with a HISTORY row recording the revision (spec.md:24) — legitimate draft-revision bump.
+
+## Per-D Resolution Verdicts
+
+**D1 — RESOLVED.**
+- spec.md §1:44-52: the claim is now "zero NAME-INVOKED (unit-level) tests … no `*_test.go` calls it by name — but its observable buckets are already pinned INDIRECTLY through `checkCodexWiring` by real-fixture tests (`TestCodexSkillPath_*`, `doctor_codex_test.go:896-1090`, plus the `TestCheckCodexWiring` stale-split and mirror families)". The gap is re-scoped exactly as required: "stat-ARGUMENT observability … and portable stat-failure injection (site B currently reaches its indeterminate arm only through a symlink-loop workaround)". The t540 rationale is corrected: "scoped down to the prune site for the MISSING SEAM — the injection gap, not the test count".
+- plan.md §B:21-35: names the specific tests with line numbers (the eight `TestCodexSkillPath_*` at :896-1090, the six `TestCheckCodexWiring_{Stale…}` at :247-535, `TestCheckCodexWiring_Mirror*` at :1259-1569 — the range endpoint verified: `TestCheckCodexWiring_MirrorFindingParticipatesInTailDrop` :1508 and `TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters` :1569 are real). M1 is re-scoped to "STRUCT-level direct pinning … it does NOT duplicate the existing bucket fixtures — M2 reuses them as the pre/post identity comparison set." The load-bearing false sentence ("Everything the swap changes in site B is currently unpinned") is gone.
+- plan.md §F M1:83-94: framing matches — "SUPPLEMENTS the existing … fixtures … the existing suite (already covered by the pre-flight `-run 'Codex'` baseline) is the M2 identity-proof comparison set (AC-SEAM-005), which strengthens it."
+- Residual observation (not a defect): plan.md §A:12 still says "zero direct tests today" without the name-invoked qualifier — literally true, and §B defines the term precisely one paragraph later. Acceptable.
+
+**D2 — RESOLVED.**
+plan.md §C.1:43-47 is now a lineage assertion: `git merge-base --is-ancestor ef10a2524 HEAD` (exit 0 required) + `git branch --show-current` → `WT-doctor-stat-shim`, explicitly stating "an ancestor assertion, NOT a literal HEAD equality", recording the re-confirmation at `45b590c24` and the advanced origin/develop tip `9dddac882`, and retaining the AGENTS.md §2 HEAD re-read obligation. Command re-executed in this iteration on HEAD `aa4e89ae4`: exit 0. Executable and true as written.
+
+**D3 — RESOLVED.**
+- spec.md REQ-005:94-96: "The no-injection property is scoped to the STAT seam only (the separate `userHomeDirFn` home seam already exists and MAY be overridden, serially, to reach the unresolvable-home arm, which real fixtures alone cannot drive)."
+- plan.md M1:95-99: carries the exact reachability rationale — a failed home makes `codexUserSkillConfig` skip the entry loop entirely (`ok=false` before any stat) — and cites the override helper at its verified anchor (`stubCodexHome`, `doctor_codex_test.go:103` — line confirmed this iteration). Serial discipline tied to C4.
+- The Clarity-docking ambiguity from iteration 1 is eliminated: single unambiguous interpretation restored.
+
+**D4 — RESOLVED.**
+plan.md M1:84-85 pins the `TestCodexStaleSkillFinding_*` naming convention; :100 pins `TestInspectSkillMirror_*`; the exit gate (:103-105) uses selector `-run 'TestCodexStaleSkillFinding_|TestInspectSkillMirror_'` — non-vacuous by construction against the pinned names — AND requires the evidence to record the swept-test COUNT with test names (> 0), explicitly stating an empty-sweep green (`ok … 0.00s`, 0 tests matched) is NOT exit success. This implements the verification-completeness §1.1 empty-swept-set obligation verbatim.
+
+**D5 (optional) — RESOLVED.**
+spec.md §5:172-174 now carries the pending-ID note: "t540's SPEC-ID is pending; substitute the final ID here when its SPEC materializes under `.moai/specs/`", with the motivation-only discipline of §3.3 declared unchanged. HISTORY row documents the revision.
+
+**D6 (optional) — recorded, no action** (as issued in iteration 1; progress.md §E.1 continues to document the acceptance.md deviation).
+
+## Regression Sweep (revision did not break anything)
+
+- **GEARS layer**: REQ-001..004, REQ-006, REQ-007 byte-identical in substance; REQ-005 revised but still Event-driven ("When the seam-swap commit lands … shall already exist in the commit graph") with a single interpretation. MP-2 holds on the revised text.
+- **MP-1**: REQ numbering unchanged (REQ-001..007, no gaps/duplicates).
+- **MP-3 / lint**: all 12 canonical frontmatter fields intact; `moai spec lint .moai/specs/SPEC-DOCTOR-STAT-SEAM-001/spec.md` → `✓ No findings` (this iteration).
+- **MP-5/6/7 on the revised text**: no new SPEC-ID-regex references; no `syscall` mentions introduced (full read of revised spec.md + plan.md); no `[NEEDS CLARIFICATION]` markers introduced.
+- **acceptance.md untouched**; no AC cited any removed sentence; AC-SEAM-002/005 remain consistent with the revised M1/M2 (the identity-proof comparison set named in plan M1 is the same fixture family AC-SEAM-005 already requires).
+- **progress.md §E structure preserved**: the repair-iteration record lives inside §E.1; the era.go-parsed §E.2/§E.3/§E.4 headings and SHA fields are untouched.
+
+## Iteration 2 Scores
+
+| Dimension | iter 1 | iter 2 | Change |
+|-----------|--------|--------|--------|
+| Clarity | 0.75 | 1.00 | D3 ambiguity eliminated (REQ-005 STAT-seam scoping is explicit) |
+| Completeness | 1.00 | 1.00 | unchanged; HISTORY 0.2.0 row added |
+| Testability | 1.00 | 1.00 | unchanged; M1 exit gate strengthened (swept-count requirement) |
+| Traceability | 1.00 | 1.00 | unchanged |
+
+**Overall: 1.00** (iter 1: 0.94 — no regression; no STOP signal; Tier S ceiling 2 iterations reached with final PASS).
+
+## Cosmetic Residuals (optional, no action required — recorded so the score is not read as "nothing was found")
+
+1. spec.md REQ-005:96-98 — editing redundancy introduced by the revision: "shall already exist in the commit graph … shall precede the swap commit in the graph and pass on the unmodified tree: committed before the swap commit, and passing on the unmodified tree" states the same requirement twice. No ambiguity, no contradiction.
+2. plan.md §A:12 — "zero direct tests today" shorthand, immediately qualified by §B's precise name-invoked definition. See D1 residual observation above.
+
+## Final Verdict
+
+**PASS — 1.00.** All four blocking conditions verified resolved with command-level and line-level evidence; optional items resolved or recorded; regression sweep clean; all seven must-pass criteria green on the revised tree (`aa4e89ae4`). Skip-eligibility for the run-gate (per spec-workflow § Plan Audit Gate skip policy): verdict PASS + score 1.00 ≥ Tier S threshold 0.75 + this verdict was produced against the current artifact hash — the three conditions hold as of this record. Implementation Kickoff Approval remains mandatory and is not affected by this verdict.
