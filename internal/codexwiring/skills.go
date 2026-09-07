@@ -19,23 +19,41 @@ import (
 	"strings"
 )
 
-// SkillEnabled is the tri-state reading of an entry's `enabled` key.
+// SkillEnabled is the four-state reading of an entry's `enabled` key.
 //
-// The three states are kept distinct deliberately. Collapsing "no key" onto
-// false asserts a default this repository has NOT observed Codex to apply,
-// and an unverified default is an unobserved premise, not a fact
-// (verification-claim-integrity §1). The reading is reported as DECLARED; how
-// Codex coerces or defaults a value is left unclaimed.
+// The states are kept distinct deliberately. Collapsing "no key" onto false
+// asserts a default Codex does NOT apply — measured on codex-cli 0.153.4, an
+// entry omitting the key makes codex exit 1 with ``missing field `enabled` in
+// `skills.config` ``, so there is no default to collapse onto. The reading is
+// reported as DECLARED; what codex then does with it is the doctor's finding to
+// state, not this parser's.
+//
+// The fourth state (SkillEnabledNonBoolean) was added by t508. It separates
+// "nothing was said" from "something was said that codex rejects" — two
+// observations codex itself reports with different errors, and which the
+// previous tri-state collapsed onto one.
 type SkillEnabled int
 
 const (
-	// SkillEnabledUnspecified is an entry declaring no `enabled` key, or one
-	// whose value this parser does not recognise. It asserts nothing.
+	// SkillEnabledUnspecified is an entry declaring no `enabled` key. It
+	// asserts nothing about what the author intended.
+	//
+	// It no longer covers an unrecognised VALUE: that is
+	// SkillEnabledNonBoolean. Folding the two together made the integer case
+	// exactly as silent as the absent case, which is the defect t508 closes.
 	SkillEnabledUnspecified SkillEnabled = iota
-	// SkillEnabledTrue is an entry declaring enabled true.
+	// SkillEnabledTrue is an entry declaring enabled as the bare TOML boolean
+	// true.
 	SkillEnabledTrue
-	// SkillEnabledFalse is an entry declaring enabled false.
+	// SkillEnabledFalse is an entry declaring enabled as the bare TOML boolean
+	// false.
 	SkillEnabledFalse
+	// SkillEnabledNonBoolean is an entry that DECLARES `enabled` with a value
+	// that is not a bare TOML boolean — an integer, a quoted string, a
+	// bareword. Codex requires a bare boolean and refuses to load the config
+	// otherwise, so this state asserts something quite specific: the key is
+	// present AND codex cannot read it.
+	SkillEnabledNonBoolean
 )
 
 // SkillEntry is one [[skills.config]] entry as declared on disk.
@@ -120,15 +138,42 @@ func JoinConfigLines(lines []string, term LineTerm) []byte {
 // [[skills.config.extra]] do not satisfy the match — each is a distinct TOML
 // surface.
 //
-// The enabled matcher accepts a quoted value as well as a bare one. A quoted
-// "true" is a TOML string rather than a boolean, so it is arguably malformed;
-// reading it as false, however, silently DEMOTES a live registration to stale
-// bookkeeping, which is the more damaging misreading. The declared intent is
-// unambiguous, so it is taken at face value and reported as declared.
+// The enabled matcher is split in two: skillEnabledKeyRe recognises a BARE TOML
+// boolean, and skillEnabledDeclRe recognises the key being declared at all. A
+// line matching the second but not the first is a declared non-boolean value.
+//
+// This REVERSES a deliberate earlier leniency, so the argument being reversed is
+// answered here rather than deleted — a future reader who finds only a narrowed
+// regex and no reasoning would read this as a regression. The previous comment
+// read, in full:
+//
+//	The enabled matcher accepts a quoted value as well as a bare one. A quoted
+//	"true" is a TOML string rather than a boolean, so it is arguably malformed;
+//	reading it as false, however, silently DEMOTES a live registration to stale
+//	bookkeeping, which is the more damaging misreading. The declared intent is
+//	unambiguous, so it is taken at face value and reported as declared.
+//
+// It makes two arguments. Both are answered:
+//
+//   - "reading it as false DEMOTES a live registration" — FALSIFIED by
+//     measurement. On codex-cli 0.153.4, `enabled = "true"` makes `codex mcp
+//     list` exit 1 with ``invalid type: string "true", expected a boolean``.
+//     There is no live registration to demote, because codex refuses to load
+//     the config at all. The argument weighed two readings of a working config;
+//     the config does not work. And the reversal does not do what the argument
+//     feared either: the value reads as NonBoolean, never as false, so it is
+//     not demoted to stale bookkeeping — it is reported as the fatal shape it is.
+//   - "the declared intent is unambiguous, so it is taken at face value" — TRUE,
+//     and beside the point. Codex never reads the intent. It reads the bytes,
+//     finds a string where a boolean is required, and stops. Face-value
+//     reporting of a declared intent is right only where the consuming tool acts
+//     on that intent; here it does not, and reporting a registration codex
+//     refuses to load is confident and wrong.
 var (
 	skillsEntryHeaderRe = regexp.MustCompile(`^\[\[skills\.config\]\]\s*(#.*)?$`)
 	skillPathKeyRe      = regexp.MustCompile(`^path\s*=\s*"([^"]*)"\s*(#.*)?$`)
-	skillEnabledKeyRe   = regexp.MustCompile(`^enabled\s*=\s*(?:(true|false)|"(true|false)"|'(true|false)')\s*(#.*)?$`)
+	skillEnabledKeyRe   = regexp.MustCompile(`^enabled\s*=\s*(true|false)\s*(#.*)?$`)
+	skillEnabledDeclRe  = regexp.MustCompile(`^enabled\s*=`)
 )
 
 // multilineDelims are the TOML multi-line string delimiters, longest-first so
@@ -253,6 +298,17 @@ func ParseSkillEntries(content []byte) []SkillEntry {
 			} else if m := skillEnabledKeyRe.FindStringSubmatch(line); m != nil {
 				entries[openIdx].Enabled = skillEnabledFrom(m)
 				mark(true)
+			} else if skillEnabledDeclRe.MatchString(line) {
+				// The key is declared with something codex will not accept.
+				// The line is marked UNRECOGNISED, which is the same
+				// disposition it already had when the old matcher failed on
+				// it (`enabled = 1`): a line codex chokes on is not a line
+				// this parser consumed. The consequence is deliberate and
+				// safe — a consumer keyed on FirstUnrecognizedLine (the prune
+				// verb's deletion guard) preserves such an entry rather than
+				// removing it.
+				entries[openIdx].Enabled = SkillEnabledNonBoolean
+				mark(false)
 			} else {
 				// A blank line and a whole-line comment are recognised; an
 				// unknown key is not. The original parser folded all three
@@ -266,16 +322,16 @@ func ParseSkillEntries(content []byte) []SkillEntry {
 	return entries
 }
 
-// skillEnabledFrom folds the enabled matcher's three alternation groups (bare,
-// double-quoted, single-quoted) onto one tri-state value.
+// skillEnabledFrom maps the bare-boolean matcher's single capture group onto a
+// reading. The regex admits only `true` and `false`, so the fallback is
+// unreachable in practice and exists so a later widening of the pattern cannot
+// silently produce a wrong reading.
 func skillEnabledFrom(m []string) SkillEnabled {
-	for _, g := range m[1:4] {
-		switch g {
-		case "true":
-			return SkillEnabledTrue
-		case "false":
-			return SkillEnabledFalse
-		}
+	switch m[1] {
+	case "true":
+		return SkillEnabledTrue
+	case "false":
+		return SkillEnabledFalse
 	}
-	return SkillEnabledUnspecified
+	return SkillEnabledNonBoolean
 }

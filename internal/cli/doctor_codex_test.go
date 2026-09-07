@@ -286,21 +286,33 @@ func TestCheckCodexWiring_EmptyPathEntryNotCountedMissing(t *testing.T) {
 	}
 }
 
-// TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately verifies an entry
-// declaring no `enabled` key is reported as unspecified rather than folded
-// into either side — the repository has not observed Codex's default, so
-// claiming one would be an unverified premise in a user-facing message.
+// TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately verifies neither an
+// absent `enabled` key nor a declared non-boolean value is folded into the
+// enabled or disabled side of the declared split. Claiming either would put an
+// unverified premise into a user-facing message.
+//
+// The EXPECTED COUNTS moved with t508 and this is not a regression. Previously
+// the quoted `"true"` entry read as SkillEnabledTrue and landed in the enabled
+// bucket, giving `(1 enabled, 0 disabled, 1 unspecified)`. Measured on
+// codex-cli 0.153.4, that config makes codex exit 1 — the entry was never a
+// live enabled registration, so counting it as one was the defect. It now reads
+// as SkillEnabledNonBoolean and joins the absent-key entry outside both boolean
+// buckets, giving `(0 enabled, 0 disabled, 2 unspecified)`.
+//
+// The declared split deliberately does NOT grow a fourth bucket: this finding's
+// message template is preserved (REQ-CEF-010), and the non-boolean shape gets
+// its own fatal finding rather than a wider advisory count.
 func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 	stubCodexLookup(t, true, true)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
 		{Path: absentSkillPath(t, "a"), EnabledKey: ""},       // no enabled key
-		{Path: absentSkillPath(t, "b"), EnabledKey: `"true"`}, // quoted string, still true
+		{Path: absentSkillPath(t, "b"), EnabledKey: `"true"`}, // quoted string: codex rejects it
 	})
 	stubCodexHome(t, home)
 
 	check := checkCodexWiring(wireProjectForDoctor(t), false)
-	if !strings.Contains(codexDetailText(check), "(1 enabled, 0 disabled, 1 unspecified)") {
-		t.Errorf("declared split wrong — quoted true must not demote to disabled, absent must not either: %q", check.Detail)
+	if !strings.Contains(codexDetailText(check), "(0 enabled, 0 disabled, 2 unspecified)") {
+		t.Errorf("declared split wrong — neither an absent key nor a non-boolean value may count as enabled or disabled: %q", check.Detail)
 	}
 }
 
