@@ -190,7 +190,7 @@ primary_checkout_untouched: true  # 모든 재현·검증은 /tmp/t517/fixture* 
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: "pending-backfill-sync"  # sync 커밋은 자기 SHA를 셀 수 없다 — backfill 커밋이 실측 SHA로 교체 (D3 placeholder-backfill exemption)
+sync_commit_sha: "e94d2f2b4"  # backfill 완료 (2026-09-07) — sync 커밋 본체 e94d2f2b4, 본 백필 커밋이 실측 SHA로 교체 (D3 placeholder-backfill exemption)
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Fixed 섹션 선두"
 b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-WEB-WRITE-SAFETY-001' CHANGELOG.md → 0 (중복 0건 — 발행 허용)"
