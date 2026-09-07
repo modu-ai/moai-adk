@@ -351,6 +351,67 @@ func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 	}
 }
 
+// TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit is the
+// guard for SPEC-CODEX-STALE-SPLIT-FOURTH-001 (AC-SSF-001): a missing-path
+// entry whose `enabled` is DECLARED with a non-boolean value is counted in its
+// own `non-boolean` bucket and NOT in `unspecified`.
+//
+// Before this SPEC the bucketing switch carried three arms and a `default:`,
+// so SkillEnabledNonBoolean fell into `unspecified` — a label asserting that
+// no `enabled` key was declared, about an entry that declares one. The same
+// entry then carried two different names inside a single `moai doctor` run:
+// `unspecified` here, `nonBoolean` in the fatal enabled-shape finding.
+//
+// Both sub-cases assert the FULL parenthesis as an ordered phrase. A bare
+// `1 non-boolean` assertion would pass just as happily under a mis-wiring that
+// collapsed every state into the new bucket, which is what the controls here
+// exist to kill: bare `true` / `false` entries must still land in enabled /
+// disabled, and an absent `enabled` key must still land in unspecified.
+func TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit(t *testing.T) {
+	t.Run("non-boolean leaves unspecified empty, bare booleans unmoved", func(t *testing.T) {
+		stubCodexLookup(t, true, true)
+		home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+			{Path: absentSkillPath(t, "on"), EnabledKey: "true"},    // control: bare boolean
+			{Path: absentSkillPath(t, "off1"), EnabledKey: "false"}, // control: bare boolean
+			{Path: absentSkillPath(t, "off2"), EnabledKey: "false"}, // control: bare boolean
+			{Path: absentSkillPath(t, "odd"), EnabledKey: "yes"},    // bareword: codex rejects it
+		})
+		stubCodexHome(t, home)
+
+		check := checkCodexWiring(wireProjectForDoctor(t), false)
+		detail := codexDetailText(check)
+		// The bucket counts are deliberately unequal, so a transposed render
+		// cannot satisfy the phrase by coincidence.
+		if !strings.Contains(detail, "(1 enabled, 2 disabled, 0 unspecified, 1 non-boolean)") {
+			t.Errorf("declared split does not carry the non-boolean entry in its own bucket: %q", check.Detail)
+		}
+		// The leading missing count is unchanged in VALUE by the fourth
+		// bucket (REQ-SSF-005): the new counter partitions that count, it
+		// neither adds to nor subtracts from it.
+		if !strings.Contains(detail, "4 with a path that no longer exists") {
+			t.Errorf("leading missing count changed with the fourth bucket: %q", check.Detail)
+		}
+		// The pre-SPEC fold-in is the mutation this guard exists to kill.
+		if strings.Contains(detail, "1 unspecified, 1 non-boolean") {
+			t.Errorf("the non-boolean entry is still counted as unspecified too: %q", check.Detail)
+		}
+	})
+
+	t.Run("absent key stays unspecified alongside a non-boolean", func(t *testing.T) {
+		stubCodexLookup(t, true, true)
+		home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+			{Path: absentSkillPath(t, "silent"), EnabledKey: ""},    // control: declares no key
+			{Path: absentSkillPath(t, "spoken"), EnabledKey: "yes"}, // bareword: codex rejects it
+		})
+		stubCodexHome(t, home)
+
+		check := checkCodexWiring(wireProjectForDoctor(t), false)
+		if !strings.Contains(codexDetailText(check), "(0 enabled, 0 disabled, 1 unspecified, 1 non-boolean)") {
+			t.Errorf("absent key and non-boolean value did not separate: %q", check.Detail)
+		}
+	})
+}
+
 // TestCheckCodexWiring_CodexHomeHonoured verifies CODEX_HOME decides which
 // config the sub-check reads. The seam points at a home whose config is
 // stale; CODEX_HOME points at a directory with no config at all, and the
