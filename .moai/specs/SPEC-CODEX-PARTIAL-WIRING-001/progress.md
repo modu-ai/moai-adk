@@ -283,7 +283,7 @@ pushed: false                     # 레인은 push하지 않는다 — 리드 �
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # this commit cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: ba5f6d4cf
 sync_status: complete
 changelog_entry_position: "[Unreleased] > ### Fixed (first entry)"
 changelog_duplicate_check:
