@@ -56,9 +56,6 @@ internal/hook/registry.go               Dispatch → 등록된 핸들러 체인
 internal/hook/pre_tool.go               실제 정책 판정
   ├ internal/hook/security/*            ast-grep 기반 보안 스캔
   ├ internal/hook/quality/*             린터·포매터·게이트 요약
-  │   └ internal/hook/quality/step_git_env.go
-  │                                     자식 프로세스에서 리포지터리 **위치** 환경변수만 제거
-  │                                     (GIT_DIR·GIT_INDEX_FILE 등 — 훅 환경이 cmd.Dir를 이긴다)
   └ internal/permission/stack.go        8-tier 권한 스택 (mvdan.cc/sh 셸 파싱)
 internal/cli/hook.go                    writeHookOutputCodex 또는 writeHookOutput → stdout JSON
 internal/cli/hook.go                    output.ExitCode == 2 → exitCodeError{2}
@@ -180,7 +177,7 @@ internal/statusline/state_anchor.go     resolveStateAnchor(...)  ← statusline 
   └ internal/stateanchor/stateanchor.go 우선순위 사슬 (요건으로 고정 — 삽입·재정렬은 요건 변경)
        1) stdin workspace.project_dir
        2) worktree.original_cwd
-       3) internal/core/git 의 공통 디렉터리 해석 → 그 부모
+       3) core/git 의 공통 디렉터리 해석 → 그 부모
           (리포지터리의 모든 체크아웃·워크트리에 대해 하나인 루트)
        ↳ 셋 다 실패하면 ""  — 호출자는 상태 쓰기·읽기를 건너뛰고 렌더는 정상 완료
 소비자

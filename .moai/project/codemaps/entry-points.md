@@ -100,13 +100,6 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 
 래퍼 스크립트가 없으면 `.moai/logs/hook-missing.log`에 남기고 **exit 0으로 fail-open** 합니다.
 
-배포된 엔트리가 프로젝트 `settings.json`에 실제로 도달했는지는 별도 진단이 답합니다 —
-`moai doctor`의 hook delivery 점검(`internal/cli/doctor_hook_delivery.go`)이 프로젝트가 이미
-가진 훅 이벤트 키 **안에서** 템플릿 엔트리와 대조해 누락분을 배치·처방과 함께 보고합니다.
-이 점검은 **읽기 전용**이며 사용자의 `settings.json`을 쓰지 않습니다 — 전달(delivery) 자체를
-자동화하는 선택지는 거부됐고, 머지 경로가 이미 가진 이벤트 키 안의 추가분을 조용히 버리는
-동작은 고쳐지지 않은 채 문서화·특성화돼 있습니다.
-
 **2. 셸 래퍼** — `internal/template/templates/.claude/hooks/moai/` 아래 47개 `.sh` / `.sh.tmpl`.
 예: `handle-pre-tool.sh.tmpl`이 `printf '%s' "$payload" | moai hook pre-tool`.
 
@@ -120,15 +113,6 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 **30회** 호출되고, `internal/hook/registry.go`의 `(*registry).Dispatch`가 체인을 돌립니다.
 부가로 `runAlwaysRunTail`, `defaultOutputForEvent`, 비동기 trace writer 플러시 배리어 `Shutdown`이
 있습니다.
-
-**게이트 스텝의 실행 환경**: `moai gate`의 자식 프로세스는 자신을 부른 것의 환경을 물려받고,
-여기서 문제가 되는 호출자는 리포지터리 pre-commit 훅입니다 — 훅 환경에는 `GIT_DIR`과
-`GIT_INDEX_FILE`이 실려 있고 이들은 작업 디렉터리보다 우선하므로 `cmd.Dir`만으로는 자식을
-가둘 수 없습니다(임시 디렉터리에 커밋을 만드는 픽스처가 커밋 대상 리포지터리에 그것을 쓴
-사고가 GH #1691). `internal/hook/quality/step_git_env.go`가 **리포지터리 위치**를 정하는
-변수만 걷어내며, 신원(author/committer)과 동작(editor/pager/ssh) 변수는 의도적으로 남깁니다 —
-신원을 잃은 픽스처는 무관한 이유로 실패해 깨끗한 격리 실패를 혼란스러운 것으로 바꾸기
-때문입니다.
 
 ---
 
@@ -157,8 +141,7 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 ## 웹 콘솔 표면
 
 `moai web`이 띄우는 루프백 콘솔은 탭 단위 표면이며, 탭 하나는 **편집하지 않습니다**.
-codex 탭(`internal/web/codexmirror.go` 행 모델 +
-`internal/web/fieldsets_codex_templ.go` 렌더)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용
-미러입니다. 이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool
+codex 탭(행 모델은 `internal/web/codexmirror.go`, 렌더는 그 짝 `.templ` 소스에서 생성된
+패널)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용 미러입니다. 이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool
 동반자 `<name>__present`까지 덮습니다 — 모든 패널이 한 폼 안에 살고 탭 전환은 표시 전환일
 뿐이라 **비활성 패널도 함께 제출되기** 때문입니다.

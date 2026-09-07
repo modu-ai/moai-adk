@@ -542,3 +542,143 @@ $ for d in overview modules dependencies entry-points data-flow docs-truth; do
 | `internal/template` | 10 | 32 |
 | `internal/settings` | 6 | 14 |
 | `internal/codexwiring` | 6 | **0** (빈 diff 첨부, 위) |
+
+---
+
+## §④-b 사후 정정 — fold 판정 단위의 산문을 되돌렸다
+
+§⑥(패키지 대조)을 처음 돌렸을 때 **후보 20개 중 히트-0 으로 남은 것이 0개**였다. 그것이 결함의 신호였다 — §A.3(a1) 은 fold 판정 단위에 대해 **"codemaps 산문을 바꾸지 않는다"** 고 규정하고, AC-CM2-007 은 잔여 히트-0 목록에 fold 단위가 판정과 함께 **남아 있을 것**을 전제한다. 첫 통과의 재생성은 fold 5개 전부에 대해 산문을 새로 썼고, 그것은 판정을 편입 허가로 오용한 형태다.
+
+되돌린 내용(모두 fold 단위에 **대한** 서술만 제거하고, 같은 문단의 omission 단위 서술은 유지):
+
+| fold 단위 | 첫 통과에서 넣었던 것 | 처분 |
+|---|---|---|
+| `internal/core/git` | `modules.md` infrastructure 표 신규 행 + `overview.md` 레이어 표 등재 + 전체 경로 표기 6곳 | 신규 행·등재 삭제, 표기를 직전 판의 `core/git` 형태로 환원 |
+| `internal/cli/doctor_hook_delivery.go` | `modules.md` `doctor*` 클러스터 행 확장 + `entry-points.md` 훅 절 문단 | 둘 다 삭제(클러스터 행은 직전 판의 열거로 복귀) |
+| `internal/hook/quality/step_git_env.go` | `data-flow.md` §B 하위 3행 + `entry-points.md` "게이트 스텝의 실행 환경" 문단 | 둘 다 삭제 |
+| `internal/kanban/prlink_landedref.go` | `modules.md` kanban 행 괄호 삽입구 | 삭제 |
+| `internal/web/fieldsets_codex_templ.go` | `modules.md` · `entry-points.md` · `dependencies.md` 3곳의 파일명 인용 | 파일명 인용만 삭제, 생성 관계 서술은 유지(직전 판에도 있던 사실) |
+
+되돌린 뒤 재확인:
+
+```
+$ /usr/bin/grep -rc -F "<fold 단위>" .moai/project/codemaps/ | grep -v ':0$'
+(다섯 단위 모두 무출력 — 히트 0)
+```
+
+omission 15개는 되돌림의 영향을 받지 않았다(§⑥ 표 참조, 전부 ≥1 유지).
+
+**이 항목을 지우지 않고 남기는 이유**: 되돌리기 전 상태에서도 12개 AC 는 전부 통과했을 것이다 — 어떤 AC 도 "fold 단위가 여전히 히트 0 인가"를 직접 묻지 않는다. AC-CM2-007 의 전제로만 간접적으로 걸리며, 그 간접성이 이 결함을 조용히 통과시킬 수 있는 경로다. 리드가 판단할 수 있도록 기록한다.
+
+---
+
+## §⑤ 인용 경로 실존 (REQ-CM2-006 / AC-CM2-006, accuracy a)
+
+### ⑤-a 추출 규약 — `internal/graph/check_citations.go` 의 정본 3요소
+
+| # | 요소 | 좌표 | 값 |
+|---|---|---|---|
+| 1 | 정규식 | `check_citations.go:23` | `\b(?:internal\|pkg\|cmd)/[A-Za-z0-9_/.-]*` |
+| 2 | 후행 구두점 절삭 | `check_citations.go:35` | `citedPathTrailingPunct = ".,;:)]}\"'"` |
+| 3 | blockquote 면제 | `positiveCitedPaths` (`:118-134`) | `strings.TrimSpace(line)` 이 `>` 로 시작하는 줄은 스캔에서 제외. **코드펜스·mermaid 는 면제가 아니다** |
+
+정본을 직독하며 규약이 **3요소보다 넓다**는 것을 확인했고, 그 나머지도 적용했다 — `normalizeCitedPath`(`:136-155`)의 후행 슬래시 절삭, `cmdMainPathMap`(`cmd/moai/main` → `cmd/moai/main.go`), 그리고 `.go` 접미 복원(`…checkgo` → `…check.go`). 이 셋을 빠뜨리면 표가 게이트보다 많은 absent 를 보고해 교차 대조가 어긋난다.
+
+```
+$ for f in .moai/project/codemaps/*.md; do
+    /usr/bin/grep -v '^[[:space:]]*>' "$f" \
+      | /usr/bin/grep -oE '(internal|pkg|cmd)/[A-Za-z0-9_/.-]*'
+  done > /tmp/cited_raw.txt        # 정규식 + blockquote 면제
+$ (후행 구두점 절삭 → 후행 슬래시 절삭 → cmd/moai/main 매핑 → .go 접미 복원 → 유니크)
+```
+
+### ⑤-b 결과
+
+```
+raw tokens        373
+unique raw        180
+unique normalized 175
+absent              0
+```
+
+**전수 표는 유니크 정규화 경로 175개이며 absent 는 0건이다.** 목록 전문은 `.moai/reports/t475/cited-paths-table.txt` 로 수출했다(경로 → exists/absent, 175행).
+
+### ⑤-c 게이트 계층과의 교차 대조
+
+```
+$ ./bin/moai graph check --json | grep -A4 '"layer": "citations"'
+      "layer": "citations",
+      "metric": "positive-cited-path-absence",
+      "value": 0,
+      "threshold": 0,
+      "verdict": "fresh"
+```
+
+**표의 absent 0 = 계층의 value 0.** 두 수가 일치하므로 추출이 규약을 벗어나지 않았다.
+
+### ⑤-d 이 검증이 잡아낸 실제 회귀 1건
+
+첫 통과에서 표는 **absent 1건**을 냈다 — `cmd/templ`. 내가 `dependencies.md` 에 `tool github.com/a-h/templ/cmd/templ` 를 그대로 적었고, 정본 정규식이 그 모듈 경로 안의 `cmd/templ` 를 인용으로 집었기 때문이다. 트리에 `cmd/templ` 는 없으므로 이대로 두었으면 **citations 계층이 fresh → stale 로 뒤집혔을 것**이다.
+
+수리는 blockquote 면제로 숨기지 않고 문장을 고쳤다 — `go.mod:106` 을 좌표로 남기고 모듈 경로 리터럴을 걷어냈다. 면제는 부존재를 **일부러** 인용한 줄을 위한 것이지, 실수로 만든 팬텀을 감추는 장치가 아니다.
+
+---
+
+## §⑥ 패키지 구조 대조 (REQ-CM2-007 / AC-CM2-007, accuracy b)
+
+재생성 후 §A.3(a) 히트-0 패키지 명령을 다시 돌렸다.
+
+```
+$ cat .moai/project/codemaps/*.md > /tmp/cm3.txt
+$ go list ./internal/... ./cmd/... ./pkg/... | sed 's|^[^/]*/[^/]*/[^/]*/||' \
+    | while read -r p; do /usr/bin/grep -q -F "$p" /tmp/cm3.txt || echo "$p"; done | wc -l
+      39
+```
+
+**48 → 39.** 편입으로 9개가 히트를 얻었다(`internal/chain`, `internal/stateanchor`, `internal/settings/yamlpatch`, `internal/template/agentemit`, `internal/template/commandemit` 및 파일 편입에 딸려 부모 경로 문자열이 생긴 것들).
+
+잔여 39개 전수와 M1 판정:
+
+| 패키지 | M1 판정 |
+|---|---|
+| `internal/core/git` | **fold** (후보였고 fold 로 판정 — 산문 무변경이 규정이므로 히트 0 유지가 정상) |
+| `internal/cli/agentlint` · `internal/cli/harness` · `internal/cli/printer` · `internal/cli/uikit` · `internal/cli/worktree` | 후보 아님(앵커 이후 무변경) — 판정 대상 밖 |
+| `internal/config/toolpolicy` · `internal/core/project` · `internal/graph/symbol` · `internal/runtime/gobin` · `internal/settings/agentfm` · `internal/tui/internal` | 후보 아님 — 판정 대상 밖 |
+| `internal/harness/{capture,cluster,curator,delegationmap,proposalgen,router,routing,safety,seeds,throttle,tier,v4manifest}` (12) | 후보 아님 — 판정 대상 밖 |
+| `internal/hook/{handoff,memo,memo/taxonomy,perf,trace}` (5) | 후보 아님 — 판정 대상 밖 |
+| `internal/lsp/{cache,core,gopls,hook,subprocess}` (5) | 후보 아님 — 판정 대상 밖 |
+| `internal/navigator/{detect,fix,route,sync,tiers}` (5) | 후보 아님 — 판정 대상 밖 |
+
+**omission 판정 단위로서 여전히 히트 0 인 것은 0개다.** 즉 REQ-CM2-004 미이행이 없다. 기록 전용 처분이 적용된 것은 fold 판정 단위 `internal/core/git` 하나이며, 나머지 38개는 애초에 후보 집합에 들어오지 않은 단위(앵커 이후 무변경)로 REQ-CM2-013 ③ 의 이관 목록 소관이다.
+
+**개수 자체는 합격 조건이 아니다**(§B.1 — 트리와 함께 움직이는 값). 판정은 위 표의 **분류가 존재하는가**로 이분한다.
+
+---
+
+## §⑦ 인용 식별자 hit/miss (REQ-CM2-008 / AC-CM2-008, accuracy c)
+
+"식별자"의 정의는 REQ-CM2-008 이 명명한 **명령의 출력**이다:
+
+```
+$ for f in entry-points data-flow; do
+    /usr/bin/grep -o '`[A-Za-z0-9_.]*`' ".moai/project/codemaps/$f.md" \
+      | tr -d '`' | /usr/bin/grep -E '^([a-z][A-Za-z0-9_]*\.)?[A-Z][A-Za-z0-9_]*$'
+  done | sort -u
+```
+
+**출력 10행 — 0행이 아니므로 빈 집합 위의 공허한 통과가 아니다**(재생성 전 `52f863f36` 에서도 10행이었다).
+
+| 식별자 | 명명 위치(문서가 가리키는 곳) | 해석 결과 | hit/miss |
+|---|---|---|---|
+| `AddCommand` | `internal/cli` — root.go `init()` 29회 + 자기 등록 65 파일 | `internal/cli/migrate_restore_skill.go:110` 외 다수 | **hit** |
+| `BacklogPathForRoot` | `internal/kanban` — 큐 경로 해석 | `internal/kanban/state_dir.go:129` `func BacklogPathForRoot(root string) string` | **hit** |
+| `ExitCoder` | `cmd/moai/main.go` 종료 코드 매핑 seam | `internal/cli/exitcode.go:13` `type ExitCoder interface`(주석 `:11` — 원래 `cmd/moai/main.go` 에 있던 인터페이스가 매칭 규칙과 함께 이리로 옮겨졌다) | **hit** |
+| `PreToolUse` | 훅 이벤트 이름 / `hook.EventPreToolUse` | `internal/hook/types.go:25` `EventPreToolUse EventType = "PreToolUse"` | **hit** |
+| `RunE` | cobra 명령 필드 (`internal/cli`) | `internal/cli/migrate_restore_skill.go:106` 외 다수 | **hit** |
+| `Shutdown` | `internal/hook/registry.go` 비동기 trace writer 플러시 배리어 | `internal/hook/registry.go:464` `func (r *registry) Shutdown()` | **hit** |
+| `cli.ResolveExitCode` | `internal/cli` | `internal/cli/exitcode.go:35` `func ResolveExitCode(err error) (int, bool)` | **hit** |
+| `hook.EventType` | `internal/hook` | `internal/hook/types.go:18` `type EventType string` | **hit** |
+| `mcp.NewTool` | `internal/cli/mcp_server.go` 의 `add(...)` 첫 인자 계약 | `internal/cli/mcp_server.go:158` `add("session_list", mcp.NewTool(` | **hit** (서드파티 `mark3labs/mcp-go` 심볼, 명명 위치에서 실사용 확인) |
+| `syscall.Exec` | `internal/cli` 런처(`cc`/`cg`/`glm`) 프로세스 교체 | `internal/cli/update.go:808` `return syscall.Exec(exe, os.Args, os.Environ())` | **hit** (stdlib 심볼; 런처 파일에도 존재하나 첫 비테스트 적중을 인용) |
+
+**10 hit / 0 miss.** miss 는 기록만 하고 인용 본문을 지우지 않는 처분이나, 이번 실행에서는 miss 가 없다.

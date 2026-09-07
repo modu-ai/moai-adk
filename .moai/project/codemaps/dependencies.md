@@ -47,7 +47,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 적은 근거입니다.
 
 `internal/core`가 6 → 7로 오른 것은 새 seam 하나가 그 밑으로 내려갔기 때문입니다 —
-`internal/stateanchor`가 리포지터리 해석 단계에서 `internal/core/git`을 재사용합니다.
+`internal/stateanchor`가 리포지터리 해석 단계에서 `core/git`을 재사용합니다.
 
 ### 새로 그래프에 들어온 leaf
 
@@ -156,11 +156,10 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 4. **CLI 치고 의외인 조합** — tree-sitter(cgo), sqlite, LSP 클라이언트, HTML 템플릿 컴파일러,
    로컬 HTTP 서버가 한 바이너리에 다 들어 있습니다. 이 도구는 CLI라기보다 개발 환경
    런타임에 가깝습니다.
-5. **`github.com/a-h/templ`이 `tool` 지시어로 등록**돼 있습니다(`go.mod:106`
-   `tool github.com/a-h/templ/cmd/templ`). `.templ` → `_templ.go` 생성이 빌드 전제이며
-   생성물이 트리에 커밋돼 있습니다 — `internal/web/fieldsets_codex_templ.go`(codex 미러 패널)와
-   트리 최대 비테스트 파일 두 개(`fieldsets_templ.go` 168KB, `screens_templ.go` 121KB)가
-   그 산물입니다.
+5. **`github.com/a-h/templ`이 `tool` 지시어로 등록**돼 있습니다(`go.mod:106` — templ CLI를
+   가리키는 `tool` 한 줄). `.templ` → `_templ.go` 생성이 빌드 전제이며
+   생성물이 트리에 커밋돼 있습니다 — 트리 최대 비테스트 파일 두 개
+   (`fieldsets_templ.go` 168KB, `screens_templ.go` 121KB)가 그 산물입니다.
 6. **`gopkg.in/yaml.v3`의 쓰임이 두 축입니다.** 대부분은 마샬/언마샬이지만
    `internal/settings/yamlpatch`는 같은 라이브러리의 **노드 트리**를 직접 수술해 주석과
    미모델링 키를 보존합니다. 이 두 번째 쓰임이 typed struct 재직렬화가 파괴하는 것을
