@@ -138,6 +138,37 @@ GREEN (동일 명령, 유도 라인을 `stateanchor.FromDirectory(visited)`로 �
 
 전 패키지 무파괴 (명령: `go test ./internal/config/ -count=1`): `ok github.com/modu-ai/moai-adk/internal/config 5.292s`. cli 접촉(deps.go 4줄)에 대해 `go vet ./internal/cli/...` = 통과, `go build ./...` = 통과, `go test ./internal/cli/ -run 'TestInitDependencies|TestDeps|TestGetDeps' -count=1` = `ok ... 1.076s`, `golangci-lint run ./internal/config/... ./internal/cli/...` = `0 issues.`
 
+### M4 — 축 A 검증 (AC-SA-009·010·011, 코드 수리 없음 — D10)
+
+**AC-SA-009 가드 활성 실측** (명령: `go test ./internal/cli/ -run 'TestTodoSweepSelectorMatchesFamily|TestGuardBypassMutant_ObserveHomePollution|TestTodoQueueRootGuard' -count=1 -v`):
+
+```
+--- PASS: TestTodoSweepSelectorMatchesFamily (0.03s)
+    todo_axisa_guard_test.go:48: selector TestTodo matches 137 test functions (swept-set liveness guard)
+--- PASS: TestGuardBypassMutant_ObserveHomePollution (0.08s)
+    todo_axisa_guard_test.go:90: mutant pollution observed: 1 entr(ies) under canary HOME/.moai/todo — runTodo's liveTodoQueueRootReason gate is what keeps the guarded family at zero
+--- PASS: TestTodoQueueRootGuard_FiresOnLiveRepository (0.07s)
+--- PASS: TestTodoQueueRootGuard_SilentOnFixture (0.18s)
+--- PASS: TestTodoQueueRootGuard_SilentOnHomeFallbackFixture (0.07s)
+ok  github.com/modu-ai/moai-adk/internal/cli	1.832s
+```
+
+가드 판별식 표면(기존 구현 판독 — 재작성 없음): `liveTodoQueueRootReason`(`todo_queue_root_test.go:226`)이 `queueRootInsideTemp`로 OS temp 트리 양철자(/var·/private/var) 안이면 침묵, 라이브 리포면 `todoFixture` 지시와 함께 발화 — 위 3형제가 세 형태를 모두 고정. 패밀리 전체가 guarded 헬퍼(`runTodo`/`runTodoWithClosedStdin` 2개) 경유임은 소스 판독 + 아래 스윕이 그 헬퍼들로 전수 통과한 것으로 입증.
+
+**AC-SA-010 canary-HOME 스윕** — 선택자 `TestTodo`(최상위 137 함수), 판정 도구는 커밋된 계측 테스트 `TestAxisACanaryHomeSweep_TodoFamily`(플래그 게이트 `MOAI_AXIS_A_CANARY_SWEEP=1` — 자식 `go test` 재실행 비용 때문에 CI 기본 제외, on-demand 재측정 도구; 상시 활성 liveness 핀은 `TestTodoSweepSelectorMatchesFamily`, N=0이면 양쪽 모두 스스로 실패). 실행 (명령: `MOAI_AXIS_A_CANARY_SWEEP=1 go test ./internal/cli/ -run 'TestAxisACanaryHomeSweep_TodoFamily' -count=1 -v -timeout 20m`):
+
+```
+todo_axisa_guard_test.go:125: sweep verdict: 198 todo tests ran under canary HOME /var/folders/.../TestAxisACanaryHomeSweep_TodoFamily4293617800/001 — 0 directories created under .moai/todo
+--- PASS: TestAxisACanaryHomeSweep_TodoFamily (36.18s)
+ok  github.com/modu-ai/moai-adk/internal/cli	37.162s
+```
+
+(198 = 137 최상위 + 서브테스트의 `--- PASS` 계수. canary HOME은 `t.TempDir()` — D5/D12대로 실제 HOME 미접촉.)
+
+**AC-SA-011 뮤턴트 증명** — `TestGuardBypassMutant_ObserveHomePollution`(커밋 유지, 이름으로 우회임을 표시): `newTodoCmd()` 직접 Execute(게이트 우회) + `CLAUDE_PROJECT_DIR`=비git temp + canary HOME(userHomeDirFn seam) → **오염 1 엔트리 관측**(`canary/.moai/todo` 아래) — AC-SA-010의 0이 가드 덕분임의 판별 증거. 못 잡은 뮤턴트: 없음(1회 시도 1회 관측). 가드의 경계: 가드는 `runTodo`/`runTodoWithClosedStdin` 2 헬퍼의 호출자만 보호한다 — 새 헬퍼가 게이트 없이 `newTodoCmd()`를 부르면 뮤턴트가 관측한 바로 그 오염이 재발한다(REQ-SA-011 보고 의무 이행).
+
+**축 A 코드 diff**: 생산 코드 변경 0 — M4 신규 파일은 테스트 1개(`internal/cli/todo_axisa_guard_test.go`)뿐. D10의 「코드 변경 금지」는 가드 행위의 변경 금지로 읽었다(AC-SA-009의 「테스트로 고정」·AC-SA-011의 뮤턴트 보관 지시가 테스트 추가를 요구하므로); 가드 코드(e7a078970 착지분)는 무접촉.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M5에서 확정>_
