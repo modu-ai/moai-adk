@@ -246,7 +246,11 @@ AC-CBN-002 · 008 · 011 · 012 는 명령 재실행이 아니라 판독으로 �
 ### Gaps
 
 - **`§E.3` 의 `run_commit_sha: pending-backfill` 은 이 커밋이 채우지 않는다.** 그 필드는 run-phase 소유 면(`§E.3`)이고 manager-docs 의 금지 반경 안이다(`spec-frontmatter-schema.md` § SHA placeholder backfill exemption 은 **해당 phase 를 소유한 에이전트**에게만 backfill 을 허용한다). 값 자체는 이미 알려져 있다 — run 커밋은 `7b4ba4491`(M1) · `c3ea4670e`(M2) · `321111fe5`(M3+M4) 셋이다. 소관 밖이라 적지 않을 뿐이므로, 리드가 이 사실과 함께 backfill 을 배차하면 한 줄로 닫힌다.
+
+  - **[해소됨 — 위 문단은 그것을 쓴 커밋에 대해 참이었고 그대로 둔다.]** 예고한 대로 소관 에이전트(manager-develop)가 backfill 을 수행했다: `979708115`(`docs(SPEC-CODEX-BODY-NEUTRALITY-001): backfill §E.3 run_commit_sha (321111fe5)`). 지금 `§E.3` 의 값은 `run_commit_sha: 321111fe5` 이며 나머지 두 run 커밋(`7b4ba4491`·`c3ea4670e`)은 같은 줄의 후행 주석에 남아 있다. **`pending-backfill` 문자열은 `§E.3` 에 더 이상 없다** — 이 SPEC 은 `completed` 이므로, 저 문단만 읽고 채울 것이 남았다고 판단하는 독자가 없도록 여기 적는다.
 - `sync_commit_sha` 는 이 커밋 안에서 자기 해시를 인용할 수 없어 canonical placeholder 로 남는다. 해소값은 완료 보고로 리드에게 전달한다.
+
+  - **[해소됨 — 위 한 줄은 그것을 쓴 커밋(`bf2458ed7`) 안에서 참이었고 그대로 둔다.]** 자기 해시를 인용할 수 없다는 이유는 지금도 유효하며, 그래서 해소는 다음 커밋의 몫이었다: `21e4a2cc4` 가 `§E.4` 의 값을 `sync_commit_sha: bf2458ed7` 로 채웠다(같은 줄 후행 주석이 backfill 관계를 기술한다). placeholder 는 남아 있지 않고, 리드에게 전달할 미해소값도 없다.
 - 코덱스 런타임 실거동은 sync-phase 에서도 프로브하지 않았다(§E.2 Gaps 와 같다). 능력 부재 판정은 여전히 매니페스트 rationale **문면** 판정이다.
 - 크로스 플랫폼 빌드 미실행 — Go 소스 변경 0.
 - 전체 스위트 미실행 — REQ-CBN-014 의 요구이며 전 패키지 판정은 CI 몫이다.
