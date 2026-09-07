@@ -2,7 +2,7 @@
 id: SPEC-WEB-WRITE-SAFETY-001
 title: "moai web 쓰기 안전성 — 무저장 재기록 차단, 쓰기 범위 한정, 포맷 충실도 보존"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
