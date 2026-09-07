@@ -1,0 +1,6 @@
+Error: /private/tmp/t504-hOuB8eKd/home-V3/config.toml:2:1: missing field `enabled`
+
+Caused by:
+    missing field `enabled`
+    in `skills.config`
+    

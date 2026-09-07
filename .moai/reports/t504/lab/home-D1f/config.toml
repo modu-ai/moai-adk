@@ -1,0 +1,4 @@
+# t504 cell D1f: live skill + entry(FILE) enabled = false
+[[skills.config]]
+path = "/tmp/t504-hOuB8eKd/home-D1f/skills/t504probe/SKILL.md"
+enabled = false
