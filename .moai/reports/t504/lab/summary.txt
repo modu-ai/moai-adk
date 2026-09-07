@@ -1,0 +1,45 @@
+EXP_ROOT=/tmp/t504-hOuB8eKd
+version=codex-cli 0.153.4
+hash_before=c45741c10c3e844ae2fe768787338cfdc659dc41b2e2b75db83f5ebf8638e01a  /Users/goos/.codex/config.toml
+hash_after=c45741c10c3e844ae2fe768787338cfdc659dc41b2e2b75db83f5ebf8638e01a  /Users/goos/.codex/config.toml
+notouch=IDENTICAL
+---cells---
+IV	out=24957	err=0	rc=0	marker=1	moai=0
+N	out=24910	err=0	rc=0	marker=1	moai=0
+V2	out=0	err=151	rc=1	marker=0	moai=0
+V1	out=0	err=151	rc=1	marker=0	moai=0
+V3	out=0	err=151	rc=1	marker=0	moai=0
+V4	out=24752	err=0	rc=0	marker=0	moai=0
+R	out=36717	err=0	rc=0	marker=0	moai=1
+---stderr-nonempty-cells---
+[V2] stderr:
+Error: /private/tmp/t504-hOuB8eKd/home-V2/config.toml:2:1: missing field `enabled`
+
+Caused by:
+    missing field `enabled`
+    in `skills.config`
+[V1] stderr:
+Error: /private/tmp/t504-hOuB8eKd/home-V1/config.toml:2:1: missing field `enabled`
+
+Caused by:
+    missing field `enabled`
+    in `skills.config`
+[V3] stderr:
+Error: /private/tmp/t504-hOuB8eKd/home-V3/config.toml:2:1: missing field `enabled`
+
+Caused by:
+    missing field `enabled`
+    in `skills.config`
+---iv-skills-section-head---
+[
+  {
+    "type": "message",
+    "id": "msg_01a079fb-2aa1-7930-9ed1-928be811ea8b",
+    "role": "developer",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "<skills_instructions>\n## Skills\nA skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and a short p
+---v1-skills-section-head---
+
+---r-complaint-sample---

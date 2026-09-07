@@ -165,6 +165,16 @@ func TestCodexSpecFiles_ExecPrimitivesCodexOnly(t *testing.T) {
 		if name == "codex_readiness.go" && len(matches) != 0 {
 			t.Errorf("codex_readiness.go starts processes: %v", matches)
 		}
+		// Lower bound: codex_launcher.go owns the one process-start primitive
+		// of this SPEC. Without this floor the scan is vacuous — a stale `call`
+		// regex matches nothing, the per-match loop body never runs, and the
+		// test reports PASS while checking nothing at all.
+		if name == "codex_launcher.go" && len(matches) == 0 {
+			t.Errorf("codex_launcher.go: zero process-start primitives found — "+
+				"the scan regex %q matched nothing, so this guard asserted nothing. "+
+				"Either the primitive moved out of this file (update codexSpecFiles) "+
+				"or the regex is stale (update it).", call.String())
+		}
 		for _, m := range matches {
 			first := strings.TrimSpace(m[1])
 			if first != "req.Program" {
