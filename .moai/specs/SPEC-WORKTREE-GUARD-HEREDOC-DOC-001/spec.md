@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-GUARD-HEREDOC-DOC-001
 title: "Worktree-guard heredoc brace asymmetry — ownership pivot, doctrine extension, reporter reply, upstream draft"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

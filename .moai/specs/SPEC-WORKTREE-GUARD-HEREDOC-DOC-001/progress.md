@@ -81,7 +81,15 @@ new_defects: 0 (Go 변경 없음 — 미러 패리티·drift 테스트가 유일
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(sync 페이즈에서 manager-docs 작성 — sync_commit_sha 기입)
+> 집행 주체 특기: sync 페이즈도 GLM 레이트리밋 지속 + 운영자 「계속 진행」 지시로
+> 오케스트레이터 직접 집행했다(CHANGELOG 진입 · 상태 전환 · close 커밋 · backfill).
+> 독립 감사(sync-auditor)는 에이전트 스폰으로 수행한다.
+
+sync_status: audit-ready
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync
+changelog_entry: CHANGELOG.md [Unreleased] § Added (B12 중복 검사 0건 통과 후 발행)
+close_scope: CHANGELOG 1건 · spec.md frontmatter(status+updated만) · progress.md §E.4 — close 이후 코드·문서 본문 쓰기 없음(마지막 쓰기 원칙)
 
 ## §F Phase 4 Mode Selection
 
