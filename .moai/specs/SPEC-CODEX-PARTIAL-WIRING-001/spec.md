@@ -2,7 +2,7 @@
 id: SPEC-CODEX-PARTIAL-WIRING-001
 title: "반쪽 배선(agent TOML만 존재) 상태의 doctor 탐지와 조치 안내"
 version: "0.3.2"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

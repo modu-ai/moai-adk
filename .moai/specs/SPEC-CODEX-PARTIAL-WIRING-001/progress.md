@@ -281,4 +281,26 @@ pushed: false                     # 레인은 push하지 않는다 — 리드 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # this commit cannot cite its own hash; backfilled in the following commit
+sync_status: complete
+changelog_entry_position: "[Unreleased] > ### Fixed (first entry)"
+changelog_duplicate_check:
+  command: "grep -c 'SPEC-CODEX-PARTIAL-WIRING-001' CHANGELOG.md"
+  pre_write_output: 0
+docs_surfaces_checked:
+  - surface: "README.md (+ .ko/.ja/.zh)"
+    result: "no mention of the Codex Wiring check anywhere; nothing to update"
+  - surface: "docs-site/content/{en,ko,ja,zh}/cli-reference/doctor.md"
+    result: "documents only two checks by name (Home Disk Usage, Hook Delivery); Codex Wiring was never documented on this surface either before or after SPEC-CODEX-WIRING-001 — nothing to update, no 4-locale obligation triggered"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (this commit)"
+  updated_field: "unchanged (2026-09-07, already current)"
+b12_self_test:
+  a_duplicate_grep: "PASS (0 before write)"
+  b_ac_count_match: "PASS (9 distinct AC-CPW-* in acceptance.md == 9 cited in progress.md §E.3 ac_pass_count)"
+  c_file_path_verification: "PASS (ls internal/cli/doctor_codex.go internal/cli/doctor_codex_test.go internal/codexwiring/codexwiring.go all resolve)"
+```
+
+**Sync-phase scope.** Modified: `CHANGELOG.md` (Unreleased > Fixed), this file's §E.4, `spec.md` frontmatter `status:` only (`in-progress → completed`). Untouched: `plan.md`, `acceptance.md`, all `spec.md` body content, implementation source (already closed at run-phase), `.moai/state/`, `.moai/cache/`, `.moai/logs/`, other SPEC directories.
