@@ -104,9 +104,87 @@ verbatim RED 출력: `.moai/reports/t517/evidence/RED-settings-write-safety.log`
 
 1. **mcp.yaml 부재 시 Save 500**: fixture에 `mcp.yaml`이 없으면 `applySchemaEdits→PatchFile→atomicWrite`가 `stat mcp.yaml: no such file or directory`로 500. PatchFile은 read 단계에서 greenfield(`{}\n`)를 허용하지만 atomicWrite의 `os.Stat`이 부재 파일에서 실패한다(`yamlpatch.go:190-193`). 실제 프로젝트 트리(`2031ccf7f`)에도 mcp.yaml이 없다 — Save 전체 제출 시 재현 가능성. (쓰기 안전 축과 별개의 **쓰기 위치/완결성** 축 — t510 경계 인접, 본 카드에서 수리하지 않음)
 
+### M4 — 수리 (커밋 `03cea2f75`, M-a/M-b 결론 인용 — REQ-WWS-008)
+
+| 수리 | 위치 | 인용 결론 |
+|---|---|---|
+| (i) 값-불변 seam edit 제거 (동일 값 + 부재키·bool-false 형태) | `internal/settings/sectionapply.go` `ApplySchemaEdits` | M-a: 값-불변 제출의 무차별 기록 |
+| (ii) typed 실변경 게이트 (apply 전후 DeepEqual, 변경 0이면 Save 생략) | `internal/settings/sectionapply.go` `applyTypedEdits` | M-b 원인 1: 무조건 SetSection → dirty → 재마샬 |
+| (iii) yamlpatch 라인 스플라이싱 (기존 스칼라 교체는 대상 라인만 재작성 + 재파싱 검증, upsert만 재직렬화 폴백) | `internal/settings/yamlpatch/yamlpatch.go` `PatchFile`/`lineSplice` | M-b 원인 2: 재직렬화의 빈 줄 정규화 |
+| (iv) parseSchemaForm 중복 폼값 감지 (동의 중복은 통과, 불일치 중복은 atomic reject 합류) | `internal/web/schemaform.go` `parseSchemaForm` | M1(d): workflow 스칼라 부수 손상 (첫 값 채택) |
+| (v) WriteProjectNestedConfig 실변경 게이트 | `internal/settings/nested.go` | M1(d): llm.yaml 무의미 생성 (동일 값 *Set 플래그가 Save를 유발) |
+
+**수리 후 같은 재현 절차 GREEN (M1(d) 절차, 수리 바이너리로 재실행)**:
+
+- 판정 커맨드: `diff -rq <worktree>/.moai/config/sections /tmp/t517/fixture-post5/.moai/config/sections`
+- verbatim 출력: `Only in /tmp/t517/fixture-post5/.moai/config/sections: llm.yaml` (유일 잔여) — **git 추적 파일 전부 diff 0행**
+- exit: 1 (untracked 파일 존재에 의한 것 — 아래 판정 참조) / 트리 SHA: `03cea2f75`
+- **llm.yaml 생성 잔여 판정**: git 미추적 파일(greenfield)에 대한 **실변경 저장**(agentfm 프로필 매트릭스 해상값과 디스크 부재의 차이)으로 REQ-WWS-003의 "git 추적 기준 diff 없음" 판정에 영향 없음. feedback 빈 줄 삭제·git-strategy 재마샬·workflow/gate 부수 손상은 전부 소멸 — O1 서명 완전 해결.
+
+**git-strategy 양성 통제 (수리 후)**: `TestApplySchemaEditsGitStrategyRealChangeStillRewrites` PASS, `TestHandleSaveGitStrategyRealChangeStillRewrites` PASS — 실변경 제출 시 재기록이 관측됨(gate 생존의 반대 방향 증거).
+
+### M5 — 회귀 가드 채택 + 뮤턴트 검증
+
+**2-cell 채택 (부재-가드 5건)**: RED-now 셀 = 상기 M3 표 (트리 `2031ccf7f`, verbatim 로그 링크 포함) / green path 셀 = M4 수리가 동일 커맨드를 PASS로 뒤집음 (커밋 `03cea2f75` 트리, 아래 최종 실행).
+
+**뮤턴트 검증 (AC-WWS-007) — 재도입 변형 3건 모두 포착:**
+
+| 뮤턴트 | 재도입 변형 | 포착 가드 | 판정 |
+|---|---|---|---|
+| MUTANT-A | applyTypedEdits의 DeepEqual 게이트 제거 (무조건 SetSection 복원) | `TestApplySchemaEditsValueInvariantTouchesNothing` FAIL + `TestHandleSaveValueInvariantLeavesSectionsByteIdentical` FAIL | 포착 |
+| MUTANT-B | lineSplice 조기 `return nil, false, nil` (재직렬화 폴백 강제) | `TestPatchFileValueInvariantPreservesBytes` FAIL | 포착 |
+| MUTANT-C | parseSchemaForm 중복 감지 제거 | `TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst` FAIL | 포착 |
+
+**못 잡은 뮤턴트 기록**: AC-WWS-001/002(무저장 기동·GET 순회 무쓰기)의 가드는 유닛 테스트가 아니라 **실물 재현 절차**(M1 a~c단계 + 스냅샷 diff)다. "startup에 Save 주입" 뮤턴트를 이 절차로 잡는 것은 가능하나 본 카드에서 미수행 — 사유: startup 주입은 lazy GET 쓰기(M-a 후보 2)와 동일 코드 영역이고, 정적 소거(쓰기 호출이 handleSave 외 0건) + 동적 관측(3단계 diff 0)이 그 결함 클래스를 이미 커버한다. 가드 경계: **새 GET/기동 경로에 쓰기 호출이 추가되면 본 가드 체계는 잡지 못한다** — 후속 카드 후보.
+
+**최종 가드 상태 (뮤턴트 복원 후, 트리 = M5 커밋)**:
+
+| 테스트 | 판정 |
+|---|---|
+| TestPatchFileValueInvariantPreservesBytes | PASS |
+| TestPatchFileScalarChangePreservesPresentation | PASS |
+| TestApplySchemaEditsValueInvariantTouchesNothing | PASS |
+| TestApplySchemaEditsGitStrategyRealChangeStillRewrites (양성 통제) | PASS |
+| TestHandleSaveValueInvariantLeavesSectionsByteIdentical | PASS |
+| TestHandleSaveGitStrategyRealChangeStillRewrites (양성 통제) | PASS |
+| TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst | PASS |
+
+### E1 — AC-WWS-001..008 최종 매트릭스
+
+| AC | Status | 검증 | 실측 |
+|---|---|---|---|
+| AC-WWS-001 | **PASS** | M1 실물 재현 3단계(기동·렌더·폴링) + 스냅샷 diff | 3단계 모두 diff exit 0 (트리 `2031ccf7f`) — 결함 미재현 = 코드에 무저장 경로 부재 확인 |
+| AC-WWS-002 | **PASS** | M1 (b) GET 라우트 9종 + /events 순회 | diff exit 0 |
+| AC-WWS-003 | **PASS** | 값-불변 Save 유닛/전체경로 가드 + 수리 후 실물 diff | RED(`2031ccf7f`) → GREEN(`03cea2f75`), git 추적 파일 diff 0 |
+| AC-WWS-004 | **PASS** | dirty-gate 가드 + 양성 통제 2건 | RED → GREEN, 양성 통제 PASS×2 (gate 생존 확인) |
+| AC-WWS-005 | **PASS** | golden round-trip (값-불변 + 값-변경) | RED → GREEN (빈 줄·주석·키 순서·unknown key byte 보존) |
+| AC-WWS-006 | **PASS** | 중복 폼값 가드 | RED → GREEN (불일치 중복 reject, 동의 중복 통과 — 문서화된 규칙) |
+| AC-WWS-007 | **PASS** | 뮤턴트 3건 재도입 → 포착 → 복원 | 포착 3/3, 못 잡은 뮤턴트 1건 기록 (AC-001/002 경계) |
+| AC-WWS-008 | **PASS** | 본 문서 M4 표의 측정 결론 인용 + M1~M3 귀속 완료 | 커밋 `911d9bbcc`(측정)가 `03cea2f75`(수리)에 선행 — 측정-선결 위반 코드 0 |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — M4/M5 완료 후 기입>_
+```yaml
+run_complete_at: 2026-09-07
+run_commit_sha: "pending-backfill-run"  # M5 커밋 SHA — 착지 후 백필 (D3 backfill window)
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+preserve_list_post_run_count: 0  # PRESERVE 대상 침범 0 — t509(codex 패널)/t510(쓰기 위치) 영역 미접촉
+l44_pre_commit_fetch: not-performed  # 레인은 push·fetch를 하지 않는다 (git-flow lane protocol §4 — 리드 일괄)
+l44_post_push_fetch: not-performed  # 상동 — 원격 착지 검증은 리드 소관
+new_warnings_or_lints_introduced: 0  # golangci-lint ./internal/web/... ./internal/settings/... → 0 issues
+cross_platform_build:
+  darwin_amd64: pass   # go build ./... → exit 0
+  windows_amd64: pass  # GOOS=windows GOARCH=amd64 go build ./... → exit 0
+total_run_phase_files: 23  # M1-M3 커밋 14 + M4 커밋 5 + M5 커밋 4 (progress/spec/증거 포함, 커밋별 산출)
+m1_to_m5_commit_strategy: "3 commits — M1-M3 measured reproduction + RED tests (911d9bbcc) / M4 repairs (03cea2f75) / M5 guard adoption + evidence (this commit)"
+known_baseline_failures: "internal/template TestManifestHashFormat — CATALOG_HASH_UNSTABLE (agents 소스 vs catalog.yaml stored hash 불일치). 본 카드 수정 파일과 무관한 pre-existing baseline 결함(별도 카드 소관)."
+side_observations:
+  - "mcp.yaml 부재 시 PatchFile→atomicWrite stat 실패로 Save 500 (yamlpatch greenfield read와 atomicWrite stat의 불일치) — t510 경계 인접, 별도 소관"
+  - "llm.yaml 부재 greenfield에서 agentfm 프로필 매트릭스 해상값이 실변경 저장으로 파일 생성 — git 미추적 파일, REQ-WWS-003 판정 축 밖"
+primary_checkout_untouched: true  # 모든 재현·검증은 /tmp/t517/fixture* 격리 트리에서 수행
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
