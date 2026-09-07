@@ -151,4 +151,18 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 RED b6bd0d011 / M2 fix e365c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관. sync_commit_sha는 sync 커밋 시 채워진다(pending-backfill 규약).>_
+sync_complete_at: 2026-09-08
+sync_commit_sha: "pending-backfill-sync"   # D3 백필 규약 — sync 커밋은 자신의 SHA를 인용할 수 없음; 후속 커밋에서 실측값으로 교체
+sync_status: complete
+changelog_entry: CHANGELOG.md [Unreleased] `### Fixed` 첫 항목 — t517 항목에 out-of-scope로 기록됐던 관측("a missing mcp.yaml still makes a full-form save return 500")의 수리로서 서술
+b12_self_test_a: pass (pre-emission grep — `grep -c 'SPEC-SEAM-GREENFIELD-001' CHANGELOG.md` = 0, 병렬 BATCH-SYNC 중복 없음)
+b12_self_test_b: pass (AC count match — Tier S, AC SSOT = spec.md §3 inline이며 acceptance.md는 존재하지 않음; `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' spec.md | sort -u | wc -l` = 6, 엔트리 기재 "6 acceptance criteria (AC-001..006)"와 동일)
+b12_self_test_c: pass (file path verification — 엔트리 인용 경로 전부 `ls` 실존 확인: internal/settings/yamlpatch/yamlpatch.go, internal/settings/yamlpatch/yamlpatch_test.go, internal/settings/yamlpatch/atomicwrite_mode_unix_test.go, internal/web/write_safety_test.go, .moai/reports/t544/)
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed" (본 sync 커밋에 병합 — 3-phase close; status + updated만 변경. updated는 2026-09-08 기유)
+  plan.md / acceptance.md: 해당 없음 — plan.md는 status 필드 미보유(Artifact Statelessness), acceptance.md는 미존재(Tier S)
+mx_tag_pass:
+  result: no-additions — run-phase M2가 이미 `@MX:NOTE: [AUTO]`(absent→create+0644 계약, REQ-1..4 문서화) + `@MX:SPEC: SPEC-SEAM-GREENFIELD-001` 서브라인을 atomicWrite에 착지했고(yamlpatch.go:368-374), defaultFilePerm 상수 주석(359-363)이 §4 기각 근거를 문서화한다. [AUTO] 접두사·code_comments(en) 준수 확인 — 중복 추가는 태그 스팸이므로 생략
+sync_phase_verification:   # 측정 트리 df50ab04e — 본 sync 커밋의 변경은 .md 3파일뿐이므로 Go 소스 트리는 커밋 전후 동일하다
+  go_test: pass — `go test -count=1 ./internal/settings/yamlpatch/` → `ok  github.com/modu-ai/moai-adk/internal/settings/yamlpatch 0.359s`, exit 0
+  go_vet: pass — `go vet ./internal/settings/yamlpatch/` → 무출력, exit 0

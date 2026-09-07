@@ -2,7 +2,7 @@
 id: SPEC-SEAM-GREENFIELD-001
 title: "seam greenfield 첫 저장 500 결함 — absent 섹션 파일 원자적 기록의 stat 부재-불내성 (t544)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: GOOS
