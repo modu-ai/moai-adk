@@ -43,7 +43,7 @@ write_surface: docs-site/content/{ko,en,ja,zh}/cli-reference/doctor.md (+28×4)
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: "pending-backfill-sync"   # placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+sync_commit_sha: 6b5316c7e                   # backfilled (sync 커밋 자신은 자기 해시를 인용할 수 없다)
 sync_status: completed
 changelog_entry_position: "[Unreleased] → Added (top of list)"
 frontmatter_status_transitions:
@@ -59,7 +59,7 @@ canary_compliance_check:
   docs_site_edits_in_sync_phase: none (run-phase carried the content)
 ```
 
-Backfill note: `sync_commit_sha` resolves to the real sync-commit SHA in the immediately following commit (`chore(SPEC-DOCS-CODEX-WIRING-CALLOUT-001): backfill sync_commit_sha (t535)`).
+Backfill note: `sync_commit_sha` was backfilled to `6b5316c7e` in the immediately following commit (`chore(SPEC-DOCS-CODEX-WIRING-CALLOUT-001): backfill sync_commit_sha (t535)`).
 
 ## §F Phase 4 Mode Selection
 
