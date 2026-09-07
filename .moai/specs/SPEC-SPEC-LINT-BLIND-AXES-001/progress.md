@@ -66,7 +66,94 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M-A1 — 축 1: 표 형식 REQ 수집 (카드 t518, cycle_type=tdd)
+
+착수 시점 트리: 워크트리 `.claude/worktrees/t518`, 브랜치 `WT-spec-lint-axes`, HEAD `b7ceffa69`. 판별식은 결재된 **C-d**(좁은 어휘 L1)만 세웠다 — 남은 후보를 다시 저울질하지 않았다.
+
+**변경한 파일 3개**: `internal/spec/lint_req_table.go`(신규 — 표 행 정규식 · L1 · C-d · 수집기 · 병합) · `internal/spec/lint.go`(`REQEntry.Source` 필드 + `REQSource` 타입만) · `internal/spec/lint_req_widen.go`(`parseREQsWithProvenance`가 표 항목을 행 순서로 병합). 테스트 `internal/spec/lint_req_table_test.go`(신규). `isModalityMalformed`는 손대지 않았다(M-A2 소관), `internal/cli`도 손대지 않았다(형제 SPEC 소관).
+
+#### AC 판정표
+
+| AC | REQ | 판정 | 실측 근거 |
+|---|---|---|---|
+| AC-SLB-001a | 001 · 003 | **PASS** | `TestTableCollection_ListFormUnchanged` — 목록 픽스처에서 live 결과가 `parseREQs`와 ID·본문·행번호 동일, 자문 0건, 출처 list, 항목 수 동일 |
+| AC-SLB-001b | 001 · 002 | **PASS** | `TestTableCollection_TableFormCollected` — 정의 표 3행 → 3항목, 전 항목 자문, 전 항목 출처 table, 본문 셀 축자 일치 |
+| AC-SLB-001c | 012 | **PASS** | `TestTableCollection_ControlPairDiverges` — 목록 자문 0 vs 표 자문 3, 단언으로 갈림(주석·체크박스 아님) |
+| AC-SLB-002 | 002 | **PASS** | `TestTableCollection_AdvisoryDoesNotGate` — 표 픽스처 `ModalityMalformed` 1건이 **발화하고** 자문, error 등급 0건. 대조군(목록)은 error 등급 비자문 1건 |
+| AC-SLB-003 | 003 | **PASS(제한 있음)** | `TestTableCollection_CorpusListFindingsUnchanged` — 코퍼스 791개 문서, 코드별 `narrow == live-비자문`. **제한**: narrow 경로가 코퍼스 전체에서 `LegacyEARSKeyword` 7건만 내므로(narrow 정규식이 거의 매치하지 않는다 — 이 SPEC §B.1이 인용한 사실) 이 단언의 변별력은 그 7건과 순서 의존 `DuplicateREQID` 위험에 한정된다. 공허하지는 않다(M5가 RED로 만든다) |
+| AC-SLB-004 | 004 | **PASS** | `TestTableCollection_DiscriminatorRejectsDispositionTables` — BINLAG `:124`(처분) · `:140`(추적) 축자 픽스처에서 수집 0. 부재 단언이므로 **M2 뮤턴트와 짝으로만 읽는다** |
+| AC-SLB-010 | 002 · 010 | **부분 PASS** | 표 절반은 AC-SLB-002가 잼(error 등급 무이동). **006b(무판정 발화) 절반은 M-A2 미착지로 미측정** |
+| AC-SLB-011 | 013 · 002 | **PASS** | ① `TestTableCollection_SourceRecordedPerOrigin` ② `TestTableCollection_SourceDoesNotDecideSeverity` — 출처를 전부 뒤집어도 severity 분포 동일 |
+
+**이 마일스톤이 잡지 않은 AC**: 005(기각의 관측 가능성 — 전용 finding 코드와 발화 지점이 필요하며 이 마일스톤의 수집기 범위 밖) · 006a · 006b · 007 · 008 · 008b · 012(전부 축 2 = M-A2) · 009(재계수 = M4).
+
+#### 뮤턴트 8건 — 잡히지 않은 것도 적는다
+
+증거: `.moai/reports/t518/mutants-MA1.txt`, 재현: `python3 .moai/reports/t518/mutants-MA1.py`.
+
+| 뮤턴트 | 결과 | RED가 된 테스트 |
+|---|---|---|
+| M1 표 수집 되돌림(`parseREQsTable` → nil) | CAUGHT | 001b · 001c · 002 · 경계 |
+| M2 판별식 C-d 제거(모든 ID-선두 행 수집) | CAUGHT | 004 · 경계 · 코퍼스 census |
+| M3 자문 표시 제거(`Widened: false`) | CAUGHT | 001b · 001c · 002 |
+| M4 출처를 `reqFindingSeverity`에 배선 | CAUGHT | 011② · 002 |
+| M5 목록 분기 한 글자 훼손(`[-*]`→`[*]`) | CAUGHT | 001a · 001c · 002 · **003(코퍼스)** |
+| M6 [경계] L1 매칭을 대소문자 무시로 넓힘 | **1차 NOT CAUGHT → 가드 신설 후 CAUGHT** | 경계 |
+| M7 [경계] 행 정규식에서 볼드 마커 허용 제거 | **1차 NOT CAUGHT → 가드 신설 후 CAUGHT** | 경계 |
+| M8 [경계] 본문 셀을 ID 뒤 **첫** 셀에서 취함 | CAUGHT | 001b · 002 |
+
+**[HARD] M6·M7은 처음에 통과했다 — 지우지 않고 적는다.** 두 뮤턴트는 픽스처 어디에도 그 성질을 거는 행이 없어 전 스위트를 초록으로 통과했다. M7이 특히 무거웠다: 코퍼스의 실제 정의 표(`SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001`의 4행)가 `| **REQ-HCW-001** |` 꼴 볼드 ID를 쓰므로, 잡히지 않은 채였다면 볼드 허용이 장식인지 필수인지 아무도 알 수 없었다. `TestTableCollection_DiscriminatorBoundaries`(소문자 `shall` 행은 기각 · 볼드 ID 행은 수집)를 신설해 둘 다 CAUGHT로 바꿨다. **기록을 남기는 이유**: 지금 CAUGHT인 것은 가드를 나중에 붙였기 때문이지 처음부터 가드가 있었기 때문이 아니다.
+
+#### 코퍼스 이동 — +16, 전부 `CoverageIncomplete`, 행 단위로 귀속됨
+
+**[HARD] 두 값 모두 같은 트리·같은 모집단에서 재유도한 값이며, 저장된 숫자와 빼지 않았다.** 설치본 바이너리는 baseline 재사용에 쓰지 않았다 — 대신 HEAD 소스에서 `git archive HEAD`로 빌드한 「이전」 바이너리와 작업 트리에서 빌드한 「이후」 바이너리를 같은 코퍼스에 각각 돌렸다.
+
+```
+# 이전(HEAD b7ceffa69 소스 빌드), 파이프 없음, rc=0
+/tmp/t518-head/moai-head spec lint   →  0 error(s), 4378 warning(s)
+# 이후(작업 트리 빌드), 파이프 없음, rc=0
+/tmp/t518-after-moai spec lint       →  0 error(s), 4394 warning(s)
+```
+
+증거: `.moai/reports/t518/lint-before-MA1.txt` · `.moai/reports/t518/lint-after-MA1.txt`.
+
+| 코드 | 이전(HEAD 빌드) | 이후 | 증감 |
+|---|---|---|---|
+| CoverageIncomplete | 3621 | 3637 | **+16** |
+| ModalityMalformed | 412 | 412 | 0 |
+| InvalidREQID | 6 | 6 | 0 |
+| DuplicateREQID | 0 | 0 | 0 |
+| (그 외 9개 코드 전부) | — | — | 0 |
+| **error 등급 합** | **0** | **0** | **0** |
+
+**증감 16행의 출처 귀속(REQ-SLB-013 필드 기준): 16행 전부 표 수집 유래, t385 구분자 넓힘 유래 0행.** 목록 경로의 findings는 한 건도 움직이지 않았다(AC-SLB-003이 코퍼스 전체에서 이를 단언한다).
+
+**16행이 어느 문서에서 왔는지 행 단위로**: `SPEC-CODEX-PARTIAL-WIRING-001` 11행(body 81-91) · `SPEC-INIT-001` 5행(body 107-111). 제거된 행은 0.
+
+**수집 20 vs 발화 16의 차 4를 남겨 두지 않는다.** 코퍼스 전체에서 C-d가 수집한 표 항목은 **20**이고(`TestTableCollection_CorpusTableEntryCensus`: 표 행 807개 관측 · 20 수집 · 787 기각 · 수집이 생긴 SPEC 3개 · 20 전부가 수집기-blind SPEC 안), 그중 4항목은 `SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001`의 것으로 **AC가 이미 참조하고 있어 `CoverageIncomplete`가 발화하지 않고, 본문도 GEARS 적합이라 `ModalityMalformed`도 발화하지 않는다.** 즉 20 − 4 = 16이며 미귀속 잔여는 0이다. 이 4행은 「수집이 소음만 만들지 않는다」의 실물이기도 하다 — 새로 보이게 된 요구사항 중 일부는 이미 건강하다.
+
+**독립 유도 일치**: 판독기(python, `.moai/reports/t518/blind-axes-reader.py`)가 blind 53개 안에서 낸 C-d 잔존 **20**과, 출하 Go 코드가 코퍼스 전체에서 낸 수집 **20**이 일치한다. 두 구현은 서로 독립이며, 이 일치가 C-d를 고른 기준(독립 유도 사이의 재현성)이 코드에서도 유지됨을 보인다.
+
+**[HARD] `CoverageIncomplete` 행의 해석은 t528에 유보된다.** +16 전부가 이 코드이고, AC 수집기(`parser.go:67,218`)가 이 코퍼스의 AC 문법을 읽지 못하므로 「진짜 미참조」와 「AC를 읽지 못함」의 분리는 t528 착지 후에만 가능하다. 이 표의 +16을 부채 크기로 읽지 않는다.
+
+**설치본 바이너리와의 차 2건도 적는다.** 운영자가 준 `baseline-merged.txt`(설치본 `moai-adk v3.2.0-rc.0`)는 4380, 같은 트리 HEAD 소스 빌드는 4378이다. 차이는 `MovingRefUnpinned` 117 vs 115 한 코드에 몰려 있고, **설치본이 HEAD와 같은 소스가 아니라는 뜻**이다. 그래서 이 마일스톤은 설치본 수치를 baseline으로 쓰지 않았다 — 썼다면 +16이 +14로 잘못 보고됐을 것이다.
+
+#### 검증 명령 (전부 파이프 없이 rc 판독, 범위는 `internal/spec`)
+
+```
+go test ./internal/spec/...            → rc=0, ok  github.com/modu-ai/moai-adk/internal/spec  69.918s
+go vet ./internal/spec/...             → rc=0, 무출력
+gofmt -l internal/spec/                → rc=0, 무출력
+golangci-lint run ./internal/spec/...  → rc=0, "0 issues."
+```
+
+증거: `.moai/reports/t518/gotest-MA1.txt`. **전체 스위트는 로컬에서 돌리지 않았다**(CLAUDE.local.md §4 — 병렬 레인 부하 사고). 전 패키지 판정은 CI 몫이며 이 레인은 push하지 않는다.
+
+#### 잔여 위험 (관측된 것만)
+
+- **순서 의존 `DuplicateREQID`**: 한 문서가 같은 REQ ID를 표 행과 목록 정의로 함께 갖고 **표 행이 앞서면**, `REQIDUniquenessRule`이 뒤의 목록 항목을 중복으로 보고해 **비자문 finding이 새로 생긴다**(REQ-SLB-003 위반). 오늘 코퍼스에 그런 문서는 없다(양쪽 `DuplicateREQID` 0 실측). 방어 기전을 넣지 않은 것은 의도이며, AC-SLB-003의 코퍼스 단언이 그것이 생기는 날 잡는다.
+- **본문 셀 선택의 대가**: 정의 표가 뒤에 노트 열을 덧붙이면 본문 대신 노트가 `Text`가 된다. 이 트리에서 그런 모양은 관측되지 않았고, 항목은 어차피 자문이다.
+- **L1의 선택된 놓침은 그대로다**: `SPEC-INIT-001`의 `| REQ-N-001 | … 않아야 한다 |`는 여전히 기각된다. 결재된 대가이며, **어휘를 넓혀 고치지 않는다.** 다만 이 놓침이 REQ-SLB-005(기각의 관측 가능성)로 이름을 갖게 되는 것은 M-A1 범위 밖이므로, **현재는 여전히 조용한 미수집**이다 — 이 카드가 고치려는 결함이 그 행에 대해서는 아직 남아 있다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

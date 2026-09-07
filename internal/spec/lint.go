@@ -537,6 +537,45 @@ type REQEntry struct {
 	// without gating. An entry the narrow pattern already collected carries
 	// false here and its rules behave exactly as before.
 	Widened bool
+
+	// Source records the SHAPE the entry was written in — a markdown list item
+	// or a table row. SPEC-SPEC-LINT-BLIND-AXES-001 REQ-SLB-013.
+	//
+	// It exists for ONE consumer: the corpus recount (REQ-SLB-009), which must
+	// split each row of its delta table into "surfaced by table collection" and
+	// "surfaced by the t385 separator widening". Those two causes share the
+	// Widened flag, so without a second field the recount can report a total but
+	// cannot attribute it — and an unattributable total does not answer the
+	// question that card asks.
+	//
+	// [HARD] Source MUST NOT reach reqFindingSeverity, or any other severity
+	// decision. Severity has exactly one decision point (Widened, via
+	// reqFindingSeverity); a second axis would mean every rule that reads a
+	// REQEntry has to handle both, and the first rule that forgets one lets an
+	// advisory finding gate. spec.md §B.2 rejects that trade explicitly, and
+	// TestTableCollection_SourceDoesNotDecideSeverity measures the prohibition
+	// by flipping every Source value and requiring the severity distribution to
+	// be unchanged.
+	Source REQSource
+}
+
+// REQSource is the shape a REQ definition was written in. The zero value is
+// REQSourceList, so every construction site that predates
+// SPEC-SPEC-LINT-BLIND-AXES-001 keeps reporting the shape it actually collects.
+type REQSource uint8
+
+const (
+	// REQSourceList is a markdown list-item definition (`- **REQ-X-001** — …`).
+	REQSourceList REQSource = iota
+	// REQSourceTable is a table-row definition (`| REQ-X-001 | … |`).
+	REQSourceTable
+)
+
+func (s REQSource) String() string {
+	if s == REQSourceTable {
+		return "table"
+	}
+	return "list"
 }
 
 // SPECDoc represents a parsed SPEC document.

@@ -2,7 +2,7 @@
 id: SPEC-SPEC-LINT-BLIND-AXES-001
 title: "spec lint의 두 사각지대 — 표 형식 REQ 미수집과 비영어 modality 무판정"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
