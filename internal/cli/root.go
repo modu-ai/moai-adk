@@ -173,6 +173,9 @@ func init() {
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand
 	rootCmd.AddCommand(newCleanCmd())
 
+	// SPEC-CODEX-SKILL-DISABLE-001: per-layer skill exposure (`moai skills`).
+	rootCmd.AddCommand(newSkillsCmd())
+
 	// SPEC-PROJECT-NAVIGATOR-003: AST enrichment entry point for /moai codemaps.
 	rootCmd.AddCommand(newNavigatorEnrichCmd())
 

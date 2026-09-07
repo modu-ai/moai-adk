@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILL-DISABLE-001
 title: "codex에서만 특정 스킬을 끄는 손 — 사용자가 이름으로 지목하고, moai가 파일 모양 게이트를 발행한다"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
