@@ -21,6 +21,8 @@
 
 그리고 이 카드가 지시하는 방향은 **이미 착지한 판정과 정면으로 부딪힌다**(§3). 그러므로 이 판정서의 결론은 "어떻게 만들 것인가"가 아니라 **"무엇이 진짜 간극이고, 그것을 만드는 것이 옳은가"**다.
 
+> **[§8 먼저 읽을 것]** 운영자가 §6의 결정에서 **「감사 경로만 — web에 노출」**을 골랐다. 그 범위를 재보니 **이미 전부 구현돼 있다** — 전용 Audit 탭, 네 필드, 회귀 테스트, i18n까지. **이 카드는 그 범위에서 만들 것이 없다.** 근거는 §8.
+
 ---
 
 ## 1. 측정 — 이 트리에서 잰 것
@@ -288,3 +290,94 @@ GLM 쪽도 같은 모양이다(`internal/cli/mcp_glm.go:172-180`). **그러므�
 - 낡았다고 판정한 것은 주석의 **사유 절반**이지 그 결정 자체가 아니다. SPEC-V3R6-AUDIT-MODEL-PIN-001이 다른 근거(예: 비밀값 동거, 리뷰 가능성)를 함께 고려했다면 결정은 여전히 옳을 수 있다 — 나는 그 SPEC 본문을 읽지 않았다(Gaps #7).
 - §5의 Tier 추정과 자리 비교표의 "우세" 판단은 **판단이지 측정이 아니다**.
 - 이 판정서는 코드를 읽고 썼다. `moai update`도 `moai web`도 실행하지 않았다.
+
+---
+
+## 8. 운영자 결정 이후 — 고른 범위는 **이미 구현돼 있다**
+
+§6의 상신에 운영자가 답했다: **「감사 경로만 — web에 노출」**(2026-09-07).
+
+그 범위를 코드에서 재봤다. **만들 것이 없다. 전부 이미 있다.**
+
+### 8.1 네 필드가 이미 web console에 선언돼 있다
+
+`internal/settings/schema_sections.go:415-421`:
+
+```go
+s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "codex", "model"),
+withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
+    "f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
+withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "model"),
+    "f.workflow.audit.glm.model.opt.", config.ValidGLMModels(), emptyLabelUnset, "opt.unset")),
+withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "effort"),
+    "f.workflow.audit.glm.effort.opt.", template.GLMReasoningStateNames(), emptyLabelUnset, "opt.unset")),
+```
+
+- `codex.model` — 자유 입력 텍스트(codex가 서빙 가능한 id, 예: `gpt-*`)
+- `codex.effort` — 닫힌 선택(v4 effort 어휘), **비우면 핀 해제**가 저장된다(`withEmptySubmits`)
+- `glm.model` / `glm.effort` — 각각 `ValidGLMModels()` / z.ai reasoning state 이름
+
+출처는 그 위 주석(`:403-404`): **SPEC-V3R6-AUDIT-MODEL-PIN-001 M4 (REQ-AMP-009 / AC-AMP-008)**.
+
+### 8.2 전용 Audit 탭이 이미 있고, 라우팅도 이미 있다
+
+- 탭 등록: `internal/web/schemaform.go:52` — `{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"}`. 주석(`:49`)이 이유를 적는다 — "audit (M2): workflow.audit.* moved off the workflow tab onto its own."
+- 패널: `schemaform.go:238-241` — `PanelID: "audit"`, `Icon: "check-circle"`, `Title: "Audit"`.
+- 필드 배치: `isAuditFieldName`(`:169-170`)이 `workflow.audit.` 접두를 보고 그 탭으로 보낸다. `partitionWorkflowFields`(`:185-199`)가 workflow 필드를 rest / worktree / audit 셋으로 가른다.
+
+### 8.3 죽은 코드가 아니다 — 대조군
+
+이 경로를 검증하는 파일이 실재한다:
+
+```
+$ git grep -ln 'workflow.audit.codex' -- internal/
+internal/cli/audit_pin_live_test.go
+internal/cli/mcp_codex.go
+internal/cli/mcp_codex_audit_pin_test.go
+internal/cli/mcp_convergence.go
+internal/config/testdata/shipped_key_inventory.yaml
+internal/core/project/initializer_audit_test.go
+internal/settings/audit_pin_fields_test.go
+internal/settings/schema_sections.go
+internal/web/assets/i18n.js
+internal/web/widget_policy_test.go
+```
+
+`audit_pin_live_test.go`(라이브 테스트), `audit_pin_fields_test.go`(필드 선언), `widget_policy_test.go`(위젯 정책), 그리고 `i18n.js`에 번역 문자열까지 있다. 배포 키 인벤토리(`shipped_key_inventory.yaml`)에도 올라 있다.
+
+### 8.4 저장 경로도 이미 옳다
+
+주석(`:405-407`)이 적는다 — 이 필드들은 "persisted through the same workflow.yaml seam the audit resolvers read". 즉 **web이 쓰는 자리와 리졸버가 읽는 자리가 같다.** §4.1에서 확인한 대로 `workflow.yaml`은 seam 경로라 주석과 미모델링 키가 보존된다.
+
+그리고 주석(`:413-414`)이 한 가지를 더 구분한다: "Unlike the llm tier effort map (stored-only, REQ-WCR-033), these efforts **ARE runtime-applied** — they ride the audit request builders." 즉 이 설정은 저장만 되는 장식이 아니라 실제로 적용된다.
+
+### 8.5 그래서 이 카드의 결론
+
+**운영자가 고른 범위에서 이 카드는 만들 것이 없다.** 요청은 이미 충족돼 있고, 남는 일은 **어디를 눌러야 하는지 알리는 것**뿐이다:
+
+> `moai web` → **Audit 탭** → `codex.model` / `codex.effort` (그리고 `glm.model` / `glm.effort`)
+
+**다만 한 가지를 되짚어야 한다.** 운영자는 §6에서 「감사 경로만」을 골랐을 때 **그것이 만들어야 할 일이라고 알고** 골랐다. 이미 있다는 사실을 알았다면 다른 답을 골랐을 수 있다 — 특히 원래 지시("각 모델별 설정")가 겨냥한 것이 §3.3의 **위임 경로**였다면, 그 간극은 여전히 열려 있고 이 카드는 아직 답하지 않았다. 그 재확인이 이 카드의 마지막 남은 행위다.
+
+### 8.6 실행으로 확인한 것 — 선언에 그치지 않는다
+
+§8.1-8.4는 코드 판독이다. 「선언이 있다」와 「동작한다」는 다르므로, 이 축을 지키는 테스트를 **실제로 돌렸다**:
+
+```
+$ go test ./internal/settings/ -run Audit -count=1 -v
+--- PASS: TestAuditPinFields_ExistWithTypeAndPanel (0.00s)
+--- PASS: TestAuditPinFields_SeamRoundTrip (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.480s
+rc=0
+```
+
+- `ExistWithTypeAndPanel` — 네 필드가 **올바른 타입과 패널로** 선언돼 있음을 지킨다.
+- `SeamRoundTrip` — **seam 경로 왕복**, 즉 저장한 값이 다시 읽히는 것을 지킨다. §8.4의 "web이 쓰는 자리와 리졸버가 읽는 자리가 같다"를 실행으로 뒷받침한다.
+
+**공허한 초록이 아니다**: `=== RUN` 개수가 **2**다(0이 아니다). `-run` 필터가 아무것도 안 잡았다면 테스트 0개로 `ok`가 났을 것이고, 그것이 이 패턴의 전형적 위장이다.
+
+### 8.7 그럼에도 안 본 것
+
+- **`moai web`을 띄워 눈으로 보지 않았다.** 렌더가 실제로 되는지는 여전히 실행 관측이 아니다 — 위 테스트는 필드 선언과 seam 왕복을 재지, HTML 렌더를 재지 않는다.
+- **`internal/cli/audit_pin_live_test.go`는 돌리지 않았다.** 이름상 라이브 테스트라 `codex` 바이너리를 요구할 수 있고, `internal/cli` 는 이 리포에서 600초 하한이 걸린 패키지다. 존재만 확인했고 내용을 읽지 않았다.
+- 가장 값싼 남은 확정: `moai web`을 띄워 Audit 탭에서 `codex.model`에 값을 넣고 저장한 뒤 `workflow.yaml`에 남는지 본다. 원하면 하겠다.
