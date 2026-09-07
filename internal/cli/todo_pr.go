@@ -68,15 +68,35 @@ var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (str
 // landed state. Read-only, fail-open, one `gh` query.
 func newTodoPRCmd() *cobra.Command {
 	var jsonOutput bool
-	// The landed ref is RESOLVED, not constant: a project that integrates on
-	// a branch other than the default asks the question about its own branch,
-	// and the help text names the ref the check will actually use rather than
-	// a default that may not apply here.
-	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "pr [<id>]",
 		Short: "Report each card's open pull request or landed state (read-only)",
-		Long: `Report, for every queued card, whether an open pull request already
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var only string
+			if len(args) == 1 {
+				only = normalizeTodoRef(args[0])
+			}
+			return runTodoPR(cmd, only, jsonOutput)
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOutput, "json", false,
+		"Emit the link outcomes as JSON on stdout")
+	withResolvedLandedRef(cmd, func(landedRef string) {
+		cmd.Long = todoPRLong(landedRef)
+	})
+	return cmd
+}
+
+// todoPRLong renders `todo pr`'s help body against the ref the landing
+// question will actually be asked about.
+//
+// The ref is RESOLVED, not constant: a project that integrates on a branch
+// other than the default asks the question about its own branch, and the help
+// text names the ref the check will actually use rather than a default that
+// may not apply here. It is resolved lazily — see withResolvedLandedRef.
+func todoPRLong(landedRef string) string {
+	return `Report, for every queued card, whether an open pull request already
 delivers it or whether its work has already landed on ` + landedRef + `.
 
 The verb writes NOTHING: no card field, no finding, no cache, no lock. It
@@ -89,33 +109,29 @@ Five outcomes, distinguishable by kind alone:
              confidence inferred — read off a single PR body
   ambiguous  several open PR bodies carry it; every candidate is listed and
              none is chosen
-  landed     no open PR carries it, and ` + landedRef + ` history names it.
-             It means SOMETHING naming the card landed on that ref — NOT that
-             the card's last step landed
+  landed     no open PR carries it, and ` + landedRef + ` history carries a
+             commit whose SUBJECT ATTRIBUTES the card — a conventional-commit
+             scope, a trailing parenthetical credit (with or without a
+             pull-request reference after it), or an integration-targeted
+             merge. It means something ATTRIBUTING the card landed on that
+             ref — NOT that the card's last step landed. A body mention, a
+             mid-sentence mention, a branch name, and a dependency note do
+             NOT count: attribution is a POSITION in the subject, never a
+             token occurring anywhere in a message
   no-link    nobody has started this
   unknown    the landing question could not be asked (no such ref, no git, a
              failed query). This is NOT evidence of not-landed
 
 The landed check is local git and keeps working when gh does not. When gh is
 absent, unauthenticated, or offline the link column renders empty, the
-degradation is noted on stderr, and the exit code stays 0.`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var only string
-			if len(args) == 1 {
-				only = normalizeTodoRef(args[0])
-			}
-			return runTodoPR(cmd, only, jsonOutput)
-		},
-	}
-	cmd.Flags().BoolVar(&jsonOutput, "json", false,
-		"Emit the link outcomes as JSON on stdout")
-	return cmd
+degradation is noted on stderr, and the exit code stays 0.`
 }
 
 // runTodoPR renders the link view. Every exit path is exit 0 unless the queue
 // itself is unreadable — a degraded link lookup is a note, not an error.
 func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
+	// REQ-BJD-002 — probed before the read (todo_disclosure.go).
+	_ = discloseQueueLayout(cmd, "pr")
 	rec, err := newTodoStore().Load()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)

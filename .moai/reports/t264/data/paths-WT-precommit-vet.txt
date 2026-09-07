@@ -1,0 +1,4 @@
+CLAUDE.local.md
+internal/cli/hook_install_precommit.go
+internal/cli/hook_install_precommit_test.go
+internal/template/templates/.git_hooks/pre-commit

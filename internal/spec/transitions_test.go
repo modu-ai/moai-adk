@@ -107,14 +107,14 @@ func TestPrefixToStatusCompleteness(t *testing.T) {
 	// SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 M2: completed는 이제 close-infix로만 도달한다
 	// (docs(sync) bare prefix → implemented). completed coverage를 close-infix title로 이동.
 	testTitles := []string{
-		"status(draft): SPEC-001",                                     // draft
-		"plan(spec): SPEC-001 — draft",                                // planned
-		"chore(SPEC-001): partial work",                               // in-progress
-		"feat(SPEC-001): implement",                                   // implemented
+		"status(draft): SPEC-001",                                      // draft
+		"plan(spec): SPEC-001 — draft",                                 // planned
+		"chore(SPEC-001): partial work",                                // in-progress
+		"feat(SPEC-001): implement",                                    // implemented
 		"chore(SPEC-001): Mx-phase audit-ready signal + 4-phase close", // completed (close-infix)
-		"status(superseded): SPEC-001 replaced by SPEC-002",           // superseded
-		"status(archived): SPEC-001 obsolete",                         // archived
-		"status(rejected): SPEC-001 won't fix",                        // rejected
+		"status(superseded): SPEC-001 replaced by SPEC-002",            // superseded
+		"status(archived): SPEC-001 obsolete",                          // archived
+		"status(rejected): SPEC-001 won't fix",                         // rejected
 	}
 
 	for _, title := range testTitles {

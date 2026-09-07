@@ -1,10 +1,10 @@
 ---
 id: SPEC-CODEX-SKILL-NEUTRAL-001
 title: "하네스 중립 지시 계층 — 코덱스에서도 Claude 와 같은 신뢰로 지시를 실행할 수 있게 한다"
-version: "0.3.2"
+version: "0.3.3"
 status: completed
 created: 2026-08-31
-updated: 2026-09-01
+updated: 2026-09-07
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -18,6 +18,8 @@ related_specs: [SPEC-CODEX-SKILLS-CANONICAL-001, SPEC-CODEX-DUAL-AGENTS-001]
 # SPEC-CODEX-SKILL-NEUTRAL-001 — 하네스 중립 지시 계층
 
 ## HISTORY
+
+- 2026-09-07 (외부 SPEC 발 실측 수치 정정 — amendment 1행, v0.3.3) — **REQ-CSN-003 의 실측 수치 문면을 4행에서 3행으로 정정한다.** 요구사항의 **의미는 바꾸지 않는다** — 파생 기준 문장(「이 표를 읽는 하네스에 존재하지 않는 모든 `tool_classes` 능력」)은 그대로 두고, 그 기준을 적용한 **실측 수치만** 갈아쓴다. 정정 근거: SPEC-CODEX-BODY-NEUTRALITY-001 M1 이 `tool_classes` 값 집합 **11개 전수**에 이 SPEC 자신의 파생 판별식을 적용해 능력 부재 **3건**(`task-list` · `design-sync` · `question-channel`)을 확정했고, 그 셋은 두 `AGENTS.md` 사본에 실린 바로 그 3행이다(`sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md | grep -c '^| [a-z]'` → 3, 두 사본 동일). 즉 실물 표가 스테일한 것이 아니라 이 문면의 수치가 스테일했다. 네 번째 후보였던 `cross-session-messaging` 은 rationale 이 "The Codex counterpart rides the moai MCP broker" 라 **대응물의 존재**를 서술하므로 파생 기준상 행을 얻지 못한다. 전수 판정 기록: `.moai/reports/t497/capability-absence.md`. **손대지 않은 것**: §B.D7 의 「4행 = 373 B」는 후보 표 `.moai/reports/t196/csn003-table-4row.txt` 의 **크기 측정 기록**이고 그 파일은 실제로 4행이므로 그대로 둔다. v0.3.1 HISTORY 항목의 「오늘의 4행」은 그 시점의 기록이므로 이력을 다시 쓰지 않는다. **status 는 completed 에 머문다** — v0.3.2 항목이 세운 같은 선례를 따른다: 본문 수치 한 자리 정정은 `completed → in-progress (amendment)` 전환이 아니므로 `amendment_of:` 나 HISTORY `## Amendments` **절**을 만들지 않고, 이 한 줄이 그 amendment 기록이다.
 
 - 2026-09-01 (sync-audit 후속 본문 정정, v0.3.2) — sync-audit(**PASS-WITH-DEBT 0.89**, `.moai/reports/t196/sync-audit.md`)의 MAJOR-1·MINOR-1 두 건을 본문에 반영한다. **요구사항·판정 개수 불변**(REQ 15 / AC 13).
   1. **AC-CSN-010 표면 목록 정정 노트 [v0.3.2]** — run-phase 리드 판정(§B.D7, 2026-09-01)이 `agents-codex.yaml` 을 범위에 승격했으므로 plan-era 표면 목록의 축자 재실행은 설계상 비어 있지 않다. AC 에 [v0.3.2, sync-audit MAJOR-1] 노트를 덧붙여 올바른 sync-phase 재판정 형태를 못박는다 — 승격 경로를 제외한 `codex_launcher.go`·`skill_mirror.go` 둘만, 착수 HEAD `2c18091d1` 기준(비어 있음을 이 트리 실측). §E.4 의 표면 치환(`renderer.go` ← `agentemit/`)은 진행 기록 결함으로 progress.md 소관이다.
@@ -277,7 +279,7 @@ HARD 6줄은 **채택안에 포함**된다(REQ-CSN-006) — 기각한 것은 "�
 
 - **REQ-CSN-001** — **While** 코덱스가 이름을 아는 도구 없이 지시를 만났을 때의 거동이 관측되지 않은 상태다, run-phase 는 축 A 의 어떤 본문도 편집하기 **전에** 그 거동을 최소 1건 관측하고 그 출력을 증거 경로에 남겨야 한다.
 - **REQ-CSN-002** — 하네스 중립 능력 어휘는 `internal/template/agentemit/agents-codex.yaml` 의 `tool_classes` 클래스 이름을 그대로 써야 하며, 두 번째 어휘를 새로 만들어서는 안 된다.
-- **REQ-CSN-003** — `AGENTS.md` 는 결속표를 실어야 한다. 표의 행 집합은 **이 표를 읽는 하네스(코덱스)에 존재하지 않는 모든 `tool_classes` 능력**이다 — 파생 기준이지 고정 행 수가 아니다. 현재 측정값 4행은 결과이지 기준이 아니다: 미래의 하네스가 `file-read` 를 잃으면 표에 그 행이 새로 생기고, 코덱스가 어떤 능력을 얻으면 그 행은 표에서 사라진다. 각 행은 (a) 그 능력의 중립 이름, (b) Claude 하네스에서의 구현, (c) **그 능력이 없는 하네스에서 취할 행동** 세 칸을 담는다. 근거(예산 측정)는 §B.D7.
+- **REQ-CSN-003** — `AGENTS.md` 는 결속표를 실어야 한다. 표의 행 집합은 **이 표를 읽는 하네스(코덱스)에 존재하지 않는 모든 `tool_classes` 능력**이다 — 파생 기준이지 고정 행 수가 아니다. 현재 측정값 3행은 결과이지 기준이 아니다: 미래의 하네스가 `file-read` 를 잃으면 표에 그 행이 새로 생기고, 코덱스가 어떤 능력을 얻으면 그 행은 표에서 사라진다. 각 행은 (a) 그 능력의 중립 이름, (b) Claude 하네스에서의 구현, (c) **그 능력이 없는 하네스에서 취할 행동** 세 칸을 담는다. 근거(예산 측정)는 §B.D7.
 - **REQ-CSN-004** — **When** 하네스에 질문 채널이 없다, 그 하네스의 실행자는 사용자에게 질문하는 대신 blocker 보고를 반환해야 한다. 결속표는 이 규칙을 명시해야 한다.
 - **REQ-CSN-005** — 결속표는 `AGENTS.md` 루트 사본과 `internal/template/templates/AGENTS.md` 사본 **양쪽**에 동일 내용으로 실려야 하며, 두 사본은 각각 `CodexContractByteCeiling` 이하로 유지되어야 한다.
 

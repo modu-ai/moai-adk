@@ -1,0 +1,20 @@
+error: cannot delete branch 'WT-lint-heading' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t154'
+error: cannot delete branch 'WT-mermaid-audit' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/mermaid-audit'
+error: cannot delete branch 'WT-precommit-vet' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t312-precommit-vet'
+error: cannot delete branch 'WT-projectdir-stamp' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t328-projectdir-stale'
+error: cannot delete branch 'WT-release-notes-313' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t146'
+error: cannot delete branch 'WT-taskstop-name-reclaim' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t267'
+error: cannot delete branch 'WT-todo-verb-guard' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t203'
+Deleted branch WT-lsel-drain-stall (was c7ddefc05).
+Deleted branch WT-main-stamp-repair (was dd27af58c).
+Deleted branch WT-prepush-overwrite (was ff5e7d07c).
+Deleted branch WT-pretool-blocking (was ed8157999).
+Deleted branch WT-project-pipeline (was 29bc2077b).
+Deleted branch WT-report-format-opt-key (was aefad57bd).
+Deleted branch WT-revival-solo-writer (was 4315ffed1).
+Deleted branch WT-security-scan-surface (was afe4fc9a8).
+Deleted branch WT-server-version (was a6890f9a6).
+Deleted branch WT-skillstead-gallery (was d8b32d28e).
+Deleted branch WT-stop-goal-double-exec (was 97af33a61).
+Deleted branch WT-v313-docs (was 0cb188b5b).
+Deleted branch WT-web-live-todo (was 82f5413af).

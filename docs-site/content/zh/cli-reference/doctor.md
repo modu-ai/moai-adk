@@ -50,6 +50,18 @@ moai doctor [OPTIONS]
 
 这个估算调用的是与 `moai clean --home` **同一个扫描器**,所以 doctor 报出的数字和 clean 实际删除的清单不会脱节。详见 [主目录卫生](/zh/advanced/home-hygiene)。
 
+## Hook Delivery 检查 {{< new-badge v3.1.4 >}}
+
+`moai update` 可能在模板新增了钩子条目时,没有把它们写进现有项目的 `.claude/settings.json` 就悄悄跳过。**Hook Delivery** 检查就是找出这类缺失:在项目已经拥有的钩子事件键范围内,对比发行模板与项目设置,报告模板有而项目缺少的条目。
+
+| 报告项目 | 内容 |
+|----------|------|
+| 缺失条目 | 以 `hooks.PreToolUse missing handle-pre-tool.sh (matcher AskUserQuestion)` 的形式指出,连事件键和匹配器一起说明 |
+| 修复方法 | 在被指名的事件键下,从所用 moai 版本的模板设置中复制对应块补回 |
+| 更新后核验 | 给出检查 `moai update` 是否删除了受管文件的命令(`git status --porcelain \| grep '^ D'`)—— 命中时先用 `git restore -- <路径>` 还原,再补回条目 |
+
+这项检查是只读的 —— 绝不写入 `.claude/settings.json`。模板首次引入的事件键和用户自己编写的条目不计为缺失,opt-out 的条目也不会被要求(模板会按项目自身的 `hook.opt_in.enabled` 设置渲染)。全部一致时报 `ok`。
+
 ## 退出码
 
 脚本和 CI 包装器调用 `moai doctor` 时，读的是退出码，而不是摘要那一行。

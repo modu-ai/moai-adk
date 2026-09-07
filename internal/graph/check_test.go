@@ -85,6 +85,14 @@ func writeCodemapsProvenance(t *testing.T, root, commit string) {
 		CommitSHA:     commit,
 		GeneratedBy:   "codemaps-gen",
 	})
+	// A genuinely stamped tree carries the codemaps docs themselves; the
+	// citations layer (fourth layer, SPEC-CODEMAPS-ACCURACY-001 REQ-CMA-002)
+	// judges them, and a doc-less directory is unjudgeable-absent, not fresh.
+	// No cited paths in the fixture doc, so the citations row reads fresh.
+	if err := os.WriteFile(filepath.Join(root, ".moai", "project", "codemaps", "modules.md"),
+		[]byte("# modules\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // writeCodemapsProvenanceBlock marshals and writes an arbitrary provenance
@@ -140,10 +148,10 @@ func TestCheckFreshness_AllFresh(t *testing.T) {
 	for _, l := range res.Layers {
 		byLayer[l.Layer] = l
 	}
-	if len(res.Layers) != 3 {
-		t.Fatalf("expected 3 layer reports, got %d: %+v", len(res.Layers), res.Layers)
+	if len(res.Layers) != 4 {
+		t.Fatalf("expected 4 layer reports (codemaps, mx-index, edges, citations), got %d: %+v", len(res.Layers), res.Layers)
 	}
-	for _, name := range []string{"codemaps", "mx-index", "edges"} {
+	for _, name := range []string{"codemaps", "mx-index", "edges", "citations"} {
 		l, ok := byLayer[name]
 		if !ok {
 			t.Fatalf("missing layer report for %q", name)

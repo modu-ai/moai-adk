@@ -2,9 +2,9 @@
 id: SPEC-STATUSLINE-PROFILE-RESPECT-001
 title: "Statusline forge/github opt-out honored end-to-end; worktree sessions resolve the enclosing project's launch profile"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-09-02
 author: manager-spec
 priority: P1
 phase: "v3.2.0"

@@ -107,6 +107,11 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 			}
 		}
 	}
+	// REQ-BJD-002 — the same vouch already in hand carries the State D
+	// fact; no second probe (REQ-BJD-006).
+	if werr := discloseNonAuthoritativeBacklogJSON(errOut, "history", vouch); werr != nil {
+		return werr
+	}
 
 	out := cmd.OutOrStdout()
 	if len(args) == 0 {

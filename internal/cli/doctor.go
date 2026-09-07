@@ -219,6 +219,15 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 
 	workspaceChecks := []checkFunc{
 		{"Hooks Config", func(v bool) DiagnosticCheck { return checkHooksConfig(cwd, v) }},
+		// SPEC-HOOK-WIRING-DRIFT-001 REQ-HWD-003: report template-vs-project
+		// hook-entry drift in both directions. Reports only; never repairs.
+		{hookWiringCheckName, func(v bool) DiagnosticCheck {
+			return checkHookWiringDrift(cwd, hookWiringTemplateSource(), v)
+		}},
+		// SPEC-UPDATE-HOOK-DELIVERY-001 REQ-UHD-008: read-only detection of
+		// shipped-template hook entries missing from the project's
+		// settings.json (Option B — detect + guide; never writes).
+		{"Hook Delivery", func(v bool) DiagnosticCheck { return checkHookDelivery(cwd, v) }},
 		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},

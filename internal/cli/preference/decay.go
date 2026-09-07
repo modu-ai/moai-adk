@@ -151,10 +151,10 @@ func (s *fileStore) reconcileRecallArchival(recall []Entry) []Entry {
 // 408-409 comments reserved the hook points for. It:
 //
 //  1. Loads recall.jsonl.
-//  1.5. Reconciles recall against archival (crash recovery, REQ-CONC-001-005):
-//      drops any recall entry that already has an archival copy, so a prior
-//      scan that crashed between writeArchivalEntry and the recall write-back
-//      self-heals instead of persisting a cross-tier duplicate.
+//     1.5. Reconciles recall against archival (crash recovery, REQ-CONC-001-005):
+//     drops any recall entry that already has an archival copy, so a prior
+//     scan that crashed between writeArchivalEntry and the recall write-back
+//     self-heals instead of persisting a cross-tier duplicate.
 //  2. For each entry, separates stable from transient behavior:
 //     - STABLE entries are EXEMPT from pure time-decay (REQ-ADM-011, the
 //     anti-AP-ADM-006 / Koren "지속 신호 상실" invariant). Their weight is

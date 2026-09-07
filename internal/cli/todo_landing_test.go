@@ -39,8 +39,14 @@ func TestTodoPR_UnanswerableRendersUnknownNotNoLink(t *testing.T) {
 	_, store := todoFixture(t)
 	ids := seedQueue(t, store, "unanswerable card", "genuinely unstarted card")
 	installSpy(t, &spyRunner{
-		prJSON:  `[]`,
-		gitFail: map[string]error{ids[0]: fmt.Errorf("fatal: ambiguous argument 'origin/develop': unknown revision")},
+		prJSON: `[]`,
+		// The landing query's argv no longer carries the card id (the query
+		// is a subject stream), so the unanswerable question is planned per
+		// call: call 1 is ids[0]'s, call 2 ids[1]'s.
+		logPlan: []spyLogAnswer{
+			{err: fmt.Errorf("fatal: ambiguous argument 'origin/develop': unknown revision")},
+			{},
+		},
 	})
 
 	stdout, stderr, err := runTodo(t, "pr")
@@ -76,10 +82,14 @@ func TestTodoPR_UnanswerableRendersUnknownNotNoLink(t *testing.T) {
 // render makes.
 func TestTodoPR_UnknownReachesJSON(t *testing.T) {
 	_, store := todoFixture(t)
-	ids := seedQueue(t, store, "unanswerable card")
+	seedQueue(t, store, "unanswerable card")
 	installSpy(t, &spyRunner{
-		prJSON:  `[]`,
-		gitFail: map[string]error{ids[0]: fmt.Errorf("fatal: bad revision")},
+		prJSON: `[]`,
+		// Per-call plan: ids[0]'s landing query fails, which is the fixture
+		// for an unanswerable question.
+		logPlan: []spyLogAnswer{
+			{err: fmt.Errorf("fatal: bad revision")},
+		},
 	})
 
 	stdout, _, err := runTodo(t, "pr", "--json")

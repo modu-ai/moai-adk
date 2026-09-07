@@ -1,0 +1,6 @@
+    token_budget_guard_test.go:69: always-loaded surface = 77723 tokens (budget 77600, headroom -123, 17 entries)
+    token_budget_guard_test.go:73: always-loaded surface = 77723 tokens, exceeds budget 77600 (overflow 123); surface has 17 entries — trim always-loaded rules or raise AlwaysLoadedTokenBudget with justification
+--- FAIL: TestAlwaysLoadedTokenBudget (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	0.545s
+FAIL

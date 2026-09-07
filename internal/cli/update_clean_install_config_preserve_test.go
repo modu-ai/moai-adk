@@ -47,6 +47,16 @@ func (d *overwritingDeployer) Deploy(ctx context.Context, projectRoot string, mg
 		// version carries no user patterns.
 		".gitignore": "# MoAI template gitignore\n.moai/cache/\n.moai/logs/\n",
 	}
+	// llm.yaml joins the clobber set with the REAL embedded template bytes
+	// (SPEC-LLMCFG-PRESERVE-001 AC-LCP-005): the force-deploy path rewrites
+	// the deployed section files with template content, and a synthetic
+	// miniature would assert preservation against a fixture that no longer
+	// resembles the shipped 247-line comment-dense file.
+	llmData, llmErr := readEmbeddedLLMYAML()
+	if llmErr != nil {
+		return llmErr
+	}
+	clobber[".moai/config/sections/llm.yaml"] = string(llmData)
 	for rel, content := range clobber {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
 		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
@@ -90,6 +100,12 @@ func makeConfigPreserveFixture(t *testing.T) string {
 		"language:\n    conversation_language: ko\n")
 	writeTestFile(t, root, ".moai/config/sections/design.yaml",
 		"design:\n    default_framework: flutter\n")
+	// llm.yaml joins the fixture family (SPEC-LLMCFG-PRESERVE-001 AC-LCP-005)
+	// with the same user-edit pattern the template-sync path pins: a
+	// glm.models.high re-pin, an agent_overrides entry, and a marker comment
+	// above a user-added key — derived from the REAL embedded template bytes.
+	writeTestFile(t, root, ".moai/config/sections/llm.yaml",
+		string(buildLLMUserYAML(t, embeddedLLMYAMLBytes(t), false)))
 
 	// A PRESERVE-inventory seed so the reinstall has inventory work too.
 	writeTestFile(t, root, ".moai/specs/SPEC-USER-CFG/spec.md", "user spec\n")
@@ -204,6 +220,32 @@ func TestCleanReinstall_AllSectionsYAMLPreserved(t *testing.T) {
 	}
 	if got := yamlNestedString(t, root, ".moai/config/sections/design.yaml", "design", "default_framework"); got != "flutter" {
 		t.Errorf("design.yaml default_framework = %q; want flutter (reset to shipped default next.js?)", got)
+	}
+}
+
+// TestCleanReinstallLLMYAMLPreserved covers AC-LCP-005
+// (SPEC-LLMCFG-PRESERVE-001): llm.yaml joins the protection class AC-RIL-006
+// already grants user/language/design.yaml — the same user-edit pattern (value
+// change + agent_overrides entry + marker comment above a user-added key)
+// survives the clean-reinstall's force-deploy clobber + restore. The deployer
+// clobbers llm.yaml with the REAL embedded template bytes, so survival proves
+// the restore's 3-way merge, not a clobber that never happened.
+func TestCleanReinstallLLMYAMLPreserved(t *testing.T) {
+	root := makeConfigPreserveFixture(t)
+	runConfigPreserveReinstall(t, root)
+
+	if got := llmYAMLString(t, root, "llm", "glm", "models", "high"); got != llmUserPinnedHigh {
+		t.Errorf("clean-reinstall lost user llm.glm.models.high = %q; want %q (clobbered to template default?)", got, llmUserPinnedHigh)
+	}
+	if got := llmYAMLString(t, root, "llm", "agent_overrides", "manager-develop", "model"); got != "opus" {
+		t.Errorf("clean-reinstall lost user agent_overrides entry: manager-develop.model = %q; want opus", got)
+	}
+	if got := llmYAMLString(t, root, "llm", llmUserMarkerKey); got != llmUserMarkerKeyValue {
+		t.Errorf("clean-reinstall lost user-added key llm.%s = %q; want %q", llmUserMarkerKey, got, llmUserMarkerKeyValue)
+	}
+	content := string(readLLMYAML(t, root))
+	if !strings.Contains(content, llmMarkerComment) {
+		t.Errorf("clean-reinstall lost the user's marker comment; llm.yaml:\n%s", content)
 	}
 }
 

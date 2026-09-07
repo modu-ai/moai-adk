@@ -1,0 +1,8 @@
+--- FAIL: TestPipelineCarrySignal_TemplateMirror (0.00s)
+    --- FAIL: TestPipelineCarrySignal_TemplateMirror/pipeline_carry-commitment_line_present (0.00s)
+        project_continuation_pipeline_signal_test.go:44: template copy of .claude/skills/moai/workflows/project/doc-generation.md lacks the pipeline carry-commitment line present fragment: "this session is expected to carry past /moai plan"
+    --- FAIL: TestPipelineCarrySignal_TemplateMirror/stop-short_naming_clause_present (0.00s)
+        project_continuation_pipeline_signal_test.go:44: template copy of .claude/skills/moai/workflows/project/doc-generation.md lacks the stop-short naming clause present fragment: "the carry stopped before the Implementation Kickoff Approval gate"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.471s
+FAIL

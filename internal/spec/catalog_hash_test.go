@@ -1,8 +1,10 @@
 // catalog_hash_test.go — Defensive parity guard for internal/template/catalog.yaml.
 //
 // TestCatalogHashParity walks every catalog entry, recomputes its sha256 hash
-// from the on-disk source body using template.NormalizeForHash, and asserts
-// byte-equality against the stored hash field. Zero drift is the invariant;
+// from on-disk source — a directory entry as its whole deployed tree via
+// template.ComputeDirTreeHash, a file entry as its single normalized body —
+// and asserts byte-equality against the stored hash field. Zero drift is the
+// invariant;
 // any mismatch is a t.Errorf with entry name + stored + computed triplet so the
 // drift is debuggable post-hoc.
 //
@@ -18,9 +20,13 @@
 // reserved for `go run internal/template/scripts/gen-catalog-hashes.go --all`
 // (manual, explicit).
 //
-// Reuses template.LoadCatalog + template.NormalizeForHash (already exported)
-// to eliminate normalization-logic duplication and avoid the §E.1 drift risk
-// documented in SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001 spec.md.
+// Reuses template.LoadCatalog, template.ComputeDirTreeHash and
+// template.NormalizeForHash (all exported) so parsing, hash boundary and
+// normalization each have a single implementation shared with the generator
+// and TestManifestHashFormat — the §E.1 drift risk documented in
+// SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001 spec.md. Sharing only the
+// normalization step proved insufficient: the boundary drifted instead, and
+// 34 directory entries disagreed until card t441 shared that too.
 //
 // SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001 M1 (Tier S 1-pass).
 package spec
@@ -56,34 +62,32 @@ func repoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
 }
 
-// resolveHashSourcePath mirrors gen-catalog-hashes.go resolveHashSourcePath
-// semantics: for skill directories, find the root SKILL.md or skill.md; for
-// agent .md files (and other regular files), use the path directly.
+// resolveHashSourcePath resolves the single file a catalog entry hashes when
+// its path names a regular file (the agent .md entries). Directory entries do
+// NOT come through here — they hash as a whole deployed tree via the exported
+// template.ComputeDirTreeHash, the same function the generator and the
+// embedded-FS audit test call.
 //
-// MIRROR: keep in sync with internal/template/scripts/gen-catalog-hashes.go
-// resolveHashSourcePath. The reference implementation is the script; this
-// helper is a deliberate duplicate kept here because the script lives in
-// `package main` and cannot be imported. Normalization itself uses the
-// exported template.NormalizeForHash, eliminating the highest-risk drift
-// surface — only path resolution logic is duplicated.
+// MIRROR: keep in sync with the file branch of
+// internal/template/scripts/gen-catalog-hashes.go resolveHashSourcePath. The
+// script is the reference implementation and lives in `package main`, so it
+// cannot be imported and this much stays a local duplicate.
+//
+// What is deliberately no longer duplicated is the hash BOUNDARY. The former
+// comment here claimed that sharing template.NormalizeForHash had eliminated
+// the highest-risk drift surface and left "only path resolution" local. That
+// was refuted: after t323 moved directory entries to whole-tree hashing, this
+// test still resolved a directory to its root SKILL.md and hashed that one
+// file, so 34 directory entries disagreed with the generator while every
+// shared normalization call agreed. Boundary selection now lives in the
+// caller and defers to ComputeDirTreeHash (card t441).
 func resolveHashSourcePath(templatesDir, entryPath string) (string, error) {
 	relPath := strings.TrimPrefix(entryPath, "templates/")
 	relPath = strings.TrimSuffix(relPath, "/")
 	absPath := filepath.Join(templatesDir, relPath)
 
-	info, err := os.Stat(absPath)
-	if err != nil {
+	if _, err := os.Stat(absPath); err != nil {
 		return "", fmt.Errorf("stat %q: %w", absPath, err)
-	}
-
-	if info.IsDir() {
-		for _, candidate := range []string{"SKILL.md", "skill.md"} {
-			candidatePath := filepath.Join(absPath, candidate)
-			if _, statErr := os.Stat(candidatePath); statErr == nil {
-				return candidatePath, nil
-			}
-		}
-		return "", fmt.Errorf("directory %q has no SKILL.md or skill.md for hashing", absPath)
 	}
 
 	return absPath, nil
@@ -137,28 +141,56 @@ func TestCatalogHashParity(t *testing.T) {
 
 	drift := 0
 	for _, e := range entries {
-		sourcePath, err := resolveHashSourcePath(templatesDir, e.Path)
-		if err != nil {
-			t.Errorf("CATALOG_ENTRY_ORPHAN: entry %q path=%q: %v", e.Name, e.Path, err)
+		relPath := strings.TrimSuffix(strings.TrimPrefix(e.Path, "templates/"), "/")
+		absPath := filepath.Join(templatesDir, relPath)
+
+		info, statErr := os.Stat(absPath)
+		if statErr != nil {
+			t.Errorf("CATALOG_ENTRY_ORPHAN: entry %q path=%q: %v", e.Name, e.Path, statErr)
 			drift++
 			continue
 		}
 
-		raw, err := os.ReadFile(sourcePath)
-		if err != nil {
-			t.Errorf("entry %q read source %q: %v", e.Name, sourcePath, err)
-			drift++
-			continue
-		}
+		var computed, hashSource string
+		if info.IsDir() {
+			// Directory entries hash as the whole deployed tree: //go:embed
+			// all:templates ships every regular file under the directory, so
+			// every one of them belongs inside the integrity claim (t323).
+			// ComputeDirTreeHash is the same exported aggregation the generator
+			// and TestManifestHashFormat call — read here over on-disk source
+			// instead of the embed, which is this test's distinct purpose.
+			treeHash, treeErr := template.ComputeDirTreeHash(os.DirFS(templatesDir), filepath.ToSlash(relPath))
+			if treeErr != nil {
+				t.Errorf("entry %q tree hash %q: %v", e.Name, absPath, treeErr)
+				drift++
+				continue
+			}
+			computed = treeHash
+			hashSource = absPath + "/ (whole tree)"
+		} else {
+			sourcePath, resolveErr := resolveHashSourcePath(templatesDir, e.Path)
+			if resolveErr != nil {
+				t.Errorf("CATALOG_ENTRY_ORPHAN: entry %q path=%q: %v", e.Name, e.Path, resolveErr)
+				drift++
+				continue
+			}
 
-		normalized := template.NormalizeForHash(raw)
-		sum := sha256.Sum256(normalized)
-		computed := hex.EncodeToString(sum[:])
+			raw, readErr := os.ReadFile(sourcePath)
+			if readErr != nil {
+				t.Errorf("entry %q read source %q: %v", e.Name, sourcePath, readErr)
+				drift++
+				continue
+			}
+
+			sum := sha256.Sum256(template.NormalizeForHash(raw))
+			computed = hex.EncodeToString(sum[:])
+			hashSource = sourcePath
+		}
 
 		if computed != e.Hash {
 			// REQ-CHR-004 prescribed triplet format: name | stored | computed.
 			t.Errorf("CATALOG_HASH_DRIFT: entry %q | stored=%s | computed=%s (source=%s) — run gen-catalog-hashes.go --all to refresh",
-				e.Name, e.Hash, computed, sourcePath)
+				e.Name, e.Hash, computed, hashSource)
 			drift++
 		}
 	}

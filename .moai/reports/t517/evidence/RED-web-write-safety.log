@@ -1,0 +1,132 @@
+=== RUN   TestHandleSaveValueInvariantLeavesSectionsByteIdentical
+    write_safety_test.go:78: value-invariant save rewrote feedback.yaml
+        --- before ---
+        feedback:
+            # repository comment line one
+            repository: modu-ai/moai-adk
+        
+            # auto_submit comment
+            auto_submit: false
+        
+        --- after ---
+        feedback:
+            # repository comment line one
+            repository: modu-ai/moai-adk
+            # auto_submit comment
+            auto_submit: false
+    write_safety_test.go:85: value-invariant save rewrote git-strategy.yaml (dirty-gate bypassed)
+        --- before ---
+        git_strategy:
+            mode: team
+        
+        --- after ---
+        git_strategy:
+            mode: team
+            provider: github
+            github_username: ""
+            gitlab:
+                instance_url: ""
+            worktree_base_branch: ""
+            manual:
+                workflow: github-flow
+                environment: local
+                github_integration: false
+                push_to_remote: false
+                auto_checkpoint: disabled
+                branch_prefix: ""
+                main_branch: ""
+                develop_branch: ""
+                release_branch_prefix: ""
+                rc_version_format: ""
+                draft_pr: false
+                required_reviews: 0
+                branch_protection: false
+                merge_method: squash
+                automation:
+                    auto_branch: false
+                    auto_commit: true
+                    auto_pr: false
+                    auto_push: false
+                branch_creation:
+                    auto_enabled: false
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: false
+                hooks:
+                    pre_commit: enforce
+                    pre_push: warn
+                    commit_msg: warn
+            personal:
+                workflow: github-flow
+                environment: github
+                github_integration: true
+                push_to_remote: true
+                auto_checkpoint: ""
+                branch_prefix: feature/SPEC-
+                main_branch: main
+                develop_branch: ""
+                release_branch_prefix: ""
+                rc_version_format: ""
+                draft_pr: false
+                required_reviews: 0
+                branch_protection: false
+                merge_method: squash
+                automation:
+                    auto_branch: false
+                    auto_commit: true
+                    auto_pr: false
+                    auto_push: false
+                branch_creation:
+                    auto_enabled: false
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: false
+                hooks:
+                    pre_commit: enforce
+                    pre_push: warn
+                    commit_msg: warn
+            team:
+                workflow: github-flow
+                environment: github
+                github_integration: true
+                push_to_remote: true
+                auto_checkpoint: ""
+                branch_prefix: feature/SPEC-
+                main_branch: main
+                develop_branch: ""
+                release_branch_prefix: ""
+                rc_version_format: ""
+                draft_pr: true
+                required_reviews: 1
+                branch_protection: true
+                merge_method: squash
+                automation:
+                    auto_branch: false
+                    auto_commit: true
+                    auto_pr: false
+                    auto_push: true
+                branch_creation:
+                    auto_enabled: false
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: true
+                hooks:
+                    pre_commit: enforce
+                    pre_push: warn
+                    commit_msg: warn
+            auto_branch: false
+            branch_prefix: moai/
+            commit_style: conventional
+            worktree_root: ""
+            gitlab_instance_url: ""
+--- FAIL: TestHandleSaveValueInvariantLeavesSectionsByteIdentical (0.01s)
+=== RUN   TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst
+    write_safety_test.go:148: duplicate form value for "git_strategy.worktree_base_branch" not detected — parser silently adopted "first-value"
+    write_safety_test.go:151: duplicate form value for "git_strategy.worktree_base_branch" resolved to a single edit "first-value" instead of being detected
+--- FAIL: TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.451s
+FAIL

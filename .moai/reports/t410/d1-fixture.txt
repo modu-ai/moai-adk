@@ -1,0 +1,6 @@
+- 이 줄은 status: 를 문장 중간에 담은 산문 diff 줄이다
++status: completed
+-status: implemented
++++ b/.moai/specs/SPEC-ERA-H3-NARROWING-001/spec.md
+--- a/.moai/specs/SPEC-ERA-H3-NARROWING-001/spec.md
++| 0.6.0 | 2026-09-03 | manager-spec | t382 원인 서술 정정 — status 전이 없음 |

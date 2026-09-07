@@ -30,9 +30,9 @@ codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed 
 
 ## `internal/codexadapter` — the hook adapter library
 
-The two harnesses' hook surfaces are nearly but not exactly the same. Measurement (against codex-cli 0.147.0) found exactly two divergences: the **event name** the harness passes, and **three output keys** codex declares but does not act on (`systemMessage`, `continue`, `stopReason`). Everything else measured identical, so `internal/codexadapter` is a thin translation layer that sits **in front of** the dispatcher — nothing under `internal/hook` is modified.
+The two harnesses' hook surfaces are nearly but not exactly the same. Measurement (against codex-cli 0.153.4) found exactly two divergences: the **event name** the harness passes, and **three output keys** codex declares but does not act on (`systemMessage`, `continue`, `stopReason`). Everything else measured identical, so `internal/codexadapter` is a thin translation layer that sits **in front of** the dispatcher — nothing under `internal/hook` is modified.
 
-### The 11-event table
+### The 12-event table
 
 | Codex event | MoAI dispatcher arg | Adapted this milestone? |
 |---|---|---|
@@ -42,19 +42,20 @@ The two harnesses' hook surfaces are nearly but not exactly the same. Measuremen
 | SessionEnd | `session-end` | yes |
 | Stop | `stop` | yes |
 | UserPromptSubmit | `user-prompt-submit` | yes |
-| PreCompact | `compact` | no — unmeasured |
-| PostCompact | `post-compact` | no — unmeasured |
-| PermissionRequest | `permission-request` | no — unmeasured |
-| SubagentStart | `subagent-start` | no — unmeasured |
-| SubagentStop | `subagent-stop` | no — measured NOT to fire |
+| PreCompact | `compact` | no — compaction never triggered non-interactively |
+| PostCompact | `post-compact` | no — compaction never triggered non-interactively |
+| PermissionRequest | `permission-request` | no — approval request never raised non-interactively |
+| SubagentStart | `subagent-start` | yes |
+| SubagentStop | `subagent-stop` | yes |
+| Interrupt | — (no counterpart) | no — fires on SIGINT; adaptation needs a new dispatcher subcommand (follow-up) |
 
-All eleven events have a dispatcher counterpart. Excluding an event from adaptation is a scoping decision about measurement coverage, never an absence of a counterpart. SubagentStop is the special case: it was **measured never to fire** — under codex, delegation surfaces as a PostToolUse whose tool name begins "collaboration", so mapping it would wire a path nothing ever flows through.
+Twelve events are covered: eleven have a dispatcher counterpart, and `Interrupt` — the 12th officially documented event — is recognized and refused with a distinct no-counterpart message until a dispatcher subcommand exists. On codex-cli 0.153.4, `SubagentStart` and `SubagentStop` were **measured to fire** (reversing an earlier 0.147.0 observation that SubagentStop never fired) and are now adapted: `RenderHooks` installs `moai hook subagent-start --harness codex` and `moai hook subagent-stop --harness codex` into the user's `.codex/hooks.json`. The compact and permission events are held back on honest evidence, not assumption: non-interactive `codex exec` runs never reached compaction (best effort 264,808 input tokens against a measured 1,048,576-character input cap) and never raised an approval request — recorded as trigger-not-achieved, never as "does not fire".
 
-Unadapted events are not silently ignored — they are **refused**. An unknown event (a typo) and a recognized-but-unadapted event (a scoping decision) return distinct errors, so an operator can tell a mistake from a decision. The config validator collects **every** unknown-key violation instead of stopping at the first.
+Unadapted events are not silently ignored — they are **refused**. An unknown event (a typo) and a recognized-but-unadapted event (a scoping decision or a missing counterpart, as with `Interrupt`) return distinct errors, so an operator can tell a mistake from a decision. The config validator collects **every** unknown-key violation instead of stopping at the first.
 
-### Nothing invokes it yet
+### What invokes it now
 
-{{< icon warning warn >}} This package shipped as a library and **nothing calls it yet**. The `--agent` config generator — the follow-up card that wires the adapter into a generated codex config — completes the connection. As of now this page is a map of where the wiring will land, not the manual for a switched-on feature.
+The adapter is no longer call-free: `RenderHooks` writes the two adapted subagent hook lines (`moai hook subagent-start --harness codex`, `moai hook subagent-stop --harness codex`) into the user's `.codex/hooks.json`. The remaining events still await the `--agent` config generator — the follow-up card that wires the adapter into a generated codex config — so for those this page remains a map of where the wiring will land.
 
 ## Next steps
 

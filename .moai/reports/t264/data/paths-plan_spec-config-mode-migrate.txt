@@ -1,0 +1,6 @@
+.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/plan.md
+.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/progress.md
+.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/spec.md
+.moai/specs/SPEC-CONFIG-TIER-PERSIST-001/spec.md
+CLAUDE.md
+internal/template/templates/CLAUDE.md

@@ -82,7 +82,7 @@ Full sync verdict, in five evidence-bearing sections with per-measurement party 
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_commit_sha: 7c555c220   # sync-phase commit (t378); merge e79272713 is its integration point
 sync_status: complete
 b12_self_test_a: pass    # grep -c 'SPEC-VACUOUS-FLOOR-GUARD-001' CHANGELOG.md -> 0, no duplicate
 b12_self_test_b: pass    # 8 own AC (AC-VFG-001..008); the domain-agnostic pattern returns 9

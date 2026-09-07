@@ -40,22 +40,58 @@ var trailingExitClause = regexp.MustCompile(`(?i)^(.*\S)\s+exits?\s+(\d+)\s*$`)
 // through this one function, so the miss was shared by both.
 var modelConditionReferents = []string{"transcript", "conversation"}
 
+// conditionDeclarationPrefix matches a leading `model:` / `cmd:` declaration
+// prefix (case-insensitive, surrounding whitespace tolerated) on a condition
+// string. Only those two exact words followed by a colon count — "modelling:"
+// and "cmdline:" are ordinary text, not prefixes.
+var conditionDeclarationPrefix = regexp.MustCompile(`(?is)^\s*(model|cmd)\s*:\s*(.*)$`)
+
 // parseCondition classifies a single condition string by the EXPLICIT rule of
 // REQ-GLE-032: a claim that references the conversation transcript becomes a
 // model condition; any other string is a runnable shell command (mechanical).
 //
-// The discriminator is a literal token from modelConditionReferents
-// (case-insensitive) — it stays an explicit rule, never an implicit heuristic.
+// Classification runs in two stages, most explicit first:
+//
+//  1. An explicit `model:` / `cmd:` declaration prefix wins outright. REQ-GLE-032
+//     asks for classification by an EXPLICIT rule rather than an implicit
+//     heuristic, and only the prefix actually delivers that: the author says
+//     which tier they meant instead of hoping the discriminator guesses it.
+//  2. Absent a prefix, the modelConditionReferents substring fallback applies
+//     unchanged (back-compat for every already-armed and already-documented
+//     condition).
+//
+// The fallback is retained but demoted deliberately. Its discriminator is an
+// ENGLISH substring allowlist, and an allowlist fails silently on what it omits:
+// prose in any other language — and English prose phrased without those two
+// words — classifies mechanical, reaches `sh -c`, and exits 127 on every turn
+// until the ceiling. The prefix is the escape hatch that does not depend on the
+// allowlist being complete.
+//
 // A mechanical condition may carry a trailing "exits <N>" clause setting the
-// expected exit code; absent it, expect_exit defaults to 0.
+// expected exit code; absent it, expect_exit defaults to 0. The clause is parsed
+// on the prefixed form too, so `cmd: grep -q X f exits 1` behaves as expected.
 func parseCondition(s string) goal.Condition {
 	s = strings.TrimSpace(s)
+	if m := conditionDeclarationPrefix.FindStringSubmatch(s); m != nil {
+		body := strings.TrimSpace(m[2])
+		if strings.EqualFold(m[1], "model") {
+			return goal.Condition{Type: goal.ConditionModel, Claim: body}
+		}
+		return mechanicalCondition(body)
+	}
 	lower := strings.ToLower(s)
 	for _, referent := range modelConditionReferents {
 		if strings.Contains(lower, referent) {
 			return goal.Condition{Type: goal.ConditionModel, Claim: s}
 		}
 	}
+	return mechanicalCondition(s)
+}
+
+// mechanicalCondition builds a Tier-1 condition from a command string, peeling
+// the optional trailing "exits <N>" clause so the shell never runs those literal
+// words as arguments.
+func mechanicalCondition(s string) goal.Condition {
 	cmd := s
 	expect := 0
 	if m := trailingExitClause.FindStringSubmatch(s); m != nil {
@@ -297,6 +333,19 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 	}
 
 	cond := parseCondition(conditionText)
+	// Arm-time runnability gate: a mechanical condition whose first word names
+	// no command can never exit 0, so arming it silently buys a goal that blocks
+	// every turn-end to the ceiling. Refuse on positive evidence only (the probe
+	// fails open) and write NO state file on refusal. An explicit `cmd:` prefix
+	// is the author declaring the tier deliberately, and is exempt — see
+	// declaredMechanical.
+	if cond.Type == goal.ConditionMechanical && !declaredMechanical(conditionText) {
+		if tok, bad := unrunnableCommandToken(cmd.Context(), cond.Cmd); bad {
+			// Returned, not also printed: the root command renders the error, and
+			// printing it here too would show the user the same paragraph twice.
+			return unrunnableConditionError("goal arm", tok, cond.Cmd)
+		}
+	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {
 		g.Ceiling.MaxTurns = maxTurns // 0 = infinite entry point (AC-001)

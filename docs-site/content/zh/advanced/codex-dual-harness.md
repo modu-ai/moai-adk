@@ -30,9 +30,9 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 ## `internal/codexadapter` —— 钩子适配器库
 
-两个 harness 的钩子表面几乎相同,但不完全相同。实测(以 codex-cli 0.147.0 为准)发现分歧只有两处: harness 传入的**事件名**,以及 codex 声明了却不会响应的**三个输出键**(`systemMessage`、`continue`、`stopReason`)。其余全部测得一致,所以 `internal/codexadapter` 是坐在分发器**前面**的薄翻译层,`internal/hook` 不被触碰。
+两个 harness 的钩子表面几乎相同,但不完全相同。实测(以 codex-cli 0.153.4 为准)发现分歧只有两处: harness 传入的**事件名**,以及 codex 声明了却不会响应的**三个输出键**(`systemMessage`、`continue`、`stopReason`)。其余全部测得一致,所以 `internal/codexadapter` 是坐在分发器**前面**的薄翻译层,`internal/hook` 不被触碰。
 
-### 11 事件表
+### 12 事件表
 
 | Codex 事件 | MoAI 分发器参数 | 本里程碑适配? |
 |---|---|---|
@@ -42,19 +42,20 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 | SessionEnd | `session-end` | 是 |
 | Stop | `stop` | 是 |
 | UserPromptSubmit | `user-prompt-submit` | 是 |
-| PreCompact | `compact` | 否 —— 未实测 |
-| PostCompact | `post-compact` | 否 —— 未实测 |
-| PermissionRequest | `permission-request` | 否 —— 未实测 |
-| SubagentStart | `subagent-start` | 否 —— 未实测 |
-| SubagentStop | `subagent-stop` | 否 —— 实测不触发 |
+| PreCompact | `compact` | 否 —— 非交互运行中压缩从未触发 |
+| PostCompact | `post-compact` | 否 —— 非交互运行中压缩从未触发 |
+| PermissionRequest | `permission-request` | 否 —— 非交互运行中审批请求从未出现 |
+| SubagentStart | `subagent-start` | 是 |
+| SubagentStop | `subagent-stop` | 是 |
+| Interrupt | —— (无对应物) | 否 —— 在 SIGINT 时触发;适配需要新的分发器子命令(后续卡片) |
 
-11 个事件全都有分发器对应物。把某个事件排除在适配之外,是关于实测覆盖范围的范围决定,从来不是对应物缺失。SubagentStop 特殊的原因: 实测中**一次也没触发过** —— 在 codex 里,委派以工具名以 "collaboration" 开头的 PostToolUse 出现,映射它等于给一条永远不会有流量的路径拉线。
+共覆盖 12 个事件: 11 个有分发器对应物,官方文档中的第 12 个事件 `Interrupt` 在对应物出现之前,会以一条明确的"无对应物"消息被识别后拒绝。在 codex-cli 0.153.4 实测中,`SubagentStart` 与 `SubagentStop` **确认触发**(推翻了此前 0.147.0 下 SubagentStop 不触发的观测),现已适配 —— `RenderHooks` 会把 `moai hook subagent-start --harness codex` 和 `moai hook subagent-stop --harness codex` 两行写入用户的 `.codex/hooks.json`。compact、permission 系列是基于诚实证据而非假设的保留: 非交互的 `codex exec` 运行从未达到压缩条件(实测输入上限 1,048,576 字符,最好成绩 264,808 输入 token),也从未引发审批请求 —— 记录为**触发未达成**,绝不记作"不触发"。
 
-未适配事件不会被静默无视,而是被**拒绝**。未知事件(拼错)和被识别但本次不处理的事件(范围决定)返回不同的错误,运营者能把失误和决定区分开。配置校验器不停在第一个,而是**收齐所有**未知键违规后一次展示。
+未适配事件不会被静默无视,而是被**拒绝**。未知事件(拼错)和被识别但不处理的事件(范围决定,或像 `Interrupt` 那样缺少对应物)返回不同的错误,运营者能把失误和决定区分开。配置校验器不停在第一个,而是**收齐所有**未知键违规后一次展示。
 
-### 还没有调用方
+### 现在的调用方
 
-{{< icon warning warn >}} 这个包以库的形态出厂,**目前还没有任何东西调用它**。后续卡片 `--agent` 配置生成器(把适配器接线进生成的 codex 配置)会补上连接。就现在而言,本文是一张接线将落在哪里的地图,不是一个已通电开关的使用手册。
+适配器不再无人调用 —— `RenderHooks` 会把两条已适配的子代理钩子行(`moai hook subagent-start --harness codex`、`moai hook subagent-stop --harness codex`)写入用户的 `.codex/hooks.json`。其余事件仍在等待 `--agent` 配置生成器(把适配器接线进生成的 codex 配置的后续卡片),在那个范围内,本文仍是接线将落在哪里的地图。
 
 ## 下一步
 

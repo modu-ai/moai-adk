@@ -626,10 +626,10 @@ func TestGracefulAbortHandoffFormat(t *testing.T) {
 	requiredTokens := []string{
 		"✂──── 여기부터 복사 ────✂", // top cut-line marker
 		"✂──── 여기까지 복사 ────✂", // bottom cut-line marker
-		"ultrathink.",                // Block 1 opener
-		"applied lessons:",           // Block 2
-		"전제 검증:",                  // Block 3 header (ko canonical locale)
-		"실행:",                       // Block 5 header (ko canonical locale)
+		"ultrathink.",      // Block 1 opener
+		"applied lessons:", // Block 2
+		"전제 검증:",           // Block 3 header (ko canonical locale)
+		"실행:",              // Block 5 header (ko canonical locale)
 	}
 	for _, token := range requiredTokens {
 		if !strings.Contains(handoff, token) {

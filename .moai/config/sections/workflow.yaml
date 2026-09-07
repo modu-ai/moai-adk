@@ -129,6 +129,11 @@ workflow:
             L-run: {model: opus, effort: medium}
             L-sync: {model: sonnet, effort: low}
             L-mx: {model: sonnet, effort: low}
+    # project.continuation: /moai project Phase 14 완료 분기.
+    # none | card | pipeline. 부재도 미매칭도 card 로 해석되며, 미매칭 값은
+    # 완료 보고에 그대로 인용된다(런은 멈추지 않는다).
+    project:
+        continuation: card
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.

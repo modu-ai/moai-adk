@@ -448,6 +448,12 @@ jobs:
           go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
           git diff --exit-code -- 'internal/web/*_templ.go'
 
+      # Format gate: gofmt-clean is required on every push. Runs the same
+      # predicate as `make fmt-check` (tracked .go files) — on a clean CI
+      # checkout this is equivalent to whole-tree `gofmt -l .`.
+      - name: Check formatting (gofmt)
+        run: make fmt-check
+
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 

@@ -54,11 +54,11 @@ optional design report). Observation-only: no file writes, no persisted store.`,
 //	<prefix>   (required) The SPEC-ID prefix identifying the epic (e.g. NAVIGATOR-SYNC).
 func newEpicStatusCmd() *cobra.Command {
 	var (
-		jsonOutput    bool
-		designReport  string
-		marker        string
-		baseDir       string
-		locale        string
+		jsonOutput   bool
+		designReport string
+		marker       string
+		baseDir      string
+		locale       string
 	)
 	_ = locale
 
@@ -76,9 +76,9 @@ Board banner grammar.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prefix := args[0]
 			opts := epic.Options{
-				BaseDir:       baseDir,
-				Marker:        marker,
-				DesignReport:  designReport,
+				BaseDir:      baseDir,
+				Marker:       marker,
+				DesignReport: designReport,
 			}
 			status, err := epic.BuildEpicStatus(prefix, opts)
 			if err != nil {

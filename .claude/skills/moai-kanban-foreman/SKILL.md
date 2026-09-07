@@ -92,10 +92,11 @@ not something this loop can do for itself.
    - `command`:
 
      ```sh
-     f=.moai/state/todo/backlog.json
+     d=.moai/state/todo
      last=init
      while true; do
-       if [ -f "$f" ]; then cur=$(cksum "$f"); else cur=missing; fi
+       cur=$(cksum "$d"/backlog.db "$d"/backlog.db-wal 2>/dev/null)
+       [ -n "$cur" ] || cur=missing
        if [ "$cur" != "$last" ]; then
          [ "$last" != init ] && echo "backlog changed"
          last=$cur
@@ -107,10 +108,15 @@ not something this loop can do for itself.
    - `persistent: true`
    - `description: backlog queue watch`
 
-   The queue file is replaced atomically on every mutation, so tools that
-   follow a single file handle are the wrong shape here; the checksum poll
-   emits one line per change and costs one tiny read every five seconds. Do
-   not tighten the interval, and do not arm a second watcher. Each emitted
+   The queue is the database, and a `backlog.json` beside it is an export or
+   a legacy leftover — never the queue — so a watch pointed at the JSON on a
+   migrated project polls a file that never changes and reports nothing,
+   forever. The write-ahead log is watched alongside the database because a
+   committed write can sit in `backlog.db-wal` with the database image
+   byte-identical until a checkpoint folds it back; watching the database
+   alone misses exactly those mutations. The checksum poll emits one line
+   per change and costs two tiny reads every five seconds. Do not tighten
+   the interval, and do not arm a second watcher. Each emitted
    line, like each scheduled wakeup, is a prompt to run this same idempotent
    iteration — an iteration that finds nothing to do ends quickly.
 

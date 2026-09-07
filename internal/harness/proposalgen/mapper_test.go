@@ -144,10 +144,10 @@ func TestMapper_RealDataSchemaPass(t *testing.T) {
 		wantAdmit  bool
 	}{
 		// 실측 pattern_key 3형 — 모두 유효 EventType prefix + 빈 segment 허용.
-		{"user_prompt::", true},          // 빈 subject + 빈 context_hash
+		{"user_prompt::", true},           // 빈 subject + 빈 context_hash
 		{"agent_invocation:Bash:", false}, // format valid, but C1 (REQ-HLR-009) excludes agent_invocation event-type regardless of tier/confidence
-		{"session_stop::", true},         // 빈 subject + 빈 context_hash
-		{"subagent_stop:unknown:", true}, // 비어있지 않은 subject
+		{"session_stop::", true},          // 빈 subject + 빈 context_hash
+		{"subagent_stop:unknown:", true},  // 비어있지 않은 subject
 		// 나머지 pattern-bearing EventType prefix.
 		{"moai_subcommand:/moai plan:h1", true},
 		{"spec_reference:SPEC-001:h2", true},
@@ -327,8 +327,8 @@ func TestActionablePatternRE_AcceptsAgentInvocationFormat(t *testing.T) {
 	t.Parallel()
 
 	cases := []string{
-		"agent_invocation:Bash:",       // real data: empty context_hash
-		"agent_invocation::",           // empty subject + context_hash
+		"agent_invocation:Bash:", // real data: empty context_hash
+		"agent_invocation::",     // empty subject + context_hash
 		"agent_invocation:Read:deadbeef",
 	}
 	for _, pk := range cases {

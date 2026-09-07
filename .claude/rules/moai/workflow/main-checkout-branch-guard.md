@@ -18,14 +18,14 @@ wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why
 | Forbidden | Why |
 |-----------|-----|
 | `git checkout <branch>` / `git switch` | relocates every concurrent session's tree |
-| `git checkout -b` / `git switch -c` / `git branch` | same, plus leaves a branch other sessions did not expect |
+| `git checkout -b` / `git switch -c` / `git branch <name>` / any mutating `git branch` form (flag classification: § Mechanical Enforcement) | same, plus leaves a branch other sessions did not expect |
 | `git reset --hard` / `git checkout -- <path>` | discards work the orchestrator cannot see the provenance of |
 | `git stash` | the stash is repository-global; it silently absorbs other sessions' uncommitted changes |
 | `git rebase` / `git merge` onto the checked-out branch | rewrites or advances shared history mid-operation |
 
 [ZONE:Evolvable] Permitted in the primary checkout:
 
-- Read-only inspection: `git status`, `git log`, `git diff`, `git rev-parse`, `git show`, `git branch -vv`
+- Read-only inspection: `git status`, `git log`, `git diff`, `git rev-parse`, `git show`; `git branch` queries (bare list, `--list`, `-v`/`-vv`, `--show-current`, `--contains`/`--merged`/`--points-at`)
 - `git fetch` (updates remote-tracking refs only; never touches the working tree)
 - Commits **to the branch already checked out**, staged by explicit pathspec rather than `git add -A`
 - `git push` of the already-checked-out branch
@@ -87,6 +87,10 @@ to the primary checkout and would lock out legitimate worktree flows.
   Disabled, no `git rev-parse` subprocess runs at all.
 - **Deny sentinel.** Every deny on this path is prefixed `BRANCH_GUARD_VIOLATION:`, so the
   orchestrator can match the source without parsing the reason string.
+- **Query-vs-mutate discrimination.** The `git branch` matcher denies every mutating form — a
+  mutating flag anywhere, a short-flag cluster containing one, or a positional branch-name
+  operand with no list action selected — and passes read-only queries. An unclassifiable form
+  under-matches and passes: under-match is the accepted fail-open direction.
 - **Fail-open.** The deny fires only on positive evidence — primary checkout confirmed, a
   branch-state pattern matched, agent not exempt. Any uncertainty falls through to allow and
   appends to `.moai/logs/branch-guard-audit.log`.
@@ -110,5 +114,5 @@ IDs: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
 
 ---
 
-Version: 1.3.1
+Version: 1.3.3
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

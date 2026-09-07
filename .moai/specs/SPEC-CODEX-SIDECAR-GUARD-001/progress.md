@@ -37,7 +37,7 @@ plan-phase 시점 프로덕션 트리 무변경: `git status --porcelain interna
 |---|---|---|
 | AC-CSG-001 | PASS | claude 경로 슬라이스 = absent(`:97`) 경로 슬라이스 — 3원소 동일 (`internal/cli/init_agent_flag_test.go` 판독) |
 | AC-CSG-002 | PASS | both 경로 슬라이스 = codex(`:70`) 경로 슬라이스 — 3원소 동일 (같은 판독) |
-| AC-CSG-003 | PASS | `grep -cE '"\.codex"\|"\.codex/"' internal/cli/init_agent_flag_test.go` → 출력 `0` (grep exit 1 — 부합 없음) |
+| AC-CSG-003 | PASS | `grep -c -e '"\.codex"' -e '"\.codex/"' internal/cli/init_agent_flag_test.go` → 출력 `0` (grep exit 1 — 부합 없음) · 2026-09-02 t254 재측정: 원 기록형 `-cE '…\|…'`는 -E에서 리터럴 파이프 매치라 0이 구조적(반증 불가) — 다중 `-e`로 교체, 베어 대안 렌더형 재측정도 동일 0 (develop 2660bcd09) |
 
 M1 직후 `go test ./internal/cli/ -run 'TestRunInit_Agent' -v`: 네 시험 전부 `--- PASS`, exit 0.
 새 단언이 초록인 것은 프로덕션이 올바르기 때문이며, 적색 능력은 M2의 격리 뮤턴트로 입증한다.

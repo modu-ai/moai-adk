@@ -1,0 +1,131 @@
+  PID  PPID STARTED                      COMMAND
+  575     1 Fri Aug 28 11:33:48 2026     /Library/Application Support/Logitech.localized/LogiOptionsPlus/logioptionsplus_agent.app/Contents/Frameworks/logioptionsplus_updater.app/Contents/MacOS/logioptionsplus_updater
+ 5817     1 Fri Aug 28 11:34:14 2026     /Library/Application Support/Logitech.localized/LogiRightSightForWebcams/LogiRightSight.app/Contents/MacOS/LogiRightSight
+ 5823     1 Fri Aug 28 11:34:14 2026     /Library/Application Support/Logitech.localized/LogiOptionsPlus/logioptionsplus_agent.app/Contents/MacOS/logioptionsplus_agent --launchd
+ 7662 82203 Fri Sep  4 15:13:26 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+ 7664 82203 Fri Sep  4 15:13:26 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+ 7679 82203 Fri Sep  4 15:13:26 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+ 7684 82203 Fri Sep  4 15:13:26 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+ 7685  7662 Fri Sep  4 15:13:26 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+ 7686  7664 Fri Sep  4 15:13:26 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+ 7690  7679 Fri Sep  4 15:13:26 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+ 7692  7684 Fri Sep  4 15:13:26 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21221 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+21222 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+21226 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+21227 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+21230 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+21234 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+21264 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+21268 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+21269 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+21272 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+21274 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+21275 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+21276 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+21281 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+21282 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+21283 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+21288 82203 Thu Sep  3 17:07:48 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+21293 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+21294 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+21296 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+21297 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+21298 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+21299 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+21305 82203 Thu Sep  3 17:07:49 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+21369 21222 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+21370 21227 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+21372 21221 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+21373 21230 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21375 21276 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+21376 21274 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+21378 21226 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21379 21234 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+21380 21268 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+21381 21305 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+21384 21269 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+21385 21293 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+21386 21299 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+21387 21272 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21390 21264 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+21391 21283 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21392 21275 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+21393 21297 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+21411 21298 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21412 21294 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+21415 21288 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+21416 21296 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+21418 21282 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+21419 21281 Thu Sep  3 17:07:49 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24
+55272 60512 Thu Sep  3 18:32:19 2026     /bin/zsh -c source /Users/goos/.moai/claude-profiles/mo.ai.kr/shell-snapshots/snapshot-zsh-1788422389747-b0biwe.sh 2>/dev/null || true && export VERCEL_PLUGIN_BOOTSTRAP_HINTS="postgres,readme,redis"\012export VERCEL_PLUGIN_RESOURCE_HINTS="postgres,redis"\012export VERCEL_PLUGIN_SETUP_MODE="1"\012export MOAI_PROJECT_DIR="/Users/goos/MoAI/mo.ai.kr"\012: && setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd /Users/goos/MoAI/mo.ai.kr/.claude/worktrees/t850/apps/www && PORT=3020 bun run dev > /tmp/t850-dev.log 2>&1' < /dev/null && pwd -P >| /tmp/claude-aea5-cwd
+67216 28524 Fri Sep  4 18:34:58 2026     /bin/zsh -c source /Users/goos/.moai/claude-profiles/moai-adk/shell-snapshots/snapshot-zsh-1788347978918-7ug6k5.sh 2>/dev/null || true && export MOAI_PROJECT_DIR="/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485"\012: && setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'timeout 2400 /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485/.moai/reports/t485/raw/watch-indexlock.sh /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485/.moai/reports/t485/raw 15000 0.12' < /dev/null && pwd -P >| /tmp/claude-7805-cwd
+67224 67216 Fri Sep  4 18:34:58 2026     timeout 2400 /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485/.moai/reports/t485/raw/watch-indexlock.sh /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485/.moai/reports/t485/raw 15000 0.12
+67229 67224 Fri Sep  4 18:34:58 2026     /bin/bash /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485/.moai/reports/t485/raw/watch-indexlock.sh /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t485/.moai/reports/t485/raw 15000 0.12
+71341 71146 Fri Sep  4 18:35:37 2026     /Applications/Xcode.app/Contents/Developer/usr/bin/git clean -ffdx
+71482 22780 Fri Sep  4 18:35:39 2026     /bin/bash /Users/goos/.moai/bin/cc-statusline.sh
+71486 71482 Fri Sep  4 18:35:39 2026     moai statusline
+71489 31922 Fri Sep  4 18:35:39 2026     moai statusline
+71493 13852 Fri Sep  4 18:35:39 2026     /bin/bash /Users/goos/.moai/bin/cc-statusline.sh
+71500 71493 Fri Sep  4 18:35:39 2026     moai statusline
+71551 71486 Fri Sep  4 18:35:39 2026     /Applications/Xcode.app/Contents/Developer/usr/bin/git status --porcelain
+71553 71500 Fri Sep  4 18:35:39 2026     (git)
+71556 71489 Fri Sep  4 18:35:39 2026     /Applications/Xcode.app/Contents/Developer/usr/bin/git status --porcelain
+71565 67229 Fri Sep  4 18:35:39 2026     awk NR==1 || /git|statusline|moai/
+72871 31922 Thu Sep  3 18:34:53 2026     /bin/zsh -c source /Users/goos/.moai/claude-profiles/mo.ai.kr/shell-snapshots/snapshot-zsh-1788298688475-1szdue.sh 2>/dev/null || true && export VERCEL_PLUGIN_BOOTSTRAP_HINTS="postgres,readme,redis"\012export VERCEL_PLUGIN_RESOURCE_HINTS="postgres,redis"\012export VERCEL_PLUGIN_SETUP_MODE="1"\012export MOAI_PROJECT_DIR="/Users/goos/MoAI/mo.ai.kr"\012: && setopt NO_EXTENDED_GLOB NO_BARE_GLOB_QUAL 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd /Users/goos/MoAI/mo.ai.kr/apps/www && bun run dev --port 3010 2>&1 | tail -20' < /dev/null && pwd -P >| /tmp/claude-dd7a-cwd
+93790 87917 Wed Sep  2 07:12:45 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lead-1 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-93790-1788300765408201000.json
+93984 93790 Wed Sep  2 07:12:46 2026     moai mcp-server
+16506  2371 Wed Sep  2 20:11:19 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-12 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-16506-1788347479946503000.json
+25016 16506 Thu Sep  3 18:53:44 2026     moai mcp-server
+ 2860 95543 Wed Sep  2 07:14:09 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-3 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-2860-1788300849236146000.json
+33834  2860 Fri Sep  4 06:10:37 2026     moai mcp-server
+11632 95822 Wed Sep  2 07:15:46 2026     claude --permission-mode bypassPermissions --no-chrome --model opus[1m] --name lane-7 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-11632-1788300947028632000.json
+ 3441 96085 Wed Sep  2 07:14:13 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-4 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-3441-1788300853602580000.json
+15021  3441 Thu Sep  3 15:44:16 2026     moai mcp-server
+22780  2568 Wed Sep  2 20:11:32 2026     claude --permission-mode bypassPermissions --no-chrome --model opus[1m] --name lane-13 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-22780-1788347493042196000.json
+31553 22780 Thu Sep  3 16:23:49 2026     moai mcp-server
+33590 86899 Wed Sep  2 06:37:21 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-1 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-33590-1788298641883045000.json
+78436 33590 Fri Sep  4 04:02:30 2026     moai mcp-server
+31922 65572 Wed Sep  2 06:37:00 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lead --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-31922-1788298620222246000.json
+31991 31922 Wed Sep  2 06:37:01 2026     moai mcp-server
+34711 88430 Wed Sep  2 06:37:29 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-4 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-34711-1788298649189470000.json
+94915 23894 Wed Sep  2 07:12:54 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-1 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-94915-1788300774631705000.json
+35663 88840 Wed Sep  2 06:37:30 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-5 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-35663-1788298650954412000.json
+80794 35663 Fri Sep  4 04:02:54 2026     moai mcp-server
+33923 89297 Wed Sep  2 06:37:25 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-2 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-33923-1788298645437109000.json
+12451 96230 Wed Sep  2 07:15:52 2026     claude --permission-mode bypassPermissions --no-chrome --model opus[1m] --name lane-8 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-12451-1788300952317856000.json
+26461 12451 Fri Sep  4 06:08:31 2026     moai mcp-server
+27477  6370 Wed Sep  2 20:11:42 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-14 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-27477-1788347502786547000.json
+34255 90121 Wed Sep  2 06:37:27 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-3 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-34255-1788298647319202000.json
+79429 34255 Fri Sep  4 04:02:38 2026     moai mcp-server
+20397 36038 Fri Sep  4 05:46:14 2026     moai mcp-server
+36038 90591 Wed Sep  2 06:37:33 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-6 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-36038-1788298653161570000.json
+76637 97661 Wed Sep  2 14:25:06 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-5 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-76637-1788326706532176000.json
+80355 76637 Fri Sep  4 05:02:14 2026     moai mcp-server
+13062 97837 Wed Sep  2 07:15:56 2026     claude --permission-mode bypassPermissions --no-chrome --model opus[1m] --name lane-9 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-13062-1788300956679259000.json
+26899 13062 Fri Sep  4 06:08:37 2026     moai mcp-server
+77903  4872 Wed Sep  2 14:25:14 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-11 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-77903-1788326714601555000.json
+13852  6262 Wed Sep  2 07:16:03 2026     claude --permission-mode bypassPermissions --no-chrome --model opus[1m] --name lane-10 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-13852-1788300963131526000.json
+28524  6705 Wed Sep  2 20:11:47 2026     claude --permission-mode bypassPermissions --no-chrome --model opus[1m] --name lane-15 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-28524-1788347508007287000.json
+85831 28524 Fri Sep  4 05:03:03 2026     moai mcp-server
+92666 93615 Fri Sep  4 04:20:47 2026     moai mcp-server
+93615 88776 Thu Sep  3 14:06:40 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-7 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-93615-1788412001004311000.json
+90013 94402 Fri Sep  4 04:20:14 2026     moai mcp-server
+94402 88948 Thu Sep  3 14:06:48 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-8 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-94402-1788412008472931000.json
+33760 39516 Fri Sep  4 02:49:20 2026     moai mcp-server
+39516 35255 Thu Sep  3 14:36:05 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-9 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-39516-1788413765417626000.json
+38658 35337 Thu Sep  3 14:35:58 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-10 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-38658-1788413759133241000.json
+82658 38658 Fri Sep  4 04:03:09 2026     moai mcp-server
+60512 58679 Thu Sep  3 16:58:10 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-11 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-60512-1788422291070737000.json
+61514 58832 Thu Sep  3 16:58:16 2026     claude --permission-mode bypassPermissions --no-chrome --model claude-opus-5[1m] --name lane-12 --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-61514-1788422296298032000.json
+83092 61514 Fri Sep  4 04:03:12 2026     moai mcp-server
+99168 96822 Thu Sep  3 23:48:42 2026     moai codex
+99379 99190 Thu Sep  3 23:48:44 2026     uv run --directory ./mcp-servers/moai-mcp-imweb moai-mcp-imweb
+99381 99190 Thu Sep  3 23:48:44 2026     moai mcp-server
+99382 99190 Thu Sep  3 23:48:44 2026     uv run --directory ./mcp-servers/moai-mcp-threads-poster moai-mcp-threads-poster
+99384 99190 Thu Sep  3 23:48:44 2026     uv run --directory ./mcp-servers/moai-mcp-smartstore moai-mcp-smartstore
+99387 99190 Thu Sep  3 23:48:44 2026     uv run --directory ./mcp-servers/moai-mcp-cafe24 moai-mcp-cafe24
+99392 99382 Thu Sep  3 23:48:45 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-threads-poster/1.4.0/mcp-servers/moai-mcp-threads-poster/.venv/bin/moai-mcp-threads-poster
+99393 99379 Thu Sep  3 23:48:45 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-imweb/.venv/bin/moai-mcp-imweb
+99394 99384 Thu Sep  3 23:48:45 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-smartstore/.venv/bin/moai-mcp-smartstore
+99396 99387 Thu Sep  3 23:48:45 2026     /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/python /Users/goos/.codex/plugins/cache/moai-cowork/moai-seller/1.3.0/mcp-servers/moai-mcp-cafe24/.venv/bin/moai-mcp-cafe24

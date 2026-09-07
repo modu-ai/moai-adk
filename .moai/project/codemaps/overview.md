@@ -1,227 +1,108 @@
-# moai-adk-go 아키텍처 개요
+# 아키텍처 개요
 
-> 이 문서는 `/moai codemaps --force`로 자동 생성된 아키텍처 설명서입니다.
+> `/moai codemaps`로 생성된 아키텍처 지도입니다. 모든 수치는 아래 트리에서 직접 잰 것이고,
+> 다른 트리·다른 시점에서 옮겨온 값은 없습니다.
 
-**모듈**: `github.com/modu-ai/moai-adk`  
-**Go 버전**: go 1.26.4  
-**코드 규모**: 1064개 non-test Go 소스 파일 + 1658개 테스트 파일 (~225.9k non-test LOC, 2026-08-31 실측)  
-**패키지 수**: internal 최상위 64개 디렉터리 (Go 코드 보유 패키지 148개) + 2 pkg (`models`, `version`) + 1 cmd
-
----
-
-## 시스템 개요
-
-moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케스트레이션하는 통합 Go 바이너리입니다. **4계층 아키텍처**로 설계되었으며, 프레젠테이션 계층(CLI/TUI)에서 인프라 계층(Git/LSP)까지 명확한 책임 분리를 구현합니다.
-
-### 아키텍처 4계층
-
-| 계층 | 책임 | 주요 패키지 |
-|------|------|-----------|
-| **프레젠테이션** | CLI 명령, 터미널 UI, HTTP 인터페이스 | `cmd/moai`, `internal/cli` (261 non-test, 하위 포함), `internal/tui`, `internal/statusline`, `internal/web` |
-| **비즈니스/도메인** | 개발 워크플로우, SPEC 라이프사이클, 정책 | `internal/spec`, `internal/workflow`, `internal/loop`, `internal/harness`, `internal/constitution`, `internal/permission`, `internal/merge` |
-| **인프라** | Git 추상화, 템플릿 배포, 설정, 훅, 세션 | `internal/core/git`, `internal/template`, `internal/config`, `internal/hook`, `internal/session`, `internal/lsp/*`, `internal/mx`, `internal/guardstate`, `internal/guardliveness`, `internal/binlag` |
-| **계측/지원** | 성능 측정, LSP 통합, 셸, 재시도 | `internal/measure`, `internal/astgrep`, `internal/shell`, `internal/resilience` |
+**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.4
+**측정 트리**: worktree `.claude/worktrees/t476`, 브랜치 `WT-codemaps-progress`, HEAD `25a3212a9`
+**측정**: 2026-09-04
 
 ---
 
-## 핵심 패키지 역할
+## 규모
 
-### Presentation (프레젠테이션)
-- **cmd/moai**: 바이너리 진입점 → `cli.Execute()`
-- **internal/cli** (261 non-test 파일, 하위 포함): Cobra 커맨드 트리, composition root, root 등록 61개 (201 non-test `.AddCommand()` 호출). `moai codex` 런처(`codex_launcher.go`)와 세 기동 형태(맨몸·`cli`·`app`)가 통과하는 init-offer 게이트(`codex_init.go`)·AGENTS.md ↔ CLAUDE.md 지시 계약(`codex_contract.go`) 포함
-- **internal/tui**: Catppuccin 색상 토큰, Box/Pill/Table/Status 컴포넌트, 테마 선택
-- **internal/statusline**: Claude Code 상태 렌더러, 3L/5L 레이아웃, pluggable 데이터 제공자
-- **internal/web**: loopback HTTP 콘솔, Templ 컴파일 핸들러, 5s 드레인 종료
-- **pkg/version**: 빌드타임 버전/commit/date (ldflags)
+| 값 | 수치 | 산출 명령 |
+|---|---|---|
+| 비테스트 Go 파일 | 1096 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 1771 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 137 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
+| 최상위 패키지 | 68 | `internal` 65 + `cmd/moai` 1 + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 1638 | `go list -f '{{range .Imports}}...'` 후 모듈 경로 필터 |
+| 내부 import 엣지 (최상위 집계) | 205 | 위를 `internal/<X>` 수준으로 접고 self-edge 제거 |
+| 임베드 템플릿 파일 | 564 | `find internal/template/templates -type f \| wc -l` |
 
-### Business/Domain (비즈니스 영역)
-- **pkg/models**: 공유 config 타입 (매우 높은 팬-인) — ProjectType, DevelopmentMode, ProjectConfig
-- **internal/spec** (30 non-test 파일): SPEC 라이프사이클 — Linter (18 규칙: 14 단일-문서 + 4 크로스-SPEC), Audit(), ClassifyEra(), DetectDrift(), ClassifyPRTitle()
-- **internal/workflow**: Plan-Run-Sync 워크트리 오케스트레이션
-- **internal/loop** (18파일): 진단 피드백 루프 — LoopController, DecisionEngine, RalphEngine
-- **internal/harness** (80 non-test 파일): 하네스 자가학습 — Observer, Learner (4-tier), Applier (45KB), v4manifest, routing(위임 관측 원장), delegationmap(위임 맵 분석기), 5-phase safety
-- **internal/permission** (18파일): 8-tier 권한 스택, 5 모드, bubble 모드
-- **internal/merge**: 3-way 파일 병합 (ADR-008), 사용자 커스터마이징 보존
-- **internal/constitution**: 동결/진화 구역 모델, 5단계 병합 안전 파이프라인
-
-### Infrastructure (인프라)
-- **internal/core/git**: exec 기반 Git 추상화, Repository/BranchManager 인터페이스
-- **internal/core/project**: FindProjectRoot() ANCHOR — `.moai/` 발견
-- **internal/template**: go:embed Template-First (`embed.go`가 직접 `//go:embed all:templates` — 별도 `embedded.go` 생성 없음), Deployer, Renderer, profile_matrix (33-cell)
-- **internal/config**: 계층화 YAML (env > yaml > defaults), 14개 `loader_*.go`가 32개 YAML 파일을 조합 (section loader chain)
-- **internal/hook**: 컴파일된 훅 시스템, 30개 Claude Code 이벤트 (35개 `handle-*.sh` 래퍼), branch-state guard, JSON 디스패치
-- **internal/session** (25파일): 다중 세션 레지스트리, active-sessions.json, Heartbeat/Purge
-- **internal/lsp** (8 sub-packages): aggregator, cache, config, core, gopls, hook, subprocess, transport — JSON-RPC 클라이언트, 16-언어 자동감지, 회로 차단기
-- **internal/mx**: @MX 태그 스캐너, FanInCounter, 사이드카 JSON 인덱스, `IsDescribedWorthy()` (codemaps 신선도 게이트가 비교하는 "설명 대상" Go 소스 판정)
-- **internal/guardstate**: 가드 이벤트를 8행 상태표로 분류하는 상태 모델 — `Classification`(닫힌 7값 어휘, `ClassOK`가 유일한 clean 값), `Classify()`/`Evaluate()`/`Produce()`가 판정·집계·산출물 조립을 각각 담당
-- **internal/guardliveness**: guardstate 판정 결과를 운영자에게 "묻지 않아도" 드러내는 표면화 계층 — 3-clause 계약(entry당 정확히 1개 분류, clean 값 1개, 결과가 그 값을 기계가 읽을 수 있게 표시)만 소비하고 어휘 자체는 소유하지 않음
-- **internal/binlag**: 설치된 `moai` 바이너리가 현재 소스 트리보다 뒤처졌는지 판정하는 단일 비교 지점 — `moai doctor`와 SessionStart 어드바이저 양쪽이 같은 구현을 공유
+테스트 대 비테스트 비율이 **1.6 : 1**입니다. 테스트 파일이 0인 패키지는 3개뿐이고
+셋 다 정당한 사유가 있습니다(§ `modules.md` 참조).
 
 ---
 
-## 매우 높은 팬-인 패키지 (ANCHOR)
+## 이 코드베이스가 실제로 따르는 구조
 
-이 패키지들의 변경은 광범위한 영향을 미칩니다:
+**깔끔하게 들어맞는 이름은 없습니다.** 가장 가까운 것은 Go 표준 프로젝트 레이아웃에 얇은
+헥사고날 시도를 얹은 형태지만, 실제로 지배적인 것은 **명령별 수직 슬라이스를 가진 모듈러
+모놀리스**입니다.
 
-| 패키지 | 팬-인 수준 | 역할 |
-|--------|----------|------|
-| `pkg/models` | Very High (45+) | Config 타입 중심 — 모든 패키지가 설정 구조 가져옴 |
-| `pkg/version` | High (30+) | 버전 정보 |
-| `internal/core/git` | High (35+) | Git 추상화 — workflow/spec/session 사용 |
-| `internal/config` | Very High (48+) | YAML 설정 SSOT — CLI가 모든 패키지에 주입 |
-| `internal/core/project` | High (28+) | FindProjectRoot() — 프로젝트 루트 발견 (everywhere) |
-| `internal/cli` | Very High (50+ import) | Composition root — 모든 subcommand 라우팅 |
-| `internal/foundation` | High (32+) | 언어 registry — 지원 언어 쿼리 |
-| `internal/hook` | High (18+) | 훅 디스패치 — CLI/test/session |
-| `internal/template` | High (15+) | 배포 엔진 — CLI/init/update/migration |
+정직하게 한 줄로 적으면 — **SPEC 단위로 증식한 수평 패키지 위에 `internal/cli`라는 단일
+거대 어댑터가 얹힌 구조**입니다.
 
----
+### 헥사고날에 부합하는 근거
 
-## 의존성 다이어그램
+- `cmd/` · `internal/` · `pkg/` 3분할과 `internal/`의 65개 도메인 분해는 표준 레이아웃 그대로입니다.
+- 합성 루트가 명시적으로 하나 있습니다 — `internal/cli/deps.go`의 `Dependencies` 구조체와
+  `InitDependencies()`. `git.Repository`, `hook.Registry`, `hook.Protocol`, `update.Checker`,
+  `update.Orchestrator` 같은 인터페이스 타입으로 조립하므로 포트/어댑터 의도가 보입니다.
+- `internal/hook/registry.go`의 `Register` / `Dispatch`는 교과서적인 핸들러 레지스트리 + 체인입니다.
+- 안정 의존성 원칙을 만족합니다 — fan-in 상위를 `defs` · `paths` · `execerr` · `atomicfile` ·
+  `models` 같은 cross-cutting leaf가 차지하고, 그것들의 fan-out은 0에 가깝습니다.
 
-```
-cmd/moai
-    └─→ internal/cli (composition root, 48개 패키지 가져옴)
-        ├─→ internal/core/{git,project,quality}
-        ├─→ internal/{config,template,manifest,hook}
-        ├─→ internal/{spec,workflow,loop,harness}
-        ├─→ internal/{lsp/*,mx,astgrep}
-        ├─→ internal/{session,state,permission}
-        ├─→ internal/{github,update,profile}
-        └─→ pkg/{models,version}
+### 부합하지 않는 근거 — 이쪽이 더 결정적입니다
 
-순환 의존성: 없음 (검증됨)
-```
-
----
-
-## 주요 데이터 흐름
-
-### 1. 템플릿 배포
-```
-EmbeddedTemplates() → Deployer.Deploy()
-  → Renderer (엄격 모드, missing key error)
-    → 원자적 쓰기 (temp+rename)
-      → Manifest.Track() (3중 해시)
-```
-
-### 2. SPEC 라이프사이클
-```
-CLI (/moai plan/run/sync)
-  → spec.Linter (frontmatter + ownership)
-    → spec.ClassifyEra (grandfather vs V3R6 현대식)
-      → spec.Audit/DetectDrift (SyncStatusDrift)
-        → spec.ClassifyPRTitle (git 유추)
-```
-
-### 3. 훅 이벤트 분배
-```
-Claude Code → handle-<event>.sh
-  → moai hook <event> (stdin JSON)
-    → Registry.Dispatch()
-      → Handler chain (순차, 2 오류 시 단락)
-        → JSON + exit-code (stdout)
-```
-
-### 4. Ralph 진단 루프
-```
-LoopController.Start()
-  → FeedbackGenerator (go test/vet + LSP)
-    → RalphEngine.Decide (계속/수렴/중단/검토)
-      → iterate
-```
-
-### 5. 권한 해석
-```
-PreToolUse hook
-  → permission.Resolver.Resolve()
-    → 8-tier stack (policy→...→deny)
-      → allow/deny/ask
-```
-
-### 6. codex 런치 게이트
-```
-moai codex (맨몸) / cli / app
-  → classifyCodexWiring (배선 판정 — 런처의 단일 판정 소비)
-    → wired: 기동 (직접 또는 tmux spawn)
-    → 불완전: 상태·처방 보고
-      → 비대화형: 보고 후 종료 (rc 1, 프롬프트 없음)
-      → 거절: 기록 없이 종료 (rc 130 — 취소)
-      → 수락: codexwiring.Wire (배선 생성, agent=codex)
-        → AGENTS.md ↔ CLAUDE.md 지시 계약 (봉쇄 선행, temp+rename)
-          → 기동
-```
+- **`internal/cli`가 최상위 패키지 68개 중 58개를 import 합니다.** 헥사고날이라면 어댑터 하나가
+  전 도메인에 닿을 이유가 없습니다. 실제 모양은 "명령 하나 = 파일 하나 = 그 명령이 필요한 것
+  전부 import"에 가깝습니다.
+- **도메인 로직이 어댑터 안에 삽니다.** `internal/hook/session_start.go`가 67KB로 트리 전체
+  비테스트 Go 파일 중 최대이고, `pre_tool.go`가 48KB, `branch_guard.go`가 27KB입니다. 이들은
+  프로토콜 변환이 아니라 정책입니다.
+- **레이어 방향이 국소적으로 뒤집힙니다.** presentation인 `internal/hook`이 다른 최상위 패키지
+  6개에게, `internal/statusline`이 5개에게 import 당합니다.
+- **DI가 전역 변수 하나로 전달됩니다.** `var deps *Dependencies`는 컨테이너가 아니라 전역
+  상태이고, 그래서 `if deps == nil` 형태의 nil 방어가 곳곳에 필요해졌습니다.
+- **패키지 경계가 응집도가 아니라 SPEC 단위로 그어졌습니다.** 대부분의 패키지 doc 코멘트가
+  `SPEC-XXX-NNN` 형태로 시작합니다. `goal` / `loop` / `ralph`가 셋으로,
+  `guardliveness` / `guardstate`가 둘로 쪼개진 것이 그 결과입니다.
 
 ---
 
-## 진입점 (Entry Points)
+## 레이어
 
-### 바이너리 진입점
-```bash
-cmd/moai/main() → cli.Execute() → cobra rootCmd.Execute()
-```
+패키지의 **주된 대화 상대**로 판정했습니다.
 
-### Composition Root
-```go
-cli.InitDependencies() // 모든 서브시스템 와이어링
-```
+| 레이어 | 판정 규칙 | 대표 패키지 |
+|---|---|---|
+| presentation | 프로세스 경계 바깥의 표면(터미널·HTTP·훅 프로토콜)과 직접 말한다 | `cmd/moai`, `internal/cli`, `internal/hook`, `internal/tui`, `internal/web`, `internal/statusline`, `internal/mcp` |
+| business/domain | MoAI 고유 규칙·정책만 담고 자체 I/O 프리미티브를 소유하지 않는다 | `internal/spec`, `internal/harness`, `internal/navigator`, `internal/kanban`, `internal/graph`, `internal/mx` … |
+| data/persistence | 디스크상 named artifact 하나의 스키마와 읽기·쓰기 계약을 소유한다 | `internal/config`, `internal/session`, `internal/settings`, `internal/manifest` … |
+| infrastructure/platform | 외부 프로세스·OS·네트워크 설비를 감싼다 | `internal/lsp`, `internal/git`, `internal/github`, `internal/astgrep`, `internal/tmux` … |
+| cross-cutting | 정책이 없고 무관한 다수 패키지가 쓰는 leaf (fan-in ≥ 5, 도메인 지식 없음) | `internal/defs`, `internal/paths`, `internal/atomicfile`, `pkg/models` … |
 
-### CLI 명령 (~60 root 등록)
-- **프로젝트**: `init`, `update`, `doctor`, `config`, `web`
-- **SPEC**: `spec` (audit/lint/close)
-- **워크플로우**: `plan`, `run`, `sync`, `loop`, `clean`
-- **인프라**: `hook`, `migration`, `worktree`, `session`
-- **개발**: `mx`, `fix`, `research`, `goal`
-- **런처**: `cc`, `glm`, `cg`, `codex`
+전체 배치는 `modules.md`에 있습니다.
 
-### 훅 진입점
-```bash
-moai hook <event>  # SessionStart, PostToolUse, Stop, etc.
-```
+### 도식에 들어맞지 않는 패키지
 
----
+분류가 어긋나는 자리는 반올림이 아니라 **발견**이므로 그대로 적습니다.
 
-## 아키텍처 특징
-
-### 1. 인터페이스 우선 설계
-- 모든 도메인 모듈이 인터페이스 노출
-- 구현은 패키지 내부에 숨김
-- Hexagonal Architecture (Ports & Adapters)
-
-### 2. 의존성 주입 (Composition Root)
-- `internal/cli/deps.go`에서 모든 타입 인스턴스화
-- CLI 명령은 인터페이스만 참조
-
-### 3. 임베드된 템플릿 파일시스템
-- go:embed로 모든 프로젝트 템플릿 컴파일
-- 배포 시에 원자적 쓰기
-- 3-way 병합으로 사용자 커스터마이징 보존
-
-### 4. 훅 레지스트리 패턴
-- Claude Code JSON 이벤트 → stdin 수신
-- Registry가 30개 EventType 핸들러로 디스패치
-- 각 핸들러는 `Handler` 인터페이스 준수
-
-### 5. 멀티 LLM 실행 모드
-- `moai cc`: Claude 전용
-- `moai glm`: GLM 전용
-- `moai cg`: Claude leader + GLM teammates
-- `moai codex`: Codex CLI/데스크톱 앱 런처 — 인자 없이 부르면 Codex CLI 를 기동하고(`cli` 는 그 명시 별칭, `app` 은 데스크톱 앱, `--spawn` 은 새 tmux 창), 준비 상태 리드아웃은 `moai codex status` 로 분리돼 아무것도 띄우지 않으며, 배선이 불완전한 프로젝트에서 기동 시 init-offer 게이트가 배선 생성을 제안
-- GLM tier-models 테이블: Claude tier → GLM 모델 매핑
+- **`internal/hook` (134 파일)** — 가장 큰 불일치입니다. 겉으로는 Claude Code 훅 JSON을
+  stdin에서 읽어 stdout으로 내보내는 인바운드 어댑터지만, 안에 브랜치 가드·세션 시작
+  오케스트레이션·증거 기록기 같은 순수 정책이 함께 삽니다. presentation으로 부르면 정책이
+  감춰지고 domain으로 부르면 stdin/stdout 계약이 감춰집니다. 어느 쪽이든 손실이 있습니다.
+- **`internal/kanban` (33 파일)** — 카드 도메인 규칙(`role.go` · `column.go` · `reconcile.go`)과
+  SQLite 스토리지 엔진(`backlog_sqlite.go` — WAL · busy_timeout · IMMEDIATE 트랜잭션을 직접
+  소유)이 한 패키지에 있습니다. domain과 data가 분리돼 있지 않습니다.
+- **`internal/template` (25 파일)** — 도메인(카탈로그·모델 정책), 데이터(564개 파일의
+  `//go:embed all:templates` 트리), 인프라(배포기)를 동시에 수행합니다.
+- **`internal/core`** — 이름과 달리 응집된 core가 아닙니다. `core/git`은 인프라,
+  `core/project` · `core/quality`는 도메인이며, `core/integration`과 `core/migration`은
+  `.gitkeep` 하나뿐인 빈 디렉터리입니다.
+- **`internal/mcp` (1 파일)** — `catalog.go`의 도구 이름 + write 여부 선언 리스트뿐입니다.
+  프로토콜 계약 선언이라 presentation에 두었으나 실질은 `internal/defs`와 같은 상수 leaf입니다.
+- **`internal/skills`** — 비테스트 Go 파일이 0개이고 `workflow_split_test.go` 하나만 있습니다.
+  어떤 레이어에도 속하지 않습니다.
 
 ---
 
-## 상세 참고 문서
+## 관련 문서
 
-이 개요는 빠른 이해를 제공합니다. 더 깊은 분석은 다음을 참고하세요:
-
-- **modules.md**: 46개 internal 패키지의 함수/타입/역할 상세 설명
-- **dependencies.md**: Mermaid 패키지 의존도 그래프 + 팬-인/팬-아웃 정량화
-- **entry-points.md**: ~40 root CLI 명령 + 훅 진입점 목록
-- **data-flow.md**: 5가지 주요 플로우 시각화 (Mermaid)
-- **docs-truth.md**: 문서 검증을 위한 수동 유지보수 사실 체크리스트
-
----
-
-**생성**: `/moai codemaps --force`로 자동 생성  
-**검증**: 순환 의존성 0개, 모든 패키지 경로 존재 확인
+- `modules.md` — 패키지별 책임과 파일 수
+- `dependencies.md` — fan-in / fan-out 상위와 상호 참조 3쌍
+- `entry-points.md` — `main()`, Cobra 트리, 훅, MCP 표면
+- `data-flow.md` — 계층을 관통하는 경로 4개

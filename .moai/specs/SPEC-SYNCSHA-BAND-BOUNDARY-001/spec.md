@@ -236,6 +236,15 @@ SPEC's judgment criterion costs a great deal more than amending a draft's.
   `{"A6BBBF82B", true}`) — which is precisely the layer such a mutant bypasses.
   Closing the alphabet slice is a different axis and would widen this card's
   scope; it is not attempted here.
+- **[RESOLVED by card t397]** The alphabet slice above is now covered at the rule
+  level: the `sha-uppercase` fixture (uppercase 40-character SHA — inside the
+  length band, on the far side of the alphabet clause) joined
+  `TestSyncSHASlot_SilentOnSHA`'s silent set, and the narrowing mutant
+  `^[0-9a-f]{7,40}$` was re-measured RED against it (`expected 0 findings …
+  got 1`) before the change was committed. The same card also closed the
+  silent-empty-sweep residual: `syncSHAFindings` now fails loudly when a
+  fixture's `spec.md` is absent, so a missing fixture can no longer read as a
+  pass (measured: fixture removed → explicit failure; restored → green).
 - Observed bonus, also attributed to the plan audit and **not** claimed as a
   designed property of this fixture set: an anchor-dropping mutant
   (`[0-9a-fA-F]{7,40}`, no `^`/`$`) is killed incidentally by `sha-above41`. The

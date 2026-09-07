@@ -1,0 +1,6 @@
+.moai/specs/SPEC-V3R5-ATOMIC-WRITE-001/acceptance.md
+.moai/specs/SPEC-V3R5-ATOMIC-WRITE-001/plan.md
+.moai/specs/SPEC-V3R5-ATOMIC-WRITE-001/spec.md
+CHANGELOG.md
+internal/migrate/hook_cleanup.go
+internal/migrate/hook_cleanup_test.go

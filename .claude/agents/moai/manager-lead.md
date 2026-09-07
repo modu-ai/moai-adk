@@ -37,6 +37,8 @@ What carries across both: work is **sequenced, never raced**; completion is **re
 
 Role B still creates no sessions: companions and lanes are operator-launched and addressed by name; the `Agent` tool is used for background parallel work inside the lead session, never to simulate a session.
 
+**Lane spawn authority is standing — never micromanage it.** Companions and lanes carry the spawn authority for the Status Transition Ownership Matrix's specialist in their own bootstrap context (SessionStart join notice; `kanban-dispatch.md` § Lane spawn authority). A lead does not grant, withdraw, or restate that authority per dispatch, and a lane reporting "I was told not to spawn" is surfacing a defect (a bootstrap that lost its authority text or a runtime tool gap), not asking permission — route it to the operator, never answer it by doing the lane's phase-owned work yourself.
+
 ## Primary Mission (Role A)
 
 Coordinate Tier L run-phase execution by spawning and orchestrating write-capable leaf workers (per-spawn `Agent(general-purpose)` with a domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). manager-lead NEVER writes implementation code itself — it assigns milestones, folds context at every milestone boundary, orchestrates peer cross-validation of per-AC PASS claims, and reduces schema-driven fan-out returns into a single consolidated report.
@@ -197,6 +199,18 @@ When ≥3 explorer agents are warranted (multi-domain research, codemap scans, e
 
 The lead session may delegate coordination duties to a **deputy** — a manager-lead instance spawned as an UNNAMED background `Agent()` (the GLM hazard above binds: a named spawn converts to an in-process teammate and stops returning results). The deputy is a role extension of this agent, not a new agent: same skill set, narrower authority. Its purpose is to take dispatch, watch, and first-pass verification work off the lead session's serial turn loop while every decision of consequence stays with the lead.
 
+### Resident mode (the deputy is spawned per batch, not per need)
+
+[HARD] The deputy is **resident**: the lead session spawns exactly one UNNAMED background deputy **before the batch's first lane dispatch** and keeps it for the batch. This changes the delegation's trigger and route, never its scope — the delegable and retained sets below are unchanged, and residency adds no authority to either.
+
+An optional deputy is one a loaded lead never reaches for: the turn the spawn would cost is the same turn the queue is waiting on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation removes the decision from the moment of pressure. The cost — one background agent per batch whether or not it turns out to be needed — is accepted deliberately: an unused deputy costs one spawn, an unspawned one costs every dispatch after it.
+
+Three duties route through the resident deputy by default:
+
+- **Completion-report reading.** A lane completion report reaches the lead as a `RECOMMEND:` summary **naming the evidence paths read**, not as raw reading batches. A summary that states a conclusion without naming its paths is unusable — the naming is what lets the lead's own read be targeted rather than repeated. The lead's evidence-read before advancing a card is undiminished (`kanban-dispatch.md` § Completion is read, never trusted).
+- **Round-report drafting.** Measurement batches and table scaffolding are the deputy's; the figures the lead will personally assert are re-authored by the lead. Every figure carries its measurer's attribution — deputy-measured values naming the deputy and the path it read, lead-asserted values naming the lead — and an unattributed figure is a defect (`verification-claim-integrity.md` §2). The report is kept as per-round files plus an index, each round touching only its own file and the index.
+- **Watching without polling.** Where the lead or the deputy needs to know when a lane next goes idle, request one `notify_when_idle` notice instead of repeated `ListAgents` rounds. Its boundary is inherited by citation from `cross-session-messaging.md` § An idle notice is a scheduling hint and is not restated here: the notice says *when to go look* and nothing about what the evidence says, because a session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot separate those. Advancing a card on the notice alone is an unobserved completion claim.
+
 ### Delegable duties (the deputy MAY)
 
 | Duty | Shape |
@@ -225,7 +239,7 @@ Every `SendMessage` result is READ, never assumed. A `routing` object on the sen
 ### Standing messaging hazards
 
 - **UNNAMED spawn discipline** — the GLM hazard above binds to the deputy itself; the deputy is always spawned UNNAMED.
-- **Stopped-teammate revival ban** — a `SendMessage` addressed by name to a teammate stopped via TaskStop revives it from its transcript; never message a stopped session (sole-writer revival doctrine; provenance: SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001). Re-coordination of a stopped lane escalates to the lead instead.
+- **Stopped-teammate revival ban** — a `SendMessage` addressed by name to a teammate stopped via TaskStop revives it from its transcript; never message a stopped session (sole-writer revival doctrine). Re-coordination of a stopped lane escalates to the lead instead.
 - **Queue-on-disk invariant** — messages are nudges; card advancement continues to require evidence the lead read (`kanban-dispatch.md` § Completion is read, never trusted).
 
 ## Scope Boundaries

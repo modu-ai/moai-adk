@@ -106,6 +106,32 @@ PR 生成の可否は SPEC の tier に応じて自動決定されます (Hybrid
 
 Tier S/M は CI 4 status checks + pre-push hook が安全を保証するので main に直接 push します。Tier L は広範な scope のため PR review window とフル CI マトリックス検証が必要です。
 
+この表の「main 直接 push」は main ブランチで実行する場合の基準です。main 以外のブランチでの動作は、直下のセクションを参照してください。
+
+### ブランチ別の引き渡し動作 (git strategy)
+
+`/moai sync` の最終段階である push と PR の引き渡しは、アクティブモードのストラテジーキーが決めます。`.moai/config/sections/git-strategy.yaml` の `git_strategy.{mode}.workflow` を読み、値は `github-flow` と `git-flow` の 2 つのどちらか一方です。3 つのモード(manual/personal/team)すべてのデフォルトは `github-flow` です。キーがこの 2 つのどちらでもない場合、引き渡し段階は推測せず、問題の値を報告して停止します。
+
+`github-flow` では、現在のブランチコンテキストによって結果が変わります:
+
+| ブランチコンテキスト | 引き渡し動作 |
+| ---- | ------- |
+| **main ブランチ** (Tier S/M、`--pr` なし) | main へ直接 push、PR なし |
+| **main 以外のブランチ** | そのブランチを push し、main 向け PR を作成(既にあれば更新) |
+| **ワークツリーブランチ** | ワークツリーブランチを push して PR を作成 |
+| **どの経路にも合わない状態** (detached HEAD など) | push も PR も行わず、ブランチ状態を報告して停止 |
+
+表の「main」はモード設定の `main_branch` 値を指し、設定がなければ `main` として動作します。
+
+main ブランチから Tier S/M の SPEC を処理する場合、この動作は v3.1.2 までと同じです — main 直接 push、PR なし。変わったのは残りのブランチコンテキスト 2 つです:
+
+- **main 以外のブランチでは PR が作られるようになります。** v3.1.2 まではブランチ名に関係なく main に push し、PR を作りませんでした。
+- **どの経路にも合わないブランチ状態では sync が停止します。** 以前はどんなブランチ状態でも main に push して完了していましたが、今後は何も push せず状態を報告します。今まで完了していた sync が突然止まったら、まずこの箇所を確認してください。
+
+`git-flow` を選ぶとブランチ名で経路が分かれます — `feature/*` は develop 向け PR、`release/*` と `hotfix/*` は main 向け PR を作り(hotfix はマージ後に develop へのバックマージ PR が 1 つ追加されます)、`WT-*` ブランチは PR なしで統合ワークツリー内でマージします。
+
+旧バージョンの設定キー `github.spec_git_workflow`(system.yaml)は非推奨で、v3.3.0 で削除されます。今後の正規キーは上記の `git_strategy.{mode}.workflow` です。
+
 **トークン効率化戦略:**
 
 - SPEC ドキュメントのメタデータと要約のみをロードします
@@ -571,7 +597,7 @@ $ gh pr view 42
 
 ### Q: PR を自動で作りたくなければ?
 
-Tier S/M SPEC は Hybrid Trunk 運用でデフォルト的に main に直接 push するので PR が生成されません。Tier L でも PR の代わりにコミットだけ残しておくなら、sync 完了後に手動で `git push` のタイミングを調節できます。
+Tier S/M SPEC は Hybrid Trunk 運用でデフォルト的に main に直接 push するので PR が生成されません。Tier L でも PR の代わりにコミットだけ残しておくなら、sync 完了後に手動で `git push` のタイミングを調節できます。なお、main 以外のブランチで sync を実行すると、ブランチ push とともに PR が作成されます(ブランチ別の引き渡し動作を参照)。
 
 ### Q: CHANGELOG 形式を変えられますか?
 

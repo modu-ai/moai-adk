@@ -1,0 +1,6 @@
+docs-site/content/en/utility-commands/moai-todo.md
+docs-site/content/ja/utility-commands/moai-todo.md
+docs-site/content/ko/utility-commands/moai-todo.md
+docs-site/content/zh/utility-commands/moai-todo.md
+internal/cli/todo.go
+internal/cli/todo_test.go

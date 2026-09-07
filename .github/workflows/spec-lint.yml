@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - '.moai/specs/**'
+      - 'internal/spec/**'
+      - '.github/workflows/spec-lint.yml'
   # develop is the integration branch under git-flow: lane work merges into it
   # directly, with no card PR to carry the pull_request trigger above. Without a
   # push trigger this lint never runs on the branch where SPECs actually land.
@@ -13,6 +15,8 @@ on:
       - develop
     paths:
       - '.moai/specs/**'
+      - 'internal/spec/**'
+      - '.github/workflows/spec-lint.yml'
 
 permissions:
   contents: read
@@ -29,10 +33,24 @@ jobs:
     steps:
       # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
       - uses: actions/checkout@v7
+        with:
+          # SPEC-SPECLINT-GITBLIND-001 (t371) REQ-SLGB-008: full history so
+          # StatusGitConsistency and OwnershipTransition walk the real log
+          # windows instead of a depth-1 truncation that silently blinds them.
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
+      # Explicit main fetch (REQ-SLGB-008). Whether actions/checkout at
+      # fetch-depth: 0 populates refs/remotes/origin/* is NOT a verified
+      # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — this repo integrates
+      # through develop, so a checkout of a develop push holds no local main
+      # either way, and the lint's base-ref chain needs one. Redundant when
+      # checkout already fetched it, the fetch costs one command; missing, it
+      # costs the lint its eyes again.
+      - name: Fetch main ref
+        run: git fetch origin main:main
       - name: Run SPEC lint
         # Invoke the freshly built binary directly via go run instead of
         # `make install` (which pollutes $GOPATH/bin and is unnecessary for

@@ -1,0 +1,4 @@
+internal/cli/update/merge/base.go
+internal/cli/update/merge/base_test.go
+internal/cli/update/merge/merge.go
+internal/cli/update_deny_migration_test.go

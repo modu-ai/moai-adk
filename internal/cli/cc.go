@@ -36,6 +36,12 @@ Flags:
   -m, --model <model>           Override model selection
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --branch <existing>         With -w <name>: create the worktree checked out at an
+                                EXISTING branch (e.g. moai cc -w develop --branch develop
+                                for the gitflow integration worktree) instead of a new
+                                branch. The branch must already exist — this flag never
+                                creates one. The tree is registered in
+                                .moai/state/worktrees.json for worktree tooling.
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
   --chrome / --no-chrome        Toggle Chrome MCP
@@ -95,6 +101,7 @@ Examples:
   moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
   moai cc -w                           # Launch in auto-named isolated worktree
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
+  moai cc -w develop --branch develop  # Integration worktree on the existing develop branch
   moai cc -k                           # Kanban lead: seeds the plan->run->sync chain
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
   moai cc -k --name plan               # Kanban companion: joins as the plan lane
@@ -223,6 +230,13 @@ func runCC(cmd *cobra.Command, args []string) error {
 	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
 	// token normalization (AC-WES-010b).
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+		return err
+	}
+	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
+	// the existing branch before launch; the flag tokens are stripped so the
+	// backend re-enters the tree that now exists. No-op without --branch.
+	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	if err != nil {
 		return err
 	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)

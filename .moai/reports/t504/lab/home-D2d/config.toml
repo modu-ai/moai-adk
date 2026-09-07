@@ -1,0 +1,4 @@
+# t504 cell D2d: live skill + entry(DIRECTORY) enabled = true
+[[skills.config]]
+path = "/tmp/t504-hOuB8eKd/home-D2d/skills/t504probe"
+enabled = true

@@ -1,0 +1,4 @@
+=== RUN   TestCheckFreshness_DescribedRootsScopeFidelity
+--- PASS: TestCheckFreshness_DescribedRootsScopeFidelity (0.82s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/graph	1.342s

@@ -14,14 +14,19 @@ it and the lead dispatches it to the `plan` session.
 The queue is deliberately thin. It records *what the operator wants next*, and
 nothing that a SPEC, a git history, or a board would record better.
 
-State lives at `.moai/state/todo/backlog.json` of the PRIMARY checkout
-(project-local, not committed). A linked worktree resolves to the same
-primary queue — one repository, one queue: a card worktree's `moai todo`
-adds to and reads the file the lead and the foreman loop see. A project
-without git metadata keeps its queue at `~/.moai/todo/<project-key>/backlog.json`
-instead — the first run there adopts an existing project-local queue (same
-items, same states) rather than starting an empty one.
-Do not read or write that file directly — run the `moai todo` commands: they
+State lives at `.moai/state/todo/backlog.db` of the PRIMARY checkout
+(project-local, not committed) — a SQLite database, not a JSON file. A
+linked worktree resolves to the same primary queue — one repository, one
+queue: a card worktree's `moai todo` adds to and reads the store the lead
+and the foreman loop see. A project without git metadata keeps its queue at
+`~/.moai/todo/<project-key>/backlog.db` instead — the first run there adopts
+an existing project-local queue (same items, same states) rather than
+starting an empty one.
+A `backlog.json` at that same path is NOT the queue. It is an export
+(`moai todo export-json`) or a pre-migration leftover, its contents can be
+arbitrarily stale, and reading it answers silently and wrongly — which is
+why every `moai todo` read verb discloses one on stderr when it finds one.
+Do not read or write the store directly — run the `moai todo` commands: they
 hold a cross-process lock across every mutation, so concurrent sessions cannot
 lose cards or collide ids.
 

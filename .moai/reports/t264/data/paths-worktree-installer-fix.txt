@@ -1,0 +1,2 @@
+docs-site/static/install.sh
+install.sh

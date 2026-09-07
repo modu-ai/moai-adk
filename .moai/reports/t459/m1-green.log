@@ -1,0 +1,6 @@
+=== AC-LSEL-007 SessionStart backlog-check fixture ===
+PASS: system-reminder emitted on overflow (40 > 0+25)
+PASS: silent below threshold (advisory non-blocking, no reminder)
+PASS: silent after drain (offset advanced; backlog below threshold)
+PASS: t459: rotation-archived stubs reported (advisory does not go silent)
+backlog_check_test: PASS

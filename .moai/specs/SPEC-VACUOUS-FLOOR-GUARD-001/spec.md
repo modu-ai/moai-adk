@@ -2,9 +2,9 @@
 id: SPEC-VACUOUS-FLOOR-GUARD-001
 title: "Remove the unreachable self-comparison floor branch in the queue lock-wait derivation guard (card t378)"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-08-31
-updated: 2026-08-31
+updated: 2026-09-02
 author: manager-spec
 priority: P2
 phase: "v3.1.5 target"

@@ -1,0 +1,9 @@
+.claude/agents/moai/evaluator-active.md
+.claude/agents/moai/expert-security.md
+.claude/agents/moai/manager-quality.md
+.claude/rules/moai/core/agent-common-protocol.md
+.moai/specs/SPEC-V3R2-ORC-002/baseline-snapshot.txt
+internal/template/templates/.claude/agents/moai/evaluator-active.md
+internal/template/templates/.claude/agents/moai/expert-security.md
+internal/template/templates/.claude/agents/moai/manager-quality.md
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md

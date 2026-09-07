@@ -1,0 +1,3 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	483.800s	coverage: 81.1% of statements
+rc=0
+tree=cd82d8a15 (worktree .claude/worktrees/t519, branch WT-codex-cover-residual, local develop 412c8cb14 absorbed) cmd='unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout 700s -coverprofile=.moai/state/verify/t519/cover-merged.out ./internal/cli/'

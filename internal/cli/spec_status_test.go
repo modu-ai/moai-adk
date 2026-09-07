@@ -3,10 +3,272 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// initSyncGitFixture builds a throwaway git project whose main-branch history
+// names specID (so the git-implied status is "implemented") and whose SPEC
+// frontmatter carries the given status. Everything lives under t.TempDir().
+func initSyncGitFixture(t *testing.T, specID, status string) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", specID)
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := "---\nid: " + specID + "\nstatus: " + status + "\n---\n\n# SPEC\n"
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	run := func(args ...string) {
+		out, err := exec.Command("git", args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	run("-C", tmpDir, "init", "-q", "-b", "main")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "add", "-A")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "feat("+specID+"): M1 implementation", "--allow-empty")
+
+	return tmpDir
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-006 (REQ-005): `--sync-git --dry-run --yes`
+// computes and prints the reconciliation but writes NOTHING.
+func TestSyncGitSpecStatuses_DryRunWritesNothing(t *testing.T) {
+	projectRoot := initSyncGitFixture(t, "SPEC-DRYGIT-001", "draft")
+	specPath := filepath.Join(projectRoot, ".moai", "specs", "SPEC-DRYGIT-001", "spec.md")
+
+	before, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatalf("failed to read spec: %v", err)
+	}
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return projectRoot, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--dry-run", "--yes"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+	cmd.SetErr(out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	after, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatalf("failed to read spec after dry-run: %v", err)
+	}
+
+	if string(before) != string(after) {
+		t.Errorf("dry-run modified spec.md:\n--- before ---\n%s\n--- after ---\n%s", before, after)
+	}
+
+	outputStr := out.String()
+	if !strings.Contains(outputStr, "SPEC-DRYGIT-001") || !strings.Contains(outputStr, "draft") {
+		t.Errorf("dry-run output must carry the would-change plan (SPEC + current status), got: %s", outputStr)
+	}
+	if !strings.Contains(outputStr, "dry-run") {
+		t.Errorf("dry-run output must state the dry-run form, got: %s", outputStr)
+	}
+	if strings.Contains(outputStr, "Summary: updated") {
+		t.Errorf("dry-run summary must not claim a write count, got: %s", outputStr)
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-007 (REQ-006): the real (non-dry-run) write path
+// still updates the eligible SPEC's frontmatter status.
+func TestSyncGitSpecStatuses_RealRunUpdatesFrontmatter(t *testing.T) {
+	projectRoot := initSyncGitFixture(t, "SPEC-REALSYNC-001", "draft")
+	specPath := filepath.Join(projectRoot, ".moai", "specs", "SPEC-REALSYNC-001", "spec.md")
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return projectRoot, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--yes"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	updated, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatalf("failed to read spec after sync: %v", err)
+	}
+
+	if !strings.Contains(string(updated), "status: implemented") {
+		t.Errorf("frontmatter status not updated by real sync run, got:\n%s", updated)
+	}
+	if !strings.Contains(out.String(), "Summary: updated 1") {
+		t.Errorf("expected real-run summary with one write, got: %s", out.String())
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-008 (REQ-007): a SPEC whose parsed status is not a
+// member of the canonical enum is skipped loudly (stderr warning naming the
+// SPEC and the offending value) and never written.
+func TestSyncGitSpecStatuses_InvalidStatusSkippedLoudly(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-INVALIDST-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	// No frontmatter + a body history table whose header cell parses to the
+	// stray token "Notes" — not a member of the 8-value enum.
+	specPath := filepath.Join(specDir, "spec.md")
+	content := "# SPEC\n\n| Version | Date | Status | Notes |\n|---|---|---|---|\n| 0.1.0 | 2026-01-01 | draft | initial |\n"
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	run := func(args ...string) {
+		out, err := exec.Command("git", args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	run("-C", tmpDir, "init", "-q", "-b", "main")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "add", "-A")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "feat(SPEC-INVALIDST-001): M1 implementation", "--allow-empty")
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return tmpDir, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--yes"})
+	out := &strings.Builder{}
+	errOut := &strings.Builder{}
+	cmd.SetOut(out)
+	cmd.SetErr(errOut)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	warnings := errOut.String()
+	if !strings.Contains(warnings, "SPEC-INVALIDST-001") || !strings.Contains(warnings, "Notes") {
+		t.Errorf("expected stderr warning naming the SPEC and offending value, got stderr: %q stdout: %s", warnings, out.String())
+	}
+
+	after, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatalf("failed to read spec after sync: %v", err)
+	}
+	if string(after) != content {
+		t.Errorf("skipped SPEC must not be written, got:\n%s", after)
+	}
+	if strings.Contains(out.String(), "Summary: updated 1") {
+		t.Errorf("invalid-status SPEC must not count as updated, got: %s", out.String())
+	}
+}
+
+// M4 sweep: a SPEC-ID present in git history but absent from .moai/specs/ is
+// counted as not-found and never written.
+func TestSyncGitSpecStatuses_SpecNotInSpecsDirCountedNotFound(t *testing.T) {
+	projectRoot := initSyncGitFixture(t, "SPEC-GHOST-001", "draft")
+
+	// Remove the SPEC dir the fixture created — the git history still names it.
+	if err := os.RemoveAll(filepath.Join(projectRoot, ".moai", "specs", "SPEC-GHOST-001")); err != nil {
+		t.Fatalf("failed to remove spec dir: %v", err)
+	}
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return projectRoot, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--yes"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "skipped SPEC-GHOST-001: not found in .moai/specs/") {
+		t.Errorf("expected not-found skip line, got: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "1 not found") {
+		t.Errorf("expected not-found count in summary, got: %s", out.String())
+	}
+}
+
+// M4 sweep: a git history with no SPEC-IDs short-circuits with the
+// no-SPEC-IDs message and writes nothing.
+func TestSyncGitSpecStatuses_NoSpecIDsInGitLog(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	run := func(args ...string) {
+		out, err := exec.Command("git", args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	run("-C", tmpDir, "init", "-q", "-b", "main")
+	run("-C", tmpDir, "-c", "user.name=t", "-c", "user.email=t@t.local", "commit", "-qm", "chore: seed only", "--allow-empty")
+
+	oldFindProjectRootFn := findProjectRootFn
+	defer func() { findProjectRootFn = oldFindProjectRootFn }()
+	findProjectRootFn = func() (string, error) {
+		return tmpDir, nil
+	}
+
+	cmd := newSpecStatusCmd()
+	cmd.SetArgs([]string{"--sync-git", "--yes"})
+	out := &strings.Builder{}
+	cmd.SetOut(out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("command execution failed: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "No SPEC-IDs found in git log.") {
+		t.Errorf("expected no-SPEC-IDs message, got: %s", out.String())
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-010 (REQ-008): help text stays accurate for the
+// --sync-git + --dry-run combination.
+func TestSpecStatusHelpText_DryRunAccurate(t *testing.T) {
+	cmd := newSpecStatusCmd()
+
+	dryRunFlag := cmd.Flags().Lookup("dry-run")
+	if dryRunFlag == nil {
+		t.Fatal("--dry-run flag not registered")
+	}
+	if !strings.Contains(dryRunFlag.Usage, "Preview change without writing") {
+		t.Errorf("--dry-run usage must keep the documented description, got: %q", dryRunFlag.Usage)
+	}
+	if !strings.Contains(cmd.Long, "--sync-git --dry-run") {
+		t.Errorf("help must document the --sync-git + --dry-run combination, got:\n%s", cmd.Long)
+	}
+}
 
 // TestSpecStatusCommand tests the basic command structure
 func TestSpecStatusCommand(t *testing.T) {

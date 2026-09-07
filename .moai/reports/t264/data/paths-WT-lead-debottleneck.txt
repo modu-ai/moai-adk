@@ -1,0 +1,14 @@
+.claude/agents/moai/manager-lead.md
+.claude/rules/moai/workflow/kanban-dispatch-detail.md
+.claude/rules/moai/workflow/kanban-dispatch.md
+.moai/specs/SPEC-LEAD-DEBOTTLENECK-001/acceptance.md
+.moai/specs/SPEC-LEAD-DEBOTTLENECK-001/plan.md
+.moai/specs/SPEC-LEAD-DEBOTTLENECK-001/progress.md
+.moai/specs/SPEC-LEAD-DEBOTTLENECK-001/spec.md
+CHANGELOG.md
+internal/template/agentemit/agents-codex.yaml
+internal/template/catalog.yaml
+internal/template/templates/.claude/agents/moai/manager-lead.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md
+internal/template/templates/.codex/agents/moai/manager-lead.toml

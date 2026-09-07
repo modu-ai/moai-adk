@@ -1,0 +1,350 @@
+worktree /Users/goos/MoAI/moai-adk-go
+HEAD 7ad9f8534dc48719854c67e2b9a06db97b594eaf
+branch refs/heads/main
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a20f1e50d08875998
+HEAD 2df70172fe827741d6a1aa7766d4c50b5d155a83
+branch refs/heads/worktree-agent-a20f1e50d08875998
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a2e81b36e7e5646c7
+HEAD 4100d87676273b60294f405a1af25f08d8d2844c
+branch refs/heads/worktree-agent-a2e81b36e7e5646c7
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a62468d0d1a7040cf
+HEAD 0e5120590aacdc5f91f2ffbbd0dce0505653b2be
+branch refs/heads/WT-t114
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a77cdfb3c00bf2557
+HEAD b018bf1e92c1faea521b7cb6d7f0e0a886181b8f
+branch refs/heads/worktree-agent-a77cdfb3c00bf2557
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a8b0420c635295c5a
+HEAD 02d9cac05731ca876bab51601431b8c04b0a7b19
+branch refs/heads/WT-t100
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a8bf881ac39468a30
+HEAD 52ad9255c12664f3a6452e2162259650567edf50
+branch refs/heads/worktree-agent-a8bf881ac39468a30
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-ac385069535544f99
+HEAD 4b2f203feda9c2cb6d7771969f4ec966842c8732
+branch refs/heads/worktree-agent-ac385069535544f99
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-acabfeac3a8608c84
+HEAD 43402fd175d5deef2fe25921548efcd0f86ab3c6
+branch refs/heads/worktree-agent-acabfeac3a8608c84
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-ad55b5fbe632611a7
+HEAD 62c2bf93997cc91b39d36dc1c34af5080d8df2df
+branch refs/heads/WT-t66
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-ae0671037b886c5a9
+HEAD 216dadc2d61344a3c3234459d3ce817fbe51ed33
+branch refs/heads/worktree-agent-ae0671037b886c5a9
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-af39f39d9c430af36
+HEAD 6a64a0bad352a493919fd98880c98378bc2867bc
+branch refs/heads/fix/t126-manager-lead-mirror
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-astgrep-path
+HEAD 813e98b2ff36f14a9845783e299fcafe7cbe7c3e
+branch refs/heads/worktree-card-astgrep-path
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-clocal
+HEAD efba57632f5c5bf564c8c10a21607a9f06a5b246
+branch refs/heads/worktree-card-clocal
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-provenance
+HEAD a91bb670fdc529192c850d6394d7dd43420b0def
+branch refs/heads/worktree-card-provenance
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-relnotes
+HEAD 18d1ddfc8fe3b0e33eb5dc66eea6338279489c19
+branch refs/heads/worktree-card-relnotes
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-wtiso
+HEAD b1f7118c0c1ea892695c5654192d9d00e6b12176
+branch refs/heads/card-wtiso
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop
+HEAD 65196a5a78201765c44b713dcc03a190836d30e0
+branch refs/heads/develop
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/glm-settings-persist
+HEAD 8f8e9c205b68d4a1cf32fcc5abe724c45ed81994
+branch refs/heads/WT-glm-settings-persist
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/installer-fix
+HEAD 222c03d0b8b69b4305cd714088d76c84c14da81c
+branch refs/heads/worktree-installer-fix
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/local-only-relocate
+HEAD 7f2019a1258a08f6a3b031061560d19d30bb2c9d
+branch refs/heads/worktree-local-only-relocate
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/local-tree-cleanup
+HEAD e585ef26eabb401ac74d01b44134ed36e23aed56
+branch refs/heads/worktree-local-tree-cleanup
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/mermaid-audit
+HEAD b0db10bc72ddccff934da10228978e17640a3917
+branch refs/heads/WT-mermaid-audit
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/readme-redesign
+HEAD c57d24912856526f1cf7063d071514232300134d
+branch refs/heads/worktree-readme-redesign
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/release-v310
+HEAD 3d51358f284ee27a64bb03876e28c68f54ebd881
+branch refs/heads/release/v3.1.0
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/release-v311
+HEAD 3286e3c36cd9b264f561659c2f77b906f4671bed
+branch refs/heads/release/v3.1.2
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/release-v313
+HEAD b37e86b643df0542d09d05d41b2c87c531adb8ff
+branch refs/heads/release/v3.1.3
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/release-v314
+HEAD 10948d057b13c8d4fab6d889fa3c01a96e1f1e7f
+branch refs/heads/release/v3.1.4
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/statusline-session-name
+HEAD ff7983a3ba48b286c0b270771e0d499036eddcf7
+branch refs/heads/worktree-statusline-session-name
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t140
+HEAD e7aeec0888c7648ec34f5918783f8118ec8dcf87
+branch refs/heads/worktree-t140
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t143
+HEAD bdaf193bd7a3e0359f107e8756859e61f41be865
+branch refs/heads/WT-t143
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t146
+HEAD 58ec3683416edf453809aabbf9569700c5b6a0f8
+branch refs/heads/WT-release-notes-313
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t148
+HEAD f73fcc92a6b6c4e300a4a40f85585f07d5eb7835
+branch refs/heads/WT-t148
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t150
+HEAD 993617ce11c6f817d3295e327d5b67f3f14ec37f
+branch refs/heads/WT-primary-writes
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t154
+HEAD dbb87f14f5775aa4bc59d4e8d4731de398894e01
+branch refs/heads/WT-lint-heading
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t155
+HEAD a4f6f1a3c1af5ac60334cafec3783c729bf58e91
+branch refs/heads/WT-spec-exclusions
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t166
+HEAD 5f53df8003f8ab73b12c31c5a581ed4e43899ac9
+branch refs/heads/WT-verify-geometry
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t179
+HEAD 0258b49bfbb8e49c164966239dfd98ae39f34dd9
+branch refs/heads/WT-e2e-sweep
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t182
+HEAD 720149668c76f2c18a14b4d207e936e2cf21e647
+branch refs/heads/WT-convergence-root
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t203
+HEAD 4c0dab511701a93a1d166f97b6a0b0c9be2d02d4
+branch refs/heads/WT-todo-verb-guard
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t205
+HEAD f9b91e4671cad7517bc49fe4c3551805317b0af5
+branch refs/heads/WT-effort-matrix
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t215
+HEAD 6907a537b421220cd0c8845eff4f95deaf5ad6b7
+branch refs/heads/WT-statusline-cost
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t216
+HEAD 8aa96bfb1555f7b1637347e7b8e3aa86da8e4d6c
+branch refs/heads/WT-hook-wiring-drift
+locked claude session t216 (pid 94915 start Tue Sep  1 22:12:54 2026)
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t223
+HEAD f027cc786c87c8c81d5caec4b1d1d08e256f3f77
+branch refs/heads/WT-agent-memory-drain
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t229
+HEAD d3e3ec97f2c5c4d6f1997d678115518eab7fdb55
+branch refs/heads/WT-audit-verdict-converge
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t233
+HEAD 53e9880ef3385a385415e0972955b8e6810035a6
+branch refs/heads/WT-gate-lint-skip
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t252
+HEAD 46ecde35ccef12e680baa663f8181071a92ef752
+branch refs/heads/WT-spec-close-backfill
+locked claude session t252 (pid 76637 start Wed Sep  2 05:25:06 2026)
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t253
+HEAD 614dcc1b6dbfa9c1cf4196866ab05017f1177efe
+branch refs/heads/WT-sessionmsg-depth
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t261
+HEAD 3e9bc0c34c77cd7a91eaacefb5add86210abef6c
+branch refs/heads/WT-harness-rules
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t264
+HEAD ad272be20abff9e4f3b1b363fce3e48dac4c5132
+branch refs/heads/WT-stale-branch-sweep
+locked claude session t264 (pid 13062 start Tue Sep  1 22:15:56 2026)
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t267
+HEAD 052830c0a7e4e0f97f9c131758efc44d2df608c5
+branch refs/heads/WT-taskstop-name-reclaim
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t268
+HEAD c9198b59a32cea611e99849bb9f5495445b7563b
+branch refs/heads/WT-zone-registry-f13
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t278
+HEAD 2aec09c2733585d690b2456d0cbbd5c83ba8251c
+branch refs/heads/WT-ci-flake-series
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t279
+HEAD 69891ce99773563ec17e10961737b5284582fe18
+branch refs/heads/WT-t250-followup
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t281
+HEAD 30f92045b2bfa23a7477fdcdc2311063c9b4e644
+branch refs/heads/WT-rc-testbed
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t289
+HEAD 37fcc274f03bc6d953ded592a523d8c4ec0fa6be
+branch refs/heads/WT-glm-flash-default
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t303
+HEAD ed68889e33c62abea3a5439c1849fc44190db0de
+branch refs/heads/WT-sync-strategy-align
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t312
+HEAD 48eb945df606eea7d6d3d1b9a1020adbfe79b2e6
+branch refs/heads/WT-web-console-ux
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t312-precommit-vet
+HEAD b6f478b1a546acc5fc0ad707d2d8afc1d266e2fe
+branch refs/heads/WT-precommit-vet
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t328-projectdir-stale
+HEAD c70adf81a0bb8c0144abcc0c4b536e1100d4a77d
+branch refs/heads/WT-projectdir-stamp
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t334
+HEAD 4837b05211fc7288747742f380de4048bc43de19
+branch refs/heads/WT-cli-test-cwd
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t335
+HEAD 41dd0e82ce3d0d49d8590a2fc1895c95dec6d9e7
+branch refs/heads/WT-delivery-branch-label
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t337
+HEAD c72a517c36a0afed9ce1594ebc139aada4e79ccf
+branch refs/heads/WT-windows-stamp-liveness
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t340
+HEAD 4b36b00d6ce716a7e51fd189abe1f3c38efb5b6d
+branch refs/heads/WT-codex-init
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t347
+HEAD e5e56e90ad84711fe1b8282b3ae7de222633fb0a
+branch refs/heads/WT-guard-state-model
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t349
+HEAD 650524d13d06fc94d2a14f2668363c86a99883cf
+branch refs/heads/WT-codex-init-spawn
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t350
+HEAD 03db97c6c945ab240cc61d4ec09c6add259053bf
+branch refs/heads/WT-glm-fable-slot
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t351
+HEAD 94b298b2626f666c4f6f42f96c6c44e5aa3b5a65
+branch refs/heads/WT-ac012-refine
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t355
+HEAD 0b75fd4a15d8610275e20b83ff246a41cd709ed0
+branch refs/heads/WT-spawn-skip-removal
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t361
+HEAD 390bfa7624971a9a2d3a497cc30198e8a43d14d6
+branch refs/heads/WT-deferred-scan-seam
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t362
+HEAD d1ace1dbd2f37cd772af6c72edeb1705652a22a2
+branch refs/heads/WT-coverage-rule-scope
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t363
+HEAD af7441bf23a601dc384d55b203fd94e3deb1a208
+branch refs/heads/WT-concurrency-keying
+locked claude session t363 (pid 77903 start Wed Sep  2 05:25:14 2026)
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t371
+HEAD f797454c94de7b5b775adee93433960f24ada807
+branch refs/heads/WT-lint-shallow-clone
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t373
+HEAD ecdc2921cba2c161f51a0dee5b129e1dd1178b54
+branch refs/heads/WT-gitignore-generated
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t379
+HEAD 8a4cc02f1fc8b6b93705c0a95eba8a70b464373e
+branch refs/heads/WT-boardlock-errno
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t395
+HEAD 4a4bbe39602d547e595fb28f0e04612f90a49862
+branch refs/heads/WT-stale-backlog-json
+locked claude session t395 (pid 3441 start Tue Sep  1 22:14:13 2026)
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t401
+HEAD 6352897a5226a407abbb280400a76736f7ff1178
+branch refs/heads/WT-analysis-pull
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t404
+HEAD 0cc769a6d93b9e3a30b2b2bf90aa52e7ebd41086
+branch refs/heads/WT-session-list-gap
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t426
+HEAD 4b86425d38b707768e277fbe4a2db2c0236465ee
+branch refs/heads/WT-windows-debt
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t428
+HEAD 9eb3dde5cac93b40af31ecfece14d8c857fdd72a
+branch refs/heads/WT-toolhelp-ancestors
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t432
+HEAD 3b669d11f5302257cc68ea9ff96748b4b582a136
+branch refs/heads/WT-codemaps-refresh
+locked claude session t432 (pid 11632 start Tue Sep  1 22:15:46 2026)
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t46-anchor-guard
+HEAD 08dc10f20e5ded692313dc6224235b5b86ccd7a2
+branch refs/heads/worktree-t46-anchor-guard
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t62
+HEAD 4997b9cf2ee352a0607f099d477974e13cb9c35f
+branch refs/heads/worktree-t62
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t74
+HEAD bf2201e5f7c275cfe9c1ce88c452f73eeaefb0ec
+branch refs/heads/worktree-t74
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t80
+HEAD d7f9f3b3a9b9fec848ac237fae66134cb8a5e1b8
+branch refs/heads/WT-t80
+
+worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/web-shell-chrome
+HEAD 3aa383c1e6c50287da3576b88e909820889efe9b
+branch refs/heads/feat/web-shell-chrome
+

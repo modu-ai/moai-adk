@@ -113,9 +113,12 @@ type ModeProfile struct {
 	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
 	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
 	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
-	// Manual-mode git-flow keys. These have NO Go consumer — they are
-	// pass-through fields whose only job is to survive a typed load-and-save
-	// round trip (SPEC-WORKTREE-BASEREF-001 REQ-WBR-013 / AC-WBR-014).
+	// Manual-mode git-flow keys. ReleaseBranchPrefix and RCVersionFormat have
+	// no Go consumer — they are pass-through fields whose only job is to
+	// survive a typed load-and-save round trip (SPEC-WORKTREE-BASEREF-001
+	// REQ-WBR-013 / AC-WBR-014). DevelopBranch gained one (card t449): the
+	// `moai integration acquire` record resolves its branch default through
+	// LoadGitFlowDevelopBranch.
 	//
 	// Measured before they existed: saving git_strategy through the typed path
 	// re-marshals this struct, so a `worktree_base_branch` edit made from the
@@ -415,6 +418,11 @@ type WorkflowConfig struct {
 	// directly: the pointer inside distinguishes "key absent" (= enabled)
 	// from "explicitly disabled", which a plain bool cannot express.
 	Todo WorkflowTodoConfig `yaml:"todo"`
+	// Project carries the /moai project Phase 14 completion-continuation key
+	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Read through
+	// Config.ProjectContinuation, never directly: the resolver supplies the
+	// absent-key default and reports an unmatched value rather than applying it.
+	Project WorkflowProjectConfig `yaml:"project"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -448,6 +456,17 @@ type WorkflowConfig struct {
 	// maintainer of a multi-lane batch opts in via local config. Sibling of
 	// BranchGuard — same opt-in shape, same default-OFF neutrality.
 	IntegrationLock IntegrationLockConfig `yaml:"integration_lock"`
+
+	// SettingsDriftGate gates the REFUSAL layer of the pre-merge
+	// `.claude/settings.json` drift assertion run by `moai integration
+	// acquire`. Default false: detection, preservation and the ledger row run
+	// on every acquire regardless of this value, and only the refusal is
+	// opt-in. Sibling of BranchGuard — same opt-in shape, same default-OFF
+	// neutrality. Deliberately NOT a sub-key of IntegrationLock: that flag's
+	// own contract scopes it to the PreToolUse deny layer, and one flag gating
+	// two refusals at two different surfaces cannot say which one a maintainer
+	// meant to turn off.
+	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
@@ -616,6 +635,18 @@ type WorkflowTodoConfig struct {
 	Enabled *bool `yaml:"enabled"`
 }
 
+// WorkflowProjectConfig mirrors workflow.project.* — the /moai project Phase 14
+// completion-continuation key (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001).
+//
+// Continuation is a plain string, NOT a *string. The pointer on
+// WorkflowTodoConfig.Enabled buys a distinction this domain does not have: the
+// default here is a NAMED token of the closed set — card — so "absent" and
+// "card" mean exactly the same thing, and no requirement reads a nil case.
+// Read it through Config.ProjectContinuation rather than dereferencing here.
+type WorkflowProjectConfig struct {
+	Continuation string `yaml:"continuation"`
+}
+
 // BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
 // Branch-State Guard opt-in gate (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-3).
 // When Enabled is false (the distributed default), the hook returns the allow
@@ -635,6 +666,18 @@ type BranchGuardConfig struct {
 // `moai integration` CLI that writes it, are unaffected by this flag: only the
 // DENY layer is gated, exactly as BranchGuard gates only its deny.
 type IntegrationLockConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in
+// gate for the REFUSAL layer of the pre-merge `.claude/settings.json` drift
+// assertion. When Enabled is false (the distributed default) `moai integration
+// acquire` still runs the predicate, still preserves a drifted working copy,
+// still appends the ledger row and still reports — it simply records the
+// window instead of refusing it. Only the refusal is gated: an implementation
+// that skipped detection while the flag is off would remove the very property
+// the default-OFF posture was chosen for, and would pass every other check.
+type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
@@ -831,6 +874,22 @@ type GateConfig struct {
 	DisabledSteps map[string]bool `yaml:"disabled_steps"`
 	// Typecheck configures the type-check axis.
 	Typecheck GateTypecheck `yaml:"typecheck"`
+	// PreCommit scopes the heavy gate's pre-commit context
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001). The runner honors it ONLY when the
+	// invoking hook exports the MOAI_PRECOMMIT=1 marker; a standalone
+	// `moai gate` run never reads it, so its existing gate.enabled contract is
+	// unchanged (operator decision 2).
+	PreCommit GatePreCommitConfig `yaml:"pre_commit"`
+}
+
+// GatePreCommitConfig configures the heavy gate's pre-commit context.
+type GatePreCommitConfig struct {
+	// Enabled opts the git pre-commit hook's heavy gate in. Default false:
+	// under the MOAI_PRECOMMIT=1 marker the runner skips the project-wide
+	// heavy steps (vet/lint/test/typecheck) so a pre-existing failure
+	// unrelated to the staged change cannot block unrelated commits. The
+	// standalone `moai gate` CLI ignores this key entirely.
+	Enabled bool `yaml:"enabled"`
 }
 
 // GateTypecheck configures the gate's type-check axis.

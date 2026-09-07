@@ -57,6 +57,8 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --branch <existing>         With -w <name>: check out an EXISTING branch in the
+                                new worktree (see moai cc --help)
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
@@ -278,6 +280,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
 		return err
 	}
+	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
+	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
@@ -388,15 +395,14 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 // (The settings.local.json twin of this wire point, injectGLMEnvForTeam, was
 // removed with its dead caller enableTeamMode in #1531.)
 //
-// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
-// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
-// Anthropic-compat shim honors the Anthropic `thinking` parameter (thinking
-// blocks returned; depth scales with the budget) and silently IGNORES a
-// top-level z.ai-style `reasoning_effort` field, so the effective wire channel
-// is the thinking-budget mapping Claude Code derives from this env var, not a
-// z.ai-native reasoning_effort passthrough. The live session's thinking-block
-// responses are indirect end-to-end evidence the chain is live; delivered spend
-// per level remains unquantified (measurements §6).
+// Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; closes the
+// AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the null-controlled
+// live differential proved the top-level `reasoning_effort` request field is
+// the effective delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound;
+// thinking-budget null 1.02). The earlier t175 probe
+// (.moai/reports/t175/measurements.md §3) reported the opposite direction and
+// is superseded by that record. Delivered spend per level remains unquantified.
 func glmReasoningEnvVars() map[string]string {
 	state := template.SessionGLMReasoningState()
 	out := make(map[string]string, 1)
@@ -422,11 +428,11 @@ func glmReasoningEnvVars() map[string]string {
 // empty); this helper is ADDITIVE and is consumed only by the main-session
 // launch path.
 //
-// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
-// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
-// shim honors the Anthropic `thinking` parameter and ignores a top-level
-// z.ai-style `reasoning_effort` field, so this env reaches z.ai through the
-// thinking-budget mapping, not a native reasoning_effort passthrough.
+// Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24 — supersedes the t175 probe):
+// the top-level `reasoning_effort` request field is the effective delivery
+// channel, so this env reaches z.ai through that field, not a thinking-budget
+// mapping.
 func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
 	state := template.SessionGLMReasoningStateForModel(model, effort)
 	out := make(map[string]string, 1)
@@ -888,32 +894,19 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 // for the GLM tier slot serving the main-session model (RC3,
 // glm-settings-persist).
 //
-// The alias→slot pairing mirrors setGLMEnv's ANTHROPIC_DEFAULT_*_MODEL
-// assignments — the ONE alias/slot mapping in the tree: opus feeds
-// Models.High (→ effort.high), sonnet Models.Medium, haiku Models.Low, fable
-// Models.Fable. The [1m] suffix is split before lookup (splitModelSuffix), and
-// a canonical claude-* id is reverse-mapped through
-// template.ModelAliasFromCanonicalID — the same helper resolveMainSessionModel
-// uses on the model under a GLM backend. An empty or unknown model (including
-// a raw GLM id, which is not an alias) resolves "": the caller falls back to
-// the prefs effort chain unchanged, byte-identical to the pre-RC3 launch.
+// Thin delegation to template.GLMSlotEffortForModel, which owns the ONE
+// alias/slot mapping in the tree (mirroring setGLMEnv's
+// ANTHROPIC_DEFAULT_*_MODEL assignments: opus feeds the high slot, sonnet
+// medium, haiku low, fable fable, with the [1m] suffix split and canonical
+// claude-* ids reverse-mapped). Sharing that mapping is what keeps this effort
+// half and the model half (template.GLMSlotModelOrHigh, which keys the wire
+// collapse) from drifting apart — t360 repaired exactly such a drift.
+//
+// An empty or unknown model (including a raw GLM id, which is not an alias)
+// resolves "": the caller falls back to the prefs effort chain unchanged,
+// byte-identical to the pre-RC3 launch.
 func glmSlotEffortForModel(model string, effort config.GLMTierEffort) string {
-	if model == "" {
-		return ""
-	}
-	base, _ := splitModelSuffix(model)
-	switch template.ModelAliasFromCanonicalID(base) {
-	case "opus":
-		return effort.High
-	case "sonnet":
-		return effort.Medium
-	case "haiku":
-		return effort.Low
-	case "fable":
-		return effort.Fable
-	default:
-		return ""
-	}
+	return template.GLMSlotEffortForModel(effort, model)
 }
 
 // resolveGLMMainSessionEffort resolves the effort fed to the GLM launch

@@ -1,0 +1,12 @@
+.claude/rules/moai/development/rule-authoring.md
+.claude/rules/moai/workflow/cache-aware-execution-reference.md
+.claude/rules/moai/workflow/cache-aware-execution.md
+.claude/rules/moai/workflow/kanban-dispatch-detail.md
+.claude/rules/moai/workflow/kanban-dispatch.md
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/progress.md
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/spec.md
+internal/template/templates/.claude/rules/moai/development/rule-authoring.md
+internal/template/templates/.claude/rules/moai/workflow/cache-aware-execution-reference.md
+internal/template/templates/.claude/rules/moai/workflow/cache-aware-execution.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch-detail.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md

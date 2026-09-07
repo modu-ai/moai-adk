@@ -1,0 +1,7 @@
+--- FAIL: TestSettingsDriftPredicateHit (0.38s)
+    settings_drift_test.go:159: match count: got 0, want 1
+        raw: ""
+    settings_drift_test.go:162: raw output "" does not name ".claude/settings.json"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.915s
+FAIL

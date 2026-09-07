@@ -38,8 +38,8 @@ func newGraphCheckCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Report per-layer staleness (codemaps / mx-index / edges) numerically",
-		Long: `Check the freshness of the three gated graph layers and exit accordingly.
+		Short: "Report per-layer staleness (codemaps / mx-index / edges / citations) numerically",
+		Long: `Check the freshness of the gated graph layers and exit accordingly.
 
 Per layer the report names the layer, the metric kind used, the measured
 integer value, the configured threshold, and a verdict (fresh | stale |
@@ -49,13 +49,24 @@ for untracked layers (fresh-worktree state); the bootstrap a CI job performs
 (moai mx scan + moai graph build) refreshes those layers to head first.
 
 Metrics (per layer, by tracking status):
-  codemaps  described-source-diff        files whose content differs from the
-                                         stamped generation commit (endpoint
-                                         diff; reverted churn counts zero)
-  mx-index  inventory-content-diff       scanner-read files whose content hash
-                                         differs from the stamped inventory
-  edges     source-fingerprint-mismatch  source sets whose fingerprint moved
-                                         since the stamped build
+  codemaps   described-source-diff         files whose content differs from
+                                          the content anchor — the point the
+                                          codemaps body last actually changed,
+                                          not the stamped commit (endpoint
+                                          diff; reverted churn counts zero).
+                                          A re-stamp over an untouched body
+                                          therefore does not reset the window.
+  mx-index   inventory-content-diff        scanner-read files whose content
+                                          hash differs from the stamped
+                                          inventory
+  edges      source-fingerprint-mismatch   source sets whose fingerprint
+                                          moved since the stamped build
+  citations  positive-cited-path-absence   source paths positively cited in
+                                          .moai/project/codemaps/*.md that do
+                                          not exist in the working tree
+                                          (accuracy, not freshness — paths on
+                                          blockquote lines are negative
+                                          citations and exempt)
 
 No filesystem mtime is read anywhere — a fresh worktree checkout resets every
 mtime, which an mtime metric would misread as freshly regenerated.
@@ -139,6 +150,17 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 // The contribution is REPORTED here, never gated on — the exit code is still
 // decided by the cumulative count alone.
 func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
+	// The measurement window comes first: without it a reader cannot tell
+	// which two points the count spans, and the codemaps layer no longer
+	// measures from the stamped commit (SPEC-GRAPH-GATE-RESTAMP-001).
+	// Reported only — the exit code is still decided by the count alone.
+	if l.ContentAnchor != "" {
+		anchor := l.ContentAnchor
+		if len(anchor) > 9 {
+			anchor = anchor[:9]
+		}
+		_, _ = fmt.Fprintf(errs, "  measured from: %s (%s)\n", anchor, l.ContentAnchorSource)
+	}
 	switch {
 	case l.Contribution != nil:
 		base := l.ContributionBase

@@ -13,10 +13,10 @@ func TestClassifyEra_HeuristicTable(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		signals   EraSignals
-		wantEra   Era
-		wantRule  string // substring of returned rule label
+		name     string
+		signals  EraSignals
+		wantEra  Era
+		wantRule string // substring of returned rule label
 	}{
 		// AC-LSG-013 — Era auto-detection (no frontmatter era field)
 		{
@@ -352,11 +352,11 @@ func TestClassifyEra_FiveBucketCoverage(t *testing.T) {
 	}
 
 	cases := []EraSignals{
-		{ProgressMDExists: false}, // V2.x
-		{ProgressMDExists: true, ProgressMDContent: "no markers"},                                                       // V3R2-R4
-		{ProgressMDExists: true, ProgressMDContent: "## §E.2\nsync_commit_sha:\n"},                                      // V3R5
-		{ProgressMDExists: true, ProgressMDContent: "## §E.2\nsync_commit_sha: abc\n## §E.5\nmx_commit_sha: def\n"},     // V3R6
-		{ProgressMDExists: true, ProgressMDContent: "## §E.2\nsync_commit_sha: abc\n"},                                  // unclassified (no mx)
+		{ProgressMDExists: false},                                                                                   // V2.x
+		{ProgressMDExists: true, ProgressMDContent: "no markers"},                                                   // V3R2-R4
+		{ProgressMDExists: true, ProgressMDContent: "## §E.2\nsync_commit_sha:\n"},                                  // V3R5
+		{ProgressMDExists: true, ProgressMDContent: "## §E.2\nsync_commit_sha: abc\n## §E.5\nmx_commit_sha: def\n"}, // V3R6
+		{ProgressMDExists: true, ProgressMDContent: "## §E.2\nsync_commit_sha: abc\n"},                              // unclassified (no mx)
 	}
 
 	for i, sig := range cases {

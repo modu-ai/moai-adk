@@ -14,7 +14,7 @@ func TestEffortForLevel(t *testing.T) {
 	cfg := minimalHarnessConfig()
 
 	tests := []struct {
-		level    router.Level
+		level      router.Level
 		wantEffort string
 	}{
 		{router.LevelMinimal, "medium"},
@@ -42,7 +42,7 @@ func TestEffortForLevel_Fallback(t *testing.T) {
 	emptyCfg := &router.ConfigProxy{EffortMapping: map[string]string{}}
 
 	tests := []struct {
-		level    router.Level
+		level      router.Level
 		wantEffort string
 	}{
 		{router.LevelMinimal, "medium"},

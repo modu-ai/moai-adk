@@ -252,6 +252,15 @@ moai-adk-go uses Go's `go:embed` directive:
 - **Embed mechanism**: `internal/template/embed.go` carries `//go:embed all:templates` + `//go:embed catalog.yaml`, which compile the `templates/` FS directly into the binary (there is NO generated `embedded.go` file)
 - **Build**: Run `make build` after editing templates (recompiles the binary)
 
+### Command-to-Skill Publication (SPEC-CODEX-COMMAND-SKILLS-001)
+
+`internal/template/commandemit` publishes the 16 `/moai` command sources as codex skill-shaped artifacts at `templates/.agents/skills/moai-<command>/SKILL.md` (committed real files, golden-checked).
+
+- **Regenerate** (after editing any command source or the emitter): `make commands-emit`
+- **Drift check**: `make commands-emit-check` — read-only, wired ahead of `build` (same position as `agents-emit-check`); it never writes
+- **Boundary**: bodies publish VERBATIM from the command sources, including their Claude-only `Skill("moai")` dispatcher line — the emitter flags this per skill and never repairs it (repair is the command-body layer's concern, sibling card t497). Do not hand-edit the emitted SKILL.md files; edit the command sources and regenerate.
+- **gitignore coupling**: the 16 published names are re-included in `templates/.gitignore` (the mirror rule `.agents/skills/moai*` would otherwise ignore them); `TestGitignoreCarriesEveryPublishedName` + `TestPublishedSkillsNamesMatchTree` keep both lists in step with the emitted set.
+
 ---
 
 ## 3. Code Standards
@@ -346,7 +355,8 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리드의 창 지명만이 근거다.
 - 창을 받으면: `moai integration acquire --name <lane>` → 본인 워크트리에서 `git merge origin/develop` 흡수 → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
-- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 로컬 develop 병합(창 경유 `git push origin develop`)이 **유일한** 공개 경로다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리드가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리드가 처분을 정한다.
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
 - sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 develop에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
 
@@ -354,7 +364,8 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 
 ```bash
 # 통합 워크트리 진입 (raw `git worktree add` 금지 — 런처 경유)
-moai cc -w develop
+moai cc -w develop                # 재진입
+moai cc -w develop --branch develop  # 최초 provisioning (기존 develop 브랜치 체크아웃)
 
 # 창 안에서
 moai integration acquire --name <lane>

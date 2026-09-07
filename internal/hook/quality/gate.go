@@ -67,6 +67,14 @@ type GateConfig struct {
 	// struct so the config chain stays one object (gate.yaml → config loader
 	// → this config → the CLI's wait loop).
 	LockWait time.Duration
+	// PreCommitEnabled carries gate.pre_commit.enabled into the CLI entry
+	// (runGate). Run itself NEVER reads it: the key is honored only under the
+	// MOAI_PRECOMMIT=1 marker, and that decision is made by the CLI caller —
+	// a standalone `moai gate` and the PreToolUse path keep the existing
+	// gate.enabled contract unchanged (SPEC-PRECOMMIT-GATE-SCOPE-001,
+	// operator decision 2). The field travels here so one config load feeds
+	// both the wait budget and the pre-commit decision.
+	PreCommitEnabled bool
 }
 
 // GraphFreshnessConfig configures the graph-freshness step of the quality
@@ -1150,6 +1158,15 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	if dir := resolveQualityProjectDir(*g.config, "QualityGate.runStep"); dir != "" {
 		cmd.Dir = dir
 	}
+	// cmd.Dir is not, on its own, isolation. Left nil, cmd.Env hands the child
+	// the caller's whole environment — and when the caller is the git
+	// pre-commit hook that environment carries GIT_DIR / GIT_INDEX_FILE, which
+	// outrank the working directory. A project test suite whose fixtures make
+	// throwaway commits then wrote them into the repository being committed to
+	// (GH #1691). Scrubbing the repository-location variables makes cmd.Dir the
+	// only repository scoping a step carries; see step_git_env.go for why the
+	// identity and behaviour variables deliberately survive.
+	cmd.Env = stepEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -176,6 +176,14 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		logSkillUsage(input)
 	}
 
+	// t236 / issue #1640: Claude Code emits no CwdChanged for EnterWorktree/
+	// ExitWorktree, so the env-file MOAI_PROJECT_DIR stamp and the session
+	// registry relocation ride this event instead. Early return — none of the
+	// Write/Edit machinery below applies to a tree move.
+	if input.ToolName == "EnterWorktree" || input.ToolName == "ExitWorktree" {
+		return handleWorktreeMove(input), nil
+	}
+
 	var systemMessage string
 	var collectedDiags []lsphook.Diagnostic
 

@@ -50,6 +50,18 @@ When the cleanable estimate exceeds the threshold (a compiled default of 500 MB)
 
 The estimate calls **the same scanner** `moai clean --home` uses, so the number doctor quotes and the list clean actually deletes cannot drift apart. Full detail: [Home Directory Hygiene](/en/advanced/home-hygiene).
 
+## Hook Delivery check {{< new-badge v3.1.4 >}}
+
+`moai update` can pass over hook entries the template newly ships without ever landing them in an existing project's `.claude/settings.json`. The **Hook Delivery** check finds those gaps: within the hook event keys the project already carries, it compares the shipped template against the project file and reports entries the template carries but the project lacks.
+
+| Reported item | Content |
+|---------------|---------|
+| Missing entries | Named as `hooks.PreToolUse missing handle-pre-tool.sh (matcher AskUserQuestion)` — the event key and matcher included |
+| How to fix | Re-add each missing entry under the named event key, copying the block from the template settings of your moai version |
+| Post-update verification | The command that shows whether `moai update` deleted managed files (`git status --porcelain \| grep '^ D'`) — on a hit, restore with `git restore -- <path>` before re-adding the entries |
+
+The check is read-only — it never writes `.claude/settings.json`. Event keys the template introduces for the first time and entries you authored yourself are never counted as missing, and opted-out entries are not expected either (the template renders with your project's own `hook.opt_in.enabled` setting). When everything matches, the check reports `ok`.
+
 ## Exit codes
 
 Scripts and CI wrappers calling `moai doctor` read the exit code, not the summary line.

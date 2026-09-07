@@ -1,0 +1,7 @@
+.moai/specs/SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001/acceptance.md
+.moai/specs/SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001/plan.md
+.moai/specs/SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001/progress.md
+.moai/specs/SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001/spec.md
+CHANGELOG.md
+internal/spec/closer.go
+internal/spec/closer_test.go

@@ -701,7 +701,7 @@ func TestResolve_ConflictSpecificityThenFsOrder(t *testing.T) {
 			config.SrcLocal: {
 				{
 					Pattern: "Bash(git push:*)",
-					Action:  DecisionDeny,   // less specific -> deny.
+					Action:  DecisionDeny, // less specific -> deny.
 					Source:  config.SrcLocal,
 					Origin:  "a-settings.json", // fs-order: a < b.
 				},

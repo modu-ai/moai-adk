@@ -1,0 +1,6 @@
+{
+  "name": "probe-plugin",
+  "version": "0.0.1",
+  "description": "t507 manifest-acceptance probe.",
+  "skills": "./skills/"
+}

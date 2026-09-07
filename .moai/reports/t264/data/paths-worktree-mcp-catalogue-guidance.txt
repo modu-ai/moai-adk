@@ -1,0 +1,2 @@
+.claude/rules/moai/core/moai-mcp-tools.md
+internal/template/templates/.claude/rules/moai/core/moai-mcp-tools.md

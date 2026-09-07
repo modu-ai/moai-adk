@@ -27,6 +27,24 @@ workflow:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
+    # project.continuation: how `/moai project` ends its Phase 14 completion.
+    # Values: none | card | pipeline. Absent resolves to card, and an
+    # unrecognized value ALSO resolves to card while naming the offending value
+    # in the completion report — the run is never stopped over it.
+    #   none     — issue no backlog card; present the pre-P1 next-steps options
+    #              with `Create SPEC` recommended.
+    #   card     — issue one derived `[PROJECT] ` card and recommend a branch
+    #              that carries the session as far as `/moai plan`, no further.
+    #   pipeline — issue the same card and recommend a branch that carries the
+    #              session past `/moai plan` to EMITTING the Implementation
+    #              Kickoff Approval gate in that same session.
+    # The key is presentation-scoped: it selects which option is recommended,
+    # how far that option carries the session, and how it is worded. It never
+    # decides whether the next-steps question is asked, never answers it, and
+    # no value pre-authorizes run-phase entry — `pipeline` causes one more gate
+    # to be ASKED, never one to be skipped.
+    project:
+        continuation: card
     # Worktree automation settings (per the canonical worktree contract).
     # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
     # three auto-* toggles default false — the EnterWorktree-first policy.

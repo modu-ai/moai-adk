@@ -77,7 +77,7 @@ The `draft → in-progress` transition rode M1 (539aa3e3f).
 | AC-MTP-014a..018b | M3 | PASS | init/update `--plan-type` help + out-of-set exit-nonzero; wizard case mapping; llm.yaml persistence round-trip in `t.TempDir()` |
 | AC-MTP-019..023b, 027a, 027b | M4 | PASS | handler render + selector + both plan previews; router-level persistence round-trip; scoped-write negative invariants (405/4xx + byte-identity); i18n ×4; templ-sync clean |
 | AC-MTP-028..032a | M5 | PASS | detection truth table (7 rows incl. corrected `team_mode="glm"→TRUE`); 5→3 collapse table; coding-max override membership; effort-only + non-GLM no-op; `glm.go` wiring reachability grep |
-| AC-MTP-032b | M5 | **PASS-WITH-RESIDUAL** | Branch-B chosen + wired + inject↔clear parity verified in code; **wire-effectiveness EMPIRICALLY UNVERIFIED** — see §E.4 residual |
+| AC-MTP-032b | M5 | **PASS-WITH-RESIDUAL** | Branch-B chosen + wired + inject↔clear parity verified in code; **wire-effectiveness EMPIRICALLY UNVERIFIED** — see §E.4 residual; residual closed post-close by SPEC-V3R6-AUDIT-MODEL-PIN-001 AC-AMP-006 (2026-08-24, card t240) — see §E.4 addendum |
 | AC-MTP-026a..026d | Global | PASS | touched-package suites green (config/template/web/core-project/cli); `moai spec lint` 0 SPEC-attributable errors (delta +0); coverage — changed FILES ≥85% (plan_type.go 100%, glm_effort_overlay 7 fns 100%, template pkg 85.1%); config package aggregate 80.9% is a PRE-EXISTING baseline (M1-M4 parent, untested loader error paths — NOT SPEC-attributable) |
 
 Coverage note: changed FILES are ≥85% (plan_type.go 100%, glm_effort_overlay 7 fns 100%,
@@ -131,6 +131,15 @@ determined**. The Branch A (shim passthrough of `ANTHROPIC_REASONING_EFFORT`) vs
 outbound-request inspection to settle. Per AC-MTP-032b + verification-claim-integrity §1.1, **do
 NOT claim the overlay is effective on the wire** — the code is wired and unit-tested; the wire
 delivery is pending empirical z.ai determination.
+
+**ADDENDUM (card t240, 2026-09-02): the residual above is CLOSED.** The pending empirical
+determination landed on 2026-08-24 as a lead-approved amendment to SPEC-V3R6-AUDIT-MODEL-PIN-001
+AC-AMP-006 (whose terms state it closes AC-MTP-032b): a null-controlled live differential
+(four runs, PASS bound 1.25, null-control bound 1.1) proved delivery via the top-level
+`reasoning_effort` request field (ratios 1.34/1.85/1.48) against the hypothesis-A
+thinking-budget null (1.02). The earlier t175 session-path probe direction ("thinking honored,
+reasoning_effort ignored") is superseded by that record. Evidence (tracked):
+`SPEC-V3R6-AUDIT-MODEL-PIN-001/acceptance.md` §AC-AMP-006 amendment record.
 
 **Delivery granularity limitation (research.md §D).** The reasoning-control delivery is
 **session-global**, NOT per-agent: the GLM launch path sets one session-level

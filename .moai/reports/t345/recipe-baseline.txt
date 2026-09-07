@@ -1,0 +1,25 @@
+# t345 dormancy-recipe baseline
+# tree: WT-policy-rule-evidence (develop 1cfd9e8a0 + merge of WT-audit-verdict-owner)
+# date of measurement: 2026-09-02
+
+$ find .moai/reports -name "verdict.md" | wc -l
+108
+
+$ grep -rl 'verification-completeness' .moai/reports --include='verdict.md' | wc -l
+5
+.moai/reports/t333/verdict.md
+.moai/reports/t302/verdict.md
+.moai/reports/t241/verdict.md
+.moai/reports/t344/verdict.md
+.moai/reports/t371/verdict.md
+
+$ grep -rl 'verification-claim-integrity' .moai/reports --include='verdict.md' | wc -l
+3
+.moai/reports/t190/verdict.md
+.moai/reports/t156/verdict.md
+.moai/reports/t308/verdict.md
+
+# prior-tree measurement (WT-audit-verdict-owner @ e85c55fa9, earlier the same day):
+# 106 verdicts / 3 citing verification-completeness / 3 citing VCI.
+# The counts MOVE between measurement trees — which is why §7's evidence block
+# fixes the convention and recipe in generic phrasing, never a number.

@@ -2,6 +2,7 @@ package graph
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,21 +21,39 @@ const (
 	VerdictAbsent = "absent"
 )
 
-// Layer names.
+// Layer names. The citations layer (accuracy axis) is defined alongside its
+// checker in check_citations.go — SPEC-CODEMAPS-ACCURACY-001 D1.
 const (
-	LayerCodemaps = "codemaps"
-	LayerMXIndex  = "mx-index"
-	LayerEdges    = "edges"
+	LayerCodemaps  = "codemaps"
+	LayerMXIndex   = "mx-index"
+	LayerEdges     = "edges"
+	LayerCitations = "citations"
 )
 
 // Metric kind tokens — the report names the metric each layer used, so a
 // reader can tell an endpoint git diff from a fingerprint comparison.
 const (
-	MetricDescribedSourceDiff  = "described-source-diff"
-	MetricInventoryContentDiff = "inventory-content-diff"
-	MetricSourceFingerprint    = "source-fingerprint-mismatch"
-	MetricGenerationFP         = "generation-fingerprint-mismatch"
-	MetricWrongTree            = "wrong-tree-anchor"
+	MetricDescribedSourceDiff      = "described-source-diff"
+	MetricInventoryContentDiff     = "inventory-content-diff"
+	MetricSourceFingerprint        = "source-fingerprint-mismatch"
+	MetricGenerationFP             = "generation-fingerprint-mismatch"
+	MetricWrongTree                = "wrong-tree-anchor"
+	MetricPositiveCitedPathAbsence = "positive-cited-path-absence"
+)
+
+// Content-anchor source tokens — how the codemaps layer resolved the commit
+// its described-source diff is measured from. Reported, never gated on.
+const (
+	// AnchorSourceWorkingTreeDiffers: the working-tree codemaps body is not
+	// identical to the body at the stamped commit, so the stamped commit is
+	// itself the anchor. The name states what the probe actually measures —
+	// "the working tree differs from the stamp" — not "the body was
+	// regenerated": the probe fires equally for a COMMITTED body change that
+	// landed after the stamp (spec.md §D.2).
+	AnchorSourceWorkingTreeDiffers = "working-tree-differs-from-stamp"
+	// AnchorSourceLastBodyChange: the body matches the stamp, so the anchor
+	// is the last commit in the stamp's own history that touched the body.
+	AnchorSourceLastBodyChange = "last-body-change"
 )
 
 // Thresholds are the per-layer red lines (acceptance.md §D.7). The edges layer
@@ -83,6 +102,19 @@ type LayerReport struct {
 	// ContributionAbsentReason names why Contribution is nil. Absent must be
 	// legible, not merely a missing field.
 	ContributionAbsentReason string `json:"contribution_absent_reason,omitempty"`
+
+	// ContentAnchor is the sha the described-source diff was measured from.
+	// It is REPORTED, never gated on: the verdict is decided by Value against
+	// Threshold exactly as before. Carrying the anchor makes the measurement
+	// window legible rather than asserted — a reader can re-run the same diff.
+	//
+	// Empty on the dirty-fingerprint path, which anchors on a content hash
+	// rather than a commit, and on every layer that resolves no anchor.
+	ContentAnchor string `json:"content_anchor,omitempty"`
+	// ContentAnchorSource names HOW ContentAnchor was resolved — one of
+	// AnchorSourceWorkingTreeDiffers or AnchorSourceLastBodyChange. Also
+	// reported, never gated on.
+	ContentAnchorSource string `json:"content_anchor_source,omitempty"`
 
 	// DrivingPaths names the described-worthy paths driving Value on a stale
 	// verdict, bounded to drivingPathDisplayBound (REQ-GFC-008). Empty on a
@@ -154,14 +186,131 @@ func CheckFreshness(projectRoot string, th Thresholds) (CheckResult, error) {
 	res.Layers = append(res.Layers, codemapsRep)
 	res.Layers = append(res.Layers, checkMXIndex(projectRoot, th))
 	res.Layers = append(res.Layers, checkEdges(projectRoot))
+	// The citations row is a pure read of the working tree (no git, no
+	// provenance) and cannot system-error, so it closes the walk: exit-code
+	// contract 0/1/2 unchanged — the row participates in Failed() exactly as
+	// the freshness rows do (SPEC-CODEMAPS-ACCURACY-001 REQ-CMA-002).
+	res.Layers = append(res.Layers, checkCitations(projectRoot))
 	return res, nil
 }
 
+// codemapsBodyPathspec is the codemaps BODY — the generated prose — with the
+// provenance sidecar excluded. Excluding it is what makes the anchor probe
+// mean anything: provenance.json is exactly the file a re-stamp rewrites, so
+// including it would let every re-stamp answer "the body changed".
+func codemapsBodyPathspec() []string {
+	return []string{
+		".moai/project/codemaps/",
+		":(exclude).moai/project/codemaps/provenance.json",
+	}
+}
+
+// Rule C splits on determinate-observation vs failed-measurement — the same
+// distinction the 1/2 exit-code contract already carries (spec.md §D.1).
+var (
+	// errCodemapsBodyAbsent is C1: there is no codemaps body at all, in the
+	// working tree or at the stamp. Nothing is being described, so freshness
+	// is unjudgeable — but that is something OBSERVED, not a measurement that
+	// failed, so it carries NO system error (exit 1). The sibling citations
+	// layer disposes of its doc-less state the same way (checkCitations,
+	// `docs == 0`); without this split the codemaps layer would diverge from
+	// its sibling (REQ-GGR-006).
+	errCodemapsBodyAbsent = errors.New("no codemaps documents to anchor on")
+	// errNoBodyCommit is C2: bodies exist, yet no anchor resolves (truncated
+	// history). The measurement failed, so the layer is absent WITH a system
+	// error (exit 2, REQ-GGR-006a).
+	//
+	// No fixture reaches C2, and that is recorded rather than papered over: a
+	// shallow boundary commit and a root commit both report every file as
+	// ADDED, so the rule-B log is non-empty whenever bodies exist. The branch
+	// is kept deliberately fail-closed — if some future git state does reach
+	// it, absent-plus-error is the safe disposition and fresh is never one
+	// (REQ-GGR-007).
+	errNoBodyCommit = errors.New("no commit in the stamped history touches the codemaps body")
+)
+
+// resolveContentAnchor answers WHERE the described-source diff should be
+// measured from, given the stamped sha S. The stamp itself is the wrong
+// answer: `moai graph stamp codemaps` writes provenance only and never reads
+// the body, so a bare re-stamp over untouched prose resets the window to zero
+// and turns the gate green on stale prose (spec.md §A).
+//
+// Three rules, in order (spec.md §D.1):
+//
+//	A. The working-tree body is not identical to the body at S — the union of
+//	   the tracked diff and the untracked listing is non-empty. Anchor S.
+//	   The union is deliberate and mirrors gitDiffNameList: filtering to the
+//	   tracked side alone misses an untracked body, which is precisely the
+//	   shape every pre-existing codemaps fixture has (spec.md §B.4).
+//	B. Otherwise the last commit IN S's OWN HISTORY that touched the body.
+//	   Restricting the walk to S's history is load-bearing: it guarantees the
+//	   anchor is an ancestor-or-self of S, so the value can only move to the
+//	   more conservative (redder) side, never the greener one (spec.md §B.2).
+//	C. Otherwise unmeasurable — errNoBodyCommit.
+//
+// It reuses gitOutput rather than introducing a second process convention.
+func resolveContentAnchor(projectRoot, stampedSHA string) (anchor, source string, err error) {
+	body := codemapsBodyPathspec()
+
+	tracked, err := gitOutput(projectRoot, append([]string{"diff", "--name-only", stampedSHA, "--"}, body...)...)
+	if err != nil {
+		return "", "", fmt.Errorf("git diff %s (codemaps body): %w", shortHash(stampedSHA), err)
+	}
+	untracked, err := gitOutput(projectRoot, append([]string{"ls-files", "--others", "--exclude-standard", "--"}, body...)...)
+	if err != nil {
+		return "", "", fmt.Errorf("git ls-files --others (codemaps body): %w", err)
+	}
+	if hasNonBlankLine(tracked) || hasNonBlankLine(untracked) {
+		return stampedSHA, AnchorSourceWorkingTreeDiffers, nil
+	}
+
+	logged, err := gitOutput(projectRoot, append([]string{"log", "-1", "--format=%H", stampedSHA, "--"}, body...)...)
+	if err != nil {
+		return "", "", fmt.Errorf("git log -1 %s (codemaps body): %w", shortHash(stampedSHA), err)
+	}
+	if sha := strings.TrimSpace(logged); sha != "" {
+		return sha, AnchorSourceLastBodyChange, nil
+	}
+
+	// Rule C. Which of the two it is turns on whether any codemaps body
+	// exists at all. Reaching here means rule A did not fire, so the working
+	// tree's body set is identical to the stamp's — which is what makes it
+	// legitimate to measure the near side rather than re-reading the stamp's
+	// tree. The untracked half is the listing rule A already computed; the
+	// tracked half is the same ls-files idiom minus --others, so no third git
+	// convention is introduced (plan.md §C).
+	tracked, err = gitOutput(projectRoot, append([]string{"ls-files", "--"}, body...)...)
+	if err != nil {
+		return "", "", fmt.Errorf("git ls-files (codemaps body): %w", err)
+	}
+	if !hasNonBlankLine(tracked) && !hasNonBlankLine(untracked) {
+		return "", "", errCodemapsBodyAbsent
+	}
+	return "", "", errNoBodyCommit
+}
+
+// hasNonBlankLine reports whether git output carries at least one path. Git
+// prints a trailing newline even for an empty result, so a bare != "" test
+// would read every empty listing as a hit.
+func hasNonBlankLine(out string) bool {
+	for _, line := range strings.Split(out, "\n") {
+		if strings.TrimSpace(line) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // checkCodemaps: count of described-source files whose working-tree content
-// differs from the content at the stamped generation commit (endpoint diff —
-// reverted churn counts zero). Dirty generation anchors on the stamped
-// content fingerprint instead of a named commit. A stamped commit git cannot
-// resolve (shallow history, vanished SHA) is NOT judged stale — the layer was
+// differs from the content at the CONTENT ANCHOR — the point the codemaps
+// body last actually changed, resolved by resolveContentAnchor (endpoint diff
+// — reverted churn counts zero). Measuring from the anchor rather than from
+// the stamped commit is what closes the bare-re-stamp false green: a stamp
+// rewritten over untouched prose no longer resets the window
+// (SPEC-GRAPH-GATE-RESTAMP-001). Dirty generation anchors on the stamped
+// content fingerprint instead of a named commit and resolves no anchor. A
+// stamped commit git cannot resolve (shallow history, vanished SHA), or an
+// anchor that cannot be resolved at all, is NOT judged stale — the layer was
 // never measured; the error propagates as a system error (exit 2).
 func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	rep := LayerReport{Layer: LayerCodemaps, Metric: MetricDescribedSourceDiff, Threshold: th.CodemapsChangedFiles}
@@ -241,7 +390,33 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 		rep.Reason = "clean stamp carries no commit sha — freshness-unjudgeable"
 		return rep, nil
 	}
-	driving, err := gitDiffNameList(projectRoot, pv.CommitSHA, roots)
+	anchor, anchorSource, err := resolveContentAnchor(projectRoot, pv.CommitSHA)
+	if err != nil {
+		rep.Verdict = VerdictAbsent
+		if errors.Is(err, errCodemapsBodyAbsent) {
+			// C1 — a determinate observation, NOT a failed measurement:
+			// there is no codemaps prose to be stale about. Absent with no
+			// system error (exit 1), matching the citations layer's doc-less
+			// disposition. Reporting it as exit 2 would call an answer a
+			// failure (REQ-GGR-006).
+			rep.Reason = "no codemaps documents to anchor on — freshness-unjudgeable, not fresh"
+			return rep, nil
+		}
+		// C2, or git could not resolve the stamped commit at all (bad
+		// revision / shallow history): the measurement failed, so the layer
+		// is unmeasured and the system error surfaces — never a verdict on a
+		// window that was never established.
+		if errors.Is(err, errNoBodyCommit) {
+			rep.Reason = "codemaps body has no change point in the stamped history (unmeasured, system error follows)"
+		} else {
+			rep.Reason = "stamped commit not comparable (unmeasured, system error follows)"
+		}
+		return rep, fmt.Errorf("codemaps stamp %s not comparable in this checkout: %w", shortHash(pv.CommitSHA), err)
+	}
+	rep.ContentAnchor = anchor
+	rep.ContentAnchorSource = anchorSource
+
+	driving, err := gitDiffNameList(projectRoot, anchor, roots)
 	if err != nil {
 		// Not-comparable (bad revision / shallow history): report the layer
 		// as unmeasured and surface the system error — never judge stale on

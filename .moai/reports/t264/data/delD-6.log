@@ -1,0 +1,20 @@
+error: cannot delete branch 'worktree-agent-a8bf881ac39468a30' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-a8bf881ac39468a30'
+error: cannot delete branch 'worktree-agent-acabfeac3a8608c84' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-acabfeac3a8608c84'
+error: cannot delete branch 'worktree-agent-ae0671037b886c5a9' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/agent-ae0671037b886c5a9'
+error: cannot delete branch 'worktree-card-astgrep-path' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-astgrep-path'
+error: cannot delete branch 'worktree-card-clocal' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-clocal'
+Deleted branch spec-dead-config-001-backup (was 87971329e).
+Deleted branch spec-sessionstart-perf-001-m3 (was 1948c5fc7).
+Deleted branch sync/spec-always-loaded-diet (was ee53ade78).
+Deleted branch sync/SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001 (was 231055083).
+Deleted branch wave-5-test (was 644df8762).
+Deleted branch worker-branch (was 914ce9865).
+Deleted branch worker-global-001 (was f11bb4c3c).
+Deleted branch worktree-agent-a0e534aab77fa9ce3 (was 8195e5383).
+Deleted branch worktree-agent-a282d559617f43a27 (was cd206a834).
+Deleted branch worktree-agent-a52b61e6a410207ad (was fe0d977b2).
+Deleted branch worktree-agent-afe11b2c359970b8d (was a82b82b9c).
+Deleted branch worktree-agent-output-contract (was c848e85b4).
+Deleted branch worktree-branch-guard-discrim (was 36319921f).
+Deleted branch worktree-branch-guard-fix (was eae65ba4d).
+Deleted branch worktree-card-installps1 (was 1d119c4cb).

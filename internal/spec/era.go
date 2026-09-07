@@ -257,7 +257,7 @@ func extractProgressField(content, field string) string {
 	return ""
 }
 
-// cleanFieldValue strips empty placeholders (null, none, "", ``) and returns
+// cleanFieldValue strips empty placeholders (null, none, "", “) and returns
 // only non-trivial values (typically a git SHA or quoted string).
 func cleanFieldValue(raw string) string {
 	v := strings.TrimSpace(raw)

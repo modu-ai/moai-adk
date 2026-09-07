@@ -1,0 +1,6 @@
+.claude/rules/moai/development/agent-authoring.md
+.claude/rules/moai/development/agent-patterns.md
+CLAUDE.md
+internal/template/templates/.claude/rules/moai/development/agent-authoring.md
+internal/template/templates/.claude/rules/moai/development/agent-patterns.md
+internal/template/templates/CLAUDE.md

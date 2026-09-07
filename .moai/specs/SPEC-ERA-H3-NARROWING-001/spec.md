@@ -1,10 +1,10 @@
 ---
 id: SPEC-ERA-H3-NARROWING-001
 title: "H-3 시대 분류 술어 축소 — 진행 중 SPEC의 V3R5 오분류 차단"
-version: "0.5.0"
+version: "0.5.2"
 status: completed
 created: 2026-08-31
-updated: 2026-09-01
+updated: 2026-09-05
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -24,6 +24,8 @@ tier: S
 | 0.2.0 | 2026-08-31 | manager-spec | **Tier M → S 정정** (LOC·파일 수 기준 미달, AC 8개가 S 상한에 부합 — acceptance.md 폐기하고 AC를 §3으로 인라인). 무게중심을 lint 심각도에서 **drift 면제**로 이동 |
 | 0.4.0 | 2026-08-31 | manager-spec | **plan-audit iter1 부채 상환** (PASS-WITH-DEBT 0.825, blocking 4 + optional 6). D1 무게중심 축에 원장 **R4** 신설 + AC-007 산술 23행→22행 정정. D2 AC-002의 코퍼스 RED가 phase 경로에 공허함을 명시하고 「날짜만으로 축소」 뮤테이션을 판정 본체로 승격. D3 AC-008의 H-5 술어 평가를 독립 리터럴 + rationale 접두로 못박음. D4 §3.6에 REQ-EH3-004 판정 줄 신설. D5 좌측 열 「오늘」 서술 3곳 정정. D6 R1 귀속 `f72c0bf0f`→`1f10f5e8d`. D7 옵션 D 근거를 측정된 기제로 교체. D8 REQ-002 라벨 `Where`→`While`. D9 테스트 이름 정정. D10 원장에 빌드 좌표 명시 |
 | 0.5.0 | 2026-08-31 | manager-spec | **§3.6 REQ-EH3-004 기준을 파일 정체성에서 심볼 경계로 정정.** run-phase가 네 번째 파일 `internal/spec/audit_test.go`를 바꿔 초판 기준이 실패했고, 확인 결과 **기준이 잘못 그어진 것**이었다 — 픽스처가 수정 이전 술어(`makeSpecMD`의 하드코딩된 `phase: "v3.0.0"`)를 인코딩하고 있어 술어를 좁히면 함께 갱신될 수밖에 없다. 완화가 아님을 세 가지로 측정 확인(금지 심볼 grep 0건 / 1줄 되돌리면 기존 테스트 rc 1 실패 / 세 파일로 끝낼 수리 경로 부재)하고 그 경위를 §3.6에 [HARD]로 기록. 범위 상한(`internal/spec/` + 룰 문서)은 유지 |
+| 0.5.1 | 2026-09-03 | manager-develop | **원인 서술 정정 — 이 SPEC의 판정·상태·AC는 유효하다.** t382가 drift 오탐의 원인으로 적은 둘 중 ①(`--grep`이 본문을 매치해 **다른 SPEC의 plan 커밋**이 최신으로 채택된다)이 카드 t410의 재현으로 **반증**됐다. 축자 추적 `.moai/reports/t410/r1-walker-trace.log`: 해당 커밋 `7cffb9717`은 2단 subject 필터에서 정상적으로 걸러진다(`extracted=[SPEC-HANDOFF-AUTORESUME-001]`) — 본문 매치는 후보 창을 넓힐 뿐이고 본문 전용 매치는 다음 필터가 전부 떨어뜨린다. 실제로 작동하는 원인은 ②(결합 범위 close subject에 완전한 ID가 없어 안 보인다) 하나뿐이며, 그 수리는 `SPEC-DRIFT-CLOSE-BODY-001`이 맡는다. **이 정정은 서술에 국한된다** — 이 SPEC의 `status: completed`, AC 판정, 본문 결론은 소급해 뒤집지 않는다 |
+| 0.5.2 | 2026-09-05 | manager-spec | **채널 귀속 정정 (카드 t484).** 0.5.1 행의 편집은 카드 t410의 run-phase(manager-develop)가 수행했으나, 그 표면(HISTORY 행 추가와 `version:`·`updated:` 갱신)은 `spec-frontmatter-schema.md` § Non-transition frontmatter corrections 가 정한 manager-spec 소유 표면이다. 본 행으로 채널 귀속을 바로잡는다 — 0.5.1 행의 내용과 판정은 그대로 유효하며, 이 SPEC의 `status`와 AC 판정은 변하지 않는다. 근거: `.moai/reports/t484/verdict.md` F1 |
 | 0.3.0 | 2026-08-31 | manager-spec | RED 증거를 `verification-completeness.md` §2.1 4요소(명령·축자 stdout·exit code·트리 SHA)로 승격 — 원장 `.moai/reports/t382/red-evidence.md` R1~R3 신설, 기준선을 트리 `f72c0bf0f`에서 **재측정**(V3R5 23→24, grandfathered 285→286). AC-001의 단위 판정 명령이 오늘 초록이라는 사실을 명시하고 RED를 코퍼스로 이관. `matchesModernPhase`의 좁은 술어(`v3.0` 접두 / `v3r6`) 실측 반영. 가드를 2층으로 분리하고 코퍼스 층이 상시 가드가 아님을 명시. t371 무충돌 주장을 「절반만 검증됨」으로 정정 |
 
 ## 1. 배경

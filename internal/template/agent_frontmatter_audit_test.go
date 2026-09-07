@@ -500,11 +500,11 @@ func TestAgentFrontmatter_PermissionModeStrictEnum(t *testing.T) {
 
 	// The five allowed permissionMode values.
 	allowedModes := map[string]bool{
-		"default":            true,
-		"acceptEdits":        true,
-		"bypassPermissions":  true,
-		"plan":               true,
-		"bubble":             true,
+		"default":           true,
+		"acceptEdits":       true,
+		"bypassPermissions": true,
+		"plan":              true,
+		"bubble":            true,
 	}
 
 	var agentFiles []string

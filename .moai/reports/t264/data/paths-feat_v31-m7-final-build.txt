@@ -1,0 +1,7 @@
+docs-site/content/en/advanced/ultracode-workflows.md
+docs-site/content/en/claude-code/_index.md
+docs-site/content/ja/advanced/ultracode-workflows.md
+docs-site/content/ja/claude-code/_index.md
+docs-site/content/zh/advanced/ultracode-workflows.md
+docs-site/content/zh/claude-code/_index.md
+docs-site/hugo.toml

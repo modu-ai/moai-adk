@@ -258,8 +258,8 @@ func TestComputeScope_DedupSameSubtree(t *testing.T) {
 			selfSymEdge("symbol:SymA", "/proj/a2.go"),
 		},
 	}
-	gitDiff := []string{"/proj/a1.go"}     // a1.go in git-diff
-	m1 := []string{"/proj/a2.go"}          // a2.go in M1
+	gitDiff := []string{"/proj/a1.go"} // a1.go in git-diff
+	m1 := []string{"/proj/a2.go"}      // a2.go in M1
 	scope := ComputeScope(gitDiff, m1, nil, graph)
 
 	if len(scope) != 1 {

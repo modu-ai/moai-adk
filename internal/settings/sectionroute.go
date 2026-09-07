@@ -98,6 +98,12 @@ var sectionRoutes = map[string]SectionRoute{
 	// remain RouteExcluded.
 	"feedback": RouteSeam,
 
+	// gate — seam-writable (SPEC-PRECOMMIT-GATE-SCOPE-001 REQ-009/AC-010):
+	// gate.pre_commit.enabled (pre-commit heavy-gate opt-in) persists through
+	// the yamlpatch seam into gate.yaml. A new seam section admitted on its
+	// own card, same as mcp and crosssession before it.
+	"gate": RouteSeam,
+
 	// SPEC-WEBCONF-SIMPLIFY-001 M3: the 6 remaining former seam sections (harness,
 	// ralph, observability, security, handoff, cache) stay reclassified
 	// to RouteExcluded — their tabs are removed and their web write path is gone.

@@ -1,0 +1,9 @@
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t264
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t336
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t361
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t371
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t395
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t395/internal/kanban
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t401
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t432

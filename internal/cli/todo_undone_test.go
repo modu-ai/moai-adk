@@ -317,7 +317,11 @@ func TestTodoDone_NoLandingQueryWithoutTheFlag(t *testing.T) {
 	var calls [][]string
 	todoRunCommand = func(name string, args ...string) (string, error) {
 		calls = append(calls, append([]string{name}, args...))
-		return "abc1234 landed t2\n", nil
+		// SPEC-TODO-LANDING-ATTRIBUTION-001: the stubbed subject must carry
+		// the card in an ATTRIBUTING position (trailing parenthetical). The
+		// old stub text "abc1234 landed t2" was a mid-subject mention, which
+		// the repaired predicate correctly refuses to read as a landing.
+		return "abc1234 fix: the delivery (t2)\n", nil
 	}
 
 	if _, _, err := runTodo(t, "done", "t1"); err != nil {

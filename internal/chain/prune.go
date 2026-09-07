@@ -42,11 +42,11 @@ func DefaultPruneThreshold() PruneThreshold {
 
 // PruneResult summarizes the outcome of a prune operation.
 type PruneResult struct {
-	ArchivedNodes  int      `json:"archived_nodes"`
-	KeptNodes      int      `json:"kept_nodes"`
-	OriginalSize   int64    `json:"original_size_bytes"`
-	CompactedSize  int64    `json:"compacted_size_bytes"`
-	ArchivedPath   string   `json:"archived_path"`
+	ArchivedNodes   int      `json:"archived_nodes"`
+	KeptNodes       int      `json:"kept_nodes"`
+	OriginalSize    int64    `json:"original_size_bytes"`
+	CompactedSize   int64    `json:"compacted_size_bytes"`
+	ArchivedPath    string   `json:"archived_path"`
 	ArchivedNodeIDs []string `json:"archived_node_ids"`
 }
 
@@ -252,14 +252,14 @@ func extractEnteredAt(events []ChainEvent) time.Time {
 
 // ArchivedNodeSummary is the compact representation of an archived node.
 type ArchivedNodeSummary struct {
-	NodeID      string   `json:"node_id"`
-	ParentNodeID string  `json:"parent_node_id,omitempty"`
-	Depth       int      `json:"depth"`
-	WorktreePath string  `json:"worktree_path,omitempty"`
-	SpecID      string   `json:"spec_id,omitempty"`
-	EnteredAt   string   `json:"entered_at,omitempty"`
-	EventCount  int      `json:"event_count"`
-	ArchivedAt  string   `json:"archived_at"`
+	NodeID       string `json:"node_id"`
+	ParentNodeID string `json:"parent_node_id,omitempty"`
+	Depth        int    `json:"depth"`
+	WorktreePath string `json:"worktree_path,omitempty"`
+	SpecID       string `json:"spec_id,omitempty"`
+	EnteredAt    string `json:"entered_at,omitempty"`
+	EventCount   int    `json:"event_count"`
+	ArchivedAt   string `json:"archived_at"`
 }
 
 // summarizeNode creates an ArchivedNodeSummary from a node's events.

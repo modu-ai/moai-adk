@@ -1,0 +1,5 @@
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    golden_test.go:109: .codex/agents/moai/sync-auditor.toml: committed artifact differs from emission (sha256 mismatch) — regenerate or stop hand-editing
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit	0.498s
+FAIL

@@ -77,7 +77,7 @@ moai worktree remove <path>
 moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 ```
 
-フラグなしで実行すると、stale なワークツリー参照だけを prune します。
+フラグなしで実行すると、stale なワークツリー参照だけを prune します。ランチ台帳(`~/.moai/claude-profiles/launch.yaml` の `projects:` 項目)のうち、プロジェクトディレクトリが消えた項目も一緒に整理し、削除した項目数を出力します。`moai worktree remove` と `moai worktree done` も、破棄するツリーの項目を同じ方法で回収します。
 
 | フラグ | 説明 |
 |--------|------|
