@@ -8,6 +8,7 @@ package cli
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -137,10 +138,44 @@ func writeCodexHomeConfig(t *testing.T, entries []codexSkillEntrySpec) string {
 		}
 		sb.WriteString("\n")
 	}
-	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(sb.String()), 0o644); err != nil {
+	cfgPath := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfgPath, []byte(sb.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	assertCodexHomeConfigUnwritten(t, cfgPath)
 	return home
+}
+
+// assertCodexHomeConfigUnwritten pins the read-only posture (t508 AC-CEF-012)
+// for every fixture in this suite: the config's content hash after the test is
+// the hash written here.
+//
+// The guard lives in the fixture builder rather than in one test on purpose. A
+// per-test assertion covers only the tests someone remembered to add it to,
+// which is exactly the set that would not contain the test that introduced a
+// write. Registered here, it binds every present and future caller.
+//
+// Only the FIXTURE's config is guarded. The machine's real ~/.codex is never
+// touched by any of this — every fixture lives under t.TempDir() with the home
+// resolution pinned, and no test in this file sets HOME.
+func assertCodexHomeConfigUnwritten(t *testing.T, cfgPath string) {
+	t.Helper()
+	before, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := sha256.Sum256(before)
+	t.Cleanup(func() {
+		after, err := os.ReadFile(cfgPath)
+		if err != nil {
+			t.Errorf("the fixture config is unreadable after the run — something removed or replaced it: %v", err)
+			return
+		}
+		if got := sha256.Sum256(after); got != want {
+			t.Errorf("the fixture config changed during the run: %s\nbefore:\n%s\nafter:\n%s",
+				cfgPath, before, after)
+		}
+	})
 }
 
 // codexDetailText collapses Detail's line wrapping back onto one line so an
@@ -286,21 +321,33 @@ func TestCheckCodexWiring_EmptyPathEntryNotCountedMissing(t *testing.T) {
 	}
 }
 
-// TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately verifies an entry
-// declaring no `enabled` key is reported as unspecified rather than folded
-// into either side — the repository has not observed Codex's default, so
-// claiming one would be an unverified premise in a user-facing message.
+// TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately verifies neither an
+// absent `enabled` key nor a declared non-boolean value is folded into the
+// enabled or disabled side of the declared split. Claiming either would put an
+// unverified premise into a user-facing message.
+//
+// The EXPECTED COUNTS moved with t508 and this is not a regression. Previously
+// the quoted `"true"` entry read as SkillEnabledTrue and landed in the enabled
+// bucket, giving `(1 enabled, 0 disabled, 1 unspecified)`. Measured on
+// codex-cli 0.153.4, that config makes codex exit 1 — the entry was never a
+// live enabled registration, so counting it as one was the defect. It now reads
+// as SkillEnabledNonBoolean and joins the absent-key entry outside both boolean
+// buckets, giving `(0 enabled, 0 disabled, 2 unspecified)`.
+//
+// The declared split deliberately does NOT grow a fourth bucket: this finding's
+// message template is preserved (REQ-CEF-010), and the non-boolean shape gets
+// its own fatal finding rather than a wider advisory count.
 func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 	stubCodexLookup(t, true, true)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
 		{Path: absentSkillPath(t, "a"), EnabledKey: ""},       // no enabled key
-		{Path: absentSkillPath(t, "b"), EnabledKey: `"true"`}, // quoted string, still true
+		{Path: absentSkillPath(t, "b"), EnabledKey: `"true"`}, // quoted string: codex rejects it
 	})
 	stubCodexHome(t, home)
 
 	check := checkCodexWiring(wireProjectForDoctor(t), false)
-	if !strings.Contains(codexDetailText(check), "(1 enabled, 0 disabled, 1 unspecified)") {
-		t.Errorf("declared split wrong — quoted true must not demote to disabled, absent must not either: %q", check.Detail)
+	if !strings.Contains(codexDetailText(check), "(0 enabled, 0 disabled, 2 unspecified)") {
+		t.Errorf("declared split wrong — neither an absent key nor a non-boolean value may count as enabled or disabled: %q", check.Detail)
 	}
 }
 
