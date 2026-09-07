@@ -328,7 +328,15 @@ instead of parameters` against the in-flight work. Two interpolation sites were 
 | Site | Disposition |
 |---|---|
 | `backlog_landing_test.go` `rowCount(t, eng, table)` — `` `SELECT count(*) FROM ` + table `` | **Removed.** One caller, always the literal `"items"`; the parameter earned nothing. Now `itemsRowCount(t, eng)` with the table fixed in the statement. |
-| `backlog_sqlite.go:359` — `fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, backlogLandingColumn)` | **Kept, behavior unchanged**; a comment now states the constraint. SQLite cannot bind an identifier as a parameter, so interpolation is the only available shape. `table` ranges over the in-source `var landingCarryingTables = []string{"items", "archived_items"}`; `backlogLandingColumn` is `const = "landing"`. Nothing caller-derived reaches either, and neither may ever be fed from a runtime value. |
+| `backlog_sqlite.go:363` @ `2dacb1d83` — `fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, backlogLandingColumn)` | **Kept, behavior unchanged**; a comment now states the constraint. SQLite cannot bind an identifier as a parameter, so interpolation is the only available shape. `table` ranges over the in-source `var landingCarryingTables = []string{"items", "archived_items"}`; `backlogLandingColumn` is `const = "landing"`. Nothing caller-derived reaches either, and neither may ever be fed from a runtime value. |
+
+> Coordinate decay, recorded rather than silently fixed. This row first cited
+> `backlog_sqlite.go:359`, the line at `3bcb0c33a`. The four comment lines this same commit
+> (`2dacb1d83`) added above the statement moved it to `:363`, so the original citation was correct
+> when written and stale one commit later. Verified now:
+> `grep -n 'ALTER TABLE %s ADD COLUMN' internal/kanban/backlog_sqlite.go` → `363:`. A line citation
+> decays exactly like a HEAD reading, which is why every coordinate in this file is anchored to a
+> SHA.
 
 The value-bearing probe is correctly parameterised and was not touched:
 
@@ -399,6 +407,44 @@ about where the reader's eye had been as a narrowly-averted incident.
 nothing — one caller, one literal — so it went, and the concatenation went with it. Had the
 parameter been carrying its weight, the correct response would have been to document the constraint
 (as was done for the production `ALTER`), not to restructure the helper.
+
+---
+
+### The scanner re-fires on this file — that is noise on documentation, not a defect
+
+After `2dacb1d83` landed, the SQL-injection check fired again at `m1-evidence.md:330` — the row in
+the table above that **quotes** the removed `` `SELECT count(*) FROM ` + table `` as documentation.
+The scanner matched a quoted example in markdown, not live code.
+
+All three candidate sites were enumerated rather than reading one and generalizing:
+
+| Site | Shape | Disposition |
+|---|---|---|
+| `m1-evidence.md:330` | this file quoting the removed concatenation | markdown, not code — scanner matched a quoted example |
+| `backlog_schema_freeze_test.go:142` @ `2dacb1d83` | `` `SELECT … ` + `FROM pragma_table_info(?)` `` | two **adjacent string literals** joined for line wrapping; no data interpolated — `table` goes through the `?` bind |
+| `backlog_sqlite.go:363` @ `2dacb1d83` | `fmt.Sprintf` over an in-source literal + a const | identifiers cannot be bound; the only available shape, already commented |
+
+Zero live injection sites.
+
+[HARD] **Do not rewrite this file to dodge the scanner.** Quoting the removed defect is the whole
+point of the record; laundering the text to avoid a pattern match would erase what the document
+exists to preserve. If the finding recurs on every read of this file, say so — it is scanner noise
+on documentation.
+
+---
+
+## Corrections to this record
+
+Two statements made earlier in this card's reporting are superseded. Recorded rather than silently
+overwritten, so a reader of the transcript can reconcile it against this file.
+
+1. **"`progress.md` §E.2 was not updated"** — true when written (the M1 dispatch scoped the work to
+   three Go files and said to touch nothing else), **superseded by `d6420c1bd`**, which populated
+   §E.2 with the M1 subsection. It is no longer a Gap, and a stale Gap reads as an open hole.
+2. **"the sibling `/Users/goos/moai/…` was never touched"** — rests on the falsified sibling
+   premise. The corrected form is the tree-identity note at the head of this file: it is the SAME
+   tree under a second spelling, so the operative claim is the branch/HEAD discriminant
+   (`WT-landing-evidence` vs `main`), not non-touching.
 
 ---
 
