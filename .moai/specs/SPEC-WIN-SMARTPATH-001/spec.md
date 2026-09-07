@@ -2,7 +2,7 @@
 id: SPEC-WIN-SMARTPATH-001
 title: "Windows-safe SmartPATH — GOOS-injected PATH generation for settings.json"
 version: "1.0.0"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

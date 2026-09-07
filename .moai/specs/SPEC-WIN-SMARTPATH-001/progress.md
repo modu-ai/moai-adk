@@ -41,7 +41,7 @@ Justification: single-domain coding work with strict ordering; the Anthropic cod
 | AC-CWSP-005 | PASS | `go test ./internal/template/ -run 'TestBuildSmartPATH\|TestIsWSL2\|TestIsUserScopedWindowsPath\|TestIsWSL2DrivePath\|TestSettingsTemplateRequiredEnvVars\|TestSettingsTemplateHookExecForm\|TestBuildSmartPATHWindows\|TestSettingsRenderWindowsPATH' -count=1` | `ok ... 0.272s` (rc 0), 빈-스윕 토큰 없음 |
 | AC-CWSP-006 | PASS | (a) `GOOS=windows GOARCH=amd64 go build ./...` (b) `go test ./internal/template/... -count=1` | (a) rc 0 — smoke 한정(테스트 미컴파일); (b) `ok ... 44.576s` + agentemit `ok` + commandemit `ok`, rc 0 |
 | AC-CWSP-007 | PASS | AC-CWSP-002의 stat=false 행으로 커버 | `no_candidate_exists_never_empty`·`env_vars_unset_skip_candidates_even_if_stat_true` 행 PASS + 뮤턴트 B(프로브 무시)가 3행 FAIL로 판별력 실증 |
-| AC-CWSP-008 | PASS | (1) `grep -c '재현했다\|reproduced on Windows' .moai/reports/t515/verdict.md` (2) `grep -c '미검증이지 반증' .moai/reports/t515/verdict.md` | (1) `0` (grep rc 1 = zero-match 정상 신호) (2) `1` (≥1 충족) — 양방향 관측 |
+| AC-CWSP-008 | PASS | (1) `grep -c '재현했다\|reproduced on Windows' .moai/reports/t515/verdict.md` (2) `grep -c '미검증이지 반증' .moai/reports/t515/verdict.md` | (1) `0` (grep rc 1 = zero-match 정상 신호) (2) `1` (≥1 충족) — 양방향 관측. 이 셸의 grep은 ugrep 래퍼라 `/usr/bin/grep`(BSD grep 2.6.0)으로 3건 전부 재측정 — 동일 결과(1/0/1, rc 0/1/0) |
 
 보조 측정: `go test ./internal/config/toolpolicy/ -run TestTemplateDirectivePreserved -count=1` → `ok ... 0.348s` (AC-TPS-014 센티넬 — 본 패키지 AC 명령 범위 밖, F1 수리에 따른 별도 확인). `golangci-lint run internal/template/...` → `0 issues.` (rc 0). `gofmt -l` → 무출력.
 
