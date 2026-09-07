@@ -107,13 +107,60 @@ const (
 // inside the band the existing rows occupy rather than defining a new one.
 const codexMessageWidthCeiling = 113
 
+// codexFindingSeverity grades one finding.
+//
+// [HARD] The ADVISORY grade is the zero value, and the ordering is load-bearing
+// rather than stylistic. Every construction site in this file builds a
+// codexFinding by composite literal naming no severity, so each takes the Go
+// zero value. Declaring the enum fatal-first — the iota ordering its neighbour
+// codexwiring.SkillEnabled uses, which is what copying the adjacent style would
+// produce — would silently re-grade every one of them to fatal, and
+// `moai doctor` would exit 1 on every advisory machine in existence.
+//
+// The cost of this default is stated rather than hidden: a future construction
+// site silently inherits advisory. That IS the intended default, and
+// TestCodexFindingZeroValueIsAdvisory is what stops it drifting.
+type codexFindingSeverity int
+
+const (
+	// codexSeverityAdvisory is a finding the user SHOULD act on. It keeps the
+	// pre-t508 behaviour: uikit.CheckWarn, process exit 0.
+	codexSeverityAdvisory codexFindingSeverity = iota
+	// codexSeverityFatal is a finding on which the consuming tool cannot
+	// operate at all — the check reports uikit.CheckFail and `moai doctor`
+	// exits non-zero.
+	codexSeverityFatal
+)
+
 // codexFinding is one problem in two registers: a SHORT summary for Message,
 // which a plain `moai doctor` renders, and the full text for Detail, which
 // renders only under --verbose. Splitting them is what lets an action
 // directive stay visible without the enumeration behind it blowing the panel.
+//
+// The severity rides ON the finding rather than beside it. A grade returned
+// alongside a finding would live on the CALL SITE and be lost the moment the
+// finding is appended or joined, and the status fold needs the grade after
+// every producer has returned; a second `fatals` slice would give the 13
+// existing sites a slice to choose rather than a safe default, and would
+// duplicate the join/width logic where the tail-drop invariant lives.
 type codexFinding struct {
-	summary string
-	detail  string
+	summary  string
+	detail   string
+	severity codexFindingSeverity
+}
+
+// codexCheckStatus folds a run's findings onto the check status: any fatal
+// finding fails the check; otherwise the pre-t508 behaviour is byte-identical.
+//
+// The caller has already handled the empty case (no findings ⇒ CheckOK), so
+// this fold is reached only with at least one finding.
+func codexCheckStatus(problems []codexFinding) uikit.CheckStatus {
+	for _, p := range problems {
+		if p.severity == codexSeverityFatal {
+			return uikit.CheckFail
+		}
+	}
+	return uikit.CheckWarn
 }
 
 // checkCodexWiring verifies the Codex wiring of the project at root:
@@ -280,7 +327,7 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	check.Status = uikit.CheckWarn
+	check.Status = codexCheckStatus(problems)
 	check.Message = joinCodexSummaries(problems)
 	check.Detail = joinCodexDetails(problems, extraDetail)
 	if check.Detail == "" && verbose {
