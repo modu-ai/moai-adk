@@ -158,7 +158,7 @@ develop 워크트리 `.moai/reports/t510/sync-audit.md:120`에서 전문을 직�
 1. `BacklogPathForRoot`(`internal/kanban/state_dir.go:129-132`)는 `root` 인자를 그대로 `resolveStateDir`에 넣고, `resolveStateDir` → `StateDirForRoot`(`state_dir.go:46-48`, `filepath.Join(root, ".moai", "state", <todo>)`)가 그 위에 `.moai/state/todo`를 다시 접는다. 이미 해석된 상태 디렉터를 넘기면 `<root>/.moai/state/todo/.moai/state/todo/backlog.json` 이중 중첩 경로가 나온다 — 기전은 위 세 좌표의 직접 판독으로 기계적으로 확정된다.
 2. `homeTodoQueueRoot`의 home-미해석 폴백(`internal/kanban/todo_root.go:112-125`)도 같은 형태로 `resolveStateDir(base, false)`에 디렉터 의미를 맡긴다(배포 코드).
 
-주제적 연결: 두 결함 모양 모두 **"넘겨받은 것의 디렉터-의미를 검증하라"** 는 같은 처방이 답한다 — 이 관측이 본 카드를 패밀리 수리로 존재시키는 근거다. 단, kanban 쪽 수리는 t536의 몫이다.
+주제적 연결: 두 결함 모양 모두 **"넘겨받은 것의 디렉터-의미를 검증하라"** 는 같은 처방이 답한다 — 이 관측이 본 카드를 패밀리 수리로 존재시키는 근거다. 단, kanban 쪽 수리는 카드별로 나뉜다 — **관측 1(BacklogPathForRoot 이중 접기, 루트→상태-디렉터 재유도)은 t549**, **관측 2(homeTodoQueueRoot 홈-미해석 폴백)는 t536**의 몫이다(t536 트리 배치가 `WT-home-fallback`인 것으로 뒷받침; §8의 t549 상호 참조와 정렬).
 
 ## 8. 미검증 항목 (Gaps)
 
