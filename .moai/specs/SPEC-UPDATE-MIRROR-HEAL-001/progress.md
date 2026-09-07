@@ -217,7 +217,7 @@ heredoc, with the rationale recorded inline at both sites.
 
 ```yaml
 run_complete_at: 2026-09-07
-run_commit_sha: <backfill — recorded on the M-final commit>
+run_commit_sha: dbb9a53a4        # M1 implementation commit (this SPEC's only implementation commit)
 run_status: complete
 ac_pass_count: 17
 ac_fail_count: 0
