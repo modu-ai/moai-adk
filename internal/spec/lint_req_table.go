@@ -68,7 +68,15 @@ var reqDefinitionLexiconL1 = []string{
 	"해서는 안 된다",
 }
 
-// isTableDefinitionRow applies discriminator C-d to a raw table row line.
+// isTableDefinitionRow applies discriminator C-d to a raw table row line: the
+// row is a definition only when the WHOLE line contacts a marker from L1.
+//
+// This is the single decision point of axis 1. Why the lexicon is narrow, what
+// the narrowness costs, and why widening it would destroy the property C-d was
+// chosen for are in the file header above (WHY C-d AND NOT A WIDER LEXICON) —
+// restating them here would give the next author two copies to keep in step.
+// What rows this declines is not silent: REQTableRejectionRule reports every
+// table it turned down (lint_req_table_rejection.go).
 func isTableDefinitionRow(line string) bool {
 	for _, marker := range reqDefinitionLexiconL1 {
 		if strings.Contains(line, marker) {

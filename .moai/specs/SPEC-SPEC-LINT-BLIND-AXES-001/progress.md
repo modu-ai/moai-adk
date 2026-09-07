@@ -715,6 +715,52 @@ m1cf_table_invalid_reqid=0  # would become SeverityError  pattern=^REQ-[A-Z][A-Z
 
 **[HARD] `spec.md`는 이 에이전트의 소관이 아니므로 고치지 않았다.** `spec.md:89-98`의 여섯 줄은 지금도 「잠정」이라 적혀 있고, 그 문장(「M1이 기준을 고정한 뒤 다시 재는 값이 이 SPEC의 baseline이 된다」)의 조건은 **충족됐다** — 기준은 위에 고정됐고 값은 재유도됐다. 그 표를 새 값으로 갱신하고 잠정 표시를 떼는 것은 계획 아티팩트 개정이며 manager-spec 소관이다. §E.3에 **F-A1**로 올린다. 이는 M-A2 에이전트가 `acceptance.md`에 대해 한 처리(v0.6.0 기록)와 같은 경계다.
 
+### M5 — 문서 정리: 판별식과 무판정의 의미를 코드에 남긴다 (카드 t518, AC 없음 · plan.md §F M5)
+
+plan.md §F M5는 「판별식과 무판정 코드의 의미를 코드 주석과 SPEC에 남김」이다. **코드 주석 쪽이 이 마일스톤의 소관이고, SPEC 쪽은 아니다** — `spec.md`는 계획 아티팩트이므로 §E.3에 후속으로 올린다.
+
+#### [HARD] 먼저 잰 것: 세 파일 중 둘은 이미 되어 있었다
+
+M5를 「할 일」로 받아 그대로 세 파일에 글을 더하는 것은, 이미 있는 설명 옆에 두 번째 사본을 만드는 일이다. 그래서 **쓰기 전에 읽었다.**
+
+| 파일 | M5가 요구하는 내용 | 실측 상태 |
+|---|---|---|
+| `internal/spec/lint_req_table.go` | C-d 판별식 + L1 어휘를 **왜** 좁게 골랐는가(두 독립 어휘 사이의 재현성이지 잔존 수의 크기가 아니다) | **이미 있다** — 파일 헤더의 `WHY C-d AND NOT A WIDER LEXICON` 문단이 C-d 20(두 어휘에서 동일) vs C-e 61↔63을 그대로 적고, 이어지는 `[HARD] THE MISS IS A CHOSEN COST` 문단이 `SPEC-INIT-001`의 `REQ-N-001` 실측 놓침과 「어휘를 넓혀 고치지 않는다」를 못박는다. M-A1이 남긴 것 |
+| `internal/spec/lint_req_table_rejection.go` | finding이 **표 단위로 접히는** 이유와 N을 싣는 이유 | **이미 있다** — `THE FOLD IS PER TABLE, NOT PER ROW — AND THE COST OF THE FOLD IS NAMED`(787행 vs 460 findings, +5.1%, 관측 단위가 행에서 표로 옮겨간다는 대가 명시)와 `WHY N RIDES ON THE LINE`(N이 두 번째 계측기가 되어 코퍼스 총합 대조가 가능해진다, 대조는 `TestTableRejection_CorpusSumEqualsRowCensus`). M-A2b가 남긴 것 |
+| `internal/spec/lint.go` | `judgeModality`의 **세 상태**와, SHALL 접촉 조건을 단어 경계로 바꾼 이유 | **부분적** — 세 상태는 `modalityVerdict` 타입과 상수 블록에, 단어 경계 교체 사유는 `shallWordPattern` 위에 각각 있었으나, **`judgeModality` 함수 자신은 한 줄짜리 주석뿐**이었다 |
+
+**그래서 이 마일스톤이 실제로 더한 것은 두 곳뿐이다.** 나머지를 다시 쓰지 않은 것이 이 마일스톤의 산출물의 일부다 — 같은 설명의 두 번째 사본은 다음 저자에게 「어느 쪽이 정본인가」를 묻게 만들고, 그 질문에 답이 없으면 둘은 갈라진다.
+
+#### 더한 것 ①: `judgeModality` 함수 주석 (`internal/spec/lint.go`)
+
+한 줄이던 함수 주석을, 독자가 그 함수에 착지했을 때 세 상태의 경계를 읽을 수 있는 분량으로 늘렸다. 담은 것:
+
+- 세 결과와 각각의 조건(CONFORMING / MALFORMED / **UNJUDGED**).
+- **UNJUDGED는 판정이 아니라는 것** — 그것을 「괜찮다」로 읽는 호출자가 이 SPEC이 없애려는 결함을 재생산한다. `isModalityMalformed`의 `false`만이 뒤 두 상태를 뭉개며, 그 함수의 주석이 이미 「false는 더 이상 well formed를 뜻하지 않는다」고 적고 있다는 연결을 명시했다.
+- 단어 경계 교체가 **한국어를 판정하는 것이 아니라는 것** — 코퍼스가 `…해야 한다(SHALL)`로 쓰므로 기존 어휘가 이미 아는 SHALL이 괄호 안에 있을 뿐이다. 옛 선행 공백 조건은 그 `(SHALL)`을 못 봤다.
+
+**타입 위의 설명을 함수로 복사하지 않았다** — 함수 주석은 세 상태의 *경계와 오독 위험*을 말하고, 타입 주석은 각 상수의 *정의*를 말한다. 축이 다르다.
+
+#### 더한 것 ②: `isTableDefinitionRow` 주석 (`internal/spec/lint_req_table.go`)
+
+한 줄이던 것에 세 가지를 더했다: 이것이 **축 1의 유일한 결정점**이라는 것, 접촉이 셀이 아니라 **행 전체**에 대해 일어난다는 것, 그리고 **판별 근거는 파일 헤더에 있으니 거기를 읽으라는 것**(여기에 다시 적지 않는다 — 그것이 사본을 만드는 일이다). 함께: 이 함수가 기각한 행은 침묵하지 않으며 `REQTableRejectionRule`이 표 단위로 보고한다는 연결.
+
+#### 검증 — 주석만 바꿨으므로 무회귀 확인이다
+
+```
+$ go test -count=1 -timeout 20m ./internal/spec/...
+rc=0
+ok  	github.com/modu-ai/moai-adk/internal/spec	77.665s
+```
+
+(트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518` · HEAD `fc02d2542` · 전문 `.moai/reports/t518/m5-spec-tests.txt`.) `gofmt -l`은 두 파일 모두 무출력, `go vet ./internal/spec/` rc=0.
+
+**[HARD] 이 초록은 「주석이 옳다」를 뜻하지 않는다.** 주석은 컴파일되지 않으므로 어떤 테스트도 그 내용을 판정하지 않는다 — 이 실행이 세우는 것은 **편집이 코드를 깨지 않았다**는 것 하나뿐이다. 주석의 정확성은 다음 독자가 코드와 대조해 판정할 몫이며, 그것이 이 절이 각 문단에 「무엇을 담았는지」를 적어 두는 이유다.
+
+#### M-A3의 미추적 증거를 이 커밋에서 추적으로 옮겼다
+
+`.moai/reports/t518/ma3-merged-spec-tests.txt`(`ok  github.com/modu-ai/moai-adk/internal/spec  79.069s`)는 M-A3 창에서 만들어졌으나 미추적으로 남아 있었다. 내용을 확인했고 M-A3이 병합 트리에서 돌린 `internal/spec` 테스트 출력이 맞다 — 이 커밋에서 커밋한다. M-A3 기록이 「창 전후 두 번 다 미추적 1건이었다」고 적은 관측은 **그 시점에 참이었고 지금도 그 시점에 대해 참이다**; 지금 추적으로 옮기는 것이 그 문장을 거짓으로 만들지 않는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

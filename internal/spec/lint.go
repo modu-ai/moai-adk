@@ -941,6 +941,23 @@ func (v modalityVerdict) String() string {
 }
 
 // judgeModality returns the tri-state modality verdict for one REQ text.
+//
+// The three outcomes, and the boundary between them, are the point of this
+// function (SPEC-SPEC-LINT-BLIND-AXES-001 axis 2):
+//
+//   - CONFORMING — an English modality prefix AND a SHALL, or a SHALL alone.
+//   - MALFORMED  — an English modality prefix and NO SHALL. A verdict.
+//   - UNJUDGED   — neither. NOT a verdict: the check has no opinion, and a
+//     caller that reads it as "fine" reproduces the defect this SPEC exists to
+//     remove. Only isModalityMalformed's false collapses the last two, which is
+//     why its own doc says a false no longer means "well formed".
+//
+// SHALL is matched at a WORD BOUNDARY (shallWordPattern), replacing a leading-
+// space contact condition that could not see `…해야 한다(SHALL)` — the shape the
+// Korean corpus actually writes. That replacement is what lets a Korean
+// requirement be judged at all, and it judges nothing about Korean: the SHALL
+// the existing lexicon already knows is right there, parenthesized. The corpus
+// figures it moved are published in the milestone record, not absorbed.
 func judgeModality(text string) modalityVerdict {
 	upper := strings.ToUpper(text)
 	hasShall := shallWordPattern.MatchString(upper)
