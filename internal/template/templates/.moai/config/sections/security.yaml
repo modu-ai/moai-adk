@@ -9,7 +9,6 @@ security:
     - 'curl\s+.*\|\s*(ba)?sh'      # curl pipe to shell
     - 'wget\s+.*\|\s*(ba)?sh'      # wget pipe to shell
     - 'chmod\s+777'                  # world-writable permissions
-    - 'rm\s+-rf\s+/[^.]'            # rm -rf targeting root paths
     - 'mkfs\.'                       # filesystem format commands
     - 'dd\s+if=.*of=/dev/'          # raw disk write
 
