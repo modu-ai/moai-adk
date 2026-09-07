@@ -5,8 +5,10 @@ worktree `.claude/worktrees/t401` · branch `WT-analysis-pull`
 
 **The close, in one sentence:** 22/23 acceptance criteria PASS; **AC-JFM-018 (vacuity falsifier,
 release-blocking) is RED by measurement and stays RED at close** — the falsifier's pull-mode
-denominator is empty and its ≥20-row collection window opened at close; the follow-up card owns
-the collection, and no release relying on the falsifier evidence may precede it.
+denominator is empty (0 rows) and its ≥20-row collection window opened at close; **the collection
+is owned by follow-up card t547 (issued with operator approval, entry-gated on the develop merge
+that turns the primary checkout's config to `pull`)**, and no release relying on the falsifier
+evidence may precede t547's close. The release gate (t204) reads this path: verdict Gaps → t547.
 
 ## Claim
 
@@ -44,8 +46,10 @@ form was denied by the permission guard and not retried) before any merge surfac
 
 1. **AC-JFM-018 has no falsifier sample.** 0 pull-mode rows exist; nothing was exported because
    exporting now would manufacture the empty-set `violations: 0` reading plan.md §F M6 warns
-   against. The export + REQ-JFM-025 provenance (`rows_recorded` vs `calls_issued`) is the first
-   act of the session that closes the collection window.
+   against. **Owner: follow-up card t547** (queued, operator-approved; entry-gated on the develop
+   merge — the observer follows the asking session's own tree's config, so rows stay `push` until
+   the merge lands `pull` at the primary). The export + REQ-JFM-025 provenance (`rows_recorded`
+   vs `calls_issued`) is t547's first act on entry.
 2. **The re-measurement at the integration window.** Behind = 1,058+ vs `origin/develop` at
    dispatch; every doctrine coordinate this SPEC cites must be re-taken when the lead's window
    merges this branch into `develop` (the lead absorbs `origin/develop` at that time). The

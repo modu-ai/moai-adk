@@ -499,7 +499,7 @@ sync_status: closed with AC-JFM-018 RED by measurement — NOT a pass on that cr
 ac_pass_count: 22
 ac_fail_count: 1    # AC-JFM-018 — vacuity falsifier; pull-mode denominator 0 rows; collection window OPEN at close
 ac_blocked_count: 0
-release_gate_note: "AC-JFM-018 is release-blocking and was closed RED. The SPEC closes on the lead's operator-backed (a) path — land M0–M5 now, close the falsifier in a follow-up card — but any release relying on this SPEC's falsifier evidence MUST wait for that follow-up to close. This note is the carry-mark; the follow-up card is the owner."
+release_gate_note: "AC-JFM-018 is release-blocking and was closed RED. The SPEC closes on the lead's operator-backed (a) path — land M0–M5 now, close the falsifier in a follow-up card — but any release relying on this SPEC's falsifier evidence MUST wait for that follow-up to close. This note is the carry-mark; **the owner is follow-up card t547** (issued with operator approval; entry-gated on the develop merge that turns the primary checkout's config to pull)."
 three_phase_close: "in-progress → completed on spec.md frontmatter rides this sync commit; sync_commit_sha backfilled next commit"
 ```
 
