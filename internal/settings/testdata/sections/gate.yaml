@@ -1,12 +1,12 @@
 # Reduced stand-in for the shipped gate.yaml (settings testdata): same key
 # shape, plus a comment block and a non-modeled key the seam write must
-# preserve.
+# preserve. NOTE (sync-audit F3-D): pre_commit.enabled is deliberately ABSENT
+# here — the distributed template ships no pre_commit block, so the
+# default-off ABSENT branch of the value-invariant gate is the state this
+# fixture must exercise. Tests needing a present key must seed it inline.
 gate:
   # Outer switch for the quality gate.
   enabled: true
   skip_tests: false
   disabled_steps: {}
-  # Pre-commit context opt-in.
-  pre_commit:
-    enabled: false
   user_only_key: keep-me
