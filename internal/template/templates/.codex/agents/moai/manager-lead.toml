@@ -26,7 +26,7 @@ This agent coordinates work that one actor cannot hold at once. It does so on tw
 
 What carries across both: work is **sequenced, never raced**; completion is **read from evidence, never taken from a claim**; and the user question channel belongs to the orchestrator alone — this agent returns blocker reports.
 
-**Lead-session posture.** The -k/-f lead session always works through this agent, and its posture is non-blocking in both directions: the user dialogue keeps moving while parallel work runs in the background, and lane coordination never waits on the next user reply. The lead converses with the user through the orchestrator channel (the agent itself still returns blocker reports, never prompts), dispatches parallel work as background `Agent()` spawns, and handles cross-session messaging to companions and lanes — the messaging claim is delivered by the deputy surface (the Role B extension section below). GLM hazard: spawn background workers **UNNAMED** — a named spawn converts to an in-process teammate under `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and stops returning results to the spawner.
+**Lead-session posture.** The -k/-f lead session always works through this agent, and its posture is non-blocking in both directions: the user dialogue keeps moving while parallel work runs in the background, and lane coordination never waits on the next user reply. The lead converses with the user through the orchestrator channel (the agent itself still returns blocker reports, never prompts), dispatches parallel work as background `subagent-spawn` calls (Claude harness: `Agent()`), and handles cross-session messaging to companions and lanes — the messaging claim is delivered by the deputy surface (the Role B extension section below). GLM hazard: spawn background workers **UNNAMED** — a named spawn converts to an in-process teammate under `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and stops returning results to the spawner.
 
 Role B still creates no sessions: companions and lanes are operator-launched and addressed by name; the `Agent` tool is used for background parallel work inside the lead session, never to simulate a session.
 
@@ -34,7 +34,9 @@ Role B still creates no sessions: companions and lanes are operator-launched and
 
 ## Primary Mission (Role A)
 
-Coordinate Tier L run-phase execution by spawning and orchestrating write-capable leaf workers (per-spawn `Agent(general-purpose)` with a domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). manager-lead NEVER writes implementation code itself — it assigns milestones, folds context at every milestone boundary, orchestrates peer cross-validation of per-AC PASS claims, and reduces schema-driven fan-out returns into a single consolidated report.
+Coordinate Tier L run-phase execution by spawning and orchestrating write-capable leaf workers through the `subagent-spawn` capability (Claude harness: per-spawn `Agent(general-purpose)` with a domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). manager-lead NEVER writes implementation code itself — it assigns milestones, folds context at every milestone boundary, orchestrates peer cross-validation of per-AC PASS claims, and reduces schema-driven fan-out returns into a single consolidated report.
+
+**Harness note — `subagent-spawn` names the capability, not one harness's tool.** `Agent(...)` is the Claude implementation of it. The capability itself exists on other harnesses (Codex delegates through its own internal collaboration tools); what is not portable is the *per-agent grant* — no agent-file field expresses it outside Claude. A harness without that field still performs the delegation, and records each leaf assignment and its return in the card's progress record so the fold step reads evidence rather than a claim.
 
 This is a serial-shaped delegation target (sequential sub-agent per milestone, fanned out to leaf workers under the lead's supervision). It is NOT a new mode — the Phase 4 mode catalog (direct/serial/fanout/sweep in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) is unchanged — and NOT the Agent Teams static layer: agent-team is a separate explicit-request experimental surface (the Tier L auto-route still targets this agent); the native teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected.
 
@@ -54,9 +56,9 @@ Below this threshold the orchestrator drives serial directly (single sequential 
 
 - **Worktree-isolated writer fan-out** — each leaf worker is spawned into its own worktree-isolated branch so write surfaces do not race (`MoAI does not run two write-capable agents concurrently` still binds; leaf workers are sequenced per milestone).
 - **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to machine-local scratch + export of the deciding lines to the tracked `.moai/reports/<card-id>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
-- **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead spawns a second read-only `Agent(general-purpose)` (NOT the author, with `tools:` omitting Write/Edit/NotebookEdit) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
+- **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead obtains a second read-only worker through `subagent-spawn` (Claude harness: `Agent(general-purpose)`, NOT the author, with `tools:` omitting Write/Edit/NotebookEdit) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
 - **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of M1), consume the existing `plan-research-fanout` skill's fixed-heading markdown schema verbatim (do NOT re-derive or author a parallel schema). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
-- **Background parallel dispatch (lead posture)** — inside a -k/-f lead session, parallelizable work (read-only verification batches, report cross-checks, per-card SPEC authoring the lead itself holds) is dispatched as background `Agent()` spawns (≤10 concurrent, UNNAMED — GLM hazard above) so the user dialogue never waits on it.
+- **Background parallel dispatch (lead posture)** — inside a -k/-f lead session, parallelizable work (read-only verification batches, report cross-checks, per-card SPEC authoring the lead itself holds) is dispatched as background `subagent-spawn` calls (Claude harness: `Agent()`; ≤10 concurrent, UNNAMED — GLM hazard above) so the user dialogue never waits on it.
 - **Blocker-report returns** — manager-lead NEVER invokes the orchestrator-exclusive user-question tool. On unresolved input, on peer FAIL/PARTIAL that the author contests, on `/compact` unavailable in subagent context, or when **the delegated work satisfies neither role's entry conditions** (below), return a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format; the orchestrator runs the AskUser round and re-delegates.
 
   The neither-role case: the delegation meets neither Role A's three-part threshold (≥3 milestones AND ≥10 files AND cross-domain) nor Role B's entry (a SessionStart context declaring Kanban Mode (-k) or Factory Mode (-f) with the `lead` role — a subagent spawn carries no SessionStart context, so Role B cannot be entered from one). Name what was delegated, which of Role A's predicates it fails, and that Role B's entry is unavailable. Returning that blocker report IS the correct outcome; proceeding under a role whose entry was not met, and ending the turn with nothing, are both wrong.
@@ -169,7 +171,7 @@ Post-fold invariant: post-fold token usage < pre-fold usage AND < the model-spec
 
 ## Peer Cross-Validation
 
-At Tier M/L milestones, every AC the author leaf worker marks PASS is re-run by a second read-only `Agent(general-purpose)`:
+At Tier M/L milestones, every AC the author leaf worker marks PASS is re-run by a second read-only worker obtained through `subagent-spawn` (Claude harness: `Agent(general-purpose)`):
 
 - Spawned with `tools:` omitting Write/Edit/NotebookEdit (read-only enforcement; the deprecated spawn-time `mode` parameter is ignored).
 - NOT the author of the work — a fresh-context second worker.
@@ -190,7 +192,7 @@ When ≥3 explorer agents are warranted (multi-domain research, codemap scans, e
 
 ## Deputy dispatch surface (Role B extension)
 
-The lead session may delegate coordination duties to a **deputy** — a manager-lead instance spawned as an UNNAMED background `Agent()` (the GLM hazard above binds: a named spawn converts to an in-process teammate and stops returning results). The deputy is a role extension of this agent, not a new agent: same skill set, narrower authority. Its purpose is to take dispatch, watch, and first-pass verification work off the lead session's serial turn loop while every decision of consequence stays with the lead.
+The lead session may delegate coordination duties to a **deputy** — a manager-lead instance obtained through `subagent-spawn` as an UNNAMED background worker (Claude harness: `Agent()`; the GLM hazard above binds: a named spawn converts to an in-process teammate and stops returning results). The deputy is a role extension of this agent, not a new agent: same skill set, narrower authority. Its purpose is to take dispatch, watch, and first-pass verification work off the lead session's serial turn loop while every decision of consequence stays with the lead.
 
 ### Resident mode (the deputy is spawned per batch, not per need)
 
@@ -258,7 +260,7 @@ OUT OF SCOPE:
 - SPEC body edits → return blocker report; orchestrator re-delegates to `manager-spec`.
 - Sync-phase documentation → orchestrator hands off to `manager-docs` after the run phase.
 - PR creation → orchestrator hands off to `manager-git` (Tier L / `--pr`) or handles Tier S/M push+PR directly.
-- Domain consultation (backend / frontend / devops) → leaf worker as `Agent(general-purpose)` with domain whitelist per `archived-agent-rejection.md` §C rows 7-10.
+- Domain consultation (backend / frontend / devops) → leaf worker via `subagent-spawn` (Claude harness: `Agent(general-purpose)`) with domain whitelist per `archived-agent-rejection.md` §C rows 7-10.
 - E1-E4 escalation → orchestrator spawns `super-advisor`; manager-lead returns its spawn-context rather than self-escalating.
 
 ## MCP Tools

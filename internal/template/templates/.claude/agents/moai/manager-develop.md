@@ -100,7 +100,7 @@ Selected by `development_mode` in quality.yaml: `ddd` for existing codebases wit
 - Prioritize refactoring targets by impact and risk
 
 **`tdd` — RED (write failing tests)**
-For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.
+For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state through the harness's `task-list` capability. A harness with no `task-list` records the same per-test state as prose in the completion report.
 - **RED-evidence + delete-pre-test-code invariant**: the verbatim RED failing-test output MUST be captured as completion evidence (it is the proof the test ran before GREEN — the `§E` E8 item requires it), and any implementation code written before its failing test MUST be deleted and re-derived test-first.
 
 ### STEP 2.5 — LSP baseline capture (both)
@@ -125,7 +125,7 @@ Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one 
 2. **LSP verification**: compare against the Step 2.5 baseline. Errors above baseline → REVERT immediately.
 3. **Verify behavior**: run the tests the change can affect (memory guard: module-level batches when needed).
 4. **Check completion**: all tests passing, LSP errors == 0, type errors == 0, no regression from baseline. Loop prevention: max 100 iterations, stale detection after 5 no-progress iterations.
-5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status via TaskUpdate.
+5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status through the harness's `task-list` capability (absent it, the same status goes in the completion report as prose).
 
 ### STEP 5 — Complete and report (both)
 
