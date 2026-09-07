@@ -101,3 +101,20 @@ _&lt;pending run-phase&gt;_
 _&lt;pending sync-phase&gt;_
 
 - 2026-09-07 plan-audit iter-2 PASS 0.9375 (`.moai/reports/t519/plan-audit-iter2.md`); remaining minor F5 (acceptance.md:60 M1→M1b) and F6 (plan.md:37, spec.md:148 four→five files) fixed by the lane directly (one-word edits; distinct-file count re-verified = 5). Advisory A6 (withCodexSession overwrites codexLookPath — never combine it with a t.Fatal LookPath guard in one test) carried into the run-phase delegation as a constraint.
+
+## §F Phase 4 Mode Selection
+
+Decision: serial (Implementation Kickoff Approval obtained 2026-09-07 via lead; autonomous progression)
+
+Input parameters: tier M · scope 2 files (1 new test file + 1 test-file addition) · domains 1 (Go test code, internal/cli) · language mix 100% Go test · concurrency benefit LOW (coding-heavy, sequential mutant discipline) · Agent Teams: not requested.
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | not a typo-level change; needs mutant RED/GREEN cycles and evidence capture |
+| serial | **yes** | coding-heavy Tier M, single domain, 2 files — Anthropic coding-task parallelism caveat |
+| fanout | no | 1 domain, 2 files — below the ≥3 domains / ≥10 files auto-select threshold |
+| sweep | no | not mechanical bulk transformation |
+
+Decision: serial
+
+Justification: one manager-develop (cycle_type=tdd) drives M1 → M2 → M3 sequentially; each milestone depends on the previous mutant ledger state and the union gate, so concurrent spawns would race on the same package and the same evidence files. Implementation Kickoff Approval: obtained 2026-09-07 via the lead session (operator decision, autonomous progression). Logged at HEAD c6bf21a72 before the first run-phase spawn.
