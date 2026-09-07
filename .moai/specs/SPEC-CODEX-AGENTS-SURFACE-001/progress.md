@@ -49,3 +49,12 @@ Decision: serial (manager-develop `dev-t505`, spawned opus/medium per profile)
 Recording-latency note: this Decision line was recorded by the orchestrator (lane-10) at run completion rather than strictly before the first run-phase spawn — the run executor was spawned directly after the Implementation Kickoff Approval gate (operator-selected autonomous progression), and the pre-assessment block above was in place before that spawn. The chosen mode matches the spawn that executed: one sequential manager-develop over M1→M4, no concurrent spawns.
 
 Justification note: measurement/judgment cards move the risk from code correctness to discipline (byte-identity proof, REQ-CSL-008 regeneration obligation, no-stamp-raise); t504 precedent logged `direct` for a zero-source-file measurement, while this SPEC edits one real source file, which weighs toward the canonical manager-develop owner. The orchestrator owns the call.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: complete
+sync_commit_sha: pending-backfill-sync
+status_transition: in-progress → completed (frontmatter, on the sync commit)
+changelog_decision: NO user-facing CHANGELOG entry (manager-docs B12 assessment). Reasoning: the run commit's change surface is `internal/template/agentemit/agents-codex.yaml` alone, whose own header (lines 4-5) states "Build input only: this file lives in the emitter package, NOT under templates/, and is never distributed to user projects" — it is not a template output. The 11 committed TOMLs are byte-identical (run-phase M2 proof: `git diff --stat -- internal/template/templates/.codex` empty + `make agents-emit-check` rc=0), and the Go diff since base is empty (verified this session: `git diff --stat 0b1e27877..HEAD -- '*.go'` → empty). No user-visible behavior, CLI surface, or distributed artifact changed, so no CHANGELOG entry is warranted. README / docs-site: same basis — no user-facing surface changed; expected no-op, not re-measured.
+mx_tag_validation: 0 added / 0 removed / 0 updated — validated against plan.md §D's zero-tag record. Evidence (this session, tree @ 84fa5fde1): `git diff --stat 0b1e27877..HEAD -- '*.go'` → empty output (rc 0); the full branch diffstat is 4 SPEC artifacts + the manifest YAML only. No Go file touched → no @MX-tagged surface exists to annotate, matching plan.md §D's rationale (edit surface is a YAML build input; the deliverable IS rationale comments).
+documentation_sync: spec.md frontmatter status + progress.md §E.4 are the entire sync-phase write surface. No body-content problems found (no blocker).
