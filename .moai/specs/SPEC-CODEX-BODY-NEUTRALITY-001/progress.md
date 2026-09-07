@@ -8,7 +8,7 @@ card: t497 · tree: `.claude/worktrees/t497` · branch `WT-codex-neutrality` · 
 - 기준선: `.moai/reports/t497/measurement.md`(`c9b226b22`) + 이 트리 재측정. 정정 3건은 `spec.md` §A.2.
 - SPEC ID 정규식 실행 결과: `PASS`
 - 미해결 마커 **0건** (`plan.md` §E): ① 코덱스 능력 부재 측정 가능 여부 → **철회**(트리 안 증거로 해소, `spec.md` §A.2 정정 2) · ② M5 착수 여부 → **운영자 결정 기록으로 전환**(`spec.md` §D)
-- status: `draft`
+- status: `draft` → `in-progress` (M1 커밋 시점, manager-develop 소관 유일 전환)
 
 ### 수리 라운드 (iteration 2/2, 트리 `845dd65af`)
 
@@ -28,7 +28,36 @@ card: t497 · tree: `.claude/worktrees/t497` · branch `WT-codex-neutrality` · 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 파생 근거 명문화 + REQ-CSN-003 문면 정정
+
+측정 트리: `.claude/worktrees/t497` · 착수 HEAD `76263a02e` · base `ace1c5440`.
+
+| # | 명령 | 기대 | 실측 | 판정 |
+|---|---|---|---|---|
+| ① | `grep -cE '\|[[:space:]](absent\|present)[[:space:]]\|[[:space:]]*$' .moai/reports/t497/capability-absence.md` | 11 | `11` | PASS |
+| ② | `grep -cE '\|[[:space:]]absent[[:space:]]\|[[:space:]]*$' .moai/reports/t497/capability-absence.md` | 3 | `3` | PASS |
+| ③ | `sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md \| grep -c '^\| [a-z]'` | 3, ② 와 같은 값 | `3` | PASS (② == ③) |
+| ④ | `grep -c '현재 측정값 4행' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md` | 0 | `0` (rc 1) | PASS |
+| ⑤ | `grep -c '현재 측정값 3행' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md` | 1 | `1` | PASS |
+| ⑥ | `diff <(sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md) <(sed -n … internal/template/templates/AGENTS.md)` | 무출력 rc 0 | 무출력, rc 0 | PASS |
+| ⑦ | `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` | PASS + headroom 양수 | `always-loaded surface = 74535 tokens (budget 77600, headroom 3065, 17 entries)` / `--- PASS` — 셀렉터 **1매치** | PASS |
+| 대조 | `grep -cE '\|[[:space:]](absent\|present)[[:space:]]\|[[:space:]]*$' AGENTS.md` | 0 | `0` | PASS (다른 표를 우연히 세지 않음) |
+
+- 착수 전 실측(RED): ①② 파일 없음 rc 2 · ④ **1** · ⑤ **0**. ③⑥⑦ 은 불변 대조.
+- 결속표 행 집합은 **바뀌지 않았다**(3행 유지) — 부재 3건이 이미 실려 있으므로 행 0개 추가가 파생이 지켜진 결과다.
+- ④ 의 자기참조 함정 1건 자체 적발: 정정 HISTORY 항목 초안이 「현재 측정값 4행」을 축자 인용해 ④ 가 1, ⑤ 가 2 로 나왔다. 인용을 서술형(「실측 수치 문면을 4행에서 3행으로」)으로 바꿔 셀렉터가 자기 정정 기록을 세지 않게 했다 — plan-audit N1 과 같은 형태를 이 실행에서 재발시킬 뻔한 자리다.
+
+### M2 — 84건 전수 분류
+
+_<pending>_
+
+### M3 — 중립 소스 본문 개정
+
+_<pending>_
+
+### M4 — 골든 재생성과 반경 확인
+
+_<pending>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
