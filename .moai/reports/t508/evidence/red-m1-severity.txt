@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/doctor_codex_severity_test.go:38:10: zero.severity undefined (type codexFinding has no field or method severity)
+internal/cli/doctor_codex_severity_test.go:38:22: undefined: codexSeverityAdvisory
+internal/cli/doctor_codex_severity_test.go:39:90: zero.severity undefined (type codexFinding has no field or method severity)
+internal/cli/doctor_codex_severity_test.go:45:13: literal.severity undefined (type codexFinding has no field or method severity)
+internal/cli/doctor_codex_severity_test.go:45:25: undefined: codexSeverityAdvisory
+internal/cli/doctor_codex_severity_test.go:46:90: literal.severity undefined (type codexFinding has no field or method severity)
+internal/cli/doctor_codex_severity_test.go:48:12: undefined: codexCheckStatus
+internal/cli/doctor_codex_severity_test.go:63:49: unknown field severity in struct literal of type codexFinding
+internal/cli/doctor_codex_severity_test.go:63:59: undefined: codexSeverityFatal
+internal/cli/doctor_codex_severity_test.go:64:74: undefined: codexSeverityFatal
+internal/cli/doctor_codex_severity_test.go:64:74: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

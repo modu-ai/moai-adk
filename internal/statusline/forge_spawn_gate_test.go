@@ -114,10 +114,13 @@ func TestMaybeRefreshGitHubCounts_NoConfigSpawnsOnce(t *testing.T) {
 
 // builderStdin renders one Build pass against the fixture root, wired so the
 // repo segment can appear (workspace.repo present) and the board root resolves
-// to the fixture (workspace.current_dir). No network is involved: the counts
-// come from the cache fixture alone.
+// to the fixture. SPEC-STATE-ANCHOR-001: the state anchor resolves from
+// workspace.project_dir, so the fixture carries it — the board root still
+// reaches the cache fixture without a git fixture. No network is involved:
+// the counts come from the cache fixture alone.
 func builderStdin(root string) string {
-	return `{"session_id":"t293","workspace":{"current_dir":` + quoteJSON(root) +
+	return `{"session_id":"t293","workspace":{"project_dir":` + quoteJSON(root) +
+		`,"current_dir":` + quoteJSON(root) +
 		`,"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}}}`
 }
 
