@@ -486,3 +486,481 @@ FAIL. Route the fixes in this order; the first three are what make a re-audit wo
 
 Separately, and outside the SPEC: **report the mid-audit commit `53886ba40` to the lead** (D0).
 An actively audited worktree has exactly one writer; the audit was reading an input that moved.
+
+---
+
+# Iteration 2
+
+# SPEC Review Report: SPEC-CODEX-BODY-NEUTRALITY-001
+Iteration: 2/2 (Tier M ceiling — final round, no third iteration available)
+Verdict: **FAIL**
+Overall Score: **0.85** (Tier M PASS threshold 0.80 — the score is above threshold; the FAIL is carried by two blocking correctness defects, not by the score)
+Score trajectory: iter1 0.63 → iter2 0.85. **No regression — no STOP signal, no scope-reduction recommendation.**
+
+Reasoning context ignored per M1 Context Isolation. Audited artifacts: `spec.md` v0.2.0, `plan.md`,
+`acceptance.md` (Tier M input contract), plus the cited evidence tree.
+
+## D0 follow-up — the audit window held
+
+- **Claim.** No writer entered the tree during this audit; iteration-1 process defect PD-1 did not recur.
+- **Evidence.**
+  ```
+  $ git rev-parse HEAD       (window open)   cb826d42ba41720433d82892830c30c4448dc6f7
+  $ git rev-parse HEAD       (window close)  cb826d42ba41720433d82892830c30c4448dc6f7
+  $ git status --short       (both)          <empty>
+  $ git branch --show-current                WT-codex-neutrality
+  ```
+- **Baseline-attribution.** Both reads in this run, this tree.
+- **Gaps.** None for this claim.
+- **Residual-risk.** None.
+
+---
+
+## Must-Pass Results
+
+- **[PASS] MP-1 REQ number consistency** — 16 definition lines, 16 unique ids, `REQ-CBN-001`..`REQ-CBN-016`, no gaps, no duplicates, uniform 3-digit padding. `grep -cE '^- \*\*REQ-CBN-[0-9]{3}\*\*' spec.md` → 16; the same piped through `sort -u | wc -l` → 16. Document order places `REQ-CBN-016` after `-005` (§C.2 grouping) — a presentation choice, not a numbering gap.
+- **[PASS] MP-2 GEARS format compliance (requirement layer)** — judged against the 16 `REQ-CBN-XXX` entries in `spec.md` §C, **not** against the `AC-CBN-XXX` Given-When-Then entries in `acceptance.md` (verification layer, graded under Group 4). All 16 carry a valid pattern: ubiquitous (001, 003, 005, 008, 011, 014, 015, and 016's first limb), `When` (004, 006, 007, 009, 012, 013, and 016's second limb), `While` (010), `Where` (002). Advisory nit A6 below on `REQ-CBN-002`'s `Where` semantics.
+- **[PASS] MP-3 YAML frontmatter validity** — all 12 canonical fields present with correct types: `id`, `title` (quoted), `version: "0.2.0"` (quoted semver), `status: draft`, `created: 2026-09-07`, `updated: 2026-09-07`, `author`, `priority: P2`, `phase` (quoted), `module`, `lifecycle: spec-anchored`, `tags` (comma-separated string). No rejected snake_case alias (`created_at` / `updated_at` / `labels` / `spec_id`). Optional `tier: M` and `related_specs` additionally carried. `moai spec lint .../spec.md` → `✓ No findings`, rc 0.
+- **[N/A] MP-4 language neutrality** — the SPEC is scoped to one repository's agent-body / emitter tree and names no per-language tooling. Criterion does not apply; auto-passes.
+- **[PASS] MP-5 D7 cross-SPEC reconciliation** — 3 referenced SPECs, all present, all `status: completed`; none in {retired, superseded, archived}. No BLOCKING finding.
+  ```
+  SPEC-CODEX-DUAL-AGENTS-001      -> status: completed
+  SPEC-CODEX-SKILL-NEUTRAL-001    -> status: completed
+  SPEC-CODEX-SKILLS-CANONICAL-001 -> status: completed
+  ```
+  In the SPEC's favour: M1 amends a `completed` SPEC and plans an explicit Amendments HISTORY row for it (`plan.md` §F M1 산출 2) — that is the reconciliation practice D7 exists to require.
+- **[PASS] MP-6 D8 cross-platform discipline** — `grep -rc 'syscall' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → `0` on all four files. D8 auto-PASS.
+- **[PASS] MP-7 clarification gate** — `grep -rn '\[NEEDS CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → no output, rc 1. Both iteration-1 markers are discharged: ① withdrawn (§A.2 correction 2), ② converted to an operator-decision record (`spec.md` §D last block, `plan.md` §E ②). **The canonical selector is clean — but see N1: the SPEC's own restatement of this check uses a different, self-falsifying selector.**
+
+## Category Scores (0.0-1.0, rubric-anchored)
+
+| Dimension | Score | Rubric Band | Evidence |
+|-----------|-------|-------------|----------|
+| Clarity | 0.75 | 0.75 — minor ambiguity in one or two requirements | `REQ-CBN-009` (`spec.md:154`) names a closed set "manager-lead 자기 스폰 4줄" that `REQ-CBN-002`'s own subject rule contradicts (N2). Everything else — units, selectors, populations — is pinned to a single value with a command. |
+| Completeness | 0.90 | 1.0 band, docked for N2's under-inclusive enumeration | All required sections present. `spec.md` §D carries **five** `### Out of Scope — <topic>` H3 sub-headings, each with specific `-` bullets (`spec.md:198,204,209,213,217`). Frontmatter complete. §C.5 supplies the literal 11-file radius the ACs compare against. |
+| Testability | 0.75 | 0.75 / 0.50 boundary | Most ACs are binary with command + unit + measured RED baseline. Docked for N1 (a Definition-of-Done check that cannot pass as written), A2 (`[^/]design-sync` cannot match a line-initial occurrence), and `AC-CBN-013` being structurally unable to detect N2's shortfall. |
+| Traceability | 1.00 | 1.0 | Every REQ has ≥1 AC and every AC maps to an existing REQ. Union of the 14 `maps REQ-…` declarations = `REQ-CBN-001..016`, exactly 16, no orphans, no uncovered REQ. |
+
+Aggregate = (0.75 + 0.90 + 0.75 + 1.00) / 4 = **0.85**.
+
+---
+
+## Regression Check — iteration-1 defects D1-D10
+
+Every finding re-verified mechanically against this tree. **All ten are RESOLVED.** No defect appears
+unchanged across both iterations, so no stagnation flag.
+
+| # | iter-1 finding | Status | Verifying measurement (this run, `cb826d42b`) |
+|---|---|---|---|
+| D1 | M1 deferred a question the baseline already answered | **RESOLVED** | Three strands independently reproduced — V1. M1 is now a documentation correction (`plan.md` §F M1: "프로브가 아니다"). |
+| D2 | Vacuous M1 gate — passed on the untouched tree | **RESOLVED** | Three RED states confirmed — V2. |
+| D3 | False coordinate `manager-develop.toml:64` | **RESOLVED** | `manager-develop.toml` `AskUserQuestion` occurrences = **0**; the three real coordinates confirmed — V3. |
+| D4 | Three expected values for one outcome | **RESOLVED** | One selector, one value: **3** on both `AGENTS.md` copies; the banned selector yields 4 and appears only inside explicit prohibitions — V4. |
+| D5 | Scope containment not pinned | **RESOLVED** | §C.5 is a literal 11-path set compared by `diff` (set equality); all 11 paths exist; evidence radius prefix-bounded — V5. |
+| D6 | `REQ-CBN-009` under-covered (only `Task*` had an AC) | **RESOLVED** (with N2 as a new, narrower defect) | `AC-CBN-013` (`subagent-spawn`) and `AC-CBN-014` (`design-sync`) added, each positive against a measured-zero baseline — V6. |
+| D7 | `REQ-CBN-008` named the wrong source path | **RESOLVED** | Path is now `internal/template/templates/.claude/agents/moai/*.md`; the citation is exact; the allowlist admits only one copy — V7. |
+| D8 | Unverified premise not labelled | **RESOLVED** | `spec.md:129-131` now carries a `[HARD]` block naming the premise as unverified and making sample-confirmation a **precondition of the follow-up card**. |
+| D9 | `AC-CBN-001` row count ≠ correspondence | **RESOLVED** | `AC-CBN-001` (c) now `diff`s the classification's `file:line` column against the coordinate set; the set is **81** distinct lines (measured). |
+| D10 | Cover-sentence check was not a runnable command | **RESOLVED** | `grep -c '\.agents/skills' AGENTS.md` runs and returns **0** on both copies (measured), and is promoted into `plan.md` M3 ⑥⑦ as a paired check. |
+
+---
+
+## Verified-correct findings (adversarial checks the repair survived)
+
+### V1 — §A.2 correction 2's three strands are all independently reproducible
+
+- **Claim.** The "4th binding row" is `cross-session-messaging`, its rationale asserts capability **presence**, and an exhaustive pass over `tool_classes` yields exactly the 3 rows already shipped.
+- **Evidence.**
+  ```
+  $ ls -l .moai/reports/t196/csn003-table-4row.txt
+  -rw-r--r-- 373 .moai/reports/t196/csn003-table-4row.txt   # 373 B — the exact figure REQ-CSN-003 :266 cites
+  $ tail -1 .moai/reports/t196/csn003-table-4row.txt
+  | cross-session-messaging | SendMessage, ListAgents tools | use the moai MCP broker |
+
+  $ sed -n '148,162p' internal/template/agentemit/agents-codex.yaml
+    - class: cross-session-messaging
+      rationale: >- ... The Codex counterpart rides the moai MCP
+        broker (session_msg_register/list/send/poll) under the existing
+        server-level moai-mcp grant ...
+
+  $ sed -n '/^tool_classes:/,/^$/p' internal/template/agentemit/agents-codex.yaml \
+      | grep -oE ': [a-z-]+$' | sed 's/^: //' | sort -u | wc -l
+  11
+  ```
+  Applying the SPEC's discriminant (a rationale describing a counterpart ⇒ capability present) to all
+  11 values yields absent = {`task-list` "no known Codex equivalent", `design-sync` "no Codex
+  equivalent", `question-channel` "codex reported it unavailable"} — **exactly the 3 rows in
+  `AGENTS.md`**. `file-read` / `file-write` / `shell` / `web` / `skill-loader` / `subagent-spawn` /
+  `cross-session-messaging` / `moai-mcp` all read as present.
+- **Baseline-attribution.** Every command above run in this tree, this run.
+- **Gaps.** I did not probe Codex runtime behaviour either; like the SPEC, this is a rationale-text judgement.
+- **Residual-risk.** A stale rationale would err toward **fewer** rows — conservative, as the SPEC states.
+
+### V1a — the M1 enumeration command actually works
+
+The `plan.md` §F M1 command that extracts the population is executable as written and returns the
+full 11-value set (output above). A broken extraction command would have made `AC-CBN-006 (a) = 11`
+unreachable; it is reachable.
+
+### V2 — M1's checks genuinely fail on the untouched tree, and the fourth condition is a real equality
+
+```
+$ ls .moai/reports/t497/capability-absence.md
+No such file or directory                                    # (a)(b) RED
+$ grep -c '현재 측정값 4행' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md
+1                                                            # (d) RED — expected 0
+$ grep -c '현재 측정값 3행' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md
+0                                                            # plan.md ⑤ RED — expected 1
+```
+All three lane-reported RED states reproduce. The dispatch's specific question — whether the
+absent-count / table-row-count relation is asserted as an **equality** or as two loose constants —
+resolves in the SPEC's favour: `acceptance.md:81` reads "(a) = **11**, (b) = **3**, (c) = **3**,
+**(b) == (c)**, (d) = **0**", and `plan.md` ③ reads "**3**, 그리고 ② 와 같은 값", with `plan.md:89`
+requiring both be measured in the same judgement. The equality is explicit and **additional** to the
+constants, so a coordinated drift of both sides cannot slip through.
+
+### V3 — the rebuilt coordinate table is correct in every cell
+
+```
+$ grep -rn 'AskUserQuestion' .../*.toml | wc -l    → 3   (distinct lines)
+$ grep -rho 'AskUserQuestion' .../*.toml | wc -l   → 4   (occurrences)
+$ grep -rco 'AskUserQuestion' .../*.toml | grep -v ':0'
+  plan-auditor.toml:2   super-advisor.toml:1   sync-auditor.toml:1
+```
+`manager-develop.toml` carries **0** — the iteration-1 false coordinate is gone. Reading the three
+lines verbatim confirms each `subject` value:
+
+- `sync-auditor.toml:131` — "no `sync-auditor` path invokes `AskUserQuestion` or `mcp__askuser`" → `prohibition`. Correct; neither `this-agent` nor `orchestrator` fits.
+- `plan-auditor.toml:146` — "**The orchestrator MUST** resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`)" → `orchestrator`, **2 occurrences on one line**. Correct.
+- `super-advisor.toml:62` — read with `:59-62`: "the orchestrator spawns … then either re-seeds the executor … or escalates to the user via `AskUserQuestion`" → `orchestrator`. Correct.
+- `manager-develop.toml:64,65,66` — three `Agent(general-purpose)` destination cells in the delegation routing table. Correct as `Agent(` axis / `orchestrator`.
+
+The introduction of the third `subject` value `prohibition` is justified: forcing `sync-auditor:131`
+into either of the other two would make the row false.
+
+**New `.md` coordinates (never seen by iteration 1) all verified exactly:**
+```
+manager-develop.md:103,128   → the two Task* directive lines                     ✓
+e2e-tester.md:146            → "tracked via TaskCreate/TaskUpdate"                ✓
+manager-design.md:115        → "(1) default = DesignSync tool push"               ✓
+manager-lead.md:44,64,66,200 → the four Agent( lines, +7 offset from toml 37,57,59,193 ✓
+```
+The `.md`↔`.toml` offset is uniform per file (+7 for `manager-lead`, `e2e-tester`, `manager-design`;
++13 for `manager-develop`), consistent with frontmatter stripping — the coordinate pairs are not guesses.
+
+### V4 — one selector, one value; no stale 4 or 5 survives
+
+```
+$ sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md | grep -c '^| [a-z]'                             → 3
+$ sed -n '/^\*\*Capability bindings/,/^---$/p' internal/template/templates/AGENTS.md | grep -c '^| [a-z]' → 3
+$ grep -c '^| ' AGENTS.md                                                                                  → 4  (the banned selector)
+```
+The banned selector appears in the SPEC only inside explicit prohibitions (`acceptance.md:17`,
+`plan.md:62`) and in the RED-baseline narration at `acceptance.md:82`. No occurrence of `4` or `5`
+survives as an *expected value* anywhere in the four artifacts. Advisory A5 concerns the *reason*
+given for the ban, not the ban itself.
+
+### V5 — the radius is a real 11-file set, template-side, and prefix-bounded
+
+All 11 paths in `spec.md` §C.5 exist (checked individually). The set names the **template-side**
+copies for all four agent bodies and both `AGENTS.md` copies; the repo-root `.claude/agents/moai/*.md`
+is absent from it, and `acceptance.md:126` makes its appearance in `git status` an explicit failure.
+The evidence radius is bounded by **prefix**, not count — the right shape for a directory whose file
+count is not determinable in advance.
+
+Structurally confirmed complete for the emit path: the goldens **are** the committed
+`templates/.codex/agents/moai/*.toml`, not a separate fixture tree — `golden_test.go:1-12` ("pin the
+committed artifacts under templates/.codex/agents/moai/"). So `AGENTEMIT_UPDATE=1` cannot dirty a
+path outside the enumerated set.
+
+### V6 — the new per-class ACs are all positive against a genuinely-zero baseline
+
+```
+$ grep -rn 'task-list'       .../*.toml                     | wc -l  → 0   (AC-CBN-005 second limb)
+$ grep -c  'subagent-spawn'  .../manager-lead.toml                   → 0   (AC-CBN-013)
+$ grep -oE '[^/]design-sync' .../manager-design.toml | wc -l         → 0   (AC-CBN-014)
+$ grep -o  'design-sync'     .../manager-design.toml | wc -l         → 4
+$ grep -c  'default = DesignSync tool push' .../manager-design.toml  → 1
+$ grep -c  '\.agents/skills' AGENTS.md ; ... templates/AGENTS.md     → 0 ; 0
+```
+The dispatch's specific question on `AC-CBN-014` resolves in the SPEC's favour: all four existing
+`design-sync` occurrences are indeed `/design-sync` slash commands (lines 25, 62, 77, 184 of
+`manager-design.toml`, each preceded by `/`), so a bare `grep -c 'design-sync'` would return 4 and be
+vacuous, and the `[^/]` guard correctly reads **0** today. See A2 for the guard's one hole.
+
+### V7 — `REQ-CBN-008`'s path and its citation are both exact
+
+```
+$ grep -n 'templatesDir\|agentMDRoot' internal/template/agentemit/golden_test.go
+31: const templatesDir = "../templates"
+34: const agentMDRoot  = ".claude/agents/moai"
+```
+The cited range `golden_test.go:31-34` is correct to the line. The M4 allowlist no longer admits both
+copies: `spec.md` §C.5 lists only the template-side bodies, `spec.md` §D moves the repo-root copy to
+Out of Scope with the single justified exception (root `AGENTS.md`, edited **together** with the
+template copy under `REQ-CBN-006`), and `acceptance.md:126` turns a root-copy appearance into a
+failure. D7 is fully discharged.
+
+### V8 — the carry-forward invariants are intact; nothing was weakened to make a check pass
+
+Every iteration-1 figure independently re-measured in this run:
+```
+$ find internal/template/templates/.codex/agents -name '*.toml' | wc -l            → 11
+$ grep -rhoE '<union>' .../*.toml | wc -l                                           → 84   (occurrences)
+$ grep -rnoE '<union>' .../*.toml | cut -d: -f1-2 | sort -u | wc -l                 → 81   (distinct lines)
+$ grep -rhoE 'invoke Skill\(' .../*.toml | wc -l → 41    $ grep -rhoE 'Skill\('  ... → 45
+$ grep -rhoE 'Agent\('        .../*.toml | wc -l → 25    $ grep -rhoE 'DesignSync' ... → 6
+$ grep -rhoE 'Task(Create|Update|List|Get)' .../*.toml | wc -l                      → 4
+$ grep -rlE '<union>' internal/template/templates/.claude/skills/ | wc -l           → 77
+```
+`45 + 25 + 4 + 6 + 4 = 84` — the pattern table and the file-wise total agree, and the 84-occurrence /
+81-line split is exactly as stated.
+
+The **field-vs-capability premise** is intact and, importantly, applied **consistently**:
+`agents-codex.yaml` uses the same "no agent-TOML carrier, counterpart exists" shape for
+`cross-session-messaging`, `skill-loader` and `subagent-spawn`, and the SPEC classifies all three as
+present. The **anti-blanket-replace design** is intact and unweakened: `AC-CBN-003` (`41` invariant),
+`AC-CBN-004` (`4` invariant, explicitly written "shrink ⇒ fail"), `AC-CBN-005` (`Task*→0` **paired**
+with `task-list ≥ 3` coordinates). Nothing was relaxed to make a check pass.
+
+### V9 — the `ParseFailure` claim is a schema property, confirmed against a sibling completed SPEC
+
+```
+$ moai spec lint .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/spec.md
+✓ No findings — all SPEC documents are valid                                   rc 0
+
+$ moai spec lint .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/plan.md
+ERROR ParseFailure ... YAML frontmatter missing or does not start with '---'
+$ moai spec lint .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/plan.md         # completed sibling
+ERROR ParseFailure ... YAML frontmatter missing or does not start with '---'
+$ moai spec lint .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/acceptance.md   # completed sibling
+ERROR ParseFailure ... YAML frontmatter missing or does not start with '---'
+```
+A `completed` sibling produces the byte-identical error on both files. The linter expects
+frontmatter; `plan.md` / `acceptance.md` carry none by convention. **Claim discharged — not a defect.**
+
+### V10 — M4's `awk '{print $NF}'` filter: reported as reasoned, now actually observed
+
+The repair did not execute this. I did, against synthetic `git status --short` entries covering the
+shapes that will occur:
+```
+$ printf ' M AGENTS.md\n?? .moai/reports/t497/x.md\nR  old/a.md -> internal/template/templates/AGENTS.md\nMM .../manager-lead.md\n?? internal/newpkg/\n?? "\353\260\224\355\214\214.md"\n?? my file.md\n' | awk '{print $NF}'
+AGENTS.md
+.moai/reports/t497/x.md
+internal/template/templates/AGENTS.md      ← rename: yields the NEW path (correct for radius comparison)
+internal/template/templates/.../manager-lead.md
+internal/newpkg/                           ← untracked dir: one entry, trailing slash
+"\353\260\224\355\214\214.md"              ← quoted non-ASCII: survives as one mangled token
+file.md                                    ← space-bearing path: MANGLED
+```
+**Assessment: correct for the shapes that will actually occur, and fail-safe where it is not.**
+Renames resolve to the new path, which is what set-equality needs. The two failure modes
+(space-bearing and non-ASCII paths) both produce an *extra unexpected line* in the `diff` — a false
+FAIL, never a false PASS — and the enumerated radius is entirely ASCII and space-free. The one shape
+that could hide a path is an untracked **directory** collapsing its contents into a single entry, but
+that only matters inside the two prefix-filtered evidence directories, where an unbounded file count
+is the intended design. No defect; recorded so the reasoning is now attributed to a measurement.
+
+### V11 — the `AGENTS.md` cover is nowhere near either ceiling
+
+The dispatch asks whether the added text is bounded ex ante or only checked post hoc. It is checked
+post hoc (`AC-CBN-009`) — and both ceilings were measured to see whether that matters:
+```
+$ go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v
+    always-loaded surface = 74535 tokens (budget 77600, headroom 3065, 17 entries)
+--- PASS
+$ wc -c AGENTS.md internal/template/templates/AGENTS.md
+14774 AGENTS.md      14774 internal/template/templates/AGENTS.md
+$ grep -n 'CodexContractByteCeiling =' internal/config/token_budget_guard.go
+95: const CodexContractByteCeiling = 24576
+```
+Headroom is **3,065 tokens (~12 KB)** on the always-loaded budget and **9,802 B** on the Codex
+contract byte ceiling, against an addition the SPEC scopes to **one sentence × two copies**
+(`spec.md:95`, `REQ-CBN-011`). A post-hoc invariant is proportionate at this margin. See A4 for the
+un-named second guard.
+
+### V12 — the cover does not smuggle back a forbidden row
+
+`REQ-CSN-003`'s doctrine constrains the binding table's **row set**; the cover is one sentence in the
+surrounding paragraph, adds no first-column value, and `AC-CBN-008` checks first-column values
+against `tool_classes` — so `AC-CBN-006 (b)==(c)` and `AC-CBN-008` both remain honest. The cover
+records an **invocation-form mapping** (`Skill("<name>")` ↔ `.agents/skills/<name>/SKILL.md`), not an
+absence fallback, which is consistent with §B.1's own field-vs-capability discriminant. **Not a
+smuggled row.** The residual tension is recorded as advisory A7, not as a defect.
+
+### V13 — `REQ-CBN-016`'s merge is constraint-driven and its coverage did not thin
+
+The Tier M ceiling the merge was made to respect is real:
+`.claude/rules/moai/workflow/spec-workflow.md:146-150` — Tier M requirement ceiling **16**,
+acceptance-criterion ceiling **16**, applied independently. The SPEC carries 16 REQs and 14 ACs —
+both within budget. `REQ-CBN-016` is a compound (an exhaustive-record obligation plus a
+`When`-guarded correction obligation), so it is not perfectly atomic — **but both limbs are covered**:
+`AC-CBN-006` tests `(a) = 11` for the record and `(d) = 0` for the correction, in the same judgement.
+Coverage did not thin. Recorded as advisory A3 for the atomicity nit and the at-ceiling signal only.
+
+---
+
+## Defects Found (structured defect-list)
+
+### N1. The SPEC's own marker-verification command is self-falsifying, and it is a Definition-of-Done item · `spec.md:235`, `plan.md:50`, `acceptance.md:173` · Severity: **major** · Class: **blocking**
+
+- **Claim.** All three artifacts state that `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` returns **무출력** (no output). On the tree the repair was written against it returns **3 lines** — and every one of them is the SPEC's own text making that claim. `acceptance.md:173` promotes this to a **Definition of Done** item, so the card's DoD is unsatisfiable as written.
+- **Evidence.** Run verbatim, this tree, this run:
+  ```
+  $ grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/
+  .moai/specs/.../acceptance.md:173:- 미해결 마커 **0건** — `grep -rn 'NEEDS' .moai/specs/...
+  .moai/specs/.../plan.md:50:검증: `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → **무출력**...
+  .moai/specs/.../spec.md:235:- 미해결 마커: **0건.** ... 검증: `grep -rn 'N...
+  rc=0    lines=3
+  ```
+  The canonical marker check is clean, which is why MP-7 passes:
+  ```
+  $ grep -rn '\[NEEDS CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/
+  (no output)   rc=1
+  ```
+- **Baseline-attribution.** Both commands run in this tree at `cb826d42b` in this run.
+- **Gaps.** I did not check whether the same selector appears in `progress.md` or in the t497 reports; the three occurrences above are the ones inside the SPEC artifact set the DoD names.
+- **Residual-risk.** Beyond the unsatisfiable DoD, the failure is self-reinforcing: the only way to make the stated command return no output is to delete the sentences that assert it. A run-phase actor running the DoD check verbatim sees a RED that looks like surviving markers and may hunt for markers that do not exist.
+- **Why blocking, not advisory.** This is the anti-pattern the SPEC itself names — `plan.md` §G **AP-6 자기참조 수치** ("이 SPEC 자신의 산출물을 주어로 삼는 계수는 문서를 편집하는 행위가 곧 무효화한다") — applied to the SPEC's own self-verification, and it is an unobserved-verification claim asserted three times (`verification-claim-integrity.md` §1). It is **new in the repair**: at v0.1.0 the markers existed, so the command legitimately returned hits and no "무출력" claim was made.
+- **Required fix.** Replace the selector in all three places with the marker-shaped one and restate the observed result: `grep -rn '\[NEEDS CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → no output, rc 1. Three single-line edits; no design change.
+
+### N2. `REQ-CBN-009` fixes the `manager-lead` directive class at a hand-enumerated 4 lines that its own subject rule contradicts · `spec.md:113,154`, `acceptance.md:138`, `plan.md:115` · Severity: **major** · Class: **blocking**
+
+- **Claim.** `REQ-CBN-009` binds "`manager-lead` 자기 스폰 **4줄** (`subagent-spawn`)" as a closed set, and `AC-CBN-013` pins exactly `manager-lead.toml:37,57,59,193`. `manager-lead.toml` carries **10** `Agent(` lines, and at least one of the six unlisted lines satisfies `REQ-CBN-002`'s own discriminant for `verdict=directive` / `subject=this-agent`. The enumeration is under-inclusive, and no AC can detect the shortfall.
+- **Evidence.**
+  ```
+  $ grep -c 'Agent(' internal/template/templates/.codex/agents/moai/manager-lead.toml
+  10
+  $ grep -n 'Agent(' ... | cut -d: -f1 | tr '\n' ' '
+  7 23 29 37 57 59 130 172 193 261
+  ```
+  Compare the listed `:57` with the unlisted `:172`:
+  ```
+  :57  - **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L,
+         manager-lead spawns a second read-only `Agent(general-purpose)` ...      [SPEC: directive]
+  :172 At Tier M/L milestones, every AC the author leaf worker marks PASS is re-run by a second
+         read-only `Agent(general-purpose)`:                                      [SPEC: unlisted]
+  ```
+  These are the same behaviour — `:57` states it in the capability list, `:172` states it as the
+  procedure this agent performs. Under `REQ-CBN-002` ("Where a line's directive subject is the
+  orchestrator rather than this agent → prose"), `:172`'s subject is this agent, so it is a
+  directive. `:261` ("Domain consultation … → leaf worker as `Agent(general-purpose)` with domain
+  whitelist") is a routing instruction to this agent and is arguably a second such line.
+- **Baseline-attribution.** All coordinates read from `manager-lead.toml` in this tree, this run.
+- **Gaps.** I did not adjudicate all six unlisted lines; `:7`, `:23`, `:29`, `:130` read to me as descriptive prose and I make no claim about them. My finding rests on `:172` alone, with `:261` flagged as probable.
+- **Residual-risk.** `AC-CBN-013` passes at `grep -c 'subagent-spawn' manager-lead.toml ≥ 4`, so revising exactly the enumerated four turns the AC green while a genuine directive line keeps instructing a Codex-driven harness to spawn a Claude subagent — precisely the failure this SPEC exists to prevent. `M2`'s 84-row classification, applying `REQ-CBN-002`, would then contradict `REQ-CBN-009` inside the same deliverable.
+- **Why blocking.** It is an internal inconsistency between two of the SPEC's own requirements, and it is the same defect *class* as iteration-1's D3 — a coordinate set asserted as complete without stating the discriminant that closes it. `§B.4` is honestly labelled "경계 판정 4건" (a boundary sample), but `REQ-CBN-009` and `AC-CBN-013` then treat that sample as the population.
+- **Required fix (either is sufficient).** (a) Restate `REQ-CBN-009`'s second class **by property** rather than by coordinate — "every `Agent(` line in `manager-lead` that M2 classifies `directive` / `this-agent`" — and rebind `AC-CBN-013` to compare `subagent-spawn` coordinates against M2's directive rows for that file rather than against the constant 4. Or (b) keep the closed set but adjudicate `:172` and `:261` explicitly in `§B.4` with the reason they are prose, citing the measured `grep -c 'Agent(' → 10` so the reader sees the 10→4 narrowing was performed rather than assumed.
+
+### A1. `moai-mcp` is an unflagged trap in M1's derivation — its rationale contains "unavailable" while the capability is present · `spec.md:145` (`REQ-CBN-004`), `plan.md:68` · Severity: minor · Class: **optional**
+
+- **Claim.** M1 must classify 11 classes; exactly one, `moai-mcp`, carries the word `unavailable` in a rationale that nonetheless describes a **present** capability. A derivation keying on the word rather than on the capability/field discriminant yields `(b) = 4`, and `AC-CBN-006`'s `(b) == (c)` then fails.
+- **Evidence.**
+  ```
+  - class: moai-mcp
+      Agents carrying any mcp__moai__* token declare the server-level grant ...
+      Per-tool filtering inside one MCP server is unavailable — documented drop; ...
+  ```
+  What is unavailable is per-tool filtering; the MCP capability itself is granted at server level. Under `REQ-CBN-004`'s discriminant this is **present** — consistent with `cross-session-messaging`, `skill-loader`, `subagent-spawn`.
+- **Baseline-attribution.** `agents-codex.yaml`, this tree, this run.
+- **Gaps.** None — this is the only class where the two readings diverge.
+- **Residual-risk.** A run-phase actor producing `capability-absence.md` hits one genuinely hard call and the SPEC names none. This SPEC names traps everywhere else; this one is missing.
+- **Suggested fix.** One line in `spec.md` §A.2 correction 2 or `plan.md` M1: `moai-mcp` reads `present` — "unavailable" there qualifies per-tool filtering, not the capability.
+
+### A2. `[^/]design-sync` cannot match a line-initial occurrence · `acceptance.md:145`, `plan.md:126`, `spec.md:123` · Severity: minor · Class: **optional**
+
+- **Claim.** `grep -oE '[^/]design-sync'` requires one non-`/` character **before** the token. A paragraph opening a line with a bare `design-sync` produces no match, so `AC-CBN-014` reads 0 and fails although the required paragraph exists.
+- **Evidence.** The regex carries no start-of-line alternation; the four existing occurrences all sit mid-line preceded by `/` (measured: bare 4, guarded 0).
+- **Baseline-attribution.** `manager-design.toml`, this tree, this run.
+- **Gaps.** I did not write a synthetic line-initial fixture into the file (the tree is read-only during the audit).
+- **Residual-risk.** Fail-safe direction — the hole produces a **false FAIL**, never a false PASS, so it costs a run-phase round trip rather than admitting a defect.
+- **Suggested fix.** `grep -oE '(^|[^/])design-sync'`, keeping the same expected value.
+
+### A3. `REQ-CBN-016` is compound, and the SPEC sits exactly at the Tier M requirement ceiling · `spec.md:147` · Severity: minor · Class: **optional**
+
+Two obligations in one requirement (produce an exhaustive derivation record; correct the mismatched
+text). Both limbs are covered by `AC-CBN-006` `(a)` and `(d)`, so testability holds and coverage did
+not thin — but 16/16 against a ceiling whose own rule says exceeding it "is a signal to tier up or to
+split the SPEC" means the next requirement has nowhere to go. Worth stating in the SPEC that the
+merge was budget-driven, so a future editor does not split it back and silently breach the ceiling.
+
+### A4. `TestCodexContractByteCeiling` is never named, and the pinned verification scope would not run it · `acceptance.md:99-103,132`, `spec.md:149` (`REQ-CBN-007`) · Severity: minor · Class: **optional**
+
+`AC-CBN-009` covers only `TestAlwaysLoadedTokenBudget`; `AC-CBN-012` restricts run-phase verification
+to `./internal/template/agentemit/...` and `./internal/config/`, and `AC-CBN-009`'s
+`-run 'TestAlwaysLoadedTokenBudget$'` filter excludes the byte guard. Both `AGENTS.md` copies are
+covered by that guard (`token_budget_guard_test.go:140-143` exercises live and mirror), and it
+**fails the build** rather than warning. Measured headroom **9,802 B** against a one-sentence
+addition, so this is not a live hazard — but the guard belongs in `REQ-CBN-007`'s scope by name.
+
+### A5. `acceptance.md:17`'s reason (a) for banning `grep -c '^| '` is false on this tree · `acceptance.md:17` · Severity: minor · Class: **optional**
+
+The ban is right; one of its two reasons is not. `acceptance.md:17` says the banned selector
+"(a) counts `| ` lines outside the binding table and (b) includes the header". Measured: all four
+matches are inside the table.
+```
+$ grep -c '^| ' AGENTS.md → 4
+$ sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md | grep -c '^| ' → 4
+$ grep -n '^| ' AGENTS.md → 19 (header), 21, 22, 23 (data)
+```
+The whole discrepancy is (b). Reason (a) is a hypothetical presented as an observation — a right
+verdict with a wrong argument, in a document whose entire method is attributing claims to measurements.
+
+### A6. `REQ-CBN-002` uses `Where` for a state condition, not a capability gate · `spec.md:140` · Severity: minor · Class: **optional**
+
+GEARS `Where` denotes a capability gate / feature flag / static config; legacy EARS `Where` denotes an
+optional feature. `REQ-CBN-002`'s condition ("a line's directive subject is the orchestrator rather
+than this agent") is a per-item state, which `When` or `While` carries. The pattern is syntactically
+valid so MP-2 passes; the modality is semantically loose.
+
+### A7. Two "field-absent, capability-present" classes get two different dispositions with no stated discriminant · `spec.md:85,89,95` vs `spec.md:154`, `acceptance.md:139` · Severity: minor · Class: **optional**
+
+`skill-loader` and `subagent-spawn` are diagnosed identically in §B.1 (the missing thing is the
+agent-TOML field, not the capability). `skill-loader` is then disposed of by leaving 41 body lines
+untouched and adding one `AGENTS.md` cover sentence; `subagent-spawn` by rewriting four body lines in
+place. §B.2 gives a reason for the first (progressive-disclosure savings) but the SPEC never states
+the rule that decides "cover sentence" vs "body rewrite", so a follow-up card has no principle to
+apply to the remaining classes.
+
+### A8. A third stale "4행" claim in the sibling SPEC is neither corrected nor exempted · `SPEC-CODEX-SKILL-NEUTRAL-001/spec.md:28` · Severity: minor · Class: **optional**
+
+M1 names one line to correct (`:280`) and one to leave alone (`:266`, a byte-size record). **The
+repair is right not to touch `:266`** — `csn003-table-4row.txt` measures 373 B, exactly the figure
+cited there, so the two are correctly distinguished and **no conflation occurred**. A third
+occurrence at `:28` ("오늘의 4행은 결과이지 기준이 아니다") sits in that SPEC's HISTORY. Leaving a
+HISTORY entry alone is defensible — history records past state — but the SPEC enumerates two
+occurrences as though they were all of them. One sentence saying `:28` is HISTORY and stays would
+close the enumeration.
+
+---
+
+## Recommendation
+
+**FAIL**, at score 0.85 against a Tier M threshold of 0.80. The score is above threshold and **all
+seven must-pass criteria are PASS or N/A**; the FAIL is carried entirely by the two blocking
+findings, and one of them (N1) makes the card's own Definition of Done unsatisfiable as written.
+
+**This is a narrow, mechanical fix delta — not a scope or design problem.** The repair is otherwise
+of high quality: all ten iteration-1 defects are discharged, each verified by re-running the
+measurement rather than reading the assertion, and none of the carry-forward invariants (84/81, the
+field-vs-capability premise, the anti-blanket-replace AC pairs) was weakened to make a check pass.
+Score moved 0.63 → 0.85, so no STOP signal and no scope-reduction recommendation.
+
+Since no third iteration is available:
+
+**Blocking — fix before the card leaves plan-phase (both are edit-in-place, no redesign):**
+
+1. **N1** — replace the marker selector with `grep -rn '\[NEEDS CLARIFICATION' …` and restate the observed result (no output, rc 1) in `spec.md:235`, `plan.md:50`, `acceptance.md:173`. Three single-line edits.
+2. **N2** — either restate `REQ-CBN-009`'s `manager-lead` class **by property** and rebind `AC-CBN-013` to M2's directive rows for that file, or adjudicate `manager-lead.toml:172` and `:261` explicitly in `§B.4` and cite the measured `grep -c 'Agent(' → 10`.
+
+After those two land, the SPEC meets the bar: I found no third blocking defect, and the must-pass
+firewall is already clean. A confirming re-read scoped to exactly these two edits is sufficient — a
+full third audit is not warranted by the evidence.
+
+**Advisory — operator's discretion, safe to carry as documented debt (A1-A8).** A1 (the `moai-mcp`
+trap) and A2 (the `[^/]` line-initial hole) are the two most likely to cost a run-phase round trip
+and are each a one-line change; A3-A8 are documentation-quality items with no effect on whether the
+card can land. Per M6 this list does not by itself justify the FAIL and must not be routed as if it did.
+
+**Process.** No PD-1 recurrence: `HEAD` was `cb826d42ba41720433d82892830c30c4448dc6f7` with a clean
+tree at both the opening and closing measurement of this audit. The window held.
