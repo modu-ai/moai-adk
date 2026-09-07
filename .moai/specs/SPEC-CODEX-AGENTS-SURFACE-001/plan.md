@@ -19,7 +19,7 @@ Flips: AC-CAS-001, AC-CAS-002, AC-CAS-003. Preserves: AC-CAS-004.
 1. `make agents-emit` (REQ-CSL-008 obligation — regeneration stays behind the explicit verb; Makefile:38).
 2. `git diff --stat -- internal/template/templates/.codex` → empty stdout, rc 0. Control: the same command form against `internal/template/agentemit/agents-codex.yaml` is non-empty after M1 (diff-visibility catch-all).
 3. `make agents-emit-check` → rc 0 (read-only drift gate; Makefile:47-49).
-4. Optional mutation check (t452 AC-CSL-012 precedent): touch one committed TOML, observe AC-CAS-005 flip red + `TestCodexAgentsDeployFixture` red, revert, confirm byte identity.
+4. Optional mutation check (t452 AC-CSL-012 precedent): touch one committed TOML, observe AC-CAS-005 flip red + `TestCodexAgentsDeployFixture` red, revert, confirm byte identity. [guard identity corrected — see REQ-CAS-004 correction: binding guard is `TestGoldenCommittedArtifactsMatchEmission` via `make agents-emit-check`; the deploy fixture measured GREEN in mutant C, run-phase finding 1]
 
 Closes: AC-CAS-005.
 
@@ -41,7 +41,7 @@ Closes: AC-CAS-006.
 - `[EXISTING-UNTOUCHED]` `internal/template/templates/.codex/**` (must stay byte-identical), every `*.go` file, `internal/codexwiring/**`, `internal/cli/update_codex_wiring.go`, `internal/template/templates/.claude/agents/moai/*.md` (the neutral layer).
 
 PRESERVE list:
-- The 11 committed TOMLs byte-identical (guard: `TestCodexAgentsDeployFixture`; regenerate-not-edit).
+- The 11 committed TOMLs byte-identical (guard: `TestCodexAgentsDeployFixture`; regenerate-not-edit) — guard identity corrected — see REQ-CAS-004 correction: binding guard is `TestGoldenCommittedArtifactsMatchEmission` via `make agents-emit-check`.
 - Top-level `codex_measured_version: "0.147.0"` (AC-CAS-004; AC-CSL-009 decision — raising it claims unmeasured axis coverage).
 - The skill-loader rationale's 0.152.1 stamp and re-probe clause.
 - R-011/AC-009 machinery: `fields.model.emit: false`, class-`model` `omit`, `model-pin-manager-git` drop — retained, only rationales refreshed.
@@ -52,7 +52,7 @@ PRESERVE list:
 |---|---|
 | A YAML comment edit breaks manifest parsing | Parse coverage runs in every emit test (AC-013 fail-closed, manifest.go:112-120); M3 runs the package suite |
 | REQ-CSL-008 forgotten (edit without regeneration) | `make build` gates on `agents-emit-check` (Makefile:34) and drift aborts the build (Makefile:47-49); M2 regenerates explicitly |
-| Accidental direct TOML edit (violates regenerate-not-edit) | `TestCodexAgentsDeployFixture` byte identity (codex_agents_deploy_test.go:74-88) + M2 zero-diff proof |
+| Accidental direct TOML edit (violates regenerate-not-edit) | `TestCodexAgentsDeployFixture` byte identity (codex_agents_deploy_test.go:74-88) + M2 zero-diff proof — guard identity corrected: binding guard is `TestGoldenCommittedArtifactsMatchEmission` via `make agents-emit-check` (see REQ-CAS-004 correction) |
 | Top-level stamp wrongly raised to 0.153.4 | AC-CAS-004 preservation cell + the AC-CSL-009 recorded decision cited in REQ-CAS-005 |
 | A1 overturned silently (reversal without evidence) | AC-CAS-002 forces the type map; spec.md §B.4 carries the full per-key overturn; REQ-CAS-003 names the overturn in the record itself |
 | Folded-scalar (`>-`) formatting mistakes in new rationales | Clone the existing entry style; parse tests catch structural breakage in M3 |

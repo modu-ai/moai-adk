@@ -32,7 +32,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILL-LOADER-001, SPEC-CO
 2. **Per-agent `skills.config` — KEEP DROPPED** (skill-loader `documented-drop`).
 3. **Global `[agents]` table — DO NOT WIRE**, recorded as a per-key judgment that overturns the t494 candidate A1 explicitly.
 
-**Deliverable shape**: manifest-comment-only change. The 11 committed TOMLs under `internal/template/templates/.codex/agents/moai/` must remain byte-identical after regeneration (the `TestCodexAgentsDeployFixture` guard and REQ-CSL-008 prove it). Editing the TOMLs directly is forbidden — they are emitter outputs (regenerate-not-edit).
+**Deliverable shape**: manifest-comment-only change. The 11 committed TOMLs under `internal/template/templates/.codex/agents/moai/` must remain byte-identical after regeneration (the `TestCodexAgentsDeployFixture` guard and REQ-CSL-008 prove it). Editing the TOMLs directly is forbidden — they are emitter outputs (regenerate-not-edit). — guard identity corrected (run-phase finding 1): the binding guard for this byte identity is `TestGoldenCommittedArtifactsMatchEmission` via `make agents-emit-check`, not the deploy fixture; see the REQ-CAS-004 correction below.
 
 ## §B Evidence Base
 
@@ -95,6 +95,8 @@ The mapping manifest shall carry a judgment record for the global `[agents]` con
 ### REQ-CAS-004 — Zero emission delta on manifest change (Event-driven) `[AC-CAS-005, AC-CAS-006]`
 
 **When** the mapping manifest's Codex-behavior rationales change, the regeneration gate shall prove a zero emission delta before commit: `make agents-emit` regenerated all 11 TOMLs byte-identically (`git diff --stat -- internal/template/templates/.codex` empty), and `make agents-emit-check` exited 0 (REQ-CSL-008 obligation — SPEC-CODEX-SKILL-LOADER-001 progress.md:117). The 11-count and byte-identity are mechanically enforced by `TestCodexAgentsDeployFixture` (internal/template/codex_agents_deploy_test.go:60-62,74-88), which stays green.
+
+> **Correction (run-phase finding 1 — annotated; original sentence kept)**: the sentence above mis-attributes the byte-identity guard. `TestCodexAgentsDeployFixture` is a deploy-consistency check — embedded FS → deployed output vs the SAME commit's committed sources — so both sides move together with a recompiled embed and it structurally cannot detect a hand edit to a committed TOML (measured GREEN in mutant C; the structural shape was already proven by the t317 SPEC-AGENT-EMIT-LINEAGE-001 mutant research). The actual committed-artifact-vs-emission byte-identity guard is `TestGoldenCommittedArtifactsMatchEmission` via `make agents-emit-check` (internal/template/agentemit/golden_test.go:80; observed failure at :109, sha256 mismatch), which went exactly red in mutant C — evidence: `.moai/reports/t505/verdict.md` finding 1. The card dispatch naming deploy_test.go as the byte guard was itself inaccurate; the misattribution is kept visible here rather than silently rewritten.
 
 ### REQ-CAS-005 — Measured-version stamp retention (State-driven) `[AC-CAS-004]`
 
@@ -186,6 +188,16 @@ commands (M2, in order):
 expected: step 2 empty + step 3 non-empty + TestCodexAgentsDeployFixture green
 mutant C: append one comment line to a committed TOML -> step 2 non-empty and the deploy
           fixture goes red (codex_agents_deploy_test.go:82-84) -> revert -> byte-identical
+mutant C (CORRECTED — run-phase finding 1, annotated not rewritten): the guard named above is
+          mis-attributed. TestCodexAgentsDeployFixture is a DEPLOY-CONSISTENCY check (embedded
+          FS -> deployed output vs the same commit's committed sources); both sides carry the
+          same hand edit, so it measured GREEN in the mutant (structural blindness — the t317
+          SPEC-AGENT-EMIT-LINEAGE-001 mutant research already proved this shape). The observed
+          red came from TestGoldenCommittedArtifactsMatchEmission via make agents-emit-check
+          (internal/template/agentemit/golden_test.go:109: committed artifact differs from
+          emission, sha256 mismatch, Error 1) — .moai/reports/t505/verdict.md finding 1. The
+          card dispatch naming deploy_test.go as the byte guard was itself inaccurate;
+          recorded here per the annotated-correction rule.
 mutant D: change a PARSED manifest value (not a comment, e.g. sandbox_mode value) ->
           regeneration produces changed TOMLs -> step 2 non-empty; proves the proof is not
           "green regardless of what was edited"

@@ -7,7 +7,7 @@ Auto-generated compact view. Canonical sources: spec.md (REQ/AC bodies), plan.md
 - **REQ-CAS-001** (Ubiquitous) — retain `fields.model.emit: false` + class-`model` `omit` + `model-pin-manager-git` drop; rationales carry the 0.153.4 evidence set (precedence-winning model field, #32587, id churn, P-03 accepted-but-wrong).
 - **REQ-CAS-002** (Ubiquitous) — retain the skill-loader documented-drop; rationale carries 0.153.4 `SkillConfig` override-not-grant + P4–P7 measured silence + retained 0.152.1 non-read + the re-probe clause.
 - **REQ-CAS-003** (Ubiquitous) — add the `[agents]` judgment record: `documented_drops` entry `codex-global-agents-table` + adjacent type-map comment block (0.153.4), stating no-wire, the dual-source hazard, the rc=1 strict-parse hazard, and the explicit t494 A1 overturn. No Go change.
-- **REQ-CAS-004** (Event-driven) — when manifest rationales change, regeneration proves zero emission delta: `make agents-emit` → byte-identical TOMLs → `make agents-emit-check` rc 0 (REQ-CSL-008; `TestCodexAgentsDeployFixture`).
+- **REQ-CAS-004** (Event-driven) — when manifest rationales change, regeneration proves zero emission delta: `make agents-emit` → byte-identical TOMLs → `make agents-emit-check` rc 0 (REQ-CSL-008; `TestCodexAgentsDeployFixture` — guard identity corrected: binding guard is `TestGoldenCommittedArtifactsMatchEmission` via `make agents-emit-check`; see spec.md REQ-CAS-004 correction).
 - **REQ-CAS-005** (State-driven) — while `codex_measured_version` stays `"0.147.0"`, record axis-wise stamps in rationales and never raise the top-level stamp (AC-CSL-009 decision).
 
 ## AC (6, inline in spec.md §D)

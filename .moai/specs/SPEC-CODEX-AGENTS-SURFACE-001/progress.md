@@ -44,6 +44,8 @@ Mode evaluation (pre-assessment only — the Decision line is recorded by the or
 - fanout — not indicated: single domain, strict milestone dependencies.
 - sweep — not indicated: not a mechanical bulk transform.
 
-Decision: (orchestrator records before first run-phase spawn)
+Decision: serial (manager-develop `dev-t505`, spawned opus/medium per profile)
+
+Recording-latency note: this Decision line was recorded by the orchestrator (lane-10) at run completion rather than strictly before the first run-phase spawn — the run executor was spawned directly after the Implementation Kickoff Approval gate (operator-selected autonomous progression), and the pre-assessment block above was in place before that spawn. The chosen mode matches the spawn that executed: one sequential manager-develop over M1→M4, no concurrent spawns.
 
 Justification note: measurement/judgment cards move the risk from code correctness to discipline (byte-identity proof, REQ-CSL-008 regeneration obligation, no-stamp-raise); t504 precedent logged `direct` for a zero-source-file measurement, while this SPEC edits one real source file, which weighs toward the canonical manager-develop owner. The orchestrator owns the call.
