@@ -40,7 +40,24 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — manager-develop 소관. M1 RED 채득(커맨드 + exit code + 트리 SHA), M2 수리, M3 뮤턴트 오버레이 채득과 못 잡은 뮤턴트 기록(REQ-8)이 이 섹션에 적힌다.>_
+### M1 — RED 가드 채득 (2026-09-08, 트리 `b91372794` + M1 테스트 파일 미커밋 상태)
+
+**M1-1 — AC-001 yamlpatch 단위 greenfield (RED-now cell)**
+
+- 커맨드: `go test -v -count=1 -run 'TestPatchFileGreenfieldCreation|TestAtomicWriteStatErrorNotWidened' ./internal/settings/yamlpatch`
+- exit code: `1`
+- 증거: `.moai/reports/t544/RED-m1-yamlpatch.log` (verbatim raw 출력)
+- RED 이유(옳은-이유 RED): `--- FAIL: TestPatchFileGreenfieldCreation` — `yamlpatch: stat …mcp.yaml: no such file or directory`. 결함 그 자체(C3 stat 부재-불내성 경로)다.
+- 동반 가드 `TestAtomicWriteStatErrorNotWidened`(AC-002, REQ-3 회귀 가드)는 수리 전 트리에서 PASS — absent 외 stat 오류(ENOTDIR)는 현행에서도 오류로 반환되므로 RED가 아니라 유지돼야 하는 가드다.
+
+**M1-2 — AC-004 웹 레벨 greenfield 첫 저장 (RED-now cell)**
+
+- 커맨드: `go test -v -count=1 -run 'TestHandleSaveGreenfieldSectionCreation' ./internal/web`
+- exit code: `1`
+- 증거: `.moai/reports/t544/RED-m1-web-save.log` (verbatim raw 출력)
+- RED 이유(옳은-이유 RED): `greenfield first-save status = 500, want 200` — 배너는 `section config write failed: yamlpatch: stat …mcp.yaml: … no such file or directory`로 stat 오류를 직접 가리킨다(AC-004 vacuous-green 방지 요건 — 제출이 C6 게이트를 통과해 PatchFile에 도달했음의 증거).
+
+**M1 커밋 범위**: `internal/settings/yamlpatch/yamlpatch_test.go`(AC-001 + AC-002 가드), `internal/web/write_safety_test.go`(AC-004 가드), spec.md `draft → in-progress` 전환.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

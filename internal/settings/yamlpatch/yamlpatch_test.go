@@ -375,6 +375,60 @@ func TestYAMLPatchIndentDetection(t *testing.T) {
 	}
 }
 
+// TestPatchFileGreenfieldCreation은 absent 섹션 파일에 대한 실변경 edit이
+// greenfield 문서로 시작해 파일을 생성함을 검증한다 (SPEC-SEAM-GREENFIELD-001
+// AC-001). 읽기 계층(PatchFile)은 absent를 greenfield로 취급하고(C1), seam
+// 쓰기는 그 계약을 거울처럼 따른다 — 첫 편집이 파일을 만들고 모드는 템플릿
+// 관례 0644다 (spec.md §4 — CreateTemp 기본 0600 기각 근거).
+func TestPatchFileGreenfieldCreation(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "mcp.yaml")
+
+	err := PatchFile(path, []KeyEdit{
+		{Path: []string{"mcp", "tools", "spec_progress", "enabled"}, Value: "false"},
+	})
+	if err != nil {
+		t.Fatalf("PatchFile on absent target: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("greenfield file not created: %v", err)
+	}
+	if !strings.Contains(string(raw), "spec_progress") || !strings.Contains(string(raw), "enabled: false") {
+		t.Errorf("submitted edit not persisted in greenfield file, got:\n%s", raw)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o644 {
+		t.Errorf("greenfield file mode = %o, want 644 (template convention, spec.md §4)", got)
+	}
+}
+
+// TestAtomicWriteStatErrorNotWidened는 absent 외의 stat 오류(대상의 부모가
+// 파일인 ENOTDIR)가 래핑 오류로 유지됨을 검증한다 (SPEC-SEAM-GREENFIELD-001
+// REQ-3, AC-002). absent 관용이 전체 stat 오류로 넓어지는 회귀를 잡는다 —
+// wrapping이 yamlpatch: stat 형태를 유지하는 것이 absent 분기가 아니라 stat
+// 단계에서 실패했음의 증거다.
+func TestAtomicWriteStatErrorNotWidened(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(blocker, "section.yaml") // parent is a file → ENOTDIR
+
+	err := atomicWrite(path, []byte("a: 1\n"))
+	if err == nil {
+		t.Fatal("want error when the target path's parent is a file (ENOTDIR)")
+	}
+	if !strings.Contains(err.Error(), "yamlpatch: stat") {
+		t.Errorf("non-absent stat error must keep the yamlpatch: stat wrapping (REQ-3), got: %v", err)
+	}
+}
+
 // TestYAMLPatchAtomicWriteErrors는 atomicWrite의 오류 분기를 직접 검증한다:
 // 대상 파일 부재(stat 실패) + 쓰기 불가 디렉터리(temp 생성 실패).
 func TestYAMLPatchAtomicWriteErrors(t *testing.T) {
