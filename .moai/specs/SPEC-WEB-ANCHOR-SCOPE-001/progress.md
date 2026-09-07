@@ -167,7 +167,7 @@ phase1_audit_skip:
 ```yaml
 spec: SPEC-WEB-ANCHOR-SCOPE-001
 card: t527
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — backfilled in a follow-up commit
+sync_commit_sha: "06183db99"
 sync_status: completed
 sync_complete_at: 2026-09-07
 zero_repair_close: true
