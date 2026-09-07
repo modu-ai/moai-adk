@@ -31,9 +31,37 @@ $ go test ./internal/codexadapter/ -run 'TestEventTableRowCount|TestEventTableMa
 | AC-CEV-006 | PASS | `grep -c 'All eleven' internal/codexadapter/events.go` / `grep -c 'never an absence of' ...` | `0` and `0`; updated block names Interrupt + "no MoAI dispatcher counterpart" (events.go:50) |
 | DoD#4 | PASS | `git diff --stat ace1c5440..HEAD -- internal/hook/` | empty output (0-row diff, REQ-CEV-005) |
 
+M2 (campaign record: `.moai/reports/t496/codex-event-campaign.md`, evidence: `.moai/reports/t496/evidence/`):
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-CEV-010 | PASS | per-event rows in the campaign record §2; captures at `evidence/captures/*.jsonl` | 6/6 rows carry fired/trigger-not-achieved verdict + exact command + observed output; 3 FIRED (SubagentStart, SubagentStop, Interrupt) with payloads; 3 trigger-not-achieved (PreCompact/PostCompact/PermissionRequest) with precondition evidence |
+| AC-CEV-011 | PASS | campaign record §0-§1; `evidence/homecheck/zero-write-verdict.txt`; `codex --version` | `CODEX_HOME` SUPPORTED (run p0, transcript_path inside tmp home); key files' mtimes/hashes pre-campaign; 0 campaign-attributable real-home writes (parallel-lane `moai-codex-gate` sessions attributed by session_meta originator+cwd); pre-fix P0 run disclosed |
+| AC-CEV-012 | PASS | campaign record §2 SubagentStop row; `evidence/runs/collab.jsonl` + `evidence/captures/SubagentStop.jsonl` | 0.147.0 not-fired observation REVERSED by 0.153.4 re-measurement: FIRED via collab_tool_call delegation, payload `last_assistant_message: "4"` |
+| AC-CEV-013 | PASS | campaign record §4 disposition table | fires rows → adapter-extension decision (SubagentStart/Stop adapt-now; Interrupt follow-up-card with payload documented); not-fired rows → documented basis; 0 undispositioned rows |
+
+M3 (conditional adapt):
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-CEV-020 | PASS (branch b — 2 adapt-now rows) | M3 RED verbatim: `adapted rows = 6, want 8` / `SubagentStart: adapted = false, want true` (captured pre-GREEN); GREEN: `go test ./internal/codexadapter/ ./internal/codexwiring/` | `ok ... codexadapter 1.116s` / `ok ... codexwiring 0.598s`; census `true}=8` `false}=4`; `go test ./internal/cli/ -run 'Codex|Hooks'` → `ok ... 45.954s` |
+
+Quality gates (D.2): `go test -cover ./internal/codexadapter/ ./internal/codexwiring/` → 87.3% / 88.2%; `golangci-lint run ./internal/codexadapter/...` → `0 issues.`; `go vet` both packages rc=0; `gofmt -l` empty. AC-CEV-002 re-checked post-M3: 0 matches. DoD#4 re-checked post-M3: empty diff.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: complete (M1 + M2 + M3-adapt; REQ-CEV-012 split not needed — M2 closed in the same run)
+- run_complete_at: 2026-09-07
+- run_commit_sha: f865e57a0 (M2 record; M1 code b4653524b, M1 evidence 88c7d0c84, M3 adapt 865e12c80)
+- ac_pass_count: 10 (AC-CEV-001..006, 010..013, 020)
+- ac_fail_count: 0
+- preserve_list_post_run_count: internal/hook untouched (merge-base diff 0, measured twice)
+- l44_pre_commit_fetch: n/a (card worktree branch, no push per lane protocol)
+- l44_post_push_fetch: n/a (lead batch-pushes develop)
+- new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues on touched package; vet clean)
+- cross_platform_build: not run this lane (no build-system files touched; production diff is 1 Go file of table data + comments) — CI verdict on origin/develop pending lead push
+- total_run_phase_files: 7 (4 code/test + 1 SPEC frontmatter + 1 progress + campaign record/evidence set)
+- m1_to_mN_commit_strategy: M1 code+tests, M1 evidence, M3 adapt, M2 record — 4 commits, evidence committed before each next change wave
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
