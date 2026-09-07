@@ -21,11 +21,66 @@ measured_baseline: 라이브 RED 3클래스(heredoc 데이터·unquoted 데이�
 
 ## §E.2 Run-phase Evidence
 
-(pending — manager-develop, M1-M3 완료 시 채움)
+측정 좌표: 브랜치 `WT-danger-guard-regex`, base `0b1e27877`, 런 커밋 M1 `85dd4a718` · M2 `34794215f`. 사전 수정 RED는 plan 커밋 트리 `5629d9448` 위에 미커밋 테스트 파일만 얹은 상태에서 관측했다. 전체 증거 파일: `.moai/reports/t511/` (RED 3건 + GREEN 스윕 1건, M3 커밋으로 본 브랜치에 착지).
+
+### RED (사전 수정 + 뮤턴트)
+
+| 셀 | 트리/상태 | verbatim 요지 | 증거 파일 |
+|----|-----------|---------------|-----------|
+| 사전 수정 allow RED | `5629d9448` + 미커밋 테스트 | `TestDangerousRemovalDeployed_Allows*` 3종 FAIL — 배포 policy가 extras 정규식으로 heredoc 데이터 언급·unquoted 데이터 언급·실행형 스크래치 정리를 전부 `deny` 판정 (TDD RED) | `red-allow-direction-prefix.txt` |
+| 뮤턴트 A [LEDGER-MUT-A] | `34794215f` + C1 라인 템플릿 재추가 + `make build` exit 0 | 허용 방향 4테스트 스윕 중 정확히 3종 FAIL로 복귀 (QuotedDataMention은 quote folding으로 GREEN 유지 — 예상대로) → 테스트가 extras 병합을 실제 로드한다는 판별 증거 | `red-mutant-a.txt` |
+| 뮤턴트 B [LEDGER-MUT-B] | `34794215f` + `checkBashCommand` 구조 체크 호출 블록 임시 주석 | 차단 방향 2테스트 모두 FAIL로 복귀 → t286 구조 체크의 회귀 방어가 살아 있음 | `red-mutant-b.txt` |
+
+두 뮤턴트 모두 실행 후 즉시 원복 — 원복 후 `git status --porcelain`은 의도된 파일만 표시했고 `pre_tool.go`는 base 대비 diff 0 (`git diff 0b1e27877..HEAD -- internal/hook/pre_tool.go` 무출력, 바이트 동일 복원). 뮤턴트 상태로 커밋한 것 없음.
+
+### GREEN (사후, 트리 `34794215f` 클린)
+
+- **AC 통합 스윕** (acceptance.md 채택 절차 1의 env-scrub 단일 호출): `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/hook/ -run 'TestDangerousRemoval' -count=1 -v` → exit 0, **스윕 10테스트 PASS / 0 FAIL** (기존 4 + 신규 6), 패키지 `ok ... 0.773s` — 전문 `green-ac-matrix-sweep.txt`
+- **AC-008 스코프 grep**: 동일 명령 `grep -rn 'rm\\s+-rf' internal/ .moai/config/` — 사전 수정 실측 3매치(템플릿:12·dogfood:7·testdata:7, pre-flight 대조군) → 사후 **0매치** (exit 1). 같은 명령의 3→0 대조이므로 0이 스캔 실패가 아님. M2.2 fixture 규율 준수 — 신규 테스트 소스에 패턴 리터럴 착지 0 (실공간 예시 형태만 사용)
+- **AC-010 numstat 실측** (`git show --numstat 85dd4a718`): yaml 3사본 각각 `0 1` (added=0 deleted=1), spec.md `1 1` (frontmatter status 행), catalog.yaml `4 4` (해시 미러 — 같은 커밋). 템플릿 추가 행 0 = 중립성 위반 주석 부재 + 전체 변경이 1행 삭제 = REQ-RGE-010 실측. 판별 뮤턴트(타 라인 변경 시 numstat 이탈)는 미실행 — 선택 항목
+
+### AC 이진 매트릭스 (11건)
+
+| AC | 판정 | 판정 근거 |
+|----|------|----------|
+| AC-RGE-001 | PASS | GREEN 스윕에 `TestDangerousRemovalDeployed_AllowsDeepPathHeredocDataMention` 포함 PASS + 사전 수정 RED 셀 (red-allow-direction-prefix.txt) |
+| AC-RGE-002 | PASS | `..._AllowsUnquotedDataMention` PASS + 사전 수정 RED |
+| AC-RGE-003 | PASS | `..._AllowsScratchCleanupExecution` PASS + 사전 수정 RED |
+| AC-RGE-004 | PASS | `..._AllowsQuotedDataMention` PASS (green-now 회귀 가드 — RED 셀 불요, 배포 policy 재실행으로 고정) |
+| AC-RGE-005 | PASS | `..._DeniesProtectedTargetsAllOrders` PASS (11형태 전부 deny + reason이 구조 체크 prefix) + 뮤턴트 B RED 셀 |
+| AC-RGE-006 | PASS | `..._DeniesHeredocBodyProtectedTarget` PASS + 뮤턴트 B RED 셀 |
+| AC-RGE-007 | PASS | 뮤턴트 A RED 셀 — 재추가 시 허용 3테스트 RED 복귀 관측 (GREEN이었다면 REQ-RGE-006 위반으로 재작업 대상이었으나 해당 없음) |
+| AC-RGE-008 | PASS | 스코프 grep 3매치(사전) → 0매치(사후) 대조 실측 |
+| AC-RGE-009 | PASS | M1 `make build` exit 0 (2회: M1 적용·뮤턴트 A 원복, 각각 로그 확인) + `deployedPolicy` 헬퍼가 임베디드 FS에서 편집된 yaml을 읽어 판정 — 임베디드 반영 자체 증명 |
+| AC-RGE-010 | PASS | numstat `0 1` × 3사본 실측 (위) |
+| AC-RGE-011 | PASS | 모든 GREEN 판정에 스윕 수 명시 (10) — `-run` 셀렉터별 스윕: 전체 10 / Allows 4 / Denies 2, 0매치 스윕 없음 |
+
+### E2 빌드 / E3 커버리지 / E4 경계 / E5 lint
+
+- **E2**: `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (사전·사후 모두 실측)
+- **E3**: `go test -cover ./internal/hook/... ./internal/settings/...` → `internal/hook` **85.3%** (패키지 목표 85% 충족), `internal/settings` 90.3%, 나머지 서브패키지 전부 ok (전문은 커버리지 배치 출력). **Gap**: 사전 수정 시점의 -cover 기준선을 측정하지 않아 Δ수치는 미제공 — 절대값만 근거로 제시한다. `internal/hook/mx/complexity` 83.6%는 본 SPEC이 건드리지 않은 사전 결함 영역
+- **E4**: 디스패치 B3 형태(주석 필터 없음)는 사전 수정 트리에서도 0이 될 수 없는 형태다 — 사전 존재 22매치 전부 경계 규율을 서술하는 주석과 관측 파이프라인 코드. 정준 형태(`grep -v _test.go | grep -v '// '`) → 1매치 (`pre_tool.go:647` 도구명 비교 관측 분기, 사전 존재). 호출 형태 스캔(`AskUserQuestion(`) → 0매치. **본 러인 diff가 도입한 매치 0건** — 유일한 non-test 변경 후보인 `pre_tool.go`는 diff 0
+- **E5**: `golangci-lint run ./internal/hook/... ./internal/settings/...` → baseline `0 issues.` = 사후 `0 issues.` — **NEW 결함 0건**. `go vet` 3패키지 exit 0
+
+### 커밋 / push 상태
+
+- M1 `85dd4a718` (feat) — yaml 3사본 + catalog.yaml + spec.md frontmatter 전환 · M2 `34794215f` (test) — 배포 policy 회귀 표면 · M3 (docs) — 본 문서 + 증거 파일 (+ run_commit_sha backfill 1건 예정)
+- push는 **레인 제외** — 본 브랜치 push는 리드 일괄 소관 (gitflow 레인 프로토콜 §4). 수행한 push 없음
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-(pending — manager-develop)
+run_status: audit-ready
+run_complete_at: 2026-09-07
+run_commit_sha: pending-backfill-run
+evidence_path: .moai/reports/t511/ (RED 3건·GREEN 스윕 1건)
+sweep_count: 10 PASS / 0 FAIL (`-run 'TestDangerousRemoval'`)
+new_defects: lint 0 · vet 0 · 경계 grep 신규 도입 0
+
+sync-phase 인도 항목 (manager-docs):
+
+1. **docs-site 4로케일 갱신 (F4)** — `docs-site/content/{ko,en,ja,zh}/advanced/config-sections.md` 131행이 제거된 정규식을 배포 설정 예시로 문서화 중. 4-locale same-PR 규칙으로 같은 변경에서 갱신 필요. 판정: `grep -rn "rm\\\\s+-rf" docs-site/content/` → 0매치 (plan.md M3 §2)
+2. **acceptance.md [LEDGER-MUT-A]/[LEDGER-MUT-B] 셀 backfill** — 소유권 경계로 manager-develop이 acceptance.md 본문을 수정하지 않았다. RED verbatim은 `progress.md §E.2` 표 + `.moai/reports/t511/red-mutant-{a,b}.txt` 로 인도됐으므로, acceptance.md 본문 셀 채움이 필요하면 manager-spec 재위임(또는 sync 페이즈에서 소유자 경유)으로 수행한다. 셀 내용 요지: 뮤턴트 A = C1 라인 템플릿 재추가 + `make build` → Allows 3종 RED / 뮤턴트 B = `dangerousRemovalTarget` 호출 블록 주석 → Denies 2종 RED, 양쪽 모두 원복·클린 확인 완료
+3. **CHANGELOG** — `#1658`/`#1686` 참조 + "배포 템플릿 extras 오탐 제거" 프레이밍 (plan.md §B.12)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
