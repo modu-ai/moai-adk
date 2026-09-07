@@ -302,3 +302,36 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.682s
 - **Integrity after revert**: `internal/cli/mcp_codex.go` SHA256
   `2a2ad2a9fd3a84566a372b01b3367223cd37fa0e71136f9543e2827e528ad8da` (identical to the pre-mutation
   capture); `git status --short` listed only ` M internal/cli/mcp_codex_test.go`.
+
+## M6 — the AC-CCR-007 absence guard, adopted by firing it
+
+Not a test mutant: AC-CCR-007 has no test verdict, only a working-tree observation. It is adopted by
+M6 rather than RED-now because an absence guard is satisfied for free before any work is done, so a
+pre-work measurement would prove nothing about it.
+
+- **Edit**: `printf '\n' >> internal/cli/codex_review_gate.go`
+- **FIRED (verbatim)**:
+
+```
+--- MUTANT M6 APPLIED: git status --short ---
+ M internal/cli/codex_review_gate.go
+--- union .go non-test filter ---
+ M internal/cli/codex_review_gate.go
+filter rc=0 (0 = violation detected = guard FIRED)
+```
+
+The filter is `git status --short | grep '\.go$' | grep -v '_test\.go$'` — the same one the close
+gate uses. It listed the production file and exited 0, which is the guard classifying a non-test
+`.go` violation.
+
+- **CLEAN after revert (verbatim)**:
+
+```
+--- M6 REVERTED: union gate ---
+status ends
+--- diff non-test .go filter (expect empty) ---
+filter rc=1 (1 = no violation)
+```
+
+- **Integrity after revert**: `internal/cli/codex_review_gate.go` SHA256
+  `9356669bdeb39f433897b7fc82c7e4cf036ca8ab24197301558b8c7bcedc3500`.
