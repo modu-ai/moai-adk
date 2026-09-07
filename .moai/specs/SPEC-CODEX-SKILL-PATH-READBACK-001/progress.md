@@ -212,7 +212,7 @@ m1_to_mN_commit_strategy: one commit per milestone plus a standalone STEP-0 repa
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in the following commit per spec-frontmatter-schema.md D3
+sync_commit_sha: 18bf8cc06   # backfilled in the following commit per spec-frontmatter-schema.md D3 (a commit cannot cite its own hash)
 sync_status: complete
 b12_self_test_a: "pre-emission grep — /usr/bin/grep -c 'SPEC-CODEX-SKILL-PATH-READBACK-001' CHANGELOG.md -> 0 (no duplicate; emission proceeds)"
 b12_self_test_b: "AC count vs acceptance.md (SSOT) — /usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 11 raw uniques, of which AC-CGM-011 (acceptance.md:203) is a CROSS-SPEC reference to t533 layer 2, not an AC of this SPEC. Live count for this SPEC = 10 (AC-CSRB-001..010), matching the §E.3 ac_pass_count and the CHANGELOG entry's stated 10. Reserved-token markers ([RETIRED]/[REF]): 0 occurrences, so no marked-identifier exclusion applies and the count is unambiguous."
