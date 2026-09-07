@@ -61,7 +61,31 @@ kickoff: pending — Implementation Kickoff Approval 게이트 대기 중 (이 �
 - `feedback.yaml`: `7d6 <` — **빈 줄 1행 삭제** (O1과 정확히 일치)
 - `git-strategy.yaml`: `worktree_base_branch: develop` 키 5행→7행 **이동** + manual/team 프로필에 `develop_branch: ""`·`release_branch_prefix: ""`·`rc_version_format: ""` **신규 추가** (O1의 "키 순서 변경 + develop_branch 추가"와 일치 — 실제로는 3키)
 - `llm.yaml`: fixture에 **부재**했던 파일이 신규 생성됨 — O2(primary llm.yaml 오늘 기록)의 기제와 일치하는 시그니처 (`Save()`의 llm 무조건 재기록이 부재 파일을 생성)
-- `workflow.yaml` (O1에 없던 추가 관측): `effort: high`→`effort:` 값 소실 2건, `failure_pattern_detection`/`auto_merge`/`tmux_preferred`/`enabled` true→false 전환, `codex.*`/`todo.enabled` 신규 추가 — **중복 폼값 첫-값 채택 + false 폴백의 실재 손상**
+- `workflow.yaml` (O1에 없던 추가 관측): `effort: high`→`effort:` 값 소실 2건, `failure_pattern_detection`/`auto_merge`/`tmux_preferred`/`enabled` true→false 전환, `codex.*`/`todo.enabled` 신규 추가
+- **[sync-audit F4 정정 (advisory 채택, 2026-09-07)]** 위 workflow.yaml 손상의 기제 서사 "중복 폼값 첫-값 채택"은 **정정한다** — 감사 실측(`.moai/reports/t517/sync-audit.md` F4): 렌더 페이지의 동명 name 54건은 전부 radio 세그먼트 그룹이고 브라우저는 그룹당 checked 1개만 제출하므로, 커밋된 POST 빌더를 동일 페이지에 재실행해도 121필드 중 중복 이름 0건 — 첫-값 채택이 발화할 중복 제출 자체가 도구 구조상 성립하지 않는다. 지지되는 기제는 "false 폴백"이다: OFF 라디오가 `name=''`을 제출 → bool 파서가 "false"로 해석 → absent-key upsert가 `enabled: false` 키를 생성(true→false 전환·신규 키 추가가 그 증거). `effort: high`→값 소실 2건의 기제는 선결함 트리 재관측이 불가해 **미해결**로 남는다. REQ-WWS-006 가드 자체는 스키마 요구로 정당하며 본 정정은 기제 서사만 귀속한다.
+
+### sync-audit F1 수리 — absent 극성 결함 (2026-09-07, post-close 수리)
+
+**결함**: 수리 (i)(b)의 "absent IS false" 가정이 default-ON-when-absent bool에서 거짓 — `workflow.todo.enabled`(`TodoEnabled()` absent⇒enabled, `internal/config/todo_enabled.go`)와 `mcp.tools.*.enabled` 24종(fail-open)에서 콘솔의 명시 OFF 저장이 값-불변 게이트에 스킵돼 무음 무효(`schema_sections.go` 극성 주석과 충돌).
+
+**수리**: (1) `FieldDef.AbsentDefault` 신설 — 부재 키의 런타임 유효 기본값을 필드에 선언(`withAbsentDefault` 옵트인, todo+mcp 24종 적용). (2) `ApplySchemaEdits`의 absent-스킵을 **유효 기본값 인지**로 교체 — absent && 제출값 == 유효 기본값(선언 없으면 "false") → 스킵, ≠ → 기록. 기존 default-off 키 게이트 동작은 불변.
+
+**RED-first (커밋된 수리 코드 이전 트리, verbatim: `.moai/reports/t517/evidence/RED-f1-absent-polarity.log`)**:
+
+| 테스트 | 판정 | 내용 |
+|---|---|---|
+| `TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites` | FAIL (RED) | todo.enabled absent + OFF 제출 → 스킵되어 기록 없음 (결함 재현) |
+| `TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites` | FAIL (RED) | mcp 부재 툴 + OFF 제출 → 스킵 (결함 재현) |
+| `TestApplySchemaEditsAbsentDefaultOnBoolTrueIsNoOp` | FAIL (RED) | todo.enabled absent + ON 제출 → 키 생성 (no-op이어야 함 — 감사 권고 (b)) |
+| `TestAbsentDefaultPolarityDeclared` | PASS | 극성 선언 존재 확인 (데이터 전제) |
+
+**GREEN + 양성 통제 재확인**: 상기 4건 전부 PASS로 전환. 기존 5건 수리의 양성 통제 무손상 — `TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp`(gate default-off 유지)·`TestApplySchemaEditsSeamAbsentKeyTrueStillWrites`·`TestApplySchemaEditsValueInvariantTouchesNothing`(AC-003/004)·`TestApplySchemaEditsGitStrategyRealChangeStillRewrites`(AC-004 양성 통제) 전부 PASS.
+
+**뮤턴트-D (극성 뒤집기) 포착**: 선언된 극성을 무시하고 전부 default-off로 판정하는 변형 적용 → `TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites`·`TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites` RED 확인 후 복원.
+
+**계약 갱신 동반**: `TestApplySchemaEditsAllFieldsRoundTrip`은 F1 수리로 바뀐 계약(absent default-on bool의 "true" 제출 = no-op)을 반영해 bool 제출값을 극성 기반으로 갱신 — default-on 필드는 "false"를 제출해 실변경을 운동시킨다.
+
+**잔여 (감사 Residual Risk 인정 분)**: absent default-on bool의 **렌더 극성**(부재 ⇒ OFF 표시 vs 런타임 enabled) 발산은 본 수리 범위 밖 — 렌더를 유효 기본값으로 시딩하는 정렬은 후속 카드 권장.
 - `gate.yaml`: `pre_commit.enabled: false` 신규 추가
 - `user/language/quality/git-convention.yaml`: diff 없음 — `Save()`가 무조건 재기록하되 **내용 동일 round-trip**(mtime만 변화, §D.2 내용 기준 판정상 무차이)
 
@@ -111,7 +135,7 @@ verbatim RED 출력: `.moai/reports/t517/evidence/RED-settings-write-safety.log`
 | (i) 값-불변 seam edit 제거 (동일 값 + 부재키·bool-false 형태) | `internal/settings/sectionapply.go` `ApplySchemaEdits` | M-a: 값-불변 제출의 무차별 기록 |
 | (ii) typed 실변경 게이트 (apply 전후 DeepEqual, 변경 0이면 Save 생략) | `internal/settings/sectionapply.go` `applyTypedEdits` | M-b 원인 1: 무조건 SetSection → dirty → 재마샬 |
 | (iii) yamlpatch 라인 스플라이싱 (기존 스칼라 교체는 대상 라인만 재작성 + 재파싱 검증, upsert만 재직렬화 폴백) | `internal/settings/yamlpatch/yamlpatch.go` `PatchFile`/`lineSplice` | M-b 원인 2: 재직렬화의 빈 줄 정규화 |
-| (iv) parseSchemaForm 중복 폼값 감지 (동의 중복은 통과, 불일치 중복은 atomic reject 합류) | `internal/web/schemaform.go` `parseSchemaForm` | M1(d): workflow 스칼라 부수 손상 (첫 값 채택) |
+| (iv) parseSchemaForm 중복 폼값 감지 (**모든 중복 — 동의 여부 무관 — atomic reject 합류**; `len(vals)>1` 무조건, `schemaform.go`) | `internal/web/schemaform.go` `parseSchemaForm` | REQ-WWS-006 (조용한 단일-값 해석 금지 — M1(d) workflow 손상의 기제 귀속은 F4 정정 참조) |
 | (v) WriteProjectNestedConfig 실변경 게이트 | `internal/settings/nested.go` | M1(d): llm.yaml 무의미 생성 (동일 값 *Set 플래그가 Save를 유발) |
 
 **수리 후 같은 재현 절차 GREEN (M1(d) 절차, 수리 바이너리로 재실행)**:
@@ -158,7 +182,7 @@ verbatim RED 출력: `.moai/reports/t517/evidence/RED-settings-write-safety.log`
 | AC-WWS-003 | **PASS** | 값-불변 Save 유닛/전체경로 가드 + 수리 후 실물 diff | RED(`2031ccf7f`) → GREEN(`03cea2f75`), git 추적 파일 diff 0 |
 | AC-WWS-004 | **PASS** | dirty-gate 가드 + 양성 통제 2건 | RED → GREEN, 양성 통제 PASS×2 (gate 생존 확인) |
 | AC-WWS-005 | **PASS** | golden round-trip (값-불변 + 값-변경) | RED → GREEN (빈 줄·주석·키 순서·unknown key byte 보존) |
-| AC-WWS-006 | **PASS** | 중복 폼값 가드 | RED → GREEN (불일치 중복 reject, 동의 중복 통과 — 문서화된 규칙) |
+| AC-WWS-006 | **PASS** | 중복 폼값 가드 | RED → GREEN (**모든 중복 reject** — 동의 여부 무관, 문서화된 규칙; 커밋된 테스트도 동의값 reject를 고정 — sync-audit F2 정정) |
 | AC-WWS-007 | **PASS** | 뮤턴트 3건 재도입 → 포착 → 복원 | 포착 3/3, 못 잡은 뮤턴트 1건 기록 (AC-001/002 경계) |
 | AC-WWS-008 | **PASS** | 본 문서 M4 표의 측정 결론 인용 + M1~M3 귀속 완료 | 커밋 `911d9bbcc`(측정)가 `03cea2f75`(수리)에 선행 — 측정-선결 위반 코드 0 |
 

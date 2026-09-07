@@ -58,15 +58,25 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 			// not change the persisted value must not reach the file. Two
 			// value-invariant shapes exist: (a) the submitted value equals the
 			// persisted scalar, and (b) the key is ABSENT and a bool field
-			// submits "false" — absent IS false for a bool key, so writing it
-			// would only create the key (M1(d) observed gate.yaml/workflow.yaml
-			// growing new `enabled: false` blocks from a value-invariant save).
+			// submits its EFFECTIVE default — absent means whatever the key's
+			// runtime interpreter makes it, so only a submission equal to that
+			// interpretation is a no-op (sync-audit F1: a default-ON key such
+			// as workflow.todo.enabled or the fail-open mcp.tools.*.enabled
+			// reads enabled when absent, so an explicit OFF there IS a real
+			// change and must be written; skipping it had silently swallowed
+			// the user's save).
 			cur, curOk := readSeamScalar(projectRoot, f.Persist.Section, f.Persist.Path)
 			if curOk && cur == edits[name] {
 				continue
 			}
-			if !curOk && f.Type == TypeBool && edits[name] == "false" {
-				continue
+			if !curOk && f.Type == TypeBool {
+				effective := f.AbsentDefault
+				if effective == "" {
+					effective = "false"
+				}
+				if edits[name] == effective {
+					continue
+				}
 			}
 			seamEdits[f.Persist.Section] = append(seamEdits[f.Persist.Section],
 				yamlpatch.KeyEdit{Path: f.Persist.Path, Value: edits[name]})

@@ -155,6 +155,93 @@ func blankLineCount(s string) int {
 	return count
 }
 
+// --- sync-audit F1: absent-polarity of the value-invariant gate ---
+
+// F1 premise helpers: the two fields the audit flagged are default-ON when
+// absent (todo: TodoEnabled() absent⇒enabled, SPEC-TODO-ENABLE-FLAG-001;
+// mcp: fail-OPEN all-enabled, SPEC-MCP-CONSOLE-001). Their FieldDefs must
+// declare that polarity explicitly so the value-invariant gate can reason
+// about the effective default.
+func TestAbsentDefaultPolarityDeclared(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"workflow.todo.enabled", "mcp.tools.spec_progress.enabled"} {
+		f, ok := Field(name)
+		if !ok {
+			t.Fatalf("field %q not registered", name)
+		}
+		if f.Type != TypeBool {
+			t.Fatalf("field %q: type %q, want bool", name, f.Type)
+		}
+		if f.AbsentDefault != "true" {
+			t.Errorf("field %q: AbsentDefault=%q, want \"true\" (default-ON-when-absent)", name, f.AbsentDefault)
+		}
+	}
+	// The default-OFF control must stay default-OFF.
+	f, ok := Field("gate.pre_commit.enabled")
+	if !ok {
+		t.Fatal("gate.pre_commit.enabled not registered")
+	}
+	if f.AbsentDefault != "" && f.AbsentDefault != "false" {
+		t.Errorf("gate.pre_commit.enabled: AbsentDefault=%q, want empty (default-off)", f.AbsentDefault)
+	}
+}
+
+// TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites carries sync-audit
+// F1 RED-first (a): a default-ON bool key that is ABSENT on disk receiving a
+// console OFF submission ("false") IS a real change — the runtime interprets
+// absent as enabled, so the value-invariant gate must WRITE it. RED on the
+// pre-fix tree: the gate skipped every absent+false submission, silently
+// swallowing the user's explicit OFF save.
+func TestApplySchemaEditsAbsentDefaultOnBoolFalseStillWrites(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedSectionFixture(t, root, "workflow") // fixture ships no todo block — key absent
+
+	if err := ApplySchemaEdits(root, map[string]string{"workflow.todo.enabled": "false"}); err != nil {
+		t.Fatalf("ApplySchemaEdits: %v", err)
+	}
+	after := readSection(t, root, "workflow")
+	if !strings.Contains(after, "enabled: false") {
+		t.Errorf("explicit OFF on default-ON absent key was silently skipped — todo.enabled not persisted:\n%s", after)
+	}
+}
+
+// TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites carries sync-audit
+// F1 RED-first (b): same polarity fix for the 24 fail-OPEN mcp.tools.<name>.enabled
+// keys. RED on the pre-fix tree.
+func TestApplySchemaEditsAbsentDefaultOnMcpFalseStillWrites(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedSectionFixture(t, root, "mcp") // fixture declares only session_list — spec_progress absent
+
+	if err := ApplySchemaEdits(root, map[string]string{"mcp.tools.spec_progress.enabled": "false"}); err != nil {
+		t.Fatalf("ApplySchemaEdits: %v", err)
+	}
+	after := readSection(t, root, "mcp")
+	if !strings.Contains(after, "spec_progress") || !strings.Contains(after, "enabled: false") {
+		t.Errorf("explicit OFF on absent mcp tool key was silently skipped — not persisted:\n%s", after)
+	}
+}
+
+// TestApplySchemaEditsAbsentDefaultOnBoolTrueIsNoOp carries sync-audit F1
+// RED-first (c): on a default-ON absent key a "true" submission equals the
+// effective default — it must be SKIPPED (no key creation), mirroring the
+// default-off gate's shape. RED on the pre-fix tree (which only skipped
+// "false" and therefore wrote the key).
+func TestApplySchemaEditsAbsentDefaultOnBoolTrueIsNoOp(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	before := seedSectionFixture(t, root, "workflow")
+
+	if err := ApplySchemaEdits(root, map[string]string{"workflow.todo.enabled": "true"}); err != nil {
+		t.Fatalf("ApplySchemaEdits: %v", err)
+	}
+	after := readSection(t, root, "workflow")
+	if after != before {
+		t.Errorf("true submission on default-ON absent key should be a no-op (absent IS enabled):\n--- before ---\n%s\n--- after ---\n%s", before, after)
+	}
+}
+
 // --- coverage reinforcement for the SPEC-WEB-WRITE-SAFETY-001 repairs ---
 
 // TestReadSeamScalarEdges covers the unreadable-target branches of
