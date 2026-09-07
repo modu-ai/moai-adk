@@ -356,6 +356,10 @@ func (e *backlogEngine) ensureLandingColumn(ctx context.Context) error {
 		if present {
 			continue
 		}
+		// SQLite cannot bind an identifier, so the table and column names are
+		// interpolated. Both are compile-time constants — table ranges over
+		// landingCarryingTables and the column is backlogLandingColumn — and
+		// NEITHER may ever be fed from a runtime value.
 		stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, backlogLandingColumn)
 		if _, err := e.db.ExecContext(ctx, stmt); err != nil {
 			return mapBacklogEngineError(

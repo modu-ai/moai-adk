@@ -78,7 +78,7 @@ func TestBacklogLanding_MigrationIsIdempotent(t *testing.T) {
 		if got := preChangeRowTuples(t, eng); got != wantPreChangeRows {
 			t.Errorf("open %d: rows =\n %s\nwant\n %s", open, got, wantPreChangeRows)
 		}
-		if got := rowCount(t, eng, "items"); got != wantRows {
+		if got := itemsRowCount(t, eng); got != wantRows {
 			t.Errorf("open %d: items row count = %d, want %d", open, got, wantRows)
 		}
 		if err := eng.close(); err != nil {
@@ -227,14 +227,15 @@ func preChangeRowTuples(t *testing.T, eng *backlogEngine) string {
 	return out
 }
 
-// rowCount reports the number of rows in a table.
-func rowCount(t *testing.T, eng *backlogEngine, table string) int {
+// itemsRowCount reports the number of rows in items. The table is fixed
+// rather than a parameter: the one caller only ever asks about items, and a
+// parameter would mean building the statement by concatenation for no gain.
+func itemsRowCount(t *testing.T, eng *backlogEngine) int {
 	t.Helper()
 	var n int
-	// The table name is a test-local literal, never user input.
 	if err := eng.db.QueryRowContext(context.Background(),
-		`SELECT count(*) FROM `+table).Scan(&n); err != nil {
-		t.Fatalf("count rows of %s: %v", table, err)
+		`SELECT count(*) FROM items`).Scan(&n); err != nil {
+		t.Fatalf("count rows of items: %v", err)
 	}
 	return n
 }
