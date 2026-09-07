@@ -23,6 +23,22 @@
 | AC-THG-007 | REQ-THG-001 (판별 증거) | (뮤턴트 오염은 **AC-THG-001 (b) 픽스처에서** 재현 가능 — 그것이 증거) | 판별식 무력화 뮤턴트가 (b) 픽스처에서 canary HOME 오염을 재현하고 (a)·(b) 단언이 모두 FAIL | invariant-guard |
 | AC-THG-008 | REQ-THG-007, 008 | (불변 대상 — 현재 상태가 기준) | 키 유도·git 가지·순수성 불변 + `~/.moai/todo` 계수 불변 | invariant-guard |
 
+
+### §D.0 REQ 커버리지 (기계 판독 형식)
+
+위 매트릭스의 「요구사항」 칸과 **같은 내용**을 `CoverageRule`이 읽는 형식으로 한 번 더 적는다. 사람이 읽는 표와 기계가 읽는 선언이 갈라지면 D21이 잡은 부류의 결함(매트릭스 행이 실제 산출 요구사항과 어긋남)이 조용히 재발하므로, **둘 다 두고 갈라지면 감사가 본다**.
+
+- AC-THG-001 maps REQ-THG-001
+- AC-THG-002 maps REQ-THG-002, REQ-THG-003
+- AC-THG-003 maps REQ-THG-005, REQ-THG-009
+- AC-THG-004 maps REQ-THG-004
+- AC-THG-005 maps REQ-THG-006, REQ-THG-007
+- AC-THG-006 maps REQ-THG-002
+- AC-THG-007 maps REQ-THG-001
+- AC-THG-008 maps REQ-THG-007, REQ-THG-008
+
+합집합은 REQ-THG-001..009 전부다 — 산출 AC 없는 요구사항은 0건이다.
+
 ---
 
 ## §D.1 AC 상세
