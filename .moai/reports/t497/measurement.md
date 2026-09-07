@@ -102,3 +102,44 @@ from BOTH paths". codex 세션의 skill roots 표가 `.agents/skills` 를 싣는
 
 - emitter 의 golden 재생성이 이 카드 밖의 `.md` 변경까지 함께 실어 나를 수 있다.
   재생성 직전 `git status` 로 반경을 확인해야 한다.
+
+---
+
+## Addendum — 미러 스킬 77파일의 분포 (같은 트리, 같은 실행)
+
+Evidence (`grep -rhoE 'AskUserQuestion|Agent\(|Task(Create|Update|List|Get)|DesignSync|Skill\(' <dir>/ | wc -l`):
+
+| 매치 | 스킬 디렉터리 |
+|---:|---|
+| 414 | moai |
+| 120 | moai-foundation-cc |
+| 105 | moai-foundation-core |
+| 21 | moai-foundation-thinking |
+| 14 | moai-meta-harness |
+| 11 | moai-harness-learner |
+| 10 | moai-workflow-spec |
+| 3 | moai-ref-react-patterns |
+| 3 | moai-ref-api-patterns |
+| 2 | moai-workflow-project |
+| 2 | moai-ref-ui-polish |
+| 2 | moai-kanban-foreman |
+| 1 | moai-ref-seo |
+| 1 | moai-ref-owasp-checklist |
+| 1 | moai-domain-html-report |
+
+합계 719. 패턴별: `Agent(` 328 · `AskUserQuestion` 270 · `Skill(` 59 · `Task*` 55 ·
+`invoke Skill(` 24 · `DesignSync` 5.
+
+**판정에 영향을 주는 분포**: 719 중 **639(89%)** 가 상위 3개 디렉터리에 몰려 있고,
+그 셋은 주제 자체가 Claude Code 인 문서다 — `moai`(오케스트레이터 스킬),
+`moai-foundation-cc`("Canonical Claude Code authoring kit"),
+`moai-foundation-core`(위임 패턴). 이들에서 `AskUserQuestion` / `Agent(` 는
+**설명 대상**이지 이 문서를 읽는 에이전트에게 내리는 행위 지시가 아니다.
+리드가 경고한 「과잉 치환이 문서를 망친다」가 정확히 여기에 해당한다.
+
+→ 미러 스킬 마일스톤은 **일괄 스윕이 아니어야 한다.** 나머지 12개 디렉터리의
+   합계는 71건뿐이고, 여기가 실제로 행위 지시가 섞여 있을 만한 다루기 쉬운 집합이다.
+
+Gap: 719건 개별 분류는 하지 않았다. 위 판단은 **분포와 세 문서의 주제**에 근거한
+scope 판단이지, 639건이 전부 산문임을 확인한 것이 아니다. 상위 3본을 범위에서
+빼려면 표본 확인이 별도로 필요하다.
