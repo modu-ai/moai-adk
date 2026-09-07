@@ -224,6 +224,75 @@ func TestT528ParenQualifier(t *testing.T) {
 	}
 }
 
+// TestT528QualifierInsideBoldWrapper — REQ-ACA-001-003 + REQ-ACA-001-004,
+// composed. Axes 3 and 4a are both declared, but plan.md §B fixes neither's
+// position relative to the other, and the corpus writes the qualifier INSIDE the
+// bold span: "**AC-CSS-001-01 (isolation-validity)** —". The closing ** then sits
+// between the qualifier and the separator rather than before the qualifier.
+//
+// This is the largest single residual class in the M2 re-measurement (53 of the
+// 134 still-rejected lines) and it is an ordering artefact of the anchor, not a
+// property of the corpus.
+func TestT528QualifierInsideBoldWrapper(t *testing.T) {
+	cases := []struct{ name, line, want string }{
+		{
+			// .moai/specs/SPEC-CODEX-SKILLCONFIG-SHAPE-001/spec.md:69
+			name: "qualifier_then_closing_bold_emdash",
+			line: "- **AC-CSS-001-01 (isolation-validity)** — Given the cell-IV capture file, When the harness runs `grep -c T504IVMARKER <iv.stdout>`, Then the count is 1.",
+			want: "AC-CSS-001-01",
+		},
+		{
+			// .moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:90 — the mirror
+			// order, qualifier AFTER the closing bold. Present so the fix widens
+			// the composition rather than swapping one accepted order for another.
+			name: "closing_bold_then_qualifier",
+			line: "- **AC-HFC-002** (REQ-HFC-001): **Given** a `PostToolUseFailure` payload with an empty top-level `Error`, **Then** the classifier reports it.",
+			want: "AC-HFC-002",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ids := t528RootIDs(t, t528Section(tc.line))
+			if !t528Has(ids, tc.want) {
+				t.Errorf("declaration not collected\n  line: %s\n  want id: %s\n  got ids: %v", tc.line, tc.want, ids)
+			}
+		})
+	}
+}
+
+// TestT528BracketQualifierStaysRejected — the boundary on the other side.
+//
+// A BRACKET qualifier ("**AC-1 [REQ-002]**:") and the "↔" separator are real
+// corpus shapes that stay rejected: plan.md §B.4 decided the qualifier set as
+// parentheses and the separator set as : — –, and admitting more would be a new
+// axis rather than the composition of two declared ones. Pinned as a test so the
+// boundary is drawn rather than asserted, and so a later card that decides to
+// widen it has to delete this case deliberately.
+func TestT528BracketQualifierStaysRejected(t *testing.T) {
+	cases := []struct{ name, line, unwanted string }{
+		{
+			// .moai/specs/SPEC-DB-CMD-001/spec.md:195 — 17 lines of this shape
+			name:     "bracket_qualifier",
+			line:     "- **AC-1 [REQ-002]**: `internal/template/templates/.claude/commands/moai/db.md` 파일이 존재한다.",
+			unwanted: "AC-1",
+		},
+		{
+			// .moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:223 — 8 lines
+			name:     "leftright_arrow_separator",
+			line:     "- AC-GM-001 ↔ REQ-GM-001 + REQ-GM-007: legacy EARS REQs continue to pass `moai spec lint` (non-strict)",
+			unwanted: "AC-GM-001",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ids := t528RootIDs(t, t528Section(tc.line))
+			if t528Has(ids, tc.unwanted) {
+				t.Errorf("out-of-axis shape was collected\n  line: %s\n  ids: %v", tc.line, ids)
+			}
+		})
+	}
+}
+
 // TestT528ParenQualifierLeavesREQMappingAlone — AC-ACA-001-008, second clause.
 //
 // A "(REQ-001)" qualifier is not the "maps REQ-..." form ExtractRequirementMappings
