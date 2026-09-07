@@ -506,6 +506,18 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// inside the helper.
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
 
+	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
+	// .agents/skills mirror. Both of its producers live inside Deploy, which
+	// the version-match branch of runTemplateSyncWithProgress returns before
+	// reaching — so without this call a deleted mirror is permanent for a
+	// version-matched project. Deliberately BESIDE the early return, at the
+	// same position as the wiring refresh above and for the same reason: the
+	// repair does not depend on a template redeploy, and the optimization
+	// stays exactly where it is (C-2). Existence-gated on the project's
+	// recorded template_version, so a pre-mirror project gets nothing created
+	// (C-1).
+	repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())
+
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled
 	// merge), the legacy-skill archive check MUST also be short-circuited.
