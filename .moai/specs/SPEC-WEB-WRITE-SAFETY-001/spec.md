@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-WRITE-SAFETY-001
 title: "moai web 쓰기 안전성 — 무저장 재기록 차단, 쓰기 범위 한정, 포맷 충실도 보존"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -19,6 +19,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-WEB-CONSOLE-010, SPEC-GITSTRATEGY-SAV
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.1 | 2026-09-07 | manager-spec | plan-audit iter-1 (FAIL 0.88) 정정. **D1(차단)** — REQ-WWS-008 신설로 측정-선결 의무를 요구 계층에 앵커(§5→acceptance→§4 순환 참조 해소), §D/§D.3 매핑 갱신. **D2** — plan.md M4 무조건 재기록 exemplar를 5섹션으로 정정(manager.go:187/192/197/202/224) + M2에 6종 판별 증거 항목 추가 + spec.md C3를 5종 일반화로 정정. **D3** — AC-WWS-002 GET 열거에 `/static/` 추가 + §D.2에 glmkey reveal·static edge 추가. **D4** — REQ-WWS-001 허용 예외를 닫힌 4라우트 목록 + 사용자 개시 판별 기준으로 교체. |
 | 0.1.0 | 2026-09-07 | manager-spec | 최초 draft. 카드 t517 (Class B — 결함, 원인 미특정, 조사-선결 구조). 리드 실측 관측 2건 + 미귀속 관측 1건을 전제로, 수리(M4)를 첫 측정 2건(M-a 쓰기 경로 귀속, M-b gate 우회·seam 충실도 원인) 뒤에 배치. 코드 근거 9곳 plan-phase 직접 확인(트리 `0b1e27877`). |
 
 ---
@@ -50,7 +51,7 @@ related_specs: [SPEC-WEB-CONSOLE-011, SPEC-WEB-CONSOLE-010, SPEC-GITSTRATEGY-SAV
 |---|------|------|----------|
 | C1 | `ConfigManager.Save()`는 6종(user/language/quality/git-convention/git-strategy/llm)을 기록하며 **feedback.yaml은 저장 목록에 없다** — feedback.yaml의 기록 주체는 `Save()` 밖의 별도 경로(yamlpatch seam 경로 추정)다 | `internal/config/manager.go:171-233` | 직접 판독 |
 | C2 | git-strategy.yaml dirty-gate: `gitStrategyDirty \|\| absent`일 때만 재기록 | `internal/config/manager.go:206-221, 230` | 직접 판독 |
-| C3 | llm.yaml은 gate 없이 매 `Save()` 재기록 | `internal/config/manager.go:223-226` | 직접 판독 |
+| C3 | `Save()`의 무조건 재기록 대상은 5종 — user.yaml(`:187`), language.yaml(`:192`), quality.yaml(`:197`), git-convention.yaml(`:202`), llm.yaml(`:224`); gated는 git-strategy(C2)뿐이다 | `internal/config/manager.go:171-233` | 직접 판독 |
 | C4 | `handleSave`(POST /save)는 쓰기를 9개 seam에서 순차 수행(writePreferences → recordLastProfile(advisory) → syncToProject → writeProjectConfig → writeProjectNestedConfig → applySchemaEdits → applyPerfTierEdits → patchAgentFM → glmcred.Save)하며, 후행 단계 실패 시 선행 쓰기를 롤백하지 않는다(에러 배너로 문서화된 동작). 단일 파일 쓰기는 temp+rename 원자적 | `internal/web/handlers.go:350-558` | 직접 판독 |
 | C5 | 편집 가능 표면은 typed 2종(git-strategy, llm) + seam 전용 6종; feedback은 `RouteSeam`으로 seam-writable 재개됨 | `internal/web/projectconfig.go:160-164`, `internal/settings/sectionroute.go:92-99` | 직접 판독 |
 | C6 | `r.PostFormValue`/`r.PostForm[f.Name]`은 동일 name 다중 제출 시 첫 값만 반환 — 파서는 중복을 인지하지 못한다 | `internal/web/schemaform.go:320-352` | 직접 판독 |
@@ -80,7 +81,7 @@ M-a가 이 중 실제 경로를 특정한다. 본 SPEC은 어느 가설도 단�
 
 ### §2.1 쓰기 시점 (write timing)
 
-**REQ-WWS-001 (Ubiquitous):** The `moai web` console shall not write any file under `.moai/config/` to disk in the absence of a user-initiated explicit write action (POST `/save` submission, `/profile/create`·`/profile/delete`·`/profile/rename` submission 등의 사용자 개시 쓰기).
+**REQ-WWS-001 (Ubiquitous):** The `moai web` console shall not write any file under `.moai/config/` to disk in the absence of a user-initiated explicit write action. 허용 예외는 닫힌 목록으로 한정한다 — POST `/save` 제출, `/profile/create` 제출, `/profile/delete` 제출, `/profile/rename` 제출(라우트 테이블 C8의 변경 라우트 중 쓰기 동작과 결부된 4개; `/__shutdown__`·glmkey reveal은 config를 기록하지 않으므로 예외가 아니다). **판별 기준**: 콘솔 자신의 렌더·폴링·htmx 자동 트리거(`hx-trigger="load"` 등)가 사용자 개입 없이 발화하는 요청은, 대상이 변경 라우트여도 사용자 개시로 인정하지 않는다.
 
 **REQ-WWS-002 (When):** When 사용자가 `moai web`을 기동하고 페이지를 탐색만 하면(Save 제출 없음, 종료 포함), the web console shall 기동·렌더·폴링·종료 전 과정에서 `.moai/config/` 하위의 git 추적 파일을 내용상 byte-동일하게 유지한다.
 
@@ -101,6 +102,10 @@ M-a가 이 중 실제 경로를 특정한다. 본 SPEC은 어느 가설도 단�
 ### §2.5 회귀 가드
 
 **REQ-WWS-007 (Ubiquitous):** The web write paths shall be covered by regression tests that detect the "config written without an explicit save" defect. Each absence-guard test shall be demonstrated RED on the defective code (RED-first) and shall be shown to catch a defect-reintroducing mutant (mutant verification). 셀 구조와 4요소(커맨드·출력·exit code·트리 SHA)는 acceptance.md §D와 `verification-completeness.md` §2를 따른다.
+
+### §2.6 측정-선결 의무 (Class B 게이트)
+
+**REQ-WWS-008 (When):** When a repair to the web write paths (plan.md M4) is designed or implemented, the repair shall cite the two first-measurement conclusions — M-a (write-path attribution: which code path writes without an explicit save) and M-b (the git-strategy dirty-gate bypass mechanism and the feedback.yaml seam blank-line loss cause) — and no repair code shall be authored before both measurements are complete. 각 측정은 커맨드 + 관측 출력 + 트리 SHA로 progress.md §E.2에 귀속된다.
 
 ---
 
@@ -151,7 +156,7 @@ M-a가 이 중 실제 경로를 특정한다. 본 SPEC은 어느 가설도 단�
 acceptance.md의 AC 매트릭스가 유일한 판정 기준이다. 요약:
 
 1. 실물 재현(RED)이 격리 트리에서 관측되고, 그 증거가 커맨드·출력·exit code·트리 SHA 4요소로 귀속된다.
-2. 첫 측정 2건(M-a 쓰기 경로 귀속, M-b gate 우회·seam 충실도 원인)이 수리 설계에 선행한다.
+2. 첫 측정 2건(M-a 쓰기 경로 귀속, M-b gate 우회·seam 충실도 원인)이 수리 설계에 선행한다(REQ-WWS-008).
 3. 모든 부재-가드 AC가 RED-first + 뮤턴트 포착으로 채택된다.
 4. 수리 후 같은 재현 절차가 GREEN이고, 비편집 섹션은 diff 없음이다.
 

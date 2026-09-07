@@ -19,7 +19,7 @@ RED-now 셀: M1 실물 재현에서 **커맨드 + 그 출력(verbatim) + exit co
 ### AC-WWS-002 — GET/탐색 라우트 전부 무쓰기 [부재-가드 · RED-first 필수 · 뮤턴트 필수]
 
 - **Given** 격리 트리와 스냅샷이 준비돼 있고
-- **When** GET 라우트 전부(`/`, `/kanban`, `/monitor`, `/todo`, `/settings`, `/specs`, `/events`)를 순회 요청하면
+- **When** GET 라우트 전부(`/`, `/kanban`, `/monitor`, `/todo`, `/settings`, `/specs`, `/events`, `/static/` — 및 라우트 테이블 `internal/web/app.go`의 기타 전 GET 표면)을 순회 요청하면
 - **Then** 어떤 요청도 `.moai/config/**` 쓰기를 유발하지 않는다(스냅샷과 diff 0행).
 
 ### AC-WWS-003 — 저장 시 비편집 섹션 무변경 [범위 · RED-first 필수]
@@ -62,11 +62,11 @@ RED 근거: O1의 빈 줄 삭제가 결함 형태다. M1/M3에서 본 카드가 
 
 **못 잡은 뮤턴트도 남긴다** — 포착 실패 기록은 그 가드의 경계를 그리는 문서다(공허한 초록 방지).
 
-### AC-WWS-008 — M-a/M-b 측정 귀속 [귀속 · major]
+### AC-WWS-008 — M-a/M-b 측정 귀속과 측정-선결 [귀속/게이트 · major]
 
-- **Given** M-a(쓰기 경로 귀속)와 M-b(gate 우회·seam 충실도 원인) 측정이 완료되면
-- **When** 수리(M4)가 설계될 때
-- **Then** 각 측정은 커맨드 + 관측 출력 + 트리 SHA가 progress.md §E.2에 귀속돼 있고, 수리 설계가 그 결론을 인용한다.
+- **Given** REQ-WWS-008(측정-선결)에 따라 M-a(쓰기 경로 귀속)와 M-b(gate 우회·seam 충실도 원인) 측정이 완료됐고
+- **When** 수리(M4)가 설계·구현될 때
+- **Then** 수리는 두 측정의 결론을 인용하며, 각 측정은 커맨드 + 관측 출력 + 트리 SHA로 progress.md §E.2에 귀속돼 있다. 두 측정 완료 전에 작성된 수리 코드는 본 AC 위반이다.
 
 ---
 
@@ -81,7 +81,7 @@ RED 근거: O1의 빈 줄 삭제가 결함 형태다. M1/M3에서 본 카드가 
 | AC-WWS-005 | REQ-WWS-005 | 충실도 | blocking | **필수 (M1/M3)** | 권장 | golden round-trip |
 | AC-WWS-006 | REQ-WWS-006 | 파서 | major | 필수 | 필수 | 중복 폼 POST |
 | AC-WWS-007 | REQ-WWS-007 | 가드 품질 | blocking | — | (본 AC가 뮤턴트 검증) | 뮤턴트 실행 기록 |
-| AC-WWS-008 | §4 측정 귀속 | 귀속 | major | — | — | progress.md §E.2 검사 |
+| AC-WWS-008 | REQ-WWS-008 | 귀속/게이트 | major | — | — | progress.md §E.2 검사 + 수리 설계의 측정 결론 인용 확인 |
 
 "권장" 뮤턴트(003/005)도 수행이 가능하면 수행하고 기록한다. 미수행 시 사유를 progress.md §E.2에 남긴다.
 
@@ -101,6 +101,7 @@ RED는 "올바른 이유로" red여야 한다 — 무저장 쓰기가 관측돼�
 - **재현 3단계 판별**: (a) 기동만(브라우저 미접속) / (b) 페이지 렌더 / (c) 탐색·폴링 유지 — 어느 단계가 쓰는지가 M-a의 1차 판별 증거다.
 - **`/__shutdown__` POST**: 쓰기 라우트이므로 무저장 쓰기 금지 대상에 포함해 확인한다.
 - **profile create/delete/rename**: 명시적 동작이므로 허용되지만, 이들이 `.moai/config/` 섹션 파일을 건드리지 않는지 확인한다(profile store는 config 밖).
+- **`/static/`·glmkey reveal**: config 쓰기와 무관 표면 — AC-WWS-002 순회에 `/static/`이 포함되고 glmkey reveal도 무쓰기임을 함께 확인한다(REQ-WWS-001 예외 목록에서도 제외 근거).
 - **값 불변 저장**: 동일 값 재제출 시에도 섹션 파일이 재기록되면 mtime만 바뀌고 내용은 같다 — 본 SPEC의 판정은 내용 기준 byte-동일(git diff 없음)이며 mtime을 기준으로 삼지 않는다.
 - **테스트 격리**: 모든 테스트 fixture는 `t.TempDir()` 아래에 생성한다(프로젝트 루트 오염 금지).
 
@@ -115,6 +116,7 @@ RED는 "올바른 이유로" red여야 한다 — 무저장 쓰기가 관측돼�
 | REQ-WWS-005 (포맷 충실도) | AC-WWS-005 |
 | REQ-WWS-006 (중복 폼값) | AC-WWS-006 |
 | REQ-WWS-007 (회귀 가드) | AC-WWS-001..006 전체 + AC-WWS-007 |
+| REQ-WWS-008 (측정-선결) | AC-WWS-008 |
 
 REQ-WWS 전체가 AC 매핑을 가진다. 누락 없음.
 

@@ -84,6 +84,7 @@ run-phase 종료 시 다음을 보여야 한다:
   3. CLI 래퍼 기동 접촉 — `moai web` 기동 경로(strace류 관측 또는 코드 추적)로 config 파일 개방/기록 확인
   4. 외부 동시 작성자 — 재현 중 다른 세션 활동 기록과 대조, 배제 불가하면 blocker report
 - **llm.yaml 귀속(O2) 포함**: primary checkout llm.yaml 기록의 작성 시각대와 사용자 활동(콘솔 Save 유무)을 대조해 C3 기제와 일치하는지 판정. primary에는 쓰지 않고 기록·관측만.
+- **6종 판별 증거(D2)**: 무저장 재현 결과 `Save()` 6종 섹션(user/language/quality/git-convention/git-strategy/llm) 중 어느 파일이 **내용 변경**됐는지 판별해 기록한다. O1은 git-strategy·feedback 2종만 내용 변경임을 시사 — 무조건 5종이 함께 기록됐는가(내용 동일 round-trip 여부 포함)가 "전체 `Save()` 통과 vs 부분 경로만 통과"를 가르는 교차 판별점이며, 이 판별 없이는 M-a 귀속이 과소 특정될 수 있다.
 - 산출: 쓰기 경로 특정 보고서(커맨드+출력+트리 SHA 귀속). M4는 이 결론을 인용해서만 설계한다.
 - **[HARD] 이 측정이 완료되기 전까지 어떤 수리 코드도 작성하지 않는다.**
 
@@ -97,7 +98,7 @@ run-phase 종료 시 다음을 보여야 한다:
 ### M4 — 수리 (Priority High, M2+M3 완료 후에만 착수)
 
 - **쓰기 시점 게이트** (가장 바뀔 가능성이 큰 설계 결정 — 먼저 검토): M-a로 특정된 경로가 명시적 저장 동작 없이는 `.moai/config/**`에 쓰지 않도록 차단. 구현 형태(게이트 위치·방식)는 M-a/M-b 결론에 따라 확정 — 본 plan은 형태를 미리 못박지 않는다.
-- **쓰기 범위 최소화**: 값 불변 섹션 재기록 제거(REQ-WWS-003). C3(llm.yaml 무조건) 포함.
+- **쓰기 범위 최소화**: 값 불변 섹션 재기록 제거(REQ-WWS-003). 무조건 재기록 exemplar는 llm.yaml 단독이 아니라 **5섹션 전부** — user.yaml(`manager.go:187`), language.yaml(`:192`), quality.yaml(`:197`), git-convention.yaml(`:202`), llm.yaml(`:224`); git-strategy만 gated 6번째다(C2).
 - **포맷 충실도**: M-b로 특정된 seam 빈 줄 삭제 지점 수리 + golden round-trip으로 키 순서·주석·unknown key 보존 확인.
 - **파서 중복 인지**: `schemaform.go`의 중복-값 무지 수리(거부 또는 문서화된 규칙). t509 패널에는 접촉하지 않는다.
 - 완료 판정: M1과 동일한 재현 절차가 GREEN, 비편집 섹션 diff 없음, git-strategy 게이트 계약 회복.
