@@ -1,0 +1,20 @@
+--- FAIL: TestOrchestrator_Update_RollbackAlsoFails (0.00s)
+panic: REACHPROBE [recovered, repanicked]
+
+goroutine 131 [running]:
+testing.tRunner.func1.2({0x102e83980, 0x102f49c30})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x102e83980?, 0x102f49c30?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/update.(*orchestratorImpl).Update(0x382b61985f08, {0x102619278?, 0x382b61985ed8?})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/update/orchestrator.go:55 +0x1d4
+github.com/modu-ai/moai-adk/internal/update.TestOrchestrator_Update_RollbackAlsoFails(0x382b616fa488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/update/orchestrator_test.go:207 +0x19c
+testing.tRunner(0x382b616fa488, 0x102f47418)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/update	0.561s
+FAIL
