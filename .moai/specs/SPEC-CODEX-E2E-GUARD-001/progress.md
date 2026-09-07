@@ -108,7 +108,7 @@ code is untouched, so statement denominators are identical and only test-side co
 
 ```yaml
 run_complete_at: "2026-09-07"
-run_commit_sha: "pending-backfill-run"   # single run-phase commit; backfill after landing
+run_commit_sha: "667509ac9"   # single run-phase commit; backfilled after landing
 run_status: "complete"
 ac_pass_count: 6        # AC-CEG-001/002/003/005/006/007
 ac_fail_count: 0        # AC-CEG-004 is sync-owned (spec.md §F verdict), not a run-phase fail
@@ -128,7 +128,7 @@ m1_to_mN_commit_strategy: "single run-phase commit carrying M1-M5 (evidence-firs
 
 ```yaml
 sync_complete_at: "2026-09-07"
-sync_commit_sha: "pending-backfill-sync"   # canonical D3 placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+sync_commit_sha: "2d98654af"   # resolved from the pending-backfill-sync placeholder (a commit cannot cite its own SHA)
 sync_status: "complete"
 b12_self_test_a_duplicate_gate: "grep -c 'SPEC-CODEX-E2E-GUARD-001' CHANGELOG.md → 0 (pre-emission), entry emitted once"
 b12_self_test_b_ac_count: "acceptance.md live AC identifiers: 8 (AC-CEG-001..007 + AC-CL-007 cross-ref to SPEC-CODEX-LAUNCHER-001); CHANGELOG entry states 7/7 AC-CEG matrix with AC-CL-007 cross-referenced, no double-claim"
