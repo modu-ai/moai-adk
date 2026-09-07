@@ -272,7 +272,7 @@ branch_pushed: false                   # lane does not push its branch and does 
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the next commit
+sync_commit_sha: 7a16df6605ac7958891473090358939b31d89c9d   # the sync commit; written as pending-backfill-sync there (a commit cannot cite its own hash) and backfilled here
 sync_status: complete
 b12_self_test_a: pass                    # grep -c 'SPEC-UPDATE-MIRROR-HEAL-001' CHANGELOG.md -> 0 before emission
 b12_self_test_b: pass                    # distinct AC ids in acceptance.md -> 17; the entry states 17 (AC-UMH-001..017)
