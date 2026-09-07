@@ -2,7 +2,7 @@
 id: SPEC-CODEX-GHOST-SKILLS-PRUNE-001
 title: "유령이 된 [[skills.config]] 등록을 지우는 동사 — 지울 수 있는 것만 지우고, 판정이 안 서면 손대지 않는다"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

@@ -145,4 +145,32 @@ evidence_path: .moai/reports/t506/run-evidence.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다 — 후속 커밋에서 백필
+sync_status: complete
+b12_self_test_a: pass                    # grep -c 'SPEC-CODEX-GHOST-SKILLS-PRUNE-001' CHANGELOG.md → 0 (중복 없음)
+b12_self_test_b: pass                    # acceptance.md 고유 AC 17개 == CHANGELOG 가 주장하는 17개
+b12_self_test_c: pass                    # CHANGELOG 가 인용한 파일 경로 6개 전부 ls 로 확인
+changelog_entry_position: "[Unreleased] > Added, 첫 항목"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (단일 sync 커밋에 병합)"
+  plan_md: "해당 없음 — status 축에서 stateless (spec-frontmatter-schema.md § Artifact Statelessness)"
+  acceptance_md: "해당 없음 — status 축에서 stateless"
+  progress_md: "해당 없음 — frontmatter 블록 없음, 본문 절로 진행을 기록"
+mx_tag_validation:
+  ran_as: "sync 하위 단계"
+  deletion_guard_annotated: true         # judgeCodexSkillEntry 에 @MX:WARN + @MX:REASON (codex_skills_prune.go:57-58)
+  anchor_required: false                 # ParseSkillEntries fan-in = 2 (doctor_codex.go, codex_skills_prune.go) — @MX:ANCHOR 의무 문턱 3 미만
+  tags_added_this_phase: 0
+docs_sync:
+  docs_site_4locale: true                # docs-site/content/{en,ko,ja,zh}/utility-commands/moai-clean.md — 4개 파일 전부 289줄, `##` 헤딩 23개로 동일
+  readme_4locale: true                   # README{,.ko,.ja,.zh}.md CLI 표의 `moai clean` 행
+  hugo_build: "exit 0, 경고 없음"
+canary_compliance_check: "해당 없음 — 이 SPEC 은 자기 sync 가 시험할 전향적 정책을 정의하지 않는다"
+verdict_path: .moai/reports/t506/verdict.md
+```
+
+### 이 SPEC 에서 `moai spec lint` 초록의 범위 (재확인)
+
+`moai spec lint` 가 `No findings` 를 내더라도 그 초록이 덮는 것은 **frontmatter 축과 REQ id 축뿐이다.** `internal/spec/lint.go:790` 의 `isModalityMalformed` 는 `WHEN `/`WHILE `/`WHERE `/`IF `/`THE ` 라는 영문 접두사에만 반응하므로 한국어 REQ 본문에 대해 무조건 false 를 돌려주고, 따라서 **GEARS 모달리티 축에서 이 SPEC 의 린트 초록은 공허하다.** sync 단계에서도 그 초록을 모달리티 준수의 근거로 인용하지 않았다 — 그 축은 plan-audit 3회차가 사람이 읽어 판정한 것이다(§E.1 의 [HARD] 절).
