@@ -43,7 +43,7 @@ m1_to_mn_commit_strategy: per-milestone commits (M1 e7d2a1658, M2 6ae337e60, M3 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: complete
-sync_commit_sha: pending-backfill-sync (backfill owed — a commit cannot cite its own SHA; backfilled in the follow-up commit per spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_commit_sha: 9da07ac65 (backfilled — sync commit SHA)
 b12_self_test_a: SPEC-ID pre-emission grep count = 0 (safe to emit; rc=1, no prior entry)
 b12_self_test_b: AC count match — acceptance.md distinct AC identifiers = 13, CHANGELOG entry references the 13-AC close (run report: ac_pass_count 13 / ac_fail_count 0, read from .moai/reports/t503/run-evidence.md)
 b12_self_test_c: file-path verification — CHANGELOG-named paths (`internal/template/commandemit`, `.agents/skills/moai-<command>/SKILL.md`, `templates/.gitignore`, root `.gitignore`) confirmed present on this tree
