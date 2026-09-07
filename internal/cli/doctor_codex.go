@@ -51,6 +51,45 @@ const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
 // user opts in explicitly.
 const initCodexAdvice = "run moai init --agent codex"
 
+// halfWiredSummary names the half-wired state: the project carries Codex
+// agent definitions but no wiring file. `moai init` deploys the definitions
+// with or without the --agent codex opt-in, so this is what a plain init
+// leaves behind — which is why the state needed a name of its own rather
+// than being folded into "not wired" (SPEC-CODEX-PARTIAL-WIRING-001).
+const halfWiredSummary = "codex agent definitions present, no wiring files"
+
+// halfWiredAbsentMessage is the WHOLE Message of the half-wired branch on a
+// machine without codex. It is a fixed literal because nothing about it
+// varies per project: the paths are evidence and ride in Detail, and the
+// count of definitions is deliberately not a discriminant input
+// (REQ-CPW-005).
+//
+// It carries NO action directive on purpose. The only remedy needs a codex
+// this machine does not have, and an instruction the reader cannot execute
+// is nagging rather than guidance (REQ-CPW-009) — the un-nagging invariant
+// this check has held since it was written.
+const halfWiredAbsentMessage = halfWiredSummary + " — codex not on PATH"
+
+// mirrorRedeployAdvice is the skill-mirror action directive
+// (SPEC-CODEX-MIRROR-DOCTOR-001 §4). The FORCED form is deliberate: the
+// routine `moai update --yes` was measured to leave a deleted mirror at zero
+// entries on a version-matched project, because the version-match
+// short-circuit returns before the deploy step that owns mirror creation.
+// This exact invocation restored it (root-cause.md Claim 2).
+const mirrorRedeployAdvice = "run moai update --templates-only --force --yes"
+
+// mirrorSkillsRelDir / canonicalSkillsRelDir are the mirror layout.
+//
+// They restate the producer's paths as literals rather than importing them:
+// package template's own mirrorSkillsRelDir and mirrorLinkTarget are
+// unexported, and exporting them is outside this SPEC's scope. The drift risk
+// that follows — the producer moving its layout without this reader noticing —
+// is recorded rather than closed, and is a candidate for its own card.
+var (
+	mirrorSkillsRelDir    = filepath.Join(".agents", "skills")
+	canonicalSkillsRelDir = filepath.Join(".claude", "skills")
+)
+
 // codexHomeConfigDisplay / codexHomeConfigEnvDisplay are how the user-layer
 // config is NAMED in a finding summary. The symbolic form keeps the summary
 // inside the width band; the exact resolved path rides in Detail, where the
@@ -93,11 +132,31 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	_, codexPathErr := codexWiringLookPath("codex")
 	codexInstalled := codexPathErr == nil
 
+	// A project can carry Codex agent definitions and no wiring file at all:
+	// that is exactly what a plain `moai init` leaves behind. Reading only
+	// the two wiring files gave that state no branch of its own, so it was
+	// reported as "not wired (claude-only project)" — a sentence contradicted
+	// by the definitions sitting on disk (REQ-CPW-004).
+	halfWired := !wired && codexAgentDefinitionsExist(root)
+
 	if !wired && !codexInstalled {
+		check.Status = uikit.CheckOK
+		if halfWired {
+			// Informational, never a warning. Raising this to Warn would put
+			// a permanent warning row in front of every claude-only user,
+			// because plain init gives every project these definitions —
+			// the outcome the un-nagging invariant exists to prevent
+			// (spec §D-1). The user-layer skill sweep below is deliberately
+			// NOT reached: Codex is not in play on this machine, and a
+			// finding from a config Codex never reads here would be the same
+			// nagging by another route (REQ-CPW-011).
+			check.Message = halfWiredAbsentMessage
+			check.Detail = halfWiredDetail()
+			return check
+		}
 		// Claude-only project on a claude-only machine: nothing about Codex
 		// is in play, so the check stays silent. This is the un-nagging
 		// invariant — it must survive every addition below.
-		check.Status = uikit.CheckOK
 		check.Message = "not wired (claude-only project) — skipped"
 		return check
 	}
@@ -118,12 +177,21 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		// were inspected, so this says nothing about whether the user-layer
 		// config registers the MoAI server — asserting a machine-wide "not
 		// registered" from a project-local absence is an unobserved premise.
-		problems = append(problems, codexFinding{
-			summary: "codex installed, project not wired — " + initCodexAdvice,
-			detail: fmt.Sprintf(
-				"codex resolves on PATH but this project declares no Codex wiring (%s and %s are both absent), so this project registers no MoAI MCP server and the generated hooks cannot fire here; %s",
-				codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice),
-		})
+		//
+		// The half-wired variant narrows the PREMISE rather than rewriting
+		// the sentence: "project not wired" stays true, and stays the
+		// wording, for a project that carries no Codex anything. Where the
+		// agent definitions ARE present, the state gets its own name and the
+		// directive — executable here, since codex resolves — rides along.
+		summary := "codex installed, project not wired — " + initCodexAdvice
+		detail := fmt.Sprintf(
+			"codex resolves on PATH but this project declares no Codex wiring (%s and %s are both absent), so this project registers no MoAI MCP server and the generated hooks cannot fire here; %s",
+			codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice)
+		if halfWired {
+			summary = halfWiredSummary + " — " + initCodexAdvice
+			detail = halfWiredDetail() + "; " + initCodexAdvice
+		}
+		problems = append(problems, codexFinding{summary: summary, detail: detail})
 	} else {
 		// hooks.json: presence, whitelist validity, sidecar divergence.
 		if hooksErr != nil {
@@ -181,6 +249,21 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)"))
 			}
 		}
+
+		// Skill mirror. `.agents/skills` is what makes the MoAI skill catalog
+		// reachable from Codex CLI, which does not scan `.claude/skills`. It
+		// is created at deploy time only, and its outcome is consumed only by
+		// the two deploy-time notice callers — so on a version-matched project
+		// a missing or broken mirror is invisible and self-perpetuating, and
+		// nothing but this row surfaces it.
+		//
+		// Inspected in the WIRED branch only (REQ-CMD-008). The unwired branch
+		// already carries initCodexAdvice, whose deploy creates the mirror; a
+		// second directive there would double-nag a project that never opted
+		// in.
+		mirrorProblems, mirrorDetail := codexMirrorObservations(inspectSkillMirror(root))
+		problems = append(problems, mirrorProblems...)
+		extraDetail = append(extraDetail, mirrorDetail...)
 	}
 
 	// User-layer skill registrations. Reached only when Codex is in play at
@@ -206,10 +289,205 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	return check
 }
 
+// codexAgentDefinitionsExist reports whether the project declares at least
+// one Codex agent definition file under .codex/agents/.
+//
+// The question is EXISTENCE, never count. How many definitions the template
+// ships is a template fact that a single edit changes, so a discriminant
+// keyed on that number goes quietly wrong the day the template grows — the
+// walk therefore stops at the first regular file (REQ-CPW-005).
+//
+// Fail-open in every direction, like the rest of this check: an absent or
+// unreadable directory yields false, so a permission error never
+// manufactures a finding. The function READS only.
+func codexAgentDefinitionsExist(root string) bool {
+	var found bool
+	_ = filepath.WalkDir(filepath.Join(root, codexwiring.AgentsRelPath),
+		func(_ string, d fs.DirEntry, err error) error {
+			if err != nil {
+				// An unreadable entry says nothing about whether a
+				// definition exists — skip it rather than decide on it.
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			found = true
+			return fs.SkipAll
+		})
+	return found
+}
+
+// halfWiredDetail is the evidence behind a half-wired verdict: what the
+// project WAS found to carry and what it was found to lack, each named by
+// path. Evidence belongs in Detail — Message carries the verdict, and naming
+// three paths there is what pushed this row past the panel width before.
+func halfWiredDetail() string {
+	return fmt.Sprintf(
+		"this project carries Codex agent definitions under %s but declares no Codex wiring (%s and %s are both absent), so it registers no MoAI MCP server and the generated hooks cannot fire here",
+		codexwiring.AgentsRelPath, codexwiring.HooksRelPath, codexwiring.ConfigRelPath)
+}
+
 // plainCodexFinding is a finding whose full text is already short enough to
 // ride in Message unchanged.
 func plainCodexFinding(text string) codexFinding {
 	return codexFinding{summary: text, detail: text}
+}
+
+// skillMirrorState is what one read of `.agents/skills` observed.
+//
+// The state model is deliberately separate from the finding/detail split that
+// consumes it: WHICH states warrant a Message finding is the decision most
+// likely to be revisited, so it lives one call site away (plan.md §D M1).
+//
+// dirPresent and dirIndeterminate are distinct on purpose. "I read the
+// directory and it is not there" and "I could not read the directory" are
+// different observations, and only the first may raise the absent finding —
+// an unobserved absence is never reported as absent (REQ-CMD-010).
+type skillMirrorState struct {
+	dirPresent       bool
+	dirIndeterminate bool
+	dirReadErr       error
+	dangling         []string
+	copyMode         int
+	unmirrored       int
+	indeterminate    int
+}
+
+// inspectSkillMirror reads the mirror at root and returns what it observed.
+// It READS only — no create, repair, replace, or remove, on any path
+// (REQ-CMD-002). Every read error folds into an indeterminate count and never
+// into a count that drives a finding.
+func inspectSkillMirror(root string) skillMirrorState {
+	var st skillMirrorState
+
+	mirrorDir := filepath.Join(root, mirrorSkillsRelDir)
+	entries, err := os.ReadDir(mirrorDir)
+	switch {
+	case err == nil:
+		st.dirPresent = true
+	case errors.Is(err, fs.ErrNotExist):
+		// Genuinely absent: the one state that may raise the absent finding.
+		return st
+	default:
+		// Permission denied, a symlink loop, an I/O error: the mirror's state
+		// is indeterminate, NOT absent.
+		st.dirIndeterminate = true
+		st.dirReadErr = err
+		return st
+	}
+
+	mirrored := make(map[string]struct{}, len(entries))
+	for _, e := range entries {
+		mirrored[e.Name()] = struct{}{}
+		entryPath := filepath.Join(mirrorDir, e.Name())
+
+		info, lerr := os.Lstat(entryPath)
+		if lerr != nil {
+			st.indeterminate++
+			continue
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			if info.IsDir() {
+				// The copy fallback's materialization. Functional, and the
+				// expected shape wherever symlink creation is unavailable.
+				st.copyMode++
+			}
+			// A regular file occupying a mirror path is a shape no
+			// requirement classifies; counting it as anything would assert
+			// something this check has no basis for.
+			continue
+		}
+		// Stat follows the link, resolving the producer's RELATIVE link body
+		// against the mirror directory exactly as the OS does for Codex.
+		_, serr := os.Stat(entryPath)
+		switch {
+		case serr == nil:
+		case errors.Is(serr, fs.ErrNotExist):
+			st.dangling = append(st.dangling, e.Name())
+		default:
+			st.indeterminate++
+		}
+	}
+
+	canonical, cerr := os.ReadDir(filepath.Join(root, canonicalSkillsRelDir))
+	if cerr != nil {
+		if !errors.Is(cerr, fs.ErrNotExist) {
+			st.indeterminate++
+		}
+		return st
+	}
+	for _, e := range canonical {
+		if !e.IsDir() {
+			continue
+		}
+		if _, ok := mirrored[e.Name()]; !ok {
+			st.unmirrored++
+		}
+	}
+	return st
+}
+
+// codexMirrorObservations splits an observed mirror state into the two
+// registers: findings that reach Message, and detail-only counts that reach
+// Detail alone.
+//
+// Two states are findings, and only two. An absent mirror means Codex sees no
+// MoAI skills at all, and a dangling entry claims a skill that is not there —
+// both mechanically decidable, both unrepaired between deploys.
+//
+// Copy-mode and unmirrored counts are reported and never warned. Copy mode is
+// the CORRECT materialization on a symlink-less host, so warning on it would
+// hand those users a permanent row for a working mirror. And the denominator
+// an unmirrored finding would need — the set of skills a deploy actually
+// mirrored — is not observable from here, so a count-based finding would warn
+// on a project carrying locally-authored skills that no deploy ever touched.
+func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
+	var problems []codexFinding
+	var detail []string
+
+	switch {
+	case st.dirIndeterminate:
+		detail = append(detail, fmt.Sprintf(
+			"%s could not be read (%v) — mirror state not checked, and NOT reported as absent",
+			mirrorSkillsRelDir, st.dirReadErr))
+		return problems, detail
+	case !st.dirPresent:
+		problems = append(problems, codexFinding{
+			summary: fmt.Sprintf("%s mirror absent — %s", mirrorSkillsRelDir, mirrorRedeployAdvice),
+			detail: fmt.Sprintf(
+				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time only, and a routine `moai update` on a version-matched project does not restore it, so %s",
+				mirrorSkillsRelDir, canonicalSkillsRelDir, mirrorRedeployAdvice),
+		})
+		return problems, detail
+	}
+
+	if n := len(st.dangling); n > 0 {
+		problems = append(problems, codexFinding{
+			summary: fmt.Sprintf("%s: %d dangling mirror %s — %s",
+				mirrorSkillsRelDir, n, pluralCodexEntries(n), mirrorRedeployAdvice),
+			detail: fmt.Sprintf(
+				"%s: %d %s are symlinks whose %s target no longer exists (%s) — %s",
+				mirrorSkillsRelDir, n, pluralCodexEntries(n), canonicalSkillsRelDir,
+				strings.Join(st.dangling, ", "), mirrorRedeployAdvice),
+		})
+	}
+	if st.copyMode > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s materialized as a real directory (copy fallback — functional, but a copy does not follow later updates to %s)",
+			mirrorSkillsRelDir, st.copyMode, pluralCodexEntries(st.copyMode), canonicalSkillsRelDir))
+	}
+	if st.unmirrored > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s with no %s entry (reported, not a finding: the set a deploy actually mirrored is not observable here)",
+			canonicalSkillsRelDir, st.unmirrored, pluralCodexEntries(st.unmirrored), mirrorSkillsRelDir))
+	}
+	if st.indeterminate > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s could not be read — not checked, and NOT counted as dangling",
+			mirrorSkillsRelDir, st.indeterminate, pluralCodexEntries(st.indeterminate)))
+	}
+	return problems, detail
 }
 
 // joinCodexSummaries renders the Message, bounded by codexMessageWidthCeiling.
