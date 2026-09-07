@@ -2,9 +2,9 @@
 id: SPEC-TODO-LANDING-EVIDENCE-001
 title: "A card that knows its own landing state, half B — the evidence store: one additive column, an operator verb that records, and an attribution rule that survives REQ-1.10"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-09-03
-updated: 2026-09-03
+updated: 2026-09-08
 author: manager-spec (card t359)
 priority: P1
 phase: "v3.1.4 target"
