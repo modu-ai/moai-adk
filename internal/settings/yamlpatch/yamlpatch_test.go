@@ -467,6 +467,35 @@ func TestAtomicWritePreservesPresentFileMode(t *testing.T) {
 	}
 }
 
+// TestAtomicWriteRenameFailure는 rename 커밋 실패 분기를 검증한다: 대상이
+// 디렉터리면 rename이 파일로 대체하지 못하므로(ENOTEMPTY/EISDIR 계열) 오류로
+// 끝나고 temp 파일이 남지 않아야 한다. 실패 주입이 자연히 가능한 유일한
+// atomicWrite 오류 분기다 — tmp write/close/chmod 실패 주입은 비현실적이므로
+// 그 셋은 커버리지 Gap으로 남는다 (M4 §E.3 기록).
+func TestAtomicWriteRenameFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("windows rename over a directory fails differently; the branch stays covered on unix")
+	}
+	t.Parallel()
+	dir := t.TempDir()
+	target := filepath.Join(dir, "section-dir")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := atomicWrite(target, []byte("a: 1\n")); err == nil {
+		t.Fatal("want error when the rename commit targets a directory")
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".yamlpatch-") {
+			t.Errorf("failed atomic write left a temp file behind: %s", e.Name())
+		}
+	}
+}
+
 // TestYAMLPatchAtomicWriteErrors는 atomicWrite의 오류 분기를 직접 검증한다.
 // "stat missing target"은 SPEC-SEAM-GREENFIELD-001 AC-003에 따라 재작성됐다 —
 // 수리 전에는 absent 대상의 오류를 기대값으로 인코딩해 결함을 지켰으므로,

@@ -111,9 +111,43 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 - 커맨드: `go test -count=1 -run 'TestPatchFileValueInvariantPreservesBytes|TestPatchFileScalarChangePreservesPresentation|TestPatchFileSpliceFallsBackForUpsert|TestPatchFileSpliceQuotedScalarChange|TestApplySchemaEditsSeamRoundTrip|TestApplySchemaEditsGateSeamRoundTrip|TestApplySchemaEditsAllFieldsRoundTrip|TestYAMLPatchScalarReplace_WorkflowFixture|TestYAMLPatchPreservesQuotedStyle|TestYAMLPatchPreservesTypedScalars|TestYAMLPatchMultiEditSingleWrite|TestYAMLPatchEmptyEditsIsNoop' -v ./internal/settings ./internal/settings/yamlpatch`
 - 결과: `--- PASS` 12건, `ok` 2패키지. 증거 `M3-AC005-control-group.log`. `"read-only directory"` 서브테스트도 무수정 GREEN (M2/M3 실행에서 PASS 확인).
 
+### M4 — 범위 한정 판정 (2026-09-08)
+
+**M4-1 scoped 테스트**: `go test -count=1 ./internal/settings/... ./internal/web/...` → `ok` 4패키지(settings 2.156s / agentfm 1.270s / yamlpatch 1.322s / web 8.416s). 증거 `M4-scoped-tests.log` (이 트리, M3 커밋 상태).
+
+**M4-2 크로스플랫폼 빌드**: `GOOS=windows GOARCH=amd64 go build ./internal/...` → exit 0. 증거 `M4-crossbuild-windows.log`. absent-mode 코드는 GOOS-neutral 형태(defaultFilePerm 상수 + os.Chmod — POSIX 비트를 컴파일 타임 분기 없이 다룸).
+
+**M4-3 vet**: `go vet ./internal/settings/... ./internal/web/...` → exit 0. 증거 `M4-vet.log`.
+
+**M4-4 lint**: `golangci-lint run --timeout=2m ./internal/settings/... ./internal/web/...` → 최종 **0 issues, exit 0** (`M4-lint.log`). NEW 이슈 1건 발생·즉시 수리: `atomicwrite_mode_unix_test.go:22 SA4032` — `//go:build !windows` 파일 안의 `runtime.GOOS == "windows"` 죽은 분기. 빌드 태그가 이미 배제하므로 분기 제거로 수리.
+
+**M4-5 커버리지** (`M4-coverage.log`, 이 트리): yamlpatch **82.5%** / settings **90.6%** / web **67.0%**.
+- 수정 함수 `atomicWrite` 72.0%(함수 단위) — 수리가 만진 stat/mode 분기(absent·ENOTDIR·present 3경로)는 전부 커버. 패키지 85% 문턱 미달 gap은 (a) `tmp.Write`/`tmp.Close`/`os.Chmod` 실패 주입 경로 3분기 — 자연 주입이 비현실적인 I/O 실패 계열로 수정 전부터 존재, (b) 미수정 함수 `setScalar` 25.0% — 본 SPEC 범위 밖.
+- M4에서 rename 실패 분기를 자연 주입 테스트로 커버(`TestAtomicWriteRenameFailure` — 대상이 디렉터리면 rename 실패 + temp 잔재 없음 단정): atomicWrite 64.0%→72.0%.
+- web 67.0%는 소스 변경 0(테스트만 추가)이므로 baseline 대비 감소 불가 — 추가 테스트는 커버리지를 올리는 방향으로만 작동.
+
+**M4-6 GREEN 가드 최종 재측정**: M4 커밋 트리에서 신설 가드 전체 `-v` 재실행 → `--- PASS` 17건, `ok` 2패키지. 증거 `M4-green-guards.log` (AC-001/AC-002/AC-003/AC-004 + umask·모드보존·rename 가드 + TestYAMLPatchErrors 재작성 서브테스트).
+
+**M4-7 E8 RED 귀속 요약**: AC-001 RED = `RED-m1-yamlpatch.log`(트리 b91372794+M1 테스트, exit 1, `yamlpatch: stat …: no such file or directory`) · AC-004 RED = `RED-m1-web-save.log`(동일 트리, exit 1, 500 + `section config write failed: yamlpatch: stat …` 배너). RED는 결함 경로 그 자체를 가리키는 옳은-이유 RED다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — manager-develop 소관.>_
+```yaml
+run_complete_at: 2026-09-08
+run_commit_sha: "pending-backfill-run"   # D3 placeholder — M4 커밋 자체 SHA는 자기 참조 불가, follow-up 커밋에서 backfill
+run_status: complete
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # PRESERVE 표면(sectionapply.go, sectionwrite.go, PatchFile 읽기 경로, renderer, C6 게이트, 13곳 타 atomicWrite) 접촉 0 — 변경 파일은 delegation 명시 범위 4개뿐
+l44_pre_commit_fetch: n/a         # 레인은 push 금지(git-flow lane protocol §4) — fetch/push 사이클 없음
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0   # 발생 1건(SA4032) 즉시 수리, 최종 0
+cross_platform_build:
+  windows_amd64: pass
+  note: "compile-only — permission 비트가 windows에서 무의미한 두 테스트(umask·모드보존)는 파일 태그/in-test skip으로 GOOS-neutral 유지"
+total_run_phase_files: 4   # yamlpatch.go, yamlpatch_test.go, atomicwrite_mode_unix_test.go, internal/web/write_safety_test.go
+m1_to_mN_commit_strategy: per-milestone commits (M1 RED b6bd0d011 / M2 fix e365c2d30 / M3 mutants 1679c23b9 / M4 verdict)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

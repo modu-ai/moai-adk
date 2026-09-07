@@ -5,7 +5,6 @@ package yamlpatch
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"syscall"
 	"testing"
 )
@@ -19,9 +18,8 @@ import (
 // 테스트는 서로 직렬로 돌고, 병렬 테스트들은 모든 비병렬 테스트가 끝난 뒤에
 // 재개되므로 umask 창이 다른 테스트와 겹치지 않는다.
 func TestAtomicWriteAbsentModeUmaskIndependent(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("unreachable on windows: POSIX umask has no analogue there")
-	}
+	// (No windows guard needed: the //go:build !windows tag above already
+	// excludes this file — POSIX umask has no analogue there.)
 	old := syscall.Umask(0o077)
 	defer syscall.Umask(old)
 
