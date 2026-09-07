@@ -107,13 +107,60 @@ const (
 // inside the band the existing rows occupy rather than defining a new one.
 const codexMessageWidthCeiling = 113
 
+// codexFindingSeverity grades one finding.
+//
+// [HARD] The ADVISORY grade is the zero value, and the ordering is load-bearing
+// rather than stylistic. Every construction site in this file builds a
+// codexFinding by composite literal naming no severity, so each takes the Go
+// zero value. Declaring the enum fatal-first — the iota ordering its neighbour
+// codexwiring.SkillEnabled uses, which is what copying the adjacent style would
+// produce — would silently re-grade every one of them to fatal, and
+// `moai doctor` would exit 1 on every advisory machine in existence.
+//
+// The cost of this default is stated rather than hidden: a future construction
+// site silently inherits advisory. That IS the intended default, and
+// TestCodexFindingZeroValueIsAdvisory is what stops it drifting.
+type codexFindingSeverity int
+
+const (
+	// codexSeverityAdvisory is a finding the user SHOULD act on. It keeps the
+	// pre-t508 behaviour: uikit.CheckWarn, process exit 0.
+	codexSeverityAdvisory codexFindingSeverity = iota
+	// codexSeverityFatal is a finding on which the consuming tool cannot
+	// operate at all — the check reports uikit.CheckFail and `moai doctor`
+	// exits non-zero.
+	codexSeverityFatal
+)
+
 // codexFinding is one problem in two registers: a SHORT summary for Message,
 // which a plain `moai doctor` renders, and the full text for Detail, which
 // renders only under --verbose. Splitting them is what lets an action
 // directive stay visible without the enumeration behind it blowing the panel.
+//
+// The severity rides ON the finding rather than beside it. A grade returned
+// alongside a finding would live on the CALL SITE and be lost the moment the
+// finding is appended or joined, and the status fold needs the grade after
+// every producer has returned; a second `fatals` slice would give the 13
+// existing sites a slice to choose rather than a safe default, and would
+// duplicate the join/width logic where the tail-drop invariant lives.
 type codexFinding struct {
-	summary string
-	detail  string
+	summary  string
+	detail   string
+	severity codexFindingSeverity
+}
+
+// codexCheckStatus folds a run's findings onto the check status: any fatal
+// finding fails the check; otherwise the pre-t508 behaviour is byte-identical.
+//
+// The caller has already handled the empty case (no findings ⇒ CheckOK), so
+// this fold is reached only with at least one finding.
+func codexCheckStatus(problems []codexFinding) uikit.CheckStatus {
+	for _, p := range problems {
+		if p.severity == codexSeverityFatal {
+			return uikit.CheckFail
+		}
+	}
+	return uikit.CheckWarn
 }
 
 // checkCodexWiring verifies the Codex wiring of the project at root:
@@ -272,6 +319,15 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	if finding, ok := codexStaleSkillFinding(); ok {
 		problems = append(problems, finding)
 	}
+	if finding, note, ok := codexEnabledShapeFinding(); ok {
+		problems = append(problems, finding)
+	} else if note != "" {
+		// No fatal shape, but the config WAS read. The note is what
+		// distinguishes "read it, every entry is well-formed" from "never
+		// reached it" — without it a quiet check is indistinguishable from a
+		// skipped one, in a report and in a test alike.
+		extraDetail = append(extraDetail, note)
+	}
 
 	if len(problems) == 0 {
 		check.Status = uikit.CheckOK
@@ -280,7 +336,7 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	check.Status = uikit.CheckWarn
+	check.Status = codexCheckStatus(problems)
 	check.Message = joinCodexSummaries(problems)
 	check.Detail = joinCodexDetails(problems, extraDetail)
 	if check.Detail == "" && verbose {
@@ -456,7 +512,7 @@ func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
 		problems = append(problems, codexFinding{
 			summary: fmt.Sprintf("%s mirror absent — %s", mirrorSkillsRelDir, mirrorRedeployAdvice),
 			detail: fmt.Sprintf(
-				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time only, and a routine `moai update` on a version-matched project does not restore it, so %s",
+				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time, and `moai update` now repairs it in projects whose recorded template_version is at or above the release that introduced it; where it is still absent after an update, %s",
 				mirrorSkillsRelDir, canonicalSkillsRelDir, mirrorRedeployAdvice),
 		})
 		return problems, detail
@@ -638,6 +694,111 @@ func expandCodexHomeRelativePath(p string) (expanded string, ok bool) {
 	return filepath.Join(home, p[2:]), true
 }
 
+// codexMeasuredVersion is the codex-cli release the `enabled` requirement was
+// actually observed on.
+//
+// It rides in the finding text so the claim stays inside the evidence. In which
+// release `enabled` became required, and whether older releases tolerate its
+// absence, is UNMEASURED — a finding worded as though the behaviour held for
+// codex in general would be asserting something nobody checked.
+const codexMeasuredVersion = "0.153.4"
+
+// codexUserSkillConfig locates and parses the user-layer config's
+// [[skills.config]] entries.
+//
+// Fail-open in every direction, exactly as the sub-checks reading it require:
+// an unresolvable home, an absent or unreadable config, or a config declaring
+// no entries all yield ok=false (a silent skip), so a missing input never
+// becomes a finding. It READS only.
+func codexUserSkillConfig() (cfgPath, display string, entries []codexwiring.SkillEntry, ok bool) {
+	codexHome, source := resolveCodexHomeDir()
+	if codexHome == "" {
+		return "", "", nil, false
+	}
+	cfgPath = filepath.Join(codexHome, path.Base(codexwiring.ConfigRelPath))
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return "", "", nil, false
+	}
+	entries = codexwiring.ParseSkillEntries(raw)
+	if len(entries) == 0 {
+		return "", "", nil, false
+	}
+	display = codexHomeConfigDisplay
+	if source == codexHomeSourceEnv {
+		display = codexHomeConfigEnvDisplay
+	}
+	return cfgPath, display, entries, true
+}
+
+// codexEnabledShapeFinding reports [[skills.config]] entries whose `enabled`
+// declaration codex cannot load — a key that is absent, or one declared with a
+// value that is not a bare TOML boolean.
+//
+// This is the one FATAL grade on this check, and the grade is not a matter of
+// tone. Measured on codex-cli 0.153.4, a single such entry makes codex exit 1
+// on every invocation: `missing field `enabled` in `skills.config“ for the
+// absent key, “invalid type: … expected a boolean“ for the wrong-typed value.
+// A user in this state already has a codex that will not start; all this
+// changes is whether `moai doctor` says so instead of reporting "wired and
+// consistent" about a machine where nothing works.
+//
+// Scope is `enabled` alone. A `path`-less entry is ACCEPTED by codex (measured,
+// rc=0) and stays with the advisory stale-path finding.
+//
+// It READS and REPORTS. Nothing here rewrites the user's config — editing
+// someone else's home config is a separate decision this check does not take.
+//
+// The second return value is a read-receipt note for the clean case: it names
+// the config that was read, so a quiet check is distinguishable from one that
+// never reached the file.
+func codexEnabledShapeFinding() (finding codexFinding, note string, ok bool) {
+	cfgPath, display, entries, loaded := codexUserSkillConfig()
+	if !loaded {
+		return codexFinding{}, "", false
+	}
+
+	var absent, nonBoolean int
+	for _, e := range entries {
+		switch e.Enabled {
+		case codexwiring.SkillEnabledUnspecified:
+			absent++
+		case codexwiring.SkillEnabledNonBoolean:
+			nonBoolean++
+		}
+	}
+	unusable := absent + nonBoolean
+	if unusable == 0 {
+		return codexFinding{}, fmt.Sprintf(
+			"%s declares %d [[skills.config]] %s, each declaring `enabled` as a bare TOML boolean",
+			cfgPath, len(entries), pluralCodexEntries(len(entries))), false
+	}
+
+	// Summary short (the panel sizes itself to its widest row); the
+	// enumeration and the evidence ride in Detail.
+	summary := fmt.Sprintf("%s: %d skill %s codex cannot load — unusable `enabled` key",
+		display, unusable, pluralCodexEntries(unusable))
+
+	detail := fmt.Sprintf("%s declares %d [[skills.config]] %s; %d of them codex cannot load",
+		cfgPath, len(entries), pluralCodexEntries(len(entries)), unusable)
+	if absent > 0 {
+		detail += fmt.Sprintf("; %d declare no `enabled` key", absent)
+	}
+	if nonBoolean > 0 {
+		detail += fmt.Sprintf("; %d declare `enabled` with a value that is not a bare TOML boolean", nonBoolean)
+	}
+	detail += fmt.Sprintf(
+		" — codex %s requires `enabled` on every entry as a bare boolean and exits 1 on the whole config otherwise"+
+			" (observed on that release only); give each entry `enabled = true` or `enabled = false`",
+		codexMeasuredVersion)
+
+	return codexFinding{
+		summary:  summary,
+		detail:   detail,
+		severity: codexSeverityFatal,
+	}, "", true
+}
+
 // codexStaleSkillFinding reports the user-layer [[skills.config]] entries
 // whose declared path no longer exists — registrations Codex neither prunes
 // nor complains about, so nothing else surfaces them.
@@ -652,17 +813,8 @@ func expandCodexHomeRelativePath(p string) (expanded string, ok bool) {
 // config, or a config declaring no entries all yield ok=false (a silent
 // skip), so a missing input never becomes a finding. The function READS only.
 func codexStaleSkillFinding() (codexFinding, bool) {
-	codexHome, source := resolveCodexHomeDir()
-	if codexHome == "" {
-		return codexFinding{}, false
-	}
-	cfgPath := filepath.Join(codexHome, path.Base(codexwiring.ConfigRelPath))
-	raw, err := os.ReadFile(cfgPath)
-	if err != nil {
-		return codexFinding{}, false
-	}
-	entries := codexwiring.ParseSkillEntries(raw)
-	if len(entries) == 0 {
+	cfgPath, display, entries, ok := codexUserSkillConfig()
+	if !ok {
 		return codexFinding{}, false
 	}
 
@@ -734,11 +886,6 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 		// indeterminate-only config stays silent too — the t451 posture,
 		// preserved verbatim.
 		return codexFinding{}, false
-	}
-
-	display := codexHomeConfigDisplay
-	if source == codexHomeSourceEnv {
-		display = codexHomeConfigEnvDisplay
 	}
 
 	// The summary carries the count and the file; the denominator, the split

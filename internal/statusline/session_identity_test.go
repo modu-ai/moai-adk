@@ -195,19 +195,34 @@ func TestResolveBacklogCounts(t *testing.T) {
 // A worktree session must read the PRIMARY checkout's board: `.moai/state/` is
 // gitignored, so it does not exist in the worktree at all. Getting this wrong
 // shows an empty board to exactly the sessions doing the work.
+//
+// SPEC-STATE-ANCHOR-001 (M2): the board root IS the state anchor. The
+// worktree case resolves from the payload (chain step 2, unchanged); the
+// primary case is now a git walk-up from a subdirectory (chain step 3) — the
+// former literal-path fixture ("/repo") cannot answer a git resolution, so it
+// became a real repository fixture.
 func TestResolveBoardRoot_PrefersPrimaryCheckoutOverWorktree(t *testing.T) {
-	t.Parallel()
+	root := t.TempDir()
+	initGitRepoStatusline(t, root)
+	root = normalizeRepoRoot(t, root)
 
 	worktreeSession := &StdinData{
-		Workspace: &WorkspaceInfo{CurrentDir: "/repo/.claude/worktrees/card-x"},
-		Worktree:  &WorktreeInfo{Path: "/repo/.claude/worktrees/card-x", OriginalCwd: "/repo"},
+		Workspace: &WorkspaceInfo{CurrentDir: filepath.Join(root, ".claude", "worktrees", "card-x")},
+		Worktree:  &WorktreeInfo{Path: filepath.Join(root, ".claude", "worktrees", "card-x"), OriginalCwd: root},
 	}
-	if got := resolveBoardRoot(worktreeSession); got != "/repo" {
-		t.Errorf("worktree session board root = %q, want /repo", got)
+	if got := resolveBoardRoot(worktreeSession); got != root {
+		t.Errorf("worktree session board root = %q, want %q (chain step 2)", got, root)
 	}
 
-	primarySession := &StdinData{Workspace: &WorkspaceInfo{CurrentDir: "/repo"}}
-	if got := resolveBoardRoot(primarySession); got != "/repo" {
-		t.Errorf("primary session board root = %q, want /repo", got)
+	// A primary-checkout session cd'd into a subdirectory still reads the
+	// repository root's board (chain step 3 — the git walk-up).
+	primarySession := &StdinData{
+		Workspace: &WorkspaceInfo{CurrentDir: filepath.Join(root, "some", "subdir")},
+	}
+	if err := os.MkdirAll(filepath.Join(root, "some", "subdir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveBoardRoot(primarySession); got != root {
+		t.Errorf("primary session board root = %q, want %q (git walk-up)", got, root)
 	}
 }
