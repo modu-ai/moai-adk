@@ -166,7 +166,7 @@ sync_complete_at: 2026-09-08
 sync_status: audit-ready
 sync_audit: PASS-WITH-DEBT 83.8 (sync-audit.md; F1-F4 repaired in 2c5c05fe6)
 docs_scope: CHANGELOG + SPEC close (operator gate-sync-2)
-sync_commit_sha: pending-backfill-sync   # this commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 684686300   # this commit cannot cite its own hash; backfilled in a following commit
 merge_status: local develop merge pending (lead window)
 ```
 
