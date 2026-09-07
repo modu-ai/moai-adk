@@ -128,6 +128,14 @@ func NewLinter(opts LinterOptions) *Linter {
 	l.rules = []Rule{
 		&EARSModalityRule{},
 		&REQIDUniquenessRule{},
+		// REQTableRejectionRule — SPEC-SPEC-LINT-BLIND-AXES-001 REQ-SLB-005
+		// (axis 1, M-A2b). Reports the tables discriminator C-d declined to
+		// read as definition tables, one advisory line per table carrying the
+		// rejected-row count. Advisory is set at the emission site for the
+		// whole code, so the entry is deliberately NOT in eraDemotableCodes:
+		// that map demotes ERRORS, and an inert entry in a policy map reads as
+		// intent.
+		&REQTableRejectionRule{},
 		&CoverageRule{},
 		&FrontmatterSchemaRule{},
 		&DependencyExistsRule{},

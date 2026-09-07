@@ -309,6 +309,118 @@ golangci-lint run ./internal/spec/...  → rc=0, "0 issues."
 - **`(SHALL)` 인정의 부작용은 재지 않았다.** 단어 경계 조건은 `SHALL NOT`·`shall not`도 SHALL 존재로 인정한다(옛 조건도 그랬다 — 선행 공백이 있으므로). 즉 Unwanted 요구사항의 부정형을 적합으로 읽는 성질은 이 교체가 만든 것이 **아니라 원래 있던 것**이며, 이 카드는 그것을 바꾸지 않았다.
 - **acceptance.md §C의 축자 픽스처 1종이 가드를 만들지 못한다**(위 절). 코드가 아니라 기준 문서의 결함이므로 run-phase에서 고치지 않았다.
 
+### M-A2b — 축 1: 기각의 관측 가능성 (카드 t518, cycle_type=tdd)
+
+**소관**: AC-SLB-005(REQ-SLB-005). M-A2가 「M4(재계수) 이전에 실행」으로 지정해 남긴 마일스톤이며, 그 지정 근거 셋(소관이 축 1 · 두 원인이 한 측정에 섞임 · 설계 결정 하나가 남아 있음)이 그대로 이 마일스톤의 전제다.
+
+**결재된 설계 — 표 단위 접기 + 줄에 N.** 기각된 표 하나당 자문 finding 한 줄을 내고, 그 줄이 해당 표의 기각 행 수 N을 싣는다. 787줄을 행 단위로 내는 안은 **기각**됐다(M-A2가 이미 기본 출력을 +5.1% 늘렸고, 여기에 787을 더하면 경고를 아무도 읽지 않는 구간에 들어가 결재된 대가를 초과한다). 행 단위 `--verbose` 확장도 **검토 후 기각** — 발화 경로가 둘이 되면 반경이 넓어지고 확장 경로 수치를 따로 검증해야 한다. acceptance.md AC-SLB-005에 세 판정 기준으로 전사했다(v0.7.0, 리드 승인).
+
+**[HARD] 접기가 바꾼 관측 단위를 새로 적는다.** 행 → 표. 지금 보이는 것은 **어느 표가 기각됐는지**이고, **그 안의 어느 행인지는 N이라는 수로만** 보인다. v0.6.0까지의 AC 문장이 시사하던 것과 같지 않으므로 같다고 읽히게 두지 않는다.
+
+#### 산출물
+
+`internal/spec/lint_req_table_rejection.go`(신규) — `collectRejectedTables`(인접 표 줄의 최대 연속 구간을 한 표로 묶고 그 안의 기각 행만 셈) · `REQTableRejectionRule`(코드 `REQTableRowsRejected`, warning + advisory) · `parseRejectedRowCount`(렌더된 메시지에서 N을 되읽음). `internal/spec/lint.go`에 규칙 등록. 테스트 `internal/spec/lint_req_table_rejection_test.go`(9건).
+
+**N을 줄에 싣는 이유 — 계기가 하나뿐이면 조용해져도 모른다.** N이 없으면 787의 유일한 증거는 census 테스트 하나다. N이 실리면 **출력 자체가 두 번째 계기**가 되고, 두 계기의 불일치가 침묵이 아니라 RED로 나타난다. N은 struct 필드가 아니라 **렌더된 메시지**에서 되읽는다 — 운영자가 실제로 보는 표면을 재는 것이 대조의 요점이기 때문이다.
+
+#### AC 판정
+
+| AC | 판정 | 검증 명령 | 실제 출력 |
+|---|---|---|---|
+| AC-SLB-005 기준 1(표 하나당 한 줄) | PASS | `go test -run 'TestTableRejection_OneLinePerRejectedTable\|TestTableRejection_MultipleRowsFoldIntoOneFinding' ./internal/spec/` | 두 테스트 PASS. 3행 1표 픽스처 → finding 1건 |
+| AC-SLB-005 기준 2(줄이 기각 행 수 N을 실음) | PASS | `go test -run TestTableRejection_MixedTableCountsOnlyRejectedRows ./internal/spec/` | PASS. 수집 1 · 기각 2인 혼합 표에서 N=2 |
+| AC-SLB-005 기준 3(모든 N의 합 = census) | PASS | `go test -run TestTableRejection_CorpusSumEqualsRowCensus -v ./internal/spec/` | `corpus rejection: rows=787 emitted lines=81 sum(N)=787` |
+| AC-SLB-005 대조쌍 | PASS | `go test -run TestTableRejection_ControlPairDiverges ./internal/spec/` | PASS. 수집 표 0건 / 기각 표 2건으로 갈림 |
+| AC-SLB-005 뮤턴트 가드 | PASS | 아래 뮤턴트 표 M1 | 6개 테스트 RED, AC-SLB-004는 GREEN 유지(비대칭 성립) |
+| AC-SLB-004(기각 자체) 회귀 없음 | PASS | `go test -run TestTableCollection ./internal/spec/` | 전건 PASS |
+
+**AC-SLB-005는 이로써 닫혔다.** 남은 AC 중 이 마일스톤 소관은 없다. M4(재계수, AC-SLB-009)와 갈래 A 후속은 미착수다.
+
+#### 뮤턴트 — 잡히지 않은 것도 남긴다
+
+| # | 뮤턴트 | 1차 결과 | 비고 |
+|---|---|---|---|
+| M1 | 발화 제거(`Check`가 nil 반환) | **잡힘** — 6건 RED | `TestTableCollection_DiscriminatorRejectsDispositionTables`(AC-SLB-004)와 census는 **GREEN 유지**. AC-SLB-005가 예고한 비대칭이 실측으로 성립 |
+| M2 | N이 기각 행이 아니라 표의 전체 REQ 행을 셈 | **잡힘** — 3건 RED | 코퍼스 합 대조가 함께 잡았다(부풀린 N을 검출) |
+| M3 | 접기 제거(행 단위 발화) | **잡힘** — 3건 RED | `OneLinePerRejectedTable`은 **PASS로 남았다** — 그 픽스처는 표마다 기각 행이 1개라 행 단위와 표 단위가 구별되지 않는다. 그 가드의 경계이므로 적어 둔다 |
+| M4 | 끝맺음 `flush()` 제거(본문이 표 줄로 끝나는 경우 마지막 표 유실) | **잡히지 않음(1차)** | 모든 픽스처와 코퍼스의 모든 spec.md가 개행으로 끝나 `strings.Split`이 빈 줄을 만들고, 그것이 부수효과로 flush를 일으켰다. 즉 이 줄은 **어떤 테스트도 도달하지 못하는 살아 있는 코드**였다 |
+| M4 재실행 | 같은 뮤턴트, 가드 추가 후 | **잡힘** — 1건 RED | 가드 신설: `TestTableRejection_TableRunningToEndOfBody`(개행 없이 표 줄로 끝나는 본문). **1차 결과는 지우지 않는다** — 「나중에 가드를 붙여서 잡혔다」는 「가드가 있었다」와 다른 사실이다 |
+| M5 | 메시지에서 N 제거(`%.0s%.0d`) | **잡힘** — 5건 RED | 렌더된 표면을 재는 설계가 실제로 그 표면을 보고 있음의 증거 |
+| M6 | 규칙 미등록(`lint.go`에서 주석 처리) | **잡힘** — 1건 RED | `TestTableRejection_RuleIsRegistered`만 RED. 나머지는 `Check`를 직접 부르므로 GREEN — 「고립된 통과」와 「사용자에게 도달」의 구별 |
+
+#### RED 증거 (구현 전, 축자)
+
+```
+$ go test ./internal/spec/ -run 'TestTableRejection' -count=1
+# github.com/modu-ai/moai-adk/internal/spec [github.com/modu-ai/moai-adk/internal/spec.test]
+internal/spec/lint_req_table_rejection_test.go:33:11: undefined: REQTableRejectionRule
+internal/spec/lint_req_table_rejection_test.go:230:11: undefined: REQTableRejectionRule
+internal/spec/lint_req_table_rejection_test.go:262:11: undefined: parseRejectedRowCount
+FAIL	github.com/modu-ai/moai-adk/internal/spec [build failed]
+FAIL
+```
+
+빌드 실패 수준의 RED다. 단언 수준 RED는 뮤턴트 M1이 사후에 같은 역할을 한다(6건이 「신호 0건」으로 실패) — M1의 출력이 곧 「발화가 없을 때 이 테스트들이 무엇을 말하는가」의 증거다.
+
+#### 코퍼스 이동 — 세 바이너리를 같은 코퍼스 위에서 돌렸다
+
+설치된 바이너리(`~/go/bin/moai`, `v3.1.2-1490-ge79c010b8`)는 **쓰지 않았다** — 이 트리보다 한참 뒤처져 있다. `git archive`로 두 시점을 꺼내 소스에서 빌드하고, 작업 트리도 빌드해 셋을 같은 코퍼스 위에서 파이프 없이 돌렸다.
+
+| 바이너리 | 트리 | `moai spec lint` (인자 없음) | rc |
+|---|---|---|---|
+| A | `458fc7ebc` (M-A2 착지) | `0 error(s), 4617 warning(s)` | 0 |
+| B | `2cfccd4eb` (HEAD, M-B1 포함) | `0 error(s), 4617 warning(s)` | 0 |
+| C | 작업 트리 (M-A2b) | `0 error(s), 4698 warning(s)` | 0 |
+
+**코드별 귀속(B → C)**: 코드 카운트 표를 diff 하면 **추가된 행이 정확히 하나** — `81 REQTableRowsRejected`. 다른 13개 코드는 한 건도 움직이지 않았다.
+
+```
+$ diff codes-B.txt codes-C.txt
+5a6
+>   81 REQTableRowsRejected
+```
+
+**출처별 귀속(REQ-SLB-009)**: 81건 **전부** 표 수집 축(축 1) 유래이며, t385 구분자 넓힘 유래는 **0건**이다. 이 코드는 `REQEntry`를 뒤에 두지 않으므로 `Source` 필드를 싣지 않는다 — 기각된 행은 애초에 항목을 만들지 않았고, 그 사실 자체가 보고 대상이기 때문이다. 귀속은 필드가 아니라 **발화 지점이 하나뿐이라는 구조**가 만든다(`REQTableRejectionRule`만이 이 코드를 낸다).
+
+**출력에서 되읽은 합 — 두 번째 계기**:
+
+```
+$ grep -o 'rejected_rows=[0-9]*' out-C.txt | sed 's/rejected_rows=//' | awk '{s+=$1} END {print NR, s}'
+81 787
+```
+
+Go census(직접 행 훑기)와 출하 바이너리 출력(메시지 파싱)이 **787로 일치**한다. 두 경로가 서로를 재고, 4698 − 4617 = 81도 발화 줄 수와 정확히 맞는다.
+
+#### 귀속되지 않은 +4 — 코드 탓이 아님이 밝혀졌고, 잔여는 M-A3로 넘긴다
+
+브리핑이 인용한 M-B1 무인자 대조군의 **4621**은 이 코퍼스에서 재현되지 않는다. A와 B가 **같은 코퍼스에서 정확히 같은 4617**을 낸다는 것이 측정이며, 이는 M-B1 코드 변경이 총량을 **0만큼** 움직였다는 뜻이다. 따라서 +4는 **코드 귀속이 아니다** — 남은 후보는 그 측정 시점의 코퍼스 상태이거나 다른 호출 형태이며, 둘 중 어느 쪽인지는 **재지 않았다(Gap)**. 추측으로 메우지 않고 M-A3(재계수) 몫으로 남긴다.
+
+#### 검증 명령 (전부 파이프 없이 rc 판독, 범위는 `internal/spec`)
+
+```
+go test ./internal/spec/... -count=1   → rc=0, ok  github.com/modu-ai/moai-adk/internal/spec  128.261s, `--- FAIL` 0건
+```
+
+**전체 스위트는 로컬에서 돌리지 않았다**(CLAUDE.local.md §4). `internal/cli`는 건드리지 않았다(형제 SPEC 반경, M-B1로 이미 착지).
+
+#### §A 규칙 8 세 수치 — 재유도, 움직이지 않음
+
+```
+grep -oE '^### AC-SLB-[0-9]+[a-z]?' acceptance.md | sort -u | wc -l  → 16
+grep -cE '^\s*[-*]\s+\**\s*REQ-SLB-[0-9]+\s*\**\s*(\([^)]*\)\s*\**\s*)?(—|:)' spec.md → 14
+moai spec lint .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md → rc=0, `0 error(s), 14 warning(s)`
+```
+
+AC 식별자를 새로 만들지 않고 기존 AC-SLB-005를 구체화했으므로 16은 그대로다. 문서 개정 후 코퍼스를 다시 돌려도 4698 / 81 / 787로 불변임을 확인했다.
+
+#### 잔여 위험 (관측된 것만)
+
+- **표의 경계는 「연속한 표 줄」로 정의했다.** 빈 줄 하나가 사이에 들어간 논리적 한 표는 두 표로 세어진다. **합(787)은 이 선택에 영향받지 않고**(모든 기각 행은 정확히 한 구간 안에 들어간다) 줄 수 81만 영향받는다. 다른 정의를 골랐다면 81이 달라졌을 것이며, 이 수는 코퍼스의 성질이 아니라 이 정의 아래의 재유도값이다.
+- **`SPEC-INIT-001`의 `| REQ-N-001 | … 않아야 한다 |`는 여전히 미수집이다.** 달라진 것은 그것이 **조용하지 않다**는 점뿐이다 — 이제 그 표가 기각됐다는 줄이 나온다. 어느 행인지는 N으로만 보이므로, 그 행을 특정하려면 여전히 문서를 열어야 한다. 이것이 결재된 대가의 현재 모양이다.
+- **기본 출력이 4617 → 4698로 +1.8% 늘었다.** M-A2의 +5.1%에 얹힌 값이며 전부 자문이라 게이트를 흔들지 않는다. 접기가 없었다면 +17%였다.
+- **코퍼스 합 대조는 같은 판별식을 양쪽에서 쓴다.** census와 규칙이 모두 `isTableDefinitionRow`를 부르므로, 판별식 **자체**가 틀렸다면 두 계기가 함께 틀린다. 이 대조가 재는 것은 「접기·발화·등록 경로가 행을 잃거나 만들지 않는가」이지 「판별식이 옳은가」가 아니다 — 후자는 AC-SLB-004와 축자 픽스처의 몫이다.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
