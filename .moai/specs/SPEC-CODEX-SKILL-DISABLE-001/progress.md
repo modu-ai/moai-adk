@@ -10,7 +10,7 @@
 - 미해결 `[NEEDS CLARIFICATION]`: **0건**. v0.1.0의 3건(Q-a 경로 표기, Q-b 미러 모드 교차, 후보 루트 집합)은 `.moai/reports/t502/gate-path-shape.md`(19셀, `codex-cli 0.153.4`)로 전부 닫혔다 — 발행 표기는 `<projectRoot>/.agents/skills/<skill>/SKILL.md` 로 확정.
 - 선행 증거 2본: `.moai/reports/t504/skills-config-path-shape.md`(`enabled` 필수, 게이트 존재) + `.moai/reports/t502/gate-path-shape.md`(표기 확정, realpath 정규화, skipped 주장 반증).
 - 철회 1건: v0.1.0의 「`MirrorModeSkipped` ⇒ 해소 실패」 주장은 측정이 반증해 철회됨(spec.md §A 각주).
-- 예산: REQ 16 / AC 16 — Tier M 상한(16/16)에 정확히 맞춤(`grep -o … | sort -u | wc -l` 로 실측). 조항을 넓혀 수를 맞추지 않았다 — 두 성질을 지는 기준에는 판별 셀도 둘씩 붙였다.
+- 예산: **REQ 16/16 (상한 안), AC 17 — Tier M 상한 16 초과.** 표제 앵커 `grep -c '^### AC-CSD'` → 17. 이는 **기록된 예외**이며 근거는 plan.md §F.1(원인: D-N2 판정이 세 거절 사례에 서로 다른 종료 코드를 부여해 병합 불가가 됨 / 검토·기각한 병합 후보 명시 / 상한 완화 아님). 조항을 넓혀 수를 맞추지 않았다 — 두 성질을 지는 기준에는 판별 셀도 둘씩 붙였다.
 - 남은 [HARD] 게이트: AC-CSD-050(발행 코드 착지 직전, 그 시점 codex 버전에서 2셀 재측정).
 - 상태: `draft` — Implementation Kickoff Approval 대기
 
