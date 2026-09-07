@@ -228,3 +228,20 @@ run-phase에서 범위 재판정을 받는다.
 오류의 SPEC 전사를 잡았다. 표시 경로의 옳은 서술은 **「기존 extractProjectDirectory
 동작 불변(표시 앵커는 project_dir 우선 유지)」**이다. 원문은 삭제하지 않고 이 정정과
 나란히 보존한다.
+
+---
+
+## 부칙 3 — 현장 표본 3건 판별 (리드 수집 2026-09-07, sync-audit PASS 이후)
+
+리드가 현장에서 수집한 stray 상태 표본 3건을 본 판정의 기전 분류에 대입했다.
+**셋 다 본 SPEC이 수리한 cwd/env-앵커 상태-쓰기 가족이며, 제3 기전은 없다.**
+
+| 표본 | 실물 지문 | 귀속 |
+|---|---|---|
+| 1. develop 워크트리 **템플릿 소스 트리** stray — primary 보존본을 본 카드 증거경로로 입안(`stray-state-20260907-develop/`) | `config-cache.json`: schema 2, `fingerprint:{}`(섹션 0발견 = 콜드 로드), User.Name 빈값·전부 en, written_at 2026-09-07T03:06:13Z(수리 전 바이너리). **`state/github/counts.json` 병존** | B2b github 카운트가 먼저 `.moai/state/github/`를 MkdirAll → 뒤이은 B4 캐시가 「`.moai`가 이미 존재할 때만 쓴다」(#1568 존재-가드)를 통과해 착지 — "B4 follows B1/B2b"(§E.2)의 실물 확인. 표본 1의 특수성은 **피해자**이다(템플릿 트리 안이라 `TestPublishedIdentitySet`을 적색으로 만들어 lane-10 창을 막음 — **가드는 작동했다**), 기전이 아니다 |
+| 2. SPEC 디렉터 stray(lane-4 보존: `.moai/specs/SPEC-UPDATE-MIRROR-HEAL-001/.moai/state/`) | config-cache.json + context-usage/&lt;session&gt;.json 쌍(리드 계측: `.gitignore:228` 무시, 대조군 rc=1로 비공허 확인) | 동일 가족 — B1 생성 후 B4 추종 쌍. **실물 부재**: 창 시점에 어느 레인 워크트리에서도 발견 못 함(폐기 창 경과 추정) — 귀속은 리드 계측 기록과 표본 1의 동형 지문에 근거한다 |
+| 3. 카드 원문 관측(홈 341 + 픽스처 2파일) | 본문 §A·§B | 축 A(테스트 격리 — e7a078970 선수리) + 축 B(본 수리) |
+
+수리 후 전환의 실측은 AC-SA-002다: RED(보드 루트가 서브디렉터에 착지) → GREEN(git
+common-dir 부모 앵커 — 템플릿 트리 시나리오도 이 경로로 primary 루트에 앵커된다).
+sync-audit PASS 95.6(독립 재관측)에서 동일 결론이 유지됐다.
