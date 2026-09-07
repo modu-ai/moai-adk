@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -39,6 +40,23 @@ type KeyEdit struct {
 // 주석(Head/Line/FootComment)·키 순서·미모델링 키는 보존된다. upsert는 명시적으로
 // 편집된 경로에만 적용되며(EC-3), 노드 삭제는 지원하지 않는다 (design.md §A.2).
 // edits가 비어 있으면 파일을 건드리지 않고 nil을 반환한다.
+//
+// REQ-WWS-005 (SPEC-WEB-WRITE-SAFETY-001): when every edit targets an EXISTING
+// scalar, the write takes the line-splice path (lineSplice) — only the target
+// lines are rewritten and the rest of the original bytes (blank lines, comments,
+// key order, unknown keys) survive untouched. The former re-encode path remains
+// as the fallback for upserts and unresolvable edits; re-encoding normalizes
+// blank lines away (the limitation documented in this package header), which
+// M1(d) observed as the feedback.yaml blank-line loss.
+//
+// @MX:ANCHOR: [AUTO] PatchFile은 seam 섹션 yaml의 공유 부분-쓰기 진입점이다 —
+// 호출 파일 3개 5호출점(sectionwrite, initializer_expansion ×3, init_workflow_flags)이 같은 계약에 의존한다.
+// @MX:REASON: [AUTO] REQ-WWS-005 (SPEC-WEB-WRITE-SAFETY-001): 기존 스칼라 교체는
+// lineSplice(대상 라인만 재작성 — 빈 줄·주석·키 순서·unknown key 원문 바이트 보존)를
+// 먼저 시도하고, upsert·해소 불가 편집만 재직렬화 폴백으로 보낸다. 재직렬화는 빈 줄을
+// 정규화해 버리므로(패키지 헤더 문서화 한계) 폴백 강제 뮤턴트는
+// TestPatchFileValueInvariantPreservesBytes가 RED로 잡는다 — 이 분기 구조를
+// 단순화하려는 시도는 이 테스트부터 읽는다.
 func PatchFile(path string, edits []KeyEdit) error {
 	if len(edits) == 0 {
 		return nil
@@ -54,6 +72,14 @@ func PatchFile(path string, edits []KeyEdit) error {
 		// tolerance); the seam write mirrors that — the first edit creates
 		// the file rather than erroring.
 		data = []byte("{}\n")
+	}
+
+	// Fast path: every edit resolves to an existing scalar → splice only the
+	// target lines, preserving every other byte of the original document.
+	if out, ok, serr := lineSplice(data, edits); serr != nil {
+		return fmt.Errorf("yamlpatch: %s: %w", path, serr)
+	} else if ok {
+		return atomicWrite(path, out)
 	}
 
 	var doc yaml.Node
@@ -79,6 +105,152 @@ func PatchFile(path string, edits []KeyEdit) error {
 		return fmt.Errorf("yamlpatch: encode %s: %w", path, err)
 	}
 	return atomicWrite(path, out)
+}
+
+// lineSplice applies edits by rewriting only the source lines of the targeted
+// scalars. It reports ok=false whenever the splice path cannot be proven
+// correct — an unresolvable path (upsert), a non-scalar target, two edits on
+// one line, or a post-splice re-parse whose values disagree — and the caller
+// falls back to the re-encode path. The re-parse verification is the safety
+// net for hand-rolled quoting: a spliced file that does not parse back to the
+// requested values is never written.
+func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return nil, false, nil // unparseable input → let the main path report it
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+		return nil, false, nil
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return nil, false, nil
+	}
+
+	type splice struct {
+		lineIdx int
+		node    *yaml.Node
+		value   string
+		desc    string
+	}
+	var splices []splice
+	seenLines := map[int]bool{}
+	for _, e := range edits {
+		cur := root
+		resolved := false
+		for i, key := range e.Path {
+			if cur.Kind != yaml.MappingNode {
+				return nil, false, nil
+			}
+			idx := findKey(cur, key)
+			if idx < 0 {
+				return nil, false, nil // upsert — needs the re-encode path
+			}
+			val := cur.Content[idx+1]
+			if i == len(e.Path)-1 {
+				if val.Kind != yaml.ScalarNode {
+					return nil, false, nil
+				}
+				if val.Line <= 0 || val.Line > len(strings.Split(string(data), "\n")) {
+					return nil, false, nil
+				}
+				lineIdx := val.Line - 1 // yaml.Node.Line is 1-based
+				if seenLines[lineIdx] {
+					return nil, false, nil // two edits on one line — ambiguous splice
+				}
+				seenLines[lineIdx] = true
+				splices = append(splices, splice{lineIdx: lineIdx, node: val, value: e.Value, desc: strings.Join(e.Path, ".")})
+				resolved = true
+				break
+			}
+			cur = val
+		}
+		if !resolved {
+			return nil, false, nil
+		}
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, sp := range splices {
+		spliced, ok := replaceScalarInLine(lines[sp.lineIdx], sp.node, sp.value)
+		if !ok {
+			return nil, false, nil
+		}
+		lines[sp.lineIdx] = spliced
+	}
+
+	out := []byte(strings.Join(lines, "\n"))
+
+	// Verify the spliced document parses back to exactly the requested values
+	// at each edited path — the guard that makes hand-rolled quoting safe.
+	var check yaml.Node
+	if err := yaml.Unmarshal(out, &check); err != nil {
+		return nil, false, nil
+	}
+	if check.Kind != yaml.DocumentNode || len(check.Content) == 0 {
+		return nil, false, nil
+	}
+	checkRoot := check.Content[0]
+	for _, sp := range splices {
+		cur := checkRoot
+		for _, key := range strings.Split(sp.desc, ".") {
+			if cur.Kind != yaml.MappingNode {
+				return nil, false, nil
+			}
+			idx := findKey(cur, key)
+			if idx < 0 {
+				return nil, false, nil
+			}
+			cur = cur.Content[idx+1]
+		}
+		if cur.Kind != yaml.ScalarNode || cur.Value != sp.value {
+			return nil, false, nil
+		}
+	}
+	return out, true, nil
+}
+
+// replaceScalarInLine rewrites the value token of a `key: value` line in place,
+// keeping the key, indentation, and any trailing comment untouched. The new
+// value is rendered in the original node's quoting style; the caller verifies
+// the result by re-parsing, so a style that cannot render safely falls back
+// (ok=false) rather than writing a corrupted line.
+func replaceScalarInLine(line string, node *yaml.Node, value string) (string, bool) {
+	if !strings.Contains(line, ":") {
+		return "", false
+	}
+	oldRendered := renderScalar(node, node.Value)
+	if oldRendered == "" {
+		return "", false
+	}
+	// Replace only the first occurrence AFTER the key separator so a value that
+	// happens to embed the key text is not mangled.
+	colon := strings.Index(line, ":")
+	head, tail := line[:colon+1], line[colon+1:]
+	pos := strings.Index(tail, oldRendered)
+	if pos < 0 {
+		return "", false
+	}
+	newRendered := renderScalar(&yaml.Node{Style: node.Style, Value: value}, value)
+	if newRendered == "" {
+		return "", false
+	}
+	return head + tail[:pos] + newRendered + tail[pos+len(oldRendered):], true
+}
+
+// renderScalar renders a scalar's value in the quoting style carried by the
+// node (or, for a synthetic node, the style it was given). Plain style is
+// returned as-is; the re-parse verification in lineSplice is what rejects a
+// plain value that would not round-trip.
+func renderScalar(node *yaml.Node, value string) string {
+	switch node.Style {
+	case yaml.DoubleQuotedStyle:
+		return strconv.Quote(value)
+	case yaml.SingleQuotedStyle:
+		return "'" + strings.ReplaceAll(value, "'", "''") + "'"
+	default:
+		return value
+	}
 }
 
 // applyEdit은 root 매핑에서 e.Path를 탐색해 최종 스칼라를 교체한다. 중간/최종

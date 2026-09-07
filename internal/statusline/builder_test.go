@@ -1835,7 +1835,10 @@ func TestBuild_WritesContextUsageWithSessionID(t *testing.T) {
 
 	in := StdinData{
 		SessionID: "sess-build-011",
-		Workspace: &WorkspaceInfo{CurrentDir: proj},
+		// SPEC-STATE-ANCHOR-001: the telemetry write anchors to project_dir
+		// (chain step 1), so the fixture carries it — the record lands under
+		// proj as the test asserts, without needing a git fixture.
+		Workspace: &WorkspaceInfo{CurrentDir: proj, ProjectDir: proj},
 		ContextWindow: &ContextWindowInfo{
 			ContextWindowSize: 256000,
 			UsedPercentage:    new(90.0), // → tokensUsed = 256000 * 90% = 230400

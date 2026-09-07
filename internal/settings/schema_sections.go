@@ -362,7 +362,9 @@ func seamSectionFields() []FieldDef {
 		// template ships no todo block, so the seam writer upserts the nested
 		// mapping on first edit. The polarity is the opposite though — this key
 		// is default-ON, so the console's "absent" rendering means enabled.
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled"),
+		// AbsentDefault declares that runtime polarity so the value-invariant
+		// write gate treats an explicit OFF as a real change (sync-audit F1).
+		withAbsentDefault(s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled")),
 		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-011: the /moai project
 		// Phase 14 completion selector. UNLIKE its two neighbours above, the
 		// distributed template DOES ship this key (`continuation: card`) — a
@@ -580,6 +582,17 @@ func withEmptySubmits(f FieldDef) FieldDef {
 	return f
 }
 
+// withAbsentDefault declares a bool field's runtime polarity for an ABSENT
+// key: "true" when the key's interpreter is default-ON / fail-open (absent
+// means enabled), empty for the default-off reading (absent means false).
+// The value-invariant write gate (ApplySchemaEdits) is the consumer — without
+// this declaration an explicit OFF save on a default-ON absent key would be
+// silently skipped as a no-op (sync-audit F1, SPEC-WEB-WRITE-SAFETY-001).
+func withAbsentDefault(f FieldDef) FieldDef {
+	f.AbsentDefault = "true"
+	return f
+}
+
 // crossSessionFields는 crosssession 섹션의 편집 FieldDef를 반환한다:
 // inbound(select, EmptySubmits) + isolate_machines(bool) + dialog_expiry
 // (select, EmptySubmits). 옵션 집합은 config.ValidCrossSession* 공유 접근자에서
@@ -633,12 +646,15 @@ func gateFields() []FieldDef {
 // C-C-5 / AC-C-005). The list is DERIVED from the single catalog declaration —
 // no second tool list lives here — so a tool added to registration cannot go
 // unrepresented in the schema (AP-C-4). Default enabled (owner decision).
+// AbsentDefault declares that fail-open polarity (sync-audit F1): an absent
+// key means the tool IS enabled, so an explicit OFF submission is a real
+// change the value-invariant gate must write.
 func mcpFields() []FieldDef {
 	tools := mcpcat.MoaiMCPTools()
 	fields := make([]FieldDef, 0, len(tools))
 	for _, t := range tools {
-		fields = append(fields, seamField(SectionMCP, "mcp", TypeBool,
-			"mcp", "tools", t.Name, "enabled"))
+		fields = append(fields, withAbsentDefault(seamField(SectionMCP, "mcp", TypeBool,
+			"mcp", "tools", t.Name, "enabled")))
 	}
 	return fields
 }

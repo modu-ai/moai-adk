@@ -459,6 +459,253 @@ No status anywhere.
 	}
 }
 
+// SPEC-STATUS-DRYRUN-001 AC-001/AC-002 (i): a frontmattered SPEC whose body
+// carries a version-history table header `| Version | Date | Status | Notes |`
+// must resolve from the frontmatter status — never from the header cell.
+func TestParseStatus_FrontmatterAnchored_HistoryTableHeader(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-DEMO-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-DEMO-001
+status: completed
+---
+
+## HISTORY
+
+| Version | Date | Status | Notes |
+|---|---|---|---|
+| 0.1.0 | 2026-01-01 | draft | initial |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "completed" {
+		t.Errorf("ParseStatus = %q, want %q (frontmatter must win over body table header)", status, "completed")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-002 (ii): the backticked-prose variant — a body
+// line merely mentioning the header shape inside a code span must never be
+// returned as the SPEC status.
+func TestParseStatus_FrontmatterAnchored_BacktickedProse(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-PROSE-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-PROSE-001
+status: draft
+---
+
+## HISTORY
+
+- HISTORY is kept as a bullet list, not a ` + "`| Version | Date | Status | Notes |`" + ` table.
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "draft" {
+		t.Errorf("ParseStatus = %q, want %q (backticked prose must never be the status)", status, "draft")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 REQ-002 edge: a frontmatter block that exists but
+// carries no status: key falls back to the legacy body formats.
+func TestParseStatus_FrontmatterWithoutStatusKey_FallsBackToBody(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-FM-NOSTATUS-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-FM-NOSTATUS-001
+title: "No status key"
+---
+
+| Field | Value |
+|-------|-------|
+| Status | draft |
+| Priority | P1 |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "draft" {
+		t.Errorf("ParseStatus = %q, want %q (frontmatter without status key must fall back to body)", status, "draft")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 edge case: malformed (unterminated) frontmatter is
+// treated as no frontmatter; the legacy fallback applies and nothing panics.
+func TestParseStatus_MalformedFrontmatter_FallsBackToBody(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-BAD-FM-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `---
+id: SPEC-BAD-FM-001
+status: draft
+
+| Status | implemented |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "implemented" {
+		t.Errorf("ParseStatus = %q, want %q (unterminated frontmatter must fall back to body table)", status, "implemented")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-005 (read): legacy English body table without any
+// frontmatter block still resolves via the fallback path.
+func TestParseStatus_LegacyTableFallback_NoFrontmatter(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, ".moai", "specs", "SPEC-LEGACY-TBL-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatalf("failed to create spec dir: %v", err)
+	}
+
+	specPath := filepath.Join(specDir, "spec.md")
+	content := `# Test SPEC
+
+| Field | Value |
+|-------|-------|
+| Status | draft |
+| Priority | P1 |
+`
+	if err := os.WriteFile(specPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write spec file: %v", err)
+	}
+
+	status, err := ParseStatus(specDir)
+	if err != nil {
+		t.Fatalf("ParseStatus failed: %v", err)
+	}
+	if status != "draft" {
+		t.Errorf("ParseStatus = %q, want %q (legacy fallback must survive)", status, "draft")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 AC-004 (REQ-003): updating a frontmattered SPEC
+// touches ONLY the frontmatter status line — the body (history table rows,
+// the `Notes` header cell, backticked prose) is byte-identical.
+func TestUpdateStatus_FrontmatterAnchored_BodyByteInvariance(t *testing.T) {
+	frontmatter := "---\nid: SPEC-DEMO-001\nstatus: completed\n---\n"
+	body := "\n## HISTORY\n\n| Version | Date | Status | Notes |\n|---|---|---|---|\n| 0.1.0 | 2026-01-01 | draft | initial |\n\n- HISTORY is kept as a bullet list, not a `| Version | Date | Status | Notes |` table.\n"
+	content := frontmatter + body
+
+	updated, err := updateStatusInContent(content, "implemented")
+	if err != nil {
+		t.Fatalf("updateStatusInContent failed: %v", err)
+	}
+
+	if !strings.Contains(updated, "status: implemented") {
+		t.Errorf("frontmatter status not updated, got:\n%s", updated)
+	}
+
+	// The body after the closing frontmatter delimiter must be byte-identical.
+	lines := strings.Split(updated, "\n")
+	closingIdx := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			closingIdx = i
+			break
+		}
+	}
+	if closingIdx < 0 {
+		t.Fatalf("updated content lost its frontmatter closing delimiter:\n%s", updated)
+	}
+	updatedBody := strings.Join(lines[closingIdx+1:], "\n")
+	if updatedBody != body {
+		t.Errorf("body was modified by the status update:\n--- want ---\n%s\n--- got ---\n%s", body, updatedBody)
+	}
+	if strings.Contains(updated, "| Version | Date | Status | implemented |") {
+		t.Error("history table header cell was clobbered")
+	}
+	if strings.Contains(updated, "Status | implemented |` table") {
+		t.Error("backticked prose was clobbered")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 edge case: a frontmatter block lacking a status: key
+// gains the key INSIDE the existing block — never a second block, never a
+// stray key appended to the body.
+func TestUpdateStatus_FrontmatterInsert_IntoExistingBlock(t *testing.T) {
+	frontmatter := "---\nid: SPEC-FM-NOSTATUS-001\ntitle: \"No status key\"\n---\n"
+	body := "\n| Field | Value |\n|-------|-------|\n| Status | draft |\n"
+	content := frontmatter + body
+
+	updated, err := updateStatusInContent(content, "in-progress")
+	if err != nil {
+		t.Fatalf("updateStatusInContent failed: %v", err)
+	}
+
+	if !strings.Contains(updated, "status: in-progress") {
+		t.Errorf("status not inserted, got:\n%s", updated)
+	}
+
+	// Insertion must land inside the frontmatter block (before its closing ---).
+	lines := strings.Split(updated, "\n")
+	closingIdx := -1
+	for i, line := range lines {
+		if i > 0 && strings.TrimSpace(line) == "---" {
+			closingIdx = i
+			break
+		}
+	}
+	if closingIdx < 0 {
+		t.Fatalf("updated content has no frontmatter closing delimiter:\n%s", updated)
+	}
+	foundInside := false
+	for _, line := range lines[:closingIdx] {
+		if strings.HasPrefix(line, "status: in-progress") {
+			foundInside = true
+		}
+	}
+	if !foundInside {
+		t.Errorf("status key not inserted inside the frontmatter block:\n%s", updated)
+	}
+
+	// Body stays byte-identical.
+	updatedBody := strings.Join(lines[closingIdx+1:], "\n")
+	if updatedBody != body {
+		t.Errorf("body was modified by the status insertion:\n--- want ---\n%s\n--- got ---\n%s", body, updatedBody)
+	}
+}
+
 // TestSpecIDPattern tests the SPEC-ID extraction regex pattern
 func TestSpecIDPattern(t *testing.T) {
 	// This test documents the expected pattern

@@ -1,0 +1,20 @@
+---round2 paths---
+E1=/tmp/t502-HTmXMiC0/proj-S/.agents/skills/./t502probe/../t502probe/SKILL.md
+E2=/tmp/t502-HTmXMiC0/alias-dir/SKILL.md   (alias -> /tmp/t502-HTmXMiC0/proj-S/.claude/skills/t502probe)
+E3=/private/tmp/t502-HTmXMiC0/proj-S/.agents/skills/t502probe/SKILL.md
+E6=.agents/skills/t502probe/SKILL.md (relative)
+E8=/private/tmp/t502-HTmXMiC0/proj-C/.agents/skills/t502probe/SKILL.md
+---round2 cells---
+EC	out=24918	err=0	rc=0	marker=1	name=1
+E1	out=24757	err=0	rc=0	marker=0	name=0
+E2	out=24756	err=0	rc=0	marker=0	name=0
+E3	out=24757	err=0	rc=0	marker=0	name=0
+E4	out=24919	err=0	rc=0	marker=1	name=1
+ECc	out=24919	err=0	rc=0	marker=1	name=1
+E5	out=24919	err=0	rc=0	marker=1	name=1
+E6	out=24919	err=0	rc=0	marker=1	name=1
+E8	out=24754	err=0	rc=0	marker=0	name=0
+---round2 stderr-nonempty---
+---notouch-recheck---
+9f6e3a953880630afcfa6a40abe846b785e8fc0067e17b3a7ec1d513f71ca33a  /Users/goos/.codex/config.toml
+9f6e3a953880630afcfa6a40abe846b785e8fc0067e17b3a7ec1d513f71ca33a  /Users/goos/.codex/config.toml

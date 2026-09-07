@@ -34,12 +34,13 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Insight: Why | `Why:` | `이유:` |
 | Insight: Alternatives | `Alternatives:` | `대안:` |
 | Insight: Implications | `Implications:` | `함의:` |
+| Insight: Your call (pull mode) | `Your call:` | `판단은 사용자 몫:` |
 | Delegation: Specialist | `Specialist:` | `전문가:` (또는 `Specialist:` 그대로 — technical role identifier) |
 | Delegation: Scope | `Scope:` | `범위:` |
 | Delegation: Constraints | `Constraints:` | `제약:` |
 | Delegation: Return | `Return:` | `반환:` |
 | Step labels (Step 1-4) | `Step 1: Clarify` / `Step 2: Delegate` / `Step 3: Execute` / `Step 4: Verify` | `1단계: 명확화` / `2단계: 위임` / `3단계: 실행` / `4단계: 검증` |
-| Recovery options | `Retry as-is / Alt approach / Pause / Abort+preserve` | `현재대로 재시도 / 대안 접근 / 일시 중지 / 중단+보존` |
+| Recovery options | `Pause / Retry as-is / Alt approach / Abort+preserve` | `일시 중지 / 현재대로 재시도 / 대안 접근 / 중단+보존` |
 
 The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate. (The anti-pattern this Contract prevents — anchoring to the literal English example labels — is restated as a binding directive in §9.)
 
