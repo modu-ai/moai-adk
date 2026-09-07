@@ -125,4 +125,31 @@ _<pending run-phase — populated at M-final>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- Close type: 3-phase close (plan→run→sync) — single sync commit carrying CHANGELOG entry +
+  progress.md §E.4 + spec.md frontmatter `status: in-progress → completed` (updated: 2026-09-08).
+  `sync_commit_sha: "pending-backfill-sync"` (D3 placeholder — real SHA backfilled in the
+  follow-up commit; a commit cannot cite its own hash).
+- Milestone commit SHAs: M1 characterization `08361d0ee` · seam swap `bca046150` ·
+  M2 observation + identity proof `02d8be597`.
+- **Identity proof (AC-SEAM-005, REQ-004, re-confirmed from §E.2's own run)**: 25 fixtures /
+  staging; ok=true traversal 6 (b02, b03, b05, b06, b07, b12 — not vacuous); pre/post diff EMPTY.
+- **Grep assertion (AC-SEAM-001), re-run this spawn on the sync tree**: `grep -n 'os\.Stat('
+  internal/cli/doctor_codex.go` → no match (exit 1); `grep -n 'os\.Lstat('` → `:441` only;
+  `grep -c 'osStatFn'` → **2**.
+- **Sync-phase quality gate** (all commands run in THIS spawn against tree @ `352ff6eab`;
+  evidence attributed per VCI §2):
+  - `go test ./internal/cli/ -run 'TestCodexStaleSkillFinding_|TestInspectSkillMirror_|TestCodexSkillPath_|TestCheckCodexWiring' -count=1 -timeout 1800s` → `ok github.com/modu-ai/moai-adk/internal/cli 1.105s` (26 seam tests + both existing families).
+  - `go vet ./internal/cli/` → exit 0 (no output).
+  - `golangci-lint run internal/cli/...` → `0 issues.`, exit 0.
+  - `/tmp/moai-t563 spec lint` (tree build @ `352ff6eab` — INSTALLED binary is 1069 commits behind and silently skips newer rules; provenance per the [HARD] tool-provenance gate) → `0 error(s), 4378 warning(s)`, EXIT=0 (warnings are repo-wide SPEC-lint baseline, not this SPEC's errors).
+  - Tree quiescence: `git status --porcelain | wc -l` → **0** before the batch and **0** after the batch (pre-commit).
+  - NO local full suite (REQ-007 — CI owns the full verdict).
+- **B12 CHANGELOG self-tests**: `grep -c 'SPEC-DOCTOR-STAT-SEAM-001' CHANGELOG.md` → 0 pre-emission
+  (no duplicate); acceptance.md distinct AC count → 8 (AC-SEAM-001..008); every file path named in
+  the entry verified present (`internal/cli/doctor_codex.go`, SPEC directory).
+- **Sync close is the last write proof**: after the sync commit,
+  `git diff --name-only <prev-HEAD 352ff6eab>..<sync-SHA>` contains ZERO `.go` files
+  (sync phase touched only CHANGELOG.md + SPEC artifacts), and
+  `git diff --name-only <sync-SHA>..HEAD` is empty (nothing after the close).
+- Note: §E.3 (Run-phase Audit-Ready Signal) remains manager-develop-owned; run-phase closed at M2
+  with §E.2 as its evidence record. All sync-phase gate evidence lives HERE (§E.4).

@@ -2,7 +2,7 @@
 id: SPEC-DOCTOR-STAT-SEAM-001
 title: "Route doctor_codex stat calls through the osStatFn seam"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
