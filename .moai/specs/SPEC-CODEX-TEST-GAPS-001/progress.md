@@ -36,3 +36,37 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+```yaml
+phase: run
+logged_at: 2026-09-07
+logged_after: "Implementation Kickoff Approval obtained 2026-09-07 (operator, via lead-session AskUserQuestion; lead relayed with HEAD cd855f296 measured)"
+input_parameters:
+  tier: M
+  scope_files: "<5 test files extended (codex_job_control_test.go, mcp_codex_test.go, codex_contract_test.go, codex_init_test.go)"
+  domain_count: 1
+  file_language_mix: "100% Go test code, single package internal/cli"
+  concurrency_benefit: "LOW — coding-heavy (Anthropic coding-task parallelism caveat); milestones M1+M2 both edit-adjacent test files, fan-out would create write contention on shared test files"
+  agent_teams_prereqs: "not requested (no operator --team)"
+mode_evaluation:
+  direct: "not selected — 8 test items across 4+ files exceeds a single-response edit"
+  serial: "selected — one manager-develop carries M1-M8 in audited order with the mutant-RED discipline interleaved"
+  fanout: "not selected — coding-heavy work, 1 domain, <10 files; shared test files would collide across concurrent writers"
+  sweep: "not selected — semantic test authoring, not mechanical-uniform; <30 files"
+  agent-team: "not selected — explicit-request-only; no request"
+decision: serial
+justification: >
+  Tests-only work confined to one package with per-milestone edits landing in
+  shared test files makes concurrency a write-conflict risk rather than a speed
+  win. The audited milestone order (M1=U3 terminateCodexProcess, M2=U2
+  codexIDMatches, M3=U2 ctx-cancel arm) already fronts the card's priority
+  clusters, so a single sequential spawn preserves both the priority directive
+  and the mutant-RED evidence chain (each test shown RED under a named mutant
+  before GREEN on the pristine tree). Serial is the default fallback for
+  coding-heavy work per the Anthropic parallelism caveat.
+boundary_case: "none — no threshold-adjacent inputs"
+sweep_confirmation: "N/A (sweep not selected)"
+```
+
