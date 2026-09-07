@@ -766,7 +766,7 @@ ok  	github.com/modu-ai/moai-adk/internal/spec	77.665s
 ```yaml
 run_complete_at: 2026-09-08
 run_commit_sha: fe75ec5c8          # 마지막 run-phase 구현 커밋(M5). 이 §E.3 기록 자체는 뒤따르는 커밋에 실린다
-run_record_commit_sha: pending-backfill   # 위 이유로 자기 SHA를 담을 수 없다 — 다음 커밋에서 backfill
+run_record_commit_sha: 3d675d99d   # 이 §E.3 절이 실린 커밋. 커밋은 자기 SHA를 담을 수 없어 placeholder 로 착지한 뒤 backfill 했다
 run_status: implemented
 ac_pass_count: 16                  # 식별자 16개 전수
 ac_fail_count: 0
