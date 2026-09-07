@@ -1,0 +1,4 @@
+# t502 cell E5
+[[skills.config]]
+path = "/tmp/t502-HTmXMiC0/proj-C/.agents/skills/t502probe"
+enabled = false

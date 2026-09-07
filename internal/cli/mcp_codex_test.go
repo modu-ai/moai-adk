@@ -659,3 +659,28 @@ func TestRealCodexConnPid(t *testing.T) {
 		t.Errorf("pid with a live Process = %d, want %d", got, os.Getpid())
 	}
 }
+
+// ─── SPEC-CODEX-COVER-RESIDUAL-001 M2 (REQ-CCR-005 / AC-CCR-006) ──────────
+
+// TestCodexSessionHandlePid covers the 3-branch pid read on the session handle
+// directly, same package, no subprocess: a nil receiver → 0, a handle with a
+// nil conn → 0, and a handle whose conn is a fakeCodexConn → fakeCodexConnPID.
+//
+// It is the sibling of TestRealCodexConnPid above — the same 3-arm nil-guard
+// shape on the other receiver — and the nil arms are likewise a disjunction:
+// h == nil MUST short-circuit before h.conn is dereferenced, or the typed-nil
+// call panics rather than returning 0.
+//
+// Constructing &fakeCodexConn{} with a nil sent field is safe here: pid() reads
+// no field of the conn beyond the interface dispatch, and send is never called.
+func TestCodexSessionHandlePid(t *testing.T) {
+	if got := (*codexSessionHandle)(nil).pid(); got != 0 {
+		t.Errorf("pid on a nil handle = %d, want 0", got)
+	}
+	if got := (&codexSessionHandle{}).pid(); got != 0 {
+		t.Errorf("pid on a handle with no conn = %d, want 0", got)
+	}
+	if got := (&codexSessionHandle{conn: &fakeCodexConn{}}).pid(); got != fakeCodexConnPID {
+		t.Errorf("pid with a process-bearing conn = %d, want %d", got, fakeCodexConnPID)
+	}
+}

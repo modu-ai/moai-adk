@@ -1,0 +1,22 @@
+=== RUN   TestDangerousRemoval_FlagOrderCannotBypass
+--- PASS: TestDangerousRemoval_FlagOrderCannotBypass (0.01s)
+=== RUN   TestDangerousRemoval_QuotedDataIsNotACommand
+--- PASS: TestDangerousRemoval_QuotedDataIsNotACommand (0.00s)
+=== RUN   TestDangerousRemoval_OrdinaryCleanupIsNotProtected
+--- PASS: TestDangerousRemoval_OrdinaryCleanupIsNotProtected (0.00s)
+=== RUN   TestDangerousRemoval_StillBlocksAfterQuoteFolding
+--- PASS: TestDangerousRemoval_StillBlocksAfterQuoteFolding (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsDeepPathHeredocDataMention
+--- PASS: TestDangerousRemovalDeployed_AllowsDeepPathHeredocDataMention (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsUnquotedDataMention
+--- PASS: TestDangerousRemovalDeployed_AllowsUnquotedDataMention (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsScratchCleanupExecution
+--- PASS: TestDangerousRemovalDeployed_AllowsScratchCleanupExecution (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsQuotedDataMention
+--- PASS: TestDangerousRemovalDeployed_AllowsQuotedDataMention (0.00s)
+=== RUN   TestDangerousRemovalDeployed_DeniesProtectedTargetsAllOrders
+--- PASS: TestDangerousRemovalDeployed_DeniesProtectedTargetsAllOrders (0.01s)
+=== RUN   TestDangerousRemovalDeployed_DeniesHeredocBodyProtectedTarget
+--- PASS: TestDangerousRemovalDeployed_DeniesHeredocBodyProtectedTarget (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.773s

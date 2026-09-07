@@ -144,6 +144,14 @@ func settingsTabFieldNames(tabID string) []string {
 		return []string{"permission_mode", "model", "effort_level"}
 	case "agentfm":
 		return []string{"performance_tier"}
+	case "codex":
+		// SPEC-WEB-CODEX-PANEL-001: the codex panel owns NO field — every row
+		// is a mirror of a field owned by audit or mcp, or probe state. Zero is
+		// therefore the honest rail number, and the panel header claims no
+		// count, so the two agree. The default branch happens to yield zero
+		// today via an empty panel meta; this explicit case makes zero a
+		// decision rather than a fallback a later change could alter silently.
+		return nil
 	case "mcp":
 		names := fieldDefNames(settings.SectionFields(settings.SectionMCP))
 		return append(names,

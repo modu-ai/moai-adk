@@ -24,6 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/stateanchor"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -166,8 +167,19 @@ func InitDependencies() {
 	// Eagerly load the project config (see InitDependencies godoc). Fail-open:
 	// a load error logs a warning and leaves Get() returning nil, so handlers
 	// fall back to defaults and glm.go's nil-safe path stays compatible.
+	// B4 (SPEC-STATE-ANCHOR-001): the load anchors to the project's state
+	// anchor — the git-resolved primary checkout — not to the raw cwd, so the
+	// config cache lands at the project root even when the process stands in
+	// a subdirectory or a linked worktree. The raw cwd remains the fallback
+	// only where no git context exists, keeping non-git MoAI projects on
+	// their project-local config; a non-project cwd never gains a .moai (the
+	// cache skips writing when the config directory is absent).
 	cfgLoadStart := time.Now()
-	if _, err := deps.Config.Load(cwd); err != nil {
+	cfgRoot := stateanchor.FromDirectory(cwd)
+	if cfgRoot == "" {
+		cfgRoot = cwd
+	}
+	if _, err := deps.Config.Load(cfgRoot); err != nil {
 		logger.Warn("config load failed; config-dependent handlers fall back to defaults",
 			"cwd", cwd,
 			"error", err,
