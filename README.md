@@ -408,10 +408,10 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
 ### moai web console
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 11 setting tabs" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into fourteen tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Codex, Agents, Report, MCP, Cross-Session, Feedback, Quality Gate. The Codex tab is a read-only screen that gathers the scattered codex settings in one place — each value is still edited on its owning tab. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
@@ -747,7 +747,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |
 | `moai clean [--home] [--codex-skills]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist; with `--codex-skills` it removes the `[[skills.config]]` registrations in `~/.codex/config.toml` whose declared path is provably absent. Exactly one scope per invocation. Dry run by default; `--force` to actually delete |
-| `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 11-tab settings |
+| `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 14-tab settings |
 
 > All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
 
