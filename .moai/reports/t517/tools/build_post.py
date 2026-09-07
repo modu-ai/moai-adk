@@ -39,7 +39,10 @@ class FormParser(html.parser.HTMLParser):
                 return
             typ = (a.get("type") or "text").lower()
             if typ in ("checkbox", "radio"):
-                if a.get("checked") is not None:
+                # templ renders the bare attribute form (`checked` with no
+                # value); html.parser hands that through as ('checked', None),
+                # so presence-in-dict is the correct test, not is-not-None.
+                if "checked" in a:
                     self.fields.append((name, a.get("value", "on")))
             elif typ in ("submit", "button", "image"):
                 return
@@ -48,7 +51,9 @@ class FormParser(html.parser.HTMLParser):
         elif tag == "select":
             self.cur = {"name": name, "picked": None}
         elif tag == "option" and self.cur is not None:
-            sel = a.get("selected") is not None
+            # templ renders `selected` as a bare attribute; html.parser hands it
+            # through as ('selected', None), so presence-in-dict is the test.
+            sel = "selected" in a
             if sel or self.cur["picked"] is None:
                 self.cur["picked"] = a.get("value", "")
         elif tag == "textarea" and name:

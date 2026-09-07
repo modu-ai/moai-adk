@@ -15,12 +15,16 @@ package settings
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
 	"github.com/modu-ai/moai-adk/pkg/models"
+	"gopkg.in/yaml.v3"
 )
 
 // ApplySchemaEdits는 제출된 확장 필드 값(FieldDef.Name → 문자열 값)을 영속화한다.
@@ -50,6 +54,20 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 		}
 		switch f.Persist.Kind {
 		case PersistSeam:
+			// REQ-WWS-003 (SPEC-WEB-WRITE-SAFETY-001): a seam edit that would
+			// not change the persisted value must not reach the file. Two
+			// value-invariant shapes exist: (a) the submitted value equals the
+			// persisted scalar, and (b) the key is ABSENT and a bool field
+			// submits "false" — absent IS false for a bool key, so writing it
+			// would only create the key (M1(d) observed gate.yaml/workflow.yaml
+			// growing new `enabled: false` blocks from a value-invariant save).
+			cur, curOk := readSeamScalar(projectRoot, f.Persist.Section, f.Persist.Path)
+			if curOk && cur == edits[name] {
+				continue
+			}
+			if !curOk && f.Type == TypeBool && edits[name] == "false" {
+				continue
+			}
 			seamEdits[f.Persist.Section] = append(seamEdits[f.Persist.Section],
 				yamlpatch.KeyEdit{Path: f.Persist.Path, Value: edits[name]})
 		case PersistTypedSection:
@@ -60,7 +78,7 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 		}
 	}
 
-	// typed 섹션: 단일 LoadRaw → 전 필드 적용 → 변경 섹션만 SetSection → 단일 Save.
+	// typed 섹션: 단일 LoadRaw → 전 필드 적용 → 실변경 섹션만 SetSection → 단일 Save.
 	if len(typedEdits) > 0 {
 		if err := applyTypedEdits(projectRoot, typedEdits, typedValues); err != nil {
 			return err
@@ -85,11 +103,23 @@ func ApplySchemaEdits(projectRoot string, edits map[string]string) error {
 // git_strategy 필드가 하나라도 있으면 SetSection("git_strategy")이 dirty-flag를
 // 세워 Save가 git-strategy.yaml을 재기록한다 (그 외에는 기존 파일 byte 보존 —
 // SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
+//
+// REQ-WWS-003/004 (SPEC-WEB-WRITE-SAFETY-001): SetSection은 apply 전후 구조체
+// 비교에서 실제로 값이 바뀐 섹션에만 호출된다. M1(d)에서 값-불변 제출이
+// SetSection("git_strategy")을 통과해 gitStrategyDirty를 세우고 Save가
+// git-strategy.yaml을 전체 재마샬하는 것(키 재배열 + zero-value 키 추가)이
+// 관측됐다 — 값이 바뀌지 않은 섹션은 dirty 플래그에 도달해서는 안 된다.
 func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) error {
 	mgr := config.NewConfigManager()
 	cfg, err := mgr.LoadRaw(projectRoot)
 	if err != nil {
 		return fmt.Errorf("settings: load project config: %w", err)
+	}
+
+	before := map[string]any{
+		"git_strategy": cfg.GitStrategy,
+		"llm":          cfg.LLM,
+		"quality":      cfg.Quality,
 	}
 
 	touched := map[string]bool{}
@@ -126,6 +156,7 @@ func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) err
 		cfg.Quality.QualityExtrasEnabled = true
 	}
 
+	changed := 0
 	for _, section := range []string{"git_strategy", "llm", "quality"} {
 		if !touched[section] {
 			continue
@@ -139,14 +170,65 @@ func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) err
 		case "quality":
 			value = cfg.Quality
 		}
+		// REQ-WWS-003: skip the SetSection entirely when the applied values did
+		// not change the section — an unchanged section must not raise the
+		// git_strategy dirty flag nor ride the Save() rewrite.
+		if reflect.DeepEqual(before[section], value) {
+			continue
+		}
 		if err := mgr.SetSection(section, value); err != nil {
 			return fmt.Errorf("settings: set %s section: %w", section, err)
 		}
+		changed++
+	}
+	if changed == 0 {
+		// REQ-WWS-003: no section actually changed — Save() would still rewrite
+		// all six section files (creating absent ones such as llm.yaml). Skip it.
+		return nil
 	}
 	if err := mgr.Save(); err != nil {
 		return fmt.Errorf("settings: save project config: %w", err)
 	}
 	return nil
+}
+
+// readSeamScalar returns the persisted scalar at path inside the section file,
+// reporting ok=false when the file, the path, or the target is absent — the
+// caller treats an unreadable current value as "unknown", so the edit is kept
+// (a genuinely new value must still be written; an absent target is an upsert).
+func readSeamScalar(projectRoot, section string, path []string) (string, bool) {
+	data, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", section+".yaml"))
+	if err != nil {
+		return "", false
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return "", false
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+		return "", false
+	}
+	cur := doc.Content[0]
+	for i, key := range path {
+		if cur.Kind != yaml.MappingNode {
+			return "", false
+		}
+		idx := -1
+		for j := 0; j+1 < len(cur.Content); j += 2 {
+			if cur.Content[j].Value == key {
+				idx = j
+				break
+			}
+		}
+		if idx < 0 {
+			return "", false
+		}
+		cur = cur.Content[idx+1]
+		if i == len(path)-1 && cur.Kind == yaml.ScalarNode {
+			return cur.Value, true
+		}
+	}
+	return "", false
 }
 
 // parseBoolValue는 typed applier의 bool 값 변환 가드다 (웹 파서가 1차 검증하지만
