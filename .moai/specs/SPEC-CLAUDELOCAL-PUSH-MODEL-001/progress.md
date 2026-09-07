@@ -261,18 +261,21 @@ open_gaps_preserved: 4   # spec.md §G 의 4건 미폐쇄 — 이 run-phase 는 
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill
-  # 커밋은 자기 해시를 인용할 수 없다. 레인이 뒤따르는 커밋에서 실제 값으로 채운다
-  # (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+sync_commit_sha: b7344d957
+  # backfill 완료. sync 커밋 `b7344d957`
+  # (docs(SPEC-CLAUDELOCAL-PUSH-MODEL-001): sync-phase artifacts (t531)) 가 착지한 뒤
+  # 후속 커밋에서 채웠다 — 커밋은 자기 해시를 인용할 수 없기 때문이다
+  # (spec-frontmatter-schema.md § SHA placeholder backfill exemption). 남은 빚 없음.
 sync_status: audit-ready
 card: t531
 branch: WT-claudelocal-push-model
 head_at_sync_authoring: 132e752bf
   # sync 저작을 시작한 시점의 HEAD. 이 블록의 대부분이 이 트리에서 쓰였다.
-head_at_last_edit: 4362ba52f
-  # 마지막 편집 시점의 HEAD — 편집 직전에 재판독했다. 그 사이 리드의 증거-정정 커밋
-  # `4362ba52f` 가 이 브랜치에 착지했고, 아래 ownership_transition_lint 블록은
-  # 그 트리에서 재측정하고 다시 쓴 것이다. 두 값이 다른 것은 드리프트가 아니라 기록이다.
+head_at_last_edit: b7344d957
+  # 마지막 편집 시점의 HEAD — 편집 직전에 재판독했다. 이 값은 sync 커밋 자신이며,
+  # 위 sync_commit_sha 의 backfill 이 이 트리에서 이뤄졌다.
+  # 이전 값들은 드리프트가 아니라 기록이다: §E.4 의 대부분은 `132e752bf` 에서,
+  # ownership_transition_lint 블록은 증거-정정 커밋 `4362ba52f` 착지 후 그 트리에서 쓰였다.
 
 b12_self_test_a:
   name: "CHANGELOG 중복 방지 사전 grep"
