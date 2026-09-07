@@ -252,6 +252,15 @@ moai-adk-go uses Go's `go:embed` directive:
 - **Embed mechanism**: `internal/template/embed.go` carries `//go:embed all:templates` + `//go:embed catalog.yaml`, which compile the `templates/` FS directly into the binary (there is NO generated `embedded.go` file)
 - **Build**: Run `make build` after editing templates (recompiles the binary)
 
+### Command-to-Skill Publication (SPEC-CODEX-COMMAND-SKILLS-001)
+
+`internal/template/commandemit` publishes the 16 `/moai` command sources as codex skill-shaped artifacts at `templates/.agents/skills/moai-<command>/SKILL.md` (committed real files, golden-checked).
+
+- **Regenerate** (after editing any command source or the emitter): `make commands-emit`
+- **Drift check**: `make commands-emit-check` — read-only, wired ahead of `build` (same position as `agents-emit-check`); it never writes
+- **Boundary**: bodies publish VERBATIM from the command sources, including their Claude-only `Skill("moai")` dispatcher line — the emitter flags this per skill and never repairs it (repair is the command-body layer's concern, sibling card t497). Do not hand-edit the emitted SKILL.md files; edit the command sources and regenerate.
+- **gitignore coupling**: the 16 published names are re-included in `templates/.gitignore` (the mirror rule `.agents/skills/moai*` would otherwise ignore them); `TestGitignoreCarriesEveryPublishedName` + `TestPublishedSkillsNamesMatchTree` keep both lists in step with the emitted set.
+
 ---
 
 ## 3. Code Standards
