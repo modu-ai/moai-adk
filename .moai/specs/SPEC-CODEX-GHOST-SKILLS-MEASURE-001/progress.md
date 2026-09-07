@@ -12,7 +12,7 @@
 - **frontmatter**: 정본 12필드 전부 존재, `status: draft`, `phase: "v3.2.0 target"`(릴리스 타깃이며 워크플로 단계 토큰 아님)
 - **층 구조**: 층 1(측정, 지금 닫힘) 10 AC / 층 2(쓰기, t502 착지 조건부) 3 AC. 층 2 는 조건을 AC 본문에 실었고 PASS/FAIL 어느 쪽으로도 표시하지 않는다.
 - **쓰기 0건**: plan 단계에서 `~/.codex` 하위에 어떤 쓰기도 수행하지 않았다. Go 코드 변경 0줄.
-- **기록된 정정 5건**: ① "백업 파일 부재" → 반증(2건 존재, 형식 상이) ② "`~/.zsh_history` 부재" → 반증(존재, 기본 로케일 grep 이 인코딩 때문에 조용히 실패) ③ 1차 초안의 "계측기가 없다" → 자기 정정(계기는 있고 **범위**가 부족한 것, §F.1) ④ "절단 여부 미상"·"다른 터미널 불가시" → 반증(상한 측정 가능, 터미널은 가시 — 「모른다」가 「안 재봤다」였다) ⑤ 깨진 계기의 반환을 `0` 으로 적은 것 → 무출력(len=0)으로 정정
+- **기록된 정정 6건**(⑥ 은 run 이 발견해 리드가 채택; ⑥ 항목은 아래 목록 뒤에 이어짐): ① "백업 파일 부재" → 반증(2건 존재, 형식 상이) ② "`~/.zsh_history` 부재" → 반증(존재, grep 이 조용히 실패 — 기전은 정정 6 참조) ③ 1차 초안의 "계측기가 없다" → 자기 정정(계기는 있고 **범위**가 부족한 것, §F.1) ④ "절단 여부 미상"·"다른 터미널 불가시" → 반증(상한 측정 가능, 터미널은 가시 — 「모른다」가 「안 재봤다」였다) ⑤ 깨진 계기의 반환을 `0` 으로 적은 것 → 무출력(len=0)으로 정정 ⑥ 그 깨짐의 **기전 귀속** → 로케일·인코딩이 아니라 **에이전트 셸의 `grep` 셸 함수**(`ugrep -I --ignore-files`); 교훈과 처방은 그대로 유효하고 `-a` 가 통하는 이유만 바뀐다
 - **증거 무결성 사건 1건**: 깨진 대조군(§F.2) — 대조군이 프로브와 같은 이유로 함께 깨져 무출력이 확증으로 오독됐다. 처방(프로브와 대조군은 실제로 달라야 한다)을 오늘의 계열 4항 마지막 자리에 연결해 기록.
 - **전제 취약성 1건 (기록만)**: 「적격 판정은 경로 부재만 본다」는 카드 t540 착지 시 재검증 대상. 범위를 넓히지 않았고 REQ/AC 를 만들지 않았다.
 - **닫지 못한 것**: `moai clean --codex-skills` 호출 여부(§F). **계기는 있으나 범위가 질문을 덮지 못한다**고 기록했고, "없음"으로도 "계기 부재"로도 보고하지 않았다.
@@ -37,6 +37,22 @@ major 6건 + minor 4건 수리. F0 은 리드 판정으로 Tier 격상 처리(�
 - **N4** — 정정 수 3 → **5** 로 일치(본문 §F 및 DoD 와 동수).
 
 _다음: 재감사(통과선 0.80) → 통과 시 run 단계에서 층 1 AC 재현 + 증거 반출._
+
+### run 층 1 이후 — AC 문안 수리 5건 적용 (리드 채택, plan-phase 소유자가 적용)
+
+`.moai/reports/t533/ac-repair-proposals.md` 의 제안 5건을 전부 적용했다. run 은 제안만 하고 적용하지 않았다 — AC 본문은 plan-phase 소유이므로 경계가 지켜졌다.
+
+**[HARD] 이 편집의 성격**: **실제로 실행된 것은 수정된 셀렉터들이다.** run 은 교정된 형태로 측정했고 AC **텍스트**만 결함 있는 옛 형태를 가리키고 있었다 — **문면이 증거를 따라잡는 것**이지 기준을 결과에 맞춰 완화하는 것이 아니다. 다섯 다 AC 를 더 어렵게 만들거나(P1 70→72, P2 필수 조건 추가, P4 가시 범위 확대, P5 검사 대상 확대) 오탐을 없앤다(P3). 근거 표는 `acceptance.md` 머리말.
+
+- **P1 (N6)** — mtime 셀렉터를 글롭에서 `find -maxdepth 1 -mindepth 1` 으로 교체. 글롭의 두 침묵 모드(`..` 이름 미표현 · zsh nomatch 가 명령줄 중단, 리다이렉션은 빈 파일 생성)가 **둘 다 부재-통과 방향**으로 실패한다. 실측 70 vs 72.
+- **P2 (N5)** — mtime 프로브의 **둘째 뮤턴트**(제자리 수정) 추가. `Then` 이 두 프로브 모두 침묵을 요구하므로 D-2 가 둘 다에 걸리는데 하나만 행사됐고, **미행사 쪽이 prune 의 실제 쓰기 모양**(`os.WriteFile` 로 같은 이름 재작성, `:210`)**을 잡는 유일한 프로브**다. `%m` 초 단위 잔여와 `%Fm` **병기**(대체 아님) 처리도 함께 기록.
+- **P3 (N7)** — 국면 B 좌측 끝점을 `git merge-base origin/develop HEAD` 로 재도출. 리터럴 핀은 **앵커**로는 옳으나 흡수 후 **범위 귀속**이 깨진다. 이동-ref 판별식 **R4**(주어가 mainline 자체). 레인 절차 결함이므로 범위 제한 AC 를 가진 **모든 카드**에 적용되는 일반화로 적었다.
+- **P4** — 국면 A 셀렉터에 `--untracked-files=all`. `git status --porcelain` 이 미추적 디렉터리를 한 줄로 접어, 그 안의 `.go` 를 볼 수 없었다. N6 과 같은 계열(선언 범위 > 실제 커버리지, 부재-통과 방향 침묵 실패).
+- **P5** — 깨진 계기의 **기전 귀속 정정**(정정 6). 로케일·인코딩이 아니라 **에이전트 셸의 `grep` 셸 함수**. **교훈도 처방도 그대로 유효**하고 `LC_ALL=C grep -a` 가 통하는 이유만 바뀐다(`-a` 가 `-I` 무력화). 판별식은 needle 이 아니라 **도구**가 다른 대조군(`/usr/bin/grep`) — §F.2 처방의 가장 날카로운 사례다. 재귀 축 실측 1886 vs 1966(80개 미검사)은 **리드의 측정**이며 리드가 자기 셸에서 독립 재현해 전 레인에 전파했다.
+
+**독립 재확인(이 편집 시점, HEAD `465d9f175`)**: `type grep` → 셸 함수(스냅숏 경로 출력) · 글롭 70 vs `find` 72 · `git merge-base origin/develop HEAD` → `6a46c0edbe2dec6014c685184aa2cf9dc346cc59`(리터럴과 동일) · 범위 `6a46c0edb..HEAD` 15파일 중 `.go` 0.
+
+**닫지 않은 것 (run 이 남긴 미해결 — 그대로 둔다)**: AC-CGM-001 의 PASS-WITH-DEBT(살아 있는 앱의 상태 디렉터리에 전체 diff 공집합을 요구하는 **검사 형태 자체가 틀렸다**) · `lsof` 무출력을 「쓰기 없음」으로 읽지 않은 것 · 실제 흡수를 해보지 않아 N7 의 흡수-후 발산이 **구조적 판단**으로 남은 것. Gap 5건도 유지하며 첫 번째는 **넓어진 상태** 그대로다.
 
 ## §E.2 Run-phase Evidence
 
@@ -209,4 +225,45 @@ mN_commit_strategy: single-commit (측정 카드 — 마일스톤 분할 없음)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] / ### Changed, 최상단 (line 273)"
+changelog_only_close: true      # README·docs-site 변경 0 — 사용자 표면 변화 없음
+docs_site_locales_touched: 0    # 4-locale 의무 미발동
+b12_self_test_a: "PASS — /usr/bin/grep -c 'SPEC-CODEX-GHOST-SKILLS-MEASURE-001' CHANGELOG.md → 0 (방출 전). 대조 2종: 't533' → 0, 'SPEC-' → 277 (계기 비공허). 방출 후 재측정 → 1"
+b12_self_test_b: "PASS — acceptance.md 고유 AC 13건 (AC-CGM-001..013). 0 이 아니므로 공허 비교 아님. CHANGELOG 문면이 13 을 그대로 적고 9 PASS / 1 PASS-WITH-DEBT / 0 FAIL / 3 BLOCKED 로 분해"
+b12_self_test_c: "PASS — CHANGELOG 가 주장한 경로 전수 존재 확인: internal/cli/codex_skills_prune.go, internal/cli/clean.go, internal/codexwiring/skills.go, .moai/reports/t533/*, /etc/zshrc"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  plan_md: "frontmatter 부재 — 이 축에서 stateless"
+  acceptance_md: "frontmatter 부재 — 이 축에서 stateless"
+  progress_md: "frontmatter 부재 — 이 축에서 stateless"
+  updated_field: "2026-09-07 (spec.md 만 해당)"
+codex_writes_by_sync_phase: 0
+codex_config_toml_mtime_at_sync: 1788771295   # run 단계 기록값과 동일 — 0쓰기 불변 유지
+go_files_changed: 0
+layer_2_status: "BLOCKED (t502 미착지 + 리드 지시 필요) — AC-CGM-011/012/013 은 전제를 명시한 채 열려 있다. sync 단계에서도 dry-run 포함 어떤 형태로도 호출하지 않았다"
+sync_phase_independent_remeasurement:
+  - "stat -f '%Sm %m' ~/.codex/config.toml → Sep 7 17:54:55 2026 / 1788771295"
+  - "/usr/bin/grep -c '^\[\[skills\.config\]\]' ~/.codex/config.toml → 49"
+  - "find ~/.codex -maxdepth 1 -name 'config.toml.bak*' → 3건 (config.toml.bak, bak-20260822-022202, bak-20260901-133347) — 생산자 형식(YYYYMMDDTHHMMSSZ) 0건"
+  - "codex_skills_prune.go:204 백업 형식 리터럴 '20060102T150405Z' 직접 확인"
+  - "codex_skills_prune.go 내 'Enabled' 매치 0, 대조 'func ' 4 (비공허)"
+  - "codexwiring/skills.go 내 쓰기 호출(os.WriteFile|Create|Remove|Symlink) 0, 대조 'func ' 5 (비공허)"
+  - "/etc/zshrc:18 SAVEHIST=1000; ~/.zsh_history 타임스탬프 엔트리 1649; 대조 'moai' 1071"
+gaps_carried_not_closed: 8
+  # ① 호출 이력 미측정 (정정 3 으로 오히려 넓어진 상태) ② 절단 실제 발생 여부
+  # ③ t502 레인 인계 사실 (이 트리에서 검증 불가) ④ t540 결합 (경로 이스케이프 변경 시 osStat 입력이 바뀜)
+  # ⑤ 재직렬화 생산자의 정체 ⑥ lsof 무출력을 '쓰기 없음'으로 읽지 않음 ⑦ %m 초 단위 잔여
+  # ⑧ 실제 흡수 미수행 — N7 흡수-후 발산은 구조적 판단으로 남음
+handed_to_lead_not_this_cards_deliverable:
+  - "N7 일반화 문안(리터럴 base SHA 기반 범위 제한 AC 는 흡수 순간 거짓이 된다) — 별도 카드로 이관"
+run_commit_sha_backfill_owner: "manager-develop (§E.3 은 run-phase 소유 표면 — manager-docs 가 쓰지 않는다). 해당 커밋: 13393b7f3, 465d9f175"
+residual_risk:
+  - "CHANGELOG 문면의 「49건 전부 부재」는 표본 5경로 test -e 와 스킬 디렉터리 열거에 근거한다 — 49건 전수 stat 이 아니다"
+  - "「재직렬화 생산자 = codex 앱」은 프로세스 관측 + 경로 귀속에 의한 추론이며, 그 앱이 쓰는 순간을 직접 포착한 것은 아니다"
+  - "AC-CGM-001 의 검사 형태 결함은 문서화만 됐고 AC 문안은 수리하지 않았다(plan-phase 소유 경계)"
+```
+
