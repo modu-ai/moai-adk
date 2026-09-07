@@ -53,6 +53,6 @@ gaps: recorded in the evidence file §Gaps (desktop-app surface unobserved; sing
 
 sync_status: audit-ready
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7483fdb6b
 sync_audit: PASS 0.92/1.00 (functionality 0.95 · security 0.95 · craft 0.90 · consistency 0.88; 0 blocking, 4 Low/optional defects — D1-D3 fixed in the evidence file pre-close, D4 deferred to next SPEC body contact per auditor recommendation)
 sync note: measurement-only SPEC — no CHANGELOG entry (no user-facing behavior change, t484 precedent), no docs-site/README touch. Sync scope = SPEC status transitions + progress close + evidence commits + the auditor-directed evidence touch-ups. Independent sync review (lens --deep per dispatch): `.moai/reports/t504/sync-audit.md`.
