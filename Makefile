@@ -77,6 +77,9 @@ test: templ-generate ## Run tests with race detection
 test-verbose: templ-generate ## Run tests with verbose output
 	go test -race -v -coverprofile=coverage.out -covermode=atomic ./...
 
+test-codex-live: ## Observe the codex live axis (opt-in; needs a codex binary and spends real codex/z.ai quota — CI never runs this; see internal/cli/codex_live_axis_declaration_test.go)
+	MOAI_CODEX_LIVE_PROBE=1 MOAI_AUDIT_PIN_LIVE=1 go test ./internal/cli/ -run 'Live' -v -count=1
+
 coverage: test ## Show test coverage report
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
