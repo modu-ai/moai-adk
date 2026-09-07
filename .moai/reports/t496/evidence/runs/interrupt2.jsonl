@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"01a07a6b-981c-7733-81d9-d2d4a1970aae"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_1","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_2","type":"error","message":"clamping SessionEnd hook timeout to 3s in /private/tmp/t496-campaign-en7H7wVT/home/hooks.json"}}
+{"type":"item.completed","item":{"id":"item_3","type":"error","message":"clamping Interrupt hook timeout to 3s in /private/tmp/t496-campaign-en7H7wVT/home/hooks.json"}}
+{"type":"turn.started"}

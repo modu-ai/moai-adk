@@ -22,6 +22,14 @@ harness driving this contract lacks the capability.
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
 
+**`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
+capability every harness driving this contract has, so it earns no row above; what is Claude-only
+is the per-agent grant, not the reach. Where a harness loads a skill by reading it rather than by
+calling a tool, the same file is already there: the deploy mirrors every skill to
+`.agents/skills/<name>/SKILL.md` alongside `.claude/skills/<name>/SKILL.md`, so
+`Skill("moai-workflow-tdd")` names `.agents/skills/moai-workflow-tdd/SKILL.md`. Agent bodies keep
+the tool-call wording for that reason — it is an address, not a Claude-only instruction.
+
 ---
 
 ## 1. Evidence and verification claims

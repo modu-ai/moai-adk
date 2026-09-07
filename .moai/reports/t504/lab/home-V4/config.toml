@@ -1,0 +1,4 @@
+# t504 cell V4: existing FILE + enabled = false
+[[skills.config]]
+path = "/tmp/t504-hOuB8eKd/neutral/t504probe/SKILL.md"
+enabled = false

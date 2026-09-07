@@ -100,11 +100,22 @@ func TestSkillMirror_SlimSetEqualsCanonicalAndIsSmaller(t *testing.T) {
 		t.Fatalf("full Deploy: %v", err)
 	}
 
-	slimMirror := mirrorEntryNames(t, slimRoot)
+	slimEntries := mirrorEntryNames(t, slimRoot)
 	slimCanonical := canonicalSkillNames(t, slimRoot)
-	fullMirror := mirrorEntryNames(t, fullRoot)
+	fullEntries := mirrorEntryNames(t, fullRoot)
 
-	// 1. slim mirror set == slim canonical set
+	// 1. the mirror contributes exactly the slim canonical set. Since the
+	//    published /moai command skills (SPEC-CODEX-COMMAND-SKILLS-001) share
+	//    the .agents/skills root as deployed real files — not mirror
+	//    products — the entries are partitioned: published names are expected
+	//    occupants, and the remaining mirror part must equal the canonical
+	//    set exactly.
+	var slimMirror []string
+	for _, n := range slimEntries {
+		if _, published := publishedSkillNames[n]; !published {
+			slimMirror = append(slimMirror, n)
+		}
+	}
 	if !sameStringSlice(slimMirror, slimCanonical) {
 		t.Errorf("slim mirror set %v != slim canonical set %v", slimMirror, slimCanonical)
 	}
@@ -123,8 +134,8 @@ func TestSkillMirror_SlimSetEqualsCanonicalAndIsSmaller(t *testing.T) {
 	// 3. the slim set is strictly smaller than the full set — this is what
 	//    proves the tier filter was actually traversed; assertion 1 alone is
 	//    true by construction for any derive-from-target implementation.
-	if len(slimMirror) >= len(fullMirror) {
-		t.Errorf("slim mirror count %d must be < full mirror count %d", len(slimMirror), len(fullMirror))
+	if len(slimEntries) >= len(fullEntries) {
+		t.Errorf("slim entry count %d must be < full entry count %d", len(slimEntries), len(fullEntries))
 	}
 }
 
