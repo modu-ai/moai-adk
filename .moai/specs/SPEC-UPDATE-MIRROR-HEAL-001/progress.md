@@ -203,6 +203,20 @@ that test are byte-identical to HEAD), with the control
 the empty result is a measurement. The failure therefore pre-dates this branch's work. No repair
 attempted — it is outside this SPEC's scope envelope (L46).
 
+### Contention observation (a fact about the measurement, not about the code)
+
+A post-commit re-run of `go test ./internal/cli/ -count=1 -timeout 900s` reported
+`FAIL github.com/modu-ai/moai-adk/internal/cli 901.894s` — the wall-clock timeout, not a test
+assertion. Attributed rather than assumed: `uptime` at that moment read
+`load averages: 21.82 13.60 12.40` with `ps aux | grep -c '[g]o test'` → `6` concurrent test
+processes from other lanes. Re-measured at a larger budget:
+`go test ./internal/cli/ -count=1 -timeout 1800s` → `ok github.com/modu-ai/moai-adk/internal/cli
+700.131s`, `exit=0`. The same package had already completed inside the 900s budget in an earlier,
+quieter window. Recorded because a timeout is indistinguishable from a failure in the exit code,
+and reading it as either without attribution would be an unobserved claim in one direction or the
+other. It is also the exact hazard `CLAUDE.local.md` §4/§6 names: this measurement measured the
+machine.
+
 ### Verification-tooling friction (candidate `/moai:feedback`)
 
 The `Write` tool's ast-grep hook rejects the project's own REQUIRED errcheck idiom. Rule
