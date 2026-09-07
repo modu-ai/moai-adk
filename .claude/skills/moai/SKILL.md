@@ -347,7 +347,7 @@ This check does NOT apply to: project, feedback subcommands.
 
 [HARD] Beginner-Friendly Option Design:
 All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
-- The first option MUST always be the recommended choice, clearly marked with "(Recommended)" suffix
+- The first option MUST always be the recommended choice, clearly marked with "(Recommended)" suffix — this is the `push`-mode branch; while `interview.recommendation_mode` is `pull` the suffix is withheld from every option and no option carries a preference claim (`.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles)
 - Every option MUST include a detailed description explaining what it does and its implications
 
 Step 2.8 - Requirement Analysis & Completion Condition:
