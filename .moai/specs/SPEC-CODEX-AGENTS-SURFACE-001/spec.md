@@ -2,7 +2,7 @@
 id: SPEC-CODEX-AGENTS-SURFACE-001
 title: "Codex agent surface judgment record — model omission retained, per-agent skills.config dropped, global [agents] table not wired (codex-cli 0.153.4 evidence)"
 version: "1.0.0"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
