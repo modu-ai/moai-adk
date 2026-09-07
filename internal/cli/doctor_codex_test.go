@@ -273,10 +273,18 @@ func TestCheckCodexWiring_StaleHomeSkillsReported(t *testing.T) {
 	// Detail carries the denominator, the declared split, and the directive.
 	// Each is an ORDERED phrase: transposing numerator and denominator, or
 	// transposing the enabled and disabled counts, breaks the match.
+	// The split gained a fourth member with
+	// SPEC-CODEX-STALE-SPLIT-FOURTH-001 (REQ-SSF-004): `non-boolean` renders
+	// unconditionally, so `0 non-boolean` appears here even though this
+	// fixture declares only bare booleans. The NUMBERS are unchanged — this
+	// fixture's entries did not move buckets — so the edit is the new
+	// member's arrival, not a corrected count. Asserting the full four-member
+	// phrase is what makes AC-SSF-004 discriminate the chosen unconditional
+	// render from the rejected conditional one.
 	for _, want := range []string{
 		"declares 5 [[skills.config]] entries",
 		"3 with a path that no longer exists",
-		"(1 enabled, 2 disabled, 0 unspecified)",
+		"(1 enabled, 2 disabled, 0 unspecified, 0 non-boolean)",
 		"remove the stale entries or restore the skill files",
 	} {
 		if !strings.Contains(codexDetailText(check), want) {
@@ -332,11 +340,26 @@ func TestCheckCodexWiring_EmptyPathEntryNotCountedMissing(t *testing.T) {
 // codex-cli 0.153.4, that config makes codex exit 1 — the entry was never a
 // live enabled registration, so counting it as one was the defect. It now reads
 // as SkillEnabledNonBoolean and joins the absent-key entry outside both boolean
-// buckets, giving `(0 enabled, 0 disabled, 2 unspecified)`.
+// buckets — at t508 that read `(0 enabled, 0 disabled, 2 unspecified)`; with
+// SPEC-CODEX-STALE-SPLIT-FOURTH-001 the two states no longer share a member and
+// it reads `(0 enabled, 0 disabled, 1 unspecified, 1 non-boolean)`.
 //
-// The declared split deliberately does NOT grow a fourth bucket: this finding's
-// message template is preserved (REQ-CEF-010), and the non-boolean shape gets
-// its own fatal finding rather than a wider advisory count.
+// PRIOR DECISION, REVERSED — kept here so a later reader meets the argument
+// before reintroducing it. t508 recorded: "the declared split deliberately
+// does NOT grow a fourth bucket: this finding's message template is preserved
+// (REQ-CEF-010), and the non-boolean shape gets its own fatal finding rather
+// than a wider advisory count."
+//
+// SPEC-CODEX-STALE-SPLIT-FOURTH-001 reverses it. REQ-CEF-010 froze the
+// template's SHAPE so t508's parser change could not silently break a
+// neighbouring feature — a scope fence, not a design decision that the split
+// must stay three-wide forever. Leaving it three-wide did not merely omit the
+// fourth state: `unspecified` ASSERTS that no `enabled` key was declared,
+// which is false about an entry that declares one. The fatal finding does
+// report the shape separately, but it reports it under a different name in
+// the same run, which is the defect (two names, one entry) rather than the
+// mitigation. So the split now carries four members, `unspecified` keeps
+// exactly the absent-key population, and only the fourth state moves.
 func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 	stubCodexLookup(t, true, true)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
@@ -346,9 +369,76 @@ func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 	stubCodexHome(t, home)
 
 	check := checkCodexWiring(wireProjectForDoctor(t), false)
-	if !strings.Contains(codexDetailText(check), "(0 enabled, 0 disabled, 2 unspecified)") {
-		t.Errorf("declared split wrong — neither an absent key nor a non-boolean value may count as enabled or disabled: %q", check.Detail)
+	// The string changed with SPEC-CODEX-STALE-SPLIT-FOURTH-001 (REQ-SSF-002 /
+	// REQ-SSF-003), not because the behaviour under test regressed: the
+	// absent-key entry stays in `unspecified` — that is this test's control —
+	// while the quoted-string entry leaves it for `non-boolean`. The count on
+	// each side is what makes the two populations distinguishable, so both
+	// members are asserted in one ordered phrase.
+	if !strings.Contains(codexDetailText(check), "(0 enabled, 0 disabled, 1 unspecified, 1 non-boolean)") {
+		t.Errorf("declared split wrong — an absent key and a declared non-boolean value must occupy different members: %q", check.Detail)
 	}
+}
+
+// TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit is the
+// guard for SPEC-CODEX-STALE-SPLIT-FOURTH-001 (AC-SSF-001): a missing-path
+// entry whose `enabled` is DECLARED with a non-boolean value is counted in its
+// own `non-boolean` bucket and NOT in `unspecified`.
+//
+// Before this SPEC the bucketing switch carried three arms and a `default:`,
+// so SkillEnabledNonBoolean fell into `unspecified` — a label asserting that
+// no `enabled` key was declared, about an entry that declares one. The same
+// entry then carried two different names inside a single `moai doctor` run:
+// `unspecified` here, `nonBoolean` in the fatal enabled-shape finding.
+//
+// Both sub-cases assert the FULL parenthesis as an ordered phrase. A bare
+// `1 non-boolean` assertion would pass just as happily under a mis-wiring that
+// collapsed every state into the new bucket, which is what the controls here
+// exist to kill: bare `true` / `false` entries must still land in enabled /
+// disabled, and an absent `enabled` key must still land in unspecified.
+func TestCheckCodexWiring_NonBooleanEnabledCountedSeparatelyInStaleSplit(t *testing.T) {
+	t.Run("non-boolean leaves unspecified empty, bare booleans unmoved", func(t *testing.T) {
+		stubCodexLookup(t, true, true)
+		home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+			{Path: absentSkillPath(t, "on"), EnabledKey: "true"},    // control: bare boolean
+			{Path: absentSkillPath(t, "off1"), EnabledKey: "false"}, // control: bare boolean
+			{Path: absentSkillPath(t, "off2"), EnabledKey: "false"}, // control: bare boolean
+			{Path: absentSkillPath(t, "odd"), EnabledKey: "yes"},    // bareword: codex rejects it
+		})
+		stubCodexHome(t, home)
+
+		check := checkCodexWiring(wireProjectForDoctor(t), false)
+		detail := codexDetailText(check)
+		// The bucket counts are deliberately unequal, so a transposed render
+		// cannot satisfy the phrase by coincidence.
+		if !strings.Contains(detail, "(1 enabled, 2 disabled, 0 unspecified, 1 non-boolean)") {
+			t.Errorf("declared split does not carry the non-boolean entry in its own bucket: %q", check.Detail)
+		}
+		// The leading missing count is unchanged in VALUE by the fourth
+		// bucket (REQ-SSF-005): the new counter partitions that count, it
+		// neither adds to nor subtracts from it.
+		if !strings.Contains(detail, "4 with a path that no longer exists") {
+			t.Errorf("leading missing count changed with the fourth bucket: %q", check.Detail)
+		}
+		// The pre-SPEC fold-in is the mutation this guard exists to kill.
+		if strings.Contains(detail, "1 unspecified, 1 non-boolean") {
+			t.Errorf("the non-boolean entry is still counted as unspecified too: %q", check.Detail)
+		}
+	})
+
+	t.Run("absent key stays unspecified alongside a non-boolean", func(t *testing.T) {
+		stubCodexLookup(t, true, true)
+		home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+			{Path: absentSkillPath(t, "silent"), EnabledKey: ""},    // control: declares no key
+			{Path: absentSkillPath(t, "spoken"), EnabledKey: "yes"}, // bareword: codex rejects it
+		})
+		stubCodexHome(t, home)
+
+		check := checkCodexWiring(wireProjectForDoctor(t), false)
+		if !strings.Contains(codexDetailText(check), "(0 enabled, 0 disabled, 1 unspecified, 1 non-boolean)") {
+			t.Errorf("absent key and non-boolean value did not separate: %q", check.Detail)
+		}
+	})
 }
 
 // TestCheckCodexWiring_CodexHomeHonoured verifies CODEX_HOME decides which
@@ -940,7 +1030,12 @@ func TestCodexSkillPath_AbsoluteExistingAndMissing(t *testing.T) {
 		t.Errorf("absolute missing entry not counted: %q", check.Message)
 	}
 	detail := codexDetailText(check)
-	if !strings.Contains(detail, "(0 enabled, 1 disabled, 0 unspecified)") {
+	// `, 0 non-boolean` appended by SPEC-CODEX-STALE-SPLIT-FOURTH-001
+	// (REQ-SSF-004 — the fourth member renders unconditionally). This
+	// fixture declares bare booleans only, so its numbers are unchanged and
+	// the assertion doubles as the control that the new `case` arm did not
+	// capture SkillEnabledFalse (AC-SSF-003).
+	if !strings.Contains(detail, "(0 enabled, 1 disabled, 0 unspecified, 0 non-boolean)") {
 		t.Errorf("declared split wrong for the absolute pair: %q", check.Detail)
 	}
 	if !strings.Contains(detail, "remove the stale entries") {
