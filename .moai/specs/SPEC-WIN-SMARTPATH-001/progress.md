@@ -74,7 +74,7 @@ blocker: 없음 — 4개 마일스톤 전부 계획대로 완료, plan.md 금지
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "74a68385c"
 sync_complete_at: 2026-09-07
 close: 3-phase close 완료 — 단일 sync 커밋이 `spec.md` frontmatter `in-progress → completed` 전환(`status` + `updated` 한정, 본문 무변경) + §E.4 시그널 + CHANGELOG 항목을 함께 운반한다.
 changelog_decision: ENTRY ADDED — `[Unreleased] → ### Added` 최상단에 GH #1690 참조 항목 추가. 판정 근거(B12 절차 이행): ① 구현 파일 `internal/template/settings.go` 전문 직접 판독(plan 요약 아님), ② 템플릿 훅 형태 `settings.json.tmpl:418` exec-form + `{{jsonEscape .SmartPATH}}` 직접 확인, ③ `grep -c 'SPEC-WIN-SMARTPATH-001' CHANGELOG.md` = 0(rc 1, zero-match — 중복 없음, 발행 허용), ④ 주장 경로 실측 검증 — `grep -rn 'BuildSmartPATH()' internal/ cmd/ pkg/`로 5 호출점 전수 일치(initializer.go:412, update.go:1019, update_template_sync.go:275+335, update_clean_install.go:449), ⑤ AC 수 일치 — acceptance.md(SSOT) 기준 AC-CWSP-001..008 = 8건 전부 PASS(progress.md §E.2 E1 매트릭스와 일치, [RETIRED]/[REF] 표지 0). 사용자 가시 결함(3.1.2 배포 템플릿에서 Windows 전 훅 세션 시작 실패)의 수리라 실재 후보로 판정.
