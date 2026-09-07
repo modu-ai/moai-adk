@@ -72,3 +72,13 @@ mx_tag_report: added 4 (`@MX:ANCHOR`+`@MX:REASON`+`@MX:SPEC` on buildSmartPATHFo
 frontmatter_status_note: spec.md `status: draft → in-progress` 전환은 manager-develop 소관이나, 본 레인 지시(frontmatter는 레인 소관 아님)에 따라 수행하지 않았다 — 리드/오케스트레이터 창에서 처리 필요
 blocker: 없음 — 4개 마일스톤 전부 계획대로 완료, plan.md 금지 목록(templates/** 무변경, internal/cli 무변경, WSL2·darwin/linux 출력 무변경) 준수
 
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_commit_sha: "pending-backfill-sync"
+sync_complete_at: 2026-09-07
+close: 3-phase close 완료 — 단일 sync 커밋이 `spec.md` frontmatter `in-progress → completed` 전환(`status` + `updated` 한정, 본문 무변경) + §E.4 시그널 + CHANGELOG 항목을 함께 운반한다.
+changelog_decision: ENTRY ADDED — `[Unreleased] → ### Added` 최상단에 GH #1690 참조 항목 추가. 판정 근거(B12 절차 이행): ① 구현 파일 `internal/template/settings.go` 전문 직접 판독(plan 요약 아님), ② 템플릿 훅 형태 `settings.json.tmpl:418` exec-form + `{{jsonEscape .SmartPATH}}` 직접 확인, ③ `grep -c 'SPEC-WIN-SMARTPATH-001' CHANGELOG.md` = 0(rc 1, zero-match — 중복 없음, 발행 허용), ④ 주장 경로 실측 검증 — `grep -rn 'BuildSmartPATH()' internal/ cmd/ pkg/`로 5 호출점 전수 일치(initializer.go:412, update.go:1019, update_template_sync.go:275+335, update_clean_install.go:449), ⑤ AC 수 일치 — acceptance.md(SSOT) 기준 AC-CWSP-001..008 = 8건 전부 PASS(progress.md §E.2 E1 매트릭스와 일치, [RETIRED]/[REF] 표지 0). 사용자 가시 결함(3.1.2 배포 템플릿에서 Windows 전 훅 세션 시작 실패)의 수리라 실재 후보로 판정.
+mx_tag_report: added 4 / removed 0 / updated 0 — `@MX:ANCHOR`+`@MX:REASON`+`@MX:SPEC` on `buildSmartPATHFor`, `@MX:NOTE` on the windows branch (settings.go). 검증: ANCHOR 필수 @MX:REASON 동반 확인(settings.go:61), fan_in 주장 5 호출점을 grep으로 스팟체크 — 5건 전수 일치, [AUTO] 접두어 동반 확인(ANCHOR/REASON/NOTE), 파일당 한도 내(anchor 1/3, note 1/10).
+docs_readme_assessment: NO-OP — README.md·README.ko.md에 SmartPATH/env.PATH 문서가 없음(grep 0매치), docs-site content에도 SmartPATH 언급 없음. 수리 대상은 내부 생성 값이며 신규 사용자 기능이 아니라, 기록 표면은 CHANGELOG 항목이 담당. 사용자 가시 행동 변화(Windows 사용자가 Windows 형태 PATH 수령)는 CHANGELOG 항목 본문에 기술됨.
+verification_note: 런 페이즈 검증(§E.2)이 본 트리 기준이며 sync 페이즈는 .go 파일을 전혀 건드리지 않았다(변경 = CHANGELOG.md + spec.md frontmatter + progress.md만) — 레인-로컬 규율에 따라 전체 스위트 재실행 없이 런 페이즈 증거를 승계한다.
+
