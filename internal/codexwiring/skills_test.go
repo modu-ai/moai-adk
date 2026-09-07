@@ -50,9 +50,22 @@ func TestParseSkillEntriesReversedKeyOrder(t *testing.T) {
 }
 
 // TestParseSkillEntriesEnabledAbsentIsUnspecified verifies an entry with no
-// `enabled` key reads as UNSPECIFIED rather than false. Codex's default for
-// an absent key is not observed anywhere in this repository, so collapsing it
-// onto false would assert a premise nobody verified.
+// `enabled` key reads as UNSPECIFIED rather than false — and, since t508, as
+// UNSPECIFIED rather than the new NonBoolean state.
+//
+// The reading is unchanged; its comment is not. This test previously said
+// "Codex's default for an absent key is not observed anywhere in this
+// repository". That is no longer true: measured on codex-cli 0.153.4 in an
+// isolated CODEX_HOME, `codex mcp list` against a config whose entry omits
+// `enabled` exits 1 with “missing field `enabled` in `skills.config` “.
+// Codex does not DEFAULT the key — it refuses to load at all.
+//
+// UNSPECIFIED is therefore still the right PARSER reading (the key is genuinely
+// absent, and the parser reports what is declared) while ceasing to be a benign
+// one. The fatality now lives where it belongs, in the doctor's finding, not in
+// a widened parser state — which is also what keeps this state distinct from
+// SkillEnabledNonBoolean: "nothing was said" and "something codex rejects was
+// said" are different observations and codex reports them with different errors.
 func TestParseSkillEntriesEnabledAbsentIsUnspecified(t *testing.T) {
 	got := ParseSkillEntries([]byte("[[skills.config]]\npath = \"/a/SKILL.md\"\n"))
 	if len(got) != 1 {
@@ -63,19 +76,40 @@ func TestParseSkillEntriesEnabledAbsentIsUnspecified(t *testing.T) {
 	}
 }
 
-// TestParseSkillEntriesEnabledQuoted verifies a quoted value is read at face
-// value. Reading `enabled = "true"` as false demotes a LIVE registration to
-// stale bookkeeping — the more damaging of the two misreadings.
+// TestParseSkillEntriesEnabledQuoted verifies a value that is not a BARE TOML
+// boolean reads as SkillEnabledNonBoolean.
+//
+// This REVERSES the previous expectation, which read a quoted value at face
+// value (`enabled = "true"` → SkillEnabledTrue). The old rationale made two
+// arguments and t508 answers both:
+//
+//   - "reading it as false silently DEMOTES a live registration to stale
+//     bookkeeping" — falsified by measurement. On codex-cli 0.153.4,
+//     `enabled = "true"` makes `codex mcp list` exit 1 with “invalid type:
+//     string "true", expected a boolean“. There IS no live registration to
+//     demote: codex refuses to load the config at all. The real choice was
+//     never between two readings of a working config.
+//   - "the declared intent is unambiguous, so it is taken at face value" —
+//     true, and beside the point. Codex never reads the intent; it reads the
+//     bytes, finds a string where a boolean is required, and refuses to start.
+//     Face-value reporting is the right posture only where the consuming tool
+//     acts on the declared intent, and here it does not.
+//
+// The `enabled = yes` row moves too, and it is the row most easily missed: it
+// is not quoted, so a reader scanning for "the quoted rows" walks past it. It
+// changes for the same reason as the others — `yes` is a DECLARED value that is
+// not a bare boolean, which is exactly the new state, and codex rejects it on
+// the same “expected a boolean“ grounds.
 func TestParseSkillEntriesEnabledQuoted(t *testing.T) {
 	cases := []struct {
 		in   string
 		want SkillEnabled
 	}{
-		{"[[skills.config]]\npath = \"/a\"\nenabled = \"true\"\n", SkillEnabledTrue},
-		{"[[skills.config]]\npath = \"/a\"\nenabled = \"false\"\n", SkillEnabledFalse},
-		{"[[skills.config]]\npath = \"/a\"\nenabled = 'true'\n", SkillEnabledTrue},
-		{"[[skills.config]]\npath = \"/a\"\nenabled = 'false'\n", SkillEnabledFalse},
-		{"[[skills.config]]\npath = \"/a\"\nenabled = yes\n", SkillEnabledUnspecified},
+		{"[[skills.config]]\npath = \"/a\"\nenabled = \"true\"\n", SkillEnabledNonBoolean},
+		{"[[skills.config]]\npath = \"/a\"\nenabled = \"false\"\n", SkillEnabledNonBoolean},
+		{"[[skills.config]]\npath = \"/a\"\nenabled = 'true'\n", SkillEnabledNonBoolean},
+		{"[[skills.config]]\npath = \"/a\"\nenabled = 'false'\n", SkillEnabledNonBoolean},
+		{"[[skills.config]]\npath = \"/a\"\nenabled = yes\n", SkillEnabledNonBoolean},
 	}
 	for _, c := range cases {
 		got := ParseSkillEntries([]byte(c.in))

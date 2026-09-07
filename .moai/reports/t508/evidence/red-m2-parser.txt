@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/codexwiring [github.com/modu-ai/moai-adk/internal/codexwiring.test]
+internal/codexwiring/skills_enabled_shape_test.go:42:32: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_enabled_shape_test.go:43:50: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_enabled_shape_test.go:44:52: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_enabled_shape_test.go:45:48: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_enabled_shape_test.go:46:50: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_enabled_shape_test.go:47:39: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_test.go:108:62: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_test.go:109:63: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_test.go:110:60: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_test.go:111:61: undefined: SkillEnabledNonBoolean
+internal/codexwiring/skills_test.go:111:61: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/codexwiring [build failed]
+FAIL

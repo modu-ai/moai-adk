@@ -1,0 +1,15 @@
+=== RUN   TestDangerousRemovalDeployed_AllowsDeepPathHeredocDataMention
+    dangerous_removal_test.go:191: command "cat > /tmp/t511-deployed-allow.md <<'EOF'\nexample form: rm -rf /tmp/moai-spec-repro-123\nEOF\necho WROTE_OK": decision = "deny", want allow
+--- FAIL: TestDangerousRemovalDeployed_AllowsDeepPathHeredocDataMention (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsUnquotedDataMention
+    dangerous_removal_test.go:205: command "echo example: rm -rf /tmp/moai-spec-repro-456": decision = "deny", want allow
+--- FAIL: TestDangerousRemovalDeployed_AllowsUnquotedDataMention (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsScratchCleanupExecution
+    dangerous_removal_test.go:222: command "rm -rf /tmp/t511-scratch-nonexistent-dir": decision = "deny", want allow
+    dangerous_removal_test.go:222: command "rm -rf /var/folders/x9/abc/T/build": decision = "deny", want allow
+--- FAIL: TestDangerousRemovalDeployed_AllowsScratchCleanupExecution (0.00s)
+=== RUN   TestDangerousRemovalDeployed_AllowsQuotedDataMention
+--- PASS: TestDangerousRemovalDeployed_AllowsQuotedDataMention (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.650s
+FAIL
