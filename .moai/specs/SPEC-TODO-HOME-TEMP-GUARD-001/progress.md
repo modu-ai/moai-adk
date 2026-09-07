@@ -434,7 +434,7 @@ sha256 도 주입 전 baseline 과 바이트 동일:
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill        # 이 커밋은 자기 해시를 인용할 수 없다 (D3 백필 창)
+run_commit_sha: 4e99fc785               # D3 백필 창 상환분 — M3(run) 커밋은 자기 해시를 인용할 수 없어 후속 커밋이 채웠다
 run_status: audit-ready
 
 ac_pass_count: 8
