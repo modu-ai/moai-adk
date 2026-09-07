@@ -222,7 +222,7 @@ internal/codexwiring/codexwiring.go
 
 ```yaml
 run_complete_at: 2026-09-07
-run_commit_sha: pending-backfill-run
+run_commit_sha: 5b436ff5d   # M1+M2 = fa352752d, M3+M4 evidence = 5b436ff5d
 run_status: complete
 ac_pass_count: 9
 ac_fail_count: 0
