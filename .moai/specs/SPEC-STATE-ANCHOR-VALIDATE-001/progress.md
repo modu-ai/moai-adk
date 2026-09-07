@@ -96,7 +96,19 @@ m1_to_mN_commit_strategy: M1 committed RED (`3b39eef8f`) / M2 GREEN + 계약 갱
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync
+sync_status: green
+b12_self_test_a: `grep -c 'SPEC-STATE-ANCHOR-VALIDATE-001' CHANGELOG.md` → `0` (exit 1) — 중복 진입 가드 통과, 진입 허용
+b12_self_test_b: `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → `8` (AC-SAV-001..008) — CHANGELOG 진입 명시 수 8과 일치
+b12_self_test_c: 인용 파일 경로 실존 확인 — `internal/stateanchor/stateanchor.go`, `internal/stateanchor/stateanchor_test.go`, `.moai/specs/SPEC-STATE-ANCHOR-VALIDATE-001/{spec,acceptance,progress}.md` 전부 존재
+changelog_entry_position: `## [Unreleased]` → `### Fixed` 첫 항목 (t517 진입 위)
+frontmatter_status_transitions.in-progress: M1 (run phase, 커밋 `3b39eef8f` 경위)
+frontmatter_status_transitions.implemented→completed: 본 sync 커밋 (3-phase close 단일 커밋 — `status`/`updated` 필드 한정)
+canary_compliance_check.docs_surface: docs-site/README/codemaps 미변경 — 내부 경화, 사용자 대면 표면 변화 없음
+sync_verification: `go test ./internal/stateanchor/ -count=1` → `ok github.com/modu-ai/moai-adk/internal/stateanchor 1.090s` (exit 0)
+sync_verification.coverage: `go test -cover ./internal/stateanchor/ -count=1` → `coverage: 100.0% of statements` (기준 ≥85%)
+sync_verification.vet: `go vet ./internal/stateanchor/` → exit 0 무출력
 
 ## §F Phase 4 Mode Selection
 
