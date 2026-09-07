@@ -206,13 +206,13 @@ their pre-M2 state.
 
 | Criterion | Status | Evidence |
 |---|---|---|
-| AC-TLE-005 — a record carries all six facts | **PASS-WITH-DEBT** | `TestLandingEvidence_CarriesAllSixFacts`; the criterion's own stated RED (drop one field per plant) was NOT run — see Gaps |
+| AC-TLE-005 — a record carries all six facts | **PASS** (all six per-field drops observed FAILING, each reverted) | `TestLandingEvidence_CarriesAllSixFacts`; evidence file § Step 7 — six one-line encoder drops, per-drop hash + verbatim failure, all rc=1 |
 | AC-TLE-006 — absence is NULL | **PARTIAL (storage half)** | `TestLandingEvidence_AbsenceIsSQLNull`; the "renders as absent" conjunct is M4's |
-| AC-TLE-011 — the resolver names no commit | **PASS** (mutant observed FAILING, reverted) | `TestResolver_NamesNoDeliveringCommit`; evidence file § Step 5 |
+| AC-TLE-011 — the resolver names no commit | **PASS** (both mutant variants observed FAILING, reverted) | `TestResolver_NamesNoDeliveringCommit`; evidence file § Step 5 (`--oneline`, abbreviated assertion) and § Step 8 (`--format=%H`, full-SHA assertion) |
 | AC-TLE-012 — a stored SHA is operator-supplied or absent | **NOT CLAIMED by M2** — belongs to M3 | see Gaps; `spec.md` §E maps it to M3 |
 | AC-TLE-013 — ref position keyed as a ref position | **PARTIAL (key half)** | `TestLandingEvidence_RefHeadIsNotADeliveringSHA`; Given is verb-shaped, render conjunct is M4's |
 
-**Evidence.** Four observations carry the milestone, in this order:
+**Evidence.** Six observations carry the milestone, in this order:
 
 1. **Step 1 — the pre-edit baseline was measured on this tree, at `56af37cbb`.**
    `go test ./internal/kanban/... -count=1` → `ok … 136.974s`, rc=0. Any later red is attributable
@@ -227,6 +227,16 @@ their pre-M2 state.
 4. **Step 6 — final scoped verification.** `gofmt -l internal/kanban/` → no output;
    `go vet ./internal/kanban/...` → rc=0; `go test ./internal/kanban/... -count=1` →
    `ok … 137.564s`, rc=0.
+5. **Step 7 — AC-TLE-005's own RED, six per-field encoder drops.** Each field's struct tag replaced
+   with `json:"-"` one at a time; all six red at rc=1, each reverted to
+   `4709a70f7ad480ce5e9dd887bc84f40b8efc438f`. No drop survived and no drop was adjusted. The
+   mechanism is not uniform — five red through the decoder's `Validate`, one through the field
+   comparison — which is recorded as a finding rather than smoothed (Gaps).
+6. **Step 8 — AC-TLE-011's full-SHA half, a second mutant variant.** The same carry-through
+   rendered as `--format=%H` leaked the full 40-hex `accd2f7c21f4a65dbd8e131700b7de1e93696f1b` —
+   again the fixture's **third** commit — and the full-SHA assertion at `:179` fired for the first
+   time. Reverted; `prlink.go` back to `a2f73970a98f536b1af8f853b167cf349e6ca345`. Post-revert:
+   `gofmt` clean, `go vet` rc=0, `go test ./internal/kanban/... -count=1` → `ok … 137.025s`, rc=0.
 
 **Baseline-attribution.**
 
@@ -250,13 +260,22 @@ their pre-M2 state.
   (`internal/kanban/landing_evidence.go`, `internal/kanban/landing_evidence_test.go`,
   `internal/kanban/prlink_landed_attribution_test.go`), this progress record, and
   `.moai/reports/t359/m2-evidence.md`.
+- **Two follow-up commits**, both docs-only, no code change: `751c2ab08` (this three-value
+  attribution) and the gap-closure commit carrying § Step 7 and § Step 8. The Step 7 and Step 8
+  measurements were taken at `751c2ab08`, not at `56af37cbb` — a later tree, named as such. The
+  files they mutate (`landing_evidence.go`, `prlink.go`) are byte-identical across both, so the
+  measurements describe the same code; that is an argument from the hashes recorded in the evidence
+  file, not a re-run of Step 1.
 
 **Gaps** — what was explicitly NOT observed:
 
-- **AC-TLE-005's own stated RED was NOT performed.** Six per-field encoder plants were not run. The
-  recorded RED is a compile failure, which shows the test predates the implementation and nothing
-  about per-field discrimination. The six-distinct-values + six-key structure is an argument, not an
-  observation — hence PASS-WITH-DEBT rather than PASS.
+- **Five of AC-TLE-005's six field-equality assertions were never REACHED.** All six drops red
+  (§ Step 7), but only the `spec_status` drop reds through the field comparison; the other five red
+  through `DecodeLandingEvidence`'s `Validate` refusal, which aborts before the comparison runs. The
+  criterion's requirement — an encoder emitting a subset cannot pass — is established for all six.
+  The literal wording — *that field's assertion fails* — is measured for one. That the other five
+  field assertions would themselves discriminate (decode without `Validate`) is a counterfactual, not
+  a measurement, and was not run. Narrower than the gap it replaces, and deliberately not deleted.
 - **AC-TLE-012 is NOT claimed by M2.** Its Given ("the operator records a landing without `--sha`")
   requires the `moai todo landed` verb, which does not exist until M3; `spec.md` §E maps it to M3
   independently. M2's encoder-level refusal of unpaired provenance narrows M3's reachable states but
@@ -265,8 +284,6 @@ their pre-M2 state.
   **constructed** record, not a **produced** one, and the "rendered form labels it as a ref position"
   conjunct belongs to M4. `Marker()` is supplied as M4's labelling primitive, not as the render.
 - **AC-TLE-006's render half was not touched.** `moai todo pr` was never run in M2.
-- **Only the abbreviated half of AC-TLE-011's containment assertion was exercised.** The mutant read
-  `--oneline` output; a `%H`-shaped carry-through was not planted.
 - **`internal/cli` was NOT run in M2.** M2 touches no file there. Its last measured state in this
   card is M1's `903bcc03c` baseline — a carry-over, named as such, not an M2 measurement.
 - **No `golangci-lint`, no `-race`, no `-cover`, no non-darwin run.** CI owns the full verdict.

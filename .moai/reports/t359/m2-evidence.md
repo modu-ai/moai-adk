@@ -99,8 +99,8 @@ rc=1
 
 **What this RED does and does not establish.** It establishes that the tests were authored before
 the implementation and that the symbols they name did not previously exist. It does NOT establish
-per-field discrimination — that is AC-TLE-005's own stated RED (drop one field from the encoder), and
-it is a **known loss**: it was NOT performed. See § What is NOT in this file.
+per-field discrimination — that is AC-TLE-005's own stated RED (drop one field from the encoder),
+which was **not** performed at first commit and was closed afterwards: see § Step 7.
 
 ---
 
@@ -209,7 +209,8 @@ is REQ-1.10's grounds reproduced mechanically: the newest match is routinely the
 
 Only the **abbreviated** assertion fired, because the mutant read `--oneline` output. The full-SHA
 assertion sits on the same rendered string and was not exercised by this particular mutant; it exists
-for a `%H`-shaped carry-through. Stated so the pass is not read as covering both carriers.
+for a `%H`-shaped carry-through. That second variant was planted afterwards and its RED observed —
+see § Step 8.
 
 **After the revert.**
 
@@ -241,6 +242,221 @@ $ go test ./internal/kanban/... -count=1
 ok  	github.com/modu-ai/moai-adk/internal/kanban	137.564s
 test rc=0
 ```
+
+---
+
+## Step 7 — AC-TLE-005's own stated RED, six per-field encoder drops
+
+Closed after M2's first commit, at HEAD `751c2ab08`. Not a §D.2 register obligation — `acceptance.md`
+§D.2 does not list AC-TLE-005 — but the plan-audit's closing discipline recorded in `progress.md`
+§E.1 as a run-phase observation duty: *every newly written assertion should be accompanied by the
+mutation that reds it before it is accepted*. The compile failure in § Step 2 shows
+test-before-implementation and nothing about per-field discrimination, which is why AC-TLE-005 was
+first recorded PASS-WITH-DEBT.
+
+Each drop is one edit to `internal/kanban/landing_evidence.go`: the field's struct tag replaced with
+`json:"-"`, so the encoder emits the record **minus that one key**. Applied one at a time, each
+reverted before the next.
+
+```
+$ shasum -a 1 internal/kanban/landing_evidence.go
+4709a70f7ad480ce5e9dd887bc84f40b8efc438f
+```
+
+Every drop was verified with `go test ./internal/kanban/ -count=1 -run
+'TestLandingEvidence_CarriesAllSixFacts'`. All six red; all six reverted to the baseline hash.
+
+| # | Field dropped | Hash with plant | Assertion that fired | rc |
+|---|---|---|---|---|
+| 1 | `ref` | `d5858765f4453109ad9e0db2757e6412f6733528` | decode refusal, `landing_evidence_test.go:47` | 1 |
+| 2 | `ref_head` | `632b96288685e0cfc5e91123de6c0b030ed7d57f` | decode refusal, `:47` | 1 |
+| 3 | `observed_at` | `64467799c3a113976e58a252ea77886c77b34dc0` | decode refusal, `:47` | 1 |
+| 4 | `sha` | `acedc60128b9c59ca1bc1b75bae5b3e7c286f675` | decode refusal, `:47` | 1 |
+| 5 | `sha_source` | `a4913d821249d266257c16efcb2d01f20f506113` | decode refusal, `:47` | 1 |
+| 6 | `spec_status` | `15312a3bd2c6bcfff4e7ff14b0d259d32834f298` | **field assertion `:61` + key assertion `:71`** | 1 |
+
+Verbatim failures:
+
+```
+DROP field=ref
+--- FAIL: TestLandingEvidence_CarriesAllSixFacts (0.00s)
+    landing_evidence_test.go:47: decode "{\"ref_head\":\"e50964ad3f0000000000000000000000000000aa\",\"observed_at\":\"2026-09-03T10:14:22Z\",\"sha\":\"c9f712232a0000000000000000000000000000bb\",\"sha_source\":\"operator\",\"spec_status\":\"completed\"}": kanban: stored landing evidence is not a record: kanban: landing evidence has no ref
+
+DROP field=ref_head
+    landing_evidence_test.go:47: decode "{\"ref\":\"origin/develop\",\"observed_at\":\"2026-09-03T10:14:22Z\",\"sha\":\"c9f712232a0000000000000000000000000000bb\",\"sha_source\":\"operator\",\"spec_status\":\"completed\"}": kanban: stored landing evidence is not a record: kanban: landing evidence has no ref_head
+
+DROP field=observed_at
+    landing_evidence_test.go:47: decode "{\"ref\":\"origin/develop\",\"ref_head\":\"e50964ad3f0000000000000000000000000000aa\",\"sha\":\"c9f712232a0000000000000000000000000000bb\",\"sha_source\":\"operator\",\"spec_status\":\"completed\"}": kanban: stored landing evidence is not a record: kanban: landing evidence has no observed_at
+
+DROP field=sha
+    landing_evidence_test.go:47: decode "{\"ref\":\"origin/develop\",\"ref_head\":\"e50964ad3f0000000000000000000000000000aa\",\"observed_at\":\"2026-09-03T10:14:22Z\",\"sha_source\":\"operator\",\"spec_status\":\"completed\"}": kanban: stored landing evidence is not a record: kanban: landing evidence carries sha_source without sha; a provenance labels nothing on its own
+
+DROP field=sha_source
+    landing_evidence_test.go:47: decode "{\"ref\":\"origin/develop\",\"ref_head\":\"e50964ad3f0000000000000000000000000000aa\",\"observed_at\":\"2026-09-03T10:14:22Z\",\"sha\":\"c9f712232a0000000000000000000000000000bb\",\"spec_status\":\"completed\"}": kanban: stored landing evidence is not a record: kanban: landing evidence carries sha without sha_source; a stored delivering commit is operator-asserted or absent
+
+DROP field=spec_status
+    landing_evidence_test.go:61: spec_status = "", want "completed"
+    landing_evidence_test.go:71: encoded record has no "spec_status" key: {"ref":"origin/develop","ref_head":"e50964ad3f0000000000000000000000000000aa","observed_at":"2026-09-03T10:14:22Z","sha":"c9f712232a0000000000000000000000000000bb","sha_source":"operator"}
+```
+
+Each revert returned the file to `4709a70f7ad480ce5e9dd887bc84f40b8efc438f`; the script asserted
+this per iteration and printed no mismatch. `git status --short` after the loop: clean.
+
+### The finding this produced — the mechanism is not what the criterion's wording predicts
+
+AC-TLE-005's stated RED is *"drop any one field from the encoder → **that field's assertion**
+fails"*. Measured, that is literally true for **one** field of six. For the other five the test never
+reaches a field assertion: `DecodeLandingEvidence` runs `Validate` on the decoded record and refuses
+it, so `t.Fatalf` fires at `:47` and the field-by-field comparison at `:56-62` is not executed.
+
+This is reported rather than smoothed because the two are different facts:
+
+- **What is established**: the criterion's actual requirement — *"it cannot be satisfied by an
+  encoder that emits a subset"* — holds for all six fields, at rc=1, with no drop surviving.
+- **What is NOT established**: that each of the six *field-equality assertions* discriminates. Five
+  of them were never reached. If `Validate` were removed from the decode path, those five would then
+  red through the field assertions instead (a dropped key decodes to the zero value, which differs
+  from every supplied value) — but that is reasoning about a counterfactual, not a measurement, and
+  it was not run.
+
+No drop was adjusted to change which assertion caught it, and the test was not modified at any point
+during this step.
+
+---
+
+## Step 8 — AC-TLE-011's full-SHA half, a second mutant variant
+
+The § Step 5 mutant read `--oneline`, so only the abbreviated containment assertion had ever fired.
+This variant plants the same carry-through on the same seam, rendering the match as a full 40-hex
+SHA (`--format=%H` substituted for `--oneline` in the argv the builder returns).
+
+```
+$ shasum -a 1 internal/kanban/prlink.go internal/kanban/prlink_landed.go
+a2f73970a98f536b1af8f853b167cf349e6ca345  internal/kanban/prlink.go
+0ba0d4180c53a6800322bdb4005c9ad403e27492  internal/kanban/prlink_landed.go
+```
+
+With the variant applied (`prlink.go` only; `prlink_landed.go` untouched):
+
+```
+$ shasum -a 1 internal/kanban/prlink.go
+042e74c27650635c1c2caea7330d9289c4a081f8
+
+$ gofmt -l internal/kanban/prlink.go
+(no output)
+
+$ go test ./internal/kanban/ -count=1 -run 'TestResolver_NamesNoDeliveringCommit'
+--- FAIL: TestResolver_NamesNoDeliveringCommit (0.40s)
+    prlink_landed_attribution_test.go:179: the resolver's output names commit 3 in full (accd2f7c21f4a65dbd8e131700b7de1e93696f1b):
+        {CardID:t359fixture Kind:landed PRs:[] PRState: Confidence: FirstMatch:accd2f7c21f4a65dbd8e131700b7de1e93696f1b}
+        kanban.PRLinkOutcome{CardID:"t359fixture", Kind:"landed", PRs:[]int(nil), PRState:"", Confidence:"", FirstMatch:"accd2f7c21f4a65dbd8e131700b7de1e93696f1b"}
+        {"card_id":"t359fixture","outcome":"landed","first_match":"accd2f7c21f4a65dbd8e131700b7de1e93696f1b"}
+    prlink_landed_attribution_test.go:182: the resolver's output names commit 3 abbreviated (accd2f7):
+        {CardID:t359fixture Kind:landed PRs:[] PRState: Confidence: FirstMatch:accd2f7c21f4a65dbd8e131700b7de1e93696f1b}
+        kanban.PRLinkOutcome{CardID:"t359fixture", Kind:"landed", PRs:[]int(nil), PRState:"", Confidence:"", FirstMatch:"accd2f7c21f4a65dbd8e131700b7de1e93696f1b"}
+        {"card_id":"t359fixture","outcome":"landed","first_match":"accd2f7c21f4a65dbd8e131700b7de1e93696f1b"}
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.790s
+FAIL
+rc=1
+```
+
+Line `:179` is the full-SHA assertion, and it has now been observed firing. Both mutant variants leak
+the **same** commit — the fixture's third, the integration commit that merely inherited the card.
+
+**The two assertions are not redundant, and the subsumption runs one way only.** A full-form leak
+trips both (the 40-hex string contains its own 7-char prefix), which is why `:182` also fired here. An
+abbreviated leak trips only `:182` — as § Step 5 measured. So neither assertion covers the other:
+dropping `:179` would leave a `%H`-shaped carry-through undetected only if the abbreviated check were
+also dropped, but dropping `:182` would leave an `--oneline`-shaped carry-through undetected outright.
+
+**After the revert.**
+
+```
+$ git restore -- internal/kanban/prlink.go && shasum -a 1 internal/kanban/prlink.go internal/kanban/prlink_landed.go internal/kanban/landing_evidence.go && git status --short
+a2f73970a98f536b1af8f853b167cf349e6ca345  internal/kanban/prlink.go
+0ba0d4180c53a6800322bdb4005c9ad403e27492  internal/kanban/prlink_landed.go
+4709a70f7ad480ce5e9dd887bc84f40b8efc438f  internal/kanban/landing_evidence.go
+(tree clean)
+```
+
+All three files byte-identical to their pre-plant hashes; no mutant from either step survived.
+
+**Post-revert scoped verification.**
+
+```
+$ gofmt -l internal/kanban/          -> no output, rc=0
+$ go vet ./internal/kanban/...       -> rc=0
+$ go test ./internal/kanban/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	137.025s   rc=0
+```
+
+---
+
+## Inherited decision for M4 — a malformed row is a READ error on a permissive path
+
+Stated here so M4's implementer meets it as an inherited decision rather than discovering it.
+
+`DecodeLandingEvidence` runs `Validate` on the decoded record and returns an error rather than a
+zero-valued record. That is deliberate: a record that read as empty would render as "an observation
+that found nothing", which is a different fact from "this value could not be read" — the same
+three-valued reasoning `LandingAnswer` applies to the landed query.
+
+The consequence lands on M4. `moai todo pr` is a **read** path that `SPEC-KANBAN-QUEUE-PR-SYNC-001`
+REQ-2.1 requires to stay permissive and to write nothing. A row written by some future
+non-conforming writer — one that bypasses `EncodeLandingEvidence` / `LandingEvidenceValue` — will
+fail to decode, and M4 must decide what the render does then. The options are not equivalent and M2
+deliberately does not choose between them:
+
+- render the evidence cell empty (indistinguishable from a card that never had evidence — the
+  ambiguity REQ-TLE-006 accepts for absence, extended to corruption, which it does not currently say);
+- render a distinct malformed marker (a new render token, and a new thing AC-TLE-016 must key on);
+- fail the row (violates REQ-2.1's permissive read).
+
+M2's only commitment is that the decode does not silently succeed.
+
+---
+
+## Tooling finding — the `go-error-ignored-blank` ast-grep rule matches a shape it was not written for
+
+Reported as a reproducible tooling defect, not as a note about this card's edits.
+
+**Rule** (`.moai/astgrep-rules/go/error-handling.yml`):
+
+```yaml
+id: go-error-ignored-blank
+language: go
+severity: error
+message: The returned error is discarded with _. Handle it or mark the intentional ignore with a comment.
+rule:
+  pattern: $_, $ERR = $FUNC($$$ARGS)
+```
+
+**Defect.** In ast-grep, `$_` is the anonymous meta-variable: it matches **any single node**, not
+specifically the Go blank identifier `_`. The pattern therefore matches every two-value plain
+assignment whose second target is any identifier — including one where nothing is discarded at all.
+
+**Reproduction.** Two PostToolUse writes of `internal/kanban/landing_evidence_test.go` were rejected
+with `go-error-ignored-blank` at a line carrying:
+
+```go
+encoded, err = EncodeLandingEvidence(rec)
+```
+
+Both values are bound to named variables and `err` is checked on the following line. No error is
+discarded. The rule's own `message` and `note` ("discarded with `_`", "add a `// nolint:errcheck`
+comment") describe a situation that is not present.
+
+**Scope.** The rule matches `=` and not `:=`, so it fires only on **reassignment** to already-declared
+variables — which is why restructuring to fresh `:=` bindings cleared it. That restructure was kept
+because it is genuinely simpler, not as a workaround; the file discards no error before or after, so
+nothing was laundered. Sibling rules in the same file already carry a comment recording an earlier
+over-matching incident (`go-error-not-wrapped`, ~16k false positives), so a name-constraint fix in
+the same style is the obvious shape.
+
+A second, distinct noise source on the same layer: the `sql-injection (high)` check fires on
+**quoted SQL in prose** — it fired on M1's evidence file for documenting the concatenation that file
+had removed, and on a dispatch message quoting the same table. Both are documentation, not code.
 
 ---
 
@@ -366,31 +582,22 @@ staleness, not as a fault.
 The PostToolUse check reports `sql-injection (high)` on quoted SQL in prose. If it fires on this
 file, it is firing on documentation of the queries the tests run (`SELECT landing IS NULL FROM items
 WHERE id = ?`, a parameterized statement). The text is left alone: quoting the statement is what the
-record is for.
-
-Separately, the same PostToolUse layer rejected two earlier writes of `landing_evidence_test.go`
-with `go-error-ignored-blank` (`.moai/astgrep-rules/go/error-handling.yml`, pattern
-`$_, $ERR = $FUNC($$$ARGS)`). The pattern's `$_` matches **any** node, not only the blank
-identifier, so a plain reassignment `encoded, err = EncodeLandingEvidence(rec)` matches it. The test
-was restructured to use fresh `:=` bindings — a real simplification, not a text-laundering edit; no
-error is discarded anywhere in the file, before or after.
+record is for. The `go-error-ignored-blank` rule defect that rejected two earlier writes of
+`landing_evidence_test.go` is written up as a reproducible report in § Tooling finding above, rather
+than left here as an annotation on this card's edits.
 
 ---
 
 ## What is NOT in this file (known losses — do not cite these later)
 
-- **AC-TLE-005's own stated RED was NOT performed.** The criterion says "drop any one field from the
-  encoder → that field's assertion fails". Six such plants (one per field) were not run. The only
-  RED recorded for AC-TLE-005 is the compile failure in § Step 2, which shows the test predates the
-  implementation but does NOT show per-field discrimination. The structural argument — six distinct
-  values compared field-by-field, plus a six-key check on the wire — is an argument, not an
-  observation.
 - **AC-TLE-006's render half.** Only the SQL predicate (`SELECT landing IS NULL`) and the
   `LandingEvidenceValue(nil)` seam were asserted. `moai todo pr` was never run, and the "renders as
   absent" conjunct is untouched. It belongs to M4.
 - **AC-TLE-013's render half and both criteria's verb-shaped Givens.** See § The M2/M3 boundary.
-- **The full-SHA half of AC-TLE-011's containment assertion.** The planted mutant exercised the
-  abbreviated form only. A `%H`-shaped carry-through was not planted.
+- **Five of AC-TLE-005's six field-equality assertions were never REACHED.** § Step 7 reds all six
+  drops, but five red through the decoder's `Validate` refusal rather than through the field
+  comparison. That the five field assertions would themselves discriminate is reasoning about a
+  counterfactual (decode without `Validate`), not a measurement, and it was not run.
 - **`internal/cli` was NOT run at any point in M2.** M2 touches no file in that package. Its last
   measured state in this card is M1's baseline at `903bcc03c` (rc=0), which is a carry-over and is
   named here as such rather than offered as an M2 measurement.
