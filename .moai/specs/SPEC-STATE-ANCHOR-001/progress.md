@@ -117,6 +117,27 @@ ok  github.com/modu-ai/moai-adk/internal/statusline	1.469s
 
 전 패키지 무파괴 (명령: `go test ./internal/statusline/ -count=1`): `ok github.com/modu-ai/moai-adk/internal/statusline 20.575s` (위 2건의 갱신분 제외 미갱신 무실패). `go test ./internal/stateanchor/ -count=1`: `ok ... 1.544s`.
 
+### M3 — B4 config 캐시 (AC-SA-004, 2단 RED→GREEN)
+
+**Stage-① 유도 지점 확정 (판정서 Gap 해소)**: B4의 cwd 연결은 config 패키지 내부에 없다(`grep -rn Getwd internal/config/ internal/paths/` = 무출력, 비테스트). 실제 유도 사슬: **`internal/cli/deps.go` `InitDependencies` — `cwd, _ := os.Getwd()` → `deps.Config.Load(cwd)`** → `ConfigManager.Load`가 `configDir = <projectRoot>/.moai`(+`MOAI_CONFIG_DIR` override)로 유도 → `LoadWithCache` → `cacheFilePath(configDir)` = `<configDir>/state/config-cache.json`. 캐시 착지의 전제: `<cwd>/.moai`가 존재할 것(cache.go의 config-dir-exists 가드) — 즉 B4 오염은 B1이 만든 stray `.moai`를 **뒤따르는** 형태였고, lane-1 t507 관측(`fixtures/.moai/state/config-cache.json`)과 정확히 같은 모양이다.
+
+**Stage-② RED** (명령: `go test ./internal/config/ -run TestConfigCacheAnchorsToProject -count=1`, cwd형 유도 상태 — git fixture 루트 + stray `.moai`를 가진 서브디렉터 + 별도 비git 디렉터):
+
+```
+--- FAIL: TestConfigCacheAnchorsToProject (0.17s)
+    state_anchor_test.go:81: config cache not anchored to the project root (want .../001/.moai/state/config-cache.json): stat .../001/.moai/state/config-cache.json: no such file or directory
+    state_anchor_test.go:85: config cache mis-landed in the stray .moai of the visited dir (the B4 pollution shape): stat err = <nil>
+FAIL
+```
+
+(`stat err = <nil>` = 캐시가 stray 안에 **실제로 쓰였다** — 부재가 아니라 오착지의 관측.)
+
+GREEN (동일 명령, 유도 라인을 `stateanchor.FromDirectory(visited)`로 플립): `ok github.com/modu-ai/moai-adk/internal/config 0.766s`.
+
+**수리**: deps.go가 `stateanchor.FromDirectory(cwd)`를 config 루트로 넘기고, git 맥락이 없을 때만 원시 cwd로 폴백(비git MoAI 프로젝트 보존 — 그 경우에도 캐시는 config-dir-exists 가드가 쓰기 화생성을 막는다). statusline→config 역방향 의존 없음: 해석은 호출 사슬(deps.go)이 stateanchor 시접을 직접 사용(plan M3 적용 지점 결정).
+
+전 패키지 무파괴 (명령: `go test ./internal/config/ -count=1`): `ok github.com/modu-ai/moai-adk/internal/config 5.292s`. cli 접촉(deps.go 4줄)에 대해 `go vet ./internal/cli/...` = 통과, `go build ./...` = 통과, `go test ./internal/cli/ -run 'TestInitDependencies|TestDeps|TestGetDeps' -count=1` = `ok ... 1.076s`, `golangci-lint run ./internal/config/... ./internal/cli/...` = `0 issues.`
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M5에서 확정>_
