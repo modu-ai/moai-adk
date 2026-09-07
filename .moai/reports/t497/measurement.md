@@ -192,3 +192,48 @@ rationale 원문:
 REQ-CSN-003 은 "현재 측정값 **4행**"이라 적는데, 이 트리의 `AGENTS.md:19-23` 과
 `internal/template/templates/AGENTS.md` 는 둘 다 **3행**이다(레인 직접 측정, 두 사본
 동일). 어느 쪽이 스테일인지는 관측하지 않았다 — Gap.
+
+---
+
+## 미해소 불일치의 해소 — 결속표 3행은 이미 REQ-CSN-003 의 올바른 파생값이다
+
+앞 절에서 Gap 으로 남긴 「REQ-CSN-003 은 4행, 실물은 3행」을 **트리 안 증거만으로**
+해소했다. 코덱스 프로브가 필요 없다.
+
+REQ-CSN-003 의 파생 기준은 "이 표를 읽는 하네스에 **존재하지 않는** 모든
+`tool_classes` 능력"이다. 그러므로 `disposition: documented-drop` 이라는 사실만으로는
+행이 생기지 않는다 — **능력 부재**여야 하고, 그 판별식은 각 rationale 본문에 있다.
+
+Evidence — `agents-codex.yaml` `classes:` 의 documented-drop 전수와 rationale 판정:
+
+| class | rationale 원문의 핵심 | 능력 부재? |
+|---|---|---|
+| `file-write` | "distinction is not mechanically preserved … sandbox is workspace-level" | 아니오 (쓰기 존재) |
+| `web` | "web access is a **global Codex feature**/config outside agent TOML" | 아니오 |
+| `task-list` | "**no known Codex equivalent**" | **예** |
+| `skill-loader` | "Session skill loading itself **IS confirmed** on this version" | 아니오 |
+| `subagent-spawn` | "Codex delegation **exists** (internal collaboration\* tools)" | 아니오 |
+| `design-sync` | "Claude-specific MCP-backed tool with **no Codex equivalent**" | **예** |
+| `cross-session-messaging` (:151-159) | "The Codex **counterpart rides the moai MCP broker** (session_msg_*)" | 아니오 |
+| `question-channel` (:160-170) | 실측 — "codex reported it **unavailable** and substituted a prose question; its own request_user_input errors 'unavailable in Default mode'" | **예** |
+| hooks | "hooks are project-level `.codex/hooks.json`" | 아니오 |
+
+부재 3건 = `task-list` · `design-sync` · `question-channel`
+= **현재 `AGENTS.md` 에 실린 바로 그 3행** (레인 직접 계수, 두 사본 동일).
+
+→ **결론 두 가지.**
+1. 실물 3행이 스테일한 것이 아니라 **REQ-CSN-003 의 "현재 측정값 4행" 이 스테일**하다.
+   `question-channel` rationale 은 결속표를 자기 대체 행동의 전달 수단으로 명시적으로
+   지목하고 있어(:168-170), 이 파생이 문서 간에 서로 맞물린다.
+2. manager-spec 이 `skill-loader` / `subagent-spawn` 행 추가를 거절한 판단은
+   두 rationale 이 아니라 **전수 9건 스윕**으로 재확인됐다. 옳다.
+
+**M1 에 미치는 영향**: 부재 실측을 코덱스 프로브로 새로 해야 한다는 전제가 사라진다.
+판별식은 이미 매니페스트 rationale 에 기록돼 있고, 위 표가 그 적용이다. M1 은
+「프로브」가 아니라 「REQ-CSN-003 문면의 4행 → 3행 정정 + 파생 근거 명문화」가 된다.
+이는 `[NEEDS CLARIFICATION] ①`(프로브 불가 시 대체 처분)을 **불필요하게 만든다.**
+
+Gap: 위 표는 rationale **문면** 판정이다. 각 능력의 코덱스 실제 거동을 이 트리에서
+새로 프로브하지 않았다 — `question-channel` 만 매니페스트에 실측 기록이 있다.
+Residual-risk: rationale 이 낡았을 수 있다(특히 `skill-loader` 는 0.152.1,
+`question-channel` 은 0.150.1 로 측정 버전이 다르다).
