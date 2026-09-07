@@ -2,7 +2,7 @@
 id: SPEC-CODEX-TEST-GAPS-001
 title: "Codex uncovered-surface test reinforcement — terminateCodexProcess, codexIDMatches, awaitCodexResponse cancel arm, HTML-comment import fixtures, error arms, delegation contract"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

@@ -129,7 +129,24 @@ evidence_dir: .moai/state/verify/t501/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: "pending-backfill-sync"   # D3 backfill exemption — a commit cannot cite its own SHA
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-CODEX-TEST-GAPS-001' CHANGELOG.md → 0 (pre-emission); entry appended once, then 1"
+b12_self_test_b: "distinct AC ids in acceptance.md = 12 (AC-CTG-001..012); CHANGELOG entry references the same 12"
+b12_self_test_c: "every path in the CHANGELOG entry verified to exist (spec.md, .moai/state/verify/t501/, .moai/reports/t501/, 4 _test.go files)"
+changelog_entry_position: "[Unreleased] → Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged close on the sync commit)"
+  updated_field: "refreshed to 2026-09-07 (sync commit date)"
+canary_compliance_check:
+  readme_sync: "N/A — tests-only, no user-facing behavior change"
+  docs_site_sync: "N/A — same rationale"
+  mx_tags: "no obligations — zero production code added or modified (AC-CTG-009 union empty of non-test .go)"
+union_gate_post_sync: "git diff --name-only 24df2ae45..HEAD filtered to non-test .go — EMPTY (verified after this commit)"
+sync_close_last_write: "git status --short empty after the sync commit"
+```
 
 ## §F Phase 4 Mode Selection
 
