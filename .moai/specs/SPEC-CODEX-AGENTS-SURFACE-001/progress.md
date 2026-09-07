@@ -53,7 +53,7 @@ Justification note: measurement/judgment cards move the risk from code correctne
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_status: complete
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: f89b922e0
 status_transition: in-progress → completed (frontmatter, on the sync commit)
 changelog_decision: NO user-facing CHANGELOG entry (manager-docs B12 assessment). Reasoning: the run commit's change surface is `internal/template/agentemit/agents-codex.yaml` alone, whose own header (lines 4-5) states "Build input only: this file lives in the emitter package, NOT under templates/, and is never distributed to user projects" — it is not a template output. The 11 committed TOMLs are byte-identical (run-phase M2 proof: `git diff --stat -- internal/template/templates/.codex` empty + `make agents-emit-check` rc=0), and the Go diff since base is empty (verified this session: `git diff --stat 0b1e27877..HEAD -- '*.go'` → empty). No user-visible behavior, CLI surface, or distributed artifact changed, so no CHANGELOG entry is warranted. README / docs-site: same basis — no user-facing surface changed; expected no-op, not re-measured.
 mx_tag_validation: 0 added / 0 removed / 0 updated — validated against plan.md §D's zero-tag record. Evidence (this session, tree @ 84fa5fde1): `git diff --stat 0b1e27877..HEAD -- '*.go'` → empty output (rc 0); the full branch diffstat is 4 SPEC artifacts + the manifest YAML only. No Go file touched → no @MX-tagged surface exists to annotate, matching plan.md §D's rationale (edit surface is a YAML build input; the deliverable IS rationale comments).
