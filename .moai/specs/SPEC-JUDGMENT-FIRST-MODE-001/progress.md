@@ -494,7 +494,7 @@ m1_to_mN_commit_strategy: one commit per milestone/repair; records backfilled th
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash — backfilled in the immediately following commit (canonical D3 exemption)
+sync_commit_sha: 7670cedfe   # backfilled — a commit cannot cite its own hash; the canonical D3 exemption applies (placeholder `pending-backfill-sync` landed with the sync commit itself)
 sync_status: closed with AC-JFM-018 RED by measurement — NOT a pass on that criterion
 ac_pass_count: 22
 ac_fail_count: 1    # AC-JFM-018 — vacuity falsifier; pull-mode denominator 0 rows; collection window OPEN at close
