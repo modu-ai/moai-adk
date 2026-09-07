@@ -149,7 +149,7 @@ m1_to_mN_commit_strategy: "M1(재측정 게이트) 선행 → 구현 단일 커�
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-resync   # the re-close lands in the commit that carries it; a SHA cannot name itself
+sync_commit_sha: f269edbc2                 # backfilled. The re-close itself - it carries §E.4, §G, the CHANGELOG entry and the round-1 audit report. A SHA cannot name the commit carrying it, so this value necessarily lands in a LATER commit; that is the normal shape of the field, not a defect. The commits after it are corrections TO this close (35d6c7404, the advisory count) and a separate evidence record (80d6edecf, the round-2 verdict) - neither is the close
 sync_status: complete
 resync_of: 43e820663                       # the first close, superseded by this one
 sync_audit_verdict: "FAIL 89.0 @ 43e820663 (independent sync-auditor); verdict + all advisories recorded at .moai/reports/t502/sync-audit.md"
