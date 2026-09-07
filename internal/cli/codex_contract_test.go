@@ -387,3 +387,46 @@ func TestCodexPathGuardParentEscape(t *testing.T) {
 		}
 	}
 }
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M4 (REQ-CTG-004 / AC-CTG-004) ───────────────
+
+// TestCodexCountExecutingImports pins the HTML-comment arm of the executing-
+// import scanner, which the fence/blockquote axes elsewhere in this file do
+// not reach: a directive AFTER a multi-line comment's `-->` close counts,
+// a directive after an inline single-line `<!-- ... -->` counts, and a
+// directive INSIDE a comment never counts — counting a commented example
+// would let prose satisfy the "already linked" contract.
+func TestCodexCountExecutingImports(t *testing.T) {
+	const directive = codexLinkLocalDirective
+	cases := []struct {
+		name string
+		body string
+		want int
+	}{
+		{
+			name: "multi-line comment — directive after the --> close",
+			body: "<!-- provenance notes\nspanning lines -->\n" + directive + "\n",
+			want: 1,
+		},
+		{
+			name: "inline single-line comment — directive after <!-- ... -->",
+			body: "<!-- hidden example -->\n" + directive + "\n",
+			want: 1,
+		},
+		{
+			name: "directive inside a comment is not an executing import",
+			body: "<!-- " + directive + " is documented here -->\n",
+			want: 0,
+		},
+		{
+			name: "directive inside a multi-line comment is not counted either",
+			body: "<!-- first line\n" + directive + " inside\nlast line -->\n",
+			want: 0,
+		},
+	}
+	for _, tc := range cases {
+		if got := codexCountExecutingImports([]byte(tc.body), directive); got != tc.want {
+			t.Errorf("%s: codexCountExecutingImports = %d, want %d", tc.name, got, tc.want)
+		}
+	}
+}
