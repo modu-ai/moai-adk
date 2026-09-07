@@ -20,6 +20,9 @@
 - When `go run ./cmd/moai spec lint --strict; echo rc=$?` — rc=1, 요약 줄 `0 error(s),
   N warning(s)`(N>0). 그리고 mutation: 같은 코퍼스를 기준선 흡수 경로로 판정하면 rc=0
 - Then 양쪽 관측이 모두 기록된다 — "재고만으로 적색"과 "재고 흡수 시 초록"의 대조
+- 관측 시점: rc=1 재현 절반은 M1 관측 창에 속하고, 기준선 흡수 mutation 절반은 M2 의
+  기준선 경로가 착지한 뒤의 관측 창에 속한다 — M1 단계에서는 mutation 쪽이 아직 관측
+  대상이 아니다.
 - 실패 모양: `--strict` 가 이미 rc=0 이면 (b) 전제가 무너진 것이므로 M1 판정을 다시 쓴다
   (침묵 통과 아님).
 
@@ -32,10 +35,15 @@
 
 ### AC-SLGS-004 — 수치 동결이 없다 (maps REQ-SLGS-003)
 
-- Given 이 SPEC 의 문서·코드·테스트 전체
-- When `grep -rn "4344\|4,344\|4368\|4,368"` (또는 동치 검사)를 하면
-- Then 역사적 인용(출처·트리 명시) 외에 임계값·상수·기대값으로 쓰인 정수가 없다
-- 실패 모양: 기대 경고 수를 숫자로 못박은 테스트 단언이 발견되면 미달.
+- Given 이 SPEC 의 문서 4건과 `internal/spec/`, `internal/cli/` 의 코드·테스트
+- When `grep -rnE '4[,.]?3(44|68)' .moai/specs/SPEC-SPECLINT-GATE-SIGNAL-001 internal/spec internal/cli`
+  를 돌린다 — 정규식 형태라 이 지시문 줄 자체에는 매칭되지 않는다(패턴 리터럴의
+  자기-매칭을 구조적으로 피한다; 열린 "동치 검사" 조항은 두지 않는다)
+- Then 히트가 0이거나, 매 히트 줄이 속한 불릿·문단이 출처(트리 SHA 또는 CI run id)를
+  명시한 역사적 인용이다. 출처 없는 히트 — 임계값·상수·테스트 기대값으로 쓰인 수치 — 가
+  하나라도 있으면 미달이다
+- 실패 모양: `wantWarnings == 4344` 류의 출처 없는 기대값 단언이 히트되면 미달. 전부
+  인용 줄이면 통과다.
 
 ## M2 — 기제
 
@@ -68,11 +76,13 @@
 ### AC-SLGS-008 — 재기준은 명시적이고 기록을 남긴다 (maps REQ-SLGS-008)
 
 - Given 기준선 파일
-- When 명시적 재기준(`--update-baseline` 또는 동치 절차)을 돌리면 — 파일이 그때-current
-  재측정값으로 갱신되고, 트리 SHA·날짜·사유 기록이 출력/커밋에 남는다. 반대 mutation:
-  명시 단계 없이 게이트를 감소 상태로 돌리면 파일은 불변(AC-SLGS-007 과 동일 관측)
+- When 명시적 재기준(`--update-baseline --reason "<text>"`)을 돌리면 — 파일이
+  그때-current 재측정값으로 갱신되고, 트리 SHA·날짜·사유 기록이 출력/커밋에 남는다.
+  mutation 둘: (α) `--reason` 생략 또는 빈 문자열로 실행하면 거절되고 파일은 불변,
+  (β) 명시 단계 없이 게이트를 감소 상태로 돌리면 파일은 불변(AC-SLGS-007 과 동일 관측)
 - Then 재기준 전후 diff 가 git 에서 검토 가능하다
-- 실패 모양: 기록 없는 갱신 경로가 존재하면 미달.
+- 실패 모양: 사유 없이 갱신이 일어나는 경로가 존재하면 미달 — "record"가 빈 사유로도
+  충족되는 구현을 이 AC 가 막는다.
 
 ### AC-SLGS-009 — error 는 기준선과 무관하게 막는다 (maps REQ-SLGS-009)
 
@@ -109,8 +119,9 @@
 ### AC-SLGS-012 — CC2X 두 디렉터가 "왜"와 함께 닫힌다 (maps REQ-SLGS-012)
 
 - Given SPEC-V3R4-CC2X-ADOPT-001/002
-- When M4 기록을 읽으면 "왜 spec.md 가 없는가"의 답이 있고(plan 관측: research.md 만
-  있는 리서치 우산 문서 — run 단계에서 의도성 확인), 답에 따른 종결 조치가 이뤄져 있다.
+- When M4 기록을 읽으면 디렉터마다 "왜 spec.md 가 없는가"의 답이 있고(plan 관측: 001 은
+  리서치 우산 frontmatter, 002 는 frontmatter 없는 2026-08-23 release-update 우산 — run
+  단계에서 각각 확인), 답에 따른 종결 조치가 이뤄져 있다.
   그 후 `go run ./cmd/moai spec lint` 출력에서 `SpecsDirMissingSpecFile` 이 0건이다
 - Then 두 디렉터는 spec.md 를 갖거나 `.moai/specs/` 밖으로 이전되어 있다
 - 실패 모양: 발견만 사라지고 답이 없거나, lint.skip 등 다른 방법으로 발견을 억눌렀으면 미달.

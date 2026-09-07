@@ -27,10 +27,14 @@
    (`internal/spec/lint.go:500`). 이 SPEC 은 plan 시점에 DAG 간선을 넣지 않는다 — t518 미착지
    상태에서 넣으면 `MissingDependency` **error**(`internal/spec/lint.go:1083`)로 자기 적색.
    간선은 M3 산출물이다.
-5. **CC2X ADOPT-001/002 관측(plan 시점)**: 두 디렉터는 `research.md` 만 담는다(프런트매터
-   `spec_id`, `phase: research`, child_specs 열거 — 2026-05-12 작성 리서치 우산 문서).
-   `discoverSPECs` 가 `SPEC-*/spec.md` 로 글롭하므로 모든 per-SPEC 규칙이 이 디렉터를 방문
-   조차 않는다(`SpecsDirMissingSpecFile` 메시지 그대로). M4 가 "왜"를 먼저 기록하고 닫는다.
+5. **CC2X ADOPT-001/002 관측(plan 시점, /usr/bin/grep 실측)**: 두 디렉터는 `research.md` 만
+   담지만 둘은 다른 정체다 — **001**: `spec_id`·`phase: research` frontmatter + child_specs
+   열거의 2026-05-12 리서치 우산 문서(두 패턴 히트 각 1건). **002**: 그런 frontmatter 가
+   없고(히트 0건) 2026-08-23 에 `/harness:release-update` 가 만든 CC 2.1.237→2.1.239 우산
+   문서로, 정본 사본이 `.moai/research/` 에 있다는 자기 참조를 담는다. `discoverSPECs` 가
+   `SPEC-*/spec.md` 로 글롭하므로 모든 per-SPEC 규칙이 이 디렉터들을 방문 조차 않는다
+   (`SpecsDirMissingSpecFile` 메시지 그대로). M4 는 디렉터마다 "왜"를 따로 기록하고 닫는다
+   — 한 묘사로 뭉뚱그리지 않는다.
 6. **바이너리 재측정 규율**: 모든 lint 수치는 그때-current 트리에서 그때 빌드한 바이너리로
    잰다. 오래된 바이너리나 다른 트리의 수는 귀속 금지(verification-claim-integrity §2).
 
@@ -92,7 +96,8 @@
 2. 비교 정책: error 무조건 적색(REQ-SLGS-009) → 규칙별 비-advisory 경고 수 초과 적색 +
    델타 출력(REQ-SLGS-006) → 이하 통과 + 총수 출력(REQ-SLGS-004).
 3. CLI 플래그: `--baseline <path>`, `--update-baseline`(명시적 재기준, SHA·사유 기록
-   출력)(REQ-SLGS-005, REQ-SLGS-008). 미지정 시 동작 불변.
+   출력; `--reason "<text>"` 는 필수 비어있지 않은 인자 — 없거나 빈 사유면 실행 거절)
+   (REQ-SLGS-005, REQ-SLGS-008). 미지정 시 동작 불변.
 4. 감소 방향: 통과 + 감소분 출력, 기준선 파일 불변(REQ-SLGS-007).
 5. 테스트: `t.TempDir()` 코퍼스로 합성 경고 주입/제거(AC-SLGS-005), 에러 독립성
    (AC-SLGS-009), 감소 불변(AC-SLGS-007), 재기준 감사(AC-SLGS-008).

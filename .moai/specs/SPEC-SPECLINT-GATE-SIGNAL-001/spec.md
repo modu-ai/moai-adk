@@ -128,9 +128,10 @@ t518 먼저라는 **순서 판정은 유지**되는데 사유가 바뀌었다: �
 - **REQ-SLGS-007** (event-driven): When 발견이 감소하면, the gate shall pass and print
   the improvement — 통과하며 감소분을 출력한다. 이때 기준선 파일을 **함축적으로 고쳐 쓰지
   않는다** — 기준선 수축은 오직 명시적 재기준 절차(REQ-SLGS-008)로만 일어난다.
-- **REQ-SLGS-008** (Ubiquitous): 재기준(re-baseline)은 명시적 명령·절차로만 가능하며,
-  트리 SHA · 날짜 · 사유를 기록해 git 이력에서 감사 가능해야 한다. 기록 없는 재기준은
-  기준선 조작이다.
+- **REQ-SLGS-008** (Ubiquitous): 재기준(re-baseline)은 명시적 명령·절차로만 가능하며, the
+  re-baseline command shall require a non-empty `--reason "<text>"` — 사유가 없거나
+  비어있으면 실행을 거절한다. 트리 SHA · 날짜 · 사유를 기록해 git 이력에서 감사 가능해야
+  한다. 기록 없는 재기준은 기준선 조작이다.
 - **REQ-SLGS-009** (Ubiquitous): error severity 발견은 기준선과 **무관하게** 항상
   exit 1 을 낸다. 기준선이 진짜 에러를 가리는 일은 없다(오늘의 `HasErrors()` error 경로
   보존).
@@ -153,9 +154,10 @@ t518 먼저라는 **순서 판정은 유지**되는데 사유가 바뀌었다: �
 
 - **REQ-SLGS-012** (event-driven): When run 단계가 M4 에 들어가면, the run phase shall
   first record why SPEC-V3R4-CC2X-ADOPT-001/002 lack spec.md — 먼저 왜 그 상태인지 답을
-  기록하고(plan 관측: 두
-  디렉터는 `phase: research` 프런트매터의 research.md 만 담고 있다 — 2026-05-12 작성의
-  리서치 우산 문서로, SPEC 이 아닌 것이 `.moai/specs/` 에 안치된 정황), 그 답에 따라
+  기록하고(plan 관측 — 둘은 다르다: 001 은 `spec_id`·`phase: research` frontmatter 의
+  2026-05-12 리서치 우산 문서, 002 는 frontmatter 없이 2026-08-23 에
+  `/harness:release-update` 가 만든 우산 문서다. M4 는 각 디렉터의 '왜'를 따로 기록한다),
+  그 답에 따라
   spec.md 를 보태거나 디렉터를 `.moai/specs/` 밖으로 옮겨 발견 2건을 닫는다. "왜" 없이
   발견만 지우는 것은 금지다.
 
