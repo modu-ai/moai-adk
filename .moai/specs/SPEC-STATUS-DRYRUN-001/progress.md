@@ -202,4 +202,22 @@ known_red_preexisting: "TestCatalogHashParity (internal/spec) — pre-existing c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: "pending-backfill-sync"
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-STATUS-DRYRUN-001' CHANGELOG.md → 0 (pre-emission, no duplicate entry)"
+b12_self_test_b: "AC count: acceptance.md SSOT yields 10 distinct AC identifiers (AC-001..AC-010); CHANGELOG entry cites 10 (AC-001..010) — match"
+b12_self_test_c: "every file path claimed in the CHANGELOG entry verified to exist: internal/spec/status.go, internal/cli/spec_status.go, internal/cli/exitcode_streams_test.go, .moai/specs/SPEC-STATUS-DRYRUN-001/progress.md, .moai/reports/t513/repro-output-fixed.txt"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Fixed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (this sync commit)"
+  updated_field: "2026-09-07 (already current — no change needed)"
+mx_compliance_check:
+  status: pass
+  note: "MX tags validated as a sync sub-step — @MX:ANCHOR on frontmatterBlock (carries @MX:REASON), @MX:NOTE on package-level regexes; no dangling @MX:TODO introduced by this branch"
+canary_compliance_check:
+  status: pass
+  note: "no policy forward-looking clauses defined by this SPEC; no canary self-test applies"
+sync_phase_scope: "markdown-only — CHANGELOG entry, spec.md frontmatter status transition, this §E.4, orchestrator-rerun evidence file; zero code changes"
+```
