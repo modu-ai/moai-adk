@@ -236,3 +236,69 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.719s
 - **Integrity after revert**: `internal/cli/codex_review_gate.go` SHA256
   `9356669bdeb39f433897b7fc82c7e4cf036ca8ab24197301558b8c7bcedc3500` (identical to the pre-mutation
   capture); `git status --short` lists only the new test file.
+
+## M5a — delete the pid nil guard (RED arrives as a panic)
+
+Run in isolation (`-run 'TestCodexSessionHandlePid'`) per acceptance.md AC-CCR-010, because the
+panic aborts the remaining tests in the same binary. Go emits the `--- FAIL:` line ahead of the
+trace, so the criterion is satisfied as written; the trace is recorded alongside it so the capture
+is not mistaken for truncated.
+
+- **Edit**: delete `mcp_codex.go:702-704` (`if h == nil || h.conn == nil { return 0 }`)
+- **RED (verbatim, head of output)**:
+
+```
+=== RUN   TestCodexSessionHandlePid
+--- FAIL: TestCodexSessionHandlePid (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x0 pc=0x1013046f8]
+
+goroutine 66 [running]:
+testing.tRunner.func1.2({0x1049575e0, 0x104cd1100})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x1049575e0?, 0x104cd1100?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.(*codexSessionHandle).pid(...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t519/internal/cli/mcp_codex.go:702
+github.com/modu-ai/moai-adk/internal/cli.TestCodexSessionHandlePid(0x3968b138c908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t519/internal/cli/mcp_codex_test.go:677 +0x28
+testing.tRunner(0x3968b138c908, 0x104b14438)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+```
+
+The trace names `mcp_codex.go:702` reached from `mcp_codex_test.go:677` — the typed-nil receiver
+arm — which is exactly the short-circuit the disjunction guard provides.
+
+## M5b — return -1 instead of 0 from the guard
+
+- **Edit**: `mcp_codex.go:703` — `return 0` → `return -1`
+- **RED (verbatim)**:
+
+```
+=== RUN   TestCodexSessionHandlePid
+    mcp_codex_test.go:678: pid on a nil handle = -1, want 0
+    mcp_codex_test.go:681: pid on a handle with no conn = -1, want 0
+--- FAIL: TestCodexSessionHandlePid (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.850s
+```
+
+Both zero-arms mismatch, as predicted. The third arm (`fakeCodexConnPID`) is untouched by this
+mutant and stays silent, which is correct — it does not pass through the guard.
+
+- **GREEN after revert (verbatim)**:
+
+```
+=== RUN   TestCodexSessionHandlePid
+--- PASS: TestCodexSessionHandlePid (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.682s
+```
+
+- **Integrity after revert**: `internal/cli/mcp_codex.go` SHA256
+  `2a2ad2a9fd3a84566a372b01b3367223cd37fa0e71136f9543e2827e528ad8da` (identical to the pre-mutation
+  capture); `git status --short` listed only ` M internal/cli/mcp_codex_test.go`.
