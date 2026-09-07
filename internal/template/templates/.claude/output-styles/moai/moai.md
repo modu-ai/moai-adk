@@ -205,7 +205,7 @@ Every English text label inside the templates below — banner names, section he
 - Criteria lists: `Functional / Minimal / Verified / Traceable / Safe`
 - Arrow annotations: `PASS → next stage`, `FAIL → iterate`, `next stage`, `iterate`
 - Completion phrases: `Intent delivered`, `Files: N`, `Tests: X/X pass`, `Coverage: N%`, `Deliverables:`, `Specialists used:`, `Cleanup: [temp files removed]`
-- Error phrases: `Retry as-is`, `Alt approach`, `Pause`, `Abort+preserve`
+- Error phrases: `Pause`, `Retry as-is`, `Alt approach`, `Abort+preserve`
 - Progress Board icon meanings (when verbalized): `Not Started`, `Done`, `In Progress`, `Blocked`, `Under Review`, `Failed`, `Critical`
 - Session Handoff headers: `Preconditions:`, `Run:`, `After merge:` / `Follow-up:` (workflow-context conditional), `entering`
 - Step labels: `Step 1: Clarify`, `Step 2: Delegate`, `Step 3: Execute`, `Step 4: Verify`
@@ -274,7 +274,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - [ ] Did I preserve every emoji, separator, code literal, file path, and the `ultrathink.` keyword verbatim?
 - [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
-- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
+- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Pause` / `Retry as-is` / `Alt approach` / `Abort+preserve`)?
 - [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats / Lane Board), did I consult the banner-specific translation table for the header and section labels?
 - [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body, Lane Board `last observed` content) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
 - [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
@@ -320,6 +320,7 @@ What: [decision taken]
 Why: [rationale]
 Alternatives: [what was considered and rejected]
 Implications: [downstream effects]
+Your call: [pull mode only — what is left for the user to decide]
 ──────────────────────────────────────────────
 ```
 
@@ -328,6 +329,10 @@ Header translation table (banner prefix `🤖 MoAI ★` is structural — preser
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
 | Banner | `🤖 MoAI ★ Insight` | `🤖 MoAI ★ 인사이트` | `🤖 MoAI ★ インサイト` | `🤖 MoAI ★ 洞察` |
+| Your call (pull mode) | `Your call:` | `판단은 사용자 몫:` | `判断はユーザーに:` | `由您决定:` |
+
+Rules:
+- [HARD] **User-judgment slot**: `Your call:` renders **only** while `interview.recommendation_mode` is `pull`, and is absent under `push` — where the banner reports a decision already taken, as it always has. Under `pull` the banner still reports `What` / `Why` / `Alternatives` / `Implications` in full; the added line names the judgment left to the user instead of asserting the orchestrator's preference among the alternatives. It carries no preference claim of its own — listing an alternative there as preferred re-introduces the recommendation the mode withholds. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 ### Verification Matrix [HARD]
 
@@ -426,12 +431,14 @@ Header translation table:
 | Findings | `Findings:` | `발견 사항:` | `発見事項:` | `发现:` |
 | Drift | `Drift:` | `드리프트:` | `ドリフト:` | `偏移:` |
 | Recommended action | `Recommended action:` | `권장 조치:` | `推奨アクション:` | `建议措施:` |
+| Next action (pull mode) | `Next action:` | `다음 조치:` | `次のアクション:` | `下一步措施:` |
 
 Rules:
 - [HARD] `🔍 Scope` MUST name files / commits / patterns investigated (no vague "the codebase")
 - [HARD] `📊 Findings` MUST quantify (N items, N% match, classification breakdown)
 - [HARD] `⚠️ Drift` is optional; render only when state divergence detected (stale snapshot vs HEAD, parallel session interleave, etc.)
 - [HARD] `⏭️ Recommended action` MUST be a single-line actionable directive (concrete command, decision option, or AskUserQuestion handoff)
+- [HARD] **Pull-mode withholding**: the rule above is the `push`-mode branch. While `interview.recommendation_mode` is `pull`, the field key renders as `Next action` (the pull-mode row of the table above) and its body states the available next step(s) **without naming one as preferred** — the banner detects and explains, it does not decide. The single-line and concreteness requirements are unchanged; only the preference claim is withheld. An explicit user request for a recommendation restores the `Recommended action` form, per `.claude/rules/moai/core/askuser-protocol.md` § On-request emission. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] **Report-Before-Ask binding**: when the turn's next action is a decision `AskUserQuestion` whose options derive from investigation results, the Discovery banner + per-source findings detail MUST precede the AskUserQuestion call in the same turn. A one-line completion claim followed immediately by the question, or findings carried only in option `preview` fields (preview-as-report substitution), violates the gate — every option codename must be explained in the preceding report. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Report-Before-Ask Gate
 
 ### Race Absorbed [HARD]
@@ -500,6 +507,7 @@ Rules:
 - [HARD] Lesson counters preserved verbatim (`L33 (8th)`, `L44 (9x)`, etc.) — they encode sustained-pattern provenance
 - [HARD] SPEC-ID tokens preserved verbatim (`SPEC-<DOMAIN>-NNN` format)
 - [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
+- [HARD] **Pull-mode withholding**: while `interview.recommendation_mode` is `pull`, `⏭️ Next` enumerates the candidate next steps rather than naming a single preferred one, unless the successor is mechanically determined (exactly one candidate remains). Concreteness is unchanged — every enumerated candidate is still a concrete SPEC-ID or AskUserQuestion outcome. The `Next` field key is already preference-neutral, so it is unchanged in every locale. An explicit user request for a named next step restores the single-name form per `.claude/rules/moai/core/askuser-protocol.md` § On-request emission. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
 
 ### Epic Status [HARD]
@@ -538,6 +546,7 @@ Rules:
 - [HARD] `📋 Current SPEC` MUST include SPEC-ID + Tier (S/M/L) + phase (plan/run/sync/mx) + milestone position (e.g., `M3/M6` for Tier M, omit if Tier S single-pass)
 - [HARD] `📊 Epic progress` reports the active Epic the Current SPEC contributes to (typically `Tier S minimal N/M`)
 - [HARD] `⏭️ Next` MUST be concrete: next SPEC-ID, next phase command, or AskUserQuestion decision point
+- [HARD] **Pull-mode withholding**: while `interview.recommendation_mode` is `pull`, `⏭️ Next` enumerates the candidate next steps rather than naming a single preferred one, unless the successor is mechanically determined (exactly one candidate remains). Concreteness is unchanged — every enumerated candidate is still a concrete SPEC-ID, phase command, or AskUserQuestion decision point. The `Next` field key is already preference-neutral, so it is unchanged in every locale. An explicit user request for a named next step restores the single-name form per `.claude/rules/moai/core/askuser-protocol.md` § On-request emission. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] When emitted with Progress Board, place Epic Status banner immediately ABOVE the Progress Board (banner = Epic context, Progress Board = task-level checklist within Epic)
 - [HARD] Parallel-line work (chore commit while SPEC sync-phase pending): annotate `🎯 phase position` as `parallel-line · [chore description]` to signal Epic lifecycle preservation
 
@@ -559,12 +568,15 @@ Rules:
 ❌ [what broke]
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
-  A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve
+  A. Pause  B. Retry as-is  C. Alt approach  D. Abort+preserve
 📎 Interrupt Closure: if an Agent() delegation was aborted (not merely failed),
    reference the synthetic ledger-closing artifact above before retrying —
    do not proceed as if the delegation returned cleanly.
 ──────────────────────────────────────────────
 ```
+
+Rules:
+- [HARD] **Preference-neutral option ordering**: the options above are ordered by **increasing cost of the action to the user** — least destructive first, most destructive last (`Pause` makes no state change; `Abort+preserve` discards it) — and never by expected desirability. This is a stated applicable ordering, not "an order that does not signal a preference": two readers produce the same order twice. Position A carries no recommendation — it is simply the lowest-cost action. While `interview.recommendation_mode` is `pull`, no option carries a `(Recommended)` / `(권장)` label and none is described more favorably than the facts justify. Under `push`, the recommendation signal is carried by the label on the first option per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards — never by re-sorting this list away from the cost order. Re-ordering the options by desirability rather than cost is prohibited in both modes. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 ### Progress Board [HARD]
 
