@@ -619,6 +619,93 @@ func TestParseStatus_LegacyTableFallback_NoFrontmatter(t *testing.T) {
 	}
 }
 
+// SPEC-STATUS-DRYRUN-001 AC-004 (REQ-003): updating a frontmattered SPEC
+// touches ONLY the frontmatter status line — the body (history table rows,
+// the `Notes` header cell, backticked prose) is byte-identical.
+func TestUpdateStatus_FrontmatterAnchored_BodyByteInvariance(t *testing.T) {
+	frontmatter := "---\nid: SPEC-DEMO-001\nstatus: completed\n---\n"
+	body := "\n## HISTORY\n\n| Version | Date | Status | Notes |\n|---|---|---|---|\n| 0.1.0 | 2026-01-01 | draft | initial |\n\n- HISTORY is kept as a bullet list, not a `| Version | Date | Status | Notes |` table.\n"
+	content := frontmatter + body
+
+	updated, err := updateStatusInContent(content, "implemented")
+	if err != nil {
+		t.Fatalf("updateStatusInContent failed: %v", err)
+	}
+
+	if !strings.Contains(updated, "status: implemented") {
+		t.Errorf("frontmatter status not updated, got:\n%s", updated)
+	}
+
+	// The body after the closing frontmatter delimiter must be byte-identical.
+	lines := strings.Split(updated, "\n")
+	closingIdx := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			closingIdx = i
+			break
+		}
+	}
+	if closingIdx < 0 {
+		t.Fatalf("updated content lost its frontmatter closing delimiter:\n%s", updated)
+	}
+	updatedBody := strings.Join(lines[closingIdx+1:], "\n")
+	if updatedBody != body {
+		t.Errorf("body was modified by the status update:\n--- want ---\n%s\n--- got ---\n%s", body, updatedBody)
+	}
+	if strings.Contains(updated, "| Version | Date | Status | implemented |") {
+		t.Error("history table header cell was clobbered")
+	}
+	if strings.Contains(updated, "Status | implemented |` table") {
+		t.Error("backticked prose was clobbered")
+	}
+}
+
+// SPEC-STATUS-DRYRUN-001 edge case: a frontmatter block lacking a status: key
+// gains the key INSIDE the existing block — never a second block, never a
+// stray key appended to the body.
+func TestUpdateStatus_FrontmatterInsert_IntoExistingBlock(t *testing.T) {
+	frontmatter := "---\nid: SPEC-FM-NOSTATUS-001\ntitle: \"No status key\"\n---\n"
+	body := "\n| Field | Value |\n|-------|-------|\n| Status | draft |\n"
+	content := frontmatter + body
+
+	updated, err := updateStatusInContent(content, "in-progress")
+	if err != nil {
+		t.Fatalf("updateStatusInContent failed: %v", err)
+	}
+
+	if !strings.Contains(updated, "status: in-progress") {
+		t.Errorf("status not inserted, got:\n%s", updated)
+	}
+
+	// Insertion must land inside the frontmatter block (before its closing ---).
+	lines := strings.Split(updated, "\n")
+	closingIdx := -1
+	for i, line := range lines {
+		if i > 0 && strings.TrimSpace(line) == "---" {
+			closingIdx = i
+			break
+		}
+	}
+	if closingIdx < 0 {
+		t.Fatalf("updated content has no frontmatter closing delimiter:\n%s", updated)
+	}
+	foundInside := false
+	for _, line := range lines[:closingIdx] {
+		if strings.HasPrefix(line, "status: in-progress") {
+			foundInside = true
+		}
+	}
+	if !foundInside {
+		t.Errorf("status key not inserted inside the frontmatter block:\n%s", updated)
+	}
+
+	// Body stays byte-identical.
+	updatedBody := strings.Join(lines[closingIdx+1:], "\n")
+	if updatedBody != body {
+		t.Errorf("body was modified by the status insertion:\n--- want ---\n%s\n--- got ---\n%s", body, updatedBody)
+	}
+}
+
 // TestSpecIDPattern tests the SPEC-ID extraction regex pattern
 func TestSpecIDPattern(t *testing.T) {
 	// This test documents the expected pattern
