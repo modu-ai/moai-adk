@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PARTIAL-WIRING-001
 title: "반쪽 배선(agent TOML만 존재) 상태의 doctor 탐지와 조치 안내"
-version: "0.2.0"
+version: "0.3.1"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -26,6 +26,8 @@ related_specs: [SPEC-CODEX-WIRING-001, SPEC-CODEX-SIDECAR-GUARD-001]
 | 0.1.0 | 2026-09-07 | 최초 작성 (plan-phase, 카드 t499). 레인이 선행 수행한 재현 기록(`.moai/reports/t499/repro.md`)을 측정 전제로 삼고 그 위에 요구·수용 기준을 얹음 |
 | 0.1.1 | 2026-09-07 | 리드 지적: §F의 AC 범위가 `~008`로 적혀 AC-CPW-009(뮤턴트 관문)가 판정 집합에서 빠져 있었다 — `~009`로 정정 |
 | 0.2.0 | 2026-09-07 | plan-audit iter1(FAIL 0.76) 수리 라운드. D3 → REQ-CPW-009 신설(codex 부재 갈래 지시문 금지 — §D-1의 판단을 요구로 강제). D5 → REQ-CPW-010 신설(존재-게이트 무접촉)하고 AC-CPW-008을 그쪽으로 재매핑. D6 → §A.3 좌표 `:105` → `:92` 정정(원문 오기 사실을 지우지 않고 정정 절로 남김). D7(optional, 수용) → §D-1에 "REQ-CPW-006은 회귀 반경을 지키는 조항이지 claude-only 사용자를 지키는 조항이 아니다" 구분 추가. D1/D2/D4는 `acceptance.md` 소관 |
+| 0.3.0 | 2026-09-07 | plan-audit iter2(FAIL 0.84, 뮤턴트 관문) 수리 라운드. D1 → AC-CPW-002 (d)를 토큰 부재에서 **성질**(부분문자열 `moai init` 금지)로 재작성 + 패러프레이즈 뮤턴트 M6 신설. D2 → **REQ-CPW-011 신설**(부재 갈래는 사용자 계층 훑기에 도달하지 않는다) + §A.4에 네 번째 보존 계약 추가 + AC-CPW-002 Given에 `stubCodexHome`(낡은 항목 ≥1) 고정 + 뮤턴트 M7 신설. D3 → `progress.md`의 lint 증거 문장 재작성(SPEC 표기는 바꾸지 않음). D4 → AC-CPW-007 좌표 `:394`/`:441` → `:404`/`:450`. D5 → RED-now 5셀을 명령/stdout/`exit:` 3필드로 분해. 더해 리드 승인 보강: RED-now 셀에 `grep -c` 관측을 짝지어 §D.0 4-조합 판독표 신설 |
+| 0.3.1 | 2026-09-07 | 리드 질의(허용 목록 전환) 채택. AC-CPW-002 (d)를 **금지 목록 → 등가 단언(allowlist)**으로 전환 — 부재 갈래 Message를 시험 파일 리터럴과 등가로 못박아 어떤 패러프레이즈도 원리상 통과하지 못하게 함. (d′)로 리터럴 자체의 모양 검사를 남기고, 사람 판정 DoD 항목은 제거(검토 지점이 체크리스트에서 diff에 보이는 코드 한 줄로 이동). 등가 단언이 닫지 못하는 잔여분(리터럴 선택 자체)을 (d′) 주석에 명시. 뮤턴트 **M6′**(세 금지 토큰을 전부 피한 지시문 — 종전 처리로는 통과, 등가 단언으로는 RED) 신설 → 뮤턴트 8종 |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -61,13 +63,14 @@ wired := hooksErr == nil || cfgErr == nil
 판별식이 읽는 것은 배선 파일 2종뿐이다. `.codex/agents/`는 어느 분기에서도 조회되지 않으므로
 반쪽 상태는 판별식 안에 자리가 없고, `!wired && !codexInstalled` 조기 반환이 §A.2의 조용한 OK를 만든다.
 
-### §A.4 보존해야 하는 계약 3종
+### §A.4 보존해야 하는 계약 4종
 
 | 계약 | 좌표 | 내용 |
 |---|---|---|
 | 존재-게이트 | `internal/codexwiring/wire.go:51-56` | `RefreshWiring`는 `wiringFilesExist`가 거짓이면 `Result{}, nil`을 돌려주고 **아무것도 만들지 않는다** |
 | 읽기 전용·비차단 | `internal/cli/doctor_codex.go` 파일 머리 주석 | 이 검사는 보고만 하며 `.codex/` 파일을 만들지도 고치지도 지우지도 않고, `~/.codex/config.toml`을 건드리지 않으며, 게이트로 쓰이지 않는다 |
 | un-nagging 불변 | `internal/cli/doctor_codex.go`의 `!wired && !codexInstalled` 조기 반환 + `TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent` | 진짜 claude-only 프로젝트(`.codex/` 자체가 없음)를 codex 없는 머신에서 볼 때 검사는 침묵한다 |
+| **사용자 계층 훑기의 도달 범위**(0.3.0 추가) | `internal/cli/doctor_codex.go:189`(`codexStaleSkillFinding` 호출, 함수 선언 `:376`) + 그 위 `:186-188` 주석 | 이 훑기는 "Codex가 관여할 때만 도달한다"는 전제 위에 있고, 오늘 그 전제는 조기 반환이 지킨다. **half-wired × codex 부재가 그 전제를 깨는 첫 사례**이므로, 이 갈래가 훑기에 도달하는지 여부는 이 SPEC이 명시해야 하는 계약이다(REQ-CPW-011) |
 
 ### §A.5 골든 픽스처 영향 (읽어서 확인)
 
@@ -99,6 +102,7 @@ agent 정의의 존재를 지우고, codex가 없는 머신에서는 아예 "cla
 | REQ-CPW-008 | Ubiquitous | 새로 추가되는 Message 문구는 기존 폭 상한 `codexMessageWidthCeiling`(113 runes)을 지켜야 한다(SHALL) |
 | REQ-CPW-009 | Unwanted | `half-wired`이고 `codex`가 PATH에 없을 때, 그 Message는 조치 지시문(`initCodexAdvice` = `run moai init --agent codex`)을 실어서는 안 된다(SHALL NOT). 실행할 수 없는 지시는 조치 안내가 아니라 잔소리이며, §D-1의 판단은 이 요구로 강제되어야만 구현을 구속한다 |
 | REQ-CPW-010 | Unwanted | 이 SPEC의 구현은 `internal/codexwiring`의 `RefreshWiring` / `wireProject` / `wiringFilesExist` 동작을 변경해서는 안 된다(SHALL NOT) — 존재-게이트(§A.4)는 이 카드에서 관측 대상이지 수정 대상이 아니다 |
+| REQ-CPW-011 | Event-driven | `half-wired`이고 `codex`가 PATH에 없을 때, 사용자 계층 config(`~/.codex/config.toml`)가 낡은 `[[skills.config]]` 항목을 선언하고 있더라도 검사 상태는 `CheckOK`로 유지되어야 하며(SHALL), 그 항목에서 비롯된 소견이 Message나 Detail에 등장해서는 안 된다 — 즉 이 갈래는 사용자 계층 훑기(§A.4 네 번째 계약)에 도달하지 않는다 |
 
 ## §D. 설계 결정 (근거를 남긴다)
 
@@ -152,7 +156,7 @@ agent 정의까지 정말로 없는 프로젝트에서는 참이다. 이 SPEC은
 
 ## §F. 수용 기준
 
-`acceptance.md`의 AC-CPW-001 ~ AC-CPW-009가 이 SPEC의 판정 기준이다. AC-CPW-009(뮤턴트 5종)는
+`acceptance.md`의 AC-CPW-001 ~ AC-CPW-009가 이 SPEC의 판정 기준이다. AC-CPW-009(뮤턴트 8종)는
 다른 여덟 항목이 실제로 판별식을 잡고 있는지를 검사하는 반증 관문이므로 이 집합에서 빠질 수 없다.
 
 0.2.0에서 아홉 항목은 두 부류로 나뉘어 표기된다 — **릴리스 게이트 6건**(AC-CPW-001 / -002 / -005 / -006 /
