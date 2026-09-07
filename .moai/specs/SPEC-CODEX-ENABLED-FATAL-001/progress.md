@@ -259,4 +259,61 @@ m1_to_mN_commit_strategy: "one commit per milestone, M4 item 1 first so its RED 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'CODEX-ENABLED-FATAL' CHANGELOG.md → 0 (pre-emission; no duplicate entry from a parallel BATCH-SYNC session)"
+b12_self_test_b: "grep -oE 'AC-CEF-[0-9]+' .moai/specs/SPEC-CODEX-ENABLED-FATAL-001/acceptance.md | sort -u | wc -l → 16; CHANGELOG entry cites '16 acceptance criteria (AC-CEF-001..016), 16 PASS / 0 FAIL' — count matches"
+b12_self_test_c: "every path claimed in the CHANGELOG entry verified via ls: .moai/specs/SPEC-CODEX-ENABLED-FATAL-001/spec.md, .moai/reports/t508/codex-enabled-lab.md, .moai/reports/t508/run-evidence.md — all exist"
+changelog_entry_position: "CHANGELOG.md ### Fixed section, first entry (top of section, immediately after the '### Fixed' heading)"
+frontmatter_status_transitions.spec_md: "in-progress -> completed (this commit; status: + updated: only, per manager-docs' allowed frontmatter scope)"
+frontmatter_status_transitions.plan_md: "no status field (stateless on that axis, unchanged)"
+frontmatter_status_transitions.acceptance_md: "no status field (stateless on that axis, unchanged)"
+canary_compliance_check: n/a — this SPEC defines no forward-looking policy that its own sync tests
+```
+
+### CHANGELOG emission (§B12 self-test detail)
+
+1. **Pre-emission grep** — `grep -c 'CODEX-ENABLED-FATAL' CHANGELOG.md` returned `0` before this
+   commit's edit, confirmed by re-running the same command after the edit and observing exactly
+   `1` (the entry this commit added). No duplicate-entry risk from a parallel BATCH-SYNC session.
+2. **AC count match** — `acceptance.md` (SSOT, not `progress.md`) carries 16 distinct
+   `AC-CEF-###` identifiers, all live (none is `[RETIRED]`/`[REF]`-marked). The CHANGELOG entry's
+   text `16 acceptance criteria (AC-CEF-001..016), 16 PASS / 0 FAIL` states the same count, matching
+   §E.3's `ac_pass_count: 16 / ac_fail_count: 0`.
+3. **File path verification** — every file path named in the CHANGELOG entry (`spec.md`,
+   `.moai/reports/t508/codex-enabled-lab.md`, `.moai/reports/t508/run-evidence.md`) exists,
+   verified via `ls`.
+
+### README / docs-site finding (not a silent scope decision)
+
+- **README** — `grep -n "Codex Wiring" README.md` (all 4 locale files) → no match. README's doctor
+  coverage is limited to the Home Disk Usage feature (line 145/734 of `README.md`); it never
+  documents individual `moai doctor` checks at this granularity. No README edit was made — there
+  is no existing surface this change extends.
+- **docs-site** — `docs-site/content/en/cli-reference/doctor.md` DOES document individual doctor
+  checks as dedicated callout sections (`## Home Disk Usage check {{< new-badge v3.1.1 >}}`,
+  `## Hook Delivery check {{< new-badge v3.1.4 >}}`) — this is a real, non-vacuous documentation
+  surface (control: `grep -n "Home Disk Usage" docs-site/content/en/cli-reference/doctor.md` → 1
+  hit). `grep -rn "Codex Wiring" docs-site/content/en/` → 0 matches: the Codex Wiring check (this
+  change included) has never had a docs-site callout, in any of the 4 locales. Adding one now would
+  be a genuine docs-site addition, not a repair, and per `docs-site-i18n-rules.md` the 4-locale
+  same-PR obligation applies — that is a larger unit of work than this sync task's scope. **This is
+  reported as a blocker/finding for the orchestrator to route (a follow-up card), not done as a
+  partial single-locale edit.**
+
+### Gaps carried from run-phase (verbatim, per acceptance.md §D.4)
+
+- Only codex-cli 0.153.4 was measured; whether older codex releases tolerate an absent `enabled`
+  is unmeasured.
+- REQ-CEF-004's "not a bare TOML boolean" class is an induction from three measured shapes
+  (integer, double-quoted string, single-quoted string); float/array/inline-table/bareword forms
+  were not probed.
+- Multi-entry reporting order (first offending entry vs all) is unmeasured; no AC depends on it.
+- `enabled` inside a multi-line string or with a trailing comment was not probed against codex.
+- The t506 prune verb (`SPEC-CODEX-GHOST-SKILLS-PRUNE-001`) was EXECUTED in this run (§E.2 AC-CEF-012
+  row cites `TestPruneCodexSkillEntries_LeavesNoFileBehind` PASS), closing the plan-phase gap that
+  it had been read but not executed.
+- Card t502, the other named writing surface, was not checked for whether it has landed.
+
