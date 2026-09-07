@@ -181,4 +181,77 @@ m1_to_mN_commit_strategy: "마일스톤별 분리 커밋 (M1 / M2 / M3+M4). 증�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass   # grep -c 'SPEC-CODEX-BODY-NEUTRALITY-001' CHANGELOG.md → 0 (착수 전, 중복 없음)
+b12_self_test_b: pass   # acceptance.md 고유 AC 식별자 14 == CHANGELOG 기재 14 (0 이 아님을 확인)
+b12_self_test_c: pass   # CHANGELOG 가 이름 붙인 경로 전수 ls 확인 — 9/9 존재
+changelog_entry_position: "[Unreleased] › ### Added — 말미 append (다른 레인 항목 무손상)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-07)"
+  plan_md: "n/a — 프론트매터 없음(status 축 stateless)"
+  acceptance_md: "n/a — 프론트매터 없음(status 축 stateless)"
+  progress_md: "n/a — 상태를 본문 절로 기록"
+canary_compliance_check:
+  applicable: false
+  note: "이 SPEC 은 자기 sync 가 시험할 전향 정책을 정의하지 않는다."
+```
+
+### 이 커밋이 하는 일
+
+`spec.md` 프론트매터의 `in-progress → completed` 전환(`status` + `updated` 두 필드만) · 이 §E.4 신호 · `CHANGELOG.md` `[Unreleased]` 항목 1건. `plan.md` · `acceptance.md` 는 프론트매터를 갖지 않아 status 축에서 stateless 이므로(`spec-frontmatter-schema.md` § Artifact Statelessness) 전환 대상이 아니다. MX Tag 검증은 별도 단계가 아니라 이 sync 안의 하위 단계다 — Go 소스 변경이 0 이라 새로 붙일 `@MX` 주석이 없고, 개정된 4본은 전부 마크다운 본문이다.
+
+### 14개 AC 재검증 (sync-phase, 이 트리 · HEAD `321111fe5` · 무캐시)
+
+run-phase 판정을 인용하지 않고 sync 시점에 다시 쟀다. 명령과 축자 출력:
+
+| # | 명령 | 실측 | 대응 AC |
+|---|---|---|---|
+| 1 | `go test -count=1 ./internal/template/agentemit/...` | `ok  github.com/modu-ai/moai-adk/internal/template/agentemit  0.296s` rc 0 | AC-CBN-010 |
+| 2 | `go test -count=1 ./internal/config/` | `ok  github.com/modu-ai/moai-adk/internal/config  1.457s` rc 0 | AC-CBN-009 |
+| 3 | `go test -count=1 -run TestAlwaysLoadedTokenBudget -v ./internal/config/` | `always-loaded surface = 74695 tokens (budget 77600, headroom 2905, 17 entries)` / `PASS` | AC-CBN-009 |
+| 4 | `go test -count=1 -run TestCodexContractByteCeiling -v ./internal/config/` | `AGENTS.md = 15415 bytes (ceiling 24576, headroom 9161)`, 템플릿 사본 동일값 / `--- PASS` | 부가 가드 |
+| 5 | `grep -rhoE 'invoke Skill\(' …/*.toml \| wc -l` | `41` (불변) | AC-CBN-003 |
+| 6 | `grep -rhoE 'AskUserQuestion' …/*.toml \| wc -l` | `4` (불변) | AC-CBN-004 |
+| 7 | `grep -rhoE 'Task(Create\|Update\|List\|Get)' …/*.toml \| wc -l` | `0` | AC-CBN-005 |
+| 8 | `grep -rn 'task-list' …/*.toml \| wc -l` | `3` | AC-CBN-005 |
+| 9 | `grep -c 'subagent-spawn' …/manager-lead.toml` | `8` (≥ N=7) | AC-CBN-013 |
+| 10 | `grep -oE '(^\|[^/])design-sync' …/manager-design.toml \| wc -l` | `3` (착수 전 0) | AC-CBN-014 |
+| 11 | `grep -c 'default = DesignSync tool push' …/manager-design.toml` | `1` (불변) | AC-CBN-014 |
+| 12 | `grep -cE '\|[[:space:]](absent\|present)[[:space:]]\|[[:space:]]*$' capability-absence.md` | `11` | AC-CBN-006 (a) |
+| 13 | `grep -cE '\|[[:space:]]absent[[:space:]]\|[[:space:]]*$' capability-absence.md` | `3` | AC-CBN-006 (b) |
+| 14 | `sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md \| grep -c '^\| [a-z]'` | `3` — (b) == (c) 성립 | AC-CBN-006 (c) |
+| 15 | `grep -c '현재 측정값 4행' …/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md` | `0` | AC-CBN-006 (d) |
+| 16 | 두 `AGENTS.md` 사본 결속표 구역 `diff` | 무출력, rc 0 | AC-CBN-007 |
+| 17 | `grep -c '^\| .*\.toml \| [0-9]' body-classification.md` | `84` | AC-CBN-001 (a) |
+| 18 | 개정 후 합집합 모집단 `grep -rhoE '<합집합 패턴>' …\| wc -l` | `82` (§E.2 M3 의 귀속과 일치: 45+26+0+7+4) | 모집단 대조 |
+| 19 | `grep -rnE '\[NEEDS[[:space:]]CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` | 무출력, rc 1 | 완료 정의 |
+
+AC-CBN-002 · 008 · 011 · 012 는 명령 재실행이 아니라 판독으로 닫힌다 — 각각 분류표 세 좌표의 행 판독(§E.2 M2), 결속표 첫 칸 값이 `tool_classes` 원소인지의 대조, 반경 집합 동일성(§E.2 M4 ②), 실행 명령 목록의 판독이다. sync-phase 에서 실행한 범위는 `./internal/template/agentemit/...` 와 `./internal/config/` **둘뿐**이며 `go test ./...` 형태는 0회다(AC-CBN-012 유지).
+
+### 좌표 인용 규율 (이 절이 새로 쓰는 인용)
+
+이 카드는 좌표 오류를 3회 냈고(그중 1건은 감사자 적발), 마지막 라운드는 좌표 대신 절 번호를 인용해 4번째를 막았다. 그래서 이 절은 **움직일 수 있는 `file:line` 을 새로 만들지 않는다** — 심볼·절 번호로 건다.
+
+- 알려진 잔존 1건: `.moai/reports/t497/measurement.md` 가 미러 도달 경로를 `internal/template/skill_mirror.go:4-5,52,171` 로 인용한다. 이 트리 실측에서 `:171` 은 `mirrorSkills` 의 `@MX:ANCHOR` 주석 줄이고, `func (d *deployer) mirrorSkills` 자체는 `:178` 이다. develop 흡수 후 좌표는 밀린다(t503 이 앞쪽에 줄을 넣었고, 그 커밋 자신이 미러 거동은 불변이라 적는다) — **실질 전제는 그대로다.** 그 파일은 plan-phase 증거 기록이므로 여기서 다시 쓰지 않고, 심볼 앵커(`skill_mirror.go` 의 `mirrorSkills` 와 그 `@MX:ANCHOR` 주석 · 파일 머리말 4-5행의 자기 서술 · `mirrorSkillsRelDir` 상수)를 이 줄에 남겨 다음 독자가 좌표 없이 찾게 한다.
+
+### docs-site 판정 — 페이지를 만들지 않는다
+
+`docs-site/content/{ko,en,ja,zh}` 4로케일이 이 트리에 있으나 **이 카드는 그 어느 것도 건드리지 않는다.** 근거 셋: (1) 사용자에게 보이는 거동 변화가 0 이다 — 바뀐 것은 에이전트 본문의 문면과 그 생성물 TOML 이고, CLI 표면·설정 키·명령 결과 중 무엇도 달라지지 않는다. (2) 반경이 전부 하네스 내부 계약(`AGENTS.md` 결속표와 에이전트 정의)이며, docs-site 는 그 계약을 페이지로 싣고 있지 않다. (3) 4로케일 의무는 페이지를 **만들기로 정했을 때** 발생하는 후속 의무이지 페이지를 만들 사유가 아니다. 따라서 `hugo build` 도 돌리지 않았고, 돌렸다고 주장하지 않는다.
+
+### Gaps
+
+- **`§E.3` 의 `run_commit_sha: pending-backfill` 은 이 커밋이 채우지 않는다.** 그 필드는 run-phase 소유 면(`§E.3`)이고 manager-docs 의 금지 반경 안이다(`spec-frontmatter-schema.md` § SHA placeholder backfill exemption 은 **해당 phase 를 소유한 에이전트**에게만 backfill 을 허용한다). 값 자체는 이미 알려져 있다 — run 커밋은 `7b4ba4491`(M1) · `c3ea4670e`(M2) · `321111fe5`(M3+M4) 셋이다. 소관 밖이라 적지 않을 뿐이므로, 리드가 이 사실과 함께 backfill 을 배차하면 한 줄로 닫힌다.
+- `sync_commit_sha` 는 이 커밋 안에서 자기 해시를 인용할 수 없어 canonical placeholder 로 남는다. 해소값은 완료 보고로 리드에게 전달한다.
+- 코덱스 런타임 실거동은 sync-phase 에서도 프로브하지 않았다(§E.2 Gaps 와 같다). 능력 부재 판정은 여전히 매니페스트 rationale **문면** 판정이다.
+- 크로스 플랫폼 빌드 미실행 — Go 소스 변경 0.
+- 전체 스위트 미실행 — REQ-CBN-014 의 요구이며 전 패키지 판정은 CI 몫이다.
+- M5(미러 스킬 77파일)는 이 카드에 들어 있지 않다. 후속 카드 `t523` 소관이며, `spec.md` §B.6 · §D 는 그 카드가 차갑게 읽을 대상이라 이 sync 에서 손대지 않았다.
+
+### Residual-risk
+
+- 덮개 문장이 always-loaded 예산을 160 tokens 썼다(여유 3065 → 2905, 이 실행 재측정으로 확인). 예산은 양수지만 이 표면의 다음 확장은 여유를 다시 재고 시작해야 한다.
+- `manager-lead` 의 지시 줄 개정은 「(Claude harness: `Agent(...)`)」 대응 표기를 남긴다. 코덱스 독자에게는 정보이지 지시가 아니지만, `Agent(` 토큰이 본문에 남는다는 사실 자체는 향후 같은 축의 카드가 0-기대값을 세울 때 걸림돌이 될 수 있다 — `Task*` 쪽이 0-기대값 때문에 대응 표기를 뺀 것과 갈리는 지점이며, 갈린 이유는 원칙이 아니라 AC 다(§E.2 M3).
+- `.agents/skills` 미러 도달 주장은 이 트리에서 배포를 실행해 눈으로 확인한 것이 아니다(§E.2 Residual-risk 와 같다).

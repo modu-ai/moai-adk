@@ -2,7 +2,7 @@
 id: SPEC-CODEX-BODY-NEUTRALITY-001
 title: "코덱스 에이전트 TOML 본문의 하네스 중립화 — 행위 지시만 고르고 산문은 남긴다"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
