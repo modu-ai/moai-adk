@@ -92,9 +92,75 @@ no delta rows required discriminator re-classification. Pending (c)=TRUE = 0,
 REPAIRED-BY-T509 = 1 (mcp_console_test.go:115), exposed-(c)=false = 36,
 NOT-EXPOSED = 23 — identical to the plan-phase outcome.
 
+### M2 — Discriminator falsification / mutant check (AC-WAS-005)
+
+The mutation: `internal/web/mcp_console_test.go:87` reverted to the pre-t509 whole-body
+form `body := renderConsolePage(t)` (repaired form: `body := panelHTML(t, renderConsolePage(t), "mcp")`),
+on the uncommitted working tree of `bf779ecf2` — never staged, never committed.
+
+| Step | Command | Verbatim output | Tree SHA |
+|---|---|---|---|
+| RED under mutant | `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -run 'TestMCPConsoleWriteCapableTextDistinction' ./internal/web/` | `--- FAIL: TestMCPConsoleWriteCapableTextDistinction` + `write-capable tool "codex_task" is missing the text write-capable marker in its row` + `write-capable tool "codex_job_cancel" is missing the text write-capable marker in its row` + `FAIL` + `FAIL github.com/modu-ai/moai-adk/internal/web 1.218s` — exit 1. Full verbatim capture: `.moai/reports/t527/m2-mutation-red.txt` | `bf779ecf2` (mutation in place) |
+| Restore proof | `git diff --stat -- internal/` | _(empty — byte-identical restore)_ | `bf779ecf2` |
+| Post-restore scoped green | `go test -count=1 -run 'TestMCPConsoleWriteCapableTextDistinction' ./internal/web/` | `ok  	github.com/modu-ai/moai-adk/internal/web	0.687s` | `bf779ecf2` |
+| Post-restore build + package green (AC-WAS-006) | `go build ./internal/web/ && go test -count=1 ./internal/web/` | `ok  	github.com/modu-ai/moai-adk/internal/web	5.912s` | `bf779ecf2` |
+
+The RED failure mode is exactly the discriminator's prediction: the two write-capable
+tools whose key chips the mirror duplicates (`codex_task`, `codex_job_cancel` — mirrored
+families per research.md §3, mirror at tab position 8 ahead of mcp at 11) lose their
+badge in the misanchored window; the non-mirrored write-capable tools (`goal_arm`,
+`verify_snapshot`) stay green, matching DUPLICATION-condition selectivity. The
+discriminator is non-vacuous — RED observed before close, per the absence-guard rule.
+
+### M3 — Zero-repair closure (AC-WAS-003, AC-WAS-004, AC-WAS-006)
+
+REQ-WAS-006 closure: the classification table yields **0 pending (c)=TRUE rows**, so the
+run phase closes with the table + mutant evidence and **no production or test-code
+change**. No repair commits exist; `git diff -- internal/` is empty on the closing tree
+(zero changed lines under `internal/web/*.go` test AND non-test files — AC-WAS-003's
+"zero rows ⇒ zero diff" and AC-WAS-004's "non-test files unchanged" both hold trivially
+and are verified, not assumed). Mirror-present green baseline re-confirmed at M2
+(build exit 0 + `ok 5.912s`). Lint: `golangci-lint run ./internal/web/... --timeout=2m`
+→ `0 issues.` (exit 0) — no new warnings introduced (there was no code change to
+introduce them).
+
+Phase 1 audit re-execution SKIP record (delegation Section A): (1) plan-auditor verdict
+PASS; (2) final score 0.99 ≥ 0.80 Tier M threshold; (3) artifact-hash unchanged since
+the iter-2 delta audit — no plan-phase artifact was modified between that audit and
+run-phase entry (progress.md is not a hash subject). Skip taken per the canonical
+skip contract.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-07
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 7
+ac_fail_count: 0
+ac_matrix:
+  AC-WAS-001: PASS  # M1 — 60 measured sites == 60 table rows, 1:1, zero drift
+  AC-WAS-002: PASS  # research.md §5 every row carries (a)(b)(c); row 27 REPAIRED-BY-T509 marked
+  AC-WAS-003: PASS  # zero (c)=TRUE rows ⇒ zero diff on internal/web/*_test.go (git diff empty)
+  AC-WAS-004: PASS  # no repair landed; non-test internal/web/*.go untouched (git diff empty)
+  AC-WAS-005: PASS  # RED captured (.moai/reports/t527/m2-mutation-red.txt), restored, green
+  AC-WAS-006: PASS  # build exit 0 + ok 5.912s on mirror-present bf779ecf2
+  AC-WAS-007: PASS  # research.md §4 states EXPOSURE ∧ DUPLICATION ∧ ORDER, keyed to predicate families
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "0 1984 (git rev-list --count --left-right origin/main...HEAD, 2026-09-07 — 0 behind, clean per matrix)"
+l44_post_push_fetch: "n/a — lane model: lane never pushes; lead batch-pushes develop"
+new_warnings_or_lints_introduced: 0  # golangci-lint ./internal/web/... → "0 issues."
+cross_platform_build:
+  applicable: false  # zero code change landed this run — not applicable, not claimed
+  note: "E2 stated N/A explicitly rather than claimed as pass (VCI §1)"
+coverage:
+  applicable: false  # no code change; coverage threshold N/A this run
+total_run_phase_files: 3  # spec.md (frontmatter only), progress.md, .moai/reports/t527/m2-mutation-red.txt
+m1_to_mN_commit_strategy: "milestone-scoped commits M1/M2/M3 on WT-anchor-scope-sweep; mutation never committed (post-restore states only)"
+phase1_audit_skip:
+  taken: true
+  conditions: ["verdict PASS", "score 0.99 >= 0.80 Tier M threshold", "artifact-hash unchanged since iter-2 delta audit"]
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
