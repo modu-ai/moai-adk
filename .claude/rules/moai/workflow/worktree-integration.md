@@ -499,6 +499,35 @@ The full refusal reads:
 
 **Gap**: the boundary between an accepted and a refused command is unmeasured in both rows. Anything outside these two observations is unknown, not permitted.
 
+### Why the two heredoc delimiter forms differ
+
+The distinction the observation above turns on is the delimiter quoting, and it
+is bash semantics, not guard behavior:
+
+- **A quoted delimiter (`<<'EOF'`) makes the body inert text.** Bash performs no
+  expansion of any kind inside such a body — no parameter expansion, no command
+  substitution, no arithmetic expansion, and no brace expansion. A brace there
+  is a literal character and cannot be brace expansion. This is the same fact a
+  guard relies on when it folds a command substitution appearing in such a
+  body, as observed above.
+- **An unquoted delimiter (`<<EOF`) makes the body live text.** Parameter
+  expansion, command substitution, arithmetic expansion, and brace expansion
+  all apply. No guard — and no reader of this file — may treat an
+  unquoted-delimiter body as inert, and a refusal that errs on the side of
+  caution there is correct behavior, not a defect.
+
+The observed asymmetry is therefore narrow: in a position provably free of
+expansion (the quoted-delimiter body), braces alone are treated as live, while
+command substitutions in the same position are already folded.
+
+The refusal half of this asymmetry was re-measured by paired probes in a
+worktree-isolated session on this repository: the brace form was refused with
+the `too complex to verify` sentence above before the command executed (the
+target file was confirmed absent afterward), and the paired probe — the same
+shape with a command substitution in the body — executed and passed with the
+body preserved as a literal. This remains a record of observations, not a
+specification; the boundary of the guard's analyzer is still unmeasured.
+
 ### Workarounds — two situations, not two competing options
 
 Which one applies is decided by what you were trying to do, so identify the situation before reaching for a form.
