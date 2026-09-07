@@ -218,7 +218,18 @@ sync_commit_sha: "e94d2f2b4"  # backfill 완료 (2026-09-07) — sync 커밋 본
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Fixed 섹션 선두"
 b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-WEB-WRITE-SAFETY-001' CHANGELOG.md → 0 (중복 0건 — 발행 허용)"
-b12_self_test_b_ac_count_match: "acceptance.md 고유 AC 식별자 8건 (AC-WWS-001..008, grep -oE | sort -u 실측) == CHANGELOG 엔트리 인용 8건"
+b12_self_test_b_ac_count_match: >-
+  [F3 정정 2026-09-07 — sync-audit(.moai/reports/t517/sync-audit.md) 재측정 반영]
+  원래 기록 "acceptance.md 8건 == CHANGELOG 엔트리 인용 8건"은 오기였다: 엔트리가
+  범위 표기 `AC-WWS-001..008`으로 AC를 인용했고 live-identifier 계수법에서 범위
+  문자열은 식별자 토큰 `AC-WWS-001` 1건으로 셈된다 — 감사자 재측정 8 vs 1이 정확했다
+  (사람 눈으로 범위를 8로 풀어 센 것은 계수법 실측이 아니다). 수리는 선택 (a):
+  엔트리 커버리지 문장에 AC ID 8건을 명시 나열해 기계 계수 8을 달성했다(규칙 문자와
+  정확히 일치하는 쪽). 정정 후 재측정(트리 43f9ab202+본 정정 커밋 기준):
+  acceptance.md `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-WEB-WRITE-SAFETY-001/acceptance.md | sort -u | wc -l` → `8` /
+  엔트리 블록 `awk '/^- \*\*\[SPEC-WEB-WRITE-SAFETY-001\]/{p=1} /^- \*\*\[SPEC-CODEX-PARTIAL-WIRING-001\]/{p=0} p' CHANGELOG.md | grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u | wc -l` → `8`.
+  산출 토큰: AC-WWS-001..AC-WWS-008 각 1회(8개 전부 live — [RETIRED]/[REF] 표지 0).
+  불변 복구: 엔트리 커버리지 == acceptance.md 커버리지, 계수법으로 실측 성립.
 b12_self_test_c_file_path_verification: "엔트리가 이름 대는 파일 7건 + spec.md — ls 실측 전부 존재 (OK 8/8)"
 frontmatter_status_transitions:
   spec_md_status: "in-progress → completed (sync 커밋 탑승 — 3-phase close)"
