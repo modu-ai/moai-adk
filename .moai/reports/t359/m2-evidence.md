@@ -337,6 +337,28 @@ taken at `56af37cbb`. The M2 commit's parent is `b48a00285`. The two intervening
 the code under test; but the measurements were not re-taken at `b48a00285`, and that is stated here
 rather than glossed.
 
+### Lead disposition, and a sequencing fact this record must not smooth over
+
+After M2 was committed, the lead attributed the overlap to **its own dispatch** rather than to
+`t359-m1`: the dispatch's HEAD reading and clean-tree claim were taken before a queued `t359-m1`
+turn landed, which put two write-capable agents on one worktree — the condition
+`agent-common-protocol.md` § Background Agent Execution forbids outright. It withdrew both dispatch
+figures: `d6420c1bd` is a stale dispatch value, not a baseline, and "tree clean" was false at the
+moment M2 read it. It then released the tree, confirming `t359-m1` had stopped and M2 is the single
+writer.
+
+**Sequencing, stated plainly because it would otherwise read as compliance.** The lead's HOLD
+message ("do not write yet… do not start until you get that go-ahead") and its subsequent GO message
+were both delivered **after** M2's work was already complete and committed as `7769bbf91`. M2 did
+not wait for the go-ahead, because the instruction to wait had not arrived while there was still
+work to hold. Nothing was re-run or re-decided on the strength of the GO; the only change made after
+it is the three-value baseline-attribution rewrite in `progress.md` §E.2 and this note.
+
+The lead's own GO message quoted HEAD `b48a00285` with 5 unpushed commits. Re-read as instructed
+rather than trusted, HEAD is `7769bbf91` with **6** unpushed commits on `903bcc03c` — the lead's
+reading was itself taken before M2's commit landed. Recorded as one more instance of the same
+staleness, not as a fault.
+
 ---
 
 ## A known scanner behaviour on this file

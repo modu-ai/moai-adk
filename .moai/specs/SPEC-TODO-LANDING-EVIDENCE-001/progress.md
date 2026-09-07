@@ -233,14 +233,23 @@ their pre-M2 state.
 - **Tree**: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch `WT-landing-evidence`,
   confirmed by `git rev-parse --show-toplevel`. `/Users/goos/moai/moai-adk-go` is the same tree under
   a second spelling; the discriminant is branch + HEAD.
-- **HEAD at dispatch `d6420c1bd`** — did NOT hold when M2 opened. The tree carried a staged
-  modification and HEAD moved to **`56af37cbb`** (a `t359-m1` commit touching only
-  `m1-evidence.md`) during M2's opening measurement batch. Reported to the lead before any edit;
-  full record in the evidence file § Step 0 and § Foreign write during the M2 window.
-- **Actual M2 baseline `56af37cbb`**, with the rc=0 pre-edit run above.
-- **M2 commit SHA**: recorded in the commit itself; the three added files are
-  `internal/kanban/landing_evidence.go`, `internal/kanban/landing_evidence_test.go`, and
-  `internal/kanban/prlink_landed_attribution_test.go`.
+- **Three HEAD values, each a different thing.** Recorded separately because collapsing them would
+  make a stale dispatch figure read as a measurement:
+  - **`d6420c1bd` — the dispatch value, stale before M2 wrote anything.** The dispatch also stated
+    the tree was clean; it was not — M2's first read observed
+    `M .moai/reports/t359/m1-evidence.md` STAGED. The lead has since attributed both to its own
+    dispatch (a HEAD reading taken before `t359-m1`'s queued turn landed), not to `t359-m1`. Not
+    carried forward as a baseline.
+  - **`56af37cbb` — the baseline M2 actually measured from.** The rc=0 pre-edit
+    `go test ./internal/kanban/... -count=1` above was taken here.
+  - **`b48a00285` — the tree M2 committed onto.** The released `draft → in-progress` frontmatter
+    transition on `spec.md` (1 file, +2/−2, no body content), landed between M2's measurement and
+    its commit. Measurements were NOT re-taken here; the two intervening commits touch only
+    `m1-evidence.md` and `spec.md` frontmatter, so no Go source moved — stated rather than glossed.
+- **M2 commit `7769bbf91`**, parent `b48a00285`, 5 files, +1180/−0: the three added Go files
+  (`internal/kanban/landing_evidence.go`, `internal/kanban/landing_evidence_test.go`,
+  `internal/kanban/prlink_landed_attribution_test.go`), this progress record, and
+  `.moai/reports/t359/m2-evidence.md`.
 
 **Gaps** — what was explicitly NOT observed:
 
