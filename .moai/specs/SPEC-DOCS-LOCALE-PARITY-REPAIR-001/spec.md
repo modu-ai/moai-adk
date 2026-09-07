@@ -2,7 +2,7 @@
 id: SPEC-DOCS-LOCALE-PARITY-REPAIR-001
 title: "docs-site locale-parity repair — e2e desktop-native en/zh stale + doctor ja/zh examples + legacy emphasis spacing + skill-guide SVG rules"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec

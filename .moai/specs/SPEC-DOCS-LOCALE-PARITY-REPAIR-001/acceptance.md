@@ -3,6 +3,17 @@
 > 하니스: **standard** · 측정 근거: `.moai/reports/t538/plan-phase.md` (base `bce6d7e08`)
 > 모든 검증 grep 은 `/usr/bin/grep` (REQ-012). RED-now AC 는 baseline(현재) vs after(수리 후)로 기술된다.
 
+## HISTORY
+
+- 2026-09-08: AC-008 검증식 정정 — 매치 **행** 계수에서 **출현 수** 계수로. 기준선(bar)은 그대로다.
+  - before: `/usr/bin/grep -c "SVG060\|SVG070" docs-site/content/{ko,en,ja,zh}/advanced/skill-guide.md`
+  - after: `/usr/bin/grep -o "SVG060\|SVG070" docs-site/content/<locale>/advanced/skill-guide.md | wc -l`
+  - 사유: `grep -c` 는 매치되는 **행**의 수를 센다. 산문 마크다운에서는 한 문단이 한 행이므로, 두 계열이 한 문단 안에 있으면 이 명령의 상한이 1이 되어 `≥2` 기준은 산출물이 아무리 정확해도 도달할 수 없다. 계측기가 기준이 말하는 대상을 재지 못한 것이다.
+  - **이 정정은 판정에 영향을 주지 않는다. 옛 읽기와 새 읽기 모두에서 기준이 충족되기 때문이다.** 이 트리·이 실행에서 레인 오케스트레이터가 실측한 값:
+    - `/usr/bin/grep -c "SVG060\|SVG070" docs-site/content/{ko,en,ja,zh}/advanced/skill-guide.md` → ko `2` · en `2` · ja `2` · zh `2`
+    - `/usr/bin/grep -o "SVG060\|SVG070" docs-site/content/<locale>/advanced/skill-guide.md | wc -l` → ko `2` · en `2` · ja `2` · zh `2`
+  - 산출물이 두 행인 이유: 두 규칙 계열(접근성-이름 / 커넥터-기하)을 각각 한 문단으로 나눠 서술했기 때문이며, 이는 plan.md M3 이 스스로 지시한 "사실문 1-2행 추가"를 따른 것이다. 잘못 세는 검사에서 더 큰 수를 얻으려고 행을 나눈 것이 아니다.
+
 ## §D AC Matrix
 
 | AC | 소관 | 검증 | 기대 (baseline → after) |
@@ -14,7 +25,7 @@
 | AC-005 | G1 | en·zh 표 행 수 = ko 패리티 | 불일치 → 동일 |
 | AC-006 | G2 | ja·zh doctor 예시행 2줄 (RED-now, 예시 블록 한정) | 블록 한정 0 → 2 · 전체 파일 2 → 4 (각) |
 | AC-007 | G3 | 전체-파일 bold-내부-괄호 스캔 (RED-now) | ko/ja/zh 1 → 0, en 0 유지 |
-| AC-008 | G4 | skill-guide ×4 SVG060/070 언급 (RED-now) | 0 → ≥2 (각) |
+| AC-008 | G4 | skill-guide ×4 SVG060/070 언급 — 출현 수 계수 (`grep -o` + `wc -l`) (RED-now) | 0 → ≥2 (각) |
 | AC-009 | 경계 | ko·ja e2e 무변경 + 배지 추가 없음 | — |
 | AC-010 | 빌드 | hugo exit 0 · WARN/ERROR 0 | — |
 | AC-011 | 착지 | 4-로케일 동일 착지 + CHANGELOG t538 항목 | — |
@@ -64,7 +75,7 @@
 ## §D.8 AC-008 — skill-guide SVG 규칙 (RED-now)
 
 - **Given** base 에서 `advanced/skill-guide.md` ×4 가 SVG060-064·SVG070-074 를 언급하지 않는다 (ko 실측 0건 — svg-infographic 서술은 ko:158·:163 에 있음).
-- **When** `/usr/bin/grep -c "SVG060\|SVG070" docs-site/content/{ko,en,ja,zh}/advanced/skill-guide.md`
+- **When** `/usr/bin/grep -o "SVG060\|SVG070" docs-site/content/<locale>/advanced/skill-guide.md | wc -l` 을 ko·en·ja·zh 각각에 적용한다 (계수 단위는 **출현 수**이며 매치 행 수가 아니다 — 아래 HISTORY 2026-09-08 항목 참조).
 - **Then** 각 `0` → `≥2` (접근성-이름 계열 1 + 커넥터-기하 계열 1). ko 정본 → en/ja/zh 파생.
 
 ## §D.9 AC-009 — 경계 준수 (ko·ja e2e 무변경 + 배지 금지)
