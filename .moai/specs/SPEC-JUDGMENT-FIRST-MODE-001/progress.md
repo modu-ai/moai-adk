@@ -373,6 +373,38 @@ AC-JFM-009 (behavior present, named citation absent) both survived M2's commit. 
 carried a full AC matrix; M2's did not. The re-verification pass this session ran is the cheap
 guard against exactly that shape, and its table above now covers every M2-owned criterion.
 
+### M4 — the static CI guard, both directions demonstrated locally (2026-09-07/08, this session)
+
+`.github/workflows/judgment-first-consistency.yaml` (new) — path-triggered (pull_request + push
+main/develop, on the doctrine file, both banner files, their template mirrors, the config
+template, and the workflow itself), `concurrency` + `permissions: contents: read`, isolated
+single-job shape per template-neutrality-check.yaml. The job's run block is pure grep/diff —
+six mechanical checks: doctrine SSOT sections present, banner `interview.recommendation_mode`
+references ≥5, `On-request emission` name citations ≥2, S5 cost ordering present with the old
+A-first ordering gone, three mirror pairs byte-identical, and the distributed config default
+push.
+
+**Both directions demonstrated locally** (AC-JFM-017 requires RED and GREEN; the run block was
+extracted verbatim from the workflow and executed in this tree):
+
+- GREEN (clean tree, HEAD `8b4896bcb`): `JUDGMENT-FIRST-CONSISTENCY: all checks pass`, exit `0`.
+- RED (scratch commit `86ddb89d0` — deliberately dropped one `interview.recommendation_mode`
+  reference from the S2 clause, 5 → 4):
+  `JUDGMENT-FIRST-CONSISTENCY: banner recommendation_mode references dropped below 5 (got 4)`,
+  exit `1`.
+- The scratch commit was **removed before any merge** (this session: `git reset --soft HEAD~1`
+  then the mutation reversed by edit; the initial `git reset --hard HEAD~1` attempt was denied
+  by the permission guard and not retried). Clean-tree GREEN re-confirmed after removal: exit
+  `0`, all checks pass. Current tree HEAD: `8b4896bcb`.
+
+**The guard's own GREEN run caught its author's bug first.** The first GREEN attempt failed —
+the check pattern had written `Abort\+preserve`; in BRE `\+` means "one or more t", which does
+not match the literal `+` in `D. Abort+preserve`. The criterion's own Verify text warns about
+exactly this ("the pattern carries no backticks so it survives shell quoting, and `+` is literal
+in BRE"). Fixed to the literal form; a guard that had only ever been shown its green would have
+shipped with a sequence assertion that never matched — the vacuous-guard direction this
+milestone exists to prevent, observed in the wild before the workflow ever reached CI.
+
 ### M3 — AC-JFM-013 escalation resolution (commit `a12beb541`, 2026-09-07 11:49; NOT plan.md §F M3)
 
 **Label clarification first**: the "M3" in commit `a12beb541`'s subject names the escalation
@@ -395,10 +427,10 @@ measured**.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_phase: resumed 2026-09-07 — M0 ratified, M1 done, M2 done (2 of its 5 criteria repaired this session), AC-JFM-013 escalation resolved + open question closed; plan.md §F M3 (config key), M4, M5, M6 NOT entered
-run_commit_sha: 9b657b8f5 (latest; per-milestone records ride their own commits — a12beb541 escalation resolution, b2c3d6c03 ledger resolution, 1fb802d09 AC-JFM-007 repair, 9b657b8f5 AC-JFM-009 repair)
+run_phase: resumed 2026-09-07 — M0 ratified, M1 done, M2 done (2 of its 5 criteria repaired this session), AC-JFM-013 escalation resolved + open question closed, M3 (config key) done, M4 (CI guard, both directions) done; M5, M6 NOT entered
+run_commit_sha: 8b4896bcb (latest; per-milestone records ride their own commits — a12beb541 escalation resolution, b2c3d6c03 ledger resolution, 1fb802d09 AC-JFM-007 repair, 9b657b8f5 AC-JFM-009 repair, 099c7bbe4 M3 config key, 8b4896bcb budget raise)
 run_status: in progress — kick-off NOT re-run (continuation of an interrupted run, lead-confirmed at dispatch); prior "M1 only" signal superseded by the M2 + repair records above
-ac_pass_count: 14   # M1's 10 + AC-JFM-005 + AC-JFM-006 + AC-JFM-007 (after 1fb802d09) + AC-JFM-008; AC-JFM-009 green after 9b657b8f5 → recounted at run close; full matrix re-measured before sync
+ac_pass_count: 16   # M1's 10 + AC-JFM-005 + AC-JFM-006 + AC-JFM-007 (after 1fb802d09) + AC-JFM-008 + AC-JFM-009 (after 9b657b8f5) + AC-JFM-002 (M3 test) + AC-JFM-017 (M4 both directions, local); full matrix re-measured before sync
 ac_fail_count: 0    # the two handover FAILs (AC-JFM-007, AC-JFM-009) are repaired as recorded in §E.2
 ac_blocked_count: 0
 preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20 (re-verify at run close)
