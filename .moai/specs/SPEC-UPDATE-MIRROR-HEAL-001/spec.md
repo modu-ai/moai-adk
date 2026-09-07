@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-MIRROR-HEAL-001
 title: "moai update repairs a deleted .agents/skills codex mirror"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec

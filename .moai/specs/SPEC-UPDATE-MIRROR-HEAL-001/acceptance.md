@@ -1,6 +1,11 @@
 # SPEC-UPDATE-MIRROR-HEAL-001 — Acceptance Criteria
 
-Version 0.4.0 (plan-audit iteration 3 repair, R3-1: AC-UMH-013's `find_rc` measured `sort`'s status,
+Version 0.5.0 (post-run pre-sync repair): AC-UMH-014's AC-UMH-013 mutant row ordered a write to
+**this** repository's `.agents/`, contradicting REQ-UMH-009 / C-3 in the same document — the mutant
+corpus is now an isolated temporary directory, with the superseded wording, the soundness argument,
+and the un-established residue kept beside it. §D.0 gains rules 6 (a compile-failure red is not a
+guard catch) and 7 (a snapshot witness needs `mtime`), both from run-phase findings.
+Prior: 0.4.0 (plan-audit iteration 3 repair, R3-1: AC-UMH-013's `find_rc` measured `sort`'s status,
 not `find`'s, and its `echo` was never redirected into the artifact — `find`/`sort` split, both
 statuses captured and written, and §D.0 gains rule 5 so the trap is not re-dug).
 Prior: 0.3.0 (plan-audit iteration 2 repair: N1 AC-UMH-015 re-pointed at the new REQ-UMH-010,
@@ -44,6 +49,20 @@ satisfy it.
    must also be **redirected into the artifact**; a value echoed to the terminal is not evidence a
    later reader can check. This is the fourth instance of the same family in this card
    (§D.0 rule 1 → rule 4 → this rule): a guard whose command silently did not measure what it names.
+6. **A red produced by a compile failure is NOT a catch by the guard.** When a mutant is applied by
+   deleting or bypassing a gate, the change can leave a variable unused (or a symbol undefined), and
+   the package then fails to build. The test reports red without any assertion having executed, so
+   the probe establishes nothing about the guard's discriminating power. A mutant must keep the
+   package compiling — e.g. `if !mirrorRepairGateOpen(stamp) && false {` rather than removing the
+   call — so the red is produced by the assertion. Where the first form of a mutant produced a
+   compile-level red, **record that form** alongside the corrected one: it is the shape most easily
+   mis-scored as a genuine catch. (Instances from this card's run phase are recorded by the
+   implementer in `progress.md` §E.2 — the AC-UMH-003 mutant, and the compile-level RED-1 of
+   AC-UMH-001..009 / 015..017 for which an extra out-of-list mutant supplied assertion-level red
+   after the fact. Both are limits of that execution, not closed questions.)
+7. **A snapshot witness must include `mtime`, or it cannot see a same-bytes rewrite.** Path + size
+   alone are blind to a file rewritten with identical content, which is exactly what AC-UMH-006's
+   mutant does. Go-side snapshots use `ModTime().UnixNano()` for portability.
 
 ## §D Acceptance matrix
 
@@ -126,6 +145,9 @@ the guard exists but is unreachable.
 *When* the version-matched update path runs;
 *Then* the pre/post snapshot of `.agents/` is identical, symlink targets included.
 Verify: `go test ./internal/cli/ -run TestUpdateMirrorHeal_HealthyIsNoop -v` → `--- PASS`.
+The snapshot witness MUST include `ModTime().UnixNano()` per §D.0 rule 7: with path + size only,
+this guard is blind to a file rewritten with identical bytes — which is precisely what its mutant
+does, so without `mtime` the guard is vacuous rather than merely weak.
 
 **AC-UMH-007 — a non-symlink occupant is left untouched.**
 *Given* a stamped project where `.agents/skills/<skill>` is a real directory (or file) holding user
@@ -245,7 +267,7 @@ Mutant per guard — the list is derived from the "Absence guard?" column of §D
 | AC-UMH-008 | widen the scope set to every directory under `.claude/skills` (S1) |
 | AC-UMH-011 | re-introduce the "does not restore it" phrasing in the doctor detail |
 | AC-UMH-012 | add a write call inside the doctor mirror span |
-| AC-UMH-013 | create `.agents/skills/mutant-probe` in **this** repository, then run the criterion's snapshot diff — it MUST report a difference (this is the mutant that the 0.2.0 git-based form could not catch, and it is the reason the guard was re-written) |
+| AC-UMH-013 | in an **isolated temporary directory** carrying a `.agents/skills/` tree (never this repository — see the note below), create `.agents/skills/mutant-probe`, then run the criterion's snapshot recipe before and after — the `diff` MUST report a difference and exit non-zero (this is the mutant the 0.2.0 git-based form could not catch, and the reason the guard was re-written) |
 | AC-UMH-015 | remove the REQ-UMH-010 target-existence filter — on the empty-skills fixture the pass must then create dangling entries, flipping AC-UMH-015 red |
 
 Verify: per mutant `go test ./internal/cli/ -run <guard> -v` → `--- FAIL` while mutated (for
@@ -254,6 +276,24 @@ AC-UMH-013, a non-empty `diff` instead), and after revert
 Control for that revert check: the same selector run while a mutant is in place must be non-empty.
 Any mutant that is **not** caught is recorded in `progress.md` §E.2 as a fact about the guard's
 boundary — never deleted, never quietly reworded.
+
+> **AC-UMH-013 mutant corpus — superseded wording (run phase, deviation D-1).** The row previously
+> read "create `.agents/skills/mutant-probe` in **this** repository". That instruction contradicted
+> REQ-UMH-009 / C-3 — and the dispatch's [HARD] restatement of it — inside the same document: the
+> guard forbids writing this repository's `.agents/`, and the mutant ordered exactly that write.
+> C-3 governs, so the row now names an isolated temporary directory.
+>
+> **Why the substitution is sound rather than a dodge**: an absence guard's mutant needs a corpus of
+> the *same kind* as the one the guard observes — a directory tree with a `.agents/skills/` layout —
+> and nothing about the probe requires that corpus to be **this** repository. The recipe under test
+> is filesystem-generic. The implementer reached the same conclusion independently, ran the mutant
+> in `/tmp` (exercising the `readlink` half with a symlink entry, plus an unmutated re-snapshot
+> control), and recorded it as deviation D-1 rather than silently substituting — that disposition is
+> endorsed here, and the wording is what changed, not the execution.
+>
+> **Gap, carried and not closed**: it is **NOT established** that this recipe behaves identically
+> against this repository's own `.agents/` tree, because that tree does not exist here. The
+> substitution is sound for the mutant's purpose and is not evidence about the real corpus.
 
 **AC-UMH-015 — boundary: stamped-but-partial project, Path A.**
 *Given* a project constructed to hold the state §3.6 accepts as residual risk — `system.yaml`

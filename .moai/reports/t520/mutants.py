@@ -81,9 +81,10 @@ def main():
             path.write_text(original.replace(needle, repl))
             rc, out = run(guard)
             caught = rc != 0
-            keep = [l for l in out.splitlines()
-                    if l.startswith("--- ") or l.startswith("FAIL") or l.startswith("ok ")
-                    or l.startswith("#") or "_test.go:" in l]
+            keep = [line for line in out.splitlines()
+                    if line.startswith("--- ") or line.startswith("FAIL")
+                    or line.startswith("ok ") or line.startswith("#")
+                    or "_test.go:" in line]
             results.append((ac, desc, guard, caught, rc, "\n".join(keep)[:1500]))
         finally:
             path.write_text(original)

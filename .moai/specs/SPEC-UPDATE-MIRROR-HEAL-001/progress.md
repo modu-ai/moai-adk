@@ -14,6 +14,18 @@ Evidence path: `.moai/reports/t520/`
   (D1 → N3 → R3-1) is named rather than re-dug. `${PIPESTATUS[@]}` rejected as bash-only.
   **R3-3** REQ-UMH-010's coordinates demoted to a dated reference with a re-measure command.
   **R3-2** ordering left as-is by deliberate judgment (a final-stage renumber is what produced N2).
+- **Post-run, pre-sync repair (`acceptance.md` 0.5.0).** The run surfaced a SPEC-internal
+  contradiction: AC-UMH-014's AC-UMH-013 mutant row ordered a write to **this** repository's
+  `.agents/`, which REQ-UMH-009 / C-3 forbid. The mutant corpus is now an isolated temporary
+  directory; the superseded wording is retained with the soundness argument (an absence guard's
+  mutant needs a corpus of the same *kind*, not this specific repository) and with the residue kept
+  open — it is **not** established that the recipe behaves identically on this repository's own
+  `.agents/` tree, which does not exist here. Deviation **D-1** already records the run-phase
+  disposition in §E.2 (verified present; not edited — §E.2 is run-phase owned).
+  §D.0 also gained two rules from run findings: **rule 6** a compile-failure red is not a catch by
+  the guard (with the AC-UMH-003 first-form mutant and the compile-level RED-1 of
+  AC-UMH-001..009 / 015..017 named as limits of that execution), and **rule 7** a snapshot witness
+  must carry `ModTime().UnixNano()` or it cannot see a same-bytes rewrite (AC-UMH-006).
 - Run-phase notes recorded in `plan.md` M3/M4: dangling is a Path A-only hazard; a deployer-option
   seam shape would also change deploy-time behavior and must be chosen deliberately.
 - Plan-audit iteration 2: FAIL 0.84 (no regression; the three iteration-1 blockers were confirmed
@@ -258,4 +270,57 @@ branch_pushed: false                   # lane does not push its branch and does 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the next commit
+sync_status: complete
+b12_self_test_a: pass                    # grep -c 'SPEC-UPDATE-MIRROR-HEAL-001' CHANGELOG.md -> 0 before emission
+b12_self_test_b: pass                    # distinct AC ids in acceptance.md -> 17; the entry states 17 (AC-UMH-001..017)
+b12_self_test_c: pass                    # every path cited in the entry verified with ls; 12/12 present, plus internal/cli/init.go
+changelog_entry_position: "[Unreleased] / ### Added, first bullet (CHANGELOG.md:12)"
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed      # `status` + `updated` only
+  plan.md: none                          # no frontmatter block; stateless on this axis
+  acceptance.md: none                    # no frontmatter block
+  progress.md: none                      # no frontmatter block
+docs_surface_decision: changelog-only
+docs_rationale: >-
+  No user-facing documentation surface carries a claim this change falsifies. The docs-site
+  `moai update` and Codex Dual Harness pages describe the mirror as a deploy-time artifact and
+  make no statement about a version-matched update failing to restore it (a repo-wide grep over
+  `docs-site/content` for the `--templates-only --force` redeploy advice, and for the doctor's
+  `mirror absent` / `Codex Wiring` strings, both return no output), so the 4-locale obligation
+  was not triggered and no locale file was touched. The one user-visible string that DID assert
+  the old behavior lives in the binary, not the docs, and it was corrected in run phase
+  (`internal/cli/doctor_codex.go`, REQ-UMH-008 / AC-UMH-011).
+sync_phase_files_changed: 3              # CHANGELOG.md, spec.md frontmatter, this file
+uncommitted_pre_sync_work_folded_in: true
+uncommitted_pre_sync_work_note: >-
+  Three lane-authored, uncommitted files were present when sync began and are carried in this
+  same commit rather than left behind (a worktree merge takes commits only): `acceptance.md`
+  0.5.0 (the D-1 contradiction repair, already narrated in §E.1), the matching §E.1 bullet in
+  this file, and a lint-only loop-variable rename in `.moai/reports/t520/mutants.py`.
+  manager-docs authored none of them and edited no `acceptance.md` body content.
+carried_gaps:
+  - partial-deploy fixture reachability through existing test seams is unsettled (§E.1, N5)
+  - AC-UMH-013's recipe is NOT established against this repository's own `.agents/` tree, which
+    does not exist here; the mutant ran against an isolated /tmp corpus (deviation D-1)
+  - RED-1 for AC-UMH-001..009 / 015..017 was compile-level, not assertion-level; assertion-level
+    red came after the fact from an out-of-list mutant (a limit of that execution)
+  - inherited RED `TestManifestHashFormat` (CATALOG_HASH_UNSTABLE, 4 entries) is not this card's,
+    was not repaired, and is not claimed to pass; attribution re-checked in sync phase with a
+    valid control (the porcelain status of `.claude/agents` + `internal/template/catalog.yaml` is
+    empty, while the same selector under `--ignored` reports the known ignored residue)
+  - full local suite not run (lane load discipline); the full-suite verdict is CI's
+observations_not_actioned:
+  - >-
+    Stray runtime state exists inside the SPEC directory at
+    `.moai/specs/SPEC-UPDATE-MIRROR-HEAL-001/.moai/state/` — untracked and ignored
+    (`.gitignore:228`), authored by neither this card's author nor its implementer. NOT deleted
+    (an untracked delete has no safety net) and NOT this card's to fix; worth a separate
+    feedback item.
+sync_phase_verification:
+  - "diff --stat against the merge-base 0b1e27877 -> 18 files, 3476 insertions, 1 deletion (merge-base, NOT origin/develop, which has moved since this branch was cut)"
+  - "go build ./internal/... -> exit 0"
+  - "grep -c 'SPEC-UPDATE-MIRROR-HEAL-001' CHANGELOG.md -> 1 after emission"
+```
