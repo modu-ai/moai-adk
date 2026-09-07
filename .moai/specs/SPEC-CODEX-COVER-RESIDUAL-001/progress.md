@@ -399,7 +399,7 @@ pushed: false
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: "pending-backfill-sync"   # backfilled in the immediately following commit
+sync_commit_sha: "650cc7d2f"
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-CODEX-COVER-RESIDUAL-001' CHANGELOG.md → 0 (pre-emission check, PASS)"
 b12_self_test_b: "grep -oE 'AC-CCR-[0-9]+' acceptance.md | sort -u | wc -l → 12 (matches acceptance.md §B AC matrix row count)"
