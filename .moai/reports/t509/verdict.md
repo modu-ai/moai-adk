@@ -785,3 +785,72 @@ func isCodexToggleFieldName(name string) bool {
 - **탭 전환이 CSS인지 JS인지** 여전히 미측정이다(B 승격의 선행 조건).
 - **`hx-boost="true"`의 제출 경로 영향** 미측정.
 - 리드 세션의 판정 원문 미독.
+
+---
+
+## 15. [정정] SPEC 작성 중 내가 준 전제 6개가 트리와 어긋났다
+
+`manager-spec`이 SPEC(`SPEC-WEB-CODEX-PANEL-001`, Tier M, draft)을 쓰면서 내 브리프의 전제 6건을 반증했다. **아래 2건은 내가 직접 재확인했고, 나머지 4건은 그 보고를 인용한다.**
+
+### 15.1 [내가 재측정] bool 동반 입력 — C1이 놓친 더 나쁜 함정
+
+C1을 나는 "`name` 속성을 가진 폼 요소를 렌더하지 않는다"로 썼다. 문자로는 맞으나, **왜 그것이 필요한지의 절반을 놓쳤다.**
+
+`internal/web/fieldsets.templ:365-366`:
+
+```go
+templ boolSegment(name string, checked bool) {
+	<input type="hidden" name={ name + "__present" } value="1"/>
+```
+
+bool 필드는 **항상 숨은 동반 입력을 함께 낸다.** 그리고 파서(`schemaform.go:319-326`):
+
+```go
+case settings.TypeBool:
+    if r.PostFormValue(f.Name+"__present") == "" {
+        continue // 미제출 → preserve
+    }
+    if r.PostFormValue(f.Name) != "" {
+        edits[f.Name] = "true"
+    } else {
+        edits[f.Name] = "false"   // ← 동반 입력만 있고 값이 비면 명시적 false
+    }
+```
+
+**결과**: 미러가 동반 입력을 내면서 컨트롤을 안 내면, 제출 시 `__present=1` + 빈 값 → 파서가 **`false`를 쓴다.** 즉 **페이지를 열고 아무거나 저장하는 것만으로 MCP 툴 토글 6개가 꺼진다.**
+
+§13.2의 실패 모드는 "편집이 사라진다"였다. 이건 **"안 한 편집이 생긴다"**다. 한 단계 더 나쁘다. A안이 그것까지 막지만, **C1의 문구가 "입력을 만들지 마라"로 읽히면 동반 입력을 빠뜨릴 수 있다** — SPEC이 이를 별도 요구사항·별도 AC·별도 뮤턴트로 분리한 것이 옳다.
+
+### 15.2 [내가 재측정] 15개가 아니라 12개다
+
+`codex.auth_provider` / `codex.binary` / `codex.version` 세 개는 **스키마 필드가 아니다.**
+
+```
+$ git grep -n 'codex.*auth_provider|"binary"|"version"' -- internal/settings/schema_sections.go
+(무출력)
+```
+
+이들은 `view.CodexState`(탐침 상태, `handlers.go:288`에서 주입)이고 `codexAuthBlock`(`fieldsets.templ:739-770`)이 `<b><code>` 평문으로 렌더한다. 키 경로가 없다.
+
+**그러므로 §9.4의 "15개"는 틀렸다. 편집 가능한 필드는 12개다.** 나머지 3개는 미러 의무의 성격이 다르다 — 중복 `name` 위험이 애초에 없다.
+
+### 15.3 [SPEC 보고 인용, 내가 재측정하지 않음] 나머지 4건
+
+| # | 내가 준 전제 | 반증 |
+|---|---|---|
+| 3 | §11.3의 구현 스케치(`isCodexFieldName` + `partitionWorkflowFields` 변경) | **「옮김」 모델의 것이다.** 읽기 전용 미러는 아무것도 빼지 않으므로 둘 다 손대지 않는다. 필요한 것은 전용 렌더 컴포넌트 + `root.templ` 스위치의 `case "codex"` — 기본 분기는 입력을 렌더하므로 못 쓴다. **카드가 더 작아진다** |
+| 4 | 새 기제가 필요하다 | **읽기 전용 행이 이미 있다.** `schemaReadOnlyRow`(`fieldsets.templ:485-497`)가 이름+라벨+값을 렌더하며 주석에 "form 컨트롤을 일절 렌더하지 않으므로 제출 자체가 불가능하다"고 적혀 있고, `ReadOnlyDisplayFields()`로 이미 소비된다. **착지한 패턴의 변형이다** |
+| 5 | i18n 4로케일 = 파일 4개 | **파일 하나다.** `internal/web/assets/i18n.js`에 4블록(en:27 / ko:729 / ja:1434 / zh:2139). 템플릿 미러 없음 — Template-First 비적용이 확인됐다. 추가 결합 2건: `tab_layout_test.go`의 `wantTabOrder`, 그리고 아이콘 이름이 `icons.templ`의 기존 `case`와 맞아야 함 |
+| 6 | (내가 안 물은 것) | `workflow.audit.model`은 공유 백엔드 선택자라 codex 전용이 아니다. SPEC이 **미러하되 공유로 표시**하는 쪽을 기본안으로 잡고 판단임을 명시했다 |
+
+### 15.4 SPEC 산출물
+
+`SPEC-WEB-CODEX-PANEL-001` — spec.md / plan.md / acceptance.md / progress.md, `status: draft`, Tier **M**(내 S~M 추정보다 한 단계 위). AC 12건(AC-WCP-001~012), 뮤턴트 5건.
+
+C2의 뮤턴트가 **둘로 갈렸다**: MU-1(미러를 입력으로 되돌림) / **MU-2(동반 입력만 냄)**. `<input type="text">`·`<select>`만 보는 가드는 MU-2를 통과시키면서 MU-1은 잡으므로, **MU-1만으로는 가드의 범위가 증명되지 않는다.** §15.1의 함정이 정확히 그 자리다.
+
+### 15.5 미관측
+
+- **SPEC 본문을 아직 읽지 않았다.** 위는 에이전트 보고와 내가 재확인한 2건이다. plan-audit 전에 읽는다.
+- 15.3의 4건은 **내 측정이 아니다.**
+- 탭 전환 CSS/JS · `hx-boost` 제출 경로 — 여전히 미측정(A→B 승격 게이트).
