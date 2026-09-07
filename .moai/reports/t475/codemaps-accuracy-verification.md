@@ -682,3 +682,72 @@ $ for f in entry-points data-flow; do
 | `syscall.Exec` | `internal/cli` 런처(`cc`/`cg`/`glm`) 프로세스 교체 | `internal/cli/update.go:808` `return syscall.Exec(exe, os.Args, os.Environ())` | **hit** (stdlib 심볼; 런처 파일에도 존재하나 첫 비테스트 적중을 인용) |
 
 **10 hit / 0 miss.** miss 는 기록만 하고 인용 본문을 지우지 않는 처분이나, 이번 실행에서는 miss 가 없다.
+
+---
+
+## §M4 재스탬프 — 도달성 (REQ-CM2-009 / AC-CM2-009)
+
+```
+$ git merge-base HEAD origin/develop
+52f863f3666c9ec754253a06b96ed1fe844f1590
+$ ./bin/moai graph stamp codemaps --commit 52f863f3666c9ec754253a06b96ed1fe844f1590
+OK: stamped /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t475/.moai/project/codemaps/provenance.json
+provenance: tree=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t475 commit=52f863f3666c
+EXIT=0
+```
+
+**리터럴 SHA 로 넘긴 이유 — 그리고 그것이 왜 하드코딩이 아닌가.** 워크트리 격리 가드가 `--commit "$(git merge-base …)"` 형태(런타임 계산 인자)와 `REV=…; moai … "$REV"` 형태(변수 인자)를 **둘 다 거절한다**. 그래서 값을 **바로 앞 호출에서 명령으로 해석**한 뒤 다음 호출에 리터럴로 넘겼다. SPEC 본문의 수를 옮겨 적은 것이 아니라 실행 시점에 명령이 낸 값이며, 스탬프 직후 재해석해 그 사이 움직이지 않았음을 확인했다:
+
+```
+$ git merge-base HEAD origin/develop            # 스탬프 직후 재해석
+52f863f3666c9ec754253a06b96ed1fe844f1590
+$ diff /tmp/t475-mb.txt /tmp/t475-mb2.txt        # 스탬프 전/후
+(무출력 — 동일)
+```
+
+**판정 근거는 `provenance.json` 이 기록한 값이다** — 중간 파일에 저장해 둔 "넣었다고 믿는 값"이 아니다.
+
+```
+$ cat .moai/project/codemaps/provenance.json
+{
+  "schema_version": 1,
+  "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t475",
+  "commit_sha": "52f863f3666c9ec754253a06b96ed1fe844f1590",
+  "dirty": false,
+  "described_roots": [ "internal", "cmd", "pkg" ],
+  "generated_by": "codemaps-gen",
+  "generated_at": "2026-09-07T18:38:44Z"
+}
+$ git merge-base --is-ancestor 52f863f3666c9ec754253a06b96ed1fe844f1590 origin/develop
+$ echo ANCESTOR=$?
+ANCESTOR=0
+```
+
+**bare HEAD 스탬프가 아니다.** 다만 이 구간에서는 `merge-base` 와 작업 시작 HEAD 가 같은 값이므로 **AC-CM2-009 는 두 형식을 아직 구분하지 못한다** — run 이 자체 커밋 3개를 쌓은 지금 HEAD 는 `merge-base` 와 갈라졌고, 스탬프에 들어간 값은 갈라지기 **전** 의 merge-base 다. 명시 형식이 규정이며 이 구간의 통과를 근거로 형식을 느슨하게 읽지 않는다(§B.1 처분에 따라 regression-guard 로 분류한다).
+
+---
+
+## §M5 게이트 종결 (REQ-CM2-010 / AC-CM2-010)
+
+```
+$ ./bin/moai graph check ; echo EXIT=$?
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=absent  (mx-index absent (untracked runtime artifact — fresh worktree state))
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=absent  (edges.jsonl absent (untracked derived artifact — fresh worktree state))
+citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
+graph check: layer mx-index verdict=absent value=0 threshold=1 — mx-index absent (untracked runtime artifact — fresh worktree state)
+graph check: layer edges verdict=absent value=0 threshold=0 — edges.jsonl absent (untracked derived artifact — fresh worktree state)
+EXIT=1
+```
+
+`--json` 의 content anchor:
+
+```
+"layer": "codemaps", "value": 0, "verdict": "fresh",
+"content_anchor": "52f863f3666c9ec754253a06b96ed1fe844f1590",
+"content_anchor_source": "working-tree-differs-from-stamp"
+```
+
+**AC-CM2-010 의 세 조건 전부 성립**: codemaps `verdict=fresh` + `value=0 < 40`, `citations` `verdict=fresh`, **stale 계층 0개**.
+
+**종료 코드 1 을 종결 실패로 읽지 않는다.** 원인은 mx-index / edges 의 `verdict=absent` 이며, `CheckResult.Failed()`(`internal/graph/check.go:142-149`)가 `VerdictFresh` 가 **아닌 모든** verdict 를 실패로 세기 때문이다 — `absent` 도 포함된다. 신규 워크트리에서 두 계층이 absent 인 것은 예상 상태이고 AC 가 그것을 합격 저해 요인이 아니라고 명시한다. **판정면은 계층 verdict 이고 종료 코드가 아니다.** 이 사실을 `verdict.md` 관측 ①의 부수 관측으로도 남겼다 — 종료 코드 0 을 종결 조건으로 읽으면 이 카드는 신규 워크트리에서 영원히 닫히지 않기 때문이다.
