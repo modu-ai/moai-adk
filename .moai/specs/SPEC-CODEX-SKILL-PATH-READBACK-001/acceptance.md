@@ -108,17 +108,27 @@ relative/oddly-formed/indeterminate counters match the PRE-CHANGE baseline exact
 - **Isolation (REQ-CSRB-008)**: fixture under `t.TempDir()`; the real `~/.codex/config.toml` is
   never read or written.
 
-### AC-CSRB-007 — Doctor seam-out pin (maps REQ-CSRB-006)
+### AC-CSRB-007 — Doctor seam-out pin, CARD-DIFF DELTA form (maps REQ-CSRB-006)
+
+> **Amended 2026-09-08 (lead-approved re-anchor; trigger: absorb `2d1dad058` ← `c72dc1baf` carrying
+> t563 / SPEC-DOCTOR-STAT-SEAM-001).** The pin was the absolute file count (was: the grep prints
+> `0`). The absorbed t563 seam moved the file's count to 2 — absorb-provenance, not card-authored —
+> so the pin is RE-ANCHORED, not silently rewritten: it now counts what THIS CARD's diff adds.
+> Evidence: `.moai/reports/t562/green-csrb-002-m2.md` (measured three ways).
 
 **Given** the card complete **When**
-`/usr/bin/grep -c 'osStatFn' internal/cli/doctor_codex.go` runs **Then** it prints `0`, with the
-positive control `/usr/bin/grep -c 'osStatFn' internal/cli/codex_skills_prune.go` printing `>= 1`
-in the same verification batch.
+`git show c007e5409 --format='' -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'` runs
+(M2 SHA `c007e5409`, the card's doctor+prune conversion commit) **Then** it prints `0` — THIS CARD's
+diff adds ZERO `osStatFn` tokens to `doctor_codex.go` — with the positive control
+`/usr/bin/grep -c 'osStatFn' internal/cli/codex_skills_prune.go` printing `>= 1` in the same
+verification batch. The file's own two `osStatFn` occurrences are absorb-provenance
+(`2d1dad058` ← `c72dc1baf`, t563) and are NOT counted against this card.
 
 - **Why the control**: a zero from a broken pattern is indistinguishable from a true zero; the
-  control proves the pattern matches the seam when one exists.
-- **Mutant (mandatory)**: add an `osStatFn` declaration to `doctor_codex.go` → the count becomes 1
-  and the pin FAILS; run, record, revert. Its presence would also be a DoD failure (t563's scope).
+  control proves the pattern matches the seam token when one exists.
+- **Mutant (mandatory)**: a card-authored commit adding an `osStatFn` line to `doctor_codex.go` →
+  the delta count becomes ≥ 1 and the pin FAILS; run, record, revert. A card-authored seam remains
+  a DoD failure — t563 owns that seam, and it arrived by absorption only.
 
 ### AC-CSRB-008 — Scope pin via re-derived CARD_BASE (maps REQ-CSRB-006)
 
@@ -181,7 +191,10 @@ below the expected delta reported as "not measurable", never as a pass.
 1. All ten ACs PASS, or any OPEN AC names its owner and reason explicitly (an OPEN AC with no named
    owner is a FAIL).
 2. The production diff is exactly the two branch conversions (`spec.md §D.2`); nothing else.
-3. `osStatFn` count in `doctor_codex.go` is 0 (AC-CSRB-007) — the t563 seam was NOT added.
+3. THIS CARD's diff adds ZERO `osStatFn` tokens to `doctor_codex.go` (AC-CSRB-007, delta form after
+   the 2026-09-08 re-anchor: `git show c007e5409 --format='' -- internal/cli/doctor_codex.go |
+   /usr/bin/grep -c 'osStatFn'` → 0). The file's two occurrences are absorb-provenance
+   (`2d1dad058` ← `c72dc1baf`, t563) — the t563 seam was NOT added by this card.
 4. `internal/codexwiring/skills.go`, `codex_config_path.go`, and `codex_skills_disable.go` carry no
    card-authored modifications beyond the absorb merge.
 5. No test performed a filesystem deletion; no experiment wrote the real `~/.codex/config.toml`.

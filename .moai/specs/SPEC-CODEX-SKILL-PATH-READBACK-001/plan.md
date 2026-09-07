@@ -124,9 +124,14 @@ Carried from `spec.md §E`; the ones that bind commands:
   - blanket-wrap mutant: `osStatFn(fromConfigPath(statPath, configPathSeparator))` at the stat
     site instead of the branch conversion → AC-CSRB-004 must FAIL;
   - reorder mutant: convert before `classifyCodexSkillPath` → AC-CSRB-003 must FAIL;
-  - seam mutant: add `osStatFn` to `doctor_codex.go` → AC-CSRB-007 must FAIL (run, record, revert).
-- **AC-CSRB-007**: `/usr/bin/grep -c 'osStatFn' internal/cli/doctor_codex.go` → 0, WITH the positive
-  control (same pattern against `internal/cli/codex_skills_prune.go` → ≥ 1).
+  - seam mutant: a card-authored commit adding an `osStatFn` line to `doctor_codex.go` → the
+    AC-CSRB-007 delta count becomes ≥ 1 and the pin FAILS (run, record, revert).
+- **AC-CSRB-007 (delta form, re-anchored 2026-09-08 — see spec.md HISTORY)**:
+  `git show c007e5409 --format='' -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'` → 0
+  (M2 SHA; measured three ways in `.moai/reports/t562/green-csrb-002-m2.md`), WITH the positive
+  control `/usr/bin/grep -c 'osStatFn' internal/cli/codex_skills_prune.go` → ≥ 1. The file's own two
+  `osStatFn` occurrences are absorb-provenance (`2d1dad058` ← `c72dc1baf`, t563) and are NOT counted
+  against this card.
 - **AC-CSRB-008**: re-derive `CARD_BASE=$(git merge-base origin/develop HEAD)`; changed-file set ⊆
   the allowlist in §G; `internal/codexwiring/skills.go` probe empty with a non-zero control.
 - **AC-CSRB-009**: `go build ./...` rc=0 AND `GOOS=windows GOARCH=amd64 go build ./...` rc=0.
@@ -163,8 +168,9 @@ BEFORE=$(/usr/bin/grep -c -- '--- PASS: ' .moai/reports/t562/ac-010-base.log)
 go build ./...
 GOOS=windows GOARCH=amd64 go build ./...
 
-# seam-out pin (zero WITH a positive control)
-/usr/bin/grep -c 'osStatFn' internal/cli/doctor_codex.go        # expect 0
+# seam-out pin (delta form, re-anchored 2026-09-08 — what THIS CARD adds, not what the file holds)
+git show c007e5409 --format='' -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'  # expect 0 (M2 diff)
+/usr/bin/grep -c 'osStatFn' internal/cli/doctor_codex.go        # provenance context: 2 (absorbed t563, not card-authored)
 /usr/bin/grep -c 'osStatFn' internal/cli/codex_skills_prune.go  # control: expect >= 1
 
 # scope pin (re-derived at read time; never a pinned SHA as the left edge)
