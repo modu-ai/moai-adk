@@ -245,7 +245,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 6e0c6625a / M2 ee680220d / M
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-07
-sync_commit_sha: "pending-backfill-sync" (본 커밋은 자신의 SHA를 인용할 수 없음 — D3 백필 창, 다음 커밋에서 확정값 기입)
+sync_commit_sha: "503aea79d" (D3 백필 확정값 — sync 본체 커밋 `docs(SPEC-STATE-ANCHOR-001): sync-phase close … (GH #1694, card t510)`)
 sync_status: complete
 changelog_entry: CHANGELOG.md [Unreleased] `### Fixed` 첫 항목 — 외부 제보 링크는 [#1694](https://github.com/modu-ai/moai-adk/issues/1694), 선례 형식(#1632/#1640) 준수
 b12_self_test_a: pass (pre-emission grep — `grep -c 'SPEC-STATE-ANCHOR-001' CHANGELOG.md` = 0, 병렬 BATCH-SYNC 중복 없음)
