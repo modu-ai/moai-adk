@@ -30,8 +30,34 @@ $ git diff b78d2e425 -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatF
 0
 ```
 
-Re-measure post-commit with `git show <M2-SHA> -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'`
-→ 0 expected; the session report carries the post-commit measurement.
+## Post-commit measurement (commit `c007e5409`) — and a measurement-methodology correction
+
+The prescribed command `git show c007e5409 -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'`
+prints **2**, but those 2 are NOT diff lines — `git show` prints the commit MESSAGE first, and this
+commit's message itself mentions "osStatFn" twice (the AC-CSRB-007 attribution sentences above
+mirror into it). A measurement over `git show`'s full output counts the message's words together
+with the diff's. Measured verbatim:
+
+```
+$ git show c007e5409 -- internal/cli/doctor_codex.go | /usr/bin/grep -n 'osStatFn'
+21:    CARRIES t563's osStatFn seam (provenance c72dc1baf, sites :459/:857);
+22:    this diff adds ZERO osStatFn tokens to that file (staged-diff count 0).
+```
+
+Both hits are message lines (no `+`/`-`/context prefix shown by `-n` over the raw output; the
+diff body contributes none). Excluding the message, and counting added lines only:
+
+```
+$ git show --format='' c007e5409 -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'
+0        (grep exit 1 = zero matches)
+$ git show c007e5409 -- internal/cli/doctor_codex.go | /usr/bin/grep -c '^+.*osStatFn'
+0        (grep exit 1 = zero matches)
+```
+
+**Verdict: the M2 diff body adds ZERO osStatFn tokens to doctor_codex.go** — the seam's two
+occurrences in the file are absorb-provenance `c72dc1baf`, not this card's. For any future reader
+re-running the prescribed one-liner: use `--format=''` (or count `^+` lines), or the message's own
+attribution sentences will masquerade as diff tokens.
 
 ## Doctor guard counters — IDENTICAL to the M1 baseline
 
