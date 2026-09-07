@@ -113,18 +113,64 @@ $ moai spec lint … | /usr/bin/grep -c 'OwnershipTransition'
 0
 ```
 
-**0 이 죽은 프로브가 아님을 대조군으로 확인했다** — 룰이 실제로 바이너리에 실려 있다:
+### [정정 2026-09-08] 위 0 을 「위험 부재」로 읽으면 안 된다
+
+이 절은 처음에 「룰 문자열이 바이너리에 6행 적중하므로 0 은 죽은 프로브가 아니다 → 제기된 위험은
+발생하지 않았다」로 적혀 있었다. **그 추론은 성립하지 않는다.** sync-phase 에서 manager-docs 가
+「문자열 존재는 *실행되어 통과함* 과 *이 입력에서 돌지 않음* 을 가르지 못한다」를 짚었고, 갈라 보니
+후자에 가까웠다. 아래가 재측정이다.
+
+**먼저 어느 빌드가 판정했는지부터** (tool-provenance — 좌표는 둘이다):
 
 ```
-$ strings "$(command -v moai)" | /usr/bin/grep -c 'OwnershipTransitionInvalid'
-6
+$ moai version
+v3.2.0-rc.1   list-744-g91d25bc61   built 2026-09-07T20:47:45Z
+$ git -C <primary> rev-parse --short HEAD
+7ad9f8534
+$ git rev-parse 7ad9f8534:internal/spec/lint_ownership.go
+a53e9e24106a12315c7d536ab3005b4157ead2c7
+$ git rev-parse 91d25bc61:internal/spec/lint_ownership.go
+ef598d5c7c54bfbc88b60ee0d4fd09ab41821a3e
 ```
 
-**판정**: 룰은 살아 있고, 이 SPEC 에 대해 아무것도 보고하지 않는다. 제기된 위험은 발생하지 않았다.
-`OwnershipTransitionUnreachable`(Info, git 이력 판독 실패 시)도 나오지 않았으므로 이력은 읽혔다.
+판정한 바이너리는 `91d25bc61`(develop)에서 빌드됐는데 primary 체크아웃은 main `7ad9f8534` 다.
+두 `lint_ownership.go` 블롭은 **다르다**. 첫 판독은 판정하지 않은 트리에서 읽은 것이었으므로,
+아래 인용은 **판정한 커밋의 블롭**에서 다시 뜬 것이다(실제 차이는 1줄이었지만, 그건 확인한 뒤에야
+알 수 있는 사실이다).
 
-**남는 채무**: 전이가 `M1` 커밋에 실리지 않았다는 사실 자체는 그대로다. lint 가 잡지 않을 뿐이며,
-이력을 다시 쓰지 않는다.
+**룰은 등록돼 있고 실행된다** — `91d25bc61:internal/spec/lint.go:139` 의 `defaultRules()` 에
+`&OwnershipTransitionRule{}` 가 있다.
+
+**그런데 트레일러가 없으면 조용히 건너뛴다** — `91d25bc61:internal/spec/lint_ownership.go:414`:
+
+```go
+if rec.AuthoredByAgent == "" {
+    return nil
+}
+```
+
+이 카드의 커밋에는 그 트레일러가 없다:
+
+```
+$ git log --format='%h |%(trailers:key=Authored-By-Agent,valueonly)|' -5
+132e752bf ||
+b9571a231 ||
+9cf0d625f ||
+4af14489a ||
+a833b5658 ||
+```
+
+**정정된 판정**: 룰은 돌았고, `Authored-By-Agent:` 트레일러가 없어 **말없이 건너뛰었다**. 따라서
+`0 findings` 는 「전이가 소유권 검사를 통과했다」가 아니라 **「이 검사가 이 커밋들에 적용되지
+않는다」**를 뜻한다. manager-develop 이 제기한 위험은 이 도구로 **확인되지도 반증되지도 않았다 —
+미측정이다.** git 이력 판독 실패(`OwnershipTransitionUnreachable`)도 아니다: 그 경로였다면 Info
+소견이 났을 텐데, `--json` 출력이 `[]` 였다.
+
+**남는 채무 (둘)**:
+1. 전이가 `M1` 커밋이 아니라 `chore(...)` 커밋(`b9571a231`)에 실렸다. 이력을 다시 쓰지 않는다.
+2. **이 저장소의 커밋이 `Authored-By-Agent:` 트레일러를 달지 않으므로 `OwnershipTransitionRule` 은
+   구조적으로 무음이다.** 이 카드의 범위 밖이며, 별개 관측으로 남긴다 — 이 룰의 초록을 소유권
+   준수의 근거로 인용하는 모든 자리가 같은 공백 위에 서 있다.
 
 ---
 
