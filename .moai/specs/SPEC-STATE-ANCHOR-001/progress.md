@@ -227,7 +227,7 @@ GOOS_WINDOWS_OK
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-07
-run_commit_sha: "pending-backfill-run"
+run_commit_sha: "15c6f5857" (D3 백필 — run 최종 커밋 M5; sync 진입 시 HEAD로 재확인)
 run_status: complete
 ac_pass_count: 12
 ac_fail_count: 0
@@ -244,4 +244,19 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 6e0c6625a / M2 ee680220d / M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관. sync_commit_sha 기입 + GH #1694 회신 착지 기록(plan.md §F M5 인계)>_
+sync_complete_at: 2026-09-07
+sync_commit_sha: "pending-backfill-sync" (본 커밋은 자신의 SHA를 인용할 수 없음 — D3 백필 창, 다음 커밋에서 확정값 기입)
+sync_status: complete
+changelog_entry: CHANGELOG.md [Unreleased] `### Fixed` 첫 항목 — 외부 제보 링크는 [#1694](https://github.com/modu-ai/moai-adk/issues/1694), 선례 형식(#1632/#1640) 준수
+b12_self_test_a: pass (pre-emission grep — `grep -c 'SPEC-STATE-ANCHOR-001' CHANGELOG.md` = 0, 병렬 BATCH-SYNC 중복 없음)
+b12_self_test_b: pass (AC count match — acceptance.md distinct AC = `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' … | sort -u | wc -l` = 12; 엔트리 기재 "All 12 acceptance criteria (AC-SA-001..012)"와 동일)
+b12_self_test_c: pass (file path verification — 엔트리 인용 경로 전부 `ls` 실존 확인: internal/stateanchor/, internal/statusline/context_usage.go, internal/statusline/backlog.go, internal/cli/deps.go, .moai/reports/t510/gh-1694-reply-draft.md)
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed" (본 sync 커밋에 병합 — 3-phase close; status + updated만 변경)
+  plan.md / acceptance.md: 해당 없음 — status 필드 미보유 (Artifact Statelessness, spec-frontmatter-schema.md)
+canary_compliance_check:
+  sync_phase_home_contact: none (sync 페이즈는 테스트 실행·측정 0건 — 문서·frontmatter 변경뿐이므로 D5/D12 canary 규율과 실접촉 없음)
+  run_phase_canary_baseline: 343 → 343 (§E.2 M5 재측정 인용 — sync에서 재측정하지 않음, run 기록 그대로)
+gh_1694_reply: 초안 sync-phase 확정 — .moai/reports/t510/gh-1694-reply-draft.md. **게시는 리드의 릴리스-타이밍 확인 게이트 대기**(수리의 develop 착지 + 릴리스 일정 확인 후). pre-run 초안 대비 변경 3건: (1) session-memo 7건의 결함 귀속 철회 — B7 재판정(§E.2 M2)에 따라 프로젝트당 compact 기록으로 분리, (2) 수리 시접 명명(internal/stateanchor 고정 우선순위 체인) + 수리 4가족 명시, (3) 무프로젝트 쓰기 생략 + cd 세션 goal 가시성 수리 반영. 정리 레시피·display 불변 문단은 pre-run에서 불변.
+docs_site_readme_judgment: no user-facing doc change required — README 4로케일·docs-site content의 `.moai/state/...` 서술은 전부 프로젝트 루트 기준 상대 경로 기술이며(예: `.moai/state/goal/<session-id>.json`, `.moai/state/context-usage/<session-id>.json`), cwd-앵커(방문 디렉터 착지)를 서술하는 문서 0건. 수리는 문서가 이미 기술한 경로로 현실을 맞춘 것 — 경로·스키마 체계는 불변(D13). 측정: `grep` over README*.md + docs-site/content/ (`\.moai/state|context-usage|config-cache|state/goal|landed/counts`).
+user_facing_doc_change_required: false

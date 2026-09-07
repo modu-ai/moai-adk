@@ -2,7 +2,7 @@
 id: SPEC-STATE-ANCHOR-001
 title: "상태 앵커 단일 시접 — cwd 오염 수리(GH #1694) + 홈 오염 정지 검증"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
