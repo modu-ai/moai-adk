@@ -86,7 +86,7 @@ sync-phase 인도 항목 (manager-docs):
 
 sync_status: audit-ready
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync (실제 SHA는 직후 커밋에서 backfill — D3 자기참조 면제)
+sync_commit_sha: 1c0ddf2fb (sync 커밋 본체 — D3 자기참조 면제에 따라 직후 커밋에서 backfill한 실측값)
 evidence_path: .moai/reports/t511/
 
 sync 페이즈 인도 실측 (manager-docs):
