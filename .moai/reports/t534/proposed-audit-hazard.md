@@ -82,3 +82,54 @@ Stated for ORDER because that is the instance measured. The wider family — any
 where satisfying one violates the other — is real but harder to make checkable, and a rule that
 cannot be run is worse than none. Recommend adopting the order-scoped version, and widening only if
 a second instance appears with a different shape.
+
+---
+
+## Amendment — the clause's own grep must not be the shell wrapper (2026-09-07)
+
+The "empty is a real result" clause above tells an auditor to show its grep so that no output is an
+observed absence rather than an unrun check. That clause is defeated if the grep it names is itself
+a tool that skips silently.
+
+**In this shell, `grep` is a shell function, not the binary:**
+
+```
+$ type grep
+grep is a shell function from …/shell-snapshots/snapshot-zsh-*.sh
+```
+
+Found by lane-4 on card t533, reproduced by the lead in a second shell, and re-measured here. The
+wrapper carries `-I` (skip files it guesses are binary) and `--ignore-files` (skip gitignored
+paths). Both skips are **silent**: the exit status and the empty output are indistinguishable from a
+genuine zero.
+
+**Amend the clause to:**
+
+> Show the grep that establishes the absence, and invoke it as `/usr/bin/grep` (or pass `-a`). The
+> shell's `grep` is a wrapper that skips binary-guessed files and gitignored paths without saying
+> so, and a clause whose own instrument skips silently proves nothing. The control must not be the
+> same wrapper run twice — two runs of a tool that skips a file skip it identically, so the control
+> cannot detect the skip. Using the real binary for both the measurement and its control is
+> sufficient; using the wrapper for both is not.
+
+Relevant to this hazard specifically: `acceptance.md` and `plan.md` are tracked files, so
+`--ignore-files` does not reach them and the ordering-clause grep is not at risk from that flag. The
+amendment is nevertheless load-bearing, because the clause is written to be reused on absence claims
+generally, and it is the *reusable wording* that must name the right binary.
+
+## Re-verification of this card's own absence claims
+
+Every absence this lane asserted today was re-measured with `/usr/bin/grep`, each against a control:
+
+| Claim | Re-measured | Control | Verdict |
+|---|---|---|---|
+| No `audit_model` configured (used to close the auditor's Gap 3) | `/usr/bin/grep -rn 'audit_model' .moai/config/sections/` → no output | `/usr/bin/grep -rc 'language' …/language.yaml` → `4` | holds |
+| t508: no `skills.config` under the template tree (the Template-First verdict) | `/usr/bin/grep -rl 'skills\.config' internal/template/templates/` → no output | `/usr/bin/grep -rl 'moai' …` → `396` | holds |
+| No prune-format backup in `~/.codex` | `ls ~/.codex/ \| /usr/bin/grep -E 'config\.toml\.bak-[0-9]{8}T[0-9]{6}Z$'` → rc=1 | same listing, `-c 'config\.toml\.bak-'` → `2` | holds |
+
+The template-tree control returning **396 under both the wrapper and the real binary** is the
+stronger reading: identical counts across the two tools is direct evidence the wrapper's skips did
+not bite on that tree, rather than an assumption that they did not.
+
+Nothing landed wrong. But the claims held by luck of subject matter — all three targets are tracked
+text — not by method, and that is the point the amendment fixes.
