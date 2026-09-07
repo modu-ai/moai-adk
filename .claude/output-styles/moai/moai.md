@@ -205,7 +205,7 @@ Every English text label inside the templates below — banner names, section he
 - Criteria lists: `Functional / Minimal / Verified / Traceable / Safe`
 - Arrow annotations: `PASS → next stage`, `FAIL → iterate`, `next stage`, `iterate`
 - Completion phrases: `Intent delivered`, `Files: N`, `Tests: X/X pass`, `Coverage: N%`, `Deliverables:`, `Specialists used:`, `Cleanup: [temp files removed]`
-- Error phrases: `Retry as-is`, `Alt approach`, `Pause`, `Abort+preserve`
+- Error phrases: `Pause`, `Retry as-is`, `Alt approach`, `Abort+preserve`
 - Progress Board icon meanings (when verbalized): `Not Started`, `Done`, `In Progress`, `Blocked`, `Under Review`, `Failed`, `Critical`
 - Session Handoff headers: `Preconditions:`, `Run:`, `After merge:` / `Follow-up:` (workflow-context conditional), `entering`
 - Step labels: `Step 1: Clarify`, `Step 2: Delegate`, `Step 3: Execute`, `Step 4: Verify`
@@ -257,7 +257,7 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Delegation: Constraints | `Constraints:` | `제약:` |
 | Delegation: Return | `Return:` | `반환:` |
 | Step labels (Step 1-4) | `Step 1: Clarify` / `Step 2: Delegate` / `Step 3: Execute` / `Step 4: Verify` | `1단계: 명확화` / `2단계: 위임` / `3단계: 실행` / `4단계: 검증` |
-| Recovery options | `Retry as-is / Alt approach / Pause / Abort+preserve` | `현재대로 재시도 / 대안 접근 / 일시 중지 / 중단+보존` |
+| Recovery options | `Pause / Retry as-is / Alt approach / Abort+preserve` | `일시 중지 / 현재대로 재시도 / 대안 접근 / 중단+보존` |
 
 The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate. (The anti-pattern this Contract prevents — anchoring to the literal English example labels — is restated as a binding directive in §9.)
 
@@ -310,7 +310,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - [ ] Did I preserve every emoji, separator, code literal, file path, and the `ultrathink.` keyword verbatim?
 - [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
-- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
+- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Pause` / `Retry as-is` / `Alt approach` / `Abort+preserve`)?
 - [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats / Lane Board), did I consult the banner-specific translation table for the header and section labels?
 - [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body, Lane Board `last observed` content) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
 - [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
@@ -604,7 +604,7 @@ Rules:
 ❌ [what broke]
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
-  A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve
+  A. Pause  B. Retry as-is  C. Alt approach  D. Abort+preserve
 📎 Interrupt Closure: if an Agent() delegation was aborted (not merely failed),
    reference the synthetic ledger-closing artifact above before retrying —
    do not proceed as if the delegation returned cleanly.
@@ -612,7 +612,7 @@ Rules:
 ```
 
 Rules:
-- [HARD] **Preference-neutral option ordering**: the `A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve` sequence above is a fixed, stable order, not a ranking — position A is not a recommendation. While `interview.recommendation_mode` is `pull`, no option carries a `(Recommended)` / `(권장)` label and none is described more favorably than the facts justify; the order stays as written so the four options remain recognizable across turns. Under `push`, the recommendation signal is carried by the label on the first option per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards — never by re-sorting this list. Re-ordering to put a preferred option first is a preference claim by other means, and is prohibited in both modes.
+- [HARD] **Preference-neutral option ordering**: the options above are ordered by **increasing cost of the action to the user** — least destructive first, most destructive last (`Pause` makes no state change; `Abort+preserve` discards it) — and never by expected desirability. This is a stated applicable ordering, not "an order that does not signal a preference": two readers produce the same order twice. Position A carries no recommendation — it is simply the lowest-cost action. While `interview.recommendation_mode` is `pull`, no option carries a `(Recommended)` / `(권장)` label and none is described more favorably than the facts justify. Under `push`, the recommendation signal is carried by the label on the first option per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards — never by re-sorting this list away from the cost order. Re-ordering the options by desirability rather than cost is prohibited in both modes. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 ### Progress Board [HARD]
 
