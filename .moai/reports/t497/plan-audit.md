@@ -964,3 +964,139 @@ card can land. Per M6 this list does not by itself justify the FAIL and must not
 
 **Process.** No PD-1 recurrence: `HEAD` was `cb826d42ba41720433d82892830c30c4448dc6f7` with a clean
 tree at both the opening and closing measurement of this audit. The window held.
+
+---
+
+## Iteration 3 (delta — N1/N2 only)
+
+**SPEC**: SPEC-CODEX-BODY-NEUTRALITY-001 · v0.2.1
+**Tree**: `.claude/worktrees/t497` · branch `WT-codex-neutrality` · HEAD `b6442e848` (opening and closing read identical; tree clean both times — the audit window held)
+**Scope**: N1 and N2 only, per the lead's grant. D1-D10 are RESOLVED by the iteration-2 verdict and are not re-opened. The carried-forward invariants (84-occurrence / 81-distinct-line unit split, field-vs-capability premise, `Task*→0` paired with `task-list ≥3`) are not re-litigated. A3-A8 remain recorded advisories.
+**Verdict (scoped to N1 + N2)**: **PASS**. Both blocking findings are closed. Two minor residuals are recorded below as advisories and carry no FAIL.
+
+Reasoning context ignored per M1 Context Isolation. The dispatch's lane-measured figures were treated as claims to reproduce, never as evidence — every number below was re-measured in this run.
+
+### N1 — CLOSED
+
+- **Claim.** The three marker-verification sites (`spec.md` §F, `plan.md` §E, `acceptance.md` §F) no longer assert a result their own command contradicts, and the replacement selector is not vacuous.
+- **Evidence.** All run in this tree, this run:
+
+  ```
+  $ grep -rn '\[NEEDS CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/
+  (no output)   rc=1
+  $ grep -rnE '\[NEEDS[[:space:]]CLARIFICATION' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/
+  (no output)   rc=1
+  $ grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/
+  plan.md:50 · spec.md:22 · spec.md:245 · acceptance.md:185     rc=0   lines=4
+  ```
+
+  The three verification sites now read the ERE marker selector → **무출력, rc 1** (`plan.md:50`, `spec.md:245`, `acceptance.md:185`), and each states in the same sentence that the broad `'NEEDS'` form matches itself. **No artifact asserts that the broad form returns no output any more** — the fourth `NEEDS` line, `spec.md:22`, is the v0.2.1 HISTORY entry recording the repair. The DoD item (`acceptance.md:185`, inside §F 완료 정의) is satisfiable as written.
+- **Non-vacuity — my own positive control**, independent of the lane's. Two fixtures written to the session scratchpad (outside the audited tree): one carrying `[NEEDS CLARIFICATION: which emitter owns the mirror?]`, one carrying a tab-separated `[NEEDS<TAB>CLARIFICATION: tabbed]`.
+
+  ```
+  ERE selector        → 2 hits (both fixtures), rc=0
+  canonical selector  → 1 hit  (space fixture only), rc=0
+  ```
+
+  The ERE matches a genuine space-separated marker **and** a tab-separated one; the canonical BRE matches only the space form. The repair's selector is a strict **superset** of the canonical one for this pattern — the substitution cannot introduce a false negative. The green is not vacuous.
+- **AP-6 sweep (dispatch item 4) — verified, with one omission.** Self-targeting commands naming this SPEC's own directory, measured this run:
+
+  | site | form | self-falsifying? |
+  |---|---|---|
+  | `plan.md:50` · `spec.md:245` · `acceptance.md:185` | ERE marker selector | no — written form cannot match itself |
+  | `plan.md:144` · `acceptance.md:117` | changed-path listing filtered by two exclusions, on the SPEC dir and on `.moai/reports/t497/` | no — excludes both evidence dirs |
+  | `spec.md:247` | `ls -d` on this SPEC's own directory, asserting `No such file or directory` | **stale by construction** — see A9 |
+
+  The coordinate the dispatch reported as `plan.md:142` measures at **`plan.md:144`** in this tree (`acceptance.md:117` is exact). The two exclusion-filtered commands do what the repair claims. `spec.md:247` was not in the repair's enumeration.
+- **Baseline-attribution.** All commands run at HEAD `b6442e848`, this tree, this run. Positive-control fixtures written outside the audited tree, so the SPEC directory was not mutated.
+- **Gaps.** I did not sweep `progress.md` or the other `.moai/reports/t497/` files for the same selector class — the DoD names the SPEC artifact set, which is what I swept. I did not verify that `[NEEDS CLARIFICATION` is the only marker spelling the project convention permits; I took the convention as given.
+- **Residual-risk.** A marker wrapped **across** two lines would evade both selectors equally. That risk predates the repair and is not introduced by it.
+
+### N2 — CLOSED
+
+- **Claim.** `REQ-CBN-009`'s `manager-lead` class is now defined by property rather than by coordinate, `AC-CBN-013` is bound to a measured population `N` rather than to the constant 4, and the §D skip-permission is removed.
+- **Evidence — property restatement.** `spec.md:164` (`REQ-CBN-009`) now binds "**M2 분류표가 `manager-lead.toml` 의 `Agent(` 줄 중 `verdict = directive` · `subject = this-agent` 로 판정한 줄 전부**". `spec.md:121-125` (§B.4) states the population, labels the four-coordinate table a **경계 표본** (boundary sample) rather than the population, names the closing discriminant as `REQ-CBN-002` applied at M2, and cites the measurement. Re-measured this run:
+
+  ```
+  $ grep -c 'Agent(' internal/template/templates/.codex/agents/moai/manager-lead.toml
+  10
+  $ grep -n 'Agent(' … | cut -d: -f1
+  7 23 29 37 57 59 130 172 193 261
+  $ grep -c 'subagent-spawn' …/manager-lead.toml
+  0
+  ```
+
+  Population 10 and the coordinate list reproduce exactly; the pre-work baseline `M = 0` reproduces, so condition (c) is a real RED.
+- **Evidence — the N selector is non-vacuous and fails loudly.** `AC-CBN-013` (`acceptance.md:134-151`) defines
+  `N = grep -cE '^\| [^|]*manager-lead\.toml \| [0-9]+ \| Agent\( \| directive \|' …/body-classification.md`.
+  The M2 column order pinned at `plan.md:93` is `file · line · token · verdict · subject · rationale`, which the selector matches positionally. Against a synthetic M2 table written this run with 5 `manager-lead.toml` / `Agent(` / `directive` rows plus 2 decoys (one `prose` row, one `manager-develop.toml` row):
+
+  ```
+  N = 5     both decoys correctly excluded
+  N = 0     same table with the token cell backtick-quoted instead of bare
+  ```
+
+  The notation dependency the AC discloses is real, and it **fails in the safe direction**: a notation mismatch drives N to 0, breaking condition (a) `N ≥ 4` loudly rather than producing a false green. The `[HARD]` token-column pin at `plan.md:95` is what makes it dependable, and the AC states the failure direction itself.
+- **Evidence — source↔TOML correspondence (dispatch item 3), re-verified independently.**
+
+  ```
+  $ grep -n 'Agent(' .claude/agents/moai/manager-lead.md | cut -d: -f1
+  6 30 36 44 64 66 137 179 200 268
+  ```
+
+  Positional pairing against the TOML list gives `44↔37 · 64↔57 · 66↔59 · 179↔172 · 200↔193 · 268↔261`, exactly as `spec.md:125` claims. Content is byte-identical at both flagged pairs:
+
+  ```
+  toml:172 == md:179   At Tier M/L milestones, every AC the author leaf worker marks PASS is re-run by a
+                       second read-only `Agent(general-purpose)`:
+  toml:261 == md:268   - Domain consultation (backend / frontend / devops) → leaf worker as
+                       `Agent(general-purpose)` with domain whitelist per `archived-agent-rejection.md` §C rows 7-10.
+  ```
+
+  And `toml:57` ("manager-lead **spawns** a second read-only `Agent(general-purpose)`") is the same behaviour `:172` restates as procedure — iteration 2's observation still holds on the tree, which is why flagging it is the correct disposition.
+- **Evidence — §D permission removed.** A search for the permitting phrase returns exactly one hit, `acceptance.md:167`, and there it appears **inside a quotation of its own removal**: "앞 라운드의 이 항목은 「M1 이 행을 만들지 않았으면 건너뛴다」로 읽혀 … **그 허용을 제거한다**". The permitting form no longer exists as an instruction. Dispatch item 4 confirmed.
+- **Assessment of the deferral (dispatch item 2) — sound, not a hole.** The literal answer to "can `AC-CBN-013` pass while `:172` is misclassified as prose?" is **yes**: N would be 4, (a) passes, (b) `M ≥ 4` passes. But that is a *judgment* risk, not a *coverage* gap, and the two are not interchangeable:
+  - Coverage is closed mechanically. M2 ③ (`plan.md:102`) diffs the classification table's `file:line` column against the measured 81-line coordinate set, rc 0 required. No `Agent(` line in this file can remain unclassified.
+  - The discriminant is stated (`REQ-CBN-002`), the population is measured (10), and the closing site is named (M2).
+  - `:172` and `:261` are explicitly named at `spec.md:125` and `plan.md:117` as lines M2 **must** adjudicate, with the reason each likely reads `this-agent`. They cannot pass through unexamined; a wrong verdict must be written down with a rationale, on a visible row, next to the boundary-sample rows it contradicts.
+  - Pre-adjudicating them here would be hand-enumeration a second time — the exact defect class of iteration-1 D3 that the SPEC's own §G AP-6 names. The repair declining to do it is the correct call, and it says so.
+
+  N2's blocking property was "a coordinate set asserted as complete without stating the discriminant that closes it." That property no longer holds.
+- **Baseline-attribution.** All coordinates and counts measured at HEAD `b6442e848`, this tree, this run. Synthetic M2 fixture written to the session scratchpad, outside the audited tree.
+- **Gaps.** I did not adjudicate `:7`, `:23`, `:29`, `:130` — no claim about them, same as iteration 2. I did not verify that M2's future output will in fact carry the pinned token notation (it does not exist yet); I verified only that a mismatch fails safe.
+- **Residual-risk.** If M2 classifies `:172` as prose **and** the rationale is plausible on its face, no mechanical check catches it — the guard is the reviewer reading the rationale row. This is a run-phase execution risk with a named review surface, not a plan-phase specification defect, and it is the irreducible remainder of any property-based binding.
+
+### Advisories found this round (recorded, NOT carrying the verdict)
+
+Both lie outside the N1/N2 blocking property. Per the dispatch's scope clause they are stated as advisory and do not carry a FAIL.
+
+**A9. `spec.md:247`'s `ls -d` self-check is stale by construction · `spec.md:247` · Severity: minor · Class: optional.**
+The line records an `ls -d` on this SPEC's own directory returning `No such file or directory` (작성 전 실측). Re-run today the command returns rc 0 and lists the directory. It is the same *class* as N1 — a self-targeting command in a self-verification block whose stated output the SPEC's own existence falsifies — but it differs on both counts that made N1 blocking: it carries an explicit temporal qualifier (작성 전 실측, "measured before authoring"), so it is an honest historical baseline rather than a present-tense claim; and it is **not** a Definition-of-Done item (`acceptance.md` §F carries no `ls -d` line — I read the whole block). It is also the one site the repair's AP-6 enumeration omitted. Optional fix: re-word to name the measurement instant, or drop the line.
+
+**A10. Two residual "4줄 / 네 줄" phrasings survive the coordinate→property move · `acceptance.md:150`, `acceptance.md:167` · Severity: minor · Class: optional.**
+`acceptance.md:150` ("**네 줄은** 능력 이름을 부르고…") and the §D label at `acceptance.md:167` ("**`manager-lead` 자기 스폰 4줄**") still describe the class by the old constant. Neither is a **Then** condition — `AC-CBN-013`'s binding text is property-bound to `N` — so neither can produce a false green: if M2 finds N=5 and only four lines are revised, condition (b) `M ≥ N` breaks. The defect is readability drift, not a weakened gate. Optional fix: two phrase edits ("네 줄" → "그 줄들", "4줄" → "자기 스폰 지시 줄").
+
+### Confirmed in passing (A1, A2 — not blocking, dispatch permitted)
+
+- **A1** — repaired. `plan.md:73` now carries a `[HARD]` trap notice stating `moai-mcp` classifies as `present`, and `spec.md:60` states the discriminant is the capability, not the word `unavailable`.
+- **A2** — repaired. Both sites now use the leading-alternation form `(^|[^/])design-sync` (`plan.md:128`, `acceptance.md:155`), and `acceptance.md:157` states why that branch is required.
+
+### Regression check (iteration 2 → 3)
+
+| Iteration-2 finding | Status | Evidence |
+|---|---|---|
+| N1 marker selector self-falsifying | **RESOLVED** | canonical + ERE both rc 1; broad form 4 lines, none asserting 무출력; independent positive control matches a real marker |
+| N2 hand-enumerated 4-line class | **RESOLVED** | `REQ-CBN-009` property-bound (`spec.md:164`); `AC-CBN-013` bound to N (`acceptance.md:143`); population 10 cited (`spec.md:121`); §D permission removed (`acceptance.md:167`) |
+| A1 `moai-mcp` word trap | RESOLVED (advisory) | `plan.md:73`, `spec.md:60` |
+| A2 leading-alternation `design-sync` | RESOLVED (advisory) | `plan.md:128`, `acceptance.md:155` |
+| D1-D10 | not re-opened (scope) | iteration-2 verdict stands |
+
+No regression: nothing that passed in iteration 2 was weakened to make N1 or N2 pass. The v0.2.1 HISTORY entry (`spec.md:22`) states the repair touched nothing else, and the two invariants most at risk from a scope-limited repair — the 84/81 unit split and the `Task*→0` / `task-list ≥3` pairing — were spot-checked and are intact (`plan.md:100-102`, `plan.md:127`).
+
+### Recommendation
+
+**N1: closed. N2: closed.** Nothing blocking remains within this round's scope. A9 and A10 are a one-line and a two-phrase edit respectively, both repairable in place, and neither is a precondition for run-phase entry.
+
+The iteration-2 aggregate FAIL was carried by N1 and N2 alone; with both closed and no regression, the plan-phase blocking set for this SPEC is empty. The remaining recorded debt is A3-A10, all optional, all surfaced for the orchestrator's discretion per M6 — routing them into a further revision round would be the over-engineering the Enforce Simplicity core behavior forbids, and iteration 3 is the hard cap regardless.
+
+Process note: HEAD read `b6442e848` at the opening and closing of this audit, with a clean tree at both reads. No recurrence of the defect recorded at `.moai/reports/t497/process-defects.md`.
