@@ -206,7 +206,7 @@ m1_to_mN_commit_strategy: single-commit  # M1-M5 landed as one commit; no push (
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_commit_sha: b921184b7c395cdc1831253e9b492712da19c3cc   # backfilled; the sync commit cannot cite its own hash
 sync_status: audit-ready
 b12_self_test_a: pass                    # grep -c 'SPEC-CODEX-MIRROR-DOCTOR-001' CHANGELOG.md → 0 before emission (no duplicate)
 b12_self_test_b: pass                    # 15 distinct AC ids in acceptance.md == 15 rows in the §E.2 matrix == 15 referenced in the entry (non-zero, not a vacuous 0==0)
