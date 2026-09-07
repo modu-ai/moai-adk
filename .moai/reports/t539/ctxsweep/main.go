@@ -13,20 +13,24 @@
 // the sweep report; they are not derivable from the test file alone.
 //
 // "Consults" is judged per parameter type:
-//   context.Context  — any use of the identifier in the body (reading
-//                      Done/Err/Deadline/Value, or passing it downstream).
-//   *http.Request    — a call of <name>.Context() somewhere in the body.
-//                      Reading req.URL or req.Body is NOT consulting the
-//                      context; a double can read the body and still answer
-//                      a dead request.
+//
+//	context.Context  — any use of the identifier in the body (reading
+//	                   Done/Err/Deadline/Value, or passing it downstream).
+//	*http.Request    — a call of <name>.Context() somewhere in the body.
+//	                   Reading req.URL or req.Body is NOT consulting the
+//	                   context; a double can read the body and still answer
+//	                   a dead request.
 //
 // Usage: go run main.go [-prod] <root>
-//   default : scan *_test.go only (test doubles)
-//   -prod   : scan non-test .go files only (the real implementations), so the
-//             two tables can be joined by method name for question (a)
+//
+//	default : scan *_test.go only (test doubles)
+//	-prod   : scan non-test .go files only (the real implementations), so the
+//	          two tables can be joined by method name for question (a)
+//
 // Output: TSV  kind  file:line  receiver  method  param  consults
-//   kind     = method | funclit
-//   consults = yes | no | "" (parameter is unnamed or named _)
+//
+//	kind     = method | funclit
+//	consults = yes | no | "" (parameter is unnamed or named _)
 package main
 
 import (
