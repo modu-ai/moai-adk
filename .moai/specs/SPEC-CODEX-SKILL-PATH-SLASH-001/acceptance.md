@@ -20,22 +20,40 @@ format; the GEARS requirement wording lives in `spec.md §C`.
 
 ## AC-CSPS-001 — Codex on Windows resolves a forward-slash `path` (GATE)
 
-**Given** a Windows host (physical, VM, or a Windows CI runner) with codex-cli installed, and an
-isolated `CODEX_HOME` pointing at a scratch directory,
-**When** that scratch `config.toml` declares a single `[[skills.config]]` entry whose `path` is the
-forward-slash form of a real SKILL.md under the scratch tree (e.g. `C:/scratch/skills/probe/SKILL.md`),
-and `codex debug prompt-input "hi"` is run against it,
-**Then** the probe skill appears in the rendered prompt-input skill roots — establishing that Codex
-resolves the forward-slash form.
+**Given** a Windows host (physical, VM, or a Windows CI runner) with codex-cli installed, an
+isolated `CODEX_HOME` pointing at a scratch directory, and a probe `SKILL.md` placed **under a skill
+root** at `%CODEX_HOME%\skills\<probe>\SKILL.md` — placement under a root is what introduces a
+skill; a `[[skills.config]]` entry does **not** introduce one, it only configures one already
+introduced,
+**When** the same fixture is observed across three arms of `codex debug prompt-input "hi"` — a
+baseline arm with **no** `[[skills.config]]` entry at all, a slash arm declaring one entry whose
+`path` is the **forward-slash** form of that SKILL.md with `enabled = false`, and a control arm
+declaring the same entry in **native backslash** form with `enabled = false`,
+**Then** the probe skill is observed **present** in the baseline arm and **disappears** in the slash
+arm — the disappearance establishing that Codex matched the declared forward-slash path against the
+on-disk native path, i.e. that it resolves the forward-slash form. Persistence of the probe skill in
+the slash arm establishes that it did not.
 
+- **Baseline arm is mandatory, not an aside.** The baseline arm MUST be run in the same run as the
+  other two, and MUST observe the probe skill present. "Disappearance" is only an event if presence
+  was established first; a run whose baseline arm does not show the skill present is "the harness
+  did not work", not a result of any kind.
+- **Slash arm** — the entry's `path` carries the forward-slash form (e.g.
+  `C:/scratch/skills/probe/SKILL.md`) while the file on disk is at `C:\scratch\skills\probe\SKILL.md`.
+  Disappearance = path matched = slash form resolved. Persistence = not resolved.
+- **Control arm** — the identical entry in native backslash form, same observation. It is the
+  attribution control: without it, a disappearance in the slash arm could not be attributed to path
+  matching rather than to run-to-run variance in the render.
+- **"Harness did not work" is distinguished from a refutation, in two shapes.** (i) A run where the
+  baseline arm does not show the probe present is a broken harness. (ii) A run where the baseline
+  arm shows the probe present but **both** the slash arm and the control arm leave it present is
+  also a broken harness — the disabling mechanism itself did not fire — not a refutation of the
+  slash direction.
 - The codex-cli version is re-stamped at measurement time (`codex --version`), never carried over.
-- A control arm is required: the same entry in native backslash form, so the measurement asserts a
-  difference rather than an unattributed success. A run where BOTH arms fail is "the harness did not
-  work", not "slash is unsupported".
 - Evidence: the command, its verbatim output, and the host's OS/version, written to
   `.moai/reports/t540/ac-001-windows-slash.md`.
 
-**Fallback clause.** If the probe skill does NOT appear in the slash arm while it DOES appear in the
+**Fallback clause.** If the probe skill REMAINS PRESENT in the slash arm while it DISAPPEARS in the
 control arm, the slash direction is refuted. The card then STOPS, reports the refutation, and the
 direction reverts to option (b) — reader-side escape decoding — which re-opens the t533
 counting-basis question (`spec.md §B.3` property 2). No publisher change lands on a refuted or
@@ -43,6 +61,52 @@ unmeasured gate.
 
 **Gap acknowledged.** No Windows host is available in this worktree. This AC is not satisfiable here
 and must be executed elsewhere; recording it as "assumed to pass" is prohibited.
+
+### Amendment record — polarity inverted from appearance to disappearance
+
+**What was measured.** Three harness-shape probe cells were run on this host (codex-cli `0.153.4`,
+darwin, isolated `CODEX_HOME`), with an identical fixture
+(`$CODEX_HOME/skills/t540probe/SKILL.md`) and an identical command
+(`CODEX_HOME=<scratch> timeout 90 codex debug prompt-input "hi" < /dev/null`). Raw figures, cited to
+`.moai/reports/t540/probe-harness-shape.log` (full report:
+`.moai/reports/t540/m0-harness-probes.md`):
+
+| cell | `[[skills.config]]` entry | rc | stderr bytes | `grep -c 't540probe'` |
+|---|---|---|---|---|
+| p1 | none at all | 0 | 0 | **1** |
+| p2 | entry, `enabled = false` | 0 | 0 | **0** |
+| p2b | entry, `enabled = true` (attribution control) | 0 | 0 | **1** |
+
+**Why the prior Then clause was vacuous.** It read:
+
+> **Then** the probe skill appears in the rendered prompt-input skill roots — establishing that
+> Codex resolves the forward-slash form.
+
+Cell p1 is decisive: with **no entry at all** the probe skill still appears, so appearance is the
+**default state**. A failure by Codex to resolve the forward-slash form would merely leave the
+declared entry inert, and the skill would appear anyway by virtue of its placement under the root.
+The criterion was therefore satisfied by the null state — the vacuous-green shape named in
+`.claude/rules/moai/development/verification-completeness.md` §1.1. The Fallback clause rested on
+the same false premise (absence-in-slash-arm as the refutation signal) and so was rewritten in the
+same pass rather than left behind. Cell p2b is the attribution control for the measurement itself:
+without it, p2's zero could not be attributed to the `enabled` flag rather than to run-to-run
+variance.
+
+**AC-CSPS-001 is OPEN both before and after this amendment.** On darwin the forward-slash form and
+the native form are the same string, so no verdict reachable on this host can close it. This
+amendment converts a vacuous check into a meaningful one while leaving the criterion unsatisfied; it
+grants no progress and cannot be self-serving.
+
+**Gaps in the probes this amendment rests on.**
+
+- `r1` in the rendered skill roots resolved to the real `/Users/goos/.agents/skills` even under an
+  isolated `CODEX_HOME`, so the probes are **not hermetic** on a developer machine (a distinctive
+  probe name was used so a collision would be visible). That this does not arise on a clean CI
+  runner is an **INFERENCE**, not a measurement — no CI cell was run.
+- The placement finding ("placement under a root introduces a skill; a config entry does not") rests
+  on an arbitrary-path cell whose hit count was zero. Some property of that cell **other than** its
+  position outside a skill root might explain the zero; no probe separated the two explanations, so
+  the placement finding is cited only at that strength.
 
 ---
 
