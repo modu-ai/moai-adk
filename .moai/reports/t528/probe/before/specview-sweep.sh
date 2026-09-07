@@ -1,5 +1,10 @@
 #!/bin/bash
-# t528 — corpus-wide `moai spec view <ID> --acceptance` hard-error sweep.
+# t528 — corpus-wide `moai spec view <ID>` hard-error sweep.
+#
+# NOT `--acceptance`: that flag does not exist (spec_view.go registers only
+# --shape-trace), and sweeping with it returns 807/807 "Unknown flag", a figure
+# about argument parsing rather than the collector. `moai spec view <ID>` IS the
+# acceptance view. See specview-before-20260908.md.
 # $1 = binary, $2 = output file. Counts lines ending in a `parse error:` failure.
 BIN="$1"; OUT="$2"
 : > "$OUT"

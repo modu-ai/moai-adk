@@ -348,19 +348,42 @@ RC=1
 ```
 
 **2단계 — 그 뒤에야 코퍼스 0을 읽는다.** 넓힌 파서로 빌드한 바이너리
-(`go build -o /tmp/t528-moai-after ./cmd/moai`, `BUILD_EXIT=0`, 트리 `13fda0f6e`)로 807개 전수:
+(`go build -o /tmp/t528-moai-after ./cmd/moai`, `BUILD_EXIT=0`, 트리 `13fda0f6e`)로 807개 전수.
 
-| 관측 | 넓힘 전 | 넓힘 후 |
-|---|---|---|
-| `parse error:` | 442 | 442 |
-| 그중 `DuplicateAcceptanceID`/깊이 부류 | 0 | **0** |
-| `spec.md not found` (`_archive/` 주소 지정 한계) | 6 | 6 |
-| **기준선에 없던 신규 하드 에러** | — | **0** |
-| 해소된 하드 에러 | — | 0 |
+[HARD] **delta만 적지 않는다 — 기준선과 착지를 항상 함께 적는다**(리드 조건 2026-09-08).
+기준선 없는 delta는 이 카드가 막으려는 수치와 같은 모양이다.
 
-SPEC ID 집합을 `comm`으로 비교해 **신규 0 · 해소 0** — 집합이 동일하다.
-442는 전부 `acceptance criteria section not found`(헤딩 축, 범위 밖)이며 M0 before-image와
-같다. 산출물: `probe/before/specview-errors.txt` · `probe/after/specview-errors.txt`.
+| 관측 | 넓힘 전 | 넓힘 후 | delta |
+|---|---|---|---|
+| `parse error:` 총계 | **442** | **442** | **0** |
+| 그중 `DuplicateAcceptanceID` / 깊이 부류 | **0** | **0** | **0** |
+| **기준선에 없던 신규 하드 에러** | — | **0** | — |
+| 해소된 하드 에러 | — | **0** | — |
+| `spec.md not found` (스윕 주소 지정 한계) | 6 | 6 | 0 |
+| 스윕 대상 | 807 | 807 | 0 |
+
+SPEC ID 집합을 `comm`으로 비교해 **신규 0 · 해소 0** — 두 집합이 동일하다. 총계가 같은 것만으로는
+「같은 수가 다른 파일에서 났다」를 배제하지 못하므로 집합 비교를 함께 남긴다.
+
+**442가 어느 방향으로도 움직이지 않았다 — 이것 자체가 판정이다**(리드 조건). **감소도 증가와
+똑같은 발견이다**: 감소했다면 항목 문법 넓힘이 헤딩 축에 닿았다는 뜻이고, 그것은 `spec.md` §4가
+닿을 수 없다고 단언한 바다. delta 0이므로 그 단언은 이 측정에서 유지된다.
+
+442는 전부 `acceptance criteria section not found` — `findACSectionStart`가 -1을 돌려줄 때
+`internal/cli/spec_view.go:85`의 `default:`가 치명으로 만드는 헤딩 축이며 이 카드의 범위 밖이다.
+M0 before-image와 같다.
+
+**제외한 6건은 제외 사실과 이유를 함께 남긴다**(리드 조건). `.moai/specs/_archive/<ID>/spec.md`에
+있는 코퍼스 항목으로, CLI가 `.moai/specs/<ID>/spec.md`를 조립하므로 **맨 SPEC ID로 주소 지정이
+되지 않는다.** 즉 **파서에 도달조차 하지 않으며**, 하드 에러 집계에서 빼는 근거가 그것이다.
+주소 지정 가능한 SPEC은 801개다. 넓힘 전후 동일한 6건이다.
+
+**무해 경로와 치명 경로는 실제로 다른 모집단이다.** 리드가 독립적으로 확인했다 —
+`go run ./cmd/moai spec view SPEC-AUDIT-SNAPSHOT-001` → `No acceptance criteria found …`, `EXIT=0`.
+전맹(무해, exit 0)과 하드 에러(치명, exit 1)가 갈리므로 위 442를 「전맹 101」과 혼동하지 않는다.
+
+산출물: `probe/before/specview-errors.txt` · `probe/after/specview-errors.txt` ·
+스윕 스크립트 `probe/before/specview-sweep.sh`.
 
 **렌더 (AC-ACA-001-012).** 기준선에서 전맹이던 101개 중 **92개**가 이제 렌더된다.
 지목: `SPEC-AUDIT-SNAPSHOT-001`.
@@ -481,7 +504,19 @@ CLI 하드 에러와 다른 양이다.
 
 PASS로 읽은 근거는 REQ-ACA-001-013의 문면이다: **「기준선에 없던 하드 에러」**. 그 값이 0이며,
 442는 전부 헤딩 축(범위 밖·수리 금지)이고 넓힘이 새로 만들 수 있는 유일한 부류(중복/깊이)도
-0이다. 리드에게 이 정정을 M0 직후 보고했고 문면 그대로의 해석을 원하면 멈추겠다고 밝혔다.
+0이다.
+
+**이 읽기는 리드가 승인했다(2026-09-08).** M0 직후 보고했고, 리드가 보고를 그대로 받지 않고
+**직접 재측정한 뒤** 승인했다. 리드의 판단 근거: 「must be 0」은 **재보지 않은 채 0으로 가정한
+기준선** 위에 쓴 약칭이었고, 이 카드가 일으킬 수도 고칠 수도 없는 축의 선존 조건으로 카드를
+멈추는 것은 잘못이라는 것. 승인에 붙은 조건 셋은 위 M7 절이 이행한다 — 기준선·착지·delta 동시
+표기, 442의 **양방향** 불변(감소도 발견), `_archive/` 6건의 제외 사실과 이유 명시.
+
+**플래그 오기의 출처도 리드가 자기 것으로 정정했다.** `--acceptance`는 이 카드의 spawn 지시문과
+SPEC 산출물 15곳(`spec.md` 4 · `plan.md` 4 · `acceptance.md` 5 · `progress.md` 2)에 있다.
+`spec.md`/`plan.md`/`acceptance.md`는 이 에이전트의 편집 대상이 아니므로 **건드리지 않았고**,
+리드가 별도 카드로 처리한다. 이 문서(`progress.md`)의 2곳은 위 「정정 1」 절이며 **오기를 고의로
+인용하는 자리**라 그대로 둔다. 이 카드가 만든 증거·스크립트는 전부 실제 명령형을 쓴다.
 
 ---
 
