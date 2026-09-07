@@ -301,6 +301,107 @@ their pre-M2 state.
 - `observed_at` is validated for non-emptiness only, not for RFC 3339 shape. A malformed instant
   stores and decodes cleanly.
 
+### M3 — the recording verb
+
+**Claim.** `moai todo landed <id> [--sha <sha>] [--ref <ref>] | --clear` exists, is registered on
+the `todo` command, and records one card's landing evidence as a single locked write of one column.
+AC-TLE-004, 007, 008, 009, 010, 012 and 020 pass. Three mandated mutants were planted, observed
+failing, and reverted; the plan-audit's F1 boundary premise was **OBSERVED** rather than left
+asserted.
+
+| Criterion | Status | Fired assertion under its mutant / input |
+|---|---|---|
+| AC-TLE-004 | PASS | `todo_landed_test.go:322`, twice (t1 queued, t2 picked) |
+| AC-TLE-007 | PASS | concurrency pair; both records survive |
+| AC-TLE-008 | PASS | `todo_landed_test.go:351`, ordered tuple list |
+| AC-TLE-009 | PASS | replace + `SELECT landing IS NULL` = 1 after `--clear`; usage refusal is exit 2 |
+| AC-TLE-010 | PASS | two-phase, frontmatter changed between phases |
+| AC-TLE-012 | PASS-WITH-REPAIR | `:469`, `:472`, and — after a clause repair — `:487` |
+| AC-TLE-020 | PASS | four conditions + the two-card boundary at `:619` |
+
+**Evidence.** `.moai/reports/t359/m3-evidence.md` — verbatim command/output pairs for the baseline,
+the compile-stage RED, the `-v` proof that eight tests and six subtests actually ran, each mutant's
+verbatim failure with before/after hashes, the two other-SPEC guard repairs, and the final scoped
+verification. Key results:
+
+```
+$ go test ./internal/kanban/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	136.644s
+
+$ go test ./internal/cli/... -count=1 -timeout 600s
+cli rc=0
+
+$ go vet ./internal/kanban/... ./internal/cli/...
+vet rc=0
+```
+
+**Baseline-attribution.** Worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch
+`WT-landing-evidence`, HEAD re-read by this agent as its first command: `705838c2a`. The pre-edit
+green baseline for BOTH packages was re-established in this tree at that HEAD rather than carried
+over — M1's `internal/cli` figure at `903bcc03c` was a carry-over M2 correctly named as such, and
+this run replaces it with a measurement.
+
+**AC-TLE-012's clause repair, stated plainly.** The mutant redded at `:469` and `:472` but NOT at
+the containment clause AC-TLE-012 names in its own words. Cause: the leak stores git's `--oneline`
+abbreviation (7 characters here) and the clause probed the full SHA and a 9-character prefix — so
+against the very leak it names, the clause was **vacuous**. The probe is now 7 characters, and the
+mutant was re-observed with the repair in place: `:487` then fired, naming commit **#3**, the
+newest mention rather than any delivering commit. The test file's hash changed across this repair
+(`f61f00c5…` → `bf9efd22…`); the production file returned to its exact pre-plant hash.
+
+**F1 — OBSERVED.** The plan-audit's iteration-3 premise (the boundary clause fires only when the
+fixture history mentions exactly one of the two card ids) was checked rather than assumed. The
+fixture's non-degeneracy is asserted inside the test, and with the card token routed into
+validation the clause fired at `:619` on the ACCEPTING branch: one `--sha`, t1 accepted, t2
+refused. The audit ceiling being spent, this was the only remaining place the premise could be
+checked, and it held.
+
+**Gaps** (unsoftened; the full known-losses list is `m3-evidence.md` §9):
+
+- **A scope disagreement with `plan.md` §F, resolved in the open.** §F assigns the
+  `backlog_migrate.go` SELECT/INSERT to M5, but M3 cannot record without them: `writeRecord`
+  re-INSERTs an explicit column list after `DELETE FROM items`, so a record written by any other
+  route is erased by the next `Mutate` of any kind — `todo done` and `todo edit` included. M3
+  therefore plumbs the `items` read/write and the `BacklogItem` field, and nothing else of M5's
+  list. `design.md` §5 already sanctions the field; the milestone boundary is what is in dispute.
+- **`landed → done → undone` silently loses the record** — MEASURED, not inferred
+  (`m3-evidence.md` §9.4). `writeArchive` carries no `landing` column, which is exactly M5's
+  declared site (`:196-201`). Until M5 lands, archiving discards the operator's evidence with no
+  signal.
+- **`golangci-lint` was not run**; only `go vet` and `gofmt`. The DoD's "project linter" line is
+  unperformed for M3.
+- **darwin/arm64 only.** No windows or linux build or test. `gitUnrunnable` discriminates on Go's
+  own `exec` error text rather than OS text, which is why it is expected to hold cross-platform —
+  an argument, not a measurement.
+- **The full local suite was never run**, by policy. Every package outside `internal/kanban` and
+  `internal/cli` is unmeasured at this HEAD; CI owns that verdict.
+- **`gofmt -l internal/kanban/ internal/cli/` reports 28 files**, none M3-touched — a pre-existing
+  condition at `705838c2a`, recorded so it is not read as an M3 regression.
+
+**Residual-risk.**
+
+- **The decode-on-read choice can wedge the queue.** `readRecord` now surfaces an undecodable
+  `landing` value as a read error naming the card, rather than dropping it to nil. The reasoning is
+  data-loss avoidance: nil would be written back as NULL by the next whole-record write, losing the
+  operator's record silently. The cost is availability — a corrupt value makes the queue unreadable,
+  and `--clear` cannot run because it must read first. M2 already flagged the same tension for M4's
+  `todo pr` degradation path; this milestone picks loud over silent and records the trade-off.
+- **The seam is still convention, not mechanism, on the archived path.** M3 routes its `items`
+  write through `LandingEvidenceValue`, so the encoder's refusals hold there. `writeArchive` does
+  not write the column at all yet, so nothing is bypassing the seam — but M5 must route through it
+  too, and nothing mechanical requires that.
+- **The `gitUnrunnable` discriminant is a string match** on three error phrasings. A future Go
+  version, or a wrapper that reformats `exec` errors, could make an unrunnable check classify as a
+  failed one — turning a "could not run" into a false "not reachable". The two are distinguished in
+  the message and in the criterion, but not by anything stronger than substring matching.
+- **The REQ-ABI-006 sweep baseline is line-keyed**, so any edit above line 216 of `todo_landed.go`
+  moves the declared coordinate and reds another SPEC's guard. That brittleness is the guard's
+  existing design, inherited rather than introduced, but M4 and M5 will both edit this file.
+- **`--ref` accepts any string and passes it to git.** It is validated only by whether git resolves
+  it. An operator can record evidence against a ref that is not the project's integration branch,
+  which is intended (the flag exists for it) but means a stored `ref` must always be read before a
+  stored `ref_head` is interpreted.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
