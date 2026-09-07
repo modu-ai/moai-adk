@@ -223,3 +223,83 @@ Gaps arising in this run:
    that advisory line while the fatal finding names it precisely. This follows the SPEC's own
    instruction not to "fix the counts back", but the resulting wording is slightly imprecise and is
    worth a follow-up decision.
+
+---
+
+## Correction — the orchestrator's "no backup file" argument was wrong (2026-09-07)
+
+The original text above is preserved. This section is appended, not substituted.
+
+**What was claimed.** In the lane's completion report to the lead, the orchestrator argued that the
+prune verb had never run on this machine because *no backup file exists*, citing:
+
+```
+ls -la ~/.codex/*.bak ~/.codex/*backup* 2>/dev/null || echo "(no backup file — no prune write happened)"
+→ (no backup file — no prune write happened)
+```
+
+**Why that is wrong.** The glob does not measure what its name claims. Two backup files DO exist:
+
+```
+$ ls ~/.codex/ | grep 'config\.toml\.bak-'
+config.toml.bak-20260822-022202
+config.toml.bak-20260901-133347
+```
+
+`config.toml.bak-20260822-022202` does not match `*.bak` — the name continues past `.bak`. So the
+selector returned empty for a reason unrelated to the question, and anyone re-checking the literal
+claim "no backup file exists" reaches the OPPOSITE conclusion: that a prune ran.
+
+Found by lane-4 on card t533's read axis, and re-measured here before adopting.
+
+**The discriminant is the filename FORMAT, not presence.** `internal/cli/codex_skills_prune.go:204`:
+
+```go
+backupPath := fmt.Sprintf("%s.bak-%s", cfgPath, time.Now().UTC().Format("20060102T150405Z"))
+```
+
+so the prune writes `config.toml.bak-YYYYMMDDTHHMMSSZ` — with a `T` separator and a trailing `Z`.
+The two files that exist are `bak-YYYYMMDD-HHMMSS` (hyphen, no `T`, no `Z`): a different producer.
+
+```
+$ ls ~/.codex/ | grep -E 'config\.toml\.bak-[0-9]{8}T[0-9]{6}Z$'
+(no output)  rc=1
+
+$ ls ~/.codex/ | grep -c 'config\.toml\.bak-'
+2
+```
+
+The second command is the non-vacuous control: the same directory and the same `bak-` prefix yield
+two rows, so the first command's silence is an observed absence of that FORMAT rather than an
+unreached scan.
+
+**Verdict: unchanged. The argument is replaced, not the conclusion.** The prune verb has never run
+on this machine. The load-bearing evidence remains the sha256 pair recorded above
+(`c91a6b73…69598` before and after the full run) — a stronger method that never depended on the
+backup argument at all. Only the orchestrator's supplementary claim was defective.
+
+## Correction — the "49/49" count basis is BLOCK-SCOPED (2026-09-07)
+
+Line 185's `~/.codex` census is block-scoped and was reported without saying so. Both numbers are
+real and they differ:
+
+```
+$ grep -A3 '^\[\[skills\.config\]\]' ~/.codex/config.toml | grep -c '^enabled = false'
+49          # block-scoped — entries inside a [[skills.config]] block
+$ grep -c '^enabled = false' ~/.codex/config.toml
+53          # whole-file — includes 4 occurrences outside any such block
+```
+
+The card's claim is about `[[skills.config]]` entries, so **49 is the correct figure** and the
+whole-file 53 must not be quoted as if it were the entry count. Recorded because the two readings
+are four apart and neither is wrong — they measure different things.
+
+Raised by lane-4; re-measured here.
+
+## What both corrections have in common
+
+A selector that does not measure what its name claims. It is the same shape this card spent its
+whole life guarding against — `go test -run <pattern>` printing `ok` on zero matches, and the
+orchestrator's own mid-verification slip of running `TestParseSkillEntriesWritesNothing` against
+`internal/cli` when it lives in `internal/codexwiring`. The lesson generalises past test selectors:
+**a filter's silence means nothing until a control proves the filter could have spoken.**
