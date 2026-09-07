@@ -70,11 +70,316 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M-B1 — 세 인자 모양의 해석 (plan §C M1-M5를 한 커밋으로 묶어 착지)
+
+**[HARD] 이 절은 소급 기록이다.** 구현은 커밋 `2cfccd4eb`(`feat(SPEC-SPEC-LINT-ID-ARG-001): M-B1 resolve three argument shapes for spec lint (t518)`)로 이미 착지했으나 그 회차에 §E.2/§E.3이 쓰이지 않았다. 아래에서 **이 실행에서 직접 관측한 것**과 **커밋된 증거 파일을 다시 읽은 것**을 구분해 적는다. 재판독은 새 측정이 아니다 — 출처 파일 경로를 항상 함께 적는다.
+
+- 기록 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518` · 브랜치 `WT-spec-lint-axes` · HEAD `a4fbaeb82` (이 절을 쓸 때 `git rev-parse --show-toplevel` / `--short HEAD` 로 확인)
+- 구현 커밋: `2cfccd4eb` — `internal/cli/spec_lint.go`(+129) · `internal/cli/specid/specid.go`(신규) · `internal/cli/spec_lint_test.go`(451줄) · `internal/cli/specid/specid_shape_test.go` + 증거 15파일(`.moai/reports/t518/mb1-*`)
+- **[HARD] 줄 인용은 트리와 SHA에 매인다.** 아래 모든 `파일:줄` 인용은 트리 `.claude/worktrees/t518` · HEAD `a4fbaeb82` 기준이다. 다른 트리나 이후 커밋에서 같은 `파일:줄`은 다른 것을 가리킬 수 있다.
+
+#### 마일스톤 대조 — 계획 M1-M5 vs 실제 착지
+
+| plan §C | 계획된 산출물 | 실제 착지 | 근거 |
+|---|---|---|---|
+| M1 | 대조쌍 하네스 + RED + 수리 전 동작 기록 | 착지 (커밋 `2cfccd4eb` 안) | `mb1-red.txt` · `mb1-before-tests.txt` · `mb1-before-head.txt`(`97f9012…`) |
+| M2 | 판별식 + 해석기 GREEN | 착지 | `internal/cli/spec_lint.go` · `mb1-green-cli.txt` |
+| M3 | 진단 + 앵커 불변식 + β 거처 + 전/후 무변형 | 착지 | `internal/cli/specid/specid.go` · `mb1-green-specid.txt` · `mb1-after-tests.txt` |
+| M4 | 도움말 세 모양 명시 | 착지 | `mb1-green-cli.txt` `TestSpecLintHelp_NamesThreeArgumentShapes` PASS |
+| M5 | 혼합 인자 + 반경 격리 두 명령 | **부분 착지** — 혼합 인자는 착지, **반경 격리 두 명령은 이 실행에서 처음 실행됐다** | `mb1-mutants.txt` M8 · 본 절 주 ③ |
+
+다섯 마일스톤이 **한 커밋**으로 눌렸다. 커밋 단위가 마일스톤 단위와 어긋나면 어느 변경이 어느 기준을 만족시켰는지가 커밋 이력에서 복원되지 않는다 — 그것을 이 표가 대신한다.
+
+#### AC 판정표 (식별자 13개 전수)
+
+판정 근거의 성질을 열로 나눴다. `RED` 열의 「없음」은 결함이 아니라 **부재 가드**라는 뜻이다 — 「이 동작이 바뀌면 안 된다」류의 기준은 수리 전에도 초록이므로 RED-now 로 채택 판정할 수 없고, 뮤턴트가 유일한 비공허성 증거다.
+
+| AC | 검증 수단 | RED (`mb1-red.txt`) | GREEN | 뮤턴트 | 이 실행 재측정 | 판정 |
+|---|---|---|---|---|---|---|
+| AC-SLI-001a | `TestSpecLint_IDArg_ResolvesToSpecMD` (`spec_lint_test.go:167`) | FAIL — `ParseFailure count = 1, want 0` | `mb1-green-cli.txt` PASS | M1 CAUGHT | PASS (0.36s) | **PASS** |
+| AC-SLI-001b | `TestSpecLint_IDArg_EqualsPathForm` (`spec_lint_test.go:188`) | FAIL — `exit codes differ: id=1 path=0` | `mb1-green-cli.txt` PASS | M1 CAUGHT | PASS (0.50s) | **PASS** |
+| AC-SLI-001c | `TestSpecLint_IDArg_FromSubdirectory` (`spec_lint_test.go:216`) | FAIL — `ParseFailure count = 1, want 0 from a subdirectory` | `mb1-green-cli.txt` PASS | M1 · M9 CAUGHT | PASS (0.24s) | **PASS** |
+| AC-SLI-002 | `TestSpecLint_DirectoryArg` (`spec_lint_test.go:233`) | FAIL — `ParseFailure count = 1 for directory form` | PASS | M2 CAUGHT | PASS (0.39s) | **PASS** |
+| AC-SLI-003 | `TestSpecLint_UnresolvableID_IsArgumentError` (`spec_lint_test.go:254`) | FAIL — `exit code = 1, want 3` | PASS | M3 · M14 CAUGHT | PASS (0.00s) | **PASS** |
+| AC-SLI-004a | `TestSpecLint_PathForm_Unchanged` (`spec_lint_test.go:275`) | FAIL — **다른 이유로**(주 ①) | PASS | **M4 NOT CAUGHT** · M4b CAUGHT | PASS (0.16s) | **PASS (주 ①·②)** |
+| AC-SLI-004b | `TestSpecLint_MissingPathArg_StillParseFailure` (`spec_lint_test.go:299`) | **없음 — PASS** (부재 가드) | PASS | M5 CAUGHT | PASS (0.00s) | **PASS (뮤턴트 채택)** |
+| AC-SLI-005 | `TestSpecLint_AnchorInvariant_SPEC_A_1` (`spec_lint_test.go:321`) | **없음 — PASS** (부재 가드) | PASS | M6 CAUGHT | PASS (0.00s) | **PASS (뮤턴트 채택)** |
+| AC-SLI-006 | `TestSpecLintHelp_NamesThreeArgumentShapes` (`spec_lint_test.go:344`) | FAIL — `help does not mention "SPEC-ID"` | PASS | M7 CAUGHT | PASS (0.00s) | **PASS** |
+| AC-SLI-007 | `TestSpecLint_MixedArgs` (`spec_lint_test.go:358`) | FAIL — `ParseFailure count = 1, want 0` | PASS | M8 CAUGHT | PASS (0.36s) | **PASS** |
+| AC-SLI-008 | git 명령 2개 (테스트 없음) | 해당 없음 | 해당 없음 | 미발화(주 ④) | **이 실행에서 처음 실행** | **PASS (주 ③·④)** |
+| AC-SLI-009 갈래 ① | `TestShapeFunction_HomeAndName` (`spec_lint_test.go:427`) | FAIL — `shape function is not declared in internal/cli/specid/specid.go` | PASS | M10 CAUGHT | PASS (0.00s) | **PASS** |
+| AC-SLI-009 갈래 ② | 전/후 두 트리의 `go test` 출력 대조 | 해당 없음 | `mb1-before-tests.txt` / `mb1-after-tests.txt` | M11 CAUGHT | 재현 창 닫힘(주 ⑤) | **PASS-WITH-DEBT (주 ⑤)** |
+| AC-SLI-010 갈래 ① | 문서 — `spec.md §H` | 해당 없음 | 해당 없음 | 해당 없음 | 이 실행에서 재판독 | **PASS (주 ⑥)** |
+| AC-SLI-010 갈래 ② | `TestSpecStatusIDPattern_LiteralFrozen` (`spec_lint_test.go:411`) | **없음 — PASS** (부재 가드) | PASS | M12 CAUGHT | PASS (0.00s) | **PASS (뮤턴트 채택)** |
+
+**[HARD] 배차문이 제기한 두 의심의 처분 — 하나는 오해였고 하나는 사실이다.**
+
+- **`AC-SLI-001b` 는 실제로 덮여 있다.** 배차문은 「mb1 보고 파일에 나타나지 않는다」고 관측했다. 그 관측 자체는 참이다 — `mb1-*.txt` 는 **테스트 이름**만 싣고 AC 식별자를 싣지 않기 때문이다. AC 식별자는 소스 주석에만 있다(`internal/cli/spec_lint_test.go:186`, 트리 `t518` · HEAD `a4fbaeb82`). 이 실행에서 `/usr/bin/grep -n 'func Test\|AC-SLI' internal/cli/spec_lint_test.go` 로 대응을 재유도했고, 001b ↔ `TestSpecLint_IDArg_EqualsPathForm` 이 성립한다. **보고 파일의 침묵은 기준의 부재가 아니라 그 파일이 다른 축을 적는다는 뜻이었다.**
+- **`AC-SLI-008` 은 실제로 미판정이었다.** 테스트가 없고 커밋된 증거 파일도 없다. 이 실행에서 처음 실행했다(주 ③).
+
+##### 주 ① — AC-SLI-004a 의 RED 는 겨냥한 결함이 아니라 픽스처 인구조사 불일치였다
+
+`mb1-red.txt` 축자:
+
+```
+    spec_lint_test.go:279: path-form census moved:
+         got: INFO/OwnershipTransitionUnreachable,INFO/StatusGitUnreachable,WARNING/CoverageIncomplete,WARNING/FrontmatterInvalid,…,WARNING/MissingExclusions
+        want: WARNING/CoverageIncomplete
+```
+
+`want` 가 한 항목뿐이었다 — 대조군이 「움직이지 않았다」를 재기 전에 **기준값 자체가 틀려 있었다.** 즉 이 RED 는 수리 대상 결함의 증거가 아니다(wrong-reason red). 그 뒤 기준값이 고쳐져 GREEN 이 됐고, 대조군의 비공허성은 **RED 가 아니라 M4b 뮤턴트**가 세운다. 원 관측을 지우지 않고 이렇게 병기한다.
+
+##### 주 ② — 못 잡은 뮤턴트 M4 를 남긴다
+
+`mb1-mutants.txt` 축자:
+
+```
+MUTANT M4 — path-signal pre-exclusion removed, anchored shape intact (AC-SLI-004a)
+command: go test ./internal/cli/ -run 'TestSpecLint_PathForm_Unchanged'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=0  => NOT CAUGHT
+```
+
+`if hasPathSignal(arg)` 를 `if false` 로 바꿔도 대조군이 초록을 유지한다. **이것은 가드의 결함이 아니라 방어가 두 겹이라는 사실의 관측이다** — 경로 신호 선행 배제가 사라져도 앵커된 모양 검사가 여전히 그 경로를 기각하므로 동작이 바뀌지 않는다. 두 겹을 함께 벗기는 M4b 는 잡힌다(`rc=1 => CAUGHT`, `path form exit code = 3, want the pre-repair 0 or 1`). **못 잡았다는 사실은 가드의 경계를 그리므로 지우지 않는다.**
+
+##### 주 ③ — AC-SLI-008 을 이 실행에서 실행했다 (신규 측정)
+
+트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518` · HEAD `a4fbaeb82`. 파이프 없이, rc 를 각각 읽었다.
+
+**명령 ①** — `git log --format=%H --grep=SPEC-SPEC-LINT-ID-ARG-001 0b1e27877..HEAD` (rc=0):
+
+```
+2cfccd4eb304c9929bd108caabe9915004674b2e
+5d495bafca56ec82f80a8b040cec56de081e39e0
+```
+
+`git show --name-only --format= 2cfccd4eb304c9929bd108caabe9915004674b2e` (rc=0) — 19줄, 그중 코드는 넷:
+
+```
+internal/cli/spec_lint.go
+internal/cli/spec_lint_test.go
+internal/cli/specid/specid.go
+internal/cli/specid/specid_shape_test.go
+```
+
+(나머지 15줄은 전부 `.moai/reports/t518/mb1-*`.) `git show --name-only --format= 5d495bafca56ec82f80a8b040cec56de081e39e0` (rc=0) — 16줄, 전부 `.moai/reports/t518/` 와 두 SPEC 의 `.moai/specs/…`. **두 출력 어디에도 `internal/spec/` 로 시작하는 줄이 없다.**
+
+**명령 ②** — 새로 도입된 finding 코드 **0개**. 이 카드가 `internal/cli/` 를 만진 커밋은 하나뿐이므로 그 커밋으로 범위를 잡았다(`git diff -U0 2cfccd4eb^ 2cfccd4eb -- internal/cli/`, rc=0, 추가 704줄). 생산 코드 쪽(`spec_lint.go` + `specid/`)에서 `^\+.*"[A-Z][A-Za-z]{3,}"` 매치 **0건**(grep rc=1). finding 코드 문자열이 나타나는 추가 줄 6개는 전부 **테스트 파일**의 `countCode(out, "ParseFailure")` 이며, 기존 코드를 **참조**할 뿐 새 코드를 도입하지 않는다.
+
+**[HARD] 그리고 이 기준의 모집단 정의가 이 트리에서 깨져 있다 — 발견으로 남긴다.** `acceptance.md` 기준 11 의 전제 확인 절차는 「`git log --format='%H %s' 0b1e27877..HEAD` 의 잔여 집합(두 SPEC-ID 중 어느 것도 담지 않은 줄)이 비어 있음」을 요구한다. 그 절차가 쓰인 v0.4.0 시점에는 `HEAD == base` 라 범위가 0건이었다. **지금 그 범위는 285 커밋이다**(`git rev-list --count 0b1e27877..HEAD` → `285`) — 그 사이 이 브랜치가 `origin/develop` 을 흡수했고, 흡수된 남의 카드 커밋 수백 개가 모집단에 들어왔다. 잔여 집합은 결코 비지 않으며, 절차를 문자 그대로 따르면 **남의 커밋 수백 개의 `git show` 를 인용해야** 통과다. 문자 그대로의 절차는 실행 불가능하다.
+
+**실질로 재측정했다.** 옳은 모집단은 「이 카드가 만든 커밋」이며, 그것은 `origin/develop` 에서 도달 불가능한 non-merge 커밋이다. `git log --format='%H %s' --no-merges origin/develop..HEAD` (rc=0) → **8줄**:
+
+```
+a4fbaeb824f0688bfb11051900f4f56cc7accde8 docs(SPEC-SPEC-LINT-BLIND-AXES-001): M-A3 third recount reading at the committed state (t518)
+b65850dbedc3e12f11352122e0e244c63e9b4638 docs(SPEC-SPEC-LINT-BLIND-AXES-001): M-A3 corpus recount on the merged tree (t518)
+fc0540f4156ca11b52b99ac9d760973ae2a036f5 feat(SPEC-SPEC-LINT-BLIND-AXES-001): M-A2b announce table rejection (t518)
+2cfccd4eb304c9929bd108caabe9915004674b2e feat(SPEC-SPEC-LINT-ID-ARG-001): M-B1 resolve three argument shapes for spec lint (t518)
+97f90128431a81e14247cd964ea0d4dd1bc5c57f docs(SPEC-SPEC-LINT-BLIND-AXES-001): correct the acceptance.md §C fixture defect (t518, v0.6.0)
+458fc7ebcec1c95385ffa8c4e3131fea260068a6 feat(SPEC-SPEC-LINT-BLIND-AXES-001): M-A2 announce unjudgeable modality (t518)
+6cfcfef00daf53d58b7261f58ec9bfb626effb9d feat(SPEC-SPEC-LINT-BLIND-AXES-001): M-A1 collect table-form REQ definitions (t518)
+5d495bafca56ec82f80a8b040cec56de081e39e0 docs(t518): SPEC-SPEC-LINT-BLIND-AXES-001 + SPEC-SPEC-LINT-ID-ARG-001 plan-phase (v0.5.0)
+```
+
+**여덟 줄 전부가 두 SPEC-ID 중 하나를 담는다 — 잔여 집합이 비어 있다.** 전제는 성립한다. 크기를 비교하지 않고 집합 자체를 읽었으므로 v0.3.0 이 폐기한 개수 대조의 상쇄 문제는 여기에 없다.
+
+**판정**: AC-SLI-008 **PASS**. 다만 **기준 문구의 모집단 정의(`0b1e27877..HEAD`)는 결함이며 `--no-merges origin/develop..HEAD` 로 고쳐져야 한다** — `acceptance.md` 는 이 에이전트의 소관이 아니므로 §E.3 에 manager-spec 후속(F-B1)으로 올린다.
+
+##### 주 ④ — AC-SLI-008 의 뮤턴트는 발화된 적이 없다
+
+기준이 요구하는 뮤턴트는 「이 카드의 커밋 하나에서 `internal/spec/` 아래 파일을 한 글자 바꾸면 명령 ①의 출력에 나타난다」이다. **이 뮤턴트는 커밋된 증거에도 없고 이 실행에서도 발화시키지 않았다** — 발화시키려면 착지한 커밋을 고쳐 써야 하고, 그것은 공유 브랜치의 이력 재작성이다. **미검증으로 남긴다.** (가드의 논리는 자명에 가깝다 — `git show --name-only` 는 그 커밋이 만진 파일을 전부 낸다 — 그러나 자명함은 이 카드가 통과 사유로 인정하지 않는 것이다.)
+
+##### 주 ⑤ — AC-SLI-009 갈래 ②: 창은 닫혔고, 기준이 요구한 한 항목이 증거에 없다
+
+**창이 닫혔다.** 「함수 추가 **전** 트리」는 `97f90128431a81e14247cd964ea0d4dd1bc5c57f`(`mb1-before-head.txt` 축자)이고, 그 시점의 `go test` 출력은 그 시점에만 채취 가능하다. 이 실행에서 재채취하지 않았다 — 커밋된 채취본을 인용한다.
+
+`mb1-before-tests.txt`(전) 와 `mb1-after-tests.txt`(후) 를 대조하면 **18개 패키지 전부가 양쪽에서 `ok`** 이고 실패 집합이 양쪽 모두 공집합이다. 다섯 호출부가 사는 두 패키지는 양쪽에서 **캐시 없이 실제로 돌았다**:
+
+| 패키지 | 전 (`mb1-before-tests.txt`) | 후 (`mb1-after-tests.txt`) |
+|---|---|---|
+| `internal/cli` | `ok … 404.484s` | `ok … 482.526s` |
+| `internal/kanban` | `ok … 147.176s` | `ok … 145.593s` |
+
+`mb1-after-tests.txt` 의 나머지 16줄은 `(cached)` 다. **캐시된 `ok` 는 과거 어느 시점의 통과를 말하지 그 실행이 일어났음을 말하지 않는다** — 이 카드가 `mb1-verify-uncached-summary.txt` 에 스스로 적은 규율이다. 다섯 호출부가 캐시되지 않은 두 패키지 안에 전부 있다는 점이 그 위험을 이 자리에서만 비껴간다.
+
+**[HARD] 그러나 기준이 명시적으로 요구한 한 항목이 증거에 없다.** AC-SLI-009 갈래 ② 는 「이 다섯 경로가 인용된 출력에서 **실제로 실행됐음**을 함께 보인다 — 셀렉터가 0건을 골라도 초록은 초록으로 보이므로」를 요구한다. 커밋된 두 파일은 **패키지 단위 `ok` 줄만** 싣고 테스트 단위 출력을 싣지 않으므로, `spec_view.go:46` · `spec_status.go:72` · `spec_close.go:108` · `kanban/board_store.go:268,360` · `kanban/status_read.go:109` 의 다섯 호출부가 그 실행에서 지나갔다는 것이 **출력에서 보이지 않는다.** 패키지가 초록이라는 사실은 그 안의 특정 경로가 실행됐다는 사실보다 약하다.
+
+**부분적으로 메우는 것**: 뮤턴트 M11(`ValidateSpecID` 가 `..` 를 더 이상 거부하지 않도록 훼손)이 CAUGHT 이며(`mb1-mutants.txt` — `tests matched by selector: 8`, `specid_test.go:39: ValidateSpecID("SPEC-..-001") = nil, want non-nil error`), 이는 **`ValidateSpecID` 의 거부 조건이 실제로 판정에 닿는다**는 것을 세운다. 그러나 M11 이 잡힌 자리는 `internal/cli/specid` 의 자기 테스트이지 **다섯 소비자 호출부가 아니다.** 무변형 단언의 비공허성은 서고, 「훑은 집합이 비어 있지 않다」는 서지 않는다.
+
+**판정: PASS-WITH-DEBT.** 무변형 자체는 두 출력의 대조로 관측됐고 뮤턴트로 비공허하다. **미상환 부채**: 다섯 호출부의 실행 관측. 창이 닫혀 소급 채취가 불가능하므로, 상환은 후속 카드에서 **후 트리 단독으로** `go test -v -run` 셀렉터가 그 다섯 경로를 지나는 테스트를 실제로 골랐음을 보이는 형태여야 한다(전 트리 없이도 「훑은 집합이 비어 있지 않다」는 잴 수 있다).
+
+##### 주 ⑥ — AC-SLI-010 갈래 ①: 세 요소 전수 확인 (이 실행에서 재판독)
+
+`spec.md §H`(트리 `t518` · HEAD `a4fbaeb82`)에서 셋을 모두 읽었다.
+
+1. **처분**: 「**[HARD] 이 카드는 `spec_status.go:18`을 통합하지 않는다** … 그대로 둔다.」
+2. **근거**: 세 항목이 명시돼 있다 — ① 그 정규식은 자기 자리에서 옳다(git 커밋 메시지 스캔 용도이므로 앵커 없는 편이 맞다) ② 반경이 이 카드의 것이 아니다(REQ-SLI-004 가 동결한 대조군 바깥의 세 번째 축) ③ 위험의 모양이 다르다(「뜻이 다른 두 정규식이 있다」이지 「어느 하나가 틀렸다」가 아니다).
+3. **위험의 이름**: **동명-이의 재사용 드리프트**.
+
+세 요소가 모두 있으므로 **PASS**.
+
+#### 뮤턴트 표 (14개 — 13 CAUGHT · 1 NOT CAUGHT)
+
+출처: `.moai/reports/t518/mb1-mutants.txt`(커밋 `2cfccd4eb` 에 포함). **이 실행에서 재발화시키지 않았다 — 재판독이다.**
+
+| 뮤턴트 | 훼손 내용 | 겨냥 AC | rc | 결과 |
+|---|---|---|---|---|
+| M1 | ID 해석기 제거 | 001a/001b/001c | 1 | CAUGHT |
+| M2 | 디렉터리 분기 제거 | 002 | 1 | CAUGHT |
+| M3 | rc=3 진단 제거 | 003 | 1 | CAUGHT |
+| **M4** | 경로 신호 선행 배제만 제거(앵커 유지) | 004a | 0 | **NOT CAUGHT** (주 ②) |
+| M4b | 선행 배제 제거 **+** 모양 완화 | 004a | 1 | CAUGHT |
+| M5 | 모든 미해결 인자를 rc=3 으로 | 004b | 1 | CAUGHT |
+| M6 | 판별식을 `spec_status.go:18` 의 앵커 없는 패턴으로 교체 | 005 | 1 | CAUGHT |
+| M7 | 도움말을 `lint [spec.md...]` 로 되돌림 | 006 | 1 | CAUGHT |
+| M8 | 첫 인자만 해석 | 007 | 1 | CAUGHT |
+| M9 | ID 기준 디렉터리를 `findProjectRootFn` → cwd | 001c | 1 | CAUGHT |
+| M10 | 모양 검사를 `spec_lint.go` 로컬 사본(후보 α)으로 이동 | 009 갈래 ① | 1 | CAUGHT |
+| M11 | `ValidateSpecID` 가 `..` 를 거부하지 않게 | 009 갈래 ② 비공허성 | 1 | CAUGHT |
+| M12 | `spec_status.go:18` 리터럴에 앵커 부착 | 010 갈래 ② | 1 | CAUGHT |
+| M13 | 복사된 모양 리터럴을 `\d{3}` → `\d+` 로 확장 | REQ-SLI-006 드리프트 가드 | 1 | CAUGHT |
+| M14 | 진단을 stderr 에 쓰지 않음(rc=3 유지) | 003 비공허성 | 1 | CAUGHT |
+
+**발화되지 않은 뮤턴트 1건**: AC-SLI-008 의 `internal/spec/` 접촉 뮤턴트(주 ④).
+
+#### 이 실행의 검증 (신규 측정 · 트리 `t518` · HEAD `a4fbaeb82`)
+
+**① AC 겨냥 12개 테스트 — rc=0.** `go test -count=1 -v -timeout 10m ./internal/cli/ -run '<12개 이름>'` → `go test rc=0`, 전문 `.moai/reports/t518/mb1-rerun-targeted-cli.txt`:
+
+```
+--- PASS: TestSpecLint_IDArg_ResolvesToSpecMD (0.36s)
+--- PASS: TestSpecLint_IDArg_EqualsPathForm (0.50s)
+--- PASS: TestSpecLint_IDArg_FromSubdirectory (0.24s)
+--- PASS: TestSpecLint_DirectoryArg (0.39s)
+--- PASS: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+--- PASS: TestSpecLint_PathForm_Unchanged (0.16s)
+--- PASS: TestSpecLint_MissingPathArg_StillParseFailure (0.00s)
+--- PASS: TestSpecLint_AnchorInvariant_SPEC_A_1 (0.00s)
+--- PASS: TestSpecLintHelp_NamesThreeArgumentShapes (0.00s)
+--- PASS: TestSpecLint_MixedArgs (0.36s)
+--- PASS: TestSpecStatusIDPattern_LiteralFrozen (0.00s)
+--- PASS: TestShapeFunction_HomeAndName (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.422s
+```
+
+**셀렉터가 12건을 골랐다** — 위 `--- PASS` 12줄이 그 자체로 훑은 집합이 비어 있지 않다는 증거다.
+
+**② `internal/cli/specid` 패키지 — rc=0.** `go test -count=1 -v -timeout 10m ./internal/cli/specid/` → `specid rc=0`, 전문 `.moai/reports/t518/mb1-rerun-specid.txt`:
+
+```
+--- PASS: TestHasCanonicalSpecIDShape (0.00s)
+--- PASS: TestCanonicalShapeLiteral_MatchesInternalSpecSource (0.00s)
+--- PASS: TestValidateSpecID (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	0.355s
+```
+
+**③ 범위 전체 — rc=1, 실패 1건이며 이 카드의 표면이 아니다.** `go test -count=1 -timeout 20m ./internal/cli/... ./internal/kanban/...` → `rc=1`, 전문 `.moai/reports/t518/mb1-rerun-scoped.txt`. 판정 줄 축자:
+
+```
+--- FAIL: TestGateCmd_SecondRunWaitsForFirst (5.27s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	489.022s
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	8.317s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	19.405s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	8.662s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	11.095s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	6.193s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	11.376s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	7.856s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	12.229s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	10.377s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	9.450s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	7.565s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	11.232s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	12.586s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	11.756s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	13.973s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	15.481s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	153.586s
+FAIL
+```
+
+`--- FAIL` 은 **정확히 1줄**이다. 그 실패의 단언 메시지 축자:
+
+```
+    gate_lock_cli_test.go:227: the runs' execution windows overlap: second run's first executed step began 2026-09-08T07:07:25.907+09:00, first run's last executed step ended 2026-09-08T07:07:25.907+09:00
+```
+
+**두 타임스탬프가 밀리초까지 같다** — 단언이 「겹침」의 경계 조건(동일 시각)을 겹침으로 읽는다. 같은 트리에서 단독 재실행은 통과한다:
+
+```
+go test -count=1 -v -timeout 5m ./internal/cli/ -run 'TestGateCmd_SecondRunWaitsForFirst'   → rc=0
+--- PASS: TestGateCmd_SecondRunWaitsForFirst (5.42s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.320s
+```
+
+(전문 `.moai/reports/t518/mb1-rerun-gatelock.txt`.)
+
+**[HARD] 이것을 「기존 결함」이라고 단정하지 않는다 — 잰 것만 적는다.** 관측된 것은 셋이다: ① 이 카드의 diff 는 `spec_lint.go` · `spec_lint_test.go` · `specid/` 넷뿐이고 `gate_lock_cli_test.go` 나 게이트 락 경로를 포함하지 않는다(주 ③ 명령 ① 출력) ② 실패 단언이 시각 비교이고 두 값이 같다 ③ 단독 재실행이 통과한다. **이 카드의 착지 이전에 같은 실패가 있었는지는 재지 않았다** — base 트리에서 재현을 시도하지 않았으므로 「기존부터 있었다」는 미검증이다. 판정으로 적을 수 있는 것은 **부하 의존 타이밍 실패이며 이 카드가 만진 표면 밖**이라는 데까지다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-08
+run_commit_sha: 2cfccd4eb304c9929bd108caabe9915004674b2e   # 구현 착지 커밋. 이 §E.2/§E.3 기록 자체는 후속 backfill 커밋
+run_status: implemented-with-debt
+ac_pass_count: 12            # 식별자 13개 중 12개 PASS
+ac_pass_with_debt_count: 1   # AC-SLI-009 갈래 ② (다섯 호출부 실행 관측 미상환)
+ac_fail_count: 0
+mutants_total: 14
+mutants_caught: 13
+mutants_not_caught: 1        # M4 — 방어 두 겹 중 한 겹만 벗긴 변형
+mutants_never_fired: 1       # AC-SLI-008 의 internal/spec 접촉 뮤턴트 (주 ④)
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not_performed        # push 하지 않음 (배차 지시)
+l44_post_push_fetch: not_applicable
+new_warnings_or_lints_introduced: not_measured   # golangci-lint 미실행 — E5 참조
+cross_platform_build: not_measured               # GOOS 교차 빌드 미실행 — E2 참조
+coverage: not_measured                           # -cover 미실행 — E3 참조
+total_run_phase_files: 19                        # 커밋 2cfccd4eb 의 파일 수 (코드 4 + 증거 15)
+m1_to_mN_commit_strategy: "plan §C M1-M5 를 단일 커밋 2cfccd4eb 으로 압축. 마일스톤↔커밋 대응은 커밋 이력에서 복원되지 않으며 §E.2 의 마일스톤 대조표가 그것을 대신한다."
+verification_tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+verification_head: a4fbaeb82
+verification_branch: WT-spec-lint-axes
+```
+
+### E1 — AC 판정 행렬
+
+§E.2 「AC 판정표」가 정본이다. 요약: 식별자 13개 중 **PASS 12 · PASS-WITH-DEBT 1 · FAIL 0**.
+
+### E2 — 크로스 플랫폼 빌드
+
+**미측정.** 이 실행에서 GOOS 교차 빌드를 돌리지 않았다. 부재를 통과로 읽지 않는다.
+
+### E3 — 커버리지
+
+**미측정.** `-cover` 를 실행하지 않았다.
+
+### E4 — 서브에이전트 경계
+
+이 실행은 서브에이전트를 스폰하지 않았다. 해당 없음.
+
+### E5 — lint
+
+**미측정.** `golangci-lint` 를 실행하지 않았다. (`mb1-rerun-scoped.txt` 안에 `golangci-lint: skipped — none of its config files exist in the project directory` 라는 줄이 있으나 그것은 **게이트 테스트가 낸 출력**이지 이 실행의 lint 측정이 아니다 — 남의 출력을 자기 측정으로 인용하지 않는다.)
+
+### E6 — push 상태
+
+**push 하지 않았다** — 배차 지시. 커밋만 만든다.
+
+### E7 — 상태 전이
+
+`spec.md` frontmatter `status: draft → in-progress`, `updated` 갱신. **이 에이전트가 수행하는 유일한 상태 전이다.** `in-progress → implemented → completed` 는 manager-docs 소관이다. (`plan.md` / `acceptance.md` 는 `status:` 필드를 갖지 않아 전이 대상이 아니다.)
+
+### manager-spec 후속 (이 에이전트의 소관 밖 — 계획 아티팩트)
+
+| # | 아티팩트 | 발견 | 근거 |
+|---|---|---|---|
+| F-B1 | `acceptance.md` 기준 11 (AC-SLI-008) | 전제 확인의 **모집단 정의가 이 트리에서 실행 불가능**하다. `0b1e27877..HEAD` 는 `origin/develop` 흡수 이후 285 커밋이며 잔여 집합이 결코 비지 않는다. `--no-merges origin/develop..HEAD`(8커밋) 로 고쳐야 한다 | §E.2 주 ③ |
+| F-B2 | `acceptance.md` 기준 12 (AC-SLI-009 갈래 ②) | 요구한 「다섯 호출부가 실제로 실행됐음」이 **전 트리 창이 닫힌 뒤에는 소급 충족 불가능**하다. 후 트리 단독으로 잴 수 있는 형태로 고치거나 부채로 명시해야 한다 | §E.2 주 ⑤ |
+| F-B3 | `acceptance.md` 기준 8 (AC-SLI-004a) | M4 가 못 잡히는 것이 **방어 두 겹** 때문이라는 사실이 기준 문서에 없다. 다음 독자가 `NOT CAUGHT` 를 가드 결함으로 오독할 수 있다 | §E.2 주 ② |
+| F-B4 | `spec.md` §A 또는 `acceptance.md` §D | AC 식별자가 **소스 주석에만** 있고 증거 파일에는 테스트 이름만 남는다. 두 축의 대응표가 아티팩트 어디에도 없어 배차 단계에서 AC-SLI-001b 를 미판정으로 오독하는 일이 실제로 일어났다 | §E.2 「배차문이 제기한 두 의심의 처분」 |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
