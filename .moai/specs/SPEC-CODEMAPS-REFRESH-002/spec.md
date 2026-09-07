@@ -373,7 +373,7 @@ missing=48        # 그중 internal/harness/* 하위 12개
 | AC-CM2-009 | 스탬프 도달성 — `origin/develop` 조상 | ✓ |
 | AC-CM2-010 | 게이트 fresh, 타 계층 stale 없음 | ✓ |
 | AC-CM2-011 | 범위 위생 — 변경 집합이 허용 3경로에 한정 | ✓ |
-| AC-CM2-012 | 관측 리포트 2항목 수출 (설정 무변경 동반) | ✓ |
+| AC-CM2-012 | 관측 리포트 3항목 수출 (설정 무변경 동반) | ✓ |
 
 ## §E. Cross-References
 
