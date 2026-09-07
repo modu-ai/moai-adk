@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILLCONFIG-SHAPE-001
 title: "Codex [[skills.config]] surface measurement — load behavior, path value shapes, and real-environment stale-entry observation on codex-cli 0.153.4"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
