@@ -1,0 +1,82 @@
+
+=== coordinates ===
+worktree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t533
+HEAD:     6a46c0edbe2dec6014c685184aa2cf9dc346cc59
+tree:     4b07b9eb68e98f6ef8a2a861e854431a330cc27d
+
+=== AC-CGM-001 — ~/.codex snapshot selectors (N6-corrected: find, not the glob pair) ===
+entries (/bin/ls -A):            72
+mtimes  (find -maxdepth 1):      72
+mtimes  (legacy glob pair):      70  <- fewer: the measured hole
+config.toml mtime:               1788771295
+t533 residue in ~/.codex:        0
+
+=== AC-CGM-002 — ghost count, two independent counters ===
+grep: 49
+awk:  49
+
+=== AC-CGM-003 — the counting trap (whole-file count is NOT a block count) ===
+whole-file 'enabled = false': 53
+in-block   'enabled = false': 49
+
+=== AC-CGM-004 — ghost paths absent, root alive ===
+MISSING /Users/goos/.codex/skills/moai-design-tools/SKILL.md
+MISSING /Users/goos/.codex/skills/moai-docs-generation/SKILL.md
+MISSING /Users/goos/.codex/skills/moai-domain-backend/SKILL.md
+MISSING /Users/goos/.codex/skills/moai-domain-database/SKILL.md
+MISSING /Users/goos/.codex/skills/moai-domain-frontend/SKILL.md
+root listing: .system hatch-pet 
+
+=== AC-CGM-005 — prune never wrote; discriminator is the PRODUCER's filename format ===
+strict (T...Z format): rc=1 len=0 out=[]
+loose control, same tool:  2
+loose control, DIFFERENT tool (find): 2
+
+=== AC-CGM-006 — timeline is not bracketed: every snapshot holds the same count ===
+config.toml.bak-20260822-022202          49
+config.toml.bak-20260901-133347          49
+config.toml.bak                          49
+config.toml                              49
+
+=== AC-CGM-007 — the reserializer is not moai ===
+non-test Go files naming skills.config:
+internal/cli/clean.go
+internal/cli/codex_skills_prune.go
+internal/cli/doctor_codex.go
+internal/codexwiring/skills.go
+write-verb probe in codexwiring/skills.go: rc=1 len=0
+control, same file (grep -c 'func '):      5
+control, DIFFERENT tool (awk):             5
+path= list, 2026-08-22 vs now — ordered diff:
+1d0
+< path = "/Users/goos/.codex/skills/moai/SKILL.md"
+49a49
+> path = "/Users/goos/.codex/skills/moai/SKILL.md"
+                            sorted (set) diff:
+(ordered diff non-empty + sorted diff empty  ==  reordering only)
+
+=== AC-CGM-008 — judgeCodexSkillEntry never consults 'enabled' ===
+function starts: 59:func judgeCodexSkillEntry(e codexwiring.SkillEntry) codexSkillPruneVerdict {
+function ends:   110
+probe  'enabled' in body: rc=1 len=1 out=[0]
+control 'Path'  in body:  rc=0 len=2 out=[10]
+needle-viability control (same instrument, parser file): 21
+
+=== AC-CGM-009 — the invocation-history gap: instrument SCOPE, not instrument absence ===
+~/.moai/logs probe: len=0  (len=0 means NO OUTPUT, which is not a zero)
+~/.moai/logs control (files naming moai): 3
+that corpus is: census-stderr.log hook-stderr.log hook-stderr.log.1 vercel-prod-guard.log 
+whatever 'grep' resolves to here, -c 'moai': rc=0 len=4 out=[1071]
+REAL BINARY /usr/bin/grep -c 'moai':         rc=0 len=4 out=[1071]
+REAL BINARY /usr/bin/grep -c 'codex-skills': rc=1 len=1 out=[0]
+REAL BINARY /usr/bin/grep -c 'moai clean':   rc=1 len=1 out=[0]
+different tool proves the corpus is not empty: : 1782909052:0;moai glm
+WORKING instrument LC_ALL=C grep -ac 'moai':         rc=0 len=4 out=[1071]
+WORKING instrument LC_ALL=C grep -ac 'codex-skills': rc=1 len=1 out=[0]
+WORKING instrument LC_ALL=C grep -ac 'moai clean':   rc=1 len=1 out=[0]
+scope limit 3 (measured truncation ceiling): 18:SAVEHIST=1000
+                        entries in file now: 1649
+scope limit 4 (other terminals ARE visible): 20 distinct lane names
+
+=== done — this script wrote nothing under ~/.codex ===
+config.toml mtime (unchanged expected): 1788771295
