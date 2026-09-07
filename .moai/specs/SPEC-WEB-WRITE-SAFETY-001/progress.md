@@ -166,7 +166,7 @@ verbatim RED 출력: `.moai/reports/t517/evidence/RED-settings-write-safety.log`
 
 ```yaml
 run_complete_at: 2026-09-07
-run_commit_sha: "pending-backfill-run"  # M5 커밋 SHA — 착지 후 백필 (D3 backfill window)
+run_commit_sha: "3d31ffff2"  # M5 커밋 — run-phase 최종 커밋 (백필 완료)
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0

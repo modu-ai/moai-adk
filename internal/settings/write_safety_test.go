@@ -154,3 +154,122 @@ func blankLineCount(s string) int {
 	}
 	return count
 }
+
+// --- coverage reinforcement for the SPEC-WEB-WRITE-SAFETY-001 repairs ---
+
+// TestReadSeamScalarEdges covers the unreadable-target branches of
+// readSeamScalar: an absent file, an empty document, a missing key, a
+// non-scalar target, and the happy path.
+func TestReadSeamScalarEdges(t *testing.T) {
+	t.Parallel()
+
+	if v, ok := readSeamScalar(t.TempDir(), "feedback", []string{"feedback", "repository"}); ok {
+		t.Errorf("absent file reported ok=%v value=%q", ok, v)
+	}
+
+	root := t.TempDir()
+	seedSectionFixture(t, root, "feedback")
+
+	if v, ok := readSeamScalar(root, "feedback", []string{"feedback", "no_such_key"}); ok {
+		t.Errorf("missing key reported ok=%v value=%q", ok, v)
+	}
+	if v, ok := readSeamScalar(root, "feedback", []string{"feedback", "repository", "too_deep"}); ok {
+		t.Errorf("over-deep path reported ok=%v value=%q", ok, v)
+	}
+	// A path segment whose parent is a scalar must be unreadable.
+	if v, ok := readSeamScalar(root, "feedback", []string{"feedback", "repository", "nested"}); ok {
+		t.Errorf("scalar-parent path reported ok=%v value=%q", ok, v)
+	}
+	if v, ok := readSeamScalar(root, "feedback", []string{"feedback", "repository"}); !ok || v != "modu-ai/moai-adk" {
+		t.Errorf("happy path: ok=%v value=%q, want ok=true modu-ai/moai-adk", ok, v)
+	}
+}
+
+// TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp covers repair (i) branch (b):
+// a bool seam field whose key is ABSENT on disk submitting "false" must not
+// create the key — absent IS false for a bool key.
+func TestApplySchemaEditsSeamAbsentKeyFalseIsNoOp(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	before := seedSectionFixture(t, root, "gate")
+
+	if err := ApplySchemaEdits(root, map[string]string{"gate.pre_commit.enabled": "false"}); err != nil {
+		t.Fatalf("ApplySchemaEdits: %v", err)
+	}
+	after := readSection(t, root, "gate")
+	if after != before {
+		t.Errorf("absent-key + false submission created the key (no-op expected)\n--- before ---\n%s\n--- after ---\n%s", before, after)
+	}
+}
+
+// TestApplySchemaEditsSeamAbsentKeyTrueStillWrites is the companion control
+// for the absent-key branch: a bool field absent on disk submitting "true"
+// IS a real change (the key must be created).
+func TestApplySchemaEditsSeamAbsentKeyTrueStillWrites(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedSectionFixture(t, root, "gate")
+
+	if err := ApplySchemaEdits(root, map[string]string{"gate.pre_commit.enabled": "true"}); err != nil {
+		t.Fatalf("ApplySchemaEdits: %v", err)
+	}
+	after := readSection(t, root, "gate")
+	if !strings.Contains(after, "enabled: true") {
+		t.Errorf("absent-key + true submission not persisted:\n%s", after)
+	}
+}
+
+// TestPatchFileSpliceFallsBackForUpsert covers the re-encode fallback: an
+// edit whose path does not exist (upsert) cannot take the splice path and
+// must still persist through the fallback.
+func TestPatchFileSpliceFallsBackForUpsert(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedSectionFixture(t, root, "feedback")
+	path := filepath.Join(root, ".moai", "config", "sections", "feedback.yaml")
+
+	err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{
+		{Path: []string{"feedback", "brand_new_key"}, Value: "hello"},
+	})
+	if err != nil {
+		t.Fatalf("PatchFile(upsert): %v", err)
+	}
+	after := readSection(t, root, "feedback")
+	if !strings.Contains(after, "brand_new_key: hello") {
+		t.Errorf("upsert not persisted:\n%s", after)
+	}
+}
+
+// TestPatchFileSpliceQuotedScalarChange covers the quoted-style line splice:
+// a double-quoted scalar keeps its quoting after a value change, and the
+// re-parse verification accepts the hand-quoted replacement.
+func TestPatchFileSpliceQuotedScalarChange(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "crosssession.yaml")
+	original := "crosssession:\n    inbound: \"select\"\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{
+		{Path: []string{"crosssession", "inbound"}, Value: "isolate_machines"},
+	})
+	if err != nil {
+		t.Fatalf("PatchFile(quoted): %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(after), `"isolate_machines"`) {
+		t.Errorf("quoted scalar replacement lost its quoting:\n%s", after)
+	}
+	if strings.Count(string(after), "\n") != strings.Count(original, "\n") {
+		t.Errorf("unexpected document shape (splice should touch one line only):\n%s", after)
+	}
+}

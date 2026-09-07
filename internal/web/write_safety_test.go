@@ -151,3 +151,67 @@ func TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst(t *testing.T) {
 		t.Errorf("duplicate form value for %q resolved to a single edit %q instead of being detected", textField, edits[textField])
 	}
 }
+
+// TestParseSchemaFormDuplicateCompanionRejected covers the hidden-bool
+// companion duplicate branch: name+"__present" submitted twice is the same
+// defect shape as a duplicated value field.
+func TestParseSchemaFormDuplicateCompanionRejected(t *testing.T) {
+	var boolField string
+	for _, f := range settings.AllFields() {
+		if schemaEditableField(f) && f.Type == settings.TypeBool {
+			boolField = f.Name
+			break
+		}
+	}
+	if boolField == "" {
+		t.Skip("no editable TypeBool schema field available")
+	}
+
+	form := url.Values{}
+	form.Add(boolField+"__present", "1")
+	form.Add(boolField+"__present", "1")
+	form.Add(boolField, "1")
+	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err := req.ParseForm(); err != nil {
+		t.Fatal(err)
+	}
+
+	edits, errs := parseSchemaForm(req, nil)
+	if _, ok := errs[boolField]; !ok {
+		t.Errorf("duplicate companion for %q not detected; edits=%v errs=%v", boolField, edits, errs)
+	}
+	if _, duplicated := edits[boolField]; duplicated {
+		t.Errorf("duplicated companion still produced an edit for %q", boolField)
+	}
+}
+
+// TestParseSchemaFormEmptySubmitsOptIn documents the EmptySubmits rule the
+// duplicate guard must not break: for those fields a "" submission IS the
+// value (unset restore), so a single empty submission must still produce an
+// edit.
+func TestParseSchemaFormEmptySubmitsOptIn(t *testing.T) {
+	var field string
+	for _, f := range settings.AllFields() {
+		if schemaEditableField(f) && f.EmptySubmits {
+			field = f.Name
+			break
+		}
+	}
+	if field == "" {
+		t.Skip("no EmptySubmits field available")
+	}
+
+	form := url.Values{}
+	form.Add(field, "")
+	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if err := req.ParseForm(); err != nil {
+		t.Fatal(err)
+	}
+
+	edits, errs := parseSchemaForm(req, nil)
+	if v, ok := edits[field]; !ok || v != "" {
+		t.Errorf("EmptySubmits field %q: empty submission must produce edit value \"\"; edits=%v errs=%v", field, edits, errs)
+	}
+}
