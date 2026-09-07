@@ -272,6 +272,24 @@ resolves to `push`; M3 has not run). The live log in the primary checkout curren
 (lead) session, not a run-phase act, and no attribution beyond §E.2's earlier session record was
 verified here.
 
+### M2 — sibling output styles are out of scope (measured, not assumed)
+
+plan.md §F M2 required deciding by measurement whether `moai-easy.md` and `moai-learn.md` carry the
+same banner rules and therefore need the same pull-mode branch. Measured at HEAD `6839f717a`:
+
+- `grep -n 'Recommended action' .claude/output-styles/moai/*.md` → **4 hits, all in `moai.md`**
+  (`:290`, `:451`, `:463`, `:469`); zero hits in `moai-easy.md` and zero in `moai-learn.md`.
+- `grep -n '⏭️ Next\|Recommended action\|Insight\|Error Recovery' .claude/output-styles/moai/moai-easy.md .claude/output-styles/moai/moai-learn.md`
+  → stdout empty; exit code `1`.
+- Catch-all control on the empty result (an empty sweep asserts nothing on its own):
+  `grep -c '권장\|Recommended' .claude/output-styles/moai/moai-easy.md .claude/output-styles/moai/moai-learn.md`
+  → `moai-learn.md:0`, `moai-easy.md:0`. Neither sibling style contains the token `권장` or
+  `Recommended` **anywhere**, so there is no recommendation-label rule in either file to condition.
+
+**Decision: both sibling styles are OUT of M2 scope, and neither was edited.** The S2-S5 banner
+rules exist only in `moai.md`. `moai-easy.md` does define an AskUserQuestion banner (its "Quick
+Question" banner) but states no first-option label rule, which the catch-all control confirms.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

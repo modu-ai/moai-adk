@@ -251,6 +251,7 @@ When `conversation_language: ko`, emitting raw English literals from the §8 tem
 | Insight: Why | `Why:` | `이유:` |
 | Insight: Alternatives | `Alternatives:` | `대안:` |
 | Insight: Implications | `Implications:` | `함의:` |
+| Insight: Your call (pull mode) | `Your call:` | `판단은 사용자 몫:` |
 | Delegation: Specialist | `Specialist:` | `전문가:` (또는 `Specialist:` 그대로 — technical role identifier) |
 | Delegation: Scope | `Scope:` | `범위:` |
 | Delegation: Constraints | `Constraints:` | `제약:` |
@@ -355,6 +356,7 @@ What: [decision taken]
 Why: [rationale]
 Alternatives: [what was considered and rejected]
 Implications: [downstream effects]
+Your call: [pull mode only — what is left for the user to decide]
 ──────────────────────────────────────────────
 ```
 
@@ -363,6 +365,10 @@ Header translation table (banner prefix `🤖 MoAI ★` is structural — preser
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
 | Banner | `🤖 MoAI ★ Insight` | `🤖 MoAI ★ 인사이트` | `🤖 MoAI ★ インサイト` | `🤖 MoAI ★ 洞察` |
+| Your call (pull mode) | `Your call:` | `판단은 사용자 몫:` | `判断はユーザーに:` | `由您决定:` |
+
+Rules:
+- [HARD] **User-judgment slot**: `Your call:` renders **only** while `interview.recommendation_mode` is `pull`, and is absent under `push` — where the banner reports a decision already taken, as it always has. Under `pull` the banner still reports `What` / `Why` / `Alternatives` / `Implications` in full; the added line names the judgment left to the user instead of asserting the orchestrator's preference among the alternatives. It carries no preference claim of its own — listing an alternative there as preferred re-introduces the recommendation the mode withholds. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 ### Verification Matrix [HARD]
 
@@ -461,12 +467,14 @@ Header translation table:
 | Findings | `Findings:` | `발견 사항:` | `発見事項:` | `发现:` |
 | Drift | `Drift:` | `드리프트:` | `ドリフト:` | `偏移:` |
 | Recommended action | `Recommended action:` | `권장 조치:` | `推奨アクション:` | `建议措施:` |
+| Next action (pull mode) | `Next action:` | `다음 조치:` | `次のアクション:` | `下一步措施:` |
 
 Rules:
 - [HARD] `🔍 Scope` MUST name files / commits / patterns investigated (no vague "the codebase")
 - [HARD] `📊 Findings` MUST quantify (N items, N% match, classification breakdown)
 - [HARD] `⚠️ Drift` is optional; render only when state divergence detected (stale snapshot vs HEAD, parallel session interleave, etc.)
 - [HARD] `⏭️ Recommended action` MUST be a single-line actionable directive (concrete command, decision option, or AskUserQuestion handoff)
+- [HARD] **Pull-mode withholding**: the rule above is the `push`-mode branch. While `interview.recommendation_mode` is `pull`, the field key renders as `Next action` (the pull-mode row of the table above) and its body states the available next step(s) **without naming one as preferred** — the banner detects and explains, it does not decide. The single-line and concreteness requirements are unchanged; only the preference claim is withheld. An explicit user request for a recommendation restores the `Recommended action` form. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] **Report-Before-Ask binding**: when the turn's next action is a decision `AskUserQuestion` whose options derive from investigation results, the Discovery banner + per-source findings detail MUST precede the AskUserQuestion call in the same turn. A one-line completion claim followed immediately by the question, or findings carried only in option `preview` fields (preview-as-report substitution), violates the gate — every option codename must be explained in the preceding report. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Report-Before-Ask Gate
 
 ### Race Absorbed [HARD]
@@ -535,6 +543,7 @@ Rules:
 - [HARD] Lesson counters preserved verbatim (`L33 (8th)`, `L44 (9x)`, etc.) — they encode sustained-pattern provenance
 - [HARD] SPEC-ID tokens preserved verbatim (`SPEC-<DOMAIN>-NNN` format)
 - [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
+- [HARD] **Pull-mode withholding**: while `interview.recommendation_mode` is `pull`, `⏭️ Next` enumerates the candidate next steps rather than naming a single preferred one, unless the successor is mechanically determined (exactly one candidate remains). Concreteness is unchanged — every enumerated candidate is still a concrete SPEC-ID or AskUserQuestion outcome. The `Next` field key is already preference-neutral, so it is unchanged in every locale. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
 
 ### Epic Status [HARD]
@@ -573,6 +582,7 @@ Rules:
 - [HARD] `📋 Current SPEC` MUST include SPEC-ID + Tier (S/M/L) + phase (plan/run/sync/mx) + milestone position (e.g., `M3/M6` for Tier M, omit if Tier S single-pass)
 - [HARD] `📊 Epic progress` reports the active Epic the Current SPEC contributes to (typically `Tier S minimal N/M`)
 - [HARD] `⏭️ Next` MUST be concrete: next SPEC-ID, next phase command, or AskUserQuestion decision point
+- [HARD] **Pull-mode withholding**: while `interview.recommendation_mode` is `pull`, `⏭️ Next` enumerates the candidate next steps rather than naming a single preferred one, unless the successor is mechanically determined (exactly one candidate remains). Concreteness is unchanged — every enumerated candidate is still a concrete SPEC-ID, phase command, or AskUserQuestion decision point. The `Next` field key is already preference-neutral, so it is unchanged in every locale. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] When emitted with Progress Board, place Epic Status banner immediately ABOVE the Progress Board (banner = Epic context, Progress Board = task-level checklist within Epic)
 - [HARD] Parallel-line work (chore commit while SPEC sync-phase pending): annotate `🎯 phase position` as `parallel-line · [chore description]` to signal Epic lifecycle preservation
 
@@ -600,6 +610,9 @@ Rules:
    do not proceed as if the delegation returned cleanly.
 ──────────────────────────────────────────────
 ```
+
+Rules:
+- [HARD] **Preference-neutral option ordering**: the `A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve` sequence above is a fixed, stable order, not a ranking — position A is not a recommendation. While `interview.recommendation_mode` is `pull`, no option carries a `(Recommended)` / `(권장)` label and none is described more favorably than the facts justify; the order stays as written so the four options remain recognizable across turns. Under `push`, the recommendation signal is carried by the label on the first option per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards — never by re-sorting this list. Re-ordering to put a preferred option first is a preference claim by other means, and is prohibited in both modes.
 
 ### Progress Board [HARD]
 
