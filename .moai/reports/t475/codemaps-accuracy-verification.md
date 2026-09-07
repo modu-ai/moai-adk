@@ -172,3 +172,373 @@ docs-truth.md:L80     exit=0    `chain`
 ```
 
 집합 대조도 함께 돌렸다 — `candidates.txt` 와 판정 표의 단위 집합이 양방향으로 동일하다(`comm -23`/`comm -13` 모두 무출력).
+
+---
+
+## §② 재생성 + 편입 (REQ-CM2-003 / REQ-CM2-004 / AC-CM2-003 / AC-CM2-004)
+
+### ②-a 사본 선행 (M2.0) — 재생성의 선행 조건
+
+사본은 M1 단계에서 이미 떴다(판정 인용 좌표를 재생성 후에도 해석 가능한 파일에 고정하기 위해). 재생성 직전 재확인:
+
+```
+$ /bin/ls .moai/reports/t475/pre-regen/ | wc -l
+       6
+$ /bin/ls .moai/reports/t475/pre-regen/
+data-flow.md
+dependencies.md
+docs-truth.md
+entry-points.md
+modules.md
+overview.md
+```
+
+**측정 주의**: 이 셸의 프로필이 `ls` 를 `ls -la` 로 alias 하므로 aliased `ls | wc -l` 은 `total` 행과 `.`/`..` 을 함께 세어 `9` 를 낸다. 판정에 쓴 것은 unaliased `/bin/ls` 다.
+
+### ②-b 생성기 5문서 재생성 (M2.1)
+
+`/moai codemaps --force` 의 실행면(`.claude/skills/moai/workflows/codemaps.md` Phase 3)이 선언하는 산출은 **5개**다 — `overview.md` · `modules.md` · `dependencies.md` · `entry-points.md` · `data-flow.md`. 다섯 전부를 현재 트리(HEAD `52f863f36`, described_roots `[internal, cmd, pkg]`)에서 재측정해 다시 썼다.
+
+```
+$ /bin/ls .moai/project/codemaps/
+data-flow.md
+dependencies.md
+docs-truth.md
+entry-points.md
+modules.md
+overview.md
+provenance.json
+```
+
+7항목(문서 6 + `provenance.json`). `docs-truth.md` 는 이 재생성의 산출물이 **아니며** §③ 이 별도로 담당한다.
+
+재측정된 주요 값(전부 이 트리에서 실행한 명령의 출력):
+
+| 값 | 직전 판(앵커 `25a3212a9`) | 이 판(`52f863f36`) |
+|---|---|---|
+| 비테스트 Go 파일 | 1096 | **1114** |
+| 테스트 Go 파일 | 1771 | **1812** |
+| Go 패키지 총수 | 137 | **139** |
+| 임베드 템플릿 파일 | 564 | **581** |
+| 최상위 집계 import 엣지 | 205 | **208** |
+| `internal/cli` fan-out | 58 | **59** |
+| `internal/core` fan-in | 6 | **7** |
+| `internal/statusline` fan-out | 7 | **8** |
+| `rootCmd.AddCommand` (root.go `init()`) | 26 | **29** |
+| `AddCommand` 호출 파일 수 | 64 | **65** |
+| `mcp_server.go` 의 `add(...)` | 28 | **29** |
+| go.mod direct require | 30 | **29** |
+
+**새 발견 — 직전 판의 두 진술이 이 트리에서 거짓이다.** 둘 다 재생성 문서 본문에 정정으로 실었다.
+
+1. **패키지 단위 엣지 1638 은 재현되지 않는다.** 이 판의 명령(`go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` + 모듈 경로 필터)은 **345** 를 낸다. 직전 판이 인용한 명령 문자열이 생략형(`'{{range .Imports}}...'`)이라 무엇을 셌는지 복원할 수 없으므로, 이 판은 명령과 그 출력을 함께 싣고 차이를 명시했다(`overview.md` · `dependencies.md`).
+2. **"`internal/hook/session_start.go`(67KB)가 트리 최대 비테스트 Go 파일"은 더 이상 사실이 아니다.** 실측 상위는 `internal/web/fieldsets_templ.go` 168KB · `screens_templ.go` 121KB(둘 다 `templ` 생성 산물)이고, `session_start.go` 는 61KB 로 5위권이다. `modules.md` 에 생성/손저작을 갈라 세는 절을 새로 넣었다.
+
+### ②-c 편입 확인 (M2.3) — omission 15개 전수
+
+```
+$ while read -r u; do n=$(/usr/bin/grep -rl -F "$u" .moai/project/codemaps/ | wc -l); printf '%-45s %s\n' "$u" "$n"; done < omissions
+internal/settings/yamlpatch                   3
+internal/stateanchor                          4
+internal/template/agentemit                   4
+internal/template/commandemit                 4
+internal/chain                                4
+internal/cli/codex_skills_disable.go          1
+internal/cli/codex_skills_prune.go            1
+internal/cli/integration_settings_drift.go    3
+internal/cli/skills.go                        1
+internal/cli/update_mirror_heal.go            2
+internal/kanban/settings_drift.go             2
+internal/statusline/state_anchor.go           2
+internal/template/published_skills.go         2
+internal/template/skill_mirror_repair.go      2
+internal/web/codexmirror.go                   2
+```
+
+**15/15 이 1개 이상. 0 은 없다.**
+
+**직접 보정한 단위 3개**: 첫 통과에서 `internal/cli/codex_skills_disable.go` · `internal/cli/codex_skills_prune.go` · `internal/cli/skills.go` 가 **0** 이었다 — `modules.md` 의 클러스터 표에 파일명만(`codex_skills_disable.go` · `skills.go`) 적어 전체 경로가 문자열로 존재하지 않았기 때문이다. 세 자리를 전체 경로 표기로 고쳐 편입을 성립시켰다. 나머지 12개는 재작성 과정에서 편입됐다.
+
+편입 위치 요약:
+
+| 단위 | 편입된 곳 |
+|---|---|
+| `internal/chain` | `modules.md` data/persistence 표 신규 행 + `data-flow.md` §F 신규 경로 |
+| `internal/stateanchor` · `internal/statusline/state_anchor.go` | `modules.md` cross-cutting 표 + 전용 절 + `data-flow.md` §E 신규 경로 + `overview.md` 레이어 표 |
+| `internal/settings/yamlpatch` | `modules.md` 신규 절 "보존 쓰기 경로" + `data-flow.md` §G |
+| `internal/template/agentemit` · `commandemit` · `published_skills.go` · `skill_mirror_repair.go` | `modules.md` 신규 절 "템플릿 방출·미러 계열" + `data-flow.md` §C(빌드타임 + 재배포 없는 경로) + `entry-points.md` |
+| `internal/cli/update_mirror_heal.go` | `modules.md` `update*` 클러스터 행 + `data-flow.md` §C |
+| `internal/cli/skills.go` · `codex_skills_disable.go` · `codex_skills_prune.go` | `modules.md` `skills*` · `codex*` 클러스터 행 + `entry-points.md` root 등록 목록 |
+| `internal/cli/integration_settings_drift.go` · `internal/kanban/settings_drift.go` | `modules.md` `integration*` 클러스터 + kanban 행 + 중복 능력 절 + `entry-points.md` + `data-flow.md` §G |
+| `internal/web/codexmirror.go` | `modules.md` 신규 절 "codex 미러 탭" + `entry-points.md` 웹 콘솔 표면 |
+
+---
+
+## §③ `docs-truth.md` 손 갱신 (REQ-CM2-014 / AC-CM2-003a)
+
+**이 섹션은 §② 와 분리돼 있다.** `docs-truth.md` 는 생성기 산출물이 아니므로 §②-b 의 재생성이 이 파일을 건드리지 않으며, 합쳐 적으면 "재생성했으니 이것도 됐다"는 오독이 그대로 통과한다.
+
+근거(실측, 이 트리):
+
+```
+$ /usr/bin/grep -n "docs-truth" .claude/skills/moai/workflows/codemaps.md
+(무출력, exit 1)
+```
+
+즉 실행면 문서 전체에 `docs-truth` 가 0회 등장하며, `/moai codemaps --force` 는 이 파일을 만들지 않는다.
+
+### ③-a 갱신 사실
+
+`docs-truth.md` 를 손으로 갱신했다. 갱신 범위:
+
+- 머리말에 **[HARD] 이 파일은 생성기 산출물이 아니다** 블록과 마지막 손 갱신 좌표(2026-09-08, `52f863f36`)를 신설.
+- §1 에이전트 카탈로그 — 전수 대조 표 신설(아래 ③-b).
+- §2 상태 enum — 재검증 날짜·HEAD 갱신(값 8 불변).
+- §3 프론트매터 12필드 — 재검증 + 실제 슬라이스 좌표 `internal/spec/lint.go:982-998` 로 갱신(직전 판의 `956-971` 은 낡음).
+- §4.1 CLI verb 표 — **렌더의 실제 그룹으로 교체**(아래 ③-c).
+- §4.2 `/moai` 명령 16개 — 재검증 + `commandemit` 발행 관계 한 줄 추가.
+- §5 GLM 티어 — 재검증 + 상수별 실제 행 번호로 갱신.
+
+### ③-b §1 에이전트 카탈로그 전수 대조 (표본 추출 없음)
+
+```
+$ find .claude/agents/moai -maxdepth 1 -name '*.md' | wc -l
+      11
+$ find .claude/agents -maxdepth 2 -name '*.md' | sort
+.claude/agents/harness/cli-template-specialist.md
+.claude/agents/harness/hns-github-specialist.md
+.claude/agents/harness/hns-oss-docs-content-author-specialist.md
+.claude/agents/harness/hns-oss-docs-locale-translator-specialist.md
+.claude/agents/harness/hns-oss-docs-structure-curator-specialist.md
+.claude/agents/harness/hns-release-specialist.md
+.claude/agents/harness/hns-release-update-specialist.md
+.claude/agents/harness/hook-ci-specialist.md
+.claude/agents/harness/quality-specialist.md
+.claude/agents/harness/workflow-specialist.md
+.claude/agents/moai/builder-harness.md
+.claude/agents/moai/e2e-tester.md
+.claude/agents/moai/manager-design.md
+.claude/agents/moai/manager-develop.md
+.claude/agents/moai/manager-docs.md
+.claude/agents/moai/manager-git.md
+.claude/agents/moai/manager-lead.md
+.claude/agents/moai/manager-spec.md
+.claude/agents/moai/plan-auditor.md
+.claude/agents/moai/super-advisor.md
+.claude/agents/moai/sync-auditor.md
+```
+
+**대조 결과: 11/11 일치, 양방향 잉여 0.** `.claude/agents/moai/` 의 11개 파일 각각이 §1 표의 행 1-11 과 이름으로 일대일 대응하고(대조 표를 `docs-truth.md` §1 에 실었다), 표에만 있는 행은 12행 `Explore` 하나인데 이것은 파일이 없는 Anthropic built-in 이므로 트리 부재가 정상이다. 같은 스캔이 보여주는 `.claude/agents/harness/` 10개는 user-owned harness specialist 이며 retained catalog 의 원소가 아니다 — 이 사실도 §1 에 적었다.
+
+### ③-c §4.1 정정 — 직전 판의 그룹 분류는 렌더에 존재하지 않았다
+
+`./bin/moai --help` 의 실제 출력은 **COMMANDS / LAUNCH COMMANDS / PROJECT COMMANDS / TOOLS** 4개 그룹이다. 직전 판이 실은 5분류(Project / Launchers / Autonomous-Dev / Governance / Tools-Infra)는 렌더에 없는 손 분류였고, 그 표는 **`skills` 를 빠뜨렸다** — `skills` 는 `internal/cli/root.go:177` 의 `newSkillsCmd()` 로 등록된 라이브 루트 명령이다. 이 판은 렌더의 4개 그룹을 그대로 옮기고 정정 사실을 문서 안에 남겼다.
+
+부수 census 갱신(전부 이 트리 실측): `.AddCommand(` 비테스트 호출 202 → **207**, `rootCmd.AddCommand(` 60 → **62**(그중 29가 `root.go` 의 `init()` 안), `internal/cli` 비테스트 파일 264 → **279**.
+
+---
+
+## §④ 구간별 전후 대조 — `diff -u` (REQ-CM2-005 / AC-CM2-005)
+
+구간 목록은 손으로 열거하지 않고 §A.3(b) 컷오프 명령의 출력을 채택했다:
+
+```
+$ awk '{print $2}' .moai/reports/t475/described-roots-diff-since-anchor.txt \
+    | xargs -n1 dirname | sort | uniq -c | sort -rn \
+    | awk '$1>=6 && $2 !~ /^internal\/template\/templates\//'
+  59 internal/cli
+  13 internal/web
+  12 internal/statusline
+  11 internal/kanban
+  10 internal/template
+   6 internal/settings
+   6 internal/codexwiring
+```
+
+**7구간 — 저작 시점과 동일**(`internal/settings` 6 포함).
+
+문서 전체의 전후 규모(`diff -u .moai/reports/t475/pre-regen/<doc>.md .moai/project/codemaps/<doc>.md | wc -l`):
+
+```
+overview.md      115
+modules.md       282
+dependencies.md  169
+entry-points.md  135
+data-flow.md     198
+docs-truth.md    120
+```
+
+아래는 구간마다, 6문서 전체의 `diff -u` 에서 그 구간 경로를 담은 **변경 행만** 뽑은 것이다:
+
+```
+$ for d in overview modules dependencies entry-points data-flow docs-truth; do
+    diff -u ".moai/reports/t475/pre-regen/$d.md" ".moai/project/codemaps/$d.md" \
+      | /usr/bin/grep -E '^[-+][^-+]' | /usr/bin/grep -F "<구간>"
+  done
+```
+
+########## AREA internal/cli
+--- overview.md
++  `internal/cli/hook.go`가 61KB, `internal/hook/quality/gate.go`가 53KB입니다. 이들은
+--- modules.md
+-| `internal/cli` | 273 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr` |
++| `internal/cli` | 279 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr` |
++| `update*` | 23 | 템플릿 재배포 — 계획/분류/네임스페이스 보호, 3-way 머지, 백업·롤백, 클린 인스톨, dry-run. 단계 로직은 `cli/update/{plan,deploy,merge,backup,report}` 하위로 분해돼 있다. **재배포가 일어나지 않는 경로에도 복구 하나가 붙는다** — `internal/cli/update_mirror_heal.go`는 버전 일치 update가 Deploy 앞에서 조기 반환하는 자리 옆에서 `.agents/skills` 미러를 복구하며, 존재 게이트는 프로젝트의 기록된 배포 버전이다 |
++| `doctor*` | 15 | 진단 — config, disk, harness, hook wiring, mcp version, permission, sandbox, skills, worktree base, agentemit embed, codex. hook wiring 점검의 실체는 `internal/cli/doctor_hook_delivery.go`로, 배포 템플릿의 훅 엔트리를 프로젝트 `.claude/settings.json`과 대조해 누락분을 배치·처방과 함께 보고하며 **사용자 파일을 쓰지 않는다** |
++| `codex*` | 10 | 외부 에이전트 백엔드 런처, 잡 제어, 준비 상태 점검, 리뷰 게이트. **여기에 사용자 HOME 계층에 대한 스킬 노출 제어 두 개가 함께 산다** — `internal/cli/codex_skills_disable.go`는 `~/.codex/config.toml`에 `enabled = false`를 실은 `[[skills.config]]` 항목을 발행하고, `internal/cli/codex_skills_prune.go`는 가리키는 파일이 사라진 유령 등록을 제거한다(부재를 증명할 수 있는 것만 지우는 allowlist 형 판정, 기본 dry-run) |
++| `skills*` | 1 | `moai skills` 명령 트리(`internal/cli/skills.go`). 스킬 노출을 **계층별** 관심사로 두고 계층을 verb 가 아니라 플래그로 명명하며, `--codex`를 필수로 만들어 사용자 HOME 쓰기를 호출 시점 opt-in으로 고정한다 |
++| **`internal/git`** (루트 패키지) | **이 판에서 새로 잡혔다.** `core/git` 위의 상위 유틸리티 8 파일인데 루트 패키지를 import 하는 비테스트 코드가 0이다. 실제로 import 되는 것은 하위 `internal/git/convention` 하나뿐이며(`internal/cli` → `internal/git/convention`), 최상위 집계 fan-in 1은 그것이다. 소비자가 `internal/core/git`로 직접 내려가면서 중간 계층만 남은 모양으로 읽힌다 — 확인이 필요한 관찰이며, 이 문서가 답을 주지는 않는다 |
++| `internal/cli/taskledger` · `internal/lsp/aggregator` · `internal/hook/testutil` · `internal/timing` · `internal/tui/golden` | 테스트 전용 소비자만 갖는 leaf. 앞의 셋은 의도로 보이고, `timing`은 이름이 그것을 말한다 |
+-  헬퍼, 후자는 `Write` + guard입니다. `internal/cli`의 6개 파일이 후자를, 나머지 트리가 전자를
++  `internal/cli/integration_settings_drift.go`(CLI 절반). 이것은 중복이 아니라 의도된 분할이며,
++ 89KB internal/cli/mcp_codex.go            (손 저작 — CLI 최대)
+--- dependencies.md
++| `internal/stateanchor` | 2 | 상태 앵커 seam. 소비자는 `internal/statusline`과 `internal/cli` |
+-| 1 | `internal/cli` | **58** |
++| 1 | `internal/cli` | **59** |
+-`internal/cli`가 최상위 68개 중 **58개**를 import 합니다 — 사실상 전 트리에 닿습니다.
+-합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 58 중 상당수는
++`internal/cli`가 최상위 68개 중 **59개**를 import 합니다 — 사실상 전 트리에 닿습니다.
++합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 59 중 상당수는
+-{{end}}' ./internal/cli/... \
+-  | awk -F/ '{print $1"/"$2}' | sort -u | grep -v '^internal/cli$' | wc -l
+-| `github.com/charmbracelet/huh` v1.0.0 | **v2와 병존하는 v1 폼** | `internal/cli` 5개 파일 |
+-| `github.com/charmbracelet/lipgloss` v1.1.1-… | **v2와 병존하는 v1 스타일링** | `internal/statusline` 3개 파일, `internal/cli` 2개 |
++| `github.com/charmbracelet/huh` v1.0.0 | **v2와 병존하는 v1 폼** | `internal/cli` |
++| `github.com/charmbracelet/lipgloss` v1.1.1-… | **v2와 병존하는 v1 스타일링** | `internal/statusline`, `internal/cli` |
+--- entry-points.md
++`internal/cli/integration_settings_drift.go`가 tracked `.claude/settings.json`의 워킹 사본
++`moai doctor`의 hook delivery 점검(`internal/cli/doctor_hook_delivery.go`)이 프로젝트가 이미
+--- data-flow.md
++internal/cli/update_mirror_heal.go      그 조기 반환 자리 옆에서 실행
+-internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 28
++internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 29
++internal/cli/statusline.go              렌더 진입
++  B4  CLI 설정 캐시 사슬          internal/cli
++internal/cli (moai chain)              조회 표면
++  └ internal/cli/integration_settings_drift.go   CLI 절반 — 두 표면의 배선
+--- docs-truth.md
+-**Source:** `moai --help` rendered output (2026-09-02, built from this tree) + `grep -rn '\.AddCommand(' internal/cli/ --include='*.go' | grep -v _test` (202 non-test calls) + `grep -rn 'rootCmd\.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (60 root registrations, 33 files) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (264).
++**Source:** `./bin/moai --help` rendered output (2026-09-08, built from this tree at HEAD `52f863f36`) + `grep -rn '\.AddCommand(' internal/cli/ --include='*.go' | grep -v _test | wc -l` (**207** non-test calls) + `grep -rn 'rootCmd\.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**62** root registrations across the package; **29**의 `rootCmd.AddCommand`가 `internal/cli/root.go:143-269`의 `init()` 안에 있다) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**279**).
+########## END internal/cli
+########## AREA internal/web
+--- modules.md
+-| `internal/web` | 29 | 루프백 전용 브라우저 콘솔. `a-h/templ` 컴파일 뷰(`*_templ.go`) + htmx + SSE(fsnotify)로 프로파일·설정·todo 큐를 편집 | `assets` |
++| `internal/web` | 31 | 루프백 전용 브라우저 콘솔. `a-h/templ` 컴파일 뷰(`*_templ.go`) + htmx + SSE(fsnotify)로 프로파일·설정·todo 큐를 편집하고, **codex 탭 하나는 편집이 아니라 읽기 전용 미러**다(§ codex 미러 탭) | `assets` |
++### codex 미러 탭 — `internal/web`의 편집하지 않는 표면
++`internal/web/codexmirror.go`는 codex 탭의 **행 모델**이며, Audit·MCP 탭에 사는 codex 설정의
++렌더 쪽 `internal/web/fieldsets_codex_templ.go`는 `a-h/templ`이
++`internal/web/fieldsets_codex.templ`에서 생성한 산물입니다(`// Code generated by templ - DO NOT EDIT.`).
++168KB internal/web/fieldsets_templ.go      (생성)
++121KB internal/web/screens_templ.go        (생성)
+--- dependencies.md
++   생성물이 트리에 커밋돼 있습니다 — `internal/web/fieldsets_codex_templ.go`(codex 미러 패널)와
+--- entry-points.md
++codex 탭(`internal/web/codexmirror.go` 행 모델 +
++`internal/web/fieldsets_codex_templ.go` 렌더)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용
+########## END internal/web
+########## AREA internal/statusline
+--- modules.md
+-| `internal/statusline` | 20 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립 | — |
++| `internal/statusline` | 21 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립. 렌더가 읽고 쓰는 상태의 **앵커는 세션의 현재 디렉터리가 아니라** `internal/stateanchor` seam이 정한 프로젝트 루트이며, 그 어댑터가 `internal/statusline/state_anchor.go`다 | — |
++`internal/statusline/state_anchor.go`입니다.
+--- dependencies.md
+-다만 7위 `internal/hook`(6)과 10위 `internal/statusline`(5)은 **presentation인데 피의존
++다만 8위 `internal/hook`(6)과 10위 `internal/statusline`(5)은 **presentation인데 피의존
++| `internal/stateanchor` | 2 | 상태 앵커 seam. 소비자는 `internal/statusline`과 `internal/cli` |
+-| 5 | `internal/statusline` | 7 |
++| 5 | `internal/statusline` | 8 |
++`internal/statusline`이 7 → 8로 오른 것도 같은 seam 때문입니다 — 렌더의 상태 앵커가
+-| `github.com/charmbracelet/lipgloss` v1.1.1-… | **v2와 병존하는 v1 스타일링** | `internal/statusline` 3개 파일, `internal/cli` 2개 |
++| `github.com/charmbracelet/lipgloss` v1.1.1-… | **v2와 병존하는 v1 스타일링** | `internal/statusline`, `internal/cli` |
+--- data-flow.md
++internal/statusline/state_anchor.go     resolveStateAnchor(...)  ← statusline 쪽 어댑터
+########## END internal/statusline
+########## AREA internal/kanban
+--- modules.md
+-| `internal/kanban` | 33 | 백로그 큐의 상태 레코드·컬럼·역할 모델, SQLite 저장 엔진, 보드 락, PR 링크, 정합성 조정 | — |
++| `internal/kanban` | 35 | 백로그 큐의 상태 레코드·컬럼·역할 모델, SQLite 저장 엔진, 보드 락, PR 링크(착지 ref 3단 해석 사슬 `prlink_landedref.go` 포함), 정합성 조정. **여기에 워킹 트리 검사 하나가 더 있다** — `settings_drift.go`가 병합 전 tracked `.claude/settings.json`의 워킹 사본 드리프트를 단정하고 사본을 보존하며 원장에 남긴다(`--no-optional-locks` 강제 — 평범한 status가 인덱스 쓰기 락을 잡아 병합 직전 경합을 스스로 만들기 때문) | — |
+--- dependencies.md
+-   `internal/kanban/backlog_sqlite.go`가 드라이버와 상수를 직접 씁니다 — `go mod tidy`가 아직
++   `internal/kanban/backlog_sqlite.go`가 드라이버(`_ "modernc.org/sqlite"`)와 상수
+--- data-flow.md
++      └ internal/kanban/settings_drift.go        도메인 절반 — 검출 · 보존 · 원장
+########## END internal/kanban
+########## AREA internal/template
+--- overview.md
+-| 임베드 템플릿 파일 | 564 | `find internal/template/templates -type f \| wc -l` |
++| 임베드 템플릿 파일 | 581 | `find internal/template/templates -type f \| wc -l` |
+--- modules.md
+-| `internal/template` | 25 | `//go:embed all:templates` + `catalog.yaml`. 배포기, 렌더러, settings 생성, 스킬 미러, 카탈로그 트리 해시, 모델 정책·프로파일 매트릭스 | `agentemit`, `scripts` |
++| `internal/template` | 30 | `//go:embed all:templates` + `catalog.yaml`. 배포기, 렌더러, settings 생성, 스킬 미러, 카탈로그 트리 해시, 모델 정책·프로파일 매트릭스. **배포 뒤편에 두 개의 기계 방출기와 두 개의 미러 보호·복구 seam이 붙어 있다**(§ 템플릿 방출·미러 계열) | `agentemit`, `commandemit`, `scripts` |
++`internal/template`의 책임 칸 한 줄로는 담기지 않는 네 단위가 하위에 있습니다. 넷 다
++| `internal/template/agentemit` | 6 | 보존된 에이전트 정의(`.md`)와 임베드 매니페스트(`agents-codex.yaml`)의 쌍을 **중립 원본**으로 삼아 `.codex/agents/` TOML을 결정적으로 이중 발행한다. `.md`의 발행은 항등(identity)이라 재렌더·재정렬이 없고, Codex 쪽은 (`.md` × 매니페스트)의 결정적 변환이다. **fail-closed** — 알 수 없는 tool 토큰·미매핑 effort·유효하지 않은 sandbox 값이면 어느 파일의 어느 토큰인지 지목하며 실패하고 부분 산출물을 남기지 않는다(codex-cli가 알 수 없는 설정을 조용히 무시하므로 생성기 쪽이 자기 출력을 검증해야 한다) |
++| `internal/template/commandemit` | 3 | `/moai` 명령 소스를 codex 스킬 아티팩트(`.agents/skills/moai-<command>/SKILL.md`)로 발행한다. 명령 소스는 읽기 전용으로 소비하며 **본문은 바이트 동일 verbatim** — 본문에 남은 Claude 전용 도구 참조는 여기서 고치지 않고 경계 플래그로만 기록한다(그 수리는 명령 본문 계층 소관). fail-closed: 프론트매터 구분자 누락, 설명 누락, 무조건 분기 없는 로케일 조건부 설명, 기존 정본 스킬 디렉터리와 충돌하는 파생 이름 |
++| `internal/template/published_skills.go` | (파일) | 위 발행 스킬 경로에 대한 **배포측 보호**. 발행 스킬은 보통의 템플릿 파일처럼 배포되지만 경로 네임스페이스가 스킬 미러가 쓰는 `.agents/skills` 루트와 겹치고, update 모드(forceUpdate)는 다른 곳에서 provenance 검사를 건너뛴다. 이 검사가 그 경로들에 한해 init 모드의 provenance 동작을 살려 사용자 소유 파일이 update를 살아남게 하고, 건너뜀을 침묵이 아니라 보고로 남긴다 |
++| `internal/template/skill_mirror_repair.go` | (파일) | `.agents/skills`의 두 생산자(심볼릭 링크 미러, 발행 SKILL.md) 결과를 **Deploy 없이** 복구하는 패키지 수준 패스. DeployerOption이 아닌 형상을 의도적으로 골랐다 — 옵션이었다면 배포 경로에서도 살아나 수리 기능의 부작용으로 배포 동작이 바뀐다. 항목별 의미는 미러 생산자의 것을 재사용하므로 생산자와 갈라질 수 없다 |
++두 방출기는 **비테스트 코드에서 아무도 import 하지 않습니다**(`internal/template/agentemit`,
++`internal/template/commandemit` 둘 다 패키지 단위 fan-in 0). 소비자는 빌드 타깃
++| `internal/template/agentemit` · `internal/template/commandemit` | **고아가 아니다.** 소비자가 `make agents-emit` / `make commands-emit` 빌드 타깃과 골든 테스트다. 방출기는 빌드타임 도구이므로 런타임 fan-in 0이 정상 상태다 |
+--- dependencies.md
+-| 7 | `internal/template` | 6 | domain |
++| 8 | `internal/template` | 6 | domain |
++두 방출기(`internal/template/agentemit`, `internal/template/commandemit`)는 이 표에 **나타나지
+--- entry-points.md
++통해 실행됩니다 — `internal/template/agentemit`(`make agents-emit`, `.md` × 매니페스트 →
++`.codex/agents/*.toml`)와 `internal/template/commandemit`(`make commands-emit`,
+--- data-flow.md
+-internal/template/embed.go                            //go:embed all:templates   (564개 파일)
++internal/template/embed.go                            //go:embed all:templates   (581개 파일)
++internal/template/agentemit                           make agents-emit
++internal/template/commandemit                         make commands-emit
+-internal/template/skill_mirror.go       심볼릭 링크 우회 미러링
++internal/template/published_skills.go   발행 스킬 경로(.agents/skills/moai-<command>/SKILL.md)에
++internal/template/skill_mirror.go       심볼릭 링크 우회 미러링 (Deploy 마지막 단계)
++  └ internal/template/skill_mirror_repair.go
+--- docs-truth.md
++이 16개 소스는 codex 쪽으로도 발행됩니다 — `internal/template/commandemit`이 각각을
+########## END internal/template
+########## AREA internal/settings
+--- overview.md
+-| data/persistence | 디스크상 named artifact 하나의 스키마와 읽기·쓰기 계약을 소유한다 | `internal/config`, `internal/session`, `internal/settings`, `internal/manifest` … |
++| data/persistence | 디스크상 named artifact 하나의 스키마와 읽기·쓰기 계약을 소유한다 | `internal/config`, `internal/session`, `internal/settings`, `internal/manifest`, `internal/chain` … |
+--- modules.md
++### `internal/settings/yamlpatch` — 보존 쓰기 경로
++`internal/settings`의 책임은 "두 표면이 공유하는 **스키마**"지만, `yamlpatch`가 지는 것은
+--- dependencies.md
+-| 5 | `internal/settings` | 7 |
++| 6 | `internal/settings` | 7 |
++| `gopkg.in/yaml.v3` v3.0.1 | 설정·카탈로그·프론트매터 파싱 + **노드 트리 수술**(`internal/settings/yamlpatch`) | 트리 전역 |
++   `internal/settings/yamlpatch`는 같은 라이브러리의 **노드 트리**를 직접 수술해 주석과
+--- data-flow.md
++internal/settings/*                     두 표면(moai web 콘솔 / moai profile setup TUI)이
++  └ Save() 경로가 없는 8개 섹션          internal/settings/yamlpatch
+########## END internal/settings
+########## AREA internal/codexwiring
+########## END internal/codexwiring
+
+### ④-a `internal/codexwiring` — 변경 없음, 빈 diff 를 증거로 첨부
+
+위 블록의 `########## AREA internal/codexwiring` 과 `########## END internal/codexwiring` 사이는 **비어 있다**. 그 빈 출력이 이 행의 증거다 — 산문만 적힌 "변경 없음"은 반증 불가능하므로 쓰지 않는다.
+
+```
+$ for d in overview modules dependencies entry-points data-flow docs-truth; do
+    diff -u ".moai/reports/t475/pre-regen/$d.md" ".moai/project/codemaps/$d.md" \
+      | /usr/bin/grep -E '^[-+][^-+]' | /usr/bin/grep -F "internal/codexwiring"
+  done
+(무출력)
+```
+
+**왜 변경이 없는가**: 앵커 이후 그 디렉터리의 파일 6개가 움직였지만, 비테스트 파일 수(5)도 패키지가 지는 책임("Codex 측 배선 파일 생성·갱신")도 재측정에서 그대로였다. 구간이 컷오프에 걸린 것은 변경 **양** 때문이고, 서술이 바뀌지 않은 것은 그 변경이 서술 수준의 사실을 옮기지 않았기 때문이다. 컷오프는 **무엇을 들여다볼지**를 정할 뿐 서술 변경을 강제하지 않는다.
+
+구간별 변경 행 수:
+
+| 구간 | 변경 파일 수(앵커 대비) | 6문서에서 그 구간을 담은 변경 행 |
+|---|---|---|
+| `internal/cli` | 59 | 42 |
+| `internal/web` | 13 | 14 |
+| `internal/statusline` | 12 | 15 |
+| `internal/kanban` | 11 | 8 |
+| `internal/template` | 10 | 32 |
+| `internal/settings` | 6 | 14 |
+| `internal/codexwiring` | 6 | **0** (빈 diff 첨부, 위) |

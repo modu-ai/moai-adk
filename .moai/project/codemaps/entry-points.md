@@ -2,8 +2,8 @@
 
 > `/moai codemaps`로 생성됐습니다.
 
-**측정 트리**: worktree `.claude/worktrees/t476`, 브랜치 `WT-codemaps-progress`, HEAD `25a3212a9`
-**측정**: 2026-09-04
+**측정 트리**: worktree `.claude/worktrees/t475`, 브랜치 `WT-codemaps-stale`, HEAD `52f863f36`
+**측정**: 2026-09-08
 
 ---
 
@@ -19,6 +19,12 @@
 나머지 `main()` 4개는 배포 대상이 아닌 도구입니다:
 `internal/template/scripts/gen-catalog-hashes.go`, `scripts/i18n-validator/main.go`,
 `scripts/docs-version-snapshot/main.go`, `scripts/convert-nextra-to-hextra/main.go`.
+
+**빌드 타깃으로만 진입하는 방출기 2개**는 `main()`이 아니라 Makefile 타깃과 골든 테스트를
+통해 실행됩니다 — `internal/template/agentemit`(`make agents-emit`, `.md` × 매니페스트 →
+`.codex/agents/*.toml`)와 `internal/template/commandemit`(`make commands-emit`,
+`.claude/commands/moai/*` → `.agents/skills/moai-<command>/SKILL.md`). 둘 다 비테스트
+fan-in이 0인 것은 고아라서가 아니라 이 진입 형태 때문입니다.
 
 ---
 
@@ -38,21 +44,27 @@ root.go Execute()
   → fang.go runFang(ctx, cmd)      # charm.land/fang/v2 가 help·에러·--version·completion 렌더링
 ```
 
-**lazy-init 패스**: `root.go`의 `trivialCommands` 맵에 9개가 있습니다 —
+**lazy-init 패스**: `root.go`의 `trivialCommands` 맵에 10개가 있습니다 —
 `--version` · `version` · `-v` · `help` · `--help` · `-h` · `completion` · `cc` · `cg` · `glm`.
 이들은 의존성 그래프 조립을 건너뜁니다. `cc` / `cg` / `glm`이 포함된 이유는 `syscall.Exec`로
 프로세스를 통째 교체하기 때문입니다.
 
 **등록 사이트가 두 갈래**입니다.
 
-1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` 26회.
-   worktree, agentlint, statusline, ast-grep, ast-edit, telemetry, constitution, state, tokens,
-   clean, navigator 5종(enrich/sync/tiers/route/fix), migration, chain, harness-router,
-   tool-policy, mcp-server, mcp, inventory, preference, model, plan, feedback, inbox.
-2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **64개**입니다
+1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **29회**.
+   worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
+   constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
+   migration, **chain**, harness-router, tool-policy, mcp-server, mcp, inventory, preference,
+   model, plan, feedback, inbox.
+   - `skills`(`newSkillsCmd()`, `root.go:177`) — `moai skills disable <name> --codex` 형태로
+     **계층을 플래그로 명명**하는 스킬 노출 제어 트리. `--codex`가 필수인 것이 opt-in의
+     기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
+     쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
+   - `chain`(`newChainCmd()`, `root.go:204`) — 워크트리 세션 origin-trail 원장 조회·정리.
+2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **65개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
-   `gate.go`, `graph.go`, `goal.go` 등이 이 방식입니다.
+   `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식입니다.
 
 **합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
 Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
@@ -61,6 +73,15 @@ LoopController · Logger · PerfTiming을 조립하고 전역 변수 `deps *Depe
 **의도적 미등록 1건**: `root.go`의 주석이 밝히듯 `newHarnessCmd()`는 폐기된 팩토리로
 **의도적으로 트리에 등록되지 않고** 컴파일 가능 상태로만 남아 있습니다. 라이브 등록은
 `newHarnessRouterCmd()` 하나입니다.
+
+### 창(window)을 잡기 전에 도는 선행 조건
+
+`moai integration acquire`는 창을 기록하기 **전에** 호출자 트리를 단정합니다 —
+`internal/cli/integration_settings_drift.go`가 tracked `.claude/settings.json`의 워킹 사본
+드리프트를 재고, 적중이면 사본을 보존한 뒤 원장 한 줄을 남깁니다. 같은 술어를 창 없이
+물을 수 있는 독립 verb가 `moai integration preflight [경로]`이며, **두 표면 중 어느 쪽도
+뺄 수 없습니다** — 선행 조건이 없으면 검사가 사회적 약속이 되고, 독립 verb가 없으면 창을
+잡지 않고는 물을 방법이 없습니다.
 
 ---
 
@@ -79,6 +100,13 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 
 래퍼 스크립트가 없으면 `.moai/logs/hook-missing.log`에 남기고 **exit 0으로 fail-open** 합니다.
 
+배포된 엔트리가 프로젝트 `settings.json`에 실제로 도달했는지는 별도 진단이 답합니다 —
+`moai doctor`의 hook delivery 점검(`internal/cli/doctor_hook_delivery.go`)이 프로젝트가 이미
+가진 훅 이벤트 키 **안에서** 템플릿 엔트리와 대조해 누락분을 배치·처방과 함께 보고합니다.
+이 점검은 **읽기 전용**이며 사용자의 `settings.json`을 쓰지 않습니다 — 전달(delivery) 자체를
+자동화하는 선택지는 거부됐고, 머지 경로가 이미 가진 이벤트 키 안의 추가분을 조용히 버리는
+동작은 고쳐지지 않은 채 문서화·특성화돼 있습니다.
+
 **2. 셸 래퍼** — `internal/template/templates/.claude/hooks/moai/` 아래 47개 `.sh` / `.sh.tmpl`.
 예: `handle-pre-tool.sh.tmpl`이 `printf '%s' "$payload" | moai hook pre-tool`.
 
@@ -93,6 +121,15 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 부가로 `runAlwaysRunTail`, `defaultOutputForEvent`, 비동기 trace writer 플러시 배리어 `Shutdown`이
 있습니다.
 
+**게이트 스텝의 실행 환경**: `moai gate`의 자식 프로세스는 자신을 부른 것의 환경을 물려받고,
+여기서 문제가 되는 호출자는 리포지터리 pre-commit 훅입니다 — 훅 환경에는 `GIT_DIR`과
+`GIT_INDEX_FILE`이 실려 있고 이들은 작업 디렉터리보다 우선하므로 `cmd.Dir`만으로는 자식을
+가둘 수 없습니다(임시 디렉터리에 커밋을 만드는 픽스처가 커밋 대상 리포지터리에 그것을 쓴
+사고가 GH #1691). `internal/hook/quality/step_git_env.go`가 **리포지터리 위치**를 정하는
+변수만 걷어내며, 신원(author/committer)과 동작(editor/pager/ssh) 변수는 의도적으로 남깁니다 —
+신원을 잃은 픽스처는 무관한 이유로 실패해 깨끗한 격리 실패를 혼란스러운 것으로 바꾸기
+때문입니다.
+
 ---
 
 ## MCP 서버 표면
@@ -100,9 +137,9 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 - **명령**: `internal/cli/mcp_server.go`의 `newMCPServerCmd()` — `root.go`에서 등록. stdio
   JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
   프로비저닝은 opt-in입니다.
-- **도구 수**: `mcp_server.go` 안 `add("...")` 호출 **28회**. 카탈로그
-  `internal/mcp/catalog.go`는 **29개**를 선언합니다 — 차이 1개는 `audit_multi`로,
-  `mcp_audit_multi.go`에서 별도 등록됩니다.
+- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **29회**(그중 28개는 이름 리터럴,
+  1개는 `auditMultiToolName` 상수 경유 — `mcp_server.go:414`). 카탈로그
+  `internal/mcp/catalog.go`도 **29개**를 선언하며 두 수가 일치합니다.
 - **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
   `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
   `codex_{audit,setup,task,job_status,job_result,job_cancel}`,
@@ -114,3 +151,14 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
   (`mcp_annotation_guard_test.go`, `mcp_boundary_test.go`).
 - **엔트리 관리와 서버 실행은 별개 서브트리**입니다 — `newMCPCmd()`(`mcp.go`)가 `.mcp.json`의
   add/remove/list를, `mcp-server`가 실행을 담당합니다.
+
+---
+
+## 웹 콘솔 표면
+
+`moai web`이 띄우는 루프백 콘솔은 탭 단위 표면이며, 탭 하나는 **편집하지 않습니다**.
+codex 탭(`internal/web/codexmirror.go` 행 모델 +
+`internal/web/fieldsets_codex_templ.go` 렌더)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용
+미러입니다. 이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool
+동반자 `<name>__present`까지 덮습니다 — 모든 패널이 한 폼 안에 살고 탭 전환은 표시 전환일
+뿐이라 **비활성 패널도 함께 제출되기** 때문입니다.
