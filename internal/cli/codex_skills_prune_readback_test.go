@@ -34,17 +34,21 @@ func overrideSeparator(t *testing.T) {
 	configPathSeparator = '\\'
 }
 
-// statRecorder records every path handed to the osStatFn seam.
-type statRecorder struct {
+// pruneReadbackStatRecorder records every path handed to the osStatFn seam.
+// Named card-uniquely (not "statRecorder"): the absorbed t563 test file
+// doctor_codex_stale_skill_test.go declares its own statRecorder type in this
+// package, and a second declaration of that name broke the package test
+// binary's compilation when the two files met in the absorb merge.
+type pruneReadbackStatRecorder struct {
 	calls []string
 	err   error // what the stub reports once it has recorded the call
 }
 
 // stubRecordingStat replaces osStatFn with a recorder that reports err for
 // every call and restores the seam via t.Cleanup.
-func stubRecordingStat(t *testing.T, err error) *statRecorder {
+func stubRecordingStat(t *testing.T, err error) *pruneReadbackStatRecorder {
 	t.Helper()
-	rec := &statRecorder{err: err}
+	rec := &pruneReadbackStatRecorder{err: err}
 	orig := osStatFn
 	t.Cleanup(func() { osStatFn = orig })
 	osStatFn = func(name string) (os.FileInfo, error) {
