@@ -183,6 +183,51 @@ func TestUpsertCodexSkillDisableAppendsOneEntryWithFalse(t *testing.T) {
 	}
 }
 
+// AC-CSD-001, insert branch — an entry declaring `path` and NO `enabled` is
+// precisely the shape codex hard-fails on (`missing field 'enabled' in
+// skills.config`, rc=1). The merge must ADD the key, not leave the entry as it
+// found it.
+//
+// Emission happens at more than one site: the append composer builds a whole
+// entry, and this branch inserts the single missing key into an entry that
+// already exists. Mutant 3 of AC-CSD-001 says an implementation with the
+// enabled line removed must go RED, and without this test that is only true of
+// the append site — deleting the insert emission passed GREEN, leaving the half
+// of the guard that faces a total-outage hazard unexercised.
+//
+// No pre-implementation RED exists for this test: the branch was already
+// correct when it was written. The mutant is therefore the only honest evidence
+// that it discriminates — delete the emission at the insert site and this goes
+// red. After this test, removing EITHER emission point turns AC-CSD-001 red, so
+// the criterion's wording matches what the tests actually cover.
+func TestUpsertCodexSkillDisableInsertsMissingEnabledKey(t *testing.T) {
+	p := "/proj/.agents/skills/probe/SKILL.md"
+	in := []byte("[[skills.config]]\npath = \"" + p + "\"\n\n[tail]\nk = 1\n")
+
+	out, v := upsertCodexSkillDisable(in, p)
+
+	if v.Action != codexSkillDisableUpdated {
+		t.Errorf("action = %v, want updated", v.Action)
+	}
+	if got := countEntriesWithPath(t, out, p); got != 1 {
+		t.Fatalf("entries declaring %q = %d, want 1\n--- out ---\n%s", p, got, out)
+	}
+	e := entryWithPath(t, out, p)
+	if !entryDeclaresEnabledKey(t, out, e) {
+		t.Errorf("the entry still declares no `enabled` key — codex refuses to start on this config\n--- out ---\n%s", out)
+	}
+	if e.Enabled != codexwiring.SkillEnabledFalse {
+		t.Errorf("enabled = %v, want SkillEnabledFalse\n--- out ---\n%s", e.Enabled, out)
+	}
+	// The insert shifts every later line by one, so what follows is the part
+	// most likely to be damaged by getting that wrong.
+	for _, want := range []string{"[tail]", "k = 1"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("lost %q past the insert point\n--- out ---\n%s", want, out)
+		}
+	}
+}
+
 // AC-CSD-002 — the published notation is the absolute LITERAL mirror path, in
 // BOTH mirror shapes. The resolved `.claude/…` twin is silently inert under a
 // copy-fallback mirror (gate-path-shape.md, cell Cres), so publishing it works

@@ -12,8 +12,10 @@ package cli
 //
 //   - `enabled` is a REQUIRED field of the entry. An entry lacking it is not
 //     a degraded feature — it is a hard start failure for the user's whole
-//     codex (`missing field 'enabled' in skills.config`, rc=1). Emission is
-//     therefore narrowed to one function whose output cannot omit the key.
+//     codex (`missing field 'enabled' in skills.config`, rc=1). Every path
+//     that writes a target entry therefore ends with the key declared. That
+//     is held by three emission sites, each pinned by its own test, not by a
+//     single funnel — see upsertCodexSkillDisable, which names them.
 //   - The gate compares REALPATH-normalised files, not path strings, and the
 //     only notation that binds under BOTH mirror shapes (symlink, and the
 //     copy fallback) is the absolute literal mirror path
@@ -197,8 +199,35 @@ func resolveCodexSkillMirrorPath(projectRoot, homeDir, skill string) codexSkillR
 }
 
 // upsertCodexSkillDisable is the pure merge: content in, content out, plus a
-// verdict. It is the ONLY place an entry is composed, which is what makes the
-// `enabled` key impossible to omit.
+// verdict. It is the sole ENTRY POINT for writing a target entry — but not the
+// sole place the `enabled` assignment is spelled, and the distinction is worth
+// keeping straight, because omitting that key is a total outage for the user's
+// codex rather than a degraded feature.
+//
+// Three sites emit it, each safe for a different reason:
+//
+//   - setEnabledFalseInExtent, rewrite branch — replaces an EXISTING enabled
+//     line, so it cannot produce an entry that lacks the key.
+//   - setEnabledFalseInExtent, insert branch — adds the key to an entry
+//     declaring `path` without it. That is the exact shape codex hard-fails
+//     on, so it is the site whose omission costs most; pinned by
+//     TestUpsertCodexSkillDisableInsertsMissingEnabledKey.
+//   - appendDisableEntry — composes a whole entry, emitting header, path and
+//     enabled together; pinned by
+//     TestUpsertCodexSkillDisableAppendsOneEntryWithFalse.
+//
+// The two composing sites are deliberately NOT folded into one. Their shapes
+// differ — one appends three lines at end of file, the other inserts a single
+// line mid-extent carrying its neighbour's indentation and CR — so merging
+// them would be an abstraction existing only to make a comment true. Each
+// carries a test instead.
+//
+// An earlier version of this comment claimed emission was narrowed to one
+// function. It was not, and the insert branch had no test, so deleting its
+// emission passed green while the comment asserted that could not happen. The
+// note is kept because a comment asserting a safety property the code does not
+// have is worse than no comment at all: the next reader trusts it and skips
+// the check.
 func upsertCodexSkillDisable(content []byte, skillPath string) ([]byte, codexSkillDisableVerdict) {
 	skip := func(format string, a ...any) ([]byte, codexSkillDisableVerdict) {
 		return content, codexSkillDisableVerdict{
@@ -280,6 +309,13 @@ func setEnabledFalseInExtent(lines []string, e codexwiring.SkillEntry) ([]string
 			pathLine = i
 		}
 	}
+	// Unreachable through the only caller, and deliberately left in. The
+	// caller reaches here only for an entry whose Path equals a non-empty
+	// skillPath, and the parser sets Path solely from a line matching
+	// `^path\s*=\s*"…"`, which the scan above matches on its "path" prefix —
+	// so pathLine is always found. It stays as a guard against a future
+	// caller, which is why its body shows zero coverage rather than being
+	// covered by a test constructing an input the caller cannot produce.
 	if pathLine < 0 {
 		return lines, false
 	}
