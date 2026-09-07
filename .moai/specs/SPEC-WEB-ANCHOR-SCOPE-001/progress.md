@@ -134,7 +134,7 @@ skip contract.
 
 ```yaml
 run_complete_at: 2026-09-07
-run_commit_sha: pending-backfill-run
+run_commit_sha: cebc79cdd
 run_status: complete
 ac_pass_count: 7
 ac_fail_count: 0
