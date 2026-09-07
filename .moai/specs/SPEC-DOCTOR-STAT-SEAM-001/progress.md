@@ -60,6 +60,55 @@ action.
   the file's base name (`codexUserSkillConfig`); observation fixtures for site B should set
   `codexHomeEnvVar` to `filepath.Join(home, ".codex")`.
 
+### M2 — seam swap + observation tests + output-identity proof (commits `bca046150`, `02d8be597`)
+
+- **Seam commit `bca046150`** (AC-SEAM-001/002/003, minimal): `internal/cli/doctor_codex.go`
+  diff = exactly 2 lines — `:459` `os.Stat(entryPath)` → `osStatFn(entryPath)` (site A),
+  `:857` `os.Stat(statPath)` → `osStatFn(statPath)` (site B). No comment rewrites, no import
+  churn, no logic edits.
+- **Grep assertion numbers (AC-SEAM-001, on the swapped tree)**: `grep -c 'os\.Stat('`
+  doctor_codex.go → **0**; `grep -n 'os\.Lstat('` → **`:441` only (1 match — survives, spec
+  §3.2)**; `grep -c 'osStatFn'` → **2**.
+- **Observation tests (REQ-006)** — 6 new, pinned prefixes, all serial (`osStatFn` save →
+  replace → `t.Cleanup` restore, no `t.Parallel`):
+  `TestCodexStaleSkillFinding_StatSeamRecordsClassifiedPaths` (recorded args = declared
+  absolute + seam-expanded home-relative, in order; relative / oddly-formed / path-less
+  entries record ZERO stat calls) · `..._InjectedErrNotExistDrivesMissing` (path EXISTS,
+  injected ENOENT → missing bucket) · `..._InjectedNilDrivesResolves` (path ABSENT, injected
+  nil → resolves, silent) · `..._InjectedOtherErrorDrivesIndeterminate` (other error →
+  indeterminate, never missing) · `TestInspectSkillMirror_StatSeamRecordsMirrorJoinedPath`
+  (recorded args = `filepath.Join(mirrorDir, name)`, lexical order) ·
+  `TestInspectSkillMirror_InjectedResultsDriveBuckets` (ENOENT → dangling by name, other
+  error → indeterminate).
+- **Output-identity proof (AC-SEAM-005, REQ-004)** — artifact
+  `.moai/reports/t563/m2-identity-proof.txt` (+ retained pre-seam dump
+  `m2-identity-pre.txt`; post dump byte-identical, removed after verification):
+  - Method: untracked capture harness, identical bytes on both sides, dumping the observed
+    surface (codexFinding ok/severity/summary/detail; skillMirrorState counters;
+    checkCodexWiring Status/Message/Detail) with temp paths normalized to stable tokens.
+    PRE captured @ `7d57ff2f5`, POST captured @ `bca046150`.
+  - **(a) fixture/staging count: 25** (12 site-B direct + 8 site-A direct + 5 wiring-level
+    covering the existing families' bucket states incl. the fatal non-boolean split, rendered
+    mirror-absent/dangling findings, copy-mode/unmirrored detail, dir-not-missing).
+  - **(b) ok=true traversal count (HARD-NEW-1): 6** (b02, b03, b05, b06, b07, b12 — live
+    findings both sides; site-A analog: 4 fixtures carry non-zero dangling/indeterminate
+    counters). NOT vacuous.
+  - **(c) pre/post diff: EMPTY** (`diff` exit 0, no output — byte-identical).
+  - **Verdict: identity HOLDS — no DISCOVERY to report.** The existing
+    `TestCodexSkillPath_*` / `TestCheckCodexWiring_*` families additionally re-ran green on
+    the swapped tree (below), completing the comparison set.
+- **Scoped verification (post-swap regression)**: `go test ./internal/cli/ -run
+  'TestCodexStaleSkillFinding_|TestInspectSkillMirror_|TestCodexSkillPath_|TestCheckCodexWiring'
+  -count=1 -timeout 1800s` → `ok ... 0.848s` (26 seam tests + both existing families, green on
+  the swapped tree); `go vet ./internal/cli/` → exit 0; `golangci-lint run internal/cli/...` →
+  exit 0 ("0 issues."). Tree quiescence checked before and after the batch — only this SPEC's
+  test file modified; no foreign writes. NO local full suite (REQ-007).
+- Harness footnote: the capture harness initially triggered the local ast-grep
+  `go-error-ignored-blank` rule on two-value call assignments (`f, ok = fn()`) and was
+  restructured through a result-struct helper; the blocking write also exposed a fixture defect
+  mid-proof (w3 initially created the canonical dangling target, so the link resolved and the
+  dangling finding never rendered) — fixed before the PRE baseline was accepted.
+
 ### M1 observed-behavior notes for the lead (nothing fixed — pinned as-is)
 
 1. `codexStaleSkillFinding`'s Detail leads with the RESOLVED config path (a temp/fixture path at
