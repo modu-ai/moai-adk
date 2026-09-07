@@ -763,7 +763,143 @@ ok  	github.com/modu-ai/moai-adk/internal/spec	77.665s
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-08
+run_commit_sha: fe75ec5c8          # 마지막 run-phase 구현 커밋(M5). 이 §E.3 기록 자체는 뒤따르는 커밋에 실린다
+run_record_commit_sha: pending-backfill   # 위 이유로 자기 SHA를 담을 수 없다 — 다음 커밋에서 backfill
+run_status: implemented
+ac_pass_count: 16                  # 식별자 16개 전수
+ac_fail_count: 0
+ac_pass_with_limitation_count: 2   # AC-SLB-003(변별력 제한) · AC-SLB-012(축자 픽스처 1종 결함, 개정으로 닫힘)
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not_performed        # push 하지 않음 (배차 지시)
+l44_post_push_fetch: not_applicable
+new_warnings_or_lints_introduced: not_measured    # golangci-lint 미실행 — E5
+cross_platform_build: not_measured                # GOOS 교차 빌드 미실행 — E2
+coverage: not_measured                            # -cover 미실행 — E3
+total_run_phase_files: 7           # 구현·테스트 파일. 아래 「파일」 절이 전수
+m1_to_mN_commit_strategy: "마일스톤당 커밋 1개 이상, 계획 순서와 다른 실행 순서. M2→M3→M3'→M4→M1→M5. 아래 마일스톤 대조표가 계획↔실행↔커밋을 잇는다"
+verification_tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+verification_branch: WT-spec-lint-axes
+verification_head_at_record: fe75ec5c8
+```
+
+### E1 — AC 판정 행렬 (식별자 16개 전수)
+
+「판정한 마일스톤」은 그 AC를 판정한 기록이 있는 절이며, 「근거」는 그 절이 인용한 테스트 이름 또는 증거 경로다. 상세는 각 마일스톤 절에 있고, 이 표는 전수 색인이다.
+
+| AC | 판정 마일스톤 | 판정 | 근거 |
+|---|---|---|---|
+| AC-SLB-001a | M-A1 | **PASS** | `TestTableCollection_ListFormUnchanged` |
+| AC-SLB-001b | M-A1 | **PASS** | `TestTableCollection_TableFormCollected` |
+| AC-SLB-001c | M-A1 | **PASS** | `TestTableCollection_ControlPairDiverges` |
+| AC-SLB-002 | M-A1 | **PASS** | `TestTableCollection_AdvisoryDoesNotGate` |
+| AC-SLB-003 | M-A1 | **PASS(변별력 제한 명시)** | `TestTableCollection_CorpusListFindingsUnchanged` — narrow 경로가 코퍼스 전체에서 `LegacyEARSKeyword` 7건만 내므로 단언의 변별력이 그 7건과 순서 의존 `DuplicateREQID`에 한정된다. **제한이 M-A1 절에 적혀 있으므로 은폐가 아니다** |
+| AC-SLB-004 | M-A1 | **PASS** | `TestTableCollection_DiscriminatorRejectsDispositionTables` — 부재 단언이므로 **M-A1 뮤턴트 표와 짝으로만 읽는다** |
+| AC-SLB-005 | M-A2b | **PASS** | 기준 5개 전부 + 뮤턴트 M1. `corpus rejection: rows=787 emitted lines=81 sum(N)=787` |
+| AC-SLB-006a | M-A2 | **PASS** | `TestModality_EnglishControlStillJudged` |
+| AC-SLB-006b | M-A2 | **PASS** | `TestModality_KoreanControlAnnounced` — 두 코드 중 정확히 하나. 「둘 다 0」을 `t.Fatalf`로 분리 |
+| AC-SLB-007 | M-A2 | **PASS** | `TestModality_SilenceDiffersFromConformance` |
+| AC-SLB-008 | M-A2 | **PASS** | `TestModality_UnjudgedIsAdvisory` — 픽스처가 `Widened=false`임을 먼저 단언해 t385 경로를 배제 |
+| AC-SLB-008b | M-A2 | **PASS** | `TestModality_UnjudgedIsNotReportedConforming` — `judgeModality` 반환값 직독, 부재로 추론하지 않음 |
+| **AC-SLB-009** | M-A3 | **PASS — 이 실행에서 처음 판정한다** | 아래 「AC-SLB-009 판정」 |
+| AC-SLB-010 | M-A1(절반) → M-A2(완결) | **PASS** | `TestModality_AdvisoryDoesNotLeakIntoErrors` — 두 자문 경로를 한 픽스처에서 동시 발화 |
+| AC-SLB-011 | M-A1 | **PASS** | `TestTableCollection_SourceRecordedPerOrigin` + `..._SourceDoesNotDecideSeverity` |
+| AC-SLB-012 | M-A2 | **PASS(축자 픽스처 1종 결함 발견 → v0.6.0 개정으로 닫힘)** | `TestModality_ShallContactIsWordBoundary` — 가드를 만드는 것은 교정 픽스처 1종뿐이며 그 사실이 `oldShallContact` 헬퍼로 기계 단언돼 있다 |
+
+**PASS 16 · FAIL 0.** 그중 둘은 한정어를 달고 통과한다(003의 변별력 제한, 012의 픽스처 결함) — **한정어는 판정의 일부이지 각주가 아니다.**
+
+#### AC-SLB-009 판정 (이 실행에서 `acceptance.md` 기준에 대조해 판정)
+
+배차문의 관측대로 **어느 절에도 AC-SLB-009의 명시적 PASS 행이 없었다.** M-A3은 그 AC의 주제이면서 판정을 적지 않았다. 이 실행에서 `acceptance.md`의 기준 다섯 항을 M-A3 기록에 하나씩 대조했다.
+
+| AC-SLB-009 요구 | M-A3 기록의 대응 | 충족 |
+|---|---|---|
+| ① 수리 전 경로와 ② 수리 후 경로를 **같은 시점의 같은 코퍼스**에 실행 | `moai-b7`·`moai-dev`(수리 전) vs `moai-wt`(수리 후), 앵커 `0705eb8d7` 한 시점, 같은 병합 코퍼스. rc 직독 4,416 / 4,416 / 4,757 | 예 |
+| 코드별 증감표, 각 행이 **두 재유도값**을 나란히 | 「코드별 증감표 — 옛 값과 새 값을 나란히, 움직이지 않은 행도 싣는다」, 15개 코드 전수 | 예 |
+| 증거 파일 경로가 보고서에 인용 | `.moai/reports/t518/ma3/` 11파일, `progress.md`의 증거 표에 경로별로 인용됨(추적 확인: `git ls-files -- .moai/reports/t518/ma3/` 11행) | 예 |
+| **[HARD]** 각 행이 **출처별로** 갈라짐(표 수집 유래 vs t385 넓힘 유래) | 「출처별 귀속」 절 — 증감 16행 전부 표 수집 유래, t385 넓힘 유래 0행. 줄 위치 조인으로 재확인 | 예 |
+| **[HARD]** 저장된 4,346과 빼지 않음 | 「옛 값과 새 값을 그대로 빼면 수리 효과와 코퍼스 증가가 섞인다」를 명시하고 같은 코퍼스 위 세 재유도값 사이에서만 비교 | 예 |
+| **[HARD]** `CoverageIncomplete` 행 별도 표기 + t528 유보 본문 명기 | 「`CoverageIncomplete` 행의 해석 유보」 절 | 예 |
+
+**판정: AC-SLB-009 PASS.** AC 자신의 판정문(「증감표가 없으면 완료가 아니다 … `CoverageIncomplete` 해석 유보는 FAIL이 아니다」)이 요구하는 것이 전부 있다.
+
+**[HARD] 이 판정은 소급 기록이며, 내가 M-A3을 다시 돌린 것이 아니다.** 위 여섯 행은 전부 커밋된 M-A3 기록과 커밋된 증거 파일의 **재판독**이다. 이 실행에서 새로 관측한 것은 증거 파일의 추적 여부(`git ls-files` 11행) 하나뿐이다.
+
+### 마일스톤 대조 — 계획 M1-M5 vs 실제 착지
+
+| plan §F | 계획 내용 | 실제 실행 | 커밋 | 순서 |
+|---|---|---|---|---|
+| M1 | 기존 계측기 확장 + 판독 기준 고정 + 반사실 | **M1** | `fc02d2542` | **5번째** |
+| M2 | 축 1 표 수집 (RED→GREEN) | M-A1 | `6cfcfef00` | 1번째 |
+| M3 | 축 2 갈래 B 무판정 발화 + SHALL 단어 경계 | M-A2 | `458fc7ebc` | 2번째 |
+| M3(잔여) | — (계획에 없던 분리) | **M-A2b** — AC-SLB-005 기각 관측 가능성. M-A2가 「소관이 축 1」이라며 별도 마일스톤으로 미룬 것 | `fc0540f41` | 3번째 |
+| M4 | 코퍼스 재계수 | M-A3 | `b65850dbe` · `a4fbaeb82` | 4번째 |
+| M5 | 문서 정리 | **M5** | `fe75ec5c8` | 6번째 |
+
+**[HARD] 실행 순서는 계획 순서가 아니다: M2 → M3 → M3' → M4 → M1 → M5.** M1이 마지막에서 두 번째로 밀린 대가는 §E.2 M1 절의 첫 문단이 값으로 적었다(여섯 줄 증감의 원인 분해 불가). 이 표를 싣는 이유는 커밋 이력만으로는 계획 마일스톤과 실행 마일스톤의 대응이 복원되지 않기 때문이다 — 이름이 다르고(M2 vs M-A1), 개수도 다르다(5 vs 6).
+
+### 파일 — run-phase가 만든 것 (전수)
+
+| 파일 | 성격 | 착지 마일스톤 |
+|---|---|---|
+| `internal/spec/lint_req_table.go` | 신규 — 표 수집기 + C-d 판별식 | M-A1 (주석 M5) |
+| `internal/spec/lint_req_table_test.go` | 신규 — 축 1 테스트 | M-A1 |
+| `internal/spec/lint_req_table_rejection.go` | 신규 — 기각 관측 가능성 | M-A2b |
+| `internal/spec/lint_req_table_rejection_test.go` | 신규 | M-A2b |
+| `internal/spec/lint.go` | 변경 — 3상태 modality + `shallWordPattern` + `judgeModality` 주석 | M-A2 (주석 M5) |
+| `internal/spec/lint_req_widen.go` | 변경 — `parseREQsWithProvenance`가 표 수집을 병합 | M-A1 |
+| `internal/spec/lint_req_widen_decompose_test.go` | 변경 — `measureM1ModalityCensus` 확장 | M1 |
+
+### E2 — 크로스 플랫폼 빌드
+
+**미측정.** GOOS 교차 빌드를 이 실행에서 돌리지 않았다. 부재를 통과로 읽지 않는다.
+
+### E3 — 커버리지
+
+**미측정.** `-cover`를 실행하지 않았다.
+
+### E4 — 서브에이전트 경계
+
+이 실행은 서브에이전트를 스폰하지 않았다. 해당 없음.
+
+### E5 — lint
+
+**미측정.** `golangci-lint`를 실행하지 않았다. 실행한 정적 검사는 `gofmt -l`(두 파일 무출력)과 `go vet ./internal/spec/`(rc=0)뿐이며, 그 둘은 lint 게이트가 아니다.
+
+### E6 — push 상태
+
+**push 하지 않았다** — 배차 지시. 이 카드가 만든 커밋은 로컬에만 있다.
+
+### E7 — 상태 전이
+
+`spec.md` frontmatter는 M-A1 착지 시 이미 `draft → in-progress`로 전이됐다(v0.6.0 기록). 이 실행은 BLIND-AXES의 상태를 움직이지 않았다 — `in-progress → implemented → completed`는 manager-docs 소관이다.
+
+### E8 — RED 증거
+
+이 실행이 착지시킨 두 마일스톤(M1 · M5)은 **어느 쪽도 새 AC를 만들지 않는다.** M1은 계측 확장(측정이 산출물, 단언 없음), M5는 주석뿐이다. 따라서 RED-GREEN 쌍이 성립하지 않으며 **RED 증거가 없는 것이 결손이 아니다.** AC를 가진 마일스톤들(M-A1·M-A2·M-A2b)의 RED 증거는 각 절에 있다.
+
+### manager-spec 후속 (계획 아티팩트 — 이 에이전트의 소관 밖)
+
+| # | 아티팩트 | 내용 | 근거 |
+|---|---|---|---|
+| **F-A1** | `spec.md` §A (`:89-98`) | 여섯 줄 표가 아직 「잠정」이다. 그 표 자신의 조건(「M1이 기준을 고정한 뒤 다시 재는 값이 baseline이 된다」)이 **충족됐다** — 기준은 `measureM1ModalityCensus` 주석과 §E.2 M1에 고정됐고 값은 재유도됐다(4,018 / 2,417 / 463 / 1,951 / 189 / 570). 새 값으로 갱신하고 잠정 표시를 떼되, **옛 값을 지우지 말고 병기**해야 한다(§G 규율) | §E.2 M1 |
+| **F-A2** | 계획 밖 — 도구 결함 | blast-radius 하네스가 `decomposeReportRelPath`로 **추적되는 t362 증거 파일**에 쓴다. 재실행이 그 카드의 커밋된 수치를 오늘 코퍼스로 덮어쓴다(실측 후 되돌림). 출력 경로를 호출자가 정할 수 있게 하거나 카드별로 갈라야 한다. **이 카드의 범위 밖** | §E.2 M1 |
+| **F-A3** | `plan.md` §F | 실행이 6개 마일스톤으로 갈렸다(M-A2b가 분리). 계획 표는 5개이며 M-A2b에 대응하는 행이 없다 | 위 마일스톤 대조표 |
+
+### Gaps — 이 실행에서 관측하지 않은 것
+
+- **커버리지·lint·교차 빌드 미측정**(E2/E3/E5). 부재를 통과로 읽지 않는다.
+- **M-A1·M-A2·M-A2b·M-A3의 테스트를 이 실행에서 개별 재실행하지 않았다.** `go test ./internal/spec/...` 전체가 rc=0으로 통과했으므로 **그 안에 포함되어 통과했다**는 것까지가 관측이며, 각 AC 테스트가 셀렉터에 실제로 잡혔음을 테스트 단위 출력으로 보이지는 않았다. 패키지 초록은 그 안의 특정 테스트가 실행됐다는 사실보다 약하다.
+- **AC-SLB-003의 변별력 제한은 이 실행에서 다시 재지 않았다.** M-A1이 적은 「narrow가 코퍼스 전체에서 `LegacyEARSKeyword` 7건만 낸다」는 그 시점 코퍼스의 값이고, M1이 코퍼스가 그 뒤 움직였음을 보였다(정의 행 4,018). 그 7이 지금도 7인지는 미측정이다.
+- **M1의 여섯 줄 증감 원인 분해 불가**(§E.2 M1 Gap). 재실행으로 회복되지 않는다.
+
+### Residual-risk — 관측했음에도 여전히 틀릴 수 있는 것
+
+- **주석은 컴파일되지 않는다.** M5가 더한 두 주석의 정확성은 어떤 테스트도 판정하지 않는다. `go test` rc=0이 세우는 것은 편집이 코드를 깨지 않았다는 것뿐이다.
+- **M1 census는 자기가 설명하는 함수와 같은 코드를 부른다.** `parseREQsWide`와 `modalityPrefixes`를 그대로 쓰므로, **그 함수들 자체가 틀렸다면 census도 같은 방향으로 틀린다.** census가 재는 것은 「분포가 어떠한가」이지 「수집기가 옳은가」가 아니다 — 후자는 M-A1의 축자 픽스처 몫이다.
+- **M1의 반사실 0건은 오늘 코퍼스의 성질이다.** 표 유래 항목 20개 중 malformed가 0인 것은 코퍼스가 그렇게 생겼기 때문이지 구조적 보장이 아니다. 코퍼스가 자라면 0이 아니게 될 수 있고, 그때 자문 처리의 억제량이 처음으로 0이 아니게 된다.
+- **`ModalityUnjudged` 481은 「깨졌다」가 아니라 「의견 없음」의 모집단 크기다.** 그중 실제로 잘 쓰인 것과 깨진 것의 분리는 갈래 A(후속 카드) 소관이며, 이 카드는 그 분리를 하지 않았다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
