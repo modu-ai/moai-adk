@@ -49,7 +49,29 @@ card: t497 · tree: `.claude/worktrees/t497` · branch `WT-codex-neutrality` · 
 
 ### M2 — 84건 전수 분류
 
-_<pending>_
+산출: `.moai/reports/t497/body-classification.md`. 측정 트리 `.claude/worktrees/t497`, HEAD `7b4ba4491`.
+
+| # | 명령 | 기대 | 실측 | 판정 |
+|---|---|---|---|---|
+| ① | `grep -c '^\| .*\.toml \| [0-9]' .moai/reports/t497/body-classification.md` | 84 | `84` | PASS |
+| ② | `grep -rhoE '<합집합 패턴>' …/*.toml \| wc -l` | 84 (모집단 불변 대조) | `84` | PASS |
+| ③ | 분류표 `file:line` 정렬본 ↔ `grep -rnoE '<합집합 패턴>' …/*.toml \| cut -d: -f1-2 \| sort -u` 의 `diff` | 무출력 rc 0, 양변 81 | 양변 `81`, diff 무출력 **rc 0** | PASS |
+| 부 | `grep -rn 'AskUserQuestion' …/*.toml \| wc -l` / `grep -rho … \| wc -l` | 3 줄 / 4 발생 | `3` / `4` | PASS (모집단 불변) |
+
+③ 의 표 좌표 추출 명령(축자):
+`grep '^| .*\.toml | [0-9]' <표> | awk -F' \\| ' '{sub(/^\| /,"",$1); print $1":"$2}' | sort -u`
+— 첫 시도에서 `$2":"$3` 로 잘못 잘라 74줄이 나왔다. 표가 아니라 **추출 명령의 필드 오프셋 오류**였고(선행 `| ` 때문에 `$1` 이 `| <path>`), 고친 뒤 81 ↔ 81 로 정확히 맞물렸다. 잘못된 셀렉터의 빈/짧은 출력을 표의 결함으로 읽지 않도록 두 시도를 함께 기록한다.
+
+집계: verdict **directive 57 / prose 27** · subject **this-agent 57 · orchestrator 17 · n/a 9 · prohibition 1**.
+directive 토큰별: `Skill(` 45 · `Agent(` 7 · `TaskUpdate` 3 · `TaskCreate` 1 · `DesignSync` 1.
+
+**AC-CBN-002 세 좌표** — `sync-auditor.toml:131` = prose/`prohibition` · `plan-auditor.toml:146` = prose/`orchestrator` **2행**(한 줄 두 발생) · `super-advisor.toml:62` = prose/`orchestrator`. 각 행에 왜 이 에이전트의 행위가 아닌지를 한 문장으로 적었다.
+
+**`manager-lead.toml` `Agent(` 10줄 전수 판정 (AC-CBN-013 의 N).** N = **7** (`29 37 57 59 172 193 261`), prose 3 (`7 23 130`). `spec.md` §B.4 의 경계 표본 `37 57 59 193` 은 전부 directive 집합 안에 있다. 셀렉터 실측: `grep -cE '^\| [^|]*manager-lead\.toml \| [0-9]+ \| Agent\( \| directive \|' <표>` → `7`.
+
+- **`:172` → directive.** `:57` 이 능력 목록으로 적은 행위를 절차로 다시 적은 줄. 수동태지만 재실행 스폰의 주체는 peer cross-validation 을 오케스트레이션하는 이 에이전트이고, 오케스트레이터가 주어가 아니므로 REQ-CBN-002 상 this-agent 다. `:57` directive / `:172` prose 는 같은 행위에 두 판정을 주는 것이 된다.
+- **`:261` → directive.** 이 에이전트의 위임 라우팅 목록 항목이며 화살표 오른쪽이 자기 행동이다. 닮은 `manager-develop.toml:64-66` 이 prose 인 것과 갈리는 축은 **스폰 주체** — manager-develop 은 `Agent` 도구가 없어 그 표가 오케스트레이터 라우팅의 기술이지만, manager-lead 는 카탈로그 유일 Agent-carrier 라 같은 문장이 자기 행위 지시다.
+- SPEC 이 남긴 나머지 넷도 닫았다: `:7`(보드 기제 서술, 행위자는 plan 레인) · `:23`(대조표 정의 칸) · `:130`(리프 워커 정의 + CI 가드 사실) = prose, `:29`(리드 자세 문단의 배경 스폰 지시, `:59` 와 같은 행위) = directive.
 
 ### M3 — 중립 소스 본문 개정
 
