@@ -150,3 +150,15 @@ _<pending sync-phase>_
 - mode: serial (sub-agent) — single manager-develop spawn, milestones M1→M2→M3 in order; mutants require an exclusive writer per tree, which rules out parallel write-capable agents
 - progression: autonomous (operator, kickoff gate) — carried by orchestrator continuation; `/moai goal` NOT armed (background-agent waits would spin idle turns against the stop-goal evaluator; arm-only hazard per goal-directive.md)
 - plan audit gate: plan-audit.md iteration 2/2 · 0.91 · must-pass 7/7 (read, not trusted: E1/E2 literal fixes verified by grep in this session)
+
+## §G Orchestrator trust-but-verify batch (run-phase completion, 2026-09-08)
+
+Read-only batch on HEAD `f83ed0c04` (this tree), plus one independent mutant re-check:
+
+- `git log --oneline dbc1f7125..HEAD` → 3 commits (6fe7a4141, a9a50254e, f83ed0c04), all subjects carry `t539`; `git status --short` → 0 lines
+- `git diff --stat dbc1f7125..HEAD -- internal/*.go :(exclude)*_test.go` → empty (0 production lines); total diff 27 files, +1802/-6
+- `go vet ./internal/cli/` → rc 0; `gofmt -l internal/cli/mcp_glm_audit_ctx_test.go` → no output
+- `go test ./internal/cli/ -run TestGLMAudit_CancelledContext -count=1 -v` → `--- PASS (0.36s)`, `ok` (log: .moai/reports/t539/orch-guard-green.log)
+- `-list` re-derived from persisted logs: GLM 225 · Audit 101 · Converg 32 (list-GLM.log / list-Audit.log / list-Converg.log)
+- Independent M2 re-check: mutant injected at mcp_glm.go:305 → `--- FAIL: TestGLMAudit_CancelledContext_IsNotSwallowed (0.38s)` "a cancelled audit returned the canned success verdict" (log: .moai/reports/t539/orch-m2-mutant-recheck.log); reverted → `git diff --stat` empty
+- Gaps carried from manager-develop, not smoothed: M3 seeds are 11 for 84 members (73 attributed by seam, not individually mutated); E3 root `internal/cli` coverage figure not captured (non-basis for adoption per AC-CBD-014); selectors ran as three separate `-run` invocations (shell guard), union ⊇ the AC literal
