@@ -2,7 +2,7 @@
 id: SPEC-STATE-ANCHOR-VALIDATE-001
 title: "상태 앵커 후보 검증 — Resolve의 ProjectDir/OriginalCwd 절대경로·존재 검증 (t510 F1 후속 경화)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec

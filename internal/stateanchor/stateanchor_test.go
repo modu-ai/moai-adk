@@ -97,6 +97,108 @@ func TestResolve_EmptySessionIsEmpty(t *testing.T) {
 	}
 }
 
+// TestResolve_RelativeProjectDirFallsThrough pins the absolute-path half of
+// REQ-SAV-001 (SPEC-STATE-ANCHOR-VALIDATE-001): a relative project_dir would
+// be interpreted against the statusline process's cwd — the wrong reference
+// point — so it is rejected and the chain falls through. With no follow-up
+// fields the fall-through lands on "" (the REQ-SA-003 skip path).
+func TestResolve_RelativeProjectDirFallsThrough(t *testing.T) {
+	t.Parallel()
+
+	got := Resolve(Session{ProjectDir: "relative/dir"})
+	if got != "" {
+		t.Errorf("Resolve() = %q, want \"\" (relative candidate rejected, chain empty)", got)
+	}
+}
+
+// TestResolve_StaleProjectDirFallsThrough pins the existence half of
+// REQ-SAV-001: an absolute path that no longer exists must not anchor —
+// anchor-derived MkdirAll writes would resurrect it as a fresh directory
+// tree (SPEC §1.1, the t510 F1 revival mechanism).
+func TestResolve_StaleProjectDirFallsThrough(t *testing.T) {
+	t.Parallel()
+
+	stale := filepath.Join(t.TempDir(), "gone")
+	if err := os.Mkdir(stale, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(stale); err != nil {
+		t.Fatal(err)
+	}
+
+	got := Resolve(Session{ProjectDir: stale})
+	if got != "" {
+		t.Errorf("Resolve() = %q, want \"\" (stale candidate rejected, chain empty)", got)
+	}
+}
+
+// TestResolve_ProjectDirFileCandidateRejected pins the mode half of the
+// predicate: an absolute path that EXISTS but is a FILE is rejected —
+// os.Stat succeeding is not enough, the candidate must name a directory
+// (REQ-SAV-001). This is the admission-condition test for the
+// Stat-success-regardless-of-mode mutant.
+func TestResolve_ProjectDirFileCandidateRejected(t *testing.T) {
+	t.Parallel()
+
+	file := filepath.Join(t.TempDir(), "plainfile")
+	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := Resolve(Session{ProjectDir: file})
+	if got != "" {
+		t.Errorf("Resolve() = %q, want \"\" (file candidate rejected, chain empty)", got)
+	}
+}
+
+// TestResolve_InvalidProjectDirFallsThroughToOriginalCwd pins REQ-SAV-002's
+// fall-through against the hard-"" mutant: an invalid chain step 1 must give
+// step 2 its chance — a valid original_cwd rescues the session, and the
+// exact fixture value is returned (equality, not merely non-empty, so
+// fall-through is distinguishable from a hard-"" early return only when both
+// would differ; here a hard-"" returns "" while fall-through returns the
+// fixture path).
+func TestResolve_InvalidProjectDirFallsThroughToOriginalCwd(t *testing.T) {
+	t.Parallel()
+
+	primary := t.TempDir()
+
+	got := Resolve(Session{
+		ProjectDir:  "/nonexistent/anchor-candidate",
+		OriginalCwd: primary,
+	})
+	if got != primary {
+		t.Errorf("Resolve() = %q, want %q (invalid step 1 falls through to valid step 2)", got, primary)
+	}
+}
+
+// TestResolve_OriginalCwdInvalidFallsThrough pins chain step 2 under the
+// same predicate (REQ-SAV-001/002): an original_cwd that is not an absolute
+// existing directory is rejected and the chain continues — with nothing
+// behind it, "" (REQ-SA-003).
+func TestResolve_OriginalCwdInvalidFallsThrough(t *testing.T) {
+	t.Parallel()
+
+	got := Resolve(Session{OriginalCwd: "relative/cwd"})
+	if got != "" {
+		t.Errorf("Resolve() = %q, want \"\" (relative original_cwd rejected, chain empty)", got)
+	}
+}
+
+// TestResolve_OriginalCwdValidReturned pins the step-2 happy path: a valid
+// absolute existing directory as original_cwd is returned AS-IS — no
+// EvalSymlinks rewriting of the value (REQ-SAV-006).
+func TestResolve_OriginalCwdValidReturned(t *testing.T) {
+	t.Parallel()
+
+	primary := t.TempDir()
+
+	got := Resolve(Session{OriginalCwd: primary})
+	if got != primary {
+		t.Errorf("Resolve() = %q, want %q (valid step 2 returned as-is)", got, primary)
+	}
+}
+
 // TestFromDirectory_WorktreeResolvesPrimaryCheckout pins the one-root
 // property the seam exists for: from a linked worktree the git common
 // directory still points at the primary checkout, so the anchor is the same
