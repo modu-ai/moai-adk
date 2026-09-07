@@ -318,6 +318,160 @@ func TestCodexStaleSkillFinding_SymlinkLoopIndeterminateNotMissing(t *testing.T)
 }
 
 // ---------------------------------------------------------------------------
+// M2 — stat-seam observation tests (REQ-006). These override osStatFn with a
+// RECORDING or INJECTING function (save → replace → t.Cleanup restore, never
+// t.Parallel — the seam is a package-level variable) to pin WHICH path each
+// stat site probes and WHICH bucket each stat result drives. The M1 tests
+// above never touch the seam; these are the only tests in this file that do.
+// ---------------------------------------------------------------------------
+
+// statRecorder collects every path argument passed through the overridden
+// osStatFn while forwarding to the real os.Stat, so the observation changes
+// nothing about the check's behavior.
+type statRecorder struct {
+	paths []string
+}
+
+// stubStatRecording installs a forwarding recording osStatFn and returns the
+// recorder. Serial only.
+func stubStatRecording(t *testing.T) *statRecorder {
+	t.Helper()
+	rec := &statRecorder{}
+	orig := osStatFn
+	osStatFn = func(p string) (fs.FileInfo, error) {
+		rec.paths = append(rec.paths, p)
+		return os.Stat(p)
+	}
+	t.Cleanup(func() { osStatFn = orig })
+	return rec
+}
+
+// stubStatInject overrides osStatFn so mapped paths return their mapped error
+// VERBATIM (a nil mapped error resolves, backed by a real FileInfo from a
+// live directory) while everything else forwards to the real os.Stat. This is
+// what proves the bucket follows the INJECTED result rather than the disk
+// state — the portable stat-failure injection the seam exists to enable.
+func stubStatInject(t *testing.T, results map[string]error) {
+	t.Helper()
+	info, err := os.Stat(t.TempDir()) // a real resolving FileInfo to hand back
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := osStatFn
+	osStatFn = func(p string) (fs.FileInfo, error) {
+		if e, mapped := results[p]; mapped {
+			if e != nil {
+				return nil, e
+			}
+			return info, nil
+		}
+		return os.Stat(p)
+	}
+	t.Cleanup(func() { osStatFn = orig })
+}
+
+// TestCodexStaleSkillFinding_StatSeamRecordsClassifiedPaths (site B): the
+// stat path argument is the CLASSIFIED path — the declared absolute, and the
+// seam-expanded home-relative — and ONLY for those two classifications:
+// relative, oddly-formed, and path-less entries produce ZERO recorded stat
+// calls (REQ-003's skip-without-stat contract, now observable).
+func TestCodexStaleSkillFinding_StatSeamRecordsClassifiedPaths(t *testing.T) {
+	absent := absentSkillPath(t, "t563-seam-abs")
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: absent, EnabledKey: "true"},
+		{Path: "~/t563-seam-gone/SKILL.md", EnabledKey: "true"},
+		{Path: "skills/t563-rel/SKILL.md", EnabledKey: "true"},
+		{Path: `skills\t563-odd\SKILL.md`, EnabledKey: "true"},
+		{Path: "~otheruser/x", EnabledKey: "true"},
+		{EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+	rec := stubStatRecording(t)
+
+	f, ok := codexStaleSkillFinding()
+	if !ok {
+		t.Fatalf("missing classified paths produced no finding")
+	}
+	if want := "~/.codex/config.toml: 2 stale skill entries"; f.summary != want {
+		t.Errorf("summary = %q, want %q", f.summary, want)
+	}
+	wantPaths := []string{
+		absent, // codexPathAbsolute: declared verbatim
+		filepath.Join(home, "t563-seam-gone", "SKILL.md"), // codexPathHomeRelative: expanded
+	}
+	if len(rec.paths) != len(wantPaths) {
+		t.Fatalf("recorded stat calls = %v, want exactly %v", rec.paths, wantPaths)
+	}
+	for i, want := range wantPaths {
+		if rec.paths[i] != want {
+			t.Errorf("recorded stat arg[%d] = %q, want %q", i, rec.paths[i], want)
+		}
+	}
+}
+
+// TestCodexStaleSkillFinding_InjectedErrNotExistDrivesMissing: a path that
+// EXISTS on disk is counted missing when the injected stat result is
+// fs.ErrNotExist — the bucket follows the injected result, not the disk.
+func TestCodexStaleSkillFinding_InjectedErrNotExistDrivesMissing(t *testing.T) {
+	live := liveSkillFile(t)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: live, EnabledKey: "true"}})
+	stubCodexHome(t, home)
+	stubStatInject(t, map[string]error{live: fs.ErrNotExist})
+
+	f, ok := codexStaleSkillFinding()
+	if !ok {
+		t.Fatalf("injected ErrNotExist produced no finding")
+	}
+	if want := "~/.codex/config.toml: 1 stale skill entry"; f.summary != want {
+		t.Errorf("summary = %q, want %q (injected ErrNotExist must drive missing)", f.summary, want)
+	}
+	if !strings.Contains(f.detail, "; 1 with a path that no longer exists (1 enabled, 0 disabled, 0 unspecified, 0 non-boolean)") {
+		t.Errorf("detail does not carry the injected-missing entry:\n%s", f.detail)
+	}
+}
+
+// TestCodexStaleSkillFinding_InjectedNilDrivesResolves: a path that is ABSENT
+// on disk resolves when the injected stat result is nil — the resolves arm is
+// the injected verdict, so the entry stays silent.
+func TestCodexStaleSkillFinding_InjectedNilDrivesResolves(t *testing.T) {
+	absent := absentSkillPath(t, "t563-seam-nil")
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: absent, EnabledKey: "true"}})
+	stubCodexHome(t, home)
+	stubStatInject(t, map[string]error{absent: nil})
+
+	f, ok := codexStaleSkillFinding()
+	assertStaleSilent(t, f, ok)
+}
+
+// TestCodexStaleSkillFinding_InjectedOtherErrorDrivesIndeterminate: a stat
+// error that is neither nil nor ErrNotExist folds the entry into the
+// indeterminate counter — disclosed in Detail, never counted missing.
+func TestCodexStaleSkillFinding_InjectedOtherErrorDrivesIndeterminate(t *testing.T) {
+	pMissing := liveSkillFile(t)
+	pOther := liveSkillFile(t)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: pMissing, EnabledKey: "true"},
+		{Path: pOther, EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+	stubStatInject(t, map[string]error{
+		pMissing: fs.ErrNotExist,
+		pOther:   errors.New("t563: injected stat failure (not ENOENT)"),
+	})
+
+	f, ok := codexStaleSkillFinding()
+	if !ok {
+		t.Fatalf("missing + injected-error entries produced no finding")
+	}
+	if want := "~/.codex/config.toml: 1 stale skill entry"; f.summary != want {
+		t.Errorf("summary = %q, want %q (the other-error entry must not inflate missing)", f.summary, want)
+	}
+	if !strings.Contains(f.detail, "; a further 1 could not be checked and are NOT counted as missing") {
+		t.Errorf("detail does not disclose the injected-error entry:\n%s", f.detail)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Site A — the skill-mirror inspection. inspectSkillMirror is READ-only, so
 // the skillMirrorState it returns is asserted directly per fixture shape.
 // ---------------------------------------------------------------------------
@@ -522,5 +676,64 @@ func TestInspectSkillMirror_AbsentCanonicalNotIndeterminate(t *testing.T) {
 	}
 	if st.indeterminate != 0 {
 		t.Errorf("absent canonical counted as indeterminate: %+v", st)
+	}
+}
+
+// TestInspectSkillMirror_StatSeamRecordsMirrorJoinedPath (site A): the stat
+// path argument is the MIRROR-RELATIVE joined path — filepath.Join(mirrorDir,
+// e.Name()) — for every symlink entry, resolving the producer's relative link
+// body against the mirror directory exactly as the OS does for Codex (REQ-002).
+func TestInspectSkillMirror_StatSeamRecordsMirrorJoinedPath(t *testing.T) {
+	root := t.TempDir()
+	writeSkillMirror(t, root, []string{"live"}, []mirrorEntrySpec{
+		{name: "live", kind: mirrorEntryLive},
+		{name: "ghost", kind: mirrorEntryDangling},
+	})
+	rec := stubStatRecording(t)
+
+	st := inspectSkillMirror(root)
+	if len(st.dangling) != 1 || st.dangling[0] != "ghost" {
+		t.Fatalf("dangling = %v, want [ghost]: %+v", st.dangling, st)
+	}
+	mirrorDir := filepath.Join(root, ".agents", "skills")
+	// ReadDir yields entries lexically: ghost, then live. Both are symlinks,
+	// so both are stat'ed (the stat follows the link).
+	wantPaths := []string{
+		filepath.Join(mirrorDir, "ghost"),
+		filepath.Join(mirrorDir, "live"),
+	}
+	if len(rec.paths) != len(wantPaths) {
+		t.Fatalf("recorded stat calls = %v, want exactly %v", rec.paths, wantPaths)
+	}
+	for i, want := range wantPaths {
+		if rec.paths[i] != want {
+			t.Errorf("recorded stat arg[%d] = %q, want %q", i, rec.paths[i], want)
+		}
+	}
+}
+
+// TestInspectSkillMirror_InjectedResultsDriveBuckets: two mirror entries
+// whose links BOTH resolve on disk are split across the dangling and
+// indeterminate buckets purely by the injected stat results — ErrNotExist →
+// dangling (named), any other error → indeterminate, and neither ever lands
+// in the silent resolve arm.
+func TestInspectSkillMirror_InjectedResultsDriveBuckets(t *testing.T) {
+	root := t.TempDir()
+	writeSkillMirror(t, root, []string{"t-a", "t-b"}, []mirrorEntrySpec{
+		{name: "t-a", kind: mirrorEntryLive},
+		{name: "t-b", kind: mirrorEntryLive},
+	})
+	mirrorDir := filepath.Join(root, ".agents", "skills")
+	stubStatInject(t, map[string]error{
+		filepath.Join(mirrorDir, "t-a"): fs.ErrNotExist,
+		filepath.Join(mirrorDir, "t-b"): errors.New("t563: injected stat failure (not ENOENT)"),
+	})
+
+	st := inspectSkillMirror(root)
+	if len(st.dangling) != 1 || st.dangling[0] != "t-a" {
+		t.Errorf("dangling = %v, want [t-a] (injected ErrNotExist must drive dangling): %+v", st.dangling, st)
+	}
+	if st.indeterminate != 1 {
+		t.Errorf("indeterminate = %d, want 1 (injected other error): %+v", st.indeterminate, st)
 	}
 }
