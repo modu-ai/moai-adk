@@ -405,6 +405,57 @@ in BRE"). Fixed to the literal form; a guard that had only ever been shown its g
 shipped with a sequence assertion that never matched — the vacuous-guard direction this
 milestone exists to prevent, observed in the wild before the workflow ever reached CI.
 
+### M5 — distribution close-out (2026-09-07/08, this session)
+
+All M5 Verify steps run, in order (this tree, HEAD `8f03bcb08` at measurement):
+
+1. **Swept count** — `git diff --name-only ad272be20 | grep -cE '^\.claude/|^\.moai/config/'`
+   → **13** (MUST be > 0; not a vacuous sweep).
+2. **Template twins** — 10 of 13 carry a template mirror pair (PAIR-OK);
+   2 are `.claude/rules/local/` files whose no-mirror status is **the documented intent**
+   (gitflow-lane-protocol.md, repo-local-pr-policy.md — repo-local doctrine, no template
+   counterpart by design); 1 is `.claude/settings.json`, whose twin is
+   `internal/template/templates/.claude/settings.json.tmpl` (different extension, same pair —
+   the M0 matcher insert, +11 lines, landed on both sides). No file lacks its intended
+   counterpart. (One swept file — `moai-memory.md` — carries another SPEC's commit on this
+   branch; its pair exists, which is all this milestone asserts.)
+3. **Neutrality grep** — `grep -rln 'SPEC-JUDGMENT-FIRST-MODE\|REQ-JFM\|/Users/\|CLAUDE.local'
+   internal/template/templates/` → **0 matches** (rc=1). Note: the first attempt piped through
+   `head` and read the head process's exit code — the re-measure reports grep's own rc.
+4. `go test ./internal/template/... -run TestTemplateNeutralityAudit -count=1` → **ok**.
+5. `make build` → exit 0; regenerated `internal/template/catalog.yaml` (the M3 key's hash
+   entry) — included in this milestone's commit; `git status --porcelain` after the commit
+   shows nothing unexpected.
+6. `go test ./internal/config/... ./internal/hook/... ./internal/template/... -count=1`
+   → **all packages ok** (hook: 98s, mx: 30s, perf: 84s, quality: 35s, security: 17s — every
+   line `ok`).
+
+### M6 — collection window opened; pull sample below floor, recorded as a GAP (2026-09-08)
+
+Entry condition **met**: M0's pre-landing baseline row exists. The primary-checkout observer log
+(`<primary>/.moai/logs/askuser-observations.jsonl`) holds **20 rows, all `mode: "push"`, all
+`label_present: true`** (span 2026-09-03T19:19:29Z → 2026-09-07T14:09:28Z, 8+ distinct
+session_ids) — AC-JFM-023's push-mode baseline is green.
+
+**The falsifier itself is NOT satisfied.** The pull-mode denominator is **empty**: 0 rows carry
+`mode: "pull"`, because this repository only switched to `recommendation_mode: pull` in M3
+today — the entire existing log predates the mode switch. `violations: 0` computed over this
+empty set asserts nothing (`feedback_confident_verdicts_over_empty_sets`): the window plan.md
+defined is exactly the one that opens now. Per plan.md — "A sample below the floor is a gap,
+recorded as such. It is never reported as a pass":
+
+```text
+jq -s '[.[] | select(.mode=="pull")] | {n: 0, violations: 0}   # n==0: nothing measured
+```
+
+**Disposition: AC-JFM-018 stays RED — collection window OPEN, not closed.** The window needs
+≥20 `pull`-mode rows to accumulate from real orchestrator sessions; no amount of lane work in
+this session can produce them, and exporting `pull-window.jsonl` now would manufacture the
+empty-set "violations: 0" artifact plan.md explicitly warns against. The export (with its
+REQ-JFM-025 provenance record, `rows_recorded` vs `calls_issued`) is the first act of the
+session that closes the window — it is deferred to that session, and this record is the
+handoff marker.
+
 ### M3 — AC-JFM-013 escalation resolution (commit `a12beb541`, 2026-09-07 11:49; NOT plan.md §F M3)
 
 **Label clarification first**: the "M3" in commit `a12beb541`'s subject names the escalation
@@ -427,10 +478,10 @@ measured**.
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_phase: resumed 2026-09-07 — M0 ratified, M1 done, M2 done (2 of its 5 criteria repaired this session), AC-JFM-013 escalation resolved + open question closed, M3 (config key) done, M4 (CI guard, both directions) done; M5, M6 NOT entered
-run_commit_sha: 8b4896bcb (latest; per-milestone records ride their own commits — a12beb541 escalation resolution, b2c3d6c03 ledger resolution, 1fb802d09 AC-JFM-007 repair, 9b657b8f5 AC-JFM-009 repair, 099c7bbe4 M3 config key, 8b4896bcb budget raise)
-run_status: in progress — kick-off NOT re-run (continuation of an interrupted run, lead-confirmed at dispatch); prior "M1 only" signal superseded by the M2 + repair records above
-ac_pass_count: 16   # M1's 10 + AC-JFM-005 + AC-JFM-006 + AC-JFM-007 (after 1fb802d09) + AC-JFM-008 + AC-JFM-009 (after 9b657b8f5) + AC-JFM-002 (M3 test) + AC-JFM-017 (M4 both directions, local); full matrix re-measured before sync
+run_phase: resumed 2026-09-07 — M0 ratified, M1 done, M2 done (2 of its 5 criteria repaired this session), AC-JFM-013 escalation resolved + open question closed, M3 (config key) done, M4 (CI guard, both directions) done, M5 (distribution close-out) done; M6 collection window OPEN — pull sample 0/20, AC-JFM-018 RED by measurement, NOT a pass
+run_commit_sha: <this milestone commit — M5/M6 record + catalog.yaml regenerate; prior chain: a12beb541, b2c3d6c03, 1fb802d09, 9b657b8f5, 099c7bbe4, 8b4896bcb, 8f03bcb08>
+run_status: blocked on M6 only — the falsifier window needs ≥20 real pull-mode AskUserQuestion rows to accumulate in live sessions (repo switched to pull in M3); no lane work can produce them; export deferred to the session that closes the window (see §E.2 M6)
+ac_pass_count: 17   # M1's 10 + AC-JFM-005/006/007/008/009 (repaired green) + AC-JFM-002 (M3) + AC-JFM-017 (M4) + AC-JFM-001/020/021/022-class guards green in M5 sweep; AC-JFM-023 green (baseline rows exist); AC-JFM-018 RED (window open); full matrix re-measured before sync
 ac_fail_count: 0    # the two handover FAILs (AC-JFM-007, AC-JFM-009) are repaired as recorded in §E.2
 ac_blocked_count: 0
 preserve_list_post_run_count: 2   # zone-registry.md, orchestration-mode-selection.md — both diff-empty vs ad272be20 (re-verify at run close)
