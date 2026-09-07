@@ -205,7 +205,7 @@ run 시점(§E.2 M5)과 동일. `EXIT=1` 은 `absent` 두 계층 탓이며 AC-CM
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync   # 자기 해시를 스스로 실을 수 없다 — 직후 커밋에서 채운다(schema D3 backfill 예외)
+sync_commit_sha: 4b1f13834   # sync 커밋. 자기 해시를 스스로 실을 수 없어 직후 커밋에서 backfill(schema D3 예외, §E.3 run_commit_sha 와 동일 방식)
 sync_status: complete
 b12_self_test_a: "pass — /usr/bin/grep -c 'SPEC-CODEMAPS-REFRESH-002' CHANGELOG.md → 0 (사전), 1 (사후). 중복 진입 없음"
 b12_self_test_b: "pass — 접미사 허용 정규식 13 = §E.3 AC 매트릭스 행 13. 정본 정규식은 12 를 내며 AC-CM2-003a 를 잃는다(위 절)"
