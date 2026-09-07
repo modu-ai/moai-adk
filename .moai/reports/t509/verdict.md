@@ -21,7 +21,10 @@
 
 그리고 이 카드가 지시하는 방향은 **이미 착지한 판정과 정면으로 부딪힌다**(§3). 그러므로 이 판정서의 결론은 "어떻게 만들 것인가"가 아니라 **"무엇이 진짜 간극이고, 그것을 만드는 것이 옳은가"**다.
 
-> **[§8 먼저 읽을 것]** 운영자가 §6의 결정에서 **「감사 경로만 — web에 노출」**을 골랐다. 그 범위를 재보니 **이미 전부 구현돼 있다** — 전용 Audit 탭, 네 필드, 회귀 테스트, i18n까지. **이 카드는 그 범위에서 만들 것이 없다.** 근거는 §8.
+> **[§9를 먼저 읽을 것 — §0·§8은 정정됐다]**
+> §8은 "고르신 범위는 이미 구현돼 있다 / 만들 것이 없다"고 결론지었다. **그것은 틀렸다.** 운영자가 트리 빌드본으로 확인하고 반박했고, 재측정 결과 그 반박이 옳다.
+> 실제 결론: **codex 설정 15개가 Audit·Workflow·MCP 세 탭에 흩어져 있고, codex 페이지는 없다.** 지시가 처음부터 말한 간극이 실재하며, **이 카드는 만들 것이 있다**(단 새 설정이 아니라 모으는 일이라 Tier가 내려간다).
+> §0-§8은 지우지 않고 남긴다 — 세 번에 걸쳐 질문을 좁혀 답한 경위가 그 자체로 기록이다. 근거는 §9.
 
 ---
 
@@ -381,3 +384,154 @@ rc=0
 - **`moai web`을 띄워 눈으로 보지 않았다.** 렌더가 실제로 되는지는 여전히 실행 관측이 아니다 — 위 테스트는 필드 선언과 seam 왕복을 재지, HTML 렌더를 재지 않는다.
 - **`internal/cli/audit_pin_live_test.go`는 돌리지 않았다.** 이름상 라이브 테스트라 `codex` 바이너리를 요구할 수 있고, `internal/cli` 는 이 리포에서 600초 하한이 걸린 패키지다. 존재만 확인했고 내용을 읽지 않았다.
 - 가장 값싼 남은 확정: `moai web`을 띄워 Audit 탭에서 `codex.model`에 값을 넣고 저장한 뒤 `workflow.yaml`에 남는지 본다. 원하면 하겠다.
+
+---
+
+## 9. [정정] §8은 틀렸다 — 운영자 관측이 옳다
+
+**§8을 지우지 않는다. 아래가 정정이다.**
+
+운영자가 §8을 읽고 실제로 확인한 뒤 답했다: **"codex 설정 메뉴가 존재하지 않는다."** 그리고 검증 방식도 지적했다: **"병합해서 빌드 후 테스트를 해야 하지 않나?"**
+
+**둘 다 옳다.**
+
+### 9.1 무엇이 틀렸나 — 질문을 좁혀놓고 답했다
+
+지시 원문은 "moai web 에서 codex 모델 설정 **페이지**를 추가하자"였다. §8이 답한 것은 **"codex 모델/effort 필드가 존재하는가"**다. 그 둘은 다른 질문이고, 나는 좁은 쪽에 답한 뒤 **"고르신 범위는 이미 100% 구현돼 있습니다"**라고 보고했다. 그것이 과대 주장이다.
+
+필드는 있다(§8.1은 여전히 참). **페이지는 없다.**
+
+### 9.2 검증 방식도 틀렸다 — 설치본으로 쟀다
+
+§8.6에서 내가 띄운 `moai web`은 PATH가 잡은 **설치본**(`/Users/goos/go/bin/moai`, `v3.2.0-rc.0`)이고, 소스는 워크트리에서 읽었다. **둘이 같은 코드라는 것을 증명하지 않았다.**
+
+병합 후 트리에서 빌드해 다시 쟀다:
+
+```
+$ make build                                  # merged HEAD 2957399d3
+$ ./bin/moai version
+ list   list-311-g2957399d3-dirty   built 2026-09-07T04:43:30Z
+```
+
+두 바이너리의 탭 수가 실제로 다르다:
+
+| | 설치본 `v3.2.0-rc.0` | 트리 빌드본 `g2957399d3` |
+|---|---|---|
+| 탭 수 | 12 | **13** (`tab-gate` 추가) |
+| `tab-codex` | 0 | **0** |
+
+**설치본은 실제로 뒤처져 있었다.** 이번 축의 답(`tab-codex` = 0)은 우연히 같았지만, 다른 축이었다면 틀린 판정을 냈을 검증이다. 지적이 정확하다.
+
+### 9.3 트리 빌드본으로 잰 결과
+
+```
+$ ./bin/moai web --port 3051 --no-open &   # 트리 빌드본
+$ curl -s .../settings   →  http=200 bytes=122782
+$ grep -o 'tab-[a-z0-9]*' page.html | sort -u
+tab-agentfm  tab-audit  tab-crosssession  tab-feedback  tab-gate
+tab-git  tab-identity  tab-language  tab-launch  tab-llm
+tab-mcp  tab-report  tab-workflow
+$ grep -c 'tab-codex' page.html
+0
+```
+
+**codex 탭은 없다.** 반면 "codex"라는 낱말은 페이지에 **102번** 나온다 — 흩어져 있다는 뜻이다.
+
+### 9.4 진짜 간극 — 세 번째이자 마지막 정정
+
+codex 설정은 **3개 탭에 15개가 흩어져** 있다(선언: `internal/settings/schema_sections.go`, 렌더 확인: 위 페이지):
+
+| 탭 | 키 경로 | 설정 |
+|---|---|---|
+| **Audit** | `workflow.audit.*` | `codex.model` · `codex.effort` · `gates.codex` · `model`(백엔드 선택) |
+| **Workflow** | `workflow.codex.*` | `review_gate.enabled` · `task.allow_write` |
+| **MCP** | `mcp.codex.*` · `mcp.tools.codex_*` | `auth_provider` · `binary` · `version` + 툴 토글 6개(`codex_audit` `codex_task` `codex_setup` `codex_job_status` `codex_job_result` `codex_job_cancel`) |
+
+**그러므로 이 카드의 간극은:**
+
+> **codex 설정이 없는 것이 아니라, codex 설정을 한자리에서 볼 곳이 없다.** 15개가 세 탭에 흩어져 있고, 사용자가 "codex를 어떻게 쓸지"를 정하려면 세 탭을 오가야 한다.
+
+이것이 지시 원문이 처음부터 말한 것이다. 나는 §0에서 "P1은 절반만 참"이라 했고 §8에서 "이미 구현됨"이라 했는데, **둘 다 필드 존재만 보고 한 판정**이었다.
+
+### 9.5 선례가 있다 — 그리고 제약도 있다
+
+**선례**: Audit 탭 자체가 이렇게 만들어졌다. `schemaform.go:49` 주석 — "audit (M2): `workflow.audit.*` moved off the workflow tab onto its own." 기제는 `isAuditFieldName`(접두 판정) + `partitionWorkflowFields`(필드 분배)다. 같은 기제를 `isCodexFieldName`으로 복제하면 된다.
+
+**제약 — 이게 핵심 난점이다**: Audit 탭이 옮긴 필드는 **전부 `workflow` 한 섹션 안**이었다. 그래서 `schemaform.go:236-238`이 "The audit panel's persistence section stays SectionWorkflow"라고 적을 수 있었다. 그런데 codex 필드는 **`workflow`와 `mcp` 두 섹션에 걸쳐** 있다. 패널의 저장 섹션이 하나로 고정되는 구조라면, **크로스 섹션 패널이 현재 지원되는지가 먼저 확정돼야 한다.** 나는 이것을 재지 않았다(§9.7).
+
+### 9.6 그래서 이 카드는 다시 열린다
+
+§8이 "만들 것이 없다"고 한 것은 취소한다. **만들 것이 있다.** 다만 그것은 「codex 설정을 새로 만드는 일」이 아니라 **「흩어진 15개를 한 페이지로 모으는 일」**이고, 범위가 다르면 설계도 다르다:
+
+- 새 설정 키를 **만들지 않는다**(이미 다 있다). 따라서 `.moai/config` 스키마 변경·템플릿 미러·16개 언어 중립성 축(§5의 A1·A3)은 **불필요해진다**.
+- 남는 것은 **web UI 축 하나**(§5의 A2)와, 그 앞에 놓인 **크로스 섹션 패널 가능성 판정**이다.
+- 결과적으로 카드는 Tier M~L이 아니라 **Tier S~M**으로 내려간다.
+
+### 9.7 이 정정이 아직 안 본 것
+
+- **크로스 섹션 패널이 현재 구조에서 가능한지** 재지 않았다. `PanelID`와 `ID: settings.SectionWorkflow`의 결합이 한 패널에 한 섹션만 허용하는지, 아니면 필드마다 섹션이 따라가는지는 코드를 더 읽어야 한다. **A2 착수 전 첫 측정이 이것이어야 한다.**
+- **15개 전부를 한 탭에 모으는 것이 옳은지** 판정하지 않았다. MCP 툴 토글 6개는 codex 설정이라기보다 MCP 도구 목록의 일부일 수 있다 — 어디까지 모을지는 설계 결정이다.
+- **`-dirty` 빌드였다.** `make build`가 `catalog.yaml`을 재생성해 트리가 dirty 상태에서 빌드됐다. 렌더 결과에 영향을 줄 만한 변경은 아니지만, 엄밀한 재현에는 clean 트리 빌드가 필요하다.
+- 운영자가 실제로 브라우저에서 본 화면을 **내가 같이 보지 않았다.** 내 판정은 curl로 받은 HTML 기준이다.
+
+---
+
+## 10. [실물 관측] `moai web`을 **띄우기만 해도** 추적 config 2개가 재작성된다
+
+§4.2는 쓰기 안전성 공백을 **코드 판독으로** 적었다. §9의 재검증 중에 그것이 **실제로 일어나는 것을 관측했다.**
+
+### 10.1 관측
+
+`./bin/moai web --port 3051 --no-open`을 띄우고 `/settings`를 curl한 뒤(**저장 버튼은 누르지 않았다**) `git status`:
+
+```
+ M .moai/config/sections/feedback.yaml
+ M .moai/config/sections/git-strategy.yaml
+```
+
+diff 내용:
+
+```diff
+--- feedback.yaml
+     repository: modu-ai/moai-adk
+-
+     # Whether the /moai feedback workflow may create the issue without asking
+```
+
+```diff
+--- git-strategy.yaml
+     github_username: ""
+-    worktree_base_branch: develop
+     gitlab:
+         instance_url: ""
++    worktree_base_branch: develop
+     ...
+         main_branch: main
++        develop_branch: ""
+```
+
+**세 가지 형태가 다 나온다**: 빈 줄 삭제 · 키 순서 변경 · 없던 빈 키 추가. 전형적인 **yaml 재인코딩** 흔적이다.
+
+### 10.2 왜 중요한가
+
+- **저장을 안 했는데 파일이 바뀌었다.** 사용자가 설정을 열어보기만 해도 프로젝트의 추적 파일이 수정된다. git 상태가 더러워지고, 모르고 커밋하면 무관한 변경이 섞인다.
+- **`git-strategy.yaml`은 dirty 게이팅이 걸려 있다고 알려진 파일이다**(`manager.go:206-221`, SPEC-GITSTRATEGY-SAVE-ISOLATION-001). 그런데도 바뀌었다 — 그 격리가 이 경로에서는 duty를 못 하고 있거나, 내가 이해한 것과 다른 조건에서 동작한다.
+- **`feedback.yaml`은 seam 섹션**(주석 보존이 설계 목표)인데 **빈 줄이 사라졌다** — `yamlpatch.go:10-12`가 스스로 적어둔 caveat("blank lines... may be normalized")의 실물이다. 알려진 한계이되, 열어보기만 해도 발동한다는 것은 별개 문제다.
+
+### 10.3 처리
+
+두 파일을 **커밋하지 않고 되돌렸다**(`git restore`, 명시 경로 2개, 글롭 없음). 추적 파일이라 git이 안전망이었고 손실은 0이다. 이 카드의 델타에 포함되지 않는다.
+
+### 10.4 이것이 A4 카드의 근거를 바꾼다
+
+§5에서 A4(쓰기 안전성)를 **독립·즉시 발행 권고**로 뒀는데, 그때 근거는 코드 판독이었다. 이제 **실행 관측**이 붙었다:
+
+> `moai web`을 띄우기만 해도 추적 config 2개가 재작성된다 — 저장 없이.
+
+A4는 이제 「이론적 결함」이 아니라 **재현되는 결함**이다. 재현 절차는 위 그대로다.
+
+### 10.5 안 본 것
+
+- **어느 코드 경로가 썼는지 특정하지 않았다.** 서버 기동인지, `/settings` GET 렌더인지, 아니면 config 로더의 정규화 저장인지 가르지 않았다. A4의 첫 측정이 이것이어야 한다.
+- **`llm.yaml`도 재작성됐는지 모른다** — 이 워크트리에서 `llm.yaml`은 gitignore라 `git status`에 안 잡힌다. §4.2가 코드로 지적한 「무조건 재작성」이 실제로 그 파일에도 일어났는지는 **이번 관측으로 확인되지 않는다.**
+- 다른 config 파일이 바뀌었는지는 `git status`가 보여준 2개까지만 안다.
