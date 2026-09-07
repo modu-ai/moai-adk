@@ -63,6 +63,23 @@ Iteration-2 reinforcement (lead, same round, still `acceptance.md` only):
   `handlers.go:350` citation introduced in the previous round was converted; the six pre-existing
   `file:line` citations are left untouched for the lead's post-absorption re-measurement.
 
+Plan-audit iteration 3 — **PASS 0.89** (Tier M threshold 0.80; trajectory 0.69 → 0.84 → 0.89, no
+STOP). Three residual findings closed, spec.md now at 0.3.0:
+
+- D3-5 → `version:` bumped to 0.3.0 and HISTORY rows added for iterations 2 and 3. At 0.2.0 the
+  document described a state two rounds behind its own content.
+- D3-3 → AC-WCP-012's command block now writes every deciding step literally, `diff` included, as
+  three per-target triples plus a stated pass rule (non-zero `wc -l` pair AND silent `diff`, counts
+  read first).
+- D3-2 → MU-8 now names which mechanism bites per target: receiver-drop empties `handleSave` only
+  (measured — `parseSchemaForm` still 67, `ApplySchemaEdits` still 53), so the two plain functions
+  need the typo mechanism.
+
+Carried into run-phase as known-unverified (auditor's own note, not a defect of these artifacts):
+AC-WCP-012's green-build arm has never been executed — no `go test`, `go build`, `go vet`, or
+`templ-generate` has run against this SPEC at any point in plan-phase. Run-phase is its first
+execution.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

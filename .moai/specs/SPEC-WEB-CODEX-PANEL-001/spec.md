@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-CODEX-PANEL-001
 title: "moai web console — codex tab as a read-only mirror of the scattered codex settings"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -22,6 +22,8 @@ related_specs: [SPEC-MCP-CONSOLE-001, SPEC-V3R6-AUDIT-MODEL-PIN-001, SPEC-WEB-CO
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3.0 | 2026-09-07 | Plan-audit iteration 3 repairs (`.moai/reports/t509/plan-audit-iter3.md`, PASS 0.89 — trajectory 0.69 → 0.84 → 0.89). Two blocking findings, both in `acceptance.md`: the AC-WCP-012 command block now writes **every deciding step literally**, including the `diff` that issues the verdict (the one step still left as prose — in the criterion whose own subject is a tool that behaves differently from how it looks); and the MU-8 mutant row now names **which mechanism bites per target**, since dropping the receiver group empties only `handleSave` and the two plain functions need the typo mechanism instead. This HISTORY row and the version bump are themselves the third finding: at 0.2.0 the document described a state two rounds behind its content. |
+| 0.2.1 | 2026-09-07 | Plan-audit iteration 2 repairs (`.moai/reports/t509/plan-audit-iter2.md`, 0.84 over the 0.80 threshold; FAIL on the retry-contract regression clause, not on score). AC-WCP-012's extractor anchor made receiver-tolerant **and** gated on a non-zero extraction count per side per target — `handleSave` is a method, so the prior anchor matched nothing and both sides extracted zero lines, which `diff` reports as `IDENTICAL`: a vacuous pass on the function guarding REQ-WCP-011. MU-8 added to pin the mis-anchor mutant. AC-WCP-011's baseline moved to an explicitly computed `git merge-base`, closing the moving-tip hazard while it was still latent. AC-WCP-009 repaired in the same pass as within the defect's blast radius (it delegates its verification to AC-WCP-012's recipe). |
 | 0.2.0 | 2026-09-07 | Plan-audit iteration 1 repairs (`.moai/reports/t509/plan-audit.md`, FAIL 0.69, no must-pass failure — all findings in the verification layer). §B.1's loss mechanism corrected from "a repeated `name`" to "a field submitted from two panels", after re-reading `boolSegment` in this tree; the `workflow.audit.model` inclusion decision closed here in §C.1 instead of being left open in the plan; §C.2 + REQ-WCP-012 added for the rail-count coupling the first draft named nowhere. |
 | 0.1.0 | 2026-09-07 | Initial draft from card t509, axis B1. Every constraint traces to `.moai/reports/t509/verdict.md` — §9 (the real gap), §11 (cross-section panels are already supported), §13 (the measured duplicate-`name` blocker), §14 (mechanism A and its six contract clauses). Three premises carried in the dispatch were re-measured against this tree and two of them needed correcting; see §B. |
 

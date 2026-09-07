@@ -211,15 +211,38 @@ statically verify stays inside the worktree, and again — after the `git` calls
 the loop body left holding only `awk` — for carrying an `awk` program the guard cannot read. Both
 refusals were observed in this tree. The six plain commands below each ran successfully:
 
+Substitute the merge-base SHA for `<BASE>` and run these verbatim. Every step that **decides**
+anything — including the `diff` — is written as a literal invocation, so nothing in this criterion
+has to be reconstructed by the person executing it:
+
 ```bash
-# base side (repeat per target)
-git show <BASE>:internal/web/handlers.go | awk '/^func (\([^)]*\) )?handleSave\(/{f=1} f{print} f&&/^}$/{exit}' | wc -l
-# head side (repeat per target)
-awk '/^func (\([^)]*\) )?handleSave\(/{f=1} f{print} f&&/^}$/{exit}' internal/web/handlers.go | wc -l
+# --- handleSave -------------------------------------------------------------
+git show <BASE>:internal/web/handlers.go | awk '/^func (\([^)]*\) )?handleSave\(/{f=1} f{print} f&&/^}$/{exit}' > /tmp/t509_base_handleSave.txt
+awk '/^func (\([^)]*\) )?handleSave\(/{f=1} f{print} f&&/^}$/{exit}' internal/web/handlers.go > /tmp/t509_head_handleSave.txt
+wc -l /tmp/t509_base_handleSave.txt /tmp/t509_head_handleSave.txt
+diff /tmp/t509_base_handleSave.txt /tmp/t509_head_handleSave.txt
+
+# --- parseSchemaForm --------------------------------------------------------
+git show <BASE>:internal/web/schemaform.go | awk '/^func (\([^)]*\) )?parseSchemaForm\(/{f=1} f{print} f&&/^}$/{exit}' > /tmp/t509_base_parseSchemaForm.txt
+awk '/^func (\([^)]*\) )?parseSchemaForm\(/{f=1} f{print} f&&/^}$/{exit}' internal/web/schemaform.go > /tmp/t509_head_parseSchemaForm.txt
+wc -l /tmp/t509_base_parseSchemaForm.txt /tmp/t509_head_parseSchemaForm.txt
+diff /tmp/t509_base_parseSchemaForm.txt /tmp/t509_head_parseSchemaForm.txt
+
+# --- ApplySchemaEdits -------------------------------------------------------
+git show <BASE>:internal/settings/sectionapply.go | awk '/^func (\([^)]*\) )?ApplySchemaEdits\(/{f=1} f{print} f&&/^}$/{exit}' > /tmp/t509_base_ApplySchemaEdits.txt
+awk '/^func (\([^)]*\) )?ApplySchemaEdits\(/{f=1} f{print} f&&/^}$/{exit}' internal/settings/sectionapply.go > /tmp/t509_head_ApplySchemaEdits.txt
+wc -l /tmp/t509_base_ApplySchemaEdits.txt /tmp/t509_head_ApplySchemaEdits.txt
+diff /tmp/t509_base_ApplySchemaEdits.txt /tmp/t509_head_ApplySchemaEdits.txt
 ```
 
-with the same anchor applied to `parseSchemaForm` (in `schemaform.go`) and `ApplySchemaEdits` (in
-`sectionapply.go`), then a `diff` of the two extractions per target.
+Pass per target requires **both**: the `wc -l` pair shows two non-zero counts, **and** the `diff`
+prints nothing. Either count reading zero is `EXTRACTION_EMPTY` and the target FAILS regardless of
+what `diff` says — an empty-vs-empty `diff` is silent, which is the whole failure this criterion
+exists to catch. The `wc -l` therefore runs **before** the `diff` and is read first.
+
+Writing the `diff` out literally is not ceremony. The subject of this criterion is a tool that
+behaves differently from how it looks, so leaving the one step that issues the verdict as prose —
+"then a `diff` of the two extractions" — reproduced the criterion's own theme in its own text.
 
 [HARD] **The line counts are part of the criterion, not diagnostics.** Both sides of every target
 must report a non-zero count, and those counts are carried in the criterion's output. A zero
@@ -323,7 +346,7 @@ applied, observed RED with the failing assertion quoted, then reverted.
 | MU-5 | Have the panel rewrite an unknown auth-provider token to a known spelling instead of rendering it verbatim | AC-WCP-008 (the sentinel no longer appears as itself inside the codex region) |
 | MU-6 | Remove the `case "codex"` from `settingsTabFieldNames`, falling back to `default` | AC-WCP-013's explicit-case arm (the count stays 0, so the count arm alone would not bite — which is the point of asserting the case separately) |
 | MU-7 | Delete the declared-exception row for `workflow.audit.model` | AC-WCP-014 |
-| MU-8 | Mis-anchor one extraction in AC-WCP-012 — drop the `(\([^)]*\) )?` receiver group, or misspell the function name — so that target's extraction matches nothing | AC-WCP-012, as `EXTRACTION_EMPTY` on the mis-anchored target. Under the pre-repair form this mutant is **GREEN**, and that was *run rather than reasoned*: with the naive anchor on `handleSave`, base `0` lines / head `0` lines / `diff` exit `0` → `IDENTICAL`. The mutant establishes that the non-zero-extraction assertion, not the corrected anchor, is what closes the path — apply it to each of the three targets, including the two whose current shape the anchor already matches |
+| MU-8 | Mis-anchor one extraction in AC-WCP-012 — drop the `(\([^)]*\) )?` receiver group, or misspell the function name — so that target's extraction matches nothing | AC-WCP-012, as `EXTRACTION_EMPTY` on the mis-anchored target. Under the pre-repair form this mutant is **GREEN**, and that was *run rather than reasoned*: with the naive anchor on `handleSave`, base `0` lines / head `0` lines / `diff` exit `0` → `IDENTICAL`. The mutant establishes that the non-zero-extraction assertion, not the corrected anchor, is what closes the path — apply it to each of the three targets, including the two whose current shape the anchor already matches. **Which mechanism bites is per-target**: dropping the receiver group empties `handleSave` only (measured: `parseSchemaForm` still 67, `ApplySchemaEdits` still 53, because both are plain functions), so for those two the typo mechanism is the one that empties the extraction. Use receiver-drop on `handleSave`, a misspelled name on the other two |
 
 **On MU-1 / MU-2.** Against AC-WCP-003 **as written**, MU-2 is redundant with MU-1: `name="…__present"`
 contains `name="`, so a conforming guard fails MU-2 through AC-WCP-003 too, and AC-WCP-004 is
