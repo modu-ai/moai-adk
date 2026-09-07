@@ -1,7 +1,7 @@
 # Progress — SPEC-DOCS-LOCALE-PARITY-REPAIR-001
 
 - 카드: t538 · 브랜치: `WT-docs-v313-locales` · 베이스: `bce6d7e08`
-- 상태: **in-progress** (run 페이즈 M1~M3 착지 — 검증 완료, sync 미개시)
+- 상태: **completed** (run 페이즈 M1~M3 착지 · sync 페이즈 종결 — AC 11/11 PASS)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -145,7 +145,70 @@ open_items:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+아래 수치는 모두 레인 오케스트레이터가 이 워크트리에서 `/usr/bin/grep` 으로 관측한 값이며(이 셸의 `grep` 은 ugrep 래퍼로 조용히 건너뛴다), 본 절은 그 관측을 귀속해 기록한 것이다.
+
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync       # backfill 예정 (sync 커밋은 자기 해시를 인용할 수 없다)
+sync_status: completed
+verified_at_head: 91fd27bb6
+changelog_entry_position: "[Unreleased] → Added (최상단) — run 페이즈 커밋 bbc37b729 에서 이미 기입됨. sync 페이즈는 CHANGELOG 를 쓰지 않는다."
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"          # 단일 sync 커밋이 in-progress → implemented → completed 를 병합 수행
+  updated: 2026-09-08
+  plan_acceptance: stateless (status 필드 없음 — 미변경)
+b12_self_test_a: PASS-BY-CONSTRUCTION (/usr/bin/grep -c "t538" CHANGELOG.md → 1. 이 1건은 run 페이즈에서 기입된 본 SPEC 항목이며, sync 페이즈는 신규 항목을 방출하지 않는다 — 중복 위험 없음)
+b12_self_test_b: PASS (acceptance.md 의 서로 다른 AC 식별자 11개 = AC-001..AC-011, CHANGELOG 항목이 기술하는 범위와 일치)
+b12_self_test_c: PASS (인용 경로 전건 실재 확인 — docs-site/content/{en,zh}/utility-commands/moai-e2e.md, docs-site/content/{ko,ja,zh}/cli-reference/doctor.md, docs-site/content/{ko,en,ja,zh}/advanced/skill-guide.md, CHANGELOG.md, .moai/reports/t538/hugo-build.log)
+ac_total: 11
+ac_pass_count: 11
+ac_fail_count: 0
+red_now_acs: [AC-001, AC-002, AC-003, AC-006, AC-007, AC-008]
+red_now_confirmed_before_edit: true
+red_now_green_after: true
+build:
+  command: hugo --source docs-site
+  exit_code: 0
+  warn_error_match_lines: 0
+  sitemap_present: true
+  locales_built: 4
+  pages: [187, 185, 185, 185]
+  log: .moai/reports/t538/hugo-build.log
+i18n_gates:
+  scope: 9 changed docs files
+  url_blacklist: 0
+  mermaid_lr_rl: 0
+  new_badge_added: 0
+  body_emoji_added: 0
+  catch_all_control_established: true         # 대조군이 grep 도달을 세운 뒤에야 0을 수용했다
+landing_check:
+  expression: "git diff --name-only bce6d7e08..HEAD -- docs-site CHANGELOG.md"
+  count: 10
+  matches_named_set: exact
+verification_expression_defects:
+  - id: AC-008
+    approved_by: author
+    resolution: repaired-in-card
+    verdict_impact: none                      # 옛 읽기·개정 읽기 양쪽에서 기준 충족 (4-로케일 전부 2)
+    detail: "grep -c 는 행을 세므로 한 문단 두 토큰의 상한이 1 — 원식 ≥2 는 도달 불가. 출현-계수형으로 개정. 경위는 acceptance.md HISTORY."
+  - id: AC-011
+    approved_by: lead
+    resolution: repaired-in-card
+    verdict_impact: flips                     # 옛 읽기에서는 18 대 10 으로 FAIL — 그래서 저자가 아니라 리드가 재측정 후 승인
+    detail: "전체-브랜치 diff 에 10파일 기준을 건 형태는 도달 불가 — 계수가 카드의 자기 장부와 함께 17→18 로 이동한다. 범위 한정식(-- docs-site CHANGELOG.md)으로 개정, 기준선 10 불변. 전체-브랜치 계수는 §D.11 에 보고 항목(기준 아님)으로 존치. 경위는 acceptance.md HISTORY."
+known_accepted_deviations:
+  - id: svg-rule-range-separator
+    severity: cosmetic
+    status: 의도적 미수리 (gap 아님)
+    detail: "ko 정본은 SVG 규칙 코드 구간을 en dash 로 잇고(`SVG060`–`SVG064`), 파생 3-로케일(en·ja·zh)은 ASCII 하이픈을 쓴다. 어떤 수용 기준도 구분자를 측정하지 않고, 파일별로는 각각 내부 일관되며, 콘텐츠는 이미 착지했다. 지금 손대는 것은 범위 밖 잡음이므로 알려진 편차로 기록한다."
+canary_compliance_check:
+  write_surface: "run 페이즈가 콘텐츠 10파일을 운반. sync 페이즈의 쓰기는 progress.md §E.4 + Phase Log 와 spec.md frontmatter(status·updated) 뿐이다."
+  scope_creep: none
+  docs_site_edits_in_sync_phase: none
+  changelog_edits_in_sync_phase: none
+```
+
+Backfill 예정: `sync_commit_sha` 는 sync 커밋 직후 커밋에서 실제 SHA 로 채운다.
 
 ## Phase Log
 
@@ -155,3 +218,4 @@ _<pending sync-phase>_
 | 2026-09-08 | plan (iter1 수리) | plan-audit iter1 **FAIL 0.71**(`.moai/reports/t538/plan-audit-iter1.md` @ `86c8023b6`) → D1-D6 전건 수리 + F1·F2 수리, F3~F6 각하 기록(spec.md HISTORY). version 0.2.0. 핵심 실측 정정: doctor 예시행 블록-한정 앵커(ja/zh 0, 표행 2), zh 원어 토큰 `原生桌面`, CHANGELOG 배치 `### Added` 직하. 재감사는 결함 delta 범위로 iteration 2/2. |
 | 2026-09-08 | run | M1-G1·M2-G2G3·M3-G4-CHANGELOG 착지(HEAD `bbc37b729`, 베이스 `bce6d7e08`). RED-now 6건 편집 전 RED 확인·편집 후 GREEN. AC 11건 중 10건 PASS, AC-011 은 의도된 대상 한정 PASS. hugo exit 0·WARN/ERROR 0·4-로케일 빌드. i18n 게이트 9파일 전건 0(catch-all 대조군으로 도달 확인, 앞선 거짓 0 원인 기록). 미해결 2건: AC-008 검증식 결함(카드 내 수리, 판정 불변) · AC-011 검증식 결함(미수리, 리드 보고). |
 | 2026-09-08 | run (AC-011 검증식 개정) | AC-011 검증식을 전체-브랜치 diff 에서 범위 한정 diff(`-- docs-site CHANGELOG.md`)로 개정, 기준선 10 불변. 근거는 전체-브랜치 계수의 17(`bbc37b729`)→18(`fbc9cc6b1`) 이동 — 카드가 자기 장부를 쓰는 동안 계수가 증가하므로 규약을 따르는 어떤 카드도 도달할 수 없고, 결함은 카드가 아니라 계측기에 있다. 옛 읽기에서는 18 대 10 으로 FAIL 이었고 AC-008 의 저자 측 안전 조건이 성립하지 않아 **리드가 재측정 후 승인**했다. 전체-브랜치 계수는 §D.11 에 보고 항목(기준 아님)으로 존치. 개정식 아래 AC-011 은 10 — 명명된 집합과 정확히 일치. AC 11/11 PASS. |
+| 2026-09-08 | sync | 3-페이즈 병합 종결. CHANGELOG 항목은 run 페이즈(`bbc37b729`)에서 이미 `[Unreleased]` → `### Added` 최상단에 놓였으므로 sync 는 CHANGELOG 를 쓰지 않는다(B12 중복 방지 — `/usr/bin/grep -c "t538" CHANGELOG.md` → 1). `spec.md` frontmatter `in-progress → completed`(status·updated 만), `progress.md` §E.4 신호 기입. HEAD `91fd27bb6` 기준 AC 11/11 PASS · hugo exit 0 · i18n 게이트 9파일 전건 0(대조군 확인) · 착지 계수 10(명명된 집합과 정확히 일치). 검증식 결함 2건은 카드 안에서 수리 완료(AC-008 저자 승인·판정 불변, AC-011 리드 승인·옛 읽기 FAIL). SVG 규칙 구간 구분자(ko en dash vs 파생 ASCII 하이픈)는 알려진 수용 편차로 기록하고 미수리. `sync_commit_sha` 는 `pending-backfill-sync` 자리표시자로 두고 후속 커밋에서 채운다. |
