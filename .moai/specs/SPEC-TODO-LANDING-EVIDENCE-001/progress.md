@@ -188,6 +188,93 @@ is deliberately unedited. `schema_version` stays `"1"`; the `items.state` CHECK 
   deviation, with a worse outcome, would then have no baseline to be judged against. Full record:
   `.moai/reports/t359/m1-evidence.md` § Disposition.
 
+### M2 — the record type and the attribution boundary
+
+Verbatim command + output pairs: **`.moai/reports/t359/m2-evidence.md`**. This section carries the
+verdict and its attribution; that file carries the material.
+
+**Claim.** M2 is complete. `internal/kanban/landing_evidence.go` defines the six-fact
+`LandingEvidence` record with its JSON encoding and decode, keyed so the OBSERVED ref position
+(`ref_head`) and the OPERATOR-ASSERTED delivering commit (`sha`) never share a key and the delivering
+key is absent rather than aliased to the head. Absence is SQL `NULL`, reached through a single seam
+(`LandingEvidenceValue(nil)` → nil driver value) rather than by per-call-site discipline. The encoder
+refuses a SHA without provenance, a provenance without a SHA, and any provenance other than
+`operator`. `internal/kanban/prlink_landed_attribution_test.go` locks REQ-1.10 in against a
+three-match fixture ref, and its §D.2 mutant was observed failing and reverted. No production file
+outside M2's deliverable list was modified: `prlink.go` and `prlink_landed.go` are byte-identical to
+their pre-M2 state.
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| AC-TLE-005 — a record carries all six facts | **PASS-WITH-DEBT** | `TestLandingEvidence_CarriesAllSixFacts`; the criterion's own stated RED (drop one field per plant) was NOT run — see Gaps |
+| AC-TLE-006 — absence is NULL | **PARTIAL (storage half)** | `TestLandingEvidence_AbsenceIsSQLNull`; the "renders as absent" conjunct is M4's |
+| AC-TLE-011 — the resolver names no commit | **PASS** (mutant observed FAILING, reverted) | `TestResolver_NamesNoDeliveringCommit`; evidence file § Step 5 |
+| AC-TLE-012 — a stored SHA is operator-supplied or absent | **NOT CLAIMED by M2** — belongs to M3 | see Gaps; `spec.md` §E maps it to M3 |
+| AC-TLE-013 — ref position keyed as a ref position | **PARTIAL (key half)** | `TestLandingEvidence_RefHeadIsNotADeliveringSHA`; Given is verb-shaped, render conjunct is M4's |
+
+**Evidence.** Four observations carry the milestone, in this order:
+
+1. **Step 1 — the pre-edit baseline was measured on this tree, at `56af37cbb`.**
+   `go test ./internal/kanban/... -count=1` → `ok … 136.974s`, rc=0. Any later red is attributable
+   to M2's edits.
+2. **Step 2 — the tests were written first and the package did not build.** Eleven `undefined:`
+   diagnostics naming every M2 symbol. This establishes test-before-implementation; it does NOT
+   establish per-field discrimination (Gaps).
+3. **Step 5 — the §D.2 mutant was planted, observed FAILING, and reverted.** The resolver carrying
+   its first grep match leaked `f6d756b` — the fixture's **third** commit, the integration commit
+   that merely inherited the card, not the delivering change. `prlink.go` returns to
+   `a2f73970a98f536b1af8f853b167cf349e6ca345`, byte-identical to its pre-plant hash.
+4. **Step 6 — final scoped verification.** `gofmt -l internal/kanban/` → no output;
+   `go vet ./internal/kanban/...` → rc=0; `go test ./internal/kanban/... -count=1` →
+   `ok … 137.564s`, rc=0.
+
+**Baseline-attribution.**
+
+- **Tree**: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch `WT-landing-evidence`,
+  confirmed by `git rev-parse --show-toplevel`. `/Users/goos/moai/moai-adk-go` is the same tree under
+  a second spelling; the discriminant is branch + HEAD.
+- **HEAD at dispatch `d6420c1bd`** — did NOT hold when M2 opened. The tree carried a staged
+  modification and HEAD moved to **`56af37cbb`** (a `t359-m1` commit touching only
+  `m1-evidence.md`) during M2's opening measurement batch. Reported to the lead before any edit;
+  full record in the evidence file § Step 0 and § Foreign write during the M2 window.
+- **Actual M2 baseline `56af37cbb`**, with the rc=0 pre-edit run above.
+- **M2 commit SHA**: recorded in the commit itself; the three added files are
+  `internal/kanban/landing_evidence.go`, `internal/kanban/landing_evidence_test.go`, and
+  `internal/kanban/prlink_landed_attribution_test.go`.
+
+**Gaps** — what was explicitly NOT observed:
+
+- **AC-TLE-005's own stated RED was NOT performed.** Six per-field encoder plants were not run. The
+  recorded RED is a compile failure, which shows the test predates the implementation and nothing
+  about per-field discrimination. The six-distinct-values + six-key structure is an argument, not an
+  observation — hence PASS-WITH-DEBT rather than PASS.
+- **AC-TLE-012 is NOT claimed by M2.** Its Given ("the operator records a landing without `--sha`")
+  requires the `moai todo landed` verb, which does not exist until M3; `spec.md` §E maps it to M3
+  independently. M2's encoder-level refusal of unpaired provenance narrows M3's reachable states but
+  does not satisfy M3's criterion.
+- **AC-TLE-013 is claimed only in part.** The distinct-key invariant is verified against a
+  **constructed** record, not a **produced** one, and the "rendered form labels it as a ref position"
+  conjunct belongs to M4. `Marker()` is supplied as M4's labelling primitive, not as the render.
+- **AC-TLE-006's render half was not touched.** `moai todo pr` was never run in M2.
+- **Only the abbreviated half of AC-TLE-011's containment assertion was exercised.** The mutant read
+  `--oneline` output; a `%H`-shaped carry-through was not planted.
+- **`internal/cli` was NOT run in M2.** M2 touches no file there. Its last measured state in this
+  card is M1's `903bcc03c` baseline — a carry-over, named as such, not an M2 measurement.
+- **No `golangci-lint`, no `-race`, no `-cover`, no non-darwin run.** CI owns the full verdict.
+
+**Residual-risk.**
+
+- The provenance pairing is enforced at the **encode** seam. A writer that bypasses
+  `EncodeLandingEvidence` / `LandingEvidenceValue` and writes the column directly would not be
+  refused. M3 is the only planned writer and routes through the seam, but nothing mechanical stops a
+  future one from not doing so.
+- `DecodeLandingEvidence` runs `Validate` on read, so a row written by a future non-conforming writer
+  fails to decode rather than being silently accepted. That is the intended direction, but it means a
+  malformed stored row becomes a **read** error on a path (`todo pr`) that REQ-2.1 requires to stay
+  permissive; M4 must decide how it degrades.
+- `observed_at` is validated for non-emptiness only, not for RFC 3339 shape. A malformed instant
+  stores and decodes cleanly.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
