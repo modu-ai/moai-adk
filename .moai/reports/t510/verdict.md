@@ -214,3 +214,17 @@ ok  github.com/modu-ai/moai-adk/internal/statusline  0.437s
 
 R1 단일 시접의 적용 대상은 B1·B2(+B2b)·B3·B4이고, B7은 훅 사슬 정리와 함께
 run-phase에서 범위 재판정을 받는다.
+
+---
+
+## 정정 — 수리 방향 1의 표시 경로 산문 (plan-audit iter-1 차단 D1+D2)
+
+본 판정서의 「수리 방향 1」은 「표시용 basename은 종전대로 current_dir에서 따로따로」라고
+썼으나 **트리는 반대다**: 표시 이름 유도 `extractProjectDirectory`
+(`internal/statusline/builder.go:415-438`)는 이미 `workspace.project_dir`를 1순위로
+사용하고, `types.go:184`의 주석도 "(used for display)"이다. 판정 작성자가 자신이 읽은
+`builder.go:407` 우선순위 주석(project_dir 최우선)을 상태 앵커 문맥에만 적용하고 표시
+문맥에는 전사하지 못한 산문 오류이다. plan-audit iter-1(0.85, FAIL — 차단 D1+D2)이 이
+오류의 SPEC 전사를 잡았다. 표시 경로의 옳은 서술은 **「기존 extractProjectDirectory
+동작 불변(표시 앵커는 project_dir 우선 유지)」**이다. 원문은 삭제하지 않고 이 정정과
+나란히 보존한다.
