@@ -2,7 +2,7 @@
 id: SPEC-CC-GD124-001
 title: "Claude Code upstream drift sweep repair GD-1/2/3/4 — context-window table and cross-session messaging availability (2 rules x local/template mirror)"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
