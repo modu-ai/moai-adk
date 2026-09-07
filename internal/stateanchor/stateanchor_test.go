@@ -17,33 +17,53 @@ func initGitRepo(t *testing.T, dir string) {
 	}
 }
 
-// TestResolve_ProjectDirWins is chain step 1: the runtime-reported project
-// root beats everything else, so a session that cd'd away still anchors to
-// its project (the GH #1694 repair).
-func TestResolve_ProjectDirWins(t *testing.T) {
+// TestResolve_ProjectDirValidDirWins is chain step 1: the runtime-reported
+// project root beats everything else, so a session that cd'd away still
+// anchors to its project (the GH #1694 repair). Contract update
+// (SPEC-STATE-ANCHOR-VALIDATE-001 plan §D8): a candidate must be a valid
+// absolute existing directory, so the fixture is a real t.TempDir() path —
+// the former "/proj" fixture pinned the now-removed unconditional return.
+// The worktree-shaped subcase keeps the candidate git-free (REQ-SAV-004): a
+// directory that is NOT a git common-dir parent is still returned as-is,
+// not walked up to some repository root.
+func TestResolve_ProjectDirValidDirWins(t *testing.T) {
 	t.Parallel()
 
+	proj := t.TempDir()
+	wt := filepath.Join(proj, "wt-card-x")
+	if err := os.Mkdir(wt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	primary := t.TempDir()
+	visited := t.TempDir()
+
 	got := Resolve(Session{
-		ProjectDir:  "/proj",
-		OriginalCwd: "/primary",
-		CurrentDir:  "/somewhere/visited",
+		ProjectDir:  wt,
+		OriginalCwd: primary,
+		CurrentDir:  visited,
 	})
-	if got != "/proj" {
-		t.Errorf("Resolve() = %q, want /proj (chain step 1)", got)
+	if got != wt {
+		t.Errorf("Resolve() = %q, want %q (chain step 1, worktree-shaped candidate)", got, wt)
 	}
 }
 
 // TestResolve_OriginalCwdSecond is chain step 2: a worktree session without
-// project_dir anchors to the primary checkout via original_cwd.
+// project_dir anchors to the primary checkout via original_cwd. Contract
+// update (SPEC-STATE-ANCHOR-VALIDATE-001 plan §D8): the candidate must be a
+// real existing directory — the former "/primary" fixture pinned the
+// now-removed unconditional return.
 func TestResolve_OriginalCwdSecond(t *testing.T) {
 	t.Parallel()
 
+	primary := t.TempDir()
+	visited := t.TempDir()
+
 	got := Resolve(Session{
-		OriginalCwd: "/primary",
-		CurrentDir:  "/primary/.claude/worktrees/card-x",
+		OriginalCwd: primary,
+		CurrentDir:  visited,
 	})
-	if got != "/primary" {
-		t.Errorf("Resolve() = %q, want /primary (chain step 2)", got)
+	if got != primary {
+		t.Errorf("Resolve() = %q, want %q (chain step 2)", got, primary)
 	}
 }
 
