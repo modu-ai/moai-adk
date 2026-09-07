@@ -175,11 +175,87 @@ Approval._
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run started at HEAD **`91f82be72`**. Full evidence — commands, verbatim output, the eight-site
+reversal table, the carried §D.4 gaps, and five recorded deviations from the plan — is at
+`.moai/reports/t508/run-evidence.md`; raw command output under `.moai/reports/t508/evidence/`.
+
+**Tree-pin note.** The plan artifacts pin every baseline to `069795602`; this run's tree is
+`91f82be72`, so nothing was carried. Every RED and baseline below was re-measured here, and the two
+plan-time cells that could be compared (the RED guard's FAIL and its control's PASS) reproduced
+verbatim.
+
+### Commits
+
+| SHA | Milestone | Subject |
+|---|---|---|
+| `656624180` | M4 item 1 (authored first, by design) | process-level `moai doctor` exit-code guard |
+| `203fc0221` | M1 | per-finding severity axis, advisory-first |
+| `876a7a7e1` | M2 | parser distinguishes a declared non-boolean `enabled` |
+| `7d8803749` | M3 | fatal-grade reporting of an unusable `enabled` key |
+| `d4b0edfab` | M4 items 5, 8 | read-only fixture guard; prune verb executed |
+
+### AC matrix
+
+Every `-run` row satisfies the swept-count obligation (acceptance §D.0): a `--- PASS:` line per
+named test or sub-test, and no row's evidence is an `ok … [no tests to run]` line.
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-CEF-001 | PASS | `go test ./internal/cli/ -run 'TestCheckCodexWiring_MissingEnabledKeyIsReportedFatal' -count=1 -v` | RED `status = ok, want CheckFail` → `--- PASS:` after M3 |
+| AC-CEF-002 | PASS | `go test ./internal/cli/ -run 'TestCheckCodexWiring_NonBooleanEnabled' -count=1 -v` | RED `codex refuses \`enabled = 1\`` → `--- PASS: …/integer` |
+| AC-CEF-003 | PASS | same selector | RED → `--- PASS: …/double_quoted_true` |
+| AC-CEF-004 | PASS | same selector | RED → `--- PASS: …/single_quoted_false` |
+| AC-CEF-005 (CONTROL) | PASS | `go test ./internal/cli/ -run 'TestCheckCodexWiring_DeclaredEnabledKeyStaysQuiet' -count=1 -v` | positive-read half RED → `--- PASS: …/bare_true` |
+| AC-CEF-006 (CONTROL) | PASS | same selector | row created in M4 item 4 → `--- PASS: …/bare_false` |
+| AC-CEF-007 (SCOPE CONTROL) | PASS | `go test ./internal/cli/ -run 'TestCheckCodexWiring_PathAbsentIsNotFatal' -count=1 -v` | RED → `--- PASS:` |
+| AC-CEF-008 | PASS — **promoted to release-blocking in-run** | `go test ./internal/cli/ -run 'TestDoctorExitCode_Codex' -count=1 -v` | RED at `91f82be72`, pre-severity: `moai doctor exit status = 0, want 1` → `--- PASS: TestDoctorExitCode_CodexEnabledFatal (20.86s)` |
+| AC-CEF-009 (CONTROL) | PASS | same selector | `--- PASS: TestDoctorExitCode_CodexCleanStaysZero (18.15s)` |
+| AC-CEF-010 | PASS | `go test ./internal/codexwiring/ -count=1` + the mixed-finding selector | parser half `--- PASS: TestParseSkillEntriesEnabledThreeWayReading` (11 sub-cases); severity half RED → GREEN |
+| AC-CEF-011 | PASS | `-run 'TestCheckCodexWiring_StaleHomeSkillsReported'` and `-run 'TestDoctorGolden_NoColor'` | both `--- PASS:`; only the two expected surfaces moved |
+| AC-CEF-012 | PASS | package run + `-run 'TestParseSkillEntriesWritesNothing'` | no fixture-hash failure; **mutant observed** — a temporary writer produced `the fixture config changed during the run` / `--- FAIL:` |
+| AC-CEF-013 | PASS | `git diff 91f82be72..HEAD -- internal/codexwiring/skills.go internal/codexwiring/skills_test.go internal/cli/doctor_codex_test.go` | all eight sites accounted for; every comment site answers BOTH grounds; no bare expectation flip |
+| AC-CEF-014 | PASS | `-run 'TestDoctorExitCode_CodexAdvisoryOnlyStaysZero' -v` | `--- PASS: (17.43s)` — `CheckWarn`, advisory text present, exit 0 |
+| AC-CEF-015 | PASS | `-run 'TestCheckCodexWiring_FatalFindingNamesMeasuredVersion' -v` | RED → `--- PASS:` |
+| AC-CEF-016 | PASS | `-run 'TestCodexFindingZeroValueIsAdvisory' -v` | RED at `656624180` (`undefined: codexSeverityAdvisory`) → `--- PASS:` |
+
+### Invariants
+
+| Invariant | Command | Observed |
+|---|---|---|
+| Parser writes nothing (REQ-CEF-002) | `go test ./internal/codexwiring/ -run 'TestParseSkillEntriesWritesNothing' -count=1 -v` | `--- PASS:` — whole fixture directory hashed |
+| No config repair (REQ-CEF-012) | `go test ./internal/cli/ -run 'TestPruneCodexSkillEntries_LeavesNoFileBehind' -count=1 -v` | `--- PASS:` |
+| Real `~/.codex` untouched | `shasum -a 256 ~/.codex/config.toml`, before and after | `c91a6b73…69598` both times — byte-identical |
+| t506 extent pins green | `go test ./internal/codexwiring/ -count=1` | `ok … 0.701s` (whole package) |
+| No template change | `grep -rl 'skills\.config' internal/template/templates/` | exit 1, zero matches, control `grep -rl 'moai'` → 396 files |
+| Full package suites | `go test ./internal/cli/ -count=1 -timeout 1800s` · `go test ./internal/codexwiring/ -count=1` | `ok … internal/cli 549.969s` exit 0 · `ok … internal/codexwiring 0.701s` |
+
+### Deviations reported (not worked around)
+
+Five, in full at `.moai/reports/t508/run-evidence.md` § Deviations. In brief: plan §B.4's claim
+that `judgeCodexSkillEntry` reads `Enabled` is false (measured — zero matches); plan §B.3 site 5's
+assertion correctly did NOT move; the quoted-`enabled` disposition moves only on a MISSING path;
+AC-CEF-005/006/007's positive-read clause required a production read-receipt note the requirements
+do not mention; and the declared-split message folds the new state into its "unspecified" count to
+preserve the template REQ-CEF-010 protects.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-07
+run_commit_sha: d4b0edfab
+run_status: audit-ready
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: n/a — no push in this run (lane-local; the branch is unpushed by design)
+l44_post_push_fetch: n/a — no push in this run
+new_warnings_or_lints_introduced: 0 (go vet clean on both packages; golangci-lint not run — CI's verdict)
+cross_platform_build:
+  host: "go build ./... — exit 0"
+  windows: "GOOS=windows GOARCH=amd64 go build ./... — exit 0"
+total_run_phase_files: 10  # source files; measured `git diff --name-only 91f82be72..HEAD | grep -v '^.moai/' | wc -l`
+m1_to_mN_commit_strategy: "one commit per milestone, M4 item 1 first so its RED preceded the severity axis"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
