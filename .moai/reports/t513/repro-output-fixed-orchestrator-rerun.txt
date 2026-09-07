@@ -1,0 +1,69 @@
+=== fixture git log (main) ===
+7957314 Merge branch 'side'
+e0066ad feat(SPEC-PROSE-001): M1 implementation
+2076788 docs(SPEC-EMDASH-001): sync-phase artifacts — 3-phase close
+c719885 feat(SPEC-EMDASH-001): M1 implementation
+8277d86 feat(SPEC-DEMO-001): M1 implementation
+c553ccb chore: seed specs
+
+=== [1] spec status --list  (#1693 read-side: expect frontmatter values, NOT Notes) ===
+SPEC-ID                        Status          Modified
+--------------------------------------------------------------------------------
+SPEC-DEMO-001                  completed       2026-09-07 18:32
+SPEC-EMDASH-001                completed       2026-09-07 18:32
+SPEC-PROSE-001                 draft           2026-09-07 18:32
+
+=== [2] spec drift  (#1693 drift-side: false DRIFT records) ===
+SPEC-ID                        Frontmatter          Git-Implied          Drift?    
+-------------------------------------------------------------------------------------
+SPEC-DEMO-001                  completed            implemented          DRIFT     
+SPEC-EMDASH-001                completed            completed            aligned   
+SPEC-PROSE-001                 draft                implemented          DRIFT     
+-------------------------------------------------------------------------------------
+Summary: 2/3 SPECs have status drift
+--- drift-cache.json ---
+{
+  "head_sha": "79573140cf163251d402f6d5900ea64fde8aeea2",
+  "computed_at": "2026-09-07T09:32:19Z",
+  "count": 2,
+  "records": [
+    {
+      "SPECID": "SPEC-DEMO-001",
+      "FrontmatterStatus": "completed",
+      "GitImpliedStatus": "implemented",
+      "Drifted": true
+    },
+    {
+      "SPECID": "SPEC-EMDASH-001",
+      "FrontmatterStatus": "completed",
+      "GitImpliedStatus": "completed",
+      "Drifted": false
+    },
+    {
+      "SPECID": "SPEC-PROSE-001",
+      "FrontmatterStatus": "draft",
+      "GitImpliedStatus": "implemented",
+      "Drifted": true
+    }
+  ]
+}
+=== [3] hashes BEFORE sync-git --dry-run ===
+739d71260d54d71b76be4da50822916c401d35dcd388eb4b3f728dfe23112350  /tmp/t513-repro/fixture/.moai/specs/SPEC-DEMO-001/spec.md
+7927ee00ea7ccd1f351986abeddf889844200d83fca1fef1c2cdc09efd87b4a7  /tmp/t513-repro/fixture/.moai/specs/SPEC-EMDASH-001/spec.md
+02b0c23fd5e4bbe92d3edb651252cbf647de37b4885ac6bf214a9cf18f2e8bde  /tmp/t513-repro/fixture/.moai/specs/SPEC-PROSE-001/spec.md
+--- git status (expect empty) ---
+
+=== [4] spec status --sync-git --dry-run --yes  (#1692: must write NOTHING) ===
+  SPEC-PROSE-001: draft → implemented (dry-run, not written)
+  skipped SPEC-EMDASH-001: already completed
+  skipped SPEC-DEMO-001: already completed
+
+Summary: dry-run, nothing written: 1 would update, 2 skipped (already done), 0 skipped (invalid status), 0 not found
+
+=== [5] hashes AFTER (defect: DEMO/PROSE changed) ===
+739d71260d54d71b76be4da50822916c401d35dcd388eb4b3f728dfe23112350  /tmp/t513-repro/fixture/.moai/specs/SPEC-DEMO-001/spec.md
+7927ee00ea7ccd1f351986abeddf889844200d83fca1fef1c2cdc09efd87b4a7  /tmp/t513-repro/fixture/.moai/specs/SPEC-EMDASH-001/spec.md
+02b0c23fd5e4bbe92d3edb651252cbf647de37b4885ac6bf214a9cf18f2e8bde  /tmp/t513-repro/fixture/.moai/specs/SPEC-PROSE-001/spec.md
+--- git status (defect: two M lines) ---
+
+=== [6] corruption shape ===
