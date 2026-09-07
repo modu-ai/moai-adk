@@ -259,4 +259,122 @@ open_gaps_preserved: 4   # spec.md §G 의 4건 미폐쇄 — 이 run-phase 는 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill
+  # 커밋은 자기 해시를 인용할 수 없다. 레인이 뒤따르는 커밋에서 실제 값으로 채운다
+  # (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+sync_status: audit-ready
+card: t531
+branch: WT-claudelocal-push-model
+head_at_sync_authoring: 132e752bf
+  # sync 저작을 시작한 시점의 HEAD. 이 블록의 대부분이 이 트리에서 쓰였다.
+head_at_last_edit: 4362ba52f
+  # 마지막 편집 시점의 HEAD — 편집 직전에 재판독했다. 그 사이 리드의 증거-정정 커밋
+  # `4362ba52f` 가 이 브랜치에 착지했고, 아래 ownership_transition_lint 블록은
+  # 그 트리에서 재측정하고 다시 쓴 것이다. 두 값이 다른 것은 드리프트가 아니라 기록이다.
+
+b12_self_test_a:
+  name: "CHANGELOG 중복 방지 사전 grep"
+  cmd: "/usr/bin/grep -c 'CLAUDELOCAL-PUSH-MODEL' CHANGELOG.md"
+  before: 0
+  verdict: PASS   # 0 이므로 append 가 허용됐다. >=1 이었다면 blocker 보고로 멈췄다
+b12_self_test_b:
+  name: "AC 수 일치"
+  cmd: "/usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l"
+  measured: 8
+  changelog_claims: 8
+  source: acceptance.md   # progress.md 가 아니다
+  verdict: PASS   # 0 이 아니므로 공허한 비교가 아니다
+b12_self_test_c:
+  name: "CHANGELOG 이 부르는 경로 실재 확인"
+  paths_checked: 4
+  missing: 0
+  paths: [CLAUDE.local.md, .moai/reports/t531/premise-remeasure.md,
+          .moai/reports/t531/run-phase-evidence.md,
+          .moai/specs/SPEC-CLAUDELOCAL-PUSH-MODEL-001/spec.md]
+  verdict: PASS
+
+changelog_entry_position: "[Unreleased] › ### Fixed 의 첫 항목 (CHANGELOG.md:375)"
+changelog_language: en
+  # 이 파일의 기존 항목이 전부 영문이라 파일 관례를 따랐다. 이 SPEC 의 산출물 산문은 한국어다.
+
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed — status 와 updated 두 키만"
+  plan.md: "해당 없음 — status: 키가 없다 (/usr/bin/grep -c '^status:' = 0)"
+  acceptance.md: "해당 없음 — 같음 (0)"
+  progress.md: "해당 없음 — frontmatter 블록 자체가 없다"
+
+docs_surface:
+  readme: not-applicable
+  docs_site: not-applicable
+  reason: |
+    CLAUDE.local.md 는 배포되지 않는 유지자 전용 파일이다(§2 Local-Only).
+    사용자 프로젝트에 닿지 않으므로 동기화할 사용자 대면 문서 표면이 없다.
+
+char_budget:
+  file: CLAUDE.local.md
+  ceiling: 40000
+  base_at_bce6d7e08: 40085
+  after: 41769
+  this_card_delta: 1684
+  measurement: "세 좌표를 각각 재유도했다 — python3 len(read()) 문자수. wc -c(바이트)가 아니다."
+  attribution: |
+    base 가 이미 85자 초과였다 — 초과는 이 카드보다 앞선다.
+    이 카드가 더한 1,684자는 AC-CLPM-002/003/004/006 이 문면에 있으라고 요구하는 문장들이다.
+    줄이는 것은 요구를 지우는 것이지 만족시키는 것이 아니다.
+  ruling: "리드 판정 2026-09-08 — 이 카드의 블로커가 아니다."
+
+ownership_transition_lint:
+  cmd: "moai spec lint .moai/specs/SPEC-CLAUDELOCAL-PUSH-MODEL-001/spec.md"
+  output: "✓ No findings — all SPEC documents are valid"
+  findings: 0
+  verdict: unmeasured
+    # 통과가 아니다. 이 커밋들에 규칙이 적용되지 않았다는 뜻이다.
+  rule_registered: |
+    등록돼 있고 실행된다 — 판정 커밋의 defaultRules() 에 &OwnershipTransitionRule{} 가 있다
+    (91d25bc61:internal/spec/lint.go:139).
+  why_zero: |
+    규칙은 커밋에 `Authored-By-Agent:` 트레일러가 없으면 **조용히** nil 을 반환한다
+    (91d25bc61:internal/spec/lint_ownership.go:414):
+
+        if rec.AuthoredByAgent == "" {
+            return nil
+        }
+
+    이 브랜치의 커밋에는 그 트레일러가 하나도 없다. 그러므로 0 은
+    「전이가 검사를 통과했다」가 아니라 「검사가 이 커밋들에 적용되지 않았다」이다.
+  trailer_measurement:
+    cmd: "git log --format='%h |%(trailers:key=Authored-By-Agent,valueonly)|' -5"
+    output: "4362ba52f || · 132e752bf || · b9571a231 || · 9cf0d625f || · 4af14489a ||"
+    carriers: 0
+  not_the_git_unreachable_path: |
+    git 미도달 경로는 Info finding 을 낸다. `moai spec lint --json` 이 `[]` 를 반환했으므로
+    그 경로에 걸린 것이 아니다.
+  tool_provenance: |
+    좌표가 둘이다. 판정한 바이너리는 v3.2.0-rc.1 list-744-g91d25bc61 — develop `91d25bc61` 빌드이고,
+    primary 체크아웃은 main `7ad9f8534` 에 있다. 두 커밋의 lint_ownership.go 블롭이 서로 다르다.
+    이 트리에서 재측정한 대응:
+      91d25bc61 → ef598d5c7c54bfbc88b60ee0d4fd09ab41821a3e
+      7ad9f8534 → a53e9e24106a12315c7d536ab3005b4157ead2c7
+    위의 file:line 인용은 판정 커밋(`91d25bc61`)의 블롭에서 읽었다.
+  residual_1: |
+    manager-develop 이 열어 둔 소유권 위험은 확인되지도 반증되지도 않았다 —
+    이 계측기로는 미측정이다.
+  residual_2: |
+    이 저장소의 커밋은 `Authored-By-Agent:` 트레일러를 달지 않는다. 즉 OwnershipTransitionRule 은
+    여기서 구조적으로 침묵한다. 이 카드의 범위 밖이지만, 이 규칙의 초록을 소유권 준수의 근거로
+    인용하는 모든 자리가 같은 간극 위에 서 있다.
+
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC 은 자기 sync 가 시험하는 전향 정책을 정의하지 않는다."
+
+open_gaps_preserved: 4
+  # spec.md §G 의 4건. sync-phase 도 어느 것도 닫지 않았고, §A.1 의 [추론] 표지도 그대로 둔다.
+
+sync_scope: |
+  CHANGELOG.md + 이 파일 §E.4 + spec.md frontmatter, 3파일.
+  CLAUDE.local.md 는 이 카드의 산출물이고 sync 에서 건드리지 않았다(diff 에 나타나지 않는다).
+commit_performed: false   # 커밋·스테이징·push 는 레인 소관이다. 편집은 워킹트리에 남긴다
+```
