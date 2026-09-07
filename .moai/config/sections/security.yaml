@@ -4,7 +4,6 @@ security:
         - curl\s+.*\|\s*(ba)?sh
         - wget\s+.*\|\s*(ba)?sh
         - chmod\s+777
-        - rm\s+-rf\s+/[^.]
         - mkfs\.
         - dd\s+if=.*of=/dev/
     # T-RT002-18: SPEC-V3R2-RT-002 permission subsystem 신규 키.

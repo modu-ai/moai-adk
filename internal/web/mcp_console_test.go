@@ -77,7 +77,14 @@ func TestMCPConsoleToolCountMatchesCatalog(t *testing.T) {
 // test asserts a textual marker is present on write-capable rows and absent
 // on read-only rows.
 func TestMCPConsoleWriteCapableTextDistinction(t *testing.T) {
-	body := renderConsolePage(t)
+	// Scoped to the MCP panel region (SPEC-WEB-CODEX-PANEL-001). The row
+	// windows below anchor on strings.Index of a key chip — the FIRST
+	// occurrence page-wide — and the codex mirror panel, which renders earlier
+	// in tab order, repeats the six codex tools' key chips as read-only rows.
+	// Unscoped, the window would land on a mirror row that carries no badge and
+	// no control, and this guard would report the MCP surface degraded when it
+	// had not changed at all.
+	body := panelHTML(t, renderConsolePage(t), "mcp")
 
 	// The write-capable badge text. The test deliberately checks for a TEXT
 	// substring (not a CSS class) so a colour-only or icon-only distinction
