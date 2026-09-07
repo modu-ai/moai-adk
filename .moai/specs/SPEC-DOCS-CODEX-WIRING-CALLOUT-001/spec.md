@@ -2,7 +2,7 @@
 id: SPEC-DOCS-CODEX-WIRING-CALLOUT-001
 title: "docs-site moai doctor 페이지에 Codex Wiring 진단 콜아웃 4로케일 반영"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
