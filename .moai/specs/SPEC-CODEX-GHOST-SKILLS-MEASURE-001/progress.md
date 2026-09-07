@@ -227,7 +227,7 @@ mN_commit_strategy: single-commit (측정 카드 — 마일스톤 분할 없음)
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 6fff287f6ecb13b9042c4fb71e098091225ad09b   # sync 커밋에는 placeholder 로 실렸고 바로 다음 커밋에서 백필됐다 — 커밋은 자기 해시를 인용할 수 없다
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] / ### Changed, 최상단 (line 273)"
 changelog_only_close: true      # README·docs-site 변경 0 — 사용자 표면 변화 없음
