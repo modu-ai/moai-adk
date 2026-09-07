@@ -144,7 +144,7 @@
 ## §G Definition of Done
 
 - [x] §A~§E 전 AC가 테스트로 표현되고 통과
-- [x] AC-CSD-001의 뮤턴트 3종, AC-CSD-002·AC-CSD-031의 뮤턴트가 실제로 잡힘(잡힌 사실을 출력으로 인용)
+- [x] AC-CSD-001의 뮤턴트 3종, AC-CSD-002·AC-CSD-031의 뮤턴트, 그리고 재닫기에서 더해진 **MUTANT-6·MUTANT-7** 이 실제로 잡힘(잡힌 사실을 출력으로 인용)
 - [x] AC-CSD-003 E2E가 `probe.sh` 로 마커 1 → 0 을 보임
 - [x] AC-CSD-040의 prune 테스트 모집단 수가 `go test -list` 로 실측돼 기준에 적혀 있음
 - [x] AC-CSD-050 재측정 2셀 통과 + 버전 스탬프
@@ -154,17 +154,21 @@
 
 ### 체크 근거 — sync-phase가 무엇을 직접 관측했는가
 
-체크 표시는 run-phase 보고를 옮겨 적은 것이 아니다. sync-phase가 이 트리(`f6550020f`)에서 다시 실행한 명령과 그 출력이 근거이며, **직접 재현하지 않은 항목은 그 사실을 여기 적는다**.
+체크 표시는 run-phase 보고를 옮겨 적은 것이 아니다. sync-phase가 다시 실행한 명령과 그 출력이 근거이며, **직접 재현하지 않은 항목은 그 사실을 여기 적는다**.
+
+> **이 절은 재닫기에서 갱신됐다.** 첫 닫기는 `f6550020f` 를 쟀고, 그 뒤 독립 sync-audit 이 blocking 1건을 돌려보내 코드 커밋 둘(`bc651da28` 수리, `13ae49a05` F2)이 착지했다. 아래 표의 **측정 트리는 `13ae49a05`** 이며, 2·6·7 행이 그 트리에서 다시 측정됐다. 판정 본문과 advisory 전문은 `.moai/reports/t502/sync-audit.md` 가 담는다.
 
 | 항목 | sync-phase가 실행한 것 | 관측 |
 |---|---|---|
-| 1 (전 AC) | `go test -list '<16개 테스트명 OR-패턴>' ./internal/cli/` → `grep '^Test' \| wc -l` | **16** — 기준 행렬이 이름 붙인 테스트 16개가 **전부 실재**한다(0이 아니고, 요청 수와 정확히 일치). 없는 이름을 고른 셀렉터도 `ok` 를 찍으므로 이 대조가 패키지 초록의 전제다. 나머지 2개(AC-CSD-003·050)는 스크립트 기준이며 아래 3·5행에서 직접 재현했다 |
-| 2 (뮤턴트) | `sed -n '163,166p;172,180p;484,488p' internal/cli/codex_skills_disable_test.go` | 인용된 실패 문구 4종이 인용된 줄 번호(165·174·178·486)에 **그대로 존재**한다 — 인용문이 지어낸 것이 아님이 확인된다. **직접 재현하지 않은 것**: 뮤턴트를 다시 주입해 RED를 보지는 않았다. 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다. 이 체크는 run-phase 관측 + sync-phase의 인용 대조로 성립한다 |
-| 3 (E2E) | `bash .moai/reports/t502/e2e-verb.sh copy` | **직접 재현.** `marker=1 → marker=0`, `expect=… result=MATCH` ×2, `post-run config mode: 644`, 재실행 후 `entries declaring the path: 1`, `E2E PASS`, exit 0 |
+| 1 (전 AC) | `go test -list '<17개 테스트명 OR-패턴>' ./internal/cli/` → `grep -c '^Test'` **@ `13ae49a05`** | **재측정 → 17.** 기준 행렬이 이름 붙인 16개 + 재닫기에서 더해진 `TestUpsertCodexSkillDisableInsertsMissingEnabledKey` 가 **전부 실재**한다(0이 아니고, 요청 수와 정확히 일치). 없는 이름을 고른 셀렉터도 `ok` 를 찍으므로 이 대조가 패키지 초록의 전제다. AC-CSD-003·050 은 스크립트 기준이며 아래 3·5행이 그 처분을 적는다 |
+| 2 (뮤턴트 1-5) | `grep -n 'want exactly 1\|want SkillEnabledFalse\|entry declares no .enabled. key\|want 0644 preserved' internal/cli/codex_skills_disable_test.go` | 인용된 실패 문구 4종이 **그대로 존재**한다 — 인용문이 지어낸 것이 아님이 확인된다. **줄 번호는 재닫기에서 옮겨졌다**: 165·174·178 은 그대로이나 모드 축은 486 → **544** 로 밀렸다(수리가 위쪽에 60줄을 더했다). **직접 재현하지 않은 것**: 뮤턴트를 다시 주입해 RED를 보지는 않았다. 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다 |
+| 2b (MUTANT-6 — 삽입 지점 발행) | `grep -n 'func TestUpsertCodexSkillDisableInsertsMissingEnabledKey' …_test.go` · `grep -n 'still declares no' …_test.go` | 테스트가 **203행에 실재**하고 그 단언이 **222행**에 있다. 이 셀이 지는 성질은 뮤턴트 3(스키마 축)이 문구로만 주장하고 있던 절반이다 — `enabled` 발행 지점은 하나가 아니라 **셋**이고, 삽입 분기(`path` 만 있고 `enabled` 가 없는 엔트리, codex 가 rc=1 로 죽는 바로 그 모양)에는 테스트가 없어 그 발행을 지워도 초록이었다. **관측 주체는 구현 커밋 `bc651da28`** 이며, 그 증거는 RED→GREEN 이 아니라 **뮤턴트 대조**다: 분기가 이미 옳았으므로 선행 실패가 존재하지 않고, MUTANT-6 아래에서 새 테스트만 붉고 기존 AC-CSD-001 테스트는 통과한다. 그 대조가 곧 공백의 증명이다. **이 문서 저자가 재주입해 보지는 않았다** — 근거는 커밋 본문의 기록과 위 두 grep 이다 |
+| 2c (MUTANT-7 — 이웃 줄끝 계승) | `grep -n 'does not carry the neighbouring\|a bare LF appeared' …_test.go` | 단언 두 개가 **230·233행**에 실재한다. MUTANT-6 과 같은 분기의 **다른 성질**이다: 삽입되는 줄은 파일 전체 스캔이 아니라 **바로 위 이웃 줄**에서 줄끝을 가져오는 유일한 지점이라, F1 픽스처를 CRLF 로 쓰는 것만으로 `reshapeLike` 의 CR 분기가 덮였다(`332.36` 0 → 1). **줄 커버리지는 단언이 아니므로** CR 을 버리는 MUTANT-7 로 판별력을 확인했고, 그 실패 출력이 손상을 구체적으로 말한다 — `\r\n` 줄들 사이에 낀 `enabled = false\n`, 즉 사용자 홈에 쓰이는 줄끝 혼재 config. **관측 주체는 구현 커밋 `13ae49a05`**, 재주입 미실행은 2b 와 같다 |
+| 3 (E2E) | `bash .moai/reports/t502/e2e-verb.sh copy` **@ `13ae49a05`** | **재측정 — 직접 재현.** 수리가 발행 경로를 건드렸으므로 첫 닫기의 실행을 이월하지 않고 다시 돌렸다: `codex-cli 0.153.4`, `verdict=exposed marker=1` → `verdict=gated marker=0`, `expect=… result=MATCH` ×2, `pre/post-run config mode: 644`, 재실행 후 `entries declaring the path: 1`, `E2E PASS`, exit 0. 실사용 `~/.codex/config.toml` sha256 **전후 IDENTICAL** |
 | 4 (모집단) | `go test -list 'TestPruneCodexSkillEntries\|TestJudgeCodexSkillEntry\|TestRunCleanCodexSkills' ./internal/cli/... \| grep -c '^Test'` | **13** — 세 번째 독립 측정이며 기준 본문에 박힌 값과 일치 |
-| 5 (재측정 게이트) | `codex --version` · `bash .moai/reports/t502/probe.sh selftest` | **직접 재현.** `codex-cli 0.153.4`, `symlink literal_false=gated` · `copy literal_false=gated` 2셀 + `copy resolved_false=exposed` 대조, 실사용 config sha256 전후 동일, `SELFTEST PASS`, exit 0 |
-| 6 (테스트) | `go test ./internal/cli/... ./internal/codexwiring/...` | exit 0, 18개 패키지 `ok`(`internal/cli` 474.735s) |
-| 7 (vet·lint) | `go vet ./...` · `golangci-lint run ./internal/cli/... ./internal/codexwiring/...` | 각각 exit 0 / 출력 0줄, `0 issues.`. **범위 표기**: vet은 모듈 전체, lint는 **영향 패키지 한정**이다(전체 lint는 돌리지 않았다) |
+| 5 (재측정 게이트) | `bash .moai/reports/t502/probe.sh selftest` | **첫 닫기(`43e820663`)의 직접 재현이며 이 HEAD 에서 다시 돌리지 않았다**: `codex-cli 0.153.4`, `symlink literal_false=gated` · `copy literal_false=gated` 2셀 + `copy resolved_false=exposed` 대조, 실사용 config sha256 전후 동일, `SELFTEST PASS`, exit 0. 재닫기가 이월한 유일한 재현이고, 같은 게이트를 3행의 E2E 가 이 HEAD 에서 끝까지 통과시킨다 |
+| 6 (테스트) | `go test ./internal/cli/... ./internal/codexwiring/...` **@ `13ae49a05`** | **재측정.** `GOTEST_EXIT=0`, `ok` **18줄**, `FAIL` **0줄**(빈 파일의 0을 초록으로 읽지 않으려면 `ok` 수를 함께 세야 한다), `internal/cli` 440.982s |
+| 7 (vet·lint) | `go vet ./...` **@ `13ae49a05`** · ~~`golangci-lint run`~~ | vet **재측정**: exit 0, 출력 **0줄**, 모듈 전체(`./...`). **lint 는 이 HEAD 에서 돌리지 않았다** — `0 issues.` 는 첫 닫기(`43e820663`)의 측정이고 그 이후 두 커밋을 덮지 않으므로, 재측정이 아니라 **이월된 값**으로 적는다 |
 | 8 (마커) | `grep -c 'NEEDS CLARIFICATION' plan.md` | **0** |
 
-증거 파일: `.moai/state/verify/t502-sync/`(`gotest.txt` · `vet-full.txt` · `lint.txt` · `e2e-copy.txt` · `regate-rerun.txt` · `ac-testlist.txt`).
+증거 파일 — 재닫기(`13ae49a05`): `.moai/state/verify/t502-resync/`(`gotest.txt` · `vet.txt` · `speclint.txt` · `e2e-copy.txt` · `ac-testlist.txt`). 첫 닫기(`43e820663`): `.moai/state/verify/t502-sync/`. 독립 감사: `.moai/state/verify/t502-audit/`, 판정서 `.moai/reports/t502/sync-audit.md`.

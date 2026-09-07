@@ -145,43 +145,57 @@ m1_to_mN_commit_strategy: "M1(재측정 게이트) 선행 → 구현 단일 커�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+> **재닫기다.** 첫 닫기는 `43e820663` 이었고, 그 뒤 독립 sync-audit 이 **FAIL 89.0** 을 blocking 1건과 함께 돌려보냈다. 수리 커밋 둘(`bc651da28`, `13ae49a05`)이 착지하면서 닫힌 산출물이 **두 커밋 낡은 트리를 기술하는** 상태가 됐다 — 「sync 닫기는 마지막 쓰기여야 한다」는 바로 그 모양이다. 아래는 그 재측정이며, **측정 트리는 `13ae49a05`** 다.
+
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync   # the close lands in the sync commit itself; a SHA cannot name the commit that carries it
+sync_commit_sha: pending-backfill-resync   # the re-close lands in the commit that carries it; a SHA cannot name itself
 sync_status: complete
-b12_self_test_a: "grep -c 'SPEC-CODEX-SKILL-DISABLE-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry)"
-b12_self_test_b: "grep -c '^### AC-CSD' acceptance.md -> 17 (non-zero; matches the AC matrix row count). REQ: grep -c '^- \\*\\*REQ-CSD-' spec.md -> 16"
-b12_self_test_c: "every path named in the CHANGELOG entry verified with ls -> 9/9 present"
-changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first bullet (line 12)"
+resync_of: 43e820663                       # the first close, superseded by this one
+sync_audit_verdict: "FAIL 89.0 @ 43e820663 (independent sync-auditor); verdict + all advisories recorded at .moai/reports/t502/sync-audit.md"
+sync_audit_disposition:
+  f1_blocking: "REPAIRED at bc651da28 - three sites spell the enabled emission, not one; the insert branch (the total-outage shape) had no test. Evidence is a MUTANT-6 contrast, not a RED-then-GREEN: the branch was already correct, so no pre-implementation failure exists"
+  f2_advisory: "CLOSED FOR FREE at 13ae49a05 - writing the F1 fixture in CRLF covered reshapeLike's CR branch (332.36: 0 -> 1); MUTANT-7 shows the test discriminates, because line coverage asserts nothing"
+  f3_to_f12: "NINE advisories remain OPEN and UNOWNED. Not addressed by this close. Do not read the two repairs above as covering them"
+b12_self_test_a: "grep -c 'SPEC-CODEX-SKILL-DISABLE-001' CHANGELOG.md -> 1. NOTE the changed meaning: this is a re-close editing the EXISTING bullet in place, not a fresh emission, so the pre-emission 0 of the first close does not apply. 1 = exactly one entry, still no duplicate"
+b12_self_test_b: "grep -c '^### AC-CSD' acceptance.md -> 17 (non-zero; matches the AC matrix row count; recorded Tier-M budget exception per plan.md §F.1, NOT an error). REQ: grep -c '^- \\*\\*REQ-CSD-' spec.md -> 16"
+b12_self_test_c: "every path named in the t502 CHANGELOG bullet verified with ls -> 9/9 present"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first bullet (line 12) - edited in place, not re-emitted"
 frontmatter_status_transitions:
-  spec_md: "in-progress -> completed (single sync commit; 3-phase close)"
+  spec_md: "status: completed - ALREADY TRANSITIONED at 43e820663 and still correct. This re-close asserts NO new transition; an amendment note is what the tree needed, because what went stale was the EVIDENCE, not the status. Re-asserting completed -> completed would be a no-op dressed as a decision"
   plan_md: "no YAML frontmatter in this artifact - nothing to transition"
   acceptance_md: "no YAML frontmatter in this artifact - nothing to transition"
   progress_md: "no YAML frontmatter in this artifact - nothing to transition"
-  updated_field: "spec.md updated: 2026-09-07 (already the sync-commit date; unchanged)"
+  updated_field: "spec.md updated: 2026-09-07 - unchanged, and correct: the re-close lands the same calendar day as the first"
 canary_compliance_check: not_applicable   # this SPEC defines no forward-looking policy its own sync tests
-verification:
-  tests: "go test ./internal/cli/... ./internal/codexwiring/... -> exit 0 (18 packages ok, internal/cli 474.735s)"
+verification:                              # every row below re-measured at 13ae49a05 by the re-closing agent
+  tests: "go test ./internal/cli/... ./internal/codexwiring/... -> GOTEST_EXIT=0; 18 'ok' lines, 0 FAIL lines (the ok count guards against reading a green off an empty file), internal/cli 440.982s"
   vet: "go vet ./... -> exit 0, 0 lines of output (module-wide)"
-  lint: "golangci-lint run ./internal/cli/... ./internal/codexwiring/... -> exit 0, '0 issues.' (affected packages only)"
   spec_lint: "moai spec lint .moai/specs/SPEC-CODEX-SKILL-DISABLE-001/spec.md -> exit 0, 'No findings'"
-  spec_audit: "mcp__moai__spec_audit(filter_spec=SPEC-CODEX-SKILL-DISABLE-001) -> modern_era_clean 1, drift INFO only (EraAutoDetected V3R6)"
+  spec_audit: "mcp__moai__spec_audit(project_root=<this worktree>, filter_spec=SPEC-CODEX-SKILL-DISABLE-001) -> modern_era_clean 1, drift INFO only (EraAutoDetected V3R6, H-4)"
+  lint: "NOT re-run at this HEAD. golangci-lint was exit 0 / '0 issues.' at the first close (43e820663); the two commits since are one source file and one test file. Recorded as carried-over, NOT as a fresh measurement"
   full_suite: "CI's job - no local full suite (CLAUDE.local.md §4)"
-sync_phase_independent_reproductions:
-  e2e: "bash .moai/reports/t502/e2e-verb.sh copy -> exit 0, marker 1 -> 0, mode 644 preserved, re-run entries=1, E2E PASS"
-  regate: "bash .moai/reports/t502/probe.sh selftest @ codex-cli 0.153.4 -> 2 cells gated + inert-notation control, live config sha256 unchanged, SELFTEST PASS"
-  prune_population: "go test -list '<prune selector>' ./internal/cli/... | grep -c '^Test' -> 13 (third independent measurement)"
-  ac_test_name_existence: "go test -list '<16 AC test names>' ./internal/cli/ | grep '^Test' | wc -l -> 16 (all named tests exist; a selector matching none also prints ok)"
-  boundary: "diff --name-only bf779ecf2..HEAD | grep '^internal/' -> 4 files; --stat on internal/codexwiring/skills.go and internal/cli/codex_skills_prune.go -> empty (byte-unchanged)"
+sync_phase_independent_reproductions:      # re-run at 13ae49a05, not carried over
+  e2e: "bash .moai/reports/t502/e2e-verb.sh copy -> exit 0, codex-cli 0.153.4, verdict=exposed marker=1 -> verdict=gated marker=0, result=MATCH x2, pre/post config mode 644, re-run entries declaring the path=1, E2E PASS. Live ~/.codex/config.toml sha256 IDENTICAL before and after (c91a6b73...69598)"
+  ac_test_name_existence: "go test -list '<17 test names>' ./internal/cli/ | grep -c '^Test' -> 17 (16 AC-named + the new insert test; a selector matching none also prints ok, so this control is the premise of the package green)"
+  boundary: "git diff --name-only bf779ecf2..HEAD | grep '^internal/' -> STILL 4 files; --stat on internal/codexwiring/skills.go and internal/cli/codex_skills_prune.go -> empty. Control run: the same --stat on codex_skills_disable.go DOES report (455 insertions), so the empty result is a real zero, not a silent one"
+  regate: "NOT re-run at this HEAD - probe.sh selftest was reproduced at the first close and at run-phase, both @ codex-cli 0.153.4. The e2e above exercises the same gate end to end"
 dod_boxes_ticked: 8
 dod_boxes_left_unticked: 0
-evidence_dir: .moai/state/verify/t502-sync/
+evidence_dir: .moai/state/verify/t502-resync/   # first close: .moai/state/verify/t502-sync/ ; audit: .moai/state/verify/t502-audit/
 ```
+
+### 판정 이후 트리에 남은 두 사실 — 결함이 아니라 기록
+
+- **`pathLine < 0` bail 은 커버리지 0 으로 의도적으로 남는다.** 유일한 호출자가 만들 수 없는 입력이라(스캔이 접두로 매치하므로 `Path` 가 비지 않으면 그 줄은 반드시 존재한다) 그 분기에 닿는 테스트는 **아무것도 고정하지 못하면서 죽은 분기를 살아있는 것처럼 굳힌다**. 다음 커버리지 판독이 다시 깃발을 꽂지 않도록 이유가 코드 위에 적혀 있다.
+- **`upsertCodexSkillDisable` 의 사후조건 가드는 후보이지 간극이 아니다.** 「`enabled` 키 없는 엔트리의 반환을 거부」하면 발행 지점 셋을 한 번에 기계적으로 덮지만, 그것은 **런타임 동작 변경**이라 blocking 최소 수리의 범위 밖이었다. 후속 카드가 집을 수 있도록 후보로 남긴다.
 
 ### Gaps — sync-phase가 관측하지 **않은** 것
 
-- **뮤턴트 5종을 재주입하지 않았다.** 인용된 실패 문구 4종이 인용된 줄 번호에 그대로 존재함은 대조했으나, 다시 넣어 RED를 보지는 않았다 — 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다. §G 체크 근거 표 2행이 이 한계를 명시한다.
-- **lint 범위는 영향 패키지 한정이다.** `golangci-lint run` 을 저장소 전체로 돌리지 않았다. vet 만 모듈 전체(`./...`)다.
+- **뮤턴트 7종 중 하나도 재주입하지 않았다.** 뮤턴트 1-5 는 인용된 실패 문구가 실재함을 대조했고(줄 번호는 재닫기에서 옮겨졌다 — 모드 축 486 → 544), MUTANT-6·7 은 **구현 커밋 본문의 기록**과 그 단언이 실재함(222·230·233행)이 근거다. 셋 다 재주입해 RED를 본 것이 아니다 — 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다. §G 체크 근거 표 2·2b·2c 행이 이 한계를 행별로 명시한다.
+- **MUTANT-6·7 의 관측 주체는 구현 에이전트다.** 재닫기 에이전트가 독립적으로 확인한 것은 테스트의 실재와 스위트 초록까지이며, 「이 뮤턴트를 넣으면 이 테스트만 붉다」는 대조 자체는 재현하지 않았다. 제3자 재주입은 더 강한 근거이므로 남겨 둔다.
+- **advisory 아홉 건(F3-F12 중 F2 제외)은 열린 채 소관 미배정이다.** 이 닫기는 그 중 어느 것도 건드리지 않았다 — blocking 1건 수리와 F2 가 픽스처로 딸려 닫힌 것이 전부다. 전문은 `.moai/reports/t502/sync-audit.md`.
+- **`golangci-lint` 를 이 HEAD 에서 돌리지 않았다.** 첫 닫기의 exit 0 은 `43e820663` 의 측정이며, 그 이후 두 커밋을 덮지 않는다. 위 yaml 이 이를 fresh measurement 가 아니라 carried-over 로 적는다. vet 만 이 HEAD 에서 모듈 전체(`./...`)로 재측정됐다.
 - **전체 테스트 스위트 미실행 · 크로스플랫폼 빌드 미실행.** 둘 다 CI 몫이며 run-phase Gap 그대로다.
 - **문서 표면은 CHANGELOG 하나다.** README·docs-site 4개 로케일에 이 verb 를 싣지 않았다 — 위임이 지목한 산출물이 CHANGELOG 였고, 문서 사이트 항목 추가는 이 카드의 범위 밖이다. 자매 카드 t506(`moai clean --codex-skills`)이 docs-site 페이지를 동반한 전례가 있으므로, **후속 카드로 남길 가치가 있는 간극**으로 기록한다.
 
@@ -189,3 +203,5 @@ evidence_dir: .moai/state/verify/t502-sync/
 
 - **CHANGELOG 항목의 서술은 run-phase 측정에 의존한다.** 게이트 성질(realpath 비교), 금지 표기 3종, `enabled` 필수성은 모두 선행 측정 보고서에서 온 것이고 sync-phase가 재현한 것은 2셀 게이트와 E2E 두 축이다.
 - **단일 codex 버전(0.153.4).** sync-phase 재현도 같은 버전이다 — 버전 드리프트는 여전히 미관측이다.
+- **한 번 낡았던 닫기는 다시 낡을 수 있다.** 이 닫기가 기술하는 트리는 `13ae49a05` 이며, 이 커밋 뒤에 코드가 착지하면 같은 방식으로 다시 어긋난다. 판별식은 `git diff --name-only <닫기커밋>..HEAD | grep '\.go$'` 이 무출력인지다.
+- **advisory 아홉 건이 열린 채 남는다.** 그 중 어느 것도 blocking 으로 승격되지 않았으나, F4(Windows 거절 가드 무테스트)와 F5(skip 이 rc=0)는 CHANGELOG 가 이름 붙여 출하한 성질에 걸려 있어 **문서가 주장하는 것과 테스트가 지는 것 사이의 간극**으로 남는다.
