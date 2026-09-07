@@ -541,7 +541,7 @@ m1_to_mN_commit_strategy: "M0 control commit -> M1 RED+GREEN -> M2/M3/M6 -> M4-M
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 5a62fc3af
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-AC-COLLECTOR-ANCHOR-001' CHANGELOG.md -> 0 (no duplicate entry)"
 b12_self_test_b: "grep -oE 'AC-ACA-001-[0-9]+' acceptance.md | sort -u | wc -l -> 16; matches the 16 AC referenced in the CHANGELOG entry"
