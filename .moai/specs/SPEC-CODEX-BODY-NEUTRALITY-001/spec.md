@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-BODY-NEUTRALITY-001
 title: "코덱스 에이전트 TOML 본문의 하네스 중립화 — 행위 지시만 고르고 산문은 남긴다"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-07
 updated: 2026-09-07
@@ -19,6 +19,7 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 
 ## HISTORY
 
+- 2026-09-07 (plan-phase 수리 라운드, v0.2.0) — `.moai/reports/t497/plan-audit.md`(iteration 1/2, FAIL 0.63, MP-7 FAIL)에 대한 수리. 좌표·기대값·경로를 이 트리 `845dd65af` 에서 전부 재측정했다. 바뀐 것: §A.2 정정 2 가 「M1 산출 대상」에서 **트리 안 증거로 해소된 결론**으로(D1) · §B.4 좌표표가 발생/줄 단위를 붙인 정정본으로(D3) · §B.1/§B.2 가 M1 을 프로브에서 문서 정정으로(D1) · §C.5 변경 반경이 문자 그대로의 파일 집합으로(D5) · REQ-CBN-008 경로가 전체 경로로(D7) · REQ-CBN-009 가 지시 부류 셋 전부를 구속하도록(D6) · REQ-CBN-016 신설 · §B.6/§D 가 표본 미확인 전제를 함께 싣도록(D8). 미해결 마커 2건은 각각 **철회**(①, 답이 트리에 있었다)와 **운영자 결정 기록으로 전환**(②, §D)했고, 마커 토큰은 본문 어디에도 남기지 않았다(MP-7 은 토큰 존재만으로 실패한다). 유지한 것: 84 라는 기준선 수치, 「없는 것은 에이전트-TOML 필드이지 능력이 아니다」라는 §B.1 전제, 전면 치환을 막는 불변 대조 설계(AC-CBN-003/004/005).
 - 2026-09-07 (plan-phase, v0.1.0) — 카드 t497 의 plan 산출물. 기준선은 `.moai/reports/t497/measurement.md`(커밋 `c9b226b22`, 트리 `.claude/worktrees/t497`, base `ace1c5440`)이며, 이 SPEC 작성 중 같은 트리에서 재측정해 **세 건을 정정**했다(§A.2). 카드 본문이 제안한 설계 6건 중 **D1 은 상당 부분 뒤집혔다**(§B.1) — 결속표의 행 집합은 고를 수 있는 설계가 아니라 완결된 SPEC-CODEX-SKILL-NEUTRAL-001 REQ-CSN-003 이 못박은 **파생 기준**이기 때문이다.
 
 ---
@@ -48,7 +49,17 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 
 **정정 1 — 합계는 74 가 아니라 84.** 위 파일별 값은 기준선 문서와 정확히 일치하지만 그 합은 `14+13+13+10+8+5+5+5+4+4+3 = 84` 다. 패턴별 표와도 정합한다(`45+25+4+6+4 = 84`). 기준선 문서의 `= 74` 는 덧셈 착오이며 **이 SPEC 의 기준선 수치는 84** 다. 단위 주의: **발생 84 / 서로 다른 줄 81** — 한 줄이 두 토큰을 싣는 경우가 있어 `grep -o` 와 `grep -c` 는 다른 값을 낸다.
 
-**정정 2 — 결속표는 3행이 실려 있는데 완결 SPEC 은 4행으로 기록한다.** `AGENTS.md:19-23` 의 결속표는 `question-channel` · `task-list` · `design-sync` **3행**이고, SPEC-CODEX-SKILL-NEUTRAL-001 §B.D7/REQ-CSN-003 은 파생 결과를 **4행**으로 적는다. 네 번째 행이 무엇이었는지, 착지 과정에서 빠진 것인지 문서 수치가 스테일한 것인지는 **이 SPEC 이 관측하지 않았다** — M1 의 산출 대상이다.
+**정정 2 — 결속표 3행이 옳고, 완결 SPEC 의 「4행」이 스테일하다.** 이 어긋남은 코덱스 프로브 없이 **트리 안 증거만으로 해소된다.** 세 갈래가 같은 곳에서 만난다.
+
+1. **네 번째 행의 정체는 커밋돼 있다.** SPEC-CODEX-SKILL-NEUTRAL-001 §B.D7 이 자기 예산 측정의 근거로 지목하는 후보 표가 `.moai/reports/t196/csn003-table-4row.txt`(373 B — §B.D7 이 인용하는 바로 그 수치)에 그대로 있고, 그 4번째 행은 **`cross-session-messaging`** 이다.
+2. **그 행은 파생 기준상 존재하지 않는 것이 옳다.** `agents-codex.yaml` 의 `cross-session-messaging` rationale(`:151-159`): "The Codex **counterpart rides the moai MCP broker** (session_msg_register/list/send/poll)". 대응물이 존재한다 ⇒ 능력 존재 ⇒ 행 없음.
+3. **전수 대조가 같은 결론을 낸다.** `tool_classes` 값 집합 11개 전부에 rationale 판별식을 적용하면 능력 부재는 `task-list`("no known Codex equivalent") · `design-sync`("no Codex equivalent") · `question-channel`(실측 — "codex reported it unavailable") **3건**이고, 이는 현재 `AGENTS.md` 에 실린 바로 그 3행이다.
+
+→ **실린 3행은 REQ-CSN-003 의 이미 올바른 파생값이고, 스테일한 것은 REQ-CSN-003 문면의 "현재 측정값 4행" 이다.** M1 은 프로브가 아니라 **파생 근거의 명문화 + 그 문면 정정**이다(§B.1). **미해결 마커 ①**(프로브 불가 시 대체 처분)은 이 해소로 **철회**한다 — 운영자가 결정할 것이 남아 있지 않다.
+
+증거 경로(판정 시 재확인 대상): `.moai/reports/t196/csn003-table-4row.txt` · `internal/template/agentemit/agents-codex.yaml` `classes:` · `.moai/reports/t497/measurement.md` §「미해소 불일치의 해소」.
+
+Gap: 위 판정은 rationale **문면** 판정이다. 각 능력의 코덱스 실제 거동을 이 트리에서 새로 프로브하지 않았다(`question-channel` 만 매니페스트에 실측 기록이 있다). Residual-risk: rationale 이 낡았을 수 있다(측정 버전이 `skill-loader` 0.152.1, `question-channel` 0.150.1 로 다르다). 이 잔여 위험은 행을 **더하지 않는** 방향이므로 보수적이다.
 
 **정정 3 — always-loaded 예산 여유가 크게 늘었다.** REQ-CSN-003 의 D7 결정을 지배한 수치는 여유 **201 tokens**(예산 76,000)였다. 이 트리 재측정: `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` → `always-loaded surface = 74535 tokens (budget 77600, headroom 3065, 17 entries)`. **여유 3,065 tokens.** 즉 예산은 더 이상 행 추가를 막지 못한다 — 그러나 §B.1 이 보이듯 행 추가를 막는 것은 예산이 아니라 파생 기준이다.
 
@@ -73,11 +84,15 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 2. **이름은 이미 정해져 있다.** 중립 어휘는 `agents-codex.yaml` `tool_classes` 의 값 집합이고 거기에 `skill-loader` · `subagent-spawn` 이 이미 있다. `reference-loader` 는 **두 번째 어휘**이며 REQ-CSN-002 가 금지하는 형태다. 이름은 `skill-loader` 로 간다.
 3. **오늘의 증거는 부재를 지지하지 않고 오히려 반대를 말한다.** `agents-codex.yaml` 의 `skill-loader` rationale 은 "**Session skill loading itself IS confirmed on this version** (the roots table lists the project `.agents/skills`)" 이라 적고, 드롭 대상은 세션 도달이 아니라 **에이전트별 부여**라고 명시한다. `subagent-spawn` rationale 도 "**Codex delegation exists** (internal collaboration\* tools) but a per-agent spawn grant is not expressible in agent TOML" 이라 적는다. 두 경우 모두 없는 것은 **에이전트-TOML 필드**이지 **능력**이 아니다. 결속표는 필드 부재가 아니라 능력 부재를 채우는 표다.
 
-**판정.** 두 행은 **오늘의 증거로는 추가 불가**하다. 추가 여부는 M1 이 "코덱스 세션이 `Skill("<name>")` 형태의 지시를 만났을 때 스킬을 적재할 표면을 갖는가 / 위임 표면을 갖는가"를 실측해 결정한다. 부재가 실측되면 그 클래스는 **이름 그대로** 한 행을 얻는다. 부재가 실측되지 않거나 측정 자체가 불가능하면 행은 생기지 않고, 41개 `invoke Skill(` 줄은 §B.2 의 두 번째 근거로 덮인다. 예산은 이 판정에 관여하지 않는다(여유 3,065 tokens — §A.2 정정 3).
+**판정.** 두 행은 **추가하지 않는다.** 이것은 유예가 아니라 결론이다 — §A.2 정정 2 의 전수 대조가 `tool_classes` 11개 전부에 판별식을 적용해 부재 3건(`task-list` · `design-sync` · `question-channel`)을 확정했고, `skill-loader` 와 `subagent-spawn` 은 둘 다 **능력이 존재하는 쪽**이다. 예산은 이 판정에 관여하지 않는다(여유 3,065 tokens — §A.2 정정 3).
+
+**따라서 M1 은 코덱스 프로브가 아니다.** M1 이 남기는 것은 (a) `tool_classes` 11개 전수에 대한 파생 근거 기록과 (b) REQ-CSN-003 문면의 스테일한 「4행」 정정이다. 결속표의 **행 집합 자체는 바뀌지 않는다**(3행 유지). 41개 `invoke Skill(` 줄은 결속행이 아니라 §B.2 의 덮개 문장으로 덮인다.
 
 ### B.2 D2 채택 — 41줄의 문면은 그대로 둔다
 
-`invoke Skill("<name>")` 41줄을 파일 경로 지시로 바꾸면 Claude 쪽의 progressive disclosure 절감(메타데이터 ~100 토큰만 상시, 본문은 호출 시점에만)이 사라진다. 그리고 코덱스 쪽 대체 행동은 **실재한다** — 미러가 같은 파일을 `.agents/skills/<name>/SKILL.md` 로 읽게 만들기 때문이다(§A.3, 측정됨). 문면은 유지하고, 덮개는 M1 의 결과에 따라 (a) `skill-loader` 결속행 또는 (b) 본문 1문장 중 하나가 된다.
+`invoke Skill("<name>")` 41줄을 파일 경로 지시로 바꾸면 Claude 쪽의 progressive disclosure 절감(메타데이터 ~100 토큰만 상시, 본문은 호출 시점에만)이 사라진다. 그리고 코덱스 쪽 대체 행동은 **실재한다** — 미러가 같은 파일을 `.agents/skills/<name>/SKILL.md` 로 읽게 만들기 때문이다(§A.3, 측정됨).
+
+**덮개는 확정됐다.** §B.1 이 `skill-loader` 를 「능력 존재」로 확정했으므로 결속행은 생기지 않는다 ⇒ 덮개는 **`AGENTS.md` 두 사본의 결속표 문단에 붙는 한 문장**이며, 코덱스로 구동되는 하네스가 `Skill("<name>")` 지시를 만났을 때 같은 파일을 `.agents/skills/<name>/SKILL.md` 에서 읽는다는 사실을 적는다. 41줄의 문면 자체는 손대지 않는다. 착수 전 실측: `grep -c '\.agents/skills' AGENTS.md` → **0**(두 사본 동일) — 이 값이 1이 되는 것이 덮개의 실재 증거다.
 
 ### B.3 D3 채택 — Task\* 3줄은 클래스 이름으로 고쳐 쓴다
 
@@ -87,19 +102,33 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 
 지배 구분: **`AskUserQuestion` 이 사용자 질문 채널임을 설명하는 문서는 산문이며 손대지 않는다. 이 에이전트에게 그것을 호출하라고 지시하는 줄은 지시이며 범위 안이다.** 전면 치환은 문서를 망가뜨린다.
 
-- `manager-develop.toml:64-66` — 라우팅 표의 목적지 칸. **오케스트레이터**가 어디로 보내는지를 서술한다. 산문, 범위 밖.
-- `sync-auditor.toml:131` — "no `sync-auditor` path invokes `AskUserQuestion`". 금지 서술. 산문, 범위 밖.
-- `plan-auditor.toml:146` — "**The orchestrator MUST** resolve each marked topic via `AskUserQuestion`". **의도적 판정: 범위 밖.** 지시의 주어가 이 에이전트가 아니라 오케스트레이터이고, 오케스트레이터가 코덱스로 구동될 때는 **이미 존재하는 `question-channel` 결속행**이 그 행동을 지배한다. 본문에서 도구 이름을 지우면 그 행이 가리킬 대상이 사라진다.
-- `super-advisor.toml:62` — "the orchestrator … escalates to the user via `AskUserQuestion`". 같은 형태. 범위 밖, 같은 근거.
-- `manager-lead.toml:37,57,59,193` — manager-lead 가 **자기 행위로** 리프 워커를 스폰하는 줄. 지시, 범위 안.
+**[HARD] 단위를 붙인 좌표표.** 이 절의 좌표는 전부 이 트리 `845dd65af` 에서 `grep -rn` / 파일별 `grep -o` 로 재측정했다. `AskUserQuestion` 모집단은 **서로 다른 줄 3개 / 발생 4건**이다 — `plan-auditor.toml:146` 한 줄이 두 번 싣는다. **발생 4 를 좌표 4 로 쓰는 것이 §G AP-3 이 이름 붙인 단위 혼동이며, 이 표는 그 정정본이다.** `manager-develop.toml` 의 `AskUserQuestion` 발생 수는 **0** 이고, 이 파일은 `AskUserQuestion` 축이 아니라 `Agent(` 축의 좌표다.
+
+| 좌표 | 축(토큰) | 발생 | 판정 | subject | 근거 |
+|---|---|---|---|---|---|
+| `sync-auditor.toml:131` | `AskUserQuestion` | 1 | prose | `prohibition` | "no `sync-auditor` path invokes `AskUserQuestion`" — 어떤 행위도 지시하지 않는 **금지 서술**. `this-agent`/`orchestrator` 어느 쪽도 아니다. |
+| `plan-auditor.toml:146` | `AskUserQuestion` | **2** | prose | `orchestrator` | "**The orchestrator MUST** resolve each marked topic via `AskUserQuestion`". 주어가 이 에이전트가 아니다. |
+| `super-advisor.toml:62` | `AskUserQuestion` | 1 | prose | `orchestrator` | "the orchestrator … escalates to the user via `AskUserQuestion`". 같은 형태. |
+| `manager-develop.toml:64,65,66` | `Agent(` | 3 | prose | `orchestrator` | 위임 라우팅 표의 **목적지 칸**(`per-spawn Agent(general-purpose) …`). 오케스트레이터가 어디로 보내는지의 서술이며 `AskUserQuestion` 토큰은 이 파일에 **0건**이다. |
+| `manager-lead.toml:37,57,59,193` | `Agent(` | 4 | **directive** | `this-agent` | manager-lead 가 **자기 행위로** 리프 워커를 스폰하는 줄. 범위 안. |
+
+**`subject` 열은 세 값을 갖는다** — `this-agent` · `orchestrator` · `prohibition`. 금지 서술을 두 값 중 하나로 밀어 넣으면 분류가 거짓이 된다.
+
+`AskUserQuestion` 3줄을 모두 범위 밖으로 두는 근거는 하나다: 오케스트레이터가 코덱스로 구동될 때는 **이미 존재하는 `question-channel` 결속행**이 그 행동을 지배하므로, 본문에서 도구 이름을 지우면 그 행이 가리킬 대상이 사라진다.
 
 ### B.5 D5 채택 — manager-design 은 한 문단
 
-`design-sync` 행도 이미 있다. 본문의 지시 자리는 `manager-design.toml:109` 의 우선순위 사다리("(1) default = DesignSync tool push")다. `DesignSync Tool Contract` 절(11 methods)은 계약 서술이므로 산문이다. 사다리 근처에 능력 부재 시 행동을 한 문단으로 붙인다.
+`design-sync` 행도 이미 있다. 본문의 지시 자리는 `manager-design.toml:109`(중립 소스 `manager-design.md:115`)의 우선순위 사다리("(1) default = DesignSync tool push")다. `DesignSync Tool Contract` 절(11 methods)은 계약 서술이므로 산문이다. 사다리 **문면은 그대로 두고**, 그 근처에 `design-sync` 능력 부재 시 행동을 한 문단으로 붙인다.
+
+착수 전 실측(이 트리 `845dd65af`): 사다리 줄은 `grep -c 'default = DesignSync tool push'` → **1**; `manager-design.toml` 의 `design-sync` 4건은 **전부 `/design-sync` 슬래시 커맨드**이고 능력 클래스 이름으로 쓰인 형태는 `grep -oE '[^/]design-sync' … | wc -l` → **0**. 따라서 「능력 이름을 부르는 문단이 생겼는가」는 슬래시 커맨드와 섞이지 않고 판정된다.
 
 ### B.6 D6 채택하되 분리 권고 — 77개 미러 스킬 파일
 
-같은 원칙, 훨씬 큰 반경이다. 11본 에이전트 본문(84 발생)과 77개 스킬 파일은 검토 단위가 다르고, 한 카드 안에서 둘을 같이 옮기면 §A.2 정정 1 같은 집계 착오와 골든 반경 오염이 함께 온다. **M5 로 두되 기본은 후속 카드로 분리**하며, 착수 여부는 운영자 결정이다.
+같은 원칙, 훨씬 큰 반경이다. 11본 에이전트 본문(84 발생)과 77개 스킬 파일은 검토 단위가 다르고, 한 카드 안에서 둘을 같이 옮기면 §A.2 정정 1 같은 집계 착오와 골든 반경 오염이 함께 온다. **M5 로 두되 기본 처분은 후속 카드 분리**이며, 이 카드에서의 착수 여부는 **운영자 결정**이다(§D 마지막 절에 기본값과 대안을 함께 적었다).
+
+**[HARD] 이 판단이 딛고 선 미검증 전제 — 후속 카드는 결론과 함께 이 단서를 물려받는다.** 분리 근거는 `.moai/reports/t497/measurement.md:133` 의 분포다: 719 매치 중 **639(89%)** 가 상위 3개 디렉터리(`moai` · `moai-foundation-cc` · `moai-foundation-core`)에 몰려 있고 그 셋은 주제 자체가 Claude Code 인 문서라, 거기서 `AskUserQuestion` / `Agent(` 는 **설명 대상**이지 행위 지시가 아니라는 것. 그러나 `measurement.md:143` 이 명시하듯 **이 판단은 분포와 주제에 근거한 scope 판단이지, 639건이 전부 산문임을 확인한 것이 아니다.** 상위 3본을 범위에서 빼려면 표본 확인이 별도로 필요하다.
+
+처분이 「분리(defer)」인 동안에는 이 전제가 해로운 방향으로 틀릴 수 없다. **후속 카드가 스스로를 「나머지 12개 디렉터리, 71건」으로 범위 지정하는 순간 전제가 지지대가 되므로, 그때는 표본 확인이 그 카드의 선행 조건이다.**
 
 ---
 
@@ -113,24 +142,54 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 
 ### C.2 축 B — 결속표
 
-- **REQ-CBN-004** — **When** 어떤 `tool_classes` 능력이 코덱스에 존재하지 않음이 실측된다, `AGENTS.md` 결속표는 그 능력의 중립 이름으로 정확히 한 행을 얻어야 한다.
+- **REQ-CBN-004** — **When** 어떤 `tool_classes` 능력이 코덱스에 존재하지 않는다고 판정된다, `AGENTS.md` 결속표는 그 능력의 중립 이름으로 정확히 한 행을 얻어야 한다. 판정은 `agents-codex.yaml` 의 해당 클래스 rationale 을 판별식으로 삼는다 — 대응물의 존재를 서술하는 rationale 은 「능력 존재」이며 행을 만들지 않는다.
 - **REQ-CBN-005** — 결속표에 추가되는 행의 능력 이름은 `agents-codex.yaml` `tool_classes` 의 값 집합에서 와야 한다. 새 어휘를 만들어서는 안 된다.
+- **REQ-CBN-016** — 이 SPEC 의 산출물은 `tool_classes` 값 집합 **전수**에 대해 「능력 부재 / 능력 존재」 판정과 그 rationale 인용을 담은 파생 기록을 포함해야 하며, **When** 그 기록이 결속표의 현재 행 집합과 SPEC-CODEX-SKILL-NEUTRAL-001 REQ-CSN-003 의 기재값이 어긋남을 보인다, 어긋난 쪽의 문면이 정정되어야 한다. 부분 집합만 판정한 기록은 파생을 증명하지 못한다.
 - **REQ-CBN-006** — **When** 결속표가 변경된다, 루트 `AGENTS.md` 사본과 `internal/template/templates/AGENTS.md` 사본은 표 구역이 바이트 동일해야 한다.
 - **REQ-CBN-007** — **When** 결속표가 변경된다, always-loaded 토큰 예산 가드는 통과 상태를 유지해야 한다.
 
 ### C.3 축 C — 본문 개정
 
-- **REQ-CBN-008** — 개정은 중립 소스 `.claude/agents/moai/*.md` 본문에 들어가야 하며, `.codex/agents/moai/*.toml` 을 직접 편집해서는 안 된다.
-- **REQ-CBN-009** — **When** 한 줄이 「행위 지시」로 판정된다, 그 줄은 도구 이름 대신 능력 클래스 이름을 부르거나, 능력 부재 시의 대체 행동을 함께 적어야 한다.
+- **REQ-CBN-008** — 개정은 중립 소스 **`internal/template/templates/.claude/agents/moai/*.md`** 본문에 들어가야 한다. 이 경로가 emitter 의 입력이다(`internal/template/agentemit/golden_test.go:31-34` — `templatesDir = "../templates"` + `agentMDRoot = ".claude/agents/moai"`). 저장소 루트 사본 `.claude/agents/moai/*.md` 를 원본으로 편집해서는 안 되며(완결 SPEC-CODEX-SKILL-NEUTRAL-001 REQ-CSN-012 의 금지), `.codex/agents/moai/*.toml` 을 직접 편집해서도 안 된다.
+- **REQ-CBN-009** — **When** 한 줄이 「행위 지시」로 판정된다, 그 줄은 도구 이름 대신 능력 클래스 이름을 부르거나, 능력 부재 시의 대체 행동을 함께 적어야 한다. 이 SPEC 이 식별한 지시 부류는 **셋이며 전부 구속된다**: `Task*` 3줄(`task-list`) · `manager-lead` 자기 스폰 4줄(`subagent-spawn`) · `manager-design` 우선순위 사다리(`design-sync`). 어느 하나를 건너뛴 상태는 REQ-CBN-009 미충족이다.
 - **REQ-CBN-010** — **While** 한 줄이 「산문 언급」으로 판정돼 있다, 개정자는 그 줄의 문면을 바꾸어서는 안 된다.
-- **REQ-CBN-011** — `invoke Skill("<name>")` 41줄의 문면은 유지되어야 한다.
+- **REQ-CBN-011** — `invoke Skill("<name>")` 41줄의 문면은 유지되어야 한다. 그 41줄의 덮개는 문면 개정이 아니라 `AGENTS.md` 두 사본에 실리는 한 문장이며, 그 문장은 코덱스 하네스가 같은 스킬을 `.agents/skills/<name>/SKILL.md` 에서 읽는다는 사실을 적어야 한다.
 - **REQ-CBN-012** — **When** 개정이 끝난다, 골든 재생성이 실행되어 TOML 이 중립 소스와 정합해야 한다.
-- **REQ-CBN-013** — **When** 골든 재생성이 실행된다, 변경 반경은 커밋 전에 `git status --short` 로 확인되어야 하며 의도한 경로 밖 변경을 실어서는 안 된다.
+- **REQ-CBN-013** — **When** 골든 재생성이 실행된다, 변경 반경은 커밋 전에 `git status --short` 로 확인되어야 하며, 변경 경로 집합이 §C.5 가 열거한 **문자 그대로의 파일 집합**과 같아야 한다. 개수 비교는 이 요구를 충족하지 못한다 — 한 파일이 빠지고 다른 파일이 들어와도 개수는 같다.
 
 ### C.4 교차 관심사
 
 - **REQ-CBN-014** — 검증은 손댄 패키지에만 돌려야 한다(`go test ./internal/template/agentemit/...`). 로컬에서 전체 스위트를 돌려서는 안 된다.
 - **REQ-CBN-015** — 이 SPEC 의 모든 계수 주장은 명령과 단위(발생 수 / 줄 수)를 함께 적어야 한다.
+
+### C.5 변경 반경 — 문자 그대로의 파일 집합 (REQ-CBN-013 의 대조군)
+
+**산출물 반경 (정확히 이 11개. 집합 동일성으로 판정한다.)**
+
+```
+AGENTS.md
+internal/template/templates/AGENTS.md
+internal/template/templates/.claude/agents/moai/e2e-tester.md
+internal/template/templates/.claude/agents/moai/manager-design.md
+internal/template/templates/.claude/agents/moai/manager-develop.md
+internal/template/templates/.claude/agents/moai/manager-lead.md
+internal/template/templates/.codex/agents/moai/e2e-tester.toml
+internal/template/templates/.codex/agents/moai/manager-design.toml
+internal/template/templates/.codex/agents/moai/manager-develop.toml
+internal/template/templates/.codex/agents/moai/manager-lead.toml
+.moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md
+```
+
+`.toml` 4본은 `.md` 4본에서 골든 재생성으로 파생되므로 이름이 짝을 이룬다 — `.toml` 목록은 고르는 것이 아니라 `.md` 목록의 함수다. **저장소 루트 사본 `.claude/agents/moai/*.md` 는 이 집합에 없다**(REQ-CBN-008; 루트 사본은 `moai update` 소관이며 이 카드가 손대지 않는다).
+
+**증거 반경 (개수를 못박지 않되 두 디렉터리 밖으로 나가지 않는다.)**
+
+```
+.moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/**
+.moai/reports/t497/**
+```
+
+이 둘은 판정 기록이 쌓이는 곳이라 파일 수가 결정적이지 않다. 그래서 **개수가 아니라 접두 경로**로 구속한다. 위 11개 ∪ 이 두 디렉터리 밖의 경로가 `git status --short` 에 하나라도 나오면 **커밋 전에 보고하고 판정을 멈춘다** — 다른 카드의 변경이 흘러든 것이다.
 
 ---
 
@@ -151,9 +210,16 @@ related_specs: [SPEC-CODEX-SKILL-NEUTRAL-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-C
 
 - 코덱스에 스킬 호출 도구나 에이전트별 스폰 부여를 만드는 일. 이 카드는 관측하고 문서로 덮을 뿐 하네스를 고치지 않는다.
 
-### Out of Scope — 미러 스킬 77파일 (조건부)
+### Out of Scope — 저장소 루트 사본
 
-- `internal/template/templates/.claude/skills/**` 의 77파일 개정은 M5 이며 **기본 처분은 후속 카드 분리**다(§B.6). 운영자가 이 카드에서 착수를 지시하지 않는 한 이 SPEC 의 착지 조건에 들어가지 않는다.
+- 저장소 루트 `.claude/agents/moai/*.md` 와 루트 `AGENTS.md` 를 **원본으로** 편집하는 일. 원본은 `internal/template/templates/**` 다(REQ-CBN-008 / REQ-CSN-012). 예외는 하나뿐이다 — 루트 `AGENTS.md` 는 결속표의 두 사본 중 하나이므로 §C.5 반경에 들어가며, 템플릿 사본과 **함께** 같은 내용으로 고친다(REQ-CBN-006).
+
+### Out of Scope — 미러 스킬 77파일 (조건부 · 운영자 결정 대기)
+
+- `internal/template/templates/.claude/skills/**` 의 77파일 개정은 M5 이며 **기본 처분은 후속 카드 분리**다(§B.6).
+- **기본값(이 SPEC 이 채택한 처분): 분리.** 근거는 검토 단위 차이와 골든 반경 오염이며, 분리는 보수적 방향이라 §B.6 의 미검증 전제가 해로운 쪽으로 작동하지 않는다.
+- **대안: 이 카드에서 착수.** 한 번의 골든 재생성으로 두 축을 함께 옮기고 후속 카드를 만들지 않는다. 대가는 반경이 11파일에서 88파일로 커지고, §B.6 의 표본 미확인 전제가 즉시 지지대가 된다는 것.
+- 이 선택은 트리 안 증거로 결정되지 않는 **범위·배치 크기 결정**이므로 **운영자 결정**이다. 레인이 Implementation Kickoff Approval 에서 위 두 갈래를 그대로 상신한다. 운영자가 착수를 지시하지 않는 한 기본값이 서며, M5 는 이 SPEC 의 착지 조건에 들어가지 않는다.
 
 ---
 
@@ -165,6 +231,7 @@ AC 의 SSOT 는 `acceptance.md` 이고, 각 판정이 자기 행에 `maps REQ-�
 
 ## §F. 자기 검증
 
-- 기준선 재측정: `.moai/reports/t497/measurement.md`(`c9b226b22`) + 이 SPEC 작성 중 같은 트리 재실행. 정정 3건은 §A.2.
+- 기준선 재측정: `.moai/reports/t497/measurement.md`(`c9b226b22`) + 이 SPEC 작성 중 같은 트리 재실행. 정정 3건은 §A.2. 수리 라운드에서 §B.4 좌표·§C.5 반경·덮개 기준선을 `845dd65af` 에서 다시 쟀다.
+- 미해결 마커: **0건.** ① 은 §A.2 정정 2 의 해소로 철회, ② 는 §D 의 운영자 결정 기록으로 전환했다. 검증: `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → 무출력.
 - SPEC ID 정규식: `[[ "SPEC-CODEX-BODY-NEUTRALITY-001" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]]` → `PASS`.
 - ID 유일성: `ls -d .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001` → `No such file or directory`(작성 전 실측).

@@ -15,7 +15,7 @@
 ## §B. 알려진 문제
 
 - **B-1 기준선 합계 착오.** `.moai/reports/t497/measurement.md` 의 `= 74` 는 덧셈 착오다. 파일별 값은 정확히 재현되며 합은 **84**(발생 수). 서로 다른 줄은 **81**. 이 카드의 모든 판정은 **발생 84** 를 단위로 한다.
-- **B-2 결속표 3행 vs 문서 4행.** 실린 표는 3행, 완결 SPEC 기록은 4행. 미해결 — M1 산출물.
+- **B-2 결속표 3행 vs 문서 4행 — 해소됨.** 실린 표는 3행, 완결 SPEC 기록은 4행이었다. **스테일한 쪽은 문서다.** 근거는 `spec.md` §A.2 정정 2 의 세 갈래: 후보 표 `.moai/reports/t196/csn003-table-4row.txt` 의 4번째 행은 `cross-session-messaging` 이고, 그 클래스의 rationale 은 "The Codex counterpart rides the moai MCP broker" 라 대응물의 **존재**를 말하며, `tool_classes` 11개 전수 대조도 부재 3건(`task-list` · `design-sync` · `question-channel`)에서 멈춘다. **코덱스 프로브는 필요 없다** — M1 은 이 파생을 기록하고 REQ-CSN-003 문면을 정정하는 문서 작업이다.
 - **B-3 `.md` 전수 grep 의 과다계상.** 같은 패턴을 `.claude/agents/moai/*.md` 에 돌리면 `Task*` 가 4 가 아니라 **48** 이다. 차이는 프론트매터 `tools:` CSV 이고 emitter 는 프론트매터를 싣지 않는다. 계수는 반드시 TOML 본문에서.
 - **B-4 골든 반경 오염.** 재생성은 이 카드 밖의 `.md` 변경까지 함께 실어 나를 수 있다. 커밋 전 `git status --short` 필수.
 
@@ -40,64 +40,113 @@ git status --short              # 착수 시 추적 파일 수정 0 이어야 �
 
 ---
 
-## §E. 미해결 질문
+## §E. 미해결 질문 — 없음
 
-- **[NEEDS CLARIFICATION: 코덱스 능력 부재 측정 가능 여부]** — M1 은 코덱스 세션이 (a) `Skill("<name>")` 지시를 적재할 표면을 갖는지, (b) 위임 표면을 갖는지 실측해야 한다. 이 워크트리 세션은 중첩 `codex exec` 프로브를 돌릴 수 없을 수 있다. 측정 불가로 판정되면 결속표는 **손대지 않고**(행 0 추가) 41줄은 본문 1문장으로 덮는다 — 이 대체 처분을 승인할지 운영자 결정이 필요하다.
-- **[NEEDS CLARIFICATION: M5 미러 스킬 77파일 착수 여부]** — 기본 처분은 후속 카드 분리(`spec.md` §B.6). 이 카드에서 착수할지 운영자 결정이 필요하다.
+**미해결 마커 0건.** 앞선 라운드의 2건은 다음과 같이 처분됐고, 어느 쪽도 마커로 남지 않는다.
+
+- **① 코덱스 능력 부재 측정 가능 여부 — 철회.** 물음 자체가 사라졌다. 부재 판정은 코덱스 프로브가 아니라 `agents-codex.yaml` rationale 을 판별식으로 삼는 문면 대조로 답해지며, 그 대조는 이미 끝났다(§B-2 · `spec.md` §A.2 정정 2). 운영자가 결정할 것이 남아 있지 않으므로 마커가 아니라 **결론**이다.
+- **② M5 미러 스킬 77파일 착수 여부 — 운영자 결정으로 기록.** 이것은 트리 증거로 결정되지 않는 진짜 범위 결정이다. 기본값(**분리**)과 대안(**이 카드에서 착수**)을 대가와 함께 `spec.md` §D 마지막 절에 적었다. 레인은 Implementation Kickoff Approval 에서 그 두 갈래를 그대로 상신하고, 답이 없으면 기본값이 선다.
+
+검증: `grep -rn 'NEEDS' .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` → **무출력**(수리 전 실측: `plan.md:45` · `plan.md:46` 2건).
 
 ---
 
 ## §F. 마일스톤
 
-### M1 — 능력 부재 측정과 결속표 행 파생 (우선순위 High · 되돌리기 가장 어려움)
+> **[HARD] 결속표 행 수의 셀렉터와 기대값은 하나뿐이다.** 이 문서·`spec.md`·`acceptance.md` 어디서나 같은 명령, 같은 값을 쓴다.
+>
+> ```
+> sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md | grep -c '^| [a-z]'
+> ```
+>
+> **기대 출력 = 3** (착수 전 실측 3, 두 사본 동일). 이 셀렉터는 (a) `sed` 로 결속표 구역에만 범위를 좁혀 파일 다른 곳의 `| ` 줄에 흔들리지 않고, (b) `^| [a-z]` 라 헤더(`| Capability` — 대문자 C)와 구분자(`|---`)를 둘 다 제외해 **데이터 행만** 센다. 종전의 `grep -c '^| '` 는 헤더를 포함해 3행 표에 4를 냈고, 그 한 자리가 `4`/`3`/`5` 세 기대값이 갈린 원인이다. **그 셀렉터는 이 SPEC 에서 쓰지 않는다.**
 
-바꾸는 판단이 가장 큰 단계다. `skill-loader` / `subagent-spawn` 이 코덱스에 **없는지**를 실측하고, 부재가 실측된 클래스에만 행을 준다. §B-2 의 3행-vs-4행 어긋남도 여기서 판정해 기록한다.
+### M1 — 파생 근거 명문화와 REQ-CSN-003 문면 정정 (우선순위 High · 되돌리기 가장 어려움)
 
-- 산출: `.moai/reports/t497/capability-absence.md` — 클래스별 `absent` / `present` / `unmeasurable` 판정 + 각 판정의 명령과 축자 출력.
-- 부재가 실측된 클래스만 `AGENTS.md` 두 사본에 **`tool_classes` 값 집합의 이름 그대로** 한 행씩 추가. `reference-loader` 같은 새 어휘 금지.
-- 검증 명령 · 기대 출력(사전 고정):
-  - `grep -c '^| ' AGENTS.md` → **4 + (M1 이 `absent` 로 판정한 클래스 수)**. 이 셀렉터는 `^| `(파이프+공백)이라 헤더 1행과 본문 3행만 잡고 구분자 행 `|---|---|---|` 은 잡지 않는다 — 착수 전 실측 **4**.
-  - `diff <(sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md) <(sed -n '/^\*\*Capability bindings/,/^---$/p' internal/template/templates/AGENTS.md)` → **무출력**(종료코드 0).
-  - `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` → `PASS`, 로그의 `headroom` 이 양수.
-- **행이 0개 추가되는 결과도 정당한 M1 완료다.** 그때 검증은 `N = 3` 과 `diff` 무출력이며, 판정 근거가 산출 문서에 남는다.
+**프로브가 아니다.** `spec.md` §A.2 정정 2 가 트리 안 증거만으로 부재 3건을 확정했으므로, M1 이 하는 일은 그 파생을 기록으로 남기고 어긋난 문면을 고치는 것이다. **결속표의 행 집합은 바뀌지 않는다.**
+
+- 산출 1: `.moai/reports/t497/capability-absence.md` — `tool_classes` 값 집합 **11개 전수**를 한 행씩. 열은 `| class | rationale 인용 | verdict |`, `verdict ∈ {absent, present}`. 모집단은 손으로 열거하지 않고 명령으로 뽑는다:
+  ```
+  sed -n '/^tool_classes:/,/^$/p' internal/template/agentemit/agents-codex.yaml \
+    | grep -oE ': [a-z-]+$' | sed 's/^: //' | sort -u
+  ```
+- 산출 2: `SPEC-CODEX-SKILL-NEUTRAL-001` `spec.md` REQ-CSN-003 문면의 **"현재 측정값 4행" → "현재 측정값 3행"** 정정 + 그 SPEC HISTORY 에 Amendments 1행(정정 근거와 이 SPEC ID). 요구사항의 **의미는 바꾸지 않는다** — 파생 기준 문장은 그대로 두고 스테일한 실측 수치만 갈아쓴다. 같은 파일 `:266` 의 「4행 = 373 B」는 후보 표의 크기 측정 기록이므로 **손대지 않는다.**
+
+검증 명령 · 기대 출력(사전 고정). **①②④⑤ 는 착수 전 트리에서 기대 출력을 내지 못한다 — 아무것도 하지 않으면 M1 은 통과할 수 없다.**
+
+| # | 명령 | 기대 출력 | 착수 전 실측 |
+|---|---|---|---|
+| ① | `grep -cE '\|[[:space:]](absent\|present)[[:space:]]\|[[:space:]]*$' .moai/reports/t497/capability-absence.md` | **11** | 파일 없음 — rc=2, 무출력 (RED) |
+| ② | `grep -cE '\|[[:space:]]absent[[:space:]]\|[[:space:]]*$' .moai/reports/t497/capability-absence.md` | **3** | 파일 없음 — rc=2, 무출력 (RED) |
+| ③ | `sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md \| grep -c '^\| [a-z]'` | **3**, 그리고 ② 와 같은 값 | 3 (불변 대조) |
+| ④ | `grep -c '현재 측정값 4행' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md` | **0** | **1** (RED) |
+| ⑤ | `grep -c '현재 측정값 3행' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md` | **1** | **0** (RED) |
+| ⑥ | `diff <(sed -n '/^\*\*Capability bindings/,/^---$/p' AGENTS.md) <(sed -n '/^\*\*Capability bindings/,/^---$/p' internal/template/templates/AGENTS.md)` | 무출력, rc 0 | 무출력, rc 0 (불변 대조) |
+| ⑦ | `go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` | `PASS` + 로그 `headroom` 양수 | PASS, `budget 77600, headroom 3065` (불변 대조) |
+
+**①②의 셀렉터는 「verdict 열이 마지막 칸」이라는 표 모양에만 의존한다** — 헤더 대소문자나 열 이름에 기대지 않는다. `^| [a-z]` 로 데이터 행을 세면 헤더가 소문자로 시작할 때(`| class | …`) 헤더까지 세어 12가 나오는데, 그것이 §F 머리말의 `4`/`3` 착오와 같은 종류의 실수다. 산출 문서의 표는 **verdict 를 마지막 칸에 둔다**(`| … | absent |` / `| … | present |`). 대조군: 같은 셀렉터를 `AGENTS.md` 에 돌리면 0 — 다른 표를 우연히 세지 않는다(이 트리 실측).
+
+**②와 ③은 같은 판정에서 함께 잰다.** 파생 기록의 부재 건수와 실린 표의 데이터 행 수가 일치해야 파생이 지켜진 것이고, 한쪽만 재면 둘이 갈라진 경우를 못 잡는다.
 
 ### M2 — 84건 전수 분류 (우선순위 High)
 
-- 산출: `.moai/reports/t497/body-classification.md` — 84행 표, 열은 `file` · `line` · `token` · `verdict(directive|prose)` · `subject(this-agent|orchestrator|n/a)` · `rationale`.
-- 판정 규칙은 `spec.md` §B.4. 주어가 오케스트레이터인 줄은 `prose` + `subject=orchestrator`.
-- 검증 명령 · 기대 출력(사전 고정):
-  - `grep -c '^| .*\.toml | [0-9]' .moai/reports/t497/body-classification.md` → **84**.
-  - `grep -rhoE 'AskUserQuestion|TaskCreate|TaskUpdate|TaskList|TaskGet|DesignSync|Skill\(|Agent\(' internal/template/templates/.codex/agents/moai/*.toml | wc -l` → **84** (분류 대상 모집단이 변하지 않았음의 대조).
-  - `grep -c 'subject=orchestrator\|orchestrator' ...` 는 쓰지 않는다 — 산문 본문에도 그 낱말이 나오므로 공허하다. 대신 열 값으로 센다.
+- 산출: `.moai/reports/t497/body-classification.md` — 84행 표. 열은 `file` · `line` · `token` · `verdict(directive|prose)` · `subject(this-agent|orchestrator|prohibition|n/a)` · `rationale`. `subject` 는 **세 값 + n/a** 다(`spec.md` §B.4 — 금지 서술을 두 값 중 하나로 밀어 넣으면 분류가 거짓이 된다).
+- 판정 규칙은 `spec.md` §B.4.
+
+| # | 명령 | 기대 출력 | 착수 전 실측 |
+|---|---|---|---|
+| ① | `grep -c '^\| .*\.toml \| [0-9]' .moai/reports/t497/body-classification.md` | **84** | 파일 없음 — rc=2 (RED) |
+| ② | `grep -rhoE 'AskUserQuestion\|TaskCreate\|TaskUpdate\|TaskList\|TaskGet\|DesignSync\|Skill\(\|Agent\(' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **84** (모집단 불변 대조 — ① 과 같은 판정에서) | 84 |
+| ③ | 분류표 `file:line` 열 정렬본과 `grep -rnoE '<② 의 합집합 패턴>' …/*.toml \| cut -d: -f1-2 \| sort -u` 를 `diff` | 무출력, rc 0 (**81** 개 서로 다른 줄) | 우변만 존재 — 81줄 (RED) |
+
+③ 이 좌표 대응 보강이다. ① 은 「84행이 있다」만 말하므로 84행이 모두 같은 좌표를 가리켜도 통과한다. ③ 은 분류표가 **실제 모집단의 그 줄들을** 덮었는지를 본다. 발생 84 vs 줄 81 의 차는 두 토큰을 싣는 3줄이며, 그 3줄은 표에서 2행씩 차지하되 좌표 집합으로는 1개다.
+
+`grep -c 'orchestrator' …` 형태는 쓰지 않는다 — 산문 본문에도 그 낱말이 나오므로 공허하다. `subject` 는 열 값으로 센다.
 
 ### M3 — 중립 소스 본문 개정 (우선순위 High)
 
-M2 가 `directive` 로 판정한 항목만 고친다. 착수 시점의 예상 대상:
+M2 가 `directive` 로 판정한 항목만 고친다. **편집 대상은 `internal/template/templates/.claude/agents/moai/*.md` 뿐이다**(REQ-CBN-008 — 저장소 루트 사본이 아니다).
 
-| 대상 | 처분 |
+| 소스 좌표 | 처분 |
 |---|---|
-| `manager-develop.md` 의 Task\* 지시 2줄 | `task-list` 능력 이름으로 고쳐 씀 |
-| `e2e-tester.md` 의 Task\* 지시 1줄 | 같음 |
-| `manager-design.md` 우선순위 사다리 | `design-sync` 부재 시 행동 1문단 추가 |
-| `manager-lead.md` 자기 스폰 줄 | `subagent-spawn` 결속 참조 1건(M1 이 행을 만들었을 때만) |
-| `invoke Skill(` 41줄 | **손대지 않음** |
+| `manager-develop.md:103,128` (Task\*) | `task-list` 능력 이름으로 고쳐 씀 |
+| `e2e-tester.md:146` (Task\*) | 같음 |
+| `manager-design.md:115` 우선순위 사다리 | 사다리 **문면 유지** + `design-sync` 부재 시 행동 1문단 추가 |
+| `manager-lead.md:44,64,66,200` 자기 스폰 4줄 | `subagent-spawn` 능력 이름을 부르도록 고쳐 씀. **결속행 참조는 만들지 않는다** — `subagent-spawn` 은 능력 존재이므로 행이 없다 |
+| `AGENTS.md` 두 사본 결속표 문단 | `invoke Skill(` 41줄의 덮개 1문장 추가(`.agents/skills/<name>/SKILL.md`). 두 사본을 **같은 내용으로** |
+| `invoke Skill(` 41줄 자체 | **손대지 않음** |
 
-- 검증 명령 · 기대 출력(사전 고정):
-  - `grep -rhoE 'Task(Create|Update|List|Get)' internal/template/templates/.codex/agents/moai/*.toml | wc -l` → M4 재생성 후 **0**(3줄 전부 클래스 이름으로 바뀌었을 때). 값이 0 이 아니면 남은 자리를 인용해 보고한다.
-  - `grep -rhoE 'invoke Skill\(' internal/template/templates/.codex/agents/moai/*.toml | wc -l` → **41 불변**(REQ-CBN-011 의 무손상 대조).
-  - `grep -rhoE 'AskUserQuestion' internal/template/templates/.codex/agents/moai/*.toml | wc -l` → **4 불변**(산문 4건은 손대지 않는다는 대조).
+검증 대상은 M4 재생성 **후**의 TOML 이다(생성물이 소스 개정을 반영했는지가 판정 대상이므로).
+
+| # | 명령 | 기대 출력 | 착수 전 실측 |
+|---|---|---|---|
+| ① | `grep -rhoE 'Task(Create\|Update\|List\|Get)' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **0** (발생 단위) | 4 발생 / 3 줄 (RED) |
+| ② | `grep -rn 'task-list' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **3 이상** (줄 단위) | **0** (RED) |
+| ③ | `grep -c 'subagent-spawn' internal/template/templates/.codex/agents/moai/manager-lead.toml` | **4 이상** (줄 단위) | **0** (RED) |
+| ④ | `grep -oE '[^/]design-sync' internal/template/templates/.codex/agents/moai/manager-design.toml \| wc -l` | **1 이상** (발생 단위) | **0** — 기존 4건은 전부 `/design-sync` 슬래시 커맨드 (RED) |
+| ⑤ | `grep -c 'default = DesignSync tool push' internal/template/templates/.codex/agents/moai/manager-design.toml` | **1 불변** | 1 |
+| ⑥ | `grep -c '\.agents/skills' AGENTS.md` | **1 이상** | **0** (RED) |
+| ⑦ | `grep -c '\.agents/skills' internal/template/templates/AGENTS.md` | ⑥ 과 **같은 값** | 0 (RED) |
+| ⑧ | `grep -rhoE 'invoke Skill\(' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **41 불변** (발생 단위) | 41 |
+| ⑨ | `grep -rhoE 'AskUserQuestion' internal/template/templates/.codex/agents/moai/*.toml \| wc -l` | **4 불변** (발생 단위 — 줄 단위로는 3) | 4 발생 / 3 줄 |
+
+①②는 「그냥 지웠다」를 막는 짝이고, ③④는 나머지 두 지시 부류를 각각 **양성으로** 잡는다(둘 다 착수 전 0이므로 우연히 통과할 수 없다). ⑤⑧⑨는 전면 치환을 막는 불변 대조다.
 
 ### M4 — 골든 재생성과 반경 확인 (우선순위 Medium · 기계적)
 
 - `AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/...` → 재생성.
-- 검증 명령 · 기대 출력(사전 고정):
-  - `go test ./internal/template/agentemit/...` (UPDATE 없이) → **PASS**(골든 드리프트 0).
-  - `git status --short` → 변경 경로가 `{.claude/agents/moai/*.md, internal/template/templates/.claude/agents/moai/*.md, internal/template/templates/.codex/agents/moai/*.toml, AGENTS.md, internal/template/templates/AGENTS.md, .moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/*, .moai/reports/t497/*}` **밖으로 나가지 않는다**. 밖의 경로가 있으면 커밋 전에 보고.
-  - `git diff --stat` → 변경 파일 수가 M2·M3 이 명시한 대상 수와 일치.
 
-### M5 — 미러 스킬 77파일 (우선순위 Low · 기본 처분 = 후속 카드 분리)
+| # | 명령 | 기대 출력 |
+|---|---|---|
+| ① | `go test ./internal/template/agentemit/...` (UPDATE 없이) | **PASS** (골든 드리프트 0) |
+| ② | `git status --short \| awk '{print $NF}' \| grep -v '^\.moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/' \| grep -v '^\.moai/reports/t497/' \| sort` 를 `spec.md` §C.5 산출물 반경 11줄(정렬본)과 `diff` | 무출력, rc 0 (**집합 동일성**) |
+| ③ | ② 의 두 필터가 걸러낸 나머지 경로 | 전부 `.moai/specs/SPEC-CODEX-BODY-NEUTRALITY-001/` 또는 `.moai/reports/t497/` 접두 |
 
-`spec.md` §B.6 · §D. 운영자가 이 카드에서 착수를 지시하지 않는 한 착지 조건에 들어가지 않는다. 착수 시 검증은 M2·M3 과 같은 형태를 77파일 모집단에 적용한다(`grep -rlE ... | wc -l` → **77** 이 사전 고정 모집단).
+②가 반경 고정이다. 종전의 「변경 파일 수가 M2·M3 이 명시한 대상 수와 일치」는 비교할 대상 수가 어디에도 없었고, 설령 있었더라도 **개수 비교는 한 파일이 빠지고 다른 파일이 들어온 경우를 통과시킨다.** 지금은 `spec.md` §C.5 의 **문자 그대로의 11파일**과 집합을 맞추므로, 다른 카드의 `.md` 하나가 끼어들면 `diff` 가 그 줄을 낸다.
+
+### M5 — 미러 스킬 77파일 (우선순위 Low · 기본 처분 = 후속 카드 분리 · 운영자 결정 대기)
+
+`spec.md` §B.6 · §D. 기본값은 분리이고, 이 카드에서의 착수 여부는 운영자 결정이다(§E ②). 착수 시 검증은 M2·M3 과 같은 형태를 77파일 모집단에 적용한다(`grep -rlE ... | wc -l` → **77** 이 사전 고정 모집단). 착수하지 않으면 M5 는 착지 조건에 들어가지 않는다.
 
 ---
 
