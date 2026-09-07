@@ -73,35 +73,122 @@ M2 owns the two one-line conversions.
 - **Coexistence with absorbed t563 tests**: `TestCodexStaleSkillFinding_|TestInspectSkillMirror_` scoped run → 27 PASS (26 absorbed + this card's guard), 0 FAIL.
 - Evidence: `.moai/reports/t562/green-csrb-002-m2.log` + `green-csrb-002-m2.md`. vet rc=0; golangci-lint `0 issues.`
 
-### §E.2 AC matrix (run-phase, as of M2)
+### M3 — doctor guard re-run, mutants, pins, verification
+
+Scope: plan.md §E M3 exactly. **The production diff of this milestone is ZERO lines** — every code
+edit was a deliberate temporary mutant, injected, measured, and reverted, with the tree proven
+byte-clean after each revert (`git status --porcelain` on the production files empty; `git diff
+--stat -- internal/` empty; HEAD never moved from `4aa8915ee` during the mutant window).
+Full 5-section record: `.moai/reports/t562/run-m3.md`.
+
+**AC-CSRB-006 — doctor regression guard re-run: PASS.**
+- Command: `go test ./internal/cli/ -run 'TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard' -count=1 -timeout 1800s -v` → exit 0 (`ac-csrb-006-post-m2.log`).
+- `diff` against the M1 baseline shows exactly two differing lines, both per-run nonces: the
+  `t.TempDir()` directory name and the package elapsed time (`0.843s` → `1.109s`). With both masked
+  the diff is EMPTY. Every counter phrase — `declares 4 [[skills.config]] entries`, `1 with a path
+  that no longer exists (1 enabled, 0 disabled, 0 unspecified, 0 non-boolean)`, `1 relative entry`,
+  `1 oddly-formed entry` — is byte-identical to the pre-change capture.
+- Expected on darwin: `configPathSeparator == '/'` makes the M2 conversion the identity; a moved
+  counter would have meant a darwin-visible behaviour change.
+
+**Mutant reachability probes — all three sites REACHED before any mutant was credited.**
+An unreached mutant and a real survivor print the same `ok`, so each site was first proven executed
+with an injected `panic`: P1 `codex_skills_prune.go:83` (conversion) under AC-CSRB-002, P2 `:101`
+(stat call) under AC-CSRB-004, P3 `:76` (`classifyCodexSkillPath` switch) under AC-CSRB-003 — each
+panicked with its probe string and a stack frame naming the site (`probe-p1/p2/p3.log`).
+
+**Mutants — 4 injected, 4 CAUGHT, 0 missed, 0 committed, 0 surviving.**
+
+| Mutant | Judge | Verdict | Observed failure |
+|---|---|---|---|
+| bypass (`statPath = e.Path`) | AC-CSRB-002 | CAUGHT | `stat target = "/var/…/gone/SKILL.md", want the converted form "\\var\\…"` |
+| blanket-wrap (wrap at stat site, branch conversion removed) | AC-CSRB-004 | CAUGHT | `stat target = "\\var\\…\\x\\SKILL.md", want the native Join product "…/x/SKILL.md" unrewritten` |
+| reorder (convert before classify) | AC-CSRB-003 | CAUGHT | `SkipReason = "oddly-formed path — not resolvable here", want "relative path — no observed resolution base"` |
+| seam (`osStatFn` line added to `doctor_codex.go`) | AC-CSRB-007 delta predicate | CAUGHT | added-osStatFn-line count `0 → 1`; pin FAILS |
+
+The seam mutant was exercised as an UNCOMMITTED working-tree change under the same delta predicate
+(committing a mutant is prohibited); the committed axis is covered instead by the per-commit sweep
+below. Logs: `mutant-bypass.log`, `mutant-blanket-wrap.log`, `mutant-reorder.log`, `mutant-seam.log`.
+
+**AC-CSRB-007 — doctor seam-out pin: PASS.**
+- `git show c007e5409 --format='' -- internal/cli/doctor_codex.go | /usr/bin/grep -c 'osStatFn'` → **0**
+  (added-lines-only `^+` also 0), with the POSITIVE CONTROL
+  `/usr/bin/grep -c 'osStatFn' internal/cli/codex_skills_prune.go` → **1**. Neither operand is empty.
+- Provenance context: `/usr/bin/grep -c 'osStatFn' internal/cli/doctor_codex.go` → 2 (absorbed t563).
+- Methodology witness: the same command WITHOUT `--format=''` prints 2 — the commit message's own
+  attribution prose, not diff lines.
+- Generalized across EVERY card-authored commit (`fe2c8f51f`, `f1654c924`, `b78d2e425`, `c007e5409`,
+  `835215bab`, `4aa8915ee`): added-osStatFn-lines = **0** on all six; the absorb merge `2d1dad058`
+  adds 2. Clean attribution. Evidence: `ac-csrb-007.log`.
+
+**AC-CSRB-008 — scope pin: PASS.**
+- `git fetch origin develop` (→ `91d25bc61`); `CARD_BASE=$(git merge-base origin/develop HEAD)` →
+  `c72dc1baf`, re-derived at read time, never a pinned SHA.
+- `git diff --name-only "$CARD_BASE"..HEAD` → **31 paths**, all inside the plan.md §G allowlist:
+  8 under `internal/cli/` (this card's 4 + the 4 absorbed t540 files) and 23 under `.moai/`.
+- Probe `-- internal/codexwiring/skills.go` → EMPTY, against the non-zero control of the 31-path
+  listing.
+- PRESERVE strengthened: `git diff --stat 2d1dad058..HEAD -- <the four t540 files>` → EMPTY, against
+  the non-zero control `10 files changed, 227 insertions(+), 30 deletions(-)` over the same range.
+  Zero card-authored change to the PRESERVE surface after the absorb. Evidence: `ac-csrb-008.log`.
+
+**AC-CSRB-009 — cross-platform build: PASS (structural only).**
+- `go build ./...` rc=0; `GOOS=windows GOARCH=amd64 go build ./...` rc=0.
+- **Stated limit**: a GOOS cross-build does NOT compile `*_test.go` files. Added as a stronger
+  witness: `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` rc=0, which does type-check test files
+  under the target GOOS. Still compile-level — no Windows runtime behaviour is claimed or observed.
+  Evidence: `ac-csrb-009.log`.
+
+**AC-CSRB-010 — scoped suite with executed-test control: PASS against a lower-bound BEFORE.**
+- `go test ./internal/cli/... -timeout 1800s -v` → **rc=0**; `--- PASS: ` = **6938**; `--- FAIL: ` = 0;
+  `^FAIL` = 0; `--- SKIP: ` = 30. Trailing space in the pattern is load-bearing (go appends
+  ` (0.06s)`, so a `$` anchor would count 0 on every line).
+- BEFORE = **6886**, carried from `.moai/reports/t540/ac-006-base.log` (same command, t540 pre-flight,
+  tree `b4ce67468`). Predicate `6938 >= 6886 AND 6938 > 0` holds.
+- This card contributes 8 `--- PASS: ` lines (5 top-level + 3 subtests), all present in the AFTER log;
+  AC-CSRB-003/004/005 are confirmed GREEN in this same full-suite run, not carried from M2.
+- **Gap (reported, not folded into the pass)**: the t562-own pre-flight base
+  `.moai/reports/t562/ac-010-base.log` required by plan.md §C was never captured and cannot be
+  captured now. 6886 predates t540's own tests and t563's absorbed tests, so it is a strict LOWER
+  bound, and the +52 delta is not decomposed beyond this card's named 8. See `run-m3.md` §4 G1 / §5 R1.
+- Evidence: `ac-csrb-010.log`, raw `ac-010.log`.
+
+**Milestone-boundary verification:** `go vet ./internal/cli/...` rc=0; `golangci-lint run
+--timeout=5m ./internal/cli/...` → `0 issues.` (`quality-gates-m3.log`). Full repository suite NOT run
+locally — that verdict is CI's, on the pushed head.
+
+### §E.2 AC matrix (run-phase, complete)
 
 | AC | Status | Evidence |
 |---|---|---|
 | AC-CSRB-001 | PASS | `ac-csrb-001.txt` |
-| AC-CSRB-002 | RED-now observed at M1 → **GREEN at M2** | `red-csrb-002.log`, `red-csrb-002.md`, `green-csrb-002-m2.log`, `green-csrb-002-m2.md` |
-| AC-CSRB-003 | GREEN-before guard (mutant = reorder, M3) | scoped run, this milestone |
-| AC-CSRB-004 | GREEN-before guard (mutant = blanket-wrap, M3) | scoped run, this milestone |
-| AC-CSRB-005 | GREEN-before guard (pins; verdicts only, no deletion) | scoped run, this milestone |
-| AC-CSRB-006 | Baseline captured (M3 re-runs + diffs) | `ac-csrb-006-baseline.log`, `ac-csrb-006-baseline.md` |
-| AC-CSRB-007..010 | Not yet attempted (M3) | — |
+| AC-CSRB-002 | RED-now observed at M1 → **GREEN at M2**; bypass mutant CAUGHT at M3 | `red-csrb-002.log`, `red-csrb-002.md`, `green-csrb-002-m2.log`, `green-csrb-002-m2.md`, `mutant-bypass.log` |
+| AC-CSRB-003 | **PASS** — guard green; reorder mutant CAUGHT (site reached, probe P3) | `mutant-reorder.log`, `probe-p3.log`, `ac-010.log` |
+| AC-CSRB-004 | **PASS** — guard green; blanket-wrap mutant CAUGHT (site reached, probe P2) | `mutant-blanket-wrap.log`, `probe-p2.log`, `ac-010.log` |
+| AC-CSRB-005 | **PASS** — all 3 arms green in the full-suite run; verdicts only, no deletion | `ac-010.log`, `ac-csrb-010.log` |
+| AC-CSRB-006 | **PASS** — post-M2 re-run reproduces the M1 baseline; only per-run nonces differ | `ac-csrb-006-baseline.log`, `ac-csrb-006-post-m2.log` |
+| AC-CSRB-007 | **PASS** — delta 0 with positive control 1; all 6 card commits 0; seam mutant CAUGHT | `ac-csrb-007.log`, `mutant-seam.log` |
+| AC-CSRB-008 | **PASS** — 31 paths all allowlisted; probe empty vs non-zero control; PRESERVE 0 | `ac-csrb-008.log` |
+| AC-CSRB-009 | **PASS** — both builds rc=0; test-file compile limit stated | `ac-csrb-009.log` |
+| AC-CSRB-010 | **PASS** against a lower-bound BEFORE (gap G1 reported) | `ac-csrb-010.log`, `ac-010.log` |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_status: partial   # M1 + M2 (incl. STEP-0 repair) complete; M3 pending the lead's go
-run_complete_at: ""
-run_commit_sha: pending-backfill-m2   # the M2 production-diff commit; backfilled in the M3 commit per the D3 exemption
-ac_pass_count: 2        # AC-CSRB-001 PASS; AC-CSRB-002 flipped RED→GREEN at M2
+run_status: complete   # M1 + M2 (incl. STEP-0 repair) + M3 complete
+run_complete_at: 2026-09-08
+run_commit_sha: c007e5409   # the M2 production-diff commit (the card's only production change), backfilled in the M3 commit per the D3 exemption
+ac_pass_count: 10       # AC-CSRB-001 … AC-CSRB-010 all PASS (AC-CSRB-010 against a lower-bound BEFORE; gap G1 named)
 ac_fail_count: 0
-preserve_list_post_run_count: 0
-l44_pre_commit_fetch: performed at commit time (see M1 report)
+preserve_list_post_run_count: 0   # measured: git diff --stat 2d1dad058..HEAD -- <the four t540 files> EMPTY, against a non-zero control over the same range
+l44_pre_commit_fetch: performed at commit time (M1 report; re-performed at M3 for AC-CSRB-008 — origin/develop 91d25bc61, CARD_BASE c72dc1baf re-derived)
 l44_post_push_fetch: n/a — no push (lane reports merge SHA; push is the lead's)
-new_warnings_or_lints_introduced: 0   # vet exit 0; golangci-lint 0 issues on internal/cli
+new_warnings_or_lints_introduced: 0   # go vet ./internal/cli/... rc=0; golangci-lint run ./internal/cli/... -> "0 issues."
 cross_platform_build:
-  darwin_native: "go build ./... rc=0 (AC-CSRB-001)"
-  windows: "not yet run — M3 (AC-CSRB-009) scope"
-total_run_phase_files: 4   # two new test files, two new evidence md/log pairs + ac-csrb-001.txt + this file (see commit)
-m1_to_mN_commit_strategy: one commit per milestone plus a standalone STEP-0 repair commit (M1 tests+evidence f1654c924; STEP-0 rename b78d2e425; M2 the two-line production diff + GREEN evidence; M3 mutants+pins+verification)
+  darwin_native: "go build ./... rc=0 (AC-CSRB-001 at M1, re-measured AC-CSRB-009 at M3)"
+  windows: "GOOS=windows GOARCH=amd64 go build ./... rc=0 (AC-CSRB-009). LIMIT: go build does not compile *_test.go; the added witness GOOS=windows go vet ./internal/cli/ rc=0 does type-check them. Compile-level only — no Windows runtime behaviour observed."
+total_run_phase_files: 31   # 16 in the committed run-phase commits (4 internal/cli + 4 SPEC artifacts + 8 evidence) + 15 new M3 evidence files
+m1_to_mN_commit_strategy: one commit per milestone plus a standalone STEP-0 repair commit (M1 tests+evidence f1654c924; STEP-0 rename b78d2e425; M2 the two-line production diff c007e5409 + GREEN evidence; M3 mutants+pins+verification — M3's production diff is ZERO lines, all mutants reverted)
 ```
 
 ## PRESERVE carried forward
