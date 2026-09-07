@@ -164,4 +164,36 @@ phase1_audit_skip:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+spec: SPEC-WEB-ANCHOR-SCOPE-001
+card: t527
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — backfilled in a follow-up commit
+sync_status: completed
+sync_complete_at: 2026-09-07
+zero_repair_close: true
+zero_repair_basis:
+  operator_gate: "2026-09-07 (REQ-WAS-006) — classification outcome: 0 pending (c)-true"
+  code_change_landed: 0   # internal/ byte-identical to bf779ecf2
+changelog_entry:
+  emitted: true
+  decision_basis: "convention grep: every SPEC sync close carries an [Unreleased] entry, including zero-Go-change closes (SPEC-WEB-TODO-QUEUE-001, SPEC-WEB-CONSOLE-015 precedents); pre-emission grep count of SPEC-WEB-ANCHOR-SCOPE-001 in CHANGELOG.md = 0 (no duplicate)"
+  ac_count: 7   # AC-WAS-001..007, matches acceptance.md distinct AC identifiers
+b12_self_test_a: pass   # pre-emission grep = 0
+b12_self_test_b: pass   # 7 distinct ACs in acceptance.md = 7 referenced in entry
+b12_self_test_c: pass   # claimed paths (spec.md, research.md) verified to exist
+changelog_entry_position: top-of-Added-under-Unreleased
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed"
+  plan_md: "n/a (no frontmatter status carried; body untouched)"
+  acceptance_md: "n/a (body untouched)"
+  progress_md: "E.4 written this sync commit"
+canary_compliance_check:
+  mx_tag_validation: "n/a — zero source-file change on this branch; no new exported functions or dangerous patterns introduced"
+  card_id_carriers: ["commit subject/body (t527)", "evidence path .moai/reports/t527/"]
+artifacts_staged:
+  - .moai/specs/SPEC-WEB-ANCHOR-SCOPE-001/progress.md
+  - .moai/specs/SPEC-WEB-ANCHOR-SCOPE-001/spec.md
+  - .moai/reports/t527/plan-audit.md   # run-phase gap, committed at sync
+  - .moai/reports/t527/verdict.md      # lane orchestrator record, read before commit
+  - CHANGELOG.md
+```

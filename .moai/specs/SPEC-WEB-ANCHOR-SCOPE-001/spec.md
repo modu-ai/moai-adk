@@ -2,7 +2,7 @@
 id: SPEC-WEB-ANCHOR-SCOPE-001
 title: "web console tests — page-wide first-occurrence anchor classification under the codex mirror"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-07
 author: manager-spec
