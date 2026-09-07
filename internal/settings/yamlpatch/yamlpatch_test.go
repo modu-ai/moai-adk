@@ -441,6 +441,32 @@ func TestAtomicWriteStatErrorNotWidened(t *testing.T) {
 	}
 }
 
+// TestAtomicWritePreservesPresentFileMode는 present 파일의 권한 모드 보존을
+// 검증한다 — atomicWrite의 기존 계약("원본 파일 모드를 보존한다")이다. M3 뮤턴트
+// E(present 경로의 mode를 0600으로 파괴)가 기존 스위트 전체에서 미검출이었음이
+// 채득됐고(.moai/reports/t544/MUTANT-E-preserve-fail.log), 이 가드가 그 경계를
+// 닫는다 (SPEC-SEAM-GREENFIELD-001 REQ-8 — 미검출 뮤턴트는 기록하고 닫는다).
+func TestAtomicWritePreservesPresentFileMode(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not meaningful for this assertion on Windows: chmod is reduced to a read-only flag there")
+	}
+	path := writeTempYAML(t, "a: 1\n")
+	if err := os.Chmod(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := atomicWrite(path, []byte("a: 2\n")); err != nil {
+		t.Fatalf("atomicWrite: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Errorf("present-file mode = %o, want 600 preserved (an atomic write must not re-permission an existing file)", got)
+	}
+}
+
 // TestYAMLPatchAtomicWriteErrors는 atomicWrite의 오류 분기를 직접 검증한다.
 // "stat missing target"은 SPEC-SEAM-GREENFIELD-001 AC-003에 따라 재작성됐다 —
 // 수리 전에는 absent 대상의 오류를 기대값으로 인코딩해 결함을 지켰으므로,

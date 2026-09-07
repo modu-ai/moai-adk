@@ -74,6 +74,43 @@ concurrency_benefit: low   # coding-heavy — Anthropic 코딩 병렬화 주의�
 
 **M2 GREEN 확인**: `go test ./internal/settings/... ./internal/web/...` → `ok` 4패키지 (이 트리, M2 적용 후). M1의 두 RED 가드(TestPatchFileGreenfieldCreation / TestHandleSaveGreenfieldSectionCreation) 모두 PASS로 뒤집힘 — verbatim은 M4 §E.1 최종 판정에서 재측정해 귀속한다.
 
+### M3 — 뮤턴트 오버레이 채득 (2026-09-08, 커밋 트리 `e365c2d30` 위 오버레이)
+
+방법: t517 F1-D 오버레이 — 커밋 트리에 뮤턴트를 적용 → 가드 FAIL verbatim 채득 → 복원 → 같은 커맨드 PASS → `git diff --stat`로 복원 완전성 증명. 모든 채득 로그는 `.moai/reports/t544/` 아래 verbatim raw 출력이다.
+
+**뮤턴트 A — 수리 되돌림** (absent 분기 제거, 원본 결함 형태 복원)
+
+- 커맨드: `go test -count=1 -run 'TestPatchFileGreenfieldCreation' ./internal/settings/yamlpatch` → exit 1, 증거 `MUTANT-A-yamlpatch-fail.log` — `--- FAIL: TestPatchFileGreenfieldCreation` + `yamlpatch: stat …: no such file or directory`
+- 커맨드: `go test -count=1 -run 'TestHandleSaveGreenfieldSectionCreation' ./internal/web` → exit 1, 증거 `MUTANT-A-web-fail.log` — `greenfield first-save status = 500, want 200`
+- 복원 후 두 커맨드 PASS, `git diff --stat` 무출력 확인.
+
+**뮤턴트 B — absent 브랜치 직접 비원자 쓰기** (`os.WriteFile` 교체 — REQ-4 공격)
+
+- 커맨드: `go test -count=1 -run 'TestAtomicWriteAbsentModeUmaskIndependent' -v ./internal/settings/yamlpatch` → exit 1, 증거 `MUTANT-B-umask-fail.log` — `absent-target mode = 600 under umask 0077, want 644`. 직접 쓰기는 umask를 결과 모드에 누출하므로 M2에서 사전 설계한 판별 가드가 잡는다.
+- 복원 후 PASS + `git diff --stat` 무출력.
+
+**뮤턴트 C — 전 stat 오류 관용** (IsNotExist 체크 제거 — REQ-3 공격)
+
+- 커맨드: `go test -count=1 -run 'TestAtomicWriteStatErrorNotWidened' -v ./internal/settings/yamlpatch` → exit 1, 증거 `MUTANT-C-enotdir-fail.log` — ENOTDIR stat 오류가 무시돼 CreateTemp 단계로 넘어가고 wrapping이 `yamlpatch: create temp: … not a directory`로 바뀜 → `yamlpatch: stat` wrapping 단정이 잡음.
+- 복원 후 PASS + `git diff --stat` 무출력.
+
+**뮤턴트 D — 기본 모드 오염** (defaultFilePerm 0644 → 0600 — REQ-2 공격)
+
+- 커맨드: `go test -count=1 -run 'TestPatchFileGreenfieldCreation|TestYAMLPatchAtomicWriteErrors|TestAtomicWriteAbsentModeUmaskIndependent' ./internal/settings/yamlpatch` → exit 1, 증거 `MUTANT-D-mode-fail.log` — 세 가드가 모두 `mode = 600, want 644`로 잡음.
+- 복원 후 PASS.
+
+**뮤턴트 E — present 파일 모드-보존 파괴** (REQ-8 미검출 뮤턴트 기록)
+
+- 뮤턴트: present 경로의 `mode`를 상수로 파괴 (`mode = 0o600`, `_ = info`로 컴파일 유지).
+- 커맨드: `go test -count=1 ./internal/settings/yamlpatch` → **`ok` — 전체 스위트 통과**. 증거 `MUTANT-E-preserve-fail.log`. **미검출이다**: 기존 스위트에는 present 파일의 권한 모드를 단정하는 테스트가 하나도 없었다 — atomicWrite의 "원본 파일 모드를 보존한다" 계약이 무가드 상태였다는 것이 이 뮤턴트가 그린 가드의 경계다 (REQ-8).
+- **경계 닫기**: `TestAtomicWritePreservesPresentFileMode` 신설 (yamlpatch_test.go, windows skip — chmod가 읽기전용 비트로 축약돼 단정 무의미). 파괴 값 0600은 기대값과 우연 일치해 가드가 통과하므로(뮤턴트 E의 값 선택이 가드와 같은 0600), 파괴 값 0777 뮤턴트 E'로 재시험: `go test -count=1 -run 'TestAtomicWritePreservesPresentFileMode' -v` → exit 1, 증거 `MUTANT-E-prime-guard-fail.log` — `present-file mode = 777, want 600 preserved`.
+- 복원 후 전체 스위트 `ok` + `git diff --stat`이 `yamlpatch.go` 무변경을 증명 (남은 diff는 이 가드 추가 26줄뿐).
+
+**AC-005 통제군 재확인**
+
+- 커맨드: `go test -count=1 -run 'TestPatchFileValueInvariantPreservesBytes|TestPatchFileScalarChangePreservesPresentation|TestPatchFileSpliceFallsBackForUpsert|TestPatchFileSpliceQuotedScalarChange|TestApplySchemaEditsSeamRoundTrip|TestApplySchemaEditsGateSeamRoundTrip|TestApplySchemaEditsAllFieldsRoundTrip|TestYAMLPatchScalarReplace_WorkflowFixture|TestYAMLPatchPreservesQuotedStyle|TestYAMLPatchPreservesTypedScalars|TestYAMLPatchMultiEditSingleWrite|TestYAMLPatchEmptyEditsIsNoop' -v ./internal/settings ./internal/settings/yamlpatch`
+- 결과: `--- PASS` 12건, `ok` 2패키지. 증거 `M3-AC005-control-group.log`. `"read-only directory"` 서브테스트도 무수정 GREEN (M2/M3 실행에서 PASS 확인).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — manager-develop 소관.>_
