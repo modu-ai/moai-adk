@@ -503,6 +503,35 @@ func TestRunCleanCodexSkillsBacksUpBeforeWriting(t *testing.T) {
 	}
 }
 
+// AC-CGP-003 (reporting half) — a kept entry is enumerated with its reason.
+// Preserving a ghost silently is not enough: the user asked for the ghosts to
+// go and would otherwise believe every one of them did.
+func TestRunCleanCodexSkillsReportsSkippedEntries(t *testing.T) {
+	tmp := t.TempDir()
+	missing := filepath.Join(tmp, "gone")
+	body := "[[skills.config]]\n" +
+		"path = \"" + missing + "\"\n" +
+		"notes = \"hi\"\n" + // unrecognised: disqualifies the entry
+		"\n" +
+		"[[skills.config]]\n" +
+		"enabled = true\n" // declares no path
+	writeCodexConfig(t, body)
+
+	stdout, stderr, err := runPrune(t, true)
+	if err != nil {
+		t.Fatalf("runCleanCodexSkills: %v", err)
+	}
+	report := stdout + stderr
+
+	if !strings.Contains(report, missing) || !strings.Contains(report, "not recognised") {
+		t.Errorf("the unrecognised-line skip was not enumerated:\n%s", report)
+	}
+	// An entry with no path has no path to name, so it is named by its line.
+	if !strings.Contains(report, "entry at line 5") || !strings.Contains(report, "declares no path") {
+		t.Errorf("the no-path skip was not enumerated:\n%s", report)
+	}
+}
+
 // AC-CGP-009 — fail-open on every missing input.
 func TestRunCleanCodexSkillsFailsOpen(t *testing.T) {
 	t.Run("unresolvable home", func(t *testing.T) {

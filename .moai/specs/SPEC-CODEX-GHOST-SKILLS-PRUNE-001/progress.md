@@ -85,11 +85,63 @@ must-pass AC 2건 체제가 됐다: AC-CGP-004(부재 판정 경계) + AC-CGP-01
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+증거 정본: `.moai/reports/t506/run-evidence.md` (이 트리, 2026-09-07 실행). 아래 표는 그 파일의 §4 를 옮긴 것이며, 실패 출력 원문과 뮤턴트 적용 지점은 정본에 있다.
+
+커밋: `8c418440d` (M1 — 파서 범위/인식 보고 + 무손실 split/join), `a18ce4e55` (M2~M6 — 판정기·쓰기 경로·명령 배선).
+
+| AC | 판정 | 검증 수단 | 관측 |
+|---|---|---|---|
+| AC-CGP-001 | PASS | `TestPruneCodexSkillEntriesRemovesMissingAbsolute` | ok |
+| AC-CGP-002 | PASS | `TestPruneCodexSkillEntriesRemovesMissingHomeRelative` | ok |
+| AC-CGP-003 | PASS | `TestPruneCodexSkillEntriesNeverPruneClasses`(12항목 선행 단언 + 행 1~7c) + `...SwallowedRegistrationSurvives`(7-d) + `...NarrowSurvives`(7-d') + `TestRunCleanCodexSkillsReportsSkippedEntries` | ok |
+| AC-CGP-004 | **PASS (must-pass)** | 뮤턴트 1 — indeterminate→missing, 적용 지점 `judgeCodexSkillEntry` stat switch `default:` | GREEN(exit 0) → RED(`TestPruneCodexSkillEntriesNeverPruneClasses`) → GREEN(exit 0) |
+| AC-CGP-005 | PASS | `TestPruneCodexSkillEntriesEnabledIsNotAGate` | ok |
+| AC-CGP-006 | PASS | `TestRunCleanCodexSkillsDryRunWritesNothing` | ok (`bytes.Equal` — sha256 동일성보다 강함) |
+| AC-CGP-007 | PASS | `TestPruneCodexSkillEntriesIgnoresHeaderInsideDocString` | ok |
+| AC-CGP-008 | PASS | `TestRunCleanCodexSkillsBacksUpBeforeWriting` | ok — 백업 내용 == 실행 전 설정, 보고에 경로 + sha256 |
+| AC-CGP-009 | PASS | `TestRunCleanCodexSkillsFailsOpen` (4 서브테스트) | ok |
+| AC-CGP-010 | PASS | `TestSinglePathShapeClassifier` | ok — 두 번째 분류기를 실물로 심어 발화 확인(정본 §5) |
+| AC-CGP-011 | PASS | `TestSkillsParserStaysReadOnly` | ok |
+| AC-CGP-012 | PASS | `TestCleanCmdRejectsBothScopeFlags` | ok |
+| AC-CGP-013 | PASS | `TestConfigLinesRoundTrip` (재조립 함수 직접 호출, 변형 a/b/c + 4) | ok |
+| AC-CGP-014 | PASS | `TestPruneCodexSkillEntriesPreservesUntouchedBytes` (3 변형) | ok |
+| AC-CGP-015 | PASS | `TestCleanCmdHelpNamesCodexScope` | ok |
+| AC-CGP-016 | PASS | `TestPruneCodexSkillEntriesEntryAtEOF` (2 변형) | ok |
+| AC-CGP-017 | **PASS (must-pass)** | 뮤턴트 2 — 파서 판정 무시 후 텍스트 재훑기, 적용 지점 `pruneCodexSkillEntries` 실격 판정 자리 | GREEN(exit 0) → RED(`...SwallowedRegistrationSurvives`, `...NarrowSurvives`) → GREEN(exit 0) |
+
+불변 축:
+
+| 불변 | 명령 | 관측 |
+|---|---|---|
+| 라이브 `~/.codex/config.toml` 불변 (spec §D) | `shasum -a 256 ~/.codex/config.toml`, run 첫 명령 직전 / 마지막 명령 직후 | 양쪽 `9f6e3a953880630afcfa6a40abe846b785e8fc0067e17b3a7ec1d513f71ca33a` — 동일 |
+| 파서 read-only | `TestSkillsParserStaysReadOnly` | 쓰기 호출 0 |
+| 분류기 단일 | `TestSinglePathShapeClassifier` | 두 번째 구현 0 |
+| 서브에이전트 경계 | `grep -rn 'AskUserQuestion\|mcp__askuser' <touched files>` | 매치 0 |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-07
+run_commit_sha: a18ce4e55
+run_status: complete
+ac_pass_count: 17
+ac_fail_count: 0
+must_pass_ac: [AC-CGP-004, AC-CGP-017]   # 둘 다 PASS, 미검증 처분 없음
+mutant_gates: 2                           # 각각 GREEN → RED(지목 테스트) → GREEN
+preserve_list_post_run_count: 0           # PRESERVE 목록 밖 변경 0
+new_warnings_or_lints_introduced: 0       # golangci-lint: 0 issues
+cross_platform_build:
+  darwin_native: pass                     # go build ./... exit 0
+  windows_amd64: pass                     # GOOS=windows GOARCH=amd64 go build ./... exit 0
+coverage:
+  internal_codexwiring: 89.5%
+  internal_cli: 80.7%                     # 패키지 기존 baseline — 미달은 이 카드 소관 밖(§7 Gaps)
+verification_scope: ["./internal/cli/...", "./internal/codexwiring/..."]
+full_local_suite_run: false               # 로컬 go test ./... 금지 — 전 패키지 판정은 CI
+total_run_phase_files: 5
+m1_to_mN_commit_strategy: "M1 단독 커밋 + M2~M6 통합 커밋 (2건)"
+evidence_path: .moai/reports/t506/run-evidence.md
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
