@@ -23,7 +23,14 @@ package codexwiring
 // which is the ground for keeping them separate states rather than widening
 // Unspecified.
 
-import "testing"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 // TestParseSkillEntriesEnabledThreeWayReading (AC-CEF-010, parser half) pins
 // all three readings in one table so no row can be changed without the others
@@ -105,4 +112,59 @@ func TestParseSkillEntriesNonBooleanEnabledIsUnrecognisedLine(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseSkillEntriesWritesNothing pins the read-only posture (REQ-CEF-002).
+// t508 changes what this parser READS; it must not change that the parser only
+// reads. The whole fixture directory is hashed, path and content both, so a
+// stray sidecar or backup file counts as a write as surely as an edit does.
+func TestParseSkillEntriesWritesNothing(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.toml")
+	body := "model = \"gpt-5\"\n\n" +
+		"[[skills.config]]\npath = \"/a/SKILL.md\"\nenabled = true\n\n" +
+		"[[skills.config]]\npath = \"/b/SKILL.md\"\nenabled = \"true\"\n\n" +
+		"[[skills.config]]\npath = \"/c/SKILL.md\"\n"
+	if err := os.WriteFile(cfg, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before := hashCodexFixtureDir(t, dir)
+
+	raw, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ParseSkillEntries(raw); len(got) != 3 {
+		t.Fatalf("ParseSkillEntries returned %d entries, want 3 — the fixture never exercised the parser", len(got))
+	}
+
+	if after := hashCodexFixtureDir(t, dir); after != before {
+		t.Errorf("the parser changed the fixture directory: before %s, after %s", before, after)
+	}
+}
+
+// hashCodexFixtureDir hashes every regular file under dir, path and content
+// both, so an added or removed file changes the digest too.
+func hashCodexFixtureDir(t *testing.T, dir string) string {
+	t.Helper()
+	h := sha256.New()
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		h.Write([]byte(p))
+		h.Write(b)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }

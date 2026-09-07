@@ -57,7 +57,7 @@ func TestParseSkillEntriesReversedKeyOrder(t *testing.T) {
 // "Codex's default for an absent key is not observed anywhere in this
 // repository". That is no longer true: measured on codex-cli 0.153.4 in an
 // isolated CODEX_HOME, `codex mcp list` against a config whose entry omits
-// `enabled` exits 1 with ``missing field `enabled` in `skills.config` ``.
+// `enabled` exits 1 with “missing field `enabled` in `skills.config` “.
 // Codex does not DEFAULT the key — it refuses to load at all.
 //
 // UNSPECIFIED is therefore still the right PARSER reading (the key is genuinely
@@ -85,8 +85,8 @@ func TestParseSkillEntriesEnabledAbsentIsUnspecified(t *testing.T) {
 //
 //   - "reading it as false silently DEMOTES a live registration to stale
 //     bookkeeping" — falsified by measurement. On codex-cli 0.153.4,
-//     `enabled = "true"` makes `codex mcp list` exit 1 with ``invalid type:
-//     string "true", expected a boolean``. There IS no live registration to
+//     `enabled = "true"` makes `codex mcp list` exit 1 with “invalid type:
+//     string "true", expected a boolean“. There IS no live registration to
 //     demote: codex refuses to load the config at all. The real choice was
 //     never between two readings of a working config.
 //   - "the declared intent is unambiguous, so it is taken at face value" —
@@ -99,7 +99,7 @@ func TestParseSkillEntriesEnabledAbsentIsUnspecified(t *testing.T) {
 // is not quoted, so a reader scanning for "the quoted rows" walks past it. It
 // changes for the same reason as the others — `yes` is a DECLARED value that is
 // not a bare boolean, which is exactly the new state, and codex rejects it on
-// the same ``expected a boolean`` grounds.
+// the same “expected a boolean“ grounds.
 func TestParseSkillEntriesEnabledQuoted(t *testing.T) {
 	cases := []struct {
 		in   string

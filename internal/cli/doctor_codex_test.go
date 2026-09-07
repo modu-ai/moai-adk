@@ -8,6 +8,7 @@ package cli
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -137,10 +138,44 @@ func writeCodexHomeConfig(t *testing.T, entries []codexSkillEntrySpec) string {
 		}
 		sb.WriteString("\n")
 	}
-	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(sb.String()), 0o644); err != nil {
+	cfgPath := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfgPath, []byte(sb.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	assertCodexHomeConfigUnwritten(t, cfgPath)
 	return home
+}
+
+// assertCodexHomeConfigUnwritten pins the read-only posture (t508 AC-CEF-012)
+// for every fixture in this suite: the config's content hash after the test is
+// the hash written here.
+//
+// The guard lives in the fixture builder rather than in one test on purpose. A
+// per-test assertion covers only the tests someone remembered to add it to,
+// which is exactly the set that would not contain the test that introduced a
+// write. Registered here, it binds every present and future caller.
+//
+// Only the FIXTURE's config is guarded. The machine's real ~/.codex is never
+// touched by any of this — every fixture lives under t.TempDir() with the home
+// resolution pinned, and no test in this file sets HOME.
+func assertCodexHomeConfigUnwritten(t *testing.T, cfgPath string) {
+	t.Helper()
+	before, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := sha256.Sum256(before)
+	t.Cleanup(func() {
+		after, err := os.ReadFile(cfgPath)
+		if err != nil {
+			t.Errorf("the fixture config is unreadable after the run — something removed or replaced it: %v", err)
+			return
+		}
+		if got := sha256.Sum256(after); got != want {
+			t.Errorf("the fixture config changed during the run: %s\nbefore:\n%s\nafter:\n%s",
+				cfgPath, before, after)
+		}
+	})
 }
 
 // codexDetailText collapses Detail's line wrapping back onto one line so an
