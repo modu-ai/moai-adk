@@ -48,6 +48,15 @@ type KeyEdit struct {
 // as the fallback for upserts and unresolvable edits; re-encoding normalizes
 // blank lines away (the limitation documented in this package header), which
 // M1(d) observed as the feedback.yaml blank-line loss.
+//
+// @MX:ANCHOR: [AUTO] PatchFile은 seam 섹션 yaml의 공유 부분-쓰기 진입점이다 —
+// 호출 파일 3개 5호출점(sectionwrite, initializer_expansion ×3, init_workflow_flags)이 같은 계약에 의존한다.
+// @MX:REASON: [AUTO] REQ-WWS-005 (SPEC-WEB-WRITE-SAFETY-001): 기존 스칼라 교체는
+// lineSplice(대상 라인만 재작성 — 빈 줄·주석·키 순서·unknown key 원문 바이트 보존)를
+// 먼저 시도하고, upsert·해소 불가 편집만 재직렬화 폴백으로 보낸다. 재직렬화는 빈 줄을
+// 정규화해 버리므로(패키지 헤더 문서화 한계) 폴백 강제 뮤턴트는
+// TestPatchFileValueInvariantPreservesBytes가 RED로 잡는다 — 이 분기 구조를
+// 단순화하려는 시도는 이 테스트부터 읽는다.
 func PatchFile(path string, edits []KeyEdit) error {
 	if len(edits) == 0 {
 		return nil

@@ -188,4 +188,26 @@ primary_checkout_untouched: true  # 모든 재현·검증은 /tmp/t517/fixture* 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-07
+sync_commit_sha: "pending-backfill-sync"  # sync 커밋은 자기 SHA를 셀 수 없다 — backfill 커밋이 실측 SHA로 교체 (D3 placeholder-backfill exemption)
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Fixed 섹션 선두"
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-WEB-WRITE-SAFETY-001' CHANGELOG.md → 0 (중복 0건 — 발행 허용)"
+b12_self_test_b_ac_count_match: "acceptance.md 고유 AC 식별자 8건 (AC-WWS-001..008, grep -oE | sort -u 실측) == CHANGELOG 엔트리 인용 8건"
+b12_self_test_c_file_path_verification: "엔트리가 이름 대는 파일 7건 + spec.md — ls 실측 전부 존재 (OK 8/8)"
+frontmatter_status_transitions:
+  spec_md_status: "in-progress → completed (sync 커밋 탑승 — 3-phase close)"
+  spec_md_updated: "2026-09-07"
+  body_edits: none  # spec.md/plan.md/acceptance.md 본문 무변경 — D5(spec.md:141 구 협의 괄호)는 auditor 유지 허가로 존속
+mx_tag_changes:
+  added:
+    - "@MX:ANCHOR + @MX:REASON → internal/settings/yamlpatch/yamlpatch.go PatchFile (호출 파일 3개 5호출점 — fan_in ≥ 3 계약 + REQ-WWS-005 lineSplice 분기 구조 계약)"
+  verified_no_change:
+    - "ApplySchemaEdits — sectionapply.go 파일헤더 @MX:WARN 존재, 신규 게이트는 REQ-WWS-003 인라인 문서화로 충분"
+    - "WriteProjectNestedConfig — nested.go 파일헤더 @MX:WARN 존재, 실변경 게이트는 REQ-WWS-003 인라인 문서화로 충분"
+    - "handleSave — handlers.go @MX:WARN 존재 (변경 없음, 배선만 확인)"
+    - "parseSchemaForm — 비-export 함수, REQ-WWS-006 문서 주석 보유 (태그 불필요)"
+readme_docs_site_judgment: "변경 없음 — README 4-locale의 moai web 문구는 화면·탭·프로필 관리 구조만 기술하고 저장 의미론에 대한 주장이 없어 정정 대상 0건(README.ko/en/ja/zh :133/:408-414/:610/:750 실측); docs-site 콘텐츠는 본 트리에 부재(docs/ 하위 design/ 뿐)"
+go_code_touched_by_sync: "MX 태그 주석 1건만 추가 (yamlpatch.go) — 주석 전용 변경, go test -count=1 ./internal/settings/... ./internal/web/... 재실행으로 확인"
+```
