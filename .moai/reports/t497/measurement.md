@@ -143,3 +143,52 @@ Evidence (`grep -rhoE 'AskUserQuestion|Agent\(|Task(Create|Update|List|Get)|Desi
 Gap: 719건 개별 분류는 하지 않았다. 위 판단은 **분포와 세 문서의 주제**에 근거한
 scope 판단이지, 639건이 전부 산문임을 확인한 것이 아니다. 상위 3본을 범위에서
 빼려면 표본 확인이 별도로 필요하다.
+
+---
+
+## 정정 — Claim 4 의 합계 (manager-spec 적발, 레인 재현 확인)
+
+위 Claim 4 의 파일별 값 11개는 옳다. **그 합을 `= 74` 로 적은 것이 틀렸다.**
+
+Evidence:
+```
+$ echo "14+13+13+10+8+5+5+5+4+4+3" | bc
+84
+$ echo "45+25+4+6+4" | bc      # 패턴별 표의 합
+84
+```
+원문을 지우지 않고 여기에 정정을 붙인다 — **정답은 84** 이고, 두 경로(파일별 합 /
+패턴별 합)가 서로 독립적으로 84 에서 만난다. 단위: **발생 84 건 / 서로 다른 줄 81 개**.
+
+## 정정 — 결속표 확장 제안(D1/D2)의 전제가 틀렸다
+
+레인이 계획 단계에서 제안한 「`reference-loader` · `subagent-spawn` 2행 추가」는
+두 가지로 성립하지 않는다. manager-spec 이 적발했고 레인이 원문에서 재현했다.
+
+**(a) 이름을 새로 만들 수 없다.** 완결 SPEC `SPEC-CODEX-SKILL-NEUTRAL-001`
+REQ-CSN-002 (`spec.md:279`): 중립 능력 어휘는 `agents-codex.yaml` 의 `tool_classes`
+클래스 이름을 그대로 쓰고 **두 번째 어휘를 만들지 않는다**. `tool_classes` 에
+이미 `skill-loader` 가 있으므로 `reference-loader` 는 금지 대상이다.
+
+**(b) 행 집합은 고르는 설계가 아니라 파생 기준이다.** REQ-CSN-003 (`spec.md:280`):
+행 집합 = **이 표를 읽는 하네스에 존재하지 않는 모든 `tool_classes` 능력**.
+"현재 측정값 4행은 결과이지 기준이 아니다."
+
+**(c) 오늘의 증거는 두 능력의 부재를 지지하지 않는다.** `agents-codex.yaml` 의
+rationale 원문:
+- `skill-loader`(:133-135) — "Session skill loading itself **IS confirmed** on this
+  version … so this drop is about the per-agent grant, not about skills reaching a session."
+- `subagent-spawn`(:143-145) — "Codex delegation **exists** (internal collaboration*
+  tools) but a per-agent spawn grant is not expressible in agent TOML."
+
+두 경우 모두 없는 것은 **에이전트-TOML 필드**이고, 결속표는 필드 부재가 아니라
+**능력 부재**를 채우는 표다. → 오늘 근거로는 두 행 모두 추가 불가이며,
+부재 실측이 선행 마일스톤이 되어야 한다. **행 0개도 정당한 결과.**
+
+이 정정은 레인의 원 제안이 근거 없이 문서를 넓힐 뻔했음을 기록으로 남긴다.
+
+## 미해소 불일치 (M1 소관)
+
+REQ-CSN-003 은 "현재 측정값 **4행**"이라 적는데, 이 트리의 `AGENTS.md:19-23` 과
+`internal/template/templates/AGENTS.md` 는 둘 다 **3행**이다(레인 직접 측정, 두 사본
+동일). 어느 쪽이 스테일인지는 관측하지 않았다 — Gap.
