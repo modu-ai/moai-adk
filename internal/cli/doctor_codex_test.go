@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -1445,5 +1446,254 @@ func TestCheckCodexWiring_MirrorUsesExistingRowTwoRegisters(t *testing.T) {
 	}}, false, resolveTheme())
 	if strings.Contains(rendered, testMirrorDetailPhrase) {
 		t.Errorf("Detail text rendered without --verbose: %q", rendered)
+	}
+}
+
+// --- SPEC-CODEX-PARTIAL-WIRING-001 (card t499) ---------------------------
+//
+// Half-wired state: the project carries Codex agent definitions under
+// .codex/agents/ but NO wiring file. A plain `moai init` leaves exactly this
+// state, so the check must name it rather than calling the project
+// "claude-only" (REQ-CPW-004) or describing it as declaring no Codex wiring
+// at all.
+
+// wantHalfWiredAbsentMessage is the test-side literal of the codex-ABSENT
+// half-wired Message (AC-CPW-002 (d), equivalence assertion / allowlist).
+// Any paraphrase of the implementation constant differs from this literal and
+// therefore fails — which is the point: a user-visible string cannot change
+// without a test breaking.
+const wantHalfWiredAbsentMessage = "codex agent definitions present, no wiring files — codex not on PATH"
+
+// halfWiredProject builds a project carrying n Codex agent definition files
+// under .codex/agents/moai/ and NO wiring file, and returns its root. n == 0
+// creates the directory but leaves it empty — the case that must NOT classify
+// as half-wired (REQ-CPW-005: the discriminant asks whether a definition
+// exists, never how many).
+func halfWiredProject(t *testing.T, n int) string {
+	t.Helper()
+	root := t.TempDir()
+	dir := filepath.Join(root, codexwiring.AgentsRelPath, "moai")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < n; i++ {
+		p := filepath.Join(dir, fmt.Sprintf("agent-%02d.toml", i))
+		if err := os.WriteFile(p, []byte("name = \"agent\"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Premise guard: a wiring file here would move the project out of the
+	// half-wired state and silently invalidate every assertion below.
+	for _, rel := range []string{codexwiring.HooksRelPath, codexwiring.ConfigRelPath} {
+		if _, err := os.Stat(filepath.Join(root, rel)); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("fixture premise broken: %s exists (stat err = %v)", rel, err)
+		}
+	}
+	return root
+}
+
+// TestCheckCodexWiring_HalfWiredCodexInstalled — AC-CPW-001. Agent definitions
+// present, no wiring, and codex resolves on PATH: the directive is executable
+// right now, so this is the branch that earns a Warn (spec.md §D-1).
+func TestCheckCodexWiring_HalfWiredCodexInstalled(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir())
+
+	check := checkCodexWiring(halfWiredProject(t, 3), false)
+
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("half-wired + codex installed status = %v, want Warn: %+v", check.Status, check)
+	}
+	// (b) both facts stated: definitions present AND wiring files absent.
+	for _, want := range []string{"agent definitions", "no wiring files"} {
+		if !strings.Contains(check.Message, want) {
+			t.Errorf("Message does not state %q: %q", want, check.Message)
+		}
+	}
+	// (c) the directive rides in Message — Detail renders only under --verbose.
+	if !strings.Contains(check.Message, initCodexAdvice) {
+		t.Errorf("action directive missing from Message: %q", check.Message)
+	}
+	// (d) the absent paths are evidence and ride in Detail.
+	for _, want := range []string{codexwiring.HooksRelPath, codexwiring.ConfigRelPath} {
+		if !strings.Contains(codexDetailText(check), want) {
+			t.Errorf("Detail does not name the absent path %q: %+v", want, check)
+		}
+	}
+	// (e) REQ-CPW-004 binds every branch, so it is measured on this one too.
+	if strings.Contains(check.Message+" "+codexDetailText(check), "claude-only") {
+		t.Errorf("half-wired project described as claude-only: %+v", check)
+	}
+}
+
+// TestCheckCodexWiring_HalfWiredCodexAbsent — AC-CPW-002. Agent definitions
+// present, no wiring, codex NOT on PATH: the state is named, the status stays
+// CheckOK (a directive nobody can execute is nagging, not guidance —
+// REQ-CPW-009), and the user-layer skill sweep is never reached
+// (REQ-CPW-011).
+//
+// Two home sub-cases are measured because the equivalence must hold
+// independently of the home's contents: a correct implementation never reads
+// the home on this branch. (i) failing alone means the literal drifted;
+// (ii) failing alone means the user-layer sweep leaked in; both failing means
+// the branch is handled differently altogether.
+func TestCheckCodexWiring_HalfWiredCodexAbsent(t *testing.T) {
+	cases := []struct {
+		name string
+		home func(t *testing.T) string
+	}{
+		{"clean home", func(t *testing.T) string { return t.TempDir() }},
+		{"stale home", func(t *testing.T) string {
+			return writeCodexHomeConfig(t, []codexSkillEntrySpec{
+				{Path: absentSkillPath(t, "moai-a"), EnabledKey: "true"},
+				{Path: absentSkillPath(t, "moai-b"), EnabledKey: "false"},
+			})
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stubCodexLookup(t, true, false)
+			stubCodexHome(t, tc.home(t))
+
+			check := checkCodexWiring(halfWiredProject(t, 3), false)
+
+			// (a) informational, in BOTH sub-cases.
+			if check.Status != uikit.CheckOK {
+				t.Errorf("half-wired + codex absent status = %v, want OK: %+v", check.Status, check)
+			}
+			// (b)+(d) equivalence assertion: any paraphrase differs and fails.
+			if check.Message != wantHalfWiredAbsentMessage {
+				t.Errorf("Message = %q, want exactly %q", check.Message, wantHalfWiredAbsentMessage)
+			}
+			// (c) REQ-CPW-004.
+			if strings.Contains(check.Message+" "+codexDetailText(check), "claude-only") {
+				t.Errorf("half-wired project described as claude-only: %+v", check)
+			}
+			// (e) REQ-CPW-011: no user-layer [[skills.config]] finding here.
+			for _, leak := range []string{"skills.config", "stale skill"} {
+				if strings.Contains(check.Message+" "+codexDetailText(check), leak) {
+					t.Errorf("user-layer sweep reached the codex-absent branch (%q): %+v", leak, check)
+				}
+			}
+		})
+	}
+}
+
+// TestCheckCodexWiringHalfWiredAbsentLiteralCarriesNoDirective — AC-CPW-002
+// (d'). The equivalence above measures whether the runtime Message drifted
+// from the literal; this measures what the literal WAS CHOSEN TO BE. The two
+// are different subjects: an author who picks a directive for the literal and
+// writes the same directive into the test passes the equivalence assertion.
+func TestCheckCodexWiringHalfWiredAbsentLiteralCarriesNoDirective(t *testing.T) {
+	for _, banned := range []string{"moai init", "run ", "install"} {
+		if strings.Contains(wantHalfWiredAbsentMessage, banned) {
+			t.Errorf("the codex-absent literal carries the directive shape %q: %q", banned, wantHalfWiredAbsentMessage)
+		}
+	}
+}
+
+// TestCheckCodexWiring_HalfWiredCountIndependent — AC-CPW-005. The
+// discriminant asks whether a definition file exists, never how many: 1 and 12
+// both classify as half-wired, and a directory holding none does not (it falls
+// back to the untouched unwired path).
+func TestCheckCodexWiring_HalfWiredCountIndependent(t *testing.T) {
+	for _, n := range []int{1, 12} {
+		t.Run(fmt.Sprintf("%d definitions", n), func(t *testing.T) {
+			stubCodexLookup(t, true, false)
+			stubCodexHome(t, t.TempDir())
+			check := checkCodexWiring(halfWiredProject(t, n), false)
+			if check.Message != wantHalfWiredAbsentMessage {
+				t.Errorf("%d definitions did not classify as half-wired: %q", n, check.Message)
+			}
+		})
+	}
+	t.Run("empty agents directory", func(t *testing.T) {
+		stubCodexLookup(t, true, false)
+		stubCodexHome(t, t.TempDir())
+		check := checkCodexWiring(halfWiredProject(t, 0), false)
+		if check.Message == wantHalfWiredAbsentMessage {
+			t.Errorf("an empty agents directory classified as half-wired: %+v", check)
+		}
+		if check.Message != "not wired (claude-only project) — skipped" {
+			t.Errorf("empty agents directory left the preserved unwired path: %q", check.Message)
+		}
+	})
+}
+
+// TestCheckCodexWiring_HalfWiredReadOnly — AC-CPW-006. The check reports; it
+// never creates, repairs, or removes. Both PATH branches are exercised and the
+// project tree plus the user-layer config are compared before and after.
+func TestCheckCodexWiring_HalfWiredReadOnly(t *testing.T) {
+	root := halfWiredProject(t, 3)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: absentSkillPath(t, "moai-a"), EnabledKey: "true"},
+	})
+	homeCfg := filepath.Join(home, ".codex", "config.toml")
+
+	snapshot := func() ([]string, []byte) {
+		t.Helper()
+		var files []string
+		if err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !d.IsDir() {
+				files = append(files, p)
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		sort.Strings(files)
+		raw, err := os.ReadFile(homeCfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return files, raw
+	}
+
+	beforeFiles, beforeCfg := snapshot()
+	for _, codexFound := range []bool{true, false} {
+		stubCodexLookup(t, true, codexFound)
+		stubCodexHome(t, home)
+		checkCodexWiring(root, false)
+		checkCodexWiring(root, true)
+	}
+	afterFiles, afterCfg := snapshot()
+
+	if strings.Join(beforeFiles, "\n") != strings.Join(afterFiles, "\n") {
+		t.Errorf("the check changed the project file set:\nbefore:\n%s\nafter:\n%s",
+			strings.Join(beforeFiles, "\n"), strings.Join(afterFiles, "\n"))
+	}
+	if !bytes.Equal(beforeCfg, afterCfg) {
+		t.Errorf("the check modified the user-layer config %s", homeCfg)
+	}
+}
+
+// TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand — AC-CPW-007. The two
+// pre-existing width guards call checkCodexWiring(t.TempDir(), ...), an empty
+// directory, so they only ever walk the unwired path and can never observe the
+// half-wired wording. This one walks it, in both PATH branches, with the worst
+// realistic co-occurrence on the codex-installed side.
+func TestCheckCodexWiring_HalfWiredMessageWidthStaysInBand(t *testing.T) {
+	absentRoot := t.TempDir()
+	entries := make([]codexSkillEntrySpec, 0, 49)
+	for i := 0; i < 49; i++ {
+		entries = append(entries, codexSkillEntrySpec{
+			Path:       filepath.Join(absentRoot, fmt.Sprintf("moai-skill-%02d", i), "SKILL.md"),
+			EnabledKey: "false",
+		})
+	}
+	home := writeCodexHomeConfig(t, entries)
+	root := halfWiredProject(t, 11)
+
+	for _, codexFound := range []bool{true, false} {
+		stubCodexLookup(t, true, codexFound)
+		stubCodexHome(t, home)
+		check := checkCodexWiring(root, false)
+		if n := utf8.RuneCountInString(check.Message); n > codexMessageWidthCeiling {
+			t.Errorf("codexFound=%v Message is %d runes, over the %d-rune band: %q",
+				codexFound, n, codexMessageWidthCeiling, check.Message)
+		}
 	}
 }

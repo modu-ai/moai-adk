@@ -29,6 +29,12 @@ const (
 	HooksRelPath = ".codex/hooks.json"
 	// ConfigRelPath is the project-layer Codex config file.
 	ConfigRelPath = ".codex/config.toml"
+	// AgentsRelPath is the project-layer Codex agent-definition directory.
+	// It is NOT a wiring file: `moai init` deploys agent definitions here
+	// with or without the --agent codex opt-in, so its contents are read as
+	// a diagnostic signal only and never as the standing opt-in marker that
+	// wiringFilesExist evaluates (REQ-CW-009 / REQ-CPW-010).
+	AgentsRelPath = ".codex/agents"
 	// SidecarPath is the trust sidecar recording the sha256 of the last
 	// generated wiring content, relative to the project root.
 	SidecarPath = ".moai/state/codex-wiring.json"

@@ -51,6 +51,25 @@ const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
 // user opts in explicitly.
 const initCodexAdvice = "run moai init --agent codex"
 
+// halfWiredSummary names the half-wired state: the project carries Codex
+// agent definitions but no wiring file. `moai init` deploys the definitions
+// with or without the --agent codex opt-in, so this is what a plain init
+// leaves behind — which is why the state needed a name of its own rather
+// than being folded into "not wired" (SPEC-CODEX-PARTIAL-WIRING-001).
+const halfWiredSummary = "codex agent definitions present, no wiring files"
+
+// halfWiredAbsentMessage is the WHOLE Message of the half-wired branch on a
+// machine without codex. It is a fixed literal because nothing about it
+// varies per project: the paths are evidence and ride in Detail, and the
+// count of definitions is deliberately not a discriminant input
+// (REQ-CPW-005).
+//
+// It carries NO action directive on purpose. The only remedy needs a codex
+// this machine does not have, and an instruction the reader cannot execute
+// is nagging rather than guidance (REQ-CPW-009) — the un-nagging invariant
+// this check has held since it was written.
+const halfWiredAbsentMessage = halfWiredSummary + " — codex not on PATH"
+
 // mirrorRedeployAdvice is the skill-mirror action directive
 // (SPEC-CODEX-MIRROR-DOCTOR-001 §4). The FORCED form is deliberate: the
 // routine `moai update --yes` was measured to leave a deleted mirror at zero
@@ -113,11 +132,31 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	_, codexPathErr := codexWiringLookPath("codex")
 	codexInstalled := codexPathErr == nil
 
+	// A project can carry Codex agent definitions and no wiring file at all:
+	// that is exactly what a plain `moai init` leaves behind. Reading only
+	// the two wiring files gave that state no branch of its own, so it was
+	// reported as "not wired (claude-only project)" — a sentence contradicted
+	// by the definitions sitting on disk (REQ-CPW-004).
+	halfWired := !wired && codexAgentDefinitionsExist(root)
+
 	if !wired && !codexInstalled {
+		check.Status = uikit.CheckOK
+		if halfWired {
+			// Informational, never a warning. Raising this to Warn would put
+			// a permanent warning row in front of every claude-only user,
+			// because plain init gives every project these definitions —
+			// the outcome the un-nagging invariant exists to prevent
+			// (spec §D-1). The user-layer skill sweep below is deliberately
+			// NOT reached: Codex is not in play on this machine, and a
+			// finding from a config Codex never reads here would be the same
+			// nagging by another route (REQ-CPW-011).
+			check.Message = halfWiredAbsentMessage
+			check.Detail = halfWiredDetail()
+			return check
+		}
 		// Claude-only project on a claude-only machine: nothing about Codex
 		// is in play, so the check stays silent. This is the un-nagging
 		// invariant — it must survive every addition below.
-		check.Status = uikit.CheckOK
 		check.Message = "not wired (claude-only project) — skipped"
 		return check
 	}
@@ -138,12 +177,21 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		// were inspected, so this says nothing about whether the user-layer
 		// config registers the MoAI server — asserting a machine-wide "not
 		// registered" from a project-local absence is an unobserved premise.
-		problems = append(problems, codexFinding{
-			summary: "codex installed, project not wired — " + initCodexAdvice,
-			detail: fmt.Sprintf(
-				"codex resolves on PATH but this project declares no Codex wiring (%s and %s are both absent), so this project registers no MoAI MCP server and the generated hooks cannot fire here; %s",
-				codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice),
-		})
+		//
+		// The half-wired variant narrows the PREMISE rather than rewriting
+		// the sentence: "project not wired" stays true, and stays the
+		// wording, for a project that carries no Codex anything. Where the
+		// agent definitions ARE present, the state gets its own name and the
+		// directive — executable here, since codex resolves — rides along.
+		summary := "codex installed, project not wired — " + initCodexAdvice
+		detail := fmt.Sprintf(
+			"codex resolves on PATH but this project declares no Codex wiring (%s and %s are both absent), so this project registers no MoAI MCP server and the generated hooks cannot fire here; %s",
+			codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice)
+		if halfWired {
+			summary = halfWiredSummary + " — " + initCodexAdvice
+			detail = halfWiredDetail() + "; " + initCodexAdvice
+		}
+		problems = append(problems, codexFinding{summary: summary, detail: detail})
 	} else {
 		// hooks.json: presence, whitelist validity, sidecar divergence.
 		if hooksErr != nil {
@@ -239,6 +287,45 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		check.Detail = "advisory check — rerun `moai init --agent codex` to refresh the wiring"
 	}
 	return check
+}
+
+// codexAgentDefinitionsExist reports whether the project declares at least
+// one Codex agent definition file under .codex/agents/.
+//
+// The question is EXISTENCE, never count. How many definitions the template
+// ships is a template fact that a single edit changes, so a discriminant
+// keyed on that number goes quietly wrong the day the template grows — the
+// walk therefore stops at the first regular file (REQ-CPW-005).
+//
+// Fail-open in every direction, like the rest of this check: an absent or
+// unreadable directory yields false, so a permission error never
+// manufactures a finding. The function READS only.
+func codexAgentDefinitionsExist(root string) bool {
+	var found bool
+	_ = filepath.WalkDir(filepath.Join(root, codexwiring.AgentsRelPath),
+		func(_ string, d fs.DirEntry, err error) error {
+			if err != nil {
+				// An unreadable entry says nothing about whether a
+				// definition exists — skip it rather than decide on it.
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			found = true
+			return fs.SkipAll
+		})
+	return found
+}
+
+// halfWiredDetail is the evidence behind a half-wired verdict: what the
+// project WAS found to carry and what it was found to lack, each named by
+// path. Evidence belongs in Detail — Message carries the verdict, and naming
+// three paths there is what pushed this row past the panel width before.
+func halfWiredDetail() string {
+	return fmt.Sprintf(
+		"this project carries Codex agent definitions under %s but declares no Codex wiring (%s and %s are both absent), so it registers no MoAI MCP server and the generated hooks cannot fire here",
+		codexwiring.AgentsRelPath, codexwiring.HooksRelPath, codexwiring.ConfigRelPath)
 }
 
 // plainCodexFinding is a finding whose full text is already short enough to
