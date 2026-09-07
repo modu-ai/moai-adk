@@ -47,6 +47,22 @@ FAIL on the retry-contract regression clause, not on score) — two edits, both 
 Nothing else was touched: `spec.md` and `plan.md` are unchanged at 0.2.0, and no criterion that
 passed iteration 2 was edited.
 
+Iteration-2 reinforcement (lead, same round, still `acceptance.md` only):
+
+- All three targets re-measured in both directions (method-form and plain-form controls), each row
+  summing to exactly 1: `handleSave` is a method, `parseSchemaForm` and `ApplySchemaEdits` are plain
+  functions. The non-zero assertion binds all three — the anchor matching two of them today is a
+  coincidence of shape, not a property.
+- The vacuous pass is now an **observation**: naive anchor on `handleSave`, base 0 / head 0 /
+  `diff` exit 0. The loop itself remains unrunnable in a worktree session — refused twice, first
+  for a compound `git` form, then for a non-literal `awk` program — so the criterion is written as
+  six plain per-side-per-target commands, all of which ran.
+- Genealogy line added to AC-WCP-012: the sibling class is "the fact the verdict rests on does not
+  yet exist"; this one is "the thing the predicate points at does not exist in that shape".
+- New prose in this round cites function names and section numbers, never `file:line`. The
+  `handlers.go:350` citation introduced in the previous round was converted; the six pre-existing
+  `file:line` citations are left untouched for the lead's post-absorption re-measurement.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
