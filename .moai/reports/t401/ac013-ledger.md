@@ -17,9 +17,21 @@ grep -rn -E '\(Recommended\)|\(권장\)' .claude/rules .claude/skills .claude/ou
 | tree measured | worktree `WT-analysis-pull`, HEAD `6839f717a`, clean tree |
 | swept count (`wc -l < ac013-candidates.txt`) | **26** |
 | ledger rows below | **26** |
-| rows classed `conditioned` | **9** |
-| rows classed `unconditioned-by-design` | **16** |
-| rows **escalated** (unclassified remainder) | **1** |
+| rows classed `conditioned` | **11** |
+| rows classed `unconditioned-by-design` | **15** |
+| rows **escalated** (unclassified remainder) | **0** |
+
+**Counts revised by the M3 `harness.md` conditioning edit** (operator-approved resolution ① of
+§ Escalation), measured on the post-edit working tree whose parent is `846b38b28`. The escalation
+is discharged: **rows 18 and 20 both move to `conditioned`**, carrier
+`.claude/skills/moai/workflows/harness.md` `:75` + `:190` and the template mirror. The delta from
+the pre-edit revision is therefore `9 / 16 / 1` → `11 / 15 / 0` — **two** rows moved, not one. Row
+20 (escalated → conditioned) is the predicted movement; row 18 (`unconditioned-by-design` →
+`conditioned`) is the second, and it follows from the disposition rule the row itself already
+carried ("this row's disposition follows row 20's resolution"), not from a reclassification of its
+merits. A prediction of `escalated → 0` alone would have left the `conditioned` /
+`unconditioned-by-design` split at 10 / 16, which does not sum to 26; the two-row movement is what
+makes the counts close.
 
 **The counts differ from the SPEC's prediction (8 / 18 / 0), and the difference is reported as a
 difference, not reconciled.** The prediction was deduced from line ⊆ block monotonicity, which
@@ -94,9 +106,9 @@ no row uses a third ground.
 | 15 | `.claude/skills/moai/workflows/run.md:137` | **conditioned** | Block = the line. The Implementation Kickoff Approval `[HARD]` clause (spec.md §E.1). Mode reference in block; the gate stays mandatory and score-independent in both modes. |
 | 16 | `.claude/skills/moai/workflows/harness-build-entry.md:75` | unconditioned-by-design | Block = the line (numbered step 2). Its **parent lead-in at `:73` was read** and cites the SSOT unqualified — "conduct AskUserQuestion Socratic rounds per `.claude/rules/moai/core/askuser-protocol.md`" — so this step is a restatement of that file's § Socratic Interview Structure constraint set, whose constraint 3 is conditioned (row 5). The citation delivers the conditioning. Flagged as most-suspect before the sweep; the reading **confirmed** the class rather than overturning it. |
 | 17 | `.claude/skills/moai/workflows/harness-build-entry.md:120` | unconditioned-by-design | Block = the line (blank above and below). A **non-mandate directive** introducing the Phase 7 option list — "with the canonical four-option pattern (first option `(권장)` / `(Recommended)`)". No MUST; the mandate in this section is that the gate *fires* (the `[HARD]` two lines above), which `pull` leaves untouched. See § Residual risk — this row is the closest call in the ledger. |
-| 18 | `.claude/skills/moai/workflows/harness.md:75` | unconditioned-by-design | Block = the line. The `### Canonical Four-Option Pattern` **template lead-in** to a fenced example; a non-mandate directive. Its normative force is supplied by row 20, which invokes this pattern with a MUST — and row 20 is escalated, so this row's disposition follows row 20's resolution. |
+| 18 | `.claude/skills/moai/workflows/harness.md:75` | **conditioned** | Block = the line. The `### Canonical Four-Option Pattern` **template lead-in** to a fenced example; a non-mandate directive. Its normative force is supplied by row 20, which invokes this pattern with a MUST — so this row's disposition follows row 20's, and row 20 is now `conditioned`. **Resolved by the M3 edit**: the lead-in now names itself the `push`-mode form and carries the `pull` branch inline, so a reader arriving from row 20 under `pull` is not sent to an unconditioned template. The fenced example below it is left exactly as it is — a code-fence illustration, the `unconditioned-by-design` class of rows 21-22, and it is now explicitly scoped by the lead-in that introduces it. |
 | 19 | `.claude/skills/moai/workflows/harness.md:131` | unconditioned-by-design | Block = the line (sub-list item). Names which option is **first** for a specific verb (`Continue (권장)` on `rollback` vs `Abort (권장)` on `apply`); the subject is option ordering for that gate. Under `pull` the ordering claim survives and the labels drop. |
-| 20 | `.claude/skills/moai/workflows/harness.md:190` | **ESCALATED** | Block = the line (numbered step 5). Carries an explicit **MUST** — "The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` **§ Option Description Standards**". The previous revision classed it `unconditioned-by-design` because a citation was present. **The citation does not deliver conditioning**: it is section-scoped to § Option Description Standards, the one section AC-JFM-010 requires **byte-unchanged**, so following it under `pull` yields no withholding instruction and the MUST stands unconditioned. It cannot be satisfied vacuously the way row 6 is — it positively requires the suffix. See § Escalation. |
+| 20 | `.claude/skills/moai/workflows/harness.md:190` | **conditioned** (was ESCALATED) | Block = the line (numbered step 5). Carried an explicit **MUST** — "The first option `Apply (권장)` MUST carry the `(권장)` / `(Recommended)` suffix per `.claude/rules/moai/core/askuser-protocol.md` **§ Option Description Standards**". The previous revision classed it `unconditioned-by-design` because a citation was present. **The citation does not deliver conditioning**: it is section-scoped to § Option Description Standards, the one section AC-JFM-010 requires **byte-unchanged**, so following it under `pull` yields no withholding instruction and the MUST stands unconditioned. It cannot be satisfied vacuously the way row 6 is — it positively requires the suffix. **Resolved by the M3 edit**: the MUST is now scoped to `push`, the `pull` branch withholds the suffix from every option, and the mode branch cites § Recommendation Placement Principles → Recommendation mode — a section that does carry the branch — while the § Option Description Standards citation is retained for the `push` clause it correctly governs. The pinned section is untouched (measured: identical SHA256 against `ad272be20`). See § Escalation (discharged). |
 | 21 | `.claude/skills/moai/workflows/feedback.md:124` | unconditioned-by-design | Block = the line. An **assertion about one concrete option set** ("`(Recommended)` is carried by the first option only"), describing the submission gate's own table immediately above. Not a general mandate. |
 | 22 | `.claude/skills/moai/workflows/run/mode-orchestration.md:79` | unconditioned-by-design | Block = the line (list item). The same `single-phase` chaining contract as rows 13-14, third file. Same slot-identification ground. |
 | 23 | `.claude/skills/moai/workflows/plan/spec-assembly.md:212` | **conditioned** | Block = the wrapped `[HARD]` paragraph (`208`-`214`) — **the case the window repair was made for**; under the retired line window the token had to sit on one physical line. Mode reference in block. Same Implementation Kickoff Approval clause as row 15. The long line the run phase wrote is left exactly as it is, per AC-JFM-013. |
@@ -104,7 +116,15 @@ no row uses a third ground.
 | 25 | `.claude/skills/hns-workflow-ci-loop/SKILL.md:198` | unconditioned-by-design | Block = the line (checklist item). A **verification checklist assertion** about what `EmitReadyToMergeReport` emits, in a dev-only, non-distributed `hns-*` skill governing `scripts/ci-watch/`. Not a mandate on AskUserQuestion composition. Correction to the previous revision, which said it "inherits the conditioned SSOT" — **no citation exists in this block**; the surviving ground is the modal one. |
 | 26 | `.claude/output-styles/moai/moai.md:65` | unconditioned-by-design | Block = the line (numbered step 1). **The M1 hedge is removed** — this file is M2's edit surface and M2 has now run, so the row is classed on its merits rather than deferred. It is a **non-mandate restatement** of the Socratic round constraints (≤4 questions, ≤4 options, user language, first option marked), the same modal class as rows 16-18, inside a Process list whose step 0 immediately above cites `askuser-protocol.md`. M2's edit surface is S2-S5 (the Discovery / Epic / Insight / Error-Recovery banner rules), which this line is not; conditioning it would be an edit outside the enumerated surface. See § Residual risk. |
 
-## Escalation — row 20 (`harness.md:190`)
+## Escalation — row 20 (`harness.md:190`) — DISCHARGED
+
+**Outcome.** The operator approved **resolution 1** below. The M3 edit conditions `:190` and `:75`
+in `.claude/skills/moai/workflows/harness.md` and its template mirror; rows 20 and 18 are now
+`conditioned` and the escalated count is 0. Resolutions 2 and 3 were considered and rejected —
+2 because re-pointing the citation leaves the `MUST … suffix` wording itself unconditioned, so the
+`pull`-mode conflict survives the re-pointing; 3 because it is a SPEC-body decision and would admit
+a carve-out where a direct fix was available. The record below is preserved as the reasoning that
+produced the choice, not as an open item.
 
 **Why it is not classifiable in either class.** It carries an explicit `MUST` that the first option
 carry the `(권장)` / `(Recommended)` suffix, so it is squarely the clause class REQ-JFM-016 names —
@@ -122,8 +142,8 @@ and never will under this SPEC. A reader under `pull` who follows the citation f
 bias-prevention rule and no withholding instruction, and emits the label.
 
 **Consequence for the criterion.** AC-JFM-013 requires "no unclassified remainder". With one row
-escalated, that clause is **not satisfied** at this HEAD. Three resolutions are available and the
-choice is the operator's:
+escalated, that clause was **not satisfied** at HEAD `846b38b28`. It is satisfied after the M3
+edit: 26 rows, 0 escalated. Three resolutions were available and the choice was the operator's:
 
 1. Expand M2's (or a follow-up milestone's) edit surface to include `harness.md`, condition `:190`,
    and — because row 18 is the pattern template `:190` invokes — condition or re-ground `:75` in the
