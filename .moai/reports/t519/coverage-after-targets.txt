@@ -1,0 +1,10 @@
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:66:		HandleCodexReviewGate			100.0%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:116:		isBlockVerdict				100.0%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:125:		hasReviewableChanges			100.0%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:145:		reviewableFromPorcelain			83.3%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:168:		isRuntimeManagedPath			100.0%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:183:		runCodexReviewGate			92.3%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:207:		readHookInput				85.7%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:221:		emitHookOutput				100.0%
+github.com/modu-ai/moai-adk/internal/cli/codex_review_gate.go:236:		resolveProjectDirFromInput		100.0%
+github.com/modu-ai/moai-adk/internal/cli/mcp_codex.go:701:			pid					100.0%
