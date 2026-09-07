@@ -87,7 +87,7 @@ new_defects: 0 (Go 변경 없음 — 미러 패리티·drift 테스트가 유일
 
 sync_status: audit-ready
 sync_complete_at: 2026-09-07
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 86c9e0eb2
 changelog_entry: CHANGELOG.md [Unreleased] § Added (B12 중복 검사 0건 통과 후 발행)
 close_scope: CHANGELOG 1건 · spec.md frontmatter(status+updated만) · progress.md §E.4 — close 이후 코드·문서 본문 쓰기 없음(마지막 쓰기 원칙)
 
