@@ -204,7 +204,7 @@ known_red_preexisting: "TestCatalogHashParity (internal/spec) — pre-existing c
 
 ```yaml
 sync_complete_at: 2026-09-07
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "166ec90ef"
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-STATUS-DRYRUN-001' CHANGELOG.md → 0 (pre-emission, no duplicate entry)"
 b12_self_test_b: "AC count: acceptance.md SSOT yields 10 distinct AC identifiers (AC-001..AC-010); CHANGELOG entry cites 10 (AC-001..010) — match"
