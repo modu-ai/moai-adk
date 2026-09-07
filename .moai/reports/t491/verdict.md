@@ -8,7 +8,7 @@ SPEC-CC-GD124-001 (Claude Code upstream drift repair GD-1/2/3/4 — `context-win
 
 ## Evidence
 
-- **What landed** — 4 target files: `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` (template) + local `.claude/rules/moai/workflow/context-window-management.md`; `cross-session-messaging.md` pair likewise. Run commits: `c67019383` (M1, cw pair + draft→in-progress), `79aa4f1c4` (M2, csm pair), `e710163c9` (M3, §E.2/§E.3). Close commit: `397db0209`; backfill commit: this commit.
+- **What landed** — 4 target files: `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` (template) + local `.claude/rules/moai/workflow/context-window-management.md`; `cross-session-messaging.md` pair likewise. Run commits: `c67019383` (M1, cw pair + draft→in-progress), `79aa4f1c4` (M2, csm pair), `e710163c9` (M3, §E.2/§E.3). Close commit: `397db0209`; backfill commit: `d2be0362d` (follow-up).
 - **AC 9/9 PASS** — attributed to (a) manager-develop §E.2 verbatim outputs (`.moai/specs/SPEC-CC-GD124-001/progress.md`, run at HEAD `79aa4f1c4`) and (b) the lane orchestrator's independent re-measure on 2026-09-07 (all AC greps reproduced; cw pair `diff -q` rc=0; csm pair exactly 1 hunk; `make build` rc=0; `go test ./internal/template/...` rc=0).
 - **Absorb guidance (measured 2026-09-07)** — `origin/develop` = `ace1c5440`, 91 commits ahead of branch base `615d18c1f`, ZERO of them touching the 4 target paths. Expected conflict-free absorb. Expected delta at the integration window: 4 rule files + the SPEC directory (`.moai/specs/SPEC-CC-GD124-001/`) + the evidence directory (`.moai/reports/t491/`). Re-read the develop tip at window time regardless (the tip moves; this snapshot does not).
 
