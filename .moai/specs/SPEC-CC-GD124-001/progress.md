@@ -34,7 +34,7 @@ run_status_notes: M1 (cw pair + draft→in-progress transition + §F mode-select
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 397db0209
 sync_status: audit-ready
 sync_complete_at: 2026-09-07
 sync_status_notes: 3-phase close (card t491) — 4 files repaired (2 always-loaded rules x local/template), AC 9/9 PASS (manager-develop §E.2 verbatim outputs + lane-orchestrator independent re-measure 2026-09-07), plan-audit iter2 PASS 1.00. CHANGELOG not emitted (count 0; repo convention since t484 — history lives in SPEC HISTORY). sync_commit_sha backfilled in the follow-up commit (D3 pattern).
