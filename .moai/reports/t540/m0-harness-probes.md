@@ -51,6 +51,22 @@ Prior cell, measured earlier the same day and consistent with the above: a `[[sk
 entry with `enabled = true` pointing at a SKILL.md at an **arbitrary path outside any skill root**
 produced `grep -c` **0**, and that path appeared in neither the roots list nor the skill list.
 
+### Exported evidence (the citation target)
+
+The deciding lines of every cell are exported to tracked paths and this report cites those files,
+not the scratch tree they were extracted from:
+
+- `.moai/reports/t540/probe-harness-shape.log` — the three harness cells: per-cell rc, stderr and
+  stdout byte counts, `grep -c 't540probe'`, the rendered probe line, the roots table, and the
+  surviving fixture `config.toml`.
+- `.moai/reports/t540/probe-auth-axis.log` — the auth-axis cell: rc, stderr/stdout byte counts,
+  the roots table, and the arbitrary-declared-path hit count.
+
+Both were extracted from the scratch outputs mechanically, not retyped. Per
+`agent-common-protocol-reference.md` § Evidence export obligation, the raw renders themselves are
+**deliberately not exported** and are therefore **not cited** anywhere in this report — see
+Residual-risk.
+
 ## Baseline-attribution
 
 All cells measured this run, this host (darwin), `codex-cli 0.153.4` re-stamped per probe, against
@@ -106,3 +122,15 @@ the lead's decision.
   arbitrary-path cell (not its position outside a skill root) explains its zero, the inference
   that placement is what introduces a skill would be wrong. The two explanations were not
   separated by a further probe.
+- **The raw prompt-input renders are not exported and are a known loss.** Four files totalling
+  ~139 KB (`p1.out`, `p2.out`, `p2b.out`, and the auth cell's `out.txt`) stay in the session
+  scratchpad and will not survive `/tmp` clearance. They were left behind under the selection
+  criterion — the lines that decided each verdict are in the two exported logs, and a 139 KB
+  attachment of rendered system-prompt text would not make the verdict more checkable. The
+  consequence is real and is accepted: an auditor cannot re-read the full render, only the
+  extracted lines and the counts taken from it. Nothing in this report rests on a line that was
+  not exported.
+- **The per-cell `config.toml` fixtures were overwritten in place**, so only cell p2b's survives
+  and is what the export carries. Cells p1 and p2 are described in prose and by their measured
+  outcome; their exact fixture bytes are gone. Re-running the probes would reconstruct them, but
+  reconstruction is not the original.
