@@ -202,7 +202,12 @@ func TestUpsertCodexSkillDisableAppendsOneEntryWithFalse(t *testing.T) {
 // the criterion's wording matches what the tests actually cover.
 func TestUpsertCodexSkillDisableInsertsMissingEnabledKey(t *testing.T) {
 	p := "/proj/.agents/skills/probe/SKILL.md"
-	in := []byte("[[skills.config]]\npath = \"" + p + "\"\n\n[tail]\nk = 1\n")
+	// CRLF deliberately. The insert is the only place an emitted line takes
+	// its ending from a NEIGHBOUR rather than from a scan of the file, so a
+	// CRLF fixture here also pins reshapeLike's CR branch — which the CRLF
+	// case in TestUpsertCodexSkillDisablePreservesSurroundings cannot reach,
+	// because the append path builds its own ending instead of reshaping one.
+	in := []byte("[[skills.config]]\r\npath = \"" + p + "\"\r\n\r\n[tail]\r\nk = 1\r\n")
 
 	out, v := upsertCodexSkillDisable(in, p)
 
@@ -218,6 +223,14 @@ func TestUpsertCodexSkillDisableInsertsMissingEnabledKey(t *testing.T) {
 	}
 	if e.Enabled != codexwiring.SkillEnabledFalse {
 		t.Errorf("enabled = %v, want SkillEnabledFalse\n--- out ---\n%s", e.Enabled, out)
+	}
+	// The inserted line takes its ending from the path line above it. A bare
+	// LF here would be a mixed-ending config written into the user's home.
+	if !bytes.Contains(out, []byte("enabled = false\r\n")) {
+		t.Errorf("the inserted key does not carry the neighbouring line's CRLF\n--- out ---\n%q", out)
+	}
+	if bytes.Contains(bytes.ReplaceAll(out, []byte("\r\n"), nil), []byte("\n")) {
+		t.Errorf("a bare LF appeared in a CRLF file\n--- out ---\n%q", out)
 	}
 	// The insert shifts every later line by one, so what follows is the part
 	// most likely to be damaged by getting that wrong.
