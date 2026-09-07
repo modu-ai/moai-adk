@@ -115,6 +115,52 @@ func TestHandleSaveGitStrategyRealChangeStillRewrites(t *testing.T) {
 	}
 }
 
+// TestHandleSaveGreenfieldSectionCreation carries SPEC-SEAM-GREENFIELD-001
+// AC-004: the first save on an ABSENT section file (template-drift state —
+// SPEC-MCP-CONSOLE-001/PRECOMMIT-GATE-SCOPE-001 grew sectionRootKeys without
+// backfilling older projects) must return 200 and create the file carrying the
+// submitted edit and mode 0644. The submission is a REAL change (REQ-6, C6):
+// mcp.tools.spec_progress.enabled is fail-open (an absent key means ON,
+// AbsentDefault "true"), so an explicit OFF differs from the absent-default
+// interpretation and passes the C6 value-invariant gate — a no-op submission
+// would be silently skipped and the guard would be vacuously green with no fix.
+func TestHandleSaveGreenfieldSectionCreation(t *testing.T) {
+	root := t.TempDir()
+	sections := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// mcp.yaml is deliberately absent — greenfield is the state under test.
+
+	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
+	a.recordLastProfile = func(string) error { return nil }
+
+	form := url.Values{
+		"__profile":                                {"default"},
+		"mcp.tools.spec_progress.enabled":          {""},  // unchecked → false
+		"mcp.tools.spec_progress.enabled__present": {"1"}, // submitted (not unsubmitted)
+	}
+	rec := servePost(t, a.routes(), "/save", form)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("greenfield first-save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
+	}
+
+	raw, err := os.ReadFile(filepath.Join(sections, "mcp.yaml"))
+	if err != nil {
+		t.Fatalf("section file not created by first save: %v", err)
+	}
+	if !strings.Contains(string(raw), "spec_progress") || !strings.Contains(string(raw), "enabled: false") {
+		t.Errorf("submitted edit not persisted in created mcp.yaml:\n%s", raw)
+	}
+	info, err := os.Stat(filepath.Join(sections, "mcp.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o644 {
+		t.Errorf("created file mode = %o, want 644 (template convention)", got)
+	}
+}
+
 // TestHandleSaveUntouchedRenderedBodyLeavesTrackedConfigByteIdentical carries
 // sync-audit F1-D through the RENDER→PARSE→GATE loop: it asks the real
 // renderer what it shows for an ABSENT default-ON bool, submits exactly that

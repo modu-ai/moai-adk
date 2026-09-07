@@ -62,6 +62,34 @@ moai doctor [OPTIONS]
 
 这项检查是只读的 —— 绝不写入 `.claude/settings.json`。模板首次引入的事件键和用户自己编写的条目不计为缺失,opt-out 的条目也不会被要求(模板会按项目自身的 `hook.opt_in.enabled` 设置渲染)。全部一致时报 `ok`。
 
+## Codex Wiring 诊断 {{< new-badge v3.1.4 >}}
+
+完整的 `moai doctor` 运行会带上 **Codex Wiring** 项。它检视项目的 Codex 配线 (生成的钩子、MCP 注册、技能镜像) 是否完好,属于建议 (advisory) 性质的检查 —— fail-open 且只读,只报告发现的问题,绝不自行修复。
+
+| 检查项目 | 内容 |
+|----------|------|
+| `.codex/hooks.json` 存在 · 键白名单 | 确认配线文件是否存在、键是否符合白名单。只要有一个多余的键,codex 就会静默忽略整个文件 —— 这项检查就是在替它观测这份沉默 |
+| sidecar 哈希 | 将当前文件与部署时记录下来的钩子内容哈希对比,抓住手工改动钩子之后留下的偏差 |
+| `moai` 二进制 PATH | 生成的钩子命令都是 `moai hook ...` 形式,PATH 上找不到 `moai` 时一条都不会触发 |
+| `.codex/config.toml` 中的 `[mcp_servers.moai]` | 确认 MCP 注册表是否存在、是否与标准注册形态一致。这张表归用户所有,doctor 只报告,不修复 |
+| `.agents/skills` 技能镜像 | Codex CLI 不会扫描 `.claude/skills`,所以没有镜像、或镜像链接断开时,codex 就看不到这个项目的 MoAI 技能 |
+| 用户层 `[[skills.config]]` 注册 | 确认 `~/.codex/config.toml`(设置了 `$CODEX_HOME` 时则是该文件)里技能注册的路径与 `enabled` 键的形态。这一项只在 codex 参与时才检查 —— 也就是项目已接线,或 codex 已安装的时候 |
+
+当检查发现问题时,代码里内置的修复指令会一并显示。
+
+| 发现 | 指令 |
+|------|------|
+| 完全没有配线的项目 | `moai init --agent codex` |
+| 钩子改动后的 sidecar 偏差 | 用 `codex /hooks` 重新信任改动过的钩子 |
+| 技能镜像缺失 · 链接断开 | `moai update --templates-only --force --yes` |
+| 指向的技能文件已消失的注册 | 移除该条目,或还原技能文件 |
+
+这项检查能给出的发现里,被归为 fatal 的只有一个。用户层设置里的 `[[skills.config]]` 条目缺少 `enabled` 键,或者其中填的不是 bare TOML 布尔值时,codex 在每次调用中都以 exit 1 结束。命中这个唯一的 fatal 发现,doctor 的结果就变成 Fail,退出码随之变成 1。不过这一行为是在 codex-cli 0.153.4 上观测到的 —— 只确认了该版本如此,并未推广到其他版本。正确的做法是在每个条目里都明确写出 `enabled = true` 或 `enabled = false`。除这一项之外,所有发现都属于建议性质,不会改变 doctor 的退出码。
+
+在没有安装 codex 的机器上,不带任何配线的 claude-only 项目会让这项检查静默跳过 —— 信息性跳过,不会产生警告行。顺带说明:把指向已不存在技能文件的幽灵 (ghost) 注册一次性收走的功能,在这项检查的指令范围之外,由单独的动词 `moai clean --codex-skills` 承担。
+
+包含钩子信任模型与技能镜像在内的 Codex 配线全貌,详见 [Codex 双 harness](/zh/advanced/codex-dual-harness) 文档。
+
 ## 退出码
 
 脚本和 CI 包装器调用 `moai doctor` 时，读的是退出码，而不是摘要那一行。
