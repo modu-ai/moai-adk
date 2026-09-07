@@ -366,20 +366,56 @@ func TestT528SeparatorSet(t *testing.T) {
 // identically-shaped out-of-section declaration is NOT. The in-section control
 // has to live in the same document — with only the outside line present, a
 // collection of 0 does not separate "scoping held" from "the grammar rejected it".
+//
+// The out-of-section decoys sit on BOTH sides of the AC section. A decoy placed
+// only BEFORE it is unreachable for a second reason — findACSectionStart returns
+// the index after the heading, so earlier lines are never scanned at all — and
+// the fixture then passes even with the section terminator removed. The M4
+// mutant that deletes only the `##` break in extractACLines went UNDETECTED
+// against the before-side-only version of this fixture, which is how the gap was
+// found; the after-side decoy is what closes it.
 func TestT528SectionScopingInvariant(t *testing.T) {
 	md := "# Fixture\n\n" +
 		"## Background\n\n" +
-		// identical shape to the in-section line below, but outside the AC section
-		"- AC-AUDIT-SNAPSHOT-009 (A9): outside the acceptance section entirely.\n\n" +
+		// identical shape to the in-section line, BEFORE the AC section
+		"- AC-AUDIT-SNAPSHOT-009 (A9): before the acceptance section.\n\n" +
 		"## Acceptance Criteria\n\n" +
-		"- AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.\n"
+		"- AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.\n\n" +
+		"## Notes\n\n" +
+		// identical shape again, AFTER the AC section — only the section
+		// terminator keeps this one out
+		"- AC-AUDIT-SNAPSHOT-017 (A17): after the acceptance section.\n"
 
 	ids := t528RootIDs(t, md)
 	if !t528Has(ids, "AC-AUDIT-SNAPSHOT-001") {
 		t.Errorf("in-section declaration was NOT collected; got ids %v", ids)
 	}
 	if t528Has(ids, "AC-AUDIT-SNAPSHOT-009") {
-		t.Errorf("out-of-section declaration WAS collected — section scoping broke; got ids %v", ids)
+		t.Errorf("declaration BEFORE the section WAS collected — scoping broke; got ids %v", ids)
+	}
+	if t528Has(ids, "AC-AUDIT-SNAPSHOT-017") {
+		t.Errorf("declaration AFTER the section WAS collected — the section terminator broke; got ids %v", ids)
+	}
+}
+
+// TestT528ACPrefixRequired — the id must start with the literal "AC-".
+//
+// Added after the M4 mutant that relaxes the prefix to an arbitrary uppercase
+// token went undetected. That non-detection was pre-declared as possible, and it
+// was accurate: nothing in the card asserted the prefix, so the anchor could have
+// been widened to collect REQ- and TEST- bullets with every other test green.
+// A mutant's job is to find that, and this closes it.
+func TestT528ACPrefixRequired(t *testing.T) {
+	for _, line := range []string{
+		"- REQ-AUDIT-SNAPSHOT-001 (A1): a requirement bullet, not an acceptance criterion.",
+		"- TEST-SPC-001-01: a test-id bullet that is not an acceptance criterion.",
+		"- M1-SPC-001-01: a milestone-id bullet that is not an acceptance criterion.",
+	} {
+		t.Run(strings.SplitN(strings.TrimPrefix(line, "- "), "-", 2)[0], func(t *testing.T) {
+			if criteria, _ := ParseAcceptanceCriteria(t528Section(line), false); len(criteria) != 0 {
+				t.Errorf("non-AC-prefixed bullet was collected\n  line: %s\n  got:  %+v", line, criteria)
+			}
+		})
 	}
 }
 

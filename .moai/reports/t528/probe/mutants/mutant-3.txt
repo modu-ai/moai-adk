@@ -1,0 +1,63 @@
+# mutant 3 — drop the parenthesised-qualifier allowance
+# expectation pre-declared in expectations.md
+
+## injected diff
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e48f39d07..d76c16b1b 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -242,7 +242,7 @@ func autoWrapSingle(ac Acceptance) Acceptance {
+ //	                              separator stays REQUIRED; widening the set is
+ //	                              not the same as dropping the requirement, and
+ //	                              the requirement is what keeps prose bullets out.
+-var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
++var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*\*{0,2}\s*[:—–]\s*`)
+ 
+ func parseSingleACLine(line string) *struct {
+ 	id     string
+
+## judging command
+go test ./internal/spec/ -run TestT528 -count=1 -timeout 600s
+
+## result
+--- FAIL: TestT528SegmentGrammar (0.00s)
+    --- FAIL: TestT528SegmentGrammar/word_middle_segments (0.00s)
+        zz_t528_grammar_test.go:105: declaration not collected
+              line: - AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.
+              want id: AC-AUDIT-SNAPSHOT-001
+              got ids: []
+--- FAIL: TestT528ParenQualifier (0.00s)
+    --- FAIL: TestT528ParenQualifier/short_qualifier (0.00s)
+        zz_t528_grammar_test.go:221: qualified declaration not collected
+              line: - AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.
+              want id: AC-AUDIT-SNAPSHOT-001
+              got ids: []
+    --- FAIL: TestT528ParenQualifier/req_qualifier (0.00s)
+        zz_t528_grammar_test.go:221: qualified declaration not collected
+              line: - AC-AUTONOMY-TIERS-001 (REQ-001): `moai init` wizard offers 3-tier selection; `--autonomy-tier` flag validates the closed set.
+              want id: AC-AUTONOMY-TIERS-001
+              got ids: []
+    --- FAIL: TestT528ParenQualifier/bold_id_with_req_qualifier (0.00s)
+        zz_t528_grammar_test.go:221: qualified declaration not collected
+              line: - **AC-RA-07** (REQ-RA-007): retired-rejection guard returns proper JSON + exit 2
+              want id: AC-RA-07
+              got ids: []
+--- FAIL: TestT528QualifierInsideBoldWrapper (0.00s)
+    --- FAIL: TestT528QualifierInsideBoldWrapper/qualifier_then_closing_bold_emdash (0.00s)
+        zz_t528_grammar_test.go:257: declaration not collected
+              line: - **AC-CSS-001-01 (isolation-validity)** — Given the cell-IV capture file, When the harness runs `grep -c T504IVMARKER <iv.stdout>`, Then the count is 1.
+              want id: AC-CSS-001-01
+              got ids: []
+    --- FAIL: TestT528QualifierInsideBoldWrapper/closing_bold_then_qualifier (0.00s)
+        zz_t528_grammar_test.go:257: declaration not collected
+              line: - **AC-HFC-002** (REQ-HFC-001): **Given** a `PostToolUseFailure` payload with an empty top-level `Error`, **Then** the classifier reports it.
+              want id: AC-HFC-002
+              got ids: []
+--- FAIL: TestT528SectionScopingInvariant (0.00s)
+    zz_t528_grammar_test.go:391: in-section declaration was NOT collected; got ids []
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.467s
+FAIL
+
+EXIT=1
+DETECTED=True  --- FAIL lines=10
