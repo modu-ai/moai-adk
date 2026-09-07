@@ -1,0 +1,6 @@
+=== RUN   TestCodexSpecFiles_ExecPrimitivesCodexOnly
+    codex_launcher_guards_test.go:173: codex_launcher.go: zero process-start primitives found — the scan regex "\\b(?:exec\\.CommandZZ|os\\.StartProcessZZ)\\s*\\(([^,)]*)" matched nothing, so this guard asserted nothing. Either the primitive moved out of this file (update codexSpecFiles) or the regex is stale (update it).
+--- FAIL: TestCodexSpecFiles_ExecPrimitivesCodexOnly (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.871s
+FAIL
