@@ -661,6 +661,16 @@ $ git grep -l 'codexwiring' -- internal/
 </tbody>
 </table></div>
 
+<div class="callout warn">
+  <div class="ct">정정 — t507이 실측으로 추가 (2026-09-07). 위 표는 지우지 않았습니다</div>
+  <p>위 표는 설치 단위를 <code>.codex-plugin/plugin.json</code> 하나로만 적어 <strong>두 층을 구분하지 않았습니다</strong>. 실측(codex-cli 0.153.4, <code>.moai/reports/t507/verdict.md</code>)에서 층이 갈립니다:</p>
+  <ul>
+    <li><strong>플러그인 매니페스트</strong> = <code>.codex-plugin/plugin.json</code> — <strong>수용됩니다.</strong> 위 표는 이 층에서 정확합니다.</li>
+    <li><strong>마켓플레이스 루트</strong> = <code>.agents/plugins/marketplace.json</code> 또는 <code>.claude-plugin/marketplace.json</code>. <strong><code>.codex-plugin/</code>을 마켓플레이스 루트로 두면 거부됩니다</strong> — <code>marketplace root does not contain a supported manifest</code>, EXIT=1.</li>
+  </ul>
+  <p>즉 이 표만 보고 <code>.codex-plugin/</code>에 마켓플레이스를 만들려 하면 <strong>첫 명령에서 막힙니다.</strong> 플러그인 하나로 끝나는 것이 아니라 <strong>마켓플레이스가 별도로, 다른 경로에</strong> 필요합니다.</p>
+</div>
+
 <details>
 <summary>플러그인 매니페스트가 실제로 어떻게 생겼는지 (원문 인용)</summary>
 <blockquote>

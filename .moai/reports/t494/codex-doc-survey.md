@@ -290,6 +290,14 @@ description = '''
 
 **그 밖의 최상위 테이블(config-reference 열거)**: `[agents]`, `[mcp_servers.<id>]`, `[permissions.<name>]`, `[[skills.config]]`, `[hooks]`, `[tui]`, `[otel]`. 스칼라 키: `model`, `web_search`, `approval_policy`, `sandbox_mode`, `default_permissions`, `notify`, `log_dir`, `file_opener`, `personality`.
 
+> **[정정 — t507이 실측으로 추가, 2026-09-07. 위 서술은 지우지 않는다]**
+> 이 절은 매니페스트를 `.codex-plugin/plugin.json` 하나로만 적어 **두 층을 구분하지 않았다.** 실측(codex-cli 0.153.4, `.moai/reports/t507/verdict.md`)은 층이 갈린다는 것을 보였다:
+>
+> - **플러그인 매니페스트** = `.codex-plugin/plugin.json` — **수용된다.** 아래 인용은 이 층에서 정확하다.
+> - **마켓플레이스 루트** = `.agents/plugins/marketplace.json` 또는 `.claude-plugin/marketplace.json`. **`.codex-plugin/`을 마켓플레이스 루트로 두면 거부된다** (`marketplace root does not contain a supported manifest`, EXIT=1).
+>
+> 즉 이 절만 읽고 `.codex-plugin/`에 마켓플레이스를 만들려 하면 **첫 명령에서 막힌다.** 아래 § 마켓플레이스 인용이 이미 `.agents/plugins/`를 적고 있으나, 두 경로가 서로 다른 층이라는 사실은 t507 전까지 이 문서에 없었다.
+
 **플러그인 매니페스트** (`.codex-plugin/plugin.json`):
 > "Only `plugin.json` belongs in `.codex-plugin/`. Keep `skills/`, `hooks/`, `assets/`, `.mcp.json`, and `.app.json` at the plugin root."
 ```json
