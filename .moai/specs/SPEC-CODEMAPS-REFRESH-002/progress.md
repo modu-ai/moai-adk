@@ -146,7 +146,7 @@ $ git diff --stat HEAD~3 HEAD -- '*.go' internal pkg cmd
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run
+run_commit_sha: c126a85a5   # M4+M5 커밋. 자기 해시를 스스로 실을 수 없어 후속 커밋에서 backfill
 run_status: complete
 ac_pass_count: 11
 ac_regression_guard_count: 2
