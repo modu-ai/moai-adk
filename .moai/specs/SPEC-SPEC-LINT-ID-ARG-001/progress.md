@@ -368,6 +368,10 @@ verification_branch: WT-spec-lint-axes
 
 **push 하지 않았다** — 배차 지시. 커밋만 만든다.
 
+### 후속 측정 — 범위 검증의 실패 1건 (교차 참조)
+
+§E.2 「③ 범위 전체」가 기록한 `TestGateCmd_SecondRunWaitsForFirst` 실패에 대해, 레인이 HEAD `7dc9cd0cf`에서 같은 범위를 다시 돌려 `rc=0`(18패키지 전부 `ok`, `--- FAIL` 0)을 냈고, 그 테스트와 대상 파일이 이 카드의 diff 밖임이 확인됐다. **원 관측은 §E.2에 그대로 둔다.** 전문·증거 경로·「무엇을 세우고 무엇을 세우지 않는가」는 형제 SPEC에 있다: `.moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/progress.md` §E.3 「해소(한정적)」. 요지: **재현되지 않음과 소관 밖임은 세워지고, 그 테스트가 건전하다는 것은 세워지지 않는다** — 밀리초 동일성 단언은 잠복 flake로 남는다.
+
 ### E7 — 상태 전이
 
 `spec.md` frontmatter `status: draft → in-progress`, `updated` 갱신. **이 에이전트가 수행하는 유일한 상태 전이다.** `in-progress → implemented → completed` 는 manager-docs 소관이다. (`plan.md` / `acceptance.md` 는 `status:` 필드를 갖지 않아 전이 대상이 아니다.)

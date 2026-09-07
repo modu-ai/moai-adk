@@ -887,6 +887,45 @@ verification_head_at_record: fe75ec5c8
 | **F-A2** | 계획 밖 — 도구 결함 | blast-radius 하네스가 `decomposeReportRelPath`로 **추적되는 t362 증거 파일**에 쓴다. 재실행이 그 카드의 커밋된 수치를 오늘 코퍼스로 덮어쓴다(실측 후 되돌림). 출력 경로를 호출자가 정할 수 있게 하거나 카드별로 갈라야 한다. **이 카드의 범위 밖** | §E.2 M1 |
 | **F-A3** | `plan.md` §F | 실행이 6개 마일스톤으로 갈렸다(M-A2b가 분리). 계획 표는 5개이며 M-A2b에 대응하는 행이 없다 | 위 마일스톤 대조표 |
 
+### 해소(한정적) — `TestGateCmd_SecondRunWaitsForFirst` 재실행
+
+이 카드의 범위 검증(§E.2 ID-ARG 「③ 범위 전체」)에서 `rc=1`과 함께 관측된 실패 1건에 대해, **레인이 같은 트리·다른 HEAD에서 같은 범위를 다시 돌렸다.** 원 관측은 지우지 않는다 — 아래는 그 옆에 붙는 후속 측정이다.
+
+**① 레인의 재실행**(레인이 잰 값이며 내가 돌린 것이 아니다. 트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518`, HEAD `7dc9cd0cf`, 같은 호출 안에서 toplevel 확인):
+
+```
+$ go test ./internal/cli/... ./internal/kanban/... -count=1
+rc=0
+ok  	github.com/modu-ai/moai-adk/internal/cli	424.081s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	147.688s
+```
+
+증거: `.moai/reports/t518/lane-rerun-cli-kanban.txt`(이 커밋에서 추적으로 옮긴다). **내가 이 실행에서 그 파일에 대해 직접 관측한 것**: `^ok` 행 **18**, `^FAIL` 및 `^--- FAIL` 행 **0**(grep rc=1). 18은 이 범위의 패키지 수와 같다.
+
+**② 소관 근거 — 이 카드의 diff는 그 테스트도 그 대상도 건드리지 않는다**(이 실행에서 직접 재유도, 레인이 잰 두 파일보다 **넓혀서** 확인했다 — `gate_lock*.go` 다섯 파일 전부):
+
+```
+$ git log --oneline --all -- internal/cli/gate_lock_cli_test.go
+4b86425d3 fix(windows): repair the release-verify windows test debt (t426)
+f3c470578 feat(SPEC-GATE-THREE-AXES-001): M3 serialize manual moai gate runs (t235)
+
+$ git diff --name-only 0b1e27877..HEAD -- 'internal/cli/gate_lock*.go'
+(무출력)
+
+$ (카드 자신의 non-merge 커밋 8개의 git show --name-only) | grep gate_lock
+(무출력, rc=1)
+```
+
+그 파일의 이력은 커밋 **둘뿐**이고 둘 다 다른 카드(t426 · t235)의 것이다.
+
+#### [HARD] 이것이 세우는 것과 세우지 않는 것
+
+**세우는 것은 둘이다**: (a) 이 HEAD(`7dc9cd0cf`)에서 이 범위로는 그 실패가 **재현되지 않는다**, (b) 이 카드의 diff는 그 테스트도 그 대상 파일들도 **건드리지 않는다**.
+
+**세우지 않는 것**: 그 테스트가 **건전하다**는 것. 원 관측에서 지목한 밀리초 동일성 단언 — 두 시각이 `…25.907`로 같은데 단언이 그것을 겹침으로 읽는다 — 은 **그대로 남아 있으며, 초록 한 번은 그 결함의 부재에 대한 증거가 아니다.** 이 절은 원래의 관측을 「기존 결함이며 무해하다」로 승격시키지 않는다. 잰 것만 적는다: 부하 아래 한 번 실패했고, 이 HEAD에서 재실행하니 통과했다.
+
+**Residual-risk에서 옮기지 않고 잠복 flake 쪽 절반으로 좁혔다** — 아래 Residual-risk 참조. 그렇게 한 이유: 재현되지 않았다는 사실은 단언의 경계 조건을 바꾸지 않으므로, 항목을 통째로 옮기면 **해소되지 않은 절반이 해소된 것으로 읽힌다.**
+
 ### Gaps — 이 실행에서 관측하지 않은 것
 
 - **커버리지·lint·교차 빌드 미측정**(E2/E3/E5). 부재를 통과로 읽지 않는다.
@@ -899,6 +938,7 @@ verification_head_at_record: fe75ec5c8
 - **주석은 컴파일되지 않는다.** M5가 더한 두 주석의 정확성은 어떤 테스트도 판정하지 않는다. `go test` rc=0이 세우는 것은 편집이 코드를 깨지 않았다는 것뿐이다.
 - **M1 census는 자기가 설명하는 함수와 같은 코드를 부른다.** `parseREQsWide`와 `modalityPrefixes`를 그대로 쓰므로, **그 함수들 자체가 틀렸다면 census도 같은 방향으로 틀린다.** census가 재는 것은 「분포가 어떠한가」이지 「수집기가 옳은가」가 아니다 — 후자는 M-A1의 축자 픽스처 몫이다.
 - **M1의 반사실 0건은 오늘 코퍼스의 성질이다.** 표 유래 항목 20개 중 malformed가 0인 것은 코퍼스가 그렇게 생겼기 때문이지 구조적 보장이 아니다. 코퍼스가 자라면 0이 아니게 될 수 있고, 그때 자문 처리의 억제량이 처음으로 0이 아니게 된다.
+- **`TestGateCmd_SecondRunWaitsForFirst`의 밀리초 동일성 단언은 잠복 flake로 남는다.** 재실행이 통과했다는 사실(위 「해소(한정적)」)은 **재현되지 않음**을 세울 뿐 단언의 경계 조건을 바꾸지 않는다 — 두 실행 창이 같은 밀리초에 접하면 그 단언은 다시 겹침으로 읽는다. 이 카드의 소관이 아니며(diff 무접촉 확인), 수리하지 않았다.
 - **`ModalityUnjudged` 481은 「깨졌다」가 아니라 「의견 없음」의 모집단 크기다.** 그중 실제로 잘 쓰인 것과 깨진 것의 분리는 갈래 A(후속 카드) 소관이며, 이 카드는 그 분리를 하지 않았다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
