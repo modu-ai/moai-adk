@@ -830,7 +830,11 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 		var statPath string
 		switch classifyCodexSkillPath(e.Path) {
 		case codexPathAbsolute:
-			statPath = e.Path
+			// SPEC-CODEX-SKILL-PATH-READBACK-001: same one-line shape as the
+			// behaviorally-verified prune side — the declared config form is
+			// converted back to host form for the stat target only; the
+			// home-relative branch stays untouched (REQ-CSRB-002).
+			statPath = fromConfigPath(e.Path, configPathSeparator)
 		case codexPathHomeRelative:
 			expanded, ok := expandCodexHomeRelativePath(e.Path)
 			if !ok {

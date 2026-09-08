@@ -1,0 +1,62 @@
+# t562 M3 — tree-attribution RE-MEASUREMENT (all reads pinned to an absolute tree path)
+tree     = /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562
+toplevel = /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562
+branch   = WT-codex-read-inverse
+HEAD     = 757ef601f2d1b231830b3ceb0fbde503d2efaa46  (M3 commit; the mutant window ran at 4aa8915ee)
+
+## discriminator: what a DRIFTED command would have returned instead
+  primary  = /Users/goos/MoAI/moai-adk-go (== /Users/goos/moai/moai-adk-go, dev:inode 16777231:253706617)
+  primary  branch=main HEAD=7ad9f8534
+  worktree dev:inode = 16777231:3137769831  -- distinct directory
+
+## AC-CSRB-007 re-measured with git -C and absolute file paths
+  git -C $WT show c007e5409 --format='' -- internal/cli/doctor_codex.go | grep -c osStatFn => 0
+  added-lines-only (^+)                                                  => 0
+  POSITIVE CONTROL  grep -c osStatFn $WT/internal/cli/codex_skills_prune.go => 1
+  provenance ctx    grep -c osStatFn $WT/internal/cli/doctor_codex.go       => 2
+  DRIFT WITNESS: the same two reads against the primary would give:
+    primary codex_skills_prune.go  => grep: /Users/goos/MoAI/moai-adk-go/internal/cli/codex_skills_prune.go: No such file or directory
+    primary doctor_codex.go        => 0
+  => the recorded control(1) and provenance(2) are only producible in the worktree.
+
+## per-commit sweep re-measured with git -C
+  4aa8915ee -> added-osStatFn-lines=0
+  835215bab -> added-osStatFn-lines=0
+  c007e5409 -> added-osStatFn-lines=0
+  b78d2e425 -> added-osStatFn-lines=0
+  f1654c924 -> added-osStatFn-lines=0
+  fe2c8f51f -> added-osStatFn-lines=0
+  absorb merge 2d1dad058 (first-parent) -> 2
+
+## AC-CSRB-008 re-measured with git -C (CARD_BASE re-derived, HEAD pinned to the mutant-window SHA 4aa8915ee)
+ * branch                develop    -> FETCH_HEAD
+  CARD_BASE=c72dc1bafe8023628b7f9fdc746bc168bf93e6ad   origin/develop=91d25bc61
+  changed-file count (CARD_BASE..4aa8915ee) = 31
+  probe internal/codexwiring/skills.go       = 0
+  paths OUTSIDE internal/cli and .moai       = 0
+  PRESERVE 4 files, 2d1dad058..4aa8915ee     = 0
+  non-zero control, same range, all paths    = 10
+
+## AC-CSRB-010 log attribution: the card's tests exist ONLY in the worktree
+  TestJudgeCodexSkillEntry_SeparatorConversion in PRIMARY tree = 0
+  ... in WORKTREE tree                                        = 1
+  ... occurrences inside the recorded ac-010.log              = 2
+  => a suite run that had drifted to the primary could not have emitted that name.
+
+## probe/mutant log attribution: the panic stack frames name the worktree path verbatim
+  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:101
+  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:76
+  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:83
+
+## AC-CSRB-006 re-run with 'go -C $WT' (tree pinned on the toolchain, not inherited CWD)
+  rc=0
+  --- PASS: TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard (0.00s)
+  PASS
+  ok  	github.com/modu-ai/moai-adk/internal/cli	0.841s
+  normalized diff vs the M1 baseline:
+    diff rc=0 (0 = identical after masking the two run nonces)
+
+## AC-CSRB-009 re-run with 'go -C $WT'
+  go -C $WT build ./...                               => rc=0
+  GOOS=windows GOARCH=amd64 go -C $WT build ./...      => rc=0
+  GOOS=windows GOARCH=amd64 go -C $WT vet ./internal/cli/ => rc=0
