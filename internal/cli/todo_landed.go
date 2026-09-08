@@ -229,12 +229,6 @@ func validateSuppliedSHA(sha, ref string) (string, error) {
 	return resolved, nil
 }
 
-// todoGitOutput runs one git command against the queue's own repository
-// through the shared process seam, and returns its trimmed stdout.
-//
-// `-C <root>` is explicit: the queue resolves against the PRIMARY checkout,
-// and the landing question is about that repository rather than about
-// whichever worktree the command happens to be typed in.
 // gitEndOfOptions stops git's option parsing so a user-supplied operand
 // (`--ref`, `--sha`) cannot be read as a flag, whatever its shape.
 //
@@ -257,6 +251,12 @@ func validateSuppliedSHA(sha, ref string) (string, error) {
 // text, so spelling it here registers a phantom coordinate.)
 const gitEndOfOptions = "--end-of-options"
 
+// todoGitOutput runs one git command against the queue's own repository
+// through the shared process seam, and returns its trimmed stdout.
+//
+// `-C <root>` is explicit: the queue resolves against the PRIMARY checkout,
+// and the landing question is about that repository rather than about
+// whichever worktree the command happens to be typed in.
 func todoGitOutput(args ...string) (string, error) {
 	full := append([]string{"-C", resolveTodoQueueRoot()}, args...)
 	out, err := todoRunCommand("git", full...)

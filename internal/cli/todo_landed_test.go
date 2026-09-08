@@ -679,9 +679,17 @@ func TestLandedGitCallsGuardEndOfOptions(t *testing.T) {
 			t.Errorf("git %v: no --end-of-options guard; a user-supplied operand reaches git as a parsable option", c.argv)
 			continue
 		}
-		// Present is not enough — it must precede the operands it guards.
-		if idx != len(c.argv)-1-countOperandsAfter(c.argv, idx) {
-			t.Errorf("git %v: --end-of-options at %d does not precede all operands", c.argv, idx)
+		// Present is not enough — it must precede every operand it guards.
+		// The assertion is stated on the arguments BEFORE the token: no
+		// operand may appear there, because an operand placed ahead of the
+		// token is still parsed as an option, which is the whole defect.
+		//
+		// It cannot be stated on the arguments AFTER the token, and that is
+		// not an oversight: the token's purpose is to make everything after
+		// it an operand whatever its shape, so a `--`-prefixed argument there
+		// is a legitimate operand and is indistinguishable from a flag.
+		if operand, found := operandBefore(c.argv, idx); found {
+			t.Errorf("git %v: --end-of-options at %d is preceded by operand %q, which git still parses as an option", c.argv, idx, operand)
 		}
 	}
 	for sub, seen := range wantSubcommands {
@@ -737,7 +745,28 @@ func indexOfArg(argv []string, want string) int {
 	return -1
 }
 
-// countOperandsAfter counts the arguments following idx.
-func countOperandsAfter(argv []string, idx int) int {
-	return len(argv) - idx - 1
+// operandBefore returns the first operand appearing before idx in argv, and
+// whether one was found. An operand is any argument that is not a `-`-prefixed
+// flag, not the `-C <dir>` pair todoGitOutput prepends, and not the git
+// subcommand itself.
+func operandBefore(argv []string, idx int) (string, bool) {
+	if idx > len(argv) {
+		idx = len(argv)
+	}
+	seenSubcommand := false
+	for i := 0; i < idx; i++ {
+		if argv[i] == "-C" {
+			i++ // the directory is -C's own operand, not the command's
+			continue
+		}
+		if strings.HasPrefix(argv[i], "-") {
+			continue
+		}
+		if !seenSubcommand {
+			seenSubcommand = true
+			continue
+		}
+		return argv[i], true
+	}
+	return "", false
 }
