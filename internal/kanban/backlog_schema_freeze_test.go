@@ -3,6 +3,13 @@
 // its landing must add no table, admit no fourth state, and leave
 // schema_version stamped at "1" (REQ-TAQ-012, REQ-TDG-004/005 — a fourth
 // state would force a table rebuild on every operator queue in the field).
+//
+// Extended by SPEC-TODO-LANDING-EVIDENCE-001 (card t359), AC-TLE-019: the
+// guard was column-blind — a planted column on either table left all four of
+// its assertions GREEN, so a schema change could land without tripping the
+// freeze. It now pins the exact ordered (name, type, notnull, dflt_value)
+// tuple sequence of items AND archived_items, asserted separately per table
+// so a half-applied migration cannot satisfy both.
 package kanban
 
 import (
@@ -85,6 +92,34 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 		t.Errorf("index set = %q, want exactly idx_items_state", got)
 	}
 
+	// The exact ordered column tuples of the two card-bearing tables. Names
+	// alone would not catch a retype, a nullability flip, or a default
+	// appearing, so each column is pinned as (name, type, notnull,
+	// dflt_value). The two tables are asserted separately: a migration
+	// applied to one only must fail loudly rather than half-pass.
+	const wantItemsColumns = "seq:INTEGER:0:NULL " +
+		"id:TEXT:1:NULL " +
+		"text:TEXT:1:NULL " +
+		"added_at:TEXT:1:NULL " +
+		"spec_id:TEXT:0:NULL " +
+		"state:TEXT:1:NULL " +
+		"landing:TEXT:0:NULL"
+	if got := columnTupleSequence(t, eng, "items"); got != wantItemsColumns {
+		t.Errorf("items column tuples =\n %s\nwant\n %s", got, wantItemsColumns)
+	}
+
+	const wantArchivedItemsColumns = "seq:INTEGER:0:NULL " +
+		"id:TEXT:1:NULL " +
+		"text:TEXT:1:NULL " +
+		"added_at:TEXT:1:NULL " +
+		"spec_id:TEXT:0:NULL " +
+		"state:TEXT:1:NULL " +
+		"position:INTEGER:1:NULL " +
+		"landing:TEXT:0:NULL"
+	if got := columnTupleSequence(t, eng, "archived_items"); got != wantArchivedItemsColumns {
+		t.Errorf("archived_items column tuples =\n %s\nwant\n %s", got, wantArchivedItemsColumns)
+	}
+
 	// schema_version is still stamped "1" — an older binary refuses any
 	// other value, so a bump is a downgrade break, not a feature.
 	version, err := eng.schemaVersion(ctx)
@@ -94,4 +129,35 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 	if version != backlogSchemaVersion {
 		t.Errorf("schema_version = %q, want %q", version, backlogSchemaVersion)
 	}
+}
+
+// columnTupleSequence reads a table's columns in declaration order and renders
+// each as "name:type:notnull:dflt_value", joined by spaces. dflt_value is
+// rendered through SQL quote() so an empty-string default (”) is
+// distinguishable from no default (NULL) — the distinction AC-TLE-019c turns
+// on.
+func columnTupleSequence(t *testing.T, eng *backlogEngine, table string) string {
+	t.Helper()
+	rows, err := eng.db.QueryContext(context.Background(),
+		`SELECT name, type, "notnull", ifnull(quote(dflt_value), 'NULL') `+
+			`FROM pragma_table_info(?)`, table)
+	if err != nil {
+		t.Fatalf("read pragma_table_info(%s): %v", table, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var tuples []string
+	for rows.Next() {
+		var name, colType, notNull, dflt string
+		if err := rows.Scan(&name, &colType, &notNull, &dflt); err != nil {
+			t.Fatalf("scan pragma_table_info(%s): %v", table, err)
+		}
+		tuples = append(tuples, name+":"+colType+":"+notNull+":"+dflt)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate pragma_table_info(%s): %v", table, err)
+	}
+	if len(tuples) == 0 {
+		t.Fatalf("pragma_table_info(%s) returned no columns", table)
+	}
+	return strings.Join(tuples, " ")
 }

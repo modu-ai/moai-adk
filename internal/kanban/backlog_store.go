@@ -59,15 +59,26 @@ const (
 	BacklogStateDropped BacklogState = "dropped"
 )
 
-// BacklogItem is one queued card. The five fields are the frozen per-item
-// contract (REQ-TODO-013): SpecID is a pointer so an absent spec id
+// BacklogItem is one queued card. The five original fields are the frozen
+// per-item contract (REQ-TODO-013): SpecID is a pointer so an absent spec id
 // round-trips as JSON null, not as an omitted key.
+//
+// Landing is ADDITIVE (SPEC-TODO-LANDING-EVIDENCE-001, design.md §5): the
+// five keep their names, types, and JSON tags, and the new one is `omitempty`
+// so a card with no evidence marshals byte-identically to before. Absence is
+// a nil pointer here and SQL NULL in the column — never `{}` and never `""`
+// (REQ-TLE-006), which is why the field is a pointer rather than a value.
 type BacklogItem struct {
 	ID      string       `json:"id"`
 	Text    string       `json:"text"`
 	AddedAt string       `json:"added_at"`
 	SpecID  *string      `json:"spec_id"`
 	State   BacklogState `json:"state"`
+	// Landing is the operator-recorded landing evidence, or nil when none
+	// was recorded. Written ONLY through LandingEvidenceValue, so the
+	// encoder's refusals (a SHA without provenance, a provenance that is not
+	// `operator`) hold on every write rather than at each call site.
+	Landing *LandingEvidence `json:"landing,omitempty"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the

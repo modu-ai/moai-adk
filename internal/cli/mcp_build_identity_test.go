@@ -589,10 +589,24 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// primitives across internal/cli non-test sources equals the measured
 	// baseline exactly (baseline 64bba61aa: 3 hits; additions AND removals
 	// both fail — equal counts alone would not).
+	// todo_landed.go:216 is a DECLARED addition, not a second binary-lag
+	// comparison. SPEC-TODO-LANDING-EVIDENCE-001 REQ-TLE-020 requires the
+	// recording verb to check that an operator-supplied delivering SHA is
+	// reachable from the record's ref before storing it — a referential
+	// -integrity question about two operator-named revisions, which is a
+	// different question from "is the running binary behind its source" that
+	// binlag.Evaluate owns. Routing it through the binlag seam would make it
+	// answer that other question.
+	//
+	// The coordinate is line-keyed like its neighbours, so an edit above it
+	// in todo_landed.go moves it and this baseline needs re-measuring; that
+	// brittleness is the guard's existing design, not something introduced
+	// here.
 	want := map[string]bool{
 		"graph_stamp.go:68":         true,
 		"graph_stamp.go:131":        true,
 		"mcp_review_material.go:95": true,
+		"todo_landed.go:216":        true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
