@@ -58,12 +58,15 @@ func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
 	}
 	// SPEC-UPDATE-VERSION-FLAG-001 REQ-UVF-007: --version mutual-exclusion matrix.
+	// SPEC-UPDATE-ADD-CODEX-001 REQ-UAC-007: the same validator also refuses
+	// the informational --check × mutating --add-codex pair.
 	if err := validateUpdateVersionConflicts(
 		getStringFlag(cmd, "version"),
 		getBoolFlag(cmd, "check"),
 		getBoolFlag(cmd, "templates-only"),
 		getStringFlag(cmd, "restore") != "",
 		getBoolFlag(cmd, "dry-run"),
+		getBoolFlag(cmd, "add-codex"),
 	); err != nil {
 		return err
 	}
@@ -80,6 +83,12 @@ func init() {
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
+
+	// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-001/008): the sanctioned ADDITIVE
+	// Codex path for an EXISTING project — wires .codex/ in place instead of
+	// the destructive `init --force --agent both` workaround. A flag-absent
+	// update keeps the existence-gated refresh (REQ-UAC-002).
+	updateCmd.Flags().Bool("add-codex", false, "Add the Codex harness to this existing project without reinitializing — the sanctioned additive path (creates .codex/hooks.json + .codex/config.toml + trust sidecar; bypasses the wiring-existence gate)")
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
@@ -135,6 +144,12 @@ func init() {
 //	--yes: Auto-confirm all prompts (CI/CD mode)
 //	--templates-only: Skip binary update, sync templates only
 //	--binary: Update binary only, skip template sync
+//	--add-codex: Add the Codex harness to this existing project without
+//	              reinitializing (SPEC-UPDATE-ADD-CODEX-001 REQ-UAC-001) — the
+//	              sanctioned additive path; calls the ungated codexwiring.Wire,
+//	              so a claude-only project gets .codex/hooks.json +
+//	              .codex/config.toml + the trust sidecar created. A validation
+//	              refusal fails the command (plan §D1).
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	// SPEC-UPDATE-VERSION-FLAG-001 (REQ-UVF-002/013/014): the --version <tag>
 	// branch. This runs FIRST — before the profile prompt and the project-marker
@@ -359,6 +374,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		// The early return itself does NOT move (REQ-RIL2-026): it stays
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
+		//
+		// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-006): --add-codex × --dry-run
+		// previews the wiring actions instead of performing them. The preview
+		// writes nothing (its only parameter is the output writer).
+		if getBoolFlag(cmd, "add-codex") {
+			emitAddCodexDryRunPreview(out)
+		}
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
 
@@ -447,6 +469,16 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 					len(result.Inventory.Files), len(result.RemovedPaths)),
 				Theme: &th,
 			}))
+			// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-001): the clean-reinstall path
+			// returns BEFORE the wiring seat beside refreshCodexWiringBestEffort,
+			// so --add-codex must be served here too — v2-era projects are the
+			// verb's primary audience (they predate codex wiring entirely).
+			// Same §D1 posture: ungated Wire, refusal propagates as a hard error.
+			if getBoolFlag(cmd, "add-codex") {
+				if err := addCodexWiringAt(cwd, out, cmd.ErrOrStderr()); err != nil {
+					return err
+				}
+			}
 			return nil
 		}
 
@@ -505,6 +537,21 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// content-changing refresh prints the re-trust guidance (REQ-CW-008)
 	// inside the helper.
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
+
+	// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-001, plan §D1): --add-codex is the
+	// sanctioned additive path — it calls the UNGATED codexwiring.Wire so an
+	// existing claude-only project gets its wiring created (the existence gate
+	// above is bypassed on this verb's path ONLY). A REQ-CW-003 validation
+	// refusal propagates as a hard error (exit ≠ 0, plan §D1 — the sibling
+	// refresh wrapper's warn-and-continue model is not followed here); IO
+	// failures warn inside the wiring package and the update continues. Same
+	// seat as the gated refresh: before the syncSkipped early return, so an
+	// "Up to date" update still serves the verb.
+	if getBoolFlag(cmd, "add-codex") {
+		if err := addCodexWiringAt(".", out, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
+	}
 
 	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
 	// .agents/skills mirror. Both of its producers live inside Deploy, which
