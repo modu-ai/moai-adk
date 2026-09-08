@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EVIDENCE-WRITE-001
 title: "Measurement harnesses must not overwrite tracked evidence files in the repository tree"
 version: "1.0.1"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec

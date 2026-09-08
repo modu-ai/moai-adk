@@ -129,4 +129,28 @@ mutant_evidence: /tmp/t569/red-guard-mutant.txt + /tmp/t569/green-guard-mutant-r
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+spec_id: SPEC-HARNESS-EVIDENCE-WRITE-001
+card: t569
+phase: sync
+sync_status: complete
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync  # D3 placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit
+sync_branch: WT-harness-evidence-write
+frontmatter_status_transitions:
+  implemented_to_completed: carried-by-sync-commit  # status + updated only, spec.md frontmatter
+changelog_entry: added  # [Unreleased] §Fixed — developer-visible harness behavior change (t.TempDir() defaults + MOAI_T362_EVIDENCE_OUT override); entry-worthiness judged against the repo's existing internal-behavior entries
+b12_self_test_a: changelog_grep_count_0  # pre-emission `grep -c SPEC-HARNESS-EVIDENCE-WRITE-001 CHANGELOG.md` = 0 — no duplicate emission
+b12_self_test_b: ac_count_match_10_vs_10  # spec.md §3 (Tier S AC SSOT) distinct AC identifiers = 10 (AC-001..007, AC-008a/b/c); CHANGELOG entry references the same 10; progress.md's count not used (it counts deferred ACs)
+b12_self_test_c: all_claimed_paths_exist  # 5 implementation files + .moai/specs/SPEC-HARNESS-EVIDENCE-WRITE-001/spec.md verified via ls before entry authoring
+canary_compliance_check:
+  single_sync_commit: true  # transition + §E.4 + CHANGELOG in ONE commit, no separate Mx chore
+  no_push: true  # lane protocol §4 — lead batch-pushes develop
+  docs_scope: none  # test-only change — README / docs-site / .moai/docs/ untouched (no user-facing doc surface)
+  codemaps: not-needed  # no non-test source changed — no codemap regeneration
+mx_tag_delta: 0  # test-only change; no new exported symbols; scan of the 5 changed test files found no @MX tags added or removed
+ac_summary: 10 PASS / 0 FAIL (§E.2.2 matrix)
+read_only_consumers_untouched: true  # ac_count_clause_test.go, zz_t528_overacceptance_test.go unmodified (AC-007)
+pinned_evidence_diff: zero  # .moai/reports/t362/ + t528/probe/ byte-unchanged
+```
+
