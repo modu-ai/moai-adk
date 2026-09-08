@@ -61,7 +61,7 @@ Run phase executed 2026-09-08, worktree `.claude/worktrees/t548`, branch `WT-cod
 - **M4-first (RED)**: `TestRunCodexSkillDisableSkippedExitsNonZero` authored (duplicate-entry guard-refusal fixture) and observed RED on the pre-change tree BEFORE any implementation edit. Verbatim E8 below.
 - **M3 (GREEN)**: `codexSkillDisableSkipped` branch (`codex_skills_disable.go`) returns `fmt.Errorf("refused to disable %q for Codex: %s", opts.Skill, v.Reason)`; the `Skipped:` stdout line is preserved. Re-run → GREEN.
 - **M4 rest**: `TestRunCodexSkillDisableUnchangedExitsZero` (Unchanged stays 0 — the other half of rule 2) + `TestRunCodexSkillDisableFailsOpenOnUnresolvedHome` (B3 absent-input, previously uncovered) added. Existing name-resolution tests (AC-CDE-004) pass unchanged.
-- **M5**: `--help` Long text (`skills.go`) carries the per-class exit-code table; the runner doc comment restates the three-class contract truthfully. CHANGELOG entry DEFERRED to sync-phase (manager-docs surface): under B, the entry documents the Skipped branch's behavior change (Skipped now exits non-zero; Unchanged and absent-inputs stay 0).
+- **M5**: `--help` Long text (`skills.go`) carries the per-class exit-code table; the runner doc comment restates the three-class contract truthfully. CHANGELOG entry DEFERRED to sync-phase (manager-docs surface) → WRITTEN at sync close: the [Unreleased] § Fixed entry documents the Skipped branch's behavior change (Skipped now exits non-zero; Unchanged and absent-inputs stay 0) and the `--help` exit-code contract.
 
 ### E1 — AC PASS/FAIL matrix (attribution: command + verbatim output + HEAD)
 
@@ -153,4 +153,14 @@ m1_to_mN_commit_strategy: 3 commits (M4-RED test / M3+M4 implementation / M5 hel
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+card: t548
+changelog_entry_position: CHANGELOG.md [Unreleased] § Fixed (top of section)
+b12_self_test_a: pass — pre-emission `grep -c 'SPEC-CODEX-DISABLE-EXIT-001' CHANGELOG.md` → 0 (exit 1, no duplicate entry); control grep `Unreleased` → 3 hits confirming the file was actually read (the shell's grep is a ugrep wrapper — run via `command grep`)
+b12_self_test_b: pass — 7 distinct live AC identifiers in acceptance.md (AC-CDE-001..007, each appearing once, zero `[RETIRED]`/`[REF]` markers) == 7 referenced in the CHANGELOG entry
+b12_self_test_c: pass — every write-surface path claimed in the entry verified present via `git diff a4855f0b2..HEAD --stat` (internal/cli/codex_skills_disable.go, internal/cli/skills.go, internal/cli/codex_skills_disable_test.go) and the SPEC link read directly
+frontmatter_status_transitions.in-progress_to_implemented_to_completed: this sync commit (the completed transition merged into the sync commit per the 3-phase close; `status` + `updated` only)
+mx_tag_check: pass — the production diff is one unexported branch return (`return fmt.Errorf(...)` inside the existing `runCodexSkillDisable` switch) plus doc comments and a `--help` string literal; no new exported symbol, no goroutine, no complexity growth — no @MX tag owed
+sync_audit_note: implementation diff re-read from git (not progress.md prose) before the CHANGELOG entry was authored, per B12 discipline
