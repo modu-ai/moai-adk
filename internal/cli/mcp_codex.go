@@ -322,12 +322,50 @@ type Finding struct {
 // usable structured result carrying the reason + the claude-fallback next step.
 // The full 3-way fallback plumbing is M3; M2 only guarantees no hard crash.
 func inconclusiveReview(reason string) ReviewOutput {
+	return inconclusiveReviewWithSummary("codex unavailable: " + reason)
+}
+
+// inconclusiveReviewWithSummary is the same fail-open factory taking the Summary
+// VERBATIM. It exists because not every inconclusive is an unavailable backend:
+// a blank review body is a backend that answered without saying anything, and
+// prefixing that with "codex unavailable" would make the two states
+// indistinguishable — a new silence, not a repair (REQ-CBR-005).
+func inconclusiveReviewWithSummary(summary string) ReviewOutput {
 	return ReviewOutput{
 		Verdict:   VerdictInconclusive,
-		Summary:   "codex unavailable: " + reason,
+		Summary:   summary,
 		Findings:  []Finding{},
 		NextSteps: []string{"fall back to the active auditor (claude)"},
 	}
+}
+
+// codexBlankReviewSummary names the blank-output state in wording distinct from
+// the unavailable-backend wording, so a reader can tell the two apart
+// (REQ-CBR-005 / SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001).
+const codexBlankReviewSummary = "codex review output was blank: no verdict text was produced"
+
+// blankReviewInconclusive is the fail-open output for a review body that carries
+// no non-whitespace character. The verdict is inconclusive, NOT fail: codex is
+// optional, and a blank body is one symptom of a backend that is present but not
+// answering — blocking a session on that would contradict the optional-backend
+// contract (spec.md §C).
+func blankReviewInconclusive() ReviewOutput {
+	return inconclusiveReviewWithSummary(codexBlankReviewSummary)
+}
+
+// codexReviewTextIsBlank is the ONE emptiness discriminator the codex
+// review-text path uses — at collection, at selection, and at the guard.
+//
+// It exists as a named function rather than four inline comparisons because the
+// defect it repairs is shaped exactly like the miss-one hazard: three sites were
+// written with the same exact-equality test, a fourth was added later, and a
+// body of whitespace passed all four as if it were content
+// (SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001, plan.md §B.2).
+//
+// strings.TrimSpace cuts on unicode.IsSpace, which includes U+00A0, so a body of
+// non-breaking spaces alone is blank. That is deliberate and asserted.
+func codexReviewTextIsBlank(s string) bool {
+	return strings.TrimSpace(s) == ""
 }
 
 // ─── injectable command-execution seams (cross-platform testable, no PATH stubs) ───

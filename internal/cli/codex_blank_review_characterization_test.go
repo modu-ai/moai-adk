@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"testing"
 )
@@ -35,7 +34,27 @@ func withCodexSessionStartErr(t *testing.T, err error) {
 func runCodexTurnWithLines(t *testing.T, lines []string) (ReviewOutput, error) {
 	t.Helper()
 	withCodexSession(t, lines)
-	return runCodexReviewRPC(context.Background(), "/fake/codex", codexMethodReviewStart,
+	return runCodexReviewRPC(t.Context(), "/fake/codex", codexMethodReviewStart,
+		map[string]any{"target": codexTargetUncommitted})
+}
+
+// codexTurnOutput is runCodexTurnWithLines for the criteria that assert on the
+// output alone. The fail-open cause is logged rather than discarded, so a
+// surprising error is visible in the test log instead of silently dropped.
+func codexTurnOutput(t *testing.T, lines []string) ReviewOutput {
+	t.Helper()
+	out, err := runCodexTurnWithLines(t, lines)
+	if err != nil {
+		t.Logf("fail-open cause: %v", err)
+	}
+	return out
+}
+
+// runUnavailableCodexTurn drives state C: the backend cannot be started.
+func runUnavailableCodexTurn(t *testing.T) (ReviewOutput, error) {
+	t.Helper()
+	withCodexSessionStartErr(t, errCharacterizeStartFailed)
+	return runCodexReviewRPC(t.Context(), "/fake/codex", codexMethodReviewStart,
 		map[string]any{"target": codexTargetUncommitted})
 }
 
@@ -44,9 +63,7 @@ func runCodexTurnWithLines(t *testing.T, lines []string) (ReviewOutput, error) {
 // whose Summary names codex unavailability. This SPEC changes nothing here, so
 // the pin below is a before/after equality, not a snapshot to be updated.
 func TestCharacterize_UnavailableBackend(t *testing.T) {
-	withCodexSessionStartErr(t, errCharacterizeStartFailed)
-	out, err := runCodexReviewRPC(context.Background(), "/fake/codex", codexMethodReviewStart,
-		map[string]any{"target": codexTargetUncommitted})
+	out, err := runUnavailableCodexTurn(t)
 	if err == nil {
 		t.Fatal("unavailable backend must still surface its cause alongside the fail-open output")
 	}
@@ -100,7 +117,7 @@ func TestCharacterize_ReviewTextPathPreRepair(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			out, _ := runCodexTurnWithLines(t, codexSessionScript(tc.review))
+			out := codexTurnOutput(t, codexSessionScript(tc.review))
 			if out.Verdict != tc.wantVerdict {
 				t.Errorf("verdict = %q, want %q", out.Verdict, tc.wantVerdict)
 			}
