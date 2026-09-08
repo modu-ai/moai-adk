@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-ADD-CODEX-001
 title: "moai update --add-codex 신설 + CLAUDE.md→AGENTS.md 구조 전환 + init --force codex-add 경로 철폐"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-09
 updated: 2026-09-09
 author: manager-spec
