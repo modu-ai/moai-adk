@@ -67,6 +67,15 @@ type WizardResult struct {
 	// nothing rather than restating the shipped default in every project.
 	FeedbackAutoSubmit *bool // feedback.auto_submit
 
+	// ProjectContinuation (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010): the
+	// /moai project Phase 14 completion selection, reusing the
+	// config.ProjectContinuation* enum. A plain string, not a pointer: the
+	// default is a NAMED token of the domain (card), so "" and "card" carry the
+	// same meaning to the resolver, and "" additionally means the wizard did not
+	// reach the question (--non-interactive) — which the writer reads as "write
+	// nothing".
+	ProjectContinuation string // workflow.project.continuation: none|card|pipeline
+
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).

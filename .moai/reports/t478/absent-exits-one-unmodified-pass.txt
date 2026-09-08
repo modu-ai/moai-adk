@@ -1,0 +1,5 @@
+=== RUN   TestGraphCheckCmd_AbsentExitsOne
+2026/09/04 07:02:33 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_AbsentExitsOne3050744754/001/.moai/config/sections
+--- PASS: TestGraphCheckCmd_AbsentExitsOne (0.49s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.355s

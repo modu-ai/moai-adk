@@ -1,0 +1,26 @@
+=== RUN   TestSpecLint_IDArg_ResolvesToSpecMD
+--- PASS: TestSpecLint_IDArg_ResolvesToSpecMD (0.12s)
+=== RUN   TestSpecLint_IDArg_EqualsPathForm
+--- PASS: TestSpecLint_IDArg_EqualsPathForm (0.22s)
+=== RUN   TestSpecLint_IDArg_FromSubdirectory
+--- PASS: TestSpecLint_IDArg_FromSubdirectory (0.11s)
+=== RUN   TestSpecLint_DirectoryArg
+--- PASS: TestSpecLint_DirectoryArg (0.21s)
+=== RUN   TestSpecLint_UnresolvableID_IsArgumentError
+--- PASS: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+=== RUN   TestSpecLint_PathForm_Unchanged
+--- PASS: TestSpecLint_PathForm_Unchanged (0.11s)
+=== RUN   TestSpecLint_MissingPathArg_StillParseFailure
+--- PASS: TestSpecLint_MissingPathArg_StillParseFailure (0.00s)
+=== RUN   TestSpecLint_AnchorInvariant_SPEC_A_1
+--- PASS: TestSpecLint_AnchorInvariant_SPEC_A_1 (0.00s)
+=== RUN   TestSpecLintHelp_NamesThreeArgumentShapes
+--- PASS: TestSpecLintHelp_NamesThreeArgumentShapes (0.00s)
+=== RUN   TestSpecLint_MixedArgs
+--- PASS: TestSpecLint_MixedArgs (0.25s)
+=== RUN   TestSpecStatusIDPattern_LiteralFrozen
+--- PASS: TestSpecStatusIDPattern_LiteralFrozen (0.00s)
+=== RUN   TestShapeFunction_HomeAndName
+--- PASS: TestShapeFunction_HomeAndName (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.856s

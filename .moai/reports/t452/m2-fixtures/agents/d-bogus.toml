@@ -1,0 +1,11 @@
+# M2 probe D — skills key, value = a name that does not exist anywhere.
+name = "probe-d-bogus"
+description = '''
+M2 probe agent D. skills value is a nonexistent name. Sentinel AGENT-D-BOGUS-9f34.
+'''
+developer_instructions = '''
+You are M2 probe agent D. Reply with exactly: PROBE-D-OK
+'''
+skills = ["moai-nonexistent-zzz-9f34"]
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"

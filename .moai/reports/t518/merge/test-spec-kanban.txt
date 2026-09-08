@@ -1,0 +1,7 @@
+--- FAIL: TestTableCollection_CorpusListFindingsUnchanged (0.27s)
+    lint_req_table_test.go:465: code CoverageIncomplete: narrow-path findings = 16, live non-advisory findings = 0 (scanned 812 docs) — the table branch moved a list-form finding
+    lint_req_table_test.go:469: scanned 812 documents; per-code narrow == live-non-advisory: map[CoverageIncomplete:16 LegacyEARSKeyword:7]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	72.277s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	142.695s
+FAIL

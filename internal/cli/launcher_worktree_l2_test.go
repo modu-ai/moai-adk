@@ -2,14 +2,19 @@
 // pre-resolution step (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a, REQ-WES-010).
 //
 // AC-WES-010a: an absolute path under ~/.moai/worktrees/<project>/... resolves
-//   to the L2 worktree (accepted; passes through unchanged so claude uses the
-//   absolute path directly rather than treating it as a .claude/worktrees/
-//   short name).
+//
+//	to the L2 worktree (accepted; passes through unchanged so claude uses the
+//	absolute path directly rather than treating it as a .claude/worktrees/
+//	short name).
+//
 // AC-WES-010b: legacy short-name token-normalization behavior preserved
-//   (covered by the existing TestNormalizeWorktreeFlag; this file asserts the
-//   pre-resolution step does not interfere with short-name inputs).
+//
+//	(covered by the existing TestNormalizeWorktreeFlag; this file asserts the
+//	pre-resolution step does not interfere with short-name inputs).
+//
 // AC-WES-010c: an absolute path NOT under ~/.moai/worktrees/ or
-//   .claude/worktrees/ is rejected with a clear error.
+//
+//	.claude/worktrees/ is rejected with a clear error.
 //
 // NOTE: does not call t.Parallel() because it sets HOME and USERPROFILE via
 // t.Setenv (process-global state on Windows where os.UserHomeDir reads

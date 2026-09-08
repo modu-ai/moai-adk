@@ -13,7 +13,7 @@ draft: false
 | `moai spec status` | SPEC ステータスの更新または一覧表示 |
 | `moai spec drift` | frontmatter status と git log 間のドリフト検出 |
 | `moai spec view <SPEC-ID>` | 受け入れ基準をツリー構造で照会 |
-| `moai spec lint [spec.md...]` | EARS 準拠と構造妥当性のリント |
+| `moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]` | EARS 準拠と構造妥当性のリント |
 | `moai spec close <SPEC-ID>` | 原子的 4-phase クローズ (status: completed + progress.md backfill) |
 | `moai spec audit` | SPEC era 分類と modern-era ステータスドリフト監査 |
 | `moai spec archive` | クローズ済み SPEC を `.moai/specs/` の外へアーカイブ |
@@ -49,7 +49,7 @@ moai spec drift
 ## moai spec lint
 
 ```bash
-moai spec lint [spec.md...]
+moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 ```
 
 | フラグ | 説明 |
@@ -58,6 +58,16 @@ moai spec lint [spec.md...]
 | `--sarif` | SARIF 2.1.0 形式で出力 |
 | `--strict` | 警告をエラーとして扱う |
 | `--format <fmt>` | 出力形式 (table) |
+
+| 引数の形 | 例 |
+|--------|------|
+| SPEC-ID | `SPEC-SPC-001` — プロジェクトルート配下の `.moai/specs/SPEC-SPC-001/spec.md` に解決 (`moai spec view` と同じ規則) |
+| ファイルパス | `.moai/specs/SPEC-SPC-001/spec.md` |
+| SPEC ディレクトリ | `.moai/specs/SPEC-SPC-001` — その中の `spec.md` を読みます |
+
+3 つの形は 1 回の呼び出しで混在できます。引数がなければ従来どおりコーパス全体を走査します。SPEC-ID に見えるのに解決先のファイルがない場合は、文書に対する指摘ではなく **引数エラー (終了コード 3)** となり、試したパスを併せて知らせます。
+
+ここから出る警告のうち 2 つは advisory 等級です。`ModalityUnjudged` は、リンターが判定できない要求事項を黙って見送らずにその事実を知らせます。`REQTableRowsRejected` は、定義表として読まれなかった表の行を知らせます。どちらも advisory であり、`--strict` でもエラーに昇格せず、終了コードを変えません。
 
 ## moai spec close
 

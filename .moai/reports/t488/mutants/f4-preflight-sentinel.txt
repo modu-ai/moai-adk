@@ -1,0 +1,8 @@
+--- FAIL: TestPreflightDoesNotClaimAWindowItNeverTook (0.91s)
+    integration_settings_drift_report_test.go:174: preflight did not return its own sentinel: release-integration window refused: the caller's tree has a modified tracked .claude/settings.json
+    integration_settings_drift_report_test.go:177: preflight returned the acquire refusal sentinel, so its text describes a refusal that never happened: release-integration window refused: the caller's tree has a modified tracked .claude/settings.json
+    integration_settings_drift_report_test.go:186: preflight's error claims a refusal, but it takes no window to refuse: "release-integration window refused: the caller's tree has a modified tracked .claude/settings.json"
+    integration_settings_drift_report_test.go:189: preflight's error does not name what it actually found: "release-integration window refused: the caller's tree has a modified tracked .claude/settings.json"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.829s
+FAIL

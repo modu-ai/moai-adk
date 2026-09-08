@@ -1,0 +1,9 @@
+=== RUN   TestTodoComposedUpgrade_FromLegacyV312Layout
+    todo_composed_upgrade_test.go:236: relocation sentinel must be readable under the current name: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoComposedUpgrade_FromLegacyV312Layout1675990274/002/.moai/state/todo/companions.json: no such file or directory
+    todo_composed_upgrade_test.go:236: legacy state dir "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoComposedUpgrade_FromLegacyV312Layout1675990274/002/.moai/state/kanban" must no longer exist after the upgrade (stat err = <nil>)
+    todo_composed_upgrade_test.go:236: quarantined legacy document "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoComposedUpgrade_FromLegacyV312Layout1675990274/002/.moai/state/todo/backlog.json.migrated" must exist: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoComposedUpgrade_FromLegacyV312Layout1675990274/002/.moai/state/todo/backlog.json.migrated: no such file or directory
+    todo_composed_upgrade_test.go:249: composed upgrade yielded 0 items, want 3: []
+--- FAIL: TestTodoComposedUpgrade_FromLegacyV312Layout (1.26s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.688s
+FAIL

@@ -1,0 +1,1 @@
+    token_budget_guard_test.go:69: always-loaded surface = 77801 tokens (budget 77600, headroom -201, 17 entries)

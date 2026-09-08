@@ -1,0 +1,98 @@
+package web
+
+// SPEC-WEB-CODEX-PANEL-001 — the codex tab, a READ-ONLY MIRROR.
+//
+// Every element here is display-only. The panel renders NO form element
+// carrying a name attribute, and that prohibition explicitly covers the hidden
+// bool companion <name>__present: all panels live inside one form, tabs are
+// display switching, so an inactive panel submits too — and parseSchemaForm
+// reads a submitted companion with an empty control as an explicit false. A
+// mirror emitting the companion alone would turn six MCP tool toggles off just
+// by the page being opened and saved.
+//
+// The row markup borrows schemaReadOnlyRow's vocabulary rather than extending
+// it: adding the owning-tab link to the shared row would change every existing
+// read-only row on every other panel.
+
+// fieldsetCodex renders the codex mirror panel. It deliberately does NOT use
+// settingsPanel: that chrome always renders a field count, and this panel owns
+// no fields — announcing a count here would claim editable fields on a page
+// where nothing is editable (spec.md §C.2).
+templ fieldsetCodex(view pageView) {
+	<section class="panel" data-density="dense">
+		<div class="panel__head">
+			<h2 class="panel__title">
+				<span class="panel__ico">@icon(codexPanelIcon)</span>
+				<span data-i18n="tab.codex.title">Codex</span>
+			</h2>
+		</div>
+		<p class="panel__help" data-i18n="tab.codex.desc">Every codex setting on one screen. Each row links to the tab that edits it.</p>
+		<p class="panel__help" data-i18n="tab.codex.readonly">This page shows values only — editing happens on the owning tab.</p>
+		for _, group := range codexMirrorGroups(view) {
+			<div class="cred">
+				<span class="cred__t" data-i18n={ group.TitleKey }>{ group.Title }</span>
+				if group.HelpKey != "" {
+					<p class="panel__help" data-i18n={ group.HelpKey }>{ group.Help }</p>
+				}
+				for _, row := range group.Rows {
+					@codexMirrorRowView(row)
+				}
+			</div>
+		}
+		@codexProbeBlock(view)
+	</section>
+}
+
+// codexMirrorRowView renders one mirrored setting: its dot-path identifier, the
+// value as read from disk, and a route to the tab that owns its editing
+// surface. No control, no name attribute, no hidden companion — submission is
+// structurally impossible, which is the same guarantee schemaReadOnlyRow makes.
+templ codexMirrorRowView(row codexMirrorRow) {
+	<div class="field field--ro">
+		<div class="field__head">
+			<code class="key">{ row.Name }</code>
+			<span class="field__label" data-i18n={ row.LabelKey }>{ row.Name }</span>
+			if row.NoteKey != "" {
+				<span class="field__label" data-i18n={ row.NoteKey }>Shared audit backend selector — not codex-owned.</span>
+			}
+		</div>
+		<div class="field__ctl">
+			if row.Unset() {
+				<span class="in in--ro" data-i18n={ codexMirrorUnsetI18nKey }>(unset)</span>
+			} else {
+				<span class="in in--ro">{ row.Value }</span>
+			}
+			<a class="mirror-edit" href={ templ.SafeURL(row.OwnerHref()) } data-i18n={ row.OwnerLinkKey() }>Edit</a>
+		</div>
+	</div>
+}
+
+// codexProbeBlock displays the injected codex probe state. It CONSUMES
+// view.CodexState exactly as codexAuthBlock does and classifies nothing —
+// codexAuthProviderLabel only chooses a display spelling for tokens the probe's
+// own classifier already produced, and renders any other token verbatim.
+templ codexProbeBlock(view pageView) {
+	<div class="cred">
+		<span class="cred__t" data-i18n="tab.codex.group.probe">Codex binary</span>
+		if view.CodexState.Installed {
+			<ul class="kv">
+				<li>
+					<span data-i18n="f.mcp.codex.binary">Binary</span>
+					<b><code class="mono">{ view.CodexState.Binary }</code></b>
+				</li>
+				if view.CodexState.Version != "" {
+					<li>
+						<span data-i18n="f.mcp.codex.version">Version</span>
+						<b>{ view.CodexState.Version }</b>
+					</li>
+				}
+				<li>
+					<span data-i18n="f.mcp.codex.auth_provider">Auth provider</span>
+					<b>{ codexAuthProviderLabel(view.CodexState.AuthProvider) }</b>
+				</li>
+			</ul>
+		} else {
+			<p class="panel__help" data-i18n="f.mcp.codex.not_installed">codex is not installed.</p>
+		}
+	</div>
+}

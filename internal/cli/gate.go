@@ -67,6 +67,24 @@ func runGate(cmd *cobra.Command, _ []string) error {
 	projectDir := resolveGateProjectDir()
 	cfg := loadGateCfgForCLI(projectDir)
 
+	// The pre-commit-context branch — the ONE runner branch point
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001, operator decision 2). The branch
+	// discriminates by the MOAI_PRECOMMIT=1 environment marker the git
+	// pre-commit hook exports, never by flipping config.Enabled: the shared
+	// Enabled short-circuit inside QualityGate.Run belongs to the standalone
+	// CLI and the PreToolUse path equally, and must not move. Under the
+	// marker with gate.pre_commit.enabled false (the default), the
+	// project-wide heavy steps are skipped and the run passes — a pre-existing
+	// project-wide failure unrelated to the staged change must not block
+	// unrelated commits. Without the marker this key is never read, so the
+	// standalone `moai gate` contract is byte-for-byte unchanged.
+	if os.Getenv(config.EnvPreCommitMarker) == "1" && !cfg.PreCommitEnabled {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"[moai gate] pre-commit context: heavy gate not opted in — skipping the project-wide steps "+
+				"(opt in via gate.pre_commit.enabled: true in .moai/config/sections/gate.yaml)\n")
+		return nil
+	}
+
 	// The lock is taken before anything else the run does (except reading the
 	// config, which is where the wait budget itself comes from). The wait is
 	// bounded by its own budget, so the 10-minute safety net below keeps
@@ -174,6 +192,10 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 		TypecheckTimeout: g.TypecheckTimeoutDuration(),
 
 		LockWait: g.LockWaitDuration(),
+
+		// Pre-commit-context opt-in (SPEC-PRECOMMIT-GATE-SCOPE-001). Consumed
+		// only by runGate's marker-gated branch; the runner never reads it.
+		PreCommitEnabled: g.PreCommit.Enabled,
 	}
 	// Map gate.disabled_steps through verbatim (issue #1265): the runner reads
 	// FALSE as "skip this step", so normalising values here would silently stop

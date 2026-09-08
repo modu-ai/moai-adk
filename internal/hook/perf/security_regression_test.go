@@ -41,7 +41,7 @@ var destructivePrimitives = []string{
 // means the command is too complex for any fast-path.
 func compoundSeparators(command string) int {
 	count := 0
-	count += strings.Count(command, "|")   // covers |, ||, && uses different char
+	count += strings.Count(command, "|") // covers |, ||, && uses different char
 	count += strings.Count(command, "&&")
 	count += strings.Count(command, ";")
 	count += strings.Count(command, "`")

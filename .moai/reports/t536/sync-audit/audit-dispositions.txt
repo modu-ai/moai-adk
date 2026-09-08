@@ -1,0 +1,14 @@
+=== C1-C6 non-temp copies exist? ===
+TestResolveTodoQueueRoot_PureFallbackWritesNothing_NonTemp     internal/kanban/todo_root_nontemp_copy_test.go
+TestResolveTodoQueueRoot_ReadThroughToProjectLocal_NonTemp     internal/kanban/todo_root_nontemp_copy_test.go
+TestAdoptionLandsWhereConsumersRead_NonTemp                    internal/kanban/todo_root_nontemp_copy_test.go
+TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp     internal/kanban/todo_root_nontemp_copy_test.go
+TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp         internal/web/todo_section_nontemp_copy_test.go
+TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp     internal/cli/todo_queue_root_test.go
+=== C7 'not modified by a line' — diff of the accepted-loss test in card range ===
+83
+(lines changed in that FILE above; the TestAxisACanaryHomeSweep func specifically:)
+=== A1-A3 original assertions preserved (home-root assertion still present)? ===
+107:	declareNonTemporary(t)
+191:	declareNonTemporary(t)
+258:	declareNonTemporary(t)

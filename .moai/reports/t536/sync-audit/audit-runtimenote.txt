@@ -1,0 +1,43 @@
+=== runtimeNote definition ===
+internal/kanban/temp_origin_test.go:184:func runtimeNote() string {
+=== follow-up candidates file ===
+# t536 — 후속 카드 후보 (반출 기록)
+
+카드 t536(`SPEC-TODO-HOME-TEMP-GUARD-001`)의 plan-phase 도중 관측됐으나 **이 카드의 범위 밖**으로 판정된 항목이다. 카드 발행은 운영자 결재 사안이므로 여기서 발행하지 않는다 — 이 문서는 **조용히 잊히지 않게 하는 기록**이고, 리드가 다음 결재 때 함께 올린다.
+
+기준 트리: `.claude/worktrees/t536`, 브랜치 `WT-home-fallback`, 기준 커밋 `075dd8d4b`.
+
+---
+
+## 후보 1 — 한 규칙의 두 변형이 세 자리에 산다
+
+**관측 (읽어서 확인, 실행 아님)**
+
+`internal/cli/todo_queue_root_test.go:243-253` `queueRootInsideTemp` 가 `REQ-THG-003` 의 정규화 규칙을 **이미 구현하고 있다**:
+
+```go
+p := filepath.Clean(root)
+if resolved, err := filepath.EvalSymlinks(p); err == nil { p = resolved }
+tmp := filepath.Clean(os.TempDir())
+tmpResolved := tmp
+if resolved, err := filepath.EvalSymlinks(tmp); err == nil { tmpResolved = resolved }
+return underDir(p, tmp) || underDir(p, tmpResolved)
+```
+
+양쪽 `EvalSymlinks` + 실패 시 어휘적 `Clean`, 컴포넌트 포함 비교. 함수 주석까지 `/var/folders` → `/private/var/folders` 기제를 이 SPEC 과 같은 근거로 설명한다.
+
+**다만 등가물이 아니다 — 이 구분이 이 항목의 핵심이다.**
+
+| | `queueRootInsideTemp` | `REQ-THG-003` |
+|---|---|---|
+| 정규화 규칙 | 같음 | 같음 |
+| 포함 비교 | 같음 | 같음 |
+| **루트 집합** | **`os.TempDir()` 하나** | `{os.TempDir(), /tmp, /var/folders}` 셋 |
+
+macOS 에서 `os.TempDir()` 은 `/var/folders/…` 를 돌려주므로 **이 헬퍼는 `/tmp` 기원을 잡지 못한다.** 그런데 이 카드가 확보한 **유일한 생산 오염 실측**(`~/.moai/todo/t203-probe-d7a16ea2` ← `/tmp/t203-probe`, `TodoQueueProjectKey` 역산으로 복원; `sha256("/tmp/t203-probe")[:4] = d7a16ea2` 일치, `/private/tmp/t203-probe` 는 `a8822e43` 로 불일치)이 **정확히 `/tmp` 기원**이다. 이 헬퍼를 그대로 승격했다면 **이 카드가 실증한 그 오염을 놓친 채 「통합했다」고 적었을 것**이다.
+
+따라서 정확한 서술은 **「한 규칙 · 세 구현」이 아니라 「한 규칙의 두 변형 · 세 자리」**다.
+
+**왜 이 카드 밖인가**
+
+1. unexported 테스트 코드를 프로덕션 경로로 끌어올리는 것은 **새 설계 결정**이고, 5차 감사까지 온 카드에 얹을 일이 아니다.

@@ -65,7 +65,8 @@ A `Given … When … Then …` acceptance criterion is therefore the CORRECT fo
 - Event-driven: "When [trigger], the <subject> shall [response]"
 - State-driven: "While [condition], the <subject> shall [response]"
 - Where (capability-gate / feature flag / static config): "Where [capability exists], the <subject> shall [response]" — GEARS reframes `Where` as capability gate / feature flag / static config; NOT "feature option" (legacy EARS Optional usage)
-- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, per the canonical GEARS migration policy]` annotation
+- Event-detected: "**When** [undesired-condition-detected], the <subject> shall [response]" — the fifth GEARS pattern, replacing the legacy EARS `If [undesired condition], then the [system] shall [response]` form, which carries the `[DEPRECATED — use When <event-detected>, per the canonical GEARS migration policy]` annotation
+- Unwanted ("The <subject> shall not [action]"): NOT a GEARS pattern — legacy EARS negative usage only. Never canonical, never steered toward; it may be counted only as a legacy equivalent under the Score 1.0 allowance above, never as a fifth pattern
 
 Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` (any subset of the three modifiers chained) is PASS-equivalent at Score 1.0.
 
@@ -387,9 +388,11 @@ A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: 
 
 ## Output Format
 
-Write the audit report to `.moai/reports/plan-audit/{SPEC-ID}-review-{iteration}.md`.
+[HARD] **Export mandate — an audit is complete only when its verdict is exported.** Write the verdict to a file in the same turn it is rendered: `.moai/reports/<card-id>/plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration; `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card). An audit response without an exported file is an **incomplete audit**. Minimum content per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`): the verdict token and score, per-defect findings, the commands run with their observed outputs in the five-section evidence-bearing format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and iteration history for repeated audits. Never write the verdict to a gitignored location — the report directory the convention declares FORBIDDEN (`audit-artifact-convention.md` § Where) receives verdicts as disposal, not export.
 
-This report belongs to the **plan-phase review stream** (`{SPEC-ID}-review-{N}.md`, iteration-based) — deliberately distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based) that the Phase 1 Plan Audit Gate writes into the same directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.
+**Side-talk discipline** — advice attached to a verdict follows the audit-artifact convention (`audit-artifact-convention.md` § Side-talk): advice lives in a separate section titled as unverified (for example "Operational Notes (unverified)") at the end of the artifact — never woven into the verdict, the dimension scores, or the defect list it follows; each advice line is a measurement instruction ("Measure X — command Y"), not a conclusion; and every advice line carries a status label — `measured` (the command and its recorded output are present per the convention), `inferred` (the reasoning rule is named so the reader can check it), or `assumption` (a naked claim — the weakest standing).
+
+The exported verdict is the **plan-phase review stream** of the two-stream contract — distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based), a Go runtime record the Phase 1 Plan Audit Gate persists under its own gitignored record directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.
 
 ```
 # SPEC Review Report: {SPEC-ID}

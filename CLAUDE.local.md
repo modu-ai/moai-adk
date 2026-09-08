@@ -6,6 +6,38 @@
 
 ---
 
+## 0. [HARD] 이 파일의 정본은 어느 사본인가
+
+이 절을 나머지보다 먼저 읽는다. 2026-09-07 에 이 파일의 틀린 사본이 레인 12곳에 배포됐고, 그 사고를 되풀이하지 않기 위한 판별식이 여기에 있다.
+
+### 0.1 [HARD] 정본은 레인이 분기하는 트리의 사본이다
+
+**판별식은 「레인이 분기하는 트리가 지배한다」이고, 현재 그 트리는 `develop` 이다.** 카드 워크트리가 `develop` 에서 나오므로 `develop` 의 사본이 레인이 실제로 읽는 문서이며, 그것이 정본이다.
+
+**날짜나 「나중에 전달된 쪽」을 판별식으로 쓰지 않는다.** 2026-09-07 에 나중에 전달된 텍스트가 틀린 쪽이었다 — 최신성 규칙이었다면 그 사고를 막지 못했을 것이다. 분기 트리는 push-model 이 바뀌어도 같은 방식으로 답을 낸다.
+
+### 0.2 [HARD] 미커밋 워킹 사본은 정본으로 인용할 수 없다
+
+**어느 브랜치에도 커밋된 적 없는 미커밋 워킹 사본은 정본이 아니며, 정본으로 인용될 수 없다.** 이것은 이 파일에 한정된 규칙이 아니라 인용 일반의 규칙이다 — 이력에 없는 텍스트는 다른 사람이 같은 것을 읽었는지 확인할 방법이 없고, 저자도 시점도 복구되지 않는다.
+
+2026-09-07 의 가해자는 스테일한 브랜치가 아니라 **git 이 추적하지만 어느 브랜치에도 커밋된 적 없는 primary 체크아웃의 워킹 사본**이었다. 인용하기 전에 그 텍스트가 어느 커밋에 있는지 확인한다 — `git show <ref>:<path>` 로 읽히지 않으면 정본이 아니다.
+
+### 0.3 [HARD] `main` 의 커밋본은 폐기된 제3의 모델이다
+
+**`main` 에 커밋돼 있는 이 파일의 사본은 폐기된 모델이며 인용 대상이 아니다.** 그 판은 「`develop` 을 원격에 올리지 않고 카드마다 `main` 으로 PR 을 낸다」는 체제를 서술하는데, 현행 체제(§4.1)와 정면으로 다르다. 다음 사람이 `main` 사본을 정본으로 집는 것이 2026-09-07 실패의 재현이다.
+
+### 0.4 [HARD] ` M CLAUDE.local.md` 는 의도된 상태다
+
+primary 체크아웃이 `main` 에 체크아웃돼 있는 동안 `git status` 는 `M CLAUDE.local.md` 를 **영구적으로, 설계대로** 보여준다. 워킹 사본이 develop 판이고 `main` 의 커밋본은 §0.3 의 폐기 모델이므로, main 대비로는 언제나 modified 로 읽힌다. 사본이 또 갈라진 것이 아니다.
+
+> **[HARD] 이 표식은 정리 대상이 아니다.**
+>
+> **`git restore CLAUDE.local.md` 를 실행하지 마라** — 워킹 사본을 §0.3 의 폐기 모델로 되돌리는 회귀다.
+>
+> 되돌리면 표식은 사라지지만 레인이 읽는 문서가 옛 체제로 바뀌고, 그 사실은 `git status` 어디에도 나타나지 않는다. 이 파일을 정말 고쳐야 하면 카드 워크트리에서 고쳐 `develop` 으로 병합한다(§4.1).
+
+---
+
 ## 1. Quick Start
 
 ### Work Location
@@ -192,10 +224,10 @@ CLAUDE.local.md                # This file
 | ast-grep 룰셋 | `.moai/config/astgrep-rules/` | `.moai/` 하위 **`config/` 밖** + `gate.yaml`의 `ast_grep_gate.rules_dir` 지정 (빈 값이면 기본 경로 폴백 없음 — t50, `internal/cli/astgrep.go:69,105`; [2026-08-27 감사 정정]) |
 | 하네스 | — | `.claude/skills/hns-*`, `.claude/agents/harness/`, `.claude/commands/harness/`, `.moai/harness/` (`IsUserOwnedNamespace` 백업 대상) |
 
-**[HARD] update 실행 후 매번 검증한다.** 전제: 실행 **전** 추적 파일 수정이 0이어야 diff 귀속이 가능하다.
+**[HARD] update 실행 후 매번 검증한다.** 전제: 실행 **전** 추적 파일 수정이 **§0.4 가 규정한 ` M CLAUDE.local.md` 한 건뿐**이어야 diff 귀속이 가능하다. primary 체크아웃에서 그 표식은 영구적이므로 **0 이 되는 일은 없다** — 0 을 전제로 읽고 그 한 건을 없애려 들면 §0.4 가 막은 회귀로 떠밀린다. 다른 파일이 함께 수정돼 있으면 그때는 귀속이 불가능하니, update 전에 그쪽을 먼저 정리한다.
 
 ```bash
-git status --porcelain | grep -v '^??' | wc -l        # 실제 변경 수
+git status --porcelain | grep -v '^??' | wc -l        # 실제 변경 수 — primary 의 baseline 은 0 이 아니라 1(§0.4)
 git status --porcelain | grep '^ D'                   # 삭제된 파일 — 0이어야 정상
 # 삭제가 있으면 (전부 추적 파일이므로 git이 안전망):
 git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 git restore --
@@ -251,6 +283,15 @@ moai-adk-go uses Go's `go:embed` directive:
 - **Source**: `internal/template/templates/` (edit here — this is the source of truth)
 - **Embed mechanism**: `internal/template/embed.go` carries `//go:embed all:templates` + `//go:embed catalog.yaml`, which compile the `templates/` FS directly into the binary (there is NO generated `embedded.go` file)
 - **Build**: Run `make build` after editing templates (recompiles the binary)
+
+### Command-to-Skill Publication (SPEC-CODEX-COMMAND-SKILLS-001)
+
+`internal/template/commandemit` publishes the 16 `/moai` command sources as codex skill-shaped artifacts at `templates/.agents/skills/moai-<command>/SKILL.md` (committed real files, golden-checked).
+
+- **Regenerate** (after editing any command source or the emitter): `make commands-emit`
+- **Drift check**: `make commands-emit-check` — read-only, wired ahead of `build` (same position as `agents-emit-check`); it never writes
+- **Boundary**: bodies publish VERBATIM from the command sources, including their Claude-only `Skill("moai")` dispatcher line — the emitter flags this per skill and never repairs it (repair is the command-body layer's concern, sibling card t497). Do not hand-edit the emitted SKILL.md files; edit the command sources and regenerate.
+- **gitignore coupling**: the 16 published names are re-included in `templates/.gitignore` (the mirror rule `.agents/skills/moai*` would otherwise ignore them); `TestGitignoreCarriesEveryPublishedName` + `TestPublishedSkillsNamesMatchTree` keep both lists in step with the emitted set.
 
 ---
 
@@ -345,8 +386,9 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리드의 창 지명만이 근거다.
-- 창을 받으면: `moai integration acquire --name <lane>` → 본인 워크트리에서 `git merge origin/develop` 흡수 → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
-- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 로컬 develop 병합(창 경유 `git push origin develop`)이 **유일한** 공개 경로다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- 창을 받으면: `moai integration acquire --name <lane>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
+- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리드가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
+- **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리드가 처분을 정한다.
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
 - sync는 병합 **전에** 워크트리 안에서 끝낸다. run만 닫고 병합하면 SPEC이 `in-progress`로 develop에 올라가 창을 다시 받아야 한다(2026-08-29 t342 실사례).
 
@@ -354,11 +396,18 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 
 ```bash
 # 통합 워크트리 진입 (raw `git worktree add` 금지 — 런처 경유)
-moai cc -w develop
+moai cc -w develop                # 재진입
+moai cc -w develop --branch develop  # 최초 provisioning (기존 develop 브랜치 체크아웃)
 
 # 창 안에서
 moai integration acquire --name <lane>
-git -C <카드워크트리> merge origin/develop      # 흡수
+# 흡수 전에 로컬 develop 을 먼저 최신화한다. 판정식(ref 비교)과 갱신 경로는
+# `.claude/rules/local/gitflow-lane-protocol.md` §11 이 소유한다 — 여기 복사하지 않는다(두 벌이 되면 갈라진다).
+git -C <카드워크트리> merge develop            # 흡수 — 대상은 로컬 develop
+# 어긋나는 방향은 둘이고, 둘 다 같은 결함을 낸다.
+#   앞설 때: 다른 레인이 로컬 병합을 마쳤고 리드가 아직 push 하지 않은 구간 — 원격을 흡수하면 그 착지분이 빠진 베이스에서 재측정한다.
+#   뒤처질 때: 다른 레인의 병합이 이미 원격에 올라간 뒤 — 최신화 없이 로컬을 흡수하면 낡은 베이스에서 재측정한다.
+# 거울상이므로 한쪽만 막으면 다른 쪽으로 새어 나간다.
 # 병합 트리에서 재측정 후
 git merge --no-ff <카드브랜치>                  # develop 워크트리 안에서
 moai integration release

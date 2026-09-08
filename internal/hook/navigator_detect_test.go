@@ -613,13 +613,13 @@ func TestNavigatorDetect_NoWorkItemPromotion(t *testing.T) {
 	}
 	body := string(raw)
 	forbidden := []string{
-		"gh issue create",       // GitHub issue promotion
-		"gh issue",              // any issue-tool invocation
-		`Decision: "block"`,     // REQ-NS2-012 — NEVER blocks
-		"os.Exit(2)",            // exit-2 block
-		`"block"`,               // any literal block decision
-		".moai/specs/SPEC-",     // SPEC mutation
-		"TODO file",             // TODO file creation
+		"gh issue create",   // GitHub issue promotion
+		"gh issue",          // any issue-tool invocation
+		`Decision: "block"`, // REQ-NS2-012 — NEVER blocks
+		"os.Exit(2)",        // exit-2 block
+		`"block"`,           // any literal block decision
+		".moai/specs/SPEC-", // SPEC mutation
+		"TODO file",         // TODO file creation
 	}
 	for _, pat := range forbidden {
 		if strings.Contains(body, pat) {

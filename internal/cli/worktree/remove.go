@@ -61,6 +61,10 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("remove worktree: %w", err)
 	}
 
+	// Reclaim the launch-ledger row(s) that died with this tree (card t297).
+	// Best-effort: a prune failure warns, never fails the removal.
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
+
 	_, _ = fmt.Fprintf(out, "Removed worktree at %s\n", wtPath)
 	return nil
 }

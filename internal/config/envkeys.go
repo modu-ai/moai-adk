@@ -45,6 +45,14 @@ const (
 	// EnvNoColor disables color output when set to "true" or "1".
 	EnvNoColor = "MOAI_NO_COLOR"
 
+	// EnvPreCommitMarker is exported by the git pre-commit hook when it
+	// invokes `moai gate` (value "1"). Under the marker the gate runner honors
+	// gate.pre_commit.enabled: when that key is false (the default) the
+	// project-wide heavy steps are skipped and the run passes. A standalone
+	// `moai gate` invocation — marker absent — never reads the key
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001, operator decision 2).
+	EnvPreCommitMarker = "MOAI_PRECOMMIT"
+
 	// EnvStatuslineMode selects the statusline display mode.
 	EnvStatuslineMode = "MOAI_STATUSLINE_MODE"
 

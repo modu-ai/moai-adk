@@ -50,7 +50,7 @@
 
 export const meta = {
   name: 'sync-audit-4dim',
-  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; execution vehicle, NOT the binding sync-auditor verdict owner',
+  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; BINDING sync-phase verdict owner on the happy path (PASS, no dim 0, not INCOMPLETE, no contested finding — IsBinding), cold sync-auditor subagent is the fallback verdict owner otherwise',
   phases: [
     { title: 'Context', detail: 'one read-only Explore agent extracts the SPEC audit surface (id, acceptance criteria, changed files, test command)' },
     { title: 'Judge', detail: 'four parallel read-only Explore judges, one per dimension, each scoring 0-1 with command+verbatim-output evidence under a skeptical-auditor stance' },

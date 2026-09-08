@@ -152,3 +152,5 @@ Three enforcement layers, none of which depends on a person remembering:
   unattributed-claim invariant this convention operationalizes
 - `.claude/agents/moai/plan-auditor.md`,
   `.claude/agents/moai/sync-auditor.md` — the export-mandate clauses
+  (plan-auditor exports to the `plan-audit.md` / `plan-audit-iter<N>.md`
+  family in § Where; sync-auditor to `sync-audit.md`)

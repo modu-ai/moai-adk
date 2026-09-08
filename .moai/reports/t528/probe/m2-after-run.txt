@@ -1,0 +1,36 @@
+=== RUN   TestT528Anchor
+    zz_t528_anchor_probe_test.go:227: OUTDIR = ../../.moai/reports/t528/probe/after
+    zz_t528_anchor_probe_test.go:228: DENOMINATOR spec.md read = 807 (list: ../../.moai/reports/t528/probe/after/filelist.txt)
+    zz_t528_anchor_probe_test.go:229: IN-SECTION declarations = 1167
+    zz_t528_anchor_probe_test.go:230:   accepted by FROZEN baseline anchor = 216
+    zz_t528_anchor_probe_test.go:231:   accepted by LIVE parseSingleACLine = 1085
+    zz_t528_anchor_probe_test.go:232:   rejected by LIVE parseSingleACLine = 82
+    zz_t528_anchor_probe_test.go:233:   NEWLY accepted (live yes, baseline no) = 869 (list: ../../.moai/reports/t528/probe/after/newly-accepted.txt)
+    zz_t528_anchor_probe_test.go:234: POSITIVE-NEEDLE files (live) = 110 (list: ../../.moai/reports/t528/probe/after/positive-needle.txt)
+    zz_t528_anchor_probe_test.go:235: BASELINE-NEEDLE files (frozen anchor) = 18 (list: ../../.moai/reports/t528/probe/after/baseline-needle.txt)
+    zz_t528_anchor_probe_test.go:236: FULLY-BLIND files (>=1 decl, 0 accepted by live) = 9
+    zz_t528_anchor_probe_test.go:237: B.1 numeric-tail candidate: covered = 1128  UNCOVERED = 39
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-UTIL-N-Nb             1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-LCLN-N.N              10
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HFC-Na                1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-DCC-N..N              4
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HML-N..N              4
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-SVG-N..N              5
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-SCOPE                 1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-GREEN                 1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-ORDERING              1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-EVIDENCE              1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-MRR-GREEN             1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HFC-Nb                1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-MUTANT                1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-MRR-GN                4
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HFC-GATE              1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-PLW-N..N              2
+    zz_t528_anchor_probe_test.go:251:   SEP :                800
+    zz_t528_anchor_probe_test.go:251:   SEP (                232
+    zz_t528_anchor_probe_test.go:251:   SEP —                93
+    zz_t528_anchor_probe_test.go:251:   SEP «none/other»     42
+--- PASS: TestT528Anchor (0.20s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.398s
+EXIT=0

@@ -1,0 +1,52 @@
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.503s
+go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
+(✓) Post-generation event received, processing... [ updates=0 needsRestart=true needsBrowserReload=true ]
+(✓) Complete [ updates=0 duration=156.393709ms ]
+Computing hashes for all 45 entries...
+  moai: f005e8731c6618402e6dafb00584818531492b0f2303361808ba7609f552811c
+  moai-foundation-cc: 5c9067f93c95f038aa458ad188d347ea85e7dc62924e5fa36f8a3db8ffa7df9e
+  moai-foundation-core: a4a67c99180df3e64053f9c287fe5bc583697b598fc4313107fc6b933f5fd4bc
+  moai-foundation-quality: 13421862623adc9836326beb57b1a7d26af46b88b9535bca084d1d39f2bd0b7d
+  moai-foundation-thinking: 93ba594d3cc2bbad9c8383dedf3d2177e0accd18f3c8c3be40cd923400051950
+  moai-harness-learner: 442542e576f1e0deccaf85680d6d60307a7ec1c768282d9a4b338b8b750d487e
+  moai-kanban-foreman: ec5e5517881710e83038c7aec851d9abd2905500d02f01c6c82287b6c6711106
+  moai-meta-harness: f98fa6a48bd3db2427c2a12b51a63f1e30b9f2dddf2919b045c5f2d011ac358d
+  moai-ref-git-workflow: 0440292378de665eb805deb439564984494411495946f9f7a96a740f54772d73
+  moai-ref-testing-pyramid: be77cf6a41f99e25cb1ff1c65690b955c490c9492aabe85cdb2174d42c3ef7fc
+  moai-workflow-ddd: 163da2b86d0a027be3de591c5d03be1ef38d597aa165fd12288016d011d43e26
+  moai-workflow-docs-claim-check: daef35e4f6e1856625a591e30a7b262fd109d135b1e7f6b6fb7e0ab354bb3521
+  moai-workflow-loop: 1268c2c6f09e4a7d3061cd94170ff1dba7b03cd9b552d18ceb028b93e980287f
+  moai-workflow-project: 1789cc64d918d10315a886a45bd2372f03b43af542b04b91afd4c3f797f593e4
+  moai-workflow-spec: ab10fb26f4d04985855f6423cf1c96882cb991eda5bfdb524ed851898b9e0fdc
+  moai-workflow-tdd: 1f551af0f059a0e7df3135d7dad89db2d12596752fc3439cbfad03413c017709
+  moai-workflow-testing: 0640a0057482e20697b0e53272b82b7f8d4e06e573f041f3f8008c9a7e0b3f92
+  moai-workflow-worktree: 05920664ac48c144d23360f58c8cd932a3095cdfa56c4b290165968d0d89f762
+  moai-domain-html-report: 7e7e427f7b04a32ce462b4bcfc8fb78f6826075473e710e01ccd6b812f1c8449
+  moai-domain-svg-infographic: bdeecd89cabf7d25c70f50557bd33420a9e1c71ecdfa2fa983461e0021d72abf
+  moai-domain-design-dna: cf40ecbaacbd0279f372eed515ef7143710ae86a40a033c884a6ec7897dd82f9
+  sync-auditor: 545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f
+  manager-develop: ad390185637655a3b7e68ff5c0fd3c9258559a6bfc01aa72d3243838de94d2f0
+  manager-docs: 8ab71abd72f587800c2b5bc03d69adce17300cf96fc844a6b2dbb6f6f3256952
+  manager-git: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
+  manager-lead: 720d71689cddb17185b046de94c91b56cc42107d816a7fa11316f3030152284d
+  manager-spec: 8c7ffaeb94b414d19ae70681c6d9bd3cf578dd7fb302b77a9bc55e2c144270a0
+  plan-auditor: 6a50b0546e0e00cf2be95dcf0d159e63ad37e44e4d189331d94f7f583106a31c
+  super-advisor: e47c17c3753b4bc85243b462c491dfef72b2bdf9918f947fdc5fcc5bd35ada1e
+  manager-design: fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a
+  e2e-tester: 910a13c9857493611eb0ee6f434bc2b5abd40c49bc25df5d48bb2ab88bea87d8
+  moai-domain-frontend: 909ada3e5d0ac21169b1b94f3e53976f5e3fa2d1c955da3c7e78214ef1eaee5b
+  moai-ref-react-patterns: 1bf865afaa742266a1449546a58cca9fd405bd515fa3f490cbd9855d04437b4c
+  moai-ref-ui-polish: 2c9a758559e4c27fab337296bd8cc4eb6772af3aedaf395b152c51ade3a3d017
+  moai-ref-seo: 64b86faef2f6600f12ebc683759e1229f636229fdcaa7127bcf3404e5972f9c8
+  moai-domain-backend: 563a35038e06cf3478ab907892597a75d42d5882290dc1807c5a8d2dd6481000
+  moai-domain-database: fb7cbf5ea66ae69fa2cae07f75a48369a24c9b55b2b9f9c1e7120b33ec409f71
+  moai-ref-api-patterns: 8c84e6cda6f315b4068cbfc29771d575d21d339a0697cf8d6c95cd494d75ff3c
+  moai-domain-humanize: 2b4c74c1bebba3f0cf3842191e894fee08803c4417f8cfaa2c7a1740a3f92ab5
+  moai-ref-owasp-checklist: f9e3a971ae3966c6a7753ec06f0e3535d2b85a81b40d06c0497238e7437823cd
+  moai-ref-llm-security: 4c847baf1c957a4a3e0e56c90c043bed13ef8b48ff5074e397e05ee736e7cec7
+  moai-ref-cross-model-audit: 340fc97c573f8c8c1966e16d36446562a55f76f597b48d08edcecbea7ec093b6
+  moai-ref-supply-chain: 8d8ddb8032d8aebe24787fe285ac3891803bff42265aa917aaa6ffa5f43b480e
+  moai-ref-secops: c0f1bc085835379932dfe175e9281e6b8af2d0501bcbbb0282549a017bf951d6
+  builder-harness: 37ff28085c45bb19b86946ca32a2416bf0af7a040f062cfa744fa98ed9a92b24
+catalog.yaml updated successfully (12899 bytes)
+go build -ldflags "-s -w -X github.com/modu-ai/moai-adk/pkg/version.Version=v3.1.2 -X github.com/modu-ai/moai-adk/pkg/version.Commit=e5161dd1e -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-09-03T03:37:09Z -X github.com/modu-ai/moai-adk/pkg/version.BuildID=v3.1.2-1587-ge5161dd1e-dirty" -o bin/moai ./cmd/moai

@@ -38,14 +38,39 @@ fi
 LINES=$(wc -l < "$INBOX" | tr -d ' ')
 BACKLOG=$(( LINES - OFFSET ))
 
-if [[ "$BACKLOG" -le "$THRESHOLD" ]]; then
-  exit 0   # advisory silent — below threshold
+# t459: count rotated archive generations. The collector-side cap
+# (SPEC-INBOX-DRAIN-GAP-001) rotates the live inbox into lessons-inbox.jsonl.N
+# whenever the LSEL marker (.moai/state/lsel/) is absent, and drain.sh reads
+# only --inbox — it carries zero references to any .N archive, so archived
+# stubs are permanently out of the drain's reach. Rotation also collapses
+# LINES, which would otherwise make this advisory go silent at exactly the
+# moment stubs left reach. Archived lines count as undrained by the drain's own
+# accounting: a rotation implies the marker was absent, and the offset file
+# lives inside that marker directory, so the offset read 0.
+#
+# The generation set is discovered by glob, never by restating the retention
+# count — that constant lives in Go (config.DefaultInboxArchiveGenerations) and
+# must not be duplicated here (CLAUDE.local.md sec 14).
+ARCHIVED=0
+for gen in "$INBOX".[0-9]*; do
+  [[ -f "$gen" ]] || continue
+  ARCHIVED=$(( ARCHIVED + $(wc -l < "$gen" | tr -d ' ') ))
+done
+
+if [[ "$BACKLOG" -le "$THRESHOLD" && "$ARCHIVED" -eq 0 ]]; then
+  exit 0   # advisory silent — below threshold and nothing rotated out of reach
 fi
 
 # Emit a system-reminder to stderr (advisory; the orchestrator reads stderr reminders)
+ARCHIVED_NOTE=""
+if [[ "$ARCHIVED" -gt 0 ]]; then
+  ARCHIVED_NOTE="
+lsel-rotation: $ARCHIVED archived stubs in $INBOX.N are OUT OF THE DRAIN'S REACH — drain.sh reads only the live inbox and references no .N generation. A rotation fires only while the marker dir ($STATE_DIR) is absent, so restore it (session_drain.sh recreates it) before further appends; the archives are then frozen but bounded, and each further rotation evicts the oldest. Recovering them needs a SEPARATE --state-dir: the shared drain-offset.json is a line index into the live file and reusing it would skip live stubs."
+fi
+
 cat >&2 <<EOF
 <system-reminder>
-lsel-backlog: $BACKLOG unread stubs in $INBOX (offset=$OFFSET, threshold=$THRESHOLD).
+lsel-backlog: $BACKLOG unread stubs in $INBOX (offset=$OFFSET, threshold=$THRESHOLD).$ARCHIVED_NOTE
 Run the LSEL drain via the wrapper: .claude/skills/hns-lsel-curator/session_drain.sh --inbox $INBOX --state-dir $STATE_DIR
 Then draft shadow proposals from the archived candidates in $STATE_DIR/clusters-history/ (hns-lsel-curator PROPOSE; the live clusters.json is ephemeral under per-session-start drains).
 </system-reminder>

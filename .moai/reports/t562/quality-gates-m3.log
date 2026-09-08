@@ -1,0 +1,4 @@
+## quality gates
+go vet ./internal/cli/... => rc=0
+golangci-lint run --timeout=5m ./internal/cli/... => 0 issues.
+rc=0

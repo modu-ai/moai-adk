@@ -18,6 +18,7 @@ package settings
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -119,10 +120,16 @@ func WriteProjectNestedConfig(projectRoot string, form NestedForm) error {
 		if form.MinCoverageSet {
 			q.TDDSettings.MinCoveragePerCommit = form.MinCoverage // 중첩-of-중첩: TDDSettings 통과, 한 필드만 설정
 		}
-		if err := mgr.SetSection("quality", q); err != nil {
-			return fmt.Errorf("set quality section: %w", err)
+		// REQ-WWS-003 (SPEC-WEB-WRITE-SAFETY-001): a submitted-but-unchanged
+		// nested field must not trigger SetSection — an unchanged section must
+		// not ride the Save() rewrite (M1(d) observed Save() creating an absent
+		// llm.yaml purely because a *Set flag fired with an identical value).
+		if !reflect.DeepEqual(q, cfg.Quality) {
+			if err := mgr.SetSection("quality", q); err != nil {
+				return fmt.Errorf("set quality section: %w", err)
+			}
+			changed = true
 		}
-		changed = true
 	}
 
 	if form.TouchesGitConvention() {
@@ -139,10 +146,13 @@ func WriteProjectNestedConfig(projectRoot string, form NestedForm) error {
 		if form.EnforceOnPushSet {
 			gc.Validation.EnforceOnPush = form.EnforceOnPush
 		}
-		if err := mgr.SetSection("git_convention", gc); err != nil {
-			return fmt.Errorf("set git_convention section: %w", err)
+		// REQ-WWS-003: same unchanged-section gate as quality above.
+		if !reflect.DeepEqual(gc, cfg.GitConvention) {
+			if err := mgr.SetSection("git_convention", gc); err != nil {
+				return fmt.Errorf("set git_convention section: %w", err)
+			}
+			changed = true
 		}
-		changed = true
 	}
 
 	if changed {

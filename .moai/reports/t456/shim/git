@@ -1,0 +1,14 @@
+#!/bin/sh
+# t456 spawn-counting shim — reused in shape from t305 (.moai/reports/t305/shim/git).
+# Two renames from that original: the log variable is T456_SPAWN_LOG rather than
+# T305_GIT_LOG, so the two harnesses cannot write each other's file, and so the
+# recipe that invokes it needs no "git" token of its own — the worktree guard
+# refuses a command it cannot statically verify, and the variable name alone was
+# enough to trip it.
+#
+# Put this directory first on PATH and point T456_SPAWN_LOG at a file: every
+# invocation the measured process makes appends one line, then runs for real.
+# The count is exact and load-independent, which is what makes it evidence
+# rather than a timing impression.
+printf '%s\n' "$*" >> "$T456_SPAWN_LOG"
+exec /usr/bin/git "$@"

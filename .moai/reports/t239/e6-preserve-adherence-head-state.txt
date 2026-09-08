@@ -1,0 +1,8 @@
+?? .moai/reports/t239/ac-lcp-006-cli-scope-files.log
+?? .moai/reports/t239/ac-lcp-006-update-scope-zero.log
+?? .moai/reports/t239/e2-scoped-packages.log
+?? .moai/reports/t239/e4-lint-cli.log
+?? .moai/reports/t239/e4-vet.log
+?? .moai/reports/t239/e5-windows-build.log
+?? .moai/reports/t239/e5-windows-vet-cli.log
+?? .moai/reports/t239/e6-preserve-adherence-head-state.txt

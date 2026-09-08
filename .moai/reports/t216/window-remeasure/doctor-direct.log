@@ -1,0 +1,106 @@
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✗ Error: moai embeds stale agent-emit artifacts (11/11 compared): manager-docs.toml, plan-auditor.toml, sync-auditor.toml
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✗ Error: L1:FAIL L2:FAIL L3:FAIL L4:FAIL L5:FAIL L6:FAIL
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                        │
+│  System Diagnostics                                                                                                                                    │
+│  System ---                                                                                                                                            │
+│    STATUS  CHECK         MESSAGE                                                                                                                       │
+│    ok      Go Runtime    go 1.26.4 (darwin/arm64)                                                                                                      │
+│    ok      Git           git version 2.50.1 (Apple Git-155)                                                                                            │
+│    ok      Claude Code   2.1.259 (Claude Code)                                                                                                         │
+│    ok      GitHub CLI    gh version 2.92.0 (2026-04-28)                                                                                                │
+│    ok      ast-grep CLI  ast-grep 0.40.5                                                                                                               │
+│    5 ok, 0 warn, 0 fail                                                                                                                                │
+│                                                                                                                                                        │
+│  MoAI-ADK ---                                                                                                                                          │
+│    STATUS  CHECK                  MESSAGE                                                                                                              │
+│    ok      MoAI Config            configuration directory found                                                                                        │
+│    ok      Claude Config          Claude Code configuration found                                                                                      │
+│    ok      MoAI Version           moai-adk v3.1.3                                                                                                      │
+│    ok      Binary Freshness       development build (no commit metadata)                                                                               │
+│    ok      MCP Scope Duplicates   4 project, 0 global MCP servers — no duplicates                                                                      │
+│    ok      MCP Server Version     no running moai MCP server recorded                                                                                  │
+│    fail    Agent Emit Embed       moai embeds stale agent-emit artifacts (11/11 compared): manager-docs.toml, plan-auditor.toml, sync-auditor.toml     │
+│    ok      Constitution Registry  registry OK — 101 entries (57 Frozen, 44 Evolvable)                                                                  │
+│    fail    Harness 5-Layer        L1:FAIL L2:FAIL L3:FAIL L4:FAIL L5:FAIL L6:FAIL                                                                      │
+│    ok      Migration              current version 0                                                                                                    │
+│    ok      Plugin Deployment      no plugin marker (binary-managed)                                                                                    │
+│    ok      Home Disk Usage        ~/.moai 6.7G (claude-profiles 6.2G, backups 361.8M, releases 139.4M) — cleanable ~64B; ~/.claude 1.5G (report-only)  │
+│    10 ok, 0 warn, 2 fail                                                                                                                               │
+│                                                                                                                                                        │
+│  Workspace ---                                                                                                                                         │
+│    STATUS  CHECK                 MESSAGE                                                                                                               │
+│    ok      Hooks Config          hook handlers directory found                                                                                         │
+│    ok      Hook Wiring           38 hook entries match the template                                                                                    │
+│    ok      Hook opt-in:          enabled                                                                                                               │
+│    ok      Slash Commands        2 command file(s) registered                                                                                          │
+│    ok      Skills Allowlist      44 skill(s) verified                                                                                                  │
+│    ok      MX Tag Config         MX tag configuration present                                                                                          │
+│    ok      Worktree State        worktree state directory found                                                                                        │
+│    ok      Worktree Base Branch  refs/remotes/origin/HEAD names develop, matching git_strategy.worktree_base_branch                                    │
+│    ok      BODP Config           BODP audit trail directory found                                                                                      │
+│    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                              │
+│    warn    Glamour Cache         glamour not integrated                                                                                                │
+│    warn    Codex Wiring          codex installed, project not wired — run moai init --agent codex; ~/.codex/config.toml: 49 stale skill entries        │
+│    9 ok, 3 warn, 0 fail                                                                                                                                │
+│                                                                                                                                                        │
+│   Pass 24    Warn 3    Fail 2                                                                                                                          │
+│                                                                                                                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+exit status 1

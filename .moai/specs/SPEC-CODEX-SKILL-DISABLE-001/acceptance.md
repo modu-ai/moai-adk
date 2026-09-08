@@ -1,0 +1,174 @@
+# SPEC-CODEX-SKILL-DISABLE-001 — 수용 기준
+
+카드 t502 · 모든 AC는 이진 판정 가능해야 하며, 판정 근거는 실행한 명령과 그 출력이다.
+
+> **[예산 초과 — 기록된 예외, 판정 완료] 현재 17개, Tier M 상한 16개.** 세는 명령은 표제 앵커 `grep -c '^### AC-CSD'` → **17**. (id 토큰을 훑는 `sort -u` 형태는 이 문서 자체가 그 패턴을 본문에 적으면 자기 자신을 세어 18을 낸다 — 표제 앵커가 오염되지 않는 쪽이다.) 기준을 넓혀 수를 맞추지 않았다: 그 수법이 감사 D-N1이 지적한 손상(수는 줄고 한 기준이 서명해야 할 표면은 늘어남) 그 자체다. **원인·검토하고 기각한 병합 후보·「완화가 아니라 예외」라는 성격은 `plan.md` §F.1 이 정본으로 담는다** — 이 문서 밖의 대화 기록이 아니라 그 절을 읽으면 된다.
+
+> **판별 셀 규율**: 한 기준이 두 성질을 지면 그것을 가르는 셀도 둘이어야 한다. 아래에서 `뮤턴트` 로 시작하는 줄이 그 판별 셀이며, 성질 하나마다 하나씩 있다. 뮤턴트가 잡히지 않으면 그 성질은 무방비이고 기준은 채택 불가다.
+
+## §A 발행 — 엔트리가 생기는가, 값이 맞는가, 실제로 꺼지는가
+
+세 기준은 한 근본의 세 축이다. 부분만 검사하면 **조합이 검사되지 않는다** — 추가가 no-op인 구현은 훑는 집합이 0이라 조용히 초록이 된다.
+
+### AC-CSD-001 — 없던 엔트리가 정확히 하나 생기고, 값이 `false` 다 (추가 축 + 값 축)
+- **Given** 경로 P에 대한 엔트리를 **하나도** 갖지 않은 config
+- **When** 병합 함수를 적용하면
+- **Then** P를 가진 `[[skills.config]]` 엔트리가 **정확히 1개** 존재하고, 그 구간에 `path` 와 `enabled` 가 모두 있으며 `enabled` 값이 `false` 다.
+- **뮤턴트 1 (추가 축)**: 추가 경로를 no-op으로 만든 구현에서 이 기준이 **RED** 여야 한다.
+- **뮤턴트 2 (값 축)**: `enabled = true` 를 발행하는 구현에서 이 기준이 **RED** 여야 한다.
+- **뮤턴트 3 (스키마 축)**: `enabled` 줄 발행을 제거한 구현에서 이 기준이 **RED** 여야 한다. (누락은 사용자 codex 전면 장애다.)
+- maps REQ-CSD-020, REQ-CSD-021, REQ-CSD-030
+
+### AC-CSD-002 — 발행 표기는 절대 리터럴 미러 경로다
+- **Given** 심링크 미러 프로젝트와 복사 폴백 미러 프로젝트 각각에서 해석된 스킬
+- **When** 발행이 일어나면
+- **Then** 두 경우 모두 `path` 값이 `<projectRoot>/.agents/skills/<skill>/SKILL.md` (절대·파일 모양)이다.
+- **뮤턴트**: `.claude/skills/…` 해소 표기를 발행하는 구현에서 이 기준이 **RED** 여야 한다. (그 표기는 복사 미러에서 조용히 무효 — `gate-path-shape.md` Cres.)
+- maps REQ-CSD-012
+
+### AC-CSD-003 — 실제로 꺼진다 (E2E, 결과 축)
+- **Given** 격리 `CODEX_HOME` 과 미러 픽스처, 그리고 노출 상태의 프로브 스킬
+- **When** `--force` 로 동사를 실행하면
+- **Then** verb가 만든 config를 그대로 겨눈 프로브가 실행 전 `--expect exposed`, 실행 후 `--expect gated` 로 각각 **exit 0** 이다 (마커 1 → 0).
+- **기구**: `.moai/reports/t502/probe.sh probe --codex-home <verb가 쓴 home> --project <픽스처> --skill <name> --expect exposed|gated` — `--entry-path`/`--enabled` 를 주지 않으면 그 config를 **다시 쓰지 않고 그대로 읽는다**(불일치 시 exit 3). 픽스처는 같은 스크립트의 `fixture` 서브커맨드로 만든다.
+- **기구의 검증 상태**: 측정 에이전트가 `--selftest` 로 검증했고 증거는 `.moai/reports/t502/lab/instrument/` 에 보관돼 있다(셀별 판정 6건 — `symlink-lit.txt` = `verdict=gated marker=0`, `copy-res.txt` = `verdict=exposed marker=1` — 및 판정서의 `SELFTEST PASS`). **이 SPEC 저자가 독립적으로 재실행하지는 않았다.** 제3자 재실행은 더 강한 근거이므로 남겨 두되, 부채가 아니라 선택적 강화다. selftest의 채택 게이트는 차단 검출만이 아니라 **무해한 엔트리를 차단으로 오인하지 않음**(복사 모양에서 해소 표기가 여전히 노출)까지 요구하므로, 이 계측기는 「무엇이든 gated로 부르는 도구」가 아님이 셀로 확인된 상태다.
+- maps REQ-CSD-013
+
+## §B 이름 해석 — 세 실패는 서로 다른 종료 코드를 갖는다
+
+### AC-CSD-010 — 이름 → 절대 경로 해석
+- **Given** 미러에 `<name>/SKILL.md` 가 실존
+- **When** `moai skills disable <name> --codex` 를 실행하면
+- **Then** dry-run 보고가 `<projectRoot>/.agents/skills/<name>/SKILL.md` 를 명시하고 exit 0 이다.
+- maps REQ-CSD-010
+
+### AC-CSD-011 — 해석 불가: 무쓰기 + **0이 아닌** 종료 코드
+- **Given** 미러는 있으나 그 이름의 `SKILL.md` 가 없는 상태
+- **When** `--force` 를 포함해 실행하면
+- **Then** 종료 코드가 **0이 아니고**, config sha256이 실행 전과 동일하다. (오타난 이름이 스크립트·CI에서 검출 가능해야 한다.)
+- maps REQ-CSD-011
+
+### AC-CSD-012 — 모호: 무쓰기 + **0이 아닌** 종료 코드
+- **Given** 둘 이상의 후보 루트에서 같은 이름이 해석되는 상태
+- **When** `--force` 로 실행하면
+- **Then** 종료 코드가 **0이 아니고**, config sha256이 실행 전과 동일하다.
+- maps REQ-CSD-011
+
+### AC-CSD-013 — 미러 부재: 무쓰기 + 종료 코드 **0**
+- **Given** `.agents/skills/` 자체가 존재하지 않는 프로젝트 (이 저장소의 실제 상태 — `ls .agents/skills` exit 1)
+- **When** `--force` 로 실행하면
+- **Then** 종료 코드가 **0** 이고 config sha256이 불변이며, 사유가 「미러 없음」으로 이름 붙어 출력된다.
+- maps REQ-CSD-011
+
+## §C 병합 — 멱등·비파괴
+
+### AC-CSD-020 — 기존 엔트리 갱신 (중복 추가 없음)
+- **Given** 대상 경로가 `enabled = true` 로 이미 등록된 config
+- **When** 비활성화 병합을 적용하면
+- **Then** 그 경로를 가진 엔트리 수가 여전히 1이고, 값이 `false` 다.
+- maps REQ-CSD-030
+
+### AC-CSD-021 — 재실행 바이트 불변 (멱등)
+- **Given** 대상 경로가 이미 `enabled = false` 인 config
+- **When** 같은 병합을 다시 적용하면
+- **Then** 출력 바이트가 입력과 **완전히 동일**하다(`bytes.Equal`).
+- maps REQ-CSD-031
+
+### AC-CSD-022 — 기존 엔트리·주석·줄끝 형식 보존
+- **Given** 대상과 무관한 엔트리 N개(주석·빈 줄 포함)를 가진 config, 그리고 CRLF 줄끝 config와 말미 개행이 없는 config
+- **When** 병합이 일어나면
+- **Then** N개 엔트리의 줄들이 순서·내용 그대로 남고, 원래의 줄끝·말미 개행 상태가 유지된다.
+- maps REQ-CSD-032
+
+### AC-CSD-023 — 미인식 줄이 있는 엔트리는 불가침
+- **Given** 대상 경로 엔트리 구간에 파서가 인식하지 못한 줄이 있는 config (`FirstUnrecognizedLine >= 0`)
+- **When** 병합이 시도되면
+- **Then** 그 엔트리는 수정되지 않고, 건너뛴 사유가 보고된다.
+- maps REQ-CSD-033
+
+## §D 러너 — dry-run · 백업 · 모드 · fail-open
+
+### AC-CSD-030 — 기본은 dry-run이고, 계층 명시 없이는 실행되지 않는다
+- **Given** 유효한 config와 해석 가능한 스킬 이름
+- **When** (a) `--force` 없이 실행, (b) `--codex` 없이 실행하면
+- **Then** (a)는 「무엇을 쓸 것인지」만 출력하고, (b)는 명령이 실패하며, 두 경우 모두 config sha256이 실행 전과 동일하다.
+- maps REQ-CSD-040, REQ-CSD-001
+
+### AC-CSD-031 — 쓰기 전 백업, 백업 실패 시 무쓰기, **원본 모드 보존**
+- **Given** 퍼미션이 `0644` 인 기존 config로 `--force` 실행, 그리고 백업 쓰기가 실패하도록 만든 상태(테스트 seam)
+- **When** 각각 실행하면
+- **Then** 정상 경로에서는 `<cfg>.bak-<UTC>` 가 원본과 동일한 내용·mode 0600으로 존재하고 원본 sha256이 출력되며, **대상 config의 모드가 `0644` 그대로**다. 백업 실패 경로에서는 대상 config가 바이트 불변이다.
+- **뮤턴트**: 대상 config를 `0600` 으로 무조건 쓰는 구현에서 이 기준이 **RED** 여야 한다.
+- maps REQ-CSD-040, REQ-CSD-032
+
+### AC-CSD-032 — 입력 부재는 에러가 아니다
+- **Given** codex home이 해석되지 않거나 config가 없는 상태
+- **When** 실행하면
+- **Then** 사유를 말하고 exit code 0으로 끝난다.
+- maps REQ-CSD-041
+
+### AC-CSD-033 — 모든 거절·건너뛰기 사유가 서로 구별된다
+- **Given** 다섯 상태: 해석 불가 · 모호 · 미러 부재 · 미인식 줄 건너뛰기 · 이미 `false`(무변경)
+- **When** 각각 실행하면
+- **Then** 다섯 출력의 사유 문자열이 **서로 다르다**. (한 문구로 뭉뚱그리면 사용자는 무엇을 고쳐야 하는지 알 수 없다.)
+- maps REQ-CSD-042
+
+## §E 경계 검증
+
+### AC-CSD-040 — 파서 읽기 전용 유지 · prune 미변경
+- **Given** 이 SPEC의 구현 diff
+- **When** `git diff --name-only bf779ecf2..HEAD` 로 확인하면 — `bf779ecf2` 는 이 카드의 plan-phase 분기점(첫 커밋 `9a0e9a364` 의 부모이자 `develop` 과의 merge-base)이며, **여기에 박아 고정한다. 자리표시자로 남기지 않는다**: 실행 시점에 값을 고르게 두면 가장 손에 잡히는 후보가 `develop` 이고, 그것이 바로 아래에서 틀렸다고 이름 붙인 값이다. 두 대체 형태가 각각 반대 방향으로 틀린다:
+  - **인자 없는 형태 → 거짓 음성.** 스테이지되지 않은 변경만 보고하므로 커밋된 트리에서 항상 빈 목록을 내고, 파서를 실제로 고쳐 커밋한 뒤에도 무조건 통과한다.
+  - **브랜치명을 base로 쓰면 → 거짓 양성.** 브랜치는 움직이므로 분기 이후 그쪽에 들어온 남의 커밋이 내 변경으로 보고된다. 가설이 아니라 **실측된 사례다**: 리드가 이 카드의 트리에서 base를 `develop` 으로 두고 `internal/` 을 훑어 파일 3개(`internal/cli/codex_task.go`, 그 failcause 테스트, `internal/template/agentemit/agents-codex.yaml`)를 얻었고 경계 위반으로 보였으나, 같은 범위의 커밋 목록이 비어 있어 이 브랜치의 어떤 커밋도 `internal/` 을 건드리지 않았음이 확인됐다 — 세 파일은 분기 이후 `develop` 이 앞서간 11개 커밋의 것이었다. 통합 브랜치가 앞서갈수록 이 오탐은 잦아진다.
+- **Then** 목록에 `internal/codexwiring/skills.go` 와 `internal/cli/codex_skills_prune.go` 가 **없다**.
+- **그리고** 기존 prune 테스트가 통과한다: `go test -run 'TestPruneCodexSkillEntries|TestJudgeCodexSkillEntry|TestRunCleanCodexSkills' ./internal/cli/...` 의 **훑은 테스트 수가 0이 아님**을 먼저 확인한다(셀렉터가 0개를 고르면 `ok` 를 찍는다 — 그 초록은 아무것도 주장하지 않는다). 기대 모집단 수는 **13** 이다 — run-phase 에서 실측해 여기에 적어 고정한 값이며, 추정도 반입도 아니다.
+
+  ```
+  $ go test -list 'TestPruneCodexSkillEntries|TestJudgeCodexSkillEntry|TestRunCleanCodexSkills' ./internal/cli/... | grep -c '^Test'
+  13
+  ```
+
+  두 번 쟀고 두 번 다 13이다: run-phase 시작 시점(`f6ed23a9c` 계열 트리)과 구현이 착지한 tip(`fabb5b000`). 이 카드는 prune 셀렉터에 걸리는 테스트를 하나도 추가하지 않았으므로 값이 움직이지 않는 것이 기대되는 결과다. **0이 나왔다면 그것은 적을 값이 아니라 셀렉터가 틀렸다는 발견이다** — 0개를 고른 셀렉터도 `ok` 를 찍기 때문이다.
+- maps REQ-CSD-050, REQ-CSD-051
+
+## §F 재측정 게이트 [HARD]
+
+### AC-CSD-050 — 발행 코드를 넣는 시점의 codex 버전에서 2셀 재측정
+- **Given** `gate-path-shape.md` 의 판정은 `codex-cli 0.153.4` 한 버전 관측이고, realpath 정규화는 구현 세부라 버전 간 안정성이 보증되지 않는다
+- **When** 발행 코드를 착지시키기 전에, 그 시점 버전에서 최소 2셀을 다시 돌리면 — 심링크 미러 차단(Slit 대응) · 복사 미러 차단(Clit 대응), 각각 양성 통제 동반
+- **Then** 두 셀이 모두 차단(marker 0)으로 재현되고, 그 실행의 `codex --version` 출력이 판정 기록에 인용된다(세션 반입 값 금지).
+- **[HARD] 음성 대조군**: 이 재측정은 **자기 카운터의 음성 대조군을 함께 낸다** — 실제로 존재하지 않는 토큰(예: `ZZZNOTAMARKER`)을 같은 방식으로 세어 **0이 나오는 것**, 그리고 통제 셀에서 실제 마커가 **0이 아닌 값**으로 나오는 것을 둘 다 기록한다. 근거: `marker=0` 행이 아무리 많아도, 카운터가 **실재하는 토큰에 대해 0이 아닌 값을 낼 수 있음**을 보이기 전까지는 「차단됐다」와 「카운터가 망가졌다」가 똑같이 생겼다. 라운드 3 감사가 원 행렬에 대해 이 대조군을 돌렸고(`ZZZNOTAMARKER`), 그것이 19개 `marker=0` 을 의미 있게 만든 검사다.
+- **[HARD] 차단 조건**: 재현되지 않으면 발행 표기를 그대로 두지 않는다 — 리드에게 blocker로 올린다. 음성 대조군이 0이 아닌 값을 내거나 통제 셀이 0을 내면 그 행렬은 채택하지 않는다(카운터를 먼저 고친다).
+- maps REQ-CSD-012, REQ-CSD-013
+
+## §G Definition of Done
+
+- [x] §A~§E 전 AC가 테스트로 표현되고 통과
+- [x] AC-CSD-001의 뮤턴트 3종, AC-CSD-002·AC-CSD-031의 뮤턴트, 그리고 재닫기에서 더해진 **MUTANT-6·MUTANT-7** 이 실제로 잡힘(잡힌 사실을 출력으로 인용)
+- [x] AC-CSD-003 E2E가 `probe.sh` 로 마커 1 → 0 을 보임
+- [x] AC-CSD-040의 prune 테스트 모집단 수가 `go test -list` 로 실측돼 기준에 적혀 있음
+- [x] AC-CSD-050 재측정 2셀 통과 + 버전 스탬프
+- [x] `go test ./internal/cli/... ./internal/codexwiring/...` 통과 (전체 스위트는 CI 몫)
+- [x] `go vet ./...` · `golangci-lint run` 무경고
+- [x] plan.md 에 미해결 clarification 마커 0건 (`grep -c 'NEEDS CLARIFICATION' plan.md` → 0)
+
+### 체크 근거 — sync-phase가 무엇을 직접 관측했는가
+
+체크 표시는 run-phase 보고를 옮겨 적은 것이 아니다. sync-phase가 다시 실행한 명령과 그 출력이 근거이며, **직접 재현하지 않은 항목은 그 사실을 여기 적는다**.
+
+> **이 절은 재닫기에서 갱신됐다.** 첫 닫기는 `f6550020f` 를 쟀고, 그 뒤 독립 sync-audit 이 blocking 1건을 돌려보내 코드 커밋 둘(`bc651da28` 수리, `13ae49a05` F2)이 착지했다. 아래 표의 **측정 트리는 `13ae49a05`** 이며, 2·6·7 행이 그 트리에서 다시 측정됐다. 판정 본문과 advisory 전문은 `.moai/reports/t502/sync-audit.md` 가 담는다.
+
+| 항목 | sync-phase가 실행한 것 | 관측 |
+|---|---|---|
+| 1 (전 AC) | `go test -list '<17개 테스트명 OR-패턴>' ./internal/cli/` → `grep -c '^Test'` **@ `13ae49a05`** | **재측정 → 17.** 기준 행렬이 이름 붙인 16개 + 재닫기에서 더해진 `TestUpsertCodexSkillDisableInsertsMissingEnabledKey` 가 **전부 실재**한다(0이 아니고, 요청 수와 정확히 일치). 없는 이름을 고른 셀렉터도 `ok` 를 찍으므로 이 대조가 패키지 초록의 전제다. AC-CSD-003·050 은 스크립트 기준이며 아래 3·5행이 그 처분을 적는다 |
+| 2 (뮤턴트 1-5) | `grep -n 'want exactly 1\|want SkillEnabledFalse\|entry declares no .enabled. key\|want 0644 preserved' internal/cli/codex_skills_disable_test.go` | 인용된 실패 문구 4종이 **그대로 존재**한다 — 인용문이 지어낸 것이 아님이 확인된다. **줄 번호는 재닫기에서 옮겨졌다**: 165·174·178 은 그대로이나 모드 축은 486 → **544** 로 밀렸다(수리가 위쪽에 60줄을 더했다). **직접 재현하지 않은 것**: 뮤턴트를 다시 주입해 RED를 보지는 않았다. 재주입은 `internal/` 쓰기이고 이 위임의 경계 밖이다 |
+| 2b (MUTANT-6 — 삽입 지점 발행) | `grep -n 'func TestUpsertCodexSkillDisableInsertsMissingEnabledKey' …_test.go` · `grep -n 'still declares no' …_test.go` | 테스트가 **203행에 실재**하고 그 단언이 **222행**에 있다. 이 셀이 지는 성질은 뮤턴트 3(스키마 축)이 문구로만 주장하고 있던 절반이다 — `enabled` 발행 지점은 하나가 아니라 **셋**이고, 삽입 분기(`path` 만 있고 `enabled` 가 없는 엔트리, codex 가 rc=1 로 죽는 바로 그 모양)에는 테스트가 없어 그 발행을 지워도 초록이었다. **관측 주체는 구현 커밋 `bc651da28`** 이며, 그 증거는 RED→GREEN 이 아니라 **뮤턴트 대조**다: 분기가 이미 옳았으므로 선행 실패가 존재하지 않고, MUTANT-6 아래에서 새 테스트만 붉고 기존 AC-CSD-001 테스트는 통과한다. 그 대조가 곧 공백의 증명이다. **이 문서 저자가 재주입해 보지는 않았다** — 근거는 커밋 본문의 기록과 위 두 grep 이다 |
+| 2c (MUTANT-7 — 이웃 줄끝 계승) | `grep -n 'does not carry the neighbouring\|a bare LF appeared' …_test.go` | 단언 두 개가 **230·233행**에 실재한다. MUTANT-6 과 같은 분기의 **다른 성질**이다: 삽입되는 줄은 파일 전체 스캔이 아니라 **바로 위 이웃 줄**에서 줄끝을 가져오는 유일한 지점이라, F1 픽스처를 CRLF 로 쓰는 것만으로 `reshapeLike` 의 CR 분기가 덮였다(`332.36` 0 → 1). **줄 커버리지는 단언이 아니므로** CR 을 버리는 MUTANT-7 로 판별력을 확인했고, 그 실패 출력이 손상을 구체적으로 말한다 — `\r\n` 줄들 사이에 낀 `enabled = false\n`, 즉 사용자 홈에 쓰이는 줄끝 혼재 config. **관측 주체는 구현 커밋 `13ae49a05`**, 재주입 미실행은 2b 와 같다 |
+| 3 (E2E) | `bash .moai/reports/t502/e2e-verb.sh copy` **@ `13ae49a05`** | **재측정 — 직접 재현.** 수리가 발행 경로를 건드렸으므로 첫 닫기의 실행을 이월하지 않고 다시 돌렸다: `codex-cli 0.153.4`, `verdict=exposed marker=1` → `verdict=gated marker=0`, `expect=… result=MATCH` ×2, `pre/post-run config mode: 644`, 재실행 후 `entries declaring the path: 1`, `E2E PASS`, exit 0. 실사용 `~/.codex/config.toml` sha256 **전후 IDENTICAL** |
+| 4 (모집단) | `go test -list 'TestPruneCodexSkillEntries\|TestJudgeCodexSkillEntry\|TestRunCleanCodexSkills' ./internal/cli/... \| grep -c '^Test'` | **13** — 세 번째 독립 측정이며 기준 본문에 박힌 값과 일치 |
+| 5 (재측정 게이트) | `bash .moai/reports/t502/probe.sh selftest` | **첫 닫기(`43e820663`)의 직접 재현이며 이 HEAD 에서 다시 돌리지 않았다**: `codex-cli 0.153.4`, `symlink literal_false=gated` · `copy literal_false=gated` 2셀 + `copy resolved_false=exposed` 대조, 실사용 config sha256 전후 동일, `SELFTEST PASS`, exit 0. 재닫기가 이월한 유일한 재현이고, 같은 게이트를 3행의 E2E 가 이 HEAD 에서 끝까지 통과시킨다 |
+| 6 (테스트) | `go test ./internal/cli/... ./internal/codexwiring/...` **@ `13ae49a05`** | **재측정.** `GOTEST_EXIT=0`, `ok` **18줄**, `FAIL` **0줄**(빈 파일의 0을 초록으로 읽지 않으려면 `ok` 수를 함께 세야 한다), `internal/cli` 440.982s |
+| 7 (vet·lint) | `go vet ./...` **@ `13ae49a05`** · ~~`golangci-lint run`~~ | vet **재측정**: exit 0, 출력 **0줄**, 모듈 전체(`./...`). **lint 는 이 HEAD 에서 돌리지 않았다** — `0 issues.` 는 첫 닫기(`43e820663`)의 측정이고 그 이후 두 커밋을 덮지 않으므로, 재측정이 아니라 **이월된 값**으로 적는다 |
+| 8 (마커) | `grep -c 'NEEDS CLARIFICATION' plan.md` | **0** |
+
+증거 파일 — 재닫기(`13ae49a05`): `.moai/state/verify/t502-resync/`(`gotest.txt` · `vet.txt` · `speclint.txt` · `e2e-copy.txt` · `ac-testlist.txt`). 첫 닫기(`43e820663`): `.moai/state/verify/t502-sync/`. 독립 감사: `.moai/state/verify/t502-audit/`, 판정서 `.moai/reports/t502/sync-audit.md`.

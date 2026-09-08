@@ -202,6 +202,48 @@ func autoWrapSingle(ac Acceptance) Acceptance {
 	return wrapped
 }
 
+// acIDPattern anchors an AC declaration line, applied after the leading
+// "- *" run has been trimmed. Its four widening axes were each derived from the
+// corpus (SPEC-AC-COLLECTOR-ANCHOR-001 §B); the anchor is compiled once because
+// it is evaluated per line over every spec.md.
+//
+//	AC-(?:[A-Za-z0-9]+-)*[0-9]+   axis 1 — variable segment count with
+//	                              alphanumeric middle segments. The LAST segment
+//	                              stays numeric: it is the only measured property
+//	                              separating a declaration id from an arbitrary
+//	                              AC-prefixed token, so dropping it would admit
+//	                              any such token with nothing left to narrow it.
+//	(?:\.[a-z](?:\.[a-z]+)?)?     axis 2 — sub-id suffix, UNCHANGED from the
+//	                              pre-widening anchor. hasIDSuffix/autoWrapSingle
+//	                              branch on the dot, so altering this changes the
+//	                              tree shape rather than only recognition.
+//	\*{0,2}                       axis 3 — the CLOSING bold marker. The opening
+//	                              one is already removed by the TrimLeft below,
+//	                              which is deliberately left alone: widening the
+//	                              preprocessing would move the risk surface from
+//	                              this anchor to every line in the section.
+//	(?:\([^()]*\)\s*)?            axis 4a — one parenthesised qualifier between
+//	                              the id and the separator, e.g. "(A1)",
+//	                              "(REQ-001)". Skipping it exposes the real
+//	                              separator behind it. Axes 3 and 4a compose in
+//	                              EITHER order, which is why \*{0,2} appears on
+//	                              both sides: the corpus writes the qualifier both
+//	                              inside the bold span ("**AC-CSS-001-01
+//	                              (isolation-validity)** —") and after it
+//	                              ("**AC-HFC-001a** (REQ-HFC-001):"), and fixing
+//	                              one order rejects 53 lines for a property of
+//	                              this anchor rather than of the corpus.
+//	                              BRACKET qualifiers ("**AC-1 [REQ-002]**:", 17
+//	                              lines) stay out: that is a new axis, not the
+//	                              composition of two declared ones.
+//	[:—–]                         axis 4b — separator set: colon, em dash
+//	                              (U+2014, observed), en dash (U+2013, a design
+//	                              decision with no corpus observation). The
+//	                              separator stays REQUIRED; widening the set is
+//	                              not the same as dropping the requirement, and
+//	                              the requirement is what keeps prose bullets out.
+var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
+
 func parseSingleACLine(line string) *struct {
 	id     string
 	given  string
@@ -214,8 +256,6 @@ func parseSingleACLine(line string) *struct {
 	trimmed = strings.TrimLeft(trimmed, "- *")
 	trimmed = strings.TrimSpace(trimmed)
 
-	// AC ID pattern: AC-XXX-NNN-NN or AC-XXX-NNN-NN.a or AC-XXX-NNN-NN.a.i
-	acIDPattern := regexp.MustCompile(`^(AC-[A-Z0-9]+-[0-9]+-[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\s*:\s*`)
 	idMatch := acIDPattern.FindStringSubmatch(trimmed)
 
 	if len(idMatch) < 2 {

@@ -4,19 +4,28 @@ package cli
 // Wiring" diagnostic (REQ-CW-010 / AC-CW-012).
 //
 // Advisory and fail-open (checkBinaryFreshness t184 precedent): the check
-// reports, it never gates — an inactive project (no wiring files) is an
+// reports, it never gates — an inactive project on a codex-less machine is an
 // informational skip, and every finding is an action directive rather than a
 // claim about Codex's undocumented internal trust store (spec §H: the
 // sidecar divergence is an INDIRECT signal; the advice says what to DO).
+//
+// The check READS only. It never creates, repairs, or removes a .codex/ file,
+// and never touches the user-layer ~/.codex/config.toml: wiring creation is
+// the explicit `moai init --agent codex` opt-in (REQ-CW-009) and a user-owned
+// table is the doctor's to report, never the writer's to repair (REQ-CW-005).
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
@@ -27,92 +36,953 @@ import (
 // check's verdict never depends on the machine running the test suite).
 var codexWiringLookPath = exec.LookPath
 
+// The user-layer config is located through resolveCodexHomeDir (mcp_codex.go)
+// rather than a home seam of this file's own: CODEX_HOME is a first-class
+// convention here (REQ-CL-005), and a second resolution that ignored it read
+// a file Codex does not, while leaving the file Codex DOES read unchecked.
+// That resolver already carries the codexUserHomeDir seam tests pin.
+
 // reTrustAdvice is the divergence action directive (AC-CW-012 token).
 const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
+
+// initCodexAdvice is the unwired-project action directive. `moai init` is the
+// ONLY path that creates wiring — RefreshWiring is an existence gate that
+// creates nothing (REQ-CW-009), so an unwired project stays unwired until the
+// user opts in explicitly.
+const initCodexAdvice = "run moai init --agent codex"
+
+// halfWiredSummary names the half-wired state: the project carries Codex
+// agent definitions but no wiring file. `moai init` deploys the definitions
+// with or without the --agent codex opt-in, so this is what a plain init
+// leaves behind — which is why the state needed a name of its own rather
+// than being folded into "not wired" (SPEC-CODEX-PARTIAL-WIRING-001).
+const halfWiredSummary = "codex agent definitions present, no wiring files"
+
+// halfWiredAbsentMessage is the WHOLE Message of the half-wired branch on a
+// machine without codex. It is a fixed literal because nothing about it
+// varies per project: the paths are evidence and ride in Detail, and the
+// count of definitions is deliberately not a discriminant input
+// (REQ-CPW-005).
+//
+// It carries NO action directive on purpose. The only remedy needs a codex
+// this machine does not have, and an instruction the reader cannot execute
+// is nagging rather than guidance (REQ-CPW-009) — the un-nagging invariant
+// this check has held since it was written.
+const halfWiredAbsentMessage = halfWiredSummary + " — codex not on PATH"
+
+// mirrorRedeployAdvice is the skill-mirror action directive
+// (SPEC-CODEX-MIRROR-DOCTOR-001 §4). The FORCED form is deliberate: the
+// routine `moai update --yes` was measured to leave a deleted mirror at zero
+// entries on a version-matched project, because the version-match
+// short-circuit returns before the deploy step that owns mirror creation.
+// This exact invocation restored it (root-cause.md Claim 2).
+const mirrorRedeployAdvice = "run moai update --templates-only --force --yes"
+
+// mirrorSkillsRelDir / canonicalSkillsRelDir are the mirror layout.
+//
+// They restate the producer's paths as literals rather than importing them:
+// package template's own mirrorSkillsRelDir and mirrorLinkTarget are
+// unexported, and exporting them is outside this SPEC's scope. The drift risk
+// that follows — the producer moving its layout without this reader noticing —
+// is recorded rather than closed, and is a candidate for its own card.
+var (
+	mirrorSkillsRelDir    = filepath.Join(".agents", "skills")
+	canonicalSkillsRelDir = filepath.Join(".claude", "skills")
+)
+
+// codexHomeConfigDisplay / codexHomeConfigEnvDisplay are how the user-layer
+// config is NAMED in a finding summary. The symbolic form keeps the summary
+// inside the width band; the exact resolved path rides in Detail, where the
+// evidence belongs and the width is the reader's own opt-in.
+const (
+	codexHomeConfigDisplay    = "~/.codex/config.toml"
+	codexHomeConfigEnvDisplay = "$CODEX_HOME/config.toml"
+)
+
+// codexMessageWidthCeiling bounds a Message in RUNES. The doctor panel sizes
+// itself to its widest row, so one long message widens the whole box past the
+// terminal and breaks every other row's alignment. 113 is the longest message
+// the committed golden fixtures already carry (internal/cli/testdata/
+// doctor-nocolor.golden, the Constitution Registry row) — this check stays
+// inside the band the existing rows occupy rather than defining a new one.
+const codexMessageWidthCeiling = 113
+
+// codexFindingSeverity grades one finding.
+//
+// [HARD] The ADVISORY grade is the zero value, and the ordering is load-bearing
+// rather than stylistic. Every construction site in this file builds a
+// codexFinding by composite literal naming no severity, so each takes the Go
+// zero value. Declaring the enum fatal-first — the iota ordering its neighbour
+// codexwiring.SkillEnabled uses, which is what copying the adjacent style would
+// produce — would silently re-grade every one of them to fatal, and
+// `moai doctor` would exit 1 on every advisory machine in existence.
+//
+// The cost of this default is stated rather than hidden: a future construction
+// site silently inherits advisory. That IS the intended default, and
+// TestCodexFindingZeroValueIsAdvisory is what stops it drifting.
+type codexFindingSeverity int
+
+const (
+	// codexSeverityAdvisory is a finding the user SHOULD act on. It keeps the
+	// pre-t508 behaviour: uikit.CheckWarn, process exit 0.
+	codexSeverityAdvisory codexFindingSeverity = iota
+	// codexSeverityFatal is a finding on which the consuming tool cannot
+	// operate at all — the check reports uikit.CheckFail and `moai doctor`
+	// exits non-zero.
+	codexSeverityFatal
+)
+
+// codexFinding is one problem in two registers: a SHORT summary for Message,
+// which a plain `moai doctor` renders, and the full text for Detail, which
+// renders only under --verbose. Splitting them is what lets an action
+// directive stay visible without the enumeration behind it blowing the panel.
+//
+// The severity rides ON the finding rather than beside it. A grade returned
+// alongside a finding would live on the CALL SITE and be lost the moment the
+// finding is appended or joined, and the status fold needs the grade after
+// every producer has returned; a second `fatals` slice would give the 13
+// existing sites a slice to choose rather than a safe default, and would
+// duplicate the join/width logic where the tail-drop invariant lives.
+type codexFinding struct {
+	summary  string
+	detail   string
+	severity codexFindingSeverity
+}
+
+// codexCheckStatus folds a run's findings onto the check status: any fatal
+// finding fails the check; otherwise the pre-t508 behaviour is byte-identical.
+//
+// The caller has already handled the empty case (no findings ⇒ CheckOK), so
+// this fold is reached only with at least one finding.
+func codexCheckStatus(problems []codexFinding) uikit.CheckStatus {
+	for _, p := range problems {
+		if p.severity == codexSeverityFatal {
+			return uikit.CheckFail
+		}
+	}
+	return uikit.CheckWarn
+}
 
 // checkCodexWiring verifies the Codex wiring of the project at root:
 // hooks.json presence + whitelist validity, sidecar-hash divergence, the
 // moai binary's PATH resolution, and the config.toml [mcp_servers.moai]
-// table's presence/canonical shape. A project without wiring files is an
-// informational skip (the update path's opt-in marker, REQ-CW-009).
+// table's presence/canonical shape — plus, when Codex is in play at all, the
+// user-layer skill registrations. A project without wiring files on a machine
+// without codex is an informational skip (the opt-in marker, REQ-CW-009).
 func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Codex Wiring"}
 
 	hooksRaw, hooksErr := os.ReadFile(filepath.Join(root, codexwiring.HooksRelPath))
 	cfgRaw, cfgErr := os.ReadFile(filepath.Join(root, codexwiring.ConfigRelPath))
-	if hooksErr != nil && cfgErr != nil {
+
+	wired := hooksErr == nil || cfgErr == nil
+	_, codexPathErr := codexWiringLookPath("codex")
+	codexInstalled := codexPathErr == nil
+
+	// A project can carry Codex agent definitions and no wiring file at all:
+	// that is exactly what a plain `moai init` leaves behind. Reading only
+	// the two wiring files gave that state no branch of its own, so it was
+	// reported as "not wired (claude-only project)" — a sentence contradicted
+	// by the definitions sitting on disk (REQ-CPW-004).
+	halfWired := !wired && codexAgentDefinitionsExist(root)
+
+	if !wired && !codexInstalled {
 		check.Status = uikit.CheckOK
+		if halfWired {
+			// Informational, never a warning. Raising this to Warn would put
+			// a permanent warning row in front of every claude-only user,
+			// because plain init gives every project these definitions —
+			// the outcome the un-nagging invariant exists to prevent
+			// (spec §D-1). The user-layer skill sweep below is deliberately
+			// NOT reached: Codex is not in play on this machine, and a
+			// finding from a config Codex never reads here would be the same
+			// nagging by another route (REQ-CPW-011).
+			check.Message = halfWiredAbsentMessage
+			check.Detail = halfWiredDetail()
+			return check
+		}
+		// Claude-only project on a claude-only machine: nothing about Codex
+		// is in play, so the check stays silent. This is the un-nagging
+		// invariant — it must survive every addition below.
 		check.Message = "not wired (claude-only project) — skipped"
 		return check
 	}
 
-	var problems []string
-	var advice []string
+	var problems []codexFinding
+	// extraDetail carries observations that are not findings in their own
+	// right (an unreadable sidecar, a verbose-only note).
+	var extraDetail []string
 
-	// hooks.json: presence, whitelist validity, sidecar divergence.
-	if hooksErr != nil {
-		problems = append(problems, fmt.Sprintf("%s missing (wiring active but the hook layer is gone)", codexwiring.HooksRelPath))
+	if !wired {
+		// Codex IS installed but this project was never wired. Silence here
+		// costs the user the whole integration with no signal: no
+		// project-layer MCP registration and every generated hook dead. The
+		// directive rides IN the summary because Detail renders only under
+		// --verbose.
+		//
+		// The claim is scoped to what was READ. Only the two PROJECT files
+		// were inspected, so this says nothing about whether the user-layer
+		// config registers the MoAI server — asserting a machine-wide "not
+		// registered" from a project-local absence is an unobserved premise.
+		//
+		// The half-wired variant narrows the PREMISE rather than rewriting
+		// the sentence: "project not wired" stays true, and stays the
+		// wording, for a project that carries no Codex anything. Where the
+		// agent definitions ARE present, the state gets its own name and the
+		// directive — executable here, since codex resolves — rides along.
+		summary := "codex installed, project not wired — " + initCodexAdvice
+		detail := fmt.Sprintf(
+			"codex resolves on PATH but this project declares no Codex wiring (%s and %s are both absent), so this project registers no MoAI MCP server and the generated hooks cannot fire here; %s",
+			codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice)
+		if halfWired {
+			summary = halfWiredSummary + " — " + initCodexAdvice
+			detail = halfWiredDetail() + "; " + initCodexAdvice
+		}
+		problems = append(problems, codexFinding{summary: summary, detail: detail})
 	} else {
-		if violations, verr := codexadapter.ValidateConfig(hooksRaw); verr != nil {
-			problems = append(problems, fmt.Sprintf("hooks.json unparseable: %v", verr))
-		} else if len(violations) > 0 {
-			// Codex silently disables the whole file on one stray key (t83
-			// Finding D) — this is the observability backstop.
-			names := make([]string, len(violations))
-			for i, v := range violations {
-				names[i] = v.Error()
+		// hooks.json: presence, whitelist validity, sidecar divergence.
+		if hooksErr != nil {
+			problems = append(problems, plainCodexFinding(fmt.Sprintf("%s missing (wiring active but the hook layer is gone)", codexwiring.HooksRelPath)))
+		} else {
+			if violations, verr := codexadapter.ValidateConfig(hooksRaw); verr != nil {
+				problems = append(problems, plainCodexFinding(fmt.Sprintf("hooks.json unparseable: %v", verr)))
+			} else if len(violations) > 0 {
+				// Codex silently disables the whole file on one stray key (t83
+				// Finding D) — this is the observability backstop.
+				names := make([]string, len(violations))
+				for i, v := range violations {
+					names[i] = v.Error()
+				}
+				problems = append(problems, codexFinding{
+					summary: "hooks.json fails the key whitelist — Codex would silently ignore the file",
+					detail:  "hooks.json fails the key whitelist (" + strings.Join(names, "; ") + ") — Codex would silently ignore the file",
+				})
 			}
-			problems = append(problems, "hooks.json fails the key whitelist ("+strings.Join(names, "; ")+") — Codex would silently ignore the file")
+
+			if sidecar, present, serr := codexwiring.LoadSidecar(root); serr != nil {
+				extraDetail = append(extraDetail, fmt.Sprintf("sidecar unreadable: %v", serr))
+			} else if present {
+				sum := sha256.Sum256(hooksRaw)
+				if sidecar.HooksSHA256 != hex.EncodeToString(sum[:]) {
+					// The directive rides IN the message (not Detail) so a plain
+					// `moai doctor` surfaces it — Detail only renders under
+					// --verbose (AC-CW-012 clause 2's plain-doctor reading).
+					problems = append(problems, codexFinding{
+						summary: "hooks.json changed since generation — " + reTrustAdvice,
+						detail:  "hooks.json differs from the last generated content (sidecar hash mismatch) — " + reTrustAdvice,
+					})
+				}
+			} else if verbose {
+				extraDetail = append(extraDetail, "no trust sidecar recorded (never wired by this generator)")
+			}
 		}
 
-		if sidecar, present, serr := codexwiring.LoadSidecar(root); serr != nil {
-			check.Detail = fmt.Sprintf("sidecar unreadable: %v", serr)
-		} else if present {
-			sum := sha256.Sum256(hooksRaw)
-			if sidecar.HooksSHA256 != hex.EncodeToString(sum[:]) {
-				// The directive rides IN the message (not Detail) so a plain
-				// `moai doctor` surfaces it — Detail only renders under
-				// --verbose (AC-CW-012 clause 2's plain-doctor reading).
-				problems = append(problems, "hooks.json differs from the last generated content (sidecar hash mismatch) — "+reTrustAdvice)
-				advice = append(advice, reTrustAdvice)
-			}
-		} else if verbose {
-			check.Detail = "no trust sidecar recorded (never wired by this generator)"
+		// moai binary PATH resolution: the generated hook commands are
+		// `moai hook ...` — an unresolvable binary means none of them can fire.
+		if _, lerr := codexWiringLookPath("moai"); lerr != nil {
+			problems = append(problems, plainCodexFinding("moai binary not found on PATH — the generated hook commands cannot fire"))
 		}
+
+		// config.toml: table presence + canonical shape (drift is REPORTED; the
+		// writer never repairs a user-owned table, REQ-CW-005).
+		if cfgErr != nil {
+			problems = append(problems, plainCodexFinding(fmt.Sprintf("%s missing (wiring active but the MCP registration is gone)", codexwiring.ConfigRelPath)))
+		} else {
+			status := codexwiring.InspectMCPTable(cfgRaw)
+			switch {
+			case !status.Present:
+				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table missing from config.toml"))
+			case !status.Canonical:
+				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)"))
+			}
+		}
+
+		// Skill mirror. `.agents/skills` is what makes the MoAI skill catalog
+		// reachable from Codex CLI, which does not scan `.claude/skills`. It
+		// is created at deploy time only, and its outcome is consumed only by
+		// the two deploy-time notice callers — so on a version-matched project
+		// a missing or broken mirror is invisible and self-perpetuating, and
+		// nothing but this row surfaces it.
+		//
+		// Inspected in the WIRED branch only (REQ-CMD-008). The unwired branch
+		// already carries initCodexAdvice, whose deploy creates the mirror; a
+		// second directive there would double-nag a project that never opted
+		// in.
+		mirrorProblems, mirrorDetail := codexMirrorObservations(inspectSkillMirror(root))
+		problems = append(problems, mirrorProblems...)
+		extraDetail = append(extraDetail, mirrorDetail...)
 	}
 
-	// moai binary PATH resolution: the generated hook commands are
-	// `moai hook ...` — an unresolvable binary means none of them can fire.
-	if _, lerr := codexWiringLookPath("moai"); lerr != nil {
-		problems = append(problems, "moai binary not found on PATH — the generated hook commands cannot fire")
+	// User-layer skill registrations. Reached only when Codex is in play at
+	// all (wired project, or codex on PATH) — the guard above already
+	// returned for the claude-only case.
+	if finding, ok := codexStaleSkillFinding(); ok {
+		problems = append(problems, finding)
 	}
-
-	// config.toml: table presence + canonical shape (drift is REPORTED; the
-	// writer never repairs a user-owned table, REQ-CW-005).
-	if cfgErr != nil {
-		problems = append(problems, fmt.Sprintf("%s missing (wiring active but the MCP registration is gone)", codexwiring.ConfigRelPath))
-	} else {
-		status := codexwiring.InspectMCPTable(cfgRaw)
-		switch {
-		case !status.Present:
-			problems = append(problems, "[mcp_servers.moai] table missing from config.toml")
-		case !status.Canonical:
-			problems = append(problems, "[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)")
-		}
+	if finding, note, ok := codexEnabledShapeFinding(); ok {
+		problems = append(problems, finding)
+	} else if note != "" {
+		// No fatal shape, but the config WAS read. The note is what
+		// distinguishes "read it, every entry is well-formed" from "never
+		// reached it" — without it a quiet check is indistinguishable from a
+		// skipped one, in a report and in a test alike.
+		extraDetail = append(extraDetail, note)
 	}
 
 	if len(problems) == 0 {
 		check.Status = uikit.CheckOK
 		check.Message = "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+		check.Detail = joinCodexDetails(nil, extraDetail)
 		return check
 	}
 
-	check.Status = uikit.CheckWarn
-	check.Message = strings.Join(problems, "; ")
-	if len(advice) > 0 {
-		check.Detail = strings.Join(advice, "; ")
-	} else if verbose && check.Detail == "" {
+	check.Status = codexCheckStatus(problems)
+	check.Message = joinCodexSummaries(problems)
+	check.Detail = joinCodexDetails(problems, extraDetail)
+	if check.Detail == "" && verbose {
 		check.Detail = "advisory check — rerun `moai init --agent codex` to refresh the wiring"
 	}
 	return check
+}
+
+// codexAgentDefinitionsExist reports whether the project declares at least
+// one Codex agent definition file under .codex/agents/.
+//
+// The question is EXISTENCE, never count. How many definitions the template
+// ships is a template fact that a single edit changes, so a discriminant
+// keyed on that number goes quietly wrong the day the template grows — the
+// walk therefore stops at the first regular file (REQ-CPW-005).
+//
+// Fail-open in every direction, like the rest of this check: an absent or
+// unreadable directory yields false, so a permission error never
+// manufactures a finding. The function READS only.
+func codexAgentDefinitionsExist(root string) bool {
+	var found bool
+	_ = filepath.WalkDir(filepath.Join(root, codexwiring.AgentsRelPath),
+		func(_ string, d fs.DirEntry, err error) error {
+			if err != nil {
+				// An unreadable entry says nothing about whether a
+				// definition exists — skip it rather than decide on it.
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			found = true
+			return fs.SkipAll
+		})
+	return found
+}
+
+// halfWiredDetail is the evidence behind a half-wired verdict: what the
+// project WAS found to carry and what it was found to lack, each named by
+// path. Evidence belongs in Detail — Message carries the verdict, and naming
+// three paths there is what pushed this row past the panel width before.
+func halfWiredDetail() string {
+	return fmt.Sprintf(
+		"this project carries Codex agent definitions under %s but declares no Codex wiring (%s and %s are both absent), so it registers no MoAI MCP server and the generated hooks cannot fire here",
+		codexwiring.AgentsRelPath, codexwiring.HooksRelPath, codexwiring.ConfigRelPath)
+}
+
+// plainCodexFinding is a finding whose full text is already short enough to
+// ride in Message unchanged.
+func plainCodexFinding(text string) codexFinding {
+	return codexFinding{summary: text, detail: text}
+}
+
+// skillMirrorState is what one read of `.agents/skills` observed.
+//
+// The state model is deliberately separate from the finding/detail split that
+// consumes it: WHICH states warrant a Message finding is the decision most
+// likely to be revisited, so it lives one call site away (plan.md §D M1).
+//
+// dirPresent and dirIndeterminate are distinct on purpose. "I read the
+// directory and it is not there" and "I could not read the directory" are
+// different observations, and only the first may raise the absent finding —
+// an unobserved absence is never reported as absent (REQ-CMD-010).
+type skillMirrorState struct {
+	dirPresent       bool
+	dirIndeterminate bool
+	dirReadErr       error
+	dangling         []string
+	copyMode         int
+	unmirrored       int
+	indeterminate    int
+}
+
+// inspectSkillMirror reads the mirror at root and returns what it observed.
+// It READS only — no create, repair, replace, or remove, on any path
+// (REQ-CMD-002). Every read error folds into an indeterminate count and never
+// into a count that drives a finding.
+func inspectSkillMirror(root string) skillMirrorState {
+	var st skillMirrorState
+
+	mirrorDir := filepath.Join(root, mirrorSkillsRelDir)
+	entries, err := os.ReadDir(mirrorDir)
+	switch {
+	case err == nil:
+		st.dirPresent = true
+	case errors.Is(err, fs.ErrNotExist):
+		// Genuinely absent: the one state that may raise the absent finding.
+		return st
+	default:
+		// Permission denied, a symlink loop, an I/O error: the mirror's state
+		// is indeterminate, NOT absent.
+		st.dirIndeterminate = true
+		st.dirReadErr = err
+		return st
+	}
+
+	mirrored := make(map[string]struct{}, len(entries))
+	for _, e := range entries {
+		mirrored[e.Name()] = struct{}{}
+		entryPath := filepath.Join(mirrorDir, e.Name())
+
+		info, lerr := os.Lstat(entryPath)
+		if lerr != nil {
+			st.indeterminate++
+			continue
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			if info.IsDir() {
+				// The copy fallback's materialization. Functional, and the
+				// expected shape wherever symlink creation is unavailable.
+				st.copyMode++
+			}
+			// A regular file occupying a mirror path is a shape no
+			// requirement classifies; counting it as anything would assert
+			// something this check has no basis for.
+			continue
+		}
+		// Stat follows the link, resolving the producer's RELATIVE link body
+		// against the mirror directory exactly as the OS does for Codex.
+		_, serr := osStatFn(entryPath)
+		switch {
+		case serr == nil:
+		case errors.Is(serr, fs.ErrNotExist):
+			st.dangling = append(st.dangling, e.Name())
+		default:
+			st.indeterminate++
+		}
+	}
+
+	canonical, cerr := os.ReadDir(filepath.Join(root, canonicalSkillsRelDir))
+	if cerr != nil {
+		if !errors.Is(cerr, fs.ErrNotExist) {
+			st.indeterminate++
+		}
+		return st
+	}
+	for _, e := range canonical {
+		if !e.IsDir() {
+			continue
+		}
+		if _, ok := mirrored[e.Name()]; !ok {
+			st.unmirrored++
+		}
+	}
+	return st
+}
+
+// codexMirrorObservations splits an observed mirror state into the two
+// registers: findings that reach Message, and detail-only counts that reach
+// Detail alone.
+//
+// Two states are findings, and only two. An absent mirror means Codex sees no
+// MoAI skills at all, and a dangling entry claims a skill that is not there —
+// both mechanically decidable, both unrepaired between deploys.
+//
+// Copy-mode and unmirrored counts are reported and never warned. Copy mode is
+// the CORRECT materialization on a symlink-less host, so warning on it would
+// hand those users a permanent row for a working mirror. And the denominator
+// an unmirrored finding would need — the set of skills a deploy actually
+// mirrored — is not observable from here, so a count-based finding would warn
+// on a project carrying locally-authored skills that no deploy ever touched.
+func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
+	var problems []codexFinding
+	var detail []string
+
+	switch {
+	case st.dirIndeterminate:
+		detail = append(detail, fmt.Sprintf(
+			"%s could not be read (%v) — mirror state not checked, and NOT reported as absent",
+			mirrorSkillsRelDir, st.dirReadErr))
+		return problems, detail
+	case !st.dirPresent:
+		problems = append(problems, codexFinding{
+			summary: fmt.Sprintf("%s mirror absent — %s", mirrorSkillsRelDir, mirrorRedeployAdvice),
+			detail: fmt.Sprintf(
+				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time, and `moai update` now repairs it in projects whose recorded template_version is at or above the release that introduced it; where it is still absent after an update, %s",
+				mirrorSkillsRelDir, canonicalSkillsRelDir, mirrorRedeployAdvice),
+		})
+		return problems, detail
+	}
+
+	if n := len(st.dangling); n > 0 {
+		problems = append(problems, codexFinding{
+			summary: fmt.Sprintf("%s: %d dangling mirror %s — %s",
+				mirrorSkillsRelDir, n, pluralCodexEntries(n), mirrorRedeployAdvice),
+			detail: fmt.Sprintf(
+				"%s: %d %s are symlinks whose %s target no longer exists (%s) — %s",
+				mirrorSkillsRelDir, n, pluralCodexEntries(n), canonicalSkillsRelDir,
+				strings.Join(st.dangling, ", "), mirrorRedeployAdvice),
+		})
+	}
+	if st.copyMode > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s materialized as a real directory (copy fallback — functional, but a copy does not follow later updates to %s)",
+			mirrorSkillsRelDir, st.copyMode, pluralCodexEntries(st.copyMode), canonicalSkillsRelDir))
+	}
+	if st.unmirrored > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s with no %s entry (reported, not a finding: the set a deploy actually mirrored is not observable here)",
+			canonicalSkillsRelDir, st.unmirrored, pluralCodexEntries(st.unmirrored), mirrorSkillsRelDir))
+	}
+	if st.indeterminate > 0 {
+		detail = append(detail, fmt.Sprintf(
+			"%s: %d %s could not be read — not checked, and NOT counted as dangling",
+			mirrorSkillsRelDir, st.indeterminate, pluralCodexEntries(st.indeterminate)))
+	}
+	return problems, detail
+}
+
+// joinCodexSummaries renders the Message, bounded by codexMessageWidthCeiling.
+//
+// Summaries are kept in order and dropped from the TAIL when they do not fit,
+// so a directive-bearing finding — which is always raised before the
+// user-layer sweep — survives truncation and stays visible on a plain
+// `moai doctor`. The dropped count is reported rather than hidden, and the
+// full text of every finding remains in Detail.
+//
+// One exception is deliberate: a single leading summary that alone exceeds
+// the ceiling is emitted whole. Cutting it mid-sentence would truncate its
+// own directive, which is the outcome the bound exists to prevent.
+func joinCodexSummaries(findings []codexFinding) string {
+	if len(findings) == 0 {
+		return ""
+	}
+	summaries := make([]string, len(findings))
+	for i, f := range findings {
+		summaries[i] = f.summary
+	}
+	if utf8.RuneCountInString(strings.Join(summaries, "; ")) <= codexMessageWidthCeiling {
+		return strings.Join(summaries, "; ")
+	}
+	// Upper bound on the marker, computed from the largest count it can name.
+	markerBudget := utf8.RuneCountInString(codexOverflowMarker(len(summaries)))
+	kept := 1
+	for i := 2; i <= len(summaries); i++ {
+		if utf8.RuneCountInString(strings.Join(summaries[:i], "; "))+markerBudget > codexMessageWidthCeiling {
+			break
+		}
+		kept = i
+	}
+	return strings.Join(summaries[:kept], "; ") + codexOverflowMarker(len(summaries)-kept)
+}
+
+// codexOverflowMarker names how many findings Message dropped for width.
+func codexOverflowMarker(dropped int) string {
+	return fmt.Sprintf(" (+%d more, see --verbose)", dropped)
+}
+
+// joinCodexDetails renders Detail as one line per finding. Detail renders
+// only under --verbose, and the panel sizes itself to its widest row, so the
+// per-finding text is kept on separate lines rather than concatenated into
+// one row that would widen the box all over again.
+func joinCodexDetails(findings []codexFinding, extra []string) string {
+	var texts []string
+	for _, f := range findings {
+		if f.detail != "" {
+			texts = append(texts, f.detail)
+		}
+	}
+	texts = append(texts, extra...)
+	if len(texts) == 0 {
+		return ""
+	}
+	var lines []string
+	for _, t := range texts {
+		lines = append(lines, wrapCodexDetail(t, codexMessageWidthCeiling)...)
+	}
+	return strings.Join(lines, "\n      ")
+}
+
+// wrapCodexDetail folds one detail text onto lines of at most width runes.
+// Detail becomes a row of its own under --verbose, so an unwrapped detail
+// widens the panel exactly as an unwrapped Message does — the width bound has
+// to hold on both surfaces or it holds on neither.
+//
+// A single token longer than width is emitted whole rather than split: the
+// tokens that get that long here are filesystem paths, and a path broken
+// across lines stops being copy-pasteable, which is the whole point of citing
+// it.
+func wrapCodexDetail(text string, width int) []string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return nil
+	}
+	var lines []string
+	cur := words[0]
+	for _, w := range words[1:] {
+		if utf8.RuneCountInString(cur)+1+utf8.RuneCountInString(w) > width {
+			lines = append(lines, cur)
+			cur = w
+			continue
+		}
+		cur += " " + w
+	}
+	return append(lines, cur)
+}
+
+// codexSkillPathShape classifies a declared [[skills.config]] path by shape,
+// BEFORE any filesystem check (SPEC-CODEX-SKILL-PATH-001). Only shapes that
+// resolve deterministically in this environment (absolute, and home-relative
+// after expansion) can feed the missing verdict; every other shape is a
+// declared classification that is reported and never acted on.
+type codexSkillPathShape int
+
+const (
+	// codexPathAbsolute is filepath.IsAbs. IsAbs is evaluated FIRST, so a
+	// Windows host classifies its own native C:\... paths here — never as
+	// oddly-formed — while a backslash-bearing fragment on any host does
+	// not.
+	codexPathAbsolute codexSkillPathShape = iota
+	// codexPathHomeRelative is exactly "~" or a "~/"-prefixed path — the
+	// user's own home, expandable here.
+	codexPathHomeRelative
+	// codexPathRelative declares a path with no observed resolution base in
+	// this repository. Guessing one would manufacture a verdict, so the
+	// entry is reported as relative and never stat'ed.
+	codexPathRelative
+	// codexPathOddlyFormed is a backslash-bearing non-absolute fragment (a
+	// Windows-shaped separator in a non-absolute position, or a residual
+	// un-decoded TOML escape) or another user's "~user" home form.
+	codexPathOddlyFormed
+)
+
+// classifyCodexSkillPath maps a declared path onto its shape. Ordering is
+// load-bearing: IsAbs runs before the backslash check (a native Windows
+// absolute stays absolute), and the home-relative forms are peeled off
+// before the residual "~"-prefixed shapes fall to oddly-formed.
+func classifyCodexSkillPath(p string) codexSkillPathShape {
+	if filepath.IsAbs(p) {
+		return codexPathAbsolute
+	}
+	if p == "~" || strings.HasPrefix(p, "~/") {
+		return codexPathHomeRelative
+	}
+	if strings.HasPrefix(p, "~") || strings.ContainsRune(p, '\\') {
+		return codexPathOddlyFormed
+	}
+	return codexPathRelative
+}
+
+// expandCodexHomeRelativePath expands a "~" or "~/"-prefixed declaration
+// against the USER home resolved through the existing codexUserHomeDir seam
+// (os.UserHomeDir) — the same seam resolveCodexHomeDir uses, never a second
+// resolver, and never CODEX_HOME: the env var locates the config, the user
+// home expands "~". ok=false means the home itself is unresolvable, which
+// the caller must treat as indeterminate, never absent.
+func expandCodexHomeRelativePath(p string) (expanded string, ok bool) {
+	home, err := codexUserHomeDir()
+	if err != nil || home == "" {
+		return "", false
+	}
+	if p == "~" {
+		return home, true
+	}
+	return filepath.Join(home, p[2:]), true
+}
+
+// codexMeasuredVersion is the codex-cli release the `enabled` requirement was
+// actually observed on.
+//
+// It rides in the finding text so the claim stays inside the evidence. In which
+// release `enabled` became required, and whether older releases tolerate its
+// absence, is UNMEASURED — a finding worded as though the behaviour held for
+// codex in general would be asserting something nobody checked.
+const codexMeasuredVersion = "0.153.4"
+
+// codexUserSkillConfig locates and parses the user-layer config's
+// [[skills.config]] entries.
+//
+// Fail-open in every direction, exactly as the sub-checks reading it require:
+// an unresolvable home, an absent or unreadable config, or a config declaring
+// no entries all yield ok=false (a silent skip), so a missing input never
+// becomes a finding. It READS only.
+func codexUserSkillConfig() (cfgPath, display string, entries []codexwiring.SkillEntry, ok bool) {
+	codexHome, source := resolveCodexHomeDir()
+	if codexHome == "" {
+		return "", "", nil, false
+	}
+	cfgPath = filepath.Join(codexHome, path.Base(codexwiring.ConfigRelPath))
+	raw, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return "", "", nil, false
+	}
+	entries = codexwiring.ParseSkillEntries(raw)
+	if len(entries) == 0 {
+		return "", "", nil, false
+	}
+	display = codexHomeConfigDisplay
+	if source == codexHomeSourceEnv {
+		display = codexHomeConfigEnvDisplay
+	}
+	return cfgPath, display, entries, true
+}
+
+// codexEnabledShapeFinding reports [[skills.config]] entries whose `enabled`
+// declaration codex cannot load — a key that is absent, or one declared with a
+// value that is not a bare TOML boolean.
+//
+// This is the one FATAL grade on this check, and the grade is not a matter of
+// tone. Measured on codex-cli 0.153.4, a single such entry makes codex exit 1
+// on every invocation: `missing field `enabled` in `skills.config“ for the
+// absent key, “invalid type: … expected a boolean“ for the wrong-typed value.
+// A user in this state already has a codex that will not start; all this
+// changes is whether `moai doctor` says so instead of reporting "wired and
+// consistent" about a machine where nothing works.
+//
+// Scope is `enabled` alone. A `path`-less entry is ACCEPTED by codex (measured,
+// rc=0) and stays with the advisory stale-path finding.
+//
+// It READS and REPORTS. Nothing here rewrites the user's config — editing
+// someone else's home config is a separate decision this check does not take.
+//
+// The second return value is a read-receipt note for the clean case: it names
+// the config that was read, so a quiet check is distinguishable from one that
+// never reached the file.
+func codexEnabledShapeFinding() (finding codexFinding, note string, ok bool) {
+	cfgPath, display, entries, loaded := codexUserSkillConfig()
+	if !loaded {
+		return codexFinding{}, "", false
+	}
+
+	var absent, nonBoolean int
+	for _, e := range entries {
+		switch e.Enabled {
+		case codexwiring.SkillEnabledUnspecified:
+			absent++
+		case codexwiring.SkillEnabledNonBoolean:
+			nonBoolean++
+		}
+	}
+	unusable := absent + nonBoolean
+	if unusable == 0 {
+		return codexFinding{}, fmt.Sprintf(
+			"%s declares %d [[skills.config]] %s, each declaring `enabled` as a bare TOML boolean",
+			cfgPath, len(entries), pluralCodexEntries(len(entries))), false
+	}
+
+	// Summary short (the panel sizes itself to its widest row); the
+	// enumeration and the evidence ride in Detail.
+	summary := fmt.Sprintf("%s: %d skill %s codex cannot load — unusable `enabled` key",
+		display, unusable, pluralCodexEntries(unusable))
+
+	detail := fmt.Sprintf("%s declares %d [[skills.config]] %s; %d of them codex cannot load",
+		cfgPath, len(entries), pluralCodexEntries(len(entries)), unusable)
+	if absent > 0 {
+		detail += fmt.Sprintf("; %d declare no `enabled` key", absent)
+	}
+	if nonBoolean > 0 {
+		detail += fmt.Sprintf("; %d declare `enabled` with a value that is not a bare TOML boolean", nonBoolean)
+	}
+	detail += fmt.Sprintf(
+		" — codex %s requires `enabled` on every entry as a bare boolean and exits 1 on the whole config otherwise"+
+			" (observed on that release only); give each entry `enabled = true` or `enabled = false`",
+		codexMeasuredVersion)
+
+	return codexFinding{
+		summary:  summary,
+		detail:   detail,
+		severity: codexSeverityFatal,
+	}, "", true
+}
+
+// codexStaleSkillFinding reports the user-layer [[skills.config]] entries
+// whose declared path no longer exists — registrations Codex neither prunes
+// nor complains about, so nothing else surfaces them.
+//
+// The config is located through resolveCodexHomeDir, so CODEX_HOME decides
+// which file is read, exactly as it does everywhere else in this binary. A
+// resolution that ignored it would warn about a file Codex does not read
+// while leaving the file Codex DOES read unexamined — wrong in both
+// directions at once.
+//
+// Fail-open in every direction: an unresolvable home, an absent or unreadable
+// config, or a config declaring no entries all yield ok=false (a silent
+// skip), so a missing input never becomes a finding. The function READS only.
+func codexStaleSkillFinding() (codexFinding, bool) {
+	cfgPath, display, entries, ok := codexUserSkillConfig()
+	if !ok {
+		return codexFinding{}, false
+	}
+
+	var missingEnabled, missingDisabled, missingUnspecified, missingNonBoolean int
+	var missingUnknownState, indeterminate int
+	var relativeCount, oddlyFormed int
+	for _, e := range entries {
+		if e.Path == "" {
+			// An entry declaring no path says nothing about a file's
+			// existence — counted in the total, never as a missing path.
+			continue
+		}
+		var statPath string
+		switch classifyCodexSkillPath(e.Path) {
+		case codexPathAbsolute:
+			// SPEC-CODEX-SKILL-PATH-READBACK-001: same one-line shape as the
+			// behaviorally-verified prune side — the declared config form is
+			// converted back to host form for the stat target only; the
+			// home-relative branch stays untouched (REQ-CSRB-002).
+			statPath = fromConfigPath(e.Path, configPathSeparator)
+		case codexPathHomeRelative:
+			expanded, ok := expandCodexHomeRelativePath(e.Path)
+			if !ok {
+				// The user home is unresolvable, so the path's existence is
+				// indeterminate — never absent (fail-open, not a guess).
+				indeterminate++
+				continue
+			}
+			statPath = expanded
+		case codexPathRelative:
+			// The base a relative path resolves against is not observed in
+			// this repository; stat'ing it against process cwd would decide
+			// the verdict on a base nobody chose. Reported as its own
+			// classification, never counted missing.
+			relativeCount++
+			continue
+		default:
+			// A backslash-bearing non-absolute fragment or a "~user" form:
+			// a declared shape this check cannot resolve here. Reported as
+			// its own classification, never counted missing.
+			oddlyFormed++
+			continue
+		}
+		_, serr := osStatFn(statPath)
+		switch {
+		case serr == nil:
+			// The path resolves. A DIRECTORY resolves too, and is likewise
+			// not a missing path: how Codex treats a directory here is not
+			// observed, and reporting one as missing would advise deleting a
+			// registration on a guess.
+		case errors.Is(serr, fs.ErrNotExist):
+			// One arm per declared state, and NO state reached by the
+			// `default:` (SPEC-CODEX-STALE-SPLIT-FOURTH-001, REQ-SSF-001).
+			// The three-arm form this replaces sent SkillEnabledNonBoolean
+			// down `default:` into `missingUnspecified`, so an entry that
+			// DECLARES `enabled` was reported as declaring no key — the same
+			// entry then carried two names in one run, `unspecified` here and
+			// `nonBoolean` in codexEnabledShapeFinding.
+			//
+			// Go does not force exhaustiveness over an int enum, so the
+			// `default:` is retained for a state added later — but it counts
+			// into its own unknown-state counter and is reported as such,
+			// never folded into a named bucket. A fifth state is then loud
+			// rather than silently absorbed, which is the defect being fixed
+			// reproduced one state later.
+			switch e.Enabled {
+			case codexwiring.SkillEnabledTrue:
+				missingEnabled++
+			case codexwiring.SkillEnabledFalse:
+				missingDisabled++
+			case codexwiring.SkillEnabledUnspecified:
+				missingUnspecified++
+			case codexwiring.SkillEnabledNonBoolean:
+				missingNonBoolean++
+			default:
+				missingUnknownState++
+			}
+		default:
+			// Permission denied, a symlink loop, an I/O error: the path's
+			// existence is INDETERMINATE, not absent. The finding tells the
+			// user to REMOVE the entry, so an unobserved absence must never
+			// reach the missing count — that would advise deleting a healthy
+			// registration on the strength of a stat this process was not
+			// allowed to complete. Surfaced in Detail, never acted on.
+			indeterminate++
+		}
+	}
+	missing := missingEnabled + missingDisabled + missingUnspecified + missingNonBoolean + missingUnknownState
+	unresolvedShape := relativeCount + oddlyFormed
+	if missing == 0 && unresolvedShape == 0 {
+		// No missing path and no unresolvable shape: nothing to say. An
+		// indeterminate-only config stays silent too — the t451 posture,
+		// preserved verbatim.
+		return codexFinding{}, false
+	}
+
+	// The summary carries the count and the file; the denominator, the split
+	// and the directive ride in Detail. The split is the severity axis, so it
+	// is quantified rather than summed away — but it is reported as DECLARED:
+	// an entry with no `enabled` key is counted as unspecified rather than
+	// folded into either side, because Codex's default for an absent key is
+	// not observed anywhere in this repository. That reasoning is about
+	// SILENCE, and it holds only for the absent-key population.
+	//
+	// An entry that DECLARES `enabled` with a value codex will not accept is
+	// not silent — something was said, and codex rejects it — so it gets its
+	// own member rather than borrowing the word for saying nothing
+	// (SPEC-CODEX-STALE-SPLIT-FOURTH-001 §A). `unspecified` keeps its
+	// original population and its original meaning; only the fourth state
+	// moves.
+	//
+	// The fourth member renders UNCONDITIONALLY, `0 non-boolean` included
+	// (REQ-SSF-004): the parenthesis is a partition of the leading count and
+	// is read by summing it, so a conditionally-rendered member would make
+	// "no such entries this run" and "no such bucket in this build" produce
+	// identical bytes.
+	//
+	// The remove directive is bound to the missing segment alone: relative
+	// and oddly-formed entries are reported per classification and never
+	// advised away.
+	detail := fmt.Sprintf(
+		"%s declares %d [[skills.config]] %s",
+		cfgPath, len(entries), pluralCodexEntries(len(entries)))
+	if missing > 0 {
+		detail += fmt.Sprintf(
+			"; %d with a path that no longer exists (%d enabled, %d disabled, %d unspecified, %d non-boolean) — remove the stale entries or restore the skill files",
+			missing, missingEnabled, missingDisabled, missingUnspecified, missingNonBoolean)
+	}
+	if missingUnknownState > 0 {
+		// Unreachable while SkillEnabled has four states. It exists so a
+		// fifth one is REPORTED rather than folded into a named bucket, and
+		// so the four members above keep summing to the leading count.
+		detail += fmt.Sprintf(
+			"; a further %d declare an `enabled` state this check does not recognise",
+			missingUnknownState)
+	}
+	if relativeCount > 0 {
+		detail += fmt.Sprintf(
+			"; %d relative %s (not checked: the resolution base is not observed)",
+			relativeCount, pluralCodexEntries(relativeCount))
+	}
+	if oddlyFormed > 0 {
+		detail += fmt.Sprintf(
+			"; %d oddly-formed %s (not checked: backslash or ~other-user shape)",
+			oddlyFormed, pluralCodexEntries(oddlyFormed))
+	}
+	if indeterminate > 0 {
+		detail += fmt.Sprintf("; a further %d could not be checked and are NOT counted as missing", indeterminate)
+	}
+
+	summary := fmt.Sprintf("%s: %d stale skill %s", display, missing, pluralCodexEntries(missing))
+	if missing == 0 {
+		// Non-destructive summary for a config whose only finding is an
+		// unresolvable path SHAPE — no "stale", nothing to remove.
+		summary = fmt.Sprintf("%s: %d skill %s with a path shape this check cannot resolve",
+			display, unresolvedShape, pluralCodexEntries(unresolvedShape))
+	}
+
+	return codexFinding{
+		summary: summary,
+		detail:  detail,
+	}, true
+}
+
+// pluralCodexEntries picks the noun for an entry count.
+func pluralCodexEntries(n int) string {
+	if n == 1 {
+		return "entry"
+	}
+	return "entries"
 }

@@ -1,0 +1,5 @@
+# t496 campaign home (isolated)
+model = "gpt-6-astra"
+
+[projects."/private/tmp/t496-campaign-en7H7wVT/proj"]
+trust_level = "trusted"

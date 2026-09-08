@@ -17,8 +17,8 @@ func TestDetectFrozenRuleContradictions_FrozenPath(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name        string
-		targetPath  string
+		name         string
+		targetPath   string
 		wantRuleName string // non-empty — the rule Name that should be cited
 	}{
 		{"moai rules", ".claude/rules/moai/core/moai-constitution.md", "frozen-moai-rules"},

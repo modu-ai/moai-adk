@@ -1,6 +1,10 @@
 interview:
   enabled: true
   clarity_threshold: 4
+  # Recommendation-mode axis for AskUserQuestion output: "push" (default) emits
+  # the recommendation label as usual; "pull" withholds it until the user
+  # explicitly asks. Any other value resolves to "push".
+  recommendation_mode: push
   plan:
     max_rounds: 5
     questions_per_round: 3

@@ -118,9 +118,20 @@ Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3
    ```bash
    # MOAI-AC-COUNTER-BEGIN
    awk '
+     BEGIN { prefixes = "AC" }
+     /^<!-- *moai-ac-prefix:/ {
+       if (!declared) {
+         line = $0
+         sub(/^<!-- *moai-ac-prefix: */, "", line)
+         sub(/ *-->.*$/, "", line)
+         gsub(/ /, "", line)
+         if (line != "") { prefixes = line; declared = 1 }
+       }
+     }
      {
        rest = $0
-       while (match(rest, /AC-([A-Z0-9]+-)*[0-9]+/)) {
+       pat = "(" prefixes ")-([A-Z0-9]+-)*[0-9]+[a-z]?"
+       while (match(rest, pat)) {
          id = substr(rest, RSTART, RLENGTH)
          rest = substr(rest, RSTART + RLENGTH)
          if (rest ~ /^[ \t]*(\[RETIRED\]|\[REF\])/) mk[id] = 1; else um[id] = 1
@@ -157,7 +168,9 @@ Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3
 
    The per-state tally (`live=… excluded=… ambiguous=0`) goes to stderr, so stdout stays exactly one integer for the caller to read. The absence of an integer IS the "no answer" signal — never substitute a guess for it.
 
-   Anchor on the AC-ID token and the reserved token, never on the surrounding markdown and never on natural-language retirement vocabulary. AC entries appear as `### AC-SYN-001 — …` headings, as `| AC-SYN-003 |` table cells, and as `AC-SYN-05` two-digit inline rows; a pattern keyed to one markup shape silently misses the others, and matching the word "retired" reads a live criterion whose SUBJECT is retirement as retired. The `([A-Z0-9]+-)*` middle allows digit-bearing domains and four-segment IDs, and the whole group is optional so a domain-less `AC-001` still matches.
+   Anchor on the AC-ID token and the reserved token, never on the surrounding markdown and never on natural-language retirement vocabulary. AC entries appear as `### AC-SYN-001 — …` headings, as `| AC-SYN-003 |` table cells, and as `AC-SYN-05` two-digit inline rows; a pattern keyed to one markup shape silently misses the others, and matching the word "retired" reads a live criterion whose SUBJECT is retirement as retired. The `([A-Z0-9]+-)*` middle allows digit-bearing domains and four-segment IDs, the whole group is optional so a domain-less `AC-001` still matches, and the trailing `[a-z]?` keeps a sub-lettered identifier (`AC-SYN-007a`) whole — a sub-letter is its own criterion, never folded into its numeric prefix (a file declaring both `AC-003` and `AC-003a` declares two criteria, and a sub-letter-blind grammar collapses them into one).
+
+   **Native prefix declaration.** The `AC` prefix is the grammar's default. An acceptance file whose criteria are declared under a different prefix replaces it ONCE, on a line of its own: `<!-- moai-ac-prefix: CR -->` — a comma-separated list of letter-digit tokens that REPLACES the default for that file; it extends nothing. The declaration is native to the counted file — no external configuration, no counter flag, and a reader of the file sees the same grammar the counter runs. A first declaration wins; later ones are ignored. Declaring a prefix whose identifiers appear in the file only as cross-references reproduces the counted-reference problem the reserved tokens exist to solve: declare a prefix the file declares criteria under, and mark cross-namespace citations `[REF]` as always (they are then excluded, while an undeclared prefix's citations stay outside the grammar entirely).
 
    **A count of 0 is a RED flag, not a pass.** `0 == 0` is a vacuous comparison — if the command returns 0, stop and inspect `acceptance.md` by hand rather than reporting the self-test satisfied. Before trusting any replacement pattern, run it against a handful of real `acceptance.md` files and confirm the counts are non-zero and plausible.
 3. **File path verification**: every file path claimed in the CHANGELOG entry MUST exist via `ls <path>` verification before committing

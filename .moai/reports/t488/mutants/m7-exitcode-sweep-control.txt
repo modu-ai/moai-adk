@@ -1,0 +1,5 @@
+--- FAIL: TestSettingsDriftVerdictNeverReadsAnExitCode (0.00s)
+    integration_settings_drift_exitcode_test.go:79: ../kanban/settings_drift.go:336 reads an exit code ("ExitCode"): // MUTANT-7: an ExitCode read would land on a line like this one.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.904s
+FAIL

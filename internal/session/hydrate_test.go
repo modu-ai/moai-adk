@@ -14,18 +14,20 @@ import (
 // is meaningfully used by HydrateForPrompt; the other methods return safe
 // defaults to satisfy the interface contract.
 type fakeSessionStore struct {
-	state    *PhaseState
+	state      *PhaseState
 	hydrateErr error
 }
 
-func (f *fakeSessionStore) Checkpoint(state PhaseState) error                      { return nil }
-func (f *fakeSessionStore) Hydrate(phase Phase, specID string) (*PhaseState, error) { return f.state, f.hydrateErr }
+func (f *fakeSessionStore) Checkpoint(state PhaseState) error { return nil }
+func (f *fakeSessionStore) Hydrate(phase Phase, specID string) (*PhaseState, error) {
+	return f.state, f.hydrateErr
+}
 func (f *fakeSessionStore) HydrateWithOpts(phase Phase, specID string, opts HydrateOpts) (*PhaseState, error) {
 	return f.state, f.hydrateErr
 }
-func (f *fakeSessionStore) AppendTaskLedger(entry TaskLedgerEntry) error        { return nil }
+func (f *fakeSessionStore) AppendTaskLedger(entry TaskLedgerEntry) error            { return nil }
 func (f *fakeSessionStore) WriteRunArtifact(iterID, name string, body []byte) error { return nil }
-func (f *fakeSessionStore) RecordBlocker(report BlockerReport) error            { return nil }
+func (f *fakeSessionStore) RecordBlocker(report BlockerReport) error                { return nil }
 func (f *fakeSessionStore) ResolveBlocker(phase Phase, specID string, resolution string) error {
 	return nil
 }

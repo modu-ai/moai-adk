@@ -34,10 +34,11 @@ Examples:
   moai spec status SPEC-XXX completed --dry-run  # Preview change
   moai spec status --list                    # List all SPECs
   moai spec status --sync-git                # Sync from git log
-  moai spec status --sync-git --yes          # Non-interactive sync`,
+  moai spec status --sync-git --yes          # Non-interactive sync
+  moai spec status --sync-git --dry-run      # Preview sync without writing`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if syncGit {
-				return syncGitSpecStatuses(cmd, syncYes)
+				return syncGitSpecStatuses(cmd, syncYes, dryRun)
 			}
 
 			// Handle --list flag
@@ -158,7 +159,13 @@ func listAllSpecs(cmd *cobra.Command) error {
 
 // syncGitSpecStatuses scans git log on main for SPEC-XXX patterns and updates statuses.
 // REQ-5 of SPEC-STATUS-AUTO-001.
-func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
+//
+// SPEC-STATUS-DRYRUN-001 (REQ-005/REQ-006/REQ-007): with dryRun the full
+// reconciliation is computed and printed as a would-change plan but nothing
+// is written; a SPEC whose parsed current status is not a member of
+// spec.ValidStatuses is skipped with a loud stderr warning instead of feeding
+// the writer.
+func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm, dryRun bool) error {
 	projectRoot, err := findProjectRootFn()
 	if err != nil {
 		return fmt.Errorf("failed to find project root: %w", err)
@@ -176,7 +183,9 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 
 	specsDir := filepath.Join(projectRoot, ".moai", "specs")
 	updated := 0
+	wouldUpdate := 0
 	skipped := 0
+	invalidStatus := 0
 	notFound := 0
 
 	for _, specID := range specIDsFromGit {
@@ -193,9 +202,25 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 			currentStatus = s
 		}
 
+		// REQ-007: a parsed status outside the canonical enum is a misparse
+		// signal — skip loudly, never feed the writer.
+		if !spec.IsValidStatus(currentStatus) {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  warning: skipping %s: parsed status %q is not a valid status\n", specID, currentStatus)
+			invalidStatus++
+			continue
+		}
+
 		if currentStatus == "completed" || currentStatus == "implemented" {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  skipped %s: already %s\n", specID, currentStatus)
 			skipped++
+			continue
+		}
+
+		if dryRun {
+			// REQ-005: print exactly what WOULD change; write nothing. No
+			// confirmation is needed when nothing can be written.
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  %s: %s → implemented (dry-run, not written)\n", specID, currentStatus)
+			wouldUpdate++
 			continue
 		}
 
@@ -225,7 +250,12 @@ func syncGitSpecStatuses(cmd *cobra.Command, autoConfirm bool) error {
 		updated++
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nSummary: updated %d, skipped %d (already done), %d not found\n", updated, skipped, notFound)
+	if dryRun {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nSummary: dry-run, nothing written: %d would update, %d skipped (already done), %d skipped (invalid status), %d not found\n", wouldUpdate, skipped, invalidStatus, notFound)
+		return nil
+	}
+
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nSummary: updated %d, skipped %d (already done), %d skipped (invalid status), %d not found\n", updated, skipped, invalidStatus, notFound)
 	return nil
 }
 

@@ -96,12 +96,12 @@ func TestBuildNodesMilestoneUpdate(t *testing.T) {
 	s := newTestStore(t)
 	_ = s.Append(ChainEvent{EventType: EventNodeEnter, NodeID: "N1", Milestone: "M0"})
 	_ = s.Append(ChainEvent{
-		EventType:             EventNodeUpdate,
-		NodeID:                "N1",
-		Milestone:             "M1",
+		EventType:              EventNodeUpdate,
+		NodeID:                 "N1",
+		Milestone:              "M1",
 		LastCompletedMilestone: "M0-done",
-		ResumeTarget:          "Start M2",
-		ResumeCommand:         "/moai run X",
+		ResumeTarget:           "Start M2",
+		ResumeCommand:          "/moai run X",
 	})
 
 	nodes := s.BuildNodes()
@@ -130,12 +130,12 @@ func TestCompletionEdgeEvent(t *testing.T) {
 	s := newTestStore(t)
 
 	ev := ChainEvent{
-		EventType:         EventCompletionEdge,
-		ParentNode:        "N1",
-		ChildNode:         "N2",
+		EventType:          EventCompletionEdge,
+		ParentNode:         "N1",
+		ChildNode:          "N2",
 		CompletedMilestone: "M2",
-		CompletedAt:       "2026-08-13T10:00:00Z",
-		NextResumeTarget:  "Start M3",
+		CompletedAt:        "2026-08-13T10:00:00Z",
+		NextResumeTarget:   "Start M3",
 	}
 	if err := s.Append(ev); err != nil {
 		t.Fatalf("Append completion-edge: %v", err)

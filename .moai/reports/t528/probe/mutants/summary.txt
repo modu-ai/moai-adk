@@ -1,0 +1,8 @@
+1	DETECTED	drop the numeric-tail requirement from the id
+2	DETECTED	drop em dash U+2014 from the separator set
+3	DETECTED	drop the parenthesised-qualifier allowance
+4	DETECTED	drop the closing-bold allowance (both positions)
+5	DETECTED	drop the sub-id suffix (.a / .a.i) recognition
+6	DETECTED	findACSectionStart returns 0 AND the ## break in extractACLines is removed
+7	DETECTED	remove ONLY the ## break in extractACLines
+8	DETECTED	relax the AC- prefix to an arbitrary uppercase token

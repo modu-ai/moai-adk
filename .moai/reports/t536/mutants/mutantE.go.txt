@@ -1,0 +1,27 @@
+package kanban
+
+// MUTANT E (t536 M3, temporary — never committed as a live .go file):
+// the discriminant disabled. AC-THG-007 asks what the guard actually catches,
+// so the injection is the smallest one that answers it — TempOriginReason is
+// made to report NEVER temporary, leaving every other line of the file intact.
+//
+// Injection form (one inserted line, applied to internal/kanban/temp_origin.go):
+//
+//	 func TempOriginReason(base string) (reason string, isTemp bool) {
+//	+	return "", false // MUTANT E (t536 M3): discriminant disabled — NEVER temporary
+//	 	if strings.TrimSpace(base) == "" {
+//
+// The remainder of the function becomes unreachable; Go compiles it, and the
+// default `go test` vet subset does not include the unreachable check, so the
+// mutant runs. `-vet=off` was passed regardless so the observation could not be
+// confounded by a vet failure standing in for a test failure.
+//
+// Observed: AC-THG-001 fails on all three branches, AND the internal/cli
+// gate-bypass test fails at its PRECONDITION rather than at its pollution
+// assertion — see guard-boundary.md, which is why this mutant alone cannot
+// demonstrate pollution reproduction and route (i) is the control that does.
+
+func TempOriginReason(base string) (reason string, isTemp bool) {
+	return "", false // MUTANT E: discriminant disabled — NEVER temporary
+	// ... original body retained below this line, now unreachable ...
+}

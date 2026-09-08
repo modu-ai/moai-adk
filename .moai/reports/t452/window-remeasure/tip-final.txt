@@ -1,0 +1,19 @@
+# t452 lane-12 window — final coordinates
+
+pre-merge card tip     4145e5755
+absorbed develop tip   1e4508ef6
+absorb merge commit    994457ed9fcde36219f5b51ab893d1363b1e51e5
+absorb merge tree      44f26de5a404d6f5556b8d05c577666e6f3f2fe2
+evidence commit        3896f5ed0a0dd046be3c4703cdde8834692edd6d
+evidence tip tree      db75cf4979ae0e286c56b470b3d1f2636aa84156
+
+The three lead-named guards were re-run a second time AT the evidence tip
+(tree db75cf497) after the evidence commit, so the tree that merges into
+develop is the same tree that was measured:
+
+  go test ./internal/spec/... -run TestCatalogHashParity -count=1     rc=0
+  go test ./internal/template/ -run TestManifestHashFormat -count=1   rc=0
+  go test ./internal/template/agentemit/... -count=1                  rc=0
+
+This file is added by a follow-up commit, so the coordinate for the tree that
+actually merges is that commit rather than 3896f5ed0; it changes this file only.

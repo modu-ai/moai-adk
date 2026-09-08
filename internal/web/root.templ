@@ -80,6 +80,15 @@ templ page(vm ShellVM, view pageView) {
 							@fieldsetAgentFrontmatter(view)
 						case "mcp":
 							@fieldsetMCP(view)
+						case "codex":
+							// SPEC-WEB-CODEX-PANEL-001: the read-only codex
+							// mirror. It cannot go through the generic
+							// fieldsetSchemaSection default branch — that
+							// branch renders inputs, and a second control for
+							// an already-rendered field loses the user's edit
+							// silently (one form, PostFormValue reads the
+							// first value only).
+							@fieldsetCodex(view)
 						default:
 							@fieldsetSchemaSection(view, schemaPanelMeta(tab.ID))
 					}

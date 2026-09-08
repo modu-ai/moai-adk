@@ -25,11 +25,11 @@ import (
 // chainEventPayload is the subset of the Claude Code SubagentStop / Stop
 // hook payload this handler consumes.
 type chainEventPayload struct {
-	SessionID    string `json:"session_id"`
-	CWD          string `json:"cwd"`
-	ProjectDir   string `json:"project_dir"`
-	SubagentID   string `json:"subagent_id"`
-	StopReason   string `json:"stop_reason"`
+	SessionID  string `json:"session_id"`
+	CWD        string `json:"cwd"`
+	ProjectDir string `json:"project_dir"`
+	SubagentID string `json:"subagent_id"`
+	StopReason string `json:"stop_reason"`
 }
 
 // RunChainEvent reads a hook payload from stdin and appends a completion

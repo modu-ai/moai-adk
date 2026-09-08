@@ -41,10 +41,10 @@ func TestInitCmd_WorkflowBranchGuardFlagsRegistered(t *testing.T) {
 // distinction is the contract).
 func TestApplyWorkflowBranchGuardFlags_ExplicitSet(t *testing.T) {
 	cmd := makeInitCmdWithFlags(map[string]string{
-		"branch-guard":           "true",
-		"worktree-auto-create":   "false",
-		"worktree-auto-merge":    "true",
-		"worktree-auto-cleanup":  "false",
+		"branch-guard":          "true",
+		"worktree-auto-create":  "false",
+		"worktree-auto-merge":   "true",
+		"worktree-auto-cleanup": "false",
 	})
 	opts := project.InitOptions{}
 	applyWorkflowBranchGuardFlags(cmd, &opts)
@@ -145,21 +145,21 @@ func TestRunWorkflowConfigStep_AbsentWorkflowYAMLSkips(t *testing.T) {
 // yamlpatch leaves their bytes (and surrounding comments) untouched.
 func TestBuildWorkflowToggleEdits(t *testing.T) {
 	cases := []struct {
-		name                          string
-		curBranch, newBranch         bool
-		curCreate, newCreate         bool
-		curMerge, newMerge           bool
-		curCleanup, newCleanup       bool
-		wantPaths                     []string
+		name                   string
+		curBranch, newBranch   bool
+		curCreate, newCreate   bool
+		curMerge, newMerge     bool
+		curCleanup, newCleanup bool
+		wantPaths              []string
 	}{
 		{
 			name:      "no changes -> empty",
 			wantPaths: nil,
 		},
 		{
-			name:       "only branch_guard toggled",
-			newBranch:  true,
-			wantPaths:  []string{"workflow.branch_guard.enabled"},
+			name:      "only branch_guard toggled",
+			newBranch: true,
+			wantPaths: []string{"workflow.branch_guard.enabled"},
 		},
 		{
 			name:       "all four toggled",

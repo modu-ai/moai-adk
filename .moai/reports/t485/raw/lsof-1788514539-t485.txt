@@ -1,0 +1,2 @@
+COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF       NODE NAME
+git     71469 goos    3u   REG   1,16        0 3113728913 /Users/goos/MoAI/moai-adk-go/.git/worktrees/t485/index.lock

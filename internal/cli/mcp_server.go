@@ -628,7 +628,7 @@ func handleGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 // (parseCondition classification; the infinite-goal fail-closed: max_turns == 0
 // requires max_duration > 0) WITHOUT re-implementing internal/goal logic. The
 // CLI-only stderr warnings / flag UX are presentation, not core.
-func handleGoalArm(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root := resolveProjectDir()
 	if root == "" {
 		return toolErr("goal_arm", fmt.Errorf("cannot resolve project root (set CLAUDE_PROJECT_DIR or run from the project directory)")), nil
@@ -654,6 +654,19 @@ func handleGoalArm(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 	}
 
 	cond := parseCondition(conditionText) // same classifier the CLI uses
+	// Inherited rule (same predicate the CLI applies): a mechanical condition
+	// whose first word resolves to no command can never exit 0, so arming it
+	// buys a goal that blocks every turn-end to the ceiling. Both arm paths call
+	// parseCondition, so both need the gate — a CLI-only check would leave the
+	// MCP path arming exactly what the CLI refuses.
+	// An explicit `cmd:` prefix exempts the condition here exactly as it does on
+	// the CLI path (declaredMechanical) — the two arm surfaces must not disagree
+	// about which conditions are armable.
+	if cond.Type == goal.ConditionMechanical && !declaredMechanical(conditionText) {
+		if tok, bad := unrunnableCommandToken(ctx, cond.Cmd); bad {
+			return toolErr("goal_arm", unrunnableConditionError("goal_arm", tok, cond.Cmd)), nil
+		}
+	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {
 		g.Ceiling.MaxTurns = maxTurns

@@ -1,0 +1,31 @@
+=== RUN   TestACCounterExtractedFromBothCarriers
+--- PASS: TestACCounterExtractedFromBothCarriers (0.00s)
+=== RUN   TestACCounterFixtureCorpus
+=== RUN   TestACCounterFixtureCorpus/shapes.md
+=== RUN   TestACCounterFixtureCorpus/adjacency.md
+=== RUN   TestACCounterFixtureCorpus/vocab.md
+=== RUN   TestACCounterFixtureCorpus/subletters.md
+=== RUN   TestACCounterFixtureCorpus/prefixdecl.md
+--- PASS: TestACCounterFixtureCorpus (0.04s)
+    --- PASS: TestACCounterFixtureCorpus/shapes.md (0.01s)
+    --- PASS: TestACCounterFixtureCorpus/adjacency.md (0.01s)
+    --- PASS: TestACCounterFixtureCorpus/vocab.md (0.00s)
+    --- PASS: TestACCounterFixtureCorpus/subletters.md (0.00s)
+    --- PASS: TestACCounterFixtureCorpus/prefixdecl.md (0.01s)
+=== RUN   TestACCounterHaltsOnPartialMarking
+--- PASS: TestACCounterHaltsOnPartialMarking (0.02s)
+=== RUN   TestACBaselineComparisonTransitions
+--- PASS: TestACBaselineComparisonTransitions (0.00s)
+=== RUN   TestACCounterFullCorpusMatchesBaseline
+    ac_count_clause_test.go:489: AC corpus: 0 file(s) matched by the glob but absent from the snapshot - reported, not failed (spec.md 3.5 rule 4)
+--- PASS: TestACCounterFullCorpusMatchesBaseline (3.95s)
+=== RUN   TestACCounterCorpusMutantIsDetected
+--- PASS: TestACCounterCorpusMutantIsDetected (0.01s)
+=== RUN   TestACPromptTemplateMirrorParity
+--- PASS: TestACPromptTemplateMirrorParity (0.00s)
+=== RUN   TestACClauseCarriesNoRealSpecID
+--- PASS: TestACClauseCarriesNoRealSpecID (0.00s)
+=== RUN   TestACCounterReachesCodexCarrier
+--- PASS: TestACCounterReachesCodexCarrier (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	4.274s

@@ -54,11 +54,11 @@ func TestIsCommitSHAToken_LengthBand(t *testing.T) {
 		token string
 		want  bool
 	}{
-		{"a6bbbf8", true},                                  // 7 — lower bound
-		{"a6bbbf82b", true},                                // 9 — the corpus's usual short form
+		{"a6bbbf8", true},   // 7 — lower bound
+		{"a6bbbf82b", true}, // 9 — the corpus's usual short form
 		{"a6bbbf82b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6", true}, // 40 — upper bound
-		{"A6BBBF82B", true},                                // uppercase hex is hex
-		{"a6bbbf", false},                                  // 6 — below the band
+		{"A6BBBF82B", true}, // uppercase hex is hex
+		{"a6bbbf", false},   // 6 — below the band
 		{"a6bbbf82b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f", false}, // 41 — above the band
 		{"", false}, // the empty slot
 		{"null", false},

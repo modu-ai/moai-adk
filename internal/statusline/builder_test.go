@@ -1370,16 +1370,16 @@ func TestCollectAll_ExtractsEffortThinking(t *testing.T) {
 // REQ-CC297-003: collectAll passes WorkspaceInfo.GitWorktree to StatusData.Worktree
 func TestCollectAll_ExtractsWorktree(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     *StdinData
-		wantWT    string
+		name   string
+		input  *StdinData
+		wantWT string
 	}{
 		{
 			name: "worktree path present: stored in StatusData.Worktree",
 			input: &StdinData{
 				Workspace: &WorkspaceInfo{
-					CurrentDir: "/repo/.claude/worktrees/abc123",
-					ProjectDir: "/repo",
+					CurrentDir:  "/repo/.claude/worktrees/abc123",
+					ProjectDir:  "/repo",
 					GitWorktree: "/repo/.claude/worktrees/abc123",
 				},
 			},
@@ -1462,8 +1462,8 @@ func TestBuild_EffortThinking_FullPipeline(t *testing.T) {
 		},
 		{
 			// GWT-9: nil-equivalent input (no effort/thinking fields) → no panic, no e:/·t
-			name:      "GWT-9: missing effort/thinking fields → no indicator",
-			jsonInput: `{"context_window": {"used_percentage": 10, "context_window_size": 200000}}`,
+			name:         "GWT-9: missing effort/thinking fields → no indicator",
+			jsonInput:    `{"context_window": {"used_percentage": 10, "context_window_size": 200000}}`,
 			wantContains: []string{},
 			wantAbsent:   []string{"🧠", "·t"},
 		},
@@ -1835,7 +1835,10 @@ func TestBuild_WritesContextUsageWithSessionID(t *testing.T) {
 
 	in := StdinData{
 		SessionID: "sess-build-011",
-		Workspace: &WorkspaceInfo{CurrentDir: proj},
+		// SPEC-STATE-ANCHOR-001: the telemetry write anchors to project_dir
+		// (chain step 1), so the fixture carries it — the record lands under
+		// proj as the test asserts, without needing a git fixture.
+		Workspace: &WorkspaceInfo{CurrentDir: proj, ProjectDir: proj},
 		ContextWindow: &ContextWindowInfo{
 			ContextWindowSize: 256000,
 			UsedPercentage:    new(90.0), // → tokensUsed = 256000 * 90% = 230400

@@ -186,8 +186,15 @@ func factoryWorkerNotice(label string, workers int, lang string) string {
 		return ""
 	}
 	m := factoryMessagesFor(lang)
+	var join string
 	if workers < 1 {
-		return fmt.Sprintf(m.workerJoinNoCount, label)
+		join = fmt.Sprintf(m.workerJoinNoCount, label)
+	} else {
+		join = fmt.Sprintf(m.workerJoin, label, workers)
 	}
-	return fmt.Sprintf(m.workerJoin, label, workers)
+	// Card t224: the standing spawn authority rides the join notice — it is
+	// the one message the lane is guaranteed to read at startup, and the
+	// tk8hce incident showed a lane without it refusing to spawn the
+	// phase-required specialist. English-only; see lane_spawn_authority.go.
+	return join + "\n\n" + laneSpawnAuthority
 }

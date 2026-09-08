@@ -1,0 +1,5 @@
+--- FAIL: TestInboxRetention_MaxTwoGenerations (0.00s)
+    inbox_lifecycle_test.go:291: after rotation 3: 3 archive generations (bound 2)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.595s
+FAIL
