@@ -437,7 +437,10 @@ before and after, the same pre-existing files enumerated in the evidence file's 
   the positive control would fail permanently. This is M3's AC-TLE-012 shape in the opposite,
   louder direction: vacuous-FAILING rather than vacuous-PASSING, which is why it surfaced on the
   first run. Repaired by DERIVING the directory from `kanban.StateDirForRoot(root)` rather than
-  transcribing it. `acceptance.md` was not edited — see Gaps.
+  transcribing it. `acceptance.md` was not edited by M4 — see Gaps. **The prose half is now CLOSED
+  by `4522bd439`** (manager-spec, post-run), which rewrote the criterion to name what the test
+  derives — `kanban.StateDirForRoot(root)`, today `.moai/state/todo/` — instead of a transcribed
+  spelling, so a later rename cannot stale it again.
   **WRONG WHEN WRITTEN, not decay — measured.** The rename landed `8910c337c` 2026-08-27;
   `acceptance.md` was first authored `b2d30deb2` 2026-09-03 with that rename already an ancestor
   (`git merge-base --is-ancestor` → true). Nothing moved after the clause was written, so this is
@@ -453,9 +456,13 @@ before and after, the same pre-existing files enumerated in the evidence file's 
 
 **Gaps.**
 
-- **`acceptance.md` AC-TLE-014 still reads `.moai/state/kanban/`.** The test is correct and derives
-  the path; the criterion prose is stale. `acceptance.md` body content is manager-spec's artifact,
-  not this milestone's, so it is reported rather than edited.
+- **[CLOSED by `4522bd439`] `acceptance.md` AC-TLE-014 read `.moai/state/kanban/` at M4.** The test
+  was correct and derived the path; the criterion prose was stale. `acceptance.md` body content is
+  manager-spec's artifact, not this milestone's, so M4 reported it rather than editing it. It was
+  repaired post-run by manager-spec in `4522bd439`: the clause now names what the test derives
+  (`kanban.StateDirForRoot(root)`) rather than a transcribed spelling. Recorded, not erased — the
+  finding that a criterion named a nonexistent directory, and that three plan-audit iterations
+  passed it, is what this milestone established about how the SPEC was reviewed.
 - **The malformed-evidence marker is unreachable through the store.** `DecodeLandingEvidence` runs
   `Validate` on read and `backlog_migrate.go:87-92` surfaces the failure as a read error, so no
   queue fixture reaches the render's malformed branch; it is asserted at the helper only. The
@@ -555,11 +562,13 @@ byte-identical to `git show HEAD:internal/template/catalog.yaml`) so the commit 
 
 **Gaps** (unsoftened; the full known-losses list is `m5-evidence.md` §10):
 
-- **`acceptance.md:180` still reads `.moai/state/kanban/`** — a directory renamed a week before
-  that criterion was first authored. M4 repaired the TEST (deriving the path from
+- **[CLOSED by `4522bd439`] `acceptance.md:180` read `.moai/state/kanban/`** — a directory renamed
+  a week before that criterion was first authored. M4 repaired the TEST (deriving the path from
   `kanban.StateDirForRoot`) and correctly left the prose alone; `acceptance.md` body content is
-  manager-spec's artifact. Carried forward here as a DISCLOSED open SPEC defect so the sync-auditor
-  meets it as such rather than discovering it.
+  manager-spec's artifact. M5 carried it forward as a DISCLOSED open SPEC defect; manager-spec then
+  repaired it post-run in `4522bd439`, the criterion now naming the resolver
+  (`kanban.StateDirForRoot(root)`) rather than a transcribed spelling. The record stands as an
+  inheritance the sync-auditor meets already closed, not as a defect that never happened.
 - **`internal/template/catalog.yaml` is not in the spec.md frontmatter module list**, yet M5
   modifies one line of it. It is the generated hash of the `moai` skill tree the mirror edit
   changed — a same-SPEC cascade, not scope expansion — but the DoD's "no source file outside the
@@ -598,7 +607,12 @@ byte-identical to `git show HEAD:internal/template/catalog.yaml`) so the commit 
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: <backfill — the M5 commit on WT-landing-evidence>
+run_commit_sha: 088ff0e63   # M5, the LAST IMPLEMENTATION commit — deliberately not the branch tip.
+                           # Two later non-implementation commits exist on WT-landing-evidence:
+                           # 4522bd439 (manager-spec, acceptance.md AC-TLE-014 prose repair, no
+                           # status transition) and this bookkeeping commit. This field names the
+                           # run-phase BOUNDARY; `git log --oneline` names the newest write.
+                           # A mismatch between the two is expected, not staleness.
 run_status: PASS-WITH-DEBT
 ac_pass_count: 21
 ac_fail_count: 0
