@@ -159,6 +159,6 @@ $ go test ./internal/cli/... -count=1 -timeout 600s -v    → EXIT=0
 - 산출물: `CHANGELOG.md` `[Unreleased] → ### Fixed` 항목 1건(사전 중복 검사
   `grep -c 'SPEC-CODEX-HOME-BACKSLASH-001' CHANGELOG.md` → `0`), `progress.md` §E.2~§E.4,
   `.moai/reports/t571/` 증거 12파일.
-- `sync_commit_sha: pending-backfill-sync`
+- `sync_commit_sha: 69070b92f`
 - 병합: 리드에 창을 요청한다. 이 브랜치는 미푸시이며 워크트리가 작업의 유일본이므로, 원격 착지가 확인되기
   전에는 폐기하지 않는다.
