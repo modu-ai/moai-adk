@@ -632,4 +632,193 @@ blocked_gate: make build (agents-emit-check) — INHERITED from 4244c4a06, not M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the real SHA lands in the
+                                    # immediately-following backfill commit, which is this section's
+                                    # own and is exempt from the ownership crossings.
+sync_status: PASS-WITH-DEBT
+b12_self_test_a: PASS   # duplicate guard — `grep -c 'SPEC-TODO-LANDING-EVIDENCE-001' CHANGELOG.md` = 0 before the append
+b12_self_test_b: PASS   # AC count — 21 live AC-TLE-* identifiers measured in acceptance.md (see below)
+b12_self_test_c: PASS   # every path claimed in the CHANGELOG entry verified present by `ls` (rc=0, 20/20)
+changelog_entry_position: "[Unreleased] → ### Added, first entry (CHANGELOG.md:12)"
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed   # merged, riding THIS single sync commit
+  plan_md: not-applicable    # this SPEC's plan.md carries no status: field
+  acceptance_md: not-applicable  # this SPEC's acceptance.md carries no status: field
+  progress_md: not-applicable    # this SPEC's progress.md carries no status: field
+  updated_field: refreshed to 2026-09-08 in spec.md
+canary_compliance_check:
+  applicable: false   # this SPEC defines no forward-looking policy that its own sync would test
+```
+
+### Claim
+
+The sync-phase deliverables landed: a `[Unreleased] → Added` CHANGELOG entry, this section, and the
+merged `in-progress → implemented → completed` frontmatter transition on `spec.md`. The card's
+implementation is verified GREEN on the four gates the dispatch names, at this tree and this HEAD.
+Three acceptance criteria close PASS-WITH-DEBT and are named below rather than rounded up.
+
+### Evidence
+
+```
+$ git rev-parse --show-toplevel
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359
+$ git rev-parse HEAD
+0b19b527765b720b3e64414140f4f5c3bea8901c
+$ git branch --show-current
+WT-landing-evidence
+
+$ grep -c 'SPEC-TODO-LANDING-EVIDENCE-001' CHANGELOG.md      # BEFORE the append
+0                                                            # (grep rc=1 — no match)
+
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-TODO-LANDING-EVIDENCE-001/acceptance.md | sort -u | wc -l
+      22
+# 22 DISTINCT tokens, of which AC-TLS-008 is a prose cross-reference to half A
+# (acceptance.md:8, "the pattern half A adopted after its own AC-TLS-008 was found
+# satisfiable by a mutant") and is NOT a criterion of this SPEC. LIVE count = 21,
+# which agrees with §E.3 ac_pass_count.
+
+$ go test ./internal/kanban/... -count=1 ; echo "kanban rc=$?"
+ok  	github.com/modu-ai/moai-adk/internal/kanban	137.840s
+kanban rc=0
+
+$ go test ./internal/cli/... -count=1 -timeout 600s ; echo "cli rc=$?"
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	1.529s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	5.713s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	0.927s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	3.429s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	5.820s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	1.219s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	7.425s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	9.470s
+cli rc=0
+# The 8 lines above are the TAIL of a 17-line file. The verdict is the exit code,
+# not the window: `grep -c '^FAIL\|--- FAIL'` over the UNFILTERED capture returns 0
+# for both packages (`.moai/reports/t359/sync-verify/fail-scan.txt`).
+# Captures, exported to a TRACKED path so they resolve at audit time:
+#   .moai/reports/t359/sync-verify/{kanban,cli,vet,agents-emit-check}.txt
+# The `moai spec lint` capture is 1,080,215 bytes and was NOT exported; only its
+# verdict line, exit code, and SPEC-scoped grep are, in
+# .moai/reports/t359/sync-verify/spec-lint-summary.txt. That truncation is a
+# declared known loss — the full capture is machine-local and reaches no clone.
+
+$ go vet ./internal/kanban/... ./internal/cli/... ; echo "vet rc=$?"
+vet rc=0
+# (no output)
+
+$ moai spec lint ; echo "lint rc=$?"
+0 error(s), 4157 warning(s)
+lint rc=0
+# `grep -c 'SPEC-TODO-LANDING-EVIDENCE-001'` over the capture = 0: no warning names
+# this SPEC. The 4157 warnings are the repository-wide standing backlog.
+
+$ ls <20 paths claimed in the CHANGELOG entry> ; echo "ls rc=$?"
+ls rc=0     # all 20 present
+
+$ make agents-emit-check ; echo "rc=$?"
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    golden_test.go:109: .codex/agents/moai/sync-auditor.toml: committed artifact differs from emission (sha256 mismatch) — regenerate or stop hand-editing
+rc=2
+```
+
+### Baseline-attribution
+
+Tree: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch `WT-landing-evidence`, HEAD
+`0b19b5277` as read by THIS agent at sync entry (`git rev-parse HEAD`, working tree clean,
+16 commits on `903bcc03c`). Every figure above was measured in this run against this tree; nothing
+is carried over from another package, tree, or point in time. The `internal/cli` timing (~412s at
+M4) is quoted as context in the dispatch and is NOT a baseline of this run.
+
+### Gaps — what was NOT observed
+
+**The three PASS-WITH-DEBT criteria, with why:**
+
+- **AC-TLE-012** — M3 found its containment clause VACUOUS against the very leak the criterion
+  names. The leak stores git's 7-character `--oneline` abbreviation; the clause probed the full SHA
+  and a 9-character prefix, so neither could ever match. It was repaired to 7 and re-observed with
+  the mutant still applied. The criterion passes on the repaired clause; it never passed on the one
+  the plan phase shipped.
+- **AC-TLE-014** — the criterion prose named a directory that had been renamed a week before the
+  clause was written. Repaired post-run by manager-spec in `4522bd439`. Sharper, and carried
+  deliberately: the clause was **ABSENT from the original draft** and was ADDED by `483cea858`, the
+  plan-audit **iter-1 remediation** — the pass whose job is to strengthen criteria — then survived
+  iter-2 and iter-3 unchanged. Three audit passes read a clause naming a directory that did not
+  exist and none of them measured it.
+- **AC-TLE-018** — its third stated RED reds at the FIXTURE (`:97`, `store.Add`), not at clause
+  (a)'s verbatim `INSERT`. Under that mutation the post-change database cannot be built at all, so
+  clause (a) is UNREACHABLE rather than failing. The mutation IS caught; the criterion's stated
+  mechanism is not demonstrated.
+
+**Standing gaps carried from M3 / M4 / M5, unsoftened:**
+
+- `golangci-lint` was never run at any point in this card. Only `go vet` and `gofmt -l`. The DoD's
+  "project linter" line is unperformed for M3, M4, and M5.
+- No coverage measurement, absolute or delta, for either package at any milestone.
+- darwin/arm64 only. No linux and no windows build or test. Cross-platform is CI's verdict.
+- The full local suite was never run, by policy (`CLAUDE.local.md` §4). Every package outside
+  `internal/kanban`, `internal/cli`, and `internal/template` is UNMEASURED at this HEAD.
+- `internal/template/catalog.yaml` sits OUTSIDE the `module:` frontmatter list. It is a generated
+  hash regenerated by the doctrine-mirror edit — a same-SPEC cascade, declared here rather than
+  hidden.
+- M5's `[HARD]` operator-act paragraph is NOT mirror-guarded. AC-TLE-021 compares two extracted
+  rows only, so the two doctrine surfaces could drift on that paragraph without any criterion
+  noticing.
+- The M1-M5 known-losses sections name further unmeasured material (the discarded throwaway probes,
+  the never-exercised malformed-marker path through a queue fixture, the unrun end-to-end
+  `moai todo landed` → `moai todo pr` sequence against a live repository, `go test -race`,
+  concurrent-open behaviour of `ensureLandingColumn`). None of it may be cited as a verdict basis.
+
+**The inherited build blocker:**
+
+`make build` fails at `agents-emit-check` on `.codex/agents/moai/sync-auditor.toml` (reproduced in
+this run, rc=2, output above). Measured origin: `4244c4a06` (2026-09-02) edited `sync-auditor.md`
+without running `make agents-emit`; the TOML's own last regeneration is the older `a7427f902`. This
+card branched at `903bcc03c` (2026-09-03) and INHERITED the failure — it touched no agent
+definition (`git diff --stat 903bcc03c HEAD -- .claude/agents/ internal/template/templates/.claude/agents/ internal/template/templates/.codex/agents/`
+is EMPTY). `b65e7e5f6` on `origin/develop` regenerates exactly that TOML (verified: the commit's
+file list contains `sync-auditor.toml`, and `git merge-base --is-ancestor b65e7e5f6 HEAD` answers
+NO, so it is not yet in this branch). The claim that it clears on the integration window's standard
+`git merge origin/develop` absorb is therefore WELL-FOUNDED but **NOT MEASURED** — no merge was
+performed in this run, and the integration lane must re-measure `make build` on the merged tree
+rather than inherit this sentence.
+
+**The docs-site hand-off — a disclosed inheritance, not a discovery:**
+
+`docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md` enumerates the `moai todo` verbs by
+name and now OMITS `landed`; the four READMEs reference `moai todo` as well. Those paths are
+outside this SPEC's `module:` frontmatter, the SPEC's five artifacts mention `docs-site` zero times,
+and the DoD's final line forbids modifying any source file outside the module list. Touching them
+here would make the sync phase violate the SPEC's own DoD; leaving them stale is a real
+user-facing gap. The disposition is a FOLLOW-UP CARD, which is the operator's to issue. The
+sync-auditor meets this as an inheritance rather than as a finding.
+
+**The open operator decision — recorded OPEN, not resolved:**
+
+M3 chose to surface an undecodable stored `landing` value as a READ ERROR rather than dropping it to
+nil, on data-loss grounds: the encoder is the column's only writer and refuses every invalid shape,
+so an undecodable value is external corruption, and dropping it would lose the operator's record
+permanently on the next whole-record write-back. The COST is that one corrupt value makes the queue
+unreadable, and `--clear` cannot run because it must read first. M5 extended the same choice to
+`archived_items`, so the availability cost is now paid on BOTH tables. This sits with the lead as an
+operator call. It is OPEN.
+
+### Residual-risk
+
+- **The absorb may not be clean.** `b65e7e5f6` also modifies `internal/template/catalog.yaml`, and
+  so does this card. The integration window should expect a conflict on that generated hash and
+  resolve it by regenerating rather than by picking a side.
+- **The merged tree is unmeasured.** Every green above is this branch's tip in isolation. A card
+  verified alone is not a card verified merged; the integration lane re-measures at the tip it will
+  merge.
+- **`landed` is unexercised as a shipped command.** Every fixture in M3-M5 is in-process; `bin/moai`
+  was built but never invoked. A defect that lives only in cobra wiring or in the real binary's
+  git-subprocess path would not have been caught by anything in this card.
+- **Three criteria pass on repaired or partially-demonstrated clauses.** AC-TLE-012's original
+  clause was vacuous, AC-TLE-014's was written against a path that did not exist and survived three
+  audit passes, and AC-TLE-018's stated mechanism is undemonstrated. The pattern across all three
+  is the same: a criterion can read as strict and measure nothing, and the audit passes did not
+  separate the two.
+- **The absent linter and the absent coverage figure are the largest unmeasured axes.** Neither has
+  been observed at any point in this card, so no statement about lint cleanliness or coverage on
+  these packages has any basis here.
