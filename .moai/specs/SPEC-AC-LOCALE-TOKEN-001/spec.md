@@ -2,7 +2,7 @@
 id: SPEC-AC-LOCALE-TOKEN-001
 title: "ASCII 토큰 계수 검증 기준의 로케일 왜곡 제거 — AC 전수 조사 및 재작성"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec (card t573)
