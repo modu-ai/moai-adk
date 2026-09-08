@@ -257,3 +257,57 @@ bytes at a fraction of the context cost.
 the same work: a fresh session re-pays the always-loaded prefix at write price where a continuing
 one reads it from cache — provided it stays warm, since a long idle gap or an edit to the loaded
 prefix reverts it to write price. Splitting a session is a cost to justify, not a default.
+
+---
+
+## 8. Codex Web Console
+
+Codex can also run this project's tasks from its web console (cloud runs). Those sessions read the
+same instruction contract — this AGENTS.md — but they are not the local CLI: `.codex/hooks.json`
+wiring and the status line are local surfaces and do not fire there. Keep instructions in this file
+self-sufficient (never reliant on local-only state), and treat web-console runs as read-and-review
+first: work that mutates the working tree belongs in a checked-out local session where the hook
+layer and tests can act on it.
+
+## 9. Hook Event Coverage
+
+MoAI's hook layer is event-driven, and Codex fires a SUBSET of it. Of the twelve hook events the
+Codex adapter recognizes, eight are wired today: SessionStart, SessionEnd, UserPromptSubmit,
+PreToolUse, PostToolUse, Stop, SubagentStart, and SubagentStop. Four are recognized but not wired:
+PreCompact and PostCompact (compaction never triggered during the firing campaigns),
+PermissionRequest, and the Codex-only Interrupt, which has no MoAI dispatcher counterpart. Claude
+-side hook events with no Codex counterpart at all — Notification, PostToolUseFailure, and the
+agent-team pair TeammateIdle / TaskCompleted — never fire in a Codex session. Do not assume a hook
+ran under Codex because it runs under Claude Code; check this coverage first.
+
+## 10. Configuration Map
+
+Project configuration lives in `.moai/config/sections/*.yaml` — one file per concern (quality,
+harness, language, llm, workflow, statusline, mx, ...). Quality gates are configured there too:
+the 3-level harness (minimal / standard / thorough), the TRUST 5 quality validation, and the
+per-phase LSP thresholds (plan: capture the LSP baseline; run: zero errors / type errors / lint
+errors; sync: zero errors, max 10 warnings) are set through `harness.yaml`, `quality.yaml`,
+`lsp.yaml`, and the evaluator profiles under `.moai/config/evaluator-profiles/`. Threshold values
+have a single source and are never duplicated inline.
+
+## 11. moai CLI Verbs
+
+| Verb | Purpose |
+|------|---------|
+| `moai init <project>` | Scaffold a new MoAI project |
+| `moai update` | Sync templates (`--add-codex` adds the Codex harness to an existing project) |
+| `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
+| `moai doctor` | Diagnose installation and wiring health |
+| `moai worktree` | Worktree lifecycle (list / snapshot / verify / restore) |
+| `moai cc` / `moai glm` / `moai cg` | Session launchers (Claude, GLM, coordinated pairing) |
+| `moai version` | Print build version and provenance |
+
+Run `moai --help` for the full verb surface — it is generated from the registered commands and is
+always current; this table names the stable entry points only.
+
+## 12. Status Line Tokens
+
+The status line is rendered by `moai statusline` (implementation: `internal/statusline`). It reads
+state snapshots under `.moai/state/` and honors the `MOAI_STATUSLINE_CONTEXT_SIZE` override for
+models whose true context window the host misreports. This section is a pointer, not a copy — read
+the builder for the current token set instead of duplicating it here and letting the copy go stale.
