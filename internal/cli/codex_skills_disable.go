@@ -420,8 +420,14 @@ func runCodexSkillDisable(p printer.Printer, opts codexSkillDisableOptions) erro
 		p.Info("Unchanged: %s (%s)", res.Path, v.Reason)
 		return nil
 	case codexSkillDisableSkipped:
+		// A guard refusal is a REFUSED request, not a quiet success: the
+		// verb heard the request and declined, so it exits non-zero (the
+		// name-resolution policy below, not the absent-input one). Two of
+		// the refusal reasons hand off to `moai clean --codex-skills`, and
+		// exit 0 would hide that handoff from a script. The Skipped: line
+		// still goes to stdout so the human reads the reason.
 		p.Info("Skipped: %s (%s)", res.Path, v.Reason)
-		return nil
+		return fmt.Errorf("refused to disable %q for Codex: %s", opts.Skill, v.Reason)
 	}
 
 	verb := "add an entry for"
