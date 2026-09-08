@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -118,6 +119,67 @@ func TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass(t *testing.T) {
 	}
 }
 
+// --- the guard, pinned independently of the collection sites ---
+
+// TestCodexBlankReview_GuardKeepsSharedDiscriminator pins the guard at
+// runTurn's blank branch WITHOUT going through the collection sites, as
+// defense in depth: a future edit to collection must not silently un-guard the
+// guard.
+//
+// Why this is a source-level assertion rather than a behavioral one, stated
+// plainly because the shape is unusual: the guard's blank branch has no live
+// producer. Collection is now blank-aware, so a whitespace-only body is never
+// stored, and the ONLY value reaching the guard through
+// awaitCodexTurnReview → bestCodexReviewText is exactly "". Reverting the guard
+// to `reviewText == ""` therefore changes no observable behavior anywhere on
+// the production path — a sync-audit mutant did exactly that and passed the
+// entire suite. Reaching the branch behaviorally would require a new injectable
+// seam in production code, which this pass may not add; the property is real,
+// so the remaining honest observer is the source itself.
+//
+// What this test can and cannot claim: it establishes that the guard STILL
+// SHARES the one discriminator, so the redundancy survives a future edit. It
+// does NOT establish that the guard would behave correctly if reached — nothing
+// on the current production path can reach it with a blank-but-non-empty value.
+func TestCodexBlankReview_GuardKeepsSharedDiscriminator(t *testing.T) {
+	raw, err := os.ReadFile("mcp_codex.go")
+	if err != nil {
+		t.Fatalf("read mcp_codex.go: %v — an unreadable source file makes every assertion below vacuous", err)
+	}
+	src := string(raw)
+
+	// Positive control FIRST: if these sentinels are gone the file was renamed
+	// or restructured, and a green from the assertions below would mean nothing.
+	for _, sentinel := range []string{
+		"func (h *codexSessionHandle) runTurn(",
+		"func bestCodexReviewText(",
+		"func codexReviewTextIsBlank(",
+	} {
+		if !strings.Contains(src, sentinel) {
+			t.Fatalf("sentinel %q absent from mcp_codex.go — this test is no longer measuring what it claims", sentinel)
+		}
+	}
+
+	if !strings.Contains(src, "if codexReviewTextIsBlank(reviewText) {") {
+		t.Error("the runTurn guard no longer uses the shared blankness discriminator — with collection already filtering blanks this change is invisible to every behavioral test, so the redundancy would be lost silently")
+	}
+
+	// The residual-site sweep, mechanized. Each of these four exact-equality
+	// forms matched on the pre-repair tree (4/4 at 3ac58b5a1, recorded in
+	// progress.md §E.2 with its positive control), so a zero-match run here is
+	// evidence rather than an unmatched grep.
+	for _, stale := range []string{
+		`if reviewText == ""`,
+		`p.Item.Review != ""`,
+		`p.Item.Text != ""`,
+		`if review != ""`,
+	} {
+		if strings.Contains(src, stale) {
+			t.Errorf("exact-equality emptiness check %q is back on the review-text path — that is the defect this SPEC repaired", stale)
+		}
+	}
+}
+
 // --- AC-CBR-002 (state B, CONTROL) ---
 
 // TestCodexBlankReview_AC002_RealCleanReviewStillPasses is the control that
@@ -227,6 +289,19 @@ func TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable(t *testing
 	}
 	if !strings.Contains(unavailableOut.Summary, "codex unavailable") {
 		t.Errorf("state-C summary = %q, want it to name codex unavailability", unavailableOut.Summary)
+	}
+	// The PREFIX, asserted specifically. Substring presence plus inequality is
+	// not enough: a summary reading "codex unavailable: blank review output …"
+	// satisfies both of those and still collapses state A into the
+	// unavailable-backend wording — the exact outcome mcp_codex.go's own comment
+	// calls "a new silence, not a repair". A sync-audit mutant that made that
+	// rewrite passed the whole suite, which is why this pair exists.
+	const unavailablePrefix = "codex unavailable: "
+	if strings.HasPrefix(blankOut.Summary, unavailablePrefix) {
+		t.Errorf("state-A summary = %q, want it NOT to carry the %q prefix — a blank body is a backend that answered without saying anything, not a backend that could not be reached", blankOut.Summary, unavailablePrefix)
+	}
+	if !strings.HasPrefix(unavailableOut.Summary, unavailablePrefix) {
+		t.Errorf("state-C summary = %q, want it to carry the %q prefix — the fail-open wording is the pre-existing contract this SPEC preserves", unavailableOut.Summary, unavailablePrefix)
 	}
 }
 

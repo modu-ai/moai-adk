@@ -77,4 +77,18 @@
 FAIL
 FAIL	github.com/modu-ai/moai-adk/internal/cli	0.867s
 FAIL
-a87a7d8a7e033ac040b6b8e66d47112c425ad8cb
+a5f83fd62ea793362aff37c8fe5700d27e90d341
+
+--- attribution correction (sync audit, finding F5) ---
+The SHA above was corrected from a87a7d8a7 to a5f83fd62.
+The RED output itself is unchanged and is NOT restated.
+Reason: the run was executed on the working tree that was committed moments
+later as a5f83fd62 (seam present, all four sites still unwired). a87a7d8a7 --
+the tree the file originally named -- contains no seam at all, so replaying
+there is a COMPILE failure, not the behavioral RED recorded above.
+Re-measured, not accepted on report:
+  $ git show a87a7d8a7:internal/cli/mcp_codex.go | grep -c codexReviewTextIsBlank  -> 0
+  $ git show a5f83fd62:internal/cli/mcp_codex.go | grep -c codexReviewTextIsBlank  -> 2
+  $ git show a5f83fd62:internal/cli/mcp_codex.go | grep -n 'if reviewText == ""'   -> 855 (guard still unwired)
+The sync auditor replayed the RED at a5f83fd62 and confirmed the failing set
+matches this record exactly.
