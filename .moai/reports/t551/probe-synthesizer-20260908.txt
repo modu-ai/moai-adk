@@ -1,0 +1,9 @@
+=== RUN   TestT551ProbeEmptyish
+    zz_t551_probe_test.go:15: empty-native         verdict="pass" findings=0 summary="" note=""
+    zz_t551_probe_test.go:15: ws-only-native       verdict="pass" findings=0 summary="" note=""
+    zz_t551_probe_test.go:15: ws-only-adv          verdict="inconclusive" findings=0 summary="" note=""
+    zz_t551_probe_test.go:15: prose-no-signal      verdict="pass" findings=0 summary="I looked at the diff." note=""
+    zz_t551_probe_test.go:15: prose-no-signal-adv  verdict="inconclusive" findings=0 summary="I looked at the diff." note=""
+--- PASS: TestT551ProbeEmptyish (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.827s
