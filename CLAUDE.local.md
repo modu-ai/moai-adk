@@ -224,10 +224,10 @@ CLAUDE.local.md                # This file
 | ast-grep 룰셋 | `.moai/config/astgrep-rules/` | `.moai/` 하위 **`config/` 밖** + `gate.yaml`의 `ast_grep_gate.rules_dir` 지정 (빈 값이면 기본 경로 폴백 없음 — t50, `internal/cli/astgrep.go:69,105`; [2026-08-27 감사 정정]) |
 | 하네스 | — | `.claude/skills/hns-*`, `.claude/agents/harness/`, `.claude/commands/harness/`, `.moai/harness/` (`IsUserOwnedNamespace` 백업 대상) |
 
-**[HARD] update 실행 후 매번 검증한다.** 전제: 실행 **전** 추적 파일 수정이 0이어야 diff 귀속이 가능하다.
+**[HARD] update 실행 후 매번 검증한다.** 전제: 실행 **전** 추적 파일 수정이 **§0.4 가 규정한 ` M CLAUDE.local.md` 한 건뿐**이어야 diff 귀속이 가능하다. primary 체크아웃에서 그 표식은 영구적이므로 **0 이 되는 일은 없다** — 0 을 전제로 읽고 그 한 건을 없애려 들면 §0.4 가 막은 회귀로 떠밀린다. 다른 파일이 함께 수정돼 있으면 그때는 귀속이 불가능하니, update 전에 그쪽을 먼저 정리한다.
 
 ```bash
-git status --porcelain | grep -v '^??' | wc -l        # 실제 변경 수
+git status --porcelain | grep -v '^??' | wc -l        # 실제 변경 수 — primary 의 baseline 은 0 이 아니라 1(§0.4)
 git status --porcelain | grep '^ D'                   # 삭제된 파일 — 0이어야 정상
 # 삭제가 있으면 (전부 추적 파일이므로 git이 안전망):
 git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 git restore --
@@ -386,7 +386,7 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 
 - 완료 보고에 담을 것: 카드 id · 브랜치와 HEAD · 로컬 병합 SHA · 미푸시 커밋 수 · 증거 경로(primary 반출 여부) · 재측정 범위
 - `moai integration status`가 `free`인 것은 **승인이 아니다.** 리드의 창 지명만이 근거다.
-- 창을 받으면: `moai integration acquire --name <lane>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
+- 창을 받으면: `moai integration acquire --name <lane>` → 본인 워크트리에서 `git merge develop` 흡수(대상은 **로컬** `develop` — 원격이 아니다. 흡수 **전에** 그 로컬 develop 이 최신인지부터 본다 — 판정식과 갱신 경로는 `.claude/rules/local/gitflow-lane-protocol.md` §11) → **병합 트리에서 재측정** → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff <WT-브랜치>` → `moai integration release` → `ExitWorktree keep` → 완료 보고(로컬 병합 SHA를 리드에게 보고 — push는 리드가 일괄로 한다)
 - **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리드가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. 레인은 `git push origin <WT-브랜치>`를 하지 않고, `gh run rerun`/`workflow dispatch` 등 CI를 직접 요청·재요청하지도 않는다 — CI 판정은 develop push가 일으키는 실행에 맡기고, 판독은 리드 몫이다. (당일 lane-2가 `WT-version-stamp-predicate`를 origin에 push한 전례로 추가)
 - **[HARD] `acquire`는 창을 기록하기 전에 호출자 트리를 먼저 단정한다.** tracked `.claude/settings.json`의 워킹 사본이 수정돼 있는지 `git --no-optional-locks status --porcelain -- .claude/settings.json`으로 재고, 적중이면 그 사본을 primary 체크아웃의 `.moai/state/settings-drift/` 아래로 보존한 뒤 같은 자리 `ledger.jsonl`에 한 줄을 남기고 보존 경로·sha256을 출력한다. **검출·보존·원장은 설정과 무관하게 매번 돈다**(9일 동안 아무도 보지 않아서 놓친 것이 문제였지 막지 않아서가 아니다). 거절만 opt-in이며(`workflow.settings_drift_gate.enabled`, 이 저장소는 켠다) 우회는 `--allow-settings-drift`다 — `--force`는 "살아 있는 보유자에게서 창을 빼앗는다"는 다른 축이라 우회로 쓰지 않는다. 창과 무관하게 손으로 확인할 때는 `moai integration preflight [경로]`. **어떤 경우에도 자동 복원하지 않는다** — 그 파일은 런타임이 쓰고 토큰·절대경로·tmux pane id를 담을 수 있어 자동 복원 자체가 데이터 파괴다. 적중 보고를 받으면 리드가 처분을 정한다.
 - **워크트리는 원격 머지가 확인되기 전까지 폐기하지 않는다.** 미푸시 브랜치의 워크트리는 그 작업의 유일본이다.
@@ -401,8 +401,13 @@ moai cc -w develop --branch develop  # 최초 provisioning (기존 develop 브�
 
 # 창 안에서
 moai integration acquire --name <lane>
+# 흡수 전에 로컬 develop 을 먼저 최신화한다. 판정식(ref 비교)과 갱신 경로는
+# `.claude/rules/local/gitflow-lane-protocol.md` §11 이 소유한다 — 여기 복사하지 않는다(두 벌이 되면 갈라진다).
 git -C <카드워크트리> merge develop            # 흡수 — 대상은 로컬 develop
-# 리드 일괄 push 모델에서 로컬 develop 은 origin/develop 보다 앞설 수 있다(다른 레인이 로컬 병합을 마쳤고 리드가 아직 push 하지 않은 구간). 원격을 흡수하면 그 착지분이 빠진 베이스에서 재측정하게 된다.
+# 어긋나는 방향은 둘이고, 둘 다 같은 결함을 낸다.
+#   앞설 때: 다른 레인이 로컬 병합을 마쳤고 리드가 아직 push 하지 않은 구간 — 원격을 흡수하면 그 착지분이 빠진 베이스에서 재측정한다.
+#   뒤처질 때: 다른 레인의 병합이 이미 원격에 올라간 뒤 — 최신화 없이 로컬을 흡수하면 낡은 베이스에서 재측정한다.
+# 거울상이므로 한쪽만 막으면 다른 쪽으로 새어 나간다.
 # 병합 트리에서 재측정 후
 git merge --no-ff <카드브랜치>                  # develop 워크트리 안에서
 moai integration release
