@@ -54,7 +54,7 @@ Both outcomes prescribed in spec.md §E. Outcome A (document-only) is viable but
 
 ## §E.2 Run-phase Evidence
 
-Run phase executed 2026-09-08, worktree `.claude/worktrees/t548`, branch `WT-codex-disable-exit`, Outcome B (M2 decision above). Commits: M4-RED `554f93e35` → M3+M4 `c7a9e0830` → M5 docs `<this commit>`.
+Run phase executed 2026-09-08, worktree `.claude/worktrees/t548`, branch `WT-codex-disable-exit`, Outcome B (M2 decision above). Commits: M4-RED `554f93e35` → M3+M4 `c7a9e0830` → M5 docs `5154bf2b8`.
 
 ### Milestone summary
 
@@ -131,14 +131,14 @@ Zero NEW findings (total is zero, so no baseline split needed).
 |--------|---------|
 | `554f93e35` | test(SPEC-CODEX-DISABLE-EXIT-001): M4 Skipped exit-contract test, RED on pre-change tree (t548) — carries spec.md `draft → in-progress` |
 | `c7a9e0830` | feat(SPEC-CODEX-DISABLE-EXIT-001): M3 Skipped guard-refusal exits non-zero (t548) |
-| `<this commit>` | docs(SPEC-CODEX-DISABLE-EXIT-001): M5 exit-code contract on the verb surface (t548) |
+| `5154bf2b8` | docs(SPEC-CODEX-DISABLE-EXIT-001): M5 exit-code contract on the verb surface (t548) |
 
 Push state: **not pushed** — lane does not push (git-flow lane protocol); the lead batch-pushes `origin/develop` after recording the local merge SHA.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run
+run_commit_sha: 5154bf2b8
 run_status: complete
 ac_pass_count: 7
 ac_fail_count: 0
@@ -154,7 +154,7 @@ m1_to_mN_commit_strategy: 3 commits (M4-RED test / M3+M4 implementation / M5 hel
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 6f3433a32
 sync_status: complete
 card: t548
 changelog_entry_position: CHANGELOG.md [Unreleased] § Fixed (top of section)
