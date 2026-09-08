@@ -1,0 +1,5 @@
+# sync-audit independent re-measurement — card t518
+tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+HEAD: 4360db373a5c7d547877adc18a6fcbfff600a374
+branch: WT-spec-lint-axes
+date: 2026-09-07T23:27:24Z

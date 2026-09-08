@@ -1,0 +1,5 @@
+=== RUN   TestZZT518ProbeNarrowCoveragePaths
+    zz_t518_probe_test.go:23: PROBE 16 /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md
+--- PASS: TestZZT518ProbeNarrowCoveragePaths (0.15s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.574s

@@ -1,0 +1,19 @@
+== six ValidateSpecID consumer call sites: coverage count > 0 == executed ==
+-- internal/kanban (go test ./internal/kanban/ -count=1 -coverprofile) --
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:267.2,267.32 1 1
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:267.32,268.60 1 1
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:268.60,270.4 1 1
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:360.2,360.54 1 1
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:360.54,362.3 1 1
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:363.2,363.69 1 1
+github.com/modu-ai/moai-adk/internal/kanban/board_store.go:363.69,367.27 4 1
+github.com/modu-ai/moai-adk/internal/kanban/status_read.go:106.18,108.3 1 0
+github.com/modu-ai/moai-adk/internal/kanban/status_read.go:109.2,109.54 1 1
+github.com/modu-ai/moai-adk/internal/kanban/status_read.go:109.54,111.3 1 1
+
+-- internal/cli (targeted selector, -coverprofile) --
+github.com/modu-ai/moai-adk/internal/cli/spec_close.go:108.4,108.56 1 1
+github.com/modu-ai/moai-adk/internal/cli/spec_close.go:108.56,110.5 1 1
+github.com/modu-ai/moai-adk/internal/cli/spec_status.go:70.88,73.54 1 1
+github.com/modu-ai/moai-adk/internal/cli/spec_status.go:73.54,75.3 1 1
+github.com/modu-ai/moai-adk/internal/cli/spec_view.go:46.54,48.3 1 1

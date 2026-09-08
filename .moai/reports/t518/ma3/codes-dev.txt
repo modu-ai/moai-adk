@@ -1,0 +1,14 @@
+6        WARNING InvalidREQID
+1        WARNING OwnershipTransitionInvalid
+2        WARNING SpecsDirMissingSpecFile
+7        WARNING StatusTokenUnrecognized
+6        WARNING SyncSHASlotFormat
+14       WARNING FrontmatterInvalid
+48       WARNING LegacyEARSKeyword
+27       WARNING MissingExclusions
+18       WARNING StatusGitConsistency
+412      WARNING ModalityMalformed
+115      WARNING MovingRefUnpinned
+102      WARNING StatusTransitionInvalid
+3658     WARNING CoverageIncomplete
+TOTAL    4416

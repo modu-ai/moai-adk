@@ -1,0 +1,65 @@
+feat(SPEC-SPEC-LINT-BLIND-AXES-001): M-A2 announce unjudgeable modality (t518)
+
+Card t518, axis 2 branch B. isModalityMalformed read five English prefixes and
+returned false for everything else, so a Korean requirement produced exactly what
+a well-formed one produces: nothing. The repair adds the third verdict rather
+than a Korean lexicon — branch A (actually judging Korean modality) stays out of
+scope by operator decision and no Korean word list is introduced here.
+
+judgeModality returns conforming / malformed / unjudged. A text is judgeable two
+ways, neither of them a Korean lexicon: an English modality prefix, or a SHALL
+token matched at a WORD BOUNDARY (REQ-SLB-014, replacing the leading-space
+strings.Contains(upper, " SHALL")). The second route is why the corpus's
+`…해야 한다(SHALL)` shape is judged at all, which is what puts the contact-condition
+repair inside branch B: with the old condition every such requirement would be
+miscounted as unjudgeable and this milestone's deliverable figure would be wrong
+from the start.
+
+ModalityUnjudged is the confirmed code name; warning severity with Advisory set
+at the emission site, per-code, so it reports and never gates. Severity still has
+exactly one entry-keyed decision point (Widened, via reqFindingSeverity).
+
+Corpus movement, old and new side by side, both re-derived on this tree from
+binaries built at HEAD and at the working tree (no stored number was subtracted):
+  before 0 error(s), 4394 warning(s)  →  after 0 error(s), 4617 warning(s)
+  ModalityUnjudged   0 → 460  (+460, all newly surfaced; 5 table-sourced,
+                               455 list-sourced, across 78 SPEC dirs)
+  ModalityMalformed  412 → 175 (-237, all attributable to the word-boundary
+                               repair: 237 disappeared, 0 appeared; every one
+                               has a word-bounded SHALL and no " SHALL")
+  All 11 other codes: 0. Error-severity total: 0 → 0. Residual unattributed 0.
+  The character preceding the recovered SHALL: `*` x231, `(` x3, backtick x3 —
+  the dominant real shape is markdown bold, NOT the parenthesized form the SPEC
+  predicted. Measurement over prediction.
+  The opposite direction (SHALLOW, which the old condition accepted) moved by 0
+  on this corpus; the unit test guards it instead.
+  Exit-code contract unmoved: rc=0 default and rc=1 --strict, before and after.
+
+Deliverable: the exact count of unjudgeable requirements is 460 of 3,985
+collected REQ entries. It sizes the branch-A follow-up card. Not stored — the
+census test re-derives it, and the shipped Go code's figures match the
+two-binary diff independently.
+
+9 mutants run over the whole package, not a -run filter. 8 caught. M8 (drop the
+"THE " prefix) passed the entire package on the first pass — every fixture opened
+with "When" — and is recorded as such; a five-prefix guard was added afterwards
+and M8 now goes RED. "Caught because a guard was added afterwards" is a different
+fact from "a guard was there".
+
+Recorded, not fixed here: acceptance.md §C's verbatim AC-SLB-012 fixture
+REQ-FX-011 cannot make its own mutant guard — its text already carries " SHALL"
+with a leading space, so the old condition judges it well-formed too. The
+verbatim fixture is kept as evidence, a corrected discriminating fixture is added
+beside it, and the test asserts the defect mechanically. acceptance.md is not
+edited (out of run-phase ownership).
+
+AC-SLB-005 (rejection observability) is deferred, not silently skipped: it is an
+axis-1 concern needing the table collector's discriminator, its 787 corpus
+rejections would fuse with this milestone's +460 in one measurement and defeat
+per-source attribution, and one design decision remains open. Owner: M-A2b,
+before M4's recount.
+
+Verified: go test ./internal/spec/... rc=0 · go vet rc=0 · gofmt clean ·
+golangci-lint 0 issues. Full suite is CI's; this lane does not push.
+
+🗿 MoAI

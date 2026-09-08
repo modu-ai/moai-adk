@@ -1,0 +1,20 @@
+# manager-spec 계획 산출물 개정 회차의 수치 재유도 (카드 t518)
+# tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+# HEAD: 358405d7c
+# command: moai spec lint .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md   (파이프 없음, rc 직독)
+# rc: 0
+# 기대: 0 error(s), 9 warning(s) — 이 회차의 편집이 이 값을 움직이지 않았음을 확인한다
+# ---------------------------------------------------------------
+SEVERITY  CODE                FILE                                           LINE  MESSAGE
+--------  ----                ----                                           ----  -------
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  114   REQ REQ-SLI-001 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  115   REQ REQ-SLI-002 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  116   REQ REQ-SLI-003 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  117   REQ REQ-SLI-004 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  118   REQ REQ-SLI-005 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  119   REQ REQ-SLI-006 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  120   REQ REQ-SLI-007 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  121   REQ REQ-SLI-008 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  122   REQ REQ-SLI-009 is not referenced by any AC
+
+0 error(s), 9 warning(s)
