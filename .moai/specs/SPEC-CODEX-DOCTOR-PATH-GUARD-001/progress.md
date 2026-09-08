@@ -107,4 +107,36 @@ m1_to_mN_commit_strategy: single milestone M1 — one implementation commit plus
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the following commit
+sync_status: complete
+b12_self_test_a: pass    # /usr/bin/grep -c 'SPEC-CODEX-DOCTOR-PATH-GUARD-001' CHANGELOG.md -> 0 before append (no duplicate entry)
+b12_self_test_b: pass    # AC count cited (7) matches acceptance.md; see the discriminator note below
+b12_self_test_c: pass    # every path claimed in the CHANGELOG entry verified to exist before commit
+changelog_entry_position: "[Unreleased] > Added, first entry (newest-first, line 12)"
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed    # merged 3-phase close, carried on this single sync commit
+  plan_md: n/a                          # stateless on the status axis (no status: field)
+  acceptance_md: n/a                    # stateless on the status axis (no status: field)
+  progress_md: n/a                      # phase state lives in body sections, not frontmatter
+canary_compliance_check: n/a            # this SPEC defines no forward-looking policy its own sync tests
+```
+
+**AC-count discriminator (recorded, because the raw counter over-reports).** The generic sweep
+`/usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` prints **9** on this
+file. Two of those nine — `AC-CSRB-003` and `AC-CSRB-006` — are cross-references to the sibling
+SPEC-CODEX-SKILL-PATH-READBACK-001 (card t562) cited in the "Contrast with t562" and edge-case
+prose; they are not criteria of this SPEC. This SPEC's own criteria are the seven `AC-CDPG-*`
+identifiers, and 7 is the figure the CHANGELOG entry cites. No occurrence in this file carries a
+`[RETIRED]` or `[REF]` reserved token, so no identifier is excluded on adjacency grounds and none
+is ambiguous.
+
+Of the seven, six are verifiable criteria and all six are PASS (§E.3 `ac_pass_count: 6`);
+`AC-CDPG-006` is deliberately no-AC-by-design — REQ-CDPG-006 is discharged as a `plan.md` §D-2
+constraint plus a Definition-of-Done checkbox verified by reading the test source, because its
+failure mode is a nondeterministic cross-test race that a passing run cannot establish.
+
+**Sync-phase scope.** This commit touches `CHANGELOG.md`, `spec.md` frontmatter (`status:` only —
+`updated:` was already today's date), and this section. No SPEC body content, no implementation
+file, and no other SPEC directory was modified.

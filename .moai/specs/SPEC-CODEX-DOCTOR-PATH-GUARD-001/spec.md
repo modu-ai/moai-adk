@@ -2,7 +2,7 @@
 id: SPEC-CODEX-DOCTOR-PATH-GUARD-001
 title: "The doctor-side path conversion gets a guard that fails when it is removed"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
