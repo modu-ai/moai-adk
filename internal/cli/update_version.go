@@ -200,7 +200,16 @@ func rollbackOrFail(backupPath string, originalErr error) error {
 // (REQ-UVF-007 / AC-UVF-007). --version is mutually exclusive with --check,
 // --templates-only, --restore, and --dry-run. Combinations with --binary,
 // --force, and --yes are permitted.
-func validateUpdateVersionConflicts(versionTag string, check, templatesOnly, restore, dryRun bool) error {
+//
+// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-007) extends the validator with the
+// --check × --add-codex pair: --check is informational while --add-codex
+// mutates project wiring, so the combination is refused fail-loud with both
+// flags named. The rule runs BEFORE the --version early return so it holds
+// when --version is absent too.
+func validateUpdateVersionConflicts(versionTag string, check, templatesOnly, restore, dryRun, addCodex bool) error {
+	if check && addCodex {
+		return fmt.Errorf("--check and --add-codex are mutually exclusive (--check is informational; --add-codex mutates project wiring)")
+	}
 	if versionTag == "" {
 		return nil
 	}

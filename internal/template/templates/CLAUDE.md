@@ -78,7 +78,7 @@ MoAI uses DDD and TDD as its development methodologies, selected via quality.yam
 
 ## 6. Quality Gates
 
-For TRUST 5 framework details, see `.claude/rules/moai/core/moai-constitution.md`. MoAI-ADK uses a 3-level harness system for adaptive quality depth: **minimal** (fast validation), **standard** (default checks), **thorough** (full sync-auditor + TRUST 5); harness level is auto-determined by the Complexity Estimator based on SPEC scope, and sync-auditor provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency). LSP quality gates apply phase-specific thresholds — plan: capture LSP baseline; run: zero errors/type-errors/lint-errors; sync: zero errors, max 10 warnings, clean LSP. Configuration: `spec-workflow.md` (harness/LSP routing) + `.moai/config/sections/{harness,quality,lsp}.yaml` + `.moai/config/evaluator-profiles/` (LSP threshold values live in `lsp.yaml` — the LSP-gate SSOT).
+The quality-gate system — the 3-level harness (minimal / standard / thorough), TRUST 5 validation, sync-auditor scoring, and the per-phase LSP thresholds with their configuration surfaces — is defined once in `AGENTS.md` §10 Configuration Map; this section is a pointer, not a copy.
 
 ---
 
