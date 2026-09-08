@@ -1,0 +1,44 @@
+--- TREE STAMP (batch C1 start) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------
+
+### AC guard tests (verbose) — internal/kanban
+--- PASS: TestTempOrigin_SymlinkSpellingEquivalence (0.00s)
+--- PASS: TestTempOrigin_FailsOpenOnUnresolvable (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/empty (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set (0.00s)
+--- PASS: TestTempOrigin_ComponentBoundary (0.00s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+--- PASS: TestTempRootsSeam_ReadAtCallTime (0.00s)
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing_NonTemp (0.05s)
+--- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.19s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.08s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.07s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.04s)
+--- PASS: TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback (0.09s)
+--- PASS: TestTodoQueueRoot_PureGuardIsSilent (0.08s)
+--- PASS: TestTodoQueueRoot_GitBranchUnreachedByGuard (0.12s)
+--- PASS: TestTempOrigin_LexicalResembler (0.00s)
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing (0.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.998s
+kanban AC exit=
+
+### full package: internal/kanban
+ok  	github.com/modu-ai/moai-adk/internal/kanban	144.092s
+exit=0
+
+### full package: internal/web
+ok  	github.com/modu-ai/moai-adk/internal/web	3.896s
+exit=0
+
+--- TREE STAMP (batch C1 end) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------

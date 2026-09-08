@@ -1,0 +1,28 @@
+===== M-AUD-3: guard moved AFTER homeTodoQueueRoot ok-check (ordering claim D12) =====
+1
+--- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.20s)
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.05s)
+--- FAIL: TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing (0.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	1.334s
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.585s
+FAIL
+
+===== M-AUD-4: substitute root = base/.moai/state/todo (layer misalignment) =====
+1
+--- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.16s)
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.08s)
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.04s)
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.04s)
+--- FAIL: TestTodoQueueRoot_PureGuardIsSilent (0.04s)
+--- FAIL: TestResolveTodoQueueRoot_ReadThroughToProjectLocal (0.04s)
+--- FAIL: TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing (0.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	1.285s
+--- FAIL: TestGuardBypassMutant_ObserveHomePollution (0.13s)
+--- FAIL: TestTempOriginGuidance_NamesRootsAndContinues (0.18s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.636s
+FAIL
+=== RESTORE ===
+5c63194e2cf69675ded897a09c089ac4aa87ec47d051dfcc1ab2c8cdc3831aa9  internal/kanban/todo_root.go

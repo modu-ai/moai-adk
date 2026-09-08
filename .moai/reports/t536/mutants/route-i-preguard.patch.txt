@@ -1,0 +1,29 @@
+ROUTE (i) — pre-guard-equivalent control (t536 M3, temporary; never committed).
+
+Applied to internal/kanban/todo_root.go with the discriminant left INTACT:
+remove the two M2 wiring insertion points, which is exactly what M2 added.
+This reproduces the pre-guard tree's behaviour IN THIS TREE, so the control is
+a measurement of this run rather than a citation of an older one.
+
+@@ func ResolveTodoQueueRoot(base string) string {
+ 	if root, ok := primaryCheckoutRoot(base); ok {
+ 		return root
+ 	}
+-	if root, _, refused := tempOriginSubstituteRoot(base); refused {
+-		return root
+-	}
+ 	return fallbackTodoQueueRoot(base)
+ }
+
+@@ func ResolveTodoQueueRootAdopting(base string) string {
+ 	if root, ok := primaryCheckoutRoot(base); ok {
+ 		return root
+ 	}
+-	if root, _, refused := tempOriginSubstituteRoot(base); refused {
+-		return root
+-	}
+ 	root, ok := homeTodoQueueRoot(base)
+
+tempOriginSubstituteRoot itself is NOT removed — TempOriginRefusal still calls
+it, so the package keeps compiling and the internal/cli guidance path is
+unchanged. Only the RESOLUTION loses the guard, which is the axis under test.

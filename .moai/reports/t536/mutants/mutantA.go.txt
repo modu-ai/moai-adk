@@ -1,0 +1,36 @@
+package kanban
+
+// MUTANT A (temporary, never compiled in place): the naive one-sided raw-prefix
+// discriminant spec.md §4 and §G name — strings.HasPrefix against the
+// unnormalized os.TempDir() spelling.
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+var TempRootsFn = defaultTempRoots
+
+func defaultTempRoots() []string {
+	return []string{os.TempDir(), "/tmp", "/var/folders"}
+}
+
+func TempOriginReason(base string) (reason string, isTemp bool) {
+	if strings.TrimSpace(base) == "" {
+		return "", false
+	}
+	abs, err := filepath.Abs(base)
+	if err != nil {
+		return "", false
+	}
+	for _, root := range TempRootsFn() {
+		if strings.TrimSpace(root) == "" {
+			continue
+		}
+		if strings.HasPrefix(abs, root) {
+			return root, true
+		}
+	}
+	return "", false
+}

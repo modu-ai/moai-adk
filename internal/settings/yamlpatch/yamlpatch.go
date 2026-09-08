@@ -356,12 +356,35 @@ func encode(doc *yaml.Node, indent int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// defaultFilePerm은 absent 대상에 대한 문서화된 기본 모드다
+// (SPEC-SEAM-GREENFIELD-001 §4). 템플릿 섹션 파일의 측정된 관례는 0644다
+// (spec.md C7); os.CreateTemp의 0600은 이후 편집의 stat 보존이 그 어긋남을
+// 영구 보존하므로 기각됐다 (§4 근거 기록).
+const defaultFilePerm os.FileMode = 0o644
+
 // atomicWrite는 동일 디렉터리 temp 파일 + rename으로 원자적으로 기록한다
 // (ConfigManager.Save의 원자성 관례를 따른다). 원본 파일 모드를 보존한다.
+//
+// @MX:NOTE: [AUTO] absent 대상은 greenfield로 생성한다 — 읽기 계층
+// (PatchFile)이 absent를 빈 문서로 시작하므로 쓰기도 그 계약을 거울처럼
+// 따른다 (REQ-1). absent에는 보존할 모드가 없어 패키지 단일 정의점인
+// defaultFilePerm(0644)으로 만든다 (REQ-2); 그 외 stat 오류(ENOTDIR·권한)는
+// 기존 래핑으로 유지된다 (REQ-3). absent 경로도 직접 쓰기로 전환하지 않고
+// temp+rename을 유지한다 (REQ-4).
+// @MX:SPEC: SPEC-SEAM-GREENFIELD-001
 func atomicWrite(path string, data []byte) error {
+	mode := defaultFilePerm
 	info, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("yamlpatch: stat %s: %w", path, err)
+		// REQ-1 (SPEC-SEAM-GREENFIELD-001): an absent target is greenfield —
+		// the read layer starts from an empty document, so the write creates
+		// the file instead of failing on the stat. Any other stat error
+		// (ENOTDIR, permissions) keeps its wrapped error (REQ-3).
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("yamlpatch: stat %s: %w", path, err)
+		}
+	} else {
+		mode = info.Mode().Perm()
 	}
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".yamlpatch-*.tmp")
@@ -378,7 +401,7 @@ func atomicWrite(path string, data []byte) error {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("yamlpatch: close temp: %w", err)
 	}
-	if err := os.Chmod(tmpName, info.Mode().Perm()); err != nil {
+	if err := os.Chmod(tmpName, mode); err != nil {
 		_ = os.Remove(tmpName)
 		return fmt.Errorf("yamlpatch: chmod temp: %w", err)
 	}

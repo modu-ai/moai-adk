@@ -1,0 +1,6 @@
+=== RUN   TestCodexTask_BackgroundJobSurvivesRequestContextEnd
+    codex_task_failcause_test.go:144: background job ended "failed" with error "codex_task turn was cancelled by the caller, well before the 10m0s bound codex_task imposes on its own turns; the turn was abandoned and the session torn down"; the request context ending must not kill it
+--- FAIL: TestCodexTask_BackgroundJobSurvivesRequestContextEnd (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.905s
+FAIL

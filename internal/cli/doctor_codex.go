@@ -456,7 +456,7 @@ func inspectSkillMirror(root string) skillMirrorState {
 		}
 		// Stat follows the link, resolving the producer's RELATIVE link body
 		// against the mirror directory exactly as the OS does for Codex.
-		_, serr := os.Stat(entryPath)
+		_, serr := osStatFn(entryPath)
 		switch {
 		case serr == nil:
 		case errors.Is(serr, fs.ErrNotExist):
@@ -854,7 +854,7 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 			oddlyFormed++
 			continue
 		}
-		_, serr := os.Stat(statPath)
+		_, serr := osStatFn(statPath)
 		switch {
 		case serr == nil:
 			// The path resolves. A DIRECTORY resolves too, and is likewise

@@ -1,0 +1,40 @@
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:149:- **AC-CSLM-005.a**: `TestSkillPreloadDriftExemption_DomainSkills` PASS (negative case — domain skills NOT flagged even when not uniform across category)
+../../.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/spec.md:269:- **AC-MIG-008** (symlink scope-leak — REQ-MIG-002) — **Given** a `.moai/config/` tree
+../../.moai/specs/SPEC-V3R6-LIFECYCLE-REDESIGN-001/spec.md:217:- AC-LR-006: MX Tag validation occurs during sync, not as a separate phase (REQ-LR-011). SHOULD-PASS.
+../../.moai/specs/SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001/spec.md:152:- **AC-HCWA-007** — `internal/hook/post_tool_metrics.go` `resolveProjectRoot` function body and signature are byte-identical pre-/post-SPEC (PRESERVE).
+../../.moai/specs/SPEC-V3R2-RT-004/spec.md:174:- AC-V3R2-RT-004-03: Given a subagent encounters missing acceptance-criteria context, When it records a BlockerReport, Then `.moai/state/blocker-run-SPEC-V3R2-RT-004-*.json` exists and `RecordBlocker()` returned nil. (maps REQ-V3R2-RT-004-012)
+../../.moai/specs/SPEC-STOPCHAIN-TRIM-001/spec.md:138:- AC-STOPCHAIN-TRIM-001 (A10): goal-absent session → no `moai hook stop-goal` exec.
+../../.moai/specs/SPEC-DB-TEMPLATES-001/spec.md:271:- **AC-11** (REQ-006): `grep -cE "^## (Applied Migrations|Pending Migrations|Rollback Notes)$" internal/template/templates/.moai/project/db/migrations.md` returns exactly 3.
+../../.moai/specs/SPEC-V3R2-ORC-001/spec.md:212:- **AC-ORC-001-04**: `manager-quality.md` body contains a "Diagnostic Sub-Mode" section whose content matches the expert-debug delegation table semantically.
+../../.moai/specs/SPEC-V3R2-ORC-002/spec.md:220:- **AC-ORC-002-12**: `.claude/rules/moai/core/agent-common-protocol.md` contains exactly one occurrence of the Skeptical-Evaluator Mandate 6-bullet block.
+../../.moai/specs/SPEC-V3R3-ARCH-007/spec.md:166:- AC-ARCH007-02: `internal/runtime/budget.go` Tracker 인터페이스 5 메서드 구현
+../../.moai/specs/SPEC-V3R2-RT-005/spec.md:183:- AC-V3R2-RT-005-13: Given a session-scoped value was set via `SrcSession` tier during session, When SessionEnd hook fires, Then the value is cleared from the resolver's state. (maps REQ-V3R2-RT-005-050)
+../../.moai/specs/SPEC-GOAL-HTML-FLOW-001/spec.md:216:- AC-GHF-001 (REQ-1+2+3, E2E): `moai goal render` writes `.html`; DOM parse shows goal text + failed-condition cmd/exit/tail + turn/ceiling + 5 verdict sections verbatim.
+../../.moai/specs/SPEC-V3R2-WF-006/spec.md:171:- **AC-WF006-02**: Given `.claude/output-styles/moai/einstein.md` When frontmatter is parsed Then `name="Einstein"`, `keep-coding-instructions: false` (maps REQ-WF006-001, REQ-WF006-005).
+../../.moai/specs/SPEC-V3R2-RT-004/spec.md:181:- AC-V3R2-RT-004-10: Given two concurrent Checkpoint() calls on the same file, When both race, Then one succeeds and the other fails with `CheckpointConcurrent` after 3 retries. (maps REQ-V3R2-RT-004-040)
+../../.moai/specs/SPEC-PREPUSH-LOADER-WIRING-001/spec.md:183:- AC-PLW-008 — scope boundary: `Save()` unchanged (`grep -c 'git-strategy.yaml' manager.go` stays 0)
+../../.moai/specs/SPEC-GOAL-HTML-FLOW-001/spec.md:220:- AC-GHF-005 (REQ-7+8, E2E): plan HTML report written; DOM shows goal + 8-field contract + verdict score + milestones.
+../../.moai/specs/SPEC-V3R2-RT-007/spec.md:187:- AC-V3R2-RT-007-04: Given migration 1 has already been applied (no hardcoded literal), When re-run, Then it logs `"already migrated"` and succeeds as no-op. (maps REQ-V3R2-RT-007-011, -023)
+../../.moai/specs/SPEC-V3R2-HRN-001/spec.md:240:- **AC-HRN-001-06**: `moai harness route --json` emits valid JSON with the documented schema.
+../../.moai/specs/SPEC-LSP-FLAKY-001/spec.md:73:- AC-003: 로컬 `go test -race -count=20 ./internal/lsp/subprocess/...` 20회 연속 PASS
+../../.moai/specs/SPEC-HIERARCHICAL-TEAM-001/spec.md:229:- AC-PEER-001 (REQ-PEER-001): Tier M/L ACs get a second-worker re-run; Tier S skips.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:47:- **AC-GSF-002 — Full package sweep green after the change.**
+../../.moai/specs/SPEC-DOCS-SB-REMOVE-001/spec.md:88:- **AC-3**: `grep -rn 'auto-quality' docs-site/content/ko/` 결과 0 라인 (링크·메타 참조 전수 제거).
+../../.moai/specs/SPEC-V3R2-EXT-003/spec.md:171:- **AC-EXT003-04**: Given a manifest with `compatibility: ">=3.0.0"` When loader (v3.1+) is implemented Then rangely compatibility check passes for moai-adk 3.0.5 (maps REQ-EXT003-004, REQ-EXT003-010).
+../../.moai/specs/SPEC-V3R2-RT-004/spec.md:173:- AC-V3R2-RT-004-02: Given run phase begins for `SPEC-V3R2-RT-004`, When `Hydrate("run", "SPEC-V3R2-RT-004")` is called, Then the returned PhaseState contains the prior PlanCheckpoint. (maps REQ-V3R2-RT-004-011)
+../../.moai/specs/SPEC-V3R2-WF-001/spec.md:191:- **AC-WF001-18**: Given a MERGE target missing a trigger keyword that existed in at least one merged source When the audit script runs against the `.moai/specs/SPEC-V3R2-WF-001/fixtures/trigger-drop/` fixture (where one trigger has been intentionally dropped from a merge target) Then the fixture verifier exits non-zero with diagnostic `SKILL_TRIGGER_DROP: <trigger_name>` demonstrating the CI behavior the real guard rail will enforce (maps REQ-WF001-016).
+../../.moai/specs/SPEC-V3R2-RT-004/spec.md:186:- AC-V3R2-RT-004-15: Given validator/v10 tagged `RunCheckpoint.Harness string` with `validate:"oneof=minimal standard thorough"`, When a value `"ultra"` is written, Then Checkpoint() returns validation error naming the field. (maps REQ-V3R2-RT-004-004)
+../../.moai/specs/SPEC-V3R2-WF-004/spec.md:166:- **AC-WF004-02**: Given `/moai coverage` invocation When executed Then untested files are localized, tests are added, coverage is re-measured (maps REQ-WF004-003).
+../../.moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/spec.md:176:- **AC-MPR-005** (MUST): Harness `thorough` resolves to full TDD, verified via `ResolveCycleType`.
+../../.moai/specs/SPEC-V3R2-EXT-004/spec.md:175:- **AC-EXT004-03**: Given an idempotent step applied once When applied again Then final state is identical to after first apply (maps REQ-EXT004-003).
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:154:- **AC-CSLM-006** (full LR-08 dissolution — binary success metric):
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:140:- **AC-CSLM-004** (catalog hash refresh):
+../../.moai/specs/SPEC-DB-SYNC-RELOC-001/spec.md:94:- **AC-3**: `grep -n '### Phase 0.08' internal/template/templates/.claude/skills/moai/workflows/sync.md .claude/skills/moai/workflows/sync.md`가 양쪽에서 정확히 1 라인씩 출력.
+../../.moai/specs/SPEC-V3R2-RT-003/spec.md:173:- AC-V3R2-RT-003-02: Given an agent with `sandbox: bubblewrap` on Linux invokes `Bash(curl https://evil.example.com)`, When the call is made, Then network is blocked with SystemMessage naming `evil.example.com`. (maps REQ-V3R2-RT-003-011, -014)
+../../.moai/specs/SPEC-V3R2-WF-004/spec.md:171:- **AC-WF004-07**: Given localize phase finds 0 targets When fix runs Then exit code is 0 and repair/validate are skipped with status "no-op" (maps REQ-WF004-007).
+../../.moai/specs/SPEC-V3R3-COV-001/spec.md:156:- AC-COV001-08: 기존 SPEC-FW-FLUTTER-001 무수정 (`moai-framework-flutter` skill body)
+../../.moai/specs/SPEC-STEERING-ALIGN-OUTPUT-STYLE-SLIM-001/spec.md:168:- **AC-OSS-001** — per-tree line-count drop measurable by `wc -l`, LIVE and TEMPLATE each dropping into the derived range (plan.md §C); both trees drop by the SAME amount. SOFT band (~530-630L) — behavioral-PASS allowed if preservation forces fewer cuts.
+../../.moai/specs/SPEC-INFINITE-GOAL-001/spec.md:154:- AC-INFINITE-GOAL-005 (REQ-4): `--max-turns 0` bounded by wall-clock (OQ-2 primary).
+../../.moai/specs/SPEC-AUDIT-SNAPSHOT-001/spec.md:131:- AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.
+../../.moai/specs/SPEC-V3R2-MIG-001/spec.md:167:- **AC-MIG001-03**: Given a v3 project When `moai migrate v2-to-v3` runs Then "Project already on v3+" message + exit code 0 (maps REQ-MIG001-007, REQ-MIG001-012).
+../../.moai/specs/SPEC-V3R2-EXT-004/spec.md:188:- **AC-EXT004-16**: Given a step violates declared impact set When CI integration test runs Then `STEP_SCOPE_VIOLATION` surfaces (maps REQ-EXT004-017).

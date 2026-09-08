@@ -1,0 +1,5 @@
+=== go vet ./internal/kanban/ ./internal/cli/ ===
+vet exit=0
+
+=== gofmt -l on touched files ===
+[end — empty means clean]

@@ -1,0 +1,7 @@
+=== RUN   TestT528DuplicateExposure
+    zz_probe3_test.go:99: TODAY   (current parser grammar) : files with duplicate ids = 0, dropped lines = 0
+    zz_probe3_test.go:100: WIDENED (B.1 candidate grammar)  : files with duplicate ids = 0, dropped lines = 0
+--- PASS: TestT528DuplicateExposure (0.17s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.476s
+EXIT=0

@@ -94,6 +94,33 @@ func TestResolveTodoQueueRoot_PrimaryIsItself(t *testing.T) {
 	}
 }
 
+// declareNonTemporaryQueueBase points internal/kanban's REQ-THG-009 temp-root
+// seam at a set that contains nothing this test uses, so a t.TempDir() base
+// classifies NON-temporary and the home-fallback branch stays reachable.
+//
+// Needed because this repository's [HARD] isolation discipline puts every
+// fixture under t.TempDir() — inside os.TempDir() by definition — which the
+// temporary-origin guard (SPEC-TODO-HOME-TEMP-GUARD-001) refuses. The seam is
+// exported precisely so consuming packages' tests can reach it.
+func declareNonTemporaryQueueBase(t *testing.T) {
+	t.Helper()
+	orig := kanban.TempRootsFn
+	isolated := filepath.Join(t.TempDir(), "a-root-that-contains-nothing")
+	kanban.TempRootsFn = func() []string { return []string{isolated} }
+	t.Cleanup(func() { kanban.TempRootsFn = orig })
+}
+
+// assertQueueSeamHeard asserts the discriminant's verdict on base directly:
+// the injected root set must actually have been read. Without this a fixture
+// whose stub is silently ignored still PASSES, which is the vacuity this
+// SPEC has paid for repeatedly.
+func assertQueueSeamHeard(t *testing.T, base string) {
+	t.Helper()
+	if reason, isTemp := kanban.TempOriginReason(base); isTemp {
+		t.Fatalf("the injected temp-root set was not read: base %q still classifies temporary (reason %q)", base, reason)
+	}
+}
+
 // TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot covers a launch
 // context inside a repository subdirectory: the queue still hangs from the
 // repository root, not the subdirectory.
@@ -122,6 +149,13 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	orig := userHomeDirFn
 	userHomeDirFn = func() (string, error) { return home, nil }
 	t.Cleanup(func() { userHomeDirFn = orig })
+	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer: t.TempDir() is
+	// inside os.TempDir(), so the temporary-origin guard would refuse this
+	// home queue and the assertion below could never be reached. The fixture
+	// moves to a NON-temporary base through the temp-root seam; the assertion
+	// itself is unchanged and still names the home root.
+	declareNonTemporaryQueueBase(t)
+	assertQueueSeamHeard(t, dir)
 
 	got := resolveTodoQueueRoot()
 	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
@@ -158,6 +192,13 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	orig := userHomeDirFn
 	userHomeDirFn = func() (string, error) { return home, nil }
 	t.Cleanup(func() { userHomeDirFn = orig })
+	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer: this is the
+	// adopt-not-shadow assertion in code form ([HARD] verification 3), so it
+	// is preserved verbatim on a non-temporary base rather than rewritten to
+	// the guarded behaviour — rewriting it would withdraw the criterion
+	// silently.
+	declareNonTemporaryQueueBase(t)
+	assertQueueSeamHeard(t, dir)
 
 	// Seed a pre-fallback local queue: 2 queued + 1 picked, ids from an
 	// earlier high-water mark — the shape a v3.1.0-era project carries.
@@ -350,5 +391,41 @@ func TestTodoQueue_WorktreeSeesPrimaryQueue(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("add from worktree did not land in the primary queue; items: %+v", rec.Items)
+	}
+}
+
+// TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp — the §C.1 C-row
+// copy of TestTodoQueueRootGuard_SilentOnHomeFallbackFixture
+// (SPEC-TODO-HOME-TEMP-GUARD-001 M2).
+//
+// The original asserts liveTodoQueueRootReason() == "" on a base that is a
+// t.TempDir(). After the temporary-origin guard lands, the resolved root is
+// that same t.TempDir() rather than a home-fallback root — so the assertion
+// stays true while its SUBJECT, "a root under the stubbed home", vanishes from
+// the fixture. The original keeps its value as a regression guard for
+// behaviour under the guard; this copy restores the home-fallback root as the
+// thing the silence is about.
+//
+// The original's assertion is an ABSENCE (the reason string is empty), which
+// the guard leaves true for an unrelated reason, so PASS alone cannot separate
+// the two states. assertQueueSeamHeard is the positive assertion that does.
+func TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp(t *testing.T) {
+	dir := t.TempDir() // not a git repository -> fallback branch
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	home := t.TempDir()
+	orig := userHomeDirFn
+	userHomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { userHomeDirFn = orig })
+	declareNonTemporaryQueueBase(t)
+	assertQueueSeamHeard(t, dir)
+
+	// The subject restored: the resolution really is on a home-fallback root.
+	root := resolveTodoQueueRoot()
+	if want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir)); root != want {
+		t.Fatalf("queue root = %q, want the home fallback %q — this copy must exercise the home-fallback shape", root, want)
+	}
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("guard fired on the home-fallback fixture root:\n%s", reason)
 	}
 }

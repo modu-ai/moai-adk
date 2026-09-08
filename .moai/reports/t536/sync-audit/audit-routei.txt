@@ -1,0 +1,37 @@
+=== AUDIT route(i) injected diff ===
+diff --git a/internal/kanban/todo_root.go b/internal/kanban/todo_root.go
+index ae5664e64..32afc319b 100644
+--- a/internal/kanban/todo_root.go
++++ b/internal/kanban/todo_root.go
+@@ -65,9 +65,6 @@ func ResolveTodoQueueRoot(base string) string {
+ 	if root, ok := primaryCheckoutRoot(base); ok {
+ 		return root
+ 	}
+-	if root, _, refused := tempOriginSubstituteRoot(base); refused {
+-		return root
+-	}
+ 	return fallbackTodoQueueRoot(base)
+ }
+ 
+@@ -80,9 +77,6 @@ func ResolveTodoQueueRootAdopting(base string) string {
+ 	if root, ok := primaryCheckoutRoot(base); ok {
+ 		return root
+ 	}
+-	if root, _, refused := tempOriginSubstituteRoot(base); refused {
+-		return root
+-	}
+ 	root, ok := homeTodoQueueRoot(base)
+ 	if !ok {
+ 		return root
+=== bypass test under route(i) ===
+--- FAIL: TestGuardBypassMutant_ObserveHomePollution (0.08s)
+    todo_axisa_guard_test.go:202: the mutant produced home pollution under /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGuardBypassMutant_ObserveHomePollution1548414414/001/.moai/todo (1 entr(ies)) — the resolver-layer temporary-origin guard regressed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.992s
+FAIL
+=== BASELINE (guard restored) ===
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.809s
+=== restore check (expect empty) ===
+5c63194e2cf69675ded897a09c089ac4aa87ec47d051dfcc1ab2c8cdc3831aa9  internal/kanban/todo_root.go
+0ed1a6d408b1e2fc214890697f97c469bf43d1646ddc3c2072c9abb9fc645cbd  internal/kanban/temp_origin.go
+d1aaa16f9227d6e27a7c9a037895605ea7f5fa8f4f6cb676ad0a15da07aa80ad  internal/cli/todo.go
