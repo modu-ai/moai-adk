@@ -2,7 +2,7 @@
 id: SPEC-CLAUDELOCAL-PUSH-MODEL-001
 title: "CLAUDE.local.md push-model 정본화 — 미커밋 사본의 정본 참칭 차단과 흡수 대상 정정"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 amendment_of: SPEC-CLAUDELOCAL-PUSH-MODEL-001

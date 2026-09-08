@@ -381,3 +381,83 @@ sync_scope: |
   CLAUDE.local.md 는 이 카드의 산출물이고 sync 에서 건드리지 않았다(diff 에 나타나지 않는다).
 commit_performed: false   # 커밋·스테이징·push 는 레인 소관이다. 편집은 워킹트리에 남긴다
 ```
+
+### 개정 이후 재close 재측정 (2026-09-08)
+
+위 블록은 **첫 close** 의 기록이고 그대로 둔다. 이 블록은 제자리 개정(`0.1.0 → 0.1.1`) 이후
+재close 시점에 **다시 잰** 값이다. 덧붙이는 것이지 고쳐 쓰는 것이 아니다 — §E.3 도 §E.4 의 첫
+블록도 바이트 그대로다. 특히 §E.3 의 `ac_matrix` 는 `head_at_measurement: a833b5658` 을 달고
+있어 그 커밋에서 참이었던 귀속된 run-phase 기록이며, 덮어쓰면 귀속된 baseline 을 파괴한다.
+
+```yaml
+re_close_at: 2026-09-08
+re_close_commit_sha: pending-backfill
+  # 커밋은 자기 해시를 인용할 수 없다. 레인이 다음 커밋에서 채운다
+  # (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+  # 비워 두지 않는 이유: SPEC 이 completed 로 읽히는 순간 아무것도 수리를 예약하지 않으므로,
+  # 빈 칸은 갚아야 할 빚을 기록하지 못한다.
+sync_commit_sha_note: |
+  위 블록의 `sync_commit_sha: b7344d957` 은 **첫 close** 를 기록하며 그대로 둔다.
+  이 재close 의 SHA 는 위 `re_close_commit_sha` 가 별도로 운반한다.
+head_at_remeasurement: 35377526a
+card_base: bce6d7e083208097960c88deac11c1365ad900bc
+  # `git merge-base origin/develop HEAD` 로 읽는 시점에 재유도했다.
+
+ac_matrix_remeasured:
+  # 이 세션에서 직접 재실행한 값이다. §E.3 에서 옮겨 적지 않았다.
+  AC-CLPM-001: {status: PASS, slice: 0, file: 0, control: 2, control_kind: "base §4.1 hits"}
+  AC-CLPM-002: {status: PASS, measured: 2, control: n/a, control_kind: "존재형 — 대조군 없음"}
+  AC-CLPM-003: {status: PASS, arm1: 3, arm2: 2, arm3: 0, window_lines: 5, mutant: FAIL-as-required}
+    # arm1 이 2 → 3 으로 오른 것은 수리가 §2.3 에 ` M CLAUDE.local.md` 한 줄을 더한 결과다.
+    # §E.3 의 `arm1: 2` 는 a833b5658 에서 참이었다 — 스테일이 아니라 다른 커밋의 기록이다.
+  AC-CLPM-004: {status: PASS, measured: 3, control: n/a, control_kind: "존재형 — 대조군 없음"}
+  AC-CLPM-005: {status: PASS, measured: 2, control: 3, control_kind: "백업(변종 2) 지문 — 선행 감사 관측"}
+  AC-CLPM-006: {status: PASS, measured: 2, control: n/a, control_kind: "존재형 — 대조군 없음"}
+  AC-CLPM-007: {status: PASS, measured: 0, control: 10, control_kind: "범위 내 전체 변경 파일 수"}
+    # 대조군이 §E.3 의 5, 델타 감사의 9 와 다르다. 셋 다 맞다 — 서로 다른 HEAD 를 쟀다.
+    # 5 = a833b5658(plan-phase 산출물만), 9 = 71839912e, 10 = 35377526a(verdict-delta.md 추가분).
+  AC-CLPM-008: {status: unmeasured, reason: "백업 파일 접근이 이 재close 의 범위 밖으로 지정됐다"}
+
+mutant_m003_rerun:
+  executed: true
+  arm2_before: 2
+  arm2_mutant: 0
+  arm3_before: 0
+  arm3_mutant: 1
+  verdict: "뮤턴트에서 AC-CLPM-003 FAIL — 프로브 생존 재확인"
+  original_unchanged: true
+  original_sha256_before: a0919df2c7e7e82a541838d3d607f55cf6c1d976213785260b6b2e92aeb5c5fa
+  original_sha256_after: a0919df2c7e7e82a541838d3d607f55cf6c1d976213785260b6b2e92aeb5c5fa
+    # 변이 전후 동일. 변이는 /tmp 사본에서만 했고 사본은 폐기했다.
+  mutant_files_removed: true
+  sha256_differs_from_e3: |
+    §E.3 은 `de5f4d0f…` 를 기록한다. 이 값과 다른 것은 드리프트가 아니다 —
+    수리 커밋이 CLAUDE.local.md 를 바꿨으므로 다른 내용의 다른 지문이다.
+
+delta_audit_outcome:
+  report: .moai/reports/t531/verdict-delta.md
+  f1: CLOSED   # §2.3 문자-독해 함정 — §0.4 의 표식 한 건을 기대 baseline 으로 명시
+  f2: CLOSED   # §4.1 흡수 논거 — 앞섬·뒤처짐 양방향 + 흡수 전 최신화 + §11 위임
+  f3: RAISED-AND-REPAIRED
+    # 개정이 형제 산출물 둘(CHANGELOG.md, progress.md)을 자기 범위에서 배제한 결함.
+    # 수리 커밋 35377526a 가 spec.md §Amendments 에 재close 갱신 대상을 명시했고,
+    # 이 재close 가 그 명시대로 CHANGELOG 항목과 이 블록을 현행화했다.
+  f4_to_f7: 범위 밖   # 아래 residual_risk 참조
+
+residual_risk:
+  f4: "`CLAUDE.local.md:227` — §0.4 는 표식의 영구성을 「primary 가 main 에 있는 동안」으로 조건 지었는데 §2.3 은 그 조건절을 떨어뜨렸다. [Low][optional]"
+  f5: "`CLAUDE.local.md:227` 끝문장 — 「다른 파일이 함께 수정돼 있으면 먼저 정리한다」가 안전한 경로를 지목하지 않는다. 문자적 독해가 primary 에서 금지된 `git restore` 로 갈 수 있다. [Low][optional]"
+  f6: "`:389`(「본다」) vs `:404`(「최신화한다」) — 판정과 실행의 어긋남. 둘 다 §11 을 가리켜 실질 위험은 없다. [Low][optional]"
+  f7: "`:381`(이름 포인터) vs `:389`/`:405`(번호 포인터 §11) — 같은 절을 두 형태로 가리킨다. 번호는 절 번호가 바뀌면 조용히 어긋난다. [Low][optional]"
+  scope_note: |
+    F4~F7 은 의도적으로 범위 밖이다. 이 넷을 흡수하려고 범위를 넓히면 F3 이 만든 함정
+    — 재close 가 자기 범위를 넘어 번지는 모양 — 을 다시 짓는 것이 된다. 잔여 위험으로만 남긴다.
+
+open_gaps_preserved: 4
+  # spec.md §G 의 4건. 재close 도 어느 것도 닫지 않았고 §A.1 의 [추론] 표지도 그대로다.
+
+re_close_scope: |
+  CHANGELOG.md(항목 1건 제자리 수정) + 이 파일 §E.4(이 블록 추가) + spec.md frontmatter
+  (`status: in-progress → completed`), 3파일. CLAUDE.local.md 는 산출물이고 건드리지 않았다.
+commit_performed: false   # 커밋·스테이징은 레인 소관이다
+```
