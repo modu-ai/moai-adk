@@ -31,11 +31,96 @@ Kickoff note: Implementation Kickoff Approval satisfied by the operator's factor
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase executed 2026-09-08 in worktree `.claude/worktrees/t569`, branch `WT-harness-evidence-write`, base HEAD `fccc31d7e` (plan-phase commit). Raw evidence files under `/tmp/t569/` (verbatim outputs quoted below).
+
+### E.2.1 TDD cycle — RED / GREEN / MUTANT (E8, verbatim)
+
+**RED — guard vs CURRENT tree (before any fix), exit 1** (`/tmp/t569/red-guard-vs-current-tree.txt`; command: `unset MOAI_T362_CORPUS_SCAN T528_PROBE_OUT && go test ./internal/spec/ -run TestNoTestWritesRepoTree -count=1 -v`):
+
+```
+=== RUN   TestNoTestWritesRepoTree
+    guard_no_repo_tree_write_test.go:67: lint_req_widen_corpus_test.go:240: os.MkdirAll writes via "out" (repo-anchored)
+    guard_no_repo_tree_write_test.go:67: lint_req_widen_corpus_test.go:243: os.WriteFile writes via "out" (repo-anchored)
+    guard_no_repo_tree_write_test.go:67: lint_req_widen_decompose_test.go:542: os.MkdirAll writes via "out" (repo-anchored)
+    guard_no_repo_tree_write_test.go:67: lint_req_widen_decompose_test.go:545: os.WriteFile writes via "out" (repo-anchored)
+    guard_no_repo_tree_write_test.go:67: zz_t528_anchor_probe_test.go:61: os.MkdirAll writes via "dir" (repo-anchored)
+    guard_no_repo_tree_write_test.go:67: zz_t528_anchor_probe_test.go:73: os.WriteFile writes via "dir" (repo-anchored)
+--- FAIL: TestNoTestWritesRepoTree (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.429s
+FAIL
+```
+
+**GREEN — guard after fix, exit 0** (`/tmp/t569/green-guard-after-fix.txt`; same command):
+
+```
+=== RUN   TestNoTestWritesRepoTree
+--- PASS: TestNoTestWritesRepoTree (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.376s
+```
+
+**MUTANT RED — AC-006 (scratch test with `os.WriteFile(filepath.Join(root, ".moai/reports/t569-mutant-probe.txt"), ...)` re-added; mutant test never executed, only scanned), exit 1** (`/tmp/t569/red-guard-mutant.txt`):
+
+```
+=== RUN   TestNoTestWritesRepoTree
+    guard_no_repo_tree_write_test.go:67: zz_t569_mutant_scratch_test.go:15: os.WriteFile writes a repo-anchored path (direct .moai/ literal)
+--- FAIL: TestNoTestWritesRepoTree (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.385s
+FAIL
+```
+
+**MUTANT REVERTED — guard GREEN again, exit 0** (`/tmp/t569/green-guard-mutant-reverted.txt`): `--- PASS: TestNoTestWritesRepoTree (0.01s)` / `ok ... 0.213s`.
+
+### E.2.2 AC binary matrix (E1)
+
+| AC | Status | Verification command | Actual output |
+|----|--------|---------------------|---------------|
+| AC-001 | PASS | `unset MOAI_T362_CORPUS_SCAN T528_PROBE_OUT && MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/ -run TestCorpusREQWideningMeasurement -count=1 -v` | exit 0; `lint_req_widen_corpus_test.go:251: measurement written to /var/folders/.../TestCorpusREQWideningMeasurement386710612/001/m1-corpus-measurement.txt`; `--- PASS`; `git status --porcelain .moai/reports/t362/` printed nothing |
+| AC-002 | PASS | same form, `-run TestCorpusRejectedREQIDDecomposition` | exit 0; `.../TestCorpusRejectedREQIDDecomposition4050208730/001/m2-gate0-decomposition.txt`; `--- PASS`; t362 tree clean |
+| AC-003 | PASS | `unset ... && go test ./internal/spec/ -run TestT528Anchor -count=1 -v` | exit 0; `OUTDIR = /var/folders/.../TestT528Anchor2984576082/001`; `--- PASS`; `git status --porcelain .moai/reports/t528/` printed nothing |
+| AC-004 | PASS | `T528_PROBE_OUT=/tmp/t569-probe-out-override go test ./internal/spec/ -run TestT528Anchor -count=1 -v` | exit 0; `OUTDIR = /tmp/t569-probe-out-override`; all 8 probe files present in that dir |
+| AC-005 | PASS | guard on fixed tree (E.2.1 GREEN) | exit 0, PASS |
+| AC-006 | PASS | mutant probe (E.2.1 MUTANT RED/REVERTED) | exit 1 on mutant naming file+line; exit 0 after revert |
+| AC-007 | PASS | `git status --porcelain internal/spec/ .moai/specs/.../ && git diff --stat .moai/reports/` | `.moai/reports/` diff EMPTY; `ac_count_clause_test.go` / `zz_t528_overacceptance_test.go` absent from modified list (unmodified); before-image `git ls-tree HEAD .moai/reports/t362/` unchanged (12 tracked files) |
+| AC-008a | PASS | `MOAI_T362_CORPUS_SCAN=1 MOAI_T362_EVIDENCE_OUT=/tmp/t569-evidence-out go test ... -run TestCorpusREQWideningMeasurement -count=1 -v` | exit 0; report landed at `/tmp/t569-evidence-out/m1-corpus-measurement.txt`; `--- PASS` |
+| AC-008b | PASS | identical invocation re-run against same dir | exit 1; `MOAI_T362_EVIDENCE_OUT no-clobber: target ... already exists; refusing to overwrite` (test file line 246); sha256 `234dc16585962e12...f9a93` BEFORE=AFTER (`SHASUM_IDENTICAL`) |
+| AC-008c | PASS | `head -6` of both produced reports | both headers carry `# output location: a per-run t.TempDir() directory` + `# durable capture: set MOAI_T362_EVIDENCE_OUT=<dir> BEFORE the run` lines; zero `.moai/reports` mentions (grep count 0) |
+
+Gate-preservation (non-AC check): ungated pair run → 2 SKIPs, exit 0 (`/tmp/t569/gate-preserved-skip.txt`). Guard boundary documented in the guard file's doc comment (dynamically built paths, parameter-carried anchors, multi-line statements, self-scan exclusion, non-test sources).
+
+### E.2.3 Self-verification E2-E6
+
+- **E2 build**: `go build ./...` → `BUILD_NATIVE_OK`; `GOOS=windows GOARCH=amd64 go build ./...` → `BUILD_WINDOWS_OK` (both exit 0).
+- **E3 coverage**: `go test -cover ./internal/spec/` → `coverage: 90.5% of statements` (target 85% — met; test-only change, coverage delta from added guard/helper code is in test files which do not count toward statement coverage).
+- **E4 boundary grep**: N/A — test-only change inside `internal/spec`; no non-test source modified (verified via git status above).
+- **E5 lint**: `golangci-lint run ./internal/spec/...` → 1 issue remaining: `zz_t528_overacceptance_test.go:100 errcheck` (PRE-EXISTING baseline, file is on the PRESERVE list and untouched). NEW issues: 0 (the one introduced during the run — guard file errcheck — was fixed and re-verified to 0).
+- **E6 commits/push**: see §E.3; NO push performed (git-flow lane protocol §4 — lead batch-pushes develop).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+spec_id: SPEC-HARNESS-EVIDENCE-WRITE-001
+card: t569
+phase: run
+run_status: complete
+run_complete_at: 2026-09-08
+run_commit_sha: pending-backfill-run  # D3 placeholder — backfilled after M4 commit lands
+ac_pass_count: 10
+ac_fail_count: 0
+ac_matrix: AC-001..008c all PASS (see §E.2.2)
+preserve_list_post_run_count: 4  # ac_count_clause_test.go, zz_t528_overacceptance_test.go, findRepoRoot helper, .moai/reports/t362/ + t528/ pinned evidence — all verified untouched
+new_warnings_or_lints_introduced: 0
+l44_pre_commit_fetch: not-applicable  # worktree-isolated card branch; no shared-checkout commit
+l44_post_push_fetch: not-applicable  # NO push performed — lane protocol §4, lead batch-pushes develop
+cross_platform_build.native: PASS
+cross_platform_build.windows_amd64: PASS
+total_run_phase_files: 5  # 3 modified harness tests + 2 new test files (+ spec.md frontmatter, progress.md)
+m1_to_mN_commit_strategy: per-milestone commits on WT-harness-evidence-write (M1+M2 fix, M3 guard test, M4 evidence)
+tdd_red_evidence: /tmp/t569/red-guard-vs-current-tree.txt (verbatim in §E.2.1)
+mutant_evidence: /tmp/t569/red-guard-mutant.txt + /tmp/t569/green-guard-mutant-reverted.txt (verbatim in §E.2.1)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
