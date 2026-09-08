@@ -489,9 +489,132 @@ before and after, the same pre-existing files enumerated in the evidence file's 
   pre-change object shape is preserved because `todoPRRow` embeds `PRLinkOutcome`; replacing the
   embed with a named field would silently nest every existing key.
 
+### M5 — compatibility and doctrine
+
+**Claim.** The landing evidence survives the legacy-JSON round trip on BOTH card-bearing tables and
+is compared by the migration's own parity verification; a reconstruction of the pre-change open
+path still serves a post-change database and the frozen replica is asserted not to have drifted;
+the two `todo.md` surfaces agree on the contract rows and the column count they state equals the
+number of fields the render emits. AC-TLE-017, 018 and 021 pass. The mandated mutant was planted
+twice, observed failing at the parity check both times, and reverted with byte-identical hashes.
+The `landed → done → undone` loss M3 measured and left is closed, with the discriminating assertion
+observed RED before the fix and GREEN after.
+
+| Criterion | Status | Fired assertion, and where |
+|---|---|---|
+| AC-TLE-017 | PASS | the PARITY CHECK, twice — `item 0 (t1): landing … != <nil>` under the both-tables drop, `archived 0 (t2): landing … != <nil>` under the archived-only drop; both surfaced as `parity check failed, legacy file left authoritative` |
+| AC-TLE-018 | PASS-WITH-FINDING | (a)+(b) red together on the `schema_version` bump; (c) reds ALONE on live-DDL drift while (a) and (b) stay green — (b)'s independent RED, observed. The third stated RED does not fire where the criterion says: see below |
+| AC-TLE-021 | PASS | `todo_landed_doc_test.go:67` on mirror drift; `:77` on `states 6 columns; renders 7`, on both surfaces |
+| `landed → done → undone` (M3's measured gap) | CLOSED | `backlog_landing_roundtrip_test.go:174` and `:189` red before the archived carry landed, green after |
+
+**Evidence.** `.moai/reports/t359/m5-evidence.md` — verbatim command/output pairs with exit codes,
+the two mutants' failure text with before/after hashes, the three AC-TLE-018 plants, both AC-TLE-021
+plants, and the known-losses list. Key results:
+
+```
+$ go test ./internal/kanban/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	137.668s
+kanban rc=0
+
+$ go test ./internal/cli/... -count=1 -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/cli	432.249s
+cli rc=0
+
+$ go vet ./internal/kanban/... ./internal/cli/... ./internal/template/...
+vet rc=0
+```
+
+**Baseline-attribution.** Tree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch
+`WT-landing-evidence`, HEAD re-read by this agent as its first command: `e4cb86920`, clean status.
+The pre-edit green for `internal/kanban` and `internal/cli` was re-established in this tree at that
+HEAD (`kanban rc=0`, `cli rc=0`) rather than carried over from M4. `internal/template` has NO
+pre-edit baseline in this run — it entered scope only when the mirror edit landed, which is why
+§8's attribution of its two failures is a derivation rather than a before/after measurement.
+
+**FINDING — AC-TLE-018's third stated RED does not fire at the assertion it names.** The criterion
+says a `NOT NULL`-without-default `landing` makes "the verbatim INSERT in (a)" fail. Planted, the
+mutant reds — at `backlog_downgrade_test.go:97`, the FIXTURE's `store.Add`, never reaching clause
+(a). Cause: SQLite accepts the `ALTER … ADD COLUMN … NOT NULL` on the empty table, and the first
+LIVE write then violates the constraint because a card with no record binds NULL through
+`LandingEvidenceValue(nil)`. Under this mutation the post-change database cannot be built at all,
+so clause (a)'s INSERT is unreachable rather than failing. Recorded as a narrower remaining gap
+following M2's precedent; the test was NOT restructured to route the mutation through, because that
+converts the finding into a green line. The mutation IS caught; the criterion's stated mechanism
+for catching it is not what catches it.
+
+**BLOCKER — an inherited emission drift blocks `make build`, and it is not M5's.** `make build`
+exits 2 at its `agents-emit-check` pre-step on `sync-auditor.toml`; the same stale-emission defect
+also reds `TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE: sync-auditor`). No sync-auditor file is
+modified in this tree (`git status --short` on all three: empty), and `git log` attributes the `.md`
+edit to `4244c4a06` (`docs(t386/t387)`) with no following `make agents-emit`. Not fixed here:
+regenerating would fold another card's un-emitted artifact into M5's commit, outside this SPEC's
+scope envelope. The build BODY was run directly instead — catalog-hash regen rc=0, `go build` rc=0 —
+and the regen's `sync-auditor` hash proposal was reverted by hand to its HEAD value (verified
+byte-identical to `git show HEAD:internal/template/catalog.yaml`) so the commit carries only the
+`moai`-skill hash M5's own mirror edit caused.
+
+**Gaps** (unsoftened; the full known-losses list is `m5-evidence.md` §10):
+
+- **`acceptance.md:180` still reads `.moai/state/kanban/`** — a directory renamed a week before
+  that criterion was first authored. M4 repaired the TEST (deriving the path from
+  `kanban.StateDirForRoot`) and correctly left the prose alone; `acceptance.md` body content is
+  manager-spec's artifact. Carried forward here as a DISCLOSED open SPEC defect so the sync-auditor
+  meets it as such rather than discovering it.
+- **`internal/template/catalog.yaml` is not in the spec.md frontmatter module list**, yet M5
+  modifies one line of it. It is the generated hash of the `moai` skill tree the mirror edit
+  changed — a same-SPEC cascade, not scope expansion — but the DoD's "no source file outside the
+  module list" line reads against it, so it is declared rather than left to be noticed.
+- **`internal/template` was not baselined pre-edit** (above). Its two failures are attributed by
+  derivation.
+- **The `[HARD]` operator-act paragraph M5 adds is NOT mirror-guarded.** AC-TLE-021 compares two
+  extracted ROWS only; prose outside them may drift between the surfaces undetected.
+- **No `golangci-lint`, no coverage measurement, no cross-platform build** — unchanged from M3 and
+  M4. The DoD's "project linter" line is unperformed for M5 as well.
+- **`make build` never completed as a whole**; its `templ-generate` step was never run, so nothing
+  here establishes that step is clean.
+- **`gofmt -l` reports 38 files across the three trees** — `internal/kanban` 0, `internal/cli` 28
+  (unchanged from M4's baseline), `internal/template` 10 (a tree M4 never measured). All
+  pre-existing; none M5-touched. Recorded with the split so 28 → 38 is not read as a regression.
+
+**Residual-risk.**
+
+- **The parity comparison is index-keyed.** A migration that swapped two cards' evidence between
+  two cards whose other compared fields also swapped would pass. Nothing pins the pairing itself.
+- **The archived read now shares the live read's loud-failure trade-off.** An undecodable archived
+  `landing` value surfaces as a read error naming the card, which makes the whole queue unreadable
+  rather than silently dropping the record. M3 chose loud over silent for `items` and this extends
+  that choice to `archived_items`; the availability cost is now paid on both tables.
+- **The frozen replica is compiled from today's source.** Clause (c) keeps it honest against
+  drift, but a divergence between it and a genuinely older RELEASED binary is invisible to all
+  three clauses — `spec.md` §G's standing limit, narrowed here rather than closed.
+- **`numberWords` is a finite vocabulary.** A `todo pr` row rewritten as "carries a dozen columns"
+  fails loudly rather than silently, which is the right direction, but the doc prose and the test's
+  parser are coupled by a hand-maintained map.
+- **The seventh column's consumers still cannot be enumerated.** Unchanged from M4: a consumer
+  doing `cut -f6` now reads the evidence where it read the card text, and nothing can pin a
+  consumer nobody can name.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-08
+run_commit_sha: <backfill — the M5 commit on WT-landing-evidence>
+run_status: PASS-WITH-DEBT
+ac_pass_count: 21
+ac_fail_count: 0
+ac_pass_with_debt: 3          # AC-TLE-012 (M3 clause repair), AC-TLE-014 (M4 criterion prose stale), AC-TLE-018 (third stated RED unreachable)
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run  # lane does not push; integration is the lead's window
+l44_post_push_fetch: not-run
+new_warnings_or_lints_introduced: 0   # go vet rc=0; gofmt -l unchanged per tree (kanban 0, cli 28 pre-existing, template 10 pre-existing)
+cross_platform_build:
+  darwin_arm64: pass
+  linux_amd64: not-run
+  windows_amd64: not-run
+total_run_phase_files: 8       # 3 new tests, 1 production file, 2 doctrine surfaces, catalog.yaml, m5-evidence.md
+m1_to_mN_commit_strategy: one commit per milestone on WT-landing-evidence
+blocked_gate: make build (agents-emit-check) — INHERITED from 4244c4a06, not M5; see §E.2 M5 BLOCKER
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
