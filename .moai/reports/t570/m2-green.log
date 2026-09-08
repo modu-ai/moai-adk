@@ -1,0 +1,4 @@
+=== RUN   TestCodexStaleSkillFinding_ClassificationPrecedesConversion
+--- PASS: TestCodexStaleSkillFinding_ClassificationPrecedesConversion (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.745s

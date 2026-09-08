@@ -39,15 +39,67 @@ func TestBacklogArchive_StateEnumUnchanged(t *testing.T) {
 	}
 }
 
-// AC-TDG-004 (half 2) — the per-item contract is still five fields.
+// permittedItemFieldAdditions lists every per-item field sanctioned by a SPEC
+// since the freeze, one entry per SPEC — the same declared-addition shape the
+// verb-surface guard uses (`internal/cli/todo_surface_test.go`). The frozen
+// FIVE below are not edited when a field is added: leaving them at the branch
+// point is what lets this guard still say which SPEC introduced what, and an
+// addition that appears without a SPEC naming it is the regression it exists
+// to catch.
+//
+//   - Landing — SPEC-TODO-LANDING-EVIDENCE-001 REQ-TLE-005/006 (design.md §5):
+//     an optional pointer carrying the operator's landing evidence, `omitempty`
+//     so a card without one marshals byte-identically to before.
+var permittedItemFieldAdditions = map[string]string{
+	"Landing": "*kanban.LandingEvidence",
+}
+
+// frozenItemFields is the pre-addition per-item contract: ordered
+// (name, type, json tag). REQ-TODO-013 is about these five keeping their
+// names, types, and tags — not about the struct never growing — so the guard
+// asserts exactly that, which is strictly stronger than the field COUNT it
+// previously checked. A reorder, a retype, or a renamed tag now fails; a
+// declared addition does not.
+var frozenItemFields = []struct{ name, typ, tag string }{
+	{"ID", "string", "id"},
+	{"Text", "string", "text"},
+	{"AddedAt", "string", "added_at"},
+	{"SpecID", "*string", "spec_id"},
+	{"State", "kanban.BacklogState", "state"},
+}
+
+// AC-TDG-004 (half 2) — the per-item contract's frozen five are unchanged,
+// and every field beyond them is a declared addition.
 func TestBacklogArchive_PerItemContractFrozen(t *testing.T) {
 	typ := reflect.TypeOf(BacklogItem{})
-	if typ.NumField() != 5 {
-		names := make([]string, 0, typ.NumField())
-		for i := 0; i < typ.NumField(); i++ {
-			names = append(names, typ.Field(i).Name)
+	if typ.NumField() < len(frozenItemFields) {
+		t.Fatalf("BacklogItem carries %d fields, fewer than the frozen %d — a field was REMOVED",
+			typ.NumField(), len(frozenItemFields))
+	}
+	for i, want := range frozenItemFields {
+		got := typ.Field(i)
+		gotTag := got.Tag.Get("json")
+		if got.Name != want.name || got.Type.String() != want.typ || gotTag != want.tag {
+			t.Errorf("frozen field %d = (%s, %s, %q), want (%s, %s, %q)",
+				i, got.Name, got.Type, gotTag, want.name, want.typ, want.tag)
 		}
-		t.Fatalf("BacklogItem carries %d fields (%v), want the frozen 5", typ.NumField(), names)
+	}
+	for i := len(frozenItemFields); i < typ.NumField(); i++ {
+		got := typ.Field(i)
+		wantType, declared := permittedItemFieldAdditions[got.Name]
+		if !declared {
+			t.Errorf("BacklogItem carries field %q, which no SPEC declared — "+
+				"the per-item contract is frozen except for declared additions", got.Name)
+			continue
+		}
+		if got.Type.String() != wantType {
+			t.Errorf("declared addition %q has type %s, want %s", got.Name, got.Type, wantType)
+		}
+	}
+	if got, want := typ.NumField(), len(frozenItemFields)+len(permittedItemFieldAdditions); got != want {
+		// Without this, a field removed AND a field added would cancel out.
+		t.Errorf("BacklogItem carries %d fields, want %d (%d frozen + %d declared additions)",
+			got, want, len(frozenItemFields), len(permittedItemFieldAdditions))
 	}
 }
 
