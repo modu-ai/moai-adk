@@ -197,6 +197,25 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 	}
 }
 
+// addCodexReinitGuidance is the redirect note printed when init runs
+// --agent codex|both against an already-initialized project (the --force
+// reinit path): the sanctioned additive verb is `moai update --add-codex`,
+// which wires Codex in place without reinitializing (REQ-UAC-013, decision
+// D4 — redirect-not-block; the reinit itself proceeds as requested).
+const addCodexReinitGuidance = "note: this project is already initialized — the sanctioned additive path for adding Codex to an existing project is `moai update --add-codex` (no reinitialization). Proceeding with the requested reinit."
+
+// emitAddCodexReinitGuidance prints the guidance when the selection is
+// codex|both AND the project is already initialized. A claude selection and a
+// fresh project stay silent; a nil writer is safe.
+func emitAddCodexReinitGuidance(errOut io.Writer, wiring agentWiring, alreadyInitialized bool) {
+	if wiring == agentWiringClaude || !alreadyInitialized {
+		return
+	}
+	if errOut != nil {
+		_, _ = fmt.Fprintln(errOut, addCodexReinitGuidance)
+	}
+}
+
 // getStringFlag retrieves a string flag value from the command.
 func getStringFlag(cmd *cobra.Command, name string) string {
 	val, err := cmd.Flags().GetString(name)
@@ -825,6 +844,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// live line on a TTY and degrades to plain lines otherwise
 	// (REQ-TUX2-010/011).
 	executor.SetReporter(newSpinnerReporter(p))
+
+	// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-013, decision D4): redirect-not-block —
+	// on the --force reinit path with a codex|both selection, name the additive
+	// verb BEFORE proceeding; the reinit itself is not blocked. The probe
+	// reuses the same validator the executor consults, so the guidance and the
+	// executor cannot disagree about what "already initialized" means.
+	if getBoolFlag(cmd, "force") && agentWiringSelection != agentWiringClaude {
+		probe, probeErr := validator.Validate(opts.ProjectRoot)
+		emitAddCodexReinitGuidance(cmd.ErrOrStderr(), agentWiringSelection, probeErr == nil && !probe.Valid)
+	}
 
 	p.Info("Initializing MoAI project...")
 
