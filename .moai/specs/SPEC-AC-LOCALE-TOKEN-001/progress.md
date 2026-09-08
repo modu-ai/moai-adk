@@ -56,7 +56,7 @@ measured_on_tree: 3ac58b5a1
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run
+run_commit_sha: 7bfaacb29
 run_status: evidence-complete
 ac_pass_count: 10
 ac_fail_count: 0
