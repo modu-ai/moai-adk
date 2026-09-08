@@ -1,0 +1,30 @@
+# mutant 1 — drop the numeric-tail requirement from the id
+# expectation pre-declared in expectations.md
+
+## injected diff
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e48f39d07..ad8c5ce7a 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -242,7 +242,7 @@ func autoWrapSingle(ac Acceptance) Acceptance {
+ //	                              separator stays REQUIRED; widening the set is
+ //	                              not the same as dropping the requirement, and
+ //	                              the requirement is what keeps prose bullets out.
+-var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
++var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[A-Za-z0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
+ 
+ func parseSingleACLine(line string) *struct {
+ 	id     string
+
+## judging command
+go test ./internal/spec/ -run TestT528 -count=1 -timeout 600s
+
+## result
+--- FAIL: TestT528NumericTailRequired (0.00s)
+    zz_t528_grammar_test.go:120: non-numeric-tail token was collected as a declaration: got ids [AC-FOO-BAR]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.567s
+FAIL
+
+EXIT=1
+DETECTED=True  --- FAIL lines=1

@@ -1,0 +1,6 @@
+=== RUN   TestGLMAudit_CancelledContext_IsNotSwallowed
+    mcp_glm_audit_ctx_test.go:89: a cancelled audit returned the canned success verdict "pass" — the request reached the transport detached from its context (check http.NewRequestWithContext at mcp_glm.go:305)
+--- FAIL: TestGLMAudit_CancelledContext_IsNotSwallowed (0.38s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.233s
+FAIL

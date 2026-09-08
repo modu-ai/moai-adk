@@ -1,0 +1,20 @@
+=== RUN   TestT528QualifierInsideBoldWrapper
+=== RUN   TestT528QualifierInsideBoldWrapper/qualifier_then_closing_bold_emdash
+    zz_t528_grammar_test.go:257: declaration not collected
+          line: - **AC-CSS-001-01 (isolation-validity)** — Given the cell-IV capture file, When the harness runs `grep -c T504IVMARKER <iv.stdout>`, Then the count is 1.
+          want id: AC-CSS-001-01
+          got ids: []
+=== RUN   TestT528QualifierInsideBoldWrapper/closing_bold_then_qualifier
+--- FAIL: TestT528QualifierInsideBoldWrapper (0.00s)
+    --- FAIL: TestT528QualifierInsideBoldWrapper/qualifier_then_closing_bold_emdash (0.00s)
+    --- PASS: TestT528QualifierInsideBoldWrapper/closing_bold_then_qualifier (0.00s)
+=== RUN   TestT528BracketQualifierStaysRejected
+=== RUN   TestT528BracketQualifierStaysRejected/bracket_qualifier
+=== RUN   TestT528BracketQualifierStaysRejected/leftright_arrow_separator
+--- PASS: TestT528BracketQualifierStaysRejected (0.00s)
+    --- PASS: TestT528BracketQualifierStaysRejected/bracket_qualifier (0.00s)
+    --- PASS: TestT528BracketQualifierStaysRejected/leftright_arrow_separator (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.427s
+FAIL
+EXIT=1

@@ -1,0 +1,82 @@
+../../.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/spec.md:257:- **AC-MIG-007** (only-widen on a non-subset mode — REQ-MIG-002, §D.2 Predicate
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:195:- **AC-1 [REQ-002]**: `internal/template/templates/.claude/commands/moai/db.md` 파일이 존재하며 `wc -l`이 20 미만을 반환한다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:196:- **AC-2 [REQ-001, REQ-004, REQ-015]**: `internal/template/templates/.claude/skills/moai/workflows/db.md` 파일이 존재하며 YAML frontmatter(`name: moai-workflow-db`)와 본문 섹션(Phase 0 라우팅 + Phase 1~8 서브커맨드 본체)을 포함한다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:197:- **AC-3 [REQ-002]**: `go test ./internal/template/... -run TestCommandsAudit`가 통과한다(`commands_audit_test.go`가 thin wrapper 제약을 검증).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:198:- **AC-4 [REQ-015]**: `grep -c "^## Phase" internal/template/templates/.claude/skills/moai/workflows/db.md`가 9 이상을 반환한다(Phase 0 router + Phase 1~8 서브커맨드).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:199:- **AC-5 [REQ-005]**: Claude Code 세션에서 서브커맨드 없이 `/moai db`를 호출하면 4개 옵션(`init`/`refresh`/`verify`/`list`)을 가진 `AskUserQuestion`이 트리거되며 첫 번째 옵션이 `init (권장)`이다(수동 세션 검증).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:200:- **AC-6 [REQ-007, REQ-008]**: `.moai/project/product.md`가 없는 디렉터리에서 `/moai db init`을 호출하면 `"Run /moai project first"` 부분 문자열이 포함된 메시지와 함께 중단되며 `.moai/project/db/` 하위에 어떤 파일도 생성되지 않는다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:201:- **AC-7 [REQ-003]**: `commands/moai/db.md`의 `argument-hint` 값이 정확히 `init|refresh|verify|list [args]`와 일치한다(grep으로 확인).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:202:- **AC-8 [REQ-014]**: `workflows/db.md`의 frontmatter `allowed-tools` 필드가 정확히 `AskUserQuestion, Read, Write, Edit, Bash, TaskCreate, TaskUpdate, Glob, Grep` 9개 도구를 포함한다(순서 무관).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:203:- **AC-9 [REQ-006]**: `/moai db xyz`(알 수 없는 서브커맨드) 호출 시 유효한 4개 서브커맨드 이름을 포함한 오류 메시지가 반환되고 어떤 Phase도 실행되지 않는다(exit code ≠ 0).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:204:- **AC-10 [REQ-009]**: `workflows/db.md` 부록 섹션에 16개 언어(`go`, `python`, `typescript`, `javascript`, `rust`, `java`, `kotlin`, `csharp`, `ruby`, `php`, `elixir`, `cpp`, `scala`, `r`, `flutter`, `swift`) 각각에 대한 canonical 마이그레이션 경로 매핑 테이블이 존재한다(grep으로 언어 이름 16개 모두 검증).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:205:- **AC-11 [REQ-010]**: `.moai/project/db/schema.md`에 테이블 `users`만 등록되고 마이그레이션에는 `users`, `orders`가 존재하는 테스트 픽스처에서 `/moai db verify`는 exit 1로 종료하며 stdout에 `orders`가 "added" 또는 "missing in schema.md"로 출력된다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:206:- **AC-12 [REQ-010a]**: `.moai/project/db/schema.md`가 없는 디렉터리에서 `/moai db verify`는 `"Schema not found"` 메시지와 함께 exit 2로 종료한다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:207:- **AC-13 [REQ-011]**: 테스트 픽스처에서 `/moai db list` 실행 후 `git status --porcelain`이 공백 출력을 반환한다(파일 시스템 mutation 없음). stdout에는 열 `table_name | column_count | primary_key | last_migration_file`을 가진 Markdown 정렬 테이블이 출력된다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:208:- **AC-14 [REQ-011a]**: `.moai/project/db/schema.md`가 없는 디렉터리에서 `/moai db list`는 `"Schema not found"` 메시지와 함께 exit 2로 종료한다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:209:- **AC-15 [REQ-012]**: `workflows/db.md` 본문의 `init`, `refresh` Phase 섹션에 `TaskCreate` 및 `TaskUpdate` 토큰이 각각 1회 이상 등장한다(grep 검증).
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:210:- **AC-16 [REQ-013]**: `workflows/db.md`의 Phase 2 (Interview) 섹션에 "AskUserQuestion" 토큰이 1회만 등장하며, 해당 호출이 정확히 4개 질문 주제(`engine`, `ORM`, `multi-tenant`, `migration tool`)를 모두 명시한다.
+../../.moai/specs/SPEC-DB-CMD-001/spec.md:211:- **AC-17 [REQ-016]**: `spec.md` 본문 내 "Single-File Command" 표기 출현 횟수가 0이며, HISTORY 엔트리가 `YYYY-MM-DD vX.Y.Z` 포맷을 따른다.
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:174:- **AC-1** parse/branch/env/bump/reject/help tables green:
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:179:- **AC-2** label vocabulary + record admission:
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:182:- **AC-3** notices (lines/socket/GLM/startup-gate/suppression/i18n):
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:184:- **AC-4** regression — kanban surfaces unchanged: full
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:192:- **AC-5** cross-platform: `GOOS=windows GOARCH=amd64 go vet ./internal/cli/
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:195:- **AC-6** binary: `make build` succeeds; catalog.yaml byte-unchanged (no
+../../.moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:90:- **AC-HFC-001a** (REQ-HFC-001): **Given** a `PostToolUseFailure` `HookInput` with an empty top-level `Error` and `tool_response` = `{"error":"permission denied: open /f","stderr":""}`, **When** `Handle` runs, **Then** the classified category is `PermissionDenied` (not `UnknownFailure`) and the `systemMessage` has the `PermissionDenied:` prefix.
+../../.moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:91:- **AC-HFC-001b** (REQ-HFC-001): **Given** a `PostToolUseFailure` payload with empty top-level `Error` and `tool_response` = `{"stderr":"...context deadline exceeded..."}`, **When** `Handle` runs, **Then** the classified category is `TimeoutError`.
+../../.moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:97:- **AC-HFC-GATE** (quality gate): **Given** the full package, **When** `go test ./internal/hook/... && go vet ./internal/hook/... && golangci-lint run internal/hook/...` runs, **Then** all pass with zero errors and the subagent-boundary grep (`grep -rn 'AskUserQuestion\|mcp__askuser' internal/hook/ | grep -v _test.go`) returns 0 matches.
+../../.moai/specs/SPEC-KARPATHY-001/spec.md:217:- AC-001 ~ AC-006 -> see `acceptance.md`
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:67:- AC-001 반출 조항 존재(양쪽 사본) — release-blocking, RED-now 있음
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:68:- AC-002 금지 경로 제거(양쪽 사본) — release-blocking, RED-now 있음
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:69:- AC-003 곁말 규약 반영(양쪽 사본) — release-blocking, RED-now 있음
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:70:- AC-004 조항 쌍둥이 일치 — release-blocking
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:71:- AC-005 교차참조 일치 — release-blocking, RED-now 있음
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:72:- AC-006 방출물+카탈로그 해시 재생성 — release-blocking, RED-now 있음
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:73:- AC-007 t367 :72 문면 보존 — 회귀 가드 (preservation)
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:74:- AC-008 템플릿 중립성 0매치 — 회귀 가드 (preservation)
+../../.moai/specs/SPEC-PREPUSH-LOADER-WIRING-001/spec.md:180:- AC-PLW-001..004 — file present / absent / partial / malformed behavior (REQ-PLW-001..005)
+../../.moai/specs/SPEC-PREPUSH-LOADER-WIRING-001/spec.md:181:- AC-PLW-005..006 — dead-config elimination (wrapper + loader symbol + wired call grep)
+../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md:105:- AC-DCC-001..003: Skill exists template-first + local-synced; frontmatter valid (Level-1 `description` measured against the ~100-token budget + `allowed-tools` exact-line match on the read-only set `Read, Grep, Glob`); progressive-disclosure structure present.
+../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md:106:- AC-DCC-004..008: 3-phase workflow, atomic decomposition, 4-label taxonomy + ordered decision tree, unsupported-reason set, and HARD read-only boundaries present in the body.
+../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md:107:- AC-DCC-009..012: 3-section output contract including the "no commands executed" certification; policy cross-reference (no duplication); English body; template neutrality (CI guard clean).
+../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md:108:- AC-DCC-013..017: clean-room mechanical absence-invariant (vendor-token grep → 0, no `NOTICE`, house-convention `license: Apache-2.0` present exactly once with no skillstead reference in frontmatter); embedded-FS rebuild; Preflight AC (public-facing confirmation + evidence inventory with versions/timestamps + secret-redaction flag); clean-room PROCESS attestation (judgment half); at least one non-Go worked example.
+../../.moai/specs/SPEC-SKILLPORT-HUMANIZE-LEDGER-001/spec.md:120:- AC-HML-001..003: Invariant Ledger step present with the canonical 4-category item taxonomy + fidelity rule (incl. supplied-vs-inferred marking) + Fast/Strict depth split.
+../../.moai/specs/SPEC-SKILLPORT-HUMANIZE-LEDGER-001/spec.md:121:- AC-HML-004..006: Delta Audit step present with the survival-check list, rollback-on-violation (scoped to SUPPLIED items), and Grade-D feed.
+../../.moai/specs/SPEC-SKILLPORT-HUMANIZE-LEDGER-001/spec.md:122:- AC-HML-007..011: existing S1/S2/S3, A/B/C/D, 30%/50% + fact-anchor guard, 4-language routing PRESERVED (regression check); enhancement is additive.
+../../.moai/specs/SPEC-SKILLPORT-HUMANIZE-LEDGER-001/spec.md:123:- AC-HML-012..017: English content, template neutrality (CI clean), clean-room MECHANICAL absence invariant with the pre-existing im-not-ai footer + `license: Apache-2.0` field preserved byte-unchanged, dual version bump 1.2.0→1.3.0 (frontmatter `metadata.version` + footer `Version:` line), progressive-disclosure placement, Template-First edit + sync + `make build` embed.
+../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:124:- AC-SVG-001..003: skill exists template-first + local-synced; Level-1 listing scope + MEASURED combined character count; progressive-disclosure structure (Level-3 references + scripts).
+../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:125:- AC-SVG-004..006: layout-before-code method, geometry-derived centers, CJK 60% budget documented.
+../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:126:- AC-SVG-007..011: render + lint recipes present; graceful degradation for missing Node / missing Chromium; runtime prerequisite stated as render/lint-only.
+../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:127:- AC-SVG-012..013: mermaid-vs-svg selection rules present; no replacement of the mermaid pipeline.
+../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:128:- AC-SVG-014..015: English body + scripts (with the CJK-capability carve-out — font-stack names and Korean sample labels are required capability, not a language violation); template neutrality (CI guard clean, CJK content retained).
+../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:129:- AC-SVG-016 + AC-SVG-019: clean-room guarantee, split into a MECHANICAL absence-invariant half (AC-SVG-016 — vendor-token grep, no NOTICE at either surface, house-convention `license: Apache-2.0` present exactly once with no skillstead reference in frontmatter) and a PROCESS attestation half (AC-SVG-019).
+../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:48:- **AC-GREEN**: Given the repaired tree, When `go run ./cmd/moai spec lint --strict` runs (output redirected to a file, exit code captured separately), Then the grep count of `^ERROR` on the output file = 0. The command MAY exit 1 on the ~4,333 warnings — that is EXPECTED and is not this AC's verdict.
+../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:49:- **AC-MUTANT**: Given the two `status:` lines restored via `git checkout 615d18c1f -- .moai/specs/SPEC-CODEX-E2E-MEASURE-001/plan.md .moai/specs/SPEC-CODEX-E2E-MEASURE-001/acceptance.md`, When the same command runs, Then the output carries exactly 2 lines matching `^ERROR`, both `ArtifactStatusFieldForbidden`. Then the fix is re-applied and AC-GREEN re-confirmed (count back to 0).
+../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:50:- **AC-ORDERING**: Given the branch history, When `git log --oneline` is read, Then the commit carrying `.moai/reports/t490/red-baseline.md` appears BEFORE the commit carrying the two-line fix (§2.3 — the commit graph, not a commit message, witnesses the ordering).
+../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:51:- **AC-SCOPE**: Given the branch diff for the two files, When `git diff <base>..HEAD -- .moai/specs/SPEC-CODEX-E2E-MEASURE-001/` is read, Then it shows exactly two deleted lines (`-status: completed`, one per file) and no other change; and the commits carrying the two-line repair modify no file other than the two named artifacts.
+../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:52:- **AC-EVIDENCE** (parent: REQ-007): Given `.moai/reports/t490/`, When the evidence files are read, Then the GREEN + mutant re-measurement outputs are recorded there, and every branch commit message carries `t490`.
+../../.moai/specs/SPEC-UTIL-001/spec.md:178:- AC-UTIL-001-13b: Given a Go file containing a function with 10 top-level `if` / `else if` branches (IfBranches == 10) but low overall cyclomatic complexity and no `@MX:WARN` tag, When `ValidateFile` runs, Then the emitted violations include one entry with `Priority == P2`, `MissingTag == "@MX:WARN"`, and `Reason` matching `"if-branches 10 >= 8"`. (maps REQ-UTIL-001-041, REQ-UTIL-001-024)
+../../.moai/specs/SPEC-V3R3-PATTERNS-001/spec.md:169:- AC-001 ~ AC-005 → see `acceptance.md`
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:113:- AC-LCLN-001.1: Baseline captured before each LCLN-Phase.
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:114:- AC-LCLN-001.2: Each LCLN-Phase reduces a contiguous subset of findings (per-phase reduction targets per plan.md §3 sum-check).
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:115:- AC-LCLN-001.3: Final post-merge `./bin/moai agent lint --strict --format=json | jq '.summary.total == 0'` returns `true` (after Mega-Sprint W2 dissolves the 12-finding residual).
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:117:- AC-LCLN-002.1: Pre-phase baseline JSON committed to `.moai/state/lint-baseline-pre-LCLN-P<N>.json`.
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:118:- AC-LCLN-002.2: Diff command emits NEW count keyed by `file+line+rule`.
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:119:- AC-LCLN-002.3: NEW count = 0 enforced as LCLN-Phase PR merge gate.
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:121:- AC-LCLN-003.1: `moai spec lint --strict` exit 0 post-phase.
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:122:- AC-LCLN-003.2: `golangci-lint run ./...` exit 0 post-phase (conditional on default linter set per C8).
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:123:- AC-LCLN-003.3: `moai workflow lint` exit 0 post-phase.
+../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:124:- AC-LCLN-003.4: No diff in design.md §1.1 + Appendix A guarded paths (automated Frozen Guard script audit).
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:223:- AC-GM-001 ↔ REQ-GM-001 + REQ-GM-007: legacy EARS REQs continue to pass `moai spec lint` (non-strict)
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:224:- AC-GM-002 ↔ REQ-GM-002 + REQ-GM-006: IF/THEN REQs emit `LegacyEARSKeyword` warning
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:225:- AC-GM-003 ↔ REQ-GM-003: GEARS REQs (WHEN/WHILE/WHERE/Ubiquitous well-formed) pass lint
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:226:- AC-GM-004 ↔ REQ-GM-004: 4-locale docs-site GEARS guide present + cross-linked
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:227:- AC-GM-005 ↔ REQ-GM-005: run-phase first step writes `.moai/research/gears-paper-validation.md` before lint.go edit
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:228:- AC-GM-006 ↔ REQ-GM-008: `moai spec lint --strict` exits non-zero on `LegacyEARSKeyword`
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:229:- AC-GM-007 ↔ REQ-GM-007: 88 existing SPECs unchanged by this SPEC (diff verification)
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:230:- AC-GM-008 ↔ REQ-GM-009: 6-month window policy documented in `internal/spec/lint.go` source comment + 4-locale migration guide
+../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:120:- AC-MRR-G1: G1 9개 테스트 PASS (FLAT `moai/` 기대값).
+../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:121:- AC-MRR-G2: G2 mirror-drift 2 parent 테스트 PASS (정책 적용 후).
+../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:122:- AC-MRR-G3: `TestTemplateNoInternalContentLeak` 0 occurrence.
+../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:123:- AC-MRR-G4: `TestSettingsTemplateHookEventCount` PASS (21 expected).
+../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:124:- AC-MRR-GREEN: `go test ./internal/template/...` 0 fail + cross-platform build exit 0 + lint baseline 유지.

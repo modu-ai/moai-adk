@@ -1,0 +1,53 @@
+# M3 후보군 4 — template 배포기 (구성원 20) · t539
+# 판정: 생존 (두 seam 모두) — 수리하지 않음, 후속 카드 요청 대상 (AC-CBD-009)
+
+## 씨앗 4a — internal/core/project/initializer.go:434
+  before: if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
+  after : if err := i.deployer.Deploy(context.Background(), opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
+
+$ go test ./internal/core/project/ -list . -count=1   → grep -c '^Test' = 118
+$ go test ./internal/core/project/... -count=1 -timeout 600s → ok  ...internal/core/project  1.609s
+
+판정: **생존**. 배포기가 자기 컨텍스트에서 분리돼도 118건 중 누구도 보지 못한다.
+주목할 점: 실물 `template/deployer.go` 는 `case <-ctx.Done():` 를 :167 과 :354 두 곳에서
+읽는다 — 즉 (a) 축은 참이고 (b) 는 거짓이라 (c) 가 성립하는 자리다. 그런데도 생존했다.
+
+귀속 구성원 (8건):
+  internal/core/project/initializer_test.go:26 :39 :49 :56 :780 :812
+  internal/core/project/initializer_mirror_notice_test.go:38 :45
+
+## 씨앗 4b — internal/cli/mirror_notice.go:37, :42 (같은 seam 함수의 두 분기)
+  before: return dep.Deploy(ctx, projectRoot, mgr, tmplCtx)
+          res, err := rd.DeployWithResult(ctx, projectRoot, mgr, tmplCtx)
+  after : 두 줄 모두 context.Background() 로 치환
+
+$ go test ./internal/cli/ -list Update  -count=1 → 161 ;  -run Update  → ok  15.564s
+$ go test ./internal/cli/ -list Mirror  -count=1 →  32 ;  -run Mirror  → ok   4.384s
+
+도달성 (감사자, sync-audit-reach-4b-{mirror,update}.log) — 두 분기 모두 확인:
+  :42 → panic REACHPROBE42 (`-run Mirror`)   :37 → panic REACHPROBE37 (`-run Update`)
+
+판정: **생존** (161 + 32 건 어느 셀렉터도 잡지 못함, 도달 증명 위에서).
+
+귀속 구성원 (10건):
+  internal/cli/update_clean_install_test.go:47 :58 :1069 :1076
+  internal/cli/update_clean_install_config_preserve_test.go:39 :73
+  internal/cli/update_mirror_notice_test.go:51 :58 :69 :75
+
+### [정정 · sync-audit F2] merge 두 행은 이 씨앗에 귀속되지 않는다
+
+최초 작성본은 `internal/cli/update/merge/merge_test.go:621 :626` 을 이 씨앗에 귀속하고
+`go test ./internal/cli/update/merge/ → ok 0.321s (-list 51)` 을 근거로 나열했다.
+**그 근거는 무효다** — `deployWithMirrorNotice` 는 package `cli` 의 비공개 함수이고
+`merge_test.go` 는 package `merge` 이므로, merge 테스트 바이너리는 이 seam 을 컴파일조차
+하지 않는다. 51건이 초록이었던 것은 뮤턴트를 견뎌서가 아니라 뮤턴트가 그 바이너리에
+존재하지 않았기 때문이다.
+
+두 행의 정본 판정은 `m3-merge.log` 에 있다: **seam 부재 / 측정 불가**
+(package merge 의 유일한 Deployer 소비 함수 `merge.go:306 AnalyzeMergeChanges` 는 컨텍스트
+파라미터가 없고 `ListTemplates()` 만 부른다; `.Deploy(` / `.ValidateAll(` 호출은 프로덕션·테스트
+모두 0건).
+
+따라서 후보군 4 의 20건은 **18 생존 + 2 seam 부재**로 분해된다.
+
+$ (되돌림) 두 씨앗 모두 git diff --stat 무출력으로 확인

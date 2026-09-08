@@ -1,0 +1,105 @@
+=== RUN   TestT528SegmentGrammar
+=== RUN   TestT528SegmentGrammar/two_segments
+    zz_t528_grammar_test.go:105: declaration not collected
+          line: - AC-001: `internal/hook/post_tool_duration.go` 가 helper 를 호출한다
+          want id: AC-001
+          got ids: []
+=== RUN   TestT528SegmentGrammar/five_segments_alnum_middle
+    zz_t528_grammar_test.go:105: declaration not collected
+          line: - AC-V3R2-RT-001-01: WHEN a PreToolUse hook wrapper writes stdout, THE system SHALL replace the pending tool input.
+          want id: AC-V3R2-RT-001-01
+          got ids: []
+=== RUN   TestT528SegmentGrammar/three_segments_alnum_middle
+    zz_t528_grammar_test.go:105: declaration not collected
+          line: - **AC-WF001-01**: Given the v2.13.2 tree with 48 skills When the full Stage 1 consolidation is applied Then `.claude/skills/` contains exactly 38 directories (maps REQ-WF001-001).
+          want id: AC-WF001-01
+          got ids: []
+=== RUN   TestT528SegmentGrammar/four_segments
+    zz_t528_grammar_test.go:105: declaration not collected
+          line: - **AC-ORC-001-01**: Counting active (non-stub) agent files under `.claude/agents/moai/` yields exactly 17, matching the REQ-001 list.
+          want id: AC-ORC-001-01
+          got ids: []
+=== RUN   TestT528SegmentGrammar/alnum_middle_mig
+    zz_t528_grammar_test.go:105: declaration not collected
+          line: - **AC-MIG001-01**: Given a v2 project When `moai migrate v2-to-v3 --dry-run` runs Then dry-run report is produced without file modification (maps REQ-MIG001-009).
+          want id: AC-MIG001-01
+          got ids: []
+=== RUN   TestT528SegmentGrammar/word_middle_segments
+    zz_t528_grammar_test.go:105: declaration not collected
+          line: - AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.
+          want id: AC-AUDIT-SNAPSHOT-001
+          got ids: []
+=== RUN   TestT528SegmentGrammar/already_accepted_three_segment
+--- FAIL: TestT528SegmentGrammar (0.00s)
+    --- FAIL: TestT528SegmentGrammar/two_segments (0.00s)
+    --- FAIL: TestT528SegmentGrammar/five_segments_alnum_middle (0.00s)
+    --- FAIL: TestT528SegmentGrammar/three_segments_alnum_middle (0.00s)
+    --- FAIL: TestT528SegmentGrammar/four_segments (0.00s)
+    --- FAIL: TestT528SegmentGrammar/alnum_middle_mig (0.00s)
+    --- FAIL: TestT528SegmentGrammar/word_middle_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/already_accepted_three_segment (0.00s)
+=== RUN   TestT528NumericTailRequired
+--- PASS: TestT528NumericTailRequired (0.00s)
+=== RUN   TestT528SubIDSuffixPreserved
+--- PASS: TestT528SubIDSuffixPreserved (0.00s)
+=== RUN   TestT528BoldWrapper
+=== RUN   TestT528BoldWrapper/bold_id_emdash_separator
+    zz_t528_grammar_test.go:189: bold-wrapped declaration not collected
+          line: - **AC-ASE-001** — **Given** the run-phase commit on `WT-achwd-strip-exempt`,
+          want id: AC-ASE-001
+          got ids: []
+=== RUN   TestT528BoldWrapper/bold_id_emdash_separator_2
+    zz_t528_grammar_test.go:189: bold-wrapped declaration not collected
+          line: - **AC-ASE-002** — **Given** the amended tree, **When** the §I.4 A4 perl guard runs,
+          want id: AC-ASE-002
+          got ids: []
+=== RUN   TestT528BoldWrapper/bold_id_colon_separator
+    zz_t528_grammar_test.go:189: bold-wrapped declaration not collected
+          line: - **AC-ORC-001-05**: All 7 stub files exist at deprecated paths with status=retired frontmatter.
+          want id: AC-ORC-001-05
+          got ids: []
+--- FAIL: TestT528BoldWrapper (0.00s)
+    --- FAIL: TestT528BoldWrapper/bold_id_emdash_separator (0.00s)
+    --- FAIL: TestT528BoldWrapper/bold_id_emdash_separator_2 (0.00s)
+    --- FAIL: TestT528BoldWrapper/bold_id_colon_separator (0.00s)
+=== RUN   TestT528ParenQualifier
+=== RUN   TestT528ParenQualifier/short_qualifier
+    zz_t528_grammar_test.go:221: qualified declaration not collected
+          line: - AC-AUDIT-SNAPSHOT-001 (A1): sticky cache — past-24h unchanged-hash skip still fires.
+          want id: AC-AUDIT-SNAPSHOT-001
+          got ids: []
+=== RUN   TestT528ParenQualifier/req_qualifier
+    zz_t528_grammar_test.go:221: qualified declaration not collected
+          line: - AC-AUTONOMY-TIERS-001 (REQ-001): `moai init` wizard offers 3-tier selection; `--autonomy-tier` flag validates the closed set.
+          want id: AC-AUTONOMY-TIERS-001
+          got ids: []
+=== RUN   TestT528ParenQualifier/bold_id_with_req_qualifier
+    zz_t528_grammar_test.go:221: qualified declaration not collected
+          line: - **AC-RA-07** (REQ-RA-007): retired-rejection guard returns proper JSON + exit 2
+          want id: AC-RA-07
+          got ids: []
+--- FAIL: TestT528ParenQualifier (0.00s)
+    --- FAIL: TestT528ParenQualifier/short_qualifier (0.00s)
+    --- FAIL: TestT528ParenQualifier/req_qualifier (0.00s)
+    --- FAIL: TestT528ParenQualifier/bold_id_with_req_qualifier (0.00s)
+=== RUN   TestT528ParenQualifierLeavesREQMappingAlone
+    zz_t528_grammar_test.go:238: control declaration not collected at all
+--- FAIL: TestT528ParenQualifierLeavesREQMappingAlone (0.00s)
+=== RUN   TestT528SeparatorSet
+=== RUN   TestT528SeparatorSet/colon
+    zz_t528_grammar_test.go:283: declaration with separator ":" (U+003A) not collected: got ids []
+=== RUN   TestT528SeparatorSet/em_dash_u2014
+    zz_t528_grammar_test.go:283: declaration with separator "—" (U+2014) not collected: got ids []
+=== RUN   TestT528SeparatorSet/en_dash_u2013
+    zz_t528_grammar_test.go:283: declaration with separator "–" (U+2013) not collected: got ids []
+--- FAIL: TestT528SeparatorSet (0.00s)
+    --- FAIL: TestT528SeparatorSet/colon (0.00s)
+    --- FAIL: TestT528SeparatorSet/em_dash_u2014 (0.00s)
+    --- FAIL: TestT528SeparatorSet/en_dash_u2013 (0.00s)
+=== RUN   TestT528SectionScopingInvariant
+    zz_t528_grammar_test.go:305: in-section declaration was NOT collected; got ids []
+--- FAIL: TestT528SectionScopingInvariant (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.377s
+FAIL
+EXIT=1
