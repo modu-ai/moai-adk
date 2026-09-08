@@ -95,10 +95,11 @@ m1_to_mn_commit_strategy: 마일스톤당 1커밋(M1/M2/M3) + 문서 1커밋 = �
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-09-09
-- sync_commit_sha: "pending-backfill-sync"   # D3 자기참조 규약 — 본 커밋은 자신의 SHA를 인용할 수 없어 placeholder 기록, 후속 커밋에서 실측값으로 백필 (소관: 리드 백필 창)
+- sync_commit_sha: "55b5d5b8e" — backfill 커밋에서 실제 short SHA로 교체 (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)
 - artifacts: CHANGELOG.md 진입 ([Unreleased] → Added 최상단, t572 진입 위) / docs-site `cli-reference/update.md` 4개 로케일 (ko/en/ja/zh — 플래그 레퍼런스 표 1행 + `--add-codex` 전용 절 1개, 동일 구조) / progress.md §E.4 (본 절) / spec.md frontmatter (`status: in-progress → completed` + `updated: 2026-09-09` — `status` + `updated` 필드만, 본문 무변경)
 - 소유 전환: in-progress → implemented → completed (단일 sync 커밋 3-phase close — 스키마 행렬의 manager-docs 소유 행)
 - AC: 14/14 PASS (SSOT = acceptance.md AC-UAC-001..014, 판정 근거는 §E.2 + acceptance.md §D.5 EV-13~20)
+- sync-audit: PASS (harmonic 96.1 — Functionality 100 · Security 100 · Craft 90 · Consistency 95, blocking 0, Tier M 0.80 상회) — 판정 실물 `.moai/reports/t589/sync-audit.md` (감사 트리 55b5d5b8e, 본 backfill 커밋에서 반출). 선택 발견 2건은 병합 전 수리 강제 없음(F-A1 second-seat 가드 보강 · F-A2 dry-run 출력 스타일 — 후속 카드 후보)
 - B12 사전 점검: (a) 중복 grep `grep -c 'SPEC-UPDATE-ADD-CODEX-001' CHANGELOG.md` = 0 → 진행 / (b) AC 토큰 수 일치 — `grep -oE 'AC-UAC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` = 14, 진입이 참조하는 AC 수 14와 일치 / (c) 진입 내 경로 실존 — `.moai/specs/SPEC-UPDATE-ADD-CODEX-001/spec.md` 존재 확인
 - 트레일러: 본 sync 커밋에 `Authored-By-Agent: manager-docs` 부착
 - canary 준수: 배포 템플릿 파일 미변경 (sync 쓰기 표면은 CHANGELOG.md · docs-site 4파일 · SPEC 아티팩트 2종뿐) — 템플릿 무결성 판정은 run-phase M2 (EV-18) 유지, `make build` 불요
