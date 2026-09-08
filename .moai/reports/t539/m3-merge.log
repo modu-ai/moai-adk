@@ -1,0 +1,99 @@
+# M3 정정 — 후보군 4 의 merge 두 행 (귀속표 73·74행) · t539
+# sync-audit F2 [Medium] [blocking] 대응. HEAD 73a588054.
+# 판정: **소관 내 프로덕션 seam 부재 — 측정 불가**(생존도 사망도 아니다)
+
+## 무엇이 틀렸었나
+
+`m3-attribution.md` 73·74행:
+  internal/cli/update/merge/merge_test.go:621  mockDeployer.Deploy
+  internal/cli/update/merge/merge_test.go:626  mockDeployer.ValidateAll
+
+이 두 행은 씨앗 4b(`internal/cli/mirror_notice.go:37,:42`)에 귀속돼 있었다. 그 귀속은 **무효**다:
+
+```
+$ head -1 internal/cli/mirror_notice.go            → package cli
+$ head -1 internal/cli/update/merge/merge_test.go  → package merge
+```
+
+`deployWithMirrorNotice` 는 package `cli` 의 **비공개** 함수다. package `merge` 의 테스트
+바이너리는 그 함수를 컴파일하지도, 링크하지도, 실행하지도 못한다. 따라서 원래
+`m3-template-deployer.log` 가 4b 의 근거로 나열한
+`go test ./internal/cli/update/merge/ → ok 0.321s (-list 51)` 는 그 뮤턴트에 대해
+**아무것도 재지 않았다.** 초록이었던 이유는 뮤턴트를 견뎌서가 아니라 뮤턴트가 그 바이너리에
+존재하지 않았기 때문이다.
+
+## 재측정 시도 — package merge 안에 씨앗이 있는가
+
+절차: "프로덕션이 컨텍스트를 그 인터페이스로 넘기는 지점" 을 package merge 안에서 찾는다.
+
+```
+$ /usr/bin/grep -rn 'Deploy\|Deployer' internal/cli/update/merge/*.go | /usr/bin/grep -v '_test.go'
+internal/cli/update/merge/merge.go:306:func AnalyzeMergeChanges(deployer template.Deployer, projectRoot string) mrg.MergeAnalysis {
+```
+
+package merge 에서 `template.Deployer` 를 소비하는 프로덕션 함수는 이 하나뿐이고,
+그 본문은 다음이 전부다:
+
+```go
+func AnalyzeMergeChanges(deployer template.Deployer, projectRoot string) mrg.MergeAnalysis {
+	templates := deployer.ListTemplates()
+	files := plan.AnalyzeFiles(templates, projectRoot)
+	return BuildMergeAnalysis(files)
+}
+```
+
+**컨텍스트 파라미터가 없고**, 부르는 메서드는 `ListTemplates()` — 컨텍스트를 받지 않는 메서드다.
+문제의 두 메서드는 아무 데서도 호출되지 않는다:
+
+```
+$ /usr/bin/grep -n '\.Deploy(\|\.ValidateAll(' internal/cli/update/merge/merge.go internal/cli/update/merge/base.go
+grep_exit=1        ← 프로덕션 호출 0건
+
+$ /usr/bin/grep -n '\.Deploy(\|\.ValidateAll(' internal/cli/update/merge/*_test.go
+grep_exit=1        ← 이 패키지 자신의 테스트에서도 호출 0건
+```
+
+package merge 의 유일한 컨텍스트 사용처는 Deployer 와 무관한 다른 seam 이다:
+```
+$ /usr/bin/grep -n 'ctx\|context\.' internal/cli/update/merge/merge.go
+228:		result, mergeErr := engine.MergeFile(context.Background(), fb.Path, baseContent, fb.Data, updatedContent)
+```
+
+`mockDeployer.Deploy` / `.ValidateAll`(merge_test.go:621, :626)은 `mockDeployer` 가
+`template.Deployer` 인터페이스를 만족시켜 `AnalyzeMergeChanges` 에 넘겨질 수 있도록
+**시그니처만 채운 스텁**이다. 본문은 `return nil` 한 줄이며 어떤 코드도 이들을 부르지 않는다.
+
+## 판정
+
+**소관 내 프로덕션 seam 부재 — 측정 불가(correctly unmeasurable).**
+
+떨어뜨릴 컨텍스트가 seam 을 건너지 않으므로 주입할 뮤턴트가 없다. 이것은 "재지 않았다"보다
+강한 진술이다 — **잴 대상이 존재하지 않는다.** (c) 축(`(a) ∧ ¬(b)`)이 성립하지 않고,
+따라서 수리 대상 `(c) ∧ (d)` 도 성립하지 않는다.
+
+씨앗 1B(`fakeUpdateChecker.CheckLatest`)와 같은 부류다: 인터페이스 시그니처라는 기계적 사실이
+근거이고, 판독이나 추정이 아니다.
+
+## 참고 측정 (판정 근거 아님 — 이 패키지가 초록임을 확인만)
+
+```
+$ go test ./internal/cli/update/merge/ -list . -count=1 > .moai/reports/t539/list-merge.log
+$ /usr/bin/grep -c '^Test' .moai/reports/t539/list-merge.log   → 51
+$ go test ./internal/cli/update/merge/ -count=1 -timeout 600s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.299s
+```
+
+이 51건은 **73·74행에 대해 아무것도 주장하지 않는다.** 원래 로그가 이 수치를 4b 의 근거로
+나열한 것이 F2 의 결함이었으므로, 여기서는 "이 패키지가 초록이다" 이상의 의미를 부여하지 않는다.
+
+## 뮤턴트 위생
+
+뮤턴트를 주입하지 않았다(주입할 자리가 없다). 트리 변경 0:
+```
+$ git diff --stat   → 무출력
+```
+
+## 귀속표 정정
+
+73·74행의 판정을 `생존`(씨앗 4b 귀속)에서 **`seam 부재 / 측정 불가`** 로 바꾼다.
+후보군 4 의 20건은 **18 생존 + 2 seam 부재**로 분해된다.

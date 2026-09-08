@@ -1,0 +1,22 @@
+--- FAIL: TestApplyBranchProtection_Success (0.00s)
+panic: REACH122 [recovered, repanicked]
+
+goroutine 69 [running]:
+testing.tRunner.func1.2({0x106c94d60, 0x106ed73d0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x106c94d60?, 0x106ed73d0?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.PreflightGh(...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/branch_protection.go:122
+github.com/modu-ai/moai-adk/internal/cli.ApplyBranchProtection({0x106d3b7c0?, 0x29f4beb38ea8?}, {0x1039f3a7a?, 0x4?}, {0x0?, 0x104709986?}, {0x29f4beb38c58?, 0x1027081cc?}, {0x1047b493a?, 0x104709986?}, ...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/branch_protection.go:134 +0x30
+github.com/modu-ai/moai-adk/internal/cli.TestApplyBranchProtection_Success(0x29f4bf5a2fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/branch_protection_test.go:176 +0x1a0
+testing.tRunner(0x29f4bf5a2fc8, 0x106ec82e0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.700s
+FAIL

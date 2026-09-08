@@ -137,7 +137,7 @@ func TestHandleSaveGreenfieldSectionCreation(t *testing.T) {
 
 	form := url.Values{
 		"__profile":                                {"default"},
-		"mcp.tools.spec_progress.enabled":          {""}, // unchecked → false
+		"mcp.tools.spec_progress.enabled":          {""},  // unchecked → false
 		"mcp.tools.spec_progress.enabled__present": {"1"}, // submitted (not unsubmitted)
 	}
 	rec := servePost(t, a.routes(), "/save", form)

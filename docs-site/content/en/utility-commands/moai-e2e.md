@@ -55,7 +55,7 @@ Run without arguments to detect the project type, get the recommended toolchain 
 | Flag | Description | Example |
 |-------|------|------|
 | `--tool TOOL` | Force toolchain selection (skips the selection question) | `/moai e2e --tool maestro` |
-| `--platform web\|mobile\|desktop` | Force the platform classification | `/moai e2e --platform web` |
+| `--platform web\|mobile\|desktop\|desktop-native` | Force the platform classification | `/moai e2e --platform desktop-native` |
 | `--record` | Record runs via the toolchain's native recording facility | `/moai e2e --record` |
 | `--url URL` | Target URL for web testing | `/moai e2e --url http://localhost:3000` |
 | `--journey NAME` | Run only the named user journey | `/moai e2e --journey checkout` |
@@ -75,8 +75,13 @@ Each platform has a fixed default toolchain, and every default path is **fully e
 | **Mobile** | Maestro | Appium (fallback), Detox (React Native only) | iOS / Android / Flutter support, declarative YAML flows |
 | **Desktop (Electron)** | Playwright `_electron` | — | Reuses the web Playwright install. API is experimental — stated in reports |
 | **Desktop (Tauri)** | WebdriverIO + `@wdio/tauri-service` | — | Embedded-WebDriver mode is cross-platform including macOS |
+| **Desktop-native (macOS)** | axcli | appium-mac2 + WebdriverIO (fallback) | Drives AppKit and native macOS apps through the AXUIElement accessibility tree. Version pinned |
+| **Desktop-native (Windows)** | FlaUI.WebDriver + WebdriverIO | pywinauto (fallback) | WinUI/Win32/Qt. W3C WebDriver2 over UIA3. Experimental — version pinned |
+| **Desktop-native (Linux)** | dogtail | ydotool/xdotool + screenshot verification (fallback) | Drives GTK/Qt through AT-SPI2. Wayland is limited to GNOME |
 
 When the selected toolchain is not installed, the install command is presented first; upon approval it installs, re-verifies the version, then proceeds.
+
+The desktop-native lane documents accessibility recipes for all three operating systems (macOS, Windows, Linux), but under the **host OS rule** a recipe for an OS other than the host stays documentation only — actual probing and execution happen on the host OS only.
 
 ## Project-Type Auto-Detection
 
@@ -90,6 +95,7 @@ The platform is classified by reading the project's **marker files**. Detection 
 | Mobile (Flutter) | `pubspec.yaml` containing `flutter:`, `lib/main.dart` |
 | Mobile (native) | `*.xcodeproj` with iOS targets, `build.gradle` with `com.android.application` |
 | Web | Web framework configs (next/nuxt/vite/astro etc.), `index.html`, HTTP-serving apps broadly |
+| Desktop-native | Native toolkit markers only, with no Electron or Tauri — AppKit (`.xcodeproj`/`Package.swift` with a macOS app target, no electron/tauri dependency), WinUI/Win32 (`.vcxproj`), Qt (Qt `find_package` in `CMakeLists.txt` / `.pro`), GTK (gtk dependency) |
 | Mixed | Two or more platform markers detected simultaneously — per-surface toolchain selection |
 
 ## Execution Flow
@@ -167,7 +173,7 @@ With the `--record` flag, runs are recorded via the selected toolchain's **nativ
 
 When no e2e-able surface is detected (for example, a pure library with no web/mobile/desktop entry point), it reports **"no e2e target detected"** showing which markers it checked, and exits gracefully without creating any `e2e/` artifacts.
 
-A **native desktop app** that is neither Electron nor Tauri (pure macOS app, WinUI, Qt/GTK, etc.) routes to this same branch — OS-level native-desktop automation is not yet provided; a deferral notice is reported with the classification evidence, followed by a graceful exit.
+A **native desktop app** that is neither Electron nor Tauri (pure macOS app, WinUI, Qt/GTK, etc.) does NOT fall into this branch. It routes to the desktop-native automation lane — axcli on macOS, FlaUI.WebDriver on Windows, dogtail on Linux — and testing proceeds normally. The "no e2e target detected" branch applies only to a pure library with no testable surface at all.
 
 ## Agent Delegation Chain
 

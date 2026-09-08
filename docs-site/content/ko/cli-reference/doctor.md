@@ -38,7 +38,7 @@ moai doctor [OPTIONS]
 
 ## Home Disk Usage 진단 {{< new-badge v3.1.1 >}}
 
-`moai doctor` 전체 진단에는 **Home Disk Usage** 항목이 함께 나옵니다. `~/.moai` 홈 디렉터리가 얼마나 찼는지를 보고하는 **권고(advisory)** 성격의 검사라, 임계값을 넘어도 다른 명령을 막지 않습니다.
+`moai doctor` 전체 진단에는 **Home Disk Usage** 항목이 함께 나옵니다. `~/.moai` 홈 디렉터리가 얼마나 찼는지를 보고하는 **권고** (advisory) 성격의 검사라, 임계값을 넘어도 다른 명령을 막지 않습니다.
 
 | 보고 항목 | 내용 |
 |-----------|------|
