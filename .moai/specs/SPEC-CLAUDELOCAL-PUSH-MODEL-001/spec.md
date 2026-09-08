@@ -1,10 +1,11 @@
 ---
 id: SPEC-CLAUDELOCAL-PUSH-MODEL-001
 title: "CLAUDE.local.md push-model 정본화 — 미커밋 사본의 정본 참칭 차단과 흡수 대상 정정"
-version: "0.1.0"
-status: completed
+version: "0.1.1"
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
+amendment_of: SPEC-CLAUDELOCAL-PUSH-MODEL-001
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -21,6 +22,36 @@ tier: S
 | 날짜 | 판 | 변경 | 근거 |
 |---|---|---|---|
 | 2026-09-08 | 0.1.0 | 최초 작성 (plan-phase). 카드 t531 의 전제가 재측정으로 **정정된 뒤** 작성됐다 — 아래 §A 참조 | `.moai/reports/t531/premise-remeasure.md` |
+| 2026-09-08 | 0.1.1 | 제자리 개정 개시. `completed → in-progress`. 아래 §Amendments 참조 | `.moai/reports/t531/verdict.md` |
+
+## Amendments
+
+### 개정 1 — sync-audit FAIL 두 건의 산출물 수리 (2026-09-08)
+
+| 항목 | 값 |
+|---|---|
+| 직전 completed 판 | `0.1.0` |
+| 직전 completed SHA | `b7344d957` (close 를 실은 sync 커밋) |
+| 개정 종류 | 제자리 개정 (in-place). 후속 SPEC 이 아니므로 `amendment_of` 가 자기 자신을 가리킨다 |
+| 범위 | `CLAUDE.local.md` §2.3 · §4.1 **본문만** |
+
+**근거.** sync-audit 이 FAIL 로 돌아왔다(`.moai/reports/t531/verdict.md`). AC-CLPM-001..008 은
+감사자가 살아 있는 대조군과 함께 전부 재실행해 통과했다. 결함은 **어떤 인수 기준도 보지 않는
+자리**, 즉 산출물 `CLAUDE.local.md` 의 본문에 있다.
+
+- **F1 — 이 카드가 자기 파일 안에 만든 자기모순.** §2.3 은 `moai update` 실행 전 추적 파일
+  수정이 0이어야 한다는 `[HARD]` 전제를 걸어 두었는데, 이 카드가 새로 넣은 §0.4 는 primary
+  체크아웃에서 ` M CLAUDE.local.md` 가 **설계상 상시**임을 선언하고 그 파일에 `git restore` 를
+  금지한다. 그 전제는 primary 체크아웃에서 성립할 수 없고, §2.3 을 문자 그대로 따르는 독자는
+  §0.4 가 금지하는 바로 그 되돌림 — REQ-CLPM-004 가 막으려고 존재하는 행위 — 로 떠밀린다.
+- **F2 — 한 방향만 고친 정정.** 고쳐 쓴 §4.1 은 로컬 `develop` 이 `origin/develop` 보다
+  **앞설** 수 있다는 것만 설명한다. 반대 방향 — 다른 레인이 착지하면 로컬 develop 이
+  **뒤처진다**, 그래서 낡은 베이스 위에서 작업하게 된다 — 은 형제 독트린
+  `.claude/rules/local/gitflow-lane-protocol.md` §11 이 판단 기준과 갱신 경로까지 담아 다루는데,
+  §4.1 은 그 거울상 위험을 그대로 남겼다. 실측: `CLAUDE.local.md` 에서 `뒤처` 0건, `앞설` 1건.
+
+**범위 한계.** 요구사항 변경 없음, 인수 기준 변경 없음. 여덟 개 AC 는 적힌 그대로 유지되며
+감사자가 이미 재검증했다. 개정이 고치는 것은 **전달된 본문**이지 계약이 아니다.
 
 ---
 
