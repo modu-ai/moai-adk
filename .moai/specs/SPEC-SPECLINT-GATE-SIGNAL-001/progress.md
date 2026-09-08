@@ -420,9 +420,131 @@ AC-SLGS-010 전반부는 미달이다. 판정은 (a)의 외연을 어느 쪽으�
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: **in-progress — 세션 경계에서 중단** (레인 오케스트레이터 lane-5, 2026-09-08)
+run_complete_at: _<미도달>_
 
-### 잔여 실측 열거 (M1 이후, 2026-09-08, tree `b09b012ef`)
+**작성 시점 좌표 — 이 값들은 낡는다. 다음 세션은 인용하지 말고 재측정한다.**
+
+| 항목 | 값 (작성 시점) |
+|---|---|
+| tree | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t525` |
+| branch / HEAD | `WT-speclint-red` / `9e1744469` |
+| `origin/develop` | `a4855f0b2` |
+| 로컬 `develop` (흡수 대상) | `768306d27` (한 시간 전 `ee194493f` — 빠르게 움직인다) |
+| 미푸시 (ahead) | 10 |
+
+### 착지한 마일스톤
+
+| M | 커밋 | 레인 오케스트레이터 독립 재현 |
+|---|---|---|
+| M1 판정 | `b09b012ef` | (이전 세션) |
+| M2 기제 | `740f4a3cd`, `185c21cff` | ✅ 아래 표 |
+| M4 부수 | `9fb52f746` | ✅ 아래 표 |
+| M3.1~M3.3 배선 | `9e1744469` | ✅ 아래 표 |
+| **M3.4** | — | **미이행 — 남은 작업** |
+
+**순서 이탈과 그 사유 (범위 불변).** M4 를 M3 앞으로 당겼다. 계획서 §F 는 M3 → M4 이지만,
+M4 가 비-advisory 재고를 비우므로 기준선을 M3 에서 먼저 뜨면 `SpecsDirMissingSpecFile: 2`
+가 굳어 **게이트에 영구 구멍**이 남는다(누가 눈먼 디렉터를 둘까지 다시 만들어도 초록).
+M4 를 먼저 닫으면 기준선이 `rules: {}` 로 나와 비-advisory 경고가 하나라도 뜨면 적색이다.
+이것은 계획서 이탈이 아니라 판단이며, 되돌리지 말 것.
+
+### 레인 오케스트레이터 독립 재현 (에이전트 보고가 아니라 직접 관측)
+
+| Claim | Command | Observed output | Tree |
+|---|---|---|---|
+| 대상 패키지 테스트 | `go test ./internal/spec/... ./internal/cli/...` | `TEST_RC=0`, 18 패키지 `ok`, `^FAIL` 0건 (대조군: `^ok` 18줄) | `185c21cff` |
+| 크로스 플랫폼 | `go build ./...` / `GOOS=windows GOARCH=amd64 go build ./...` | 각 rc=0, 무출력 | `185c21cff` |
+| AC-SLGS-002 ① | `<신규 빌드> spec lint --strict` | `0 error(s), 4378 warning(s)`, **rc=1** | `185c21cff` |
+| AC-SLGS-002 ② | `<동일 바이너리> spec lint --baseline <file>` | `baseline: OK`, **rc=0** | `185c21cff` |
+| AC-SLGS-005 증가 | 기준선 2→1 로 낮춰 재실행 | **rc=1**, `SpecsDirMissingSpecFile: recorded 1 -> current 2 (+1)` | `185c21cff` |
+| AC-SLGS-008 α | `--update-baseline` 사유 없이 | **rc=3**, sha256 before==after | `185c21cff` |
+| **AC-SLGS-012** | `spec lint --json` + jq | `SpecsDirMissingSpecFile` **0**, 비-advisory **0**, 총 4376 | `9fb52f746` |
+| 〃 양성 대조군 | 동일 식, `MovingRefUnpinned` | **115** — 위 0들이 실측된 부재임을 보장 | `9fb52f746` |
+| 〃 음성 대조군 | 동일 식, `NoSuchRuleCodeXYZ` | `0` | `9fb52f746` |
+| **신호 회복** | `<신규 빌드> spec lint --strict` | `0 error(s), 4376 warning(s)`, **rc=0** (M1 시점 rc=1) | `9fb52f746` |
+| **빈 기준선 적색** ① | 스크래치 코퍼스 + 커밋된 기준선 | rc=0, `0 non-advisory tracked` | `9e1744469` |
+| 〃 ② 주입 | 눈먼 SPEC 디렉터 1개 주입 | **rc=1**, `baseline: EXCEEDED`, `SpecsDirMissingSpecFile: recorded 0 -> current 1 (+1)` | `9e1744469` |
+| 〃 ③ 제거 | 동일 | rc=0 복귀, 기준선 sha256 `07d89a6a…8c36e6b` 3회 불변 | `9e1744469` |
+
+`"rules": {}` 는 장식이 아니라 **가장 엄격한 상태**다(기록치 0 대비 증가 = 적색).
+
+### t518 잠금 해제 — R-7 이 뒤집혔다
+
+작업 도중 다른 행위자의 push 로 `origin/develop` 이 갱신되며 t518 이 착지했다.
+아래 실측이 §E.3 하단 R-7(rc=1, `origin/develop` = `91d25bc61`)을 **대체한다**.
+
+| Command | Observed | 판정 |
+|---|---|---|
+| `git merge-base --is-ancestor a4fbaeb82 origin/develop` | rc=**0** | t518 착지 |
+| `git merge-base --is-ancestor 9e1744469 origin/develop` (대조군) | rc=**1** | 판별식 유효 — 위 0은 실측 |
+| `git show origin/develop:.moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md` | `status: completed`, `updated: 2026-09-08` | 〃 |
+
+**따라서 REQ-SLGS-011 이 예약한 M3.4 가 실행 대상이 되었다** — 이 카드 안에서 닫아야 한다.
+
+### [HARD] 기준선은 t518 흡수 **이전** 트리 측정치다
+
+`.moai/spec-lint-baseline.json` 의 `tree_sha: 9fb52f746` 은 t518 을 흡수하지 않은 트리다.
+t518 은 `internal/spec/` 를 8커밋 +2096/−20 으로 바꿨고(`lint_req_widen.go` 수정 +
+`lint_req_table*` 신규) 그 내용이 곧 advisory 경계이므로, **흡수하면 비-advisory 인구가
+0이 아닐 수 있고 빈 기준선이 `EXCEEDED` 로 붉어질 수 있다.** 그것은 결함이 아니라 설계된
+신호이며, 정확히 M3.4 「게이트된 재기준 1회」의 자리다.
+
+**병합 전 측정을 병합 후 근거로 재사용하지 말 것.** 흡수 후 재측정한 값만이 근거다.
+
+### AC 현황
+
+| AC | 판정 | 근거 |
+|---|---|---|
+| AC-SLGS-001 | PASS | M1 census (`.moai/reports/t525/census-b6efc874f.json`) |
+| AC-SLGS-002 | PASS | 양쪽 절반 모두 관측 (위 표) |
+| AC-SLGS-003 | PASS | M1 verdict.md |
+| AC-SLGS-004 | PASS | `grep -rnE '4[,.]?3(44\|68\|78)' internal/spec internal/cli` 무출력 rc=1, 대조군 `baseline` 41히트 |
+| AC-SLGS-005 | PASS | 크로스프로세스 양방향 (위 표) |
+| AC-SLGS-006 | PASS | 실 코퍼스 rc=0 + inventory 줄 |
+| AC-SLGS-007 | PASS | 감소 통과 + sha256 불변 |
+| AC-SLGS-008 | PASS | α 거절(rc=3, 불변) + 정상 경로 기록 |
+| AC-SLGS-009 | PASS | error 우선 + `ErrorOutranksASimultaneousIncrease` (`spec_lint_test.go:390`) |
+| AC-SLGS-010 전반부 | PASS-WITH-CAVEAT | 아래 |
+| **AC-SLGS-010 후반부** | **미이행** | t518 착지 후 간선 + 재기준 — M3.4 |
+| AC-SLGS-011 배선 절반 | PASS | `spec-lint.yml:77` |
+| **AC-SLGS-011 로그 절반** | **Gap — 레인이 못 닫음** | 녹색 CI run 로그 판독은 push 후. 리드가 develop push 후 `SPEC Lint` run 의 `inventory:` 줄을 읽어야 닫힌다 |
+| AC-SLGS-012 | PASS | 위 표 (대조군 포함) |
+
+**AC-SLGS-010 전반부의 caveat — 숨기지 않고 남긴다.** M3 담당이 브랜치 커밋 8건을 전수
+분류해 대량 SPEC 문서 수정 0건을 보였고, M4 가 없앤 2건은 M1 실측 분할에서 `advisory=false`
+라 (a)축(advisory 4,376)의 **여집합**이라고 변호했다. 그러나 총계가 4378→4376 으로 줄었고
+그 −2 가 `--strict` rc 를 1→0 으로 뒤집은 것은 사실이다. **(a)를 「서 있는 경고 전체」로
+읽으면 이 변호는 무너지고 전반부는 미달이다.** 판정은 (a)의 외연 확정에 달려 있으며,
+sync-auditor 가 이 지점을 독립적으로 판정해야 한다.
+
+### 남은 작업 — 순서 고정
+
+1. **로컬 `develop` 흡수** — `git merge <로컬 develop>` (원격이 아니라 로컬. 값 재측정 필수)
+2. **M3.4** — 프런트매터에 `dependencies: [SPEC-SPEC-LINT-BLIND-AXES-001]` 추가
+   (필드명 주의: 스키마 문서는 `depends_on` 이나 코드 바인딩은 `dependencies`,
+   `internal/spec/lint.go:500`. 틀리면 디코더가 조용히 버린다) + **게이트된 재기준 1회**
+   (`--update-baseline --reason "<t518 흡수 후 재측정>"`, 흡수 후 트리에서)
+3. **§E.3 종결** — `run_status: audit-ready` 로 갱신
+4. **sync** — 워크트리 안에서 끝낸다. run 만 닫고 병합하면 SPEC 이 `in-progress` 로 develop 에 올라가 창을 다시 받아야 한다
+
+### 미관측 (Gap)
+
+- 녹색 CI run 로그 (AC-SLGS-011 나머지 절반) — push 필요, 리드 소관
+- **t518 흡수 후 게이트 거동** — 미측정. 위 [HARD] 절 참조
+- windows/darwin 매트릭스 **테스트 실행** — E2 는 컴파일만 증명
+- 주입 위반은 `SpecsDirMissingSpecFile` 1종만 — 다른 규칙 코드의 델타 출력은 코드 읽기일 뿐 실행 관측 아님
+- `--strict` 는 CI 실행 경로에서 사라짐(플래그·코드·문서는 유지). 실행 호출자 0, 회귀는 단위 테스트가 잡는다
+- `internal/cli` 테스트는 무부하에서도 go 기본 600s 상한까지 여유 67s — 부하가 얹히면 단정 실패 없이 타임아웃으로 붉어지고, 그 모양은 「테스트가 깨졌다」와 구별되지 않는다 (별건 관측)
+
+### 범위에서 한 걸음 — M3 담당이 신고한 것
+
+`.moai/spec-lint-baseline.json` 을 워크플로 `paths:` 트리거 두 곳(`spec-lint.yml:12`, `:24`)에
+추가했다. 사유: 그 파일이 이 게이트 자신의 통제면이라, 넣지 않으면 **기준선만 고친 커밋이
+검사 없이 판정을 바꾸는 구멍**이 남는다. 지시에 없던 변경이므로 명시하며, 되돌리려면
+두 목록에서 한 줄씩 빼면 된다.
+
+### 잔여 실측 열거 (M1 이후, 2026-09-08, tree `b09b012ef`) — 역사 기록
 
 리드 지시(2026-09-08)에 따라 M2 이후 잔여를 문서 추론이 아니라 실측으로 확정한다.
 카운팅·부재 판정은 `/usr/bin/grep`(셸 `grep` 은 ugrep 래퍼라 조용히 건너뛴다).
@@ -436,11 +558,11 @@ _<pending run-phase>_
 | R-4 | 신규 소스 파일 | `ls internal/spec/lint_baseline*.go` | `no matches found` | 미생성 |
 | R-5 | CI 배선 | `/usr/bin/grep -n 'spec lint' .github/workflows/spec-lint.yml` | `58:        run: go run ./cmd/moai spec lint --strict` | 벌거벗은 `--strict` — 미배선 |
 | R-6 | M4 대상 디렉터 | `ls .moai/specs/SPEC-V3R4-CC2X-ADOPT-001/ -002/` | 각각 `research.md` 1건뿐 | 미종결 |
-| R-7 | t518 착지 (REQ-SLGS-011 게이트) | `git merge-base --is-ancestor a4fbaeb82 origin/develop` | rc=1 | **비-조상 — 미착지** (`origin/develop` = `91d25bc61`) |
+| R-7 | t518 착지 (REQ-SLGS-011 게이트) | `git merge-base --is-ancestor a4fbaeb82 origin/develop` | rc=1 | **[SUPERSEDED — 위 「t518 잠금 해제」 절 참조]** 측정 당시 비-조상 (`origin/develop` = `91d25bc61`). 이후 다른 행위자의 push 로 t518 이 착지해 rc=0 이 되었다. 이 줄은 그 시점의 참인 판독이며 현재 상태가 아니다 |
 
-**잔여 = M2 전체 + M3.1~M3.3 + M4.** M3.4(DAG 간선 `dependencies:` 추가 + 게이트된 재기준
-1회)는 R-7 로 잠금 유지 — 이 카드에서 열지 않고 t518 착지 시 별건으로 연다.
-M1 에서 pending 으로 남긴 AC-SLGS-002 mutation 절반은 M2 기준선 경로 착지 후 관측한다.
+**잔여 = M2 전체 + M3.1~M3.3 + M4** (그때 기준). M3.4 는 당시 R-7 로 잠겨 있었다 —
+**그 잠금은 이후 해제됐고, 지금은 이 카드 안에서 닫아야 하는 남은 작업이다**(위 절).
+M1 에서 pending 으로 남긴 AC-SLGS-002 mutation 절반은 M2 착지 후 관측됐다(위 재현 표).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
