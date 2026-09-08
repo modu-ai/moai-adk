@@ -214,8 +214,23 @@ $ go test -count=1 -v -run 'TestCodexBlankReview_' ./internal/cli/
 FAIL	github.com/modu-ai/moai-adk/internal/cli	0.867s
 ```
 
-Baseline-attribution: this run, this tree, HEAD `a87a7d8a7` (the M1 commit —
-the four sites still unrepaired).
+Baseline-attribution: this run, this tree, HEAD `a5f83fd62` (the M2 RED commit —
+seam present, all four sites still unwired).
+
+> **Attribution corrected (sync audit, finding F5).** This field previously read
+> `a87a7d8a7`. That coordinate was wrong and could not have produced the
+> measurement above: `a87a7d8a7` carries no blankness seam at all, so replaying
+> the suite there is a COMPILE failure, not the behavioral RED recorded here.
+> The run was executed on the working tree committed moments later as
+> `a5f83fd62`. Re-measured before writing, not transcribed:
+> `git show a87a7d8a7:internal/cli/mcp_codex.go | grep -c codexReviewTextIsBlank`
+> → `0`; the same command at `a5f83fd62` → `2`; and
+> `git show a5f83fd62:internal/cli/mcp_codex.go | grep -n 'if reviewText == ""'`
+> → `855`, the guard still unwired. The sync auditor replayed the RED at
+> `a5f83fd62` and confirmed the failing set matches this record exactly. The
+> measurement itself is unchanged and is not restated — only its coordinate was
+> wrong. The same correction was applied to the raw capture at
+> `.moai/reports/t551/red-evidence-20260908.txt`.
 
 Two properties of that RED are load-bearing:
 
