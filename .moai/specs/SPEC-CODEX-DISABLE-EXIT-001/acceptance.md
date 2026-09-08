@@ -53,7 +53,7 @@ Every AC is binary-testable. Baseline tree: `a4855f0b2`. Where an AC is conditio
 **When** `go run . skills disable --help` (or the built binary's equivalent) executes
 **Then** the Long help text carries the per-class exit-code statement (performed / refused / absent-input with their codes), greppable from the help output.
 
-### AC-CDE-007 — Adjudication recorded before implementation (both outcomes)
+### AC-CDE-007 — Adjudication recorded before implementation (both outcomes) — maps REQ-CDE-002
 
 **Given** the run phase
 **When** the first implementation commit lands
