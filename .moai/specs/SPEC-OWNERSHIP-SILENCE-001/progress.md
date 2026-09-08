@@ -22,3 +22,33 @@
 - Boundary case: 없음
 - Implementation Kickoff Approval 처분: 본 레인은 Factory Mode 상임 스폰 권한(세션 bootstrap) 하에 plan→run→sync 전 체인을 위임한다 — 카드 단위 승인 채널은 운영자의 팩토리 기동 + 리드 배차다. plan-audit PASS(0.94) 확인 후 게이트 개방. 이 기록은 완료 보고에서 리드가 재판정할 관측점이다.
 - plan-audit F1 처분(should-fix): 수리 제안 A 채택 — run-phase 위임문에 "AC-OWN-004의 RED 관측은 m2 뮤턴트 주입 시점에 커맨드·verbatim FAIL 출력·종료 코드·트리 SHA 4요소로 기록, AC-OWN-005 증거 파일에 동봉"을 명시(acceptance.md 무수정, 재감사 불요 판정 준용). F2-F4는 run 위임문 관측 지침으로, F5는 M2 픽스처 2종 명시로 반영.
+
+## §E.2 Run-phase Evidence
+
+- 실행 커밋: M1 `c7b940e45` (RED + draft→in-progress 전이) / M2 `a6274068e` (GREEN 발급+의도적 이동+안전망) / M3 (문서 정렬 + 증거 반출 — 본 절 기록 커밋). 트리: `.claude/worktrees/t572`, branch `WT-ownership-lint-silent`, base `b642479ec`. **push 미수행(리드 단일 소관).**
+- 증거 원장: `.moai/reports/t572/run-evidence.md` (전 커맨드 + verbatim 출력 + 종료 코드 + 트리 SHA). `/tmp` 반출 0건.
+
+| AC | 판정 | 검증 커맨드 (요약 — 전문은 원장) | 관측 결과 |
+|----|------|--------------------------------|----------|
+| AC-OWN-001 | **PASS** | `go test ./internal/spec/ -run TestOwnershipTransitionUnmeasured -count=1` @ `b642479ec` | RED — rc=1, 두 서브테스트 "expected exactly 1 … got 0: []" (무음 nil 분기가 관측된 원인 — right-reason) |
+| AC-OWN-002 | **PASS** | 타깃 테스트 배치 (발급 2 픽스처 + 보존 전부) | GREEN — 메시지 5요소 + `"(none)"` 경로 단언, 보존 테스트 무변경 통과, diff에 보존 분기 본문 없음 |
+| AC-OWN-003 | **PASS** | `AuthoredByAgent` 전수 스윕 + 테스트 diff 판독 | 갱신 1건(`trailer_absent_silent_skip`→`trailer_absent_emits_unmeasured`) 전부 사유 주석 동반, 사유 없는 변경 0건 |
+| AC-OWN-004 | **PASS** | `TestOwnershipTransitionUnmeasuredStrictSafe` + 코퍼스 lint rc 비교 | GREEN — Info 단독·Check() 반환 Report 모두 Strict=true에서 HasErrors()==false; RED-now는 m2 주입 시점 4요소로 관측(원장 m2 절); lint rc 1→1 불변 |
+| AC-OWN-005 | **PASS** | m1/m2/m3 주입 → 스위트 판정 → 원복 `git diff` | 3건 전부 검출(verbatim FAIL 원장), `MUTANT` 마커 0건 원복 확인, 생존 뮤턴트 없음 |
+| AC-OWN-006 | **PASS** | `cmp -s` (rc=0) + `grep -c "subject prefix"` (출력 0, rc 무시 — F4) + `go test ./internal/template/...` | 쌍둥이 바이트 동일(263행), 구 트리거 0, 중립성 가드 GREEN, 카드 id/내부 SHA/내부 날짜 신규 0, manager-develop·.codex 불접촉 |
+| AC-OWN-007 | **PASS** | `go test ./internal/spec/... -count=1` + `go vet ./internal/spec/` | `ok … 109.590s` + vet 청결. 전체 스위트 미실행(의도 — CI 몫). 상속 errcheck 1건(t577 축, diff 밖 파일) 귀속 분리 |
+| AC-OWN-008 | **PASS** | 경로 존재 + 파일 내 커맨드·출력 대조 | 증거 7파일 전부 `.moai/reports/t572/` (색인 표는 원장 끝) |
+
+- 보조 실측 (spec.md §7 Gap 종결): 변경 후 `spec lint --strict` rc=1 (baseline과 동일), error +1·warning +20은 전부 본 SPEC 디렉터리의 plan-phase 콘텐츠(Coverage 10 + Modality 10 + MissingExclusions 1), run-phase 코드 기인 0. 신규 `OwnershipTransitionUnmeasured` Info **199건 = 199 SPEC × 1건** (유한·advisory — `.moai/reports/t572/unmeasured-per-spec.txt`). 본 카드 SPEC 자신의 unmeasured는 0건 — REQ-OWN-010 트레일러가 수리 후 첫 측정 전환으로 실동작.
+- 크로스 플랫폼: `GOOS=windows GOARCH=amd64 go build ./internal/spec/` exit 0. 커버리지: 90.6% (`go test -cover ./internal/spec/...`, 목표 85% 이상).
+- plan-phase 결함 귀속 보고 (B4 — 본 레인 수정 불가): 본 SPEC spec.md의 `MissingExclusions` ERROR 1건("'Out of Scope' section has no items") — manager-spec 소관, 리드 경유 전달.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+- run_status: audit-ready
+- run_complete_at: 2026-09-08
+- artifacts: lint_ownership.go (무음 분기 → Unmeasured Info 발급 + 낡은 주석 2곳 정정) / lint_ownership_test.go (RED 테스트 + 의도적 이동 + strict 안전 테스트) / spec-frontmatter-schema.md 템플릿+로컬 쌍둥이 (Cross-Reference 절 재작성) / 증거 7파일
+- AC: 8/8 PASS (매트릭스는 §E.2)
+- 검증 스코프: `internal/spec` + `internal/template` 패키지 한정 (AC-OWN-007). 전체 스위트는 develop push 후 CI 판정 (레인 부하 규율)
+- 상속 적색 분리: t577 errcheck 1건 (zz_t528_overacceptance_test.go, diff 밖) + develop CI spec-lint 잡 적색 — 본 카드 판정 축 밖
+- sync 이관 메모: manager-docs는 sync 커밋에 `Authored-By-Agent: manager-docs` 트레일러 필수 (REQ-OWN-010, plan §D.6); CHANGELOG 반영 시 INFO 등급 증가(199건)는 의도된 산출임을 명기 (acceptance §D.2.1)

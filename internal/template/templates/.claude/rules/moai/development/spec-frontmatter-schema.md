@@ -193,14 +193,21 @@ See `internal/spec/lint.go` `FrontmatterSchemaRule.Check()` for the authoritativ
 
 ## OwnershipTransitionRule Cross-Reference
 
-The Status Transition Ownership Matrix above is enforced at lint-time by the `OwnershipTransitionRule` in `internal/spec/lint_ownership.go` (registered in `defaultRules()` of `internal/spec/lint.go`). The rule emits two finding codes:
+The Status Transition Ownership Matrix above is enforced at lint-time by the `OwnershipTransitionRule` in `internal/spec/lint_ownership.go` (registered in `defaultRules()` of `internal/spec/lint.go`). The rule reads the SPEC's git-log history for the most recent `status:` transition within the lookback window and compares the transition actor against the matrix. The WHO signal is the `Authored-By-Agent:` commit-body trailer — the single mechanical source of truth for who performed a transition. The commit subject is never consulted as the WHO signal (subject-prefix classification survives in the source only to pin the subject→owner mapping regression tests).
 
-- **`OwnershipTransitionInvalid`** (Warning severity): Emitted when a SPEC's git-log history shows a status transition performed by an agent whose commit subject prefix does NOT match the canonical owner for that transition. Example: `manager-docs` performing `draft → in-progress` (which the matrix above assigns to `manager-develop`) triggers a finding.
+The rule emits three finding codes:
+
+- **`OwnershipTransitionInvalid`** (Warning severity): Emitted when the transition commit carries an `Authored-By-Agent:` trailer whose actor does NOT match the canonical owner for that transition. Example: a trailer reading `manager-docs` on a `draft → in-progress` transition (which the matrix above assigns to `manager-develop`) triggers a finding.
 - **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
+- **`OwnershipTransitionUnmeasured`** (Info severity): Emitted when a transition was found but its commit carries no `Authored-By-Agent:` trailer. A statement about measurement state, not a violation — the transition cannot be attributed, so it is reported instead of passing silently.
 
-Default subset (per the ownership-transition lint policy): the rule evaluates the two most common transitions by default (`draft → in-progress` and `in-progress → implemented`). Terminal states (`superseded`, `archived`, `rejected`) are exempted via the `terminalStatusEnum` shared with `StatusGitConsistencyRule`.
+Three transitions are silent by design (not gaps):
 
-Configuration: severity can be promoted to Error under `--strict` mode (same as `StatusGitConsistencyRule`). Per-SPEC opt-out via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
+- No `status:` transition within the lookback window — nothing to judge.
+- A transition the matrix does not map (for example a backwards status move) — no violation is defined for it; status-value validity is other rules' responsibility.
+- A trailer naming an actor outside the transition matrix (for example `manager-git`) — that actor cannot own any transition.
+
+`--strict` mode escalates only non-Advisory **Warning** findings to errors, so the Info findings above (`OwnershipTransitionUnreachable`, `OwnershipTransitionUnmeasured`) never change the lint exit status. Per-SPEC opt-out for the Invalid warning is available via `lint.skip: [OwnershipTransitionInvalid]` in optional frontmatter (see Optional Fields above).
 
 Implementation files: `internal/spec/lint_ownership.go` (rule body) + `internal/spec/lint_ownership_test.go` (TDD coverage).
 

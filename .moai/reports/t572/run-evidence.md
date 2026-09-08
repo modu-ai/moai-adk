@@ -30,6 +30,7 @@ FAIL
 
 - **(c) 종료 코드**: `1`
 - **(d) 트리 SHA**: `b642479ec` (plan-phase 커밋 — 테스트 파일 추가분은 미커밋 워킹 트리, 피시험 코드는 정확히 이 커밋의 pre-fix 상태)
+  - 측정 실행 시점에 HEAD가 `0538585ac`로 진행해 있었다(레인 오케스트레이터가 measurement-baseline.md에 트레일러 파싱 위험 기록을 추가한 커밋 — `.md` 단일 파일, 피시험 Go 코드 `lint_ownership.go`·`lint.go`는 두 커밋 간 바이트 동일). RED 관측의 코드 baseline은 `b642479ec`로 유효.
 
 ---
 
@@ -155,11 +156,110 @@ ok  	github.com/modu-ai/moai-adk/internal/spec	109.590s
 - **전체 스위트 미실행**: 의도다(레인 부하 규율 — CI 몫). 로컬 `go test ./...` 실행 0회.
 - **상속 적색 분리**: baseline(`b642479ec` 기준 `ok ... 78.980s`)이 GREEN이었으므로 internal/spec 패키지에 본 카드 이전 붉은 테스트 없음 — 분리 기록할 상속 적색 없음. CI spec-lint 잡·t577 errcheck 축의 develop 적색은 본 판정 축 밖(dispatch B5).
 
-## AC-OWN-006 — (M3에서 아래에 추가)
+## AC-OWN-006 — 규칙 문서 정렬 (M3)
+
+- **재작성 대상**: `## OwnershipTransitionRule Cross-Reference` 절 — 트레일러 WHO SSOT 서술, 발견 코드 3종(Invalid Warning / Unreachable Info / 신규 Unmeasured Info), 설계적 침묵 3지점과 사유, strict 승급의 정확한 서술(Warning-only, Info 무영향). 템플릿 중립 산문 — 신규 추가 식별자 없음 (아래 스캔).
+- **순서**: 템플릿 사본 먼저 편집 → 동일 내용 로컬 사본 → 두 사본 같은 커밋(acceptance §D.1 (1)의 단일 커밋 대체 판정 — diff에 템플릿 경로 포함 + 내용 동일).
+- **(1) 쌍둥이 일치 (편집 후)**:
+
+```
+$ cmp -s internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md .claude/rules/moai/development/spec-frontmatter-schema.md; echo "cmp_rc=$?"
+cmp_rc=0
+(양 사본 263행)
+```
+
+- **(2) 구 트리거 부재 — `grep -c "subject prefix"` (출력된 계수 판정, 종료 코드 무시 — F4 처분)**:
+
+```
+$ /usr/bin/grep -c "subject prefix" internal/template/templates/.../spec-frontmatter-schema.md
+0
+$ /usr/bin/grep -c "subject prefix" .claude/rules/moai/development/spec-frontmatter-schema.md
+0
+```
+
+  (과정 기록: 첫 재작성본이 "Commit subject prefixes are NOT consulted" 문장에서 substring 매치 1건을 만들어 가드에 잡혔고, "The commit subject is never consulted as the WHO signal"으로 재서술해 0으로 확정 — 부재-가드가 실동작한 사례.)
+- **(3) 중립성 토큰 스캔**: `/usr/bin/grep -c "t572\|OWNERSHIP-SILENCE"` (템플릿 사본) → 0. 카드 id·내부 SHA·내부 날짜 신규 추가 없음.
+- **(4) 템플릿 중립성·유출 가드** (문구 재서술 후 재실행):
+
+```
+$ go test ./internal/template/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	34.687s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.470s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	1.005s
+```
+
+- **(5) drift 정정 기록**: spec.md HISTORY v0.1.0 행 + progress.md §E.1 (배차 전제 정정·세 갈래 판정) — 규칙 문서 자체에는 내부 식별자를 쓰지 않음 (위 (3)).
+- **(6) 불접촉 확인**:
+
+```
+$ git diff --name-only b642479ec HEAD  (+ M3 워킹 트리)
+[6 커밋 파일 + 규칙 문서 쌍둥이 2]
+manager-develop.md: 없음 / .codex/agents/moai/*: 없음
+```
+
+- **always-loaded 비용 규율** (rule-authoring.md §statement duty): 절 크기 증가 ~600 바이트 < 1,000 바이트 단일 편집 임계 — 비용 진술 의무 미발화.
+
+## E3 — 커버리지
+
+```
+$ go test -cover ./internal/spec/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/spec	86.419s	coverage: 90.6% of statements
+```
+
+- 트리 SHA: a6274068e + M3 워킹 트리 / 목표 85% 이상 유지. (동일 실행의 변경 전 -cover 수치는 미측정 — Gap 기록. 신규 경로 전체가 RED→GREEN 테스트+뮤턴트로 도달 입증됐으므로 감소 위험은 새 코드 축에 없다.)
+
+## E5 — lint 상태 (상속 vs 신규 구분)
+
+```
+$ golangci-lint run ./internal/spec/... --timeout=5m
+internal/spec/zz_t528_overacceptance_test.go:100:15: Error return value of `f.Close` is not checked (errcheck)
+	defer f.Close()
+1 issues:
+* errcheck: 1
+$ echo "real_gcl_rc=$?"   # (파이프 없는 재실행)
+real_gcl_rc=1
+```
+
+- **귀속**: 상속 — `git diff b642479ec HEAD -- internal/spec/zz_t528_overacceptance_test.go` = 0행 (파일 무변경, 마지막 터치 = t528 카드 커밋 `13fda0f6e`). 본 카드(diff 외부 파일)와 무관, t577 errcheck 축 소관. **신규 이슈 0건.**
+
+## AC-OWN-004 보강 — 변경 후 코퍼스 lint (plan.md §E 보조 관측 + spec.md §7 Gap 종결)
+
+- **커맨드**: `go run ./cmd/moai spec lint --strict` (백그라운드 실행; `go run`이 본 트리에서 빌드하므로 판정 빌드=측정 트리 — VCI §2.2 두 번째 좌표 성립)
+- **verbatim 출력 (꼬리)**:
+
+```
+1 error(s), 4718 warning(s)
+exit status 1
+lint_rc=1
+```
+
+- **전문**: `.moai/reports/t572/postlint-strict.txt` (4,924행) / 트리 SHA: a6274068e + M3 워킹 트리
+- **baseline 대비 (baseline: `0 error(s), 4698 warning(s)`, rc=1 @ 3ac58b5a1 — measurement-baseline.md)**:
+
+| 항목 | baseline (3ac58b5a1) | 변경 후 (본 트리) | 델타 귀속 |
+|---|---|---|---|
+| 종료 코드 | 1 | **1** | **변경 없음** — Info 발견이 exit을 뒤집지 않음의 실측 보강 (1차 판정자는 AC-OWN-004 유닛 테스트) |
+| error | 0 | 1 | 본 SPEC spec.md의 `MissingExclusions` 1건 — **plan-phase 산물** (§7 gap 참조) |
+| warning | 4,698 | 4,718 | +20 = 본 SPEC 디렉터리의 plan-phase 콘텐츠(CoverageIncomplete 10 + ModalityUnjudged 10) — 정확히 상계, run-phase 코드 기인 0 |
+| info (신규) | 0 | 199 | **본 카드의 산출** — 아래 볼륨 실측 |
+
+- **unmeasured 볼륨 (spec.md §7 Gap 종결)**: **199건 — 199개 SPEC 각 1건씩** (룰이 창 안 최신 전환 1건만 판정). 전부 INFO·advisory — error/warning 계수 어디에도 불산입. per-SPEC 목록: `.moai/reports/t572/unmeasured-per-spec.txt`. 유한하다는 §3.3 예측의 실측 확정.
+- **도그푸드 자기검증 (REQ-OWN-010 관측점)**: 본 카드 SPEC(`.moai/specs/SPEC-OWNERSHIP-SILENCE-001/`)의 OwnershipTransitionUnmeasured = **0건** — 본 카드의 plan/M1/M2 커밋들이 `Authored-By-Agent:` 트레일러를 달아 **수리 후 실제로 측정된 첫 전환**이 됐고, 매트릭스 판정 결과 통과(manager-develop가 draft → in-progress 수행 = 정당 소유자). 본 카드의 커밋 트레일러 검증: `git log -1 --format='%(trailers:key=Authored-By-Agent,valueonly)'` → M1/M2 각 `manager-develop` (위 각 커밋 직후 관측).
+
+### 발견된 plan-phase 결함 기록 (run-phase 소관 아님 — B4 귀속 보고)
+
+- `MissingExclusions` ERROR 1건: `.moai/specs/SPEC-OWNERSHIP-SILENCE-001/spec.md` — "'Out of Scope' section has no items — minimum one item required". spec.md §6 본문 구조의 조건으로, **manager-develop는 SPEC 본문을 수정할 수 없어**(B4, spec-frontmatter-schema.md § Forbidden ownership crossings) run-phase에서 수리하지 않는다. manager-spec 소관 — 리드 경유 귀속 보고. 본 카드의 변경 전 baseline 측정(3ac58b5a1)에는 본 SPEC 디렉터리가 없었으므로 이 error는 plan 커밋(b642479ec) 이후 존재 — run-phase 도입 결함이 아니다.
 
 ## AC-OWN-008 — 증거 경로 색인
 
-- 본 파일: `.moai/reports/t572/run-evidence.md` (AC-OWN-001/004-RED/005/007 원장)
-- `.moai/reports/t572/run-preflight.md` (Section C 재측정 — C.1 좌표/C.3 쌍둥이/C.4 baseline GREEN)
-- `.moai/reports/t572/measurement-baseline.md` (plan-phase 실측 — 본 카드가 인용하는 1차 근거)
-- 최종 AC 매핑 표: progress.md §E.2
+| 파일 | 담당 AC |
+|---|---|
+| `.moai/reports/t572/run-evidence.md` (본 파일) | AC-OWN-001(RED 4요소) / 002 / 003 / 004(green+RED-now) / 005(뮤턴트 3건) / 006 / 007 / E2·E3·E5 |
+| `.moai/reports/t572/run-preflight.md` | Section C 재측정 (C.1 좌표 / C.3 쌍둥이 / C.4 baseline GREEN / 인벤토리) |
+| `.moai/reports/t572/postlint-strict.txt` | AC-OWN-004 보강 (변경 후 코퍼스 lint 전문 4,924행) |
+| `.moai/reports/t572/unmeasured-per-spec.txt` | spec.md §7 Gap 종결 (unmeasured 199 SPEC×1건 목록) |
+| `.moai/reports/t572/golangci-lint.txt` | E5 (상속 errcheck 1건 원문) |
+| `.moai/reports/t572/measurement-baseline.md` | plan-phase 1차 근거 (본 카드가 인용) |
+| 최종 AC 매핑 표 | progress.md §E.2 |
+
+→ 전 증거가 `.moai/reports/t572/` 트래킹 경로에 반출. `/tmp` 반출 0건.
