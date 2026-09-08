@@ -714,3 +714,47 @@ func TestRunCodexSkillDisableReasonsAreDistinct(t *testing.T) {
 		seen[body] = name
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// §E exit-code contract (SPEC-CODEX-DISABLE-EXIT-001)
+// ─────────────────────────────────────────────────────────────────────────
+
+// AC-CDE-002 (Outcome B, M2 operator decision) — a guard refusal is a REFUSED
+// request, not a success: the verb returns a non-zero error so a script can
+// see that nothing was disabled. The Skipped: report STAYS on stdout — the
+// human still reads the reason — and the config stays byte-invariant.
+//
+// RED was observed on the pre-change tree (progress.md §E.2, E8): the branch
+// returned nil, so a refused request was indistinguishable from a performed
+// one.
+//
+// The fixture refuses through the duplicate-entry guard — two entries declare
+// the same path, which is `moai clean --codex-skills`'s job to collapse — so
+// exit 0 hides that handoff from a script exactly as the SPEC describes.
+func TestRunCodexSkillDisableSkippedExitsNonZero(t *testing.T) {
+	const skill = "t502probe"
+	proj := mirrorFixture(t, "copy", skill)
+	target := filepath.Join(proj, ".agents", "skills", skill, "SKILL.md")
+	entry := "[[skills.config]]\npath = \"" + target + "\"\n"
+	_, cfg := codexHomeWith(t, entry+"enabled = true\n"+entry+"enabled = false\n", 0o600)
+	before := mustRead(t, cfg)
+
+	var out, errBuf bytes.Buffer
+	p := printer.New(printer.WithWriters(&out, &errBuf))
+	err := runCodexSkillDisable(p, codexSkillDisableOptions{
+		Skill: skill, ProjectRoot: proj, HomeDir: emptyHome(t), Force: true,
+	})
+	if err == nil {
+		t.Fatalf("guard refusal returned nil error — a refused request is indistinguishable from a performed one")
+	}
+	body := out.String() + errBuf.String()
+	if !strings.Contains(body, "Skipped: ") {
+		t.Errorf("the refusal lost the Skipped marker on stdout\n--- report ---\n%s", body)
+	}
+	if !strings.Contains(body, "moai clean --codex-skills") {
+		t.Errorf("the refusal does not name the verb that collapses the duplicates\n--- report ---\n%s", body)
+	}
+	if !bytes.Equal(before, mustRead(t, cfg)) {
+		t.Errorf("config changed on the refusal path")
+	}
+}

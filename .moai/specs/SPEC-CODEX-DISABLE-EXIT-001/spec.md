@@ -2,7 +2,7 @@
 id: SPEC-CODEX-DISABLE-EXIT-001
 title: "moai skills disable --codex exit-code contract — boundary-intent adjudication and per-branch exit policy"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec
