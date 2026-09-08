@@ -438,6 +438,14 @@ before and after, the same pre-existing files enumerated in the evidence file's 
   louder direction: vacuous-FAILING rather than vacuous-PASSING, which is why it surfaced on the
   first run. Repaired by DERIVING the directory from `kanban.StateDirForRoot(root)` rather than
   transcribing it. `acceptance.md` was not edited — see Gaps.
+  **WRONG WHEN WRITTEN, not decay — measured.** The rename landed `8910c337c` 2026-08-27;
+  `acceptance.md` was first authored `b2d30deb2` 2026-09-03 with that rename already an ancestor
+  (`git merge-base --is-ancestor` → true). Nothing moved after the clause was written, so this is
+  an authoring error in the SPEC rather than the coordinate-decay class of M1's `:359`→`:363` and
+  M3's line-keyed REQ-ABI-006 baseline. Sharper: the clause is ABSENT from the original draft and
+  was added by `483cea858`, the plan-audit **iter-1 remediation** — the pass whose job is to
+  strengthen criteria — naming a directory that had not existed for a week, and it then survived
+  iter-2 and iter-3 unchanged.
 - **`TestTodoPR_RowCarriesQueueState` (`internal/cli/todo_landing_test.go:101`) pinned SIX
   columns.** It is half A's AC-TLS-010 criterion, and AC-TLE-015 mandates breaking it. The expected
   count was bumped 6 → 7 and the text index 5 → 6 as a visible act in the same change that adds the
@@ -453,7 +461,8 @@ before and after, the same pre-existing files enumerated in the evidence file's 
   queue fixture reaches the render's malformed branch; it is asserted at the helper only. The
   render-side and storage-side halves of this question were decided SEPARATELY: the render marker
   by the lead's disposition for M4, the storage-side read-error behaviour by M3 and now escalated
-  by the lead as an operator call.
+  by the lead as an operator call. That storage-side half is **NOT settled**; until it lands,
+  nothing here may claim what an operator actually sees for a corrupt row.
 - **No cross-platform build, no `golangci-lint`, no coverage measurement.** M4 introduces one
   platform-sensitive construct (`filepath.Separator` in the test's queue-directory prefix),
   unverified off darwin.

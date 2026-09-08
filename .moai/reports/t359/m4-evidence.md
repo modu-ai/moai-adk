@@ -154,6 +154,51 @@ const legacyStateDirName = "kanban"
 records that `LegacyStateDirForRoot` is "the fallback reader's subject and the
 relocation's source; **nothing writes through it**".
 
+### 4.1 Wrong when written, NOT decay — measured, not inferred
+
+Two different defects are possible here and they say different things: the
+criterion was WRONG WHEN WRITTEN (an authoring error in the SPEC), or it was
+correct and the path MOVED afterwards (coordinate decay). The dates settle it.
+
+```
+$ git log --format='%h %ad %s' --date=short -- internal/kanban/state_dir.go
+8910c337c 2026-08-27 feat(SPEC-TODO-SQLITE-001): M3+M4 state-directory rename and consumer sweep (t306)
+
+$ git log --format='%h %ad %s' --date=short -- .moai/specs/SPEC-TODO-LANDING-EVIDENCE-001/acceptance.md
+903bcc03c 2026-09-03 docs(t359): SPEC-TODO-LANDING-EVIDENCE-001 v0.3.1 — iter-3 debt closure (F1-F3)
+c0cfb2520 2026-09-03 docs(t359): SPEC-TODO-LANDING-EVIDENCE-001 v0.3.0 — iter-2 debt closure (E1-E7)
+483cea858 2026-09-03 docs(t359): SPEC-TODO-LANDING-EVIDENCE-001 v0.2.0 — plan-audit iter-1 remediation
+b2d30deb2 2026-09-03 docs(t359): plan-phase artifacts for SPEC-TODO-LANDING-EVIDENCE-001 (Tier L)
+
+$ git merge-base --is-ancestor 8910c337c b2d30deb2 && echo ANCESTOR
+ANCESTOR
+```
+
+The rename landed **2026-08-27**; `acceptance.md` was first authored
+**2026-09-03**, seven days later, with the rename already in its ancestry.
+Nothing moved after the clause was written.
+
+**Verdict: WRONG WHEN WRITTEN.** This is an authoring error in the SPEC, not
+coordinate decay, and it therefore does say something about how the SPEC was
+written — unlike M1's `:359`→`:363` and M3's line-keyed REQ-ABI-006 baseline,
+which are genuine decay.
+
+Sharper still, from which revision introduced it:
+
+```
+$ git show b2d30deb2:.../acceptance.md | grep -n "state/kanban\|state/todo"
+(no such clause in v0.1)
+$ git show 483cea858:.../acceptance.md | grep -n "state/kanban"
+180:and contains at least the queue database under `.moai/state/kanban/`.
+```
+
+The clause is **absent from the original draft** and was ADDED by
+`483cea858` — the plan-audit **iter-1 remediation**, the pass whose purpose is
+to strengthen criteria. The strengthening named a directory that had not
+existed for a week, and then survived iter-2 (`c0cfb2520`) and iter-3
+(`903bcc03c`) unchanged. A positive-control clause added to make an assertion
+non-vacuous was itself never executed until run-phase.
+
 **This is the same shape M3 found in AC-TLE-012's containment clause** — a
 criterion probing a value the implementation cannot produce — but in the
 opposite, louder direction: M3's was vacuous-PASSING (the clause could never
@@ -377,9 +422,12 @@ of it may be cited later as establishing anything.
    (`TestFormatLandingEvidence_MarkersAreDisjoint`), because the store's read
    path (`backlog_migrate.go:87-92`) refuses an undecodable stored value before
    any render runs. That the marker renders correctly *from the store* is
-   UNMEASURED. It is reachable only if M3's readRecord-errors decision is
-   overturned; that decision is under separate review and is not this
-   milestone's.
+   UNMEASURED. **The storage-side half of this question is NOT settled**: M3's
+   readRecord-errors choice — surfacing an undecodable stored value as a read
+   error rather than dropping it to nil — sits with the lead as an operator
+   call. The two halves were split deliberately, so the render-side marker
+   stands whichever way the storage-side lands; but until it lands, no claim
+   may be made here about what an operator actually sees for a corrupt row.
 3. **No cross-platform build was run.** `GOOS=windows` / `GOOS=linux` builds of
    the touched packages were not attempted. M4 introduces one platform-sensitive
    construct — `filepath.Separator` in the test's queue-directory prefix — and
