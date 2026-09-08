@@ -1,0 +1,20 @@
+exit=0
+ok  	github.com/modu-ai/moai-adk/internal/cli	563.276s
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	2.532s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	9.904s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	0.718s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	2.004s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	4.543s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	1.023s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	4.909s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	2.147s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	3.259s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	3.797s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	1.927s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.945s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	4.596s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	3.962s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	8.884s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	9.361s
+
+[exited with code 0]

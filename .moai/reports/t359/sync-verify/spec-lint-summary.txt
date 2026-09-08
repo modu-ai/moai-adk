@@ -1,0 +1,15 @@
+moai spec lint — BOUNDED capture (sync phase, card t359)
+
+The full capture is 1,080,215 bytes (4157 repository-wide warnings) and was NOT exported.
+That is a declared known loss: it is machine-local scratch at
+.moai/state/verify/t359-sync/speclint.txt (a gitignored path) and reaches no clone.
+What IS exported is the verdict line, the exit code, and the SPEC-scoped grep over the FULL
+capture — the three facts §E.4 cites.
+
+$ moai spec lint ; echo "lint rc=$?"
+0 error(s), 4157 warning(s)
+lint rc=0
+
+$ grep -c "SPEC-TODO-LANDING-EVIDENCE-001" <full capture>
+0
+# 0 — no warning names this SPEC.

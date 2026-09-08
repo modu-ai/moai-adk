@@ -1,0 +1,9 @@
+=== RUN   TestCodexStaleSkillFinding_ClassificationPrecedesConversion
+    doctor_codex_path_guard_test.go:124: detail does not report the entry as relative:
+        /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexStaleSkillFinding_ClassificationPrecedesConversion2808742113/001/.codex/config.toml declares 1 [[skills.config]] entry; 1 oddly-formed entry (not checked: backslash or ~other-user shape)
+    doctor_codex_path_guard_test.go:127: detail reports the entry as oddly-formed — the declared string was converted BEFORE classification:
+        /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexStaleSkillFinding_ClassificationPrecedesConversion2808742113/001/.codex/config.toml declares 1 [[skills.config]] entry; 1 oddly-formed entry (not checked: backslash or ~other-user shape)
+--- FAIL: TestCodexStaleSkillFinding_ClassificationPrecedesConversion (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.982s
+FAIL

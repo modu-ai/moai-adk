@@ -322,12 +322,50 @@ type Finding struct {
 // usable structured result carrying the reason + the claude-fallback next step.
 // The full 3-way fallback plumbing is M3; M2 only guarantees no hard crash.
 func inconclusiveReview(reason string) ReviewOutput {
+	return inconclusiveReviewWithSummary("codex unavailable: " + reason)
+}
+
+// inconclusiveReviewWithSummary is the same fail-open factory taking the Summary
+// VERBATIM. It exists because not every inconclusive is an unavailable backend:
+// a blank review body is a backend that answered without saying anything, and
+// prefixing that with "codex unavailable" would make the two states
+// indistinguishable — a new silence, not a repair (REQ-CBR-005).
+func inconclusiveReviewWithSummary(summary string) ReviewOutput {
 	return ReviewOutput{
 		Verdict:   VerdictInconclusive,
-		Summary:   "codex unavailable: " + reason,
+		Summary:   summary,
 		Findings:  []Finding{},
 		NextSteps: []string{"fall back to the active auditor (claude)"},
 	}
+}
+
+// codexBlankReviewSummary names the blank-output state in wording distinct from
+// the unavailable-backend wording, so a reader can tell the two apart
+// (REQ-CBR-005 / SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001).
+const codexBlankReviewSummary = "codex review output was blank: no verdict text was produced"
+
+// blankReviewInconclusive is the fail-open output for a review body that carries
+// no non-whitespace character. The verdict is inconclusive, NOT fail: codex is
+// optional, and a blank body is one symptom of a backend that is present but not
+// answering — blocking a session on that would contradict the optional-backend
+// contract (spec.md §C).
+func blankReviewInconclusive() ReviewOutput {
+	return inconclusiveReviewWithSummary(codexBlankReviewSummary)
+}
+
+// codexReviewTextIsBlank is the ONE emptiness discriminator the codex
+// review-text path uses — at collection, at selection, and at the guard.
+//
+// It exists as a named function rather than four inline comparisons because the
+// defect it repairs is shaped exactly like the miss-one hazard: three sites were
+// written with the same exact-equality test, a fourth was added later, and a
+// body of whitespace passed all four as if it were content
+// (SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001, plan.md §B.2).
+//
+// strings.TrimSpace cuts on unicode.IsSpace, which includes U+00A0, so a body of
+// non-breaking spaces alone is blank. That is deliberate and asserted.
+func codexReviewTextIsBlank(s string) bool {
+	return strings.TrimSpace(s) == ""
 }
 
 // ─── injectable command-execution seams (cross-platform testable, no PATH stubs) ───
@@ -814,8 +852,15 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 		// fail-open comment in HandleCodexReviewGate names).
 		return inconclusiveReview(turnErr.Error()), turnErr
 	}
-	if reviewText == "" {
-		return inconclusiveReview("codex review produced no verdict text"), errors.New("codex review produced no verdict text")
+	if codexReviewTextIsBlank(reviewText) {
+		// The turn COMPLETED but said nothing: no body, or a body of whitespace
+		// only. Either way no verdict was produced, so this must never reach the
+		// synthesizer — native review mode's documented default for an
+		// unrecognized body is "pass", which would launder a review that never
+		// happened into a clean one (REQ-CBR-004). Only ABSENCE is reclassified
+		// here; a PRESENT body that matches no signal keeps that documented
+		// default (REQ-CBR-007).
+		return blankReviewInconclusive(), errors.New(codexBlankReviewSummary)
 	}
 	return synthesizeReviewOutput(reviewText, method), nil
 }
@@ -1131,10 +1176,15 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, 
 				} `json:"item"`
 			}
 			_ = json.Unmarshal(msg.Params, &p)
-			if p.Item.Type == "exitedReviewMode" && p.Item.Review != "" {
+			// A field carrying no non-whitespace character is treated as ABSENT
+			// (REQ-CBR-001 / REQ-CBR-002). The loop REASSIGNS on every matching
+			// item, so an exact-equality test here lets a later blank item
+			// overwrite an earlier real one — the real review is then lost and
+			// the turn reports a body it never received.
+			if p.Item.Type == "exitedReviewMode" && !codexReviewTextIsBlank(p.Item.Review) {
 				reviewText = p.Item.Review
 			}
-			if p.Item.Type == "agentMessage" && p.Item.Text != "" {
+			if p.Item.Type == "agentMessage" && !codexReviewTextIsBlank(p.Item.Text) {
 				agentText = p.Item.Text
 			}
 		case "turn/completed":
@@ -1248,9 +1298,14 @@ func writeCodexEnvelope(conn codexConn, envelope map[string]any) error {
 }
 
 // bestCodexReviewText prefers the structured exitedReviewMode review over the
-// free-form agentMessage text (both carry the same prose in practice).
+// free-form agentMessage text (both carry the same prose in practice). That
+// preference is UNCHANGED; what changed is what counts as having a structured
+// review at all — a body with no non-whitespace character is absent, so it must
+// not SHADOW a real agent message (REQ-CBR-003). Shadowing here is why the guard
+// cannot be repaired alone: it would turn a case that has genuine review content
+// into an inconclusive, trading one wrong answer for another.
 func bestCodexReviewText(review, agent string) string {
-	if review != "" {
+	if !codexReviewTextIsBlank(review) {
 		return review
 	}
 	return agent

@@ -237,11 +237,27 @@ func upsertCodexSkillDisable(content []byte, skillPath string) ([]byte, codexSki
 	if skillPath == "" {
 		return skip("no path to write")
 	}
-	// A TOML basic string cannot carry these verbatim, and this repository's
-	// parser reads the value verbatim rather than decoding escapes. Emitting
-	// an escaped form would produce an entry Codex reads correctly and every
-	// moai reader — including the prune verb, which deletes what it cannot
-	// find — reads as a different, absent path.
+	// The config carries paths in forward-slash form on every host, so the
+	// host separator is converted away BEFORE the guard below rather than
+	// being refused by it. On a host whose separator is already '/' this is
+	// the identity and nothing about the guard's reach changes; on Windows it
+	// is the difference between publishing an entry and refusing every single
+	// invocation, which is what the verb did there before
+	// SPEC-CODEX-SKILL-PATH-SLASH-001.
+	skillPath = toConfigPath(skillPath, configPathSeparator)
+	// What remains is genuinely unrepresentable. A TOML basic string cannot
+	// carry these verbatim, and this repository's parser reads the value
+	// verbatim rather than decoding escapes. Emitting an escaped form would
+	// produce an entry Codex reads correctly and every moai reader —
+	// including the prune verb, which deletes what it cannot find — reads as
+	// a different, absent path.
+	//
+	// The backslash stays in the set on purpose, and the conversion above is
+	// deliberately NOT an unconditional replacement. A unix filename may
+	// legally contain a backslash; on a '/'-separator host such a path
+	// reaches this line unchanged and is REFUSED, which is correct. Rewriting
+	// it instead would publish a different, nonexistent path — a registration
+	// prune then classifies as absent and deletes.
 	if strings.ContainsAny(skillPath, "\"\\\n\r") {
 		return skip("the path contains a character this config format cannot carry verbatim (%q)", skillPath)
 	}
@@ -249,7 +265,16 @@ func upsertCodexSkillDisable(content []byte, skillPath string) ([]byte, codexSki
 	lines, term := codexwiring.SplitConfigLines(content)
 	var matches []codexwiring.SkillEntry
 	for _, e := range codexwiring.ParseSkillEntries(content) {
-		if e.Path == skillPath {
+		// Both sides are compared in the config's slash form. This is the
+		// verb's ONLY path comparison, so it is also the only place the
+		// normalization can be applied: an entry already stored in native
+		// backslash form — written by hand, or by another tool — would
+		// otherwise fail to match the converted skillPath, fall through to
+		// appendDisableEntry, and leave the config holding TWO entries for
+		// one skill. Collapsing those is `moai clean --codex-skills`'s job
+		// (t506), and manufacturing that debt here would be a defect, not a
+		// handoff.
+		if toConfigPath(e.Path, configPathSeparator) == skillPath {
 			matches = append(matches, e)
 		}
 	}
@@ -361,11 +386,20 @@ func appendDisableEntry(lines []string, skillPath string) []string {
 
 // runCodexSkillDisable is the `moai skills disable <name> --codex` runner.
 //
-// Fail-open on absent inputs, exactly as the prune verb is: an unresolvable
-// Codex home or an absent config says so and returns nil. A missing input is
-// not an error — there is simply nothing to disable. A name that does not
-// resolve is different: that is a typo, and it exits non-zero so a script can
-// see it.
+// The exit-code contract, by outcome class (SPEC-CODEX-DISABLE-EXIT-001):
+//
+//   - performed — an entry was written, or the desired state already held
+//     (Unchanged): returns nil.
+//   - refused — a guard declined the write (Skipped), or the name does not
+//     resolve (unresolved / ambiguous): returns an error. A refusal the
+//     caller cannot see is a request silently dropped — two Skipped reasons
+//     hand off to `moai clean --codex-skills`, and a zero exit would hide
+//     that handoff from a script. The Skipped report still prints, so a
+//     human reads the reason.
+//   - absent-input — fail-open, exactly as the prune verb is: an
+//     unresolvable Codex home, an absent config, or an absent project
+//     mirror says so and returns nil. A missing input is not an error —
+//     there is simply nothing to disable.
 func runCodexSkillDisable(p printer.Printer, opts codexSkillDisableOptions) error {
 	res := resolveCodexSkillMirrorPath(opts.ProjectRoot, opts.HomeDir, opts.Skill)
 	switch res.Outcome {
@@ -395,8 +429,14 @@ func runCodexSkillDisable(p printer.Printer, opts codexSkillDisableOptions) erro
 		p.Info("Unchanged: %s (%s)", res.Path, v.Reason)
 		return nil
 	case codexSkillDisableSkipped:
+		// A guard refusal is a REFUSED request, not a quiet success: the
+		// verb heard the request and declined, so it exits non-zero (the
+		// name-resolution policy below, not the absent-input one). Two of
+		// the refusal reasons hand off to `moai clean --codex-skills`, and
+		// exit 0 would hide that handoff from a script. The Skipped: line
+		// still goes to stdout so the human reads the reason.
 		p.Info("Skipped: %s (%s)", res.Path, v.Reason)
-		return nil
+		return fmt.Errorf("refused to disable %q for Codex: %s", opts.Skill, v.Reason)
 	}
 
 	verb := "add an entry for"
