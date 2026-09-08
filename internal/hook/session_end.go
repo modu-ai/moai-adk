@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/graph"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
@@ -254,6 +255,10 @@ func projectSlug(absPath string) string {
 func getModifiedGoFiles(ctx context.Context, projectDir string) []string {
 	cmd := exec.CommandContext(ctx, "git", "diff", "--name-only", "HEAD")
 	cmd.Dir = projectDir
+	// cmd.Dir does not decide which repository this reads: a GIT_DIR inherited
+	// from a hook outranks it, and the modified-file list would then come from
+	// another repository entirely.
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		// git diff may fail in non-git environments; this is expected

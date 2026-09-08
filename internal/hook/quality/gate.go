@@ -1064,6 +1064,12 @@ func stagedFiles(ctx context.Context, dir string) ([]string, error) {
 
 	cmd := exec.CommandContext(ctx, "git", "diff", "--cached", "--name-only")
 	cmd.Dir = dir
+	// cmd.Dir alone does not decide which repository this reads: a leaked
+	// GIT_DIR / GIT_INDEX_FILE outranks it, and under a pre-commit hook those
+	// name the repository being committed to. Unscrubbed, this answered about
+	// the caller's repository, so the gate skipped or ran steps on another
+	// repository's staged set — silently, since neither path errors (t560).
+	cmd.Env = stepEnv()
 	out, err := cmd.Output()
 	if err != nil {
 		// Outside a git repository or command failed — conservative fallback
