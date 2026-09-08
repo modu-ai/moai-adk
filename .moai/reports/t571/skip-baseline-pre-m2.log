@@ -1,0 +1,59 @@
+# SPEC-CODEX-HOME-BACKSLASH-001 / card t571 — pre-M2 SKIP baseline
+
+Purpose: AC-CHB-006 states an exact-equality regression criterion. "newly SKIP 0" is a delta, and a
+delta cannot be decided without a pinned pre-change number. This file IS that number, measured on the
+unmodified tree before M2's reordering is applied.
+
+MEASURED_ON_HEAD=ee194493ff14bce2cf30ef790304426d53235595
+MEASURED_ON_HEAD_SHORT=ee194493f
+BRANCH=WT-codex-home-backslash
+WORKTREE=.claude/worktrees/t571
+TREE_STATE=pre-M2 — no production Go source touched by this card at measurement time
+MEASURED_AT_UTC=2026-09-08T05:00:45Z
+COMMAND=go test ./internal/cli/... -count=1 -timeout 600s -v
+EXIT=0
+SKIP_COUNT=30
+SKIP_COUNT_EXPR=grep -c '^ *--- SKIP: ' <verbose-output>
+
+Note on the counting expression: `--- SKIP:` lines are indented under their parent in `-v` output, so
+the leading `^ *` is load-bearing — an anchored `^--- SKIP:` matches nothing and would report a
+vacuous 0. Subtests are counted individually (four of the 30 below are subtests — measured `grep '^--- SKIP: ' <this file> | grep -c '/'` = 4), which is the
+same granularity the post-M2 run must use for the equality to mean anything.
+
+SKIP_NAMES (30):
+--- SKIP: TestAuditPinLive_CodexPinConfirmation (0.00s)
+--- SKIP: TestAuditPinLive_GLMDifferential (0.00s)
+--- SKIP: TestAxisACanaryHomeSweep_TodoFamily (0.00s)
+--- SKIP: TestCheckDeadHooks_ViaLintAgentFile (0.00s)
+--- SKIP: TestCleanupMoaiWorktrees (0.00s)
+--- SKIP: TestCodexLive_ExplicitReadOnlyApprovalStall (0.00s)
+--- SKIP: TestCodexLive_OmittedSandboxPolicyBaseline (0.00s)
+--- SKIP: TestCodexLive_ReviewStartEmitsTurnStarted (0.00s)
+--- SKIP: TestCodexLive_SandboxPolicyStickiness (0.00s)
+--- SKIP: TestCodexLive_ThreadReuseAndTurnInterrupt (0.00s)
+--- SKIP: TestCrossCompileScriptMirrorsCanonical (0.00s)
+--- SKIP: TestGLMAudit_NoAskUserQuestion (0.00s)
+--- SKIP: TestGLMToolsEnable_AtomicWriteProtectsOriginal (0.00s)
+--- SKIP: TestGateLockHelperSleep (0.00s)
+--- SKIP: TestLegacySkillIDsNotEmbedded/manifest_empty (0.00s)
+--- SKIP: TestLegacySkillIDsNotEmbedded/manifest_error (0.00s)
+--- SKIP: TestMCPServer_StdioRoundTripSubprocess (0.01s)
+--- SKIP: TestMakeSymlink_SkipsWhenCreationFails/collision (0.00s)
+--- SKIP: TestMergeUserFiles_EmbeddedTemplateError (0.00s)
+--- SKIP: TestMigrationRollback_M001_Rejected (0.00s)
+--- SKIP: TestMigrationRollback_NoRollbackable (0.00s)
+--- SKIP: TestMigrationRollback_Succeeds (0.00s)
+--- SKIP: TestMigrationRun_AppliesPending (0.00s)
+--- SKIP: TestMigrationRun_NoPending (0.00s)
+--- SKIP: TestMigrationStatus_Human (0.00s)
+--- SKIP: TestMigrationStatus_JSON (0.00s)
+--- SKIP: TestResolveRulesDir/windows_volume-letter_gate.yaml_value_passes_through_unjoined (0.00s)
+--- SKIP: TestRunVersionBranch_NonTTYProceeds (0.00s)
+--- SKIP: TestSessionPIDStampExecHelper (0.00s)
+--- SKIP: TestViewAcceptanceCriteria_ShapeTraceE2E (0.00s)
+
+Caveat on portability of this number: several of the 30 skip on an environment predicate (live-backend
+tests, TTY probes, cross-compile helpers, exec-helper re-entry). The count is therefore pinned to THIS
+host and THIS environment, not to the commit alone. The post-M2 comparison run must be made in the
+same session/environment for the equality to be attributable; a run under a different environment that
+differs from 30 is an environment delta, not a regression, and must be re-measured rather than reported.

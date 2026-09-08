@@ -661,17 +661,38 @@ const (
 )
 
 // classifyCodexSkillPath maps a declared path onto its shape. Ordering is
-// load-bearing: IsAbs runs before the backslash check (a native Windows
-// absolute stays absolute), and the home-relative forms are peeled off
-// before the residual "~"-prefixed shapes fall to oddly-formed.
+// load-bearing, and each step earns its position:
+//
+//	IsAbs → backslash → "~"/"~/" peel → residual "~" → relative
+//
+// IsAbs stays FIRST so a native Windows absolute (C:\...) is classified by
+// what it is rather than by the separator it happens to carry.
+//
+// The backslash check runs SECOND — ahead of the "~/" peel — because the
+// refusal it performs must not depend on the shape of the declaration that
+// carries it (SPEC-CODEX-HOME-BACKSLASH-001). It previously ran last, so
+// stripping "~/" first routed a backslash-bearing home-relative declaration
+// into codexPathHomeRelative, where it was expanded, stat'ed, and reached
+// Eligible=true in the prune verb — a DELETION verdict on a registration the
+// user wrote by hand. The identical backslash in a relative declaration was
+// refused. That asymmetry was the defect; this ordering is the fix, and
+// TestCodexSkillPathBackslashSymmetry is what keeps it closed.
+//
+// [HARD] The check runs on the DECLARATION, never on the expansion. The
+// expanded home is legitimately backslash-bearing on Windows (C:\Users\x), so
+// a check moved below expandCodexHomeRelativePath would refuse every entry
+// there — the alternative repair, and the reason it was rejected.
 func classifyCodexSkillPath(p string) codexSkillPathShape {
 	if filepath.IsAbs(p) {
 		return codexPathAbsolute
 	}
+	if strings.ContainsRune(p, '\\') {
+		return codexPathOddlyFormed
+	}
 	if p == "~" || strings.HasPrefix(p, "~/") {
 		return codexPathHomeRelative
 	}
-	if strings.HasPrefix(p, "~") || strings.ContainsRune(p, '\\') {
+	if strings.HasPrefix(p, "~") {
 		return codexPathOddlyFormed
 	}
 	return codexPathRelative

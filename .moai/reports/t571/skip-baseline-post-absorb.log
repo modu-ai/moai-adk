@@ -1,0 +1,88 @@
+# SPEC-CODEX-HOME-BACKSLASH-001 / card t571 — post-absorb SKIP baseline
+
+Purpose: AC-CHB-006 compares an exact SKIP count. The pre-M2 pin (`skip-baseline-pre-m2.log`,
+SKIP_COUNT=30 @ ee194493f) was measured BEFORE this worktree absorbed local develop. The absorb
+brought in t577, which edits `internal/cli/todo.go` — inside the counted package — so that pin no
+longer describes this tree. This file is the re-pin AC-CHB-006's re-pin rule requires.
+
+MEASURED_ON_HEAD=768306d2779aae7bce52ac6a78ec0839a498a203
+MEASURED_ON_HEAD_SHORT=768306d27
+BRANCH=WT-codex-home-backslash
+WORKTREE=.claude/worktrees/t571
+TREE_STATE=post-absorb, pre-M2 — develop absorbed by fast-forward; no production Go source touched by this card yet
+MEASURED_AT_UTC=2026-09-08T05:28:36Z
+COMMAND=go test ./internal/cli/... -count=1 -timeout 600s -v
+EXIT=0
+EVIDENCE_EXTRACT=.moai/reports/t571/post-absorb-skiplines.txt (47 lines: every `--- SKIP:`, `--- FAIL:`, `ok`, and `FAIL` line)
+RAW_OUTPUT=NOT RETAINED. The full `-v` run was 18,847 lines / 1.1 MB, of which ~99% is `=== RUN` and
+`--- PASS` noise carrying no claim this file makes. Committing 1.1 MB of it (plus the same again for
+the post-M2 run) would have put 2.2 MB of scrollback into the repository to support two numbers. The
+extract above carries every line the count and the name comparison are computed from, so the claims
+below stay attributable; what is lost is the passing-test noise, and that loss is stated here rather
+than left for a reader to discover. Regenerate the full output with the COMMAND line above.
+SKIP_COUNT=30
+SKIP_COUNT_EXPR=grep -c '^ *--- SKIP: ' <verbose-output>
+SUBTEST_SKIPS=4
+FAIL_LINES=0
+
+DELTA_VS_PRE_ABSORB: count 30 = 30; name set IDENTICAL.
+
+The count being unchanged across the absorb is a measurement, not a prediction that it will stay
+unchanged. t577 touched the counted package without changing which tests skip; a later absorb may
+not be so quiet. The re-pin rule exists for that case, and this file is what it produces.
+
+[HARD] Comparing the names requires stripping the elapsed-time suffix FIRST.
+Measured here: a raw `comm -3` over the two name lists reports ONE difference —
+
+    --- SKIP: TestMCPServer_StdioRoundTripSubprocess (0.01s)   [pre-absorb]
+    --- SKIP: TestMCPServer_StdioRoundTripSubprocess (0.02s)   [post-absorb]
+
+— the same test, timed differently. A `-v` SKIP line carries its own duration, and durations vary
+run to run, so a name comparison that keeps the suffix reports a spurious delta on EVERY run. Left
+uncorrected, AC-CHB-006's "enumerate the differing names" clause would hand the reader a permanent
+false positive and teach them to ignore it — which is exactly how a real delta gets waved through.
+
+The comparison expression is therefore:
+
+    grep '^ *--- SKIP: ' <verbose-output> | sed 's/^ *//' | sed -E 's/ \([0-9.]+s\)$//' | sort
+    comm -3 <pre-list> <post-list>
+
+With the suffix stripped, the two 30-name sets are byte-identical — `comm -3` emits nothing
+(verified in this run).
+
+SKIP_NAMES (30, duration-stripped, sorted):
+--- SKIP: TestAuditPinLive_CodexPinConfirmation
+--- SKIP: TestAuditPinLive_GLMDifferential
+--- SKIP: TestAxisACanaryHomeSweep_TodoFamily
+--- SKIP: TestCheckDeadHooks_ViaLintAgentFile
+--- SKIP: TestCleanupMoaiWorktrees
+--- SKIP: TestCodexLive_ExplicitReadOnlyApprovalStall
+--- SKIP: TestCodexLive_OmittedSandboxPolicyBaseline
+--- SKIP: TestCodexLive_ReviewStartEmitsTurnStarted
+--- SKIP: TestCodexLive_SandboxPolicyStickiness
+--- SKIP: TestCodexLive_ThreadReuseAndTurnInterrupt
+--- SKIP: TestCrossCompileScriptMirrorsCanonical
+--- SKIP: TestGLMAudit_NoAskUserQuestion
+--- SKIP: TestGLMToolsEnable_AtomicWriteProtectsOriginal
+--- SKIP: TestGateLockHelperSleep
+--- SKIP: TestLegacySkillIDsNotEmbedded/manifest_empty
+--- SKIP: TestLegacySkillIDsNotEmbedded/manifest_error
+--- SKIP: TestMCPServer_StdioRoundTripSubprocess
+--- SKIP: TestMakeSymlink_SkipsWhenCreationFails/collision
+--- SKIP: TestMergeUserFiles_EmbeddedTemplateError
+--- SKIP: TestMigrationRollback_M001_Rejected
+--- SKIP: TestMigrationRollback_NoRollbackable
+--- SKIP: TestMigrationRollback_Succeeds
+--- SKIP: TestMigrationRun_AppliesPending
+--- SKIP: TestMigrationRun_NoPending
+--- SKIP: TestMigrationStatus_Human
+--- SKIP: TestMigrationStatus_JSON
+--- SKIP: TestResolveRulesDir/windows_volume-letter_gate.yaml_value_passes_through_unjoined
+--- SKIP: TestRunVersionBranch_NonTTYProceeds
+--- SKIP: TestSessionPIDStampExecHelper
+--- SKIP: TestViewAcceptanceCriteria_ShapeTraceE2E
+
+ENVIRONMENT CAVEAT (carried over from the pre-absorb pin, still binding): several of the 30 skip on
+live-backend, TTY, and cross-compile predicates. This number is host- and environment-pinned as much
+as tree-pinned. A post-M2 run that differs from 30 is diagnosed by the NAMES, never by the count
+alone.
