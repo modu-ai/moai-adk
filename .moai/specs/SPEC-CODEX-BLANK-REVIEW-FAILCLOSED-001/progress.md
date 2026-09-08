@@ -505,9 +505,16 @@ the SPEC body, because both are the kind that decays:
   in a clean environment or on the windows/linux matrix. `GOOS=windows go build`
   compiles non-test code only — it establishes compilability, not that the tests
   compile or pass there.
-- **`run_commit_sha` in §E.3 above is still the `pending-backfill-run` placeholder.**
-  That field belongs to manager-develop's §E.3 surface and was not modified here;
-  it is reported as an owed backfill rather than silently completed.
+- **`run_commit_sha` in §E.3 was owed at sync-close, and has since been paid.** At
+  the moment this §E.4 landed (`b6428562c`) the field still carried the canonical
+  `pending-backfill-run` placeholder. That field belongs to manager-develop's §E.3
+  surface, so it was reported across the ownership boundary rather than silently
+  completed from here. manager-develop backfilled it in `4aef89606`, and
+  `progress.md:386` now reads `run_commit_sha: b2f7fdd63` — the final run-phase
+  commit, the one that introduced the §E.3 block and therefore could not cite its
+  own hash. **Nothing is owed on that field now**; the passage is kept because the
+  debt having been tracked across the boundary, rather than reached into, is the
+  part of the record worth keeping.
 ### docs-site: a related page exists, and it is reported rather than edited
 
 docs-site was out of scope for this card by dispatch. It was searched anyway, so
