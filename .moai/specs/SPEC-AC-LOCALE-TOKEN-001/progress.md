@@ -98,7 +98,7 @@ m1_to_mN_commit_strategy: M1 census 1커밋 + M2 재작성 1커밋 + M-final pro
 
 sync_status: completed
 sync_complete_at: 2026-09-08
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "0a077078d"
 frontmatter_status_transitions:
   - transition: "in-progress → implemented → completed (merged into the single sync commit per the V3R6 3-phase close)"
     owner: manager-docs
