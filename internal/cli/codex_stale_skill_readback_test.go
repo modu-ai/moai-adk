@@ -3,12 +3,27 @@ package cli
 // codex_stale_skill_readback_test.go — SPEC-CODEX-SKILL-PATH-READBACK-001
 // (t562) M1: AC-CSRB-006, the doctor-side regression guard.
 //
-// codexStaleSkillFinding stats DIRECTLY (doctor_codex.go has zero osStatFn
-// seams — card t563's scope to add one, forbidden here per REQ-CSRB-006), so
-// the doctor half of the card is verified at output level: this guard pins the
+// The doctor half of the card is verified at OUTPUT level: this guard pins the
 // finding's counter decomposition on a fixture whose declared paths are REAL
 // (one existing file, one missing, one relative, one backslash-shaped) and
 // must stay byte-identical after M2 changes the doctor's stat target.
+//
+// CORRECTED post-close (t562, sync-audit F1). This comment previously stated
+// that doctor_codex.go has zero osStatFn seams. That was true when written at
+// M1 and became FALSE at the absorb merge 2d1dad058, which brought in card
+// t563's seam: doctor_codex.go now calls osStatFn at :459 and :861. REQ-CSRB-006
+// still forbids THIS card from authoring such a seam — that half of the original
+// sentence stands, and AC-CSRB-007 pins this card's diff to zero added osStatFn
+// lines — but the seam's ABSENCE is no longer a fact, and it must not be read as
+// the reason the doctor side is checked at output level only.
+//
+// The honest statement is that output-level verification here is a CHOICE, not a
+// necessity: an injectable seam exists in the tree, so a stat-target assertion on
+// the doctor half is writable (stubStatRecording, doctor_codex_stale_skill_test.go).
+// It was not written. Consequence, recorded as sync-audit F2: reverting the
+// doctor-side conversion to `statPath = e.Path` is caught by nothing here —
+// darwin's separator makes the conversion the identity, so this guard is blind to
+// it. Closing that is a follow-up card, not a silent edit to a closed one.
 //
 // The expected values were derived from this PRE-CHANGE run and recorded as
 // the M1 baseline (`.moai/reports/t562/ac-csrb-006-baseline.log` +

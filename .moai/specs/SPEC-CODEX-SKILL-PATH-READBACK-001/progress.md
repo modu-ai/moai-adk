@@ -244,6 +244,55 @@ Sync-phase scope actually performed: CHANGELOG `[Unreleased]` → `### Fixed` en
 only artifact of the four that carries a `status:` field (measured, not assumed). No SPEC body content
 (`§A`–`§H` of spec.md / plan.md / acceptance.md) was modified.
 
+## §J Post-close deltas
+
+Changes landed on this branch AFTER the sync commit closed the SPEC
+(`spec.md` `status: completed`, `sync_commit_sha: 18bf8cc06`). Each row names what
+changed, why it is not an amendment, and the lead decision that authorized it.
+`§E.1`-`§E.4` are the phase record and are NOT rewritten by anything here.
+
+### J1 — sync-audit F1: stale comment corrected in `codex_stale_skill_readback_test.go`
+
+- **What was false.** The file header asserted `doctor_codex.go has zero osStatFn
+  seams`. Measured at this branch: `/usr/bin/grep -n 'osStatFn'
+  internal/cli/doctor_codex.go` → `459:` and `861:` — two call sites, not zero.
+- **What made it false.** The statement was TRUE when authored at M1. It became
+  false at the absorb merge `2d1dad058`, which brought in card t563's doctor stat
+  seam. **This card did not author the seam and did not make the statement false** —
+  AC-CSRB-007 pins this card's diff to zero added `osStatFn` lines, verified
+  `git show c007e5409 --format='' -- internal/cli/doctor_codex.go |
+  /usr/bin/grep -c 'osStatFn'` → `0`, positive control `1`.
+- **Why it mattered enough to fix.** sync-audit F1 [Medium] found the false premise
+  was doing work: it stood in the file as the stated reason the doctor half is
+  verified at output level only. A false sentence used as a justification is worse
+  than a stale one that no reader depends on.
+- **Why this is NOT an amendment.** The edit touches a comment in a test file. No
+  AC produced that sentence, no SPEC artifact body changed, and `status:` is
+  untouched. The `completed → in-progress (amendment)` transition governs revising a
+  completed SPEC's own claims; this is the correction of a stale statement an
+  external change created. Lead decision (option C, split): correct F1 here, record
+  it, and do not perform the amendment ceremony.
+- **What the corrected comment now says.** That REQ-CSRB-006 still forbids THIS card
+  from authoring such a seam (that half of the original sentence stands), that the
+  seam's absence is no longer a fact, and that output-level verification of the
+  doctor half is a CHOICE rather than a necessity — an injectable seam exists
+  (`stubStatRecording`, `doctor_codex_stale_skill_test.go`), so the assertion is
+  writable and was not written.
+- **Verification after the edit** (this branch, this tree): `go vet ./internal/cli/`
+  rc 0 (type-checks test files); `go test ./internal/cli/ -run
+  'TestCodexStaleSkillFinding_|TestJudgeCodexSkillEntry_' -count=1 -timeout 1800s`
+  → `ok  github.com/modu-ai/moai-adk/internal/cli`; `gofmt -l` on the file empty.
+  Non-test production files unchanged.
+- **Gap left open, deliberately: sync-audit F2 [Medium].** Reverting the doctor-side
+  conversion to `statPath = e.Path` is caught by nothing in this card — the three
+  mutants are all prune-side and the AC-CSRB-006 guard is blind to the conversion
+  because darwin's separator makes it the identity. **G6 is closeable, not
+  inevitable.** It is NOT closed here: a ~20-line test deserves its own RED
+  observation, and appending it to a closed card would land that RED unobserved.
+  Issued as a follow-up card together with sync-audit F6 (extended-length paths
+  `//?/C:/…` → `\\?\C:\…`, the one family where this conversion is load-bearing,
+  which the SPEC never named).
+
 ## PRESERVE carried forward
 
 - `internal/cli/codex_config_path.go`, `codex_config_path_test.go`, `codex_skills_disable.go`,
