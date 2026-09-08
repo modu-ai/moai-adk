@@ -1,0 +1,7 @@
+=== RUN   TestT571Probe
+path="~/x\\SKILL.md"    shape=1 eligible=true skip="" stated=[/Users/goos/x\SKILL.md]
+path="x\\SKILL.md"      shape=3 eligible=false skip="oddly-formed path — not resolvable here" stated=[]
+path="~/ok/SKILL.md"    shape=1 eligible=true skip="" stated=[/Users/goos/ok/SKILL.md]
+--- PASS: TestT571Probe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.736s

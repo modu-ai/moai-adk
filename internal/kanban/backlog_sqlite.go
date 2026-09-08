@@ -80,6 +80,11 @@ const (
 	backlogMetaKeyQuarantinePending = "legacy_quarantine_pending"
 )
 
+// backlogLandingColumn is the landing-evidence column carried by both
+// card-bearing tables. It is added by ensureLandingColumn rather than by
+// backlogDDL — see that function for why.
+const backlogLandingColumn = "landing"
+
 // backlogDDL is the physical schema (design.md §2). Everything is IF NOT
 // EXISTS so opening any existing database is idempotent. seq carries the
 // insertion-order duty of the legacy array (ORDER BY seq reproduces it);
@@ -270,14 +275,18 @@ func openBacklogEngine(dbPath string) (*backlogEngine, error) {
 	return eng, nil
 }
 
-// ensureSchema executes the idempotent DDL and reconciles the
-// schema_version marker. A stamped FUTURE or alien version aborts the open
-// with ErrBacklogCorrupt semantics: refuse-to-operate, never repair-by-delete.
+// ensureSchema executes the idempotent DDL, adds any column the DDL cannot
+// retrofit onto an existing table, and reconciles the schema_version marker.
+// A stamped FUTURE or alien version aborts the open with ErrBacklogCorrupt
+// semantics: refuse-to-operate, never repair-by-delete.
 func (e *backlogEngine) ensureSchema(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, backlogOpenTimeout)
 	defer cancel()
 	if _, err := e.db.ExecContext(ctx, backlogDDL); err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("schema %s", e.dbPath), err)
+	}
+	if err := e.ensureLandingColumn(ctx); err != nil {
+		return err
 	}
 	version, err := e.schemaVersion(ctx)
 	if err != nil {
@@ -313,6 +322,66 @@ func (e *backlogEngine) schemaVersion(ctx context.Context) (string, error) {
 		return "", mapBacklogEngineError(fmt.Sprintf("read schema_version %s", e.dbPath), err)
 	}
 	return version, nil
+}
+
+// landingCarryingTables are the two card-bearing tables that carry the landing
+// evidence column. archived_items mirrors items because an archived card keeps
+// whatever evidence it held when it left the live queue.
+var landingCarryingTables = []string{"items", "archived_items"}
+
+// ensureLandingColumn adds the nullable landing TEXT column to both
+// card-bearing tables when it is absent.
+//
+// It runs at open, after backlogDDL and before the schema_version switch.
+// Both halves of that ordering matter: the tables do not exist until the DDL
+// has run on a brand-new database, and the version switch is where the engine
+// declares the database usable, so a column added after it would be missing
+// for any caller that short-circuits there.
+//
+// The column lives here rather than in backlogDDL because CREATE TABLE IF NOT
+// EXISTS adds no column to an existing table — the DDL alone cannot serve a
+// database already in the field — and keeping it in exactly one place means a
+// new and an upgraded database converge on the same statement.
+//
+// Idempotence is decided by reading the table's own column metadata, not by
+// catching SQLite's "duplicate column name": that would turn a normal control
+// path into an error path and would swallow a genuine failure sharing the
+// message.
+func (e *backlogEngine) ensureLandingColumn(ctx context.Context) error {
+	for _, table := range landingCarryingTables {
+		present, err := e.hasColumn(ctx, table, backlogLandingColumn)
+		if err != nil {
+			return err
+		}
+		if present {
+			continue
+		}
+		// SQLite cannot bind an identifier, so the table and column names are
+		// interpolated. Both are compile-time constants — table ranges over
+		// landingCarryingTables and the column is backlogLandingColumn — and
+		// NEITHER may ever be fed from a runtime value.
+		stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT", table, backlogLandingColumn)
+		if _, err := e.db.ExecContext(ctx, stmt); err != nil {
+			return mapBacklogEngineError(
+				fmt.Sprintf("add %s.%s %s", table, backlogLandingColumn, e.dbPath), err)
+		}
+	}
+	return nil
+}
+
+// hasColumn reports whether a table already declares the named column.
+func (e *backlogEngine) hasColumn(ctx context.Context, table, column string) (bool, error) {
+	var found string
+	err := e.db.QueryRowContext(ctx,
+		`SELECT name FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&found)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, mapBacklogEngineError(
+			fmt.Sprintf("read columns of %s %s", table, e.dbPath), err)
+	}
+	return true, nil
 }
 
 // pragmas reads the effective journal_mode and busy_timeout off the live

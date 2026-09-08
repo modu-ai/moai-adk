@@ -130,9 +130,15 @@ func TestTodoPR_RowCarriesQueueState(t *testing.T) {
 	picked := prRow(t, stdout, ids[0])
 	queued := prRow(t, stdout, ids[1])
 
-	// Six columns: CardID, Kind, PRs, Confidence, State, text.
-	if len(picked) != 6 {
-		t.Fatalf("row %v has %d columns, want 6 (the state column was added)", picked, len(picked))
+	// Seven columns: CardID, Kind, PRs, Confidence, State, Evidence, text.
+	//
+	// Updated from six by SPEC-TODO-LANDING-EVIDENCE-001 AC-TLE-015, which
+	// inserts the landing-evidence column at position 6. The count is bumped
+	// here as a VISIBLE act in the same change that adds the column, rather
+	// than loosened to a lower bound: this guard's value is that it fails on
+	// any count change, and a `>=` form would stop catching the next one.
+	if len(picked) != 7 {
+		t.Fatalf("row %v has %d columns, want 7 (state at 5, evidence at 6)", picked, len(picked))
 	}
 	if picked[1] != queued[1] {
 		t.Fatalf("fixture premise broken: the two cards must share the %q outcome, got %q and %q",
@@ -146,8 +152,8 @@ func TestTodoPR_RowCarriesQueueState(t *testing.T) {
 	}
 	// The card text stays the LAST field, so a consumer reading the tail
 	// still reads the text after the column count changed.
-	if picked[5] != "picked but no commits" {
-		t.Errorf("last column = %q, want the card text", picked[5])
+	if picked[6] != "picked but no commits" {
+		t.Errorf("last column = %q, want the card text", picked[6])
 	}
 }
 
