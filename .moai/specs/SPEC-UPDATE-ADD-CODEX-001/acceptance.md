@@ -238,6 +238,103 @@ EV-10
   exit code: 0
   tree: 5caddeb2d
   cited by: SPEC ID 사전 검증 (spec-workflow 매니저 프로토콜; 중복 검사 rg 0 matches 병행)
+
+EV-11 (run-phase RED — M1)
+  command: go test ./internal/cli -run TestUpdateAddCodex
+  stdout:
+    # github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+    internal/cli/update_add_codex_test.go:27:9: undefined: addCodexWiringAt
+    internal/cli/update_add_codex_test.go:259:2: undefined: emitAddCodexDryRunPreview
+    internal/cli/update_add_codex_test.go:279:71: too many arguments in call to validateUpdateVersionConflicts
+    FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+  exit code: 미직접 관측(측정 파이프가 소비) — 위 stdout 은 go test 빌드-실패 형태 그대로 관측됨
+  tree: 5caddeb2d (구현 전)
+  cited by: M1 TDD RED (acceptance.md §D.5 운영 규율에 따른 run-phase 추가; 리드 dispatch 승인 범위)
+
+EV-12 (run-phase RED — M3)
+  command: go test ./internal/cli -run TestInitAddCodex
+  stdout:
+    internal/cli/init_add_codex_guidance_test.go:21:23: undefined: addCodexReinitGuidance
+    internal/cli/init_add_codex_guidance_test.go:49:4: undefined: emitAddCodexReinitGuidance
+  exit code: 미직접 관측(측정 파이프가 소비) — 위 stdout 은 go test 빌드-실패 형태 그대로 관측됨
+  tree: 5caddeb2d (M3 구현 전 — 작업 트리에는 M1/M2 가 이미 착지)
+  cited by: M3 TDD RED
+
+EV-13 (GREEN — AC-UAC-001)
+  command: ./bin/moai update --help | grep -c -- --add-codex
+  stdout: 1
+  exit code: 0
+  tree: c26b7fddb (M1 커밋 코드 상태의 작업 트리에서 측정 — 커밋 직전, make build 바이너리)
+  cited by: AC-UAC-001
+
+EV-14 (GREEN — AC-UAC-002)
+  command: MOAI_SKIP_BINARY_UPDATE=1 ./bin/moai update --add-codex   (신규 init 스크래치에서 첫 update)
+  stdout:
+    Clean reinstall complete (4 files preserved, 3 deprecated removed)
+    Codex wiring: .codex/hooks.json created. Codex loads project hooks only from a trusted .codex/ layer — approve it when prompted, then run codex /hooks to review and trust the MoAI hooks.
+    hooks-exists / config-exists / sidecar-exists
+    mcp_servers.moai count: 1
+  exit code: 0
+  tree: c26b7fddb
+  cited by: AC-UAC-002. 스크래치 스모크에 코드베이스 자체 격리 가드 MOAI_SKIP_BINARY_UPDATE=1 (shouldSkipBinaryUpdate, reexecNewBinary 루프 방지용) 사용 — 바이너리 자가 갱신 re-exec 가 스모크를 탈선시키는 것을 막기 위함(배선 판정과 무관). dev 빌드("list") 스크래치의 첫 update 는 DeprecatedPaths 시그널로 clean-reinstall 로 분기하며, 그 early return 뒤에서도 배선이 서브되도록 runUpdate clean-reinstall 성공 블록에 제2 호출 자리를 둠(plan §D1 단일 위치 표기에 대한 측정 기반 추가 — progress.md §E.2 편차 2)
+
+EV-15 (GREEN — AC-UAC-004 / AC-UAC-005)
+  command: shasum -a 256 .mcp.json .moai/state/codex-wiring.json  (재실행 전후 비교)
+  stdout:
+    c1efd5be162d5bd879ae5d154f1fa96ea233e5b59f2ae00f25431919bdf58fab  .mcp.json
+    e975338c2ddcecc3b38469d956cbb4fe1c4d5a1c790a68d1fc420d36bc7faa36  .moai/state/codex-wiring.json
+    SHA-IDENTICAL (diff 전후 빈 출력) + 재실행 무안내("created|re-trust" grep 0 matches)
+  exit code: 0
+  tree: c26b7fddb
+  cited by: AC-UAC-004, AC-UAC-005
+
+EV-16 (GREEN — AC-UAC-003 / AC-UAC-007)
+  command: MOAI_SKIP_BINARY_UPDATE=1 ./bin/moai update            (플래그 부재 — 신규 스크래치)
+  stdout: flag-absent-exit=0 · hooks-absent · config-absent · sidecar-absent
+  exit code: 0
+  tree: c26b7fddb
+  cited by: AC-UAC-003 (판정식 전제 갱신 권고는 progress.md §E.2 편차 1 — init 이 .codex/agents 를 이미 배포하므로 배선 파일 3종 부재로 실질 계약 판정)
+  command(2): MOAI_SKIP_BINARY_UPDATE=1 ./bin/moai update --add-codex --dry-run
+  stdout(2):
+    Dry-run --add-codex wiring plan (nothing written):
+      - create-or-refresh .codex/hooks.json (merged hook render, whitelist-gated)
+      - create-or-refresh .codex/config.toml ([mcp_servers.moai] + [tui].status_line, create-if-absent merge)
+      - create-or-refresh .moai/state/codex-wiring.json (trust sidecar, sha256 of the generated content)
+    hooks-absent · sidecar-absent
+  exit code(2): 0
+  cited by: AC-UAC-007
+
+EV-17 (GREEN — AC-UAC-008)
+  command: ./bin/moai update --check --add-codex > out 2>&1     (파이프 없이 종료 코드 직접 관측)
+  stdout:
+    ERROR
+    --Check and --add-codex are mutually exclusive (--check is informational; --add-codex mutates project wiring).
+  exit code: 1
+  tree: c26b7fddb
+  cited by: AC-UAC-008
+
+EV-18 (GREEN — AC-UAC-009 / 010 / 011 / 012)
+  command: rg -c '^## (8|9|10|11|12)\. ' internal/template/templates/AGENTS.md ; 본문 앵커 5종 grep ; wc -c ; rg -c '^## [0-9]' internal/template/templates/CLAUDE.md ; grep -c '@AGENTS.md' internal/template/templates/CLAUDE.md ; rg -n "MOAI:LEARNED-WORKFLOW" internal/template/templates/AGENTS.md ; rg -c 'Path: "CLAUDE.md"' internal/harness/curator/
+  stdout: 제목 5 · 앵커 (a)2 (b)2 (c)1 (d)5 (e)3 · 템플릿 AGENTS.md 18582 B / 루트 15415 B · CLAUDE.md 헤딩 18 · @AGENTS.md 1 · 품질 게이트 포인터 1 · AGENTS.md 마커 0 matches · curator TierSurfaceMap CLAUDE.md 앵커 1
+  exit code: 0 (마커 grep 만 exit 1 = 0 matches, 의도된 판독)
+  tree: 8be0e637f (M2 커밋 코드 상태의 작업 트리에서 측정)
+  cited by: AC-UAC-009, AC-UAC-010, AC-UAC-011, AC-UAC-012
+
+EV-19 (GREEN — AC-UAC-013)
+  command: ./bin/moai init --force --agent both --non-interactive   (초기화된 프로젝트 복제본에서)
+  stdout:
+    note: this project is already initialized — the sanctioned additive path for adding Codex to an existing project is `moai update --add-codex` (no reinitialization). Proceeding with the requested reinit.
+    · Initializing MoAI project...   (2행 — 안내가 재초기화 진행에 선행)
+  exit code: 0
+  tree: 0cda08931 (M3 커밋 코드 상태)
+  cited by: AC-UAC-013
+
+EV-20 (GREEN — AC-UAC-006 / AC-UAC-014)
+  command: MOAI_SKIP_BINARY_UPDATE=1 ./bin/moai update --add-codex   (사용자 config.toml 선수정 스크래치) ; go test ./internal/cli -run TestUpdateAddCodex ; go test ./internal/cli -run TestInitAddCodex ; rg -c '^func Test' internal/cli/init_agent_flag_test.go
+  stdout: user-key=1 · mcp=1 · statusline=1 · ok (exit 0) · ok (exit 0) · 8 (M3 직전과 동일 — 비감소)
+  exit code: 0
+  tree: c26b7fddb (AC-006) / 0cda08931 (AC-014)
+  cited by: AC-UAC-006, AC-UAC-014
 ```
 
-비고: EV-2/3/4/8 은 rg no-match(empty stdout) 판독이다. 파일 존재는 각각 선행 측정(update.go/init.go/AGENTS.md 판독)으로 확인돼 있어 "빈 출력 = 0 matches" 판독이 성립한다 — 대상 파일 부재에 의한 빈 출력이 아니다.
+비고: EV-2/3/4/8 은 rg no-match(empty stdout) 판독이다. 파일 존재는 각각 선행 측정(update.go/init.go/AGENTS.md 판독)으로 확인돼 있어 "빈 출력 = 0 matches" 판독이 성립한다 — 대상 파일 부재에 의한 빈 출력이 아니다. EV-11/12 의 exit code 는 측정 파이프(`| head`)가 소비해 직접 관측되지 않았다 — stdout 은 verbatim 관측이며, 같은 명령의 GREEN 재실행(EV-20)은 exit 0 이 직접 관측됐다. run-phase EV-11~20 추가는 리드 dispatch 의 명시 승인 범위(장부 추가만 — 본문 §A~§D.4 무변경)다.
