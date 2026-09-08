@@ -2,9 +2,9 @@
 id: SPEC-OWNERSHIP-SILENCE-001
 title: "OwnershipTransitionRule 무음 통과 수리 — trailer-less 전환을 unmeasured 로 명시 보고"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-09
 author: manager-spec
 priority: P1
 phase: "v3.2.0"

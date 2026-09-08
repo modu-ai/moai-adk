@@ -52,3 +52,14 @@
 - 검증 스코프: `internal/spec` + `internal/template` 패키지 한정 (AC-OWN-007). 전체 스위트는 develop push 후 CI 판정 (레인 부하 규율)
 - 상속 적색 분리: t577 errcheck 1건 (zz_t528_overacceptance_test.go, diff 밖) + develop CI spec-lint 잡 적색 — 본 카드 판정 축 밖
 - sync 이관 메모: manager-docs는 sync 커밋에 `Authored-By-Agent: manager-docs` 트레일러 필수 (REQ-OWN-010, plan §D.6); CHANGELOG 반영 시 INFO 등급 증가(199건)는 의도된 산출임을 명기 (acceptance §D.2.1)
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+- sync_status: audit-ready
+- sync_complete_at: 2026-09-09
+- sync_commit_sha: "pending-backfill-sync"
+- artifacts: CHANGELOG.md 진입 ([Unreleased] → Added 최상단, t518 진입 위) / progress.md §E.4 (본 절) / spec.md frontmatter (`status: in-progress → completed` + `updated: 2026-09-09`, `status` + `updated` 필드만) / 증거 `.moai/reports/t572/sync-evidence.md`
+- 소유 전환: in-progress → implemented → completed (단일 sync 커밋 3-phase close — 스키마 행렬의 manager-docs 소유 행)
+- AC: 8/8 PASS (SSOT = acceptance.md AC-OWN-001..008, 매트릭스는 §E.2)
+- 트레일러: 본 sync 커밋에 `Authored-By-Agent: manager-docs` 부착 — 수리된 OwnershipTransitionRule이 실제로 측정하는 첫 sync 전환 (close 전환의 기대 소유자 = manager-docs, 일치 예상). 커밋 직후 `git log -1 --format='%(trailers:key=Authored-By-Agent,valueonly)'` 관측으로 검증 (sync-evidence.md 원장)
+- sync_commit_sha 백필: D3 자기참조 규약 — 본 커밋은 자신의 SHA를 인용할 수 없어 placeholder 기록, 후속 커밋에서 실측값으로 백필 (소관: 리드 백필 창)
