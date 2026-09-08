@@ -238,6 +238,186 @@ rmdir .moai/specs/SPEC-V3R4-CC2X-ADOPT-002   # rc=0
   가리키는 ID 다. ID 참조로서는 유효하나, 장래에 `parent:` 를 디렉터 존재로 검증하는 규칙이
   생기면 두 stub 이 발화한다.
 
+### M3 — 배선과 잠금 (2026-09-08, card t525)
+
+측정 규율: 모든 수치는 **트리 빌드**(`go build -o /tmp/t525-m3 ./cmd/moai`, tree `9fb52f746`,
+worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t525`)로 잰다. 이 저장소의 primary
+체크아웃은 대소문자만 다른 두 철자로 도달 가능하고 둘은 같은 디렉터라, 잘못된 CWD 판독이
+성공하면서 그럴듯해 보인다 — 모든 측정 앞에 `git rev-parse --show-toplevel` 을 찍었다.
+카운팅·부재 판정은 `/usr/bin/grep`(셸 `grep` 은 ugrep 래퍼라 조용히 건너뛴다), 모든 0 에는
+양성 대조군을 붙였다. 종료코드는 파이프 없이 `cmd > file 2>&1; echo "rc=$?"` 로 읽었다
+(zsh 에서 `${PIPESTATUS[0]}` 는 비어 판정이 조용히 사라진다).
+
+#### 근거의 전환 — 이 기준선은 게이트를 초록으로 만들려고 넣은 것이 아니다
+
+M4 가 비-advisory 재고를 0 으로 만든 뒤 **벌거벗은 `--strict` 는 이미 초록이다**(아래 M3-1).
+따라서 기준선을 체크인하는 근거는 "적색 게이트를 초록으로 돌린다"가 **아니다**. 남은 가치는
+둘이다:
+
+1. **규칙별 델타 가시성** — `--strict` 는 무엇이 몇 개 늘었는지 말하지 않고 통째로 붉어진다.
+   기준선은 어느 규칙이 `recorded N -> current M (+K)` 인지 이름을 붙인다(M3-5 에서 실측).
+2. **감사 가능한 재기준 절차** — t518 이 advisory 인구를 통째로 옮기면 재고 판정 자체가
+   움직인다. 그때 필요한 것은 임시 우회가 아니라 사유가 붙은 1회 재기준 경로이며, 그 경로가
+   지금 존재한다(REQ-SLGS-008).
+
+M1 verdict 이 이미 이 전환을 예고했다("M2 기제(iii)의 잔여 가치: 규칙별 델타 가시성 +
+t518 인구 이동 흡수"). 이 절은 그 예고를 실측으로 확정한다.
+
+#### 실측 — attribution triple (명령 / 관측 출력 / 트리 SHA)
+
+| # | Claim | Command | Observed output | Tree SHA |
+|---|---|---|---|---|
+| M3-0 | 착수 트리 확정 | `git branch --show-current` / `git rev-parse --short HEAD` / `git rev-parse --show-toplevel` / `git status --short` | `WT-speclint-red` / `9fb52f746` / `…/.claude/worktrees/t525` / 무출력(청결) | `9fb52f746` |
+| M3-1 | 벌거벗은 `--strict` 가 **이미** rc=0 | `/tmp/t525-m3 spec lint --strict > f 2>&1; echo "rc=$?"` | `0 error(s), 4376 warning(s)`, `RC_STRICT=0` | `9fb52f746` |
+| M3-2 | 비-advisory 재고 = 0 (기준선 입력) | `<bin> spec lint --json` → `jq '[.[]\|select(.advisory != true)]\|length'` | `0`; 코드별 group_by → `[]` | `9fb52f746` |
+| M3-2-ctrlA | 세는 식이 살아 있다(양성 대조) | 같은 식, `.code=="MovingRefUnpinned"` | `115` | `9fb52f746` |
+| M3-2-ctrlB | 거짓 양성 아님(음성 대조) | 같은 식, `.code=="NoSuchRuleCodeXYZ"` | `0` | `9fb52f746` |
+| M3-2-tot | 총계·severity 분포 | `jq '[length, ([.[]\|select(.severity=="error")]\|length), ([.[]\|select(.severity=="warning")]\|length)]'` | `4376 / 0 / 4376` | `9fb52f746` |
+| M3-3 | **기준선 최초 산출은 기제 경유**(손으로 쓰지 않음) — REQ-SLGS-010 | `<bin> spec lint --baseline .moai/spec-lint-baseline.json --update-baseline --reason "<본문>"` | `RC_UPDATE=0`; `baseline: UPDATED`, `tree_sha: 9fb52f746`, `date: 2026-09-08`, `recorded: 0 non-advisory warning(s) across 0 rule(s)`. 파일 내용 `"rules": {}` | `9fb52f746` |
+| M3-4 | **AC-SLGS-006** 실 코퍼스에서 초록 + 재고 줄 관측 | `<bin> spec lint --baseline .moai/spec-lint-baseline.json > f 2>&1; echo "rc=$?"` | `RC_GATE=0`; `baseline: OK`, `inventory: 4376 warning(s) total (advisory included), 0 non-advisory tracked across 0 recorded rule(s)`, `recorded at: 9fb52f746 (2026-09-08)` | `9fb52f746` |
+| M3-5a | **빈 기준선 증가 검출 — 대조군(주입 전)** | 스크래치 코퍼스 `/tmp/t525-scratch`(SPEC 1건 + 기준선 사본), `cd … && <bin> spec lint --baseline …/baseline.json` | `rc=0`; `0 error(s), 11 warning(s)`, `baseline: OK`, `1... 0 non-advisory tracked` — 11건 전부 era-demoted advisory | 스크래치 |
+| M3-5b | **빈 기준선이 새 발견에 붉어진다 (이 마일스톤의 하중)** | 같은 코퍼스에 `SPEC-SCRATCH-NEW-001/`(spec.md 없음) 주입 후 동일 명령 | `rc=1`; `baseline: EXCEEDED`, `SpecsDirMissingSpecFile: recorded 0 -> current 1 (+1)`, `inventory: 12 warning(s) total …, 1 non-advisory tracked` | 스크래치 |
+| M3-5c | 지우면 복귀 | `rmdir …/SPEC-SCRATCH-NEW-001` 후 동일 명령 | `rc=0`; `baseline: OK`, `11 warning(s) total`, `0 non-advisory tracked` | 스크래치 |
+| M3-5d | 기준선 파일은 스스로 다시 쓰이지 않는다 | `shasum -a 256 baseline.json` — 주입 전/주입 후(rc=1)/복귀 후 3회 | 세 번 모두 `07d89a6a3751f9dca6079ed4219ff24312d525c6500b0dcfdaba14ab58c36e6b` | 스크래치 |
+| M3-6 | **AC-SLGS-011 배선 절반** | `/usr/bin/grep -n 'spec lint' .github/workflows/spec-lint.yml` | `run: go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json` (변경 전: `--strict`) | 워킹트리 |
+| M3-7 | 워크플로가 파싱되고 트리거 경로가 실제로 그렇다 | `python3 -c "yaml.safe_load(...)"` 로 `pull_request.paths` / `push.paths` / 마지막 step `run` 출력 | `parsed ok`; 두 paths 리스트 모두 `.moai/spec-lint-baseline.json` 포함; run 줄 위와 동일 | 워킹트리 |
+| M3-8 | 상대경로가 해소된다 — 잡에 `working-directory` 없음 | `/usr/bin/grep -n "working-directory" .github/workflows/spec-lint.yml` | 히트 1건, 그것은 내가 쓴 **주석**(`:73`). 키로서는 부재 | 워킹트리 |
+| M3-9 | 다른 `spec lint` 호출자 없음 | `/usr/bin/grep -rn "spec lint" .github/` | `spec-lint.yml:58` 단 1건 | 워킹트리 |
+| M3-9b | `--strict` 실행 호출자는 CI 그 줄뿐 | `/usr/bin/grep -rn "spec lint --strict" …` (specs·reports 제외) | 실행 호출 1건(그 줄, 이제 대체됨). 나머지 히트는 CHANGELOG 3건 + 스킬 문서 4건 + 테스트 주석 1건 = **산문**. §D.4 의 "`--strict` 플래그 유지"는 플래그 존재의 문제이며 이 CI 스텝이 계속 쓰느냐의 문제가 아니다 — 플래그는 코드에 그대로 있다 | 워킹트리 |
+| M3-10 | 기준선 파일이 실제로 커밋된다(ignore 아님) | `git check-ignore -v .moai/spec-lint-baseline.json` | rc=1(무시 안 됨) | 워킹트리 |
+| M3-10-ctrl | check-ignore 가 작동한다(양성 대조) | `git check-ignore -v .moai/logs/x.log` | rc=0, `.gitignore:314:.moai/logs/` | 워킹트리 |
+| M3-11 | 템플릿에 미러되지 않음(§D.3) | `/usr/bin/grep -rn "spec-lint-baseline" internal/template/` | 히트 0, rc=1 | 워킹트리 |
+
+`tree_sha: 9fb52f746` 에 대하여: 기록은 **측정한 트리**를 이름 붙인 것이고 그 트리는 필연적으로
+커밋 직전 HEAD 다 — 커밋은 자기 해시를 인용할 수 없다. 이 기준선 파일을 운반하는 커밋은
+`9fb52f746` 의 자식이며, 기록된 SHA 는 그 부모다. 소급해서 채워 넣지 않았다.
+
+#### t518 잠금 — 측정 도중 잠금이 **풀렸다**
+
+| # | Claim | Command | Observed output |
+|---|---|---|---|
+| T-1 | 착수 시점 판독 | `git fetch origin develop` → `git rev-parse --short origin/develop` → `git merge-base --is-ancestor a4fbaeb82 origin/develop; echo "rc=$?"` | `origin/develop = 91d25bc61`, `rc=1` — **비-조상(미착지)** |
+| T-2 | 배선·기준선 작업 뒤 재판독 | 같은 ancestry 명령(재fetch 없이) | `rc=0` — **조상(착지)** |
+| T-3 | 무엇이 움직였나 | `git rev-parse --short origin/develop` / `git log -1 origin/develop` | `3ac58b5a1`, `Merge branch 'WT-spec-lint-axes' into develop (card t518)` (2026-09-08 12:37:36 +0900) |
+| T-4 | 내 fetch 가 아니었다 | `git reflog show origin/develop \| head -2` | `3ac58b5a1 @{0}: update by push` / `91d25bc61 @{1}: update by push` — 워크트리는 primary 와 오브젝트 저장소·remote ref 를 공유하므로, 다른 행위자(리드 일괄 push)의 갱신이 내 판독 사이에 들어왔다 |
+| T-5 | 씨앗 SHA 가 실재한다(부재를 rc=1 로 오독하지 않았다) | `git cat-file -t a4fbaeb82` / `git cat-file -t 6cfcfef00` | 둘 다 `commit`, rc=0 — 즉 T-1 의 `rc=1` 은 "모르는 객체"가 아니라 실제 비-조상이었다 |
+| T-5-ctrl | ancestry 식의 양성 대조 | `git merge-base --is-ancestor 91d25bc61 origin/develop` | rc=0 |
+| T-6 | t518 이 린터를 실제로 건드렸다 | `git log --oneline 91d25bc61..3ac58b5a1 -- internal/spec/` + `git diff --stat` | 커밋 8건; `lint_req_widen.go` 수정 + `lint_req_table*.go` 신규 계열, 8 files / +2096 −20 |
+
+**결론과 처분**: REQ-SLGS-011 의 잠금 조건은 **이 카드의 작업 도중 해제됐다**. 그러나 M3.4
+(DAG 간선 `dependencies: [SPEC-SPEC-LINT-BLIND-AXES-001]` 추가 + 게이트된 재기준 1회)를 이
+커밋에서 **열지 않았다**. 이유는 셋이다:
+
+1. **이 트리는 t518 코드를 담고 있지 않다.** 착지는 `origin/develop` 에서 일어났고 이 브랜치는
+   그 병합을 아직 흡수하지 않았다. 여기서 간선을 넣으면 `MissingDependency`(error,
+   `internal/spec/lint.go:1083`) 판정의 근거가 되는 코퍼스와 실제 판정 트리가 어긋난다.
+2. **재기준은 흡수 후에만 정직하다.** T-6 이 보이듯 t518 은 발화 규칙 집합을 바꿨다. 흡수 전
+   재기준은 t518 이후 인구를 재지 않은 채 t518 을 사유로 적는 것이 되어, 사유 있는 재기준이라는
+   절차의 취지를 형식만 남기고 비운다.
+3. **배차 지시가 M3.4 를 닫아 두었다** — 그 지시의 전제(t518 미착지)가 실행 중에 뒤집혔으므로
+   전제 변화를 보고하고 판단을 리드에게 돌린다. 잠금을 조용히 여는 것은 지시 위반이고,
+   전제가 뒤집힌 것을 보고하지 않는 것도 마찬가지다.
+
+**따라서 AC-SLGS-010 의 후반부 의무가 새로 열렸다** — "t518 착지 후에는 간선 추가 + 게이트된
+재기준 1회가 기록된다". 이 커밋에서는 미이행이며, Gap 으로 아래에 명시한다.
+
+#### (a)축 부채 상환 커밋 부재 — AC-SLGS-010 전반부
+
+`git log --oneline 19cf21408..HEAD`(merge-base `19cf21408`) 로 이 브랜치의 커밋을 전수
+열거하고 각각 분류했다.
+
+| 커밋 | 성격 | (a)축 부채 상환인가 |
+|---|---|---|
+| `e246c9ec6` plan-phase artifacts | 이 SPEC 문서 4건 신규 | 아니다 — 자기 SPEC 저작 |
+| `dc8e10068` / `b6efc874f` merge | origin/develop 흡수 | 아니다 — 저작 0 |
+| `0a58ccb57` plan-audit 기록 | 이 SPEC 문서 | 아니다 |
+| `2cee65571` §F mode·kickoff | 이 SPEC 문서 | 아니다 |
+| `b09b012ef` M1 verdict | reports 3건 + 이 SPEC 의 progress·spec | 아니다 — 측정 기록 |
+| `740f4a3cd` M2 기제 | Go 소스·테스트 | 아니다 — 코드 |
+| `185c21cff` M2 증거 | 이 SPEC 의 progress | 아니다 |
+| `9fb52f746` M4 | 6 files: research 2건 `git mv`, 타 SPEC 2건 **1줄씩** 링크 수리, 이 SPEC progress, 테스트 주석 1줄 | **쟁점 — 아래 논증** |
+
+**M4 변호.** (a)축은 plan §A/§G 와 M1 실측으로 **advisory 경고 재고**(t518 소관, 측정치 4,376건
+/ 12 규칙)로 못박혀 있다. M4 가 없앤 2건은 M1-1 이 측정한 분할에서 **advisory=false** 쪽,
+즉 (a)의 여집합이다. 금지된 행위의 문언은 "경고 감축 목적의 SPEC 문서 **대량** 수정"인데,
+M4 의 diff 는 6파일이고 SPEC 문서 본문 수정은 타 SPEC 2건 × 1줄(파일 이동이 강제한 상대경로
+수리)뿐이다 — 어느 읽기로도 "대량"이 성립하지 않는다. 그리고 처분의 **위임 근거가 따로**
+있다: REQ-SLGS-012 / AC-SLGS-012 는 측정 이전에 쓰인 별개 요구이고, AC-SLGS-012 는 오히려
+`lint.skip`·스텁 spec.md 같은 **억압을 금지**하며 디렉터마다 "왜"를 요구한다. M4 는 원인을
+제거했고(디렉터가 `.moai/specs/` 밖으로 나갔다) 발견은 그 결과로 죽었다 — 수치를 겨눈 것이
+아니다.
+
+**회의적 감사자가 반박할 지점(내가 먼저 적는다).** 사실 관계로는 총계가 4378 → 4376 으로
+줄었고 그 −2 가 `--strict` 의 rc 를 1 → 0 으로 뒤집었다. "이름이 무엇이든 경고를 줄여
+게이트를 초록으로 만든 것"이라는 반박은 **효과 축에서 성립한다**. 내 변호는 효과가 아니라
+모집단과 위임 근거에 기대고 있으며, 따라서 **(a)축을 'advisory 재고'가 아니라 '서 있는 경고
+재고 전체'로 읽으면 이 변호는 무너진다**. 그 읽기에서는 M4 가 (a)의 부분 상환이고
+AC-SLGS-010 전반부는 미달이다. 판정은 (a)의 외연을 어느 쪽으로 확정하느냐에 달려 있고,
+나는 M1 이 측정으로 확정한 분할(advisory 4,376 / 비-advisory 2)을 근거로 전자를 택했다.
+이 의존 관계를 숨기지 않고 적는다.
+
+#### §E — 자가 검증
+
+| # | Claim | Command | Observed output | Tree SHA |
+|---|---|---|---|---|
+| E1 | AC 판정 — 아래 별도 표 | — | AC-SLGS-006 PASS / AC-SLGS-010 전반부 PASS·후반부 신규 미이행 / AC-SLGS-011 배선 절반 PASS·로그 절반 Gap | `9fb52f746` |
+| E2 | 크로스 플랫폼 빌드 | `go build ./... > f 2>&1; echo "rc=$?"` / `GOOS=windows GOARCH=amd64 go build ./... > f 2>&1; echo "rc=$?"` | `host-build rc=0` / `windows-build rc=0`, 양쪽 무출력 | `9fb52f746` + 워킹트리 변경 |
+| E3-1 | 대상 패키지 테스트 — **1차 실패** | `go test ./internal/spec/... ./internal/cli/... > f 2>&1; echo "rc=$?"` | `rc=1`; `FAIL internal/cli 601.471s`. 정확한 실패 모양: `panic: test timed out after 10m0s`(`:937`), `--- FAIL:` 줄 **0건**(대조: 비-verbose 모드는 실패 테스트마다 `--- FAIL:` 를 찍는다) — 즉 단정 실패가 아니라 go 기본 10분 타임아웃 | 〃 |
+| E3-2 | 원인 — 동시 부하 | 위 실행과 `golangci-lint run` 이 겹쳤다. M2 실측 `internal/cli 403.381s`, 이번 무부하 재측정 `532.742s` — 기본 상한 600s 까지 여유가 67s 뿐이라 부하가 얹히면 넘는다 | — | 〃 |
+| E3-3 | **재측정 — 무부하·상한 확대** | `go test -timeout 25m ./internal/cli/... > f 2>&1; echo "rc=$?"` | `rc=0`; `ok internal/cli 532.742s` + 하위 16개 패키지 전부 `ok`(cached 아님, 실측 시간 표시). FAIL 0 | 〃 |
+| E3-4 | **재측정 — spec 패키지 캐시 없이** | `go test -count=1 ./internal/spec/... > f 2>&1; echo "rc=$?"` | `rc=0`; `ok internal/spec 78.831s` | 〃 |
+| E5 | 린트 | `golangci-lint run --timeout=5m internal/spec/... internal/cli/... > f 2>&1; echo "rc=$?"` | `rc=0`, `0 issues.` (이 마일스톤의 Go 변경은 0줄이므로 회귀 방지 확인용) | 〃 |
+| E6 | 커밋 | `git log --oneline` | 이 절을 담은 M3 커밋 1건. **push·PR·develop 병합 없음** | 〃 |
+
+**AC 판정표**
+
+| AC | 판정 | 근거 |
+|---|---|---|
+| AC-SLGS-006 | **PASS** | M3-4 — 미변경 실 코퍼스에서 rc=0, `inventory:` 줄에 총 4376 경고가 그대로 보인다 |
+| AC-SLGS-010 (전반부: t518 착지 전 (a)축 상환 커밋 없음) | **PASS, 단 (a) 외연 정의에 의존** | 위 커밋 전수 분류 + M4 변호. 반박 지점 명기 |
+| AC-SLGS-010 (후반부: 착지 후 간선 + 게이트된 재기준 1회) | **미이행 — 이 커밋 범위 밖** | T-1..T-6. 잠금이 작업 중 풀렸으나 흡수 전이라 열지 않았다 |
+| AC-SLGS-011 (배선 절반) | **PASS** | M3-6/M3-7/M3-8/M3-9 — 배선 줄이 kickoff 승인 모양(`--baseline`)이고, 파싱·경로 해소·유일 호출자까지 관측 |
+| AC-SLGS-011 (녹색 CI run 로그의 재고 줄) | **Gap — 이 레인이 닫을 수 없다** | 관측하려면 develop push 가 필요하고 레인은 push 하지 않는다(리드 일괄 소관). 닫는 방법: 리드가 이 브랜치를 develop 에 병합·push 한 뒤 `SPEC Lint` run 로그에서 `inventory:` 줄을 읽는다 |
+| AC-SLGS-005 (재확인, M2 소관) | 재관측 PASS | M3-5a/b/c — 실 CLI 크로스프로세스로 붉어짐·복귀 양방향 |
+| AC-SLGS-007 (재확인, M2 소관) | 재관측 PASS | M3-5d — rc=1 을 낸 실행을 포함해 해시 3회 불변 |
+
+**이 §E 절을 쓴 뒤 게이트를 재측정했다** — 이 파일도 `.moai/specs/` 안이라 lint 대상이고,
+위 M3-4 는 이 절을 쓰기 **전** 측정이었다. 재측정 결과 동일: `rc=0`, `baseline: OK`,
+`inventory: 4376 warning(s) total …, 0 non-advisory tracked`, 기준선 해시
+`07d89a6a…8c36e6b` 불변. 즉 이 절 자체는 새 발견을 만들지 않았다.
+
+**Gaps (관측하지 않은 것)**
+
+- **녹색 CI run 로그를 보지 못했다.** 배선 줄은 읽었으나 그 배선이 GitHub Actions 러너에서
+  실제로 rc=0 을 내는지는 이 레인의 관측이 아니다. `go run` 경로·체크아웃 루트에서의 상대경로
+  해소는 로컬 등가물로만 확인했다.
+- **t518 흡수 후 이 게이트가 어떻게 되는지 재지 않았다.** T-6 이 린터 변경을 보였으므로,
+  병합 트리에서 비-advisory 인구가 0 이 아닐 수 있고 그러면 빈 기준선이 `EXCEEDED` 로 붉어진다.
+  이것은 결함이 아니라 설계된 신호이며, 그때가 게이트된 재기준(M3.4)의 자리다. **병합 전
+  측정을 병합 후 근거로 재사용하지 말 것.**
+- **M3.4 를 열지 않았다** — 간선 미추가, 재기준 미실행(위 처분 참조).
+- windows/darwin 매트릭스에서 **테스트 실행**은 관측하지 않았다. E2 는 컴파일만 증명한다.
+- 스크래치 코퍼스의 주입 위반은 `SpecsDirMissingSpecFile` 한 종류다. 다른 규칙 코드로도
+  같은 델타 출력이 나오는지는 재지 않았다(경로는 규칙-불문이나, 그것은 코드 읽기다).
+
+**Residual risk**
+
+- **빈 규칙 집합의 오독 위험.** `"rules": {}` 를 본 독자가 "기준선이 아무것도 안 한다"로 읽을
+  수 있다. 실제로는 그 반대다 — 기록치 0 대비 증가는 곧 적색이므로(M3-5b 실측), 빈 기준선은
+  **가장 엄격한** 상태다. 새 규칙이 처음 발화하면 `0 -> N` 으로 즉시 붉어진다.
+- 반대 방향의 위험: 그래서 이 게이트는 t518 흡수처럼 인구가 정당하게 움직이는 순간에도
+  붉어진다. 그 적색을 습관적 재기준으로 끄면 기준선은 장식이 된다(plan §G). 재기준마다 사유가
+  강제되는 것(REQ-SLGS-008)이 그 습관을 비싸게 만드는 유일한 장치다.
+- `.moai/spec-lint-baseline.json` 을 트리거 `paths:` 에 추가했다(pull_request·push 양쪽).
+  이 커밋이 만들어낸 구멍을 같은 커밋에서 막은 것이다 — 넣지 않으면 기준선만 고친 커밋이
+  검사 없이 판정을 바꾼다. 부수 효과로 그 파일만 바뀐 PR 도 이 잡을 돌린다(의도된 비용).
+- `--strict` 는 CI 에서 더는 쓰이지 않는다. 플래그·코드 경로·문서는 그대로이나, 실행 경로가
+  사라졌으므로 그 경로의 회귀는 이제 이 CI 가 잡지 않는다(단위 테스트가 잡는다).
+- **관측된 부수 사실(이 카드 소관 아님)**: `internal/cli` 는 무부하에서도 532.742s 로, go 기본
+  테스트 상한 600s 까지 여유가 67s 뿐이다(E3-2/E3-3). 부하가 조금만 얹히면 단정 실패 없이
+  `panic: test timed out` 으로 붉어진다 — 실제로 E3-1 이 그렇게 붉어졌다. 실패 모양이
+  「테스트가 깨졌다」와 구별되지 않으므로 오진 위험이 있다. 별건으로 기록해 둔다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

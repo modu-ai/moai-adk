@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-08",
+  "tree_sha": "9fb52f746",
+  "reason": "Initial capture at tree 9fb52f746 (card t525, M3.2): per-rule non-advisory warning inventory of the standing corpus. Empty rule set = no non-advisory warning stands after M4 closed the SpecsDirMissingSpecFile pair; the 4376 advisory warnings are deliberately untracked (their boundary is SPEC-SPEC-LINT-BLIND-AXES-001's).",
+  "rules": {}
+}
