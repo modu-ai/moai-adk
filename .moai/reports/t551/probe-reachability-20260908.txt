@@ -1,0 +1,9 @@
+=== RUN   TestT551ProbeReachability
+    zz_t551_probe2_test.go:21: exactly-empty        verdict="inconclusive" summary="codex unavailable: codex review produced no verdict text" findings=0 err=codex review produced no verdict text
+    zz_t551_probe2_test.go:21: whitespace-only      verdict="pass" summary="" findings=0 err=<nil>
+    zz_t551_probe2_test.go:21: newline-only         verdict="pass" summary="" findings=0 err=<nil>
+    zz_t551_probe2_test.go:21: real-clean-review    verdict="pass" summary="The change introduces no blocking issues." findings=0 err=<nil>
+--- PASS: TestT551ProbeReachability (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.882s
+3ac58b5a19489c2853cc919a6ba1c83bb76343d5
