@@ -1,7 +1,7 @@
 ---
 id: SPEC-OWNERSHIP-SILENCE-001
 title: "OwnershipTransitionRule 무음 통과 수리 — trailer-less 전환을 unmeasured 로 명시 보고"
-version: "0.1.0"
+version: "0.1.1"
 status: in-progress
 created: 2026-09-08
 updated: 2026-09-08
@@ -22,6 +22,7 @@ era: V3R6
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-08 | manager-spec | 최초 작성 — 세 갈래 판정에서 (c) 채택: trailer-less 상태 전환을 무음 통과 대신 Info `OwnershipTransitionUnmeasured` 로 명시 보고. 배차 전제("트레일러 보유 커밋 없음")를 시대 한정 형태로 정정해 기록 |
+| 0.1.1 | 2026-09-08 | manager-spec | Out of Scope 하위 절에 필수 리스트 항목 추가 (MissingExclusions ERROR 수리 — OutOfScopeRule 스캐너 요구) |
 
 ## 1. 문제 — 측정된 형태
 
@@ -214,31 +215,32 @@ false-positive 를 되돌려 받는다. **기각하며, 이 사유를 본 절에
 
 ### Out of Scope — 관례 강제의 전면 부활 (판정 (a))
 
-에이전트 정의·커밋 게이트·템플릿 미러 전파를 포함한 `Authored-By-Agent:` 관례의 기계적
-강제. 본 카드는 후속 카드 권고만 기록한다(§3.1). 예외인 본 카드 자신의 커밋 트레일러는
-REQ-OWN-010 이라는 요구사항으로 스코프 안에 있다.
+- 에이전트 정의·커밋 게이트·템플릿 미러 전파를 포함한 `Authored-By-Agent:` 관례의 기계적
+  강제 — 본 카드는 후속 카드 권고만 기록한다(§3.1). 예외인 본 카드 자신의 커밋 트레일러는
+  REQ-OWN-010 이라는 요구사항으로 스코프 안에 있다.
 
 ### Out of Scope — 다른 무음 지점의 동작 변경
 
-`:400-402`(창 미스), `:405-407`(매트릭스 미정의), `:419-422`(미인식 행위자)의 nil 은 그대로
-둔다. 창 미스를 보고하면 아카이브 SPEC 다수가 소음을 내고, 미인식 행위자 보고는 전환-무관
-커밋을 건넨다 — 둘 다 본 카드가 고치는 "재료가 있어야 했던 전환"과 다른 상태다.
+- `:400-402`(창 미스), `:405-407`(매트릭스 미정의), `:419-422`(미인식 행위자)의 nil 은
+  그대로 둔다 — 창 미스 보고는 아카이브 SPEC 다수의 소음이고, 미인식 행위자 보고는
+  전환-무관 커밋을 건네는 일이다. 둘 다 본 카드가 고치는 "재료가 있어야 했던 전환"과 다른
+  상태다.
 
 ### Out of Scope — manager-develop 인용 문장 편집
 
-`.claude/agents/moai/manager-develop.md:185`·템플릿 미러·`.codex` toml(:173)의
-`OwnershipTransitionInvalid` 억지 인용은 (c) 채택 후에도 참이므로 만지지 않는다(§2.2).
-에이전트 파일을 건드리지 않으므로 `make agents-emit` 도 불필요하다.
+- `.claude/agents/moai/manager-develop.md:185`·템플릿 미러·`.codex` toml(:173)의
+  `OwnershipTransitionInvalid` 억지 인용은 (c) 채택 후에도 참이므로 만지지 않는다(§2.2) —
+  에이전트 파일을 건드리지 않으므로 `make agents-emit` 도 불필요하다.
 
 ### Out of Scope — 상속 CI 적색 축
 
-t577(lane-9 errcheck 축) 등 develop 에 이미 열려 있는 CI 적색은 본 카드 판정과 무관하다.
-본 카드의 검증은 스코프된 패키지로 한정한다(AC-OWN-007).
+- t577(lane-9 errcheck 축) 등 develop 에 이미 열려 있는 CI 적색은 본 카드 판정과 무관하다 —
+  본 카드의 검증은 스코프된 패키지로 한정한다(AC-OWN-007).
 
 ### Out of Scope — 로컬 전체 스위트 실행
 
-`go test ./...` 전체를 로컬에서 돌리지 않는다(레인 부하 규율). 전 수트 판정은 develop push
-이후 CI 몫이다.
+- `go test ./...` 전체를 로컬에서 돌리지 않는다(레인 부하 규율) — 전 수트 판정은 develop
+  push 이후 CI 몫이다.
 
 ## 7. 미검증 항목 (Gaps)
 
