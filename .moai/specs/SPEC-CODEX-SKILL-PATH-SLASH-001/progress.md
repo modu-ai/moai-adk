@@ -215,3 +215,37 @@ m0_ci_feasibility:
       Those assertions require the install/run axis, which is unmeasured. Only two of the three
       axes have been measured.
 ```
+
+## Gate re-scoping — operator decision, 2026-09-08
+
+This SPEC's `acceptance.md:10` states that nothing lands before AC-CSPS-001 (M0) is measured. The
+card landed anyway. It landed by **operator decision**, not by satisfying that gate. Five facts,
+recorded so the next reader cannot mistake one for the other.
+
+1. **The gate was re-scoped by the operator on 2026-09-08.** The prior lead direction — hold the
+   card indefinitely until M0 is measured — was superseded by that decision. Landing is a choice
+   made about an open gate; it is not evidence the gate closed.
+
+2. **AC-CSPS-001 remains OPEN and unmeasured.** The Windows axis has never been measured. Not
+   partially, not indirectly — the arm that would decide it was never run on a Windows host.
+
+3. **The amended verdict (disappearance polarity) is a meaningful gate, not a closed one.** The
+   three-cell measurement showed that the *previous* verdict was vacuous — it would have read PASS
+   whether or not the behaviour existed. Replacing a vacuous criterion with one that can fail is
+   progress on the criterion, and says nothing about the result.
+
+4. **`do_not_claim` stands unchanged.** None of "M0 is achievable", "M0 is feasible", or "M0 is
+   ready to run" is asserted here. Two of the three feasibility axes (distribution, infrastructure)
+   were measured; the install/run axis was not attempted. See § AC-CSPS-001 above for that record.
+
+5. **The harness shape was described, not built.** Skill-root placement, `enabled = false`, and the
+   mandatory baseline arm exist as a written specification of what M0 would need. No probe harness
+   was implemented, and none was run.
+
+**Consequence for a later reader.** A card that landed while its own blocking gate is open carries
+that gate forward as debt. The debt is AC-CSPS-001, and it is not discharged by anything in this
+branch. Reading "landed" as "gate closed" inverts what happened.
+
+**Measured at record time**, in this worktree (`.claude/worktrees/t540`, branch
+`WT-codex-path-escape`), inside the integration window held by lane-1: `origin/develop` and local
+`develop` both at `3ac58b5a1`; this branch 10 ahead, 221 behind.
