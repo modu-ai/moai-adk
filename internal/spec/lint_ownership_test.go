@@ -605,6 +605,119 @@ func TestOwnershipTransitionDetected(t *testing.T) {
 	})
 }
 
+// TestOwnershipTransitionUnmeasured exercises the SPEC-OWNERSHIP-SILENCE-001 behavior:
+// a FOUND transition commit WITHOUT the `Authored-By-Agent:` trailer is reported as an
+// OwnershipTransitionUnmeasured Info finding ("noisy unmeasured") instead of passing
+// silently (the former M4 silent-skip guard).
+//
+// RED (pre-fix tree, b642479ec): the trailer-less branch returned nil, so both subtests
+// failed with "expected exactly 1 OwnershipTransitionUnmeasured finding, got 0" —
+// the failure reason is the silent nil branch itself, not a compile or fixture error.
+func TestOwnershipTransitionUnmeasured(t *testing.T) {
+	const commitSHA = "a1b2c3d4e5f6a7b8"
+
+	t.Run("trailer_absent_emits_unmeasured", func(t *testing.T) {
+		restore := withFakeOwnershipLookup(t, &ownershipTransitionRecord{
+			PreviousStatus:  "in-progress",
+			CurrentStatus:   "implemented",
+			CommitSubject:   "feat(SPEC-FOO-001): M5 close-out implementation",
+			CommitSHA:       commitSHA,
+			AuthoredByAgent: "", // trailer-less commit — unmeasured, reported as Info
+		}, nil)
+		defer restore()
+
+		doc := &SPECDoc{
+			Path: ".moai/specs/SPEC-FOO-001/spec.md",
+			Frontmatter: SPECFrontmatter{
+				ID:     "SPEC-FOO-001",
+				Status: "implemented",
+			},
+		}
+
+		rule := &OwnershipTransitionRule{}
+		findings := rule.Check(doc, nil)
+
+		var unmeasured []Finding
+		for _, f := range findings {
+			if f.Code == "OwnershipTransitionUnmeasured" {
+				unmeasured = append(unmeasured, f)
+			}
+		}
+		if len(unmeasured) != 1 {
+			t.Fatalf("expected exactly 1 OwnershipTransitionUnmeasured finding, got %d: %+v", len(unmeasured), findings)
+		}
+		f := unmeasured[0]
+		if f.Severity != SeverityInfo {
+			t.Errorf("expected Info severity, got %s", f.Severity)
+		}
+		if f.Advisory {
+			t.Errorf("expected plain Info (no Advisory flag), got Advisory=true")
+		}
+		// REQ-OWN-002: message must carry all five elements — SPEC id, prev → curr,
+		// commit SHA, commit subject, and the reason.
+		for _, want := range []string{
+			"SPEC-FOO-001",
+			`"in-progress" → "implemented"`,
+			commitSHA,
+			"feat(SPEC-FOO-001): M5 close-out implementation",
+			"no Authored-By-Agent trailer",
+		} {
+			if !strings.Contains(f.Message, want) {
+				t.Errorf("expected finding message to contain %q, got: %s", want, f.Message)
+			}
+		}
+	})
+
+	t.Run("none_to_draft_emits_unmeasured_with_none_literal", func(t *testing.T) {
+		// (none) → draft transition: PreviousStatus is empty and MUST be rendered as
+		// the literal "(none)" via emptyOrValue in the finding message.
+		restore := withFakeOwnershipLookup(t, &ownershipTransitionRecord{
+			PreviousStatus:  "",
+			CurrentStatus:   "draft",
+			CommitSubject:   "feat(SPEC-FOO-001): plan-phase artifacts (M, 3 artifacts)",
+			CommitSHA:       commitSHA,
+			AuthoredByAgent: "", // trailer-less commit — unmeasured, reported as Info
+		}, nil)
+		defer restore()
+
+		doc := &SPECDoc{
+			Path: ".moai/specs/SPEC-FOO-001/spec.md",
+			Frontmatter: SPECFrontmatter{
+				ID:     "SPEC-FOO-001",
+				Status: "draft",
+			},
+		}
+
+		rule := &OwnershipTransitionRule{}
+		findings := rule.Check(doc, nil)
+
+		var unmeasured []Finding
+		for _, f := range findings {
+			if f.Code == "OwnershipTransitionUnmeasured" {
+				unmeasured = append(unmeasured, f)
+			}
+		}
+		if len(unmeasured) != 1 {
+			t.Fatalf("expected exactly 1 OwnershipTransitionUnmeasured finding, got %d: %+v", len(unmeasured), findings)
+		}
+		f := unmeasured[0]
+		if f.Severity != SeverityInfo {
+			t.Errorf("expected Info severity, got %s", f.Severity)
+		}
+		for _, want := range []string{
+			"SPEC-FOO-001",
+			`"(none)" → "draft"`,
+			commitSHA,
+			"feat(SPEC-FOO-001): plan-phase artifacts (M, 3 artifacts)",
+			"no Authored-By-Agent trailer",
+		} {
+			if !strings.Contains(f.Message, want) {
+				t.Errorf("expected finding message to contain %q, got: %s", want, f.Message)
+			}
+		}
+	})
+}
+
 // TestSkipOptOut exercises the AC-LSG-012 lint.skip opt-out path.
 //
 // When the SPEC frontmatter contains `lint.skip: [OwnershipTransitionInvalid]`, no
