@@ -383,7 +383,11 @@ one finding at `internal/cli/todo.go:97`). NEW issues introduced by this card: 0
 
 ```yaml
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run
+run_commit_sha: b2f7fdd63   # the final run-phase commit — the one carrying this §E.3
+                            # block. It landed with the canonical `pending-backfill-run`
+                            # placeholder here because a commit cannot cite its own hash;
+                            # this line is the backfill (D3 exemption,
+                            # spec-frontmatter-schema.md § SHA placeholder backfill).
 run_status: complete
 ac_pass_count: 9
 ac_fail_count: 0
