@@ -852,8 +852,15 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 		// fail-open comment in HandleCodexReviewGate names).
 		return inconclusiveReview(turnErr.Error()), turnErr
 	}
-	if reviewText == "" {
-		return inconclusiveReview("codex review produced no verdict text"), errors.New("codex review produced no verdict text")
+	if codexReviewTextIsBlank(reviewText) {
+		// The turn COMPLETED but said nothing: no body, or a body of whitespace
+		// only. Either way no verdict was produced, so this must never reach the
+		// synthesizer — native review mode's documented default for an
+		// unrecognized body is "pass", which would launder a review that never
+		// happened into a clean one (REQ-CBR-004). Only ABSENCE is reclassified
+		// here; a PRESENT body that matches no signal keeps that documented
+		// default (REQ-CBR-007).
+		return blankReviewInconclusive(), errors.New(codexBlankReviewSummary)
 	}
 	return synthesizeReviewOutput(reviewText, method), nil
 }
@@ -1169,10 +1176,15 @@ func awaitCodexTurnReview(conn codexConn, threadID string, ctx context.Context, 
 				} `json:"item"`
 			}
 			_ = json.Unmarshal(msg.Params, &p)
-			if p.Item.Type == "exitedReviewMode" && p.Item.Review != "" {
+			// A field carrying no non-whitespace character is treated as ABSENT
+			// (REQ-CBR-001 / REQ-CBR-002). The loop REASSIGNS on every matching
+			// item, so an exact-equality test here lets a later blank item
+			// overwrite an earlier real one — the real review is then lost and
+			// the turn reports a body it never received.
+			if p.Item.Type == "exitedReviewMode" && !codexReviewTextIsBlank(p.Item.Review) {
 				reviewText = p.Item.Review
 			}
-			if p.Item.Type == "agentMessage" && p.Item.Text != "" {
+			if p.Item.Type == "agentMessage" && !codexReviewTextIsBlank(p.Item.Text) {
 				agentText = p.Item.Text
 			}
 		case "turn/completed":
@@ -1286,9 +1298,14 @@ func writeCodexEnvelope(conn codexConn, envelope map[string]any) error {
 }
 
 // bestCodexReviewText prefers the structured exitedReviewMode review over the
-// free-form agentMessage text (both carry the same prose in practice).
+// free-form agentMessage text (both carry the same prose in practice). That
+// preference is UNCHANGED; what changed is what counts as having a structured
+// review at all — a body with no non-whitespace character is absent, so it must
+// not SHADOW a real agent message (REQ-CBR-003). Shadowing here is why the guard
+// cannot be repaired alone: it would turn a case that has genuine review content
+// into an inconclusive, trading one wrong answer for another.
 func bestCodexReviewText(review, agent string) string {
-	if review != "" {
+	if !codexReviewTextIsBlank(review) {
 		return review
 	}
 	return agent

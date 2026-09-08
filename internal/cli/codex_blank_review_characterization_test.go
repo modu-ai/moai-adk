@@ -5,13 +5,14 @@ import (
 	"testing"
 )
 
-// SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001 (card t551) — M1 characterization.
+// SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001 (card t551) — characterization.
 //
-// These tests pin the behavior of the codex review-text path BEFORE the
-// blank-output repair, so that the repair shows up as a visible diff in test
-// expectations rather than as an unexplained new test (plan.md §D M1).
+// These tests were written in M1 against the UNREPAIRED tree and pinned its
+// behavior verbatim, so the repair shows up as a visible diff in test
+// expectations rather than as an unexplained new test (plan.md §D M1). The rows
+// the repair changed carry the value they replaced in a comment.
 //
-// One of them is NOT a pre-repair snapshot: TestCharacterize_UnavailableBackend
+// One of them was never a pre-repair snapshot: TestCharacterize_UnavailableBackend
 // is the permanent control (acceptance.md AC-CBR-004 state C). It pins the
 // unavailable-backend fail-open path, which this SPEC must leave byte-identical.
 // If it ever changes, the repair reached a path it was required to leave alone.
@@ -82,32 +83,33 @@ func TestCharacterize_UnavailableBackend(t *testing.T) {
 	}
 }
 
-// TestCharacterize_ReviewTextPathPreRepair pins the pre-repair verdict/summary of
-// the review-text path for each fixture class. The rows marked PRE-REPAIR
-// SNAPSHOT are the ones whose expectations the repair commit rewrites in place.
-func TestCharacterize_ReviewTextPathPreRepair(t *testing.T) {
+// TestCharacterize_ReviewTextPath pins the verdict/summary of the review-text
+// path for each fixture class. The rows marked REPAIRED are the ones whose
+// expectations the repair commit rewrote in place; each records the pre-repair
+// value it replaced, so the behavior change is readable here rather than only in
+// the diff. The rows marked UNCHANGED are the controls.
+func TestCharacterize_ReviewTextPath(t *testing.T) {
 	cases := []struct {
 		name        string
 		review      string
 		wantVerdict string
 		wantSummary string
 	}{
-		// PRE-REPAIR SNAPSHOT (rewritten by the repair commit of
-		// SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001): a body carrying no
-		// non-whitespace character passes the exact-equality guard at
-		// internal/cli/mcp_codex.go:817, reaches the synthesizer, and the
-		// native review mode's unrecognized-body default turns it into `pass`
-		// with an empty Summary — a review that never produced a verdict,
-		// reported as a review that found nothing wrong.
-		{"space-only", " ", "pass", ""},
-		{"newline-only", "\n", "pass", ""},
-		{"mixed-whitespace", "\n\t  \n", "pass", ""},
-		// PRE-REPAIR SNAPSHOT: exactly-empty is already inconclusive, but its
-		// Summary carries the UNAVAILABLE wording for a state that is not
-		// unavailability. The repair gives it the blank-output wording it
-		// shares with the rows above (acceptance.md §C).
-		{"exactly-empty", "", VerdictInconclusive,
-			"codex unavailable: codex review produced no verdict text"},
+		// REPAIRED by SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001. The pre-repair
+		// snapshot these three rows carried was {"pass", ""}: a body with no
+		// non-whitespace character passed the exact-equality guard, reached the
+		// synthesizer, and the native review mode's unrecognized-body default
+		// turned it into `pass` with an empty Summary — a review that never
+		// produced a verdict, reported as one that found nothing wrong.
+		{"space-only", " ", VerdictInconclusive, codexBlankReviewSummary},
+		{"newline-only", "\n", VerdictInconclusive, codexBlankReviewSummary},
+		{"mixed-whitespace", "\n\t  \n", VerdictInconclusive, codexBlankReviewSummary},
+		// REPAIRED: exactly-empty was already inconclusive, but its Summary was
+		// "codex unavailable: codex review produced no verdict text" — the
+		// UNAVAILABLE wording for a state that is not unavailability. It now
+		// shares the blank-output wording with the rows above (acceptance.md §C)
+		// and is therefore distinguishable from state C (AC-CBR-005).
+		{"exactly-empty", "", VerdictInconclusive, codexBlankReviewSummary},
 		// UNCHANGED by this SPEC — the control (state B).
 		{"real-clean-review", "The change introduces no blocking issues.", "pass",
 			"The change introduces no blocking issues."},
