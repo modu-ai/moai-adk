@@ -391,7 +391,7 @@ commit_performed: false   # 커밋·스테이징·push 는 레인 소관이다. 
 
 ```yaml
 re_close_at: 2026-09-08
-re_close_commit_sha: pending-backfill
+re_close_commit_sha: 58910bb3d
   # 커밋은 자기 해시를 인용할 수 없다. 레인이 다음 커밋에서 채운다
   # (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
   # 비워 두지 않는 이유: SPEC 이 completed 로 읽히는 순간 아무것도 수리를 예약하지 않으므로,
