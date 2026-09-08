@@ -36,7 +36,7 @@ moai doctor [OPTIONS]
 
 ## Home Disk Usage 診断 {{< new-badge v3.1.1 >}}
 
-`moai doctor` の全体診断には **Home Disk Usage** 項目が並びます。`~/.moai` ホームディレクトリがどれだけ埋まっているかを報告する**勧告 (advisory)** 性格の検査なので、閾値を超えても他のコマンドを止めません。
+`moai doctor` の全体診断には **Home Disk Usage** 項目が並びます。`~/.moai` ホームディレクトリがどれだけ埋まっているかを報告する**勧告** (advisory) 性格の検査なので、閾値を超えても他のコマンドを止めません。
 
 | 報告項目 | 内容 |
 |----------|------|
@@ -108,6 +108,8 @@ moai doctor                            # 全体診断
 moai doctor --verbose                  # 詳細診断
 moai doctor --export diagnostics.json  # 結果をエクスポート
 moai doctor hook                       # フックカバレッジ表
+moai doctor permission                 # 権限の解決
+moai doctor sandbox                    # サンドボックスバックエンド
 ```
 
 ---
