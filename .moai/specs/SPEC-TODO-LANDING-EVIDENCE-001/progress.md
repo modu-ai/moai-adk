@@ -402,6 +402,84 @@ checked, and it held.
   which is intended (the flag exists for it) but means a stored `ref` must always be read before a
   stored `ref_head` is interpreted.
 
+### M4 — the read surfaces
+
+**Claim.** `moai todo pr` renders seven tab-separated fields with the card text LAST, the landing
+evidence in field 6, and the record under a `landing` key on a render-time wrapper that leaves
+`kanban.PRLinkOutcome` unwidened. AC-TLE-014, 015 and 016 pass, as do the render conjuncts of
+AC-TLE-006 and AC-TLE-013. The one mandated mutant was planted, observed failing at the assertion
+the criterion names, and reverted with byte-identical hashes. Two criterion/guard defects were
+found and repaired; both are recorded rather than folded away.
+
+| Criterion | Status | Fired assertion, and where |
+|---|---|---|
+| AC-TLE-014 | PASS | `todo_pr_landing_test.go:387` byte-identity, under a cache planted at `.moai/cache/todo-pr.cache` — outside the queue dir and outside `.git/` |
+| AC-TLE-015 | PASS | 7 fields; fields 1-5 measured equal to the pre-change render of the same fixture; `landing` key present only on the evidence-carrying card |
+| AC-TLE-016 | PASS | markers `(operator)` / `(ref-head)` distinguish the cells after the ref head is substituted with the asserted SHA |
+| AC-TLE-006 (render conjunct) | PASS | field 6 empty for a landed-but-unrecorded card while field 2 still carries the resolver's `landed` |
+| AC-TLE-013 (render conjunct) | PASS | observed record renders `(ref-head)`; its JSON carries `ref_head` and NO `sha` key |
+
+**Evidence.** `.moai/reports/t359/m4-evidence.md` — verbatim command + output pairs, including the
+mutant's failure text, the before/after SHA-1 pairs, and the emitted seven-field row.
+
+**Baseline-attribution.** Tree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t359`, branch
+`WT-landing-evidence`, HEAD read at M4 entry as `5edba757cc0fb4b6e6ee9b8bbac53fa4e213fb21` with a
+clean status. Post-repair: `go test ./internal/cli/... -count=1 -timeout 600s` exit 0 (17 packages
+`ok`, `internal/cli` 412.816s); `go test ./internal/kanban/... -count=1` → `ok ... 137.054s`;
+`go vet` on both trees exit 0 with no output; `gofmt -l internal/kanban/ internal/cli/` = 28 both
+before and after, the same pre-existing files enumerated in the evidence file's §2.
+
+**Two findings, repaired.**
+
+- **AC-TLE-014's containment clause named `.moai/state/kanban/`**, which is the PRE-RENAME legacy
+  directory — `internal/kanban/state_dir.go:37,42` sets `stateDirName = "todo"` and records that
+  nothing writes through the legacy name. Transcribed literally the clause could never match, so
+  the positive control would fail permanently. This is M3's AC-TLE-012 shape in the opposite,
+  louder direction: vacuous-FAILING rather than vacuous-PASSING, which is why it surfaced on the
+  first run. Repaired by DERIVING the directory from `kanban.StateDirForRoot(root)` rather than
+  transcribing it. `acceptance.md` was not edited — see Gaps.
+- **`TestTodoPR_RowCarriesQueueState` (`internal/cli/todo_landing_test.go:101`) pinned SIX
+  columns.** It is half A's AC-TLS-010 criterion, and AC-TLE-015 mandates breaking it. The expected
+  count was bumped 6 → 7 and the text index 5 → 6 as a visible act in the same change that adds the
+  column, NOT loosened to a lower bound — the guard's value is that it fails on any count change.
+
+**Gaps.**
+
+- **`acceptance.md` AC-TLE-014 still reads `.moai/state/kanban/`.** The test is correct and derives
+  the path; the criterion prose is stale. `acceptance.md` body content is manager-spec's artifact,
+  not this milestone's, so it is reported rather than edited.
+- **The malformed-evidence marker is unreachable through the store.** `DecodeLandingEvidence` runs
+  `Validate` on read and `backlog_migrate.go:87-92` surfaces the failure as a read error, so no
+  queue fixture reaches the render's malformed branch; it is asserted at the helper only. The
+  render-side and storage-side halves of this question were decided SEPARATELY: the render marker
+  by the lead's disposition for M4, the storage-side read-error behaviour by M3 and now escalated
+  by the lead as an operator call.
+- **No cross-platform build, no `golangci-lint`, no coverage measurement.** M4 introduces one
+  platform-sensitive construct (`filepath.Separator` in the test's queue-directory prefix),
+  unverified off darwin.
+- **The pre-edit `internal/cli` green was read through a filtered, `head`-bounded window** and its
+  exit code was not captured, so it is a known loss rather than an attributable baseline. The same
+  window shape hid the `TestTodoPR_RowCarriesQueueState` failure for one cycle; the post-repair run
+  in Baseline-attribution is exit-code-based.
+- **No end-to-end run of `moai todo landed` followed by `moai todo pr`.** Every fixture record was
+  hand-authored, so agreement between the ref M3 resolves and the ref M4 renders is unmeasured.
+
+**Residual-risk.**
+
+- **The seventh column is the second contract change on this surface, and external consumers still
+  cannot be enumerated.** A consumer doing `cut -f6` now reads the evidence where it read the card
+  text. Fields 1-5 and the text-stays-last property are pinned; nothing can pin a consumer nobody
+  can name.
+- **A malformed record's `ref` reaches the cell unsanitized except for separators.** The cell strips
+  tab / newline / carriage return so a corrupt record cannot split a row, but any other bytes in a
+  corrupt `ref` render as-is. Unreachable today (see Gaps).
+- **The marker set is disjoint by test, not by type.** `operator` / `ref-head` / `malformed` are
+  three independent string constants in two packages; nothing structurally prevents a fourth from
+  colliding. `TestFormatLandingEvidence_MarkersAreDisjoint` is the only guard.
+- **`--json` backward compatibility rests on Go's field promotion for embedded structs.** The
+  pre-change object shape is preserved because `todoPRRow` embeds `PRLinkOutcome`; replacing the
+  embed with a named field would silently nest every existing key.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
