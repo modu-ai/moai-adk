@@ -1,0 +1,8 @@
+=== RESTORE VERIFICATION ===
+--- git diff -- internal/kanban/temp_origin.go (expect EMPTY) ---
+[end of diff output]
+--- git diff --stat (expect empty) ---
+[end]
+--- sha256 now vs baseline ---
+0ed1a6d408b1e2fc214890697f97c469bf43d1646ddc3c2072c9abb9fc645cbd  internal/kanban/temp_origin.go
+0ed1a6d408b1e2fc214890697f97c469bf43d1646ddc3c2072c9abb9fc645cbd  internal/kanban/temp_origin.go

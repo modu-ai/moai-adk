@@ -1,0 +1,14 @@
+=== BASELINE (production root set) ===
+=== RUN   TestAUDIT_ProductionRootSetCoverage
+    zz_audit_probe_test.go:8: AUDIT /tmp/t203-probe          isTemp=true reason="/tmp"
+    zz_audit_probe_test.go:8: AUDIT /tmp                     isTemp=true reason="/tmp"
+    zz_audit_probe_test.go:8: AUDIT /var/folders/x/y         isTemp=true reason="/var/folders"
+    zz_audit_probe_test.go:8: AUDIT /tmpfoo                  isTemp=false reason=""
+--- PASS: TestAUDIT_ProductionRootSetCoverage (0.00s)
+=== UNDER M-AUD-2 (os.TempDir() only) ===
+=== RUN   TestAUDIT_ProductionRootSetCoverage
+    zz_audit_probe_test.go:8: AUDIT /tmp/t203-probe          isTemp=false reason=""
+    zz_audit_probe_test.go:8: AUDIT /tmp                     isTemp=false reason=""
+    zz_audit_probe_test.go:8: AUDIT /var/folders/x/y         isTemp=false reason=""
+    zz_audit_probe_test.go:8: AUDIT /tmpfoo                  isTemp=false reason=""
+--- PASS: TestAUDIT_ProductionRootSetCoverage (0.00s)

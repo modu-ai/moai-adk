@@ -1,0 +1,10 @@
+=== sweep count for the -run selector (a zero-match selector still prints ok) ===
+1
+^ number of test functions the selector matched (must be >= 1)
+
+=== all test funcs in temp_origin_test.go (/usr/bin/grep, completeness-bearing) ===
+41:func TestTempOrigin_SymlinkSpellingEquivalence(t *testing.T) {
+79:func TestTempOrigin_FailsOpenOnUnresolvable(t *testing.T) {
+117:func TestTempOrigin_ComponentBoundary(t *testing.T) {
+162:func TestDefaultTempRoots_Membership(t *testing.T) {
+209:func TestTempRootsSeam_ReadAtCallTime(t *testing.T) {

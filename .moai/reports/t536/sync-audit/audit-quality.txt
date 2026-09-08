@@ -1,0 +1,22 @@
+=== go vet (3 packages) ===
+vet exit=0
+=== coverage: internal/kanban ===
+ok  	github.com/modu-ai/moai-adk/internal/kanban	142.511s	coverage: 86.3% of statements
+=== security probe: secrets / shell / injection surfaces in the new code ===
+internal/cli/todo.go:203:same thing. A single unknown token stays an error (a mistyped verb must not
+internal/cli/todo.go:208:One fallthrough shape is refused outright: a verb-shaped first token followed
+internal/cli/todo.go:215:			// Deliberate failure modes: a single token (the mistyped verb
+internal/cli/todo.go:223:			// a verb-shaped first token addressing a card id is a mistyped
+internal/cli/todo.go:257:// todoVerbShaped matches a first token that reads as a command verb: one
+internal/cli/todo.go:270:// never a card: a verb-shaped first token followed by a card id
+=== gofmt ===
+internal/web/write_safety_test.go
+(empty above = formatted)
+=== is the gofmt-unclean file card-attributed? ===
+(empty above = NOT touched by this card; it arrived via the develop absorb)
+b6bd0d011 fix(SPEC-SEAM-GREENFIELD-001): M1 RED guards — greenfield first-save reproduction [t544]
+=== internal/web package ===
+ok  	github.com/modu-ai/moai-adk/internal/web	3.779s
+=== final tree integrity ===
+029ab039f59958ee2a35b76a725f205b5b169033
+(empty above = only my audit dir is untracked)
