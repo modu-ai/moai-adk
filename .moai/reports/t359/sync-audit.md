@@ -121,6 +121,55 @@ without revisiting the annotation leaves a false warrant in place.
 subcommand exposes a write-capable option. Latent hardening only; a future subcommand change would
 make it live.
 
+#### F4 — REMEDIATION CORRECTED (appended by the lane orchestrator, post-verdict)
+
+The finding above stands unchanged and is not disputed: user-supplied `--ref` did reach git
+subcommands with no end-of-options guard, and the probe recorded with it is a real measurement.
+**Only the prescribed token is corrected.** This note is appended rather than edited into the body
+so the auditor's text stays as written.
+
+**The original prescription**, quoted verbatim from the heading and body above: *"with no `--`
+end-of-options separator"* … *"without `--`"*. That names two different git tokens as one. Applied
+literally it breaks the verb. Measured on `git version 2.50.1 (Apple Git-155)`:
+
+```
+$ git rev-parse --verify --quiet 'HEAD^{commit}'                    → rc=0  <sha>
+$ git rev-parse --verify --quiet -- 'HEAD^{commit}'                 → rc=1  NO OUTPUT   ← breaks
+$ git rev-parse --verify --quiet --end-of-options 'HEAD^{commit}'   → rc=0  <sha>
+$ git merge-base --is-ancestor --end-of-options HEAD~1 HEAD         → rc=0
+$ git rev-parse --verify --quiet --end-of-options '--output=/tmp/t359_probe'
+                                                                    → rc=1, no file created
+```
+
+In `rev-parse`, `--` separates revisions from **paths**, so a revision placed after it is read as a
+path and resolves to nothing. `--end-of-options` is the token that stops option parsing while
+leaving the operand a revision. Reproduced independently by the lane lead and by the fixing agent.
+
+**Adopted: `--end-of-options`**, at **three** call sites rather than the two this finding lists —
+`todo_landed.go:161`, `:205` (`validateSuppliedSHA`'s own `rev-parse` on `--sha`, same class, absent
+from the finding's text), and `:216`. Guarding two of three would have left an incoherent partial
+guard. It introduces a git 2.24+ (Nov 2019) floor where this project has declared none.
+
+**One correction in the other direction, owed to the finding.** The lane orchestrator wrote that
+guarded and unguarded were "indistinguishable by any probe available today". That is true of the
+WRITE probe only. At the raw-ref site the injection is mechanically observable in isolation:
+
+```
+$ git merge-base --is-ancestor <sha> --independent                  → rc=129
+    error: options '--independent' and '--is-ancestor' cannot be used together   ← consumed as an OPTION
+$ git merge-base --is-ancestor --end-of-options <sha> --independent → rc=128
+    fatal: Not a valid object name --independent                                 ← treated as an OPERAND
+```
+
+It remains unreachable through the CLI, and the structural reason is sharper than this finding's
+"neither subcommand exposes a write-capable option": the `^{commit}` gate in `buildLandingEvidence`
+runs first and refuses every option-shaped ref, so the raw-ref site never receives one. Not
+exploitable today **by construction**; never "safe", since the immunity rests on incidental string
+concatenation. `TestLandedOptionShapedRefIsRefused` is the alarm if that changes.
+
+Fix landed in `b6e09cd31`; evidence in `.moai/reports/t359/f4`-bearing sections of
+`.moai/reports/t359/f1-fix-evidence.md` and its F4 companion.
+
 ### F5 — AC-TLE-010 cannot fail on a malformed `spec_id`, so REQ-TLE-010 is violable while its criterion passes
 - **Severity: Low-Medium · Confidence: HIGH · not blocking (pairs with F1)**
 - **Location:** `acceptance.md:126-135`

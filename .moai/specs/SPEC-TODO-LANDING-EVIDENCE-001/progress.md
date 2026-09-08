@@ -823,3 +823,113 @@ operator call. It is OPEN.
 - **The absent linter and the absent coverage figure are the largest unmeasured axes.** Neither has
   been observed at any point in this card, so no statement about lint cleanliness or coverage on
   these packages has any basis here.
+
+## §J Post-audit disposition (lane orchestrator record)
+
+Written after the sync phase closed and the sync-audit returned. A fresh top-level letter per the
+progress.md Section Map rule — the `§E.*` namespace is reserved for the era-parsed lifecycle
+structure and is not overloaded here.
+
+### J.1 The ordering, stated so it is not misread
+
+`spec.md` reads `status: completed`, set by the sync commit `b306a6148`. The sync-audit verdict
+(`d739cd051`) landed AFTER it and returned **FAIL 0.75** against the Tier L threshold 0.85. That
+ordering is the standard chain, not a defect: sync closes, then sync-audit judges, so a FAIL always
+arrives on an already-`completed` SPEC. The status was deliberately NOT reverted — bouncing it to
+`in-progress` and re-closing would erase the true fact that the close preceded the verdict.
+
+Fixes routed from the FAIL's findings list therefore land as post-close commits on this branch:
+`bedb269a3` (F1) and `b6e09cd31` (F4), with evidence in `26e4e9200` and `f059a82ca`.
+
+**The FAIL verdict stands until a delta-scoped confirming re-audit returns.** Fixing F1 does not
+imply a PASS: the audit was score-driven with all four dimensions at 0.75, and the auditor recorded
+that Craft at a perfect 1.00 still yields only 0.80. F1 was one of nine findings. A re-audit is the
+procedure for receiving a verdict again, not for overturning one.
+
+### J.2 The malformed-value decision — ruled, and deliberately NOT implemented here
+
+The operator ruled option 3: an undecodable stored `landing` value is preserved opaquely and
+warned about, rather than surfaced as a read error. The ruling stands; only its execution moved.
+
+**This card closed with M3's choice (read error), on both `items` and `archived_items`.** M3 chose
+loud over silent on data-loss grounds; M5 extended it to the archived path. The cost is recorded in
+§E.2 and confirmed by the auditor as F2: one corrupt cell makes `todo`, `todo pr`, and
+`landed --clear` all exit 1 — and `--clear`, the designed correction path, cannot run because it
+must read first.
+
+**Why it was not implemented on this card** — recorded because a ruling without its reasoning reads
+later as "they knew and did not fix it":
+
+1. **The audit window had one writer.** `t359-syncaudit2` was live on this worktree when the ruling
+   arrived. Changing the audited subject mid-audit means the tree the auditor measured and the tree
+   the verdict attaches to are different trees.
+2. **The SPEC was already `completed`.** Reopening it for a design change is the
+   `completed → in-progress (amendment)` transition, which carries `amendment_of:`, a HISTORY
+   `## Amendments` entry, and plan-audit cache invalidation.
+3. **The change is follow-up-card sized, not a correction.** Decode path, both tables, raw-value
+   survival across the whole-record write (`writeRecord` DELETEs then re-INSERTs an explicit column
+   list), and a shift in what the render's `malformed` marker denotes — from "read failure" to
+   "preserved opaque value", which AC-TLE-016 would need re-confirmed against.
+
+The discriminant applied: **new behaviour deserves its own RED and GREEN; bolted onto a closed card
+it lands with nobody having observed that RED.** The same rule this card enforced for five
+milestones.
+
+A bounded mitigation the auditor proposed is carried to that card: let `--clear` skip decoding the
+column it is about to erase. That unblocks the correction path without the full redesign.
+
+The render half is already correct under either storage choice: a distinct `malformed` marker in the
+same parenthesized position, disjoint from `operator` and `ref-head`, never collapsed into an empty
+cell — because absence is a meaningful state that AC-TLE-006 asserts.
+
+### J.3 F5 — the F1 fix has no acceptance criterion behind it
+
+Deferred to a follow-up card, and the risk is named here rather than left implicit:
+
+> **AC-TLE-010 does not put the SHAPE of `spec_id` on its test axis, so a re-introduction of the F1
+> class would pass it. The only thing guarding the F1 fix is
+> `TestReadPrimarySpecStatus_RefusesTraversingSpecID`, and that is not an AC.**
+
+The criterion tests a readable fixture SPEC and a nonexistent one; both are well-formed identifiers.
+The auditor classed it Low-Medium, not blocking, and observed that this is the fifth instance of the
+pattern this SPEC's own Residual-risk named — one more than the three it lists. Naming a pattern
+does not prevent it.
+
+Fixing it requires amending `acceptance.md` (manager-spec's artifact) AND proving the amended
+criterion is non-vacuous by mutant — reverting F1 and observing AC-TLE-010 actually FAIL. Landing the
+amendment without that observation would produce another criterion that reads strict and measures
+nothing, which is the defect being repaired.
+
+### J.4 Measurement labels carried forward
+
+- **git floor.** `--end-of-options` (F4's fix) needs git 2.24+ (Nov 2019). MEASURED: CI runs on
+  `ubuntu-latest` / `windows-latest`; no git version requirement found in `README.md`,
+  `.github/`, `.moai/docs/`, or `docs-site/content/ko/`. That absence is SCOPE-BOUNDED — no
+  exhaustive sweep was run. So this introduces an implicit floor the project has never stated.
+- **Package-scope lint.** `golangci-lint ./internal/kanban/...` reported `0 issues`, rc=0,
+  measured independently by the auditor and by the fixing agent. The errcheck failures on
+  `origin/develop` sit in `internal/spec` and `internal/cli` and are not cited in any verdict here.
+- **Severity of F1: Medium, on a measurement rather than a premise.** `ReadPrimarySpecStatus` has
+  exactly one production caller (`internal/cli/todo_landed.go:300`); `it.SpecID` originates only
+  from the `--spec` operator flag (`internal/cli/todo.go:584`) or the queue's own legacy JSON
+  re-import (`backlog_migrate.go:77`, `:157`). No card-text parsing, branch name, PR title, filename
+  parsing, or automation path reaches it. The remaining premise is NOT measured and bounds the
+  grade: "every lane runs as the same user" holds on this machine and need not hold on a CI runner,
+  a shared machine, or in a container — where the grade rises.
+- **Write-side gap, reported not fixed.** `specid.ValidateSpecID` is called from eight production
+  files but NOT from `internal/cli/todo.go`, so `moai todo next --spec` still admits an unvalidated
+  value into the queue. F1's fix blocks it at the READ boundary, which is the right layer and matches
+  the sibling function. The write-side gap is a follow-up-card candidate.
+
+### J.5 Two overbroad claims by the lane orchestrator, corrected on the record
+
+Both were absence claims made before measuring, the shape this card catalogued five times.
+
+1. **"The `#nosec` observation is not in the audit report."** False — it is F3 at `sync-audit.md:105`,
+   found first by the auditor with a sharper basis (G304 is *"file path provided as taint input"*,
+   the same class as F1). The independent arrival was real; the claim of absence was not. The lead
+   had already amplified it upstream and corrected it there.
+2. **"Guarded and unguarded are indistinguishable by any probe available today."** True of the WRITE
+   probe only. The fixing agent showed the injection IS mechanically observable at the raw-ref site
+   (`--independent` consumed as an option, rc=129, versus treated as an operand, rc=128). Corrected
+   in `sync-audit.md`'s appended F4 remediation note.
