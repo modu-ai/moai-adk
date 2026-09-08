@@ -933,3 +933,80 @@ Both were absence claims made before measuring, the shape this card catalogued f
    probe only. The fixing agent showed the injection IS mechanically observable at the raw-ref site
    (`--independent` consumed as an option, rc=129, versus treated as an operand, rc=128). Corrected
    in `sync-audit.md`'s appended F4 remediation note.
+
+### J.6 Merge record — the sync-audit FAIL stands at merge
+
+**This card merges into `develop` with the sync-audit verdict FAIL 0.75 standing.** The verdict was
+not overturned, not re-scored, and not superseded by a passing re-audit. It is recorded here so a
+later reader does not have to reconstruct it from the report stream.
+
+The verdict verbatim, from `.moai/reports/t359/sync-audit.md:14`:
+
+> **FAIL — 0.75 vs the Tier L threshold 0.85. Score-driven; the must-pass firewall did NOT fire.**
+
+What the report itself records as the basis for merging despite it (`sync-audit.md:12-41`, `:373-378`):
+
+1. **Both must-pass dimensions PASS independently** — Functionality (21/21 acceptance criteria met)
+   and Security (no Critical or High finding). The must-pass firewall did not fire.
+2. **The FAIL is arithmetic, not a blocking judgment** — every dimension sits at the same 0.75
+   rubric anchor, so the weighted total is exactly 0.75.
+3. **The rubric's anchors are 0.25 apart**, so a single dimension cannot close a 0.10 gap: even
+   Craft at 1.00 yields 0.80, still under 0.85. The distance from PASS is smaller than the token
+   "FAIL" suggests.
+4. **The one Medium finding (F1) is closed**, re-measured by the re-auditor
+   (`ReadPrimarySpecStatus` coverage 0.0% → 75.0%) rather than asserted.
+
+The lead's own wording for the merge decision is not reproduced here; the four grounds above are
+the ones this record can attribute to a document in the tree.
+
+#### Findings disposition at merge — nine, not a subset
+
+| # | Finding | Disposition at merge |
+|---|---|---|
+| F1 | `ReadPrimarySpecStatus` joins an unvalidated `spec_id` (path traversal) | **CLOSED** — `specid.ValidateSpecID` added at the read boundary; re-auditor confirmed by archive-restored RED reproduction plus an end-to-end binary probe |
+| F2 | one undecodable `landing` value wedges the queue; `--clear` unreachable | **OPEN, deferred by operator ruling** — option 3 (opaque preservation + warning) ruled, follow-up card |
+| F3 | the `#nosec` annotation asserts the unverified property | **CLOSED** — dissolved by F1's fix (the path is now validated, so the annotation's claim holds) |
+| F4 | user-supplied `--ref` reaches git with no end-of-options separator | **CLOSED** — `--end-of-options` at three call sites; the report's own remediation wording (`--`) was measured wrong and corrected in an appended note at `sync-audit.md:124` |
+| F5 | AC-TLE-010 cannot fail on a malformed `spec_id` | **OPEN, named** — the criterion cannot detect F1's class; follow-up card |
+| F6 | docs-site omits the new verb in all four locales | **OPEN, named** — follow-up card |
+| F7 | the `[HARD]` operator-act paragraph is unguarded against mirror drift | **OPEN, named** |
+| F8 | `make build` blocked at `agents-emit-check` | **OPEN, INHERITED** — confirmed not this card's doing; clears on absorb |
+| F9 | `internal/cli` coverage 80.4%, below the profile's 85% | **OPEN, named** — scored at the 0.75 anchor, not as a Craft FAIL |
+
+#### N1 landed without a third re-audit — stated, not implied
+
+No third re-audit was run. **The N1/N2/N3 repair therefore lands without audit confirmation.** What
+stands in its place is the lane orchestrator's own independent verification, run after the fixing
+agent reported and recorded here as measurement rather than as a substitute verdict:
+
+| Check | Command | Observed |
+|---|---|---|
+| Landing | `git rev-parse --short HEAD` | `a6c6021fc`; `git status --porcelain \| wc -l` → `0` |
+| Tautology removed | `grep -n 'len(argv)-1-countOperandsAfter' internal/cli/todo_landed_test.go` | no match (`rc=1`) |
+| Assertion GREEN | `go test ./internal/cli/ -run TestLandedGitCallsGuardEndOfOptions -count=1 -v` | `=== RUN` present, `--- PASS`, `ok … 1.780s` |
+| **Assertion can fire** | guard moved after the operand at `todo_landed.go:216`, same test re-run | `todo_landed_test.go:692: … --end-of-options at 5 is preceded by operand "9ee53d25…"` → `--- FAIL` |
+| Mutant attribution | same output | the fixture's `t.Fatalf` did NOT fire, so the RED is attributable to the position change alone |
+| Reverted | `cp` of the pre-mutation copy | dirty count `0`, HEAD unchanged `a6c6021fc`, GREEN restored |
+| N2 | `go doc -u ./internal/cli todoGitOutput` / `… gitEndOfOptions` | each symbol carries its own doc paragraph |
+
+The `=== RUN` line is quoted deliberately: a `-run` selector that matches zero tests prints `ok`
+too, so the passing line alone would not establish that anything was swept.
+
+**Two instrument errors by the lane orchestrator during this verification, recorded because an
+unrecorded instrument error is indistinguishable from a measurement:**
+
+1. `rc=${PIPESTATUS[0]}` after a pipeline returned empty. The verdict was read from the `--- PASS` /
+   `ok` lines instead, so the conclusion survives — but the exit code was never captured.
+2. `go doc` without `-u` returned `no symbol` for both unexported symbols. That is the probe failing
+   to measure, not a finding; it was re-run with `-u`.
+
+#### Residual risk carried into the merge
+
+- The corrected assertion is mutant-verified at **one** of the three call sites; coverage of the two
+  `rev-parse` sites is argued, not measured.
+- The operand discriminator is **shape-based**, so a future call site using a separated-value flag
+  (`-c key=value`) would raise a false RED. All three current sites are flag-only.
+- **N3 stays open**: git below 2.24 is unmeasured and no floor is declared anywhere. On such a host
+  all three calls fail — safely, but they fail.
+- `-race` and cross-platform were not run; packages outside `internal/cli` / `internal/kanban` were
+  not measured. F2 and F5-F9 were neither touched nor re-measured.
