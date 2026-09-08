@@ -90,6 +90,23 @@ $ # 심각도×코드 상위 구성:
 - CI spec-lint 잡의 develop 최근 판정은 lane 에서 `gh run list` 로 관측 시도; 결과는 완료 보고에 귀속.
 - unmeasured 발화 볼륨의 per-SPEC 정확한 수는 구현 후 lint 실측에서 확정 예정(815 디렉터 중 창 안 전환 보유분만).
 
+## Evidence — 커밋 트레일러 파싱 위험 (REQ-OWN-010 이행 시 필수 지식, 2026-09-08 실측)
+
+plan 커밋에서 실측: git 트레일러 파서는 마지막 문단에 트레일러가 아닌 줄이 섞이면 **블록 전체를
+파기**한다(일부 보존이 아니라 전부). 고립 실험(`git interpret-trailers --parse`):
+
+```
+$ printf 'subject\n\nbody\n\nAuthored-By-Agent: manager-spec\n' | git interpret-trailers --parse
+Authored-By-Agent: manager-spec        # ✓ 트레일러만 있는 마지막 문단
+$ printf 'subject\n\nbody\n\n🗿 MoAI\nAuthored-By-Agent: manager-spec\n' | git interpret-trailers --parse
+(빈 출력)                               # ✗ 마커 줄이 같은 문단에 있으면 블록 통째로 죽는다
+```
+
+**규칙**: `Authored-By-Agent:` 트레일러는 **마지막 문단의 유일한 줄**이어야 하고, `🗿 MoAI`
+마커는 그 앞 문단에 둔다(빈 줄 분리). 커밋마다
+`git log -1 --format='%(trailers:key=Authored-By-Agent,valueonly)'` 가 행위자를 출력하는지
+확인한다 — 빈 출력은 "관례 부재"와 구분 불가능하게 읽힌다(본 카드가 수리하는 무음과 같은 형태).
+
 ## Residual-risk
 
 - develop 의 `lint.go` 는 t518(axes) 축에서 활발히 변동 중 — 등록 줄번호·인접 룰은 병합 시점 재확인 필요.
