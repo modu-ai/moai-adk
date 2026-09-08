@@ -386,11 +386,20 @@ func appendDisableEntry(lines []string, skillPath string) []string {
 
 // runCodexSkillDisable is the `moai skills disable <name> --codex` runner.
 //
-// Fail-open on absent inputs, exactly as the prune verb is: an unresolvable
-// Codex home or an absent config says so and returns nil. A missing input is
-// not an error — there is simply nothing to disable. A name that does not
-// resolve is different: that is a typo, and it exits non-zero so a script can
-// see it.
+// The exit-code contract, by outcome class (SPEC-CODEX-DISABLE-EXIT-001):
+//
+//   - performed — an entry was written, or the desired state already held
+//     (Unchanged): returns nil.
+//   - refused — a guard declined the write (Skipped), or the name does not
+//     resolve (unresolved / ambiguous): returns an error. A refusal the
+//     caller cannot see is a request silently dropped — two Skipped reasons
+//     hand off to `moai clean --codex-skills`, and a zero exit would hide
+//     that handoff from a script. The Skipped report still prints, so a
+//     human reads the reason.
+//   - absent-input — fail-open, exactly as the prune verb is: an
+//     unresolvable Codex home, an absent config, or an absent project
+//     mirror says so and returns nil. A missing input is not an error —
+//     there is simply nothing to disable.
 func runCodexSkillDisable(p printer.Printer, opts codexSkillDisableOptions) error {
 	res := resolveCodexSkillMirrorPath(opts.ProjectRoot, opts.HomeDir, opts.Skill)
 	switch res.Outcome {
