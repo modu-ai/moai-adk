@@ -57,7 +57,7 @@
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-09-09
-- sync_commit_sha: "pending-backfill-sync"
+- sync_commit_sha: "26878d787"
 - artifacts: CHANGELOG.md 진입 ([Unreleased] → Added 최상단, t518 진입 위) / progress.md §E.4 (본 절) / spec.md frontmatter (`status: in-progress → completed` + `updated: 2026-09-09`, `status` + `updated` 필드만) / 증거 `.moai/reports/t572/sync-evidence.md`
 - 소유 전환: in-progress → implemented → completed (단일 sync 커밋 3-phase close — 스키마 행렬의 manager-docs 소유 행)
 - AC: 8/8 PASS (SSOT = acceptance.md AC-OWN-001..008, 매트릭스는 §E.2)
