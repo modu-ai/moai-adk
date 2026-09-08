@@ -344,6 +344,37 @@ func TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne(t *testing.T) {
 	}
 }
 
+// --- M5: closing the spec.md §E convergence-layer gap by MEASUREMENT ---
+
+// TestCodexBlankReview_M5_InconclusiveDoesNotBlockTheConvergenceLayer measures
+// what spec.md §E recorded as a plan-phase STATIC TRACE rather than a result: a
+// codex `inconclusive` leaves the all-pass arm, lands codex in
+// fail_open_backends, and overall_verdict follows the CLAUDE anchor — so this
+// repair does NOT close the gate hole and never claimed to. Making a required
+// codex gate actually block is #1632 axis 3, a sibling card.
+//
+// This is a measurement of pre-existing convergence behavior, not an assertion
+// that this SPEC changed it: no convergence-layer code is touched by this card.
+func TestCodexBlankReview_M5_InconclusiveDoesNotBlockTheConvergenceLayer(t *testing.T) {
+	got := converge([]PerBackendVerdict{
+		{Backend: BackendClaude, Gate: config.AuditGateRequired, Verdict: "pass"},
+		{Backend: BackendCodex, Gate: config.AuditGateRequired, Verdict: VerdictInconclusive,
+			Summary: codexBlankReviewSummary},
+	})
+	if got.OverallVerdict != "pass" {
+		t.Errorf("overall_verdict = %q, want pass — a codex inconclusive falls back to the claude anchor; the blank-output repair changes what codex REPORTS, not what the convergence layer DECIDES", got.OverallVerdict)
+	}
+	found := false
+	for _, b := range got.FailOpenBackends {
+		if b == BackendCodex {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("fail_open_backends = %v, want it to name codex — the gap must be REPORTED even though it does not block", got.FailOpenBackends)
+	}
+}
+
 // --- acceptance.md §A: the three-state control matrix, in ONE run ---
 
 // TestCodexBlankReview_ThreeStateControlMatrix observes states A, B and C in the
