@@ -1,0 +1,31 @@
+# t540 — harness-shape probes: deciding lines (3 cells)
+# Extracted from scratch, not retyped. Raw renders NOT exported (see Residual-risk).
+# codex-cli 0.153.4 · darwin · isolated CODEX_HOME · 2026-09-08
+# Fixture identical across cells: $CODEX_HOME/skills/t540probe/SKILL.md
+# Command identical across cells: CODEX_HOME=<scratch>/m0probe/home timeout 90 codex debug prompt-input "hi" < /dev/null
+
+## cell p1 — no skills.config entry (control)
+rc=0   stderr bytes: 0   stdout bytes: 34759
+grep -c 't540probe' -> 1
+probe line: - t540probe: t540 harness-shape probe skill, isolated CODEX_HOME only (file: r0/t540probe/SKILL.md)
+
+## cell p2 — entry, enabled = false
+rc=0   stderr bytes: 0   stdout bytes: 34525
+grep -c 't540probe' -> 0
+
+## cell p2b — entry, enabled = true (attribution control)
+rc=0   stderr bytes: 0   stdout bytes: 34759
+grep -c 't540probe' -> 1
+probe line: - t540probe: t540 harness-shape probe skill, isolated CODEX_HOME only (file: r0/t540probe/SKILL.md)
+
+## rendered skill roots, cell p1
+`r0` = `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a3be7c8f-4efa-4739-a28f-fe531c281b05/scratchpad/m0probe/home/skills`
+`r1` = `/Users/goos/.agents/skills`
+`r2` = `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a3be7c8f-4efa-4739-a28f-fe531c281b05/scratchpad/m0probe/home/skills/.system`
+
+## surviving fixture config.toml (last written = cell p2b)
+model = "gpt-5"
+
+[[skills.config]]
+path = "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a3be7c8f-4efa-4739-a28f-fe531c281b05/scratchpad/m0probe/home/skills/t540probe/SKILL.md"
+enabled = true

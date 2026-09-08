@@ -237,11 +237,27 @@ func upsertCodexSkillDisable(content []byte, skillPath string) ([]byte, codexSki
 	if skillPath == "" {
 		return skip("no path to write")
 	}
-	// A TOML basic string cannot carry these verbatim, and this repository's
-	// parser reads the value verbatim rather than decoding escapes. Emitting
-	// an escaped form would produce an entry Codex reads correctly and every
-	// moai reader — including the prune verb, which deletes what it cannot
-	// find — reads as a different, absent path.
+	// The config carries paths in forward-slash form on every host, so the
+	// host separator is converted away BEFORE the guard below rather than
+	// being refused by it. On a host whose separator is already '/' this is
+	// the identity and nothing about the guard's reach changes; on Windows it
+	// is the difference between publishing an entry and refusing every single
+	// invocation, which is what the verb did there before
+	// SPEC-CODEX-SKILL-PATH-SLASH-001.
+	skillPath = toConfigPath(skillPath, configPathSeparator)
+	// What remains is genuinely unrepresentable. A TOML basic string cannot
+	// carry these verbatim, and this repository's parser reads the value
+	// verbatim rather than decoding escapes. Emitting an escaped form would
+	// produce an entry Codex reads correctly and every moai reader —
+	// including the prune verb, which deletes what it cannot find — reads as
+	// a different, absent path.
+	//
+	// The backslash stays in the set on purpose, and the conversion above is
+	// deliberately NOT an unconditional replacement. A unix filename may
+	// legally contain a backslash; on a '/'-separator host such a path
+	// reaches this line unchanged and is REFUSED, which is correct. Rewriting
+	// it instead would publish a different, nonexistent path — a registration
+	// prune then classifies as absent and deletes.
 	if strings.ContainsAny(skillPath, "\"\\\n\r") {
 		return skip("the path contains a character this config format cannot carry verbatim (%q)", skillPath)
 	}
@@ -249,7 +265,16 @@ func upsertCodexSkillDisable(content []byte, skillPath string) ([]byte, codexSki
 	lines, term := codexwiring.SplitConfigLines(content)
 	var matches []codexwiring.SkillEntry
 	for _, e := range codexwiring.ParseSkillEntries(content) {
-		if e.Path == skillPath {
+		// Both sides are compared in the config's slash form. This is the
+		// verb's ONLY path comparison, so it is also the only place the
+		// normalization can be applied: an entry already stored in native
+		// backslash form — written by hand, or by another tool — would
+		// otherwise fail to match the converted skillPath, fall through to
+		// appendDisableEntry, and leave the config holding TWO entries for
+		// one skill. Collapsing those is `moai clean --codex-skills`'s job
+		// (t506), and manufacturing that debt here would be a defect, not a
+		// handoff.
+		if toConfigPath(e.Path, configPathSeparator) == skillPath {
 			matches = append(matches, e)
 		}
 	}
