@@ -3,6 +3,15 @@
 > 하니스: **standard** · 측정 근거: `.moai/reports/t573/plan-research.md` (트리 `3ac58b5a1`, 2026-09-08)
 > 모든 검증 grep 은 `/usr/bin/grep`. RED-now AC 는 baseline(현재) vs after 로 기술된다.
 
+## HISTORY
+
+- 2026-09-08: AC-004 검증식 재스코핑 — 문자열 계수 프록시에서 **zh 대상 라이브 사용 계수**로. 기준(`0`)은 그대로다.
+  - before: `/usr/bin/grep -c 'grep -ci "desktop-native"' .moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/acceptance.md` → run 종료 실측 `5` (기대 `0` — FAIL)
+  - after: `awk '/^## §D AC Matrix/{f=1} f && /grep -ci "desktop-native"[^`]*content\/zh/{n++} END{print n+0}' .moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/acceptance.md` → `0` (exit 0)
+  - 사유: 프록시는 `grep -ci "desktop-native"` 문자열의 **행 수**를 세는데, run 이 남긴 5행은 zh 대상 라이브 사용 **0** + en 축 유지 1(REQ-004 가 유지를 지시 — en 은 Latin 로케일) + HISTORY·논거 인용 4(AC-005 가 before 명령 인용을 의무화)로 분해된다. 즉 프록시는 자기 SPEC 의 REQ-004·AC-005 가 의무화하는 인용을 위반으로 재는 셈이고, 이는 본 SPEC 이 없애는 결함형 — "문자열의 개수로 라이브 사용을 단정한다" — 의 자기-적용 사례다 (`verification-claim-integrity.md` §1: 참조의 존재는 참조 대상의 생존이 아니다).
+  - **이 재스코핑은 통과 기준을 완화하지 않는다.** 본질 요구(zh 대상 왜곡 기준의 라이브 잔존 = 0)는 옛 읽기와 새 읽기 어느 쪽에서도 충족돼 있다 — 바뀐 것은 계측기가 재는 대상이지 요구가 아니다. 도달성은 뮤턴트로 실증했다: en 명령의 경로를 zh 로 바꾼 /tmp 사본에서 새 식은 `1` 을 낸다 (공허한 0 이 아님 — §D.4 대조군 기록).
+  - **승인 귀속: 리드 승인 — run-phase 수리 dispatch (카드 t573, manager-spec 재위임; D-NEW-1 inline-fix 경로).**
+
 ## §D AC Matrix
 
 | AC | 소관 | REQ | 검증 | 기대 (baseline → after) |
@@ -10,7 +19,7 @@
 | AC-001 | M1 | REQ-002 | census 장부 존재 + REQ-002 필드 스키마 (RED-now) | 부재 → 존재 |
 | AC-002 | M1 | REQ-002·007 | swept-set 계수 명시 (코퍼스·A1/A2/A3·A·A∩B 각 단계, 재측정값) (RED-now) | 없음 → 명시 |
 | AC-003 | M2 | REQ-001·003 | 왜곡형 확정 건 전량 재작성 + REQ-001 4요소 충족 | — |
-| AC-004 | M2 | REQ-004 | t538 AC-004 ASCII 계수 잔존 제거 (RED-now) | 1 → 0 |
+| AC-004 | M2 | REQ-004 | t538 AC-004 zh-명향 **라이브** 사용 0 — 섹션-절단 + 명령-범위 zh 경로 (RED-now → 2026-09-08 재스코핑, §D.4) | 프록시 5 → 라이브 zh 0 |
 | AC-005 | M2 | REQ-003 | 재작성마다 t538 규율 HISTORY 항목 | — |
 | AC-006 | M2 | REQ-001 | 뮤턴트 probe — 보강-제거 사본에서 재작성 기준 통과 | — |
 | AC-007 | M3 | REQ-005 | 옵션 A/B 기준값 연산 제시 + docs-site 무변경 | — |
@@ -36,11 +45,18 @@
 - **When** 각 확정 건에 대해 재작성 후 기준 검증식을 실행한다.
 - **Then** 각 재작성 기준이 (a) 정확한 계수 명령 (b) 로케일 명시 (c) 실측 기준선 (d) 왜곡 불가 근거를 진술한다 (REQ-001). census 확정 건수와 재작성 건수가 일치한다.
 
-## §D.4 AC-004 — t538 AC-004 ASCII 계수 제거 (RED-now)
+## §D.4 AC-004 — t538 AC-004 zh-명향 라이브 사용 0 (RED-now → 2026-09-08 재스코핑, HISTORY 참조)
 
-- **Given** 트리 `3ac58b5a1` 에서 `/usr/bin/grep -c 'grep -ci "desktop-native"' .moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/acceptance.md` → `1` (exit 0 — 실측).
-- **When** M2 재작성 후 같은 명령을 실행한다.
-- **Then** baseline `1` → after `0`. 단, AC-003(플래그 행, 코드 토큰)의 `grep -c "desktop-native"` 검증은 유지될 수 있다 — 제거 대상은 **산문/라벨 자리를 겨냥한 출현 수 계수 기준**이다.
+- **Given** 최초 프록시는 문자열 계수였다: 트리 `3ac58b5a1` 에서 `/usr/bin/grep -c 'grep -ci "desktop-native"' .moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/acceptance.md` → `1` (RED-now 실측). run 종료 트리 `30915eddb` 에서 같은 프록시는 `5` 를 내 FAIL — 그러나 분해하면 zh 대상 라이브 사용 **0**(본질 요구 충족 — t538 §D.4 zh 축이 `原生桌面` ≥6행 + 매트릭스 3행 구조로 대체됨) + en 축 유지 1(REQ-004 가 지시) + HISTORY·논거 인용 4(AC-005 가 의무화). 프록시는 **인용을 라이브 사용으로 재는 문자열 계수**다 — 본 SPEC 이 없애려는 결함형 그 자체.
+- **When** (재스코핑된 검증식 — 단일 호출, 파이프 없음):
+
+  ```
+  awk '/^## §D AC Matrix/{f=1} f && /grep -ci "desktop-native"[^`]*content\/zh/{n++} END{print n+0}' .moai/specs/SPEC-DOCS-LOCALE-PARITY-REPAIR-001/acceptance.md
+  ```
+
+- **Then** 트리 `30915eddb` 실측 출력 `0`, exit `0`. 제외의 기계적 근거: (a) `^## §D AC Matrix` 시작 조건 — HISTORY 블록(`## HISTORY` … `## §D AC Matrix` 사이)의 before-명령 인용은 절단면 밖이라 계수되지 않는다 (절 이름이 정확한 배제 근거다). (b) `[^`]*content\/zh` — **같은 백틱 명령 안에서** 옛 패턴 바로 뒤에 오는 경로가 zh 일 때만 계수하므로, en 축 유지 명령(`… content/en …`, t538 §D.4 :79)과 경로 없는 인용(t538 §D.4 :81 논거)은 탈락한다.
+- **인용-증명 (대조군 + 뮤턴트, 트리 `30915eddb` 실측)**: (A) zh 제약을 빼면 절단면 안의 2행(en 라이브 + 논거 인용)이 잡힌다 — 매치기는 살아 있다. (B) 절단면 필터를 빼면 HISTORY 9행의 zh-명령 인용이 `1` 로 잡힌다 — 절단이 바로 인용 배제의 기제다. (C) 뮤턴트 — en 명령의 경로를 zh 로 바꾼 사본에서 `1` 로 뒤집힌다: 진짜 라이브 zh 사용이 생기면 기준이 발화한다. 즉 출력 `0` 은 공허한 0 이 아니다 (verification-completeness §1.1 빈-집합 가시성).
+- **네 요소 (REQ-001)**: (a) 단일 awk 호출 — 읽기 전용, 파이프·연쇄 없음 (b) 대상 명명 — t538 acceptance.md 의 `## §D AC Matrix` 이후 영역에서 zh 경로를 갖는 라이브 옛-기준 행 (c) 기준 `0` — 분해 실측(zh 라이브 0)에서 도출, 완화 아님 (d) 트리 `30915eddb` 핀. 인용(HISTORY, 논거)이 이 기준을 실패시킬 수 없다 — 절단면이 구조적으로 인용 영역을 제외하기 때문이다.
 
 ## §D.5 AC-005 — HISTORY 규율
 
