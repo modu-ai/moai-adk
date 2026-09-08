@@ -1,0 +1,7 @@
+=== RUN   TestTableCollection_CorpusListFindingsUnchanged
+    lint_req_table_test.go:473: code LegacyEARSKeyword: narrow-path findings = 7, live non-advisory findings = 0 (scanned 812 docs) — the table branch moved a list-form finding
+    lint_req_table_test.go:477: scanned 812 documents; per-code narrow == live-non-advisory: map[LegacyEARSKeyword:7]
+--- FAIL: TestTableCollection_CorpusListFindingsUnchanged (0.19s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.559s
+FAIL

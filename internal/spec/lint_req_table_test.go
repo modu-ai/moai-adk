@@ -433,7 +433,15 @@ func TestTableCollection_CorpusListFindingsUnchanged(t *testing.T) {
 		doc.REQs = parseREQs(body)
 		for _, r := range rules {
 			for _, f := range r.Check(doc, nil) {
-				narrowCounts[f.Code]++
+				// The advisory filter is applied on BOTH sides, or the two
+				// counters are not measuring the same quantity. CoverageRule
+				// (see CoverageRule.Check) sets Advisory unconditionally, so
+				// the live side can never count it, while an unfiltered narrow
+				// side counts it the moment any finding appears — an
+				// asymmetry that reads as a regression when the corpus grows.
+				if !f.Advisory {
+					narrowCounts[f.Code]++
+				}
 			}
 		}
 
