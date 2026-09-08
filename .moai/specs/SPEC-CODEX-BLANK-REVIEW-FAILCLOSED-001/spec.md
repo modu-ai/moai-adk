@@ -2,7 +2,7 @@
 id: SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001
 title: Blank codex review output must not synthesize a pass
 version: 0.1.0
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-08
 author: manager-spec

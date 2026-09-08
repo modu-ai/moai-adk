@@ -445,4 +445,86 @@ m1_to_mN_commit_strategy: one commit per milestone group on WT-audit-fail-open
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-08
+sync_commit_sha: pending-backfill-sync   # the commit carrying this §E.4 cannot cite its
+                                         # own hash; the resolved value is backfilled in
+                                         # the immediately following commit (D3 exemption,
+                                         # spec-frontmatter-schema.md § SHA placeholder
+                                         # backfill exemption)
+sync_status: completed
+b12_self_test_a: pass    # pre-emission duplicate grep —
+                         # `grep -c 'SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001' CHANGELOG.md`
+                         # → 0 before writing (rc=1, no match)
+b12_self_test_b: pass    # AC count match — 9 distinct AC identifiers in acceptance.md
+                         # (AC-CBR-001..009), non-zero, equal to §E.3 ac_pass_count 9
+b12_self_test_c: pass    # every path cited in the CHANGELOG entry verified with `ls`:
+                         # 9 paths, all present (3 internal/cli sources +
+                         # mcp_convergence.go + 5 under .moai/reports/t551/)
+changelog_entry_position: "[Unreleased] › ### Fixed, topmost entry (immediately above SPEC-TODO-HOME-TEMP-GUARD-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit; updated: 2026-09-08, already current — no byte changed on that key)"
+  plan_md: "no status field — not a transition target (ArtifactStatusFieldForbidden); updated already 2026-09-08"
+  acceptance_md: "no status field — not a transition target; updated already 2026-09-08"
+  progress_md: "no frontmatter — not a transition target"
+canary_compliance_check: not_applicable   # this SPEC defines no forward-looking policy
+                                          # for its own sync to test
+verification_tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t551
+verification_branch: WT-audit-fail-open
+verification_head_at_measurement: b2f7fdd63
+docs_site_surface: related-but-not-stale   # measured, not assumed — see the note below
+```
+
+### What this sync execution measured for itself
+
+Two claims in the CHANGELOG entry were re-measured here rather than inherited from
+the SPEC body, because both are the kind that decays:
+
+| Claim | Command | Observed |
+|---|---|---|
+| The four call sites route through the one discriminator | `grep -n 'codexReviewTextIsBlank(' internal/cli/mcp_codex.go` | `:855`, `:1184`, `:1187`, `:1308`; definition at `:367` — matching the dispatch exactly |
+| The pinned synthesizer test is byte-identical | `git diff --stat 3ac58b5a1..HEAD -- internal/cli/codex_review_rpc_test.go` | empty output, rc=0 |
+| The convergence default arm still reaches the claude anchor | `sed -n '185,200p' internal/cli/mcp_convergence.go` | `default:` → `claudeVerdictOrDefault(verdicts, overallVerdictPass)` — the non-closure holds as written |
+
+### Gaps — what this sync execution did NOT observe
+
+- **No test, build, lint, or coverage command was re-run in this sync phase.** The
+  verification figures in the CHANGELOG entry (9/9 AC, suite exit 0, lint delta 0,
+  cross-platform build) are the run-phase measurements recorded in §E.2/§E.3 and
+  the `.moai/reports/t551/` evidence files, cited as such. They are attributed to
+  run-phase, not re-measured here, and this sync makes no independent claim about
+  them.
+- **No CI verdict exists.** This lane does not push, so nothing has been measured
+  in a clean environment or on the windows/linux matrix. `GOOS=windows go build`
+  compiles non-test code only — it establishes compilability, not that the tests
+  compile or pass there.
+- **`run_commit_sha` in §E.3 above is still the `pending-backfill-run` placeholder.**
+  That field belongs to manager-develop's §E.3 surface and was not modified here;
+  it is reported as an owed backfill rather than silently completed.
+### docs-site: a related page exists, and it is reported rather than edited
+
+docs-site was out of scope for this card by dispatch. It was searched anyway, so
+that the scope call rests on a measurement instead of an assumption:
+`/usr/bin/grep -rlni 'codex' docs-site/content/` returns **40** files (the plain
+`grep` on this shell is a `ugrep` wrapper that can skip silently, so the absolute
+path was used).
+
+The one page that touches this contract is `advanced/multi-model-audit.md`
+(4 locales). Two of its sentences were read in full:
+
+- `:80` documents the diff-collection-failure cause of `inconclusive`. This card
+  adds a **second** cause (a blank review body). The page does not present its
+  causes as a closed set, so nothing on it becomes false — it becomes less
+  complete.
+- `:82` states that convergence reads a self-declared `inconclusive` as
+  inconclusive and never synthesizes it into a PASS. That remains true of the
+  backend's own recorded verdict, which is what the sentence is about, and this
+  card does not touch convergence at all.
+
+**Verdict: related, not stale — no page is edited.** Adding the second cause to
+that page is a documentation-completeness follow-up, deliberately not folded into
+a sync commit scoped to an internal classification change. Recorded here so the
+next reader does not have to re-derive it.
+
+- **README was not searched.** Only `docs-site/content/` was grepped; the four
+  README locales were not, so no claim is made about them in either direction.
