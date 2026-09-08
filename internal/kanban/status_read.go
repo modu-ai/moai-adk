@@ -271,8 +271,9 @@ func readPrimaryStatus(primaryRoot, specID string) (*CardStatus, error) {
 //
 // The two returns are not redundant: ok=false means the question was asked
 // and could not be answered — no such document, an unreadable file, a
-// document with no status key — which SPEC-TODO-LANDING-EVIDENCE-001
-// REQ-TLE-010 requires be kept apart from a status that WAS read. A caller
+// document with no status key, or an identifier refused as traversal-shaped —
+// which SPEC-TODO-LANDING-EVIDENCE-001 REQ-TLE-010 requires be kept apart
+// from a status that WAS read. A caller
 // recording landing evidence maps ok=false onto LandingSpecStatusUnknown, the
 // explicit marker, rather than onto a plausible default.
 //
@@ -282,7 +283,17 @@ func ReadPrimarySpecStatus(primaryRoot, specID string) (string, bool) {
 	if strings.TrimSpace(primaryRoot) == "" || strings.TrimSpace(specID) == "" {
 		return "", false
 	}
-	raw, err := os.ReadFile(filepath.Join(primaryRoot, ".moai", "specs", specID, "spec.md")) // #nosec G304 -- project-local SPEC path
+	// The spec identifier is interpolated into the primary-checkout spec.md
+	// path, and `moai todo next --spec` records the operator's value verbatim
+	// by design — so a traversal-shaped value (`..`, separator, absolute) must
+	// be refused here rather than reach the join, exactly as ReadCardStatus
+	// refuses it above. A rejected id is the ok=false outcome, not a plausible
+	// default: an unreadable identifier is unanswerable, which is what the
+	// caller's LandingSpecStatusUnknown marker already means.
+	if err := specid.ValidateSpecID(specID); err != nil {
+		return "", false
+	}
+	raw, err := os.ReadFile(filepath.Join(primaryRoot, ".moai", "specs", specID, "spec.md")) // #nosec G304 -- specID validated above; path is project-local
 	if err != nil {
 		return "", false
 	}
