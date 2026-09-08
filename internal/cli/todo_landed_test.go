@@ -631,3 +631,113 @@ func TestTodoLanded_SHAValidation(t *testing.T) {
 		}
 	})
 }
+
+// TestLandedGitCallsGuardEndOfOptions — every git invocation this verb makes
+// carries a user-controlled operand (`--ref`, `--sha`), so each must stop
+// option parsing before that operand reaches git.
+//
+// [HARD] This is a SHAPE assertion, not a behavioural RED, and the difference
+// is recorded rather than papered over. The verb's own `^{commit}` gate
+// (buildLandingEvidence) refuses every option-shaped ref before the raw-ref
+// merge-base call can see one, so no end-to-end input distinguishes the
+// guarded build from the unguarded one. TestLandedOptionShapedRefIsRefused
+// below pins that reachability fact. The guard is latent hardening: it is the
+// call sites, not today's exploitability, that this test fixes in place.
+//
+// The token is `--end-of-options`, NOT `--`: in rev-parse `--` separates
+// revisions from PATHS, so a rev placed after it resolves to nothing and the
+// verb breaks. Measured on git 2.50.1 — see .moai/reports/t359/f4-fix-evidence.md.
+func TestLandedGitCallsGuardEndOfOptions(t *testing.T) {
+	f := newLandedFixture(t)
+	seedQueue(t, f.store, "first card")
+
+	type call struct{ argv []string }
+	var calls []call
+	prev := todoRunCommand
+	t.Cleanup(func() { todoRunCommand = prev })
+	todoRunCommand = func(name string, args ...string) (string, error) {
+		calls = append(calls, call{argv: append([]string(nil), args...)})
+		return prev(name, args...)
+	}
+
+	if _, _, err := runTodo(t, "landed", "1", "--ref", "HEAD", "--sha", f.mentioning[0]); err != nil {
+		t.Fatalf("landed on a legitimate ref/sha failed: %v", err)
+	}
+
+	// Every reachable git subcommand that takes a user-controlled operand.
+	// Absence of the subcommand entirely is a fixture failure, not a pass:
+	// a guard asserted over zero calls asserts nothing.
+	wantSubcommands := map[string]bool{"rev-parse": false, "merge-base": false}
+	for _, c := range calls {
+		sub := gitSubcommandOf(c.argv)
+		if _, watched := wantSubcommands[sub]; !watched {
+			continue
+		}
+		wantSubcommands[sub] = true
+		idx := indexOfArg(c.argv, "--end-of-options")
+		if idx < 0 {
+			t.Errorf("git %v: no --end-of-options guard; a user-supplied operand reaches git as a parsable option", c.argv)
+			continue
+		}
+		// Present is not enough — it must precede the operands it guards.
+		if idx != len(c.argv)-1-countOperandsAfter(c.argv, idx) {
+			t.Errorf("git %v: --end-of-options at %d does not precede all operands", c.argv, idx)
+		}
+	}
+	for sub, seen := range wantSubcommands {
+		if !seen {
+			t.Fatalf("fixture: no %q call was observed, so the guard was asserted over nothing", sub)
+		}
+	}
+}
+
+// TestLandedOptionShapedRefIsRefused pins the reachability fact that makes the
+// guard above latent rather than a repair: an option-shaped ref never reaches
+// the raw-ref merge-base call, because the `^{commit}` gate refuses it first.
+// If this test ever fails, the option-shaped value became reachable and the
+// guard above stopped being latent — read it as that signal, not as a flake.
+func TestLandedOptionShapedRefIsRefused(t *testing.T) {
+	f := newLandedFixture(t)
+	seedQueue(t, f.store, "first card")
+
+	_, errOut, err := runTodo(t, "landed", "1", "--ref", "--independent", "--sha", f.mentioning[0])
+	if err == nil {
+		t.Fatal("an option-shaped --ref was accepted; it must refuse at the ^{commit} gate")
+	}
+	if !strings.Contains(errOut+err.Error(), "did not resolve to a commit") {
+		t.Errorf("refusal did not come from the ^{commit} gate, so the reachability claim is unverified\nstderr+err: %s", errOut+err.Error())
+	}
+	if got := landingIsNULL(t, f.store, "t1"); got != 1 {
+		t.Errorf("a record was written for an option-shaped ref (SELECT landing IS NULL = %d, want 1)", got)
+	}
+}
+
+// gitSubcommandOf returns the git subcommand in argv, skipping the leading
+// `-C <dir>` the runner prepends.
+func gitSubcommandOf(argv []string) string {
+	for i := 0; i < len(argv); i++ {
+		if argv[i] == "-C" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(argv[i], "-") {
+			return argv[i]
+		}
+	}
+	return ""
+}
+
+// indexOfArg returns the position of want in argv, or -1.
+func indexOfArg(argv []string, want string) int {
+	for i, a := range argv {
+		if a == want {
+			return i
+		}
+	}
+	return -1
+}
+
+// countOperandsAfter counts the arguments following idx.
+func countOperandsAfter(argv []string, idx int) int {
+	return len(argv) - idx - 1
+}

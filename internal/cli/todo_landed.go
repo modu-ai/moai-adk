@@ -158,7 +158,7 @@ func buildLandingEvidence(store *kanban.BacklogStore, id, sha, ref string) (*kan
 	// posture of the --sha checks introduces no new policy. This is also the
 	// single place case (d) originates for BOTH of its sub-conditions: git
 	// absent, and a ref that resolves to nothing.
-	refHead, err := todoGitOutput("rev-parse", "--verify", "--quiet", ref+"^{commit}")
+	refHead, err := todoGitOutput("rev-parse", "--verify", "--quiet", gitEndOfOptions, ref+"^{commit}")
 	if err != nil || refHead == "" {
 		return nil, &exitCodeError{code: 1, msg: fmt.Sprintf(
 			"todo landed: the %s check could not run: ref %q did not resolve to a commit (%v); "+
@@ -202,7 +202,7 @@ func validateSuppliedSHA(sha, ref string) (string, error) {
 	if strings.TrimSpace(sha) == "" {
 		return "", nil
 	}
-	resolved, err := todoGitOutput("rev-parse", "--verify", "--quiet", sha+"^{commit}")
+	resolved, err := todoGitOutput("rev-parse", "--verify", "--quiet", gitEndOfOptions, sha+"^{commit}")
 	if err != nil || resolved == "" {
 		if unrunnable := gitUnrunnable(err); unrunnable != nil {
 			return "", &exitCodeError{code: 1, msg: fmt.Sprintf(
@@ -213,7 +213,7 @@ func validateSuppliedSHA(sha, ref string) (string, error) {
 			"todo landed: the %s check failed: %q names no commit in this repository; nothing was written",
 			landedCheckExistence, sha)}
 	}
-	if _, err := todoGitOutput("merge-base", "--is-ancestor", resolved, ref); err != nil {
+	if _, err := todoGitOutput("merge-base", "--is-ancestor", gitEndOfOptions, resolved, ref); err != nil {
 		if unrunnable := gitUnrunnable(err); unrunnable != nil {
 			return "", &exitCodeError{code: 1, msg: fmt.Sprintf(
 				"todo landed: the %s check could not run (%v); nothing was written",
@@ -235,6 +235,28 @@ func validateSuppliedSHA(sha, ref string) (string, error) {
 // `-C <root>` is explicit: the queue resolves against the PRIMARY checkout,
 // and the landing question is about that repository rather than about
 // whichever worktree the command happens to be typed in.
+// gitEndOfOptions stops git's option parsing so a user-supplied operand
+// (`--ref`, `--sha`) cannot be read as a flag, whatever its shape.
+//
+// It is NOT `--`, and the two are not interchangeable here: in rev-parse `--`
+// separates revisions from PATHS, so a revision placed after it is read as a
+// path and resolves to nothing — `rev-parse --verify --quiet -- 'HEAD^{commit}'`
+// exits 1 with no output, which would break the verb outright. Only
+// `--end-of-options` stops option parsing while leaving the operand a
+// revision. Measured on git 2.50.1; the token needs git 2.24+ (Nov 2019).
+//
+// Today no reachable operand exploits the absence: the `^{commit}` gate in
+// buildLandingEvidence refuses every option-shaped ref before the raw-ref
+// reachability call in validateSuppliedSHA sees one. The guard is therefore
+// latent hardening for a future subcommand change or a new call site on this
+// seam, when nobody will re-derive that reasoning. See
+// TestLandedGitCallsGuardEndOfOptions.
+//
+// (The reachability command is named indirectly for the reason the sibling
+// comment below records: the REQ-ABI-006 ancestry sweep matches raw source
+// text, so spelling it here registers a phantom coordinate.)
+const gitEndOfOptions = "--end-of-options"
+
 func todoGitOutput(args ...string) (string, error) {
 	full := append([]string{"-C", resolveTodoQueueRoot()}, args...)
 	out, err := todoRunCommand("git", full...)
