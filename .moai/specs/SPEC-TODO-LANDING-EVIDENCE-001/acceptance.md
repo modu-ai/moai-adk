@@ -177,7 +177,10 @@ evidence,
 **When** the test hashes every file under the project root **except everything under `.git/`**
 (content plus relative path), runs `moai todo pr`, and hashes again,
 **Then** the two hashes are equal; **and** the positive control holds — the hashed set is non-empty
-and contains at least the queue database under `.moai/state/kanban/`.
+and contains at least one entry under the queue state directory — the directory
+`kanban.StateDirForRoot(root)` resolves (`internal/kanban/state_dir.go`), today
+`.moai/state/todo/`. The clause is satisfied against the resolver's answer, never against a
+transcribed spelling, so a later rename of the directory cannot silently hollow the control out.
 
 **Why `.git/` is excluded, and why the exclusion is not a hollowing-out.** `moai todo pr` shells out
 to `git` in the project working directory (`internal/kanban/prlink_landed.go:150-154` via the
