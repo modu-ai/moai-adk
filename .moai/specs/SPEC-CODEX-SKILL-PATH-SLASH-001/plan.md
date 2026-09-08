@@ -61,7 +61,7 @@ Carried from `spec.md §E`; the ones that bind commands:
 Highest reversibility risk in the card: a negative result invalidates every milestone below it.
 
 - Build the isolated-`CODEX_HOME` probe (the harness established by SPEC-CODEX-SKILLCONFIG-SHAPE-001).
-- Run BOTH arms on a Windows host: slash-form `path` and native-backslash-form `path` (control).
+- Run all THREE arms on a Windows host: a baseline arm with no `skills.config` entry, then the slash-form and native-backslash-form arms (both `enabled = false`).
 - Re-stamp `codex --version` at measurement time.
 - Write `.moai/reports/t540/ac-001-windows-slash.md` with the commands, verbatim output, and host OS.
 

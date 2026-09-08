@@ -134,3 +134,39 @@ the lead's decision.
   and is what the export carries. Cells p1 and p2 are described in prose and by their measured
   outcome; their exact fixture bytes are gone. Re-running the probes would reconstruct them, but
   reconstruction is not the original.
+
+## Cross-layer sweep after the AC-CSPS-001 amendment (2026-09-08)
+
+**Claim.** The amendment that inverted the AC-CSPS-001 observable to disappearance left one
+plan-layer inconsistency, now repaired, and no residual echo of the old appearance phrasing.
+
+**Evidence.**
+
+1. Inconsistency found and repaired — `plan.md` §E M0 bullet 2 still prescribed two arms while the
+   amended AC requires three:
+
+   ```
+   -- Run BOTH arms on a Windows host: slash-form `path` and native-backslash-form `path` (control).
+   ++ Run all THREE arms on a Windows host: a baseline arm with no `skills.config` entry, then the
+      slash-form and native-backslash-form arms (both `enabled = false`).
+   ```
+
+   Following the un-amended procedure would have run two arms without a baseline and could not have
+   satisfied the amended AC's exit condition.
+
+2. Residual-echo sweep — clean, both files:
+
+   ```
+   $ /usr/bin/grep -nEi 'appears|appear |appearance|나타남|나타난' <spec.md|plan.md>
+   spec.md: (0 hits)
+   plan.md: (0 hits)
+   ```
+
+**Baseline-attribution.** Measured in this run, in this worktree
+(`.claude/worktrees/t540`, branch `WT-codex-path-escape`), against `769ae6f3c`.
+
+**Gaps.** The sweep covered `spec.md` and `plan.md` only — the two artifacts the amendment's
+observable is cited in. `acceptance.md` carries the amended text itself and was not swept for echo.
+
+**Residual-risk.** A paraphrase of the appearance framing that shares none of the swept tokens would
+not have been caught; the repair above was found by reading the procedure, not by the token sweep.
