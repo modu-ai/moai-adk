@@ -1,0 +1,6 @@
+da68c0dbe550bb6f0fccf5b04cc9856e53d49808cf10a34e62657ee62e099c4f  .moai/specs/SPEC-CODEX-HOME-BACKSLASH-001/acceptance.md
+71d08a2d412e80a047292be65c1c9d7a185d355aa75eb0cbd82cc227fa869e8a  .moai/specs/SPEC-CODEX-HOME-BACKSLASH-001/plan.md
+07de922fea9482a8d6fd42f4d8e3a358ac7a9743e8fadb671d7008bb2170c5ce  .moai/specs/SPEC-CODEX-HOME-BACKSLASH-001/progress.md
+2abec682c7e0673284aa61a0f3130ed49a20ff6ec81e4b9a9d73e48d8ee13baa  .moai/specs/SPEC-CODEX-HOME-BACKSLASH-001/spec.md
+10dbc9ee9b0195b1e6941fcaac61c8e02b5b26734be22c89ba8f0b705bb716d0  .moai/reports/t571/repro-asymmetry.log
+bc46671d061abada17542be09ed7046ebf36719a09d184df95089796e67bb329  .moai/reports/t571/skip-baseline-pre-m2.log

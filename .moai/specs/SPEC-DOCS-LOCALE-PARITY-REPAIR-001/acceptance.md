@@ -5,6 +5,13 @@
 
 ## HISTORY
 
+- 2026-09-08: AC-004 검증식 정정 — zh 축의 ASCII 토큰 계수(`grep -ci "desktop-native"` ≥4)를 **원어 토큰 + 구조 기준**(`原生桌面` ≥6행 + `^| \*\*原生桌面` 매트릭스 3행)으로. en 축은 Latin 로케일이라 ASCII 계수에 왜곡이 없어 그대로 유지한다(본 트리 실측 7행 — 기준 ≥4 유지). **승인 귀속: 리드 승인 — 카드 t573 발행 dispatch** (SPEC-AC-LOCALE-TOKEN-001 M2; t538 sync-audit F2 의 후속 수리).
+  - before: `/usr/bin/grep -ci "desktop-native" docs-site/content/zh/utility-commands/moai-e2e.md` → 기준 `≥4`
+  - after: `/usr/bin/grep -c "原生桌面" docs-site/content/zh/utility-commands/moai-e2e.md` → `6` (기준 `≥6`) · `/usr/bin/grep -c '^| \*\*原生桌面' …` → `3` (기준 `3`)
+  - 사유: `grep -ci "desktop-native"` 는 비(非)Latin 로케일(zh) 문서의 산문·표 라벨 자리에 ASCII 토큰의 존재를 요구한다. 실측된 결과 — zh 작성자가 기준선을 채우려고 :78-80 매트릭스 라벨과 :84·:98·:176 산문에 ` (…, desktop-native)` 형태의 ASCII 괄호 보강을 삽입했다 (t538 sync-audit F2 원인). 계측기가 기준이 말하는 대상(데스크톱-네이티브 기능 문서화)이 아니라 ASCII 토큰의 개수를 재고 있었다. spec.md 의 REQ 계층(:132, REQ-012)은 이미 "ko·ja·zh 존재 단정에는 원어 토큰을 사용해야 한다(shall)"고 지시하고 있어, 본 정정은 AC 를 자기 SPEC 의 REQ 와 일치시킨 것이다.
+  - 실측(트리 `0e1f248cd`, 워크트리 `WT-ascii-token-criterion`, 2026-09-08): 뮤턴트 probe — `sed 's/, desktop-native)/)/g; s/ (desktop-native)//g' docs-site/content/zh/utility-commands/moai-e2e.md > /tmp/t573-zh-reverted.md` 후 옛 검증식 `/usr/bin/grep -o 'desktop-native' /tmp/t573-zh-reverted.md | wc -l` → `2` (기준 `≥4` **미달** — 옛 기준은 ASCII 보강 제거, 즉 왜곡의 수리에서 실패한다), 재작성 검증식 `/usr/bin/grep -c "原生桌面" /tmp/t573-zh-reverted.md` → `6` · `/usr/bin/grep -c '^| \*\*原生桌面' /tmp/t573-zh-reverted.md` → `3` (**통과** — ASCII 보강 여부와 무관).
+  - **판정 영향 없음**: 현재 트리에서 옛 읽기(zh 7행 ≥4)와 새 읽기(`原生桌面` 6 ≥6, 매트릭스 3=3) 모두 통과다. 이 정정은 통과 기준을 완화하지 않는다 — zh 페이지가 로케일의 자연어로 기능을 문서화하기만 하면 언제나 도달 가능한 기준으로 바꾼 것뿐이다 (t538 HISTORY AC-008 정정과 동일 종류, AC-011 정정과 달리 판정 불변).
+
 - 2026-09-08: AC-008 검증식 정정 — 매치 **행** 계수에서 **출현 수** 계수로. 기준선(bar)은 그대로다.
   - before: `/usr/bin/grep -c "SVG060\|SVG070" docs-site/content/{ko,en,ja,zh}/advanced/skill-guide.md`
   - after: `/usr/bin/grep -o "SVG060\|SVG070" docs-site/content/<locale>/advanced/skill-guide.md | wc -l`
@@ -39,7 +46,7 @@
 | AC-001 | G1 | en deferral 문장 제거 (RED-now) | 1 → 0 |
 | AC-002 | G1 | zh deferral 문장 제거 (RED-now) | 1 → 0 |
 | AC-003 | G1 | en·zh 플래그 행 desktop-native (RED-now) | 0 → ≥1 (각) |
-| AC-004 | G1 | en·zh desktop-native 총 히트 (플래그+3-OS+자동감지) | 0 → ≥4 (각) |
+| AC-004 | G1 | en: desktop-native ASCII 히트 (Latin 로케일 — ASCII 유지) · zh: 원어 토큰 `原生桌面` 산문 커버리지 + 매트릭스 3-OS 행 (구조) | 0 → en ≥4 · zh 원어 ≥6행 + 매트릭스 3행 (각) |
 | AC-005 | G1 | en·zh 표 행 수 = ko 패리티 | 불일치 → 동일 |
 | AC-006 | G2 | ja·zh doctor 예시행 2줄 (RED-now, 예시 블록 한정) | 블록 한정 0 → 2 · 전체 파일 2 → 4 (각) |
 | AC-007 | G3 | 전체-파일 bold-내부-괄호 스캔 (RED-now) | ko/ja/zh 1 → 0, en 0 유지 |
@@ -66,11 +73,12 @@
 - **When** `/usr/bin/grep -c "desktop-native" docs-site/content/en/utility-commands/moai-e2e.md docs-site/content/zh/utility-commands/moai-e2e.md`
 - **Then** 각 파일 `0` → `≥1` (플래그 행). ko 정본 = :58 형태.
 
-## §D.4 AC-004 — en·zh desktop-native 축 전체 (RED-now)
+## §D.4 AC-004 — en·zh 데스크톱-네이티브 축 전체 (RED-now → 2026-09-08 검증식 정정, HISTORY 참조)
 
 - **Given** base 에서 en·zh 에 데스크톱-네이티브 관련 행이 전무하다 (플래그 0 + 3-OS 매트릭스 0 + 자동감지 0).
-- **When** `/usr/bin/grep -ci "desktop-native" <en|zh moai-e2e.md>`
-- **Then** 각 `0` → `≥4` (플래그 1 + 3-OS 매트릭스 3 + 자동감지 마커 행 1 이상). 내용은 ko:78-80·:98 정본 파생, 표 형태 참조는 ja:78-80.
+- **When** en 축 (Latin 로케일 — ASCII 계수에 왜곡 없음, 유지): `/usr/bin/grep -ci "desktop-native" docs-site/content/en/utility-commands/moai-e2e.md` → `≥4` (본 트리 `0e1f248cd` 실측 7행). zh 축 (비(非)Latin 로케일 — 원어-확정 + 구조 기준): (i) `/usr/bin/grep -c '^| \*\*原生桌面' docs-site/content/zh/utility-commands/moai-e2e.md` → `3` (3-OS 매트릭스 행 — 구조 기준) 및 (ii) `/usr/bin/grep -c "原生桌面" docs-site/content/zh/utility-commands/moai-e2e.md` → `≥6` (원어 토큰 산문 커버리지, 행 계수).
+- **Then** 위 세 검증이 전부 통과한다. 내용은 ko:78-80·:98 정본 파생, 표 형태 참조는 ja:78-80.
+- **왜곡 불가성 (REQ-001(d))**: `原生桌面` 은 zh 페이지의 기존 용어 계열(zh:170 `原生桌面应用`·`原生桌面自动化` — spec.md §1.2/REQ-012·Edge Case 5 가 원어 토큰 사용을 지시)로서, ASCII 보강을 전부 제거한 뮤턴트 사본에서도 동일하게 계수된다 — 실측 `/usr/bin/grep -c "原生桌面" /tmp/t573-zh-reverted.md` → `6`, `/usr/bin/grep -c '^| \*\*原生桌面' /tmp/t573-zh-reverted.md` → `3` (본 트리 재실측). 반면 옛 기준(`grep -ci "desktop-native"` ≥4)은 뮤턴트 사본에서 2로 미달 — 옛 기준은 zh 산문·라벨의 ASCII 보강을 급여하는 구조였다 (census `.moai/reports/t573/census.md` §6).
 
 ## §D.5 AC-005 — 표 행 수 패리티 + 호스트 OS 규칙 문단 (ko 정본 대비)
 
