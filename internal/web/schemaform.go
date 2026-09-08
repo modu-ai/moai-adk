@@ -325,6 +325,21 @@ func parseSchemaForm(r *http.Request, current map[string]string) (map[string]str
 		if !schemaEditableField(f) {
 			continue
 		}
+		// REQ-WWS-006 (SPEC-WEB-WRITE-SAFETY-001): a form name submitted more
+		// than once must not be silently resolved to its first value — the
+		// first value can belong to a hidden duplicate tab while the user's
+		// actual value sits in a later submission (observed: unedited workflow
+		// scalars zeroed by a value-invariant full-form save). Detect the
+		// duplicate and join the atomic-reject error set (EC-2). The hidden
+		// bool companion follows the same rule.
+		if vals := r.PostForm[f.Name]; len(vals) > 1 {
+			errs[f.Name] = "duplicate form values submitted"
+			continue
+		}
+		if vals := r.PostForm[f.Name+"__present"]; len(vals) > 1 {
+			errs[f.Name] = "duplicate form values submitted"
+			continue
+		}
 		switch f.Type {
 		case settings.TypeBool:
 			if r.PostFormValue(f.Name+"__present") == "" {

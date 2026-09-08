@@ -1,0 +1,279 @@
+=== RUN   TestPatchFileValueInvariantPreservesBytes
+=== PAUSE TestPatchFileValueInvariantPreservesBytes
+=== RUN   TestPatchFileScalarChangePreservesPresentation
+=== PAUSE TestPatchFileScalarChangePreservesPresentation
+=== RUN   TestApplySchemaEditsValueInvariantTouchesNothing
+=== PAUSE TestApplySchemaEditsValueInvariantTouchesNothing
+=== CONT  TestPatchFileValueInvariantPreservesBytes
+=== CONT  TestApplySchemaEditsValueInvariantTouchesNothing
+=== CONT  TestPatchFileScalarChangePreservesPresentation
+=== NAME  TestPatchFileValueInvariantPreservesBytes
+    write_safety_test.go:43: value-invariant seam patch rewrote the file — presentation elements lost
+        --- before ---
+        feedback:
+            # Target repository for the /moai feedback workflow (GitHub owner/repo slug).
+            # Default: the remote MoAI-ADK tool repository — bug reports and feature
+            # requests about the MoAI-ADK tool itself, NOT the user's own project.
+            # Fork maintainers override this to redirect feedback to their own fork.
+            repository: modu-ai/moai-adk
+        
+            # Whether the /moai feedback workflow may create the issue without asking
+            # first. Default false: before anything leaves the machine the workflow
+            # shows the masked title, the masked body in full, and a summary of what
+            # was masked, then waits for an explicit choice. Set this to true only if
+            # that per-submission confirmation is not wanted.
+            auto_submit: false
+        
+        --- after ---
+        feedback:
+            # Target repository for the /moai feedback workflow (GitHub owner/repo slug).
+            # Default: the remote MoAI-ADK tool repository — bug reports and feature
+            # requests about the MoAI-ADK tool itself, NOT the user's own project.
+            # Fork maintainers override this to redirect feedback to their own fork.
+            repository: modu-ai/moai-adk
+            # Whether the /moai feedback workflow may create the issue without asking
+            # first. Default false: before anything leaves the machine the workflow
+            # shows the masked title, the masked body in full, and a summary of what
+            # was masked, then waits for an explicit choice. Set this to true only if
+            # that per-submission confirmation is not wanted.
+            auto_submit: false
+=== NAME  TestPatchFileScalarChangePreservesPresentation
+    write_safety_test.go:69: blank lines not preserved: before=2 after=1
+        feedback:
+            # Target repository for the /moai feedback workflow (GitHub owner/repo slug).
+            # Default: the remote MoAI-ADK tool repository — bug reports and feature
+            # requests about the MoAI-ADK tool itself, NOT the user's own project.
+            # Fork maintainers override this to redirect feedback to their own fork.
+            repository: someone/else-fork
+            # Whether the /moai feedback workflow may create the issue without asking
+            # first. Default false: before anything leaves the machine the workflow
+            # shows the masked title, the masked body in full, and a summary of what
+            # was masked, then waits for an explicit choice. Set this to true only if
+            # that per-submission confirmation is not wanted.
+            auto_submit: false
+--- FAIL: TestPatchFileValueInvariantPreservesBytes (0.00s)
+--- FAIL: TestPatchFileScalarChangePreservesPresentation (0.00s)
+=== NAME  TestApplySchemaEditsValueInvariantTouchesNothing
+    write_safety_test.go:109: value-invariant save rewrote git-strategy.yaml (dirty-gate bypassed):
+        --- before ---
+        git_strategy:
+            github_username: ""
+            gitlab:
+                instance_url: ""
+            manual:
+                auto_checkpoint: disabled
+                automation:
+                    auto_branch: false
+                    auto_commit: true
+                    auto_pr: false
+                    auto_push: false
+                branch_creation:
+                    auto_enabled: false
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: false
+                environment: local
+                github_integration: false
+                hooks:
+                    commit_msg: warn
+                    pre_commit: enforce
+                    pre_push: warn
+                push_to_remote: false
+                workflow: github-flow
+            mode: team
+            personal:
+                # 1-person OSS Hybrid Trunk (2026-05-22): Tier S 미만은 main 직접 commit,
+                # Tier M/L 또는 SPEC sync 시만 feat 브랜치 + PR. auto_branch/auto_pr 활성으로
+                # SPEC 워크플로우 시 자동 브랜치 + PR. branch_prefix는 feat/SPEC- (실제 사용 형식 일치).
+                automation:
+                    auto_branch: true
+                    auto_commit: true
+                    auto_pr: true
+                    auto_push: true
+                branch_creation:
+                    auto_enabled: true
+                    prompt_always: true
+                branch_prefix: feat/SPEC-
+                commit_style:
+                    format: conventional
+                    scope_required: false
+                environment: github
+                github_integration: true
+                hooks:
+                    commit_msg: warn
+                    pre_commit: enforce
+                    pre_push: enforce
+                main_branch: main
+                push_to_remote: true
+                workflow: github-flow
+            provider: github
+            team:
+                # 1-person OSS Hybrid Trunk (2026-05-22):
+                # auto_branch/auto_pr/auto_enabled 재활성 — SPEC 워크플로우 시 자동 브랜치 + PR 생성.
+                # branch_prefix: feature/SPEC- → feat/SPEC- (PR #1043/#1044 실제 사용 형식 일치).
+                # draft_pr: true → false (1인 OSS이므로 즉시 ready, draft 단계 불필요).
+                # required_reviews: 1 → 0 (외부 contributor 없음 — self admin merge).
+                # hooks.pre_push: warn → enforce (main push 보호, local lint/test 검증 강제).
+                # Tier S 미만은 main 직접 commit (Hybrid 첫번째 옵션), Tier M/L만 PR.
+                automation:
+                    auto_branch: true
+                    auto_commit: true
+                    auto_pr: true
+                    auto_push: true
+                branch_creation:
+                    auto_enabled: true
+                    prompt_always: true
+                branch_prefix: feat/SPEC-
+                branch_protection: true
+                commit_style:
+                    format: conventional
+                    scope_required: true
+                draft_pr: false
+                environment: github
+                github_integration: true
+                hooks:
+                    commit_msg: warn
+                    pre_commit: enforce
+                    pre_push: enforce
+                main_branch: main
+                push_to_remote: true
+                required_reviews: 0
+                workflow: github-flow
+        
+        --- after ---
+        git_strategy:
+            mode: team
+            provider: github
+            github_username: ""
+            gitlab:
+                instance_url: ""
+            worktree_base_branch: ""
+            manual:
+                workflow: github-flow
+                environment: local
+                github_integration: false
+                push_to_remote: false
+                auto_checkpoint: disabled
+                branch_prefix: ""
+                main_branch: ""
+                develop_branch: ""
+                release_branch_prefix: ""
+                rc_version_format: ""
+                draft_pr: false
+                required_reviews: 0
+                branch_protection: false
+                merge_method: squash
+                automation:
+                    auto_branch: false
+                    auto_commit: true
+                    auto_pr: false
+                    auto_push: false
+                branch_creation:
+                    auto_enabled: false
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: false
+                hooks:
+                    pre_commit: enforce
+                    pre_push: warn
+                    commit_msg: warn
+            personal:
+                workflow: github-flow
+                environment: github
+                github_integration: true
+                push_to_remote: true
+                auto_checkpoint: ""
+                branch_prefix: feat/SPEC-
+                main_branch: main
+                develop_branch: ""
+                release_branch_prefix: ""
+                rc_version_format: ""
+                draft_pr: false
+                required_reviews: 0
+                branch_protection: false
+                merge_method: squash
+                automation:
+                    auto_branch: true
+                    auto_commit: true
+                    auto_pr: true
+                    auto_push: true
+                branch_creation:
+                    auto_enabled: true
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: false
+                hooks:
+                    pre_commit: enforce
+                    pre_push: enforce
+                    commit_msg: warn
+            team:
+                workflow: github-flow
+                environment: github
+                github_integration: true
+                push_to_remote: true
+                auto_checkpoint: ""
+                branch_prefix: feat/SPEC-
+                main_branch: main
+                develop_branch: ""
+                release_branch_prefix: ""
+                rc_version_format: ""
+                draft_pr: false
+                required_reviews: 0
+                branch_protection: true
+                merge_method: squash
+                automation:
+                    auto_branch: true
+                    auto_commit: true
+                    auto_pr: true
+                    auto_push: true
+                branch_creation:
+                    auto_enabled: true
+                    prompt_always: true
+                commit_style:
+                    format: conventional
+                    scope_required: true
+                hooks:
+                    pre_commit: enforce
+                    pre_push: enforce
+                    commit_msg: warn
+            auto_branch: false
+            branch_prefix: moai/
+            commit_style: conventional
+            worktree_root: ""
+            gitlab_instance_url: ""
+    write_safety_test.go:113: value-invariant save rewrote feedback.yaml (seam presentation lost)
+        --- before ---
+        feedback:
+            # Target repository for the /moai feedback workflow (GitHub owner/repo slug).
+            # Default: the remote MoAI-ADK tool repository — bug reports and feature
+            # requests about the MoAI-ADK tool itself, NOT the user's own project.
+            # Fork maintainers override this to redirect feedback to their own fork.
+            repository: modu-ai/moai-adk
+        
+            # Whether the /moai feedback workflow may create the issue without asking
+            # first. Default false: before anything leaves the machine the workflow
+            # shows the masked title, the masked body in full, and a summary of what
+            # was masked, then waits for an explicit choice. Set this to true only if
+            # that per-submission confirmation is not wanted.
+            auto_submit: false
+        
+        --- after ---
+        feedback:
+            # Target repository for the /moai feedback workflow (GitHub owner/repo slug).
+            # Default: the remote MoAI-ADK tool repository — bug reports and feature
+            # requests about the MoAI-ADK tool itself, NOT the user's own project.
+            # Fork maintainers override this to redirect feedback to their own fork.
+            repository: modu-ai/moai-adk
+            # Whether the /moai feedback workflow may create the issue without asking
+            # first. Default false: before anything leaves the machine the workflow
+            # shows the masked title, the masked body in full, and a summary of what
+            # was masked, then waits for an explicit choice. Set this to true only if
+            # that per-submission confirmation is not wanted.
+            auto_submit: false
+--- FAIL: TestApplySchemaEditsValueInvariantTouchesNothing (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/settings	0.301s
+FAIL

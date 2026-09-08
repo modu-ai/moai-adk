@@ -46,19 +46,64 @@ func BuildSmartPATH() string {
 	if homeDir == "" {
 		homeDir = os.Getenv("HOME")
 	}
+	return buildSmartPATHFor(runtime.GOOS, homeDir, os.Getenv, isExistingDir, runtime.GOOS == "linux" && IsWSL2())
+}
 
-	sep := string(os.PathListSeparator)
+// isExistingDir reports whether path exists and is a directory. A regular
+// file at a candidate location does not count: the probe semantics require a
+// directory that can hold executables.
+func isExistingDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+// @MX:ANCHOR: [AUTO] buildSmartPATHFor is the GOOS-injected, deterministic core of BuildSmartPATH
+// @MX:REASON: [AUTO] fan_in 5 through the BuildSmartPATH wrapper (initializer.go:412, update.go:1019, update_template_sync.go:275+335, update_clean_install.go:449) — every settings.json write surface routes through this one generator, so its per-platform output shape is an invariant contract
+// @MX:SPEC: SPEC-WIN-SMARTPATH-001
+//
+// buildSmartPATHFor assembles the platform-appropriate PATH from fully
+// injected inputs (goos, home, envLookup, stat, wsl2), which makes its output
+// a pure function of its arguments — table tests can pin exact output per
+// platform without touching the host filesystem or runtime.GOOS.
+func buildSmartPATHFor(goos, home string, envLookup func(string) string, stat func(string) bool, wsl2 bool) string {
+	// The list separator is a property of the TARGET platform, not the build
+	// host: os.PathListSeparator is pinned to the build GOOS at compile time,
+	// so it is derived from the injected goos instead. unix builds join with
+	// ":" exactly as os.PathListSeparator does there; windows joins with ";".
+	sep := ":"
+	if goos == "windows" {
+		sep = ";"
+	}
 
 	// User-specific directories (always included, cross-platform)
 	candidates := []string{
-		filepath.Join(homeDir, ".local", "bin"), // XDG user-local binaries
-		filepath.Join(homeDir, "go", "bin"),     // Go workspace binaries
+		filepath.Join(home, ".local", "bin"), // XDG user-local binaries
+		filepath.Join(home, "go", "bin"),     // Go workspace binaries
 	}
 
 	// Platform-specific package manager and system paths
-	switch runtime.GOOS {
+	switch goos {
+	case "windows":
+		// @MX:NOTE: [AUTO] Windows assembles Windows-shaped entries only — the POSIX system tail below is never appended under windows (GH #1690: the GOOS-blind generator fell into the default/linux branch and shipped a ";-joined" mix of POSIX dirs that broke exec-form hook bash resolution).
+		if systemRoot := envLookup("SystemRoot"); systemRoot != "" {
+			candidates = append(candidates, filepath.Join(systemRoot, "System32"))
+		}
+		// Git Bash candidates resolve from standard install-location
+		// environment variables (no hardcoded C:\ literals in source) and are
+		// appended only when the probe reports an existing directory. Git for
+		// Windows registers only Git\cmd on the system PATH; bash.exe lives
+		// in Git\bin, which exec-form hooks must be able to resolve.
+		if pf := envLookup("ProgramFiles"); pf != "" && stat(filepath.Join(pf, "Git", "bin")) {
+			candidates = append(candidates, filepath.Join(pf, "Git", "bin"))
+		}
+		if pf86 := envLookup("ProgramFiles(x86)"); pf86 != "" && stat(filepath.Join(pf86, "Git", "bin")) {
+			candidates = append(candidates, filepath.Join(pf86, "Git", "bin"))
+		}
+		if lad := envLookup("LOCALAPPDATA"); lad != "" && stat(filepath.Join(lad, "Programs", "Git", "bin")) {
+			candidates = append(candidates, filepath.Join(lad, "Programs", "Git", "bin"))
+		}
 	case "darwin":
-		if brewPrefix := os.Getenv("HOMEBREW_PREFIX"); brewPrefix != "" {
+		if brewPrefix := envLookup("HOMEBREW_PREFIX"); brewPrefix != "" {
 			candidates = append(candidates,
 				filepath.Join(brewPrefix, "bin"),
 				filepath.Join(brewPrefix, "sbin"),
@@ -78,8 +123,11 @@ func BuildSmartPATH() string {
 		)
 	}
 
-	// Standard POSIX system paths (always required)
-	candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+	// Standard POSIX system paths (always required — except under windows,
+	// where POSIX dirs must never appear; see the windows case above)
+	if goos != "windows" {
+		candidates = append(candidates, "/usr/bin", "/bin", "/usr/sbin", "/sbin")
+	}
 
 	// WSL2: append Windows drive-mount paths from the current terminal PATH.
 	// WSL2 maps Windows drives as /mnt/<letter>/ (e.g., /mnt/c/, /mnt/d/),
@@ -91,12 +139,12 @@ func BuildSmartPATH() string {
 	// are included. This filters out non-drive mounts (e.g., /mnt/wslg, /mnt/foo)
 	// while preserving all legitimate Windows drive paths regardless of depth
 	// (e.g., /mnt/c/Windows/System32, /mnt/d/tools/bin).
-	if runtime.GOOS == "linux" && IsWSL2() {
+	if goos == "linux" && wsl2 {
 		seen := make(map[string]bool, len(candidates))
 		for _, c := range candidates {
 			seen[strings.TrimRight(c, "/\\")] = true
 		}
-		for _, entry := range strings.Split(os.Getenv("PATH"), sep) {
+		for _, entry := range strings.Split(envLookup("PATH"), sep) {
 			if isWSL2DrivePath(entry) && !isUserScopedWindowsPath(entry) {
 				normalized := strings.TrimRight(entry, "/\\")
 				if !seen[normalized] {

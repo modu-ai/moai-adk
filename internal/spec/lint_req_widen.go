@@ -90,6 +90,13 @@ func parseREQsWide(body string) []REQEntry {
 // severity treatment does not touch. Marking the newly-reachable entries lets
 // each emission site report the finding while declining to gate on it, and
 // leaves every pre-existing narrow entry byte-identical in behavior.
+//
+// SPEC-SPEC-LINT-BLIND-AXES-001 axis 1 added a SECOND source to this entry
+// point: table-form definitions (lint_req_table.go). The two are merged by line
+// so the result stays in document order. The list branch below is untouched by
+// that addition — every entry it produces keeps its ID, Text, Line, Widened
+// value and its (zero-value) list Source, which is what AC-SLB-001a and
+// AC-SLB-003 assert.
 func parseREQsWithProvenance(body string) []REQEntry {
 	narrow := parseREQs(body)
 	narrowAt := make(map[int]string, len(narrow))
@@ -101,5 +108,5 @@ func parseREQsWithProvenance(body string) []REQEntry {
 	for i := range wide {
 		wide[i].Widened = narrowAt[wide[i].Line] != wide[i].ID
 	}
-	return wide
+	return mergeREQsByLine(wide, parseREQsTable(body))
 }

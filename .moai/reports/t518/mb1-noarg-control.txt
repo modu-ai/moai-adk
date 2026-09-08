@@ -1,0 +1,22 @@
+tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+HEAD (pre-change sources): 97f90128431a81e14247cd964ea0d4dd1bc5c57f
+
+before build rc=0
+after build rc=0
+BEFORE: moai spec lint (no argument) rc=0
+AFTER:  moai spec lint (no argument) rc=0
+
+--- BEFORE summary line ---
+
+0 error(s), 4617 warning(s)
+--- AFTER summary line ---
+
+0 error(s), 4617 warning(s)
+
+--- byte-level diff of the two full outputs ---
+diff rc=0  (0 = identical)
+
+--- line counts (a non-empty diff would be visible above; these are a second reading) ---
+    4621 /tmp/t518-noarg-before.txt
+    4621 /tmp/t518-noarg-after.txt
+    9242 total

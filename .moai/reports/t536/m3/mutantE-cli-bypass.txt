@@ -1,0 +1,5 @@
+--- FAIL: TestGuardBypassMutant_ObserveHomePollution (0.00s)
+    todo_axisa_guard_test.go:184: precondition: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGuardBypassMutant_ObserveHomePollution2572639914/002" must classify as a temporary origin (reason ""); without it, an absence of pollution says nothing about the resolver-layer guard
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.867s
+FAIL

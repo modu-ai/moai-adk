@@ -179,6 +179,7 @@ type FieldDef struct {
 	Default       string            // 디스크 값 부재 시 위젯이 선택할 값 (빈 문자열이면 기존 동작 — 선택 없음)
 	StoreOnly     bool              // 값이 저장만 되고 런타임에 적용되지 않음 — 위젯이 저장 전용 배지를 렌더한다
 	EmptySubmits  bool              // select가 "" 제출을 실제 값으로 취급한다 (empty=preserve 예외 — 키를 중립 ""로 되돌리는 경로)
+	AbsentDefault string            // bool 전용: 부재 키의 런타임 유효 기본값 ("true" = default-ON/fail-open, 빈 문자열 = default-off). 값-불변 게이트가 absent 분기의 극성을 판정하는 단일 원천 (sync-audit F1, SPEC-WEB-WRITE-SAFETY-001)
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
 	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상

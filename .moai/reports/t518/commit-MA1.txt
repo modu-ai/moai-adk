@@ -1,0 +1,37 @@
+feat(SPEC-SPEC-LINT-BLIND-AXES-001): M-A1 collect table-form REQ definitions (t518)
+
+Card t518. Axis 1 of the two blind spots: the REQ collector was anchored to a
+markdown list bullet, so a SPEC stating its requirements as a table produced an
+empty doc.REQs and the four REQ-based rules never visited it — a silence
+indistinguishable from a pass.
+
+Discriminator is the operator-approved C-d: a table row is a definition only
+when the row carries a marker from the narrow lexicon L1 (SHALL / 해야 한다 /
+해서는 안 된다), matched as a case-sensitive substring over the whole row. The
+lexicon is NOT to be widened to reduce its known miss — C-d was chosen for
+reproducibility between independent derivations, and widening destroys that.
+
+Severity has one decision point: table entries ride the existing
+REQEntry.Widened / reqFindingSeverity advisory path (no second severity axis).
+Provenance is a separate REQEntry.Source field whose only consumer is the corpus
+recount; it never reaches a severity decision, and a test flips every value to
+prove it.
+
+Corpus movement, both values re-derived on this tree from binaries built at HEAD
+and at the working tree (no stored number was subtracted):
+  before 0 error(s), 4378 warning(s)  →  after 0 error(s), 4394 warning(s)
+  +16, all CoverageIncomplete, all table-sourced, 0 from the t385 widening.
+  Attributed row by row: CODEX-PARTIAL-WIRING-001 x11, INIT-001 x5.
+  20 entries collected corpus-wide; the other 4 (HARNESS-CLASSIFIER-WIRING-001)
+  are AC-covered and GEARS-clean, so they emit nothing. Residual 0.
+  The shipped Go collector's 20 independently matches the python reader's C-d 20.
+  CoverageIncomplete interpretation stays deferred to t528.
+
+8 mutants run; all 8 now RED. Two (L1 case-insensitivity, bold-ID tolerance)
+passed the whole suite on the first pass and are recorded as such — the guard
+that catches them was added afterwards, not present from the start.
+
+Verified: go test ./internal/spec/... rc=0 · go vet rc=0 · gofmt clean ·
+golangci-lint 0 issues. Full suite is CI's; this lane does not push.
+
+🗿 MoAI

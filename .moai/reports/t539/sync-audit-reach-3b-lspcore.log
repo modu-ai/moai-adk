@@ -1,0 +1,202 @@
+2026/09/08 03:27:01 WARN lsp: SIGTERM failed, sending SIGKILL language=go error="process already dead"
+panic: REACHPROBE
+	
+	runtime/debug.Stack()
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/debug/stack.go:26 +0x64
+	golang.org/x/sync/singleflight.newPanicError({0x1029e45e0, 0x102a2b6f0})
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:44 +0x24
+	golang.org/x/sync/singleflight.(*Group).doCall.func2.1()
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:193 +0x34
+	panic({0x1029e45e0?, 0x102a2b6f0?})
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn.func1()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:366 +0x340
+	golang.org/x/sync/singleflight.(*Group).doCall.func2(0x63819803da6, 0x63819724000, 0x50?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:198 +0x54
+	golang.org/x/sync/singleflight.(*Group).doCall(0x1029f69e0?, 0x63819722000?, {0x102853f7a?, 0x2?}, 0x0?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:200 +0x68
+	golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819803e98)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:113 +0x1ac
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+	github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+	created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+	
+
+goroutine 112 [running]:
+golang.org/x/sync/singleflight.(*Group).doCall.func1()
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:170 +0x290
+golang.org/x/sync/singleflight.(*Group).doCall(0x1029f69e0?, 0x63819722000?, {0x102853f7a?, 0x2?}, 0x0?)
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:205 +0x88
+golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819803e98)
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:113 +0x1ac
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+panic: REACHPROBE
+	
+	runtime/debug.Stack()
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/debug/stack.go:26 +0x64
+	golang.org/x/sync/singleflight.newPanicError({0x1029e45e0, 0x102a2b6f0})
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:44 +0x24
+	golang.org/x/sync/singleflight.(*Group).doCall.func2.1()
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:193 +0x34
+	panic({0x1029e45e0?, 0x102a2b6f0?})
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn.func1()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:366 +0x340
+	golang.org/x/sync/singleflight.(*Group).doCall.func2(0x63819803da6, 0x63819724000, 0x50?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:198 +0x54
+	golang.org/x/sync/singleflight.(*Group).doCall(0x1029f69e0?, 0x63819722000?, {0x102853f7a?, 0x2?}, 0x0?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:200 +0x68
+	golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819803e98)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:113 +0x1ac
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+	github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+	created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+	
+
+goroutine 101 [running]:
+golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x6381991ae98)
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:102 +0x264
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+panic: REACHPROBE
+	
+	runtime/debug.Stack()
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/debug/stack.go:26 +0x64
+	golang.org/x/sync/singleflight.newPanicError({0x1029e45e0, 0x102a2b6f0})
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:44 +0x24
+	golang.org/x/sync/singleflight.(*Group).doCall.func2.1()
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:193 +0x34
+	panic({0x1029e45e0?, 0x102a2b6f0?})
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn.func1()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:366 +0x340
+	golang.org/x/sync/singleflight.(*Group).doCall.func2(0x63819803da6, 0x63819724000, 0x50?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:198 +0x54
+	golang.org/x/sync/singleflight.(*Group).doCall(0x1029f69e0?, 0x63819722000?, {0x102853f7a?, 0x2?}, 0x0?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:200 +0x68
+	golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819803e98)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:113 +0x1ac
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+	github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+	created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+	
+
+goroutine 102 [running]:
+golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x6381991b698)
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:102 +0x264
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+panic: REACHPROBE
+	
+	runtime/debug.Stack()
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/debug/stack.go:26 +0x64
+	golang.org/x/sync/singleflight.newPanicError({0x1029e45e0, 0x102a2b6f0})
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:44 +0x24
+	golang.org/x/sync/singleflight.(*Group).doCall.func2.1()
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:193 +0x34
+	panic({0x1029e45e0?, 0x102a2b6f0?})
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn.func1()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:366 +0x340
+	golang.org/x/sync/singleflight.(*Group).doCall.func2(0x63819803da6, 0x63819724000, 0x50?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:198 +0x54
+	golang.org/x/sync/singleflight.(*Group).doCall(0x1029f69e0?, 0x63819722000?, {0x102853f7a?, 0x2?}, 0x0?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:200 +0x68
+	golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819803e98)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:113 +0x1ac
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+	github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+	created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+	
+
+goroutine 108 [running]:
+golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819916698)
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:102 +0x264
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+panic: REACHPROBE
+	
+	runtime/debug.Stack()
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/debug/stack.go:26 +0x64
+	golang.org/x/sync/singleflight.newPanicError({0x1029e45e0, 0x102a2b6f0})
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:44 +0x24
+	golang.org/x/sync/singleflight.(*Group).doCall.func2.1()
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:193 +0x34
+	panic({0x1029e45e0?, 0x102a2b6f0?})
+		/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn.func1()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:366 +0x340
+	golang.org/x/sync/singleflight.(*Group).doCall.func2(0x63819803da6, 0x63819724000, 0x50?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:198 +0x54
+	golang.org/x/sync/singleflight.(*Group).doCall(0x1029f69e0?, 0x63819722000?, {0x102853f7a?, 0x2?}, 0x0?)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:200 +0x68
+	golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819803e98)
+		/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:113 +0x1ac
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+	github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+	github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+	created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+		/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+	
+
+goroutine 110 [running]:
+golang.org/x/sync/singleflight.(*Group).Do(0x63819942118, {0x102853f7a, 0x2}, 0x63819917698)
+	/Users/goos/go/pkg/mod/golang.org/x/sync@v0.22.0/singleflight/singleflight.go:102 +0x264
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).getOrSpawn(0x63819942100, {0x102857f64?, 0x12?}, {0x102853f7a, 0x2})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:347 +0x1fc
+github.com/modu-ai/moai-adk/internal/lsp/core.(*Manager).RouteFor(0x63819942100, {0x102a2dd10, 0x102a7f760}, {0x102857f64, 0x12})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager.go:314 +0x104
+github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector.func2()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:266 +0x78
+created by github.com/modu-ai/moai-adk/internal/lsp/core.TestGetOrSpawnConcurrent_RaceDetector in goroutine 100
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/core/manager_singleflight_test.go:262 +0x428
+FAIL	github.com/modu-ai/moai-adk/internal/lsp/core	0.378s
+FAIL

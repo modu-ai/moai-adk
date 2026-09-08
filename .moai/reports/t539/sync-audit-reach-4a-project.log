@@ -1,0 +1,23 @@
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+--- FAIL: TestInit_PlainDeployerStillDeploys (0.01s)
+panic: REACHPROBE [recovered, repanicked]
+
+goroutine 117 [running]:
+testing.tRunner.func1.2({0x1052c0fa0, 0x10534a7c0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x1052c0fa0?, 0x10534a7c0?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/core/project.(*projectInitializer).deployTemplates(_, {_, _}, {{0x1ba7c4cc0e0, 0x61}, {0x104aa867c, 0x12}, {0x104a9907d, 0x2}, {0x0, ...}, ...}, ...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/core/project/initializer.go:434 +0x53c
+github.com/modu-ai/moai-adk/internal/core/project.(*projectInitializer).Init(_, {_, _}, {{0x1ba7c4cc0e0, 0x61}, {0x104aa867c, 0x12}, {0x104a9907d, 0x2}, {0x0, ...}, ...})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/core/project/initializer.go:226 +0x36c
+github.com/modu-ai/moai-adk/internal/core/project.TestInit_PlainDeployerStillDeploys(0x1ba7c490b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/core/project/initializer_mirror_notice_test.go:152 +0x2c0
+testing.tRunner(0x1ba7c490b48, 0x1053480d0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/core/project	0.507s
+FAIL

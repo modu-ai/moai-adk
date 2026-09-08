@@ -24,9 +24,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/lsp/gopls"
 	lsphook "github.com/modu-ai/moai-adk/internal/lsp/hook"
 	"github.com/modu-ai/moai-adk/internal/paths"
-	"github.com/modu-ai/moai-adk/internal/stateanchor"
 	"github.com/modu-ai/moai-adk/internal/ralph"
 	"github.com/modu-ai/moai-adk/internal/resilience"
+	"github.com/modu-ai/moai-adk/internal/stateanchor"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )

@@ -1,0 +1,10 @@
+--- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.08s)
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.00s)
+        todo_root_temp_guard_test.go:65: precondition: base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueueno_local_queue_bot3312424363/001" must classify temporary under the production root set (reason "")
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.04s)
+        todo_root_temp_guard_test.go:105: adopting root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuelocal_queue_present1307054495/002/.moai/todo/001-7b9f3e87", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuelocal_queue_present1307054495/001"
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.04s)
+        todo_root_temp_guard_test.go:149: temp-origin ∧ home-unresolvable root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuetemporary_origin_AN2633523154/001/.moai/state/todo", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuetemporary_origin_AN2633523154/001"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.555s
+FAIL

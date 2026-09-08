@@ -11,8 +11,48 @@ package specid
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// CanonicalSpecIDShapeLiteral is the anchored SPEC-ID shape regexp source.
+//
+// SPEC-SPEC-LINT-ID-ARG-001 (REQ-SLI-006, REQ-SLI-009) — it is a COPY of the
+// strict pattern that lives, unexported, in internal/spec (lint.go). The copy
+// exists because that symbol is lowercase and therefore unimportable, and
+// exporting it would edit internal/spec, which this SPEC's radius forbids
+// (REQ-SLI-008). specid_shape_test.go compares this literal, byte for byte,
+// against the literal read out of the internal/spec source, so the two
+// drifting apart is detected rather than assumed.
+//
+// Two properties are load-bearing and must not be relaxed:
+//   - both ends are anchored (^…$), so it cannot match a substring of a path;
+//   - neither "." nor a path separator appears in any character class.
+//
+// Both exist to keep this from behaving like the LOOSER, same-named symbol
+// specIDPattern in internal/cli/spec_status.go:18, which is unanchored on
+// purpose — it scrapes SPEC-IDs out of git commit messages. Reusing that one
+// as an argument discriminator misreads a path as an ID; the risk has a name,
+// same-name/different-meaning reuse drift, and spec.md §H records it.
+const CanonicalSpecIDShapeLiteral = `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`
+
+var canonicalSpecIDShape = regexp.MustCompile(CanonicalSpecIDShapeLiteral)
+
+// HasCanonicalSpecIDShape reports whether s has the canonical SPEC-ID shape.
+//
+// This is a SHAPE question, and it is deliberately a different question from
+// the one ValidateSpecID answers: that function is a security sanitizer that
+// rejects exactly three things (absolute path, "..", path separators) and says
+// nothing about whether the remainder looks like a SPEC-ID at all. A caller
+// deciding "is this argument an ID or a path?" needs this function; a caller
+// about to build a filesystem path out of an ID needs that one.
+//
+// The name is deliberately unlike specIDPattern (spec_status.go:18), so that
+// a reader reaching for "the SPEC-ID regexp" cannot pick the loose one by
+// accident (REQ-SLI-006).
+func HasCanonicalSpecIDShape(s string) bool {
+	return canonicalSpecIDShape.MatchString(s)
+}
 
 // ValidateSpecID는 specID에 path-traversal 문자("..", "/" 또는 "\", 절대 경로)가
 // 포함되어 있으면 구조화된 검증 에러를 반환한다. 정상 canonical SPEC-ID(예:

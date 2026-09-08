@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // TestTodoSweepSelectorMatchesFamily — AC-SA-010's selector-0-match guard.
@@ -134,15 +136,34 @@ func tailLines(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
-// TestGuardBypassMutant_ObserveHomePollution — AC-SA-011 (REQ-SA-011): the
-// mutant proof that AC-SA-010's zero is EARNED by the guard, not coincidence.
-// The mutant executes newTodoCmd() DIRECTLY, bypassing runTodo's
-// liveTodoQueueRootReason gate, in the exact context the historical
-// pollution was born in (verdict §A-5): CLAUDE_PROJECT_DIR points at a
-// non-git temp directory, so git resolution fails and the queue falls back
-// to the home root — one lock + one store under $HOME/.moai/todo. The canary
-// HOME is this test's own temp dir through the userHomeDirFn seam; the real
-// HOME is never touched.
+// TestGuardBypassMutant_ObserveHomePollution — AC-SA-011 (REQ-SA-011),
+// transitioned to that requirement's SECOND branch by
+// SPEC-TODO-HOME-TEMP-GUARD-001.
+//
+// History, kept because the transition is the point. The mutant executes
+// newTodoCmd() DIRECTLY, bypassing runTodo's liveTodoQueueRootReason gate, in
+// the exact context the historical pollution was born in: CLAUDE_PROJECT_DIR
+// points at a non-git temp directory, so git resolution fails and the queue
+// used to fall back to the home root — one lock + one store under
+// $HOME/.moai/todo. Observing that pollution was the evidence that AC-SA-010's
+// zero was EARNED by the runTodo gate rather than coincidence.
+//
+// The mutant no longer produces pollution, and REQ-SA-011 already says what to
+// do about that: "a mutant that produces no pollution shall be reported
+// alongside the one that does, naming the guard boundary it reveals." This is
+// therefore a transition into a branch that requirement already documents, not
+// a withdrawal of it — SPEC-STATE-ANCHOR-001 is not modified, and its own
+// acceptance record stays a time-fixed observation of the tree that preceded
+// this card.
+//
+// The boundary revealed: t422's runTodo gate lives in the TEST layer, while
+// SPEC-TODO-HOME-TEMP-GUARD-001's temporary-origin refusal lives in the
+// RESOLVER layer beneath it. Bypassing the upper gate no longer reaches the
+// home root, because the lower one never resolves to it. Two different layers;
+// the lower one covers the upper one's bypass. The full report — which mutant,
+// which boundary, and the control run on the pre-guard tree that separates
+// "the guard worked" from "the mutant did not run" — is M3's artifact at
+// .moai/reports/t536/guard-boundary.md.
 //
 // The name deliberately carries GuardBypassMutant and deliberately does NOT
 // match the AC-SA-010 sweep selector (TestTodo): the swept family is the
@@ -156,23 +177,53 @@ func TestGuardBypassMutant_ObserveHomePollution(t *testing.T) {
 	nonGit := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", nonGit)
 
+	// The precondition that makes the absence attributable: this base IS a
+	// temporary origin, so the resolver-layer guard is the thing standing
+	// between the mutant and the home root.
+	if reason, isTemp := kanban.TempOriginReason(nonGit); !isTemp {
+		t.Fatalf("precondition: %q must classify as a temporary origin (reason %q); "+
+			"without it, an absence of pollution says nothing about the resolver-layer guard", nonGit, reason)
+	}
+
 	// THE MUTANT: newTodoCmd().Execute() with no gate — exactly what runTodo
 	// refuses to do without todoFixture(t).
 	cmd := newTodoCmd()
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetErr(&errBuf)
-	cmd.SetArgs([]string{"add", "t510 mutant probe card"})
+	cmd.SetArgs([]string{"add", "t536 mutant probe card"})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("mutant add failed: %v (stderr: %s)", err, errBuf.String())
 	}
 
 	todoRoot := filepath.Join(canaryHome, ".moai", "todo")
 	entries, readErr := os.ReadDir(todoRoot)
-	if readErr != nil || len(entries) == 0 {
-		t.Fatalf("mutant produced NO home pollution under %s (read err=%v) — report the guard boundary this reveals (REQ-SA-011: a pollution-less mutant is a finding, not a pass)",
-			todoRoot, readErr)
+	if readErr == nil && len(entries) > 0 {
+		t.Fatalf("the mutant produced home pollution under %s (%d entr(ies)) — "+
+			"the resolver-layer temporary-origin guard regressed", todoRoot, len(entries))
 	}
-	t.Logf("mutant pollution observed: %d entr(ies) under canary HOME/.moai/todo — runTodo's liveTodoQueueRootReason gate is what keeps the guarded family at zero",
-		len(entries))
+
+	// Positive attribution: the run went somewhere, and that somewhere is the
+	// substitute root the guard names. Absence of pollution on its own would be
+	// satisfied just as well by a command that did nothing at all.
+	root := resolveTodoQueueRoot()
+	if root != nonGit {
+		t.Fatalf("queue root = %q, want the guard's substitute root %q", root, nonGit)
+	}
+	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
+	if err != nil {
+		t.Fatalf("load the project-local queue the run continued against: %v", err)
+	}
+	if len(rec.Items) == 0 {
+		t.Fatalf("the mutant add landed nowhere: the project-local queue at %s is empty, so "+
+			"the zero-pollution observation cannot be attributed to the guard",
+			kanban.BacklogPathForRoot(root))
+	}
+
+	t.Logf("REQ-SA-011 second branch: the bypass mutant produced NO pollution under %s. "+
+		"Boundary revealed: t422's runTodo gate (test layer) is bypassed, but "+
+		"SPEC-TODO-HOME-TEMP-GUARD-001's temporary-origin refusal (resolver layer) never resolves "+
+		"to a home root for this base, so the card landed in the project-local queue at %s instead. "+
+		"Full report with the pre-guard control run: .moai/reports/t536/guard-boundary.md",
+		todoRoot, kanban.BacklogPathForRoot(root))
 }

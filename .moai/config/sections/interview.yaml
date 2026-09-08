@@ -1,6 +1,9 @@
 interview:
   enabled: true
   clarity_threshold: 4
+  # Dogfood: this repository runs judgment-first (pull) to exercise the
+  # withholding path and collect the M6 falsifier sample.
+  recommendation_mode: pull
   plan:
     max_rounds: 5
     questions_per_round: 3
