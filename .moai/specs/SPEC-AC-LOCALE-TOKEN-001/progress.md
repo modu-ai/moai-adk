@@ -96,4 +96,14 @@ m1_to_mN_commit_strategy: M1 census 1커밋 + M2 재작성 1커밋 + M-final pro
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: completed
+sync_complete_at: 2026-09-08
+sync_commit_sha: "pending-backfill-sync"
+frontmatter_status_transitions:
+  - transition: "in-progress → implemented → completed (merged into the single sync commit per the V3R6 3-phase close)"
+    owner: manager-docs
+    surfaces: spec.md only (plan.md / acceptance.md are frontmatter-stateless per spec-frontmatter-schema.md § Artifact Statelessness; progress.md carries no status axis)
+ac_tally_pointer: progress.md §E.2 AC PASS/FAIL matrix — 10/10 PASS (ac_pass_count: 10, ac_fail_count: 0, §E.3)
+changelog_entry: none (no user-facing surface changed — deliverable is acceptance-criteria repairs in .moai/specs/**; operator keep-policy for docs-site/CHANGELOG/README; plan DoD carries no CHANGELOG requirement)
+mx_tag_validation: n/a (no source-code artifacts touched by this SPEC — .moai/specs markdown only)
+docs_site_untouched: "git status --porcelain -- docs-site → empty (see post-commit verification)"
