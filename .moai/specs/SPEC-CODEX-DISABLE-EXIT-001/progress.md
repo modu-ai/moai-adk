@@ -44,6 +44,14 @@ All searches run with `rg` against this worktree at `a4855f0b2`, this run, 2026-
 
 Both outcomes prescribed in spec.md §E. Outcome A (document-only) is viable but must carry an explicit card-rule-2 waiver (Unchanged/Skipped share bucket 0). Outcome B (Skipped → non-zero; Unchanged and absent-inputs stay 0) is the RECOMMENDED default: rule 2 is a stated operator requirement the current code violates; the code's own doc comment scopes fail-open to missing inputs, not refusals; the two rule-2-actionable skip reasons hand off to a different verb; and the census shows no documented exit-code promise for Skipped to break. Scope axis resolved at plan phase (spec.md §D): verb-local, with the single-target-vs-sweep distinction documented against `moai clean --codex-skills`.
 
+### M2 Adjudication Decision — OPERATOR (via lead relay, 2026-09-08)
+
+- **Decision: Outcome B — exit-code repair.** Skipped (deliberate refusal) → non-zero; Unchanged (already disabled) → stays 0; absent-inputs (B1/B3/B4) → stay 0; name-resolution (B2) → stays non-zero.
+- Channel: lead-relayed AskUserQuestion operator judgment, 2026-09-08 (relay message carries the verdict; same relay granted Implementation Kickoff Approval for run-phase entry).
+- Evidence carried into this record (the 4 operator-cited grounds, all from §E.1/§B above): (1) caller census zero production in-repo callers; (2) Unchanged/Skipped exit codes undocumented on every published surface; (3) 2 of 5 Skipped reasons hand off to `moai clean --codex-skills` and exit 0 hides that handoff; (4) no measurable breakage (census).
+- Card rule 2 (Unchanged ≠ Skipped) enforced per AC-CDE-002, including the RED-now cell observed on `a4855f0b2`.
+- Outcome A remains documented in spec.md §E as the rejected alternative (unpicked prescription stays intact).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
