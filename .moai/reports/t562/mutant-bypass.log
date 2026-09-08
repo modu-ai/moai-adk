@@ -1,0 +1,6 @@
+=== RUN   TestJudgeCodexSkillEntry_SeparatorConversion
+    codex_skills_prune_readback_test.go:90: stat target = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestJudgeCodexSkillEntry_SeparatorConversion3722343196/001/gone/SKILL.md", want the converted form "\\var\\folders\\kt\\nq2q81cn4gx3y41r7x47ggmr0000gn\\T\\TestJudgeCodexSkillEntry_SeparatorConversion3722343196\\001\\gone\\SKILL.md" (declared "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestJudgeCodexSkillEntry_SeparatorConversion3722343196/001/gone/SKILL.md")
+--- FAIL: TestJudgeCodexSkillEntry_SeparatorConversion (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.832s
+FAIL

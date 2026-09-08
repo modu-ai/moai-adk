@@ -1,0 +1,7 @@
+=== RUN   TestZZT518ProbeTableReach
+    zz_t518_probe_test.go:30: SCANNED 812
+    zz_t518_probe_test.go:31: DOCS_WITH_TABLE_ENTRIES 3 (total table entries 20)
+    zz_t518_probe_test.go:32: DOCS_WITH_WIDE_ENTRIES 282
+--- PASS: TestZZT518ProbeTableReach (0.16s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.530s

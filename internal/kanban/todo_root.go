@@ -65,6 +65,9 @@ func ResolveTodoQueueRoot(base string) string {
 	if root, ok := primaryCheckoutRoot(base); ok {
 		return root
 	}
+	if root, _, refused := tempOriginSubstituteRoot(base); refused {
+		return root
+	}
 	return fallbackTodoQueueRoot(base)
 }
 
@@ -75,6 +78,9 @@ func ResolveTodoQueueRoot(base string) string {
 // side effect is reachable.
 func ResolveTodoQueueRootAdopting(base string) string {
 	if root, ok := primaryCheckoutRoot(base); ok {
+		return root
+	}
+	if root, _, refused := tempOriginSubstituteRoot(base); refused {
 		return root
 	}
 	root, ok := homeTodoQueueRoot(base)
@@ -89,6 +95,60 @@ func ResolveTodoQueueRootAdopting(base string) string {
 	// root the populated one and it wins, and a failed adoption reads through to
 	// the local queue rather than reporting it empty.
 	return fallbackTodoQueueRoot(base)
+}
+
+// tempOriginSubstituteRoot is the temporary-origin guard
+// (SPEC-TODO-HOME-TEMP-GUARD-001, REQ-THG-001): when the launch base is
+// classified as a temporary-directory origin, no home queue is resolved to and
+// none is created; the substitute root is the LAUNCH BASE itself.
+//
+// Why the base and not resolveStateDir(base, false): every consumer appends
+// BacklogPathForRoot to whatever this resolution returns (internal/cli/todo.go,
+// internal/web/todo_queue_read.go), and resolveStateDir already IS the state
+// directory — returning it would send readers one level too deep, to the state
+// directory nested inside itself, which is a location nothing ever writes.
+// The property this substitute must satisfy is therefore stated on the reader's
+// side: BacklogPathForRoot(<returned root>) names the project's existing
+// project-local backlog file. "" is likewise forbidden — the console puts the
+// returned root straight into vm.Root and would read a cwd-relative path.
+//
+// Placement is load-bearing, not stylistic (REQ-THG-001, plan D12): the
+// discriminant is evaluated BEFORE the home-resolution outcome is consulted.
+// "Temporary origin" and "home unresolvable" are not mutually exclusive — a
+// non-git temp base whose HomeDirFn errors satisfies both — and on that
+// intersection this requirement fixes the return at the base. Evaluating the
+// discriminant after homeTodoQueueRoot's ok check would let that function's
+// no-home return — resolveStateDir(base, false), the one layer-misaligned value
+// in this file — win by ordering alone.
+//
+// Read-only: TempOriginReason performs Lstat/EvalSymlinks and nothing else.
+func tempOriginSubstituteRoot(base string) (root, matchedRoot string, refused bool) {
+	if base == "" {
+		base = "."
+	}
+	matchedRoot, isTemp := TempOriginReason(base)
+	if !isTemp {
+		return "", "", false
+	}
+	return base, matchedRoot, true
+}
+
+// TempOriginRefusal reports whether queue-root resolution for base refuses the
+// home queue on temporary-origin grounds, naming both the matched temp root and
+// the substitute root the caller will keep using.
+//
+// It exists so the COMMAND path can surface guidance (REQ-THG-006) without the
+// resolvers themselves acquiring an output channel: the pure resolver stays
+// silent on every branch, which is what keeps a console page render free of
+// side effects and messages (REQ-THG-007, AC-THG-005). Read-only, like the
+// resolution it mirrors — it consults the same git branch first, so a git
+// repository living under a temp root is reported NOT refused, exactly as the
+// resolvers treat it.
+func TempOriginRefusal(base string) (substitute, matchedRoot string, refused bool) {
+	if _, ok := primaryCheckoutRoot(base); ok {
+		return "", "", false
+	}
+	return tempOriginSubstituteRoot(base)
 }
 
 // primaryCheckoutRoot resolves base to the repository's primary checkout,

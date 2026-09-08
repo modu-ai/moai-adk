@@ -1,0 +1,44 @@
+=== f3 prose amendment verification (card t536, SPEC-TODO-HOME-TEMP-GUARD-001) ===
+
+--- tree/HEAD/branch at start ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536 / 23659dda0 / WT-home-fallback
+
+--- BEFORE: content-based location (git show HEAD:progress.md | /usr/bin/grep -n) ---
+522:- **`sync_commit_sha` 는 이 커밋에서 `pending-backfill` 이다.** 뒤따르는 커밋이 실 SHA 로 채우기 전까지 이 절은 자기 커밋을 지목하지 못한다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+
+--- backfill commit confirmation: git show --stat --oneline 586f26f2a ---
+586f26f2a docs(SPEC-TODO-HOME-TEMP-GUARD-001): backfill sync_commit_sha (F2, t536)
+ .moai/reports/t536/f2-backfill/verification.txt    | 35 ++++++++++++++++++++++
+ .../SPEC-TODO-HOME-TEMP-GUARD-001/progress.md      |  2 +-
+ 2 files changed, 36 insertions(+), 1 deletion(-)
+
+--- BEFORE sweep (SPEC dir, from HEAD blob) ---
+1
+
+--- AFTER: worktree sweep, load-bearing (SPEC dir only) ---
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:522:- **`sync_commit_sha` 는 이 커밋(`029ab039f`)에서 `pending-backfill` 이었고, 후속 커밋 `586f26f2a` 가 실 SHA 로 채웠다.** 그 후속 커밋 전까지 이 절은 자기 커밋을 지목하지 못했다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+exit=0  (1 = zero matches)
+
+--- CONTROL: same command shape, token that IS present ---
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:429:③ 감사 F2(`sync_commit_sha` 백필)·F3(docs-site 4로케일 추적 주체)는 이 회차의 소관이
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:472:sync_commit_sha: 029ab039f              # D3 백필 창 상환분 — sync 커밋은 자기 해시를 인용할 수 없어 후속 커밋이 채웠다
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:522:- **`sync_commit_sha` 는 이 커밋(`029ab039f`)에서 `pending-backfill` 이었고, 후속 커밋 `586f26f2a` 가 실 SHA 로 채웠다.** 그 후속 커밋 전까지 이 절은 자기 커밋을 지목하지 못했다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+
+--- AFTER: amended sentence in place ---
+522:- **`sync_commit_sha` 는 이 커밋(`029ab039f`)에서 `pending-backfill` 이었고, 후속 커밋 `586f26f2a` 가 실 SHA 로 채웠다.** 그 후속 커밋 전까지 이 절은 자기 커밋을 지목하지 못했다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+
+--- diff ---
+diff --git a/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md b/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md
+index e4e916072..dae13e889 100644
+--- a/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md
++++ b/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md
+@@ -519,5 +519,5 @@ measurement_branch: WT-home-fallback
+ 
+ - **D8 류 판정식은 재발한다.** 고정 SHA 를 기준으로 쓴 무변경 판정은 그 SHA 가 흡수 이전이면 범위에 남의 작업이 섞인다. 후속 카드에서는 카드 귀속 범위(흡수 병합 이후)로 쓰는 편이 옳다 — 이 카드는 그 형태를 실측으로 한 번 더 확인했을 뿐 규칙으로 만들지 않았다.
+ - **CHANGELOG 항목의 AC 수 8 은 매트릭스 판독에 의존한다.** B12 자가시험 (b) 의 원시 계수는 10 이고, 8 은 그중 교차-SPEC 인용 2건(AC-SA-011 · AC-WTQ-006)을 제외한 값이다. 그 제외 판단이 틀리면 CHANGELOG 의 수가 틀린다 — 그래서 원시 계수와 제외 근거를 위 자가시험 칸에 함께 남겼다.
+-- **`sync_commit_sha` 는 이 커밋에서 `pending-backfill` 이다.** 뒤따르는 커밋이 실 SHA 로 채우기 전까지 이 절은 자기 커밋을 지목하지 못한다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
++- **`sync_commit_sha` 는 이 커밋(`029ab039f`)에서 `pending-backfill` 이었고, 후속 커밋 `586f26f2a` 가 실 SHA 로 채웠다.** 그 후속 커밋 전까지 이 절은 자기 커밋을 지목하지 못했다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+ - **가드 경계 보고는 테스트 한 건에 걸려 있다.** `TestGuardBypassMutant_ObserveHomePollution` 이 약화되면 route (i) 대조군이 인용하는 「오염 0」의 의미도 함께 약해진다(§E.2 M3 잔여 위험과 같은 항목이며 sync 가 바꾸지 않았다).
+
+NOTE: this file itself quotes the token pending-backfill inside its captured before-sweep output; that is a capture artifact, and it is the third such file under .moai/reports/t536/ (f2-backfill, f2b-run-sha are the other two). The load-bearing sweep is scoped to the SPEC directory only.
+NOTE: go test NOT run — markdown-only change, no Go source touched. Repository discipline forbids a local full-suite run.

@@ -1,0 +1,21 @@
+=== RUN   TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative
+--- FAIL: TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative (0.00s)
+panic: MX-PROBE-P2-STAT-SITE [recovered, repanicked]
+
+goroutine 37 [running]:
+testing.tRunner.func1.2({0x10743d0a0, 0x107680320})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x10743d0a0?, 0x107680320?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.judgeCodexSkillEntry({{0x1041b377a, 0xc}, 0x1, 0x0, 0x3, 0xffffffffffffffff})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:101 +0x364
+github.com/modu-ai/moai-adk/internal/cli.TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative(0xc2626e24908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune_readback_test.go:132 +0xb0
+testing.tRunner(0xc2626e24908, 0x1076740d8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.868s
+FAIL

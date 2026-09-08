@@ -1,0 +1,67 @@
+# t518 축 3 — `moai spec lint` 인자 형태 대조쌍 (측정 증거)
+
+tree     : /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+branch   : WT-spec-lint-axes
+commit   : 0b1e27877 (= origin/develop)
+binary   : moai-adk v3.2.0-rc.0
+measured : 2026-09-07
+note     : 모든 rc 판독은 파이프 없음. 명령을 파일로 리다이렉트한 뒤 `echo $?`를
+           별도 문장으로 실행했다. 파이프로 끊긴 `$?`는 마지막 스테이지를 읽는다.
+
+=== [1] ID 형태 — moai spec lint SPEC-AC-COUNT-DISCRIMINATOR-001 ===
+rc=1
+SEVERITY  CODE          FILE                             LINE  MESSAGE
+--------  ----          ----                             ----  -------
+ERROR     ParseFailure  SPEC-AC-COUNT-DISCRIMINATOR-001  1     SPEC parsing failed: failed to read file: open SPEC-AC-COUNT-DISCRIMINATOR-001: no such file or directory
+
+1 error(s), 0 warning(s)
+
+=== [2] 경로 형태 (대조군) — moai spec lint .moai/specs/SPEC-AC-COUNT-DISCRIMINATOR-001/spec.md ===
+rc=0
+SEVERITY  CODE               FILE                                                     LINE  MESSAGE
+--------  ----               ----                                                     ----  -------
+WARNING   MovingRefUnpinned  .moai/specs/SPEC-AC-COUNT-DISCRIMINATOR-001/progress.md  322   `origin/develop` decides an invariant claim on this line with no SHA pin ... (전문 생략, 코드/파일/라인만 대조에 사용)
+
+0 error(s), 1 warning(s)
+
+  → 대조군이 성공한다. 따라서 [1]과 [2]의 차이는 **인자 형태**에 귀속된다.
+
+=== [3] 디렉터리 형태 — moai spec lint .moai/specs/SPEC-AC-COUNT-DISCRIMINATOR-001 ===
+rc=1
+SEVERITY  CODE          FILE                                         LINE  MESSAGE
+--------  ----          ----                                         ----  -------
+ERROR     ParseFailure  .moai/specs/SPEC-AC-COUNT-DISCRIMINATOR-001  1     SPEC parsing failed: failed to read file: read .moai/specs/SPEC-AC-COUNT-DISCRIMINATOR-001: is a directory
+
+1 error(s), 0 warning(s)
+
+  → 카드가 말하지 않은 **세 번째** 인자 형태. 같은 실패 계열(ParseFailure/ERROR/LINE 1)이다.
+
+=== [4] 실재하지 않는 SPEC-ID — moai spec lint SPEC-NOPE-999 ===
+rc=1
+SEVERITY  CODE          FILE           LINE  MESSAGE
+--------  ----          ----           ----  -------
+ERROR     ParseFailure  SPEC-NOPE-999  1     SPEC parsing failed: failed to read file: open SPEC-NOPE-999: no such file or directory
+
+1 error(s), 0 warning(s)
+
+  → [1]과 **바이트 모양이 같다**. 즉 오늘의 출력은 "인자를 잘못 썼다"와
+    "그런 SPEC이 없다"를 구별하지 않는다.
+
+=== [5] invalid-argument 경로가 실재함 — moai spec lint --json --sarif <path> ===
+rc=3
+cannot use --json and --sarif together (stderr)
+
+  → 종료 코드 3(invalid arguments) 통로가 이미 구현돼 있다. 인자 형태 오류를
+    findings 표가 아니라 이 통로로 보낼 수 있다는 뜻이다.
+
+=== [6] 형제 서브커맨드 계약 — grep -hn 'Use:[[:space:]]*"' internal/cli/spec*.go ===
+13:		Use:   "spec",
+35:		Use:   "archive",
+64:		Use:   "audit",
+71:		Use:   "close SPEC-ID",
+28:		Use:   "lint [spec.md...]",
+20:		Use:   "drift",
+28:		Use:   "status <SPEC-ID> <new-status>",
+20:		Use:   "view <SPEC-ID>",
+
+  → SPEC-ID를 받는 형제 3개(close / status / view) 대 경로를 받는 1개(lint).

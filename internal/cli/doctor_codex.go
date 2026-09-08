@@ -456,7 +456,7 @@ func inspectSkillMirror(root string) skillMirrorState {
 		}
 		// Stat follows the link, resolving the producer's RELATIVE link body
 		// against the mirror directory exactly as the OS does for Codex.
-		_, serr := os.Stat(entryPath)
+		_, serr := osStatFn(entryPath)
 		switch {
 		case serr == nil:
 		case errors.Is(serr, fs.ErrNotExist):
@@ -830,7 +830,11 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 		var statPath string
 		switch classifyCodexSkillPath(e.Path) {
 		case codexPathAbsolute:
-			statPath = e.Path
+			// SPEC-CODEX-SKILL-PATH-READBACK-001: same one-line shape as the
+			// behaviorally-verified prune side — the declared config form is
+			// converted back to host form for the stat target only; the
+			// home-relative branch stays untouched (REQ-CSRB-002).
+			statPath = fromConfigPath(e.Path, configPathSeparator)
 		case codexPathHomeRelative:
 			expanded, ok := expandCodexHomeRelativePath(e.Path)
 			if !ok {
@@ -854,7 +858,7 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 			oddlyFormed++
 			continue
 		}
-		_, serr := os.Stat(statPath)
+		_, serr := osStatFn(statPath)
 		switch {
 		case serr == nil:
 			// The path resolves. A DIRECTORY resolves too, and is likewise

@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/spec	72.688s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	142.460s

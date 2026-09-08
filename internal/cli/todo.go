@@ -72,6 +72,33 @@ func resolveTodoQueueRoot() string {
 	return kanban.ResolveTodoQueueRootAdopting(resolveProjectDir())
 }
 
+// warnTempOriginQueueRefusal surfaces the temporary-origin refusal on the
+// COMMAND path (SPEC-TODO-HOME-TEMP-GUARD-001, REQ-THG-006): the queue-root
+// resolution declined to create a home queue under ~/.moai/todo because the
+// launch directory lives inside a temporary root, and the run continues
+// against the project-local queue instead.
+//
+// Three things the guidance must carry, because a refusal that reads as a
+// silent success is indistinguishable from the bug it replaced: WHICH temp
+// root matched, WHICH root the run continues against, and that the run is in
+// fact continuing. The exit code is unchanged — refusing the home queue is
+// already the whole of the protection, so failing the command would withdraw
+// working behaviour from every script that runs `moai todo` inside a temp
+// directory without preventing anything further.
+//
+// Silent on every other path, the console included: this is called only from
+// the command's PersistentPreRun, and the pure resolver the web console
+// imports neither writes nor speaks.
+func warnTempOriginQueueRefusal(cmd *cobra.Command) {
+	substitute, matched, refused := kanban.TempOriginRefusal(resolveProjectDir())
+	if !refused {
+		return
+	}
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/todo; continuing against the project-local queue at %s\n",
+		matched, substitute)
+}
+
 // newTodoStore is the single constructor every todo verb goes through, so
 // every verb resolves — and sees — the same queue file.
 func newTodoStore() *kanban.BacklogStore {
@@ -208,6 +235,14 @@ adds any text verbatim.`,
 				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
 			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
+		},
+		// PersistentPreRun fires once per `moai todo ...` invocation, for the
+		// parent and every subcommand alike, which is why the guidance lives
+		// here rather than inside resolveTodoQueueRoot: that helper is called
+		// several times per run (store, landed ref, ...) and would repeat the
+		// notice once per call.
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			warnTempOriginQueueRefusal(cmd)
 		},
 		GroupID: "tools",
 	}

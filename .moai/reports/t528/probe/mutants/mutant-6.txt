@@ -1,0 +1,40 @@
+# mutant 6 — findACSectionStart returns 0 AND the ## break in extractACLines is removed
+# expectation pre-declared in expectations.md
+
+## injected diff
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e48f39d07..21984ed38 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -65,7 +65,7 @@ func findACSectionStart(lines []string) int {
+ 	for i, line := range lines {
+ 		trimmed := strings.TrimSpace(line)
+ 		if strings.HasPrefix(trimmed, "##") && strings.Contains(strings.ToLower(trimmed), "acceptance") {
+-			return i + 1
++			return i * 0
+ 		}
+ 	}
+ 	return -1
+@@ -83,7 +83,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
+ 			continue
+ 		}
+ 
+-		if strings.HasPrefix(trimmed, "##") {
++		if false {
+ 			break
+ 		}
+ 
+
+## judging command
+go test ./internal/spec/ -run TestT528 -count=1 -timeout 600s
+
+## result
+--- FAIL: TestT528SectionScopingInvariant (0.00s)
+    zz_t528_grammar_test.go:394: declaration BEFORE the section WAS collected — scoping broke; got ids [AC-AUDIT-SNAPSHOT-009 AC-AUDIT-SNAPSHOT-001 AC-AUDIT-SNAPSHOT-017]
+    zz_t528_grammar_test.go:397: declaration AFTER the section WAS collected — the section terminator broke; got ids [AC-AUDIT-SNAPSHOT-009 AC-AUDIT-SNAPSHOT-001 AC-AUDIT-SNAPSHOT-017]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.543s
+FAIL
+
+EXIT=1
+DETECTED=True  --- FAIL lines=1

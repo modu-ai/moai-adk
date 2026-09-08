@@ -1,0 +1,26 @@
+=== D8 literal (plan.md M3 fixed SHA 412c8cb14..HEAD) ===
+   18650
+--- files in literal diff ---
+ internal/config/defaults.go                        |   1 +
+ .../config/interview_recommendation_mode_test.go   | 125 +++++++++++++++++
+ .../config/testdata/shipped_key_inventory.yaml     |   5 +-
+ internal/config/types.go                           |  23 +++-
+ internal/stateanchor/stateanchor.go                |  42 ++++--
+ internal/stateanchor/stateanchor_test.go           | 150 +++++++++++++++++++--
+ 6 files changed, 318 insertions(+), 28 deletions(-)
+=== D8 card-attributed (6b71fdaa5..HEAD) ===
+       0
+=== catch-all control: card range is NOT globally empty ===
+ internal/kanban/todo_root_test.go                  |  42 +-
+ internal/web/todo_section_nontemp_copy_test.go     |  70 ++++
+ 43 files changed, 3226 insertions(+), 24 deletions(-)
+=== who authored the files in the literal diff ===
+internal/config/defaults.go -> 12c7782f8 merge: absorb origin/develop 52f863f36 into WT-analysis-pull (card t401)
+internal/config/interview_recommendation_mode_test.go -> 099c7bbe4 feat(t401): M3 — interview.recommendation_mode config key (default push)
+internal/config/testdata/shipped_key_inventory.yaml -> 12c7782f8 merge: absorb origin/develop 52f863f36 into WT-analysis-pull (card t401)
+internal/config/types.go -> 12c7782f8 merge: absorb origin/develop 52f863f36 into WT-analysis-pull (card t401)
+internal/stateanchor/stateanchor.go -> 5df939476 feat(SPEC-STATE-ANCHOR-VALIDATE-001): M2 GREEN — validate anchor candidates, fall through on failure (t537)
+internal/stateanchor/stateanchor_test.go -> 5df939476 feat(SPEC-STATE-ANCHOR-VALIDATE-001): M2 GREEN — validate anchor candidates, fall through on failure (t537)
+=== is 412c8cb14 an ancestor of 6b71fdaa5? ===
+YES (baseline predates the develop absorb)
+LITERAL DIFF MATCHES COMMITTED EVIDENCE

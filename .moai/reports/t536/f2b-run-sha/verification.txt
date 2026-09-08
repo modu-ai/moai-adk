@@ -1,0 +1,42 @@
+=== tree anchor ===
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+586f26f2a
+WT-home-fallback
+
+=== SHA identification: which commit wrote §E.3 ===
+-- 4e99fc785 added the run_commit_sha line --
+311:+run_commit_sha: pending-backfill        # 이 커밋은 자기 해시를 인용할 수 없다 (D3 백필 창)
+-- db45d8209 created the §E.3 header (stub), added no run_commit_sha --
+165: ## §E.3 Run-phase Audit-Ready Signal
+-- §E.3 self-record: M3 = 이 커밋 ; §E.4: sync 진입 HEAD 4e99fc785 --
+457:m1_to_mN_commit_strategy: "마일스톤별 개별 커밋 (M1 8337cdf24 · M2 db45d8209 · M3 이 커밋); squash 없음, --amend 없음, force-push 없음"
+468:측정 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536` · 브랜치 `WT-home-fallback` · sync 진입 HEAD `4e99fc785`. 이 절의 모든 인용은 반출된 `.moai/reports/t536/` 파일과 이번 회차 명령 출력만 지목한다.
+
+=== post-edit field + sibling (alignment control) ===
+429:③ 감사 F2(`sync_commit_sha` 백필)·F3(docs-site 4로케일 추적 주체)는 이 회차의 소관이
+437:run_commit_sha: 4e99fc785               # D3 백필 창 상환분 — M3(run) 커밋은 자기 해시를 인용할 수 없어 후속 커밋이 채웠다
+472:sync_commit_sha: 029ab039f              # D3 백필 창 상환분 — sync 커밋은 자기 해시를 인용할 수 없어 후속 커밋이 채웠다
+522:- **`sync_commit_sha` 는 이 커밋에서 `pending-backfill` 이다.** 뒤따르는 커밋이 실 SHA 로 채우기 전까지 이 절은 자기 커밋을 지목하지 못한다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+
+=== post-edit sweep: pending-backfill (scope: SPEC dir + reports/t536) ===
+      26
+-- SPEC dir only (the debt surface) --
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:522:- **`sync_commit_sha` 는 이 커밋에서 `pending-backfill` 이다.** 뒤따르는 커밋이 실 SHA 로 채우기 전까지 이 절은 자기 커밋을 지목하지 못한다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+
+=== control: the same command finds something (non-empty proof) ===
+       1
+
+=== diff ===
+diff --git a/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md b/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md
+index 7a6c4e0a9..e4e916072 100644
+--- a/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md
++++ b/.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md
+@@ -434,7 +434,7 @@ sha256 도 주입 전 baseline 과 바이트 동일:
+ 
+ ```yaml
+ run_complete_at: 2026-09-08
+-run_commit_sha: pending-backfill        # 이 커밋은 자기 해시를 인용할 수 없다 (D3 백필 창)
++run_commit_sha: 4e99fc785               # D3 백필 창 상환분 — M3(run) 커밋은 자기 해시를 인용할 수 없어 후속 커밋이 채웠다
+ run_status: audit-ready
+ 
+ ac_pass_count: 8

@@ -1,0 +1,31 @@
+# AC-CSRB-001 — absorb gate: the seam is present and the tree builds (t562 M1)
+
+Measured: tree 69cfdce6f @ branch WT-codex-read-inverse (worktree .claude/worktrees/t562),
+2026-09-08. The absorb merges (origin/develop 706853e1b, then WT-codex-path-escape) are already
+in HEAD; this file records the gate verification on top of them.
+
+## go build ./...
+
+Command: `go build ./...`
+Observed: exit 0, no output.
+
+## Seam symbols in internal/cli/codex_config_path.go
+
+Command: `/usr/bin/grep -n 'func toConfigPath\|func fromConfigPath\|var configPathSeparator' internal/cli/codex_config_path.go`
+
+```
+39:var configPathSeparator = filepath.Separator
+51:func toConfigPath(p string, sep rune) string {
+61:func fromConfigPath(p string, sep rune) string {
+```
+
+## Publisher conversion in internal/cli/codex_skills_disable.go (t540's landed work, absorbed)
+
+Command: `/usr/bin/grep -n 'toConfigPath\|fromConfigPath\|configPathSeparator' internal/cli/codex_skills_disable.go`
+
+```
+247:	skillPath = toConfigPath(skillPath, configPathSeparator)
+277:		if toConfigPath(e.Path, configPathSeparator) == skillPath {
+```
+
+Both symbols present, build clean — the consumer precondition of the card holds.

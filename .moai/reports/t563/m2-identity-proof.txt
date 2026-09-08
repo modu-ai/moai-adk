@@ -1,0 +1,57 @@
+SPEC-DOCTOR-STAT-SEAM-001 — M2 output-identity proof (AC-SEAM-005, REQ-004)
+===========================================================================
+
+METHOD
+  A temporary capture harness (internal/cli/zz_t563_identity_capture_test.go,
+  untracked, IDENTICAL bytes on both sides — deleted after the proof) builds a
+  standardized fixture battery and dumps the OBSERVED output surface to a file
+  named by $MOAI_M2_DUMP, with every fixture temp path normalized to stable
+  <ROOTn> tokens and whitespace field-collapsed. Dumped surface per fixture:
+  codexFinding (ok + severity + summary + detail) for direct
+  codexStaleSkillFinding calls; skillMirrorState counters for direct
+  inspectSkillMirror calls; checkCodexWiring Status + Message + Detail for the
+  rendered wiring level.
+
+  PRE  capture: tree @ 7d57ff2f5 (seam NOT applied)   -> m2-identity-pre.txt (retained)
+  POST capture: tree @ bca046150 (seam applied)       -> m2-identity-post.txt
+  Comparison: diff m2-identity-pre.txt m2-identity-post.txt
+  Retention note: the POST dump was removed after verification BECAUSE the
+  empty diff proves it byte-identical to the retained PRE dump — m2-identity-pre.txt
+  is the content of both sides. The harness itself is also deleted; the proof
+  it produced is this file.
+
+COMPARISON SET (25 fixtures — M1 buckets + the existing families' states)
+  Site B (12, direct codexStaleSkillFinding):
+    b01-abs-existing          b02-abs-missing-split     b03-home-rel
+    b04-bare-tilde            b05-relative-only         b06-odd-only
+    b07-unresolvable-expansion b08-indet-only           b09-empty-path
+    b10-no-config             b11-no-home               b12-loop-indet
+  Site A (8, direct inspectSkillMirror):
+    a01-absent  a02-resolving  a03-dangling  a04-copydir-unmirrored
+    a05-regular-file  a06-loop  a07-unreadable-canonical  a08-absent-canonical
+  Wiring level (5, checkCodexWiring — the TestCheckCodexWiring/TestCodexSkillPath
+  family bucket states: stale split incl. fatal non-boolean, mirror absent,
+  mirror dangling (rendered finding), copy-mode + unmirrored detail, directory
+  path not missing):
+    w1-stale-split  w2-mirror-absent  w3-mirror-dangling  w4-mirror-copymode
+    w5-dir-not-missing
+  The pre/post comparison ALSO covered the existing test families by re-running
+  the scoped selector on the swapped tree (see the verification record in
+  progress.md §E.2): TestCodexSkillPath_* + TestCheckCodexWiring_* all PASS
+  before and after — identical judgments on their own fixtures.
+
+(a) FIXTURE/STAGING COUNT: 25 (12 site-B + 8 site-A + 5 wiring-level)
+(b) ok=true TRAVERSAL COUNT (HARD-NEW-1): 6
+    (b02-abs-missing-split, b03-home-rel, b05-relative-only, b06-odd-only,
+     b07-unresolvable-expansion, b12-loop-indet — all produced a live finding;
+     site-A analog: 4 fixtures carry non-zero dangling/indeterminate counters:
+     a03-dangling, a04-copydir-unmirrored, a06-loop, a07-unreadable-canonical)
+(c) PRE/POST DIFF: EMPTY
+    $ diff .moai/reports/t563/m2-identity-pre.txt .moai/reports/t563/m2-identity-post.txt
+    (no output — exit 0)
+    Both dumps: 25 lines + "COUNT dump_lines=25" + "COUNT ok_true=6", identical
+    byte-for-byte. Every finding set, summary, detail, severity, mirror counter,
+    and wiring Status/Message/Detail identical across the seam swap.
+
+VERDICT: identity HOLDS. The seam swap is observability-only, as required by
+REQ-004. No DISCOVERY to report (no difference recorded).
