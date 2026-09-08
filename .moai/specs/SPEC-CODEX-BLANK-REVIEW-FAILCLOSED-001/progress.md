@@ -447,11 +447,14 @@ m1_to_mN_commit_strategy: one commit per milestone group on WT-audit-fail-open
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync   # the commit carrying this §E.4 cannot cite its
-                                         # own hash; the resolved value is backfilled in
-                                         # the immediately following commit (D3 exemption,
-                                         # spec-frontmatter-schema.md § SHA placeholder
-                                         # backfill exemption)
+sync_commit_sha: b6428562c   # the sync commit carrying the CHANGELOG entry, the frontmatter
+                             # close, and this §E.4. It landed with the canonical
+                             # `pending-backfill-sync` placeholder here — a commit cannot
+                             # cite its own hash — and this line is the backfill (D3
+                             # exemption, spec-frontmatter-schema.md § SHA placeholder
+                             # backfill exemption)
+sync_backfill_commit_sha: self   # this line's own commit, the immediate successor of
+                                 # b6428562c in `git log`; it likewise cannot name itself
 sync_status: completed
 b12_self_test_a: pass    # pre-emission duplicate grep —
                          # `grep -c 'SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001' CHANGELOG.md`
