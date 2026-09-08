@@ -634,9 +634,10 @@ blocked_gate: make build (agents-emit-check) — INHERITED from 4244c4a06, not M
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; the real SHA lands in the
-                                    # immediately-following backfill commit, which is this section's
-                                    # own and is exempt from the ownership crossings.
+sync_commit_sha: b306a6148   # backfilled. The sync commit could not cite its own hash, so it carried
+                             # the canonical `pending-backfill` placeholder and this immediately-
+                             # following commit replaces it. This section is manager-docs' own and
+                             # the backfill is exempt from the ownership crossings.
 sync_status: PASS-WITH-DEBT
 b12_self_test_a: PASS   # duplicate guard — `grep -c 'SPEC-TODO-LANDING-EVIDENCE-001' CHANGELOG.md` = 0 before the append
 b12_self_test_b: PASS   # AC count — 21 live AC-TLE-* identifiers measured in acceptance.md (see below)
