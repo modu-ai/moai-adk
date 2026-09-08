@@ -1,0 +1,37 @@
+--- TREE STAMP ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+------------------
+
+### D8 literal (412c8cb14..HEAD) — byte count + stat
+   18650
+ internal/config/defaults.go                        |   1 +
+ .../config/interview_recommendation_mode_test.go   | 125 +++++++++++++++++
+ .../config/testdata/shipped_key_inventory.yaml     |   5 +-
+ internal/config/types.go                           |  23 +++-
+ internal/stateanchor/stateanchor.go                |  42 ++++--
+ internal/stateanchor/stateanchor_test.go           | 150 +++++++++++++++++++--
+ 6 files changed, 318 insertions(+), 28 deletions(-)
+
+### D8 card-attributable (6b71fdaa5..HEAD) — byte count (expect 0)
+       0
+
+### D7 sibling-SPEC diff (expect empty; dirs proven non-empty as a catch-all control)
+catch-all control — files tracked under those two dirs:
+       9
+
+### REQ-THG-008 — find ~/.moai/todo -maxdepth 1 -type d | wc -l
+     344
+
+### go vet three packages
+vet exit=0
+
+### GOOS=windows GOARCH=amd64 go build ./... (does NOT compile test files)
+build exit=0
+
+--- TREE STAMP ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+------------------

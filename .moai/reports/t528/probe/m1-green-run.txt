@@ -1,0 +1,84 @@
+=== RUN   TestT528Anchor
+    zz_t528_anchor_probe_test.go:227: OUTDIR = ../../.moai/reports/t528/probe/out
+    zz_t528_anchor_probe_test.go:228: DENOMINATOR spec.md read = 807 (list: ../../.moai/reports/t528/probe/out/filelist.txt)
+    zz_t528_anchor_probe_test.go:229: IN-SECTION declarations = 1167
+    zz_t528_anchor_probe_test.go:230:   accepted by FROZEN baseline anchor = 216
+    zz_t528_anchor_probe_test.go:231:   accepted by LIVE parseSingleACLine = 1033
+    zz_t528_anchor_probe_test.go:232:   rejected by LIVE parseSingleACLine = 134
+    zz_t528_anchor_probe_test.go:233:   NEWLY accepted (live yes, baseline no) = 817 (list: ../../.moai/reports/t528/probe/out/newly-accepted.txt)
+    zz_t528_anchor_probe_test.go:234: POSITIVE-NEEDLE files (live) = 104 (list: ../../.moai/reports/t528/probe/out/positive-needle.txt)
+    zz_t528_anchor_probe_test.go:235: BASELINE-NEEDLE files (frozen anchor) = 18 (list: ../../.moai/reports/t528/probe/out/baseline-needle.txt)
+    zz_t528_anchor_probe_test.go:236: FULLY-BLIND files (>=1 decl, 0 accepted by live) = 15
+    zz_t528_anchor_probe_test.go:237: B.1 numeric-tail candidate: covered = 1128  UNCOVERED = 39
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-GREEN                 1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HML-N..N              4
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-SCOPE                 1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-MRR-GREEN             1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HFC-Na                1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HFC-Nb                1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-PLW-N..N              2
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-MUTANT                1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-ORDERING              1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-EVIDENCE              1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-DCC-N..N              4
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-SVG-N..N              5
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-UTIL-N-Nb             1
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-LCLN-N.N              10
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-MRR-GN                4
+    zz_t528_anchor_probe_test.go:239:   UNCOVERED-SHAPE AC-HFC-GATE              1
+    zz_t528_anchor_probe_test.go:251:   SEP :                800
+    zz_t528_anchor_probe_test.go:251:   SEP (                232
+    zz_t528_anchor_probe_test.go:251:   SEP —                93
+    zz_t528_anchor_probe_test.go:251:   SEP «none/other»     42
+--- PASS: TestT528Anchor (0.21s)
+=== RUN   TestT528SegmentGrammar
+=== RUN   TestT528SegmentGrammar/two_segments
+=== RUN   TestT528SegmentGrammar/five_segments_alnum_middle
+=== RUN   TestT528SegmentGrammar/three_segments_alnum_middle
+=== RUN   TestT528SegmentGrammar/four_segments
+=== RUN   TestT528SegmentGrammar/alnum_middle_mig
+=== RUN   TestT528SegmentGrammar/word_middle_segments
+=== RUN   TestT528SegmentGrammar/already_accepted_three_segment
+--- PASS: TestT528SegmentGrammar (0.00s)
+    --- PASS: TestT528SegmentGrammar/two_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/five_segments_alnum_middle (0.00s)
+    --- PASS: TestT528SegmentGrammar/three_segments_alnum_middle (0.00s)
+    --- PASS: TestT528SegmentGrammar/four_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/alnum_middle_mig (0.00s)
+    --- PASS: TestT528SegmentGrammar/word_middle_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/already_accepted_three_segment (0.00s)
+=== RUN   TestT528NumericTailRequired
+--- PASS: TestT528NumericTailRequired (0.00s)
+=== RUN   TestT528SubIDSuffixPreserved
+--- PASS: TestT528SubIDSuffixPreserved (0.00s)
+=== RUN   TestT528BoldWrapper
+=== RUN   TestT528BoldWrapper/bold_id_emdash_separator
+=== RUN   TestT528BoldWrapper/bold_id_emdash_separator_2
+=== RUN   TestT528BoldWrapper/bold_id_colon_separator
+--- PASS: TestT528BoldWrapper (0.00s)
+    --- PASS: TestT528BoldWrapper/bold_id_emdash_separator (0.00s)
+    --- PASS: TestT528BoldWrapper/bold_id_emdash_separator_2 (0.00s)
+    --- PASS: TestT528BoldWrapper/bold_id_colon_separator (0.00s)
+=== RUN   TestT528ParenQualifier
+=== RUN   TestT528ParenQualifier/short_qualifier
+=== RUN   TestT528ParenQualifier/req_qualifier
+=== RUN   TestT528ParenQualifier/bold_id_with_req_qualifier
+--- PASS: TestT528ParenQualifier (0.00s)
+    --- PASS: TestT528ParenQualifier/short_qualifier (0.00s)
+    --- PASS: TestT528ParenQualifier/req_qualifier (0.00s)
+    --- PASS: TestT528ParenQualifier/bold_id_with_req_qualifier (0.00s)
+=== RUN   TestT528ParenQualifierLeavesREQMappingAlone
+--- PASS: TestT528ParenQualifierLeavesREQMappingAlone (0.00s)
+=== RUN   TestT528SeparatorSet
+=== RUN   TestT528SeparatorSet/colon
+=== RUN   TestT528SeparatorSet/em_dash_u2014
+=== RUN   TestT528SeparatorSet/en_dash_u2013
+--- PASS: TestT528SeparatorSet (0.00s)
+    --- PASS: TestT528SeparatorSet/colon (0.00s)
+    --- PASS: TestT528SeparatorSet/em_dash_u2014 (0.00s)
+    --- PASS: TestT528SeparatorSet/en_dash_u2013 (0.00s)
+=== RUN   TestT528SectionScopingInvariant
+--- PASS: TestT528SectionScopingInvariant (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.577s
+EXIT=0

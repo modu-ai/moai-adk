@@ -1,0 +1,12 @@
+=== sibling SPEC artifact diffs (card range) ===
+--- SPEC-WEB-TODO-QUEUE-001 (6b71fdaa5..HEAD) bytes:        0
+--- SPEC-WEB-TODO-QUEUE-001 (412c8cb14..HEAD) bytes:        0
+--- SPEC-STATE-ANCHOR-001 (6b71fdaa5..HEAD) bytes:        0
+--- SPEC-STATE-ANCHOR-001 (412c8cb14..HEAD) bytes:        0
+=== catch-all control: the specs dir DID change in the card range ===
+ .../SPEC-TODO-HOME-TEMP-GUARD-001/progress.md      | 453 ++++++++++++++++++++-
+ .moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/spec.md  |   2 +-
+ 2 files changed, 451 insertions(+), 4 deletions(-)
+=== do those SPEC dirs exist? ===
+drwxr-xr-x@ 7 goos  staff  224 Sep  7 23:27 .moai/specs/SPEC-STATE-ANCHOR-001
+drwxr-xr-x@ 6 goos  staff  192 Sep  7 23:27 .moai/specs/SPEC-WEB-TODO-QUEUE-001

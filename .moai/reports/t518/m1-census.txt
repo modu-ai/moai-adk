@@ -1,0 +1,55 @@
+# SPEC-SPEC-LINT-BLIND-AXES-001 M1 — modality census + table-path counterfactual
+#
+# tree:    /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+# branch:  WT-spec-lint-axes
+# HEAD:    1e273079b
+# command: MOAI_T362_CORPUS_SCAN=1 go test -count=1 -timeout 15m ./internal/spec/ \
+#            -run 'TestCorpusRejectedREQIDDecomposition'
+#          -> rc=0, ok github.com/modu-ai/moai-adk/internal/spec 0.995s
+#          (run log: .moai/reports/t518/m1-harness-run.txt)
+#
+# WHY THIS FILE EXISTS SEPARATELY FROM THE HARNESS OUTPUT PATH.
+# The harness writes its whole report to .moai/reports/t362/m2-gate0-decomposition.txt,
+# a path fixed by decomposeReportRelPath and belonging to card t362. Re-running it
+# REWRITES that file against today's corpus: t362's committed figure
+# wide_extractions_total=1085 became 4018, and its rejected-sample enumeration was
+# replaced wholesale. That is another card's evidence, so the re-run was reverted
+# (git checkout -- .moai/reports/t362/...) and the M1 blocks were extracted here,
+# under this card's own tracked evidence path, which is what the record cites.
+# The clobber hazard is pre-existing — any re-run of the harness does it, with or
+# without this card's extension — and is reported, not repaired, in progress.md.
+#
+# The reading criterion these figures are produced under is fixed in the comment
+# above measureM1ModalityCensus in internal/spec/lint_req_widen_decompose_test.go
+# and restated in progress.md §E.2 M1.
+
+[M1] modality census over wide-collected definition lines
+# Reading criterion is fixed in the comment above this function and is the
+# LIVE one: body = parseREQsWide Text, prefix test = ToUpper + HasPrefix over
+# modalityPrefixes. Re-run this harness to re-derive every figure.
+m1_definition_lines_wide=4018
+m1_english_prefix_caseinsensitive=2417
+m1_english_prefix_allcaps=463
+m1_english_prefix_titlecase=1951
+m1_english_prefix_othercase=3  # ci - (allcaps + titlecase)
+m1_body_starts_hangul_raw=189       # live view: bold markers NOT stripped
+m1_body_starts_hangul_boldstripped=198
+m1_body_contains_hangul=570
+m1_prefix_IF=54
+m1_prefix_THE=1608
+m1_prefix_WHEN=412
+m1_prefix_WHERE=165
+m1_prefix_WHILE=178
+
+[M1-cf] table-path advisory counterfactual
+# Every parseREQsTable entry carries Widened=true, and reqFindingSeverity
+# reads ONLY that flag, so the counts below are exactly the findings that
+# would gate instead of report if the advisory treatment were withdrawn from
+# the table path. No pre-M-A1 tree is needed: the counterfactual is a
+# severity assignment, not a tree state.
+m1cf_entries_source_list=4018
+m1cf_entries_source_table=20
+m1cf_table_modality_malformed=0  # would become SeverityError
+m1cf_table_modality_conforming=15
+m1cf_table_modality_unjudged=5
+m1cf_table_invalid_reqid=0  # would become SeverityError  pattern=^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$

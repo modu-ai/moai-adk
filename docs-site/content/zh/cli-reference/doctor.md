@@ -36,7 +36,7 @@ moai doctor [OPTIONS]
 
 ## Home Disk Usage 检查 {{< new-badge v3.1.1 >}}
 
-完整的 `moai doctor` 运行会带上 **Home Disk Usage** 项。它报告 `~/.moai` 主目录塞了多满,属于**建议 (advisory)** 性质的检查 —— 超标也不会拦住其他命令。
+完整的 `moai doctor` 运行会带上 **Home Disk Usage** 项。它报告 `~/.moai` 主目录塞了多满,属于**建议** (advisory) 性质的检查 —— 超标也不会拦住其他命令。
 
 | 报告项目 | 内容 |
 |----------|------|
@@ -108,6 +108,8 @@ moai doctor                            # 完整诊断
 moai doctor --verbose                  # 详细诊断
 moai doctor --export diagnostics.json  # 导出结果
 moai doctor hook                       # 钩子覆盖表
+moai doctor permission                 # 权限解析
+moai doctor sandbox                    # 沙箱后端
 ```
 
 ---

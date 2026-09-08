@@ -1,0 +1,50 @@
+--- TREE STAMP (before injection) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------
+exclusivity (tracked modifications must be 0):
+?? .moai/reports/t536/guard-boundary.md
+?? .moai/reports/t536/m3/
+?? .moai/reports/t536/mutants/mutantE.go.txt
+?? .moai/reports/t536/mutants/route-i-preguard.patch.txt
+[end status]
+
+route (i) injected: 2 wiring blocks removed
+
+--- TREE STAMP (after injection) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------
+positive control — restore-check command DOES emit while injected:
+     731
+
+### CONTROL RUN: gate-bypass mutant under pre-guard-equivalent
+--- FAIL: TestGuardBypassMutant_ObserveHomePollution (0.12s)
+    todo_axisa_guard_test.go:202: the mutant produced home pollution under /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGuardBypassMutant_ObserveHomePollution3556948134/001/.moai/todo (1 entr(ies)) — the resolver-layer temporary-origin guard regressed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.984s
+FAIL
+
+--- TREE STAMP (before restore) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------
+restored.
+
+--- TREE STAMP (after restore) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------
+restore proof — same command, expect NO output then 0 bytes:
+[end diff output]
+       0
+status:
+?? .moai/reports/t536/guard-boundary.md
+?? .moai/reports/t536/m3/
+?? .moai/reports/t536/mutants/mutantE.go.txt
+?? .moai/reports/t536/mutants/route-i-preguard.patch.txt
+[end status]

@@ -1,0 +1,38 @@
+== overlay-based mutant re-verification (go test -overlay; source tree never mutated — git status empty before and after) ==
+anchor: HEAD 4360db373, tree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+
+-- M6 (blind-axes M-A1): L1 matching made case-insensitive --
+--- FAIL: TestTableCollection_DiscriminatorBoundaries (0.00s)
+    lint_req_table_test.go:239: collected [REQ-FXB-001 REQ-FXB-002], want [REQ-FXB-002] — row 1 must be rejected (lowercase 'shall' is not an L1 marker) and row 2 admitted (bold ID cell)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	68.874s
+FAIL
+
+-- M7 (blind-axes M-A1): row pattern loses bold tolerance --
+--- FAIL: TestTableCollection_DiscriminatorBoundaries (0.00s)
+    lint_req_table_test.go:239: collected [], want [REQ-FXB-002] — row 1 must be rejected (lowercase 'shall' is not an L1 marker) and row 2 admitted (bold ID cell)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	1.197s
+FAIL
+
+-- M8 (blind-axes M-A2): drop "THE " from modalityPrefixes --
+--- FAIL: TestModality_EveryEnglishPrefixIsStillJudged (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	68.626s
+FAIL
+
+-- M2 (blind-axes M-A2): revert SHALL contact to leading-space Contains --
+--- FAIL: TestModality_SilenceDiffersFromConformance (0.00s)
+--- FAIL: TestModality_UnjudgedIsNotReportedConforming (0.00s)
+--- FAIL: TestModality_ShallContactIsWordBoundary (0.00s)
+--- FAIL: TestModality_CorpusUnjudgedCensus (0.27s)
+--- FAIL: TestTableCollection_CorpusListFindingsUnchanged (0.31s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	69.050s
+FAIL
+
+-- M4 (blind-axes M-A2b): trailing flush() removed --
+--- FAIL: TestTableRejection_TableRunningToEndOfBody (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	68.002s
+FAIL

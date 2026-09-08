@@ -15,7 +15,7 @@ A SPEC is both the unit a harness receives work in and the single record a manag
 | `moai spec status` | Update or list SPEC status |
 | `moai spec drift` | Detect drift between frontmatter status and the git log |
 | `moai spec view <SPEC-ID>` | View acceptance criteria as a tree |
-| `moai spec lint [spec.md...]` | Lint for EARS compliance and structural validity |
+| `moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]` | Lint for EARS compliance and structural validity |
 | `moai spec close <SPEC-ID>` | Atomic 4-phase closure (status: completed + progress.md backfill) |
 | `moai spec audit` | SPEC era classification and modern-era status drift audit |
 | `moai spec archive` | Archive closed SPECs out of `.moai/specs/` |
@@ -51,7 +51,7 @@ moai spec drift
 ## moai spec lint
 
 ```bash
-moai spec lint [spec.md...]
+moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 ```
 
 | Flag | Description |
@@ -60,6 +60,16 @@ moai spec lint [spec.md...]
 | `--sarif` | SARIF 2.1.0 format output |
 | `--strict` | Treat warnings as errors |
 | `--format <fmt>` | Output format (table) |
+
+| Argument shape | Example |
+|--------|------|
+| SPEC-ID | `SPEC-SPC-001` — resolved to `.moai/specs/SPEC-SPC-001/spec.md` under the project root (the same rule `moai spec view` uses) |
+| File path | `.moai/specs/SPEC-SPC-001/spec.md` |
+| SPEC directory | `.moai/specs/SPEC-SPC-001` — read as the `spec.md` inside it |
+
+The three shapes are mixable in one invocation, and with no argument the whole corpus is scanned as before. An argument that looks like a SPEC-ID but resolves to no file is an **argument error (exit code 3)** naming the path that was tried — not a finding about a document.
+
+Two advisory-grade warnings originate here. `ModalityUnjudged` reports a requirement the linter cannot judge instead of passing it over silently. `REQTableRowsRejected` reports table rows that were not read as REQ definitions. Both are advisory: `--strict` does not promote them to errors, and neither changes the exit code.
 
 ## moai spec close
 

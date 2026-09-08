@@ -1,0 +1,26 @@
+=== M-AUD-2 INJECTED — diff (non-zero, proving the filter reached the file) ===
+diff --git a/internal/kanban/temp_origin.go b/internal/kanban/temp_origin.go
+index 633b09c24..1bce2b25a 100644
+--- a/internal/kanban/temp_origin.go
++++ b/internal/kanban/temp_origin.go
+@@ -58,7 +58,7 @@ var TempRootsFn = defaultTempRoots
+ // living under it is higher than under /tmp. The exclusion is fail-open —
+ // a /var/tmp launch keeps today's home fallback.
+ func defaultTempRoots() []string {
+-	return []string{os.TempDir(), "/tmp", "/var/folders"}
++	return []string{os.TempDir()}
+ }
+ 
+ // TempOriginReason classifies base as a temporary-directory origin, reporting
+
+=== go test ./internal/kanban/ -run TestDefaultTempRoots_Membership -count=1 -v ===
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:171: fixed temp root "/tmp" missing from defaultTempRoots() = ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+    temp_origin_test.go:171: fixed temp root "/var/folders" missing from defaultTempRoots() = ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+    temp_origin_test.go:188: defaultTempRoots() has 1 members, want 3: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+--- FAIL: TestDefaultTempRoots_Membership (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.498s
+FAIL
+exit=1

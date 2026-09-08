@@ -293,6 +293,47 @@ changed, why it is not an amendment, and the lead decision that authorized it.
   `//?/C:/…` → `\\?\C:\…`, the one family where this conversion is load-bearing,
   which the SPEC never named).
 
+### J2 — the merge was authorized by gate RESCOPING, not by the gate being met
+
+- **What the card was waiting for, and what actually arrived.** The hold on this
+  card and on t540 was `nothing lands before M0` — the SPEC's own gate. The lane
+  was told the release signal would be **"M0 has been measured."** That is NOT what
+  arrived. The operator decision of 2026-09-08 **rescoped the gate**: `AC-CSPS-001`
+  is recorded as unmeasured debt and both cards land anyway. The distinction is
+  recorded here because the two are easy to conflate later — a reader who finds
+  this card merged will otherwise infer the gate was satisfied.
+- **`AC-CSPS-001` remains OPEN and UNMEASURED.** How Codex itself resolves a
+  forward-slash path on a Windows host was neither observed nor simulated: no
+  Windows host exists in either card's worktree. Nothing in this merge measures it.
+  The card's own G2 (no Windows runtime observation) is unchanged and unclosed.
+- **This card did not meet the gate.** It is landing under an operator decision to
+  accept the debt, which is a different fact from having discharged it.
+- **Absorb, measured at the window rather than taken from the dispatch.** The
+  dispatch named local develop tip `ee194493f`; re-measured at absorb time with
+  `git rev-parse --short develop` → `ee194493f` (still current). `origin/develop`
+  had moved to `3ac58b5a1` since the last reading, and local develop contains it
+  (`git rev-list --count --left-right origin/develop...develop` → `0 14`), so the
+  absorb target is local develop, whose 14 unpushed commits carry t540. Verified
+  t540's seam is present on local develop (`git cat-file -e
+  develop:internal/cli/codex_config_path.go`), and that `ee194493f` and the
+  gate-rescoping record `0caa6097e` are both develop ancestors.
+- **CHANGELOG conflict: both sides preserved, neither stale.** The develop side
+  carries t540, t528 and siblings; the HEAD side carries this card. The develop side
+  contains **zero** t562 entries (`/usr/bin/grep -c
+  '^- \*\*\[SPEC-CODEX-SKILL-PATH-READBACK-001\]'` on `develop:CHANGELOG.md` → `0`);
+  its single occurrence of this SPEC's token is a cross-reference inside t540's own
+  entry, not a duplicate entry. Resolution removed the three conflict markers and
+  preserved both blocks verbatim. Post-merge counts, each against a control so an
+  expected number is not read off a pattern that matches nothing: t562 `1`, t540 `1`,
+  t528 `1`; negative control (a SPEC id that does not exist) `0`; positive control
+  (all entries) `247`. Both operands non-zero, so the comparison asserts something.
+- **CI is not cited in this merge verdict.** `origin/develop` CI is red on two
+  golangci-lint `errcheck` findings (one inherited from t528, one from t536), issued
+  as card t577. This merge neither created that red nor repairs it, so it is not
+  evidence for or against this integration.
+- **Unchanged by this section**: §J1 (the F1 post-close correction) and
+  `.moai/reports/t562/writer-collision.md` stand as written.
+
 ## PRESERVE carried forward
 
 - `internal/cli/codex_config_path.go`, `codex_config_path_test.go`, `codex_skills_disable.go`,

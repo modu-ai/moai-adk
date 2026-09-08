@@ -55,7 +55,7 @@ flowchart TD
 | 标志 | 说明 | 示例 |
 |-------|------|------|
 | `--tool TOOL` | 强制指定工具链 (跳过选择问题) | `/moai e2e --tool maestro` |
-| `--platform web\|mobile\|desktop` | 强制指定平台分类 | `/moai e2e --platform web` |
+| `--platform web\|mobile\|desktop\|desktop-native` | 强制指定平台分类 | `/moai e2e --platform desktop-native` |
 | `--record` | 用工具链的原生记录功能记录运行 | `/moai e2e --record` |
 | `--url URL` | 指定网页测试目标 URL | `/moai e2e --url http://localhost:3000` |
 | `--journey NAME` | 只运行指定的用户旅程 | `/moai e2e --journey checkout` |
@@ -75,8 +75,13 @@ flowchart TD
 | **移动** | Maestro | Appium (回退)、Detox (仅限 React Native) | 支持 iOS / Android / Flutter，声明式 YAML 流程 |
 | **桌面 (Electron)** | Playwright `_electron` | — | 复用网页版 Playwright 安装。API 为实验性 (experimental) — 会在报告中注明 |
 | **桌面 (Tauri)** | WebdriverIO + `@wdio/tauri-service` | — | 嵌入式 WebDriver 模式跨平台，包含 macOS |
+| **原生桌面 (macOS, desktop-native)** | axcli | appium-mac2 + WebdriverIO (回退) | 通过 AXUIElement 无障碍树驱动 AppKit 与原生 macOS 应用。版本已 PIN |
+| **原生桌面 (Windows, desktop-native)** | FlaUI.WebDriver + WebdriverIO | pywinauto (回退) | WinUI/Win32/Qt。基于 UIA3 的 W3C WebDriver2。实验性 — 版本已 PIN |
+| **原生桌面 (Linux, desktop-native)** | dogtail | ydotool/xdotool + 截图验证 (回退) | 通过 AT-SPI2 驱动 GTK/Qt。Wayland 仅限 GNOME |
 
 若所选工具链未安装，会先给出安装命令，经批准后安装 → 重新确认版本 → 再继续。
+
+原生桌面 (desktop-native) 通道为三种操作系统 (macOS·Windows·Linux) 都备有无障碍方案文档，但按照**主机 OS 规则**，与主机不同的操作系统的方案只作为文档保留，实际的探测与执行只在主机操作系统上进行。
 
 ## 项目类型自动检测
 
@@ -90,6 +95,7 @@ flowchart TD
 | 移动 (Flutter) | 含 `flutter:` 的 `pubspec.yaml`、`lib/main.dart` |
 | 移动 (原生) | 含 iOS 目标的 `*.xcodeproj`、含 `com.android.application` 的 `build.gradle` |
 | 网页 | next/nuxt/vite/astro 等网页框架配置、`index.html`、各类 HTTP 服务应用 |
+| 原生桌面 (desktop-native) | 没有 Electron/Tauri，只有原生工具包标记 — AppKit (含 macOS 应用目标的 `.xcodeproj`/`Package.swift`，且无 electron/tauri 依赖)、WinUI/Win32 (`.vcxproj`)、Qt (`CMakeLists.txt` 中的 Qt `find_package`/`.pro`)、GTK (gtk 依赖) |
 | 混合 (mixed) | 同时检测到两类以上平台标记 — 按表面分别选择工具链 |
 
 ## 执行流程
@@ -167,7 +173,7 @@ flowchart TD
 
 当未检测到可测的 E2E 表面时 (例如没有网页/移动/桌面入口的纯库项目)，会连同已核对的标记依据一起报告 **"未检测到 E2E 目标"**，不创建任何 `e2e/` 产物并正常退出。
 
-检测到既非 Electron 也非 Tauri 的**原生桌面应用** (纯 macOS 应用、WinUI、Qt/GTK 等) 时也走同一分支 — 操作系统级的原生桌面自动化尚未提供；会连同分类依据一起给出延期 (deferral) 说明并正常退出。
+检测到既非 Electron 也非 Tauri 的**原生桌面应用** (纯 macOS 应用、WinUI、Qt/GTK 等) 时，并不会落入这一分支。它会转入原生桌面 (desktop-native) 自动化通道 — macOS 用 axcli、Windows 用 FlaUI.WebDriver、Linux 用 dogtail — 测试照常进行。"未检测到 E2E 目标"分支只适用于完全没有可测表面的纯库项目。
 
 ## 智能体委派链
 

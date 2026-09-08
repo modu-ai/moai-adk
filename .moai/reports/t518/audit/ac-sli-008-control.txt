@@ -1,0 +1,9 @@
+== AC-SLI-008 instrument non-vacuity control (absent from the card's record) ==
+$ git show --name-only --format= fe75ec5c8 | grep -c '^internal/spec/'
+2
+$ git show --name-only --format= 2cfccd4eb | grep -c '^internal/spec/'
+0
+0
+$ git show --name-only --format= 5d495bafc | grep -c '^internal/spec/'
+0
+0

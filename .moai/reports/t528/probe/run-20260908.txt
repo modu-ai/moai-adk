@@ -1,0 +1,32 @@
+=== RUN   TestT528Anchor
+    zz_probe_test.go:141: DENOMINATOR spec.md read = 807 (list: .moai/reports/t528/probe/filelist.txt)
+    zz_probe_test.go:142: IN-SECTION declarations = 1167
+    zz_probe_test.go:143:   accepted by current parser = 216
+    zz_probe_test.go:144:   rejected                   = 951
+    zz_probe_test.go:145: POSITIVE-NEEDLE files = 18 (list: .moai/reports/t528/probe/positive-needle.txt)
+    zz_probe_test.go:146: FULLY-BLIND files (>=1 decl, 0 accepted) = 101
+    zz_probe_test.go:147: B.1 numeric-tail candidate: covered = 1128  UNCOVERED = 39
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-EVIDENCE              1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-MRR-GREEN             1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-DCC-N..N              4
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-HML-N..N              4
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-SCOPE                 1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-LCLN-N.N              10
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-HFC-Na                1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-GREEN                 1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-MRR-GN                4
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-HFC-Nb                1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-PLW-N..N              2
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-ORDERING              1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-UTIL-N-Nb             1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-HFC-GATE              1
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-SVG-N..N              5
+    zz_probe_test.go:149:   UNCOVERED-SHAPE AC-MUTANT                1
+    zz_probe_test.go:161:   SEP :                800
+    zz_probe_test.go:161:   SEP (                232
+    zz_probe_test.go:161:   SEP —                93
+    zz_probe_test.go:161:   SEP «none/other»     42
+--- PASS: TestT528Anchor (0.18s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.684s
+EXIT=0

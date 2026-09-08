@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	0.332s	coverage: 100.0% of statements
+rc=0

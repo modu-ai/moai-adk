@@ -1,0 +1,25 @@
+# manager-spec 계획 산출물 개정 회차의 수치 재유도 (카드 t518)
+# tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+# HEAD: 358405d7c
+# command: moai spec lint .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md   (파이프 없음, rc 직독)
+# rc: 0
+# 기대: 0 error(s), 14 warning(s) — 이 회차의 편집이 이 값을 움직이지 않았음을 확인한다
+# ---------------------------------------------------------------
+SEVERITY  CODE                FILE                                               LINE  MESSAGE
+--------  ----                ----                                               ----  -------
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  146   REQ REQ-SLB-001 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  147   REQ REQ-SLB-002 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  148   REQ REQ-SLB-003 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  149   REQ REQ-SLB-004 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  150   REQ REQ-SLB-005 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  151   REQ REQ-SLB-006 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  152   REQ REQ-SLB-007 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  153   REQ REQ-SLB-008 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  154   REQ REQ-SLB-009 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  155   REQ REQ-SLB-010 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  156   REQ REQ-SLB-011 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  157   REQ REQ-SLB-012 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  158   REQ REQ-SLB-013 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md  159   REQ REQ-SLB-014 is not referenced by any AC
+
+0 error(s), 14 warning(s)

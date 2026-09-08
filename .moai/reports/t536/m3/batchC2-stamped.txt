@@ -1,0 +1,22 @@
+--- TREE STAMP (batch C2 start) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------
+
+### cli guard tests (verbose)
+--- PASS: TestGuardBypassMutant_ObserveHomePollution (0.13s)
+--- PASS: TestTempOriginGuidance_NamesRootsAndContinues (0.17s)
+--- PASS: TestTempOriginGuidance_SilentOnNonTemporaryBase (0.12s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.310s
+
+### full package: internal/cli
+ok  	github.com/modu-ai/moai-adk/internal/cli	459.946s
+exit=0
+
+--- TREE STAMP (batch C2 end) ---
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536
+db45d8209
+WT-home-fallback
+-----------------------

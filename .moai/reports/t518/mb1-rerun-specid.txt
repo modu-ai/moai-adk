@@ -1,0 +1,38 @@
+=== RUN   TestHasCanonicalSpecIDShape
+--- PASS: TestHasCanonicalSpecIDShape (0.00s)
+=== RUN   TestCanonicalShapeLiteral_MatchesInternalSpecSource
+--- PASS: TestCanonicalShapeLiteral_MatchesInternalSpecSource (0.00s)
+=== RUN   TestValidateSpecID
+=== PAUSE TestValidateSpecID
+=== CONT  TestValidateSpecID
+=== RUN   TestValidateSpecID/legitimate_canonical_spec_id
+=== PAUSE TestValidateSpecID/legitimate_canonical_spec_id
+=== RUN   TestValidateSpecID/legitimate_short_spec_id
+=== PAUSE TestValidateSpecID/legitimate_short_spec_id
+=== RUN   TestValidateSpecID/dotdot_traversal
+=== PAUSE TestValidateSpecID/dotdot_traversal
+=== RUN   TestValidateSpecID/embedded_dotdot
+=== PAUSE TestValidateSpecID/embedded_dotdot
+=== RUN   TestValidateSpecID/forward_slash_separator
+=== PAUSE TestValidateSpecID/forward_slash_separator
+=== RUN   TestValidateSpecID/backslash_separator
+=== PAUSE TestValidateSpecID/backslash_separator
+=== RUN   TestValidateSpecID/absolute_path_unix
+=== PAUSE TestValidateSpecID/absolute_path_unix
+=== CONT  TestValidateSpecID/legitimate_canonical_spec_id
+=== CONT  TestValidateSpecID/absolute_path_unix
+=== CONT  TestValidateSpecID/backslash_separator
+=== CONT  TestValidateSpecID/forward_slash_separator
+=== CONT  TestValidateSpecID/embedded_dotdot
+=== CONT  TestValidateSpecID/dotdot_traversal
+=== CONT  TestValidateSpecID/legitimate_short_spec_id
+--- PASS: TestValidateSpecID (0.00s)
+    --- PASS: TestValidateSpecID/legitimate_canonical_spec_id (0.00s)
+    --- PASS: TestValidateSpecID/absolute_path_unix (0.00s)
+    --- PASS: TestValidateSpecID/backslash_separator (0.00s)
+    --- PASS: TestValidateSpecID/forward_slash_separator (0.00s)
+    --- PASS: TestValidateSpecID/embedded_dotdot (0.00s)
+    --- PASS: TestValidateSpecID/dotdot_traversal (0.00s)
+    --- PASS: TestValidateSpecID/legitimate_short_spec_id (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	0.355s

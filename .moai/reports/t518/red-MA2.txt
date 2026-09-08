@@ -1,0 +1,19 @@
+--- FAIL: TestModality_KoreanControlAnnounced (0.00s)
+    lint_modality_unjudged_test.go:189: Korean requirement produced NEITHER code — silence is indistinguishable from a pass, which is the defect
+--- FAIL: TestModality_SilenceDiffersFromConformance (0.00s)
+    lint_modality_unjudged_test.go:235: unjudgeable fixture: ModalityUnjudged = 0, want >= 1
+    lint_modality_unjudged_test.go:238: the two fixtures produced the SAME finding set (map[]) — silence and conformance are still indistinguishable
+--- FAIL: TestModality_UnjudgedIsAdvisory (0.00s)
+    lint_modality_unjudged_test.go:272: ModalityUnjudged count = 0, want 1
+--- FAIL: TestModality_UnjudgedIsNotReportedConforming (0.00s)
+    lint_modality_unjudged_test.go:308: unjudgeable korean (AC-SLB-007 verbatim): judgeModality = 0, want 2
+    lint_modality_unjudged_test.go:314: unjudgeable fixture: ModalityUnjudged = 0, want 1
+--- FAIL: TestModality_ShallContactIsWordBoundary (0.00s)
+    lint_modality_unjudged_test.go:338: word-boundary contact did not accept the parenthesized SHALL in "When the tool runs, the tool reports.(SHALL)"
+    lint_modality_unjudged_test.go:356: FXB-011: ModalityMalformed = 1, want 0
+    lint_modality_unjudged_test.go:370: word-boundary contact accepted SHALLOW as SHALL in "When the tool runs, the pool is shallow."
+--- FAIL: TestModality_AdvisoryDoesNotLeakIntoErrors (0.00s)
+    lint_modality_unjudged_test.go:393: fixture precondition broken: table=0 list=1 — the mixed fixture must exercise BOTH advisory paths
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.465s
+FAIL

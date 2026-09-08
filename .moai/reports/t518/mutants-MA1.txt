@@ -1,0 +1,59 @@
+=== baseline (unmutated) ===
+exit=0 failed=[] build_failed=False
+
+M1 table collection reverted (parseREQsTable returns nil)                CAUGHT
+   red: ['TestTableCollection_AdvisoryDoesNotGate', 'TestTableCollection_ControlPairDiverges', 'TestTableCollection_DiscriminatorBoundaries', 'TestTableCollection_TableFormCollected']
+
+M2 discriminator C-d removed (every ID-leading row admitted)             CAUGHT
+   red: ['TestTableCollection_CorpusTableEntryCensus', 'TestTableCollection_DiscriminatorBoundaries', 'TestTableCollection_DiscriminatorRejectsDispositionTables']
+
+M3 advisory marking removed from table entries (Widened: false)          CAUGHT
+   red: ['TestTableCollection_AdvisoryDoesNotGate', 'TestTableCollection_ControlPairDiverges', 'TestTableCollection_TableFormCollected']
+
+M4 Source wired into reqFindingSeverity (second severity axis)           CAUGHT
+   red: ['TestTableCollection_AdvisoryDoesNotGate', 'TestTableCollection_SourceDoesNotDecideSeverity']
+
+M5 list branch corrupted by one character (bullet class '[-*]' -> '[*]') CAUGHT
+   red: ['TestTableCollection_AdvisoryDoesNotGate', 'TestTableCollection_ControlPairDiverges', 'TestTableCollection_CorpusListFindingsUnchanged', 'TestTableCollection_ListFormUnchanged']
+
+M6 [boundary] L1 matching widened to case-insensitive                    CAUGHT
+   red: ['TestTableCollection_DiscriminatorBoundaries']
+
+M7 [boundary] row pattern loses bold-marker tolerance around the ID      CAUGHT
+   red: ['TestTableCollection_DiscriminatorBoundaries']
+
+M8 [boundary] table body taken from the FIRST cell after the ID          CAUGHT
+   red: ['TestTableCollection_AdvisoryDoesNotGate', 'TestTableCollection_TableFormCollected']
+
+=== restore check ===
+exit=0 failed=[]
+
+=== SUMMARY ===
+M1 table collection reverted (parseREQsTable returns nil)                CAUGHT
+      RED: TestTableCollection_AdvisoryDoesNotGate
+      RED: TestTableCollection_ControlPairDiverges
+      RED: TestTableCollection_DiscriminatorBoundaries
+      RED: TestTableCollection_TableFormCollected
+M2 discriminator C-d removed (every ID-leading row admitted)             CAUGHT
+      RED: TestTableCollection_CorpusTableEntryCensus
+      RED: TestTableCollection_DiscriminatorBoundaries
+      RED: TestTableCollection_DiscriminatorRejectsDispositionTables
+M3 advisory marking removed from table entries (Widened: false)          CAUGHT
+      RED: TestTableCollection_AdvisoryDoesNotGate
+      RED: TestTableCollection_ControlPairDiverges
+      RED: TestTableCollection_TableFormCollected
+M4 Source wired into reqFindingSeverity (second severity axis)           CAUGHT
+      RED: TestTableCollection_AdvisoryDoesNotGate
+      RED: TestTableCollection_SourceDoesNotDecideSeverity
+M5 list branch corrupted by one character (bullet class '[-*]' -> '[*]') CAUGHT
+      RED: TestTableCollection_AdvisoryDoesNotGate
+      RED: TestTableCollection_ControlPairDiverges
+      RED: TestTableCollection_CorpusListFindingsUnchanged
+      RED: TestTableCollection_ListFormUnchanged
+M6 [boundary] L1 matching widened to case-insensitive                    CAUGHT
+      RED: TestTableCollection_DiscriminatorBoundaries
+M7 [boundary] row pattern loses bold-marker tolerance around the ID      CAUGHT
+      RED: TestTableCollection_DiscriminatorBoundaries
+M8 [boundary] table body taken from the FIRST cell after the ID          CAUGHT
+      RED: TestTableCollection_AdvisoryDoesNotGate
+      RED: TestTableCollection_TableFormCollected
