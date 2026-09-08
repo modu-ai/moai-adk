@@ -139,6 +139,13 @@ func scanTestSourceForRepoWrites(path string) []string {
 			}
 		}
 	}
+	// Fail loudly on a mid-file read error: a scanner that stops early would
+	// otherwise report findings on a truncated file — a vacuous green in the
+	// very instrument this SPEC ships. Surfaced as a finding so it fails the
+	// test through the same path as every other verdict.
+	if err := sc.Err(); err != nil {
+		findings = append(findings, fmt.Sprintf("%s: scanner error after line %d: %v", base, lineNo, err))
+	}
 	return findings
 }
 

@@ -90,6 +90,11 @@ FAIL
 
 Gate-preservation (non-AC check): ungated pair run → 2 SKIPs, exit 0 (`/tmp/t569/gate-preserved-skip.txt`). Guard boundary documented in the guard file's doc comment (dynamically built paths, parameter-carried anchors, multi-line statements, self-scan exclusion, non-test sources).
 
+### E.2.4 Post-verification polish (lane LSP-diagnostic follow-up, 2026-09-08)
+
+1. **Adopted — scanner error check** (`guard_no_repo_tree_write_test.go`): the `bufio.Scanner` loop now surfaces a mid-file read error as a finding (post-loop `sc.Err()` → finding → `t.Errorf`), closing a truncated-file vacuous-green path in the guard itself. Post-fix guard run: exit 0, `--- PASS: TestNoTestWritesRepoTree (0.01s)` / `ok ... 0.373s` (`/tmp/t569/green-guard-after-polish.txt`).
+2. **Rejected with evidence — "t362ReportPath unused"** (`t362_evidence_out_test.go:27`): the diagnostic's premise is false on the committed tip. Verified: `grep -n t362ReportPath` shows two LIVE call sites (`lint_req_widen_corpus_test.go:246`, `lint_req_widen_decompose_test.go:547`), the helper's no-clobber branch was observed executing (AC-008b's `Fatalf` message is emitted by this helper), and `golangci-lint run ./internal/spec/...` on the tip reports only the pre-existing `zz_t528_overacceptance_test.go:100` errcheck — no `unused` finding. Deleting a live, exercised helper would have broken the build; the diagnostic is treated as a stale LSP read against the pre-edit buffer. Nothing changed in `t362_evidence_out_test.go`.
+
 ### E.2.3 Self-verification E2-E6
 
 - **E2 build**: `go build ./...` → `BUILD_NATIVE_OK`; `GOOS=windows GOARCH=amd64 go build ./...` → `BUILD_WINDOWS_OK` (both exit 0).
