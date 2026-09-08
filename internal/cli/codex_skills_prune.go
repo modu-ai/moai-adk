@@ -75,7 +75,12 @@ func judgeCodexSkillEntry(e codexwiring.SkillEntry) codexSkillPruneVerdict {
 	var statPath string
 	switch classifyCodexSkillPath(e.Path) {
 	case codexPathAbsolute:
-		statPath = e.Path
+		// SPEC-CODEX-SKILL-PATH-READBACK-001: the publisher writes the config's
+		// forward-slash form; stat reads the path back in the HOST's own form
+		// (REQ-CSRB-001). Classification above ran on the DECLARED form, and the
+		// home-relative branch below is left untouched — its filepath.Join
+		// product is already native and must never be converted (REQ-CSRB-002).
+		statPath = fromConfigPath(e.Path, configPathSeparator)
 	case codexPathHomeRelative:
 		expanded, ok := expandCodexHomeRelativePath(e.Path)
 		if !ok {

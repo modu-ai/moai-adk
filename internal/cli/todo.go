@@ -94,7 +94,7 @@ func warnTempOriginQueueRefusal(cmd *cobra.Command) {
 	if !refused {
 		return
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(),
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/todo; continuing against the project-local queue at %s\n",
 		matched, substitute)
 }
@@ -250,7 +250,7 @@ adds any text verbatim.`,
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
+		newTodoPRCmd(), newTodoLandedCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
 	return cmd
 }
 

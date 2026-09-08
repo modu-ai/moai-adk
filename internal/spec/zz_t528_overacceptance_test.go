@@ -97,7 +97,7 @@ func TestT528NonDeclarationBulletsCorpusSweep(t *testing.T) {
 	if err != nil {
 		t.Fatalf("roster missing — the sweep would otherwise pass while checking nothing: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 1<<20), 1<<20)

@@ -57,7 +57,7 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 	}
 
 	itemRows, err := e.db.QueryContext(ctx,
-		`SELECT id, text, added_at, spec_id, state FROM items ORDER BY seq`)
+		`SELECT id, text, added_at, spec_id, state, landing FROM items ORDER BY seq`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
@@ -65,8 +65,9 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 	for itemRows.Next() {
 		var it BacklogItem
 		var specID sql.NullString
+		var landing sql.NullString
 		var state string
-		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state); err != nil {
+		if err := itemRows.Scan(&it.ID, &it.Text, &it.AddedAt, &specID, &state, &landing); err != nil {
 			return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 		}
 		if specID.Valid {
@@ -74,6 +75,20 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 			// spec id round-trips as JSON null, never as an omitted key.
 			v := specID.String
 			it.SpecID = &v
+		}
+		if landing.Valid {
+			// A PRESENT value that will not decode is surfaced, never
+			// silently dropped: the encoder is the column's only writer and
+			// refuses every invalid shape, so an undecodable value is
+			// external corruption. Dropping it would lose the operator's
+			// record on the next write — the read would return nil, and the
+			// whole-record write-back would then store that nil as NULL.
+			// Loud is recoverable by hand; silent loss is not.
+			ev, decErr := DecodeLandingEvidence(landing.String)
+			if decErr != nil {
+				return nil, fmt.Errorf("load backlog %s: item %s: %w", e.dbPath, it.ID, decErr)
+			}
+			it.Landing = &ev
 		}
 		it.State = BacklogState(state)
 		rec.Items = append(rec.Items, it)
@@ -120,7 +135,7 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 // position-as-key shape `items` already uses.
 func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) error {
 	rows, err := e.db.QueryContext(ctx,
-		`SELECT seq, id, text, added_at, spec_id, state, position FROM archived_items ORDER BY seq`)
+		`SELECT seq, id, text, added_at, spec_id, state, position, landing FROM archived_items ORDER BY seq`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
@@ -131,14 +146,26 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		var seq int
 		var entry BacklogArchiveEntry
 		var specID sql.NullString
+		var landing sql.NullString
 		var state string
 		if err := rows.Scan(&seq, &entry.Item.ID, &entry.Item.Text, &entry.Item.AddedAt,
-			&specID, &state, &entry.Position); err != nil {
+			&specID, &state, &entry.Position, &landing); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 		}
 		if specID.Valid {
 			v := specID.String
 			entry.Item.SpecID = &v
+		}
+		if landing.Valid {
+			// Same contract as the live read: a PRESENT value that will not
+			// decode is surfaced, never silently dropped. An archived card is
+			// the one an operator is most likely to be reading evidence FOR,
+			// so losing it quietly here is worse, not better.
+			ev, decErr := DecodeLandingEvidence(landing.String)
+			if decErr != nil {
+				return fmt.Errorf("load backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, decErr)
+			}
+			entry.Item.Landing = &ev
 		}
 		entry.Item.State = BacklogState(state)
 		entry.Findings = []BacklogArchivedFinding{}
@@ -194,12 +221,22 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 		if entry.Item.SpecID != nil {
 			specID = *entry.Item.SpecID
 		}
+		// Routed through the SAME seam as the live write, so REQ-TLE-006's
+		// "absence is NULL" holds on this table by the type rather than by a
+		// second call site remembering to. An archived card keeps whatever
+		// evidence it held when it left the live queue: `done` followed by
+		// `undone` must return the record it started with, and the archive is
+		// the only place that record lives in between.
+		landing, encErr := LandingEvidenceValue(entry.Item.Landing)
+		if encErr != nil {
+			return fmt.Errorf("write backlog archive %s: item %s: %w", e.dbPath, entry.Item.ID, encErr)
+		}
 		seq := i + 1
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position, landing)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			seq, entry.Item.ID, entry.Item.Text, entry.Item.AddedAt, specID,
-			string(entry.Item.State), entry.Position); err != nil {
+			string(entry.Item.State), entry.Position, landing); err != nil {
 			return mapBacklogWriteError(e.dbPath, entry.Item.ID, err)
 		}
 		for _, af := range entry.Findings {
@@ -271,10 +308,20 @@ func (e *backlogEngine) writeRecord(ctx context.Context, rec *BacklogRecord) (er
 		if it.SpecID != nil {
 			specID = *it.SpecID
 		}
+		// The landing column is written ONLY through this seam, so
+		// REQ-TLE-006's "absence is NULL" is a property of the type rather
+		// than a discipline each call site keeps: LandingEvidenceValue(nil)
+		// yields nil, and a present record is refused here if it carries a
+		// SHA without provenance or a provenance the SPEC does not define.
+		var landing any
+		if landing, err = LandingEvidenceValue(it.Landing); err != nil {
+			err = fmt.Errorf("write backlog %s: item %s: %w", e.dbPath, it.ID, err)
+			return err
+		}
 		// seq = 1-based array position: the ordering contract (REQ-TOSQ-004).
 		if _, err = tx.ExecContext(ctx,
-			`INSERT INTO items(seq, id, text, added_at, spec_id, state) VALUES (?, ?, ?, ?, ?, ?)`,
-			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State)); err != nil {
+			`INSERT INTO items(seq, id, text, added_at, spec_id, state, landing) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			i+1, it.ID, it.Text, it.AddedAt, specID, string(it.State), landing); err != nil {
 			err = mapBacklogWriteError(e.dbPath, it.ID, err)
 			return err
 		}
@@ -592,6 +639,10 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 		if !equalSpecID(want.SpecID, got.SpecID) {
 			return fmt.Errorf("item %d (%s): spec_id %v != %v", i, want.ID, derefSpecID(want.SpecID), derefSpecID(got.SpecID))
 		}
+		if !equalLandingEvidence(want.Landing, got.Landing) {
+			return fmt.Errorf("item %d (%s): landing %v != %v", i, want.ID,
+				derefLandingEvidence(want.Landing), derefLandingEvidence(got.Landing))
+		}
 	}
 	if len(source.Findings) != len(migrated.Findings) {
 		return fmt.Errorf("finding count %d != %d", len(source.Findings), len(migrated.Findings))
@@ -619,6 +670,10 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 		if !equalSpecID(want.Item.SpecID, got.Item.SpecID) {
 			return fmt.Errorf("archived %d (%s): spec_id %v != %v", i, want.Item.ID,
 				derefSpecID(want.Item.SpecID), derefSpecID(got.Item.SpecID))
+		}
+		if !equalLandingEvidence(want.Item.Landing, got.Item.Landing) {
+			return fmt.Errorf("archived %d (%s): landing %v != %v", i, want.Item.ID,
+				derefLandingEvidence(want.Item.Landing), derefLandingEvidence(got.Item.Landing))
 		}
 		if len(want.Findings) != len(got.Findings) {
 			return fmt.Errorf("archived %d (%s): finding count %d != %d", i, want.Item.ID,
@@ -648,6 +703,32 @@ func equalSpecID(a, b *string) bool {
 		return a == nil && b == nil
 	}
 	return *a == *b
+}
+
+// equalLandingEvidence compares two evidence pointers by null-shape AND value,
+// the same two-part test equalSpecID applies for the same reason: absence is
+// SQL NULL (REQ-TLE-006), so a nil and a pointer to a zero-valued record are
+// different facts. Conflating them would let a migration report parity while
+// turning an operator's recorded landing into a record that observed nothing —
+// and the cutover flips authority onto that result and quarantines the legacy
+// file, so the loss would be permanent rather than recoverable.
+//
+// The struct is compared by value rather than field by field: every field is a
+// string, so == is exact, and a field added later is covered automatically
+// instead of being silently exempt from parity until someone remembers it.
+func equalLandingEvidence(a, b *LandingEvidence) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
+// derefLandingEvidence renders an evidence pointer for an error message.
+func derefLandingEvidence(p *LandingEvidence) any {
+	if p == nil {
+		return nil
+	}
+	return *p
 }
 
 // derefSpecID renders a spec-id pointer for an error message.
