@@ -111,7 +111,7 @@ card: t569
 phase: run
 run_status: complete
 run_complete_at: 2026-09-08
-run_commit_sha: pending-backfill-run  # D3 placeholder — backfilled after M4 commit lands
+run_commit_sha: ada562362  # D3 backfilled — run-phase tip (the polish commit) immediately before the sync commit
 ac_pass_count: 10
 ac_fail_count: 0
 ac_matrix: AC-001..008c all PASS (see §E.2.2)
@@ -135,7 +135,7 @@ card: t569
 phase: sync
 sync_status: complete
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync  # D3 placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit
+sync_commit_sha: 3db94543e  # D3 backfilled — written as pending-backfill-sync inside the sync commit itself (a commit cannot cite its own SHA), resolved here
 sync_branch: WT-harness-evidence-write
 frontmatter_status_transitions:
   implemented_to_completed: carried-by-sync-commit  # status + updated only, spec.md frontmatter
