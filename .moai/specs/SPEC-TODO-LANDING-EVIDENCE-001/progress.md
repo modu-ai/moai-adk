@@ -1010,3 +1010,94 @@ unrecorded instrument error is indistinguishable from a measurement:**
   all three calls fail — safely, but they fail.
 - `-race` and cross-platform were not run; packages outside `internal/cli` / `internal/kanban` were
   not measured. F2 and F5-F9 were neither touched nor re-measured.
+
+#### The lead's merge ruling, verbatim (2026-09-08)
+
+Supplied by the lead after J.6 was first written. The four grounds above were
+the ones attributable to the audit document; these are the lead's own words,
+recorded rather than paraphrased.
+
+> **Ruling: merge once N1 is closed. With the FAIL standing, and recorded as such.**
+>
+> 1. **The blocking finding is closed and the re-audit confirmed it by measuring.**
+>    The auditor extracted the old tree with `git archive d739cd051` into a
+>    scratchpad (leaving the shared tree untouched), reproduced RED there, saw
+>    GREEN at HEAD, and then ran an end-to-end probe with a binary built from
+>    this HEAD confirming `"spec_status":"unknown"` is stored in the DB — not
+>    the validator alone, but the value passing through the reader and being
+>    refused. This is the core of what permits the merge.
+> 2. **The firewall did not fire; both must-pass dimensions PASS independently.**
+>    0.75 is a quality signal, not a blocking line.
+> 3. **The remaining findings are all dispositioned to follow-up cards** — the
+>    merge does not hide them.
+> 4. **The worktree holds the only copy of the unpushed commits.** Holding it
+>    indefinitely on account of the FAIL is itself the risk.
+>
+> Three conditions: close N1 first · state "sync-audit FAIL 0.75 stood at merge"
+> in BOTH `progress.md` and the merge commit message · if no third re-audit can
+> be run, report and record "the N1 repair lands without audit confirmation"
+> verbatim.
+
+**A correction the lead made to its own ground 3.** Its original wording said
+"six findings"; that count came from the lane orchestrator's summary and was
+carried across without checking. The audit report carries **nine** (F1-F9), and
+the disposition table above is built from the report rather than from either
+party's memory. The quoted ground reads "the remaining findings" for that
+reason.
+
+### J.7 The absorb of local `develop` — two integration failures neither branch showed alone
+
+Recorded here because it is the load-bearing argument for the integration
+window existing at all: both branches were green on their own, and the merged
+tree did not compile — twice.
+
+Full evidence, with commands and observed output:
+`.moai/reports/t359/merge-absorb-evidence.md`.
+
+| What | Outcome |
+|---|---|
+| Absorb source | local `develop` `768306d27`, **re-measured** at absorb time |
+| Merge commit | `8a589d9df`; `git merge-base --is-ancestor develop HEAD` rc=0 |
+| Conflict — `CHANGELOG.md` | both sides added entries; both kept |
+| Conflict — `internal/template/catalog.yaml` | **neither side was correct**; regenerated |
+| F8 (`agents-emit-check`) | `make build` rc=0, clean tree after — **measured** resolved |
+| `internal/kanban` | build failed → ported → rc=0, FAIL scan 0, 143.160s |
+| `internal/cli` | build failed → ported (delegated) → rc=0, FAIL scan 0, empty-sweep 0, 580.933s |
+| `go vet` / `golangci-lint` | rc=0 / rc=0, `0 issues.` |
+
+**The generated-artifact conflict is the finding worth carrying forward.** The
+conflicted line was the content hash of the `moai` skill directory; both
+branches had edited a file inside it, so each side's hash was computed from its
+own input and neither from the merged input. "Which side is right?" is not a
+question that has an answer there — regenerating produced a third value
+(`5514ce67…`) equal to neither. Picking a side would have been silent: the
+merge completes, the YAML parses, and the drift check that would catch it runs
+in a later commit or not at all. The discriminant: **a file a build step or a
+check regenerates has no correct side in a conflict.**
+
+**Both build failures share one cause, and it is structural.** develop's
+SPEC-TODO-LANDING-ATTRIBUTION-001 removed the card id from the landing query's
+argv, renaming `LandedGrepArgs(ref, cardID)` to `LandedSubjectArgs(ref)`; the
+consequence reached this card's test surface twice — directly in
+`internal/kanban`, and one layer out in `internal/cli`, where the stub's
+card-keyed `landedFor` became the positional `logPlan`. The author of a rename
+has no way to see the consumers living on unmerged branches, so this class of
+failure is only ever visible at the merge. Reported to the lead as a follow-up
+card candidate.
+
+**Where judgment was withheld rather than exercised.** The `internal/cli` port
+was delegated instead of inferred: `logPlan` is positional, and a plan mapped
+onto the wrong cards yields a test that passes while asserting the wrong thing.
+The mapping was established empirically with a throwaway probe, which settled
+two facts inference would have gotten wrong — `logCalls` is cumulative across
+the two renders each site performs, and at one site the first seeded card never
+reaches the query at all because it matches the pinned PR fixture and
+short-circuits.
+
+**A third instrument error by the lane orchestrator, recorded like the first
+two.** `rc=${PIPESTATUS[0]}` returned empty a third time in this session. Every
+exit code cited above was captured directly from the command rather than
+through a pipe. Separately, the editor's diagnostics reported three symbols as
+undefined while `go vet` was clean; rather than assume either reading, the test
+binaries were compiled (`go test -c -o /dev/null`, rc=0, zero output) and the
+diagnostics were the stale side.

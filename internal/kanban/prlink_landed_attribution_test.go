@@ -41,7 +41,15 @@ import (
 )
 
 // attributionCard is the card the three fixture commits name.
-const attributionCard = "t359fixture"
+//
+// It MUST be a bare `t<digits>` token. subjectAttribution's forms and
+// subjectCardToken both match `t[0-9]+` with word boundaries, so a suffixed id
+// such as "t359fixture" is not a card token to them at all: every commit here
+// would then attribute nothing and the landed positive control below would
+// fail for a reason that has nothing to do with what it tests. The digits are
+// deliberately far from any live card id so the fixture cannot be read as a
+// claim about a real one.
+const attributionCard = "t9359"
 
 // threeMatchRepo builds a repository whose origin/main history contains THREE
 // commits naming attributionCard, with a HEAD commit that names it not at all.
@@ -114,20 +122,39 @@ func TestResolver_NamesNoDeliveringCommit(t *testing.T) {
 	// --- positive control 1: the fixture really names the card three times.
 	// Without this the containment assertion below would pass against a
 	// repository that mentions nothing, which is the vacuous shape.
-	args, err := LandedGrepArgs(DefaultLandedRef, attributionCard)
+	//
+	// Two queries, because one cannot carry both properties. The FIRST runs
+	// the implementation's own argv builder, so a silent-empty regression in
+	// it is caught here rather than passing as "the fixture names nothing";
+	// that builder streams subjects only (`--format=%s`) and deliberately
+	// names no SHA, so it cannot answer the identity half. The SECOND is a
+	// fixture-premise query built in the test on purpose: it asserts what the
+	// FIXTURE contains, never what the implementation constructs, so
+	// rebuilding the argv here proves exactly what it is asked to.
+	subjArgs, err := LandedSubjectArgs(DefaultLandedRef)
 	if err != nil {
 		t.Fatalf("argv: %v", err)
 	}
-	raw, err := run("git", args...)
+	subjects, err := run("git", subjArgs...)
+	if err != nil {
+		t.Fatalf("fixture subject query: %v", err)
+	}
+	if strings.TrimSpace(subjects) == "" {
+		t.Fatalf("fixture premise broken: the subject stream is EMPTY")
+	}
+
+	raw, err := run("git", "log", DefaultLandedRef, "--format=%h %s")
 	if err != nil {
 		t.Fatalf("fixture query: %v", err)
 	}
-	matched := strings.Count(strings.TrimSpace(raw), "\n") + 1
-	if strings.TrimSpace(raw) == "" {
-		t.Fatalf("fixture premise broken: the query returned an EMPTY commit set")
+	matched := 0
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		if strings.Contains(line, attributionCard) {
+			matched++
+		}
 	}
 	if matched != 3 {
-		t.Fatalf("fixture premise broken: the query matched %d commits, want 3:\n%s", matched, raw)
+		t.Fatalf("fixture premise broken: %d commits name the card, want 3:\n%s", matched, raw)
 	}
 	for _, sha := range shas {
 		if !strings.Contains(raw, sha[:7]) {

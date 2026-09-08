@@ -127,7 +127,11 @@ func renderedColumnCount(t *testing.T) int {
 	_, store := todoFixture(t)
 	ids := seedQueue(t, store, "a card that carries evidence")
 	recordLanding(t, store, ids[0], operatorEvidence("c9f712232aabbccddeeff00112233445566778899"))
-	installSpy(t, &spyRunner{landedFor: map[string]bool{ids[0]: true}})
+	// One card, one render, so the landed query is reached exactly once and
+	// call 1 answers ids[0]. Measured, not assumed: a probe planting the
+	// landed answer at each position in turn showed position 0 — and only
+	// position 0 — rendering ids[0] as landed.
+	installSpy(t, &spyRunner{logPlan: []spyLogAnswer{{out: landedLogLine(ids[0])}}})
 
 	out, _, err := runTodo(t, "pr")
 	if err != nil {

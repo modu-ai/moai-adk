@@ -109,7 +109,18 @@ func TestTodoPR_SevenColumnsCardTextLast(t *testing.T) {
 	// Exactly ONE card carries evidence, so the empty-cell clause is asserted
 	// on the same render as the populated one.
 	recordLanding(t, store, landed, operatorEvidence("c9f712232aabbccddeeff00112233445566778899"))
-	installSpy(t, &spyRunner{prJSON: pinnedPRJSON, landedFor: map[string]bool{landed: true}})
+	// `linked` hits pinnedPRJSON's body and resolves before the landed query,
+	// so only `landed` and `untouched` reach it — two calls per render, in
+	// that order. This test renders TWICE (text, then --json) and the spy's
+	// call counter is cumulative, so the plan carries both renders' answers:
+	// landed / not-landed / landed / not-landed. Measured, not assumed: a
+	// probe planting the landed answer at one position at a time rendered
+	// `landed` at position 0 and `untouched` at position 1, and reported 2
+	// calls for the first render, 4 cumulative after the second.
+	installSpy(t, &spyRunner{prJSON: pinnedPRJSON, logPlan: []spyLogAnswer{
+		{out: landedLogLine(landed)}, {},
+		{out: landedLogLine(landed)}, {},
+	}})
 
 	out, _, err := runTodo(t, "pr")
 	if err != nil {
@@ -232,7 +243,16 @@ func TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution(t *testing.T) 
 			asserted, observed := ids[0], ids[1]
 			recordLanding(t, store, asserted, operatorEvidence(shared))
 			recordLanding(t, store, observed, refHeadEvidence(tc.observedAt))
-			installSpy(t, &spyRunner{prJSON: `[]`, landedFor: map[string]bool{asserted: true, observed: true}})
+			// No pull requests at all, so both cards reach the landed query
+			// in queue order, and both answer landed as before. Two renders
+			// (text, then --json) against a cumulative call counter, hence
+			// four planned answers. Measured, not assumed: the probe rendered
+			// `asserted` landed at position 0 and `observed` at position 1,
+			// 2 calls per render.
+			installSpy(t, &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{
+				{out: landedLogLine(asserted)}, {out: landedLogLine(observed)},
+				{out: landedLogLine(asserted)}, {out: landedLogLine(observed)},
+			}})
 
 			out, _, err := runTodo(t, "pr")
 			if err != nil {
@@ -296,7 +316,15 @@ func TestTodoPR_NoRecordRendersEmptyEvidenceCell(t *testing.T) {
 	_, store := todoFixture(t)
 	ids := seedQueue(t, store, "landed but unrecorded", "plainly untouched")
 	landed, untouched := ids[0], ids[1]
-	installSpy(t, &spyRunner{prJSON: `[]`, landedFor: map[string]bool{landed: true}})
+	// No pull requests, so both cards reach the landed query in queue order:
+	// `landed` first, `untouched` second. Two renders (text, then --json)
+	// against a cumulative call counter, hence four planned answers. Measured,
+	// not assumed: the probe rendered `landed` at position 0 and `untouched`
+	// at position 1, 2 calls per render.
+	installSpy(t, &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{
+		{out: landedLogLine(landed)}, {},
+		{out: landedLogLine(landed)}, {},
+	}})
 
 	out, _, err := runTodo(t, "pr")
 	if err != nil {
@@ -341,7 +369,17 @@ func TestTodoPR_ProjectRootUnchangedWithEvidence(t *testing.T) {
 	ids := seedQueue(t, store, "first landed card", "second landed card")
 	recordLanding(t, store, ids[0], operatorEvidence("c9f712232aabbccddeeff00112233445566778899"))
 	recordLanding(t, store, ids[1], refHeadEvidence("e50964ad3f11223344556677889900aabbccddee"))
-	installSpy(t, &spyRunner{prJSON: pinnedPRJSON, landedFor: map[string]bool{ids[0]: true, ids[1]: true}})
+	// ids[0] hits pinnedPRJSON's body and resolves before the landed query, so
+	// only ids[1] reaches it — ONE call per render. The two renders below
+	// share a cumulative call counter, hence two planned answers, both
+	// landed. The old fixture also marked ids[0] landed; that entry was
+	// already inert, because the card never reached the query to consume it.
+	// Measured, not assumed: the probe rendered ids[1] landed at position 0
+	// and reported 1 call per render, 2 cumulative.
+	installSpy(t, &spyRunner{prJSON: pinnedPRJSON, logPlan: []spyLogAnswer{
+		{out: landedLogLine(ids[1])},
+		{out: landedLogLine(ids[1])},
+	}})
 
 	before := queueDirDigest(t, root)
 
