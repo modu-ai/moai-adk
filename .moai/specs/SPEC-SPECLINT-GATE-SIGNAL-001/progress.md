@@ -122,6 +122,122 @@ M1 측정 전 흡수: `origin/develop` `a849d99d2` → `19cf21408` 병합 (창 6
 - 비-advisory 재고가 현재 2건뿐이므로(M1 판정), 기준선의 실효 가치는 t518 착지 후
   인구 이동을 흡수하는 데 있다. 지금 시점의 래칫은 회귀 방지용으로만 작동한다.
 
+### M4 — 부수: CC2X ADOPT-001/002 (2026-09-08, card t525)
+
+측정 규율: 모든 lint 수치는 **그때-current 트리에서 그때 빌드한 바이너리**로 잰다
+(before: `/tmp/t525-m4-moai` @ `185c21cff` 변경 전, after: `/tmp/t525-m4-moai2` @ 같은 HEAD
+변경 후 워킹트리). 부재·카운팅 판정은 `/usr/bin/grep`(셸의 `grep` 은 조용히 건너뛰는
+ugrep 래퍼다). attribution triple(명령 / 관측 출력 / 트리 SHA).
+
+**순서 기록 — M4 를 M3 보다 먼저 돌렸다.** plan.md §F 는 M3 → M4 순이나 리드 판정으로
+뒤집었다. 근거: M4 가 유일한 비-advisory 발견 2건을 닫으므로, M3 의 기준선을 M4 뒤에
+산출하면 규칙 집합이 비고 이후의 **어떤** 비-advisory 경고도 즉시 적색이 된다. 먼저
+산출했으면 `SpecsDirMissingSpecFile: 2` 가 동결돼 영구 구멍으로 남는다. 범위는 불변,
+순서만 이동.
+
+#### "왜 spec.md 가 없는가" — 디렉터마다 따로 (REQ-SLGS-012)
+
+두 디렉터는 **둘 다 의도적 안치(deliberate placement)이지 유실이 아니다.** 근거는 각각
+다르다 — plan.md §B.5 관측을 run 단계에서 문서를 열어 확인했다.
+
+| | SPEC-V3R4-CC2X-ADOPT-001 | SPEC-V3R4-CC2X-ADOPT-002 |
+|---|---|---|
+| 판정 | 의도적 안치 | 의도적 안치 |
+| frontmatter | 있음 — `spec_id`, `phase: research`, `created: 2026-05-12`, `child_specs:` 17개 열거 | **없음** — `#` 제목으로 시작 |
+| 자기 서술 | §0 Purpose 축자: "본 문서 자체는 plan/spec/acceptance를 포함하지 않으며, 17개 child SPEC의 공통 참조 자료로 사용됩니다" | 제목 축자: "CC Upstream Change Analysis — 2.1.237 → 2.1.239 (Umbrella **Research**)" |
+| 출처 | 2026-05-12 마스터 리서치(v2.1.0~v2.1.139, 1,500+ 변경 전수 분석) | 2026-08-23 `/harness:release-update` Phase 5 Option C 스윕 |
+| 결정적 증거 | `phase: research` + "plan/spec/acceptance를 포함하지 않으며" — spec.md 를 담을 의도가 애초에 없었다 | 같은 스윕이 만든 child stub 둘(`MSGR-001`, `MCP-001`)은 **12필드 frontmatter 를 갖춘 진짜 spec.md 를 받았다.** 스윕은 SPEC 을 만들 줄 알았고, umbrella 는 SPEC 으로 만들지 않았다 |
+
+즉 어느 쪽도 "spec.md 가 있어야 하는데 사라진" 상태가 아니다. `spec.md` 를 보태는 처분은
+**AC-SLGS-012 가 금지한 억압의 다른 얼굴**이다 — 작업을 서술하지 않는 spec.md 는 발견만
+지우고 답을 만들지 않는다(실제 작업은 17개/2개 child SPEC 이 담고 있다). 따라서 두 디렉터
+모두 **`.moai/specs/` 밖으로 이전**이 유일한 정합 처분이다.
+
+#### 처분 — `.moai/research/` 로 이전(삭제 아님)
+
+```
+git mv .moai/specs/SPEC-V3R4-CC2X-ADOPT-001/research.md .moai/research/SPEC-V3R4-CC2X-ADOPT-001-research.md
+git mv .moai/specs/SPEC-V3R4-CC2X-ADOPT-002/research.md .moai/research/SPEC-V3R4-CC2X-ADOPT-002-research.md
+rmdir .moai/specs/SPEC-V3R4-CC2X-ADOPT-001   # rc=0
+rmdir .moai/specs/SPEC-V3R4-CC2X-ADOPT-002   # rc=0
+```
+
+- **삭제는 금지였고 하지 않았다.** 002 가 자기 정본이라 지목한 `.moai/research/cc-update-2.1.237-to-2.1.239.md`
+  는 이 트리에 **없다**(`ls` → `No such file or directory`) — 즉 SPEC 디렉터 사본이 유일본이었다.
+  `git mv` 로 이력을 따라가게 했다.
+- **`rmdir` 이 빠지면 처분이 성립하지 않는다.** 규칙은 `os.ReadDir(.moai/specs)` 로 디렉터
+  엔트리를 읽고 `SPEC-*` 이면서 `spec.md` 가 없으면 발화한다(`internal/spec/lint.go`
+  `lintSpecsDirRootIntegrity`). 파일만 옮기고 빈 디렉터를 남기면 git 은 조용하지만 발견은
+  그대로다.
+- 목적지 선정: `.moai/research/` 는 추적되고 ignore 되지 않으며(`git check-ignore` rc=1),
+  이미 `cc-update-*.md` 스윕과 `SPEC-V3R4-CI-FASTTRACK-001-*.md` 형태의 SPEC-ID 접두
+  리서치를 담고 있다. plan.md §F 가 예시로 든 `.moai/reports/` 계열도 ignore 되지 않으나
+  (rc=1), 그쪽은 카드 verdict·audit 의 자리이고 두 문서는 리서치다.
+- `lint.skip` 을 쓰지 않았고, 린터에 예외를 넣지 않았으며, 스텁 spec.md 를 쓰지 않았다.
+
+#### 참조 분류 (`/usr/bin/grep -rln "CC2X-ADOPT-00" --include='*.md' --include='*.go' --include='*.yaml' --include='*.yml' .` → 19 파일)
+
+| 분류 | 위치 | 처분 |
+|---|---|---|
+| (a) 깨지는 경로 참조 | `SPEC-V3R4-CC2X-MSGR-001/spec.md:23`, `SPEC-V3R4-CC2X-MCP-001/spec.md:23` — 마크다운 상대경로 링크 `../SPEC-V3R4-CC2X-ADOPT-002/research.md` | **수리** → `../../research/SPEC-V3R4-CC2X-ADOPT-002-research.md` (같은 커밋) |
+| (b) 살아남는 ID 참조 | 같은 두 파일 `:16` `parent: SPEC-V3R4-CC2X-ADOPT-002`; `.moai/research/cc-update-20260515.md:143,151,201` + `cc-update-20260520.md:18,169,208`(후보 SPEC ID 언급); `SPEC-V3R5-STATUSLINE-V2145-001/{plan.md:177,spec.md:193}`(EXCL-3 번들 대상); 001 자신의 `spec_id`/`child_specs` | **미변경.** ID 는 경로가 아니다 — 이전 후에도 그대로 해소된다. `parent:` 는 역사적 포인터로 유효 |
+| (c) 역사 기록 | `SPEC-ARTIFACT-STATELESS-001/progress.md:356,357,375,502`; `.moai/reports/t252/discriminant.md:96,180`; `.moai/reports/t365/verdict.md:24,25,53,54,143`; `.moai/reports/t525/{plan-audit,m1-demographics,verdict}.md`; 이 SPEC 의 `{spec,plan,acceptance}.md` | **미변경.** 완료된 SPEC 의 진행 기록과 카드 verdict 은 그 시점의 관측이다. 소급 수정하면 기록이 낙관으로 휜다 |
+| (d) 스테일해지는 주석 | `internal/spec/lint_test.go:1019` — 픽스처를 설명하는 **주석 1줄**. 픽스처 자체는 합성(`SPEC-BLIND-001` in `t.TempDir()`)이라 실 디렉터에 의존하지 않는다 | **갱신**(과거형 + 이전 사실 명기). 테스트 동작은 불변 — `go test ./internal/spec/...` `ok` |
+
+문서 안 자기참조 2건도 손봤다: 001 은 §0 앞에 이전 사유 1문단, 002 는 존재하지 않는 경로를
+정본이라 주장하던 헤더를 실제 위치로 정정했다(거짓 주장 → 참인 주장). 002 의 `:108`
+`Prior sweep: .moai/research/cc-update-2.1.236-to-2.1.237.md` 는 **다른 파일**에 대한 역사
+기록이라 건드리지 않았다(그 파일도 이 트리에 없다 — 같은 dev-only untracked 계열이다).
+
+#### §E — 자가 검증
+
+| # | Claim | Command | Observed output | Tree SHA |
+|---|---|---|---|---|
+| E1 | **AC-SLGS-012**: `SpecsDirMissingSpecFile` before 2 → after **0** | `<bin> spec lint --json`, 그 뒤 `jq -r '[.[] \| select(.code=="SpecsDirMissingSpecFile")] \| length'` | before `2` / after `0` | `185c21cff` (before=변경 전, after=변경 후 워킹트리) |
+| E1-ctrl-A | 세는 식이 작동한다(양성 대조) | 같은 식, `.code=="MovingRefUnpinned"` | before `115` / after `115` — 0 이 아니므로 식은 살아 있다 | 〃 |
+| E1-ctrl-B | 세는 식이 거짓 양성을 내지 않는다(음성 대조) | 같은 식, `.code=="NoSuchRuleCodeXYZ"` | before `0` / after `0` | 〃 |
+| E1-text | AC 축자 명령 형태에서도 0 | `<bin> spec lint` → `/usr/bin/grep -c SpecsDirMissingSpecFile` | before `2` / after `0` | 〃 |
+| E1-total | 총 경고 정확히 −2 (부수 피해 없음) | `<bin> spec lint` 마지막 줄 | before `0 error(s), 4378 warning(s)` / after `0 error(s), 4376 warning(s)`, 양쪽 rc=0 | 〃 |
+| E1-new | 목적지에서 새 발견이 생기지 않았다 | `jq -r '[.[] \| select(.file \| contains("/.moai/research/"))] \| length'` | `0` | 〃 |
+| E1b | **비-advisory 재고 after = 0** (M3 의 기준선 입력) | `jq -r '[.[] \| select(.advisory != true)] \| length'` + 코드별 group_by | before `2` (`SpecsDirMissingSpecFile: 2`) / after `0` (남은 항목 없음) | 〃 |
+| E1c | `--strict` 가 지금 rc=0 | `<bin> spec lint --strict` | `0 error(s), 4376 warning(s)`, `rc=0` | 〃 |
+| E2 | 크로스 플랫폼 빌드 | `go build ./... > f 2>&1; echo "rc=$?"` / `GOOS=windows GOARCH=amd64 go build ./... > f 2>&1; echo "rc=$?"` | `host-build rc=0` / `windows-build rc=0`, 양쪽 출력 없음 | 〃 |
+| E3 | 대상 패키지 테스트 | `go test ./internal/spec/... ./internal/cli/...` | `rc=0`; `ok internal/spec 68.214s`, `ok internal/cli 403.381s`, 하위 16개 패키지 `ok (cached)` — FAIL 0 | 〃 |
+| E5 | 린트 청결 | `golangci-lint run --timeout=5m internal/spec/... internal/cli/...` | `0 issues.`, `rc=0` | 〃 |
+
+파이프 없이 종료코드를 읽었다 — 이 셸은 zsh 라 `${PIPESTATUS[0]}` 가 비어 판정이 조용히
+사라진다. `cmd > file 2>&1; echo "rc=$?"` 형태만 썼다.
+
+**이 §E 절을 progress.md 에 쓴 뒤 재측정했다** — 이 파일도 `.moai/specs/` 안이라 lint 대상이고,
+위 after 수치는 이 절을 쓰기 **전** 측정이었다. 재측정 결과 동일: `SpecsDirMissingSpecFile` `0`,
+비-advisory `0`, 대조군 `MovingRefUnpinned` `115`, 총계 `0 error(s), 4376 warning(s)` rc=0.
+즉 이 절 자체는 새 발견을 만들지 않았다.
+
+**Gaps (관측하지 않은 것)**:
+
+- **변경 전 `--strict` 의 rc 를 내가 직접 재지 않았다.** 배차문이 전한 M1 실측
+  (`0 error(s), 4378 warning(s)`, rc=1)은 인계받은 값이지 이 런의 관측이 아니다. 따라서
+  "재고 2 → 0 이 `--strict` rc 를 1 → 0 으로 뒤집었다"는 **인과 주장은 절반만 실측**이다 —
+  after rc=0 은 내 관측, before rc=1 은 전달값이다. 인과 자체는 소스에서 기계적으로 자명
+  하나(`lintSpecsDirRootIntegrity` 가 그 두 디렉터를 이름으로 지목했고 규칙은
+  `.moai/specs` 엔트리만 읽는다), 그것은 코드 읽기이지 실행 관측이 아니다.
+- 커버리지(E4/E3-cover)를 재지 않았다 — M4 는 Go 동작을 바꾸지 않았다(주석 1줄).
+- windows/darwin 매트릭스에서 **테스트 실행**은 관측하지 않았다. E2 는 컴파일만 증명한다.
+- 이전된 두 문서가 이 저장소 **밖**(docs-site, 외부 링크, 다른 체크아웃)에서 옛 경로로
+  참조되는지는 조사하지 않았다 — 리포 내부 스윕만 했다.
+
+**Residual risk**:
+
+- 옛 경로(`.moai/specs/SPEC-V3R4-CC2X-ADOPT-00{1,2}/research.md`)를 기억하고 찾아오는
+  독자는 빈손이 된다. 완화: 두 문서 모두 헤더에 이전 사유와 옛 경로를 적었고, `git log
+  --follow` 가 이력을 따라간다. 그러나 **옛 경로에 남는 표지는 없다** — 디렉터를 지웠기
+  때문이다(남기면 발견이 되살아난다).
+- E1b 가 0 이라는 것은 M3 의 기준선이 **빈 규칙 집합**이 된다는 뜻이다. 그 상태의 래칫은
+  회귀 방지로만 작동하고, t518 착지 시 advisory 인구가 움직이면 재기준이 필요할 수 있다.
+- `parent: SPEC-V3R4-CC2X-ADOPT-002` 는 이제 `.moai/specs/` 에 실재하지 않는 디렉터를
+  가리키는 ID 다. ID 참조로서는 유효하나, 장래에 `parent:` 를 디렉터 존재로 검증하는 규칙이
+  생기면 두 stub 이 발화한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

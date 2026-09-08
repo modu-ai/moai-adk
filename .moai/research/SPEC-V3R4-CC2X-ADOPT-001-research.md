@@ -28,6 +28,12 @@ analysis_scope: Claude Code v2.1.0 (2025-10) ~ v2.1.139 (2026-05-12), 1500+ chan
 
 # SPEC-V3R4-CC2X-ADOPT-001 — Claude Code v2.1.0+ Adoption Master Research
 
+> 이 문서는 `.moai/specs/SPEC-V3R4-CC2X-ADOPT-001/research.md` 에 있다가
+> SPEC-SPECLINT-GATE-SIGNAL-001 M4(카드 t525)에서 여기로 옮겨졌다. §0 이 스스로
+> 밝히듯 이 문서는 plan/spec/acceptance 를 담지 않는 리서치 문서이므로
+> `.moai/specs/` 아래에 있을 자리가 아니다. `spec_id:` 와 `child_specs:` 는
+> 식별자이므로 그대로 둔다 — 17개 child SPEC 은 여전히 `.moai/specs/` 에 있다.
+
 ## 0. Purpose
 
 이 문서는 Claude Code v2.1.0 ~ v2.1.139 사이 1,500+ 변경사항을 전수 분석하여 moai-adk-go에 도입 가치 있는 기능을 분류·우선순위화한 **마스터 research.md**입니다. 본 문서 자체는 plan/spec/acceptance를 포함하지 않으며, 17개 child SPEC의 공통 참조 자료로 사용됩니다.
