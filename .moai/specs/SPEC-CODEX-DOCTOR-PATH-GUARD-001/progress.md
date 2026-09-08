@@ -109,7 +109,7 @@ m1_to_mN_commit_strategy: single milestone M1 — one implementation commit plus
 
 ```yaml
 sync_complete_at: 2026-09-08
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: 0cb88345f53c2ec9522eda741410b07b31fb1474   # backfilled; the sync commit itself carried pending-backfill-sync
 sync_status: complete
 b12_self_test_a: pass    # /usr/bin/grep -c 'SPEC-CODEX-DOCTOR-PATH-GUARD-001' CHANGELOG.md -> 0 before append (no duplicate entry)
 b12_self_test_b: pass    # AC count cited (7) matches acceptance.md; see the discriminator note below
