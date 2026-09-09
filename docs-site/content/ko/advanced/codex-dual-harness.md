@@ -30,7 +30,7 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을 
 
 ## `internal/codexadapter` — 훅 어댑터 라이브러리
 
-두 하네스의 훅 표면은 거의 같지만 완전히 같지는 않습니다. 실측(codex-cli 0.153.4 기준)에서 갈린 지점은 정확히 두 가지: 하네스가 넘기는 **이벤트 이름**, 그리고 codex가 선언은 하지만 실제로는 반응하지 않는 **출력 키 세 개**(`systemMessage`·`continue`·`stopReason`)입니다. 나머지는 전부 동일하게 측정됐으므로, `internal/codexadapter`는 디스패처 **앞에** 앉는 얇은 번역층이고 `internal/hook`은 건드리지 않습니다.
+두 하네스의 훅 표면은 거의 같지만 완전히 같지는 않습니다. 실측(codex-cli 0.153.4 기준)에서 갈린 지점은 세 가지: 하네스가 넘기는 **이벤트 이름**, codex가 선언은 하지만 실제로는 반응하지 않는 **출력 키 세 개**(`systemMessage`·`continue`·`stopReason`), 그리고 **PreToolUse 결정 계약**입니다 — codex 파서는 `updatedInput` 없는 `permissionDecision:allow`와 `permissionDecision:ask`를 거부합니다. `internal/codexadapter`는 디스패처 **앞에** 앉는 얇은 번역층이고(`internal/hook`은 건드리지 않음) 거부되는 결정 형태(allow·ask·defer)는 무의견 `{}`로 열화해 codex 자체 승인 흐름에 맡기며, 각 열화는 discard 싱크로 공지되고 사유 없는 deny에는 기본 사유가 채워집니다.
 
 ### 12-이벤트 표
 

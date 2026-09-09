@@ -30,7 +30,7 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 ## `internal/codexadapter` —— 钩子适配器库
 
-两个 harness 的钩子表面几乎相同,但不完全相同。实测(以 codex-cli 0.153.4 为准)发现分歧只有两处: harness 传入的**事件名**,以及 codex 声明了却不会响应的**三个输出键**(`systemMessage`、`continue`、`stopReason`)。其余全部测得一致,所以 `internal/codexadapter` 是坐在分发器**前面**的薄翻译层,`internal/hook` 不被触碰。
+两个 harness 的钩子表面几乎相同,但不完全相同。实测(以 codex-cli 0.153.4 为准)发现分歧有三处: harness 传入的**事件名**、codex 声明了却不会响应的**三个输出键**(`systemMessage`、`continue`、`stopReason`),以及 **PreToolUse 决定契约** — codex 解析器会拒绝没有 `updatedInput` 的 `permissionDecision:allow`,并全面拒绝 `permissionDecision:ask`。`internal/codexadapter` 是坐在分发器**前面**的薄翻译层(`internal/hook` 不被触碰);被拒绝的决定形态(allow、ask、defer)降级为无意见 `{}`,交给 codex 自己的审批流程,每次降级都通过 discard sink 通报,无理由的 deny 会补上默认理由。
 
 ### 12 事件表
 
