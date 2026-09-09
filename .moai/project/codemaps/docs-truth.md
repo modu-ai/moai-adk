@@ -14,8 +14,9 @@
 > 통과하는 동안 이 파일만 조용히 낡을 수 있다. **재생성 때마다 이 파일을 손으로
 > 함께 갱신하고, 그 사실을 재생성 증거와 분리해 기록한다.**
 >
-> **마지막 손 갱신**: 2026-09-08, 워크트리 `.claude/worktrees/t475`, HEAD `52f863f36`.
-> §1~§5 전 항목을 인용된 원천에 대해 재검증했다(§1은 전수 대조, 표본 추출 없음).
+> **마지막 손 갱신**: 2026-09-10, 워크트리 `.claude/worktrees/t592`, HEAD `e7bd89ee3`.
+> 이번 변경 범위인 §4 CLI 표면과 HOME 상태 진입점을 현재 소스와 `go run ./cmd/moai --help`에
+> 대해 재검증했다. 나머지 절의 과거 검증일은 각 Source 문구를 따른다.
 
 ---
 
@@ -97,14 +98,14 @@ Rejected snake_case aliases (silently dropped by the YAML decoder): `created_at:
 
 ### §4.1 `moai` terminal verbs (human-facing)
 
-Top-level verbs rendered by `moai --help`, in the render's own grouping (2026-09-08 actual render, `./bin/moai --help`):
+Top-level verbs rendered by `moai --help`, in the render's own grouping (2026-09-10 actual render, `go run ./cmd/moai --help`):
 
 | Render group | Verbs |
 |------------------|-------|
-| COMMANDS | `gate`, `goal`, `integration`, `config`, `ast-grep`, `ast-edit`, `migration`, `harness`, `mcp-server`, `mcp`, `plan`, `feedback`, `help`, `completion` |
+| COMMANDS | `factory`, `gate`, `goal`, `integration`, `config`, `ast-grep`, `ast-edit`, `migration`, `harness`, `mcp-server`, `mcp`, `plan`, `feedback`, `help`, `completion` |
 | LAUNCH COMMANDS | `cc`, `glm`, `cg`, `codex` |
 | PROJECT COMMANDS | `init`, `status`, `doctor`, `update`, `migrate`, `pr` |
-| TOOLS | `hook`, `spec`, `session`, `mx`, `loop`, `handoff`, `model`, `constitution`, `state`, `epic`, `github`, `graph`, `lsp`, `memory`, `profile`, `research`, `worktree`, `agent`, `workflow`, `telemetry`, `tokens`, `clean`, `skills`, `chain`, `tool-policy`, `inventory`, `preference`, `inbox`, `todo`, `verify`, `version`, `web` |
+| TOOLS | `hook`, `spec`, `session`, `mx`, `loop`, `handoff`, `model`, `constitution`, `state`, `epic`, `github`, `graph`, `lsp`, `memory`, `profile`, `research`, `worktree`, `agent`, `workflow`, `telemetry`, `tokens`, `clean`, `skills`, `chain`, `tool-policy`, `tool`, `inventory`, `preference`, `inbox`, `todo`, `verify`, `version`, `web` |
 
 > **정정(2026-09-08).** 직전 판은 이 자리에 렌더의 그룹이 아니라 손으로 묶은 5분류
 > (Project / Launchers / Autonomous-Dev / Governance / Tools-Infra)를 실었고, 그 분류는
@@ -114,7 +115,13 @@ Top-level verbs rendered by `moai --help`, in the render's own grouping (2026-09
 
 Additional note: `statusline` is a root-registered command but `Hidden: true` in `moai --help`; `help` and `completion` are cobra-generated. The `run` verb exists ONLY as a `moai migration` subcommand (`internal/cli/migration.go`) — there is NO standalone `moai run` or `moai sync` root command; the plan/run/sync workflow lives in the `/moai` Claude Code skill set (§4.2).
 
-**Source:** `./bin/moai --help` rendered output (2026-09-08, built from this tree at HEAD `52f863f36`) + `grep -rn '\.AddCommand(' internal/cli/ --include='*.go' | grep -v _test | wc -l` (**207** non-test calls) + `grep -rn 'rootCmd\.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**62** root registrations across the package; **29**의 `rootCmd.AddCommand`가 `internal/cli/root.go:143-269`의 `init()` 안에 있다) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**279**).
+**Source:** `go run ./cmd/moai --help` rendered output (2026-09-10, HEAD `e7bd89ee3`) + `rg -n '\.AddCommand\(' internal/cli -g '*.go' -g '!**/*_test.go' | wc -l` (**215** non-test calls) + `rg -n 'rootCmd\.AddCommand\(' internal/cli -g '*.go' -g '!**/*_test.go' | wc -l` (**64** root registrations across the package; **30**의 `rootCmd.AddCommand`가 `internal/cli/root.go`의 `init()` 안에 있다) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**286**).
+
+HOME 상태의 사용자 진입점은 `moai migrate home-state`입니다. 기본 실행은 dry-run이고,
+실제 쓰기는 `--apply --verified-live`를 함께 요구합니다. 복구 표면은 하위 명령 `recover`와
+`rollback`, Factory 레거시 인계 복구는
+`moai factory handoff recover-resume --id <id> --expected-token <token> --decision <fail|requeue>`입니다.
+이 명령의 존재는 운영 데이터 이전 완료를 뜻하지 않습니다.
 
 The `codex` launcher: closed-set verb routing `{bare, cli, app}` (launch, `--spawn` optional, `-w <worktree>` optional, `--` passthrough) × `{status}` (readout, rc 0, starts nothing); an unknown token is rejected with a one-line usage diagnostic (rc 1), never routed to a launch. Downstream of routing, an argv-translation table forwards a verb to the child only where it names a real codex subcommand — `app` is forwarded, the bare form and `cli` are moai-side synonyms and are not, so the child receives only the operator's own tail. `-w` is consumed by moai (it points the child's working directory at an EXISTING worktree and never creates one) and is not forwarded. All three launching forms pass through ONE init-offer gate function immediately before launching — the gate takes no `--spawn` parameter, accepts exactly `y`/`yes` at its prompt, exits 130 on decline (cancel, not error) and 1 on failure or a non-interactive session (report only, no prompt issued), and on acceptance delegates to the `moai init --agent codex` wiring generator exactly once, then links `AGENTS.md` ↔ `CLAUDE.md` (connection-only: at most one appended `@AGENTS.md` / `@CLAUDE.local.md` directive per file, path-containment guard runs before any read or write, writes are per-file temp+rename, idempotent on re-run).
 
