@@ -216,7 +216,7 @@ The model labels visible in the screenshot's statuslines reflect one operator's 
 
 If kanban is the shape where "three roles carry one card through the phases," **Factory Mode** is the shape where "N numbered lanes carry several cards at once." A card does not hop between columns — it goes **whole** into one free lane, and that lane carries it through `plan → run → sync` in order, in-session — each phase is spawned and run as an `Agent()` sub-agent. The entry is the dedicated token `-f`: open a lead and four lanes with `moai cc -f 4`, and grow one lane at a time with `moai cc -f lane-<n>` (or `moai glm -f lane-<n>`).
 
-The per-lane concurrent-agent cap (10), the reason for staggered activation, lane-number ownership (`workers.json`), worktree isolation for write spawns, and where factory diverges from kanban are covered on the dedicated [Factory Mode](/en/advanced/factory-mode) page.
+The per-lane concurrent-agent cap (10), the reason for staggered activation, lane-number ownership (`factory.db`), worktree isolation for write spawns, and where factory diverges from kanban are covered on the dedicated [Factory Mode](/en/advanced/factory-mode) page.
 
 ## Watching the board in a browser
 

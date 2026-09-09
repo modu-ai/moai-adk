@@ -6,8 +6,11 @@ package cli
 // @MX:NOTE: [AUTO] M6-S1 DDD: cc is a thin delegate-only entry point; print sites live in launcher.go::launchClaudeDefault
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -164,7 +167,9 @@ func runCC(cmd *cobra.Command, args []string) error {
 		// session name, and the lane commands the notice prints stay on one
 		// run.
 		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
+		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
+		defer restoreFactory()
+		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendClaude, entry.Spec)
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())

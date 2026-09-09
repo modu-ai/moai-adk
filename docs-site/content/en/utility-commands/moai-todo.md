@@ -53,7 +53,7 @@ Any other argument shape is treated as a description. `/moai todo fix flaky CI c
 
 ## State file
 
-The queue is stored in one SQLite database at `.moai/state/todo/backlog.db`. It lives inside the project and is never committed. The shape below is the record as `moai todo list --json` and `moai todo export-json` emit it — the database holds the same fields. For what every artifact in that directory is, and how to get back to plain JSON, see `.moai/docs/todo-queue-storage.md` in your project.
+The queue is stored in one SQLite database at `~/.moai/db/<project-key>/todo/backlog.db`. The project key binds linked worktrees to one home-scoped queue, and the database is never committed. The shape below is the record as `moai todo list --json` and `moai todo export-json` emit it — the database holds the same fields. For migration and downgrade details, see `.moai/docs/todo-queue-storage.md` in your project.
 
 ```json
 {
@@ -212,7 +212,7 @@ $ moai todo unrelate 2
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 
-Run it inside a linked worktree and the queue still **resolves to the one queue of the primary checkout** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same file the lead and the foreman loop read. Projects without git metadata keep the queue at `~/.moai/todo/<project-key>/backlog.db`.
+Run it inside a linked worktree and the queue still **resolves to the primary checkout's project key** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same database the lead and the foreman loop read. Projects without git metadata use the same `~/.moai/db/<project-key>/todo/backlog.db` layout.
 
 Both surfaces share the same storage layer. Mutations hold the sibling lock file (backlog.lock) next to the database and land inside one SQLite transaction in WAL mode; reads take no lock. Item ids are issued from the persisted high-water mark (`last_seq`), advanced in the same transaction as the insert and guarded by a UNIQUE constraint on the id, so a removed item's id is never reused even if a process dies mid-mutation.
 

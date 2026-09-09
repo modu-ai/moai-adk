@@ -2,9 +2,9 @@ package cli
 
 // handoff.go registers `moai handoff save` / `moai handoff clear` — the writer
 // half of the reverse auto-resume handoff (SPEC-HANDOFF-AUTORESUME-001 M2). The
-// pending record is written to <projectDir>/.moai/state/handoff/pending.json via
-// the internal/hook/handoff package; it NEVER touches the SessionEnd flow's
-// session-handoff/pending.md (path isolation, REQ-AUTORESUME-005/007).
+// pending record is written to the project's factory.db via the
+// internal/hook/handoff package; it NEVER consumes the SessionEnd flow's
+// separate memory-handoff rows (REQ-AUTORESUME-005/007).
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ func newHandoffCmd() *cobra.Command {
 		Short:   "Manage the auto-resume handoff pending record",
 		GroupID: "tools",
 		Long: "Save or clear the reverse auto-resume handoff pending record\n" +
-			"(.moai/state/handoff/pending.json). When handoff.mode=auto, the next\n" +
+			"(~/.moai/db/<project-key>/factory/factory.db). When handoff.mode=auto, the next\n" +
 			"SessionStart on /clear injects the saved record as session context.",
 	}
 
@@ -156,7 +156,7 @@ func handoffProjectDir(explicit string) (string, error) {
 	return wd, nil
 }
 
-// saveHandoff writes rec to handoff/pending.json and returns the written path.
+// saveHandoff writes rec to factory.db and returns the database path.
 // Extracted from the cobra RunE so it is directly unit-testable.
 func saveHandoff(projectDir string, rec *handoff.PendingRecord) (string, error) {
 	if rec == nil || strings.TrimSpace(rec.Body) == "" {
@@ -168,7 +168,7 @@ func saveHandoff(projectDir string, rec *handoff.PendingRecord) (string, error) 
 	return handoff.PendingPath(projectDir), nil
 }
 
-// clearHandoff removes handoff/pending.json and returns its path.
+// clearHandoff marks the pending resume row cleared and returns the database path.
 func clearHandoff(projectDir string) (string, error) {
 	if err := handoff.ClearPending(projectDir); err != nil {
 		return "", fmt.Errorf("handoff clear: %w", err)

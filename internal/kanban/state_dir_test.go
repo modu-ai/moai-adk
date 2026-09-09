@@ -9,12 +9,16 @@
 package kanban
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 // seedLegacyStateDir plants a queue file plus N session-registry files under
@@ -55,6 +59,219 @@ func dirCensus(t *testing.T, dir string) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource(t *testing.T) {
+	t.Parallel()
+	base := t.TempDir()
+	from := filepath.Join(base, "legacy")
+	to := filepath.Join(base, "global")
+	if err := os.MkdirAll(from, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(from, backlogFileName)
+	if err := os.WriteFile(source, []byte(migrationFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	registry := filepath.Join(from, "session.json")
+	if err := os.WriteFile(registry, []byte(`{"session_id":"session"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := relocateQueueArtifacts(from, to); err != nil {
+		t.Fatal(err)
+	}
+	got, err := NewBacklogStore(filepath.Join(to, backlogFileName)).LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Items) != 4 {
+		t.Fatalf("migrated items=%d, want 4", len(got.Items))
+	}
+	if _, err := os.Stat(source); err != nil {
+		t.Fatalf("rollback source missing: %v", err)
+	}
+	if _, err := os.Stat(registry); err != nil {
+		t.Fatalf("unowned registry moved: %v", err)
+	}
+	if info, err := os.Stat(filepath.Join(to, "backlog.db")); err != nil {
+		t.Fatalf("target database missing: %v", err)
+	} else if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("target database mode=%#o, want 0600", got)
+	}
+}
+
+func TestRelocateQueueArtifactsRemovesIncompleteTargetOnWriteFailure(t *testing.T) {
+	base := t.TempDir()
+	from := filepath.Join(base, "legacy")
+	to := filepath.Join(base, "global")
+	if err := os.MkdirAll(from, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	broken := `{"version":1,"last_seq":2,"items":[{"id":"t1","text":"a","added_at":"2026-01-01T00:00:00Z","spec_id":null,"state":"queued"},{"id":"t1","text":"b","added_at":"2026-01-01T00:00:00Z","spec_id":null,"state":"queued"}],"findings":[],"archived":[]}`
+	if err := os.WriteFile(filepath.Join(from, backlogFileName), []byte(broken), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := relocateQueueArtifacts(from, to); err == nil {
+		t.Fatal("relocation unexpectedly succeeded")
+	}
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		path := filepath.Join(to, "backlog.db") + suffix
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("incomplete target survived at %s: %v", path, err)
+		}
+	}
+}
+
+func TestRelocateQueueArtifactsNeverOverwritesExistingHomeQueue(t *testing.T) {
+	t.Parallel()
+	base := t.TempDir()
+	from := filepath.Join(base, "legacy")
+	to := filepath.Join(base, "global")
+	if err := os.MkdirAll(from, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(from, backlogFileName), []byte(migrationFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	target := NewBacklogStore(filepath.Join(to, backlogFileName))
+	if _, _, err := target.Add("new home card"); err != nil {
+		t.Fatal(err)
+	}
+	if err := relocateQueueArtifacts(from, to); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := target.LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.Items) != 1 || rec.Items[0].Text != "new home card" {
+		t.Fatalf("existing home queue was overwritten: %+v", rec.Items)
+	}
+}
+
+func TestRelocateQueueArtifactsSerializesOnTargetQueueLock(t *testing.T) {
+	base := t.TempDir()
+	from := filepath.Join(base, "legacy")
+	to := filepath.Join(base, "global")
+	if err := os.MkdirAll(from, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(from, backlogFileName), []byte(migrationFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	target := NewBacklogStore(filepath.Join(to, backlogFileName))
+	targetLock, err := target.acquireLock()
+	if err != nil {
+		t.Fatalf("acquire target lock: %v", err)
+	}
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { _ = targetLock.Release() }) }
+	t.Cleanup(release)
+
+	done := make(chan error, 1)
+	go func() { done <- relocateQueueArtifacts(from, to) }()
+	select {
+	case err := <-done:
+		t.Fatalf("relocation bypassed target queue lock: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	release()
+	if err := <-done; err != nil {
+		t.Fatalf("relocation after target unlock: %v", err)
+	}
+}
+
+func TestAdoptingPathMigratesLegacyHomeQueue(t *testing.T) {
+	home := t.TempDir()
+	root := t.TempDir()
+	t.Setenv("MOAI_HOME", home)
+	legacyDir := filepath.Join(home, "todo", TodoQueueProjectKey(root))
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	legacy := filepath.Join(legacyDir, backlogFileName)
+	if err := os.WriteFile(legacy, []byte(migrationFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	path := BacklogPathForRootAdopting(root)
+	want := filepath.Join(home, "db", TodoQueueProjectKey(root), "todo", backlogFileName)
+	if path != want {
+		t.Fatalf("adopting path=%q, want %q", path, want)
+	}
+	rec, err := NewBacklogStore(path).LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.Items) != 4 {
+		t.Fatalf("migrated items=%d, want 4", len(rec.Items))
+	}
+	if _, err := os.Stat(legacy); err != nil {
+		t.Fatalf("legacy rollback source missing: %v", err)
+	}
+}
+
+func TestAdoptingPathFindsLegacyHomeQueueWithPreSanitizationKey(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(t.TempDir(), "한글 프로젝트")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MOAI_HOME", home)
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte(abs))
+	legacyKey := fmt.Sprintf("%s-%x", filepath.Base(abs), sum[:4])
+	if legacyKey == TodoQueueProjectKey(root) {
+		t.Fatal("fixture did not produce a legacy/new key difference")
+	}
+	legacyDir := filepath.Join(home, "todo", legacyKey)
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	legacy := filepath.Join(legacyDir, backlogFileName)
+	if err := os.WriteFile(legacy, []byte(migrationFixture), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	path := BacklogPathForRootAdopting(root)
+	rec, err := NewBacklogStore(path).LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rec.Items) != 4 {
+		t.Fatalf("migrated items=%d, want 4", len(rec.Items))
+	}
+	if _, err := os.Stat(legacy); err != nil {
+		t.Fatalf("legacy rollback source missing: %v", err)
+	}
+}
+
+func TestBacklogSQLiteArtifactsArePrivateWhileOpen(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "backlog.db")
+	eng, err := openBacklogEngine(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = eng.close() }()
+	if err := eng.writeRecord(t.Context(), &BacklogRecord{Version: 1, Items: []BacklogItem{}, Findings: []BacklogFinding{}, Archived: []BacklogArchiveEntry{}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("stat %s: %v", path, err)
+		}
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Errorf("%s mode=%#o, want 0600", filepath.Base(path), got)
+		}
+	}
 }
 
 // AC-TOSQ-006 / REQ-TOSQ-015: only the legacy directory exists. An adopting

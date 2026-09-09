@@ -21,6 +21,7 @@ package handoff
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -29,7 +30,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"gopkg.in/yaml.v3"
 )
 
@@ -86,36 +89,71 @@ var errStructuralDefect = errors.New("structural defect")
 // @MX:REASON: REQ-SHA-001~010 통합 계약 위치 + SessionEnd hook으로부터의 유일한 진입점. 모든 실패 경로 best-effort (slog.Warn + return nil, 사용자 가시적 출력 0, REQ-SHA-009). 시그니처/단계 순서 변경 시 SessionEnd 통합 + AC-SHA-001~010 전체 회귀 위험. ctx + sessionID는 향후 timeout/로깅 컨텍스트 확장 예약 (현재 미사용).
 // @MX:SPEC: SPEC-V3R6-SESSION-HANDOFF-AUTO-001
 func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir string) error {
-	_ = ctx
 	_ = sessionID
 
 	pendingPath := pendingFilePath(projectDir)
-
-	// REQ-SHA-002: absent pending file is a no-op.
-	pendingBytes, err := os.ReadFile(pendingPath)
+	db, err := homestate.OpenFactory(projectDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		slog.Warn("session_end: handoff: could not read pending file",
-			"path", pendingPath,
-			"error", err,
-		)
+		slog.Warn("session_end: handoff: could not open factory database", "error", err)
 		return nil
 	}
+	defer func() { _ = db.Close() }()
 
-	// REQ-SHA-004 / REQ-SHA-005: validate frontmatter + body structure.
-	entry, err := parsePending(pendingBytes)
+	stored, present, err := db.ReadPendingMemory(ctx)
 	if err != nil {
-		reason := "malformed_frontmatter"
-		if errors.Is(err, errStructuralDefect) {
-			reason = "structural_defect"
+		slog.Warn("session_end: handoff: could not read pending database row", "error", err)
+		return nil
+	}
+	var entry *pendingEntry
+	var handoffID int64
+	var legacyHash *[sha256.Size]byte
+	if present {
+		handoffID = stored.ID
+		entry = &pendingEntry{Sprint: stored.Sprint, Spec: stored.Spec, Status: stored.Status,
+			Body: stored.Body, IndexLine: stored.IndexLine, Supersedes: stored.Supersedes}
+	}
+
+	// Compatibility ingest is evaluated even when a pending DB row exists. A
+	// legacy producer can publish a newer handoff after an earlier row was
+	// imported; preferring the row solely because it exists loses that update.
+	pendingBytes, readErr := os.ReadFile(pendingPath)
+	if readErr == nil {
+		fileEntry, parseErr := parsePending(pendingBytes)
+		if parseErr != nil {
+			err = parseErr
+			reason := "malformed_frontmatter"
+			if errors.Is(err, errStructuralDefect) {
+				reason = "structural_defect"
+			}
+			slog.Warn("session_end: handoff: pending file invalid; preserving for inspection", "path", pendingPath, "reason", reason, "error", err)
+			if !present {
+				return nil
+			}
 		}
-		slog.Warn("session_end: handoff: pending file invalid; preserving for inspection",
-			"path", pendingPath,
-			"reason", reason,
-			"error", err,
-		)
+		if parseErr == nil {
+			sum := sha256.Sum256(pendingBytes)
+			legacyHash = &sum
+			if !present || !samePendingEntry(entry, fileEntry) {
+				if err := db.SaveMemory(ctx, homestate.MemoryHandoff{Sprint: fileEntry.Sprint, Spec: fileEntry.Spec,
+					Status: fileEntry.Status, Body: fileEntry.Body, IndexLine: fileEntry.IndexLine, Supersedes: fileEntry.Supersedes}); err != nil {
+					slog.Warn("session_end: handoff: could not import pending file into factory database", "path", pendingPath, "error", err)
+					return nil
+				}
+				stored, present, err = db.ReadPendingMemory(ctx)
+				if err != nil || !present {
+					slog.Warn("session_end: handoff: imported row could not be read back", "error", err)
+					return nil
+				}
+				handoffID = stored.ID
+				entry = fileEntry
+			}
+		}
+	} else if !os.IsNotExist(readErr) {
+		slog.Warn("session_end: handoff: could not read pending file", "path", pendingPath, "error", readErr)
+		if !present {
+			return nil
+		}
+	} else if !present {
 		return nil
 	}
 
@@ -155,13 +193,14 @@ func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir stri
 		return nil
 	}
 
-	// REQ-SHA-010: on full success, remove pending file.
-	if err := os.Remove(pendingPath); err != nil {
-		slog.Warn("session_end: handoff: persistence succeeded but pending file removal failed",
-			"path", pendingPath,
-			"error", err,
-		)
+	if err := db.SetMemoryStatus(ctx, handoffID, "persisted", ""); err != nil {
+		slog.Warn("session_end: handoff: persistence succeeded but database transition failed", "error", err)
 		return nil
+	}
+	if legacyHash != nil {
+		if _, err := removePendingIfUnchanged(pendingPath, *legacyHash); err != nil {
+			slog.Warn("session_end: handoff: persistence succeeded but legacy pending file removal failed", "path", pendingPath, "error", err)
+		}
 	}
 
 	slog.Info("session_end: handoff: paste-ready resume persisted",
@@ -169,6 +208,49 @@ func PersistIfPending(ctx context.Context, sessionID, projectDir, memoryDir stri
 		"supersedes", entry.Supersedes,
 	)
 	return nil
+}
+
+// removePendingIfUnchanged removes only the exact legacy payload that was
+// persisted. The rename claims one path entry atomically; a writer publishing
+// a replacement at the original path after that point is never touched.
+func removePendingIfUnchanged(path string, expected [sha256.Size]byte) (bool, error) {
+	raw, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if sha256.Sum256(raw) != expected {
+		return false, nil
+	}
+
+	claim := path + ".claim-" + uuid.NewString()
+	if err := os.Rename(path, claim); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	claimed, err := os.ReadFile(claim)
+	if err != nil {
+		return false, fmt.Errorf("read claimed pending file %s: %w", claim, err)
+	}
+	if sha256.Sum256(claimed) != expected {
+		if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+			_ = os.Rename(claim, path)
+		}
+		return false, fmt.Errorf("pending file changed while it was claimed; preserved at %s", claim)
+	}
+	if err := os.Remove(claim); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func samePendingEntry(a, b *pendingEntry) bool {
+	return a != nil && b != nil && a.Sprint == b.Sprint && a.Spec == b.Spec && a.Status == b.Status &&
+		a.Body == b.Body && a.IndexLine == b.IndexLine && a.Supersedes == b.Supersedes
 }
 
 // pendingFilePath returns the canonical pending-resume file location per

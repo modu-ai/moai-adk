@@ -140,7 +140,7 @@ func TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot(t *testing.T) {
 
 // TestResolveTodoQueueRoot_FallbackNoGit covers the home-based fallback: a
 // launch context with no git metadata keeps one queue under
-// ~/.moai/todo/<project-key>/, keyed deterministically from the directory.
+// ~/.moai/db/<project-key>/todo/, keyed deterministically from the directory.
 func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	dir := t.TempDir() // deliberately NOT a git repository
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)

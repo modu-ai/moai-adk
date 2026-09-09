@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -708,6 +710,7 @@ func TestFactoryDefaultWorkersConstant(t *testing.T) {
 // there, which is the point — the signal REQ-FM-023 transports).
 type factoryLaunchCapture struct {
 	args    []string
+	runID   string
 	workers string
 	worker  string
 	addr    string
@@ -722,6 +725,7 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 	origLaunch := unifiedLaunchFunc
 	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
 		c.args = args
+		c.runID = os.Getenv(config.EnvMoaiKanbanID)
 		c.workers = os.Getenv(config.EnvMoaiFactoryWorkers)
 		c.worker = os.Getenv(config.EnvMoaiFactoryWorker)
 		c.addr = os.Getenv(config.EnvMoaiKanbanLeadAddr)
@@ -738,6 +742,36 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 		deps = origDeps
 	})
 	return c
+}
+
+func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
+	clearFactoryTestEnv(t)
+	root := t.TempDir()
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Setenv("MOAI_HOME", t.TempDir())
+	c := installFactoryLaunchSeam(t)
+	if err := runCC(ccCmd, []string{"-f"}); err != nil {
+		t.Fatalf("runCC(-f): %v", err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var manifestRaw string
+	if err := db.DB.QueryRow(`SELECT manifest_json FROM runs WHERE run_id=?`, c.runID).Scan(&manifestRaw); err != nil {
+		t.Fatalf("factory run row missing: %v", err)
+	}
+	var manifest map[string]string
+	if err := json.Unmarshal([]byte(manifestRaw), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest["captured_at"] == "" {
+		t.Fatalf("captured_at missing: %s", manifestRaw)
+	}
+	if manifest["spec_path"] != "" || manifest["spec_sha256"] != "" || manifest["git_commit"] != "" {
+		t.Fatalf("absent-spec/non-git metadata must fail open to empty values: %s", manifestRaw)
+	}
 }
 
 // TestCC_FactoryEntryThroughRunCC drives the t118 -f surface through the real

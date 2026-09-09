@@ -53,7 +53,7 @@ flowchart TD
 
 ## 상태 파일
 
-대기열은 `.moai/state/todo/backlog.db` 하나의 SQLite 데이터베이스에 저장됩니다. 프로젝트 안에만 있고 커밋되지 않습니다. 아래 형태는 `moai todo list --json`과 `moai todo export-json`이 내보내는 레코드 모양이며, 데이터베이스도 같은 필드를 담습니다. 그 디렉터리의 파일이 각각 무엇인지, 다시 JSON으로 돌아가려면 어떻게 하는지는 프로젝트 안의 `.moai/docs/todo-queue-storage.md`에 있습니다.
+대기열은 `~/.moai/db/<project-key>/todo/backlog.db` 하나의 SQLite 데이터베이스에 저장됩니다. 프로젝트 키가 연결된 워크트리를 홈의 큐 하나에 묶으며, 데이터베이스는 커밋되지 않습니다. 아래 형태는 `moai todo list --json`과 `moai todo export-json`이 내보내는 레코드 모양이며, 데이터베이스도 같은 필드를 담습니다. 이전과 다운그레이드 방법은 프로젝트 안의 `.moai/docs/todo-queue-storage.md`에 있습니다.
 
 ```json
 {
@@ -212,7 +212,7 @@ $ moai todo unrelate 2
 
 CLI는 프롬프트를 띄우지 않습니다. 인자와 플래그를 받고 한 줄을 출력하며, 오류는 stderr로 — 스크립트와 CI에서 안전하게 쓸 수 있는 형태입니다.
 
-연결된 워크트리 안에서 실행해도 대기열은 **프라이머리 체크아웃의 큐 하나로 귀속**됩니다 — 저장소 하나에 큐 하나라는 계약입니다. 카드 워크트리에서 `moai todo add`를 하면 리드와 포어맨 루프가 읽는 같은 파일에 추가됩니다. git 메타데이터가 없는 프로젝트는 `~/.moai/todo/<project-key>/backlog.db`에 큐를 둡니다.
+연결된 워크트리 안에서 실행해도 대기열은 **프라이머리 체크아웃의 프로젝트 키 하나로 귀속**됩니다 — 저장소 하나에 큐 하나라는 계약입니다. 카드 워크트리에서 `moai todo add`를 하면 리드와 포어맨 루프가 읽는 같은 데이터베이스에 추가됩니다. git 메타데이터가 없는 프로젝트도 `~/.moai/db/<project-key>/todo/backlog.db` 구조를 사용합니다.
 
 두 표면은 같은 저장 계층을 공유합니다. 변경은 데이터베이스 옆의 잠금 파일(backlog.lock)을 잡은 뒤 WAL 모드의 SQLite 트랜잭션 하나로 반영되며, 읽기는 잠금을 잡지 않습니다. 항목 id는 파일에 남은 최고 수위 표시(`last_seq`)에서 발급되는데, 이 값이 삽입과 같은 트랜잭션 안에서 올라가고 id에 UNIQUE 제약이 걸려 있어, 프로세스가 변경 도중에 죽어도 제거된 항목의 id가 다시 쓰이는 일은 없습니다.
 
