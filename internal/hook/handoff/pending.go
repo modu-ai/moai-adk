@@ -1,22 +1,21 @@
 package handoff
 
-// pending.go implements the reverse-handoff half (SPEC-HANDOFF-AUTORESUME-001):
-// the `moai handoff save` / `clear` CLI writer and the SessionStart reader operate
-// on a SEPARATE tree — `<projectDir>/.moai/state/handoff/pending.json` (JSON) —
-// that is fully decoupled from the SessionEnd → memory flow in persist.go
-// (`session-handoff/pending.md`, Markdown). The two flows never read or write
-// each other's paths, so the SessionEnd-vs-SessionStart consume race is
-// statically unreachable (design.md §B).
+// pending.go implements the reverse-handoff half (SPEC-HANDOFF-AUTORESUME-001).
+// Resume rows and SessionEnd memory rows share factory.db but remain distinct
+// tables and state machines, so neither flow consumes the other's records.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
-// PendingSchemaVersion is the current schema version of pending.json.
+// PendingSchemaVersion is the current resume handoff payload version.
 const PendingSchemaVersion = 1
 
 // Directives carries the mode-change directive metadata recorded at save time.
@@ -48,10 +47,11 @@ func (e *EmbeddedGoal) IsUnbounded() bool {
 	return e != nil && e.MaxTurns == 0 && e.MaxDuration <= 0 && e.CostCap <= 0
 }
 
-// PendingRecord is the JSON schema of handoff/pending.json (design.md §B.1).
+// PendingRecord is the resume handoff payload stored in factory.db.
 // REQ-AUTORESUME-006 mandates at least schema_version, body, directives,
 // conversation_language, and saved_at.
 type PendingRecord struct {
+	ID                   int64      `json:"-"`
 	SchemaVersion        int        `json:"schema_version"`
 	SpecID               string     `json:"spec_id,omitempty"`
 	Phase                string     `json:"phase,omitempty"`
@@ -67,34 +67,22 @@ type PendingRecord struct {
 	Body string `json:"body"`
 }
 
-// handoffStateDir returns <projectDir>/.moai/state/handoff — the reverse-handoff
-// tree, kept strictly separate from session-handoff/ (persist.go).
+// handoffStateDir identifies the legacy pre-SQLite compatibility tree.
 func handoffStateDir(projectDir string) string {
 	return filepath.Join(projectDir, ".moai", "state", "handoff")
 }
 
-// PendingPath returns <projectDir>/.moai/state/handoff/pending.json.
+// PendingPath returns the project-scoped factory.db path.
 func PendingPath(projectDir string) string {
-	return filepath.Join(handoffStateDir(projectDir), "pending.json")
+	path, err := homestate.FactoryDBPath(projectDir)
+	if err != nil {
+		return filepath.Join(handoffStateDir(projectDir), "pending.json")
+	}
+	return path
 }
 
-// ConsumedDir returns <projectDir>/.moai/state/handoff/consumed — the audit-trail
-// directory the SessionStart handler renames a claimed pending.json into.
-func ConsumedDir(projectDir string) string {
-	return filepath.Join(handoffStateDir(projectDir), "consumed")
-}
-
-// ClaimGatePath returns the exclusive-creation gate that elects a single
-// consumer of pending.json when several SessionStart hooks race. It sits beside
-// pending.json rather than inside consumed/, which is an enumerated audit trail.
-func ClaimGatePath(projectDir string) string {
-	return PendingPath(projectDir) + ".claim"
-}
-
-// SavePending writes rec to handoff/pending.json using an atomic temp-file +
-// rename (reusing the persist.go atomicWriteFile contract). REQ-AUTORESUME-005:
-// it writes ONLY the handoff/ tree and NEVER touches session-handoff/pending.md.
-// The record is written 0o600 because the resume body may carry session context.
+// SavePending writes a private resume row and never touches the SessionEnd
+// memory-handoff table or its legacy pending.md compatibility file.
 func SavePending(projectDir string, rec *PendingRecord) error {
 	if rec == nil {
 		return fmt.Errorf("save pending: nil record")
@@ -106,38 +94,64 @@ func SavePending(projectDir string, rec *PendingRecord) error {
 		rec.SavedAt = time.Now()
 	}
 
-	data, err := json.MarshalIndent(rec, "", "  ")
+	row, err := pendingRow(rec)
 	if err != nil {
-		return fmt.Errorf("marshal pending record: %w", err)
+		return err
 	}
-
-	dir := handoffStateDir(projectDir)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("create handoff state dir: %w", err)
+	db, err := homestate.OpenFactory(projectDir)
+	if err != nil {
+		return fmt.Errorf("open factory handoff store: %w", err)
 	}
-	if err := atomicWriteFile(dir, "pending.json", data, 0o600); err != nil {
-		return fmt.Errorf("atomic write pending.json: %w", err)
+	defer func() { _ = db.Close() }()
+	if err := db.SaveResume(context.Background(), row); err != nil {
+		return err
 	}
-	// Clear any claim gate leaked by a killed consumer. This record was just
-	// written, so it has never been claimed and no live consumer can hold a gate
-	// for it; leaving a stale gate here would silently block every future
-	// auto-resume. Best-effort — a failure here only costs one injection, and
-	// the save itself already succeeded.
-	_ = os.Remove(ClaimGatePath(projectDir))
+	legacy := filepath.Join(handoffStateDir(projectDir), "pending.json")
+	if err := os.Remove(legacy); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("retire legacy pending.json: %w", err)
+	}
 	return nil
 }
 
-// ClearPending removes handoff/pending.json. An absent file is a no-op (nil).
-// REQ-AUTORESUME-007: it touches ONLY the handoff/ tree, never
-// session-handoff/pending.md.
+func pendingRow(rec *PendingRecord) (homestate.ResumeHandoff, error) {
+	directives, err := json.Marshal(rec.Directives)
+	if err != nil {
+		return homestate.ResumeHandoff{}, fmt.Errorf("marshal pending record: %w", err)
+	}
+	var embedded *string
+	if rec.EmbeddedGoal != nil {
+		raw, err := json.Marshal(rec.EmbeddedGoal)
+		if err != nil {
+			return homestate.ResumeHandoff{}, fmt.Errorf("marshal embedded goal: %w", err)
+		}
+		value := string(raw)
+		embedded = &value
+	}
+	return homestate.ResumeHandoff{SchemaVersion: rec.SchemaVersion, SpecID: rec.SpecID,
+		Phase: rec.Phase, SavedAt: rec.SavedAt, SavedBySession: rec.SavedBySession,
+		ConversationLanguage: rec.ConversationLanguage, DirectivesJSON: string(directives),
+		EmbeddedGoalJSON: embedded, Body: rec.Body}, nil
+}
+
+// ClearPending marks a pending resume row cleared and removes only the legacy
+// resume file. It never touches memory handoffs.
 func ClearPending(projectDir string) error {
-	if err := os.Remove(PendingPath(projectDir)); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove pending.json: %w", err)
+	db, err := homestate.OpenFactory(projectDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	if err := db.ClearPendingResume(context.Background()); err != nil {
+		return err
+	}
+	legacy := filepath.Join(handoffStateDir(projectDir), "pending.json")
+	if err := os.Remove(legacy); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove legacy pending.json: %w", err)
 	}
 	return nil
 }
 
-// ReadPending reads and parses handoff/pending.json.
+// ReadPending reads the pending SQLite row, with read-only legacy compatibility.
 //
 //   - absent file        → (nil, false, nil)   — the caller treats this as a no-op.
 //   - present + valid     → (&rec, true, nil)
@@ -148,16 +162,141 @@ func ClearPending(projectDir string) error {
 // (absent, silent) from "corrupt pending" (present, slog.Warn + preserve) per
 // REQ-AUTORESUME-017.
 func ReadPending(projectDir string) (*PendingRecord, bool, error) {
-	data, err := os.ReadFile(PendingPath(projectDir))
-	if err != nil {
-		if os.IsNotExist(err) {
+	db, err := homestate.OpenFactory(projectDir)
+	if err == nil {
+		defer func() { _ = db.Close() }()
+		ctx := context.Background()
+		row, present, readErr := db.ReadPendingResume(ctx)
+		if readErr != nil || present {
+			if readErr != nil {
+				return nil, false, readErr
+			}
+			return resumeRecord(row)
+		}
+		retired, retiredErr := db.LegacyResumeRetired(ctx)
+		if retiredErr != nil {
+			return nil, false, retiredErr
+		}
+		if retired {
 			return nil, false, nil
 		}
-		return nil, false, fmt.Errorf("read pending.json: %w", err)
+	} else if path, pathErr := homestate.FactoryDBPath(projectDir); pathErr == nil {
+		if _, statErr := os.Stat(path); statErr == nil {
+			return nil, true, fmt.Errorf("read factory handoff database: %w", err)
+		}
+	}
+	// Read-only compatibility for a pre-migration pending.json. The next save or
+	// explicit home migration moves the flow into factory.db.
+	legacy := filepath.Join(handoffStateDir(projectDir), "pending.json")
+	data, err := os.ReadFile(legacy)
+	if os.IsNotExist(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("read legacy pending.json: %w", err)
 	}
 	var rec PendingRecord
 	if err := json.Unmarshal(data, &rec); err != nil {
 		return nil, true, fmt.Errorf("parse pending.json: %w", err)
 	}
 	return &rec, true, nil
+}
+
+func resumeRecord(row *homestate.ResumeHandoff) (*PendingRecord, bool, error) {
+	if row == nil {
+		return nil, false, nil
+	}
+	rec := &PendingRecord{ID: row.ID, SchemaVersion: row.SchemaVersion, SpecID: row.SpecID, Phase: row.Phase,
+		SavedAt: row.SavedAt, SavedBySession: row.SavedBySession,
+		ConversationLanguage: row.ConversationLanguage, Body: row.Body}
+	if err := json.Unmarshal([]byte(row.DirectivesJSON), &rec.Directives); err != nil {
+		return nil, true, fmt.Errorf("parse directives: %w", err)
+	}
+	if row.EmbeddedGoalJSON != nil {
+		var goal EmbeddedGoal
+		if err := json.Unmarshal([]byte(*row.EmbeddedGoalJSON), &goal); err != nil {
+			return nil, true, fmt.Errorf("parse embedded goal: %w", err)
+		}
+		rec.EmbeddedGoal = &goal
+	}
+	return rec, true, nil
+}
+
+// ClaimPending atomically claims one pending resume row. A legacy pending.json
+// is imported once before claiming so upgrades do not silently skip a resume.
+func ClaimPending(projectDir, token string) (*PendingRecord, int64, bool, error) {
+	db, err := homestate.OpenFactory(projectDir)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	defer func() { _ = db.Close() }()
+	ctx := context.Background()
+	row, present, err := db.ClaimPendingResume(ctx, token)
+	if err == nil && !present {
+		legacy := filepath.Join(handoffStateDir(projectDir), "pending.json")
+		data, readErr := os.ReadFile(legacy)
+		if readErr == nil {
+			var rec PendingRecord
+			if err := json.Unmarshal(data, &rec); err != nil {
+				return nil, 0, true, fmt.Errorf("parse pending.json: %w", err)
+			}
+			if rec.SchemaVersion == 0 {
+				rec.SchemaVersion = PendingSchemaVersion
+			}
+			if rec.SavedAt.IsZero() {
+				rec.SavedAt = time.Now()
+			}
+			legacyRow, err := pendingRow(&rec)
+			if err != nil {
+				return nil, 0, true, err
+			}
+			imported, err := db.ImportLegacyResume(ctx, legacyRow)
+			if err != nil {
+				return nil, 0, true, err
+			}
+			if imported {
+				if err := os.Remove(legacy); err != nil && !os.IsNotExist(err) {
+					return nil, 0, true, fmt.Errorf("retire legacy pending.json: %w", err)
+				}
+			}
+			row, present, err = db.ClaimPendingResume(ctx, token)
+		} else if !os.IsNotExist(readErr) {
+			return nil, 0, true, fmt.Errorf("read legacy pending.json: %w", readErr)
+		}
+	}
+	if err != nil || !present {
+		return nil, 0, present, err
+	}
+	rec, _, err := resumeRecord(row)
+	if err != nil {
+		_ = db.FinishResume(ctx, row.ID, row.ClaimToken, "failed", err.Error())
+		return nil, row.ID, true, err
+	}
+	return rec, row.ID, true, err
+}
+
+func ExpirePending(projectDir string, id int64) error {
+	db, err := homestate.OpenFactory(projectDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	_, err = db.ExpireResumeIfPending(context.Background(), id)
+	return err
+}
+
+func FinishClaim(projectDir string, id int64, success bool, detail, claimToken string) error {
+	db, err := homestate.OpenFactory(projectDir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	status := "failed"
+	if success {
+		status = "consumed"
+	}
+	if claimToken == "" {
+		return fmt.Errorf("resume claim token is required")
+	}
+	return db.FinishResume(context.Background(), id, claimToken, status, detail)
 }

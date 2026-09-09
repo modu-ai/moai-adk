@@ -225,8 +225,11 @@ func EnsureDir(name string) error {
 		return fmt.Errorf("invalid profile name %q: must not contain path separators or start with '.'", name)
 	}
 	profileDir := filepath.Join(GetBaseDir(), name)
-	if err := os.MkdirAll(profileDir, 0755); err != nil {
+	if err := os.MkdirAll(profileDir, 0o700); err != nil {
 		return fmt.Errorf("failed to create profile directory: %w", err)
+	}
+	if err := os.Chmod(profileDir, 0o700); err != nil {
+		return fmt.Errorf("secure profile directory: %w", err)
 	}
 	if err := os.Setenv("CLAUDE_CONFIG_DIR", profileDir); err != nil {
 		return fmt.Errorf("set CLAUDE_CONFIG_DIR: %w", err)
@@ -658,8 +661,11 @@ func saveLaunchLedger(baseDir string, ledger map[string]any) error {
 		return fmt.Errorf("marshal launch ledger: %w", err)
 	}
 
-	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+	if err := os.MkdirAll(baseDir, 0o700); err != nil {
 		return fmt.Errorf("create base dir: %w", err)
+	}
+	if err := os.Chmod(baseDir, 0o700); err != nil {
+		return fmt.Errorf("secure base dir: %w", err)
 	}
 	tmp, err := os.CreateTemp(baseDir, ".launch-*.tmp")
 	if err != nil {

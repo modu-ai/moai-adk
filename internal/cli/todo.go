@@ -25,6 +25,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -32,6 +33,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -74,7 +76,7 @@ func resolveTodoQueueRoot() string {
 
 // warnTempOriginQueueRefusal surfaces the temporary-origin refusal on the
 // COMMAND path (SPEC-TODO-HOME-TEMP-GUARD-001, REQ-THG-006): the queue-root
-// resolution declined to create a home queue under ~/.moai/todo because the
+// resolution declined to create a home queue under ~/.moai/db because the
 // launch directory lives inside a temporary root, and the run continues
 // against the project-local queue instead.
 //
@@ -95,7 +97,7 @@ func warnTempOriginQueueRefusal(cmd *cobra.Command) {
 		return
 	}
 	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/todo; continuing against the project-local queue at %s\n",
+		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/db/<project-key>/todo; continuing against the project-local queue at %s\n",
 		matched, substitute)
 }
 
@@ -185,13 +187,13 @@ func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.db.
+		Long: `Operate the kanban backlog queue at ~/.moai/db/<project-key>/todo/backlog.db.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
 to and reads the same store the lead and the foreman loop see. A project
-without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.db
-instead. A backlog.json sitting beside the database is NOT the queue — it is
+without git metadata uses the same project-keyed home layout. A backlog.json
+left at the former project-local path is NOT the queue — it is
 an export or a legacy leftover, and its contents can be arbitrarily stale.
 
 The backlog is the operator's queue: entry into the board is the operator's
@@ -524,6 +526,7 @@ func newTodoDoneCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			var specID string
 			// Resolved once, up front, so the query, the verdict line, and the
 			// disclosure all name the same ref (todoLandedRef's contract).
 			ref, refLevel := todoLandedRefResolved()
@@ -542,6 +545,9 @@ func newTodoDoneCmd() *cobra.Command {
 				}
 				if at < 0 {
 					return fmt.Errorf("no backlog item %s", id)
+				}
+				if rec.Items[at].SpecID != nil {
+					specID = *rec.Items[at].SpecID
 				}
 				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
 					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
@@ -571,6 +577,7 @@ func newTodoDoneCmd() *cobra.Command {
 			} else {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
 			}
+			recordFactoryCardState(id, specID, "completed", "card.completed")
 			return nil
 		},
 	}
@@ -728,6 +735,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
+			recordFactoryCardState(id, specID, "picked", "card.assigned")
 			_, _ = fmt.Fprintf(out, "picked %s %s\n", id, todoTextPrefix(pickedText))
 			return nil
 		},
@@ -773,10 +781,26 @@ func newTodoUnpickCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
+			recordFactoryCardState(id, "", "queued", "card.unpicked")
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "unpicked %s %s\n", id, todoTextPrefix(text))
 			return nil
 		},
 	}
+}
+
+func recordFactoryCardState(cardID, specID, state, eventKind string) {
+	runID := os.Getenv(config.EnvMoaiKanbanID)
+	if runID == "" || os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
+		return
+	}
+	owner := os.Getenv(config.EnvMoaiFactoryWorker)
+	if owner == "" {
+		owner = "lead"
+	}
+	// Queue mutations resolve through the primary checkout, but provenance must
+	// describe the lane checkout that actually selected and executed the card.
+	// OpenFactory canonicalizes only the DB routing after capture.
+	_ = kanban.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit

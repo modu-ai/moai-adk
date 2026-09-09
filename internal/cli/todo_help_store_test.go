@@ -34,8 +34,8 @@ var todoStoreClaimRoots = []string{"internal", "cmd", "pkg"}
 // the string a reader actually sees from `moai todo --help`.
 func TestTodoHelp_NamesTheDatabaseStore(t *testing.T) {
 	long := newTodoCmd().Long
-	if !strings.Contains(long, ".moai/state/todo/backlog.db") {
-		t.Errorf("todo Long help does not name the canonical store .moai/state/todo/backlog.db")
+	if !strings.Contains(long, "~/.moai/db/<project-key>/todo/backlog.db") {
+		t.Errorf("todo Long help does not name the canonical home store ~/.moai/db/<project-key>/todo/backlog.db")
 	}
 	for name, re := range todoStoreClaimPatterns {
 		if re.MatchString(long) {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/graph"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
@@ -66,6 +67,10 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		"session_id", input.SessionID,
 		"project_dir", input.ProjectDir,
 	)
+	if store, leaseErr := homestate.OpenProfileLeases(); leaseErr == nil {
+		_ = store.ReleaseSession(ctx, input.SessionID)
+		_ = store.Close()
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

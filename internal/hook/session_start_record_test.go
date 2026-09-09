@@ -256,7 +256,11 @@ func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".moai", "state", "active-sessions.json"), encoded, 0o600); err != nil {
+	activePath := filepath.Join(root, ".moai", "state", "active-sessions.json")
+	if err := os.MkdirAll(filepath.Dir(activePath), 0o700); err != nil {
+		t.Fatalf("mkdir active registry: %v", err)
+	}
+	if err := os.WriteFile(activePath, encoded, 0o600); err != nil {
 		t.Fatalf("seed registry: %v", err)
 	}
 

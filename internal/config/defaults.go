@@ -217,9 +217,13 @@ const (
 	// `state.home_retention_days` key read from ~/.moai/config/sections/state.yaml;
 	// DefaultReleaseKeep is how many non-current release binaries beyond the
 	// current version survive `clean --home`.
-	DefaultHomeDiskWarnBytes      = 500 * 1024 * 1024
-	DefaultHomeCleanRetentionDays = 30
-	DefaultReleaseKeep            = 3
+	DefaultHomeDiskWarnBytes            = 500 * 1024 * 1024
+	DefaultHomeCleanRetentionDays       = 30
+	DefaultReleaseKeep                  = 3
+	DefaultProfileProjectsRetentionDays = 180
+	DefaultProfileDebugRetentionDays    = 30
+	DefaultProfileUnusedDays            = 90
+	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
 	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
 	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
@@ -328,7 +332,7 @@ var SandboxProofKinds = []string{
 	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata", "sandbox-runtime",
 }
 
-// DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
+// DefaultHandoffStaleTTL is the age past which a pending resume handoff row is
 // considered stale and silently removed by the SessionStart handler — auto-mode
 // ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale
 // pending record (REQ-009 pure no-op). Single source of truth consumed by the

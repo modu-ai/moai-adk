@@ -14,6 +14,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -762,6 +763,23 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		a = append(a, passThrough...)
 		return a
 	}
+	profileLeaseEnv := ""
+	if isNamedProfile(profileName) {
+		store, leaseErr := homestate.OpenProfileLeases()
+		if leaseErr != nil {
+			return fmt.Errorf("protect profile lease before launch: %w", leaseErr)
+		}
+		token, createErr := store.CreateProvisional(context.Background(), homestate.ProfileLease{
+			ProfileName: profileName, ProfilePath: profile.GetProfileDir(profileName),
+			ProjectKey: homestate.ProjectKey(launchProjectRoot()), PID: os.Getpid(),
+			ProcessFingerprint: homestate.CurrentProcessFingerprint(),
+		})
+		_ = store.Close()
+		if createErr != nil {
+			return fmt.Errorf("protect profile lease before launch: %w", createErr)
+		}
+		profileLeaseEnv = "MOAI_PROFILE_LEASE_TOKEN=" + token
+	}
 
 	// 7. Execute with --continue fallback
 	if cont {
@@ -769,6 +787,9 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		tryCmd.Stdin = os.Stdin
 		tryCmd.Stdout = os.Stdout
 		tryCmd.Stderr = os.Stderr
+		if profileLeaseEnv != "" {
+			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
+		}
 		err := tryCmd.Run()
 		if err == nil {
 			return nil
@@ -815,6 +836,9 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// boundary on the chain ledger and hand the node ID to the child
 	// environment. Fail-open — never blocks the launch (card t242).
 	launchEnv = injectChainNodeForLaunch(passThrough, launchEnv, os.Stderr)
+	if profileLeaseEnv != "" {
+		launchEnv = append(launchEnv, profileLeaseEnv)
+	}
 	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 }
 

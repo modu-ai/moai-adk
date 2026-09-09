@@ -40,7 +40,7 @@ type dashboardModel struct {
 	Gaps             string
 	ResidualRisk     string
 	SnapshotAttrib   []string
-	ReArmIndicator   string // non-empty when pending.json embedded_goal present (M5)
+	ReArmIndicator   string // non-empty when a resume row carries embedded_goal (M5)
 	ReArmedView      string // non-empty when post-/clear new-session goal exists (M5)
 	UnboundedBanner  string // non-empty when IsUnbounded() (M5)
 }
