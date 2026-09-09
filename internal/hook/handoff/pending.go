@@ -269,7 +269,7 @@ func ClaimPending(projectDir, token string) (*PendingRecord, int64, bool, error)
 	}
 	rec, _, err := resumeRecord(row)
 	if err != nil {
-		_ = db.SetResumeStatus(ctx, row.ID, "claimed", "failed", err.Error())
+		_ = db.FinishResume(ctx, row.ID, row.ClaimToken, "failed", err.Error())
 		return nil, row.ID, true, err
 	}
 	return rec, row.ID, true, err
@@ -285,7 +285,7 @@ func ExpirePending(projectDir string, id int64) error {
 	return err
 }
 
-func FinishClaim(projectDir string, id int64, success bool, detail string) error {
+func FinishClaim(projectDir string, id int64, success bool, detail, claimToken string) error {
 	db, err := homestate.OpenFactory(projectDir)
 	if err != nil {
 		return err
@@ -295,5 +295,8 @@ func FinishClaim(projectDir string, id int64, success bool, detail string) error
 	if success {
 		status = "consumed"
 	}
-	return db.SetResumeStatus(context.Background(), id, "claimed", status, detail)
+	if claimToken == "" {
+		return fmt.Errorf("resume claim token is required")
+	}
+	return db.FinishResume(context.Background(), id, claimToken, status, detail)
 }

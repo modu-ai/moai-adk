@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -85,11 +86,24 @@ provision the entry (M4).`,
 // until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
 // internally (derived from os signals); there is no ctx to thread here.
 func runMCPServer() error {
+	projectDir := resolveProjectDir()
+	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
+	if lockErr != nil {
+		return lockErr
+	}
+	if err := homestate.CheckRuntimeAdmission(projectDir); err != nil {
+		_ = admissionLock.Release()
+		return err
+	}
 	// Stamp this process's build identity so `moai doctor` can detect a host
 	// still talking to a previously-installed build (mcp_server_runtime.go).
 	// Best-effort by contract: a failed stamp never blocks serving.
-	if recordPath, err := writeMCPServerRuntimeRecord(resolveProjectDir()); err == nil {
+	if recordPath, err := writeMCPServerRuntimeRecord(projectDir); err == nil {
 		defer removeMCPServerRuntimeRecord(recordPath)
+		_ = admissionLock.Release()
+	} else {
+		_ = admissionLock.Release()
+		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
 	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE

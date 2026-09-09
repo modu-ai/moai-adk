@@ -20,6 +20,18 @@ type ResumeHandoff struct {
 	DirectivesJSON       string
 	EmbeddedGoalJSON     *string
 	Body                 string
+	ClaimToken           string
+	ClaimExpiresAt       *time.Time
+	ClaimOwnerPID        int
+	ClaimOwnerSession    string
+}
+
+type ResumeClaim struct {
+	Token            string
+	OwnerPID         int
+	OwnerSession     string
+	OwnerFingerprint string
+	TTL              time.Duration
 }
 
 func (f *FactoryDB) LegacyResumeRetired(ctx context.Context) (bool, error) {
@@ -136,6 +148,18 @@ WHERE status='pending' ORDER BY id DESC LIMIT 1`).Scan(&row.ID, &row.SchemaVersi
 // ClaimPendingResume atomically elects one consumer. The update predicate is
 // the compare-and-swap gate; exactly one concurrent caller changes one row.
 func (f *FactoryDB) ClaimPendingResume(ctx context.Context, token string) (*ResumeHandoff, bool, error) {
+	return f.ClaimResume(ctx, ResumeClaim{Token: token, TTL: 5 * time.Minute})
+}
+
+// ClaimResume provides at-least-once delivery: pending work has priority and,
+// only when none exists, an expired non-legacy claim can be atomically reclaimed.
+func (f *FactoryDB) ClaimResume(ctx context.Context, claim ResumeClaim) (*ResumeHandoff, bool, error) {
+	if claim.Token == "" {
+		return nil, false, fmt.Errorf("claim token is required")
+	}
+	if claim.TTL == 0 {
+		claim.TTL = 5 * time.Minute
+	}
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, false, err
@@ -143,19 +167,23 @@ func (f *FactoryDB) ClaimPendingResume(ctx context.Context, token string) (*Resu
 	defer func() { _ = tx.Rollback() }()
 	row := &ResumeHandoff{}
 	var saved string
+	var prior string
 	err = tx.QueryRowContext(ctx, `SELECT id,schema_version,spec_id,phase,saved_at,saved_by_session,
-conversation_language,directives_json,embedded_goal_json,body FROM resume_handoffs
-WHERE status='pending' ORDER BY id DESC LIMIT 1`).Scan(&row.ID, &row.SchemaVersion, &row.SpecID,
+conversation_language,directives_json,embedded_goal_json,body,status FROM resume_handoffs
+WHERE status='pending' OR (status='claimed' AND legacy_recovery=0 AND claim_expires_at IS NOT NULL AND claim_expires_at<=?)
+ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END,id DESC LIMIT 1`, time.Now().UTC().Format(time.RFC3339Nano)).Scan(&row.ID, &row.SchemaVersion, &row.SpecID,
 		&row.Phase, &saved, &row.SavedBySession, &row.ConversationLanguage, &row.DirectivesJSON,
-		&row.EmbeddedGoalJSON, &row.Body)
+		&row.EmbeddedGoalJSON, &row.Body, &prior)
 	if err == sql.ErrNoRows {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := tx.ExecContext(ctx, `UPDATE resume_handoffs SET status='claimed',claim_token=?,claimed_at=? WHERE id=? AND status='pending'`, token, now, row.ID)
+	nowTime := time.Now().UTC()
+	now := nowTime.Format(time.RFC3339Nano)
+	expiry := nowTime.Add(claim.TTL).Format(time.RFC3339Nano)
+	result, err := tx.ExecContext(ctx, `UPDATE resume_handoffs SET status='claimed',claim_token=?,claimed_at=?,claim_expires_at=?,claim_owner_pid=?,claim_owner_session=?,claim_owner_fingerprint=? WHERE id=? AND status=? AND (status='pending' OR (legacy_recovery=0 AND claim_expires_at<=?))`, claim.Token, now, expiry, claim.OwnerPID, claim.OwnerSession, claim.OwnerFingerprint, row.ID, prior, now)
 	if err != nil {
 		return nil, false, err
 	}
@@ -163,31 +191,88 @@ WHERE status='pending' ORDER BY id DESC LIMIT 1`).Scan(&row.ID, &row.SchemaVersi
 	if err != nil || n != 1 {
 		return nil, false, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,detail,created_at) VALUES('resume',?,'pending','claimed',?,?)`, row.ID, token, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,detail,created_at) VALUES('resume',?,?,'claimed',?,?)`, row.ID, prior, claim.Token, now); err != nil {
 		return nil, false, err
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, false, err
 	}
 	row.SavedAt, err = time.Parse(time.RFC3339Nano, saved)
+	row.ClaimToken = claim.Token
+	row.ClaimOwnerPID = claim.OwnerPID
+	row.ClaimOwnerSession = claim.OwnerSession
+	if parsed, parseErr := time.Parse(time.RFC3339Nano, expiry); parseErr == nil {
+		row.ClaimExpiresAt = &parsed
+	}
 	return row, true, err
 }
 
-func (f *FactoryDB) SetResumeStatus(ctx context.Context, id int64, from, to, detail string) error {
+func (f *FactoryDB) FinishResume(ctx context.Context, id int64, token, to, detail string) error {
+	if to != "consumed" && to != "failed" {
+		return fmt.Errorf("invalid finish status %q", to)
+	}
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := tx.ExecContext(ctx, `UPDATE resume_handoffs SET status=?,consumed_at=CASE WHEN ?='consumed' THEN ? ELSE consumed_at END,error=CASE WHEN ?='failed' THEN ? ELSE error END WHERE id=? AND status=?`, to, to, now, to, detail, id, from)
+	result, err := tx.ExecContext(ctx, `UPDATE resume_handoffs SET status=?,consumed_at=CASE WHEN ?='consumed' THEN ? ELSE consumed_at END,error=CASE WHEN ?='failed' THEN ? ELSE error END WHERE id=? AND status='claimed' AND claim_token=?`, to, to, now, to, detail, id, token)
 	if err != nil {
 		return err
 	}
 	if n, _ := result.RowsAffected(); n != 1 {
-		return fmt.Errorf("resume handoff %d is not %s", id, from)
+		return fmt.Errorf("resume handoff %d stale claim token", id)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,detail,created_at) VALUES('resume',?,?,?,?,?)`, id, from, to, detail, now); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,detail,created_at) VALUES('resume',?,'claimed',?,?,?)`, id, to, detail, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (f *FactoryDB) RecoverLegacyResume(ctx context.Context, id int64, expectedToken, decision string, probe func(int) (string, ProcessIdentityState), verifyZeroActive func() error) error {
+	if decision != "requeue" && decision != "fail" {
+		return fmt.Errorf("invalid recovery decision %q", decision)
+	}
+	tx, err := f.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var pid sql.NullInt64
+	var fingerprint string
+	if err := tx.QueryRowContext(ctx, `SELECT claim_owner_pid,claim_owner_fingerprint FROM resume_handoffs WHERE id=? AND status='claimed' AND claim_token=? AND legacy_recovery=1`, id, expectedToken).Scan(&pid, &fingerprint); err != nil {
+		return fmt.Errorf("legacy resume recovery CAS precondition: %w", err)
+	}
+	if pid.Valid {
+		got, state := probe(int(pid.Int64))
+		if state != ProcessIdentityDead {
+			if state == ProcessIdentityLive && got != fingerprint && fingerprint != "" { /* PID reuse is stale */
+			} else {
+				return fmt.Errorf("legacy resume owner is %s", state)
+			}
+		}
+	} else {
+		if verifyZeroActive == nil {
+			return fmt.Errorf("legacy resume unknown owner requires zero-active census")
+		}
+		if err := verifyZeroActive(); err != nil {
+			return fmt.Errorf("legacy resume unknown owner census: %w", err)
+		}
+	}
+	status := "failed"
+	if decision == "requeue" {
+		status = "pending"
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE resume_handoffs SET status=?,claim_token='',claimed_at=NULL,claim_expires_at=NULL,claim_owner_pid=NULL,claim_owner_session='',claim_owner_fingerprint='',legacy_recovery=0,legacy_recovery_reason='',error=CASE WHEN ?='failed' THEN 'operator legacy recovery' ELSE error END WHERE id=? AND status='claimed' AND claim_token=? AND legacy_recovery=1`, status, status, id, expectedToken)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return fmt.Errorf("legacy resume recovery stale CAS")
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO handoff_events(flow,handoff_id,from_status,to_status,detail,created_at) VALUES('resume',?,'claimed',?,'operator legacy recovery',?)`, id, status, now); err != nil {
 		return err
 	}
 	return tx.Commit()

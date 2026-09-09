@@ -183,7 +183,10 @@ func runCC(cmd *cobra.Command, args []string) error {
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
 		// the address the lead dispatches to.
-		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		if claimErr != nil {
+			return claimErr
+		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()

@@ -337,17 +337,17 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // unwritable registry degrades to using the label as supplied, exactly like
 // every other launch-path state write — the launch must never block on it.
 // notes, when non-nil, receives the operator-visible bump line.
-func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
+func resolveFactoryWorkerName(root, label string, notes io.Writer) (string, error) {
 	final, err := kanban.ClaimFactoryWorkerName(root, label, os.Getpid(), factoryProcessAlive)
 	if err != nil {
-		return label // best-effort registry: launch under the requested label
+		return "", fmt.Errorf("claim factory worker %s: %w", label, err)
 	}
 	if final != label && notes != nil {
 		// The note is best-effort operator guidance; the SessionStart
 		// lane notice is the reliable surface for the final name.
 		_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", label, final)
 	}
-	return final
+	return final, nil
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal

@@ -17,7 +17,7 @@ import (
 	sqlite3 "modernc.org/sqlite/lib"
 )
 
-const factorySchemaVersion = 1
+const factorySchemaVersion = 2
 
 const factoryDDL = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -78,6 +78,12 @@ CREATE TABLE IF NOT EXISTS resume_handoffs (
   body_sha256 TEXT NOT NULL,
   claim_token TEXT NOT NULL DEFAULT '',
   claimed_at TEXT,
+  claim_expires_at TEXT,
+  claim_owner_pid INTEGER,
+  claim_owner_session TEXT NOT NULL DEFAULT '',
+  claim_owner_fingerprint TEXT NOT NULL DEFAULT '',
+  legacy_recovery INTEGER NOT NULL DEFAULT 0,
+  legacy_recovery_reason TEXT NOT NULL DEFAULT '',
   consumed_at TEXT,
   error TEXT NOT NULL DEFAULT ''
 );
@@ -175,8 +181,17 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 			})
 		}
 	}
+	if err == nil && version == "1" {
+		err = migrateFactoryV1ToV2(ctx, db)
+		if err == nil {
+			version = strconv.Itoa(factorySchemaVersion)
+		}
+	}
 	if err == nil && version != strconv.Itoa(factorySchemaVersion) {
 		err = fmt.Errorf("unsupported factory schema version %q", version)
+	}
+	if err == nil {
+		_, err = db.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS resume_handoff_claim_expiry ON resume_handoffs(status,claim_expires_at,id)`)
 	}
 	if err != nil {
 		_ = db.Close()
@@ -191,6 +206,68 @@ func OpenFactoryPath(path string) (*FactoryDB, error) {
 		return nil, err
 	}
 	return &FactoryDB{DB: db, Path: path}, nil
+}
+
+func migrateFactoryV1ToV2(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	columns := []string{
+		`ALTER TABLE resume_handoffs ADD COLUMN claim_expires_at TEXT`,
+		`ALTER TABLE resume_handoffs ADD COLUMN claim_owner_pid INTEGER`,
+		`ALTER TABLE resume_handoffs ADD COLUMN claim_owner_session TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE resume_handoffs ADD COLUMN claim_owner_fingerprint TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE resume_handoffs ADD COLUMN legacy_recovery INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE resume_handoffs ADD COLUMN legacy_recovery_reason TEXT NOT NULL DEFAULT ''`,
+	}
+	for _, stmt := range columns {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id,claimed_at FROM resume_handoffs WHERE status='claimed'`)
+	if err != nil {
+		return err
+	}
+	type legacy struct {
+		id      int64
+		claimed sql.NullString
+	}
+	var claimed []legacy
+	for rows.Next() {
+		var row legacy
+		if err := rows.Scan(&row.id, &row.claimed); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		claimed = append(claimed, row)
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	for _, row := range claimed {
+		if row.claimed.Valid {
+			if at, parseErr := time.Parse(time.RFC3339Nano, row.claimed.String); parseErr == nil {
+				_, err = tx.ExecContext(ctx, `UPDATE resume_handoffs SET claim_expires_at=? WHERE id=?`, at.Add(5*time.Minute).Format(time.RFC3339Nano), row.id)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE resume_handoffs SET legacy_recovery=1,legacy_recovery_reason='missing or invalid claimed_at' WHERE id=?`, row.id); err != nil {
+			return err
+		}
+	}
+	if _, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS resume_handoff_claim_expiry ON resume_handoffs(status,claim_expires_at,id)`); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE meta SET value='2' WHERE key='schema_version' AND value='1'`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func secureFactoryArtifacts(path string) error {

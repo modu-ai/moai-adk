@@ -238,7 +238,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	case factoryBranchWorker:
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		if claimErr != nil {
+			return claimErr
+		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()

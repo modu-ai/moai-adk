@@ -492,7 +492,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("free name is kept and registered", func(t *testing.T) {
 		root := t.TempDir()
-		if got := resolveFactoryWorkerName(root, "lane-1", nil); got != "lane-1" {
+		if got, err := resolveFactoryWorkerName(root, "lane-1", nil); err != nil || got != "lane-1" {
 			t.Fatalf("free name = %q, want lane-1", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
@@ -516,7 +516,10 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		defer func() { factoryProcessAlive = probe }()
 
 		var notes bytes.Buffer
-		got := resolveFactoryWorkerName(root, "lane-2", &notes)
+		got, err := resolveFactoryWorkerName(root, "lane-2", &notes)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if got != "lane-4" {
 			t.Fatalf("bumped name = %q, want lane-4 (2 and 3 are live)", got)
 		}
@@ -536,7 +539,10 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		factoryProcessAlive = func(int) bool { return false }
 		defer func() { factoryProcessAlive = probe }()
 
-		got := resolveFactoryWorkerName(root, "lane-2", nil)
+		got, err := resolveFactoryWorkerName(root, "lane-2", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if got != "lane-2" {
 			t.Fatalf("dead claim should free the name, got %q", got)
 		}
@@ -554,8 +560,21 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		}
 		root := blocker // .moai/state/factory/ resolves under a file → fails
 
-		if got := resolveFactoryWorkerName(root, "lane-7", nil); got != "lane-7" {
-			t.Fatalf("fail-open name = %q, want lane-7 as supplied", got)
+		if got, err := resolveFactoryWorkerName(root, "lane-7", nil); err == nil || got != "" {
+			t.Fatalf("fail-closed name = %q err=%v", got, err)
+		}
+	})
+
+	t.Run("migration marker blocks resolver before registration", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv("MOAI_HOME", filepath.Join(t.TempDir(), "home"))
+		release, err := homestate.AcquireMigrationAdmission(root, "factory-block")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = release(true) }()
+		if got, err := resolveFactoryWorkerName(root, "lane-1", nil); err == nil || got != "" {
+			t.Fatalf("resolver admitted marker: got=%q err=%v", got, err)
 		}
 	})
 }

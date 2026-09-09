@@ -34,7 +34,7 @@ func TestClaimPending_ImportsLegacyOnce(t *testing.T) {
 	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
 		t.Fatalf("legacy file must be retired after import: %v", err)
 	}
-	if err := FinishClaim(pd, id, true, "test"); err != nil {
+	if err := FinishClaim(pd, id, true, "test", "claim-a"); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, present, err := ClaimPending(pd, "claim-b"); err != nil || present {

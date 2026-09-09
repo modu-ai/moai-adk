@@ -133,7 +133,7 @@ func (h *handoffInjectHandler) claimAndInject(projectDir, newSessionID string, r
 	// above — a separate file artifact). Best-effort + fail-open: a write error is
 	// logged and never blocks the session.
 	rearmEmbeddedGoal(projectDir, newSessionID, claimed)
-	if err := handoff.FinishClaim(projectDir, claimID, true, "injected"); err != nil {
+	if err := handoff.FinishClaim(projectDir, claimID, true, "injected", token); err != nil {
 		slog.Warn("session_start: handoff: injection succeeded but audit transition failed", "error", err)
 	}
 

@@ -115,6 +115,14 @@ func SaveFactoryRegistry(path string, reg map[string]FactoryWorkerEntry) error {
 // the same free label and then erase each other's claim through whole-roster
 // replacement.
 func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) bool) (string, error) {
+	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
+	if lockErr != nil {
+		return requested, lockErr
+	}
+	defer admissionLock.Release()
+	if err := homestate.CheckRuntimeAdmission(root); err != nil {
+		return requested, err
+	}
 	n, ok := SplitFactoryLaneLabel(requested)
 	if !ok {
 		return requested, fmt.Errorf("invalid factory lane label %q", requested)

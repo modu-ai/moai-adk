@@ -84,7 +84,7 @@ func TestFactorySchemaAndResumeClaimOnce(t *testing.T) {
 	if err := db.DB.QueryRow(`SELECT id FROM resume_handoffs WHERE status='claimed'`).Scan(&claimedID); err != nil {
 		t.Fatalf("claimed row: %v", err)
 	}
-	if err := db.SetResumeStatus(context.Background(), claimedID, "claimed", "consumed", "test"); err != nil {
+	if err := db.FinishResume(context.Background(), claimedID, "token", "consumed", "test"); err != nil {
 		t.Fatalf("consume claim: %v", err)
 	}
 	var eventCount int

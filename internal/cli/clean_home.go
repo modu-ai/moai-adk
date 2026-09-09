@@ -20,6 +20,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -333,16 +334,47 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 }
 
 func activeClaudeProfile(profileRoot string) bool {
+	_, protected := claudeProfileProtection(profileRoot)
+	return protected
+}
+
+func claudeProfileProtection(profileRoot string) (string, bool) {
 	configured := os.Getenv("CLAUDE_CONFIG_DIR")
-	if configured == "" {
-		return false
+	if configured != "" {
+		configuredAbs, err := filepath.Abs(configured)
+		profileAbs, profileErr := filepath.Abs(profileRoot)
+		if err == nil && profileErr == nil && filepath.Clean(configuredAbs) == filepath.Clean(profileAbs) {
+			return "live (CLAUDE_CONFIG_DIR)", true
+		}
 	}
-	configuredAbs, err := filepath.Abs(configured)
+	protection, leaseErr := homestate.ProfileProtectionAtHome(profileRoot)
+	if leaseErr != nil {
+		return "lease error: " + leaseErr.Error(), true
+	}
+	if protection == homestate.LeaseLive {
+		return "live lease", true
+	}
+	if protection == homestate.LeaseIndeterminate {
+		return "indeterminate lease", true
+	}
+	return "", false
+}
+
+func reportProtectedClaudeProfiles(p printer.Printer, root string) {
+	profilesDir := filepath.Join(root, defs.ClaudeProfilesSubdir)
+	profiles, err := os.ReadDir(profilesDir)
 	if err != nil {
-		return false
+		return
 	}
-	profileAbs, err := filepath.Abs(profileRoot)
-	return err == nil && filepath.Clean(configuredAbs) == filepath.Clean(profileAbs)
+	for _, profile := range profiles {
+		if !profile.IsDir() {
+			continue
+		}
+		profileRoot := filepath.Join(profilesDir, profile.Name())
+		if reason, protected := claudeProfileProtection(profileRoot); protected {
+			p.Info("Skipped protected profile %s: %s (deleted 0)", profile.Name(), reason)
+		}
+	}
 }
 
 func profileCandidateContainsProtected(root, candidate, category string) bool {
@@ -518,6 +550,7 @@ func runCleanHome(p printer.Printer, force bool) error {
 		return nil
 	}
 	candidates := scanHomeCleanable(root, retention, config.DefaultReleaseKeep, version.GetVersion(), time.Now())
+	reportProtectedClaudeProfiles(p, root)
 	if len(candidates) == 0 {
 		if force {
 			if err := secureHomeDirectories(root); err != nil && !os.IsNotExist(err) {
