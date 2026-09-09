@@ -573,3 +573,217 @@ GOFMT_OK
 ## Authoritative final verdict
 
 **PASS — 100/100, findings 0.** Iteration 4가 최종 판정이며 이전 FAIL 섹션은 감사 이력이다. F14 영구 same-PID primary+linked test는 GREEN이고 dedup guard branch가 coverprofile에서 실행됐다. 동일 production diff의 exact coverage는 `1214/1425 = 85.193%`다. 실제 live apply와 post-apply AC-HSR-022는 이 판정 범위 밖이며 실행하지 않았다.
+
+---
+
+## Iteration 5 — post-merge clean-git coverage regression
+
+### Evaluation Report
+
+SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0
+Baseline: branch `WT-home-state-rollout`, HEAD `18f446d579dcd5f254ff9ef7c2be30366b72505c`, five-file uncommitted remediation set
+Overall Verdict: **PASS — 100/100**
+Findings: **0**
+
+| Dimension | Score | Verdict | Evidence |
+|-----------|------:|---------|----------|
+| Functionality (40%) | 100/100 | PASS | committed change-set resolver matrix와 F1–F14 smoke가 모두 GREEN이다. |
+| Security (25%) | 100/100 | PASS | stale/ambiguous/non-descendant/unreachable/invalid Git evidence가 fail-closed하며 외부 base 입력은 없다. |
+| Craft (20%) | 100/100 | PASS | exact current union coverage `1196/1407 = 85.004%`, malformed/tampered profile 거부, self-recursion guard 확인. |
+| Consistency (15%) | 100/100 | PASS | `go mod verify`, gofmt, `git diff --check`가 모두 통과했다. |
+
+### Findings
+
+없음.
+
+### Claim
+
+Resolver는 clean original tip, descendant remediation tip, ancestry-preserving merge HEAD, later unrelated commit 및 dirty production diff union을 처리한다. Audited path stale blob, duplicate marker, non-descendant remediation, unreachable marker, invalid Git/parentless marker/malformed evidence는 모두 거부한다.
+
+### Evidence
+
+```text
+command: MOAI_HOME=<temp> go test ./internal/cli -run '^(TestCommittedCoverageChangeSet.*|TestParseChangedSurfaceCoverageRejectsMissingZeroAndTamperedProfiles|TestHomeStateChangedSurfaceCoverageConsumesFreshProfile)$' -count=1 -v
+exit: 0
+output:
+--- PASS: TestCommittedCoverageChangeSetWorksInCleanRepositoryAndAfterUnrelatedCommit (1.33s)
+--- PASS: TestCommittedCoverageChangeSetWorksAfterMergeCommit (1.28s)
+--- PASS: TestCommittedCoverageChangeSetWorksCleanAfterRemediationCommit (1.64s)
+--- PASS: TestCommittedCoverageChangeSetMergesDirtyProductionDiff (1.26s)
+--- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence (3.82s)
+    --- PASS: .../covered_path_changed_after_audited_tip
+    --- PASS: .../duplicate_audit_marker
+    --- PASS: .../audit_marker_not_reachable_from_head
+    --- PASS: .../remediation_marker_is_not_a_descendant
+    --- PASS: .../duplicate_remediation_marker
+--- PASS: TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence (3.20s)
+--- PASS: TestParseChangedSurfaceCoverageRejectsMissingZeroAndTamperedProfiles (0.00s)
+--- PASS: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (8.39s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 23.468s
+```
+
+```text
+command: HOME=<temp> env -u MOAI_HOME go test ./internal/cli -run '^TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite$' -count=1 -v
+exit: 0
+output:
+=== RUN   TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite
+    home_state_coverage_test.go:341: auto-diff changed production coverage: 1196/1407 = 85.004%
+--- PASS: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (80.22s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 81.090s
+```
+
+```text
+command: MOAI_HOME=<temp> go test ./internal/cli ./internal/homestate ./internal/hook -run '<F1-F14 concise smoke>' -count=1 -v
+exit: 0
+output:
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 9.902s
+ok github.com/modu-ai/moai-adk/internal/homestate 1.821s
+ok github.com/modu-ai/moai-adk/internal/hook 1.152s
+```
+
+```text
+command: go mod verify; gofmt -l internal/cli/home_state_coverage.go internal/cli/home_state_coverage_test.go; git diff --check
+exit: 0
+output:
+all modules verified
+GOFMT_OK
+external_base_inputs=0
+self_recursion_guard:
+329: if os.Getenv("MOAI_HOME_STATE_COVERAGE_CHILD") == "1" {
+332: t.Setenv("MOAI_HOME_STATE_COVERAGE_CHILD", "1")
+```
+
+### Baseline-attribution
+
+모든 command는 현재 t592 worktree의 HEAD `18f446d579dcd5f254ff9ef7c2be30366b72505c`와 다섯 uncommitted remediation files를 대상으로 실행했다. 테스트는 임시 HOME/MOAI_HOME만 사용했으며 실제 사용자 홈에는 apply하지 않았다.
+
+### Integration contract
+
+- 미래 remediation commit subject는 정확히 `fix(state): stabilize committed coverage evidence (t592)`여야 한다.
+- 이 subject는 original evidence commit의 descendant인 단 하나의 reachable commit일 때 충분하다.
+- Integration은 해당 commit object와 ancestry를 보존하는 merge 방식이어야 한다. squash/rebase로 evidence commit을 제거하거나 ancestry를 재작성하면 resolver가 의도적으로 fail-closed하므로 금지한다.
+- 이 `sync-audit.md` 갱신은 별도 report diff다. 별도 문서 commit으로 처리해야 하며 audited production blob 또는 remediation evidence commit에 섞지 않는다.
+
+### Gaps
+
+- 실제 live apply와 post-apply AC-HSR-022는 실행하지 않았다.
+- Integration branch에서 commit 이후 clean-git exact validator는 아직 실행되지 않았다. 현재 resolver의 clean/remediation/merge fixture와 dirty-union exact validator가 그 사전 조건을 검증했다.
+
+### Residual-risk
+
+Coverage 여유는 `0.004%`로 사실상 한 statement 미만이다. Production statement 한 개가 미커버 상태로 추가되면 gate가 실패하므로 remediation commit 직전과 ancestry-preserving integration 직후 exact validator를 다시 실행해야 한다.
+
+---
+
+## Iteration 7 — F15 closure authoritative verdict
+
+Overall Verdict: **PASS — 100/100**
+
+Findings: **0**
+
+### Claim
+
+F15는 닫혔다. Production coverage runner가 시작하는 다섯 child command 모두 `MOAI_HOME_STATE_COVERAGE_CHILD=1`을 받으며 coverage driver self-recursion이 차단된다. F1–F14 smoke도 회귀 없이 통과했다.
+
+### Evidence
+
+```text
+command: MOAI_HOME=<temp> go test ./internal/cli -run '^TestCoverageRunnerSetsRecursionGuardOnEveryChild$' -count=1 -v
+exit: 0
+output:
+=== RUN   TestCoverageRunnerSetsRecursionGuardOnEveryChild
+--- PASS: TestCoverageRunnerSetsRecursionGuardOnEveryChild (1.80s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 2.790s
+```
+
+영구 fake-go test는 guard log의 entry가 정확히 5개인지 확인하고 각 값이 모두 `1`인지 반복 assertion한다.
+
+```text
+command: HOME=<temp> env -u MOAI_HOME go test ./internal/cli -run '^TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite$' -count=1 -v
+exit: 0
+output:
+=== RUN   TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite
+    home_state_coverage_test.go:341: auto-diff changed production coverage: 1197/1408 = 85.014%
+--- PASS: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (78.98s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 79.895s
+```
+
+```text
+command: MOAI_HOME=<temp> go test ./internal/cli ./internal/homestate ./internal/hook -run '<F1-F14 concise smoke>' -count=1
+exit: 0
+output:
+ok github.com/modu-ai/moai-adk/internal/cli 9.315s
+ok github.com/modu-ai/moai-adk/internal/homestate 3.830s
+ok github.com/modu-ai/moai-adk/internal/hook 2.206s
+```
+
+### Baseline-attribution
+
+현재 branch `WT-home-state-rollout`, HEAD `18f446d579dcd5f254ff9ef7c2be30366b72505c`와 uncommitted remediation diff에서 직접 측정했다. 임시 HOME/MOAI_HOME만 사용했고 live apply는 실행하지 않았다.
+
+### Gaps
+
+- 실제 live apply와 post-apply AC-HSR-022는 실행하지 않았다.
+- Integration branch clean-git 검증은 ancestry-preserving merge 뒤 별도로 실행해야 한다.
+
+### Residual-risk
+
+Coverage 여유는 `0.014%`로 매우 작다. Production 변경이 추가되면 exact validator를 즉시 재실행해야 한다. 이 보고서 갱신은 별도 report diff이며 audited production blob에 포함하지 않는다.
+
+---
+
+## Iteration 6 — authoritative post-merge verdict
+
+Overall Verdict: **FAIL — 71/100**
+Findings: **1 blocking**
+
+| Dimension | Score | Verdict | Evidence |
+|-----------|------:|---------|----------|
+| Functionality (40%) | 50/100 | FAIL | verified-live production coverage 호출이 coverage test를 한 단계 재호출한다. |
+| Security (25%) | 100/100 | PASS | 재귀는 apply를 우회하지 않고 실패 시 fail-closed한다. |
+| Craft (20%) | 75/100 | FAIL | 85.004% coverage는 통과하지만 child recursion control이 test caller에만 있다. |
+| Consistency (15%) | 75/100 | FAIL | production runner와 test-only guard의 책임 위치가 어긋난 localized deviation이다. |
+
+가중 점수: `50×0.40 + 100×0.25 + 75×0.20 + 75×0.15 = 71.25`, 반올림 `71/100`.
+
+### Findings
+
+- **F15 [Medium] [blocking]** `internal/cli/home_state_coverage.go:35-66`, `internal/cli/home_state_coverage_test.go:329-333` — recursion guard는 outer test 함수가 `t.Setenv`로만 설정한다. Production `validateLivePreApply → measureChangedSurfaceCoverage → runChangedSurfaceCoverageSuite` 경로는 env를 설정하지 않은 채 child `go test`를 시작하고, selector에 `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite` 자체가 포함된다. 따라서 child test가 coverage suite를 한 단계 다시 실행한다. Fake `go` auditor fixture로 child env에 `MOAI_HOME_STATE_COVERAGE_CHILD=1`을 요구했을 때 production runner가 exit 92를 반환해 결함을 재현했다. **Confidence: High. Impact:** verified-live validation이 불필요한 중첩 full suite를 실행하여 4분 deadline/불안정 timing failure 가능성을 키운다. Apply는 fail-closed하므로 data corruption은 없지만 AC-HSR-021 live gate를 안정적으로 완료하지 못할 수 있다. **Required fix:** `runChangedSurfaceCoverageSuite`가 시작하는 모든 child command의 env에 recursion marker를 직접 주입하거나 selector에서 coverage driver test를 제외한다. Production entry에서 child가 재귀 driver를 실행하지 않는 영구 fake-runner test를 추가한다. **Merge-blocking: yes.**
+
+### Evidence
+
+```text
+command: MOAI_HOME=<temp> go test -overlay=/private/tmp/t592_iter2_cli_overlay.json ./internal/cli -run '^TestAuditCoverageRunnerSetsChildRecursionGuard$' -count=1 -v
+exit: 1
+output:
+=== RUN   TestAuditCoverageRunnerSetsChildRecursionGuard
+    t592_iter2_cli_probe_test.go:50: coverage child launched without recursion guard
+--- FAIL: TestAuditCoverageRunnerSetsChildRecursionGuard (0.33s)
+FAIL
+FAIL github.com/modu-ai/moai-adk/internal/cli 1.352s
+FAIL
+```
+
+### Verified non-findings
+
+- committed resolver의 clean original/remediation descendant/merge/later unrelated/dirty union matrix는 GREEN이다.
+- stale blob, duplicate markers, non-descendant remediation, unreachable evidence, invalid Git 및 malformed profile은 fail-closed한다.
+- 외부 base flag/env 입력은 0건이다.
+- exact dirty-union coverage는 `1196/1407 = 85.004%`다.
+- F1–F14 smoke는 regression 없이 GREEN이다.
+- 미래 subject `fix(state): stabilize committed coverage evidence (t592)`는 단일 reachable descendant commit이며 ancestry-preserving merge될 때 충분하다. squash/rebase는 금지한다.
+
+### Gaps and residual risk
+
+실제 live apply와 post-apply AC-HSR-022는 실행하지 않았다. 이 report 갱신은 별도 diff이며 audited production blob에 섞으면 안 된다. F15 수정 뒤 exact coverage는 한 statement 여유도 없으므로 반드시 다시 측정해야 한다.
+
+---
+
+## Final authoritative closure
+
+**PASS — 100/100, findings 0.** Iteration 7이 최종 판정이며 앞선 FAIL은 감사 이력이다. `TestCoverageRunnerSetsRecursionGuardOnEveryChild`는 다섯 child 모두의 guard를 확인해 통과했고, F1–F14 smoke도 통과했다. Exact coverage는 `1197/1408 = 85.014%`다. 실제 live apply와 post-apply AC-HSR-022는 실행하지 않았다.

@@ -20,13 +20,24 @@ type changedCoverageResult struct {
 	Percent        float64
 }
 
+const (
+	homeStateCoverageCommitSubject            = "feat(state): add guarded home-state rollout (t592)"
+	homeStateCoverageRemediationCommitSubject = "fix(state): stabilize committed coverage evidence (t592)"
+)
+
+type homeStateCoverageChangeSet struct {
+	Base, Tip           string
+	Native, Disposition []string
+	Ranges              map[string][]changedLineRange
+}
+
 func measureChangedSurfaceCoverage(ctx context.Context, root string) (float64, error) {
 	result, err := measureChangedSurfaceCoverageResultWith(ctx, root, runChangedSurfaceCoverageSuite)
 	return result.Percent, err
 }
 
 func runChangedSurfaceCoverageSuite(ctx context.Context, root, path string) error {
-	pattern := "^(TestHomeState.*|TestHomeLayout.*|TestProject(Layout|Dir).*|TestRuntimeCensus.*|TestAdmission.*|TestFactory.*|TestResolveFactory.*|TestResume.*|TestExpireResume.*|TestImportLegacy.*|TestHandoff.*|TestClaim.*|TestClaimThenInject.*|TestConcurrentConsume.*|TestSQLiteClaim.*|TestNonceFallback.*|TestManualMode.*|TestNonClearSource.*|TestDegradeToGuidance.*|TestFailOpen_CorruptPending.*|TestStaleTTL.*|TestBranchTable.*|TestRenderHandoff.*|TestHandle_.*|TestIsHex.*|TestInjectionHeader.*|TestNoUserInteraction.*|TestThreeHandler.*|TestProfile.*|TestCleanHome.*|TestScanHomeCleanable.*|TestSecureHomeDirectories.*|TestContinue.*|TestCC.*|TestCharacterize_CC.*|TestRunCC.*|TestRunGLM.*|TestSession(Start|End).*|TestPersistedHomeStateEvidence.*|TestPlatformProcessIdentity.*|TestParseChanged.*|TestChangedProduction.*)$"
+	pattern := "^(TestHomeState.*|TestHomeLayout.*|TestProject(Layout|Dir).*|TestRuntimeCensus.*|TestAdmission.*|TestFactory.*|TestResolveFactory.*|TestResume.*|TestExpireResume.*|TestImportLegacy.*|TestHandoff.*|TestClaim.*|TestClaimThenInject.*|TestConcurrentConsume.*|TestSQLiteClaim.*|TestNonceFallback.*|TestManualMode.*|TestNonClearSource.*|TestDegradeToGuidance.*|TestFailOpen_CorruptPending.*|TestStaleTTL.*|TestBranchTable.*|TestRenderHandoff.*|TestHandle_.*|TestIsHex.*|TestInjectionHeader.*|TestNoUserInteraction.*|TestThreeHandler.*|TestProfile.*|TestCleanHome.*|TestScanHomeCleanable.*|TestSecureHomeDirectories.*|TestContinue.*|TestCC.*|TestCharacterize_CC.*|TestRunCC.*|TestRunGLM.*|TestSession(Start|End).*|TestPersistedHomeStateEvidence.*|TestPlatformProcessIdentity.*|TestParseChanged.*|TestChangedProduction.*|TestCommittedCoverage.*)$"
 	coverpkg := "./internal/cli,./internal/homestate,./internal/hook/handoff,./internal/hook,./internal/kanban"
 	parts := []struct {
 		name string
@@ -46,6 +57,7 @@ func runChangedSurfaceCoverageSuite(ctx context.Context, root, path string) erro
 		args = append(args, "-count=1", "-coverpkg="+coverpkg, "-coverprofile="+partPath)
 		cmd := exec.CommandContext(ctx, "go", args...)
 		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "MOAI_HOME_STATE_COVERAGE_CHILD=1")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("coverage %s tests: %w\n%s", part.name, err, out)
 		}
@@ -83,15 +95,11 @@ func measureChangedSurfaceCoverageResultWith(ctx context.Context, root string, r
 	if err := run(ctx, root, path); err != nil {
 		return changedCoverageResult{}, err
 	}
-	files, _, err := changedProductionFiles(root)
+	changeSet, err := resolveHomeStateCoverageChangeSet(root)
 	if err != nil {
 		return changedCoverageResult{}, err
 	}
-	ranges, err := changedProductionLineRanges(root, files)
-	if err != nil {
-		return changedCoverageResult{}, err
-	}
-	result, err := parseChangedLineCoverage(path, ranges)
+	result, err := parseChangedLineCoverage(path, changeSet.Ranges)
 	if err != nil {
 		return changedCoverageResult{}, err
 	}
@@ -99,14 +107,11 @@ func measureChangedSurfaceCoverageResultWith(ctx context.Context, root string, r
 }
 
 func changedProductionLineRanges(root string, files []string) (map[string][]changedLineRange, error) {
-	out, err := exec.Command("git", "-C", root, "diff", "--unified=0", "--no-color", "HEAD", "--", ":(glob)**/*.go").Output()
+	changeSet, err := resolveHomeStateCoverageChangeSet(root)
 	if err != nil {
 		return nil, err
 	}
-	ranges, err := parseUnifiedZeroDiff(string(out))
-	if err != nil {
-		return nil, err
-	}
+	ranges := changeSet.Ranges
 	wanted := map[string]bool{}
 	for _, file := range files {
 		wanted[file] = true
@@ -116,40 +121,8 @@ func changedProductionLineRanges(root string, files []string) (map[string][]chan
 			delete(ranges, file)
 		}
 	}
-	nameStatus, err := exec.Command("git", "-C", root, "diff", "--name-status", "-M", "HEAD", "--", ":(glob)**/*.go").Output()
-	if err != nil {
-		return nil, err
-	}
-	for _, line := range strings.Split(strings.TrimSpace(string(nameStatus)), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 3 && strings.HasPrefix(fields[0], "R") && wanted[filepath.ToSlash(fields[2])] {
-			if _, ok := ranges[filepath.ToSlash(fields[2])]; !ok {
-				ranges[filepath.ToSlash(fields[2])] = nil
-			}
-		}
-	}
-	tracked := map[string]bool{}
-	for file := range ranges {
-		tracked[file] = true
-	}
 	for _, file := range files {
-		if _, ok := ranges[file]; ok {
-			continue
-		}
-		status, err := exec.Command("git", "-C", root, "ls-files", "--others", "--exclude-standard", "--", file).Output()
-		if err != nil {
-			return nil, err
-		}
-		if strings.TrimSpace(string(status)) == file {
-			raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
-			if err != nil {
-				return nil, err
-			}
-			lines := 1 + strings.Count(string(raw), "\n")
-			ranges[file] = []changedLineRange{{Start: 1, End: lines}}
-			continue
-		}
-		if !tracked[file] {
+		if _, ok := ranges[file]; !ok {
 			return nil, fmt.Errorf("changed production file missing from diff: %s", file)
 		}
 	}
@@ -214,49 +187,187 @@ func parseUnifiedZeroDiff(diff string) (map[string][]changedLineRange, error) {
 }
 
 func changedProductionFiles(root string) ([]string, []string, error) {
-	commands := [][]string{{"diff", "--name-only", "--diff-filter=ACMR", "HEAD", "--", ":(glob)**/*.go"}, {"ls-files", "--others", "--exclude-standard", "--", ":(glob)**/*.go"}}
-	all := map[string]bool{}
-	for _, args := range commands {
-		out, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, file := range strings.Fields(string(out)) {
-			file = filepath.ToSlash(file)
-			if strings.Contains(file, "/testdata/") || strings.HasSuffix(file, "_test.go") || !strings.HasPrefix(file, "internal/") {
-				continue
-			}
-			all[file] = true
-		}
-	}
-	statusOut, err := exec.Command("git", "-C", root, "diff", "--name-status", "-M", "HEAD", "--", ":(glob)**/*.go").Output()
+	changeSet, err := resolveHomeStateCoverageChangeSet(root)
+	return changeSet.Native, changeSet.Disposition, err
+}
+
+func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet, error) {
+	var result homeStateCoverageChangeSet
+	var originalTip, remediationTip string
+	log, err := gitCoverageOutput(root, "log", "--format=%H%x09%s", "HEAD")
 	if err != nil {
-		return nil, nil, err
+		return result, err
 	}
-	var deleted []string
-	for _, line := range strings.Split(strings.TrimSpace(string(statusOut)), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 2 && fields[0] == "D" {
-			deleted = append(deleted, fields[1])
+	for _, line := range strings.Split(strings.TrimSpace(log), "\n") {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		switch parts[1] {
+		case homeStateCoverageCommitSubject:
+			if originalTip != "" {
+				return result, fmt.Errorf("ambiguous home-state coverage evidence")
+			}
+			originalTip = parts[0]
+		case homeStateCoverageRemediationCommitSubject:
+			if remediationTip != "" {
+				return result, fmt.Errorf("ambiguous home-state coverage remediation evidence")
+			}
+			remediationTip = parts[0]
 		}
 	}
-	if len(deleted) != 0 {
-		return nil, nil, fmt.Errorf("deleted production coverage target: %s", strings.Join(deleted, ","))
+	if originalTip == "" {
+		return result, fmt.Errorf("home-state coverage evidence commit not found")
 	}
-	var native, disposition []string
+	result.Base, err = gitCoverageOutput(root, "rev-parse", originalTip+"^1")
+	if err != nil {
+		return result, fmt.Errorf("resolve home-state coverage base: %w", err)
+	}
+	result.Tip = originalTip
+	if remediationTip != "" {
+		if err := gitCoverageRun(root, "merge-base", "--is-ancestor", originalTip, remediationTip); err != nil {
+			return result, fmt.Errorf("home-state coverage remediation does not descend from original evidence: %w", err)
+		}
+		result.Tip = remediationTip
+	}
+	if err := gitCoverageRun(root, "merge-base", "--is-ancestor", result.Tip, "HEAD"); err != nil {
+		return result, fmt.Errorf("home-state coverage tip is not an ancestor of HEAD: %w", err)
+	}
+
+	committedStatus, err := gitCoverageOutput(root, "diff", "--name-status", "-M", result.Base, result.Tip, "--", ":(glob)**/*.go")
+	if err != nil {
+		return result, err
+	}
+	committedFiles, err := productionFilesFromNameStatus(committedStatus)
+	if err != nil {
+		return result, err
+	}
+	for file := range committedFiles {
+		tipBlob, err := gitCoverageOutput(root, "rev-parse", result.Tip+":"+file)
+		if err != nil {
+			return result, fmt.Errorf("read audited production blob %s: %w", file, err)
+		}
+		headBlob, err := gitCoverageOutput(root, "rev-parse", "HEAD:"+file)
+		if err != nil || headBlob != tipBlob {
+			return result, fmt.Errorf("audited production file changed after coverage tip: %s", file)
+		}
+	}
+
+	committedDiff, err := gitCoverageOutput(root, "diff", "--unified=0", "--no-color", result.Base, result.Tip, "--", ":(glob)**/*.go")
+	if err != nil {
+		return result, err
+	}
+	result.Ranges, err = parseUnifiedZeroDiff(committedDiff)
+	if err != nil {
+		return result, err
+	}
+	for file := range result.Ranges {
+		if !isProductionCoverageFile(file) {
+			delete(result.Ranges, file)
+		}
+	}
+
+	dirtyStatus, err := gitCoverageOutput(root, "diff", "--name-status", "-M", "HEAD", "--", ":(glob)**/*.go")
+	if err != nil {
+		return result, err
+	}
+	dirtyFiles, err := productionFilesFromNameStatus(dirtyStatus)
+	if err != nil {
+		return result, err
+	}
+	dirtyDiff, err := gitCoverageOutput(root, "diff", "--unified=0", "--no-color", "HEAD", "--", ":(glob)**/*.go")
+	if err != nil {
+		return result, err
+	}
+	dirtyRanges, err := parseUnifiedZeroDiff(dirtyDiff)
+	if err != nil {
+		return result, err
+	}
+	for file, ranges := range dirtyRanges {
+		if isProductionCoverageFile(file) {
+			result.Ranges[file] = append(result.Ranges[file], ranges...)
+		}
+	}
+
+	untracked, err := gitCoverageOutput(root, "ls-files", "--others", "--exclude-standard", "--", ":(glob)**/*.go")
+	if err != nil {
+		return result, err
+	}
+	all := committedFiles
+	for file := range dirtyFiles {
+		all[file] = true
+	}
+	for _, file := range strings.Fields(untracked) {
+		file = filepath.ToSlash(file)
+		if !isProductionCoverageFile(file) {
+			continue
+		}
+		all[file] = true
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+		if err != nil {
+			return result, err
+		}
+		result.Ranges[file] = []changedLineRange{{Start: 1, End: 1 + strings.Count(string(raw), "\n")}}
+	}
 	for file := range all {
+		if _, ok := result.Ranges[file]; !ok {
+			return result, fmt.Errorf("changed production file missing from diff: %s", file)
+		}
 		if strings.HasSuffix(file, "_windows.go") && runtime.GOOS != "windows" || strings.HasSuffix(file, "_unix.go") && runtime.GOOS == "windows" {
-			disposition = append(disposition, file+":cross-compile")
+			result.Disposition = append(result.Disposition, file+":cross-compile")
+			delete(result.Ranges, file)
 		} else {
-			native = append(native, file)
+			result.Native = append(result.Native, file)
 		}
 	}
-	if len(native) == 0 {
-		return nil, nil, fmt.Errorf("zero changed production files")
+	if len(result.Native) == 0 {
+		return result, fmt.Errorf("zero changed production files")
 	}
-	sort.Strings(native)
-	sort.Strings(disposition)
-	return native, disposition, nil
+	sort.Strings(result.Native)
+	sort.Strings(result.Disposition)
+	return result, nil
+}
+
+func gitCoverageOutput(root string, args ...string) (string, error) {
+	out, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func gitCoverageRun(root string, args ...string) error {
+	_, err := gitCoverageOutput(root, args...)
+	return err
+}
+
+func productionFilesFromNameStatus(status string) (map[string]bool, error) {
+	files := map[string]bool{}
+	for _, line := range strings.Split(strings.TrimSpace(status), "\n") {
+		if line == "" {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return nil, fmt.Errorf("malformed git name-status row: %q", line)
+		}
+		if fields[0] == "D" {
+			if isProductionCoverageFile(fields[1]) {
+				return nil, fmt.Errorf("deleted production coverage target: %s", fields[1])
+			}
+			continue
+		}
+		file := fields[len(fields)-1]
+		if isProductionCoverageFile(file) {
+			files[filepath.ToSlash(file)] = true
+		}
+	}
+	return files, nil
+}
+
+func isProductionCoverageFile(file string) bool {
+	file = filepath.ToSlash(file)
+	return strings.HasPrefix(file, "internal/") && strings.HasSuffix(file, ".go") && !strings.HasSuffix(file, "_test.go") && !strings.Contains(file, "/testdata/")
 }
 
 func parseChangedSurfaceCoverage(profilePath string, files []string) (float64, error) {

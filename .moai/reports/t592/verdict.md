@@ -2,7 +2,7 @@
 
 ## Claim
 
-F6-R2 보강으로 worktree inventory discovery 오류와 malformed/empty/path/canonicalization 이상이 모두 indeterminate error로 닫힌다. 현재 HEAD exact diff-line validator는 **1214/1425 = 85.193%**다. 구현 측 gate는 GREEN이지만 최종 판정은 **독립 재감사 대기**이며, 실제 사용자 홈 apply와 post-apply AC-HSR-022는 실행하지 않았다.
+F6-R2 보강으로 worktree inventory discovery 오류와 malformed/empty/path/canonicalization 이상이 모두 indeterminate error로 닫힌다. post-commit clean-tree 및 F15 child recursion guard를 수정한 현재 exact diff-line validator는 **1197/1408 = 85.014%**다. 기존 구현은 독립 sync-audit PASS 100/100을 받았지만 이번 후속 변경은 **독립 재감사 대기**이며, 실제 사용자 홈 apply와 post-apply AC-HSR-022는 실행하지 않았다.
 
 ## Evidence
 
@@ -164,6 +164,69 @@ git diff --check
 (empty), exit 0
 ```
 
+### Post-commit clean-tree coverage 회귀와 보강
+
+기존 resolver는 `git diff HEAD`만 사용해 clean commit/merge에서 `zero changed production files`로 실패했다. RED fixture는 clean repository에서 committed t592 change set을 요구했지만 `resolveHomeStateCoverageChangeSet`이 없어 build fail했다.
+
+```text
+timeout 30s go test ./internal/cli -run '^TestCommittedCoverageChangeSet' -count=1 -v
+internal/cli/home_state_coverage_test.go:46:20: undefined: resolveHomeStateCoverageChangeSet
+internal/cli/home_state_coverage_test.go:58:15: undefined: resolveHomeStateCoverageChangeSet
+internal/cli/home_state_coverage_test.go:69:20: undefined: resolveHomeStateCoverageChangeSet
+FAIL github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+GREEN 설계는 caller env/ref를 받지 않는다. Git 이력에서 exact original subject를 유일하게 찾고 그 첫 부모를 base로 고정한다. 이번 보강 commit은 exact remediation subject `fix(state): stabilize committed coverage evidence (t592)`로 식별하며 original tip의 descendant여야 한다. audited tip→HEAD의 모든 covered production blob ID가 동일해야 하고, HEAD→worktree tracked/untracked production diff만 합산한다. duplicate/unreachable/non-descendant/stale evidence는 fail closed다.
+
+```text
+timeout 90s go test ./internal/cli -run '^TestCommittedCoverage' -count=1 -v
+--- PASS: TestCommittedCoverageChangeSetWorksInCleanRepositoryAndAfterUnrelatedCommit
+--- PASS: TestCommittedCoverageChangeSetWorksAfterMergeCommit
+--- PASS: TestCommittedCoverageChangeSetWorksCleanAfterRemediationCommit
+--- PASS: TestCommittedCoverageChangeSetMergesDirtyProductionDiff
+--- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence
+--- PASS: TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 10.946s
+
+timeout 300s go test ./internal/cli -run '^TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite$' -count=1 -v
+home_state_coverage_test.go:341: auto-diff changed production coverage: 1197/1408 = 85.014%
+--- PASS: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (136.89s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 137.654s
+
+timeout 120s go test -race ./internal/cli -run '^TestCommittedCoverage' -count=1
+ok github.com/modu-ai/moai-adk/internal/cli 12.336s
+
+timeout 120s go vet ./internal/homestate ./internal/hook/handoff ./internal/hook ./internal/kanban ./internal/cli
+(empty), exit 0
+
+GOOS=windows GOARCH=amd64 go test -c ./internal/cli -o /tmp/t592-cli.test.exe
+GOOS=windows GOARCH=amd64 go test -c ./internal/homestate -o /tmp/t592-homestate.test.exe
+(empty), exit 0
+
+go run ./cmd/moai spec lint SPEC-HOME-STATE-ROLLOUT-001 --strict --json
+[{"severity":"info","code":"OwnershipTransitionUnmeasured","message":"... commit 0c86e61d... has no Authored-By-Agent trailer ..."}]
+exit 0; warning/error 0, 기존 provenance info 1
+
+git diff --check
+(empty), exit 0
+```
+
+F15 RED/GREEN은 production coverage runner가 각 child `go test`에 recursion guard를 직접 설정하는지 가짜 `go` executable로 검증한다. 기존 환경의 `PATH`와 log 경로는 유지하고, 다섯 child 모두 `MOAI_HOME_STATE_COVERAGE_CHILD=1`을 관측해야 한다.
+
+```text
+RED: TestCoverageRunnerSetsRecursionGuardOnEveryChild
+coverage cli tests: exit status 42
+coverage child recursion guard missing
+--- FAIL: TestCoverageRunnerSetsRecursionGuardOnEveryChild
+
+GREEN: TestCoverageRunnerSetsRecursionGuardOnEveryChild
+--- PASS: TestCoverageRunnerSetsRecursionGuardOnEveryChild (0.13s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 1.116s
+```
+
 ### 최종 focused F1–F13 및 gate 재검증
 
 ```text
@@ -196,11 +259,14 @@ git diff --check
 
 ## Baseline-attribution
 
-검증 수치는 worktree `.claude/worktrees/t592`, branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`와 현재 미커밋 diff에서 이번 run에 직접 측정했다. F6-R2 보강 후 `git diff --unified=0 HEAD` 기반 exact validator의 1214/1425=85.193%를 유효한 기준으로 사용한다. 테스트는 `t.TempDir()`와 격리 `MOAI_HOME`만 사용했다.
+검증 수치는 worktree `.claude/worktrees/t592`, branch `WT-home-state-rollout`, HEAD `18f446d57`와 현재 미커밋 diff에서 이번 run에 직접 측정했다. original audited change set과 현재 미커밋 remediation diff를 합친 exact validator의 1197/1408=85.014%를 유효한 기준으로 사용한다. clean commit, merge commit, later unrelated commit은 모두 `t.TempDir()` Git fixture에서 검증했고 실제 사용자 홈은 사용하지 않았다.
 
 ## Gaps
 
-- production `validateLivePreApply`의 fresh coverage 계산과 low/zero/error/tampered/missing profile 거부 및 exact changed-line coverage 85.085%는 GREEN이다. 기준 초과 여유는 1 statement이므로 변경 시 즉시 재측정해야 한다.
+- production `validateLivePreApply`의 fresh coverage 계산과 low/zero/error/tampered/missing profile 거부 및 exact changed-line coverage 85.014%는 GREEN이다. 기준 초과 여유가 매우 작으므로 변경 시 즉시 재측정해야 한다.
+- clean post-remediation 동작은 commit subject `fix(state): stabilize committed coverage evidence (t592)`를 trusted audited tip marker로 사용한다. 다른 제목으로 production 보강을 commit하면 의도대로 stale evidence로 닫히므로 commit 단계에서 exact 제목을 보존해야 한다.
+- 이번 post-commit remediation은 기존 PASS 100/100 이후 변경이므로 독립 sync re-audit는 PENDING이다.
+- 소유한 5개 변경 경로의 `git diff --check`는 exit 0이다. 전체 tree 검사는 동시 세션이 수정한 `.moai/reports/t592/sync-audit.md`의 기존 trailing whitespace 4건 때문에 exit 2였으며, 해당 외부 변경은 수정하거나 되돌리지 않았다.
 - exact validator 실행 중 기존 hook timing assertion과 4분 내부 deadline 실패를 각각 한 번 관측했다. 최종 동일 command는 PASS했지만 느린 개발 머신에서의 timing 변동 위험은 남아 있다.
 - 실제 live apply, post-apply AC-HSR-022 readback, integration-branch CI 전체 suite는 실행하지 않았다. 이 셋의 verdict는 PENDING이다.
 - 전체 kanban package 회귀는 실행하지 않았고 변경 영향 selector와 요청된 최소 race set만 PASS다.
