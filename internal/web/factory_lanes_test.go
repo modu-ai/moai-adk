@@ -29,14 +29,7 @@ func writeFactoryRegistry(t *testing.T, root string, lanes map[string]int) {
 		reg[label] = kanban.FactoryWorkerEntry{PID: pid, RegisteredAt: time.Now().UTC().Format(time.RFC3339)}
 	}
 	path := kanban.FactoryRegistryPath(root)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir factory dir: %v", err)
-	}
-	body, err := json.Marshal(reg)
-	if err != nil {
-		t.Fatalf("marshal registry: %v", err)
-	}
-	if err := os.WriteFile(path, body, 0o600); err != nil {
+	if err := kanban.SaveFactoryRegistry(path, reg); err != nil {
 		t.Fatalf("write registry: %v", err)
 	}
 }
@@ -60,15 +53,7 @@ func writeActiveSessions(t *testing.T, root string, entries []session.Entry) {
 // writeKanbanRecord writes one kanban record keyed by its session id.
 func writeKanbanRecord(t *testing.T, root string, rec kanban.Record) {
 	t.Helper()
-	dir := filepath.Join(root, ".moai", "state", "kanban")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir kanban dir: %v", err)
-	}
-	body, err := json.Marshal(rec)
-	if err != nil {
-		t.Fatalf("marshal record: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, rec.SessionID+".json"), body, 0o600); err != nil {
+	if err := kanban.Write(root, &rec); err != nil {
 		t.Fatalf("write record: %v", err)
 	}
 }

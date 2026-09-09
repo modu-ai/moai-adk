@@ -223,7 +223,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLead:
 		leadLabel, _ := parseLeadLabel(filteredArgs)
-		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
+		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
+		defer restoreFactory()
+		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec)
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())

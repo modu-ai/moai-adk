@@ -23,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -586,7 +587,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// No positional arg or "." - use current directory
 		rootFlag = cwd
 	}
-
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
 	opts := project.InitOptions{
@@ -873,6 +873,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
+		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
 
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the

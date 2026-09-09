@@ -2,7 +2,6 @@ package hook
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -175,21 +174,5 @@ func TestRenderHandoffContext_AllDirectives(t *testing.T) {
 	}
 	if !strings.Contains(plain, "just body") {
 		t.Error("no-directive render should still carry the body")
-	}
-}
-
-// TestConsumedDir_Path covers the ConsumedDir path helper directly (attribution
-// artifact: it is exercised by claimAndInject but attributed to the hook binary).
-func TestConsumedDir_Path(t *testing.T) {
-	t.Parallel()
-
-	pd := "/tmp/proj"
-	got := handoff.ConsumedDir(pd)
-	// ConsumedDir is a real filesystem path (MkdirAll/rename target), so it is
-	// built with filepath.Join and uses OS-native separators. Build the
-	// expectation the same way rather than hardcoding forward slashes.
-	want := filepath.Join(pd, ".moai", "state", "handoff", "consumed")
-	if got != want {
-		t.Errorf("ConsumedDir: got %q, want %q", got, want)
 	}
 }

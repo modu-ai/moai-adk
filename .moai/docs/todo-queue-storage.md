@@ -1,9 +1,10 @@
 # Backlog queue storage and the downgrade route
 
 The backlog queue `moai todo` operates lives in one SQLite database at
-`.moai/state/todo/backlog.db`. This page explains what each artifact in that
-directory is, how an existing project moves onto the database, and how to get
-back to plain JSON if you need to run an older release.
+`~/.moai/db/<project-key>/todo/backlog.db`. This page explains what each
+artifact in that home-scoped directory is, how an existing project is copied
+into the database, and how to get back to plain JSON if you need to run an
+older release.
 
 Nothing here is required for normal use. Read it when you are downgrading,
 recovering from an interrupted upgrade, or wondering what a file in that
@@ -18,7 +19,7 @@ directory is for.
 | `backlog.db-shm` | SQLite's shared-memory index for the WAL. Rebuilt automatically. | Only when nothing is using the queue. |
 | `backlog.lock` | The advisory lock every writer takes. Lets several sessions share one queue without losing updates. | Yes when nothing is running; it is recreated on demand. |
 | `backlog.json` | Present only if you exported one (see below), or if the queue has not been moved onto the database yet. | Yes, once you no longer need it — but see the downgrade route first. |
-| `backlog.json.migrated` | Your original JSON queue, preserved byte-for-byte at the moment it moved onto the database. | Yes, once you are confident in the upgrade. Keeping it costs a few hundred kilobytes and is the simplest rollback there is. |
+| legacy project-local queue | The former `.moai/state/todo/` or `.moai/state/kanban/` source. It remains untouched after a verified import. | **No** until the home database has been backed up and verified in normal use. |
 
 ## Moving an existing queue onto the database
 
@@ -35,16 +36,17 @@ to interrupt:
 3. The database is written in one transaction.
 4. It is read back and compared to the JSON **field by field** — every card,
    every finding, in order, plus the id high-water mark.
-5. Only if that comparison passes is the JSON renamed to
-   `backlog.json.migrated`.
+5. Only after that comparison passes does the home database become the queue
+   returned by future path resolution. The project-local source is retained as
+   a rollback snapshot; the migration does not delete or rename it.
 
-Because the comparison happens before step 5, a move that would have lost
-anything leaves the JSON in place and authoritative. Your queue keeps working
-on the old file and the command reports what went wrong.
+Because the comparison happens before step 5, an import that would have lost
+anything leaves the legacy queue in place and authoritative. Your queue keeps
+working on the old store and the command reports what went wrong.
 
-If the process is killed between steps 3 and 5, you are left with both files.
-The database is authoritative from that point on, and the next `moai todo`
-command finishes the rename. Nothing is lost either way.
+If the process is killed between steps 3 and 5, you are left with both stores.
+The next `moai todo` command repeats the logical copy and readback; it does not
+delete the source. Nothing is lost either way.
 
 ## Downgrading to a release that predates the database
 
@@ -52,7 +54,7 @@ An older `moai` reads only `backlog.json` and ignores the database entirely, so
 the whole job is producing a current JSON file for it to read.
 
 ```sh
-moai todo export-json     # writes .moai/state/todo/backlog.json from the live queue
+moai todo export-json     # writes backlog.json beside the home-scoped live database
 ```
 
 Then install the older release. It will pick the exported file up as its queue.
@@ -72,6 +74,15 @@ There is deliberately no setting that selects the storage engine. Two live
 engines would mean two places a card could be, and the whole point of one
 store is that there is only ever one answer to "where are my cards?".
 
+## Factory assignment provenance
+
+A factory run starts before it necessarily knows which SPEC a card will use.
+For that reason, the run manifest records run metadata only. The append-only
+`card.assigned` event written by `moai todo next <n> --spec <SPEC-ID>` is the
+source of truth for the assigned SPEC snapshot: canonical `spec.md` path,
+SHA256, Git commit, and capture timestamp. Missing SPEC files and non-Git
+projects remain usable; the unavailable hash or commit is recorded as empty.
+
 ## Recovering
 
 **"I exported, downgraded, and now want to come back."** Just install the newer
@@ -83,31 +94,21 @@ reported as an error — never as an empty queue, which would look like your
 cards were gone. The database is never deleted or rewritten in response.
 Your options, in order of preference:
 
-1. If `backlog.json.migrated` is still there, it is your queue as of the
-   upgrade. Rename it to `backlog.json`, move `backlog.db*` aside, and the next
-   command moves it back onto a fresh database.
-2. If it is not, `backlog.db` is still a standard SQLite file and standard
-   SQLite tools can read it.
+1. Stop every process using the queue and back up `backlog.db*` together.
+2. The retained project-local queue is your rollback source as of the import.
+   Move the home database backup aside, then let the next `moai todo` command
+   import that source again.
+3. `backlog.db` is a standard SQLite file, so standard SQLite integrity and
+   recovery tools can inspect the backup without changing the live copy.
 
-## The directory name
+## The home directory
 
-This directory is `.moai/state/todo/`. Earlier releases called it
-`.moai/state/kanban/`, which named no command anyone could type — the queue has
-always belonged to `moai todo`.
+Each project has one stable key below `~/.moai/db/`. Linked worktrees derive
+the key from the primary checkout, so every session reads and writes the same
+queue. `project.json` beside `todo/` records the canonical project root used to
+derive that key.
 
-The rename happens automatically, once, on the first `moai todo` command, and
-moves the whole directory: the queue and the per-session records that live
-beside it travel together.
-
-Two cases are worth knowing:
-
-- **If both directories exist**, the new one wins and the old one is left
-  exactly where it is, untouched. It is left visible on purpose. If some script
-  of yours is still writing to the old path, you want to be able to see that
-  rather than have it quietly swallowed.
-- **If the directory cannot be moved** — a permission you did not expect, or a
-  mount boundary between the two paths — the queue is served from the old
-  location instead and nothing fails. It is retried on the next command.
-
-Read-only surfaces (the web console, the status line) never trigger either the
-directory move or the storage move. They read whichever layout they find.
+Read-only surfaces (the web console and status line) never trigger migration.
+They read the home database when it exists and otherwise read the legacy
+project-local queue. The first adopting `moai todo` command performs the
+verified copy.

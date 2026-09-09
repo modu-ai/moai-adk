@@ -69,9 +69,9 @@ func TestTempOriginGuidance_NamesRootsAndContinues(t *testing.T) {
 	if len(rec.Items) == 0 {
 		t.Errorf("the card landed nowhere: the queue at %s is empty", kanban.BacklogPathForRoot(root))
 	}
-	if entries, readErr := os.ReadDir(filepath.Join(canaryHome, ".moai", "todo")); readErr == nil && len(entries) > 0 {
+	if entries, readErr := os.ReadDir(filepath.Join(canaryHome, ".moai", "db")); readErr == nil && len(entries) > 0 {
 		t.Errorf("canary HOME polluted: %d entr(ies) under %s",
-			len(entries), filepath.Join(canaryHome, ".moai", "todo"))
+			len(entries), filepath.Join(canaryHome, ".moai", "db"))
 	}
 }
 
@@ -97,5 +97,25 @@ func TestTempOriginGuidance_SilentOnNonTemporaryBase(t *testing.T) {
 	}
 	if strings.Contains(errOut, "no home queue was created") {
 		t.Errorf("guidance fired on a non-temporary base — the guard's trigger is a temporary origin, not the absence of git:\n%s", errOut)
+	}
+}
+
+func TestTempOriginGuidance_SilentWithExplicitAbsoluteMOAIHome(t *testing.T) {
+	dir := t.TempDir()
+	homeRoot := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	t.Setenv("MOAI_HOME", homeRoot)
+
+	_, errOut, err := runTodo(t, "add", "explicit home probe")
+	if err != nil {
+		t.Fatalf("add with explicit MOAI_HOME failed: %v (stderr: %s)", err, errOut)
+	}
+	if strings.Contains(errOut, "no home queue was created") {
+		t.Errorf("explicit absolute MOAI_HOME was falsely reported as refused:\n%s", errOut)
+	}
+	root := resolveTodoQueueRoot()
+	queuePath := todoBacklogPath(root)
+	if !strings.HasPrefix(queuePath, filepath.Join(homeRoot, "db")+string(os.PathSeparator)) {
+		t.Errorf("queue path = %q, want beneath explicit MOAI_HOME %q", queuePath, homeRoot)
 	}
 }

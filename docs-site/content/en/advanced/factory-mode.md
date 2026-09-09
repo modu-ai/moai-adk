@@ -88,9 +88,9 @@ When spawning write-capable sub-agents in parallel, always attach worktree isola
 
 Never activate every lane at once. Activate the first lane, wait for evidence that it has started producing output (first job or visible progress), then activate the remaining lanes — concurrent requests cannot read a cache entry still being written, so simultaneous activation breaks cache efficiency. For the same reason, do not put a model override on dispatch messages — the GLM tier mapping rides the `ANTHROPIC_DEFAULT_*_MODEL` slot environment variables, and a per-spawn override splits the caches and can bypass the slot→GLM mapping.
 
-## Lane-number ownership — workers.json
+## Lane-number ownership — factory.db
 
-Which lane holds which number is recorded in `.moai/state/factory/workers.json`. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's number is released and reused, and its leftover claims are cleared from this file too. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
+Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's number is released and reused, and its leftover claims are cleared from the database too. A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
 
 ## What does not change
 

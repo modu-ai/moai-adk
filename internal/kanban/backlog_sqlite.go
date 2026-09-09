@@ -252,7 +252,7 @@ type backlogEngine struct {
 // schema_version when absent. An unrecognized stamped version refuses the
 // open rather than operating against unknown bytes.
 func openBacklogEngine(dbPath string) (*backlogEngine, error) {
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
 		return nil, fmt.Errorf("open backlog store %s: creating dir: %w", dbPath, err)
 	}
 	db, err := sql.Open(sqliteDriverName, backlogDSN(dbPath))
@@ -272,7 +272,24 @@ func openBacklogEngine(dbPath string) (*backlogEngine, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := os.Chmod(dbPath, 0o600); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("open backlog store %s: secure database: %w", dbPath, err)
+	}
+	if err := secureBacklogArtifacts(dbPath); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return eng, nil
+}
+
+func secureBacklogArtifacts(dbPath string) error {
+	for _, artifact := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		if err := os.Chmod(artifact, 0o600); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("open backlog store %s: secure database artifact %s: %w", dbPath, artifact, err)
+		}
+	}
+	return nil
 }
 
 // ensureSchema executes the idempotent DDL, adds any column the DDL cannot

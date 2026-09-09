@@ -127,6 +127,22 @@ type homeCleanCandidate struct {
 	Category string // debug | releases | logs | backups
 }
 
+func profileCleanupAllowed(relPath, category string) bool {
+	parts := strings.Split(filepath.ToSlash(relPath), "/")
+	if len(parts) < 4 || parts[0] != defs.ClaudeProfilesSubdir || parts[2] != category {
+		return false
+	}
+	if category != "debug" && category != "projects" {
+		return false
+	}
+	for _, seg := range parts[3:] {
+		if carveOutDirNames[seg] || carveOutFileNames[seg] || strings.HasPrefix(seg, "credentials") {
+			return false
+		}
+	}
+	return true
+}
+
 // scanHomeCleanable enumerates the REQ-MCH-004 allowlist under root:
 //
 //   - per-profile debug/ entries older than retentionDays,
@@ -147,13 +163,16 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 	}
 	cutoff := now.AddDate(0, 0, -retentionDays)
 
-	add := func(abs, category string, size int64) {
+	add := func(abs, category string, size int64) bool {
 		relPath, relErr := relFromHomeRoot(root, abs)
 		if relErr != nil {
-			return
+			return false
 		}
-		if isCarvedOut(relPath) {
-			return
+		if isCarvedOut(relPath) && !profileCleanupAllowed(relPath, category) {
+			return false
+		}
+		if (category == "projects" || category == "debug") && profileCandidateContainsProtected(root, abs, category) {
+			return false
 		}
 		candidates = append(candidates, homeCleanCandidate{
 			RelPath:  relPath,
@@ -161,13 +180,86 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 			Size:     size,
 			Category: category,
 		})
+		return true
 	}
 
-	// Category 1 — per-profile debug/ entries older than retention.
+	// Category 0 — per-profile projects/ entries. Age-based expiry is 180
+	// days, independent of debug/log retention. If a profile remains above the
+	// 5 GiB cap, oldest project entries become additional candidates until the
+	// estimated post-clean size is within the cap.
 	profilesDir := filepath.Join(root, defs.ClaudeProfilesSubdir)
 	if profiles, err := os.ReadDir(profilesDir); err == nil {
 		for _, p := range profiles {
 			if !p.IsDir() {
+				continue
+			}
+			profileRoot := filepath.Join(profilesDir, p.Name())
+			if activeClaudeProfile(profileRoot) {
+				continue
+			}
+			profileBytes, _, walkErr := walkHomeSize(profileRoot)
+			if walkErr != nil {
+				continue
+			}
+			projectsDir := filepath.Join(profileRoot, "projects")
+			entries, err := os.ReadDir(projectsDir)
+			if err != nil {
+				continue
+			}
+			type projectEntry struct {
+				abs   string
+				size  int64
+				mtime time.Time
+			}
+			var all []projectEntry
+			for _, entry := range entries {
+				info, infoErr := entry.Info()
+				if infoErr != nil {
+					continue
+				}
+				abs := filepath.Join(projectsDir, entry.Name())
+				size := info.Size()
+				if entry.IsDir() {
+					size, _, infoErr = walkHomeSize(abs)
+					if infoErr != nil {
+						continue
+					}
+				}
+				all = append(all, projectEntry{abs: abs, size: size, mtime: info.ModTime()})
+			}
+			sort.Slice(all, func(i, j int) bool { return all[i].mtime.Before(all[j].mtime) })
+			projectCutoff := now.AddDate(0, 0, -config.DefaultProfileProjectsRetentionDays)
+			selected := map[string]bool{}
+			for _, entry := range all {
+				if entry.mtime.Before(projectCutoff) {
+					if add(entry.abs, "projects", entry.size) {
+						selected[entry.abs] = true
+						profileBytes -= entry.size
+					}
+				}
+			}
+			for _, entry := range all {
+				if profileBytes <= config.DefaultProfileMaxBytes {
+					break
+				}
+				if selected[entry.abs] {
+					continue
+				}
+				if add(entry.abs, "projects", entry.size) {
+					selected[entry.abs] = true
+					profileBytes -= entry.size
+				}
+			}
+		}
+	}
+
+	// Category 1 — per-profile debug/ entries older than retention.
+	if profiles, err := os.ReadDir(profilesDir); err == nil {
+		for _, p := range profiles {
+			if !p.IsDir() {
+				continue
+			}
+			if activeClaudeProfile(filepath.Join(profilesDir, p.Name())) {
 				continue
 			}
 			debugDir := filepath.Join(profilesDir, p.Name(), "debug")
@@ -177,7 +269,8 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 			}
 			for _, e := range entries {
 				info, err := e.Info()
-				if err != nil || !info.ModTime().Before(cutoff) {
+				debugCutoff := now.AddDate(0, 0, -config.DefaultProfileDebugRetentionDays)
+				if err != nil || !info.ModTime().Before(debugCutoff) {
 					continue
 				}
 				abs := filepath.Join(debugDir, e.Name())
@@ -237,6 +330,43 @@ func scanHomeCleanable(root string, retentionDays, releaseKeep int, currentVersi
 	}
 
 	return candidates
+}
+
+func activeClaudeProfile(profileRoot string) bool {
+	configured := os.Getenv("CLAUDE_CONFIG_DIR")
+	if configured == "" {
+		return false
+	}
+	configuredAbs, err := filepath.Abs(configured)
+	if err != nil {
+		return false
+	}
+	profileAbs, err := filepath.Abs(profileRoot)
+	return err == nil && filepath.Clean(configuredAbs) == filepath.Clean(profileAbs)
+}
+
+func profileCandidateContainsProtected(root, candidate, category string) bool {
+	info, err := os.Lstat(candidate)
+	if err != nil || !info.IsDir() {
+		return err != nil
+	}
+	protected := false
+	_ = filepath.WalkDir(candidate, func(path string, _ fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			protected = true
+			return fs.SkipAll
+		}
+		if path == candidate {
+			return nil
+		}
+		rel, err := relFromHomeRoot(root, path)
+		if err != nil || !profileCleanupAllowed(rel, category) {
+			protected = true
+			return fs.SkipAll
+		}
+		return nil
+	})
+	return protected
 }
 
 // scanReleaseCandidates returns the deletable release binaries (plus their
@@ -379,11 +509,21 @@ func runCleanHome(p printer.Printer, force bool) error {
 		return fmt.Errorf("load home retention: %w", err)
 	}
 	if retention <= 0 {
+		if force {
+			if err := secureHomeDirectories(root); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("secure home directories: %w", err)
+			}
+		}
 		p.Info("home cleaning disabled (state.home_retention_days=0); nothing to clean")
 		return nil
 	}
 	candidates := scanHomeCleanable(root, retention, config.DefaultReleaseKeep, version.GetVersion(), time.Now())
 	if len(candidates) == 0 {
+		if force {
+			if err := secureHomeDirectories(root); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("secure home directories: %w", err)
+			}
+		}
 		p.Info("nothing to clean under %s (retention %dd)", root, retention)
 		return nil
 	}
@@ -401,9 +541,24 @@ func runCleanHome(p printer.Printer, force bool) error {
 		}
 	}
 	if force {
+		if err := secureHomeDirectories(root); err != nil && !os.IsNotExist(err) {
+			p.Warn("cleanup completed but home directory permission repair failed: %v", err)
+		}
 		p.Success("Deleted %d path(s), %s reclaimed (retention %dd)", len(candidates), formatDiskBytes(total), retention)
 	} else {
 		p.Info("%d path(s), %s eligible under %dd retention. Run with --force to delete.", len(candidates), formatDiskBytes(total), retention)
 	}
 	return nil
+}
+
+func secureHomeDirectories(root string) error {
+	return filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return os.Chmod(path, 0o700)
+		}
+		return nil
+	})
 }

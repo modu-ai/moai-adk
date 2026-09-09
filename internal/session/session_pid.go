@@ -9,7 +9,7 @@
 // isolation is required.
 //
 // The registry needs the PID of the long-lived session process instead. That
-// is the same PID `workers.json` already carries: the factory launcher stamps
+// is the same PID the factory roster in `factory.db` already carries: the factory launcher stamps
 // `os.Getpid()` and then `syscall.Exec`s into Claude Code, so the launcher's
 // PID *becomes* the session's. A hook subprocess has no such luck — it must
 // look up the ancestry it was spawned from.
