@@ -55,13 +55,18 @@ func addCodexWiringAt(projectRoot string, out, errOut io.Writer) error {
 	return nil
 }
 
-// emitAddCodexDryRunPreview prints the wiring actions `--add-codex` would
-// perform (REQ-UAC-006). It writes nothing: the writer is its only parameter,
-// and the preview never touches the project tree.
-func emitAddCodexDryRunPreview(out io.Writer) {
-	_, _ = fmt.Fprintln(out, "Dry-run --add-codex wiring plan (nothing written):")
+// emitCodexWiringDryRunPreview prints the additive wiring actions for the
+// named invocation. It writes nothing: the writer is its only parameter.
+func emitCodexWiringDryRunPreview(out io.Writer, invocation string) {
+	_, _ = fmt.Fprintf(out, "Dry-run %s wiring plan (nothing written):\n", invocation)
 	_, _ = fmt.Fprintf(out, "  - create-or-refresh %s (merged hook render, whitelist-gated)\n", codexwiring.HooksRelPath)
 	_, _ = fmt.Fprintf(out, "  - create-or-refresh %s ([mcp_servers.moai] + [tui].status_line, create-if-absent merge)\n", codexwiring.ConfigRelPath)
 	_, _ = fmt.Fprintf(out, "  - create-or-refresh %s (trust sidecar, sha256 of the generated content)\n", codexwiring.SidecarPath)
 	_, _ = fmt.Fprintln(out, "  - run without --dry-run to apply")
+}
+
+// emitAddCodexDryRunPreview preserves the deprecated update flag's output
+// contract while sharing the preview renderer with `moai tool enable codex`.
+func emitAddCodexDryRunPreview(out io.Writer) {
+	emitCodexWiringDryRunPreview(out, "moai update --add-codex")
 }
