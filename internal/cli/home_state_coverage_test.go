@@ -106,6 +106,77 @@ func TestCommittedCoverageChangeSetWorksCleanAfterRemediationCommit(t *testing.T
 	}
 }
 
+func TestCommittedCoverageChangeSetExcludesInterveningMergedProduction(t *testing.T) {
+	root := committedCoverageRepo(t)
+	gitForCoverageTest(t, root, "checkout", "-qb", "unrelated-production")
+	codexPath := filepath.Join(root, "internal", "codexwiring", "configtoml.go")
+	if err := os.MkdirAll(filepath.Dir(codexPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(codexPath, []byte("package codexwiring\nfunc Config() string { return \"unrelated\" }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "internal/codexwiring/configtoml.go")
+	gitForCoverageTest(t, root, "commit", "-qm", "feat(codex): unrelated production")
+	gitForCoverageTest(t, root, "checkout", "-q", "-")
+	if err := os.WriteFile(filepath.Join(root, "NOTICE"), []byte("main advance\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "NOTICE")
+	gitForCoverageTest(t, root, "commit", "-qm", "chore: advance main")
+	gitForCoverageTest(t, root, "merge", "--no-ff", "-qm", "chore: merge unrelated production", "unrelated-production")
+	a := filepath.Join(root, "internal", "x", "a.go")
+	if err := os.WriteFile(a, []byte("package x\nfunc A() int { return 5 }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "internal/x/a.go")
+	gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("later docs\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "README.md")
+	gitForCoverageTest(t, root, "commit", "-qm", "docs: after remediation")
+
+	changeSet, err := resolveHomeStateCoverageChangeSet(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := changeSet.Ranges["internal/codexwiring/configtoml.go"]; ok {
+		t.Fatalf("intervening merged production included: %+v", changeSet)
+	}
+	if len(changeSet.Ranges["internal/x/a.go"]) == 0 {
+		t.Fatalf("audited production missing: %+v", changeSet)
+	}
+}
+
+func TestCommittedCoverageChangeSetSupportsVersionedRemediationChain(t *testing.T) {
+	root := committedCoverageRepo(t)
+	a := filepath.Join(root, "internal", "x", "a.go")
+	for _, step := range []struct{ value, subject string }{
+		{"5", homeStateCoverageRemediationCommitSubject},
+		{"6", homeStateCoverageDeltaCommitSubject},
+	} {
+		if err := os.WriteFile(a, []byte("package x\nfunc A() int { return "+step.value+" }\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitForCoverageTest(t, root, "add", "internal/x/a.go")
+		gitForCoverageTest(t, root, "commit", "-qm", step.subject)
+	}
+	tip, err := gitCoverageOutput(root, "rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("later docs\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "README.md")
+	gitForCoverageTest(t, root, "commit", "-qm", "docs: after delta remediation")
+	changeSet, err := resolveHomeStateCoverageChangeSet(root)
+	if err != nil || changeSet.Tip != tip || len(changeSet.Ranges["internal/x/a.go"]) < 3 {
+		t.Fatalf("changeSet=%+v tip=%s err=%v", changeSet, tip, err)
+	}
+}
+
 func TestCommittedCoverageChangeSetMergesDirtyProductionDiff(t *testing.T) {
 	root := committedCoverageRepo(t)
 	dirty := filepath.Join(root, "internal", "x", "dirty.go")
@@ -184,8 +255,19 @@ func TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence(t *testing.T)
 			gitForCoverageTest(t, root, "add", filepath.Base(path))
 			gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
 		}
-		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil || !strings.Contains(err.Error(), "ambiguous home-state coverage remediation") {
+		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil || !strings.Contains(err.Error(), "ambiguous home-state coverage evidence marker") {
 			t.Fatalf("duplicate remediation evidence accepted: %v", err)
+		}
+	})
+	t.Run("versioned marker skips predecessor", func(t *testing.T) {
+		root := committedCoverageRepo(t)
+		if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("skip predecessor\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitForCoverageTest(t, root, "add", "README.md")
+		gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageDeltaCommitSubject)
+		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil || !strings.Contains(err.Error(), "missing predecessor") {
+			t.Fatalf("gapped evidence chain accepted: %v", err)
 		}
 	})
 }
@@ -230,6 +312,16 @@ func TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence(t *test
 	if _, err := changedProductionLineRanges(root, []string{"internal/x/missing.go"}); err == nil || !strings.Contains(err.Error(), "missing from diff") {
 		t.Fatalf("requested missing file accepted: %v", err)
 	}
+	t.Run("unreadable untracked production", func(t *testing.T) {
+		root := committedCoverageRepo(t)
+		path := filepath.Join(root, "internal", "x", "dangling.go")
+		if err := os.Symlink("missing-target", path); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil {
+			t.Fatal("unreadable untracked production accepted")
+		}
+	})
 }
 
 func TestParseChangedSurfaceCoverageRejectsMissingZeroAndTamperedProfiles(t *testing.T) {

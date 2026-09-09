@@ -25,7 +25,7 @@
 | AC-HSR-001..012 | PASS | 동적 dry-run census, 두 번의 fresh census, private backup/hash/restore probe, divergence/idempotency/source 보존, 공통 lock과 세 admission 경로 GREEN. |
 | AC-HSR-013..017,019,020 | PASS | schema v2, reclaim/token CAS/at-least-once, global lease와 clean 보호 focused selectors GREEN. |
 | AC-HSR-018 | PASS | provisional→child PID/fingerprint CAS, enrich/release, cleaner race와 Windows compile GREEN. |
-| AC-HSR-021 | PASS | F6-R2/F14, post-commit resolver, F15 child guard 보강 후 exact diff-line validator 1197/1408=85.014%; 기존 audit는 PASS 100/100, 후속 변경 재감사 대기. |
+| AC-HSR-021 | PASS | F6-R2/F14/F15와 F16 audited first-parent delta union 보강 후 exact validator 1202/1413=85.067%; 기존 audit는 PASS 100/100, 후속 변경 재감사 대기. |
 | AC-HSR-022 | PENDING-LIVE | immutable evidence ledger와 실제 source/target/backup readback focused test는 GREEN이나 실제 live apply/post-apply 판정은 미실행. |
 | AC-HSR-023,024 | PASS | live/indeterminate 거부, PID reuse, manifest/hash, quarantine/restore parity, marker-last, 반복 no-op GREEN. |
 | AC-HSR-025 | PASS | token CAS, old-token 거부, unknown-owner nonzero 거부와 zero-active requeue GREEN. |
@@ -49,8 +49,8 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   windows_amd64: pass
   native: pass-focused
-changed_surface_coverage: 85.014
-changed_surface_statements: 1197/1408-committed-audited-plus-working-diff-lines
+changed_surface_coverage: 85.067
+changed_surface_statements: 1202/1413-audited-first-parent-deltas-plus-working-diff-lines
 total_run_phase_files: 36
 m1_to_mN_commit_strategy: no-commit-requested
 ```

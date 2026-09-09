@@ -787,3 +787,85 @@ FAIL
 ## Final authoritative closure
 
 **PASS — 100/100, findings 0.** Iteration 7이 최종 판정이며 앞선 FAIL은 감사 이력이다. `TestCoverageRunnerSetsRecursionGuardOnEveryChild`는 다섯 child 모두의 guard를 확인해 통과했고, F1–F14 smoke도 통과했다. Exact coverage는 `1197/1408 = 85.014%`다. 실제 live apply와 post-apply AC-HSR-022는 실행하지 않았다.
+
+---
+
+## Iteration 8 — F16 closure authoritative verdict
+
+Overall Verdict: **PASS — 100/100**
+
+Findings: **0**
+
+### Claim
+
+Versioned committed coverage resolver는 각 audited marker의 first-parent delta만 합친다. Original t592 뒤 unrelated production merge가 있고 remediation, later docs, new remediation이 이어져도 unrelated `internal/codexwiring`은 분모에서 제외하고 audited `internal/x/a.go` 변경과 dirty union만 포함한다. Version gap, duplicate, non-descendant, unreachable marker, stale audited blob, malformed/invalid Git은 fail-closed한다.
+
+### Evidence
+
+```text
+command: MOAI_HOME=<temp> go test ./internal/cli -run '^(TestCommittedCoverageChangeSetExcludesInterveningMergedProduction|TestCommittedCoverageChangeSetSupportsVersionedRemediationChain|TestCommittedCoverageChangeSetMergesDirtyProductionDiff|TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence|TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence)$' -count=1 -v
+exit: 0
+output:
+--- PASS: TestCommittedCoverageChangeSetExcludesInterveningMergedProduction (1.77s)
+--- PASS: TestCommittedCoverageChangeSetSupportsVersionedRemediationChain (1.70s)
+--- PASS: TestCommittedCoverageChangeSetMergesDirtyProductionDiff (1.33s)
+--- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence (4.94s)
+    --- PASS: .../covered_path_changed_after_audited_tip
+    --- PASS: .../duplicate_audit_marker
+    --- PASS: .../audit_marker_not_reachable_from_head
+    --- PASS: .../remediation_marker_is_not_a_descendant
+    --- PASS: .../duplicate_remediation_marker
+    --- PASS: .../versioned_marker_skips_predecessor
+--- PASS: TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence (4.13s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 16.439s
+```
+
+```text
+command: HOME=<temp> env -u MOAI_HOME go test ./internal/cli -run '^TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite$' -count=1 -v
+exit: 0
+output:
+=== RUN   TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite
+    home_state_coverage_test.go:433: auto-diff changed production coverage: 1202/1413 = 85.067%
+--- PASS: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (82.62s)
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 83.502s
+```
+
+```text
+command: MOAI_HOME=<temp> go test ./internal/cli ./internal/homestate ./internal/hook -run '<F1-F14 plus recursion-guard smoke>' -count=1
+exit: 0
+output:
+ok github.com/modu-ai/moai-adk/internal/cli 9.708s
+ok github.com/modu-ai/moai-adk/internal/homestate 3.256s
+ok github.com/modu-ai/moai-adk/internal/hook 0.821s
+```
+
+```text
+command: go mod verify; gofmt -l internal/cli/home_state_coverage.go internal/cli/home_state_coverage_test.go; git diff --check
+exit: 0
+output:
+all modules verified
+GOFMT_OK
+caller_controlled_refs=0
+```
+
+### Marker contract
+
+- 다음 commit subject는 정확히 `fix(state): isolate committed coverage deltas (t592)`여야 한다.
+- 이는 original `feat(state): add guarded home-state rollout (t592)`와 remediation `fix(state): stabilize committed coverage evidence (t592)` 뒤의 세 번째 marker다.
+- 각 subject는 reachable history에 정확히 한 번만 존재하고 앞 marker의 descendant여야 한다. predecessor gap, duplicate 및 non-descendant는 거부된다.
+- Integration은 marker commits와 ancestry를 보존해야 하며 squash/rebase로 version chain을 제거하면 안 된다.
+
+### Baseline-attribution
+
+현재 branch `WT-home-state-rollout`, HEAD `01e7a612e2c11554c6024d9c8cc88cbc90a368d5`와 five-file uncommitted remediation diff에서 직접 측정했다. Test fixture와 coverage는 임시 HOME/MOAI_HOME만 사용했다.
+
+### Gaps
+
+- 실제 live apply와 post-apply AC-HSR-022는 실행하지 않았다.
+- 다음 marker commit 및 integration branch clean-tree 검증은 아직 실행 전이다.
+
+### Residual-risk
+
+Coverage 여유는 `0.067%`로 작다. Next marker commit 직전과 ancestry-preserving integration 직후 exact clean-tree validator를 다시 실행해야 한다. 이 report 변경은 audited production blob과 분리된 문서 diff로 처리해야 한다.

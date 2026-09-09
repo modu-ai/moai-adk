@@ -32,6 +32,7 @@ Cycle: `tdd`
 - [x] Re-measure after F6-R2: 1214/1425 = 85.193%.
 - [x] Final independent sync-audit: PASS 100/100, findings 0; live rollout remains pending.
 - [x] Fix post-commit clean-tree coverage resolution and F15 child recursion guard; verify clean, merge, later unrelated, dirty, stale, duplicate, non-descendant, and all-child guard fixtures; exact coverage 1197/1408 = 85.014%.
+- [x] F16: isolate original/remediation first-parent deltas from intervening merged production; version evidence chain and re-measure 1202/1413 = 85.067%.
 - [ ] Run independent sync re-audit for the post-commit coverage remediation.
 
 ## Live rollout

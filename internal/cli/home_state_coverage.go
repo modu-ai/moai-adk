@@ -23,6 +23,7 @@ type changedCoverageResult struct {
 const (
 	homeStateCoverageCommitSubject            = "feat(state): add guarded home-state rollout (t592)"
 	homeStateCoverageRemediationCommitSubject = "fix(state): stabilize committed coverage evidence (t592)"
+	homeStateCoverageDeltaCommitSubject       = "fix(state): isolate committed coverage deltas (t592)"
 )
 
 type homeStateCoverageChangeSet struct {
@@ -193,7 +194,12 @@ func changedProductionFiles(root string) ([]string, []string, error) {
 
 func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet, error) {
 	var result homeStateCoverageChangeSet
-	var originalTip, remediationTip string
+	subjects := []string{
+		homeStateCoverageCommitSubject,
+		homeStateCoverageRemediationCommitSubject,
+		homeStateCoverageDeltaCommitSubject,
+	}
+	commitsBySubject := make(map[string]string, len(subjects))
 	log, err := gitCoverageOutput(root, "log", "--format=%H%x09%s", "HEAD")
 	if err != nil {
 		return result, err
@@ -203,19 +209,17 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 		if len(parts) != 2 {
 			continue
 		}
-		switch parts[1] {
-		case homeStateCoverageCommitSubject:
-			if originalTip != "" {
-				return result, fmt.Errorf("ambiguous home-state coverage evidence")
+		for _, subject := range subjects {
+			if parts[1] != subject {
+				continue
 			}
-			originalTip = parts[0]
-		case homeStateCoverageRemediationCommitSubject:
-			if remediationTip != "" {
-				return result, fmt.Errorf("ambiguous home-state coverage remediation evidence")
+			if commitsBySubject[subject] != "" {
+				return result, fmt.Errorf("ambiguous home-state coverage evidence marker: %s", subject)
 			}
-			remediationTip = parts[0]
+			commitsBySubject[subject] = parts[0]
 		}
 	}
+	originalTip := commitsBySubject[homeStateCoverageCommitSubject]
 	if originalTip == "" {
 		return result, fmt.Errorf("home-state coverage evidence commit not found")
 	}
@@ -223,47 +227,73 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 	if err != nil {
 		return result, fmt.Errorf("resolve home-state coverage base: %w", err)
 	}
-	result.Tip = originalTip
-	if remediationTip != "" {
-		if err := gitCoverageRun(root, "merge-base", "--is-ancestor", originalTip, remediationTip); err != nil {
-			return result, fmt.Errorf("home-state coverage remediation does not descend from original evidence: %w", err)
+	var auditedCommits []string
+	previous := ""
+	missingEarlier := false
+	for _, subject := range subjects {
+		commit := commitsBySubject[subject]
+		if commit == "" {
+			missingEarlier = true
+			continue
 		}
-		result.Tip = remediationTip
+		if missingEarlier {
+			return result, fmt.Errorf("home-state coverage evidence chain has a missing predecessor: %s", subject)
+		}
+		if previous != "" {
+			if err := gitCoverageRun(root, "merge-base", "--is-ancestor", previous, commit); err != nil {
+				return result, fmt.Errorf("home-state coverage evidence does not descend from prior marker: %s: %w", subject, err)
+			}
+		}
+		auditedCommits = append(auditedCommits, commit)
+		previous = commit
 	}
+	result.Tip = auditedCommits[len(auditedCommits)-1]
 	if err := gitCoverageRun(root, "merge-base", "--is-ancestor", result.Tip, "HEAD"); err != nil {
 		return result, fmt.Errorf("home-state coverage tip is not an ancestor of HEAD: %w", err)
 	}
 
-	committedStatus, err := gitCoverageOutput(root, "diff", "--name-status", "-M", result.Base, result.Tip, "--", ":(glob)**/*.go")
-	if err != nil {
-		return result, err
-	}
-	committedFiles, err := productionFilesFromNameStatus(committedStatus)
-	if err != nil {
-		return result, err
-	}
-	for file := range committedFiles {
-		tipBlob, err := gitCoverageOutput(root, "rev-parse", result.Tip+":"+file)
+	result.Ranges = map[string][]changedLineRange{}
+	committedFiles := map[string]bool{}
+	expectedBlobs := map[string]string{}
+	for _, commit := range auditedCommits {
+		parent, err := gitCoverageOutput(root, "rev-parse", commit+"^1")
 		if err != nil {
-			return result, fmt.Errorf("read audited production blob %s: %w", file, err)
+			return result, fmt.Errorf("resolve coverage marker parent: %w", err)
 		}
+		status, err := gitCoverageOutput(root, "diff", "--name-status", "-M", parent, commit, "--", ":(glob)**/*.go")
+		if err != nil {
+			return result, err
+		}
+		files, err := productionFilesFromNameStatus(status)
+		if err != nil {
+			return result, err
+		}
+		diff, err := gitCoverageOutput(root, "diff", "--unified=0", "--no-color", parent, commit, "--", ":(glob)**/*.go")
+		if err != nil {
+			return result, err
+		}
+		ranges, err := parseUnifiedZeroDiff(diff)
+		if err != nil {
+			return result, err
+		}
+		for file := range files {
+			committedFiles[file] = true
+			blob, err := gitCoverageOutput(root, "rev-parse", commit+":"+file)
+			if err != nil {
+				return result, fmt.Errorf("read audited production blob %s: %w", file, err)
+			}
+			expectedBlobs[file] = blob
+		}
+		for file, changed := range ranges {
+			if isProductionCoverageFile(file) {
+				result.Ranges[file] = append(result.Ranges[file], changed...)
+			}
+		}
+	}
+	for file, expected := range expectedBlobs {
 		headBlob, err := gitCoverageOutput(root, "rev-parse", "HEAD:"+file)
-		if err != nil || headBlob != tipBlob {
+		if err != nil || headBlob != expected {
 			return result, fmt.Errorf("audited production file changed after coverage tip: %s", file)
-		}
-	}
-
-	committedDiff, err := gitCoverageOutput(root, "diff", "--unified=0", "--no-color", result.Base, result.Tip, "--", ":(glob)**/*.go")
-	if err != nil {
-		return result, err
-	}
-	result.Ranges, err = parseUnifiedZeroDiff(committedDiff)
-	if err != nil {
-		return result, err
-	}
-	for file := range result.Ranges {
-		if !isProductionCoverageFile(file) {
-			delete(result.Ranges, file)
 		}
 	}
 
