@@ -30,7 +30,7 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ�
 
 ## `internal/codexadapter` — フックアダプターライブラリ
 
-2 つのハーネスのフック表面はほぼ同じですが、完全には同じではありません。実測(codex-cli 0.153.4 基準)で分かれた地点はちょうど 2 つ: ハーネスが渡す**イベント名**と、codex が宣言はするが実際には反応しない**出力キー 3 つ**(`systemMessage`・`continue`・`stopReason`)です。それ以外はすべて同一に測定されたため、`internal/codexadapter` はディスパッチャーの**前に**座る薄い翻訳層で、`internal/hook` には触れません。
+2 つのハーネスのフック表面はほぼ同じですが、完全には同じではありません。実測(codex-cli 0.153.4 基準)で分かれた地点は 3 つ: ハーネスが渡す**イベント名**、codex が宣言はするが実際には反応しない**出力キー 3 つ**(`systemMessage`・`continue`・`stopReason`)、そして **PreToolUse 決定契約**です — codex パーサーは `updatedInput` のない `permissionDecision:allow` と `permissionDecision:ask` を拒否します。`internal/codexadapter` はディスパッチャーの**前に**座る薄い翻訳層で(`internal/hook` には触れない)、拒否される決定形(allow・ask・defer)は無意見の `{}` に劣化させて codex 自身の承認フローに委ね、各劣化は discard シンクで通知され、理由のない deny には既定理由が補われます。
 
 ### 12 イベント表
 

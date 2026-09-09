@@ -30,7 +30,7 @@ codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed 
 
 ## `internal/codexadapter` — the hook adapter library
 
-The two harnesses' hook surfaces are nearly but not exactly the same. Measurement (against codex-cli 0.153.4) found exactly two divergences: the **event name** the harness passes, and **three output keys** codex declares but does not act on (`systemMessage`, `continue`, `stopReason`). Everything else measured identical, so `internal/codexadapter` is a thin translation layer that sits **in front of** the dispatcher — nothing under `internal/hook` is modified.
+The two harnesses' hook surfaces are nearly but not exactly the same. Measurement (against codex-cli 0.153.4) found three divergences: the **event name** the harness passes, **three output keys** codex declares but does not act on (`systemMessage`, `continue`, `stopReason`), and the **PreToolUse decision contract** — the codex parser rejects `permissionDecision:allow` without `updatedInput` and rejects `permissionDecision:ask` outright. `internal/codexadapter` is a thin translation layer that sits **in front of** the dispatcher (nothing under `internal/hook` is modified); refused decision shapes (allow, ask, defer) degrade to the no-opinion `{}`, handing the choice to codex's own approval flow, each drop is announced through the discard sink, and a blank-reason deny gains a default reason.
 
 ### The 12-event table
 
