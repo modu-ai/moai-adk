@@ -200,10 +200,11 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 
 // addCodexReinitGuidance is the redirect note printed when init runs
 // --agent codex|both against an already-initialized project (the --force
-// reinit path): the sanctioned additive verb is `moai update --add-codex`,
-// which wires Codex in place without reinitializing (REQ-UAC-013, decision
+// reinit path): the preferred additive verb is `moai tool enable codex`,
+// which wires Codex in place without reinitializing. The former update flag
+// remains named as a deprecated compatibility alias (REQ-UAC-013, decision
 // D4 — redirect-not-block; the reinit itself proceeds as requested).
-const addCodexReinitGuidance = "note: this project is already initialized — the sanctioned additive path for adding Codex to an existing project is `moai update --add-codex` (no reinitialization). Proceeding with the requested reinit."
+const addCodexReinitGuidance = "note: this project is already initialized — the additive path is `moai tool enable codex`, which adds Codex without reinitializing (`moai update --add-codex` remains a deprecated compatibility alias). Proceeding with the requested reinit."
 
 // emitAddCodexReinitGuidance prints the guidance when the selection is
 // codex|both AND the project is already initialized. A claude selection and a

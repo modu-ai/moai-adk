@@ -88,7 +88,10 @@ func init() {
 	// Codex path for an EXISTING project — wires .codex/ in place instead of
 	// the destructive `init --force --agent both` workaround. A flag-absent
 	// update keeps the existence-gated refresh (REQ-UAC-002).
-	updateCmd.Flags().Bool("add-codex", false, "Add the Codex harness to this existing project without reinitializing — the sanctioned additive path (creates .codex/hooks.json + .codex/config.toml + trust sidecar; bypasses the wiring-existence gate)")
+	updateCmd.Flags().Bool("add-codex", false, "Deprecated compatibility alias for the additive `moai tool enable codex` command (adds Codex wiring without reinitializing)")
+	if err := updateCmd.Flags().MarkDeprecated("add-codex", "use `moai tool enable codex` instead"); err != nil {
+		panic(err)
+	}
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
