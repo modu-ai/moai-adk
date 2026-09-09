@@ -1,9 +1,9 @@
 # SPEC Final Plan Gate: SPEC-HOME-STATE-ROLLOUT-001
 
-Gate: v0.5.0 D5a/D5b delta re-audit  
-Verdict: **PASS**  
-Overall Score: **1.00**  
-Blocking findings: **0**  
+Gate: v0.5.0 D5a/D5b delta re-audit
+Verdict: **PASS**
+Overall Score: **1.00**
+Blocking findings: **0**
 Threshold: Tier L `0.85`, blocking finding `0` required
 
 Reasoning context ignored per M1 Context Isolation. 이 재감사는 직전 final gate의 D5a/D5b와

@@ -2,10 +2,10 @@
 
 ## Evaluation Report
 
-SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0  
-Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, 현재 미커밋 diff  
-Profile: `.moai/config/evaluator-profiles/default.md` (flat weighted-percentage)  
-Overall Verdict: **FAIL — 35/100**  
+SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0
+Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, 현재 미커밋 diff
+Profile: `.moai/config/evaluator-profiles/default.md` (flat weighted-percentage)
+Overall Verdict: **FAIL — 35/100**
 Must-pass firewall: **Functionality 25/100 FAIL, Security 50/100 FAIL**
 
 ### Dimension Scores
@@ -203,9 +203,9 @@ duplicate-session-release-probe:
 
 ### Evaluation Report
 
-SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0  
-Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, current uncommitted remediation diff  
-Overall Verdict: **FAIL — 68/100**  
+SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0
+Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, current uncommitted remediation diff
+Overall Verdict: **FAIL — 68/100**
 Must-pass firewall: **Functionality 50/100 FAIL; Security 50/100 FAIL**
 
 | Dimension | Score | Verdict | Evidence |
@@ -348,9 +348,9 @@ F6-R2가 수정되기 전에는 second census도 같은 false-zero 결과를 반
 
 ### Evaluation Report
 
-SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0  
-Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, current uncommitted test-only F14 closure diff  
-Overall Verdict: **PASS — 100/100**  
+SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0
+Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, current uncommitted test-only F14 closure diff
+Overall Verdict: **PASS — 100/100**
 Findings: **0**
 
 | Dimension | Score | Verdict | Evidence |
@@ -435,9 +435,9 @@ focused test와 branch coverage는 현재 t592 worktree에서 직접 측정했�
 
 ### Evaluation Report
 
-SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0  
-Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, current uncommitted remediation diff  
-Overall Verdict: **FAIL — 95/100**  
+SPEC: `SPEC-HOME-STATE-ROLLOUT-001` v0.5.0
+Baseline: branch `WT-home-state-rollout`, HEAD `6ea69661c405c1b6a3ef38e598f5653a63cd7af0`, current uncommitted remediation diff
+Overall Verdict: **FAIL — 95/100**
 Must-pass firewall: Functionality **PASS**, Security **PASS**. 명시된 permanent-regression coverage finding 1건이 blocking이므로 overall FAIL이다.
 
 | Dimension | Score | Verdict | Evidence |

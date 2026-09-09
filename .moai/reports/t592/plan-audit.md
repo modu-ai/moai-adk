@@ -1,9 +1,9 @@
 # SPEC Review Report: SPEC-HOME-STATE-ROLLOUT-001
 
-Iteration: 3/3  
-Verdict: FAIL  
-Overall Score: 0.81  
-Tier: L (PASS threshold 0.85)  
+Iteration: 3/3
+Verdict: FAIL
+Overall Score: 0.81
+Tier: L (PASS threshold 0.85)
 Escalation: MAX_ITERATIONS_REACHED
 
 Reasoning context ignored per M1 Context Isolation. 이번 재감사는 v0.3.0의 D1/D2/D5 수정
