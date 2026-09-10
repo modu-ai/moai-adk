@@ -223,6 +223,18 @@ var toolchains = []langToolchain{
 			// linter entry uses, so an eslint project never invokes biome.
 			name: "biome", binary: "npx", args: []string{"biome", "check", "."}, optional: true,
 			configFiles: []string{"biome.json", "biome.jsonc"},
+		}, {
+			// oxlint coverage (issue #1631, SPEC-GATE-OXLINT-DETECT-001): an
+			// oxlint project carries neither an eslint nor a biome config, so
+			// both entries above skipped and the lint axis ran nothing while
+			// the gate exited 0. Gated on oxlint's own config files — the
+			// four names oxlint itself discovers — so an eslint or biome
+			// project never invokes oxlint. Bare `npx oxlint` with no path
+			// argument: oxlint defaults to the current directory.
+			name: "oxlint", binary: "npx", args: []string{"oxlint"}, optional: true,
+			configFiles: []string{
+				".oxlintrc.json", ".oxlintrc.jsonc", "oxlint.config.ts", "oxlint.config.mts",
+			},
 		}},
 		testStep: &gateStep{name: "npm test", binary: "npm", args: []string{"test", "--", "--passWithNoTests"}},
 	},
