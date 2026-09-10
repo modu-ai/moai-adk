@@ -180,10 +180,11 @@ func TestPythonToolchain_ResolvedByDetect(t *testing.T) {
 	writeFile(t, dir, "uv.lock", "")
 
 	g := &QualityGate{config: &GateConfig{Enabled: true, ProjectDir: dir}}
-	tc := g.detectToolchain()
-	if tc == nil {
+	dt := g.detectToolchain()
+	if dt == nil {
 		t.Fatal("detectToolchain returned nil for a pyproject.toml project")
 	}
+	tc := dt.tc
 	if tc.testStep == nil {
 		t.Fatal("Python toolchain has no test step")
 	}
