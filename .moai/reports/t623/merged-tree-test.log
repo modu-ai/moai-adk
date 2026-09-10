@@ -1,0 +1,46 @@
+=== RUN   TestPlanAuditD7_RetiredSPECConflict
+=== PAUSE TestPlanAuditD7_RetiredSPECConflict
+=== RUN   TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+=== PAUSE TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+=== RUN   TestPlanAuditD7_LiveReferenceIsSilent
+=== PAUSE TestPlanAuditD7_LiveReferenceIsSilent
+=== RUN   TestPlanAuditD7_MissingReferencedSPEC
+=== PAUSE TestPlanAuditD7_MissingReferencedSPEC
+=== RUN   TestPlanAuditD8_MissingBuildTag
+=== PAUSE TestPlanAuditD8_MissingBuildTag
+=== RUN   TestPlanAuditD8_WithBuildTagPasses
+=== PAUSE TestPlanAuditD8_WithBuildTagPasses
+=== RUN   TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover
+=== PAUSE TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover
+=== RUN   TestPlanAuditD8_UnreadableSpecIsGap
+=== PAUSE TestPlanAuditD8_UnreadableSpecIsGap
+=== RUN   TestPlanAuditD7D8_VerbsIdenticalAcrossCopies
+=== PAUSE TestPlanAuditD7D8_VerbsIdenticalAcrossCopies
+=== CONT  TestPlanAuditD7_RetiredSPECConflict
+=== CONT  TestPlanAuditD8_WithBuildTagPasses
+=== CONT  TestPlanAuditD8_UnreadableSpecIsGap
+=== CONT  TestPlanAuditD7D8_VerbsIdenticalAcrossCopies
+=== CONT  TestPlanAuditD7_MissingReferencedSPEC
+=== CONT  TestPlanAuditD8_MissingBuildTag
+=== CONT  TestPlanAuditD7_LiveReferenceIsSilent
+=== CONT  TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+=== CONT  TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover
+--- PASS: TestPlanAuditD7D8_VerbsIdenticalAcrossCopies (0.00s)
+--- PASS: TestPlanAuditD8_UnreadableSpecIsGap (0.01s)
+--- PASS: TestPlanAuditD8_WithBuildTagPasses (0.01s)
+--- PASS: TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover (0.01s)
+--- PASS: TestPlanAuditD8_MissingBuildTag (0.02s)
+--- PASS: TestPlanAuditD7_MissingReferencedSPEC (0.02s)
+--- PASS: TestPlanAuditD7_LiveReferenceIsSilent (0.02s)
+=== NAME  TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+    plan_audit_d7_d8_test.go:181: D7 output:
+        SHOULD: referenced SPEC SPEC-FIXTURE-CONSUMER-001 not found in .moai/specs/
+        REVIEW: SPEC-FIXTURE-OLD-001 has status=superseded — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING
+          reconciliation candidate (paragraph 4): This SPEC supersedes SPEC-FIXTURE-OLD-001: its eviction requirement is absorbed here.
+--- PASS: TestPlanAuditD7_ReconciledReferenceIsNotBlocking (0.03s)
+=== NAME  TestPlanAuditD7_RetiredSPECConflict
+    plan_audit_d7_d8_test.go:151: D7 output:
+        SHOULD: referenced SPEC SPEC-FIXTURE-CONSUMER-001 not found in .moai/specs/
+        REVIEW: SPEC-FIXTURE-OLD-001 has status=retired — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING
+--- PASS: TestPlanAuditD7_RetiredSPECConflict (0.03s)
+PASS

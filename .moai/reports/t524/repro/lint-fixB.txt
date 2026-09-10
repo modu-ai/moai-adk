@@ -1,0 +1,5 @@
+SEVERITY  CODE               FILE                                                     LINE  MESSAGE
+--------  ----               ----                                                     ----  -------
+WARNING   MissingExclusions  .moai/reports/t524/repro/fixtures/SPEC-FIXB-001/spec.md  1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required [grandfathered era — downgraded to warning]
+
+0 error(s), 1 warning(s)
