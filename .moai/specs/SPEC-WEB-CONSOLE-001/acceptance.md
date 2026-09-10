@@ -78,6 +78,7 @@ Acceptance criteria are mapped 1:1 to the GEARS requirements in `spec.md`. Each 
   | `Host` header | (a) `GET /static/app.js` | (b) `GET /settings` | (c) `POST /save` (valid change) |
   |---|---|---|---|
   | `localhost`, and `localhost:<port>` | 200 | 200 | 2xx, change persisted |
+  | `LOCALHOST`, and `LocalHost:<port>` | 200 | 200 | 2xx, change persisted |
   | `127.0.0.1`, and `127.0.0.1:<port>` | 200 | 200 | 2xx, change persisted |
   | `[::1]`, and `[::1]:<port>` | 200 | 200 | 2xx, change persisted |
   | foreign (e.g. `attacker.example.com:<port>`) | 403 | 403 | 403, state unchanged |
@@ -88,6 +89,7 @@ Acceptance criteria are mapped 1:1 to the GEARS requirements in `spec.md`. Each 
 - **And** a 403 response carries none of the route's content (the foreign-`Host` and absent-`Host` `GET /settings` bodies contain no persisted profile value);
 - **And** after the foreign-`Host` and absent-`Host` `POST /save` requests, the persisted profile preferences and the `user.yaml` / `language.yaml` / `statusline.yaml` sections are byte-unchanged;
 - **And** the `Sec-Fetch-Site` same-origin gate (SPEC-INTERNAL-SECURITY-001 REQ-SEC-002) is not widened: it still applies only to state-changing routes;
+- **And** the host-name acceptance set of REQ-WC-009 as amended is pinned by a unit table over the host-name check, with accepted rows (at minimum `localhost`, `LOCALHOST`, `LocalHost:<port>`, `127.0.0.1`, `127.1.2.3:<port>`, `127.255.255.254`, `::1`, `[::1]:<port>`, `::ffff:127.0.0.1`, `[::ffff:127.0.0.1]:<port>`) and rejected rows (at minimum `0.0.0.0`, `10.0.0.5:<port>`, `attacker.example.com`, `localhost.attacker.example.com`, the U+017F LATIN SMALL LETTER LONG S spelling of `localhost` with and without a port, and the empty `Host`); the trailing-dot form `localhost.` is currently rejected but undecided, so it is not required as a row in either direction;
 - **And** the regression test formerly named `TestHostCheckDoesNotGateGet`, which required HTTP 200 for a foreign-`Host` GET, is inverted to require HTTP 403 and renamed to state the new contract (e.g. "GET from a foreign Host is gated"; the implementer picks the final name). The old name no longer appears anywhere in `internal/web`.
 
 ### AC-WC-010 — graceful empty/error states
