@@ -1,0 +1,9 @@
+slot pre-check before the window-remeasure run
+2026-09-10T18:29:22Z
+ 3:29  up 2 days, 21:22, 19 users, load averages: 33.82 30.42 25.25
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1515)
+observer control - the ps process itself: 1
+go test/.test lines (zsh/python excluded): 2
+71237       04:22 go               go test -overlay /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/lint-ce
+72247       04:18 /var/folders/kt/ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build1754797603/b001/spec.test -test.paniconexit0 -test.count=1 -test.run
