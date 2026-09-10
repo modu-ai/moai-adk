@@ -32,12 +32,14 @@ retention_days is read from .moai/config/sections/state.yaml.
 Exactly one scope is cleaned per invocation. --home and --codex-skills select
 different files and may not be combined.
 
-With --home, clean the ~/.moai home directory instead of the project scope:
-aged per-profile debug/ entries, releases/ binaries beyond the current
-version + the 3 newest, aged root logs/, and aged backups/removed-*
-directories. That scope touches only ~/.moai — ~/.claude is never modified.
-Home retention comes from state.home_retention_days in ~/.moai/config/
-sections/state.yaml (default 30 days; explicit 0 disables).
+With --home, clean the ~/.moai home directory instead of the project scope.
+The default is a report-only dry-run. --force removes per-profile projects/
+entries older than 180 days, debug/ entries older than 30 days, and the oldest
+projects/ entries needed to bring a profile under 5 GiB. It also repairs every
+directory under ~/.moai to mode 0700. Profiles unused for 90 days and byte-identical
+plugin trees are reported but never deleted automatically. Releases, root
+logs/, and backups/removed-* retain the existing home-retention policy. This
+scope touches only ~/.moai — ~/.claude is never modified.
 
 With --codex-skills, remove ghost [[skills.config]] registrations from
 ~/.codex/config.toml (or $CODEX_HOME/config.toml) — entries whose declared

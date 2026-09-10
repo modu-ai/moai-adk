@@ -98,16 +98,108 @@ func settingsTabVMs(view pageView) []TabVM {
 	for _, t := range tabs {
 		names := settingsTabFieldNames(t.ID)
 		count := settingsTabFieldCount(t.ID, view, names)
+		descKey := settingsTabDescKey(t.ID)
+		effectKey, effect := settingsTabEffect(t.ID)
 		out = append(out, TabVM{
-			ID:       t.ID,
-			LabelKey: t.LabelKey,
-			Label:    t.Baseline,
-			Fields:   count,
-			HasErr:   settingsTabHasError(t.ID, names, view.FieldErrors),
+			ID:        t.ID,
+			LabelKey:  t.LabelKey,
+			Label:     t.Baseline,
+			DescKey:   descKey,
+			Desc:      settingsTabDesc(t.ID),
+			EffectKey: effectKey,
+			Effect:    effect,
+			Fields:    count,
+			HasErr:    settingsTabHasError(t.ID, names, view.FieldErrors),
 		})
 	}
 	return out
 }
+
+// settingsTabDescKey keeps the Settings header aligned with the section that
+// owns the persisted fields. Codex is a mirror and therefore uses its tab
+// namespace; Git/Worktree and Audit already have dedicated tab copy.
+func settingsTabDescKey(tabID string) string {
+	switch tabID {
+	case "git-worktree":
+		return "tab.git-worktree.desc"
+	case "audit":
+		return "tab.audit.desc"
+	case "codex":
+		return "tab.codex.desc"
+	case "gate":
+		return "sec.gate.desc"
+	default:
+		return "sec." + tabID + ".desc"
+	}
+}
+
+func settingsTabDesc(tabID string) string {
+	switch tabID {
+	case "identity":
+		return "Who you are in commits and sessions."
+	case "language":
+		return "Languages used across conversation, commits, comments, and docs."
+	case "launch":
+		return "How sessions start — permissions, model, and reasoning effort."
+	case "llm":
+		return "GLM backend model tier mappings and per-tier reasoning effort."
+	case "workflow":
+		return "Workflow execution mode and loop-prevention settings."
+	case "git-worktree":
+		return "Git strategy mode, per-profile merge method, and worktree automation."
+	case "audit":
+		return "Review backend that gates merges and the per-auditor gate strictness."
+	case "codex":
+		return "Every Codex setting on one screen. Each row links to its owning tab."
+	case "agentfm":
+		return "Per-agent model and effort frontmatter for the live agent files."
+	case "report":
+		return "Output format for generated HTML and Markdown reports."
+	case "mcp":
+		return "Per-tool enablement for the self-hosted MoAI MCP server."
+	case "crosssession":
+		return "How launched sessions treat messages from your other sessions."
+	case "feedback":
+		return "Feedback target repository and pre-submission confirmation."
+	case "gate":
+		return "Commit-time quality gate posture."
+	default:
+		return "Configuration details for this page."
+	}
+}
+
+func settingsTabEffect(tabID string) (string, string) {
+	switch tabID {
+	case "identity", "language":
+		return "settings.effect.now", "Now"
+	case "launch", "llm", "workflow", "git-worktree", "report", "crosssession":
+		return "settings.effect.next-launch", "Next launch"
+	case "codex":
+		return "settings.effect.read-only", "Read-only"
+	case "agentfm":
+		return "settings.effect.stored", "Stored value"
+	default:
+		return "settings.effect.per-request", "Per request"
+	}
+}
+
+func activeSettingsTabVM(vm ShellVM) TabVM {
+	for _, tab := range vm.Tabs {
+		if tab.ID == vm.Tab {
+			return tab
+		}
+	}
+	return TabVM{ID: vm.Tab, Label: vm.Tab, Desc: settingsTabDesc(vm.Tab), Effect: "Now", EffectKey: "settings.effect.now"}
+}
+
+func activeSettingsTabLabelKey(vm ShellVM) string { return activeSettingsTabVM(vm).LabelKey }
+func activeSettingsTabLabel(vm ShellVM) string    { return activeSettingsTabVM(vm).Label }
+func activeSettingsTabDescKey(vm ShellVM) string  { return activeSettingsTabVM(vm).DescKey }
+func activeSettingsTabDesc(vm ShellVM) string     { return activeSettingsTabVM(vm).Desc }
+func activeSettingsTabEffectKey(vm ShellVM) string {
+	return activeSettingsTabVM(vm).EffectKey
+}
+func activeSettingsTabEffect(vm ShellVM) string { return activeSettingsTabVM(vm).Effect }
 
 // settingsTabFieldCount 는 레일 subnav 에 붙는 숫자다. 각 패널이 자기 머리글에
 // 쓰는 수와 같아야 한다 — 레일과 패널이 다른 수를 말하면 어느 쪽이 맞는지 알

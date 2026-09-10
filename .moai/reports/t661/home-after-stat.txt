@@ -1,0 +1,7 @@
+1789025082 48208 /Users/goos/.claude/settings.json
+1786867378 1579 /Users/goos/.zshenv
+1786867378 5138 /Users/goos/.zshrc
+1788158817 1163 /Users/goos/.zprofile
+1779596844 188 /Users/goos/.profile
+1779596844 1430 /Users/goos/.bash_profile
+1779596844 199 /Users/goos/.bashrc

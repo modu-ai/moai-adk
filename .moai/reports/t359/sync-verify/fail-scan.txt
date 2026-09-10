@@ -1,0 +1,5 @@
+$ grep -c "^FAIL\|--- FAIL" over the UNFILTERED test captures
+.moai/state/verify/t359-sync/kanban.txt:0
+.moai/state/verify/t359-sync/cli.txt:0
+# 0 and 0 — the exit codes (rc=0, rc=0) are the verdict; this scan is the cross-check
+# that no --- FAIL line sat below a filtered window.

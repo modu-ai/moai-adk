@@ -236,6 +236,18 @@ moai update --dry-run
 moai update --yes
 ```
 
+### 为已有项目添加 Codex
+
+无需重新初始化,即可为 claude-only 项目添加 codex harness 配线:
+
+```bash
+moai tool enable codex
+```
+
+- 创建或刷新 `.codex/hooks.json`(通过白名单门控的 hook 渲染)、`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 自行添加的条目会保留)、`.moai/state/codex-wiring.json`(信任 sidecar)
+- 不改动 `.mcp.json`,重复执行是幂等的 — 已配线的项目不会写入任何内容,也不会重复输出信任提示
+- 运行 `moai tool enable codex --dry-run` 时,只预览配线计划,不改动文件系统
+
 ## 更新后流程
 
 ### 第 1 步:确认版本

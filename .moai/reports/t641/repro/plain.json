@@ -1,0 +1,31 @@
+{
+  "plain": {
+    "mode": "plain",
+    "writes_attempted": 150,
+    "add_failures": 8,
+    "add_lock_failures": 8,
+    "commit_failures": 4,
+    "commit_lock_failures": 4,
+    "status_runs": 362,
+    "status_failures": 0,
+    "status_lock_failures": 0,
+    "status_thread_alive_after_join": false,
+    "failure_samples": [
+      [
+        "commit",
+        128,
+        "fatal: Unable to create '/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t556/e6946f98-39aa-4df4-9a3f-3b9caed0ab4d/scratchpad/t641/repo-plain/.git/index.lock': File exists.\n\nAno"
+      ],
+      [
+        "add",
+        128,
+        "fatal: Unable to create '/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t556/e6946f98-39aa-4df4-9a3f-3b9caed0ab4d/scratchpad/t641/repo-plain/.git/index.lock': File exists.\n\nAno"
+      ],
+      [
+        "add",
+        128,
+        "fatal: Unable to create '/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t556/e6946f98-39aa-4df4-9a3f-3b9caed0ab4d/scratchpad/t641/repo-plain/.git/index.lock': File exists.\n\nAno"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+auto exit=3
+go1.26.6 exit=0
+go1.26.8 exit=0

@@ -3,8 +3,8 @@
 > `/moai codemaps`로 생성됐습니다. 시스템 동작의 대부분을 실어 나르는 경로를
 > 끝에서 끝까지 따라갑니다.
 
-**측정 트리**: worktree `.claude/worktrees/t475`, 브랜치 `WT-codemaps-stale`, HEAD `52f863f36`
-**측정**: 2026-09-08
+**측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
+**측정**: 2026-09-10
 
 ---
 
@@ -18,7 +18,9 @@ internal/cli/root.go → fang.go          runFang → cobra 라우팅
 internal/cli/todo.go                    newTodoCmd() → add 서브커맨드 RunE
 internal/cli/todo.go                    resolveTodoQueueRoot()
   └ internal/kanban/todo_root.go        ResolveTodoQueueRootAdopting
-                                          — primary checkout → ~/.moai → fallback 3단 해석
+                                          — primary checkout 정규화 → project-key 산출
+internal/kanban/state_dir.go            StateDirForRoot
+                                          → ~/.moai/db/<project-key>/todo
 internal/cli/todo.go                    todoBacklogPath() → kanban.BacklogPathForRootAdopting
 internal/cli/todo.go                    newTodoStore() → kanban.NewBacklogStore(path)
 internal/cli/todo_analysis.go           appendAnalyzedCard(rec, text, BacklogStateQueued, force)
@@ -28,9 +30,11 @@ internal/kanban/backlog_sqlite.go       openEngine → WAL + busy_timeout ≥ 50
                                           ↳ <queue-dir>/backlog.db
 ```
 
-**주목할 점**: 큐 경로 해석 함수 `BacklogPathForRoot`는 **여전히 `backlog.json` 이름을
-반환합니다.** DB는 그 형제 파일로 파생됩니다 — 다운그레이드 시 구버전 바이너리가 JSON만 읽도록
-남긴 의도적 설계이며, `backlog_sqlite.go` 헤더가 그 이유를 적고 있습니다.
+**주목할 점**: 큐 경로 해석 함수 `BacklogPathForRoot`는
+`~/.moai/db/<project-key>/todo/backlog.json`이라는 논리 경로를 반환하고, 저장 엔진이 같은
+디렉터리의 `backlog.db`를 정본으로 엽니다. JSON 이름은 구버전 다운그레이드 계약을 위한
+호출 인터페이스일 뿐이며, 이전 프로젝트 로컬 `backlog.json`은 정본이 아닙니다. 검증된
+명시적 이전 전에는 프로젝트 로컬 `backlog.db`가 롤백 원본으로 보존됩니다.
 
 ---
 
@@ -249,3 +253,59 @@ moai integration preflight [경로]        창을 잡지 않고 같은 질문만
 **검출·보존·원장은 설정과 무관하게 매번 돕니다.** 거절만 opt-in이며, 어떤 경우에도
 자동 복원하지 않습니다 — 그 파일은 런타임이 쓰고 토큰·절대경로를 담을 수 있어 자동 복원
 자체가 데이터 파괴이기 때문입니다.
+
+---
+
+## H. HOME SQLite 이전·Factory 인계·프로필 lease
+
+### 명시적 HOME 상태 이전
+
+```
+moai migrate home-state                 기본 dry-run: 경로·census·논리 건수·integrity 출력
+  └ internal/cli/migrate_home_state.go  source: <project>/.moai/state/todo/backlog.db
+                                         target: ~/.moai/db/<project-key>/todo/backlog.db
+                                         search: not-applicable (runtime producer 없음)
+
+moai migrate home-state --apply --verified-live
+  ├ 현재 HEAD용 검증 증거 확인
+  ├ admission lock 획득 + migration marker 설치
+  ├ runtime census 1차·2차 모두 zero인지 확인
+  ├ ~/.moai/backups/<project-key>/<migration-id>/에 원본+manifest 보존
+  ├ SQLite 백업 API로 복사
+  ├ integrity, 논리 건수·digest, SHA-256 readback
+  └ 성공 뒤에도 프로젝트 로컬 source는 롤백 원본으로 보존
+```
+
+SessionStart, MCP 서버, Factory는 상태를 열기 전 같은 admission lock과 marker를 검사합니다.
+marker의 소유 PID가 살아 있거나 판정 불명확하면 자동 복구하지 않습니다. 죽은 소유자만
+`moai migrate home-state recover`로 정리할 수 있고, `rollback`은 manifest와 해시가 검증된
+백업만 받습니다.
+
+### Factory resume 인계
+
+```
+producer                              FactoryStore.SaveResume(schema v2)
+consumer                              ClaimResume(token, owner PID+fingerprint, TTL)
+  ├ pending                           claimed로 전이
+  ├ expired + owner dead              새 token으로 재점유
+  ├ owner live/indeterminate           거절
+  └ 주입 성공                          FinishResume(expected token)
+```
+
+token 비교는 ABA를 막는 CAS 경계입니다. 주입과 완료 기록 사이에 프로세스가 죽으면 메시지는
+다시 전달될 수 있으므로 이 계약은 exactly-once가 아니라 **at-least-once**입니다. v1 레거시
+claim이 자동 판정 불가능할 때만 `moai factory handoff recover-resume`으로 운영자가
+`fail` 또는 `requeue`를 명시합니다.
+
+### 전역 프로필 lease
+
+```
+launcher                              ~/.moai/run/profile-leases.db에 provisional 생성
+child spawn                           child PID+fingerprint로 token CAS transfer
+SessionStart                          session ID·project key enrich
+SessionEnd                            같은 소유권을 확인하고 release
+clean                                 live/indeterminate lease는 보존, provably-dead만 정리
+```
+
+SQLite 파일은 `0600`, 상위 HOME 디렉터리는 `0700` 경계를 유지합니다. 이 흐름은 코드상
+계약을 설명한 것이며, 실제 운영 backlog 이전이 실행됐다는 완료 표시는 아닙니다.

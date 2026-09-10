@@ -1,36 +1,18 @@
-// state_dir.go — the project-local state directory and its one-time
-// relocation from the legacy name (SPEC-TODO-SQLITE-001 REQ-TOSQ-015, M3;
-// absorbs card t309).
-//
-// The directory is named for the command that owns what it holds. `moai todo`
-// owns the queue; there is no `moai kanban` command, and there has not been
-// one for as long as the queue has existed. `.moai/state/kanban/` therefore
-// described nothing a user could type. The rename rides this SPEC because a
-// schema redefinition is the one moment it costs nothing: the storage cutover
-// already walks every queue root once, under the lock, so the directory move
-// costs no second migration.
-//
-// The per-session registry files (`<uuid>.json`, plus companions.json and
-// leads.json) share the directory and ride along by construction — the
-// relocation moves the DIRECTORY, not a file list, so nothing can be
-// forgotten from an inventory that does not exist.
-//
-// Three rules govern it, and the third is the one that matters:
-//
-//	only legacy exists  → relocate the directory, then proceed
-//	both exist          → the new name wins; the legacy directory is left
-//	                      STRICTLY untouched (stale-copy policy)
-//	relocation refused  → serve the legacy layout READ-ONLY and do not error
-//
-// The third rule is why this file exists rather than a one-line rename. A
-// filesystem that cannot relocate the directory — a cross-device mount, a
-// permission the operator did not expect — must leave the queue usable, not
-// take it away. Failing open here mirrors ResolveTodoQueueRoot's own posture.
+// state_dir.go resolves the Todo queue to
+// ~/.moai/db/<project-key>/todo/backlog.db. Temporary test projects remain
+// project-local so tests cannot touch the operator's home. Legacy project-local
+// queues are copied through the logical store and read back before the global
+// database becomes canonical; the source remains a rollback snapshot.
 package kanban
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"reflect"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // stateDirName is the project-local state directory `moai todo` owns.
@@ -42,9 +24,60 @@ const stateDirName = "todo"
 // occurrence in production Go is a consumer that was missed.
 const legacyStateDirName = "kanban"
 
-// StateDirForRoot returns the project-local state directory under root.
+// StateDirForRoot returns the canonical Todo state directory for root.
 func StateDirForRoot(root string) string {
+	local := projectStateDirForRoot(root)
+	override := os.Getenv(paths.EnvHome)
+	if _, temporary := TempOriginReason(root); temporary && (override == "" || !filepath.IsAbs(override)) {
+		return local
+	}
+	home, err := HomeDirFn()
+	if err != nil || home == "" {
+		return local
+	}
+	moaiHome := filepath.Join(home, ".moai")
+	if override != "" && filepath.IsAbs(override) {
+		moaiHome = override
+	}
+	return filepath.Join(moaiHome, "db", homestate.ProjectKey(root), "todo")
+}
+
+func legacyHomeStateDirsForRoot(root string) []string {
+	moaiHome, err := paths.MoaiHome()
+	if err != nil {
+		return nil
+	}
+	keys := []string{homestate.ProjectKey(root), legacyTodoQueueProjectKey(root)}
+	seen := map[string]bool{}
+	var dirs []string
+	for _, key := range keys {
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		base := filepath.Join(moaiHome, "todo", key)
+		dirs = append(dirs, base, filepath.Join(base, ".moai", "state", stateDirName), filepath.Join(base, ".moai", "state", legacyStateDirName))
+	}
+	return dirs
+}
+
+func projectStateDirForRoot(root string) string {
 	return filepath.Join(root, ".moai", "state", stateDirName)
+}
+
+// RuntimeStateDirForRoot is the compatibility home for session registries
+// that have not yet moved to the factory database. It must never be used for
+// backlog persistence.
+func RuntimeStateDirForRoot(root string) string {
+	current := projectStateDirForRoot(root)
+	if dirExists(current) {
+		return current
+	}
+	legacy := LegacyStateDirForRoot(root)
+	if dirExists(legacy) {
+		return legacy
+	}
+	return current
 }
 
 // LegacyStateDirForRoot returns the pre-rename directory under root. It is
@@ -60,8 +93,13 @@ func dirExists(path string) bool {
 	return err == nil && info.IsDir()
 }
 
-// @MX:ANCHOR: [AUTO] resolveStateDir — the directory-layer resolver every queue and registry path enters through
-// @MX:REASON: expected fan_in >= 3 (backlog store open, RecordPath, registry helpers); it is the single place the legacy directory is relocated, so a second resolver would let one surface adopt while another still reads the old name
+func queueExists(dir string) bool {
+	layout := inspectBacklogLayout(filepath.Join(dir, backlogFileName))
+	return layout.dbExists || layout.jsonExists
+}
+
+// @MX:ANCHOR: [AUTO] resolveStateDir — the directory-layer resolver every queue path enters through
+// @MX:REASON: it is the single place a legacy queue is adopted, so a second resolver would let readers observe different backlogs
 //
 // resolveStateDir returns the state directory to USE under root, and whether
 // the answer is the legacy one.
@@ -78,7 +116,10 @@ func dirExists(path string) bool {
 // names.
 func resolveStateDir(root string, adopt bool) (dir string, legacy bool) {
 	current := StateDirForRoot(root)
-	if dirExists(current) {
+	// A global Todo directory may already exist because factory/handoff startup
+	// materialized the home layout. It wins only when it contains a queue;
+	// otherwise a project-local legacy queue still needs adoption.
+	if (current == projectStateDirForRoot(root) && dirExists(current)) || queueExists(current) {
 		// Stale-copy policy: once the new name exists it wins unconditionally,
 		// and the legacy directory is left exactly where it is. Leaving it
 		// visible is the point — an operator still writing to the dead path
@@ -87,8 +128,14 @@ func resolveStateDir(root string, adopt bool) (dir string, legacy bool) {
 		return current, false
 	}
 
-	legacyDir := LegacyStateDirForRoot(root)
-	if !dirExists(legacyDir) {
+	legacyDir := ""
+	for _, candidate := range append([]string{projectStateDirForRoot(root), LegacyStateDirForRoot(root)}, legacyHomeStateDirsForRoot(root)...) {
+		if candidate != current && queueExists(candidate) {
+			legacyDir = candidate
+			break
+		}
+	}
+	if legacyDir == "" {
 		// Neither exists: first run. The new name is created on demand by
 		// whichever writer gets there first.
 		return current, false
@@ -97,10 +144,91 @@ func resolveStateDir(root string, adopt bool) (dir string, legacy bool) {
 	if !adopt {
 		return legacyDir, true
 	}
-	if err := relocateStateDir(legacyDir, current); err != nil {
+	if current == projectStateDirForRoot(root) {
+		if err := relocateStateDir(legacyDir, current); err != nil {
+			return legacyDir, true
+		}
+		return current, false
+	}
+	if err := relocateQueueArtifacts(legacyDir, current); err != nil {
 		return legacyDir, true
 	}
 	return current, false
+}
+
+// relocateQueueArtifacts moves only Todo-owned files into the global project
+// database directory. Session registries that happened to share the old
+// project directory are deliberately left for the Factory migration.
+func relocateQueueArtifacts(from, to string) (err error) {
+	sourceQueue := filepath.Join(from, backlogFileName)
+	sourceStore := NewBacklogStore(sourceQueue)
+	lock, err := sourceStore.acquireLock()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = joinBacklogReleaseErr(err, lock.Release(), sourceQueue)
+	}()
+
+	if err := os.MkdirAll(to, 0o700); err != nil {
+		return err
+	}
+	if err := os.Chmod(to, 0o700); err != nil {
+		return err
+	}
+	targetQueue := filepath.Join(to, backlogFileName)
+	targetStore := NewBacklogStore(targetQueue)
+	targetLock, err := targetStore.acquireLock()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = joinBacklogReleaseErr(err, targetLock.Release(), targetQueue)
+	}()
+
+	// Another adopting process may have completed the copy while this caller
+	// waited on the legacy lock. The first verified home database wins; a late
+	// migrator must not overwrite cards already added there.
+	if queueExists(to) {
+		return nil
+	}
+	sourceLayout := inspectBacklogLayout(sourceQueue)
+	if !sourceLayout.dbExists && !sourceLayout.jsonExists {
+		return os.ErrNotExist
+	}
+	record, err := sourceStore.LoadPure()
+	if err != nil {
+		return err
+	}
+	targetEngine, err := openBacklogEngine(backlogSQLitePath(targetQueue))
+	if err != nil {
+		return err
+	}
+	migrationComplete := false
+	defer func() {
+		if !migrationComplete {
+			removeBacklogDBArtifacts(backlogSQLitePath(targetQueue))
+		}
+	}()
+	if err := targetEngine.writeRecord(context.Background(), record); err != nil {
+		_ = targetEngine.close()
+		return err
+	}
+	readback, err := targetEngine.readRecord(context.Background())
+	closeErr := targetEngine.close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if !reflect.DeepEqual(record, readback) {
+		return os.ErrInvalid
+	}
+	migrationComplete = true
+	// The source remains as a rollback snapshot. Once the explicit migration
+	// command archives it, the canonical directory already wins every read.
+	return nil
 }
 
 // relocateStateDir renames the legacy directory to the current one, creating
@@ -136,6 +264,9 @@ func BacklogPathForRoot(root string) string {
 // ResolveTodoQueueRoot / ResolveTodoQueueRootAdopting split one layer down.
 func BacklogPathForRootAdopting(root string) string {
 	dir, _ := resolveStateDir(root, true)
+	if StateDirForRoot(root) != projectStateDirForRoot(root) {
+		_ = homestate.EnsureProjectLayout(root)
+	}
 	return filepath.Join(dir, backlogFileName)
 }
 

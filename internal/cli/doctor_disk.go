@@ -7,7 +7,10 @@ package cli
 // clean --home never touches ~/.claude.
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -22,16 +25,15 @@ import (
 )
 
 // profileCategoryStat is one profile top-level category's size and regular-file
-// count — the inputs of the duplicate-cluster heuristic.
+// count — report metadata carried alongside a verified tree digest.
 type profileCategoryStat struct {
 	Size  int64
 	Files int
 }
 
-// homeDuplicateCluster is a report-only duplicate-cluster finding: a category
-// name carried byte-equally (equal total size AND equal file count) by two or
-// more profiles. No content hashing — false positives are accepted by design
-// because the finding is advisory (plan.md §4 resolved decision, D1).
+// homeDuplicateCluster is a report-only duplicate-plugin finding. Membership
+// is established by a SHA-256 digest over sorted paths, modes, and contents;
+// size and file count are display metadata, not equality evidence.
 type homeDuplicateCluster struct {
 	Category string
 	Profiles []string
@@ -48,18 +50,21 @@ type homeDirStat struct {
 
 // homeDiskReport aggregates everything the check renders.
 type homeDiskReport struct {
-	Root           string
-	TotalBytes     int64
-	TopLevel       []homeDirStat
-	Profiles       []homeDirStat
-	ProfileCats    map[string]map[string]profileCategoryStat
-	Clusters       []homeDuplicateCluster
-	ReleaseCount   int
-	CurrentVersion string
-	CleanableBytes int64
-	RetentionDays  int
-	ClaudeBytes    int64
-	ClaudeExists   bool
+	Root             string
+	TotalBytes       int64
+	TopLevel         []homeDirStat
+	Profiles         []homeDirStat
+	ProfileCats      map[string]map[string]profileCategoryStat
+	Clusters         []homeDuplicateCluster
+	ReleaseCount     int
+	CurrentVersion   string
+	CleanableBytes   int64
+	RetentionDays    int
+	ClaudeBytes      int64
+	ClaudeExists     bool
+	InactiveProfiles []string
+	OversizeProfiles []string
+	InsecureHomeDirs int
 }
 
 // @MX:NOTE: [AUTO] Home Disk Usage check — advisory only; the WARN threshold is the compiled DefaultHomeDiskWarnBytes (config surface per CLAUDE.local.md §14)
@@ -147,6 +152,18 @@ func gatherHomeDiskReport(root string) homeDiskReport {
 			profileRoot := filepath.Join(profilesDir, p.Name())
 			size, files := homeEntrySize(profileRoot, p)
 			report.Profiles = append(report.Profiles, homeDirStat{Name: p.Name(), Size: size, Files: files})
+			if size > config.DefaultProfileMaxBytes {
+				report.OversizeProfiles = append(report.OversizeProfiles, p.Name())
+			}
+			lastUsed := newestModTime(filepath.Join(profileRoot, "projects"))
+			if lastUsed.IsZero() {
+				if info, err := p.Info(); err == nil {
+					lastUsed = info.ModTime()
+				}
+			}
+			if !lastUsed.IsZero() && lastUsed.Before(time.Now().AddDate(0, 0, -config.DefaultProfileUnusedDays)) {
+				report.InactiveProfiles = append(report.InactiveProfiles, p.Name())
+			}
 			cats := map[string]profileCategoryStat{}
 			if catEntries, err := os.ReadDir(profileRoot); err == nil {
 				for _, ce := range catEntries {
@@ -164,7 +181,15 @@ func gatherHomeDiskReport(root string) homeDiskReport {
 		})
 	}
 
-	report.Clusters = findDuplicateClusters(report.ProfileCats)
+	report.Clusters = findPluginHashClusters(profilesDir, report.ProfileCats)
+	_ = filepath.WalkDir(root, func(_ string, entry os.DirEntry, walkErr error) error {
+		if walkErr == nil && entry.IsDir() {
+			if info, err := entry.Info(); err == nil && info.Mode().Perm() != 0o700 {
+				report.InsecureHomeDirs++
+			}
+		}
+		return nil
+	})
 
 	// Releases count vs current version.
 	releasesDir := filepath.Join(root, defs.ReleasesSubdir)
@@ -232,6 +257,15 @@ func renderHomeDiskDetail(report homeDiskReport) string {
 		}
 		lines = append(lines, "duplicate clusters: "+strings.Join(clusterParts, "; ")+" — report-only")
 	}
+	if len(report.OversizeProfiles) > 0 {
+		lines = append(lines, fmt.Sprintf("profiles above %s: %s", formatDiskBytes(config.DefaultProfileMaxBytes), strings.Join(report.OversizeProfiles, ", ")))
+	}
+	if len(report.InactiveProfiles) > 0 {
+		lines = append(lines, fmt.Sprintf("profiles unused for %d+ days: %s (report-only)", config.DefaultProfileUnusedDays, strings.Join(report.InactiveProfiles, ", ")))
+	}
+	if report.InsecureHomeDirs > 0 {
+		lines = append(lines, fmt.Sprintf("~/.moai directories not mode 0700: %d (repaired by 'moai clean --home --force')", report.InsecureHomeDirs))
+	}
 	lines = append(lines, fmt.Sprintf("releases: %d binary/binary-set entr(ies) vs current %s (keep %d beyond current)",
 		report.ReleaseCount, report.CurrentVersion, config.DefaultReleaseKeep))
 	lines = append(lines, fmt.Sprintf("cleanable estimate: ~%s under %dd retention — 'moai clean --home' (dry-run by default)",
@@ -244,44 +278,92 @@ func renderHomeDiskDetail(report homeDiskReport) string {
 	return strings.Join(lines, "\n")
 }
 
-// findDuplicateClusters implements the resolved D1 heuristic: a category name
-// whose (total size, file count) signature is carried identically by two or
-// more profiles forms a cluster. Report-only; no content hashing.
-func findDuplicateClusters(perProfile map[string]map[string]profileCategoryStat) []homeDuplicateCluster {
-	type signature struct {
-		size  int64
-		files int
-	}
-	byCategory := map[string]map[signature][]string{}
+func newestModTime(root string) time.Time {
+	var newest time.Time
+	_ = filepath.WalkDir(root, func(_ string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info, infoErr := entry.Info(); infoErr == nil && info.ModTime().After(newest) {
+			newest = info.ModTime()
+		}
+		return nil
+	})
+	return newest
+}
+
+// findPluginHashClusters reports byte-identical plugin trees. The digest is
+// over sorted relative paths, file modes and contents, so equal aggregate
+// sizes alone never produce a duplicate claim.
+func findPluginHashClusters(profilesDir string, perProfile map[string]map[string]profileCategoryStat) []homeDuplicateCluster {
+	byDigest := map[string][]string{}
+	stats := map[string]profileCategoryStat{}
 	for profile, cats := range perProfile {
-		for category, st := range cats {
-			if category == "" {
-				continue
-			}
-			if byCategory[category] == nil {
-				byCategory[category] = map[signature][]string{}
-			}
-			sig := signature{size: st.Size, files: st.Files}
-			byCategory[category][sig] = append(byCategory[category][sig], profile)
+		stat, ok := cats["plugins"]
+		if !ok || stat.Files == 0 {
+			continue
 		}
-	}
-	var clusters []homeDuplicateCluster
-	for category, sigs := range byCategory {
-		for sig, profiles := range sigs {
-			if len(profiles) < 2 {
-				continue
-			}
-			sort.Strings(profiles)
-			clusters = append(clusters, homeDuplicateCluster{
-				Category: category,
-				Profiles: profiles,
-				Size:     sig.size,
-				Files:    sig.files,
-			})
+		digest, err := treeDigest(filepath.Join(profilesDir, profile, "plugins"))
+		if err != nil {
+			continue
 		}
+		byDigest[digest] = append(byDigest[digest], profile)
+		stats[digest] = stat
 	}
-	sort.Slice(clusters, func(i, j int) bool { return clusters[i].Category < clusters[j].Category })
-	return clusters
+	var out []homeDuplicateCluster
+	for digest, profiles := range byDigest {
+		if len(profiles) < 2 {
+			continue
+		}
+		sort.Strings(profiles)
+		st := stats[digest]
+		out = append(out, homeDuplicateCluster{Category: "plugins sha256=" + digest[:12], Profiles: profiles, Size: st.Size, Files: st.Files})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Category < out[j].Category })
+	return out
+}
+
+func treeDigest(root string) (string, error) {
+	var files []string
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	sort.Strings(files)
+	h := sha256.New()
+	for _, path := range files {
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return "", err
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return "", err
+		}
+		_, _ = io.WriteString(h, filepath.ToSlash(rel)+"\x00"+info.Mode().String()+"\x00")
+		file, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		_, copyErr := io.Copy(h, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return "", copyErr
+		}
+		if closeErr != nil {
+			return "", closeErr
+		}
+		_, _ = h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // homeEntrySize returns the size and regular-file count of a ReadDir entry

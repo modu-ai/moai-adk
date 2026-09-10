@@ -312,10 +312,15 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			}
 			// Persist model_policy to system.yaml so it survives future updates
 			systemPath := filepath.Join(sectionsDir, defs.SystemYAML)
-			systemData, _ := os.ReadFile(systemPath)
+			systemData, err := os.ReadFile(systemPath)
+			if err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("read system.yaml: %w", err)
+			}
 			var sys map[string]any
 			if len(systemData) > 0 {
-				_ = yaml.Unmarshal(systemData, &sys)
+				if err := yaml.Unmarshal(systemData, &sys); err != nil {
+					return fmt.Errorf("parse system.yaml: %w", err)
+				}
 			}
 			if sys == nil {
 				sys = make(map[string]any)
@@ -326,8 +331,12 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			}
 			moaiSection["model_policy"] = string(policy)
 			sys["moai"] = moaiSection
-			if updatedData, err := yaml.Marshal(sys); err == nil {
-				_ = atomicfile.Write(systemPath, updatedData, defs.FilePerm)
+			updatedData, err := yaml.Marshal(sys)
+			if err != nil {
+				return fmt.Errorf("marshal system.yaml: %w", err)
+			}
+			if err := atomicfile.Write(systemPath, updatedData, defs.FilePerm); err != nil {
+				return fmt.Errorf("write system.yaml: %w", err)
 			}
 		}
 	}

@@ -79,7 +79,7 @@ When the check finds a problem, the fix directive baked into the code is shown a
 
 | Finding | Directive |
 |---------|-----------|
-| Project with no wiring at all | `moai init --agent codex` |
+| Project with no wiring at all | `moai init --llm codex` |
 | Sidecar divergence after hook changes | Re-trust the changed hooks with `codex /hooks` |
 | Missing skill mirror · broken link | `moai update --templates-only --force --yes` |
 | Registration whose skill file has vanished | Remove the entry or restore the skill file |

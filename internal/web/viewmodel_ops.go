@@ -666,8 +666,8 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 
 	vm := OverviewVM{
 		Stats: []StatVM{
-			{Label: "SPEC", Value: itoa(len(rows)), Note: itoa(len(inProgress)) + " in-progress", NoteKey: "statNote.in-progress", NoteParams: itoa(len(inProgress))},
-			{Label: "drift", Value: itoa(mustFix), Note: "MUST-FIX", NoteKey: "statNote.must-fix"},
+			{Label: "work tracked", Value: itoa(len(rows)), Note: itoa(len(inProgress)) + " in-progress", NoteKey: "statNote.in-progress", NoteParams: itoa(len(inProgress))},
+			{Label: "review", Value: itoa(mustFix), Note: "needs review", NoteKey: "statNote.needs-review"},
 			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
 			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys", NoteKey: "statNote.keys", NoteParams: itoa(verifyKeys)},
 		},

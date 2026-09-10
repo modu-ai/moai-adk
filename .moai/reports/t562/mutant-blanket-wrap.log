@@ -1,0 +1,6 @@
+=== RUN   TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative
+    codex_skills_prune_readback_test.go:139: stat target = "\\var\\folders\\kt\\nq2q81cn4gx3y41r7x47ggmr0000gn\\T\\TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative3648331893\\001\\x\\SKILL.md", want the native Join product "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative3648331893/001/x/SKILL.md" unrewritten
+--- FAIL: TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.839s
+FAIL

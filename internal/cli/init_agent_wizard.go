@@ -2,7 +2,7 @@
 // (SPEC-INIT-HARNESS-PROMPT-001, spec.md §4 D1).
 //
 // init_agent_wizard.go holds resolveAgentWiringWithWizard: the SINGLE point at
-// which the agent-harness selection is resolved, from either the --agent flag
+// which the agent-harness selection is resolved, from either the --llm flag
 // or the wizard's answer. It mirrors applyAutonomyTierFromWizard
 // (init_autonomy_wizard.go, SPEC-INIT-WIZARD-REPAIR-001 REQ-005) minus the opts
 // write — the harness selection persists nothing, so no InitOptions field is
@@ -28,10 +28,10 @@ import (
 // flag-over-wizard precedence (REQ-IHP-002/003).
 //
 // Precedence:
-//  1. When the --agent flag was explicitly set to a non-empty value
+//  1. When the --llm flag was explicitly set to a non-empty value
 //     (flagChanged && flagValue != ""), it wins and the wizard selection is
 //     discarded. BOTH conjuncts are required: the flag's cobra default is the
-//     empty string, not claude, so `--agent ""` is "explicitly set and empty"
+//     empty string, not claude, so `--llm ""` is "explicitly set and empty"
 //     and must fall through rather than pin claude — otherwise the claude
 //     fallback stops being attributable to the flag's absence. This matches
 //     validateInitFlags, which short-circuits on agent != "".

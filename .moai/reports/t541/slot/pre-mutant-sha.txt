@@ -1,0 +1,2 @@
+dea6916d4289d16a1448053c24479f9ecba87e72aa14fd00879114a05a97112d  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t541/internal/template/templates/.claude/agents/moai/plan-auditor.md
+39704a921e04227ef84025b49dad9c64636d0fbcff9104998eb6049691bd8e35  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t541/.claude/agents/moai/plan-auditor.md

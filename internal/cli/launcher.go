@@ -14,6 +14,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -615,6 +616,12 @@ func runGitCommand(dir string, args ...string) (string, error) {
 // launchClaudeFunc is the function used by launchClaude. Override in tests.
 var launchClaudeFunc = launchClaudeDefault
 
+// execOrSpawnClaudeFunc hands the process over to claude. Defaults to the
+// build-tagged execOrSpawnClaude (POSIX syscall.Exec / Windows
+// spawn-and-exit). Override in tests to capture the binary path, args, and
+// env a launch would have used without replacing the test process.
+var execOrSpawnClaudeFunc = execOrSpawnClaude
+
 // launchClaude delegates to launchClaudeFunc for testability.
 func launchClaude(profileName string, extraArgs []string) error {
 	return launchClaudeFunc(profileName, extraArgs)
@@ -633,10 +640,12 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		fmt.Fprintf(os.Stderr, "Profile: %s\n", profileName)
 	}
 
-	// 2. Find claude binary
-	claudeBin, err := exec.LookPath("claude")
+	// 2. Find claude binary — explicit pin first (MOAI_CLAUDE_BIN env var,
+	// then the llm.claude_bin config key; issue #1697), PATH lookup unchanged
+	// as the fallback.
+	claudeBin, err := resolveLaunchClaudeBinary()
 	if err != nil {
-		return fmt.Errorf("claude not found in PATH. Install Claude Code first")
+		return err
 	}
 
 	// 3. Read profile preferences and sync to project config. The
@@ -762,6 +771,23 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		a = append(a, passThrough...)
 		return a
 	}
+	profileLeaseEnv := ""
+	if isNamedProfile(profileName) {
+		store, leaseErr := homestate.OpenProfileLeases()
+		if leaseErr != nil {
+			return fmt.Errorf("protect profile lease before launch: %w", leaseErr)
+		}
+		token, createErr := store.CreateProvisional(context.Background(), homestate.ProfileLease{
+			ProfileName: profileName, ProfilePath: profile.GetProfileDir(profileName),
+			ProjectKey: homestate.ProjectKey(launchProjectRoot()), PID: os.Getpid(),
+			ProcessFingerprint: homestate.CurrentProcessFingerprint(),
+		})
+		_ = store.Close()
+		if createErr != nil {
+			return fmt.Errorf("protect profile lease before launch: %w", createErr)
+		}
+		profileLeaseEnv = "MOAI_PROFILE_LEASE_TOKEN=" + token
+	}
 
 	// 7. Execute with --continue fallback
 	if cont {
@@ -769,6 +795,9 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		tryCmd.Stdin = os.Stdin
 		tryCmd.Stdout = os.Stdout
 		tryCmd.Stderr = os.Stderr
+		if profileLeaseEnv != "" {
+			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
+		}
 		err := tryCmd.Run()
 		if err == nil {
 			return nil
@@ -815,7 +844,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// boundary on the chain ledger and hand the node ID to the child
 	// environment. Fail-open — never blocks the launch (card t242).
 	launchEnv = injectChainNodeForLaunch(passThrough, launchEnv, os.Stderr)
-	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
+	if profileLeaseEnv != "" {
+		launchEnv = append(launchEnv, profileLeaseEnv)
+	}
+	return execOrSpawnClaudeFunc(claudeBin, buildArgs(false), launchEnv)
 }
 
 // --- Flag Parsing ---

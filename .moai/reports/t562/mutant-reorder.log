@@ -1,0 +1,6 @@
+=== RUN   TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion
+    codex_skills_prune_readback_test.go:114: SkipReason = "oddly-formed path — not resolvable here", want "relative path — no observed resolution base" (classification ran on the declared form)
+--- FAIL: TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.049s
+FAIL

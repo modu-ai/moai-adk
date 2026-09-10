@@ -1,0 +1,5 @@
+## AC-CSRB-009 — cross-platform build (structural only)
+go build ./... => rc=0
+GOOS=windows GOARCH=amd64 go build ./... => rc=0
+LIMIT: a GOOS cross-build compiles non-test packages only; *_test.go files are NOT compiled by 'go build'.
+  (witness) GOOS=windows go vet ./internal/cli/ => vet rc=0

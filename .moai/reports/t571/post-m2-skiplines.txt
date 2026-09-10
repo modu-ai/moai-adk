@@ -1,0 +1,47 @@
+--- SKIP: TestAuditPinLive_GLMDifferential (0.00s)
+--- SKIP: TestAuditPinLive_CodexPinConfirmation (0.00s)
+--- SKIP: TestCodexLive_ThreadReuseAndTurnInterrupt (0.00s)
+--- SKIP: TestCodexLive_SandboxPolicyStickiness (0.00s)
+--- SKIP: TestCodexLive_OmittedSandboxPolicyBaseline (0.00s)
+--- SKIP: TestCodexLive_ExplicitReadOnlyApprovalStall (0.00s)
+--- SKIP: TestCodexLive_ReviewStartEmitsTurnStarted (0.00s)
+--- SKIP: TestGateLockHelperSleep (0.00s)
+--- SKIP: TestCleanupMoaiWorktrees (0.00s)
+--- SKIP: TestGLMToolsEnable_AtomicWriteProtectsOriginal (0.00s)
+--- SKIP: TestSessionPIDStampExecHelper (0.00s)
+--- SKIP: TestGLMAudit_NoAskUserQuestion (0.00s)
+--- SKIP: TestMCPServer_StdioRoundTripSubprocess (0.01s)
+--- SKIP: TestViewAcceptanceCriteria_ShapeTraceE2E (0.00s)
+--- SKIP: TestAxisACanaryHomeSweep_TodoFamily (0.00s)
+    --- SKIP: TestLegacySkillIDsNotEmbedded/manifest_error (0.00s)
+    --- SKIP: TestLegacySkillIDsNotEmbedded/manifest_empty (0.00s)
+--- SKIP: TestRunVersionBranch_NonTTYProceeds (0.00s)
+--- SKIP: TestMigrationStatus_Human (0.00s)
+--- SKIP: TestMigrationStatus_JSON (0.00s)
+--- SKIP: TestMigrationRun_AppliesPending (0.00s)
+--- SKIP: TestMigrationRun_NoPending (0.00s)
+--- SKIP: TestMigrationRollback_NoRollbackable (0.00s)
+--- SKIP: TestMigrationRollback_Succeeds (0.00s)
+--- SKIP: TestMigrationRollback_M001_Rejected (0.00s)
+--- SKIP: TestCrossCompileScriptMirrorsCanonical (0.00s)
+    --- SKIP: TestResolveRulesDir/windows_volume-letter_gate.yaml_value_passes_through_unjoined (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	559.691s
+--- SKIP: TestCheckDeadHooks_ViaLintAgentFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	0.798s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	8.995s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	2.339s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	4.738s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	4.683s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	5.139s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	4.224s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	5.524s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	6.224s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	3.776s
+    --- SKIP: TestMakeSymlink_SkipsWhenCreationFails/collision (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	4.881s
+--- SKIP: TestMergeUserFiles_EmbeddedTemplateError (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.234s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	0.413s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	2.672s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	8.741s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	9.885s

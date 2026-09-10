@@ -365,16 +365,16 @@ func TestQualityGate_detectToolchain(t *testing.T) {
 				}
 			}
 			g := NewQualityGate(&GateConfig{ProjectDir: dir})
-			tc := g.detectToolchain()
+			dt := g.detectToolchain()
 			if tt.wantNil {
-				if tc != nil {
-					t.Errorf("detectToolchain() should be nil for %q, got marker %v", tt.name, tc.markerFiles)
+				if dt != nil {
+					t.Errorf("detectToolchain() should be nil for %q, got marker %v", tt.name, dt.tc.markerFiles)
 				}
 			} else {
-				if tc == nil {
+				if dt == nil {
 					t.Errorf("detectToolchain() should not be nil for %q", tt.name)
-				} else if tc.markerFiles[0] != tt.wantMarker {
-					t.Errorf("detectToolchain() first marker = %q, want %q", tc.markerFiles[0], tt.wantMarker)
+				} else if dt.tc.markerFiles[0] != tt.wantMarker {
+					t.Errorf("detectToolchain() first marker = %q, want %q", dt.tc.markerFiles[0], tt.wantMarker)
 				}
 			}
 		})
@@ -436,10 +436,11 @@ dev_dependencies:
 				t.Fatalf("write pubspec.yaml: %v", err)
 			}
 			g := NewQualityGate(&GateConfig{ProjectDir: dir})
-			tcResolved := g.detectToolchain()
-			if tcResolved == nil {
+			dtResolved := g.detectToolchain()
+			if dtResolved == nil {
 				t.Fatalf("detectToolchain returned nil")
 			}
+			tcResolved := dtResolved.tc
 			if tcResolved.testStep == nil {
 				t.Fatalf("testStep is nil")
 			}
@@ -469,13 +470,13 @@ func TestQualityGate_detectToolchain_GlobPattern(t *testing.T) {
 	}
 
 	g := NewQualityGate(&GateConfig{ProjectDir: dir})
-	tc := g.detectToolchain()
+	dt := g.detectToolchain()
 
-	if tc == nil {
+	if dt == nil {
 		t.Fatal("detectToolchain() should detect C# project from .csproj file")
 	}
-	if tc.markerFiles[0] != "*.csproj" {
-		t.Errorf("expected *.csproj marker, got %v", tc.markerFiles)
+	if dt.tc.markerFiles[0] != "*.csproj" {
+		t.Errorf("expected *.csproj marker, got %v", dt.tc.markerFiles)
 	}
 }
 

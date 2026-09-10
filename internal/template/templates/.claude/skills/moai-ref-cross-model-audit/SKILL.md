@@ -172,6 +172,15 @@ Two invariants follow:
 - **Advisory backends never flip overall to fail.** Case 4 records the advisory
   conflict but keeps `overall_verdict: pass`. This is the fixed user-policy term:
   an advisory FAIL is reported, not enforced.
+- **An explicitly configured `required` gate left unmet fails overall.** A gate
+  the project sets to `required` in `workflow.audit.gates` must actually hold:
+  when that backend returns `inconclusive` (missing binary, auth failure, error),
+  the engine fails `overall_verdict` and names the unmet backend in
+  `residual_risk_note`. A gate the project never configured keeps the fail-open
+  behavior — the distributed default is NOT an opt-in. In both cases the
+  backend's own `per_backend_verdicts` entry stays `inconclusive` and its
+  `fail_open_backends` listing stays, so the audit trail keeps saying the
+  backend never ran.
 - **Below 2 participants the flag is `null`, not `false` — unless a divergence
   was observed.** The case table presumes a comparable field of 2+; when
   `participant_count` is 0 or 1 (for example the only required backend to
@@ -189,7 +198,10 @@ NEVER hard-blocked on a missing optional dependency — `evidence-of-absence ≠
 evidence-of-failure`.
 
 When ALL non-Claude backends are inconclusive, the overall verdict fails open to
-the in-session Claude verdict (the always-available anchor).
+the in-session Claude verdict (the always-available anchor) — EXCEPT for a gate
+the project explicitly configured `required` in `workflow.audit.gates`: that
+gate left unmet fails `overall_verdict` instead (see the convergence policy
+above).
 
 ## Folding the result into the audit verdict
 
@@ -211,6 +223,9 @@ residual-risk section so a human reader sees which backend disagreed with which.
   whose handlers the convergence engine reuses (the engine does NOT re-implement
   them).
 - `workflow.audit.gates.*` — the per-auditor gate map (`off`/`advisory`/`required`).
+  An explicit `required` is enforced: an unmet required gate (its backend
+  `inconclusive`) fails `overall_verdict`. Absent keys fall back to the
+  distributed defaults WITHOUT that enforcement — write the key to opt in.
 - `workflow.multi.review_gate.enabled` — opt-in toggle for the multi-review-gate
   Stop hook (the Path C fully-autonomous gate). Default OFF; opt in via local
   config.

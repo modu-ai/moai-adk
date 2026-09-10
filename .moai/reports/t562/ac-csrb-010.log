@@ -1,0 +1,31 @@
+## AC-CSRB-010 — scoped package suite with executed-test control
+command: go test ./internal/cli/... -timeout 1800s -v > .moai/reports/t562/ac-010.log 2>&1
+harness-reported exit code: rc=0
+--- PASS: TestRunSync_SpecID (0.00s)
+PASS
+AFTER  --- PASS:  count = 6938
+AFTER  --- FAIL:  count = 0
+AFTER  --- SKIP:  count = 30
+top-level FAIL lines = 0
+BEFORE (t540 pre-flight base, same command, tree b4ce67468) = 6886
+### this card's own new tests present in the AFTER log
+--- PASS: TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion
+--- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins
+--- PASS: TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative
+--- PASS: TestJudgeCodexSkillEntry_QuotedEnabledDispositionMoved
+--- PASS: TestJudgeCodexSkillEntry_SeparatorConversion
+--- PASS: TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard
+### this card's contribution to the AFTER PASS count (decomposition)
+card test PASS lines (top-level + subtests) = 8
+--- PASS: TestJudgeCodexSkillEntry_SeparatorConversion (0.00s)
+--- PASS: TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion (0.00s)
+--- PASS: TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative (0.00s)
+--- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/missing_means_eligible (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/resolving_means_kept (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/backslash_declaration_is_oddly_formed_and_never_statted (0.00s)
+--- PASS: TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard (0.00s)
+  (EligibilityGatingPins subtests:)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/missing_means_eligible (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/resolving_means_kept (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/backslash_declaration_is_oddly_formed_and_never_statted (0.00s)

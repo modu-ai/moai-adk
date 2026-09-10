@@ -1,0 +1,12 @@
+=== RUN   TestStatusDoesNotRewriteIndex
+    status_optional_locks_test.go:96: control: plain status rewrote .git/index: sha c2f9a06c5823e34a348d6dca6d171b8127672276b71bce9e30e24c351f8bd40e -> 027c393b31115363dfa92b23e1ede758b52663d55cee8f7af4c27e22aba41168
+--- PASS: TestStatusDoesNotRewriteIndex (3.84s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/git	4.223s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/project	0.460s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/quality	0.651s [no tests to run]
+EXIT=0

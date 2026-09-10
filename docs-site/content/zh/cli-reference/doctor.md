@@ -79,7 +79,7 @@ moai doctor [OPTIONS]
 
 | 发现 | 指令 |
 |------|------|
-| 完全没有配线的项目 | `moai init --agent codex` |
+| 完全没有配线的项目 | `moai init --llm codex` |
 | 钩子改动后的 sidecar 偏差 | 用 `codex /hooks` 重新信任改动过的钩子 |
 | 技能镜像缺失 · 链接断开 | `moai update --templates-only --force --yes` |
 | 指向的技能文件已消失的注册 | 移除该条目,或还原技能文件 |

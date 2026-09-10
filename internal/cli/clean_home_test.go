@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -230,6 +231,10 @@ func TestCleanHome_RetentionFromHomeTier(t *testing.T) {
 		root := filepath.Join(home, ".moai")
 		writeTier(t, home, "0")
 		writeHomeFixtureFile(t, filepath.Join(root, "logs", "ancient.log"), 10, time.Now().AddDate(0, 0, -400))
+		logsDir := filepath.Join(root, "logs")
+		if err := os.Chmod(logsDir, 0o755); err != nil {
+			t.Fatalf("chmod logs: %v", err)
+		}
 
 		p, _, errBuf := newHomeTestPrinter()
 		if err := runCleanHome(p, true); err != nil {
@@ -241,7 +246,127 @@ func TestCleanHome_RetentionFromHomeTier(t *testing.T) {
 		if !strings.Contains(errBuf.String(), "disabled") {
 			t.Errorf("disabled run should say so, got %q", errBuf.String())
 		}
+		info, err := os.Stat(logsDir)
+		if err != nil {
+			t.Fatalf("stat repaired logs dir: %v", err)
+		}
+		if info.Mode().Perm() != 0o700 {
+			t.Errorf("force must repair directory permissions even when retention is disabled: mode=%v", info.Mode().Perm())
+		}
 	})
+}
+
+func TestScanHomeCleanable_PreservesActiveProfile(t *testing.T) {
+	home := hermeticHomeEnv(t)
+	root := filepath.Join(home, ".moai")
+	profileRoot := filepath.Join(root, "claude-profiles", "active")
+	project := filepath.Join(profileRoot, "projects", "old-project")
+	debug := filepath.Join(profileRoot, "debug", "old.log")
+	writeHomeFixtureFile(t, filepath.Join(project, "session.jsonl"), 10, agedTime(t))
+	writeHomeFixtureFile(t, debug, 10, agedTime(t))
+	if err := os.Chtimes(project, agedTime(t), agedTime(t)); err != nil {
+		t.Fatalf("chtimes project: %v", err)
+	}
+	t.Setenv("CLAUDE_CONFIG_DIR", profileRoot)
+
+	candidates := scanHomeCleanable(root, 30, config.DefaultReleaseKeep, "v-test", time.Now())
+	for _, candidate := range candidates {
+		if candidate.AbsPath == project || candidate.AbsPath == debug {
+			t.Fatalf("active profile path selected for deletion: %s", candidate.AbsPath)
+		}
+	}
+}
+
+func TestScanHomeCleanable_ProfileProjectsRetentionAndCap(t *testing.T) {
+	home := hermeticHomeEnv(t)
+	root := filepath.Join(home, ".moai")
+	projects := filepath.Join(root, "claude-profiles", "p1", "projects")
+	if err := os.MkdirAll(projects, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	old := filepath.Join(projects, "old.jsonl")
+	fresh := filepath.Join(projects, "fresh.jsonl")
+	for _, path := range []string{old, fresh} {
+		f, err := os.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := f.Truncate(3 * 1024 * 1024 * 1024); err != nil {
+			_ = f.Close()
+			t.Fatal(err)
+		}
+		_ = f.Close()
+	}
+	now := time.Now()
+	oldAt := now.AddDate(0, 0, -200)
+	if err := os.Chtimes(old, oldAt, oldAt); err != nil {
+		t.Fatal(err)
+	}
+	protected := filepath.Join(projects, "old-project", "credentials-cache")
+	if err := os.MkdirAll(protected, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(protected, "token"), []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(filepath.Join(projects, "old-project"), oldAt, oldAt); err != nil {
+		t.Fatal(err)
+	}
+	candidates := scanHomeCleanable(root, 30, 3, "v-test", now)
+	seenOld, seenFresh, seenProtected := false, false, false
+	for _, c := range candidates {
+		if c.AbsPath == old {
+			seenOld = true
+		}
+		if c.AbsPath == fresh {
+			seenFresh = true
+		}
+		if c.AbsPath == filepath.Join(projects, "old-project") {
+			seenProtected = true
+		}
+	}
+	if !seenOld {
+		t.Error("180-day retention must select the old projects entry")
+	}
+	if seenFresh {
+		t.Error("after removing the old 3 GiB entry the profile is below 5 GiB; fresh entry must survive")
+	}
+	if seenProtected {
+		t.Error("a project entry containing a credentials* descendant must be protected")
+	}
+}
+
+func TestSecureHomeDirectoriesRepairsMode0700(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX modes are not represented on Windows")
+	}
+	home := hermeticHomeEnv(t)
+	root := filepath.Join(home, ".moai")
+	nested := filepath.Join(root, "claude-profiles", "p1", "projects")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	nonProfile := filepath.Join(root, "cache", "search")
+	if err := os.MkdirAll(nonProfile, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{root, filepath.Dir(nested), nonProfile} {
+		if err := os.Chmod(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := secureHomeDirectories(root); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{root, filepath.Join(root, "claude-profiles"), filepath.Join(root, "claude-profiles", "p1"), nested, filepath.Join(root, "cache"), nonProfile} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0o700 {
+			t.Errorf("%s mode=%#o, want 0700", path, got)
+		}
+	}
 }
 
 // TestCleanHome_NoHomeIsNoop: an absent ~/.moai home is an informative

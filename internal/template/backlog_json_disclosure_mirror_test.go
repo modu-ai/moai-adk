@@ -2,12 +2,10 @@
 // (card t395), AC-BJD-015 / AC-BJD-016: the distributed copy carries the
 // same repair, and the binary carries the distributed copy.
 //
-// THREE files, FOUR sites: `workflows/todo.md` holds two of them (the
-// primary-checkout assertion and the home-fallback one). A check written
-// against "the four mirrored files" would name a set that does not exist,
-// and — measured, not supposed — a single regex over
-// `state/todo/backlog.json` cannot see the home-fallback site at all, so a
-// one-pattern completeness check passes over three of four.
+// THREE files carried FOUR historical claims: `workflows/todo.md` held both
+// the primary-checkout assertion and the home-fallback one. The home-scoped
+// SQLite layout removes both old path shapes; two patterns remain necessary
+// because neither can detect the other by construction.
 package template
 
 import (
@@ -56,9 +54,8 @@ func TestBacklogJSONDisclosure_EmbeddedTemplatesMatchSource(t *testing.T) {
 // TestBacklogJSONDisclosure_TemplateMirrorIsComplete — AC-BJD-015, run as
 // its two enumerated patterns rather than one.
 func TestBacklogJSONDisclosure_TemplateMirrorIsComplete(t *testing.T) {
-	// Pattern 1: the three same-shape sites. Exactly one match survives,
-	// and it is the export-json line of the storage document — correct,
-	// out of scope, deliberately not edited.
+	// Pattern 1: the former project-local path. The home-scoped layout leaves
+	// no current deployment claim using it.
 	primary := regexp.MustCompile(`state/todo/backlog\.json`)
 	// Pattern 2: the home-fallback site. Pattern 1 cannot see this one.
 	fallback := regexp.MustCompile(`moai/todo/<project-key>/backlog\.json`)
@@ -90,10 +87,9 @@ func TestBacklogJSONDisclosure_TemplateMirrorIsComplete(t *testing.T) {
 		t.Fatalf("walk templates: %v", err)
 	}
 
-	const exportControl = "templates/.moai/docs/todo-queue-storage.md"
-	if len(primaryHits) != 1 || !strings.HasPrefix(primaryHits[0], exportControl+":") {
-		t.Errorf("pattern 1 (state/todo/backlog.json) expected exactly one surviving match — the %s export-json control — got %d:\n%s",
-			exportControl, len(primaryHits), strings.Join(primaryHits, "\n"))
+	if len(primaryHits) != 0 {
+		t.Errorf("pattern 1 (state/todo/backlog.json) expected zero current claims, got %d:\n%s",
+			len(primaryHits), strings.Join(primaryHits, "\n"))
 	}
 	if len(fallbackHits) != 0 {
 		t.Errorf("pattern 2 (home-fallback) expected zero matches, got %d:\n%s",

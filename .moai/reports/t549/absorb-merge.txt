@@ -1,0 +1,90 @@
+Merge made by the 'ort' strategy.
+ .claude/settings.json                              |   8 -
+ .claude/skills/moai/workflows/goal.md              |  21 +-
+ .moai/config/sections/tool-policy.yaml             |  47 --
+ .moai/reports/t556/merge-tree-catalog.txt          |  68 +++
+ .moai/reports/t556/merge-tree-goal-pkg.txt         |   1 +
+ .moai/reports/t556/merge-tree-goal-tests.txt       |  18 +
+ .moai/reports/t556/remeasure.md                    | 306 ++++++++++
+ .moai/reports/t556/verdict.md                      | 137 +++++
+ .moai/reports/t581/reproduction.md                 | 212 +++++++
+ .moai/reports/t581/verdict.md                      |  81 +++
+ .moai/reports/t581/window-20260910.md              | 146 +++++
+ .moai/reports/t609/verdict.md                      | 268 +++++++++
+ .moai/reports/t611/mutant-no-specid.log            |  27 +
+ .moai/reports/t611/post-fix-green.log              | 442 ++++++++++++++
+ .moai/reports/t611/post-fix-pkg-before-fixture.log |   6 +
+ .moai/reports/t611/post-restore-green.log          | 442 ++++++++++++++
+ .moai/reports/t611/pre-edit-red.log                |  25 +
+ .moai/reports/t611/run-evidence.md                 | 226 +++++++
+ .moai/reports/t611/verdict.md                      | 200 +++++++
+ .moai/reports/t611/vet-post-restore.log            |   0
+ .moai/reports/t611/vet.log                         |   0
+ .moai/reports/t612/exits-measure-before.txt        |  11 +
+ .moai/reports/t612/full-package-after-fix.txt      | 657 ++++++++++++++++++++
+ .moai/reports/t612/full-package-before-fix.txt     | 664 +++++++++++++++++++++
+ .moai/reports/t612/green-after-fix.txt             |  40 ++
+ .moai/reports/t612/merge-tree-gofmt.txt            |   0
+ .moai/reports/t612/merge-tree-remeasure.txt        | 657 ++++++++++++++++++++
+ .moai/reports/t612/merge-tree-vet.txt              |   0
+ .moai/reports/t612/mutant-ac006.txt                |   6 +
+ .moai/reports/t612/mutant-f03.txt                  |  43 ++
+ .moai/reports/t612/mutant-f04.txt                  |  45 ++
+ .moai/reports/t612/red-before-fix.txt              |  38 ++
+ .moai/reports/t612/restore-f03.txt                 |  40 ++
+ .moai/reports/t612/restore-f04.txt                 |  40 ++
+ .moai/reports/t612/verdict.md                      | 155 +++++
+ .moai/reports/t612/vet-final.txt                   |   0
+ .moai/reports/t612/vet.txt                         |   0
+ internal/cli/doctor_codex_seam_use_guard_test.go   |  98 +++
+ internal/cli/goal.go                               |  21 +-
+ internal/cli/goal_arm_prose_shape_test.go          | 141 +++++
+ internal/cli/goal_runnable.go                      | 104 ++++
+ internal/cli/mcp_server.go                         |  19 +-
+ internal/mx/scanner.go                             |  22 +-
+ internal/mx/scanner_pending_warn_test.go           | 186 ++++++
+ internal/session/store.go                          |   7 +-
+ internal/session/store_resolve_scope_test.go       | 169 ++++++
+ internal/session/store_test.go                     |   4 +
+ internal/template/catalog.yaml                     |   2 +-
+ .../template/templates/.claude/settings.json.tmpl  |   8 -
+ .../.claude/skills/moai/workflows/goal.md          |  21 +-
+ 50 files changed, 5776 insertions(+), 103 deletions(-)
+ create mode 100644 .moai/reports/t556/merge-tree-catalog.txt
+ create mode 100644 .moai/reports/t556/merge-tree-goal-pkg.txt
+ create mode 100644 .moai/reports/t556/merge-tree-goal-tests.txt
+ create mode 100644 .moai/reports/t556/remeasure.md
+ create mode 100644 .moai/reports/t556/verdict.md
+ create mode 100644 .moai/reports/t581/reproduction.md
+ create mode 100644 .moai/reports/t581/verdict.md
+ create mode 100644 .moai/reports/t581/window-20260910.md
+ create mode 100644 .moai/reports/t609/verdict.md
+ create mode 100644 .moai/reports/t611/mutant-no-specid.log
+ create mode 100644 .moai/reports/t611/post-fix-green.log
+ create mode 100644 .moai/reports/t611/post-fix-pkg-before-fixture.log
+ create mode 100644 .moai/reports/t611/post-restore-green.log
+ create mode 100644 .moai/reports/t611/pre-edit-red.log
+ create mode 100644 .moai/reports/t611/run-evidence.md
+ create mode 100644 .moai/reports/t611/verdict.md
+ create mode 100644 .moai/reports/t611/vet-post-restore.log
+ create mode 100644 .moai/reports/t611/vet.log
+ create mode 100644 .moai/reports/t612/exits-measure-before.txt
+ create mode 100644 .moai/reports/t612/full-package-after-fix.txt
+ create mode 100644 .moai/reports/t612/full-package-before-fix.txt
+ create mode 100644 .moai/reports/t612/green-after-fix.txt
+ create mode 100644 .moai/reports/t612/merge-tree-gofmt.txt
+ create mode 100644 .moai/reports/t612/merge-tree-remeasure.txt
+ create mode 100644 .moai/reports/t612/merge-tree-vet.txt
+ create mode 100644 .moai/reports/t612/mutant-ac006.txt
+ create mode 100644 .moai/reports/t612/mutant-f03.txt
+ create mode 100644 .moai/reports/t612/mutant-f04.txt
+ create mode 100644 .moai/reports/t612/red-before-fix.txt
+ create mode 100644 .moai/reports/t612/restore-f03.txt
+ create mode 100644 .moai/reports/t612/restore-f04.txt
+ create mode 100644 .moai/reports/t612/verdict.md
+ create mode 100644 .moai/reports/t612/vet-final.txt
+ create mode 100644 .moai/reports/t612/vet.txt
+ create mode 100644 internal/cli/doctor_codex_seam_use_guard_test.go
+ create mode 100644 internal/cli/goal_arm_prose_shape_test.go
+ create mode 100644 internal/mx/scanner_pending_warn_test.go
+ create mode 100644 internal/session/store_resolve_scope_test.go
