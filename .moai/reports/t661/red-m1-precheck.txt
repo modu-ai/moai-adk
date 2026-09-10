@@ -1,0 +1,4 @@
+pre-check before M1 run (2026-09-11)
+pgrep go test|cli.test|go vet: 1 foreign process = go test ./internal/hook/ (lane t624)
+go list -deps ./internal/hook/: internal/cli count 0, internal/hook count 1 (positive control)
+verdict: no other internal/cli compile running
