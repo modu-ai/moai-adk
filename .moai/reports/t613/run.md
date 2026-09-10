@@ -149,7 +149,7 @@ ok  	github.com/modu-ai/moai-adk/internal/web	0.833s
 
 ### 8.1 Claim
 
-1. `isLoopbackHost` 가 `localhost` 를 대소문자와 무관하게 받는다(`strings.EqualFold`). 포트가 붙어도 같다. 이 비교는 Unicode 단순 대소문자 접기라서 ASCII 밖의 접기 동치 표기(U+017F 가 섞인 `localhoſt`)도 받는다(§8.5, 미결).
+1. `isLoopbackHost` 가 `localhost` 를 대소문자와 무관하게 받는다(`strings.EqualFold`). 포트가 붙어도 같다. 이 비교는 Unicode 단순 대소문자 접기라서 ASCII 밖의 접기 동치 표기(U+017F 가 섞인 `localhoſt`)도 받는다(§8.5, 미결). **→ 다음 회차(§8.6)에서 ASCII 대소문자로 한정했다. U+017F 표기는 이제 거부된다.**
 2. 나머지 허용 범위는 넓히지도 좁히지도 않았다. `127.0.0.0/8` 전체, 대괄호 유무와 무관한 `::1`, IPv4-mapped loopback(`::ffff:127.x.y.z`)은 그대로 받고, 빈 Host 를 포함한 그 밖의 값은 그대로 거부한다.
 3. 이 허용 범위가 이제 오버레이 프로브가 아니라 커밋된 단위 표(`TestIsLoopbackHost`)의 행으로 고정됐다. 대조군 행렬(`TestHostGateControlMatrix`)에도 `LOCALHOST`·`LocalHost:3041` 행이 정적 GET·`/settings` GET·POST `/save` 세 열로 들어갔다.
 4. 새 행은 공허하지 않다. 비교를 대소문자 구분으로 되돌린 변이본(m4)에서 대문자 칸 9개가 정확히 실패한다.
@@ -227,7 +227,7 @@ FAIL	github.com/modu-ai/moai-adk/internal/web	24.587s
 
 ### 8.4 Gaps
 
-- **`strings.EqualFold` 의 Unicode 접기 범위는 결정하지 않았다.** U+017F 가 섞인 `localhoſt` 도 받아진다는 것은 쟀지만(§8.5), ASCII 대소문자만 받도록 좁힐지는 정하지 않았고 단위 표에도 행이 없다. 다른 접기 쌍은 따로 재지 않았다.
+- **`strings.EqualFold` 의 Unicode 접기 범위는 결정하지 않았다.** U+017F 가 섞인 `localhoſt` 도 받아진다는 것은 쟀지만(§8.5), ASCII 대소문자만 받도록 좁힐지는 정하지 않았고 단위 표에도 행이 없다. 다른 접기 쌍은 따로 재지 않았다. **→ 해소(§8.6):** ASCII 한정으로 좁혔고 U+017F 표기 3개를 거부 행으로 고정했다. `localhost` 글자의 접기 궤도도 조사했다.
 - **끝 점 형태 `localhost.` 는 결정하지 않았다.** GREEN 에서도 거부된다(`LOCALHOST.` 도 거부). 절대 도메인 표기라 의미상 `localhost` 와 같다고 볼 여지가 있지만, 이번 회차에서는 받을지 말지를 정하지 않았고 단위 표에도 어느 쪽으로든 행을 넣지 않았다. 미결 항목이다.
 - 공개 핸들러(`/glm-key/reveal`)에 대문자 `localhost` 로 요청하는 칸은 따로 단언하지 않았다. 같은 함수를 호출하므로 같은 판정을 받는다는 것은 코드 구조에서 나온 추론이다.
 - 실제 클라이언트가 `Host: LOCALHOST` 를 보내는 경우는 재지 않았다. `httptest` 요청과 `isLoopbackHost` 직접 호출로만 쟀다.
@@ -242,3 +242,83 @@ FAIL	github.com/modu-ai/moai-adk/internal/web	24.587s
 - **`strings.EqualFold` 는 ASCII 대소문자만 접지 않는다.** 유니코드 단순 대소문자 접기라서 U+017F(LATIN SMALL LETTER LONG S)가 `s` 로 접힌다. 오버레이 프로브로 재 보니 `localhoſt`, `localhoſt:3041`, `LOCALHOſT` 가 모두 받아졌다(`loopback-probe-2.txt` Part C, `exit=0`). 즉 실제 허용 집합은 "대소문자 무관 `localhost`"보다 조금 넓다. godoc 에는 이 사실을 그대로 적었다.
   - rebinding 방어 관점의 판단(추론, 실제 브라우저로 재지는 않음): 브라우저는 URL 호스트를 IDNA(UTS #46) 매핑으로 정규화하는데, 그 매핑이 U+017F 를 `s` 로 바꾸므로 `http://localhoſt:<port>` 는 `Host: localhost` 로 나간다. 공격자 도메인이 이 경로로 `localhost` 로 위장하는 수단은 보이지 않는다. 브라우저가 아닌 클라이언트는 원래 loopback 에 직접 접속할 수 있으므로 새로 열리는 경로도 아니다.
   - 그래도 리드 지시(`strings.EqualFold`)의 문자를 따랐기 때문에 남는 선택이다. ASCII 대소문자만 받도록 좁힐지는 이번 회차에서 정하지 않았고 단위 표에도 행을 넣지 않았다. 미결 항목이다.
+
+  > **해소(§8.6):** 레인 오케스트레이터가 이 수용을 의도하지 않은 확장으로 판정했다. 호스트 이름의 대소문자 무시는 ASCII 한정(RFC 4343)이므로, 다음 회차에서 `localhost` 비교를 ASCII 대소문자로만 제한했다. U+017F 표기는 다시 거부된다. 원문은 기록으로 남긴다.
+
+### 8.6 후속 회차 2 — `localhost` 비교를 ASCII 대소문자로 한정
+
+(지시문은 이 절을 `### 8.1` 로 붙이라고 했지만 §8 안에 이미 `### 8.1 Claim` 이 있어 번호가 겹치므로 `8.6` 으로 달았다.)
+
+**무엇을, 왜 바꿨나.** 앞 회차의 `strings.EqualFold` 는 Unicode 단순 대소문자 접기로 비교해서 `localhoſt`(U+017F)까지 받았다. 레인 오케스트레이터는 이것을 자기 지시가 만든 의도하지 않은 확장으로 판정했다. 호스트 이름의 대소문자 무시는 ASCII 문자에만 적용되는 규칙이다(RFC 4343). 그래서 `localhost` 는 ASCII 글자의 대소문자 차이만 받고, ASCII 밖의 접기 동치 표기는 거부하도록 고쳤다. 이 수용은 `f45e88300` 에서 생겨 이번 GREEN 커밋에서 사라진다. 그 사이는 이 카드 브랜치에만 있었고 develop 에 올라간 적이 없다. `f45e88300` 이전에는 대소문자 구분 비교라 U+017F 표기가 거부됐으므로, 이번 수정이 예전에 받던 입력을 막는 일은 없다.
+
+**구현.** `len(hostname) == len("localhost") && strings.EqualFold(hostname, "localhost")`. ASCII 가 아닌 룬은 UTF-8 에서 최소 2바이트라, 바이트 길이가 `localhost` 와 같다는 조건이 붙으면 비교가 ASCII 대소문자 차이로만 좁혀진다. 이 이유는 코드 주석에 그대로 적었다. `isLoopbackHost` godoc 은 "ASCII 글자는 대소문자 무관, ASCII 밖의 접기 동치는 거부"로 고쳤고, U+017F 를 받는다는 문장은 지웠다.
+
+**접기 동치 조사.** `unicode.SimpleFold` 로 `localhost` 각 글자의 접기 궤도를 출력해 보니, ASCII 밖의 동치가 있는 글자는 `s`(U+017F) 하나뿐이었다. 켈빈 기호(U+212A)는 `K`/`k` 로만 접히는데 `localhost` 에는 `k` 가 없어서 해당 행을 넣지 않았다.
+
+```
+$ go run <scratch>/foldorbit/main.go
+l: [U+004C]  o: [U+004F]  c: [U+0043]  a: [U+0041]  h: [U+0048]  t: [U+0054]
+s: [U+017F U+0053]
+KELVIN U+212A orbit: U+004B U+006B
+```
+
+(출력은 한 줄에 한 글자씩이며 위에서는 줄을 묶어 적었다.)
+
+#### 8.6.1 Evidence
+
+RED-3 — 바뀌지 않은 `app.go`(`f45e88300` 과 같음)에서 (`.moai/reports/t613/run/red-3.txt`)
+
+```
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s ./internal/web/... > .moai/reports/t613/run/red-3.txt 2>&1
+exit=1
+--- FAIL: TestIsLoopbackHost (0.00s)
+    coverage_test.go:193: isLoopbackHost("LOCALHOſT") = true, want false
+    coverage_test.go:193: isLoopbackHost("localhoſt") = true, want false
+    coverage_test.go:193: isLoopbackHost("localhoſt:3041") = true, want false
+FAIL	github.com/modu-ai/moai-adk/internal/web	18.509s
+```
+
+최상위 실패 1개, 서브테스트 실패 0개, 실패 행 3개. 새로 넣은 ASCII 밖 행만 실패했고 ASCII 대문자 행은 통과했다. 테스트 소스에 추가한 7줄에는 ASCII 밖 문자 0개, 역슬래시-u 0개다. U+017F 는 `string(rune(0x17F))` 변환으로만 만든다.
+
+GREEN-3 (`.moai/reports/t613/run/green-3.txt`)
+
+```
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s ./internal/web/... > .moai/reports/t613/run/green-3.txt 2>&1
+exit=0
+ok  	github.com/modu-ai/moai-adk/internal/web	19.705s
+```
+
+Lint (`.moai/reports/t613/run/lint-3.txt`) — `go vet` 출력 없음(exit 0), `golangci-lint` 0 issues(exit 0), `gofmt -l` 출력 없음(exit 0).
+
+변이본 (`.moai/reports/t613/run/mutants-3.txt`, `go test -overlay` 로만 주입)
+
+| 변이본 | 비교 | exit | 실패 |
+|---|---|---|---|
+| m5 | 길이 가드 없이 `strings.EqualFold` 만 | 1 | U+017F 행 3개만 (최상위 1, 서브테스트 0). ASCII 대문자 행은 통과 |
+| m4 재실행 | `hostname == "localhost"` | 1 | 대문자 단위 행 3 + 행렬 칸 6 (최상위 2, 서브테스트 6). U+017F 행은 통과 |
+
+두 변이본 모두 빌드 실패·panic·race 0. 가드와 대소문자 무시가 각각 자기 행으로 지켜진다는 뜻이다.
+
+허용 범위 재측정 (`.moai/reports/t613/run/loopback-probe-3.txt`) — 오버레이 프로브 Part A(23개)·Part C(5개) exit=0, 커밋된 표와 공개 핸들러 테스트 `-v` exit=0(`TestGLMKeyRevealLoopbackOnly` 서브테스트 4개 PASS).
+
+| 판정 | 입력 |
+|---|---|
+| 받음 | `localhost`, `localhost:3041`, `LOCALHOST`, `LocalHost:3041`, `Localhost:8080`, `127.0.0.1`, `127.0.0.1:3041`, `127.1.2.3:3041`, `127.255.255.254`, `::1`, `[::1]`, `[::1]:3041`, `::ffff:127.0.0.1`, `[::ffff:127.0.0.1]:3041` |
+| 거부 | `localhoſt`, `localhoſt:3041`, `LOCALHOſT`, `localhost.`, `LOCALHOST.`, `0.0.0.0`, `0.0.0.0:8080`, `10.0.0.5:8080`, `attacker.example.com`, `localhost.attacker.example.com`, `LOCALHOST.attacker.example.com`, 빈 값 |
+
+#### 8.6.2 Baseline-attribution
+
+| 측정 | 트리 |
+|---|---|
+| RED-3 | 작업 트리 = RED-3 커밋 `fa58df3f0` 내용(기준 `f45e88300` + 테스트 행만 추가, `app.go` 변경 없음) |
+| GREEN-3, lint-3, m5, m4 재실행, probe-3 | `fa58df3f0` + `app.go` 가드·godoc 수정분(이 문서를 싣는 GREEN 커밋 내용) |
+
+변이본은 GREEN-3 `app.go` 에서 비교 줄 하나만 바꾼 사본으로 만들었다(바꾼 줄 수 1).
+
+#### 8.6.3 Gaps
+
+- 끝 점 형태 `localhost.` 는 여전히 결정하지 않았다. GREEN-3 에서도 거부된다. 미결 항목이다.
+- 접기 궤도는 `localhost` 의 글자에 대해서만 조사했다. 잘못된 UTF-8 바이트가 섞인 Host 는 따로 넣어 보지 않았다(길이 가드 논리상 룬 수가 9보다 적어져 `EqualFold` 가 거짓이라는 것은 추론이다).
+- 공개 핸들러에 U+017F 표기로 요청하는 칸은 따로 단언하지 않았다. 같은 함수를 부르므로 같은 판정이라는 것은 코드 구조에서 나온 추론이다.
+- 커버리지 수치는 재지 않았다. 접기 궤도 프로그램, 변이 소스, 프로브 파일, 오버레이 JSON 은 스크래치 영역에만 있다.
+- 이 절도 `moai-domain-humanize` 최종 교정을 거치지 않았다.

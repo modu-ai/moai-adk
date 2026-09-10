@@ -1,0 +1,13 @@
+# t613 follow-up increment 3 — lint on the GREEN-3 tree (RED-3 fa58df3f0 + ASCII-only guard in app.go)
+
+$ go vet ./internal/web/...
+(no output)
+exit=0
+
+$ golangci-lint run ./internal/web/...
+0 issues.
+exit=0
+
+$ gofmt -l internal/web
+(no output)
+exit=0

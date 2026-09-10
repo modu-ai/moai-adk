@@ -235,10 +235,9 @@ func hostCheckMiddleware(next http.Handler) http.Handler {
 
 // isLoopbackHost reports whether a request Host header (host or host:port)
 // names a loopback origin. It accepts exactly:
-//   - localhost in any letter case (host names are case-insensitive), with or
-//     without a port. The comparison is strings.EqualFold, i.e. Unicode simple
-//     case folding, so a fold-equivalent non-ASCII spelling also matches
-//     (U+017F LATIN SMALL LETTER LONG S folds to "s");
+//   - localhost with its ASCII letters in any case (host-name case
+//     insensitivity is ASCII-only, RFC 4343), with or without a port.
+//     Non-ASCII case-fold equivalents are rejected;
 //   - any IP address in 127.0.0.0/8;
 //   - ::1, with or without brackets;
 //   - IPv4-mapped loopback (::ffff:127.x.y.z), with or without brackets.
@@ -253,7 +252,10 @@ func isLoopbackHost(host string) bool {
 		hostname = h
 	}
 	hostname = strings.TrimSuffix(strings.TrimPrefix(hostname, "["), "]")
-	if strings.EqualFold(hostname, "localhost") {
+	// strings.EqualFold alone applies Unicode folding (U+017F would match "s").
+	// Every non-ASCII rune takes at least two bytes in UTF-8, so requiring the
+	// same byte length as "localhost" limits the match to ASCII case changes.
+	if len(hostname) == len("localhost") && strings.EqualFold(hostname, "localhost") {
 		return true
 	}
 	if ip := net.ParseIP(hostname); ip != nil {
