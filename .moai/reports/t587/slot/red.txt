@@ -1,0 +1,89 @@
+=== RUN   TestUpdateRepair_RecoverHintFlagExists
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes
+    update_repair_test.go:87: report.RenderOutcome(AlreadyUpToDate): recovery hint names --restore-config, which `moai update` does not define
+    update_repair_test.go:87: report.RenderOutcome(UpdatedFiles): recovery hint names --restore-config, which `moai update` does not define
+    update_repair_test.go:87: report.RenderOutcome(DryRun): recovery hint names --restore-config, which `moai update` does not define
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome
+    update_repair_test.go:94: renderUpdateOutcome: recovery hint names --restore-config, which `moai update` does not define
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/source_literals
+    update_repair_test.go:127: update/report/outcome.go: recovery hint names --restore-config, which `moai update` does not define
+    update_repair_test.go:127: update/report/outcome.go: recovery hint names --restore-config, which `moai update` does not define
+    update_repair_test.go:127: update/report/outcome.go: recovery hint names --restore-config, which `moai update` does not define
+    update_repair_test.go:127: update_tux.go: recovery hint names --restore-config, which `moai update` does not define
+--- FAIL: TestUpdateRepair_RecoverHintFlagExists (0.02s)
+    --- FAIL: TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes (0.00s)
+    --- FAIL: TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome (0.00s)
+    --- FAIL: TestUpdateRepair_RecoverHintFlagExists/source_literals (0.02s)
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/template_sync
+2026/09/10 23:23:27 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    update_repair_test.go:194: rendered settings.json lacks "Bash(git commit:*)": the team project was rendered with git mode manual
+    update_repair_test.go:194: rendered settings.json lacks "Bash(git push:*)": the team project was rendered with git mode manual
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall
+    update_repair_test.go:216: TemplateContext.GitMode = "manual", want "team" from git-strategy.yaml
+--- FAIL: TestUpdateRepair_RenderUsesProjectGitMode (0.32s)
+    --- FAIL: TestUpdateRepair_RenderUsesProjectGitMode/template_sync (0.29s)
+    --- FAIL: TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall (0.03s)
+=== RUN   TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup
+    update_repair_test.go:241: legacy skill was not archived before the cleanup removed it: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup3777894471/002/.moai/archive/skills/v2.16/moai-domain-mobile/SKILL.md: no such file or directory
+        output: [1;38;2;217;119;87m◆ MoAI-ADK[m  v3.1.3  [38;2;154;163;160mgo1.26.8 · claude[m
+        Current version   moai-adk v3.1.3
+        ●  Syncing templates  from embedded filesystem
+        
+        Proceeding with template deployment ---
+        
+          ○ Backing up .moai/config...
+          ✓ .moai/config backed up
+          ○ Backing up user-owned namespace...
+          ✓ User-owned namespace backed up: .moai/backups/update-2026-09-10T14-23-27Z
+          [1;38;2;217;119;87m●[m ██░░░░░░░░ 1/5 steps
+          ○ Validating templates...
+          ✓ All templates validated
+          [1;38;2;217;119;87m●[m ████░░░░░░ 2/5 steps
+          ○ Removing .claude/settings.json...
+          ✓ Skipped .claude/settings.json (not found)
+          ○ Removing .claude/commands/moai...
+          ✓ Skipped .claude/commands/moai (not found)
+          ○ Removing .claude/agents/moai...
+          ✓ Skipped .claude/agents/moai (not found)
+          ○ Removing .claude/skills/moai*...
+          ✓ Removed .claude/skills/moai* (backed up 1 unmanaged file(s))
+          ○ Removing .claude/rules/moai...
+          ✓ Skipped .claude/rules/moai (not found)
+          ○ Removing .claude/output-styles/moai...
+          ✓ Skipped .claude/output-styles/moai (not found)
+          ○ Removing .claude/hooks/moai...
+          ✓ Skipped .claude/hooks/moai (not found)
+          ○ Removing .moai/config...
+          ✓ Removed .moai/config (backed up 1 unmanaged file(s))
+          [1;38;2;217;119;87m●[m ██████░░░░ 3/5 steps
+          ○ Deploying templates...
+          ✓ Templates deployed
+          [1;38;2;217;119;87m●[m ████████░░ 4/5 steps
+          ○ Restoring user settings...
+          ✓ User settings restored
+          ✓ 1 user settings key(s) preserved (run with --verbose to list)
+          [38;2;91;191;154m✓[m ██████████ 5/5 steps
+        
+         ✓ Updated 581 files 
+        [38;2;154;163;160m62 merged/added + 519 managed re-deployed · removed 1 under managed paths (1 not restored — local-only)[m
+        [38;2;154;163;160mBackup: .moai-backups/20260910_232327[m                              
+        [38;2;154;163;160mRecover: moai update --restore-config .moai-backups/20260910_232327[m
+        Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.
+        
+        To reconfigure project settings (development mode, git, model policy), run:
+           moai update -c
+        Tip: this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai cg -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+--- FAIL: TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup (0.24s)
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept
+    update_repair_test.go:266: applyWizardConfig returned nil for an unparseable system.yaml
+    update_repair_test.go:269: system.yaml was rewritten after a parse failure: "moai:\n    model_policy: high\n"
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported
+    update_repair_test.go:283: applyWizardConfig returned nil when system.yaml could not be read or written
+--- FAIL: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors (0.01s)
+    --- FAIL: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept (0.00s)
+    --- FAIL: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.707s
+FAIL
