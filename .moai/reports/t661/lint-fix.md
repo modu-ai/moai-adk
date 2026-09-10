@@ -20,3 +20,9 @@ Local lint on tree `e793fd1bc` plus the one-line edit (committed next), golangci
 
 ## Residual-risk
 - Version skew between local and CI linters could still surface a different finding in CI.
+
+## Integration window
+- `moai integration status` free, then `moai integration acquire --name lane-3` exit 0 (since 2026-09-10T23:52:02Z).
+- Local develop had moved to `96004e166` (4 commits after `f6b121a9c`); `git fetch origin develop` exit 0, origin/develop `f6b121a9c`, left-right `0 4` (local develop current).
+- Re-absorb: `git merge --no-ff 96004e166` exit 0 -> `4147eeaef` (^1 `c5fbe8628`, ^2 `96004e166`), clean.
+- Delta vs the linted tree `c5fbe8628`: 1 file, `.moai/reports/t464/reverify-verdict-20260907.md` (no Go file, no go.mod/go.sum, not under an embed path). The lint result carries over; no re-run.
