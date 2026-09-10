@@ -85,9 +85,12 @@ if [ -n "$STAGED_GO" ]; then
     # that as a vet finding. Grouping staged files by module root and running
     # 'go vet' inside each one fixes it.
     #
-    # A staged file whose module root cannot be determined falls back to the
-    # repo root, so the worst case is the previous behaviour and never less
-    # coverage.
+    # A staged file that belongs to no module at all -- no go.mod at or above
+    # its directory, repo root included -- is skipped. Falling back to the repo
+    # root there cannot vet anything (go exits "cannot find main module") and
+    # only produces a spurious block reported as a vet finding. Where the repo
+    # root DOES hold a go.mod the walk returns "." as before, so single-module
+    # layouts keep their full coverage.
     if command -v go >/dev/null 2>&1; then
         # Optional Go build tags (.moai/config/build-tags, first non-comment
         # non-blank line) so projects requiring non-default tags (e.g. goolm)
@@ -119,7 +122,7 @@ if [ -n "$STAGED_GO" ]; then
         MODROOTS="$(
             printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                 [ -n "$f" ] || continue
-                _mr="$(_moai_module_root "$(dirname "$f")")" || _mr="."
+                _mr="$(_moai_module_root "$(dirname "$f")")" || continue
                 printf '%s\n' "$_mr"
             done | sort -u
         )"
@@ -129,7 +132,7 @@ if [ -n "$STAGED_GO" ]; then
                 printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                     [ -n "$f" ] || continue
                     _d="$(dirname "$f")"
-                    _m="$(_moai_module_root "$_d")" || _m="."
+                    _m="$(_moai_module_root "$_d")" || continue
                     [ "$_m" = "$_mr" ] || continue
                     if [ "$_mr" = "." ]; then
                         printf './%s\n' "$_d"
