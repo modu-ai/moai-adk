@@ -1,0 +1,27 @@
+=== RUN   TestResolveBlockerScope_SingleMatchResolved
+--- PASS: TestResolveBlockerScope_SingleMatchResolved (0.00s)
+=== RUN   TestResolveBlockerScope_NoMatchResolvesNothing
+    store_resolve_scope_test.go:110: ResolveBlocker with no matching blocker returned nil error
+    store_resolve_scope_test.go:112: non-target blocker changed: blocker-run-SPEC-C-20260910-000100.json (spec="SPEC-C" phase="run" resolved=true resolution="approved A")
+--- FAIL: TestResolveBlockerScope_NoMatchResolvesNothing (0.00s)
+=== RUN   TestResolveBlockerScope_NewerOtherSpecUntouched
+    store_resolve_scope_test.go:126: target blocker-run-SPEC-A-20260910-000000.json not resolved: resolved=false resolution=""
+    store_resolve_scope_test.go:126: non-target blocker changed: blocker-run-SPEC-B-20260910-000100.json (spec="SPEC-B" phase="run" resolved=true resolution="approved A")
+--- FAIL: TestResolveBlockerScope_NewerOtherSpecUntouched (0.00s)
+=== RUN   TestResolveBlockerScope_NewerOtherPhaseUntouched
+--- PASS: TestResolveBlockerScope_NewerOtherPhaseUntouched (0.00s)
+=== RUN   TestResolveBlockerScope_ReportCriterion
+--- PASS: TestResolveBlockerScope_ReportCriterion (0.00s)
+=== RUN   TestResolveBlockerScope_EmptyFieldRecordNotMatched
+--- PASS: TestResolveBlockerScope_EmptyFieldRecordNotMatched (0.00s)
+=== RUN   TestFileSessionStoreResolveBlocker
+--- PASS: TestFileSessionStoreResolveBlocker (0.00s)
+=== RUN   TestResolveBlocker_NoBlockerFound
+--- PASS: TestResolveBlocker_NoBlockerFound (0.00s)
+=== RUN   TestResolveBlocker_OnlyResolvedExists
+--- PASS: TestResolveBlocker_OnlyResolvedExists (0.00s)
+=== RUN   TestResolveBlocker_MostRecentSelectedAmongMultiple
+--- PASS: TestResolveBlocker_MostRecentSelectedAmongMultiple (1.10s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/session	1.471s
+FAIL
