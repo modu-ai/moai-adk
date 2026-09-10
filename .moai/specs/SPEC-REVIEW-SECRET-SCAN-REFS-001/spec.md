@@ -118,8 +118,12 @@ satisfaction differs by option, the difference is marked **[option-specific]**.
 
 ## §3 Open decision — coverage versus cost
 
-**Decision:** pending — reserved to the operator. The lane does not resolve it (card t629 forbids
-the lane from narrowing security-scan coverage for cost).
+**Decision:** Option 2 — per-ref tip-set checkpoint (conditional; see §3.4).
+
+**Handling of known example values:** an exact example-value allowlist; no path exclusions.
+
+Decided by the operator, answered directly in the lead session and relayed by the lead,
+2026-09-10. The lane records the decision; it did not make it.
 
 ### §3.1 Cost basis common to all options
 
