@@ -149,12 +149,20 @@ Behavior on invocation, for a sync-phase HEAD with a code delta (the unchanged e
   - a Python fixture helper (`pyproject.toml` plus a `.py` change) with a failing `ruff` stub;
   - a sleeping stub that **writes a marker file before it sleeps**, whose sleep is bounded by
     its own timeout.
-- **Interrupted-run harness (AC-006c, AC-015 N1).** Start the hook in its own process group,
-  then wait for **whichever comes first**: the stub's marker file appears, or the hook process
-  exits on its own. On the marker, kill the process group (registered in `t.Cleanup`). Then
-  age the record file. The harness never waits on a state-file token, so on today's hook
-  (which never writes `running`) a run that short-circuits simply exits and the test moves
-  on — no step can end in a harness timeout.
+- **Interrupted-run harness (AC-006c, AC-015 N1).** For each run:
+  1. **Delete the stub's marker file before starting the run**, so a marker left by an earlier
+     run can never trigger this run's kill.
+  2. Start the hook in its own process group.
+  3. Wait for **whichever comes first**: the marker file appears, or the hook process exits on
+     its own.
+  4. On the marker, record "marker observed for this run" and kill the process group
+     (registered in `t.Cleanup`). Then age the record file.
+
+  The harness never waits on a state-file token. On today's hook (which never writes `running`),
+  a run that short-circuits simply exits: the test records "marker not observed" for that run
+  and moves on, so no step can end in a harness timeout. Assertions are **non-fatal**
+  (`t.Errorf`, not `t.Fatalf`), so every failing assertion of a row is observed and can be
+  compared with the named RED reason.
 - Cover AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-013, AC-014, and
   AC-015 (acceptance.md).
 - Commit **the tests alone** (`test(t624): …`), with no hook or document change. Run
@@ -205,10 +213,12 @@ Behavior on invocation, for a sync-phase HEAD with a code delta (the unchanged e
   it, and never block: skip the read when stdin is a terminal (`[ -t 0 ]`), and treat an empty
   or `/dev/null` stdin as "field absent".
 - **`stop_hook_active` without jq.** Match the key only in object-key position, never inside a
-  string: require that the `"` opening `"stop_hook_active"` is not preceded by `\`, then allow
-  any run of spaces or tabs (including none), `:`, any run of spaces or tabs, and `true`. The
-  runtime's actual payload spacing was not observed (plan-audit Gaps), so AC-004 probes the
-  compact, single-space, and multi-space forms rather than assuming one.
+  string: require that the `"` opening `"stop_hook_active"` is not preceded by `\`. Then allow
+  any run of spaces or tabs (including none), `:`, another such run, and `true`. This match does
+  **not** tell a top-level key from a nested one, and REQ-005 does not require it to (an explicit
+  gap in acceptance.md §D.0). The runtime's actual payload spacing was not observed (plan-audit
+  Gaps), so AC-004 probes the compact, single-space, multi-space, and tab forms rather than
+  assuming one.
 - **mtime portability.** `stat` flags differ between BSD/macOS (`-f %m`) and GNU (`-c %Y`);
   Windows git-bash ships GNU. Prefer a form that works on both (for example, compare against a
   reference file with `find … -newer`, or try one `stat` form and fall back to the other). On

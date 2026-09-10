@@ -31,7 +31,7 @@
 | AC-003 | 004 | regression-guard | h01 controls B1/B2 silent | M2 keeps it |
 | AC-004 | 005 | release-blocking (a, b, c — all stdin forms) | M1 RED cell | M2 |
 | AC-005 | 001·002·007 | release-blocking (L1, TA1, TA4, TB1; record-format sub-assertion of U-rows); regression-guard (U1-U5 run-and-block, TA2, TA3, TA5, TB2) | M1 RED cell / baseline | M2 |
-| AC-006 | 008·009 | release-blocking (a0, a50, c); regression-guard (b70, b120) | M1 RED cell / baseline | M2 |
+| AC-006 | 008·009 | release-blocking (a0, a50, c); regression-guard (b61, b70, b120) | M1 RED cell / baseline | M2 |
 | AC-007 | 010 | regression-guard | M1 baseline PASS (today blocks) | M2 keeps it |
 | AC-008 | 006 | release-blocking (A4, A9); regression-guard (A1-A3, A5-A8) | M1 RED cell / baseline | M2 |
 | AC-009 | 012 | regression-guard | existing guards green; L-14, L-18, L-19 | M2, M3 keep them |
@@ -68,8 +68,9 @@ the tool reporting no error (exit 0).
 | L-14 | pin | `grep -c "SPEC-" internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | `0` | 1 |
 | L-15 | `ad0ad6f9b` | `/usr/bin/grep -n "^Purpose: Ensure code has appropriate @MX annotations for AI agent context" internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md` (and the same on the local copy) | `160:Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.` (identical for both copies) | 0 |
 | L-17 | `ad0ad6f9b` | `git diff --stat fa96fe644 -- internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md .claude/skills/moai/workflows/sync/quality-gates-quality.md` | *(empty)* | 0 |
-| L-18 | `ad0ad6f9b` | `/usr/bin/grep -cE '(^\|[;&\|(]\|\$\()[[:space:]]*jq([[:space:]]\|$)' internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | `0` | 1 |
+| L-18 | `a130f891a` | `/usr/bin/grep -cE '(^\|[;&\|(]\|\$\(\|(then\|do)[[:space:]])[[:space:]]*jq([[:space:]]\|$)' internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | `0` | 1 |
 | L-19 | `ad0ad6f9b` | `/usr/bin/grep -cE '(^\|[^A-Za-z0-9_])t[0-9]{2,4}([^A-Za-z0-9_]\|$)\|20[0-9]{2}-[0-9]{2}-[0-9]{2}' internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md` | `…/sync-phase-quality-gate.sh:0` and `…/quality-gates-quality.md:0` | 1 |
+| L-21 | M1 commit | **Pending — measured at M1, not assumed.** Commit-SHA coverage of the delegated template-leak guards for the two template files: `go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak\|TestLeakClassNoDateShaInDefaultTier\|TestC7PackageRestriction' -count=1 -v`, plus a read of those tests' per-path tier assignment for `.claude/hooks/moai/sync-phase-quality-gate.sh` and `.claude/skills/moai/workflows/sync/quality-gates-quality.md` | *(recorded in `progress.md §E.2` at M1: verbatim output, and whether each path is in a tier whose class checks 7-40-hex SHA tokens)* | *(recorded at M1)* |
 
 (In the L-18 and L-19 cells, `\|` renders a literal `|` inside the table; the executed regex
 contains a plain `|`.)
@@ -89,9 +90,11 @@ Non-single-invocation baselines (regression-guard support only, not RED cells):
 - **L-16** (`ad0ad6f9b`) — a process-substitution `diff` of each document copy through the
   anchor line (`sed '/^Purpose: Ensure code has appropriate @MX annotations for AI agent
   context/q'`) printed nothing, exit 0.
-- **L-18 control** — the L-18 regex fed three lines (`x=$(echo "$in" | jq -r .a)`, a comment
-  line naming jq, and `jq . file`) printed `2`. It matches the two invocations and skips the
-  comment.
+- **L-18 control** (`a130f891a`) — the L-18 regex was fed five lines through `printf … |
+  /usr/bin/grep -cE`: `x=$(echo "$in" | jq -r .a)`, a comment line naming jq, `jq . file`,
+  `if true; then jq -r .x f; fi`, and `for f in a; do jq . "$f"; done`. It printed `4`: all four
+  invocations matched, including after the shell keywords `then` and `do`, and the comment line
+  was skipped. Backtick command substitution is not covered by this regex.
 - **L-20** — a line-filtered `grep -n` sweep of the template document showed line 71 carrying
   `HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores`,
   and lines 136-137 and 156 carrying the CRITICAL-only / HIGH-warning wording.
@@ -113,6 +116,25 @@ this document**.
 - **Residual risk:** on a platform where mtime is unreadable, a genuinely stale `running` record
   could keep emitting the fresh-running notice instead of re-gating. That is still non-blocking
   and never a silent pass, but it is never re-gated.
+
+**Unverified behavior — explicit gap, no criterion: nested `stop_hook_active` keys.**
+- **What is not verified:** whether the detector tells a top-level `stop_hook_active` key from a
+  nested one (for example `{"x":{"stop_hook_active":true}}`). REQ-005 does not require it.
+- **Why:** a jq-free key-position match does not see nesting, and the documented Stop-hook
+  stdin carries `stop_hook_active` only as a plain field. No live payload was measured, and no
+  row feeds a nested key.
+- **Consequence:** the Definition of Done does not claim nested-key discrimination. A nested
+  `true` key would defer re-delivery by one turn. That is non-blocking and never a silent pass.
+
+**Unverified behavior — explicit gap, no row: the exact 60 s boundary.**
+- **What is defined but not pinned:** REQ-008/009 define an age of exactly 60 s as fresh
+  (stale only when the age is strictly greater than 60 s). No row pins that exact point.
+- **Why no row:** the hook reads the clock after the test sets the mtime, so an age written as
+  60 s is read as 60 or 61 depending on elapsed time. A row at the exact boundary would be
+  nondeterministic.
+- **What is pinned:** rows a50 (notice), b61, and b70 (re-run) bracket the window
+  deterministically, since age only grows between the write and the read. The difference
+  between `>` and `>=` at exactly 60 s remains unverified.
 
 ## §D.1 AC-001 — a failure on a HEAD is re-delivered on the next call (release-blocking)
 
@@ -154,6 +176,7 @@ Run the (a)→(b) pair once for each stdin form of the flag, each on a fresh fix
 | F1 single space | `{"stop_hook_active": true}` |
 | F2 compact | `{"stop_hook_active":true}` |
 | F3 multi-space | `{"stop_hook_active"   :   true}` |
+| F4 tab | `{"stop_hook_active":<TAB>true}` — `<TAB>` is one literal tab byte (U+0009) in the stdin the test writes, not the five characters |
 
 - **(a) Given** the AC-001 state after call 1. **When** the hook runs with the form's stdin.
   **Then** stdout contains no `"decision"`, and the stub `go` count is unchanged.
@@ -183,8 +206,13 @@ record file prepared as shown, and runs the hook once.
 | U4 | `<HEAD> fail`, file mode 0200 (writable, unreadable); skipped as root and on Windows | regression-guard (run/block) |
 | U5 | `<HEAD> fail`, no payload file in `.moai/state/` | regression-guard (run/block) |
 
-- **Then**, for every row: the stub `go` count is ≥ 1; stdout contains a block; the record now
-  reads `<HEAD> fail` (a closed-set token, REQ-001).
+- **U4 read step:** after the hook call and before any read of the record, the test restores
+  read permission with `chmod 0600` on `.moai/state/sync-quality-gate.last`. Writing through the
+  owner-write bit keeps mode 0200, so without this step the test's own read would fail with
+  permission denied — a fixture failure, not the REQ-001 signal.
+- **Then**, for every row: the stub `go` count is ≥ 1; stdout contains a block; the record (read
+  after the U4 read step, where it applies) now reads `<HEAD> fail`, a closed-set token
+  (REQ-001).
 - **RED reason:**
   - **L1:** the checks never run and stdout is empty — a bare SHA equal to HEAD short-circuits
     (the same defect as h01 call2).
@@ -197,7 +225,9 @@ record file prepared as shown, and runs the hook once.
 
 Write ordering (REQ-002: payload first, then the `fail` record) is the safety mechanism, so each
 torn state it can leave must read as a re-gate or as a non-blocking notice — **never as a silent
-pass**. The payload file's layout is left to run-phase, so every row builds its torn state
+pass**. The notice outcome for a fresh torn state is grounded in lead decision D2 (a fresh
+`running` record for the same HEAD is not re-run and gets a non-blocking notice). It is not a
+paraphrase of today's behavior: today's hook would run the checks and block on that record. The payload file's layout is left to run-phase, so every row builds its torn state
 behaviorally: the gate writes a genuine payload, and the test changes only the record or removes
 only the auxiliary files.
 
@@ -251,38 +281,48 @@ the age shown, modes unset, and stdin `{}`.
 |---|---|---|---|
 | a0 | 0 s | stub count 0; stdout contains `"systemMessage"`, no `"decision"` | release-blocking |
 | a50 | 50 s | stub count 0; stdout contains `"systemMessage"`, no `"decision"` | release-blocking |
+| b61 | 61 s | stub count ≥ 1; stdout contains a block | regression-guard |
 | b70 | 70 s | stub count ≥ 1; stdout contains a block | regression-guard |
 | b120 | 120 s | stub count ≥ 1; stdout contains a block | regression-guard |
 
 - **RED reason (a0, a50):** the fresh-running notice is absent. Today's hook treats
   `<HEAD> running` as a foreign record, runs the checks (count > 0), and blocks.
-- **Baseline (b70, b120):** true today for the same reason, since the record differs from the
-  bare SHA.
-- **Boundary purpose:** a50 and b70 pin the 60 s window by behavior. A window of 40 s fails a50;
-  a window of 100 s fails b70.
+- **Baseline (b61, b70, b120):** true today for the same reason, since the record differs from
+  the bare SHA.
+- **Boundary purpose:** a50, b61, and b70 pin the 60 s window by behavior (REQ-008/009: stale
+  only when the age is strictly greater than 60 s). A window of 40 s fails a50; a window of 65 s
+  fails b61; a window of 100 s fails b70. Age only grows between the test's mtime write and the
+  hook's read, so these rows are deterministic. The exact-60 s point is defined but not pinned by
+  any row (§D.0, explicit gap).
 
 ### AC-006c — the retry bound and its notice (release-blocking)
 
 - **Given** a sync-phase Go fixture; a stub `go` that writes a marker file, then sleeps
-  (bounded by its own timeout); and the interrupted-run harness of plan.md §F M1, which kills
-  the hook's process group when the marker appears or proceeds when the hook exits on its own,
-  whichever comes first.
+  (bounded by its own timeout); and the interrupted-run harness of plan.md §F M1.
+  - The harness **deletes the marker file before starting each run**, so a marker left by an
+    earlier run can never kill a later run early.
+  - For each run it waits for whichever comes first: the marker appears (it records "marker
+    observed for this run" and kills the hook's process group), or the hook exits on its own
+    (it records "marker not observed").
   - **Run 1:** interrupted by that harness. The record file is then aged to 120 s.
   - **Run 2:** interrupted the same way. The record file is then aged to 120 s again.
-- **When** run 3 executes with the stub switched to exit 1 immediately.
-- **Then:**
-  1. run 1 observed the marker (setup sanity);
-  2. the stub count for run 3 is 0;
-  3. run 3's stdout contains no `"decision"`;
-  4. run 3's stdout contains `"systemMessage"`, whose text says this HEAD's gate run has not
+- **When** run 3 executes with the marker deleted first and the stub switched to exit 1
+  immediately.
+- **Then** (every assertion non-fatal, so all failures are observed):
+  1. run 1 observed its marker (setup sanity);
+  2. run 2 observed **its own** marker — the one allowed stale re-run started (REQ-009);
+  3. the stub count for run 3 is 0;
+  4. run 3's stdout contains no `"decision"`;
+  5. run 3's stdout contains `"systemMessage"`, whose text says this HEAD's gate run has not
      completed and names deleting the state file as the way to force a re-gate.
-- **Named RED reason:** *the non-blocking exhausted-retry notice is absent* — run 3's stdout is
-  empty, so assertion 4 fails.
-  - On `fa96fe644`, run 1 writes the bare SHA before invoking the stub, so the marker still
-    appears and the kill happens.
-  - Runs 2 and 3 find that SHA, short-circuit, and exit 0 without invoking the stub. The
-    harness proceeds on process exit, so no wait or timeout occurs.
-  - Assertions 1-3 already pass there. They are the re-run cap, which must stay green.
+- **Named RED reason:** *the stale re-run and the non-blocking exhausted-retry notice are both
+  absent.* Assertion 2 fails because run 2 never invokes the stub; assertion 5 fails because
+  run 3's stdout is empty.
+  - On `fa96fe644`, run 1 writes the bare SHA before invoking the stub, so its marker appears
+    and the kill happens; assertion 1 passes.
+  - Runs 2 and 3 find that SHA, short-circuit, and exit 0 without invoking the stub. The harness
+    records "marker not observed" on process exit, so no wait or timeout occurs.
+  - Assertions 3 and 4 already pass there. They are the re-run cap, which must stay green.
 - Unix-only; skipped on Windows. Kills are registered in `t.Cleanup`.
 - **Green path:** M2 (REQ-008, REQ-009).
 
@@ -441,32 +481,51 @@ Each row calls the hook twice on the same failing HEAD.
 
 ## §D.15 AC-015 — gate notices never block and never consume the Stop-hook block cap (release-blocking)
 
-- **Given** two fixtures, both on a failing sync-phase HEAD with a counting stub `go`:
-  - **(N1)** the exhausted-retry state of AC-006c after run 2 (built with the same
-    marker-or-exit harness);
-  - **(N2)** a record `<HEAD> running` whose mtime is refreshed to now before every call (the
-    fresh-running notice of REQ-008).
+- **Given** three fixtures, all on a failing sync-phase HEAD with a counting stub `go`:
+  - **(N1)** the exhausted-retry state of AC-006c after run 2, built with the same
+    per-run-marker harness and carrying AC-006c's setup assertions 1 and 2. For the 9 calls
+    below, the stub **writes its marker and then exits 1 immediately, with no sleep**, and the
+    marker is deleted before each call.
+  - **(N2a)** a record `<HEAD> running` written once; before every call the test refreshes
+    **only its mtime** to now, leaving the content as the hook left it.
+  - **(N2b)** before every call the test **rewrites the full record content** to
+    `<HEAD> running` and sets its mtime to now, so every call measures the fresh-running record
+    itself (REQ-008).
 - **When** the hook runs **9 consecutive times** on each fixture (one more than the runtime
   Stop-hook block cap of 8), alternating stdin between `{}` and `{"stop_hook_active":true}`,
   with `MOAI_SYNC_GATE_BLOCKING` and `MOAI_AUTONOMY_TIER` unset (the blocking default).
-- **Then**, for each fixture:
+- **Then**, for each fixture (assertions non-fatal):
   - all 9 runs exit 0;
   - all 9 stdouts contain `"systemMessage"`;
   - the number of stdouts containing `"decision"` is exactly `0`;
   - the stub `go` count after run 9 equals the count before run 1.
   - For N1, every notice also says this HEAD's gate run has not completed and names deleting
     the state file as the way to force a re-gate.
-- **Swept-set check:** the test reports 18 invocations (9 × 2). Fewer is a partial sweep, not
+  - For N2a, the record content after run 9 still reads `<HEAD> running` (the notice path does
+    not rewrite the record).
+- **Swept-set check:** the test reports 27 invocations (9 × 3). Fewer is a partial sweep, not
   a pass.
-- **Named RED reason, N1:** *the repeated non-blocking exhausted-retry notice is absent* — all
-  9 stdouts are empty, so the `"systemMessage"` assertion fails. Today's hook short-circuits on
-  the bare-SHA record left by run 1 and exits 0 without invoking the stub; the harness proceeds
-  on process exit, so no wait or timeout occurs. The `decision`-count and stub-count assertions
-  already pass there.
-- **Named RED reason, N2:** *the fresh-running notice is absent* — today's hook treats each
-  refreshed `<HEAD> running` record as a foreign record, runs the checks, and blocks. The
-  `decision` count is 9 and the stub count grows.
-- **Green path:** M2 (REQ-008, REQ-009; lead ruling B1).
+- **Named RED reason, N1:** *the stale re-run and the repeated non-blocking exhausted-retry
+  notice are both absent.*
+  - The inherited setup assertion 2 fails: run 2 never invokes the stub.
+  - All 9 stdouts are empty, so the `"systemMessage"` assertion fails.
+  - Today's hook short-circuits on the bare-SHA record left by run 1 and exits 0 without
+    invoking the stub. The harness proceeds on process exit, so no wait or timeout occurs.
+  - The `decision`-count and stub-count assertions already pass there.
+- **Named RED reason, N2a** (what `fa96fe644` produces with an mtime-only refresh): *the
+  fresh-running notice is absent.*
+  - Call 1 finds `<HEAD> running`, which differs from the bare SHA. It rewrites the record to
+    the bare SHA (hook lines 183-186), runs the checks once, and emits one `decision:block`.
+  - Calls 2-9 find that bare SHA (the refresh changed only the mtime), short-circuit, and write
+    empty stdout.
+  - Observed today: a `decision` count of **1** (not 0), a stub count grown by **1**, 8 empty
+    stdouts (8 of 9 lacking `"systemMessage"`), and a final record that is the bare SHA.
+- **Named RED reason, N2b** (full-content rewrite): *the fresh-running notice is absent.* Every
+  call finds the rewritten `<HEAD> running`, runs the checks, and blocks. The `decision` count
+  is **9** and the stub count grows by **9**. Each block JSON carries a `"systemMessage"`, so
+  that one assertion passes.
+- **Green path:** M2 (REQ-008, REQ-009; lead ruling B1). The notice path neither runs the checks
+  nor rewrites the record, so N2a and N2b both yield 9 notices.
 
 ## §D.16 Mutant probes (run in M4; each must turn at least one named row red)
 
@@ -476,7 +535,7 @@ Each row calls the hook twice on the same failing HEAD.
 | M2 | Never re-emit (today's behavior) | AC-001, AC-004 (b), AC-008 A4 and A9 |
 | M3 | Re-run the checks on a same-HEAD `fail` instead of re-emitting | AC-001 (count) |
 | M4 | Re-emit the stored block whatever the resolved tier | AC-008 A5 |
-| M5 | Treat a fresh `running` record as stale | AC-006 a0, AC-015 N2 |
+| M5 | Treat a fresh `running` record as stale | AC-006 a0, AC-015 N2a and N2b |
 | M6 | Re-run on every stale `running` record (no retry bound) | AC-006c |
 | M7 | Detect `stop_hook_active` with a plain substring match | AC-004 (c) |
 | M8 | Let `stop_hook_active` suppress every block | AC-007 R10a, R10b |
@@ -496,6 +555,9 @@ Each row calls the hook twice on the same failing HEAD.
 | M22 | Re-deliver an advisory payload as a block when the mode now resolves blocking, or treat a `fail` record without a payload as a silent pass | AC-008 A6, AC-005 U5 |
 | M23 | Decide from the payload file alone: an advisory payload present for HEAD reads as a completed advisory `fail` and passes silently, whatever the record says (torn state a) | AC-005 TA1-TA5 |
 | M24 | Read a stale `running` record with no payload file as a completed pass (torn state b) | AC-005 TB2 |
+| M25 | Detect `stop_hook_active` allowing spaces but not tabs between the key, the colon, and the value | AC-004 F4 |
+| M26 | On the fresh-running notice path, rewrite the record (for example to the bare SHA) instead of leaving `<HEAD> running` in place | AC-015 N2a (call 2 re-gates and blocks; final record is not `<HEAD> running`) |
+| M27 | Declare the stale window as 60 but compare against 65 | AC-006 b61 |
 
 A mutant that turns nothing red means the criterion it targets is too shallow; tighten the
 criterion before closing. Each mutant is reverted after its measurement.
@@ -508,9 +570,10 @@ criterion before closing. Each mutant is reverted after its measurement.
   elements (command, verbatim stdout, exit code, tree SHA) that make the behavioral criteria
   release-blocking (lead ruling B4). The observed RED reasons match the named reasons above,
   and every regression-guard row passes on that commit.
-- All twenty-four mutants of §D.16 are observed turning their named rows red.
-- The mtime-unreadable fallback remains an explicit unverified gap (§D.0); closing the card
-  does not claim it.
+- All twenty-seven mutants of §D.16 are observed turning their named rows red.
+- Three behaviors remain explicit unverified gaps (§D.0), and closing the card does not claim
+  them: the mtime-unreadable fallback, nested `stop_hook_active` key discrimination, and the
+  exact-60 s boundary point.
 - `cmp` of the hook copies exits 0; AC-010's anchor checks hold.
 - `go vet ./internal/hook/...` and `golangci-lint run ./internal/hook/...` are clean on the
   touched package.

@@ -150,14 +150,16 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
   run the checks and shall write nothing to stdout. **When** there is no record, or the
   recorded SHA differs from HEAD, the gate shall run the checks as it does today.
 
-- **REQ-005 (When):** **When** stdin's top-level `stop_hook_active` field is `true` and the
-  gate would re-deliver a stored block under REQ-003, the gate shall emit no output carrying a
+- **REQ-005 (When):** **When** stdin carries a `stop_hook_active` key set to `true` and the gate
+  would re-deliver a stored block under REQ-003, the gate shall emit no output carrying a
   `decision` field, and shall leave the record and the payload file unchanged so the next
-  invocation without the flag re-delivers the block. Detection shall not use `jq`, and shall
-  recognize the field whatever whitespace (none, one or more spaces, tabs) separates the key,
-  the colon, and the value. A `stop_hook_active` literal appearing escaped inside a JSON
-  string value (such as `last_assistant_message`) shall not count as the field. This
-  requirement shall not suppress a block from a run that executes the checks.
+  invocation without the flag re-delivers the block. Detection shall not use `jq`. It shall
+  recognize the key in object-key position whatever whitespace separates the key, the colon,
+  and the value: none, one or more spaces, or tabs. A `stop_hook_active` literal appearing
+  escaped inside a JSON string value (such as `last_assistant_message`) shall not count as the
+  key. Detection is not required to tell a top-level key from a nested one (acceptance.md §D.0,
+  explicit gap). This requirement shall not suppress a block from a run that executes the
+  checks.
 
 - **REQ-006 (When):** **When** the record for the current HEAD is `fail` and its payload file
   holds a block, the gate shall resolve the blocking-versus-advisory mode at this invocation,
@@ -175,14 +177,15 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
   shall treat the outcome as unknown, run the checks, and rewrite the record per REQ-001.
 
 - **REQ-008 (While/When):** **While** the record for the current HEAD is `running` and the
-  record file's age is within the stale window, **when** the gate is invoked, it shall not run
+  record file's age is at most the stale window, **when** the gate is invoked, it shall not run
   the checks and shall emit only a non-blocking `systemMessage` saying that the previous gate
   run for this HEAD has not completed. The stale window shall equal the timeout the shipped
   settings template registers for this hook (60 s), and the age comparison shall use that
-  value.
+  value. A record is stale only when its age is strictly greater than the window; an age of
+  exactly 60 s is fresh and gets the notice.
 
-- **REQ-009 (When):** **When** the record for the current HEAD is `running` and older than
-  the stale window, the gate shall run the checks. That re-run shall happen at most once per
+- **REQ-009 (When):** **When** the record for the current HEAD is `running` and its age is
+  strictly greater than the stale window, the gate shall run the checks. That re-run shall happen at most once per
   HEAD. **When** that single re-run also leaves a stale `running` record, every later
   invocation for that HEAD shall neither run the checks nor stay silent: it shall emit only a
   non-blocking `systemMessage` saying that this HEAD's gate run has not completed and that
