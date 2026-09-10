@@ -1,0 +1,6 @@
+WARN: checkpoint for run/SPEC-RESUME-001 is stale (age=1h0m0s); loading anyway (--resume)
+--- FAIL: TestFileSessionStoreResolveBlocker (0.00s)
+    store_test.go:299: ResolveBlocker() failed: no outstanding blocker found
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/session	6.288s
+FAIL
