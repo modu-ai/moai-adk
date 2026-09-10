@@ -330,3 +330,49 @@ pass_named=2 (expect 2)  fail=0
 - **플래그 부재 대조는 `internal/cli/worktree` 패키지 안의 문자열 리터럴로 한정된다.** 다른 패키지에 같은 이름의 플래그가 정의돼 있을 가능성은 재지 않았다.
 - **§2.1의 89줄에는 "the X command" 형태가 들어 있지 않다.** 모듈·참고문서의 실제 규모는 재지 않았다.
 - **감사가 말한 "참고문서"는 특정하지 못했다**(§1.4).
+
+## 7. 통합 창
+
+리드 지명을 받아 창을 기록했다(`moai integration acquire --name lane-2`, exit 0).
+
+```
+$ git merge --no-edit develop > .moai/reports/t628/window-absorb.txt 2>&1
+absorb_exit=0
+unmerged: (없음)
+HEAD f28d24518   HEAD^2 a4461479e   tree 432e069eb4c38fe2569eef1742547d9b57e77340   MERGE_HEAD 없음
+```
+
+**흡수 델타** (`30e540b8f..f28d24518`): 전체 618파일 중 이 카드가 보는 경로(스킬 두 사본, `catalog.yaml`, `go.mod`, `go.sum`)에 걸린 것은 `go.mod`와 `internal/template/catalog.yaml` 둘이다. 스킬 두 사본은 develop이 건드리지 않았다. `go.mod` 지시어는 `go 1.26.8`이고 실행 중인 도구체인도 `go1.26.8 darwin/arm64`다.
+
+**해시**: `catalog.yaml`은 충돌 없이 자동 병합됐다. 흡수 트리에서 다시 계산해 기록값과 대조했다.
+
+```
+$ go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai-workflow-worktree --dry-run
+WINDOW_DRYRUN_EXIT=0
+  [dry-run] moai-workflow-worktree: ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa (source: internal/template/templates/.claude/skills/moai-workflow-worktree (whole tree))
+$ grep -n -A3 'name: moai-workflow-worktree' internal/template/catalog.yaml
+94-              hash: ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa
+```
+
+계산값과 기록값이 64자 모두 같아 재생성하지 않았다.
+
+**흡수 트리 재측정** (go1.26.8):
+
+```
+$ go test ./internal/template/... -count=1 -timeout 20m > .moai/reports/t628/window-gotest-template.txt 2>&1
+WINDOW_TEMPLATE_EXIT=0
+ok  	github.com/modu-ai/moai-adk/internal/template	28.882s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.462s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	1.148s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+fail_lines=0  catalog_hash_msgs=0  panic_timeout_build=0
+
+$ go test ./internal/template/ -run 'TestCatalogHashCoversSkillSubfiles|TestManifestHashFormat' -v -count=1
+WINDOW_NAMED_V_EXIT=0
+--- PASS: TestCatalogHashCoversSkillSubfiles (0.01s)
+--- PASS: TestManifestHashFormat (0.01s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.271s
+pass_named=2 (expect 2)  fail=0
+```
+
+**창에서 관측하지 않은 것**: `go list -deps -test`로 흡수 델타의 전이 적중은 판정하지 않았다. 이전 측정을 이월하지 않고 이 카드의 영향 패키지(`internal/template`)를 흡수 트리에서 새로 쟀기 때문이다. 임베드된 스킬 내용을 읽을 수 있는 다른 패키지(`internal/cli` 등)의 테스트는 재지 않았다. 리드가 push 전에 develop tip에서 돌리는 전체 스위트의 몫이다.
