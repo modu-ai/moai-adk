@@ -1,0 +1,51 @@
+=== RUN   TestNodeLintRunsOxlintStepOnOxlintProject
+--- PASS: TestNodeLintRunsOxlintStepOnOxlintProject (0.12s)
+=== RUN   TestNodeLintOxlintViolationFailsGate
+--- PASS: TestNodeLintOxlintViolationFailsGate (0.12s)
+=== RUN   TestNodeLintOxlintConfigFilenames
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.json
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.jsonc
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.ts
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.mts
+--- PASS: TestNodeLintOxlintConfigFilenames (0.49s)
+    --- PASS: TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.json (0.12s)
+    --- PASS: TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.jsonc (0.12s)
+    --- PASS: TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.ts (0.13s)
+    --- PASS: TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.mts (0.13s)
+=== RUN   TestNodeLintOxlintStepShape
+    gate_oxlint_lint_test.go:206: oxlint configFiles has 0 entries, want exactly 4: []
+    gate_oxlint_lint_test.go:211: missing config file name: .oxlintrc.json (declared: [])
+    gate_oxlint_lint_test.go:211: missing config file name: .oxlintrc.jsonc (declared: [])
+    gate_oxlint_lint_test.go:211: missing config file name: oxlint.config.ts (declared: [])
+    gate_oxlint_lint_test.go:211: missing config file name: oxlint.config.mts (declared: [])
+--- FAIL: TestNodeLintOxlintStepShape (0.00s)
+=== RUN   TestNodeLintEslintProjectUnaffectedByOxlint
+    gate_oxlint_lint_test.go:246: oxlint outcome = "executed", want "skipped" (no oxlint config in this fixture)
+    gate_oxlint_lint_test.go:248: executed lint steps = 2, want 1; summary:
+        quality gate steps (4 configured):
+          - eslint: executed in 124ms at 2026-09-10T14:29:14.409+09:00 — npx eslint .
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - oxlint: executed in 4ms at 2026-09-10T14:29:14.533+09:00 — npx oxlint
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintEslintProjectUnaffectedByOxlint (0.13s)
+=== RUN   TestNodeLintBiomeProjectUnaffectedByOxlint
+    gate_oxlint_lint_test.go:275: oxlint outcome = "executed", want "skipped" (no oxlint config in this fixture)
+    gate_oxlint_lint_test.go:277: executed lint steps = 2, want 1; summary:
+        quality gate steps (4 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: executed in 134ms at 2026-09-10T14:29:14.543+09:00 — npx biome check .
+          - oxlint: executed in 5ms at 2026-09-10T14:29:14.677+09:00 — npx oxlint
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintBiomeProjectUnaffectedByOxlint (0.14s)
+=== RUN   TestNodeLintLinterFreeScaffoldStillPasses
+    gate_oxlint_lint_test.go:305: executed lint steps = 1 on a linter-free scaffold, want 0; summary:
+        quality gate steps (4 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - oxlint: executed in 136ms at 2026-09-10T14:29:14.687+09:00 — npx oxlint
+          - npm test: skipped — turned off by the gate.skip_tests setting
+    gate_oxlint_lint_test.go:310: oxlint outcome = "executed", want "skipped" (no oxlint config in this fixture)
+--- FAIL: TestNodeLintLinterFreeScaffoldStillPasses (0.14s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	1.672s
+FAIL
