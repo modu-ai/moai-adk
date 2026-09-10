@@ -165,3 +165,61 @@ lane-6 전체 스위트 1건만 병행, 다른 스코프 컴파일 0건.
 ### Residual-risk
 - 기지 적색 4건이 계속 적색이라, 그 테스트들이 덮는 경로에서 이 카드가 만든 회귀가 있다면 가려진다. 그 4건은 이름상 home-state 커버리지·변경 파일 판독·binlag 계기로, `..` 분류 경로와 겹치지 않는다(이름 기준 판독이며 실행 관측은 아님).
 - 경합은 거짓 통과를 만들지 않으므로(리드 판정) 초록 판정의 유효성은 유지된다.
+
+리드 규칙 변경(병합 트리 전체 재측정 폐지) 이후 §6 은 **`d3b7d438d` 기반 트리의 참고 관측**으로 격하된다. 병합 판정의 근거는 §7 이다.
+
+## 7. 통합 창 — develop 흡수 · 델타 판정 · 병합 트리 스코프 재측정
+
+### Claim
+로컬 develop `a0d8da641` 흡수 후 트리(`def73087a`)에서, 이 카드가 바꾼 파일(`doctor_codex.go`, `codex_skills_disable.go`)을 덮는 codex skill-path 테스트 55개가 이름별로 전부 통과한다.
+
+### Evidence
+창 획득(08:40:24Z): `moai integration acquire --name lane-9` → `acquire_exit=0`, 출력 `release-integration window acquired by e5c0032b-ffbd-44b0-8997-c16d09d3541b on WT-home-dotdot-escape`. 직전 `git rev-parse --short develop` → `a0d8da641`, `git rev-parse --short HEAD` → `da373da3c`, `git status --short` → 출력 없음.
+
+흡수: `git merge --no-edit a0d8da641` → `merge_exit=0`(충돌 없음). `git log -1 --format='%h %p'` → `def73087a da373da3c a0d8da641`.
+
+델타 판정:
+- `git diff --name-only d3b7d438d a0d8da641` → 83개 파일(`absorb-delta-files.txt`).
+- `go.mod`/`go.sum` 매치 0행. 같은 awk 모양으로 델타에 있는 알려진 경로(`internal/cli/doctor_codex_seam_use_guard_test.go`)를 찾으면 1행 — 0 이 패턴 사망이 아니다.
+- 델타의 Go 패키지 디렉터리 4개: `internal/cli`, `internal/kanban`, `internal/mx`, `internal/session`.
+- `go list -deps -test ./internal/cli`(흡수 후 트리에서 재실행, `golist_exit=0`, 569행 중 이 모듈 패키지 120개)와의 교집합: 4개 전부. 따라서 `internal/cli` 테스트 바이너리가 흡수로 바뀌었고, 병합 트리 재측정이 필요하다.
+- 첫 `go list` 는 흡수 병합과 동시에 돌아 어느 트리를 읽었는지 귀속할 수 없어 버렸고, 흡수 완료 뒤 다시 돌린 결과만 쓴다.
+- 델타에는 이 카드가 바꾼 `doctor_codex.go` 의 `codexStaleSkillFinding` 을 직접 실행하는 새 가드(t581, `doctor_codex_seam_use_guard_test.go`)가 들어 있어 스코프에 포함했다.
+
+스코프 선택: `internal/cli/*_test.go` 에서 `^(TestCodexSkill|TestJudgeCodexSkillEntry|TestCodexStaleSkillFinding|TestCodexBackslash|TestCodexDotDot|TestUpsertCodexSkillDisable|TestSinglePathShapeClassifier$)` 로 시작하는 최상위 테스트를 소스에서 먼저 열거 → 55개(`merged-scope-expected.txt`).
+
+동시 실행 조건(08:41:49Z 직전): `ps -eo pid,etime,comm,args | awk '$3=="go" && /internal\/cli/'` → 출력 없음(이 관측기의 자기 포착은 §6 에서 확인).
+
+명령(08:41:49Z–08:41:59Z): `go test ./internal/cli/ -count=1 -v -run '^(TestCodexSkill.*|TestJudgeCodexSkillEntry.*|TestCodexStaleSkillFinding.*|TestCodexBackslash.*|TestCodexDotDot.*|TestUpsertCodexSkillDisable.*|TestSinglePathShapeClassifier)$' > .moai/reports/t582/merged-tree-scoped.log 2>&1` → `exit=0`.
+
+로그(176행): 최상위 `--- PASS` 55개. `--- FAIL`·`^FAIL`·`[build failed]`·`undefined:`·`panic:` 0건. 마지막 줄 `ok  	github.com/modu-ai/moai-adk/internal/cli	1.179s`.
+소스 열거 55개 vs 로그의 최상위 PASS 이름 55개: `diff` → 출력 없음, `diff_exit=0` — 셀렉터가 빠뜨리거나 더 잡은 이름 없음.
+이 카드의 테스트 8개 이름별 PASS: `TestCodexSkillPathDotDotSegmentRefused`, `TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat`, `TestCodexDotDotRefusalIsSymmetricAcrossReadAndWrite`, `TestCodexSkillPathBackslashSymmetry`, `TestCodexSkillPathPreservedShapes`, `TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash`, `TestCodexBackslashRefusalIsSymmetricAcrossReadAndWrite`, `TestJudgeCodexSkillEntryBackslashHomeStillExpands`.
+흡수된 t581 가드 PASS: `TestCodexStaleSkillFinding_SlashPinnedAbsoluteArmIsReached`, `TestCodexStaleSkillFinding_SlashPinnedStatTargetIsUnconverted`.
+§6 의 Gap(비-verbose 라 이름별 PASS 미관측)은 병합 트리에서 이것으로 닫힌다.
+
+### Baseline-attribution
+워크트리 `WT-home-dotdot-escape` HEAD `def73087a`(부모 `da373da3c`, `a0d8da641`), 흡수 후·재측정 시점 미추적 파일은 `.moai/reports/t582/` 아래 로그뿐, 이 실행.
+
+### Gaps
+- `internal/kanban`·`internal/mx`·`internal/session` 의 테스트는 돌리지 않았다. 이 카드는 그 패키지를 바꾸지 않았고(그 패키지들이 `internal/cli` 를 import 하지 않는 방향), 델타 자체의 검증은 각 레인과 리드 일괄 전체 스위트 소관이다.
+- 스코프 55개 밖의 `internal/cli` 테스트는 병합 트리에서 돌리지 않았다(리드 규칙: 전체 스위트 금지).
+- `golangci-lint`/`go vet`, `GOOS=windows` 교차 빌드는 여전히 미실행.
+
+### Residual-risk
+- 소스 열거는 `^func Test` 줄 기준이라, 서브테스트나 다른 형태로 선언된 테스트는 목록에 없다. 셀렉터 역시 최상위 이름에만 걸리므로 두 집합의 기준은 같다.
+
+### 사건 기록 — 창 안 증거 커밋의 index.lock
+- `git add`(10개 경로) 는 성공했고 곧이은 `git commit` 이 `commit_exit=128` 로 실패했다. 출력 전문:
+  ```
+  fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t582/index.lock': File exists.
+
+  Another git process seems to be running in this repository, e.g.
+  an editor opened by 'git commit'. Please make sure all processes
+  are terminated then try again. If it still fails, a git process
+  may have crashed in this repository earlier:
+  remove the file manually to continue.
+  ```
+- 직후(08:43:19Z) 기록: `ls -l .../worktrees/t582/index.lock` → `No such file or directory`(`lock_ls_exit=1`), `git rev-parse --short HEAD` → `def73087a`(불변), `git rev-parse -q --verify MERGE_HEAD` → 출력 없음(`merge_head_exit=1`). 락은 손으로 지우지 않았다.
+- 같은 형태가 §6 증거 커밋(07:25Z 무렵)에서도 한 번 있었다. 두 번 모두 `add` 성공 → `commit` 실패 → 수 초 뒤 경로 부재였다 — 짧게 잡혔다 풀리는 외부 락 모양이다. 누가 잡았는지는 관측하지 못했다.
+- 3회 규칙: 이 창에서 재시도 1회차.
