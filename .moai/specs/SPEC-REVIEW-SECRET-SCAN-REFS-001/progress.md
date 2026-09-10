@@ -204,6 +204,94 @@ no markers and no `-G`; they are syntax checks, not gate evidence. `git --versio
   `git log -p --all --not $(cat <store>)` as a form too complex to verify; hence the execution method
   above.
 
+### Gate evidence
+
+Taken 2026-09-11 from this worktree on branch `WT-secret-scan-refs`, HEAD `b8c0ef74b` (the pin
+commit), on a throwaway fixture repository outside this repository at `SP/m1gate/fx`, where `SP` is the
+session scratchpad. `git version 2.50.1 (Apple Git-155)`. Fixture set-up: `git init -b main`, a fixture
+`user.name` and `user.email`, `commit.gpgsign=false`, and `core.hooksPath=/dev/null`, read back with
+`git config --list --local`. `REGEX` is the scan regex as `review.md` writes it.
+
+- Markers: PEM-style private-key header lines with distinct uppercase labels, each written by `printf`
+  from a format string split around two fragments and not reproduced here. Each marker file was checked
+  with `/usr/bin/grep -cE -- 'REGEX' <file>` → `1`.
+- Every command's output went to a file under `SP/m1gate/`, and every exit code was read with
+  `; echo "exit=$?"`, never through a pipe.
+- Tip store: `SP/m1gate/fx/.moai/state/secrets-scan-tips.txt`, recorded through `.next` and replaced
+  with `mv` only after the scan carrying the final result exited 0.
+- Execution method as pinned: each run of the scan command replaced
+  `$(cat .moai/state/secrets-scan-tips.txt)` with the store's lines, read with `cat` and `wc -l` in the
+  command before. Arguments against store lines: R2 1/1, R3 2/2, R4 3/3.
+- Fixture object names are kept in `SP` only. `<G1>` below stands for the recorded tip of branch
+  `gone`, a full 40-character object name.
+
+#### Gate cell 1
+
+| Step | Command (in `SP/m1gate/fx`; outputs in `SP/m1gate/`) | Exit | Reading |
+|---|---|---|---|
+| C0 | clean `keys.txt` committed on `main` | 0 | — |
+| clean-history scan | `git log -p --all -G 'REGEX' > g1-base.txt 2> g1-base.err` | 0 | `wc -c` 0 and 0 bytes |
+| R1 tip recording | `git for-each-ref --format='%(objectname)' > .moai/state/secrets-scan-tips.next` | 0 | 1 line |
+| R1 scan (no store yet, so the full-history scan) | `git log -p --all -G 'REGEX' > g1-r1.txt 2> g1-r1.err` | 0 | 0 and 0 bytes; `mv` to the store, exit 0 |
+| S1 | `SIDECELL` marker in `side.txt`, committed on `side` created from C0 | 0 | `show --stat side`: 1 file, 1 insertion, parent C0 |
+| C1 | `HEADCELL` marker appended to `keys.txt`, committed on `main` | 0 | `side.txt` absent on `main` (`test -e` exit 1) |
+| construction | `git merge-base --is-ancestor side HEAD` | 1 | — |
+| R2 tip recording | as R1 | 0 | — |
+| R2 scan command | `git log -p --all -G 'REGEX' --not <1 store line> > g1-r2.txt 2> g1-r2.err` | 0 | 634 and 0 bytes; `mv` to the store (2 lines), exit 0 |
+| construction, re-read before the counts | `git merge-base --is-ancestor side HEAD` | 1 | — |
+| counts | `/usr/bin/grep -c 'HEADCELL' g1-r2.txt`; `/usr/bin/grep -c 'SIDECELL' g1-r2.txt` | 0; 0 | `1`; `1` |
+| context | `/usr/bin/grep -cE -- 'REGEX' g1-r2.txt`; `/usr/bin/grep -c '^commit ' g1-r2.txt` | 0; 0 | `2`; `2` |
+
+Predicate (`spec.md` §3.4 cell ①, AC-008): the clean-history scan printed 0 bytes — holds; every scan
+exited 0 (clean-history scan, R1, R2) — holds; `is-ancestor` exited 1 immediately before the counts —
+holds; in R2, `HEADCELL` ≥ 1 (`1`) and `SIDECELL` ≥ 1 (`1`) — both hold. The side branch's marker was
+reported in the scan where it first became reachable, next to the HEAD-line control.
+
+verdict: trustworthy
+
+#### Gate cell 2
+
+Taken on the same fixture after cell 1.
+
+| Step | Command (in `SP/m1gate/fx`; outputs in `SP/m1gate/`) | Exit | Reading |
+|---|---|---|---|
+| G1 | plain `gone.txt` with a line unique to G1, committed on `gone` created from `main` | 0 | `for-each-ref --contains gone` → `refs/heads/gone` only |
+| R3 tip recording | `git for-each-ref --format='%(objectname)' > .moai/state/secrets-scan-tips.next` | 0 | 3 lines; `/usr/bin/grep -cxF '<G1>'` → `1` |
+| R3 scan command | `git log -p --all -G 'REGEX' --not <2 store lines> > g2-r3.txt 2> g2-r3.err` | 0 | 0 and 0 bytes; `mv` to the store (3 lines, `<G1>` counted `1`), exit 0 |
+| delete | `git branch -D gone` | 0 | — |
+| expire | `git reflog expire --expire=now --all` | 0 | — |
+| prune | `git gc --prune=now --quiet` | 0 | — |
+| construction | `git cat-file -e <G1>` | 1 | the recorded tip is absent from the object store |
+| L1 | `GONECELL` marker in `after.txt`, committed on `after` created from `main` | 0 | — |
+| construction | `git merge-base --is-ancestor after HEAD` | 1 | — |
+| R4 tip recording | as R3 | 0 | — |
+| R4 scan command | `git log -p --all -G 'REGEX' --not <3 store lines> > g2.txt 2> g2.err` | 128 | `g2.txt` 0 bytes; `g2.err` 59 bytes, one line of the form `fatal: bad object <G1>` |
+| handling check | `/usr/bin/grep -cxF '<G1>' .moai/state/secrets-scan-tips.txt` | 0 | `1`: the object named is a listed tip, so the handling runs the full-history scan |
+| full-history scan in its place | `git log -p --all -G 'REGEX' > g2-fallback.txt 2> g2-fallback.err` | 0 | 945 and 0 bytes; `mv` to the store, exit 0 |
+| detection reading | `/usr/bin/grep -cF '<G1>' g2.err g2.txt g2-fallback.txt` | 0 | `g2.err:1`, `g2.txt:0`, `g2-fallback.txt:0`; sum `1` |
+| final-result count | `/usr/bin/grep -c 'GONECELL' g2-fallback.txt` | 0 | `1` |
+| context | `/usr/bin/grep -c` for `HEADCELL` and `SIDECELL`; `/usr/bin/grep -cE -- 'REGEX'` on `g2-fallback.txt` | 0 | `1`, `1`; `3` |
+
+Predicate (`spec.md` §3.4 cell ②, AC-009): the construction check exited non-zero (`1`) — holds; the
+detection reading totals ≥ 1 (`1`) — holds; the scan carrying the final result, the full-history scan,
+exited 0 — holds; it reports `GONECELL` ≥ 1 (`1`) — holds, through behaviour (a), falling back to a full
+`--all` scan. None of the untrustworthy shapes occurred: the error was followed by a follow-on scan,
+the final scan exited 0, `GONECELL` was not 0, and the detection total was not 0.
+
+verdict: trustworthy
+
+#### Gaps in cells 1 and 2
+
+- The scan command's `$(cat …)` substitution was not executed; the pinned hand expansion stood in for
+  it. An empty store and argument-list limits were not exercised.
+- Only local branches were exercised; tags, remote-tracking refs, stash entries, and merge commits were
+  not.
+- Only the PEM-header alternative of `REGEX` was exercised.
+- Cell 2 exercised one missing tip, listed first in its store. Git stops at the first bad object, so a
+  store with several missing tips reports only one per attempt; not exercised.
+- Cell 3 is not taken in this segment. It needs the lead's approval, committed in its own commit first
+  (`plan.md` §C item 4).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
