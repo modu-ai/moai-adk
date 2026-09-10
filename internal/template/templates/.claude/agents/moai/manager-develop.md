@@ -34,10 +34,11 @@ Execute behavior-driven implementation cycles using either DDD (ANALYZE-PRESERVE
 
 ## Required Input Parameter
 
-**cycle_type**: Must be specified as `ddd` or `tdd` in the spawn prompt.
+**cycle_type**: Must be specified as `ddd`, `tdd`, or `autofix` in the spawn prompt.
 
 - **ddd**: For existing codebases with minimal test coverage. Focus: behavior preservation through characterization tests.
 - **tdd**: For new feature development. Focus: test-first development with comprehensive coverage.
+- **autofix**: For the CI auto-fix loop on a failing required check. Protocol: see § cycle_type=autofix Mode (CI auto-fix loop) below.
 
 ## Migration Notes
 
@@ -57,7 +58,7 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 ## Behavioral Contract (SEMAP)
 
-**Preconditions**: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. **cycle_type parameter provided**.
+**Preconditions**: For `cycle_type=ddd` or `cycle_type=tdd`: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. For `cycle_type=autofix`: the SPEC premise does not apply; the preconditions are the entry condition and prerequisites of the canonical CI auto-fix protocol referenced in § cycle_type=autofix Mode. **cycle_type parameter provided**.
 
 **Postconditions**: All existing tests still pass. New tests cover modified code. Coverage >= 85% on modified files. No new lint/type errors.
 
