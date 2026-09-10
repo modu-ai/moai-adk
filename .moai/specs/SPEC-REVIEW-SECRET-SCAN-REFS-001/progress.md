@@ -76,6 +76,49 @@ after the operator decision, on top of `af7eb142b`
   - `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001`, run with every other 0.2.1 edit in place →
     exit 0, `0 error(s), 0 warning(s)`, with the same one INFO `OwnershipTransitionUnmeasured` on
     commit `78e29987f`.
+- Scan output granularity measurement, the basis for resolving plan audit iteration 2 finding D13
+  (`.moai/reports/t629/plan-audit-iter2.md`). Taken 2026-09-10 on a throwaway fixture repository in
+  the session scratchpad, outside this repository, with the worktree at `5fa97ecd7` (clean) and
+  `git --version` → `git version 2.50.1 (Apple Git-155)`. No history scan ran on this repository.
+  The record sits in this file because the subagent file-write guard refused a separate report file
+  under `.moai/reports/t629/`.
+  - Fixture: fixture identity, `commit.gpgsign=false`, `core.hooksPath=/dev/null`. Markers are
+    PEM-style private-key header lines with distinct uppercase labels, each written by `printf` from
+    four fragments and never reproduced here. Fixture commit F0: `keys.txt` with six context lines
+    carrying `CTXLINE`, `other.txt` with two lines carrying `OTHERPLAIN`. F1: four adjacent added
+    lines in one hunk of `keys.txt` — the `ALPHACELL` marker, a plain line carrying `DELTAPLAIN`,
+    the `BRAVOCELL` marker, the `CHARLIECELL` marker. Supplementary F2, one commit: the `ECHOCELL`
+    marker appended to `other.txt` and a plain line carrying `FOXPLAIN` appended to `keys.txt`.
+    Supplementary F3, one commit: the `GOLFCELL` marker as the first line of `keys.txt` and a plain
+    line carrying `HOTELPLAIN` at its end, two hunks. F2 and F3 were added because in F1 the hunk,
+    the file, and the commit coincide.
+  - Commands (`REGEX` = the scan regex as written in `review.md`; every output redirected to a file;
+    every exit code read without a pipe; every `git` command exited 0): after F0
+    `git -C FX log -p --all -G 'REGEX' > SP/gran/base.txt`, `wc -c` → `0` bytes; after each commit
+    `git -C FX show HEAD --output=SP/gran/c<N>-show.txt` and the prescribed incremental form
+    `git -C FX log -p HEAD~1..HEAD -G 'REGEX'` redirected to `SP/gran/inc.txt` (F1),
+    `SP/gran/inc2.txt` (F2), and `SP/gran/inc3.txt` (F3); after F1 also
+    `git -C FX log -p --all -G 'REGEX' > SP/gran/all.txt`; per file `wc -l`,
+    `/usr/bin/grep -c '<LABEL>'`, `/usr/bin/grep -cE -- 'REGEX'`, `/usr/bin/grep -c '^@@'`,
+    `/usr/bin/grep -c '^diff '`.
+  - F1, patch / incremental scan / `--all` scan: `wc -l` 21 / 21 / 21; `ALPHACELL`, `BRAVOCELL`,
+    `CHARLIECELL` each 1 in every file; lines matching `REGEX` 3 / 3 / 3; the non-matching added
+    line `DELTAPLAIN` 1 / 1 / 1; context lines `CTXLINE` 6 / 6 / 6; `^@@` 1 / 1 / 1; the untouched
+    file's `OTHERPLAIN` 0 / 0 / 0 (grep exit 1).
+  - F2, patch / scan: `wc -l` 23 / 14; `^diff ` 2 / 1; `^@@` 2 / 1; `ECHOCELL` 1 / 1; lines
+    matching `REGEX` 1 / 1; the non-matching file's `FOXPLAIN` 1 / 0.
+  - F3, patch / scan: `wc -l` 20 / 20; `^diff ` 1 / 1; `^@@` 2 / 2; `GOLFCELL` 1 / 1; lines
+    matching `REGEX` 1 / 1; the non-matching hunk's `HOTELPLAIN` 1 / 1.
+  - Conclusion: the scan's native output is file-granular within a matching commit. Every hunk of a
+    matching file is printed, with its non-matching added lines and its context lines; a
+    non-matching file in the same commit is not printed. A label count over the raw scan output, or
+    over any patch-shaped output, therefore also counts lines printed next to a finding. A listed
+    line itself matches `REGEX`, so filtering patch-shaped output by `REGEX` does not remove a listed
+    line printed next to a finding.
+  - Gaps: only the PEM-header alternative; one git build; `--pickaxe-all`, a changed context width,
+    merge commits, and stash entries were not exercised. The credential regex reading over this file
+    is taken before this record's commit and recorded with the next revision readings; it does not
+    include the lines that record it.
 
 ## §E.2 Run-phase Evidence
 
