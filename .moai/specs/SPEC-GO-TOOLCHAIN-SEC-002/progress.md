@@ -1,6 +1,6 @@
 # Progress — SPEC-GO-TOOLCHAIN-SEC-002
 
-## Status: draft (plan-phase)
+## Status: completed (sync-phase closed)
 
 Tier S, Class C (global change). Card t610 (Factory lane-8), branch `WT-go-1266`, base
 `d3b7d438d` (local develop at card creation; local develop has since moved to `d1b61005d`).
@@ -107,7 +107,53 @@ full_suite_verdict_owner: "lead batch full run + CI on origin/develop (after M4)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Measured by manager-docs on 2026-09-10 in `.claude/worktrees/t610` (branch `WT-go-1266`), before
+the sync commit. Evidence directory: `.moai/reports/t610/sync/` (full command/output/exit
+detail: `ac008-evidence.md`).
+
+**AC-GTS2-008 result table** (grep-based, unpiped exit codes):
+
+| File | `1.26.4` count | exit | `1.26.8` count | exit |
+|------|---------------:|------|---------------:|------|
+| `.moai/project/product.md` | 0 | 1 (no-match) | 2 | 0 |
+| `.moai/project/structure.md` | 0 | 1 (no-match) | 1 | 0 |
+| `.moai/project/codemaps/overview.md` | 0 | 1 (no-match) | 1 | 0 |
+| `.moai/project/codemaps/modules.md` | 0 | 1 (no-match) | 1 | 0 |
+| **Total** | **0** | — | **5** | — |
+
+Control (proves the grep instrument reads the token): `git show
+403bac94b339c19ebcee29e12b1a722cfd3d69ee:.moai/project/product.md` →
+`control-product-at-403bac94b.md`, then `grep -c '1\.26\.4'` on that pre-edit capture → `2`
+(exit 0), matching spec.md § D.0 E-08's baseline for `product.md`.
+
+Verdict: AC-GTS2-008 PASS.
+
+**Files changed this sync phase:**
+- `.moai/project/product.md` (2 mentions: lines 244, 300)
+- `.moai/project/structure.md` (1 mention: line 132)
+- `.moai/project/codemaps/overview.md` (1 mention: line 6)
+- `.moai/project/codemaps/modules.md` (1 mention: line 6)
+- `CHANGELOG.md` (`[Unreleased]` → `### Fixed`, one new entry citing SPEC-GO-TOOLCHAIN-SEC-002)
+- `.moai/specs/SPEC-GO-TOOLCHAIN-SEC-002/spec.md` (frontmatter `status: in-progress → completed`)
+- `.moai/specs/SPEC-GO-TOOLCHAIN-SEC-002/progress.md` (this file: §E.4 + status line)
+- `.moai/reports/t610/sync/` (this evidence directory)
+
+CHANGELOG pre-emission self-test (B12): `grep -c 'SPEC-GO-TOOLCHAIN-SEC-002' CHANGELOG.md` → `0`
+(exit 1, no match) before emission — no duplicate entry risk. AC count self-test: `grep -oE
+'AC-GTS2-[0-9]+' acceptance.md | sort -u | wc -l` → `8`, matching the CHANGELOG entry's "8
+acceptance criteria" claim.
+
+```yaml
+sync_complete_at: 2026-09-10
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: "grep -c SPEC-GO-TOOLCHAIN-SEC-002 CHANGELOG.md -> 0 (pre-emission), no duplicate"
+b12_self_test_b: "AC-GTS2-[0-9]+ distinct count in acceptance.md -> 8, matches CHANGELOG claim"
+b12_self_test_c: "ls verified: product.md, structure.md, codemaps/overview.md, codemaps/modules.md all exist"
+changelog_entry_position: "[Unreleased] -> ### Fixed (first entry under that heading)"
+frontmatter_status_transitions.spec_md: "in-progress -> completed (status + updated only)"
+canary_compliance_check: "not applicable — this SPEC defines no forward-looking policy that its own sync tests"
+```
 
 ## §F Phase 4 Mode Selection
 
