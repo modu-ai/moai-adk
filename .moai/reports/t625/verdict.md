@@ -17,7 +17,7 @@
 
 - C2(템플릿)를 먼저, C1(로컬)을 같은 문구로 나중에 고쳤다. C2↔C1 비교는 작업 전과 같은 기존 3개 헝크만 남는다.
 - 카탈로그 해시는 `manager-develop` 항목 한 줄만 바뀌었다.
-- C3(`.codex/agents/moai/manager-develop.toml`)는 손대지 않았다. 따라서 방출 드리프트 검사는 예상대로 실패한다(리드의 `make agents-emit` 대기).
+- C3(`.codex/agents/moai/manager-develop.toml`)는 손으로 고치지 않았다. 워커 단계에서는 방출 드리프트 검사가 예상대로 실패했고, 이후 lane-6 이 `make agents-emit` 으로 C3 를 재생성해 드리프트 검사와 agentemit 테스트가 모두 통과했다(§2.1). 이 배치에서는 C3 재생성을 레인이 맡는다.
 - `/moai` 워크플로의 "cycle_type=ddd or tdd, per development_mode" 줄은 확인했고 그대로 둔다. 이 줄은 SPEC 구현 배차를 설명하며, 그 경로에는 autofix가 해당하지 않으므로 이번 수정과 어긋나지 않는다.
 
 커밋:
@@ -86,6 +86,14 @@
   - 양성 대조군 `neutrality-control.txt`: 세션 스크래치에 심은 5줄 중 금지 토큰 4줄(SPEC/REQ, 카드 id, 40자리 SHA, 날짜)을 모두 잡고 깨끗한 줄 1줄은 건너뜀, `EXIT=0`. POSIX ERE에서 `\b`는 단어 경계가 아니므로 카드 id는 명시적 경계 클래스로 썼다.
 - Cf 문자: `cf-commit1.txt`, `cf-ac06-files.txt`, `cf-commit2.txt`, `cf-ac10-files.txt`, `cf-commit3.txt` 모두 `TOTAL_CF=0`. 계수기는 스크래치에 U+200B를 심은 대조 파일에서 `TOTAL_CF=1`, `EXIT=3`을 냈다.
 
+### 2.1 C3 재생성 (lane-6, 워커 종료 뒤)
+
+리드 결정에 따라 이 배치에서는 C3 재생성을 레인이 한다. 워커가 커밋을 마친 뒤(HEAD `02f3ab532`) lane-6 이 같은 트리에서 실행했다.
+
+- 재생성: `make agents-emit` → EXIT=0 (`agents-emit-run.txt`). 바뀐 파일은 `internal/template/templates/.codex/agents/moai/manager-develop.toml` 하나다. 바뀐 부분은 C2 에 넣은 세 문장 변경(AC-06 1줄, AC-10 2줄 수정과 1줄 추가)과 같다.
+- 드리프트 검사: `make agents-emit-check` → 출력 `ok … internal/template/agentemit`, EXIT=0 (`agents-emit-check-after-emit.txt`). 재생성 전에는 EXIT=2 였다(`agents-emit-check.txt`).
+- agentemit 테스트: `go test ./internal/template/agentemit/... -count=1 -v` → `--- PASS` 24건, `TestGoldenCommittedArtifactsMatchEmission` 포함, `--- FAIL` 0건, EXIT=0 (`test-agentemit-after-emit.txt`). 재생성 전에는 이 테스트 하나가 실패했다(`test-agentemit.txt`).
+
 ## 3. 기준 귀속 (Baseline-attribution)
 
 - 측정 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t625`, 브랜치 `WT-develop-guide-conflicts`
@@ -96,7 +104,7 @@
 
 ## 4. 미검증 (Gaps)
 
-- 기준점 `2160d4e92`에서 `agentemit` 테스트를 돌려 원래 초록이었는지는 재지 않았다. "실패 원인은 C3가 낡은 것뿐"이라는 판단은 (a) 불일치로 나온 파일이 이번에 고친 C2에서 방출되는 `manager-develop.toml` 하나라는 점, (b) C3가 기준점 이후 바뀌지 않았다는 점에 기댄 추론이다. 리드가 `make agents-emit`을 돌린 뒤 이 테스트가 초록이 되는지가 확인 수단이다.
+- 기준점 `2160d4e92`에서 `agentemit` 테스트를 돌려 원래 초록이었는지는 재지 않았다. "실패 원인은 C3가 낡은 것뿐"이라는 판단은 (a) 불일치로 나온 파일이 이번에 고친 C2에서 방출되는 `manager-develop.toml` 하나라는 점, (b) C3가 기준점 이후 바뀌지 않았다는 점에 기댄 추론이다. 이 추론은 재생성 뒤 확인됐다. lane-6 의 `make agents-emit` 뒤 같은 테스트가 통과했고, 바뀐 C3 파일도 `manager-develop.toml` 하나였다(§2.1). 기준점 `2160d4e92` 자체에서의 결과는 여전히 재지 않았다.
 - `internal/template` 패키지 전체와 저장소 전체 스위트는 돌리지 않았다. 범위 한정 실행만 했고, 전체 판정은 CI 몫이다.
 - C2↔C1 헝크가 "같다"는 AC-10 이후 판정은 헝크 머리의 줄 번호를 정규화한 대조에 기댄다. 헝크 본문 바이트는 같지만 줄 번호는 1씩 밀렸다.
 - 다른 파일(예: `manager-develop-prompt-template.md`, 기타 스킬·규칙)에 남은 "`ddd` 또는 `tdd`만" 식 서술은 전수 조사하지 않았다. 확인한 것은 `/moai` 워크플로의 배차 줄 하나다.
@@ -104,6 +112,6 @@
 
 ## 5. 잔여 위험 (Residual-risk)
 
-- C3가 재방출되기 전에 이 브랜치를 develop에 병합하면 develop에서 `agentemit` 골든 테스트와 `make build`의 선행 `agents-emit-check`가 빨갛게 된다. 방출 전에 만든 바이너리는 옛 `manager-develop` 정의를 임베드한다.
+- C3 는 이 브랜치에서 재생성했으므로 병합 뒤 develop 의 `agentemit` 골든 테스트와 `agents-emit-check` 는 초록이어야 한다. 병합 창에서 흡수한 트리 기준으로 다시 확인한다. 이미 설치된 바이너리는 배치 끝 리드의 빌드 전까지 옛 정의를 임베드한다(임베드 축은 `make embed-check` 소관).
 - AC-10의 새 전제 조건 문장은 `ci-autofix-protocol.md`의 "Entry Condition"과 "Prerequisites" 구성을 가리킨다. 그 규칙 파일의 절 구성이 바뀌면 이 참조가 어긋날 수 있다.
 - AC-06 문장이 산출물 범위를 SSOT에 맡겼으므로, 앞으로 SSOT 행이 바뀌면 "Status transitions owned" 항목(4개 산출물 명시)과 다시 어긋날 수 있다. 그 항목은 이번 범위 밖이라 손대지 않았다.
