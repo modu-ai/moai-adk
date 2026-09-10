@@ -63,10 +63,7 @@ func boardFixtureRoot(t *testing.T) string {
 func getBoard(t *testing.T, root string) *httptest.ResponseRecorder {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
-	req := httptest.NewRequest(http.MethodGet, "/specs", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
-	return rec
+	return serveGet(t, a.routes(), "/specs")
 }
 
 // TestBoard_Render (AC-WC11-040): the /specs screen lists every SPEC, calls out
@@ -190,9 +187,7 @@ func TestBoard_GETOnly(t *testing.T) {
 		}
 	}
 	// GET is allowed.
-	req := httptest.NewRequest(http.MethodGet, "/specs", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/specs")
 	if rec.Code != http.StatusOK {
 		t.Errorf("GET /specs = %d, want 200", rec.Code)
 	}
@@ -203,9 +198,7 @@ func TestBoard_GETOnly(t *testing.T) {
 // still answered would be a second, unlinked copy of the same surface.
 func TestBoard_BoardRouteRetired(t *testing.T) {
 	a := newApp(Config{ProjectRoot: boardFixtureRoot(t), ProfileName: "default"})
-	req := httptest.NewRequest(http.MethodGet, "/specs/board", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/specs/board")
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("GET /specs/board = %d, want 404 (the standalone board page was retired)", rec.Code)
 	}

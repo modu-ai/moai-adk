@@ -1,0 +1,4 @@
+Computing hash for entry "manager-develop"...
+  manager-develop: b8fa8c95eb18654a65b5ce81bd605c4c6befda29cec263e56a906962a17eae82
+catalog.yaml updated successfully (12899 bytes)
+EXIT=0
