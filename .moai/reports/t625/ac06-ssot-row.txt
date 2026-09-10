@@ -1,0 +1,5 @@
+.claude/rules/moai/development/spec-frontmatter-schema.md:92:## Status Transition Ownership Matrix
+.claude/rules/moai/development/spec-frontmatter-schema.md:99:| `draft → in-progress` | manager-develop (on M1 commit start) | `fix(SPEC-{ID}): M1 ...` or `feat(SPEC-{ID}): M1 ...` — first run-phase commit |
+internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md:92:## Status Transition Ownership Matrix
+internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md:99:| `draft → in-progress` | manager-develop (on M1 commit start) | `fix(SPEC-{ID}): M1 ...` or `feat(SPEC-{ID}): M1 ...` — first run-phase commit |
+EXIT=0

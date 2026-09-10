@@ -1,0 +1,2859 @@
+2026/09/10 14:01:15 INFO session started session_id=sess-seam cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces4288599644/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces4288599644/001
+2026/09/10 14:01:15 WARN configuration not available, proceeding with defaults session_id=sess-seam
+2026/09/10 14:01:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 14:01:16 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCCCmd_Execution_NoDeps924926926/001/.moai/config/sections
+Launching Claude Code...
+Launching Claude Code...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+CG mode: Lead (Claude) + Teammates (GLM)
+Launching Claude Code...
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatus1934394673/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainLineage635749001/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBack3529856529/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBackAtRoot2247622831/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList3465383728/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList3465383728/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatusNoContext3575965160/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainPruneDryRun3711509297/001
+2026/09/10 14:01:16 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLaunchClaudeDefault_LaunchesPinnedBinary130406073/001/proj/.moai/config/sections
+2026/09/10 14:01:16 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLaunchClaudeDefault_UnsetPinFallsBackToPATH2272982867/001/proj/.moai/config/sections
+warn: skipping symlink /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateSymlinkSkip_Repro1343556813/001/src/link.txt
+install the desktop app from https://example.invalid/codex-desktop
+2026/09/10 14:03:20 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_ConfigLoadError2965851936/001/.moai/config/sections
+2026/09/10 14:03:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_SuccessfulExecution2994314357/001/.moai/config/sections
+Launching Claude Code...
+2026/09/10 14:03:52 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/09/10 14:03:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_WithProjectRoot262546574/001/.moai/config/sections
+Launching Claude Code...
+2026/09/10 14:03:53 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd test-project                           │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+2026/09/10 14:03:53 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg_NonInteractive3593239752/001/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd dot-project                            │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Version Check: Checking template version......
+  ✓ Version check complete
+  ○ Loading Templates: Reading embedded templates......
+  ✓ Templates loaded
+  ○ Loading Manifest: Reading project manifest......
+  ✓ Manifest loaded
+· Found 62 files to sync
+2026/09/10 14:04:19 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_NamedDirectoryArg4251187833/001/.moai/config/sections
+2026/09/10 14:04:20 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/.moai/config/sections
+Team mode disabled (was: glm)
+Launching Claude Code...
+Team mode disabled (was: cg)
+Launching Claude Code...
+2026/09/10 14:04:20 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/.moai/config/sections
+2026/09/10 14:04:20 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithPositionalArg4207944944/001/.moai/config/sections
+2026/09/10 14:04:21 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithDotArg16175734/001/.moai/config/sections
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+2026/09/10 14:05:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_NoConfig905434970/001/.moai/config/sections
+2026/09/10 14:05:25 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/.moai/config/sections
+2026/09/10 14:05:26 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_PositionalArg2162406936/001/.moai/config/sections
+2026/09/10 14:05:26 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg1181164275/001/.moai/config/sections
+moai hook PostToolUse: invalid stdin JSON (invalid JSON); emitting default output
+Launching Claude Code...
+2026/09/10 14:05:27 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_NilConfig864766509/001/.moai/config/sections
+Launching Claude Code...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+2026/09/10 14:05:39 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/.moai/config/sections
+2026/09/10 14:05:39 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/.moai/config/sections
+2026/09/10 14:05:40 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/09/10 14:05:40 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+{
+  "epic": "X",
+  "epic_token": "T",
+  "milestones": [
+    {
+      "id": "M0",
+      "label": "M0",
+      "status": "in-progress",
+      "covered": true,
+      "spec_id": "SPEC-X-001",
+      "spec_status": "completed",
+      "sync_commit_sha": ""
+    }
+  ],
+  "done": 0,
+  "total": 1,
+  "pct": 0,
+  "extra_mx": [],
+  "untracked_specs": [],
+  "baseline_attribution": ""
+}
+Launching Claude Code with GLM backend...
+CG mode: Lead (Claude) + Teammates (GLM)
+Launching Claude Code...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+Z.AI MCP tools auto-enabled (Vision, Web Search, Web Reader)
+  Disable: moai glm tools disable all
+Error: --id, --expected-token, and --decision requeue|fail are required
+Usage:
+  factory handoff recover-resume [flags]
+
+Flags:
+      --decision string         Recovery decision: requeue or fail
+      --expected-token string   Current claim token
+  -h, --help                    help for recover-resume
+      --id int                  Resume handoff row id
+
+Error: legacy resume unknown owner census: active runtimes=1
+Usage:
+  factory handoff recover-resume [flags]
+
+Flags:
+      --decision string         Recovery decision: requeue or fail
+      --expected-token string   Current claim token
+  -h, --help                    help for recover-resume
+      --id int                  Resume handoff row id
+
+--- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.91s)
+    home_state_coverage_test.go:420: audited production file changed after coverage tip: internal/cli/launcher.go
+--- FAIL: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (149.26s)
+    home_state_coverage_test.go:468: coverage={Covered:0 Total:0 Percent:0} err=coverage cli tests: exit status 1
+        2026/09/10 14:11:05 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCCCmd_Execution_NoDeps2799402294/001/.moai/config/sections
+        Launching Claude Code...
+        Launching Claude Code...
+        Notice: profile "work" has no Claude Code configuration yet.
+          Claude Code will show the login / onboarding screen on this launch.
+          Account state is not inherited between profiles; sign in once and it
+          persists for this profile.
+        2026/09/10 14:11:05 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_SuccessfulExecution2575147405/001/.moai/config/sections
+        Launching Claude Code...
+        2026/09/10 14:11:05 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_WithProjectRoot1564564529/001/.moai/config/sections
+        Launching Claude Code...
+        Team mode disabled (was: glm)
+        Launching Claude Code...
+        Team mode disabled (was: cg)
+        Launching Claude Code...
+        Launching Claude Code...
+        2026/09/10 14:11:05 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_NilConfig2202384326/001/.moai/config/sections
+        Launching Claude Code...
+        Launching Claude Code with GLM backend...
+        Launching Claude Code with GLM backend...
+        Launching Claude Code with GLM backend...
+        Error: --id, --expected-token, and --decision requeue|fail are required
+        Usage:
+          factory handoff recover-resume [flags]
+        
+        Flags:
+              --decision string         Recovery decision: requeue or fail
+              --expected-token string   Current claim token
+          -h, --help                    help for recover-resume
+              --id int                  Resume handoff row id
+        
+        Error: legacy resume unknown owner census: active runtimes=1
+        Usage:
+          factory handoff recover-resume [flags]
+        
+        Flags:
+              --decision string         Recovery decision: requeue or fail
+              --expected-token string   Current claim token
+          -h, --help                    help for recover-resume
+              --id int                  Resume handoff row id
+        
+        --- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.77s)
+            home_state_coverage_test.go:420: audited production file changed after coverage tip: internal/cli/launcher.go
+        --- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (4.31s)
+            home_state_coverage_test.go:520: audited production file changed after coverage tip: internal/cli/launcher.go
+        mode: dry-run
+        canonical-root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets2757732351/001
+        project-key: 001-9f8ade18
+        source: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets2757732351/001/.moai/state/todo/backlog.db
+        target: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets2757732351/002/home/db/001-9f8ade18/todo/backlog.db
+        active-census: sessions=0 factory=0 mcp=0 fingerprint=0:0:0
+        logical-count: 2
+        integrity: ok
+        search: not-applicable (no runtime producer)
+        target-status: absent
+        2026/09/10 14:12:03 INFO session started session_id=blocked cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateBarrierAdmissionHaltsAllHosts2613380750/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateBarrierAdmissionHaltsAllHosts2613380750/001
+        Error: bare --apply is refused; use --apply --verified-live
+        Error: --migration-id and --backup-id are required
+        Usage:
+          home-state recover [flags]
+        
+        Flags:
+              --backup-id string      Verified backup identifier
+          -h, --help                  help for recover
+              --migration-id string   Migration identifier from the marker
+        
+        Error: migration and backup identities must match
+        Usage:
+          home-state rollback [flags]
+        
+        Flags:
+              --backup-id string      Verified backup identifier
+          -h, --help                  help for rollback
+              --migration-id string   Completed migration identifier
+        
+        Profile: lease-test
+        2026/09/10 14:13:17 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestContinueLaunchCreatesSingleProvisionalLeaseBeforeChildStart3709082444/001/.moai/config/sections
+        Warning: no model resolved from profile "lease-test" — Claude Code will use the model in .claude/settings.json instead.
+          Check with: moai profile current && moai profile list
+          Select one with: moai cc -p <profile>
+        2026/09/10 14:13:18 INFO session started session_id=t352-guard cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard3336222389 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard3336222389
+        2026/09/10 14:13:19 WARN configuration not available, proceeding with defaults session_id=t352-guard
+        2026/09/10 14:13:19 INFO teammateMode updated mode=auto in_tmux=false
+        FAIL
+        coverage: 15.0% of statements in ./internal/cli, ./internal/homestate, ./internal/hook/handoff, ./internal/hook, ./internal/kanban
+        FAIL	github.com/modu-ai/moai-adk/internal/cli	137.948s
+        FAIL
+--- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (3.68s)
+    home_state_coverage_test.go:520: audited production file changed after coverage tip: internal/cli/launcher.go
+harness-observe-stop: auto-classify 2 patterns → 1 promotions
+codex-adapter: dropped "systemMessage" on Stop (26 bytes): no delivery channel on this event
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 2 patterns → 1 promotions
+harness-observe-stop: auto-propose generated 1 proposal(s)
+moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                              │
+│  ✓ MoAI project initialized                                                                                                                                  │
+│   13 dirs    2 files                                                                                                                                         │
+│                                                                                                                                                              │
+│  Next steps:                                                                                                                                                 │
+│    1. cd /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunWizardFn_ZeroInvocationsNonInteractive--non-interactive_4087924177/002/noninteractive-proj  │
+│    2. moai cc                                                                                                                                                │
+│    3. /moai plan "describe your first feature"                                                                                                               │
+│                                                                                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Tip: this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai cg -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                      │
+│  ✓ MoAI project initialized                                                                                                                          │
+│   13 dirs    2 files                                                                                                                                 │
+│                                                                                                                                                      │
+│  Next steps:                                                                                                                                         │
+│    1. cd /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunWizardFn_ZeroInvocationsNonInteractiveabsent_TTY3156023676/002/noninteractive-proj  │
+│    2. moai cc                                                                                                                                        │
+│    3. /moai plan "describe your first feature"                                                                                                       │
+│                                                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Tip: this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai cg -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInjectChainNodeForLaunchCreatesRootNode1089670782/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInjectChainNodeForLaunchNestedDepth2195672584/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInjectChainNodeForLaunchNestedDepth2195672584/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInjectChainNodeForLaunchAbsoluteTarget1246352910/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInjectChainNodeForLaunchFailOpen1386402745/001
+time=2026-09-10T14:15:04.138+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceA_explici2577434214/002/.moai/config/sections
+Launching Claude Code...
+time=2026-09-10T14:15:04.141+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceB_bare_la3916269802/002/.moai/config/sections
+Launching Claude Code...
+time=2026-09-10T14:15:04.142+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceC1_explic2654566728/002/.moai/config/sections
+Launching Claude Code...
+time=2026-09-10T14:15:04.144+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceC2_bare_l609146976/002/.moai/config/sections
+Launching Claude Code...
+Using project profile 'proj-one' (recorded for this project). Use -p default to override.
+time=2026-09-10T14:15:04.145+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_UsesProjectScopedResolution1953935876/002/.moai/config/sections
+Launching Claude Code...
+Notice: profile "proj-one" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+time=2026-09-10T14:15:04.147+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FirstTimeNewProfileIsRecorded2394433126/002/.moai/config/sections
+Launching Claude Code...
+Notice: profile "brand-new" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+time=2026-09-10T14:15:04.148+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_RecordFailureDoesNotBlockLaunch1753715339/002/.moai/config/sections
+Launching Claude Code...
+time=2026-09-10T14:15:05.031+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_Claude1616758308/001/.moai/config/sections
+Launching Claude Code...
+Notice: profile "myprofile" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+Launching Claude Code with GLM backend...
+CG mode: Lead (Claude) + Teammates (GLM)
+Launching Claude Code...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+time=2026-09-10T14:15:05.062+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_GlobalLedgerDoesNotBleed4054555812/001/.moai/config/sections
+Launching Claude Code...
+--- FAIL: TestAuditLagUsesBinlagSeam (0.78s)
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:243 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:251 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:245 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:253 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] .moai/research/observations/ already migrated — skipping
+[3/5] design.yaml already migrated — skipping
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 0 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_IdempotentOnAlreadyMigrated3200684854/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_POSIXPermission464430545/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_HappyPath3480343331/001/.agency.archived
+[dry-run] Expected migration actions:
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun4246163689/001/.agency/config.yaml → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun4246163689/001/.moai/config/sections/design.yaml
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun4246163689/001/.agency/learnings → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun4246163689/001/.moai/research/observations
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun4246163689/001/.agency → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun4246163689/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_ForceOverwrite3905513851/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+rollback: MIGRATE_ROLLBACK_OK
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_Archive3040693548/001/.agency.archived
+Resuming migration from checkpoint test-tx-001 (completed phases: [1 2])
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_EmptyAgencyDir3750276071/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+rollback: MIGRATE_ROLLBACK_OK
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ constitution.md relocated to .claude/rules/moai/design/
+
+Migration complete: 3 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_ConstitutionRelocation3342139438/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_NoMergeConflict445922823/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgencyMigrationAdapter_ForceRunsRealMigration3773697798/001/.agency.archived
+mode: dry-run
+canonical-root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets3815150659/001
+project-key: 001-5aa52f78
+source: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets3815150659/001/.moai/state/todo/backlog.db
+target: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets3815150659/002/home/db/001-5aa52f78/todo/backlog.db
+active-census: sessions=0 factory=0 mcp=0 fingerprint=0:0:0
+logical-count: 2
+integrity: ok
+search: not-applicable (no runtime producer)
+target-status: absent
+Error: bare --apply is refused; use --apply --verified-live
+panic: test timed out after 15m0s
+	running tests:
+		TestHomeStateRecoveryAndRollbackCoverSafeExistingAndMissingTargets (3s)
+		TestHomeStateRecoveryAndRollbackCoverSafeExistingAndMissingTargets/recovery_quarantines_a_valid_divergent_target (1s)
+
+goroutine 14041 [running]:
+testing.(*M).startAlarm.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2802 +0x2cc
+created by time.goFunc
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/time/sleep.go:215 +0x38
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0x8c560a86c8, {0x10430342f?, 0x2c87894002f32e60?}, 0x1077160c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2109 +0x3bc
+testing.runTests.func1(0x8c560a86c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x40
+testing.tRunner(0x8c560a86c8, 0x8c562bfb98)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+testing.runTests({0x104238872, 0x1b}, {0x104286cfa, 0x28}, 0x8c55b8e8d0, {0x107925d80, 0xddc, 0xddc}, {0x11?, 0xd?, ...})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x3f0
+testing.(*M).Run(0x8c55ea7220)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0x578
+github.com/modu-ai/moai-adk/internal/cli.TestMain(0x8c55ea7220)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/main_test.go:230 +0xa0
+main.main()
+	_testmain.go:7146 +0x88
+
+goroutine 69 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a8fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputText_NoFindings(0x8c560a8fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:28 +0x28
+testing.tRunner(0x8c560a8fc8, 0x1077170e0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 70 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a9208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputText_WithFindings(0x8c560a9208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:40 +0x28
+testing.tRunner(0x8c560a9208, 0x1077170e8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 71 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a9448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputText_WithNote(0x8c560a9448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:57 +0x28
+testing.tRunner(0x8c560a9448, 0x1077170f0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 72 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a9688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputJSON_EmptyFindings(0x8c560a9688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:75 +0x28
+testing.tRunner(0x8c560a9688, 0x1077170d0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 73 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a98c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOutputJSON_WithFindings(0x8c560a98c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:93 +0x28
+testing.tRunner(0x8c560a98c8, 0x1077170d8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 74 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a9b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_ErrorLevel(0x8c560a9b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:117 +0x28
+testing.tRunner(0x8c560a9b08, 0x107715538)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 75 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c560a9d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_WarningLevel(0x8c560a9d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:136 +0x28
+testing.tRunner(0x8c560a9d48, 0x107715550)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 76 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c558fe908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_InfoLevel(0x8c558fe908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:152 +0x28
+testing.tRunner(0x8c558fe908, 0x107715540)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 77 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c558ff208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_UnknownLevel(0x8c558ff208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:168 +0x28
+testing.tRunner(0x8c558ff208, 0x107715548)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 78 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c558ff448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_EmptyInput(0x8c558ff448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:183 +0x20
+testing.tRunner(0x8c558ff448, 0x107715530)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 79 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c558ff688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFilterBySeverity_CaseInsensitive(0x8c558ff688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_output_test.go:193 +0x28
+testing.tRunner(0x8c558ff688, 0x107715528)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 80 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c558ff8c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveRulesDir(0x8c558ff8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_rulesdir_test.go:32 +0x20
+testing.tRunner(0x8c558ff8c8, 0x107717cb8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 81 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c558ffb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestAstGrepCmdRulesDirFlagNoDefault(0x8c558ffb08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/astgrep_rulesdir_test.go:111 +0x28
+testing.tRunner(0x8c558ffb08, 0x107713538)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 28 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c5601a488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLoadWorkflowAuditSection(0x8c5601a488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/audit_pin_test.go:16 +0x20
+testing.tRunner(0x8c5601a488, 0x1077169d0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 124 [chan receive, 15 minutes]:
+testing.(*T).Parallel(0x8c55f906c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestApplyBranchProtection_URLEncodesBranchSlash(0x8c55f906c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/branch_protection_test.go:74 +0x28
+testing.tRunner(0x8c55f906c8, 0x1077132e8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3294 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f22d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseKanbanFlagPassThroughBoundary(0x8c56f22d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:117 +0x28
+testing.tRunner(0x8c56f22d88, 0x107717280)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4400 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56458008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestRunmdAcConvergeProseMatchesFixture(0x8c56458008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_condition_classify_test.go:106 +0x24
+testing.tRunner(0x8c56458008, 0x107718a20)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3293 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f22b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseKanbanFlagUnifiedEntry(0x8c56f22b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:46 +0x28
+testing.tRunner(0x8c56f22b48, 0x107717288)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4392 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c561befc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDeclaredMechanical(0x8c561befc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_arm_refusal_test.go:176 +0x28
+testing.tRunner(0x8c561befc8, 0x107714d10)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2978 [chan receive, 8 minutes]:
+testing.(*T).Parallel(0x8c55f90008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClassifySkill_HNS(0x8c55f90008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_hns_test.go:24 +0x24
+testing.tRunner(0x8c55f90008, 0x107713f90)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5872 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56458d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdDisable_PreservesFileMode(0x8c56458d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:330 +0x34
+testing.tRunner(0x8c56458d88, 0x107714378)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3073 [chan receive, 7 minutes]:
+testing.(*T).Parallel(0x8c569e6d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDoctorSandbox_ProfileFlag(0x8c569e6d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_sandbox_test.go:79 +0x24
+testing.tRunner(0x8c569e6d88, 0x107715080)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5873 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56458fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdDisable_PreservesComments(0x8c56458fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:360 +0x28
+testing.tRunner(0x8c56458fc8, 0x107714370)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8287 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f22248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCompanionLabelRecognizesWithoutConsuming(0x8c56f22248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_bootstrap_test.go:16 +0x28
+testing.tRunner(0x8c56f22248, 0x107717220)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9179 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705a908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildEnvForLaunch_PreservesOtherVars(0x8c5705a908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:472 +0x28
+testing.tRunner(0x8c5705a908, 0x1077137b0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3295 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f22fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseFactoryFlag(0x8c56f22fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:135 +0x28
+testing.tRunner(0x8c56f22fc8, 0x107717258)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2981 [chan receive, 8 minutes]:
+testing.(*T).Parallel(0x8c55f90908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckLayer6AgentActivation_HNSResolvedRef(0x8c55f90908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_hns_test.go:104 +0x28
+testing.tRunner(0x8c55f90908, 0x107713e10)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3161 [chan receive, 7 minutes]:
+testing.(*T).Parallel(0x8c5601ad88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDoctorSandbox_AvailabilityReport(0x8c5601ad88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_sandbox_test.go:15 +0x28
+testing.tRunner(0x8c5601ad88, 0x107715068)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3297 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f23448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseLauncherEntryMerge(0x8c56f23448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:216 +0x20
+testing.tRunner(0x8c56f23448, 0x1077172b0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 342 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c55f91448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClaudeJSONGuard_ConcurrentForceNoLostUpdate(0x8c55f91448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m2_test.go:94 +0x20
+testing.tRunner(0x8c55f91448, 0x107713fa8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5837 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c5601b208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestApply_PayloadOnly_PreservedWithoutExecuteFlag(0x8c5601b208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_execute_test.go:60 +0x24
+testing.tRunner(0x8c5601b208, 0x107713490)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2980 [chan receive, 8 minutes]:
+testing.(*T).Parallel(0x8c55f90488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckLayer6AgentActivation_HNSDanglingRef(0x8c55f90488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_hns_test.go:75 +0x28
+testing.tRunner(0x8c55f90488, 0x107713e08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5868 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55f91208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdApply_NoProposals(0x8c55f91208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:175 +0x20
+testing.tRunner(0x8c55f91208, 0x107714360)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6501 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56459448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHookSubcommands_AllNewEventsRegistered(0x8c56459448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_e2e_test.go:39 +0x28
+testing.tRunner(0x8c56459448, 0x1077161d0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4393 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c561bf208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBacktickProse_ClassifiedModelNeverReachesTheShell(0x8c561bf208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_backtick_hazard_test.go:24 +0x24
+testing.tRunner(0x8c561bf208, 0x107713600)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2979 [chan receive, 8 minutes]:
+testing.(*T).Parallel(0x8c55f90248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckLayer1Triggers_HNSDirScanned(0x8c55f90248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_hns_test.go:54 +0x24
+testing.tRunner(0x8c55f90248, 0x107713df8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2631 [chan receive, 10 minutes]:
+testing.(*T).Parallel(0x8c569e7448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestEnableObservabilityIfConfigured_NoConfigFile(0x8c569e7448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/deps_coverage_test.go:39 +0x20
+testing.tRunner(0x8c569e7448, 0x1077151a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 1719 [chan receive, 12 minutes]:
+testing.(*T).Parallel(0x8c55e658c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestInitConsoleNoop(0x8c55e658c8?)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/console_test.go:9 +0x1c
+testing.tRunner(0x8c55e658c8, 0x107716308)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 352 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c569e6b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteClaudeJSONBytes_NoTrailingNewline(0x8c569e6b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:232 +0x24
+testing.tRunner(0x8c569e6b48, 0x107713a90)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 351 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c569e6908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_SaveLLMSection_WritesLLMYaml(0x8c569e6908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:204 +0x28
+testing.tRunner(0x8c569e6908, 0x107713a70)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 350 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c569e66c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_SaveWorkflowMuteConfig_Perm0644(0x8c569e66c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:168 +0x28
+testing.tRunner(0x8c569e66c8, 0x107713a80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 349 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c569e6488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_SaveMergeHistoryLedger_JSONTrailingNewline(0x8c569e6488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:131 +0x24
+testing.tRunner(0x8c569e6488, 0x107713a78)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 343 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c55f91688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClaudeJSONGuard_ConcurrentIdempotentNoLostUpdate(0x8c55f91688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m2_test.go:104 +0x20
+testing.tRunner(0x8c55f91688, 0x107713fb0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 348 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c569e6248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_CreatesParentDir(0x8c569e6248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:107 +0x24
+testing.tRunner(0x8c569e6248, 0x107713a98)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 347 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c569e6008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_NoPartialContent(0x8c569e6008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:79 +0x24
+testing.tRunner(0x8c569e6008, 0x107713aa0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 346 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c55f91d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_Perm0644(0x8c55f91d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:59 +0x24
+testing.tRunner(0x8c55f91d48, 0x107713ab0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 345 [chan receive, 14 minutes]:
+testing.(*T).Parallel(0x8c55f91b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCharacterize_WriteFileAtomic_Perm0600(0x8c55f91b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/clifix_concurrency_m3_test.go:31 +0x24
+testing.tRunner(0x8c55f91b08, 0x107713aa8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9281 [chan receive]:
+testing.(*T).Parallel(0x8c56f14b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Remove_PartialDelete(0x8c56f14b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:218 +0x28
+testing.tRunner(0x8c56f14b48, 0x107716ae0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2644 [chan receive, 10 minutes]:
+testing.(*T).Parallel(0x8c55f90d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestValidateUpdateURL(0x8c55f90d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/deps_env_trust_test.go:132 +0x28
+testing.tRunner(0x8c55f90d88, 0x107719ca8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3314 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f23688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveFactoryBranch(0x8c56f23688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:325 +0x24
+testing.tRunner(0x8c56f23688, 0x107717b88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4396 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c561bf688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBacktickHazard_KnownGaps(0x8c561bf688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_backtick_hazard_test.go:71 +0x28
+testing.tRunner(0x8c561bf688, 0x1077135f8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9176 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705a008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildEnvForLaunch_EmptyEffort(0x8c5705a008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:422 +0x20
+testing.tRunner(0x8c5705a008, 0x1077137a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5844 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c561be008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessVerify_DeferredMessage(0x8c561be008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_mute_test.go:121 +0x24
+testing.tRunner(0x8c561be008, 0x107715fa8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9178 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705a6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildEnvForLaunch_ReplacesExisting(0x8c5705a6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:451 +0x24
+testing.tRunner(0x8c5705a6c8, 0x1077137b8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4397 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c561bf8c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCondition_CanonicalAcConvergeIsModel(0x8c561bf8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_condition_classify_test.go:36 +0x24
+testing.tRunner(0x8c561bf8c8, 0x107717230)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9180 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705ab48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSyncBypassToSettingsLocal_TrueSetsBypass(0x8c5705ab48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:496 +0x24
+testing.tRunner(0x8c5705ab48, 0x107719200)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5725 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebe008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHandoffSave_WritesJSONNotMarkdown(0x8c56ebe008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/handoff_test.go:52 +0x24
+testing.tRunner(0x8c56ebe008, 0x107715e58)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3315 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f238c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseFactoryLaneLabelRecognizesWithoutConsuming(0x8c56f238c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:348 +0x28
+testing.tRunner(0x8c56f238c8, 0x107717268)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3597 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c5601a248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestReplaceNamedLabel(0x8c5601a248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:585 +0x28
+testing.tRunner(0x8c5601a248, 0x1077179f0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 13767 [chan receive]:
+testing.(*T).Run(0x8c5700f688, {0x1042a8014?, 0x8c5715df58?}, 0x10771ad68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2109 +0x3bc
+github.com/modu-ai/moai-adk/internal/cli.TestHomeStateRecoveryAndRollbackCoverSafeExistingAndMissingTargets(0x8c5700f688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/migrate_home_state_test.go:663 +0x50
+testing.tRunner(0x8c5700f688, 0x1077160c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7380 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c5705a488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHostFromRemoteURL(0x8c5705a488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/init_gitdetect_test.go:122 +0x28
+testing.tRunner(0x8c5705a488, 0x107716228)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6930 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56c60b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveAgentWiringWithWizard_NilResultIsClaude(0x8c56c60b48?)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/init_agent_wizard_precedence_test.go:83 +0x1c
+testing.tRunner(0x8c56c60b48, 0x107717a90)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5871 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56458b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdDisable_SetsEnabledFalse(0x8c56458b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:290 +0x28
+testing.tRunner(0x8c56458b48, 0x107714380)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6588 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56e26fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveUserPromptStrategy_FailOpen(0x8c56e26fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_harness_multi_event_test.go:243 +0x28
+testing.tRunner(0x8c56e26fc8, 0x107717d28)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9161 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f22908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseMCPJSON_NullMCPServers(0x8c56f22908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:86 +0x24
+testing.tRunner(0x8c56f22908, 0x1077172d8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3296 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56f23208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseFactoryFlagPassThroughBoundary(0x8c56f23208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:198 +0x24
+testing.tRunner(0x8c56f23208, 0x107717260)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4114 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56ebe6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestGLMEnvSetParity(0x8c56ebe6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/glm_env_parity_test.go:29 +0x28
+testing.tRunner(0x8c56ebe6c8, 0x107715700)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9163 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f23d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckMCPScopeDuplicates_ProjectOnly_NoDup(0x8c56f23d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:121 +0x28
+testing.tRunner(0x8c56f23d48, 0x107713e48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2637 [chan receive, 10 minutes]:
+testing.(*T).Parallel(0x8c560a8b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildAutoUpdateFunc_ReturnsNonNilFunc(0x8c560a8b48?)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/deps_coverage_test.go:176 +0x1c
+testing.tRunner(0x8c560a8b48, 0x107713760)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5831 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebfd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessClustersFactoryNotNil(0x8c56ebfd48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_clusters_test.go:171 +0x20
+testing.tRunner(0x8c56ebfd48, 0x107715e88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3170 [chan receive, 7 minutes]:
+testing.(*T).Parallel(0x8c569e6fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDoctorSandbox_BackendUnavailableMessage(0x8c569e6fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_sandbox_test.go:102 +0x24
+testing.tRunner(0x8c569e6fc8, 0x107715070)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2635 [chan receive, 10 minutes]:
+testing.(*T).Parallel(0x8c569e7d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildSessionEndHandler_NoTraceDir(0x8c569e7d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/deps_coverage_test.go:148 +0x20
+testing.tRunner(0x8c569e7d48, 0x107713820)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2636 [chan receive, 10 minutes]:
+testing.(*T).Parallel(0x8c560a8908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildSessionEndHandler_WithTraceDir(0x8c560a8908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/deps_coverage_test.go:160 +0x20
+testing.tRunner(0x8c560a8908, 0x107713828)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9160 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f226c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseMCPJSON_EmptyServers(0x8c56f226c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:70 +0x24
+testing.tRunner(0x8c56f226c8, 0x1077172c0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6379 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56ebf208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHookValidEventTypes_AllHaveSubcommands(0x8c56ebf208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_e2e_test.go:290 +0x28
+testing.tRunner(0x8c56ebf208, 0x1077161e8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9278 [chan receive]:
+testing.(*T).Parallel(0x8c56f14488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Add_RegistersEntry_PreservesUnrelated(0x8c56f14488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:106 +0x28
+testing.tRunner(0x8c56f14488, 0x107716aa0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6378 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c5601bd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHookValidEventTypes_Deterministic(0x8c5601bd48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_e2e_test.go:269 +0x28
+testing.tRunner(0x8c5601bd48, 0x1077161f8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 2645 [chan receive, 10 minutes]:
+testing.(*T).Parallel(0x8c55f90fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestIsLocalPath(0x8c55f90fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/deps_env_trust_test.go:164 +0x28
+testing.tRunner(0x8c55f90fc8, 0x107716640)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9395 [chan receive]:
+testing.(*T).Parallel(0x8c56f14fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_List_JSON(0x8c56f14fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:276 +0x28
+testing.tRunner(0x8c56f14fc8, 0x107716ac0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7893 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c55e64b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestWriteSettingsDriftReportSurfacesAWriteFailure(0x8c55e64b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/integration_settings_drift_report_test.go:80 +0x24
+testing.tRunner(0x8c55e64b48, 0x107719eb8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5833 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c569e7688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessDelegationAnalyzeCmd(0x8c569e7688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_delegation_test.go:50 +0x24
+testing.tRunner(0x8c569e7688, 0x107715ef0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5829 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebf8c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessClustersEmpty(0x8c56ebf8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_clusters_test.go:116 +0x24
+testing.tRunner(0x8c56ebf8c8, 0x107715e78)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5858 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c60908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessFactoryStillCompiles(0x8c56c60908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_retirement_test.go:126 +0x20
+testing.tRunner(0x8c56c60908, 0x107715f08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3598 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c5601a6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestRejectFactoryOnCG(0x8c5601a6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:632 +0x28
+testing.tRunner(0x8c5601a6c8, 0x107717858)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9396 [chan receive]:
+testing.(*T).Parallel(0x8c56f15208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Add_SecretRejection(0x8c56f15208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:347 +0x28
+testing.tRunner(0x8c56f15208, 0x107716ab0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5867 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55f90b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdApply_ReturnsPayloadJSON(0x8c55f90b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:131 +0x28
+testing.tRunner(0x8c55f90b48, 0x107714368)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4115 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56ebe908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestNoBareGLMEnvVarLiteralsInCLIProduction(0x8c56ebe908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/glm_env_parity_test.go:67 +0x24
+testing.tRunner(0x8c56ebe908, 0x107717050)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5869 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c564586c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdRollback_RestoresFile(0x8c564586c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:204 +0x28
+testing.tRunner(0x8c564586c8, 0x107714390)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5865 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c61b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdStatus_FreshProject(0x8c56c61b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:65 +0x20
+testing.tRunner(0x8c56c61b08, 0x107714398)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6692 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c5705b448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestPreCommitWarningWriterWiring(0x8c5705b448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_install_precommit_disclosure_test.go:76 +0x20
+testing.tRunner(0x8c5705b448, 0x107717570)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6610 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56ebafc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestIsHarnessLearningEnabled(0x8c56ebafc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_harness_observe_test.go:88 +0x28
+testing.tRunner(0x8c56ebafc8, 0x107716638)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5830 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebfb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessClustersEmptyLogFile(0x8c56ebfb08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_clusters_test.go:149 +0x24
+testing.tRunner(0x8c56ebfb08, 0x107715e80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4399 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c561bfd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCondition_TranscriptReferentsAreModel(0x8c561bfd48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_condition_classify_test.go:88 +0x28
+testing.tRunner(0x8c561bfd48, 0x107717250)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6589 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56e27208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestDetectPromptLang(0x8c56e27208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_harness_multi_event_test.go:272 +0x28
+testing.tRunner(0x8c56e27208, 0x107714e38)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5835 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c569e7b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessDelegationAnalyzeCmd_GracefulNoOp(0x8c569e7b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_delegation_test.go:131 +0x24
+testing.tRunner(0x8c569e7b08, 0x107715ef8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6533 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c569de008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFlushBarrierHasProductionCaller(0x8c569de008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_flush_test.go:210 +0x28
+testing.tRunner(0x8c569de008, 0x1077155c0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4398 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c561bfb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCondition_ShellCommandsStayMechanical(0x8c561bfb08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_condition_classify_test.go:55 +0x28
+testing.tRunner(0x8c561bfb08, 0x107717248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4401 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56458248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCondition_ReferentTokenIsTheSoleDiscriminator(0x8c56458248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_condition_discriminator_test.go:42 +0x28
+testing.tRunner(0x8c56458248, 0x107717240)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3174 [chan receive, 7 minutes]:
+testing.(*T).Parallel(0x8c55f918c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestClassifySkill(0x8c55f918c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/doctor_skills_test.go:99 +0x28
+testing.tRunner(0x8c55f918c8, 0x107713f80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9162 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f23b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCheckMCPScopeDuplicates_BothEmpty(0x8c56f23b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:105 +0x24
+testing.tRunner(0x8c56f23b08, 0x107713e18)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5870 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56458908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdRollback_NonexistentDate(0x8c56458908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:271 +0x20
+testing.tRunner(0x8c56458908, 0x107714388)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7891 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c55e64488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSettingsDriftVerdictNeverReadsAnExitCode(0x8c55e64488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/integration_settings_drift_exitcode_test.go:42 +0x28
+testing.tRunner(0x8c55e64488, 0x107718d20)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3599 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c5601a908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestRejectKanbanOnCGLeavesFactoryForms(0x8c5601a908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:671 +0x28
+testing.tRunner(0x8c5601a908, 0x107717860)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3600 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c5601ab48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFactoryGenealogyInHelp(0x8c5601ab48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:695 +0x28
+testing.tRunner(0x8c5601ab48, 0x107715498)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9157 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700fb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseMCPJSON_ValidFile(0x8c5700fb08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:21 +0x24
+testing.tRunner(0x8c5700fb08, 0x1077172e0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4014 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56c606c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestGithubCLI_ErrorPropagation(0x8c56c606c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/github_integration_test.go:113 +0x28
+testing.tRunner(0x8c56c606c8, 0x107715b80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3889 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56c60488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveAgentWiringWithWizard_PrecedenceTable(0x8c56c60488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/init_agent_wizard_precedence_test.go:33 +0x28
+testing.tRunner(0x8c56c60488, 0x107717a98)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5845 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c561be248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessV3R5VerbSurface(0x8c561be248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_retirement_test.go:66 +0x28
+testing.tRunner(0x8c561be248, 0x107715f90)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 3601 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c5601afc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestFactoryDefaultWorkersConstant(0x8c5601afc8?)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/factory_test.go:717 +0x1c
+testing.tRunner(0x8c5601afc8, 0x107715490)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8844 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e278c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_NoInlineGetenv(0x8c56e278c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_boundary_test.go:35 +0x20
+testing.tRunner(0x8c56e278c8, 0x107716ad0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 4402 [chan receive, 6 minutes]:
+testing.(*T).Parallel(0x8c56458488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCondition_ExplicitPrefixWins(0x8c56458488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/goal_condition_discriminator_test.go:74 +0x20
+testing.tRunner(0x8c56458488, 0x107717238)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9236 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c561be908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestGLMAuditDefaultModel_DerivesFromTierDefault(0x8c561be908?)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_glm_fallback_test.go:25 +0x1c
+testing.tRunner(0x8c561be908, 0x107715618)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6931 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56e26008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCPPrecedenceComment_StatesHarnessRule(0x8c56e26008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/init_agent_wizard_precedence_test.go:98 +0x24
+testing.tRunner(0x8c56e26008, 0x107716a60)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8288 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f22488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseCompanionLabelStopsAtPassThroughMarker(0x8c56f22488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_bootstrap_test.go:57 +0x28
+testing.tRunner(0x8c56f22488, 0x107717228)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5834 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c569e78c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessDelegationAnalyzeCmd_WritesWhenNotDryRun(0x8c569e78c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_delegation_test.go:99 +0x28
+testing.tRunner(0x8c569e78c8, 0x107715f00)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7434 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56ebb688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestInitCmd_AllFlagRegistered(0x8c56ebb688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/init_slim_branch_test.go:146 +0x20
+testing.tRunner(0x8c56ebb688, 0x107716290)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5729 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebed88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHandoffClear(0x8c56ebed88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/handoff_test.go:148 +0x24
+testing.tRunner(0x8c56ebed88, 0x107715e30)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5792 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e65b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessMute_AddCategory(0x8c55e65b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_mute_test.go:15 +0x28
+testing.tRunner(0x8c55e65b08, 0x107715f28)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5866 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c61d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestCmdStatus_WithLogData(0x8c56c61d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_test.go:91 +0x28
+testing.tRunner(0x8c56c61d48, 0x1077143a0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5826 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebefc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHandoffCmdRegistered(0x8c56ebefc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/handoff_test.go:179 +0x24
+testing.tRunner(0x8c56ebefc8, 0x107715e38)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5788 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e64fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLedgerVerbs_NoOutcomeOnWriteSurfaces(0x8c55e64fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_ledger_test.go:140 +0x20
+testing.tRunner(0x8c55e64fc8, 0x107716890)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5860 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c60fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessRouteJSONSchema(0x8c56c60fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_route_test.go:42 +0x28
+testing.tRunner(0x8c56c60fc8, 0x107715f68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5828 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebf688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessClustersCmd(0x8c56ebf688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_clusters_test.go:63 +0x28
+testing.tRunner(0x8c56ebf688, 0x107715e68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5793 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e65d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessMuteList_ShowsCategories(0x8c55e65d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_mute_test.go:41 +0x28
+testing.tRunner(0x8c55e65d48, 0x107715f18)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5827 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebf448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessClustersCmdHelp(0x8c56ebf448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_clusters_test.go:43 +0x20
+testing.tRunner(0x8c56ebf448, 0x107715e70)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5832 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c569e7208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessClustersRegisteredInLiveTree(0x8c569e7208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_clusters_test.go:187 +0x20
+testing.tRunner(0x8c569e7208, 0x107715e90)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5843 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c560a8d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessMute_InvalidCategory(0x8c560a8d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_mute_test.go:99 +0x24
+testing.tRunner(0x8c560a8d88, 0x107715f30)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5859 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c60d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessRouterCmd(0x8c56c60d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_route_test.go:16 +0x28
+testing.tRunner(0x8c56c60d88, 0x107715f78)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5836 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c5601a008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestExecuteCmd_RegisteredInRouter(0x8c5601a008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_execute_test.go:41 +0x20
+testing.tRunner(0x8c5601a008, 0x1077153b0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5842 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c558ffd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessUnmute_RemovesCategory(0x8c558ffd48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_mute_test.go:68 +0x28
+testing.tRunner(0x8c558ffd48, 0x107715f88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7894 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56459688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestWriteSettingsDriftReportIsSilentForAnUnsetResult(0x8c56459688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/integration_settings_drift_report_test.go:95 +0x24
+testing.tRunner(0x8c56459688, 0x107719eb0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5864 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c618c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessRouterHelp_EnumeratesAllVerbs(0x8c56c618c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_route_test.go:456 +0x20
+testing.tRunner(0x8c56c618c8, 0x107715f80)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5861 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c61208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessValidateCmd(0x8c56c61208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_route_test.go:185 +0x24
+testing.tRunner(0x8c56c61208, 0x107715f98)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5863 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c61688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessRouteSpecOverride(0x8c56c61688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_route_test.go:318 +0x28
+testing.tRunner(0x8c56c61688, 0x107715f70)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5862 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56c61448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessValidate_UnknownLevel(0x8c56c61448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_route_test.go:259 +0x24
+testing.tRunner(0x8c56c61448, 0x107715fa0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5838 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c5601b448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestApply_DelegatesToGoPath_WithExecuteFlag(0x8c5601b448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_execute_test.go:97 +0x24
+testing.tRunner(0x8c5601b448, 0x107713488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8390 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705ad88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveKanbanBranchTruthTable(0x8c5705ad88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_dispatch_test.go:38 +0x28
+testing.tRunner(0x8c5705ad88, 0x107717bf0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5791 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e65688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessLedgerAnnotateCmd(0x8c55e65688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_ledger_test.go:242 +0x28
+testing.tRunner(0x8c55e65688, 0x107715f10)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5728 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebeb48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHandoffSave_RequiresBody(0x8c56ebeb48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/handoff_test.go:133 +0x20
+testing.tRunner(0x8c56ebeb48, 0x107715e40)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5726 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebe248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHandoffSave_Schema(0x8c56ebe248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/handoff_test.go:82 +0x24
+testing.tRunner(0x8c56ebe248, 0x107715e48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5790 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e65448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLedgerRecord_LearningDisabledNoOp(0x8c55e65448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_ledger_test.go:220 +0x20
+testing.tRunner(0x8c55e65448, 0x107716888)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5727 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c56ebe488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHandoffSave_Stdin(0x8c56ebe488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/handoff_test.go:115 +0x24
+testing.tRunner(0x8c56ebe488, 0x107715e50)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5789 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e65208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLedgerVerbs_RecordEvidenceList(0x8c55e65208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_ledger_test.go:156 +0x28
+testing.tRunner(0x8c55e65208, 0x107716898)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 5787 [chan receive, 5 minutes]:
+testing.(*T).Parallel(0x8c55e64d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHarnessObserveStop_RoutingLedgerGated(0x8c55e64d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/harness_ledger_test.go:65 +0x28
+testing.tRunner(0x8c55e64d88, 0x107715f38)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9177 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705a248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestBuildEnvForLaunch_AddsNewEntry(0x8c5705a248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:433 +0x20
+testing.tRunner(0x8c5705a248, 0x1077137a0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6376 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c5601b8c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHookValidEventTypes_Complete(0x8c5601b8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_e2e_test.go:180 +0x28
+testing.tRunner(0x8c5601b8c8, 0x1077161f0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6377 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c5601bb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestHookNewEventTypes_AreValid(0x8c5601bb08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_e2e_test.go:235 +0x28
+testing.tRunner(0x8c5601bb08, 0x1077161b8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6710 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c55e64908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestPreCommitContent_TwoTierBoundary(0x8c55e64908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_install_precommit_test.go:283 +0x24
+testing.tRunner(0x8c55e64908, 0x107717458)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6701 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56459208)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestPreCommitTemplateMatchesConstant(0x8c56459208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/hook_install_precommit_test.go:39 +0x28
+testing.tRunner(0x8c56459208, 0x107717558)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 6834 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c55e64248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestInboxCmdRegisteredOnRoot(0x8c55e64248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/inbox_test.go:102 +0x20
+testing.tRunner(0x8c55e64248, 0x107716240)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9181 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705afc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSyncBypassToSettingsLocal_FalseRemovesBypass(0x8c5705afc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:515 +0x24
+testing.tRunner(0x8c5705afc8, 0x1077191f8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7435 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c56ebb8c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestEmitSlimModeNotice_FourSubstrings(0x8c56ebb8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/init_slim_branch_test.go:168 +0x24
+testing.tRunner(0x8c56ebb8c8, 0x107715180)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9175 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e27d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSyncPermissionModeToSettingsLocal_PreservesExistingEnv(0x8c56e27d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:391 +0x28
+testing.tRunner(0x8c56e27d48, 0x107719248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9174 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e27b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSyncPermissionModeToSettingsLocal_EmptyModeRemovesOverride(0x8c56e27b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:369 +0x24
+testing.tRunner(0x8c56e27b08, 0x107719240)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9173 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e27448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSyncPermissionModeToSettingsLocal_AcceptEditsRemovesOverride(0x8c56e27448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:347 +0x24
+testing.tRunner(0x8c56e27448, 0x107719238)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9172 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e26d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSyncPermissionModeToSettingsLocal_SetsBypassPermissions(0x8c56e26d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:328 +0x24
+testing.tRunner(0x8c56e26d88, 0x107719250)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9171 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e26b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveSymlinks_ExistingPath(0x8c56e26b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:315 +0x20
+testing.tRunner(0x8c56e26b48, 0x107717cd8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9170 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e26908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestResolveSymlinks_NonExistentPath(0x8c56e26908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:299 +0x24
+testing.tRunner(0x8c56e26908, 0x107717ce0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 7892 [chan receive, 2 minutes]:
+testing.(*T).Parallel(0x8c55e646c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSettingsDriftReportNamesTheTreeInEveryState(0x8c55e646c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/integration_settings_drift_report_test.go:18 +0x28
+testing.tRunner(0x8c55e646c8, 0x107718d18)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9159 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56f22008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseMCPJSON_MalformedJSON(0x8c56f22008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:54 +0x24
+testing.tRunner(0x8c56f22008, 0x1077172c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9158 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700fd48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseMCPJSON_MissingFile(0x8c5700fd48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_doctor_coverage_test.go:44 +0x20
+testing.tRunner(0x8c5700fd48, 0x1077172d0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8696 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56cb0b48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestWarnNoModelResolved(0x8c56cb0b48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/launcher_test.go:1011 +0x28
+testing.tRunner(0x8c56cb0b48, 0x107719de8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8414 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c561bed88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLeadLabelNeverReadsAsCompanion(0x8c561bed88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_lead_name_test.go:218 +0x20
+testing.tRunner(0x8c561bed88, 0x107716848)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8413 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c561beb48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestParseLeadLabel(0x8c561beb48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_lead_name_test.go:179 +0x28
+testing.tRunner(0x8c561beb48, 0x1077172b8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8399 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c569de6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestOperatorSuppliedName(0x8c569de6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_lead_name_test.go:20 +0x28
+testing.tRunner(0x8c569de6c8, 0x1077170c0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8395 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705bb08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestACFB019_HelpDocumentsCompanionEntry(0x8c5705bb08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_help_test.go:47 +0x24
+testing.tRunner(0x8c5705bb08, 0x107713148)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8394 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5705b8c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestACFB018_HelpDocumentsLeadEntry(0x8c5705b8c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/kanban_help_test.go:16 +0x24
+testing.tRunner(0x8c5705b8c8, 0x107713140)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 13961 [runnable]:
+internal/poll.(*FD).Fsync(0x8c55c57800)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/internal/poll/fd_fsync_darwin.go:21 +0x194
+os.(*File).Sync(0x8c565a8308)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/file_posix.go:166 +0x48
+github.com/modu-ai/moai-adk/internal/homestate.installMigrationMarker({0x8c57194bd0, 0x87}, {0x8c56f82480, 0x13})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/homestate/admission.go:81 +0x270
+github.com/modu-ai/moai-adk/internal/homestate.InstallMigrationMarkerLocked(...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/homestate/admission_lock.go:45
+github.com/modu-ai/moai-adk/internal/cli.(*homeStateRunner).Run(0x8c55ce9f00, {0x107740238, 0x107983ea0})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/migrate_home_state.go:627 +0xa0c
+github.com/modu-ai/moai-adk/internal/cli.TestHomeStateRecoveryAndRollbackCoverSafeExistingAndMissingTargets.func2(0x8c56f42488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/migrate_home_state_test.go:665 +0x90
+testing.tRunner(0x8c56f42488, 0x10771ad68)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 13767
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8804 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700e488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLSPDoctorReport_ReportsInstalledServers(0x8c5700e488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/lsp_doctor_test.go:106 +0x24
+testing.tRunner(0x8c5700e488, 0x1077167b8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8803 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700e248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLSPDoctorReport_DetectsProjectLanguages(0x8c5700e248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/lsp_doctor_test.go:77 +0x20
+testing.tRunner(0x8c5700e248, 0x1077167a0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8741 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e7e008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLoggingNeverTargetsStdout(0x8c56e7e008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/logging_test.go:108 +0x20
+testing.tRunner(0x8c56e7e008, 0x1077169e0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9397 [chan receive]:
+testing.(*T).Parallel(0x8c56f15448)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Add_SecretLiteralAccepted(0x8c56f15448)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:374 +0x28
+testing.tRunner(0x8c56f15448, 0x107716aa8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9263 [syscall]:
+os/signal.signal_recv()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/sigqueue.go:149 +0x108
+os/signal.loop()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/signal/signal_unix.go:23 +0x1c
+created by os/signal.Notify.func1.1 in goroutine 9435
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/signal/signal.go:152 +0x28
+
+goroutine 9374 [chan receive]:
+testing.(*T).Parallel(0x8c56eba248)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestArchiveMovesFileAndDropsIndexLine(0x8c56eba248)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/memory_test.go:38 +0x28
+testing.tRunner(0x8c56eba248, 0x1077134c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9400 [chan receive]:
+testing.(*T).Parallel(0x8c56f15b08)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCPCmdRegisteredOnRoot(0x8c56f15b08)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:466 +0x28
+testing.tRunner(0x8c56f15b08, 0x107716a58)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8843 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c56e27688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_NoAskUserQuestion(0x8c56e27688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_boundary_test.go:18 +0x24
+testing.tRunner(0x8c56e27688, 0x107716ac8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8807 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700eb48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLSPDoctorRender_NonEmptyOutput(0x8c5700eb48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/lsp_doctor_test.go:166 +0x20
+testing.tRunner(0x8c5700eb48, 0x107716798)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9375 [chan receive]:
+testing.(*T).Parallel(0x8c56eba488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestArchiveNeverDeletes(0x8c56eba488)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/memory_test.go:70 +0x28
+testing.tRunner(0x8c56eba488, 0x1077134d0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9402 [chan receive]:
+testing.(*T).Parallel(0x8c56f42008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMemoryDrainListedInHelp(0x8c56f42008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/memory_drain_test.go:55 +0x20
+testing.tRunner(0x8c56f42008, 0x107716b50)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9401 [chan receive]:
+testing.(*T).Parallel(0x8c56f15d48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestSecretLiteralRegex(0x8c56f15d48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:502 +0x28
+testing.tRunner(0x8c56f15d48, 0x107718b98)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8806 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700e908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLSPDoctorReport_MissingYAML(0x8c5700e908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/lsp_doctor_test.go:154 +0x20
+testing.tRunner(0x8c5700e908, 0x1077167a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8805 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700e6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLSPDoctorReport_ReadinessStatus(0x8c5700e6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/lsp_doctor_test.go:132 +0x20
+testing.tRunner(0x8c5700e6c8, 0x1077167b0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9399 [chan receive]:
+testing.(*T).Parallel(0x8c56f158c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestNewMCPCmd_FactoryChildren(0x8c56f158c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:431 +0x28
+testing.tRunner(0x8c56f158c8, 0x107716fc8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9398 [chan receive]:
+testing.(*T).Parallel(0x8c56f15688)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Add_HTTPType(0x8c56f15688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:400 +0x24
+testing.tRunner(0x8c56f15688, 0x107716a90)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9279 [chan receive]:
+testing.(*T).Parallel(0x8c56f146c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Add_IdempotentSkip(0x8c56f146c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:135 +0x28
+testing.tRunner(0x8c56f146c8, 0x107716a98)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 8802 [chan receive, 1 minutes]:
+testing.(*T).Parallel(0x8c5700e008)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestLSPDoctorReport_ReturnsReport(0x8c5700e008)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/lsp_doctor_test.go:59 +0x20
+testing.tRunner(0x8c5700e008, 0x1077167c0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9394 [chan receive]:
+testing.(*T).Parallel(0x8c56f14d88)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestMCP_Remove_NoEntryIsNoChange(0x8c56f14d88)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/mcp_test.go:255 +0x24
+testing.tRunner(0x8c56f14d88, 0x107716ad8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9376 [chan receive]:
+testing.(*T).Parallel(0x8c56eba6c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestArchiveValidatesEveryNameBeforeMoving(0x8c56eba6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/memory_test.go:94 +0x24
+testing.tRunner(0x8c56eba6c8, 0x107713520)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9377 [chan receive]:
+testing.(*T).Parallel(0x8c56eba908)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestArchiveRefusesTheIndexItself(0x8c56eba908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/memory_test.go:114 +0x24
+testing.tRunner(0x8c56eba908, 0x1077134e0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9426 [chan receive]:
+testing.(*T).Parallel(0x8c56ebab48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1803 +0x194
+github.com/modu-ai/moai-adk/internal/cli.TestArchiveOrphanNeedsNoIndexLine(0x8c56ebab48)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t554/internal/cli/memory_test.go:129 +0x24
+testing.tRunner(0x8c56ebab48, 0x1077134d8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	902.637s
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	5.427s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	11.077s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	1.195s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.295s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	3.925s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	3.316s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	4.033s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	2.917s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	5.684s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	4.805s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	7.117s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	6.597s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	1.469s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	6.033s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	7.927s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	12.928s
+FAIL

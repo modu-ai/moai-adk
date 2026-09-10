@@ -1,0 +1,36 @@
+=== RUN   TestDiffLines_IdenticalAllocatesNothing
+    differ_equal_fastpath_test.go:57: control (2000 lines, one line differs): expected allocs > 0, got 0
+--- FAIL: TestDiffLines_IdenticalAllocatesNothing (0.00s)
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+    differ_equal_fastpath_test.go:95: expected non-nil edits for non-identical input
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+    differ_equal_fastpath_test.go:95: expected non-nil edits for non-identical input
+--- FAIL: TestDiffLines_SingleEditAtThresholdBoundary (0.01s)
+    --- FAIL: TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001 (0.00s)
+    --- FAIL: TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000 (0.02s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000 (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/merge	0.426s
+FAIL
