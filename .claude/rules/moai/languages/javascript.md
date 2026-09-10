@@ -17,7 +17,7 @@ Core Stack:
 - Node.js 24 LTS: Native TypeScript, built-in WebSocket, stable watch mode
 - Runtimes: Node.js 22 and 24 LTS, Deno 2.x, Bun 1.x
 - Testing: Vitest, Jest, Node.js test runner
-- Linting: ESLint 9 flat config, Biome
+- Linting: ESLint 9 flat config, Biome, oxlint
 - Bundlers: Vite, esbuild, Rollup
 - Frameworks: Express, Fastify, Hono, Koa
 
