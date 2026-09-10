@@ -1,0 +1,56 @@
+=== [SX-01 premise] cross_validate_with_evaluator_active ===
+--- .moai/config/sections/harness.yaml lines=     194
+117:        cross_validate_with_evaluator_active: true
+control(harness key count)=8
+--- internal/template/templates/.moai/config/sections/harness.yaml lines=     183
+106:        cross_validate_with_evaluator_active: true
+control(harness key count)=8
+=== [SX-01 premise] sync-auditor SPEC-review / pre|post-implementation ===
+--- .claude/agents/moai/sync-auditor.md lines=     180
+6:  Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
+8:  NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
+135:- **final-pass** (standard harness): single post-implementation evaluation
+136:- **per-iteration** (thorough harness): Phase 10 Evaluation Contract negotiation + post-implementation evaluation
+--- internal/template/templates/.claude/agents/moai/sync-auditor.md lines=     180
+6:  Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
+8:  NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
+135:- **final-pass** (standard harness): single post-implementation evaluation
+136:- **per-iteration** (thorough harness): Phase 10 Evaluation Contract negotiation + post-implementation evaluation
+=== [SX-R03 SSOT] agent-common-protocol Background Agent Execution ===
+--- .claude/rules/moai/core/agent-common-protocol.md lines=     373
+170:## Background Agent Execution
+171-
+172-[ZONE:Evolvable] [HARD] Since Claude Code v2.1.198 subagents run in the background by **default**;
+173-the runtime chooses foreground only when it needs the result. The default changes *where* a
+174-subagent runs, not *what* it may do — a background subagent still surfaces every permission prompt
+175-in the main session. MoAI aligns with the default and does not set the `background:` frontmatter
+176-field.
+177-
+178-The retained safeguard is **concurrency, not backgrounding**, because the actual hazard is a
+179-file-write race: never run two write-capable agents at once, and keep orchestrator work concurrent
+180-with a write-capable agent read-only. Read-only tasks are safe in the background while the
+181-orchestrator continues other read-only work; for write tasks, let the runtime choose the mode rather
+182-than forcing it. Pre-approved write paths in settings.json `permissions.allow` reduce prompts.
+183-Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution
+184-rationale.
+185-
+186-[ZONE:Evolvable] [HARD] **While a worktree is being actively audited, it has exactly one writer.**
+--- internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md lines=     373
+170:## Background Agent Execution
+171-
+172-[ZONE:Evolvable] [HARD] Since Claude Code v2.1.198 subagents run in the background by **default**;
+173-the runtime chooses foreground only when it needs the result. The default changes *where* a
+174-subagent runs, not *what* it may do — a background subagent still surfaces every permission prompt
+175-in the main session. MoAI aligns with the default and does not set the `background:` frontmatter
+176-field.
+177-
+178-The retained safeguard is **concurrency, not backgrounding**, because the actual hazard is a
+179-file-write race: never run two write-capable agents at once, and keep orchestrator work concurrent
+180-with a write-capable agent read-only. Read-only tasks are safe in the background while the
+181-orchestrator continues other read-only work; for write tasks, let the runtime choose the mode rather
+182-than forcing it. Pre-approved write paths in settings.json `permissions.allow` reduce prompts.
+183-Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution
+184-rationale.
+185-
+186-[ZONE:Evolvable] [HARD] **While a worktree is being actively audited, it has exactly one writer.**
+PREMISE-DONE

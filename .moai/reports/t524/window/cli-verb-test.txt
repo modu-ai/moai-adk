@@ -1,0 +1,99 @@
+=== RUN   TestPlanAuditD7_RetiredSPECConflict
+=== PAUSE TestPlanAuditD7_RetiredSPECConflict
+=== RUN   TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+=== PAUSE TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+=== RUN   TestPlanAuditD7_LiveReferenceIsSilent
+=== PAUSE TestPlanAuditD7_LiveReferenceIsSilent
+=== RUN   TestPlanAuditD7_MissingReferencedSPEC
+=== PAUSE TestPlanAuditD7_MissingReferencedSPEC
+=== RUN   TestPlanAuditD8_MissingBuildTag
+=== PAUSE TestPlanAuditD8_MissingBuildTag
+=== RUN   TestPlanAuditD8_WithBuildTagPasses
+=== PAUSE TestPlanAuditD8_WithBuildTagPasses
+=== RUN   TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover
+=== PAUSE TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover
+=== RUN   TestPlanAuditD8_UnreadableSpecIsGap
+=== PAUSE TestPlanAuditD8_UnreadableSpecIsGap
+=== RUN   TestPlanAuditD7D8_VerbsIdenticalAcrossCopies
+=== PAUSE TestPlanAuditD7D8_VerbsIdenticalAcrossCopies
+=== RUN   TestPlanAuditTraceability_ShorthandMappingIsCovered
+=== PAUSE TestPlanAuditTraceability_ShorthandMappingIsCovered
+=== RUN   TestPlanAuditTraceability_FullIDsHaveNoFalsePositive
+=== PAUSE TestPlanAuditTraceability_FullIDsHaveNoFalsePositive
+=== RUN   TestPlanAuditTraceability_TableMappingIsCovered
+=== PAUSE TestPlanAuditTraceability_TableMappingIsCovered
+=== RUN   TestPlanAuditTraceability_HeadingDefinitionsExposeRealGap
+=== PAUSE TestPlanAuditTraceability_HeadingDefinitionsExposeRealGap
+=== RUN   TestPlanAuditTraceability_BareNumbersOutsideListDoNotExpand
+=== PAUSE TestPlanAuditTraceability_BareNumbersOutsideListDoNotExpand
+=== RUN   TestPlanAuditTraceability_ZeroDefinitionsIsGap
+=== PAUSE TestPlanAuditTraceability_ZeroDefinitionsIsGap
+=== RUN   TestPlanAuditTraceability_UnreadableSpecIsGap
+=== PAUSE TestPlanAuditTraceability_UnreadableSpecIsGap
+=== RUN   TestPlanAuditTraceability_InlineACsWithoutAcceptance
+=== PAUSE TestPlanAuditTraceability_InlineACsWithoutAcceptance
+=== RUN   TestPlanAuditTraceability_VerbIdenticalAcrossCopies
+=== PAUSE TestPlanAuditTraceability_VerbIdenticalAcrossCopies
+=== RUN   TestPlanAuditTraceability_CitationDisciplineClausePresent
+=== PAUSE TestPlanAuditTraceability_CitationDisciplineClausePresent
+=== CONT  TestPlanAuditD7_RetiredSPECConflict
+=== CONT  TestPlanAuditTraceability_CitationDisciplineClausePresent
+=== CONT  TestPlanAuditTraceability_ShorthandMappingIsCovered
+=== CONT  TestPlanAuditTraceability_VerbIdenticalAcrossCopies
+=== CONT  TestPlanAuditTraceability_InlineACsWithoutAcceptance
+=== CONT  TestPlanAuditTraceability_UnreadableSpecIsGap
+=== CONT  TestPlanAuditTraceability_TableMappingIsCovered
+=== CONT  TestPlanAuditTraceability_FullIDsHaveNoFalsePositive
+=== CONT  TestPlanAuditD8_WithBuildTagPasses
+=== CONT  TestPlanAuditD7D8_VerbsIdenticalAcrossCopies
+=== CONT  TestPlanAuditD8_UnreadableSpecIsGap
+=== CONT  TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover
+=== CONT  TestPlanAuditTraceability_ZeroDefinitionsIsGap
+=== CONT  TestPlanAuditTraceability_BareNumbersOutsideListDoNotExpand
+=== CONT  TestPlanAuditD7_MissingReferencedSPEC
+=== CONT  TestPlanAuditD8_MissingBuildTag
+=== CONT  TestPlanAuditD7_LiveReferenceIsSilent
+--- PASS: TestPlanAuditTraceability_CitationDisciplineClausePresent (0.00s)
+--- PASS: TestPlanAuditTraceability_VerbIdenticalAcrossCopies (0.00s)
+=== CONT  TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+=== CONT  TestPlanAuditTraceability_HeadingDefinitionsExposeRealGap
+--- PASS: TestPlanAuditD7D8_VerbsIdenticalAcrossCopies (0.00s)
+--- PASS: TestPlanAuditD8_WithBuildTagPasses (0.01s)
+--- PASS: TestPlanAuditTraceability_UnreadableSpecIsGap (0.01s)
+=== NAME  TestPlanAuditTraceability_ShorthandMappingIsCovered
+    plan_audit_traceability_test.go:109: Group 4 output:
+        COLLECTED: 3 REQ definitions (acceptance input: read)
+--- PASS: TestPlanAuditTraceability_ShorthandMappingIsCovered (0.01s)
+--- PASS: TestPlanAuditTraceability_ZeroDefinitionsIsGap (0.01s)
+--- PASS: TestPlanAuditD8_UnreadableSpecIsGap (0.01s)
+--- PASS: TestPlanAuditTraceability_InlineACsWithoutAcceptance (0.02s)
+--- PASS: TestPlanAuditTraceability_FullIDsHaveNoFalsePositive (0.02s)
+--- PASS: TestPlanAuditTraceability_TableMappingIsCovered (0.02s)
+--- PASS: TestPlanAuditD8_BuildTagInOtherSectionDoesNotCover (0.02s)
+=== NAME  TestPlanAuditTraceability_HeadingDefinitionsExposeRealGap
+    plan_audit_traceability_test.go:214: Group 4 output:
+        COLLECTED: 3 REQ definitions (acceptance input: read)
+        UNCOVERED: REQ-FIXD-003
+--- PASS: TestPlanAuditTraceability_HeadingDefinitionsExposeRealGap (0.01s)
+=== NAME  TestPlanAuditTraceability_BareNumbersOutsideListDoNotExpand
+    plan_audit_traceability_test.go:252: Group 4 output:
+        COLLECTED: 3 REQ definitions (acceptance input: read)
+        UNCOVERED: REQ-FIXE-002
+        UNCOVERED: REQ-FIXE-003
+--- PASS: TestPlanAuditTraceability_BareNumbersOutsideListDoNotExpand (0.02s)
+--- PASS: TestPlanAuditD8_MissingBuildTag (0.02s)
+--- PASS: TestPlanAuditD7_MissingReferencedSPEC (0.02s)
+=== NAME  TestPlanAuditD7_RetiredSPECConflict
+    plan_audit_d7_d8_test.go:151: D7 output:
+        SHOULD: referenced SPEC SPEC-FIXTURE-CONSUMER-001 not found in .moai/specs/
+        REVIEW: SPEC-FIXTURE-OLD-001 has status=retired — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING
+--- PASS: TestPlanAuditD7_RetiredSPECConflict (0.02s)
+--- PASS: TestPlanAuditD7_LiveReferenceIsSilent (0.02s)
+=== NAME  TestPlanAuditD7_ReconciledReferenceIsNotBlocking
+    plan_audit_d7_d8_test.go:181: D7 output:
+        SHOULD: referenced SPEC SPEC-FIXTURE-CONSUMER-001 not found in .moai/specs/
+        REVIEW: SPEC-FIXTURE-OLD-001 has status=superseded — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING
+          reconciliation candidate (paragraph 4): This SPEC supersedes SPEC-FIXTURE-OLD-001: its eviction requirement is absorbed here.
+--- PASS: TestPlanAuditD7_ReconciledReferenceIsNotBlocking (0.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.228s

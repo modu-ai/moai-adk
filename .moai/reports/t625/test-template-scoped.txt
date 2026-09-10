@@ -1,0 +1,301 @@
+=== RUN   TestAgentFrontmatterAudit
+=== PAUSE TestAgentFrontmatterAudit
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum
+=== RUN   TestBacklogJSONDisclosure_EmbeddedTemplatesMatchSource
+--- PASS: TestBacklogJSONDisclosure_EmbeddedTemplatesMatchSource (0.00s)
+=== RUN   TestLoadCatalog
+=== PAUSE TestLoadCatalog
+=== RUN   TestLoadCatalog_MalformedYAML
+=== PAUSE TestLoadCatalog_MalformedYAML
+=== RUN   TestLoadCatalog_ManifestAbsent
+=== PAUSE TestLoadCatalog_ManifestAbsent
+=== RUN   TestSlimFS_PreservesNonCatalogFiles
+=== PAUSE TestSlimFS_PreservesNonCatalogFiles
+=== RUN   TestCatalogManifestPresent
+=== PAUSE TestCatalogManifestPresent
+=== RUN   TestAllSkillsInCatalog
+=== PAUSE TestAllSkillsInCatalog
+=== RUN   TestAllAgentsInCatalog
+=== PAUSE TestAllAgentsInCatalog
+=== RUN   TestCatalogReferencesValid
+=== PAUSE TestCatalogReferencesValid
+=== RUN   TestCatalogTierValid
+=== PAUSE TestCatalogTierValid
+=== RUN   TestCatalogHashCoversSkillSubfiles
+=== PAUSE TestCatalogHashCoversSkillSubfiles
+=== RUN   TestCatalogNoDuplicateEntries
+=== PAUSE TestCatalogNoDuplicateEntries
+=== RUN   TestCatalogReservedFieldType
+=== PAUSE TestCatalogReservedFieldType
+=== RUN   TestLoadEmbeddedCatalog_Success
+=== PAUSE TestLoadEmbeddedCatalog_Success
+=== RUN   TestNewSlimDeployerWithRenderer_NilCatalog
+=== PAUSE TestNewSlimDeployerWithRenderer_NilCatalog
+=== RUN   TestLoadEmbeddedCatalog_LoadCatalogErrorWrapping
+=== PAUSE TestLoadEmbeddedCatalog_LoadCatalogErrorWrapping
+=== RUN   TestEmbeddedTemplatesExcludeCILoopSkill
+--- PASS: TestEmbeddedTemplatesExcludeCILoopSkill (0.00s)
+=== RUN   TestEmbeddedGitignoreHasMoaiBackupsSlash
+--- PASS: TestEmbeddedGitignoreHasMoaiBackupsSlash (0.00s)
+=== RUN   TestEmbeddedGitignoreCoversGeneratedArtifacts
+--- PASS: TestEmbeddedGitignoreCoversGeneratedArtifacts (0.00s)
+=== RUN   TestEmbeddedTemplatesNoRuntimeLogs
+--- PASS: TestEmbeddedTemplatesNoRuntimeLogs (0.00s)
+=== RUN   TestEmbed_TemplateTreeHasNoSymlinks
+--- PASS: TestEmbed_TemplateTreeHasNoSymlinks (0.01s)
+=== RUN   TestEmbed_SkillNamePrefixInvariant
+--- PASS: TestEmbed_SkillNamePrefixInvariant (0.00s)
+=== RUN   TestEmbeddedTemplates_ReturnsValidFS
+=== PAUSE TestEmbeddedTemplates_ReturnsValidFS
+=== RUN   TestEmbeddedTemplates_PathStripping
+=== PAUSE TestEmbeddedTemplates_PathStripping
+=== RUN   TestEmbeddedTemplates_AgentDefinitions
+=== PAUSE TestEmbeddedTemplates_AgentDefinitions
+=== RUN   TestEmbeddedTemplates_SkillDefinitions
+=== PAUSE TestEmbeddedTemplates_SkillDefinitions
+=== RUN   TestEmbeddedTemplates_RuleFiles
+=== PAUSE TestEmbeddedTemplates_RuleFiles
+=== RUN   TestEmbeddedTemplates_OutputStyles
+=== PAUSE TestEmbeddedTemplates_OutputStyles
+=== RUN   TestEmbeddedTemplates_CLAUDEmd
+=== PAUSE TestEmbeddedTemplates_CLAUDEmd
+=== RUN   TestEmbeddedTemplates_Gitignore
+=== PAUSE TestEmbeddedTemplates_Gitignore
+=== RUN   TestEmbeddedTemplates_Announcements
+=== PAUSE TestEmbeddedTemplates_Announcements
+=== RUN   TestEmbeddedTemplates_LLMConfig
+=== PAUSE TestEmbeddedTemplates_LLMConfig
+=== RUN   TestEmbeddedTemplates_NoPythonHooks
+=== PAUSE TestEmbeddedTemplates_NoPythonHooks
+=== RUN   TestEmbeddedTemplates_NoSettingsJSON
+=== PAUSE TestEmbeddedTemplates_NoSettingsJSON
+=== RUN   TestEmbeddedTemplates_NoCacheOrOSFiles
+=== PAUSE TestEmbeddedTemplates_NoCacheOrOSFiles
+=== RUN   TestEmbeddedTemplates_NoLSPConfig
+=== PAUSE TestEmbeddedTemplates_NoLSPConfig
+=== RUN   TestEmbeddedTemplates_NoGitHooks
+=== PAUSE TestEmbeddedTemplates_NoGitHooks
+=== RUN   TestEmbeddedTemplates_WalkDirTotalCount
+=== PAUSE TestEmbeddedTemplates_WalkDirTotalCount
+=== RUN   TestEmbeddedLLMYAMLMatchesMatrix
+--- PASS: TestEmbeddedLLMYAMLMatchesMatrix (0.00s)
+=== RUN   TestRenderHookEntriesFromEmbeddedTemplate
+--- PASS: TestRenderHookEntriesFromEmbeddedTemplate (0.00s)
+=== RUN   TestManagerDevelopActiveAgentPresent
+=== PAUSE TestManagerDevelopActiveAgentPresent
+=== RUN   TestManagerDevelopIsActiveAgent
+=== PAUSE TestManagerDevelopIsActiveAgent
+=== RUN   TestPipelineCarrySignal_EmbeddedMatchesSource
+--- PASS: TestPipelineCarrySignal_EmbeddedMatchesSource (0.00s)
+=== RUN   TestEmbeddedMoaiSkillNames
+--- PASS: TestEmbeddedMoaiSkillNames (0.00s)
+=== RUN   TestSlimFS_NonCatalogPassthrough
+=== PAUSE TestSlimFS_NonCatalogPassthrough
+=== RUN   TestToolCatalogNoMultiEdit
+=== PAUSE TestToolCatalogNoMultiEdit
+=== RUN   TestToolCatalogNoTodoWrite
+=== PAUSE TestToolCatalogNoTodoWrite
+=== CONT  TestAgentFrontmatterAudit
+=== CONT  TestEmbeddedTemplates_AgentDefinitions
+=== CONT  TestEmbeddedTemplates_NoCacheOrOSFiles
+=== CONT  TestEmbeddedTemplates_PathStripping
+=== CONT  TestEmbeddedTemplates_ReturnsValidFS
+=== CONT  TestManagerDevelopIsActiveAgent
+=== CONT  TestCatalogReservedFieldType
+=== CONT  TestCatalogNoDuplicateEntries
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/builder-harness.md
+=== CONT  TestLoadCatalog_ManifestAbsent
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/builder-harness.md
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/e2e-tester.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/e2e-tester.md
+=== CONT  TestCatalogTierValid
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum
+=== CONT  TestCatalogReferencesValid
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md
+--- PASS: TestEmbeddedTemplates_ReturnsValidFS (0.00s)
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md
+=== CONT  TestLoadEmbeddedCatalog_LoadCatalogErrorWrapping
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md
+--- PASS: TestEmbeddedTemplates_AgentDefinitions (0.00s)
+--- PASS: TestLoadCatalog_ManifestAbsent (0.00s)
+=== CONT  TestNewSlimDeployerWithRenderer_NilCatalog
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md
+=== CONT  TestLoadEmbeddedCatalog_Success
+=== CONT  TestAllAgentsInCatalog
+=== CONT  TestAllSkillsInCatalog
+=== CONT  TestCatalogManifestPresent
+=== CONT  TestSlimFS_PreservesNonCatalogFiles
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/manager-design.md
+=== CONT  TestLoadCatalog_MalformedYAML
+=== CONT  TestLoadCatalog
+=== CONT  TestEmbeddedTemplates_NoGitHooks
+--- PASS: TestManagerDevelopIsActiveAgent (0.00s)
+--- PASS: TestEmbeddedTemplates_PathStripping (0.00s)
+--- PASS: TestLoadEmbeddedCatalog_LoadCatalogErrorWrapping (0.00s)
+--- PASS: TestNewSlimDeployerWithRenderer_NilCatalog (0.00s)
+--- PASS: TestEmbeddedTemplates_NoCacheOrOSFiles (0.00s)
+=== CONT  TestEmbeddedTemplates_WalkDirTotalCount
+=== NAME  TestCatalogTierValid
+    catalog_tier_audit_test.go:325: audited 45 catalog entries for tier validity
+--- PASS: TestCatalogTierValid (0.00s)
+=== CONT  TestEmbeddedTemplates_NoLSPConfig
+--- PASS: TestEmbeddedTemplates_NoLSPConfig (0.00s)
+=== CONT  TestToolCatalogNoMultiEdit
+=== CONT  TestManagerDevelopActiveAgentPresent
+--- PASS: TestManagerDevelopActiveAgentPresent (0.00s)
+=== CONT  TestToolCatalogNoTodoWrite
+=== RUN   TestLoadCatalog_MalformedYAML/unbalanced_bracket
+=== PAUSE TestLoadCatalog_MalformedYAML/unbalanced_bracket
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md
+--- PASS: TestLoadEmbeddedCatalog_Success (0.00s)
+=== NAME  TestCatalogReservedFieldType
+    catalog_tier_audit_test.go:651: audited 6 packs for reserved field type compliance
+--- PASS: TestCatalogReservedFieldType (0.00s)
+=== CONT  TestEmbeddedTemplates_Gitignore
+--- PASS: TestEmbeddedTemplates_Gitignore (0.00s)
+=== CONT  TestEmbeddedTemplates_NoSettingsJSON
+--- PASS: TestEmbeddedTemplates_NoSettingsJSON (0.00s)
+=== CONT  TestEmbeddedTemplates_NoPythonHooks
+=== RUN   TestLoadCatalog_MalformedYAML/tab_indentation_invalid
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/manager-design.md
+=== NAME  TestCatalogNoDuplicateEntries
+    catalog_tier_audit_test.go:617: audited 45 unique names for duplicate entries
+--- PASS: TestCatalogNoDuplicateEntries (0.00s)
+=== CONT  TestEmbeddedTemplates_LLMConfig
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md
+=== NAME  TestEmbeddedTemplates_LLMConfig
+    embed_test.go:216: llm-configs directory was removed in refactoring
+--- SKIP: TestEmbeddedTemplates_LLMConfig (0.00s)
+=== CONT  TestEmbeddedTemplates_Announcements
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md
+=== PAUSE TestLoadCatalog_MalformedYAML/tab_indentation_invalid
+=== NAME  TestEmbeddedTemplates_Announcements
+    embed_test.go:199: announcements directory not implemented in Go version
+--- SKIP: TestEmbeddedTemplates_Announcements (0.00s)
+=== CONT  TestEmbeddedTemplates_OutputStyles
+--- PASS: TestEmbeddedTemplates_OutputStyles (0.00s)
+--- PASS: TestCatalogManifestPresent (0.00s)
+=== CONT  TestEmbeddedTemplates_CLAUDEmd
+--- PASS: TestEmbeddedTemplates_CLAUDEmd (0.00s)
+=== CONT  TestEmbeddedTemplates_SkillDefinitions
+=== CONT  TestCatalogHashCoversSkillSubfiles
+=== CONT  TestEmbeddedTemplates_RuleFiles
+--- PASS: TestEmbeddedTemplates_NoGitHooks (0.00s)
+=== NAME  TestEmbeddedTemplates_WalkDirTotalCount
+    embed_test.go:363: total embedded files: 581
+=== NAME  TestEmbeddedTemplates_SkillDefinitions
+    embed_test.go:101: total skill .md files: 241
+--- PASS: TestEmbeddedTemplates_WalkDirTotalCount (0.00s)
+--- PASS: TestEmbeddedTemplates_RuleFiles (0.00s)
+=== CONT  TestSlimFS_NonCatalogPassthrough
+--- PASS: TestEmbeddedTemplates_SkillDefinitions (0.00s)
+--- PASS: TestSlimFS_NonCatalogPassthrough (0.00s)
+=== NAME  TestCatalogReferencesValid
+    catalog_tier_audit_test.go:302: audited 45 catalog entries for path validity
+--- PASS: TestCatalogReferencesValid (0.00s)
+--- PASS: TestEmbeddedTemplates_NoPythonHooks (0.00s)
+--- PASS: TestSlimFS_PreservesNonCatalogFiles (0.00s)
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/manager-develop.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/manager-develop.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md
+=== NAME  TestAllAgentsInCatalog
+    catalog_tier_audit_test.go:269: audited 11 agents on disk against catalog
+--- PASS: TestAllAgentsInCatalog (0.00s)
+=== RUN   TestLoadCatalog_MalformedYAML/incomplete_mapping
+=== PAUSE TestLoadCatalog_MalformedYAML/incomplete_mapping
+=== CONT  TestLoadCatalog_MalformedYAML/unbalanced_bracket
+=== CONT  TestLoadCatalog_MalformedYAML/incomplete_mapping
+=== NAME  TestAllSkillsInCatalog
+    catalog_tier_audit_test.go:190: audited 34 skills on disk against catalog
+--- PASS: TestAllSkillsInCatalog (0.00s)
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md
+=== CONT  TestLoadCatalog_MalformedYAML/tab_indentation_invalid
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/manager-docs.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/manager-docs.md
+=== NAME  TestLoadCatalog
+    catalog_loader_test.go:138: LoadCatalog: version=1.0.0, generated_at=2026-05-25T08:06:18Z, total_entries=45
+--- PASS: TestLoadCatalog_MalformedYAML (0.00s)
+    --- PASS: TestLoadCatalog_MalformedYAML/unbalanced_bracket (0.00s)
+    --- PASS: TestLoadCatalog_MalformedYAML/incomplete_mapping (0.00s)
+    --- PASS: TestLoadCatalog_MalformedYAML/tab_indentation_invalid (0.00s)
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md
+--- PASS: TestLoadCatalog (0.00s)
+--- PASS: TestToolCatalogNoTodoWrite (0.00s)
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/manager-git.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/manager-git.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/manager-lead.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/manager-lead.md
+--- PASS: TestAgentFrontmatter_PermissionModeStrictEnum (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md (0.00s)
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/manager-spec.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/manager-spec.md
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/plan-auditor.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/plan-auditor.md
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/super-advisor.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/super-advisor.md
+=== RUN   TestAgentFrontmatterAudit/.claude/agents/moai/sync-auditor.md
+=== PAUSE TestAgentFrontmatterAudit/.claude/agents/moai/sync-auditor.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/builder-harness.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/manager-lead.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/manager-git.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/manager-develop.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/manager-docs.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/e2e-tester.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/super-advisor.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/manager-spec.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/sync-auditor.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/manager-design.md
+=== CONT  TestAgentFrontmatterAudit/.claude/agents/moai/plan-auditor.md
+--- PASS: TestAgentFrontmatterAudit (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/builder-harness.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/manager-git.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/manager-lead.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/super-advisor.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/manager-design.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/sync-auditor.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/e2e-tester.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/manager-spec.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/manager-develop.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/plan-auditor.md (0.00s)
+    --- PASS: TestAgentFrontmatterAudit/.claude/agents/moai/manager-docs.md (0.00s)
+--- PASS: TestToolCatalogNoMultiEdit (0.01s)
+=== NAME  TestCatalogHashCoversSkillSubfiles
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+--- PASS: TestCatalogHashCoversSkillSubfiles (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.525s
+EXIT=0

@@ -1,0 +1,11 @@
+delta judgment: develop changes since card base f3c4ca50c vs test deps of internal/template and internal/template/agentemit (merged tree HEAD 454b2b264)
+deps command: go list -deps -test ./internal/template/ ./internal/template/agentemit/
+delta command: diff --name-only f3c4ca50c 6d228ea19
+dep packages total 186, module-local 13
+develop changed files 177
+control internal/template in local deps: True
+go.mod/go.sum changed: ['go.mod']
+changed .go files in an affected-test dep package: 0
+changed non-.go files under a dep package dir (embed candidates): 2
+  internal/template/templates/.claude/agents/moai/plan-auditor.md
+  internal/template/templates/.codex/agents/moai/plan-auditor.toml
