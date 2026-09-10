@@ -13,8 +13,8 @@ Card: t624 · Branch: `WT-sync-gate-failstate` · Plan-phase tree: `fa96fe644`
   `[[ "SPEC-SYNC-GATE-FAILSTATE-001" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]]` → `PASS`.
 - Defect evidence: `.moai/reports/t624/h01-repro-develop.md` (tree `d5dc42959`). Target files
   are identical at `fa96fe644` (acceptance.md §D.0 L-01).
-- Six open decisions are recorded in `plan.md §B` (B1-B6); four carry `[NEEDS CLARIFICATION]`
-  markers to resolve before Implementation Kickoff Approval.
+- Plan-phase decisions B1-B6 were resolved by lead ruling on 2026-09-10 and are recorded in
+  `plan.md §B`. No clarification markers remain.
 - `plan_status: audit-ready`
 
 ## §E.2 Run-phase Evidence

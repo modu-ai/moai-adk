@@ -23,6 +23,13 @@ tier: M
   `d5dc42959` and the plan-phase tree `fa96fe644` (acceptance.md §D.0 L-01), so that
   reproduction describes the current tree. Direction D1-D6 is lead-approved and encoded
   here as decided (§2), not re-opened.
+- 2026-09-10: lead rulings on the plan-phase open decisions applied (plan.md §B), all in the
+  "never looser than today" direction. B1: after the single allowed stale re-run also fails
+  to complete, later turns emit a non-blocking notice instead of staying silent (REQ-009;
+  AC-006c, AC-015). B2: mode is resolved again at re-delivery, and an advisory first run is
+  never retroactively blocked (REQ-006). B3: the advisory warning is emitted once (REQ-006).
+  B4: behavioral RED cells are adopted at the M1 test-only commit (acceptance.md legend).
+  B5: record only. B6: the doc line 43 claim moved out of this SPEC (§5).
 
 ## §1 Background and problem statement
 
@@ -126,12 +133,15 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
   `last_assistant_message`) shall not count as the field. This requirement shall not suppress
   a block from a run that actually executes the checks.
 
-- **REQ-006 (When):** **When** the gate re-delivers a stored failure, it shall resolve the
+- **REQ-006 (When):** **When** the gate would re-deliver a stored failure, it shall resolve the
   blocking-versus-advisory mode at re-delivery time, from the same inputs and rules a check
   run uses (`MOAI_SYNC_GATE_BLOCKING`, `MOAI_AUTONOMY_TIER`, and the failed-check
-  composition). If that mode is advisory, the gate shall emit no output carrying a `decision`
-  field. **When** the record is `fail` but no block was persisted (the first run was
-  advisory), the gate shall neither run the checks nor emit a `decision` field.
+  composition), and shall re-emit the stored block only when that mode is blocking. If that
+  mode is advisory, the gate shall neither run the checks nor write anything to stdout.
+  **When** the record is `fail` but no block was persisted (the first run was advisory), the
+  gate shall neither run the checks nor write anything to stdout, whatever the mode resolves
+  to now: an advisory first run is never retroactively blocked. The advisory warning is
+  therefore written once, by the run that executed the checks, as it is today.
 
 - **REQ-007 (When):** **When** the record holds only a SHA equal to HEAD, with no outcome
   token (the legacy format), the gate shall treat the outcome as unknown, run the checks, and
@@ -145,8 +155,11 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
 
 - **REQ-009 (When):** **When** the record for the current HEAD is `running` and older than
   the stale window, the gate shall run the checks. That re-run shall happen at most once per
-  HEAD. If the re-run also leaves a stale `running` record, later invocations for that HEAD
-  shall neither run the checks nor emit a `decision` field (plan.md §B, item B1).
+  HEAD. **When** that single re-run also leaves a stale `running` record, every later
+  invocation for that HEAD shall neither run the checks nor stay silent: it shall emit only a
+  non-blocking `systemMessage` saying that this HEAD's gate run has not completed and that
+  deleting the state file forces a new gate run. That notice shall never carry a `decision`
+  field, so repeated notices never count toward the runtime Stop-hook block cap.
 
 - **REQ-010 (Ubiquitous):** For every input combination under which the hook on `fa96fe644`
   emits a block (enumerated in acceptance.md §D.7), the gate shall emit a block carrying the
@@ -218,9 +231,7 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
 
 ### Out of Scope — other claims in the same document
 
-- Line 43 of `quality-gates-quality.md` says the Stop hook reads the shared diagnostic
-  snapshot instead of running its own checks, but the hook runs `go vet` / `go build` itself.
-  It was found during plan-phase and is **not** corrected here (plan.md §B, item B6).
+- Observed during plan-phase and handled elsewhere: line 43's claim that the Stop hook reads the shared diagnostic snapshot.
 - Everything from line 162 onward (the Phase 9 MX section), where the two document copies
   already differ.
 

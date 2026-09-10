@@ -8,10 +8,11 @@
 ## Classification legend
 
 - **release-blocking** — the criterion has an adopted RED-now cell (four elements, per
-  `verification-completeness.md` §2.1) and a green path. For behavioral criteria, the four
-  elements are recorded from the M1 test-first commit in `progress.md §E.2` (plan.md §B,
-  item B4). Until that record exists, the criterion is not release-blocking and cannot be
-  recorded as a pass.
+  `verification-completeness.md` §2.1) and a green path. Behavioral criteria become
+  release-blocking at the M1 test-only commit, when their four elements (command, verbatim
+  stdout, exit code, tree SHA) are recorded in `progress.md §E.2` (lead ruling B4, plan.md §B).
+  The h01 reproduction stays supporting evidence. Until that record exists, a behavioral
+  criterion is not release-blocking and cannot be recorded as a pass.
 - **regression-guard** — the behavior already holds on `fa96fe644`, so no honest RED-now cell
   exists. The criterion guards against the fix breaking the behavior. Its baseline is observed
   as a PASS on the M1 commit, before the fix.
@@ -25,7 +26,7 @@
 | AC-003 | 004 | regression-guard | h01 controls B1/B2 silent | M2 keeps it |
 | AC-004 | 005 | release-blocking (a, b); regression-guard (c) | M1 RED cell | M2 |
 | AC-005 | 007 | release-blocking | M1 RED cell | M2 |
-| AC-006 | 008·009 | release-blocking (a); regression-guard (b, c) | M1 RED cell | M2 |
+| AC-006 | 008·009 | release-blocking (a, c); regression-guard (b) | M1 RED cell | M2 |
 | AC-007 | 010 | regression-guard | M1 baseline PASS (today blocks) | M2 keeps it |
 | AC-008 | 006 | release-blocking (A4); regression-guard (A1-A3, A5, A6) | M1 RED cell / baseline | M2 |
 | AC-009 | 012 | regression-guard | existing guards green on `fa96fe644` | M2, M3 keep them |
@@ -34,8 +35,9 @@
 | AC-012 | 015 | release-blocking (a); regression-guard (b) | L-06, L-07, L-16 | M3 |
 | AC-013 | 011 | regression-guard | deleting the sentinel re-runs today | M2 keeps it |
 | AC-014 | 008 | release-blocking | M1 RED cell (no named window exists) | M2 |
+| AC-015 | 008·009 | release-blocking | M1 RED cell (exhausted state is silent today) | M2 |
 
-14 criteria (Tier M ceiling 16).
+15 criteria (Tier M ceiling 16).
 
 ## §D.0 Evidence ledger (plan-phase observations)
 
@@ -152,13 +154,17 @@ measures it directly.
 - **(b, regression-guard) Given** the same record with mtime 120 s in the past. **When** the
   hook runs. **Then** the count is ≥ 1 and stdout contains a block. *Baseline:* true on
   `fa96fe644`, since the record differs from the bare SHA.
-- **(c, regression-guard — the retry bound) Given** a stub `go` that sleeps (bounded by its own
-  timeout) and a hook process killed as a process group once the record reads `running`, aged
-  to 120 s; then a second run killed the same way and aged again. **When** the hook runs a
-  third time with a stub `go` that exits 1. **Then** the stub count for the third run is 0 and
-  stdout contains no `"decision"`. *Baseline:* on `fa96fe644` the first interrupted run leaves
-  a SHA record, so every later run is silent (count 0). Unix-only; skipped on Windows. Kills
-  are registered in `t.Cleanup`.
+- **(c, release-blocking — the retry bound and its notice) Given** a stub `go` that sleeps
+  (bounded by its own timeout) and a hook process killed as a process group once the record
+  reads `running`, aged to 120 s; then a second run killed the same way and aged again (the
+  one allowed re-run is now spent). **When** the hook runs a third time with a stub `go` that
+  exits 1. **Then** the stub count for the third run is 0; stdout contains `"systemMessage"`
+  whose text says this HEAD's gate run has not completed and names deleting the state file as
+  the way to force a re-gate; stdout contains no `"decision"`. *RED reason:* on `fa96fe644`
+  the first interrupted run leaves a SHA record, so the third run is silent: count 0 and no
+  decision already hold, but stdout is empty, so the notice assertion fails. The count and
+  no-decision parts are the retry bound, which must stay green. Unix-only; skipped on Windows.
+  Kills are registered in `t.Cleanup`.
 - **Green path:** M2 (REQ-008, REQ-009).
 
 ## §D.7 AC-007 — no path is looser than today (regression-guard matrix)
@@ -193,14 +199,16 @@ Each row calls the hook twice on the same failing HEAD.
 
 | Row | Call 1 env | Call 2 env | Stub fails | Call 2 expectation | Class |
 |---|---|---|---|---|---|
-| A1 | tier `fully-autonomous` | same | `build` | no `"decision"` in either call | regression-guard |
-| A2 | tier `automatic` | same | `vet` only | no `"decision"` in either call | regression-guard |
-| A3 | `MOAI_SYNC_GATE_BLOCKING=0` | same | `vet` | no `"decision"` in either call | regression-guard |
+| A1 | tier `fully-autonomous` | same | `build` | call 1 carries no `"decision"`; call 2 stdout empty; no re-run | regression-guard |
+| A2 | tier `automatic` | same | `vet` only | call 1 carries no `"decision"`; call 2 stdout empty; no re-run | regression-guard |
+| A3 | `MOAI_SYNC_GATE_BLOCKING=0` | same | `vet` | call 1 carries no `"decision"`; call 2 stdout empty; no re-run | regression-guard |
 | A4 | tier `automatic` | same | `build` | call 2 stdout byte-identical to call 1's block | release-blocking (RED: call 2 is 0 bytes today) |
-| A5 | both unset | tier `fully-autonomous` | `vet` | no `"decision"`; no re-run | regression-guard |
-| A6 | tier `fully-autonomous` | both unset | `vet` | no `"decision"`; no re-run (plan.md §B, item B2) | regression-guard |
+| A5 | both unset | tier `fully-autonomous` | `vet` | call 2 stdout empty; no re-run | regression-guard |
+| A6 | tier `fully-autonomous` | both unset | `vet` | call 2 stdout empty; no re-run (an advisory first run is never retroactively blocked) | regression-guard |
 
-- **Green path:** M2 (REQ-006). The A5 row is the direct probe of "re-emit only while blocking".
+- **Green path:** M2 (REQ-006; lead rulings B2 and B3). A5 is the direct probe of "re-emit only
+  while blocking". A1-A3 pin the once-only advisory warning. A6 pins "never retroactively
+  blocked". Baseline for every regression-guard row: on `fa96fe644`, call 2 writes 0 bytes.
 
 ## §D.9 AC-009 — existing guards and invariants stay green (regression-guard)
 
@@ -270,7 +278,34 @@ Each row calls the hook twice on the same failing HEAD.
 - **RED reason:** no stale-window variable exists on `fa96fe644`, so the test fails at M1 for
   lack of the variable, not for any settings reason (the settings entry reads `"timeout": 60`).
 
-## §D.15 Mutant probes (run in M4; each must turn at least one named criterion red)
+## §D.15 AC-015 — gate notices never block and never consume the Stop-hook block cap (release-blocking)
+
+- **Given** two fixtures, both on a failing sync-phase HEAD with a counting stub `go`:
+  - **(N1)** the exhausted-retry state of AC-006c (the one allowed stale re-run is spent);
+  - **(N2)** a record `<HEAD> running` whose mtime is refreshed to now before every call (the
+    fresh-running notice of REQ-008).
+- **When** the hook runs **9 consecutive times** on each fixture (one more than the runtime
+  Stop-hook block cap of 8), alternating stdin between `{}` and `{"stop_hook_active": true}`,
+  with `MOAI_SYNC_GATE_BLOCKING` and `MOAI_AUTONOMY_TIER` unset (the blocking default, where a
+  block would be emitted if one were possible).
+- **Then**, for each fixture:
+  - all 9 runs exit 0;
+  - all 9 stdouts contain `"systemMessage"`;
+  - the number of stdouts containing `"decision"` is exactly `0`, so no invocation can count
+    toward the block cap;
+  - the stub `go` count after run 9 equals the count before run 1 (the notices never re-run
+    the checks).
+  - For N1, every notice also says that this HEAD's gate run has not completed and names
+    deleting the state file as the way to force a re-gate.
+- **Swept-set check:** the test reports 18 invocations (9 × 2). A loop that executes fewer
+  than 9 per fixture is a partial sweep, not a pass.
+- **RED reason:** on `fa96fe644`, N1 is silent (the SHA record short-circuits), and N2 runs the
+  checks and emits a block (the record content differs from the bare SHA). N1 fails the
+  `"systemMessage"` assertion; N2 fails both the `"decision"`-count and stub-count assertions.
+  Neither fails for a fixture reason.
+- **Green path:** M2 (REQ-008, REQ-009; lead ruling B1).
+
+## §D.16 Mutant probes (run in M4; each must turn at least one named criterion red)
 
 | Mutant | Change | Must fail |
 |---|---|---|
@@ -278,23 +313,27 @@ Each row calls the hook twice on the same failing HEAD.
 | M2 | Never re-emit (today's behavior) | AC-001, AC-004b, AC-008 A4 |
 | M3 | Re-run the checks on a same-HEAD `fail` instead of re-emitting | AC-001 (count), AC-003 unaffected |
 | M4 | Re-emit the stored block whatever the resolved mode | AC-008 A5 |
-| M5 | Treat a fresh `running` record as stale | AC-006a |
+| M5 | Treat a fresh `running` record as stale | AC-006a, AC-015 N2 |
 | M6 | Re-run on every stale `running` record (no retry bound) | AC-006c |
 | M7 | Detect `stop_hook_active` with a plain substring match | AC-004c |
 | M8 | Let `stop_hook_active` suppress every block | AC-007 R10 |
 | M9 | Delete the false document sentences and add nothing | AC-011 (`deps_modified` rows) |
 | M10 | Replay any persisted block regardless of SHA | AC-007 R8 |
+| M11 | After the retry is spent, stay silent (the previous default) | AC-006c, AC-015 N1 |
+| M12 | Emit the exhausted-retry notice together with `"decision":"block"` | AC-015 N1 (`decision` count) |
+| M13 | Repeat the advisory warning on re-delivery | AC-008 A1-A3 (call 2 stdout empty) |
 
 A mutant that turns nothing red means the criterion it targets is too shallow; tighten the
 criterion before closing. Each mutant is reverted after its measurement.
 
-## §D.16 Definition of Done
+## §D.17 Definition of Done
 
-- All 14 criteria pass. Each is recorded in `progress.md §E.2` with the command, its verbatim
+- All 15 criteria pass. Each is recorded in `progress.md §E.2` with the command, its verbatim
   output (or the persisted file holding it), and the tree SHA measured.
-- M1's test-only commit precedes every hook or document change, and its RED cells are
-  recorded (plan.md §B, item B4).
-- All ten mutants of §D.15 are observed turning their named criteria red.
+- M1's test-only commit precedes every hook or document change, and it records the four
+  elements (command, verbatim stdout, exit code, tree SHA) that make the behavioral criteria
+  release-blocking (lead ruling B4).
+- All thirteen mutants of §D.16 are observed turning their named criteria red.
 - `cmp` of the hook copies exits 0; document lines 1-161 are identical, and lines 162 onward are
   unchanged against `fa96fe644`.
 - `go vet ./internal/hook/...` and `golangci-lint run ./internal/hook/...` are clean on the

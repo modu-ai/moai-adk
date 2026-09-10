@@ -22,45 +22,35 @@ contract first, mechanical steps last.
   `TestHookWrapperCopiesStayIdentical`, `TestAC004_SyncGateAdvisoryAtFullyAutonomous`,
   `TestAC002_NonSyncHeadSkipsVetBuild`, `TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput`.
 
-## §B Open decisions (resolve before Implementation Kickoff Approval)
+## §B Resolved decisions (lead rulings, 2026-09-10)
 
-Where spec.md encodes a default for one of these, the default is used unless the lead rules
-otherwise.
+Every ruling below moves in the "never looser than today" direction.
 
-- **B1 — what happens after the one allowed stale re-run.** D2 says "re-gate once". If the
-  checks run past 60 s on every attempt (a large build), the runtime kills each run and
-  leaves a `running` record. Re-running on every stale record would bring back the per-turn
-  re-run the original sentinel existed to prevent. REQ-009 therefore allows one re-run per
-  HEAD; after that the gate stays silent, as today. [NEEDS CLARIFICATION: after the second
-  incomplete run, should the gate stay silent (encoded default, matches today) or emit a
-  one-line non-blocking notice that the gate could not finish for this HEAD?]
-- **B2 — mode changes between turns.** D1 says "re-emit verbatim", while the autonomy-tier
-  constraint says a re-delivered failure must follow mode resolution. REQ-006 resolves the
-  mode again at re-delivery: the stored block is re-emitted verbatim only while the mode
-  resolves to blocking. If the first run was advisory, nothing blocks later even if the tier
-  becomes blocking — that matches today, so it is not looser. [NEEDS CLARIFICATION: confirm
-  that an advisory-first-run failure should not start blocking when the environment later
-  resolves to blocking.]
-- **B3 — repeating advisory warnings.** Advisory failures are reported once today. The spec
-  does not require the advisory `systemMessage` to repeat on later turns, since repeating it
-  every turn under `fully-autonomous` would be noise until a new commit lands. [NEEDS
-  CLARIFICATION: confirm once-only advisory reporting.]
-- **B4 — when the RED cells for behavioral criteria are recorded.** The behavioral RED
-  observation (h01) came from a multi-step fixture, which is not the single-invocation form
-  `verification-completeness.md` §2.1 requires. Acceptance therefore adopts each behavioral
-  release-blocking criterion at the M1 test-first commit: its four elements (command, verbatim
-  stdout, exit code, RED commit SHA) go into `progress.md §E.2`, and h01 is supporting
-  evidence only. [NEEDS CLARIFICATION: confirm that deferring the four-element RED cell to the
-  M1 commit is acceptable for release-blocking status.]
-- **B5 — no `make build`.** The dispatch excludes `make build` from run-phase verification.
-  `go test ./internal/template/` compiles the embedded tree fresh and the hook tests read the
-  scripts from disk, so verification loses nothing. Refreshing the installed binary is the
-  integration step's job. Recorded here so the Template-First "`make build` after a template
-  edit" habit is not applied by reflex and then reported as a gap.
-- **B6 — doc line 43 is also inaccurate.** It says the Stop hook reads the shared diagnostic
-  snapshot; the hook runs its own checks. It was found during plan-phase and is left out of
-  scope (spec.md §5). [NEEDS CLARIFICATION: add it to this SPEC's wording fix, or raise a
-  separate card?]
+- **B1 — after the one allowed stale re-run.** The per-HEAD cap stays at ONE re-run for a
+  stale `running` record: re-running on every stale record would bring back the per-turn
+  re-run the original sentinel existed to prevent. If that single re-run also does not
+  complete, later invocations for that HEAD neither re-run the checks nor stay silent. Each
+  one emits a NON-BLOCKING `systemMessage` saying this HEAD's gate run has not completed and
+  that deleting the state file forces a new gate run (REQ-009). The notice never carries
+  `decision`, so it never counts toward the runtime Stop-hook block cap of 8 (AC-015).
+- **B2 — mode changes between turns.** The mode is resolved again at re-delivery. The stored
+  block is re-emitted verbatim only when that mode resolves to blocking. An advisory first run
+  is never retroactively blocked, even if the environment later resolves to blocking
+  (REQ-006; AC-008 rows A5, A6).
+- **B3 — advisory warnings.** The advisory warning is emitted once, by the run that executed
+  the checks, as today. A re-delivery under an advisory mode writes nothing to stdout
+  (REQ-006; AC-008 rows A1-A3).
+- **B4 — when behavioral RED cells are recorded.** Accepted. Each behavioral criterion becomes
+  release-blocking at the M1 test-only commit, when its four elements (command, verbatim
+  stdout, exit code, tree SHA) are recorded in `progress.md §E.2`. The h01 reproduction stays
+  supporting evidence.
+- **B5 — no `make build` (record only).** The dispatch excludes `make build` from run-phase
+  verification. `go test ./internal/template/` compiles the embedded tree fresh and the hook
+  tests read the scripts from disk, so verification loses nothing. Refreshing the installed
+  binary is the integration step's job. Recorded so the Template-First "`make build` after a
+  template edit" habit is not applied by reflex and then reported as a gap.
+- **B6 — doc line 43.** Out of this SPEC. The claim that the Stop hook reads the shared
+  diagnostic snapshot is handled by a separate card; spec.md §5 keeps a one-line note.
 
 ## §C State contract (the data model — decided by D1/D2)
 
@@ -84,12 +74,12 @@ Behavior on invocation, for a sync-phase HEAD with a code delta:
 | `pass` | any | nothing | empty |
 | `fail` + persisted block, mode blocking | absent / false | re-emit | persisted bytes, byte-identical |
 | `fail` + persisted block, mode blocking | true | nothing; record unchanged | no `decision` |
-| `fail` + persisted block, mode advisory | any | nothing | no `decision` |
-| `fail`, no persisted block | any | nothing | no `decision` |
+| `fail` + persisted block, mode advisory | any | nothing (B2, B3) | empty |
+| `fail`, no persisted block | any | nothing (B2, B3) | empty |
 | legacy SHA-only | any | run checks once; rewrite record | check output |
-| `running`, fresh (≤ window) | any | no checks | `systemMessage` notice only |
+| `running`, fresh (≤ window) | any | no checks | `systemMessage` notice only ("previous run has not completed") |
 | `running`, stale, retry unused | any | run checks; mark retry used | check output |
-| `running`, stale, retry used | any | nothing (B1 default) | empty |
+| `running`, stale, retry used | any | no checks (B1) | `systemMessage` notice only ("this HEAD's gate run has not completed; delete the state file to force a re-gate"); never `decision` |
 
 The non-sync-HEAD, no-language-marker, and zero-code-delta early exits run **before** any
 state is read, exactly as today.
@@ -129,7 +119,8 @@ state is read, exactly as today.
   `requireGit`, and the counting-stub pattern; add a stub variant whose exit depends on the
   `vet` / `build` argument, so C1-only and C2-only failures are reproducible without a real
   toolchain).
-- Cover AC-001, AC-004, AC-005, AC-006, AC-007, AC-008, AC-013, and AC-014 (acceptance.md).
+- Cover AC-001, AC-004, AC-005, AC-006, AC-007, AC-008, AC-013, AC-014, and AC-015
+  (acceptance.md).
 - Commit **the tests alone** (`test(t624): …`), with no hook or document change. Run
   `go test ./internal/hook/ -run '^TestSyncGateFailState' -count=1 -v`, and record the command,
   verbatim stdout, exit code, and commit SHA in `progress.md §E.2` as the RED cells. Confirm
@@ -161,7 +152,7 @@ state is read, exactly as today.
 
 ### M4 — mutant probes and evidence (Priority Medium)
 
-- Run the mutant probes in acceptance.md §D.15. Record each mutant's observed failure, then
+- Run the mutant probes in acceptance.md §D.16. Record each mutant's observed failure, then
   revert it.
 - Fill `progress.md §E.2` / `§E.3` with the AC matrix (command, verbatim output, tree SHA).
 
@@ -192,6 +183,7 @@ state is read, exactly as today.
 | Risk | Impact | Mitigation |
 |---|---|---|
 | Stale re-run loops on slow checks | per-turn toolchain re-runs return | REQ-009 one-retry bound; AC-006c |
+| Exhausted-retry notice repeats every turn | notice noise until a new commit or state-file deletion (accepted by lead ruling B1) | notice is `systemMessage` only, never `decision`, so it never counts toward the Stop-hook block cap of 8; AC-015 |
 | A `stop_hook_active` literal in message text is misread | a stored failure is suppressed forever | key-position match; AC-004c |
 | Re-emit printf becomes the compliance first match | `TestHookOfficialCompliance_AC002` fails or passes vacuously | §D printf rule; AC-009 |
 | A stored block re-emitted under an advisory tier | advisory users suddenly blocked | REQ-006; AC-008 flip rows |
