@@ -1,0 +1,8 @@
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-INTEGRATION-LOCK-ATOMIC-001.txt:REQ-ILA-001, 002
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-INTEGRATION-LOCK-ATOMIC-001.txt:REQ-ILA-001, 002, 003
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-INTEGRATION-LOCK-ATOMIC-001.txt:REQ-ILA-005, 009
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-001, 003, 005
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-001, 003, 013
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-002, 003, 009
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-004, 006
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-007, 008, 011

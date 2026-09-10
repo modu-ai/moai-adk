@@ -1,0 +1,7 @@
+=== RUN   TestT617Probe_SystemYamlMigrationsDisabled
+    zz_t617_probe_test.go:33: PROBE loader: cfg.System.Migrations.Disabled=false loadedSections[system]=true
+    zz_t617_probe_test.go:40: PROBE control direct-unmarshal: SystemConfig.Migrations.Disabled=true
+--- PASS: TestT617Probe_SystemYamlMigrationsDisabled (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.674s
+EXIT=0

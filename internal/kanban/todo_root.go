@@ -132,10 +132,10 @@ func pathInsideTempDir(path string) bool {
 // discriminant is evaluated BEFORE the home-resolution outcome is consulted.
 // "Temporary origin" and "home unresolvable" are not mutually exclusive — a
 // non-git temp base whose HomeDirFn errors satisfies both — and on that
-// intersection this requirement fixes the return at the base. Evaluating the
-// discriminant after homeTodoQueueRoot's ok check would let that function's
-// no-home return — resolveStateDir(base, false), the one layer-misaligned value
-// in this file — win by ordering alone.
+// intersection this requirement fixes the return at the base. homeTodoQueueRoot's
+// no-home return used to be resolveStateDir(base, false), one layer below the
+// root, so ordering alone would have decided the value; since t549 it returns
+// the base as well, and the placement keeps the guard's guidance path first.
 //
 // Read-only: TempOriginReason performs Lstat/EvalSymlinks and nothing else.
 func tempOriginSubstituteRoot(base string) (root, matchedRoot string, refused bool) {
@@ -185,8 +185,8 @@ func primaryCheckoutRoot(base string) (string, bool) {
 }
 
 // homeTodoQueueRoot returns the home-based queue root for base, reporting
-// false when no home is resolvable — in which case it returns the in-project
-// root instead, keeping the queue usable rather than failing the caller
+// false when no home is resolvable — in which case it returns base itself, the
+// in-project ROOT, keeping the queue usable rather than failing the caller
 // outright. Read-only.
 //
 // The directory is named for the command that owns the queue (`moai todo` —
@@ -199,11 +199,12 @@ func homeTodoQueueRoot(base string) (string, bool) {
 	}
 	home, err := HomeDirFn()
 	if err != nil {
-		// No home: fall back to the project-local state directory, resolved
-		// PURELY so a failed home lookup cannot trigger the one-time
-		// directory relocation as a side effect.
-		dir, _ := resolveStateDir(base, false)
-		return dir, false
+		// No home: fall back to the launch base. It is a ROOT like every other
+		// value this resolution returns — consumers extend it with
+		// BacklogPathForRoot, which resolves the project-local state directory
+		// itself, purely. Returning that state directory here got it extended a
+		// second time, and the read landed on a path nothing writes (t549).
+		return base, false
 	}
 	return filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(base)), true
 }

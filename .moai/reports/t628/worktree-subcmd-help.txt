@@ -1,0 +1,85 @@
+===== moai worktree sync --help =====
+
+  Synchronize a worktree with changes from the base branch.                                                             
+                                                                                                                        
+  If branch-name is provided, syncs that worktree.                                                                      
+  If omitted, syncs the worktree at the current directory.                                                              
+                                                                                                                        
+  Strategies:                                                                                                           
+    merge   - Merge base branch into worktree (default)                                                                 
+    rebase  - Rebase worktree onto base branch                                                                          
+         
+  USAGE  
+         
+    moai worktree sync [branch-name] [--flags]  
+         
+  FLAGS  
+         
+    --base      Base branch to sync from (main)
+    -h --help   Help for sync
+    --strategy  Sync strategy: merge or rebase (merge)
+
+exit=0
+===== moai worktree clean --help =====
+
+  Remove stale worktree references and optionally remove worktrees                                                      
+  whose branches have been merged into the base branch.                                                                 
+                                                                                                                        
+  --stale sweeps abandoned worktrees that hold nothing to lose: a clean working                                         
+  tree (no uncommitted or untracked files) AND no commits of its own beyond the                                         
+  base branch. Worktrees that would lose work are reported and kept, and so are                                         
+  worktrees anchoring a live session (tree-local registry check). Branches are                                          
+  never deleted. --stale previews by default; pass --yes to actually remove.                                            
+         
+  USAGE  
+         
+    moai worktree clean [--flags]  
+         
+  FLAGS  
+         
+    --base         Base branch for --merged-only and --stale checks (origin/main)
+    -h --help      Help for clean
+    --json         Report every non-protected worktree and its state as JSON; removes nothing
+    --merged-only  Only remove worktrees whose branches are merged into base
+    --stale        Remove abandoned worktrees that are clean and hold no unique commits (preview unless --yes)
+    --yes          Actually perform the --stale removals instead of previewing them
+
+exit=0
+===== moai worktree remove --help =====
+
+  Remove a Git worktree at the specified path.                                                                          
+         
+  USAGE  
+         
+    moai worktree remove [path] [--flags]  
+         
+  FLAGS  
+         
+    --force    Force removal even with uncommitted changes
+    -h --help  Help for remove
+
+exit=0
+===== moai worktree done --help =====
+
+  Complete a worktree by removing it and optionally deleting the branch.                                                
+                                                                                                                        
+  This command performs the completion workflow:                                                                        
+  1. Refuse while a live session is anchored in the worktree (tree-local                                                
+     session registry check; --force overrides with a warning)                                                          
+  2. Remove the worktree at the specified branch                                                                        
+  3. Optionally delete the feature branch (with --delete-branch)                                                        
+                                                                                                                        
+  Note: Merging to base branch should be done separately via git merge or PR.                                           
+         
+  USAGE  
+         
+    moai worktree done [branch-name] [--flags]  
+         
+  FLAGS  
+         
+    --auto           Auto mode: no success output for automation (e.g., after PR merge); failures still exit non-zero
+    --delete-branch  Delete the branch after removing worktree
+    --force          Force removal even with uncommitted changes
+    -h --help        Help for done
+
+exit=0
