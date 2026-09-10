@@ -62,7 +62,7 @@
 
 ### 6.1 이 절의 Gaps
 
-- `SPEC-UPDATE-DOC-DRIFT-001` 의 Definition of Done(`acceptance.md:811-812`)에 "`internal/template/templates/**` is unmodified relative to `7f61332ef` (AC-UDD-021)" 라는 산문이 남아 있어, 고친 기준과 표현이 어긋난다. 명령이 아니고 수리 지시 범위 밖이라 고치지 않았다.
+- ~~Definition of Done 산문이 옛 기준을 말함~~ — **닫힘.** 리드 지시로 이 카드에서 고쳤다. 커밋은 `bc8a78b0a`(manager-spec)이고, lane-6 이 diff 를 직접 읽어 확인했다. `acceptance.md` §D 의 해당 항목은 이제 "AC-UDD-021 이 재는 이 SPEC 자신의 범위(읽는 시점의 `CARD_BASE`, 병합 전)"를 기준으로 말하고, 0.3.1 HISTORY 행에도 이 수정을 덧붙였다. 수리 뒤 §D 안에는 `7f61332ef` 가 한 건도 남지 않았다(`spec-repair3-grep.txt`: §D 범위 적중 0, 같은 식으로 파일 전체를 세면 30 이고 이는 `grep -c` 결과와 같다). lint 는 트리에서 빌드한 도구로 돌려 `0 error(s), 1 warning(s)` 으로 이전과 같았다(`spec-repair3-lint.txt`).
 - 이 SPEC 의 lint 는 원래부터 `StatusGitConsistency` 경고를 낸다(frontmatter `draft` 대 git 이 가리키는 `implemented`). **리드 판단: 살아 있는 draft 다. 근거는 develop 이력 `ddfe2253f`**("v0.3.0 staleness rewrite — retire 4, re-anchor 3, keep 5 live", #1515)와 frontmatter `status: draft` 다. 따라서 수리 전제는 유지된다. 경고가 왜 나는지는 이 카드 범위 밖이라 판정하지 않았다. 리드는 그 커밋 제목의 `feat(...)` 접두를 구현 신호로 읽은 것이라고 추정했지만, 측정한 것은 아니다.
 - 넓힌 grep 도 오른쪽 끝이 `HEAD` 가 아닌 범위, SHA 를 변수에 담은 경우, 세 점(`...`) 범위는 잡지 않는다.
 - 규율에 따른 실행(카드들이 실제로 `CARD_BASE` 형태를 쓰는지)은 문서 수정으로 보장되지 않는다. 카드 본문이 요구한 "실행 규율로 세운다"는 이번에는 규칙 문서화까지만 했다.
