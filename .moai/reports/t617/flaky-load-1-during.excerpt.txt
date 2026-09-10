@@ -1,0 +1,10 @@
+Excerpt of local raw file flaky-load-1-during.txt (raw machine-wide ps output not committed).
+--- snapshot: single ---
+17:31  up 2 days, 11:24, 15 users, load averages: 10.64 10.28 7.94
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1385)
+go test/.test lines: 3 (self shell lines containing zsh: 1; other: 2)
+  OTHER:  4388       00:04 go               go test ./internal/hook/ -v -count=40 -timeout 300s -run ^TestSessionStart_DeferredScanDoesNotBlockReturn$
+  OTHER:  4514       00:02 /var/folders/kt/ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build4025828079/b001/hook.test -test.paniconexit0 -test.v=true -test.count=40 -test.timeout=5m0s -test.run=^TestS
+  SELF(shell, args truncated):  4375       00:04 /bin/zsh         /bin/zsh -c source /Users/goos/.moai/claude-profiles/mo ...
+EXIT=0

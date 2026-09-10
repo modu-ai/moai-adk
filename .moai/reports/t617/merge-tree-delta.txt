@@ -1,0 +1,23 @@
+delta judgment: develop changes since card base d3b7d438d vs hook test dependencies on the merged tree
+deps command: go list -deps -test ./internal/hook/ (run on merged tree HEAD fedfe3f43)
+delta command: diff --name-only d3b7d438d f66cdc918 (local develop tip)
+dep packages total 395, module-local 68
+develop changed files 145
+control internal/hook in local deps: True
+go.mod/go.sum changed: []
+changed .go files in a hook-test dep package: 10
+  internal/kanban/root_layer_repro_test.go
+  internal/kanban/todo_root.go
+  internal/kanban/todo_root_temp_guard_test.go
+  internal/merge/differ.go
+  internal/merge/differ_equal_fastpath_test.go
+  internal/mx/scanner.go
+  internal/mx/scanner_pending_warn_test.go
+  internal/session/store.go
+  internal/session/store_resolve_scope_test.go
+  internal/session/store_test.go
+changed non-.go files under a dep package dir (embed candidates): 4
+  internal/template/catalog.yaml
+  internal/template/templates/.claude/settings.json.tmpl
+  internal/template/templates/.claude/skills/moai/workflows/goal.md
+  internal/template/templates/.git_hooks/pre-commit
