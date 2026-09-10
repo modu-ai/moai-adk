@@ -1,0 +1,13 @@
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e5cebb4cd..0a3a75f87 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -147,7 +147,7 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
+ 			result.Errors = append(result.Errors, &DuplicateAcceptanceID{
+ 				ID:    acLine.id,
+ 				Depth: acLine.indent,
+-				Line:  acLine.line,
++				Line:  0, // MUTANT M4: line not recorded
+ 			})
+ 			duplicateReqIDs[acLine.id] = append(duplicateReqIDs[acLine.id], acLine.reqIDs...)
+ 			continue
