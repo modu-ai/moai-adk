@@ -244,4 +244,72 @@ internal/cli/update/merge/conflict_blind_repro_test.go
 
 리드 규칙("흡수 시점 이후 델타가 `internal/cli` 코드를 건드렸으면 다시 흡수하고 재측정을 다시 하라")에 따라 **§8.2–8.3의 결과는 `f51f7b9e6` 트리에 대한 실측으로만 유효하고, 병합 근거로 쓰지 않는다.** 흡수하면 base 기준 판별식이 낡는다.
 
-**다음**: 리드가 슬롯을 다시 주면 그 시점 develop을 재흡수하고 재측정한다. t581(lane-5, `internal/cli` 테스트 파일 1개)이 대기 중이라 조기 재측정은 다시 무효화될 수 있어, 순번은 리드에 맡긴다.
+~~**다음**: 리드가 슬롯을 다시 주면 그 시점 develop을 재흡수하고 재측정한다.~~ — **§9의 규칙 변경으로 대체됨.**
+
+## 9. 흡수 델타 전제 정정과 규칙 변경 (2026-09-10)
+
+### 9.1 리드 전제 정정 — 무효 원인은 둘이다
+
+리드는 흡수 이후 델타를 "t576(`d3b7d438d`)뿐, `internal/cli` 본체와 별개 패키지"로 보고 재측정이 유효하리라 판단했다. 재판독 결과 그 전제는 두 곳에서 틀렸고, 리드가 정정을 수용했다.
+
+**(1) t555 — 본체 직접 적중.** t555 병합은 흡수 기준 이후에 착지했고 같은 구간에 들어 있다:
+
+```
+$ git merge-base --is-ancestor c9a9e8866 c8203fbf3; echo $?
+1        # 흡수 기준의 조상이 아님 = 흡수 이후 착지
+$ git merge-base --is-ancestor c9a9e8866 d3b7d438d; echo $?
+0        # 구간 끝에는 포함
+$ git show d3b7d438d:internal/cli/todo.go | grep -m1 '^package '
+package cli
+```
+
+`internal/cli/todo.go`는 이 카드의 훅 파일과 같은 본체 패키지의 **프로덕션 코드**다.
+
+**(2) t609 — 경로 적중 0, 전이 적중.** develop은 이어서 `d1b61005d`로 움직였다.
+
+```
+$ git diff --name-only d3b7d438d d1b61005d
+.claude/settings.json
+.moai/config/sections/tool-policy.yaml
+.moai/reports/t609/verdict.md
+internal/template/templates/.claude/settings.json.tmpl
+$ git diff --name-only d3b7d438d d1b61005d | grep -c '^internal/cli/'
+0
+```
+
+`internal/cli` 경로 필터는 빈 출력을 냈으나 `git diff --name-only`는 차이가 있든 없든 exit 0이므로, 필터 없는 전체 목록(4파일)으로 대조해 **양성 부재**로 확인했다. 그러나 경로 적중 0은 영향 없음이 아니다:
+
+```
+$ go list -deps ./internal/cli > .moai/reports/t554/cli-deps.txt 2>&1; echo $?
+0        # 548개
+$ grep -x 'github.com/modu-ai/moai-adk/internal/template' .moai/reports/t554/cli-deps.txt
+github.com/modu-ai/moai-adk/internal/template
+```
+
+`settings.json.tmpl`은 `//go:embed all:templates`로 `internal/template`의 **컴파일 산출물**에 들어가고, `internal/cli`가 그 패키지를 가져가므로 본체가 싣는 바이트가 바뀐다.
+
+**대조 — t576은 무영향.** `go list -deps`에 `internal/cli/update/merge`도 적중하지만 t576이 들인 것은 `_test.go` 2개뿐이다. 테스트 파일은 다른 패키지가 import하는 패키지에 포함되지 않으므로 `internal/cli`가 가져가는 컴파일 내용은 불변이다. 의존 적중만으로는 판정이 서지 않는다는 것을 이 대조가 보인다.
+
+리드는 "경로 필터 기반 델타 판정은 `//go:embed` 전이를 못 본다"를 이 배치의 **다섯째 계기 결함**으로 채택했다 — 에러 없이 `0`이라는 그럴듯한 값을 돌려주는 형태다.
+
+### 9.2 규칙 변경 — 레인은 영향 범위만, 전체 스위트는 리드가 한 번
+
+병합마다 병합 트리에서 `internal/cli` 전체를 재는 방식은 구조적으로 끝나지 않는 경쟁이었다. 대기열의 어느 병합이든 본체를 직접, 또는 템플릿을 통해 전이로 건드리면 앞선 측정이 무효가 된다. `AGENTS.md` §4는 로컬 검증을 변경 범위로 좁히고 전체 스위트는 CI에 맡기라고 한다.
+
+| 주체 | 새 규칙 |
+|---|---|
+| 레인 | 병합 트리에서 **이 카드가 영향 줄 수 있는 테스트만** 잰다 |
+| 리드 | 일괄 push 직전 develop tip에서 `internal/cli` 전체를 **한 번** 돈다. 실패 ⊆ 기지 4건이면 통과, 5번째가 나오면 병합된 카드 사이에서 이분 탐색. push 뒤 CI가 전 매트릭스를 돈다 |
+
+### 9.3 §8의 위상
+
+§8.2의 882초 전체 스위트(차집합 ∅)와 §8.3의 `-v` 측정은 **흡수 기준 `f51f7b9e6` 트리의 관측**이다. 병합 근거가 아니라 참고로만 남긴다.
+
+### 9.4 이 카드의 남은 절차
+
+창 순번: t612 → t556 → t611 → t549 → **t554**. 슬롯 불요.
+
+1. 창을 받으면 로컬 develop tip을 흡수한다.
+2. 병합 트리에서 `go test ./internal/cli/ -run 'TestPreCommit' -v -count=1`을 파일 리다이렉트·파이프 없는 종료 코드로 잰다. 본체 컴파일이 따르므로 다른 레인의 `internal/cli` 컴파일이 없는지 사전 확인한다(프로세스는 패턴 매칭이 아니라 실행 파일 이름으로 거른다).
+3. 통과 기준: `TestPreCommit*` FAIL 0, 신규 두 테스트를 이름으로 확인.
+4. develop 워크트리에서 `--no-ff` 병합 → `moai integration release` → 로컬 병합 SHA 보고. push 없음.
