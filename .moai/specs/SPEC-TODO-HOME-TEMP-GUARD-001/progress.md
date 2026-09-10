@@ -10,6 +10,33 @@
 - 미결 사항: **없다.** U1(거부 시 CLI 형태)은 운영자 선택으로 **(b) 안내 후 계속**으로 결정됐다(2026-09-07, 리드 경유 — plan.md §D). run-phase는 고르지 않고 구현한다.
 - 2차 감사 수리(`version: 0.1.2`): D9(대체 루트를 `base`로 정정 — 종전 값은 루트가 아니라 상태 디렉터였다), D10(AC-THG-001이 문자열 동일성이 아니라 `BacklogPathForRoot(반환 루트)`의 읽힘을 단언), D11(`/var/tmp` 근거의 미측정 단정 격하 + 재검토 트리거 교체), U1 결정 반영. spec.md §8에 기존 코드(`todo_root.go:121`)의 계층 불일치를 **관측**으로 등재 — 본 SPEC은 고치지 않는다(별도 카드 후보).
 
+### 개정 0.1.5 — plan-phase 신호 (카드 t574, 2026-09-10)
+
+위 목록은 최초 plan-phase(0.1.0~0.1.4)의 기록이고 그대로 둔다. 이 블록은 제자리 개정의 plan-phase 신호를 **덧붙인다**. 아래 run·sync 절의 기존 블록은 첫 close의 귀속된 기록이므로 고쳐 쓰지 않으며, 개정 이후의 재측정과 재close도 각 단계 소유자가 그 블록들 **아래에 덧붙인다**.
+
+```yaml
+amendment_plan_status: audit-ready
+amendment_plan_complete_at: 2026-09-10
+amendment_version: "0.1.5"
+amended_spec: SPEC-TODO-HOME-TEMP-GUARD-001      # 자기 참조 — 제자리 개정 (spec.md frontmatter amendment_of 와 같은 값)
+prior_completed_version: "0.1.4"
+prior_completed_sha: 029ab039f                    # completed 전이 + 3-phase close 를 실은 sync 커밋
+status_transition: "completed → in-progress — spec.md frontmatter 에만. plan/acceptance 는 status 축 stateless, progress 는 본문 절로 기록"
+card: t574
+measurement_tree: .claude/worktrees/t574
+measurement_branch: WT-temp-roots-ac
+plan_base_head: 95ba9deb2
+spec_id_regex_self_check: PASS                    # Bash 실행, 이 트리
+edited_artifacts: [spec.md, acceptance.md, progress.md]
+code_change: none
+ac_count: 8                                       # 불변 — AC-THG-006 확장, 신규 AC 없음
+coverage_mapping_changed: false                   # acceptance.md §D.0 의 "AC-THG-006 maps REQ-THG-002" 불변
+evidence: [.moai/reports/t574/repro-summary.md, .moai/reports/t574/mutant-kanban.txt]
+open_questions: none                              # 개정 형태(기존 AC 확장, 신규 AC 없음)는 운영자 결정
+next: "run 재측정(AC-THG-006 확장 판정 명령) → sync 재close — 각 단계가 기존 블록 아래에 덧붙인다"
+expected_audit_drift: "개정 창 동안(status in-progress) 트리 빌드 `moai spec audit`와 MCP `spec_audit`가 SyncStatusDrift(MUST-FIX)를 낸다 — 예상된 경보다. 해소 경로는 manager-docs의 정상 sync 재close이며, 권고 조치 `moai spec close --backfill-only`는 run 재측정을 건너뛰고 status만 되돌리므로 실행하지 않는다"
+```
+
 ## §E.2 Run-phase Evidence
 
 측정 트리: `.claude/worktrees/t536` · 브랜치 `WT-home-fallback` · M1 착지 `8337cdf24`. 아래 모든 실행은 **이 트리, 이 회차**의 것이며, 플랫폼은 별도 표기가 없으면 **로컬 darwin/arm64**다. `go test`는 트리에서 컴파일되므로 판정 빌드와 측정 트리가 같다(별도 설치본 개입 없음).
@@ -463,6 +490,62 @@ measurement_head: db45d8209
 measurement_branch: WT-home-fallback
 ```
 
+### 개정 0.1.5 — run-phase 재측정 (카드 t574, 2026-09-10)
+
+위 블록은 첫 close(0.1.4)의 run 신호이며 고쳐 쓰지 않는다. 이 블록은 개정 0.1.5의 `next:`(run 재측정)를 이행한 기록을 덧붙인다. 코드 변경은 없고, AC-THG-006의 판정 명령을 기준 트리와 뮤턴트 M-574 아래에서 다시 재서 plan-audit D2(뮤턴트 대조에 명령·뮤턴트 소스·exit 코드가 필드로 남지 않음)를 닫는다. 예측 파일은 뮤턴트 주입 **전에** 따로 커밋했으므로, 순서는 커밋 그래프로 확인된다(예측 커밋이 이 블록을 싣는 커밋의 조상).
+
+```yaml
+amendment_run_status: audit-ready
+amendment_run_complete_at: 2026-09-10
+amendment_version: "0.1.5"
+card: t574
+measurement_tree: .claude/worktrees/t574
+measurement_branch: WT-temp-roots-ac
+run_entry_head: d937cd68d
+mutant_prediction_commit: 0f30477af              # 예측만 실은 커밋 — 뮤턴트 주입 전
+measurement_head: 0f30477af                       # 기준 실행은 예측 커밋과 같은 턴에 발행돼 d937cd68d 일 수도 있다 — 두 트리의 차이는 예측 .md 하나, Go 파일 없음
+go_version: go1.26.8 darwin/arm64
+code_change: none                                 # temp_origin.go 는 뮤턴트 주입 후 되돌림 — 작업 blob 633b09c24 == HEAD blob 633b09c24
+
+measurements:
+  - id: baseline
+    command: "go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v"
+    exit_code: 0
+    top_level_run: 2                              # 기대 2 — 충족
+    result: "TestTempOrigin_ComponentBoundary PASS · TestDefaultTempRoots_Membership PASS"
+    evidence: .moai/reports/t574/run-baseline.txt
+  - id: mutant-M-574
+    mutant: "defaultTempRoots() 본문 → return []string{os.TempDir()} (os 계속 사용, 컴파일됨)"
+    mutant_source: .moai/reports/t574/run-mutant-source.diff
+    prediction: .moai/reports/t574/run-mutant-prediction.md
+    command: "go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v"
+    exit_code: 1
+    top_level_run: 2                              # 기대 2 — 충족
+    result: "TestTempOrigin_ComponentBoundary PASS · TestDefaultTempRoots_Membership FAIL — fixed temp root \"/tmp\" missing · fixed temp root \"/var/folders\" missing · has 1 members, want 3"
+    prediction_matched: true
+    evidence: .moai/reports/t574/run-mutant.txt
+  - id: mutant-revert
+    command: "git diff --stat -- internal/kanban/temp_origin.go"
+    output: empty                                 # 대조: 같은 경로가 뮤턴트 아래에서는 비어 있지 않은 diff 를 냈다
+    git_diff_quiet_exit_code: 0
+    evidence: .moai/reports/t574/run-mutant-revert.txt
+  - id: kanban-package
+    command: "go test -count=1 ./internal/kanban/"
+    exit_code: 0
+    result: "ok  github.com/modu-ai/moai-adk/internal/kanban  158.924s"
+    evidence: .moai/reports/t574/run-kanban-pkg.txt
+
+ac_thg_006: PASS                                  # 경계 절 + 소속 절, 판정 명령 2건 모두 PASS
+ac_count: 8                                       # 불변
+plan_audit_d2: closed                             # 명령·뮤턴트 diff·exit 코드가 각 증거 파일의 필드로 남았다
+evidence_root: .moai/reports/t574/
+gaps:
+  - "리눅스 셀(TMPDIR 미설정 시 os.TempDir() == /tmp) 미측정 — CI 몫"
+  - "internal/cli 패키지와 golangci-lint 는 이번 재측정에서 돌리지 않았다(코드 변경 없음, 레인 범위 규율)"
+  - "뮤턴트 아래에서는 선택된 2건만 돌렸다 — 나머지 kanban 테스트의 뮤턴트 아래 결과는 plan-phase 증거(.moai/reports/t574/mutant-kanban.txt)의 것이며 이번에 다시 재지 않았다"
+next: "sync 재close — manager-docs 가 기존 sync 블록 아래에 덧붙인다"
+```
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 측정 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536` · 브랜치 `WT-home-fallback` · sync 진입 HEAD `4e99fc785`. 이 절의 모든 인용은 반출된 `.moai/reports/t536/` 파일과 이번 회차 명령 출력만 지목한다.
@@ -521,3 +604,57 @@ measurement_branch: WT-home-fallback
 - **CHANGELOG 항목의 AC 수 8 은 매트릭스 판독에 의존한다.** B12 자가시험 (b) 의 원시 계수는 10 이고, 8 은 그중 교차-SPEC 인용 2건(AC-SA-011 · AC-WTQ-006)을 제외한 값이다. 그 제외 판단이 틀리면 CHANGELOG 의 수가 틀린다 — 그래서 원시 계수와 제외 근거를 위 자가시험 칸에 함께 남겼다.
 - **`sync_commit_sha` 는 이 커밋(`029ab039f`)에서 `pending-backfill` 이었고, 후속 커밋 `586f26f2a` 가 실 SHA 로 채웠다.** 그 후속 커밋 전까지 이 절은 자기 커밋을 지목하지 못했다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
 - **가드 경계 보고는 테스트 한 건에 걸려 있다.** `TestGuardBypassMutant_ObserveHomePollution` 이 약화되면 route (i) 대조군이 인용하는 「오염 0」의 의미도 함께 약해진다(§E.2 M3 잔여 위험과 같은 항목이며 sync 가 바꾸지 않았다).
+
+### 개정 0.1.5 — sync-phase 재close (카드 t574, 2026-09-10)
+
+위 §E.4 블록은 첫 close(0.1.4)의 sync 신호이며 고쳐 쓰지 않는다. 이 블록은 개정 0.1.5의 sync 재close 기록을 덧붙인다. 코드 변경은 없다 — AC-THG-006 양의 방향 절 추가와 그 판정 명령의 plan/run 재측정만 있었다(위 §E.1·§E.3 개정 블록).
+
+```yaml
+amendment_sync_status: audit-ready
+amendment_sync_complete_at: 2026-09-10
+amendment_version: "0.1.5"
+card: t574
+measurement_tree: .claude/worktrees/t574
+measurement_branch: WT-temp-roots-ac
+sync_entry_head: 4eff56551
+
+commit_chain:
+  - ac751bc48   # feat — in-place amendment AC-THG-006 positive clause
+  - 559fd8de6   # docs — export plan-audit verdict for AC-THG-006 amendment
+  - d937cd68d   # docs — address plan-audit minor defects D1 D3 D4 D5 D6
+  - 0f30477af   # test — pin mutant M-574 prediction before run-phase injection
+  - 4eff56551   # test — run-phase re-measure for amendment 0.1.5, close plan-audit D2
+  - (this commit)  # docs — sync re-close amendment 0.1.5
+
+plan_audit:
+  verdict: PASS
+  score: 0.94
+  evidence: .moai/reports/t574/plan-audit.md
+
+run_reremeasure_evidence:
+  - .moai/reports/t574/run-baseline.txt
+  - .moai/reports/t574/run-mutant-source.diff
+  - .moai/reports/t574/run-mutant-prediction.md
+  - .moai/reports/t574/run-mutant.txt
+  - .moai/reports/t574/run-mutant-revert.txt
+  - .moai/reports/t574/run-kanban-pkg.txt
+
+status_transition: "in-progress → completed (spec.md frontmatter: status + updated 두 필드만, 본문 무수정)"
+code_change: none
+user_facing_docs: none    # CHANGELOG/README/docs-site 무편집 — 요구사항 본문·AC 8개·§D.0 매핑 불변, 내부 SPEC의 검증 텍스트만 바뀌었다 (b12 self-test 아래)
+
+b12_self_test_a: "grep -c 'SPEC-TODO-HOME-TEMP-GUARD-001' CHANGELOG.md → 1 (기존 0.1.4 close 항목). AC 수·서술 모두 이번 개정으로 거짓이 되지 않아 편집하지 않는다"
+b12_self_test_b: "/usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10, 0 아님. 8건(AC-THG-001..008)이 본 SPEC 소유이며 개정 후에도 그 수는 불변 — 기존 CHANGELOG 항목의 '8 acceptance criteria' 서술과 일치"
+b12_self_test_c: "ls 로 실재 확인 — spec.md · progress.md (이 커밋이 편집) · .moai/reports/t574/plan-audit.md · run-baseline.txt · run-mutant.txt · run-mutant-revert.txt · run-kanban-pkg.txt — 전부 존재"
+
+evidence_root: .moai/reports/t574/
+```
+
+### 미검증 (Gaps) — sync 재close
+
+- 코드 변경이 없으므로 이 회차의 sync 재close는 컴파일 대상을 다시 재지 않았다 — 판정의 근거는 위 §E.3 개정 블록의 run 재측정과 §E.1 개정 블록의 plan-audit이다.
+- 리눅스·윈도우 셀 미측정은 첫 close 때와 동일하게 남아 있다(위 §E.4 원 블록의 Gaps 참조) — 이 개정이 새로 만든 갭이 아니다.
+
+### 잔여 위험 (Residual risk) — sync 재close
+
+- 이 커밋은 자기 해시를 인용할 수 없어 `(this commit)`로 표기했다 — 첫 close(0.1.4) 때의 백필-플레이스홀더 관행과 달리, 이번 개정 블록은 애초에 era.go가 원 §E.4 블록에서 읽는 해시 필드 이름을 쓰지 않는다(그 필드로 읽는 값을 이 블록이 흔들지 않도록).

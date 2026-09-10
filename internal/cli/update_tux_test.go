@@ -207,7 +207,7 @@ func TestRenderUpdateOutcome(t *testing.T) {
 	if !strings.Contains(out, "Backup: .moai-backups/20260725_020747") {
 		t.Errorf("outcome dim note must carry the backup path, got:\n%q", out)
 	}
-	if !strings.Contains(out, "Recover: moai update --restore-config .moai-backups/20260725_020747") {
+	if !strings.Contains(out, "Recover: moai update --restore .moai-backups/20260725_020747") {
 		t.Errorf("outcome dim note must carry the recover command, got:\n%q", out)
 	}
 }

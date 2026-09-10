@@ -1,0 +1,8 @@
+=== RUN   TestTempOriginGuidance_NamesRootsAndContinues
+--- PASS: TestTempOriginGuidance_NamesRootsAndContinues (0.31s)
+=== RUN   TestTempOriginGuidance_SilentOnNonTemporaryBase
+--- PASS: TestTempOriginGuidance_SilentOnNonTemporaryBase (2.06s)
+=== RUN   TestTempOriginGuidance_SilentWithExplicitAbsoluteMOAIHome
+--- PASS: TestTempOriginGuidance_SilentWithExplicitAbsoluteMOAIHome (1.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	4.341s

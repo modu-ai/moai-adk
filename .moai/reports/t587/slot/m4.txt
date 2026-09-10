@@ -1,0 +1,28 @@
+=== RUN   TestUpdateRepair_RecoverHintFlagExists
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/source_literals
+--- PASS: TestUpdateRepair_RecoverHintFlagExists (0.02s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/source_literals (0.02s)
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/template_sync
+2026/09/10 23:32:30 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall
+--- PASS: TestUpdateRepair_RenderUsesProjectGitMode (0.23s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/template_sync (0.20s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall (0.02s)
+=== RUN   TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup
+--- PASS: TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup (0.21s)
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept
+    update_repair_test.go:266: applyWizardConfig returned nil for an unparseable system.yaml
+    update_repair_test.go:269: system.yaml was rewritten after a parse failure: "moai:\n    model_policy: high\n"
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported
+--- FAIL: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors (0.00s)
+    --- FAIL: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.478s
+FAIL
