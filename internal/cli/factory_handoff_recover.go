@@ -26,7 +26,7 @@ func newFactoryCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		return db.RecoverLegacyResume(context.Background(), id, token, decision, homestate.ProbeProcessIdentity, func() error {
 			census, err := homestate.ReadRuntimeCensus(root)
 			if err != nil {

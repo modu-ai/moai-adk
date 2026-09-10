@@ -34,7 +34,7 @@ func WithRuntimeAdmission(projectRoot string, register func() error) error {
 	if err != nil {
 		return err
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 	if err := CheckRuntimeAdmission(projectRoot); err != nil {
 		return err
 	}

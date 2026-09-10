@@ -150,7 +150,7 @@ func (s *ProfileLeaseStore) ProfileProtection(ctx context.Context, profilePath s
 	if err != nil {
 		return LeaseIndeterminate, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	found := false
 	staleOnly := true
 	for rows.Next() {
@@ -225,6 +225,6 @@ func ProfileProtectionAtHome(profilePath string) (LeaseProtection, error) {
 	if err != nil {
 		return LeaseIndeterminate, err
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	return s.ProfileProtection(context.Background(), profilePath, ProbeProcessIdentity)
 }

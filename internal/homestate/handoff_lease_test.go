@@ -33,7 +33,11 @@ INSERT INTO resume_handoffs(status,schema_version,saved_at,body,body_sha256,clai
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	var version string
 	if err := f.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != "2" {
 		t.Fatalf("version=%q err=%v", version, err)
@@ -53,7 +57,11 @@ func TestResumeLatestPendingThenExpiredReclaim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	ctx := context.Background()
 	if err := f.SaveResume(ctx, ResumeHandoff{SchemaVersion: 1, SavedAt: time.Now(), Body: "expired", DirectivesJSON: "{}"}); err != nil {
 		t.Fatal(err)
@@ -93,7 +101,11 @@ func TestResumeFinishRejectsABAToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	ctx := context.Background()
 	_ = f.SaveResume(ctx, ResumeHandoff{SchemaVersion: 1, SavedAt: time.Now(), Body: "payload", DirectivesJSON: "{}"})
 	row, _, _ := f.ClaimResume(ctx, ResumeClaim{Token: "A", OwnerPID: 1, TTL: -time.Second})
@@ -113,7 +125,11 @@ func TestResumeInjectionCrashIsAtLeastOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	ctx := context.Background()
 	_ = f.SaveResume(ctx, ResumeHandoff{SchemaVersion: 1, SavedAt: time.Now(), Body: "same", DirectivesJSON: "{}"})
 	a, _, _ := f.ClaimResume(ctx, ResumeClaim{Token: "A", OwnerPID: 1, TTL: -time.Second})

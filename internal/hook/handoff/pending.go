@@ -246,13 +246,13 @@ func ClaimPending(projectDir, token string) (*PendingRecord, int64, bool, error)
 			if rec.SavedAt.IsZero() {
 				rec.SavedAt = time.Now()
 			}
-			legacyRow, err := pendingRow(&rec)
-			if err != nil {
-				return nil, 0, true, err
+			legacyRow, rowErr := pendingRow(&rec)
+			if rowErr != nil {
+				return nil, 0, true, rowErr
 			}
-			imported, err := db.ImportLegacyResume(ctx, legacyRow)
-			if err != nil {
-				return nil, 0, true, err
+			imported, importErr := db.ImportLegacyResume(ctx, legacyRow)
+			if importErr != nil {
+				return nil, 0, true, importErr
 			}
 			if imported {
 				if err := os.Remove(legacy); err != nil && !os.IsNotExist(err) {

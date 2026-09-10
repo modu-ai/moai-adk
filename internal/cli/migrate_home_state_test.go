@@ -332,7 +332,9 @@ func TestHomeStateStartVsMigrateSerialized(t *testing.T) {
 		}
 		release, err := homestate.InstallMigrationMarkerLocked(root, "race")
 		if err != nil {
-			lock.Release()
+			if releaseErr := lock.Release(); releaseErr != nil {
+				t.Errorf("release admission lock after marker failure: %v", releaseErr)
+			}
 			t.Fatal(err)
 		}
 		admitted := make(chan error, 1)
@@ -342,7 +344,9 @@ func TestHomeStateStartVsMigrateSerialized(t *testing.T) {
 			t.Fatal("runtime passed while migration held lock")
 		case <-time.After(time.Millisecond):
 		}
-		lock.Release()
+		if err := lock.Release(); err != nil {
+			t.Fatal(err)
+		}
 		if err := <-admitted; err == nil {
 			t.Fatal("runtime admitted while marker active")
 		}
@@ -493,7 +497,7 @@ func TestHomeStateLiveValidatorRequiresExecutedTestsAndAllTooling(t *testing.T) 
 						continue
 					}
 					seen[name] = true
-					out.WriteString(fmt.Sprintf("{\"Action\":\"pass\",\"Test\":%q}\n", name))
+					fmt.Fprintf(&out, "{\"Action\":\"pass\",\"Test\":%q}\n", name)
 				}
 			}
 		}
@@ -512,9 +516,10 @@ func TestHomeStateRunNamedTestsRejectsSkipFailAndZeroJSONEvents(t *testing.T) {
 	for _, action := range []string{"skip", "fail", "", "duplicate-pass"} {
 		t.Run(action, func(t *testing.T) {
 			out := []byte(`{"Action":"` + action + `","Test":"required"}` + "\n")
-			if action == "" {
+			switch action {
+			case "":
 				out = []byte(`{"Action":"output","Test":"required"}` + "\n")
-			} else if action == "duplicate-pass" {
+			case "duplicate-pass":
 				out = []byte("{\"Action\":\"pass\",\"Test\":\"required\"}\n{\"Action\":\"pass\",\"Test\":\"required\"}\n")
 			}
 			runner := func(context.Context, string, []string, ...string) ([]byte, error) { return out, nil }
@@ -537,7 +542,7 @@ func TestHomeStateLiveValidatorFailsClosedAtEveryToolGate(t *testing.T) {
 						continue
 					}
 					seen[name] = true
-					out.WriteString(fmt.Sprintf("{\"Action\":\"pass\",\"Test\":%q}\n", name))
+					fmt.Fprintf(&out, "{\"Action\":\"pass\",\"Test\":%q}\n", name)
 				}
 			}
 		}
@@ -1263,7 +1268,11 @@ func TestHomeStateBackupRecoveryAndEvidenceRejectUnsafeInputs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer release(true)
+		t.Cleanup(func() {
+			if err := release(true); err != nil {
+				t.Errorf("release migration admission: %v", err)
+			}
+		})
 		if err := rollbackHomeState(context.Background(), root, "latest"); err == nil {
 			t.Fatal("rollback replaced an active migration marker")
 		}

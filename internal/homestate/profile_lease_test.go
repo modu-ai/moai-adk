@@ -14,7 +14,11 @@ func TestProfileLeasesAreGlobalAndPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	if _, err = store.CreateProvisional(context.Background(), ProfileLease{ProfileName: "opus", ProfilePath: filepath.Join(home, "claude-profiles", "opus"), ProjectKey: "p1", PID: os.Getpid(), ProcessFingerprint: "start"}); err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +38,11 @@ func TestProfileLeaseReconcilePIDFingerprint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	ctx := context.Background()
 	_, _ = store.CreateProvisional(ctx, ProfileLease{ProfileName: "live", ProfilePath: "/p/live", PID: 10, ProcessFingerprint: "same"})
 	staleToken, _ := store.CreateProvisional(ctx, ProfileLease{ProfileName: "stale", ProfilePath: "/p/stale", PID: 11, ProcessFingerprint: "old"})
@@ -70,7 +78,11 @@ func TestProfileLeaseCASAndProtectionBranches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	ctx := context.Background()
 	path := filepath.Join(home, "profiles", "opus")
 	token, err := store.CreateProvisional(ctx, ProfileLease{Token: "token", ProfileName: "opus", ProfilePath: path, PID: 10, ProcessFingerprint: "parent"})
@@ -116,7 +128,11 @@ func TestDeadProvisionalLeaseRemainsIndeterminateUntilTransferDeadline(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "profile")
 	token, err := store.CreateProvisional(ctx, ProfileLease{ProfilePath: path, PID: 10, ProcessFingerprint: "parent"})
@@ -228,7 +244,11 @@ func TestProfileLeaseUnknownProbeStateFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	path := filepath.Join(t.TempDir(), "profile")
 	if _, err := store.CreateProvisional(context.Background(), ProfileLease{Token: "unknown-state", ProfilePath: path, PID: 42, ProcessFingerprint: "known"}); err != nil {
 		t.Fatal(err)

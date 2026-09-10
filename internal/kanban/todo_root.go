@@ -110,7 +110,7 @@ func pathInsideTempDir(path string) bool {
 		return false
 	}
 	rel, err := filepath.Rel(os.TempDir(), abs)
-	return err == nil && rel != ".." && rel != "." && len(rel) > 0 && rel[0] != filepath.Separator && !(len(rel) > 2 && rel[:3] == ".."+string(filepath.Separator))
+	return err == nil && rel != ".." && rel != "." && len(rel) > 0 && rel[0] != filepath.Separator && (len(rel) <= 2 || rel[:3] != ".."+string(filepath.Separator))
 }
 
 // tempOriginSubstituteRoot is the temporary-origin guard

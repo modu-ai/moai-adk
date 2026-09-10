@@ -189,6 +189,7 @@ func toolResultJSON(t *testing.T, res *mcp.CallToolResult) map[string]any {
 	t.Helper()
 	if res == nil {
 		t.Fatal("nil tool result")
+		return nil
 	}
 	if res.IsError {
 		t.Fatalf("unexpected IsError tool result: %+v", res)
@@ -589,8 +590,9 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// primitives across internal/cli non-test sources equals the measured
 	// baseline exactly (baseline 64bba61aa: 3 hits; additions AND removals
 	// both fail — equal counts alone would not).
-	// todo_landed.go:216 is a DECLARED addition, not a second binary-lag
-	// comparison. SPEC-TODO-LANDING-EVIDENCE-001 REQ-TLE-020 requires the
+	// todo_landed.go:216 and home_state_coverage.go:243/251 are DECLARED
+	// additions, not second binary-lag comparisons. SPEC-TODO-LANDING-EVIDENCE-001
+	// REQ-TLE-020 requires the
 	// recording verb to check that an operator-supplied delivering SHA is
 	// reachable from the record's ref before storing it — a referential
 	// -integrity question about two operator-named revisions, which is a
@@ -598,15 +600,23 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// binlag.Evaluate owns. Routing it through the binlag seam would make it
 	// answer that other question.
 	//
+	// The home-state coordinates instead protect evidence-chain integrity: 243
+	// checks each coverage marker descends from its predecessor, and 251 checks
+	// the final marker is in HEAD's ancestry. Neither compares the running
+	// binary identity with source freshness, so binlag.Evaluate is not the
+	// correct owner for either check.
+	//
 	// The coordinate is line-keyed like its neighbours, so an edit above it
 	// in todo_landed.go moves it and this baseline needs re-measuring; that
 	// brittleness is the guard's existing design, not something introduced
 	// here.
 	want := map[string]bool{
-		"graph_stamp.go:68":         true,
-		"graph_stamp.go:131":        true,
-		"mcp_review_material.go:95": true,
-		"todo_landed.go:216":        true,
+		"graph_stamp.go:68":          true,
+		"graph_stamp.go:131":         true,
+		"home_state_coverage.go:243": true,
+		"home_state_coverage.go:251": true,
+		"mcp_review_material.go:95":  true,
+		"todo_landed.go:216":         true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

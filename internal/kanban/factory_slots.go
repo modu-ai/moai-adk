@@ -119,7 +119,7 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 	if lockErr != nil {
 		return requested, lockErr
 	}
-	defer admissionLock.Release()
+	defer func() { _ = admissionLock.Release() }()
 	if err := homestate.CheckRuntimeAdmission(root); err != nil {
 		return requested, err
 	}

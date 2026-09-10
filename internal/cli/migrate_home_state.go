@@ -198,11 +198,11 @@ func validateLivePreApplyWith(ctx context.Context, root string, headReader func(
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(compileDir)
+	defer func() { _ = os.RemoveAll(compileDir) }()
 	for i, pkg := range []string{"./internal/homestate", "./internal/hook/handoff", "./internal/hook", "./internal/kanban", "./internal/cli"} {
 		env := append(os.Environ(), "GOOS=windows", "GOARCH=amd64", "CGO_ENABLED=0")
 		if out, err := runner(ctx, root, env, "test", "-c", "-o", filepath.Join(compileDir, strconv.Itoa(i)+".test.exe"), pkg); err != nil {
-			return nil, fmt.Errorf("Windows compile %s: %w\n%s", pkg, err, out)
+			return nil, fmt.Errorf("windows compile %s: %w\n%s", pkg, err, out)
 		} else {
 			ledger.Checks["windows:"+pkg] = newHomeStateEvidenceRecord("GOOS=windows GOARCH=amd64 go test -c "+pkg, out, 0, head)
 		}
@@ -410,7 +410,7 @@ func sqliteCensus(path string) (homeStateCensus, error) {
 	if err != nil {
 		return homeStateCensus{}, err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	var integrity string
 	if err := db.QueryRow(`PRAGMA integrity_check`).Scan(&integrity); err != nil {
 		return homeStateCensus{}, err
@@ -467,7 +467,7 @@ func sqliteCensus(path string) (homeStateCensus, error) {
 		if err != nil {
 			return homeStateCensus{}, err
 		}
-		fmt.Fprintf(h, "table:%s\n", name)
+		_, _ = fmt.Fprintf(h, "table:%s\n", name)
 		for rows.Next() {
 			vals := make([]any, len(cols))
 			ptrs := make([]any, len(cols))
@@ -479,9 +479,9 @@ func sqliteCensus(path string) (homeStateCensus, error) {
 				return homeStateCensus{}, err
 			}
 			for _, v := range vals {
-				fmt.Fprintf(h, "%T:%v|", v, v)
+				_, _ = fmt.Fprintf(h, "%T:%v|", v, v)
 			}
-			fmt.Fprintln(h)
+			_, _ = fmt.Fprintln(h)
 			if name == "items" {
 				count++
 			}
@@ -501,7 +501,7 @@ func copySQLiteConsistent(source, target string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	escaped := strings.ReplaceAll(filepath.ToSlash(target), "'", "''")
 	if _, err := db.Exec(`VACUUM INTO '` + escaped + `'`); err != nil {
 		return err
@@ -549,7 +549,7 @@ func (r *homeStateRunner) Run(ctx context.Context) error {
 	if runtimeReportErr != nil {
 		runtimeLine = "indeterminate: " + runtimeReportErr.Error()
 	}
-	fmt.Fprintf(r.stdout, "mode: %s\ncanonical-root: %s\nproject-key: %s\nsource: %s\ntarget: %s\nactive-census: %s\nlogical-count: %d\nintegrity: %s\nsearch: not-applicable (no runtime producer)\n", map[bool]string{true: "apply", false: "dry-run"}[r.apply], root, homestate.ProjectKey(root), source, target, runtimeLine, census.Count, census.Integrity)
+	_, _ = fmt.Fprintf(r.stdout, "mode: %s\ncanonical-root: %s\nproject-key: %s\nsource: %s\ntarget: %s\nactive-census: %s\nlogical-count: %d\nintegrity: %s\nsearch: not-applicable (no runtime producer)\n", map[bool]string{true: "apply", false: "dry-run"}[r.apply], root, homestate.ProjectKey(root), source, target, runtimeLine, census.Count, census.Integrity)
 	if !r.apply {
 		targetStatus := "absent"
 		if targetCensus, targetErr := sqliteCensus(target); targetErr == nil {
@@ -561,7 +561,7 @@ func (r *homeStateRunner) Run(ctx context.Context) error {
 		} else if !os.IsNotExist(targetErr) {
 			targetStatus = "unreadable: " + targetErr.Error()
 		}
-		fmt.Fprintln(r.stdout, "target-status:", targetStatus)
+		_, _ = fmt.Fprintln(r.stdout, "target-status:", targetStatus)
 		return nil
 	}
 	if runtimeReportErr != nil {
@@ -617,7 +617,7 @@ func (r *homeStateRunner) Run(ctx context.Context) error {
 		if targetCensus == census {
 			_ = admissionLock.Release()
 			lockHeld = false
-			fmt.Fprintln(r.stdout, "already migrated: logical parity and integrity ok")
+			_, _ = fmt.Fprintln(r.stdout, "already migrated: logical parity and integrity ok")
 			return nil
 		}
 		return fmt.Errorf("target divergence: refusing non-empty target")
@@ -705,7 +705,7 @@ func (r *homeStateRunner) Run(ctx context.Context) error {
 		}
 	}
 	if err := release(true); err != nil {
-		fmt.Fprintf(r.stdout, "recovery-required: migration-id=%s backup-id=%s marker-clear=%v\n", migrationID, migrationID, err)
+		_, _ = fmt.Fprintf(r.stdout, "recovery-required: migration-id=%s backup-id=%s marker-clear=%v\n", migrationID, migrationID, err)
 		return fmt.Errorf("clear migration marker: %w", err)
 	}
 	succeeded = true
@@ -717,7 +717,7 @@ func recoverHomeState(_ context.Context, root, migrationID, backupID string) err
 	if err != nil {
 		return err
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 	marker, err := homestate.ReadMigrationMarker(root)
 	if os.IsNotExist(err) {
 		return nil
@@ -801,7 +801,7 @@ func rollbackHomeState(_ context.Context, root, backupID string) error {
 	if err != nil {
 		return err
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 	target, err := homestate.BacklogDBPath(root)
 	if err != nil {
 		return err

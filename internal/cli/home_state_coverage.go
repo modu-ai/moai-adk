@@ -92,7 +92,7 @@ func measureChangedSurfaceCoverageResultWith(ctx context.Context, root string, r
 	if err := profile.Close(); err != nil {
 		return changedCoverageResult{}, err
 	}
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 	if err := run(ctx, root, path); err != nil {
 		return changedCoverageResult{}, err
 	}
@@ -414,7 +414,7 @@ func parseChangedLineCoverage(profilePath string, ranges map[string][]changedLin
 	if err != nil {
 		return changedCoverageResult{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	wanted := ranges
 	type block struct{ statements, count int }
 	blocks := map[string]block{}

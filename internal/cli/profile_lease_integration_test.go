@@ -18,7 +18,11 @@ func TestProfileLeaseLifecycleAndNonExecCleanerRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	ctx := context.Background()
 	token, err := store.CreateProvisional(ctx, homestate.ProfileLease{ProfileName: "opus", ProfilePath: filepath.Join(home, "claude-profiles", "opus"), PID: 100, ProcessFingerprint: "parent"})
 	if err != nil {

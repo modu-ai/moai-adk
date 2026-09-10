@@ -18,7 +18,11 @@ func TestResumeLegacyIndeterminateOperatorRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	ctx := context.Background()
 	if err := f.SaveResume(ctx, homestate.ResumeHandoff{SchemaVersion: 1, SavedAt: time.Now(), Body: "legacy", DirectivesJSON: "{}"}); err != nil {
 		t.Fatal(err)
@@ -59,7 +63,11 @@ func TestResumeLegacyUnknownOwnerRequiresZeroActiveCensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	ctx := context.Background()
 	if err := f.SaveResume(ctx, homestate.ResumeHandoff{SchemaVersion: 1, SavedAt: time.Now(), Body: "unknown", DirectivesJSON: "{}"}); err != nil {
 		t.Fatal(err)
@@ -147,7 +155,11 @@ func TestFactoryRecoverResumeCommandRequeuesUnknownOwnerAtZeroCensus(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer check.Close()
+	t.Cleanup(func() {
+		if err := check.Close(); err != nil {
+			t.Errorf("close factory: %v", err)
+		}
+	})
 	var status string
 	if err := check.DB.QueryRow(`SELECT status FROM resume_handoffs WHERE id=?`, row.ID).Scan(&status); err != nil || status != "pending" {
 		t.Fatalf("status=%q err=%v", status, err)
