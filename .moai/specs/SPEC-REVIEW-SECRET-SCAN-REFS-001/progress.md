@@ -146,3 +146,34 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Decision: serial
+
+Recorded by the orchestrator (lane-5) before the first run-phase spawn, 2026-09-11, on tree `7a711c549`.
+
+**Gate record.** Plan audit iteration 3 PASS 0.89 (`.moai/reports/t629/plan-audit-iter3.md`, commit
+`7a711c549`); the lead read the verdict file and judged PASS. Implementation Kickoff Approval was given
+by the lead under the batch's delegated conditions (audit PASS, zero blocking findings, a one-sentence
+change), with the design decisions (Option 2, exact allowlist) already taken by the operator.
+Progression: autonomous, with two mandatory stops set by the lead: (a) after the M1 measure-first gate,
+report cells 1-3 and do not start M2 before the lead confirms; (b) cell 3 (full ref-reachable history on
+this repository) runs only after a separately committed lead approval, requested together with the
+load-recording plan.
+
+**Input parameters.** Tier M; scope two review workflow document copies plus SPEC/evidence files;
+domain count 1 (documentation with a measurement gate); file language mix markdown only; concurrency
+benefit low (ordered gate, single integration surface); Agent Teams not requested.
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | multi-milestone gated work, not a one-line change |
+| serial | **yes** | ordered measure-first gate with stop points; one writer on the worktree |
+| fanout | no | not multi-domain research; cells share one fixture and one progress record |
+| sweep | no | two files, no high-volume mechanical transform |
+
+**Justification.** The run phase is an ordered sequence whose later milestones depend on the gate's
+verdicts, and two of its stops are human confirmations, so a single sequential `manager-develop`
+delegation per stop segment is the simplest mode that fits. Parallel spawns would add a second writer
+to the progress record the ordering checks (AC-010, AC-011, AC-016) read.
