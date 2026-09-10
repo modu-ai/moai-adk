@@ -1,9 +1,8 @@
 package cli
 
-// SPEC-UPDATE-ADD-CODEX-001 M3 — init --force redirect guidance (REQ-UAC-013,
-// decision D4). When init runs --agent codex|both against an
+// Codex tool-enable redirect guidance. When init runs --llm codex|both against an
 // already-initialized project (the --force reinit path), init prints guidance
-// naming `moai update --add-codex` as the sanctioned additive path BEFORE
+// naming `moai tool enable codex` as the additive path BEFORE
 // proceeding. The reinit itself is not blocked — the codex-add *purpose* is
 // redirected, the reinit *capability* remains (redirect-not-block).
 
@@ -15,14 +14,13 @@ import (
 )
 
 // TestInitAddCodexGuidanceNamesAdditiveVerb pins the REQ-UAC-013 wording: the
-// guidance must name `moai update --add-codex` (the AC grep anchor) and
-// describe it as the sanctioned additive path.
+// guidance must name the single supported additive command.
 func TestInitAddCodexGuidanceNamesAdditiveVerb(t *testing.T) {
-	if !strings.Contains(addCodexReinitGuidance, "update --add-codex") {
-		t.Errorf("guidance does not name the additive verb `update --add-codex`:\n%s", addCodexReinitGuidance)
+	if !strings.Contains(addCodexReinitGuidance, "moai tool enable codex") {
+		t.Errorf("guidance does not name `moai tool enable codex`:\n%s", addCodexReinitGuidance)
 	}
-	if !strings.Contains(addCodexReinitGuidance, "additive") {
-		t.Errorf("guidance does not describe the additive path:\n%s", addCodexReinitGuidance)
+	if strings.Contains(addCodexReinitGuidance, "add-codex") {
+		t.Errorf("guidance still names the removed --add-codex flag:\n%s", addCodexReinitGuidance)
 	}
 }
 

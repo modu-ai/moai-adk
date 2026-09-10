@@ -200,6 +200,37 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 	}
 }
 
+// TestCodexNestedTemplateDiscoveryBudget pins the one directory in this
+// repository where Codex can discover both the root contract and the embedded
+// deployment copy. The merged chain must fit Codex's default 32 KiB project
+// instruction budget; the per-file ceiling alone cannot detect this case.
+func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, ok := findRepoRoot(cwd)
+	if !ok {
+		t.Fatal("repository root not found")
+	}
+	paths := []string{
+		filepath.Join(root, "AGENTS.md"),
+		filepath.Join(root, "internal", "template", "templates", "AGENTS.md"),
+	}
+	total := 0
+	for _, path := range paths {
+		info, statErr := os.Stat(path)
+		if statErr != nil {
+			t.Fatalf("stat %s: %v", path, statErr)
+		}
+		total += int(info.Size())
+	}
+	const codexDefaultProjectInstructionsMaxBytes = 32 * 1024
+	if total > codexDefaultProjectInstructionsMaxBytes {
+		t.Fatalf("nested Codex instruction chain = %d bytes, exceeds %d by %d", total, codexDefaultProjectInstructionsMaxBytes, total-codexDefaultProjectInstructionsMaxBytes)
+	}
+}
+
 // TestAlwaysLoadedSurfaceEnumeration asserts the enumerated surface equals
 // (count of no-`paths:` rule files) + 3 fixed slots, and that a known
 // paths:-scoped rule is excluded — the load-bearing enumeration-correctness proof

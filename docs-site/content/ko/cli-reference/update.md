@@ -140,7 +140,6 @@ graph TD
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
 | `--profile <high\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` 의 `profile` 에 저장) |
-| `--add-codex` | 기존 claude 프로젝트에 codex 하네스 배선 추가 (재초기화 없음) |
 
 ### 동작 방식
 
@@ -237,18 +236,17 @@ moai update --dry-run
 moai update --yes
 ```
 
-### 기존 프로젝트에 Codex 추가 (`--add-codex`)
+### 기존 프로젝트에 Codex 추가
 
 재초기화 없이 claude-only 프로젝트에 codex 하네스 배선을 추가합니다:
 
 ```bash
-moai update --add-codex
+moai tool enable codex
 ```
 
 - `.codex/hooks.json`(화이트리스트 게이트를 통과한 훅 렌더)·`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 사용자가 추가한 항목은 보존)·`.moai/state/codex-wiring.json`(신뢰 사이드카)을 만들거나 갱신합니다
 - `.mcp.json`은 건드리지 않으며, 재실행은 멱등입니다 — 이미 배선돼 있으면 아무것도 기록하지 않고 재신뢰 안내도 출력하지 않습니다
-- `--dry-run`과 함께 쓰면 파일시스템을 바꾸지 않고 배선 계획만 미리 보여 줍니다
-- `--check`와는 함께 쓸 수 없습니다 — `--check`는 정보성이고 `--add-codex`는 프로젝트 배선을 바꾸므로, 조합하면 오류로 거절합니다
+- `moai tool enable codex --dry-run`을 실행하면 파일시스템을 바꾸지 않고 배선 계획만 미리 보여 줍니다
 
 ## 업데이트 후 절차
 

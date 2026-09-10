@@ -140,7 +140,6 @@ This safety net keeps `moai update` from losing local-only files (personal rules
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
 | `--profile <high\|medium\|low>` | Override the model+effort profile (stored in `profile` of `llm.yaml`) |
-| `--add-codex` | Add codex harness wiring to an existing claude project (no reinitialization) |
 
 ### How it behaves
 
@@ -250,18 +249,17 @@ Auto-approve all confirmations:
 moai update --yes
 ```
 
-### Add Codex to an existing project (`--add-codex`)
+### Add Codex to an existing project
 
 Adds codex harness wiring to a claude-only project without reinitialization:
 
 ```bash
-moai update --add-codex
+moai tool enable codex
 ```
 
 - Creates or refreshes `.codex/hooks.json` (whitelist-gated hook render), `.codex/config.toml` (`[mcp_servers.moai]` + `[tui].status_line` — entries you added yourself are preserved), and `.moai/state/codex-wiring.json` (the trust sidecar)
 - `.mcp.json` is never touched, and re-running is idempotent — an already-wired project gets no writes and no re-trust guidance
-- Combine with `--dry-run` to preview the wiring plan without changing the filesystem
-- Mutually exclusive with `--check` — `--check` is informational while `--add-codex` mutates project wiring, so the combination is refused with an error
+- Run `moai tool enable codex --dry-run` to preview the wiring plan without changing the filesystem
 
 ## Post-update procedure
 

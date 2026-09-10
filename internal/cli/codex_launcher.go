@@ -26,6 +26,7 @@ package cli
 // process replacement, no OS build tags (AC-CL-014).
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -108,6 +109,36 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 		args = append(args, sub)
 	}
 	return append(args, tail...)
+}
+
+// codexLocalDeveloperInstructionArgs loads Codex-only personal guidance from
+// the project root. JSON string encoding is valid TOML basic-string syntax,
+// so it preserves newlines, quotes, and UTF-8 while remaining one argv token.
+// The local file is read-only input and is never imported from AGENTS.md.
+func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
+	localPath := filepath.Join(projectRoot, codexLocalInstructionName)
+	info, err := os.Lstat(localPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("probe %s: %w", codexLocalInstructionName, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, &codexPathGuardError{Rel: codexLocalInstructionName, Reason: "not a regular file (" + codexModeName(info.Mode()) + ")"}
+	}
+	body, err := os.ReadFile(localPath)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", codexLocalInstructionName, err)
+	}
+	if len(body) == 0 {
+		return nil, nil
+	}
+	encoded, err := json.Marshal(string(body))
+	if err != nil {
+		return nil, fmt.Errorf("encode %s: %w", codexLocalInstructionName, err)
+	}
+	return []string{"-c", "developer_instructions=" + string(encoded)}, nil
 }
 
 // launches reports whether the verb class starts a process (AC-CL-002's
@@ -299,7 +330,9 @@ var codexCmd = &cobra.Command{
 		"reports six rows and starts nothing - the codex binary, CODEX_HOME,\n" +
 		"the auth provider, the project wiring, the generated agent TOMLs, and\n" +
 		"the harness entry. An incomplete wiring row is informational, not an\n" +
-		"error: moai init --agent codex generates the .codex wiring files.\n" +
+		"error: moai init --llm codex generates the .codex wiring files.\n" +
+		"If AGENTS.local.md exists at the project root, its content is injected\n" +
+		"as Codex-only developer instructions for the launched session.\n" +
 		"\n" +
 		"  moai codex            launch the Codex CLI at the project root\n" +
 		"  moai codex cli        the same launch, named explicitly\n" +
@@ -435,7 +468,6 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		dir = resolved
 	}
 
-	req := codexLaunchRequest{Program: binaryPath, Args: codexChildArgs(kind, tail), Dir: dir}
 	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site every
 	// launch form passes through right before launching, the bare form
 	// included. The gate takes no spawn argument: both launch paths cross the
@@ -443,6 +475,12 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	if err := codexInitOfferGate(cmd, projectRoot); err != nil {
 		return err
 	}
+	localArgs, err := codexLocalDeveloperInstructionArgs(projectRoot)
+	if err != nil {
+		return fmt.Errorf("load Codex local instructions: %w", err)
+	}
+	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
+	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
 	if spawn {
 		return codexSpawnLaunch(req)
 	}

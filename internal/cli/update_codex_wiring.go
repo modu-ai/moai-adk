@@ -4,7 +4,7 @@ package cli
 // refresh (REQ-CW-009). File existence is the user's standing opt-in: an
 // update refreshes the Codex wiring ONLY in projects that already carry a
 // wiring file (.codex/hooks.json or .codex/config.toml) and creates nothing
-// in `--agent claude` / flag-absent projects.
+// in `--llm claude` / flag-absent projects.
 
 import (
 	"errors"
@@ -34,15 +34,14 @@ func refreshCodexWiringBestEffort(out, errOut io.Writer) {
 }
 
 // addCodexWiringAt adds the Codex wiring of the project at projectRoot by
-// calling the UNGATED codexwiring.Wire (SPEC-UPDATE-ADD-CODEX-001 REQ-UAC-001,
-// plan §D1): --add-codex exists to CREATE wiring, so the existence gate that
-// governs refreshCodexWiringBestEffortAt is bypassed on this verb's path ONLY.
+// calling the UNGATED codexwiring.Wire. `moai tool enable codex` creates
+// wiring, so it intentionally bypasses the existence gate used by refresh.
 //
 // Error posture (plan §D1): a REQ-CW-003 validation refusal
-// (ErrValidationRefused) propagates as a hard error — runUpdate returns it and
-// the command exits non-zero. The sibling refresh wrapper's warn-and-continue
-// model is deliberately NOT followed here: best-effort is allowed only for IO
-// errors, which warn and the update continues (spec §F posture).
+// (ErrValidationRefused) propagates as a hard error and the tool command exits
+// non-zero. The sibling refresh wrapper's warn-and-continue model is deliberately
+// NOT followed here: best-effort is allowed only for IO errors, which warn and
+// the update continues (spec §F posture).
 func addCodexWiringAt(projectRoot string, out, errOut io.Writer) error {
 	if _, err := codexwiring.Wire(projectRoot, out, errOut); err != nil {
 		if errors.Is(err, codexwiring.ErrValidationRefused) {
@@ -63,10 +62,4 @@ func emitCodexWiringDryRunPreview(out io.Writer, invocation string) {
 	_, _ = fmt.Fprintf(out, "  - create-or-refresh %s ([mcp_servers.moai] + [tui].status_line, create-if-absent merge)\n", codexwiring.ConfigRelPath)
 	_, _ = fmt.Fprintf(out, "  - create-or-refresh %s (trust sidecar, sha256 of the generated content)\n", codexwiring.SidecarPath)
 	_, _ = fmt.Fprintln(out, "  - run without --dry-run to apply")
-}
-
-// emitAddCodexDryRunPreview preserves the deprecated update flag's output
-// contract while sharing the preview renderer with `moai tool enable codex`.
-func emitAddCodexDryRunPreview(out io.Writer) {
-	emitCodexWiringDryRunPreview(out, "moai update --add-codex")
 }

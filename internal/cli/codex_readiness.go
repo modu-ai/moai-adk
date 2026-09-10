@@ -49,7 +49,7 @@ const (
 // codexWiringAction is the remediation phrase REQ-CL-006 requires on EVERY
 // incomplete wiring state (absent, empty, either partial, invalid) and forbids
 // on the wired state.
-const codexWiringAction = "run moai init --agent codex"
+const codexWiringAction = "run moai init --llm codex"
 
 // codexHomeMissingAction is the remediation phrase when CODEX_HOME points at a
 // path that does not exist (plan §C.3). The launcher reports the gap; logging

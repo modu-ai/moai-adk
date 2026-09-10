@@ -63,9 +63,9 @@ func newInitTestCmd() *cobra.Command {
 	cmd.Flags().Bool("worktree-auto-merge", false, "")
 	cmd.Flags().Bool("worktree-auto-cleanup", false, "")
 	cmd.Flags().String("autonomy-tier", "", "")
-	// SPEC-CODEX-WIRING-001: mirror the --agent harness selector, matching the
+	// SPEC-CODEX-WIRING-001: mirror the --llm harness selector, matching the
 	// production initCmd registration.
-	cmd.Flags().String("agent", "", "")
+	cmd.Flags().String("llm", "", "")
 	return cmd
 }
 

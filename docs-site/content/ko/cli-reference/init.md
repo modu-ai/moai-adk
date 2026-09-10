@@ -31,6 +31,7 @@ moai init [project-name]
 | `--all` | 카탈로그 전체 배치 (core + 선택 팩 + 하네스 생성물). 기본값은 core-only slim 모드 |
 | `--force` | 기존 프로젝트 재초기화 (현재 `.moai/` 를 백업) |
 | `--no-hooks` | git 훅 설치 생략 |
+| `--llm <claude\|codex\|both>` | 연결할 LLM 하네스 선택 (기본값: `claude`) |
 
 ### 프로젝트 기본값
 
