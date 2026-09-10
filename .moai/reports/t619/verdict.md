@@ -115,3 +115,10 @@ settings.json.tmpl 권한 영역의 항목 집합을 커밋본 allow+deny 와 `c
 - (a) YAML 수정: allow 7개 추가, MultiEdit allow 1개와 Glob/Grep/Write deny 12개 삭제. 수정 후 build 출력이 커밋 settings.json 과 같아야 한다(적용 권한 변화 0).
 - (b) 읽기 전용 드리프트 검사: 재생성하지 않고 차이만 보고한다. 대조군으로 한 항목을 일부러 어긋나게 해 검사가 실패하는지 보인다.
 - (c) tool-policy.yaml 머리말의 "structurally preventing YAML↔settings.json drift" 진술을 검사 존재 사실에 맞춘다.
+
+## 7. 운영자 결정 (레인 세션에서 직접 받음, 2026-09-10)
+
+리드가 전한 확인을 근거로 삼지 않고, 이 레인 세션의 AskUserQuestion 으로 운영자에게 직접 물었다.
+
+- 수리 방향: **YAML 을 settings.json 에 맞춤** (Grep deny 4개 포함 삭제. 적용 권한 변화 0)
+- 드리프트 검사 위치: **make build 선행 + CI** (agents-emit-check 선례, 읽기 전용)
