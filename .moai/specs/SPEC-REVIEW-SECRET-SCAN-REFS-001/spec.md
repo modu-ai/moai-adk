@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-SECRET-SCAN-REFS-001
 title: "Review workflow secret scan — coverage of refs not reachable from HEAD"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-10
 updated: 2026-09-10
@@ -23,16 +23,27 @@ tier: M
   `.moai/reports/t629/cost-baseline.md`. Both were measured on tree `feeecc980`; the review
   workflow copies are unchanged between `feeecc980` and HEAD `21e5837dc`
   (`git diff --stat feeecc980 21e5837dc -- <both copies>` printed nothing).
-- The choice between the options in §3 is **deliberately left open**. The card reserves any
+- (0.1.0) The choice between the options in §3 is **deliberately left open**. The card reserves any
   narrowing of security-scan coverage for cost to the operator; this SPEC records the options
-  and does not choose.
+  and does not choose. Superseded by 0.2.0.
 - 2026-09-10 (0.1.1): §3.3 folds in the lead's path-only classification of the full-scan matches
-  (lead-reported, not re-measured by the lane). The decision in §3 is still pending.
+  (lead-reported, not re-measured by the lane). The decision in §3 is still pending (superseded by
+  0.2.0).
 - 2026-09-10 (0.2.0): the operator decided §3 — Option 2 (per-ref tip-set checkpoint), adopted on
   the condition that the run phase measures it first, with an exact example-value allowlist and no
   path exclusions; answered in the lead session and relayed by the lead. §3.4 adds the adoption
   conditions; §2 states the requirements for Option 2 and adds REQ-009 to REQ-012; §5 aligns its
   unexamined-content wording with §3.3.
+- 2026-09-10 (0.2.1): plan audit iteration 1 returned FAIL; this revision resolves its findings.
+  D1 — REQ-013 and AC-016 tie the edited wording to the procedure the gate measured, and a changed
+  procedure re-takes the gate. D2 — AC-001's fail conditions become the exact complement of its
+  required table. D3 — AC-014 places its negatives in the listed line's commit and hunk. D4 — §3.4
+  separates the operator's conditions from the lane's predicates. D5 — cell ② requires an exit-0
+  final scan and a pinned detection reading. D6 — AC-002 adds a `same coverage` check. D7 — the
+  cell ③ approval lands in its own earlier commit. D8 — a digest is written at full length and
+  AC-005 runs the strict template leak tier. D9 — REQ-004 is Ubiquitous. D10 — superseded HISTORY
+  notes are marked. D11 — closure checks run at a recorded `K` before the develop absorb. D12 — the
+  cell ③ tip store sits outside the repository.
 
 ## §1 Background and problem statement
 
@@ -104,10 +115,10 @@ as the record of the choice.
   the set of commits that step scans and what the checkpoint records — under Option 2, the tip of
   every ref at the last completed scan — and shall not claim coverage beyond that set.
 
-- **REQ-004 (Where):** **Where** the Option 2 per-review step leaves commits outside its scope —
-  including commits reachable from no ref, such as commits reachable only through a reflog — the
-  workflow document shall name those commits as uncovered by that step, and shall name the step
-  that covers them or state that no prescribed step does. The earlier Option 3 reading of this
+- **REQ-004 (Ubiquitous):** The workflow document shall name, as uncovered by the Option 2
+  per-review step, the commits that step leaves outside its scope — including commits reachable
+  from no ref, such as commits reachable only through a reflog — and shall name the step that covers
+  them or state that no prescribed step does. The earlier Option 3 reading of this
   requirement (refs not reachable from HEAD) no longer applies, because Option 3 was not adopted.
 
 - **REQ-005 (Unwanted):** The workflow document shall not state that the incremental scan with a
@@ -143,6 +154,12 @@ as the record of the choice.
   workflow document or in any other file committed to this repository, text that matches the
   scan's regex — a listed value written literally included — and shall still decide suppression by
   exact value.
+
+- **REQ-013 (When):** **When** either copy of the review workflow document is edited, the
+  secrets-scan procedure the edited copies prescribe shall be the procedure pinned verbatim in
+  `progress.md` §E.2 before the first command of the gate round whose verdicts stand at that edit,
+  and that pinned procedure shall be unchanged between that round's gate evidence commit and the
+  edit; a changed procedure is a new gate round (§3.4).
 
 ## §3 Decision — coverage versus cost
 
@@ -244,6 +261,12 @@ chosen an exact example-value allowlist with no path exclusions (§3, §3.4).
 the lead, 2026-09-10). Option 2 has no fixture or timing measurement (§3.2), so it is adopted on the
 condition that the run phase measures it first.
 
+**Who set which part.** The three measurements and the stop rule are the operator's; each cell's
+predicate — the ≥ 1 thresholds in cell ①, the detection requirement and the two recovery paths in
+cell ②, and the `B − A + L` bound in cell ③ — is the lane's operationalization, submitted for plan
+audit and open to operator correction. Cell ②'s detection requirement is explicitly lane-authored
+and stricter than the condition the operator stated.
+
 #### Measure-first gate
 
 The first run-phase milestone takes the three measurements below before any commit touches either
@@ -251,7 +274,8 @@ copy of the review workflow document (REQ-009). Before the first gate command ru
 procedure under measurement — how and when the tip set is recorded, the scan command, and the
 handling of a recorded tip that no longer exists — is pinned verbatim in `progress.md` §E.2, so the
 gate measures a procedure fixed in advance. The document edit may prescribe only a procedure the
-gate measured.
+gate measured (REQ-013). A change to the pinned procedure after the gate is a new gate round: cells
+①, ②, and ③ are taken again, cell ③ after a fresh lead approval, before either copy is edited.
 
 Every cell records its commands, its output redirected to files outside this repository, and each
 exit code read without a pipe, and ends in one verdict — **trustworthy** or **untrustworthy** — by
@@ -281,20 +305,27 @@ on a new branch not reachable from HEAD; then the next scan runs.
 - Construction check first: `git cat-file -e <the recorded tip>` exits non-zero. If it exits 0, the
   tip still exists and the cell was not constructed; it is rebuilt, and that reading is a gap, never
   a pass.
-- Trustworthy when the missing tip is **detected** — an error or notice naming it is recorded in the
-  scan's captured output or error stream — **and** the scan that follows reports `GONECELL` ≥ 1,
-  through either acceptable behaviour:
+- Trustworthy when all of these hold: the missing tip is **detected** — its identifier appears at
+  least once, counted by a fixed-string search over the scan's captured output, its error stream,
+  and any fallback scan's output (`acceptance.md` §D.9 pins the command); the scan carrying the final
+  result exits 0; **and** that scan reports `GONECELL` ≥ 1, through either acceptable behaviour:
   - (a) falling back to a full `--all` scan; or
   - (b) dropping the missing tip from the exclusion set and scanning with the remaining tips.
-- Untrustworthy: an error with no follow-on scan (an unhandled error); exit 0 with `GONECELL` 0 (a
-  silent skip); or no recorded detection of the missing tip.
+- Untrustworthy: an error with no follow-on scan (an unhandled error); a final scan with a non-zero
+  exit, even when it printed `GONECELL` (partial output); exit 0 with `GONECELL` 0 (a silent skip);
+  or no recorded detection of the missing tip.
+- The detection requirement is lane-authored and stricter than the operator's stated condition
+  (see **Who set which part** above).
 
 **Cell ③ — wall time on this repository.** Two runs of the pinned procedure: a first run with no
 recorded tips, then an incremental run against the tips the first run recorded. The first run
 reaches the full ref-reachable history, so — like the full `--all` scan measured in
 `cost-baseline.md` — it runs only after the lead approves it, and the approval is recorded before
-the run. Scan output stays in files outside this repository; only counts are recorded, and no SHA,
-path, or matched value of any matching commit is written into this repository (§5).
+the run, in its own commit ahead of the commit that records this cell's evidence. Scan output stays
+in files outside this repository; only counts are recorded, and no SHA, path, or matched value of
+any matching commit is written into this repository (§5). The tip set both runs record and read is
+stored in the session scratchpad, outside this repository — never in the worktree's own checkpoint
+location — so a later real review in the worktree does not start from the gate's tips.
 
 - Recorded for each run: the command; the HEAD commit it ran on; load averages immediately before
   and after; wall time; exit code; the number of recorded tips excluded; the number of commits in
@@ -338,7 +369,10 @@ matches the regex. Candidates, recorded here and not chosen:
   listed value.
 
 The choice belongs to the run-phase wording milestone (`plan.md` §F M2) and is bound by this
-constraint. No SPEC artifact or evidence file writes a listed value, whole or in fragments.
+constraint. No SPEC artifact or evidence file writes a listed value, whole or in fragments. If a
+digest is chosen, each digest is written at its full length: a 7-8 character lowercase hexadecimal
+run in the distributed copy trips the CI strict template leak tier that guards template paths
+(`acceptance.md` §D.5).
 
 ## §4 Constraints
 

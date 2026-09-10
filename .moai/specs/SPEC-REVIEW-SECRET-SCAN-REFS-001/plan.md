@@ -37,12 +37,18 @@ first, with an exact example-value allowlist and no path exclusions (`spec.md` �
    plan time, stop and report; do not reconcile by copying one over the other.
 3. Before the first gate command runs, pin verbatim in `progress.md` §E.2 the Option 2 procedure
    under measurement: how and when the tip set is recorded, the scan command, and the handling of a
-   recorded tip that no longer exists (`spec.md` §3.4). Pin in the same place, before the document
-   edit, the sentence that will name the commits the per-review step does not cover (REQ-004), so
-   AC-006 checks a sentence fixed in advance rather than one chosen after the fact.
+   recorded tip that no longer exists (`spec.md` §3.4). The pin sits under a `### Pinned procedure`
+   heading, with the scan command on one line beginning `Scan command: ` and the missing-tip
+   handling on one line beginning `Missing-tip handling: `, each written in the form the document
+   will carry, so AC-016 can find both verbatim in the edited section (REQ-013). Pin in the same
+   place, before the document edit, the sentence that will name the commits the per-review step does
+   not cover (REQ-004), so AC-006 checks a sentence fixed in advance rather than one chosen after the
+   fact.
 4. Obtain and record the lead's approval before gate cell ③ takes its first run on this repository.
    That run reaches the full ref-reachable history, and the full `--all` scan on this repository is
-   not re-run without lead approval.
+   not re-run without lead approval. The approval record, quoting the lead's message, is committed
+   alone, before the commit that records cell ③'s evidence, so the commit graph witnesses the order
+   (AC-010).
 
 ## §D Constraints
 
@@ -56,15 +62,16 @@ first, with an exact example-value allowlist and no path exclusions (`spec.md` �
   runtime, so no line matching the scan regex is ever committed (REQ-007, AC-004).
 - [HARD] No SPEC artifact or evidence file writes a listed allowlist value, whole or in fragments,
   and neither `review.md` copy carries text matching the scan regex (REQ-007, REQ-012, AC-015).
-- [HARD] Gate cell ③ keeps scan output in files outside this repository and records counts only —
-  no SHA, path, or matched value of any matching commit (`spec.md` §5).
+- [HARD] Gate cell ③ keeps scan output and its recorded tip set in files outside this repository
+  and records counts only — no SHA, path, or matched value of any matching commit (`spec.md` §3.4,
+  §5).
 - [HARD] The distributed copy carries no SPEC ID, card ID, or cost figure from this repository, and
   names no programming language as primary (REQ-006, AC-005).
 - Cost: gate cell ③ records load averages before and after each run (`spec.md` §3.4). Never cite
   the 76.084 s figure as a clean benchmark.
 - Exercising other unreachable ref kinds — remote-only branches, tags, stash entries, branches
   deleted after push — is inferred rather than measured. It is recorded as a gap (§G) and as a
-  candidate criterion in `acceptance.md` §D.16, not as a Definition-of-Done item.
+  candidate criterion in `acceptance.md` §D.17, not as a Definition-of-Done item.
 - Do not examine or record the SHAs of the 15 commits matched on this repository.
 
 ## §E Self-verification
@@ -106,7 +113,13 @@ blocker to report, not a trade-off to make.
 
 Build the throwaway fixture and run the worded procedure through the review sequence of
 `acceptance.md` §D.1 and the allowlist controls of §D.13 and §D.14. Record every cell in
-`progress.md` §E.2. If a cell fails, return to M2 before editing any document.
+`progress.md` §E.2. If a cell fails, no document is edited. A fix that changes only the wording,
+with the pinned procedure unchanged, returns to M2. A fix that changes the procedure itself is a new
+gate round and re-takes the gate before any edit (REQ-013, AC-016): one commit moves the standing
+round's pinned procedure, lead approval, and gate evidence out of `progress.md` verbatim into
+`.moai/reports/t629/`; the changed procedure is pinned; gate cells ①, ②, and ③ are taken again —
+cell ③ only after a fresh lead approval committed alone as in §C item 4 — and committed as in M1;
+then M2 and M3 run again.
 
 ### M4 — Edit the two copies (Priority Medium)
 
@@ -114,9 +127,11 @@ Edit the distributed copy, then the local copy. Verify AC-002, AC-003, AC-005, A
 
 ### M5 — Mechanical closure checks (Priority Low)
 
-AC-004 (no credential-shaped added line since the card base), AC-007 (the decision commit precedes
-the first document-edit commit), and AC-011 (the gate evidence commit precedes it too). Populate
-`progress.md` §E.2 and §E.3.
+Record `K`, the card branch tip, in `progress.md` §E.2 before the develop absorb; the closure checks
+run at `K` (`acceptance.md` § Closure-check anchor). AC-004 (no credential-shaped added line since
+the card base), AC-007 (the decision commit precedes the first document-edit commit), AC-011 (the
+gate evidence commit precedes it too), and AC-016 (the edited copies prescribe the pinned procedure,
+unchanged since the gate evidence). Populate `progress.md` §E.2 and §E.3.
 
 ## §G Risks and gaps
 
@@ -140,7 +155,7 @@ the first document-edit commit), and AC-011 (the gate evidence commit precedes i
 - **Merge commits and stash entries (inferred):** `git log -p` shows no patch for merge commits
   unless a `--diff-merges` variant is given. A stash's working-tree change, and a credential
   introduced while resolving a merge, may therefore be missed even by `--all`. Not measured; see
-  `acceptance.md` §D.16 and §D.17.
+  `acceptance.md` §D.17 and §D.18.
 - **Regex alternatives:** only the PEM-header alternative was exercised.
 - **Cost is repository-specific and contended:** the ratio on a project with few branches is not
   measured. Gate cell ③ is also taken on a shared machine; its predicate checks that the record is

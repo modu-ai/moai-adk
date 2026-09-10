@@ -54,6 +54,28 @@ after the operator decision, on top of `af7eb142b`
     `grep -cE '^\| AC-[0-9]{3} ' acceptance.md` → `15` (Tier M ceilings: 16 and 16).
   - `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001` → `0 error(s), 0 warning(s)`, with one INFO
     `OwnershipTransitionUnmeasured` on commit `78e29987f` (no `Authored-By-Agent` trailer).
+- Revision readings (plan 0.2.1, resolving plan audit iteration 1 findings D1-D12, on top of
+  `496fe6153`; the audit report is `.moai/reports/t629/plan-audit-iter1.md`):
+  - AC-004 over the working tree with every 0.2.1 revision edit in place:
+    `git diff feeecc980 --output=SP/card-diff-wt2.txt`, then `wc -l` → `1667` lines, then
+    `/usr/bin/grep -cE -- '^\+.*(REGEX)' SP/card-diff-wt2.txt` → `0`, grep exit `1`, read
+    separately. Gap: the lines recording this reading are not in it.
+  - AC-002 reworded-claim check: `/usr/bin/grep -ci 'same coverage' LOC TPL` → `1`, `1`.
+  - AC-005 on the section extracted from `TPL`: `/usr/bin/grep -c 'R language'` → `0`, exit 1; the
+    16-name language grep with `-n` → no lines, exit 1. The strict leak test named in AC-005 exists:
+    `grep -n 'func TestTemplateNoInternalContentLeak' internal/template/internal_content_leak_test.go`
+    → line 1535. The leak run itself was not taken at plan time.
+  - AC-016 mechanics on a scratch file in `SP`: the pinned-block `sed` extraction printed the heading
+    and body, kept a level-4 sub-heading, and stopped before the next level-3 heading;
+    `grep -cF -f <pattern file>` → `1` (exit 0) on a matching line and `0` (exit 1) on a control line.
+  - Requirement and criterion counts: `grep -cE '^- \*\*REQ-[0-9]{3} ' spec.md` → `13`;
+    `grep -cE '^\| AC-[0-9]{3} ' acceptance.md` → `16` (Tier M ceilings: 16 and 16); the §D.1-§D.16
+    headings carry AC-001 to AC-016 in order.
+  - Credential regex over the four SPEC artifacts: `/usr/bin/grep -cE -- 'REGEX' <4 files>` → `0`
+    each, exit 1; a fragment-assembled PEM-header control in `SP` → `1`, exit 0.
+  - `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001`, run with every other 0.2.1 edit in place →
+    exit 0, `0 error(s), 0 warning(s)`, with the same one INFO `OwnershipTransitionUnmeasured` on
+    commit `78e29987f`.
 
 ## §E.2 Run-phase Evidence
 
