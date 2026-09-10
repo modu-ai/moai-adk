@@ -85,6 +85,9 @@ func TestCodexLocalInstructions_DirectSpawnAndAppSharePrefix(t *testing.T) {
 	prevInTmux := inTmuxFn
 	inTmuxFn = func() bool { return true }
 	t.Cleanup(func() { inTmuxFn = prevInTmux })
+	prevLookPath := spawnLookPath
+	spawnLookPath = func(file string) (string, error) { return "/stub/bin/" + file, nil }
+	t.Cleanup(func() { spawnLookPath = prevLookPath })
 	for _, args := range [][]string{{"cli"}, {"app", "--spawn"}} {
 		if _, _, err := runCodexCmd(t, args...); err != nil {
 			t.Fatalf("run %v: %v", args, err)

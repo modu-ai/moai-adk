@@ -141,7 +141,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.SetContinue(false)
 			return out, nil
 		}
-		defer admissionLock.Release()
+		defer func() { _ = admissionLock.Release() }()
 		if err := homestate.CheckRuntimeAdmission(admissionRoot); err != nil {
 			out := &HookOutput{StopReason: err.Error()}
 			out.SetContinue(false)
@@ -584,7 +584,7 @@ func registerProfileLease(ctx context.Context, input *HookInput) {
 		slog.Warn("session_start: profile lease unavailable", "error", err)
 		return
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	pid := os.Getppid()
 	fingerprint, state := homestate.ProbeProcessIdentity(pid)
 	if state != homestate.ProcessIdentityLive {

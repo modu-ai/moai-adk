@@ -155,6 +155,7 @@ func TestCommittedCoverageChangeSetSupportsVersionedRemediationChain(t *testing.
 	for _, step := range []struct{ value, subject string }{
 		{"5", homeStateCoverageRemediationCommitSubject},
 		{"6", homeStateCoverageDeltaCommitSubject},
+		{"7", homeStateCoverageCertificationSubject},
 	} {
 		if err := os.WriteFile(a, []byte("package x\nfunc A() int { return "+step.value+" }\n"), 0o600); err != nil {
 			t.Fatal(err)
@@ -172,7 +173,7 @@ func TestCommittedCoverageChangeSetSupportsVersionedRemediationChain(t *testing.
 	gitForCoverageTest(t, root, "add", "README.md")
 	gitForCoverageTest(t, root, "commit", "-qm", "docs: after delta remediation")
 	changeSet, err := resolveHomeStateCoverageChangeSet(root)
-	if err != nil || changeSet.Tip != tip || len(changeSet.Ranges["internal/x/a.go"]) < 3 {
+	if err != nil || changeSet.Tip != tip || len(changeSet.Ranges["internal/x/a.go"]) != 4 {
 		t.Fatalf("changeSet=%+v tip=%s err=%v", changeSet, tip, err)
 	}
 }
@@ -268,6 +269,42 @@ func TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence(t *testing.T)
 		gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageDeltaCommitSubject)
 		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil || !strings.Contains(err.Error(), "missing predecessor") {
 			t.Fatalf("gapped evidence chain accepted: %v", err)
+		}
+	})
+	t.Run("certification marker skips predecessor", func(t *testing.T) {
+		root := committedCoverageRepo(t)
+		path := filepath.Join(root, "internal", "x", "a.go")
+		if err := os.WriteFile(path, []byte("package x\nfunc A() int { return 5 }\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitForCoverageTest(t, root, "add", "internal/x/a.go")
+		gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+		if err := os.WriteFile(path, []byte("package x\nfunc A() int { return 7 }\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		gitForCoverageTest(t, root, "add", "internal/x/a.go")
+		gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageCertificationSubject)
+		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil || !strings.Contains(err.Error(), "missing predecessor") {
+			t.Fatalf("gapped certification evidence chain accepted: %v", err)
+		}
+	})
+	t.Run("duplicate certification marker", func(t *testing.T) {
+		root := committedCoverageRepo(t)
+		path := filepath.Join(root, "internal", "x", "a.go")
+		for _, step := range []struct{ value, subject string }{
+			{"5", homeStateCoverageRemediationCommitSubject},
+			{"6", homeStateCoverageDeltaCommitSubject},
+			{"7", homeStateCoverageCertificationSubject},
+			{"8", homeStateCoverageCertificationSubject},
+		} {
+			if err := os.WriteFile(path, []byte("package x\nfunc A() int { return "+step.value+" }\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			gitForCoverageTest(t, root, "add", "internal/x/a.go")
+			gitForCoverageTest(t, root, "commit", "-qm", step.subject)
+		}
+		if _, err := resolveHomeStateCoverageChangeSet(root); err == nil || !strings.Contains(err.Error(), "ambiguous home-state coverage evidence marker") {
+			t.Fatalf("duplicate certification evidence accepted: %v", err)
 		}
 	})
 }

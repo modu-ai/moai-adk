@@ -45,7 +45,11 @@ func TestContinueLaunchCreatesSingleProvisionalLeaseBeforeChildStart(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	var count int
 	if err := store.DB.QueryRowContext(context.Background(), `SELECT count(*) FROM profile_leases WHERE token=? AND state='provisional'`, strings.TrimSpace(string(tokenRaw))).Scan(&count); err != nil {
 		t.Fatal(err)

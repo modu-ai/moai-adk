@@ -53,7 +53,7 @@ func AcquireMigrationAdmission(projectRoot, migrationID string) (func(bool) erro
 	if err != nil {
 		return nil, err
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 	return installMigrationMarker(projectRoot, migrationID)
 }
 

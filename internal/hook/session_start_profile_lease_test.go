@@ -52,7 +52,11 @@ func TestSessionStartProfileLeaseDirectAndTokenFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close profile lease store: %v", err)
+		}
+	})
 	var fallback int
 	if err := store.DB.QueryRow(`SELECT count(*) FROM profile_leases WHERE session_id='fallback'`).Scan(&fallback); err != nil {
 		t.Fatal(err)

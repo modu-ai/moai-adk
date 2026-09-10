@@ -28,6 +28,6 @@ func transferProfileLeaseToChild(env []string, parentPID int, parentFingerprint 
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	return store.TransferToChild(context.Background(), token, parentPID, parentFingerprint, childPID, childFingerprint)
 }

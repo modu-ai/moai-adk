@@ -24,6 +24,7 @@ const (
 	homeStateCoverageCommitSubject            = "feat(state): add guarded home-state rollout (t592)"
 	homeStateCoverageRemediationCommitSubject = "fix(state): stabilize committed coverage evidence (t592)"
 	homeStateCoverageDeltaCommitSubject       = "fix(state): isolate committed coverage deltas (t592)"
+	homeStateCoverageCertificationSubject     = "fix(state): certify review remediation coverage (t592)"
 )
 
 type homeStateCoverageChangeSet struct {
@@ -92,7 +93,7 @@ func measureChangedSurfaceCoverageResultWith(ctx context.Context, root string, r
 	if err := profile.Close(); err != nil {
 		return changedCoverageResult{}, err
 	}
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 	if err := run(ctx, root, path); err != nil {
 		return changedCoverageResult{}, err
 	}
@@ -198,6 +199,7 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 		homeStateCoverageCommitSubject,
 		homeStateCoverageRemediationCommitSubject,
 		homeStateCoverageDeltaCommitSubject,
+		homeStateCoverageCertificationSubject,
 	}
 	commitsBySubject := make(map[string]string, len(subjects))
 	log, err := gitCoverageOutput(root, "log", "--format=%H%x09%s", "HEAD")
@@ -414,7 +416,7 @@ func parseChangedLineCoverage(profilePath string, ranges map[string][]changedLin
 	if err != nil {
 		return changedCoverageResult{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	wanted := ranges
 	type block struct{ statements, count int }
 	blocks := map[string]block{}
