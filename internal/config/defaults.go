@@ -23,6 +23,18 @@ const (
 	// content drift (the index is cheap to rescan).
 	DefaultGraphFreshnessCodemapsChangedFiles = 40
 	DefaultGraphFreshnessMXIndexChangedFiles  = 1
+
+	// DefaultGateMarkerScanDepth bounds the quality gate's recursive
+	// language-marker scan below the project root (GH #1680): how many
+	// directory levels beneath the project directory the scan examines for
+	// module markers (go.mod, package.json, ...) when none exists at the top.
+	// The value covers the common monorepo shapes — apps/<svc>,
+	// packages/<pkg>, services/<name> at depth 2, apps/services/<svc> at
+	// depth 3 — with one spare level, while keeping the walk bounded on large
+	// trees. This is the single source of truth for the literal 4; the scan
+	// and its tests reference this constant, never an inline literal
+	// (CLAUDE.local.md §14 — no hardcoding).
+	DefaultGateMarkerScanDepth = 4
 	// DefaultGraphFreshnessUpdateBudgetMS bounds a query-time refresh's
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
