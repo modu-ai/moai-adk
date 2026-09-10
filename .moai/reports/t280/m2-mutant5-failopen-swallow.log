@@ -1,0 +1,6 @@
+--- FAIL: TestInboxCap_FailOpenOnRotationFailure (0.00s)
+    inbox_lifecycle_test.go:368: rotation failure was not logged as a warning; log = ""
+    inbox_lifecycle_test.go:378: live file was rotated despite sabotaged chain (append must land on the EXISTING file)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.804s
+FAIL

@@ -12,21 +12,24 @@
 //	--templates DIR Path to templates directory (default: internal/template/templates)
 //	--dry-run       Print computed hashes without modifying catalog.yaml
 //
-// Hash normalization (HARD — must match NormalizeForHash in catalog_hash_norm.go):
-//  1. Read raw bytes of the target file
+// Hash normalization: template.NormalizeForHash — the single source both the
+// generator and the audit suite use (no local copy to keep byte-identical):
+//  1. Read raw bytes of the target
 //  2. Convert CRLF → LF (uniform line endings)
 //  3. Strip trailing whitespace from each line
 //  4. Ensure exactly one trailing newline
 //  5. sha256 the result, hex-encode → 64-char lowercase hex
 //
-// For skill entries: hash only the root SKILL.md or skill.md (not sub-files).
+// For skill entries (directories): hash the whole deployed tree via
+// template.ComputeDirTreeHash — every regular file under the directory
+// contributes (t323; the v1 SKILL.md-only reading left the deployed
+// sub-files outside the integrity claim).
 // For agent entries: hash the *.md file at the given path.
 //
 // SPEC-V3R4-CATALOG-001 T-007 (M2.4)
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"flag"
@@ -37,6 +40,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // catalogYAML mirrors catalog.yaml for YAML round-trip with comment preservation.
@@ -73,37 +78,17 @@ type catalogPack struct {
 	Agents      []catalogEntry `yaml:"agents"`
 }
 
-// normalizeForHash normalizes raw file content for reproducible sha256 hashing.
-// This is a local copy of template.NormalizeForHash to avoid import cycles
-// (this script is in a separate package under scripts/).
-// MUST remain byte-identical to catalog_hash_norm.go NormalizeForHash.
-func normalizeForHash(raw []byte) []byte {
-	// Step 1: Normalize line endings CRLF → LF, lone CR → LF
-	normalized := bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
-	normalized = bytes.ReplaceAll(normalized, []byte("\r"), []byte("\n"))
-
-	// Step 2: Strip trailing whitespace from each line
-	lines := strings.Split(string(normalized), "\n")
-	for i, line := range lines {
-		lines[i] = strings.TrimRight(line, " \t")
-	}
-
-	// Step 3: Join and ensure exactly one trailing newline
-	content := strings.Join(lines, "\n")
-	content = strings.TrimRight(content, "\n")
-	content += "\n"
-
-	return []byte(content)
-}
-
 // computeHash computes the sha256 hash of a file at the given path,
-// after applying normalizeForHash normalization.
+// after applying template.NormalizeForHash normalization. The former local
+// copy of NormalizeForHash ("MUST remain byte-identical" to it) is gone:
+// the internal-package import it was written to avoid turns out to be
+// allowed, and a single source cannot drift (t323).
 func computeHash(filePath string) (string, error) {
 	raw, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", fmt.Errorf("read %q: %w", filePath, err)
 	}
-	normalized := normalizeForHash(raw)
+	normalized := template.NormalizeForHash(raw)
 	sum := sha256.Sum256(normalized)
 	return hex.EncodeToString(sum[:]), nil
 }
@@ -139,19 +124,39 @@ func resolveHashSourcePath(templatesDir, entryPath string) (string, error) {
 }
 
 // updateEntryHash computes and sets the hash for a single catalog entry.
+// A directory entry is hashed as its whole deployed tree (t323): every
+// regular file under it reaches the user through //go:embed all:templates,
+// so all of them — not just SKILL.md — belong in the catalog's integrity
+// claim. The tree aggregation is template.ComputeDirTreeHash, the same
+// function the audit test uses, over os.DirFS of the templates tree.
 func updateEntryHash(entry *catalogEntry, templatesDir string, dryRun bool) error {
-	sourcePath, err := resolveHashSourcePath(templatesDir, entry.Path)
-	if err != nil {
-		return fmt.Errorf("resolve hash source for %q: %w", entry.Name, err)
-	}
+	relPath := strings.TrimPrefix(entry.Path, "templates/")
+	relPath = strings.TrimSuffix(relPath, "/")
+	absPath := filepath.Join(templatesDir, relPath)
 
-	hash, err := computeHash(sourcePath)
-	if err != nil {
-		return fmt.Errorf("compute hash for %q: %w", entry.Name, err)
+	var hash, source string
+	if info, statErr := os.Stat(absPath); statErr == nil && info.IsDir() {
+		var treeErr error
+		hash, treeErr = template.ComputeDirTreeHash(os.DirFS(templatesDir), filepath.ToSlash(relPath))
+		if treeErr != nil {
+			return fmt.Errorf("compute tree hash for %q: %w", entry.Name, treeErr)
+		}
+		source = absPath + " (whole tree)"
+	} else {
+		sourcePath, resolveErr := resolveHashSourcePath(templatesDir, entry.Path)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve hash source for %q: %w", entry.Name, resolveErr)
+		}
+		var hashErr error
+		hash, hashErr = computeHash(sourcePath)
+		if hashErr != nil {
+			return fmt.Errorf("compute hash for %q: %w", entry.Name, hashErr)
+		}
+		source = sourcePath
 	}
 
 	if dryRun {
-		fmt.Printf("  [dry-run] %s: %s (source: %s)\n", entry.Name, hash, sourcePath)
+		fmt.Printf("  [dry-run] %s: %s (source: %s)\n", entry.Name, hash, source)
 	} else {
 		fmt.Printf("  %s: %s\n", entry.Name, hash)
 		entry.Hash = hash

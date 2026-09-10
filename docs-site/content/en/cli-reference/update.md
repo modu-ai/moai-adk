@@ -249,6 +249,18 @@ Auto-approve all confirmations:
 moai update --yes
 ```
 
+### Add Codex to an existing project
+
+Adds codex harness wiring to a claude-only project without reinitialization:
+
+```bash
+moai tool enable codex
+```
+
+- Creates or refreshes `.codex/hooks.json` (whitelist-gated hook render), `.codex/config.toml` (`[mcp_servers.moai]` + `[tui].status_line` — entries you added yourself are preserved), and `.moai/state/codex-wiring.json` (the trust sidecar)
+- `.mcp.json` is never touched, and re-running is idempotent — an already-wired project gets no writes and no re-trust guidance
+- Run `moai tool enable codex --dry-run` to preview the wiring plan without changing the filesystem
+
 ## Post-update procedure
 
 ### Step 1: check the version

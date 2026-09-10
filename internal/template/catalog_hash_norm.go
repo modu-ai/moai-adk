@@ -23,8 +23,11 @@ import (
 // audit test (TestManifestHashFormat in catalog_tier_audit_test.go) MUST
 // import this function to guarantee identical byte sequences across platforms.
 //
-// Note on skill entries: For skill directories, only the root SKILL.md or skill.md
-// is hashed. Sub-files (workflows/*.md, references/*) are NOT included in v1 hash.
+// Note on skill entries: since t323 a skill directory entry is hashed as a
+// whole tree via ComputeDirTreeHash — every regular file under the entry
+// contributes, not just the root SKILL.md. The v1 SKILL.md-only reading left
+// the deployed sub-files (modules/, references/, scripts/, workflows/, ...)
+// outside the catalog's integrity claim entirely.
 func NormalizeForHash(raw []byte) []byte {
 	// Step 1: Normalize line endings — CRLF → LF
 	normalized := bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))

@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -58,22 +59,90 @@ type acParsedLine struct {
 	then   string
 	reqIDs []string
 	indent int
+	line   int
 }
 
-// findACSectionStart finds the start index of Acceptance Criteria section in markdown
+// acSectionVocabulary is the explicit list of phrases that name an acceptance
+// criteria section (card t565). Matching is case-insensitive and runs after the
+// file name acceptance.md is removed, so a heading that only points at the
+// sibling file does not name the section.
+var acSectionVocabulary = []string{
+	"acceptance",
+	"success criteria",
+	"ac matrix",
+	"수락 기준",
+	"인수 기준",
+	"검수 기준",
+	"수용 기준",
+	"성공 기준",
+	"ac summary",
+}
+
+// acNegativeSectionMarkers mark a heading about what the SPEC does not cover;
+// such a heading never anchors, even when it mentions acceptance criteria.
+var acNegativeSectionMarkers = []string{"out of scope", "out-of-scope", "non-goal"}
+
+// markdownHeadingLevel returns the ATX heading level of a trimmed line, or 0
+// when the line is not a heading.
+func markdownHeadingLevel(trimmed string) int {
+	level := 0
+	for level < len(trimmed) && trimmed[level] == '#' {
+		level++
+	}
+	if level == 0 || level > 6 {
+		return 0
+	}
+	if level < len(trimmed) && trimmed[level] != ' ' && trimmed[level] != '\t' {
+		return 0
+	}
+	return level
+}
+
+// isACSectionHeading reports whether a heading names the acceptance criteria
+// section.
+func isACSectionHeading(trimmed string) bool {
+	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
+	for _, marker := range acNegativeSectionMarkers {
+		if strings.Contains(text, marker) {
+			return false
+		}
+	}
+	for _, phrase := range acSectionVocabulary {
+		if strings.Contains(text, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// findACSectionStart finds the start index of Acceptance Criteria section in markdown:
+// the line after the first heading of level 2 or deeper that names the section and
+// whose section holds at least one criterion line. An empty summary section that
+// precedes the real one does not take the anchor; when every such section is
+// empty, the first one still anchors.
 func findACSectionStart(lines []string) int {
+	first := -1
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "##") && strings.Contains(strings.ToLower(trimmed), "acceptance") {
+		if markdownHeadingLevel(trimmed) < 2 || !isACSectionHeading(trimmed) {
+			continue
+		}
+		if first < 0 {
+			first = i + 1
+		}
+		if len(extractACLines(lines, i+1, false)) > 0 {
 			return i + 1
 		}
 	}
-	return -1
+	return first
 }
 
-// extractACLines extracts parsed line list from AC section
+// extractACLines extracts parsed line list from AC section. The section ends at
+// the next heading of the same or a higher level than its anchor, so its own
+// deeper subheadings are read.
 func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedLine {
 	var acLines []acParsedLine
+	anchorLevel := markdownHeadingLevel(strings.TrimSpace(lines[startIdx-1]))
 
 	for i := startIdx; i < len(lines); i++ {
 		line := lines[i]
@@ -83,7 +152,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 			continue
 		}
 
-		if strings.HasPrefix(trimmed, "##") {
+		if level := markdownHeadingLevel(trimmed); level > 0 && level <= anchorLevel {
 			break
 		}
 
@@ -106,6 +175,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 			then:   parsed.then,
 			reqIDs: parsed.reqIDs,
 			indent: indent,
+			line:   i + 1,
 		})
 	}
 
@@ -124,6 +194,12 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 	var roots []Acceptance
 	var stack []stackEntry
 	seenIDs := make(map[string]bool)
+	// Duplicate ids (card t564): the grammar cannot tell a bullet that cites an
+	// id from the bullet that declares it, so dropping either line loses its REQ
+	// mapping silently. The first line's text is kept, every later line's REQ
+	// mappings are collected here and merged below, and the duplicate is still
+	// reported so the author sees it.
+	duplicateReqIDs := make(map[string][]string)
 
 	for i, acLine := range acLines {
 		node := Acceptance{
@@ -138,7 +214,9 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 			result.Errors = append(result.Errors, &DuplicateAcceptanceID{
 				ID:    acLine.id,
 				Depth: acLine.indent,
+				Line:  acLine.line,
 			})
+			duplicateReqIDs[acLine.id] = append(duplicateReqIDs[acLine.id], acLine.reqIDs...)
 			continue
 		}
 		seenIDs[acLine.id] = true
@@ -173,6 +251,10 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 		}
 	}
 
+	// Merge before auto-wrapping, which copies RequirementIDs into the wrapper's
+	// child and would otherwise leave the merged ids on the empty wrapper.
+	mergeDuplicateReqIDs(roots, duplicateReqIDs)
+
 	for i := range roots {
 		if len(roots[i].Children) == 0 && !hasIDSuffix(roots[i].ID) {
 			roots[i] = autoWrapSingle(roots[i])
@@ -180,6 +262,22 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 	}
 
 	return roots
+}
+
+// mergeDuplicateReqIDs appends to each node the REQ ids mapped by later lines
+// carrying the same AC id, skipping ids the node already holds.
+func mergeDuplicateReqIDs(nodes []Acceptance, extra map[string][]string) {
+	if len(extra) == 0 {
+		return
+	}
+	for i := range nodes {
+		for _, id := range extra[nodes[i].ID] {
+			if !slices.Contains(nodes[i].RequirementIDs, id) {
+				nodes[i].RequirementIDs = append(nodes[i].RequirementIDs, id)
+			}
+		}
+		mergeDuplicateReqIDs(nodes[i].Children, extra)
+	}
 }
 
 func hasIDSuffix(id string) bool {
@@ -202,6 +300,48 @@ func autoWrapSingle(ac Acceptance) Acceptance {
 	return wrapped
 }
 
+// acIDPattern anchors an AC declaration line, applied after the leading
+// "- *" run has been trimmed. Its four widening axes were each derived from the
+// corpus (SPEC-AC-COLLECTOR-ANCHOR-001 §B); the anchor is compiled once because
+// it is evaluated per line over every spec.md.
+//
+//	AC-(?:[A-Za-z0-9]+-)*[0-9]+   axis 1 — variable segment count with
+//	                              alphanumeric middle segments. The LAST segment
+//	                              stays numeric: it is the only measured property
+//	                              separating a declaration id from an arbitrary
+//	                              AC-prefixed token, so dropping it would admit
+//	                              any such token with nothing left to narrow it.
+//	(?:\.[a-z](?:\.[a-z]+)?)?     axis 2 — sub-id suffix, UNCHANGED from the
+//	                              pre-widening anchor. hasIDSuffix/autoWrapSingle
+//	                              branch on the dot, so altering this changes the
+//	                              tree shape rather than only recognition.
+//	\*{0,2}                       axis 3 — the CLOSING bold marker. The opening
+//	                              one is already removed by the TrimLeft below,
+//	                              which is deliberately left alone: widening the
+//	                              preprocessing would move the risk surface from
+//	                              this anchor to every line in the section.
+//	(?:\([^()]*\)\s*)?            axis 4a — one parenthesised qualifier between
+//	                              the id and the separator, e.g. "(A1)",
+//	                              "(REQ-001)". Skipping it exposes the real
+//	                              separator behind it. Axes 3 and 4a compose in
+//	                              EITHER order, which is why \*{0,2} appears on
+//	                              both sides: the corpus writes the qualifier both
+//	                              inside the bold span ("**AC-CSS-001-01
+//	                              (isolation-validity)** —") and after it
+//	                              ("**AC-HFC-001a** (REQ-HFC-001):"), and fixing
+//	                              one order rejects 53 lines for a property of
+//	                              this anchor rather than of the corpus.
+//	                              BRACKET qualifiers ("**AC-1 [REQ-002]**:", 17
+//	                              lines) stay out: that is a new axis, not the
+//	                              composition of two declared ones.
+//	[:—–]                         axis 4b — separator set: colon, em dash
+//	                              (U+2014, observed), en dash (U+2013, a design
+//	                              decision with no corpus observation). The
+//	                              separator stays REQUIRED; widening the set is
+//	                              not the same as dropping the requirement, and
+//	                              the requirement is what keeps prose bullets out.
+var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
+
 func parseSingleACLine(line string) *struct {
 	id     string
 	given  string
@@ -214,8 +354,6 @@ func parseSingleACLine(line string) *struct {
 	trimmed = strings.TrimLeft(trimmed, "- *")
 	trimmed = strings.TrimSpace(trimmed)
 
-	// AC ID pattern: AC-XXX-NNN-NN or AC-XXX-NNN-NN.a or AC-XXX-NNN-NN.a.i
-	acIDPattern := regexp.MustCompile(`^(AC-[A-Z0-9]+-[0-9]+-[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\s*:\s*`)
 	idMatch := acIDPattern.FindStringSubmatch(trimmed)
 
 	if len(idMatch) < 2 {

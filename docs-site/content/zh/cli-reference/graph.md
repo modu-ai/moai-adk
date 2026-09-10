@@ -63,7 +63,9 @@ mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
 edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 ```
 
-按层各自的指标，测量图的三个层——codemaps · @MX 索引 · edges.jsonl——落后代码多远，并给出每层 `fresh` / `stale` / `absent` 判定。codemaps 看打了戳记的生成提交之后变化的被描述文件数(回退的改动计为 0)，@MX 索引看内容哈希变了的文件数，edges.jsonl 看源指纹是否不一致。
+按层各自的指标，测量图的三个层——codemaps · @MX 索引 · edges.jsonl——落后代码多远，并给出每层 `fresh` / `stale` / `absent` 判定。codemaps 看内容锚点——codemaps 正文最后一次真正变化的位置——之后变化的被描述文件数(回退的改动计为 0)，@MX 索引看内容哈希变了的文件数，edges.jsonl 看源指纹是否不一致。
+
+测量的起点是**内容锚点**，不是打了戳记的提交。若工作树里的 codemaps 正文与戳记处的正文不同，锚点就是戳记提交本身(`content_anchor_source=working-tree-differs-from-stamp`)；若两者一致，锚点则是戳记自身历史中最后一次改动正文的提交(`last-body-change`)。锚点及其来源会随 stderr 和 `--json` 一起以 `content_anchor` · `content_anchor_source` 输出。这就是正文原封不动、只重新执行 `moai graph stamp codemaps` 也不会把测量窗口清零的原因——门禁变红时不要再盖一次戳，请先用 `/moai codemaps` 重新生成正文，然后再盖戳。
 
 每个生成物都用 provenance 块声明自己描述的是哪棵树、哪个提交。没有这个块的产物判为 `absent`——判断不能冒充 fresh，absent 同样算失败：新 worktree 里这些未跟踪产物根本不存在，检查会如实说明而不是放行。退出码为 0(全部 fresh)· 1(stale 或 absent)· 2(系统错误)，提交前质量门的 graph-freshness 步骤和 CI 的 graph-freshness 作业直接消费这个值。阈值在 gate.yaml 的 `graph_freshness` 小节调整。
 
@@ -79,7 +81,7 @@ OK: stamped .moai/project/codemaps/provenance.json
 provenance: tree=/path/to/project commit=1a2b3c4d5e6
 ```
 
-重新生成 codemaps 后，作为最后一步执行。文档内容由 `/moai codemaps` 打磨，而这份内容**描述的是哪个树状态**由本命令写入 `provenance.json`——`moai graph check` 判定 codemaps 层的依据就是这份记录。
+重新生成 codemaps 后，作为最后一步执行。文档内容由 `/moai codemaps` 打磨，而这份内容**描述的是哪个树状态**由本命令写入 `provenance.json`——`moai graph check` 以这份记录为起点解析内容锚点，再据此判定 codemaps 层。
 
 ### 指定一个能活过合并的提交（`--commit`）
 
@@ -91,7 +93,7 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 不带旗标执行时，戳记记录的是当前检出的 HEAD。在功能分支上这是个陷阱：本仓库用**挤压合并**（squash merge）合入拉取请求，分支上的提交——HEAD 也在内——永远不会进入 main 的历史。指向分支本地 HEAD 的戳记在挤压合并落地的那一刻就成了孤儿，之后打开的每个拉取请求都会继承 graph-freshness 的红灯（`not comparable`，exit 2）。这个失败真实发生过一次，并以 `0d15864ae90b` 事件留档追查。
 
-`--commit <rev>` 接受任何 `git rev-parse` 表达式（完整 sha、短哈希、引用名都可以），解析成完整 sha 后原样记录。上面的 merge-base 配方就是安全写法：`git merge-base HEAD origin/main` 既是 main 的祖先（能活过挤压合并），内容又与分支点上的 described 源一致（不会把别的拉取请求合入的改动算成你的漂移）。千万不要对着分支本地 HEAD 重新盖戳。另外，described 源存在未提交改动时使用 `--commit` 会被直接拒绝——指定提交和内容指纹是两种不同的诚实声明，而 schema 里锚的位置只有一个。
+`--commit <rev>` 接受任何 `git rev-parse` 表达式（完整 sha、短哈希、引用名都可以），解析成完整 sha 后原样记录。上面的 merge-base 配方就是安全写法：`git merge-base HEAD origin/main` 既是 main 的祖先（能活过挤压合并），内容又与分支点上的 described 源一致（不会把别的拉取请求合入的改动算成你的漂移）。 不过实际的测量起点是内容锚点而非这个提交，若正文自更早的提交起就没有变过，检查会从那个更早的提交开始测量。千万不要对着分支本地 HEAD 重新盖戳。另外，described 源存在未提交改动时使用 `--commit` 会被直接拒绝——指定提交和内容指纹是两种不同的诚实声明，而 schema 里锚的位置只有一个。
 
 这条纪律由 CI 机械地兜底：graph-freshness 工作流在给出任何新鲜度判定之前，先验证被跟踪戳记的提交是拉取请求目标分支的祖先。注定成为孤儿的戳记会在原地点名失败，而不是等合并之后才以一个无名的 exit 2 冒出来。
 

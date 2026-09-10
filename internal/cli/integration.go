@@ -102,6 +102,61 @@ func currentBranch() string {
 	return strings.TrimSpace(string(out))
 }
 
+// resolveIntegrationTarget returns the (branch, worktree) the window actually
+// locks. Resolution order: the explicit --branch flag, then the project's
+// configured git-flow develop branch (LoadGitFlowDevelopBranch), then the
+// caller's own tree.
+//
+// The ordering exists because acquire used to record the CALLER's cwd and the
+// CALLER's checked-out branch (card t449), while the window it serializes is
+// the integration worktree — a lane sitting in its own card worktree recorded
+// that card tree against a window whose whole purpose was the develop tree.
+// The caller fallback is deliberate and NOT that defect: when no integration
+// branch is configured, the caller's tree genuinely is the tree being
+// integrated, so the caller's branch and cwd stay correct there.
+func resolveIntegrationTarget(explicitBranch, configuredBranch string) (branch, worktree string) {
+	target := strings.TrimSpace(explicitBranch)
+	if target == "" {
+		target = strings.TrimSpace(configuredBranch)
+	}
+	if target != "" {
+		// An honest unknown beats a confidently wrong path: no worktree has
+		// the branch checked out, so the record carries an empty worktree for
+		// a human to read as "not provisioned yet" rather than a path that
+		// names some unrelated tree.
+		return target, worktreeForBranch(target)
+	}
+	wt, _ := os.Getwd()
+	return currentBranch(), wt
+}
+
+// worktreeForBranch returns the path of the worktree with branch checked out,
+// or the empty string when none does (a failed git call included). Records
+// arrive in blocks — `worktree <path>` / `HEAD <sha>` / `branch
+// refs/heads/<name>` / `bare` / `detached` — so each block's path is
+// remembered until its branch line answers the question. Paths are taken
+// whole from git's output and converted with filepath semantics, never split
+// on a separator: git prints forward slashes even on Windows, and the
+// recorded path should read like every other path this CLI writes.
+func worktreeForBranch(branch string) string {
+	out, err := exec.Command("git", "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return ""
+	}
+	wtPath := ""
+	for _, line := range strings.Split(string(out), "\n") {
+		switch {
+		case strings.HasPrefix(line, "worktree "):
+			wtPath = filepath.FromSlash(strings.TrimPrefix(line, "worktree "))
+		case strings.HasPrefix(line, "branch "):
+			if strings.TrimPrefix(line, "branch ") == "refs/heads/"+branch && wtPath != "" {
+				return wtPath
+			}
+		}
+	}
+	return ""
+}
+
 func newIntegrationCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "integration [command]",
@@ -117,7 +172,7 @@ The deny layer is opt-in (workflow.integration_lock.enabled, default false);
 these verbs work regardless, so a project may keep the record as a
 coordination signal without enabling refusal.`,
 	}
-	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd())
+	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPreflightCmd())
 	return cmd
 }
 
@@ -148,8 +203,15 @@ func newIntegrationStatusCmd() *cobra.Command {
 			if lock.Stale() {
 				state = "held by a session that is gone (reclaimable)"
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window: %s\n  holder:   %s (pid %d)\n  branch:   %s\n  worktree: %s\n  since:    %s\n",
-				state, lock.SessionID, lock.PID, lock.Branch, lock.Worktree, lock.AcquiredAt)
+			// The name is what a lane recognizes its own queue position by; the
+			// bare id is opaque to the human deciding whether to reclaim. When
+			// no name was recorded, today's shape stands.
+			holder := fmt.Sprintf("%s (pid %d)", lock.SessionID, lock.PID)
+			if lock.SessionName != "" {
+				holder = fmt.Sprintf("%s (%s, pid %d)", lock.SessionName, lock.SessionID, lock.PID)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window: %s\n  holder:   %s\n  branch:   %s\n  worktree: %s\n  since:    %s\n",
+				state, holder, lock.Branch, lock.Worktree, lock.AcquiredAt)
 			return nil
 		},
 	}
@@ -159,7 +221,7 @@ func newIntegrationStatusCmd() *cobra.Command {
 
 func newIntegrationAcquireCmd() *cobra.Command {
 	var sessionFlag, nameFlag, branchFlag, cardFlag string
-	var force, jsonOut bool
+	var force, jsonOut, allowSettingsDrift bool
 	cmd := &cobra.Command{
 		Use:   "acquire",
 		Short: "Record this session as the holder of the release-integration window",
@@ -169,11 +231,19 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				return fmt.Errorf("cannot resolve this session's id; pass --session <id> (a lock with an invented holder can be neither released by its holder nor recognized by the guard)")
 			}
 			root := integrationLockRoot()
-			wt, _ := os.Getwd()
-			branch := branchFlag
-			if branch == "" {
-				branch = currentBranch()
+
+			// The settings-drift precondition runs BEFORE the record is
+			// written (card t488). Its detection, preservation and ledger row
+			// are unconditional; only its refusal is gated on
+			// workflow.settings_drift_gate.enabled. A refusal returns here, so
+			// no window is taken — a gate that refuses and takes the window
+			// anyway would be the worst of both.
+			drift, driftErr := acquireSettingsDriftPrecondition(cmd, root, cardFlag, allowSettingsDrift)
+			if driftErr != nil {
+				return driftErr
 			}
+
+			branch, wt := resolveIntegrationTarget(branchFlag, config.LoadGitFlowDevelopBranch(root))
 			// The pid recorded is the OWNING SESSION's, never this process's.
 			// This command exits the moment it returns, so its own pid is dead
 			// before any reader probes it — recording it made every window read
@@ -190,16 +260,22 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				Branch:      branch,
 				Worktree:    wt,
 				Card:        cardFlag,
+				// Recorded only when a refusal was actually bypassed; the
+				// precondition resolves that, so the flag alone does not stamp
+				// the record.
+				SettingsDriftBypass:    drift.Bypassed,
+				SettingsDriftPreserved: settingsDriftBypassPreservedPath(drift),
 			}, force)
 			if err != nil {
 				return err
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
-					"acquired": true,
-					"session":  sessionID,
-					"branch":   branch,
-					"replaced": replaced,
+					"acquired":       true,
+					"session":        sessionID,
+					"branch":         branch,
+					"replaced":       replaced,
+					"settings_drift": settingsDriftJSON(drift),
 				})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window acquired by %s on %s\n", sessionID, branch)
@@ -213,11 +289,22 @@ func newIntegrationAcquireCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session id to record as holder (default: this session)")
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Human-facing lane name recorded alongside the id")
-	cmd.Flags().StringVar(&branchFlag, "branch", "", "Branch being integrated (default: current branch)")
+	cmd.Flags().StringVar(&branchFlag, "branch", "", "Branch being integrated (default: the configured git-flow develop branch, else the current branch)")
 	cmd.Flags().StringVar(&cardFlag, "card", "", "Card id this integration belongs to")
 	cmd.Flags().BoolVar(&force, "force", false, "Take the window over from a live holder (recorded, never silent)")
+	cmd.Flags().BoolVar(&allowSettingsDrift, "allow-settings-drift", false, "Record the window despite a refused settings-drift verdict (recorded in the lock, never silent). Deliberately separate from --force, which is a different decision")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit machine-readable JSON")
 	return cmd
+}
+
+// settingsDriftBypassPreservedPath returns the preserved copy's path only when
+// a refusal was actually bypassed. Recording it otherwise would put a bypass
+// artefact on a record that bypassed nothing.
+func settingsDriftBypassPreservedPath(r kanban.SettingsDriftResult) string {
+	if !r.Bypassed {
+		return ""
+	}
+	return r.PreservedPath
 }
 
 func newIntegrationReleaseCmd() *cobra.Command {

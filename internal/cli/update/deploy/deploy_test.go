@@ -16,8 +16,8 @@ import (
 func TestCleanMoaiManagedPaths(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupFunc      func(string) error
-		verifyFunc     func(string) error
+		setupFunc     func(string) error
+		verifyFunc    func(string) error
 		expectError   bool
 		errorContains string
 	}{
@@ -197,8 +197,8 @@ func TestCleanMoaiManagedPaths_Output(t *testing.T) {
 func TestMigrateLegacyMemoryDir(t *testing.T) {
 	tests := []struct {
 		name          string
-		setupFunc      func(string) error
-		verifyFunc     func(string) error
+		setupFunc     func(string) error
+		verifyFunc    func(string) error
 		expectError   bool
 		errorContains string
 	}{
@@ -355,8 +355,8 @@ func TestMigrateLegacyMemoryDir_Output(t *testing.T) {
 func TestScaffoldEvolutionDir(t *testing.T) {
 	tests := []struct {
 		name        string
-		setupFunc    func(string) error
-		verifyFunc   func(string) error
+		setupFunc   func(string) error
+		verifyFunc  func(string) error
 		expectError bool
 	}{
 		{

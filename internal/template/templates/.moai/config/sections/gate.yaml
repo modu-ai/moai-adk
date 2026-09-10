@@ -50,6 +50,16 @@ gate:
     # NOT interpreted — put a pipeline or a redirect in a script and name the
     # script here.
     command: ""
+  # Pre-commit context: the git pre-commit hook's `moai gate` invocation.
+  # The project-wide heavy steps (vet / lint / test / typecheck) are OFF there
+  # by default, so one pre-existing failure unrelated to your staged change
+  # cannot block every commit; the hook still runs the fast staged-files
+  # subset (gofmt + go vet) on every commit. Set enabled: true to opt in and
+  # block commits on project-wide failures — e.g. via `moai web`, Gate panel.
+  # A standalone `moai gate` run ignores this key and keeps following the
+  # `enabled` key above.
+  pre_commit:
+    enabled: false
   ast_grep_gate:
     enabled: true
     # Where this project's ast-grep rules live. This is the single source of

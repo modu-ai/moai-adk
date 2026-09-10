@@ -7,20 +7,23 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// tab_layout_test.go — M2 guards for SPEC-WEB-CONSOLE-REDESIGN-001: the 9-tab
-// restructure (AC-WCR-010..013). Tab placement is a RENDER concern; the
+// tab_layout_test.go — M2 guards for SPEC-WEB-CONSOLE-REDESIGN-001: the current
+// 14-tab Settings contract (AC-WCR-010..013). Tab placement is a RENDER concern; the
 // persistence section of every moved field is unchanged (AP-4).
 
 // wantTabOrder is the canonical tab order. It is asserted as a SEQUENCE, not
 // a set — the tab nav and the tabpanel sequence must both follow it.
-// SPEC-MCP-CONSOLE-001 M2 appends the mcp panel (10th tab); the crosssession
-// posture panel is the 11th; SPEC-FEEDBACK-AUTO-SUBMIT-001 M7 appends the
-// reopened feedback panel as the 12th (reversing the SPEC-WEBCONF-SIMPLIFY-001
-// M3 tab removal for that section only).
+// SPEC-MCP-CONSOLE-001 M2 appends the mcp panel (11th tab); the crosssession
+// posture panel is the 12th; SPEC-FEEDBACK-AUTO-SUBMIT-001 M7 appends the
+// reopened feedback panel as the 13th (reversing the SPEC-WEBCONF-SIMPLIFY-001
+// M3 tab removal for that section only); SPEC-PRECOMMIT-GATE-SCOPE-001 M2
+// appends the gate panel as the 14th. SPEC-WEB-CODEX-PANEL-001 inserts the
+// read-only codex mirror immediately after audit — not last, because panelHTML
+// slices the final panel to end-of-document.
 var wantTabOrder = []string{
 	"identity", "language", "launch", "llm", "workflow",
-	"git-worktree", "audit", "agentfm", "report", "mcp", "crosssession",
-	"feedback",
+	"git-worktree", "audit", "codex", "agentfm", "report", "mcp", "crosssession",
+	"feedback", "gate",
 }
 
 // TestConsoleTabsOrder verifies AC-WCR-010.

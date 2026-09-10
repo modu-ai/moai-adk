@@ -69,9 +69,9 @@ func TestRenderBarsInline_TwoStageSuffix(t *testing.T) {
 		wantHard   bool
 		wantNoClrs bool
 	}{
-		{"none", &StatusData{Memory: mem(256_000, 100_000)}, false, false, true},   // 39% → none
-		{"soft", &StatusData{Memory: mem(256_000, 230_400)}, true, false, false},   // 90% → soft
-		{"hard", &StatusData{Memory: mem(256_000, 245_760)}, false, true, false},   // 96% → hard
+		{"none", &StatusData{Memory: mem(256_000, 100_000)}, false, false, true}, // 39% → none
+		{"soft", &StatusData{Memory: mem(256_000, 230_400)}, true, false, false}, // 90% → soft
+		{"hard", &StatusData{Memory: mem(256_000, 245_760)}, false, true, false}, // 96% → hard
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

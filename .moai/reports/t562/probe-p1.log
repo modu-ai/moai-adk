@@ -1,0 +1,21 @@
+=== RUN   TestJudgeCodexSkillEntry_SeparatorConversion
+--- FAIL: TestJudgeCodexSkillEntry_SeparatorConversion (0.00s)
+panic: MX-PROBE-P1-CONVERSION-SITE [recovered, repanicked]
+
+goroutine 16 [running]:
+testing.tRunner.func1.2({0x1054010a0, 0x105644320})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x1054010a0?, 0x105644320?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.judgeCodexSkillEntry({{0x3a88b2a78f80, 0x79}, 0x1, 0x0, 0x3, 0xffffffffffffffff})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:83 +0x530
+github.com/modu-ai/moai-adk/internal/cli.TestJudgeCodexSkillEntry_SeparatorConversion(0x3a88b2c2a908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune_readback_test.go:83 +0xd0
+testing.tRunner(0x3a88b2c2a908, 0x1056380e8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.283s
+FAIL

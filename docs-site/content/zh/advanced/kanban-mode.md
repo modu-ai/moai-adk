@@ -216,7 +216,7 @@ moai cc  -k --name sync        # sync —— 评审·整理交给 Claude
 
 如果说看板的形态是“三个角色接力搬运一张卡片”，那么**工厂模式**就是“N 条编号泳道同时搬运多张卡片”。卡片不在列与列之间移动，而是**整张**进入一条空闲泳道，由那条泳道在会话内按顺序通过 `plan → run → sync` —— 各阶段作为 `Agent()` 子智能体执行。进入用的专用标记是 `-f`。用 `moai cc -f 4` 打开主控和 4 条泳道，再用 `moai cc -f lane-<n>`（或 `moai glm -f lane-<n>`）一条一条地加泳道。
 
-每条泳道的并发智能体上限（10 个）、错峰启动的理由、泳道编号的归属（`workers.json`）、写入 spawn 的 worktree 隔离、与看板的分岔点的正文，由专页 [工厂模式](/zh/advanced/factory-mode) 讲解。
+每条泳道的并发智能体上限（10 个）、错峰启动的理由、泳道编号的归属（`factory.db`）、写入 spawn 的 worktree 隔离、与看板的分岔点的正文，由专页 [工厂模式](/zh/advanced/factory-mode) 讲解。
 
 ## 在浏览器里看板
 

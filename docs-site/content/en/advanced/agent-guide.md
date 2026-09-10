@@ -176,15 +176,15 @@ flowchart TD
 
 Once every AC row for milestone Mn is PASS and the cross-verification of those rows also comes back PASS, `manager-lead` takes three steps before moving to the next milestone. The procedure **composes only existing tooling** — it introduces no new Go code, no new hooks, and no new CLI subcommands.
 
-1. **Persist evidence** — redirect each AC's verification command output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`. `/tmp` is not used because the OS clears it. The cited evidence is valid only if that path actually opens at audit time. An AC whose evidence could not be captured is marked `GAP`, not `PASS`.
-2. **Append a fold row** — add one line to `progress.md` §E.2 in the existing row format: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`. The `M<n>:` prefix was chosen so it does not collide with the §E heading matcher in `internal/spec/era.go`, letting the two coexist without touching the matcher.
+1. **Capture, then export** — redirect each AC's verification command output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`. `/tmp` is not used because the OS clears it, but surviving `/tmp` is not the same as being reachable at audit time: that directory is gitignored **machine-local scratch**. Before an AC row cites its evidence, export the lines that decided the verdict to the tracked path `.moai/reports/<card-id>/`, and let the citation name that one file. An AC whose evidence could not be captured is marked `GAP`, not `PASS`.
+2. **Append a fold row** — add one line to `progress.md` §E.2 in the existing row format: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/M<n>-report.md | fold-at: <ISO-8601>`. The `M<n>:` prefix was chosen so it does not collide with the §E heading matcher in `internal/spec/era.go`, letting the two coexist without touching the matcher.
 3. **Run `/compact`** — compact with explicit retain instructions: retain-current-milestone (the milestone just finished and its fold row), retain-fold-rows (every earlier fold row in §E.2), and retain-armed-goal (the condition armed via `/moai goal`, if any).
 
 Two invariants hold after the fold: post-compaction token usage must be lower than it was before compaction, and it must simultaneously sit below the model-specific handoff threshold (50% for the 1M class, 90% for the 200K/256K class). If it did not drop, treat the fold as failed and re-plan. When `/compact` is unavailable in a sub-agent context, return a blocker report so the orchestrator can compact on its behalf or route around it via `/clear` plus a resume message.
 
 ```mermaid
 flowchart TD
-    MN["Milestone Mn complete<br>all ACs PASS + cross-verification PASS"] --> S1["Step 1: Persist evidence<br>.moai/state/verify/session/"]
+    MN["Milestone Mn complete<br>all ACs PASS + cross-verification PASS"] --> S1["Step 1: Capture to scratch<br>then export to .moai/reports/card-id/"]
     S1 --> S2["Step 2: Append fold row<br>progress.md §E.2"]
     S2 --> S3["Step 3: Run /compact<br>3 retain instructions"]
     S3 --> CHECK{"Usage dropped and<br>below threshold?"}

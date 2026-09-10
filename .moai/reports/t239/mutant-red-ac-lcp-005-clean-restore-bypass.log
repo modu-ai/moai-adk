@@ -1,0 +1,6 @@
+--- FAIL: TestCleanReinstallLLMYAMLPreserved (0.03s)
+    update_clean_install_config_preserve_test.go:238: clean-reinstall lost user llm.glm.models.high = "glm-5.3-flash"; want "glm-user-pinned-model" (clobbered to template default?)
+    update_clean_install_config_preserve_test.go:240: llm.yaml: key "manager-develop" missing (path [llm agent_overrides manager-develop model])
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.001s
+FAIL

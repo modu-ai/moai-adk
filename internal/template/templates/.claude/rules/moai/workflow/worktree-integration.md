@@ -45,13 +45,13 @@ This glossary is the canonical definition surface for the L1 / L2 worktree-layer
 | **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** — `moai cc -w ~/.moai/worktrees/<project>/<SPEC>`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`, `remove`, `clean`, `recover`, `done`, plus the guard trio `snapshot` / `verify` / `restore`); disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
 
 Relationships:
-- A **short name** passed to `-w` (`moai cc -w <name>`) resolves against `.claude/worktrees/<name>/` and creates an **L1** tree, not an L2 one; an **L2** persistent worktree is entered by absolute path (`moai cc -w <abs-path>`). `moai worktree` deliberately carries no creation verb — entering is the launcher's job (the former `/moai plan --worktree` launch action and `moai worktree new` command are both retired).
+- A **short name** passed to `-w` (`moai cc -w <name>`) resolves against `.claude/worktrees/<name>/` and creates an **L1** tree, not an L2 one; an **L2** persistent worktree is entered by absolute path (`moai cc -w <abs-path>`). `moai worktree` deliberately carries no creation verb — entering is the launcher's job (the former `/moai plan --worktree` launch action and `moai worktree new` command are both retired). The one creation path for a worktree on an **existing** branch is the launcher's `--branch` flag: `moai cc -w <name> --branch <existing>` creates `.claude/worktrees/<name>` checked out at that branch (the branch must already exist — the flag never creates one) and registers the tree in `.moai/state/worktrees.json` so `clean`'s anchor check sees it; the gitflow integration worktree (`.claude/worktrees/develop`) is the canonical use.
 - An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2 and may occur inside either the main checkout or an L2 worktree.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
 
 [HARD] **`moai worktree` verbs are L2-only.** An L1 tree under `.claude/worktrees/` is never registered with `moai worktree`, so `done`, `clean`, and `recover` cannot act on it — `moai worktree done` on an L1 tree is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock. The lock itself is designed behavior, not a defect: it is held while the session runs and released on exit, and a dead session's lock auto-releases on Claude Code 2.1.210+ — a locked tree at disposal time means a live session still owns it, and the remediation is the unlock guidance, not a cause investigation.
 
-[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work. Before Claude Code 2.1.246 the runtime's own background retention sweep could delete a user-created worktree under `.claude/worktrees/` when a stale background-session record pointed at it (fixed in 2.1.246) — an unpushed L1 tree could be lost with nobody disposing of it, which is one more reason this rule treats the pre-merge tree as the only copy.
+[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`, or `moai cc -w <name> --branch <existing>` when the tree must sit on an existing branch such as the develop integration worktree) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work. Before Claude Code 2.1.246 the runtime's own background retention sweep could delete a user-created worktree under `.claude/worktrees/` when a stale background-session record pointed at it (fixed in 2.1.246) — an unpushed L1 tree could be lost with nobody disposing of it, which is one more reason this rule treats the pre-merge tree as the only copy.
 
 [HARD] **Kanban/team card worktree branches carry the `WT-` prefix followed by a descriptive slug.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<slug>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
 
@@ -498,6 +498,35 @@ The full refusal reads:
 | **Several mutation steps bundled into one compound command** | **Second-hand** — reported by another working lane, not measured here | Recorded because it carried the same refusal sentence; it has not been reproduced by the session that wrote this section |
 
 **Gap**: the boundary between an accepted and a refused command is unmeasured in both rows. Anything outside these two observations is unknown, not permitted.
+
+### Why the two heredoc delimiter forms differ
+
+The distinction the observation above turns on is the delimiter quoting, and it
+is bash semantics, not guard behavior:
+
+- **A quoted delimiter (`<<'EOF'`) makes the body inert text.** Bash performs no
+  expansion of any kind inside such a body — no parameter expansion, no command
+  substitution, no arithmetic expansion, and no brace expansion. A brace there
+  is a literal character and cannot be brace expansion. This is the same fact a
+  guard relies on when it folds a command substitution appearing in such a
+  body, as observed above.
+- **An unquoted delimiter (`<<EOF`) makes the body live text.** Parameter
+  expansion, command substitution, arithmetic expansion, and brace expansion
+  all apply. No guard — and no reader of this file — may treat an
+  unquoted-delimiter body as inert, and a refusal that errs on the side of
+  caution there is correct behavior, not a defect.
+
+The observed asymmetry is therefore narrow: in a position provably free of
+expansion (the quoted-delimiter body), braces alone are treated as live, while
+command substitutions in the same position are already folded.
+
+The refusal half of this asymmetry was re-measured by paired probes in a
+worktree-isolated session on this repository: the brace form was refused with
+the `too complex to verify` sentence above before the command executed (the
+target file was confirmed absent afterward), and the paired probe — the same
+shape with a command substitution in the body — executed and passed with the
+body preserved as a literal. This remains a record of observations, not a
+specification; the boundary of the guard's analyzer is still unmeasured.
 
 ### Workarounds — two situations, not two competing options
 

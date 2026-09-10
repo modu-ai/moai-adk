@@ -66,6 +66,14 @@ type SkillMirrorEntry struct {
 type DeployResult struct {
 	// SkillMirrors holds one entry per skill the run attempted to mirror.
 	SkillMirrors []SkillMirrorEntry
+	// ProtectedSkips records the deploy-relative paths this run skipped
+	// because a user-owned entry occupied a published-skill path
+	// (.agents/skills/moai-<command>/SKILL.md). Update mode refreshes
+	// template-managed content elsewhere, but it must not overwrite a file
+	// it does not own at a published-skill path — each skip is reported
+	// here in walk order. (Field added by SPEC-CODEX-COMMAND-SKILLS-001;
+	// mirror behavior itself is unchanged.)
+	ProtectedSkips []string
 }
 
 // CopyFallbackUsed reports whether any skill fell back to a directory copy.

@@ -1,0 +1,5 @@
+--- FAIL: TestInboxStatus_ReportsAllFields (0.00s)
+    inbox_test.go:72: status output missing "cap_distance_bytes:"; output = "inbox_path: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxStatus_ReportsAllFields3958642296/001/.moai/lessons-inbox.jsonl\nsize_bytes: 140\nlines: 2\ncap_bytes: 1048576\narchive_generations: 0\nownership: cap-managed\n\n"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.055s
+FAIL

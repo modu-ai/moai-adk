@@ -175,6 +175,7 @@ func TestStateDirReturnsNormalizedPath(t *testing.T) {
 func TestResolveTokensStateDirFallsBackToCwd(t *testing.T) {
 	cwd := t.TempDir()
 	t.Chdir(cwd)
+	t.Setenv("HOME", cwd)
 	t.Setenv(config.EnvClaudeProjectDir, "")
 
 	got, err := resolveTokensStateDir()

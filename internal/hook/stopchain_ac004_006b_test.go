@@ -22,9 +22,9 @@ func TestAC006b_LifecycleDormantAtFullyAutonomous(t *testing.T) {
 	requireBash(t)
 	repoRoot := filepath.Join(mustGetwd(t), "..", "..")
 	wrappers := []struct {
-		name    string
-		rel     string
-		extra   []string // extra args (handle-agent-hook.sh takes the action arg)
+		name  string
+		rel   string
+		extra []string // extra args (handle-agent-hook.sh takes the action arg)
 	}{
 		{"SubagentStop (develop-completion)", ".claude/hooks/moai/handle-agent-hook.sh", []string{"develop-completion"}},
 		{"TeammateIdle", ".claude/hooks/moai/handle-teammate-idle.sh", nil},

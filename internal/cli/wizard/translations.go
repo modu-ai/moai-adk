@@ -134,6 +134,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "샌드박스 증명 필요 (Docker/gVisor 등)"},
 			},
 		},
+		"project_continuation": {
+			Title:       "/moai project 완료 방식",
+			Description: "실행이 첫 기능 백로그 카드를 발급할지, 그리고 권장 다음 단계가 세션을 어디까지 끌고 갈지 정합니다. 기본값은 'card'입니다.",
+			Options: []OptionTranslation{
+				{Label: "None", Desc: "카드를 발급하지 않고 Create SPEC 을 권장"},
+				{Label: "Card", Desc: "카드를 발급하고 /moai plan 에서 멈춤"},
+				{Label: "Pipeline", Desc: "카드를 발급하고 킥오프 게이트까지 이어감"},
+			},
+		},
 		"audit_model": {
 			Title:       "감사 모델 선택",
 			Description: "활성 감사 백엔드. 'claude'가 배포 기본값입니다.",
@@ -177,7 +186,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"agent_wiring": {
 			Title:       "연결할 에이전트 하니스 선택",
-			Description: "이 프로젝트에 MoAI가 연결할 에이전트 하니스입니다. 'claude'가 권장 기본값이며, --agent 플래그가 이 답변보다 우선합니다.",
+			Description: "이 프로젝트에 MoAI가 연결할 LLM 하니스입니다. 'claude'가 권장 기본값이며, --llm 플래그가 이 답변보다 우선합니다.",
 			Options: []OptionTranslation{
 				{Label: "Claude (권장)", Desc: "Claude 쪽만 연결 (.mcp.json 프로비저닝)"},
 				{Label: "Codex", Desc: ".codex/ 훅 계층과 MCP 설정을 연결하고 .mcp.json 프로비저닝은 건너뜁니다"},
@@ -293,6 +302,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "サンドボックス証明が必要 (Docker/gVisor 等)"},
 			},
 		},
+		"project_continuation": {
+			Title:       "/moai project の完了方法",
+			Description: "実行が最初の機能のバックログカードを発行するか、そして推奨される次の一手がセッションをどこまで進めるかを決めます。既定値は 'card' です。",
+			Options: []OptionTranslation{
+				{Label: "None", Desc: "カードを発行せず Create SPEC を推奨"},
+				{Label: "Card", Desc: "カードを発行し /moai plan で止まる"},
+				{Label: "Pipeline", Desc: "カードを発行しキックオフゲートまで進む"},
+			},
+		},
 		"audit_model": {
 			Title:       "監査モデルを選択",
 			Description: "アクティブな監査バックエンド。'claude' が配布デフォルトです。",
@@ -336,7 +354,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"agent_wiring": {
 			Title:       "接続するエージェントハーネスを選択",
-			Description: "このプロジェクトで MoAI が接続するエージェントハーネスです。'claude' が推奨デフォルトで、--agent フラグがこの回答より優先されます。",
+			Description: "このプロジェクトで MoAI が接続する LLM ハーネスです。'claude' が推奨デフォルトで、--llm フラグがこの回答より優先されます。",
 			Options: []OptionTranslation{
 				{Label: "Claude (推奨)", Desc: "Claude 側のみ接続 (.mcp.json のプロビジョニング)"},
 				{Label: "Codex", Desc: ".codex/ フック層と MCP 設定を接続し、.mcp.json のプロビジョニングはスキップ"},
@@ -452,6 +470,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "需要沙箱证明 (Docker/gVisor 等)"},
 			},
 		},
+		"project_continuation": {
+			Title:       "/moai project 的收尾方式",
+			Description: "决定本次运行是否发出首个功能的待办卡片，以及推荐的下一步把会话带到哪一步。默认值为 'card'。",
+			Options: []OptionTranslation{
+				{Label: "None", Desc: "不发卡片，推荐 Create SPEC"},
+				{Label: "Card", Desc: "发出卡片，停在 /moai plan"},
+				{Label: "Pipeline", Desc: "发出卡片，继续到启动关卡"},
+			},
+		},
 		"audit_model": {
 			Title:       "选择审计模型",
 			Description: "活跃的审计后端。'claude' 是锁定分发默认值。",
@@ -495,7 +522,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"agent_wiring": {
 			Title:       "选择要接入的代理框架",
-			Description: "MoAI 为本项目接入的代理框架。'claude' 是推荐默认值，--agent 参数优先于此答案。",
+			Description: "MoAI 为本项目接入的 LLM 框架。'claude' 是推荐默认值，--llm 参数优先于此答案。",
 			Options: []OptionTranslation{
 				{Label: "Claude (推荐)", Desc: "仅接入 Claude 一侧 (.mcp.json 供应)"},
 				{Label: "Codex", Desc: "接入 .codex/ 钩子层与 MCP 配置，跳过 .mcp.json 供应"},

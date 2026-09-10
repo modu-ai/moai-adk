@@ -1,0 +1,74 @@
+build rc=0
+tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518
+HEAD: 97f90128431a81e14247cd964ea0d4dd1bc5c57f
+
+==============================================================
+[1 ID form] moai spec lint SPEC-SPEC-LINT-ID-ARG-001
+rc=0   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+WARNING   CoverageIncomplete  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  119   REQ REQ-SLI-006 is not referenced by any AC
+WARNING   CoverageIncomplete  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  120   REQ REQ-SLI-007 is not referenced by any AC
+WARNING   CoverageIncomplete  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  121   REQ REQ-SLI-008 is not referenced by any AC
+WARNING   CoverageIncomplete  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  122   REQ REQ-SLI-009 is not referenced by any AC
+
+0 error(s), 9 warning(s)
+
+==============================================================
+[2 path form (CONTROL)] moai spec lint .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md
+rc=0   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  119   REQ REQ-SLI-006 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  120   REQ REQ-SLI-007 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  121   REQ REQ-SLI-008 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  122   REQ REQ-SLI-009 is not referenced by any AC
+
+0 error(s), 9 warning(s)
+
+==============================================================
+[3 directory form] moai spec lint .moai/specs/SPEC-SPEC-LINT-ID-ARG-001
+rc=0   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  119   REQ REQ-SLI-006 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  120   REQ REQ-SLI-007 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  121   REQ REQ-SLI-008 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  122   REQ REQ-SLI-009 is not referenced by any AC
+
+0 error(s), 9 warning(s)
+
+==============================================================
+[4 absent ID] moai spec lint SPEC-NOPE-999
+rc=3   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+spec lint: no SPEC document found for "SPEC-NOPE-999" (tried: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t518/.moai/specs/SPEC-NOPE-999/spec.md)
+
+==============================================================
+[5 SPEC-A-1 (anchor)] moai spec lint SPEC-A-1
+rc=1   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+SEVERITY  CODE          FILE      LINE  MESSAGE
+--------  ----          ----      ----  -------
+ERROR     ParseFailure  SPEC-A-1  1     SPEC parsing failed: failed to read file: open SPEC-A-1: no such file or directory
+
+1 error(s), 0 warning(s)
+
+==============================================================
+[6 missing path] moai spec lint ./missing/spec.md
+rc=1   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+SEVERITY  CODE          FILE               LINE  MESSAGE
+--------  ----          ----               ----  -------
+ERROR     ParseFailure  ./missing/spec.md  1     SPEC parsing failed: failed to read file: open ./missing/spec.md: no such file or directory
+
+1 error(s), 0 warning(s)
+
+==============================================================
+[7 mixed] moai spec lint SPEC-SPEC-LINT-ID-ARG-001 .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md
+rc=0   (read on its own line, no pipe)
+--- output (last 6 lines) ---
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md                                                  145   REQ REQ-SLB-011 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md                                                  146   REQ REQ-SLB-012 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md                                                  147   REQ REQ-SLB-013 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/specs/SPEC-SPEC-LINT-BLIND-AXES-001/spec.md                                                  148   REQ REQ-SLB-014 is not referenced by any AC
+
+0 error(s), 23 warning(s)
+

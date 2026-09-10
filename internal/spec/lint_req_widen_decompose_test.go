@@ -10,9 +10,12 @@ import (
 	"testing"
 )
 
-// decomposeReportRelPath is where the Gate-0 decomposition is written, relative
-// to the repository root.
-const decomposeReportRelPath = ".moai/reports/t362/m2-gate0-decomposition.txt"
+// decomposeReportFilename is the bare filename of the Gate-0 decomposition.
+// Its directory is resolved per run by t362ReportPath — t.TempDir() by
+// default, or the MOAI_T362_EVIDENCE_OUT override for durable capture — so a
+// re-run can never rewrite repository-tracked evidence
+// (SPEC-HARNESS-EVIDENCE-WRITE-001).
+const decomposeReportFilename = "m2-gate0-decomposition.txt"
 
 // Mechanical misread predicates.
 //
@@ -460,6 +463,9 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# SPEC-COVERAGE-RULE-SCOPE-001 M2 Gate 0 — rejected-REQ-ID decomposition\n")
 	fmt.Fprintf(&b, "# produced by: MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/... -run TestCorpusRejectedREQIDDecomposition -v\n")
+	fmt.Fprintf(&b, "# output location: a per-run t.TempDir() directory (exact path announced via t.Logf).\n")
+	fmt.Fprintf(&b, "# durable capture: set MOAI_T362_EVIDENCE_OUT=<dir> BEFORE the run; the report then\n")
+	fmt.Fprintf(&b, "# lands at <dir>/m2-gate0-decomposition.txt (no-clobber: an existing file fails the run).\n")
 	fmt.Fprintf(&b, "scan_glob=%s\n", corpusSpecGlobRel)
 	fmt.Fprintf(&b, "\n# POPULATION DEFINITION — frozen, and deliberately not the live pattern.\n")
 	fmt.Fprintf(&b, "# Sections [A]-[E] decompose the ids the widened extraction collects that the\n")
@@ -536,13 +542,222 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 	}
 
 	fmt.Fprintf(&b, "\n%s", measureWiringBlastRadius(t, paths, root))
+	fmt.Fprintf(&b, "\n%s", measureM1ModalityCensus(t, paths, root))
 
-	out := filepath.Join(root, decomposeReportRelPath)
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
+	out := t362ReportPath(t, decomposeReportFilename)
 	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	t.Logf("decomposition written to %s", out)
+}
+
+// ---------------------------------------------------------------------------
+// SPEC-SPEC-LINT-BLIND-AXES-001 M1 — modality census + table-path counterfactual
+//
+// M1 owes two things: a FIXED reading criterion under which the six provisional
+// figures in spec.md §A are re-derivable, and the counterfactual §B.1 left
+// unmeasured. Both are emitted here rather than in a new file, because plan.md
+// §G forbids building a second measurement harness — the instrument that
+// already walks the corpus is this one, and extending it is what M1 asks for.
+//
+// THE READING CRITERION, stated before any number is produced.
+//
+//	body text      = REQEntry.Text from parseREQsWide — reqLineWidePattern
+//	                 capture group 2, strings.TrimSpace'd, and NOTHING else.
+//	                 This is byte-for-byte the string judgeModality receives on
+//	                 the live path, so the census cannot drift from the check it
+//	                 describes. It is NOT re-trimmed, NOT lowercased, and NOT
+//	                 stripped of bold markers.
+//	english prefix = strings.HasPrefix(strings.ToUpper(text), p) for p in
+//	                 modalityPrefixes. Case-insensitive, because that is what the
+//	                 live predicate does. This is the "actually judged" row.
+//	all-caps form  = strings.HasPrefix(text, p) with p verbatim uppercase.
+//	title form     = strings.HasPrefix(text, "When "/"While "/"Where "/"If "/"The ").
+//	other case     = english prefix count minus (all-caps + title). The two named
+//	                 forms are disjoint, so this residual is well defined and
+//	                 non-negative. The v0.3.0 table had no such row, which is why
+//	                 its two case rows could not be checked against its total.
+//	bold markers   = reported as their own axis rather than folded in. A body
+//	                 written `**항상** …` starts with '*', so it is NOT
+//	                 starts-with-Hangul under the live view; the bold-stripped
+//	                 view says how many lines that decision moves.
+//	Hangul         = a rune in U+AC00-U+D7A3 (syllables), U+1100-U+11FF (jamo),
+//	                 or U+3130-U+318F (compatibility jamo).
+//
+// Every figure below is re-derivable by re-running this harness. None of them is
+// asserted against; the harness is an instrument and the numbers are its output.
+
+// hangulRune reports whether r lies in a Hangul block.
+func hangulRune(r rune) bool {
+	switch {
+	case r >= 0xAC00 && r <= 0xD7A3:
+		return true
+	case r >= 0x1100 && r <= 0x11FF:
+		return true
+	case r >= 0x3130 && r <= 0x318F:
+		return true
+	}
+	return false
+}
+
+// startsHangul reports whether the first rune of s is Hangul.
+func startsHangul(s string) bool {
+	for _, r := range s {
+		return hangulRune(r)
+	}
+	return false
+}
+
+// containsHangul reports whether any rune of s is Hangul.
+func containsHangul(s string) bool {
+	for _, r := range s {
+		if hangulRune(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// stripLeadingBold removes leading '*' and space runs, so a body written
+// `**항상** …` can be measured on the bold-stripped axis.
+func stripLeadingBold(s string) string {
+	return strings.TrimLeft(s, "* ")
+}
+
+// titleCasePrefix maps a modalityPrefixes entry ("WHEN ") to its title form
+// ("When "). The prefixes are ASCII words followed by one space, so this is a
+// total function over that list and needs no unicode table.
+func titleCasePrefix(p string) string {
+	if p == "" {
+		return p
+	}
+	return p[:1] + strings.ToLower(p[1:])
+}
+
+// m1Census is the six-row re-derivation plus the axes the v0.3.0 table left
+// implicit.
+type m1Census struct {
+	wideLines      int
+	englishCI      int
+	allCaps        int
+	titleCase      int
+	startsHangul   int
+	startsHangulNB int // bold-stripped
+	containsHangul int
+	perPrefixCI    map[string]int
+}
+
+// measureM1ModalityCensus re-derives spec.md §A's six provisional figures under
+// the criterion documented above, and measures the table-path advisory
+// counterfactual.
+//
+// The counterfactual is measurable on THIS tree and needs no pre-M-A1 checkout:
+// "advisory not applied on the table path" is a hypothetical SEVERITY
+// assignment, not a historical tree state. Every table-collected entry is
+// identifiable now by REQEntry.Source, and reqFindingSeverity's only input is
+// REQEntry.Widened, so the counterfactual count is exactly the number of
+// findings that would gate if those entries carried Widened=false.
+func measureM1ModalityCensus(t *testing.T, paths []string, root string) string {
+	t.Helper()
+
+	var (
+		c        m1Census
+		tableAll int
+		tableMal int
+		tableCon int
+		tableUnj int
+		tableBad int
+		listAll  int
+	)
+	c.perPrefixCI = map[string]int{}
+
+	for _, p := range paths {
+		doc := parseSPECDoc(p)
+		if doc.ParseError != nil {
+			continue
+		}
+
+		for _, r := range parseREQsWide(doc.Body) {
+			c.wideLines++
+			upper := strings.ToUpper(r.Text)
+			for _, pre := range modalityPrefixes {
+				if strings.HasPrefix(upper, pre) {
+					c.englishCI++
+					c.perPrefixCI[strings.TrimSpace(pre)]++
+					if strings.HasPrefix(r.Text, pre) {
+						c.allCaps++
+					} else if strings.HasPrefix(r.Text, titleCasePrefix(pre)) {
+						c.titleCase++
+					}
+					break
+				}
+			}
+			if startsHangul(r.Text) {
+				c.startsHangul++
+			}
+			if startsHangul(stripLeadingBold(r.Text)) {
+				c.startsHangulNB++
+			}
+			if containsHangul(r.Text) {
+				c.containsHangul++
+			}
+		}
+
+		for _, r := range parseREQsWithProvenance(doc.Body) {
+			if r.Source != REQSourceTable {
+				listAll++
+				continue
+			}
+			tableAll++
+			switch judgeModality(r.Text) {
+			case modalityJudgedMalformed:
+				tableMal++
+			case modalityJudgedConforming:
+				tableCon++
+			default:
+				tableUnj++
+			}
+			if !reqIDPattern.MatchString(r.ID) {
+				tableBad++
+			}
+		}
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "[M1] modality census over wide-collected definition lines\n")
+	fmt.Fprintf(&b, "# Reading criterion is fixed in the comment above this function and is the\n")
+	fmt.Fprintf(&b, "# LIVE one: body = parseREQsWide Text, prefix test = ToUpper + HasPrefix over\n")
+	fmt.Fprintf(&b, "# modalityPrefixes. Re-run this harness to re-derive every figure.\n")
+	fmt.Fprintf(&b, "m1_definition_lines_wide=%d\n", c.wideLines)
+	fmt.Fprintf(&b, "m1_english_prefix_caseinsensitive=%d\n", c.englishCI)
+	fmt.Fprintf(&b, "m1_english_prefix_allcaps=%d\n", c.allCaps)
+	fmt.Fprintf(&b, "m1_english_prefix_titlecase=%d\n", c.titleCase)
+	fmt.Fprintf(&b, "m1_english_prefix_othercase=%d  # ci - (allcaps + titlecase)\n",
+		c.englishCI-c.allCaps-c.titleCase)
+	fmt.Fprintf(&b, "m1_body_starts_hangul_raw=%d       # live view: bold markers NOT stripped\n", c.startsHangul)
+	fmt.Fprintf(&b, "m1_body_starts_hangul_boldstripped=%d\n", c.startsHangulNB)
+	fmt.Fprintf(&b, "m1_body_contains_hangul=%d\n", c.containsHangul)
+	prefixes := make([]string, 0, len(c.perPrefixCI))
+	for k := range c.perPrefixCI {
+		prefixes = append(prefixes, k)
+	}
+	sort.Strings(prefixes)
+	for _, k := range prefixes {
+		fmt.Fprintf(&b, "m1_prefix_%s=%d\n", k, c.perPrefixCI[k])
+	}
+
+	fmt.Fprintf(&b, "\n[M1-cf] table-path advisory counterfactual\n")
+	fmt.Fprintf(&b, "# Every parseREQsTable entry carries Widened=true, and reqFindingSeverity\n")
+	fmt.Fprintf(&b, "# reads ONLY that flag, so the counts below are exactly the findings that\n")
+	fmt.Fprintf(&b, "# would gate instead of report if the advisory treatment were withdrawn from\n")
+	fmt.Fprintf(&b, "# the table path. No pre-M-A1 tree is needed: the counterfactual is a\n")
+	fmt.Fprintf(&b, "# severity assignment, not a tree state.\n")
+	fmt.Fprintf(&b, "m1cf_entries_source_list=%d\n", listAll)
+	fmt.Fprintf(&b, "m1cf_entries_source_table=%d\n", tableAll)
+	fmt.Fprintf(&b, "m1cf_table_modality_malformed=%d  # would become SeverityError\n", tableMal)
+	fmt.Fprintf(&b, "m1cf_table_modality_conforming=%d\n", tableCon)
+	fmt.Fprintf(&b, "m1cf_table_modality_unjudged=%d\n", tableUnj)
+	fmt.Fprintf(&b, "m1cf_table_invalid_reqid=%d  # would become SeverityError  pattern=%s\n",
+		tableBad, reqIDPattern.String())
+	return b.String()
 }

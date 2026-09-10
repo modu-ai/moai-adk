@@ -70,7 +70,7 @@ func TestLayer1BinaryAndLargePayload(t *testing.T) {
 
 	// A payload larger than the scan cap must not panic and must remain bounded.
 	huge := strings.Repeat("safe line\n", 200000) // ~1.8MB, exceeds the 1MB cap
-	_ = ScanBuffer(huge)                            // must not panic
+	_ = ScanBuffer(huge)                          // must not panic
 }
 
 // TestLayer1NoLLMOrSubprocess asserts the scan execution path imports no

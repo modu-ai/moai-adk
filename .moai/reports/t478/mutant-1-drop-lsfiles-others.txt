@@ -1,0 +1,6 @@
+=== RUN   TestCheckCodemaps_UntrackedBodyResolvesViaRuleA
+    check_restamp_anchor_test.go:262: an untracked body must stay judgeable, got system error: codemaps stamp 51b64b852fdb not comparable in this checkout: no commit in the stamped history touches the codemaps body
+--- FAIL: TestCheckCodemaps_UntrackedBodyResolvesViaRuleA (0.57s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	1.092s
+FAIL

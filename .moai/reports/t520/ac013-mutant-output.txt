@@ -1,0 +1,25 @@
+--- before snapshot ---
+agents_exists_rc=0
+find_rc=0
+.agents
+.agents/skills
+.agents/skills/linked-entry
+.agents/skills/real-entry
+link_rc=0
+.agents/skills/linked-entry -> ../../real-target
+--- after snapshot ---
+agents_exists_rc=0
+find_rc=0
+.agents
+.agents/skills
+.agents/skills/linked-entry
+.agents/skills/mutant-probe
+.agents/skills/real-entry
+link_rc=0
+.agents/skills/linked-entry -> ../../real-target
+--- diff: MUST be non-empty (guard flips red) ---
+5a6
+> .agents/skills/mutant-probe
+diff reported a difference -> AC-UMH-013 mutant CAUGHT
+--- CONTROL: unmutated re-snapshot must be identical ---
+control OK: the recipe is stable when nothing changes

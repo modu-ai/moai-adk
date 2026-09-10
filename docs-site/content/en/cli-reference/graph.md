@@ -63,7 +63,9 @@ mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
 edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 ```
 
-Measures how far the graph's three layers — codemaps, the @MX index, edges.jsonl — have fallen behind the code, each by its own metric, and returns a `fresh` / `stale` / `absent` verdict per layer. Codemaps is judged by described-source files changed since the stamped generation commit (reverted churn counts zero), the @MX index by files whose content hash moved, edges.jsonl by source-fingerprint mismatch.
+Measures how far the graph's three layers — codemaps, the @MX index, edges.jsonl — have fallen behind the code, each by its own metric, and returns a `fresh` / `stale` / `absent` verdict per layer. Codemaps is judged by described-source files changed since the content anchor — the point where the codemaps body last actually changed — (reverted churn counts zero), the @MX index by files whose content hash moved, edges.jsonl by source-fingerprint mismatch.
+
+The measurement starts at the **content anchor**, not at the stamped commit. If the working tree's codemaps body differs from the body at the stamp, the anchor is the stamped commit itself (`content_anchor_source=working-tree-differs-from-stamp`); if they match, the anchor is the last commit in the stamp's own history that touched the body (`last-body-change`). Both the anchor and its source are reported on stderr and in `--json` as `content_anchor` and `content_anchor_source`. This is why a bare re-stamp over untouched prose no longer resets the window to zero — when the gate is red, do not stamp again: regenerate the bodies with `/moai codemaps`, then stamp.
 
 Every generated artifact declares, in a provenance block, which tree and commit it describes. An artifact without one is reported `absent` — unjudgeable, never silently fresh — and absent fails the check too: a fresh worktree holds none of these untracked artifacts, and the check says so instead of passing. Exit codes: 0 all fresh · 1 stale or absent · 2 system error. The pre-commit quality gate's graph-freshness step and the CI graph-freshness job consume this value directly. Thresholds are tuned in gate.yaml's `graph_freshness` section.
 
@@ -79,7 +81,7 @@ OK: stamped .moai/project/codemaps/provenance.json
 provenance: tree=/path/to/project commit=1a2b3c4d5e6
 ```
 
-Run as the last step after regenerating codemaps. The content is curated by `/moai codemaps`; this command records **which tree state that content describes**, in `provenance.json` — the anchor `moai graph check` judges the codemaps layer against.
+Run as the last step after regenerating codemaps. The content is curated by `/moai codemaps`; this command records **which tree state that content describes**, in `provenance.json` — the starting point from which `moai graph check` resolves the content anchor it judges the codemaps layer against.
 
 ### Naming a merge-surviving commit (`--commit`)
 
@@ -91,7 +93,7 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 By default the stamp records the checked-out HEAD. On a feature branch that is a trap: this repository merges pull requests with **squash merges**, so the branch's commits — including its HEAD — never enter main's history. A stamp naming a branch-local HEAD is orphaned the moment the squash lands, and every later pull request inherits a red graph-freshness check (`not comparable`, exit 2). That exact failure shipped once and was traced in the `0d15864ae90b` incident.
 
-`--commit <rev>` accepts any `git rev-parse` expression (a full sha, a short rev, a ref), resolves it to the full sha, and records that sha verbatim. The merge-base recipe above is the safe form: `git merge-base HEAD origin/main` is an ancestor of main (so it survives the squash) **and** content-equal to your branch's described sources at the branch point (so the check does not count other PRs' merged churn as your drift). Never restamp against a branch-local HEAD — `--commit` with a dirty described-source tree is rejected outright, because a named commit and a content fingerprint are two different honesty claims and the schema carries only one anchor.
+`--commit <rev>` accepts any `git rev-parse` expression (a full sha, a short rev, a ref), resolves it to the full sha, and records that sha verbatim. The merge-base recipe above is the safe form: `git merge-base HEAD origin/main` is an ancestor of main (so it survives the squash) **and** content-equal to your branch's described sources at the branch point (so the check does not count other PRs' merged churn as your drift). Note that the effective measurement point is the content anchor rather than this commit, so when the body has not changed since an earlier commit, the check measures from that earlier commit instead. Never restamp against a branch-local HEAD — `--commit` with a dirty described-source tree is rejected outright, because a named commit and a content fingerprint are two different honesty claims and the schema carries only one anchor.
 
 CI backs this discipline mechanically: the graph-freshness workflow verifies the tracked stamp's commit is an ancestor of the pull request's base branch before reporting any freshness verdict, so an orphan-bound stamp fails the check by name instead of surfacing as a generic exit 2 after the merge.
 

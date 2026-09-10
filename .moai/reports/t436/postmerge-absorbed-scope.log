@@ -1,0 +1,29 @@
+2026/09/03 12:01:13 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t436/internal/template/templates/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "gvisor" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "podman" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "gvisor" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "firecracker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "e2b" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "devcontainer" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "kata" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "sandbox-runtime" accepted as attestation (host GOOS=darwin); boundary not independently verified
+2026/09/03 12:01:13 WARN cache.yaml malformed, using safe default (disabled) path=testdata/cache-malformed/cache.yaml error="yaml: line 3: found unexpected end of stream"
+2026/09/03 12:01:13 WARN cache.yaml invalid, using safe default (disabled) path=testdata/cache-invalid-ttl/cache.yaml error="cacheStrategy.session_ttl \"2h\" invalid: want one of 1h|5m|off"
+2026/09/03 12:01:14 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCache_DoesNotCreateConfigDir2747607691/001/fresh-project/.moai/config/sections
+2026/09/03 12:01:14 WARN HRN_SCHEMA_DRIFT: unknown keys in harness.yaml: [unknown_top_field] (path: testdata/harness-drift-strict/harness.yaml) unknown_keys=[unknown_top_field] path=testdata/harness-drift-strict/harness.yaml
+2026/09/03 12:01:14 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectContinuationForRootmissing_.moai_tree1872575852/001/.moai/config/sections
+--- FAIL: TestAlwaysLoadedTokenBudget (0.02s)
+    token_budget_guard_test.go:69: always-loaded surface = 77020 tokens (budget 76400, headroom -620, 17 entries)
+    token_budget_guard_test.go:73: always-loaded surface = 77020 tokens, exceeds budget 76400 (overflow 620); surface has 17 entries — trim always-loaded rules or raise AlwaysLoadedTokenBudget with justification
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	2.903s
+ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	1.724s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.892s
+ok  	github.com/modu-ai/moai-adk/internal/core/project	4.301s
+ok  	github.com/modu-ai/moai-adk/internal/settings	1.552s
+ok  	github.com/modu-ai/moai-adk/internal/settings/agentfm	2.792s
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	2.467s
+ok  	github.com/modu-ai/moai-adk/internal/web	5.322s
+FAIL

@@ -67,6 +67,12 @@ const (
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
 	// 렌더한다. RawBlockRef.Section 그룹핑 태그로만 사용된다.
 	SectionMx SectionID = "mx"
+
+	// gate 섹션 — pre-commit heavy gate opt-in (SPEC-PRECOMMIT-GATE-SCOPE-001
+	// REQ-009, seam 전용). gate.pre_commit.enabled bool 하나를 편집하며,
+	// yamlpatch seam으로 gate.yaml에 기록된다. 런너는 MOAI_PRECOMMIT=1 마커
+	// 하에서만 이 키를 존중한다 (단독 `moai gate` 불변).
+	SectionGate SectionID = "gate"
 )
 
 // NOTE: agent-settings 섹션(workflow.yaml team.role_profiles 렌더 표면)은 Agent
@@ -96,6 +102,7 @@ func AllSections() []SectionID {
 		SectionReport,
 		SectionMCP,
 		SectionCrossSession,
+		SectionGate,
 	}
 }
 
@@ -172,6 +179,7 @@ type FieldDef struct {
 	Default       string            // 디스크 값 부재 시 위젯이 선택할 값 (빈 문자열이면 기존 동작 — 선택 없음)
 	StoreOnly     bool              // 값이 저장만 되고 런타임에 적용되지 않음 — 위젯이 저장 전용 배지를 렌더한다
 	EmptySubmits  bool              // select가 "" 제출을 실제 값으로 취급한다 (empty=preserve 예외 — 키를 중립 ""로 되돌리는 경로)
+	AbsentDefault string            // bool 전용: 부재 키의 런타임 유효 기본값 ("true" = default-ON/fail-open, 빈 문자열 = default-off). 값-불변 게이트가 absent 분기의 극성을 판정하는 단일 원천 (sync-audit F1, SPEC-WEB-WRITE-SAFETY-001)
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
 	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상

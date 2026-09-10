@@ -3,7 +3,7 @@
 name = "manager-git"
 description = '''
 Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
-Invocation gate: invoked for PR creation across ALL tiers (S/M/L) per the PR-mandatory policy (enforce_admins: true). Tier L uses heavy ceremony (long-lived branch + full CI matrix); Tier S/M uses light ceremony (short-lived branch + self-merge) — both route PR creation through manager-git. manager-develop/manager-docs perform commits only; push + PR is always delegated to manager-git.
+Invocation gate: invoked for PR creation only when the SPEC is Tier L or the operator selects `--pr`. Tier S/M defaults to the direct Route A owned by the phase agent; manager-git owns Route B branch, push, PR, merge, and release operations.
 Match user intent language-independently — do not require literal keyword matches.
 NOT for: code implementation, testing, architecture design, documentation content, security audits
 '''
@@ -127,18 +127,18 @@ Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Step 1 entry 
 ### Personal Mode
 
 SPEC Git Workflow options (from git-strategy.yaml):
-- **main_direct** [RETIRED — main direct push blocked by enforce_admins:true; all tiers require PR]: Direct commits to main, no branches needed
+- **main_direct**: Route A default for Tier S/M when repository policy permits direct commits
 - **main_late_branch**: main commit + late `git switch -c feat/SPEC-*` at PR time, PR squash + delete-branch, local main `reset --hard origin/main` cleanup (4-phase procedure — see Late-Branch Invocation Pattern above)
 - **main_feature**: Feature branches from main, optional PR
-- **develop_direct** [RETIRED — main direct push blocked by enforce_admins:true; all tiers require PR]: Direct commits to develop
+- **develop_direct**: Route A direct commits to develop when selected by repository policy
 - **feature_branch** / **per_spec**: Feature branches with PR required
 
 ### Team Mode
 
 - GitHub Flow: main + feature/SPEC-* branches
-- [HARD] PR required for all changes, no direct commits to main
-- [HARD] Minimum 1 reviewer approval before merge
-- [HARD] Author cannot merge own PR
+- Tier S/M follows Route A unless the operator selects `--pr`
+- [HARD] Tier L or explicit `--pr` follows Route B and requires a PR
+- [HARD] Route B requires at least 1 reviewer approval; the author cannot merge their own PR
 - Auto-merge: only with the `--auto-merge` flag, per § PR Auto-Merge (Team Mode)
 
 Hotfix: `hotfix/v*` branch from main → Fix → PR → Merge → Tag

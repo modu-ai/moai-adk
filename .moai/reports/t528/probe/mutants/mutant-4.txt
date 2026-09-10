@@ -1,0 +1,79 @@
+# mutant 4 — drop the closing-bold allowance (both positions)
+# expectation pre-declared in expectations.md
+
+## injected diff
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e48f39d07..296e4b36e 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -242,7 +242,7 @@ func autoWrapSingle(ac Acceptance) Acceptance {
+ //	                              separator stays REQUIRED; widening the set is
+ //	                              not the same as dropping the requirement, and
+ //	                              the requirement is what keeps prose bullets out.
+-var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
++var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\s*(?:\([^()]*\)\s*)?\s*[:—–]\s*`)
+ 
+ func parseSingleACLine(line string) *struct {
+ 	id     string
+
+## judging command
+go test ./internal/spec/ -run TestT528 -count=1 -timeout 600s
+
+## result
+--- FAIL: TestT528SegmentGrammar (0.00s)
+    --- FAIL: TestT528SegmentGrammar/three_segments_alnum_middle (0.00s)
+        zz_t528_grammar_test.go:105: declaration not collected
+              line: - **AC-WF001-01**: Given the v2.13.2 tree with 48 skills When the full Stage 1 consolidation is applied Then `.claude/skills/` contains exactly 38 directories (maps REQ-WF001-001).
+              want id: AC-WF001-01
+              got ids: []
+    --- FAIL: TestT528SegmentGrammar/four_segments (0.00s)
+        zz_t528_grammar_test.go:105: declaration not collected
+              line: - **AC-ORC-001-01**: Counting active (non-stub) agent files under `.claude/agents/moai/` yields exactly 17, matching the REQ-001 list.
+              want id: AC-ORC-001-01
+              got ids: []
+    --- FAIL: TestT528SegmentGrammar/alnum_middle_mig (0.00s)
+        zz_t528_grammar_test.go:105: declaration not collected
+              line: - **AC-MIG001-01**: Given a v2 project When `moai migrate v2-to-v3 --dry-run` runs Then dry-run report is produced without file modification (maps REQ-MIG001-009).
+              want id: AC-MIG001-01
+              got ids: []
+--- FAIL: TestT528BoldWrapper (0.00s)
+    --- FAIL: TestT528BoldWrapper/bold_id_emdash_separator (0.00s)
+        zz_t528_grammar_test.go:189: bold-wrapped declaration not collected
+              line: - **AC-ASE-001** — **Given** the run-phase commit on `WT-achwd-strip-exempt`,
+              want id: AC-ASE-001
+              got ids: []
+    --- FAIL: TestT528BoldWrapper/bold_id_emdash_separator_2 (0.00s)
+        zz_t528_grammar_test.go:189: bold-wrapped declaration not collected
+              line: - **AC-ASE-002** — **Given** the amended tree, **When** the §I.4 A4 perl guard runs,
+              want id: AC-ASE-002
+              got ids: []
+    --- FAIL: TestT528BoldWrapper/bold_id_colon_separator (0.00s)
+        zz_t528_grammar_test.go:189: bold-wrapped declaration not collected
+              line: - **AC-ORC-001-05**: All 7 stub files exist at deprecated paths with status=retired frontmatter.
+              want id: AC-ORC-001-05
+              got ids: []
+--- FAIL: TestT528ParenQualifier (0.00s)
+    --- FAIL: TestT528ParenQualifier/bold_id_with_req_qualifier (0.00s)
+        zz_t528_grammar_test.go:221: qualified declaration not collected
+              line: - **AC-RA-07** (REQ-RA-007): retired-rejection guard returns proper JSON + exit 2
+              want id: AC-RA-07
+              got ids: []
+--- FAIL: TestT528QualifierInsideBoldWrapper (0.00s)
+    --- FAIL: TestT528QualifierInsideBoldWrapper/qualifier_then_closing_bold_emdash (0.00s)
+        zz_t528_grammar_test.go:257: declaration not collected
+              line: - **AC-CSS-001-01 (isolation-validity)** — Given the cell-IV capture file, When the harness runs `grep -c T504IVMARKER <iv.stdout>`, Then the count is 1.
+              want id: AC-CSS-001-01
+              got ids: []
+    --- FAIL: TestT528QualifierInsideBoldWrapper/closing_bold_then_qualifier (0.00s)
+        zz_t528_grammar_test.go:257: declaration not collected
+              line: - **AC-HFC-002** (REQ-HFC-001): **Given** a `PostToolUseFailure` payload with an empty top-level `Error`, **Then** the classifier reports it.
+              want id: AC-HFC-002
+              got ids: []
+--- FAIL: TestT528ParenQualifierLeavesREQMappingAlone (0.00s)
+    zz_t528_grammar_test.go:307: control declaration not collected at all
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.447s
+FAIL
+
+EXIT=1
+DETECTED=True  --- FAIL lines=14

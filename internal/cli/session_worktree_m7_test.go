@@ -26,11 +26,11 @@ import (
 // BOTH the M2/M4 seams (to no-op defaults via swapSessionWorktreeSeams) AND the
 // M7 git-config seams carried here.
 type m7Seams struct {
-	safeDirAdd     func(path string) error
-	safeDirUnset   func(path string) error
-	safeDirGetAll  func() ([]string, error)
-	globalGet      func(key string) string
-	gitVersion     func() gitVersionInfo
+	safeDirAdd    func(path string) error
+	safeDirUnset  func(path string) error
+	safeDirGetAll func() ([]string, error)
+	globalGet     func(key string) string
+	gitVersion    func() gitVersionInfo
 }
 
 // swapM7Seams replaces ONLY the M7 git-config seams and registers restoration.

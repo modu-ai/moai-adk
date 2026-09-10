@@ -24,14 +24,14 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check embed-check
+.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-check fmt-check tool-policy-drift-check
 
 all: lint test build ## Run lint, test, and build
 
 templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
 	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
 
-build: agents-emit-check templ-generate ## Build the binary
+build: agents-emit-check commands-emit-check tool-policy-drift-check templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
@@ -47,6 +47,25 @@ agents-emit: ## Regenerate the .codex/agents/moai TOMLs from the neutral .md lay
 agents-emit-check: ## Verify the committed .codex TOMLs match the .md source layer (read-only; never regenerates)
 	@AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
 		|| { printf 'agent-emit drift: committed .codex/agents/moai/*.toml differ from the .md source layer — run `make agents-emit`\n' >&2; exit 1; }
+
+commands-emit: ## Regenerate the .agents/skills/moai-<command> SKILL.md artifacts from the command sources
+	COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
+# Read-only drift check for the published command skills, in the same
+# position as agents-emit-check. It NEVER writes: regeneration stays behind
+# the explicit `commands-emit` verb, and COMMAND_EMIT_UPDATE is scrubbed so
+# an inherited value cannot flip this into the regeneration branch.
+commands-emit-check: ## Verify the committed published command skills match the command source layer (read-only; never regenerates)
+	@COMMAND_EMIT_UPDATE= go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
+		|| { printf 'command-skill drift: committed .agents/skills/moai-*/SKILL.md differ from the command source layer — run `make commands-emit`\n' >&2; exit 1; }
+
+# Read-only drift check between tool-policy.yaml and the permissions block of
+# the working-tree .claude/settings.json, in the same position as
+# agents-emit-check. It compares the two as sets and NEVER writes:
+# regeneration stays behind the explicit `moai tool-policy build` verb.
+tool-policy-drift-check: ## Verify tool-policy.yaml and the .claude/settings.json permissions block declare the same sets (read-only; never regenerates)
+	@go test ./internal/config/toolpolicy/... -run 'TestToolPolicyDrift_(CommittedSettingsMatchYAML|NoDuplicatesOrOverlap)$$' -count=1 \
+		|| { printf 'tool-policy drift: .claude/settings.json permissions differ from .moai/config/sections/tool-policy.yaml — reconcile tool-policy.yaml, then regenerate with `moai tool-policy build --local-only`\n' >&2; exit 1; }
 
 # Embed-axis judgment point: compares the .codex artifacts carried by an
 # ALREADY-BUILT binary against the committed ones. It deliberately has no
@@ -77,6 +96,9 @@ test: templ-generate ## Run tests with race detection
 test-verbose: templ-generate ## Run tests with verbose output
 	go test -race -v -coverprofile=coverage.out -covermode=atomic ./...
 
+test-codex-live: ## Observe the codex live axis (opt-in; needs a codex binary and spends real codex/z.ai quota — CI never runs this; see internal/cli/codex_live_axis_declaration_test.go)
+	MOAI_CODEX_LIVE_PROBE=1 MOAI_AUDIT_PIN_LIVE=1 go test ./internal/cli/ -run 'Live' -v -count=1
+
 coverage: test ## Show test coverage report
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
@@ -93,6 +115,17 @@ vet: ## Run go vet
 
 fmt: ## Format code
 	gofumpt -l -w .
+
+# Format gate (SPEC-FMT-GATE-001): tracked-files variant of `gofmt -l .` —
+# untracked scratch .go files must not flip the local verdict. Silent on a
+# clean tree; lists offending files and exits non-zero otherwise. gofumpt
+# output (`make fmt`) is gofmt-clean, so the existing fix path still applies.
+fmt-check: ## Verify tracked .go files are gofmt-clean (gate predicate; silent on success)
+	@files="$$(git ls-files -z '*.go' | xargs -0 gofmt -l)"; \
+	if [ -n "$$files" ]; then \
+		printf 'gofmt violations found (run gofmt -w or make fmt):\n%s\n' "$$files" >&2; \
+		exit 1; \
+	fi
 
 generate: ## Run go generate
 	go generate ./...

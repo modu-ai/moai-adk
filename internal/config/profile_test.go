@@ -162,4 +162,3 @@ func TestValidateAgentOverrides(t *testing.T) {
 		t.Fatalf("out-of-enum effort should error on the effort field, got %v", errs)
 	}
 }
-

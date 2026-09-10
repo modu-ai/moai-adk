@@ -50,11 +50,20 @@ import (
 func syncSHAFindings(t *testing.T, c string) []spec.Finding {
 	t.Helper()
 	dir := filepath.Join(testdataDir, "syncsha", c)
+	// Guard against the silent-empty-sweep hazard (card t397): Lint on a
+	// missing fixture file returns no findings and no error, so a deleted or
+	// mistyped fixture directory would read as a pass rather than as broken
+	// test infrastructure. A fixture that does not exist is a failure here,
+	// before the lint can produce its vacuous zero.
+	fixtureMD := filepath.Join(dir, "spec.md")
+	if st, statErr := os.Stat(fixtureMD); statErr != nil || st.IsDir() {
+		t.Fatalf("fixture %q has no spec.md (%v) — the zero-findings result below would be a vacuous pass over missing infrastructure, not evidence", c, statErr)
+	}
 	linter := spec.NewLinter(spec.LinterOptions{
 		RegistryPath: testRegistryPath(),
 		BaseDir:      dir,
 	})
-	report, err := linter.Lint([]string{filepath.Join(dir, "spec.md")})
+	report, err := linter.Lint([]string{fixtureMD})
 	if err != nil {
 		t.Fatalf("Lint(%s) returned unexpected error: %v", c, err)
 	}
@@ -134,8 +143,12 @@ func TestSyncSHASlot_FlagsProse(t *testing.T) {
 //   - narrow the SHA pattern to {40} — `sha-short` and `sha-quoted` must produce findings
 //   - narrow the floor by one, {7,40} -> {8,40} — `sha-min7` must produce a finding
 //   - narrow the ceiling by one, {7,40} -> {7,39} — `sha-full` must produce a finding
+//   - narrow the alphabet, [0-9a-fA-F] -> [0-9a-f] — `sha-uppercase` must produce a
+//     finding. That axis had no fixture before card t397 (SPEC-SYNCSHA-BAND-BOUNDARY-001
+//     §C's declared debt): every fixture was lowercase, so the narrowing mutant was
+//     indistinguishable from the shipped rule.
 func TestSyncSHASlot_SilentOnSHA(t *testing.T) {
-	for _, c := range []string{"sha-min7", "sha-short", "sha-full", "sha-quoted", "sha-annotated"} {
+	for _, c := range []string{"sha-min7", "sha-short", "sha-full", "sha-quoted", "sha-annotated", "sha-uppercase"} {
 		if got := syncSHAFindings(t, c); len(got) != 0 {
 			t.Errorf("%s: expected 0 findings on a well-formed SHA, got %d: %v", c, len(got), got)
 		}

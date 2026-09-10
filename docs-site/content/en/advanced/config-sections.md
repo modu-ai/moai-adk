@@ -128,7 +128,6 @@ Additional security settings that **extend** (not replace) the built-in `Default
 security:
   extra_dangerous_bash_patterns:
     - 'curl\s+.*\|\s*(ba)?sh'
-    - 'rm\s+-rf\s+/[^.]'
   extra_deny_patterns: []
   extra_ask_patterns: []
   permission:

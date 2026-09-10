@@ -563,3 +563,143 @@ func TestPreCommitHook_ToolchainAbsent(t *testing.T) {
 		t.Errorf("toolchain-absent path must not emit FAILED, got:\n%s", stderr)
 	}
 }
+
+// moduleShimPath builds a PATH shim directory holding the tools the vet block
+// needs (git, grep, sort, dirname, sed, awk, tr, go, gofmt) and NOT moai, so
+// the heavy-gate block is skipped deterministically while the fast subset runs
+// with a real Go toolchain. Mirrors the shim technique of
+// TestPreCommitHook_ToolchainAbsent.
+func moduleShimPath(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("shim-PATH construction is POSIX-only")
+	}
+	shim := t.TempDir()
+	for _, tool := range []string{"git", "grep", "sort", "dirname", "sed", "awk", "tr", "go", "gofmt"} {
+		real, err := exec.LookPath(tool)
+		if err != nil {
+			t.Skipf("required tool %q not found: %v", tool, err)
+		}
+		if err := os.Symlink(real, filepath.Join(shim, tool)); err != nil {
+			t.Fatalf("symlink %s: %v", tool, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(shim, "moai")); err == nil {
+		t.Fatal("shim unexpectedly contains moai")
+	}
+	return shim
+}
+
+// writeSubmoduleFixture creates a repo whose only go.mod lives in a
+// subdirectory (submod/), mirroring monorepos where the repo root holds no
+// Go module — the shape that previously broke the root-level go vet.
+func writeSubmoduleFixture(t *testing.T, repo string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(repo, "submod"), 0o755); err != nil {
+		t.Fatalf("mkdir submod: %v", err)
+	}
+	goMod := "module sample\n\ngo 1.21\n"
+	if err := os.WriteFile(filepath.Join(repo, "submod", "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatalf("write submod/go.mod: %v", err)
+	}
+}
+
+// vetCleanGo is gofmt-clean, vet-clean Go living inside submod/.
+const vetCleanGo = "package sample\n\n// Clean is a well-formed file that vet accepts.\nfunc Clean() string {\n\treturn \"ok\"\n}\n"
+
+// vetBadGo is gofmt-clean Go that go vet flags (Printf verb/arg mismatch).
+const vetBadGo = "package sample\n\nimport \"fmt\"\n\n// Bad triggers a go vet Printf diagnostic.\nfunc Bad() string {\n\treturn fmt.Sprintf(\"%d\", \"not a number\")\n}\n"
+
+// TestPreCommitHook_SubmodulePassesClean — regression test for the monorepo
+// defect: with go.mod only in a subdirectory, a clean staged .go file must
+// pass. The previous root-level 'go vet ./submod' failed with "cannot find
+// main module" and blocked every such commit regardless of code quality.
+func TestPreCommitHook_SubmodulePassesClean(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	repo := gitInitRepo(t)
+	writeSubmoduleFixture(t, repo)
+	stageFile(t, repo, "submod/clean.go", vetCleanGo)
+
+	code, stderr := runPreCommitHook(t, repo, []string{"PATH=" + moduleShimPath(t)})
+	if code != 0 {
+		t.Fatalf("expected exit 0 (clean submodule file passes), got %d\nstderr:\n%s", code, stderr)
+	}
+	if strings.Contains(stderr, "FAILED") {
+		t.Errorf("clean submodule file must not emit FAILED, got:\n%s", stderr)
+	}
+}
+
+// TestPreCommitHook_SubmoduleVetBlocks — the counterpart that proves the green
+// above comes from vet actually running, not from the check being skipped: the
+// same fixture with a real vet diagnostic must block (exit 1) and name the
+// module root it ran from.
+func TestPreCommitHook_SubmoduleVetBlocks(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	repo := gitInitRepo(t)
+	writeSubmoduleFixture(t, repo)
+	stageFile(t, repo, "submod/bad.go", vetBadGo)
+
+	code, stderr := runPreCommitHook(t, repo, []string{
+		"PATH=" + moduleShimPath(t), "GOTOOLCHAIN=local", "GOFLAGS=-mod=mod", "GOPROXY=off",
+	})
+	if code != 1 {
+		t.Fatalf("expected exit 1 (go vet block), got %d\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "module root: submod") {
+		t.Errorf("expected 'module root: submod' in stderr, got:\n%s", stderr)
+	}
+}
+
+// TestPreCommitHook_OutsideAnyModuleSkips — card t554 / GH #1679 case T3: in a
+// repo whose root holds no go.mod, a staged .go file that belongs to no module
+// at all must be skipped rather than vetted from the repo root. The previous
+// fallback ran `go vet ./scripts` from a module-less root, which exits non-zero
+// with "cannot find main module" and was reported as a vet finding — the very
+// blanket-block SPEC-PRECOMMIT-VET-MONOREPO-001 set out to remove, narrowed to
+// files outside any module.
+func TestPreCommitHook_OutsideAnyModuleSkips(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	repo := gitInitRepo(t)
+	writeSubmoduleFixture(t, repo) // module at submod/; repo root has none
+	stageFile(t, repo, "scripts/tool.go", "package main\n\nfunc main() {}\n")
+
+	code, stderr := runPreCommitHook(t, repo, []string{"PATH=" + moduleShimPath(t)})
+	if code != 0 {
+		t.Fatalf("expected exit 0 (file outside any module is skipped), got %d\nstderr:\n%s", code, stderr)
+	}
+	if strings.Contains(stderr, "FAILED") {
+		t.Errorf("a module-less staged file must not emit FAILED, got:\n%s", stderr)
+	}
+}
+
+// TestPreCommitHook_RootModuleStillVets — the vacuous-green guard for the test
+// above: skipping must be conditional on there being no module, not on the
+// walk being bypassed. With a go.mod AT the repo root the same walk returns "."
+// and a real vet diagnostic must still block, naming that root.
+func TestPreCommitHook_RootModuleStillVets(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	repo := gitInitRepo(t)
+	goMod := "module sample\n\ngo 1.21\n"
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+	stageFile(t, repo, "scripts/bad.go", vetBadGo)
+
+	code, stderr := runPreCommitHook(t, repo, []string{
+		"PATH=" + moduleShimPath(t), "GOTOOLCHAIN=local", "GOFLAGS=-mod=mod", "GOPROXY=off",
+	})
+	if code != 1 {
+		t.Fatalf("expected exit 1 (root-module vet still blocks), got %d\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "module root: .") {
+		t.Errorf("expected 'module root: .' in stderr, got:\n%s", stderr)
+	}
+}

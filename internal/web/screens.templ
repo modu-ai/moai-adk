@@ -1,5 +1,6 @@
-// 개요(/) · 칸반(/kanban) · SPEC(/specs) · 모니터(/monitor)
-// 전부 읽기 전용. 실시간 갱신은 [data-live] 조각 단위로 htmx 가 다시 가져온다.
+// 개요(/)는 현재 작업의 출발점이다. 칸반·SPEC·모니터 route는 읽기 전용
+// 호환 표면으로 남기되, 이 화면과 주 메뉴에는 운영판 데이터를 노출하지 않는다.
+// 실시간 갱신은 [data-live] 조각 단위로 htmx 가 다시 가져온다.
 //
 // handoff 원본 대비 로컬 보정: `@icon(name, size)` → `@iconAt(...)`,
 // `@banner(...)` → `@noteBanner(...)` (이름 충돌 회피 — widgets.templ 주석 참조).
@@ -7,102 +8,105 @@ package web
 
 /* ── 개요 ───────────────────────────────────────────── */
 
-templ Overview(vm ShellVM, o OverviewVM) {
+templ Overview(vm ShellVM, o OverviewVM, q TodoVM) {
 	@Shell(vm) {
-		<div class="stats" data-live="spec">
-			for _, s := range o.Stats {
-				<div class="stat">
-					<span class="stat__l" data-i18n={ "stat." + i18nSlug(s.Label) }>{ s.Label }</span>
-					<span class="stat__v">{ s.Value }</span>
-					// Note 이 개수를 품은 합성문("4 in-progress")이어도 키는 평평하게
-					// 하나다 — {0} 자리에 NoteParams 의 숫자가 들어가므로 개수가
-					// 바뀌어도 사전은 그대로다.
-					<span class="stat__n" data-i18n={ s.NoteKey } data-i18n-params={ s.NoteParams }>{ s.Note }</span>
-				</div>
-			}
-		</div>
-		if o.Chain.Present {
-			<section class="chainbar" data-live="kanban">
-				<div class="chainbar__h">
-					<span class="panel__meta" data-i18n="chain.title">Kanban chain</span>
-					if o.Chain.CardID != "" {
-						<span class="mono">{ o.Chain.CardID }</span>
-					}
-					if o.Chain.IdleRole != "" {
-						<span class="warn">
-							@iconAt("alert", 13)
-							<span>{ o.Chain.IdleRole }</span>
-							<span data-i18n="chain.stopped">— the chain stops here</span>
-						</span>
-					}
-					<a class="panel__meta" href="/kanban" style="margin-left:auto">
-						<span data-i18n="chain.open">Open in Kanban</span>
-						@iconAt("chevron", 13)
-					</a>
-				</div>
-				<ol class="chainbar__l">
-					for _, r := range o.Chain.Roles {
-						<li class={ "cpill", templ.KV("cpill--idle", r.State == "idle") }>
-							<span class="cpill__r">{ r.Role }</span>
-							@stateMark(r.State, stateLabel(r.State))
-						</li>
-					}
-				</ol>
-			</section>
-		}
-		<div class="two">
-			<div class="col">
-				@panel("In-progress SPECs", itoa(len(o.InProgress)), "", "", "", "roomy") {
-					<div class="rows" data-live="spec">
-						for _, s := range o.InProgress {
-							@specRowLink(s)
-						}
-					</div>
-				}
-				@panel("Needs attention", itoa(len(o.Attention)), "", "", "MUST-FIX drift · failed verification · stalled goals · idle roles only.", "roomy") {
-					<div class="rows">
-						for _, a := range o.Attention {
-							<a class="row-link" href={ templ.SafeURL(a.Href) }>
-								@iconAt(a.Icon, 14)
-								<span class="mono" style="flex:0 0 190px">{ a.Source }</span>
-								// 칸반 미기동 행은 체인 띠와 같은 안내다 — 키를 공유해야
-								// 한쪽만 번역되는 일이 없다. Role 이 비어 있는 일반 행은
-								// 서버가 준 Text 를 그대로 둔다.
-								if a.Role != "" {
-									<span style="flex:1 1 auto;min-width:0">
-										{ a.Role + " " }
-										<span data-i18n="chain.sessionNotStarted">session not started</span>
-										{" "}
-										<span data-i18n="chain.stopped">— the chain stops here</span>
-									</span>
-								} else {
-									<span style="flex:1 1 auto;min-width:0">{ a.Text }</span>
-								}
-								@badge(a.BadgeKind, a.Badge)
-							</a>
-						}
-					</div>
-				}
+		<section class="overview-hero">
+			<div class="overview-hero__copy">
+				<span class="eyebrow" data-i18n="overview.eyebrow">Workspace overview</span>
+				<h2 class="overview-hero__title" data-i18n="overview.title">Start with what needs your attention</h2>
+				<p class="overview-hero__desc" data-i18n="overview.desc">A focused workspace for configuration health, backlog work, and the next safe action.</p>
 			</div>
-			<aside class="rail2">
-				@panel("Sessions", "registry "+itoa(len(o.Sessions)), "panelMeta.registry", itoa(len(o.Sessions)), "", "roomy") {
-					@noteBanner("info", "The registry can hold entries whose process has exited. Only PID-confirmed sessions are marked active.", "banner.registry")
-					<div class="rows" data-live="session">
-						for _, s := range o.Sessions {
-							<div class="sess">
-								<span class="mono" style="display:flex;align-items:center;gap:7px">
-									@stateMark(s.State, "")
-									{ s.ID }
-								</span>
-								<span class="panel__meta" style="display:flex;align-items:center;gap:6px">
-									@backendBadge(s.Backend)
-									{ " · " + s.Heartbeat }
-								</span>
+			<div class="overview-hero__actions" aria-label="Quick actions" data-i18n-aria="overview.actions">
+				<a class="btn btn--primary" href="/settings">
+					@iconAt("settings", 14)
+					<span data-i18n="overview.action.settings">Open Settings</span>
+				</a>
+				<a class="btn btn--outline" href="/todo">
+					@iconAt("todo", 14)
+					<span data-i18n="overview.action.todo">Review Todo</span>
+				</a>
+			</div>
+		</section>
+
+		<div class="overview-grid" data-live="spec">
+			<section class="panel overview-card overview-card--health">
+				<div class="panel__head">
+					<h2 class="panel__title" data-i18n="overview.health.title">Configuration health</h2>
+					<span class="panel__meta" data-i18n="overview.health.meta">Read-only signals</span>
+				</div>
+				<p class="panel__help" data-i18n="overview.health.desc">A compact read of the current project state. Change values from Settings.</p>
+				if len(o.Stats) == 0 {
+					<p class="panel__meta" data-i18n="overview.health.empty">No health signal is available yet.</p>
+				} else {
+					<div class="overview-health-grid">
+						for _, s := range o.Stats {
+							<div class="health-stat">
+								<span class="health-stat__label" data-i18n={ "stat." + i18nSlug(s.Label) }>{ s.Label }</span>
+								<strong class="health-stat__value">{ s.Value }</strong>
+								<span class="health-stat__note" data-i18n={ s.NoteKey } data-i18n-params={ s.NoteParams }>{ s.Note }</span>
 							</div>
 						}
 					</div>
 				}
-			</aside>
+			</section>
+
+			<section class="panel overview-card overview-card--todo" data-live="kanban">
+				<div class="panel__head">
+					<h2 class="panel__title" data-i18n="overview.todo.title">Todo queue</h2>
+					<a class="panel__act panel__meta" href="/todo">
+						<span data-i18n="overview.todo.open">Open queue</span>
+						@iconAt("chevron", 13)
+					</a>
+				</div>
+				<p class="panel__help" data-i18n="overview.todo.desc">Cards stay in their operator-owned queue; this summary never mutates it.</p>
+				<div class="todo-summary__metrics">
+					<div class="todo-summary__metric"><strong>{ itoa(todoStateCount(q.Items, "queued")) }</strong><span data-i18n="todo.state.queued">queued</span></div>
+					<div class="todo-summary__metric"><strong>{ itoa(todoStateCount(q.Items, "picked")) }</strong><span data-i18n="todo.state.picked">picked</span></div>
+					<div class="todo-summary__metric"><strong>{ itoa(todoStateCount(q.Items, "dropped")) }</strong><span data-i18n="todo.state.dropped">dropped</span></div>
+				</div>
+				if len(q.Items) == 0 {
+					<p class="panel__meta" data-i18n="todo.empty">The backlog queue is empty.</p>
+				} else {
+					<div class="rows">
+						for _, it := range boundedTodoItems(q.Items) {
+							<a class="row-link todo-summary__row" href="/todo">
+								<span class="mono">{ it.ID }</span>
+								<span class="todo-summary__text">{ it.Text }</span>
+								@todoStateBadge(it.State)
+							</a>
+						}
+					</div>
+				}
+				<span class="panel__meta todo-summary__root" title={ q.Root }>{ q.Root }</span>
+			</section>
+		</div>
+
+		<div class="overview-grid overview-grid--lower">
+			<section class="panel overview-card">
+				<div class="panel__head">
+					<h2 class="panel__title" data-i18n="overview.actions.title">Quick actions</h2>
+					<span class="panel__meta" data-i18n="overview.actions.meta">Safe entry points</span>
+				</div>
+				<div class="overview-action-list">
+					<a class="overview-action" href="/settings?tab=identity"><span class="overview-action__icon">@iconAt("user-round", 15)</span><span><strong data-i18n="overview.action.identity">Update identity</strong><small data-i18n="overview.action.identity.desc">Change the name used in commits and session headers.</small></span>@iconAt("chevron", 13)</a>
+					<a class="overview-action" href="/settings?tab=launch"><span class="overview-action__icon">@iconAt("rocket", 15)</span><span><strong data-i18n="overview.action.launch">Review launch defaults</strong><small data-i18n="overview.action.launch.desc">Check permission, model, and effort before the next session.</small></span>@iconAt("chevron", 13)</a>
+					<a class="overview-action" href="/settings?tab=gate"><span class="overview-action__icon">@iconAt("check-circle", 15)</span><span><strong data-i18n="overview.action.gate">Inspect quality gate</strong><small data-i18n="overview.action.gate.desc">See the commit-time quality gate posture.</small></span>@iconAt("chevron", 13)</a>
+				</div>
+			</section>
+
+			<section class="panel overview-card overview-card--scope">
+				<div class="panel__head">
+					<h2 class="panel__title" data-i18n="overview.scope.title">Current scope</h2>
+					<span class="panel__meta" data-i18n="overview.scope.meta">Where changes land</span>
+				</div>
+				<dl class="scope-list">
+					<div><dt data-i18n="rail.profile">Profile</dt><dd class="mono">{ vm.Profile }</dd></div>
+					<div><dt data-i18n="rail.project">Project</dt><dd class="mono" title={ vm.ProjectPath }>{ vm.Project }</dd></div>
+					<div><dt data-i18n="overview.scope.host">Host</dt><dd class="mono">{ vm.Host }</dd></div>
+					<div><dt data-i18n="overview.scope.pages">Settings pages</dt><dd class="mono">{ itoa(len(consoleTabs())) }</dd></div>
+				</dl>
+				<p class="panel__help" data-i18n="overview.scope.desc">Settings keeps every panel in the form contract, including the read-only Codex mirror and Quality Gate page.</p>
+			</section>
 		</div>
 	}
 }
@@ -283,7 +287,7 @@ templ Kanban(vm ShellVM, k KanbanVM) {
 
 // Todo 는 백로그 큐를 읽기 전용으로 보여주는 화면이다. 섹션은 새 이벤트 이름을
 // 만들지 않고 기존 data-live="kanban" 마커를 단다 — 큐 파일이
-// .moai/state/todo/backlog.json 이라 이미 watchMap["kanban"] 이 보는
+// 전역 backlog.db이며 resolvedWatchPaths가 "kanban" 대상으로 추가하는
 // 디렉터리 안에 있고, 클라이언트의 refresh() 는 라우트가 아니라 이 마커를 보고
 // 갱신하기 때문이다(REQ-WTQ-007).
 templ Todo(vm ShellVM, q TodoVM) {

@@ -45,6 +45,14 @@ const (
 	// EnvNoColor disables color output when set to "true" or "1".
 	EnvNoColor = "MOAI_NO_COLOR"
 
+	// EnvPreCommitMarker is exported by the git pre-commit hook when it
+	// invokes `moai gate` (value "1"). Under the marker the gate runner honors
+	// gate.pre_commit.enabled: when that key is false (the default) the
+	// project-wide heavy steps are skipped and the run passes. A standalone
+	// `moai gate` invocation — marker absent — never reads the key
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001, operator decision 2).
+	EnvPreCommitMarker = "MOAI_PRECOMMIT"
+
 	// EnvStatuslineMode selects the statusline display mode.
 	EnvStatuslineMode = "MOAI_STATUSLINE_MODE"
 
@@ -60,6 +68,20 @@ const (
 
 	// EnvGLMNoAutoTools skips automatic Z.AI MCP server enable on moai glm launch.
 	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
+
+	// EnvClaudeBin pins the Claude Code binary the launcher launches (issue
+	// #1697). When set to a non-empty path, every launcher (cc / glm / cg all
+	// funnel through launchClaudeDefault) launches THIS binary instead of
+	// searching PATH for `claude` — an operator pins a known-good release when
+	// a newer Claude Code release breaks compatibility with a third-party
+	// endpoint, instead of every lane auto-adopting the broken build. The path
+	// must exist and be executable; an invalid pin fails the launch rather
+	// than silently falling back (a silent fallback would re-expose the blast
+	// radius the pin exists to stop). Resolution order: this env var → the
+	// llm.claude_bin config key → PATH lookup (unchanged default). The env var
+	// wins over the config key so a single launch can be re-pointed without
+	// editing llm.yaml.
+	EnvClaudeBin = "MOAI_CLAUDE_BIN"
 
 	// EnvGitConvention overrides the git commit convention.
 	EnvGitConvention = "MOAI_GIT_CONVENTION"

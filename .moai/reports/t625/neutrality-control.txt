@@ -1,0 +1,5 @@
+1:+ planted SPEC-FOO-001 and REQ-BAR-002 token
+2:+ planted card t999 reference
+3:+ planted sha 0123456789abcdef0123456789abcdef01234567
+4:+ planted date 2026-09-10
+neutrality grep on planted control EXIT=0

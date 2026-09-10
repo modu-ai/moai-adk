@@ -1,0 +1,29 @@
+--- FAIL: TestStateTable_EveryRowClassifiesExactlyOnce (0.00s)
+    --- FAIL: TestStateTable_EveryRowClassifiesExactlyOnce/subject_on_disk,_query_did_not_return (0.00s)
+panic: REACHPROBE [recovered, repanicked]
+
+goroutine 12 [running]:
+testing.tRunner.func1.2({0x102613e20, 0x102658260})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x102613e20?, 0x102658260?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/guardstate.Evaluate.func1()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/guardstate/evaluate.go:180 +0x2c
+github.com/modu-ai/moai-adk/internal/guardstate.(*entryObservation).ensureQueried(0x69aebe6c240)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/guardstate/classify.go:204 +0x38
+github.com/modu-ai/moai-adk/internal/guardstate.entryAxis.func3(0x69aebe6c240)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/guardstate/classify.go:287 +0x20
+github.com/modu-ai/moai-adk/internal/guardstate.classifyEntry(0x69aebe6c240)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/guardstate/classify.go:311 +0x90
+github.com/modu-ai/moai-adk/internal/guardstate.Evaluate({0x1?, 0x1023f453f?}, 0x69aebdb21b0, {0x102659e50, 0x69aebe46e40}, {0x0?, 0x0?}, {0x1025a47c8?, 0x102660200?, 0x0?})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/guardstate/evaluate.go:183 +0x498
+github.com/modu-ai/moai-adk/internal/guardstate.TestStateTable_EveryRowClassifiesExactlyOnce.func1(0x69aebf09208)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/guardstate/axis_test.go:318 +0x84
+testing.tRunner(0x69aebf09208, 0x69aebe36240)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 10
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/guardstate	0.339s
+FAIL

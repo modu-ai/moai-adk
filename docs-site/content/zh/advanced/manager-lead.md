@@ -109,7 +109,7 @@ manager-lead:        [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdat
 叶子 read-only 验证:      [Read, Grep, Glob, Bash]  ← 没有 Write/Edit/Agent
 ```
 
-这里 `manager-lead` 的 `Write` 和 `Edit` 只用于协调。也就是说，它们用来往 `progress.md` 的 §E.2 字段添一行折叠记录，或者在 `.moai/state/verify/` 下写证据文件——绝不碰源代码。代码永远是叶子智能体的活。
+这里 `manager-lead` 的 `Write` 和 `Edit` 只用于协调。也就是说，它们用来往 `progress.md` 的 §E.2 字段添一行折叠记录，或者把验证输出先落到暂存区、再把决定判定的那部分导出到 `.moai/reports/<卡片-id>/`——绝不碰源代码。代码永远是叶子智能体的活。
 
 委派路由把顺序与并行分开挂。必须在一个窗口里依次进行的工作（每里程碑的实现）以顺序派生发出；与其余部分互不相干的工作（侦察、只读验证批处理、每卡片的 SPEC 撰写）以并行派生发出。技能访问完全开放——`Skill` 工具随时按需加载所需的领域技能。
 
@@ -119,20 +119,23 @@ manager-lead:        [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdat
 
 `manager-lead` 最有辨识度的习惯，是在里程碑边界把窗口折轻。这道流程叫 **Context-Folding**。一个里程碑内的每条 AC 都拿到通过判定后，`manager-lead` 依次走三步。
 
-1. **保存证据**——把该里程碑跑过的 AC 验证命令输出留成文件。路径遵循 `.moai/state/verify/<会话>/M<里程碑>.<AC-id>.{log,out}` 的形式。放在 `.moai/state/` 下而不是 `/tmp` 下，是因为操作系统一清 `/tmp`，引用的路径就断了。
-2. **写下折叠行**——往 `progress.md` 的 §E.2 字段添一行摘要。这行遵循 "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/state/verify/.../M2.* | fold-at: 2026-08-12T..." 的形式。之后到审计阶段，这行上的证据路径必须指向一个真实存在的文件。
+1. **留存证据，再把它导出**——先把该里程碑跑过的 AC 验证命令输出落到 `.moai/state/verify/<会话>/M<里程碑>.<AC-id>.{log,out}`。这个位置只是**本机暂存区**：它熬得过 `/tmp` 的清理，但它在 gitignore 之列，所以既进不了 clone，也到不了 CI 运行器，更到不了别的机器。因此在某条 AC 行引用证据**之前**，要把决定判定的那几行——退出码、失败摘要、该行引用的数字——导出到受版本跟踪的路径 `.moai/reports/<卡片-id>/M<里程碑>.<AC-id>.log`，引用也只点名这一个文件。只搬点名的文件，暂存目录绝不整个导出；留在原地那部分的丢失风险，写进判定书的残余风险一栏。
+2. **写下折叠行**——往 `progress.md` 的 §E.2 字段添一行摘要。这行遵循 "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/reports/t123/M2-report.md | fold-at: 2026-08-12T..." 的形式。之后到审计阶段，这行上的证据路径必须指向一个真实打得开的文件，而能打得开的只有受跟踪的路径。
 3. **折叠窗口**——带上明确的保留指令调用 `/compact`，只留下当前里程碑的计划和到此为止的折叠行，其余清空。
 
 ```text
 # 追加到 progress.md §E.2 的折叠行示例
-M1: AC-001=PASS, AC-002=PASS | evidence: .moai/state/verify/abc123/M1.* | fold-at: 2026-08-12T10:14:00Z
-M2: AC-003=PASS, AC-004=PASS | evidence: .moai/state/verify/abc123/M2.* | fold-at: 2026-08-12T11:42:00Z
+M1: AC-001=PASS, AC-002=PASS | evidence: .moai/reports/t123/M1-report.md | fold-at: 2026-08-12T10:14:00Z
+M2: AC-003=PASS, AC-004=PASS | evidence: .moai/reports/t123/M2-report.md | fold-at: 2026-08-12T11:42:00Z
 ```
 
 走完这道流程之后，`manager-lead` 的活跃上下文只与"当前里程碑的大小 + 到此为止的折叠行 + 规则中常驻加载的开头部分"成正比。哪怕前面还横着第五个里程碑，第一个里程碑的原始记录也不再占着窗口。6 个里程碑的 Tier L 实现能在一个窗口里走到最后，靠的就是这一点。
 
 ```bash
-# 里程碑 2 结束后查看留下的证据文件 (持久化在 .moai/state/verify 下)
+# 确认被引用的证据在审计时打得开——只有受跟踪的路径满足这个条件
+ls .moai/reports/t123/M2-report.md
+
+# 留在暂存区的原始输出只留在这台机器上
 ls .moai/state/verify/"$(moai session current)"/M2.*
 ```
 

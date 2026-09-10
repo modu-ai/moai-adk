@@ -85,23 +85,30 @@ func TestMxQueryCmd_InvalidKind(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_SidecarUnavailable tests the error when the sidecar file is absent.
-// AC-SPC-004-04: SidecarUnavailable error when the sidecar is missing.
-func TestMxQueryCmd_SidecarUnavailable(t *testing.T) {
-	// AC-SPC-004-04: sidecar file absent
+// TestMxQueryCmd_AbsentSidecarIsBuiltOnDemand pins the contract AC-HWD-012
+// replaced AC-SPC-004-04 with: an absent sidecar is no longer an error, it is
+// a build. The query answers AND leaves the index behind, in the process that
+// needed it, rather than failing and pointing at `moai mx scan`.
+func TestMxQueryCmd_AbsentSidecarIsBuiltOnDemand(t *testing.T) {
 	tmpDir := t.TempDir()
-	// Do not create the sidecar file
+	// Do not create the sidecar file.
 
 	oldFindProjectRootFn := findProjectRootFn
 	defer func() { findProjectRootFn = oldFindProjectRootFn }()
 	findProjectRootFn = func() (string, error) { return tmpDir, nil }
 
 	_, stderr, err := executeQueryCmd(t, []string{})
-	if err == nil {
-		t.Error("사이드카 없을 때 오류 기대, 실제 nil")
+	if err != nil {
+		t.Fatalf("absent sidecar should be built on demand, got error: %v (stderr: %s)", err, stderr)
+	}
+	if strings.Contains(stderr, "SidecarUnavailable") {
+		t.Errorf("stderr should not report SidecarUnavailable on the build-on-demand path, got: %s", stderr)
 	}
 
-	_ = stderr // In the GREEN phase, verify the message contains "SidecarUnavailable"
+	sidecarPath := filepath.Join(tmpDir, ".moai", "state", mx.SidecarFileName)
+	if _, statErr := os.Stat(sidecarPath); statErr != nil {
+		t.Errorf("query should leave the index behind at %s: %v", sidecarPath, statErr)
+	}
 }
 
 // TestMxQueryCmd_JSONOutput tests the JSON output format.
@@ -447,11 +454,24 @@ func TestMxQueryCmd_FormatDefault(t *testing.T) {
 	}
 }
 
-// TestSidecarUnavailable_StderrFormat verifies the exact stderr format when the sidecar is absent.
-// AC-SPC-004-04: SidecarUnavailable → stderr must include "SidecarUnavailable" + "/moai mx --full" (G-06)
+// TestSidecarUnavailable_StderrFormat verifies the stderr surface of the one
+// path that still errors after AC-HWD-012 moved the index build into the
+// command. Absence is no longer the error case — it is a build (see
+// TestMxQueryCmd_AbsentSidecarIsBuiltOnDemand). What remains is a build that
+// CANNOT succeed, and the criterion the old AC-SPC-004-04 protected still
+// holds there: the failure is loud and names SidecarUnavailable rather than
+// degrading to an empty result set.
 func TestSidecarUnavailable_StderrFormat(t *testing.T) {
 	tmpDir := t.TempDir()
-	// Do not create the sidecar file (simulates absence)
+	// Make .moai/state a FILE so the sidecar directory cannot be created and
+	// the on-demand build is forced to fail (same technique as
+	// TestBuildMXIndex_WriteErrorIsLoud).
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".moai", "state"), []byte("blocker"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	oldFindProjectRootFn := findProjectRootFn
 	defer func() { findProjectRootFn = oldFindProjectRootFn }()
@@ -459,15 +479,20 @@ func TestSidecarUnavailable_StderrFormat(t *testing.T) {
 
 	_, stderr, err := executeQueryCmd(t, []string{"--kind", "anchor"})
 	if err == nil {
-		t.Fatal("사이드카 없을 때 오류 기대, 실제 nil")
+		t.Fatal("expected an error when the sidecar index cannot be built, got nil")
 	}
 
 	if !strings.Contains(stderr, "SidecarUnavailable") {
-		t.Errorf("stderr에 'SidecarUnavailable' 없음\nstderr: %q", stderr)
+		t.Errorf("stderr must name SidecarUnavailable\nstderr: %q", stderr)
 	}
 
-	if !strings.Contains(stderr, "moai mx scan") {
-		t.Errorf("stderr에 'moai mx scan' 없음\nstderr: %q", stderr)
+	// Pin the COMMAND-layer branch specifically. Without this the assertion is
+	// vacuous: swallowing the build error still produces a SidecarUnavailable
+	// from the resolver a few lines later, so "an error naming
+	// SidecarUnavailable" is satisfied by a path this test is not about.
+	// Observed under mutation — see the M4 re-measurement record.
+	if !strings.Contains(stderr, "could not build the sidecar index") {
+		t.Errorf("stderr must attribute the failure to the on-demand build\nstderr: %q", stderr)
 	}
 }
 

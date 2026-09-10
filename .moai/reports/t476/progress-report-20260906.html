@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>moai-adk-go 진행 상황 리포트</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413; --clay:#D97757; --clay-d:#B85C3E;
+  --oat:#E3DACC; --olive:#788C5D;
+  --sans:"Pretendard",system-ui,-apple-system,sans-serif;
+  --serif:"Pretendard",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px; --radius-panel:12px; --radius-row:8px;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.65;font-size:15px}
+main{max-width:var(--max-width);margin:0 auto;padding:32px 20px 64px}
+header.masthead{border-bottom:3px solid var(--slate);padding-bottom:18px;margin-bottom:26px}
+h1{font-family:var(--serif);font-weight:700;font-size:27px;letter-spacing:-.01em}
+.meta{color:var(--g500);font-size:12.5px;margin-top:8px}
+.meta code{font-family:var(--mono);font-size:11.5px;color:var(--g700)}
+h2{font-size:18px;font-weight:700;margin:34px 0 6px;letter-spacing:-.01em}
+h2 .n{color:var(--clay);margin-right:6px}
+.lead{color:var(--g700);font-size:13.5px;margin-bottom:14px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 6px}
+@media(max-width:640px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius-panel);padding:16px 14px}
+.card .k{font-size:11.5px;color:var(--g500);font-weight:600;letter-spacing:.02em}
+.card .v{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-.02em}
+.card .v small{font-size:13px;font-weight:600;color:var(--g500)}
+.card .s{font-size:11.5px;color:var(--g500);margin-top:4px}
+.card.good .v{color:var(--olive)} .card.warn .v{color:var(--clay-d)}
+.panel{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius-panel);padding:18px 20px;margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+th{text-align:left;font-size:11.5px;color:var(--g500);font-weight:600;padding:7px 8px;border-bottom:2px solid var(--oat)}
+td{padding:8px;border-bottom:1px solid var(--g100);vertical-align:top}
+tr:last-child td{border-bottom:none}
+code{font-family:var(--mono);font-size:.86em;background:var(--g100);padding:1.5px 5px;border-radius:4px;word-break:break-all}
+pre{background:var(--slate);color:#EDEAE2;border-radius:var(--radius-row);padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.55;margin:10px 0}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.tag.fixed{background:#E7EDDD;color:#4C5F33}
+.tag.open{background:#F6E3DB;color:#B85C3E}
+.tag.info{background:var(--g100);color:var(--g700)}
+.gloss{color:var(--g700)}
+.gloss b{color:var(--slate)}
+.note{border-left:3px solid var(--clay);background:var(--paper);border-radius:0 var(--radius-row) var(--radius-row) 0;padding:12px 16px;margin:12px 0;font-size:13.5px}
+details{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius-panel);padding:12px 18px;margin:12px 0}
+summary{cursor:pointer;font-weight:600;font-size:13.5px}
+details[open] summary{margin-bottom:8px}
+ul.tight{padding-left:20px} ul.tight li{margin:5px 0}
+.mermaid{background:var(--paper);border:1.5px solid var(--g300);border-radius:var(--radius-panel);padding:14px;margin:12px 0;text-align:center}
+.mermaid pre{background:none;color:var(--slate);text-align:left;font-size:11.5px}
+footer{margin-top:40px;border-top:1.5px solid var(--oat);padding-top:14px;color:var(--g500);font-size:12px}
+a{color:var(--clay)}
+.chartsvg{width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <h1>moai-adk-go 진행 상황 리포트</h1>
+  <div class="meta">2026-09-06 측정 · 카드 t476 (lane-15) · 측정 트리 <code>647cfeae7</code> = <strong>develop <code>3084f1071</code></strong> 흡수본 · 수치는 전부 이 트리에서 이 시각에 직접 잰 값입니다</div>
+</header>
+
+<section>
+  <h2>한눈에 보는 네 개의 숫자</h2>
+  <p class="lead">이 프로젝트는 "카드(작업 한 장)" 단위로 움직입니다. 각 카드는 설계 문서(<b>SPEC</b> — 한 작업 단위의 요구·설계 기록)를 만들고, 코드를 고치고, 자동 검사를 통과하면 통합 작업줄(<b>develop 브랜치 (branch)</b> — 모든 작업이 모이는 본줄)에 병합됩니다. 아래 네 수치가 오늘의 전체 그림입니다.</p>
+  <div class="cards">
+    <div class="card">
+      <div class="k">SPEC 누적 완료</div>
+      <div class="v">574</div>
+      <div class="s">전체 약 784개 중 · 추가 진행형 142</div>
+    </div>
+    <div class="card">
+      <div class="k">활성 카드</div>
+      <div class="v">20<small>장</small></div>
+      <div class="s">대기 13 · 진행 7</div>
+    </div>
+    <div class="card warn">
+      <div class="k">미병합 잔량</div>
+      <div class="v">9<small>브랜치 · 62커밋</small></div>
+      <div class="s">살아 있는 카드 작업분 (develop 기준)</div>
+    </div>
+    <div class="card good">
+      <div class="k">CI 적색 6원인 중 수리</div>
+      <div class="v">3<small>/ 6</small></div>
+      <div class="s">흡수 트리 재검증 기준</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">01</span>코드 규모와 작업 속도</h2>
+  <p class="lead">프로젝트가 얼마나 크고, 얼마나 빨리 움직이는지를 잰 값입니다. <b>커밋 (commit)</b>은 작업을 저장하는 기록 지점, 병합(merge)은 갈래로 작업한 결과를 본줄에 합치는 행위입니다.</p>
+  <div class="panel">
+    <table>
+      <tr><th>항목</th><th>값</th><th>비고</th></tr>
+      <tr><td>실행 코드 (테스트 제외)</td><td><strong>1,097개 파일 · 235,201줄</strong></td><td>internal + cmd + pkg</td></tr>
+      <tr><td>테스트 코드</td><td><strong>1,775개 파일</strong></td><td>실행 코드 대비 1.6배</td></tr>
+      <tr><td>패키지 (go list)</td><td><strong>137개</strong></td><td>기능별 코드 묶음 단위</td></tr>
+      <tr><td>주간 병합 수 (develop)</td><td><strong>W33 3 → W34 150 → W35 126 → W36 409</strong></td><td>카드 1장이 병합을 여러 번 만들어 수치가 증폭됩니다</td></tr>
+      <tr><td>등록 워크트리 (worktree)</td><td><strong>80개</strong></td><td>병렬 작업을 위한 격리된 작업 사본 폴더</td></tr>
+    </table>
+  </div>
+  <p class="lead" style="margin-top:6px">금주(W36)에 409건의 병합 — 카드 하나가 흡수·재흡수 병합을 여러 개 만들므로 카드 수와 1:1은 아니지만, 작업 회전이 빠른 시기임은 분명합니다.</p>
+  <svg class="chartsvg" viewBox="0 0 720 230" role="img" aria-label="주간 병합 수 막대그래프: 33주차 3건, 34주차 150건, 35주차 126건, 36주차 409건">
+    <line x1="40" y1="180" x2="690" y2="180" stroke="#D1CFC5" stroke-width="1.5"/>
+    <rect x="70" y="177" width="100" height="3" rx="2" fill="#87867F"/>
+    <rect x="230" y="121" width="100" height="59" rx="4" fill="#87867F"/>
+    <rect x="390" y="131" width="100" height="49" rx="4" fill="#87867F"/>
+    <rect x="550" y="20" width="100" height="160" rx="4" fill="#D97757"/>
+    <text x="120" y="167" text-anchor="middle" font-size="14" font-weight="700" fill="#3D3D3A" font-family="Pretendard,sans-serif">3</text>
+    <text x="280" y="111" text-anchor="middle" font-size="14" font-weight="700" fill="#3D3D3A" font-family="Pretendard,sans-serif">150</text>
+    <text x="440" y="121" text-anchor="middle" font-size="14" font-weight="700" fill="#3D3D3A" font-family="Pretendard,sans-serif">126</text>
+    <text x="600" y="12" text-anchor="middle" font-size="15" font-weight="700" fill="#B85C3E" font-family="Pretendard,sans-serif">409</text>
+    <text x="120" y="202" text-anchor="middle" font-size="12" fill="#87867F" font-family="Pretendard,sans-serif">W33 (8/10~16)</text>
+    <text x="280" y="202" text-anchor="middle" font-size="12" fill="#87867F" font-family="Pretendard,sans-serif">W34 (8/17~23)</text>
+    <text x="440" y="202" text-anchor="middle" font-size="12" fill="#87867F" font-family="Pretendard,sans-serif">W35 (8/24~30)</text>
+    <text x="600" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="#B85C3E" font-family="Pretendard,sans-serif">W36 (8/31~)</text>
+    <text x="365" y="224" text-anchor="middle" font-size="11" fill="#87867F" font-family="Pretendard,sans-serif">develop 병합 커밋 수 · 주차별 (측정: 2026-09-06)</text>
+  </svg>
+</section>
+
+<section>
+  <h2><span class="n">02</span>카드의 여정 — 그리고 지금 막힌 곳</h2>
+  <p class="lead">아래 흐름도는 카드 한 장이 태어나서 착지할 때까지의 길입니다. <b>큐 (queue)</b>는 작업 대기줄입니다. 지금 이 흐름의 "일괄 push" 단계에 적체가 있습니다 — <b>미푸시 (unpushed)</b>, 즉 아직 GitHub 원격 저장소로 올라가지 않은 커밋이 185개 쌓여 있습니다.</p>
+  <div class="mermaid">
+<pre class="mermaid">
+flowchart TD
+  A["운영자 요청 → 카드 발행"] --> B["큐 대기 · 13장"]
+  B --> C["배차 · 진행 7장"]
+  C --> D["워크트리에서 작업 (80개 트리)"]
+  D --> E{"자동 검사 통과?"}
+  E -- "실패" --> D
+  E -- "통과" --> F["develop에 병합 — 현재 미푸시 적체 185커밋"]
+  F --> G["리드가 일괄 push ← 지금 여기가 다음 관문"]
+  G --> H["CI가 원격 기준 최종 판정"]
+  H -- "착지" --> I["카드 done · 워크트리 폐기"]
+</pre>
+  </div>
+  <noscript><p class="note">흐름 요약: 운영자 요청 → 카드 발행 → 큐 대기(13장) → 배차(7장) → 워크트리 작업 → 자동 검사 → develop 병합 → <strong>리드 일괄 push(현재 관문 — 185커밋 적체)</strong> → CI 최종 판정 → 착지. 스크립트가 꺼진 환경에서는 이 글로 대체 표시됩니다.</p></noscript>
+  <div class="note">왜 적체가 문제가 아니라 <strong>절차</strong>인가 — 이 프로젝트의 규율상 develop에 올리는 push는 리드가 모아서 한 번에 합니다. 185커밋은 "밀린 것"이 아니라 "창(통합 허가 시간)을 기다리는 것"입니다. 다만 CI는 push를 해야만 돌아가므로, 그동안 최신 코드의 검사 결과는 없습니다.</div>
+</section>
+
+<section>
+  <h2><span class="n">03</span>CI 적색 6원인 — 흡수 트리에서 직접 재검증</h2>
+  <p class="lead"><b>CI</b>는 push할 때마다 자동으로 돌아가는 검사 파이프라인입니다. 마지막 CI 실행(9월 3일, <code>25a3212a9</code>)에서 3개 검사가 빨간불이었고, 그 안의 실패 원인은 6가지였습니다. 원격 CI는 push 전까지는 다시 못 돌기 때문에, 이번에 <strong>185커밋을 흡수한 트리에서 직접 재검증</strong>했습니다 — 3건은 이미 수리됐고 3건은 남아 있습니다.</p>
+  <div class="panel">
+    <table>
+      <tr><th>#</th><th>원인 (9/3 CI 기준)</th><th>상태</th><th>흡수 트리 재검증 결과</th></tr>
+      <tr><td>1</td><td>Graph Freshness — codemaps 설명 낡음 144 (임계 40)</td><td><span class="tag fixed">수리</span></td><td><strong>t476이 수리</strong> — 재생성 후 값 10, 판정 fresh. t475 카드를 흡수해 종결 (04절)</td></tr>
+      <tr><td>2</td><td>SPEC Lint — 상태 필드 잘못 들어감 ×2</td><td><span class="tag open">미수리</span></td><td><code>SPEC-CODEX-E2E-MEASURE-001</code>의 plan/acceptance 5번째 줄에 <code>status:</code>가 그대로 — 각 한 줄 삭제로 닫힘. <strong>소관자 없음</strong></td></tr>
+      <tr><td>3</td><td>Lint — errcheck 1건</td><td><span class="tag open">미수리</span></td><td><code>internal/template/catalog_tree_hash.go:60</code> 그대로 — 한 줄(<code>_, _ =</code>)로 닫힘. <strong>소관자 없음</strong></td></tr>
+      <tr><td>4</td><td>Race — 항상-적재 토큰 예산 초과</td><td><span class="tag open">미수리</span></td><td>초과분 <strong>123 토큰 그대로</strong> (77,723 / 예산 77,600, 17항목). 테스트는 <code>internal/config</code>로 이사 갔지만 수치는 안 줄었다. <strong>t473 소관</strong></td></tr>
+      <tr><td>5</td><td>Race — TestStatusAheadBehindFromHeader</td><td><span class="tag fixed">수리</span></td><td><strong>t474가 수리</strong> — 테스트가 <code>internal/core/git</code>으로 이사한 새 자리에서 통과 확인</td></tr>
+      <tr><td>6</td><td>Race — TestStatusBranchHeaderShapes</td><td><span class="tag fixed">수리</span></td><td>〃 통과 확인</td></tr>
+    </table>
+  </div>
+  <details>
+    <summary>재검증에 쓴 실제 명령과 출력 (클릭해서 펼치기)</summary>
+<pre><code>$ go test ./internal/core/git/ -run 'TestStatusAheadBehindFromHeader|TestStatusBranchHeaderShapes' -count=1
+ok  github.com/modu-ai/moai-adk/internal/core/git  4.282s          ← #5·#6 수리 확인
+
+$ go test ./internal/config/ -run TestAlwaysLoadedTokenBudget -count=1 -v
+token_budget_guard_test.go:69: always-loaded surface = 77723 tokens (budget 77600, headroom -123, 17 entries)
+--- FAIL                                                          ← #4 미수리 (초과 123, CI 수치와 동일)
+
+$ grep -n '^status:' .moai/specs/SPEC-CODEX-E2E-MEASURE-001/plan.md .moai/specs/SPEC-CODEX-E2E-MEASURE-001/acceptance.md
+plan.md:5:status: completed
+acceptance.md:5:status: completed                                 ← #2 미수리 재확인</code></pre>
+    <p style="font-size:12.5px;color:var(--g700)">주의: 세 테스트는 185커밋 안에서 <strong>패키지를 이사</strong>했습니다(status → internal/core/git, 예산 → internal/config). 9/3 CI는 이사 전 자리에서 잰 값이라, 이사 후 자리에서 다시 재야 정확합니다 — 그렇게 했습니다.</p>
+  </details>
+</section>
+
+<section>
+  <h2><span class="n">04</span>t475 흡수 종결 판정 — codemaps 게이트</h2>
+  <p class="lead"><b>codemaps</b>는 코드 구조를 요약해 둔 안내 문서 5종입니다. <b>게이트 (gate)</b>는 통과/실패를 가르는 자동 검사기입니다. 카드 t475(문서 낡음 — 값 144)는 카드 t476(이번 리포트)이 흡수해 처리하기로 판정돼 있었고, 그 종결 조건은 "병합 트리에서 게이트가 초록인 것"입니다. 오늘, 185커밋을 흡수한 트리에서 수리된 게이트로 재측정했습니다.</p>
+  <div class="panel">
+<pre><code>$ go build -o ./bin/moai ./cmd/moai &amp;&amp; ./bin/moai graph check
+codemaps  value=10  threshold=40  verdict=<strong>fresh</strong>   ← 초록. 임계 40 미만
+mx-index  value=18  verdict=stale   ← 이 카드 소관 아님 (별도 처리)
+edges     value=2   verdict=stale   ← 〃
+citations value=0   verdict=fresh</code></pre>
+  </div>
+  <p style="font-size:13.5px">9월 초에 카드 t478이 게이트를 고쳐 <strong>"문서를 실제로 다시 만든 것"과 "도장만 다시 찍은 것"을 구별</strong>하게 됐습니다. 도장만 찍었더라면 value가 0 근처로 위장했을 것입니다. 실측 값 10은 185커밋 흡수 후에 살짝 낡은 부분이 10곳 있다는 뜻이고, 임계 40 미만이라 통과입니다 — 즉 <strong>이전 재생성이 진짜였음이 수리된 게이트로 확인</strong>됐습니다.</p>
+  <div class="note"><strong>아직 남은 한 걸음</strong> — 위 측정은 "흡수 트리" 기준입니다. 최종 종결은 이 브랜치가 develop에 병합된 <strong>병합 트리에서 같은 판별식(codemaps 행)을 다시 잰 값</strong>으로 합니다. 통합 창(리드가 여는 병합 허가 시간)에서 수행 예정.</div>
+</section>
+
+<section>
+  <h2><span class="n">05</span>최근 착지한 작업들</h2>
+  <p class="lead">develop 통합줄에 최근 병합된 커밋들입니다 (측정분만 실음).</p>
+  <div class="panel">
+    <table>
+      <tr><th>커밋</th><th>내용</th></tr>
+      <tr><td><code>3084f1071</code></td><td>develop 최신점 — WT-settings-origin 병합</td></tr>
+      <tr><td><code>e883493e5</code></td><td><strong>t479</strong> — binary-lag 허용목록 키 모양 검사기</td></tr>
+      <tr><td><code>251b8c950</code></td><td><strong>t478</strong> — codemaps 게이트 수리 (재생성/도장 구별 — 이 리포트 04절의 기반)</td></tr>
+      <tr><td><code>5f9f61d65</code></td><td>WT-t410-followups 병합</td></tr>
+      <tr><td><code>becf0be68</code></td><td><strong>t480</strong> — 증거 반출 (evidence export)</td></tr>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">06</span>남은 일 (carryover)</h2>
+  <p class="lead">우선순위 순입니다.</p>
+  <div class="panel">
+    <ul class="tight">
+      <li><strong>1 · 미푸시 185커밋 push</strong> — 리드 일괄 실행. push 후에야 최신 코드의 CI 판정이 생깁니다 (High)</li>
+      <li><strong>2 · 소관자 없는 적색 2건</strong> — SPEC Lint 상태 필드 2줄 (한 줄씩 삭제) · errcheck 1건 (한 줄 수정). 둘 다 아주 작은 수정인데 담당 카드가 없습니다 (High)</li>
+      <li><strong>3 · t475 최종 종결</strong> — 병합 트리 재측정 (통합 창에서, 이 카드와 함께) (High)</li>
+      <li><strong>4 · 예산 초과 123 토큰</strong> — t473 소관. 항상-적재 검사 표면 17항목 중 어디를 줄일지 결정 필요 (Medium)</li>
+      <li><strong>5 · mx-index(18)·edges(2) stale</strong> — 이번 재측정에서 확인된 별도 소관 항목. 카드 발행 대상 (Medium)</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">07</span>인계 중 기록된 사고 (복원 완료)</h2>
+  <div class="panel" style="font-size:13.5px">
+    9월 4일 03:43경, 이 카드의 이전 담당(lane-1)이 커밋을 마친 뒤, 작업 폴더의 codemaps 문서 5개가 도구의 자동 출력물로 덮이고 판정 기록 2건이 삭제된 채 발견됐습니다. 다행히 커밋된 원본이 남아 있어 <code>git restore</code>로 전부 복원했고 손실은 없습니다. 덮인 자동 출력물은 언제든 도구로 다시 만들 수 있는 것이어서 잃은 것이 없다는 판정까지 확인했습니다. 누가 돌렸는지는 이 카드 소관 밖이라 판정하지 않았습니다.
+  </div>
+</section>
+
+<section>
+  <h2>직접 확인해 볼 것</h2>
+  <ul class="tight" style="font-size:13.5px">
+    <li>적체 확인: 터미널에서 <code>git rev-list --count origin/develop..develop</code> — 185가 나오면 이 리포트와 같은 상태</li>
+    <li>게이트 초록 확인: <code>go build -o ./bin/moai ./cmd/moai && ./bin/moai graph check</code> — codemaps 행의 <code>verdict=fresh</code> 확인 (rc 값은 판별식이 아님에 주의 — mx-index/edges가 항상 rc=1을 만듭니다)</li>
+    <li>큐 상태 확인: <code>moai todo</code></li>
+  </ul>
+</section>
+
+<footer>
+  이 리포트는 카드 t476의 산출물입니다. 측정 근거 전문은 같은 폴더의 <code>status-measurements.md</code> §6, 요약 쌍둥이는 <code>progress-report-20260906.md</code>에 있습니다. 모든 수치는 흡수 트리 <code>647cfeae7</code>에서 2026-09-06에 직접 측정했습니다.
+</footer>
+
+</main>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:      "#FAF9F5",
+      primaryTextColor:  "#141413",
+      primaryBorderColor:"#D97757",
+      lineColor:         "#87867F",
+      secondaryColor:    "#E3DACC",
+      tertiaryColor:     "#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

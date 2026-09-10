@@ -1,0 +1,75 @@
+--- new/removed files: control window (C->P) ---
+--- new/removed files: campaign window (P->O) ---
+1217a1218
+> ./.tmp/git-JOtwY4/HEAD
+1380a1382
+> ./.tmp/git-TWtzvv/HEAD
+94482a94485,94492
+> ./sessions/2026/09/07/rollout-2026-09-07T14-50-13-01a07a6a-c8b4-7781-80e4-cd0735d26ed3.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-50-15-01a07a6a-cc86-75f2-8c24-942e12969894.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-50-45-01a07a6b-4694-7572-9f7d-54d2aaf7c709.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-50-46-01a07a6b-49ff-7542-91fb-efbd668db7d0.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-50-49-01a07a6b-55ca-7570-b9fe-4771ba291fb1.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-50-50-01a07a6b-56c8-7800-8964-d87819b89de8.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-51-22-01a07a6b-d5cf-7d00-969b-fa5fb6166231.jsonl
+> ./sessions/2026/09/07/rollout-2026-09-07T14-51-23-01a07a6b-da4e-7c03-a20c-ac529296305f.jsonl
+94587c94597
+< ./tmp/arg0/codex-arg0T5ecVN/.lock
+---
+> ./tmp/arg0/codex-arg0Seph7q/.lock
+--- new/removed files NOT explained by control window ---
+./.tmp/git-JOtwY4/HEAD
+./.tmp/git-TWtzvv/HEAD
+./sessions/2026/09/07/rollout-2026-09-07T14-50-13-01a07a6a-c8b4-7781-80e4-cd0735d26ed3.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-50-15-01a07a6a-cc86-75f2-8c24-942e12969894.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-50-45-01a07a6b-4694-7572-9f7d-54d2aaf7c709.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-50-46-01a07a6b-49ff-7542-91fb-efbd668db7d0.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-50-49-01a07a6b-55ca-7570-b9fe-4771ba291fb1.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-50-50-01a07a6b-56c8-7800-8964-d87819b89de8.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-51-22-01a07a6b-d5cf-7d00-969b-fa5fb6166231.jsonl
+./sessions/2026/09/07/rollout-2026-09-07T14-51-23-01a07a6b-da4e-7c03-a20c-ac529296305f.jsonl
+./tmp/arg0/codex-arg0Seph7q/.lock
+--- mtime-changed files in campaign window (P->O), full list ---
+./sessions/2026/09/07/rollout-2026-09-07T14-50-13-01a07a6a-c8b4-7781-80e4-cd0735d26ed3.jsonl 1788760244
+./sessions/2026/09/07/rollout-2026-09-07T14-50-15-01a07a6a-cc86-75f2-8c24-942e12969894.jsonl 1788760244
+./sessions/2026/09/07/rollout-2026-09-07T14-50-45-01a07a6b-4694-7572-9f7d-54d2aaf7c709.jsonl 1788760247
+./sessions/2026/09/07/rollout-2026-09-07T14-50-46-01a07a6b-49ff-7542-91fb-efbd668db7d0.jsonl 1788760247
+./.tmp/git-JOtwY4/HEAD 1788760266
+./sessions/2026/09/07/rollout-2026-09-07T14-50-49-01a07a6b-55ca-7570-b9fe-4771ba291fb1.jsonl 1788760281
+./sessions/2026/09/07/rollout-2026-09-07T14-50-50-01a07a6b-56c8-7800-8964-d87819b89de8.jsonl 1788760281
+./sessions/2026/09/07/rollout-2026-09-07T14-51-22-01a07a6b-d5cf-7d00-969b-fa5fb6166231.jsonl 1788760284
+./sessions/2026/09/07/rollout-2026-09-07T14-51-23-01a07a6b-da4e-7c03-a20c-ac529296305f.jsonl 1788760284
+./.tmp/git-TWtzvv/HEAD 1788760298
+./tmp/arg0/codex-arg0Seph7q/.lock 1788760298
+(count: 11)
+--- of those, how many were ALSO churning in control window (C->P) ---
+0
+--- campaign-window mtime churn NOT in control churn (candidates) ---
+1788760244
+1788760244
+1788760247
+1788760247
+1788760266
+1788760281
+1788760281
+1788760284
+1788760284
+1788760298
+1788760298
+--- key-file integrity (config.toml, auth.json, hooks.json) ---
+-rw-------@ 1 goos  staff   4152 Aug 29 13:00 /Users/goos/.codex/auth.json
+-rw-------@ 1 goos  staff  17275 Sep  7 13:33 /Users/goos/.codex/config.toml
+-rw-r--r--@ 1 goos  staff   4244 Aug 27 03:17 /Users/goos/.codex/hooks.json
+9f6e3a953880630afcfa6a40abe846b785e8fc0067e17b3a7ec1d513f71ca33a  /Users/goos/.codex/config.toml
+b580bafcf6dbcf049edaf09fdfc9389c9759ae2677e5a34212017aa0671abbeb  /Users/goos/.codex/auth.json
+ddeb8afb3a868c194e4fe446714624b3406df516221b21ddb854a7e9557f520d  /Users/goos/.codex/hooks.json
+--- campaign captures under EXP (tmp only) ---
+total 56
+drwxr-xr-x@  8 goos  wheel   256 Sep  7 14:51 .
+drwx------@ 14 goos  wheel   448 Sep  7 14:53 ..
+-rw-r--r--@  1 goos  wheel   393 Sep  7 14:51 Interrupt.jsonl
+-rw-r--r--@  1 goos  wheel  3020 Sep  7 14:53 SessionEnd.jsonl
+-rw-r--r--@  1 goos  wheel  3294 Sep  7 14:52 SessionStart.jsonl
+-rw-r--r--@  1 goos  wheel  4272 Sep  7 14:53 Stop.jsonl
+-rw-r--r--@  1 goos  wheel   470 Sep  7 14:49 SubagentStart.jsonl
+-rw-r--r--@  1 goos  wheel   681 Sep  7 14:49 SubagentStop.jsonl

@@ -1,0 +1,20 @@
+=== RUN   TestT528DiscriminatorDrift
+    zz_probe2_test.go:61: discriminator A (digit-final), own card INCLUDED : files=807 decls=1160
+    zz_probe2_test.go:62: discriminator B (letter/dot ok), own card INCLUDED: files=807 decls=1167
+    zz_probe2_test.go:63: discriminator A, own card EXCLUDED               : files=806 decls=1160
+    zz_probe2_test.go:64: discriminator B, own card EXCLUDED               : files=806 decls=1167
+    zz_probe2_test.go:65: => corpus effect of own card (A): files +1 decls +0
+    zz_probe2_test.go:66: => discriminator effect A->B (own excluded): decls +7
+--- PASS: TestT528DiscriminatorDrift (0.59s)
+=== RUN   TestT528HeadingFalsePositive
+    zz_probe2_test.go:101: AC section anchored on a ###-or-deeper heading = 9
+    zz_probe2_test.go:102: AC section anchored on a heading naming the FILE acceptance.md = 41
+    zz_probe2_test.go:104:   ../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md  ->  ### Out of Scope — 형제 `acceptance.md` 인라인 파싱
+    zz_probe2_test.go:104:   ../../.moai/specs/SPEC-AGENT-EMIT-LINEAGE-001/spec.md  ->  ## 3. 수락 기준 — `acceptance.md` (Tier M)
+    zz_probe2_test.go:104:   ../../.moai/specs/SPEC-AUDIT-SNAPSHOT-001/spec.md  ->  ## §H. Acceptance Criteria (summary — full GWT in acceptance.md)
+    zz_probe2_test.go:104:   ../../.moai/specs/SPEC-AUTONOMY-TIERS-001/spec.md  ->  ## §H. Acceptance Criteria (summary — full GWT in acceptance.md)
+    zz_probe2_test.go:104:   ../../.moai/specs/SPEC-CC2178-MODEL-POLICY-REPAIR-001/spec.md  ->  ## §D. Acceptance Criteria (Summary — see acceptance.md for full Given-When-Then)
+--- PASS: TestT528HeadingFalsePositive (0.10s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	1.047s
+EXIT=0

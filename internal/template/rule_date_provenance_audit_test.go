@@ -14,12 +14,12 @@
 // Sentinel: RULE_DATE_PROVENANCE_LEAK.
 //
 // False-positive mitigation (design.md §4):
-//   1. Line-context exclusion: lines whose trimmed form starts with a metadata
-//      prefix (Last Updated:, Version:, Status:, Relocated:, Origin:,
-//      Classification:, created:, created_at:, updated:, updated_at:, date:)
-//      are skipped — these are legitimate doc-metadata date placements.
-//   2. File-level allowlist: NOTICE.md is fully excluded (third-party import
-//      provenance dates — Out of Scope per spec.md §C NOTICE.md carve-out).
+//  1. Line-context exclusion: lines whose trimmed form starts with a metadata
+//     prefix (Last Updated:, Version:, Status:, Relocated:, Origin:,
+//     Classification:, created:, created_at:, updated:, updated_at:, date:)
+//     are skipped — these are legitimate doc-metadata date placements.
+//  2. File-level allowlist: NOTICE.md is fully excluded (third-party import
+//     provenance dates — Out of Scope per spec.md §C NOTICE.md carve-out).
 //
 // Ratchet semantics: this guard is NOT an automatic date classifier. It forces
 // human judgment (allowlist or remove) whenever a new date enters the rules

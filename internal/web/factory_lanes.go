@@ -4,7 +4,7 @@
 // widening it: the four-role chain is a fixed dispatch vocabulary, and a
 // variable-length role list would make every chain consumer defend against it.
 //
-// The join is `workers.json[lane-N].PID → active-sessions entry → kanban
+// The join is `factory.db workers[lane-N].PID → active-sessions entry → kanban
 // record`, and it is non-unique on BOTH sides. The factory registry's loader is
 // fail-open and pruning dead claims is a separate call this console does not
 // make, so one pid can sit on two lanes; and session.Registry.Register

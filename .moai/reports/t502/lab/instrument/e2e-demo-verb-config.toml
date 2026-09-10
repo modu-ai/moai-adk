@@ -1,0 +1,4 @@
+# written by a stand-in for the t502 verb
+[[skills.config]]
+path = "/tmp/t502-e2e-demo/proj/.agents/skills/t502probe/SKILL.md"
+enabled = false

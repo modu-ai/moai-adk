@@ -1,0 +1,2 @@
+--- FAIL: TestGraphCheckCmd_AbsentExitsOne (0.55s)
+    graph_check_test.go:271: absent layers must exit 1, got graph check: codemaps stamp 61195101480e not comparable in this checkout: no commit in the stamped history touches the codemaps body

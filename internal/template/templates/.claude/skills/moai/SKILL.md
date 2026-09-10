@@ -167,7 +167,7 @@ For detailed orchestration: Read .claude/skills/moai/workflows/goal.md
 
 Purpose: Hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
 Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo` (list). CLI only: `moai todo next` (print queued cards; `moai todo next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai todo done <n>` (remove).
-State: `.moai/state/todo/backlog.db` — project-local, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` sitting beside it is an export or a legacy leftover, never the queue; the read verbs say so on stderr when one is present.
+State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` at the former project-local path is an export or a legacy leftover, never the queue; the read verbs say so on stderr when one is present.
 The pick is the operator's: never preselect, never reorder by inferred priority, never auto-populate from TODO comments or issues.
 Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai todo` or `/moai todo "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — `moai todo` stays registered and every verb keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
 For detailed orchestration: Read .claude/skills/moai/workflows/todo.md
@@ -347,7 +347,7 @@ This check does NOT apply to: project, feedback subcommands.
 
 [HARD] Beginner-Friendly Option Design:
 All AskUserQuestion calls throughout MoAI workflows MUST follow these rules:
-- The first option MUST always be the recommended choice, clearly marked with "(Recommended)" suffix
+- The first option MUST always be the recommended choice, clearly marked with "(Recommended)" suffix — this is the `push`-mode branch; while `interview.recommendation_mode` is `pull` the suffix is withheld from every option and no option carries a preference claim (`.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles)
 - Every option MUST include a detailed description explaining what it does and its implications
 
 Step 2.8 - Requirement Analysis & Completion Condition:

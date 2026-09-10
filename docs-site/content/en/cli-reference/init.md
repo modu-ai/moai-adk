@@ -29,6 +29,7 @@ Accepts at most 1 argument.
 | `--all` | Deploy the full catalog (core + optional packs + harness artifacts). The default is core-only slim mode |
 | `--force` | Re-initialize an existing project (backs up the current `.moai/`) |
 | `--no-hooks` | Skip git hook installation |
+| `--llm <claude\|codex\|both>` | Select the LLM harness to wire (default: `claude`) |
 
 ### Project defaults
 

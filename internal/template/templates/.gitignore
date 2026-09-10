@@ -171,6 +171,8 @@ secret-*.*
 # ===========================================
 # Claude Code Configuration
 # ===========================================
+/AGENTS.local.md
+/CLAUDE.local.md
 .claude/settings.local.json
 .claude/settings.local.*.json
 .claude/.env.local*
@@ -200,6 +202,28 @@ secret-*.*
 # Only the generated entries are ignored. The .agents/ root itself is NOT:
 # entries you create there, and source files placed there later, stay tracked.
 .agents/skills/moai*
+#
+# The published /moai command skills (committed template-managed content,
+# not deploy-time build products) share this root under moai-<command>
+# names. The publisher's collision guard keeps those names disjoint from
+# the canonical mirror names above, so each published entry is re-included
+# explicitly; a new command must extend this list alongside its source.
+!.agents/skills/moai-clean/
+!.agents/skills/moai-codemaps/
+!.agents/skills/moai-e2e/
+!.agents/skills/moai-feedback/
+!.agents/skills/moai-fix/
+!.agents/skills/moai-gate/
+!.agents/skills/moai-goal/
+!.agents/skills/moai-harness/
+!.agents/skills/moai-loop/
+!.agents/skills/moai-mx/
+!.agents/skills/moai-plan/
+!.agents/skills/moai-project/
+!.agents/skills/moai-review/
+!.agents/skills/moai-run/
+!.agents/skills/moai-sync/
+!.agents/skills/moai-todo/
 
 # ===========================================
 # Local-Only Files (never sync via git pull)

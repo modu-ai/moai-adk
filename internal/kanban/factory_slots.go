@@ -12,10 +12,8 @@
 // backlog store the loop polls. The cli call sites keep their historical
 // package-private names via thin delegates.
 //
-// The registry FILE PATH keeps its historical workers.json name (the t118
-// lane rename changed the LABEL VALUES it is keyed by — lane-<n> — not the
-// file's location; renaming the file would orphan every existing registry
-// for no benefit).
+// The registry is persisted in the project-scoped factory.db. A legacy
+// workers.json is imported only when the SQLite roster is empty.
 //
 // The liveness probe is passed in as a parameter rather than read from a
 // package var so each consumer keeps its own test seam: cli overrides its
@@ -24,10 +22,14 @@
 package kanban
 
 import (
-	"encoding/json"
+	"context"
+	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // FactoryWorkerEntry is one registered lane: the pid of the process that
@@ -39,13 +41,15 @@ type FactoryWorkerEntry struct {
 	RegisteredAt string `json:"registered_at"`
 }
 
-// FactoryRegistryPath returns the liveness-checked lane-name registry's
-// home. It lives under .moai/state/ beside the goal and kanban state, keyed
-// by project root — separate projects keep separate registries, and one
-// project's concurrent factory runs share one (which is the point: the bump
-// exists to keep session names addressable).
+// FactoryRegistryPath returns the project-scoped factory.db path. Separate
+// projects keep separate registries and one project's runs share one roster.
 func FactoryRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "factory", "workers.json")
+	_ = homestate.EnsureProjectLayout(root)
+	path, err := homestate.FactoryDBPath(root)
+	if err != nil {
+		return filepath.Join(root, ".moai", "state", "factory", "factory.db")
+	}
+	return path
 }
 
 // LoadFactoryRegistry reads the lane registry, returning an empty map on
@@ -54,25 +58,138 @@ func FactoryRegistryPath(root string) string {
 // lead loop's slot pick.
 func LoadFactoryRegistry(path string) map[string]FactoryWorkerEntry {
 	reg := make(map[string]FactoryWorkerEntry)
-	raw, err := os.ReadFile(path)
+	db, err := homestate.OpenFactoryPath(path)
 	if err != nil {
 		return reg
 	}
-	_ = json.Unmarshal(raw, &reg)
+	defer func() { _ = db.Close() }()
+	if root, rootErr := homestate.ProjectRootFromDBPath(path); rootErr == nil {
+		_ = db.ImportLegacyWorkers(filepath.Join(root, ".moai", "state", "factory", "workers.json"))
+	}
+	rows, err := db.DB.Query(`SELECT label, pid, registered_at FROM workers`)
+	if err != nil {
+		return reg
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var label string
+		var entry FactoryWorkerEntry
+		if err := rows.Scan(&label, &entry.PID, &entry.RegisteredAt); err == nil {
+			reg[label] = entry
+		}
+	}
 	return reg
 }
 
 // SaveFactoryRegistry writes the lane registry, creating its directory as
 // needed. Best-effort: the error is returned for the caller to ignore.
 func SaveFactoryRegistry(path string, reg map[string]FactoryWorkerEntry) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	encoded, err := json.MarshalIndent(reg, "", "  ")
+	db, err := homestate.OpenFactoryPath(path)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(encoded, '\n'), 0o600)
+	defer func() { _ = db.Close() }()
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`DELETE FROM workers`); err != nil {
+		return err
+	}
+	for label, entry := range reg {
+		at := entry.RegisteredAt
+		if at == "" {
+			at = time.Now().UTC().Format(time.RFC3339Nano)
+		}
+		if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES(?,?,?,?)`, label, entry.PID, at, at); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// ClaimFactoryWorkerName atomically removes dead claims, selects the first
+// free lane at or above requested, and records pid. The selection and insert
+// share one IMMEDIATE SQLite transaction, so two launchers cannot both observe
+// the same free label and then erase each other's claim through whole-roster
+// replacement.
+func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) bool) (string, error) {
+	admissionLock, lockErr := homestate.AcquireAdmissionLock(root)
+	if lockErr != nil {
+		return requested, lockErr
+	}
+	defer func() { _ = admissionLock.Release() }()
+	if err := homestate.CheckRuntimeAdmission(root); err != nil {
+		return requested, err
+	}
+	n, ok := SplitFactoryLaneLabel(requested)
+	if !ok {
+		return requested, fmt.Errorf("invalid factory lane label %q", requested)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return requested, err
+	}
+	defer func() { _ = db.Close() }()
+	if err := db.ImportLegacyWorkers(filepath.Join(root, ".moai", "state", "factory", "workers.json")); err != nil {
+		return requested, err
+	}
+
+	tx, err := db.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return requested, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.Query(`SELECT label,pid FROM workers`)
+	if err != nil {
+		return requested, err
+	}
+	type claim struct {
+		label string
+		pid   int
+	}
+	var stale []claim
+	for rows.Next() {
+		var row claim
+		if err := rows.Scan(&row.label, &row.pid); err != nil {
+			_ = rows.Close()
+			return requested, err
+		}
+		if row.pid <= 0 || !alive(row.pid) {
+			stale = append(stale, row)
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return requested, err
+	}
+	for _, row := range stale {
+		if _, err := tx.Exec(`DELETE FROM workers WHERE label=? AND pid=?`, row.label, row.pid); err != nil {
+			return requested, err
+		}
+	}
+
+	final := requested
+	for {
+		var existing int
+		err := tx.QueryRow(`SELECT pid FROM workers WHERE label=?`, final).Scan(&existing)
+		if err == sql.ErrNoRows {
+			break
+		}
+		if err != nil {
+			return requested, err
+		}
+		n++
+		final = FactoryLaneLabel(n)
+	}
+	at := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES(?,?,?,?)`, final, pid, at, at); err != nil {
+		return requested, err
+	}
+	if err := tx.Commit(); err != nil {
+		return requested, err
+	}
+	return final, nil
 }
 
 // PruneFactoryDeadClaims drops claims whose pid is dead (or non-positive)

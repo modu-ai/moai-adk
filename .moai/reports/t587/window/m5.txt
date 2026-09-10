@@ -1,0 +1,34 @@
+=== RUN   TestReportArchiveShortfall
+=== PAUSE TestReportArchiveShortfall
+=== RUN   TestUpdateRepair_RecoverHintFlagExists
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/source_literals
+--- PASS: TestUpdateRepair_RecoverHintFlagExists (0.08s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/source_literals (0.08s)
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/template_sync
+2026/09/11 03:24:08 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall
+--- PASS: TestUpdateRepair_RenderUsesProjectGitMode (0.62s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/template_sync (0.58s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall (0.04s)
+=== RUN   TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup
+--- PASS: TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup (0.60s)
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_directory_is_reported
+--- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors (0.02s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_directory_is_reported (0.02s)
+=== CONT  TestReportArchiveShortfall
+    update_observability_test.go:110: shortfall warning must name the archive failure as the cause, got:
+        !  Legacy skill archive  archived 0 of 3 skills present before sync · managed-path cleanup removed the sources before the archive step ran — the rest were deleted without archival
+--- FAIL: TestReportArchiveShortfall (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.748s
+FAIL

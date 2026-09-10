@@ -130,7 +130,48 @@ logs/*
 # Template-distributed Codex agent artifacts ARE committed (SPEC-CODEX-DUAL-AGENTS-001);
 # re-include the template subtree excluded by the bare .codex/ rule above.
 !internal/template/templates/.codex/
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+# Publish only the generated Codex command-skill entrypoints. Keep every other
+# local .agents artifact, unlisted skill, and per-skill sidecar ignored.
+!.agents/skills/moai-clean/
+!.agents/skills/moai-codemaps/
+!.agents/skills/moai-e2e/
+!.agents/skills/moai-feedback/
+!.agents/skills/moai-fix/
+!.agents/skills/moai-gate/
+!.agents/skills/moai-goal/
+!.agents/skills/moai-harness/
+!.agents/skills/moai-loop/
+!.agents/skills/moai-mx/
+!.agents/skills/moai-plan/
+!.agents/skills/moai-project/
+!.agents/skills/moai-review/
+!.agents/skills/moai-run/
+!.agents/skills/moai-sync/
+!.agents/skills/moai-todo/
+.agents/skills/*/*
+!.agents/skills/moai-clean/SKILL.md
+!.agents/skills/moai-codemaps/SKILL.md
+!.agents/skills/moai-e2e/SKILL.md
+!.agents/skills/moai-feedback/SKILL.md
+!.agents/skills/moai-fix/SKILL.md
+!.agents/skills/moai-gate/SKILL.md
+!.agents/skills/moai-goal/SKILL.md
+!.agents/skills/moai-harness/SKILL.md
+!.agents/skills/moai-loop/SKILL.md
+!.agents/skills/moai-mx/SKILL.md
+!.agents/skills/moai-plan/SKILL.md
+!.agents/skills/moai-project/SKILL.md
+!.agents/skills/moai-review/SKILL.md
+!.agents/skills/moai-run/SKILL.md
+!.agents/skills/moai-sync/SKILL.md
+!.agents/skills/moai-todo/SKILL.md
+# Template-distributed Codex command-skill publications ARE committed
+# (SPEC-CODEX-COMMAND-SKILLS-001); re-include the template subtree excluded
+# by the bare .agents/ rule above.
+!internal/template/templates/.agents/
 # AGENTS.md is NOT ignored: the root file is this repository's tracked contract
 # document, and the template mirror ships it to users.
 
@@ -187,6 +228,8 @@ secret-*.*
 # ===========================================
 # Claude Code Configuration
 # ===========================================
+/AGENTS.local.md
+/CLAUDE.local.md
 .claude/settings.local.json
 .claude/settings.local.json.lock
 .claude/settings.local.*.json

@@ -14,6 +14,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -615,6 +616,12 @@ func runGitCommand(dir string, args ...string) (string, error) {
 // launchClaudeFunc is the function used by launchClaude. Override in tests.
 var launchClaudeFunc = launchClaudeDefault
 
+// execOrSpawnClaudeFunc hands the process over to claude. Defaults to the
+// build-tagged execOrSpawnClaude (POSIX syscall.Exec / Windows
+// spawn-and-exit). Override in tests to capture the binary path, args, and
+// env a launch would have used without replacing the test process.
+var execOrSpawnClaudeFunc = execOrSpawnClaude
+
 // launchClaude delegates to launchClaudeFunc for testability.
 func launchClaude(profileName string, extraArgs []string) error {
 	return launchClaudeFunc(profileName, extraArgs)
@@ -633,10 +640,12 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		fmt.Fprintf(os.Stderr, "Profile: %s\n", profileName)
 	}
 
-	// 2. Find claude binary
-	claudeBin, err := exec.LookPath("claude")
+	// 2. Find claude binary — explicit pin first (MOAI_CLAUDE_BIN env var,
+	// then the llm.claude_bin config key; issue #1697), PATH lookup unchanged
+	// as the fallback.
+	claudeBin, err := resolveLaunchClaudeBinary()
 	if err != nil {
-		return fmt.Errorf("claude not found in PATH. Install Claude Code first")
+		return err
 	}
 
 	// 3. Read profile preferences and sync to project config. The
@@ -724,10 +733,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// slot env that setGLMEnv configured; under a Claude backend short aliases
 	// expand to canonical ids as before (byte-identical to expandModelString).
 	glmBackend := false
-	glmHighModel := ""
+	var glmModels config.GLMModels
 	var glmTierEffort config.GLMTierEffort
 	if root, err := findProjectRoot(); err == nil {
-		glmBackend, glmHighModel, glmTierEffort = resolveGLMBackendForLaunch(root)
+		glmBackend, glmModels, glmTierEffort = resolveGLMBackendForLaunch(root)
 	}
 	model = resolveMainSessionModel(model, glmBackend)
 
@@ -762,6 +771,23 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		a = append(a, passThrough...)
 		return a
 	}
+	profileLeaseEnv := ""
+	if isNamedProfile(profileName) {
+		store, leaseErr := homestate.OpenProfileLeases()
+		if leaseErr != nil {
+			return fmt.Errorf("protect profile lease before launch: %w", leaseErr)
+		}
+		token, createErr := store.CreateProvisional(context.Background(), homestate.ProfileLease{
+			ProfileName: profileName, ProfilePath: profile.GetProfileDir(profileName),
+			ProjectKey: homestate.ProjectKey(launchProjectRoot()), PID: os.Getpid(),
+			ProcessFingerprint: homestate.CurrentProcessFingerprint(),
+		})
+		_ = store.Close()
+		if createErr != nil {
+			return fmt.Errorf("protect profile lease before launch: %w", createErr)
+		}
+		profileLeaseEnv = "MOAI_PROFILE_LEASE_TOKEN=" + token
+	}
 
 	// 7. Execute with --continue fallback
 	if cont {
@@ -769,6 +795,9 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		tryCmd.Stdin = os.Stdin
 		tryCmd.Stdout = os.Stdout
 		tryCmd.Stderr = os.Stderr
+		if profileLeaseEnv != "" {
+			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
+		}
 		err := tryCmd.Run()
 		if err == nil {
 			return nil
@@ -801,7 +830,7 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		// prefs/model_policy chain. Empty stored slot ⇒ the chain, unchanged.
 		// The collapse overlay downstream stays governing for the wire value
 		// (stored high and max both wire as max; flash pins everything to max).
-		launchEnv = buildEnvForGLMLaunch(glmHighModel,
+		launchEnv = buildEnvForGLMLaunch(glmModels, model,
 			resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort), os.Environ())
 	} else {
 		// Claude backend: honors the 5-step effort vocabulary (CLAUDE_CODE_EFFORT_LEVEL).
@@ -811,7 +840,14 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// exists for the resolving session, raise the runtime Stop-hook block cap so
 	// the infinite loop persists. Best-effort + fail-open (never blocks launch).
 	launchEnv = injectStopHookBlockCapForGoal(context.Background(), launchEnv, launchProjectRoot(), resolveLaunchSessionID(""))
-	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
+	// SPEC-CHAIN-CORE-001 REQ-CHAIN-005 (Path A): record the worktree spawn
+	// boundary on the chain ledger and hand the node ID to the child
+	// environment. Fail-open — never blocks the launch (card t242).
+	launchEnv = injectChainNodeForLaunch(passThrough, launchEnv, os.Stderr)
+	if profileLeaseEnv != "" {
+		launchEnv = append(launchEnv, profileLeaseEnv)
+	}
+	return execOrSpawnClaudeFunc(claudeBin, buildArgs(false), launchEnv)
 }
 
 // --- Flag Parsing ---
@@ -1186,14 +1222,18 @@ func resolveLaunchEffort(effortLevel, modelPolicy string) string {
 // implement Claude's 5-level effort — that var is inert under the z.ai proxy)
 // and injects ANTHROPIC_REASONING_EFFORT derived from the web-set effort via
 // the GLM effort overlay, so a web-set effort reaches z.ai through the channel
-// it honors. The derivation is model-aware: glmHighModel (the resolved high
-// slot) pins every effort to max under glm-5.3-flash (flash accepts
-// reasoning_effort: max only), and collapses as before under any other model.
+// it honors. The derivation is model-aware and SLOT-keyed: the GLM model of the
+// slot serving sessionModel (template.GLMSlotModelOrHigh over glmModels) pins
+// every effort to max under glm-5.3-flash (flash accepts reasoning_effort: max
+// only), and collapses as before under any other model. The slot must be the
+// same one the effort was read from — a session on a non-flash slot whose high
+// slot is flash would otherwise have its stored effort silently discarded
+// (t360). A sessionModel claiming no slot keys on the high slot, unchanged.
 // Any pre-existing ANTHROPIC_REASONING_EFFORT (setGLMEnv writes the
 // hardcoded coding-max default) is replaced so the prefs-derived value wins.
 // When the effort collapse disables thinking, no reasoning-effort entry is
 // emitted (reasoning_effort is moot when thinking is off).
-func buildEnvForGLMLaunch(glmHighModel, effort string, base []string) []string {
+func buildEnvForGLMLaunch(glmModels config.GLMModels, sessionModel, effort string, base []string) []string {
 	result := make([]string, 0, len(base)+1)
 	for _, e := range base {
 		if strings.HasPrefix(e, config.EnvClaudeCodeEffortLevel+"=") {
@@ -1204,7 +1244,12 @@ func buildEnvForGLMLaunch(glmHighModel, effort string, base []string) []string {
 		}
 		result = append(result, e)
 	}
-	for k, v := range glmReasoningEnvVarsForModel(glmHighModel, effort) {
+	// The collapse is MODEL-keyed, so it reads the model of the SAME slot the
+	// effort came from (resolveGLMMainSessionEffort → glmSlotEffortForModel).
+	// Keying it to the high slot discards a stored effort whenever the session
+	// runs on a different slot whose model differs in flash-ness (t360).
+	// A session model claiming no slot falls back to the high slot, unchanged.
+	for k, v := range glmReasoningEnvVarsForModel(template.GLMSlotModelOrHigh(glmModels, sessionModel), effort) {
 		result = append(result, k+"="+v)
 	}
 	return result
@@ -1249,13 +1294,13 @@ func resolveMainSessionModel(prefsModel string, glmBackend bool) string {
 // glm-settings-persist — resolveGLMMainSessionEffort reads the slot serving
 // the main-session model). The model is "" whenever the backend resolves false
 // or llm.yaml fails to load; the overlay treats an empty model as non-flash.
-func resolveGLMBackendForLaunch(root string) (bool, string, config.GLMTierEffort) {
+func resolveGLMBackendForLaunch(root string) (bool, config.GLMModels, config.GLMTierEffort) {
 	sectionsDir := filepath.Join(filepath.Clean(root), defs.MoAIDir, defs.SectionsSubdir)
 	llm, err := loadLLMSectionOnly(sectionsDir)
 	if err != nil {
-		return false, "", config.GLMTierEffort{}
+		return false, config.GLMModels{}, config.GLMTierEffort{}
 	}
-	return template.IsGLMBackend(llm), llm.GLM.Models.High, llm.GLM.Effort
+	return template.IsGLMBackend(llm), llm.GLM.Models, llm.GLM.Effort
 }
 
 // syncBypassToSettingsLocal is a backward-compatible wrapper for

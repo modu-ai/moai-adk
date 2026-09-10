@@ -115,6 +115,21 @@ type IntegrationLock struct {
 	Worktree    string `json:"worktree"`
 	AcquiredAt  string `json:"acquired_at"`
 	Card        string `json:"card,omitempty"`
+
+	// SettingsDriftBypass and SettingsDriftPreserved record that the window
+	// was taken over a REFUSED settings-drift verdict (card t488), and where
+	// the drifted working copy was preserved.
+	//
+	// Both are written only when a refusal was actually bypassed — that is,
+	// only when the refusal layer was on and --allow-settings-drift was given.
+	// With the layer off there is no refusal to bypass, and stamping the flag
+	// there would make the record assert something that did not happen.
+	//
+	// They are deliberately NOT driven by --force: that flag means "take the
+	// window from a live holder", a different decision, and one flag carrying
+	// two of them leaves the record unable to say which was intended.
+	SettingsDriftBypass    bool   `json:"settings_drift_bypass,omitempty"`
+	SettingsDriftPreserved string `json:"settings_drift_preserved,omitempty"`
 }
 
 // Held reports whether the record names a holder at all.

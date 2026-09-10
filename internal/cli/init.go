@@ -23,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -125,11 +126,11 @@ func init() {
 	// fully-autonomous).
 	initCmd.Flags().String("autonomy-tier", "", "Autonomy tier: semi-auto, automatic, or fully-autonomous (default: semi-auto)")
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the agent-harness selector. Closed
+	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the LLM harness selector. Closed
 	// set {claude, codex, both} validated fail-loud in validateInitFlags;
 	// help names all three values. Default claude = flag-absent behavior
 	// byte-identical to today (AC-CW-004).
-	initCmd.Flags().String("agent", "", "Agent harness to wire: claude, codex, or both (default: claude; codex skips .mcp.json provisioning and wires the .codex/ hook layer + MCP config)")
+	initCmd.Flags().String("llm", "", "LLM harness to wire: claude, codex, or both (default: claude; codex skips .mcp.json provisioning and wires the .codex/ hook layer + MCP config)")
 }
 
 // agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
@@ -138,7 +139,7 @@ func init() {
 // reversible delta.
 //
 // SPEC-INIT-HARNESS-PROMPT-001 moved that place: the selection now has TWO
-// input sources — the --agent flag and the wizard's agent_wiring answer — so
+// input sources — the --llm flag and the wizard's agent_wiring answer — so
 // the resolution point is resolveAgentWiringWithWizard, not resolveAgentWiring
 // (which is now only the flag-reading primitive). The flag still wins over the
 // wizard answer; that precedence is decided there, once, upstream of both
@@ -165,7 +166,7 @@ func normalizeAgentWiring(value string) agentWiring {
 	}
 }
 
-// resolveAgentWiring resolves the --agent selection, defaulting to claude.
+// resolveAgentWiring resolves the --llm selection, defaulting to claude.
 // An empty or unrecognized value falls back to claude rather than erroring
 // here — invalid values are rejected earlier, fail-loud, by
 // validateInitFlags.
@@ -174,7 +175,7 @@ func normalizeAgentWiring(value string) agentWiring {
 // on is resolved once by resolveAgentWiringWithWizard, which additionally reads
 // the wizard's answer (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004).
 func resolveAgentWiring(cmd *cobra.Command) agentWiring {
-	return normalizeAgentWiring(getStringFlag(cmd, "agent"))
+	return normalizeAgentWiring(getStringFlag(cmd, "llm"))
 }
 
 // wireCodexUnlessClaude wires the Codex side (.codex/hooks.json +
@@ -194,6 +195,25 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 	}
 	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: Codex wiring failed: %v\n", err)
+	}
+}
+
+// addCodexReinitGuidance is the redirect note printed when init runs
+// --llm codex|both against an already-initialized project (the --force
+// reinit path): the preferred additive verb is `moai tool enable codex`,
+// which wires Codex in place without reinitializing and is the only additive
+// command. The reinit itself proceeds as requested.
+const addCodexReinitGuidance = "note: this project is already initialized — use `moai tool enable codex` to add Codex without reinitializing. Proceeding with the requested reinit."
+
+// emitAddCodexReinitGuidance prints the guidance when the selection is
+// codex|both AND the project is already initialized. A claude selection and a
+// fresh project stay silent; a nil writer is safe.
+func emitAddCodexReinitGuidance(errOut io.Writer, wiring agentWiring, alreadyInitialized bool) {
+	if wiring == agentWiringClaude || !alreadyInitialized {
+		return
+	}
+	if errOut != nil {
+		_, _ = fmt.Fprintln(errOut, addCodexReinitGuidance)
 	}
 }
 
@@ -297,6 +317,12 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// as well as the answer — --non-interactive leaves it nil and the writer
 	// then touches nothing.
 	opts.FeedbackAutoSubmit = result.FeedbackAutoSubmit
+
+	// /moai project completion continuation (SPEC-PROJECT-CONTINUATION-KEY-001
+	// REQ-PCK-010). Wizard-only select, no CLI flag. The empty string carries
+	// "was it asked" — --non-interactive leaves it empty and the writer then
+	// touches nothing, leaving the template-shipped `continuation: card` alone.
+	opts.ProjectContinuation = result.ProjectContinuation
 
 	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
 	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
@@ -415,14 +441,14 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-CODEX-WIRING-001 (REQ-CW-001): validate the --agent closed set
+	// SPEC-CODEX-WIRING-001 (REQ-CW-001): validate the --llm closed set
 	// fail-loud, naming the valid values (autonomy-tier closed-set pattern).
-	agent := getStringFlag(cmd, "agent")
-	if agent != "" {
-		switch agentWiring(agent) {
+	llm := getStringFlag(cmd, "llm")
+	if llm != "" {
+		switch agentWiring(llm) {
 		case agentWiringClaude, agentWiringCodex, agentWiringBoth:
 		default:
-			return fmt.Errorf("invalid --agent value %q: must be one of: claude, codex, both", agent)
+			return fmt.Errorf("invalid --llm value %q: must be one of: claude, codex, both", llm)
 		}
 	}
 
@@ -561,7 +587,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// No positional arg or "." - use current directory
 		rootFlag = cwd
 	}
-
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
 	opts := project.InitOptions{
@@ -752,7 +777,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// unchanged (REQ-IHP-007).
 	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
 	agentWiringSelection := resolveAgentWiringWithWizard(
-		cmd.Flags().Changed("agent"), getStringFlag(cmd, "agent"), wizardResult,
+		cmd.Flags().Changed("llm"), getStringFlag(cmd, "llm"), wizardResult,
 	)
 
 	// Default git provider to "github" for backward compatibility
@@ -820,6 +845,16 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// (REQ-TUX2-010/011).
 	executor.SetReporter(newSpinnerReporter(p))
 
+	// SPEC-UPDATE-ADD-CODEX-001 (REQ-UAC-013, decision D4): redirect-not-block —
+	// on the --force reinit path with a codex|both selection, name the additive
+	// verb BEFORE proceeding; the reinit itself is not blocked. The probe
+	// reuses the same validator the executor consults, so the guidance and the
+	// executor cannot disagree about what "already initialized" means.
+	if getBoolFlag(cmd, "force") && agentWiringSelection != agentWiringClaude {
+		probe, probeErr := validator.Validate(opts.ProjectRoot)
+		emitAddCodexReinitGuidance(cmd.ErrOrStderr(), agentWiringSelection, probeErr == nil && !probe.Valid)
+	}
+
 	p.Info("Initializing MoAI project...")
 
 	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
@@ -838,6 +873,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
+		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
 
 	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
@@ -973,7 +1011,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
-	// --agent codex|both — hooks.json (EventTable-derived, whitelist-gated),
+	// --llm codex|both — hooks.json (EventTable-derived, whitelist-gated),
 	// config.toml (mcp_servers.moai + tui.status_line), trust sidecar, and
 	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
 	// so both harness sides of the init tail read as one unit.

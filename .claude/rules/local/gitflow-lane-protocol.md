@@ -32,7 +32,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 리포 고유 사항:
 
-- 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리드가 배치 시작 시 provisioning 한다.
+- 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리드가 배치 시작 시 provisioning 한다. provisioning 경로는 런처의 기존-브랜치 플래그다: `moai cc -w develop --branch develop` (2026-09-02 착지 — 이전에는 인가된 생성 경로가 없어 raw `git worktree add` 이탈이 반복됐다).
 - 통합 브랜치는 `develop` 이며 push 대상은 `origin/develop` 이다(§4의 CI 판정 면).
 - 병합을 마치고 자기 카드 작업이 남아 있으면 `EnterWorktree(<card-id>)` 로 재진입한다 — `ExitWorktree` 는 primary 체크아웃으로 돌아가지 자기 트리로 돌아가지 않는다.
 
@@ -97,6 +97,10 @@ git branch --show-current
 
 - **`go test ./...` 를 로컬에서 돌리지 않는다.** 레인 여럿이 동시에 돌려 load 413까지 치솟고 머신을 마비시킨 사고가 있다(2026-08-15).
 - **백그라운드 부하를 만들지 않는다.** 경합이 필요한 검증이라면 부하는 정리 보장이 있어야 한다 — 테스트 프레임워크 cleanup 훅에 등록된 kill이거나, 밖에서 프로세스를 묶는 `timeout` 래퍼. 뒤에 붙인 `kill`은 정리가 아니다(도달하지 못하는 줄이다).
+- **[HARD] 「이 카드가 무엇을 바꿨는가」는 흡수한 ref 와의 merge-base 부터 잰다 — 리터럴 base SHA 로 재지 않는다.** "Go 변경 없음", "템플릿 변경 없음", "이 경로만" 같은 범위 판정식의 왼쪽 끝은 읽는 시점에 `CARD_BASE=$(git merge-base develop HEAD)` 로 다시 구하고, 값을 핀하지 않는다. 대조군은 `git diff --name-only "$CARD_BASE"..HEAD | wc -l`(1 이상이어야 함), 프로브는 같은 범위에 pathspec 을 붙인 형태다. 대조군이 0 이면 "변경 없음"이 아니라 "측정 불가"로 보고한다.
+  - 이유: 흡수하는 순간 리터럴 핀 범위에 다른 카드의 커밋이 들어온다. 로컬 develop 이 원격보다 앞서 있으면 `origin/develop` 기준 merge-base 도 흡수 전 분기점에 머물러 같은 오탐을 낸다. 실측(2026-09-10, `.moai/reports/t543/verdict.md`): 로컬 develop 을 흡수한 뒤 리터럴 핀과 `origin/develop` 기준은 모두 Go 51개를 냈고, `develop` 기준만 카드 자기 기여(파일 4, Go 0)를 냈다. 이 재현이 이 규율의 대조군이다.
+  - 원칙은 "흡수한 바로 그 ref"다. 이 저장소 절차의 흡수 대상은 로컬 `develop`(§11, `CLAUDE.local.md` §4.1)이라 기본값이 `develop` 이다. 원격 develop 을 흡수하는 절차라면 ref 는 `origin/develop` 이 된다. develop 이 흡수 뒤 더 앞서가도 merge-base 는 마지막으로 흡수한 develop 커밋에 머물러 계속 옳다.
+  - 한계 — **병합 뒤에는 쓸 수 없다.** 카드가 develop 에 병합되면 merge-base 가 카드 tip 자신이 되어 범위가 비고, 판정식은 공허하게 통과한다(실측: 이미 병합된 카드 브랜치에서 빈 출력, `.moai/reports/t543/repro/limit-a-post-merge-all.txt`). 범위 판정식은 병합 전 평가 전용이다. 병합 뒤 근거는 병합 트리와 카드 브랜치 트리의 동일성으로 대신한다.
 
 ## 9. rc 빌드 — 운영자 요청 시, 통합 워크트리에서
 

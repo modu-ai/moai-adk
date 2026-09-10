@@ -1,0 +1,16 @@
+internal/cli/doctor_codex_stale_skill_test.go:331:type statRecorder struct {
+internal/cli/doctor_codex_path_guard_test.go:136:type statRecorder struct{ mutantM3 int }
+       2
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/doctor_codex_stale_skill_test.go:331:6: statRecorder redeclared in this block
+	internal/cli/doctor_codex_path_guard_test.go:136:6: other declaration of statRecorder
+internal/cli/doctor_codex_path_guard_test.go:48:13: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:49:62: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:51:9: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:52:64: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:54:9: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:55:89: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:89:13: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:90:62: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:92:9: rec.paths undefined (type *statRecorder has no field or method paths)
+internal/cli/doctor_codex_path_guard_test.go:92:9: too many errors

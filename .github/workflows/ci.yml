@@ -65,6 +65,7 @@ jobs:
       #   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
       #   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
       #   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)
+      #   .claude/settings.json           internal/config/toolpolicy/drift_check_test.go (permissions block vs tool-policy.yaml, fail-loud)
       #   scripts/ci-census/**            the test steps below shell out to it;
       #                                    without it here, a PR that edits the
       #                                    census alone gets the skip-marker
@@ -88,6 +89,7 @@ jobs:
               - '.claude/agents/**'
               - '.claude/rules/moai/**'
               - '.claude/output-styles/moai/**'
+              - '.claude/settings.json'
               - 'CLAUDE.md'
               - 'scripts/ci-census/**'
 
@@ -447,6 +449,12 @@ jobs:
         run: |
           go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
           git diff --exit-code -- 'internal/web/*_templ.go'
+
+      # Format gate: gofmt-clean is required on every push. Runs the same
+      # predicate as `make fmt-check` (tracked .go files) — on a clean CI
+      # checkout this is equivalent to whole-tree `gofmt -l .`.
+      - name: Check formatting (gofmt)
+        run: make fmt-check
 
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m

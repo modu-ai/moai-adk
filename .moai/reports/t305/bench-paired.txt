@@ -1,0 +1,5 @@
+22:59  up 5 days, 11:26, 25 users, load averages: 6.68 9.48 12.26
+base   n=25 median=  323.23ms p95=  344.57ms min=  313.29ms max=  402.40ms
+after  n=25 median=  151.72ms p95=  168.82ms min=  147.35ms max=  193.29ms
+delta  median +171.51ms (53.1% of baseline)
+22:59  up 5 days, 11:27, 25 users, load averages: 6.01 9.20 12.11

@@ -41,7 +41,7 @@ func (c *PlanCheckpoint) Validate() error {
 // RunCheckpoint holds state after the run phase.
 type RunCheckpoint struct {
 	SPECID        string `json:"spec_id" validate:"required"`
-	Status        string `json:"status" validate:"required,oneof=pass fail partial"` // SPEC-V3R2-RT-004 REQ-015
+	Status        string `json:"status" validate:"required,oneof=pass fail partial"`          // SPEC-V3R2-RT-004 REQ-015
 	Harness       string `json:"harness" validate:"required,oneof=minimal standard thorough"` // SPEC-V3R2-RT-004 AC-15
 	TestsTotal    int    `json:"tests_total"`
 	TestsPassed   int    `json:"tests_passed"`

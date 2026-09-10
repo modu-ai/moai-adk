@@ -395,6 +395,24 @@ func Page3Questions(projectRoot string) []Question {
 			Description: "When disabled (the default), the feedback workflow shows the masked title and body and asks before opening a public issue. Enabling it skips that confirmation.",
 			Default:     "false",
 		},
+		// SPEC-PROJECT-CONTINUATION-KEY-001 M4 (REQ-PCK-010) — how /moai project
+		// ends its Phase 14 completion. Presentation-scoped: it selects the
+		// recommended option and how far that option carries the session; it
+		// never decides whether the next-steps question is asked.
+		{
+			ID:          "project_continuation",
+			Group:       "Quality & Workflow",
+			Type:        QuestionTypeSelect,
+			Title:       "How should /moai project end?",
+			Description: "Whether the run issues a first-feature backlog card, and how far the recommended next step carries the session. 'card' is the shipped default.",
+			Options: []Option{
+				{Label: "None", Value: config.ProjectContinuationNone, Desc: "Issue no card; recommend Create SPEC"},
+				{Label: "Card", Value: config.ProjectContinuationCard, Desc: "Issue the card; stop at /moai plan"},
+				{Label: "Pipeline", Value: config.ProjectContinuationPipeline, Desc: "Issue the card; carry on to the kickoff gate"},
+			},
+			Default:  config.ProjectContinuationCard,
+			Required: true,
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — audit +
 		// MCP opt-in selection. Reuses the M3 typed-config enum vocabulary.
 		{
@@ -460,7 +478,7 @@ func Page3Questions(projectRoot string) []Question {
 			Default:     "false",
 		},
 		// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-001) — the agent-harness
-		// selector, previously reachable only through `moai init --agent`.
+		// selector, previously reachable only through `moai init --llm`.
 		// It sits immediately before mcp_provision because the two answers
 		// jointly decide the MCP surface and the overriding one is given
 		// first: a codex selection declines .mcp.json provisioning whatever
@@ -473,7 +491,7 @@ func Page3Questions(projectRoot string) []Question {
 			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "Select the agent harness to wire",
-			Description: "Which agent harness MoAI wires for this project. 'claude' is the recommended default; the --agent flag overrides this answer.",
+			Description: "Which LLM harness MoAI wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
 			Options: []Option{
 				{Label: "Claude (Recommended)", Value: "claude", Desc: "Wire the Claude side only (.mcp.json provisioning)"},
 				{Label: "Codex", Value: "codex", Desc: "Wire the .codex/ hook layer + MCP config; skips .mcp.json provisioning"},

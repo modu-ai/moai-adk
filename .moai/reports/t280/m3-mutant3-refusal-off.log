@@ -1,0 +1,5 @@
+--- FAIL: TestInboxDrain_CuratorRefusal (0.00s)
+    inbox_test.go:177: drain on a curator machine must exit non-zero
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.898s
+FAIL

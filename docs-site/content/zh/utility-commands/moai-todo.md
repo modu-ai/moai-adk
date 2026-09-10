@@ -53,7 +53,7 @@ flowchart TD
 
 ## 状态文件
 
-队列保存在 `.moai/state/todo/backlog.db` 这一个 SQLite 数据库里。它只存在于项目内部，不会被提交。下面的形状是 `moai todo list --json` 与 `moai todo export-json` 输出的记录形状，数据库里也是同样的字段。该目录下每个文件分别是什么、以及怎样退回纯 JSON，见项目内的 `.moai/docs/todo-queue-storage.md`。
+队列保存在 `~/.moai/db/<project-key>/todo/backlog.db` 这一个 SQLite 数据库里。项目键会把链接型工作树统一到主目录中的同一条队列，数据库不会被提交。下面的形状是 `moai todo list --json` 与 `moai todo export-json` 输出的记录形状，数据库里也是同样的字段。迁移与降级方法见项目内的 `.moai/docs/todo-queue-storage.md`。
 
 ```json
 {
@@ -194,7 +194,7 @@ $ moai todo unrelate 2
 | `moai todo <两个词以上>` | 按自然语原样添加条目。单个词（包括打错的动词）不是添加而是报错。若形如动词的首个词后面跟着卡片 id（`moai todo pick t151`），会被当作打错的动词而报错 —— 只是在句子中提到 id 的卡片仍然照常添加。 |
 | `moai todo add "<text>" [--pick]` | 添加条目，输出签发的 id 和位置。带 `--pick` 时，添加与挑选标记在一次加锁写入里完成。 |
 | `moai todo list` / `--json` | 呈现队列。`--json` 以 JSON 输出完整记录。 |
-| `moai todo done <n> [--expect <prefix>] [--require-landed]` | 在锁的保护下把第 `n` 号条目移出活跃队列。推荐使用显式 `t<n>` id 形式——并发添加会让位置移动。卡片和指向它的每条记录都会被**归档而非删除**，`undone` 可以把两者都恢复。归档的行不会出现在 `list` · `next` · `why` · `analyze` 及重复判定的输入中。`--expect <prefix>` 在卡片文本不以该前缀开头时拒绝——防止误关卡片的安全阀。`--require-landed` 会询问落地判定，只在得到"未落地"的肯定答案时拒绝，判定不确定时予以放行——该判定只会询问所配置基准 ref 上的某个提交是否提到了这张卡片，被询问本身并不保证答案正确。不带该标志时，`done` 完全不执行落地查询，也不增加成本；无论走哪条拒绝路径，队列记录都逐字节保持不变。每次成功的 `done` 都会在标准输出上留下恰好一个落地判定令牌 — `done <id> landing=landed|not-landed|unknown` — 即使不带该标志也是如此，此时因为没有执行查询而读作 `unknown`。判定不确定而放行的情况同样是 `unknown`，因此"守卫已通过"与"守卫从未运行"在标准输出上不再是同一串字节。 |
+| `moai todo done <n> [--expect <prefix>] [--require-landed]` | 在锁的保护下把第 `n` 号条目移出活跃队列。推荐使用显式 `t<n>` id 形式——并发添加会让位置移动。卡片和指向它的每条记录都会被**归档而非删除**，`undone` 可以把两者都恢复。归档的行不会出现在 `list` · `next` · `why` · `analyze` 及重复判定的输入中。`--expect <prefix>` 在卡片文本不以该前缀开头时拒绝——防止误关卡片的安全阀。`--require-landed` 会询问落地判定，只在得到"未落地"的肯定答案时拒绝，判定不确定时予以放行——该判定只看所答 ref 上提交的**主题行**是否以六种归属位置之一指向这张卡片（惯例提交作用域、末尾括号署名、署名后跟 PR 引用、卡片主导的合并、集成合并末尾括号内的卡片标记、`merge: <card>`）。正文提及、句中提及、分支名一概不计——归属是主题行中的**位置**，而不是消息里任何地方出现的标记。ref 依项目设置（`git_strategy.worktree_base_branch`）→ `refs/remotes/origin/HEAD` → 内置默认值（`origin/main`）的顺序确定；未配置项目由较低层级作答时，其来源会输出到标准错误。不带该标志时，`done` 完全不执行落地查询，也不增加成本；无论走哪条拒绝路径，队列记录都逐字节保持不变。每次成功的 `done` 都会在标准输出上留下恰好一个落地判定令牌 — 带该标志时为 `done <id> landing=landed|not-landed|unknown ref=<ref>`，不带时为 `done <id> landing=landed|not-landed|unknown` — 不带标志时没有执行任何查询，因此读作 `unknown`。判定不确定而放行的情况同样是 `unknown`，因此"守卫已通过"与"守卫从未运行"在标准输出上不再是同一串字节。 |
 | `moai todo undone <n>` | 把归档的卡片连同指向它的每条记录，按原来的位置恢复到活跃队列，并清空归档条目。`done` 之后接 `undone`，队列记录会精确回到相同的字节。若该 id 期间已重新发给另一张活跃卡片，则拒绝并指名冲突，活跃卡片不受影响。 |
 | `moai todo next` | 按从旧到新打印排队条目。只读。 |
 | `moai todo next <n> [--spec <SPEC-ID>]` | 把条目标记为 `picked`；给出 `--spec` 时原样记录标识符。一次加锁写入完成。 |
@@ -212,7 +212,7 @@ $ moai todo unrelate 2
 
 CLI 不会弹出提示。它接受参数和标志、输出一行、把错误写到 stderr——在脚本和 CI 中都能安全使用的形态。
 
-在链接型 worktree 里执行时，队列也**归属为 primary 检出的那一个队列**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一份文件。没有 git 元数据的项目把队列放在 `~/.moai/todo/<project-key>/backlog.db`。
+在链接型 worktree 里执行时，队列也**归属到 primary 检出的同一个项目键**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一个数据库。没有 git 元数据的项目也使用 `~/.moai/db/<project-key>/todo/backlog.db` 结构。
 
 两个表面共享同一个存储层。变更先抓住数据库旁边的锁文件（backlog.lock），再由一个 WAL 模式的 SQLite 事务落盘；读取则不加锁。条目 id 从持久化的最高水位标记（`last_seq`）签发，而该值在与插入相同的事务内推进，id 上还有 UNIQUE 约束，因此即使进程在变更途中死掉，被移除条目的 id 也永不复用。
 

@@ -171,6 +171,14 @@ func TestACCounterFixtureCorpus(t *testing.T) {
 		{"adjacency.md", 4, 2},
 		// Retirement vocabulary as the SUBJECT of a live criterion.
 		{"vocab.md", 4, 0},
+		// Trailing lowercase sub-letters are distinct identifiers, never
+		// folded into their numeric prefix (t348: the grammar the original
+		// counter silently skipped across ~1,000 existing forms).
+		{"subletters.md", 3, 2},
+		// A native prefix declaration replaces the default AC prefix for the
+		// file that carries it (t348: the convention stops being
+		// regex-frozen to one hardcoded prefix).
+		{"prefixdecl.md", 1, 1},
 	}
 	for _, tc := range cases {
 		tc := tc

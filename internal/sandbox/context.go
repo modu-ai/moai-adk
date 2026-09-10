@@ -12,7 +12,9 @@
 //
 // @MX:ANCHOR: [AUTO] Sandbox enum is the primary type contract for all backends
 // @MX:REASON: Fan_in >= 3: used by launcher.go, doctor_sandbox.go, agent_lint.go,
-//             config/types.go — any rename breaks callers across 4+ packages.
+//
+//	config/types.go — any rename breaks callers across 4+ packages.
+//
 // @MX:SPEC: SPEC-V3R2-RT-003 REQ-001/002
 package sandbox
 

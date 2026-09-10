@@ -1,0 +1,12 @@
+=== RUN   TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping
+--- PASS: TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping (0.00s)
+=== RUN   TestParser_DuplicateID_UnionsMappingsOfEveryLine
+--- PASS: TestParser_DuplicateID_UnionsMappingsOfEveryLine (0.00s)
+=== RUN   TestParser_DuplicateID_DeclarationAboveStillReported
+--- PASS: TestParser_DuplicateID_DeclarationAboveStillReported (0.00s)
+=== RUN   TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage
+--- PASS: TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage (0.70s)
+=== RUN   TestLintDuplicateACID_NoDuplicateNoFinding
+--- PASS: TestLintDuplicateACID_NoDuplicateNoFinding (0.36s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	1.286s

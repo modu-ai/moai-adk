@@ -1,0 +1,10 @@
+--- FAIL: TestRecordFromRegisteredNestedProjectUpdatesOwnRowNotParent (0.00s)
+    write_normalization_test.go:168: projects[lib] = beta, want gamma (own row updated in place)
+    write_normalization_test.go:171: projects[mono] = gamma, want alpha (parent registration untouched)
+--- FAIL: TestRecordFromSubtreeWithLegacyOwnRowUpdatesOwnRow (0.00s)
+    write_normalization_test.go:198: projects[wt1] = beta, want gamma (legacy own row updated in place)
+    write_normalization_test.go:201: projects[root] = gamma, want alpha (untouched)
+    write_normalization_test.go:205: wt1 resolved to "beta", want gamma (own row shadows the ancestor)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/profile	0.419s
+FAIL

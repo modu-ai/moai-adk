@@ -1,0 +1,6 @@
+--- FAIL: TestInboxStandDown_MarkerPresentNoRotation (0.00s)
+    inbox_lifecycle_test.go:264: stand-down violated: 1 archive generations created
+    inbox_lifecycle_test.go:271: live inbox did not grow past the cap under stand-down: 510 bytes
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.601s
+FAIL

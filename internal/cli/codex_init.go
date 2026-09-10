@@ -130,7 +130,7 @@ func defaultCodexOfferPrompt(out io.Writer, in io.Reader, info codexWiringInfo) 
 }
 
 // defaultCodexInitGenerator delegates to the existing wiring generator —
-// the same one `moai init --agent codex` calls. The gate adds no path of
+// the same one `moai init --llm codex` calls. The gate adds no path of
 // its own that writes a wiring file (REQ-CI-004).
 func defaultCodexInitGenerator(req codexGeneratorRequest) error {
 	if _, err := codexwiring.Wire(req.ProjectRoot, req.Out, req.Err); err != nil {

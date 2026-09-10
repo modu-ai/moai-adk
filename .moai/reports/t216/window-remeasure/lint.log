@@ -1,0 +1,6 @@
+internal/template/catalog_tree_hash.go:60:14: Error return value of `fmt.Fprintf` is not checked (errcheck)
+		fmt.Fprintf(h, "%s:%s\n", e.rel, e.sum)
+		           ^
+1 issues:
+* errcheck: 1
+lint-rc=1

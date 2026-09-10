@@ -34,10 +34,11 @@ Execute behavior-driven implementation cycles using either DDD (ANALYZE-PRESERVE
 
 ## Required Input Parameter
 
-**cycle_type**: Must be specified as `ddd` or `tdd` in the spawn prompt.
+**cycle_type**: Must be specified as `ddd`, `tdd`, or `autofix` in the spawn prompt.
 
 - **ddd**: For existing codebases with minimal test coverage. Focus: behavior preservation through characterization tests.
 - **tdd**: For new feature development. Focus: test-first development with comprehensive coverage.
+- **autofix**: For the CI auto-fix loop on a failing required check. Protocol: see § cycle_type=autofix Mode (CI auto-fix loop) below.
 
 ## Migration Notes
 
@@ -57,7 +58,7 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 ## Behavioral Contract (SEMAP)
 
-**Preconditions**: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. **cycle_type parameter provided**.
+**Preconditions**: For `cycle_type=ddd` or `cycle_type=tdd`: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. For `cycle_type=autofix`: the SPEC premise does not apply; the preconditions are the entry condition and prerequisites of the canonical CI auto-fix protocol referenced in § cycle_type=autofix Mode. **cycle_type parameter provided**.
 
 **Postconditions**: All existing tests still pass. New tests cover modified code. Coverage >= 85% on modified files. No new lint/type errors.
 
@@ -100,7 +101,7 @@ Selected by `development_mode` in quality.yaml: `ddd` for existing codebases wit
 - Prioritize refactoring targets by impact and risk
 
 **`tdd` — RED (write failing tests)**
-For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.
+For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state through the harness's `task-list` capability. A harness with no `task-list` records the same per-test state as prose in the completion report.
 - **RED-evidence + delete-pre-test-code invariant**: the verbatim RED failing-test output MUST be captured as completion evidence (it is the proof the test ran before GREEN — the `§E` E8 item requires it), and any implementation code written before its failing test MUST be deleted and re-derived test-first.
 
 ### STEP 2.5 — LSP baseline capture (both)
@@ -125,7 +126,7 @@ Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one 
 2. **LSP verification**: compare against the Step 2.5 baseline. Errors above baseline → REVERT immediately.
 3. **Verify behavior**: run the tests the change can affect (memory guard: module-level batches when needed).
 4. **Check completion**: all tests passing, LSP errors == 0, type errors == 0, no regression from baseline. Loop prevention: max 100 iterations, stale detection after 5 no-progress iterations.
-5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status via TaskUpdate.
+5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status through the harness's `task-list` capability (absent it, the same status goes in the completion report as prose).
 
 ### STEP 5 — Complete and report (both)
 
@@ -161,7 +162,7 @@ Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
 
 ## Status Responsibility Matrix
 
-This agent performs exactly ONE status transition, on the first run-phase commit (M1), for the `progress.md` artifact only. See §SPEC Artifact Ownership for the full artifact-level boundary.
+This agent performs exactly ONE status transition: `draft → in-progress`, on the first run-phase commit (M1). Which SPEC artifacts that transition covers is decided by `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, the one authoritative reference. See §SPEC Artifact Ownership for the full artifact-level boundary.
 
 | Transition | Trigger | Agent Role |
 |---|---|---|

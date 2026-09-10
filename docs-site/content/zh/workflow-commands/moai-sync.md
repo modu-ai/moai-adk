@@ -109,6 +109,30 @@ Sync 完成后自动合并 PR 并清理分支:
   自动化。
 {{< /callout >}}
 
+### 按分支区分的交付行为 (git strategy)
+
+`/moai sync` 的最后一步——push 与 PR 交付——由当前模式的策略键决定。它读取 `.moai/config/sections/git-strategy.yaml` 中的 `git_strategy.{mode}.workflow`,取值只有两个:`github-flow` 或 `git-flow`。三种模式(manual/personal/team)的默认值都是 `github-flow`。当该键不是这两个值之一时,交付步骤不做猜测,而是报告该值并停止。
+
+在 `github-flow` 下,交付结果取决于当前的分支环境:
+
+| 分支环境 | 交付行为 |
+| ---- | ------- |
+| **main 分支** (Tier S/M、无 `--pr`) | 直接 push 到 main,不创建 PR |
+| **main 以外的分支** | push 该分支,并创建以 main 为目标的 PR(已存在则更新) |
+| **worktree 分支** | push worktree 分支并创建 PR |
+| **不匹配任何路径的状态** (detached HEAD 等) | 不 push、不创建 PR,报告分支状态后停止 |
+
+表中的"main"指该模式的 `main_branch` 设置;未设置时按 `main` 处理。
+
+在 main 分支上处理 Tier S/M SPEC 时,这一行为与 v3.1.2 为止相同——直接 push,无 PR。变化出现在其余两类分支环境:
+
+- **main 以外的分支现在会创建 PR。** 到 v3.1.2 为止,交付会无视分支名一律 push 到 main,且不创建 PR。
+- **不匹配任何路径的分支状态现在会让 sync 停止。** 过去无论处于何种分支状态都会 push 到 main 并完成;现在则什么也不 push,改为报告状态。如果原本能完成的 sync 突然停住,请先从这里排查。
+
+选择 `git-flow` 时按分支名路由——`feature/*` 创建以 develop 为目标的 PR,`release/*` 与 `hotfix/*` 创建以 main 为目标的 PR(hotfix 在合并后还会追加一个向 develop 的回迁 PR),`WT-*` 分支则在集成 worktree 内合并,不创建 PR。
+
+旧版本配置键 `github.spec_git_workflow`(system.yaml)已弃用,将于 v3.3.0 移除。今后的规范键是上文的 `git_strategy.{mode}.workflow`。
+
 **令牌效率化策略:**
 
 - 只加载 SPEC 文档的元数据与摘要
@@ -582,7 +606,7 @@ $ gh pr view 42
 
 ### Q: 不想自动创建 PR 怎么办?
 
-在 `git-strategy.yaml` 中设置 `auto_pr: false`,则只自动执行到提交为止。PR 可以在想要的时间点手动创建。
+在 `git-strategy.yaml` 中设置 `auto_pr: false`,则只自动执行到提交为止。PR 可以在想要的时间点手动创建。另请注意,在 main 以外的分支上运行 sync 时,会随分支 push 一起创建 PR(参见按分支区分的交付行为)。
 
 ### Q: 可以更改 CHANGELOG 格式吗?
 

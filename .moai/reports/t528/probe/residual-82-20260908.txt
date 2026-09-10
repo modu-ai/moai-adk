@@ -1,0 +1,155 @@
+# t528 M2 residual — the 82 in-section declarations still rejected after widening
+# discriminator B · denominator after/filelist.txt (807) · see progress.md for tree SHA
+
+   17  TAIL-OK  / first char after id = '['
+   10  TAIL-UNCOVERED / AC-LCLN-N.N
+    8  TAIL-OK  / first char after id = '↔'
+    5  TAIL-UNCOVERED / AC-SVG-N..N
+    4  TAIL-UNCOVERED / AC-DCC-N..N
+    4  TAIL-UNCOVERED / AC-HML-N..N
+    4  TAIL-UNCOVERED / AC-MRR-GN
+    2  TAIL-OK  / first char after id = '~'
+    2  TAIL-UNCOVERED / AC-PLW-N..N
+    1  TAIL-OK  / first char after id = '('
+    1  TAIL-OK  / first char after id = 'p'
+    1  TAIL-OK  / first char after id = 'l'
+    1  TAIL-OK  / first char after id = 'n'
+    1  TAIL-OK  / first char after id = 'r'
+    1  TAIL-OK  / first char after id = 'c'
+    1  TAIL-OK  / first char after id = 'b'
+    1  TAIL-UNCOVERED / AC-HFC-Na
+    1  TAIL-UNCOVERED / AC-HFC-Nb
+    1  TAIL-UNCOVERED / AC-HFC-GATE
+    1  TAIL-OK  / first char after id = '반'
+    1  TAIL-OK  / first char after id = '금'
+    1  TAIL-OK  / first char after id = '곁'
+    1  TAIL-OK  / first char after id = '조'
+    1  TAIL-OK  / first char after id = '교'
+    1  TAIL-OK  / first char after id = '방'
+    1  TAIL-OK  / first char after id = 't'
+    1  TAIL-OK  / first char after id = '템'
+    1  TAIL-OK  / first char after id = '+'
+    1  TAIL-UNCOVERED / AC-GREEN
+    1  TAIL-UNCOVERED / AC-MUTANT
+    1  TAIL-UNCOVERED / AC-ORDERING
+    1  TAIL-UNCOVERED / AC-SCOPE
+    1  TAIL-UNCOVERED / AC-EVIDENCE
+    1  TAIL-UNCOVERED / AC-UTIL-N-Nb
+    1  TAIL-UNCOVERED / AC-MRR-GREEN
+   82  TOTAL
+
+# one verbatim sample per class (plan.md §D.1 — no figure adopted without opening lines)
+
+[TAIL-OK  / first char after id = '[']
+  ../../.moai/specs/SPEC-DB-CMD-001/spec.md:195:- **AC-1 [REQ-002]**: `internal/template/templates/.claude/commands/moai/db.md` 파일이 존재하며 `wc -l`이 20 미만을 반환한다.
+  ../../.moai/specs/SPEC-DB-CMD-001/spec.md:196:- **AC-2 [REQ-001, REQ-004, REQ-015]**: `internal/template/templates/.claude/skills/moai/workflows/db.md` 파일이 존재하며 YAML frontmatter(`name: moai-workflow-d
+
+[TAIL-UNCOVERED / AC-LCLN-N.N]
+  ../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:113:- AC-LCLN-001.1: Baseline captured before each LCLN-Phase.
+  ../../.moai/specs/SPEC-V3R5-LINT-CLEAN-001/spec.md:114:- AC-LCLN-001.2: Each LCLN-Phase reduces a contiguous subset of findings (per-phase reduction targets per plan.md §3 sum-check).
+
+[TAIL-OK  / first char after id = '↔']
+  ../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:223:- AC-GM-001 ↔ REQ-GM-001 + REQ-GM-007: legacy EARS REQs continue to pass `moai spec lint` (non-strict)
+  ../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md:224:- AC-GM-002 ↔ REQ-GM-002 + REQ-GM-006: IF/THEN REQs emit `LegacyEARSKeyword` warning
+
+[TAIL-UNCOVERED / AC-SVG-N..N]
+  ../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:124:- AC-SVG-001..003: skill exists template-first + local-synced; Level-1 listing scope + MEASURED combined character count; progressive-d
+  ../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:125:- AC-SVG-004..006: layout-before-code method, geometry-derived centers, CJK 60% budget documented.
+
+[TAIL-UNCOVERED / AC-DCC-N..N]
+  ../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md:105:- AC-DCC-001..003: Skill exists template-first + local-synced; frontmatter valid (Level-1 `description` measured against the ~100-token bud
+  ../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md:106:- AC-DCC-004..008: 3-phase workflow, atomic decomposition, 4-label taxonomy + ordered decision tree, unsupported-reason set, and HARD read-
+
+[TAIL-UNCOVERED / AC-HML-N..N]
+  ../../.moai/specs/SPEC-SKILLPORT-HUMANIZE-LEDGER-001/spec.md:120:- AC-HML-001..003: Invariant Ledger step present with the canonical 4-category item taxonomy + fidelity rule (incl. supplied-vs-inferre
+  ../../.moai/specs/SPEC-SKILLPORT-HUMANIZE-LEDGER-001/spec.md:121:- AC-HML-004..006: Delta Audit step present with the survival-check list, rollback-on-violation (scoped to SUPPLIED items), and Grade-D
+
+[TAIL-UNCOVERED / AC-MRR-GN]
+  ../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:120:- AC-MRR-G1: G1 9개 테스트 PASS (FLAT `moai/` 기대값).
+  ../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:121:- AC-MRR-G2: G2 mirror-drift 2 parent 테스트 PASS (정책 적용 후).
+
+[TAIL-OK  / first char after id = '~']
+  ../../.moai/specs/SPEC-KARPATHY-001/spec.md:217:- AC-001 ~ AC-006 -> see `acceptance.md`
+  ../../.moai/specs/SPEC-V3R3-PATTERNS-001/spec.md:169:- AC-001 ~ AC-005 → see `acceptance.md`
+
+[TAIL-UNCOVERED / AC-PLW-N..N]
+  ../../.moai/specs/SPEC-PREPUSH-LOADER-WIRING-001/spec.md:180:- AC-PLW-001..004 — file present / absent / partial / malformed behavior (REQ-PLW-001..005)
+  ../../.moai/specs/SPEC-PREPUSH-LOADER-WIRING-001/spec.md:181:- AC-PLW-005..006 — dead-config elimination (wrapper + loader symbol + wired call grep)
+
+[TAIL-OK  / first char after id = '(']
+  ../../.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/spec.md:257:- **AC-MIG-007** (only-widen on a non-subset mode — REQ-MIG-002, §D.2 Predicate
+
+[TAIL-OK  / first char after id = 'p']
+  ../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:174:- **AC-1** parse/branch/env/bump/reject/help tables green:
+
+[TAIL-OK  / first char after id = 'l']
+  ../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:179:- **AC-2** label vocabulary + record admission:
+
+[TAIL-OK  / first char after id = 'n']
+  ../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:182:- **AC-3** notices (lines/socket/GLM/startup-gate/suppression/i18n):
+
+[TAIL-OK  / first char after id = 'r']
+  ../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:184:- **AC-4** regression — kanban surfaces unchanged: full
+
+[TAIL-OK  / first char after id = 'c']
+  ../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:192:- **AC-5** cross-platform: `GOOS=windows GOARCH=amd64 go vet ./internal/cli/
+
+[TAIL-OK  / first char after id = 'b']
+  ../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md:195:- **AC-6** binary: `make build` succeeds; catalog.yaml byte-unchanged (no
+
+[TAIL-UNCOVERED / AC-HFC-Na]
+  ../../.moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:90:- **AC-HFC-001a** (REQ-HFC-001): **Given** a `PostToolUseFailure` `HookInput` with an empty top-level `Error` and `tool_response` = `{"error
+
+[TAIL-UNCOVERED / AC-HFC-Nb]
+  ../../.moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:91:- **AC-HFC-001b** (REQ-HFC-001): **Given** a `PostToolUseFailure` payload with empty top-level `Error` and `tool_response` = `{"stderr":"...
+
+[TAIL-UNCOVERED / AC-HFC-GATE]
+  ../../.moai/specs/SPEC-HOOK-FAILURE-CLASSIFY-001/spec.md:97:- **AC-HFC-GATE** (quality gate): **Given** the full package, **When** `go test ./internal/hook/... && go vet ./internal/hook/... && golangc
+
+[TAIL-OK  / first char after id = '반']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:67:- AC-001 반출 조항 존재(양쪽 사본) — release-blocking, RED-now 있음
+
+[TAIL-OK  / first char after id = '금']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:68:- AC-002 금지 경로 제거(양쪽 사본) — release-blocking, RED-now 있음
+
+[TAIL-OK  / first char after id = '곁']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:69:- AC-003 곁말 규약 반영(양쪽 사본) — release-blocking, RED-now 있음
+
+[TAIL-OK  / first char after id = '조']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:70:- AC-004 조항 쌍둥이 일치 — release-blocking
+
+[TAIL-OK  / first char after id = '교']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:71:- AC-005 교차참조 일치 — release-blocking, RED-now 있음
+
+[TAIL-OK  / first char after id = '방']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:72:- AC-006 방출물+카탈로그 해시 재생성 — release-blocking, RED-now 있음
+
+[TAIL-OK  / first char after id = 't']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:73:- AC-007 t367 :72 문면 보존 — 회귀 가드 (preservation)
+
+[TAIL-OK  / first char after id = '템']
+  ../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md:74:- AC-008 템플릿 중립성 0매치 — 회귀 가드 (preservation)
+
+[TAIL-OK  / first char after id = '+']
+  ../../.moai/specs/SPEC-SKILLPORT-SVG-INFOGRAPHIC-001/spec.md:129:- AC-SVG-016 + AC-SVG-019: clean-room guarantee, split into a MECHANICAL absence-invariant half (AC-SVG-016 — vendor-token grep, no NOT
+
+[TAIL-UNCOVERED / AC-GREEN]
+  ../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:48:- **AC-GREEN**: Given the repaired tree, When `go run ./cmd/moai spec lint --strict` runs (output redirected to a file, exit code capture
+
+[TAIL-UNCOVERED / AC-MUTANT]
+  ../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:49:- **AC-MUTANT**: Given the two `status:` lines restored via `git checkout 615d18c1f -- .moai/specs/SPEC-CODEX-E2E-MEASURE-001/plan.md .mo
+
+[TAIL-UNCOVERED / AC-ORDERING]
+  ../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:50:- **AC-ORDERING**: Given the branch history, When `git log --oneline` is read, Then the commit carrying `.moai/reports/t490/red-baseline.
+
+[TAIL-UNCOVERED / AC-SCOPE]
+  ../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:51:- **AC-SCOPE**: Given the branch diff for the two files, When `git diff <base>..HEAD -- .moai/specs/SPEC-CODEX-E2E-MEASURE-001/` is read,
+
+[TAIL-UNCOVERED / AC-EVIDENCE]
+  ../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md:52:- **AC-EVIDENCE** (parent: REQ-007): Given `.moai/reports/t490/`, When the evidence files are read, Then the GREEN + mutant re-measuremen
+
+[TAIL-UNCOVERED / AC-UTIL-N-Nb]
+  ../../.moai/specs/SPEC-UTIL-001/spec.md:178:- AC-UTIL-001-13b: Given a Go file containing a function with 10 top-level `if` / `else if` branches (IfBranches == 10) but low overall cyclomatic complexit
+
+[TAIL-UNCOVERED / AC-MRR-GREEN]
+  ../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md:124:- AC-MRR-GREEN: `go test ./internal/template/...` 0 fail + cross-platform build exit 0 + lint baseline 유지.

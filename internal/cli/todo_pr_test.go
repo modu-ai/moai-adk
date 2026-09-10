@@ -42,12 +42,27 @@ type spyRunner struct {
 	// which is the fail-open fixture.
 	prJSON string
 	ghFail error
-	// landedFor is the set of cards `git log` reports as landed.
-	landedFor map[string]bool
-	// gitFail is the set of cards whose landing query FAILS — the fixture for
-	// an unanswerable question (no such ref, no git, a broken remote), which
-	// must render distinctly from an answered-empty one.
-	gitFail map[string]error
+	// logPlan holds what each SUCCESSIVE `git log` call returns, in call
+	// order. SPEC-TODO-LANDING-ATTRIBUTION-001 removed the card id from the
+	// landing query's argv — the query is a subject stream and the predicate
+	// matches Go-side — so a stub can no longer key the answer on the argv.
+	// It plans the answers per call instead; the queue renders cards in
+	// order, so call N answers the Nth card that reaches the landed query.
+	logPlan []spyLogAnswer
+	// logCalls counts the `git log` calls seen so far.
+	logCalls int
+}
+
+// spyLogAnswer is one planned `git log` answer.
+type spyLogAnswer struct {
+	out string
+	err error
+}
+
+// landedLogLine is the one-line subject stream that makes cardID read landed:
+// the card sits in a form-2 attributing position (trailing parenthetical).
+func landedLogLine(cardID string) string {
+	return "d9899f437 fix: something (" + cardID + ")\n"
 }
 
 func installSpy(t *testing.T, s *spyRunner) *spyRunner {
@@ -63,15 +78,11 @@ func installSpy(t *testing.T, s *spyRunner) *spyRunner {
 			}
 			return s.prJSON, nil
 		case "git":
-			joined := strings.Join(args, " ")
-			for card, failure := range s.gitFail {
-				if strings.Contains(joined, card) {
-					return "", failure
-				}
-			}
-			for card, landed := range s.landedFor {
-				if landed && strings.Contains(strings.Join(args, " "), card) {
-					return "d9899f437 fix: something (" + card + ")\n", nil
+			if len(args) > 0 && args[0] == "log" {
+				i := s.logCalls
+				s.logCalls++
+				if i < len(s.logPlan) {
+					return s.logPlan[i].out, s.logPlan[i].err
 				}
 			}
 			return "", nil
@@ -177,16 +188,16 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 	}{
 		{"linked and ambiguous", &spyRunner{prJSON: pinnedPRJSON}, []string{"pr"}},
 		{"json form", &spyRunner{prJSON: pinnedPRJSON}, []string{"pr", "--json"}},
-		{"landed path", &spyRunner{prJSON: `[]`, landedFor: map[string]bool{"t1": true}}, []string{"pr"}},
+		{"landed path", &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{{out: landedLogLine("t1")}, {}}}, []string{"pr"}},
 		{"fail-open path", &spyRunner{ghFail: fmt.Errorf("gh: not found")}, []string{"pr"}},
 		// The landed path exercised for a card that is NOT in the default
 		// queued state, so the state column added by
 		// SPEC-TODO-LANDING-STATE-001 is read on a landed row too. (The queue
 		// has no `completed` state — `picked` is the non-default state a
 		// landed card actually carries.)
-		{"landed and picked", &spyRunner{prJSON: `[]`, landedFor: map[string]bool{"t1": true}}, []string{"pr"}},
+		{"landed and picked", &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{{out: landedLogLine("t1")}, {}}}, []string{"pr"}},
 		// The unknown path: the verb must not write a cache while degrading.
-		{"unanswerable path", &spyRunner{prJSON: `[]`, gitFail: map[string]error{"t1": fmt.Errorf("fatal: bad revision")}}, []string{"pr"}},
+		{"unanswerable path", &spyRunner{prJSON: `[]`, logPlan: []spyLogAnswer{{err: fmt.Errorf("fatal: bad revision")}, {}}}, []string{"pr"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -253,8 +264,8 @@ func TestTodoPR_FailOpenNoGh(t *testing.T) {
 	_, store := todoFixture(t)
 	ids := seedQueue(t, store, "landed card", "untouched card")
 	installSpy(t, &spyRunner{
-		ghFail:    fmt.Errorf("exec: \"gh\": executable file not found in $PATH"),
-		landedFor: map[string]bool{ids[0]: true},
+		ghFail:  fmt.Errorf("exec: \"gh\": executable file not found in $PATH"),
+		logPlan: []spyLogAnswer{{out: landedLogLine(ids[0])}, {}},
 	})
 
 	out, errOut, err := runTodo(t, "pr")
@@ -348,7 +359,9 @@ func TestTodoPR_RendersOutcomeAndConfidence(t *testing.T) {
 	 {"number":1601,"title":"docs: lifecycle","body":"card %s","state":"OPEN"},
 	 {"number":1611,"title":"chore: sweep","body":"part of %s","state":"OPEN"}
 	]`, ids[0], ids[0], ids[2], ids[1], ids[2])
-	installSpy(t, &spyRunner{prJSON: prJSON, landedFor: map[string]bool{ids[3]: true}})
+	// ids[0]-ids[2] resolve from PR hits and never reach the landed query, so
+	// the plan needs exactly one answer: ids[3]'s landed stream.
+	installSpy(t, &spyRunner{prJSON: prJSON, logPlan: []spyLogAnswer{{out: landedLogLine(ids[3])}}})
 
 	out, _, err := runTodo(t, "pr", "--json")
 	if err != nil {

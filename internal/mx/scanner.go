@@ -153,14 +153,18 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 				// @MX:SPEC sub-line capture (REQ-MX-ASSOC-001). Pairs with the
 				// most recent preceding standalone tag in the same file (mirrors
 				// @MX:REASON proximity discipline, but without a 3-line cutoff —
-				// @MX:SPEC is optional metadata, not a mandatory pairing). A
-				// dangling sub-line (no preceding tag) emits DanglingSpecRef.
+				// @MX:SPEC is optional metadata, not a mandatory pairing). A WARN
+				// still awaiting its REASON is not yet in tags but is the most
+				// recent tag, so it owns the sub-line. A dangling sub-line (no
+				// preceding tag, pending or appended) emits DanglingSpecRef.
 				//
-				// @MX:NOTE: [AUTO] @MX:SPEC capture arm — attaches the sub-line SPEC ID to the most recent tag's SpecRef; DanglingSpecRef when no preceding tag exists
+				// @MX:NOTE: [AUTO] @MX:SPEC capture arm — attaches the sub-line SPEC ID to the most recent tag's SpecRef (a pending WARN first, else the last appended tag); DanglingSpecRef when neither exists
 				if strings.Contains(upperLine, "@MX:SPEC") {
 					specRef := extractSpecRef(line)
 					if specRef != "" {
-						if len(tags) > 0 {
+						if pendingWarnTag != nil {
+							pendingWarnTag.SpecRef = specRef
+						} else if len(tags) > 0 {
 							lastIdx := len(tags) - 1
 							tags[lastIdx].SpecRef = specRef
 						} else {
@@ -175,6 +179,16 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 			}
 			s.errors = append(s.errors, fmt.Sprintf("parse error at %s:%d: %v", filePath, lineNum, err))
 			continue
+		}
+
+		// A new standalone tag closes a pending WARN's sub-line window. The
+		// superseded WARN is unpaired: report it and do not add it to tags,
+		// exactly as the window-expiry, too-late-REASON, and end-of-file exits do.
+		if pendingWarnTag != nil {
+			s.warnings = append(s.warnings,
+				fmt.Sprintf("MissingReasonForWarn: %s:%d - WARN tag without REASON before the next tag",
+					pendingWarnTag.File, pendingWarnTag.Line))
+			pendingWarnTag = nil
 		}
 
 		// Handle WARN tag REASON requirement
@@ -410,14 +424,14 @@ func (s *Scanner) parseTag(filePath string, lineNum int, content string, rawLine
 	}
 
 	return Tag{
-		Kind:         kind,
-		File:         filePath,
-		Line:         lineNum,
-		Body:         body,
-		AnchorID:     anchorID,
-		ContentHash:  hashTagLine(rawLine),
-		CreatedBy:    "scanner", // TODO: Detect if human-created
-		LastSeenAt:   time.Now(),
+		Kind:        kind,
+		File:        filePath,
+		Line:        lineNum,
+		Body:        body,
+		AnchorID:    anchorID,
+		ContentHash: hashTagLine(rawLine),
+		CreatedBy:   "scanner", // TODO: Detect if human-created
+		LastSeenAt:  time.Now(),
 	}, nil
 }
 

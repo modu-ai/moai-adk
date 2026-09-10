@@ -270,22 +270,3 @@ func sameSemanticPayload(a, b *SessionTelemetryRecord) bool {
 		a.Model == b.Model &&
 		a.Effort == b.Effort
 }
-
-// resolveProjectDir resolves the project directory that anchors
-// the per-session telemetry record, following the stdin workspace
-// chain and falling back to the process CWD (design §D.2). Returns "" only when
-// no directory can be resolved (write is then skipped).
-func resolveProjectDir(input *StdinData) string {
-	if input != nil {
-		if input.Workspace != nil && input.Workspace.CurrentDir != "" {
-			return input.Workspace.CurrentDir
-		}
-		if input.CWD != "" {
-			return input.CWD
-		}
-	}
-	if cwd, err := os.Getwd(); err == nil {
-		return cwd
-	}
-	return ""
-}

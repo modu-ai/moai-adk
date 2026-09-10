@@ -1,0 +1,4 @@
+=== RUN   TestGateCmd_SecondRunWaitsForFirst
+--- PASS: TestGateCmd_SecondRunWaitsForFirst (5.42s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.320s

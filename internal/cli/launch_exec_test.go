@@ -33,8 +33,11 @@ func TestExecOrSpawnClaude_PosixBuildTagGate(t *testing.T) {
 		t.Errorf("launcher.go must not call syscall.Exec inline; the POSIX-only call " +
 			"belongs in launch_exec_posix.go behind //go:build !windows (REQ-CGH-001)")
 	}
-	if !strings.Contains(string(launcherSrc), "execOrSpawnClaude(") {
-		t.Errorf("launcher.go must delegate the launch to execOrSpawnClaude (REQ-CGH-001)")
+	if !strings.Contains(string(launcherSrc), "execOrSpawnClaudeFunc = execOrSpawnClaude") {
+		t.Errorf("launcher.go must default the launch seam to execOrSpawnClaude (REQ-CGH-001)")
+	}
+	if !strings.Contains(string(launcherSrc), "execOrSpawnClaudeFunc(") {
+		t.Errorf("launcher.go must delegate the launch through execOrSpawnClaudeFunc (REQ-CGH-001)")
 	}
 
 	// 2. The POSIX variant exists with the !windows build tag and the syscall.Exec call.

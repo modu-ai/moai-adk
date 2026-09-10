@@ -1,0 +1,46 @@
+# t348 RED evidence — the pre-fix counter, extracted from git HEAD, run against the new fixtures
+
+The old counter was extracted from the unmodified clause at HEAD (this branch's base,
+`131daa290`), so the reproduction does not touch the working tree:
+
+    git show HEAD:.claude/agents/moai/manager-docs.md \
+      | awk '/# MOAI-AC-COUNTER-BEGIN/{f=1;next}/# MOAI-AC-COUNTER-END/{f=0}f' \
+      > /tmp/t348_old_counter.sh
+
+## Fixture 1 — subletters.md (hand-derived: live=3, excluded=2)
+
+    $ AC_FILE=internal/spec/testdata/ac_count/subletters.md sh /tmp/t348_old_counter.sh
+    live=4 excluded=0 ambiguous=0
+    4
+    SUBLETTERS_RC=0
+
+WRONG on two axes: the trailing-sub-letter identifiers are folded into their numeric
+prefixes (`AC-SYN-007a` collapses into `AC-SYN-007`, `AC-003a` into `AC-003`), so the
+`AC-003`/`AC-003a` pair reads as ONE live criterion — the exact conflation the widened
+grammar exists to prevent — and the excluded sub-lettered states are misattributed
+(excluded=0 vs hand-derived 2).
+
+## Fixture 2 — prefixdecl.md (hand-derived: live=1, excluded=1)
+
+    $ AC_FILE=internal/spec/testdata/ac_count/prefixdecl.md sh /tmp/t348_old_counter.sh
+    live=0 excluded=1 ambiguous=0
+    0
+    PREFIXDECL_RC=0
+
+Returns the vacuous zero the convention itself names a RED flag: the file declares its
+criteria under a non-default prefix and the old grammar cannot see them at all —
+"a rule/counter that silently skips existing files", the card's premise, instantiated.
+
+## Cross-check — the Go harness observed the same RED pre-fix
+
+`go test ./internal/spec/ -run 'TestACCounterFixtureCorpus' -count=1` with the two new
+fixtures and the still-unmodified clause (observed in this session before the fix):
+
+    --- FAIL: TestACCounterFixtureCorpus/subletters.md
+        live count = 4, want 3 (hand-derived)
+        per-state tally "live=3 excluded=2 ambiguous=0" not found in stderr "live=4 excluded=0 ambiguous=0"
+    --- FAIL: TestACCounterFixtureCorpus/prefixdecl.md
+        live count = 0, want 1 (hand-derived)
+        per-state tally "live=1 excluded=1 ambiguous=0" not found in stderr "live=0 excluded=1 ambiguous=0"
+
+GREEN counterpart: `.moai/reports/t348/green-test-run.log` (9 PASS, exit 0, post-fix).

@@ -1,0 +1,6 @@
+38ddb84532e699b5470e54f54dfe976b1827d840750df178d01a27233d7ffd92  .moai/reports/t517/snapshots/feedback.yaml
+80a26284c5743446bf6a81013503a444017cf351c9aaaa3ec4f67adad3d39e3f  .moai/reports/t517/snapshots/git-convention.yaml
+e7a87924862226ca8e287cf88580575b93915f271d36275d53e2100b88820932  .moai/reports/t517/snapshots/git-strategy.yaml
+ef1ac0e3ac7d49a4e4f9637d2da4037fb9bfc73ab8c816d76707da2edb737bd4  .moai/reports/t517/snapshots/language.yaml
+4902f23fa8a5f1c4a5a6cd8cb3fe844e88a95384a51f104a0e7509b303b1675b  .moai/reports/t517/snapshots/quality.yaml
+20e0234ea61d9accce5db6644d6cd1576787b11ee3a1d5f09fc62ec146195dde  .moai/reports/t517/snapshots/user.yaml

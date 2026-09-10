@@ -1,0 +1,36 @@
+diff --git a/internal/merge/differ.go b/internal/merge/differ.go
+index fd661589f..868672f5b 100644
+--- a/internal/merge/differ.go
++++ b/internal/merge/differ.go
+@@ -2,6 +2,7 @@ package merge
+ 
+ import (
+ 	"fmt"
++	"slices"
+ 	"strings"
+ )
+ 
+@@ -42,7 +43,8 @@ type Edit struct {
+ 
+ // DiffLines computes the edit script between two slices of lines using a
+ // simple LCS-based diff algorithm. It returns a minimal list of insert and
+-// delete operations needed to transform a into b.
++// delete operations needed to transform a into b. Identical inputs return nil
++// without building the LCS table.
+ //
+ // REQ-PERF-005-A: When either input exceeds diffLinesThreshold lines, the
+ // linear-space fallback (diffLinesGreedy) is used instead of the full DP table.
+@@ -50,6 +52,13 @@ type Edit struct {
+ // Inputs at or below the threshold produce identical results to the pre-change
+ // implementation (REQ-PERF-005-C behavior preservation).
+ func DiffLines(a, b []string) []Edit {
++	// Identical inputs have no edits. Both paths below also return nil for
++	// equal inputs, so returning here keeps the result unchanged while skipping
++	// the O(m*n) table.
++	if slices.Equal(a, b) {
++		return nil
++	}
++
+ 	// REQ-PERF-005-A: resource guard — use linear-space fallback for large inputs
+ 	if len(a) > diffLinesThreshold || len(b) > diffLinesThreshold {
+ 		return diffLinesGreedy(a, b)
