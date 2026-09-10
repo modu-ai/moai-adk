@@ -1,0 +1,7 @@
+=== RUN   TestSettingsRenderFormNamesUnique
+2026/09/10 23:00:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsRenderFormNamesUnique757964606/001/.moai/config/sections
+2026/09/10 23:00:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsRenderFormNamesUnique757964606/001/.moai/config/sections
+2026/09/10 23:00:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsRenderFormNamesUnique757964606/001/.moai/config/sections
+--- PASS: TestSettingsRenderFormNamesUnique (0.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.823s

@@ -1,0 +1,14 @@
+=== RUN   TestStatusDoesNotRewriteIndex
+    status_optional_locks_test.go:96: control: plain status rewrote .git/index: sha 70ef27b96dedd2d35ed599d809d8b74ae2f5701eed16890e3a88d1545c990d1d -> 78b51e43fe9a2ba789074eda02e2602184e7f27495fc58890e472b7854567861
+    status_optional_locks_test.go:111: Status() rewrote .git/index: sha 70d083bda8e572822fb99f46d989ac96607bcf702adfad9c46d4931fa5ad0229 -> ad80cf5c7781f71d50ff4f1ac47606fce2eeafbce1db934284af6bfaad1d3d9e, mtime 2026-09-10T22:10:28.986151507+09:00 -> 2026-09-10T22:10:30.294592046+09:00
+--- FAIL: TestStatusDoesNotRewriteIndex (3.24s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/core/git	3.579s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/project	0.980s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/quality	0.592s [no tests to run]
+FAIL
+EXIT=1

@@ -133,7 +133,7 @@ An unsubstantiated PASS verdict is automatically downgraded to UNVERIFIED, which
 
 ### M5: Must-Pass Firewall
 
-Eight criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
+Nine criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
@@ -174,6 +174,15 @@ forbidden-metacharacter: (
 
 Each token above is a violation only when it appears **outside** quotes: a quoted `|` inside a regex is a literal, and refusing it would reject commands that are in fact single invocations.
 <!-- MOAI-REDNOW-END -->
+
+**(MP-9) No unresolved cross-artifact ordering conflict**: A pair of obligations that cannot both be followed — the plan's milestone order on one side, an ordering clause in the acceptance criteria or the Definition of Done on the other — is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical with both texts quoted side by side. The pair is invisible when either document is read alone, which is why no per-artifact check catches it.
+
+Two sources feed MP-9, and they do not carry the same weight:
+
+- A `CONFLICT:` line from the Group 6 CN-4 verification verb **forces FAIL on its own**. The verb emits one only where the plan binds the criterion to a milestone through an `Exit:` line and the clause names the milestone it must precede or follow, so both halves of the pair are read from the documents rather than inferred.
+- A `CANDIDATE:` line **never forces FAIL by itself**. Most ordering words in an acceptance file order nothing across milestones, so failing on candidates would manufacture false FAILs. Read each candidate against both documents; where it binds a milestone the plan schedules on the forbidden side, emit the ordering-conflict finding yourself, quoting both texts — that confirmed finding then forces FAIL exactly as a `CONFLICT:` line does.
+
+`GAP:` means the milestone order was not observed mechanically: read the plan's milestone order by hand and judge the candidates against it, never read the gap as a pass. Where the SPEC has no plan, mark MP-9 N/A following the MP-4 precedent and state the reason. A `NONE:` result is an observed absence and passes MP-9 — cite the line so the zero reads as measured.
 
 ### M6: Finding-consumption discipline (over-engineering brake)
 
@@ -403,6 +412,101 @@ A requirement counts as mapped when its ID appears on any line that also names a
 - CN-1: No two requirements contradict each other
 - CN-2: Exclusions do not conflict with included requirements
 - CN-3: Priority and labels are consistent with the stated scope
+- CN-4: The plan's milestone order and every ordering obligation in the acceptance surface (the Definition of Done and each criterion's Then) are jointly satisfiable — for each clause that orders work (before, after, first, prior to, measured against the pre-change tree), the milestone it binds is scheduled on the side the clause requires (MP-9). Decided from the verb below, which runs in full on every iteration (see Retry Loop Contract)
+
+Verification verb (executed inside this agent during audit):
+
+```bash
+# Surface cross-artifact ordering candidates; the auditor decides CN-4 and MP-9
+plan="<plan.md>"
+acc="<acceptance.md>"
+if [ ! -r "$plan" ] || [ ! -r "$acc" ]; then
+  [ -r "$plan" ] || echo "GAP: $plan is not readable — milestone order was not observed"
+  [ -r "$acc" ] || echo "GAP: $acc is not readable — ordering clauses were not observed"
+else
+  awk '
+    function bindexit(seg, ms,   tok, prefix, rest) {
+      while (match(seg, acid)) {
+        tok = substr(seg, RSTART, RLENGTH); bind[tok] = ms; nb++
+        prefix = tok; sub(/[0-9]+$/, "", prefix)
+        seg = substr(seg, RSTART + RLENGTH)
+        while (match(seg, /^[ \t]*,[ \t]*[0-9]+/)) {
+          rest = substr(seg, RLENGTH + 1)
+          tok = substr(seg, 1, RLENGTH); sub(/^[ \t]*,[ \t]*/, "", tok)
+          bind[prefix tok] = ms; nb++
+          seg = rest
+        }
+      }
+    }
+    function flush(   low, kpos, head, tail, subj, rel, ms) {
+      if (rec == "") return
+      low = tolower(rec)
+      if (match(low, kw)) {
+        nc++
+        printf "CANDIDATE: %s:%d: %s\n", accname, recline, rec
+        kpos = RSTART; rel = substr(low, RSTART, RLENGTH)
+        head = substr(rec, 1, kpos - 1); tail = substr(rec, kpos + RLENGTH)
+        subj = ""
+        if (match(head, acid)) subj = substr(head, RSTART, RLENGTH)
+        else if (secac != "") subj = secac
+        if (match(tail, /M[0-9]+/)) {
+          ms = substr(tail, RSTART, RLENGTH)
+          if (subj != "" && (subj in bind) && (ms in pos)) {
+            if (rel !~ /after/ && pos[bind[subj]] > pos[ms])
+              printf "CONFLICT: %s:%d orders %s before %s, but %s binds %s to the exit of %s, which the plan places after %s\n", accname, recline, subj, ms, planname, subj, bind[subj], ms
+            if (rel ~ /after/ && pos[bind[subj]] < pos[ms])
+              printf "CONFLICT: %s:%d orders %s after %s, but %s binds %s to the exit of %s, which the plan places before %s\n", accname, recline, subj, ms, planname, subj, bind[subj], ms
+          }
+        }
+      }
+      rec = ""
+    }
+    BEGIN {
+      acid = "AC-([A-Z][A-Z0-9]*-)*[0-9]+"
+      kw = "(before|after|first|prior to|pre-change)"
+      planname = ARGV[1]; accname = ARGV[2]
+    }
+    { sub(/\r$/, "") }
+    FILENAME == ARGV[1] {
+      if (match($0, /^#+/) && substr($0, RLENGTH + 1) ~ /^[ \t]+(Milestone[ \t]+)?M[0-9]+([^0-9]|$)/) {
+        mlevel = RLENGTH; match($0, /M[0-9]+/); cur = substr($0, RSTART, RLENGTH)
+        if (!(cur in pos)) { pos[cur] = ++nm; order = order " " cur }
+        next
+      }
+      if (match($0, /^#+[ \t]/) && RLENGTH - 1 <= mlevel) { cur = ""; next }
+      if (cur != "" && tolower($0) ~ /^(\*\*)?exit(\*\*)?[ \t]*:/) bindexit($0, cur)
+      next
+    }
+    {
+      if ($0 ~ /^[ \t]*$/ || $0 ~ /^#+[ \t]/ || $0 ~ /^[ \t]*([-*+]|[0-9]+\.)[ \t]/ || $0 ~ /^[ \t]*\|/) {
+        flush()
+        if ($0 ~ /^#+[ \t]/) { secac = ""; if (match($0, acid)) secac = substr($0, RSTART, RLENGTH); next }
+        if ($0 ~ /^[ \t]*$/) next
+        rec = $0; recline = FNR
+        if ($0 ~ /^[ \t]*\|/) flush()
+        next
+      }
+      if (rec == "") { rec = $0; recline = FNR } else rec = rec " " $0
+    }
+    END {
+      flush()
+      printf "COLLECTED: %d milestones in plan order (%s), %d exit bindings, %d ordering candidates\n", nm, (nm ? substr(order, 2) : "none"), nb, nc
+      if (nm == 0) print "GAP: 0 milestone headings collected from the plan — milestone order not observed"
+      if (nc == 0) printf "NONE: 0 records in %s match %s (case-insensitive) — an observed absence\n", accname, kw
+    }
+  ' "$plan" "$acc"
+fi
+```
+
+The script narrows where to read; the auditor decides CN-4 and MP-9. It never prints PASS and always exits 0. For a SPEC whose criteria live inline in the spec, pass the spec as the acceptance input.
+
+- `COLLECTED: N milestones in plan order (…), K exit bindings, C ordering candidates` — the milestone headings read from the plan (`M1`, or `Milestone M1`, at any heading level), the criteria bound to a milestone by an `Exit:` line inside it, and the ordering records found in the acceptance input. Record the line with the CN-4 result.
+- `CANDIDATE: <file>:<line>: <record>` — a list item with its continuation lines, a table row, or a paragraph containing `before`, `after`, `first`, `prior to`, or `pre-change` in any case. Read it: most order nothing across milestones. Where one binds a milestone the plan schedules on the forbidden side, record the conflict yourself with both texts quoted (MP-9).
+- `CONFLICT: …` — the record names a criterion the plan binds to one milestone's exit and orders it before (or after) a milestone the plan places on the other side. It forces MP-9 FAIL; quote both texts side by side in the defect.
+- `GAP: …` — the plan or acceptance input is unreadable, or no milestone heading was collected, so the order was not observed mechanically. Never read it as a pass.
+- `NONE: …` — no ordering record exists in the acceptance input. An observed absence, not an unrun check; cite the line.
+
+A `CONFLICT:` line needs the criterion, the ordering word, and the milestone in one record, and a plan that binds criteria through `Exit:` lines. Everything else surfaces as a candidate only, so a clean result is not an automatic pass: an obligation spread across two sentences, or a milestone bound by prose instead of an `Exit:` line, reaches you as a candidate or not at all.
 
 ### Group 7: Cross-SPEC Reconciliation (D7)
 
@@ -504,6 +608,7 @@ Overall Score: {0.0-1.0}
 - [PASS/FAIL/N/A] MP-6 D8 cross-platform discipline: {D8 verification evidence or "no BLOCKING finding"; N/A only when the D8 verb is not executable}
 - [PASS/FAIL/N/A] MP-7 clarification gate: {`grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` evidence or "no [NEEDS CLARIFICATION] markers"; N/A only when neither plan.md nor research.md exists}
 - [PASS/FAIL/N/A] MP-8 RED-now cell re-execution: {per release-blocking AC, the re-executed command and its observed output; N/A only when no AC is release-blocking or acceptance.md is absent, with the reason stated}
+- [PASS/FAIL/N/A] MP-9 cross-artifact ordering consistency: {the CN-4 verb's `COLLECTED:` line, then each `CONFLICT:` line or confirmed candidate with both texts quoted, or the `NONE:` line; N/A only when the SPEC has no plan, with the reason stated}
 
 ## Category Scores (0.0-1.0, rubric-anchored)
 | Dimension | Score | Rubric Band | Evidence |
@@ -538,6 +643,8 @@ This agent is invoked by the orchestrator up to a Tier-resolved number of times 
 On iteration 1: Full audit against all criteria.
 
 On iteration 2+: the re-audit is scoped to the enumerated defect delta from the previous iteration's report, plus a regression check over those prior-iteration defects — not a from-scratch full re-audit. For each defect listed in the previous iteration's report, verify whether it was resolved. Unresolved defects from a prior iteration are automatically FAIL regardless of other scores. Verdict authority stays with this agent: the delta scope reduces re-audit cost only, and it never permits an orchestrator self-assessment to substitute for an auditor verdict.
+
+One check is exempt from the delta scope: the Group 6 CN-4 ordering verb runs in full on every iteration, and MP-9 is re-decided from its output. A fix applied to one artifact can add an ordering obligation that contradicts another — a Definition of Done clause written to close one defect can collide with the plan's milestone order — and a re-audit scoped to the prior defects would never read that pair again.
 
 If iteration 3 results in FAIL, the agent produces a final escalation report with the full defect history across all iterations and recommends user intervention.
 
