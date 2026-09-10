@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-SECRET-SCAN-REFS-001
 title: "Review workflow secret scan — coverage of refs not reachable from HEAD"
-version: "0.2.2"
+version: "0.3.0"
 status: in-progress
 created: 2026-09-10
 updated: 2026-09-11
@@ -51,6 +51,16 @@ tier: M
   AC-001's construction readings become a rebuild-and-gap condition. D16 — AC-004 ends its diff at
   `K` and joins the closure-check anchor. The third plan audit exceeds the Tier M ceiling of 2 by
   one, approved by the operator (lead session, relayed by the lead, 2026-09-10).
+- 2026-09-11 (0.3.0): run-phase amendment, approved by the operator (lead session, relayed by the
+  lead, 2026-09-11), made before any edit to either copy of the review workflow document. The pinned
+  Option 2 scan passed the recorded tips to `git log` through a command substitution; a
+  worktree-isolated session, the kind that runs `/moai review`, refuses that form, and typing the
+  tips of this repository's refs by hand does not scale. §3.4 now makes the canonical tip store
+  caret-prefixed object names read through `--stdin`, and cell ② detects a missing tip by its name
+  without the caret. AC-006, AC-009, AC-010, `acceptance.md` §D.18, and `plan.md` §C item 3 and §G
+  follow. A scoped plan audit follows this revision and exceeds the Tier M audit ceiling once more,
+  with the operator's approval; then the procedure is pinned again and gate cells ① and ② are
+  re-run on the new pin.
 
 ## §1 Background and problem statement
 
@@ -274,6 +284,33 @@ cell ②, and the `B − A + L` bound in cell ③ — is the lane's operationali
 audit and open to operator correction. Cell ②'s detection requirement is explicitly lane-authored
 and stricter than the condition the operator stated.
 
+#### Tip store and scan command
+
+- **Tip store.** The checkpoint is a file of caret-prefixed object names, one line per ref, written by
+  `git for-each-ref --format='^%(objectname)'`. It is recorded before the scan starts, and it replaces
+  the previous store only after the scan that carries the final result exits 0.
+- **Scan command.** `git log -p --all -G '<regex>' --stdin < <tip store>`. Each store line reaches
+  git as a negated revision, so the scan covers every commit reachable from a ref and excludes every
+  commit reachable from a recorded tip.
+- **How git names a missing tip.** Git reports a missing object by its name without the caret, so a
+  missing tip is looked for as its store line with the first character removed.
+
+**Design defect this revision corrects (0.3.0).** The earlier pin passed the recorded tips to
+`git log` through a command substitution, and the gate typed the tips as separate arguments by hand.
+Neither works in the session that runs `/moai review`:
+
+- Measured: a worktree-isolated session refuses a git command carrying a command substitution, and
+  hand expansion does not scale to this repository's refs.
+- Measured: the same kind of session runs the standard-input form. `git for-each-ref` with the
+  caret format wrote a one-line store (exit 0), and `git rev-list --count --all --stdin` reading that
+  store printed the same count as `git rev-list --count --all --not HEAD` (orchestrator probes,
+  worktree `.claude/worktrees/t629`, HEAD `6e56840d5`, 2026-09-11).
+- Inferred, not measured: that `git log` reads a caret store through `--stdin` by the same revision
+  rules as `git rev-list`. The re-run of gate cells ① and ② on the new pin is the measurement of this
+  inference.
+- Gap: whether a session that is not worktree-isolated can run the command-substitution form was not
+  measured. The canonical procedure does not depend on it.
+
 #### Measure-first gate
 
 The first run-phase milestone takes the three measurements below before any commit touches either
@@ -283,6 +320,9 @@ handling of a recorded tip that no longer exists — is pinned verbatim in `prog
 gate measures a procedure fixed in advance. The document edit may prescribe only a procedure the
 gate measured (REQ-013). A change to the pinned procedure after the gate is a new gate round: cells
 ①, ②, and ③ are taken again, cell ③ after a fresh lead approval, before either copy is edited.
+The pin states the tip store and the scan command in the form of § Tip store and scan command. The
+0.3.0 revision changes the pinned procedure, so cells ① and ② are taken again on the new pin; cell ③,
+not yet taken under the earlier pin, is taken on the new pin for the first time.
 
 Every cell records its commands, its output redirected to files outside this repository, and each
 exit code read without a pipe, and ends in one verdict — **trustworthy** or **untrustworthy** — by
@@ -312,8 +352,9 @@ on a new branch not reachable from HEAD; then the next scan runs.
 - Construction check first: `git cat-file -e <the recorded tip>` exits non-zero. If it exits 0, the
   tip still exists and the cell was not constructed; it is rebuilt, and that reading is a gap, never
   a pass.
-- Trustworthy when all of these hold: the missing tip is **detected** — its identifier appears at
-  least once, counted by a fixed-string search over the scan's captured output, its error stream,
+- Trustworthy when all of these hold: the missing tip is **detected** — its object name, without the
+  leading caret the tip store carries, appears at least once, counted by a fixed-string search over
+  the scan's captured output, its error stream,
   and any fallback scan's output (`acceptance.md` §D.9 pins the command); the scan carrying the final
   result exits 0; **and** that scan reports `GONECELL` ≥ 1, through either acceptable behaviour:
   - (a) falling back to a full `--all` scan; or
@@ -336,7 +377,8 @@ location — so a later real review in the worktree does not start from the gate
 
 - Recorded for each run: the command; the HEAD commit it ran on; load averages immediately before
   and after; wall time; exit code; the number of recorded tips excluded; the number of commits in
-  the scan's scope (the same revision arguments listed without `-p` and `-G`, counted by line); and
+  the scan's scope (the same revision arguments, and the same tip store on standard input where the
+  run reads one, listed without `-p` and `-G`, counted by line); and
   the number of matching commits (a count only).
 - Recorded immediately before the incremental run: `A`, the commits reachable from the recorded
   tips; `B`, the commits reachable from all refs; and `L`, the commits reachable from the recorded

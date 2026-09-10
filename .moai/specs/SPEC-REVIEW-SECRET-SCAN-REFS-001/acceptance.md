@@ -44,7 +44,7 @@ the earlier draft now state the Option 2 outcome only; Options 1 and 3 were not 
 | AC-003 | REQ-006 | `diff -q LOC TPL`, and both copies changed since `feeecc980` | exit 0, neither changed → exit 0, both changed |
 | AC-004 | REQ-007 | added-line grep for `REGEX` over the card diff | 0 matches (readings in §D.4) → 0 matches |
 | AC-005 | REQ-006 | neutrality greps on `TPL` | all 0 → all 0 |
-| AC-006 | REQ-003·004 | Option 2 coverage-statement checks on `SECTION` | no `--not`, no `every ref`, HEAD-SHA checkpoint phrase 1 → §D.6 |
+| AC-006 | REQ-003·004 | Option 2 coverage-statement checks on `SECTION` | no `--stdin`, no `^%(objectname)`, no `every ref`, HEAD-SHA checkpoint phrase 1 → §D.6 |
 | AC-007 | REQ-008 | decision commit is a strict ancestor of the first commit touching either copy | `D` = `af7eb142b`, no copy-touching commit yet → ancestor, exit 0 |
 | AC-008 | REQ-001·009 | gate cell ①: side ref reported where it first becomes reachable | not measurable at plan time → trustworthy verdict recorded |
 | AC-009 | REQ-009 | gate cell ②: recorded tip that no longer exists | not measurable at plan time → trustworthy verdict recorded |
@@ -197,7 +197,11 @@ Common set-up: `/usr/bin/grep -e 'log -p' SP/section.txt > SP/cmds.txt`, then `w
 must be ≥ 1.
 
 - `/usr/bin/grep -vc -e '--all' SP/cmds.txt` → `0`, so every history-scan command reaches all refs.
-- `/usr/bin/grep -c -e '--not' SP/cmds.txt` → ≥ 1, so a command excludes previously recorded tips.
+- `/usr/bin/grep -c -e '--stdin' SP/cmds.txt` → ≥ 1, so a history-scan command reads the recorded
+  tips from standard input.
+- `/usr/bin/grep -cF '^%(objectname)' SP/section.txt` → ≥ 1, so the section records the tip store as
+  caret-prefixed object names. `-F` reads the pattern as fixed text, so `^` is a literal caret, not a
+  line anchor.
 - `/usr/bin/grep -ci 'every ref' SP/section.txt` → ≥ 1, so the checkpoint is described as the tips
   of every ref.
 - `/usr/bin/grep -c 'the HEAD SHA of the last completed scan' SP/section.txt` → `0`.
@@ -205,10 +209,14 @@ must be ≥ 1.
   in `PROG` §E.2 **before** the edit (`plan.md` §C item 3).
   `/usr/bin/grep -cF '<pinned sentence>' SP/section.txt` → `1`.
 
-**Plan-time baseline (`TPL` at `af7eb142b`):** `SP/section.txt` 20 lines; `SP/cmds.txt` 2 lines;
-`grep -vc -e '--all'` → `1` (the `<last-sha>..HEAD` command); `grep -c -e '--not'` → `0`, exit 1;
-`grep -ci 'every ref'` → `0`, exit 1; `the HEAD SHA of the last completed scan` → `1`. No sentence is
-pinned yet.
+**Plan-time baseline, re-measured for 0.3.0 (`TPL` at `6e56840d5`; neither copy changed since
+`feeecc980`):** `SP/section.txt` 20 lines; `SP/cmds.txt` 2 lines; `grep -vc -e '--all'` → `1`, exit 0
+(the `<last-sha>..HEAD` command); `grep -c -e '--stdin'` → `0`, exit 1;
+`grep -cF '^%(objectname)'` → `0`, exit 1; `grep -ci 'every ref'` → `0`, exit 1;
+`the HEAD SHA of the last completed scan` → `1`, exit 0. Positive controls, over a scratch file in `SP`
+holding one line of each form: the `--stdin` count → `1`, exit 0; the `^%(objectname)` count → `1`,
+exit 0. The pinned-sentence check is not measured here; it reads the edited section. The earlier
+check for `--not` (reading `0`, exit 1, at `af7eb142b`) is retired with the command-substitution form.
 
 ## §D.7 AC-007 — the operator decision precedes the document edit
 
@@ -264,15 +272,28 @@ pinned yet.
     and that final scan's exit code;
   - the detection reading: `/usr/bin/grep -cF '<G1>' SP/g2.err SP/g2.txt`, with
     `SP/g2-fallback.txt` added as a third operand when that file exists, where `<G1>` is the recorded
-    tip exactly as the tip store holds it; the per-file counts are summed.
+    tip's object name **without the leading caret** the tip store carries — git names a missing object
+    that way; the per-file counts are summed.
+  - how `<G1>` is derived: before `gone` is deleted, `git -C FX rev-parse refs/heads/gone > SP/g2-gone.txt`
+    records the plain name; `sed 's/^\^//' <tip store> > SP/g2-store-plain.txt` strips the caret from
+    every store line; `/usr/bin/grep -cxF -f SP/g2-gone.txt SP/g2-store-plain.txt` → `1` shows the
+    store recorded that tip; `<G1>` is the one line of `SP/g2-gone.txt`.
 - **Then** the construction check exits non-zero, and the verdict is `trustworthy` exactly when
   `spec.md` §3.4 cell ② holds: the detection reading totals ≥ 1, the scan carrying the final result
   exits 0, and it reports `GONECELL` ≥ 1 through behaviour (a) or (b). An unhandled error, a final
   scan with a non-zero exit, a silent skip, or a detection total of 0 gives `untrustworthy`. If the construction check exits 0, the cell was not constructed; it is rebuilt,
   and that reading is a gap, not a pass. The verdict is recorded under `#### Gate cell 2` in
   `PROG` §E.2.
-- **Plan-time reading:** not red-measurable at plan time — no procedure is pinned, and how `--not`
-  behaves with a missing tip is inferred (`plan.md` §G), not measured.
+- **Plan-time reading:** not red-measurable at plan time — no procedure is pinned. The failure it
+  guards against is shown by a design probe (`progress.md` §E.2, git 2.50.1): `git log -p --all --stdin`
+  reading a caret-prefixed line for a missing object exited 128 with 0 bytes on stdout and
+  `fatal: bad object <name>` on stderr, naming the object without the caret.
+- **Mechanics check (0.3.0, scratch files in `SP`, a one-line caret store of this worktree's branch
+  tip):** the `sed` form above turned the 42-byte store into a 41-byte plain line —
+  `/usr/bin/grep -c '^\^'` printed `0`, exit 1, on the plain file and `1`, exit 0, on the store; and
+  `/usr/bin/grep -cxF -f` with the plain name as the pattern file printed `1`, exit 0, over the
+  stripped store and `0`, exit 1, over the caret store, so the membership check needs the stripped
+  store.
 
 ## §D.10 AC-010 — gate cell ③: the timing record on this repository
 
@@ -286,14 +307,23 @@ pinned yet.
     after it;
   - the scan under `/usr/bin/time -p`, output to `SP/g3-<run>.txt`, timing and errors to
     `SP/g3-<run>.time`, exit code read without a pipe;
-  - scope: the same revision arguments with `--format=%H` and without `-p` or `-G`, to
-    `SP/g3-<run>-scope.txt`, then `wc -l`;
+  - scope: the same revision arguments with `--format=%H` and without `-p` or `-G`, reading
+    `SP/g3-tips.txt` on standard input where the run reads the store, to `SP/g3-<run>-scope.txt`, then
+    `wc -l`;
   - matching commits: `/usr/bin/grep -c '^commit ' SP/g3-<run>.txt` — a count only;
   - tips excluded: `wc -l SP/g3-tips.txt`;
-  - incremental run only, immediately before it, each to its own file: `A` =
-    `git rev-list --count <recorded tips>`, `B` = `git rev-list --count --all`, `L` =
-    `git rev-list --count <recorded tips> --not --all` (tips passed with `--stdin` where the list
-    is long);
+  - incremental run only, immediately before it, each to its own file: first the plain tip names,
+    `sed 's/^\^//' SP/g3-tips.txt > SP/g3-tips-plain.txt`, then `wc -l` on both files (equal) and
+    `/usr/bin/grep -c '^\^' SP/g3-tips-plain.txt` → `0`; then `A` =
+    `git rev-list --count --stdin < SP/g3-tips-plain.txt`, `B` = `git rev-list --count --all`, and
+    `L` = `git rev-list --count --not --all --stdin < SP/g3-tips-plain.txt`. The plain file is
+    required: `A` and `L` count commits reachable **from** the recorded tips, and the store's
+    caret lines read directly would negate them. A command-line `--not` does not negate revisions
+    read through `--stdin`, so in `L` it negates `--all` only;
+  - mechanics check (0.3.0, this worktree at `6e56840d5`, a one-line plain file holding the branch
+    tip, in `SP`): the `A` form printed `7081`, equal to `git rev-list --count HEAD` → `7081`; and
+    `git rev-list --count --not HEAD~1 --stdin < <that file>` printed `1` — the command-line `--not`
+    left the standard-input tip positive (negated, the count would be `0`);
   - approval ordering, at `K`:
     `git -C <worktree> log --format=%H -S '### Lead approval for gate cell 3' feeecc980..K -- PROG > SP/g3-approval.txt`
     — the first line (newest) is `P`;
@@ -486,7 +516,7 @@ alone may not report `STASHCELL`. Measuring it would settle the question.
 
 - **Vanished recorded tip.** Now a gate cell (AC-009), not an edge case.
 - **Rewritten tip.** A recorded tip that a force-push replaced still exists until garbage collection,
-  so `--not <tip>` keeps excluding commits that are no longer on any ref. Record the observed
+  so its `^<tip>` store line keeps excluding commits that are no longer on any ref. Record the observed
   behaviour; it is not a gate cell.
 - **Credentials introduced in a merge resolution.** For the reason in §D.17, these may not surface
   under `git log -p`. Inferred, not measured.

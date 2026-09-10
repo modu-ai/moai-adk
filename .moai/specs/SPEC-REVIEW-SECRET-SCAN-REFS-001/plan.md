@@ -41,7 +41,11 @@ first, with an exact example-value allowlist and no path exclusions (`spec.md` �
    heading, with how and when the tip set is recorded on one line beginning `Tip recording: `, the
    scan command on one line beginning `Scan command: `, and the missing-tip handling on one line
    beginning `Missing-tip handling: `, each written in the form the document will carry, so AC-016
-   can find all three verbatim in the edited section (REQ-013). Pin in the same
+   can find all three verbatim in the edited section (REQ-013). The tip store is caret-prefixed object
+   names written by `git for-each-ref --format='^%(objectname)'`, and the scan command reads it through
+   standard input — `git log -p --all -G '<regex>' --stdin < <tip store>` — never through a command
+   substitution (`spec.md` §3.4 § Tip store and scan command). The missing-tip handling looks for the
+   tip's object name without the caret, the way git names a missing object. Pin in the same
    place, before the document edit, the sentence that will name the commits the per-review step does
    not cover (REQ-004), so AC-006 checks a sentence fixed in advance rather than one chosen after the
    fact.
@@ -139,9 +143,22 @@ unchanged since the gate evidence). Populate `progress.md` §E.2 and §E.3.
 - **Option 2 is unmeasured until the gate runs** — no timing and no fixture run exist yet; its cost
   claim is an expectation. M1 measures it (`spec.md` §3.4 cells ① and ③), and an untrustworthy cell
   stops the run phase.
-- **Option 2, vanished tips:** a recorded tip that has been garbage-collected may make `--not <tip>`
-  fail (inferred). M1 measures this as gate cell ② (`spec.md` §3.4), which defines the acceptable
-  behaviours; any other outcome stops the run phase.
+- **Option 2, vanished tips:** a recorded tip that has been garbage-collected stops the scan. The
+  design probe in `progress.md` §E.2 (git 2.50.1) read a caret-prefixed line for a missing object
+  through `git log -p --all --stdin` and exited 128, naming the object without its caret. M1 measures
+  the recovery as gate cell ② (`spec.md` §3.4), which defines the acceptable behaviours; any other
+  outcome stops the run phase.
+- **Command-substitution form (design reason for the stdin form):** a worktree-isolated session
+  refuses a git command carrying a command substitution (measured, 2026-09-11), and the lead reports
+  725 refs on this repository, so typing the tips as arguments by hand does not scale. Reading the
+  tip store through `--stdin` also keeps the tip list off the command line, out of reach of the
+  operating system's argument-list limit. That property is the design reason; it is not measured
+  beyond this repository's 725 refs.
+- **`git log` stdin semantics (inferred):** the stdin form was measured on `git rev-list`; that
+  `git log` reads a caret store by the same revision rules is inferred. Re-running gate cells ① and
+  ② on the new pin measures it.
+- **Sessions that are not worktree-isolated (gap):** whether such a session can run the
+  command-substitution form was not measured. The canonical procedure does not depend on it.
 - **Option 2, when the tip set is recorded (inferred):** a tip set recorded after the scan rather
   than before it could exclude commits that landed while the scan ran. The pinned procedure states
   when tips are recorded (§C item 3).
