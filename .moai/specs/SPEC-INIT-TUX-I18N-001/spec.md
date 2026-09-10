@@ -1,7 +1,7 @@
 ---
 id: SPEC-INIT-TUX-I18N-001
 title: "init/update/profile wizard TUX repair — v1 profile wizard absorbed into huh v2, layout repair, remaining English surfaces localized"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -11,179 +11,237 @@ phase: "v3.2.0 target"
 module: "internal/cli, internal/cli/wizard"
 lifecycle: spec-anchored
 tags: "cli, tux, wizard, huh-v2, i18n, init, update, profile, layout, pty"
-tier: M
-related_specs: [SPEC-CLI-TUX-V3-002, SPEC-CLI-TUX-INIT-UPDATE-001, SPEC-CLI-WIZARD-RESTRUCTURE-001, SPEC-INIT-WIZARD-REPAIR-001, SPEC-WEB-CONSOLE-002, SPEC-WEB-CONSOLE-003, SPEC-I18N-GOVERNANCE-001]
+tier: L
+related_specs: [SPEC-CLI-TUI-MODERNIZE-001, SPEC-CLI-TUX-V3-002, SPEC-CLI-TUX-INIT-UPDATE-001, SPEC-CLI-WIZARD-RESTRUCTURE-001, SPEC-INIT-WIZARD-REPAIR-001, SPEC-INIT-HARNESS-PROMPT-001, SPEC-WEB-CONSOLE-002, SPEC-WEB-CONSOLE-003, SPEC-I18N-GOVERNANCE-001]
 ---
 
 # SPEC-INIT-TUX-I18N-001 — init/update/profile 위저드 TUX 수리와 잔여 영어 표면 현지화
 
-> 카드: **t586** (Factory lane-2, Class C). 재현 근거: `.moai/reports/t586/verdict.md`.
+> 카드: **t586** (Factory lane-2, Class C). 재현 근거: `.moai/reports/t586/verdict.md`. 1회차 plan 감사: `.moai/reports/t586/plan-audit.md` (FAIL 0.67, 결함 D1~D17).
 
 ## HISTORY
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
-| 0.1.0 | 2026-09-11 | manager-spec | 최초 작성(카드 t586 plan 단계). 재현 판정(`.moai/reports/t586/verdict.md`)과 리드·운영자 결정 D1~D6을 요구사항으로 옮겼다. 프로필 없음 확인창 제거(D1), huh v1 프로필 위저드를 huh v2 위저드로 흡수(D2), 확인창 안쪽 빈 줄 유지(D3), 단계 표시 줄 소실 조사 연기(D4), 옵션 설명 열 표시 폭 기준 정렬(D5), pty 캡처 하네스와 View() 골든 이원 판정(D6)을 반영했다. |
+| 0.1.0 | 2026-09-11 | manager-spec | 최초 작성(카드 t586 plan 단계). 재현 판정과 리드·운영자 결정 D1~D6 을 요구사항으로 옮겼다. |
+| 0.2.0 | 2026-09-11 | manager-spec | 1회차 plan 감사 결함 D1~D17 반영. 리드 판정 Q1~Q4 로 미결 4건을 닫았다(init 은 프로필 위저드를 부르지 않음, 도움말은 키별 짧은 라벨, 다운그레이드 확인창 언어 우선순위, 프로필 위저드 단계 표시). SPEC-CLI-TUI-MODERNIZE-001 계약 인수를 명시했다(§A.6.1). 소스 스캔 가드 9건·v1 타입 노출·저장값 보존 4건을 조사와 요구에 넣었다. pty 판정 계약을 공허 초록이 불가능하도록 다시 썼다. t583 충돌 회피 전제를 lane-1 확정 범위로 바꾸고, t583 뒤 남는 그룹 재구성을 새 요구로 넣었다. REQ 18·AC 20 으로 Tier M 요구 상한(16)을 넘어 Tier L 로 올리고 `design.md`·`research.md` 를 보탰다. |
 
 ## §A 배경
 
 ### A.1 무엇이 문제인가
 
-`moai init`·`moai update`·`moai profile setup` 의 대화형 화면에는 두 종류의 결함이 있다. 재현과 측정은 모두 판정 문서에 있고, 이 SPEC 은 그 측정을 기준선으로 삼는다(수치는 판정 문서에서 읽은 것만 옮긴다).
+`moai init`·`moai update`·`moai profile setup` 의 대화형 화면에는 두 종류의 결함이 있다. 재현과 측정은 판정 문서에 있고, 이 SPEC 은 그 측정을 기준선으로 삼는다.
 
 - **F11 렌더 결함** — 확인 버튼 중앙정렬(들여쓰기 v2 7칸, v1 22칸), 필드 사이 빈 줄(`FieldSeparator` 기본값 `"\n\n"`), 선택 필드 아래 빈 카드 줄(첫 페이지 4줄), 옵션 설명 열 불일치(`Label - Desc` 단순 연결). 네 가지 모두 뷰 문자열과 tmux 80×30 pty 캡처 양쪽에서 재현됐다.
-- **F10 영어 고정 표면** — 판정 문서의 I1~I7. 프로필 없음 확인창 제목·설명(I1·I2), v1 확인창 버튼 `Yes`/`No`(I3), v1 프로필 위저드 1단계 언어 선택(I4), 1단계 취소 메시지(I5), 버전 다운그레이드 확인창(I6, 카드 원문에 없던 대상), v1·v2 전 표면의 도움말 줄(I7).
+- **F10 영어 고정 표면** — 판정 문서의 I1~I7. 프로필 없음 확인창(I1·I2), v1 확인창 버튼 `Yes`/`No`(I3), v1 프로필 위저드 1단계 언어 선택(I4), 1단계 취소 메시지(I5), 버전 다운그레이드 확인창(I6), v1·v2 전 표면의 도움말 줄(I7).
 
 ### A.2 결정으로 좁혀진 범위
 
-리드·운영자 결정이 대상 목록을 다음과 같이 바꾼다.
+리드·운영자 결정 D1~D6(판정 문서)과 1회차 감사 뒤 리드 판정 Q1~Q4 가 대상 목록을 다음과 같이 정한다.
 
 | 판정 대상 | 결정 반영 후 |
 |---|---|
-| I1·I2 프로필 없음 확인창 | **사라짐** (D1 — 확인창 자체를 없앤다) |
-| I3 v1 확인창 버튼 | **사라짐** (D1 로 해당 확인창이 없어짐) |
-| I4·I5 v1 프로필 위저드 1단계 | **흡수로 해소** (D2 — v2 위저드의 언어 질문과 취소 경로가 대신한다) |
-| I6 다운그레이드 확인창 | **현지화 대상으로 남음** — 이 SPEC 은 이 확인창도 v2 로 옮기기로 정한다(§A.4, §B.3) |
-| I7 도움말 줄 | **현지화 대상으로 남음** (F11 의 키맵 조정과 함께) |
+| I1·I2 프로필 없음 확인창 | **사라짐** — init·update 모두에서 확인창을 없애고, 두 명령은 프로필 위저드도 부르지 않는다(D1, Q1) |
+| I3 v1 확인창 버튼 | **사라짐** — I1·I2 와 함께 없어짐 |
+| I4·I5 v1 프로필 위저드 1단계 | **흡수로 해소** — v2 위저드의 대화 언어 질문과 취소 경로가 대신한다(D2) |
+| I6 다운그레이드 확인창 | **v2 로 옮기고 현지화** — 언어는 프로젝트 → 활성 프로필 → 영어 순서로 푼다(Q3) |
+| I7 도움말 줄 | **키별 짧은 라벨로 현지화** — 문장형 `HelpSelect`/`HelpInput` 은 지운다(Q2) |
 
-### A.3 v1 호출 지점 전수 조사 (D2-a)
+Q1 의 결과로 init 에서 대화 언어는 한 번만 묻는다(init 위저드 첫 질문). 프로필 위저드는 사용자가 `moai profile setup [name]` 이나 `moai profile --setup` 을 직접 실행할 때만 뜬다. Q4 에 따라 흡수된 프로필 위저드도 init 위저드와 같은 형식의 단계 표시를 보여 준다.
 
-트리 `e7a7d4bb3`(워크트리 `WT-init-tux-i18n`)에서 grep 으로 다시 셌다.
+### A.3 v1 호출 지점 전수 조사
 
-`runProfileSetup` 호출·등록 지점 — 4곳, 이 밖에 없음:
+트리 `18144b7ac`(워크트리 `WT-init-tux-i18n`)에서 다시 쟀다. 조사 트리 `e7a7d4bb3` 와 이 트리 사이 `git diff --stat e7a7d4bb3 HEAD -- internal cmd pkg go.mod go.sum` 출력은 비어 있다. 명령과 원문은 `research.md` §1 에 있다.
 
-| 위치 | 성격 |
-|---|---|
-| `internal/cli/profile.go:62` | `moai profile --setup`/`-s` 플래그 경로(`runProfileCmd`) |
-| `internal/cli/profile_setup.go:214` | `moai profile setup [name]` cobra `RunE` 등록 |
-| `internal/cli/init.go:659` | 프로필 없음 확인창 "예" 분기 |
-| `internal/cli/update.go:187` | 같은 확인창의 update 쪽 사본 |
+`runProfileSetup` 호출·등록 지점 — 4곳:
 
-(`internal/cli/launcher.go:1104`, `:1106` 은 주석 속 언급이며 호출이 아니다.)
+| 위치 | 성격 | 이 SPEC 뒤 |
+|---|---|---|
+| `internal/cli/profile.go:62` | `moai profile --setup`/`-s` 플래그 경로 | 남음 |
+| `internal/cli/profile_setup.go:214` | `moai profile setup [name]` cobra `RunE` 등록 | 남음 |
+| `internal/cli/init.go:659` | 프로필 없음 확인창 "예" 분기 | **사라짐** (REQ-ITI-001) |
+| `internal/cli/update.go:187` | 같은 확인창의 update 쪽 사본 | **사라짐** (REQ-ITI-001) |
 
-`github.com/charmbracelet/huh`(v1) 을 import 하는 파일 — 5개, 테스트 파일 포함 전수: `huh_theme.go`, `init.go`, `update.go`, `update_version.go`, `profile_setup.go`.
+`github.com/charmbracelet/huh`(v1) 을 import 하는 추적 비테스트 Go 파일 — 5개: `huh_theme.go`, `init.go`, `update.go`, `update_version.go`, `profile_setup.go`. v1 을 import 하는 테스트 파일은 `huh_theme_test.go` 하나다.
 
-v1 테마 팩토리 `moaiHuhTheme` 소비 지점 — 5곳: `init.go:657`, `update.go:185`, `update_version.go:331`, `profile_setup.go:335`, `profile_setup.go:442`. `moaiHuhStyles` 는 `huh_theme.go` 안과 `huh_theme_test.go` 에서만 쓰인다.
+v1 테마 팩토리 `moaiHuhTheme` 비테스트 소비 지점 — 5곳: `init.go:657`, `update.go:185`, `update_version.go:331`, `profile_setup.go:335`, `profile_setup.go:442`.
 
-### A.4 흡수 후 사라지는 표면과 남는 표면 (D2-b)
+### A.4 흡수 뒤 사라지는 표면, 시그니처가 바뀌는 표면, 남는 표면
 
 사라지는 것:
 
 - `profile_setup.go` 의 v1 폼 두 개(1단계 언어 폼 `:327-335`, 본 폼 `:354-442`)
-- 프로필 없음 확인창 두 개(`init.go:650-662`, `update.go:177-191`)
-- v1 테마 팩토리 `huh_theme.go`(`moaiHuhTheme`/`moaiHuhStyles`) — 이 SPEC 이 다운그레이드 확인창(`update_version.go:327`)도 v2 로 옮기므로 흡수 뒤 소비자가 0 이 된다. 다운그레이드 확인창을 v1 에 남겨 두면 v1 테마와 v1 키맵 현지화를 확인창 하나 때문에 따로 유지해야 하므로, 옮기는 쪽을 택한다.
+- 프로필 없음 확인창 두 개(`init.go:647-663`, `update.go:174-192`)
+- v1 테마 팩토리 `huh_theme.go`(`moaiHuhTheme`·`moaiHuhStyles`·`huhThemeIsDark`)와 `huh_theme_test.go`
+- 위저드 번역의 문장형 도움말 `HelpSelect`/`HelpInput`(`wizard/translations.go:18-19`, 로케일별 값 `:542-564`)과 그것을 읽는 `wizard/wizard_test.go:283-298`, `:1256-1260`
+- `profileSetupText` 의 폼 전용 필드(1단계 언어 문구, v1 그룹 제목 등) — 흡수 뒤 비테스트 참조가 0 이 되는 것만(REQ-ITI-013)
 
-남는 것 (흡수 뒤에도 소비자가 있다):
+시그니처가 바뀌는 것 (D4):
 
-- `profileSetupText` 구조체와 `getProfileText` — 저장 뒤 요약 출력(`printProfileSummary`, `profile_setup.go:537`), 스키마 옵션 라벨 브리지(`schemaOptionBridge` → `optionLabelFor`, `schema_bridge.go:131-168`), 필드·세그먼트 브리지(`schema_bridge.go:27-111`)가 계속 읽는다.
-- `normalizeModel`·`schemaSelectOptions`·`readCurrentProjectConfig`·`persistProjectConfig` 등 v1 폼과 무관한 저장·정규화 함수.
+| 표면 | 현재 | 처분 | 영향받는 테스트 |
+|---|---|---|---|
+| `schemaSelectOptions` (`profile_setup.go:124`) | `[]huh.Option[string]`(v1) 반환, `huh.NewOption` 사용 | 버전 중립 `{Label, Value}` 목록을 돌려주도록 바꾸고, v2 위저드에는 이 목록을 인자로 넘긴다(`design.md` §3) | `profile_setup_projectconfig_test.go:160`, `profile_setup_schema_options_test.go:49,68,92,108`, `profile_setup_nested_test.go:107` — 3개 파일, 호출 6곳. `.Key` 는 `.Label` 로 바뀐다 |
+| 인라인 언어 옵션 `langOptions` (`profile_setup.go:320-325`) | v1 옵션 리터럴 | 없어짐. 값은 스키마 `languageOptions` 에서, 라벨은 init 위저드와 같은 원어 이름에서 온다(REQ-ITI-004) | — |
+| 취소 판별 `errors.Is(err, huh.ErrUserAborted)` (`profile_setup.go:338`, `:445`) | v1 센티널 | v2 위저드의 취소 센티널 `wizard.ErrCancelled`(`wizard.go:135-138` `mapFormErr`)로 판별 | 명령 수준 새 테스트(AC-ITI-007) |
+| 다운그레이드 확인창 (`update_version.go:327-334`) | v1 `huh.NewConfirm` + `moaiHuhTheme` | v2 확인창 헬퍼로 이관 | `update_version_test.go` 초록 유지 + 새 골든 |
 
-`moai profile setup [name]` 은 명령 표면을 그대로 두고, 폼 실행만 v2 엔진으로 바뀐다(REQ-ITI-007).
+남는 것:
 
-### A.5 선행 조건 — 카드 t583 과의 충돌 회피
+- `profileSetupText` 구조체와 `getProfileText` — 저장 뒤 요약(`printProfileSummary`), 스키마 옵션 라벨 브리지(`schemaOptionBridge` → `optionLabelFor`, `schema_bridge.go:162-169`), 필드·세그먼트 브리지가 계속 읽는다. 폼 문자열만 위저드 번역 쪽으로 옮긴다.
+- `normalizeModel`·`readCurrentProjectConfig`·`persistProjectConfig`·`emitAcceptEditsConfirmation` 등 저장·정규화 함수.
+- 명령 표면 `moai profile setup [name]`·`moai profile --setup`.
 
-카드 t583(lane-1, init 위저드 질문 16→4)이 자기 워크트리에서 **커밋하지 않은 상태로** 아래 범위를 고치고 있다. 줄 번호는 lane-1 이 리드에게 보고한 값이며 **이 트리에서 검증하지 않았다**.
+### A.5 소스 스캔 가드 전수 조사 (D3)
 
-| 파일 | t583 이 고치는 범위(보고값) |
-|---|---|
-| `internal/cli/wizard/questions.go` | `Page3Questions`, `InitQuestions` |
-| `internal/cli/wizard/wizard.go` | `397-482`, `35-52`, `176-238` |
-| `internal/cli/wizard/translations.go` | (범위 미상) |
-| `internal/cli/init.go` | `270-339`, `728-754` |
+`profile_setup.go` 파일 본문을 읽는 테스트는 9건이다(`git grep -n 'ReadFile("profile_setup.go")' -- 'internal/cli/*_test.go'`). 폼 코드가 옮겨 가면 양성 가드는 실패하고, 음성 가드는 표현이 바뀌어 공허해진다. 가드마다 재조준 대상은 `design.md` §10 이 정한다.
 
-[HARD] `wizard.go`·`questions.go`·`translations.go`·`init.go` 를 건드리는 run 단계 작업은 **t583 이 develop 에 병합되고 이 워크트리가 그것을 흡수한 뒤에만** 시작한다. 이 네 파일과 겹치지 않는 작업(`huh_theme.go`, `update_version.go`, 검증 하네스와 골든 발판, 새 파일)은 먼저 할 수 있다. 순서는 `plan.md` §F 가 정한다.
+| # | 위치 | 테스트 함수 | 종류 | 단정하는 성질 |
+|---|---|---|---|---|
+| S1 | `profile_setup_model_policy_test.go:38` | `TestProfileSetup_ModelPolicySelectPresent` | 양성 | model_policy 선택이 `existingPrefs.ModelPolicy` 로 초기화되고 `t.ModelPolicyTitle`·세 정책 값·`ModelPolicy:` 저장을 가진다 |
+| S2 | `profile_setup_nested_test.go:27` | `TestTUINestedConfigNoParallelWriter` | 음성+양성 | `yaml.Marshal`·`os.WriteFile` 부재, `persistProjectConfig` 존재 |
+| S3 | `profile_setup_nested_test.go:80` | `TestPermissionModeNormalizeAcceptEdits` | 양성 | `permissionMode == defaultPermissionMode` 정규화 존재 |
+| S4 | `profile_setup_nested_test.go:117` | `TestTUIEmptyLabelsSchemaSourced` | 양성 | model_policy 빈 라벨을 `settings.EmptyLabelFor("model_policy")` 에서 읽음 |
+| S5 | `profile_setup_projectconfig_test.go:145` | `TestProfileSetupConstructsProjectSelects` | 양성 | `&developmentMode` 바인딩 |
+| S6 | `schema_bridge_test.go:121` | `TestTUIRendersSchemaFieldSet` | 양성 | 바인딩 9개(`&userName` … `&developmentMode`) |
+| S7 | `profile_setup_removed_questions_test.go:61` | `TestWizardOmitsRemovedQuestions` | 음성 | 제거된 질문 표식(`NewMultiSelect`, `&statuslineTheme`, `GitConventionTitle` 등) 부재 |
+| S8 | `profile_setup_removed_questions_test.go:87` | `TestWizardWritesNoStatuslineTheme` | 음성 | `StatuslineTheme:` 대입과 테마 이름 부재 |
+| S9 | `profile_setup_removed_questions_test.go:116` | `TestWizardCarriesStoredSegmentsIntoPrefs` | 양성 | 세그먼트 맵 통과, 프로젝트 동기화 nil 세그먼트, 빈 convention 인자 |
 
 ### A.6 관련 SPEC 과의 관계
 
 | SPEC | 관계 |
 |---|---|
-| SPEC-CLI-TUX-V3-002 (completed) | REQ-TUX2-006 단일 멀티그룹 폼, REQ-TUX2-008 동적 단계 표시를 **이어받는다**. REQ-TUX2-012 가 "huh 메이저는 스파이크 결과를 따른다"고 남긴 v1 잔여 표면을 이 SPEC 이 정리한다. 충돌 없음. |
-| SPEC-CLI-TUX-INIT-UPDATE-001 (completed) | 배너·체크리스트·진행 표시의 표현 개편. 위저드 폼은 대상이 아니었다. REQ-TUXIU-044(stdout/stderr 채널 규율)는 이 SPEC 에서도 지킨다. 충돌 없음. |
-| SPEC-CLI-WIZARD-RESTRUCTURE-001 (completed) | 그 SPEC 의 §C「Out of Scope — wizard rendering engine / theme」가 미뤄 둔 영역을 이 SPEC 이 맡는다. REQ-WIZ-007(언어 변경 즉시 반영)을 프로필 흐름까지 넓힌다(REQ-ITI-008). |
-| SPEC-INIT-WIZARD-REPAIR-001 (completed) | 그 SPEC 의 "질문·번역 변경 없음" 제약은 그 SPEC 한정이다. 그 SPEC 이 되살린 세 배선(autonomy tier, 워크플로 토글, audit 블록)은 이 SPEC 이 회귀시키지 않는다. |
-| SPEC-WEB-CONSOLE-002 (completed) | REQ-WC2-006 TUI `model_policy` 선택을 흡수 뒤에도 유지한다(REQ-ITI-005). |
-| SPEC-WEB-CONSOLE-003 (completed) | REQ-WC3-006 의 `development_mode` 선택과 quality.yaml 저장 경로를 유지한다. 같은 요구의 `git_convention` 선택은 이미 코드에서 빠졌고(`profile_setup.go:427-434` 주석), 이 SPEC 은 되살리지 않는다. |
-| SPEC-I18N-GOVERNANCE-001 (completed) | 웹 콘솔 `i18n.js` 카탈로그 관리. 대상 카탈로그가 다르다. 키 동등성 원칙만 빌려 오고 웹 쪽은 건드리지 않는다. |
+| SPEC-CLI-TUI-MODERNIZE-001 (completed) | **계약 일부를 이 SPEC 이 뒤집는다.** 두 팩토리 병존과 v1 쪽 간접 변수를 요구하던 절이 v1 팩토리 삭제와 충돌한다. 인수 내용은 §A.6.1. |
+| SPEC-CLI-TUX-V3-002 (completed) | REQ-TUX2-006 단일 멀티그룹 폼, REQ-TUX2-008 동적 단계 표시를 **이어받는다**. REQ-TUX2-012 가 남긴 v1 잔여 표면을 이 SPEC 이 정리한다. 충돌 없음. |
+| SPEC-CLI-TUX-INIT-UPDATE-001 (completed) | 배너·체크리스트·진행 표시의 표현 개편. REQ-TUXIU-044(stdout/stderr 채널 규율)는 이 SPEC 에서도 지킨다. 충돌 없음. |
+| SPEC-CLI-WIZARD-RESTRUCTURE-001 (completed) | 그 SPEC 의「Out of Scope — wizard rendering engine / theme」가 미뤄 둔 영역을 이 SPEC 이 맡는다. REQ-WIZ-007(언어 변경 즉시 반영)을 프로필 흐름까지 넓힌다(REQ-ITI-007). |
+| SPEC-INIT-WIZARD-REPAIR-001 (completed) | 그 SPEC 이 되살린 세 배선(autonomy tier, 워크플로 토글, audit 블록)을 회귀시키지 않는다. |
+| SPEC-INIT-HARNESS-PROMPT-001 (completed) | `init.go` 의 프로필 확인창을 언급하지만 REQ-IHP-005 가 질문 총수에 대해 주장하지 않는다고 밝혀 확인창 제거와 충돌하지 않는다. |
+| SPEC-WEB-CONSOLE-002 (completed) | REQ-WC2-006 TUI `model_policy` 선택을 흡수 뒤에도 유지한다(REQ-ITI-004). |
+| SPEC-WEB-CONSOLE-003 (completed) | REQ-WC3-006 의 `development_mode` 선택과 quality.yaml 저장 경로를 유지한다. `git_convention` 선택은 이미 빠졌고 되살리지 않는다. |
+| SPEC-I18N-GOVERNANCE-001 (completed) | 웹 콘솔 `i18n.js` 카탈로그 관리. 키 동등성 원칙만 빌려 오고 웹 쪽은 건드리지 않는다. |
 
-### A.7 템플릿 영향
+#### A.6.1 SPEC-CLI-TUI-MODERNIZE-001 계약 인수
 
-이 SPEC 의 변경은 모두 `internal/cli` 와 `internal/cli/wizard` 의 Go 코드와 그 테스트다. `internal/template/templates/**` 는 **바뀌지 않는다**. 따라서 템플릿 중립성 규칙(SPEC ID·날짜·카드 id 금지)이 적용될 산출물이 없다. 사용자 문서(docs-site)에 확인창 문구가 인용돼 있는지는 sync 단계에서 확인한다.
+이 SPEC 은 `internal/cli/huh_theme.go` 를 지운다. 그 SPEC 의 본문은 고치지 않고, 뒤집히는 절과 대체 보장을 여기에 적는다.
+
+| 뒤집히는 절 (SPEC-CLI-TUI-MODERNIZE-001) | 뒤집히는 내용 | 대체 보장 |
+|---|---|---|
+| 요구 `REQ-TUIM-040` | "huh v1 테마 팩토리와 huh v2 테마 팩토리는 두 개의 분리된 팩토리로 남는다" — v1 팩토리의 존속 | REQ-ITI-009: `internal/cli` 가 그리는 모든 huh 폼은 v2 위저드 테마 팩토리 하나를 쓴다. 병합할 두 번째 팩토리 자체가 없어지므로 "하나로 합치지 않는다"는 금지는 대상이 사라진다 |
+| 요구 `REQ-TUIM-045` | "두 팩토리 모두 기존 패키지 수준 간접 변수로 밝기 축을 푼다" — v1 쪽 간접 변수 `huhThemeIsDark` 의 존속 | REQ-ITI-009: 남는 v2 팩토리가 자기 간접 변수(`wizardIsDark`)로 밝기 축을 풀고, 테스트는 환경 변수를 건드리지 않고 두 축을 강제할 수 있다(AC-ITI-011) |
+| 인수 기준 `AC-TUIM-026` | `grep -n "func moaiHuhStyles" internal/cli/huh_theme.go` → 1 hit | AC-ITI-011: `huh_theme.go` 부재와 `moaiHuhTheme`·`moaiHuhStyles`·`huhThemeIsDark` 참조 0, 대조군 `var wizardIsDark` 1 hit |
+| 인수 기준 `AC-TUIM-029` | `grep -n "var huhThemeIsDark" internal/cli/huh_theme.go` → 1 hit | AC-ITI-011: 다운그레이드 확인창과 프로필 위저드를 `wizardIsDark` 강제 참·거짓으로 각각 그린 골든이 서로 다르고 각 골든과 일치 |
+
+REQ-TUIM-041(두 팩토리에 같은 토큰-역할 배정)은 뒤집지 않는다. 팩토리가 하나가 되므로 그 절은 남는 v2 팩토리의 토큰 배정에 대한 요구로 읽힌다.
+
+**인수 문장**: REQ-TUIM-040 과 REQ-TUIM-045 의 v1 쪽 보장, AC-TUIM-026 과 AC-TUIM-029 의 `internal/cli/huh_theme.go` 판정은 이 SPEC 이 develop 에 병합되는 시점에 이 SPEC 의 REQ-ITI-009 와 AC-ITI-011 로 넘어가며, 그 뒤로는 SPEC-CLI-TUI-MODERNIZE-001 의 해당 절을 현행 계약으로 읽지 않는다.
+
+### A.7 선행 조건 — 카드 t583 과의 충돌 회피
+
+카드 t583(lane-1, SPEC-INIT-QUIET-WIZARD-001, init 질문 18→4)이 같은 위저드 파일을 고친다. 아래 범위는 lane-1 이 확정해 리드에게 넘긴 목록이다(출처: t583 워크트리 `SPEC-INIT-QUIET-WIZARD-001/plan.md` §F.1, 기준 트리 `120436f58`). t583 은 아직 plan 단계이고 커밋되지 않았다. **줄 번호는 t583 병합·흡수 뒤 흡수 트리에서 다시 잰다.** 이 트리에서 함수 시작 줄(`InitQuestions` 296, `Page3Questions` 349, `ReconfigureQuestions` 268, `RunWithDefaults` 35, `buildFormGroups` 158, `stepperDenominator` 236, `saveAnswer` 397, `saveBoolAnswer` 467, `buildConfirmField` 487)은 목록과 일치함을 확인했다(`research.md` §6).
+
+| 파일 | t583 이 고치는 범위 | t583 이 건드리지 않는 범위 |
+|---|---|---|
+| `internal/cli/wizard/questions.go` | `InitQuestions` 본문(296-303), `Page3Questions`(349-527)에서 11문항 리터럴과 딸린 주석 삭제, ID 로 고르는 작은 도우미 추가 | `DefaultQuestions`(48), `GitQuestions`(162), `ReconfigureQuestions`(268-289), `FilteredQuestions`·`TotalVisibleQuestions`·`QuestionByID`, 남는 `agent_wiring`·`autonomy_tier` 리터럴과 그룹 라벨 |
+| `internal/cli/wizard/wizard.go` | `saveAnswer` 분기 `project_mode`(434)·`project_continuation`(440)·`audit_model`/`audit_gate_*`(442-449), `saveBoolAnswer`(467) 본문 분기와 위 주석(458-466) | `RunWithDefaults`(35-59), `buildFormGroups`(158~)와 그룹 묶기, 스테퍼(236·242), `buildField`·`buildConfirmField`(487~), 스타일·렌더링 코드 전부 |
+| `internal/cli/wizard/types.go` | `WizardResult` 필드 11개 삭제(`ProjectMode`, `WorktreeAutoCreate`, `TodoEnabled`, `FeedbackAutoSubmit`, `ProjectContinuation`, `AuditModel`, `AuditGateClaude`, `AuditGateCodex`, `AuditGateGLM`, `CodexAuditEnabled`, `MCPProvision`) | 나머지 필드 |
+| `internal/cli/wizard/translations.go` | ko·ja·zh 표에서 위 11개 ID 항목 삭제 | `project_name`·`model_policy`·`report_format`·Git·`agent_wiring`·`autonomy_tier` 항목, UI 문자열 표(t583 보고값 548 이후; 이 트리의 `var uiStrings` 는 540) |
+| t583 위저드 테스트 | t583 plan.md §H 목록만 | 렌더·색·폼 스냅숏 테스트 |
+| `internal/cli/init.go` | `applyWizardPage3ToOpts`(277-339) 매핑 삭제, 결과 적용 블록(728-750) 일부 삭제, 대화형 `opts.MCPProvision = true`, `:1004-1011` 규칙과 주석 | 프로필 확인창 블록(647-663)은 목록에 없다 |
+
+t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / Quality & Workflow 1개(`agent_wiring`) / Autonomy 1개(`autonomy_tier`), 라벨은 그대로다. 확인형(`QuestionTypeConfirm`) 질문 5개(`worktree_auto_create`, `todo_enabled`, `feedback_auto_submit`, `codex_audit_enabled`, `mcp_provision`)는 모두 삭제 목록에 들어 있어, t583 뒤 init·reconfigure 질문 집합에는 확인형 질문이 남지 않는다. `QuestionTypeConfirm` 열거값과 `buildConfirmField` 는 남는다.
+
+**t586 이 새로 맡는 일**: 라벨이 "Quality & Workflow" 인데 `agent_wiring` 하나만 남는 그룹의 정리(REQ-ITI-017). 그룹 라벨은 화면에 그려지지 않고 페이지를 묶는 키로만 쓰이므로(`wizard.go:183-186`), 라벨만 바꾸는 것으로는 사용자가 보는 것이 달라지지 않는다. 결정은 `design.md` §9.
+
+[HARD] `questions.go`·`wizard.go`·`types.go`·`translations.go`·`init.go` 를 건드리는 run 단계 작업은 **t583 이 develop 에 병합되고 이 워크트리가 그것을 흡수한 뒤, 흡수 트리에서 기준선을 다시 잰 다음에만** 시작한다. 이 다섯 파일과 겹치지 않는 작업(`update_version.go`, `profile_setup.go` 의 옵션 타입, 새 파일, 검증 하네스와 골든 발판)은 먼저 할 수 있다. 같은 Go 패키지의 최상위 식별자는 한 이름공간을 쓰므로, 게이트 앞에 `wizard` 패키지에 새로 두는 식별자는 흡수 직후 `go build ./internal/cli/wizard/` 로 충돌을 확인한다. 순서는 `plan.md` §F.
+
+### A.8 템플릿 영향
+
+변경은 모두 `internal/cli` 와 `internal/cli/wizard` 의 Go 코드, `go.mod`/`go.sum`, 그 테스트다. `internal/template/templates/**` 는 **바뀌지 않는다**. 사용자 문서(docs-site)에 확인창 문구가 인용돼 있는지는 sync 단계에서 확인한다.
 
 ## §B 요구사항 (GEARS)
 
-> 요구 본문은 이 저장소의 GEARS 관례대로 영어 절(`When`/`While`/`Where`/`shall`)로 적는다.
+> 요구 본문은 이 저장소의 GEARS 관례대로 영어 절로 적는다. 패턴 이름은 Ubiquitous / Event-driven / State-driven / Unwanted behavior 중 하나다.
 
-### B.1 프로필 없음 진입 (D1)
+### B.1 프로필 없음 진입 (D1, Q1)
 
-- **REQ-ITI-001** (Event-driven): **When** `moai init` or `moai update` runs on an interactive terminal and the active profile is not set up, the CLI **shall** enter the profile setup wizard directly at its first question (conversation language), without presenting any intermediate yes/no confirmation.
-- **REQ-ITI-002** (Event-detected): **When** the user cancels the profile setup wizard entered through REQ-ITI-001, or that wizard returns an error, `moai init` and `moai update` **shall** continue their remaining flow exactly as they do today — a cancellation writes no profile and proceeds, an error emits a warning and proceeds — and **shall not** exit non-zero because of the cancellation.
-- **REQ-ITI-003** (State-driven): **While** stdin is not a terminal, or `moai init` runs with `--non-interactive`, or `moai update` runs with `--yes`, the CLI **shall not** start the profile setup wizard.
+- **REQ-ITI-001** (Event-driven): **When** `moai init` or `moai update` runs while the active profile is not set up, the CLI **shall** continue its flow without presenting any profile yes/no confirmation and without starting the profile setup wizard, whether or not stdin is a terminal and whichever flags were passed.
+- **REQ-ITI-002** (Ubiquitous): The interactive `moai init` flow **shall** ask the conversation-language question exactly once, as the first question of the init wizard, and the profile setup wizard **shall** start only when the user runs `moai profile setup [name]` or `moai profile --setup`.
 
-### B.2 v1 프로필 위저드 흡수 (D2)
+### B.2 v1 프로필 위저드 흡수 (D2, Q4)
 
-- **REQ-ITI-004** (Ubiquitous): Every profile setup entry — `moai profile setup [name]`, `moai profile --setup`, and the REQ-ITI-001 entry — **shall** run on the same huh v2 wizard engine as the init wizard, and no non-test Go source **shall** import `github.com/charmbracelet/huh` (v1).
-- **REQ-ITI-005** (Ubiquitous): The absorbed profile wizard **shall** collect the same field set as the current wizard (user name; conversation, git-commit, code-comment and documentation language; model; model policy; effort level; permission mode; development mode), **shall** persist each value to the same destination as today (profile `preferences.yaml`, project config sync, `quality.yaml` `development_mode`), and **shall** derive every option value set from the shared settings schema that the web console also reads.
-- **REQ-ITI-006** (Ubiquitous — persisted-value preservation): The absorbed profile wizard **shall** preserve these existing behaviors: a deprecated model ID stored in preferences is normalized before it is bound to the model select, so the stored choice is pre-selected rather than silently lost; selecting `acceptEdits` stores an empty permission mode and prints the acceptEdits confirmation line; the development-mode select is initialized from the project's `quality.yaml`, not from preferences; the stored statusline segment map is carried through a save untouched; and every other select pre-selects the currently stored value.
-- **REQ-ITI-007** (Ubiquitous): `moai profile setup [name]` **shall** keep its command contract — an optional profile name defaulting to `default`, the session-worktree auto-entry with its scope notice and exit cleanup, the "setup cancelled" exit with status 0 on user abort, and the saved-values summary after a successful save.
-- **REQ-ITI-008** (Event-driven): **When** the user answers the conversation-language question in the profile wizard, every subsequently rendered question title, description, option label, confirm button label and help line **shall** render in the selected language.
+- **REQ-ITI-003** (Ubiquitous): Both explicit profile setup entries **shall** run on the same huh v2 wizard engine as the init wizard; no tracked non-test Go source **shall** import `github.com/charmbracelet/huh`, and after `go mod tidy` the `go.mod` file **shall** not require that module.
+- **REQ-ITI-004** (Ubiquitous): The absorbed profile wizard **shall** collect the user name; the conversation, git-commit, code-comment and documentation languages; the model; the model policy; the effort level; the permission mode; and the development mode. It **shall** persist them to the same destinations as today — the profile `preferences.yaml`, the project `user.yaml` and `language.yaml` through the project config sync when run inside a MoAI project, and `quality.yaml` `development_mode` — and **shall** take every select's option values from the shared settings schema (`settings.FieldOptionDefs`), except `model_policy`, which the schema no longer declares and whose option values **shall** be `template.ValidModelPolicies()` plus the empty value.
+- **REQ-ITI-005** (Ubiquitous): The absorbed profile wizard **shall** preserve these behaviors: (1) a deprecated model ID stored in preferences is normalized before binding, so the stored choice is pre-selected; (2) selecting `acceptEdits` stores an empty permission mode and prints the acceptEdits confirmation line exactly once; (3) the development-mode select is initialized from the project's `quality.yaml`; (4) the stored statusline segment map is written back to `preferences.yaml` unchanged; (5) every other select pre-selects the stored value; (6) the project sync receives a nil segment map, so `statusline.yaml` is left byte-identical; (7) the project config write passes an empty git convention, so `git-convention.yaml` is left byte-identical; (8) the statusline theme is never written, so `statusline_theme` is absent from `preferences.yaml`; (9) an empty stored permission mode pre-selects `acceptEdits`.
+- **REQ-ITI-006** (Ubiquitous): `moai profile setup [name]` and `moai profile --setup` **shall** keep their command contract: the profile name defaults to `default` when omitted; session-worktree auto-entry with its scope notice runs before any shared-state read, and its cleanup runs exactly once at exit with a clean-exit flag that is true on success and on cancellation and false on error; a user cancellation prints the localized setup-cancelled line, writes no preferences and exits with status 0; a wizard error returns a non-nil error and writes no preferences; a successful save prints the saved-profile line and the summary.
+- **REQ-ITI-007** (Event-driven): **When** the user answers the conversation-language question in the profile wizard, every subsequently rendered group **shall** render its question titles, descriptions, localizable option labels and help-line action labels in the selected language.
+- **REQ-ITI-008** (Ubiquitous): The absorbed profile wizard **shall** show a step indicator above each group in the same format as the init wizard's step indicator, with a denominator equal to the number of profile questions currently visible.
+- **REQ-ITI-009** (Ubiquitous): Every huh form rendered by `internal/cli` **shall** use the huh v2 wizard theme factory, which **shall** resolve the light/dark axis through its package-level indirection variable, and the huh v1 theme factory and its indirection variable **shall** no longer exist. This requirement supersedes the v1 halves of SPEC-CLI-TUI-MODERNIZE-001 REQ-TUIM-040 and REQ-TUIM-045 and the `internal/cli/huh_theme.go` assertions of AC-TUIM-026 and AC-TUIM-029 (§A.6.1).
+- **REQ-ITI-010** (Ubiquitous): Each of the nine source-scan guards listed in §A.5 **shall** keep asserting its property against the source file that holds the corresponding profile question definition or save path after the move, or **shall** be replaced by a behavior test asserting the same property; every positive guard **shall** fail when its asserted construct is removed, and every negative guard **shall** fail when a removed question is reintroduced in the v2 question-definition form.
 
-### B.3 잔여 영어 표면 현지화 (F10)
+### B.3 잔여 영어 표면 현지화 (F10, Q2, Q3)
 
-- **REQ-ITI-009** (Event-driven): **When** `moai update --version <tag>` asks the user to confirm a downgrade, the confirmation **shall** render its title, description, button labels and help line in the conversation language resolved from existing persisted configuration, and **shall** fall back to English when no language resolves.
-- **REQ-ITI-010** (Ubiquitous): The help line of every wizard form — the init wizard, the `moai update -c` reconfigure wizard, the profile wizard and the downgrade confirmation — **shall** render its key-action labels in the active locale for each of `en`, `ko`, `ja` and `zh`.
-- **REQ-ITI-011** (Unwanted behavior): After this SPEC lands, the wizard and profile translation catalogues **shall not** contain a key that non-test code never reads, and each of `ko`, `ja` and `zh` **shall** define every key the `en` table defines.
+- **REQ-ITI-011** (Event-driven): **When** `moai update --version <tag>` asks the user to confirm a downgrade, the confirmation **shall** render on the huh v2 engine, with its title, description, button labels and help line in the language resolved in this order: the `conversation_language` of `.moai/config/sections/language.yaml` when the working directory holds a `.moai` directory and that value is non-empty; otherwise the active profile's conversation language when non-empty; otherwise English.
+- **REQ-ITI-012** (Ubiquitous): The help line of the init wizard, the `moai update -c` reconfigure wizard, the profile wizard and the downgrade confirmation **shall** render each key binding's action label as a short per-key label from the active locale for each of `en`, `ko`, `ja` and `zh`, and the sentence-style help strings `HelpSelect` and `HelpInput` **shall** not exist in any Go source.
+- **REQ-ITI-013** (Unwanted behavior): The wizard translation catalogue and `profileSetupText` **shall not** contain a key that non-test code never references, and each of `ko`, `ja` and `zh` **shall** define every key the `en` table defines.
 
-### B.4 레이아웃 (F11)
+### B.4 레이아웃 (F11, D5)
 
-- **REQ-ITI-012** (Ubiquitous): Every confirm field **shall** render its buttons left-aligned with the field card's content column.
-- **REQ-ITI-013** (Ubiquitous): A wizard form **shall** render no blank line between consecutive fields, and a select field **shall** render no empty card row below its last option.
-- **REQ-ITI-014** (Ubiquitous): **Where** the options of a select field carry descriptions, the field **shall** render the descriptions in one vertically aligned column whose start position is computed from terminal display width, counting each East Asian wide character as two cells.
+- **REQ-ITI-014** (Ubiquitous): Every confirm field rendered by `internal/cli`, including the downgrade confirmation, **shall** render its first button at the same display column as its description line.
+- **REQ-ITI-015** (Ubiquitous): The init wizard, the reconfigure wizard and the profile wizard **shall** render no blank line between consecutive fields of a group and no empty card row below a select field's last option.
+- **REQ-ITI-016** (Event-driven): **When** a select field's options carry descriptions, the field **shall** render the descriptions in one column whose start position is computed from terminal display width, counting each East Asian wide character as two cells.
+- **REQ-ITI-017** (Ubiquitous): Once the card t583 question set is absorbed, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group under a single group label that names both, and no init question **shall** carry the group label `Quality & Workflow`.
 
 ### B.5 판정 하네스 (D6)
 
-- **REQ-ITI-015** (State-driven): **While** the pty-capture environment variable is set, the test suite **shall** render the wizard surfaces in a real pseudo-terminal and capture the screen for judgement; **while** it is unset, the capture tests **shall** report themselves as skipped. In both states the harness **shall not** write under the real home directory, and every terminal session it starts **shall** be terminated by a registered cleanup.
+- **REQ-ITI-018** (State-driven): **While** the pty-capture environment variable is set, the capture tests **shall** render the wizard surfaces in a fixed-size tmux pseudo-terminal, judge a captured screen only after that surface's anchor text has appeared, and fail on a capture timeout or when tmux is unavailable; **while** it is unset, the capture tests **shall** report themselves as skipped and start no terminal session. In both states the harness **shall** not write under the real home directory, **shall** give every terminal session it starts a unique name, and **shall** terminate only those sessions through a registered cleanup that also runs when a test fails.
 
 ## §C 제약
 
 - **huh 포크·교체 금지(D3)**: `go.mod` 에 `replace` 지시나 vendor 사본을 추가하지 않는다. huh v2 공개 API 로 되는 조정만 한다.
-- **의존성**: 새 모듈을 추가하지 않는다. huh v1 import 가 0 이 된 뒤 `go mod tidy` 로 v1 모듈이 빠지는 것은 허용한다(제거는 새 의존성이 아니다).
-- **import 방향**: `internal/cli` → `internal/cli/wizard` 한 방향을 유지한다. 스키마 옵션 라벨은 현재 `internal/cli` 에서 풀리므로, 흡수 뒤에도 옵션 값의 출처는 `settings.FieldOptionDefs` 하나로 남아야 한다.
-- **채널 규율**: 요약·경고·확인 문구의 stdout/stderr 배분을 바꾸지 않는다(SPEC-CLI-TUX-INIT-UPDATE-001 REQ-TUXIU-044 승계).
+- **의존성**: 새 모듈을 추가하지 않는다. huh v1 import 가 0 이 된 뒤 `go mod tidy` 로 v1 모듈과 그것만 끌어오던 간접 의존성(`github.com/charmbracelet/bubbletea v1.3.10`, `github.com/charmbracelet/bubbles v1.0.0`, `github.com/catppuccin/go v0.3.0`, `go.mod:44-47`)이 빠지는 것은 허용한다. `github.com/charmbracelet/lipgloss`(v1, `go.mod:15`)는 다른 직접 소비자가 있어 남는다.
+- **import 방향**: `internal/cli` → `internal/cli/wizard` 한 방향을 유지한다. 위저드는 `cli` 를 import 하지 않으므로, 스키마 옵션 라벨은 `cli` 에서 풀어 버전 중립 목록으로 위저드에 인자로 넘긴다.
+- **채널 규율**: 요약·경고·확인 문구의 stdout/stderr 배분을 바꾸지 않는다(REQ-TUXIU-044 승계).
 - **테스트 격리**: `t.TempDir()` 만 쓴다. OTEL 환경 변수를 병렬 테스트에서 설정하지 않는다. pty 하네스는 자식 프로세스 환경으로만 HOME 을 바꾸고 `t.Setenv("HOME", …)` 을 쓰지 않는다.
 - **로컬 검증 범위**: 변경 패키지(`internal/cli`, `internal/cli/wizard`)만 로컬에서 돌리고, 전체 스위트 판정은 CI 에 맡긴다.
 - **크로스 플랫폼**: pty 하네스는 tmux 가 필요한 환경 게이트 테스트이므로 Windows 에서는 건너뛴다. 제품 코드는 `GOOS=windows GOARCH=amd64 go build ./...` 를 통과해야 한다.
+- **t583 게이트**: §A.7 [HARD] 규칙.
 
 ## §D 제외 범위
 
 ### Out of Scope — 확인창 안쪽 빈 줄 (D3, 알려진 한계)
 
 - huh v2 `field_confirm.go:261-264` 에 박힌 설명과 버튼 사이 `"\n"` 두 번은 그대로 둔다. 포크·`replace`·확인창 자체 구현으로 없애지 않는다.
-- 이 한계가 남는 표면: init 위저드와 `moai update -c` 재구성 위저드의 확인형 질문, 흡수된 프로필 위저드에 확인형 질문이 있다면 그 질문, 버전 다운그레이드 확인창. (프로필 없음 확인창 두 개는 D1 로 사라지므로 목록에서 빠진다.)
+- 이 한계가 남는 표면: 버전 다운그레이드 확인창, 그리고 앞으로 `QuestionTypeConfirm` 으로 추가될 위저드 질문. t583 뒤 init·reconfigure 질문 집합과 흡수된 프로필 위저드에는 확인형 질문이 없다.
 
 ### Out of Scope — 단계 표시 줄 소실 원인 조사 (D4, 연기)
 
-- 80×30 뷰 문자열에는 있는 단계 표시 줄이 같은 크기 pty 캡처에서 사라지는 현상의 원인 규명과 수리는 이 SPEC 의 요구사항이 아니다. t583 병합 뒤 질문 수가 바뀌므로 그때 다시 재고, 결과를 기록만 한다(`plan.md` §G).
+- 80×30 뷰 문자열에는 있는 단계 표시 줄이 같은 크기 pty 캡처에서 사라지는 현상의 원인 규명과 수리는 이 SPEC 의 요구사항이 아니다. t583 흡수 뒤 다시 재고 결과를 기록만 한다(`plan.md` §G). REQ-ITI-008 은 뷰 문자열(골든) 기준이다.
 
 ### Out of Scope — 질문 집합 변경
 
-- init 위저드 질문 수·순서 변경은 카드 t583 소관이다. 이 SPEC 은 질문을 더하거나 빼지 않는다.
+- init 위저드 질문의 추가·삭제는 카드 t583 소관이다. 이 SPEC 은 질문을 더하거나 빼지 않는다. REQ-ITI-017 은 남는 질문의 묶음만 바꾼다.
 - 이미 빠진 프로필 위저드 필드(statusline 테마, 세그먼트 MultiSelect, `git_convention`, 중첩 quality·git 자동 감지 필드)는 되살리지 않는다.
 
 ### Out of Scope — 웹 콘솔과 스키마 브리지 정리
 
 - 웹 콘솔 화면과 `i18n.js` 카탈로그는 건드리지 않는다.
-- `schema_bridge.go` 의 필드·세그먼트 브리지는 현재 비테스트 호출자가 없지만(`uikit.SchemaKeyToTUIField`/`FieldDefTUILabel` 의 비테스트 호출 0건), 삭제 여부는 이 SPEC 이 정하지 않는다. 옵션 라벨 브리지는 흡수된 위저드가 계속 쓴다.
+- `schema_bridge.go` 의 필드·세그먼트 브리지의 삭제 여부는 정하지 않는다. 옵션 라벨 브리지는 흡수된 위저드가 계속 쓴다.
+- `model_policy` 빈 옵션 라벨이 스키마에서 빈 문자열로 오는 기존 결함(`profile_setup_nested_test.go` 주석)은 고치지 않는다.
 
 ### Out of Scope — 실제 터미널 앱 호환성
 
-- 운영자가 쓰는 개별 터미널 에뮬레이터별 줄바꿈·폭 처리 차이는 판정 대상이 아니다. 판정 기준 환경은 tmux pty 한 가지다.
+- 개별 터미널 에뮬레이터별 줄바꿈·폭 처리 차이는 판정 대상이 아니다. 판정 기준 환경은 tmux pty 한 가지다.
 
 ### Out of Scope — 템플릿과 문서 본문
 
-- `internal/template/templates/**` 변경 없음(§A.7). docs-site 문구 동기화는 sync 단계에서 필요할 때만 한다.
+- `internal/template/templates/**` 변경 없음(§A.8). docs-site 문구 동기화는 sync 단계에서 필요할 때만 한다.
 
 ## §E 참조
 
-- `plan.md` — 마일스톤 순서(t583 흡수 게이트 포함), 기술 접근, 위험, 미결 사항
-- `acceptance.md` — AC 16개, 판정 방식(pty / 골든 / 기계 검사) 구분, 완료 정의
+- `plan.md` — 마일스톤 순서(t583 흡수 게이트 포함), 기술 접근, 위험
+- `acceptance.md` — AC 20개, pty 공통 계약, 픽스처·실제 질문 구분, 완료 정의
+- `design.md` — 흡수 구조, 옵션 전달 모양, 도움말 라벨 표, 그룹 재구성 결정, 가드 재조준, pty 하네스
+- `research.md` — 이 트리에서 다시 잰 조사 원문
+- `progress.md` — 단계별 증거 기록
 - 재현 증거: `.moai/reports/t586/verdict.md`, 같은 폴더의 `probe-*.txt`, `tty-*.txt`
