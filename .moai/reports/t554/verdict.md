@@ -313,3 +313,83 @@ github.com/modu-ai/moai-adk/internal/template
 2. 병합 트리에서 `go test ./internal/cli/ -run 'TestPreCommit' -v -count=1`을 파일 리다이렉트·파이프 없는 종료 코드로 잰다. 본체 컴파일이 따르므로 다른 레인의 `internal/cli` 컴파일이 없는지 사전 확인한다(프로세스는 패턴 매칭이 아니라 실행 파일 이름으로 거른다).
 3. 통과 기준: `TestPreCommit*` FAIL 0, 신규 두 테스트를 이름으로 확인.
 4. develop 워크트리에서 `--no-ff` 병합 → `moai integration release` → 로컬 병합 SHA 보고. push 없음.
+
+## 10. 통합 창 (2026-09-10, 창 순번 5)
+
+### 10.1 창 기록과 흡수
+
+```
+$ moai integration acquire --name lane-2
+release-integration window acquired by b5f354f2-f7a6-4161-b130-182bd0d4b7a9 on WT-vet-module
+acquire_exit=0
+$ git merge --no-edit develop > .moai/reports/t554/absorb2.txt 2>&1
+absorb_exit=0
+$ git rev-parse -q --verify MERGE_HEAD; echo $?
+1        # 진행 중 병합 없음
+```
+
+| 항목 | 값 |
+|---|---|
+| 흡수 대상 | 로컬 `develop` @ `7beba0342` (t549) |
+| 흡수 결과 | `f1cb4e39e` |
+| 병합 트리 | `1aa69880507b289ae3b9075600dd3b6d3e615dee` |
+
+### 10.2 델타 판정 — `c8203fbf3..7beba0342`
+
+커밋 44개, 파일 78개 (`.moai/reports/t554/delta2-commits.txt`, `delta2-files.txt`).
+
+**go.mod / go.sum 불변** — 빈 출력이 아니라 종료 코드로 양성 확인:
+
+```
+$ git diff --quiet c8203fbf3 7beba0342 -- go.mod go.sum; echo $?
+0        # 0=불변, 1=변경
+```
+
+**델타의 Go 패키지가 이 카드 테스트 바이너리의 전이 집합에 드는가** (`go list -deps -test`, 병합 트리 기준, 569개 — `.moai/reports/t554/cli-deps-test-merged.txt`):
+
+| 델타 패키지 | 전이 집합 적중 | 델타 성질 | 판정 |
+|---|---|---|---|
+| `internal/cli` | 2 (본체 + 테스트 변형) | `goal.go`·`goal_runnable.go`·`mcp_server.go`·`todo.go` 등 프로덕션 | **직접 적중** |
+| `internal/cli/update/merge` | 1 | `_test.go` 2개뿐 | 컴파일 변화 없음 |
+| `internal/kanban` | 1 | `todo_root.go` | 전이 적중 |
+| `internal/mx` | 1 | `scanner.go` | 전이 적중 |
+| `internal/session` | 1 | `store.go` | 전이 적중 |
+| `internal/template` | 1 | `catalog.yaml`·`settings.json.tmpl`·`goal.md` (embed) | 전이 적중 |
+
+적중 패턴은 `/moai-adk/<패키지>( \[|$)` — 테스트 변형 줄(`… [… .test]`)까지 포함한다.
+
+**결론**: 직접·전이 적중이 모두 있으므로 §8.3의 `-v` 측정(`f51f7b9e6` 트리)은 재사용하지 않는다. 새 규칙(§9.2)에 따라 병합 트리에서 영향 범위만 다시 잰다.
+
+### 10.3 재측정 전 사전 확인 — 다른 `internal/cli` 컴파일이 없는가
+
+macOS의 `ps -o comm`은 경로로 실행된 프로그램을 전체 경로로 찍으므로, `comm=="go"` 비교는 실제 `go` 프로세스가 있어도 적중하지 못할 수 있다. 경로를 떼고 **실행 파일 이름만** 비교하고, 같은 비교로 확실히 떠 있는 프로세스가 잡히는지 양성 대조를 붙였다:
+
+```
+$ ps -eo pid=,comm= | awk '{c=$2; sub(/.*\//,"",c)} c=="zsh"{z++} c=="go" || c ~ /\.test$/ {h++} END{...}'
+positive_control_zsh=36
+go_or_test_hits=0
+```
+
+비교기가 작동하고(양성 대조 36), 그 비교기로 `go`·`*.test`는 0이다 — 다른 컴파일 없음이 양성 부재로 확인됐다.
+
+### 10.4 병합 트리 재측정 — 영향 범위만 (새 규칙 §9.2)
+
+```
+$ go test ./internal/cli/ -run 'TestPreCommit' -v -count=1 -timeout 20m > .moai/reports/t554/window-precommit-v.txt 2>&1
+WINDOW_PRECOMMIT_EXIT=0        # 파이프 없이 받은 종료 코드
+$ grep -cE '^--- PASS: TestPreCommit' window-precommit-v.txt
+39
+$ grep -cE -- '--- FAIL' window-precommit-v.txt
+0
+--- PASS: TestPreCommitHook_SubmodulePassesClean (0.34s)
+--- PASS: TestPreCommitHook_SubmoduleVetBlocks (0.34s)
+--- PASS: TestPreCommitHook_OutsideAnyModuleSkips (0.26s)
+--- PASS: TestPreCommitHook_RootModuleStillVets (0.34s)
+--- PASS: TestPreCommitTemplateMatchesConstant (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	19.932s
+```
+
+panic·timeout·빌드 실패 문자열 0건. 종료 코드 0만으로는 "테스트가 실제로 돌았다"가 서지 않으므로, 신규 두 테스트와 쌍둥이 바이트 동일성 테스트를 **이름으로** 확인했다.
+
+**통과 기준 충족**: `TestPreCommit*` FAIL 0, 신규 두 테스트 이름 확인. `internal/cli` 전체 스위트는 새 규칙에 따라 돌리지 않았다 — 리드가 일괄 push 직전 develop tip에서 한 번 돈다.
