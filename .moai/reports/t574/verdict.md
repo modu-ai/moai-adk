@@ -66,3 +66,31 @@ lint/audit by a binary built from this tree and invoked by path (not the install
   comment the parser reads as part of the value (pre-existing since `586f26f2a`).
 - This verdict commit lands after the sync re-close commit; it touches only `.moai/reports/t574/`, not
   SPEC artifacts.
+
+## Integration window re-measure (lead-assigned)
+
+Claim: the card absorbed onto local develop `987eb7e40` (which now carries t657, merged outside dispatch)
+still passes its AC-named tests and SPEC checks; no absorb delta reaches kanban except
+`internal/core/git`, which the whole-package run covers.
+
+Evidence:
+- `window-acquire.txt`: window acquired by lane-3 on `WT-temp-roots-ac`.
+- `absorb-merge.txt`: `git merge --no-ff 987eb7e40` exit 0, no conflict. Absorb commit
+  `2d2e7d8170827ae71879272049be8cfa71920cd2`, parents `cf49681de…` (card tip) + `987eb7e40…` (develop).
+- Delta judgment (`absorb-changed-files.txt` 275 files vs `absorb-kanban-deps.txt`, the 12 module-internal
+  packages of `go list -deps -test ./internal/kanban/`, plus go.mod/go.sum and this SPEC dir):
+  `absorb-delta-hits.txt` = `internal/core/git/manager.go`, `internal/core/git/status_optional_locks_test.go`.
+  `internal/web` changed 18 files but is not a kanban dependency (`web-in-deps=0`). No `go:embed` in
+  `internal/kanban` (grep exit 1). Matcher control: a planted `internal/kanban/temp_origin.go` entry is
+  matched (count 1).
+- `absorb-kanban-ac-tests.txt`: 9 AC-named kanban tests (incl. `TestDefaultTempRoots_Membership`) —
+  9 RUN / 9 PASS / 0 FAIL-SKIP, exit 0.
+- `absorb-cli-ac-tests.txt`: 3 `TestTempOriginGuidance_*` PASS, exit 0.
+- `absorb-kanban-pkg.txt`: `go test -count=1 ./internal/kanban/` → `ok … 197.3s`, exit 0 (covers the
+  changed `internal/core/git` dependency).
+- Binary rebuilt from the absorbed tree: `absorb-spec-lint.txt` `✓ No findings` exit 0;
+  `absorb-spec-audit.txt` `"drift_findings": []`, `"modern_era_clean": 1`.
+
+Baseline-attribution: absorb commit `2d2e7d817` tree, go1.26.8, this run.
+
+Gaps: `internal/core/git` own package tests not run here (owned by the card that changed it); CI matrix not yet run.
