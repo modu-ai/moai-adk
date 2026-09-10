@@ -30,6 +30,8 @@ var hostGateCases = []struct {
 }{
 	{"localhost", "localhost", true},
 	{"localhost-port", "localhost:3041", true},
+	{"localhost-upper", "LOCALHOST", true},
+	{"localhost-mixed-port", "LocalHost:3041", true},
 	{"ipv4", "127.0.0.1", true},
 	{"ipv4-port", "127.0.0.1:3041", true},
 	{"ipv6", "[::1]", true},
