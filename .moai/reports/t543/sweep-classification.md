@@ -19,3 +19,13 @@
 
 - 수정 대상: 1개 SPEC, 3줄. SPEC 본문은 manager-spec 소관이므로 그 경로로 고친다.
 - 인벤토리의 한계: grep 은 `git diff --name-only <SHA>..HEAD` 형태만 잡는다. `git log <SHA>..HEAD`, `rev-list`, 변수에 담은 SHA 같은 다른 형태의 범위 판정식은 이 인벤토리에 없다.
+
+## 넓힌 인벤토리 (같은 날, SPEC 수리 워커가 형태 밖의 줄을 찾은 뒤)
+
+SPEC 수리 중 `SPEC-UPDATE-DOC-DRIFT-001` 의 AC-UDD-021(`acceptance.md:610-611`)이 같은 결함을 `git diff --stat` · `git log` 형태로 갖고 있는데 위 인벤토리가 놓쳤다는 사실이 드러났다. 그래서 형태를 넓혀 다시 쟀다.
+
+- 명령: develop 의 `.moai/specs/*/acceptance.md`·`plan.md` 에서 `git diff` · `git log` · `git rev-list`(옵션 포함) 뒤에 `<7~40자리 16진수>..HEAD` 가 오는 줄을 찾는 grep. 결과 `repro/sweep-inventory-wide.txt`.
+- 결과: **80줄, SPEC 27개.** 형태별로 `diff --name-only` 22 · `diff --stat` 17 · 기타 `diff` 30 · `log` 10 · `rev-list` 1.
+- 새로 잡힌 SPEC 17개의 `status:` 를 develop 에서 읽었다. **17개 모두 completed** 다. 따라서 흡수 뒤 평가 대상이라는 분류는 바뀌지 않는다 — 여전히 draft 인 `SPEC-UPDATE-DOC-DRIFT-001` 한 곳뿐이다.
+- 그 SPEC 안에서 넓힌 인벤토리가 잡은 줄은 5개다: AC-UDD-021 의 `acceptance.md:610`(`diff --stat`)과 `:611`(`log --oneline`), 이미 고친 AC-UDD-023 의 `:659`·`:660`, plan.md `:54`. **수정 대상에 AC-UDD-021 두 줄을 더한다.**
+- 넓힌 grep 에도 한계가 남는다: 범위의 오른쪽 끝이 `HEAD` 가 아닌 경우, SHA 를 변수에 담아 쓰는 경우, `...` 세 점 범위는 잡지 않는다.
