@@ -2,15 +2,18 @@
 
 Verification layer. Each AC is a Given-When-Then scenario with its verifying command and, where the property can pass vacuously, a mutant that must turn it RED. GEARS obligations live in `spec.md` §D. Test names are proposals; run-phase fixes the final names and records them in `progress.md` §E.2.
 
+Revision 0.1.1 (same as spec.md HISTORY): AC-CAA-018 … AC-CAA-022 and mutants M-15 … M-19 appended for the verdict §8 rulings; AC-CAA-012 amended for on-disk backups; AC-CAA-014 and AC-CAA-017 amended. Existing IDs unchanged.
+
 Common rules for every AC:
-- Fixtures live under `t.TempDir()`: a project dir with `.claude/rules/moai/core/zone-registry.md`, a real rule file the target entry points at, and `.moai/research/evolution-log.md` where needed. The lock path is pinned inside the temp dir; `fakeOversight` approves non-dry-run runs.
+- Fixtures live under `t.TempDir()`: a project dir with `.claude/rules/moai/core/zone-registry.md`, a real rule file the target entry points at (current clause once, new clause absent unless the AC says otherwise), and `.moai/research/evolution-log.md` where needed. The lock path is pinned inside the temp dir; `fakeOversight` approves non-dry-run runs; the proposal's `Before` equals the current clause unless the AC says otherwise.
+- Every test that calls `Execute` or `runConstitutionAmend` sets `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` with `t.Setenv` (empty unless the AC says otherwise) — REQ-CAA-015.
 - "Byte-identical" means equal to a sha256 captured **before** the operation. "No leftover files" means the set of paths under the fixture dir equals the set captured before (plus exactly the intended changes on success).
 - Selectors are anchored `^…$`. A run whose top-level `=== RUN` count is below the stated number is not a PASS.
 - ACs marked **baseline-first** are run against unchanged production code and their RED output is committed before the production change (plan.md §F).
 
 ## §D AC Matrix
 
-| AC | Requirement | RED at `034d55c56` | Mutant(s) |
+| AC | Requirement | RED at `ff11e752f` (predicted from code reading unless cited) | Mutant(s) |
 |---|---|---|---|
 | AC-CAA-001 | REQ-CAA-001, REQ-CAA-014 | stub error (verdict §2.1) — baseline-first | M-1 |
 | AC-CAA-002 | REQ-CAA-002, REQ-CAA-014 | stub error, not an occurrence error — baseline-first | M-1 |
@@ -23,12 +26,17 @@ Common rules for every AC:
 | AC-CAA-009 | REQ-CAA-007 | `---` split fabricates or drops entries (verdict §2.3) — baseline-first | M-12 |
 | AC-CAA-010 | REQ-CAA-008, REQ-CAA-009 | 0 entries from the real log (verdict §2.3) — baseline-first | M-8a, M-8b |
 | AC-CAA-011 | REQ-CAA-008 | limiter admits (sees 0 entries) — baseline-first | M-8a |
-| AC-CAA-012 | REQ-CAA-010, REQ-CAA-011 | seam does not exist (compile failure, not discriminating) — the discriminating RED is the mutants | M-5a, M-5b, M-11a |
+| AC-CAA-012 | REQ-CAA-010, REQ-CAA-011 | seams do not exist (compile failure, not discriminating) — the discriminating RED is the mutants | M-5a, M-5b, M-11a |
 | AC-CAA-013 | REQ-CAA-010, REQ-CAA-011 | seam does not exist — the mutant is the RED | M-5c |
 | AC-CAA-014 | REQ-CAA-012, REQ-CAA-014 | dry-run returns success on a two-occurrence fixture — baseline-first | M-10, M-11b |
 | AC-CAA-015 | REQ-CAA-013 | CLI dry-run prints success on a two-occurrence fixture — baseline-first (needs compile slot) | M-13 |
 | AC-CAA-016 | REQ-CAA-014 | `not yet implemented` present in pipeline.go and pipeline_test.go | — (grep with control) |
 | AC-CAA-017 | REQ-CAA-015 | none expected — invariant guard | M-14 |
+| AC-CAA-018 | REQ-CAA-009 | reader ignores the malformed block and returns no error — baseline-first | M-15 |
+| AC-CAA-019 | REQ-CAA-016 | stub error, not a new-clause occurrence error — baseline-first | M-16 |
+| AC-CAA-020 | REQ-CAA-017 | dry-run `Execute` with a stale `Before` succeeds — baseline-first | M-17 |
+| AC-CAA-021 | REQ-CAA-011, REQ-CAA-018 | seams do not exist — the discriminating RED is the mutant | M-18 |
+| AC-CAA-022 | REQ-CAA-019 | `Execute` joins `projectDir`, fails to load the registry at the env path — baseline-first | M-19 |
 
 ### §D.0 REQ coverage (machine-readable)
 
@@ -49,8 +57,13 @@ Common rules for every AC:
 - AC-CAA-015 maps REQ-CAA-013
 - AC-CAA-016 maps REQ-CAA-014
 - AC-CAA-017 maps REQ-CAA-015
+- AC-CAA-018 maps REQ-CAA-009
+- AC-CAA-019 maps REQ-CAA-016
+- AC-CAA-020 maps REQ-CAA-017
+- AC-CAA-021 maps REQ-CAA-011, REQ-CAA-018
+- AC-CAA-022 maps REQ-CAA-019
 
-The union is REQ-CAA-001 … REQ-CAA-015; no requirement lacks an AC.
+The union is REQ-CAA-001 … REQ-CAA-019; no requirement lacks an AC.
 
 ## §D.1 AC Details
 
@@ -144,7 +157,7 @@ Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs_Markdown
 - **When** `LoadEvolutionLogs` reads it,
 - **Then** it returns one entry with `ID = EVO-HRN-002`, `RuleID = CONST-V3R2-153`, `ApprovedAt = 2026-05-13T00:00:00Z`, `ZoneBefore = ZoneAfter = ZoneFrozen`, `RolledBack = false`, `RollbackAt = nil`;
 - **And given** (b) the repository's real `.moai/research/evolution-log.md` opened read-only, **then** the returned entries include one with `ID = EVO-HRN-002` (a drift witness for the real format; this sub-case must not write);
-- **And given** (c) a human-format block with `id: EVO-X-001`, `timestamp: "not-a-date"`, and no `approved_at`, **then** `LoadEvolutionLogs` returns an error whose text contains `EVO-X-001`.
+- **And given** (c) a human-format block with `id: EVO-X-001`, `timestamp: "not-a-date"`, and no `approved_at`, **then** `LoadEvolutionLogs` returns an error whose text contains `EVO-X-001`. (The file, line, and key content of that error is AC-CAA-018.)
 
 Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs_HumanFormat$' -count=1 -v` — expect 1 top-level RUN with subtests `verbatim_block`, `real_file_readonly`, `malformed_timestamp_fails_closed`.
 
@@ -159,10 +172,10 @@ Command: `go test ./internal/constitution/ -run '^TestRateLimiter_SeesHumanForma
 
 ### AC-CAA-012 — failed 2nd or 3rd rename restores all three files
 
-- **Given** a valid fixture whose log file exists, and a pipeline whose rename seam fails on call N (N = 2, then separately N = 3) and otherwise delegates to `os.Rename`,
+- **Given** a valid fixture whose log file exists, and a pipeline whose rename seam fails on call N (N = 2, then separately N = 3) and otherwise delegates to `os.Rename`, with the default restore seam,
 - **When** `Execute(dryRun=false)` runs,
 - **Then** it returns an error naming the failed rename,
-- **And** the seam was called exactly N times (reachability — without this, an injector that never fires is indistinguishable from a correct restore),
+- **And** the rename seam was called exactly N times (reachability — without this, an injector that never fires is indistinguishable from a correct restore),
 - **And** the rule file, registry, and log are byte-identical to their pre-apply sha256 snapshots,
 - **And** no temporary or backup path remains under the fixture dir;
 - **And given** the same N = 3 case on a fixture whose log file does not exist yet, **then** after the failure the log path does not exist;
@@ -180,12 +193,12 @@ Command: `go test ./internal/constitution/ -run '^TestApply_RenameOrder$' -count
 
 ### AC-CAA-014 — dry-run runs the validation and writes nothing
 
-- **Given** four fixtures: (a) valid; (b) clause occurs twice; (c) registry continuation line (AC-CAA-005 a); (d) rule file missing,
+- **Given** six fixtures: (a) valid; (b) current clause occurs twice; (c) registry continuation line (AC-CAA-005 a); (d) rule file missing; (e) new clause already present in the rule file; (f) proposal `Before` differs from the current clause,
 - **When** `Execute(dryRun=true)` runs on each,
-- **Then** (a) returns a log entry and no error; (b), (c), (d) each return an error of the same kind a real apply returns on that fixture,
-- **And** for all four, the snapshot of every path and sha256 under the fixture dir is identical before and after, and no lock file was created.
+- **Then** (a) returns a log entry and no error; (b)–(f) each return an error of the same kind a real apply returns on that fixture,
+- **And** for all six, the snapshot of every path and sha256 under the fixture dir is identical before and after, and no lock file was created.
 
-Command: `go test ./internal/constitution/ -run '^TestPipeline_Execute_DryRun_Validates$' -count=1 -v` — expect 1 top-level RUN with subtests `valid`, `two_occurrences`, `registry_continuation`, `missing_rule_file`. The former `TestPipeline_Execute_DryRun_Success` is folded into subtest `valid` or kept with an existing rule file (plan.md §C.2).
+Command: `go test ./internal/constitution/ -run '^TestPipeline_Execute_DryRun_Validates$' -count=1 -v` — expect 1 top-level RUN with subtests `valid`, `two_occurrences`, `registry_continuation`, `missing_rule_file`, `new_clause_present`, `stale_before`. The former `TestPipeline_Execute_DryRun_Success` is folded into subtest `valid` or kept with an existing rule file (plan.md §C.2).
 
 ### AC-CAA-015 — CLI dry-run surfaces the validation failure
 
@@ -196,19 +209,77 @@ Command: `go test ./internal/constitution/ -run '^TestPipeline_Execute_DryRun_Va
 
 Command (compile slot required at run-phase): `unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR MOAI_CONSTITUTION_DRY_RUN && go test ./internal/cli/ -run '^TestConstitutionAmend_DryRun_SurfacesValidation$' -count=1 -v -timeout 600s` — expect 1 top-level RUN with subtests `two_occurrences` and `valid`.
 
+This AC is the whole CLI-level coverage; the non-dry-run CLI path is the approved Gap in spec.md §E.4.
+
 ### AC-CAA-016 — no stub characterization remains
 
-- **Given** the tree after M4,
+- **Given** the tree after M5,
 - **When** `/usr/bin/grep -rn 'not yet implemented' internal/constitution/pipeline.go internal/constitution/pipeline_test.go` runs,
 - **Then** it prints 0 lines,
 - **And** the control `/usr/bin/grep -c 'func (p \*Pipeline) Execute' internal/constitution/pipeline.go` prints `1` (the grep reached the file),
 - **And** `/usr/bin/grep -nE 'func (TestPipeline_Execute_NonDryRun_AmendmentStubError|TestPipeline_applyAmendment_StubError|TestUpdateSourceFile_StubError|TestUpdateRegistryClause_StubError)\(' internal/constitution/pipeline_test.go` prints 0 lines, and each replacement named in plan.md §C.2 exists (`/usr/bin/grep -c` per name ≥ 1).
 
-### AC-CAA-017 — real files untouched by the package run
+### AC-CAA-017 — real files untouched by the package runs, even with a session environment
 
-- **Given** sha256 of `.claude/rules/moai/core/zone-registry.md` and `.moai/research/evolution-log.md` recorded before the run,
-- **When** `go test ./internal/constitution/ -count=1` and the AC-CAA-015 command complete,
-- **Then** both sha256 values are unchanged, `git status --porcelain -- .claude/rules .moai/research` shows nothing attributable to the run, and neither `internal/constitution/.moai` nor `internal/cli/.moai` exists.
+- **Given** sha256 of `.claude/rules/moai/core/zone-registry.md` and `.moai/research/evolution-log.md` recorded before the runs,
+- **When** `go test ./internal/constitution/ -count=1` runs twice — once as `unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR && go test ./internal/constitution/ -count=1`, and once with `CLAUDE_PROJECT_DIR` exported as the repository root (`CLAUDE_PROJECT_DIR="$(git rev-parse --show-toplevel)" go test ./internal/constitution/ -count=1`) — and the AC-CAA-015 command completes,
+- **Then** both sha256 values are unchanged after every run, `git status --porcelain -- .claude/rules .moai/research` shows nothing attributable to the runs, and neither `internal/constitution/.moai` nor `internal/cli/.moai` exists,
+- **And** both package runs report the same PASS/FAIL result, which shows the tests set the variables themselves rather than relying on the shell.
+
+### AC-CAA-018 — the fail-closed error names file, line, and key
+
+- **Given** a temp log whose first 5 lines are prose, followed by a fenced yaml block for `id: EVO-X-001` in which `timestamp: "not-a-date"` sits on a known file line L1 (and `approved_at` is absent), and a second log where a machine `---` entry `id: LEARN-20260911-009` has no timestamp key at all, its `id:` key on known file line L2,
+- **When** `LoadEvolutionLogs` reads each file,
+- **Then** the first error contains the log file path, the decimal line number L1, the key `timestamp`, and `EVO-X-001`,
+- **And** the second error contains its file path, L2, the key `approved_at`, and `LEARN-20260911-009`,
+- **And** the line assertions use the file line, not the line inside the yaml block (the 5-line prose offset makes those differ, so a block-relative number fails).
+
+Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs_FailClosedErrorLocation$' -count=1 -v` — expect 1 top-level RUN with subtests `unparseable_timestamp` and `missing_timestamp`.
+
+### AC-CAA-019 — a new clause already present in the source is rejected
+
+- **Given** two fixtures: (a) the rule file contains the current clause once and, elsewhere, the new clause once; (b) the new clause is a prefix of the current clause (so it occurs once, inside the current clause),
+- **When** `Execute(dryRun=false)` runs on each,
+- **Then** each returns an error whose text names the rule file path and the new-clause occurrence count `1`,
+- **And** the rule file, registry, and log are byte-identical to their pre-apply snapshots, no path was added under the fixture dir, and the lock is released.
+
+Command: `go test ./internal/constitution/ -run '^TestApply_NewClausePresent_Rejected$' -count=1 -v` — expect 1 top-level RUN with subtests `elsewhere` and `inside_current_clause`.
+
+### AC-CAA-020 — Execute rejects a stale Before
+
+- **Given** a valid fixture and a proposal whose `Before` differs from the current clause by one trailing character, with oversight, canary, and contradiction doubles that record whether they were called,
+- **When** `Execute` runs in dry-run and, separately, in real mode, called directly (not through the CLI),
+- **Then** both return an error containing the rule ID,
+- **And** no gate double was called (the check runs before Layer 1),
+- **And** all three files are byte-identical and the lock is released in real mode.
+
+Command: `go test ./internal/constitution/ -run '^TestPipeline_Execute_StaleBefore_Rejected$' -count=1 -v` — expect 1 top-level RUN with subtests `dry_run` and `real`.
+
+Baseline-first: against current code, the `dry_run` subtest must FAIL (dry-run `Execute` returns success today). The mutant M-17 keeps the CLI `--before` check and removes only the `Execute` check; the AC stays RED because it calls `Execute` directly.
+
+### AC-CAA-021 — a failed restore keeps the backups and names them
+
+- **Given** a valid fixture whose three files all exist, a rename seam that fails on call 2, and a restore seam that fails on its first call and otherwise delegates to the default restore,
+- **When** `Execute(dryRun=false)` runs,
+- **Then** it returns an error that contains the path of every backup file the apply wrote (three paths) and names the failed restore step,
+- **And** every path named in the error exists and holds the pre-apply bytes of its file (sha256 equal to the pre-apply snapshot),
+- **And** the rename seam was called exactly 2 times and the restore seam at least 1 time (reachability),
+- **And** no temporary file remains under the fixture dir.
+
+Command: `go test ./internal/constitution/ -run '^TestApply_RestoreFault_KeepsBackups$' -count=1 -v` — expect 1 top-level RUN.
+
+### AC-CAA-022 — the CLI and Execute resolve the same registry
+
+- **Given** a `t.TempDir()` project `P` holding two registries: the default location `P/.claude/rules/moai/core/zone-registry.md` with the target clause `A`, and `P/alt/zone-registry.md` with the target clause `B` (each pointing at its own rule file containing its clause once); a second temp dir `Q` holding a third registry at the default location; `MOAI_CONSTITUTION_REGISTRY = P/alt/zone-registry.md` and `CLAUDE_PROJECT_DIR = Q` set with `t.Setenv`,
+- **When** the shared resolver is called for `P`, and `Execute(dryRun=false)` runs for `P` with `Before = B`,
+- **Then** the resolver returns `P/alt/zone-registry.md` (the env override outranks `CLAUDE_PROJECT_DIR`),
+- **And** `Execute` succeeds and `LoadRegistry(P/alt/zone-registry.md)` shows the new clause,
+- **And** the default-location registry in `P` and the registry in `Q` are byte-identical to their pre-apply snapshots,
+- **And** in `internal/cli`, `resolveRegistryPath(P)` under the same environment returns the same path as the shared resolver.
+
+Command: `go test ./internal/constitution/ -run '^TestExecute_UsesSharedRegistryResolver$' -count=1 -v` (expect 1 top-level RUN) and, with the compile slot, `go test ./internal/cli/ -run '^TestResolveRegistryPath_MatchesExecute$' -count=1 -v -timeout 600s` (expect 1 top-level RUN).
+
+Baseline-first: against current code, `Execute` loads the default location in `P`, finds clause `A`, and — once REQ-CAA-017 lands — rejects `Before = B`; today it passes the gates and fails at the stub. Either way the success assertion is RED. The mutant M-19 keeps `Execute`'s own `projectDir` join and turns the AC RED the same way.
 
 ## §D.2 Mutant list (each must turn its AC RED; record in progress.md §E.2)
 
@@ -225,21 +296,28 @@ Command (compile slot required at run-phase): `unset MOAI_CONSTITUTION_REGISTRY 
 | M-6 | Drop the legacy concatenated-key aliases | AC-CAA-007 |
 | M-7 | Drop the snake_case tag on `rule_id` (read side) | AC-CAA-008 |
 | M-8a | Ignore fenced yaml blocks (human format) | AC-CAA-010 (a), AC-CAA-011 |
-| M-8b | Treat an unparseable human timestamp as zero time instead of an error | AC-CAA-010 (c) |
+| M-8b | Treat an unparseable human timestamp as zero time instead of an error | AC-CAA-010 (c), AC-CAA-018 |
 | M-9 | Serialize zone as an integer | AC-CAA-006 |
-| M-10 | Dry-run skips apply validation (today's behaviour) | AC-CAA-014 (b), (c), (d) |
+| M-10 | Dry-run skips apply validation (today's behaviour) | AC-CAA-014 (b)–(f) |
 | M-11a | Leave temp or backup files after success | AC-CAA-012 `no_fault_clean` |
 | M-11b | Dry-run performs the real apply (writes) | AC-CAA-014 snapshot |
 | M-12 | Pairwise `---` split (today's parser) | AC-CAA-009 |
 | M-13 | CLI dry-run ignores the pipeline error and prints success | AC-CAA-015 `two_occurrences` |
-| M-14 | A test writes a fixture path resolved against the repository root | AC-CAA-017 |
+| M-14 | A test writes a fixture path resolved against the repository root, or reads the registry path from the shell environment instead of setting it | AC-CAA-017 |
+| M-15 | Drop the line number from the fail-closed error; separately, drop the key; separately, report the block-relative line instead of the file line | AC-CAA-018 |
+| M-16 | Allow a pre-existing occurrence of the new clause (skip the 0-occurrence precondition) | AC-CAA-019 |
+| M-17 | Remove the `Execute` `Before` check while the CLI `--before` check stays | AC-CAA-020 |
+| M-18 | On restore failure, delete the backups; separately, omit the backup paths from the error | AC-CAA-021 |
+| M-19 | `Execute` keeps its own `projectDir` join instead of the shared resolver | AC-CAA-022 |
+
+M-15 and M-18 each carry separate variants; each variant is injected and observed on its own, so one kill cannot hide the survival of another.
 
 A mutant that cannot be injected, or whose AC run shows fewer top-level RUN lines than stated, is recorded as a Gap, not a kill.
 
 ## §D.3 Definition of Done
 
-- All 17 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
-- All 19 mutants observed RED and reverted.
+- All 22 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
+- All 24 mutants (M-15 and M-18 with every listed variant) observed RED and reverted.
 - `go vet` and `golangci-lint` clean on `internal/constitution` and `internal/cli`.
 - The five tests in plan.md §C.2 replaced, none silently deleted.
 - plan.md §C.1 real-file sha256 equals the post-run sha256 (AC-CAA-017).
