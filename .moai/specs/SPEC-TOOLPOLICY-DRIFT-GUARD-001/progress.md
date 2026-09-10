@@ -40,6 +40,23 @@ gap: **v0.1.3 의 D21-D23 수정은 독립 재감사를 받지 않았다.** 3회
   - 조건부 변이 사슬(백업에서 계산한 원본 sha, 리터럴 경로): 원본 상태에서 `mutate=DONE`·항목 173→172, 한 줄 덧붙인 불일치 상태에서 `mutate=STOPPED`·항목 173 유지. 가드 통과.
   - 가드 추가 실측: 셸 반복문 안에서 변수 인자로 `moai` 를 부르는 명령, 여러 heredoc 을 묶은 명령은 거부됨. 파일마다 `printf '%s\n' … > <리터럴 경로>` 로 나누면 통과.
 
+## Run Phase 1 — Plan Audit Gate
+
+- audit_verdict: BYPASSED
+- audit_report: .moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-3.md (최종 감사, FAIL 0.89)
+- audit_at: 2026-09-10
+- bypass_user: GOOS 오라버니~ (`.moai/config/sections/user.yaml`)
+- bypass_reason: Tier M 감사 상한(2회)을 운영자 승인으로 1회 연장해 3회차까지 돌렸다. 3회차에 남은 blocking D21 을 두고 운영자가 "지금 고치고 진행"을 골랐고, 구현 시작 승인에서 "D21~D23 수정분이 독립 재감사 없이 진행되는 것"을 전제로 run 진입을 승인했다. 따라서 4회차 감사는 돌리지 않는다. 수정분의 오케스트레이터 직접 확인은 `.moai/reports/t619/verdict.md` §8.
+- run_trigger: bypassed (operator decision, lane session AskUserQuestion)
+
+## Phase 4 Mode Selection
+
+- Input: tier M · 수정 파일 5개(`tool-policy.yaml`, `internal/config/toolpolicy/drift_check_test.go` 신규, `Makefile`, `.github/workflows/ci.yml`, `internal/config/toolpolicy/types.go`) · 영역 1개(Go 설정 패키지와 빌드 배선) · 언어 Go + YAML + Makefile · 병렬 이득 없음(M1→M5 가 서로 의존)
+- 평가: serial — 적합(단일 작성자, 순차 의존). fanout — 부적합(조사 단계가 이미 끝남). agent-team — 부적합(파일 5개, 조정 비용이 이득보다 큼). sweep — 부적합(균일한 기계적 변환이 아니고 30파일 미만)
+- Decision: Scale-based mode: serial / Focused (files: 5, domains: 1)
+- Justification: 드리프트 검사가 먼저 붉게 재현돼야 YAML 수정의 초록이 의미를 가지므로 M1→M2→M3 이 순서 의존이다. 쓰기 가능한 에이전트는 manager-develop 하나만 둔다.
+- progression: autonomous (운영자 선택, 2026-09-10). `/moai goal` 은 워크트리 세션 키 불일치 위험(기존 교훈) 때문에 무장하지 않고, 오케스트레이터가 단계마다 증거를 읽어 진행한다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
