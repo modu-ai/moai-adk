@@ -255,6 +255,59 @@ A Unicode format-character (`Cf`) count was run on every Go file written
 through a tool payload, with a control string holding one such character
 (counted 1): `differ.go` 0, `differ_equal_fastpath_test.go` 0.
 
+## Integration window
+
+The window was acquired as lane-3 (`moai integration acquire`, exit 0, no
+settings-drift detection). Local `develop` was `c352330d3`, and the merge base
+`d3b7d438d` was re-confirmed inside the window. Every measurement in this section
+was taken at the absorb commit `4b87a7244`.
+
+### Absorb judgment
+
+**Dependency set of `internal/merge`** (`go list -deps -test`, non-standard
+packages only; `deps-internal-merge.txt`): `gopkg.in/yaml.v3`, which is external
+and pinned by `go.mod`/`go.sum`, and `internal/merge` itself. The package has no
+module-internal dependency and no embed pattern.
+
+That is a claim of absence, so the observer got a positive control first. The
+same template run on `./internal/cli/update/merge` listed 118 non-standard
+packages, one of which was `github.com/modu-ai/moai-adk/internal/merge`
+(`deps-observer-control.txt`). The observer does report module-internal
+dependencies, so the short list reflects a real absence rather than an observer
+that stayed silent.
+
+**Delta paths** (from diffing the merge base against `c352330d3`, name-only;
+`absorb-delta-paths.txt`): 121 paths. Matches against the judgment set: 0 under
+the `internal/merge/` prefix, 0 for `go.mod`, 0 for `go.sum`. Positive controls
+on the same file: 24 under `internal/`, 95 under `.moai/`, 2 under `.claude/`.
+Those add up to 121, so every line is accounted for.
+
+**Second observer: content hashes**, taken at the merge base and at `develop`.
+All three are the same on both sides: `internal/merge` `80b758a1`, `go.mod`
+`18a58bbe`, `go.sum` `a59f8dab`.
+
+The two observers agree that the absorbed delta touches nothing `internal/merge`
+depends on, which would have permitted carrying the earlier results forward.
+The package was re-measured directly anyway. It is small and needs no test
+slot, and a direct run also covers the build of the test binary, which a hash
+comparison cannot.
+
+### Absorb and merged-tree re-measurement
+
+Absorb commit `4b87a7244` (parents `05946ea8c` and `c352330d3`): an `ort` merge,
+no conflict, 121 files changed, matching the delta. The `internal/merge` tree is
+`17a1a7e6` both at `05946ea8c` and at the absorb commit.
+
+| Check | Result |
+|---|---|
+| `go test ./internal/merge/ -count=1 -v` | exit 0; 0 `--- FAIL` lines, 0 `no test files` lines, `ok` line present, 83 top-level `--- PASS`, all three new tests PASS (`merged-tree-test.txt`) |
+| `go vet ./internal/merge/` | exit 0, 0 bytes of output |
+| `golangci-lint run ./internal/merge/...` | exit 0, `0 issues.` |
+| `gofmt -l` on both changed Go files | 0 bytes of output |
+
+The benchmark was not re-run. `internal/merge` is byte-identical across the
+absorb, so the allocation result cannot have changed.
+
 ## Baseline-attribution
 
 Everything above was measured in this run, in this worktree, at
@@ -267,10 +320,10 @@ first.
 
 ## Gaps
 
-- **Merge-tree re-measurement is pending.** `develop` has moved since this
-  base. The fix is measured on `d3b7d438d`, and the integration window must
-  absorb the current `develop` and either re-measure or show that the absorbed
-  delta does not touch `internal/merge` or anything it imports.
+- This file does not record the tree identity of the final `develop` merge,
+  because the file is committed before that merge happens. The lane's
+  completion report carries it instead. The merged-tree re-measurement was run
+  on the absorb commit; see Integration window.
 - Real-world invocation frequency of `DiffLines` on identical inputs is not
   measured; the source report states the same gap.
 - ns/op was measured under different load averages before and after (21.61 vs
