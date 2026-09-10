@@ -92,6 +92,25 @@ go vet ./internal/web/                → VET_EXIT=0 (vet-web-final.txt 빈 파�
 gofmt -l internal/web/settings_form_names_test.go → 출력 없음
 ```
 
+### 통합 창 재측정 (흡수 트리)
+
+리드 지명으로 창을 잡고 로컬 develop 을 흡수한 트리에서 다시 쟀다.
+
+```
+moai integration acquire --name lane-2   → ACQUIRE_EXIT=0 (window-acquire.txt)
+git rev-parse refs/heads/develop         → c77ef6247fd9ba2fba1ec7367675c2ef1d2d9d40
+git merge --no-ff develop                → ABSORB_EXIT=0, HEAD 707324b752babcb4ee9f68a78780fa574eb88e07
+                                           (HEAD^1 334458f19, HEAD^2 c77ef6247), tree dbb51fc5034e55676503d843dc9d1c09dfd9b7a2
+go version                               → go1.26.8 darwin/arm64 (go.mod: go 1.26.8)
+go test ./internal/web/... -count=1      → WINDOW_WEB_PKG_EXIT=0, ok internal/web 20.600s (window-web-package.txt)
+go test ./internal/web/ -run 'TestSettingsRenderFormNamesUnique' -v -count=1
+                                         → WINDOW_NEW_TEST_EXIT=0, --- PASS: TestSettingsRenderFormNamesUnique (window-new-test.txt)
+```
+
+흡수가 `internal/web` 를 건드렸는지: `git diff --quiet 334458f19 HEAD -- internal/web` 종료 코드 0(변경 없음). 대조군으로 같은 명령을 `internal/spec` 에 돌리면 종료 코드 1(흡수로 바뀜)이다.
+
+templ 생성 드리프트 한 줄 확인(생성은 실행하지 않음): `internal/web/fieldsets.templ` 과 `internal/web/fieldsets_templ.go` 를 마지막으로 바꾼 커밋 세 개가 둘 다 `6639e7ecb`·`48239c7dc`·`62c2bf939` 로 같다. 생성 파일 머리의 `templ: version: v0.3.1020` 도 `go.mod` 의 `github.com/a-h/templ v0.3.1020` 과 같다.
+
 ## 설계 메모
 
 **검사 범위는 페이지 전체가 아니라 `#settings-form` 이다.** 브라우저는 제출된 폼에 속한 컨트롤만 보낸다. 소속은 폼 하위 트리 안에 있거나 `form="settings-form"` 속성을 가진 경우다. 파서 가드도 이 폼의 저장 경로 한 곳에서만 호출된다. 페이지 전체로 넓히면 오탐이 난다. `shell.templ` 의 프로필 폼 세 개(생성 326행, 이름 변경 332행, 삭제 342행)는 서로 독립된 폼인데 컨트롤이 모두 `name="profile_name"` 을 쓴다(328·334·344행). 이름 변경·삭제 폼은 `len(vm.RenameTargets) > 0` 일 때만 렌더된다. 기본 테스트 렌더에서는 페이지 전체 폼이 3개이고 페이지 컨트롤이 settings 폼보다 1개 많아(199 대 198), 페이지 전체 스윕도 지금은 통과한다. 프로필이 둘 이상인 설정에서는 페이지 전체 스윕이 `profile_name` 을 중복으로 잘못 보고하게 된다. 이 조건부 렌더 상태는 이번에 측정하지 않았고 템플릿 코드에서 읽은 것이다.
@@ -106,12 +125,11 @@ gofmt -l internal/web/settings_form_names_test.go → 출력 없음
 
 ## Baseline-attribution
 
-모든 측정은 이번 실행에서 워크트리 `.claude/worktrees/t545`, HEAD `5b9607218ddc19e1c6a53c6fa6782adfa10e70eb`, 브랜치 `WT-settings-form-names` 위에서 했다. 뮤턴트 측정은 이 트리에 `mutant.patch` 만 얹은 상태이고, 복원 후 해당 파일이 HEAD 와 같음을 sha256 과 `git diff --quiet` 로 확인했다. develop 흡수 후의 재측정은 아직 하지 않았다(아래 Gaps).
+모든 측정은 이번 실행에서 워크트리 `.claude/worktrees/t545`, HEAD `5b9607218ddc19e1c6a53c6fa6782adfa10e70eb`, 브랜치 `WT-settings-form-names` 위에서 했다. 뮤턴트 측정은 이 트리에 `mutant.patch` 만 얹은 상태이고, 복원 후 해당 파일이 HEAD 와 같음을 sha256 과 `git diff --quiet` 로 확인했다. 통합 창 재측정은 로컬 develop `c77ef6247` 을 흡수한 HEAD `707324b75` (tree `dbb51fc50`) 위에서 했다. 이 트리와 병합할 브랜치 끝의 차이는 `.moai/reports/t545/` 증거 파일뿐이다.
 
 ## Gaps
 
-- 통합 창에서 develop 을 다시 흡수한 트리의 재측정은 아직 하지 않았다. 창을 받으면 병합 트리에서 신규 테스트와 `./internal/web/...` 를 다시 잰다.
-- `make templ-generate` 는 돌리지 않았다. `.templ` 과 `_templ.go` 사이 생성 드리프트는 이 카드 범위 밖이며, 드리프트를 검사하는 테스트도 없다.
+- `make templ-generate` 는 돌리지 않았다. 생성 드리프트는 커밋 이력이 같고 templ 버전이 일치한다는 데까지만 확인했고, 재생성 결과를 바이트로 비교하지는 않았다. 드리프트를 검사하는 테스트도 없다.
 - 뮤턴트는 텍스트 행 한 종류만 넣었다. select·textarea·checkbox 중복과 `form=` 속성으로 외부에서 소속되는 컨트롤의 중복은 코드 경로로만 다루고 뮤턴트로 확인하지 않았다.
 - 프로필이 둘 이상이라 이름 변경·삭제 폼까지 렌더되는 상태는 렌더해 보지 않았다. 범위 선택의 근거 중 이 부분은 템플릿 코드 판독에 기댄다.
 - 전체 `internal/cli` 스위트와 다른 패키지는 돌리지 않았다. 변경은 `internal/web` 테스트 파일 하나다.
