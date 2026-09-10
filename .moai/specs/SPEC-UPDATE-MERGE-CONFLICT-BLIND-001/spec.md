@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "moai update merge: an unreachable conflict detector and no signal when a shared key is preserved"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-09-10
 updated: 2026-09-10
@@ -23,6 +23,7 @@ tier: M
 - 2026-09-10 — plan-phase artifacts authored (Tier M: spec.md + plan.md + acceptance.md + progress.md). Origin: card **t576**, whose investigation is committed verbatim at `.moai/reports/t576/verdict.md`. The card arrived describing a `permissions.ask` symptom in `.claude/settings.json`; the investigation established the symptom's writer as external to this repository and surfaced this merge finding as a **latent second finding**, static-derived and explicitly **not executed**. This SPEC's first milestone is therefore the reproduction, not a repair.
 - 2026-09-10 — a framing used earlier in the t576 investigation — "the merge is broken because the both-changed branch cannot fire" — is **withdrawn** and MUST NOT reappear in this SPEC or its siblings. See §A.2.
 - 2026-09-10 — **third framing revision**, authored after M1 was executed. M1's `untouched_shared` cell measured the merge writing the user's value for a key whose template value had changed, which establishes a fact wider than §A's plan-phase premise: for a top-level JSON key the user's file already carries, `moai update` cannot change that key's value at all. Recorded as §A.6. The two earlier framings are **retained** — the withdrawn one in §A.2's opening record, the plan-phase two-defect reading in §A.2 proper — rather than erased; §A.6 supersedes the plan-phase reading in breadth only.
+- 2026-09-10 — **fourth framing revision**, authored after M2.0 measured the recursive and the YAML breadths. The measurement forced a **granularity correction** to §A.6, not a defect discovery: the post-M1 wording — that the merge cannot change the value of a key the user's file already carries — is true at **leaf** granularity and false at **container** granularity, because a container both sides carry gains the template's new leaves. §A.6 is restated around the canonical sentence; its post-M1 wording is **superseded and retained here as the record**, alongside the withdrawn first framing and §A.2's plan-phase reading. §A.3 moves the recursive and YAML breadths from unmeasured to measured and carries M2.0's own Gaps list forward.
 
 ## §A Context
 
@@ -38,7 +39,7 @@ So for any key both sides carry, `baseVal == updVal` by construction (`base.go:1
 
 ### §A.2 The two defects, and what they are not
 
-> **Superseded in breadth by §A.6, and retained as the record of the first two framings.** The plan-phase reading below — two defects sitting in the gap between the code's stated intent and its instrumentation — remains correct as far as it goes. M1 measured something wider, which §A.6 states. Nothing here is deleted: the withdrawn framing is recorded in HISTORY, and this section is the plan-phase framing it replaced.
+> **Superseded in breadth by §A.6, and retained as the record of the first two framings.** The plan-phase reading below — two defects sitting in the gap between the code's stated intent and its instrumentation — remains correct as far as it goes. M1 measured something wider and M2.0 fixed its granularity, which §A.6 states. Nothing here is deleted: the withdrawn framing is recorded in HISTORY, and this section is the plan-phase framing it replaced.
 
 [HARD] A user's value winning on a shared key is **designed behaviour, not a defect**. A SPEC that calls the code's stated intent a defect collapses on one reading of the source. The defects sit in the **gap between that intent and its instrumentation**.
 
@@ -59,14 +60,26 @@ A reader of `mergeJSON` / `mergeYAML` sees a populated `Conflicts` slice and a `
 
 [HARD] The scope is wider than `permissions.ask`, which is the **instance that exposed the defects**, not the extent of them. But the measured breadth and the asserted breadth must not be confused, so this section states them separately.
 
-**Measured (M1, `progress.md` §E.2).** Both defects bind every **top-level JSON key** the user's file and the deployed template both carry. That is the breadth of the fixture M1 ran: a flat JSON document, four top-level keys, one merge.
+**Measured — three breadths, 20 predictions, 0 failed** (`progress.md` §E.2):
 
-**Not measured — an explicit open measurement.** Two breadth claims are NOT established and MUST NOT be asserted:
+| Breadth | Milestone | Fixture | Codec |
+|---|---|---|---|
+| Top-level JSON keys | M1 | flat document, four cells | `json_merge` |
+| Recursive path — a nested leaf under a container both sides carry | M2.0 | four cells one level down, plus a case where the whole container is absent on the user's side | `json_merge` |
+| YAML, flat and nested | M2.0 | the four cells driven through the YAML strategy, then the nested intersection that `.moai/config/sections/*.yaml` actually has | `yaml_deep`, asserted per cell |
 
-- The **recursive path.** `pruneToShared` recurses wherever both sides hold a nested map (`base.go:124-126`), and reading it suggests a nested shared leaf behaves as a top-level shared key does. M1 exercised no nested key, so that reading is a hypothesis.
-- The **YAML path.** `mergeYAML` was never entered. Every M1 reading came through the JSON strategy.
+Each breadth carried **its own discriminator cell** — the one cell whose prediction inverts, the template's value landing rather than the user's, so a harness that merely copied the user's document fails it — and **its own conflict-surface control**: the same engine over the same key, given a base agreeing with neither side, reporting `HasConflict=true` / `len(Conflicts)=1`. A control inside one codec says nothing about the other, so the YAML control is measured rather than inherited from the JSON one.
 
-[HARD] Until both are measured, `§A.2`'s defects and `§A.6`'s value-invariance finding are stated of top-level JSON keys and of nothing else. `plan.md` §F makes the two measurements the **precondition of M2**, ahead of any repair, because `.moai/config/sections/*.yaml` — 32 files — travels the YAML path: repairing without knowing the exposure means the fixed scope and the believed scope diverge, and the divergence is silent.
+**The YAML path is the identical call, not a parallel strategy.** `mergeYAML` (`internal/merge/strategies.go:343`) and `mergeJSON` (`:314`) both call `deepMergeMap`; `three_way.go:56-59` dispatches the two from the extension map at `strategies.go:79-82`, and `deriveTemplateBase` routes YAML through `yaml.Unmarshal` / `yaml.Marshal` into the same `pruneToShared` (`base.go:75-78`). The arm structure of `strategies.go:418-462` is therefore shared, and the two paths differ only in the codec that produces the three maps and re-serializes the result. Because every YAML cell asserts `MergeResult.Strategy == yaml_deep`, a YAML reading cannot be a JSON reading wearing a `.yaml` file name.
+
+**Not measured — the breadth still open.** Carried faithfully from M2.0's own Gaps list; none of the following may be asserted:
+
+- Which **arm** of `strategies.go:422-462` fires for a shared container key. `MergeResult` does not distinguish them, so the arm is not inferable from the result.
+- **Non-string YAML keys**, and value shapes beyond scalars, string arrays, and nested maps.
+- Any **end-to-end `moai update`** run, and any real checkout — `permissions.ask` has been measured nowhere outside a fixture.
+- Cross-platform (`GOOS=windows`) behaviour, and any coverage delta.
+
+[HARD] So the three breadths above are established and the list above is a gap. What now scopes `§A.6` is **granularity** — leaf versus container — rather than codec; `§A.2`'s defects are likewise established across all three breadths at leaf granularity. Citing either beyond that scope is an unobserved claim.
 
 ### §A.4 The healing boundary — omitted heals, empty does not
 
@@ -77,30 +90,40 @@ Measurable in the same code, and load-bearing for the reproduction:
 
 This is why the in-repo `toolpolicy` writers — which omit `ask` entirely when it is empty (`internal/config/toolpolicy/settings_region.go:204`) — would have self-healed on the next update, while the literal `"ask": []` produced by a writer **outside this repository** would not.
 
-### §A.5 What was unexecuted at plan-phase, and what M1 has since measured
+### §A.5 What was unexecuted at plan-phase, and what M1 and M2.0 have since measured
 
 The plan-phase statement, retained as the record it was: §A.1-§A.4 were derived from reading `base.go` and `strategies.go`; no test had been run against a live file; Defect 1 and Defect 2 were **hypotheses** until the §C M1 reproduction was observed.
 
-**M1 has since been executed.** Its evidence is `progress.md` §E.2, and it discharges the hypothesis marker **only at the breadth it measured** — top-level JSON keys (§A.3). What it established, and what it did not:
+**M1 has since been executed**, and **M2.0 after it**. The evidence for both is `progress.md` §E.2. Together they discharge the hypothesis marker at the three breadths §A.3 names — top-level JSON, nested JSON, and flat and nested YAML — and at **leaf granularity** (§A.6). What is established, and what is not:
 
-- **Established at that breadth.** §A.4's healing boundary (an omitted key heals, an emptied one does not); the shared-key conflict surface reading `HasConflict=false` / `len(Conflicts)=0` on a genuinely divergent shared key, against a control on the same engine and the same key that fired `true` / `1` under a base differing from both sides — so the reading is a property of the derived base, not of the harness.
-- **Not established.** The recursive path and the YAML path (§A.3); any end-to-end `moai update` run; any real checkout. No production code changed, so no `REQ-UMC-008` / `009` / `011` obligation is discharged and M2's design choice stays open.
+- **Established.** §A.4's healing boundary (an omitted key or container heals, an emptied one does not); the shared-leaf conflict surface reading `HasConflict=false` / `len(Conflicts)=0` on a genuinely divergent shared key, against a control on the same engine and the same key that fired `true` / `1` under a base differing from both sides — so the reading is a property of the derived base, not of the harness, and the YAML control is measured on its own codec rather than inherited. The §A.6 canonical statement's three clauses.
+- **Not established.** Everything in §A.3's gap list: which arm fires for a shared container key, non-string YAML keys, value shapes beyond scalars / string arrays / nested maps, any end-to-end `moai update` run, any real checkout, cross-platform behaviour, coverage delta. No production code changed in either milestone, so no `REQ-UMC-008` / `009` / `011` obligation is discharged and M2.1's design choice stays open.
 
-### §A.6 Third framing revision (post-M1) — the merge cannot change a value the user already carries
+### §A.6 Fourth framing revision (post-M2.0) — a shared LEAF's value cannot change
 
-[HARD] This is the **current** framing. It supersedes §A.2's plan-phase reading in breadth, not in correctness, and erases nothing: §A.2 stands as the record of the plan-phase framing, and the first framing's withdrawal stands in HISTORY.
+[HARD] This is the **current** framing. It supersedes this section's post-M1 wording — which stated the invariance of "a key the user's file already carries" — in **granularity**, not in correctness of the mechanism it described, and it erases nothing: §A.2 stands as the record of the plan-phase framing, the withdrawn first framing stands in HISTORY, and the superseded post-M1 wording is recorded there too, dated.
 
-**The measured fact.** M1's `untouched_shared` cell held `["template-old"]` on the user's side and `["template-new"]` on the template's. The merge wrote `["template-old"]`. Stated generally, for a top-level JSON key (§A.3):
+**Why the revision happened is worth stating plainly: this is a granularity correction, not a defect discovery.** M2.0 measured the recursive and the YAML breadths and every prediction held (20 of 20). What it also showed, in the same runs, is that the earlier sentence was pitched one level too high in the document tree.
 
-> `moai update` cannot change the VALUE of a key the user's file already carries. Only keys the user's file **lacks** receive a template value.
+**The canonical statement.**
 
-**The mechanism.** `pruneToShared` sets the base to the template's value for every shared key (`base.go:128`), so at `strategies.go:419-420` `updChanged` is always false there, while `baseChanged` is true whenever the user's value differs from the incoming template's — which is the ordinary case for a user sitting on an older template. The `baseChanged && !updChanged` arm ("only user changed", `strategies.go:427-429`) returns the user's value. Of the four arms of the shared-key switch (`strategies.go:422-462`), only two are reachable: **"Only template changed" (`strategies.go:431-433`) and "Both changed" (`strategies.go:435-436`) cannot execute for a shared key.**
+> A shared leaf's value cannot change. A leaf absent on the user's side lands. A container's value changes only by gaining such leaves.
 
-**The load-bearing point.** `pruneToShared` states its intent at `base.go:109-111`: a key on both sides enters the base carrying the template's value, "which is what makes a user's edit to that key read as their change during the merge." The mechanism **cannot distinguish "the user edited this" from "the user is on an older template version"** — both present as a difference between the user's value and the incoming template's, and both therefore read as the user's change. The stated intent is satisfiable only under an assumption that is false for the ordinary updating user, which is precisely the population `moai update` exists to serve.
+Each of the three clauses is measured, at all three breadths of §A.3:
+
+- **A shared leaf's value cannot change.** M1's `untouched_shared` cell held `["template-old"]` on the user's side while the template shipped `["template-new"]`; the merge wrote `["template-old"]`. The nested-JSON and the flat- and nested-YAML runs reproduced it on their own fixtures and codecs.
+- **A leaf absent on the user's side lands.** The discriminator cell of every breadth: an omitted key or leaf is not shared, so it stays out of the base and the template reads as introducing it. This is §A.4's healing boundary, and it is what separates a merge that ran from a document left alone.
+- **A container's value changes only by gaining such leaves.** In both nested runs the container `container` was carried by both sides, and the written container read `{"changed_shared":["user-choice"],"emptied_shared":[],"omitted_leaf":["template-only"],"untouched_shared":["template-old"],"user_only":["user-addition"]}` — the user's leaves **plus** the template's new leaf. That value is neither side's, which is precisely why the invariance cannot be stated of "a key". The recursion is `base.go:105-111` working as it describes; it is not a defect.
+
+**The mechanism.** `pruneToShared` sets the base to the template's value for every shared key (`base.go:128`), so at `strategies.go:419-420` `updChanged` is always false there, while `baseChanged` is true whenever the user's value differs from the incoming template's — the ordinary case for a user sitting on an older template. The `baseChanged && !updChanged` arm ("only user changed", `strategies.go:427-429`) returns the user's value. Of the four arms of the shared-key switch (`strategies.go:422-462`), only two are reachable for a shared **leaf**: **"Only template changed" (`strategies.go:431-433`) and "Both changed" (`strategies.go:435-436`) cannot execute there.**
+
+[HARD] **What is not observable, and therefore not claimed.** Which arm of `strategies.go:422-462` fires for a shared **container** key. `MergeResult` carries the written value, the conflict flag, and the strategy — it does not distinguish the arms — so the arm may not be inferred from the result. The reachability sentence above is stated of leaves for that reason, and a reading of it that covers containers is an unobserved claim (§A.3).
+
+**The load-bearing point, unchanged by the correction.** `pruneToShared` states its intent at `base.go:109-111`: a key on both sides enters the base carrying the template's value, "which is what makes a user's edit to that key read as their change during the merge." The mechanism **cannot distinguish "the user edited this leaf" from "the user is on an older template version"** — both present as a difference between the user's value and the incoming template's, and both therefore read as the user's change. The stated intent is satisfiable only under an assumption that is false for the ordinary updating user, which is precisely the population `moai update` exists to serve.
 
 This is why §A.2's Defect 2 needs a remedy of its own and why `REQ-UMC-010` is not in tension with it: the resolution is designed and stays, but a subsystem that cannot tell an edit from a stale deployment must not present a surface implying it can.
 
-**The breadth of each sentence above, stated so the two are not read as one.** The *measured fact* is scoped to top-level JSON keys — that is the fixture M1 ran (§A.3). The *mechanism* paragraph reads `pruneToShared` and `strategies.go` and says "every shared key"; that reach is **static-derived**, exactly as §A.2 was before M1, and it is a hypothesis for the recursive and YAML paths until `plan.md` §F M2.0 measures them. Citing this section at full breadth before that measurement is an unobserved claim.
+**The breadth of each sentence above.** The three clauses of the canonical statement, the healing boundary, and the leaf-level reachability reading are **measured** across top-level JSON, nested JSON, and flat and nested YAML (§A.3). The container-arm question is **not observable** and is claimed nowhere. Everything in §A.3's gap list — end-to-end `moai update`, a real checkout, non-string YAML keys, value shapes beyond scalars / string arrays / nested maps, cross-platform behaviour — remains unmeasured, and citing this section as though it covered them is an unobserved claim.
 
 ## §B Requirements (GEARS)
 
@@ -149,7 +172,7 @@ This is why §A.2's Defect 2 needs a remedy of its own and why `REQ-UMC-010` is 
 Decision-reversibility order, most-likely-to-change first. Full plan in `plan.md`.
 
 - **M1 — Reproduction (no code change).** Observe the four cells. **Executed** — evidence in `progress.md` §E.2; it produced the §A.6 revision. Everything downstream is conditional on what M1 records.
-- **M2 — Instrument honesty.** REQ-UMC-008/009/010. Entered by a **precondition measurement**: the recursive `pruneToShared` path and the `mergeYAML` path are measured **before** any repair (§A.3), because the fixed scope and the believed scope diverge silently otherwise. The design decision (make the arm reachable, or declare the surface's limit) is deliberately left open until that measurement is read alongside M1's.
+- **M2 — Instrument honesty.** REQ-UMC-008/009/010. Entered by a **precondition measurement** (M2.0): the recursive `pruneToShared` path and the `mergeYAML` path are measured **before** any repair (§A.3), because the fixed scope and the believed scope diverge silently otherwise. **M2.0 is executed** — evidence in `progress.md` §E.2; it produced the §A.6 granularity correction. The design decision of M2.1 (make the arm reachable, or declare the surface's limit) remains open: it was deliberately not taken in the measurement milestone.
 - **M3 — The signal.** REQ-UMC-011/012/013.
 
 ## §D Exclusions

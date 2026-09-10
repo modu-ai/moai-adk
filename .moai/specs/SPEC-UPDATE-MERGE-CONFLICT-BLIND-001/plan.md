@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "Implementation plan — update merge conflict blindness"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-10
 ---
 
@@ -15,12 +15,15 @@ at authoring time: everything the SPEC asserted about merge behaviour was
 observation comes before any design decision that depends on it, and so that the
 decisions most likely to change sit at the top where review is cheapest.
 
-**M1 has since been executed** (`progress.md` §E.2), and it found something wider
-than the plan-phase premise — `spec.md` §A.6: for a top-level JSON key the user's
-file already carries, the merge cannot change that key's value at all. Two
-consequences bind the rest of this plan: the breadth is **top-level JSON keys
-only** (`spec.md` §A.3), and M2 therefore opens with a precondition measurement
-(§F M2.0) rather than with a design choice.
+**M1 and then M2.0 have since been executed** (`progress.md` §E.2). M1 found
+something wider than the plan-phase premise, and M2.0 fixed its granularity —
+`spec.md` §A.6, restated: a shared **leaf's** value cannot change, a leaf absent
+on the user's side lands, and a container's value changes only by gaining such
+leaves. Two consequences bind the rest of this plan: the measured breadth is now
+three (top-level JSON, nested JSON, flat and nested YAML — `spec.md` §A.3) with
+the finding scoped by **granularity** rather than by codec, and M2's remaining
+work is the M2.1 design choice alone, since the §F M2.0 precondition is
+discharged.
 
 ## §B Known issues carried in from the investigation
 
@@ -34,15 +37,21 @@ only** (`spec.md` §A.3), and M2 therefore opens with a precondition measurement
 3. **`bypassPermissions` is set in `settings.local.json`.** Any claim that this
    work hardens the permission layer would be an unobserved claim while that mode
    is active.
-4. **The breadth M1 measured is narrower than the breadth the finding invites.**
-   `spec.md` §A.6 reads as a statement about the merge; it is established for
-   top-level JSON keys and for nothing else (`spec.md` §A.3). The recursive
-   `pruneToShared` path and `mergeYAML` were never entered. Citing §A.6 at full
-   breadth before M2.0 measures those two paths is an unobserved claim.
-5. **`.moai/config/sections/*.yaml` (32 files) travels the YAML path.** So the
-   unmeasured path is not a corner: it carries the bulk of the config surface a
-   repair would be judged on. This is why M2.0 is a precondition and not a
-   follow-up.
+4. **The finding invites a breadth one level above the one measured.** M2.0 has
+   since entered both the recursive `pruneToShared` path and `mergeYAML`, so the
+   codec-and-nesting breadth is closed (`spec.md` §A.3). What replaced it is a
+   **granularity** boundary: `spec.md` §A.6 holds of a shared **leaf**, and a
+   shared **container's** value does change when the template adds a leaf inside
+   it. Citing §A.6 as a statement about "a key" is an unobserved claim, and which
+   arm of `strategies.go:422-462` fires for a container is not observable from
+   `MergeResult` at all.
+5. **`.moai/config/sections/*.yaml` (32 files) travels the YAML path.** That is
+   why M2.0 was a precondition and not a follow-up: the path carries the bulk of
+   the config surface a repair would be judged on. Measured, it reaches the
+   **identical** `deepMergeMap` call as JSON (`strategies.go:343` and `:314`), so
+   the arm structure is shared rather than parallel — but the reading is a
+   measurement, not the source inference: every YAML cell asserts
+   `MergeResult.Strategy == yaml_deep`.
 
 ## §C Pre-flight
 
@@ -130,9 +139,9 @@ what produced the `spec.md` §A.6 revision.
 [HARD] M2 does **not** begin with the design choice. It begins with a
 measurement, and no repair is authored until that measurement is recorded.
 
-What is unmeasured, and why it blocks: M1's fixture was a flat JSON document, so
-`spec.md` §A.6 is established for **top-level JSON keys only** (`spec.md` §A.3).
-Two paths were never entered:
+What was unmeasured when this milestone was authored, and why it blocked: M1's
+fixture was a flat JSON document, so `spec.md` §A.6 stood for top-level JSON keys
+and for nothing else. Two paths had never been entered:
 
 1. The **recursive** `pruneToShared` path (`base.go:124-126`) — a shared key whose
    two sides both hold a nested map, measured down to a nested leaf.
@@ -152,6 +161,18 @@ had, unmeasured and now also unexamined. The divergence produces no signal, whic
 is what makes measuring first cheaper than measuring after.
 
 M2.0's exit is the recorded evidence. Only then is the choice below made.
+
+**Status: executed.** Evidence: `progress.md` §E.2. Both paths were entered, each
+on its own fixture, its own codec, and its own control: 20 predictions fixed
+before the runs, 0 failed. YAML was established to reach the **identical**
+`deepMergeMap` call rather than a separate strategy, and every YAML cell asserts
+`MergeResult.Strategy == yaml_deep`, so a YAML reading cannot be a JSON reading
+wearing a `.yaml` file name. The measurement forced one correction, and it is a
+granularity correction rather than a defect: a shared **container's** value does
+change when the template adds a leaf inside it, so `spec.md` §A.6 is restated at
+leaf granularity. Which arm fires for a shared container key is not observable
+from `MergeResult` and is claimed nowhere. No production code changed, so M2.1
+below is untouched — the design choice was deliberately not taken here.
 
 #### M2.1 — The design choice
 
@@ -196,21 +217,26 @@ document. Recorded here so the coupling is not discovered late.
 ## §G Anti-patterns
 
 - **Re-asserting the withdrawn framing.** The withdrawn sentence — "The merge is broken because the conflict branch cannot fire" — contradicts `base.go:109-111`. The defect is the unreachable instrument, not the resolution. (A mention like this one is quoted on a single line on purpose: `acceptance.md` §D.3's criterion strips single-line quoted and backticked spans before searching, so a mention passes and a use is caught. A quotation broken across two lines is reported — fail-closed, not a false pass.)
-- **Citing `spec.md` §A.6 at full breadth.** The value-invariance finding is
-  measured for top-level JSON keys only (`spec.md` §A.3). Stating it of "every
-  shared key" before M2.0 measures the recursive and YAML paths is an unobserved
-  claim.
-- **Repairing before M2.0.** A repair authored on the JSON-only reading fixes a
-  scope narrower than the scope it will be believed to cover, and nothing signals
-  the difference.
-- **Narrowing to `permissions.ask`.** Both defects bind every shared key at the
-  breadth measured so far — top-level JSON keys (`spec.md` §A.3) — and
-  `permissions.ask` is one instance of that class. A repair scoped to one key
-  leaves the instrument defect intact.
+- **Citing `spec.md` §A.6 at container granularity.** The value-invariance
+  finding is measured of a shared **leaf** — across top-level JSON, nested JSON,
+  and flat and nested YAML (`spec.md` §A.3). Stating it of "every shared key" is
+  false for a shared container, whose value gains the template's new leaves; and
+  naming the arm that fires for a container is an unobserved claim, because
+  `MergeResult` does not distinguish the arms.
+- **Repairing before M2.0.** Discharged — M2.0 is executed. The reason it was a
+  precondition still governs any later scope decision: a repair authored on a
+  reading narrower than the scope it will be believed to cover produces no signal
+  about the difference.
+- **Narrowing to `permissions.ask`.** Both defects bind every shared **leaf** at
+  the three breadths measured so far (`spec.md` §A.3), and `permissions.ask` is
+  one instance of that class. A repair scoped to one key leaves the instrument
+  defect intact.
 - **Passing on cells (i)-(iii) alone.** All three predict "user's side stands", so
   a harness that copied the user's file passes them. Cell (iv) is the counter-cell.
-- **Citing §A as established.** Until M1 lands, `spec.md` §A is a hypothesis
-  (`spec.md` §A.5).
+- **Citing §A as established beyond what was run.** M1 and M2.0 discharged the
+  plan-phase hypothesis marker for §A.1-§A.4 and §A.6 at the breadths and the
+  granularity those runs measured — and only there. `spec.md` §A.5 carries the
+  list of what stayed unmeasured; read it before citing §A.
 - **Measuring the live `.claude/settings.json`.** It is healthy again and says
   nothing about the merge (§B.1).
 
