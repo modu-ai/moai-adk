@@ -110,3 +110,28 @@ T556E2ECTRL.json          # 거절된 arm 은 상태 파일을 쓰지 않았다
 
 - `parseCondition` 의 기본 방향 자체를 뒤집는 안(무접두·무증거 → model)은 **채택하지 않았다.** 문서화된 맨 명령 형태(`/moai goal "go test ./... exits 0"`)를 전부 model 로 만들어버려 회귀가 크다. 별도 판단이 필요하면 카드로 분리할 것.
 - 참조어 허용목록(`transcript`/`conversation`)은 여전히 영어 전용이다. 이번 판별식이 그 뒤를 받치지만, 허용목록 자체는 손대지 않았다.
+
+## 병합 트리 재측정 — 통합 창 안 (lane-6)
+
+리드 지명 후 창을 잡고(`moai integration acquire --name lane-6`) 로컬 develop 을 흡수한 트리에서 다시 쟀다. 흡수 전 측정은 근거로 재사용하지 않는다.
+
+**흡수 대상의 최신성.** `git fetch origin develop` 후 `git rev-list --count --left-right origin/develop...develop` → `0	37`. 원격에만 있는 커밋은 없고 로컬이 리드 일괄 push 대기분만큼 앞서 있으므로, 흡수 대상은 로컬 develop `030987513` 이다.
+
+**흡수.** `git merge --no-edit develop` → HEAD `7d4ef0560`, 트리 `ec49cc856`. 흡수 전에 `git merge-tree --write-tree --name-only develop HEAD` 가 예측한 트리 `ec49cc856` 과 같다(충돌 파일 0). `git merge-base --is-ancestor 030987513 HEAD` → rc 0.
+
+**범위 — 영향 범위만.** 기준 이후 develop 이 바꾼 파일과 이 카드가 바꾼 파일은 겹치지 않는다. 겹치는 것은 패키지 둘이다.
+
+| 공유 패키지 | develop 쪽 | 이 카드 쪽 | 잰 것 |
+|---|---|---|---|
+| `internal/cli` | `update/merge` 테스트 2본, 템플릿 embed 전이(t609) | `goal.go`, `goal_runnable.go`, `mcp_server.go` | 이 카드의 테스트 4개 |
+| `internal/template` | `settings.json.tmpl` | `catalog.yaml` 의 `moai` 스킬 해시 | catalog 계열 테스트 |
+
+| 명령 | 결과 | 증거 |
+|---|---|---|
+| `go test ./internal/cli/ -count=1 -v -run 'TestProseShapedCommand\|TestGoalArm_ProseShape\|TestMCPGoalArm_ProseShape'` | rc 0, `--- PASS` 4건 이름 확인, `ok … 0.971s` | `merge-tree-goal-tests.txt` |
+| `go test ./internal/goal/... -count=1` | rc 0, `ok … 0.355s` | `merge-tree-goal-pkg.txt` |
+| `go test ./internal/template/ -count=1 -v -run 'TestCatalog\|TestAllSkillsInCatalog\|TestLoadCatalog'` | rc 0, `--- PASS` 10건(`TestCatalogHashCoversSkillSubfiles` 포함), `ok … 0.460s` | `merge-tree-catalog.txt` |
+
+통과 줄은 개수만이 아니라 테스트 이름으로 읽었다 — `-run` 이 0건과 일치해도 `ok` 가 찍히기 때문이다.
+
+**이 절의 Gaps.** `internal/cli` 패키지 전체 판정은 리드가 일괄 push 직전에 한 번 도는 몫이라 여기서 돌리지 않았다. `internal/template` 도 catalog 계열만 쟀고 패키지 전체는 돌리지 않았다. 앞 절에 기록된 선재 실패 4건(`TestHomeState…` 계열)은 이 트리에서 다시 재지 않았다.
