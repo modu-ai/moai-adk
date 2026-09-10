@@ -33,6 +33,7 @@ import (
 	"path/filepath"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
@@ -60,15 +61,21 @@ var HomeDirFn = paths.Home
 // Fail-open direction: an unresolvable git context (no git binary, not a
 // repository) keeps the queue usable via the home-based fallback rather than
 // erroring — a project without git metadata still gets exactly one queue,
-// keyed under ~/.moai/todo/ so two such projects cannot collide.
+// keyed under ~/.moai/db/ so two such projects cannot collide.
 func ResolveTodoQueueRoot(base string) string {
 	if root, ok := primaryCheckoutRoot(base); ok {
 		return root
 	}
+	if explicitMoaiHome() {
+		return base
+	}
 	if root, _, refused := tempOriginSubstituteRoot(base); refused {
 		return root
 	}
-	return fallbackTodoQueueRoot(base)
+	if pathInsideTempDir(base) {
+		return fallbackTodoQueueRoot(base)
+	}
+	return base
 }
 
 // ResolveTodoQueueRootAdopting is ResolveTodoQueueRoot plus the queue
@@ -80,21 +87,30 @@ func ResolveTodoQueueRootAdopting(base string) string {
 	if root, ok := primaryCheckoutRoot(base); ok {
 		return root
 	}
+	if explicitMoaiHome() {
+		return base
+	}
 	if root, _, refused := tempOriginSubstituteRoot(base); refused {
 		return root
 	}
-	root, ok := homeTodoQueueRoot(base)
-	if !ok {
-		return root
+	if pathInsideTempDir(base) {
+		root, ok := homeTodoQueueRoot(base)
+		if !ok {
+			return root
+		}
+		adoptLocalTodoQueue(base, root)
+		return fallbackTodoQueueRoot(base)
 	}
-	adoptLocalTodoQueue(base, root)
-	// Adoption is best-effort, so it can leave the fallback root empty while the
-	// project-local queue still holds the operator's cards. Resolving through the
-	// pure resolver afterwards is what keeps this path and the console's agreeing
-	// in that case too (REQ-WTQ-005): a successful adoption makes the fallback
-	// root the populated one and it wins, and a failed adoption reads through to
-	// the local queue rather than reporting it empty.
-	return fallbackTodoQueueRoot(base)
+	return base
+}
+
+func pathInsideTempDir(path string) bool {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(os.TempDir(), abs)
+	return err == nil && rel != ".." && rel != "." && len(rel) > 0 && rel[0] != filepath.Separator && (len(rel) <= 2 || rel[:3] != ".."+string(filepath.Separator))
 }
 
 // tempOriginSubstituteRoot is the temporary-origin guard
@@ -116,10 +132,10 @@ func ResolveTodoQueueRootAdopting(base string) string {
 // discriminant is evaluated BEFORE the home-resolution outcome is consulted.
 // "Temporary origin" and "home unresolvable" are not mutually exclusive — a
 // non-git temp base whose HomeDirFn errors satisfies both — and on that
-// intersection this requirement fixes the return at the base. Evaluating the
-// discriminant after homeTodoQueueRoot's ok check would let that function's
-// no-home return — resolveStateDir(base, false), the one layer-misaligned value
-// in this file — win by ordering alone.
+// intersection this requirement fixes the return at the base. homeTodoQueueRoot's
+// no-home return used to be resolveStateDir(base, false), one layer below the
+// root, so ordering alone would have decided the value; since t549 it returns
+// the base as well, and the placement keeps the guard's guidance path first.
 //
 // Read-only: TempOriginReason performs Lstat/EvalSymlinks and nothing else.
 func tempOriginSubstituteRoot(base string) (root, matchedRoot string, refused bool) {
@@ -148,7 +164,15 @@ func TempOriginRefusal(base string) (substitute, matchedRoot string, refused boo
 	if _, ok := primaryCheckoutRoot(base); ok {
 		return "", "", false
 	}
+	if explicitMoaiHome() {
+		return "", "", false
+	}
 	return tempOriginSubstituteRoot(base)
+}
+
+func explicitMoaiHome() bool {
+	value := os.Getenv(paths.EnvHome)
+	return value != "" && filepath.IsAbs(value)
 }
 
 // primaryCheckoutRoot resolves base to the repository's primary checkout,
@@ -161,8 +185,8 @@ func primaryCheckoutRoot(base string) (string, bool) {
 }
 
 // homeTodoQueueRoot returns the home-based queue root for base, reporting
-// false when no home is resolvable — in which case it returns the in-project
-// root instead, keeping the queue usable rather than failing the caller
+// false when no home is resolvable — in which case it returns base itself, the
+// in-project ROOT, keeping the queue usable rather than failing the caller
 // outright. Read-only.
 //
 // The directory is named for the command that owns the queue (`moai todo` —
@@ -175,11 +199,12 @@ func homeTodoQueueRoot(base string) (string, bool) {
 	}
 	home, err := HomeDirFn()
 	if err != nil {
-		// No home: fall back to the project-local state directory, resolved
-		// PURELY so a failed home lookup cannot trigger the one-time
-		// directory relocation as a side effect.
-		dir, _ := resolveStateDir(base, false)
-		return dir, false
+		// No home: fall back to the launch base. It is a ROOT like every other
+		// value this resolution returns — consumers extend it with
+		// BacklogPathForRoot, which resolves the project-local state directory
+		// itself, purely. Returning that state directory here got it extended a
+		// second time, and the read landed on a path nothing writes (t549).
+		return base, false
 	}
 	return filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(base)), true
 }
@@ -255,6 +280,13 @@ func adoptLocalTodoQueue(base, fallbackRoot string) {
 // path. Two distinct projects sharing a base name still occupy two keys, and
 // the mapping is deterministic across runs.
 func TodoQueueProjectKey(base string) string {
+	return homestate.ProjectKey(base)
+}
+
+// legacyTodoQueueProjectKey reproduces the pre-home-state key byte-for-byte
+// so on-access migration can find queues created before canonicalization and
+// filename sanitization were introduced.
+func legacyTodoQueueProjectKey(base string) string {
 	abs, err := filepath.Abs(base)
 	if err != nil {
 		abs = filepath.Clean(base)

@@ -47,7 +47,7 @@ import (
 //  4. no session id / missing state file     → ALLOW (fail-open; no result yet)
 //  5. malformed state file                   → ALLOW (fail-open; corrupt JSON)
 //  6. overall_verdict = pass                 → ALLOW (all required PASS, or an advisory-only conflict — never blocks)
-//  7. overall_verdict = fail (required FAIL) → BLOCK (the gate's ONLY block path)
+//  7. overall_verdict = fail                 → BLOCK (the gate's ONLY block path — a required FAIL, or a gate the project explicitly configured `required` left unmet by a fail-open inconclusive; both arrive as overall=fail from the convergence engine)
 //
 // `enabled` is read by the caller (runMultiReviewGate via
 // readMultiReviewGateEnabled) and passed in so this function stays free of
@@ -56,9 +56,12 @@ import (
 // The gate does NOT distinguish "fail because all required agree on fail" from
 // "fail because of a required split" — both surface as overall=fail in the
 // ConvergenceResult (the convergence engine resolves them identically per
-// REQ-AMM-006 #2/#3). The residual_risk_note in the result already names which
-// backend(s) failed; this gate's BLOCK reason echoes that note so the operator
-// sees the same trail at the Stop surface.
+// REQ-AMM-006 #2/#3). Nor does it distinguish them from "fail because a gate
+// explicitly configured `required` was left unmet by a fail-open inconclusive"
+// — the engine's enforcement layers that on as the same overall=fail. The
+// residual_risk_note in the result already names which backend(s) failed (or
+// which gate went unmet); this gate's BLOCK reason echoes that note so the
+// operator sees the same trail at the Stop surface.
 func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sessionID string) (*hook.HookOutput, error) {
 	allow := &hook.HookOutput{}
 	if !enabled {

@@ -1,0 +1,7 @@
+[mcp_servers.moai]
+command = "moai"
+args = ["mcp-server"]
+default_tools_approval_mode = "writes"
+
+[tui]
+status_line = ["model-with-reasoning", "context-remaining", "git-branch", "current-dir", "branch-changes", "five-hour-limit", "weekly-limit", "thread-title"]

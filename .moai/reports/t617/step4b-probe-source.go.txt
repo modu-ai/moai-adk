@@ -1,0 +1,37 @@
+package config
+
+// Temporary t617 probe — deleted after measurement, never committed.
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"gopkg.in/yaml.v3"
+)
+
+func TestT617Probe_SystemYamlMigrationsDisabled(t *testing.T) {
+	configDir := filepath.Join(t.TempDir(), ".moai", "config")
+	sections := filepath.Join(configDir, "sections")
+	if err := os.MkdirAll(sections, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := []byte("migrations:\n  disabled: true\nhook:\n  opt_in:\n    enabled: true\n")
+	if err := os.WriteFile(filepath.Join(sections, "system.yaml"), body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Load takes the .moai directory and appends config/sections itself.
+	cfg, err := NewLoader().Load(filepath.Dir(configDir))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	t.Logf("PROBE loader: cfg.System.Migrations.Disabled=%v", cfg.System.Migrations.Disabled)
+	t.Logf("PROBE loader positive control (same file): cfg.System.Hook.OptIn.Enabled=%v", cfg.System.Hook.OptIn.Enabled)
+
+	var direct SystemConfig
+	if err := yaml.Unmarshal(body, &direct); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	t.Logf("PROBE direct unmarshal into SystemConfig: Migrations.Disabled=%v", direct.Migrations.Disabled)
+}

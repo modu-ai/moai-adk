@@ -1,0 +1,17 @@
+delta judgment: local develop changes since card base c7dd269f3 (to 247d0985a) vs test deps of internal/core/... and internal/statusline (merged tree HEAD c94d3a97d)
+deps command: go list -deps -test ./internal/core/... ./internal/statusline/  (core/... is used because the worktree guard refuses a go command whose package path has a git path segment)
+delta command: git diff --name-only c7dd269f3 247d0985a
+dep packages total 340, module-local 34
+develop changed files 286
+control internal/statusline in local deps: True
+go.mod/go.sum changed: []
+changed .go files in an affected-test dep package: 0
+changed non-.go files under a dep package dir (embed candidates): 8
+  internal/template/catalog.yaml
+  internal/template/templates/.claude/agents/moai/plan-auditor.md
+  internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md
+  internal/template/templates/.claude/skills/moai/workflows/plan.md
+  internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+  internal/template/templates/.claude/skills/moai/workflows/run.md
+  internal/template/templates/.claude/skills/moai/workflows/sync.md
+  internal/template/templates/.codex/agents/moai/plan-auditor.toml

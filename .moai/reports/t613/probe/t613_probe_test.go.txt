@@ -1,0 +1,80 @@
+package web
+
+import (
+	"io/fs"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/profile"
+)
+
+// t613 probe (injected via go test -overlay only; never part of the package tree).
+// Host x path matrix against the real router, plus a POST positive control.
+func TestT613HostMatrix(t *testing.T) {
+	const marker = "t613-private-marker-5521"
+	hosts := []struct{ label, host string }{
+		{"localhost", "localhost:3041"},
+		{"ipv4-loopback", "127.0.0.1:3041"},
+		{"ipv6-loopback", "[::1]:3041"},
+		{"foreign", "attacker.example.com:3041"},
+		{"absent", ""},
+	}
+
+	staticPath := ""
+	_ = fs.WalkDir(staticFS(), ".", func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && staticPath == "" {
+			staticPath = "/static/" + p
+		}
+		return nil
+	})
+	if staticPath == "" {
+		t.Fatalf("no static asset found — static control unavailable")
+	}
+
+	paths := []string{"/settings", "/", "/kanban", "/monitor", "/todo", "/specs", staticPath}
+
+	for _, h := range hosts {
+		for _, p := range paths {
+			h, p := h, p
+			t.Run(h.label+p, func(t *testing.T) {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Logf("RESULT host=%s path=%s PANIC=%v", h.label, p, r)
+					}
+				}()
+				a := newTestApp(t)
+				a.readPreferences = func(string) (profile.ProfilePreferences, error) {
+					return profile.ProfilePreferences{UserName: marker}, nil
+				}
+				req := httptest.NewRequest(http.MethodGet, p, nil)
+				req.Host = h.host
+				rec := httptest.NewRecorder()
+				a.routes().ServeHTTP(rec, req)
+				t.Logf("RESULT method=GET host=%s path=%s status=%d bytes=%d marker=%t",
+					h.label, p, rec.Code, rec.Body.Len(), strings.Contains(rec.Body.String(), marker))
+			})
+		}
+	}
+
+	// Positive control: the mutating gate is live on the same router.
+	for _, h := range hosts {
+		h := h
+		t.Run("POST-save-"+h.label, func(t *testing.T) {
+			a := newTestApp(t)
+			wrote := false
+			a.writePreferences = func(string, profile.ProfilePreferences) error { wrote = true; return nil }
+			a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
+			form := url.Values{"__profile": {"default"}, "permission_mode": {"acceptEdits"}}
+			req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("Sec-Fetch-Site", "same-origin")
+			req.Host = h.host
+			rec := httptest.NewRecorder()
+			a.routes().ServeHTTP(rec, req)
+			t.Logf("RESULT method=POST host=%s path=/save status=%d wrote=%t", h.label, rec.Code, wrote)
+		})
+	}
+}

@@ -186,8 +186,7 @@ func (r *Record) WithCard(cardID string) *Record {
 
 // RecordPath returns the on-disk path of a session's record.
 func RecordPath(projectRoot, sessionID string) string {
-	dir, _ := resolveStateDir(projectRoot, false)
-	return filepath.Join(dir, sessionID+".json")
+	return filepath.Join(RuntimeStateDirForRoot(projectRoot), sessionID+".json")
 }
 
 // Write persists rec under projectRoot, creating the state directory as needed.

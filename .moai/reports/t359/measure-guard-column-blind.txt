@@ -1,0 +1,19 @@
+=== RUN   TestTodoHistoryAddsNoSchemaChange
+--- PASS: TestTodoHistoryAddsNoSchemaChange (0.01s)
+=== RUN   TestT359ProbeGuardIsColumnBlind
+    zz_t359_probe_test.go:44: A1 table set     = "archived_findings archived_items findings items meta" (guard wants "archived_findings archived_items findings items meta") -> match=true
+    zz_t359_probe_test.go:55: A2 CHECK present = true
+    zz_t359_probe_test.go:56: A2 stored items SQL now = CREATE TABLE items (
+          seq      INTEGER PRIMARY KEY,
+          id       TEXT    NOT NULL UNIQUE,
+          text     TEXT    NOT NULL,
+          added_at TEXT    NOT NULL,
+          spec_id  TEXT,
+          state    TEXT    NOT NULL CHECK (state IN ('queued','picked','dropped'))
+        , bogus TEXT)
+    zz_t359_probe_test.go:71: A3 index set     = "idx_items_state" -> match=true
+    zz_t359_probe_test.go:79: A4 schema_version = "1" -> match=true
+    zz_t359_probe_test.go:93: COLUMN SET (unasserted by the guard) = "seq id text added_at spec_id state bogus"
+--- PASS: TestT359ProbeGuardIsColumnBlind (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.253s

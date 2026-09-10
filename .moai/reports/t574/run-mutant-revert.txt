@@ -1,0 +1,10 @@
+# card t574 — proof that mutant M-574 was reverted
+# tree: .claude/worktrees/t574  branch: WT-temp-roots-ac  head: 0f30477af  go: go1.26.8 darwin/arm64
+# command: git diff --stat -- internal/kanban/temp_origin.go
+# expected: empty output (no difference from HEAD)
+# control: the same path under the mutant produced a non-empty diff (.moai/reports/t574/run-mutant-source.diff), so empty here is a measured zero, not a silent command
+# blob witness: git hash-object internal/kanban/temp_origin.go -> 633b09c247ef69c0af232196089af8f84fc74264
+#               git rev-parse HEAD:internal/kanban/temp_origin.go -> 633b09c247ef69c0af232196089af8f84fc74264
+# --- verbatim output (between the markers; nothing between them means empty) ---
+# --- end output ---
+git diff --quiet exit_code: 0 (0 = no difference)

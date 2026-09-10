@@ -278,6 +278,14 @@ type LLMConfig struct {
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
+	// ClaudeBin pins the Claude Code binary the launcher launches (issue
+	// #1697): when non-empty, launchClaudeDefault launches THIS path instead
+	// of searching PATH for `claude`. Resolution order: the MOAI_CLAUDE_BIN
+	// env var → this key → PATH lookup (unchanged default). The path must
+	// exist and be executable; an invalid pin is a launch error, not a silent
+	// fallback — a pin that silently fell back would re-expose the
+	// broken-release blast radius the pin exists to stop.
+	ClaudeBin string `yaml:"claude_bin,omitempty"`
 	// Performance tier: "high", "medium", "low" (canonical), plus "max" accepted
 	// as the superseded name of the top tier. Controls model selection for all
 	// sub-agents. Since the top column was renamed max -> high this axis shares the

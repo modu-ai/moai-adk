@@ -333,18 +333,15 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 	}
 
 	cond := parseCondition(conditionText)
-	// Arm-time runnability gate: a mechanical condition whose first word names
-	// no command can never exit 0, so arming it silently buys a goal that blocks
-	// every turn-end to the ceiling. Refuse on positive evidence only (the probe
-	// fails open) and write NO state file on refusal. An explicit `cmd:` prefix
-	// is the author declaring the tier deliberately, and is exempt — see
-	// declaredMechanical.
-	if cond.Type == goal.ConditionMechanical && !declaredMechanical(conditionText) {
-		if tok, bad := unrunnableCommandToken(cmd.Context(), cond.Cmd); bad {
-			// Returned, not also printed: the root command renders the error, and
-			// printing it here too would show the user the same paragraph twice.
-			return unrunnableConditionError("goal arm", tok, cond.Cmd)
-		}
+	// Arm-time gate: a mechanical condition that can only ever fail buys a goal
+	// that blocks every turn-end to the ceiling. Refuse on positive evidence
+	// only (both probes fail open) and write NO state file on refusal. The gate
+	// is shared with the goal_arm MCP wrapper — see armTimeConditionGate.
+	//
+	// Returned, not also printed: the root command renders the error, and
+	// printing it here too would show the user the same paragraph twice.
+	if err := armTimeConditionGate(cmd.Context(), "goal arm", conditionText, cond); err != nil {
+		return err
 	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {
@@ -522,7 +519,7 @@ func runGoalRender(cmd *cobra.Command, sessionFlag string, jsonOutput bool) erro
 	v, _ := goal.LoadVerdict(root, sessionID)
 	// SPEC-GOAL-HTML-WIRING-001 REQ-WIRE-009 / AC-WIRE-007: construct the
 	// render-only ReArmContext from the already-landed SPEC-INFINITE-GOAL-001
-	// state (pending.json EmbeddedGoal + post-/clear new-session goal file).
+	// state (factory.db resume row + post-/clear new-session goal file).
 	// nil reArm → byte-identical base view per AC-GHF-007 / AC-WIRE-009.
 	reArm := buildReArmContext(root, sessionID)
 	raw, err := goal.RenderDashboardReArm(g, v, reArm)
@@ -558,13 +555,13 @@ func init() {
 
 // buildReArmContext constructs the render-only re-arm UI context from the
 // already-landed SPEC-INFINITE-GOAL-001 state (SPEC-GOAL-HTML-WIRING-001
-// REQ-WIRE-009 / AC-WIRE-007). It reads `.moai/state/handoff/pending.json`
+// REQ-WIRE-009 / AC-WIRE-007). It reads the pending resume row in factory.db
 // (consume-only — the SPEC-INFINITE-GOAL-001 shape is untouched) and, when an
 // EmbeddedGoal is present, scans the per-session goal files for a post-/clear
 // new-session goal whose `Goal` text matches the embedded condition (the
 // `rearmEmbeddedGoal` write signature). Returns nil when no EmbeddedGoal is
 // present → the base view renders byte-identically (AC-WIRE-009). All steps are
-// best-effort / fail-open: a missing/corrupt pending.json or a scan miss leaves
+// best-effort / fail-open: a missing/corrupt database or a scan miss leaves
 // the corresponding ReArmContext field empty.
 func buildReArmContext(root, sessionID string) *goal.ReArmContext {
 	rec, present, _ := handoff.ReadPending(root)

@@ -1,0 +1,58 @@
+=== RUN   TestCodexStaleSkillFinding_AbsoluteStatTargetIsConvertedForm
+    doctor_codex_path_guard_test.go:52: stat target = "/Users/u/skills/probe/SKILL.md", want the converted form "\\Users\\u\\skills\\probe\\SKILL.md"
+    doctor_codex_path_guard_test.go:55: stat target = "/Users/u/skills/probe/SKILL.md" — the DECLARED form: the conversion is not applied
+--- FAIL: TestCodexStaleSkillFinding_AbsoluteStatTargetIsConvertedForm (0.00s)
+=== RUN   TestCodexStaleSkillFinding_ExtendedLengthStatTargetIsConvertedForm
+    doctor_codex_path_guard_test.go:93: stat target = "//?/C:/Users/u/skills/probe/SKILL.md", want the converted extended-length form "\\\\?\\C:\\Users\\u\\skills\\probe\\SKILL.md"
+--- FAIL: TestCodexStaleSkillFinding_ExtendedLengthStatTargetIsConvertedForm (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.186s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.502s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	2.548s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	0.349s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	5.360s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	1.822s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	3.279s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	5.988s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	2.207s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	5.683s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	4.375s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	3.987s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.975s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	3.596s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	5.048s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	4.735s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	6.023s [no tests to run]
+FAIL

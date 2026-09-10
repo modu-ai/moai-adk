@@ -137,7 +137,7 @@ func syncStatusline(projectRoot string, prefs ProfilePreferences) error {
 	if err != nil {
 		return fmt.Errorf("marshal statusline.yaml: %w", err)
 	}
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
+	if err := os.MkdirAll(sectionsDir, 0o700); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
 	}
 	if err := os.WriteFile(statuslineFile, yamlData, 0o644); err != nil {

@@ -2,8 +2,8 @@
 
 > `/moai codemaps`로 생성됐습니다.
 
-**측정 트리**: worktree `.claude/worktrees/t475`, 브랜치 `WT-codemaps-stale`, HEAD `52f863f36`
-**측정**: 2026-09-08
+**측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
+**측정**: 2026-09-10
 
 ---
 
@@ -51,7 +51,7 @@ root.go Execute()
 
 **등록 사이트가 두 갈래**입니다.
 
-1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **29회**.
+1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **30회**.
    worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
    constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
    migration, **chain**, harness-router, tool-policy, mcp-server, mcp, inventory, preference,
@@ -61,7 +61,7 @@ root.go Execute()
      기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
      쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
    - `chain`(`newChainCmd()`, `root.go:204`) — 워크트리 세션 origin-trail 원장 조회·정리.
-2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **65개**입니다
+2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **67개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식입니다.
@@ -82,6 +82,26 @@ LoopController · Logger · PerfTiming을 조립하고 전역 변수 `deps *Depe
 물을 수 있는 독립 verb가 `moai integration preflight [경로]`이며, **두 표면 중 어느 쪽도
 뺄 수 없습니다** — 선행 조건이 없으면 검사가 사회적 약속이 되고, 독립 verb가 없으면 창을
 잡지 않고는 물을 방법이 없습니다.
+
+---
+
+## HOME 상태와 Factory 복구 진입점
+
+- `moai migrate home-state` — 기본은 읽기 전용 점검입니다. `--apply`만으로는 쓸 수 없고
+  `--verified-live`를 함께 줘야 하며, 내부에서 현재 HEAD에 대한 검증 증거와 두 번의
+  zero-active runtime census를 다시 확인합니다.
+- `moai migrate home-state recover` — 소유 프로세스가 죽은 migration marker만 복구합니다.
+  소유자 상태가 불명확하거나 살아 있으면 fail-closed입니다.
+- `moai migrate home-state rollback` — 백업 manifest, SHA-256, 프로젝트 키·루트가 일치하는
+  검증된 백업만 복원합니다.
+- `moai factory handoff recover-resume --id <id> --expected-token <token> --decision <fail|requeue>`
+  — v1 레거시 claim이 자동 판정 불가능할 때 쓰는 명시적 운영 복구 표면입니다. 현재 소유자가
+  살아 있거나 상태가 불명확하면 재점유하지 않습니다.
+
+런타임 쪽 진입점은 별도 명령이 아니라 공통 gate입니다. SessionStart, MCP 서버, Factory가
+`internal/homestate` admission lock을 잡고 migration marker를 검사한 뒤에만 상태를 엽니다.
+프로필 lease는 런처에서 provisional 생성, 자식 PID로 transfer, SessionStart에서 session ID를
+enrich하고 SessionEnd에서 release하는 흐름입니다.
 
 ---
 

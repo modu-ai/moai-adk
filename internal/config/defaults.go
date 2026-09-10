@@ -23,6 +23,18 @@ const (
 	// content drift (the index is cheap to rescan).
 	DefaultGraphFreshnessCodemapsChangedFiles = 40
 	DefaultGraphFreshnessMXIndexChangedFiles  = 1
+
+	// DefaultGateMarkerScanDepth bounds the quality gate's recursive
+	// language-marker scan below the project root (GH #1680): how many
+	// directory levels beneath the project directory the scan examines for
+	// module markers (go.mod, package.json, ...) when none exists at the top.
+	// The value covers the common monorepo shapes — apps/<svc>,
+	// packages/<pkg>, services/<name> at depth 2, apps/services/<svc> at
+	// depth 3 — with one spare level, while keeping the walk bounded on large
+	// trees. This is the single source of truth for the literal 4; the scan
+	// and its tests reference this constant, never an inline literal
+	// (CLAUDE.local.md §14 — no hardcoding).
+	DefaultGateMarkerScanDepth = 4
 	// DefaultGraphFreshnessUpdateBudgetMS bounds a query-time refresh's
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
@@ -217,9 +229,13 @@ const (
 	// `state.home_retention_days` key read from ~/.moai/config/sections/state.yaml;
 	// DefaultReleaseKeep is how many non-current release binaries beyond the
 	// current version survive `clean --home`.
-	DefaultHomeDiskWarnBytes      = 500 * 1024 * 1024
-	DefaultHomeCleanRetentionDays = 30
-	DefaultReleaseKeep            = 3
+	DefaultHomeDiskWarnBytes            = 500 * 1024 * 1024
+	DefaultHomeCleanRetentionDays       = 30
+	DefaultReleaseKeep                  = 3
+	DefaultProfileProjectsRetentionDays = 180
+	DefaultProfileDebugRetentionDays    = 30
+	DefaultProfileUnusedDays            = 90
+	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
 
 	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
 	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
@@ -328,7 +344,7 @@ var SandboxProofKinds = []string{
 	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata", "sandbox-runtime",
 }
 
-// DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
+// DefaultHandoffStaleTTL is the age past which a pending resume handoff row is
 // considered stale and silently removed by the SessionStart handler — auto-mode
 // ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale
 // pending record (REQ-009 pure no-op). Single source of truth consumed by the

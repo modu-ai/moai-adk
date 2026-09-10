@@ -79,7 +79,7 @@ moai doctor [OPTIONS]
 
 | 発見 | 指示文 |
 |------|--------|
-| 配線が全く無いプロジェクト | `moai init --agent codex` |
+| 配線が全く無いプロジェクト | `moai init --llm codex` |
 | フック変更後のサイドカーずれ | `codex /hooks` で変更されたフックを再信頼 |
 | スキルミラー欠如・切れたリンク | `moai update --templates-only --force --yes` |
 | 参照先のスキルファイルが消えた登録 | 項目を削除するか、スキルファイルを復元 |

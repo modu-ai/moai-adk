@@ -20,6 +20,7 @@ tier: M
 |------|--------|--------|
 | 2026-08-25 | manager-spec | Initial creation — plan-phase artifacts for card t273 (Class C, Tier M). Scope fixed by `.moai/reports/t273/gap-map.md` GAP-1..GAP-4; that gap map's Out-of-Scope list is binding on this SPEC. |
 | 2026-08-25 | manager-spec | Plan-audit iter-1 revision (review-1 D1-D10): GREEN anchors strengthened (AC-001/007/009/011); run-entry pre-flight decoupled from nav approval (D2); gap-map committed to branch (D3); REQ-WFD-001 Class A canon completion (D4); AC-009 grep `-E` fix (D5); E7 count 33 (D6); REQ-WFD-004 relabel (D7); M1 qualifier move (D8); denominator footnote (D9); REQ-WFD-007 icon wording (D10). Team-lead nav approval recorded 2026-08-25 with three binding conditions (§C.3). |
+| 2026-09-08 | manager-develop (card t573) | §C.4 정정 — "Protocol values stay locale-verbatim" 를 두 부류로 분리: 기계 리터럴(`0.75/0.80/0.85`, `workers.json`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, `sync-auditor`, `factory-mode`, `spec-lifecycle`)은 locale-verbatim 유지, 의미 라벨(`Class A/B/C`, `Implementation Kickoff`, 4개 차원명)은 **원어-병렬**(로케일 원어 OR ASCII 어느 쪽이든 계수 통과)로. 근거: ASCII 존재 계수가 ja·zh 산문에 괄호 글로스를 강제한 관측 (census `.moai/reports/t573/census.md` §3 배치 3, 측정 트리 `0e1f248cd`). 승인: 리드 승인 — 카드 t573 발행 dispatch. acceptance.md AC-WFD-001/007/011 검증식 정정과 짝. |
 
 ## §A Context and Problem
 
@@ -76,7 +77,7 @@ Nav edits (`_meta.yaml` × 4 locales, `data/menu/main.yaml`) are structure-curat
 
 ### §C.4 Normative heading/content tokens (AC anchors)
 
-The card-class section heading carries, per locale: ko `카드 클래스`, en `Card Classes`, ja `カードクラス`, zh `卡片类别`. Protocol values stay locale-verbatim: `Class A/B/C`, `Implementation Kickoff`, `0.75` / `0.80` / `0.85`, `workers.json`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, `sync-auditor`, `factory-mode`, `spec-lifecycle`, and the four sync-auditor dimension names `Functionality` / `Security` / `Craft` / `Consistency` (the 4-dimension scoring semantics; AC anchors rely on them).
+The card-class section heading carries, per locale: ko `카드 클래스`, en `Card Classes`, ja `カードクラス`, zh `卡片类别`. Machine-literal protocol values stay locale-verbatim (they are code, not prose): `0.75` / `0.80` / `0.85`, `workers.json`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, `sync-auditor`, `factory-mode`, `spec-lifecycle`. Semantic labels — `Class A/B/C`, `Implementation Kickoff`, and the four sync-auditor dimension names `Functionality` / `Security` / `Craft` / `Consistency` (the 4-dimension scoring semantics) — are counted **bilingually**: each locale's own term OR the ASCII form satisfies the AC anchor (an ASCII-presence count would coerce ja/zh/ko prose into parenthetical ASCII glosses; measured in census `.moai/reports/t573/census.md` §3 배치 3 — 2026-09-08 HISTORY 항목 참조).
 
 ### §C.5 Touch boundary
 

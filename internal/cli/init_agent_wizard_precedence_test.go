@@ -2,7 +2,7 @@ package cli
 
 // SPEC-INIT-HARNESS-PROMPT-001 — the precedence RULE, asserted directly.
 //
-// The end-to-end rows in init_agent_wizard_test.go cannot carry the --agent
+// The end-to-end rows in init_agent_wizard_test.go cannot carry the --llm
 // claude case on their own: its observable outcome is identical before and
 // after this change, because the wizard answer used to be discarded
 // unconditionally. Nothing in a file assertion distinguishes "the flag won"
@@ -26,7 +26,7 @@ import (
 // The flag branch requires BOTH conjuncts — flagChanged AND a non-empty value —
 // matching applyAutonomyTierFromWizard and consistent with validateInitFlags,
 // which short-circuits on agent != "". The cobra default is the empty string,
-// not claude, so `--agent ""` is explicitly set and empty: it must fall through
+// not claude, so `--llm ""` is explicitly set and empty: it must fall through
 // to the wizard rather than pin claude, or the fallback stops being
 // attributable to absence.
 func TestResolveAgentWiringWithWizard_PrecedenceTable(t *testing.T) {

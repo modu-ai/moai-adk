@@ -22,11 +22,12 @@
 // added one spec.md. The probe therefore writes the exact file list it read,
 // so the denominator is fixed by an artifact rather than by a later `find`.
 //
-// OUTPUT DIRECTORY. Set T528_PROBE_OUT to redirect. The default is a run-scoped
-// directory, NOT the plan-phase artifact directory: the pinned before-image
-// (probe/positive-needle.txt, probe/filelist.txt) must never be overwritten by
-// a post-widening run, or the no-regression control becomes a comparison of the
-// widened parser against itself.
+// OUTPUT DIRECTORY. Set T528_PROBE_OUT to redirect. The default is a per-run
+// t.TempDir() directory (SPEC-HARNESS-EVIDENCE-WRITE-001): this probe writes
+// NOTHING into the repository tree. The pinned before-images under
+// .moai/reports/t528/probe/ (probe/positive-needle.txt, probe/filelist.txt)
+// must never be overwritten by a post-widening run, or the no-regression
+// control becomes a comparison of the widened parser against itself.
 package spec
 
 import (
@@ -56,7 +57,7 @@ func t528ProbeOutDir(t *testing.T) string {
 	t.Helper()
 	dir := os.Getenv("T528_PROBE_OUT")
 	if dir == "" {
-		dir = "../../.moai/reports/t528/probe/out"
+		dir = t.TempDir()
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)

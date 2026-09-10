@@ -365,3 +365,64 @@ func TestUnresolvedCard_OutcomeDistinctAndByteUnchanged(t *testing.T) {
 		t.Fatal("spec.md changed")
 	}
 }
+
+// TestReadPrimarySpecStatus_RefusesTraversingSpecID — the spec identifier
+// reaches a filesystem join here exactly as it does in ReadCardStatus, and
+// `moai todo next --spec` records the operator's value verbatim by design, so
+// a traversal-shaped id must be refused at this boundary rather than read a
+// document that is not the card's SPEC (SPEC-TODO-LANDING-EVIDENCE-001
+// REQ-TLE-005/010).
+//
+// The traversal is driven end-to-end rather than asserted against the
+// validator: testing the sanitizer tests the sanitizer, while the defect is
+// that the READER never called it. The planted file sits OUTSIDE primaryRoot,
+// so a pass means the escape actually happened.
+//
+// The legitimate leg is not decoration — without it a guard that refused
+// every id would satisfy the traversal leg alone.
+func TestReadPrimarySpecStatus_RefusesTraversingSpecID(t *testing.T) {
+	t.Parallel()
+
+	tmp, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("resolve tmp: %v", err)
+	}
+	root := filepath.Join(tmp, "project")
+
+	// The legitimate leg: a real card under the root, read normally.
+	writeSpecMD(t, root, "SPEC-NAV-X", StatusCompleted)
+
+	// The escape target, outside the root entirely. From
+	// <root>/.moai/specs/<id>/spec.md, three parent steps land in tmp.
+	outsideDir := filepath.Join(tmp, "outside")
+	if err := os.MkdirAll(outsideDir, 0o755); err != nil {
+		t.Fatalf("mkdir outside: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(outsideDir, "spec.md"),
+		[]byte("---\nstatus: PWNED-TRAVERSAL\n---\n"), 0o644); err != nil {
+		t.Fatalf("write outside spec.md: %v", err)
+	}
+	traversing := filepath.Join("..", "..", "..", "outside")
+
+	// Precondition: the traversal target really is reachable by the join this
+	// function performs, and really is outside the root. Without this, a
+	// refusal below could mean the fixture simply pointed at nothing.
+	escaped := filepath.Join(root, ".moai", "specs", traversing, "spec.md")
+	if _, err := os.Stat(escaped); err != nil {
+		t.Fatalf("fixture: the traversal target is not reachable at %s: %v", escaped, err)
+	}
+	if strings.HasPrefix(escaped, root+string(filepath.Separator)) {
+		t.Fatalf("fixture: %s is still inside the root — the traversal does not escape", escaped)
+	}
+
+	if status, ok := ReadPrimarySpecStatus(root, traversing); ok {
+		t.Fatalf("ReadPrimarySpecStatus(root, %q) = (%q, true) — a traversing spec id read a document outside the project root; want ('', false) so the caller maps it onto the unknown marker",
+			traversing, status)
+	}
+
+	status, ok := ReadPrimarySpecStatus(root, "SPEC-NAV-X")
+	if !ok || status != StatusCompleted {
+		t.Fatalf("ReadPrimarySpecStatus(root, \"SPEC-NAV-X\") = (%q, %v), want (%q, true) — the guard must not refuse a legitimate id",
+			status, ok, StatusCompleted)
+	}
+}

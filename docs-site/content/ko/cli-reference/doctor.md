@@ -81,7 +81,7 @@ moai doctor [OPTIONS]
 
 | 발견 | 지시문 |
 |------|--------|
-| 배선이 아예 없는 프로젝트 | `moai init --agent codex` |
+| 배선이 아예 없는 프로젝트 | `moai init --llm codex` |
 | 훅 변경 뒤 사이드카 발산 | `codex /hooks` 로 변경된 훅을 재신뢰 |
 | 스킬 미러 부재 · 끊긴 링크 | `moai update --templates-only --force --yes` |
 | 가리키던 스킬 파일이 사라진 등록 | 항목을 제거하거나 스킬 파일을 복원 |

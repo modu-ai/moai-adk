@@ -1,0 +1,7 @@
+# card t574 — whole internal/kanban package, no selector, after mutant revert
+# tree: .claude/worktrees/t574  branch: WT-temp-roots-ac  head: 0f30477af (temp_origin.go byte-identical to HEAD — see run-mutant-revert.txt)  go: go1.26.8 darwin/arm64
+# command: go test -count=1 ./internal/kanban/
+# expected: ok, exit_code 0
+# --- verbatim output ---
+ok  	github.com/modu-ai/moai-adk/internal/kanban	158.924s
+exit_code: 0

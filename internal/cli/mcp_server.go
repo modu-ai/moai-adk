@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -85,11 +86,24 @@ provision the entry (M4).`,
 // until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
 // internally (derived from os signals); there is no ctx to thread here.
 func runMCPServer() error {
+	projectDir := resolveProjectDir()
+	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
+	if lockErr != nil {
+		return lockErr
+	}
+	if err := homestate.CheckRuntimeAdmission(projectDir); err != nil {
+		_ = admissionLock.Release()
+		return err
+	}
 	// Stamp this process's build identity so `moai doctor` can detect a host
 	// still talking to a previously-installed build (mcp_server_runtime.go).
 	// Best-effort by contract: a failed stamp never blocks serving.
-	if recordPath, err := writeMCPServerRuntimeRecord(resolveProjectDir()); err == nil {
+	if recordPath, err := writeMCPServerRuntimeRecord(projectDir); err == nil {
 		defer removeMCPServerRuntimeRecord(recordPath)
+		_ = admissionLock.Release()
+	} else {
+		_ = admissionLock.Release()
+		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
 	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
@@ -654,18 +668,13 @@ func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	}
 
 	cond := parseCondition(conditionText) // same classifier the CLI uses
-	// Inherited rule (same predicate the CLI applies): a mechanical condition
-	// whose first word resolves to no command can never exit 0, so arming it
-	// buys a goal that blocks every turn-end to the ceiling. Both arm paths call
-	// parseCondition, so both need the gate — a CLI-only check would leave the
-	// MCP path arming exactly what the CLI refuses.
-	// An explicit `cmd:` prefix exempts the condition here exactly as it does on
-	// the CLI path (declaredMechanical) — the two arm surfaces must not disagree
-	// about which conditions are armable.
-	if cond.Type == goal.ConditionMechanical && !declaredMechanical(conditionText) {
-		if tok, bad := unrunnableCommandToken(ctx, cond.Cmd); bad {
-			return toolErr("goal_arm", unrunnableConditionError("goal_arm", tok, cond.Cmd)), nil
-		}
+	// Inherited rule: a mechanical condition that can only ever fail buys a goal
+	// that blocks every turn-end to the ceiling. This is the SAME function the
+	// CLI arm path calls, not a parallel copy — the two arm surfaces disagreeing
+	// about which conditions are armable is the defect class issue #1660 was
+	// reported against, so the gate has exactly one implementation.
+	if err := armTimeConditionGate(ctx, "goal_arm", conditionText, cond); err != nil {
+		return toolErr("goal_arm", err), nil
 	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {

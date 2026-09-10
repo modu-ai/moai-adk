@@ -478,7 +478,7 @@ func Page3Questions(projectRoot string) []Question {
 			Default:     "false",
 		},
 		// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-001) — the agent-harness
-		// selector, previously reachable only through `moai init --agent`.
+		// selector, previously reachable only through `moai init --llm`.
 		// It sits immediately before mcp_provision because the two answers
 		// jointly decide the MCP surface and the overriding one is given
 		// first: a codex selection declines .mcp.json provisioning whatever
@@ -491,7 +491,7 @@ func Page3Questions(projectRoot string) []Question {
 			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "Select the agent harness to wire",
-			Description: "Which agent harness MoAI wires for this project. 'claude' is the recommended default; the --agent flag overrides this answer.",
+			Description: "Which LLM harness MoAI wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
 			Options: []Option{
 				{Label: "Claude (Recommended)", Value: "claude", Desc: "Wire the Claude side only (.mcp.json provisioning)"},
 				{Label: "Codex", Value: "codex", Desc: "Wire the .codex/ hook layer + MCP config; skips .mcp.json provisioning"},

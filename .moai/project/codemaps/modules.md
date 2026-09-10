@@ -2,10 +2,12 @@
 
 > `/moai codemaps`로 생성된 패키지 목록입니다. 존재 여부는 작업 트리만을 근거로 판정했고,
 > 이전 codemaps 문서를 존재의 근거로 쓰지 않았습니다.
+> **Go** 버전은 아래 측정 트리에서 잰 값이 아닙니다. 측정 트리의 `go.mod`는 `go 1.26.4`였고, 여기 적힌 값은
+> t610 커밋 `41f445fa5`가 올린 `go.mod:3`에서 옮겨 적었습니다.
 
-**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.4
-**측정 트리**: worktree `.claude/worktrees/t475`, 브랜치 `WT-codemaps-stale`, HEAD `52f863f36`
-**측정**: 2026-09-08
+**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
+**측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
+**측정**: 2026-09-10
 
 파일 수는 전부 `find <dir> -name '*.go' -not -name '*_test.go' | wc -l`로 센 **비테스트 파일**이며
 하위 패키지를 포함합니다.
@@ -17,7 +19,7 @@
 | 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
 |---|---|---|---|
 | `cmd/moai` | 1 | 바이너리 유일 진입점. `cli.Execute()` 호출 후 `cli.ResolveExitCode`로 종료 코드만 매핑 | — |
-| `internal/cli` | 279 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr` |
+| `internal/cli` | 286 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr` |
 | `internal/hook` | 135 | Claude Code 26종 훅 이벤트의 핸들러 레지스트리와 개별 핸들러. `registry.Dispatch`가 이벤트별 체인을 돌려 `HookOutput`을 만든다 | `quality`, `security`, `mx`(+`complexity`), `memo`(+`taxonomy`), `handoff`, `perf`, `trace`, `testutil` |
 | `internal/web` | 31 | 루프백 전용 브라우저 콘솔. `a-h/templ` 컴파일 뷰(`*_templ.go`) + htmx + SSE(fsnotify)로 프로파일·설정·todo 큐를 편집하고, **codex 탭 하나는 편집이 아니라 읽기 전용 미러**다(§ codex 미러 탭) | `assets` |
 | `internal/statusline` | 21 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립. 렌더가 읽고 쓰는 상태의 **앵커는 세션의 현재 디렉터리가 아니라** `internal/stateanchor` seam이 정한 프로젝트 루트이며, 그 어댑터가 `internal/statusline/state_anchor.go`다 | — |
@@ -35,7 +37,8 @@
 | `mcp*` | 14 | 두 갈래. `mcp_server.go`(50KB)는 stdio JSON-RPC 서버, `mcp.go`/`mcp_codex.go`(89KB — CLI 최대 파일)/`mcp_glm.go`/`mcp_convergence.go`는 codex·GLM 위임과 다중 모델 감사 수렴 |
 | `todo*` | 11 | 백로그 큐 CLI. 파일 헤더가 스스로를 `kanban.BacklogStore`에 대한 얇은 cobra 배선이라고 밝힌다 |
 | `codex*` | 10 | 외부 에이전트 백엔드 런처, 잡 제어, 준비 상태 점검, 리뷰 게이트. **여기에 사용자 HOME 계층에 대한 스킬 노출 제어 두 개가 함께 산다** — `internal/cli/codex_skills_disable.go`는 `~/.codex/config.toml`에 `enabled = false`를 실은 `[[skills.config]]` 항목을 발행하고, `internal/cli/codex_skills_prune.go`는 가리키는 파일이 사라진 유령 등록을 제거한다(부재를 증명할 수 있는 것만 지우는 allowlist 형 판정, 기본 dry-run) |
-| `migrate*` | 9 | 프로파일·에이전시·스킬 복원 등 일회성 마이그레이션 verb |
+| `migrate*` | 10 | 프로파일·에이전시·스킬 복원과 HOME SQLite 상태의 점검·이전·복구·롤백 verb. `migrate_home_state.go`는 기본 dry-run이며 실제 쓰기는 `--apply --verified-live` 이중 승인과 두 번의 zero-active census를 요구한다 |
+| `factory*` / `handoff*` / `profile*` | 7 | Factory 인계 v2 lease·만료 재점유·token CAS, 레거시 claim의 명시적 `recover-resume`, 전역 프로필 lease의 provisional→transfer→enrich→release 수명주기 |
 | `spec*` | 8 | SPEC 문서 lifecycle CLI (view/close/audit/drift) |
 | `hook*` | 7 | 훅 디스패처 진입점(`hook.go`, 61KB)과 pre-commit/pre-push 설치 |
 | `harness*` | 7 | harness route/validate/ledger/mute/delegation/clusters |
@@ -57,7 +60,7 @@
 |---|---|---|---|
 | `internal/harness` | 82 | GAN 루프 harness — Socratic 인터뷰 버퍼, 계층적 수락 스코어링, 패턴 학습·티어 분류, FROZEN 가드, lineage 매니페스트, 회귀 게이트 | `curator`, `cluster`, `proposalgen`, `router`, `routing`, `safety`, `seeds`, `throttle`, `tier`, `capture`, `delegationmap`, `v4manifest`, `harnessrun` |
 | `internal/navigator` | 53 | BAS(Blueprint-Anchored Synchronization) 파이프라인. 루트에 Go 파일이 없고 전부 단계별 하위 패키지 | `astx`(tree-sitter 16개 언어), `detect`, `sync`, `tiers`, `route`, `fix` |
-| `internal/kanban` | 35 | 백로그 큐의 상태 레코드·컬럼·역할 모델, SQLite 저장 엔진, 보드 락, PR 링크, 정합성 조정. **여기에 워킹 트리 검사 하나가 더 있다** — `settings_drift.go`가 병합 전 tracked `.claude/settings.json`의 워킹 사본 드리프트를 단정하고 사본을 보존하며 원장에 남긴다(`--no-optional-locks` 강제 — 평범한 status가 인덱스 쓰기 락을 잡아 병합 직전 경합을 스스로 만들기 때문) | — |
+| `internal/kanban` | 38 | 백로그 큐의 상태 레코드·컬럼·역할 모델, SQLite 저장 엔진, 보드 락, PR 링크, 정합성 조정. 저장소 해석은 `internal/homestate`의 프로젝트 키 경로를 사용하고 Factory 런타임 진입은 migration admission gate를 통과한다. **여기에 워킹 트리 검사 하나가 더 있다** — `settings_drift.go`가 병합 전 tracked `.claude/settings.json`의 워킹 사본 드리프트를 단정하고 사본을 보존하며 원장에 남긴다(`--no-optional-locks` 강제 — 평범한 status가 인덱스 쓰기 락을 잡아 병합 직전 경합을 스스로 만들기 때문) | — |
 | `internal/spec` | 31 | SPEC 문서 파싱/린트/감사, era 분류, per-SPEC 파일 락, atomic close 오케스트레이터 | — |
 | `internal/template` | 30 | `//go:embed all:templates` + `catalog.yaml`. 배포기, 렌더러, settings 생성, 스킬 미러, 카탈로그 트리 해시, 모델 정책·프로파일 매트릭스. **배포 뒤편에 두 개의 기계 방출기와 두 개의 미러 보호·복구 seam이 붙어 있다**(§ 템플릿 방출·미러 계열) | `agentemit`, `commandemit`, `scripts` |
 | `internal/core` | 24 | 응집 없는 우산 패키지 (§ `overview.md` 참조) | `git`, `project`, `quality` |
@@ -122,9 +125,23 @@
 | `internal/settings` | 10 | `moai web` 콘솔과 `moai profile setup` TUI 두 표면이 공유하는 설정 스키마 | `agentfm`, `yamlpatch` |
 | `internal/sessionmsg` | 7 | 단일 머신 세션 간 메시징 브로커 (envelope 스키마) | — |
 | `internal/chain` | 4 | **워크트리 세션 origin-trail 체인** — `.moai/state/chain/events.jsonl`에 spawn 경계·`session_id` 백필·완료 엣지를 append-only JSONL 계보 트리로 적는다. 쓰기는 매번 `O_APPEND`로 열어 커널이 동시 append를 직렬화하게 두며, 읽고-고치고-쓰는 주기가 없다(전체 파일을 올려 변형하지 않는다). 깨진 줄은 스트림을 중단시키지 않고 건너뛴다. 목적은 depth-N 워크트리에 `/clear` 이후 재진입한 사람이 grep·스크롤백 고고학 없이 origin·완료·재개 지점을 바로 복원하는 것이다 | — |
+| `internal/homestate` | 14 | HOME 상태의 경로·SQLite 스키마·동시성 계약. 프로젝트별 `todo/backlog.db`, `factory/factory.db`, 전역 `run/profile-leases.db`, migration marker·admission lock, PID 지문과 runtime census를 소유한다. Unix `flock`과 Windows `LockFileEx`를 같은 계약으로 제공한다 | — |
 | `internal/guardstate` | 4 | 가드 생존성의 상태 모델·매니페스트 | — |
 | `internal/manifest` | 3 | 파일 provenance 추적과 변경 감지 | — |
 | `internal/tokenusage` | 3 | Claude Code 트랜스크립트 JSONL을 파싱해 토큰 사용량을 귀속·기록. **호출자 0 — 아래 §네거티브 스페이스** | — |
+
+### `internal/homestate` — 프로젝트 로컬 파일과 HOME DB 사이의 안전 경계
+
+정본 경로는 `~/.moai/db/<project-key>/todo/backlog.db`와
+`~/.moai/db/<project-key>/factory/factory.db`이며, 프로필 점유는 프로젝트와 무관한
+`~/.moai/run/profile-leases.db`에 둡니다. `project-key`는 정규화한 프로젝트 루트에서
+결정되므로 여러 워크트리가 같은 프로젝트 DB를 공유합니다.
+
+이 패키지는 경로만 계산하지 않습니다. migration marker가 있는 동안 SessionStart, MCP 서버,
+Factory 런타임 진입을 동일한 admission lock 아래에서 거절하고, 실제 이전은 두 번의 런타임
+census가 모두 0일 때만 허용합니다. Factory 인계는 v2 lease와 token CAS로 만료 재점유와 ABA를
+막고, 주입 뒤 crash는 at-least-once 경계로 남깁니다. 이 설명은 구현된 계약이며, 운영 DB에
+`--apply`가 실행됐다는 뜻은 아닙니다.
 
 ### `internal/settings/yamlpatch` — 보존 쓰기 경로
 

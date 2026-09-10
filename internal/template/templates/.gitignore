@@ -171,6 +171,8 @@ secret-*.*
 # ===========================================
 # Claude Code Configuration
 # ===========================================
+/AGENTS.local.md
+/CLAUDE.local.md
 .claude/settings.local.json
 .claude/settings.local.*.json
 .claude/.env.local*

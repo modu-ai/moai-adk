@@ -10,9 +10,12 @@ import (
 	"testing"
 )
 
-// decomposeReportRelPath is where the Gate-0 decomposition is written, relative
-// to the repository root.
-const decomposeReportRelPath = ".moai/reports/t362/m2-gate0-decomposition.txt"
+// decomposeReportFilename is the bare filename of the Gate-0 decomposition.
+// Its directory is resolved per run by t362ReportPath — t.TempDir() by
+// default, or the MOAI_T362_EVIDENCE_OUT override for durable capture — so a
+// re-run can never rewrite repository-tracked evidence
+// (SPEC-HARNESS-EVIDENCE-WRITE-001).
+const decomposeReportFilename = "m2-gate0-decomposition.txt"
 
 // Mechanical misread predicates.
 //
@@ -460,6 +463,9 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# SPEC-COVERAGE-RULE-SCOPE-001 M2 Gate 0 — rejected-REQ-ID decomposition\n")
 	fmt.Fprintf(&b, "# produced by: MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/... -run TestCorpusRejectedREQIDDecomposition -v\n")
+	fmt.Fprintf(&b, "# output location: a per-run t.TempDir() directory (exact path announced via t.Logf).\n")
+	fmt.Fprintf(&b, "# durable capture: set MOAI_T362_EVIDENCE_OUT=<dir> BEFORE the run; the report then\n")
+	fmt.Fprintf(&b, "# lands at <dir>/m2-gate0-decomposition.txt (no-clobber: an existing file fails the run).\n")
 	fmt.Fprintf(&b, "scan_glob=%s\n", corpusSpecGlobRel)
 	fmt.Fprintf(&b, "\n# POPULATION DEFINITION — frozen, and deliberately not the live pattern.\n")
 	fmt.Fprintf(&b, "# Sections [A]-[E] decompose the ids the widened extraction collects that the\n")
@@ -538,10 +544,7 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 	fmt.Fprintf(&b, "\n%s", measureWiringBlastRadius(t, paths, root))
 	fmt.Fprintf(&b, "\n%s", measureM1ModalityCensus(t, paths, root))
 
-	out := filepath.Join(root, decomposeReportRelPath)
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
+	out := t362ReportPath(t, decomposeReportFilename)
 	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
