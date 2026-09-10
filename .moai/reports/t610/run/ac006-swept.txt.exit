@@ -1,0 +1,4 @@
+grep_ok_exit=0
+grep_empty_or_fail_exit=1
+go_list_selected_exit=0
+cmp_status_exit=0

@@ -3,7 +3,7 @@
 > `/moai codemaps`로 생성된 아키텍처 지도입니다. 모든 수치는 아래 트리에서 직접 잰 것이고,
 > 다른 트리·다른 시점에서 옮겨온 값은 없습니다.
 
-**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.4
+**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
 **측정**: 2026-09-10
 

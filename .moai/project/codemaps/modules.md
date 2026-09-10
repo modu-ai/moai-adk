@@ -3,7 +3,7 @@
 > `/moai codemaps`로 생성된 패키지 목록입니다. 존재 여부는 작업 트리만을 근거로 판정했고,
 > 이전 codemaps 문서를 존재의 근거로 쓰지 않았습니다.
 
-**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.4
+**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
 **측정**: 2026-09-10
 

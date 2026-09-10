@@ -129,7 +129,7 @@ moai-adk-go/
 ├── pkg/
 │   ├── models/                       # Shared config types (Very High fan-in, 45+): ProjectType, DevelopmentMode, ProjectConfig
 │   └── version/                      # Build-time version / commit / date (ldflags)
-├── go.mod                            # module github.com/modu-ai/moai-adk, go 1.26.4
+├── go.mod                            # module github.com/modu-ai/moai-adk, go 1.26.8
 ├── go.sum
 ├── Makefile
 ├── CHANGELOG.md

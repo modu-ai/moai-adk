@@ -1,0 +1,18 @@
+# AC-GTS2-004 instrument control: the same grep form finds the IDs in the go1.26.4 baseline log
+
+$ grep -c 'GO-2026-6218' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-6091' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-6090' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-6089' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-6088' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-5972' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-5856' .moai/reports/t610/baseline/govulncheck-auto.log
+2
+$ grep -c 'GO-2026-5026' .moai/reports/t610/baseline/govulncheck-auto.log
+2
