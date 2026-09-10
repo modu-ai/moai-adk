@@ -1,0 +1,12 @@
+=== RUN   TestT549_BacklogPathForRootTreatsArgumentAsRoot
+    root_layer_repro_test.go:55: BacklogPathForRoot(root)     = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_BacklogPathForRootTreatsArgumentAsRoot2899067350/001/.moai/state/todo/backlog.json
+    root_layer_repro_test.go:56: BacklogPathForRoot(stateDir) = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_BacklogPathForRootTreatsArgumentAsRoot2899067350/001/.moai/state/todo/.moai/state/todo/backlog.json
+--- PASS: TestT549_BacklogPathForRootTreatsArgumentAsRoot (0.09s)
+=== RUN   TestT549_NoHomeFallbackReadsTheExistingQueue
+    root_layer_repro_test.go:114: pure: root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue4048160258/001 path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue4048160258/001/.moai/state/todo/backlog.json items=3 err=<nil>
+    root_layer_repro_test.go:114: adopting: root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue4048160258/001 path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue4048160258/001/.moai/state/todo/backlog.json items=3 err=<nil>
+--- PASS: TestT549_NoHomeFallbackReadsTheExistingQueue (0.19s)
+=== RUN   TestT549_SymlinkedTempBaseWithDefaultRootsReturnsBase
+--- PASS: TestT549_SymlinkedTempBaseWithDefaultRootsReturnsBase (0.12s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.677s
