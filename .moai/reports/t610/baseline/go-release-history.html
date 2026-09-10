@@ -1,0 +1,5910 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+
+<link rel="preconnect" href="https://www.googletagmanager.com">
+<script >(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-W8MVQXG');</script>
+  
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#00add8">
+<link rel="canonical" href="https://go.dev/doc/devel/release">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Material+Icons">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="icon" href="/images/favicon-gopher.png" sizes="any">
+<link rel="apple-touch-icon" href="/images/favicon-gopher-plain.png"/>
+<link rel="icon" href="/images/favicon-gopher.svg" type="image/svg+xml">
+<link rel="me" href="https://hachyderm.io/@golang">
+
+  
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-W8MVQXG');</script>
+  
+<script src="/js/site.js"></script>
+<meta name="og:url" content="https://go.dev/doc/devel/release">
+<meta name="og:title" content="Release History - The Go Programming Language">
+<title>Release History - The Go Programming Language</title>
+
+<meta name="og:image" content="https://go.dev/doc/gopher/gopher5logo.jpg">
+<meta name="twitter:image" content="https://go.dev/doc/gopher/gopherbelly300.jpg">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@golang">
+</head>
+<body class="Site">
+  
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W8MVQXG"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  
+
+
+<header class="Site-header js-siteHeader">
+  <div class="Header Header--dark">
+    <nav class="Header-nav">
+      <a href="/">
+        <img
+          class="js-headerLogo Header-logo"
+          src="/images/go-logo-white.svg"
+          alt="Go">
+      </a>
+      <div class="skip-navigation-wrapper">
+        <a class="skip-to-content-link" aria-label="Skip to main content" href="#main-content"> Skip to Main Content </a>
+      </div>
+      <div class="Header-rightContent">
+        <ul class="Header-menu">
+          <li class="Header-menuItem ">
+            <a href="#"  class="js-desktop-menu-hover" aria-label=Why&#32;Go aria-describedby="dropdown-description">
+              Why Go <i class="material-icons" aria-hidden="true">arrow_drop_down</i>
+            </a>
+            <div class="screen-reader-only" id="dropdown-description" hidden>
+              Press Enter to activate/deactivate dropdown
+            </div>
+              <ul class="Header-submenu js-desktop-submenu-hover" aria-label="submenu">
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/solutions/case-studies">
+                          Case Studies
+                          
+                        </a>
+                    </div>
+                    <p>Common problems companies solve with Go</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/solutions/use-cases">
+                          Use Cases
+                          
+                        </a>
+                    </div>
+                    <p>Stories about how and why companies use Go</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/security/">
+                          Security
+                          
+                        </a>
+                    </div>
+                    <p>How Go can help keep you secure by default</p>
+                  </li>
+              </ul>
+          </li>
+          <li class="Header-menuItem ">
+            <a href="/learn/"  aria-label=Learn aria-describedby="dropdown-description">
+              Learn 
+            </a>
+            <div class="screen-reader-only" id="dropdown-description" hidden>
+              Press Enter to activate/deactivate dropdown
+            </div>
+          </li>
+          <li class="Header-menuItem  Header-menuItem--active">
+            <a href="#"  class="js-desktop-menu-hover" aria-label=Docs aria-describedby="dropdown-description">
+              Docs <i class="material-icons" aria-hidden="true">arrow_drop_down</i>
+            </a>
+            <div class="screen-reader-only" id="dropdown-description" hidden>
+              Press Enter to activate/deactivate dropdown
+            </div>
+              <ul class="Header-submenu js-desktop-submenu-hover" aria-label="submenu">
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/ref/spec">
+                          Go Spec
+                          
+                        </a>
+                    </div>
+                    <p>The official Go language specification</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/doc">
+                          Go User Manual
+                          
+                        </a>
+                    </div>
+                    <p>A complete introduction to building software with Go</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="https://pkg.go.dev/std">
+                          Standard library
+                          
+                        </a>
+                    </div>
+                    <p>Reference documentation for Go&#39;s standard library</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/doc/devel/release">
+                          Release Notes
+                          
+                        </a>
+                    </div>
+                    <p>Learn what&#39;s new in each Go release</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/doc/effective_go">
+                          Effective Go
+                          
+                        </a>
+                    </div>
+                    <p>Tips for writing clear, performant, and idiomatic Go code</p>
+                  </li>
+              </ul>
+          </li>
+          <li class="Header-menuItem ">
+            <a href="https://pkg.go.dev"  aria-label=Packages aria-describedby="dropdown-description">
+              Packages 
+            </a>
+            <div class="screen-reader-only" id="dropdown-description" hidden>
+              Press Enter to activate/deactivate dropdown
+            </div>
+          </li>
+          <li class="Header-menuItem ">
+            <a href="#"  class="js-desktop-menu-hover" aria-label=Community aria-describedby="dropdown-description">
+              Community <i class="material-icons" aria-hidden="true">arrow_drop_down</i>
+            </a>
+            <div class="screen-reader-only" id="dropdown-description" hidden>
+              Press Enter to activate/deactivate dropdown
+            </div>
+              <ul class="Header-submenu js-desktop-submenu-hover" aria-label="submenu">
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/talks/">
+                          Recorded Talks
+                          
+                        </a>
+                    </div>
+                    <p>Videos from prior events</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="https://www.meetup.com/pro/go">
+                          Meetups
+                           <i class="material-icons">open_in_new</i>
+                        </a>
+                    </div>
+                    <p>Meet other local Go developers</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/wiki/Conferences">
+                          Conferences
+                           <i class="material-icons">open_in_new</i>
+                        </a>
+                    </div>
+                    <p>Learn and network with Go developers from around the world</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/blog">
+                          Go blog
+                          
+                        </a>
+                    </div>
+                    <p>The Go project&#39;s official blog.</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        <a href="/help">
+                          Go project
+                          
+                        </a>
+                    </div>
+                    <p>Get help and stay informed from Go</p>
+                  </li>
+                  <li class="Header-submenuItem">
+                    <div>
+                        Get connected
+                    </div>
+                    <p></p>
+                      <div class="Header-socialIcons">
+                        
+                        <a class="Header-socialIcon" aria-label="Get connected with google-groups (Opens in new window)" href="https://groups.google.com/g/golang-nuts"><img src="/images/logos/social/google-groups.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with github (Opens in new window)" href="https://github.com/golang"><img src="/images/logos/social/github.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with bluesky (Opens in new window)" href="https://bsky.app/profile/golang.org"><img src="/images/logos/social/bluesky.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with mastodon (Opens in new window)" href="https://hachyderm.io/@golang"><img src="/images/logos/social/mastodon.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with twitter (Opens in new window)" href="https://twitter.com/golang"><img src="/images/logos/social/twitter.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with reddit (Opens in new window)" href="https://www.reddit.com/r/golang/"><img src="/images/logos/social/reddit.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with slack (Opens in new window)" href="https://invite.slack.golangbridge.org/"><img src="/images/logos/social/slack.svg" /></a>
+                        <a class="Header-socialIcon" aria-label="Get connected with stack-overflow (Opens in new window)" href="https://stackoverflow.com/tags/go"><img src="/images/logos/social/stack-overflow.svg" /></a>
+                      </div>
+                  </li>
+              </ul>
+          </li>
+        </ul>
+        <button class="Header-navOpen js-headerMenuButton Header-navOpen--white" aria-label="Open navigation.">
+        </button>
+      </div>
+    </nav>
+    
+  </div>
+</header>
+<aside class="NavigationDrawer js-header">
+  <nav class="NavigationDrawer-nav">
+    <div class="NavigationDrawer-header">
+      <a href="/">
+        <img class="NavigationDrawer-logo" src="/images/go-logo-blue.svg" alt="Go.">
+      </a>
+    </div>
+    <ul class="NavigationDrawer-list">
+        
+          <li class="NavigationDrawer-listItem js-mobile-subnav-trigger  NavigationDrawer-hasSubnav">
+            <a href="#"><span>Why Go</span> <i class="material-icons">navigate_next</i></a>
+
+            <div class="NavigationDrawer NavigationDrawer-submenuItem">
+              <nav class="NavigationDrawer-nav">
+                <div class="NavigationDrawer-header">
+                  <a href="#"><i class="material-icons">navigate_before</i>Why Go</a>
+                </div>
+                <ul class="NavigationDrawer-list">
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/solutions/case-studies">
+                          Case Studies
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/solutions/use-cases">
+                          Use Cases
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/security/">
+                          Security
+                          
+                        </a>
+                      
+                    </li>
+                </ul>
+              </div>
+            </div>
+          </li>
+
+        
+        
+          <li class="NavigationDrawer-listItem ">
+            <a href="/learn/">Learn</a>
+          </li>
+        
+        
+          <li class="NavigationDrawer-listItem js-mobile-subnav-trigger  NavigationDrawer-listItem--active NavigationDrawer-hasSubnav">
+            <a href="#"><span>Docs</span> <i class="material-icons">navigate_next</i></a>
+
+            <div class="NavigationDrawer NavigationDrawer-submenuItem">
+              <nav class="NavigationDrawer-nav">
+                <div class="NavigationDrawer-header">
+                  <a href="#"><i class="material-icons">navigate_before</i>Docs</a>
+                </div>
+                <ul class="NavigationDrawer-list">
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/ref/spec">
+                          Go Spec
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/doc">
+                          Go User Manual
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="https://pkg.go.dev/std">
+                          Standard library
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/doc/devel/release">
+                          Release Notes
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/doc/effective_go">
+                          Effective Go
+                          
+                        </a>
+                      
+                    </li>
+                </ul>
+              </div>
+            </div>
+          </li>
+
+        
+        
+          <li class="NavigationDrawer-listItem ">
+            <a href="https://pkg.go.dev">Packages</a>
+          </li>
+        
+        
+          <li class="NavigationDrawer-listItem js-mobile-subnav-trigger  NavigationDrawer-hasSubnav">
+            <a href="#"><span>Community</span> <i class="material-icons">navigate_next</i></a>
+
+            <div class="NavigationDrawer NavigationDrawer-submenuItem">
+              <nav class="NavigationDrawer-nav">
+                <div class="NavigationDrawer-header">
+                  <a href="#"><i class="material-icons">navigate_before</i>Community</a>
+                </div>
+                <ul class="NavigationDrawer-list">
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/talks/">
+                          Recorded Talks
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="https://www.meetup.com/pro/go">
+                          Meetups
+                           <i class="material-icons">open_in_new</i>
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/wiki/Conferences">
+                          Conferences
+                           <i class="material-icons">open_in_new</i>
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/blog">
+                          Go blog
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <a href="/help">
+                          Go project
+                          
+                        </a>
+                      
+                    </li>
+                    <li class="NavigationDrawer-listItem">
+                        <div>Get connected</div>
+                        <div class="Header-socialIcons">
+                          
+                            <a class="Header-socialIcon" href="https://groups.google.com/g/golang-nuts"><img src="/images/logos/social/google-groups.svg" /></a>
+                            <a class="Header-socialIcon" href="https://github.com/golang"><img src="/images/logos/social/github.svg" /></a>
+                            <a class="Header-socialIcon" href="https://bsky.app/profile/golang.org"><img src="/images/logos/social/bluesky.svg" /></a>
+                            <a class="Header-socialIcon" href="https://hachyderm.io/@golang"><img src="/images/logos/social/mastodon.svg" /></a>
+                            <a class="Header-socialIcon" href="https://twitter.com/golang"><img src="/images/logos/social/twitter.svg" /></a>
+                            <a class="Header-socialIcon" href="https://www.reddit.com/r/golang/"><img src="/images/logos/social/reddit.svg" /></a>
+                            <a class="Header-socialIcon" href="https://invite.slack.golangbridge.org/"><img src="/images/logos/social/slack.svg" /></a>
+                            <a class="Header-socialIcon" href="https://stackoverflow.com/tags/go"><img src="/images/logos/social/stack-overflow.svg" /></a>
+                        </div>
+                    </li>
+                </ul>
+              </div>
+            </div>
+          </li>
+
+        
+    </ul>
+  </nav>
+</aside>
+<div class="NavigationDrawer-scrim js-scrim" role="presentation"></div>
+<main class="SiteContent SiteContent--default" id="main-content">
+  
+
+
+<article class="Doc Article">
+
+
+
+
+
+<h1>Release History</h1>
+
+
+
+
+
+
+<div id="nav" class="TOC"></div>
+
+
+
+
+
+
+
+
+<p>This page summarizes the changes between official stable releases of Go.
+The <a href="/change">change log</a> has the full details.</p>
+
+<p>To update to a specific release, use:</p>
+
+<pre>
+git fetch --tags
+git checkout <i>goX.Y.Z</i>
+</pre>
+
+<h2 id="policy">Release Policy</h2>
+
+<p>
+Each major Go release is supported until there are two newer major releases.
+For example, Go 1.5 was supported until the Go 1.7 release, and Go 1.6 was
+supported until the Go 1.8 release.
+We fix critical problems, including <a href="/security">critical security problems</a>,
+in supported releases as needed by issuing minor revisions
+(for example, Go 1.6.1, Go 1.6.2, and so on).
+</p>
+
+
+
+	<h2 id="go1.27.0">go1.27.0 (released 2026-08-19)</h2>
+
+	<p>
+	Go 1.27.0 is a major release of Go.
+	Read the <a href="/doc/go1.27">Go 1.27 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.27.minor">Minor revisions</h3>
+
+	
+		<p id="go1.27.1">
+		go1.27.1
+		(released 2026-09-01)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, the runtime, the <code>go fix</code> command, and the <code>database/sql</code>, <code>debug/elf</code>, <code>encoding/json</code>, <code>net/http</code>, <code>os</code>, <code>simd</code>, and <code>simd/archsimd</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.27.1+label%3ACherryPickApproved">Go 1.27.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.26.0">go1.26.0 (released 2026-02-10)</h2>
+
+	<p>
+	Go 1.26.0 is a major release of Go.
+	Read the <a href="/doc/go1.26">Go 1.26 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.26.minor">Minor revisions</h3>
+
+	
+		<p id="go1.26.1">
+		go1.26.1
+		(released 2026-03-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code>, <code>html/template</code>, <code>net/url</code>, and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the <code>go fix</code> command, the compiler, and the <code>os</code> and <code>reflect</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.1+label%3ACherryPickApproved">Go 1.26.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.2">
+		go1.26.2
+		(released 2026-04-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, the compiler, and the <code>archive/tar</code>, <code>crypto/tls</code>, <code>crypto/x509</code>, <code>html/template</code>, and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the <code>go fix</code> command, the compiler, the linker, the runtime, and the <code>net</code>, <code>net/http</code>, and <code>net/url</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.2+label%3ACherryPickApproved">Go 1.26.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.3">
+		go1.26.3
+		(released 2026-05-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, the <code>pack</code> tool, and the <code>html/template</code>, <code>net</code>, <code>net/http</code>, <code>net/http/httputil</code>, <code>net/mail</code>, and <code>syscall</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the <code>go fix</code> command, the compiler, the linker, the runtime, and the <code>crypto/fips140</code>, <code>crypto/tls</code>, <code>go/types</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.3+label%3ACherryPickApproved">Go 1.26.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.4">
+		go1.26.4
+		(released 2026-06-02)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code>, <code>mime</code>, and <code>net/textproto</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, the <code>go fix</code> command, and the <code>crypto/fips140</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.4+label%3ACherryPickApproved">Go 1.26.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.5">
+		go1.26.5
+		(released 2026-07-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/tls</code> and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, the <code>go</code> command, and the <code>net</code>, <code>os</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.5+label%3ACherryPickApproved">Go 1.26.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.6">
+		go1.26.6
+		(released 2026-08-13)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>crypto/tls</code>, <code>encoding/asn1</code>, <code>encoding/xml</code>, <code>html/template</code>, <code>net</code>, <code>net/http</code>, and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the linker, the runtime, and the <code>crypto/tls</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.6+label%3ACherryPickApproved">Go 1.26.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.7">
+		go1.26.7
+		(released 2026-08-19)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.7+label%3ACherryPickApproved">Go 1.26.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.26.8">
+		go1.26.8
+		(released 2026-09-01)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, the runtime, and the <code>debug/elf</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.26.8+label%3ACherryPickApproved">Go 1.26.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.25.0">go1.25.0 (released 2025-08-12)</h2>
+
+	<p>
+	Go 1.25.0 is a major release of Go.
+	Read the <a href="/doc/go1.25">Go 1.25 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.25.minor">Minor revisions</h3>
+
+	
+		<p id="go1.25.1">
+		go1.25.1
+		(released 2025-09-03)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, and the <code>net</code>, <code>os</code>, <code>os/exec</code>, and <code>testing/synctest</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.1+label%3ACherryPickApproved">Go 1.25.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.2">
+		go1.25.2
+		(released 2025-10-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/tar</code>, <code>crypto/tls</code>, <code>crypto/x509</code>, <code>encoding/asn1</code>, <code>encoding/pem</code>, <code>net/http</code>, <code>net/mail</code>, <code>net/textproto</code>, and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>context</code>, <code>debug/pe</code>, <code>net/http</code>, <code>os</code>, and <code>sync/atomic</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.2+label%3ACherryPickApproved">Go 1.25.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.3">
+		go1.25.3
+		(released 2025-10-13)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.3+label%3ACherryPickApproved">Go 1.25.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.4">
+		go1.25.4
+		(released 2025-11-05)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the runtime, and the <code>crypto/subtle</code>, <code>encoding/pem</code>, <code>net/url</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.4+label%3ACherryPickApproved">Go 1.25.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.5">
+		go1.25.5
+		(released 2025-12-02)
+		
+			includes
+			
+				two
+				security
+				fixes to the <code>crypto/x509</code> package, as well as
+				
+				bug 
+				fixes to the <code>mime</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.5+label%3ACherryPickApproved">Go 1.25.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.6">
+		go1.25.6
+		(released 2026-01-15)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>archive/zip</code>, <code>crypto/tls</code>, and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>crypto/tls</code>, <code>errors</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.6+label%3ACherryPickApproved">Go 1.25.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.7">
+		go1.25.7
+		(released 2026-02-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>crypto/tls</code> package, as well as
+				
+				bug 
+				fixes to the compiler and the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.7+label%3ACherryPickApproved">Go 1.25.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.8">
+		go1.25.8
+		(released 2026-03-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>html/template</code>, <code>net/url</code>, and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the compiler, and the <code>os</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.8+label%3ACherryPickApproved">Go 1.25.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.9">
+		go1.25.9
+		(released 2026-04-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, the compiler, and the <code>archive/tar</code>, <code>crypto/tls</code>, <code>crypto/x509</code>, <code>html/template</code>, and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the compiler, and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.9+label%3ACherryPickApproved">Go 1.25.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.10">
+		go1.25.10
+		(released 2026-05-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, the <code>pack</code> tool, and the <code>html/template</code>, <code>net</code>, <code>net/http</code>, <code>net/http/httputil</code>, <code>net/mail</code>, and <code>syscall</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the compiler, the linker, the runtime, and the <code>crypto/fips140</code>, <code>go/types</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.10+label%3ACherryPickApproved">Go 1.25.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.11">
+		go1.25.11
+		(released 2026-06-02)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code>, <code>mime</code>, and <code>net/textproto</code> packages, as well as
+				
+				bug 
+				fixes to the compiler and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.11+label%3ACherryPickApproved">Go 1.25.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.12">
+		go1.25.12
+		(released 2026-07-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/tls</code> and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, and the <code>net</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.12+label%3ACherryPickApproved">Go 1.25.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.13">
+		go1.25.13
+		(released 2026-08-13)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>crypto/tls</code>, <code>encoding/asn1</code>, <code>encoding/xml</code>, <code>html/template</code>, <code>net/http</code>, and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>crypto/tls</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.13+label%3ACherryPickApproved">Go 1.25.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.25.14">
+		go1.25.14
+		(released 2026-08-19)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.25.14+label%3ACherryPickApproved">Go 1.25.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.24.0">go1.24.0 (released 2025-02-11)</h2>
+
+	<p>
+	Go 1.24.0 is a major release of Go.
+	Read the <a href="/doc/go1.24">Go 1.24 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.24.minor">Minor revisions</h3>
+
+	
+		<p id="go1.24.1">
+		go1.24.1
+		(released 2025-03-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to cgo, the compiler, the <code>go</code> command, and the <code>reflect</code>, <code>runtime</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.1+label%3ACherryPickApproved">Go 1.24.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.2">
+		go1.24.2
+		(released 2025-04-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, the <code>go</code> command, and the <code>crypto/tls</code>, <code>go/types</code>, <code>net/http</code>, and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.2+label%3ACherryPickApproved">Go 1.24.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.3">
+		go1.24.3
+		(released 2025-05-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>os</code> package, as well as
+				
+				bug 
+				fixes to the runtime, the compiler, the linker, the <code>go</code> command, and the <code>crypto/tls</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.3+label%3ACherryPickApproved">Go 1.24.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.4">
+		go1.24.4
+		(released 2025-06-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code>, <code>net/http</code>, and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the linker, the <code>go</code> command, and the <code>hash/maphash</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.4+label%3ACherryPickApproved">Go 1.24.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.5">
+		go1.24.5
+		(released 2025-07-08)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, as well as
+				
+				bug 
+				fixes to the compiler, the linker, the runtime, and the <code>go</code> command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.5+label%3ACherryPickApproved">Go 1.24.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.6">
+		go1.24.6
+		(released 2025-08-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>database/sql</code> and <code>os/exec</code> packages, as well as
+				
+				bug 
+				fixes to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.6+label%3ACherryPickApproved">Go 1.24.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.7">
+		go1.24.7
+		(released 2025-09-03)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>go</code> command, and the <code>net</code> and <code>os/exec</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.7+label%3ACherryPickApproved">Go 1.24.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.8">
+		go1.24.8
+		(released 2025-10-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/tar</code>, <code>crypto/tls</code>, <code>crypto/x509</code>, <code>encoding/asn1</code>, <code>encoding/pem</code>, <code>net/http</code>, <code>net/mail</code>, <code>net/textproto</code>, and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the linker, and the <code>debug/pe</code>, <code>net/http</code>, <code>os</code>, and <code>sync/atomic</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.8+label%3ACherryPickApproved">Go 1.24.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.9">
+		go1.24.9
+		(released 2025-10-13)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.9+label%3ACherryPickApproved">Go 1.24.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.10">
+		go1.24.10
+		(released 2025-11-05)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>encoding/pem</code> and <code>net/url</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.10+label%3ACherryPickApproved">Go 1.24.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.11">
+		go1.24.11
+		(released 2025-12-02)
+		
+			includes
+			
+				two
+				security
+				fixes to the <code>crypto/x509</code> package, as well as
+				
+				bug 
+				fixes to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.11+label%3ACherryPickApproved">Go 1.24.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.12">
+		go1.24.12
+		(released 2026-01-15)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>archive/zip</code>, <code>crypto/tls</code>, and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>crypto/tls</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.12+label%3ACherryPickApproved">Go 1.24.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.24.13">
+		go1.24.13
+		(released 2026-02-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>crypto/tls</code> package, as well as
+				
+				bug 
+				fixes to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.24.13+label%3ACherryPickApproved">Go 1.24.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.23.0">go1.23.0 (released 2024-08-13)</h2>
+
+	<p>
+	Go 1.23.0 is a major release of Go.
+	Read the <a href="/doc/go1.23">Go 1.23 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.23.minor">Minor revisions</h3>
+
+	
+		<p id="go1.23.1">
+		go1.23.1
+		(released 2024-09-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/gob</code>, <code>go/build/constraint</code>, and <code>go/parser</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>database/sql</code>, <code>go/types</code>, <code>os</code>, <code>runtime/trace</code>, and <code>unique</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.1+label%3ACherryPickApproved">Go 1.23.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.2">
+		go1.23.2
+		(released 2024-10-01)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, cgo, the runtime, and the <code>maps</code>, <code>os</code>, <code>os/exec</code>, <code>time</code>, and <code>unique</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.2+label%3ACherryPickApproved">Go 1.23.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.3">
+		go1.23.3
+		(released 2024-11-06)
+		
+			includes
+			
+				
+				 
+				fixes to the linker, the runtime, and the <code>net/http</code>, <code>os</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.3+label%3ACherryPickApproved">Go 1.23.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.4">
+		go1.23.4
+		(released 2024-12-03)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the runtime, the <code>trace</code> command, and the <code>syscall</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.4+label%3ACherryPickApproved">Go 1.23.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.5">
+		go1.23.5
+		(released 2025-01-16)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code> and <code>net/http</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>net</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.5+label%3ACherryPickApproved">Go 1.23.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.6">
+		go1.23.6
+		(released 2025-02-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/elliptic</code> package, as well as
+				
+				bug 
+				fixes to the compiler and the <code>go</code> command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.6+label%3ACherryPickApproved">Go 1.23.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.7">
+		go1.23.7
+		(released 2025-03-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to cgo, the compiler, and the <code>reflect</code>, <code>runtime</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.7+label%3ACherryPickApproved">Go 1.23.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.8">
+		go1.23.8
+		(released 2025-04-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the runtime and the <code>go</code> command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.8+label%3ACherryPickApproved">Go 1.23.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.9">
+		go1.23.9
+		(released 2025-05-06)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime and the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.9+label%3ACherryPickApproved">Go 1.23.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.10">
+		go1.23.10
+		(released 2025-06-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.10+label%3ACherryPickApproved">Go 1.23.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.11">
+		go1.23.11
+		(released 2025-07-08)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, as well as
+				
+				bug 
+				fixes to the compiler, the linker, and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.11+label%3ACherryPickApproved">Go 1.23.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.23.12">
+		go1.23.12
+		(released 2025-08-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>database/sql</code> and <code>os/exec</code> packages, as well as
+				
+				bug 
+				fixes to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.23.12+label%3ACherryPickApproved">Go 1.23.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.22.0">go1.22.0 (released 2024-02-06)</h2>
+
+	<p>
+	Go 1.22.0 is a major release of Go.
+	Read the <a href="/doc/go1.22">Go 1.22 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.22.minor">Minor revisions</h3>
+
+	
+		<p id="go1.22.1">
+		go1.22.1
+		(released 2024-03-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code>, <code>html/template</code>, <code>net/http</code>, <code>net/http/cookiejar</code>, and <code>net/mail</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, the <code>trace</code> command, and the <code>go/types</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.1+label%3ACherryPickApproved">Go 1.22.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.2">
+		go1.22.2
+		(released 2024-04-03)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the linker, and the <code>encoding/gob</code>, <code>go/types</code>, <code>net/http</code>, and <code>runtime/trace</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.2+label%3ACherryPickApproved">Go 1.22.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.3">
+		go1.22.3
+		(released 2024-05-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>net</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.3+label%3ACherryPickApproved">Go 1.22.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.4">
+		go1.22.4
+		(released 2024-06-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code> and <code>net/netip</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the linker, the runtime, and the <code>os</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.4+label%3ACherryPickApproved">Go 1.22.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.5">
+		go1.22.5
+		(released 2024-07-02)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, cgo, the <code>go</code> command, the linker, the runtime, and the <code>crypto/tls</code>, <code>go/types</code>, <code>net</code>, <code>net/http</code>, and <code>os/exec</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.5+label%3ACherryPickApproved">Go 1.22.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.6">
+		go1.22.6
+		(released 2024-08-06)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>go</code> command, the compiler, the linker, the <code>trace</code> command, the <code>covdata</code> command, and the <code>bytes</code>, <code>go/types</code>, and <code>os/exec</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.6+label%3ACherryPickApproved">Go 1.22.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.7">
+		go1.22.7
+		(released 2024-09-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/gob</code>, <code>go/build/constraint</code>, and <code>go/parser</code> packages, as well as
+				
+				bug 
+				fixes to the <code>fix</code> command and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.7+label%3ACherryPickApproved">Go 1.22.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.8">
+		go1.22.8
+		(released 2024-10-01)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, and the <code>maps</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.8+label%3ACherryPickApproved">Go 1.22.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.9">
+		go1.22.9
+		(released 2024-11-06)
+		
+			includes
+			
+				
+				 
+				fixes to the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.9+label%3ACherryPickApproved">Go 1.22.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.10">
+		go1.22.10
+		(released 2024-12-03)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime and the <code>syscall</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.10+label%3ACherryPickApproved">Go 1.22.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.11">
+		go1.22.11
+		(released 2025-01-16)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code> and <code>net/http</code> packages, as well as
+				
+				bug 
+				fixes to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.11+label%3ACherryPickApproved">Go 1.22.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.22.12">
+		go1.22.12
+		(released 2025-02-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/elliptic</code> package, as well as
+				
+				bug 
+				fixes to the compiler and the <code>go</code> command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.22.12+label%3ACherryPickApproved">Go 1.22.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.21.0">go1.21.0 (released 2023-08-08)</h2>
+
+	<p>
+	Go 1.21.0 is a major release of Go.
+	Read the <a href="/doc/go1.21">Go 1.21 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.21.minor">Minor revisions</h3>
+
+	
+		<p id="go1.21.1">
+		go1.21.1
+		(released 2023-09-06)
+		
+			includes
+			
+				four
+				security
+				fixes to the <code>cmd/go</code>, <code>crypto/tls</code>, and <code>html/template</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the linker, the runtime, and the <code>context</code>, <code>crypto/tls</code>, <code>encoding/gob</code>, <code>encoding/xml</code>, <code>go/types</code>, <code>net/http</code>, <code>os</code>, and <code>path/filepath</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.1+label%3ACherryPickApproved">Go 1.21.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.2">
+		go1.21.2
+		(released 2023-10-05)
+		
+			includes
+			
+				one
+				security
+				fix to the <code>cmd/go</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the linker, the runtime, and the <code>runtime/metrics</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.2+label%3ACherryPickApproved">Go 1.21.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.3">
+		go1.21.3
+		(released 2023-10-10)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.3+label%3ACherryPickApproved">Go 1.21.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.4">
+		go1.21.4
+		(released 2023-11-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>path/filepath</code> package, as well as
+				
+				bug 
+				fixes to the linker, the runtime, the compiler, and the <code>go/types</code>, <code>net/http</code>, and <code>runtime/cgo</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.4+label%3ACherryPickApproved">Go 1.21.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.5">
+		go1.21.5
+		(released 2023-12-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>net/http</code> and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>crypto/rand</code>, <code>net</code>, <code>os</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.5+label%3ACherryPickApproved">Go 1.21.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.6">
+		go1.21.6
+		(released 2024-01-09)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the runtime, and the <code>crypto/tls</code>, <code>maps</code>, and <code>runtime/pprof</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.6+label%3ACherryPickApproved">Go 1.21.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.7">
+		go1.21.7
+		(released 2024-02-06)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.7+label%3ACherryPickApproved">Go 1.21.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.8">
+		go1.21.8
+		(released 2024-03-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code>, <code>html/template</code>, <code>net/http</code>, <code>net/http/cookiejar</code>, and <code>net/mail</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.8+label%3ACherryPickApproved">Go 1.21.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.9">
+		go1.21.9
+		(released 2024-04-03)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the linker, and the <code>go/types</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.9+label%3ACherryPickApproved">Go 1.21.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.10">
+		go1.21.10
+		(released 2024-05-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, as well as
+				
+				bug 
+				fixes to the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.10+label%3ACherryPickApproved">Go 1.21.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.11">
+		go1.21.11
+		(released 2024-06-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code> and <code>net/netip</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>os</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.11+label%3ACherryPickApproved">Go 1.21.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.12">
+		go1.21.12
+		(released 2024-07-02)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>crypto/x509</code>, <code>net/http</code>, <code>net/netip</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.12+label%3ACherryPickApproved">Go 1.21.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.21.13">
+		go1.21.13
+		(released 2024-08-06)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>go</code> command, the <code>covdata</code> command, and the <code>bytes</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.21.13+label%3ACherryPickApproved">Go 1.21.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.20">go1.20 (released 2023-02-01)</h2>
+
+	<p>
+	Go 1.20 is a major release of Go.
+	Read the <a href="/doc/go1.20">Go 1.20 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.20.minor">Minor revisions</h3>
+
+	
+		<p id="go1.20.1">
+		go1.20.1
+		(released 2023-02-14)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/tls</code>, <code>mime/multipart</code>, <code>net/http</code>, and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the linker, the runtime, and the <code>time</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.1+label%3ACherryPickApproved">Go 1.20.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.2">
+		go1.20.2
+		(released 2023-03-07)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/elliptic</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the <code>covdata</code> command, the linker, the runtime, and the <code>crypto/ecdh</code>, <code>crypto/rsa</code>, <code>crypto/x509</code>, <code>os</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.2+label%3ACherryPickApproved">Go 1.20.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.3">
+		go1.20.3
+		(released 2023-04-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go/parser</code>, <code>html/template</code>, <code>mime/multipart</code>, <code>net/http</code>, and <code>net/textproto</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the linker, the runtime, and the <code>time</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.3+label%3ACherryPickApproved">Go 1.20.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.4">
+		go1.20.4
+		(released 2023-05-02)
+		
+			includes
+			
+				three
+				security
+				fixes to the <code>html/template</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>crypto/subtle</code>, <code>crypto/tls</code>, <code>net/http</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.4+label%3ACherryPickApproved">Go 1.20.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.5">
+		go1.20.5
+		(released 2023-06-06)
+		
+			includes
+			
+				four
+				security
+				fixes to the <code>cmd/go</code> and <code>runtime</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>crypto/rsa</code>, <code>net</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.5+label%3ACherryPickApproved">Go 1.20.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.6">
+		go1.20.6
+		(released 2023-07-11)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, cgo, the <code>cover</code> tool, the <code>go</code> command, the runtime, and the <code>crypto/ecdsa</code>, <code>go/build</code>, <code>go/printer</code>, <code>net/mail</code>, and <code>text/template</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.6+label%3ACherryPickApproved">Go 1.20.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.7">
+		go1.20.7
+		(released 2023-08-01)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/tls</code> package, as well as
+				
+				bug 
+				fixes to the assembler and the compiler.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.7+label%3ACherryPickApproved">Go 1.20.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.8">
+		go1.20.8
+		(released 2023-09-06)
+		
+			includes
+			
+				two
+				security
+				fixes to the <code>html/template</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>crypto/tls</code>, <code>go/types</code>, <code>net/http</code>, and <code>path/filepath</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.8+label%3ACherryPickApproved">Go 1.20.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.9">
+		go1.20.9
+		(released 2023-10-05)
+		
+			includes
+			
+				one
+				security
+				fix to the <code>cmd/go</code> package, as well as
+				
+				bug 
+				fixes to the <code>go</code> command and the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.9+label%3ACherryPickApproved">Go 1.20.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.10">
+		go1.20.10
+		(released 2023-10-10)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.10+label%3ACherryPickApproved">Go 1.20.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.11">
+		go1.20.11
+		(released 2023-11-07)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>path/filepath</code> package, as well as
+				
+				bug 
+				fixes to the linker and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.11+label%3ACherryPickApproved">Go 1.20.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.12">
+		go1.20.12
+		(released 2023-12-05)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>net/http</code> and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the compiler and the <code>go</code> command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.12+label%3ACherryPickApproved">Go 1.20.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.13">
+		go1.20.13
+		(released 2024-01-09)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime and the <code>crypto/tls</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.13+label%3ACherryPickApproved">Go 1.20.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.20.14">
+		go1.20.14
+		(released 2024-02-06)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.20.14+label%3ACherryPickApproved">Go 1.20.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.19">go1.19 (released 2022-08-02)</h2>
+
+	<p>
+	Go 1.19 is a major release of Go.
+	Read the <a href="/doc/go1.19">Go 1.19 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.19.minor">Minor revisions</h3>
+
+	
+		<p id="go1.19.1">
+		go1.19.1
+		(released 2022-09-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>net/url</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the <code>pprof</code> command, the linker, the runtime, and the <code>crypto/tls</code> and <code>crypto/x509</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.1+label%3ACherryPickApproved">Go 1.19.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.2">
+		go1.19.2
+		(released 2022-10-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/tar</code>, <code>net/http/httputil</code>, and <code>regexp</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the linker, the runtime, and the <code>go/types</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.2+label%3ACherryPickApproved">Go 1.19.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.3">
+		go1.19.3
+		(released 2022-11-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>os/exec</code> and <code>syscall</code> packages, as well as
+				
+				bug 
+				fixes to the compiler and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.3+label%3ACherryPickApproved">Go 1.19.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.4">
+		go1.19.4
+		(released 2022-12-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>crypto/x509</code>, <code>os/exec</code>, and <code>sync/atomic</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.4+label%3ACherryPickApproved">Go 1.19.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.5">
+		go1.19.5
+		(released 2023-01-10)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the linker, and the <code>crypto/x509</code>, <code>net/http</code>, <code>sync/atomic</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.5+label%3ACherryPickApproved">Go 1.19.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.6">
+		go1.19.6
+		(released 2023-02-14)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/tls</code>, <code>mime/multipart</code>, <code>net/http</code>, and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the <code>go</code> command, the linker, the runtime, and the <code>crypto/x509</code>, <code>net/http</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.6+label%3ACherryPickApproved">Go 1.19.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.7">
+		go1.19.7
+		(released 2023-03-07)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/elliptic</code> package, as well as
+				
+				bug 
+				fixes to the linker, the runtime, and the <code>crypto/x509</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.7+label%3ACherryPickApproved">Go 1.19.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.8">
+		go1.19.8
+		(released 2023-04-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go/parser</code>, <code>html/template</code>, <code>mime/multipart</code>, <code>net/http</code>, and <code>net/textproto</code> packages, as well as
+				
+				bug 
+				fixes to the linker, the runtime, and the <code>time</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.8+label%3ACherryPickApproved">Go 1.19.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.9">
+		go1.19.9
+		(released 2023-05-02)
+		
+			includes
+			
+				three
+				security
+				fixes to the <code>html/template</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the runtime, and the <code>crypto/tls</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.9+label%3ACherryPickApproved">Go 1.19.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.10">
+		go1.19.10
+		(released 2023-06-06)
+		
+			includes
+			
+				four
+				security
+				fixes to the <code>cmd/go</code> and <code>runtime</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.10+label%3ACherryPickApproved">Go 1.19.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.11">
+		go1.19.11
+		(released 2023-07-11)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to cgo, the <code>cover</code> tool, the <code>go</code> command, the runtime, and the <code>go/printer</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.11+label%3ACherryPickApproved">Go 1.19.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.12">
+		go1.19.12
+		(released 2023-08-01)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/tls</code> package, as well as
+				
+				bug 
+				fixes to the assembler and the compiler.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.12+label%3ACherryPickApproved">Go 1.19.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.19.13">
+		go1.19.13
+		(released 2023-09-06)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>go</code> command, and the <code>crypto/tls</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.19.13+label%3ACherryPickApproved">Go 1.19.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.18">go1.18 (released 2022-03-15)</h2>
+
+	<p>
+	Go 1.18 is a major release of Go.
+	Read the <a href="/doc/go1.18">Go 1.18 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.18.minor">Minor revisions</h3>
+
+	
+		<p id="go1.18.1">
+		go1.18.1
+		(released 2022-04-12)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/elliptic</code>, <code>crypto/x509</code>, and <code>encoding/pem</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, vet, and the <code>bytes</code>, <code>crypto/x509</code>, and <code>go/types</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.1+label%3ACherryPickApproved">Go 1.18.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.2">
+		go1.18.2
+		(released 2022-05-10)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>syscall</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, the <code>go</code> command, and the <code>crypto/x509</code>, <code>go/types</code>, <code>net/http/httptest</code>, <code>reflect</code>, and <code>sync/atomic</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.2+label%3ACherryPickApproved">Go 1.18.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.3">
+		go1.18.3
+		(released 2022-06-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/rand</code>, <code>crypto/tls</code>, <code>os/exec</code>, and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, and the <code>crypto/tls</code> and <code>text/template/parse</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.3+label%3ACherryPickApproved">Go 1.18.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.4">
+		go1.18.4
+		(released 2022-07-12)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>compress/gzip</code>, <code>encoding/gob</code>, <code>encoding/xml</code>, <code>go/parser</code>, <code>io/fs</code>, <code>net/http</code>, and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the linker, the runtime, and the <code>runtime/metrics</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.4+label%3ACherryPickApproved">Go 1.18.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.5">
+		go1.18.5
+		(released 2022-08-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/gob</code> and <code>math/big</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>testing</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.5+label%3ACherryPickApproved">Go 1.18.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.6">
+		go1.18.6
+		(released 2022-09-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the <code>pprof</code> command, the runtime, and the <code>crypto/tls</code>, <code>encoding/xml</code>, and <code>net</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.6+label%3ACherryPickApproved">Go 1.18.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.7">
+		go1.18.7
+		(released 2022-10-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/tar</code>, <code>net/http/httputil</code>, and <code>regexp</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the linker, and the <code>go/types</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.7+label%3ACherryPickApproved">Go 1.18.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.8">
+		go1.18.8
+		(released 2022-11-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>os/exec</code> and <code>syscall</code> packages, as well as
+				
+				bug 
+				fixes to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.8+label%3ACherryPickApproved">Go 1.18.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.9">
+		go1.18.9
+		(released 2022-12-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>os</code> packages, as well as
+				
+				bug 
+				fixes to cgo, the compiler, the runtime, and the <code>crypto/x509</code> and <code>os/exec</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.9+label%3ACherryPickApproved">Go 1.18.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.18.10">
+		go1.18.10
+		(released 2023-01-10)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, the linker, and the <code>crypto/x509</code>, <code>net/http</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.18.10+label%3ACherryPickApproved">Go 1.18.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.17">go1.17 (released 2021-08-16)</h2>
+
+	<p>
+	Go 1.17 is a major release of Go.
+	Read the <a href="/doc/go1.17">Go 1.17 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.17.minor">Minor revisions</h3>
+
+	
+		<p id="go1.17.1">
+		go1.17.1
+		(released 2021-09-09)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>archive/zip</code> package, as well as
+				
+				bug 
+				fixes to the compiler, linker, the <code>go</code> command, and the <code>crypto/rand</code>, <code>embed</code>, <code>go/types</code>, <code>html/template</code>, and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.1+label%3ACherryPickApproved">Go 1.17.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.2">
+		go1.17.2
+		(released 2021-10-07)
+		
+			includes
+			
+				
+				security
+				fixes to linker and the <code>misc/wasm</code> directory, as well as
+				
+				bug 
+				fixes to the compiler, runtime, the <code>go</code> command, and the <code>text/template</code> and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.2+label%3ACherryPickApproved">Go 1.17.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.3">
+		go1.17.3
+		(released 2021-11-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code> and <code>debug/macho</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, the <code>misc/wasm</code> directory, and the <code>net/http</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.3+label%3ACherryPickApproved">Go 1.17.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.4">
+		go1.17.4
+		(released 2021-12-02)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, and the <code>go/types</code>, <code>net/http</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.4+label%3ACherryPickApproved">Go 1.17.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.5">
+		go1.17.5
+		(released 2021-12-09)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.5+label%3ACherryPickApproved">Go 1.17.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.6">
+		go1.17.6
+		(released 2022-01-06)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, and the <code>crypto/x509</code>, <code>net/http</code>, and <code>reflect</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.6+label%3ACherryPickApproved">Go 1.17.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.7">
+		go1.17.7
+		(released 2022-02-10)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>crypto/elliptic</code> and <code>math/big</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, and the <code>debug/macho</code>, <code>debug/pe</code>, and <code>net/http/httptest</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.7+label%3ACherryPickApproved">Go 1.17.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.8">
+		go1.17.8
+		(released 2022-03-03)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>regexp/syntax</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, the <code>go</code> command, and the <code>crypto/x509</code> and <code>net</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.8+label%3ACherryPickApproved">Go 1.17.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.9">
+		go1.17.9
+		(released 2022-04-12)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/elliptic</code> and <code>encoding/pem</code> packages, as well as
+				
+				bug 
+				fixes to the linker and runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.9+label%3ACherryPickApproved">Go 1.17.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.10">
+		go1.17.10
+		(released 2022-05-10)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>syscall</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, and the <code>crypto/x509</code> and <code>net/http/httptest</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.10+label%3ACherryPickApproved">Go 1.17.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.11">
+		go1.17.11
+		(released 2022-06-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/rand</code>, <code>crypto/tls</code>, <code>os/exec</code>, and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the <code>crypto/tls</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.11+label%3ACherryPickApproved">Go 1.17.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.12">
+		go1.17.12
+		(released 2022-07-12)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>compress/gzip</code>, <code>encoding/gob</code>, <code>encoding/xml</code>, <code>go/parser</code>, <code>io/fs</code>, <code>net/http</code>, and <code>path/filepath</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, the <code>go</code> command, the runtime, and the <code>runtime/metrics</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.12+label%3ACherryPickApproved">Go 1.17.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.17.13">
+		go1.17.13
+		(released 2022-08-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/gob</code> and <code>math/big</code> packages, as well as
+				
+				bug 
+				fixes to the compiler and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.17.13+label%3ACherryPickApproved">Go 1.17.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.16">go1.16 (released 2021-02-16)</h2>
+
+	<p>
+	Go 1.16 is a major release of Go.
+	Read the <a href="/doc/go1.16">Go 1.16 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.16.minor">Minor revisions</h3>
+
+	
+		<p id="go1.16.1">
+		go1.16.1
+		(released 2021-03-10)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code> and <code>encoding/xml</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.1+label%3ACherryPickApproved">Go 1.16.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.2">
+		go1.16.2
+		(released 2021-03-11)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, linker, the <code>go</code> command, and the <code>syscall</code> and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.2+label%3ACherryPickApproved">Go 1.16.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.3">
+		go1.16.3
+		(released 2021-04-01)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, and the <code>testing</code> and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.3+label%3ACherryPickApproved">Go 1.16.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.4">
+		go1.16.4
+		(released 2021-05-06)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, and the <code>archive/zip</code>, <code>syscall</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.4+label%3ACherryPickApproved">Go 1.16.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.5">
+		go1.16.5
+		(released 2021-06-03)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code>, <code>math/big</code>, <code>net</code>, and <code>net/http/httputil</code> packages, as well as
+				
+				bug 
+				fixes to the linker, the <code>go</code> command, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.5+label%3ACherryPickApproved">Go 1.16.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.6">
+		go1.16.6
+		(released 2021-07-12)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/tls</code> package, as well as
+				
+				bug 
+				fixes to the compiler, and the <code>net</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.6+label%3ACherryPickApproved">Go 1.16.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.7">
+		go1.16.7
+		(released 2021-08-05)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http/httputil</code> package, as well as
+				
+				bug 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.7+label%3ACherryPickApproved">Go 1.16.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.8">
+		go1.16.8
+		(released 2021-09-09)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>archive/zip</code> package, as well as
+				
+				bug 
+				fixes to the <code>archive/zip</code>, <code>go/internal/gccgoimporter</code>, <code>html/template</code>, <code>net/http</code>, and <code>runtime/pprof</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.8+label%3ACherryPickApproved">Go 1.16.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.9">
+		go1.16.9
+		(released 2021-10-07)
+		
+			includes
+			
+				
+				security
+				fixes to linker and the <code>misc/wasm</code> directory, as well as
+				
+				bug 
+				fixes to runtime and the <code>text/template</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.9+label%3ACherryPickApproved">Go 1.16.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.10">
+		go1.16.10
+		(released 2021-11-04)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code> and <code>debug/macho</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, linker, runtime, the <code>misc/wasm</code> directory, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.10+label%3ACherryPickApproved">Go 1.16.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.11">
+		go1.16.11
+		(released 2021-12-02)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, runtime, and the <code>net/http</code>, <code>net/http/httptest</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.11+label%3ACherryPickApproved">Go 1.16.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.12">
+		go1.16.12
+		(released 2021-12-09)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.12+label%3ACherryPickApproved">Go 1.16.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.13">
+		go1.16.13
+		(released 2022-01-06)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.13+label%3ACherryPickApproved">Go 1.16.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.14">
+		go1.16.14
+		(released 2022-02-10)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command, and the <code>crypto/elliptic</code> and <code>math/big</code> packages, as well as
+				
+				bug 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, and the <code>debug/macho</code>, <code>debug/pe</code>, <code>net/http/httptest</code>, and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.14+label%3ACherryPickApproved">Go 1.16.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.16.15">
+		go1.16.15
+		(released 2022-03-03)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>regexp/syntax</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, the <code>go</code> command, and the <code>net</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.16.15+label%3ACherryPickApproved">Go 1.16.15 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.15">go1.15 (released 2020-08-11)</h2>
+
+	<p>
+	Go 1.15 is a major release of Go.
+	Read the <a href="/doc/go1.15">Go 1.15 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.15.minor">Minor revisions</h3>
+
+	
+		<p id="go1.15.1">
+		go1.15.1
+		(released 2020-09-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http/cgi</code> and <code>net/http/fcgi</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.1+label%3ACherryPickApproved">Go 1.15.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.2">
+		go1.15.2
+		(released 2020-09-09)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, runtime, documentation, the <code>go</code> command, and the <code>net/mail</code>, <code>os</code>, <code>sync</code>, and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.2+label%3ACherryPickApproved">Go 1.15.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.3">
+		go1.15.3
+		(released 2020-10-14)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, runtime, the <code>go</code> command, and the <code>bytes</code>, <code>plugin</code>, and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.3+label%3ACherryPickApproved">Go 1.15.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.4">
+		go1.15.4
+		(released 2020-11-05)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, linker, runtime, and the <code>compress/flate</code>, <code>net/http</code>, <code>reflect</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.4+label%3ACherryPickApproved">Go 1.15.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.5">
+		go1.15.5
+		(released 2020-11-12)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>math/big</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.5+label%3ACherryPickApproved">Go 1.15.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.6">
+		go1.15.6
+		(released 2020-12-03)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, and the <code>io</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.6+label%3ACherryPickApproved">Go 1.15.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.7">
+		go1.15.7
+		(released 2021-01-19)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>crypto/elliptic</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.7+label%3ACherryPickApproved">Go 1.15.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.8">
+		go1.15.8
+		(released 2021-02-04)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, the <code>go</code> command, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.8+label%3ACherryPickApproved">Go 1.15.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.9">
+		go1.15.9
+		(released 2021-03-10)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/xml</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.9+label%3ACherryPickApproved">Go 1.15.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.10">
+		go1.15.10
+		(released 2021-03-11)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the <code>go</code> command, and the <code>net/http</code>, <code>os</code>, <code>syscall</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.10+label%3ACherryPickApproved">Go 1.15.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.11">
+		go1.15.11
+		(released 2021-04-01)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, linker, runtime, the <code>go</code> command, and the <code>database/sql</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.11+label%3ACherryPickApproved">Go 1.15.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.12">
+		go1.15.12
+		(released 2021-05-06)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, and the <code>archive/zip</code>, <code>syscall</code>, and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.12+label%3ACherryPickApproved">Go 1.15.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.13">
+		go1.15.13
+		(released 2021-06-03)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>archive/zip</code>, <code>math/big</code>, <code>net</code>, and <code>net/http/httputil</code> packages, as well as
+				
+				bug 
+				fixes to the linker, the <code>go</code> command, and the <code>math/big</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.13+label%3ACherryPickApproved">Go 1.15.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.14">
+		go1.15.14
+		(released 2021-07-12)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/tls</code> package, as well as
+				
+				bug 
+				fixes to the linker and the <code>net</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.14+label%3ACherryPickApproved">Go 1.15.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.15.15">
+		go1.15.15
+		(released 2021-08-05)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>net/http/httputil</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, the <code>go</code> command, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.15.15+label%3ACherryPickApproved">Go 1.15.15 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.14">go1.14 (released 2020-02-25)</h2>
+
+	<p>
+	Go 1.14 is a major release of Go.
+	Read the <a href="/doc/go1.14">Go 1.14 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.14.minor">Minor revisions</h3>
+
+	
+		<p id="go1.14.1">
+		go1.14.1
+		(released 2020-03-19)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, tools, and the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.1+label%3ACherryPickApproved">Go 1.14.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.2">
+		go1.14.2
+		(released 2020-04-08)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the go command, the runtime, and the <code>os/exec</code> and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.2+label%3ACherryPickApproved">Go 1.14.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.3">
+		go1.14.3
+		(released 2020-05-14)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, the runtime, and the <code>go/doc</code> and <code>math/big</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.3+label%3ACherryPickApproved">Go 1.14.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.4">
+		go1.14.4
+		(released 2020-06-01)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>go</code> <code>doc</code> command, the runtime, and the <code>encoding/json</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.4+label%3ACherryPickApproved">Go 1.14.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.5">
+		go1.14.5
+		(released 2020-07-14)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.5+label%3ACherryPickApproved">Go 1.14.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.6">
+		go1.14.6
+		(released 2020-07-16)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>go</code> command, the compiler, the linker, vet, and the <code>database/sql</code>, <code>encoding/json</code>, <code>net/http</code>, <code>reflect</code>, and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.6+label%3ACherryPickApproved">Go 1.14.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.7">
+		go1.14.7
+		(released 2020-08-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/binary</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.7+label%3ACherryPickApproved">Go 1.14.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.8">
+		go1.14.8
+		(released 2020-09-01)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http/cgi</code> and <code>net/http/fcgi</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.8+label%3ACherryPickApproved">Go 1.14.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.9">
+		go1.14.9
+		(released 2020-09-09)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, documentation, and the <code>net/http</code> and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.9+label%3ACherryPickApproved">Go 1.14.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.10">
+		go1.14.10
+		(released 2020-10-14)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, runtime, and the <code>plugin</code> and <code>testing</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.10+label%3ACherryPickApproved">Go 1.14.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.11">
+		go1.14.11
+		(released 2020-11-05)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime, and the <code>net/http</code> and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.11+label%3ACherryPickApproved">Go 1.14.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.12">
+		go1.14.12
+		(released 2020-11-12)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>math/big</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.12+label%3ACherryPickApproved">Go 1.14.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.13">
+		go1.14.13
+		(released 2020-12-03)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, runtime, and the <code>go</code> command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.13+label%3ACherryPickApproved">Go 1.14.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.14">
+		go1.14.14
+		(released 2021-01-19)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>go</code> command and the <code>crypto/elliptic</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.14+label%3ACherryPickApproved">Go 1.14.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.14.15">
+		go1.14.15
+		(released 2021-02-04)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, runtime, the <code>go</code> command, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.14.15+label%3ACherryPickApproved">Go 1.14.15 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.13">go1.13 (released 2019-09-03)</h2>
+
+	<p>
+	Go 1.13 is a major release of Go.
+	Read the <a href="/doc/go1.13">Go 1.13 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.13.minor">Minor revisions</h3>
+
+	
+		<p id="go1.13.1">
+		go1.13.1
+		(released 2019-09-25)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>net/textproto</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.1+label%3ACherryPickApproved">Go 1.13.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.2">
+		go1.13.2
+		(released 2019-10-17)
+		
+			includes
+			
+				
+				security
+				fixes to the compiler and the <code>crypto/dsa</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.2+label%3ACherryPickApproved">Go 1.13.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.3">
+		go1.13.3
+		(released 2019-10-17)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, the toolchain, the runtime, and the <code>crypto/ecdsa</code>, <code>net</code>, <code>net/http</code>, and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.3+label%3ACherryPickApproved">Go 1.13.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.4">
+		go1.13.4
+		(released 2019-10-31)
+		
+			includes
+			
+				
+				 
+				fixes to the <code>net/http</code> and <code>syscall</code> packages.
+			It also fixes an issue on macOS 10.15 Catalina
+where the non-notarized installer and binaries were being
+<a href="/issue/34986">rejected by Gatekeeper</a>.
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.4+label%3ACherryPickApproved">Go 1.13.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.5">
+		go1.13.5
+		(released 2019-12-04)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, the runtime, the linker, and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.5+label%3ACherryPickApproved">Go 1.13.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.6">
+		go1.13.6
+		(released 2020-01-09)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.6+label%3ACherryPickApproved">Go 1.13.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.7">
+		go1.13.7
+		(released 2020-01-28)
+		
+			includes
+			
+				two
+				security
+				fixes to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.7+label%3ACherryPickApproved">Go 1.13.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.8">
+		go1.13.8
+		(released 2020-02-12)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime, and the <code>crypto/x509</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.8+label%3ACherryPickApproved">Go 1.13.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.9">
+		go1.13.9
+		(released 2020-03-19)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, tools, the runtime, the toolchain, and the <code>crypto/cypher</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.9+label%3ACherryPickApproved">Go 1.13.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.10">
+		go1.13.10
+		(released 2020-04-08)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, the runtime, and the <code>os/exec</code> and <code>time</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.10+label%3ACherryPickApproved">Go 1.13.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.11">
+		go1.13.11
+		(released 2020-05-14)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.11+label%3ACherryPickApproved">Go 1.13.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.12">
+		go1.13.12
+		(released 2020-06-01)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime, and the <code>go/types</code> and <code>math/big</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.12+label%3ACherryPickApproved">Go 1.13.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.13">
+		go1.13.13
+		(released 2020-07-14)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/x509</code> and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.13+label%3ACherryPickApproved">Go 1.13.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.14">
+		go1.13.14
+		(released 2020-07-16)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, vet, and the <code>database/sql</code>, <code>net/http</code>, and <code>reflect</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.14+label%3ACherryPickApproved">Go 1.13.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.13.15">
+		go1.13.15
+		(released 2020-08-06)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>encoding/binary</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.13.15+label%3ACherryPickApproved">Go 1.13.15 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.12">go1.12 (released 2019-02-25)</h2>
+
+	<p>
+	Go 1.12 is a major release of Go.
+	Read the <a href="/doc/go1.12">Go 1.12 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.12.minor">Minor revisions</h3>
+
+	
+		<p id="go1.12.1">
+		go1.12.1
+		(released 2019-03-14)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, the go command, and the <code>fmt</code>, <code>net/smtp</code>, <code>os</code>, <code>path/filepath</code>, <code>sync</code>, and <code>text/template</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.1+label%3ACherryPickApproved">Go 1.12.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.2">
+		go1.12.2
+		(released 2019-04-05)
+		
+			includes
+			
+				
+				security
+				fixes to the runtime, as well as
+				
+				bug 
+				fixes to the compiler, the go command, and the <code>doc</code>, <code>net</code>, <code>net/http/httputil</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.2+label%3ACherryPickApproved">Go 1.12.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.3">
+		go1.12.3
+		(released 2019-04-08)
+		
+			was accidentally released without its
+intended fix. It is identical to go1.12.2, except for its version
+number. The intended fix is in go1.12.4.
+		
+		</p>
+	
+		<p id="go1.12.4">
+		go1.12.4
+		(released 2019-04-11)
+		
+			fixes an issue where using the prebuilt binary
+releases on older versions of GNU/Linux
+<a href="/issues/31293">led to failures</a>
+when linking programs that used cgo.
+Only Linux users who hit this issue need to update.
+		
+		</p>
+	
+		<p id="go1.12.5">
+		go1.12.5
+		(released 2019-05-06)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the linker, the go command, the runtime, and the <code>os</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.5+label%3ACherryPickApproved">Go 1.12.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.6">
+		go1.12.6
+		(released 2019-06-11)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, the linker, the go command, and the <code>crypto/x509</code>, <code>net/http</code>, and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.6+label%3ACherryPickApproved">Go 1.12.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.7">
+		go1.12.7
+		(released 2019-07-08)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, and the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.7+label%3ACherryPickApproved">Go 1.12.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.8">
+		go1.12.8
+		(released 2019-08-13)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>net/url</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.8+label%3ACherryPickApproved">Go 1.12.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.9">
+		go1.12.9
+		(released 2019-08-15)
+		
+			includes
+			
+				
+				 
+				fixes to the linker, and the <code>math/big</code> and <code>os</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.9+label%3ACherryPickApproved">Go 1.12.9 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.10">
+		go1.12.10
+		(released 2019-09-25)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>net/textproto</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.10+label%3ACherryPickApproved">Go 1.12.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.11">
+		go1.12.11
+		(released 2019-10-17)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>crypto/dsa</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.11+label%3ACherryPickApproved">Go 1.12.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.12">
+		go1.12.12
+		(released 2019-10-17)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, runtime, and the <code>net</code> and <code>syscall</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.12+label%3ACherryPickApproved">Go 1.12.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.13">
+		go1.12.13
+		(released 2019-10-31)
+		
+			fixes an issue on macOS 10.15 Catalina
+where the non-notarized installer and binaries were being
+<a href="/issue/34986">rejected by Gatekeeper</a>.
+Only macOS users who hit this issue need to update.
+		
+		</p>
+	
+		<p id="go1.12.14">
+		go1.12.14
+		(released 2019-12-04)
+		
+			includes
+			
+				a
+				 
+				fix to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.14+label%3ACherryPickApproved">Go 1.12.14 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.15">
+		go1.12.15
+		(released 2020-01-09)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime and the <code>net/http</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.15+label%3ACherryPickApproved">Go 1.12.15 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.16">
+		go1.12.16
+		(released 2020-01-28)
+		
+			includes
+			
+				two
+				security
+				fixes to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.16+label%3ACherryPickApproved">Go 1.12.16 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.12.17">
+		go1.12.17
+		(released 2020-02-12)
+		
+			includes
+			
+				a
+				 
+				fix to the runtime.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.12.17+label%3ACherryPickApproved">Go 1.12.17 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.11">go1.11 (released 2018-08-24)</h2>
+
+	<p>
+	Go 1.11 is a major release of Go.
+	Read the <a href="/doc/go1.11">Go 1.11 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.11.minor">Minor revisions</h3>
+
+	
+		<p id="go1.11.1">
+		go1.11.1
+		(released 2018-10-01)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, documentation, go command, runtime, and the <code>crypto/x509</code>, <code>encoding/json</code>, <code>go/types</code>, <code>net</code>, <code>net/http</code>, and <code>reflect</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.1+label%3ACherryPickApproved">Go 1.11.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.2">
+		go1.11.2
+		(released 2018-11-02)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, documentation, go command, and the <code>database/sql</code> and <code>go/types</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.2+label%3ACherryPickApproved">Go 1.11.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.3">
+		go1.11.3
+		(released 2018-12-12)
+		
+			includes
+			
+				three
+				security
+				fixes to "go get" and the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.3+label%3ACherryPickApproved">Go 1.11.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.4">
+		go1.11.4
+		(released 2018-12-14)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, linker, runtime, documentation, go command, and the <code>go/types</code> and <code>net/http</code> packages.
+			It includes a fix to a bug introduced in Go 1.11.3 that broke <code>go</code>
+<code>get</code> for import path patterns containing "<code>...</code>".
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.4+label%3ACherryPickApproved">Go 1.11.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.5">
+		go1.11.5
+		(released 2019-01-23)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/elliptic</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.5+label%3ACherryPickApproved">Go 1.11.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.6">
+		go1.11.6
+		(released 2019-03-14)
+		
+			includes
+			
+				
+				 
+				fixes to cgo, the compiler, linker, runtime, go command, and the <code>crypto/x509</code>, <code>encoding/json</code>, <code>net</code>, and <code>net/url</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.6+label%3ACherryPickApproved">Go 1.11.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.7">
+		go1.11.7
+		(released 2019-04-05)
+		
+			includes
+			
+				
+				 
+				fixes to the runtime and the <code>net</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.7+label%3ACherryPickApproved">Go 1.11.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.8">
+		go1.11.8
+		(released 2019-04-08)
+		
+			was accidentally released without its
+intended fix. It is identical to go1.11.7, except for its version
+number. The intended fix is in go1.11.9.
+		
+		</p>
+	
+		<p id="go1.11.9">
+		go1.11.9
+		(released 2019-04-11)
+		
+			fixes an issue where using the prebuilt binary
+releases on older versions of GNU/Linux
+<a href="/issues/31293">led to failures</a>
+when linking programs that used cgo.
+Only Linux users who hit this issue need to update.
+		
+		</p>
+	
+		<p id="go1.11.10">
+		go1.11.10
+		(released 2019-05-06)
+		
+			includes
+			
+				
+				security
+				fixes to the runtime, as well as
+				
+				bug 
+				fixes to the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.10+label%3ACherryPickApproved">Go 1.11.10 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.11">
+		go1.11.11
+		(released 2019-06-11)
+		
+			includes
+			
+				a
+				 
+				fix to the <code>crypto/x509</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.11+label%3ACherryPickApproved">Go 1.11.11 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.12">
+		go1.11.12
+		(released 2019-07-08)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler and the linker.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.12+label%3ACherryPickApproved">Go 1.11.12 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.11.13">
+		go1.11.13
+		(released 2019-08-13)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/http</code> and <code>net/url</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.11.13+label%3ACherryPickApproved">Go 1.11.13 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.10">go1.10 (released 2018-02-16)</h2>
+
+	<p>
+	Go 1.10 is a major release of Go.
+	Read the <a href="/doc/go1.10">Go 1.10 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.10.minor">Minor revisions</h3>
+
+	
+		<p id="go1.10.1">
+		go1.10.1
+		(released 2018-03-28)
+		
+			includes
+			
+				
+				security
+				fixes to the go command, as well as
+				
+				bug 
+				fixes to the compiler, runtime, and the <code>archive/zip</code>, <code>crypto/tls</code>, <code>crypto/x509</code>, <code>encoding/json</code>, <code>net</code>, <code>net/http</code>, and <code>net/http/pprof</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.1+label%3ACherryPickApproved">Go 1.10.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.10.2">
+		go1.10.2
+		(released 2018-05-01)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, and go command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.2+label%3ACherryPickApproved">Go 1.10.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.10.3">
+		go1.10.3
+		(released 2018-06-05)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, and the <code>crypto/tls</code>, <code>crypto/x509</code>, and <code>strings</code> packages.
+			In particular, it adds <a href="https://go.googlesource.com/go/+/d4e21288e444d3ffd30d1a0737f15ea3fc3b8ad9">
+minimal support to the go command for the vgo transition</a>.
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.3+label%3ACherryPickApproved">Go 1.10.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.10.4">
+		go1.10.4
+		(released 2018-08-24)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, linker, and the <code>bytes</code>, <code>mime/multipart</code>, <code>net/http</code>, and <code>strings</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.4+label%3ACherryPickApproved">Go 1.10.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.10.5">
+		go1.10.5
+		(released 2018-11-02)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, linker, runtime, and the <code>database/sql</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.5+label%3ACherryPickApproved">Go 1.10.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.10.6">
+		go1.10.6
+		(released 2018-12-12)
+		
+			includes
+			
+				three
+				security
+				fixes to "go get" and the <code>crypto/x509</code> package.
+			It contains the same fixes as Go 1.11.3 and was released at the same time.
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.6+label%3ACherryPickApproved">Go 1.10.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.10.7">
+		go1.10.7
+		(released 2018-12-14)
+		
+			includes a fix to a bug introduced in Go 1.10.6
+that broke <code>go</code> <code>get</code> for import path patterns containing
+"<code>...</code>".
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.7+label%3ACherryPickApproved">
+Go 1.10.7 milestone</a> on our issue tracker for details.
+		
+		</p>
+	
+		<p id="go1.10.8">
+		go1.10.8
+		(released 2019-01-23)
+		
+			includes
+			
+				a
+				security
+				fix to the <code>crypto/elliptic</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.10.8+label%3ACherryPickApproved">Go 1.10.8 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+	<h2 id="go1.9">go1.9 (released 2017-08-24)</h2>
+
+	<p>
+	Go 1.9 is a major release of Go.
+	Read the <a href="/doc/go1.9">Go 1.9 Release Notes</a> for more information.
+	</p>
+
+	<h3 id="go1.9.minor">Minor revisions</h3>
+
+	
+		<p id="go1.9.1">
+		go1.9.1
+		(released 2017-10-04)
+		
+			includes
+			
+				two
+				security
+				fixes.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.1+label%3ACherryPickApproved">Go 1.9.1 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.9.2">
+		go1.9.2
+		(released 2017-10-25)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler, linker, runtime, documentation, <code>go</code> command, and the <code>crypto/x509</code>, <code>database/sql</code>, <code>log</code>, and <code>net/smtp</code> packages.
+			It includes a fix to a bug introduced in Go 1.9.1 that broke <code>go</code> <code>get</code>
+of non-Git repositories under certain conditions.
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.2+label%3ACherryPickApproved">Go 1.9.2 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.9.3">
+		go1.9.3
+		(released 2018-01-22)
+		
+			includes
+			
+				
+				security
+				fixes to the <code>net/url</code> package, as well as
+				
+				bug 
+				fixes to the compiler, runtime, and the <code>database/sql</code>, <code>math/big</code>, and <code>net/http</code> packages.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.3+label%3ACherryPickApproved">Go 1.9.3 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.9.4">
+		go1.9.4
+		(released 2018-02-07)
+		
+			includes
+			
+				a
+				security
+				fix to "go get".
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.4+label%3ACherryPickApproved">Go 1.9.4 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.9.5">
+		go1.9.5
+		(released 2018-03-28)
+		
+			includes
+			
+				
+				security
+				fixes to the go command, as well as
+				
+				bug 
+				fixes to the compiler, go command, and the <code>net/http/pprof</code> package.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.5+label%3ACherryPickApproved">Go 1.9.5 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.9.6">
+		go1.9.6
+		(released 2018-05-01)
+		
+			includes
+			
+				
+				 
+				fixes to the compiler and go command.
+			
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.6+label%3ACherryPickApproved">Go 1.9.6 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+		<p id="go1.9.7">
+		go1.9.7
+		(released 2018-06-05)
+		
+			includes
+			
+				
+				 
+				fixes to the go command, and the <code>crypto/x509</code> and <code>strings</code> packages.
+			In particular, it adds <a href="https://go.googlesource.com/go/+/d4e21288e444d3ffd30d1a0737f15ea3fc3b8ad9">
+minimal support to the go command for the vgo transition</a>.
+
+			
+			See the
+			<a href="https://github.com/golang/go/issues?q=milestone%3AGo1.9.7+label%3ACherryPickApproved">Go 1.9.7 milestone</a>
+			on our issue tracker for details.
+			
+		
+		</p>
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h2 id="go1.8">go1.8 (released 2017-02-16)</h2>
+
+<p>
+Go 1.8 is a major release of Go.
+Read the <a href="/doc/go1.8">Go 1.8 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.8.minor">Minor revisions</h3>
+
+<p id="go1.8.1">
+go1.8.1 (released 2017-04-07) includes fixes to the compiler, linker, runtime,
+documentation, <code>go</code> command and the <code>crypto/tls</code>,
+<code>encoding/xml</code>, <code>image/png</code>, <code>net</code>,
+<code>net/http</code>, <code>reflect</code>, <code>text/template</code>,
+and <code>time</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.1">Go
+1.8.1 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.8.2">
+go1.8.2 (released 2017-05-23) includes a security fix to the
+<code>crypto/elliptic</code> package.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.2">Go
+1.8.2 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.8.3">
+go1.8.3 (released 2017-05-24) includes fixes to the compiler, runtime,
+documentation, and the <code>database/sql</code> package.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.3">Go
+1.8.3 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.8.4">
+go1.8.4 (released 2017-10-04) includes two security fixes.
+It contains the same fixes as Go 1.9.1 and was released at the same time.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.4">Go
+1.8.4 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.8.5">
+go1.8.5 (released 2017-10-25) includes fixes to the compiler, linker, runtime,
+documentation, <code>go</code> command,
+and the <code>crypto/x509</code> and <code>net/smtp</code> packages.
+It includes a fix to a bug introduced in Go 1.8.4 that broke <code>go</code> <code>get</code>
+of non-Git repositories under certain conditions.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.5">Go
+1.8.5 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.8.6">
+go1.8.6 (released 2018-01-22) includes the same fix in <code>math/big</code>
+as Go 1.9.3 and was released at the same time.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.6">Go
+1.8.6 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.8.7">
+go1.8.7 (released 2018-02-07) includes a security fix to "go get".
+It contains the same fix as Go 1.9.4 and was released at the same time.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.7">Go
+1.8.7</a> milestone on our issue tracker for details.
+</p>
+
+<h2 id="go1.7">go1.7 (released 2016-08-15)</h2>
+
+<p>
+Go 1.7 is a major release of Go.
+Read the <a href="/doc/go1.7">Go 1.7 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.7.minor">Minor revisions</h3>
+
+<p id="go1.7.1">
+go1.7.1 (released 2016-09-07) includes fixes to the compiler, runtime,
+documentation, and the <code>compress/flate</code>, <code>hash/crc32</code>,
+<code>io</code>, <code>net</code>, <code>net/http</code>,
+<code>path/filepath</code>, <code>reflect</code>, and <code>syscall</code>
+packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.7.1">Go
+1.7.1 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.7.2">
+go1.7.2 should not be used. It was tagged but not fully released.
+The release was deferred due to a last minute bug report.
+Use go1.7.3 instead, and refer to the summary of changes below.
+</p>
+
+<p id="go1.7.3">
+go1.7.3 (released 2016-10-19) includes fixes to the compiler, runtime,
+and the <code>crypto/cipher</code>, <code>crypto/tls</code>,
+<code>net/http</code>, and <code>strings</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.7.3">Go
+1.7.3 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.7.4">
+go1.7.4 (released 2016-12-01) includes two security fixes.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.7.4">Go
+1.7.4 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.7.5">
+go1.7.5 (released 2017-01-26) includes fixes to the compiler, runtime,
+and the <code>crypto/x509</code> and <code>time</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.7.5">Go
+1.7.5 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.7.6">
+go1.7.6 (released 2017-05-23) includes the same security fix as Go 1.8.2 and
+was released at the same time.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.8.2">Go
+1.8.2 milestone</a> on our issue tracker for details.
+</p>
+
+<h2 id="go1.6">go1.6 (released 2016-02-17)</h2>
+
+<p>
+Go 1.6 is a major release of Go.
+Read the <a href="/doc/go1.6">Go 1.6 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.6.minor">Minor revisions</h3>
+
+<p id="go1.6.1">
+go1.6.1 (released 2016-04-12) includes two security fixes.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.6.1">Go
+1.6.1 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.6.2">
+go1.6.2 (released 2016-04-20) includes fixes to the compiler, runtime, tools,
+documentation, and the <code>mime/multipart</code>, <code>net/http</code>, and
+<code>sort</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.6.2">Go
+1.6.2 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.6.3">
+go1.6.3 (released 2016-07-17) includes security fixes to the
+<code>net/http/cgi</code> package and <code>net/http</code> package when used in
+a CGI environment.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.6.3">Go
+1.6.3 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.6.4">
+go1.6.4 (released 2016-12-01) includes two security fixes.
+It contains the same fixes as Go 1.7.4 and was released at the same time.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.7.4">Go
+1.7.4 milestone</a> on our issue tracker for details.
+</p>
+
+<h2 id="go1.5">go1.5 (released 2015-08-19)</h2>
+
+<p>
+Go 1.5 is a major release of Go.
+Read the <a href="/doc/go1.5">Go 1.5 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.5.minor">Minor revisions</h3>
+
+<p id="go1.5.1">
+go1.5.1 (released 2015-09-08) includes bug fixes to the compiler, assembler, and
+the <code>fmt</code>, <code>net/textproto</code>, <code>net/http</code>, and
+<code>runtime</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.5.1">Go
+1.5.1 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.5.2">
+go1.5.2 (released 2015-12-02) includes bug fixes to the compiler, linker, and
+the <code>mime/multipart</code>, <code>net</code>, and <code>runtime</code>
+packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.5.2">Go
+1.5.2 milestone</a> on our issue tracker for details.
+</p>
+
+<p id="go1.5.3">
+go1.5.3 (released 2016-01-13) includes a security fix to the <code>math/big</code> package
+affecting the <code>crypto/tls</code> package.
+See the <a href="/s/go153announce">release announcement</a> for details.
+</p>
+
+<p id="go1.5.4">
+go1.5.4 (released 2016-04-12) includes two security fixes.
+It contains the same fixes as Go 1.6.1 and was released at the same time.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.6.1">Go
+1.6.1 milestone</a> on our issue tracker for details.
+</p>
+
+<h2 id="go1.4">go1.4 (released 2014-12-10)</h2>
+
+<p>
+Go 1.4 is a major release of Go.
+Read the <a href="/doc/go1.4">Go 1.4 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.4.minor">Minor revisions</h3>
+
+<p id="go1.4.1">
+go1.4.1 (released 2015-01-15) includes bug fixes to the linker and the <code>log</code>, <code>syscall</code>, and <code>runtime</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.4.1">Go 1.4.1 milestone on our issue tracker</a> for details.
+</p>
+
+<p id="go1.4.2">
+go1.4.2 (released 2015-02-17) includes security fixes to the compiler, and bug fixes to the <code>go</code> command, the compiler and linker, and the <code>runtime</code>, <code>syscall</code>, <code>reflect</code>, and <code>math/big</code> packages.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.4.2">Go 1.4.2 milestone on our issue tracker</a> for details.
+</p>
+
+<p id="go1.4.3">
+go1.4.3 (released 2015-09-22) includes security fixes to the <code>net/http</code> package and bug fixes to the <code>runtime</code> package.
+See the <a href="https://github.com/golang/go/issues?q=milestone%3AGo1.4.3">Go 1.4.3 milestone on our issue tracker</a> for details.
+</p>
+
+<h2 id="go1.3">go1.3 (released 2014-06-18)</h2>
+
+<p>
+Go 1.3 is a major release of Go.
+Read the <a href="/doc/go1.3">Go 1.3 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.3.minor">Minor revisions</h3>
+
+<p id="go1.3.1">
+go1.3.1 (released 2014-08-13) includes bug fixes to the compiler and the <code>runtime</code>, <code>net</code>, and <code>crypto/rsa</code> packages.
+See the <a href="https://github.com/golang/go/commits/go1.3.1">change history</a> for details.
+</p>
+
+<p id="go1.3.2">
+go1.3.2 (released 2014-09-25) includes security fixes to the <code>crypto/tls</code> package and bug fixes to cgo.
+See the <a href="https://github.com/golang/go/commits/go1.3.2">change history</a> for details.
+</p>
+
+<p id="go1.3.3">
+go1.3.3 (released 2014-09-30) includes further bug fixes to cgo, the runtime package, and the nacl port.
+See the <a href="https://github.com/golang/go/commits/go1.3.3">change history</a> for details.
+</p>
+
+<h2 id="go1.2">go1.2 (released 2013-12-01)</h2>
+
+<p>
+Go 1.2 is a major release of Go.
+Read the <a href="/doc/go1.2">Go 1.2 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.2.minor">Minor revisions</h3>
+
+<p id="go1.2.1">
+go1.2.1 (released 2014-03-02) includes bug fixes to the <code>runtime</code>, <code>net</code>, and <code>database/sql</code> packages.
+See the <a href="https://github.com/golang/go/commits/go1.2.1">change history</a> for details.
+</p>
+
+<p id="go1.2.2">
+go1.2.2 (released 2014-05-05) includes a
+<a href="https://github.com/golang/go/commits/go1.2.2">security fix</a>
+that affects the tour binary included in the binary distributions (thanks to Guillaume T).
+</p>
+
+<h2 id="go1.1">go1.1 (released 2013-05-13)</h2>
+
+<p>
+Go 1.1 is a major release of Go.
+Read the <a href="/doc/go1.1">Go 1.1 Release Notes</a> for more information.
+</p>
+
+<h3 id="go1.1.minor">Minor revisions</h3>
+
+<p id="go1.1.1">
+go1.1.1 (released 2013-06-13) includes a security fix to the compiler and several bug fixes to the compiler and runtime.
+See the <a href="https://github.com/golang/go/commits/go1.1.1">change history</a> for details.
+</p>
+
+<p id="go1.1.2">
+go1.1.2 (released 2013-08-13) includes fixes to the <code>gc</code> compiler
+and <code>cgo</code>, and the <code>bufio</code>, <code>runtime</code>,
+<code>syscall</code>, and <code>time</code> packages.
+See the <a href="https://github.com/golang/go/commits/go1.1.2">change history</a> for details.
+If you use package syscall's <code>Getrlimit</code> and <code>Setrlimit</code>
+functions under Linux on the ARM or 386 architectures, please note change
+<a href="/cl/11803043">11803043</a>
+that fixes <a href="/issue/5949">issue 5949</a>.
+</p>
+
+<h2 id="go1">go1 (released 2012-03-28)</h2>
+
+<p>
+Go 1 is a major release of Go that will be stable in the long term.
+Read the <a href="/doc/go1.html">Go 1 Release Notes</a> for more information.
+</p>
+
+<p>
+It is intended that programs written for Go 1 will continue to compile and run
+correctly, unchanged, under future versions of Go 1.
+Read the <a href="/doc/go1compat.html">Go 1 compatibility document</a> for more
+about the future of Go 1.
+</p>
+
+<p>
+The go1 release corresponds to
+<code><a href="weekly.html#2012-03-27">weekly.2012-03-27</a></code>.
+</p>
+
+<h3 id="go1.minor">Minor revisions</h3>
+
+<p id="go1.0.1">
+go1.0.1 (released 2012-04-25) was issued to
+<a href="/cl/6061043">fix</a> an
+<a href="/issue/3545">escape analysis bug</a>
+that can lead to memory corruption.
+It also includes several minor code and documentation fixes.
+</p>
+
+<p id="go1.0.2">
+go1.0.2 (released 2012-06-13) was issued to fix two bugs in the implementation
+of maps using struct or array keys:
+<a href="/issue/3695">issue 3695</a> and
+<a href="/issue/3573">issue 3573</a>.
+It also includes many minor code and documentation fixes.
+</p>
+
+<p id="go1.0.3">
+go1.0.3 (released 2012-09-21) includes minor code and documentation fixes.
+</p>
+
+<p>
+See the <a href="https://github.com/golang/go/commits/release-branch.go1">go1 release branch history</a> for the complete list of changes.
+</p>
+
+<h2 id="pre.go1">Older releases</h2>
+
+<p>
+See the <a href="pre_go1.html">Pre-Go 1 Release History</a> page for notes
+on earlier releases.
+</p>
+
+
+
+
+
+
+
+</article>
+
+
+
+</main>
+<footer class="Site-footer">
+  <div class="Footer">
+    <div class="Container">
+      <div class="Footer-links">
+          <div class="Footer-linkColumn">
+            <a href="/solutions/" class="Footer-link Footer-link--primary" aria-describedby="footer-description">
+              Why Go
+            </a>
+              <a href="/solutions/use-cases" class="Footer-link" aria-describedby="footer-description">
+                Use Cases
+              </a>
+              <a href="/solutions/case-studies" class="Footer-link" aria-describedby="footer-description">
+                Case Studies
+              </a>
+          </div>
+          <div class="Footer-linkColumn">
+            <a href="/learn/" class="Footer-link Footer-link--primary" aria-describedby="footer-description">
+              Get Started
+            </a>
+              <a href="/play" class="Footer-link" aria-describedby="footer-description">
+                Playground
+              </a>
+              <a href="/tour/" class="Footer-link" aria-describedby="footer-description">
+                Tour
+              </a>
+              <a href="https://stackoverflow.com/questions/tagged/go?tab=Newest" class="Footer-link" aria-describedby="footer-description">
+                Stack Overflow
+              </a>
+              <a href="/help/" class="Footer-link" aria-describedby="footer-description">
+                Help
+              </a>
+          </div>
+          <div class="Footer-linkColumn">
+            <a href="https://pkg.go.dev" class="Footer-link Footer-link--primary" aria-describedby="footer-description">
+              Packages
+            </a>
+              <a href="/pkg/" class="Footer-link" aria-describedby="footer-description">
+                Standard Library
+              </a>
+              <a href="https://pkg.go.dev/about" class="Footer-link" aria-describedby="footer-description">
+                About Go Packages
+              </a>
+              <a href="https://pkg.go.dev/api" class="Footer-link" aria-describedby="footer-description">
+                pkg.go.dev API
+              </a>
+          </div>
+          <div class="Footer-linkColumn">
+            <a href="/project" class="Footer-link Footer-link--primary" aria-describedby="footer-description">
+              About
+            </a>
+              <a href="/dl/" class="Footer-link" aria-describedby="footer-description">
+                Download
+              </a>
+              <a href="/blog/" class="Footer-link" aria-describedby="footer-description">
+                Blog
+              </a>
+              <a href="https://github.com/golang/go/issues" class="Footer-link" aria-describedby="footer-description">
+                Issue Tracker
+              </a>
+              <a href="/doc/devel/release" class="Footer-link" aria-describedby="footer-description">
+                Release Notes
+              </a>
+              <a href="/brand" class="Footer-link" aria-describedby="footer-description">
+                Brand Guidelines
+              </a>
+              <a href="/conduct" class="Footer-link" aria-describedby="footer-description">
+                Code of Conduct
+              </a>
+          </div>
+          <div class="Footer-linkColumn">
+            <a href="/wiki/#the-go-community" class="Footer-link Footer-link--primary" aria-describedby="footer-description">
+              Connect
+            </a>
+              <a href="https://bsky.app/profile/golang.org" class="Footer-link" aria-describedby="footer-description">
+                Bluesky
+              </a>
+              <a href="https://hachyderm.io/@golang" class="Footer-link" aria-describedby="footer-description">
+                Mastodon
+              </a>
+              <a href="https://www.twitter.com/golang" class="Footer-link" aria-describedby="footer-description">
+                Twitter
+              </a>
+              <a href="https://github.com/golang" class="Footer-link" aria-describedby="footer-description">
+                GitHub
+              </a>
+              <a href="https://invite.slack.golangbridge.org/" class="Footer-link" aria-describedby="footer-description">
+                Slack
+              </a>
+              <a href="https://reddit.com/r/golang" class="Footer-link" aria-describedby="footer-description">
+                r/golang
+              </a>
+              <a href="https://www.meetup.com/pro/go" class="Footer-link" aria-describedby="footer-description">
+                Meetup
+              </a>
+              <a href="https://golangweekly.com/" class="Footer-link" aria-describedby="footer-description">
+                Golang Weekly
+              </a>
+          </div>
+      </div>
+    </div>
+  </div>
+  <div class="screen-reader-only" id="footer-description" hidden>
+          Opens in new window.
+  </div>
+  <div class="Footer">
+    <div class="Container Container--fullBleed">
+      <div class="Footer-bottom">
+        <img class="Footer-gopher" src="/images/gophers/pilot-bust.svg" alt="The Go Gopher">
+        <ul class="Footer-listRow">
+          <li class="Footer-listItem">
+            <a href="/copyright" aria-describedby="footer-description">Copyright</a>
+          </li>
+          <li class="Footer-listItem">
+            <a href="/tos" aria-describedby="footer-description">Terms of Service</a>
+          </li>
+          <li class="Footer-listItem">
+            <a href="http://www.google.com/intl/en/policies/privacy/" aria-describedby="footer-description"
+              target="_blank"
+              rel="noopener">
+              Privacy Policy
+            </a>
+            </li>
+          <li class="Footer-listItem">
+            <a
+              href="/s/website-issue" aria-describedby="footer-description"
+              target="_blank"
+              rel="noopener"
+              >
+              Report an Issue
+            </a>
+          </li>
+          <li class="Footer-listItem go-Footer-listItem">
+            <button class="go-Button go-Button--text go-Footer-toggleTheme js-toggleTheme" aria-label="Toggle theme">
+              <img
+                data-value="auto"
+                class="go-Icon go-Icon--inverted"
+                height="24"
+                width="24"
+                src="/images/icons/brightness_6_gm_grey_24dp.svg"
+                alt="System theme">
+              <img
+                data-value="dark"
+                class="go-Icon go-Icon--inverted"
+                height="24"
+                width="24"
+                src="/images/icons/brightness_2_gm_grey_24dp.svg"
+                alt="Dark theme">
+              <img
+                data-value="light"
+                class="go-Icon go-Icon--inverted"
+                height="24"
+                width="24"
+                src="/images/icons/light_mode_gm_grey_24dp.svg"
+                alt="Light theme">
+            </button>
+          </li>
+        </ul>
+        <a class="Footer-googleLogo" target="_blank" href="https://google.com" rel="noopener">
+          <img class="Footer-googleLogoImg" src="/images/google-white.png" alt="Google logo">
+        </a>
+      </div>
+    </div>
+  </div>
+  <script src="/js/jquery.js"></script>
+  <script src="/js/carousels.js"></script>
+  <script src="/js/searchBox.js"></script>
+  <script src="/js/misc.js"></script>
+  <script src="/js/hats.js"></script>
+  <script src="/js/playground.js"></script>
+  <script src="/js/godocs.js"></script>
+  <script async src="/js/copypaste.js"></script>
+</footer>
+<section class="Cookie-notice js-cookieNotice">
+  <div>go.dev uses cookies from Google to deliver and enhance the quality of its services and to
+  analyze traffic. <a target=_blank href="https://policies.google.com/technologies/cookies">Learn more.</a></div>
+  <div><button class="go-Button">Okay</button></div>
+</section>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

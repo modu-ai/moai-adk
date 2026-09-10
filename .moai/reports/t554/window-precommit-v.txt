@@ -1,0 +1,113 @@
+=== RUN   TestPreCommitProvenanceRecorded
+--- PASS: TestPreCommitProvenanceRecorded (1.58s)
+=== RUN   TestPreCommitVersionBumpIsSilent
+--- PASS: TestPreCommitVersionBumpIsSilent (1.37s)
+=== RUN   TestPreCommitThreeWayAttribution
+=== RUN   TestPreCommitThreeWayAttribution/record_matches_installed_version_bump
+=== RUN   TestPreCommitThreeWayAttribution/record_differs_from_installed_user_edit
+--- PASS: TestPreCommitThreeWayAttribution (0.89s)
+    --- PASS: TestPreCommitThreeWayAttribution/record_matches_installed_version_bump (0.47s)
+    --- PASS: TestPreCommitThreeWayAttribution/record_differs_from_installed_user_edit (0.42s)
+=== RUN   TestPreCommitLegacyNoRecord
+=== RUN   TestPreCommitLegacyNoRecord/a_no_record_content_differs
+=== RUN   TestPreCommitLegacyNoRecord/b_no_record_content_identical
+=== RUN   TestPreCommitLegacyNoRecord/c_no_record_pinned_released_body
+--- PASS: TestPreCommitLegacyNoRecord (0.55s)
+    --- PASS: TestPreCommitLegacyNoRecord/a_no_record_content_differs (0.19s)
+    --- PASS: TestPreCommitLegacyNoRecord/b_no_record_content_identical (0.15s)
+    --- PASS: TestPreCommitLegacyNoRecord/c_no_record_pinned_released_body (0.21s)
+=== RUN   TestPreCommitModifiedHookIsBackedUp
+--- PASS: TestPreCommitModifiedHookIsBackedUp (0.15s)
+=== RUN   TestPreCommitWarningWriterWiring
+=== PAUSE TestPreCommitWarningWriterWiring
+=== RUN   TestPreCommitBackupNoticeContent
+--- PASS: TestPreCommitBackupNoticeContent (0.17s)
+=== RUN   TestPreCommitNoSilentReplacement
+--- PASS: TestPreCommitNoSilentReplacement (0.15s)
+=== RUN   TestPreCommitBackupOutputNotBareSuccess
+--- PASS: TestPreCommitBackupOutputNotBareSuccess (0.16s)
+=== RUN   TestPreCommitBackupNoClobber
+--- PASS: TestPreCommitBackupNoClobber (0.15s)
+=== RUN   TestPreCommitSupportWriteFailureNonFatal
+=== RUN   TestPreCommitSupportWriteFailureNonFatal/a_backup_write_fails_hook_left_untouched
+=== RUN   TestPreCommitSupportWriteFailureNonFatal/b_provenance_write_fails_replacement_stays
+--- PASS: TestPreCommitSupportWriteFailureNonFatal (0.29s)
+    --- PASS: TestPreCommitSupportWriteFailureNonFatal/a_backup_write_fails_hook_left_untouched (0.15s)
+    --- PASS: TestPreCommitSupportWriteFailureNonFatal/b_provenance_write_fails_replacement_stays (0.14s)
+=== RUN   TestPreCommitTemplateMatchesConstant
+=== PAUSE TestPreCommitTemplateMatchesConstant
+=== RUN   TestPreCommitInstall_FreshRepo
+--- PASS: TestPreCommitInstall_FreshRepo (0.14s)
+=== RUN   TestPreCommitInstall_PreservesForeignHook
+--- PASS: TestPreCommitInstall_PreservesForeignHook (0.14s)
+=== RUN   TestPreCommitInstall_OverwritesMoaiHook
+--- PASS: TestPreCommitInstall_OverwritesMoaiHook (0.14s)
+=== RUN   TestPreCommitInstall_SkipFlag
+--- PASS: TestPreCommitInstall_SkipFlag (0.14s)
+=== RUN   TestPreCommitInstall_OptionalSkipSilent
+--- PASS: TestPreCommitInstall_OptionalSkipSilent (0.14s)
+=== RUN   TestPreCommitInstall_OptionalFreshPrints
+--- PASS: TestPreCommitInstall_OptionalFreshPrints (0.15s)
+=== RUN   TestPreCommitInstall_OptionalPreservedNote
+--- PASS: TestPreCommitInstall_OptionalPreservedNote (0.15s)
+=== RUN   TestPreCommitInstall_Assertion
+--- PASS: TestPreCommitInstall_Assertion (0.15s)
+=== RUN   TestPreCommitContent_TwoTierBoundary
+=== PAUSE TestPreCommitContent_TwoTierBoundary
+=== RUN   TestPreCommitInstall_NonFatalFailure
+--- PASS: TestPreCommitInstall_NonFatalFailure (0.17s)
+=== RUN   TestPreCommitInstall_ConfigAgnostic
+--- PASS: TestPreCommitInstall_ConfigAgnostic (0.53s)
+=== RUN   TestPreCommitHook_GofmtBlocks
+--- PASS: TestPreCommitHook_GofmtBlocks (0.36s)
+=== RUN   TestPreCommitHook_SkipBypass
+--- PASS: TestPreCommitHook_SkipBypass (0.37s)
+=== RUN   TestPreCommitHook_NoStagedGo
+--- PASS: TestPreCommitHook_NoStagedGo (0.38s)
+=== RUN   TestPreCommitHook_GoVetBlocks
+--- PASS: TestPreCommitHook_GoVetBlocks (0.63s)
+=== RUN   TestPreCommitHook_ToolchainAbsent
+--- PASS: TestPreCommitHook_ToolchainAbsent (0.36s)
+=== RUN   TestPreCommitHook_SubmodulePassesClean
+--- PASS: TestPreCommitHook_SubmodulePassesClean (0.34s)
+=== RUN   TestPreCommitHook_SubmoduleVetBlocks
+--- PASS: TestPreCommitHook_SubmoduleVetBlocks (0.34s)
+=== RUN   TestPreCommitHook_OutsideAnyModuleSkips
+--- PASS: TestPreCommitHook_OutsideAnyModuleSkips (0.26s)
+=== RUN   TestPreCommitHook_RootModuleStillVets
+--- PASS: TestPreCommitHook_RootModuleStillVets (0.34s)
+=== RUN   TestPreCommitRelocation_GoodCommitPasses
+--- PASS: TestPreCommitRelocation_GoodCommitPasses (0.38s)
+=== RUN   TestPreCommitRelocation_BudgetIndependence
+    precommit_relocation_test.go:135: F1 PASS: hook ran for 6.496968125s (>5s), sentinel created — budget independence proven at the integration boundary
+--- PASS: TestPreCommitRelocation_BudgetIndependence (6.93s)
+=== RUN   TestPreCommitRelocation_LanguageNeutralTemplate
+=== PAUSE TestPreCommitRelocation_LanguageNeutralTemplate
+=== RUN   TestPreCommitRelocation_POSIXShellAndNoBias
+=== PAUSE TestPreCommitRelocation_POSIXShellAndNoBias
+=== RUN   TestPreCommitRelocation_RejectionSurfacedToCaller
+--- PASS: TestPreCommitRelocation_RejectionSurfacedToCaller (0.67s)
+=== RUN   TestPreCommitRelocation_GateVerbReachable
+--- PASS: TestPreCommitRelocation_GateVerbReachable (0.00s)
+=== RUN   TestPreCommitRelocation_NoPreToolUseRegression
+=== PAUSE TestPreCommitRelocation_NoPreToolUseRegression
+=== CONT  TestPreCommitWarningWriterWiring
+=== CONT  TestPreCommitRelocation_LanguageNeutralTemplate
+=== CONT  TestPreCommitRelocation_NoPreToolUseRegression
+=== CONT  TestPreCommitRelocation_POSIXShellAndNoBias
+--- PASS: TestPreCommitRelocation_LanguageNeutralTemplate (0.00s)
+--- PASS: TestPreCommitRelocation_NoPreToolUseRegression (0.00s)
+--- PASS: TestPreCommitRelocation_POSIXShellAndNoBias (0.00s)
+=== CONT  TestPreCommitContent_TwoTierBoundary
+--- PASS: TestPreCommitContent_TwoTierBoundary (0.00s)
+=== CONT  TestPreCommitTemplateMatchesConstant
+=== RUN   TestPreCommitWarningWriterWiring/init_binds_warning_writer_to_command_stderr
+--- PASS: TestPreCommitTemplateMatchesConstant (0.00s)
+=== RUN   TestPreCommitWarningWriterWiring/update_binds_warning_writer_to_errOut_stderr
+=== RUN   TestPreCommitWarningWriterWiring/no_other_call_sites
+--- PASS: TestPreCommitWarningWriterWiring (0.06s)
+    --- PASS: TestPreCommitWarningWriterWiring/init_binds_warning_writer_to_command_stderr (0.00s)
+    --- PASS: TestPreCommitWarningWriterWiring/update_binds_warning_writer_to_errOut_stderr (0.00s)
+    --- PASS: TestPreCommitWarningWriterWiring/no_other_call_sites (0.06s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	19.932s

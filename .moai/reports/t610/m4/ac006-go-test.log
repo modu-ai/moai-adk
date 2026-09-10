@@ -1,0 +1,5 @@
+ok  	github.com/modu-ai/moai-adk/internal/web	19.295s
+ok  	github.com/modu-ai/moai-adk/internal/update	7.519s
+ok  	github.com/modu-ai/moai-adk/internal/goal	1.824s
+ok  	github.com/modu-ai/moai-adk/pkg/models	0.356s
+ok  	github.com/modu-ai/moai-adk/pkg/version	2.130s

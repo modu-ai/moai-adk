@@ -1,0 +1,176 @@
+=== RUN   TestUpsertCodexSkillDisablePublishesWindowsPathInSlashForm
+--- PASS: TestUpsertCodexSkillDisablePublishesWindowsPathInSlashForm (0.00s)
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars///quote
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars///lf
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars///cr
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars/\/quote
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars/\/lf
+=== RUN   TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars/\/cr
+--- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars (0.00s)
+    --- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars///quote (0.00s)
+    --- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars///lf (0.00s)
+    --- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars///cr (0.00s)
+    --- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars/\/quote (0.00s)
+    --- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars/\/lf (0.00s)
+    --- PASS: TestUpsertCodexSkillDisableStillRefusesUnrepresentableChars/\/cr (0.00s)
+=== RUN   TestUpsertCodexSkillDisableRefusesBackslashOnSlashHost
+--- PASS: TestUpsertCodexSkillDisableRefusesBackslashOnSlashHost (0.00s)
+=== RUN   TestUpsertCodexSkillDisableUpdatesExistingBackslashEntry
+--- PASS: TestUpsertCodexSkillDisableUpdatesExistingBackslashEntry (0.00s)
+=== RUN   TestUpsertCodexSkillDisableSkipsMixedShapeDuplicates
+--- PASS: TestUpsertCodexSkillDisableSkipsMixedShapeDuplicates (0.00s)
+=== RUN   TestUpsertCodexSkillDisableAppendsOneEntryWithFalse
+--- PASS: TestUpsertCodexSkillDisableAppendsOneEntryWithFalse (0.00s)
+=== RUN   TestUpsertCodexSkillDisableInsertsMissingEnabledKey
+--- PASS: TestUpsertCodexSkillDisableInsertsMissingEnabledKey (0.00s)
+=== RUN   TestUpsertCodexSkillDisableUpdatesExistingEntry
+--- PASS: TestUpsertCodexSkillDisableUpdatesExistingEntry (0.00s)
+=== RUN   TestUpsertCodexSkillDisableIdempotentBytes
+--- PASS: TestUpsertCodexSkillDisableIdempotentBytes (0.00s)
+=== RUN   TestUpsertCodexSkillDisablePreservesSurroundings
+=== RUN   TestUpsertCodexSkillDisablePreservesSurroundings/unrelated_entries_and_comments
+=== RUN   TestUpsertCodexSkillDisablePreservesSurroundings/CRLF_line_endings
+=== RUN   TestUpsertCodexSkillDisablePreservesSurroundings/no_trailing_newline
+--- PASS: TestUpsertCodexSkillDisablePreservesSurroundings (0.00s)
+    --- PASS: TestUpsertCodexSkillDisablePreservesSurroundings/unrelated_entries_and_comments (0.00s)
+    --- PASS: TestUpsertCodexSkillDisablePreservesSurroundings/CRLF_line_endings (0.00s)
+    --- PASS: TestUpsertCodexSkillDisablePreservesSurroundings/no_trailing_newline (0.00s)
+=== RUN   TestUpsertCodexSkillDisableSkipsUnrecognisedEntry
+--- PASS: TestUpsertCodexSkillDisableSkipsUnrecognisedEntry (0.00s)
+=== RUN   TestCodexSkillPathDotDotSegmentRefused
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/home_escape_to_etc
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/home_escape_to_parent
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/home_inner_dotdot_intended_change
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/relative_dotdot_intended_change
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/clean_home_relative
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/dotdot_prefixed_name_is_not_a_segment
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/plain_relative
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/absolute
+=== RUN   TestCodexSkillPathDotDotSegmentRefused/absolute_with_dotdot
+--- PASS: TestCodexSkillPathDotDotSegmentRefused (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/home_escape_to_etc (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/home_escape_to_parent (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/home_inner_dotdot_intended_change (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/relative_dotdot_intended_change (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/clean_home_relative (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/dotdot_prefixed_name_is_not_a_segment (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/plain_relative (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/absolute (0.00s)
+    --- PASS: TestCodexSkillPathDotDotSegmentRefused/absolute_with_dotdot (0.00s)
+=== RUN   TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat
+=== RUN   TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat/refuses_before_stat
+=== RUN   TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat/positive_control_clean_path_does_stat_once
+--- PASS: TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat (0.00s)
+    --- PASS: TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat/refuses_before_stat (0.00s)
+    --- PASS: TestJudgeCodexSkillEntryRefusesDotDotEscapeBeforeStat/positive_control_clean_path_does_stat_once (0.00s)
+=== RUN   TestCodexDotDotRefusalIsSymmetricAcrossReadAndWrite
+--- PASS: TestCodexDotDotRefusalIsSymmetricAcrossReadAndWrite (0.00s)
+=== RUN   TestCodexSkillPathBackslashSymmetry
+=== RUN   TestCodexSkillPathBackslashSymmetry/home_relative_arm_matches_relative_arm
+=== RUN   TestCodexSkillPathBackslashSymmetry/both_arms_are_oddly_formed
+--- PASS: TestCodexSkillPathBackslashSymmetry (0.00s)
+    --- PASS: TestCodexSkillPathBackslashSymmetry/home_relative_arm_matches_relative_arm (0.00s)
+    --- PASS: TestCodexSkillPathBackslashSymmetry/both_arms_are_oddly_formed (0.00s)
+=== RUN   TestCodexSkillPathPreservedShapes
+=== RUN   TestCodexSkillPathPreservedShapes/posix_absolute_with_backslash
+=== RUN   TestCodexSkillPathPreservedShapes/other_user_home
+=== RUN   TestCodexSkillPathPreservedShapes/plain_relative
+=== RUN   TestCodexSkillPathPreservedShapes/clean_home_relative
+--- PASS: TestCodexSkillPathPreservedShapes (0.00s)
+    --- PASS: TestCodexSkillPathPreservedShapes/posix_absolute_with_backslash (0.00s)
+    --- PASS: TestCodexSkillPathPreservedShapes/other_user_home (0.00s)
+    --- PASS: TestCodexSkillPathPreservedShapes/plain_relative (0.00s)
+    --- PASS: TestCodexSkillPathPreservedShapes/clean_home_relative (0.00s)
+=== RUN   TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash
+=== RUN   TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash/refuses_before_stat
+=== RUN   TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash/positive_control_clean_path_does_stat_once
+--- PASS: TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash (0.00s)
+    --- PASS: TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash/refuses_before_stat (0.00s)
+    --- PASS: TestJudgeCodexSkillEntryRefusesHomeRelativeBackslash/positive_control_clean_path_does_stat_once (0.00s)
+=== RUN   TestCodexBackslashRefusalIsSymmetricAcrossReadAndWrite
+--- PASS: TestCodexBackslashRefusalIsSymmetricAcrossReadAndWrite (0.00s)
+=== RUN   TestJudgeCodexSkillEntryBackslashHomeStillExpands
+--- PASS: TestJudgeCodexSkillEntryBackslashHomeStillExpands (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_QuotedEnabledDispositionMoved
+--- PASS: TestJudgeCodexSkillEntry_QuotedEnabledDispositionMoved (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_SeparatorConversion
+--- PASS: TestJudgeCodexSkillEntry_SeparatorConversion (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion
+--- PASS: TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative
+--- PASS: TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins/missing_means_eligible
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins/resolving_means_kept
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins/backslash_declaration_is_oddly_formed_and_never_statted
+--- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/missing_means_eligible (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/resolving_means_kept (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/backslash_declaration_is_oddly_formed_and_never_statted (0.00s)
+=== RUN   TestSinglePathShapeClassifier
+--- PASS: TestSinglePathShapeClassifier (0.05s)
+=== RUN   TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard
+    codex_stale_skill_readback_test.go:70: summary: ~/.codex/config.toml: 1 stale skill entry
+    codex_stale_skill_readback_test.go:71: detail: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard4218803658/003/.codex/config.toml declares 4 [[skills.config]] entries; 1 with a path that no longer exists (1 enabled, 0 disabled, 0 unspecified, 0 non-boolean) — remove the stale entries or restore the skill files; 1 relative entry (not checked: the resolution base is not observed); 1 oddly-formed entry (not checked: backslash or ~other-user shape)
+--- PASS: TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard (0.00s)
+=== RUN   TestCodexStaleSkillFinding_AbsoluteStatTargetIsConvertedForm
+--- PASS: TestCodexStaleSkillFinding_AbsoluteStatTargetIsConvertedForm (0.00s)
+=== RUN   TestCodexStaleSkillFinding_ExtendedLengthStatTargetIsConvertedForm
+--- PASS: TestCodexStaleSkillFinding_ExtendedLengthStatTargetIsConvertedForm (0.00s)
+=== RUN   TestCodexStaleSkillFinding_ClassificationPrecedesConversion
+--- PASS: TestCodexStaleSkillFinding_ClassificationPrecedesConversion (0.00s)
+=== RUN   TestCodexStaleSkillFinding_SlashPinnedAbsoluteArmIsReached
+--- PASS: TestCodexStaleSkillFinding_SlashPinnedAbsoluteArmIsReached (0.00s)
+=== RUN   TestCodexStaleSkillFinding_SlashPinnedStatTargetIsUnconverted
+--- PASS: TestCodexStaleSkillFinding_SlashPinnedStatTargetIsUnconverted (0.00s)
+=== RUN   TestCodexStaleSkillFinding_AbsoluteExistingNotCounted
+--- PASS: TestCodexStaleSkillFinding_AbsoluteExistingNotCounted (0.00s)
+=== RUN   TestCodexStaleSkillFinding_AbsoluteMissingSplitsEnabledStates
+--- PASS: TestCodexStaleSkillFinding_AbsoluteMissingSplitsEnabledStates (0.00s)
+=== RUN   TestCodexStaleSkillFinding_HomeRelativeExpansionBuckets
+--- PASS: TestCodexStaleSkillFinding_HomeRelativeExpansionBuckets (0.00s)
+=== RUN   TestCodexStaleSkillFinding_BareTildeResolvesHome
+--- PASS: TestCodexStaleSkillFinding_BareTildeResolvesHome (0.00s)
+=== RUN   TestCodexStaleSkillFinding_RelativeShapeNeverCountedMissing
+--- PASS: TestCodexStaleSkillFinding_RelativeShapeNeverCountedMissing (0.00s)
+=== RUN   TestCodexStaleSkillFinding_OddlyFormedShapeNeverCountedMissing
+--- PASS: TestCodexStaleSkillFinding_OddlyFormedShapeNeverCountedMissing (0.00s)
+=== RUN   TestCodexStaleSkillFinding_UnresolvableHomeExpansionIndeterminate
+--- PASS: TestCodexStaleSkillFinding_UnresolvableHomeExpansionIndeterminate (0.00s)
+=== RUN   TestCodexStaleSkillFinding_IndeterminateOnlyStaysSilent
+--- PASS: TestCodexStaleSkillFinding_IndeterminateOnlyStaysSilent (0.00s)
+=== RUN   TestCodexStaleSkillFinding_EmptyPathEntrySkipped
+--- PASS: TestCodexStaleSkillFinding_EmptyPathEntrySkipped (0.00s)
+=== RUN   TestCodexStaleSkillFinding_UnreadableConfigFailsOpen
+--- PASS: TestCodexStaleSkillFinding_UnreadableConfigFailsOpen (0.00s)
+=== RUN   TestCodexStaleSkillFinding_UnresolvableCodexHomeSkipsLoop
+--- PASS: TestCodexStaleSkillFinding_UnresolvableCodexHomeSkipsLoop (0.00s)
+=== RUN   TestCodexStaleSkillFinding_SymlinkLoopIndeterminateNotMissing
+--- PASS: TestCodexStaleSkillFinding_SymlinkLoopIndeterminateNotMissing (0.00s)
+=== RUN   TestCodexStaleSkillFinding_StatSeamRecordsClassifiedPaths
+--- PASS: TestCodexStaleSkillFinding_StatSeamRecordsClassifiedPaths (0.00s)
+=== RUN   TestCodexStaleSkillFinding_InjectedErrNotExistDrivesMissing
+--- PASS: TestCodexStaleSkillFinding_InjectedErrNotExistDrivesMissing (0.00s)
+=== RUN   TestCodexStaleSkillFinding_InjectedNilDrivesResolves
+--- PASS: TestCodexStaleSkillFinding_InjectedNilDrivesResolves (0.00s)
+=== RUN   TestCodexStaleSkillFinding_InjectedOtherErrorDrivesIndeterminate
+--- PASS: TestCodexStaleSkillFinding_InjectedOtherErrorDrivesIndeterminate (0.00s)
+=== RUN   TestCodexSkillPath_HomeRelativeExistingNotMissing
+--- PASS: TestCodexSkillPath_HomeRelativeExistingNotMissing (0.00s)
+=== RUN   TestCodexSkillPath_HomeRelativeMissingStillCounted
+--- PASS: TestCodexSkillPath_HomeRelativeMissingStillCounted (0.00s)
+=== RUN   TestCodexSkillPath_RelativeNotMissingDistinctClassification
+--- PASS: TestCodexSkillPath_RelativeNotMissingDistinctClassification (0.00s)
+=== RUN   TestCodexSkillPath_RelativeOnlyNonDestructiveFinding
+--- PASS: TestCodexSkillPath_RelativeOnlyNonDestructiveFinding (0.00s)
+=== RUN   TestCodexSkillPath_BackslashAndOtherUserHomeNotMissing
+--- PASS: TestCodexSkillPath_BackslashAndOtherUserHomeNotMissing (0.00s)
+=== RUN   TestCodexSkillPath_AbsoluteExistingAndMissing
+--- PASS: TestCodexSkillPath_AbsoluteExistingAndMissing (0.00s)
+=== RUN   TestCodexSkillPath_RealMissingWithSymlinkLoopIndeterminate
+--- PASS: TestCodexSkillPath_RealMissingWithSymlinkLoopIndeterminate (0.00s)
+=== RUN   TestCodexSkillPath_ExpansionUsesUserHomeSeam
+--- PASS: TestCodexSkillPath_ExpansionUsesUserHomeSeam (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.179s
