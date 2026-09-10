@@ -1,7 +1,9 @@
 # 아키텍처 개요
 
-> `/moai codemaps`로 생성된 아키텍처 지도입니다. 모든 수치는 아래 트리에서 직접 잰 것이고,
+> `/moai codemaps`로 생성된 아키텍처 지도입니다. **Go** 버전을 뺀 모든 수치는 아래 트리에서 직접 잰 것이고,
 > 다른 트리·다른 시점에서 옮겨온 값은 없습니다.
+> **Go** 버전만 예외입니다. 측정 트리의 `go.mod`는 `go 1.26.4`였고, 여기 적힌 값은 t610 커밋 `41f445fa5`가
+> 올린 `go.mod:3`에서 옮겨 적었습니다.
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
