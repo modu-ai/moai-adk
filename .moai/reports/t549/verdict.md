@@ -66,7 +66,7 @@ pathInsideTempDir=true isTemp=false (reason "") git=false root=…/001/link/.moa
 | `go test ./internal/kanban/ -count=1` | exit 0, `ok … 155.211s` | `kanban-postfix.txt` |
 | `go test ./internal/web/ -count=1` | exit 0, `ok … 14.177s` | `web-postfix.txt` |
 | `gofmt -l internal/kanban/` · `go vet ./internal/kanban/` | 출력 없음, exit 0 / exit 0 | `vet-kanban.txt` |
-| `go test ./internal/cli/ -run 'Todo' -count=1 -v -timeout 30m` (15:36:07–15:39:25, 리드 슬롯 승인 1회) | exit 0, `ok … 188.352s` · 최상위 `--- PASS` 161 / `--- FAIL` 0 / `--- SKIP` 1 | `cli-todo-postfix.txt`, `cli-todo-postfix.meta` |
+| **흡수 전 트리 관측** — `go test ./internal/cli/ -run 'Todo' -count=1 -v -timeout 30m` (15:36:07–15:39:25, base `d3b7d438d` + 수리, 리드 슬롯 승인 1회) | exit 0, `ok … 188.352s` · 최상위 `--- PASS` 161 / `--- FAIL` 0 / `--- SKIP` 1 | `cli-todo-postfix.txt`, `cli-todo-postfix.meta` |
 
 셀렉터 대조: 정적 목록(`cli-todo-selector-static.txt`)은 165개였지만 그중 3개(`TestSaveBoolAnswerTodoEnabled`, `TestTodoEnabledQuestion`, `TestTodoEnabledTranslationsExist`)는 하위 패키지 `internal/cli/wizard/todo_enabled_test.go` 소속이다. git pathspec 의 `*` 가 디렉터리를 넘어 매칭해 과다 집계됐다. `./internal/cli/` 패키지 기준 기대치는 162이고, 실행 이름 집합과 `comm` 대조 결과 양방향 차이 0이다. SKIP 1개는 `TestAxisACanaryHomeSweep_TodoFamily` — `MOAI_AXIS_A_CANARY_SWEEP=1` 을 켜야 자식 `go test` 를 띄우는 opt-in canary 라 의도적으로 돌리지 않았다.
 
@@ -99,7 +99,7 @@ production Go(`*_test.go` 제외)의 해당 함수 전수. 명령: `git grep -n 
 1. **홈 분기 root 의 재키잉 (카드 발행 대상, 이 카드에서 수리 안 함).** 로그 관측만 했다(`probe-develop-d3b7d438d.txt`, `TestT549_ProbeHomeRootRekeying`): `BacklogPathForRoot(homeRoot)` = `<home>/.moai/db/001-b770b8ec-f195ba1f/todo/backlog.json`, `BacklogPathForRoot(base)` = `<home>/.moai/db/001-b770b8ec/todo/backlog.json`. 즉 `~/.moai/todo/<key>` 가 다시 프로젝트 키로 쓰여 canonical 과 다른 db 디렉터리가 생긴다. 읽기·쓰기가 같은 함수를 거치므로 서로는 일관되지만, 이것이 사용자에게 보이는 오작동인지는 측정하지 않았다.
 2. **fallback 의 이름 기반 stat 가설 (미측정).** `fallbackTodoQueueRoot` 와 `adoptLocalTodoQueue` 는 `os.Stat(BacklogPathForRoot(…))` 로 `backlog.json` 이름만 확인한다. 저장소가 `backlog.db` 만 가진 레이아웃이면 기존 큐를 못 보고 빈 홈 root 를 고를 수 있다는 가설이다. 코드 판독뿐이고 실행 관측은 없다.
 3. 심볼릭 링크 도달성은 macOS(이 머신)에서만 관측했다. linux·windows 에서는 미관측이다(windows 는 `/usr` 부재로 skip 예상).
-4. internal/cli 는 `-run 'Todo'` 스코프만 돌렸다. 패키지 전체와 `internal/cli/wizard`, `internal/statusline` 은 이 카드에서 돌리지 않았다(statusline 은 리졸버를 거치지 않아 영향 경로 밖이라고 판독했지만 실행 확인은 아니다). 전체 판정은 develop push 뒤 CI 몫이다.
+4. internal/cli 는 흡수 전 트리에서 `-run 'Todo'` 스코프만 돌렸다. 병합 트리에서는 재측정하지 않는다 — 리드 면제(2026-09-10): 레인은 병합 트리에서 영향 범위만 재고, `internal/cli` 전체는 리드가 일괄 push 직전 develop tip 에서 한 번 잰다. 흡수 대상 4커밋(`d3b7d438d..d1b61005d`)에서 cli 에 닿는 것은 t609 의 `settings.json.tmpl` 이 `internal/template` embed 를 거쳐 전이되는 경로 하나다(서브트리 해시: kanban·web·cli 불변, template `9ee2c67f → 58cfd9e4`; `go list -deps`: kanban→template 0, web·cli→template 1). 이 수리와는 파일도 의존 방향도 겹치지 않는다. `internal/cli/wizard` 와 `internal/statusline` 도 돌리지 않았다(statusline 은 리졸버를 거치지 않아 영향 경로 밖이라고 판독했지만 실행 확인은 아니다).
 5. 병합 트리 재측정은 아직 없다 — 창을 받은 뒤 `origin/develop` 흡수 트리에서 다시 잰다.
 
 ## 6. 잔여 위험 (Residual-risk)
