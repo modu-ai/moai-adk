@@ -1,0 +1,16 @@
+=== RUN   TestProbeT545FormNameMultiplicity
+2026/09/10 22:57:08 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProbeT545FormNameMultiplicity3627439782/001/.moai/config/sections
+2026/09/10 22:57:08 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProbeT545FormNameMultiplicity3627439782/001/.moai/config/sections
+2026/09/10 22:57:08 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProbeT545FormNameMultiplicity3627439782/001/.moai/config/sections
+    zz_probe_t545_test.go:108: PROBE forms_in_page=3
+    zz_probe_t545_test.go:103: PROBE settings-form: controls=201 distinct_names=125 dup_radio_only_names=54 dup_other_names=3
+    zz_probe_t545_test.go:105: PROBE settings-form dup_other: feedback.repository input:text
+    zz_probe_t545_test.go:105: PROBE settings-form dup_other: git_strategy.worktree_base_branch input:text
+    zz_probe_t545_test.go:105: PROBE settings-form dup_other: workflow.audit.codex.model input:text
+    zz_probe_t545_test.go:103: PROBE page: controls=202 distinct_names=126 dup_radio_only_names=54 dup_other_names=3
+    zz_probe_t545_test.go:105: PROBE page dup_other: feedback.repository input:text
+    zz_probe_t545_test.go:105: PROBE page dup_other: git_strategy.worktree_base_branch input:text
+    zz_probe_t545_test.go:105: PROBE page dup_other: workflow.audit.codex.model input:text
+--- PASS: TestProbeT545FormNameMultiplicity (0.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.814s

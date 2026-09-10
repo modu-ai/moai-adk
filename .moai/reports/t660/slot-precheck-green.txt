@@ -1,0 +1,7 @@
+slot pre-check before the GREEN+mutant run
+2026-09-10T18:14:04Z
+ 3:14  up 2 days, 21:07, 19 users, load averages: 8.48 17.76 16.74
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1456)
+observer control - the ps process itself: 1
+go test/.test lines (zsh/python excluded): 0

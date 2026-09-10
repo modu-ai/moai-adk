@@ -1,0 +1,246 @@
+=== RUN   TestApplyWizardConfig_WithGitHubUser
+--- PASS: TestApplyWizardConfig_WithGitHubUser (0.00s)
+=== RUN   TestApplyWizardConfig_WithGitHubUserAndToken
+--- PASS: TestApplyWizardConfig_WithGitHubUserAndToken (0.00s)
+=== RUN   TestInitUpdateTUXCharacterization
+=== RUN   TestInitUpdateTUXCharacterization/init/tty/stdout
+=== RUN   TestInitUpdateTUXCharacterization/init/tty/stderr
+=== RUN   TestInitUpdateTUXCharacterization/init/notty/stdout
+=== RUN   TestInitUpdateTUXCharacterization/init/notty/stderr
+=== RUN   TestInitUpdateTUXCharacterization/init/nocolor/stdout
+=== RUN   TestInitUpdateTUXCharacterization/init/nocolor/stderr
+=== RUN   TestInitUpdateTUXCharacterization/update/tty/stdout
+=== RUN   TestInitUpdateTUXCharacterization/update/tty/stderr
+=== RUN   TestInitUpdateTUXCharacterization/update/notty/stdout
+=== RUN   TestInitUpdateTUXCharacterization/update/notty/stderr
+=== RUN   TestInitUpdateTUXCharacterization/update/nocolor/stdout
+=== RUN   TestInitUpdateTUXCharacterization/update/nocolor/stderr
+--- PASS: TestInitUpdateTUXCharacterization (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/init/tty/stdout (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/init/tty/stderr (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/init/notty/stdout (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/init/notty/stderr (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/init/nocolor/stdout (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/init/nocolor/stderr (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/update/tty/stdout (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/update/tty/stderr (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/update/notty/stdout (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/update/notty/stderr (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/update/nocolor/stdout (0.00s)
+    --- PASS: TestInitUpdateTUXCharacterization/update/nocolor/stderr (0.00s)
+=== RUN   TestTUXChannelPartition
+=== RUN   TestTUXChannelPartition/tty
+=== RUN   TestTUXChannelPartition/notty
+=== RUN   TestTUXChannelPartition/nocolor
+--- PASS: TestTUXChannelPartition (0.00s)
+    --- PASS: TestTUXChannelPartition/tty (0.00s)
+    --- PASS: TestTUXChannelPartition/notty (0.00s)
+    --- PASS: TestTUXChannelPartition/nocolor (0.00s)
+=== RUN   TestTUXDataValuesPreserved
+--- PASS: TestTUXDataValuesPreserved (0.00s)
+=== RUN   TestTUXPostM4CarriesNewPresentation
+--- PASS: TestTUXPostM4CarriesNewPresentation (0.00s)
+=== RUN   TestArchiveLegacySkills_ContinuesAfterFailure
+=== PAUSE TestArchiveLegacySkills_ContinuesAfterFailure
+=== RUN   TestArchiveLegacySkills_Integration
+=== PAUSE TestArchiveLegacySkills_Integration
+=== RUN   TestArchiveLegacySkills_PartialPresent
+=== PAUSE TestArchiveLegacySkills_PartialPresent
+=== RUN   TestArchiveForce
+=== PAUSE TestArchiveForce
+=== RUN   TestRunCleanReinstall_ScenarioA
+--- PASS: TestRunCleanReinstall_ScenarioA (0.02s)
+=== RUN   TestRunCleanReinstall_ScenarioB
+--- PASS: TestRunCleanReinstall_ScenarioB (0.02s)
+=== RUN   TestRunCleanReinstall_ScenarioC
+--- PASS: TestRunCleanReinstall_ScenarioC (0.00s)
+=== RUN   TestRunCleanReinstall_DryRun
+--- PASS: TestRunCleanReinstall_DryRun (0.00s)
+=== RUN   TestRunCleanReinstall_EmptyRoot
+--- PASS: TestRunCleanReinstall_EmptyRoot (0.00s)
+=== RUN   TestRunCleanReinstall_DeployerErrorPropagates
+--- PASS: TestRunCleanReinstall_DeployerErrorPropagates (0.02s)
+=== RUN   TestRunCleanReinstall_PopulatesPATHContext
+--- PASS: TestRunCleanReinstall_PopulatesPATHContext (0.02s)
+=== RUN   TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006
+=== RUN   TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006/zero_deprecated_paths_→_no_Removed_line,_informational_line_instead
+=== RUN   TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006/real_removals_→_Removed_line_reports_the_actual_count
+--- PASS: TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006 (0.04s)
+    --- PASS: TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006/zero_deprecated_paths_→_no_Removed_line,_informational_line_instead (0.02s)
+    --- PASS: TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006/real_removals_→_Removed_line_reports_the_actual_count (0.02s)
+=== RUN   TestReproduction_FingerprintNonConvergence_Issue1084
+--- PASS: TestReproduction_FingerprintNonConvergence_Issue1084 (0.00s)
+=== RUN   TestReproduction_MigrateTargetExistsLoop_Issue1132
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] design.yaml already migrated — skipping
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 0 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestReproduction_MigrateTargetExistsLoop_Issue11322878982707/001/.agency.archived
+--- PASS: TestReproduction_MigrateTargetExistsLoop_Issue1132 (0.04s)
+=== RUN   TestReproduction_GitignoreUserBlockDeleted_Issue1131
+--- PASS: TestReproduction_GitignoreUserBlockDeleted_Issue1131 (0.02s)
+=== RUN   TestCleanReinstall_PrunesOldConfigBackups
+--- PASS: TestCleanReinstall_PrunesOldConfigBackups (0.02s)
+=== RUN   TestRunCleanReinstall_BackupCoverageGate_AbortsBeforeRemove
+--- PASS: TestRunCleanReinstall_BackupCoverageGate_AbortsBeforeRemove (0.00s)
+=== RUN   TestUpdateSubsystem_HomeSeamReach
+=== RUN   TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context
+=== RUN   TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy
+2026/09/10 23:34:02 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestUpdateSubsystem_HomeSeamReach (0.24s)
+    --- PASS: TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context (0.03s)
+    --- PASS: TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy (0.21s)
+=== RUN   TestArchiveIdempotency
+=== PAUSE TestArchiveIdempotency
+=== RUN   TestArchiveIdempotency_NoNewFiles
+=== PAUSE TestArchiveIdempotency_NoNewFiles
+=== RUN   TestDryRunArchive_PredictsRemovalNotArchive
+=== PAUSE TestDryRunArchive_PredictsRemovalNotArchive
+=== RUN   TestDryRunArchive_NoSkills_HonestZero
+=== PAUSE TestDryRunArchive_NoSkills_HonestZero
+=== RUN   TestPresentLegacySkillIDs
+=== PAUSE TestPresentLegacySkillIDs
+=== RUN   TestReportArchiveShortfall
+=== PAUSE TestReportArchiveShortfall
+=== RUN   TestRenderUpdateOutcome_ManagedBreakdown
+=== PAUSE TestRenderUpdateOutcome_ManagedBreakdown
+=== RUN   TestRenderUpdateOutcome_ZeroDetailUnchanged
+=== PAUSE TestRenderUpdateOutcome_ZeroDetailUnchanged
+=== RUN   TestPreviewManagedCleanup
+=== PAUSE TestPreviewManagedCleanup
+=== RUN   TestPreviewManagedCleanup_EmptyProject
+=== PAUSE TestPreviewManagedCleanup_EmptyProject
+=== RUN   TestUpdateRepair_RecoverHintFlagExists
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/source_literals
+--- PASS: TestUpdateRepair_RecoverHintFlagExists (0.03s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/source_literals (0.03s)
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/template_sync
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall
+--- PASS: TestUpdateRepair_RenderUsesProjectGitMode (0.25s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/template_sync (0.22s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall (0.02s)
+=== RUN   TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup
+--- PASS: TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup (0.22s)
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported
+--- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported (0.00s)
+=== RUN   TestRenderDeployProgress_Bar
+--- PASS: TestRenderDeployProgress_Bar (0.00s)
+=== RUN   TestRenderDeployProgress_AllDone
+--- PASS: TestRenderDeployProgress_AllDone (0.00s)
+=== RUN   TestRenderUpdateOutcome
+--- PASS: TestRenderUpdateOutcome (0.00s)
+=== RUN   TestRenderUpdateOutcome_SingularFile
+--- PASS: TestRenderUpdateOutcome_SingularFile (0.00s)
+=== RUN   TestRenderUpdateOutcome_NoColor
+--- PASS: TestRenderUpdateOutcome_NoColor (0.00s)
+=== RUN   TestApplyWizardConfig_TokenNotPersisted
+--- PASS: TestApplyWizardConfig_TokenNotPersisted (0.00s)
+=== RUN   TestApplyWizardConfig_TokenOnlyCreatesNoUserYAML
+--- PASS: TestApplyWizardConfig_TokenOnlyCreatesNoUserYAML (0.00s)
+=== RUN   TestApplyWizardConfig_GitHubUsername
+--- PASS: TestApplyWizardConfig_GitHubUsername (0.00s)
+=== RUN   TestApplyWizardConfig_GitHubToken
+--- PASS: TestApplyWizardConfig_GitHubToken (0.00s)
+=== RUN   TestApplyWizardConfig_GitHubUsernameAndToken
+--- PASS: TestApplyWizardConfig_GitHubUsernameAndToken (0.00s)
+=== RUN   TestApplyWizardConfig_NoUserYAMLWhenGitHubFieldsEmpty
+--- PASS: TestApplyWizardConfig_NoUserYAMLWhenGitHubFieldsEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_ExistingUserYAMLPreserved
+--- PASS: TestApplyWizardConfig_ExistingUserYAMLPreserved (0.00s)
+=== RUN   TestApplyWizardConfig_AllFieldsPopulated
+--- PASS: TestApplyWizardConfig_AllFieldsPopulated (0.00s)
+=== RUN   TestApplyWizardConfig_GitStrategyYAML
+--- PASS: TestApplyWizardConfig_GitStrategyYAML (0.00s)
+=== RUN   TestApplyWizardConfig_GitStrategyYAML_NoFileCreatedWhenEmpty
+--- PASS: TestApplyWizardConfig_GitStrategyYAML_NoFileCreatedWhenEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_QualityYAML
+--- PASS: TestApplyWizardConfig_QualityYAML (0.00s)
+=== RUN   TestApplyWizardConfig_QualityYAML_NoFileCreatedWhenEmpty
+--- PASS: TestApplyWizardConfig_QualityYAML_NoFileCreatedWhenEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_GitLabCredentials
+--- PASS: TestApplyWizardConfig_GitLabCredentials (0.00s)
+=== RUN   TestApplyWizardConfig_GitLabInstanceURL
+--- PASS: TestApplyWizardConfig_GitLabInstanceURL (0.00s)
+=== RUN   TestApplyWizardConfig_AllFields
+--- PASS: TestApplyWizardConfig_AllFields (0.00s)
+=== RUN   TestApplyWizardConfig_ConversationLang
+--- PASS: TestApplyWizardConfig_ConversationLang (0.00s)
+=== RUN   TestApplyWizardConfig_ConversationLang_NoFileCreatedWhenEmpty
+--- PASS: TestApplyWizardConfig_ConversationLang_NoFileCreatedWhenEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_UserName
+--- PASS: TestApplyWizardConfig_UserName (0.00s)
+=== RUN   TestApplyWizardConfig_UserNameWithoutGitCredentials
+--- PASS: TestApplyWizardConfig_UserNameWithoutGitCredentials (0.00s)
+=== RUN   TestApplyWizardConfig_UserNamePreservesGitCredentials
+--- PASS: TestApplyWizardConfig_UserNamePreservesGitCredentials (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsMalformedGitLabURL
+--- PASS: TestApplyWizardConfig_RejectsMalformedGitLabURL (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsHTTPGitLabURL
+--- PASS: TestApplyWizardConfig_RejectsHTTPGitLabURL (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsMalformedGitHubUsername
+--- PASS: TestApplyWizardConfig_RejectsMalformedGitHubUsername (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsLeadingHyphenUsername
+--- PASS: TestApplyWizardConfig_RejectsLeadingHyphenUsername (0.00s)
+=== RUN   TestApplyWizardConfig_AcceptsValidIdentityInput
+--- PASS: TestApplyWizardConfig_AcceptsValidIdentityInput (0.00s)
+=== CONT  TestArchiveLegacySkills_ContinuesAfterFailure
+=== CONT  TestRenderUpdateOutcome_ZeroDetailUnchanged
+=== CONT  TestReportArchiveShortfall
+=== CONT  TestArchiveLegacySkills_PartialPresent
+=== CONT  TestArchiveLegacySkills_Integration
+--- PASS: TestRenderUpdateOutcome_ZeroDetailUnchanged (0.00s)
+=== CONT  TestArchiveForce
+=== CONT  TestDryRunArchive_NoSkills_HonestZero
+=== CONT  TestPresentLegacySkillIDs
+=== CONT  TestPreviewManagedCleanup_EmptyProject
+=== CONT  TestRenderUpdateOutcome_ManagedBreakdown
+=== CONT  TestArchiveIdempotency
+=== CONT  TestDryRunArchive_PredictsRemovalNotArchive
+--- PASS: TestRenderUpdateOutcome_ManagedBreakdown (0.00s)
+=== CONT  TestArchiveIdempotency_NoNewFiles
+=== CONT  TestPreviewManagedCleanup
+=== RUN   TestArchiveForce/force_with_drift_creates_backup_and_overwrites
+=== PAUSE TestArchiveForce/force_with_drift_creates_backup_and_overwrites
+=== RUN   TestArchiveForce/force_without_drift_is_idempotent
+=== PAUSE TestArchiveForce/force_without_drift_is_idempotent
+=== RUN   TestArchiveForce/force_false_preserves_drift_error
+=== PAUSE TestArchiveForce/force_false_preserves_drift_error
+=== RUN   TestArchiveForce/force_with_drift_backup_failure_preserves_original
+=== PAUSE TestArchiveForce/force_with_drift_backup_failure_preserves_original
+=== CONT  TestArchiveForce/force_with_drift_creates_backup_and_overwrites
+=== CONT  TestArchiveForce/force_false_preserves_drift_error
+=== CONT  TestArchiveForce/force_with_drift_backup_failure_preserves_original
+=== CONT  TestArchiveForce/force_without_drift_is_idempotent
+--- PASS: TestReportArchiveShortfall (0.01s)
+--- PASS: TestDryRunArchive_NoSkills_HonestZero (0.01s)
+--- PASS: TestPreviewManagedCleanup_EmptyProject (0.01s)
+--- PASS: TestDryRunArchive_PredictsRemovalNotArchive (0.02s)
+=== RUN   TestArchiveLegacySkills_ContinuesAfterFailure/success_count_excludes_failures
+--- PASS: TestPresentLegacySkillIDs (0.02s)
+--- PASS: TestArchiveLegacySkills_ContinuesAfterFailure (0.03s)
+    --- PASS: TestArchiveLegacySkills_ContinuesAfterFailure/success_count_excludes_failures (0.00s)
+--- PASS: TestPreviewManagedCleanup (0.03s)
+--- PASS: TestArchiveForce (0.00s)
+    --- PASS: TestArchiveForce/force_without_drift_is_idempotent (0.03s)
+    --- PASS: TestArchiveForce/force_false_preserves_drift_error (0.03s)
+    --- PASS: TestArchiveForce/force_with_drift_backup_failure_preserves_original (0.03s)
+    --- PASS: TestArchiveForce/force_with_drift_creates_backup_and_overwrites (0.03s)
+--- PASS: TestArchiveLegacySkills_PartialPresent (0.04s)
+--- PASS: TestArchiveIdempotency_NoNewFiles (0.05s)
+--- PASS: TestArchiveLegacySkills_Integration (0.07s)
+--- PASS: TestArchiveIdempotency (0.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.051s
