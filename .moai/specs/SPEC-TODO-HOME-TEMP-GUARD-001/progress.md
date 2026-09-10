@@ -490,6 +490,62 @@ measurement_head: db45d8209
 measurement_branch: WT-home-fallback
 ```
 
+### 개정 0.1.5 — run-phase 재측정 (카드 t574, 2026-09-10)
+
+위 블록은 첫 close(0.1.4)의 run 신호이며 고쳐 쓰지 않는다. 이 블록은 개정 0.1.5의 `next:`(run 재측정)를 이행한 기록을 덧붙인다. 코드 변경은 없고, AC-THG-006의 판정 명령을 기준 트리와 뮤턴트 M-574 아래에서 다시 재서 plan-audit D2(뮤턴트 대조에 명령·뮤턴트 소스·exit 코드가 필드로 남지 않음)를 닫는다. 예측 파일은 뮤턴트 주입 **전에** 따로 커밋했으므로, 순서는 커밋 그래프로 확인된다(예측 커밋이 이 블록을 싣는 커밋의 조상).
+
+```yaml
+amendment_run_status: audit-ready
+amendment_run_complete_at: 2026-09-10
+amendment_version: "0.1.5"
+card: t574
+measurement_tree: .claude/worktrees/t574
+measurement_branch: WT-temp-roots-ac
+run_entry_head: d937cd68d
+mutant_prediction_commit: 0f30477af              # 예측만 실은 커밋 — 뮤턴트 주입 전
+measurement_head: 0f30477af                       # 기준 실행은 예측 커밋과 같은 턴에 발행돼 d937cd68d 일 수도 있다 — 두 트리의 차이는 예측 .md 하나, Go 파일 없음
+go_version: go1.26.8 darwin/arm64
+code_change: none                                 # temp_origin.go 는 뮤턴트 주입 후 되돌림 — 작업 blob 633b09c24 == HEAD blob 633b09c24
+
+measurements:
+  - id: baseline
+    command: "go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v"
+    exit_code: 0
+    top_level_run: 2                              # 기대 2 — 충족
+    result: "TestTempOrigin_ComponentBoundary PASS · TestDefaultTempRoots_Membership PASS"
+    evidence: .moai/reports/t574/run-baseline.txt
+  - id: mutant-M-574
+    mutant: "defaultTempRoots() 본문 → return []string{os.TempDir()} (os 계속 사용, 컴파일됨)"
+    mutant_source: .moai/reports/t574/run-mutant-source.diff
+    prediction: .moai/reports/t574/run-mutant-prediction.md
+    command: "go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v"
+    exit_code: 1
+    top_level_run: 2                              # 기대 2 — 충족
+    result: "TestTempOrigin_ComponentBoundary PASS · TestDefaultTempRoots_Membership FAIL — fixed temp root \"/tmp\" missing · fixed temp root \"/var/folders\" missing · has 1 members, want 3"
+    prediction_matched: true
+    evidence: .moai/reports/t574/run-mutant.txt
+  - id: mutant-revert
+    command: "git diff --stat -- internal/kanban/temp_origin.go"
+    output: empty                                 # 대조: 같은 경로가 뮤턴트 아래에서는 비어 있지 않은 diff 를 냈다
+    git_diff_quiet_exit_code: 0
+    evidence: .moai/reports/t574/run-mutant-revert.txt
+  - id: kanban-package
+    command: "go test -count=1 ./internal/kanban/"
+    exit_code: 0
+    result: "ok  github.com/modu-ai/moai-adk/internal/kanban  158.924s"
+    evidence: .moai/reports/t574/run-kanban-pkg.txt
+
+ac_thg_006: PASS                                  # 경계 절 + 소속 절, 판정 명령 2건 모두 PASS
+ac_count: 8                                       # 불변
+plan_audit_d2: closed                             # 명령·뮤턴트 diff·exit 코드가 각 증거 파일의 필드로 남았다
+evidence_root: .moai/reports/t574/
+gaps:
+  - "리눅스 셀(TMPDIR 미설정 시 os.TempDir() == /tmp) 미측정 — CI 몫"
+  - "internal/cli 패키지와 golangci-lint 는 이번 재측정에서 돌리지 않았다(코드 변경 없음, 레인 범위 규율)"
+  - "뮤턴트 아래에서는 선택된 2건만 돌렸다 — 나머지 kanban 테스트의 뮤턴트 아래 결과는 plan-phase 증거(.moai/reports/t574/mutant-kanban.txt)의 것이며 이번에 다시 재지 않았다"
+next: "sync 재close — manager-docs 가 기존 sync 블록 아래에 덧붙인다"
+```
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 측정 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536` · 브랜치 `WT-home-fallback` · sync 진입 HEAD `4e99fc785`. 이 절의 모든 인용은 반출된 `.moai/reports/t536/` 파일과 이번 회차 명령 출력만 지목한다.
