@@ -175,4 +175,73 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	8.462s
 2. **모듈 루트 경로에 공백이 있으면** `for _mr in $MODROOTS`의 비인용 단어 분리가 깨진다. 착지분에서 넘어온 선재 성질이며 이번 편집이 만들지 않았다.
 3. **`.moai/config/build-tags`가 존재하되 유효 줄이 없으면** `set -e` 아래에서 `[ -n "$_bt_line" ] && BT_TAGS=...`가 상태 1로 훅을 중단시킬 수 있다. 역시 선재 성질이며 미측정 — 확인 필요하면 별도 카드.
 4. **`internal/cli` 선재 실패 4건**(§5.4)은 이 카드 소관이 아니지만 develop에 남아 있다. 리드가 t600으로 발행했다. `TestAuditLagUsesBinlagSeam`은 REQ-ABI-006 계약 위반을 주장하는 성질이 달라 분리 판단이 필요할 수 있다.
-5. **에러가 지목하는 파일명이 무작위라는 성질 자체**(§5.4)가 별개의 계기 결함이다. `expectedBlobs` map 순회의 첫 적중을 출력하므로, 실패를 파일명으로 귀속하려는 다음 사람은 실행마다 다른 답을 얻는다. t600에 딸린 축으로 보이며 리드 판정 요청.
+5. **에러가 지목하는 파일명이 무작위라는 성질 자체**(§5.4)가 별개의 계기 결함이다. `expectedBlobs` map 순회의 첫 적중을 출력하므로, 실패를 파일명으로 귀속하려는 다음 사람은 실행마다 다른 답을 얻는다. 리드가 **t606으로 발행**했다 — t600에 딸린 축이 아니라 **형제 축**이다. t600을 고쳐 넷이 초록이 되어도 파일명 무작위성은 남아 앞으로의 실패에서 같은 오귀속을 만들기 때문이다. 카드 문안에 대조군이 [HARD]로 박혔다: 같은 입력으로 반복 실행해 지목이 흔들리는 것을 먼저 잴 것 — 한 번 실행으로는 무작위성이 안 보인다.
+
+---
+
+## 8. 병합 트리 재측정 (2026-09-10, 리드 슬롯 승인)
+
+### 8.1 흡수
+
+| 항목 | 값 |
+|---|---|
+| 흡수 대상 | 로컬 `develop` @ `c8203fbf3` |
+| 흡수 결과 | `f51f7b9e6` (충돌 없음) |
+| 병합 트리 | `d0782bfc2b40c637d01180a452c6d90ddf1f6d8e` |
+
+### 8.2 재측정 — 파이프 없음, 전체 출력 보존
+
+```
+$ go test ./internal/cli/... -count=1 -timeout 60m > .moai/reports/t554/remeasure-merged.txt 2>&1
+REMEASURE_EXIT=1
+```
+
+(래퍼는 exit 0을 보고했으나 명령의 판정은 위 값이다.)
+
+실패 패키지는 `internal/cli` 하나이고 하위 16개는 모두 `ok`다. panic·timeout·빌드 실패는 없다(882.553s < 60m).
+
+**고유 실패 이름 — 중첩 재출력 포함 전수**:
+
+```
+$ grep -oE -- '--- FAIL: [A-Za-z0-9_/]+' .moai/reports/t554/remeasure-merged.txt | sort | uniq -c
+   1 --- FAIL: TestAuditLagUsesBinlagSeam
+   2 --- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition
+   2 --- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+   1 --- FAIL: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite
+```
+
+×2는 `RunsBoundedFocusedSuite`가 중첩 스위트 출력을 재인쇄한 것이다. **고유 이름은 정확히 기지 4건이며 5번째는 없다** — 리드 통과 기준(부분집합)을 충족한다.
+
+### 8.3 이 카드 테스트의 양성 증거
+
+비-verbose 출력은 통과한 테스트를 인쇄하지 않는다. "FAIL 줄이 없다"는 "돌아서 통과했다"를 입증하지 못하므로 별도로 쟀다:
+
+```
+$ go test ./internal/cli/ -run 'TestPreCommit' -v -count=1 -timeout 20m > .moai/reports/t554/remeasure-precommit-v.txt 2>&1
+PRECOMMIT_V_EXIT=0
+--- PASS: TestPreCommitHook_SubmodulePassesClean (0.27s)
+--- PASS: TestPreCommitHook_SubmoduleVetBlocks (0.40s)
+--- PASS: TestPreCommitHook_OutsideAnyModuleSkips (0.24s)
+--- PASS: TestPreCommitHook_RootModuleStillVets (0.29s)
+--- PASS: TestPreCommitTemplateMatchesConstant (0.00s)
+```
+
+`TestPreCommit*` PASS 39건, FAIL 0건.
+
+### 8.4 델타 판정 — **이 재측정은 병합 근거로 무효다**
+
+재측정 직후 develop을 재판독하니 움직여 있었다: `c8203fbf3` → `d3b7d438d`.
+
+```
+$ git diff --name-only c8203fbf3 d3b7d438d -- internal/cli
+internal/cli/todo.go
+internal/cli/todo_verb_leak_test.go
+internal/cli/update/merge/conflict_blind_breadth_test.go
+internal/cli/update/merge/conflict_blind_repro_test.go
+```
+
+`internal/cli/todo.go`는 **프로덕션 코드**다(t555, `c9a9e8866`, +151/−14 범위). 테스트 파일은 t555·t576에서 왔다.
+
+리드 규칙("흡수 시점 이후 델타가 `internal/cli` 코드를 건드렸으면 다시 흡수하고 재측정을 다시 하라")에 따라 **§8.2–8.3의 결과는 `f51f7b9e6` 트리에 대한 실측으로만 유효하고, 병합 근거로 쓰지 않는다.** 흡수하면 base 기준 판별식이 낡는다.
+
+**다음**: 리드가 슬롯을 다시 주면 그 시점 develop을 재흡수하고 재측정한다. t581(lane-5, `internal/cli` 테스트 파일 1개)이 대기 중이라 조기 재측정은 다시 무효화될 수 있어, 순번은 리드에 맡긴다.
