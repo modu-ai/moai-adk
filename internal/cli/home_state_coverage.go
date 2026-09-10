@@ -24,6 +24,7 @@ const (
 	homeStateCoverageCommitSubject            = "feat(state): add guarded home-state rollout (t592)"
 	homeStateCoverageRemediationCommitSubject = "fix(state): stabilize committed coverage evidence (t592)"
 	homeStateCoverageDeltaCommitSubject       = "fix(state): isolate committed coverage deltas (t592)"
+	homeStateCoverageCertificationSubject     = "fix(state): certify review remediation coverage (t592)"
 )
 
 type homeStateCoverageChangeSet struct {
@@ -198,6 +199,7 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 		homeStateCoverageCommitSubject,
 		homeStateCoverageRemediationCommitSubject,
 		homeStateCoverageDeltaCommitSubject,
+		homeStateCoverageCertificationSubject,
 	}
 	commitsBySubject := make(map[string]string, len(subjects))
 	log, err := gitCoverageOutput(root, "log", "--format=%H%x09%s", "HEAD")
