@@ -30,6 +30,18 @@ tier: M
   never retroactively blocked (REQ-006). B3: the advisory warning is emitted once (REQ-006).
   B4: behavioral RED cells are adopted at the M1 test-only commit (acceptance.md legend).
   B5: record only. B6: the doc line 43 claim moved out of this SPEC (§5).
+- 2026-09-10: plan-audit round 1 findings applied (`.moai/reports/t624/plan-audit.md`; 11
+  blocking, 7 optional), inside the existing decisions and in the "never looser" direction.
+  Two structural changes:
+  - **Auxiliary state.** A payload file and a retry marker are now named, each a separate file
+    beside the closed-token record (REQ-001, REQ-002). Every check-running invocation
+    invalidates the payload.
+  - **Payload generalized.** D1's persisted block now covers the output of every failing run,
+    advisory included. This lets the audit's write-ordering choice (a `fail` record without a
+    payload re-gates, REQ-007) hold without breaking B2 or B3.
+
+  REQ-010 is restated as an invariant over call history. REQ-013 is anchored on content rather
+  than line numbers.
 
 ## §1 Background and problem statement
 
@@ -54,9 +66,9 @@ Reproduced in an isolated git fixture (Go project, sync-phase commit subject; ev
 
 Root cause (hook lines 176-186 on `fa96fe644`): the hook writes **only** the HEAD SHA to
 `.moai/state/sync-quality-gate.last`, and it does so **before** the checks run. Lines 179-182
-then exit 0 whenever the recorded SHA equals HEAD, whatever the earlier run's outcome was. A
-failing sync commit therefore blocks exactly one turn, and every later turn on that HEAD
-passes silently with no check, no log line, and no output.
+then exit 0 whenever the recorded content equals the HEAD SHA, whatever the earlier run's
+outcome was. A failing sync commit therefore blocks exactly one turn, and every later turn on
+that HEAD passes silently with no check, no log line, and no output.
 
 Control A shows that re-gating on a new HEAD works; control B shows that a silent re-call
 after a pass is correct and must stay that way.
@@ -66,7 +78,8 @@ after a pass is correct and must stay that way.
 `quality-gates-quality.md` (both copies) says, at line 145, that a dependency vulnerability
 scan "runs automatically via the Stop hook". At line 142 it says the audit covers every
 manifest present at the project root, and at line 116 it calls this "the only check for that
-drift". The hook's header (line 3) calls the step a "dependency manifest audit".
+drift". The hook's comments call the step a "dependency manifest audit", once in the header
+(line 3) and again above the manifest step (line 287).
 
 What the hook actually does (lines 287-314 on `fa96fe644`) is run `git diff` over the
 detected language's manifests for the HEAD commit and set `deps_modified=1` when that diff is
@@ -86,22 +99,22 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
 ## §2 Decisions encoded (lead-approved — not re-opened here)
 
 - **D1 — outcome record.** The existing state path holds `<sha> <running|pass|fail>`. On
-  `fail` the emitted block payload is persisted beside it and re-emitted verbatim when the same
-  HEAD is gated again. A legacy record holding only a SHA means the outcome is unknown, and the
-  gate runs once more.
+  `fail` the emitted payload is persisted beside it and re-emitted verbatim when the same HEAD
+  is gated again, but only when that payload is a block (REQ-003, REQ-006). A legacy record
+  holding only a SHA means the outcome is unknown, and the gate runs once more.
 - **D2 — in-progress.** A `running` record for the same HEAD whose state-file mtime is older
   than the hook timeout (60 s, `internal/template/templates/.claude/settings.json.tmpl`, entry
   for `sync-phase-quality-gate.sh`) triggers one more run. A fresher `running` record is not
   re-run; the gate emits a non-blocking notice instead. **No path may be looser than the
-  current hook**: every situation in which today's hook blocks must still block.
-- **D3 — `stop_hook_active`.** When stdin carries `"stop_hook_active": true`, a stored failure
-  is not re-emitted as a block, so the runtime Stop-hook block cap is not spent. Re-delivery
-  happens on the next fresh turn. Detection is jq-free.
+  current hook**: every situation in which today's hook blocks must still block (REQ-010).
+- **D3 — `stop_hook_active`.** When stdin carries `stop_hook_active` set to `true`, a stored
+  failure is not re-emitted as a block, so the runtime Stop-hook block cap is not spent.
+  Re-delivery happens on the next fresh turn. Detection is jq-free.
 - **D4 — explicit retry.** There is no new flag or environment variable. Deleting the state
   file forces a new gate run, and the hook documents this.
-- **D5 — H03 wording.** Doc lines 116 and 140-146 (both copies) and the hook header comment
-  (both copies) are corrected to describe manifest-change observation. No gate behavior is
-  added or removed.
+- **D5 — H03 wording.** Doc lines 116 and 140-146 (both copies) and the hook's manifest
+  comments (both copies) are corrected to describe manifest-change observation. No gate
+  behavior is added or removed.
 - **D6 — SX-R05 wording.** The document states that the sync-auditor rubric is canonical and
   that Phase 8 is an additional lens whose CRITICAL-only stop gate never clears an earlier
   sync-auditor FAIL. Wording only.
@@ -109,49 +122,64 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
 ## §3 GEARS requirements
 
 - **REQ-001 (Ubiquitous):** The gate shall keep, for the HEAD it gates, a single-line record
-  `<sha> <outcome>` at `.moai/state/sync-quality-gate.last`, where `<outcome>` is one of
-  `running`, `pass`, `fail`. The record shall read `running` before any check starts. When
-  the checks finish it shall read `fail` if any check failed — whether the resolved mode then
-  blocked or only advised — and `pass` otherwise.
+  `<sha> <outcome>` at `.moai/state/sync-quality-gate.last`. `<outcome>` shall be exactly one
+  token from the closed set `running`, `pass`, `fail`; the gate shall write no other token and
+  no further field. The record shall read `running` before any check starts. When the checks
+  finish it shall read `fail` if any check failed — whether the resolved mode then blocked or
+  only advised — and `pass` otherwise.
 
-- **REQ-002 (When):** **When** a gate run emits a block, the gate shall persist the exact
-  bytes it wrote to stdout, under `.moai/state/`, bound to that HEAD.
+- **REQ-002 (Ubiquitous/When):** The gate shall keep two auxiliary files under `.moai/state/`,
+  each bound to its HEAD and separate from the record:
+  - a **payload file** holding the exact stdout bytes a failing run emitted, together with
+    whether those bytes were a block or an advisory message;
+  - a **retry marker** recording that the one stale re-run of REQ-009 has been used for that
+    HEAD.
 
-- **REQ-003 (When):** **When** the gate is invoked on a HEAD whose record is `fail` and a
-  persisted block exists for that HEAD, the gate shall not run the checks and shall write the
-  persisted block to stdout byte-identical — subject to REQ-005 and REQ-006.
+  **When** an invocation runs the checks, the gate shall, before any check starts, atomically
+  remove the payload file and set the retry marker. The marker shall be present if and only if
+  this invocation is that one stale re-run; otherwise it shall be removed. **When** a run
+  finishes with outcome `fail`, the gate shall atomically write the payload file first, and
+  only then write the `fail` record.
+
+- **REQ-003 (When):** **When** the gate is invoked on a HEAD whose record is `fail`, whose
+  payload file holds a block for that HEAD, and for which the mode resolved at this invocation
+  is blocking, the gate shall not run the checks and shall write the stored block to stdout
+  byte-identical — unless REQ-005 applies.
 
 - **REQ-004 (When):** **When** the record for the current HEAD is `pass`, the gate shall not
   run the checks and shall write nothing to stdout. **When** there is no record, or the
   recorded SHA differs from HEAD, the gate shall run the checks as it does today.
 
 - **REQ-005 (When):** **When** stdin's top-level `stop_hook_active` field is `true` and the
-  gate would re-deliver a stored failure under REQ-003, the gate shall emit no output carrying
-  a `decision` field, and shall leave the record and the persisted block unchanged so the next
-  invocation without the flag re-delivers the block. Detection shall not use `jq`, and a
-  `stop_hook_active` literal appearing escaped inside a JSON string value (such as
-  `last_assistant_message`) shall not count as the field. This requirement shall not suppress
-  a block from a run that actually executes the checks.
+  gate would re-deliver a stored block under REQ-003, the gate shall emit no output carrying a
+  `decision` field, and shall leave the record and the payload file unchanged so the next
+  invocation without the flag re-delivers the block. Detection shall not use `jq`, and shall
+  recognize the field whatever whitespace (none, one or more spaces, tabs) separates the key,
+  the colon, and the value. A `stop_hook_active` literal appearing escaped inside a JSON
+  string value (such as `last_assistant_message`) shall not count as the field. This
+  requirement shall not suppress a block from a run that executes the checks.
 
-- **REQ-006 (When):** **When** the gate would re-deliver a stored failure, it shall resolve the
-  blocking-versus-advisory mode at re-delivery time, from the same inputs and rules a check
-  run uses (`MOAI_SYNC_GATE_BLOCKING`, `MOAI_AUTONOMY_TIER`, and the failed-check
-  composition), and shall re-emit the stored block only when that mode is blocking. If that
-  mode is advisory, the gate shall neither run the checks nor write anything to stdout.
-  **When** the record is `fail` but no block was persisted (the first run was advisory), the
-  gate shall neither run the checks nor write anything to stdout, whatever the mode resolves
-  to now: an advisory first run is never retroactively blocked. The advisory warning is
-  therefore written once, by the run that executed the checks, as it is today.
+- **REQ-006 (When):** **When** the record for the current HEAD is `fail` and its payload file
+  holds a block, the gate shall resolve the blocking-versus-advisory mode at this invocation,
+  from the same inputs and rules a check run uses (`MOAI_SYNC_GATE_BLOCKING`,
+  `MOAI_AUTONOMY_TIER`, and the stored failed-check composition). If that mode is advisory,
+  the gate shall neither run the checks nor write anything to stdout. **When** the record is
+  `fail` and its payload file holds an advisory message, the gate shall neither run the checks
+  nor write anything to stdout, whatever the mode resolves to now: an advisory first run is
+  never retroactively blocked, and the advisory warning is written once, by the run that
+  executed the checks, as it is today.
 
-- **REQ-007 (When):** **When** the record holds only a SHA equal to HEAD, with no outcome
-  token (the legacy format), the gate shall treat the outcome as unknown, run the checks, and
-  replace the record per REQ-001.
+- **REQ-007 (When):** **When** the record file is empty or unreadable, or names the current
+  HEAD and is a bare SHA with no outcome token (the legacy format), carries a token outside the
+  closed set or any additional field, or is `fail` with no payload file for that HEAD, the gate
+  shall treat the outcome as unknown, run the checks, and rewrite the record per REQ-001.
 
 - **REQ-008 (While/When):** **While** the record for the current HEAD is `running` and the
-  state file was modified within the stale window, **when** the gate is invoked, it shall not
-  run the checks and shall emit only a non-blocking `systemMessage` saying that the previous
-  gate run for this HEAD has not completed. The stale window shall equal the timeout the
-  shipped settings template registers for this hook (60 s).
+  record file's age is within the stale window, **when** the gate is invoked, it shall not run
+  the checks and shall emit only a non-blocking `systemMessage` saying that the previous gate
+  run for this HEAD has not completed. The stale window shall equal the timeout the shipped
+  settings template registers for this hook (60 s), and the age comparison shall use that
+  value.
 
 - **REQ-009 (When):** **When** the record for the current HEAD is `running` and older than
   the stale window, the gate shall run the checks. That re-run shall happen at most once per
@@ -161,33 +189,56 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
   deleting the state file forces a new gate run. That notice shall never carry a `decision`
   field, so repeated notices never count toward the runtime Stop-hook block cap.
 
-- **REQ-010 (Ubiquitous):** For every input combination under which the hook on `fa96fe644`
-  emits a block (enumerated in acceptance.md §D.7), the gate shall emit a block carrying the
-  `hookSpecificOutput` wrapper.
+- **REQ-010 (Ubiquitous):** The gate shall block on every invocation on which the hook at
+  `fa96fe644`, given the same history, would block. A history is any sequence of invocations —
+  each with its own HEAD, environment, and stdin — that starts from no state record or from a
+  legacy bare-SHA record. Within it, state files change only through the gate itself, through
+  removal of state files (REQ-011), or through an interrupted gate run.
 
-- **REQ-011 (Ubiquitous):** Removing `.moai/state/sync-quality-gate.last` — or `.moai/state`
-  as a whole — shall make the next invocation run the checks. The hook's header comment shall
-  document this as the way to retry. No new flag or environment variable shall be added, and
-  every file this change introduces shall live under `.moai/state/`.
+  > **Why this holds (equivalence argument, non-normative).** On `fa96fe644` an invocation
+  > blocks only if all four hold:
+  > 1. it passes the early exits — sync-phase subject, recognized language marker, non-zero
+  >    code delta;
+  > 2. the record content differs from the bare HEAD SHA;
+  > 3. a check fails;
+  > 4. the mode resolves to blocking.
+  >
+  > In such a history the record is always absent or the bare SHA of the last gated HEAD, so
+  > condition 2 means "no record, or a record for another HEAD". The new gate writes its record
+  > for the same last gated HEAD, so in exactly those cases it also sees no record or another
+  > HEAD, and REQ-004 makes it run the checks. The early exits, check commands, and mode
+  > resolution are unchanged and run in the same order (REQ-012), so conditions 3 and 4
+  > produce the same block. The new state logic only decides whether the checks run, and it
+  > runs after the early exits, so each remaining input splits into independent classes: the
+  > subject pattern, the language branch, the failed-check composition, the mode inputs, the
+  > stdin form, and the starting state. acceptance.md §D.7 takes one representative per class.
+
+- **REQ-011 (Ubiquitous):** The gate shall run the checks on the first invocation after
+  `.moai/state/sync-quality-gate.last`, or `.moai/state` as a whole, has been removed. Its
+  header comment shall document that removal as the way to force a re-gate. The gate shall add
+  no flag or environment variable for retrying, and shall keep every file it introduces under
+  `.moai/state/`.
 
 - **REQ-012 (Ubiquitous):** The hook shall exit 0 on every path and block only through stdout
-  JSON. It shall not call `jq`. Its per-language detection, check commands, and `--skip-hook`
-  path shall stay unchanged for all 16 supported programming languages. Its comments shall
-  describe the outcome record (REQ-001 through REQ-011) instead of the once-per-commit sentinel
-  they describe on `fa96fe644`. Template content shall carry no SPEC ID, card id, internal
-  date, or commit SHA.
+  JSON. It shall invoke no `jq`. Its early exits, per-language detection, check commands, mode
+  resolution, and `--skip-hook` path shall stay unchanged for all 16 supported programming
+  languages. Its comments shall describe the outcome record and auxiliary state (REQ-001
+  through REQ-011) instead of the once-per-commit sentinel they describe on `fa96fe644`.
+  Template content shall carry no SPEC ID, card id, internal date, or commit SHA.
 
-- **REQ-013 (Ubiquitous):** Both copies of the hook shall be byte-identical. The two copies of
-  `quality-gates-quality.md` shall be identical over lines 1-161. Lines 162 onward of each
-  document copy shall be unchanged from `fa96fe644`. Each edit shall be made in the template
-  copy first.
+- **REQ-013 (Ubiquitous):** Both copies of the hook shall be byte-identical. The Phase 9
+  anchor line `Purpose: Ensure code has appropriate @MX annotations for AI agent context.
+  Supports all 16 MoAI-ADK languages.` shall appear exactly once in each copy of
+  `quality-gates-quality.md`. The two copies shall be identical from their first line through
+  that anchor line, and the text after it in each copy shall be unchanged from `fa96fe644`.
 
-- **REQ-014 (Ubiquitous):** Doc lines 116 and 140-146 (both copies) and the hook header's
-  Purpose line (both copies) shall describe manifest-change observation: the hook sets
-  `deps_modified` when a dependency manifest of the detected language changed in the HEAD
-  commit; the value is informational, never drives the decision, and is not a vulnerability
-  scan. They shall not claim that the hook scans vulnerabilities, audits every manifest at the
-  project root, or detects transitive-vulnerability drift.
+- **REQ-014 (Ubiquitous):** Doc lines 116 and 140-146 (both copies), the hook header's
+  Purpose line, and the hook's comment above the manifest step (both hook copies) shall
+  describe manifest-change observation: the hook sets `deps_modified` when a dependency
+  manifest of the detected language changed in the HEAD commit; the value is informational,
+  never drives the decision, and is not a vulnerability scan. None of them shall claim that the
+  hook scans vulnerabilities, audits every manifest at the project root, or detects
+  transitive-vulnerability drift. Neither hook copy shall contain the phrase `manifest audit`.
 
 - **REQ-015 (Ubiquitous):** `quality-gates-quality.md` (both copies) shall state that the
   sync-auditor Security rule (a Critical/High finding makes the result FAIL) is canonical, and
@@ -197,8 +248,6 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
 
 ## §4 Constraints
 
-- **Template-First.** Edit the template copy of each file first, then make the local copy
-  match (byte-identical for the hook; lines 1-161 for the document).
 - **Test resets must keep working.** `internal/hook/stopchain_ac004_006b_test.go` and
   `internal/hook/stopchain_trim_test.go` reset the gate by deleting `.moai/state` as a whole.
   All new state lives under `.moai/state/`.
@@ -207,13 +256,15 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
   line containing `printf`, `decision`, and `block`. No re-emission line may become that first
   match unless it carries the `hookSpecificOutput` wrapper and `hookEventName` `Stop`.
 - **Autonomy tiers.** `internal/hook/stopchain_ac004_006b_test.go` pins advisory-versus-blocking
-  per tier; a re-delivered failure must never block under an advisory tier (REQ-006).
-- **Stays dependency-free.** No `jq` (`.claude/rules/moai/development/hook-independence.md` §4,
-  row d) and no dependency on the `moai` binary.
+  per tier; a re-delivered failure must never block under an advisory resolution (REQ-006).
+- **Stays dependency-free.** No `jq` invocation
+  (`.claude/rules/moai/development/hook-independence.md` §4, row d) and no dependency on the
+  `moai` binary.
 - **Always exit 0.** Blocking goes through stdout JSON only.
 - **Verification scope.** Targeted `go test ./internal/hook/ ./internal/template/` runs. No
   local full suite and no `make build` in run-phase verification (dispatch constraint; plan.md
-  §D).
+  §B, B5). Template-First editing order is a process note (plan.md §D), not a verifiable
+  requirement.
 
 ## §5 Out of Scope
 
@@ -232,8 +283,8 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
 ### Out of Scope — other claims in the same document
 
 - Observed during plan-phase and handled elsewhere: line 43's claim that the Stop hook reads the shared diagnostic snapshot.
-- Everything from line 162 onward (the Phase 9 MX section), where the two document copies
-  already differ.
+- Everything after the Phase 9 anchor line (REQ-013), where the two document copies already
+  differ.
 
 ### Out of Scope — new controls and neighbouring mechanisms
 
@@ -243,5 +294,5 @@ HIGH finding which the sync-auditor already failed is cleared by Phase 8.
   documentation-only).
 - The Go Stop handler (`internal/hook/stop.go`), other hook scripts, and their wrappers.
 - Cross-session locking of `.moai/state/` when two sessions share one project root. Atomic
-  record writes are required (plan.md §G); a lock is not.
+  writes are required (REQ-002); a lock is not.
 - Changing the hook's 60-second timeout in the settings template.
