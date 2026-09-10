@@ -6,8 +6,8 @@
 ## 흡수
 
 - 흡수 대상: 로컬 `develop` `84e5666d9714571544bf05e88db9bdc034551ffb`(리드가 알린 tip 과 `git rev-parse develop` 일치).
-- 사전 예측: `git merge-tree --write-tree --name-only 84e5666d9 HEAD` → `CONFLICT (content): Merge conflict in CHANGELOG.md` 1건(`merge-tree-84e.txt`).
-- 실행: `git merge --no-ff develop` → `window-merge.log`, exit 1, `CONFLICT (content): Merge conflict in CHANGELOG.md` 만. index.lock·`Unable to write index` 없음.
+- 사전 예측: `git merge-tree --write-tree --name-only 84e5666d9 HEAD` → `CONFLICT (content): Merge conflict in CHANGELOG.md` 1건(`t560-merge-tree-84e.txt`).
+- 실행: `git merge --no-ff develop` → `t560-window-merge.log`, exit 1, `CONFLICT (content): Merge conflict in CHANGELOG.md` 만. index.lock·`Unable to write index` 없음.
 - 병합되지 않은 경로: `CHANGELOG.md` 하나. 인덱스 stage 1 `ff68df7f`(기준점), stage 2 `127732e9`(= `2d38b094b:CHANGELOG.md`), stage 3 `1c2a1ea1`(= `develop:CHANGELOG.md`).
 
 ## CHANGELOG 충돌 해결 (리드 승인 방식: 합집합)
@@ -18,7 +18,7 @@
 - 확인:
   - `git diff --check -- CHANGELOG.md` → exit 0
   - 충돌 표지 `^(<<<<<<<|=======|>>>>>>>)` → 0 (대조: 해결 전 사본 3, `changelog-conflicted-marker-count.txt`)
-  - `git diff develop -- CHANGELOG.md`(`changelog-vs-develop.diff`) → 추가 6줄·삭제 0줄, 추가 줄(`added-now.txt`)과 t560 원 항목 추가 줄(`added-orig.txt`)이 `cmp` exit 0
+  - `git diff develop -- CHANGELOG.md`(`t560-changelog-vs-develop.diff`) → 추가 6줄·삭제 0줄, 추가 줄(`t560-added-now.txt`)과 t560 원 항목 추가 줄(`t560-added-orig.txt`)이 `cmp` exit 0
   - `^## \[Unreleased\]` → 1
 - 흡수 병합 커밋: `2c07f89ff5c0627cf66eb5cfe2e81f889e476416`, 부모 `2d38b094b` · `84e5666d9`, 트리 `d0698df1c3c8e4fc1860ecd2bc8e81a252160e19`. 커밋 뒤 MERGE_HEAD 없음, 추적 수정 0.
 
@@ -54,7 +54,7 @@
 
 - `registerProfileLease`(`session_start.go`)는 `CLAUDE_CONFIG_DIR` 가 있으면 `homestate.OpenProfileLeases()`(`internal/homestate/profile_lease.go:51-68`)를 연다. 위치는 `paths.MoaiHome()`(`internal/paths/paths.go:68-77`, `MOAI_HOME` 이 절대경로일 때만 그 값, 아니면 `~/.moai`) 아래 `run/profile-leases.db`, SQLite WAL·`busy_timeout(5000)`·immediate txlock. 토큰이 없으면 임시 임대를 만든다.
 - 이 세션: `printenv CLAUDE_CONFIG_DIR` → `/Users/goos/.moai/claude-profiles/moai-adk`, `MOAI_PROFILE_LEASE_TOKEN` 길이 0, `MOAI_HOME` 미설정.
-- `NewSessionStartHandler(` 를 쓰는 internal/hook 테스트 파일 18개(`ss-handler-tests.txt`) 중 `MOAI_HOME`·`CLAUDE_CONFIG_DIR` 를 격리하는 파일은 0개. 격리 패턴은 핸들러를 직접 만들지 않는 `session_start_profile_lease_test.go:14-17`(`t.Setenv("MOAI_HOME", t.TempDir()…)`, `t.Setenv("CLAUDE_CONFIG_DIR", …)`)에만 있다(`home-isolating-tests.txt`).
+- `NewSessionStartHandler(` 를 쓰는 internal/hook 테스트 파일 18개(`t560-ss-handler-tests.txt`) 중 `MOAI_HOME`·`CLAUDE_CONFIG_DIR` 를 격리하는 파일은 0개. 격리 패턴은 핸들러를 직접 만들지 않는 `session_start_profile_lease_test.go:14-17`(`t.Setenv("MOAI_HOME", t.TempDir()…)`, `t.Setenv("CLAUDE_CONFIG_DIR", …)`)에만 있다(`t560-home-isolating-tests.txt`).
 - 실제 파일 `/Users/goos/.moai/run/profile-leases.db`: mtime 04:17:14, 331776 B, `-wal`·`-shm` 없음. 내 `internal/hook` 실행 종료는 04:14:36 이므로 마지막 쓰기는 다른 세션이다. 내 실행이 그 전에 행을 썼는지는 mtime 으로 가를 수 없고, DB 는 열지 않았다.
 - 창 전·재측정 뒤 동일: `~/.claude/settings.json` sha256 `86e2d9b6…`, `~/.zshrc` `~/.zprofile` `~/.zshenv` `~/.bashrc` `~/.bash_profile` `~/.profile` `~/.gitconfig` mtime. 이 감시 목록에 lease DB 는 없었다.
 

@@ -197,3 +197,22 @@ The classification is a closed set over the 20 real `exec.Command` call expressi
   from recurring — but it also means the list deserves the review a shared contract gets.
 - **The unreachable `RunTool` may become reachable.** If `Formatter`/`Linter` are ever wired into
   the gate, the defect arrives with them, and no test currently guards that site.
+
+---
+
+## Integration windows (2026-09-11, lane-8)
+
+The sections above describe the card at base `3ac58b5a1`. The integration record lives in three
+files and is summarised here only as pointers:
+
+- `window/summary.md` — first window. Absorbed local develop `84e5666d9` (merge `2c07f89ff`,
+  CHANGELOG union). gitenv, hook/quality, hook/security ok; hook copy parity 2/2; internal/hook
+  failed `TestSessionStart_DeferredScanDoesNotBlockReturn` (559ms > 500ms) on a handler and test
+  blob-identical to develop. Not merged.
+- `rerun/summary.md` — one home-isolated internal/hook run. The target test did not fail; two GLM
+  credential tests failed because the prescribed `MOAI_HOME` override hid their `HOME`-seeded env
+  file. Lead verdict (ii): merge without a further run; the two GLM failures are excluded as
+  isolation by-products.
+- `window2/summary.md` — second window. Absorbed local develop `526249cf6` (merge `7a76becca`, no
+  conflict). The delta touched no file under `internal/gitenv` or `internal/hook` (only reports and
+  three `internal/cli` test files), so tests were not re-run, by lead instruction.

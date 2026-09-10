@@ -1,0 +1,151 @@
+Merge made by the 'ort' strategy.
+ .moai/reports/t553/gh1640-comment-posted.md        |    67 +
+ .moai/reports/t553/m1-premise-recheck.md           |   139 +
+ .moai/reports/t661/c-wrapper-prescan.md            |    42 +
+ .moai/reports/t661/code-reading.md                 |    53 +
+ .moai/reports/t661/full-run/cli-full-exit.txt      |     1 +
+ .moai/reports/t661/full-run/cli-full.txt           | 14339 +++++++++++++++++++
+ .moai/reports/t661/full-run/fp-after-hooks.err     |     1 +
+ .moai/reports/t661/full-run/fp-after-hooks.out     |     0
+ .../reports/t661/full-run/fp-after-hooksparent.err |     1 +
+ .../reports/t661/full-run/fp-after-hooksparent.out |     0
+ .moai/reports/t661/full-run/fp-after-sha.err       |     0
+ .moai/reports/t661/full-run/fp-after-sha.out       |     7 +
+ .moai/reports/t661/full-run/fp-after-stat.err      |     0
+ .moai/reports/t661/full-run/fp-after-stat.out      |     7 +
+ .moai/reports/t661/full-run/fp-before-hooks.err    |     1 +
+ .moai/reports/t661/full-run/fp-before-hooks.out    |     0
+ .../t661/full-run/fp-before-hooksparent.err        |     1 +
+ .../t661/full-run/fp-before-hooksparent.out        |     0
+ .moai/reports/t661/full-run/fp-before-sha.err      |     0
+ .moai/reports/t661/full-run/fp-before-sha.out      |     7 +
+ .moai/reports/t661/full-run/fp-before-stat.err     |     0
+ .moai/reports/t661/full-run/fp-before-stat.out     |     7 +
+ .moai/reports/t661/full-run/load-after.txt         |     1 +
+ .moai/reports/t661/full-run/load-before.txt        |     1 +
+ .moai/reports/t661/full-run/precheck-pgrep.txt     |     8 +
+ .moai/reports/t661/full-run/run-end.txt            |     1 +
+ .moai/reports/t661/full-run/run-start.txt          |     1 +
+ .moai/reports/t661/full-run/summary.md             |    26 +
+ .moai/reports/t661/full-run/tree-head.txt          |     2 +
+ .moai/reports/t661/home-after-hooks-parent.txt     |     1 +
+ .moai/reports/t661/home-after-hooks.txt            |     1 +
+ .moai/reports/t661/home-after-sha.txt              |     7 +
+ .moai/reports/t661/home-after-stat.txt             |     7 +
+ .moai/reports/t661/home-before-hooks-parent.txt    |     1 +
+ .moai/reports/t661/home-before-hooks.txt           |     1 +
+ .moai/reports/t661/home-before-sha.txt             |     7 +
+ .moai/reports/t661/home-before-stat.txt            |     8 +
+ .moai/reports/t661/home-compare.md                 |    11 +
+ .moai/reports/t661/red-m1-precheck.txt             |     4 +
+ .moai/reports/t661/red-m1-revert-diffstat.txt      |     0
+ .moai/reports/t661/red-m1.txt                      |    10 +
+ .moai/reports/t661/red-m2-precheck.txt             |     3 +
+ .moai/reports/t661/red-m2-revert-diffstat.txt      |     0
+ .moai/reports/t661/red-m2.txt                      |    11 +
+ .moai/reports/t661/red-prediction.md               |    25 +
+ .moai/reports/t661/slot-run-tests.txt              |    53 +
+ .moai/reports/t661/slot-vet.txt                    |     0
+ .moai/reports/t661/verdict.md                      |    81 +
+ .moai/reports/t661/window/card-tests-exit.txt      |     1 +
+ .moai/reports/t661/window/card-tests.txt           |    53 +
+ .moai/reports/t661/window/delta-files.txt          |   255 +
+ .moai/reports/t661/window/delta-judgment.md        |    10 +
+ .moai/reports/t661/window/fp-after-hooks.err       |     1 +
+ .moai/reports/t661/window/fp-after-hooks.out       |     0
+ .moai/reports/t661/window/fp-after-hooksparent.err |     1 +
+ .moai/reports/t661/window/fp-after-hooksparent.out |     0
+ .moai/reports/t661/window/fp-after-sha.err         |     0
+ .moai/reports/t661/window/fp-after-sha.out         |     7 +
+ .moai/reports/t661/window/fp-after-stat.err        |     0
+ .moai/reports/t661/window/fp-after-stat.out        |     7 +
+ .moai/reports/t661/window/fp-before-hooks.err      |     1 +
+ .moai/reports/t661/window/fp-before-hooks.out      |     0
+ .../reports/t661/window/fp-before-hooksparent.err  |     1 +
+ .../reports/t661/window/fp-before-hooksparent.out  |     0
+ .moai/reports/t661/window/fp-before-sha.err        |     0
+ .moai/reports/t661/window/fp-before-sha.out        |     7 +
+ .moai/reports/t661/window/fp-before-stat.err       |     0
+ .moai/reports/t661/window/fp-before-stat.out       |     7 +
+ .moai/reports/t661/window/load-after.txt           |     1 +
+ .moai/reports/t661/window/load-before.txt          |     1 +
+ .moai/reports/t661/window/precheck-pgrep.txt       |     2 +
+ .moai/reports/t661/window/remeasure.md             |     8 +
+ .moai/reports/t661/window/tree-head.txt            |     1 +
+ internal/cli/main_test.go                          |   190 +
+ internal/cli/update_clean_install_test.go          |    23 +
+ internal/cli/update_skip_sync_test.go              |     9 +
+ 76 files changed, 15530 insertions(+)
+ create mode 100644 .moai/reports/t553/gh1640-comment-posted.md
+ create mode 100644 .moai/reports/t553/m1-premise-recheck.md
+ create mode 100644 .moai/reports/t661/c-wrapper-prescan.md
+ create mode 100644 .moai/reports/t661/code-reading.md
+ create mode 100644 .moai/reports/t661/full-run/cli-full-exit.txt
+ create mode 100644 .moai/reports/t661/full-run/cli-full.txt
+ create mode 100644 .moai/reports/t661/full-run/fp-after-hooks.err
+ create mode 100644 .moai/reports/t661/full-run/fp-after-hooks.out
+ create mode 100644 .moai/reports/t661/full-run/fp-after-hooksparent.err
+ create mode 100644 .moai/reports/t661/full-run/fp-after-hooksparent.out
+ create mode 100644 .moai/reports/t661/full-run/fp-after-sha.err
+ create mode 100644 .moai/reports/t661/full-run/fp-after-sha.out
+ create mode 100644 .moai/reports/t661/full-run/fp-after-stat.err
+ create mode 100644 .moai/reports/t661/full-run/fp-after-stat.out
+ create mode 100644 .moai/reports/t661/full-run/fp-before-hooks.err
+ create mode 100644 .moai/reports/t661/full-run/fp-before-hooks.out
+ create mode 100644 .moai/reports/t661/full-run/fp-before-hooksparent.err
+ create mode 100644 .moai/reports/t661/full-run/fp-before-hooksparent.out
+ create mode 100644 .moai/reports/t661/full-run/fp-before-sha.err
+ create mode 100644 .moai/reports/t661/full-run/fp-before-sha.out
+ create mode 100644 .moai/reports/t661/full-run/fp-before-stat.err
+ create mode 100644 .moai/reports/t661/full-run/fp-before-stat.out
+ create mode 100644 .moai/reports/t661/full-run/load-after.txt
+ create mode 100644 .moai/reports/t661/full-run/load-before.txt
+ create mode 100644 .moai/reports/t661/full-run/precheck-pgrep.txt
+ create mode 100644 .moai/reports/t661/full-run/run-end.txt
+ create mode 100644 .moai/reports/t661/full-run/run-start.txt
+ create mode 100644 .moai/reports/t661/full-run/summary.md
+ create mode 100644 .moai/reports/t661/full-run/tree-head.txt
+ create mode 100644 .moai/reports/t661/home-after-hooks-parent.txt
+ create mode 100644 .moai/reports/t661/home-after-hooks.txt
+ create mode 100644 .moai/reports/t661/home-after-sha.txt
+ create mode 100644 .moai/reports/t661/home-after-stat.txt
+ create mode 100644 .moai/reports/t661/home-before-hooks-parent.txt
+ create mode 100644 .moai/reports/t661/home-before-hooks.txt
+ create mode 100644 .moai/reports/t661/home-before-sha.txt
+ create mode 100644 .moai/reports/t661/home-before-stat.txt
+ create mode 100644 .moai/reports/t661/home-compare.md
+ create mode 100644 .moai/reports/t661/red-m1-precheck.txt
+ create mode 100644 .moai/reports/t661/red-m1-revert-diffstat.txt
+ create mode 100644 .moai/reports/t661/red-m1.txt
+ create mode 100644 .moai/reports/t661/red-m2-precheck.txt
+ create mode 100644 .moai/reports/t661/red-m2-revert-diffstat.txt
+ create mode 100644 .moai/reports/t661/red-m2.txt
+ create mode 100644 .moai/reports/t661/red-prediction.md
+ create mode 100644 .moai/reports/t661/slot-run-tests.txt
+ create mode 100644 .moai/reports/t661/slot-vet.txt
+ create mode 100644 .moai/reports/t661/verdict.md
+ create mode 100644 .moai/reports/t661/window/card-tests-exit.txt
+ create mode 100644 .moai/reports/t661/window/card-tests.txt
+ create mode 100644 .moai/reports/t661/window/delta-files.txt
+ create mode 100644 .moai/reports/t661/window/delta-judgment.md
+ create mode 100644 .moai/reports/t661/window/fp-after-hooks.err
+ create mode 100644 .moai/reports/t661/window/fp-after-hooks.out
+ create mode 100644 .moai/reports/t661/window/fp-after-hooksparent.err
+ create mode 100644 .moai/reports/t661/window/fp-after-hooksparent.out
+ create mode 100644 .moai/reports/t661/window/fp-after-sha.err
+ create mode 100644 .moai/reports/t661/window/fp-after-sha.out
+ create mode 100644 .moai/reports/t661/window/fp-after-stat.err
+ create mode 100644 .moai/reports/t661/window/fp-after-stat.out
+ create mode 100644 .moai/reports/t661/window/fp-before-hooks.err
+ create mode 100644 .moai/reports/t661/window/fp-before-hooks.out
+ create mode 100644 .moai/reports/t661/window/fp-before-hooksparent.err
+ create mode 100644 .moai/reports/t661/window/fp-before-hooksparent.out
+ create mode 100644 .moai/reports/t661/window/fp-before-sha.err
+ create mode 100644 .moai/reports/t661/window/fp-before-sha.out
+ create mode 100644 .moai/reports/t661/window/fp-before-stat.err
+ create mode 100644 .moai/reports/t661/window/fp-before-stat.out
+ create mode 100644 .moai/reports/t661/window/load-after.txt
+ create mode 100644 .moai/reports/t661/window/load-before.txt
+ create mode 100644 .moai/reports/t661/window/precheck-pgrep.txt
+ create mode 100644 .moai/reports/t661/window/remeasure.md
+ create mode 100644 .moai/reports/t661/window/tree-head.txt
