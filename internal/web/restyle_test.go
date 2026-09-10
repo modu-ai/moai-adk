@@ -3,7 +3,6 @@ package web
 import (
 	"io/fs"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"regexp"
@@ -140,10 +139,12 @@ func TestFontServedFromStatic(t *testing.T) {
 	a := newTestApp(t)
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/static/fonts/Pretendard-Regular.subset.woff2", nil)
-	req.Host = "evil.example.com" // GET static asset is not Host-gated
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	const path = "/static/fonts/Pretendard-Regular.subset.woff2"
+	// Static assets are Host-gated like every other route (AC-WC-009 as amended).
+	if foreign := serveWithHost(t, h, http.MethodGet, path, "evil.example.com"); foreign.Code != http.StatusForbidden {
+		t.Errorf("GET woff2 from a foreign Host: status = %d, want 403", foreign.Code)
+	}
+	rec := serveGet(t, h, path)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET woff2 status = %d, want 200", rec.Code)
@@ -656,9 +657,7 @@ func TestGoormSansCodeSelfHosted(t *testing.T) {
 
 	// (4) Served offline from the embed (200, non-empty).
 	a := newTestApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/static/fonts/GoormSansCode-Regular.subset.woff2", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/static/fonts/GoormSansCode-Regular.subset.woff2")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET GoormSansCode subset status = %d, want 200", rec.Code)
 	}
