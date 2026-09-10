@@ -68,11 +68,40 @@ func TestT565AnchorVocabulary(t *testing.T) {
 		"## §F AC Matrix",
 		"## §E Success Criteria",
 		"## §E. Success criteria",
+		"## §D 수용 기준",
+		"## §H. 성공 기준 (요약)",
+		// Corpus shape (SPEC-SYNC-AUDIT-FALSIFICATION-001): with the file name
+		// removed, only "ac summary" names the section.
+		"## §H AC summary (full GWT in acceptance.md)",
 	} {
 		t.Run(heading, func(t *testing.T) {
 			md := "# Fixture\n\n## 1. Overview\n\nProse only.\n\n" + heading + "\n\n" + t565RealAC
 			t565Expect(t, md, []string{"AC-HDG-01"}, nil)
 		})
+	}
+}
+
+// Corpus shape (SPEC-LEARN-CHANNEL-SCOPE-001): an empty summary section that
+// names the criteria comes before the real one. The anchor is the first
+// section-naming heading whose section the parser reads lines from.
+func TestT565AnchorSkipsEmptySection(t *testing.T) {
+	md := "# Fixture\n\n" +
+		"## §F. Success Criteria\n\nProse only, no declarations.\n\n" +
+		"## §G. Out of Scope\n\nProse.\n\n" +
+		"## §I. Acceptance Criteria\n\n" + t565RealAC
+	t565Expect(t, md, []string{"AC-HDG-01"}, nil)
+}
+
+// When every section-naming heading is empty, the document still has an
+// acceptance criteria section: no "section not found" error.
+func TestT565AnchorAllEmptySectionsStillAnchor(t *testing.T) {
+	md := "# Fixture\n\n## §F. Success Criteria\n\nProse only.\n\n## §I. Acceptance Criteria\n\nProse only.\n"
+	criteria, errs := ParseAcceptanceCriteria(md, false)
+	if len(criteria) != 0 {
+		t.Errorf("expected no criteria from empty sections; got %+v", criteria)
+	}
+	if len(errs) != 0 {
+		t.Errorf("empty sections must still anchor (no section-not-found error); got %v", errs)
 	}
 }
 
