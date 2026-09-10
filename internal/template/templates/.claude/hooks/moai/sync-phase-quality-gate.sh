@@ -25,9 +25,34 @@
 # this script does not parse stopReason, so the carve-out remains documentation-
 # only at this layer (per runtime-recovery-doctrine.md §4).
 #
-# Once-per-commit: a given sync commit is gated at most ONCE. The gated HEAD SHA is
-# recorded in .moai/state/sync-quality-gate.last and the hook short-circuits on any
-# later turn whose HEAD is unchanged, so the gate does not re-run every turn-end.
+# Outcome record: for the HEAD it gates, the hook keeps one line
+# "<head-sha> <outcome>" in .moai/state/sync-quality-gate.last. <outcome> is
+# exactly one of running, pass, fail. The record reads "running" before any check
+# starts, then "fail" if a check failed (whether the mode blocked or only advised)
+# or "pass" otherwise. On a later turn with the same HEAD:
+#   - pass: no checks, empty stdout.
+#   - fail: no checks. The failing run's exact stdout, its kind (block or
+#     advisory), and the failed-check exit codes are kept in
+#     .moai/state/sync-quality-gate.payload. A stored block is re-delivered
+#     byte-identical while the mode resolved on that turn is blocking; a stored
+#     block under an advisory resolution, or a stored advisory message, stays
+#     silent (the advisory warning is written once, by the run that checked).
+#   - stop_hook_active: when stdin carries "stop_hook_active": true, a stored
+#     block is not re-delivered on that turn and no state changes, so the next
+#     turn without the flag re-delivers it. The flag never suppresses the output
+#     of a run that executes the checks.
+#   - running: a run did not finish. While the record is at most
+#     SYNC_GATE_STALE_WINDOW seconds old, no checks run and a non-blocking notice
+#     is emitted. An older record gets ONE re-run for that HEAD, recorded in
+#     .moai/state/sync-quality-gate.retry; once that re-run is used, later turns
+#     emit a non-blocking notice instead of re-running.
+#   - no record, a record for another HEAD, or an empty, unreadable, legacy
+#     (bare SHA), or malformed record: the checks run.
+# Every state write goes through a temporary file renamed into place, and a
+# failing run writes its payload before its "fail" record.
+#
+# Forcing a re-gate: delete .moai/state/sync-quality-gate.last (or .moai/state as
+# a whole). There is no flag or environment variable for retrying.
 #
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
@@ -167,22 +192,190 @@ if [ "$CODE_DELTA" -eq 0 ]; then
     exit 0
 fi
 
-# Once-per-commit sentinel: gate a given sync commit at most ONCE. Without this the
-# Stop hook re-fires on every subsequent turn-end while HEAD is still the sync commit
-# (the last-commit-subject trigger stays matched until a newer non-sync commit lands),
-# re-running the toolchain each turn. Record the gated HEAD SHA and short-circuit when
-# it is unchanged. The SHA is recorded BEFORE the checks run, so a slow/killed run
-# still counts as gated and cannot re-trigger a per-turn re-run.
+# --- Outcome record and auxiliary state (described in the header) ---
+# This runs only after the early exits above, so a non-sync HEAD, an unrecognized
+# project, or a docs-only delta never reads or writes any state.
 HEAD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
 STATE_DIR="${CLAUDE_PROJECT_DIR:-$PWD}/.moai/state"
-SENTINEL_FILE="$STATE_DIR/sync-quality-gate.last"
-if [ -n "$HEAD_SHA" ] && [ -f "$SENTINEL_FILE" ] && [ "$(cat "$SENTINEL_FILE" 2>/dev/null)" = "$HEAD_SHA" ]; then
-    # This commit was already gated in a prior turn — silent pass, no re-run.
-    exit 0
-fi
+RECORD_FILE="$STATE_DIR/sync-quality-gate.last"
+PAYLOAD_FILE="$STATE_DIR/sync-quality-gate.payload"
+RETRY_FILE="$STATE_DIR/sync-quality-gate.retry"
+GATE_LOG_DIR="${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
+# Stale window, in seconds, for a "running" record. It must equal the timeout the
+# settings template registers for this hook's Stop entry: a run older than that
+# timeout was killed by the runtime and will never write its outcome.
+SYNC_GATE_STALE_WINDOW=60
+
+# write_state_file <path>: copy stdin into <path> through a temporary file in the
+# state dir renamed into place, so a reader never sees a half-written file.
+# Failures are swallowed: the gate exits 0 on every path, and a missing write
+# leaves a state that later re-gates or notifies, never a silent pass.
+write_state_file() {
+    wsf_tmp="$STATE_DIR/.${1##*/}.tmp.$$"
+    if cat > "$wsf_tmp" 2>/dev/null && mv -f "$wsf_tmp" "$1" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$wsf_tmp" 2>/dev/null || true
+    return 0
+}
+
+# log_gate_event <fields>: one audit line in the gate log; failures are ignored.
+log_gate_event() {
+    mkdir -p "$GATE_LOG_DIR" 2>/dev/null || true
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG $1 head=$HEAD_SHA" \
+        >> "$GATE_LOG_DIR/sync-quality-gate.log" 2>/dev/null || true
+}
+
+# emit_gate_notice <text>: a non-blocking notice. It carries only a systemMessage,
+# so repeated notices never count toward the runtime Stop-hook block cap.
+emit_gate_notice() {
+    printf '{"systemMessage":"%s"}\n' "$1"
+}
+
+# stop_hook_active_set: succeeds when stdin carries "stop_hook_active": true in
+# object-key position. jq-free: the key's opening quote must not follow a
+# backslash (an escaped literal inside a JSON string value does not count), and
+# any run of spaces or tabs may separate the key, the colon, and the value. A
+# nested key is not told apart from a top-level one. A terminal stdin is not read.
+stop_hook_active_set() {
+    if [ -t 0 ]; then
+        return 1
+    fi
+    shas_stdin=$(cat 2>/dev/null || true)
+    shas_tab=$(printf '\t')
+    printf '%s\n' "$shas_stdin" | grep -Eq "(^|[^\\\\])\"stop_hook_active\"[ ${shas_tab}]*:[ ${shas_tab}]*true"
+}
+
+# record_age_seconds: prints the record file's age in seconds, or nothing when the
+# mtime cannot be read; the caller then treats the record as stale, which runs
+# the checks rather than staying silent.
+record_age_seconds() {
+    ras_mtime=$(stat -c %Y "$RECORD_FILE" 2>/dev/null || stat -f %m "$RECORD_FILE" 2>/dev/null || true)
+    case "$ras_mtime" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+    ras_now=$(date +%s 2>/dev/null || true)
+    case "$ras_now" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+    echo $((ras_now - ras_mtime))
+}
+
+# resolve_gate_mode: sets MODE (blocking|advisory) from MOAI_SYNC_GATE_BLOCKING,
+# MOAI_AUTONOMY_TIER, DECISION, C1_EXIT, and C2_EXIT. A check run and a
+# re-delivery both call it, so a stored failure is re-delivered only under the
+# same rules that decide a fresh run.
+resolve_gate_mode() {
+    # D3=Promote (observability hygiene policy): vet/build block by DEFAULT.
+    # MOAI_SYNC_GATE_BLOCKING is the opt-OUT — set to 0/off/false/advisory/no to
+    # downgrade a failing vet/build to a non-blocking warning. Default (unset) and
+    # the legacy =1 value both select blocking. tests/coverage are NOT run here.
+    case "${MOAI_SYNC_GATE_BLOCKING:-1}" in
+        0|off|false|advisory|no) MODE="advisory" ;;
+        *) MODE="blocking" ;;
+    esac
+
+    # Stop-chain trim guard: tier-aware mode override. Read
+    # $MOAI_AUTONOMY_TIER at the shell layer (no moai binary — the token is an
+    # env-key per OQ-1/REQ-003 so shell can read it directly). The tier relaxes
+    # ONLY the advisory-vs-blocking MODE of this gate, never the deny/ask denylist
+    # (that lives in pre_tool.go and is tier-invariant per REQ-007).
+    #   - fully-autonomous: advisory only (systemMessage, no decision:block).
+    #   - automatic:        build-only-block — a C2 (build) failure still blocks,
+    #                        but C1 (vet/lint) failures become advisory.
+    #   - semi-auto/unset:  current MODE (no change — backward compat, AC-007).
+    AUTONOMY_TIER=$(printf '%s' "${MOAI_AUTONOMY_TIER:-}" | tr '[:upper:]' '[:lower:]')
+    case "$AUTONOMY_TIER" in
+        fully-autonomous)
+            MODE="advisory"
+            ;;
+        automatic)
+            # Build (C2) failure still blocks; vet/lint (C1) failure → advisory.
+            if [ "$DECISION" = "block" ] && [ "$C1_EXIT" -ne 0 ] && [ "$C2_EXIT" -eq 0 ]; then
+                MODE="advisory"
+            fi
+            ;;
+        *)
+            # semi-auto / unset / unrecognized → MODE unchanged (AC-007 backward compat).
+            ;;
+    esac
+}
+
+RERUN_OF_RUNNING=0
 if [ -n "$HEAD_SHA" ]; then
-    mkdir -p "$STATE_DIR"
-    echo "$HEAD_SHA" > "$SENTINEL_FILE"
+    RECORD_CONTENT=""
+    if [ -f "$RECORD_FILE" ]; then
+        RECORD_CONTENT=$(cat "$RECORD_FILE" 2>/dev/null || echo "")
+    fi
+    case "$RECORD_CONTENT" in
+        "$HEAD_SHA pass")
+            # This HEAD already passed the gate: silent, no re-run.
+            exit 0
+            ;;
+        "$HEAD_SHA fail")
+            PAYLOAD_HEADER=""
+            if [ -f "$PAYLOAD_FILE" ]; then
+                PAYLOAD_HEADER=$(head -n 1 "$PAYLOAD_FILE" 2>/dev/null || echo "")
+            fi
+            P_SHA=""; P_KIND=""; P_C1=""; P_C2=""; P_EXTRA=""
+            read -r P_SHA P_KIND P_C1 P_C2 P_EXTRA <<< "$PAYLOAD_HEADER" || true
+            PAYLOAD_VALID=0
+            if [ "$P_SHA" = "$HEAD_SHA" ] && [ -z "$P_EXTRA" ]; then
+                case "$P_KIND" in
+                    block|advisory) PAYLOAD_VALID=1 ;;
+                esac
+                case "$P_C1" in ''|*[!0-9]*) PAYLOAD_VALID=0 ;; esac
+                case "$P_C2" in ''|*[!0-9]*) PAYLOAD_VALID=0 ;; esac
+            fi
+            if [ "$PAYLOAD_VALID" = "1" ]; then
+                if [ "$P_KIND" = "advisory" ]; then
+                    # The advisory warning was written once, by the run that checked.
+                    exit 0
+                fi
+                DECISION="block"
+                C1_EXIT="$P_C1"
+                C2_EXIT="$P_C2"
+                resolve_gate_mode
+                if [ "$MODE" != "blocking" ]; then
+                    # An advisory resolution never re-delivers a stored block.
+                    exit 0
+                fi
+                if stop_hook_active_set; then
+                    log_gate_event "mode=$MODE decision=redelivery-deferred stop_hook_active=true"
+                    exit 0
+                fi
+                tail -n +2 "$PAYLOAD_FILE" 2>/dev/null || true
+                log_gate_event "mode=$MODE decision=block-redelivered"
+                exit 0
+            fi
+            # A "fail" record without a usable payload is an unknown outcome: re-gate.
+            ;;
+        "$HEAD_SHA running")
+            RECORD_AGE=$(record_age_seconds)
+            if [ -n "$RECORD_AGE" ] && [ "$RECORD_AGE" -le "$SYNC_GATE_STALE_WINDOW" ]; then
+                emit_gate_notice "sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last."
+                log_gate_event "decision=running-notice age=$RECORD_AGE"
+                exit 0
+            fi
+            if [ "$(cat "$RETRY_FILE" 2>/dev/null || echo "")" = "$HEAD_SHA" ]; then
+                emit_gate_notice "sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run."
+                log_gate_event "decision=retry-exhausted-notice"
+                exit 0
+            fi
+            RERUN_OF_RUNNING=1
+            ;;
+    esac
+
+    # This invocation runs the checks: invalidate the payload, set or clear the
+    # retry marker, and record "running" before any check starts.
+    mkdir -p "$STATE_DIR" 2>/dev/null || true
+    rm -f "$PAYLOAD_FILE" 2>/dev/null || true
+    if [ "$RERUN_OF_RUNNING" = "1" ]; then
+        printf '%s\n' "$HEAD_SHA" | write_state_file "$RETRY_FILE"
+    else
+        rm -f "$RETRY_FILE" 2>/dev/null || true
+    fi
+    printf '%s running\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
 fi
 
 # Per-check result scratch dir.
@@ -328,39 +521,7 @@ elif [ "$C2_EXIT" -ne 0 ]; then
 fi
 
 # Resolve the mode once (set -e safe) for both stdout and the audit log.
-# D3=Promote (observability hygiene policy): vet/build block by DEFAULT.
-# MOAI_SYNC_GATE_BLOCKING is the opt-OUT — set to 0/off/false/advisory/no to
-# downgrade a failing vet/build to a non-blocking warning. Default (unset) and
-# the legacy =1 value both select blocking. tests/coverage are NOT run here.
-case "${MOAI_SYNC_GATE_BLOCKING:-1}" in
-    0|off|false|advisory|no) MODE="advisory" ;;
-    *) MODE="blocking" ;;
-esac
-
-# Stop-chain trim guard: tier-aware mode override. Read
-# $MOAI_AUTONOMY_TIER at the shell layer (no moai binary — the token is an
-# env-key per OQ-1/REQ-003 so shell can read it directly). The tier relaxes
-# ONLY the advisory-vs-blocking MODE of this gate, never the deny/ask denylist
-# (that lives in pre_tool.go and is tier-invariant per REQ-007).
-#   - fully-autonomous: advisory only (systemMessage, no decision:block).
-#   - automatic:        build-only-block — a C2 (build) failure still blocks,
-#                        but C1 (vet/lint) failures become advisory.
-#   - semi-auto/unset:  current MODE (no change — backward compat, AC-007).
-AUTONOMY_TIER=$(printf '%s' "${MOAI_AUTONOMY_TIER:-}" | tr '[:upper:]' '[:lower:]')
-case "$AUTONOMY_TIER" in
-    fully-autonomous)
-        MODE="advisory"
-        ;;
-    automatic)
-        # Build (C2) failure still blocks; vet/lint (C1) failure → advisory.
-        if [ "$DECISION" = "block" ] && [ "$C1_EXIT" -ne 0 ] && [ "$C2_EXIT" -eq 0 ]; then
-            MODE="advisory"
-        fi
-        ;;
-    *)
-        # semi-auto / unset / unrecognized → MODE unchanged (AC-007 backward compat).
-        ;;
-esac
+resolve_gate_mode
 
 # Emit a Stop-schema-compliant response.
 #
@@ -378,15 +539,36 @@ esac
 # exit 0), so the advisory path MUST NOT emit it.
 #
 # On allow, stdout is intentionally empty (silent pass); the audit log records detail.
+# The response is composed into a scratch file first so the exact bytes can be
+# stored for re-delivery before they are written to stdout.
+GATE_OUTPUT_FILE="$GATE_TMPDIR/stdout"
+: > "$GATE_OUTPUT_FILE"
+PAYLOAD_KIND=""
 if [ "$DECISION" = "block" ]; then
     if [ "$MODE" = "blocking" ]; then
+        PAYLOAD_KIND="block"
         printf '{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"%s"},"systemMessage":"sync-phase quality gate BLOCKED: %s (%s=%s %s=%s deps_modified=%s). Detail: .moai/logs/sync-quality-gate.log"}\n' \
-            "$BLOCKED_REASON" "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED"
+            "$BLOCKED_REASON" "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED" > "$GATE_OUTPUT_FILE"
     else
+        PAYLOAD_KIND="advisory"
         printf '{"systemMessage":"sync-phase quality gate WARNING (advisory, not blocking): %s (%s=%s %s=%s deps_modified=%s). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log"}\n' \
-            "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED"
+            "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED" > "$GATE_OUTPUT_FILE"
     fi
 fi
+
+# Record the outcome before writing stdout. A failing run writes its payload
+# first and its "fail" record second, so a crash between the two leaves a state
+# that re-gates or notifies on a later turn rather than one that passes silently.
+if [ -n "$HEAD_SHA" ]; then
+    if [ -n "$PAYLOAD_KIND" ]; then
+        { printf '%s %s %s %s\n' "$HEAD_SHA" "$PAYLOAD_KIND" "$C1_EXIT" "$C2_EXIT"; cat "$GATE_OUTPUT_FILE"; } | write_state_file "$PAYLOAD_FILE"
+        printf '%s fail\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
+    else
+        printf '%s pass\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
+    fi
+fi
+
+cat "$GATE_OUTPUT_FILE"
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
