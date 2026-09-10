@@ -23,7 +23,7 @@ Names used below:
 - `K` = the card branch tip at which the closure checks run, recorded in `PROG` §E.2 from
   `git -C <worktree> rev-parse HEAD` **before** the develop absorb
 
-**Closure-check anchor.** AC-003, AC-007, AC-010, AC-011, AC-012, and AC-016 run at `K`, before the
+**Closure-check anchor.** AC-003, AC-004, AC-007, AC-010, AC-011, AC-012, and AC-016 run at `K`, before the
 develop absorb, and every range or revision in their commands ends at `K`, never at `HEAD`. A re-run
 after the absorb uses the recorded `K`, so a develop commit touching either copy cannot enter those
 ranges.
@@ -54,7 +54,7 @@ the earlier draft now state the Option 2 outcome only; Options 1 and 3 were not 
 | AC-013 | REQ-011 | allowlist positive control | no allowlist exists → listed value not reported |
 | AC-014 | REQ-011 | allowlist negative controls in the listed line's commit and hunk | no allowlist exists → near-miss, unlisted, mixed, and PEM markers all reported |
 | AC-015 | REQ-007·012 | `REGEX` count over both copies after the edit | 0 and 0 → 0 and 0 |
-| AC-016 | REQ-013 | pinned procedure appears verbatim in `SECTION` and is unchanged from gate evidence to edit | no pin, no gate record, no edit → both pinned lines found, `cmp` exit 0 |
+| AC-016 | REQ-013 | pinned procedure appears verbatim in `SECTION` and is unchanged from gate evidence to edit | no pin, no gate record, no edit → all three pinned lines found, `cmp` exit 0 |
 
 ## §D.1 AC-001 — fixture review sequence
 
@@ -106,6 +106,9 @@ in R3 or `LATECELL` in R4 — does not satisfy the criterion; each marker must b
 where its commit first becomes reachable (`spec.md` REQ-001). A non-zero cell B also makes every
 later count unattributable.
 
+An `is-ancestor` reading other than exit 1, or a non-zero exit from any of R1-R4, means the sequence
+was not constructed as specified; it is rebuilt, and that reading is a gap, not a pass.
+
 **Note on re-reporting.** The `SIDECELL` count in R3 is informational. Option 2 scans only what
 became reachable since R2 and is expected not to report it again. Requiring re-reporting would
 contradict `spec.md` REQ-002.
@@ -139,13 +142,14 @@ checks that the worded procedure is the pinned one.
 ## §D.4 AC-004 — no credential-shaped line is committed
 
 - **Given** all of the card's commits, including evidence under `.moai/reports/t629/`.
-- **When** `git -C <worktree> diff feeecc980 HEAD --output=SP/card-diff.txt` runs, then
+- **When** `git -C <worktree> diff feeecc980 K --output=SP/card-diff.txt` runs, then
   `wc -l SP/card-diff.txt`, then
   `/usr/bin/grep -cE -- '^\+.*(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' SP/card-diff.txt`
 - **Then** `wc -l` is non-zero, so the operand is not empty, and the grep count is `0`.
 - The pattern requires an uppercase label, so a placeholder label such as `<LABEL>` and the regex text
   itself do not match it.
-- **Plan-time reading (HEAD `21e5837dc`):** 128-line diff, count `0`, grep exit 1.
+- **Plan-time reading (taken at commit `21e5837dc` in place of `K`, which does not exist until
+  `plan.md` §F M5):** `git diff feeecc980 21e5837dc`, 128-line diff, count `0`, grep exit 1.
 - **Plan-time reading (working tree on top of `af7eb142b`, every plan-revision edit in place):**
   `git diff feeecc980 --output=SP/card-diff-wt.txt`, then `wc -l` → `1236` lines, then the grep
   above over `SP/card-diff-wt.txt` → count `0`, grep exit `1`. Gap: the lines recording this reading
@@ -356,11 +360,21 @@ pinned yet.
   whose HEAD line carries a commit adding a line `LISTCELL <value>`, where `<value>` equals one listed
   public example value. The value is assembled from fragments held only in `SP`; no fixture script
   carrying those fragments is committed to this repository.
+- **Findings file.** `SP/al-findings.txt` holds one line per finding the procedure reports: the line
+  carrying the unsuppressed match. It is not the scan's patch output. The scan prints the whole diff
+  of every matching file, including context lines and neighbouring added lines (measured on a
+  fixture: `progress.md` §E.1, scan output granularity measurement). A line printed with a finding is
+  not a finding, and a listed line printed next to a finding is not reported by being printed.
+  Labels are counted only over lines that match `REGEX`.
 - **When** the raw scan — the procedure's scan command without suppression — is redirected to
   `SP/al-raw.txt`, and the procedure's reported findings after suppression to `SP/al-findings.txt`,
-  each exit code read without a pipe; then `/usr/bin/grep -c 'LISTCELL'` runs on each file.
+  each exit code read without a pipe; then the lines matching `REGEX` are extracted from each file,
+  `/usr/bin/grep -E -- 'REGEX' SP/al-raw.txt > SP/al-raw-match.txt` and
+  `/usr/bin/grep -E -- 'REGEX' SP/al-findings.txt > SP/al-match-lines.txt`, and
+  `/usr/bin/grep -c 'LISTCELL'` runs on each extracted file.
 - **Then** the raw count is ≥ 1, so the listed value matches the regex and suppression is actually
-  exercised, and the findings count is `0`.
+  exercised, and the findings count is `0`. Counting over `SP/al-raw.txt` itself would not show
+  this: `LISTCELL` shares its file with the negatives of AC-014 and is printed whenever they are.
 - **Plan-time reading:** not measurable — no allowlist and no suppression step exist. Under today's
   procedure every raw match is a finding, so a listed value would be reported (inferred from the
   absence of any suppression text in `SECTION`).
@@ -380,17 +394,21 @@ pinned yet.
 - **When** construction is checked first: the commit carrying `LISTCELL` is written with
   `git -C FX show <that commit> --output=SP/al-commit.txt`, then `/usr/bin/grep -c '^@@' SP/al-commit.txt`
   and `/usr/bin/grep -c` for `LISTCELL`, `NEARCELL`, `OTHERCELL`, and `MIXCELL` on that file; then the
-  two files of AC-013 are produced, and `/usr/bin/grep -c` runs for `NEARCELL`, `OTHERCELL`,
-  `MIXCELL`, `HEADCELL`, and `SIDECELL` on each.
+  two files of AC-013 and their `REGEX`-matching extracts `SP/al-raw-match.txt` and
+  `SP/al-match-lines.txt` are produced exactly as AC-013 defines them, and `/usr/bin/grep -c` runs for
+  `NEARCELL`, `OTHERCELL`, `MIXCELL`, `HEADCELL`, and `SIDECELL` on each extract. The findings file
+  and the counting rule are AC-013's: a line printed with a finding is not a finding.
 - **Then** the construction reading shows one hunk (`^@@` count `1`) and each of the four labels
-  counted `1`; every label counts ≥ 1 in `SP/al-raw.txt` and ≥ 1 in `SP/al-findings.txt`. A
-  construction reading other than that means the cell was not built; it is rebuilt, and that reading
-  is a gap, not a pass.
+  counted `1`; every label counts ≥ 1 in `SP/al-raw-match.txt` and ≥ 1 in `SP/al-match-lines.txt`.
+  A construction reading other than that means the cell was not built; it is rebuilt, and that
+  reading is a gap, not a pass.
 - **Mutant pairing:** suppressing everything fails this criterion; suppressing nothing fails AC-013;
   a path-based suppression that passes AC-013 fails here, because the negative lines share the
-  listed line's file; a suppression of the whole commit or the whole hunk once it contains a listed
-  value fails on `NEARCELL` and `OTHERCELL`, which sit in that commit and hunk; a suppression of the
-  whole line fails on `MIXCELL`; a prefix match on the listed value fails on `NEARCELL`.
+  listed line's file; a suppression of the whole commit, the whole file, or the whole hunk once it
+  contains a listed value fails on `NEARCELL` and `OTHERCELL`, which sit in that commit, file, and
+  hunk; a suppression of the whole line fails on `MIXCELL`; a prefix match on the listed value fails
+  on `NEARCELL`; reporting the scan's patch output as the findings file fails AC-013, because the
+  listed line is printed with its neighbours and itself matches `REGEX`.
 - **Plan-time reading:** not measurable — no allowlist exists.
 
 ## §D.15 AC-015 — no regex-matching text in either copy
@@ -408,9 +426,10 @@ pinned yet.
 ## §D.16 AC-016 — the edited copies prescribe the procedure the gate measured
 
 - **Given** `PROG` §E.2 carrying the pinned procedure under a `### Pinned procedure` heading, with
-  the scan command on one line beginning `Scan command: ` and the handling of a recorded tip that no
-  longer exists on one line beginning `Missing-tip handling: `, each written in the form the document
-  will carry (`plan.md` §C item 3); `R` as in AC-011; and `SECTION` extracted from the edited `TPL`.
+  how and when the tip set is recorded on one line beginning `Tip recording: `, the scan command on
+  one line beginning `Scan command: `, and the handling of a recorded tip that no longer exists on one
+  line beginning `Missing-tip handling: `, each written in the form the document will carry
+  (`plan.md` §C item 3); `R` as in AC-011; and `SECTION` extracted from the edited `TPL`.
 - **When** the following run, at `K`:
   - `git -C <worktree> log --format=%H -S '### Gate evidence' feeecc980..R~1 -- PROG > SP/g-rounds.txt`
     — the first line (newest) is `G`, the gate evidence commit of the round standing at the edit.
@@ -422,22 +441,26 @@ pinned yet.
     `sed -nE '/^### Pinned procedure$/,/^###? /{/^### Pinned procedure$/p;/^###? /!p;}' SP/prog-g.txt > SP/pin-g.txt`,
     the same over `SP/prog-r1.txt` into `SP/pin-r1.txt`, then `wc -l` on each
   - (b) `cmp SP/pin-g.txt SP/pin-r1.txt; echo "exit=$?"`
-  - `sed -n 's/^Scan command: //p' SP/pin-r1.txt > SP/pin-scan.txt` and
+  - `sed -n 's/^Tip recording: //p' SP/pin-r1.txt > SP/pin-tips.txt`,
+    `sed -n 's/^Scan command: //p' SP/pin-r1.txt > SP/pin-scan.txt`, and
     `sed -n 's/^Missing-tip handling: //p' SP/pin-r1.txt > SP/pin-gone.txt`, then `wc -l` and
     `/usr/bin/grep -c .` on each
-  - (a) `/usr/bin/grep -cF -f SP/pin-scan.txt SP/section.txt` and
+  - (a) `/usr/bin/grep -cF -f SP/pin-tips.txt SP/section.txt`,
+    `/usr/bin/grep -cF -f SP/pin-scan.txt SP/section.txt`, and
     `/usr/bin/grep -cF -f SP/pin-gone.txt SP/section.txt`
 - **Then** all of these hold: the `### Gate evidence` count at `R~1` is `1`, so the newest listed
   commit added the heading rather than removed it; each extracted block is at least 2 lines, so the
   comparison is not between two empty files; `cmp` prints `exit=0`, so the pinned procedure is
-  byte-identical at `G` and at `R~1`; `SP/pin-scan.txt` and `SP/pin-gone.txt` each hold exactly one
-  non-empty line, so neither pattern file is empty or a match-everything blank line; and both
-  fixed-string counts are ≥ 1, so the pinned scan command and the pinned missing-tip handling each
-  appear verbatim in `SECTION`. `LOC` is covered by AC-003's byte identity.
+  byte-identical at `G` and at `R~1`; `SP/pin-tips.txt`, `SP/pin-scan.txt`, and `SP/pin-gone.txt`
+  each hold exactly one non-empty line, so no pattern file is empty or a match-everything blank line;
+  and all three fixed-string counts are ≥ 1, so the pinned tip recording, the pinned scan command,
+  and the pinned missing-tip handling each appear verbatim in `SECTION`. `LOC` is covered by
+  AC-003's byte identity.
 - **Mutant pairing:** gating one procedure and then wording another that drops the missing-tip
-  handling fails (a); changing the pin after the gate without a new gate round fails (b), because
-  `G` stays the round that measured the old pin; a pin that exists only after the gate fails the
-  2-line block check at `G`.
+  handling fails (a); wording a section that records the tip set after the scan while the pin records
+  it before the scan fails (a) on the tip-recording line; changing the pin after the gate without a
+  new gate round fails (b), because `G` stays the round that measured the old pin; a pin that exists
+  only after the gate fails the 2-line block check at `G`.
 - **Mechanics check (plan revision 0.2.1, a scratch file in `SP`, not this repository):** the `sed`
   extraction above printed the heading and its body lines, kept a `####` sub-heading, and stopped
   before the next `###` heading; the `grep -cF -f` form printed `1` (exit 0) on a line holding the

@@ -119,6 +119,21 @@ after the operator decision, on top of `af7eb142b`
     merge commits, and stash entries were not exercised. The credential regex reading over this file
     is taken before this record's commit and recorded with the next revision readings; it does not
     include the lines that record it.
+- Revision readings (plan 0.2.2, resolving plan audit iteration 2 findings D13-D16, on top of
+  `3bb7f2423`; the audit report is `.moai/reports/t629/plan-audit-iter2.md`):
+  - Ceiling override: plan audit iteration 2 was the last iteration within the Tier M ceiling of 2
+    and returned FAIL. The operator approved one further audit — a third, exceeding the ceiling by
+    one — scoped to D13-D16 and the regressions their fixes create (answered in the lead session,
+    relayed by the lead, 2026-09-10). D17-D20 are not taken in this revision.
+  - D13 basis: the scan output granularity measurement above, committed alone in `3bb7f2423` before
+    the AC-013 and AC-014 definition that rests on it.
+  - Credential regex over this file before `3bb7f2423`:
+    `/usr/bin/grep -cE -- 'REGEX' progress.md` → `0`, exit 1; a fragment-assembled PEM-header
+    control in `SP` → `1`, exit 0.
+  - AC-004 over the working tree with every 0.2.2 revision edit in place, taken right before
+    staging: `git diff feeecc980 --output=SP/card-diff-wt3.txt`, then `wc -l` → `2101` lines,
+    then `/usr/bin/grep -cE -- '^\+.*(REGEX)' SP/card-diff-wt3.txt` → `0`, grep exit
+    `1`, read separately. Gap: the lines recording this reading are not in it.
 
 ## §E.2 Run-phase Evidence
 

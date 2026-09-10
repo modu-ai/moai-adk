@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-SECRET-SCAN-REFS-001
 title: "Review workflow secret scan — coverage of refs not reachable from HEAD"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-09-10
 updated: 2026-09-10
@@ -44,6 +44,13 @@ tier: M
   AC-005 runs the strict template leak tier. D9 — REQ-004 is Ubiquitous. D10 — superseded HISTORY
   notes are marked. D11 — closure checks run at a recorded `K` before the develop absorb. D12 — the
   cell ③ tip store sits outside the repository.
+- 2026-09-10 (0.2.2): plan audit iteration 2 returned FAIL; this revision resolves its findings
+  D13-D16 and nothing else. D13 — AC-013 and AC-014 define the findings file and count labels only
+  over lines that match the scan regex, on the basis of a fixture measurement of the scan's output
+  granularity (`progress.md` §E.1). D14 — the pin format and AC-016 add a tip-recording line. D15 —
+  AC-001's construction readings become a rebuild-and-gap condition. D16 — AC-004 ends its diff at
+  `K` and joins the closure-check anchor. The third plan audit exceeds the Tier M ceiling of 2 by
+  one, approved by the operator (lead session, relayed by the lead, 2026-09-10).
 
 ## §1 Background and problem statement
 

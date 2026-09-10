@@ -38,9 +38,10 @@ first, with an exact example-value allowlist and no path exclusions (`spec.md` �
 3. Before the first gate command runs, pin verbatim in `progress.md` §E.2 the Option 2 procedure
    under measurement: how and when the tip set is recorded, the scan command, and the handling of a
    recorded tip that no longer exists (`spec.md` §3.4). The pin sits under a `### Pinned procedure`
-   heading, with the scan command on one line beginning `Scan command: ` and the missing-tip
-   handling on one line beginning `Missing-tip handling: `, each written in the form the document
-   will carry, so AC-016 can find both verbatim in the edited section (REQ-013). Pin in the same
+   heading, with how and when the tip set is recorded on one line beginning `Tip recording: `, the
+   scan command on one line beginning `Scan command: `, and the missing-tip handling on one line
+   beginning `Missing-tip handling: `, each written in the form the document will carry, so AC-016
+   can find all three verbatim in the edited section (REQ-013). Pin in the same
    place, before the document edit, the sentence that will name the commits the per-review step does
    not cover (REQ-004), so AC-006 checks a sentence fixed in advance rather than one chosen after the
    fact.
