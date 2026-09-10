@@ -249,7 +249,7 @@ Harness configuration reference (harness.yaml):
 - `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
 - `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
 
-For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
 
 ### Phase 12: GitHub Issue Creation (Conditional, opt-in)
 
