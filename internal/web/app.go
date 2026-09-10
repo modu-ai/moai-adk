@@ -204,7 +204,7 @@ func (a *app) routes() http.Handler {
 // 읽기도 게이트한다 — rebinding 공격에서 브라우저는 127.0.0.1 에 접속하면서 공격자 도메인을 Host 로 보내므로, 읽기를 막는 서버 측 수단은 Host 검사뿐이다.
 //
 // hostCheckMiddleware rejects every request whose Host header does not resolve
-// to a loopback origin (127.0.0.1 / localhost / ::1), whatever its method or
+// to a loopback origin (see isLoopbackHost for the exact set), whatever its method or
 // route, returning HTTP 403 before any handler runs (REQ-WC-009 as amended — the
 // DNS-rebinding gate covers reads as well as writes). On mutating requests
 // (POST/PUT/PATCH) it additionally requires Sec-Fetch-Site: same-origin
@@ -234,7 +234,16 @@ func hostCheckMiddleware(next http.Handler) http.Handler {
 }
 
 // isLoopbackHost reports whether a request Host header (host or host:port)
-// resolves to a loopback origin. Accepts 127.0.0.1, localhost, and ::1.
+// names a loopback origin. It accepts exactly:
+//   - localhost in any letter case (host names are case-insensitive), with or
+//     without a port. The comparison is strings.EqualFold, i.e. Unicode simple
+//     case folding, so a fold-equivalent non-ASCII spelling also matches
+//     (U+017F LATIN SMALL LETTER LONG S folds to "s");
+//   - any IP address in 127.0.0.0/8;
+//   - ::1, with or without brackets;
+//   - IPv4-mapped loopback (::ffff:127.x.y.z), with or without brackets.
+//
+// Everything else is rejected, including an empty Host.
 func isLoopbackHost(host string) bool {
 	if host == "" {
 		return false
@@ -244,7 +253,7 @@ func isLoopbackHost(host string) bool {
 		hostname = h
 	}
 	hostname = strings.TrimSuffix(strings.TrimPrefix(hostname, "["), "]")
-	if hostname == "localhost" {
+	if strings.EqualFold(hostname, "localhost") {
 		return true
 	}
 	if ip := net.ParseIP(hostname); ip != nil {

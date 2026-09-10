@@ -128,7 +128,11 @@ ok  	github.com/modu-ai/moai-adk/internal/web	0.833s
   - 거부: `LOCALHOST`, `Localhost:3041`, `localhost.`(대소문자·끝 점 구분), `0.0.0.0`, `attacker.example.com`, 빈 값
 
   넓은 쪽은 모두 loopback 주소라 rebinding 방어의 구멍은 아니다. 다만 문구와 코드 중 하나는 맞춰야 한다. 운영자 지시대로 코드는 바꾸지 않았다. `isLoopbackHost` 의 godoc("Accepts 127.0.0.1, localhost, and ::1")도 같은 이유로 실제보다 좁게 적혀 있다.
+
+  > **후속 회차 반영(§8):** `LOCALHOST`·`Localhost:3041` 거부는 이 카드가 만든 회귀로 판정돼 고쳤다(이제 받음). 넓은 허용 범위는 그대로 두되 단위 표에 행으로 고정했고, godoc 은 실제 허용 집합으로 다시 썼다. SPEC 문구와의 어긋남은 여전히 남아 있다.
 - **이름 비교가 대소문자를 구분한다.** 이전에는 이 거부가 POST 에만 걸렸지만 이제 GET 에도 걸린다. 브라우저는 호스트 이름을 소문자로 보내므로 일반 사용에는 영향이 없을 것으로 보지만, `Host: LOCALHOST` 를 그대로 보내는 도구가 있다면 읽기까지 403 이다(추론, 실제 클라이언트로 재지는 않음).
+
+  > **해소(§8):** 리드 검토에서 회귀로 판정돼 후속 회차에서 `strings.EqualFold` 비교로 고쳤다. 원문은 기록으로 남긴다.
 - 역방향 프록시가 Host 를 바꿔 보내는 구성은 이제 모든 요청이 403 이다. 공식 문서가 지원하지 않는 구성이지만, 쓰던 사용자가 있다면 읽기까지 막힌다.
 - 문서(docs-site 보안 모델 절)는 아직 "읽기는 게이트하지 않는다"는 전제를 반영하지 않았을 수 있다. 이번 카드 범위 밖이다.
 - `httptest` 는 Host 를 정규화하지 않는다. 실제 서버 경로는 골든 패스와 중계기 테스트로 따로 쟀지만, HTTP/2 나 비표준 Host 형식은 재지 않았다.
@@ -138,3 +142,103 @@ ok  	github.com/modu-ai/moai-adk/internal/web	0.833s
 - `.moai/reports/t613/run/red.txt`, `green.txt`, `lint.txt`, `mutants.txt`, `loopback-probe.txt`
 - 코드: `internal/web/app.go` (게이트 이동 + 거짓이 된 주석 5곳 정정, `@MX:NOTE` 갱신)
 - 테스트: `internal/web/host_gate_test.go` (신규), `integration_test.go` 확장, 17개 테스트 파일 수정
+
+## 8. Follow-up increment (lead review)
+
+리드 검토에서 이 카드가 만든 회귀가 하나 나왔다. `isLoopbackHost` 가 `hostname == "localhost"` 로 대소문자를 구분해 비교하는데, 카드 이전에는 GET 이 Host 게이트를 타지 않아 `Host: LOCALHOST` 로도 페이지를 읽을 수 있었다. 게이트를 전 메서드로 넓힌 뒤로는 같은 요청이 403 이다. 호스트 이름은 대소문자를 구분하지 않으므로(DNS, RFC 3986 host 구성요소) 정책 변경이 아니라 고칠 회귀로 다뤘다.
+
+### 8.1 Claim
+
+1. `isLoopbackHost` 가 `localhost` 를 대소문자와 무관하게 받는다(`strings.EqualFold`). 포트가 붙어도 같다. 이 비교는 Unicode 단순 대소문자 접기라서 ASCII 밖의 접기 동치 표기(U+017F 가 섞인 `localhoſt`)도 받는다(§8.5, 미결).
+2. 나머지 허용 범위는 넓히지도 좁히지도 않았다. `127.0.0.0/8` 전체, 대괄호 유무와 무관한 `::1`, IPv4-mapped loopback(`::ffff:127.x.y.z`)은 그대로 받고, 빈 Host 를 포함한 그 밖의 값은 그대로 거부한다.
+3. 이 허용 범위가 이제 오버레이 프로브가 아니라 커밋된 단위 표(`TestIsLoopbackHost`)의 행으로 고정됐다. 대조군 행렬(`TestHostGateControlMatrix`)에도 `LOCALHOST`·`LocalHost:3041` 행이 정적 GET·`/settings` GET·POST `/save` 세 열로 들어갔다.
+4. 새 행은 공허하지 않다. 비교를 대소문자 구분으로 되돌린 변이본(m4)에서 대문자 칸 9개가 정확히 실패한다.
+5. `isLoopbackHost` 의 두 번째 호출자인 GLM 키 공개 핸들러(`glmkey.go`)의 loopback 재검사도 이제 대문자 `localhost` 를 받는다. 기존 `TestGLMKeyRevealLoopbackOnly` 는 GREEN 에서 통과한다.
+
+### 8.2 Evidence
+
+RED — 바뀌지 않은 `app.go` 에서 (`.moai/reports/t613/run/red-2.txt`)
+
+```
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s ./internal/web/... > .moai/reports/t613/run/red-2.txt 2>&1
+exit=1
+--- FAIL: TestIsLoopbackHost (0.00s)
+    coverage_test.go:186: isLoopbackHost("LOCALHOST") = false, want true
+    coverage_test.go:186: isLoopbackHost("LocalHost:3041") = false, want true
+    coverage_test.go:186: isLoopbackHost("Localhost:8080") = false, want true
+--- FAIL: TestHostGateControlMatrix (0.21s)
+    --- FAIL: TestHostGateControlMatrix/localhost-upper/{static,settings,save}
+    --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/{static,settings,save}
+FAIL	github.com/modu-ai/moai-adk/internal/web	22.058s
+```
+
+(행렬 실패 6줄은 위에서 경로만 묶어 적었다. 원문은 `red-2.txt` 에 있다.) 최상위 실패 2개, 서브테스트 실패 6개, 빌드 실패·panic·race 0. 고정한 넓은 범위 행(`127.1.2.3:3041`, `127.255.255.254`, `[::ffff:127.0.0.1]:3041`, `::ffff:127.0.0.1`, `::1`)과 거부 행은 RED 에서도 통과했다. 즉 앞 회차 프로브 값이 맞았다.
+
+GREEN (`.moai/reports/t613/run/green-2.txt`)
+
+```
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s ./internal/web/... > .moai/reports/t613/run/green-2.txt 2>&1
+exit=0
+ok  	github.com/modu-ai/moai-adk/internal/web	22.383s
+```
+
+GREEN 은 두 번 쟀다. 첫 실행(`23.834s`, exit=0)은 godoc 을 고치기 전 트리였고, Unicode 접기 사실을 godoc 에 적은 뒤(주석만 변경) 같은 명령을 다시 돌려 `green-2.txt` 를 덮어썼다. 위 값이 최종 트리의 값이다.
+
+Lint (`.moai/reports/t613/run/lint-2.txt`)
+
+```
+$ go vet ./internal/web/...           → exit=0, 출력 없음
+$ golangci-lint run ./internal/web/... → 0 issues. exit=0
+$ gofmt -l internal/web               → 출력 없음, exit=0
+```
+
+변이본 (`.moai/reports/t613/run/mutants-2.txt`) — 추적 파일은 고치지 않고 `go test -overlay` 로만 주입했다.
+
+```
+m4: if hostname == "localhost" {   (GREEN: strings.EqualFold(hostname, "localhost"))
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m4_overlay.json ./internal/web/...
+exit=1
+build_failed_lines=0  panic_or_race=0  top_level_FAIL=2  subtest_FAIL=6
+FAIL	github.com/modu-ai/moai-adk/internal/web	24.587s
+```
+
+실패 집합은 RED 와 같다. 대문자 단위 행 3개와 대문자 행렬 칸 6개만 실패하고, 넓은 범위 행과 거부 행은 통과한다.
+
+허용 범위 재측정 (`.moai/reports/t613/run/loopback-probe-2.txt`) — GREEN 코드에 입력 23개를 넣는 프로브를 오버레이로 주입했고(`exit=0`, `PROBE` 줄 23개), 커밋된 표와 공개 핸들러 테스트를 `-v` 로 따로 돌렸다(`exit=0`, `--- PASS: TestIsLoopbackHost`, `--- PASS: TestGLMKeyRevealLoopbackOnly` 와 서브테스트 4개 PASS).
+
+| 판정 | 입력 |
+|---|---|
+| 받음 | `localhost`, `localhost:3041`, `LOCALHOST`, `LocalHost:3041`, `Localhost:8080`, `127.0.0.1`, `127.0.0.1:3041`, `127.1.2.3:3041`, `127.255.255.254`, `::1`, `[::1]`, `[::1]:3041`, `::ffff:127.0.0.1`, `[::ffff:127.0.0.1]:3041` |
+| 거부 | `localhost.`, `LOCALHOST.`, `0.0.0.0`, `0.0.0.0:8080`, `10.0.0.5:8080`, `attacker.example.com`, `localhost.attacker.example.com`, `LOCALHOST.attacker.example.com`, 빈 값 |
+
+주석 정정: `isLoopbackHost` godoc 을 실제 허용 집합으로 다시 썼고, `hostCheckMiddleware` godoc 의 "(127.0.0.1 / localhost / ::1)" 을 `isLoopbackHost` 참조로 바꿨다. `internal/web` 에서 좁은 집합을 주장하는 주석을 다시 찾아 보니 `handlers_test.go:469` 가 남는데, 이것은 그 테스트가 넣는 입력 세 개를 설명하는 문장이지 허용 집합이 그것뿐이라는 주장이 아니어서 두었다.
+
+투명 문자 검사: RED 커밋 직전 스테이징 diff(141,810자)에서 유니코드 Cf 문자 0개, `chr(0x200B)` 를 넣은 대조 문자열은 1개로 셌다. GREEN 커밋 직전 값은 커밋 보고에 따로 적는다.
+
+### 8.3 Baseline-attribution
+
+| 측정 | 트리 | 코드 상태 |
+|---|---|---|
+| RED (`red-2.txt`) | 작업 트리 = RED 커밋 `32ea783c4` 내용(기준 HEAD `4b275def4` + 테스트만 변경, 측정 시 `git diff -- internal/web/app.go` 빈 출력) | 대소문자 구분 비교 |
+| GREEN, lint (`green-2.txt`, `lint-2.txt`) | `32ea783c4` + `app.go` 최종 수정분(이 문서를 싣는 GREEN 커밋 내용) | `strings.EqualFold` 비교 + 최종 godoc |
+| m4, 프로브 Part A·B·C (`mutants-2.txt`, `loopback-probe-2.txt`) | 위 트리에서 godoc 한 항목(Unicode 접기 설명)만 빠진 상태 | 코드 줄은 최종 트리와 같다. 차이는 주석뿐이다 |
+
+앞 회차 프로브(`loopback-probe.txt`)는 GREEN 커밋 `8239e8dd2` 트리 기준이다. 이번 회차의 넓은 범위 판정은 그 값을 옮겨 쓰지 않고 위 트리에서 다시 쟀다.
+
+### 8.4 Gaps
+
+- **`strings.EqualFold` 의 Unicode 접기 범위는 결정하지 않았다.** U+017F 가 섞인 `localhoſt` 도 받아진다는 것은 쟀지만(§8.5), ASCII 대소문자만 받도록 좁힐지는 정하지 않았고 단위 표에도 행이 없다. 다른 접기 쌍은 따로 재지 않았다.
+- **끝 점 형태 `localhost.` 는 결정하지 않았다.** GREEN 에서도 거부된다(`LOCALHOST.` 도 거부). 절대 도메인 표기라 의미상 `localhost` 와 같다고 볼 여지가 있지만, 이번 회차에서는 받을지 말지를 정하지 않았고 단위 표에도 어느 쪽으로든 행을 넣지 않았다. 미결 항목이다.
+- 공개 핸들러(`/glm-key/reveal`)에 대문자 `localhost` 로 요청하는 칸은 따로 단언하지 않았다. 같은 함수를 호출하므로 같은 판정을 받는다는 것은 코드 구조에서 나온 추론이다.
+- 실제 클라이언트가 `Host: LOCALHOST` 를 보내는 경우는 재지 않았다. `httptest` 요청과 `isLoopbackHost` 직접 호출로만 쟀다.
+- 커버리지 수치는 재지 않았다.
+- 변이 소스, 프로브 테스트 파일, 오버레이 JSON 은 스크래치 영역에 두었고 보고서 디렉터리로 옮기지 않았다. 변이 줄과 실행 요약은 `mutants-2.txt`, 프로브 출력은 `loopback-probe-2.txt` 에 있다.
+- 이 절도 `moai-domain-humanize` 최종 교정을 거치지 않았다.
+
+### 8.5 Residual-risk
+
+- **SPEC 문구와의 어긋남은 그대로다.** 개정 REQ-WC-009 는 "정확히 `localhost`, `127.0.0.1`, `[::1]`"라고 적지만 코드는 `127.0.0.0/8`, IPv4-mapped loopback, 대소문자 무관 `localhost` 까지 받는다. 이번 회차는 코드 쪽 문서(godoc)만 실제에 맞췄고, SPEC 문구 정리는 이 카드 범위 밖이다.
+- 공개 핸들러의 loopback 재검사가 대문자 `localhost` 를 받게 된 것은 허용 방향의 변화다. 대문자 이름도 같은 loopback 이라 방어 경계가 바뀌지는 않는다고 보지만, 그 핸들러만의 별도 판단은 거치지 않았다.
+- **`strings.EqualFold` 는 ASCII 대소문자만 접지 않는다.** 유니코드 단순 대소문자 접기라서 U+017F(LATIN SMALL LETTER LONG S)가 `s` 로 접힌다. 오버레이 프로브로 재 보니 `localhoſt`, `localhoſt:3041`, `LOCALHOſT` 가 모두 받아졌다(`loopback-probe-2.txt` Part C, `exit=0`). 즉 실제 허용 집합은 "대소문자 무관 `localhost`"보다 조금 넓다. godoc 에는 이 사실을 그대로 적었다.
+  - rebinding 방어 관점의 판단(추론, 실제 브라우저로 재지는 않음): 브라우저는 URL 호스트를 IDNA(UTS #46) 매핑으로 정규화하는데, 그 매핑이 U+017F 를 `s` 로 바꾸므로 `http://localhoſt:<port>` 는 `Host: localhost` 로 나간다. 공격자 도메인이 이 경로로 `localhost` 로 위장하는 수단은 보이지 않는다. 브라우저가 아닌 클라이언트는 원래 loopback 에 직접 접속할 수 있으므로 새로 열리는 경로도 아니다.
+  - 그래도 리드 지시(`strings.EqualFold`)의 문자를 따랐기 때문에 남는 선택이다. ASCII 대소문자만 받도록 좁힐지는 이번 회차에서 정하지 않았고 단위 표에도 행을 넣지 않았다. 미결 항목이다.
