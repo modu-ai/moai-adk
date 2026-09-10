@@ -1,0 +1,8 @@
+develop delta 84e5666d9..526249cf6 (develop-delta-files.txt)
+ancestry: git merge-base --is-ancestor 84e5666d9 526249cf6 -> exit 0
+total files: 76 (wc -l)
+/usr/bin/grep -cE '^internal/(gitenv|hook)/' -> 0 (exit 1)
+control /usr/bin/grep -cE '^internal/cli/' -> 3
+/usr/bin/grep -vE '^\.moai/reports/|_test\.go$' -> no output (exit 1): every delta file is a report or a _test.go file
+internal/cli files: main_test.go, update_clean_install_test.go, update_skip_sync_test.go (t661)
+merge-tree prediction: git merge-tree --write-tree --name-only 526249cf6 HEAD -> 2dff123743722ee577fccf9184403201f2c606a4, no conflict lines, exit 0
