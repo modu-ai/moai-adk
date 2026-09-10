@@ -1,0 +1,4 @@
+d7be4a4a8695459dc5d80d76543a7091476a6423f28ffbf542ab30032fe711b3  internal/template/templates/.claude/agents/moai/plan-auditor.md
+36b4a33563297758a86b39f967bacb95609bcdfe1316b1d9753eca0573dddd25  .claude/agents/moai/plan-auditor.md
+36b4a33563297758a86b39f967bacb95609bcdfe1316b1d9753eca0573dddd25  /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/7e33c4bd-a91e-4a67-bf0c-15ad255da456/scratchpad/t524-restore/local-plan-auditor.md
+d7be4a4a8695459dc5d80d76543a7091476a6423f28ffbf542ab30032fe711b3  /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/7e33c4bd-a91e-4a67-bf0c-15ad255da456/scratchpad/t524-restore/template-plan-auditor.md

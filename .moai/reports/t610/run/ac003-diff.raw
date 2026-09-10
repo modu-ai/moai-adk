@@ -1,0 +1,12 @@
+diff --git a/go.mod b/go.mod
+index 18a58bbeb..22c1354f1 100644
+--- a/go.mod
++++ b/go.mod
+@@ -1,6 +1,6 @@
+ module github.com/modu-ai/moai-adk
+ 
+-go 1.26.4
++go 1.26.8
+ 
+ require (
+ 	charm.land/bubbles/v2 v2.2.1

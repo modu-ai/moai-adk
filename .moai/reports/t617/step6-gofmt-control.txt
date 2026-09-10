@@ -1,0 +1,2 @@
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-t556/e6946f98-39aa-4df4-9a3f-3b9caed0ab4d/scratchpad/t617-badfmt.go
+EXIT=0

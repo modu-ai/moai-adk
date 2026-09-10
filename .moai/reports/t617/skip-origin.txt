@@ -1,0 +1,176 @@
+t617 step 1 — why the four migration tests were SKIP (git history)
+Tree: .claude/worktrees/agent-a5130b13e9e45a187, branch WT-migration-skip, HEAD 98e8bd8a2
+Each block: the command as run, then its verbatim output. Commands ran from the worktree root.
+Large git show outputs were redirected to session scratch files and then grepped; the grep
+commands are listed with the scratch file they read.
+
+========================================================================
+A. Commit history of the test file
+$ git log --format='%h %ad %s' --date=short -- internal/hook/session_start_migration_test.go
+98e8bd8a2 2026-09-10 test(t617): preserve the interrupted worker's migration tests and raw outputs
+ef95739c6 2026-05-23 feat(SPEC-V3R6-CODE-COMMENTS-EN-001): Wave 6 Test B re-commit — 30 test files Korean → English (post-PR-1048 dangling recovery)
+aa10ce386 2026-05-12 feat(migration): SPEC-V3R2-RT-007 — Hardcoded Path Fix + Versioned Migration (#846)
+
+========================================================================
+B. Skip reasons — origin (aa10ce386) and pristine base (d3b7d438d)
+$ git show aa10ce386:internal/hook/session_start_migration_test.go > <scratch>/t617-origin_test.go   (EXIT=0)
+$ grep -n 't.Skip\|^func Test' <scratch>/t617-origin_test.go
+9:func TestSessionStart_InvokesMigrationRunner(t *testing.T) {
+11:	t.Skip("waiting for session-start migration integration")
+16:func TestSessionStart_MigrationFailure_SurfacesViaSystemMessage(t *testing.T) {
+18:	t.Skip("waiting for RT-001 HookResponse SystemMessage merge")
+23:func TestSessionStart_DisabledViaSystemYaml(t *testing.T) {
+25:	t.Skip("waiting for system.yaml migrations.disabled implementation")
+30:func TestSessionStart_EnabledByDefault(t *testing.T) {
+32:	t.Skip("waiting for system.yaml migrations.disabled implementation")
+
+$ git show d3b7d438d:internal/hook/session_start_migration_test.go > <scratch>/t617/pristine_test.go   (EXIT=0)
+$ grep -n 't.Skip\|^func Test' <scratch>/t617/pristine_test.go
+(output identical to the origin block above, line for line)
+Reading: the four skips and their reasons are unchanged from birth to the base. ef95739c6 only
+translated comments.
+
+========================================================================
+C. Did the SAME origin commit already wire migration into session start?
+$ git show --stat --format='%h %ad %s' --date=short aa10ce386 > <scratch>/t617-origin-stat.txt   (EXIT=0)
+$ grep -n 'internal/hook\|internal/config\|internal/migration\|^[0-9a-f]\{9\} ' <scratch>/t617-origin-stat.txt
+1:aa10ce386 2026-05-12 feat(migration): SPEC-V3R2-RT-007 — Hardcoded Path Fix + Versioned Migration (#846)
+11: internal/config/types.go                           |  17 +-
+13: internal/hook/session_start.go                     |  33 +++
+14: internal/hook/session_start_migration_test.go      |  34 +++
+15: internal/migration/log.go                          | 100 +++++++++
+16: internal/migration/log_test.go                     |  26 +++
+19: internal/migration/registry.go                     |  84 ++++++++
+20: internal/migration/registry_test.go                |  26 +++
+21: internal/migration/runner.go                       | 237 +++++++++++++++++++++
+22: internal/migration/runner_test.go                  |  54 +++++
+23: internal/migration/version.go                      |  98 +++++++++
+24: internal/migration/version_test.go                 |  33 +++
+25: internal/migration/version_unix.go                 |  34 +++
+26: internal/migration/version_windows.go              |  49 +++++
+
+$ git show aa10ce386:internal/hook/session_start.go > <scratch>/t617-origin-session_start.go   (EXIT=0)
+$ grep -n 'migrat\|Migrations' <scratch>/t617-origin-session_start.go
+17:	"github.com/modu-ai/moai-adk/internal/migration"
+150:	// @MX:WARN @MX:REASON - SPEC-V3R2-RT-007 REQ-020 silent migration apply at session start.
+152:	// to return success. Bypassing this preserves migration-version-file unchanged → next
+153:	// session retries. NEVER let migration error abort session-start handler.
+155:	// session-start 시점에서 pending migrations를 자동으로 실행합니다.
+159:		if cfg == nil || !cfg.System.Migrations.Disabled {
+160:			runner := migration.NewRunner(input.ProjectDir)
+163:				slog.Warn("session start: migration apply failed",
+167:				data["migration_error"] = err.Error()
+169:				data["migrations_applied"] = len(applied)
+170:				slog.Info("session start: migrations applied successfully",
+176:			slog.Info("session start: migrations disabled via config",
+
+$ git show aa10ce386^:internal/hook/session_start.go > <scratch>/t617-parent-session_start.go   (EXIT=0)
+$ grep -c 'runMigration\|migration.NewRunner\|migration_error' <scratch>/t617-parent-session_start.go
+0
+
+Reading: the runner call, the fail-open branch, and the cfg.System.Migrations.Disabled gate were
+all added by aa10ce386 — the same commit that added the placeholder saying "waiting for
+session-start migration integration". The parent had none of it. Reason 1 was already false on
+the day it was written: the placeholders were never re-visited after the wiring landed with them.
+
+========================================================================
+D. a43f519e3 (the `git log -S runMigration` hit) — origin or refactor?
+$ git log -S runMigration --format='%h %ad %s' --date=short -- internal/hook/
+98e8bd8a2 2026-09-10 test(t617): preserve the interrupted worker's migration tests and raw outputs
+a43f519e3 2026-08-03 perf(hook): parallelize SessionStart + defer advisory scans to cut input lag (#1294)
+
+$ git show a43f519e3 -- internal/hook/session_start.go > <scratch>/t617-a43f-diff.txt   (EXIT=0)
+$ grep -n '^[-+].*\(runMigration\|NewRunner\|migration_error\|Migrations.Disabled\)' <scratch>/t617-a43f-diff.txt
+250:+			migrationData = runMigration(gctx, input.ProjectDir, cfg)
+273:-		if cfg == nil || !cfg.System.Migrations.Disabled {
+274:-			runner := migration.NewRunner(input.ProjectDir)
+281:-				data["migration_error"] = err.Error()
+427:+// runMigration applies pending migrations (REQ-020, REQ-021). Best-effort,
+431:+func runMigration(ctx context.Context, projectDir string, cfg *config.Config) map[string]any {
+433:+	if cfg == nil || !cfg.System.Migrations.Disabled {
+434:+		runner := migration.NewRunner(projectDir)
+441:+			d["migration_error"] = err.Error()
+
+Reading: a43f519e3 moved the inline block (removed lines 273-281) into the new runMigration
+function (added lines 427-441) with the same gate and the same Data key. It is an extraction
+refactor, not the origin.
+
+========================================================================
+E. Reason 2 — "waiting for RT-001 HookResponse SystemMessage merge"
+$ grep -rn 'SystemMessage' internal/hook/types.go internal/hook/session_start.go
+internal/hook/types.go:366:	SystemMessage  string `json:"systemMessage,omitempty"`  // Warning message shown to user
+internal/hook/types.go:514:	out := &HookOutput{SystemMessage: message}
+internal/hook/types.go:565:		SystemMessage: reason,
+internal/hook/session_start.go:466:		if out.SystemMessage == "" {
+internal/hook/session_start.go:467:			out.SystemMessage = operatorNotice
+internal/hook/session_start.go:469:			out.SystemMessage += "\n\n" + operatorNotice
+internal/hook/session_start.go:517:		if out.SystemMessage == "" {
+internal/hook/session_start.go:518:			out.SystemMessage = operatorNotice
+internal/hook/session_start.go:520:			out.SystemMessage += "\n\n" + operatorNotice
+
+Read internal/hook/session_start.go lines 667-695 (runMigration, Read tool, not a shell command):
+the failure branch writes only slog.Warn and d["migration_error"] = err.Error() (line 681);
+runMigration contains no SystemMessage write. The grep above shows every SystemMessage writer in
+the file: lines 466-520, which append an operator notice unrelated to migration.
+
+$ grep -rn 'REQ-V3R2-RT-007-021\|REQ-V3R2-RT-007-020\|REQ-V3R2-RT-007-032' .moai/specs --include='spec.md'
+.moai/specs/SPEC-V3R2-RT-007/spec.md:150:- REQ-V3R2-RT-007-020: WHEN the session-start hook fires, the handler SHALL invoke `MigrationRunner.Apply(current_version)` before any user-facing output.
+.moai/specs/SPEC-V3R2-RT-007/spec.md:151:- REQ-V3R2-RT-007-021: WHEN a migration fails with a non-nil error, the runner SHALL NOT advance the version file, SHALL write the failure to `.moai/logs/migrations.log`, and SHALL emit `HookResponse.SystemMessage` naming the migration number and error.
+.moai/specs/SPEC-V3R2-RT-007/spec.md:161:- REQ-V3R2-RT-007-032: WHILE `.moai/config/sections/system.yaml` has `migrations.disabled: true`, the session-start migration invocation SHALL be skipped with a log entry but no SystemMessage.
+.moai/specs/SPEC-V3R2-RT-007/spec.md:189:- AC-V3R2-RT-007-06: Given a migration fails with error, When runner completes, Then version file is unchanged and `.moai/logs/migrations.log` contains the failure entry with error text. (maps REQ-V3R2-RT-007-021, -014)
+.moai/specs/SPEC-V3R2-RT-007/spec.md:196:- AC-V3R2-RT-007-13: Given `system.yaml` has `migrations.disabled: true`, When session-start fires, Then migration runner is skipped and no SystemMessage appears. (maps REQ-V3R2-RT-007-032)
+.moai/specs/SPEC-V3R2-RT-007/spec.md:209:- Observable failure: migration failures never silently halt the session; SystemMessage is mandatory (REQ-V3R2-RT-007-021).
+
+Reading: the dependency named in reason 2 exists today — HookOutput carries SystemMessage and
+session_start.go already writes it for another notice. What is missing is the migration path
+using it. The skip reason is stale as worded (nothing left to wait for), but the behaviour it
+guarded is still absent. A test must not claim the SystemMessage half passes; the rewritten
+test was renamed to DoesNotBlockSession and asserts only the fail-open half.
+
+========================================================================
+F. Reason 3 — "waiting for system.yaml migrations.disabled implementation"
+$ grep -rn 'Migrations\b\|migrations\.disabled\|"system.yaml"\|MigrationsConfig' internal cmd pkg --include='*.go' | grep -v '_test.go'
+internal/config/types.go:254:	Migrations     MigrationsConfig `yaml:"migrations"`
+internal/config/types.go:258:// MigrationsConfig represents the migrations configuration section.
+internal/config/types.go:259:// REQ-V3R2-RT-007-032: session-start migration can be disabled via migrations.disabled.
+internal/config/types.go:260:type MigrationsConfig struct {
+internal/config/loader_system.go:33:	loaded, err := loadYAMLFile(dir, "system.yaml", wrapper)
+internal/config/loader_system.go:61:	loaded, err := loadYAMLFile(dir, "system.yaml", wrapper)
+internal/cli/v2_detection.go:182:		".moai", "config", "sections", "system.yaml")
+internal/cli/v2_detection.go:337:		defs.MoAIDir, "config", "sections", "system.yaml")
+internal/cli/migration.go:41:Migrations also run automatically via the session-start hook; this command lets you trigger them manually.`,
+internal/cli/update_restore.go:25:	marker := filepath.ToSlash(filepath.Join(defs.MoAIDir, "config", "sections", "system.yaml"))
+internal/migration/registry.go:59:// PendingMigrations returns the list of migrations that need to be applied given the current version.
+internal/migration/registry.go:60:func PendingMigrations(current int) []Migration {
+internal/hook/session_start.go:673:	if cfg == nil || !cfg.System.Migrations.Disabled {
+internal/defs/files.go:26:	SystemYAML      = "system.yaml"
+
+$ grep -n -A6 'type systemFileWrapper' internal/config/*.go
+internal/config/types.go:1606:type systemFileWrapper struct {
+internal/config/types.go-1607-	Hook SystemHookConfig `yaml:"hook"`
+internal/config/types.go-1608-}
+
+$ git log -S systemFileWrapper --format='%h %ad %s' --date=short -- internal/config/
+4d3e1d669 2026-08-12 feat(SPEC-CONFIG-KEY-HONESTY-001): config surface honesty — every shipped key parsed+read+enforced, or marked not (#1463)
+
+$ git show aa10ce386:internal/config/loader.go > <scratch>/t617-origin-loader.go   (EXIT=0)
+$ grep -n -i 'system' <scratch>/t617-origin-loader.go
+(no output)  grep-exit=1
+
+Reading: the only system.yaml loader today (loader_system.go, added by 4d3e1d669) decodes into
+systemFileWrapper, whose single field is Hook; cfg.System.Migrations has no writer on the
+Loader.Load path, and at the origin commit no loader read system.yaml at all. The handler-side
+gate exists (session_start.go:673), so a ConfigProvider-supplied flag is honoured, but a
+system.yaml `migrations.disabled: true` never reaches it. Reason 3 is still TRUE as worded. The
+rewritten disabled/enabled tests drive the flag through ConfigProvider and say so in the file
+header; they must not be read as evidence that the system.yaml path works. The prior worker's
+loader probe (prior-run/04-probe-yaml.txt: loader=false, direct unmarshal=true) is re-measured
+in step 4b of this card.
+
+========================================================================
+Summary
+| Placeholder | Skip reason | True today? | Basis |
+| InvokesMigrationRunner | waiting for session-start migration integration | FALSE since aa10ce386 (same commit) | C |
+| MigrationFailure_SurfacesViaSystemMessage | waiting for RT-001 SystemMessage merge | Dependency landed; the migration SystemMessage behaviour is still absent | E |
+| DisabledViaSystemYaml | waiting for system.yaml migrations.disabled implementation | TRUE — loader never binds migrations | F |
+| EnabledByDefault | same as above | Handler default is enabled (cfg nil or Disabled=false); nothing waits on the loader for this | C, F |

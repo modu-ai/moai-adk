@@ -62,17 +62,13 @@ func TestProfileCRUDFlow(t *testing.T) {
 	}
 
 	// --- LIST (GET /) reflects the new profile ---
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec = serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "work") {
 		t.Fatalf("GET / did not list 'work' (status %d)", rec.Code)
 	}
 
 	// --- SWITCH (GET /?profile=work reuses the existing load path) ---
-	req = httptest.NewRequest(http.MethodGet, "/settings?profile=work", nil)
-	rec = httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec = serveGet(t, h, "/settings?profile=work")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("switch GET /?profile=work status = %d, want 200", rec.Code)
 	}
@@ -170,9 +166,7 @@ func TestProfileCRUDMethodNotAllowed(t *testing.T) {
 	a, _ := crudApp(t, "default")
 	h := a.routes()
 	for _, path := range []string{"/profile/create", "/profile/delete", "/profile/rename"} {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, req)
+		rec := serveGet(t, h, path)
 		if rec.Code != http.StatusMethodNotAllowed {
 			t.Errorf("GET %s status = %d, want 405", path, rec.Code)
 		}
