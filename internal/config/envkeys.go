@@ -69,6 +69,20 @@ const (
 	// EnvGLMNoAutoTools skips automatic Z.AI MCP server enable on moai glm launch.
 	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
 
+	// EnvClaudeBin pins the Claude Code binary the launcher launches (issue
+	// #1697). When set to a non-empty path, every launcher (cc / glm / cg all
+	// funnel through launchClaudeDefault) launches THIS binary instead of
+	// searching PATH for `claude` — an operator pins a known-good release when
+	// a newer Claude Code release breaks compatibility with a third-party
+	// endpoint, instead of every lane auto-adopting the broken build. The path
+	// must exist and be executable; an invalid pin fails the launch rather
+	// than silently falling back (a silent fallback would re-expose the blast
+	// radius the pin exists to stop). Resolution order: this env var → the
+	// llm.claude_bin config key → PATH lookup (unchanged default). The env var
+	// wins over the config key so a single launch can be re-pointed without
+	// editing llm.yaml.
+	EnvClaudeBin = "MOAI_CLAUDE_BIN"
+
 	// EnvGitConvention overrides the git commit convention.
 	EnvGitConvention = "MOAI_GIT_CONVENTION"
 
