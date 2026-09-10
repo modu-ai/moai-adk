@@ -67,3 +67,26 @@
 - 넓힌 grep 도 오른쪽 끝이 `HEAD` 가 아닌 범위, SHA 를 변수에 담은 경우, 세 점(`...`) 범위는 잡지 않는다.
 - 규율에 따른 실행(카드들이 실제로 `CARD_BASE` 형태를 쓰는지)은 문서 수정으로 보장되지 않는다. 카드 본문이 요구한 "실행 규율로 세운다"는 이번에는 규칙 문서화까지만 했다.
 - §4 Gaps(원격 흡수, 흡수 중첩, `--first-parent`)는 리드 판정에 따라 그대로 둔다.
+
+## 7. 병합 트리 재측정 — 통합 창 안 (lane-6)
+
+리드 지명 후 창을 잡고(`moai integration acquire --name lane-6`) 로컬 develop 을 흡수한 트리에서 다시 쟀다. 흡수 전 측정은 병합 뒤 근거로 재사용하지 않는다.
+
+**흡수 대상과 흡수.** `git fetch origin develop` 후 `git rev-list --count --left-right origin/develop...develop` → `0 189` 이므로 흡수 대상은 로컬 develop `0dfb3f605` 다. `git merge --no-edit develop` → HEAD `7bef04ebd`, 트리 `4ea3985a3`. 흡수 전 `git merge-tree --write-tree --name-only develop HEAD` 가 예측한 트리와 같다(충돌 파일 0). 도구체인은 `go1.26.8` 이다(`window-go-version.txt`).
+
+**델타 판정 — 이 카드가 세운 규율로 잰다(§8, 병합 전 평가).**
+
+| 시점 | `CARD_BASE = git merge-base develop HEAD` | 무필터 대조군 | Go 프로브 | 증거 |
+|---|---|---|---|---|
+| 흡수 직전 (HEAD `a28e462bf`) | `4b82591cb` | 32 | 0 | `window-pre-absorb-scope-all.txt`, `-go.txt` |
+| 흡수 직후 (HEAD `7bef04ebd`) | `0dfb3f605` (방금 흡수한 develop tip) | 32 | 0 | `window-post-absorb-scope-all.txt`, `-go.txt` |
+
+두 시점의 파일 집합은 정확히 같다(차집합 양방향 모두 공집합). 흡수로 develop 의 커밋 189개가 들어왔는데도, 규율대로 다시 구한 범위는 카드 자기 기여만 가리키고 Go 변경은 0 이다. S2 재현에서 리터럴 핀이 51개를 냈던 바로 그 상황에서 규율이 올바른 값을 낸다는 것을, 이 카드 자신의 흡수로 한 번 더 관측했다.
+
+- 카드 경로의 흡수 영향: `git diff --name-only 4b82591cb 0dfb3f605 -- .claude/rules/local/gitflow-lane-protocol.md .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/` → 빈 출력, EXIT=0 (`window-delta-card-paths.txt`). develop 은 이 카드의 규칙 파일과 SPEC 파일을 건드리지 않았다.
+- 파일 동일성: 규칙 파일과 SPEC 파일 3개의 blob 이 흡수 전(`window-blobs-before.txt`)과 흡수 후(`window-blobs-after.txt`)에 모두 같다.
+- SPEC lint: `go run ./cmd/moai spec lint .moai/specs/SPEC-UPDATE-DOC-DRIFT-001`(흡수 트리에서 빌드) → `0 error(s), 1 warning(s)`, EXIT=0. 경고는 기존 `StatusGitConsistency` 하나로 이전 세 번의 실행과 같다(`window-spec-lint.txt`).
+
+이 카드는 Go 코드를 바꾸지 않으므로 Go 테스트는 재측정 대상이 아니다.
+
+**이 절의 Gaps.** 병합 뒤에는 §8 규율의 한계 (a)에 따라 범위 판정식을 쓰지 않는다. 병합 후 근거는 develop 병합 트리와 카드 브랜치 트리의 동일성으로 대신한다(병합 뒤 보고에 적는다).
