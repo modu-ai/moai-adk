@@ -135,3 +135,20 @@ SPEC-TOOLPOLICY-DRIFT-GUARD-001 plan 감사는 1회차 FAIL 0.71, 2회차 FAIL 0
 - D22 고정 fixture `{"permissions":{"allow":["Read"],"deny":["Bash(rm -rf /:*)"],}}`: 괄호 2:2·대괄호 2:2, Python `json.loads` 는 `Illegal trailing comma` 로 거부. 스크래치 루트에서 `moai tool-policy build --local-only` 출력은 `permissions object parse: invalid character '}' looking for beginning of object key string` — 권한 블록 위치는 찾고 해석 단계에서 실패한다. 대조군(쉼표만 뺀 같은 JSON)은 `allow=108 ask=0 deny=60 env_gated_skipped=5` 로 정상 생성.
 
 갭: 뮤턴트와 새 비교 함수는 아직 코드가 없어 실행하지 않았다. 위 확인은 fixture 구성과 생성기 경로에 대한 것이며, plan-auditor 판정을 대신하지 않는다.
+
+## 9. run 단계 결과와 AC-TDG-009 처분 (2026-09-10~11)
+
+run 은 manager-develop 이 M1~M5 로 진행했다(커밋 `dfcf7c519`..`2ed2475cc`, push 없음). 오케스트레이터가 다시 잰 항목:
+
+- 적용 권한 불변: `git --no-optional-locks diff --exit-code d1b61005d HEAD -- .claude/settings.json internal/template/templates/.claude/settings.json.tmpl` → `settings_diff_rc=0`.
+- 드리프트 검사: `make tool-policy-drift-check` → `make_rc=0`. `go test ./internal/config/toolpolicy/ -run 'TestToolPolicyDrift' -count=1 -v` → `drift_rc=0`, Mutation 하위 PASS `7`, FailClosed 하위 PASS `10`, FAIL·SKIP `0`.
+- 배선: `.github/workflows/ci.yml:92` `- '.claude/settings.json'`, `Makefile:34` `build:` 선행에 `tool-policy-drift-check`.
+- 린트: `golangci-lint run --timeout=2m ./internal/config/toolpolicy/...` → `0 issues.`
+- 이스케이프·Cf: 바뀐 파일 7개 모두 `(0, 0)`, 대조군 `(1, 1)`.
+
+**AC-TDG-009 는 FAIL 이며 t609 선재 결함에 귀속한다.**
+
+- 관측: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout 600s ./internal/cli/ -run 'TestToolPolicyList_QueryFilters' -v` → `cli_rc=1`, `tool_policy_test.go:97: output missing substring "ask";`, `--- FAIL: TestToolPolicyList_QueryFilters/filter_ask`. 나머지 하위 테스트 5개 PASS.
+- 귀속 근거: 이 하위 테스트는 커밋된 YAML 에 `decision: ask` 항목이 있어야 통과한다. `git show 1ac333952^:.moai/config/sections/tool-policy.yaml | grep -c 'decision: ask'` → `6`, `git show d1b61005d:… | grep -c 'decision: ask'` → `0`. `d1b61005d..HEAD` 사이 `internal/cli/` diff 없음, YAML 의 ask 줄 변경 `0`. 테스트 입력이 base 와 같다.
+- develop: 로컬 develop `647ad0157` 에도 같은 하위 테스트(`tool_policy_test.go:61`)가 있고 YAML ask 는 `0` 이다. develop 트리에서 직접 실행하지는 않았다(갭).
+- 처분(운영자 결정, 2026-09-11): 별도 수리 카드로 분리한다. t619 는 `internal/cli` 테스트를 건드리지 않는다. 리드에게 사실과 결정을 전달했고, 리드는 이 적색이 develop push 전에 닫혀야 한다고 판정했다.
