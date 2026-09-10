@@ -1,0 +1,548 @@
+=== RUN   TestFormatConflictMarkers_SingleConflict
+=== PAUSE TestFormatConflictMarkers_SingleConflict
+=== RUN   TestFormatConflictMarkers_MultipleConflicts
+=== PAUSE TestFormatConflictMarkers_MultipleConflicts
+=== RUN   TestWriteConflictFile
+=== PAUSE TestWriteConflictFile
+=== RUN   TestWriteConflictFile_NoConflicts
+=== PAUSE TestWriteConflictFile_NoConflicts
+=== RUN   TestMergeJSON_InvalidBase
+=== PAUSE TestMergeJSON_InvalidBase
+=== RUN   TestMergeJSON_InvalidCurrent
+=== PAUSE TestMergeJSON_InvalidCurrent
+=== RUN   TestMergeJSON_InvalidUpdated
+=== PAUSE TestMergeJSON_InvalidUpdated
+=== RUN   TestMergeYAML_InvalidBase
+=== PAUSE TestMergeYAML_InvalidBase
+=== RUN   TestMergeYAML_InvalidCurrent
+=== PAUSE TestMergeYAML_InvalidCurrent
+=== RUN   TestMergeYAML_InvalidUpdated
+=== PAUSE TestMergeYAML_InvalidUpdated
+=== RUN   TestLineMerge_CurrentOnlyChanged
+=== PAUSE TestLineMerge_CurrentOnlyChanged
+=== RUN   TestLineMerge_UserAddsLines
+=== PAUSE TestLineMerge_UserAddsLines
+=== RUN   TestLineMerge_TemplateAddsLines
+=== PAUSE TestLineMerge_TemplateAddsLines
+=== RUN   TestLineMerge_EmptyFiles
+=== PAUSE TestLineMerge_EmptyFiles
+=== RUN   TestEngine_MergeFile_UnsupportedStrategy
+=== PAUSE TestEngine_MergeFile_UnsupportedStrategy
+=== RUN   TestEngine_NewEngineWithSelector
+=== PAUSE TestEngine_NewEngineWithSelector
+=== RUN   TestValuesEqual_MarshalError
+=== PAUSE TestValuesEqual_MarshalError
+=== RUN   TestDeepMergeMap_BothAddedSameKey
+=== PAUSE TestDeepMergeMap_BothAddedSameKey
+=== RUN   TestDeepMergeMap_UserDeletedKey
+=== PAUSE TestDeepMergeMap_UserDeletedKey
+=== RUN   TestDiffLines_IdenticalReturnsNil
+=== PAUSE TestDiffLines_IdenticalReturnsNil
+=== RUN   TestDiffLines_IdenticalAllocatesNothing
+--- PASS: TestDiffLines_IdenticalAllocatesNothing (0.05s)
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary
+=== RUN   TestDiffLinesGreedyProperty
+=== PAUSE TestDiffLinesGreedyProperty
+=== RUN   TestDiffLinesThresholdPreservation
+=== PAUSE TestDiffLinesThresholdPreservation
+=== RUN   TestDiffLines_IdenticalInput
+=== PAUSE TestDiffLines_IdenticalInput
+=== RUN   TestDiffLines_AllInserted
+=== PAUSE TestDiffLines_AllInserted
+=== RUN   TestDiffLines_AllDeleted
+=== PAUSE TestDiffLines_AllDeleted
+=== RUN   TestDiffLines_Modification
+=== PAUSE TestDiffLines_Modification
+=== RUN   TestDiffLines_TableDriven
+=== PAUSE TestDiffLines_TableDriven
+=== RUN   TestUnifiedDiff_NoDifference
+=== PAUSE TestUnifiedDiff_NoDifference
+=== RUN   TestUnifiedDiff_WithChanges
+=== PAUSE TestUnifiedDiff_WithChanges
+=== RUN   TestUnifiedDiff_HeaderFormat
+=== PAUSE TestUnifiedDiff_HeaderFormat
+=== RUN   TestSplitLines
+=== PAUSE TestSplitLines
+=== RUN   TestParseEvolvableZones_Valid
+=== PAUSE TestParseEvolvableZones_Valid
+=== RUN   TestParseEvolvableZones_NoZones
+=== PAUSE TestParseEvolvableZones_NoZones
+=== RUN   TestParseEvolvableZones_NestedError
+=== PAUSE TestParseEvolvableZones_NestedError
+=== RUN   TestParseEvolvableZones_DuplicateID
+=== PAUSE TestParseEvolvableZones_DuplicateID
+=== RUN   TestParseEvolvableZones_MissingEndMarker
+=== PAUSE TestParseEvolvableZones_MissingEndMarker
+=== RUN   TestParseEvolvableZones_OrphanEndMarker
+=== PAUSE TestParseEvolvableZones_OrphanEndMarker
+=== RUN   TestParseEvolvableZones_EmptyZone
+=== PAUSE TestParseEvolvableZones_EmptyZone
+=== RUN   TestMergeEvolvableZones_TemplateUpdatesOutsideZone
+=== PAUSE TestMergeEvolvableZones_TemplateUpdatesOutsideZone
+=== RUN   TestMergeEvolvableZones_UserWinsInsideZone
+=== PAUSE TestMergeEvolvableZones_UserWinsInsideZone
+=== RUN   TestMergeEvolvableZones_TemplateAddsNewZone
+=== PAUSE TestMergeEvolvableZones_TemplateAddsNewZone
+=== RUN   TestMergeEvolvableZones_TemplateRemovesZone
+=== PAUSE TestMergeEvolvableZones_TemplateRemovesZone
+=== RUN   TestMergeEvolvableZones_FallbackOnParseError
+=== PAUSE TestMergeEvolvableZones_FallbackOnParseError
+=== RUN   TestHasEvolvableZones
+=== PAUSE TestHasEvolvableZones
+=== RUN   TestMergeRoundTrip_PopulatedLearnedBlockSurvivesTemplateSync
+=== PAUSE TestMergeRoundTrip_PopulatedLearnedBlockSurvivesTemplateSync
+=== RUN   TestReplaceEvolvableZone_Basic
+=== PAUSE TestReplaceEvolvableZone_Basic
+=== RUN   TestReplaceEvolvableZone_ErrZoneNotFound
+=== PAUSE TestReplaceEvolvableZone_ErrZoneNotFound
+=== RUN   TestReplaceEvolvableZone_Idempotent
+=== PAUSE TestReplaceEvolvableZone_Idempotent
+=== RUN   TestMergeEvolvableZones_PreservesFileStructure
+=== PAUSE TestMergeEvolvableZones_PreservesFileStructure
+=== RUN   TestSelectStrategy_TableDriven
+=== PAUSE TestSelectStrategy_TableDriven
+=== RUN   TestLineMergeStrategy_OneSideChanged
+=== PAUSE TestLineMergeStrategy_OneSideChanged
+=== RUN   TestLineMergeStrategy_BothSidesNoConflict
+=== PAUSE TestLineMergeStrategy_BothSidesNoConflict
+=== RUN   TestLineMergeStrategy_BothSidesConflict
+=== PAUSE TestLineMergeStrategy_BothSidesConflict
+=== RUN   TestLineMergeStrategy_BothSidesSameChange
+=== PAUSE TestLineMergeStrategy_BothSidesSameChange
+=== RUN   TestEntryMergeStrategy_GitignoreMerge
+=== PAUSE TestEntryMergeStrategy_GitignoreMerge
+=== RUN   TestEntryMergeStrategy_UserDeletedNotRestored
+=== PAUSE TestEntryMergeStrategy_UserDeletedNotRestored
+=== RUN   TestEntryMergeStrategy_NoDuplicates
+=== PAUSE TestEntryMergeStrategy_NoDuplicates
+=== RUN   TestOverwriteStrategy
+=== PAUSE TestOverwriteStrategy
+=== RUN   TestJSONMergeStrategy_ObjectMerge
+=== PAUSE TestJSONMergeStrategy_ObjectMerge
+=== RUN   TestJSONMergeStrategy_ConflictDetection
+=== PAUSE TestJSONMergeStrategy_ConflictDetection
+=== RUN   TestYAMLDeepMerge_UserKeyPreserved
+=== PAUSE TestYAMLDeepMerge_UserKeyPreserved
+=== RUN   TestYAMLDeepMerge_NestedMerge
+=== PAUSE TestYAMLDeepMerge_NestedMerge
+=== RUN   TestYAMLDeepMerge_ConflictDetection
+=== PAUSE TestYAMLDeepMerge_ConflictDetection
+=== RUN   TestSectionMergeStrategy_UserSectionPreserved
+=== PAUSE TestSectionMergeStrategy_UserSectionPreserved
+=== RUN   TestSectionMergeStrategy_SameSectionConflict
+=== PAUSE TestSectionMergeStrategy_SameSectionConflict
+=== RUN   TestMergeSectionBased_PreservesPopulatedLearnedBlock
+=== PAUSE TestMergeSectionBased_PreservesPopulatedLearnedBlock
+=== RUN   TestMergeSectionBased_EmptyUpstreamPopulatedLocal
+=== PAUSE TestMergeSectionBased_EmptyUpstreamPopulatedLocal
+=== RUN   TestMergeSectionBased_ConflictInsideMarkers_Surfaced
+=== PAUSE TestMergeSectionBased_ConflictInsideMarkers_Surfaced
+=== RUN   TestManagedSectionHeadings_RecognizesLearnedBlocks
+=== PAUSE TestManagedSectionHeadings_RecognizesLearnedBlocks
+=== RUN   TestToMapInterface
+=== PAUSE TestToMapInterface
+=== RUN   TestEngine_ThreeWayMerge_OneSideChanged
+=== PAUSE TestEngine_ThreeWayMerge_OneSideChanged
+=== RUN   TestEngine_ThreeWayMerge_BothSidesConflict
+=== PAUSE TestEngine_ThreeWayMerge_BothSidesConflict
+=== RUN   TestEngine_ThreeWayMerge_IdenticalFiles
+=== PAUSE TestEngine_ThreeWayMerge_IdenticalFiles
+=== RUN   TestEngine_MergeFile_YAMLStrategy
+=== PAUSE TestEngine_MergeFile_YAMLStrategy
+=== RUN   TestEngine_MergeFile_JSONStrategy
+=== PAUSE TestEngine_MergeFile_JSONStrategy
+=== RUN   TestEngine_MergeFile_SectionStrategy
+=== PAUSE TestEngine_MergeFile_SectionStrategy
+=== RUN   TestEngine_MergeFile_EntryStrategy
+=== PAUSE TestEngine_MergeFile_EntryStrategy
+=== RUN   TestEngine_MergeFile_OverwriteStrategy
+=== PAUSE TestEngine_MergeFile_OverwriteStrategy
+=== RUN   TestEngine_MergeFile_ContextCancelled
+=== PAUSE TestEngine_MergeFile_ContextCancelled
+=== RUN   TestMergeAnalysis_Creation
+=== PAUSE TestMergeAnalysis_Creation
+=== RUN   TestFileAnalysis_NamedFieldLiteral
+=== PAUSE TestFileAnalysis_NamedFieldLiteral
+=== CONT  TestFormatConflictMarkers_SingleConflict
+=== CONT  TestYAMLDeepMerge_NestedMerge
+=== CONT  TestMergeRoundTrip_PopulatedLearnedBlockSurvivesTemplateSync
+--- PASS: TestFormatConflictMarkers_SingleConflict (0.00s)
+=== CONT  TestMergeEvolvableZones_UserWinsInsideZone
+--- PASS: TestMergeRoundTrip_PopulatedLearnedBlockSurvivesTemplateSync (0.00s)
+=== CONT  TestHasEvolvableZones
+--- PASS: TestMergeEvolvableZones_UserWinsInsideZone (0.00s)
+=== RUN   TestHasEvolvableZones/with_marker
+=== CONT  TestLineMergeStrategy_BothSidesNoConflict
+=== PAUSE TestHasEvolvableZones/with_marker
+--- PASS: TestLineMergeStrategy_BothSidesNoConflict (0.00s)
+=== RUN   TestHasEvolvableZones/without_marker
+=== CONT  TestParseEvolvableZones_NoZones
+--- PASS: TestParseEvolvableZones_NoZones (0.00s)
+=== PAUSE TestHasEvolvableZones/without_marker
+=== CONT  TestParseEvolvableZones_Valid
+=== RUN   TestHasEvolvableZones/empty
+=== CONT  TestMergeEvolvableZones_TemplateUpdatesOutsideZone
+--- PASS: TestParseEvolvableZones_Valid (0.00s)
+=== CONT  TestSplitLines
+=== RUN   TestSplitLines/empty
+=== PAUSE TestSplitLines/empty
+=== RUN   TestSplitLines/single_line
+=== PAUSE TestSplitLines/single_line
+=== CONT  TestUnifiedDiff_HeaderFormat
+=== RUN   TestSplitLines/two_lines
+=== CONT  TestUnifiedDiff_WithChanges
+=== CONT  TestUnifiedDiff_NoDifference
+=== CONT  TestDiffLines_TableDriven
+=== RUN   TestDiffLines_TableDriven/empty_to_empty
+=== PAUSE TestDiffLines_TableDriven/empty_to_empty
+=== RUN   TestDiffLines_TableDriven/add_one_line_at_end
+--- PASS: TestMergeEvolvableZones_TemplateUpdatesOutsideZone (0.00s)
+--- PASS: TestUnifiedDiff_HeaderFormat (0.00s)
+--- PASS: TestUnifiedDiff_WithChanges (0.00s)
+=== CONT  TestReplaceEvolvableZone_Idempotent
+=== CONT  TestDiffLines_Modification
+=== CONT  TestDiffLines_AllDeleted
+=== CONT  TestDiffLines_AllInserted
+=== CONT  TestDiffLines_IdenticalInput
+=== CONT  TestDiffLinesThresholdPreservation
+=== CONT  TestDiffLinesGreedyProperty
+=== PAUSE TestSplitLines/two_lines
+=== RUN   TestSplitLines/trailing_newline
+=== CONT  TestReplaceEvolvableZone_ErrZoneNotFound
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary
+=== CONT  TestReplaceEvolvableZone_Basic
+=== CONT  TestDiffLines_IdenticalReturnsNil
+=== CONT  TestDeepMergeMap_UserDeletedKey
+=== CONT  TestParseEvolvableZones_EmptyZone
+=== CONT  TestDeepMergeMap_BothAddedSameKey
+=== CONT  TestValuesEqual_MarshalError
+=== CONT  TestEngine_NewEngineWithSelector
+=== CONT  TestEngine_MergeFile_UnsupportedStrategy
+=== CONT  TestLineMerge_EmptyFiles
+=== CONT  TestLineMerge_TemplateAddsLines
+=== CONT  TestLineMerge_UserAddsLines
+=== CONT  TestLineMerge_CurrentOnlyChanged
+=== CONT  TestMergeYAML_InvalidUpdated
+=== CONT  TestMergeYAML_InvalidCurrent
+=== CONT  TestParseEvolvableZones_OrphanEndMarker
+=== CONT  TestMergeYAML_InvalidBase
+=== CONT  TestMergeJSON_InvalidUpdated
+=== CONT  TestMergeJSON_InvalidCurrent
+=== CONT  TestMergeJSON_InvalidBase
+=== CONT  TestWriteConflictFile_NoConflicts
+=== CONT  TestWriteConflictFile
+=== CONT  TestParseEvolvableZones_MissingEndMarker
+=== CONT  TestParseEvolvableZones_DuplicateID
+2026/09/10 16:30:23 WARN evolvable zone: end marker without matching start line=2
+2026/09/10 16:30:23 WARN evolvable zone: unclosed start marker (missing end marker), zone discarded id=section-a start_line=1
+=== CONT  TestMergeEvolvableZones_TemplateRemovesZone
+2026/09/10 16:30:23 WARN evolvable zone: template removed zone, preserving user content id=removable
+=== CONT  TestFormatConflictMarkers_MultipleConflicts
+=== CONT  TestEntryMergeStrategy_NoDuplicates
+=== CONT  TestYAMLDeepMerge_UserKeyPreserved
+=== CONT  TestSelectStrategy_TableDriven
+=== RUN   TestSelectStrategy_TableDriven/config.yaml
+=== CONT  TestLineMergeStrategy_OneSideChanged
+=== CONT  TestJSONMergeStrategy_ObjectMerge
+=== CONT  TestJSONMergeStrategy_ConflictDetection
+=== CONT  TestEngine_ThreeWayMerge_BothSidesConflict
+=== CONT  TestFileAnalysis_NamedFieldLiteral
+=== CONT  TestOverwriteStrategy
+=== CONT  TestEngine_MergeFile_ContextCancelled
+=== CONT  TestEngine_MergeFile_OverwriteStrategy
+=== CONT  TestEngine_MergeFile_EntryStrategy
+=== CONT  TestEngine_MergeFile_SectionStrategy
+=== CONT  TestMergeEvolvableZones_PreservesFileStructure
+=== CONT  TestEngine_MergeFile_YAMLStrategy
+=== CONT  TestEngine_ThreeWayMerge_IdenticalFiles
+=== CONT  TestMergeEvolvableZones_TemplateAddsNewZone
+=== CONT  TestEntryMergeStrategy_GitignoreMerge
+=== CONT  TestEntryMergeStrategy_UserDeletedNotRestored
+=== CONT  TestLineMergeStrategy_BothSidesSameChange
+=== CONT  TestSectionMergeStrategy_SameSectionConflict
+=== CONT  TestMergeSectionBased_PreservesPopulatedLearnedBlock
+=== CONT  TestEngine_ThreeWayMerge_OneSideChanged
+=== PAUSE TestDiffLines_TableDriven/add_one_line_at_end
+--- PASS: TestUnifiedDiff_NoDifference (0.00s)
+=== RUN   TestDiffLines_TableDriven/remove_one_line_from_start
+--- PASS: TestReplaceEvolvableZone_Idempotent (0.00s)
+--- PASS: TestDiffLines_Modification (0.00s)
+--- PASS: TestDiffLines_AllDeleted (0.00s)
+=== PAUSE TestDiffLines_TableDriven/remove_one_line_from_start
+=== RUN   TestDiffLines_TableDriven/swap_two_lines
+=== PAUSE TestDiffLines_TableDriven/swap_two_lines
+--- PASS: TestDiffLines_AllInserted (0.00s)
+=== CONT  TestParseEvolvableZones_NestedError
+=== CONT  TestMergeSectionBased_ConflictInsideMarkers_Surfaced
+=== CONT  TestMergeEvolvableZones_FallbackOnParseError
+=== PAUSE TestSelectStrategy_TableDriven/config.yaml
+=== RUN   TestSelectStrategy_TableDriven/.moai/config/sections/user.yml
+=== PAUSE TestSelectStrategy_TableDriven/.moai/config/sections/user.yml
+2026/09/10 16:30:23 WARN evolvable zone merge: parse error, falling back to line merge base_err=<nil> current_err="evolvable zone: nested start marker at line 2 (inside zone \"a\" opened at line 1)" updated_err=<nil>
+=== PAUSE TestHasEvolvableZones/empty
+=== RUN   TestSelectStrategy_TableDriven/deep/nested/settings.yaml
+=== CONT  TestMergeSectionBased_EmptyUpstreamPopulatedLocal
+=== CONT  TestMergeAnalysis_Creation
+=== CONT  TestDiffLines_TableDriven/empty_to_empty
+=== CONT  TestDiffLines_TableDriven/swap_two_lines
+=== CONT  TestLineMergeStrategy_BothSidesConflict
+=== CONT  TestDiffLines_TableDriven/remove_one_line_from_start
+=== CONT  TestHasEvolvableZones/without_marker
+=== CONT  TestManagedSectionHeadings_RecognizesLearnedBlocks
+=== PAUSE TestSplitLines/trailing_newline
+=== CONT  TestSectionMergeStrategy_UserSectionPreserved
+=== RUN   TestSplitLines/only_newline
+--- PASS: TestDiffLines_IdenticalInput (0.00s)
+--- PASS: TestDiffLinesThresholdPreservation (0.00s)
+--- PASS: TestReplaceEvolvableZone_ErrZoneNotFound (0.00s)
+--- PASS: TestReplaceEvolvableZone_Basic (0.00s)
+--- PASS: TestYAMLDeepMerge_NestedMerge (0.00s)
+--- PASS: TestDeepMergeMap_UserDeletedKey (0.00s)
+=== PAUSE TestSplitLines/only_newline
+=== CONT  TestSplitLines/empty
+=== CONT  TestYAMLDeepMerge_ConflictDetection
+=== CONT  TestSplitLines/single_line
+=== PAUSE TestSelectStrategy_TableDriven/deep/nested/settings.yaml
+=== CONT  TestDiffLines_TableDriven/add_one_line_at_end
+=== CONT  TestEngine_MergeFile_JSONStrategy
+=== CONT  TestHasEvolvableZones/with_marker
+=== CONT  TestHasEvolvableZones/empty
+=== CONT  TestToMapInterface
+=== RUN   TestToMapInterface/map[string]any
+--- PASS: TestDeepMergeMap_BothAddedSameKey (0.00s)
+=== CONT  TestSplitLines/only_newline
+=== CONT  TestSplitLines/trailing_newline
+=== CONT  TestSplitLines/two_lines
+=== RUN   TestSelectStrategy_TableDriven/settings.json
+=== RUN   TestDiffLines_IdenticalReturnsNil/nil_nil
+=== PAUSE TestSelectStrategy_TableDriven/settings.json
+=== RUN   TestSelectStrategy_TableDriven/manifest.json
+=== PAUSE TestSelectStrategy_TableDriven/manifest.json
+=== PAUSE TestDiffLines_IdenticalReturnsNil/nil_nil
+=== RUN   TestSelectStrategy_TableDriven/.moai/manifest.json
+=== RUN   TestDiffLines_IdenticalReturnsNil/empty_empty
+=== PAUSE TestSelectStrategy_TableDriven/.moai/manifest.json
+--- PASS: TestParseEvolvableZones_EmptyZone (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/CLAUDE.md
+--- PASS: TestEngine_NewEngineWithSelector (0.00s)
+=== PAUSE TestDiffLines_IdenticalReturnsNil/empty_empty
+--- PASS: TestEngine_MergeFile_UnsupportedStrategy (0.00s)
+=== RUN   TestDiffLines_IdenticalReturnsNil/three_lines
+=== PAUSE TestSelectStrategy_TableDriven/CLAUDE.md
+=== PAUSE TestDiffLines_IdenticalReturnsNil/three_lines
+=== RUN   TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== PAUSE TestDiffLines_IdenticalReturnsNil/threshold_2000
+--- PASS: TestLineMerge_EmptyFiles (0.00s)
+=== RUN   TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+--- PASS: TestValuesEqual_MarshalError (0.00s)
+=== PAUSE TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+--- PASS: TestLineMerge_TemplateAddsLines (0.00s)
+--- PASS: TestLineMerge_UserAddsLines (0.00s)
+--- PASS: TestLineMerge_CurrentOnlyChanged (0.00s)
+--- PASS: TestMergeYAML_InvalidUpdated (0.00s)
+--- PASS: TestMergeYAML_InvalidCurrent (0.00s)
+--- PASS: TestMergeYAML_InvalidBase (0.00s)
+--- PASS: TestMergeJSON_InvalidUpdated (0.00s)
+--- PASS: TestMergeJSON_InvalidBase (0.00s)
+--- PASS: TestMergeJSON_InvalidCurrent (0.00s)
+--- PASS: TestParseEvolvableZones_DuplicateID (0.00s)
+--- PASS: TestParseEvolvableZones_OrphanEndMarker (0.00s)
+--- PASS: TestParseEvolvableZones_MissingEndMarker (0.00s)
+--- PASS: TestMergeEvolvableZones_TemplateRemovesZone (0.00s)
+--- PASS: TestFormatConflictMarkers_MultipleConflicts (0.00s)
+--- PASS: TestEntryMergeStrategy_NoDuplicates (0.00s)
+=== CONT  TestDiffLines_IdenticalReturnsNil/nil_nil
+=== RUN   TestSelectStrategy_TableDriven/path/to/CLAUDE.md
+=== PAUSE TestSelectStrategy_TableDriven/path/to/CLAUDE.md
+=== RUN   TestSelectStrategy_TableDriven/.gitignore
+=== PAUSE TestSelectStrategy_TableDriven/.gitignore
+=== CONT  TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== RUN   TestSelectStrategy_TableDriven/sub/.gitignore
+=== PAUSE TestSelectStrategy_TableDriven/sub/.gitignore
+=== RUN   TestSelectStrategy_TableDriven/README.md
+=== PAUSE TestSelectStrategy_TableDriven/README.md
+=== CONT  TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== CONT  TestDiffLines_IdenticalReturnsNil/three_lines
+=== CONT  TestDiffLines_IdenticalReturnsNil/empty_empty
+--- PASS: TestLineMergeStrategy_OneSideChanged (0.00s)
+--- PASS: TestYAMLDeepMerge_UserKeyPreserved (0.00s)
+--- PASS: TestJSONMergeStrategy_ObjectMerge (0.00s)
+--- PASS: TestJSONMergeStrategy_ConflictDetection (0.00s)
+--- PASS: TestEngine_ThreeWayMerge_BothSidesConflict (0.00s)
+--- PASS: TestFileAnalysis_NamedFieldLiteral (0.00s)
+--- PASS: TestOverwriteStrategy (0.00s)
+--- PASS: TestEngine_MergeFile_ContextCancelled (0.00s)
+--- PASS: TestEngine_MergeFile_OverwriteStrategy (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/agents/expert-backend.md
+=== PAUSE TestSelectStrategy_TableDriven/agents/expert-backend.md
+--- PASS: TestEngine_MergeFile_EntryStrategy (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/notes.txt
+--- PASS: TestEngine_MergeFile_SectionStrategy (0.00s)
+=== PAUSE TestSelectStrategy_TableDriven/notes.txt
+--- PASS: TestMergeEvolvableZones_PreservesFileStructure (0.00s)
+--- PASS: TestEngine_ThreeWayMerge_IdenticalFiles (0.00s)
+--- PASS: TestEntryMergeStrategy_GitignoreMerge (0.00s)
+--- PASS: TestEntryMergeStrategy_UserDeletedNotRestored (0.00s)
+--- PASS: TestMergeEvolvableZones_TemplateAddsNewZone (0.00s)
+--- PASS: TestLineMergeStrategy_BothSidesSameChange (0.00s)
+--- PASS: TestEngine_MergeFile_YAMLStrategy (0.00s)
+--- PASS: TestSectionMergeStrategy_SameSectionConflict (0.00s)
+--- PASS: TestMergeSectionBased_PreservesPopulatedLearnedBlock (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/config.toml
+--- PASS: TestEngine_ThreeWayMerge_OneSideChanged (0.00s)
+--- PASS: TestParseEvolvableZones_NestedError (0.00s)
+--- PASS: TestMergeSectionBased_ConflictInsideMarkers_Surfaced (0.00s)
+=== PAUSE TestSelectStrategy_TableDriven/config.toml
+--- PASS: TestMergeEvolvableZones_FallbackOnParseError (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/unknown.bin
+--- PASS: TestMergeAnalysis_Creation (0.00s)
+--- PASS: TestMergeSectionBased_EmptyUpstreamPopulatedLocal (0.00s)
+=== PAUSE TestSelectStrategy_TableDriven/unknown.bin
+=== RUN   TestSelectStrategy_TableDriven/image.png
+--- PASS: TestLineMergeStrategy_BothSidesConflict (0.00s)
+=== PAUSE TestSelectStrategy_TableDriven/image.png
+=== RUN   TestSelectStrategy_TableDriven/photo.jpg
+--- PASS: TestManagedSectionHeadings_RecognizesLearnedBlocks (0.00s)
+--- PASS: TestSectionMergeStrategy_UserSectionPreserved (0.00s)
+=== PAUSE TestSelectStrategy_TableDriven/photo.jpg
+=== RUN   TestSelectStrategy_TableDriven/archive.zip
+--- PASS: TestDiffLines_TableDriven (0.00s)
+    --- PASS: TestDiffLines_TableDriven/empty_to_empty (0.00s)
+    --- PASS: TestDiffLines_TableDriven/swap_two_lines (0.00s)
+    --- PASS: TestDiffLines_TableDriven/remove_one_line_from_start (0.00s)
+    --- PASS: TestDiffLines_TableDriven/add_one_line_at_end (0.00s)
+--- PASS: TestYAMLDeepMerge_ConflictDetection (0.00s)
+--- PASS: TestEngine_MergeFile_JSONStrategy (0.00s)
+=== PAUSE TestSelectStrategy_TableDriven/archive.zip
+--- PASS: TestHasEvolvableZones (0.00s)
+    --- PASS: TestHasEvolvableZones/without_marker (0.00s)
+    --- PASS: TestHasEvolvableZones/with_marker (0.00s)
+    --- PASS: TestHasEvolvableZones/empty (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/font.woff
+=== PAUSE TestSelectStrategy_TableDriven/font.woff
+=== RUN   TestToMapInterface/map[any]any_(YAML_style)
+--- PASS: TestSplitLines (0.00s)
+    --- PASS: TestSplitLines/empty (0.00s)
+    --- PASS: TestSplitLines/single_line (0.00s)
+    --- PASS: TestSplitLines/only_newline (0.00s)
+    --- PASS: TestSplitLines/trailing_newline (0.00s)
+    --- PASS: TestSplitLines/two_lines (0.00s)
+--- PASS: TestDiffLines_IdenticalReturnsNil (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/nil_nil (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/over_threshold_2001 (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/threshold_2000 (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/three_lines (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/empty_empty (0.00s)
+=== RUN   TestSelectStrategy_TableDriven/data.exe
+=== PAUSE TestSelectStrategy_TableDriven/data.exe
+=== RUN   TestToMapInterface/string_(not_a_map)
+=== CONT  TestSelectStrategy_TableDriven/config.yaml
+=== CONT  TestSelectStrategy_TableDriven/sub/.gitignore
+=== CONT  TestSelectStrategy_TableDriven/data.exe
+=== CONT  TestSelectStrategy_TableDriven/photo.jpg
+=== CONT  TestSelectStrategy_TableDriven/deep/nested/settings.yaml
+=== CONT  TestSelectStrategy_TableDriven/.moai/config/sections/user.yml
+=== CONT  TestSelectStrategy_TableDriven/config.toml
+=== CONT  TestSelectStrategy_TableDriven/README.md
+=== CONT  TestSelectStrategy_TableDriven/notes.txt
+=== CONT  TestSelectStrategy_TableDriven/.gitignore
+=== RUN   TestToMapInterface/nil
+=== CONT  TestSelectStrategy_TableDriven/path/to/CLAUDE.md
+=== CONT  TestSelectStrategy_TableDriven/CLAUDE.md
+=== CONT  TestSelectStrategy_TableDriven/image.png
+=== RUN   TestToMapInterface/int
+=== CONT  TestSelectStrategy_TableDriven/.moai/manifest.json
+=== CONT  TestSelectStrategy_TableDriven/manifest.json
+=== CONT  TestSelectStrategy_TableDriven/archive.zip
+=== CONT  TestSelectStrategy_TableDriven/settings.json
+=== CONT  TestSelectStrategy_TableDriven/unknown.bin
+=== CONT  TestSelectStrategy_TableDriven/agents/expert-backend.md
+=== RUN   TestToMapInterface/slice
+=== CONT  TestSelectStrategy_TableDriven/font.woff
+--- PASS: TestSelectStrategy_TableDriven (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/config.yaml (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/sub/.gitignore (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/data.exe (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/photo.jpg (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/deep/nested/settings.yaml (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/.moai/config/sections/user.yml (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/config.toml (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/README.md (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/notes.txt (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/.gitignore (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/path/to/CLAUDE.md (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/CLAUDE.md (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/image.png (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/.moai/manifest.json (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/manifest.json (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/archive.zip (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/settings.json (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/unknown.bin (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/agents/expert-backend.md (0.00s)
+    --- PASS: TestSelectStrategy_TableDriven/font.woff (0.00s)
+--- PASS: TestToMapInterface (0.00s)
+    --- PASS: TestToMapInterface/map[string]any (0.00s)
+    --- PASS: TestToMapInterface/map[any]any_(YAML_style) (0.00s)
+    --- PASS: TestToMapInterface/string_(not_a_map) (0.00s)
+    --- PASS: TestToMapInterface/nil (0.00s)
+    --- PASS: TestToMapInterface/int (0.00s)
+    --- PASS: TestToMapInterface/slice (0.00s)
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+--- PASS: TestWriteConflictFile_NoConflicts (0.00s)
+--- PASS: TestWriteConflictFile (0.00s)
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== RUN   TestDiffLinesGreedyProperty/identical_large
+=== PAUSE TestDiffLinesGreedyProperty/identical_large
+=== RUN   TestDiffLinesGreedyProperty/completely_different
+=== PAUSE TestDiffLinesGreedyProperty/completely_different
+=== RUN   TestDiffLinesGreedyProperty/insert_at_start
+=== PAUSE TestDiffLinesGreedyProperty/insert_at_start
+=== RUN   TestDiffLinesGreedyProperty/delete_at_end
+=== PAUSE TestDiffLinesGreedyProperty/delete_at_end
+=== RUN   TestDiffLinesGreedyProperty/common_prefix_suffix
+=== PAUSE TestDiffLinesGreedyProperty/common_prefix_suffix
+=== RUN   TestDiffLinesGreedyProperty/empty_a
+=== PAUSE TestDiffLinesGreedyProperty/empty_a
+=== RUN   TestDiffLinesGreedyProperty/empty_b
+=== PAUSE TestDiffLinesGreedyProperty/empty_b
+=== CONT  TestDiffLinesGreedyProperty/identical_large
+=== CONT  TestDiffLinesGreedyProperty/common_prefix_suffix
+=== CONT  TestDiffLinesGreedyProperty/empty_b
+=== CONT  TestDiffLinesGreedyProperty/insert_at_start
+=== CONT  TestDiffLinesGreedyProperty/completely_different
+=== CONT  TestDiffLinesGreedyProperty/delete_at_end
+=== CONT  TestDiffLinesGreedyProperty/empty_a
+--- PASS: TestDiffLinesGreedyProperty (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/identical_large (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/insert_at_start (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/delete_at_end (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/empty_b (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/empty_a (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/common_prefix_suffix (0.00s)
+    --- PASS: TestDiffLinesGreedyProperty/completely_different (0.00s)
+--- PASS: TestDiffLines_SingleEditAtThresholdBoundary (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000 (0.01s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000 (0.01s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000 (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/merge	0.458s

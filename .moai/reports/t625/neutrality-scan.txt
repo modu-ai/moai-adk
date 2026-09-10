@@ -1,0 +1,3 @@
+added-lines extract EXIT=0
+5
+neutrality grep on C2 added lines EXIT=1

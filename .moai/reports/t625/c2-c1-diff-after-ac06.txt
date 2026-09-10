@@ -1,0 +1,11 @@
+2d1
+< isolation: worktree
+103c102
+< For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state through the harness's `task-list` capability. A harness with no `task-list` records the same per-test state as prose in the completion report.
+---
+> For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.
+128c127
+< 5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status through the harness's `task-list` capability (absent it, the same status goes in the completion report as prose).
+---
+> 5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status via TaskUpdate.
+EXIT=1

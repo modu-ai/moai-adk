@@ -333,18 +333,15 @@ func runGoalArm(cmd *cobra.Command, args []string, sessionFlag string, jsonOutpu
 	}
 
 	cond := parseCondition(conditionText)
-	// Arm-time runnability gate: a mechanical condition whose first word names
-	// no command can never exit 0, so arming it silently buys a goal that blocks
-	// every turn-end to the ceiling. Refuse on positive evidence only (the probe
-	// fails open) and write NO state file on refusal. An explicit `cmd:` prefix
-	// is the author declaring the tier deliberately, and is exempt — see
-	// declaredMechanical.
-	if cond.Type == goal.ConditionMechanical && !declaredMechanical(conditionText) {
-		if tok, bad := unrunnableCommandToken(cmd.Context(), cond.Cmd); bad {
-			// Returned, not also printed: the root command renders the error, and
-			// printing it here too would show the user the same paragraph twice.
-			return unrunnableConditionError("goal arm", tok, cond.Cmd)
-		}
+	// Arm-time gate: a mechanical condition that can only ever fail buys a goal
+	// that blocks every turn-end to the ceiling. Refuse on positive evidence
+	// only (both probes fail open) and write NO state file on refusal. The gate
+	// is shared with the goal_arm MCP wrapper — see armTimeConditionGate.
+	//
+	// Returned, not also printed: the root command renders the error, and
+	// printing it here too would show the user the same paragraph twice.
+	if err := armTimeConditionGate(cmd.Context(), "goal arm", conditionText, cond); err != nil {
+		return err
 	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {

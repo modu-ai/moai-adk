@@ -139,7 +139,7 @@ Eight criteria cannot be compensated by high scores in other dimensions. ANY sin
 
 **(MP-4) Section 22 Language Neutrality** (applies when the SPEC targets template-bound or universal content): The SPEC must not hardcode language-specific tool names (e.g., "gopls", "pylsp", "rust-analyzer") unless all 16 supported languages (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift) are enumerated with equal weight. If the SPEC covers multi-language tooling and enumerates some languages but not others, = FAIL. If the SPEC is clearly scoped to a single-language project, this criterion is N/A and auto-passes.
 
-**(MP-5) No unresolved D7 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 7 (D7 Cross-SPEC Reconciliation) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D7 BLOCKING finding can never be silently absorbed into the aggregate score. If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+**(MP-5) No unresolved D7 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 7 (D7 Cross-SPEC Reconciliation) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D7 BLOCKING finding can never be silently absorbed into the aggregate score. The Group 7 verification script emits only `REVIEW:` candidates; the BLOCKING finding is the auditor's own, emitted after reading each candidate in context (see Group 7). If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 **(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
@@ -336,20 +336,26 @@ Execute each check in order against the full document — every REQ entry and ev
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
 - D7-4: If status ∈ {retired, superseded, archived}, require explicit reconciliation
   in the new SPEC body (search for the referenced SPEC-ID near keywords like
-  "reversal", "supersede", "absorb", "carve-out") — otherwise BLOCKING
+  "reversal", "supersede", "absorb", "carve-out") — otherwise BLOCKING, decided
+  by the auditor after reading the script's `REVIEW:` output, never by the script
 - D7-5: If a referenced SPEC does NOT exist in `.moai/specs/`, emit SHOULD severity
   (typo or future SPEC) with message indicating "referenced SPEC not found"
 
 Verification verb (executed inside this agent during audit):
 
 ```bash
-# Extract SPEC-ID references and check their cross-SPEC status
+# Surface cross-SPEC reconciliation candidates; the auditor decides BLOCKING
 grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SID; do
   if [ -f ".moai/specs/$SID/spec.md" ]; then
     STATUS=$(grep '^status:' ".moai/specs/$SID/spec.md" | head -1 | cut -d: -f2 | tr -d ' ')
     case "$STATUS" in
       retired|superseded|archived)
-        echo "BLOCKING: $SID has status=$STATUS but is referenced without reconciliation"
+        echo "REVIEW: $SID has status=$STATUS — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING"
+        # Paragraphs naming $SID next to a reconciliation keyword, for the auditor to read
+        awk -v sid="$SID" 'BEGIN { RS = "" }
+          index($0, sid) && tolower($0) ~ /revers|supersed|absorb|carve-out/ {
+            gsub(/\n/, " "); print "  reconciliation candidate (paragraph " NR "): " $0
+          }' <new-spec.md>
         ;;
     esac
   else
@@ -357,6 +363,8 @@ grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SI
   fi
 done
 ```
+
+The script never emits BLOCKING itself: a keyword search cannot tell a reconciliation from a sentence that merely names the old SPEC, so it narrows where to read and the auditor reads. Both directions bind. A `REVIEW:` line with no `reconciliation candidate` paragraph is **not** automatically BLOCKING — read the body around the reference, and emit BLOCKING only when no explicit reconciliation is found there (reconciliation phrased without the listed keywords is still reconciliation). A `reconciliation candidate` paragraph is **not** an automatic pass — read it, and emit BLOCKING when it names the SPEC without actually reconciling it.
 
 A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-5) — it is never absorbed into the aggregate score.
 
@@ -376,13 +384,25 @@ A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: 
 Verification verb (executed inside this agent during audit):
 
 ```bash
-# Detect syscall introduction without build-tag constraint
-if grep -q 'syscall' <new-spec.md>; then
-  if ! grep -qE '//go:build|cross-platform exemption|EXCL.*syscall' <new-spec.md>; then
-    echo "BLOCKING: SPEC references syscall but no //go:build constraint or EXCL justification"
-  fi
+# Detect syscall mentions whose own section carries no build-tag constraint or exemption
+if [ ! -r <new-spec.md> ]; then
+  echo "GAP: <new-spec.md> is not readable — D8 was not observed"
+else
+  awk '
+    function flush() {
+      if (has_sys && !has_tag)
+        printf "BLOCKING: section \"%s\" references syscall but carries no //go:build constraint or EXCL justification\n", head
+    }
+    BEGIN { head = "(before the first heading)" }
+    /^#+ / { flush(); head = $0; has_sys = 0; has_tag = 0 }
+    /syscall/ { has_sys = 1 }
+    /\/\/go:build|cross-platform exemption|EXCL.*syscall/ { has_tag = 1 }
+    END { flush() }
+  ' <new-spec.md>
 fi
 ```
+
+The check is scoped per section, delimited by markdown headings, because D8-2 requires the constraint within the same section or paragraph: a `//go:build` elsewhere in the document cannot cover a `syscall` mention in a section that carries none. A `GAP:` line means D8 was not observed — report it as a gap, never read it as a pass.
 
 A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-6) — it is never absorbed into the aggregate score.
 

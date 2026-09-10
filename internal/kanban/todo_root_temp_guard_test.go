@@ -135,10 +135,11 @@ func TestTodoQueueRoot_TempOriginRefusesHomeQueue(t *testing.T) {
 
 	t.Run("temporary origin AND home unresolvable: the base still wins", func(t *testing.T) {
 		// The two conditions are not exclusive, and REQ-THG-001 fixes the
-		// return on their intersection. This is what pins the discriminant
-		// AHEAD of the home-resolution outcome: placed after it, the return
-		// would be homeTodoQueueRoot's no-home value (resolveStateDir(base,
-		// false) = base/.moai/state/todo) — one layer off, by ordering alone.
+		// return on their intersection at the base. Until t549 the no-home
+		// value was resolveStateDir(base, false) = base/.moai/state/todo, one
+		// layer off, so placement alone decided the return; homeTodoQueueRoot
+		// now returns the base too, and this subtest pins that the
+		// intersection still does.
 		dir := t.TempDir()
 		orig := HomeDirFn
 		HomeDirFn = func() (string, error) { return "", os.ErrNotExist }

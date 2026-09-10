@@ -1,0 +1,54 @@
+=== RUN   TestSessionStart_InvokesMigrationRunner
+=== RUN   TestSessionStart_InvokesMigrationRunner/malformed_version_file_is_read_by_the_runner
+2026/09/10 16:08:09 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_InvokesMigrationRunnermalformed_version_file_i3989457809/001
+2026/09/10 16:08:10 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 16:08:10 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_migration_test.go:86: Data[migration_error] absent: runner.Apply was not invoked (Data=map[multi_session_register:ok session_id:t617-migration status:initialized teammate_mode:auto])
+=== RUN   TestSessionStart_InvokesMigrationRunner/control:_absent_version_file_yields_no_migration_error
+2026/09/10 16:08:10 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_InvokesMigrationRunnercontrol_absent_version_1377367811/001
+2026/09/10 16:08:10 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 16:08:10 INFO teammateMode updated mode=auto in_tmux=false
+--- FAIL: TestSessionStart_InvokesMigrationRunner (0.38s)
+    --- FAIL: TestSessionStart_InvokesMigrationRunner/malformed_version_file_is_read_by_the_runner (0.20s)
+    --- PASS: TestSessionStart_InvokesMigrationRunner/control:_absent_version_file_yields_no_migration_error (0.18s)
+=== RUN   TestSessionStart_MigrationFailure_DoesNotBlockSession
+2026/09/10 16:08:10 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationFailure_DoesNotBlockSession3502649893/001
+2026/09/10 16:08:10 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 16:08:10 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_migration_test.go:112: Data[migration_error] absent: the failure was swallowed without a record (Data=map[multi_session_register:ok session_id:t617-migration status:initialized teammate_mode:auto])
+--- FAIL: TestSessionStart_MigrationFailure_DoesNotBlockSession (0.19s)
+=== RUN   TestSessionStart_MigrationsDisabled_SkipsRunner
+=== RUN   TestSessionStart_MigrationsDisabled_SkipsRunner/disabled:_runner_skipped
+2026/09/10 16:08:10 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnerdisabled_runner2580839194/001
+2026/09/10 16:08:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 16:08:10 INFO session start: migrations disabled via config project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnerdisabled_runner2580839194/001
+=== RUN   TestSessionStart_MigrationsDisabled_SkipsRunner/control:_enabled_on_the_same_fixture_runs_the_runner
+2026/09/10 16:08:10 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnercontrol_enabled4210651526/001
+2026/09/10 16:08:10 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_migration_test.go:146: Data[migration_error] absent with migrations.disabled=false (Data=map[multi_session_register:ok session_id:t617-migration status:initialized teammate_mode:auto])
+--- FAIL: TestSessionStart_MigrationsDisabled_SkipsRunner (0.42s)
+    --- PASS: TestSessionStart_MigrationsDisabled_SkipsRunner/disabled:_runner_skipped (0.23s)
+    --- FAIL: TestSessionStart_MigrationsDisabled_SkipsRunner/control:_enabled_on_the_same_fixture_runs_the_runner (0.19s)
+=== RUN   TestSessionStart_EnabledByDefault
+=== RUN   TestSessionStart_EnabledByDefault/nil_ConfigProvider
+2026/09/10 16:08:10 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultnil_ConfigProvider2465487546/001
+2026/09/10 16:08:10 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 16:08:10 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_migration_test.go:167: Data[migration_error] absent: runner not invoked by default (Data=map[multi_session_register:ok session_id:t617-migration status:initialized teammate_mode:auto])
+=== RUN   TestSessionStart_EnabledByDefault/provider_returning_nil_config
+2026/09/10 16:08:11 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultprovider_returning_nil_config4083188477/001
+2026/09/10 16:08:11 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 16:08:11 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_migration_test.go:167: Data[migration_error] absent: runner not invoked by default (Data=map[multi_session_register:ok session_id:t617-migration status:initialized teammate_mode:auto])
+=== RUN   TestSessionStart_EnabledByDefault/default_config_(key_missing)
+2026/09/10 16:08:11 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultdefault_config_(key_missing)395790158/001
+2026/09/10 16:08:11 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_migration_test.go:167: Data[migration_error] absent: runner not invoked by default (Data=map[multi_session_register:ok session_id:t617-migration status:initialized teammate_mode:auto])
+--- FAIL: TestSessionStart_EnabledByDefault (0.56s)
+    --- FAIL: TestSessionStart_EnabledByDefault/nil_ConfigProvider (0.19s)
+    --- FAIL: TestSessionStart_EnabledByDefault/provider_returning_nil_config (0.19s)
+    --- FAIL: TestSessionStart_EnabledByDefault/default_config_(key_missing) (0.18s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.264s
+FAIL
+EXIT=1

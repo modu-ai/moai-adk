@@ -1,0 +1,2 @@
+.moai/reports/t625/c2-c1-diff-before.txt .moai/reports/t625/c2-c1-diff-after-ac10.txt differ: char 29, line 3
+cmp before vs after-ac10 EXIT=1

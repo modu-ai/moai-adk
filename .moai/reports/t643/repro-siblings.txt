@@ -1,0 +1,8 @@
+# F7 sibling sweep — tree 8addcf742 (pre-correction)
+
+$ grep -rn -l -F 'reachable from the `go.mod`' --include='*.md' --exclude-dir=node_modules --exclude-dir=reports .
+CHANGELOG.md
+
+# Scope: *.md files outside node_modules and any directory named reports.
+# Historical evidence under .moai/reports/ is intentionally excluded (records, not live docs).
+# Result: the phrase has exactly one live copy, CHANGELOG.md:12.

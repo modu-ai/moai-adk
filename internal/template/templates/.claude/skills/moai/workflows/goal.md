@@ -74,11 +74,22 @@ moai goal "cmd: <your test command> exits 0"
 ```
 
 The prefix wins over the substring test in both directions, and a `cmd:`
-condition still accepts the trailing `exits <N>` clause. Arming is refused when a
-mechanical condition's first word resolves to no command — the message names the
-word and points back at the `model:` prefix. The refusal fires only on that
-positive evidence: assignments (`FOO=bar cmd`), path forms, subshells, and shell
-keywords are all left alone.
+condition still accepts the trailing `exits <N>` clause. Arming is refused on
+either of two pieces of positive evidence that a mechanical condition can only
+ever fail:
+
+- **Its first word resolves to no command.** The message names the word and
+  points back at the `model:` prefix. Assignments (`FOO=bar cmd`), path forms,
+  subshells, and shell keywords are all left alone.
+- **It reads as a sentence rather than a command** — five words or more, almost
+  all of them bare words carrying no shell syntax. This is the shape the first
+  check is blind to, because a sentence can open with a real command name
+  (`make sure every AC row is marked PASS` resolves `make` perfectly well). The
+  message names both remedies, since at that point which tier you meant is
+  genuinely unknown.
+
+Short invocations and anything carrying a meaningful amount of shell syntax —
+flags, paths, pipes, globs — are never flagged as prose.
 
 An explicit `cmd:` prefix **exempts the condition from that refusal**. The check
 resolves the first word in the ARMING environment, so it would otherwise reject a

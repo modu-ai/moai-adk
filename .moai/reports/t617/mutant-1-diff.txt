@@ -1,0 +1,15 @@
+diff --git a/internal/hook/session_start.go b/internal/hook/session_start.go
+index 224968b6f..767c2b585 100644
+--- a/internal/hook/session_start.go
++++ b/internal/hook/session_start.go
+@@ -262,7 +262,8 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
+ 		// next session retries. Best-effort, fail-open.
+ 		var migrationData map[string]any
+ 		g.Go(func() error {
+-			migrationData = runMigration(gctx, input.ProjectDir, cfg)
++			_ = gctx
++			migrationData = map[string]any{}
+ 			return nil
+ 		})
+ 
+EXIT=0

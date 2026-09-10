@@ -1,0 +1,68 @@
+=== RUN   TestLoadCatalog
+=== PAUSE TestLoadCatalog
+=== RUN   TestLoadCatalog_MalformedYAML
+=== PAUSE TestLoadCatalog_MalformedYAML
+=== RUN   TestLoadCatalog_ManifestAbsent
+=== PAUSE TestLoadCatalog_ManifestAbsent
+=== RUN   TestCatalogManifestPresent
+=== PAUSE TestCatalogManifestPresent
+=== RUN   TestAllSkillsInCatalog
+=== PAUSE TestAllSkillsInCatalog
+=== RUN   TestCatalogReferencesValid
+=== PAUSE TestCatalogReferencesValid
+=== RUN   TestCatalogTierValid
+=== PAUSE TestCatalogTierValid
+=== RUN   TestCatalogHashCoversSkillSubfiles
+=== PAUSE TestCatalogHashCoversSkillSubfiles
+=== RUN   TestCatalogNoDuplicateEntries
+=== PAUSE TestCatalogNoDuplicateEntries
+=== RUN   TestCatalogReservedFieldType
+=== PAUSE TestCatalogReservedFieldType
+=== CONT  TestLoadCatalog
+=== CONT  TestCatalogReferencesValid
+=== CONT  TestCatalogManifestPresent
+=== CONT  TestCatalogNoDuplicateEntries
+=== CONT  TestLoadCatalog_ManifestAbsent
+--- PASS: TestLoadCatalog_ManifestAbsent (0.00s)
+=== CONT  TestCatalogHashCoversSkillSubfiles
+=== CONT  TestAllSkillsInCatalog
+=== CONT  TestLoadCatalog_MalformedYAML
+=== RUN   TestLoadCatalog_MalformedYAML/unbalanced_bracket
+=== PAUSE TestLoadCatalog_MalformedYAML/unbalanced_bracket
+=== RUN   TestLoadCatalog_MalformedYAML/tab_indentation_invalid
+=== PAUSE TestLoadCatalog_MalformedYAML/tab_indentation_invalid
+=== RUN   TestLoadCatalog_MalformedYAML/incomplete_mapping
+=== PAUSE TestLoadCatalog_MalformedYAML/incomplete_mapping
+=== CONT  TestLoadCatalog_MalformedYAML/unbalanced_bracket
+=== NAME  TestCatalogNoDuplicateEntries
+    catalog_tier_audit_test.go:617: audited 45 unique names for duplicate entries
+--- PASS: TestCatalogNoDuplicateEntries (0.00s)
+=== CONT  TestLoadCatalog_MalformedYAML/incomplete_mapping
+=== CONT  TestCatalogReservedFieldType
+=== NAME  TestCatalogReferencesValid
+    catalog_tier_audit_test.go:302: audited 45 catalog entries for path validity
+--- PASS: TestCatalogReferencesValid (0.00s)
+=== CONT  TestCatalogTierValid
+=== CONT  TestLoadCatalog_MalformedYAML/tab_indentation_invalid
+=== NAME  TestLoadCatalog
+    catalog_loader_test.go:138: LoadCatalog: version=1.0.0, generated_at=2026-05-25T08:06:18Z, total_entries=45
+--- PASS: TestLoadCatalog (0.00s)
+=== NAME  TestAllSkillsInCatalog
+    catalog_tier_audit_test.go:190: audited 34 skills on disk against catalog
+--- PASS: TestLoadCatalog_MalformedYAML (0.00s)
+    --- PASS: TestLoadCatalog_MalformedYAML/unbalanced_bracket (0.00s)
+    --- PASS: TestLoadCatalog_MalformedYAML/incomplete_mapping (0.00s)
+    --- PASS: TestLoadCatalog_MalformedYAML/tab_indentation_invalid (0.00s)
+--- PASS: TestAllSkillsInCatalog (0.00s)
+=== NAME  TestCatalogReservedFieldType
+    catalog_tier_audit_test.go:651: audited 6 packs for reserved field type compliance
+--- PASS: TestCatalogReservedFieldType (0.00s)
+=== NAME  TestCatalogTierValid
+    catalog_tier_audit_test.go:325: audited 45 catalog entries for tier validity
+--- PASS: TestCatalogTierValid (0.00s)
+--- PASS: TestCatalogManifestPresent (0.01s)
+=== NAME  TestCatalogHashCoversSkillSubfiles
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+--- PASS: TestCatalogHashCoversSkillSubfiles (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.460s

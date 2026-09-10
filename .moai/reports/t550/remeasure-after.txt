@@ -1,0 +1,92 @@
+go build -o $SP/moai-after ./cmd/moai: exit 0
+===== fixture eslintprj (linter config: eslint.config.js) =====
+time=2026-09-10T14:31:16.344+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/eslintprj/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: executed in 151ms at 2026-09-10T14:31:16.345+09:00 — npx eslint .
+  - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+  - oxlint: skipped — none of its config files exist in the project directory (.oxlintrc.json, .oxlintrc.jsonc, oxlint.config.ts, oxlint.config.mts)
+  - npm test: executed in 136ms at 2026-09-10T14:31:16.496+09:00 — npm test -- --passWithNoTests
+exit=0
+===== fixture biomeprj (linter config: biome.json) =====
+time=2026-09-10T14:31:16.796+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/biomeprj/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+  - biome: executed in 5ms at 2026-09-10T14:31:16.797+09:00 — npx biome check .
+  - oxlint: skipped — none of its config files exist in the project directory (.oxlintrc.json, .oxlintrc.jsonc, oxlint.config.ts, oxlint.config.mts)
+  - npm test: executed in 5ms at 2026-09-10T14:31:16.802+09:00 — npm test -- --passWithNoTests
+exit=0
+===== fixture oxlintprj (linter config: .oxlintrc.json) =====
+time=2026-09-10T14:31:16.954+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/oxlintprj/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+  - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+  - oxlint: executed in 6ms at 2026-09-10T14:31:16.954+09:00 — npx oxlint
+  - npm test: executed in 5ms at 2026-09-10T14:31:16.960+09:00 — npm test -- --passWithNoTests
+exit=0
+===== fixture ox2 (linter config: .oxlintrc.jsonc) =====
+time=2026-09-10T14:31:17.133+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/ox2/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+  - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+  - oxlint: executed in 6ms at 2026-09-10T14:31:17.134+09:00 — npx oxlint
+  - npm test: executed in 5ms at 2026-09-10T14:31:17.140+09:00 — npm test -- --passWithNoTests
+exit=0
+===== fixture ox3 (linter config: oxlint.config.ts) =====
+time=2026-09-10T14:31:17.296+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/ox3/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+  - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+  - oxlint: executed in 5ms at 2026-09-10T14:31:17.297+09:00 — npx oxlint
+  - npm test: executed in 5ms at 2026-09-10T14:31:17.303+09:00 — npm test -- --passWithNoTests
+exit=0
+===== fixture ox4 (linter config: oxlint.config.mts) =====
+time=2026-09-10T14:31:17.455+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/ox4/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+  - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+  - oxlint: executed in 5ms at 2026-09-10T14:31:17.455+09:00 — npx oxlint
+  - npm test: executed in 5ms at 2026-09-10T14:31:17.460+09:00 — npm test -- --passWithNoTests
+exit=0
+===== fixture bareprj (linter config: none — CONTROL) =====
+time=2026-09-10T14:31:17.655+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/cbea09a7-48ea-46ea-bb4f-bfbba105cfdb/scratchpad/fx-after/bareprj/.moai/config/sections
+graph-freshness: codemaps=absent(value=0 threshold=40), mx-index=absent(value=0 threshold=1), edges=absent(value=0 threshold=0), citations=absent(value=0 threshold=0) (advisory)
+typecheck: skipped (no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one)
+ast-grep scan skipped: ast_grep_gate.rules_dir is empty (not configured); set it in .moai/config/sections/gate.yaml to enable the scan
+
+quality gate steps (5 configured):
+  - typecheck: skipped — no scripts.typecheck and no tsconfig.json; set gate.typecheck.command to enable one
+  - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+  - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+  - oxlint: skipped — none of its config files exist in the project directory (.oxlintrc.json, .oxlintrc.jsonc, oxlint.config.ts, oxlint.config.mts)
+  - npm test: executed in 7ms at 2026-09-10T14:31:17.657+09:00 — npm test -- --passWithNoTests
+exit=0

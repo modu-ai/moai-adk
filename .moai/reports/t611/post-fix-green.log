@@ -1,0 +1,442 @@
+=== RUN   TestLockAnchor_LivePidAnchored
+--- PASS: TestLockAnchor_LivePidAnchored (0.00s)
+=== RUN   TestLockAnchor_DeadPidNotAnchored
+--- PASS: TestLockAnchor_DeadPidNotAnchored (0.00s)
+=== RUN   TestLockAnchor_IndeterminateIsAnchored
+=== RUN   TestLockAnchor_IndeterminateIsAnchored/no_pid_token
+=== RUN   TestLockAnchor_IndeterminateIsAnchored/non-integer_pid
+=== RUN   TestLockAnchor_IndeterminateIsAnchored/empty_reason
+=== RUN   TestLockAnchor_IndeterminateIsAnchored/probe_undetermined
+--- PASS: TestLockAnchor_IndeterminateIsAnchored (0.00s)
+    --- PASS: TestLockAnchor_IndeterminateIsAnchored/no_pid_token (0.00s)
+    --- PASS: TestLockAnchor_IndeterminateIsAnchored/non-integer_pid (0.00s)
+    --- PASS: TestLockAnchor_IndeterminateIsAnchored/empty_reason (0.00s)
+    --- PASS: TestLockAnchor_IndeterminateIsAnchored/probe_undetermined (0.00s)
+=== RUN   TestLockAnchor_DeadLockRemovalIsInert
+--- PASS: TestLockAnchor_DeadLockRemovalIsInert (0.00s)
+=== RUN   TestAnchorDecision_RegistryOnlyPathStillAnchors
+--- PASS: TestAnchorDecision_RegistryOnlyPathStillAnchors (0.00s)
+=== RUN   TestParseWorktreeLocks_CapturesStoredReason
+--- PASS: TestParseWorktreeLocks_CapturesStoredReason (0.00s)
+=== RUN   TestRelocateSession_UpdatesCwd
+--- PASS: TestRelocateSession_UpdatesCwd (0.00s)
+=== RUN   TestRelocateSession_MissingEntryNoOp
+--- PASS: TestRelocateSession_MissingEntryNoOp (0.00s)
+=== RUN   TestRelocateSession_EmptyArgsReject
+--- PASS: TestRelocateSession_EmptyArgsReject (0.00s)
+=== RUN   TestLiveAnchoredSessions_CallerRegistrySource
+--- PASS: TestLiveAnchoredSessions_CallerRegistrySource (0.00s)
+=== RUN   TestLiveAnchoredSessions_KeepsLivePIDWithStaleHeartbeat
+--- PASS: TestLiveAnchoredSessions_KeepsLivePIDWithStaleHeartbeat (0.00s)
+=== RUN   TestLiveAnchoredSessions_DropsDeadPIDStaleHeartbeat
+--- PASS: TestLiveAnchoredSessions_DropsDeadPIDStaleHeartbeat (0.00s)
+=== RUN   TestLiveAnchoredSessions_KeepsFreshHeartbeatDespiteDeadPID
+--- PASS: TestLiveAnchoredSessions_KeepsFreshHeartbeatDespiteDeadPID (0.00s)
+=== RUN   TestLiveAnchoredSessions_FiltersForeignHostAndCWD
+--- PASS: TestLiveAnchoredSessions_FiltersForeignHostAndCWD (0.00s)
+=== RUN   TestLiveAnchoredSessions_MissingRegistryFailsOpen
+--- PASS: TestLiveAnchoredSessions_MissingRegistryFailsOpen (0.00s)
+=== RUN   TestNewBlockerReport
+--- PASS: TestNewBlockerReport (0.00s)
+=== RUN   TestBlockerReportResolve
+--- PASS: TestBlockerReportResolve (0.00s)
+=== RUN   TestBlockerReportContext
+--- PASS: TestBlockerReportContext (0.00s)
+=== RUN   TestCheckpointPhaseName
+=== RUN   TestCheckpointPhaseName/PlanCheckpoint
+=== RUN   TestCheckpointPhaseName/RunCheckpoint
+=== RUN   TestCheckpointPhaseName/SyncCheckpoint
+--- PASS: TestCheckpointPhaseName (0.00s)
+    --- PASS: TestCheckpointPhaseName/PlanCheckpoint (0.00s)
+    --- PASS: TestCheckpointPhaseName/RunCheckpoint (0.00s)
+    --- PASS: TestCheckpointPhaseName/SyncCheckpoint (0.00s)
+=== RUN   TestPlanCheckpointFields
+--- PASS: TestPlanCheckpointFields (0.00s)
+=== RUN   TestRunCheckpointFields
+--- PASS: TestRunCheckpointFields (0.00s)
+=== RUN   TestSyncCheckpointFields
+--- PASS: TestSyncCheckpointFields (0.00s)
+=== RUN   TestPlanCheckpointValidate_MissingSPECID
+--- PASS: TestPlanCheckpointValidate_MissingSPECID (0.00s)
+=== RUN   TestPlanCheckpointValidate_InvalidStatus
+--- PASS: TestPlanCheckpointValidate_InvalidStatus (0.00s)
+=== RUN   TestPlanCheckpointValidate_AllValidStatuses
+=== RUN   TestPlanCheckpointValidate_AllValidStatuses/approved
+=== RUN   TestPlanCheckpointValidate_AllValidStatuses/draft
+=== RUN   TestPlanCheckpointValidate_AllValidStatuses/rejected
+--- PASS: TestPlanCheckpointValidate_AllValidStatuses (0.00s)
+    --- PASS: TestPlanCheckpointValidate_AllValidStatuses/approved (0.00s)
+    --- PASS: TestPlanCheckpointValidate_AllValidStatuses/draft (0.00s)
+    --- PASS: TestPlanCheckpointValidate_AllValidStatuses/rejected (0.00s)
+=== RUN   TestRunCheckpointValidate_MissingSPECID
+--- PASS: TestRunCheckpointValidate_MissingSPECID (0.00s)
+=== RUN   TestRunCheckpointValidate_InvalidStatus
+--- PASS: TestRunCheckpointValidate_InvalidStatus (0.00s)
+=== RUN   TestRunCheckpointValidate_EmptyHarness
+--- PASS: TestRunCheckpointValidate_EmptyHarness (0.00s)
+=== RUN   TestRunCheckpointValidate_InvalidHarness
+--- PASS: TestRunCheckpointValidate_InvalidHarness (0.00s)
+=== RUN   TestRunCheckpointValidate_AllValidStatuses
+=== RUN   TestRunCheckpointValidate_AllValidStatuses/pass
+=== RUN   TestRunCheckpointValidate_AllValidStatuses/fail
+=== RUN   TestRunCheckpointValidate_AllValidStatuses/partial
+--- PASS: TestRunCheckpointValidate_AllValidStatuses (0.00s)
+    --- PASS: TestRunCheckpointValidate_AllValidStatuses/pass (0.00s)
+    --- PASS: TestRunCheckpointValidate_AllValidStatuses/fail (0.00s)
+    --- PASS: TestRunCheckpointValidate_AllValidStatuses/partial (0.00s)
+=== RUN   TestRunCheckpointValidate_AllValidHarnesses
+=== RUN   TestRunCheckpointValidate_AllValidHarnesses/minimal
+=== RUN   TestRunCheckpointValidate_AllValidHarnesses/standard
+=== RUN   TestRunCheckpointValidate_AllValidHarnesses/thorough
+--- PASS: TestRunCheckpointValidate_AllValidHarnesses (0.00s)
+    --- PASS: TestRunCheckpointValidate_AllValidHarnesses/minimal (0.00s)
+    --- PASS: TestRunCheckpointValidate_AllValidHarnesses/standard (0.00s)
+    --- PASS: TestRunCheckpointValidate_AllValidHarnesses/thorough (0.00s)
+=== RUN   TestSyncCheckpointValidate_MissingSPECID
+--- PASS: TestSyncCheckpointValidate_MissingSPECID (0.00s)
+=== RUN   TestSyncCheckpointValidate_Valid
+--- PASS: TestSyncCheckpointValidate_Valid (0.00s)
+=== RUN   TestHydrateWithOpts_SkipStaleCheck
+WARN: checkpoint for run/SPEC-RESUME-001 is stale (age=1h0m0s); loading anyway (--resume)
+--- PASS: TestHydrateWithOpts_SkipStaleCheck (0.00s)
+=== RUN   TestHydrateWithOpts_Default
+--- PASS: TestHydrateWithOpts_Default (0.00s)
+=== RUN   TestHydrateWithOpts_NotExists
+--- PASS: TestHydrateWithOpts_NotExists (0.00s)
+=== RUN   TestHydrateForPrompt_NilState
+--- PASS: TestHydrateForPrompt_NilState (0.00s)
+=== RUN   TestHydrateForPrompt_HydrateError
+--- PASS: TestHydrateForPrompt_HydrateError (0.00s)
+=== RUN   TestHydrateForPrompt_CacheOrderInvariant
+--- PASS: TestHydrateForPrompt_CacheOrderInvariant (0.00s)
+=== RUN   TestHydrateForPrompt_AllPhases
+=== RUN   TestHydrateForPrompt_AllPhases/PlanCheckpoint_status_approved
+=== RUN   TestHydrateForPrompt_AllPhases/RunCheckpoint_status_pass
+=== RUN   TestHydrateForPrompt_AllPhases/SyncCheckpoint_synced
+=== RUN   TestHydrateForPrompt_AllPhases/SyncCheckpoint_pending
+=== RUN   TestHydrateForPrompt_AllPhases/NoCheckpoint_no_checkpoint
+--- PASS: TestHydrateForPrompt_AllPhases (0.00s)
+    --- PASS: TestHydrateForPrompt_AllPhases/PlanCheckpoint_status_approved (0.00s)
+    --- PASS: TestHydrateForPrompt_AllPhases/RunCheckpoint_status_pass (0.00s)
+    --- PASS: TestHydrateForPrompt_AllPhases/SyncCheckpoint_synced (0.00s)
+    --- PASS: TestHydrateForPrompt_AllPhases/SyncCheckpoint_pending (0.00s)
+    --- PASS: TestHydrateForPrompt_AllPhases/NoCheckpoint_no_checkpoint (0.00s)
+=== RUN   TestCheckpointStatus_UnknownConcreteType
+--- PASS: TestCheckpointStatus_UnknownConcreteType (0.00s)
+=== RUN   TestIrreplaceableIgnoredEntries
+=== RUN   TestIrreplaceableIgnoredEntries/agent_memory_has_no_regenerator
+=== RUN   TestIrreplaceableIgnoredEntries/an_allowlisted_tree_is_regenerable_at_any_depth
+=== RUN   TestIrreplaceableIgnoredEntries/tracked_and_untracked_lines_are_not_this_guard's_business
+=== RUN   TestIrreplaceableIgnoredEntries/a_mixed_listing_reports_only_the_irreplaceable_entries
+=== RUN   TestIrreplaceableIgnoredEntries/quoted_and_trailing-slash_forms_normalise_the_same_way
+=== RUN   TestIrreplaceableIgnoredEntries/a_prefix_that_is_not_a_path_boundary_is_not_allowlisted
+=== RUN   TestIrreplaceableIgnoredEntries/empty_porcelain_reports_nothing
+--- PASS: TestIrreplaceableIgnoredEntries (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/agent_memory_has_no_regenerator (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/an_allowlisted_tree_is_regenerable_at_any_depth (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/tracked_and_untracked_lines_are_not_this_guard's_business (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/a_mixed_listing_reports_only_the_irreplaceable_entries (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/quoted_and_trailing-slash_forms_normalise_the_same_way (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/a_prefix_that_is_not_a_path_boundary_is_not_allowlisted (0.00s)
+    --- PASS: TestIrreplaceableIgnoredEntries/empty_porcelain_reports_nothing (0.00s)
+=== RUN   TestIsRegenerableIgnoredPath
+--- PASS: TestIsRegenerableIgnoredPath (0.00s)
+=== RUN   TestDetectInFlightTransition
+--- PASS: TestDetectInFlightTransition (0.00s)
+=== RUN   TestDetectInFlightTransition_AllPhasesComplete
+--- PASS: TestDetectInFlightTransition_AllPhasesComplete (0.00s)
+=== RUN   TestDetectInFlightTransition_NoCheckpoint
+--- PASS: TestDetectInFlightTransition_NoCheckpoint (0.00s)
+=== RUN   TestDetectInFlightTransition_DifferentSpec
+--- PASS: TestDetectInFlightTransition_DifferentSpec (0.00s)
+=== RUN   TestCheckpoint_BlockerOutstanding_FileScan
+--- PASS: TestCheckpoint_BlockerOutstanding_FileScan (0.00s)
+=== RUN   TestCheckpoint_AfterBlockerResolved_FileScan
+--- PASS: TestCheckpoint_AfterBlockerResolved_FileScan (0.00s)
+=== RUN   TestPhaseString
+=== RUN   TestPhaseString/plan_phase
+=== RUN   TestPhaseString/run_phase
+=== RUN   TestPhaseString/sync_phase
+=== RUN   TestPhaseString/design_phase
+=== RUN   TestPhaseString/review_phase
+=== RUN   TestPhaseString/fix_phase
+=== RUN   TestPhaseString/loop_phase
+=== RUN   TestPhaseString/db_phase
+=== RUN   TestPhaseString/mx_phase
+--- PASS: TestPhaseString (0.00s)
+    --- PASS: TestPhaseString/plan_phase (0.00s)
+    --- PASS: TestPhaseString/run_phase (0.00s)
+    --- PASS: TestPhaseString/sync_phase (0.00s)
+    --- PASS: TestPhaseString/design_phase (0.00s)
+    --- PASS: TestPhaseString/review_phase (0.00s)
+    --- PASS: TestPhaseString/fix_phase (0.00s)
+    --- PASS: TestPhaseString/loop_phase (0.00s)
+    --- PASS: TestPhaseString/db_phase (0.00s)
+    --- PASS: TestPhaseString/mx_phase (0.00s)
+=== RUN   TestPhaseValid
+=== RUN   TestPhaseValid/plan_valid
+=== RUN   TestPhaseValid/run_valid
+=== RUN   TestPhaseValid/sync_valid
+=== RUN   TestPhaseValid/design_valid
+=== RUN   TestPhaseValid/review_valid
+=== RUN   TestPhaseValid/fix_valid
+=== RUN   TestPhaseValid/loop_valid
+=== RUN   TestPhaseValid/db_valid
+=== RUN   TestPhaseValid/mx_valid
+=== RUN   TestPhaseValid/invalid_invalid
+=== RUN   TestPhaseValid/_invalid
+=== RUN   TestPhaseValid/Plan_invalid
+--- PASS: TestPhaseValid (0.00s)
+    --- PASS: TestPhaseValid/plan_valid (0.00s)
+    --- PASS: TestPhaseValid/run_valid (0.00s)
+    --- PASS: TestPhaseValid/sync_valid (0.00s)
+    --- PASS: TestPhaseValid/design_valid (0.00s)
+    --- PASS: TestPhaseValid/review_valid (0.00s)
+    --- PASS: TestPhaseValid/fix_valid (0.00s)
+    --- PASS: TestPhaseValid/loop_valid (0.00s)
+    --- PASS: TestPhaseValid/db_valid (0.00s)
+    --- PASS: TestPhaseValid/mx_valid (0.00s)
+    --- PASS: TestPhaseValid/invalid_invalid (0.00s)
+    --- PASS: TestPhaseValid/_invalid (0.00s)
+    --- PASS: TestPhaseValid/Plan_invalid (0.00s)
+=== RUN   TestRegistryWithLockInProcessSerialization
+    registry_inprocess_mutex_test.go:79: withLock concurrent residency (mutex enabled): max=1 (workers=10 perWorker=100 total=1000)
+--- PASS: TestRegistryWithLockInProcessSerialization (1.89s)
+=== RUN   TestRegistryWithLockInProcessSerializationFalsifiability
+    registry_inprocess_mutex_test.go:102: MOAI_CFS3_FALSIFIABILITY!=1; skipping falsifiability sub-case (local verification only)
+--- SKIP: TestRegistryWithLockInProcessSerializationFalsifiability (0.00s)
+=== RUN   TestPurgeKeepsLiveSessionPastHeartbeatFloor
+--- PASS: TestPurgeKeepsLiveSessionPastHeartbeatFloor (0.00s)
+=== RUN   TestPurgeRemovesDeadStaleSession
+--- PASS: TestPurgeRemovesDeadStaleSession (0.00s)
+=== RUN   TestPurgeFreshDeadEntryKept
+--- PASS: TestPurgeFreshDeadEntryKept (0.00s)
+=== RUN   TestPurgeUndeterminedProbeFallsBackToHeartbeat
+--- PASS: TestPurgeUndeterminedProbeFallsBackToHeartbeat (0.00s)
+=== RUN   TestPurgeCorruptPIDUsesHeartbeatVerdict
+--- PASS: TestPurgeCorruptPIDUsesHeartbeatVerdict (0.00s)
+=== RUN   TestRegisterStarvationCharacterization
+    registry_starvation_test.go:95: per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=3.8545ms p95=6.269208ms max=6.894166ms
+--- PASS: TestRegisterStarvationCharacterization (0.11s)
+=== RUN   TestWithLockTimeoutContract
+    registry_starvation_test.go:132: timeout path returned "session registry: lock acquisition timed out: registry lock flock /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWithLockTimeoutContract3701041846/001/active-sessions.json.lock: resource temporarily unavailable" after 81.837167ms
+--- PASS: TestWithLockTimeoutContract (0.08s)
+=== RUN   TestLockRetryDelayBoundsAndJitter
+--- PASS: TestLockRetryDelayBoundsAndJitter (0.00s)
+=== RUN   TestRegisterSession
+=== RUN   TestRegisterSession/happy_path_with_SPEC
+=== RUN   TestRegisterSession/happy_path_no_SPEC
+=== RUN   TestRegisterSession/empty_sessionID_rejected
+--- PASS: TestRegisterSession (0.00s)
+    --- PASS: TestRegisterSession/happy_path_with_SPEC (0.00s)
+    --- PASS: TestRegisterSession/happy_path_no_SPEC (0.00s)
+    --- PASS: TestRegisterSession/empty_sessionID_rejected (0.00s)
+=== RUN   TestRegisterIdempotentOnDuplicate
+--- PASS: TestRegisterIdempotentOnDuplicate (0.00s)
+=== RUN   TestHeartbeat
+--- PASS: TestHeartbeat (0.00s)
+=== RUN   TestHeartbeatIdempotentOnMissing
+--- PASS: TestHeartbeatIdempotentOnMissing (0.00s)
+=== RUN   TestDeregisterSession
+--- PASS: TestDeregisterSession (0.00s)
+=== RUN   TestDeregisterSessionIdempotent
+--- PASS: TestDeregisterSessionIdempotent (0.00s)
+=== RUN   TestQueryActiveWorkFilter
+=== RUN   TestQueryActiveWorkFilter/empty_filter_returns_all
+=== RUN   TestQueryActiveWorkFilter/SPEC-A_returns_2
+=== RUN   TestQueryActiveWorkFilter/SPEC-B_returns_1
+=== RUN   TestQueryActiveWorkFilter/non-existent_returns_0
+--- PASS: TestQueryActiveWorkFilter (0.00s)
+    --- PASS: TestQueryActiveWorkFilter/empty_filter_returns_all (0.00s)
+    --- PASS: TestQueryActiveWorkFilter/SPEC-A_returns_2 (0.00s)
+    --- PASS: TestQueryActiveWorkFilter/SPEC-B_returns_1 (0.00s)
+    --- PASS: TestQueryActiveWorkFilter/non-existent_returns_0 (0.00s)
+=== RUN   TestPurgeStale
+--- PASS: TestPurgeStale (0.00s)
+=== RUN   TestPurgeStaleDefaultThreshold
+--- PASS: TestPurgeStaleDefaultThreshold (0.00s)
+=== RUN   TestRegisterSessionConcurrent
+--- PASS: TestRegisterSessionConcurrent (2.14s)
+=== RUN   TestQueryEmptyRegistry
+--- PASS: TestQueryEmptyRegistry (0.00s)
+=== RUN   TestRegistryAtomicWrite
+--- PASS: TestRegistryAtomicWrite (0.01s)
+=== RUN   TestFormatStderrReminder
+--- PASS: TestFormatStderrReminder (0.00s)
+=== RUN   TestRegisterPersistsAtomically
+--- PASS: TestRegisterPersistsAtomically (0.00s)
+=== RUN   TestDetectHostNonEmpty
+--- PASS: TestDetectHostNonEmpty (0.00s)
+=== RUN   TestPlatformTagFormat
+--- PASS: TestPlatformTagFormat (0.00s)
+=== RUN   TestPackageLevelHelpers
+--- PASS: TestPackageLevelHelpers (0.00s)
+=== RUN   TestPackageLevelEmptySessionID
+--- PASS: TestPackageLevelEmptySessionID (0.00s)
+=== RUN   TestNewRegistryNilClock
+--- PASS: TestNewRegistryNilClock (0.00s)
+=== RUN   TestReadAllUnlockedCorrupt
+--- PASS: TestReadAllUnlockedCorrupt (0.00s)
+=== RUN   TestShortIDEdgeCases
+--- PASS: TestShortIDEdgeCases (0.00s)
+=== RUN   TestRegister_RecordsLivePID_LauncherPath
+--- PASS: TestRegister_RecordsLivePID_LauncherPath (0.00s)
+=== RUN   TestResolveSessionPID_IgnoresDeadLauncherStamp
+--- PASS: TestResolveSessionPID_IgnoresDeadLauncherStamp (0.00s)
+=== RUN   TestAncestorSessionPID_SkipsWrapperShells
+--- PASS: TestAncestorSessionPID_SkipsWrapperShells (0.00s)
+=== RUN   TestAncestorSessionPID_CollapsedChain
+--- PASS: TestAncestorSessionPID_CollapsedChain (0.00s)
+=== RUN   TestAncestorSessionPID_Unresolvable
+=== RUN   TestAncestorSessionPID_Unresolvable/platform_reports_nothing
+=== RUN   TestAncestorSessionPID_Unresolvable/walk_reaches_init
+=== RUN   TestAncestorSessionPID_Unresolvable/resolved_ancestor_is_dead
+=== RUN   TestAncestorSessionPID_Unresolvable/shells_all_the_way_up_past_the_depth_bound
+--- PASS: TestAncestorSessionPID_Unresolvable (0.00s)
+    --- PASS: TestAncestorSessionPID_Unresolvable/platform_reports_nothing (0.00s)
+    --- PASS: TestAncestorSessionPID_Unresolvable/walk_reaches_init (0.00s)
+    --- PASS: TestAncestorSessionPID_Unresolvable/resolved_ancestor_is_dead (0.00s)
+    --- PASS: TestAncestorSessionPID_Unresolvable/shells_all_the_way_up_past_the_depth_bound (0.00s)
+=== RUN   TestSessionPIDFromEnv_RejectsUnusableValues
+--- PASS: TestSessionPIDFromEnv_RejectsUnusableValues (0.00s)
+=== RUN   TestResolveSessionPID_PrefersEnvOverride
+--- PASS: TestResolveSessionPID_PrefersEnvOverride (0.00s)
+=== RUN   TestResolveOwnerPID_Precedence
+=== RUN   TestResolveOwnerPID_Precedence/env_stamp_wins
+=== RUN   TestResolveOwnerPID_Precedence/ancestry_answers_when_no_stamp
+=== RUN   TestResolveOwnerPID_Precedence/unresolvable_reports_zero,_never_os.Getpid()
+--- PASS: TestResolveOwnerPID_Precedence (0.00s)
+    --- PASS: TestResolveOwnerPID_Precedence/env_stamp_wins (0.00s)
+    --- PASS: TestResolveOwnerPID_Precedence/ancestry_answers_when_no_stamp (0.00s)
+    --- PASS: TestResolveOwnerPID_Precedence/unresolvable_reports_zero,_never_os.Getpid() (0.00s)
+=== RUN   TestResolveSessionPID_FallsBackToSelf
+--- PASS: TestResolveSessionPID_FallsBackToSelf (0.00s)
+=== RUN   TestRegister_RecordsLivePID
+--- PASS: TestRegister_RecordsLivePID (0.00s)
+=== RUN   TestPhaseStateMarshalUnmarshal
+--- PASS: TestPhaseStateMarshalUnmarshal (0.00s)
+=== RUN   TestPhaseStateMarshalUnmarshalRunCheckpoint
+--- PASS: TestPhaseStateMarshalUnmarshalRunCheckpoint (0.00s)
+=== RUN   TestPhaseStateMarshalUnmarshalSyncCheckpoint
+--- PASS: TestPhaseStateMarshalUnmarshalSyncCheckpoint (0.00s)
+=== RUN   TestPhaseStateWithBlocker
+--- PASS: TestPhaseStateWithBlocker (0.00s)
+=== RUN   TestProvenanceTag
+--- PASS: TestProvenanceTag (0.00s)
+=== RUN   TestPhaseStateMarshalJSONPointerReceiver_RoundTrip
+=== RUN   TestPhaseStateMarshalJSONPointerReceiver_RoundTrip/PlanCheckpoint
+=== RUN   TestPhaseStateMarshalJSONPointerReceiver_RoundTrip/RunCheckpoint
+=== RUN   TestPhaseStateMarshalJSONPointerReceiver_RoundTrip/SyncCheckpoint
+--- PASS: TestPhaseStateMarshalJSONPointerReceiver_RoundTrip (0.00s)
+    --- PASS: TestPhaseStateMarshalJSONPointerReceiver_RoundTrip/PlanCheckpoint (0.00s)
+    --- PASS: TestPhaseStateMarshalJSONPointerReceiver_RoundTrip/RunCheckpoint (0.00s)
+    --- PASS: TestPhaseStateMarshalJSONPointerReceiver_RoundTrip/SyncCheckpoint (0.00s)
+=== RUN   TestPhaseStateMarshalJSONPointerReceiver_NilCheckpoint
+--- PASS: TestPhaseStateMarshalJSONPointerReceiver_NilCheckpoint (0.00s)
+=== RUN   TestPhaseStateUnmarshalJSON_UnknownPhase
+--- PASS: TestPhaseStateUnmarshalJSON_UnknownPhase (0.00s)
+=== RUN   TestPhaseStateUnmarshalJSON_MalformedCheckpoint
+--- PASS: TestPhaseStateUnmarshalJSON_MalformedCheckpoint (0.00s)
+=== RUN   TestPhaseStateUnmarshalJSON_PlanCheckpointBadStatus
+--- PASS: TestPhaseStateUnmarshalJSON_PlanCheckpointBadStatus (0.00s)
+=== RUN   TestResolveBlockerScope_SingleMatchResolved
+--- PASS: TestResolveBlockerScope_SingleMatchResolved (0.00s)
+=== RUN   TestResolveBlockerScope_NoMatchResolvesNothing
+--- PASS: TestResolveBlockerScope_NoMatchResolvesNothing (0.00s)
+=== RUN   TestResolveBlockerScope_NewerOtherSpecUntouched
+--- PASS: TestResolveBlockerScope_NewerOtherSpecUntouched (0.00s)
+=== RUN   TestResolveBlockerScope_NewerOtherPhaseUntouched
+--- PASS: TestResolveBlockerScope_NewerOtherPhaseUntouched (0.00s)
+=== RUN   TestResolveBlockerScope_ReportCriterion
+--- PASS: TestResolveBlockerScope_ReportCriterion (0.00s)
+=== RUN   TestResolveBlockerScope_EmptyFieldRecordNotMatched
+--- PASS: TestResolveBlockerScope_EmptyFieldRecordNotMatched (0.00s)
+=== RUN   TestFileSessionStoreCheckpoint
+--- PASS: TestFileSessionStoreCheckpoint (0.00s)
+=== RUN   TestFileSessionStoreCheckpointWithBlocker
+--- PASS: TestFileSessionStoreCheckpointWithBlocker (0.00s)
+=== RUN   TestFileSessionStoreHydrate
+--- PASS: TestFileSessionStoreHydrate (0.00s)
+=== RUN   TestFileSessionStoreHydrateStale
+--- PASS: TestFileSessionStoreHydrateStale (0.00s)
+=== RUN   TestFileSessionStoreAppendTaskLedger
+--- PASS: TestFileSessionStoreAppendTaskLedger (0.00s)
+=== RUN   TestFileSessionStoreWriteRunArtifact
+--- PASS: TestFileSessionStoreWriteRunArtifact (0.00s)
+=== RUN   TestFileSessionStoreRecordBlocker
+--- PASS: TestFileSessionStoreRecordBlocker (0.00s)
+=== RUN   TestFileSessionStoreResolveBlocker
+--- PASS: TestFileSessionStoreResolveBlocker (0.00s)
+=== RUN   TestCheckpoint_ValidatorRejectsBadHarness
+--- PASS: TestCheckpoint_ValidatorRejectsBadHarness (0.00s)
+=== RUN   TestCheckpoint_ValidatorAcceptsGoodHarness
+--- PASS: TestCheckpoint_ValidatorAcceptsGoodHarness (0.00s)
+=== RUN   TestCheckpoint_ValidatorRejectsEmptyHarness
+--- PASS: TestCheckpoint_ValidatorRejectsEmptyHarness (0.00s)
+=== RUN   TestCheckpoint_ConcurrentRace
+    store_test.go:464: WARNING: No ErrCheckpointConcurrent returned - advisory lock not yet implemented (expected in RED phase)
+--- PASS: TestCheckpoint_ConcurrentRace (0.01s)
+=== RUN   TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8
+=== RUN   TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.md
+=== RUN   TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.txt
+=== RUN   TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.json
+=== RUN   TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.yaml
+=== RUN   TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.yml
+--- PASS: TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8 (0.00s)
+    --- PASS: TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.md (0.00s)
+    --- PASS: TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.txt (0.00s)
+    --- PASS: TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.json (0.00s)
+    --- PASS: TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.yaml (0.00s)
+    --- PASS: TestWriteRunArtifact_TextExtensions_RejectInvalidUTF8/output.yml (0.00s)
+=== RUN   TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8
+=== RUN   TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8/output.bin
+=== RUN   TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8/image.png
+=== RUN   TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8/archive.tar
+--- PASS: TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8 (0.00s)
+    --- PASS: TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8/output.bin (0.00s)
+    --- PASS: TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8/image.png (0.00s)
+    --- PASS: TestWriteRunArtifact_BinaryExtensions_AcceptInvalidUTF8/archive.tar (0.00s)
+=== RUN   TestWriteRunArtifact_TextExtensions_AcceptValidUTF8
+--- PASS: TestWriteRunArtifact_TextExtensions_AcceptValidUTF8 (0.00s)
+=== RUN   TestWriteRunArtifact_CaseInsensitiveExtension
+--- PASS: TestWriteRunArtifact_CaseInsensitiveExtension (0.00s)
+=== RUN   TestMergeTeamCheckpoints_PhasePlan_LastWriteWins
+--- PASS: TestMergeTeamCheckpoints_PhasePlan_LastWriteWins (0.00s)
+=== RUN   TestMergeTeamCheckpoints_PhaseSync_LastWriteWins
+--- PASS: TestMergeTeamCheckpoints_PhaseSync_LastWriteWins (0.00s)
+=== RUN   TestMergeTeamCheckpoints_EmptyAgentNames
+--- PASS: TestMergeTeamCheckpoints_EmptyAgentNames (0.00s)
+=== RUN   TestRecordBlocker_DefaultsWhenPhaseAndSpecMissing
+--- PASS: TestRecordBlocker_DefaultsWhenPhaseAndSpecMissing (0.00s)
+=== RUN   TestRecordBlocker_WithPhaseAndSpec
+--- PASS: TestRecordBlocker_WithPhaseAndSpec (0.00s)
+=== RUN   TestResolveBlocker_NoBlockerFound
+--- PASS: TestResolveBlocker_NoBlockerFound (0.00s)
+=== RUN   TestResolveBlocker_OnlyResolvedExists
+--- PASS: TestResolveBlocker_OnlyResolvedExists (0.00s)
+=== RUN   TestResolveBlocker_MostRecentSelectedAmongMultiple
+--- PASS: TestResolveBlocker_MostRecentSelectedAmongMultiple (1.10s)
+=== RUN   TestCheckpoint_RejectedByDiskBlocker
+--- PASS: TestCheckpoint_RejectedByDiskBlocker (0.00s)
+=== RUN   TestCheckpoint_RejectedByInvalidCheckpoint
+--- PASS: TestCheckpoint_RejectedByInvalidCheckpoint (0.00s)
+=== RUN   TestDetectInFlightTransition_PlanOnly_PlanToRun
+--- PASS: TestDetectInFlightTransition_PlanOnly_PlanToRun (0.00s)
+=== RUN   TestDetectInFlightTransition_Empty
+--- PASS: TestDetectInFlightTransition_Empty (0.00s)
+=== RUN   TestAppendTaskLedger_MultipleEntriesAppended
+--- PASS: TestAppendTaskLedger_MultipleEntriesAppended (0.00s)
+=== RUN   TestSubagentBoundary
+--- PASS: TestSubagentBoundary (0.00s)
+=== RUN   TestSubagentBoundary_RequiredFilesExist
+--- PASS: TestSubagentBoundary_RequiredFilesExist (0.00s)
+=== RUN   TestMergeTeamCheckpoints_HappyPath
+--- PASS: TestMergeTeamCheckpoints_HappyPath (0.00s)
+=== RUN   TestMergeTeamCheckpoints_BlockerBubble
+--- PASS: TestMergeTeamCheckpoints_BlockerBubble (0.00s)
+=== RUN   TestMergeTeamCheckpoints_MissingFile
+--- PASS: TestMergeTeamCheckpoints_MissingFile (0.00s)
+=== RUN   TestProvenanceRoundTrip
+--- PASS: TestProvenanceRoundTrip (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/session	5.758s

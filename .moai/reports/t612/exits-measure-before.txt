@@ -1,0 +1,11 @@
+=== RUN   TestPendingWarnExit_E1_WindowExpiryOnPlainLine_DiagnosticOnly
+    scanner_pending_warn_test.go:140: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarnExit_E1_WindowExpiryOnPlainLine_DiagnosticOnly1503538961/001/fixture.go:2 - WARN tag without REASON within 3 lines]
+--- PASS: TestPendingWarnExit_E1_WindowExpiryOnPlainLine_DiagnosticOnly (0.00s)
+=== RUN   TestPendingWarnExit_E2_TooLateReason_DiagnosticOnly
+    scanner_pending_warn_test.go:149: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarnExit_E2_TooLateReason_DiagnosticOnly3277618979/001/fixture.go:2 - WARN tag without REASON within 3 lines]
+--- PASS: TestPendingWarnExit_E2_TooLateReason_DiagnosticOnly (0.00s)
+=== RUN   TestPendingWarnExit_E3_EndOfFile_DiagnosticOnly
+    scanner_pending_warn_test.go:156: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarnExit_E3_EndOfFile_DiagnosticOnly1907331645/001/fixture.go:2 - WARN tag without REASON]
+--- PASS: TestPendingWarnExit_E3_EndOfFile_DiagnosticOnly (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/mx	0.335s

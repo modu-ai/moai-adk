@@ -1,0 +1,6 @@
+# AC-GTS2-006 go vet
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+tree: e6ec2991e4ce028b83d2be0658844ddb3813a8dd
+shell env GOTOOLCHAIN: unset
+
+$ go vet ./...

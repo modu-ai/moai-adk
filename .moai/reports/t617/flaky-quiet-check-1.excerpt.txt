@@ -1,0 +1,7 @@
+Excerpt of local raw file flaky-quiet-check-1.txt (raw machine-wide ps output not committed).
+--- snapshot: single ---
+17:32  up 2 days, 11:25, 15 users, load averages: 10.45 10.28 8.05
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1373)
+go test/.test lines: 0 (self shell lines containing zsh: 0; other: 0)
+EXIT=0

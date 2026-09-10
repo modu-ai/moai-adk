@@ -466,7 +466,8 @@ func (fs *FileSessionStore) ResolveBlocker(phase Phase, specID string, resolutio
 		return fmt.Errorf("glob blockers: %w", err)
 	}
 
-	// Find the most recent unresolved blocker
+	// Find the most recent unresolved blocker whose Phase and SPECID match the
+	// request exactly; blockers belonging to another phase or SPEC are never selected.
 	var latestBlocker *BlockerReport
 	var latestPath string
 	var latestTime time.Time
@@ -479,6 +480,10 @@ func (fs *FileSessionStore) ResolveBlocker(phase Phase, specID string, resolutio
 
 		var blocker BlockerReport
 		if err := json.Unmarshal(data, &blocker); err != nil {
+			continue
+		}
+
+		if blocker.Phase != phase || blocker.SPECID != specID {
 			continue
 		}
 

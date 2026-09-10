@@ -1,0 +1,6 @@
+Excerpt of local raw file flaky-ps-layout.txt (raw machine-wide ps output not committed).
+--- snapshot: single ---
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1381)
+go test/.test lines: 0 (self shell lines containing zsh: 0; other: 0)
+EXIT=0

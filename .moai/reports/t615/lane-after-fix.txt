@@ -1,0 +1,56 @@
+=== RUN   TestDiffLines_IdenticalReturnsNil
+=== PAUSE TestDiffLines_IdenticalReturnsNil
+=== RUN   TestDiffLines_IdenticalAllocatesNothing
+--- PASS: TestDiffLines_IdenticalAllocatesNothing (0.06s)
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary
+=== CONT  TestDiffLines_IdenticalReturnsNil
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary
+=== RUN   TestDiffLines_IdenticalReturnsNil/nil_nil
+=== PAUSE TestDiffLines_IdenticalReturnsNil/nil_nil
+=== RUN   TestDiffLines_IdenticalReturnsNil/empty_empty
+=== PAUSE TestDiffLines_IdenticalReturnsNil/empty_empty
+=== RUN   TestDiffLines_IdenticalReturnsNil/three_lines
+=== PAUSE TestDiffLines_IdenticalReturnsNil/three_lines
+=== RUN   TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== PAUSE TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== RUN   TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== PAUSE TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== CONT  TestDiffLines_IdenticalReturnsNil/nil_nil
+=== CONT  TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== CONT  TestDiffLines_IdenticalReturnsNil/empty_empty
+=== CONT  TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== CONT  TestDiffLines_IdenticalReturnsNil/three_lines
+--- PASS: TestDiffLines_IdenticalReturnsNil (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/nil_nil (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/over_threshold_2001 (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/empty_empty (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/threshold_2000 (0.00s)
+    --- PASS: TestDiffLines_IdenticalReturnsNil/three_lines (0.00s)
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+=== RUN   TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== PAUSE TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000
+=== CONT  TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001
+--- PASS: TestDiffLines_SingleEditAtThresholdBoundary (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_greedy_2001 (0.00s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_insertion_dp_2000 (0.01s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_deletion_dp_2000 (0.01s)
+    --- PASS: TestDiffLines_SingleEditAtThresholdBoundary/one_line_change_dp_2000 (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/merge	0.417s

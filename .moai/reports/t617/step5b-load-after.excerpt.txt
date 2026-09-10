@@ -1,0 +1,9 @@
+Excerpt of local raw file step5b-load-after.txt (raw machine-wide ps output not committed).
+2026-09-10T08:28:49Z
+17:28  up 2 days, 11:22, 15 users, load averages: 14.96 10.59 7.57
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1397)
+observer control — the ps process itself: 1 line(s)
+go test/.test lines (zsh lines excluded): 2
+  93412 00:04 go test ./internal/web/ -count=1
+  93662 00:00 /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build1069750037/b001/web.test -test.paniconexit0 -test.timeout=10m0s -test.count=1

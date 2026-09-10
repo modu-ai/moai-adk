@@ -1,0 +1,34 @@
+=== RUN   TestDiffLines_IdenticalReturnsNil
+=== PAUSE TestDiffLines_IdenticalReturnsNil
+=== CONT  TestDiffLines_IdenticalReturnsNil
+=== RUN   TestDiffLines_IdenticalReturnsNil/nil_nil
+=== PAUSE TestDiffLines_IdenticalReturnsNil/nil_nil
+=== RUN   TestDiffLines_IdenticalReturnsNil/empty_empty
+=== PAUSE TestDiffLines_IdenticalReturnsNil/empty_empty
+=== RUN   TestDiffLines_IdenticalReturnsNil/three_lines
+=== PAUSE TestDiffLines_IdenticalReturnsNil/three_lines
+=== RUN   TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== PAUSE TestDiffLines_IdenticalReturnsNil/threshold_2000
+=== RUN   TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== PAUSE TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== CONT  TestDiffLines_IdenticalReturnsNil/nil_nil
+=== CONT  TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+=== CONT  TestDiffLines_IdenticalReturnsNil/empty_empty
+    differ_equal_fastpath_test.go:28: expected nil edits for identical input, got non-nil slice (len=0)
+=== CONT  TestDiffLines_IdenticalReturnsNil/three_lines
+    differ_equal_fastpath_test.go:28: expected nil edits for identical input, got non-nil slice (len=0)
+=== NAME  TestDiffLines_IdenticalReturnsNil/over_threshold_2001
+    differ_equal_fastpath_test.go:28: expected nil edits for identical input, got non-nil slice (len=0)
+=== NAME  TestDiffLines_IdenticalReturnsNil/nil_nil
+    differ_equal_fastpath_test.go:28: expected nil edits for identical input, got non-nil slice (len=0)
+=== CONT  TestDiffLines_IdenticalReturnsNil/threshold_2000
+    differ_equal_fastpath_test.go:28: expected nil edits for identical input, got non-nil slice (len=0)
+--- FAIL: TestDiffLines_IdenticalReturnsNil (0.00s)
+    --- FAIL: TestDiffLines_IdenticalReturnsNil/empty_empty (0.00s)
+    --- FAIL: TestDiffLines_IdenticalReturnsNil/three_lines (0.00s)
+    --- FAIL: TestDiffLines_IdenticalReturnsNil/over_threshold_2001 (0.00s)
+    --- FAIL: TestDiffLines_IdenticalReturnsNil/nil_nil (0.00s)
+    --- FAIL: TestDiffLines_IdenticalReturnsNil/threshold_2000 (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/merge	0.427s
+FAIL

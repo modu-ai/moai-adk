@@ -781,53 +781,6 @@ entries:
       exception_when: "cg_leader"
 
   # -------------------------------------------------------------------------
-  # §D.4 Ask-tier (operations requiring user confirmation)
-  # Source: .claude/settings.json#permissions.ask (6 entries).
-  # -------------------------------------------------------------------------
-  - tool: "Bash"
-    args_pattern: "rm:*"
-    risk_tier: write
-    decision: ask
-    owner_agent: orchestrator
-    audit: "rm requires confirmation (destructive potential)"
-    source: ".claude/settings.json#permissions.ask"
-  - tool: "Bash"
-    args_pattern: "sudo:*"
-    risk_tier: write
-    decision: ask
-    owner_agent: orchestrator
-    audit: "sudo requires confirmation (privilege escalation)"
-    source: ".claude/settings.json#permissions.ask"
-  - tool: "Bash"
-    args_pattern: "chmod:*"
-    risk_tier: write
-    decision: ask
-    owner_agent: orchestrator
-    audit: "chmod requires confirmation (permission change)"
-    source: ".claude/settings.json#permissions.ask"
-  - tool: "Bash"
-    args_pattern: "chown:*"
-    risk_tier: write
-    decision: ask
-    owner_agent: orchestrator
-    audit: "chown requires confirmation (ownership change)"
-    source: ".claude/settings.json#permissions.ask"
-  - tool: "Read"
-    args_pattern: "./.env"
-    risk_tier: read
-    decision: ask
-    owner_agent: orchestrator
-    audit: ".env read requires confirmation (secret exposure)"
-    source: ".claude/settings.json#permissions.ask"
-  - tool: "Read"
-    args_pattern: "./.env.*"
-    risk_tier: read
-    decision: ask
-    owner_agent: orchestrator
-    audit: ".env.* read requires confirmation (secret exposure)"
-    source: ".claude/settings.json#permissions.ask"
-
-  # -------------------------------------------------------------------------
   # §D.5 Read-tier (bulk of current allow list — read-only operations)
   # Source: .claude/settings.json#permissions.allow (read-only subset).
   # Ordered by category: MoAI tools, MCP tools, git-read, file-read, system-read.

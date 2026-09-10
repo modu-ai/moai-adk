@@ -1,0 +1,3 @@
+internal/template/templates/.claude/skills/moai/workflows/moai.md:264:   - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml constitution.development_mode)
+.claude/skills/moai/workflows/moai.md:264:   - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml constitution.development_mode)
+EXIT=0

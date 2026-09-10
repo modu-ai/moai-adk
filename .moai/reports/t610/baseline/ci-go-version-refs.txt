@@ -1,0 +1,32 @@
+grep: ./.goreleaser.yaml: No such file or directory
+grep: ./Dockerfile: No such file or directory
+./.github/workflows/release.yml:138:        uses: actions/setup-go@v7
+./.github/workflows/release.yml:140:          go-version-file: go.mod
+./.github/workflows/spec-lint.yml:34:      # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
+./.github/workflows/spec-lint.yml:41:      - uses: actions/setup-go@v7
+./.github/workflows/spec-lint.yml:43:          go-version-file: go.mod
+./.github/workflows/codeql.yml:79:        uses: actions/setup-go@v7
+./.github/workflows/codeql.yml:81:          go-version-file: go.mod
+./.github/workflows/lsel-leak-guard.yaml:32:      - uses: actions/setup-go@v7
+./.github/workflows/lsel-leak-guard.yaml:34:          go-version-file: go.mod
+./.github/workflows/spec-status-auto-sync.yml:31:      - uses: actions/setup-go@v7
+./.github/workflows/spec-status-auto-sync.yml:33:          go-version-file: go.mod
+./.github/workflows/release-pr-multi-os.yml:106:        uses: actions/setup-go@v7
+./.github/workflows/release-pr-multi-os.yml:108:          go-version-file: go.mod
+./.github/workflows/graph-freshness.yml:26:      # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
+./.github/workflows/graph-freshness.yml:92:      - uses: actions/setup-go@v7
+./.github/workflows/graph-freshness.yml:94:          go-version-file: go.mod
+./.github/workflows/ci.yml:132:        uses: actions/setup-go@v7
+./.github/workflows/ci.yml:134:          go-version-file: go.mod
+./.github/workflows/ci.yml:267:        uses: actions/setup-go@v7
+./.github/workflows/ci.yml:269:          go-version-file: go.mod
+./.github/workflows/ci.yml:385:        uses: actions/setup-go@v7
+./.github/workflows/ci.yml:387:          go-version-file: go.mod
+./.github/workflows/ci.yml:434:        uses: actions/setup-go@v7
+./.github/workflows/ci.yml:436:          go-version-file: go.mod
+./.github/workflows/ci.yml:495:        uses: actions/setup-go@v7
+./.github/workflows/ci.yml:497:          go-version-file: go.mod
+./.github/workflows/ci.yml:552:        uses: actions/setup-go@v7
+./.github/workflows/ci.yml:554:          go-version-file: go.mod
+./.github/workflows/template-neutrality-check.yaml:53:        uses: actions/setup-go@v7
+./.github/workflows/template-neutrality-check.yaml:55:          go-version-file: 'go.mod'

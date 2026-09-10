@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -656,14 +657,24 @@ const (
 	codexPathRelative
 	// codexPathOddlyFormed is a backslash-bearing non-absolute fragment (a
 	// Windows-shaped separator in a non-absolute position, or a residual
-	// un-decoded TOML escape) or another user's "~user" home form.
+	// un-decoded TOML escape), a non-absolute declaration carrying a ".."
+	// segment, or another user's "~user" home form.
 	codexPathOddlyFormed
 )
 
 // classifyCodexSkillPath maps a declared path onto its shape. Ordering is
 // load-bearing, and each step earns its position:
 //
-//	IsAbs → backslash → "~"/"~/" peel → residual "~" → relative
+//	IsAbs → backslash → ".." segment → "~"/"~/" peel → residual "~" → relative
+//
+// The ".." segment check runs THIRD, ahead of the peel for the same reason the
+// backslash check does (card t582): "~/../../etc/x" carries no backslash, so it
+// was classified home-relative, and filepath.Join's internal Clean expanded it
+// to /etc/x — outside the user's home — where an absent target reached the
+// prune verb's deletion verdict. ANY ".." segment is refused, not only one that
+// escapes: the write side (upsertCodexSkillDisable) refuses the same segment
+// through hasCodexDotDotSegment, and one predicate cannot disagree with itself
+// at a boundary input.
 //
 // IsAbs stays FIRST so a native Windows absolute (C:\...) is classified by
 // what it is rather than by the separator it happens to carry.
@@ -689,6 +700,9 @@ func classifyCodexSkillPath(p string) codexSkillPathShape {
 	if strings.ContainsRune(p, '\\') {
 		return codexPathOddlyFormed
 	}
+	if hasCodexDotDotSegment(p) {
+		return codexPathOddlyFormed
+	}
 	if p == "~" || strings.HasPrefix(p, "~/") {
 		return codexPathHomeRelative
 	}
@@ -696,6 +710,15 @@ func classifyCodexSkillPath(p string) codexSkillPathShape {
 		return codexPathOddlyFormed
 	}
 	return codexPathRelative
+}
+
+// hasCodexDotDotSegment reports whether a slash-form path carries a ".."
+// segment. It is the single predicate both sides consult: the read side on a
+// non-absolute declaration (backslashes are already refused there), the write
+// side after the host separator has been converted to '/'. A name that merely
+// starts with ".." ("..ok") is not a segment and is not refused.
+func hasCodexDotDotSegment(p string) bool {
+	return slices.Contains(strings.Split(p, "/"), "..")
 }
 
 // expandCodexHomeRelativePath expands a "~" or "~/"-prefixed declaration
@@ -873,7 +896,7 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 			relativeCount++
 			continue
 		default:
-			// A backslash-bearing non-absolute fragment or a "~user" form:
+			// A backslash- or ".."-bearing non-absolute fragment, or a "~user" form:
 			// a declared shape this check cannot resolve here. Reported as
 			// its own classification, never counted missing.
 			oddlyFormed++

@@ -1,0 +1,32 @@
+07:10:12Z
+53928       00:12 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:11:12Z
+53928       01:12 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:12:12Z
+53928       02:12 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:13:12Z
+53928       03:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:14:13Z
+53928       04:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:15:13Z
+53928       05:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:16:13Z
+53928       06:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+81598       00:10 go               go test ./internal/cli -run ^(TestHomeState.*|TestHomeLayout.*|TestProject(Layout|Dir).*|TestRuntimeCensus.*|TestAdmission.*|TestFactory.*|TestResolveFactory.*|TestResume.*|TestExpireResume.*|TestImportLegacy.*|TestHandoff.*|TestClaim.*|TestClaimThenInject.*|TestConcurrentConsume.*|TestSQLiteClaim.*|TestNonceFallback.*|TestManualMode.*|TestNonClearSource.*|TestDegradeToGuidance.*|TestFailOpen_CorruptPending.*|TestStaleTTL.*|TestBranchTable.*|TestRenderHandoff.*|TestHandle_.*|TestIsHex.*|TestInjectionHeader.*|TestNoUserInteraction.*|TestThreeHandler.*|TestProfile.*|TestCleanHome.*|TestScanHomeCleanable.*|TestSecureHomeDirectories.*|TestContinue.*|TestCC.*|TestCharacterize_CC.*|TestRunCC.*|TestRunGLM.*|TestSession(Start|End).*|TestPersistedHomeStateEvidence.*|TestPlatformProcessIdentity.*|TestParseChanged.*|TestChangedProduction.*|TestCommittedCoverage.*)$ -count=1 -coverpkg=./internal/cli,./internal/homestate,./internal/hook/handoff,./internal/hook,./internal/kanban -coverprofile=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-home-state-coverage-2743070135.out.cli
+07:17:13Z
+53928       07:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+81598       01:10 go               go test ./internal/cli -run ^(TestHomeState.*|TestHomeLayout.*|TestProject(Layout|Dir).*|TestRuntimeCensus.*|TestAdmission.*|TestFactory.*|TestResolveFactory.*|TestResume.*|TestExpireResume.*|TestImportLegacy.*|TestHandoff.*|TestClaim.*|TestClaimThenInject.*|TestConcurrentConsume.*|TestSQLiteClaim.*|TestNonceFallback.*|TestManualMode.*|TestNonClearSource.*|TestDegradeToGuidance.*|TestFailOpen_CorruptPending.*|TestStaleTTL.*|TestBranchTable.*|TestRenderHandoff.*|TestHandle_.*|TestIsHex.*|TestInjectionHeader.*|TestNoUserInteraction.*|TestThreeHandler.*|TestProfile.*|TestCleanHome.*|TestScanHomeCleanable.*|TestSecureHomeDirectories.*|TestContinue.*|TestCC.*|TestCharacterize_CC.*|TestRunCC.*|TestRunGLM.*|TestSession(Start|End).*|TestPersistedHomeStateEvidence.*|TestPlatformProcessIdentity.*|TestParseChanged.*|TestChangedProduction.*|TestCommittedCoverage.*)$ -count=1 -coverpkg=./internal/cli,./internal/homestate,./internal/hook/handoff,./internal/hook,./internal/kanban -coverprofile=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-home-state-coverage-2743070135.out.cli
+07:18:13Z
+53928       08:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:19:13Z
+53928       09:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:20:13Z
+53928       10:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:21:13Z
+53928       11:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:22:13Z
+53928       12:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:23:13Z
+53928       13:13 go               go test ./internal/cli/ -count=1 -timeout 60m
+07:24:13Z
+53928       14:13 go               go test ./internal/cli/ -count=1 -timeout 60m

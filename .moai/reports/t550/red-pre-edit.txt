@@ -1,0 +1,71 @@
+=== RUN   TestNodeLintRunsOxlintStepOnOxlintProject
+    gate_oxlint_lint_test.go:87: no oxlint row in the run summary — the Node toolchain has no oxlint lint step; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintRunsOxlintStepOnOxlintProject (0.00s)
+=== RUN   TestNodeLintOxlintViolationFailsGate
+    gate_oxlint_lint_test.go:115: gate passed a red oxlint run — the lint axis never looked at oxlint; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintOxlintViolationFailsGate (0.00s)
+=== RUN   TestNodeLintOxlintConfigFilenames
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.json
+    gate_oxlint_lint_test.go:154: no oxlint row for config file .oxlintrc.json; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.jsonc
+    gate_oxlint_lint_test.go:154: no oxlint row for config file .oxlintrc.jsonc; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.ts
+    gate_oxlint_lint_test.go:154: no oxlint row for config file oxlint.config.ts; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.mts
+    gate_oxlint_lint_test.go:154: no oxlint row for config file oxlint.config.mts; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintOxlintConfigFilenames (0.01s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.json (0.00s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.jsonc (0.00s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.ts (0.00s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.mts (0.00s)
+=== RUN   TestNodeLintOxlintStepShape
+    gate_oxlint_lint_test.go:193: Node toolchain lintSteps has no oxlint entry: [{name:eslint binary:npx args:[eslint .] optional:true configFiles:[eslint.config.js eslint.config.mjs eslint.config.cjs eslint.config.ts eslint.config.mts eslint.config.cts .eslintrc.js .eslintrc.cjs .eslintrc.yaml .eslintrc.yml .eslintrc.json .eslintrc] changedExts:[] sourceExts:[]} {name:biome binary:npx args:[biome check .] optional:true configFiles:[biome.json biome.jsonc] changedExts:[] sourceExts:[]}]
+--- FAIL: TestNodeLintOxlintStepShape (0.00s)
+=== RUN   TestNodeLintEslintProjectUnaffectedByOxlint
+    gate_oxlint_lint_test.go:246: no oxlint row in the run summary; summary:
+        quality gate steps (3 configured):
+          - eslint: executed in 137ms at 2026-09-10T14:28:42.990+09:00 — npx eslint .
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintEslintProjectUnaffectedByOxlint (0.14s)
+=== RUN   TestNodeLintBiomeProjectUnaffectedByOxlint
+    gate_oxlint_lint_test.go:275: no oxlint row in the run summary; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: executed in 136ms at 2026-09-10T14:28:43.129+09:00 — npx biome check .
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintBiomeProjectUnaffectedByOxlint (0.14s)
+=== RUN   TestNodeLintLinterFreeScaffoldStillPasses
+    gate_oxlint_lint_test.go:310: no oxlint row in the run summary; summary:
+        quality gate steps (3 configured):
+          - eslint: skipped — none of its config files exist in the project directory (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts, .eslintrc.js, .eslintrc.cjs, .eslintrc.yaml, .eslintrc.yml, .eslintrc.json, .eslintrc)
+          - biome: skipped — none of its config files exist in the project directory (biome.json, biome.jsonc)
+          - npm test: skipped — turned off by the gate.skip_tests setting
+--- FAIL: TestNodeLintLinterFreeScaffoldStillPasses (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	0.714s
+FAIL

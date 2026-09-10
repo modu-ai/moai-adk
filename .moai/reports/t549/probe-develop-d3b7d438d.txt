@@ -1,0 +1,12 @@
+=== RUN   TestT549_ProbeSymlinkedTempBaseReachesNoHomeBranch
+    root_layer_repro_test.go:143: pathInsideTempDir=true isTemp=false (reason "") git=false root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_ProbeSymlinkedTempBaseReachesNoHomeBranch451412079/001/link/.moai/state/todo
+    root_layer_repro_test.go:145: default root set reaches the no-home branch: root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_ProbeSymlinkedTempBaseReachesNoHomeBranch451412079/001/link/.moai/state/todo", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_ProbeSymlinkedTempBaseReachesNoHomeBranch451412079/001/link"
+--- FAIL: TestT549_ProbeSymlinkedTempBaseReachesNoHomeBranch (0.13s)
+=== RUN   TestT549_ProbeHomeRootRekeying
+    root_layer_repro_test.go:159: ok=true homeRoot=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_ProbeHomeRootRekeying1560684452/002/.moai/todo/001-b770b8ec
+    root_layer_repro_test.go:160: BacklogPathForRoot(homeRoot) = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_ProbeHomeRootRekeying1560684452/002/.moai/db/001-b770b8ec-f195ba1f/todo/backlog.json
+    root_layer_repro_test.go:161: BacklogPathForRoot(base)     = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_ProbeHomeRootRekeying1560684452/002/.moai/db/001-b770b8ec/todo/backlog.json
+--- PASS: TestT549_ProbeHomeRootRekeying (0.22s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.746s
+FAIL
