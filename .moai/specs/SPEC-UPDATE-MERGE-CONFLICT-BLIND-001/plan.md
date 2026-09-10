@@ -176,6 +176,20 @@ below is untouched — the design choice was deliberately not taken here.
 
 #### M2.1 — The design choice
 
+[HARD] **Entry gate — M2.1 does not begin until this gate is passed.**
+`REQ-UMC-008` and `REQ-UMC-009` have each been adjudicated as **leaf**,
+**container**, or **both**, and each adjudication records its reason. Until then
+no M2.1 artifact — design, test, or code — is authored.
+
+Why this is a gate and not a note: both requirements say "shared key"; `spec.md`
+§A.6, as measured in M2.0, distinguishes a shared **leaf** (its value cannot
+change) from a shared **container** (its value changes by gaining the template's
+new leaves); and the design choice below is a choice of the granularity at which
+a conflict is determined, which depends on which of the two the requirements
+bind. Choosing (a) or (b) against the unadjudicated wording would fix a
+granularity the requirements layer never stated. Gate evidence: the adjudication
+and its reason, recorded at both requirements in `spec.md`.
+
 `REQ-UMC-008`, `REQ-UMC-009`, `REQ-UMC-010`. Two candidate shapes, deliberately
 not chosen here — the choice is a decision for the orchestrator and the operator
 after both M1's and M2.0's evidence exist:

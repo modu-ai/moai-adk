@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "moai update merge: an unreachable conflict detector and no signal when a shared key is preserved"
-version: "0.3.0"
+version: "0.3.1"
 status: in-progress
 created: 2026-09-10
 updated: 2026-09-10
@@ -24,6 +24,7 @@ tier: M
 - 2026-09-10 — a framing used earlier in the t576 investigation — "the merge is broken because the both-changed branch cannot fire" — is **withdrawn** and MUST NOT reappear in this SPEC or its siblings. See §A.2.
 - 2026-09-10 — **third framing revision**, authored after M1 was executed. M1's `untouched_shared` cell measured the merge writing the user's value for a key whose template value had changed, which establishes a fact wider than §A's plan-phase premise: for a top-level JSON key the user's file already carries, `moai update` cannot change that key's value at all. Recorded as §A.6. The two earlier framings are **retained** — the withdrawn one in §A.2's opening record, the plan-phase two-defect reading in §A.2 proper — rather than erased; §A.6 supersedes the plan-phase reading in breadth only.
 - 2026-09-10 — **fourth framing revision**, authored after M2.0 measured the recursive and the YAML breadths. The measurement forced a **granularity correction** to §A.6, not a defect discovery: the post-M1 wording — that the merge cannot change the value of a key the user's file already carries — is true at **leaf** granularity and false at **container** granularity, because a container both sides carry gains the template's new leaves. §A.6 is restated around the canonical sentence; its post-M1 wording is **superseded and retained here as the record**, alongside the withdrawn first framing and §A.2's plan-phase reading. §A.3 moves the recursive and YAML breadths from unmeasured to measured and carries M2.0's own Gaps list forward.
+- 2026-09-10 — v0.3.1, **annotation only**: `REQ-UMC-008` and `REQ-UMC-009` still say "shared key", which predates §A.6's leaf/container split. Their text is deliberately left unchanged — restating them is entangled with M2.1's choice of conflict-determination granularity — and each now carries an annotation marking the wording stale, backed by an entry gate at M2.1 in `plan.md` §F. No REQ text changed and no acceptance criterion was added or removed.
 
 ## §A Context
 
@@ -149,7 +150,11 @@ This is why §A.2's Defect 2 needs a remedy of its own and why `REQ-UMC-010` is 
 
 **REQ-UMC-008** — **When** the merge subsystem cannot determine whether a shared key's divergence is a template change, a user change, or both, the merge subsystem shall not report the outcome as an unconflicted merge.
 
+> **Granularity annotation (2026-09-10).** This requirement's "shared key" wording predates the leaf/container split of §A.6 and is stale relative to the measured mechanism. It must be re-adjudicated as leaf, container, or both before M2.1 begins — see the entry gate at M2.1 in `plan.md` §F. The requirement sentence above is unchanged.
+
 **REQ-UMC-009** — The merge subsystem shall not present a conflict-detection surface — a `Conflicts` slice, a `HasConflict` flag, or user-facing output derived from either — that a shared key cannot reach.
+
+> **Granularity annotation (2026-09-10).** This requirement's "shared key" wording predates the leaf/container split of §A.6 and is stale relative to the measured mechanism. It must be re-adjudicated as leaf, container, or both before M2.1 begins — see the entry gate at M2.1 in `plan.md` §F. The requirement sentence above is unchanged.
 
 **REQ-UMC-010** — The merge subsystem shall continue to resolve a shared key in favour of the user's value, preserving the behaviour `base.go:109-111` states as its intent; no remedy for REQ-UMC-008 or REQ-UMC-009 shall change which value the merge writes for a shared key.
 
