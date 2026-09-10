@@ -352,6 +352,106 @@ during M2 was in the hook (the `STALE_RERUN` rename above).
 - The payload file carries the full stdout of the failing run. That is the bytes already written to
   the log channel, so no new data leaves the project.
 
+### M3 — document and hook-comment wording (AC-010 / AC-011 / AC-012), recorded 2026-09-11 by manager-develop
+
+#### Pre-flight (before any M3 edit)
+
+| # | Command | Verbatim stdout | Exit |
+|---|---|---|---|
+| P1 | `git rev-parse --show-toplevel` | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t624` | 0 |
+| P2 | `git branch --show-current` | `WT-sync-gate-failstate` | 0 |
+| P3 | `git rev-parse --short HEAD` | `edecbff54` | 0 |
+| P4 | `git status --short` | *(empty)* | 0 |
+| P5 | `git diff --stat fa96fe644 edecbff54 -- <both doc copies>` | *(empty)*: the documents were unchanged between the plan baseline and M2 | 0 |
+
+`manifest audit` sat at lines 3 and 480 of both hook copies. The Phase 9 anchor sat at line 160 of both document copies.
+
+#### What changed
+
+- **Documents** (both copies, identical edits, all above the Phase 9 anchor):
+  - The Step 0.55.0 scope sentence now describes the hook-side manifest-change observation. The "only check for that drift" claim is gone.
+  - The dependency block is now headed "Dependency manifest-change observation (hook-side, informational)". It says the Stop hook runs `git diff` over the detected language's manifests for the HEAD commit and records `deps_modified=1` when that diff is non-empty. It also says the value appears only in the hook output and in `.moai/logs/sync-quality-gate.log`, never drives the block decision, and is not a vulnerability scan.
+  - The every-manifest-at-root list and the scan claim are removed. The `moai-ref-supply-chain` injection is kept, reworded as a separate agent-invoked review.
+  - Step 0.55.2 opens with a new paragraph, "Relationship to the sync-auditor Security rule". It names Step 0.5.4's rubric (Critical/High → FAIL) as canonical and Phase 8 as an additional lens whose CRITICAL-only gate never clears an earlier sync-auditor FAIL.
+  - Line 71 (HARD THRESHOLD) and lines 136-137 / 150 / 156 (CRITICAL blocks, HIGH warns) are untouched.
+- **Hooks** (template first, then `cp` to local): the header `# Purpose:` line and the comment above the manifest step. Comment lines only.
+- Full diffs: `.moai/reports/t624/m3-docs-diff.txt` (two hunks per copy) and `.moai/reports/t624/m3-hooks-diff.txt`.
+
+#### Wording commit
+
+- Commit `c0e56ab09`:
+  `docs(t624): M3 correct manifest-observation and severity wording in sync quality gate doc and hook comments`.
+  `git show --stat` lists exactly the four files, `4 files changed, 22 insertions(+), 20 deletions(-)`.
+- Trailers: `git log -1 --format='%(trailers)'` → `Authored-By-Agent: manager-develop`.
+- Attribution: every check below ran on the uncommitted tree at HEAD `edecbff54` after all four edits and the hook `cp`. The staged set at commit time was those same four files, so the measured bytes are the committed ones.
+
+#### AC rows
+
+Each row was a separate plain invocation with `/usr/bin/grep` and literal paths. The full transcript is in `.moai/reports/t624/m3-ac-rows.txt`.
+
+| AC | Check | Stdout | Exit | Expected |
+|---|---|---|---|---|
+| 010 | `cmp` template hook vs local hook | *(empty)* | 0 | exit 0 |
+| 010 | anchor `grep -c`, template doc / local doc | `1` / `1` | 0 / 0 | 1 each |
+| 010 | `cmp` of the through-anchor extracts (`sed '/<anchor>/q'`) between copies | *(empty)* | 0 | identical |
+| 010 | `diff` after-anchor extract (`sed '1,/<anchor>/d'`), fa96fe644 vs current, template | *(empty)* | 0 | unchanged |
+| 010 | same, local | *(empty)* | 0 | unchanged |
+| 011 | scan claim, template / local | `0` / `0` | 1 / 1 | 0, exit 1 |
+| 011 | `deps_modified`, template / local | `1` / `1` | 0 / 0 | ≥1, exit 0 |
+| 011 | "only check for that drift", template / local | `0` / `0` | 1 / 1 | 0, exit 1 |
+| 011 | "Audit ALL of the following manifest files present at project root", template / local | `0` / `0` | 1 / 1 | 0, exit 1 |
+| 011 | `manifest audit`, template hook / local hook | `0` / `0` | 1 / 1 | 0, exit 1 |
+| 011 | `head -5` template hook \| `grep -E 'manifest[ -]change'` | `# Purpose: Fast sync-phase quality gate (compile/vet checks + dependency manifest-change observation)` | 0 | match |
+| 012a | `sync-auditor FAIL`, template / local | `1` / `1` | 0 / 0 | ≥1 |
+| 012b | HARD THRESHOLD `grep -n`, template / local | `71:- Security (25%): … HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores` (both) | 0 / 0 | present |
+| 012b | `grep -nE 'sync-auditor FAIL\|CRITICAL\|HIGH'`, both copies (identical) | lines 136 `Only CRITICAL findings block`, 137 `HIGH findings are reported as warnings`, 148 new paragraph, 150 `If CRITICAL findings exist:`, 156 `If no CRITICAL findings` | 0 / 0 | CRITICAL still the only blocking severity |
+| 009 | `grep -c "SPEC-"`, template doc / template hook | `0` / `0` | 1 / 1 | 0 |
+| 009 | L-19 card-id/date regex, template doc / template hook | `0` / `0` | 1 / 1 | 0 |
+| 009 | SHA-token scan, template doc / template hook | *(empty)* / *(empty)* | 1 / 1 | no hits |
+| 009 | L-18 jq invocation regex, template hook | `0` | 1 | 0 |
+
+(`\|` inside the table is table escaping; the executed pattern carries a plain `|`.)
+
+AC-012 reviewer read, as author: the 012a token sits in the sentence "Phase 8 … never clears an earlier sync-auditor FAIL". That sentence also states the rubric is canonical, so the token is not in a contrary sentence. The "Step 0.5.4" target exists: `grep -nE '^#+ .*(Step 0\.5|0\.5\.4|Phase 8)'` shows `60:#### Step 0.5.4: Deep Code Review with Auto-Fix`, and line 71 sits under that heading. This is the author's read, not an independent verdict.
+
+AC-011 reviewer read (mutant M9), as author: the removed claims are replaced by a description of `deps_modified` for manifests changed in the HEAD commit, marked informational. The description was checked against the hook: `DEPS_MODIFIED` is set from `git diff "$DIFF_RANGE" -- $DEPS_MANIFESTS` (hook line 504). It is echoed only in the two stdout `printf` messages and the log line (lines 551-556, 575).
+
+#### Hooks
+
+| Check | Command | Stdout | Exit |
+|---|---|---|---|
+| Syntax, template | `bash -n internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | *(empty)* | 0 |
+| Syntax, local | `bash -n .claude/hooks/moai/sync-phase-quality-gate.sh` | *(empty)* | 0 |
+| Parity | `cmp <template hook> <local hook>` | *(empty)* | 0 |
+| Comment-only | `grep -cE '^[-+][^-+#]' m3-hooks-diff.txt` (changed lines not starting with `#`) | `0` | 1 |
+
+The diff against `edecbff54` has two hunks per copy. Hunk 1 changes line 3 (`# Purpose:`). Hunk 2 replaces the three-line manifest comment with a four-line one. That is 5 insertions and 4 deletions per copy.
+
+#### Tests (the hook bytes changed, so they were re-run after all edits and the `cp`)
+
+| Check | Command | Exit | Verbatim tail | Full output |
+|---|---|---|---|---|
+| M1 selector | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ -run '^TestSyncGateFailState' -count=1 -v` | 0 | `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/hook	119.508s` | `m3-m1-selector.txt` |
+| Six guards | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ ./internal/template/ -run '^(TestHookWrapperCopiesStayIdentical\|TestAC004_SyncGateAdvisoryAtFullyAutonomous\|TestAC002_NonSyncHeadSkipsVetBuild\|TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput\|TestTemplateNoInternalContentLeak\|TestTemplateNeutralityAudit)$' -count=1 -v` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/hook	10.572s` / `ok  	github.com/modu-ai/moai-adk/internal/template	1.626s` | `m3-guards.txt` |
+
+- **M1 selector swept set** (from `m3-m1-selector.txt`): 13 lines match `^--- PASS: TestSyncGateFailState`, the same 13 top-level tests listed under M2. 0 lines match `^--- (FAIL|SKIP)` and 0 lines contain `no tests to run`.
+- **Guards**: each of the six printed a `--- PASS:` line by name. The neutrality positive control `grep -c -- '--- PASS: TestTemplateNeutralityAudit '` → `1`.
+- **Package runs**: the two full package runs were not repeated, because no guard failed.
+
+#### Gaps (not observed in M3)
+
+- The AC-012 and AC-011 (M9) reviewer reads above are the author's own, not an independent reviewer's verdict.
+- The full `go test ./internal/hook/ ./internal/template/` package runs, lint, Windows vet, and `internal/cli` tests were not run in M3. The change is comment and markdown only, and the coordinator's instruction limited the re-run to the selector and the six guards.
+- The document was not rendered. Only raw bytes were checked.
+- No live Stop event exercised the hook.
+- Mutant probes are M4.
+
+#### Residual risk
+
+- "restricted to the HEAD commit" is accurate for the normal `HEAD~1..HEAD` range. On an initial commit the hook's `DIFF_RANGE` is the empty tree, and the diff then compares the empty tree with the working tree.
+- The hook captures `git diff` stderr into the same file (`2>&1`). A `git diff` error would therefore also set `deps_modified=1`. "When that diff is non-empty" omits that edge.
+- The after-anchor comparison uses fa96fe644. The pre-flight showed the documents unchanged between fa96fe644 and edecbff54, so the result also holds against edecbff54.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
