@@ -214,3 +214,57 @@ RED → GREEN:
    - (가) 판정 어휘를 유지하고 −5 를 받아들인다.
 3. **1-(i)과 2-(가′)를 함께 쓰면** 1248줄이고 수정 전보다 적게 읽는 파일이 0개다. 레인 권고는 이 조합이다. 바뀌는 코드는 `findACSectionStart` 의 선택 루프와 어휘 목록 두 곳이다.
 4. 코퍼스 lint 전/후(`CoverageIncomplete` 신규·소멸, `DuplicateAcceptanceID` 증가)는 §4 에 판정 그대로의 구현 기준으로 적는다.
+
+## 6. 리드 2차 판정 적용 — 빈 앵커 건너뛰기 + 어휘 추가
+
+리드 2차 판정: 레인 권고 (i)+(가′) 채택, (ii) 합집합 기각. 판정 기준은 "수정 전보다 덜 읽는 파일 0".
+
+### Claim
+- `findACSectionStart` 는 AC 절을 부르는 헤딩 가운데 **절 안에서 파서가 받는 줄이 1개 이상인 첫 헤딩**을 앵커로 삼는다. 그런 헤딩이 하나도 없으면 첫 AC 헤딩을 앵커로 삼는다(빈 절도 "절 없음" 오류를 내지 않는다).
+- 어휘에 `수용 기준`·`성공 기준`·`ac summary` 를 더했다.
+- 새 테스트 4개가 수정 전(1차 구현 `70b084194`)에 예측대로 실패하고 수정 후 통과한다. 뮤턴트 9개(신규 3 + 1차 6개 재적용)가 모두 예측한 테스트에서 잡혔다.
+- 코퍼스에서 수정 전 파서보다 **적게 읽는 파일은 0개**다(아래 표).
+
+### Evidence
+RED → GREEN:
+- 2차 기준선 커밋 `test(t565): RED round 2 for skip-empty anchor and the extra vocabulary`(수정 코드 없음, 부모 `70b084194`).
+- 실행 전 예측 `red2.predicted`. `go test ./internal/spec -count=1 -run '^(TestT565|TestT528)' -v` → exit 1, 실패는 `TestT565AnchorSkipsEmptySection` 과 `TestT565AnchorVocabulary` 의 `§D 수용 기준`·`§H. 성공 기준 (요약)`·`§H AC summary (full GWT in acceptance.md)` 뿐이고 대조 `TestT565AnchorAllEmptySectionsStillAnchor` 는 통과, `--- PASS` 64줄(`red2-before-fix.log`).
+- 수정 후 같은 명령 → exit 0, `--- PASS` 69줄, FAIL 0(`green2-after-fix.log`). `gofmt -l` 두 파일 → 출력 없음, exit 0.
+- 패키지 전체 `go test ./internal/spec -count=1 -timeout 1500s` → `ok  github.com/modu-ai/moai-adk/internal/spec 101.203s`, `exit=0`, `--- FAIL`·`FAIL` 줄 0(`green2-spec-package.log`).
+
+뮤턴트(실행 전 예측 `mutants2.predicted`, 차이 `mutant2-M{1..9}.diff`, 기록 `mutant2-M{1..9}.log`, 모두 `-overlay`):
+
+| 뮤턴트 | 바꾼 것 | 실패한 테스트 | 예측과 |
+|---|---|---|---|
+| M7 | 빈 앵커 건너뛰기 제거(검사를 항상 참으로) | SkipsEmptySection | 같음 |
+| M8 | 추가 어휘 3개 삭제 | Vocabulary 3개(수용 기준, 성공 기준, AC summary) | 같음 |
+| M9 | 모두 빈 경우의 첫 헤딩 폴백 제거(`return -1`) | AllEmptySectionsStillAnchor | 같음 |
+| M1 | 부정 표지 검사 무력화 | OutOfScope/english, /korean | 같음 |
+| M2 | `acceptance.md` 제거 생략 | FileMentionOnly | 같음 |
+| M3 | 1차 어휘 5줄 삭제 | Vocabulary 7개(1차 어휘 6 + `수락 기준 — acceptance.md`) | 같음 |
+| M4 | 절 끝을 옛 규칙으로 | ReadsOwnSubheadings, h3-anchor, h1-ends-h2 | 같음 |
+| M5 | 절 끝을 "더 높은 레벨"만으로 | ReadsOwnSubheadings, h3-anchor, T528SectionScopingInvariant | 같음 |
+| M6 | 파일명 언급 헤딩 전부 제외 | Vocabulary 2개(`수락 기준 — acceptance.md`, `AC summary … acceptance.md`) | 같음 |
+
+코퍼스 헤딩 센서스(`probe/anchor-after-census2.log`, exit 0). 이 실행에서 "ruled" 열은 2차 구현이다.
+- 대조: 옛 규칙 앵커 종류별 파일 수와 불릿 모양 아닌 수용 줄 47 이 1차와 같다.
+- 앵커된 파일 367 → 446, 절 안 파서 수용 줄 1147 → 1248(+101).
+- 파일별 비교표 `per-file-lines-round2.tsv`(열: 파일, 수정 전 줄, 수정 후 줄, 수정 전 앵커 종류, 수정 전 앵커, 수정 후 앵커). 앵커나 줄 수가 바뀐 파일 104개: **늘어난 파일 13 · 같은 파일 91 · 줄어든 파일 0**, 줄 합계 +101. 센서스 자체 집계도 `files reading FEWER lines than the unfixed parser: ruled=0`.
+- 1차에서 줄었던 두 파일(`SPEC-LEARN-CHANNEL-SCOPE-001`, `SPEC-SYNC-AUDIT-FALSIFICATION-001`)은 비교표에 없다(`grep` 으로 두 이름 0행). 표는 앵커 위치나 줄 수가 달라진 파일만 담으므로, 두 파일은 수정 전과 같은 앵커에서 같은 줄 수(7, 5)를 읽는다. 표 전체에서 `$3<$2` 인 행도 0개다.
+- 읽힌 줄의 REQ 매핑: 파일별 합계 580 → 596. 새로 매핑된 16개는 모두 `SPEC-PREMERGE-SETTINGS-DRIFT-001`(84행 `## §3 수용 기준`), 매핑이 사라진 것 0.
+
+### Baseline-attribution
+워크트리 `WT-ac-heading-anchor`. RED 는 1차 구현 커밋 `70b084194` 트리 + 새 테스트, GREEN·뮤턴트·센서스는 2차 기준선 커밋 위 미커밋 2차 수정 트리, 이 실행.
+
+코퍼스 lint 전/후(2차 구현):
+- 탐침 `probe/zz_t565_lint_census_test.go` 를 `-overlay` 로 끼워 `go test ./internal/spec -count=1 -run '^TestT565LintCensus$' -v -timeout 1500s` → `ok … 301.856s`, `exit=0`, `findings = 3325  CoverageIncomplete = 2010  DuplicateAcceptanceID = 0`(`probe/lint-census-after2.log`).
+- 수정 전 기준(`corpus-before-coverage.tsv`, 2010행)과 비교: `comm -13` → `corpus-appeared2.tsv` 0행, `comm -23` → `corpus-disappeared2.tsv` 0행, `corpus-after2-duplicate.tsv` 0행, `diff corpus-before-codes.tsv corpus-after2-codes.tsv` exit 0.
+- 새로 생긴 `CoverageIncomplete`·`DuplicateAcceptanceID` 발견이 0건이므로 원문 대조 대상은 빈 집합이다.
+- 양성 대조(2차 파서, `probe/repro-lint-round2.log`): `SPEC-HDGREPRO-001/002/003 CoverageIncomplete = 0/0/0`, exit 0. 수정 전 파서는 `1/1/0`(`probe/repro-lint-unfixed.log`)이라 같은 계기가 파서 변화를 본다.
+- `SPEC-PREMERGE-SETTINGS-DRIFT-001` 의 새 매핑 16개가 lint 를 바꾸지 않은 이유: 수정 전에도 이 SPEC 의 `CoverageIncomplete` 는 0건이고(`grep` exit 1) 형제 `acceptance.md` 가 있다. 그 REQ 들은 이미 형제 파일로 커버돼 있었다.
+
+### Gaps
+- `moai spec view` 픽스처 재실행은 여전히 하지 않았다(`internal/cli` 컴파일 불필요 판정, spec view Gap 유지).
+
+### Residual-risk
+- 빈 앵커 건너뛰기는 앞선 AC 헤딩 절에 선언이 없다는 이유만으로 뒤의 절을 고른다. 앞 절이 산문으로만 AC 를 적은 진짜 절이고 뒤 절이 예시 절이면 예시를 읽는다. 코퍼스에서는 이 경우로 줄어든 파일이 0개다.

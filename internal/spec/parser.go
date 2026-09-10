@@ -73,6 +73,9 @@ var acSectionVocabulary = []string{
 	"수락 기준",
 	"인수 기준",
 	"검수 기준",
+	"수용 기준",
+	"성공 기준",
+	"ac summary",
 }
 
 // acNegativeSectionMarkers mark a heading about what the SPEC does not cover;
@@ -113,15 +116,25 @@ func isACSectionHeading(trimmed string) bool {
 }
 
 // findACSectionStart finds the start index of Acceptance Criteria section in markdown:
-// the line after the first heading of level 2 or deeper that names the section.
+// the line after the first heading of level 2 or deeper that names the section and
+// whose section holds at least one criterion line. An empty summary section that
+// precedes the real one does not take the anchor; when every such section is
+// empty, the first one still anchors.
 func findACSectionStart(lines []string) int {
+	first := -1
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if markdownHeadingLevel(trimmed) >= 2 && isACSectionHeading(trimmed) {
+		if markdownHeadingLevel(trimmed) < 2 || !isACSectionHeading(trimmed) {
+			continue
+		}
+		if first < 0 {
+			first = i + 1
+		}
+		if len(extractACLines(lines, i+1, false)) > 0 {
 			return i + 1
 		}
 	}
-	return -1
+	return first
 }
 
 // extractACLines extracts parsed line list from AC section. The section ends at
