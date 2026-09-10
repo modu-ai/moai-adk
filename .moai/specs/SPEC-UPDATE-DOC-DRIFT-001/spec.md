@@ -1,10 +1,10 @@
 ---
 id: SPEC-UPDATE-DOC-DRIFT-001
 title: "always-loaded instruction drift: maintainer documentation that asserts a mechanism the code contradicts is not a stale comment — it is an input that misdirects every agent session"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-07-31
-updated: 2026-08-14
+updated: 2026-09-10
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
@@ -26,6 +26,7 @@ depends_on: []
 | 0.1.0 | 2026-07-31 | Initial draft. Epic SPEC 6 of 6 — the closing SPEC of the four-lens audit of `moai update` / `.moai/config`. Findings F1-F5 each re-verified while authoring; F1 found false in three independent ways rather than the two supplied; F3 found false at the template path as well as the local path. Three drifts recorded (§A.6). |
 | 0.2.0 | 2026-07-31 | Plan-audit revision (iteration 1 verdict **FAIL, 0.65**; Testability 0.50). D1-D11 resolved, D12 folded into D1, D16 resolved; D13-D15 and D17 deferred. §A.5's option-B cost framing found inverted and rewritten against measurement; the `--dry-run` decision settled as **option B**. `acceptance.md` gained §A clause 7 (anti-vacuity); ten criteria rewritten under it. |
 | 0.3.0 | 2026-08-14 | **Staleness rewrite.** Every one of REQ-UDD-001..013 re-measured against worktree HEAD `7f61332ef` (branch `docs/spec-doc-drift-rewrite`); the v0.2.0 baseline `d5336214e` is **not an ancestor of this tree** (`git merge-base --is-ancestor` exits `1`), so every v0.2.0 `file:line` and count was re-observed rather than carried over. Since v0.2.0, `CLAUDE.local.md` was consolidated: former §18-§27 were externalized into `.moai/docs/*.md` and the file now runs §1-§17 plus a `## References` table (511 lines). **Retired with evidence (4)**: REQ-UDD-005 (E4 landed and the reconciliation was performed), REQ-UDD-011 and REQ-UDD-012 (option B was implemented by the sibling E1 as REQ-RIL2-024/025/026, with the early-return constraint honoured), REQ-UDD-013 (its escalation target is moot). **Re-anchored (3)**: REQ-UDD-004 to `.moai/docs/local-dev-settings-intent.md`, REQ-UDD-007 to `.moai/docs/version-management.md`, and REQ-UDD-002/003's site from `CLAUDE.local.md:141` to `:146`. **Kept live, narrowed (2)**: REQ-UDD-002 and REQ-UDD-003 — §2.2 gained a dated correction on 2026-08-01 that retracts all four false claims, so the falsehood half of each is discharged; what survives is a *new* misstatement (§A.1) and two unmet positive obligations. **Kept live (5)**: REQ-UDD-001, REQ-UDD-006 (with `.agency/` folded in as its concrete target), REQ-UDD-008, REQ-UDD-009, REQ-UDD-010. **REQ-UDD-004's polarity inverted**: two production readers for `auto_cleanup` have appeared since v0.2.0, so the drift is no longer "the doc claims an enforcement that does not exist" but its mirror image. **`REQ-ARCH-006` duplicate resolved** in favour of this SPEC (§A.7). |
+| 0.3.1 | 2026-09-10 | **Scope-criterion left endpoint (t543).** acceptance.md AC-UDD-023 and plan.md §C pre-flight measured "no Go change" and "only the declared write surface" as a name-diff over a literal range pinned at `7f61332ef`, which turns false once the branch absorbs the integration branch before re-measuring: the range then holds other work's commits (the t543 reproduction on 2026-09-10 counted 51 Go files from other cards in a tree whose own contribution was 0 Go). Both now derive the left endpoint at read time as `CARD_BASE=$(git merge-base develop HEAD)`, add an unfiltered control (`>= 1`; `0` = not measurable), and are stated pre-merge only, per `.claude/rules/local/gitflow-lane-protocol.md` §8. The v0.3.0 reading is kept as a dated reference. No requirement, status, or other criterion changed; AC-UDD-021 carries the same literal range over the template tree and is not revised here. |
 
 ## §A Problem / Motivation
 

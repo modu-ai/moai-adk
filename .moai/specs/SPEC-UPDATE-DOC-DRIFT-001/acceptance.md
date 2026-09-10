@@ -653,18 +653,33 @@ Recorded as known and out of scope, carried forward from v0.2.0 so it is not red
 `TestBranchGuard_Latency` in `internal/hook` is load-sensitive and fails under a parallel full-suite
 run while passing alone. It is not diagnosed here.
 
-#### AC-UDD-023 (rewritten at v0.3.0) — this SPEC modifies no Go file
+#### AC-UDD-023 (rewritten at v0.3.0, left endpoint revised at v0.3.1) — this SPEC modifies no Go file
+
+Run on this SPEC's branch, before it merges into `develop`:
 
 ```bash
-git diff --name-only 7f61332ef..HEAD | grep -c '\.go$'
-git diff --name-only 7f61332ef..HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
+CARD_BASE=$(git merge-base develop HEAD)
+git diff --name-only "$CARD_BASE"..HEAD | wc -l
+git diff --name-only "$CARD_BASE"..HEAD | grep -c '\.go$'
+git diff --name-only "$CARD_BASE"..HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
 ```
 
-Expected: `0` and `0`. No Go file differs from the baseline, and every changed path lies inside this
-SPEC's declared write surface: its own SPEC directory, the two always-loaded instruction files, and
-the two re-anchored `.moai/docs/` targets.
+Expected: the unfiltered control (first count) `>= 1`, then `0` and `0`. No Go file differs from
+`CARD_BASE`, and every changed path lies inside this SPEC's declared write surface: its own SPEC
+directory, the two always-loaded instruction files, and the two re-anchored `.moai/docs/` targets.
+A control of `0` means the range holds none of this SPEC's commits, and both probes print `0` on
+such a range too — report it as **not measurable**, never as "no Go change".
 
-Baseline at `7f61332ef` (the baseline commit itself): `0` and `0`.
+`CARD_BASE` is derived when the criterion is read and never pinned: it is the merge-base with the
+ref this branch absorbed — local `develop` under this repository's lane procedure,
+`origin/develop` for a procedure that absorbs the remote — because a literal base SHA sweeps every
+absorbed commit into the range. The criterion is pre-merge only: once the branch merges into
+`develop` the merge-base is the branch tip and the range holds nothing, so post-merge evidence is
+merge-tree / branch-tree identity (`.claude/rules/local/gitflow-lane-protocol.md` §8).
+
+(Reference reading 2026-08-14, not the criterion: the v0.3.0 form, a literal range pinned at
+`7f61332ef`, read `0` and `0` at the baseline commit itself — a range with no commits in it, which
+the control above now reports as not measurable.)
 
 **Why this replaces the v0.2.0 form.** That criterion snapshotted `git status --porcelain` before and
 after a test run to prove tests wrote nothing outside `t.TempDir()`. With no tests added, it measures
