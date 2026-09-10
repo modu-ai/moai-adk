@@ -268,3 +268,48 @@ RED → GREEN:
 
 ### Residual-risk
 - 빈 앵커 건너뛰기는 앞선 AC 헤딩 절에 선언이 없다는 이유만으로 뒤의 절을 고른다. 앞 절이 산문으로만 AC 를 적은 진짜 절이고 뒤 절이 예시 절이면 예시를 읽는다. 코퍼스에서는 이 경우로 줄어든 파일이 0개다.
+
+## 7. 통합 창 — 흡수·재측정·병합
+
+리드가 창을 지명했다(로컬 develop tip `ed71054d3`, 원격 push 완료).
+
+### Claim
+- 창을 잡고 로컬 develop 을 카드 워크트리로 흡수했다. 충돌은 없었다.
+- 흡수 델타는 `internal/spec` 자체를 바꾸지 않았지만, `internal/spec` 이 의존하는 `internal/config` 에 비테스트 파일 1개를 더했고 코퍼스에 SPEC 1개를 더했다. 그래서 흡수 트리에서 패키지 전체 테스트와 코퍼스 lint 탐침을 다시 쟀다.
+- 흡수 트리에서 2차 새 테스트 이름이 모두 통과한다.
+
+### Evidence
+창과 흡수:
+- `moai integration status` → `release-integration window: free`, exit 0. `moai integration acquire --name lane-9` → `release-integration window acquired by e5c0032b-ffbd-44b0-8997-c16d09d3541b on WT-ac-heading-anchor`, exit 0.
+- `git rev-parse refs/heads/develop` 와 `refs/remotes/origin/develop` → 둘 다 `ed71054d3744aaa41533fb303ce31ef377d8171f`.
+- `git merge --no-ff -m "Merge local develop ed71054d3 into WT-ac-heading-anchor for integration (card t565)" ed71054d3…` → `merge_exit=0`(`absorb-merge.log`). 병합 커밋 `b5ba3e473`, 부모 `525c10c15 ed71054d3`. 직후 `git status --short` 에는 이 창의 증거 파일 2개만 있다.
+
+델타 판정(`absorb-delta-judgement.txt`):
+- `git merge-base 525c10c15 ed71054d3…` → `c77ef6247`. `git diff --name-only c77ef6247 ed71054d3…` → 195개 파일.
+- `go list -deps ./internal/spec` 의 모듈 내부 디렉터리 8개: `internal/config`, `internal/config/atomicfile`, `internal/constitution`, `internal/defs`, `internal/execerr`, `internal/paths`, `internal/spec`, `pkg/models`.
+- 교집합(비테스트 파일): `internal/config/loader_git_mode.go` 1개. `internal/spec/` 아래 변경 0개. 대조로 목록에 `internal/spec` 자신이 들어 있어 교집합 계산이 빈 목록 위에서 돈 것이 아니다.
+- 코퍼스: `.moai/specs/` 아래 변경 3개, 그중 `spec.md` 1개(`SPEC-TODO-HOME-TEMP-GUARD-001/spec.md`, 형제 `acceptance.md` 도 함께 추가).
+- 코퍼스가 달라졌으므로 흡수 트리의 수정 전후 비교는 옛 기준 2010 이 아니라, 같은 흡수 트리에서 수정 전 파서(`c77ef6247` 의 `parser.go` 와 `cmp` exit 0 인 사본)와 수정 후 파서를 각각 돌려 비교한다.
+
+흡수 트리 코퍼스 lint — 수정 후 파서(`probe/lint-census-window-fixed.log`): 탐침을 `-overlay` 로 끼워 `go test ./internal/spec -count=1 -run '^TestT565LintCensus$' -v -timeout 1500s` → `ok … 430.573s`, `exit=0`, `findings = 3325  CoverageIncomplete = 2010  DuplicateAcceptanceID = 0`.
+- 흡수 전 2차 측정과 비교: `cmp corpus-after2-coverage.tsv corpus-window-fixed-coverage.tsv` exit 0, `diff corpus-after2-codes.tsv corpus-window-fixed-codes.tsv` exit 0. `corpus-window-fixed-duplicate.tsv` 0행.
+- 흡수로 들어온 `SPEC-TODO-HOME-TEMP-GUARD-001` 의 `CoverageIncomplete` 행은 0개(`grep -c` 0).
+
+흡수 트리 코퍼스 lint — 수정 전 파서(`probe/lint-census-window-unfixed.log`): 같은 탐침에 `c77ef6247` 의 `parser.go` 사본을 함께 `-overlay` → `ok … 332.169s`, `exit=0`, `findings = 3325  CoverageIncomplete = 2010  DuplicateAcceptanceID = 0`.
+- 같은 흡수 트리에서 수정 전 대 수정 후: `comm -13` → `corpus-window-appeared.tsv` 0행, `comm -23` → `corpus-window-disappeared.tsv` 0행, 두 duplicate TSV 모두 0행, `diff corpus-window-unfixed-codes.tsv corpus-window-fixed-codes.tsv` exit 0.
+- 새로 생긴 `CoverageIncomplete`·`DuplicateAcceptanceID` 발견이 0건이라 원문 대조 대상은 빈 집합이다.
+- 수정 전 파서 결과는 창 밖 수정 전 기준과도 같다: `cmp corpus-before-coverage.tsv corpus-window-unfixed-coverage.tsv` exit 0. 흡수 델타(`internal/config` 1파일, SPEC 1개)가 lint 결과를 바꾸지 않았다.
+
+패키지 전체(`window-spec-package.log`): `go test ./internal/spec -count=1 -timeout 1500s` → `ok  github.com/modu-ai/moai-adk/internal/spec 175.989s`, `exit=0`, `--- FAIL`·`FAIL` 줄 0.
+
+2차 새 테스트 이름(`window-red2-names.log`): `go test ./internal/spec -count=1 -run '^(TestT565|TestT528)' -v` → exit 0, `--- PASS` 69줄, FAIL 0. `TestT565AnchorSkipsEmptySection`, `TestT565AnchorAllEmptySectionsStillAnchor`, `TestT565AnchorVocabulary/##_§D_수용_기준`, `…/##_§H._성공_기준_(요약)`, `…/##_§H_AC_summary_(full_GWT_in_acceptance.md)` 모두 PASS.
+
+### Baseline-attribution
+흡수 병합 커밋 `b5ba3e473`(부모 `525c10c15`, `ed71054d3`)의 작업 트리, 이 창 안의 실행. 판정 빌드는 모두 `go test` 가 이 트리에서 새로 컴파일한 테스트 바이너리이며, 수정 전 파서 측정만 `c77ef6247` 의 `parser.go` 사본을 `-overlay` 로 끼웠다. develop 병합 커밋의 트리가 이 트리(증거 커밋 포함)와 같은지는 병합 뒤에 적는다.
+
+### Gaps
+- `moai spec view` 픽스처 재실행은 하지 않았다(`internal/cli` 컴파일 불필요 판정, spec view Gap 유지).
+- 흡수 델타 판정은 `go list -deps` 가 보는 Go 패키지 의존과 코퍼스 경로만 본다. `internal/spec` 테스트가 런타임에 읽는 저장소 밖 경로는 따로 세지 않았다.
+
+### Residual-risk
+- 로컬 판정이다. darwin 한 대에서 쟀고, 다른 플랫폼 판정은 develop push 뒤 CI 몫이다.
