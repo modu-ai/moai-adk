@@ -46,9 +46,10 @@ exit    : 0
 ```
 
 Files: `control-product-at-403bac94b.md` (the pre-edit product.md content at HEAD `403bac94b`),
-`control-product-1264.txt` (`2`), `control-product-1264.exit` (`0`), `control-git-show.exit` (`0`).
+`control-product-1264.txt` (`2`), `control-product-1264.exit` (`0`). The `git show` exit code above
+was not saved to a file (sync-audit F2); the 326-line capture it produced is the observable result.
 
-The control's `2` matches spec.md § D.0 E-08's baseline stdout for `product.md` (2 mentions: lines
+The control's `2` matches acceptance.md § D.0 E-08's baseline stdout for `product.md` (2 mentions: lines
 244, 300), confirming the grep pattern is live against a tree that still carries the old token.
 
 ## Verdict
