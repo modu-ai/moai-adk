@@ -1,0 +1,21 @@
+# card t574 — AC-THG-006 judging command under mutant M-574
+# tree: .claude/worktrees/t574  branch: WT-temp-roots-ac  head: 0f30477af (+ uncommitted mutant, reverted after this run)  go: go1.26.8 darwin/arm64
+# mutant source: .moai/reports/t574/run-mutant-source.diff  (defaultTempRoots() -> return []string{os.TempDir()})
+# prediction (committed before injection, 0f30477af): .moai/reports/t574/run-mutant-prediction.md
+# command: go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v
+# expected: exactly 2 top-level "=== RUN" lines; Membership FAIL, ComponentBoundary PASS; exit_code 1
+# --- verbatim output ---
+=== RUN   TestTempOrigin_ComponentBoundary
+=== RUN   TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp
+--- PASS: TestTempOrigin_ComponentBoundary (0.00s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:171: fixed temp root "/tmp" missing from defaultTempRoots() = ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+    temp_origin_test.go:171: fixed temp root "/var/folders" missing from defaultTempRoots() = ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+    temp_origin_test.go:188: defaultTempRoots() has 1 members, want 3: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"]
+--- FAIL: TestDefaultTempRoots_Membership (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.429s
+FAIL
+exit_code: 1
