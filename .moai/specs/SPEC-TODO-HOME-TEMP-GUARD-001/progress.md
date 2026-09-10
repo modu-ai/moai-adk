@@ -10,6 +10,32 @@
 - 미결 사항: **없다.** U1(거부 시 CLI 형태)은 운영자 선택으로 **(b) 안내 후 계속**으로 결정됐다(2026-09-07, 리드 경유 — plan.md §D). run-phase는 고르지 않고 구현한다.
 - 2차 감사 수리(`version: 0.1.2`): D9(대체 루트를 `base`로 정정 — 종전 값은 루트가 아니라 상태 디렉터였다), D10(AC-THG-001이 문자열 동일성이 아니라 `BacklogPathForRoot(반환 루트)`의 읽힘을 단언), D11(`/var/tmp` 근거의 미측정 단정 격하 + 재검토 트리거 교체), U1 결정 반영. spec.md §8에 기존 코드(`todo_root.go:121`)의 계층 불일치를 **관측**으로 등재 — 본 SPEC은 고치지 않는다(별도 카드 후보).
 
+### 개정 0.1.5 — plan-phase 신호 (카드 t574, 2026-09-10)
+
+위 목록은 최초 plan-phase(0.1.0~0.1.4)의 기록이고 그대로 둔다. 이 블록은 제자리 개정의 plan-phase 신호를 **덧붙인다**. 아래 run·sync 절의 기존 블록은 첫 close의 귀속된 기록이므로 고쳐 쓰지 않으며, 개정 이후의 재측정과 재close도 각 단계 소유자가 그 블록들 **아래에 덧붙인다**.
+
+```yaml
+amendment_plan_status: audit-ready
+amendment_plan_complete_at: 2026-09-10
+amendment_version: "0.1.5"
+amended_spec: SPEC-TODO-HOME-TEMP-GUARD-001      # 자기 참조 — 제자리 개정 (spec.md frontmatter amendment_of 와 같은 값)
+prior_completed_version: "0.1.4"
+prior_completed_sha: 029ab039f                    # completed 전이 + 3-phase close 를 실은 sync 커밋
+status_transition: "completed → in-progress — spec.md frontmatter 에만. plan/acceptance 는 status 축 stateless, progress 는 본문 절로 기록"
+card: t574
+measurement_tree: .claude/worktrees/t574
+measurement_branch: WT-temp-roots-ac
+plan_base_head: 95ba9deb2
+spec_id_regex_self_check: PASS                    # Bash 실행, 이 트리
+edited_artifacts: [spec.md, acceptance.md, progress.md]
+code_change: none
+ac_count: 8                                       # 불변 — AC-THG-006 확장, 신규 AC 없음
+coverage_mapping_changed: false                   # acceptance.md §D.0 의 "AC-THG-006 maps REQ-THG-002" 불변
+evidence: [.moai/reports/t574/repro-summary.md, .moai/reports/t574/mutant-kanban.txt]
+open_questions: none                              # 개정 형태(기존 AC 확장, 신규 AC 없음)는 운영자 결정
+next: "run 재측정(AC-THG-006 확장 판정 명령) → sync 재close — 각 단계가 기존 블록 아래에 덧붙인다"
+```
+
 ## §E.2 Run-phase Evidence
 
 측정 트리: `.claude/worktrees/t536` · 브랜치 `WT-home-fallback` · M1 착지 `8337cdf24`. 아래 모든 실행은 **이 트리, 이 회차**의 것이며, 플랫폼은 별도 표기가 없으면 **로컬 darwin/arm64**다. `go test`는 트리에서 컴파일되므로 판정 빌드와 측정 트리가 같다(별도 설치본 개입 없음).

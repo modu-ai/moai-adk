@@ -1,10 +1,11 @@
 ---
 id: SPEC-TODO-HOME-TEMP-GUARD-001
 title: "생산 홈 폴백의 임시-디렉터 기원 거부 — SPEC-STATE-ANCHOR-001 §5 결정 이행"
-version: "0.1.4"
-status: completed
+version: "0.1.5"
+status: in-progress
 created: 2026-09-08
-updated: 2026-09-08
+updated: 2026-09-10
+amendment_of: SPEC-TODO-HOME-TEMP-GUARD-001
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -22,6 +23,7 @@ related_specs: [SPEC-STATE-ANCHOR-001, SPEC-WEB-TODO-QUEUE-001]
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.5 | 2026-09-10 | manager-spec | **t574 — 제자리 개정(in-place amendment).** AC-THG-006에 양의 방향 절 추가 — 생산 임시 루트 집합 소속(production temp-root set membership): 스텁이 아닌 `defaultTempRoots()`가 `os.TempDir()`·`/tmp`·`/var/folders`를 담고 원소가 정확히 3개임을 AC가 요구한다. **코드 변경 없음(no code change).** 출처: **t536 sync-audit F1**(뮤턴트 M-AUD-2, t574가 M-574로 재현). `status: completed → in-progress`, `amendment_of` 자기 참조. 요구사항 본문·AC 개수(8)·§D.0 매핑은 불변. 아래 § Amendments 참조 |
 | 0.1.4 | 2026-09-08 | manager-spec | plan-audit 4차(FAIL — D14·D16 닫힘, D15 미닫힘) 수리 + **리드의 Tier 판정 이행**. ⑴ **접힘 해제(unfold)** — REQ-THG-002에 접었던 판별식 주입 이음매를 **REQ-THG-009로 분리**하고 `tier: S → M`. 근거: 접힌 상태에서 그 절은 주어가 *분류 동작*인 요구사항 안의 종속절이라, REQ-THG-002를 정리하는 후속 편집자가 **어떤 AC도 눈치채지 못한 채** 지울 수 있다 — 그런데 이음매가 없으면 `t.TempDir()` 아래에서 홈 폴백 가지를 밟을 픽스처가 존재하지 않아 **가드가 시험 불가 상태로 출하된다**. 이 SPEC은 공허한 초록을 세 번 냈고(D2·D10·D14), *관측 가능성을 보장하려고 존재하는* 요구사항은 독립적으로 지목 가능해야 한다. D9 선례와는 모양이 다르다: D9의 절은 같은 사건의 **결과**(거부가 무엇을 돌려주는가)였고, 이음매는 그 사건을 **관측하는 도구**다 — 결과와 도구는 다른 축이다. ⑵ **D18** — §C.1의 「전수 8건」이 전수가 아니었다. 인용된 grep 패턴이 대문자 `R`로 시작해 CLI의 소문자 래퍼 `resolveTodoQueueRoot()`(`internal/cli/todo.go:71`)를 **원리상 볼 수 없었다**(실측: `/usr/bin/grep -c 'func Resolve' internal/cli/todo.go` = **0**). 두 축(대소문자 무관 심볼 · 간접 소비자)으로 재열거해 **14건**으로 정정(A행 4→6 · C행 5→7). ⑶ **AC-SA-011 교차-SPEC 판정** — `SPEC-STATE-ANCHOR-001`(completed)의 §5·§5:115·REQ-SA-011 2번째 가지 셋이 같은 방향을 가리킨다: 철회가 아니라 **그 요구사항이 문서화한 두 번째 가지로의 이행**이며, 본 카드가 §5가 위임한 결정의 **이행 주체**다. 그 SPEC은 한 글자도 수정하지 않는다. ⑷ **D19** — C행 판정식이 5건 중 4건에 공허했다(부재 단언 2 · 단언 대상이 가드 반환값과 동일 2). 관측 대상을 반환값에서 **판별식의 직접 단언**(`TempOriginReason(base)`의 `isTemp == false`)으로 옮기고, **그 판정식이 실제로 RED가 되는 조건을 M2가 실연**하도록 종료 조건에 넣었다. ⑸ **D21/D22** — 이음매의 산출 AC 매트릭스 행 정정, 교차 절의 산출 And절 추가. D17은 범위 밖으로 열린 채 |
 | 0.1.3 | 2026-09-08 | manager-spec | plan-audit 3차(FAIL 0.8125) 수리 — **D14**(`acceptance.md:134`이 뮤턴트 아래 갈래 (b)의 FAIL 기제를 거꾸로 적었다: 「stat 불가」라 했으나 `Rename`의 목적지가 곧 `BacklogPathForRoot(반환 루트)`라 stat은 **성공**한다 → 실제 FAIL 사유 셋으로 재작성하고 읽힘 단언이 (b)에서 뮤턴트에 공허함을 명시), **D15**(가드가 깨뜨리는 기존 테스트가 1건으로 적혀 있었으나 실측 8건 — 확실히 깨짐 4·공허화 5·배치 의존 1 → `plan.md` §C·§F M2에 전수 등재 + 테스트별 처분, `SPEC-WEB-TODO-QUEUE-001` AC 산출 테스트는 보존 지정. 그 과정에서 **판별식 주입 이음매**가 요구사항임이 드러나 REQ-THG-002에 접었다 — §8 D15 판정 기록), **D16**(「임시 기원」과 「홈 해석 불가」가 배타적이라는 §8의 분리 근거가 거짓 — 교차에서 `base`가 이긴다는 절과 술어 배치 순서 구속을 REQ-THG-001에 추가). §8에 공허한 초록 3연발(D2·D10·D14) 관측 등재 |
 | 0.1.2 | 2026-09-08 | manager-spec | plan-audit 2차(FAIL 0.875) 수리 — **D9**(REQ-THG-001의 대체 루트가 「루트」 계층이 아니었다: `resolveStateDir(base,false)`는 이미 상태 디렉터라 소비자가 `BacklogPathForRoot`를 덧붙이면 `base/.moai/state/todo/.moai/state/todo/backlog.json`이 된다 → **대체 루트를 `base`로 정정**하고 성질로 기술, `base`를 「덜 정밀」로 기각했던 종전 판단이 뒤집혔음을 plan.md D12에 정정 기록), **D10**(AC-THG-001이 문자열 동일성만 단언해 D9가 GREEN 통과했다 → `BacklogPathForRoot(반환 루트)`가 픽스처 큐를 가리키는지를 단언), **D11**(`/var/tmp` 제외 근거의 미측정 사전확률을 판단형으로 격하 + 재검토 트리거를 관측 가능한 형태로 교체). **U1 결정 반영**: 운영자가 형태 (b)(안내 후 계속)를 선택(2026-09-07, 리드 경유) → REQ-THG-006·AC-THG-005의 두-형태 표현을 결정된 형태로 **가지치기**(두-형태 표현은 U1이 열려 있던 동안 의도적이었고 지금 불필요해진 것이지 틀렸던 것이 아니다). §8에 `todo_root.go:121`의 기존 계층 불일치를 **관측**으로 등재(본 SPEC은 고치지 않는다 — 별도 카드 후보) |
@@ -29,6 +31,34 @@ related_specs: [SPEC-STATE-ANCHOR-001, SPEC-WEB-TODO-QUEUE-001]
 | 0.1.0 | 2026-09-08 | manager-spec | 최초 작성 — 카드 t536 plan-phase. `SPEC-STATE-ANCHOR-001` §5가 표면화만 하고 결정하지 않은 미결 설계 결정을, 운영자 결정(2026-09-07, 리드 경유)에 따라 **임시-디렉터 기원 한정 거부**로 확정하고 SPEC으로 전사 |
 
 카드: **t536** (Class C · **Tier M** — 0.1.4에서 S→M, 이음매 분리에 따른 리드 판정. §8). 측정 기준 트리: `.claude/worktrees/t536`, 브랜치 `WT-home-fallback` @ `412c8cb14`. 아래의 모든 좌표·측정치는 이 트리에서 나온 것이다.
+
+## Amendments
+
+### 개정 1 — AC-THG-006 양의 방향 절: 생산 임시 루트 집합 소속 (카드 t574, 2026-09-10)
+
+| 항목 | 값 |
+|---|---|
+| 직전 completed 판 | `0.1.4` |
+| prior_completed_sha | `029ab039f` — `status: in-progress → completed` 전이와 3-phase close를 실은 sync 커밋. `git show 029ab039f -- .moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/spec.md`가 `-status: in-progress` / `+status: completed`를 보인다(t574 트리에서 확인). 이 값을 `progress.md` sync 절의 SHA 칸에 채운 백필 커밋은 `586f26f2a`다 |
+| 개정 종류 | 제자리 개정(in-place). 후속 SPEC이 아니므로 `amendment_of`가 자기 자신을 가리킨다 |
+| 개정 착수 트리 | `.claude/worktrees/t574` · 브랜치 `WT-temp-roots-ac` · HEAD `95ba9deb2` |
+
+**근거.** t536 sync-audit F1이, `defaultTempRoots()`를 `{os.TempDir()}` 하나로 줄인 뮤턴트 M-AUD-2가 `internal/kanban`·`internal/cli` 스위트를 전부 초록으로 통과한다고 보고했다. 그 수리로 `1d091087b`가 `TestDefaultTempRoots_Membership`을 추가해 이 뮤턴트는 이제 테스트 층에서 잡힌다. 그러나 **그 테스트를 요구하는 인수 기준은 없었다.** 카드 t574가 같은 모양의 뮤턴트 M-574로 재현했다 — AC가 이름 부른 kanban 테스트는 전부 PASS하고 `TestDefaultTempRoots_Membership`만 FAIL한다(`.moai/reports/t574/repro-summary.md`, `.moai/reports/t574/mutant-kanban.txt`).
+
+원인은 AC-THG-006의 형태에 있다. 양의 방향 절(임시 루트 자신과 하위는 임시)은 **스텁한 루트**를 상대로 판정되고, 생산 집합을 상대로 하는 서브테스트는 음의 방향(`/tmpfoo`는 `/tmp` 밖) 하나만 묻는다. 두 판정 모두 뮤턴트가 만족한다. 그래서 그 테스트를 지우거나 약화시키는 후속 편집을 막는 AC가 하나도 없었다. REQ-THG-002는 집합을 {`os.TempDir()`, `/tmp`, `/var/folders`}로 이미 고정하고 있으므로, 결함은 요구사항 층이 아니라 인수 기준 층에 있다.
+
+**결정(운영자).** 새 AC를 만들지 않고 AC-THG-006에 양의 방향 절을 더한다. AC 개수 8과 `acceptance.md` §D.0의 `AC-THG-006 maps REQ-THG-002`는 그대로다.
+
+**범위.**
+- `acceptance.md` — AC-THG-006 본문에 생산 집합 소속 절, 확장된 판정 명령, RED 대조 문단을 더하고, §D 매트릭스 AC-THG-006 행의 GREEN 칸과 머리의 판본 표기를 갱신한다.
+- `spec.md` — frontmatter(`version`·`status`·`updated`·`amendment_of`), HISTORY 행, 이 § Amendments.
+- `progress.md` — plan-phase 신호 절에 개정 신호 블록을 덧붙인다.
+
+**범위 밖.**
+- 요구사항 본문(REQ-THG-001..009) — 한 글자도 바꾸지 않는다.
+- 코드와 테스트 — `internal/kanban/temp_origin.go`·`internal/kanban/temp_origin_test.go` 무변경. 판정에 쓰는 두 테스트는 이미 트리에 있다.
+- AC-THG-006 외의 AC, `plan.md`, 다른 SPEC.
+- `progress.md`의 run·sync 절 기존 블록 — 첫 close의 귀속된 기록이므로 고쳐 쓰지 않는다. 개정 이후의 재측정과 재close는 각 단계 소유자가 그 아래에 덧붙인다.
 
 ## 1. 문제 — 측정된 형태
 
