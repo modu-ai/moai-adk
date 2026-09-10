@@ -241,7 +241,7 @@ The official user documentation is served at `https://adk.mo.ai.kr` and maintain
 
 ## Implementation Status
 
-The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-test Go source files** and **~1000 test files**, organized into **46 internal/ top-level packages** (318 subpackages) + **2 pkg/ packages** (`models`, `version`) + **1 cmd** binary. The single binary embeds all Claude Code templates via `//go:embed all:templates` in `internal/template/embed.go` (no separate `embedded.go` is generated). Module path: `github.com/modu-ai/moai-adk` (Go 1.26.4).
+The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-test Go source files** and **~1000 test files**, organized into **46 internal/ top-level packages** (318 subpackages) + **2 pkg/ packages** (`models`, `version`) + **1 cmd** binary. The single binary embeds all Claude Code templates via `//go:embed all:templates` in `internal/template/embed.go` (no separate `embedded.go` is generated). Module path: `github.com/modu-ai/moai-adk` (Go 1.26.8).
 
 ### Feature Completion
 
@@ -297,7 +297,7 @@ Several planned dependencies were replaced with simpler, purpose-built solutions
 - **No go-git**: Git operations use `exec.Command("git", ...)` for reliability and full feature coverage
 - **No Viper**: Custom YAML loader with 14 `loader_*.go` files provides simpler, type-safe configuration
 - **No go.lsp.dev packages**: Multi-language LSP client built on `github.com/charmbracelet/x/powernap` in `internal/lsp/` (8 sub-packages)
-- **Go 1.26.4**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
+- **Go 1.26.8**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
 
 ---
 

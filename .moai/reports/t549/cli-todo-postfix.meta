@@ -1,0 +1,4 @@
+start=2026-09-10T15:36:07
+go               go test ./internal/cli/ -count=1 -timeout 60m
+exit=0
+end=2026-09-10T15:39:25

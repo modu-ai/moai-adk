@@ -1,0 +1,7 @@
+b16332642f4d3698bc0f811d68e35c36c4271232ec63567f30d621c841168641  internal/hook/session_start_migration_test.go
+EXIT=0
+?? .moai/reports/t617/step2-pristine-skip.txt
+?? .moai/reports/t617/step2-restore-proof.txt
+?? .moai/reports/t617/step2-swap-sha.txt
+?? .moai/reports/t617/step5-deferred-control-pristine.txt
+STATUS-EXIT=0

@@ -1,0 +1,9 @@
+=== RUN   TestT617Probe_SystemYamlMigrationsDisabled
+2026/09/10 16:44:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT617Probe_SystemYamlMigrationsDisabled1481566673/001/.moai/config/config/sections
+    zz_t617_probe_test.go:28: PROBE loader: cfg.System.Migrations.Disabled=false
+    zz_t617_probe_test.go:29: PROBE loader positive control (same file): cfg.System.Hook.OptIn.Enabled=false
+    zz_t617_probe_test.go:35: PROBE direct unmarshal into SystemConfig: Migrations.Disabled=true
+--- PASS: TestT617Probe_SystemYamlMigrationsDisabled (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.397s
+EXIT=0

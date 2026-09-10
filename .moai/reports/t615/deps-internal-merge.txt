@@ -1,0 +1,4 @@
+gopkg.in/yaml.v3|/Users/goos/go/pkg/mod/gopkg.in/yaml.v3@v3.0.1|embed=[]|testembed=[]
+github.com/modu-ai/moai-adk/internal/merge|/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t615/internal/merge|embed=[]|testembed=[]
+github.com/modu-ai/moai-adk/internal/merge [github.com/modu-ai/moai-adk/internal/merge.test]|/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t615/internal/merge|embed=[]|testembed=[]
+github.com/modu-ai/moai-adk/internal/merge.test|/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t615/internal/merge|embed=[]|testembed=[]
