@@ -2,7 +2,7 @@
 id: SPEC-SYNC-GATE-FAILSTATE-001
 title: "Sync-phase quality gate — failure state survives re-invocation on the same HEAD"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-10
 updated: 2026-09-10
 author: manager-spec (card t624)
