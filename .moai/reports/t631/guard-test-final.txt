@@ -1,0 +1,6 @@
+=== RUN   TestPhaseSignalCitationsNameTheParsedSection
+--- PASS: TestPhaseSignalCitationsNameTheParsedSection (0.00s)
+=== RUN   TestSpecArtifactSetIsTierScoped
+--- PASS: TestSpecArtifactSetIsTierScoped (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.465s

@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/template	28.432s
+ok  	github.com/modu-ai/moai-adk/internal/spec	73.380s
