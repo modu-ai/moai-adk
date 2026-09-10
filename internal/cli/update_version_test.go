@@ -150,7 +150,7 @@ func TestValidateUpdateVersionConflicts(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := validateUpdateVersionConflicts(c.version, c.check, c.templatesOnly, c.restore, c.dryRun, false)
+			err := validateUpdateVersionConflicts(c.version, c.check, c.templatesOnly, c.restore, c.dryRun)
 			if c.wantConflict {
 				if err == nil {
 					t.Fatalf("expected conflict error naming %s, got nil", c.wantFlag)
@@ -217,7 +217,7 @@ func TestUpdateFlagsNoVersionDefaultIsNoop(t *testing.T) {
 		t.Errorf("default --version = %q, want empty (default flow must be preserved)", got)
 	}
 	// An empty --version passes validation (no conflict, no resolution attempt).
-	if err := validateUpdateVersionConflicts("", false, false, false, false, false); err != nil {
+	if err := validateUpdateVersionConflicts("", false, false, false, false); err != nil {
 		t.Errorf("empty --version must not trigger conflict validation: %v", err)
 	}
 	// tagReleaseURL is never reached when --version is empty because runUpdate

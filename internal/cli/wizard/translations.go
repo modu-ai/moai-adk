@@ -186,7 +186,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"agent_wiring": {
 			Title:       "연결할 에이전트 하니스 선택",
-			Description: "이 프로젝트에 MoAI가 연결할 에이전트 하니스입니다. 'claude'가 권장 기본값이며, --agent 플래그가 이 답변보다 우선합니다.",
+			Description: "이 프로젝트에 MoAI가 연결할 LLM 하니스입니다. 'claude'가 권장 기본값이며, --llm 플래그가 이 답변보다 우선합니다.",
 			Options: []OptionTranslation{
 				{Label: "Claude (권장)", Desc: "Claude 쪽만 연결 (.mcp.json 프로비저닝)"},
 				{Label: "Codex", Desc: ".codex/ 훅 계층과 MCP 설정을 연결하고 .mcp.json 프로비저닝은 건너뜁니다"},
@@ -354,7 +354,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"agent_wiring": {
 			Title:       "接続するエージェントハーネスを選択",
-			Description: "このプロジェクトで MoAI が接続するエージェントハーネスです。'claude' が推奨デフォルトで、--agent フラグがこの回答より優先されます。",
+			Description: "このプロジェクトで MoAI が接続する LLM ハーネスです。'claude' が推奨デフォルトで、--llm フラグがこの回答より優先されます。",
 			Options: []OptionTranslation{
 				{Label: "Claude (推奨)", Desc: "Claude 側のみ接続 (.mcp.json のプロビジョニング)"},
 				{Label: "Codex", Desc: ".codex/ フック層と MCP 設定を接続し、.mcp.json のプロビジョニングはスキップ"},
@@ -522,7 +522,7 @@ var translations = map[string]map[string]QuestionTranslation{
 		},
 		"agent_wiring": {
 			Title:       "选择要接入的代理框架",
-			Description: "MoAI 为本项目接入的代理框架。'claude' 是推荐默认值，--agent 参数优先于此答案。",
+			Description: "MoAI 为本项目接入的 LLM 框架。'claude' 是推荐默认值，--llm 参数优先于此答案。",
 			Options: []OptionTranslation{
 				{Label: "Claude (推荐)", Desc: "仅接入 Claude 一侧 (.mcp.json 供应)"},
 				{Label: "Codex", Desc: "接入 .codex/ 钩子层与 MCP 配置，跳过 .mcp.json 供应"},

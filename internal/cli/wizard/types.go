@@ -93,7 +93,7 @@ type WizardResult struct {
 	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 
 	// AgentWiring (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-001/002): the
-	// interactive agent-harness selection, reusing the --agent closed set
+	// interactive LLM-harness selection, reusing the --llm closed set
 	// {claude, codex, both}. Empty means the wizard did not run (or did not
 	// reach the question), which resolveAgentWiringWithWizard resolves to the
 	// claude fallback — the same fallback the flag path has always used.

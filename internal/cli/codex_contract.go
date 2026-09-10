@@ -24,27 +24,25 @@ import (
 	"strings"
 )
 
-// Instruction paths — the single source the contract guards and links.
+// Instruction paths — the single source the contract guards. AGENTS.local.md
+// is Codex-only input consumed by the launcher; it is never imported from a
+// shared instruction file.
 const (
 	codexAgentsRelPath        = "AGENTS.md"
 	codexClaudeRelPath        = "CLAUDE.md"
-	codexLocalInstructionName = "CLAUDE.local.md"
+	codexLocalInstructionName = "AGENTS.local.md"
 )
 
-// Link directives — the executing lines this contract may add.
-const (
-	codexLinkAgentsDirective = "@AGENTS.md"
-	codexLinkLocalDirective  = "@CLAUDE.local.md"
-)
+// Link directive — the only executing line this contract may add.
+const codexLinkAgentsDirective = "@AGENTS.md"
 
 // Created bodies — minimal and non-empty (AC-CI-005 requires a created
 // AGENTS.md to carry at least one non-space character; body QUALITY is out
-// of this SPEC's scope). AGENTS.md carries the local-file link only when
-// that file exists — nothing references an absent file (REQ-CI-008).
+// of this SPEC's scope). Local instructions are injected by the launcher,
+// never linked into either shared instruction file.
 const (
-	codexCreatedClaudeBody          = "# CLAUDE.md\n\n" + codexLinkAgentsDirective + "\n"
-	codexCreatedAgentsBody          = "# AGENTS.md\n"
-	codexCreatedAgentsBodyWithLocal = "# AGENTS.md\n\n" + codexLinkLocalDirective + "\n"
+	codexCreatedClaudeBody = "# CLAUDE.md\n\n" + codexLinkAgentsDirective + "\n"
+	codexCreatedAgentsBody = "# AGENTS.md\n"
 )
 
 // codexInstructionRelPathsFn is the path-table seam: the three instruction
@@ -239,27 +237,20 @@ func secureCodexInstructionContract(req codexContractRequest) error {
 	}
 
 	// 2. Read + plan — compute EVERY intended change before applying any.
-	localExists := exists[2]
 	type codexContractPlan struct {
 		rel     string
 		content []byte
 	}
 	var plans []codexContractPlan
 
-	agentsBytes, aerr := codexReadFileFn(filepath.Join(root, filepath.FromSlash(rels[0])))
+	_, aerr := codexReadFileFn(filepath.Join(root, filepath.FromSlash(rels[0])))
 	agentsExists := aerr == nil
 	if aerr != nil && !errors.Is(aerr, os.ErrNotExist) {
 		return fmt.Errorf("read %s: %w", rels[0], aerr)
 	}
 	switch {
 	case !agentsExists:
-		body := codexCreatedAgentsBody
-		if localExists {
-			body = codexCreatedAgentsBodyWithLocal
-		}
-		plans = append(plans, codexContractPlan{rel: rels[0], content: []byte(body)})
-	case localExists && codexCountExecutingImports(agentsBytes, codexLinkLocalDirective) == 0:
-		plans = append(plans, codexContractPlan{rel: rels[0], content: codexAppendLine(agentsBytes, codexLinkLocalDirective)})
+		plans = append(plans, codexContractPlan{rel: rels[0], content: []byte(codexCreatedAgentsBody)})
 	}
 
 	claudeBytes, cerr := codexReadFileFn(filepath.Join(root, filepath.FromSlash(rels[1])))

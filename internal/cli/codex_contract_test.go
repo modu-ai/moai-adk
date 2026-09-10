@@ -397,7 +397,7 @@ func TestCodexPathGuardParentEscape(t *testing.T) {
 // directive INSIDE a comment never counts — counting a commented example
 // would let prose satisfy the "already linked" contract.
 func TestCodexCountExecutingImports(t *testing.T) {
-	const directive = codexLinkLocalDirective
+	const directive = codexTestLocalImportDirective
 	cases := []struct {
 		name string
 		body string

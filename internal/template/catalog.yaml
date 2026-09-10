@@ -127,7 +127,7 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
+              hash: 061fe4fb0dfee5b06a2c67b51835c5512f45f0c56a888fbf786c5d9220099b07
               version: 1.0.0
             - name: manager-lead
               tier: core

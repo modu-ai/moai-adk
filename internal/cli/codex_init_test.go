@@ -683,8 +683,8 @@ func TestCodexInitAcceptDelegation(t *testing.T) {
 					if got := codexTestExecImports(t, claudePath, codexLinkAgentsDirective); got != 1 {
 						t.Errorf("executing @AGENTS.md imports in CLAUDE.md = %d, want 1", got)
 					}
-					if got := codexTestExecImports(t, agentsPath, codexLinkLocalDirective); got != 0 {
-						t.Errorf("executing @CLAUDE.local.md imports in AGENTS.md = %d, want 0 (no local file exists)", got)
+					if got := codexTestExecImports(t, agentsPath, codexTestLocalImportDirective); got != 0 {
+						t.Errorf("executing @AGENTS.local.md imports in AGENTS.md = %d, want 0", got)
 					}
 					// launch: exactly once, on the requested site.
 					direct, spawnN := 1, 0
@@ -846,7 +846,7 @@ func TestCodexInitFailurePaths(t *testing.T) {
 				}
 			},
 			layDisk:  func(t *testing.T, proj string) {},
-			wantCall: "stage AGENTS.md",
+			wantCall: "stage CLAUDE.md",
 		},
 		{
 			name: "e3_partial_output_then_fails",
@@ -1036,7 +1036,7 @@ func (w *t501ErrWriter) Write(p []byte) (int, error) {
 // report must never mask the refusal it accompanies (codex_init.go).
 func TestCodexGatePrintf(t *testing.T) {
 	w := &t501ErrWriter{}
-	codexGatePrintf(w, "codex wiring is %s — %s", "not wired", "run moai init --agent codex")
+	codexGatePrintf(w, "codex wiring is %s — %s", "not wired", "run moai init --llm codex")
 	if w.calls != 1 {
 		t.Errorf("erroring writer was called %d times, want 1", w.calls)
 	}

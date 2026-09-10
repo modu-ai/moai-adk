@@ -12,7 +12,7 @@ package cli
 //
 // The existence gate is the project's RECORDED DEPLOY VERSION, not the
 // presence of .agents/ (gone exactly when repair is needed) and not the
-// presence of .codex/ wiring (absent by default in every `--agent claude`
+// presence of .codex/ wiring (absent by default in every `--llm claude`
 // project, whose mirror is created unconditionally). See spec.md §3 for both
 // rejections, each measured.
 

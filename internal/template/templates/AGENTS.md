@@ -1,17 +1,19 @@
 # AGENTS.md — standing contract for agents in this repository
 
 Every clause here binds a turn regardless of which agent harness drives it. The file is
-**self-sufficient**: it assumes no other instruction file is loaded, and no nested `AGENTS.md`
-exists anywhere in this repository.
+**self-sufficient**: it does not depend on another instruction file. If a nested `AGENTS.md`
+exists, Codex loads it as an additional, more-specific contract; the merged byte budget must cover
+the whole discovery chain.
 
 **Budget warning.** A personal `~/.codex/AGENTS.md` joins the same merged chain and is consumed
 **before** this file, narrowing what the project's contract can carry. Overflow is dropped from the
 **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered most-critical-first
 for that reason.
 
-Obligations are carried from `.claude/rules/moai/**` and `CLAUDE.md`, which remain the source of
-truth; compression removed rationale and incident records, never an obligation. Claude-only
-mechanisms (the question channel, subagent spawning, skills, session handoff) stay there.
+This file is the canonical cross-harness contract. `.claude/rules/moai/**` and `CLAUDE.md` expand
+Claude-only mechanisms (question channel, subagent spawning, skills, session handoff); they do not
+override a cross-harness clause here. Compression removed rationale and incident records, never an
+obligation.
 
 **Capability bindings.** Names below are the neutral tool classes; a row exists only where a
 harness driving this contract lacks the capability.
@@ -47,12 +49,10 @@ against this tree. A figure carried over from another package, tree, or point in
 baseline; using it as a fresh measurement violates this. Anything unattributed is a Gap, not a
 Claim.
 
-**Evidence-bearing report format.** Verification and completion reports SHOULD carry five sections,
-on every report and not only the first: **Claim** (what is asserted); **Evidence** (the command run
-plus its verbatim output — a summary is not evidence); **Baseline-attribution** (what it was
-measured against, in this run); **Gaps** (what was explicitly NOT observed — an empty Gaps section
-asserts nothing was left unobserved, which must itself be true); **Residual-risk** (what could
-still be wrong despite what was observed).
+**Evidence-bearing report format.** Verification and completion reports SHOULD carry five sections:
+**Claim**, **Evidence** (command plus verbatim output), **Baseline-attribution** (tree measured in
+this run), **Gaps** (explicitly unobserved), and **Residual-risk**. An empty Gaps section claims
+nothing was left unobserved and is valid only when true.
 
 ---
 
@@ -90,13 +90,16 @@ into lost work.
 `.moai/`, `internal/`, `pkg/`, `cmd/`, repo-root config), and surface any divergence:
 
 ```bash
-git fetch origin main 2>&1
-git rev-list --count --left-right origin/main...HEAD
+default_ref="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD)"
+test -n "$default_ref"
+git fetch origin "${default_ref#origin/}" 2>&1
+git rev-list --count --left-right "$default_ref"...HEAD
 ```
 
 `0 0` or `0 N` proceeds; `N 0` or `N M` means resolve before editing. Where another live session
 shares the checkout, isolate into a worktree rather than editing in the shared tree. The check
-decays — re-run it before any commit and after a long pause.
+decays — re-run it before any commit and after a long pause. If `origin/HEAD` is unresolved, stop
+and resolve the remote default branch instead of assuming `main`.
 
 ---
 
@@ -157,23 +160,16 @@ limited` means the review never started.
 
 ## 5. Core behaviors
 
-Six behaviors bind every turn, whatever the task.
-
 **1. Surface assumptions.** Before implementing anything non-trivial, list assumptions explicitly
-and wait for confirmation — silent assumptions are the most dangerous misunderstanding. State them
-as a short list and invite correction. Anti-pattern: silently picking one reading of an ambiguous
-requirement and running with it.
+and wait for confirmation. State them as a short list and invite correction.
 
 **2. Manage confusion actively.** On an inconsistency, a conflicting requirement, or an unclear
-specification: STOP — do not proceed on a guess; name the specific confusion; present the tradeoff
-or clarifying question; wait for resolution. Anti-pattern: "the spec says X but the code does Y",
-then silently choosing Y because it is easier.
+specification: STOP — do not guess; name the confusion, present the tradeoff or question, and wait.
 
 **3. Push back when warranted.** Say so directly when an approach has a concrete downside,
 contradicts an established convention without justification, or breaks a tested invariant. State
 the issue, quantify the downside ("adds ~200 ms latency", not "might be slower"), propose an
-alternative, and accept an override once the user has full information. Sycophancy is a failure
-mode. Anti-pattern: "Of course!" followed by a known-bad implementation.
+alternative, and accept an override once the user has full information.
 
 **4. Enforce simplicity.** Actively resist overcomplexity; generation tends toward
 over-engineering. Before completing, ask: fewer lines without losing clarity? are these
@@ -191,13 +187,12 @@ create noise and risk regressions. Do NOT remove comments you do not understand,
 orthogonal to the task, refactor adjacent systems as a side effect, delete seemingly-unused code
 without explicit approval, or add unrequested features because they seem useful. Match the existing
 style of the file being modified — naming, error handling, import organization; consistency within
-a file outranks personal preference. Anti-pattern: "while I was in this file I noticed…".
+a file outranks personal preference.
 
 **6. Verify, don't assume.** Every task requires evidence of completion; "seems right" is never
 sufficient. Tests passing means showing the test output; a build succeeding, the build output; a
 file created, reading it back; behavior correct, the runtime evidence. For ad-hoc work without a
 spec, define the goal as a testable assertion first — "done when X produces Y" — then verify it.
-Anti-pattern: claiming tests pass without running them.
 
 ---
 
@@ -253,61 +248,50 @@ code and a bounded tail. A runtime output limit is a backstop, not the target.
 a targeted filter — not forms emitting spinners, banners, tables, or color noise. The same decision
 bytes at a fraction of the context cost.
 
-**Weigh session length as a cost axis.** One long session is cheaper than several short ones for
-the same work: a fresh session re-pays the always-loaded prefix at write price where a continuing
-one reads it from cache — provided it stays warm, since a long idle gap or an edit to the loaded
-prefix reverts it to write price. Splitting a session is a cost to justify, not a default.
+**Weigh session length as a cost axis.** Prefer one warm session for the same work; a new or cold
+session re-pays the always-loaded prefix. Split only when the benefit justifies that cost.
 
 ---
 
-## 8. Codex Web Console
+## 8. Harness-local instructions
 
-Codex can also run this project's tasks from its web console (cloud runs). Those sessions read the
-same instruction contract — this AGENTS.md — but they are not the local CLI: `.codex/hooks.json`
-wiring and the status line are local surfaces and do not fire there. Keep instructions in this file
-self-sufficient (never reliant on local-only state), and treat web-console runs as read-and-review
-first: work that mutates the working tree belongs in a checked-out local session where the hook
-layer and tests can act on it.
+`AGENTS.local.md` is Codex-only and uncommitted. `moai codex` reads it from the project root and
+passes its exact content as a session `developer_instructions` override; shared `AGENTS.md` and
+`CLAUDE.md` never import it. Other harness-local settings and memory remain owned by their harness
+and are not forwarded to Codex.
+
+Codex Web sessions read `AGENTS.md`, but local `.codex/hooks.json`, the status line, and the MoAI
+launcher injection do not run there. Treat Web sessions as read-and-review first.
 
 ## 9. Hook Event Coverage
 
-MoAI's hook layer is event-driven, and Codex fires a SUBSET of it. Of the twelve hook events the
-Codex adapter recognizes, eight are wired today: SessionStart, SessionEnd, UserPromptSubmit,
-PreToolUse, PostToolUse, Stop, SubagentStart, and SubagentStop. Four are recognized but not wired:
-PreCompact and PostCompact (compaction never triggered during the firing campaigns),
-PermissionRequest, and the Codex-only Interrupt, which has no MoAI dispatcher counterpart. Claude
--side hook events with no Codex counterpart at all — Notification, PostToolUseFailure, and the
-agent-team pair TeammateIdle / TaskCompleted — never fire in a Codex session. Do not assume a hook
-ran under Codex because it runs under Claude Code; check this coverage first.
+Codex currently wires SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop,
+SubagentStart, and SubagentStop. It does not wire PreCompact, PostCompact, PermissionRequest, or
+Interrupt; Claude-only Notification, PostToolUseFailure, TeammateIdle, and TaskCompleted never fire
+under Codex. Verify coverage before relying on a hook.
 
 ## 10. Configuration Map
 
-Project configuration lives in `.moai/config/sections/*.yaml` — one file per concern (quality,
-harness, language, llm, workflow, statusline, mx, ...). Quality gates are configured there too:
-the 3-level harness (minimal / standard / thorough), the TRUST 5 quality validation, and the
-per-phase LSP thresholds (plan: capture the LSP baseline; run: zero errors / type errors / lint
-errors; sync: zero errors, max 10 warnings) are set through `harness.yaml`, `quality.yaml`,
-`lsp.yaml`, and the evaluator profiles under `.moai/config/evaluator-profiles/`. Threshold values
-have a single source and are never duplicated inline.
+Project configuration lives in `.moai/config/sections/*.yaml`. Harness, TRUST 5, and phase LSP
+thresholds come from `harness.yaml`, `quality.yaml`, `lsp.yaml`, and evaluator profiles; never
+duplicate those values inline.
 
 ## 11. moai CLI Verbs
 
 | Verb | Purpose |
 |------|---------|
-| `moai init <project>` | Scaffold a new MoAI project |
-| `moai update` | Sync templates (`--add-codex` adds the Codex harness to an existing project) |
+| `moai init <project> --llm claude\|codex\|both` | Scaffold a project and select its LLM harness |
+| `moai update` | Sync templates and refresh already-enabled wiring |
+| `moai tool enable codex` | Add or refresh Codex wiring in an existing project |
 | `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
 | `moai doctor` | Diagnose installation and wiring health |
 | `moai worktree` | Worktree lifecycle (list / snapshot / verify / restore) |
 | `moai cc` / `moai glm` / `moai cg` | Session launchers (Claude, GLM, coordinated pairing) |
 | `moai version` | Print build version and provenance |
 
-Run `moai --help` for the full verb surface — it is generated from the registered commands and is
-always current; this table names the stable entry points only.
+Run `moai --help` for the generated, current command surface.
 
 ## 12. Status Line Tokens
 
-The status line is rendered by `moai statusline` (implementation: `internal/statusline`). It reads
-state snapshots under `.moai/state/` and honors the `MOAI_STATUSLINE_CONTEXT_SIZE` override for
-models whose true context window the host misreports. This section is a pointer, not a copy — read
-the builder for the current token set instead of duplicating it here and letting the copy go stale.
+`moai statusline` reads `.moai/state/` and honors `MOAI_STATUSLINE_CONTEXT_SIZE`. Read
+`internal/statusline` for the current token set; do not duplicate it here.

@@ -140,7 +140,6 @@ graph TD
 | `--verbose` | すべての警告を表示 (診断モード) |
 | `--shell-env` | Claude Code 用のシェル環境変数を構成 |
 | `--profile <high\|medium\|low>` | モデル+effort プロファイルの上書き (`llm.yaml` の `profile` に保存) |
-| `--add-codex` | 既存の claude プロジェクトに codex ハーネス配線を追加 (再初期化なし) |
 
 ### 動作方式
 
@@ -237,18 +236,17 @@ moai update --dry-run
 moai update --yes
 ```
 
-### 既存プロジェクトに Codex を追加 (`--add-codex`)
+### 既存プロジェクトに Codex を追加
 
 再初期化せずに、claude のみのプロジェクトへ codex ハーネス配線を追加します:
 
 ```bash
-moai update --add-codex
+moai tool enable codex
 ```
 
 - `.codex/hooks.json`(ホワイトリストゲートを通過したフック描画)・`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 自分で追加した項目は保持)・`.moai/state/codex-wiring.json`(信頼サイドカー)を作成または更新します
 - `.mcp.json` には触れず、再実行は冪等です — 配線済みなら何も書かず、再信頼ガイドも表示しません
-- `--dry-run` と組み合わせると、ファイルシステムを変更せずに配線計画だけを先に確認できます
-- `--check` とは併用できません — `--check` は情報提供用、`--add-codex` はプロジェクト配線を変更するため、組み合わせるとエラーで拒否されます
+- `moai tool enable codex --dry-run` を実行すると、ファイルシステムを変更せずに配線計画だけを先に確認できます
 
 ## アップデート後の手順
 

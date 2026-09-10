@@ -140,7 +140,6 @@ graph TD
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
 | `--profile <high\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` 的 `profile`) |
-| `--add-codex` | 为已有的 claude 项目添加 codex harness 配线(无需重新初始化) |
 
 ### 工作方式
 
@@ -237,18 +236,17 @@ moai update --dry-run
 moai update --yes
 ```
 
-### 为已有项目添加 Codex(`--add-codex`)
+### 为已有项目添加 Codex
 
 无需重新初始化,即可为 claude-only 项目添加 codex harness 配线:
 
 ```bash
-moai update --add-codex
+moai tool enable codex
 ```
 
 - 创建或刷新 `.codex/hooks.json`(通过白名单门控的 hook 渲染)、`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 自行添加的条目会保留)、`.moai/state/codex-wiring.json`(信任 sidecar)
 - 不改动 `.mcp.json`,重复执行是幂等的 — 已配线的项目不会写入任何内容,也不会重复输出信任提示
-- 与 `--dry-run` 组合时,只预览配线计划,不改动文件系统
-- 与 `--check` 互斥 — `--check` 仅用于查看信息,而 `--add-codex` 会改动项目配线,组合使用会以错误拒绝
+- 运行 `moai tool enable codex --dry-run` 时,只预览配线计划,不改动文件系统
 
 ## 更新后流程
 

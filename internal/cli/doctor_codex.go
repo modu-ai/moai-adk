@@ -11,7 +11,7 @@ package cli
 //
 // The check READS only. It never creates, repairs, or removes a .codex/ file,
 // and never touches the user-layer ~/.codex/config.toml: wiring creation is
-// the explicit `moai init --agent codex` opt-in (REQ-CW-009) and a user-owned
+// the explicit `moai init --llm codex` opt-in (REQ-CW-009) and a user-owned
 // table is the doctor's to report, never the writer's to repair (REQ-CW-005).
 
 import (
@@ -49,11 +49,11 @@ const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
 // ONLY path that creates wiring — RefreshWiring is an existence gate that
 // creates nothing (REQ-CW-009), so an unwired project stays unwired until the
 // user opts in explicitly.
-const initCodexAdvice = "run moai init --agent codex"
+const initCodexAdvice = "run moai init --llm codex"
 
 // halfWiredSummary names the half-wired state: the project carries Codex
 // agent definitions but no wiring file. `moai init` deploys the definitions
-// with or without the --agent codex opt-in, so this is what a plain init
+// with or without the --llm codex opt-in, so this is what a plain init
 // leaves behind — which is why the state needed a name of its own rather
 // than being folded into "not wired" (SPEC-CODEX-PARTIAL-WIRING-001).
 const halfWiredSummary = "codex agent definitions present, no wiring files"
@@ -340,7 +340,7 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	check.Message = joinCodexSummaries(problems)
 	check.Detail = joinCodexDetails(problems, extraDetail)
 	if check.Detail == "" && verbose {
-		check.Detail = "advisory check — rerun `moai init --agent codex` to refresh the wiring"
+		check.Detail = "advisory check — rerun `moai init --llm codex` to refresh the wiring"
 	}
 	return check
 }

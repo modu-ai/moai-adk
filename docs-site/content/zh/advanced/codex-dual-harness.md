@@ -3,16 +3,16 @@ title: "Codex 双 harness — AGENTS.md、代理双重发布、钩子适配器"
 weight: 31
 draft: false
 added_in: "v3.1.3"
-description: "让 codex-cli 能读懂 MoAI-ADK 的四件产物 —— 根目录 AGENTS.md standing contract、代理 TOML 双重发布、.agents/skills 技能镜像、internal/codexadapter 钩子适配器库。"
+description: "让 codex-cli 与 Claude Code 并行使用 MoAI-ADK 的共用表面与各 harness 个人指令。"
 ---
 
-MoAI-ADK 的第一 harness(实际驱动代理的运行环境)是 Claude Code,但从 v3.1.3 起它带上了一层 **codex-cli 也能读的二元表面**。这些都不会改变 Claude Code 一侧的行为 —— 只是让已经存在的规则与代理定义,再按 codex 寻找的位置和形式发布一次。本文讲这四件产物各是什么、各解决什么问题。
+MoAI-ADK 的第一 harness(实际驱动代理的运行环境)是 Claude Code,但从 v3.1.3 起它带上了一层 **codex-cli 也能读的二元表面**。共用规则与代理定义会按 Codex 寻找的位置和形式一并发布,个人指令则按 harness 分开。本文说明这些表面各自解决什么问题。
 
 ## 根 AGENTS.md —— harness 通用的 standing contract
 
 仓库根目录的 `AGENTS.md` 不是 Claude 专属文件,而是**无论哪个代理 harness 驱动一回合都适用的 standing contract**(常时契约)。它以单一文件存在,原因在 codex 的读取方式: codex 在字节上限内读项目指示,**超出的尾部会被静默丢弃 —— 没有警告,退出码还是 0**。装不进上限的契约会以"完整"的姿态汇报。所以"装得进上限"本身就是需求,由 build guard(构建时检查该文件是否在上限之内的机制)把守。
 
-为了腾出空间,11 份常驻加载文档降级成了指向 8 份惰性伴随文档(lazy companion,按需才读的详述文档)的存根(简短摘要)。**搬走的是解释义务的文字,从来不是义务本身** —— 权威源仍是 `.claude/rules/moai/**` 和 `CLAUDE.md`,`AGENTS.md` 只是以 harness 中立的形式运载它。
+为了腾出空间,11 份常驻加载文档降级成了指向 8 份惰性伴随文档(lazy companion,按需才读的详述文档)的存根(简短摘要)。**搬走的是解释义务的文字,从来不是义务本身** —— `AGENTS.md` 是各 harness 共用契约的基准,`.claude/rules/moai/**` 和 `CLAUDE.md` 补充 Claude 专用机制。
 
 {{< callout type="info" >}}
 个人的 `~/.codex/AGENTS.md` 会加入同一条合并链,并在本文件**之前**被消费,压缩项目契约能承载的宽度。溢出从尾部开始静默丢弃 —— 这正是本文件的条款按最重要在前排序的原因。
@@ -27,6 +27,10 @@ MoAI-ADK 的第一 harness(实际驱动代理的运行环境)是 Claude Code,但
 ## `.agents/skills` —— 技能镜像
 
 codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复写副本)形式部署到 `.agents/skills` 下。镜像清单不是手工维护的,而是在部署执行时从实际的技能集合导出 —— 技能增减,清单不会过期。这个目录是面向**用户仓库之外**的部署产物,不进 git;优先符号链接,无法创建链接的环境退回复制部署(`moai init`、`moai update` 的完成摘要会说明这一点 —— 详见 [moai update](/zh/cli-reference/update/) 文档)。
+
+## 各 harness 的个人指令
+
+`AGENTS.local.md` 仅供 Codex 使用。本地 `moai codex` 启动器从项目根目录读取它,并把原始内容作为 Codex 会话的 `developer_instructions` 覆盖项传入;共享文件不会用 `@` 导入它。`CLAUDE.local.md`、`.claude/settings.local.json` 和 Claude 自动生成的 `MEMORY.md` 仍仅供 Claude 使用。Codex Web 会话不经过本地启动器,因此不会收到这项注入。
 
 ## `internal/codexadapter` —— 钩子适配器库
 
@@ -55,7 +59,7 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 ### 现在的调用方
 
-适配器不再无人调用 —— `RenderHooks` 会把两条已适配的子代理钩子行(`moai hook subagent-start --harness codex`、`moai hook subagent-stop --harness codex`)写入用户的 `.codex/hooks.json`。其余事件仍在等待 `--agent` 配置生成器(把适配器接线进生成的 codex 配置的后续卡片),在那个范围内,本文仍是接线将落在哪里的地图。
+`RenderHooks` 会把 8 个已适配事件的命令写入用户的 `.codex/hooks.json`。`moai init --llm codex|both` 创建这套配线;已有项目可用 `moai tool enable codex` 添加或刷新。
 
 ## 下一步
 

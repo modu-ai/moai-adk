@@ -3,16 +3,16 @@ title: "Codex Dual Harness — AGENTS.md, Dual Agent Publication, Hook Adapter"
 weight: 31
 draft: false
 added_in: "v3.1.3"
-description: "The four artifacts that let codex-cli read MoAI-ADK — the root AGENTS.md standing contract, dual agent TOML publication, the .agents/skills mirror, and the internal/codexadapter hook adapter library."
+description: "The shared and harness-local surfaces that let codex-cli use MoAI-ADK alongside Claude Code."
 ---
 
-MoAI-ADK's primary harness (the runtime that actually drives agents) is Claude Code, but as of v3.1.3 it carries a **dual surface that codex-cli can read too**. None of it changes what Claude Code does — the rules and agent definitions that already existed are simply published a second time, in the locations and formats codex looks for. This page covers the four artifacts and the problem each one solves.
+MoAI-ADK's primary harness (the runtime that actually drives agents) is Claude Code, but as of v3.1.3 it carries a **dual surface that codex-cli can read too**. Shared rules and agent definitions are published in the locations and formats Codex expects, while personal instructions stay separated by harness. This page explains those surfaces and the problem each one solves.
 
 ## The root AGENTS.md — a standing contract for any harness
 
 The root `AGENTS.md` is a standing contract that binds a turn **regardless of which agent harness drives it** — not a Claude-specific file. It is one file because of how codex reads: it consumes project instructions under a byte cap and **drops the overflow silently, with no warning and exit 0**. A contract that does not fit reports as complete. Fitting under the ceiling is therefore itself a requirement, and a build guard (a check run at build time that the file stays under it) holds it there.
 
-Making room took eleven always-loaded documents down to stubs (short summaries) pointing at eight lazy companions (detail documents read only on demand). **What moved was the prose explaining each obligation, never the obligation itself** — the source of truth remains `.claude/rules/moai/**` and `CLAUDE.md`, and `AGENTS.md` carries it in a harness-neutral form.
+Making room took eleven always-loaded documents down to stubs (short summaries) pointing at eight lazy companions (detail documents read only on demand). **What moved was the prose explaining each obligation, never the obligation itself** — `AGENTS.md` is the canonical cross-harness contract, while `.claude/rules/moai/**` and `CLAUDE.md` expand Claude-only mechanisms.
 
 {{< callout type="info" >}}
 A personal `~/.codex/AGENTS.md` joins the same merged chain and is consumed **before** this file, narrowing what the project's contract can carry. Overflow is dropped from the tail silently — which is why the clauses in this file are ordered most-critical-first.
@@ -27,6 +27,10 @@ Three guards keep source and derivation from drifting apart: a golden-file compa
 ## `.agents/skills` — the skill mirror
 
 codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed as a **mirror** under `.agents/skills`. The mirror list is not hand-maintained — it is derived from the actual skill set at deploy time, so it cannot go stale as skills come and go. The directory is a deployment artifact aimed **outside user repositories** and is never committed; it prefers a symbolic link, falling back to a copy where links cannot be created (the `moai init` / `moai update` completion summaries say so — see the [moai update](/en/cli-reference/update/) page).
+
+## Harness-local personal instructions
+
+`AGENTS.local.md` is Codex-only. The local `moai codex` launcher reads it from the project root and passes its exact content through Codex's `developer_instructions` session override; it is never imported with `@` from a shared file. `CLAUDE.local.md`, `.claude/settings.local.json`, and Claude automatic `MEMORY.md` files remain Claude-only. Codex Web sessions do not run the local launcher, so they do not receive this injection.
 
 ## `internal/codexadapter` — the hook adapter library
 
@@ -55,7 +59,7 @@ Unadapted events are not silently ignored — they are **refused**. An unknown e
 
 ### What invokes it now
 
-The adapter is no longer call-free: `RenderHooks` writes the two adapted subagent hook lines (`moai hook subagent-start --harness codex`, `moai hook subagent-stop --harness codex`) into the user's `.codex/hooks.json`. The remaining events still await the `--agent` config generator — the follow-up card that wires the adapter into a generated codex config — so for those this page remains a map of where the wiring will land.
+`RenderHooks` writes all eight adapted event commands into the user's `.codex/hooks.json`; `moai init --llm codex|both` creates that wiring, and `moai tool enable codex` adds or refreshes it in an existing project.
 
 ## Next steps
 

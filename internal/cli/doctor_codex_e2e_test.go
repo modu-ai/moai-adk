@@ -28,10 +28,10 @@ import (
 // alongside the status (verification-completeness §1.1: the swept surface is
 // named, not just the exit verdict).
 var codexFindingPhrases = []string{
-	"moai init --agent codex", // the unwired-project action directive
-	"stale skill",             // the stale-home-skill sub-check finding
-	"/hooks to re-trust",      // the hooks-divergence finding
-	"mcp_servers.moai",        // the config-table-drift finding
+	"moai init --llm codex", // the unwired-project action directive
+	"stale skill",           // the stale-home-skill sub-check finding
+	"/hooks to re-trust",    // the hooks-divergence finding
+	"mcp_servers.moai",      // the config-table-drift finding
 }
 
 // pinInitHome pins the environment the init tests run under: HOME to a fresh
