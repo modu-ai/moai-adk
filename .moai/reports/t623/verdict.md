@@ -191,3 +191,50 @@ REVIEW 줄의 `BLOCKING` 낱말이 발견으로 세지지 않는다는 증거(�
 
 ### Residual-risk
 - 테스트는 D7 후보 문단을 "보여 주는지"까지만 고정한다. 그 문단을 읽고 BLOCKING 을 내는 auditor 판단은 기계로 검증하지 않는다.
+
+## 6. 통합 창 — develop 흡수 · 병합 트리 재측정 (go 1.26.8)
+
+### Claim
+로컬 develop `296ba7aa5` 를 흡수한 트리(`cb037678f`)에서, 새 도구체인 go1.26.8 로 컴파일한 테스트 9개가 이름별로 전부 통과하고 `make agents-emit-check` 가 통과한다.
+
+### Evidence
+창 획득(09:14:34Z): 직전 `git rev-parse --short develop` → `296ba7aa5`, `git rev-parse --short HEAD` → `587287e8a`, `git status --short` → 출력 없음. `moai integration acquire --name lane-9` → `acquire_exit=0`, `release-integration window acquired by e5c0032b-ffbd-44b0-8997-c16d09d3541b on WT-auditor-d7d8-scripts`.
+
+흡수: `git merge --no-edit 296ba7aa5` → `merge_exit=0`(충돌 없음), `git log -1 --format='%h %p'` → `cb037678f 587287e8a 296ba7aa5`.
+
+델타: `git diff --name-only 1e207c3ff 296ba7aa5` → 215개 파일. `go.mod` 포함(go 지시어 변경 — 리드 판정대로 전 패키지 재컴파일 대상). plan-auditor 문서·`plan_audit_d7_d8` 테스트와 겹치는 파일 0(같은 awk 로 `internal/cli/` 파일 2개를 세어 판독기가 동작함을 대조). 이 카드의 변경과 텍스트 충돌 없음.
+
+도구체인(09:15:01Z): `go.mod` → `go 1.26.8`; `go version` → `go version go1.26.8 darwin/arm64` (`goversion_exit=0`).
+
+슬롯(창 안 1회, 리드 사전 승인):
+- 09:15:04Z 실행 파일 이름 비교기 — 양성 대조 합성 행 2개 매치·`awk` 행 제외, 실측 출력 없음.
+- 09:15:10Z–09:15:27Z `go test -c -o /tmp/t623-lane9/cli3.test ./internal/cli` → `compile_exit=0`.
+- 워크트리 `internal/cli` 에서 9개 이름 `-test.v -test.count=1 -test.timeout 600s` → `exit=0` (`merged-tree-test.log`, 46행). 최상위 `--- PASS` 9개 = VerbsIdenticalAcrossCopies · UnreadableSpecIsGap · WithBuildTagPasses · BuildTagInOtherSectionDoesNotCover · MissingBuildTag · MissingReferencedSPEC · LiveReferenceIsSilent · ReconciledReferenceIsNotBlocking · RetiredSPECConflict. `--- FAIL`·`^FAIL`·`panic:`·`RESIDUE GUARD`·`no tests to run` 0건. 마지막 줄 `PASS`.
+- 실행 뒤 임시 바이너리 삭제(`rm_exit=0`).
+
+방출 검사(09:15:41Z–09:15:43Z): `make agents-emit-check` → `check_exit=0`, 로그 끝 `ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.495s`.
+
+### Baseline-attribution
+워크트리 `WT-auditor-d7d8-scripts` HEAD `cb037678f`(부모 `587287e8a`, `296ba7aa5`), 흡수 후 미추적 파일은 `.moai/reports/t623/` 아래 로그뿐, 이 실행. 도구체인 go1.26.8.
+
+### Gaps
+- `internal/cli` 풀 스위트는 금지 규칙대로 돌리지 않았다(리드가 일괄 push 직전 develop tip 에서 1회).
+- 흡수 델타 자체(t610·t617 등)의 검증은 해당 레인과 리드 소관이다.
+- `golangci-lint`/`go vet`, `GOOS=windows` 교차 빌드, `make build`·embed-check 미실행.
+
+### Residual-risk
+- 스코프 9개 밖에서 go1.26.8 전환이 `internal/cli` 에 미치는 영향은 이 실행이 보지 않았다.
+
+### 사건 기록 — 창 안 증거 커밋의 index.lock
+- `git add .moai/reports/t623` 는 성공했고(7개 경로 스테이징) 곧이은 `git commit` 이 `commit_exit=128` 로 실패했다. 출력 전문:
+  ```
+  fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t623/index.lock': File exists.
+
+  Another git process seems to be running in this repository, e.g.
+  an editor opened by 'git commit'. Please make sure all processes
+  are terminated then try again. If it still fails, a git process
+  may have crashed in this repository earlier:
+  remove the file manually to continue.
+  ```
+- 직후(09:16:33Z) 기록: `ls -l .../worktrees/t623/index.lock` → `No such file or directory`(`lock_ls_exit=1`), `git rev-parse --short HEAD` → `cb037678f`(불변), `git rev-parse -q --verify MERGE_HEAD` → 출력 없음(`merge_head_exit=1`). 락은 손으로 지우지 않았다.
+- 3회 규칙: 이 창에서 재시도 1회차. 같은 형태(`add` 성공 → `commit` 실패 → 수 초 뒤 경로 부재)가 t582 의 두 창에서도 관측됐다. 락을 잡은 주체는 관측하지 못했다.
