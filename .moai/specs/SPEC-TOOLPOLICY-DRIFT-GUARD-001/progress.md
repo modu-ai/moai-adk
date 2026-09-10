@@ -59,11 +59,178 @@ gap: **v0.1.3 의 D21-D23 수정은 독립 재감사를 받지 않았다.** 3회
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### 기준선 귀속
+
+- 워크트리 `.claude/worktrees/t619`, 브랜치 `WT-toolpolicy-drift`. 착수 HEAD `b75d4fdcd`, 마지막 코드 커밋 `e2fc880b8`, `git merge-base HEAD develop` → `d1b61005d20967fdbd970ec7ec734c6d14f29dc3`.
+- 아래 수치는 모두 이번 run 에서 이 트리를 대상으로 실행한 명령의 출력이다. 로그는 세션 스크래치(`t619/`)에 두었고 휘발성이므로, 판정에 쓰인 출력은 이 절에 그대로 옮긴다.
+- develop 흡수는 하지 않았다(지시). push·PR 없음.
+
+### Pre-flight (코드 변경 전, HEAD `b75d4fdcd`)
+
+- `go build ./...` → `build_rc=0`, `GOOS=windows GOARCH=amd64 go build ./...` → `winbuild_rc=0`
+- `golangci-lint run --timeout=2m ./internal/config/toolpolicy/...` → `0 issues.`
+- `go test -count=1 ./internal/config/toolpolicy/...` → `ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.447s`
+- acceptance.md 의 "현재" 기준선 재측정 — 전부 일치, 차이 없음:
+  - AC-TDG-007 여덟 grep: `1`(두 파일) / `1` / `1` / `1` / `1` / `0`(두 파일) / `171` / `1`
+  - AC-TDG-008: `0` / `1` / `0` / `2` / 블록 `14` 줄 / `0` / `1`
+  - AC-TDG-010: `rc=0`, `MultiEdit` `1`, env_gate 없는 네 경로 deny `12`, env-gated Write deny `1`, env_gate `5`, 정렬 JSON sha256 `5e0cba521c5c81a2d7bb82fbba52c59b027d2329b2c0bf8b912ed6b2150e6d27`, 일곱 도구 allow `0`, Read deny `5`, 항목 수 `173`
+  - AC-TDG-003: merge-base 기준 `git diff --exit-code` 출력 없음, `rc=0`
+
+### M1 RED 재현 (E8, M2 전 — 커밋 `dfcf7c519` 직전 트리)
+
+```
+$ go test ./internal/config/toolpolicy/ -run 'TestToolPolicyDrift_CommittedSettingsMatchYAML$' -count=1 -v
+=== RUN   TestToolPolicyDrift_CommittedSettingsMatchYAML
+    drift_check_test.go:255: tool-policy.yaml and .claude/settings.json permissions declare different sets (20 specifiers):
+        allow only-in-yaml: MultiEdit
+        allow only-in-settings: CronCreate
+        allow only-in-settings: CronDelete
+        allow only-in-settings: CronList
+        allow only-in-settings: EnterPlanMode
+        allow only-in-settings: EnterWorktree
+        allow only-in-settings: ExitPlanMode
+        allow only-in-settings: ExitWorktree
+        deny only-in-yaml: Glob(./secrets/**)
+        deny only-in-yaml: Glob(~/.aws/**)
+        deny only-in-yaml: Glob(~/.config/gcloud/**)
+        deny only-in-yaml: Glob(~/.ssh/**)
+        deny only-in-yaml: Grep(./secrets/**)
+        deny only-in-yaml: Grep(~/.aws/**)
+        deny only-in-yaml: Grep(~/.config/gcloud/**)
+        deny only-in-yaml: Grep(~/.ssh/**)
+        deny only-in-yaml: Write(./secrets/**)
+        deny only-in-yaml: Write(~/.aws/**)
+        deny only-in-yaml: Write(~/.config/gcloud/**)
+        deny only-in-yaml: Write(~/.ssh/**)
+        reconcile tool-policy.yaml to the intended state, then regenerate with `moai tool-policy build --local-only`
+--- FAIL: TestToolPolicyDrift_CommittedSettingsMatchYAML (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.370s
+FAIL
+```
+
+집계(AC-TDG-001 붉은색 명령 그대로): `rc=1`, 서로 다른 차이 줄 `20`, 분할 `7` / `1` / `12` / `0`, `--- FAIL:` `1`. 판정서 §2.2 목록과 항목이 같다.
+M2 전 env_gate 해시 재측정: `5e0cba521c5c81a2d7bb82fbba52c59b027d2329b2c0bf8b912ed6b2150e6d27` (기준선과 같음).
+
+### AC 매트릭스
+
+| AC | 상태 | 명령 | 관측 출력 |
+|---|---|---|---|
+| AC-TDG-001 | PASS | 붉은색: 위 E8. 초록(M2 뒤): `go test … -run 'TestToolPolicyDrift_(CommittedSettingsMatchYAML\|NoDuplicatesOrOverlap)$' -count=1 -v` 와 `make tool-policy-drift-check` | 붉은색 `rc=1`/`20`/`7 1 12 0`/`1`. 초록 `rc=0`, `--- PASS:` `1`·`1`, `only-in-` `0`. make: `ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.189s` 후 `rc=0` |
+| AC-TDG-002 | PASS | `moai tool-policy build --repo-root <스크래치>/root --policy .moai/config/sections/tool-policy.yaml --local-only` 후 정렬 목록 `diff` | `<스크래치>/root/.claude/settings.json [json]: allow=114 ask=0 deny=48 env_gated_skipped=5`, `allow diff_rc=0`, `deny diff_rc=0`, ask 길이 `0` `0` |
+| AC-TDG-003 | PASS | HEAD `e2fc880b8` 에서 merge-base `git diff --exit-code`, 검사 전후 `shasum -a 256` 과 `git status --porcelain --untracked-files=all` 비교 | `rc=0`(출력 없음), `check_rc=0`, `cmp_rc=0`, `status_cmp_rc=0`. 입력 sha: settings `25e19e906f639044c38371fadec796f080cab2630b0d295478a62bdc47e73c39`, YAML `edff7e725e02738f78a77d8d9959a2f933b2e6fe705ce8d044e251048c544cdf` |
+| AC-TDG-004 | PASS | acceptance.md 조건부 사슬 그대로(M5 커밋 `e2fc880b8` 뒤) | 아래 절 참조. `mutate=DONE` → 붉은색 → `restore=DONE` → 초록, `diff_rc=0` |
+| AC-TDG-005 | PASS | `go test … -run 'TestToolPolicyDrift_Mutation$' -count=1 -v` | `rc=0`, `--- PASS: …/` `7`, `--- FAIL:` `0`, `errDriftDuplicate` `7`, `errDriftOverlap` `7` |
+| AC-TDG-006 | PASS | `go test … -run 'TestToolPolicyDrift_FailClosed$' -count=1 -v` | `rc=0`, `--- PASS: …/` `10`, `--- SKIP:` `0`, `t.Skip` `0`, `errors.Is(` `4`, `TestToolPolicyDrift` `8` |
+| AC-TDG-007 | PASS | 여덟 grep (M5 뒤) | `0`(두 파일) / `0` / `0` / `0` / `0` / YAML `1`·types.go `2` / `165` / `1`. 7번 `171`→`165` 는 M2 가 `source: ".claude/settings.json#permissions.*"` 를 가진 항목 13개를 빼고 7개를 더한 결과(−6)이며 기대값 "1 이상"을 만족한다 |
+| AC-TDG-008 | PASS | `^build:` grep, `make -n build`, `go_code` 블록 추출 | `1` / `1` / `1` / `2` / `15` / `1` / `1` |
+| AC-TDG-009 | **FAIL (선재 결함, 이 변경 귀속 아님)** | 패키지·cli·config 세 실행 | 아래 절 참조. toolpolicy `rc=0`·RoundTrip PASS `1`·FAIL `0`, config `rc=0`·PASS `1`, **cli `rc=1`** |
+| AC-TDG-010 | PASS | `moai tool-policy list … --format json` 질의 | `rc=0`, `0`, `0`, `1`, `5`, `5e0cba521c5c81a2d7bb82fbba52c59b027d2329b2c0bf8b912ed6b2150e6d27`, 일곱 도구 각 `1`, Read deny `5`, 항목 수 `167`(= 173 − 13 + 7) |
+
+### AC-TDG-004 수동 뮤테이션 기록
+
+- 백업 경로: `<세션 스크래치>/t619/tool-policy.yaml.bak`
+- 원본 sha256(백업에서 계산): `edff7e725e02738f78a77d8d9959a2f933b2e6fe705ce8d044e251048c544cdf`
+- 조건부 변이 사슬 → `mutate=DONE`
+- 변이 sha256: `5837f0bcee9d982b0c9bb4aa1e8094439ddceecaf044217ff99d16bc4703746e`, `mutation_applied_cmp_rc=1`
+- 변이 뒤 `make tool-policy-drift-check` → `rc=2`, `allow only-in-settings: ExitWorktree` `1`, 서로 다른 차이 줄 `1`, `reconcile tool-policy.yaml` `2`, `moai tool-policy build --local-only` `2`. 출력:
+  ```
+  --- FAIL: TestToolPolicyDrift_CommittedSettingsMatchYAML (0.00s)
+      drift_check_test.go:257: tool-policy.yaml and .claude/settings.json permissions declare different sets (1 specifiers):
+          allow only-in-settings: ExitWorktree
+          reconcile tool-policy.yaml to the intended state, then regenerate with `moai tool-policy build --local-only`
+  FAIL
+  FAIL	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.340s
+  FAIL
+  tool-policy drift: .claude/settings.json permissions differ from .moai/config/sections/tool-policy.yaml — reconcile tool-policy.yaml, then regenerate with `moai tool-policy build --local-only`
+  make: *** [tool-policy-drift-check] Error 1
+  ```
+- 조건부 복원 사슬 → `restore=DONE`
+- 복원 뒤: `sha_rc=0`, make `rc=0`, `only-in-` `0`, 안내 문구 `0`·`0`, `git diff --exit-code -- .moai/config/sections/tool-policy.yaml` → `diff_rc=0`
+- `STOPPED` 는 한 번도 나오지 않았다. `git restore`/`git checkout --` 는 쓰지 않았다.
+
+### AC-TDG-009 실패 — 원인 귀속
+
+관측(HEAD `e2fc880b8`, 뮤턴트가 `internal/config/toolpolicy` 테스트 파일에 있던 시점이나 `internal/cli` 는 그 파일을 컴파일하지 않는다):
+
+```
+$ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout 600s ./internal/cli/ -run 'TestToolPolicy' -v
+rc=1
+    tool_policy_test.go:97: output missing substring "ask";
+--- FAIL: TestToolPolicyList_QueryFilters (0.00s)
+    --- FAIL: TestToolPolicyList_QueryFilters/filter_ask (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_deny (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/all_entries (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_tool_Bash (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_irreversible (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_allow (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.001s
+```
+
+`filter_ask` 는 커밋된 YAML 에 `decision: ask` 항목이 하나 이상 있어야 통과한다. 이 run 이전부터 그런 항목이 없다는 증거:
+
+- 착수 트리의 YAML(`git show b75d4fdcd:.moai/config/sections/tool-policy.yaml`)에서 `decision: ask` 줄 `0`, 현재 YAML 도 `0`. M2 는 allow·deny 항목만 바꿨다.
+- 현재 트리의 list 코드로 착수 트리 YAML 을 조회: `go run ./cmd/moai tool-policy list --policy <착수 YAML 사본> --decision ask` → 머리글 `TOOL  ARGS  RISK  DECISION  OWNER  AUDIT` 한 줄만, `base_rc=0`. 소문자 `ask` 가 없으므로 착수 트리에서도 같은 단정이 실패한다.
+- ask 항목을 없앤 커밋: `1ac333952 fix(t609): drop the six permissions.ask rules from template, local settings, and the policy SSOT`. `git merge-base --is-ancestor 1ac333952 d1b61005d…` → `rc=0`(이 카드의 base 에 이미 포함). `decision: ask` 줄 수: `1ac333952^` 에서 `6`, `1ac333952` 에서 `0`. 그 커밋의 변경 파일은 `.claude/settings.json`, `tool-policy.yaml`, `.moai/reports/t609/verdict.md`, `settings.json.tmpl` 이며 `internal/cli/tool_policy_test.go` 는 없다.
+
+갭: `internal/cli` 테스트 자체를 착수 트리에서 실행하지는 않았다(워크트리 추가 금지). 귀속은 같은 list 코드에 착수 트리 YAML 을 넣은 대조 실행과 git 객체 판독에 기댄다. 수리는 `internal/cli/tool_policy_test.go` 수정이 필요해 이 SPEC 의 파일 범위 밖이므로 하지 않았고, 차단 보고로 올린다.
+
+### DoD 뮤턴트 6종
+
+각 뮤턴트는 테스트 파일에 임시로 넣고, 지정 명령을 로그 경로만 바꿔 실행한 뒤 되돌렸다. 되돌린 직후마다 `git diff --exit-code -- internal/config/toolpolicy/drift_check_test.go` → `rc=0`(커밋본과 같음)을 확인했다.
+
+| 뮤턴트 | 변이 | 관측 | 기대 |
+|---|---|---|---|
+| M-always-empty-diff | `driftSetDiff` 가 `return nil, nil` | `rc=1`, `--- FAIL: …/settings_side_missing` `1` (`removing "AskUserQuestion" from settings allow: diff = [], want exactly ["allow only-in-yaml: AskUserQuestion"]`). `yaml_side_flip` 도 붉음, 나머지 다섯 초록 | `1` |
+| M-no-duplicate-check | 중복 판정 `if false && n > 1` | `rc=1`, `duplicate_settings_` FAIL `3`, `allow_deny_overlap` FAIL `0` | `3` / `0` |
+| M-no-overlap-check | 겹침 판정 `if false && allow[spec]` | `rc=1`, `allow_deny_overlap` FAIL `1`, `duplicate_settings_` FAIL `0` | `1` / `0` |
+| M-parse-yaml | `Load` 오류 무시, 빈 `PolicyDocument` 로 계속 | `rc=1`, `malformed_yaml` FAIL `1` (`driftSetDiff error yaml allow set is empty: … does not wrap its cause … input file cannot be parsed`) | `1` |
+| M-parse-json | `extractPermissions` 오류 무시, 빈 `PermissionsBlock` 으로 계속 | `rc=1`, `malformed_settings_json` FAIL `1` (`settings allow set is empty … does not wrap its cause … input file cannot be parsed`) | `1` |
+| M-list-type | 엄격 디코드 제거, `block.Allow/Ask/Deny` 사용 | `rc=1`, `wrong_type_settings_list` FAIL `1` (`driftSetDiff returned no error (diff []); want a failure wrapping … input file cannot be parsed`) | `1` |
+
+되돌린 트리에서 다시: Mutation `rc=0`·PASS `7`, FailClosed `rc=0`·PASS `10`, 두 로그 FAIL `0`.
+
+### 품질 게이트와 경계
+
+- `go vet ./internal/config/toolpolicy/` → `vet_rc=0`
+- `golangci-lint run --timeout=2m ./internal/config/toolpolicy/...` → `0 issues.` (기준선 `0 issues.`, 신규 0)
+- `go test -count=1 -cover ./internal/config/toolpolicy/...` → `coverage: 89.1% of statements`
+- `gofmt -l internal/config/toolpolicy/` → 출력 없음
+- `grep -rn 'AskUserQuestion' internal/config/toolpolicy | grep -v _test.go | grep -v '// '` → 출력 없음
+- 크로스 빌드(HEAD `e2fc880b8`): `build_rc=0`, `winbuild_rc=0`
+- 역슬래시-u / Cf 스캔(acceptance.md §D.3 명령, 대조 `CONTROL (1, 1)`): `tool-policy.yaml`, `Makefile`, `ci.yml`, `types.go`, `drift_check_test.go`, `spec.md` 모두 `(0, 0)`
+
+### 커밋
+
+| SHA | 제목 | `Authored-By-Agent` |
+|---|---|---|
+| `dfcf7c519` | test(t619): add tool-policy drift check against settings.json permissions | `manager-develop` |
+| `6ca23b0bd` | fix(t619): reconcile tool-policy.yaml with settings.json permissions | `manager-develop` |
+| `3229f52dd` | test(t619): add mutation and fail-closed controls for the drift check | `manager-develop` |
+| `508c6c5e8` | build(t619): wire tool-policy drift check into make build and CI filter | `manager-develop` |
+| `e2fc880b8` | docs(t619): correct drift-prevention claims in tool-policy.yaml and types.go | `manager-develop` |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-10
+run_commit_sha: e2fc880b8   # 마지막 코드 커밋. 이 progress.md 기록 커밋은 그 뒤에 온다
+run_status: complete-with-blocker
+ac_pass_count: 9
+ac_fail_count: 1
+ac_fail_detail: "AC-TDG-009 — internal/cli TestToolPolicyList_QueryFilters/filter_ask, t609(1ac333952) 이후 선재 실패. 이 SPEC 파일 범위 밖"
+dod_mutants_red_observed: 6/6
+preserve_list_post_run_count: 2   # .claude/settings.json, settings.json.tmpl — merge-base 대비 바이트 불변
+l44_pre_commit_fetch: not-run     # 레인 지시: 커밋만, develop 흡수는 통합 창에서
+l44_post_push_fetch: n/a          # push 없음
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: 0
+  windows_amd64: 0
+coverage_toolpolicy: "89.1%"
+total_run_phase_files: 7   # tool-policy.yaml, drift_check_test.go, Makefile, ci.yml, types.go, spec.md, progress.md
+m1_to_mN_commit_strategy: "마일스톤마다 커밋 1개(M1, M2, M3 자동 대조, M4, M5) + progress 기록 커밋"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
