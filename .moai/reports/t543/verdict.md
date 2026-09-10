@@ -43,3 +43,27 @@
 - **올바른 왼쪽 끝이 무엇인지가 흡수 대상에 달려 있다.** 이번 측정으로는 "흡수한 바로 그 ref 와의 merge-base" 가 올바른 값을 냈다. 현행 절차에서는 그 ref 가 로컬 `develop` 이다. 그러나 절차가 원격 흡수로 바뀌거나, 로컬 develop 이 원격보다 뒤처진 상태에서 흡수하면 답도 달라진다. 규율을 "`git merge-base <흡수한 ref> HEAD`" 로 세울지, 흡수 ref 를 기록해 두는 방식으로 할지, 범위 AC 를 흡수 전 평가로 한정할지는 설계 선택이다.
 - **카드 문안의 수리를 그대로 스윕하면 오탐을 옮겨 심는다.** 카드 본문은 `origin/develop` 기준 merge-base 를 권한다. 이번 측정에서 그 형태는 로컬 develop 흡수 뒤 리터럴 핀과 똑같이 51개를 냈다.
 - **스윕 범위.** 형태가 맞는 22줄 가운데 무엇을 고치고 무엇을 흡수 전 한정으로 둘지는, 위 규율이 정해진 뒤에야 판정할 수 있다.
+
+## 6. 리드 판정 뒤 수리 (같은 날)
+
+**판정.** 리드가 ①을 채택했다 — 범위 판정식의 왼쪽 끝은 `git merge-base develop HEAD`(흡수한 ref) 이다. ②(흡수 ref 기록)는 상태 파일을 늘리고, ③(흡수 전 한정)은 흡수 후 재측정 규율과 부딪혀 기각됐다. 한계 둘을 규율에 적으라는 지시가 붙었다.
+
+| 산출물 | 커밋 | 내용 |
+|---|---|---|
+| 규율 | `5f65c1420` | `.claude/rules/local/gitflow-lane-protocol.md` §8 에 [HARD] 항목 추가. 이 룰은 `paths:` 한정이라 상시 로드 표면을 늘리지 않는다. S2 재현을 대조군으로 인용하고, 한계 (a) 병합 뒤 사용 불가 · (b) 흡수 ref 원칙을 적었다 |
+| 한계 (a) 실측 | `5f65c1420` | 이미 develop 에 병합된 카드 브랜치 `WT-develop-guide-conflicts` 에서 `git merge-base develop <브랜치>` 가 브랜치 tip `8ce9c5620` 자신이었다. `git diff --name-only 8ce9c5620..WT-develop-guide-conflicts` 는 빈 출력, EXIT=0 이었다 (`repro/limit-a-post-merge-all.txt`) |
+| 스윕 분류 | `5f65c1420`, `848579f1f` | `sweep-classification.md`. 1차 인벤토리 22줄·SPEC 10개, 넓힌 인벤토리 80줄·SPEC 27개. 흡수 뒤 평가 대상은 draft 인 `SPEC-UPDATE-DOC-DRIFT-001` 하나다(나머지 26개는 completed) |
+| SPEC 수리 1 | `8f92320de` (manager-spec) | AC-UDD-023 두 명령과 plan.md §C 한 줄을 `CARD_BASE` 형태로 바꾸고 무필터 대조군을 붙였다. 옛 값은 날짜 붙은 참고 판독으로 내렸다. 0.3.1 |
+| SPEC 수리 2 | `2fbf48512` (manager-spec) | AC-UDD-021 두 명령(`diff --stat`, `log`)을 같은 형태로 바꿨다. unstaged 확인 줄은 그대로 두었고, 0.3.1 HISTORY 행을 보강했다 |
+
+**수리 확인(lane-6 이 이번 실행에서 직접 확인).** 두 수리 커밋의 diff 를 읽었다. `acceptance.md`·`plan.md` 에서 `7f61332ef` 를 찾으면, 명령으로 남은 것은 없고 모두 기준값을 적은 문장(`Baseline at ...`, `Observed at ...`)이나 참고 판독이다. SPEC lint 는 두 번 모두 트리에서 빌드한 도구로 돌렸고 결과는 `0 error(s), 1 warning(s)` 으로 편집 전과 같았다(`spec-repair-lint.txt`, `spec-repair2-lint.txt`).
+
+**계기 결함 한 건(내 몫).** 1차 인벤토리는 `git diff --name-only <SHA>..HEAD` 형태만 잡아서, 같은 SPEC 의 AC-UDD-021(`diff --stat` · `log` 형태)을 놓쳤다. 수리 워커가 찾아냈고, 형태를 넓혀 다시 쟀다.
+
+### 6.1 이 절의 Gaps
+
+- `SPEC-UPDATE-DOC-DRIFT-001` 의 Definition of Done(`acceptance.md:811-812`)에 "`internal/template/templates/**` is unmodified relative to `7f61332ef` (AC-UDD-021)" 라는 산문이 남아 있어, 고친 기준과 표현이 어긋난다. 명령이 아니고 수리 지시 범위 밖이라 고치지 않았다.
+- 이 SPEC 의 lint 는 원래부터 `StatusGitConsistency` 경고를 낸다(frontmatter `draft` 대 git 이 가리키는 `implemented`). **리드 판단: 살아 있는 draft 다. 근거는 develop 이력 `ddfe2253f`**("v0.3.0 staleness rewrite — retire 4, re-anchor 3, keep 5 live", #1515)와 frontmatter `status: draft` 다. 따라서 수리 전제는 유지된다. 경고가 왜 나는지는 이 카드 범위 밖이라 판정하지 않았다. 리드는 그 커밋 제목의 `feat(...)` 접두를 구현 신호로 읽은 것이라고 추정했지만, 측정한 것은 아니다.
+- 넓힌 grep 도 오른쪽 끝이 `HEAD` 가 아닌 범위, SHA 를 변수에 담은 경우, 세 점(`...`) 범위는 잡지 않는다.
+- 규율에 따른 실행(카드들이 실제로 `CARD_BASE` 형태를 쓰는지)은 문서 수정으로 보장되지 않는다. 카드 본문이 요구한 "실행 규율로 세운다"는 이번에는 규칙 문서화까지만 했다.
+- §4 Gaps(원격 흡수, 흡수 중첩, `--first-parent`)는 리드 판정에 따라 그대로 둔다.
