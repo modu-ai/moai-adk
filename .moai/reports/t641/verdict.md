@@ -109,3 +109,29 @@ EXIT=0
 - **새 테스트는 파일시스템 시간 해상도에 기댄다.** 1.1초씩 두 번 기다려 racy-git 판정을 피하고, stat 정보가 낡았는지는 대조군으로 매번 확인한다. 대조군이 인덱스를 다시 쓰지 않는 환경에서는 테스트가 공허하게 통과하지 않고 `t.Fatalf` 로 멈춘다. 대신 그런 환경에서는 거짓 실패가 날 수 있다.
 - **`Status()` 의 다른 소비자.** 제품 코드 호출자는 `internal/statusline/git.go:37` 과 같은 파일의 `IsClean()` 이다(`.Status()` 비테스트 grep 기준). 동작 차이는 인덱스 쓰기가 없어진다는 것 하나이며, 인덱스 갱신에 기대는 소비자는 찾지 못했다.
 - **워크트리 가드 오탐(t654 증거).** 패키지 경로에 `git` 조각이 든 go 명령을 가드가 거부해 검증 범위를 `./internal/core/...` 로 넓혀 돌렸다. lane-6 이 2026-09-10 이 트리에서 `go test ./internal/core/git/ -count=1 -run '^TestStatusDoesNotRewriteIndex$'` 를 다시 실행해 받은 거부 출력 원문: `This session is isolated in the worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t641, but this command runs go with a git command among its operands: what runs it, and from which directory or root, cannot be read here (name git right after the launcher and its options) in a plain command, so what it runs cannot be shown not to be git. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Run the plain command from /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t641.`
+
+## 병합 트리 재측정 — 통합 창 안 (lane-6)
+
+리드 지명 후 창을 잡고(`moai integration acquire --name lane-6`) 로컬 develop 을 흡수한 트리에서 다시 쟀다. 흡수 전 측정은 병합 뒤 근거로 재사용하지 않는다.
+
+**흡수 대상과 흡수.** `git fetch origin develop` 후 `git rev-list --count --left-right origin/develop...develop` → `0 180` 이므로 흡수 대상은 로컬 develop `247d0985a` 다. `git merge --no-edit develop` → HEAD `c94d3a97d`, 트리 `095707519`. 흡수 전 `git merge-tree --write-tree --name-only develop HEAD` 가 예측한 트리와 같다(충돌 파일 0). 도구체인은 `go version go1.26.8 darwin/arm64` 다(`merge-tree-go-version.txt`).
+
+**델타 판정** — `merge-tree-delta.txt`. 카드 기준 `c7dd269f3` 이후 develop 이 바꾼 파일 286개를, 병합 트리에서 잰 `go list -deps -test ./internal/core/... ./internal/statusline/` 의 모듈 내부 패키지 34개와 대조했다.
+
+- 의존 패키지 안에서 바뀐 `.go` 파일: 0. `go.mod` / `go.sum` 변경: 없음.
+- 의존 패키지 디렉터리 아래에서 바뀐 비-`.go` 파일(embed 후보): 8개. 모두 `internal/template` 아래의 템플릿 문서·에이전트 정의·`catalog.yaml` 이고, `Status()` 의 git 호출 경로와는 무관하다.
+- 대조: `internal/statusline` 자신이 의존 목록에 잡힌다(참).
+- 가드 우회 표기: 워크트리 가드가 패키지 경로에 `git` 조각이 든 go 명령을 거부하므로 `./internal/core/git/` 대신 `./internal/core/...` 로 의존 목록과 테스트를 돌렸다. 대상 패키지는 이 범위에 포함된다.
+
+코드 의존에 델타가 없으므로 범위를 넓히지 않고 계획한 재측정만 했다.
+
+| 명령 | 결과 | 증거 |
+|---|---|---|
+| `go test ./internal/core/... -count=1 -v` | EXIT=0, `--- PASS` 481줄, `--- FAIL` 0줄, `--- PASS: TestStatusDoesNotRewriteIndex (4.12s)`, `ok` 3패키지(core/git · project · quality) | `merge-tree-core.txt` |
+| `go test ./internal/statusline/ -count=1 -v` | EXIT=0, `--- PASS` 779줄, `--- FAIL` 0줄 | `merge-tree-statusline.txt` |
+
+모든 go 명령은 한 호출 안에서 `MOAI_*`·`CLAUDE_PROJECT_DIR`·칸반 변수를 `unset` 한 뒤 실행했다.
+
+**추가 관측 표본 — 같은 날 다른 카드(t543)에서 일어난 락 충돌.** lane-6 의 t543 워크트리에서, 같은 호출 묶음 안에 plain `git status --short` 와 `git add <판정서>` 를 동시에 냈을 때 `git add` 가 `fatal: Unable to create '.../.git/worktrees/t543/index.lock': File exists.`(exit 128)로 실패했다. 직후 락 경로는 이미 없었고(`ls` exit 1), HEAD 는 `2fbf48512` 로 그대로였으며, `MERGE_HEAD` 도 없었다. `git add` 단독 재시도는 성공했다. 이 재현이 보인 기제 — plain status 가 인덱스 쓰기 락을 잠깐 잡는다 — 와 모양이 같은 표본이다. 다만 그 순간의 락 보유자를 직접 관측하지는 못했으므로, 원인 귀속은 추정이다.
+
+**이 절의 Gaps.** `internal/core/git` 을 단독 패키지로는 돌리지 못했다(가드). 설치 바이너리 전에는 실행 중인 세션에 효과가 없다는 점은 앞 절 그대로다.
