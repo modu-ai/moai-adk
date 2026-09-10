@@ -3,6 +3,10 @@
 > Harness: **standard**. Card base `feeecc980`; plan-time HEAD `21e5837dc`. The review workflow
 > copies are unchanged between the two (`git diff --stat feeecc980 21e5837dc -- <both copies>`
 > printed nothing), so every plan-time baseline below applies to both.
+>
+> Revised after the operator decision, on top of decision commit `af7eb142b`. The copies are still
+> unchanged: `git diff --stat feeecc980 af7eb142b -- <both copies>` wrote 0 bytes, and
+> `diff -q LOC TPL` exited 0.
 
 Names used below:
 
@@ -11,6 +15,8 @@ Names used below:
 - `REGEX` = the scan regex as written in `review.md`:
   `(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})`
 - `SP` = the session scratchpad, outside this repository
+- `FX` = a throwaway fixture repository under `SP`, configured as in §D.1
+- `PROG` = `.moai/specs/SPEC-REVIEW-SECRET-SCAN-REFS-001/progress.md`
 - `SECTION` = the secret-scan section extracted to a file:
   `sed -n '/^#### Secrets Scan/,/^#### Data Isolation Check/p' TPL > SP/section.txt`
   (the heading text is adjusted to the final heading if the edit renames it)
@@ -19,17 +25,28 @@ Names used below:
 criterion below therefore writes `git` output to a file first (`--output=` or a plain redirect) and
 counts from that file in a separate command.
 
+**Adopted option.** The operator adopted Option 2 (`spec.md` §3). Criteria written per option in
+the earlier draft now state the Option 2 outcome only; Options 1 and 3 were not adopted.
+
 ## §D AC Matrix
 
 | AC | REQ | Verification | Plan-time baseline → required after |
 |---|---|---|---|
-| AC-001 | REQ-001·002 | fixture review sequence with HEAD-line control, side-branch cell, over-time cell | SIDECELL never reported by the per-review step → reported by the adopted procedure |
+| AC-001 | REQ-001·002 | fixture review sequence for the worded Option 2 procedure | SIDECELL never reported by the per-review step → reported in the scan where `side` first becomes reachable |
 | AC-002 | REQ-005 | exact-phrase grep in both copies | 1 and 1 → 0 and 0 |
 | AC-003 | REQ-006 | `diff -q LOC TPL`, and both copies changed since `feeecc980` | exit 0, neither changed → exit 0, both changed |
-| AC-004 | REQ-007 | added-line grep for `REGEX` over the card diff | 0 matches (128-line diff) → 0 matches |
+| AC-004 | REQ-007 | added-line grep for `REGEX` over the card diff | 0 matches (readings in §D.4) → 0 matches |
 | AC-005 | REQ-006 | neutrality greps on `TPL` | all 0 → all 0 |
-| AC-006 | REQ-003·004 | per-option coverage-statement checks on `SECTION` | 1 of 2 scan commands lacks `--all` → per option, §D.6 |
-| AC-007 | REQ-008 | decision commit is a strict ancestor of the first commit touching either copy | `**Decision:** pending` → ancestor, exit 0 |
+| AC-006 | REQ-003·004 | Option 2 coverage-statement checks on `SECTION` | no `--not`, no `every ref`, HEAD-SHA checkpoint phrase 1 → §D.6 |
+| AC-007 | REQ-008 | decision commit is a strict ancestor of the first commit touching either copy | `D` = `af7eb142b`, no copy-touching commit yet → ancestor, exit 0 |
+| AC-008 | REQ-001·009 | gate cell ①: side ref reported where it first becomes reachable | not measurable at plan time → trustworthy verdict recorded |
+| AC-009 | REQ-009 | gate cell ②: recorded tip that no longer exists | not measurable at plan time → trustworthy verdict recorded |
+| AC-010 | REQ-009 | gate cell ③: timing record on this repository | not measurable at plan time → trustworthy verdict recorded |
+| AC-011 | REQ-009 | gate evidence commit is a strict ancestor of the first commit touching either copy | no gate commit, no copy-touching commit → ancestor, exit 0, three trustworthy verdicts |
+| AC-012 | REQ-010 | stop behaviour after an untrustworthy cell | no gate record → no copy-touching commit after the stop, stop recorded |
+| AC-013 | REQ-011 | allowlist positive control | no allowlist exists → listed value not reported |
+| AC-014 | REQ-011 | allowlist negative controls | no allowlist exists → near-miss, unlisted, and PEM markers all reported |
+| AC-015 | REQ-007·012 | `REGEX` count over both copies after the edit | 0 and 0 → 0 and 0 |
 
 ## §D.1 AC-001 — fixture review sequence
 
@@ -48,45 +65,43 @@ without a pipe; the file is measured with `wc -c` and counted per label with `gr
 
 1. Commit `C0`, a clean file, on `main`. **Cell B (baseline):** `git log -p --all -G 'REGEX'`
    exits 0 with **0 bytes** of output.
-2. **R1** — run the adopted procedure's first-run step (for Options 2 and 3 this records the
-   checkpoint).
+2. **R1** — run the worded procedure's first completed scan, which records the tip set.
 3. Commit `S1` carrying `SIDECELL` on branch `side` from `C0`. Commit `C1` carrying `HEADCELL` on
    `main`. Record `git merge-base --is-ancestor side HEAD` → exit 1.
-4. **R2** — run the adopted per-review step, with the checkpoint as R1 left it.
+4. **R2** — run the per-review step, with the tip set as R1 recorded it.
    **Cell H (scanner alive):** `HEADCELL` count in R2's output. **Cell S:** `SIDECELL` count in
    R2's output.
 5. Commit `C2`, clean, on `main`. Commit `S2` carrying `LATECELL` on a new branch `side2` from `C2`.
    Record `git merge-base --is-ancestor side2 HEAD` → exit 1.
-6. **R3** — run the adopted per-review step, with the checkpoint as R2 advanced it.
+6. **R3** — run the per-review step, with the tip set as R2 recorded it.
    **Cell T (over time):** `LATECELL` count in R3's output. Also record the `SIDECELL` count in R3
    (informational — see the note below).
-7. **Option 3 only — P:** run the prescribed periodic full-scan step once, after R3.
-8. **Option 2 only — R4:** with no ref moved since R3, run the per-review step again.
-   **Cell N:** output is 0 bytes.
-9. Immediately before reading cells S and T, re-run both `git merge-base --is-ancestor` checks and
+7. **R4** — with no ref moved since R3, run the per-review step again. **Cell N:** output is
+   0 bytes.
+8. Immediately before reading cells S and T, re-run both `git merge-base --is-ancestor` checks and
    record exit 1 for each. No merge of `side` or `side2` happens at any point in the sequence.
 
-**Required outcome per option.**
+**Required outcome.**
 
-| Cell | Option 1 | Option 2 | Option 3 |
-|---|---|---|---|
-| B | 0 bytes | 0 bytes | 0 bytes |
-| H | R2 `HEADCELL` ≥ 1 | R2 `HEADCELL` ≥ 1 | R2 `HEADCELL` ≥ 1 |
-| S | R2 `SIDECELL` ≥ 1 | R2 `SIDECELL` ≥ 1 | R2 `SIDECELL` 0 expected and recorded; P `SIDECELL` ≥ 1 |
-| T | R3 `LATECELL` ≥ 1 | R3 `LATECELL` ≥ 1 | R3 `LATECELL` 0 expected and recorded; P `LATECELL` ≥ 1 |
-| N | n/a | 0 bytes | n/a |
+| Cell | Required |
+|---|---|
+| B | 0 bytes |
+| H | R2 `HEADCELL` ≥ 1 |
+| S | R2 `SIDECELL` ≥ 1 |
+| T | R3 `LATECELL` ≥ 1 |
+| N | R4 0 bytes |
 
-**Fail conditions (any option).** AC-001 fails when cell H is ≥ 1 but `SIDECELL` totals 0 across
-every step the adopted procedure prescribes (R2, R3, and P where it exists), or when `LATECELL`
-totals 0 across the same steps. A procedure that reports the HEAD line but not the side branch fails.
-It also fails when cell B is non-zero, because every later count would then be unattributable.
+**Fail conditions.** AC-001 fails when cell H is ≥ 1 but `SIDECELL` totals 0 across R2 and R3, or
+when `LATECELL` totals 0 across R3 and R4. A procedure that reports the HEAD line but not the side
+branch fails. It also fails when cell B is non-zero, because every later count would then be
+unattributable.
 
-**Note on re-reporting.** The `SIDECELL` count in R3 is informational. Option 1 re-scans all history
-and is expected to report it again; Option 2 scans only what became reachable since R2 and is
-expected not to. Requiring re-reporting would silently select Option 1 (`spec.md` REQ-002).
+**Note on re-reporting.** The `SIDECELL` count in R3 is informational. Option 2 scans only what
+became reachable since R2 and is expected not to report it again. Requiring re-reporting would
+contradict `spec.md` REQ-002.
 
-**Note on Option 3.** The zero counts in R2 and R3 are the per-review narrowing that Option 3 accepts
-by design. They pass AC-001 only together with AC-006's disclosure requirement for Option 3.
+**Relation to AC-008.** AC-008 measures the procedure pinned before the wording (the M1 gate). This
+criterion measures the procedure as worded in the edited section (M3). Both must pass.
 
 ## §D.2 AC-002 — the equivalence claim is gone from both copies
 
@@ -117,6 +132,10 @@ by design. They pass AC-001 only together with AC-006's disclosure requirement f
 - The pattern requires an uppercase label, so a placeholder label such as `<LABEL>` and the regex text
   itself do not match it.
 - **Plan-time reading (HEAD `21e5837dc`):** 128-line diff, count `0`, grep exit 1.
+- **Plan-time reading (working tree on top of `af7eb142b`, every plan-revision edit in place):**
+  `git diff feeecc980 --output=SP/card-diff-wt.txt`, then `wc -l` → `1236` lines, then the grep
+  above over `SP/card-diff-wt.txt` → count `0`, grep exit `1`. Gap: the lines recording this reading
+  are not in it.
 
 ## §D.5 AC-005 — template neutrality of the distributed copy
 
@@ -132,31 +151,28 @@ by design. They pass AC-001 only together with AC-006's disclosure requirement f
   (lines 121, 340, 344, 444) concern review focus and workflow execution paths, not a programming
   language, and are outside this section.
 
-## §D.6 AC-006 — the coverage statement matches the adopted procedure
+## §D.6 AC-006 — the coverage statement matches Option 2
 
 Common set-up: `/usr/bin/grep -e 'log -p' SP/section.txt > SP/cmds.txt`, then `wc -l SP/cmds.txt`
 must be ≥ 1.
 
-- **Option 1**
-  - `/usr/bin/grep -vc -e '--all' SP/cmds.txt` → `0`, so every scan command covers all refs.
-  - `/usr/bin/grep -c 'the HEAD SHA of the last completed scan' SP/section.txt` → `0`.
-- **Option 2**
-  - `/usr/bin/grep -vc -e '--all' SP/cmds.txt` → `0`.
-  - `/usr/bin/grep -c -e '--not' SP/cmds.txt` → ≥ 1, so the command excludes previously recorded tips.
-  - `/usr/bin/grep -ci 'every ref' SP/section.txt` → ≥ 1, so the checkpoint is described as the tips of every ref.
-  - `/usr/bin/grep -c 'the HEAD SHA of the last completed scan' SP/section.txt` → `0`.
-- **Option 3**
-  - The sentence naming the uncovered refs, and the sentence stating the full-scan period, are pinned
-    verbatim in `progress.md` §E.2 **before** the edit. `/usr/bin/grep -cF '<pinned sentence>' SP/section.txt`
-    → `1` for each.
-  - `/usr/bin/grep -c -e '--all' SP/cmds.txt` → ≥ 1, so the periodic full-scan step is present.
+- `/usr/bin/grep -vc -e '--all' SP/cmds.txt` → `0`, so every history-scan command reaches all refs.
+- `/usr/bin/grep -c -e '--not' SP/cmds.txt` → ≥ 1, so a command excludes previously recorded tips.
+- `/usr/bin/grep -ci 'every ref' SP/section.txt` → ≥ 1, so the checkpoint is described as the tips
+  of every ref.
+- `/usr/bin/grep -c 'the HEAD SHA of the last completed scan' SP/section.txt` → `0`.
+- The sentence naming the commits the per-review step does not cover (REQ-004) is pinned verbatim
+  in `PROG` §E.2 **before** the edit (`plan.md` §C item 3).
+  `/usr/bin/grep -cF '<pinned sentence>' SP/section.txt` → `1`.
 
-**Plan-time baseline:** `SP/cmds.txt` holds 2 lines, and `grep -vc -e '--all'` gives `1` (the
-`<last-sha>..HEAD` command). `the HEAD SHA of the last completed scan` gives `1` in both copies.
+**Plan-time baseline (`TPL` at `af7eb142b`):** `SP/section.txt` 20 lines; `SP/cmds.txt` 2 lines;
+`grep -vc -e '--all'` → `1` (the `<last-sha>..HEAD` command); `grep -c -e '--not'` → `0`, exit 1;
+`grep -ci 'every ref'` → `0`, exit 1; `the HEAD SHA of the last completed scan` → `1`. No sentence is
+pinned yet.
 
 ## §D.7 AC-007 — the operator decision precedes the document edit
 
-- **Given** the operator's choice is recorded in `spec.md` §3 as a line beginning
+- **Given** the operator's choice recorded in `spec.md` §3 as a line beginning
   `**Decision:** Option`.
 - **When** the following run:
   - `git -C <worktree> log --format=%H -S 'Decision:** Option' -- .moai/specs/SPEC-REVIEW-SECRET-SCAN-REFS-001/spec.md`
@@ -164,10 +180,171 @@ must be ≥ 1.
   - `git -C <worktree> log --reverse --format=%H feeecc980..HEAD -- TPL` — take the first SHA as `R`.
   - `git -C <worktree> merge-base --is-ancestor D R; echo "exit=$?"`
 - **Then** `exit=0` and `D` ≠ `R`. Repeat with `LOC` in place of `TPL`.
-- **Plan-time baseline:** `spec.md` §3 reads `**Decision:** pending`; no commit since `feeecc980`
-  touches either copy.
+- **Plan-time reading (HEAD `af7eb142b`):** the `-S` log printed one SHA, `af7eb142b` — the decision
+  commit, committed alone. The `-- TPL` and `-- LOC` log forms each wrote 0 lines, so `R` does not
+  exist yet and the ancestor check cannot run until a commit touches a copy. Control: the same log
+  form over `spec.md` wrote 3 lines.
 
-## §D.8 Candidate criterion C-1 — other unreachable ref kinds (not in the Definition of Done)
+## §D.8 AC-008 — gate cell ①: the side ref is reported when it first becomes reachable
+
+- **Given** the Option 2 procedure pinned verbatim in `PROG` §E.2 (`plan.md` §C item 3), and `FX`
+  configured as in §D.1, with markers assembled from fragments at runtime.
+- **When** the cell runs, in order:
+  - commit `C0`, clean, on `main`; the pre-marker scan `git -C FX log -p --all -G 'REGEX'`
+    redirected to `SP/g1-base.txt`, its exit code read without a pipe, then `wc -c SP/g1-base.txt`;
+  - the procedure's first completed scan `R1`, which records the tip set;
+  - commit `S1` carrying `SIDECELL` on `side` from `C0`, and `C1` carrying `HEADCELL` on `main`;
+  - `git -C FX merge-base --is-ancestor side HEAD; echo "exit=$?"`;
+  - the procedure's next scan `R2` redirected to `SP/g1-r2.txt`, its exit code read without a pipe;
+  - `wc -c SP/g1-r2.txt`, `/usr/bin/grep -c 'HEADCELL' SP/g1-r2.txt`,
+    `/usr/bin/grep -c 'SIDECELL' SP/g1-r2.txt`.
+- **Then** the verdict is `trustworthy` exactly when `spec.md` §3.4 cell ① holds: base 0 bytes,
+  every scan exit 0, is-ancestor exit 1, and in R2 `HEADCELL` ≥ 1 and `SIDECELL` ≥ 1. Otherwise it is
+  `untrustworthy`. The verdict is recorded as a line `verdict: <value>` under a `#### Gate cell 1`
+  heading in `PROG` §E.2.
+- **Plan-time reading:** not red-measurable at plan time — no Option 2 procedure is pinned and none
+  has run (`spec.md` §3.2). The failure this cell guards against is measured for the current
+  HEAD-anchored procedure: `reproduction.md` measurement 1, `HEADCELL 1`, `SIDECELL 0`.
+- **Mutant note:** a procedure that re-scans all history on every review passes this cell. AC-010's
+  scope bound rejects it.
+
+## §D.9 AC-009 — gate cell ②: a recorded tip that no longer exists
+
+- **Given** the pinned procedure, and `FX` after a completed scan whose recorded tip set includes the
+  tip `G1` of branch `gone`, where `G1` is reachable from no other ref.
+- **When** the cell runs, in order:
+  - `git -C FX branch -D gone`; `git -C FX reflog expire --expire=now --all`;
+    `git -C FX gc --prune=now --quiet`;
+  - construction check: `git -C FX cat-file -e <G1>; echo "exit=$?"`;
+  - commit `L1` carrying `GONECELL` on a new branch `after`, not reachable from HEAD;
+  - the procedure's next scan redirected to `SP/g2.txt`, its error stream to `SP/g2.err`, its exit
+    code read without a pipe; any fallback scan the procedure runs redirected to
+    `SP/g2-fallback.txt` the same way;
+  - `wc -c` on each file, `/usr/bin/grep -c 'GONECELL'` on the file carrying the final scan result,
+    and the detection signal read from `SP/g2.err` or the procedure's captured output.
+- **Then** the construction check exits non-zero, and the verdict is `trustworthy` exactly when
+  `spec.md` §3.4 cell ② holds: the missing tip is detected and recorded, and `GONECELL` ≥ 1 through
+  behaviour (a) or (b). An unhandled error, a silent skip, or no recorded detection gives
+  `untrustworthy`. If the construction check exits 0, the cell was not constructed; it is rebuilt,
+  and that reading is a gap, not a pass. The verdict is recorded under `#### Gate cell 2` in
+  `PROG` §E.2.
+- **Plan-time reading:** not red-measurable at plan time — no procedure is pinned, and how `--not`
+  behaves with a missing tip is inferred (`plan.md` §G), not measured.
+
+## §D.10 AC-010 — gate cell ③: the timing record on this repository
+
+- **Given** the pinned procedure; the lead's approval of the first run recorded in `PROG` §E.2
+  before that run; this repository at a recorded HEAD commit.
+- **When**, for the first run and then the incremental run:
+  - `uptime > SP/g3-<run>-load-before.txt` before the scan, and `uptime > SP/g3-<run>-load-after.txt`
+    after it;
+  - the scan under `/usr/bin/time -p`, output to `SP/g3-<run>.txt`, timing and errors to
+    `SP/g3-<run>.time`, exit code read without a pipe;
+  - scope: the same revision arguments with `--format=%H` and without `-p` or `-G`, to
+    `SP/g3-<run>-scope.txt`, then `wc -l`;
+  - matching commits: `/usr/bin/grep -c '^commit ' SP/g3-<run>.txt` — a count only;
+  - tips excluded: `wc -l` on the recorded tip set;
+  - incremental run only, immediately before it, each to its own file: `A` =
+    `git rev-list --count <recorded tips>`, `B` = `git rev-list --count --all`, `L` =
+    `git rev-list --count <recorded tips> --not --all` (tips passed with `--stdin` where the list
+    is long).
+- **Then** the verdict is `trustworthy` exactly when `spec.md` §3.4 cell ③ holds: every field present
+  for both runs, both runs exit 0, and the incremental scope line count ≤ `B − A + L`. If `A` or `L`
+  cannot be computed because a recorded tip is absent, the pair is re-taken and is a gap until then.
+  The verdict is recorded under `#### Gate cell 3` in `PROG` §E.2. No SHA, path, or matched value from
+  the `SP/g3-*` files is copied into this repository.
+- **Judgement:** no threshold is set on seconds; the predicate decides only whether the record is
+  complete and consistent (`spec.md` §3.4).
+- **Plan-time reading:** not red-measurable at plan time — it needs the pinned procedure and the
+  lead's approval. The only cost evidence on this repository, `cost-baseline.md`, measures the
+  HEAD-anchored and full `--all` scans under contention, not Option 2.
+- **Mutant note:** a procedure that re-scans all history on every review has an incremental scope of
+  `B`, which exceeds `B − A + L` whenever any commit reachable from the recorded tips is still
+  reachable (`A` > `L`).
+
+## §D.11 AC-011 — the gate evidence precedes the document edit
+
+- **Given** gate evidence recorded in `PROG` §E.2 under a `### Gate evidence` heading, with one
+  `#### Gate cell N` sub-heading and one `verdict:` line per cell.
+- **When** the following run:
+  - `git -C <worktree> log --reverse --format=%H -S '### Gate evidence' feeecc980..HEAD -- PROG > SP/g-commit.txt`
+    — the first line is `G`.
+  - `git -C <worktree> log --reverse --format=%H feeecc980..HEAD -- TPL > SP/r-tpl.txt` — the first
+    line is `R`.
+  - `git -C <worktree> merge-base --is-ancestor G R; echo "exit=$?"`
+  - `git -C <worktree> show R~1:.moai/specs/SPEC-REVIEW-SECRET-SCAN-REFS-001/progress.md > SP/pre-edit-progress.txt`,
+    then `/usr/bin/grep -c '^verdict: trustworthy$' SP/pre-edit-progress.txt`
+- **Then** `exit=0`, `G` ≠ `R`, and the count is `3`. Repeat with `LOC` in place of `TPL`.
+- **Plan-time reading (HEAD `af7eb142b`):** not red-measurable — no gate evidence and no
+  copy-touching commit exist (the `-- TPL` and `-- LOC` log forms each wrote 0 lines; the same form
+  over `spec.md` wrote 3). The gate-evidence heading is deliberately absent from `PROG` at plan time,
+  so `G` cannot resolve to a plan-phase commit.
+
+## §D.12 AC-012 — the run phase stops on an untrustworthy cell
+
+- **Given** a gate cell whose `verdict: untrustworthy` line first appears in `PROG` in commit `U`:
+  `git -C <worktree> log --reverse --format=%H -S 'verdict: untrustworthy' feeecc980..HEAD -- PROG > SP/u-commit.txt`,
+  first line.
+- **When** the following run:
+  - `git -C <worktree> log --format=%H U..HEAD -- TPL LOC > SP/after-stop.txt`, then
+    `wc -l SP/after-stop.txt`
+  - `git -C <worktree> log --format=%H feeecc980..U -- TPL LOC > SP/before-stop.txt`, then
+    `wc -l SP/before-stop.txt`
+  - control: `git -C <worktree> log --format=%H feeecc980..HEAD -- .moai/specs/SPEC-REVIEW-SECRET-SCAN-REFS-001/spec.md > SP/ctl-log.txt`,
+    then `wc -l SP/ctl-log.txt`
+  - `/usr/bin/grep -c '^Run phase stopped: gate cell [123]' PROG`
+- **Then** both copy-touching line counts are `0`, the control is ≥ 1 (the log form prints commits
+  when they exist, so the zeros are not an empty-command artefact), and the stop-line count is ≥ 1.
+- **Applicability:** only when a gate cell is untrustworthy. When all three are trustworthy, AC-012
+  is recorded as not applicable, citing the three verdict lines.
+- **Plan-time reading:** not measurable — no gate record exists. Neither an untrustworthy verdict
+  line nor a stop line is present in `PROG` at plan time.
+
+## §D.13 AC-013 — allowlist positive control
+
+- **Given** the procedure as worded after M2, its allowlist in the chosen representation, and `FX`
+  whose HEAD line carries a commit adding a line `LISTCELL <value>`, where `<value>` equals one listed
+  public example value. The value is assembled from fragments held only in `SP`; no fixture script
+  carrying those fragments is committed to this repository.
+- **When** the raw scan — the procedure's scan command without suppression — is redirected to
+  `SP/al-raw.txt`, and the procedure's reported findings after suppression to `SP/al-findings.txt`,
+  each exit code read without a pipe; then `/usr/bin/grep -c 'LISTCELL'` runs on each file.
+- **Then** the raw count is ≥ 1, so the listed value matches the regex and suppression is actually
+  exercised, and the findings count is `0`.
+- **Plan-time reading:** not measurable — no allowlist and no suppression step exist. Under today's
+  procedure every raw match is a finding, so a listed value would be reported (inferred from the
+  absence of any suppression text in `SECTION`).
+
+## §D.14 AC-014 — allowlist negative controls
+
+- **Given** the same fixture run as AC-013, with these lines added in the **same file** as the
+  `LISTCELL` line, each value assembled from fragments held only in `SP`:
+  - `NEARCELL <value>` — the listed value with only its last character changed, still matching the
+    regex;
+  - `OTHERCELL <value>` — a credential-shaped value on no list;
+  - plus the `HEADCELL` and `SIDECELL` PEM-header markers of §D.1, `SIDECELL` on the unmerged side
+    branch.
+- **When** the two files of AC-013 are produced, then `/usr/bin/grep -c` runs for `NEARCELL`,
+  `OTHERCELL`, `HEADCELL`, and `SIDECELL` on each.
+- **Then** every label counts ≥ 1 in `SP/al-raw.txt` and ≥ 1 in `SP/al-findings.txt`.
+- **Mutant pairing:** suppressing everything fails this criterion; suppressing nothing fails AC-013;
+  a path-based suppression that passes AC-013 fails here, because the negative lines share the
+  listed line's file; a prefix match on the listed value fails on `NEARCELL`.
+- **Plan-time reading:** not measurable — no allowlist exists.
+
+## §D.15 AC-015 — no regex-matching text in either copy
+
+- **Given** the edited copies.
+- **When** `/usr/bin/grep -cE -- 'REGEX' LOC TPL` runs, and, as a positive control, the same command
+  runs over a scratch file in `SP` holding a PEM-header line assembled from fragments.
+- **Then** `0` and `0` for the copies, and `1` for the control.
+- **Relation to AC-004:** AC-004 covers every added line in the card diff; this criterion pins the
+  two copies after the edit, where a literal allowlist value would land (REQ-012).
+- **Plan-time reading (HEAD `af7eb142b`):** `0`, `0`, grep exit 1; control `1`, exit 0. This is a
+  regression guard: green at plan time because no allowlist exists yet; the control shows the command
+  detects a regex-shaped line.
+
+## §D.16 Candidate criterion C-1 — other unreachable ref kinds (not in the Definition of Done)
 
 Only a local branch was exercised. Extending the §D.1 fixture is cheap — a few commands — so this
 is recorded as a candidate that the run phase may promote to an AC with operator agreement:
@@ -181,20 +358,25 @@ documentation says merge commits show no patch — and do not match `-S`/`-G`-st
 `--diff-merges` variant is given. A stash's working-tree change lives in a merge commit, so `--all`
 alone may not report `STASHCELL`. Measuring it would settle the question.
 
-## §D.9 Edge cases (recorded when encountered; not criteria)
+## §D.17 Edge cases (recorded when encountered; not criteria)
 
-- **Unresolvable checkpoint.** Option 2 with a previous tip that no longer exists, or Option 3 with a
-  checkpoint SHA rewritten by a force-push. Record the observed behaviour; the fallback is unspecified
-  (`plan.md` §G).
-- **Credentials introduced in a merge resolution.** For the reason in §D.8, these may not surface
-  under `git log -p` in any option. Inferred, not measured.
+- **Vanished recorded tip.** Now a gate cell (AC-009), not an edge case.
+- **Rewritten tip.** A recorded tip that a force-push replaced still exists until garbage collection,
+  so `--not <tip>` keeps excluding commits that are no longer on any ref. Record the observed
+  behaviour; it is not a gate cell.
+- **Credentials introduced in a merge resolution.** For the reason in §D.16, these may not surface
+  under `git log -p`. Inferred, not measured.
 
-## §D.10 Definition of Done
+## §D.18 Definition of Done
 
-- AC-001 through AC-007 PASS, each recorded in `progress.md` §E.2 with the command, its verbatim
-  output, and the tree it was measured on.
+- AC-001 through AC-011 and AC-013 through AC-015 PASS, each recorded in `progress.md` §E.2 with the
+  command, its verbatim output, and the tree it was measured on.
+- AC-012 applies only when a gate cell is untrustworthy. The run phase then ends at the stop, and
+  AC-012 PASS with the stop report is the phase's outcome in place of the criteria after the gate.
+  When all three cells are trustworthy, AC-012 is recorded as not applicable, citing the three
+  verdict lines.
 - The operator's decision is recorded in `spec.md` §3 (AC-007).
-- `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001` reports no findings.
+- `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001` reports 0 errors and 0 warnings.
 - The lane does not run `make build`. The build and embed check belong to the lead at batch close
   and are not part of this Definition of Done.
 - Any cost figure cited in the run-phase evidence states its load condition and tree.
