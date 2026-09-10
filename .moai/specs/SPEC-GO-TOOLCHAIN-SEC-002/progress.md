@@ -124,7 +124,7 @@ detail: `ac008-evidence.md`).
 Control (proves the grep instrument reads the token): `git show
 403bac94b339c19ebcee29e12b1a722cfd3d69ee:.moai/project/product.md` →
 `control-product-at-403bac94b.md`, then `grep -c '1\.26\.4'` on that pre-edit capture → `2`
-(exit 0), matching spec.md § D.0 E-08's baseline for `product.md`.
+(exit 0), matching acceptance.md § D.0 E-08's baseline for `product.md`.
 
 Verdict: AC-GTS2-008 PASS.
 
@@ -145,7 +145,7 @@ acceptance criteria" claim.
 
 ```yaml
 sync_complete_at: 2026-09-10
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 4516fbe40
 sync_status: audit-ready
 b12_self_test_a: "grep -c SPEC-GO-TOOLCHAIN-SEC-002 CHANGELOG.md -> 0 (pre-emission), no duplicate"
 b12_self_test_b: "AC-GTS2-[0-9]+ distinct count in acceptance.md -> 8, matches CHANGELOG claim"
