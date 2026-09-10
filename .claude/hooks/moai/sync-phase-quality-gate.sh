@@ -1,6 +1,6 @@
 #!/bin/bash
 # Hook: sync-phase-quality-gate
-# Purpose: Fast sync-phase quality gate (compile/vet + dependency manifest audit)
+# Purpose: Fast sync-phase quality gate (compile/vet checks + dependency manifest-change observation)
 # Trigger: Stop event when the current session's HEAD is a sync-phase commit
 #
 # Scope: the hook runs ONLY fast structural checks (compile/vet) that finish well
@@ -477,9 +477,10 @@ case "$GATE_LANG" in
         ;;
 esac
 
-# Dependency manifest audit: flag if a dependency manifest was modified in the
-# sync-phase commit (unexpected for a docs sync). Informational only — it does NOT
-# drive the block decision. Language-specific manifest set.
+# Dependency manifest-change observation: set DEPS_MODIFIED=1 when a dependency
+# manifest of the detected language changed in the HEAD commit (unexpected for a
+# docs sync). Informational only — it does NOT drive the block decision and it is
+# not a vulnerability scan. Language-specific manifest set.
 DEPS_MANIFESTS=""
 case "$GATE_LANG" in
     go)       DEPS_MANIFESTS="go.mod go.sum" ;;
