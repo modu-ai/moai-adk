@@ -287,6 +287,10 @@ func TestFileSessionStoreResolveBlocker(t *testing.T) {
 		},
 		Resolved:  false,
 		Timestamp: time.Now(),
+		// t611: ResolveBlocker matches Phase+SPECID exactly, so the fixture
+		// must carry the scope it is resolved under.
+		Phase:  PhaseRun,
+		SPECID: "SPEC-001",
 	}
 
 	if err := store.RecordBlocker(report); err != nil {
