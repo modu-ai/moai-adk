@@ -1,0 +1,6 @@
+"~/ok/SKILL.md"        shape=home-relative  expanded=/Users/example/ok/SKILL.md inside_home=true
+"~/../../etc/x"        shape=home-relative  expanded=/etc/x                   inside_home=false
+"~/x\\SKILL.md"        shape=oddly-formed   expanded=-                        inside_home=-
+"/etc/x"               shape=absolute       expanded=-                        inside_home=-
+"~/a/../b/SKILL.md"    shape=home-relative  expanded=/Users/example/b/SKILL.md inside_home=true
+"~/.."                 shape=home-relative  expanded=/Users                   inside_home=false
