@@ -134,11 +134,27 @@ separate post-restore run was needed.
   `SPEC-MULTI/run`, so after the fix it still exercises selection among multiple MATCHING
   records rather than passing because nothing matches.
 
-**Off-scope change, disclosed.** `TestFileSessionStoreResolveBlocker`'s fixture gained
-`Phase: PhaseRun, SPECID: "SPEC-001"`. The original recorded an unscoped blocker and resolved
-it under `(PhaseRun, "SPEC-001")`, so it depended on the defect; it was the only test that
-failed immediately after the fix (agent log `post-fix-pkg-before-fixture.log`). Assertions are
-unchanged. Reported to the lead for acceptance.
+**Off-scope change — accepted by the lead.** `TestFileSessionStoreResolveBlocker`'s fixture
+gained `Phase: PhaseRun, SPECID: "SPEC-001"`; its assertions are unchanged. The original
+recorded an unscoped blocker and resolved it under `(PhaseRun, "SPEC-001")`.
+
+The ground for acceptance is that **this test depended on the defect before the fix.**
+Immediately after the fix, and before its fixture was touched, it was the only test in the
+package that failed. The committed log `.moai/reports/t611/post-fix-pkg-before-fixture.log`
+(captured by the implementing agent, read by the lane), verbatim, all 6 lines:
+
+```
+WARN: checkpoint for run/SPEC-RESUME-001 is stale (age=1h0m0s); loading anyway (--resume)
+--- FAIL: TestFileSessionStoreResolveBlocker (0.00s)
+    store_test.go:299: ResolveBlocker() failed: no outstanding blocker found
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/session	6.288s
+FAIL
+```
+
+The `WARN` line is an unrelated stale-checkpoint notice from another test in the package. The
+repair turning this test red is itself evidence that the repair is right; adding the scope the
+test resolves under, while leaving the assertions alone, is the minimum correction.
 
 **Correction to the lane's own dispatch.** The dispatch predicted the report-criterion test
 would go RED under the specID-half mutant. That was wrong: its newer record is SPEC-B/plan,
@@ -150,7 +166,8 @@ with a pre-run prediction, and the measurement bore the correction out.
 The independent run, the vet run, the mutant run, and the restore check above were all
 executed in this run, in this worktree, at HEAD 1e47aa479 with a clean tree (the mutant run
 with exactly the one shown mutation applied). Agent-measured results are labelled as such and
-cited to run-evidence.md; none of their figures is presented as the lane's measurement.
+cited to run-evidence.md or to the committed log they came from; none of their figures is
+presented as the lane's measurement.
 
 ## Gaps — not observed
 
@@ -159,8 +176,10 @@ cited to run-evidence.md; none of their figures is presented as the lane's measu
   `internal/cli/update/merge`, `internal/hook/quality`) is not yet measured. Per the lead, this
   is measured with `go list -deps` at absorb time, not left to the merged-tree re-run.
 - Callers outside Go source (shell hooks, reflection) — the caller grep cannot see them.
-- An empty request `ResolveBlocker("", "", ...)` is not pinned by a test. Under exact match it
-  releases only empty-field records. Advisory, lead's call.
+- An empty request `ResolveBlocker("", "", ...)` is not pinned by a test, and **by the lead's
+  ruling it is deliberately left unpinned in this card.** Under exact match it releases only
+  empty-field records. Pinning it would turn that consequence into a contract — "an empty
+  request may release empty-field records" — which is a separate decision. Advisory only.
 - The report's own tree (main 2213871af) was not re-run.
 - `internal/cli` and the full suite were not run; the card does not touch them.
 - darwin only.
@@ -176,6 +195,6 @@ cited to run-evidence.md; none of their figures is presented as the lane's measu
 
 ## Sync decision
 
-**No CHANGELOG entry.** There is no non-test caller in Go source and no user-visible effect has
-been established; the card forbids inflating the defect into a user-facing outage. The
-function's behaviour change is recorded here and in commit cbb48c5d2. The lead may override.
+**No CHANGELOG entry — approved by the lead.** There is no non-test caller in Go source and no
+user-visible effect has been established; the card forbids inflating the defect into a
+user-facing outage. The behaviour change is recorded here and in commit cbb48c5d2.
