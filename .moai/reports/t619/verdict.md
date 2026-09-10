@@ -151,4 +151,12 @@ run 은 manager-develop 이 M1~M5 로 진행했다(커밋 `dfcf7c519`..`2ed2475c
 - 관측: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test -count=1 -timeout 600s ./internal/cli/ -run 'TestToolPolicyList_QueryFilters' -v` → `cli_rc=1`, `tool_policy_test.go:97: output missing substring "ask";`, `--- FAIL: TestToolPolicyList_QueryFilters/filter_ask`. 나머지 하위 테스트 5개 PASS.
 - 귀속 근거: 이 하위 테스트는 커밋된 YAML 에 `decision: ask` 항목이 있어야 통과한다. `git show 1ac333952^:.moai/config/sections/tool-policy.yaml | grep -c 'decision: ask'` → `6`, `git show d1b61005d:… | grep -c 'decision: ask'` → `0`. `d1b61005d..HEAD` 사이 `internal/cli/` diff 없음, YAML 의 ask 줄 변경 `0`. 테스트 입력이 base 와 같다.
 - develop: 로컬 develop `647ad0157` 에도 같은 하위 테스트(`tool_policy_test.go:61`)가 있고 YAML ask 는 `0` 이다. develop 트리에서 직접 실행하지는 않았다(갭).
-- 처분(운영자 결정, 2026-09-11): 별도 수리 카드로 분리한다. 리드가 수리 카드 **t660** 을 발행했다(ask 0 정책 유지, 테스트를 커밋 YAML 이 아닌 ask 포함 fixture 로 검증, develop push 전 필수). 병합 판정에서 이 AC 는 t660 소관이다. t619 는 `internal/cli` 테스트를 건드리지 않는다. 리드에게 사실과 결정을 전달했고, 리드는 이 적색이 develop push 전에 닫혀야 한다고 판정했다.
+- 처분(운영자 결정, 2026-09-11): 별도 수리 카드로 분리한다. 리드가 수리 카드 **t660** 을 발행했다(ask 0 정책 유지, 테스트를 커밋 YAML 이 아닌 ask 포함 fixture 로 검증, develop push 전 필수). 병합 판정에서 이 AC 는 t660 소관이다.
+
+## 10. Factory 실행 종료 관문 — 보안 deep scan (2026-09-11)
+
+- 호출: `/moai review --security --deep --branch develop`. Factory 계약 문구는 `--repo` 이나, 운영자가 이 카드 변경분만 같은 깊이로 검사하도록 결정했다(추적 파일 12,946개 대 변경 코드·설정 파일 5개). `--patch` 없음(운영자 결정).
+- 실행: PRIMARY 경로(Dynamic Workflow, Claude Code 2.1.267), 에이전트 7명·오류 0. 검사 커밋 `1977040b7`, 공통 조상 `d1b61005d`.
+- 결과: 사냥 후보 2건(정책·빌드·CI 영역 0, Go 영역 2), 두 건 모두 3인 패널 0/3 으로 탈락. **확인된 결함 0건 → S2, sync 진행.**
+- 결과 폴더: `.moai/reports/security-deepscan-20260910T181938Z/` (자체 `.gitignore` 로 커밋되지 않음 — 이 절이 커밋되는 기록이다).
+- 탈락 후보 C1 에 대한 오케스트레이터 판단: 원문 스캐너가 첫 번째 `"permissions"` 키를 읽고 표준 JSON 파서는 마지막 키를 쓰는 차이는 실재한다. 보안 결함으로는 기각에 동의한다(입력 주체가 YAML 도 함께 바꿀 수 있는 PR 작성자이고, 검사는 권한 관문이 아니라 일치 검사다). 다만 중복 키가 드리프트를 가릴 수 있는 검사 견고성 빈틈이므로 후속 카드 후보로 리드에게 전달했다. 해당 스캐너는 이 카드가 바꾸지 않은 기존 코드다: `git --no-optional-locks diff --stat d1b61005d HEAD -- internal/config/toolpolicy/settings_region.go` → 출력 없음. t619 는 `internal/cli` 테스트를 건드리지 않는다. 리드에게 사실과 결정을 전달했고, 리드는 이 적색이 develop push 전에 닫혀야 한다고 판정했다.
