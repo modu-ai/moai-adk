@@ -202,3 +202,31 @@ AC 없는 REQ 우선 행 — 127행(`acless-rows-127.tsv`) 중 수리 전 발견
 
 ### Residual-risk
 - WEB-CONSOLE-007·008·009 는 AC 를 목록 항목 `- **AC-…** (REQ-…)` 으로 매핑한다. 이 형태는 수리 범위(표 형식) 밖이라 49개 REQ 가 여전히 발견으로 남는다. 넓힐지는 별도 판단이다.
+
+## 7. 통합 창 — 흡수 · 병합 트리 재측정
+
+### Claim
+리드가 지명한 창에서 로컬 develop `82303360f` 를 카드 브랜치로 흡수했다(`3066afdbb`). 흡수 델타는 `internal/spec` 과 그 의존 패키지를 하나도 건드리지 않으므로, 리드 승인 조건에 따라 `cmd/moai` 재빌드와 코퍼스 재측정은 하지 않았다. 흡수한 트리 `64d5fc24fcf8c158449e1e0f293360ef1fe587f1` 에서 `internal/spec` 패키지 전체와 형제 테스트 7개가 통과한다.
+
+### Evidence
+- 창 획득: `moai integration acquire --name lane-9` → `acquire_exit=0`, `release-integration window acquired by e5c0032b-ffbd-44b0-8997-c16d09d3541b on WT-lint-sibling-ac`(`window-acquire.log`). settings 드리프트 보고 없음.
+- 흡수 대상 확인: `git rev-parse develop` → `82303360fca31d7eb4c05cf7fee36144c856f30d`(리드 지명과 같음). `git merge-base HEAD develop` → `8203040b8…`(이 가지의 base).
+- 흡수 델타: `git diff --name-only 8203040b8 82303360f` → 218파일(`window-absorb-delta-files.txt`).
+  - `^internal/spec/` 0건(exit 1). 대조로 `^internal/` 은 26건이다(`internal/cli` 1, `internal/template` 5, `internal/web` 20).
+  - 의존 패키지 경로(`internal/config`·`config/atomicfile`·`defs`·`paths`·`constitution`·`execerr`, `pkg/models`)도 0건이다(`window-absorb-delta-specdeps.txt` 빈 파일, exit 1).
+- 의존 목록: `go list -deps` 로 흡수 전(`window-spec-deps.txt`)과 흡수 후(`window-merged-spec-deps.txt`)를 쟀다. 저장소 패키지는 같은 8개이고, 흡수 후 `EmbedFiles` 는 8개 모두 `[]` 다. 템플릿 임베드를 거쳐 전이 적중할 경로도 없다.
+- 흡수 병합: `git merge --no-ff -m "Merge local develop 82303360f into WT-lint-sibling-ac (card t561 window)" 82303360f` → `merge_exit=0`, `3066afdbb a761e0a12 82303360f`, MERGE_HEAD 없음(exit 1), index.lock 없음(exit 1)(`window-absorb-merge.log`).
+- 병합 트리 재측정:
+  - `go test ./internal/spec -count=1` → `pkg_exit=0`, `ok github.com/modu-ai/moai-adk/internal/spec 110.480s`(`window-merged-spec-package.log`).
+  - `go test ./internal/spec -count=1 -run '^TestCoverageSibling' -v` → `sib_exit=0`, 7개 전부 PASS, `ok … 5.742s`(`window-merged-sibling.log`).
+- 측정 트리: `git rev-parse HEAD HEAD^{tree}` → `3066afdbb9c10e978c47a21bc055a824b0d23422` / `64d5fc24fcf8c158449e1e0f293360ef1fe587f1`, 추적 파일 변경 없음.
+
+### Baseline-attribution
+카드 브랜치 흡수 커밋 `3066afdbb`(트리 `64d5fc24f…`), 이 창 안의 실행. 이 절을 담는 증거 커밋은 `.moai/reports/t561/` 만 바꾼다. develop 병합 커밋의 트리가 그 증거 커밋의 트리와 같다는 확인은 병합 직후에 하며, 병합 SHA 와 함께 완료 보고로 전달한다.
+
+### Gaps
+- darwin 로컬 한 번의 실행이다. windows·linux 매트릭스는 develop push 뒤 CI 판정에 맡긴다.
+- 흡수 후 코퍼스 lint 는 재측정하지 않았다(흡수 델타가 `internal/spec` 과 그 의존을 건드리지 않아 리드 승인 조건 밖). `.moai/specs` 변경이 델타에 있으면 코퍼스 수는 §5 와 달라질 수 있지만, 그것은 수리 코드의 판정이 아니라 입력의 변화다.
+
+### Residual-risk
+- `go list -deps` 는 빌드 태그 기본값으로 계산한다. 다른 태그에서만 import 하는 의존은 이 목록에 없다.
