@@ -264,11 +264,56 @@ ok  	github.com/modu-ai/moai-adk/internal/template	0.444s
 # 편집본 복원 (sha256 584e48d3…, 1차 편집 시점) — 이후 2차 편집을 이어서 적용
 ```
 
-편집 전 원본에서는 두 테스트가 통과한다. 두 빨간 줄은 이 카드의 편집에서 비롯했으며 해소 방법은 해시 재생성(`gen-catalog-hashes.go --all`, `make build`의 한 단계)이다. 카드 지시에 따라 레인은 `make build`를 돌리지 않았다. 리드가 배치 끝에 빌드하면 녹색이 되리라 예상하지만 **그 녹색은 관측하지 않았다.** 기준선 입력 파일: `head-template-SKILL.md`, 결과: `baseline-catalog-tests.txt`.
+편집 전 원본에서는 두 테스트가 통과한다. 두 빨간 줄은 이 카드의 편집에서 비롯했다. 기준선 입력 파일: `head-template-SKILL.md`, 결과: `baseline-catalog-tests.txt`.
+
+#### 해시 재생성과 재측정
+
+처음에는 해시 재생성을 리드의 배치 끝 빌드에 맡기려 했으나 리드가 정정했다. 알려진 빨간 줄을 달고 병합하지 않으며 해시 재생성은 카드 소관이다(t524·t647 선례). 이 카드 안에서 생성기로 재생성했고 손으로 해시를 쓰지 않았다.
+
+```
+$ go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai-workflow-worktree --dry-run
+DRYRUN_EXIT=0
+  [dry-run] moai-workflow-worktree: ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa (source: internal/template/templates/.claude/skills/moai-workflow-worktree (whole tree))
+[dry-run] catalog.yaml not modified
+
+$ go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai-workflow-worktree
+REGEN_EXIT=0
+catalog.yaml updated successfully (12899 bytes)
+
+$ git diff -U0 -- internal/template/catalog.yaml
+@@ -94 +94 @@ catalog:
+-              hash: 05920664ac48c144d23360f58c8cd932a3095cdfa56c4b290165968d0d89f762
++              hash: ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa
+$ git diff --numstat -- internal/template/catalog.yaml
+1	1	internal/template/catalog.yaml
+```
+
+생성기 소스에 `--all`은 `catalog.yaml`의 주석을 잃는다고 적혀 있어 `--entry`를 썼다. 쓰기 전에 dry-run 계산값이 실패한 테스트가 요구한 전체 트리 해시와 64자 모두 같은지 확인했다. 바뀐 것은 이 항목의 해시 한 줄뿐이다.
+
+재생성 뒤 선택자 없이 다시 쟀다. 비-verbose 출력은 통과한 테스트의 이름을 찍지 않으므로 두 테스트는 이름을 지정해 따로 확인했다.
+
+```
+$ go test ./internal/template/... -count=1 -timeout 20m > .moai/reports/t628/gotest-template-after-regen.txt 2>&1
+TEMPLATE_AFTER_REGEN_EXIT=0
+ok  	github.com/modu-ai/moai-adk/internal/template	37.129s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	1.520s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	2.222s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+fail_lines=0  catalog_hash_msgs=0  panic_timeout_build=0
+
+$ go test ./internal/template/ -run 'TestCatalogHashCoversSkillSubfiles|TestManifestHashFormat' -v -count=1
+NAMED_V_EXIT=0
+--- PASS: TestCatalogHashCoversSkillSubfiles (0.02s)
+--- PASS: TestManifestHashFormat (0.02s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.416s
+pass_named=2 (expect 2)  fail=0
+```
+
+해시 커밋은 `f8c976d63`이다. 증거: `catalog-hash-dryrun.txt`, `catalog-hash-regen.txt`, `gotest-template-after-regen.txt`, `catalog-tests-after-regen-v.txt`.
 
 ## 5. 이 카드에서 고치지 않고 남긴 것
 
-1. **카탈로그 해시 재생성.** 리드의 배치 끝 `make build` 소관이다(§4.5).
+1. **`make build`와 임베드 검사.** 카드 지시에 따라 레인은 돌리지 않았다. 리드의 배치 끝 빌드 소관이다.
 2. **모듈·참고문서의 제거 명령.** `worktree` 접두 형태만 89줄이고 "the X command" 형태는 세지 않았다(§2.1). 모듈 재작성은 별도 카드감이다.
 3. **있는 명령의 없는 플래그**(§2.2). `SKILL.md`의 `sync` include/exclude·auto-resolve·interactive 서술(고급 절 동기화), template 플래그(고급 절 템플릿), developer 플래그와 팀 레지스트리 모드(고급 절 팀), 설정 키 `auto_create`·`auto_sync`·`cleanup_merged`·`worktree_root`(§4 설정 통합, 미측정).
 4. **템플릿 `AGENTS.md:288`.** `moai worktree`를 "(list / snapshot / verify / restore)"로 적는다. 없는 `list`가 있고 5개가 빠졌다(§1.4).
@@ -280,7 +325,7 @@ ok  	github.com/modu-ai/moai-adk/internal/template	0.444s
 
 - **런타임 권한 우회는 시험하지 않았다.** Bash를 가진 에이전트가 실제로 파일을 쓸 수 있는지, 샌드박스나 권한 프롬프트가 막는지는 재지 않았다. 문구는 "보장되지 않는다"는 보수적 표현에 머문다.
 - **`Explore`가 Bash를 가진다는 근거는 이 세션의 런타임 에이전트 목록뿐이다.** 배포 문서에는 `Explore`의 도구 목록이 없으며 Claude Code 버전에 따라 달라질 수 있다.
-- **`make build`·임베드 검사·해시 재생성 뒤의 녹색은 관측하지 않았다**(§4.5).
+- **`make build`와 임베드 검사는 돌리지 않았다.** 해시 재생성 뒤 `internal/template`의 녹색은 관측했으나(§4.5) 바이너리 빌드와 임베드 축은 재지 않았다.
 - **설치 바이너리는 develop tip보다 오래됐다.** help를 develop 소스의 `Use:`·`Short:`·플래그 리터럴과 대조해 일치를 확인했으나 develop tip으로 빌드한 바이너리의 help를 직접 보지는 않았다.
 - **플래그 부재 대조는 `internal/cli/worktree` 패키지 안의 문자열 리터럴로 한정된다.** 다른 패키지에 같은 이름의 플래그가 정의돼 있을 가능성은 재지 않았다.
 - **§2.1의 89줄에는 "the X command" 형태가 들어 있지 않다.** 모듈·참고문서의 실제 규모는 재지 않았다.
