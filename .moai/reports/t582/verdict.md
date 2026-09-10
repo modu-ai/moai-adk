@@ -122,3 +122,46 @@ lane-6 전체 스위트 1건만 병행, 다른 스코프 컴파일 0건.
 - 절대 경로의 `..` (`/tmp/a/../b`)는 읽기에서 absolute 로 stat 되지만 쓰기에서는 거절된다. t571 백슬래시(`/tmp/a\b`)와 같은 선례이며, 운영 쓰기 경로는 `..` 를 품은 절대 경로를 만들지 않는다.
 - `.` 세그먼트(`~/./x`)는 거절하지 않는다 — 홈 밖으로 나가지 못하므로 범위 밖.
 - doctor 보고에서 `..` 를 품은 relative 선언이 relative 칸에서 oddly-formed 칸으로 옮겨 세어진다(의도된 변화, 테스트 고정).
+
+## 6. `internal/cli` 패키지 전체 판정 (리드 슬롯)
+
+### Claim
+커밋 `397d04df9` 트리에서 `internal/cli` 전체 스위트의 실패 집합은 기지 적색 4건과 정확히 같다. 이 카드가 들여온 새 실패는 0건이다.
+
+### Evidence
+관측기 자기검증(시작 전, 07:09:52Z): `ps -eo pid,etime,comm,args | awk '$3=="go" && /internal\/cli/'` → 출력 없음. 같은 awk 에 ps 필드 배치를 흉내 낸 합성 행을 넣은 양성 대조군 `go test ./internal/cli/ ...` → 매치 1행, 음성 대조군(`awk internal/cli` 행) → 매치 0행. 따라서 빈 출력은 "관측기가 볼 수 없음" 이 아니라 "다른 `go` 프로세스 없음" 이다.
+시작 후 자기 포착(07:10:10Z): 같은 명령 → `53928       00:10 go               go test ./internal/cli/ -count=1 -timeout 60m`. 표본 수집기(`timeout 3900` 로 바깥에서 한정, 60초 간격)의 첫 표본(07:10:12Z)도 pid 53928 을 잡았다 — 수집기의 다른 인용 경로에서도 관측기가 동작함을 따로 확인.
+
+명령(07:10:00Z–07:25:03Z, 파이프 없음): `go test ./internal/cli/ -count=1 -timeout 60m > .moai/reports/t582/full-suite.log 2>&1; GOTEST_EXIT=$?` → `.moai/reports/t582/full-suite.exit` 에 `GOTEST_EXIT=1`.
+
+로그(1120행) 마지막 줄: `FAIL	github.com/modu-ai/moai-adk/internal/cli	900.693s`. `panic:`·`test timed out`·`[build failed]`·`[setup failed]` 0건 — 패키지가 끝까지 돌았다.
+
+`--- FAIL` 전체 6행:
+```
+--- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.08s)
+--- FAIL: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (111.18s)
+        --- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.05s)
+        --- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (2.83s)
+--- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (3.58s)
+--- FAIL: TestAuditLagUsesBinlagSeam (0.73s)
+```
+최상위 실패 집합(4) = {`TestHomeStateChangedSurfaceCoverageConsumesFreshProfile`, `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite`, `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition`, `TestAuditLagUsesBinlagSeam`}.
+기지 적색 4건과의 차집합: 실패 − 기지 = ∅, 기지 − 실패 = ∅.
+들여쓰기된 2행은 `RunsBoundedFocusedSuite` 가 띄운 하위 스위트의 출력이며, 이름이 모두 기지 적색에 속한다.
+
+이 카드의 테스트 8개(새 3 + t571 5)의 이름: 로그 전체에서 매치 0행. 같은 awk 로 기지 적색 이름 `TestAuditLagUsesBinlagSeam` 을 찾으면 1행 — 판독기가 이름을 잡을 수 있음을 보인 양성 대조군.
+
+동시 실행 조건(`.moai/reports/t582/full-suite-concurrency.log`, 표본 15개, 07:10:12Z–07:24:13Z): 매 표본에 pid 53928(이 실행). 그 밖의 행은 pid 81598 한 건뿐, 07:16:13Z·07:17:13Z 두 표본에만 보였다 — 인자가 `go test ./internal/cli -run ^(TestHomeState.*|...)$ -count=1 -coverpkg=... -coverprofile=.../moai-home-state-coverage-...` 인 집중 스위트. 다른 레인의 전체 스위트나 스코프 실행은 표본에 없었다.
+
+### Baseline-attribution
+워크트리 `WT-home-dotdot-escape` HEAD `397d04df9`(부모 `d3b7d438d`), 실행 전 `git status --short` 출력 없음, 이 실행.
+
+### Gaps
+- 비-verbose 실행이라 통과한 테스트는 로그에 이름이 찍히지 않는다. 8개의 "실패 아님" 은 관측됐으나 이름별 `--- PASS` 는 이 실행에서 관측되지 않았다. 이름별 PASS 는 §5 의 verbose 스코프 실행(같은 production 내용 — 커밋 직후 `git status --short` 가 비었고 커밋 파일이 §5 실행 때 작업 트리와 같다)에서 관측됐다.
+- pid 81598 이 이 실행의 자식(`RunsBoundedFocusedSuite` 가 띄운 하위 스위트)이라는 판단은 인자 모양과 시각(그 테스트 소요 111.18s 구간)으로 한 추론이다. 부모 pid 는 프로세스가 끝나 확인하지 못했다.
+- `golangci-lint`/`go vet`, `GOOS=windows` 교차 빌드는 여전히 미실행.
+- 15분 동안 60초 간격 표본이라, 60초보다 짧게 끝난 프로세스는 표본에 안 잡혔을 수 있다.
+
+### Residual-risk
+- 기지 적색 4건이 계속 적색이라, 그 테스트들이 덮는 경로에서 이 카드가 만든 회귀가 있다면 가려진다. 그 4건은 이름상 home-state 커버리지·변경 파일 판독·binlag 계기로, `..` 분류 경로와 겹치지 않는다(이름 기준 판독이며 실행 관측은 아님).
+- 경합은 거짓 통과를 만들지 않으므로(리드 판정) 초록 판정의 유효성은 유지된다.
