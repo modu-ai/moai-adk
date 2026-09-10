@@ -1,0 +1,26 @@
+# t566 mutant revert: restores modules.md from the saved original and proves the
+# bytes match, then removes the backup.
+import hashlib
+import os
+import shutil
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+TARGET = os.path.join(ROOT, ".moai", "project", "codemaps", "modules.md")
+BACKUP = os.path.join(os.path.dirname(__file__), "modules.md.orig")
+
+
+def sha(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+if not os.path.exists(BACKUP):
+    raise SystemExit("no backup to restore from")
+mutated = sha(TARGET)
+original = sha(BACKUP)
+shutil.copyfile(BACKUP, TARGET)
+restored = sha(TARGET)
+os.remove(BACKUP)
+print("mutated ", mutated)
+print("original", original)
+print("restored", restored)
+print("RESTORED_MATCHES_ORIGINAL", restored == original)
