@@ -180,6 +180,13 @@ func TestIsLoopbackHost(t *testing.T) {
 		"LOCALHOST.attacker.example.com": false,
 		"":                               false,
 		"not a host:port":                false,
+		// Host-name case-insensitivity is ASCII-only (RFC 4343). U+017F (LATIN
+		// SMALL LETTER LONG S) is the only non-ASCII simple-fold equivalent of a
+		// letter in "localhost", so these spellings must stay rejected. The rune
+		// is built by conversion so no non-ASCII byte appears in this file.
+		"localho" + string(rune(0x17F)) + "t":      false,
+		"localho" + string(rune(0x17F)) + "t:3041": false,
+		"LOCALHO" + string(rune(0x17F)) + "T":      false,
 	}
 	for host, want := range cases {
 		if got := isLoopbackHost(host); got != want {
