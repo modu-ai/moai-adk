@@ -107,3 +107,110 @@ t564 와의 겹침: `git diff c3b931784 c77ef6247 -- internal/spec/parser.go` �
    - (ㄱ) 절 끝을 "앵커와 같거나 더 높은 레벨의 헤딩"으로 바꾼다. `SPEC-DESIGN-ATTACH-001`·`SPEC-V3R5-WORKFLOW-LEAN-001` 이 읽히지만, 앵커 절 안의 산문 하위 절(`### 3.1 Tier Classification` 같은 요구사항 절)의 `AC-…:` 줄까지 읽는다.
    - (ㄴ) 이 카드 범위 밖으로 둔다(카드 본문에 없던 축이다).
 4. **범위와 영향.** 어느 조합이든 파서 수용 선언 수가 바뀌어 코퍼스 `CoverageIncomplete`(현재 2010)와 t564 의 중복 판정 입력이 함께 움직인다. 코퍼스 전/후는 t561 방식으로 잰다. 수리는 `internal/spec` 에만 닿고 `internal/cli` 컴파일은 필요 없다.
+
+## 3. 리드 판정 적용 — 구현·검증
+
+리드 판정: 앵커 (b) 변형, 어휘 (가), 절 끝 (ㄱ). 원칙은 "진짜 AC 절을 더 잘 찾되 새 오탐을 만들지 않는다".
+
+### Claim
+- `internal/spec/parser.go` 에 판정 세 가지를 반영했다.
+  - **앵커**: 레벨 2 이상 ATX 헤딩 가운데 첫 번째로 다음을 모두 만족하는 헤딩. 소문자로 바꾸고 `acceptance.md` 를 지운 텍스트가 ① 부정 표지(`out of scope`·`out-of-scope`·`non-goal`)를 포함하지 않고 ② 어휘 목록(`acceptance`·`success criteria`·`ac matrix`·`수락 기준`·`인수 기준`·`검수 기준`) 중 하나를 포함한다.
+  - **어휘**: 리드 판정문에 이름이 나온 것만 넣었다. `수용 기준`·`성공 기준`·`AC summary` 는 넣지 않았고, 넣었을 때의 결과는 반사실로만 쟀다(아래).
+  - **절 끝**: 앵커와 같거나 높은 레벨의 헤딩. `#` 헤딩도 절 끝이 된다(이전에는 `##` 로 시작하는 줄만).
+  - 헤딩 판정은 `#` 1~6개 뒤에 공백이나 줄 끝이 오는 줄이다. 코퍼스에서 `##` 뒤에 공백이 없는 헤딩은 0건이라 이 조건으로 달라지는 파일은 없다.
+- 테스트 16개 중 12개가 수정 전 코드에서 예측대로 실패했고, 수정 후 모두 통과한다. 뮤턴트 6개는 모두 예측한 테스트에서 잡혔다.
+- 코퍼스 헤딩 센서스 결과, 판정 범위 안에서 **새 과소 계수 2건**이 생긴다. §5 에서 멈춘다.
+
+### Evidence
+RED → GREEN:
+- 기준선 커밋(수정 전 측정과 RED 테스트만): `test(t565): RED heading-anchor tests and before-fix corpus baseline`. 수정 코드는 이 커밋에 없다.
+- 실행 전 예측 `red.predicted`. `go test ./internal/spec -count=1 -run '^(TestT565|TestT528SectionScopingInvariant$)' -v` → exit 1, 실패 12·통과 4 모두 예측과 같다(`red-before-fix.log`).
+- 수정 후 `go test ./internal/spec -count=1 -run '^(TestT565|TestT528)' -v` → exit 0, `--- PASS` 64줄, FAIL 0(`green-after-fix.log`). `gofmt -l` 세 파일 → 출력 없음, exit 0.
+- 패키지 전체 `go test ./internal/spec -count=1 -timeout 1500s` → `ok  github.com/modu-ai/moai-adk/internal/spec 158.576s`, `exit=0`, `--- FAIL`·`FAIL` 줄 0(`green-spec-package.log`).
+- 테스트 파일 `internal/spec/parser_ac_heading_anchor_test.go`: 파일명만 언급한 헤딩, Out of Scope 헤딩(영어·한국어), 어휘 8개(대조 2개 포함), 어휘 밖 헤딩(`## 7. Review Criteria`) 비앵커, 자기 하위 제목 판독, `###` 앵커의 같은 레벨 종료, `#` 헤딩의 `##` 절 종료.
+
+뮤턴트(실행 전 예측 `mutants.predicted`). 작업 트리 `parser.go` 는 건드리지 않고 스크래치 사본을 `go test -overlay` 로 끼웠다. 각 사본의 차이는 `mutant-M{1..6}.diff`(M3 는 5줄 삭제, 나머지는 1줄 교체), 실행 기록은 `mutant-M{1..6}.log`.
+
+| 뮤턴트 | 바꾼 것 | 실패한 테스트 | 예측과 |
+|---|---|---|---|
+| M1 | 부정 표지 검사 무력화 | OutOfScope/english, /korean | 같음 |
+| M2 | `acceptance.md` 제거 생략 | FileMentionOnly | 같음 |
+| M3 | 어휘를 `acceptance` 하나로 | Vocabulary 7개(한국어 3, AC Matrix, Success Criteria 2, `수락 기준 — acceptance.md`) | 같음 |
+| M4 | 절 끝을 옛 규칙(`##` 접두)으로 | ReadsOwnSubheadings, h3-anchor, h1-ends-h2 | 같음 |
+| M5 | 절 끝을 "더 높은 레벨"만으로 | ReadsOwnSubheadings, h3-anchor, T528SectionScopingInvariant | 같음 |
+| M6 | 파일명 언급 헤딩을 전부 제외 | Vocabulary/`## 3. 수락 기준 — acceptance.md (Tier M)` | 같음 |
+
+코퍼스 헤딩 센서스 — 탐침 `probe/zz_t565_anchor_after_census_test.go`(도우미는 `probe/zz_t565_heading_census_test.go`). 두 파일을 `-overlay` 로 끼워 `go test ./internal/spec -count=1 -run '^TestT565AnchorAfterCensus$' -v` → exit 0(`probe/anchor-after-census.log`).
+- 대조: 옛 규칙을 다시 구현한 열이 §1 의 앵커 종류별 파일 수(319·29·10·4·5·467)를 그대로 재현한다. 절 안 줄 수는 1147 로 §1 의 1100 과 47 차이인데, §1 은 불릿 선언 모양만 셌고 여기서는 파서가 받는 줄을 모두 센다. 불릿 모양이 아닌 파서 수용 줄을 따로 세면 정확히 47 이다.
+- 앵커된 파일 367 → 425, 절 안 파서 수용 줄 1147 → 1223(+76). 앵커나 판독 줄 수가 바뀐 파일 90.
+- 늘어난 파일 12개(+88줄): `SPEC-DESIGN-ATTACH-001` +17, `SPEC-V3R5-STATUSLINE-STDINFIELDS-001` +11, `SPEC-V3R5-WORKFLOW-LEAN-001` +11, `SPEC-STEERING-ALIGN-RULE-SCOPING-001` +8, `SPEC-ERA-H3-NARROWING-001` +8, `SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001` +7, `SPEC-DRIFT-CLOSE-BODY-001` +7, `SPEC-CI-PR-TRIGGER-FILTER-001` +6, `SPEC-MCP-WORKTREE-ROOT-001` +5, `SPEC-CI-DOCTOR-BIN-001` +4, `SPEC-HANDOFF-CTXGUIDE-001` +2, `SPEC-HANDOFF-MSGMODE-001` +2.
+- **줄어든 파일 2개(−12줄)** — 원문 대조:
+  - `SPEC-LEARN-CHANNEL-SCOPE-001` −7. 115행 `## §F. Success Criteria`(선언 0)가 154행 `## §I. Acceptance Criteria (Tier S inline — Given-When-Then)`(171~177행 선언 7)보다 앞에 있어 앵커를 가져간다.
+  - `SPEC-SYNC-AUDIT-FALSIFICATION-001` −5. 136행 `## §H AC summary (full GWT in acceptance.md)` 아래 138~142행에 선언 5(`AC-SAF-001`~`005`)가 있다. 예전에는 파일명 덕분에 앵커됐는데, 이제 파일명을 지우면 어휘가 남지 않는다.
+- 파일명만 언급한 `##` 앵커 10개 중 (가) 어휘로 잡히는 것 7개, **안 잡히는 것 3개**:
+  - `SPEC-SPEC-LINT-ID-ARG-001` `## §D 수용 기준 — acceptance.md가 소유한다`(절 안 0줄)
+  - `SPEC-SYNC-AUDIT-FALSIFICATION-001` `## §H AC summary (full GWT in acceptance.md)`(5줄 — 위 회귀)
+  - `SPEC-V3R6-ASKUSER-DECISION-MEMORY-001` `## §H. 성공 기준 (요약; 상세는 acceptance.md)`(0줄)
+- 남은 `###` 이하 앵커 **6개**, 모두 절 안 0줄:
+  - 옛 `###` + 단어 5개가 그대로 남았다: `SPEC-HARNESS-OUTCOME-CAPTURE-001`·`SPEC-HARNESS-REGRESSION-GATE-001` `### Preservation tests required GREEN (run in acceptance)`, `SPEC-V3R4-STATUS-LIFECYCLE-001` `### Phase-Gate Acceptance`, `SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002` `### §B.5 Reproduction-First Acceptance …`, `SPEC-ZONE-REGISTRY-HARDEN-001` `### 1.3 F3 — plan.md 문서 의미론 vs 구현·acceptance 의미론 불일치`.
+  - 새로 1개: `SPEC-COVERAGE-RULE-SCOPE-001` `### 2026-08-31 — 설계 결정이 인수 기준 하나를 만료시켰다 (AC-CRS-001-006b)`(앵커 없던 파일).
+  - 옛 `###` + 파일명만 4개는 모두 사라졌다. `SPEC-STEERING-ALIGN-RULE-SCOPING-001` 은 `## E. Acceptance Criteria Reference` 로 옮겨 8줄을 읽는다.
+- 부정 표지로 빠진 헤딩 중 어휘를 가진 것 2개: `SPEC-AC-COUNT-DISCRIMINATOR-001`·`SPEC-SELECTOR-CENSUS-001` 의 `### Out of Scope — … 수락 기준 …`.
+- 앵커 절 뒤에 AC 를 부르는 헤딩이 또 있고 그 아래 파서 수용 줄이 있는 경우: 3건 14줄. `SPEC-LEARN-CHANNEL-SCOPE-001` 7줄(위 회귀), `SPEC-V3R2-SPC-001` `### 11.1 Before (v2.x acceptance format)` 3줄·`### 11.2 After (v3.0+ acceptance format)` 4줄(수정 전에도 읽히지 않던 형식 예시 절).
+- 반사실 — 어휘에 `수용 기준`·`성공 기준`·`ac summary` 를 더하면: 판정 대비 21파일이 바뀌고 +18줄. 줄이 생기는 파일은 `SPEC-PREMERGE-SETTINGS-DRIFT-001` +13(84행 `## §3 수용 기준`, 88~100행 `maps REQ-PSD-…` 선언 13)과 `SPEC-SYNC-AUDIT-FALSIFICATION-001` +5 둘뿐이고, 나머지 19파일은 0줄이다.
+- 반사실 — 앵커 선택 방식(어휘는 판정 그대로):
+  - 절 안 파서 수용 줄이 0 인 앵커를 건너뛰고 다음 AC 헤딩으로 가면: 1230줄(+7), 바뀌는 파일은 `SPEC-LEARN-CHANNEL-SCOPE-001` 하나(0 → 7).
+  - AC 헤딩 절을 모두 합치면(줄 중복 제거): 1237줄(+14), 바뀌는 파일 2개. `SPEC-LEARN-CHANNEL-SCOPE-001` 0 → 7, `SPEC-V3R2-SPC-001` 17 → 24(형식 예시 절 `### 11.1 Before`·`### 11.2 After` 의 7줄이 새로 읽힌다).
+  - 빈 앵커 건너뛰기 + 어휘 확장(`수용 기준`·`성공 기준`·`ac summary`)을 함께 쓰면: 1248줄(판정 대비 +25, 수정 전 대비 +101), 바뀌는 파일 3개(`SPEC-LEARN-CHANNEL-SCOPE-001` 0 → 7, `SPEC-PREMERGE-SETTINGS-DRIFT-001` 0 → 13, `SPEC-SYNC-AUDIT-FALSIFICATION-001` 0 → 5).
+  - 수정 전 파서보다 **적게** 읽는 파일: 판정 그대로 2개(위 두 회귀), 빈 앵커 건너뛰기 + 어휘 확장 0개.
+- 코드 블록 안 `#` 줄: AC 어휘 헤딩 아래에서 0줄(awk). 같은 awk 로 헤딩 조건 없이 세면 258줄이라 계기가 동작한다. 그래서 절 끝 판정에 펜스 처리는 넣지 않았다.
+
+### Baseline-attribution
+워크트리 `WT-ac-heading-anchor`. 수정 전 측정은 HEAD `ce37a31b9`(수정 코드 없음), 수정 후 측정은 기준선 커밋 위에 수정 코드가 미커밋으로 얹힌 작업 트리, 이 실행.
+
+### Gaps
+- `moai spec view` 픽스처 L/N/C 재실행은 바이너리가 필요해 하지 않았다(`internal/cli` 컴파일 슬롯 미승인). 파서 동작은 위 테스트와 센서스로만 확인했다.
+- 늘어난 12파일의 +88줄은 파일별 수만 봤고 줄마다 진짜 AC 선언인지는 읽지 않았다. 코퍼스 lint 전/후 비교(§4)에서 새로 생긴 발견은 전수 대조한다.
+
+### Residual-risk
+- 어휘가 헤딩 전체에서 부분 문자열로 맞기 때문에 `### 2026-08-31 — … 인수 기준 하나를 만료시켰다` 같은 이력 소제목도 앵커가 된다. 지금은 절 안 0줄이라 판독이 바뀌지 않지만, 이런 소제목 아래에 `AC-…:` 줄이 오면 읽힌다.
+
+## 4. 코퍼스 lint 전/후 (판정 그대로의 구현)
+
+### Claim
+- 코퍼스 `CoverageIncomplete` 는 수정 전후 모두 **2010건**이고, 새로 생긴 발견 0건·사라진 발견 0건이다. `DuplicateAcceptanceID` 는 전후 모두 0건(증가 0). 발견 코드별 개수(16종)도 전후가 같다.
+- 전수 원문 대조 대상(새 발견)과 무작위 표본 대상(사라진 발견)이 모두 빈 집합이다.
+- 이 "변화 없음"은 계기가 수정을 못 본 결과가 아니다. 같은 Linter 로 재현 픽스처를 돌리면 수정 전 파서에서 L·N 이 `CoverageIncomplete` 1건씩, 수정 후 0건이다.
+
+### Evidence
+- 수정 전: `probe/lint-census-before.log`(exit 0, `findings = 3325  CoverageIncomplete = 2010  DuplicateAcceptanceID = 0`). 이 TSV 는 t564 바이너리 측정 `corpus-after-coverage.tsv`(2010행)와 `cmp` exit 0, 코드별 개수는 `moai-t564-fixed spec lint --json` 결과와 `diff` exit 0.
+- 수정 후: 탐침 `probe/zz_t565_lint_census_test.go` 를 `-overlay` 로 끼워 `go test ./internal/spec -count=1 -run '^TestT565LintCensus$' -v -timeout 1500s` → `ok … 365.735s`, `exit=0`, `findings = 3325  CoverageIncomplete = 2010  DuplicateAcceptanceID = 0`(`probe/lint-census-after.log`).
+- 비교: `comm -13` → `corpus-appeared.tsv` 0행, `comm -23` → `corpus-disappeared.tsv` 0행, `corpus-after-duplicate.tsv` 0행, `diff corpus-before-codes.tsv corpus-after-codes.tsv` exit 0.
+- 양성 대조(탐침 `probe/zz_t565_repro_lint_test.go`, `BaseDir` = `.moai/reports/t565/repro`):
+  - 수정 후 파서: `SPEC-HDGREPRO-001/002/003 CoverageIncomplete = 0/0/0`, exit 0(`probe/repro-lint-fixed.log`).
+  - HEAD 의 수정 전 `parser.go` 를 `-overlay` 로 바꿔 끼움: `1/1/0`, exit 0(`probe/repro-lint-unfixed.log`). §1 의 바이너리 픽스처 결과(L·N 에서 `CoverageIncomplete`, C 는 0)와 같다.
+
+### Baseline-attribution
+수정 전 측정은 HEAD `ce37a31b9` 트리, 수정 후 측정과 양성 대조는 기준선 커밋 위 미커밋 수정 트리. 판정 빌드는 모두 `go test` 가 그 트리에서 새로 컴파일한 테스트 바이너리다.
+
+- 읽는 줄이 바뀐 14파일에서 `CoverageIncomplete` 가 움직이지 않은 이유: 센서스(`probe/anchor-after-census.log`)에서 읽힌 줄이 매핑하는 REQ id 를 파일별 집합으로 비교하면 새로 매핑된 것 0, 매핑이 사라진 것 0 이다. 대조로 파일별 합계는 수정 전 580, 수정 후 580 이라 빈 집합 비교가 아니다. 늘어난 88줄과 줄어든 12줄은 모두 이미 다른 줄이 매핑한 REQ 를 다시 부르거나 REQ 매핑이 없는 줄이다.
+
+### Gaps
+- 반사실 조합(빈 앵커 건너뛰기 + 어휘 확장)의 코퍼스 lint 결과는 재지 않았다. `SPEC-PREMERGE-SETTINGS-DRIFT-001` 의 새 13줄은 `maps REQ-PSD-…` 를 달고 있어 `CoverageIncomplete` 가 줄어들 수 있다.
+
+### Residual-risk
+- 코퍼스 결과는 이 트리의 SPEC 834개에 대한 것이다. 새로 읽히는 줄에 REQ 매핑이 붙은 SPEC 이 앞으로 추가되면 `CoverageIncomplete` 가 달라질 수 있다.
+
+## 5. 멈춤 — 판정 범위 안에서 생긴 새 과소 계수 (리드 판정 대기)
+
+판정 원칙은 "새 오탐을 만들지 않는다"인데, 판정 그대로 구현하면 수정 전보다 적게 읽는 파일이 2개 생긴다(§3). 둘 다 판정문이 정하지 않은 지점에서 생긴다.
+
+1. **AC 헤딩이 여럿일 때 어느 것을 앵커로 삼는가.** 판정 (b) 는 "첫 헤딩"을 유지한다. 그런데 `Success Criteria`·`AC Matrix` 가 어휘에 들어가면서, 앞에 있는 빈 요약 절이 뒤의 진짜 절에서 앵커를 가져간다(`SPEC-LEARN-CHANNEL-SCOPE-001` −7).
+   - (i) 절 안에서 파서가 받는 줄이 0 인 앵커는 건너뛰고 다음 AC 헤딩으로 간다. 반사실 +7, 이 파일 하나만 바뀐다.
+   - (ii) AC 헤딩 절을 모두 합친다. 반사실 +14 인데, `SPEC-V3R2-SPC-001` 의 형식 예시 절 7줄까지 새로 읽는다.
+   - (iii) 첫 헤딩을 유지하고 −7 을 받아들인다.
+2. **판정 어휘 밖의 헤딩 3개.** 파일명만 언급한 `##` 10개 중 `수용 기준`·`성공 기준`·`AC summary` 3개가 어휘에 없다. 그중 `SPEC-SYNC-AUDIT-FALSIFICATION-001` 은 절 안에 진짜 선언 5개가 있어 −5 가 된다. 코퍼스 헤딩 수로는 `## 수용 기준` 42개, `## 성공 기준` 33개로 `수락 기준`(12)·`인수 기준`(9)보다 많다.
+   - (가′) 세 표현을 어휘에 더한다. 반사실 +18, 줄이 생기는 파일은 −5 회복과 `SPEC-PREMERGE-SETTINGS-DRIFT-001` +13(수정 전에도 읽히지 않던 `## §3 수용 기준`)뿐이고, 나머지 19파일은 앵커만 생기고 0줄이다.
+   - (가) 판정 어휘를 유지하고 −5 를 받아들인다.
+3. **1-(i)과 2-(가′)를 함께 쓰면** 1248줄이고 수정 전보다 적게 읽는 파일이 0개다. 레인 권고는 이 조합이다. 바뀌는 코드는 `findACSectionStart` 의 선택 루프와 어휘 목록 두 곳이다.
+4. 코퍼스 lint 전/후(`CoverageIncomplete` 신규·소멸, `DuplicateAcceptanceID` 증가)는 §4 에 판정 그대로의 구현 기준으로 적는다.

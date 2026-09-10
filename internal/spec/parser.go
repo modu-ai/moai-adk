@@ -62,20 +62,74 @@ type acParsedLine struct {
 	line   int
 }
 
-// findACSectionStart finds the start index of Acceptance Criteria section in markdown
+// acSectionVocabulary is the explicit list of phrases that name an acceptance
+// criteria section (card t565). Matching is case-insensitive and runs after the
+// file name acceptance.md is removed, so a heading that only points at the
+// sibling file does not name the section.
+var acSectionVocabulary = []string{
+	"acceptance",
+	"success criteria",
+	"ac matrix",
+	"수락 기준",
+	"인수 기준",
+	"검수 기준",
+}
+
+// acNegativeSectionMarkers mark a heading about what the SPEC does not cover;
+// such a heading never anchors, even when it mentions acceptance criteria.
+var acNegativeSectionMarkers = []string{"out of scope", "out-of-scope", "non-goal"}
+
+// markdownHeadingLevel returns the ATX heading level of a trimmed line, or 0
+// when the line is not a heading.
+func markdownHeadingLevel(trimmed string) int {
+	level := 0
+	for level < len(trimmed) && trimmed[level] == '#' {
+		level++
+	}
+	if level == 0 || level > 6 {
+		return 0
+	}
+	if level < len(trimmed) && trimmed[level] != ' ' && trimmed[level] != '\t' {
+		return 0
+	}
+	return level
+}
+
+// isACSectionHeading reports whether a heading names the acceptance criteria
+// section.
+func isACSectionHeading(trimmed string) bool {
+	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
+	for _, marker := range acNegativeSectionMarkers {
+		if strings.Contains(text, marker) {
+			return false
+		}
+	}
+	for _, phrase := range acSectionVocabulary {
+		if strings.Contains(text, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// findACSectionStart finds the start index of Acceptance Criteria section in markdown:
+// the line after the first heading of level 2 or deeper that names the section.
 func findACSectionStart(lines []string) int {
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "##") && strings.Contains(strings.ToLower(trimmed), "acceptance") {
+		if markdownHeadingLevel(trimmed) >= 2 && isACSectionHeading(trimmed) {
 			return i + 1
 		}
 	}
 	return -1
 }
 
-// extractACLines extracts parsed line list from AC section
+// extractACLines extracts parsed line list from AC section. The section ends at
+// the next heading of the same or a higher level than its anchor, so its own
+// deeper subheadings are read.
 func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedLine {
 	var acLines []acParsedLine
+	anchorLevel := markdownHeadingLevel(strings.TrimSpace(lines[startIdx-1]))
 
 	for i := startIdx; i < len(lines); i++ {
 		line := lines[i]
@@ -85,7 +139,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 			continue
 		}
 
-		if strings.HasPrefix(trimmed, "##") {
+		if level := markdownHeadingLevel(trimmed); level > 0 && level <= anchorLevel {
 			break
 		}
 
