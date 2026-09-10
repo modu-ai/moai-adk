@@ -1,0 +1,17 @@
+# F7 evidence — govulncheck judges reachability by call paths, not by the go directive
+# tree: 8addcf742 (pre-correction)
+
+$ grep -c 'Example traces found' .moai/reports/t610/baseline/govulncheck-auto.log
+8
+
+$ grep -n -m 2 -A 2 'Example traces found' .moai/reports/t610/baseline/govulncheck-auto.log
+9:    Example traces found:
+10-      #1: internal/update/checker.go:76:26: update.checker.CheckLatest calls http.Client.Do, which eventually calls url.URL.Parse
+11-      #2: internal/cli/mcp_progress.go:32:2: cli.init calls server.init, which eventually calls url.URL.ResolveReference
+--
+19:    Example traces found:
+20-      #1: internal/goal/dashboard.go:100:24: goal.RenderDashboardReArm calls template.Template.Execute
+21-
+
+# Each of the 8 advisories carries a trace block from this module's code to the affected
+# standard-library symbol; the go directive only selects which standard library is scanned.
