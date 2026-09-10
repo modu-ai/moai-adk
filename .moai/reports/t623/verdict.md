@@ -74,3 +74,52 @@ branch: WT-auditor-d7d8-scripts · base: 로컬 develop `1e207c3ff`
 ### Residual-risk
 - D8 섹션 경계는 마크다운 제목만 본다. 코드 펜스 안의 `#` 로 시작하는 줄은 제목으로 오인될 수 있다.
 - awk 의 `RS = ""` 문단 모드와 `tolower` 는 POSIX awk 기능이며 macOS 기본 awk 에서만 실행했다.
+
+## 3. 문서 반영 — 템플릿 먼저, 로컬 손편집, C3 재생성
+
+### Claim
+리드 판정(결정 1: 스크립트는 REVIEW/candidate/GAP 만, BLOCKING 은 auditor 가 읽고 판단 / 결정 2: 워크트리 안 `make agents-emit` 1회 허용)대로 두 사본을 고쳤고, 두 사본에서 다시 추출한 스크립트가 §2 에서 검증한 초안과 바이트 동일하며 7개 픽스처에서 같은 결과를 낸다. C3 는 재생성분만 바뀌었고 방출 검사가 통과한다.
+
+### Evidence
+수정 위치(두 사본 동일 4곳, 템플릿 먼저 → 로컬 손편집, cp 없음):
+1. MP-5: "Group 7 스크립트는 `REVIEW:` 후보만 내고 BLOCKING 은 auditor 가 문맥을 읽고 낸다" 한 문장 추가.
+2. D7-4: "— otherwise BLOCKING" 뒤에 "decided by the auditor after reading the script's `REVIEW:` output, never by the script".
+3. D7 스크립트 교체 + 양방향 문단: "`reconciliation candidate` 없는 `REVIEW:` 는 자동 BLOCKING 이 아니다(읽어서 조정이 없을 때만 BLOCKING, 키워드 밖 표현도 조정이다) / candidate 문단은 자동 통과가 아니다(읽어서 실제로 조정하지 않으면 BLOCKING)".
+4. D8 스크립트 교체(제목 단위 섹션 판정 + `GAP:`) + 섹션 범위를 두는 이유와 GAP 을 통과로 읽지 말라는 문단.
+
+두 사본 차이(수정 후): `diff .claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md > copies-diff-after.txt` → `diff_exit=1`, 헝크 `338c338`, `463c463`, `465,466d464` — 수정 전과 같은 기존 차이 2곳(D7-1 예시 ID, Retry Loop)뿐. 이번 수정은 두 사본에 같은 바이트로 들어갔다.
+
+재추출 비교(§1 과 같은 awk 추출 + 자리표시자 치환):
+```
+d7_copies_cmp=0
+d8_copies_cmp=0
+d7_vs_draft_cmp=0
+d8_vs_draft_cmp=0
+```
+재추출본 줄 수: `post-d7-local.sh` 18, `post-d8-local.sh` 16.
+
+C3 재생성: `make agents-emit > agents-emit.log 2>&1` → `emit_exit=0`, 로그 끝 `ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.417s`. `git status --short -- internal/template/templates/.codex` → ` M internal/template/templates/.codex/agents/moai/plan-auditor.toml` 한 파일. `git diff --stat` → `29 insertions(+), 9 deletions(-)`, 헝크 위치 142(MP-5)·339(D7-4)·346~367(D7)·379~405(D8) — 수정한 영역뿐. C3 손편집 없음.
+방출 검사(읽기 전용): `make agents-emit-check > agents-emit-check.log 2>&1` → `check_exit=0`, 로그 끝 `ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.419s`.
+대조군: `git grep -c -F 'Surface cross-SPEC reconciliation candidates'` → 로컬 .md 1, C3 .toml 1 — 새 문구가 C3 에 실제로 실렸다.
+
+재추출 스크립트로 픽스처 재실행(템플릿 사본 7건, 로컬 사본 7건, 각각 단독 명령; 출력 `repro/post-tmpl-*.log`, `repro/post-local-*.log`):
+
+| 픽스처 | 템플릿·로컬 사본 출력(동일) |
+|---|---|
+| `d7-fp` | `REVIEW: ... superseded — confirm explicit reconciliation ...` + `reconciliation candidate (paragraph 4): This SPEC supersedes SPEC-FIXTURE-OLD-001: ...`, BLOCKING 없음, `exit=0` |
+| `d7-tp` | `REVIEW: ...` 만, `exit=0` |
+| `d7-live` | REVIEW 없음, `exit=0` |
+| `d8-fn` | `BLOCKING: section "## 2. New file watcher" ...`, `exit=0` |
+| `d8-tn` | 출력 없음, `exit=0` |
+| `d8-tp` | `BLOCKING: section "## 1. New file watcher" ...`, `exit=0` |
+| `d8-gap` | `GAP: new-spec.md is not readable — D8 was not observed`, `exit=0` |
+
+### Baseline-attribution
+워크트리 `WT-auditor-d7d8-scripts` HEAD `955a66792` + 미커밋 수정(두 .md, C3 .toml), 이 실행. `make build`·embed-check 는 돌리지 않았다(배치 끝 리드 몫).
+
+### Gaps
+- **기존 테스트가 옛 계약을 고정한다.** `internal/cli/plan_audit_d7_d8_test.go` 는 D7·D8 스크립트를 문서에서 읽지 않고 테스트 코드 안에 옛 스크립트 사본을 박아 두었다(87행·142행 D7, 184~188·226~230행 D8). 그래서 문서가 바뀌어도 이 테스트는 계속 초록이고, 동시에 `TestPlanAuditD7_RetiredSPECConflict` 는 "조정 없는 retired 참조 → 스크립트가 BLOCKING" 이라는 **폐기된 계약**을 맞다고 주장한다. 주석의 문서 경로(`.claude/agents/meta/plan-auditor.md`)도 현존하지 않는 경로다. 이 테스트는 `internal/cli` 소속이라 고치거나 돌리려면 리드 슬롯이 필요하다 — 리드 판정 대기.
+- D7 후보 문단 판독(auditor 가 읽고 BLOCKING 을 내는 층)은 사람·모델 판단이라 기계적으로 검증하지 않았다.
+
+### Residual-risk
+- 테스트를 고치지 않으면, 누군가 문서 스크립트를 옛 형태로 되돌려도 어떤 테스트도 붉어지지 않는다.
