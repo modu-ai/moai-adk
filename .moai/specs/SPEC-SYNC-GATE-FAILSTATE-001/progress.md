@@ -28,6 +28,26 @@ Card: t624 · Branch: `WT-sync-gate-failstate` · Plan-phase tree: `fa96fe644`
 - 2026-09-10 — plan-audit round 3 FAIL (score 0.86, 1 blocking NEW-1) — `.moai/reports/t624/plan-audit-r3.md`; operator decision relayed by the factory lead: PASS-with-debt, Implementation Kickoff approved on condition that NEW-1 is resolved before M1; debt paid in the first run-phase commit (this change set). Standing condition: if at M1 an observed RED reason again differs from its stated reason, the run stops and reports without editing the criterion.
 - Earlier verdicts: `.moai/reports/t624/plan-audit.md` (round 1, FAIL 0.60) and `.moai/reports/t624/plan-audit-r2.md` (round 2, FAIL 0.86).
 
+### AC-013 amendment (recorded 2026-09-11 by manager-spec)
+
+- **Trigger:** in the run-phase M4 mutant probes (HEAD `989ef144b`), mutant M18 survived.
+  Replacing hook line 372 (`rm -f "$PAYLOAD_FILE" 2>/dev/null || true`) with `:` left
+  `TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState` at exit 0, D1 and S1 PASS.
+  Evidence: `.moai/reports/t624/m4-mutant-M18.txt`.
+  - **Why S1 missed it:** its failing call 2 rewrites the payload before call 3 reads it.
+- **Decision:** lead decision A. AC-013 gains rows that kill M18 directly. Approved without a
+  new plan-audit round under the kickoff debt rule. SPEC status is unchanged (`in-progress`).
+- **Rows added:**
+  - **S2:** the payload file is absent at every stub invocation of a check-running call that
+    follows a stored block.
+  - **S3:** a partial write failure (payload `mv` refused by a PATH shim, `fail` record
+    written) re-gates on the next call instead of re-delivering the stale block.
+- **Knock-on edits:**
+  - §D.16: M18 now names S2 and S3; S1 is recorded as not an M18 target.
+  - plan.md §H: the stale-payload risk row now cites S2 and S3.
+- **For the run phase:** the M18 probe re-run on the tree where S2/S3 land is their RED
+  evidence. No RED-now cell exists (acceptance.md §D.13 class note).
+
 ## §E.2 Run-phase Evidence
 
 ### M1 — RED tests (test-only commit), recorded 2026-09-10 by manager-develop

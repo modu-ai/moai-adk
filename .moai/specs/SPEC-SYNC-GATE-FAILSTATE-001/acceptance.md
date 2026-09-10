@@ -44,7 +44,7 @@
 | AC-010 | 013 | regression-guard | L-13, L-15, L-16, L-17 | M2, M3 keep them |
 | AC-011 | 014 | release-blocking | L-02..L-05, L-08..L-12 | M3 |
 | AC-012 | 015 | release-blocking (a); regression-guard (b) | L-06, L-07, L-20 | M3 |
-| AC-013 | 002·011 | regression-guard | deleting the sentinel re-runs today | M2 keeps it |
+| AC-013 | 002·011 | regression-guard | D1, S1: deleting the sentinel re-runs today; S2, S3: M2-tree baseline, RED evidence = mutant M18 probe (2026-09-11 amendment) | M2 keeps it |
 | AC-014 | 008 | release-blocking | M1 RED cell (no named window exists) | M2 |
 | AC-015 | 008·009 | release-blocking | M1 RED cell (named reasons, §D.15) | M2 |
 
@@ -502,13 +502,59 @@ Each row calls the hook twice on the same failing HEAD.
 |---|---|---|
 | D1 | AC-001 state after call 1 → remove `.moai/state/sync-quality-gate.last` → run with modes unset | stub count increased; stdout contains a block |
 | S1 | call 1 with modes unset, `go vet` failing (blocks; block payload stored) → remove `.moai/state/sync-quality-gate.last` → call 2 with tier `fully-autonomous` (advisory run) → call 3 with modes unset | call 2 stub count increased and stdout carries no `"decision"`; **call 3 stdout is empty and its stub count is unchanged** — the call-1 block is not re-delivered |
+| S2 | call 1 with modes unset, `go vet` failing (blocks; block payload stored) → remove `.moai/state/sync-quality-gate.last` → empty the probe file → call 2 with modes unset, `go vet` still failing (runs the checks) | **Setup:** `.moai/state/sync-quality-gate.payload` exists after the record is removed and before call 2 starts. **Then:** the probe file holds at least one observation written during call 2, and **every observation reads `absent`** — no stub invocation of call 2 saw the payload file on disk |
+| S3 | call 1 with modes unset, `go vet` failing (blocks; block payload stored) → remove `.moai/state/sync-quality-gate.last` → install the `mv` shim → call 2 with modes unset, `go vet` still failing → remove the shim → call 3 with modes unset | **Setup (reachability, asserted separately):** during call 2 the shim logged at least one refused move whose destination was the payload file; the call-2 stub count increased; after call 2 the record reads `<HEAD> fail`. **Then:** after call 2 no payload file exists; **call 3's stub count increased** (the checks re-ran) and its stdout contains a block |
 
 - **And** the hook's leading comment block names `.moai/state/sync-quality-gate.last` together
   with deletion as the way to force a re-run (reviewer read).
 - **Baseline:** on `fa96fe644`, D1 re-runs (which is why the stopchain tests reset this way);
-  S1 call 3 is silent.
+  S1 call 3 is silent. S2 and S3 have no `fa96fe644` baseline (see the class note below).
+- **S2 probe mechanism (fixture only, no production change):** each time the stub toolchain is
+  invoked, before it exits, it appends one line to a probe file in the fixture temp directory:
+  `present` when `<fixture repo>/.moai/state/sync-quality-gate.payload` exists, `absent`
+  otherwise. An empty probe file after call 2 means the checks never ran. That is a gap, not a
+  pass.
+- **S3 shim mechanism (fixture only, no production change):** an executable named `mv` is placed
+  in the stub toolchain directory, which is first on PATH. When its final argument is the
+  payload file path, it appends a line to a shim log and exits 1. Otherwise it execs the system
+  `mv` by the absolute path resolved before the shim was installed, so it cannot resolve to
+  itself.
+  - **Why it reaches the hook:** `write_state_file` calls `mv` by bare name (hook line 215 at
+    `989ef144b`), and the hook never reassigns PATH.
+  - **What call 2 leaves behind:** the `fail` record goes through the real `mv`, so call 2
+    leaves exactly the partial-write state: a `fail` record and no payload.
+- **S3 discriminator:** stdout alone cannot tell a re-run from a re-delivery. Call 3's fresh
+  block and the stale call-1 payload come from the same failing check, so their bytes are
+  identical. The stub count decides the row; the stdout block assertion only shows that call 3
+  did not fall silent.
+- **S3 reachability:** if the shim refusal is not logged (for example, a later hook calls `mv`
+  by absolute path), the setup assertion fails. That run cannot be interpreted and is reported
+  as a gap; it is never read as S3 passing.
+- **Class and RED evidence for S2 and S3:** both rows are regression-guard.
+  - **No `fa96fe644` baseline:** `fa96fe644` writes no payload file, so their setup assertions
+    cannot hold there.
+  - **When they were added:** the 2026-09-11 amendment added them after M2. Their baseline is a
+    PASS on the tree where the run phase adds them (M2 tree `989ef144b` or its successor).
+  - **RED evidence:** the M18 mutant probe, re-run in the run phase on that same tree, not a
+    RED-now cell. With hook line 372 at `989ef144b`
+    (`rm -f "$PAYLOAD_FILE" 2>/dev/null || true`) replaced by `:`, S2 and S3 must each turn red.
+- **Selector:** S2 and S3 run as subtests of
+  `TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState`, so the M4 `-run` selector is
+  unchanged. Before the result is read, the `-v` output must list four subtests: D1, S1, S2, S3.
 - **S1 failure meaning:** a stale payload survived a check-running invocation and blocked an
-  advisory run retroactively (REQ-002 violated; mutant M18).
+  advisory run retroactively (REQ-002 violated).
+- **S1 is not a mutant M18 target.** In S1 the advisory call 2 is itself a failing run, so it
+  rewrites the payload (hook lines 564-566 at `989ef144b`) before call 3 reads it, and the stale
+  call-1 payload is overwritten on the normal write path. M18 left S1 green in the M4 probe
+  (`.moai/reports/t624/m4-mutant-M18.txt`). S1 stays as a regression guard on the advisory
+  re-delivery path.
+- **S2 failure meaning:** a check-running invocation kept the stored payload on disk while its
+  checks ran, because the invalidation was removed or moved after the checks. This violates
+  REQ-002 ("before any check starts, atomically remove the payload file"); mutant M18.
+- **S3 failure meaning:** after a partial write failure (payload write failed, `fail` record
+  written), the call-1 block payload for the same HEAD survived and was re-delivered without
+  running the checks. A stale verdict stood in for the run that could not record its own
+  (REQ-002 violated; mutant M18).
 
 ## §D.14 AC-014 — the stale window equals the registered timeout (release-blocking)
 
@@ -592,7 +638,7 @@ Each row calls the hook twice on the same failing HEAD.
 | M15 | Ignore `MOAI_SYNC_GATE_BLOCKING` when resolving the mode at re-delivery | AC-008 A7 |
 | M16 | Treat tier `automatic` as blocking at re-delivery regardless of the failed-check composition | AC-008 A8 |
 | M17 | Treat tier `automatic` as advisory whenever `vet` failed, ignoring the `build` failure | AC-008 A9 |
-| M18 | Leave the payload file in place when an invocation runs the checks | AC-013 S1 |
+| M18 | Leave the payload file in place when an invocation runs the checks | AC-013 S2 (a stub invocation observes `present`), AC-013 S3 (call 3 stub count unchanged; payload present after call 2). S1 is not a target: its failing call 2 rewrites the payload before call 3 reads it |
 | M19 | Treat `<HEAD> <any token>` other than `fail` as a silent pass | AC-005 U1 |
 | M20 | Declare the stale window as 60 but compare against 100 | AC-006 b70 |
 | M21 | Declare the stale window as 60 but compare against 40 | AC-006 a50 |

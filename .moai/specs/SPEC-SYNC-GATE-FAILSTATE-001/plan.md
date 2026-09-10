@@ -242,7 +242,7 @@ Behavior on invocation, for a sync-phase HEAD with a code delta (the unchanged e
 | Exhausted-retry notice repeats every turn | notice noise until a new commit or state-file deletion (accepted by lead ruling B1) | notice is `systemMessage` only, never `decision`, so it never counts toward the Stop-hook block cap of 8; AC-015 |
 | A `stop_hook_active` literal in message text is misread | a stored failure is suppressed forever | key-position match; AC-004c |
 | Runtime sends a spacing variant not probed | re-delivery under the flag spends the block cap | whitespace-agnostic match; AC-004 compact/multi-space rows |
-| A stale payload survives a later check run | an advisory run retroactively blocked | REQ-002 invalidation; AC-013 S1 |
+| A stale payload survives a later check run | an advisory run retroactively blocked; after a partial payload-write failure, a stale block re-delivered without running the checks | REQ-002 invalidation; AC-013 S2 (payload absent while checks run), S3 (partial-write re-gate); mutant M18. S1 guards the advisory path but cannot observe M18 |
 | Payload write fails under blocking mode | silent pass | payload written before `fail` record; a `fail` record without a payload re-gates (B7); AC-005 U5 |
 | Crash between the payload write and the `fail` record | a torn state reads as a silent pass | torn states read as a notice or a re-gate, never silent; AC-005 torn-write rows TA1-TA5, TB1-TB2; mutants M23, M24 |
 | Re-emit printf becomes the compliance first match | `TestHookOfficialCompliance_AC002` fails or passes vacuously | §D printf rule; AC-009 |
