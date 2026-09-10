@@ -1,0 +1,187 @@
+=== RUN   TestT565AnchorSkipsFileMentionOnlyHeading
+--- PASS: TestT565AnchorSkipsFileMentionOnlyHeading (0.00s)
+=== RUN   TestT565AnchorSkipsOutOfScopeHeading
+=== RUN   TestT565AnchorSkipsOutOfScopeHeading/english
+    parser_ac_heading_anchor_test.go:55: AC-HDG-01 was NOT collected; got ids [AC-HDG-09]
+    parser_ac_heading_anchor_test.go:55: AC-HDG-09 WAS collected; got ids [AC-HDG-09]
+=== RUN   TestT565AnchorSkipsOutOfScopeHeading/korean
+    parser_ac_heading_anchor_test.go:55: AC-HDG-01 was NOT collected; got ids [AC-HDG-09]
+    parser_ac_heading_anchor_test.go:55: AC-HDG-09 WAS collected; got ids [AC-HDG-09]
+--- FAIL: TestT565AnchorSkipsOutOfScopeHeading (0.00s)
+    --- FAIL: TestT565AnchorSkipsOutOfScopeHeading/english (0.00s)
+    --- FAIL: TestT565AnchorSkipsOutOfScopeHeading/korean (0.00s)
+=== RUN   TestT565AnchorVocabulary
+=== RUN   TestT565AnchorVocabulary/##_6._Acceptance_Criteria
+=== RUN   TestT565AnchorVocabulary/##_3._수락_기준_—_acceptance.md_(Tier_M)
+=== RUN   TestT565AnchorVocabulary/##_수락_기준
+=== RUN   TestT565AnchorVocabulary/##_인수_기준
+=== RUN   TestT565AnchorVocabulary/##_검수_기준
+=== RUN   TestT565AnchorVocabulary/##_§F_AC_Matrix
+=== RUN   TestT565AnchorVocabulary/##_§E_Success_Criteria
+=== RUN   TestT565AnchorVocabulary/##_§E._Success_criteria
+=== RUN   TestT565AnchorVocabulary/##_§D_수용_기준
+=== RUN   TestT565AnchorVocabulary/##_§H._성공_기준_(요약)
+=== RUN   TestT565AnchorVocabulary/##_§H_AC_summary_(full_GWT_in_acceptance.md)
+--- PASS: TestT565AnchorVocabulary (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_6._Acceptance_Criteria (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_3._수락_기준_—_acceptance.md_(Tier_M) (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_수락_기준 (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_인수_기준 (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_검수_기준 (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_§F_AC_Matrix (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_§E_Success_Criteria (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_§E._Success_criteria (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_§D_수용_기준 (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_§H._성공_기준_(요약) (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_§H_AC_summary_(full_GWT_in_acceptance.md) (0.00s)
+=== RUN   TestT565AnchorSkipsEmptySection
+--- PASS: TestT565AnchorSkipsEmptySection (0.00s)
+=== RUN   TestT565AnchorAllEmptySectionsStillAnchor
+--- PASS: TestT565AnchorAllEmptySectionsStillAnchor (0.00s)
+=== RUN   TestT565AnchorVocabularyIsNotWide
+--- PASS: TestT565AnchorVocabularyIsNotWide (0.00s)
+=== RUN   TestT565SectionReadsItsOwnSubheadings
+--- PASS: TestT565SectionReadsItsOwnSubheadings (0.00s)
+=== RUN   TestT565SectionEndsAtSameOrHigherLevel
+=== RUN   TestT565SectionEndsAtSameOrHigherLevel/h3-anchor
+=== RUN   TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2
+--- PASS: TestT565SectionEndsAtSameOrHigherLevel (0.00s)
+    --- PASS: TestT565SectionEndsAtSameOrHigherLevel/h3-anchor (0.00s)
+    --- PASS: TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2 (0.00s)
+=== RUN   TestT528Anchor
+    zz_t528_anchor_probe_test.go:228: OUTDIR = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT528Anchor1309669482/001
+    zz_t528_anchor_probe_test.go:229: DENOMINATOR spec.md read = 834 (list: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT528Anchor1309669482/001/filelist.txt)
+    zz_t528_anchor_probe_test.go:230: IN-SECTION declarations = 1208
+    zz_t528_anchor_probe_test.go:231:   accepted by FROZEN baseline anchor = 216
+    zz_t528_anchor_probe_test.go:232:   accepted by LIVE parseSingleACLine = 1123
+    zz_t528_anchor_probe_test.go:233:   rejected by LIVE parseSingleACLine = 85
+    zz_t528_anchor_probe_test.go:234:   NEWLY accepted (live yes, baseline no) = 907 (list: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT528Anchor1309669482/001/newly-accepted.txt)
+    zz_t528_anchor_probe_test.go:235: POSITIVE-NEEDLE files (live) = 115 (list: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT528Anchor1309669482/001/positive-needle.txt)
+    zz_t528_anchor_probe_test.go:236: BASELINE-NEEDLE files (frozen anchor) = 18 (list: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT528Anchor1309669482/001/baseline-needle.txt)
+    zz_t528_anchor_probe_test.go:237: FULLY-BLIND files (>=1 decl, 0 accepted by live) = 9
+    zz_t528_anchor_probe_test.go:238: B.1 numeric-tail candidate: covered = 1166  UNCOVERED = 42
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-HFC-Nb                1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-HFC-GATE              1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-ORDERING              1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-MRR-GN                4
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-MRR-GREEN             1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-HML-N..N              4
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-SVG-N..N              5
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-GREEN                 1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-EVIDENCE              1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-SCOPE                 1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-HFC-Na                1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-PLW-N..N              2
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-DCC-N..N              4
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-Nb                    1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-MUTANT                1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-UTIL-N-Nb             1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-LCLN-N.N              10
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-Na                    1
+    zz_t528_anchor_probe_test.go:240:   UNCOVERED-SHAPE AC-Nc                    1
+    zz_t528_anchor_probe_test.go:252:   SEP :                807
+    zz_t528_anchor_probe_test.go:252:   SEP (                235
+    zz_t528_anchor_probe_test.go:252:   SEP —                124
+    zz_t528_anchor_probe_test.go:252:   SEP «none/other»     42
+--- PASS: TestT528Anchor (0.24s)
+=== RUN   TestT528CoverageAndParseErrorCensus
+    zz_t528_coverage_delta_test.go:102: positive control: uncovered REQ produces 1 CoverageIncomplete finding (rule fires)
+    zz_t528_coverage_delta_test.go:104: spec.md walked                       = 834
+    zz_t528_coverage_delta_test.go:105: files yielding >=1 acceptance criterion = 132
+    zz_t528_coverage_delta_test.go:106: CoverageRule (CoverageIncomplete) findings = 2010
+    zz_t528_coverage_delta_test.go:108:   parse error kind section-not-found                386
+    zz_t528_coverage_delta_test.go:110: DuplicateAcceptanceID / depth / other-fatal occurrences = 0
+--- PASS: TestT528CoverageAndParseErrorCensus (0.25s)
+=== RUN   TestT528SegmentGrammar
+=== RUN   TestT528SegmentGrammar/two_segments
+=== RUN   TestT528SegmentGrammar/five_segments_alnum_middle
+=== RUN   TestT528SegmentGrammar/three_segments_alnum_middle
+=== RUN   TestT528SegmentGrammar/four_segments
+=== RUN   TestT528SegmentGrammar/alnum_middle_mig
+=== RUN   TestT528SegmentGrammar/word_middle_segments
+=== RUN   TestT528SegmentGrammar/already_accepted_three_segment
+--- PASS: TestT528SegmentGrammar (0.00s)
+    --- PASS: TestT528SegmentGrammar/two_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/five_segments_alnum_middle (0.00s)
+    --- PASS: TestT528SegmentGrammar/three_segments_alnum_middle (0.00s)
+    --- PASS: TestT528SegmentGrammar/four_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/alnum_middle_mig (0.00s)
+    --- PASS: TestT528SegmentGrammar/word_middle_segments (0.00s)
+    --- PASS: TestT528SegmentGrammar/already_accepted_three_segment (0.00s)
+=== RUN   TestT528NumericTailRequired
+--- PASS: TestT528NumericTailRequired (0.00s)
+=== RUN   TestT528SubIDSuffixPreserved
+--- PASS: TestT528SubIDSuffixPreserved (0.00s)
+=== RUN   TestT528BoldWrapper
+=== RUN   TestT528BoldWrapper/bold_id_emdash_separator
+=== RUN   TestT528BoldWrapper/bold_id_emdash_separator_2
+=== RUN   TestT528BoldWrapper/bold_id_colon_separator
+--- PASS: TestT528BoldWrapper (0.00s)
+    --- PASS: TestT528BoldWrapper/bold_id_emdash_separator (0.00s)
+    --- PASS: TestT528BoldWrapper/bold_id_emdash_separator_2 (0.00s)
+    --- PASS: TestT528BoldWrapper/bold_id_colon_separator (0.00s)
+=== RUN   TestT528ParenQualifier
+=== RUN   TestT528ParenQualifier/short_qualifier
+=== RUN   TestT528ParenQualifier/req_qualifier
+=== RUN   TestT528ParenQualifier/bold_id_with_req_qualifier
+--- PASS: TestT528ParenQualifier (0.00s)
+    --- PASS: TestT528ParenQualifier/short_qualifier (0.00s)
+    --- PASS: TestT528ParenQualifier/req_qualifier (0.00s)
+    --- PASS: TestT528ParenQualifier/bold_id_with_req_qualifier (0.00s)
+=== RUN   TestT528QualifierInsideBoldWrapper
+=== RUN   TestT528QualifierInsideBoldWrapper/qualifier_then_closing_bold_emdash
+=== RUN   TestT528QualifierInsideBoldWrapper/closing_bold_then_qualifier
+--- PASS: TestT528QualifierInsideBoldWrapper (0.00s)
+    --- PASS: TestT528QualifierInsideBoldWrapper/qualifier_then_closing_bold_emdash (0.00s)
+    --- PASS: TestT528QualifierInsideBoldWrapper/closing_bold_then_qualifier (0.00s)
+=== RUN   TestT528BracketQualifierStaysRejected
+=== RUN   TestT528BracketQualifierStaysRejected/bracket_qualifier
+=== RUN   TestT528BracketQualifierStaysRejected/leftright_arrow_separator
+--- PASS: TestT528BracketQualifierStaysRejected (0.00s)
+    --- PASS: TestT528BracketQualifierStaysRejected/bracket_qualifier (0.00s)
+    --- PASS: TestT528BracketQualifierStaysRejected/leftright_arrow_separator (0.00s)
+=== RUN   TestT528ParenQualifierLeavesREQMappingAlone
+--- PASS: TestT528ParenQualifierLeavesREQMappingAlone (0.00s)
+=== RUN   TestT528SeparatorSet
+=== RUN   TestT528SeparatorSet/colon
+=== RUN   TestT528SeparatorSet/em_dash_u2014
+=== RUN   TestT528SeparatorSet/en_dash_u2013
+--- PASS: TestT528SeparatorSet (0.00s)
+    --- PASS: TestT528SeparatorSet/colon (0.00s)
+    --- PASS: TestT528SeparatorSet/em_dash_u2014 (0.00s)
+    --- PASS: TestT528SeparatorSet/en_dash_u2013 (0.00s)
+=== RUN   TestT528SectionScopingInvariant
+--- PASS: TestT528SectionScopingInvariant (0.00s)
+=== RUN   TestT528ACPrefixRequired
+=== RUN   TestT528ACPrefixRequired/REQ
+=== RUN   TestT528ACPrefixRequired/TEST
+=== RUN   TestT528ACPrefixRequired/M1
+--- PASS: TestT528ACPrefixRequired (0.00s)
+    --- PASS: TestT528ACPrefixRequired/REQ (0.00s)
+    --- PASS: TestT528ACPrefixRequired/TEST (0.00s)
+    --- PASS: TestT528ACPrefixRequired/M1 (0.00s)
+=== RUN   TestT528NonDeclarationBulletsStayRejected
+=== RUN   TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range
+=== RUN   TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range_2
+=== RUN   TestT528NonDeclarationBulletsStayRejected/global_scope_line_naming_an_ac
+=== RUN   TestT528NonDeclarationBulletsStayRejected/tier_grouping_line_listing_acs
+=== RUN   TestT528NonDeclarationBulletsStayRejected/prose_note_mentioning_an_anchor
+=== RUN   TestT528NonDeclarationBulletsStayRejected/bare_ears_clause_bullet
+=== RUN   TestT528NonDeclarationBulletsStayRejected/verification_command_bullet
+=== RUN   TestT528NonDeclarationBulletsStayRejected/given_prelude_bullet
+--- PASS: TestT528NonDeclarationBulletsStayRejected (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range_2 (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/global_scope_line_naming_an_ac (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/tier_grouping_line_listing_acs (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/prose_note_mentioning_an_anchor (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/bare_ears_clause_bullet (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/verification_command_bullet (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/given_prelude_bullet (0.00s)
+=== RUN   TestT528NonDeclarationBulletsCorpusSweep
+    zz_t528_overacceptance_test.go:138: non-declaration bullets swept = 335, read as declarations = 0
+--- PASS: TestT528NonDeclarationBulletsCorpusSweep (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.864s
+FAIL
+exit=1

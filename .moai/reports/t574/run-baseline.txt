@@ -1,0 +1,15 @@
+# card t574 — AC-THG-006 baseline (no mutant)
+# tree: .claude/worktrees/t574  branch: WT-temp-roots-ac  head: d937cd68d or 0f30477af (run issued concurrently with the prediction commit; the two differ only by .moai/reports/t574/run-mutant-prediction.md, no Go file)  go: go1.26.8 darwin/arm64
+# command: go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v
+# expected: exactly 2 top-level "=== RUN" lines, both PASS, exit_code 0
+# --- verbatim output ---
+=== RUN   TestTempOrigin_ComponentBoundary
+=== RUN   TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp
+--- PASS: TestTempOrigin_ComponentBoundary (0.00s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/" "/tmp" "/var/folders"]
+--- PASS: TestDefaultTempRoots_Membership (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.245s
+exit_code: 0

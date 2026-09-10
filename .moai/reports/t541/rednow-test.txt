@@ -1,0 +1,45 @@
+=== RUN   TestRuleClauseEnumeratesFourElements
+--- PASS: TestRuleClauseEnumeratesFourElements (0.00s)
+=== RUN   TestRuleClauseStatesDemotionNotPass
+--- PASS: TestRuleClauseStatesDemotionNotPass (0.00s)
+=== RUN   TestRuleClauseIsStructuralNotLexical
+--- PASS: TestRuleClauseIsStructuralNotLexical (0.00s)
+=== RUN   TestMP8SpanNamesReexecution
+--- PASS: TestMP8SpanNamesReexecution (0.00s)
+=== RUN   TestMP8SpanIsScoreIndependent
+--- PASS: TestMP8SpanIsScoreIndependent (0.00s)
+=== RUN   TestMP8SpanCarriesNABranch
+--- PASS: TestMP8SpanCarriesNABranch (0.00s)
+=== RUN   TestGroup4AndReportRowExist
+--- PASS: TestGroup4AndReportRowExist (0.00s)
+=== RUN   TestMP8SpanCarriesExecutionDiscipline
+--- PASS: TestMP8SpanCarriesExecutionDiscipline (0.00s)
+=== RUN   TestMP8SpanKeysOnExecutedCount
+--- PASS: TestMP8SpanKeysOnExecutedCount (0.00s)
+=== RUN   TestMP8LivenessAnchors
+--- PASS: TestMP8LivenessAnchors (0.00s)
+=== RUN   TestMP8SentinelMutantsAreDetected
+--- PASS: TestMP8SentinelMutantsAreDetected (0.00s)
+=== RUN   TestRedNowViolatingFixtureIsReported
+    red_now_cell_test.go:676: violating fixture findings: elements=[AC-VIO-001 (line 29): release-blocking RED-now cell carries no command, stdout and exit code] form=[line 20 (ledger-entry): "grep -c \"alpha\" internal/spec/testdata/red_now/violating/target.txt | wc -l" carries unquoted [|]]
+--- PASS: TestRedNowViolatingFixtureIsReported (0.00s)
+=== RUN   TestRedNowLegitimateFixtureIsClean
+--- PASS: TestRedNowLegitimateFixtureIsClean (0.00s)
+=== RUN   TestCommandScopeIsCarrierIndependent
+    red_now_cell_test.go:718: M-5 observed: cell-scoped=0 findings, carrier-independent=1 findings [line 17 (ledger-entry): "grep -c \"alpha\" internal/spec/testdata/red_now/ledger/target.txt | head -1" carries unquoted [|]]
+--- PASS: TestCommandScopeIsCarrierIndependent (0.00s)
+=== RUN   TestClassLaunderingMutantIsDetected
+    red_now_cell_test.go:765: M-4 observed: class-scoped=0 findings, class-independent=1 findings [line 20 (ledger-entry): "grep -c \"alpha\" internal/spec/testdata/red_now/violating/target.txt | wc -l" carries unquoted [|]]
+--- PASS: TestClassLaunderingMutantIsDetected (0.00s)
+=== RUN   TestRedNowFormCheckDivergesOnQuoting
+--- PASS: TestRedNowFormCheckDivergesOnQuoting (0.00s)
+=== RUN   TestMP8MirrorSpanIsByteEqual
+--- PASS: TestMP8MirrorSpanIsByteEqual (0.00s)
+=== RUN   TestRuleMirrorIsByteIdentical
+--- PASS: TestRuleMirrorIsByteIdentical (0.00s)
+=== RUN   TestMP8MirrorSpanIsNeutral
+--- PASS: TestMP8MirrorSpanIsNeutral (0.00s)
+=== RUN   TestRedNowArtifactsDoNotShip
+--- PASS: TestRedNowArtifactsDoNotShip (0.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.453s

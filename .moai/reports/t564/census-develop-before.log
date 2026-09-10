@@ -1,0 +1,10 @@
+=== RUN   TestT528CoverageAndParseErrorCensus
+    zz_t528_coverage_delta_test.go:102: positive control: uncovered REQ produces 1 CoverageIncomplete finding (rule fires)
+    zz_t528_coverage_delta_test.go:104: spec.md walked                       = 834
+    zz_t528_coverage_delta_test.go:105: files yielding >=1 acceptance criterion = 119
+    zz_t528_coverage_delta_test.go:106: CoverageRule (CoverageIncomplete) findings = 2010
+    zz_t528_coverage_delta_test.go:108:   parse error kind section-not-found                467
+    zz_t528_coverage_delta_test.go:110: DuplicateAcceptanceID / depth / other-fatal occurrences = 0
+--- PASS: TestT528CoverageAndParseErrorCensus (0.65s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	1.143s

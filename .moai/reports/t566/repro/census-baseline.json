@@ -1,0 +1,224 @@
+{
+  "label": "baseline",
+  "codemaps_files": [
+    "data-flow.md",
+    "dependencies.md",
+    "docs-truth.md",
+    "entry-points.md",
+    "modules.md",
+    "overview.md"
+  ],
+  "go_list_exit": 0,
+  "go_list_packages": 137,
+  "hit_zero_packages": [
+    "internal/cli/agentlint",
+    "internal/cli/harness",
+    "internal/cli/printer",
+    "internal/cli/uikit",
+    "internal/cli/worktree",
+    "internal/config/toolpolicy",
+    "internal/core/git",
+    "internal/core/project",
+    "internal/graph/symbol",
+    "internal/harness/capture",
+    "internal/harness/cluster",
+    "internal/harness/curator",
+    "internal/harness/delegationmap",
+    "internal/harness/proposalgen",
+    "internal/harness/router",
+    "internal/harness/routing",
+    "internal/harness/safety",
+    "internal/harness/seeds",
+    "internal/harness/throttle",
+    "internal/harness/tier",
+    "internal/harness/v4manifest",
+    "internal/hook/memo",
+    "internal/hook/memo/taxonomy",
+    "internal/hook/perf",
+    "internal/hook/trace",
+    "internal/lsp/cache",
+    "internal/lsp/core",
+    "internal/lsp/gopls",
+    "internal/lsp/hook",
+    "internal/lsp/subprocess",
+    "internal/navigator/detect",
+    "internal/navigator/fix",
+    "internal/navigator/route",
+    "internal/navigator/sync",
+    "internal/navigator/tiers",
+    "internal/runtime/gobin",
+    "internal/settings/agentfm",
+    "internal/tui/internal"
+  ],
+  "hit_zero_count": 38,
+  "fold_hit_zero": [
+    "internal/core/git",
+    "internal/cli/doctor_hook_delivery.go",
+    "internal/hook/quality/step_git_env.go",
+    "internal/kanban/prlink_landedref.go",
+    "internal/web/fieldsets_codex_templ.go"
+  ],
+  "fold_with_hits": [],
+  "omission_without_hits": [],
+  "omission_count": 15,
+  "fold_count": 5,
+  "fold_packages_in_hit_zero_census": [
+    "internal/core/git"
+  ],
+  "omission_packages_in_hit_zero_census": [],
+  "units": {
+    "internal/core/git": {
+      "kind": "fold",
+      "line_hits": 0,
+      "files": []
+    },
+    "internal/cli/doctor_hook_delivery.go": {
+      "kind": "fold",
+      "line_hits": 0,
+      "files": []
+    },
+    "internal/hook/quality/step_git_env.go": {
+      "kind": "fold",
+      "line_hits": 0,
+      "files": []
+    },
+    "internal/kanban/prlink_landedref.go": {
+      "kind": "fold",
+      "line_hits": 0,
+      "files": []
+    },
+    "internal/web/fieldsets_codex_templ.go": {
+      "kind": "fold",
+      "line_hits": 0,
+      "files": []
+    },
+    "internal/chain": {
+      "kind": "omission",
+      "line_hits": 8,
+      "files": [
+        "data-flow.md",
+        "dependencies.md",
+        "modules.md",
+        "overview.md"
+      ]
+    },
+    "internal/stateanchor": {
+      "kind": "omission",
+      "line_hits": 11,
+      "files": [
+        "data-flow.md",
+        "dependencies.md",
+        "modules.md",
+        "overview.md"
+      ]
+    },
+    "internal/settings/yamlpatch": {
+      "kind": "omission",
+      "line_hits": 4,
+      "files": [
+        "data-flow.md",
+        "dependencies.md",
+        "modules.md"
+      ]
+    },
+    "internal/template/agentemit": {
+      "kind": "omission",
+      "line_hits": 6,
+      "files": [
+        "data-flow.md",
+        "dependencies.md",
+        "entry-points.md",
+        "modules.md"
+      ]
+    },
+    "internal/template/commandemit": {
+      "kind": "omission",
+      "line_hits": 7,
+      "files": [
+        "data-flow.md",
+        "dependencies.md",
+        "docs-truth.md",
+        "entry-points.md",
+        "modules.md"
+      ]
+    },
+    "internal/template/published_skills.go": {
+      "kind": "omission",
+      "line_hits": 2,
+      "files": [
+        "data-flow.md",
+        "modules.md"
+      ]
+    },
+    "internal/template/skill_mirror_repair.go": {
+      "kind": "omission",
+      "line_hits": 2,
+      "files": [
+        "data-flow.md",
+        "modules.md"
+      ]
+    },
+    "internal/cli/skills.go": {
+      "kind": "omission",
+      "line_hits": 1,
+      "files": [
+        "modules.md"
+      ]
+    },
+    "internal/cli/codex_skills_disable.go": {
+      "kind": "omission",
+      "line_hits": 1,
+      "files": [
+        "modules.md"
+      ]
+    },
+    "internal/cli/codex_skills_prune.go": {
+      "kind": "omission",
+      "line_hits": 1,
+      "files": [
+        "modules.md"
+      ]
+    },
+    "internal/cli/integration_settings_drift.go": {
+      "kind": "omission",
+      "line_hits": 3,
+      "files": [
+        "data-flow.md",
+        "entry-points.md",
+        "modules.md"
+      ]
+    },
+    "internal/cli/update_mirror_heal.go": {
+      "kind": "omission",
+      "line_hits": 2,
+      "files": [
+        "data-flow.md",
+        "modules.md"
+      ]
+    },
+    "internal/kanban/settings_drift.go": {
+      "kind": "omission",
+      "line_hits": 2,
+      "files": [
+        "data-flow.md",
+        "modules.md"
+      ]
+    },
+    "internal/statusline/state_anchor.go": {
+      "kind": "omission",
+      "line_hits": 3,
+      "files": [
+        "data-flow.md",
+        "modules.md"
+      ]
+    },
+    "internal/web/codexmirror.go": {
+      "kind": "omission",
+      "line_hits": 2,
+      "files": [
+        "entry-points.md",
+        "modules.md"
+      ]
+    }
+  }
+}
