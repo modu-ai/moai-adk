@@ -1,0 +1,7 @@
+# AC-GTS2-004 govulncheck under bumped go.mod, no GOTOOLCHAIN override
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+tree: e6ec2991e4ce028b83d2be0658844ddb3813a8dd
+
+$ go -C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t610 env GOTOOLCHAIN GOMOD
+auto
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t610/go.mod

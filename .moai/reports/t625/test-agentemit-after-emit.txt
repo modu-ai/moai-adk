@@ -1,0 +1,51 @@
+=== RUN   TestEmitAllFlatPrefixLayoutFallback
+--- PASS: TestEmitAllFlatPrefixLayoutFallback (0.00s)
+=== RUN   TestEmitAllSandboxEmittedWhenConfirmed
+--- PASS: TestEmitAllSandboxEmittedWhenConfirmed (0.00s)
+=== RUN   TestParseManifestFailClosed
+--- PASS: TestParseManifestFailClosed (0.00s)
+=== RUN   TestParseAgentDocStructuralErrors
+--- PASS: TestParseAgentDocStructuralErrors (0.00s)
+=== RUN   TestEmitAllRejectsUnrepresentableBodies
+--- PASS: TestEmitAllRejectsUnrepresentableBodies (0.00s)
+=== RUN   TestParseAgentDocParsesFrontmatterContract
+--- PASS: TestParseAgentDocParsesFrontmatterContract (0.00s)
+=== RUN   TestParseAgentDocRejectsBrokenSources
+--- PASS: TestParseAgentDocRejectsBrokenSources (0.00s)
+=== RUN   TestEmitAllRoundTripsBodyVerbatim
+--- PASS: TestEmitAllRoundTripsBodyVerbatim (0.00s)
+=== RUN   TestEmitAllMCPServerMapping
+--- PASS: TestEmitAllMCPServerMapping (0.00s)
+=== RUN   TestEmitAllEffortMappingPerManifest
+--- PASS: TestEmitAllEffortMappingPerManifest (0.00s)
+=== RUN   TestEmitAllOmitsModel
+--- PASS: TestEmitAllOmitsModel (0.00s)
+=== RUN   TestEmitAllSandboxPerMeasuredSet
+--- PASS: TestEmitAllSandboxPerMeasuredSet (0.00s)
+=== RUN   TestEmitAllDeterministic
+--- PASS: TestEmitAllDeterministic (0.00s)
+=== RUN   TestEmitAllMarkdownIdentityIsPassThrough
+--- PASS: TestEmitAllMarkdownIdentityIsPassThrough (0.00s)
+=== RUN   TestEmitAllFailClosedNegatives
+--- PASS: TestEmitAllFailClosedNegatives (0.00s)
+=== RUN   TestEmitAllFailClosedDuplicateName
+--- PASS: TestEmitAllFailClosedDuplicateName (0.00s)
+=== RUN   TestLoadManifestSelfValidates
+--- PASS: TestLoadManifestSelfValidates (0.00s)
+=== RUN   TestGoldenCommittedArtifactsMatchEmission
+--- PASS: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+=== RUN   TestRealSetMarkdownTreeUnmodified
+--- PASS: TestRealSetMarkdownTreeUnmodified (0.00s)
+=== RUN   TestRealSetCodexShape
+--- PASS: TestRealSetCodexShape (0.00s)
+=== RUN   TestRealSetBodiesByteEqual
+--- PASS: TestRealSetBodiesByteEqual (0.00s)
+=== RUN   TestEmbedFSPresenceAndByteEquality
+--- PASS: TestEmbedFSPresenceAndByteEquality (0.00s)
+=== RUN   TestNeutralityByInheritance
+--- PASS: TestNeutralityByInheritance (0.01s)
+=== RUN   TestPublicationPathHygiene
+--- PASS: TestPublicationPathHygiene (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.343s
+EXIT=0

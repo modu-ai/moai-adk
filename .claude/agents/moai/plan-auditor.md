@@ -143,7 +143,7 @@ Eight criteria cannot be compensated by high scores in other dimensions. ANY sin
 
 **(MP-4) Section 22 Language Neutrality** (applies when the SPEC targets template-bound or universal content): The SPEC must not hardcode language-specific tool names (e.g., "gopls", "pylsp", "rust-analyzer") unless all 16 supported languages (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift) are enumerated with equal weight. If the SPEC covers multi-language tooling and enumerates some languages but not others, = FAIL. If the SPEC is clearly scoped to a single-language project, this criterion is N/A and auto-passes.
 
-**(MP-5) No unresolved D7 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 7 (D7 Cross-SPEC Reconciliation) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D7 BLOCKING finding can never be silently absorbed into the aggregate score. If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+**(MP-5) No unresolved D7 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 7 (D7 Cross-SPEC Reconciliation) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D7 BLOCKING finding can never be silently absorbed into the aggregate score. The Group 7 verification script emits only `REVIEW:` candidates; the BLOCKING finding is the auditor's own, emitted after reading each candidate in context (see Group 7). If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 **(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
@@ -317,9 +317,80 @@ Execute each check in order against the full document — every REQ entry and ev
 - AC-1: Each AC is expressed as a Given-When-Then scenario (the verification-layer format — see M3 § Scope). The GEARS obligation belongs to the `REQ-XXX` requirement layer and is checked by RQ-6/MP-2, NOT here; do not apply a GEARS pattern test to an AC.
 - AC-2: Each AC is binary-testable — a tester can determine PASS/FAIL without judgment calls
 - AC-3: No AC contains weasel words: "appropriate", "adequate", "reasonable", "good", "proper"
-- AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability)
-- AC-5: Each REQ-XXX has at least one corresponding AC (Traceability)
+- AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability) — decided from the verb below: every `ORPHAN:` line is a candidate failure, read against the AC text
+- AC-5: Each REQ-XXX has at least one corresponding AC (Traceability) — decided from the verb below: every `UNCOVERED:` line is a candidate failure, and the `COLLECTED:` count is the measurement both AC-4 and AC-5 rest on
 - AC-6: Each release-blocking AC carries a RED-now cell with the command, its verbatim stdout, its exit code, and a pinned tree SHA, and that command re-executes to a reproducing RED on the current tree (MP-8)
+
+Verification verb (executed inside this agent during audit):
+
+```bash
+# Trace REQ definitions to AC mappings; the auditor decides AC-4 and AC-5
+spec="<new-spec.md>"
+acc="<acceptance.md>"
+if [ ! -r "$spec" ]; then
+  echo "GAP: $spec is not readable — traceability was not observed"
+else
+  set -- "$spec"
+  accstate=absent
+  if [ -r "$acc" ]; then set -- "$@" "$acc"; accstate=read; fi
+  awk -v accstate="$accstate" '
+    function scan(seg,   tok, prefix, rest, c) {
+      while (match(seg, id)) {
+        tok = substr(seg, RSTART, RLENGTH)
+        mapped[tok] = 1
+        prefix = tok
+        sub(/[0-9]+$/, "", prefix)
+        seg = substr(seg, RSTART + RLENGTH)
+        # a bare numeric tail expands only while the comma-separated list continues
+        while (match(seg, /^[ \t]*,[ \t]*[0-9]+/)) {
+          rest = substr(seg, RLENGTH + 1)
+          c = rest
+          sub(/^[ \t]+/, "", c)
+          if (c != "" && index(",;)]", substr(c, 1, 1)) == 0 && !(c ~ /^\.([ \t]|$)/)) break
+          tok = substr(seg, 1, RLENGTH)
+          sub(/^[ \t]*,[ \t]*/, "", tok)
+          mapped[prefix tok] = 1
+          seg = rest
+        }
+      }
+    }
+    BEGIN {
+      id = "REQ-([A-Z][A-Z0-9]*-)*[0-9]+"
+      deflist = "^[ \t]*[-*+][ \t]+(\\*\\*" id "|" id "[ \t]*:)"
+      defhead = "^#+[ \t]+(\\*\\*)?" id
+      defrow = "^[ \t]*\\|[ \t]*(\\*\\*)?" id "(\\*\\*)?[ \t]*\\|"
+    }
+    { sub(/\r$/, "") }
+    FILENAME == ARGV[1] && ($0 ~ deflist || $0 ~ defhead || $0 ~ defrow) {
+      match($0, id)
+      def[substr($0, RSTART, RLENGTH)] = 1
+    }
+    (" " $0) ~ /[^A-Za-z0-9_-]AC-([A-Z0-9]+-)*[0-9]+/ {
+      n = split($0, cells, "|")
+      for (i = 1; i <= n; i++) scan(cells[i])
+    }
+    END {
+      count = 0
+      for (k in def) count++
+      printf "COLLECTED: %d REQ definitions (acceptance input: %s)\n", count, accstate
+      if (count == 0) { print "GAP: 0 REQ definitions collected — traceability not observed"; exit }
+      for (k in def) if (!(k in mapped)) print "UNCOVERED: " k
+      for (k in mapped) if (!(k in def)) print "ORPHAN: " k
+    }
+  ' "$@" | LC_ALL=C sort
+fi
+```
+
+The script narrows where to read; the auditor decides AC-4 and AC-5. It never prints PASS and always exits 0.
+
+- `COLLECTED: N REQ definitions (acceptance input: read|absent)` — the requirement definitions read from the spec in any of three forms (a list item opening with the ID followed by a colon or in bold, a heading opening with the ID, a table row whose first cell is the ID), and whether an acceptance.md was read. This count is the auditor's own measurement on the traceability axis: record it with the AC-4 / AC-5 result. `acceptance input: absent` is expected when the ACs live inline in the spec; for a SPEC that should carry an acceptance.md, it means the mapping side was not observed.
+- `UNCOVERED: REQ-…` — defined in the spec, named on no line that also names an AC. Feeds AC-5. Read the ACs before recording FAIL: a mapping phrased without the requirement ID is still a mapping.
+- `ORPHAN: REQ-…` — named on an AC-bearing line, defined nowhere in the spec. Feeds AC-4: a typo, a removed requirement, a definition written in a form the script does not read, or another SPEC's requirement cited next to that SPEC's AC (a cross-SPEC reference, not a defect of this SPEC).
+- `GAP: …` — the axis was not observed: the spec is unreadable, or zero definitions were collected. Report it as a gap, never read it as a pass, and never let a zero count stand behind an AC-4 / AC-5 PASS.
+
+A requirement counts as mapped when its ID appears on any line that also names an AC. Shorthand expands under one rule only: inside the same table cell or the same comma-separated list, a bare number that follows a complete ID takes that ID's prefix, so `REQ-X-001, 002` maps `REQ-X-001` and `REQ-X-002`. Nothing else expands — not a range, not a number in another table cell, not a number in running prose. A clean result is not an automatic pass either: an ID that merely appears on an AC line counts as mapped, so read the AC behind any mapping that looks incidental.
+
+**Citation discipline — another tool's silence.** A different tool reporting no traceability finding for this SPEC (a SPEC linter's coverage rule, for example) may be cited as corroboration only after showing that tool collected N > 0 requirements on that axis for this SPEC. When that count is 0, or is not shown, record "the tool said nothing on this axis" — never corroboration. The failure this prevents: a tool that recognizes only some definition forms collects nothing from a SPEC written in another form and stays silent, and that silence is then cited as agreement with the auditor's own reading, so a requirement no AC covers passes on the strength of two readings of which only one ever looked.
 
 ### Group 5: Language Neutrality
 
@@ -340,20 +411,26 @@ Execute each check in order against the full document — every REQ entry and ev
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
 - D7-4: If status ∈ {retired, superseded, archived}, require explicit reconciliation
   in the new SPEC body (search for the referenced SPEC-ID near keywords like
-  "reversal", "supersede", "absorb", "carve-out") — otherwise BLOCKING
+  "reversal", "supersede", "absorb", "carve-out") — otherwise BLOCKING, decided
+  by the auditor after reading the script's `REVIEW:` output, never by the script
 - D7-5: If a referenced SPEC does NOT exist in `.moai/specs/`, emit SHOULD severity
   (typo or future SPEC) with message indicating "referenced SPEC not found"
 
 Verification verb (executed inside this agent during audit):
 
 ```bash
-# Extract SPEC-ID references and check their cross-SPEC status
+# Surface cross-SPEC reconciliation candidates; the auditor decides BLOCKING
 grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SID; do
   if [ -f ".moai/specs/$SID/spec.md" ]; then
     STATUS=$(grep '^status:' ".moai/specs/$SID/spec.md" | head -1 | cut -d: -f2 | tr -d ' ')
     case "$STATUS" in
       retired|superseded|archived)
-        echo "BLOCKING: $SID has status=$STATUS but is referenced without reconciliation"
+        echo "REVIEW: $SID has status=$STATUS — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING"
+        # Paragraphs naming $SID next to a reconciliation keyword, for the auditor to read
+        awk -v sid="$SID" 'BEGIN { RS = "" }
+          index($0, sid) && tolower($0) ~ /revers|supersed|absorb|carve-out/ {
+            gsub(/\n/, " "); print "  reconciliation candidate (paragraph " NR "): " $0
+          }' <new-spec.md>
         ;;
     esac
   else
@@ -361,6 +438,8 @@ grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SI
   fi
 done
 ```
+
+The script never emits BLOCKING itself: a keyword search cannot tell a reconciliation from a sentence that merely names the old SPEC, so it narrows where to read and the auditor reads. Both directions bind. A `REVIEW:` line with no `reconciliation candidate` paragraph is **not** automatically BLOCKING — read the body around the reference, and emit BLOCKING only when no explicit reconciliation is found there (reconciliation phrased without the listed keywords is still reconciliation). A `reconciliation candidate` paragraph is **not** an automatic pass — read it, and emit BLOCKING when it names the SPEC without actually reconciling it.
 
 A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-5) — it is never absorbed into the aggregate score.
 
@@ -380,13 +459,25 @@ A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: 
 Verification verb (executed inside this agent during audit):
 
 ```bash
-# Detect syscall introduction without build-tag constraint
-if grep -q 'syscall' <new-spec.md>; then
-  if ! grep -qE '//go:build|cross-platform exemption|EXCL.*syscall' <new-spec.md>; then
-    echo "BLOCKING: SPEC references syscall but no //go:build constraint or EXCL justification"
-  fi
+# Detect syscall mentions whose own section carries no build-tag constraint or exemption
+if [ ! -r <new-spec.md> ]; then
+  echo "GAP: <new-spec.md> is not readable — D8 was not observed"
+else
+  awk '
+    function flush() {
+      if (has_sys && !has_tag)
+        printf "BLOCKING: section \"%s\" references syscall but carries no //go:build constraint or EXCL justification\n", head
+    }
+    BEGIN { head = "(before the first heading)" }
+    /^#+ / { flush(); head = $0; has_sys = 0; has_tag = 0 }
+    /syscall/ { has_sys = 1 }
+    /\/\/go:build|cross-platform exemption|EXCL.*syscall/ { has_tag = 1 }
+    END { flush() }
+  ' <new-spec.md>
 fi
 ```
+
+The check is scoped per section, delimited by markdown headings, because D8-2 requires the constraint within the same section or paragraph: a `//go:build` elsewhere in the document cannot cover a `syscall` mention in a section that carries none. A `GAP:` line means D8 was not observed — report it as a gap, never read it as a pass.
 
 A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-6) — it is never absorbed into the aggregate score.
 
