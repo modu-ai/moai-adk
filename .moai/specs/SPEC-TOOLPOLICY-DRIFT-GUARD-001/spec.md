@@ -1,7 +1,7 @@
 ---
 id: SPEC-TOOLPOLICY-DRIFT-GUARD-001
 title: "tool-policy.yaml ↔ settings.json 권한 블록 드리프트 검사 도입과 YAML 정합 복구"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-09-10
 updated: 2026-09-10
@@ -22,7 +22,8 @@ related_specs: [SPEC-V3R6-TOOL-POLICY-SSOT-001, SPEC-TOOLPOLICY-DEPLOY-REVIEW-00
 | 날짜 | 버전 | 사건 |
 |---|---|---|
 | 2026-09-10 | 0.1.0 | 생성 (카드 t619, plan 단계). 근거는 `.moai/reports/t619/verdict.md`. 운영자 결정 3건(수리 방향·검사 위치·주장 정정)과 plan 제안 검토 뒤 받은 추가 결정 3건(집합 비교·주장 정정 전수·워킹 트리 판독)을 반영했다. SPEC-V3R6-TOOL-POLICY-SSOT-001 의 AC-TPS-005 는 이미 종결된 SPEC 이므로 고치지 않고, 그 AC 가 드리프트를 막지 못했다는 사실만 이 문서에 기록한다. |
-| 2026-09-10 | 0.1.1 | plan-audit 1회차 FAIL(0.71) 수리. `.moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-1.md` 의 D1-D10 반영: REQ-TDG-005 정정 대상에 열거 밖 진술 두 곳 추가(D2), REQ-TDG-004 에 해석 실패와 비어 있음 판정의 양쪽 대상 명시(D3·D10), 패턴 라벨과 규범 서술어 정리(D9). 수용 기준 쪽 수리는 acceptance.md, 처분 표는 plan.md §H. |
+| 2026-09-10 | 0.1.1 | plan-audit 1회차 FAIL(0.71) 수리. `.moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-1.md` 의 D1-D10 반영: REQ-TDG-005 정정 대상에 열거 밖 진술 두 곳 추가(D2), REQ-TDG-004 에 해석 실패와 비어 있음 판정의 양쪽 대상 명시(D3·D10), 패턴 라벨과 규범 서술어 정리(D9). |
+| 2026-09-10 | 0.1.2 | plan-audit 2회차 FAIL(0.79) 수리. Tier M 감사 상한(`harness.yaml` `plan_audit_tier_ceilings.M: 2`)에 도달했으나, **운영자가 수정 후 3회차 감사 1회를 명시적으로 승인**했다(상한 연장). `.moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-2.md` 의 D11-D20 반영: REQ-TDG-004 에 실패 원인 구별 계약 추가(D11), §4 뮤테이션 범위 문장 한정(D12), REQ-TDG-005 제외 목록에 AC-TPS-005 테스트 주석 명시(D19). 수용 기준 쪽 수리는 acceptance.md, 처분 표는 plan.md §H. |
 
 ## §1 문제 진술
 
@@ -39,10 +40,10 @@ related_specs: [SPEC-V3R6-TOOL-POLICY-SSOT-001, SPEC-TOOLPOLICY-DEPLOY-REVIEW-00
 
 ## §2 요구사항 (GEARS)
 
-- **REQ-TDG-001** (Ubiquitous): `tool-policy.yaml` 이 선언하는 allow / ask / deny 명세자 집합은, 생성기와 같은 규칙(env_gate 항목 제외, 중복 제거)을 적용한 뒤 커밋된 `.claude/settings.json` 권한 블록의 allow / ask / deny 집합과 **집합으로** 같아야 한다. 그 결과 YAML 은 `CronCreate` `CronDelete` `CronList` `EnterPlanMode` `ExitPlanMode` `EnterWorktree` `ExitWorktree` 를 allow 로 선언해야 하고, `MultiEdit` allow 와 env_gate 없는 `Glob` / `Grep` / `Write` 경로 deny 12개를 선언해서는 안 된다. env_gate 가 붙은 항목은 이 요구의 삭제 대상이 아니다. 비교 대상은 권한 블록의 세 목록뿐이며, `defaultMode` 와 그 밖의 권한 키는 YAML 에서 유도되지 않으므로 비교하지 않는다. `ask` 키가 없으면 빈 목록으로 본다.
+- **REQ-TDG-001** (Ubiquitous): `tool-policy.yaml` 이 선언하는 allow / ask / deny 명세자 집합은, 생성기와 같은 규칙(env_gate 항목 제외, 중복 제거)을 적용한 뒤 커밋된 `.claude/settings.json` 권한 블록의 allow / ask / deny 집합과 **집합으로** 같아야 한다. 그 결과 YAML 은 `CronCreate` `CronDelete` `CronList` `EnterPlanMode` `ExitPlanMode` `EnterWorktree` `ExitWorktree` 를 allow 로 선언해야 하고, `MultiEdit` allow 와 env_gate 없는 `Glob` / `Grep` / `Write` 경로 deny 12개를 선언해서는 안 된다. env_gate 가 붙은 항목은 이 요구의 삭제 대상이 아니며 내용이 바뀌어서도 안 된다. 비교 대상은 권한 블록의 세 목록뿐이며, `defaultMode` 와 그 밖의 권한 키는 YAML 에서 유도되지 않으므로 비교하지 않는다. `ask` 키가 없으면 빈 목록으로 본다.
 - **REQ-TDG-002** (Unwanted): 이 변경은 `.claude/settings.json` 과 `internal/template/templates/.claude/settings.json.tmpl` 의 바이트를 바꿔서는 안 된다. 검증을 위한 어떤 단계도 실제 트리를 대상으로 `moai tool-policy build` 를 실행해서는 안 되며, 생성기 실행은 저장소 밖 스크래치 사본에만 써야 한다.
-- **REQ-TDG-003** (Event-driven, 복합): **When** `make build` 가 실행되면, 드리프트 검사는 컴파일보다 먼저 실행돼야 한다. 검사는 워킹 트리의 `.claude/settings.json` 권한 블록과 워킹 트리의 `tool-policy.yaml` 을 읽어야 한다. **When** 두 집합이 다르면, 검사는 실패해야 하고 서로 다른 명세자 각각을 결정(allow / ask / deny)과 어느 쪽에만 있는지와 함께 이름으로 밝혀야 하며, 조정 방법(YAML 을 의도한 상태로 고친 뒤 생성기로 재생성)을 안내해야 한다. 검사는 어떤 파일도 쓰거나 재생성해서는 안 된다. **When** 변경이 `.claude/settings.json` 또는 `tool-policy.yaml` 을 건드리면, CI 의 Go 테스트 작업이 이 검사를 실행해야 한다.
-- **REQ-TDG-004** (Event-driven, 복합): **When** 어느 한쪽 입력 파일이 없거나, 해석할 수 없거나(YAML 문법 오류, 권한 블록 JSON 오류), 권한 블록이 없으면, 검사는 통과하거나 건너뛰어서는 안 되며 실패해야 한다. **When** YAML 에서 유도한 allow 집합, YAML 에서 유도한 deny 집합, settings.json 에서 판독한 allow 집합, settings.json 에서 판독한 deny 집합 네 개 중 **어느 하나라도** 비어 있으면, 검사는 실패해야 한다. ask 집합이 비어 있는 것은 실패 사유가 아니다. **When** settings.json 의 한 목록 안에 같은 명세자가 두 번 있거나 같은 명세자가 allow 와 deny 에 함께 있으면, 검사는 집합 비교와 별도로 실패해야 한다. **When** 명세자 하나를 일부러 어긋나게 하면 검사는 실패해야 하고, 되돌리면 통과해야 한다.
+- **REQ-TDG-003** (Event-driven, 복합): **When** `make build` 가 실행되면, 드리프트 검사는 컴파일보다 먼저(`build` 선행 목록의 한 항목으로) 실행돼야 한다. 검사는 워킹 트리의 `.claude/settings.json` 권한 블록과 워킹 트리의 `tool-policy.yaml` 을 읽어야 한다. **When** 두 집합이 다르면, 검사는 실패해야 하고 서로 다른 명세자 각각을 결정(allow / ask / deny)과 어느 쪽에만 있는지와 함께 이름으로 밝혀야 하며, 조정 방법(YAML 을 의도한 상태로 고친 뒤 생성기로 재생성)을 안내해야 한다. 검사는 저장소 안의 어떤 파일도 쓰거나 재생성해서는 안 된다. **When** 변경이 `.claude/settings.json` 또는 `tool-policy.yaml` 을 건드리면, CI 의 Go 테스트 작업이 이 검사를 실행해야 한다.
+- **REQ-TDG-004** (Event-driven, 복합): **When** 어느 한쪽 입력 파일이 없거나, 해석할 수 없거나(YAML 문법 오류, 권한 블록 JSON 오류), 권한 블록이 없으면, 검사는 통과하거나 건너뛰어서는 안 되며 실패해야 한다. **When** YAML 에서 유도한 allow 집합, YAML 에서 유도한 deny 집합, settings.json 에서 판독한 allow 집합, settings.json 에서 판독한 deny 집합 네 개 중 **어느 하나라도** 비어 있으면, 검사는 실패해야 한다. ask 집합이 비어 있는 것은 실패 사유가 아니다. 검사는 이 네 가지 실패 원인(입력 부재, 해석 실패, 권한 블록 부재, 빈 집합)을 **서로 구별할 수 있게** 보고해야 하며, 입력 부재·해석 실패·권한 블록 부재를 빈 집합 실패로 보고해서는 안 된다(해석 오류를 빈 정책으로 삼키는 회귀가 빈 집합 규칙에 가려지지 않도록). **When** settings.json 의 allow·ask·deny 중 한 목록 안에 같은 명세자가 두 번 있거나 같은 명세자가 allow 와 deny 에 함께 있으면, 검사는 집합 비교와 별도로 실패해야 한다. **When** 명세자 하나를 일부러 어긋나게 하면 검사는 실패해야 하고, 되돌리면 통과해야 한다.
 - **REQ-TDG-005** (Ubiquitous): YAML↔settings.json 드리프트가 구조적으로 막힌다고 주장하거나 머리말 주석이 생성된다고 주장하는 모든 진술은, 드리프트를 실제로 막는 장치가 이 검사라는 사실로 바뀌어야 한다. 대상은 다음 다섯 곳이다(위치는 HEAD `b2cbfd207` 기준).
   1. `tool-policy.yaml:5-9` — 머리말이 생성된다는 진술과 "structurally preventing" 드리프트 방지 진술
   2. `tool-policy.yaml:11-16` — "This SSOT prevents the ANALOGOUS drift class on the surfaces it generates" 문단
@@ -50,7 +51,7 @@ related_specs: [SPEC-V3R6-TOOL-POLICY-SSOT-001, SPEC-TOOLPOLICY-DEPLOY-REVIEW-00
   4. `internal/config/toolpolicy/types.go:94-98` — `Metadata` 문서 주석의 "structurally preventing" 진술
   5. `tool-policy.yaml:54` — 생성기가 건너뛰는 템플릿을 생성 대상으로 적은 `metadata.generated_into` 항목
 
-  대조 분석(analogy) 인용인 `types.go:8` 의 "Drift-class analogy:" 와 `tool-policy.yaml:42` 의 교차 참조 목록 항목은 방지를 주장하지 않으므로 대상이 아니다.
+  다음은 대상이 아니다. 대조 분석(analogy) 인용인 `types.go:8` 의 "Drift-class analogy:" 와 `tool-policy.yaml:42` 의 교차 참조 목록 항목은 방지를 주장하지 않는다. `internal/config/toolpolicy/codegen_test.go:209-213` 의 AC-TPS-005 테스트 이름·주석("by-construction drift-prevention property")은 §5 "종결된 SPEC 소급 수정" 에 따라 범위 밖이다.
 
 ## §3 수용 기준
 
@@ -58,21 +59,21 @@ related_specs: [SPEC-V3R6-TOOL-POLICY-SSOT-001, SPEC-TOOLPOLICY-DEPLOY-REVIEW-00
 
 - **AC-TDG-001** — 커밋된 트리에서 검사 통과, 중복·겹침 없음, 정정 전 붉은색 20개 (maps REQ-TDG-001, REQ-TDG-004)
 - **AC-TDG-002** — 생성기 스크래치 실행으로 독립 확인한 집합 일치 (maps REQ-TDG-001, REQ-TDG-002)
-- **AC-TDG-003** — 적용 권한 불변, 검사는 읽기 전용 (maps REQ-TDG-002, REQ-TDG-003)
-- **AC-TDG-004** — 수동 뮤테이션 대조: YAML 한 항목을 어긋나게 하면 붉은색, 되돌리면 초록 (maps REQ-TDG-003, REQ-TDG-004)
-- **AC-TDG-005** — 자동 뮤테이션 대조: 양방향 + 중복·겹침 (maps REQ-TDG-004)
-- **AC-TDG-006** — 누락·해석 실패·권한 블록 부재·네 집합 각각의 비어 있음에서 실패, 건너뛰기 없음 (maps REQ-TDG-004)
+- **AC-TDG-003** — 적용 권한 불변, 검사는 읽기 전용(입력 파일 sha 와 워킹 트리 상태 불변) (maps REQ-TDG-002, REQ-TDG-003)
+- **AC-TDG-004** — 수동 뮤테이션 대조: YAML 한 항목을 어긋나게 하면 붉은색과 조정 안내, 조건부 복원 뒤 초록 (maps REQ-TDG-003, REQ-TDG-004)
+- **AC-TDG-005** — 자동 뮤테이션 대조: 양방향 + 세 목록 중복 + 겹침 (maps REQ-TDG-004)
+- **AC-TDG-006** — 누락·해석 실패·권한 블록 부재·네 집합 비어 있음에서 원인별로 구별되는 실패, 건너뛰기 없음 (maps REQ-TDG-004)
 - **AC-TDG-007** — 주장 정정 다섯 곳 전수 (maps REQ-TDG-005)
-- **AC-TDG-008** — `make build` 선행 연결과 CI 경로 필터 블록 (maps REQ-TDG-003)
+- **AC-TDG-008** — `build` 선행 목록 연결과 CI 경로 필터 블록 (maps REQ-TDG-003)
 - **AC-TDG-009** — 영향받는 기존 테스트 무회귀 (maps REQ-TDG-001, REQ-TDG-005)
-- **AC-TDG-010** — YAML 항목 단위 결과, env_gate 항목 보존 (maps REQ-TDG-001)
+- **AC-TDG-010** — YAML 항목 단위 결과, env_gate 항목 내용 보존 (maps REQ-TDG-001)
 
 ## §4 제약 [HARD — run 단계 구속]
 
 - 적용되는 권한은 바뀌지 않는다. settings.json 과 템플릿은 이 SPEC 의 변경 대상이 아니다.
 - 검사는 읽기 전용이다. 재생성은 명시적 동사(`moai tool-policy build`)로만 일어난다.
-- 실행 중인 세션이 읽는 settings.json 은 뮤테이션 대조에서도 건드리지 않는다. 뮤테이션은 YAML 쪽에만 한다.
-- env_gate 가 붙은 YAML 항목은 삭제하지 않는다.
+- 실행 중인 세션이 읽는 워킹 트리의 `.claude/settings.json` 은 뮤테이션 대조에서도 건드리지 않는다. 워킹 트리 파일에 대한 제자리 수동 뮤테이션은 YAML 에만 한다. `t.TempDir()` 격리 사본의 settings.json·YAML 뮤테이션은 자동 대조(AC-TDG-005)에서 허용한다.
+- env_gate 가 붙은 YAML 항목은 삭제하거나 고치지 않는다.
 - 비ASCII 문자는 원래 UTF-8 로 쓴다. 역슬래시-u 이스케이프 표기를 산출물에 남기지 않는다.
 
 ## §5 범위
@@ -97,11 +98,11 @@ related_specs: [SPEC-V3R6-TOOL-POLICY-SSOT-001, SPEC-TOOLPOLICY-DEPLOY-REVIEW-00
 
 ### Out of Scope — 종결된 SPEC 소급 수정
 
-- SPEC-V3R6-TOOL-POLICY-SSOT-001 의 AC-TPS-005 와 그 테스트 이름·주석은 고치지 않는다.
+- SPEC-V3R6-TOOL-POLICY-SSOT-001 의 AC-TPS-005 와 그 테스트 이름·주석(`codegen_test.go:209-213`)은 고치지 않는다.
 
 ## §6 의존과 참조
 
 - 근거: `.moai/reports/t619/verdict.md`
-- plan 감사: `.moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-1.md`
+- plan 감사: `.moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-1.md`, `.moai/reports/plan-audit/SPEC-TOOLPOLICY-DRIFT-GUARD-001-review-2.md`
 - 선례: `Makefile:41-49` (`agents-emit-check`), `Makefile:54-60` (`commands-emit-check`)
 - 관련 SPEC: SPEC-V3R6-TOOL-POLICY-SSOT-001 (생성기 도입), SPEC-TOOLPOLICY-DEPLOY-REVIEW-001 (YAML 템플릿 배포 제거, dev 전용화)
