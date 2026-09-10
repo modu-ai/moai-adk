@@ -75,3 +75,25 @@ of local develop (≥ `296ba7aa5`, go 1.26.8) invalidates them as merge evidence
   namespace). Reported to the lead.
 - `catalog.yaml` hash is order-sensitive to any other card touching `templates/.claude/skills/moai/`;
   a conflicting refresh at merge time must be regenerated, not hand-picked.
+
+## Integration window re-measure (lead-assigned)
+
+Claim: the card, absorbed onto local develop `c3b931784`, passes the same verification on go1.26.8.
+
+Evidence:
+- `window-acquire.txt`: `release-integration window acquired by b0e19603-… on WT-spec-ownership-ssot`.
+- `absorb-merge.txt`: `git merge --no-ff c3b931784` exit 0, no conflict. Absorb commit
+  `0ee435aeccbf094c6a22a9e024e23cd8c4eb6806`, parents `2520d1c63…` (card tip) + `c3b931784…` (develop).
+- Absorb delta in overlapping paths (`git diff --stat 2520d1c63 HEAD -- <edited skill trees, catalog.yaml,
+  t408 guard>`): only `internal/template/catalog.yaml` (2+/2−, other entries). Whole absorb: 512 files.
+- `catalog-hash-dryrun-absorbed.txt`: generator on the absorbed tree computes `moai` =
+  `fa683eb7…`, identical to the stored value at `catalog.yaml:9` — no regeneration needed.
+- `go version` → `go1.26.8 darwin/arm64`.
+- `pkg-tests-absorbed-go1268.txt`: template (no selector) · spec · skills · harness · lsp/config →
+  exit 0, 20 `ok`, 0 FAIL (`internal/template` 47.2s, `internal/spec` 116.0s).
+- `cli-test-names-absorbed.txt`: pre-check — the 9 selected test names still exist, identical to the
+  pre-absorb list (`cmp` exit 0). `cli-targeted-tests-absorbed-go1268.txt`: 9 PASS, 0 FAIL/SKIP, exit 0.
+
+Baseline-attribution: absorb commit `0ee435aec` tree, go1.26.8, this run.
+
+Gaps: `internal/cli` remains scoped to the 9 tests (lead-approved scope); CI matrix not yet run.
