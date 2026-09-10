@@ -1,0 +1,46 @@
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:10:  workspaces, automatic branch registration, branch isolation, and
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:23:  tags: "git, worktree, parallel, development, spec, isolation"
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:61:- Feature branch isolation
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:123:During the Plan Phase using /moai:1-plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:141:First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai:2-run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai:2-run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:155:During Development Phase with /moai:2-run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:257:For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai:1-plan.
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:263:For code review workflows, use isolated review worktrees. The primary approach is worktree isolation for reviews and the supporting pattern is clean sync after review completion.
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:282:| "Worktree isolation is overkill for this small change" | Small changes on main cause merge conflicts when parallel work is in progress. Worktrees prevent this. |
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:284:| "Read-only agents need worktree isolation too, for safety" | Read-only agents (mode: plan) cannot write. Adding isolation wastes resources with no benefit. |
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:286:| "Absolute paths in agent prompts are fine since the worktree has the same structure" | Absolute paths to the main repo bypass worktree isolation entirely. Use relative paths. |
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:293:- Implementation agent spawned without isolation: worktree in team mode
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:294:- Read-only agent spawned with isolation: worktree (unnecessary overhead)
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:304:- [ ] Implementation teammates use isolation: worktree (check agent spawn parameters)
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:305:- [ ] Read-only teammates do NOT use isolation: worktree (verify mode: plan is sufficient)
+a0d8da641:.claude/skills/moai-workflow-worktree/SKILL.md:308:- [ ] Worktree CWD isolation verified on Claude Code >= 2.1.97 (check version)
+a0d8da641:.claude/skills/moai-workflow-worktree/modules/integration-patterns.md:58:- Development server isolation per worktree
+a0d8da641:.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md:180:- read-only: View worktree status and metadata
+a0d8da641:.claude/skills/moai-workflow-worktree/modules/parallel-development.md:47:Each worktree provides complete isolation across multiple layers:
+a0d8da641:.claude/skills/moai-workflow-worktree/modules/parallel-development.md:104:- Each developer works in isolation
+a0d8da641:.claude/skills/moai-workflow-worktree/modules/parallel-workflows.md:130:- Experimental features in isolation
+a0d8da641:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:81:- File system is read-only or mounted incorrectly
+a0d8da641:.claude/skills/moai-workflow-worktree/references/reference.md:76: - Environment isolation for different worktree configurations
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:10:  workspaces, automatic branch registration, branch isolation, and
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:23:  tags: "git, worktree, parallel, development, spec, isolation"
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:61:- Feature branch isolation
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:123:During the Plan Phase using /moai plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:141:First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:155:During Development Phase with /moai run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:258:For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai plan.
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:264:For code review workflows, use isolated review worktrees. The primary approach is worktree isolation for reviews and the supporting pattern is clean sync after review completion.
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:283:| "Worktree isolation is overkill for this small change" | Small changes on main cause merge conflicts when parallel work is in progress. Worktrees prevent this. |
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:285:| "Read-only agents need worktree isolation too, for safety" | Read-only agents cannot write because their tools list omits Write/Edit (the spawn-time mode parameter is deprecated and ignored). Adding isolation wastes resources with no benefit. |
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:287:| "Absolute paths in agent prompts are fine since the worktree has the same structure" | Absolute paths to the main repo bypass worktree isolation entirely. Use relative paths. |
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:294:- Implementation agent spawned without isolation: worktree in team mode
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:295:- Read-only agent spawned with isolation: worktree (unnecessary overhead)
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:305:- [ ] Implementation teammates use isolation: worktree (check agent spawn parameters)
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:306:- [ ] Read-only teammates do NOT use isolation: worktree (verify the tools list omits Write/Edit)
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:309:- [ ] Worktree CWD isolation verified on Claude Code >= 2.1.97 (check version)
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/integration-patterns.md:57:- Development server isolation per worktree
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md:180:- read-only: View worktree status and metadata
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/parallel-development.md:46:Each worktree provides complete isolation across multiple layers:
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/parallel-development.md:103:- Each developer works in isolation
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/parallel-workflows.md:129:- Experimental features in isolation
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:80:- File system is read-only or mounted incorrectly
+a0d8da641:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:75: - Environment isolation for different worktree configurations

@@ -1,0 +1,44 @@
+7beba0342 merge(t549): WT-root-rederive — no-home queue root returns the launch base
+d6513b8ff docs(t549): record integration window absorb and merged-tree re-measure
+146622b4f merge(t549): absorb local develop 80e9e0039 into WT-root-rederive
+80e9e0039 Merge branch 'WT-seam-bypass-mutant' into develop
+0af9aa12f docs(t581): record the integration window where the develop merge did not land (card t581)
+90658a408 Merge commit '6f7166cd796d92f6e3c8175e76d4cd357c6c6ecb' into WT-seam-bypass-mutant
+6f7166cd7 Merge branch 'WT-blocker-scope' into develop
+b267d49ac Merge commit 'e1d57257f04145098e7f3365eab8d41f4929a8e3' into WT-blocker-scope
+e1d57257f Merge branch 'WT-goal-cond-classify' into develop (t556)
+816128fe0 docs(t581): record the lane verdict for the seam-use guard (card t581)
+3a776fb59 docs(t556): record the merge-tree remeasure after absorbing develop 030987513
+7d4ef0560 Merge branch 'develop' into WT-goal-cond-classify
+bb0f1f03d docs(t549): mark internal/cli result as pre-absorb, record lead exemption
+030987513 merge: t612 MX scanner pending-WARN defects F03+F04 (Go review report)
+42898e92d docs(t612): record merge-tree re-measure after absorbing local develop d1b61005d
+4917bad4f docs(t611): record the lead's rulings in the verdict (card t611)
+87f788bff merge(t612): absorb local develop before merge-tree re-measure
+18ed6320c docs(t611): record the lane's independent verdict for the ResolveBlocker scope fix (card t611)
+1e47aa479 docs(t611): record ResolveBlocker scope run-phase evidence
+88f303e29 fix(kanban): return the launch base from the no-home queue-root branch (t549)
+cbb48c5d2 fix(session): scope ResolveBlocker to the requested phase and SPEC (t611)
+a2e7b9172 test(t581): pin fromConfigPath seam use under a slash separator (card t581)
+06ec8a251 fix(mx): t612 report superseded reason-less WARN and give pending WARN @MX:SPEC ownership
+d1b61005d Merge branch 'WT-drop-ask-rules' into develop (t609)
+93940c198 docs(t609): record the merge-tree verdict after absorbing develop d3b7d438d
+504743a25 test(mx): t612 pin pending-WARN exits and SPEC ownership (RED)
+f8f5fdf91 Merge branch 'develop' into WT-drop-ask-rules
+1ac333952 fix(t609): drop the six permissions.ask rules from template, local settings, and the policy SSOT
+d3b7d438d Merge branch 'WT-permissions-ask-empty' into develop (t576)
+9230fd39a Merge branch 'refs/heads/develop' into WT-permissions-ask-empty
+ace0f1cb3 docs(SPEC-UPDATE-MERGE-CONFLICT-BLIND-001): gate M2.1 on re-adjudicating REQ-UMC-008/009 granularity (t576)
+73728174e docs(SPEC-UPDATE-MERGE-CONFLICT-BLIND-001): restate the mechanism at leaf granularity (t576)
+0e47f8ca7 Merge branch 'develop' into WT-goal-cond-classify
+c9a9e8866 Merge branch 'WT-todo-verb-guard' into develop (t555)
+32b1d538b docs(t555): record the merge-tree verdict after absorbing develop c8203fbf3
+65f6a079c Merge branch 'develop' into WT-todo-verb-guard
+1bd6aa677 test(SPEC-UPDATE-MERGE-CONFLICT-BLIND-001): M2.0 measures the recursive and YAML breadths (t576)
+a79e8601c docs(t576): E1's writer is witnessed, not inferred — plus the third framing revision and a repaired DoD criterion
+957f52edd fix(t555): close the mistyped-verb leak the guard's two discriminants left open
+715078afb test(SPEC-UPDATE-MERGE-CONFLICT-BLIND-001): M1 measures the shared-key merge, and it is worse than the SPEC states (t576)
+9cf415332 docs(SPEC-UPDATE-MERGE-CONFLICT-BLIND-001): plan-phase artifacts (t576)
+7764e63bf docs(t576): establish the permissions.ask emptying cause as far as evidence reaches
+9f89296a9 Merge branch 'develop' into WT-goal-cond-classify
+bdbc09788 fix(goal): refuse arming a sentence as a shell command (card t556)

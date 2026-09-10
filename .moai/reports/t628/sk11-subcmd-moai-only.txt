@@ -1,0 +1,179 @@
+HEAD:.claude/skills/moai-workflow-worktree/SKILL.md:99:To create a new worktree for a SPEC, use the new command followed by the SPEC ID and description. To list all worktrees, use the list command. To switch to a specific worktree, use the switch command with the SPEC ID. To get the worktree path for shell integration, use the go command with eval. To sync a worktree with its base branch, use the sync command. To remove a worktree, use the remove command. To clean up merged worktrees, use the clean command. To show worktree status, use the status command. For configuration management, use the config command with get or set subcommands.
+HEAD:.claude/skills/moai-workflow-worktree/SKILL.md:123:During the Plan Phase using /moai:1-plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
+HEAD:.claude/skills/moai-workflow-worktree/SKILL.md:202:Relationship to the retired `--team` flag: `moai worktree new --team` previously created a worktree and launched a session in one step, across four patterns. Three of them are now covered by `-w` alone (in-place launch, and its handoff-guidance fallback), and the fourth — the new-tmux-window spawn — is `--spawn`. Its write-only swarm registry was retired with it; nothing ever read `.moai/state/swarm/`.
+HEAD:.claude/skills/moai-workflow-worktree/modules/integration-patterns.md:20:The basic integration workflow follows three phases. During the Plan Phase, the /moai plan command auto-creates a worktree for the SPEC. During the Development Phase, use the moai-worktree go command to navigate to the isolated environment and run /moai run for DDD implementation. During the Sync Phase, use moai-worktree sync to update the worktree and /moai sync for documentation synchronization.
+HEAD:.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md:28:- The retired `/moai plan --worktree` flag and the retired `moai worktree new` command MUST NOT be presented as live entry points.
+HEAD:.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md:180:- read-only: View worktree status and metadata
+HEAD:.claude/skills/moai-workflow-worktree/modules/parallel-development.md:21:To set up parallel development, create worktrees for each SPEC using moai-worktree new with the SPEC ID and description. For parallel execution, navigate to each worktree using moai-worktree go and run /moai run in separate terminals or background processes. For integration, use moai-worktree sync --all to synchronize all worktrees, then clean up merged worktrees with moai-worktree clean --merged-only.
+HEAD:.claude/skills/moai-workflow-worktree/modules/parallel-workflows.md:185:- All developers see team worktree list
+HEAD:.claude/skills/moai-workflow-worktree/modules/resource-optimization.md:213:3. Mark worktree status as error
+HEAD:.claude/skills/moai-workflow-worktree/modules/tools-integration.md:70:- Color coding for worktree status
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:20:- Check worktree status: moai-worktree status --all
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:117:- Validate the rebuilt registry with moai-worktree status --all
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:123:- moai-worktree status shows worktrees as missing
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:133:1. Run moai-worktree status --all to identify orphaned entries
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:323:- moai-worktree status --all: Shows all worktrees with sync status
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:325:- moai-worktree status SPEC-ID --detailed: Detailed status for specific worktree
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:355:- Run moai-worktree status --all to check for issues
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:367:- Always use moai-worktree new instead of manual Git commands
+HEAD:.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:391:- Share worktree status updates for blocking issues
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:20:1. Create worktree: moai-worktree new SPEC-001 "User Authentication"
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:21:2. Switch to worktree: moai-worktree switch SPEC-001
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:22:3. Or use shell eval: eval $(moai-worktree go SPEC-001)
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:28:### moai-worktree new - Create Worktree
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:32:Syntax: moai-worktree new <spec-id> [description] [options]
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:47:- Basic creation: moai-worktree new SPEC-001 "User Auth System"
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:48:- Custom branch: moai-worktree new SPEC-002 "Payment" --branch feature/payment-gateway
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:49:- From develop: moai-worktree new SPEC-003 "API Refactor" --base develop
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:50:- With template: moai-worktree new SPEC-004 "Frontend" --template frontend
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:51:- Fast creation: moai-worktree new SPEC-005 "Bug Fixes" --shallow --depth 1
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:61:### moai-worktree list - List Worktrees
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:65:Syntax: moai-worktree list [options]
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:75:- Table format: moai-worktree list
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:76:- JSON output: moai-worktree list --format json
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:77:- Active only: moai-worktree list --status active
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:78:- Sort by date: moai-worktree list --sort created
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:79:- Detailed: moai-worktree list --verbose
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:81:### moai-worktree switch - Switch to Worktree
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:85:Syntax: moai-worktree switch <spec-id> [options]
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:93:- Basic switch: moai-worktree switch SPEC-001
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:94:- With sync: moai-worktree switch SPEC-002 --auto-sync
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:95:- Force switch: moai-worktree switch SPEC-003 --force
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:97:### moai-worktree go - Get Worktree Path
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:101:Syntax: moai-worktree go <spec-id> [options]
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:109:- eval pattern (recommended): eval $(moai-worktree go SPEC-001)
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:110:- source pattern: moai-worktree go SPEC-001 | source
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:111:- manual cd: cd $(moai-worktree go SPEC-001 --absolute)
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:195:### moai-worktree status - Show Worktree Status
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:199:Syntax: moai-worktree status [spec-id] [options]
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:211:- Current worktree: moai-worktree status
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:212:- Specific worktree: moai-worktree status SPEC-001
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:213:- All with sync check: moai-worktree status --all --sync-check
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:214:- Detailed Git status: moai-worktree status SPEC-001 --detailed
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:215:- JSON output: moai-worktree status --all --format json
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:223:### moai-worktree config - Configuration Management
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:227:Syntax: moai-worktree config <action> [key] [value]
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:245:- List all: moai-worktree config list
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:246:- Get value: moai-worktree config get worktree_root
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:247:- Set value: moai-worktree config set auto_sync true
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:248:- Reset: moai-worktree config reset worktree_root
+HEAD:.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:249:- Edit: moai-worktree config edit
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:26:# 1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:27:# 2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:31:eval $(moai-worktree go SPEC-AUTH-001)
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:48:moai-worktree new SPEC-AUTH-001 "User Authentication"
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:49:moai-worktree new SPEC-PAY-001 "Payment Processing"
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:50:moai-worktree new SPEC-DASH-001 "Dashboard Analytics"
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:53:moai-worktree switch SPEC-AUTH-001
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:56:moai-worktree switch SPEC-PAY-001
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:59:moai-worktree switch SPEC-DASH-001
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:63:moai-worktree status --all
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:87:moai-worktree status SPEC-AUTH-001
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:89:moai-worktree config get worktree_root
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:188:if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/null; then
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:193: cd $(moai-worktree go "$SPEC_ID")
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:260:moai-worktree config set worktree_root "$WORKTREE_ROOT"
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:261:moai-worktree config set registry_type team
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:357:# moai-worktree new SPEC-FULL-001 "Fullstack Application" --template fullstack
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:463: """Generate comprehensive worktree status report."""
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:465: # Get worktree status
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:569:moai-worktree new SPEC-DEBUG-001 "Debug Test" --verbose
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:575:moai-worktree status SPEC-CONFLICT-001
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:590:moai-worktree config set registry_rebuild true
+HEAD:.claude/skills/moai-workflow-worktree/references/examples.md:591:moai-worktree list --rebuild-registry
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:131: moai-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:209: moai-worktree new test-spec "Test Worktree"
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:230: moai-worktree config set worktree_root $WORKSPACE/worktrees
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:240: moai-worktree new SPEC-AUTH-001 "Authentication Worktree"
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:241: cd $(moai-worktree go SPEC-AUTH-001)
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:250: moai-worktree new SPEC-PAY-001 "Payment Worktree"
+HEAD:.claude/skills/moai-workflow-worktree/references/reference.md:251: cd $(moai-worktree go SPEC-PAY-001)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:99:To create a new worktree for a SPEC, use the new command followed by the SPEC ID and description. To list all worktrees, use the list command. To switch to a specific worktree, use the switch command with the SPEC ID. To get the worktree path for shell integration, use the go command with eval. To sync a worktree with its base branch, use the sync command. To remove a worktree, use the remove command. To clean up merged worktrees, use the clean command. To show worktree status, use the status command. For configuration management, use the config command with get or set subcommands.
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/SKILL.md:123:During the Plan Phase using /moai plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/integration-patterns.md:19:The basic integration workflow follows three phases. During the Plan Phase, the /moai plan command auto-creates a worktree for the SPEC. During the Development Phase, use the moai-worktree go command to navigate to the isolated environment and run /moai run for DDD implementation. During the Sync Phase, use moai-worktree sync to update the worktree and /moai sync for documentation synchronization.
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md:28:- The retired `/moai plan --worktree` flag and the retired `moai worktree new` command MUST NOT be presented as live entry points.
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md:180:- read-only: View worktree status and metadata
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/parallel-development.md:20:To set up parallel development, create worktrees for each SPEC using moai-worktree new with the SPEC ID and description. For parallel execution, navigate to each worktree using moai-worktree go and run /moai run in separate terminals or background processes. For integration, use moai-worktree sync --all to synchronize all worktrees, then clean up merged worktrees with moai-worktree clean --merged-only.
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/parallel-workflows.md:184:- All developers see team worktree list
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/resource-optimization.md:213:3. Mark worktree status as error
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/tools-integration.md:70:- Color coding for worktree status
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:19:- Check worktree status: moai-worktree status --all
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:116:- Validate the rebuilt registry with moai-worktree status --all
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:122:- moai-worktree status shows worktrees as missing
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:132:1. Run moai-worktree status --all to identify orphaned entries
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:322:- moai-worktree status --all: Shows all worktrees with sync status
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:324:- moai-worktree status SPEC-ID --detailed: Detailed status for specific worktree
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:354:- Run moai-worktree status --all to check for issues
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:366:- Always use moai-worktree new instead of manual Git commands
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:390:- Share worktree status updates for blocking issues
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:19:1. Create worktree: moai-worktree new SPEC-001 "User Authentication"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:20:2. Switch to worktree: moai-worktree switch SPEC-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:21:3. Or use shell eval: eval $(moai-worktree go SPEC-001)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:27:### moai-worktree new - Create Worktree
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:31:Syntax: moai-worktree new <spec-id> [description] [options]
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:46:- Basic creation: moai-worktree new SPEC-001 "User Auth System"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:47:- Custom branch: moai-worktree new SPEC-002 "Payment" --branch feature/payment-gateway
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:48:- From develop: moai-worktree new SPEC-003 "API Refactor" --base develop
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:49:- With template: moai-worktree new SPEC-004 "Frontend" --template frontend
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:50:- Fast creation: moai-worktree new SPEC-005 "Bug Fixes" --shallow --depth 1
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:60:### moai-worktree list - List Worktrees
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:64:Syntax: moai-worktree list [options]
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:74:- Table format: moai-worktree list
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:75:- JSON output: moai-worktree list --format json
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:76:- Active only: moai-worktree list --status active
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:77:- Sort by date: moai-worktree list --sort created
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:78:- Detailed: moai-worktree list --verbose
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:80:### moai-worktree switch - Switch to Worktree
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:84:Syntax: moai-worktree switch <spec-id> [options]
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:92:- Basic switch: moai-worktree switch SPEC-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:93:- With sync: moai-worktree switch SPEC-002 --auto-sync
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:94:- Force switch: moai-worktree switch SPEC-003 --force
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:96:### moai-worktree go - Get Worktree Path
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:100:Syntax: moai-worktree go <spec-id> [options]
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:108:- eval pattern (recommended): eval $(moai-worktree go SPEC-001)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:109:- source pattern: moai-worktree go SPEC-001 | source
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:110:- manual cd: cd $(moai-worktree go SPEC-001 --absolute)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:194:### moai-worktree status - Show Worktree Status
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:198:Syntax: moai-worktree status [spec-id] [options]
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:210:- Current worktree: moai-worktree status
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:211:- Specific worktree: moai-worktree status SPEC-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:212:- All with sync check: moai-worktree status --all --sync-check
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:213:- Detailed Git status: moai-worktree status SPEC-001 --detailed
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:214:- JSON output: moai-worktree status --all --format json
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:222:### moai-worktree config - Configuration Management
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:226:Syntax: moai-worktree config <action> [key] [value]
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:244:- List all: moai-worktree config list
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:245:- Get value: moai-worktree config get worktree_root
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:246:- Set value: moai-worktree config set auto_sync true
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:247:- Reset: moai-worktree config reset worktree_root
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/worktree-commands.md:248:- Edit: moai-worktree config edit
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:25:# 1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:26:# 2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:30:eval $(moai-worktree go SPEC-AUTH-001)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:47:moai-worktree new SPEC-AUTH-001 "User Authentication"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:48:moai-worktree new SPEC-PAY-001 "Payment Processing"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:49:moai-worktree new SPEC-DASH-001 "Dashboard Analytics"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:52:moai-worktree switch SPEC-AUTH-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:55:moai-worktree switch SPEC-PAY-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:58:moai-worktree switch SPEC-DASH-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:62:moai-worktree status --all
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:86:moai-worktree status SPEC-AUTH-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:88:moai-worktree config get worktree_root
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:187:if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/null; then
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:192: cd $(moai-worktree go "$SPEC_ID")
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:259:moai-worktree config set worktree_root "$WORKTREE_ROOT"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:260:moai-worktree config set registry_type team
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:356:# moai-worktree new SPEC-FULL-001 "Fullstack Application" --template fullstack
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:462: """Generate comprehensive worktree status report."""
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:464: # Get worktree status
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:568:moai-worktree new SPEC-DEBUG-001 "Debug Test" --verbose
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:574:moai-worktree status SPEC-CONFLICT-001
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:589:moai-worktree config set registry_rebuild true
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/examples.md:590:moai-worktree list --rebuild-registry
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:130: moai-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:208: moai-worktree new test-spec "Test Worktree"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:229: moai-worktree config set worktree_root $WORKSPACE/worktrees
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:239: moai-worktree new SPEC-AUTH-001 "Authentication Worktree"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:240: cd $(moai-worktree go SPEC-AUTH-001)
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:249: moai-worktree new SPEC-PAY-001 "Payment Worktree"
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/references/reference.md:250: cd $(moai-worktree go SPEC-PAY-001)

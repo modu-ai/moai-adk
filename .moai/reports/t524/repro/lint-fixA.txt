@@ -1,0 +1,6 @@
+SEVERITY  CODE                FILE                                                     LINE  MESSAGE
+--------  ----                ----                                                     ----  -------
+WARNING   CoverageIncomplete  .moai/reports/t524/repro/fixtures/SPEC-FIXA-001/spec.md  8     REQ REQ-FIXA-002 is not referenced by any AC
+WARNING   MissingExclusions   .moai/reports/t524/repro/fixtures/SPEC-FIXA-001/spec.md  1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required [grandfathered era — downgraded to warning]
+
+0 error(s), 2 warning(s)

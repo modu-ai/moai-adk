@@ -14,7 +14,7 @@ Acceptance criteria are mapped 1:1 to the GEARS requirements in `spec.md`. Each 
 | AC-WC-006 | REQ-WC-006 | `GET /` renders current settings as pre-populated form |
 | AC-WC-007 | REQ-WC-007 | Valid submit persists via `WritePreferences` + `SyncToProjectConfig` (round-trip) |
 | AC-WC-008 | REQ-WC-008 | Invalid value rejected via existing validation; state unchanged |
-| AC-WC-009 | REQ-WC-009 | Foreign `Host` on mutating request → HTTP 403 |
+| AC-WC-009 | REQ-WC-009 | Foreign `Host` on mutating request → HTTP 403 — **[SUPERSEDED IN PART 2026-09-10]** now: foreign or absent `Host` on any method and any route, `/static/` included → HTTP 403 (see § AC-WC-009 as amended) |
 | AC-WC-010 | REQ-WC-010 | Zero-value profile / missing section → neutral defaults; read error → inline error, no panic |
 | AC-WC-011 | REQ-WC-011 | Multi-profile: list + current marker + selection; single profile may omit UI |
 | AC-WC-012 | REQ-WC-012 | Out-of-scope config sections never read/written |
@@ -61,11 +61,36 @@ Acceptance criteria are mapped 1:1 to the GEARS requirements in `spec.md`. Each 
 - **When** the user submits an unrecognized `PermissionMode` (fails `IsValidPermissionMode`) or an unrecognized statusline theme (not in `statuslineThemeCanonical`),
 - **Then** the mutation is rejected, persisted state is unchanged, the form re-renders with a per-field error, and the rejection used the existing validation predicate (not a parallel rule).
 
-### AC-WC-009 — write-safety Host check
+### AC-WC-009 — write-safety Host check **[SUPERSEDED IN PART — 2026-09-10]**
+
+> **Amendment notice (2026-09-10, v0.2.0 → v0.3.0, card t613).** The original scenario below is kept verbatim. Its last line, "a `GET` request is not Host-gated (read remains accessible)", is **superseded**, because REQ-WC-009 as amended gates every method on every route. Its first three lines (foreign `Host` on a mutating request → 403, state unchanged) still hold, and are a subset of the amended scenario that follows. Where the two disagree, the amended scenario governs. Rationale and provenance: `spec.md` § REQ-WC-009 supersession block. Evidence: `.moai/reports/t613/verdict.md`.
+
 - **Given** the Console server is running,
 - **When** a `POST`/`PUT`/`PATCH` arrives with a `Host` header that does not resolve to a loopback origin (`127.0.0.1:<port>` / `localhost:<port>`),
 - **Then** the server responds HTTP 403 and persisted state is unchanged;
-- **And** a `GET` request is not Host-gated (read remains accessible).
+- **And** a `GET` request is not Host-gated (read remains accessible). **[SUPERSEDED 2026-09-10 — see AC-WC-009 as amended]**
+
+### AC-WC-009 as amended 2026-09-10 — all-route Host check
+- **Given** the Console server is running, and the persisted profile preferences and project config sections are in a known state,
+- **When** requests are sent for every cell of the control matrix below: each `Host` value crossed with (a) a static asset route (`GET /static/app.js`), (b) a dynamic GET route (`GET /settings`), and (c) a mutating route (`POST /save` carrying a valid settings change and satisfying the unchanged `Sec-Fetch-Site` gate),
+- **Then** each cell returns the result shown:
+
+  | `Host` header | (a) `GET /static/app.js` | (b) `GET /settings` | (c) `POST /save` (valid change) |
+  |---|---|---|---|
+  | `localhost`, and `localhost:<port>` | 200 | 200 | 2xx, change persisted |
+  | `LOCALHOST`, and `LocalHost:<port>` | 200 | 200 | 2xx, change persisted |
+  | `127.0.0.1`, and `127.0.0.1:<port>` | 200 | 200 | 2xx, change persisted |
+  | `[::1]`, and `[::1]:<port>` | 200 | 200 | 2xx, change persisted |
+  | foreign (e.g. `attacker.example.com:<port>`) | 403 | 403 | 403, state unchanged |
+  | absent (empty `Host`) | 403 | 403 | 403, state unchanged |
+
+  Each allowed-Host row is exercised in both its port-less and its with-port form.
+- **And** every other GET route the router registers (at minimum `/`, `/kanban`, `/monitor`, `/todo`, `/specs`) returns HTTP 403 for a foreign and for an absent `Host`, and a request with any other method (e.g. `HEAD`, `OPTIONS`) from a foreign or absent `Host` returns HTTP 403 as well;
+- **And** a 403 response carries none of the route's content (the foreign-`Host` and absent-`Host` `GET /settings` bodies contain no persisted profile value);
+- **And** after the foreign-`Host` and absent-`Host` `POST /save` requests, the persisted profile preferences and the `user.yaml` / `language.yaml` / `statusline.yaml` sections are byte-unchanged;
+- **And** the `Sec-Fetch-Site` same-origin gate (SPEC-INTERNAL-SECURITY-001 REQ-SEC-002) is not widened: it still applies only to state-changing routes;
+- **And** the host-name acceptance set of REQ-WC-009 as amended is pinned by a unit table over the host-name check, with accepted rows (at minimum `localhost`, `LOCALHOST`, `LocalHost:<port>`, `127.0.0.1`, `127.1.2.3:<port>`, `127.255.255.254`, `::1`, `[::1]:<port>`, `::ffff:127.0.0.1`, `[::ffff:127.0.0.1]:<port>`) and rejected rows (at minimum `0.0.0.0`, `10.0.0.5:<port>`, `attacker.example.com`, `localhost.attacker.example.com`, the U+017F LATIN SMALL LETTER LONG S spelling of `localhost` with and without a port, and the empty `Host`); the trailing-dot form `localhost.` is currently rejected but undecided, so it is not required as a row in either direction;
+- **And** the regression test formerly named `TestHostCheckDoesNotGateGet`, which required HTTP 200 for a foreign-`Host` GET, is inverted to require HTTP 403 and renamed to state the new contract (e.g. "GET from a foreign Host is gated"; the implementer picks the final name). The old name no longer appears anywhere in `internal/web`.
 
 ### AC-WC-010 — graceful empty/error states
 - **Given** a profile with no `preferences.yaml` (zero-value preferences) or an absent project config section,

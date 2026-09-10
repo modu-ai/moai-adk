@@ -1,0 +1,7 @@
+SEVERITY  CODE                           FILE                                                                                               LINE  MESSAGE
+--------  ----                           ----                                                                                               ----  -------
+WARNING   StatusGitConsistency           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t543/.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/spec.md  1     SPEC SPEC-UPDATE-DOC-DRIFT-001 frontmatter status 'draft' disagrees with git-implied status 'implemented'
+INFO      OwnershipTransitionUnmeasured  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t543/.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/spec.md  1     SPEC SPEC-UPDATE-DOC-DRIFT-001 transition "(none)" → "draft" expected owner "manager-spec" but commit 9a6b6c8545ae2bef110eed200ceba27881b16015 (docs(epic): update/config 4-lens audit Epic — 6 SPEC plan-phase artifacts (E1-E6) (#1258)) has no Authored-By-Agent trailer — ownership transition unmeasured
+
+0 error(s), 1 warning(s)
+EXIT=0
