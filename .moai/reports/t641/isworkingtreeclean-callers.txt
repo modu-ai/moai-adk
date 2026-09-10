@@ -1,0 +1,4 @@
+internal/core/git/manager.go:461:// isWorkingTreeClean is a package-level helper to check working tree cleanliness.
+internal/core/git/manager.go:462:func isWorkingTreeClean(ctx context.Context, dir string) (bool, error) {
+internal/core/git/branch.go:75:	clean, err := isWorkingTreeClean(ctx, b.root)
+EXIT=0

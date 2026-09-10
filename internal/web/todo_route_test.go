@@ -20,10 +20,7 @@ import (
 // recorder.
 func getTodoPage(t *testing.T, a *app) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/todo", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
-	return rec
+	return serveGet(t, a.routes(), "/todo")
 }
 
 // navRowHrefRe captures the href of every rendered rail navigation row.
@@ -51,9 +48,12 @@ func TestTodoRouteRejectsNonGET(t *testing.T) {
 	// what a request that never reached the method gate returns.
 
 	// POST/PUT/PATCH are stopped FIRST by the CSRF guard (hostCheckMiddleware,
-	// app.go), which refuses before routing and is the stronger protection.
+	// app.go), which refuses before routing and is the stronger protection. The
+	// request carries a loopback Host so the refusal is the CSRF guard's, not the
+	// Host gate's.
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch} {
 		req := httptest.NewRequest(method, "/todo", nil)
+		req.Host = "127.0.0.1:8080"
 		rec := httptest.NewRecorder()
 		a.routes().ServeHTTP(rec, req)
 
@@ -121,9 +121,10 @@ func TestTodoNavRowIsSixthAndCurrent(t *testing.T) {
 func TestTodoNavRowNotCurrentElsewhere(t *testing.T) {
 	a := newTestApp(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/kanban", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/kanban")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /kanban status = %d, want 200", rec.Code)
+	}
 
 	if strings.Contains(rec.Body.String(), `href="/todo" aria-current="page"`) {
 		t.Errorf("the /todo row is marked current while /kanban is served")

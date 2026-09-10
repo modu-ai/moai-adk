@@ -1,0 +1,5 @@
+# AC-GTS2-006 vet swept-set control: package count go vet ./... walks
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+
+$ go list ./...  (count below)
+     140

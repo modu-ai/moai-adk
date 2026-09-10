@@ -1,0 +1,15 @@
+internal/template/agentless_audit_test.go
+internal/template/rule_template_mirror_test.go
+internal/template/agent_frontmatter_audit_test.go
+internal/template/internal_content_leak_test.go
+internal/template/implementation_kickoff_approval_preservation_test.go
+internal/template/skill_authoring_paths_glob_test.go
+internal/template/catalog_slim_audit_test.go
+internal/template/skills_audit_test.go
+internal/spec/progress_section_letter_guard_test.go
+internal/lsp/config/completeness_test.go
+internal/cli/runmd_ac_converge_test.go
+internal/cli/goal_condition_classify_test.go
+internal/cli/plan_subagent_boundary_test.go
+internal/harness/meta_invocation_test.go
+internal/skills/workflow_split_test.go
