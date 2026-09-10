@@ -1,0 +1,11 @@
+--- internal/spec/parser.go	2026-09-11 03:37:53
++++ /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/mutants2/M6/parser.go	2026-09-11 03:39:29
+@@ -101,7 +101,7 @@
+ // isACSectionHeading reports whether a heading names the acceptance criteria
+ // section.
+ func isACSectionHeading(trimmed string) bool {
+-	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
++	if strings.Contains(strings.ToLower(trimmed), "acceptance.md") { return false }; text := strings.ToLower(trimmed)
+ 	for _, marker := range acNegativeSectionMarkers {
+ 		if strings.Contains(text, marker) {
+ 			return false

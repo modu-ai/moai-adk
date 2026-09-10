@@ -1,0 +1,13 @@
+t565 round 2 RED predictions — lead ruling (i)+(가′), written before the new tests first run
+Tree: HEAD 70b084194 (ruled parser, no skip-empty, no extra vocabulary) + new test edits only
+
+Selector: go test ./internal/spec -count=1 -run '^(TestT565|TestT528)' -v
+
+New:
+TestT565AnchorSkipsEmptySection                                   FAIL  (anchors on the empty "## §F. Success Criteria"; AC-HDG-01 under §I not read)
+TestT565AnchorAllEmptySectionsStillAnchor                         PASS  (control: first heading anchors, empty section, no error — must stay PASS after the fix)
+TestT565AnchorVocabulary/"## §D 수용 기준"                          FAIL
+TestT565AnchorVocabulary/"## §H. 성공 기준 (요약)"                   FAIL
+TestT565AnchorVocabulary/"## §H AC summary (full GWT in acceptance.md)"  FAIL
+
+Every other TestT565* / TestT528* test                             PASS (unchanged from round 1 GREEN)
