@@ -3,6 +3,7 @@ package spec
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -58,6 +59,7 @@ type acParsedLine struct {
 	then   string
 	reqIDs []string
 	indent int
+	line   int
 }
 
 // findACSectionStart finds the start index of Acceptance Criteria section in markdown
@@ -106,6 +108,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
 			then:   parsed.then,
 			reqIDs: parsed.reqIDs,
 			indent: indent,
+			line:   i + 1,
 		})
 	}
 
@@ -124,6 +127,12 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 	var roots []Acceptance
 	var stack []stackEntry
 	seenIDs := make(map[string]bool)
+	// Duplicate ids (card t564): the grammar cannot tell a bullet that cites an
+	// id from the bullet that declares it, so dropping either line loses its REQ
+	// mapping silently. The first line's text is kept, every later line's REQ
+	// mappings are collected here and merged below, and the duplicate is still
+	// reported so the author sees it.
+	duplicateReqIDs := make(map[string][]string)
 
 	for i, acLine := range acLines {
 		node := Acceptance{
@@ -138,7 +147,9 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 			result.Errors = append(result.Errors, &DuplicateAcceptanceID{
 				ID:    acLine.id,
 				Depth: acLine.indent,
+				Line:  acLine.line,
 			})
+			duplicateReqIDs[acLine.id] = append(duplicateReqIDs[acLine.id], acLine.reqIDs...)
 			continue
 		}
 		seenIDs[acLine.id] = true
@@ -173,6 +184,10 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 		}
 	}
 
+	// Merge before auto-wrapping, which copies RequirementIDs into the wrapper's
+	// child and would otherwise leave the merged ids on the empty wrapper.
+	mergeDuplicateReqIDs(roots, duplicateReqIDs)
+
 	for i := range roots {
 		if len(roots[i].Children) == 0 && !hasIDSuffix(roots[i].ID) {
 			roots[i] = autoWrapSingle(roots[i])
@@ -180,6 +195,22 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
 	}
 
 	return roots
+}
+
+// mergeDuplicateReqIDs appends to each node the REQ ids mapped by later lines
+// carrying the same AC id, skipping ids the node already holds.
+func mergeDuplicateReqIDs(nodes []Acceptance, extra map[string][]string) {
+	if len(extra) == 0 {
+		return
+	}
+	for i := range nodes {
+		for _, id := range extra[nodes[i].ID] {
+			if !slices.Contains(nodes[i].RequirementIDs, id) {
+				nodes[i].RequirementIDs = append(nodes[i].RequirementIDs, id)
+			}
+		}
+		mergeDuplicateReqIDs(nodes[i].Children, extra)
+	}
 }
 
 func hasIDSuffix(id string) bool {
