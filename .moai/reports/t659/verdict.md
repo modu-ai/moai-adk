@@ -152,3 +152,12 @@ SPEC `SPEC-V3R2-CON-002` frontmatter 는 `status: implemented` 인데, REQ-CON-0
 3. dry-run 환경 변수 값 불일치 — SPEC-V3R2-CON-002 REQ-031·AC-07 은 `MOAI_CONSTITUTION_DRY_RUN=1`, `internal/cli/constitution.go:470` 은 `== "true"`.
 4. EVO-HRN-002 항목 오기 — `const_registry_entry: CONST-V3R2-153` 인데 그 등록부 항목의 file 은 `.claude/rules/moai/workflow/session-handoff.md`(zone-registry.md:678-681), 로그의 `target_file` 은 `.claude/rules/moai/design/constitution.md`.
 5. `MarkRolledBack` 손실 재직렬화 위험 — 파서가 사람 작성 항목을 읽게 되면 `rewriteEvolutionLog` 가 그 항목을 코드 형식으로 다시 써서 원래 필드를 잃을 수 있다(에이전트 판독, 프로덕션 호출자 0 — 미실측).
+
+## 9. 리드 판정 — G6 (SPEC 0.1.1 `01af243ae` 판독 뒤)
+
+- **G6 경로 경계**: (ii) 채택. `LoadRegistry` 가 projectDir 밖 등록부 경로를 거부하는 동작(`internal/constitution/loader.go:79-88`)을 의도된 경계로 명시한다.
+  - REQ: 등록부·원문 규칙 파일·evolution-log 는 모두 같은 프로젝트 루트 안에서만 온다(불변식).
+  - AC: `CLAUDE_PROJECT_DIR` 가 다른 트리를 가리키면 쓰기 전 적재 오류로 멈추고 어느 파일도 바뀌지 않는다. 대조: 같은 트리를 가리키면 통과한다.
+  - (i) 원문·로그도 해석된 루트를 따르게 확장하는 안은 쓰기 대상 트리를 넓히는 방향이라 기각.
+- **설치 바이너리 SIGKILL**(`/Users/goos/go/bin/moai`, 04:14 교체 뒤 `moai version` exit 137): 리드가 확인한다. 레인은 재설치하지 않는다.
+- 순서: G6 SPEC 반영 → 바이너리 복구 확인 뒤 `moai spec lint` 1회 → plan-auditor.
