@@ -205,3 +205,64 @@ SSOT 머리말은 「구조적으로 YAML↔settings.json 드리프트를 막는
 2. **선재 드리프트가 남아 있다.** 누군가 `moai tool-policy build` 를 돌리면 로컬 settings.json 의 allow 6개가 빠지고 deny 12개가 더해진다 — 이 카드와 무관하게, 지금도 그렇다. 검사가 없어 조용히 일어난다.
 3. **리드의 주 체크아웃 미커밋분에 세 번째 파일이 없다.** 카드 문안에 따르면 리드는 main 에서 두 settings 파일만 편집했다. 착지 후 정리할 때 `tool-policy.yaml` 이 빠져 있으면 원본과 산출물이 다시 어긋난다.
 4. **바이너리의 참조 문서 2건은 남는다.** 설정이 아니라 문서 예시이므로 기능에는 영향이 없지만, `strings | grep` 으로 제거를 재는 다음 사람은 적중 2건을 보게 된다 — §3.3 의 정산이 그 해석이다.
+
+---
+
+## 9. 병합 트리 — 흡수 후 판정
+
+통합 창 안에서 로컬 develop `d3b7d438d`(t576 병합)를 흡수했다(병합 커밋 `f8f5fdf91`, 충돌 없음).
+
+### 9.1 흡수 델타
+
+```
+.moai/reports/t576/verdict.md                                   +491
+.moai/specs/SPEC-UPDATE-MERGE-CONFLICT-BLIND-001/ (문서 4개)      +1135
+internal/cli/update/merge/conflict_blind_breadth_test.go (신규)  +485
+internal/cli/update/merge/conflict_blind_repro_test.go (신규)    +234
+7 files, 2345(+), 0(−)
+```
+
+**코드가 들어왔다** — 신규 테스트 2개. 이 카드의 표면 파일은 델타에 없다. 다만 t576 은 바로 `permissions.ask` 가 비는 원인을 조사한 카드라, 두 테스트가 실제 템플릿의 ask 블록을 읽는다면 병합 트리에서 이 카드의 제거와 부딪친다. 그래서 「표면 파일이 diff 에 없다」로 이월하지 않고 따로 판정했다.
+
+### 9.2 두 테스트가 무엇을 읽는가 — 추론을 정정한 경위
+
+처음에는 두 파일을 템플릿·임베드 참조로 grep 해 `permissions.ask` 가 주석(breadth 24·273행)에만 나오는 것을 보고 「파일을 읽지 않는다」고 판단했다. 이는 텍스트 추론이었고, **파일 읽기 패턴으로 다시 재자 틀린 것으로 드러났다** — 두 테스트 모두 `os.ReadFile` 을 부른다(breadth 62·66행, repro 48·52행). 패턴의 양성 대조는 시험 입력 3줄 중 2줄 적중이다.
+
+읽는 대상을 코드로 따라가면 결론은 선다. 두 호출은 헬퍼 `writeBreadthFixture` / `writeReproFixture` 안에만 있고, 흐름은 `dir := t.TempDir()` → `os.WriteFile(currentPath, []byte(current))` → `os.ReadFile(currentPath)` 다. 내용은 각 케이스가 넘기는 문자열이며, 픽스처 이름은 일부러 `fixture.json` 이다. 두 파일에 `templates/`·`embed.FS` 참조는 0이다. **즉 이 카드의 변경은 두 테스트의 입력에 닿지 않는다.** 정적 근거에 그치지 않도록 아래 9.3 에서 런타임으로도 쟀다.
+
+### 9.3 들어온 코드가 사는 패키지 — 직접 측정
+
+`internal/cli/update/merge` 는 경로가 `internal/cli` 아래일 뿐 별개 패키지라 실행 슬롯 대상이 아니다(리드 판정).
+
+```
+$ go test ./internal/cli/update/merge/... -timeout 600s
+ok  github.com/modu-ai/moai-adk/internal/cli/update/merge  0.494s
+GOTEST_EXIT=0
+```
+
+### 9.4 이 카드가 잰 패키지 — 트리 동일성 이월과 그 한계
+
+§3.4 에서 잰 3개 패키지와 이 카드의 4개 파일의 해시가 흡수 전후 **바이트 동일**하다:
+
+| 대상 | 흡수 전 (`1ac333952`) | 흡수 후 (`f8f5fdf91`) |
+|---|---|---|
+| `.claude/settings.json` | `b29819ebe60094cd…` | `b29819ebe60094cd…` |
+| `tool-policy.yaml` | `3e2e5de5953c1290…` | `3e2e5de5953c1290…` |
+| `settings.json.tmpl` | `419ab9e41e373da9…` | `419ab9e41e373da9…` |
+| `verdict.md` | `8be3f98db3ee3aea…` | `8be3f98db3ee3aea…` |
+| `internal/config/` | `36a42c6a8acbd788…` | `36a42c6a8acbd788…` |
+| `internal/template/` | `58cfd9e4c464149c…` | `58cfd9e4c464149c…` |
+| `internal/core/project/` | `0905b58a1f91bc5a…` | `0905b58a1f91bc5a…` |
+
+**[HARD] 서브트리 해시는 그 패키지 자기 파일까지만 세운다 — 전이 의존성은 덮지 않는다.** 그래서 3개 패키지의 의존 폐포에 흡수 델타가 있는지 따로 쟀다:
+
+```
+$ go list -deps ./internal/config/... ./internal/template/... ./internal/core/project/...
+의존 패키지 수: 171
+델타 패키지 internal/cli/update/merge 적중: 0
+양성 대조(대상 패키지 internal/template 자신): 1
+```
+
+3개 패키지 어느 것도 델타 패키지에 의존하지 않는다. 게다가 델타는 그 패키지에 `_test.go` 만 더했으므로 import 하는 쪽의 입력을 바꿀 수도 없다. 두 조건이 함께 서므로 §3.4 의 테스트 결과는 병합 트리에 그대로 성립한다.
+
+[HARD] **이 이월이 성립하지 않는 경우**: 흡수 델타가 3개 패키지의 의존 폐포 안에 비테스트 Go 파일을 들여왔다면, 서브트리 해시가 같아도 테스트 입력이 달라진다. 그때는 이월이 아니라 재측정이다.
