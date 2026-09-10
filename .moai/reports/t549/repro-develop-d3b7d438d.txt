@@ -1,0 +1,15 @@
+=== RUN   TestT549_BacklogPathForRootTreatsArgumentAsRoot
+    root_layer_repro_test.go:53: BacklogPathForRoot(root)     = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_BacklogPathForRootTreatsArgumentAsRoot1156946446/001/.moai/state/todo/backlog.json
+    root_layer_repro_test.go:54: BacklogPathForRoot(stateDir) = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_BacklogPathForRootTreatsArgumentAsRoot1156946446/001/.moai/state/todo/.moai/state/todo/backlog.json
+--- PASS: TestT549_BacklogPathForRootTreatsArgumentAsRoot (0.09s)
+=== RUN   TestT549_NoHomeFallbackReadsTheExistingQueue
+    root_layer_repro_test.go:113: pure: root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001/.moai/state/todo path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001/.moai/state/todo/.moai/state/todo/backlog.json items=0 err=<nil>
+    root_layer_repro_test.go:115: pure resolver root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001/.moai/state/todo", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001"
+    root_layer_repro_test.go:118: pure resolver read 0 items through its root (err <nil>), want 3
+    root_layer_repro_test.go:113: adopting: root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001/.moai/state/todo path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001/.moai/state/todo/.moai/state/todo/backlog.json items=0 err=<nil>
+    root_layer_repro_test.go:115: adopting resolver root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001/.moai/state/todo", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue3932622916/001"
+    root_layer_repro_test.go:118: adopting resolver read 0 items through its root (err <nil>), want 3
+--- FAIL: TestT549_NoHomeFallbackReadsTheExistingQueue (0.30s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.782s
+FAIL

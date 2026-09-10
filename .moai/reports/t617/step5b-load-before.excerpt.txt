@@ -1,0 +1,9 @@
+Excerpt of local raw file step5b-load-before.txt (raw machine-wide ps output not committed).
+2026-09-10T08:28:34Z
+17:28  up 2 days, 11:21, 15 users, load averages: 11.23 9.70 7.21
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1391)
+observer control — the ps process itself: 1 line(s)
+go test/.test lines (zsh lines excluded): 2
+  80119 02:41 go test ./internal/kanban/ -count=1 -v
+  80224 02:40 /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build4266998329/b001/kanban.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 -test.v=true

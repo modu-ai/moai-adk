@@ -1,0 +1,15 @@
+=== RUN   TestSessionStart_InvokesMigrationRunner
+    session_start_migration_test.go:11: waiting for session-start migration integration
+--- SKIP: TestSessionStart_InvokesMigrationRunner (0.00s)
+=== RUN   TestSessionStart_MigrationFailure_SurfacesViaSystemMessage
+    session_start_migration_test.go:18: waiting for RT-001 HookResponse SystemMessage merge
+--- SKIP: TestSessionStart_MigrationFailure_SurfacesViaSystemMessage (0.00s)
+=== RUN   TestSessionStart_DisabledViaSystemYaml
+    session_start_migration_test.go:25: waiting for system.yaml migrations.disabled implementation
+--- SKIP: TestSessionStart_DisabledViaSystemYaml (0.00s)
+=== RUN   TestSessionStart_EnabledByDefault
+    session_start_migration_test.go:32: waiting for system.yaml migrations.disabled implementation
+--- SKIP: TestSessionStart_EnabledByDefault (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.720s
+EXIT=0
