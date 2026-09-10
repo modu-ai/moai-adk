@@ -161,3 +161,35 @@ SPEC `SPEC-V3R2-CON-002` frontmatter 는 `status: implemented` 인데, REQ-CON-0
   - (i) 원문·로그도 해석된 루트를 따르게 확장하는 안은 쓰기 대상 트리를 넓히는 방향이라 기각.
 - **설치 바이너리 SIGKILL**(`/Users/goos/go/bin/moai`, 04:14 교체 뒤 `moai version` exit 137): 리드가 확인한다. 레인은 재설치하지 않는다.
 - 순서: G6 SPEC 반영 → 바이너리 복구 확인 뒤 `moai spec lint` 1회 → plan-auditor.
+
+## 10. SPEC 0.1.2 확인 · lint · 새 공백 G7
+
+### 10.1 레인 직접 확인 (`e693f0583`)
+
+- 커밋 `e693f0583` 은 SPEC 파일 4개만 바꿨다(69+/28-). 작업 트리 변경 0.
+- `version: "0.1.2"`. REQ-CAA 20개(acceptance.md 에서 20/20 참조), AC 23개, 뮤턴트 25개(`grep -o … | sort -u | wc -l`).
+- Cf 문자 네 파일 모두 0(대조 1).
+- G6 반영 ID: REQ-CAA-020, AC-CAA-023(`divergent_root_real`·`divergent_root_dry_run`·`same_root_control`), M-20.
+
+### 10.2 lint (`lint-0.1.2.txt`, 판정 바이너리 `lint-binary.txt`)
+
+```
+/Users/goos/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001
+INFO  OwnershipTransitionUnmeasured  …/spec.md  1  … commit 7b4d1ac89… has no Authored-By-Agent trailer — ownership transition unmeasured
+0 error(s), 0 warning(s)
+LINT_EXIT=0
+```
+
+- 판정 바이너리: `v3.2.0-rc.7   moai_cp/20260910_130400-275-ged71054d3-dirty   built 2026-09-10T19:18:41Z`, `VERSION_EXIT=0`.
+- 판정 트리: `e693f0583b3490620e9d40f82d9895f76ab594b3`.
+- 귀속: `git merge-base --is-ancestor ed71054d3 92c8c3f36` → exit 0. `git diff --stat ed71054d3 92c8c3f36 -- '*.go' internal cmd pkg` → 출력 없음(같은 범위 전체 diff 는 11 files 로 대조). 따라서 lint 규칙 코드는 커밋 기준으로 이 트리와 같다. `-dirty` 는 빌드 트리에 미커밋 변경이 있었다는 뜻이며 그 내용은 관측하지 않았다(Gap).
+
+### 10.3 새 공백 G7 — 에이전트 판독, 레인이 인용 줄을 확인
+
+REQ-CAA-020 이 "다른 트리에는 읽기도 쓰기도 닿지 않는다"고 선언했지만, 현재 검사가 막지 못하는 모양이 두 가지다(실행 재현 없음).
+
+1. 상대 등록부 경로 — `internal/constitution/loader.go:82` 는 `filepath.IsAbs(cleanPath)` 일 때만 경계를 검사한다. `MOAI_CONSTITUTION_REGISTRY` 나 `CLAUDE_PROJECT_DIR` 에 `../other` 같은 상대값이 오면 검사 없이 프로세스 cwd 기준으로 읽는다.
+2. 등록부 항목 `file:` 이 절대경로이거나 `..` 를 포함 — `internal/constitution/pipeline.go:192-195` 는 상대경로면 `projectDir` 에 join 하고, 경계 검사가 없다.
+   - 실제 등록부 `file:` 101줄 중 `/` 시작 0, `..` 포함 0(대조: `.claude/` 시작 87).
+
+리드 판단 필요: (A) 두 모양 모두 REQ-CAA-020 으로 강제하고 AC·뮤턴트 추가, (B) REQ 를 절대 등록부 경로로 좁히고 두 모양은 §F 에 기록만.
