@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Drift check between .moai/config/sections/tool-policy.yaml and the
@@ -266,5 +268,303 @@ func TestToolPolicyDrift_NoDuplicatesOrOverlap(t *testing.T) {
 
 	if err := driftListViolations(settingsPath); err != nil {
 		t.Errorf(".claude/settings.json permissions lists violate the list rules:\n%v", err)
+	}
+}
+
+// Fixed fixtures (acceptance.md AC-TDG-005 / AC-TDG-006).
+const (
+	driftYAMLHeader = "metadata:\n  version: \"1.0.0\"\nentries:\n"
+
+	driftReadAllowEntry = `  - tool: "Read"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "read"
+`
+	driftBashDenyEntry = `  - tool: "Bash"
+    args_pattern: "rm -rf /:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "rm"
+`
+	driftWebFetchAskEntry = `  - tool: "WebFetch"
+    args_pattern: ""
+    risk_tier: read
+    decision: ask
+    owner_agent: orchestrator
+    audit: "fetch"
+`
+	driftReadDenyEntry = `  - tool: "Read"
+    args_pattern: ""
+    risk_tier: read
+    decision: deny
+    owner_agent: orchestrator
+    audit: "read-deny"
+`
+
+	driftBaseYAML    = driftYAMLHeader + driftReadAllowEntry + driftBashDenyEntry
+	driftAskYAML     = driftBaseYAML + driftWebFetchAskEntry
+	driftOverlapYAML = driftBaseYAML + driftReadDenyEntry
+
+	driftBaseSettings = `{"permissions":{"allow":["Read"],"deny":["Bash(rm -rf /:*)"]}}`
+)
+
+// driftWriteFixture writes content to dir/name and returns the path.
+func driftWriteFixture(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write fixture %q: %v", path, err)
+	}
+	return path
+}
+
+// driftCopyCommitted copies the committed YAML and settings into a fresh
+// t.TempDir() so a subtest can mutate the copies without touching the tree.
+func driftCopyCommitted(t *testing.T, yamlSrc, settingsSrc string) (yamlPath, settingsPath string) {
+	t.Helper()
+	dir := t.TempDir()
+	yamlBody, err := os.ReadFile(yamlSrc)
+	if err != nil {
+		t.Fatalf("read committed yaml: %v", err)
+	}
+	settingsBody, err := os.ReadFile(settingsSrc)
+	if err != nil {
+		t.Fatalf("read committed settings: %v", err)
+	}
+	return driftWriteFixture(t, dir, "tool-policy.yaml", string(yamlBody)),
+		driftWriteFixture(t, dir, "settings.json", string(settingsBody))
+}
+
+// TestToolPolicyDrift_Mutation proves the check can go red: each subtest
+// mutates an isolated copy (never the working tree) or uses a fixed fixture
+// whose sets are equal, so the dedicated list rules are the only thing that
+// can fail.
+func TestToolPolicyDrift_Mutation(t *testing.T) {
+	committedYAML, committedSettings := driftCommittedPaths(t)
+
+	t.Run("settings_side_missing", func(t *testing.T) {
+		yamlPath, settingsPath := driftCopyCommitted(t, committedYAML, committedSettings)
+
+		body, err := os.ReadFile(settingsPath)
+		if err != nil {
+			t.Fatalf("read settings copy: %v", err)
+		}
+		var settings map[string]any
+		if err := json.Unmarshal(body, &settings); err != nil {
+			t.Fatalf("decode settings copy: %v", err)
+		}
+		perms, ok := settings["permissions"].(map[string]any)
+		if !ok {
+			t.Fatalf("settings copy has no permissions object")
+		}
+		allow, ok := perms["allow"].([]any)
+		if !ok || len(allow) < 2 {
+			t.Fatalf("settings copy allow list is not a list of at least two entries: %v", perms["allow"])
+		}
+		removed, ok := allow[0].(string)
+		if !ok {
+			t.Fatalf("first allow entry is not a string: %v", allow[0])
+		}
+		perms["allow"] = allow[1:]
+		var out bytes.Buffer
+		enc := json.NewEncoder(&out)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(settings); err != nil {
+			t.Fatalf("encode mutated settings: %v", err)
+		}
+		driftWriteFixture(t, filepath.Dir(settingsPath), filepath.Base(settingsPath), out.String())
+
+		diff, err := driftSetDiff(yamlPath, settingsPath)
+		if err != nil {
+			t.Fatalf("driftSetDiff: %v", err)
+		}
+		want := "allow only-in-yaml: " + removed
+		if len(diff) != 1 || diff[0] != want {
+			t.Errorf("removing %q from settings allow: diff = %q, want exactly [%q]", removed, diff, want)
+		}
+	})
+
+	t.Run("yaml_side_flip", func(t *testing.T) {
+		yamlPath, settingsPath := driftCopyCommitted(t, committedYAML, committedSettings)
+
+		doc, err := Load(yamlPath)
+		if err != nil {
+			t.Fatalf("load yaml copy: %v", err)
+		}
+		counts := map[string]int{}
+		for _, e := range doc.Entries {
+			if e.EnvGate == nil {
+				counts[e.SettingsSpecifier()]++
+			}
+		}
+		flipped := ""
+		for i, e := range doc.Entries {
+			if e.EnvGate == nil && e.Decision == DecisionAllow && counts[e.SettingsSpecifier()] == 1 {
+				doc.Entries[i].Decision = DecisionDeny
+				flipped = e.SettingsSpecifier()
+				break
+			}
+		}
+		if flipped == "" {
+			t.Fatalf("no single-declaration allow entry to flip in the yaml copy")
+		}
+		body, err := yaml.Marshal(doc)
+		if err != nil {
+			t.Fatalf("encode mutated yaml: %v", err)
+		}
+		driftWriteFixture(t, filepath.Dir(yamlPath), filepath.Base(yamlPath), string(body))
+
+		diff, err := driftSetDiff(yamlPath, settingsPath)
+		if err != nil {
+			t.Fatalf("driftSetDiff: %v", err)
+		}
+		for _, want := range []string{"allow only-in-settings: " + flipped, "deny only-in-yaml: " + flipped} {
+			found := false
+			for _, line := range diff {
+				if line == want {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("flipping %q from allow to deny: diff = %q, missing %q", flipped, diff, want)
+			}
+		}
+	})
+
+	t.Run("unmutated", func(t *testing.T) {
+		yamlPath, settingsPath := driftCopyCommitted(t, committedYAML, committedSettings)
+
+		diff, err := driftSetDiff(yamlPath, settingsPath)
+		if err != nil {
+			t.Fatalf("driftSetDiff: %v", err)
+		}
+		if len(diff) != 0 {
+			t.Errorf("unmutated copies: diff = %q, want none", diff)
+		}
+		if err := driftListViolations(settingsPath); err != nil {
+			t.Errorf("unmutated copies: driftListViolations = %v, want nil", err)
+		}
+	})
+
+	listRuleCases := []struct {
+		name     string
+		yaml     string
+		settings string
+		want     error
+		other    error
+	}{
+		{
+			name:     "duplicate_settings_allow",
+			yaml:     driftBaseYAML,
+			settings: `{"permissions":{"allow":["Read","Read"],"deny":["Bash(rm -rf /:*)"]}}`,
+			want:     errDriftDuplicate,
+			other:    errDriftOverlap,
+		},
+		{
+			name:     "duplicate_settings_ask",
+			yaml:     driftAskYAML,
+			settings: `{"permissions":{"allow":["Read"],"ask":["WebFetch","WebFetch"],"deny":["Bash(rm -rf /:*)"]}}`,
+			want:     errDriftDuplicate,
+			other:    errDriftOverlap,
+		},
+		{
+			name:     "duplicate_settings_deny",
+			yaml:     driftBaseYAML,
+			settings: `{"permissions":{"allow":["Read"],"deny":["Bash(rm -rf /:*)","Bash(rm -rf /:*)"]}}`,
+			want:     errDriftDuplicate,
+			other:    errDriftOverlap,
+		},
+		{
+			name:     "allow_deny_overlap",
+			yaml:     driftOverlapYAML,
+			settings: `{"permissions":{"allow":["Read"],"deny":["Bash(rm -rf /:*)","Read"]}}`,
+			want:     errDriftOverlap,
+			other:    errDriftDuplicate,
+		},
+	}
+	for _, tc := range listRuleCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			yamlPath := driftWriteFixture(t, dir, "tool-policy.yaml", tc.yaml)
+			settingsPath := driftWriteFixture(t, dir, "settings.json", tc.settings)
+
+			// 1. The sets are equal, so the set comparison reports nothing.
+			diff, err := driftSetDiff(yamlPath, settingsPath)
+			if err != nil {
+				t.Fatalf("driftSetDiff: %v", err)
+			}
+			if len(diff) != 0 {
+				t.Fatalf("fixture sets must be equal: diff = %q", diff)
+			}
+
+			// 2-3. Only the dedicated rule fails, and only its own sentinel.
+			err = driftListViolations(settingsPath)
+			if !errors.Is(err, tc.want) {
+				t.Errorf("driftListViolations = %v, want it to wrap %v", err, tc.want)
+			}
+			if errors.Is(err, tc.other) {
+				t.Errorf("driftListViolations = %v, must not wrap %v", err, tc.other)
+			}
+		})
+	}
+}
+
+// TestToolPolicyDrift_FailClosed proves the check never passes or skips on
+// unusable input, and that each cause is reported through its own sentinel.
+func TestToolPolicyDrift_FailClosed(t *testing.T) {
+	malformedYAML := strings.Replace(driftBaseYAML, `  version: "1.0.0"`, `  version: "1.0.0`, 1)
+	if malformedYAML == driftBaseYAML {
+		t.Fatalf("malformed_yaml fixture did not change the base yaml")
+	}
+	inputSentinels := []error{errDriftInputMissing, errDriftInputParse, errDriftNoPermissionsRegion, errDriftEmptySet}
+
+	cases := []struct {
+		name            string
+		yaml            string
+		settings        string
+		yamlMissing     bool
+		settingsMissing bool
+		want            error
+	}{
+		{name: "missing_yaml", settings: driftBaseSettings, yamlMissing: true, want: errDriftInputMissing},
+		{name: "missing_settings", yaml: driftBaseYAML, settingsMissing: true, want: errDriftInputMissing},
+		{name: "malformed_yaml", yaml: malformedYAML, settings: driftBaseSettings, want: errDriftInputParse},
+		{name: "malformed_settings_json", yaml: driftBaseYAML, settings: `{"permissions":{"allow":["Read"],"deny":["Bash(rm -rf /:*)"],}}`, want: errDriftInputParse},
+		{name: "wrong_type_settings_list", yaml: driftBaseYAML, settings: `{"permissions":{"allow":["Read"],"ask":1,"deny":["Bash(rm -rf /:*)"]}}`, want: errDriftInputParse},
+		{name: "no_permissions_region", yaml: driftBaseYAML, settings: `{"env":{}}`, want: errDriftNoPermissionsRegion},
+		{name: "empty_yaml_allow", yaml: driftYAMLHeader + driftBashDenyEntry, settings: driftBaseSettings, want: errDriftEmptySet},
+		{name: "empty_yaml_deny", yaml: driftYAMLHeader + driftReadAllowEntry, settings: driftBaseSettings, want: errDriftEmptySet},
+		{name: "empty_settings_allow", yaml: driftBaseYAML, settings: `{"permissions":{"allow":[],"deny":["Bash(rm -rf /:*)"]}}`, want: errDriftEmptySet},
+		{name: "empty_settings_deny", yaml: driftBaseYAML, settings: `{"permissions":{"allow":["Read"],"deny":[]}}`, want: errDriftEmptySet},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			yamlPath := filepath.Join(dir, "tool-policy.yaml")
+			settingsPath := filepath.Join(dir, "settings.json")
+			if !tc.yamlMissing {
+				driftWriteFixture(t, dir, "tool-policy.yaml", tc.yaml)
+			}
+			if !tc.settingsMissing {
+				driftWriteFixture(t, dir, "settings.json", tc.settings)
+			}
+
+			diff, err := driftSetDiff(yamlPath, settingsPath)
+			if err == nil {
+				t.Fatalf("driftSetDiff returned no error (diff %q); want a failure wrapping %v", diff, tc.want)
+			}
+			if !errors.Is(err, tc.want) {
+				t.Errorf("driftSetDiff error %v does not wrap its cause %v", err, tc.want)
+			}
+			for _, s := range inputSentinels {
+				if s != tc.want && errors.Is(err, s) {
+					t.Errorf("driftSetDiff error %v also wraps %v; each cause must wrap exactly one sentinel", err, s)
+				}
+			}
+		})
 	}
 }
