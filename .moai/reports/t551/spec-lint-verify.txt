@@ -1,0 +1,11 @@
+SEVERITY  CODE                FILE                                                              LINE  MESSAGE
+--------  ----                ----                                                              ----  -------
+WARNING   CoverageIncomplete  .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/plan.md        132   REQ REQ-CBR-009 is not referenced by any AC
+ERROR     FrontmatterInvalid  .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/plan.md        1     Frontmatter required field missing: status
+ERROR     MissingExclusions   .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/plan.md        1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required
+ERROR     FrontmatterInvalid  .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/acceptance.md  1     Frontmatter required field missing: status
+ERROR     MissingExclusions   .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/acceptance.md  1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required
+ERROR     DuplicateSPECID     .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/plan.md        1     SPEC ID "SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001" declared multiple times (first location: .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/spec.md)
+ERROR     DuplicateSPECID     .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/acceptance.md  1     SPEC ID "SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001" declared multiple times (first location: .moai/specs/SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001/spec.md)
+
+6 error(s), 1 warning(s)

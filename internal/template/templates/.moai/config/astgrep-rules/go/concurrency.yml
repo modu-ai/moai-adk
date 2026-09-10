@@ -18,8 +18,16 @@ severity: warning
 message: defer inside a loop holds the file/resource open until the loop's enclosing function returns.
 note: defer inside a loop does not run until the function returns. Extract the
   loop body into a separate function or close explicitly.
+# Expressed structurally (a defer statement nested inside a for statement)
+# rather than as an indented multi-line pattern: the literal block form matched
+# nothing under ast-grep 0.40.x, while this form fires on any loop-carried
+# defer and stays silent outside loops.
 rule:
-  pattern: "for $$$INIT {\n  $$$PRE\n  defer $RESOURCE.$METHOD()\n  $$$POST\n}\n"
+  all:
+    - kind: defer_statement
+    - inside:
+        stopBy: end
+        kind: for_statement
 ---
 id: go-channel-send-no-select
 language: go

@@ -184,9 +184,40 @@ jobs:
           }
       # ---------------------------------------------------------------------
 
+      # `-json` writes a per-test event stream to a FILE, keeping the console
+      # log at its pre-change size while making a skipped or never-selected
+      # test identifiable after the fact.
+      #
+      # `|| rc=$?` is load-bearing and MUST NOT be "simplified" to `; rc=$?`:
+      # GitHub Actions runs this body under `bash --noprofile --norc -e -o
+      # pipefail`, and under `-e` the shell exits AT a failing `go test`, so
+      # the census would never print on exactly the run where it is wanted.
+      # The two forms are indistinguishable on a green run.
+      #
+      # stdout ONLY — `2>&1` would corrupt the stream.
+      # 3-OS matrix: the artifact name carries matrix.os or the legs collide.
       - name: Run tests with race detector
         shell: bash
-        run: go test -race -timeout 25m ./...
+        run: |
+          rc=0
+          go test -json -race -timeout 25m ./... > test-stream.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream.json
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream.json ]; then gzip -f test-stream.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-release-verify-${{ matrix.os }}
+          path: test-stream.json.gz
+          retention-days: 7
+          if-no-files-found: warn
 
       # --- t169 diagnostic (windows only, temporary) ------------------------
       # always(): the failing run is the one worth reading, so this must not be

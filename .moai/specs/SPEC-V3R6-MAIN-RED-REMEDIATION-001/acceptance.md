@@ -2,7 +2,6 @@
 id: SPEC-V3R6-MAIN-RED-REMEDIATION-001
 title: "Acceptance — internal/template main-RED 4-group 일괄 해소"
 version: "0.1.0"
-status: draft
 created: 2026-05-30
 updated: 2026-05-30
 author: manager-spec

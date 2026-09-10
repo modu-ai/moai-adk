@@ -2,7 +2,6 @@
 id: SPEC-AGENT-ARCH-V2-001
 title: "MoAI Agent Architecture v2 — Design"
 version: "0.2.0"
-status: completed
 created: 2026-07-09
 updated: 2026-07-10
 author: manager-spec

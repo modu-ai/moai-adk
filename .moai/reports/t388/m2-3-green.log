@@ -1,0 +1,4 @@
+=== RUN   TestVersionSyncListNamesOnlyExistingPaths
+--- PASS: TestVersionSyncListNamesOnlyExistingPaths (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.742s

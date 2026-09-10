@@ -1,0 +1,5 @@
+--- FAIL: TestInboxCap_RotatesOverCapInbox (0.00s)
+    inbox_lifecycle_test.go:218: cap path created .moai/state (NFC-4: the marker tree must never be created): <nil>
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.606s
+FAIL

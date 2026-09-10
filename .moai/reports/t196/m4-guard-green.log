@@ -1,0 +1,7 @@
+=== RUN   TestSkillTreeHasNoClaudeSkillDirToken
+=== PAUSE TestSkillTreeHasNoClaudeSkillDirToken
+=== CONT  TestSkillTreeHasNoClaudeSkillDirToken
+    skill_dir_token_guard_test.go:94: census: 0 lines carrying CLAUDE_SKILL_DIR across 255 files walked under .claude/skills
+--- PASS: TestSkillTreeHasNoClaudeSkillDirToken (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.443s

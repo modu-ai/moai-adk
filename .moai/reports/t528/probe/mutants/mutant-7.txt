@@ -1,0 +1,30 @@
+# mutant 7 — remove ONLY the ## break in extractACLines
+# expectation pre-declared in expectations.md
+
+## injected diff
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e48f39d07..b79de4af0 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -83,7 +83,7 @@ func extractACLines(lines []string, startIdx int, isFlatFormat bool) []acParsedL
+ 			continue
+ 		}
+ 
+-		if strings.HasPrefix(trimmed, "##") {
++		if false {
+ 			break
+ 		}
+ 
+
+## judging command
+go test ./internal/spec/ -run TestT528 -count=1 -timeout 600s
+
+## result
+--- FAIL: TestT528SectionScopingInvariant (0.00s)
+    zz_t528_grammar_test.go:397: declaration AFTER the section WAS collected — the section terminator broke; got ids [AC-AUDIT-SNAPSHOT-001 AC-AUDIT-SNAPSHOT-017]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.568s
+FAIL
+
+EXIT=1
+DETECTED=True  --- FAIL lines=1

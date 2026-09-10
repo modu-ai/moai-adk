@@ -16,9 +16,9 @@ import (
 // v4manifest canonical table for a representative agent per tier.
 func TestTierForAgent_Delegates(t *testing.T) {
 	cases := map[string]v4manifest.Tier{
-		"manager-spec":         v4manifest.TierRed,
-		"manager-develop":      v4manifest.TierOrange,
-		"manager-docs":         v4manifest.TierBlue,
+		"manager-spec":          v4manifest.TierRed,
+		"manager-develop":       v4manifest.TierOrange,
+		"manager-docs":          v4manifest.TierBlue,
 		"hns-github-specialist": v4manifest.TierLightBlue,
 	}
 	for name, want := range cases {

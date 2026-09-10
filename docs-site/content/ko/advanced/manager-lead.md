@@ -109,7 +109,7 @@ manager-lead:          [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpd
 잎말 read-only 검증:  [Read, Grep, Glob, Bash]  ← Write/Edit/Agent 없음
 ```
 
-여기서 `manager-lead`의 `Write`와 `Edit`은 조율 용도로만 쓰입니다. 즉 `progress.md`의 §E.2 칸에 접기 줄을 추가하거나, `.moai/state/verify/` 아래에 증거 파일을 쓰는 데 쓰일 뿐, 소스 코드를 건드리는 일은 없습니다. 코드는 항상 잎말 에이전트의 몫입니다.
+여기서 `manager-lead`의 `Write`와 `Edit`은 조율 용도로만 쓰입니다. 즉 `progress.md`의 §E.2 칸에 접기 줄을 추가하거나, 검증 출력을 스크래치에 담았다가 판정 근거만 `.moai/reports/<카드-id>/` 로 반출하는 데 쓰일 뿐, 소스 코드를 건드리는 일은 없습니다. 코드는 항상 잎말 에이전트의 몫입니다.
 
 위임 라우팅은 순차와 병렬을 구분해 붙입니다. 한 창에서 차례로 돌아야 하는 작업(마일스톤별 구현)은 순차 스폰으로, 서로 독립인 작업(정탐, 읽기 전용 검증 묶음, 카드별 SPEC 저작)은 병렬 스폰으로 흘려보냅니다. 스킬 접근은 전면 개방입니다 — `Skill` 도구로 필요한 도메인 스킬을 그 자리에서 불러 씁니다.
 
@@ -119,20 +119,23 @@ manager-lead:          [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpd
 
 `manager-lead`의 가장 독특한 습관은 마일스톤 경계에서 창을 가볍게 접는 일입니다. 이 절차를 **컨텍스트 접기(Context-Folding)**라고 부릅니다. 한 마일스톤의 모든 AC가 통과 판정을 받으면, `manager-lead`는 세 단계를 차례로 밟습니다.
 
-1. **증거 저장** — 그 마일스톤에서 돌린 AC 검증 명령의 출력을 파일로 남깁니다. 경로는 `.moai/state/verify/<세션>/M<마일스톤>.<AC-id>.{log,out}` 형식을 따릅니다. `/tmp` 아래가 아니라 `.moai/state/` 아래에 두는 이유는, 운영체제가 `/tmp`를 비우면 인용 경로가 끊어지기 때문입니다.
-2. **접기 줄 쓰기** — `progress.md`의 §E.2 칸에 한 줄 요약을 추가합니다. 이 줄은 "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/state/verify/.../M2.* | fold-at: 2026-08-12T..." 형식을 따릅니다. 나중에 감사 단계에서 이 줄의 증거 경로가 실제 파일을 가리켜야 합니다.
+1. **증거 저장과 반출** — 그 마일스톤에서 돌린 AC 검증 명령의 출력을 먼저 `.moai/state/verify/<세션>/M<마일스톤>.<AC-id>.{log,out}` 에 담습니다. 이 자리는 `/tmp` 소거를 견디는 **머신-로컬 스크래치**일 뿐입니다 — gitignore 대상이라 clone 에도, CI 러너에도, 다른 머신에도 따라가지 않습니다. 그래서 AC 행이 증거를 인용하기 **전에**, 판정을 결정한 줄(종료 코드, 실패 요약, 그 행이 인용하는 수치)을 추적 경로 `.moai/reports/<카드-id>/M<마일스톤>.<AC-id>.log` 로 반출하고 인용은 그 파일 하나를 이름 붙입니다. 이름 붙인 파일만 옮기며, 스크래치 디렉터리를 통째로 반출하지는 않습니다. 남겨 둔 원문의 손실 위험은 판정문의 잔여 위험 항목에 적습니다.
+2. **접기 줄 쓰기** — `progress.md`의 §E.2 칸에 한 줄 요약을 추가합니다. 이 줄은 "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/reports/t123/M2-report.md | fold-at: 2026-08-12T..." 형식을 따릅니다. 나중에 감사 단계에서 이 줄의 증거 경로가 실제 파일을 가리켜야 하고, 그때 열리는 것은 추적 경로뿐입니다.
 3. **창 접기** — `/compact`를 명시적인 보존 지시와 함께 불러, 현재 마일스톤 계획과 지금까지의 접기 줄만 남기고 나머지는 정리합니다.
 
 ```text
 # progress.md §E.2 에 추가되는 접기 줄 예시
-M1: AC-001=PASS, AC-002=PASS | evidence: .moai/state/verify/abc123/M1.* | fold-at: 2026-08-12T10:14:00Z
-M2: AC-003=PASS, AC-004=PASS | evidence: .moai/state/verify/abc123/M2.* | fold-at: 2026-08-12T11:42:00Z
+M1: AC-001=PASS, AC-002=PASS | evidence: .moai/reports/t123/M1-report.md | fold-at: 2026-08-12T10:14:00Z
+M2: AC-003=PASS, AC-004=PASS | evidence: .moai/reports/t123/M2-report.md | fold-at: 2026-08-12T11:42:00Z
 ```
 
 이 절차가 끝나면 `manager-lead`의 활성 컨텍스트는 "현재 마일스톤 규모 + 지금까지의 접기 줄 + 항상 깔려 있는 규칙 앞부분"에 비례합니다. 다섯째 마일스톤을 앞두고 있어도, 첫 마일스톤의 날것 기록이 창을 차지하지 않습니다. 그래서 6마일스톤짜리 Tier L 실행이 한 창 안에서 끝까지 살아납니다.
 
 ```bash
-# 마일스톤 2 가 끝난 뒤 남은 증거 파일 확인 (.moai/state/verify 아래 영속)
+# 인용된 증거가 감사 시점에 열리는지 확인 — 추적 경로만 이 조건을 만족합니다
+ls .moai/reports/t123/M2-report.md
+
+# 스크래치에 담아 둔 원문은 이 머신에만 남습니다
 ls .moai/state/verify/"$(moai session current)"/M2.*
 ```
 

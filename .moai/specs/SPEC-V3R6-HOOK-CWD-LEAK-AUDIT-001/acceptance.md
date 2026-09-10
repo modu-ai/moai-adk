@@ -2,7 +2,6 @@
 id: SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001
 title: "Hook cwd leak audit + resolveProjectRoot consistency — Acceptance Criteria"
 version: "0.2.0"
-status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

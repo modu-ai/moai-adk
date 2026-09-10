@@ -2,7 +2,6 @@
 id: SPEC-V3R6-MULTI-SESSION-COORD-001
 title: "Multi-Session Coordination — Implementation Plan"
 version: "0.1.0"
-status: implemented
 created: 2026-05-24
 updated: 2026-05-25
 author: "GOOS행님"

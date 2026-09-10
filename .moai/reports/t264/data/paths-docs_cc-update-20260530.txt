@@ -1,0 +1,9 @@
+.moai/research/cc-update-20260530.md
+docs-site/content/en/advanced/hooks-reference.md
+docs-site/content/en/advanced/statusline.md
+docs-site/content/ja/advanced/hooks-reference.md
+docs-site/content/ja/advanced/statusline.md
+docs-site/content/ko/advanced/hooks-reference.md
+docs-site/content/ko/advanced/statusline.md
+docs-site/content/zh/advanced/hooks-reference.md
+docs-site/content/zh/advanced/statusline.md

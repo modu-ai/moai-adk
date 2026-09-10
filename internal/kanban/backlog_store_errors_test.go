@@ -78,11 +78,26 @@ func TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError(t *testing.T) {
 	}
 }
 
-// TestBacklogWrite_UnwritableDirFailsTempCreation — the mutation callback
-// itself revokes the directory's write bit, so the write path fails at temp
-// file creation while the lock is already held: the error surfaces and no
-// residue is left beyond the lock artifact.
-func TestBacklogWrite_UnwritableDirFailsTempCreation(t *testing.T) {
+// TestBacklogWrite_UnwritableDirFailsLoudly — a directory the process cannot
+// write MUST surface an error rather than report a mutation it did not
+// persist.
+//
+// The scenario moved with the storage swap and the move is the point. The
+// pre-SQLite store created a temp file inside the directory on every write, so
+// revoking the write bit from INSIDE the mutation callback failed the write.
+// The engine has no temp-file step: by the time the callback runs, the
+// database is already open, and an open descriptor keeps writing through a
+// directory that turned read-only underneath it — the write lands, durably and
+// correctly, and there is nothing to report. So this test revokes the bit
+// BEFORE the store opens, which is the hazard that still exists.
+//
+// The failure observed on that path is the LOCK artifact's, not the database's:
+// the mutation cannot create backlog.lock, so it never reaches the engine at
+// all. That ordering is deliberate rather than incidental — the lock is what
+// serializes factory lanes, and a mutation that proceeded without it would be
+// the lost-update race the store exists to prevent. The read path's own
+// failure (which does reach the engine) is asserted separately below.
+func TestBacklogWrite_UnwritableDirFailsLoudly(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("a read-only directory does not block file creation on Windows; temp creation succeeds and the error branch is never reached")
 	}
@@ -94,16 +109,51 @@ func TestBacklogWrite_UnwritableDirFailsTempCreation(t *testing.T) {
 	dir := filepath.Dir(store.Path())
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatalf("revoke write bit: %v", err)
+	}
+
+	called := false
 	err := store.Mutate(func(rec *BacklogRecord) error {
-		return os.Chmod(dir, 0o500)
+		called = true
+		return nil
 	})
 	if err == nil {
-		t.Fatal("Mutate(read-only dir) err = nil, want temp-creation error")
+		t.Fatal("Mutate(read-only dir) err = nil, want an open/write failure")
 	}
-	for _, name := range readBacklogDirNames(t, store) {
-		if name != "backlog.lock" {
-			t.Fatalf("backlog dir holds leaked file %q after failed write", name)
-		}
+	if called {
+		t.Error("the mutation callback ran against a store that could not be opened")
+	}
+	if _, statErr := os.Stat(store.Path()); statErr == nil {
+		t.Error("a queue file appeared in an unwritable directory")
+	}
+}
+
+// TestBacklogRead_UnwritableDirSurfacesEngineFailure — the read path takes no
+// lock, so it reaches the engine, and the engine cannot open a database it
+// cannot create. That MUST surface as an error rather than as an empty queue:
+// reporting "no cards" for a queue that could not be read would tell a lane
+// there is no work when there may be eighty cards waiting.
+func TestBacklogRead_UnwritableDirSurfacesEngineFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a read-only directory does not block file creation on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("read-only directory does not block the root user")
+	}
+	t.Parallel()
+	store := newTestBacklogStore(t)
+	dir := filepath.Dir(store.Path())
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("create dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatalf("revoke write bit: %v", err)
+	}
+
+	if _, err := store.Load(); err == nil {
+		t.Fatal("Load(unwritable dir) err = nil, want an engine open failure")
 	}
 }
 

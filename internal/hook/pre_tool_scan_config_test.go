@@ -68,14 +68,30 @@ func newTempFilesSince(before, after []string) []string {
 // goPayloadContent is the clean .go payload the coverage criteria above and
 // below are measured with.
 //
-// It carries `const`, which is a go pre-filter token (M2 derives it from
-// sec-hardcoded-api-key's `const $NAME = "sk-$$$REST"`). That is load-bearing
-// for the CONTROL arms only: a control asserting "a covered language still
-// scans" must use a payload that survives every skip the gate applies, and once
-// M2 landed a token-free payload is skipped by the pre-filter rather than by
-// the coverage check the control is observing. The payload remains clean — it
-// trips no rule — so no recorded decision changes.
-const goPayloadContent = "package main\n\nconst greeting = \"hello\"\n\nfunc main() {\n\tprintln(greeting)\n}\n"
+// It carries `exec.Command`, which is a go pre-filter token: M2 derives it from
+// sec-command-injection-shell's `pattern: exec.Command("sh", "-c", $CMD)`
+// (security/injection.yml), whose match is impossible without that literal. The
+// payload calls exec.Command with an explicit argument list and no shell, so it
+// carries the token while being unable to match the rule the token comes from —
+// which is exactly the pairing a control arm needs.
+//
+// That pairing is load-bearing for the CONTROL arms only: a control asserting
+// "a covered language still scans" must use a payload that survives every skip
+// the gate applies, and once M2 landed a token-free payload is skipped by the
+// pre-filter rather than by the coverage check the control is observing. The
+// payload remains clean — `sg scan` against the shipped ruleset reports zero
+// findings — so no recorded decision changes.
+//
+// WHEN THE RULESET CHANGES, RE-DERIVE THIS PAYLOAD. The token set is a function
+// of the shipped error-severity rules, not a constant: this payload previously
+// carried `const`, derived from sec-hardcoded-api-key's old
+// `pattern: const $NAME = "sk-$$$REST"`. SPEC-ASTGREP-LANG16-001 M1 restructured
+// that rule into `kind: const_spec` + `regex: '"sk-'`, `const` stopped being
+// derivable, and all three control arms silently observed 0 scans. Measure the
+// current set (security.DerivePrefilters on the shipped sgconfig) before
+// choosing a token; most go tokens (md5.New, "sk-, AKIA, template.HTML() are
+// themselves violations and would change a recorded decision.
+const goPayloadContent = "package main\n\nimport (\n\t\"fmt\"\n\t\"os/exec\"\n)\n\nfunc main() {\n\tcmd := exec.Command(\"git\", \"status\", \"--porcelain\")\n\tfmt.Println(cmd.Path)\n}\n"
 
 // TestScanWriteContentNoConfigNoScan closes AC-SSS-002: a project root with no
 // resolvable ast-grep configuration dispatches no scan at all.

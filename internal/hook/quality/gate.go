@@ -61,6 +61,20 @@ type GateConfig struct {
 	// GraphFreshness configures the graph-layer drift gate step. When nil,
 	// the step is skipped WITH an explicit notice (never silence).
 	GraphFreshness *GraphFreshnessConfig
+	// LockWait bounds how long a starting gate run waits for the gate-run
+	// lock before degrading to an unserialized run. The lock itself is
+	// CLI-side (internal/cli/gate_lock.go); the budget travels through this
+	// struct so the config chain stays one object (gate.yaml → config loader
+	// → this config → the CLI's wait loop).
+	LockWait time.Duration
+	// PreCommitEnabled carries gate.pre_commit.enabled into the CLI entry
+	// (runGate). Run itself NEVER reads it: the key is honored only under the
+	// MOAI_PRECOMMIT=1 marker, and that decision is made by the CLI caller —
+	// a standalone `moai gate` and the PreToolUse path keep the existing
+	// gate.enabled contract unchanged (SPEC-PRECOMMIT-GATE-SCOPE-001,
+	// operator decision 2). The field travels here so one config load feeds
+	// both the wait budget and the pre-commit decision.
+	PreCommitEnabled bool
 }
 
 // GraphFreshnessConfig configures the graph-freshness step of the quality
@@ -94,18 +108,22 @@ func DefaultGraphFreshnessConfig() *GraphFreshnessConfig {
 // DefaultGateConfig returns a GateConfig with production-safe defaults.
 func DefaultGateConfig() *GateConfig {
 	return &GateConfig{
-		Enabled:     true,
-		SkipTests:   false,
-		VetTimeout:  30 * time.Second,
-		LintTimeout: 60 * time.Second,
-		TestTimeout: 120 * time.Second,
-		AstGrepGate: DefaultAstGrepGateConfig(),
+		Enabled:        true,
+		SkipTests:      false,
+		VetTimeout:     30 * time.Second,
+		LintTimeout:    60 * time.Second,
+		TestTimeout:    120 * time.Second,
+		AstGrepGate:    DefaultAstGrepGateConfig(),
 		GraphFreshness: DefaultGraphFreshnessConfig(),
 		// The axis ships on: a project with no type-check surface reports the
 		// skip and passes, so enabling it by default costs nothing while
 		// closing the hole for every project that does have one.
 		TypecheckEnabled: true,
 		TypecheckTimeout: 300 * time.Second,
+		// The gate-run lock's wait budget — see LockWait. 30s waits out a
+		// concurrently finishing run while never holding a starting run
+		// without bound.
+		LockWait: 30 * time.Second,
 	}
 }
 
@@ -197,6 +215,14 @@ var toolchains = []langToolchain{
 				"eslint.config.ts", "eslint.config.mts", "eslint.config.cts",
 				".eslintrc.js", ".eslintrc.cjs", ".eslintrc.yaml", ".eslintrc.yml", ".eslintrc.json", ".eslintrc",
 			},
+		}, {
+			// biome coverage (issue #1631): a biome project carries no eslint
+			// config, so the eslint entry above skips and the lint axis ran
+			// nothing — `npm run lint` exit 1 while `moai gate` exit 0. Gated
+			// on biome's own config files, the same pattern every other
+			// linter entry uses, so an eslint project never invokes biome.
+			name: "biome", binary: "npx", args: []string{"biome", "check", "."}, optional: true,
+			configFiles: []string{"biome.json", "biome.jsonc"},
 		}},
 		testStep: &gateStep{name: "npm test", binary: "npm", args: []string{"test", "--", "--passWithNoTests"}},
 	},
@@ -333,6 +359,12 @@ type QualityGate struct {
 	stagedCache      []string
 	stagedCacheReady bool // true when the query is complete (even if result is nil)
 	stagedCacheNil   bool // true when nil was returned (conservative fallback)
+
+	// summary accumulates one record per configured step for the run in
+	// progress. Nil outside Run — executeStep and runStep are also called
+	// directly, and a nil summary makes every observation a no-op rather than
+	// a panic.
+	summary *runSummary
 }
 
 // NewQualityGate creates a QualityGate with the given configuration.
@@ -378,12 +410,30 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		return true, gfNotice
 	}
 
+	// Seed one record per configured step BEFORE anything runs, so a step the
+	// run never reaches is reportable as such. Populating the summary as steps
+	// complete instead would leave an aborted run silent about everything after
+	// the failure — which is indistinguishable from those steps having passed.
+	g.summary = newRunSummary()
+	for _, step := range tc.vetSteps {
+		g.summary.seed(step.name)
+	}
+	if g.config.TypecheckEnabled {
+		g.summary.seed(typecheckStepName)
+	}
+	for _, step := range tc.lintSteps {
+		g.summary.seed(step.name)
+	}
+	if tc.testStep != nil {
+		g.summary.seed(tc.testStep.name)
+	}
+
 	// Step 1: vet steps
 	var vetReason string
 	for _, step := range tc.vetSteps {
 		ok, out := g.executeStep(ctx, step, g.config.VetTimeout)
 		if !ok {
-			return false, out
+			return false, g.withSummary(out)
 		}
 		vetReason = appendReason(vetReason, out)
 	}
@@ -406,10 +456,11 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		case ok:
 			passed, out := g.executeStep(ctx, step, g.config.TypecheckTimeout)
 			if !passed {
-				return false, out
+				return false, g.withSummary(out)
 			}
 			passReason = appendReason(passReason, out)
 		default:
+			g.summary.markSkipped(typecheckStepName, condenseSkipReason(typecheckStepName, reason))
 			passReason = appendReason(passReason, reason)
 		}
 	}
@@ -418,7 +469,7 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	for _, step := range tc.lintSteps {
 		ok, out := g.executeStep(ctx, step, g.config.LintTimeout)
 		if !ok {
-			return false, out
+			return false, g.withSummary(out)
 		}
 		passReason = appendReason(passReason, out)
 	}
@@ -430,12 +481,15 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		projectDir := resolveQualityProjectDir(*g.config, "QualityGate.Run.astgrep")
 		ok, out := RunAstGrepGateV2(ctx, projectDir, g.config.AstGrepGate)
 		if !ok {
-			return false, out
+			return false, g.withSummary(out)
 		}
 		passReason = appendReason(passReason, out)
 	}
 
 	// Step 3: test step (skippable)
+	if tc.testStep != nil && g.config.SkipTests {
+		g.summary.markSkipped(tc.testStep.name, reasonSkipTests)
+	}
 	if !g.config.SkipTests && tc.testStep != nil {
 		// The Node test step is resolved to a self-terminating (run-form)
 		// command right before execution, reading the project's package.json
@@ -443,12 +497,28 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		// Every other toolchain's step passes through unchanged.
 		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
 		testStep := resolveNodeTestStep(*tc.testStep, resolveQualityProjectDir(*g.config, "QualityGate.Run.nodeTestStep"))
-		if ok, out := g.executeStep(ctx, testStep, g.config.TestTimeout); !ok {
-			return false, out
+		// The resolved step reaches executeStep under its own name, so the
+		// seeded row follows it; otherwise the run would report the configured
+		// step as never reached and the resolved one as an extra.
+		g.summary.relabel(tc.testStep.name, testStep.name)
+		ok, out := g.executeStep(ctx, testStep, g.config.TestTimeout)
+		if !ok {
+			return false, g.withSummary(out)
 		}
+		// The test step's pass-side value used to be discarded outright — the
+		// one axis whose notice never reached the caller at all.
+		passReason = appendReason(passReason, out)
 	}
 
-	return true, passReason
+	return true, g.withSummary(passReason)
+}
+
+// withSummary stacks the run's execution summary beneath whatever the run
+// already had to say. Both the pass path and every failure path go through
+// here: a run that aborts still owes the caller an account of which steps it
+// reached, and which it did not.
+func (g *QualityGate) withSummary(out string) string {
+	return joinBlocks(out, g.summary.render())
 }
 
 // detectToolchain finds the matching toolchain by checking marker files in ProjectDir.
@@ -825,15 +895,18 @@ func nodeScriptWatchProne(script string) bool {
 func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout time.Duration) (bool, string) {
 	// Fix 3: explicitly disable via DisabledSteps configuration
 	if disabled, ok := g.config.DisabledSteps[step.name]; ok && !disabled {
+		g.summary.markDisabled(step.name, reasonDisabledByConfig)
 		return true, ""
 	}
 
 	if step.optional {
 		if _, err := exec.LookPath(step.binary); err != nil {
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonOptionalBinaryAbsentFmt, step.binary))
 			return true, ""
 		}
 	}
 	if len(step.configFiles) > 0 && !g.anyConfigFileExists(step.configFiles) {
+		g.summary.markSkipped(step.name, fmt.Sprintf(reasonConfigFilesAbsentFmt, strings.Join(step.configFiles, ", ")))
 		return true, ""
 	}
 
@@ -845,6 +918,7 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 		staged := g.cachedStagedFiles(ctx, dir)
 		// If staged is nil, cannot determine — run step conservatively
 		if staged != nil && !hasStagedExt(staged, step.changedExts) {
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonNoStagedMatchFmt, strings.Join(step.changedExts, ", ")))
 			return true, ""
 		}
 	}
@@ -860,6 +934,7 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 				"extensions", strings.Join(step.sourceExts, ","),
 				"hint", "add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml",
 			)
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonNoProjectSourceFmt, strings.Join(step.sourceExts, ", ")))
 			return true, ""
 		}
 	}
@@ -1052,7 +1127,28 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	stepCtx, cancel := context.WithDeadline(ctx, stepDeadline)
 	defer cancel()
 
+	// The step's outcome is recorded on every exit from here, not only the
+	// happy one: a step that failed, timed out, or could not be launched was
+	// still executed, and the command line below is still what the gate handed
+	// to the launcher. Recording only on success is how the pass path came to
+	// report nothing at all.
+	defer func() {
+		g.summary.markExecuted(stepName, commandLine(name, args...), startedAt, time.Since(startedAt))
+	}()
+
 	cmd := exec.CommandContext(stepCtx, name, args...)
+	// The deadline alone reaches only the direct child, and the buffers below
+	// mean os/exec copies the child's output through OS pipes that a surviving
+	// descendant keeps open — so Wait blocks past the deadline that was meant
+	// to bound it. WaitDelay bounds that wait; the process group is what
+	// actually ends the descendant. See step_process_group.go: either mechanism
+	// alone leaves the other failure standing.
+	isolateProcessGroup(cmd)
+	cmd.WaitDelay = stepWaitGrace
+	cmd.Cancel = func() error {
+		terminateProcessGroup(cmd.Process.Pid)
+		return cmd.Process.Kill()
+	}
 	// Every step's arguments are cwd-relative ("./...", ".", a bare "test").
 	// Without an explicit Dir the child inherits the calling process's cwd,
 	// which is the project root only by coincidence — so a gate configured for
@@ -1062,9 +1158,28 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	if dir := resolveQualityProjectDir(*g.config, "QualityGate.runStep"); dir != "" {
 		cmd.Dir = dir
 	}
+	// cmd.Dir is not, on its own, isolation. Left nil, cmd.Env hands the child
+	// the caller's whole environment — and when the caller is the git
+	// pre-commit hook that environment carries GIT_DIR / GIT_INDEX_FILE, which
+	// outrank the working directory. A project test suite whose fixtures make
+	// throwaway commits then wrote them into the repository being committed to
+	// (GH #1691). Scrubbing the repository-location variables makes cmd.Dir the
+	// only repository scoping a step carries; see step_git_env.go for why the
+	// identity and behaviour variables deliberately survive.
+	cmd.Env = stepEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+
+	// The deadline is not the only exit that can leave descendants behind: a
+	// step whose direct child exits promptly while a grandchild keeps running
+	// never reaches Cancel at all. The group is swept on every exit from here,
+	// so the step's tree does not outlive the step.
+	defer func() {
+		if cmd.Process != nil {
+			terminateProcessGroup(cmd.Process.Pid)
+		}
+	}()
 
 	err := cmd.Run()
 	if err == nil {
@@ -1093,12 +1208,27 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 		// says nothing about WHICH budget ran out. Blaming the step's own budget
 		// unconditionally produced impossible reasons — a 30s dispatcher budget
 		// expiring mid-`go test` reported "go test exceeded 2m0s" (card t218).
+		// What happened to the step's descendants is appended, never
+		// substituted: the existing attribution text is what card t218's two
+		// regression tests read, and AC-GTA-010 forbids disturbing them.
 		if parentBinds {
 			return false, fmt.Sprintf(
-				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded)",
-				stepName, parentBudget.Round(time.Millisecond), timeout)
+				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded); %s",
+				stepName, parentBudget.Round(time.Millisecond), timeout, descendantTerminationNote)
 		}
-		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
+		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s; %s",
+			stepName, timeout, descendantTerminationNote)
+	}
+
+	// The step's own process finished, but something it started kept the
+	// output stream open past the grace period, so Wait gave up on the pipes.
+	// The captured output is therefore incomplete and the verdict cannot rest
+	// on it — reporting a pass here would restore the silence this SPEC exists
+	// to remove.
+	if errors.Is(err, exec.ErrWaitDelay) {
+		return false, fmt.Sprintf(
+			"quality gate could not read %s to completion: a process it started still held its output stream %s after it exited; %s",
+			stepName, stepWaitGrace, descendantTerminationNote)
 	}
 
 	// Fix 2: when a NuGet restore failure (cross-platform TFM mismatch) is detected in the dotnet step,

@@ -1,0 +1,6 @@
+.claude/hooks/moai/handle-stop-goal.sh
+.moai/reports/t220/verdict.md
+internal/hook/stop_goal_single_exec_test.go
+internal/template/renderer.go
+internal/template/templates/.claude/hooks/moai/handle-stop-goal.sh
+internal/template/templates/.claude/hooks/moai/handle-stop-goal.sh.tmpl

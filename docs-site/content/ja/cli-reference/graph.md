@@ -36,7 +36,8 @@ $ moai graph build
 |--------|------|-----|
 | `--callers <ノード>` | このパッケージ/SPEC を直接依存している対象は? | 逆方向の隣人 — インポートするパッケージ、依存する SPEC、`@MX:SPEC` タグの付いたコードファイル |
 | `--blast <ノード>` | ここを直すとどこまで揺れるか? | 逆方向エッジを幅優先で洗った(BFS)影響半径。`@MX:SPEC` エッジは双方向に伝播し、コードファイルが実装する SPEC まで届きます |
-| `--fanin [--limit N]` | 最もよく使われるパッケージは? | インポートのファンイン順位 — @MX:DEBT ファンイン問合せの代用品(タグ種別ごとのエッジはまだありません) |
+| `--fanin [--limit N]` | 最もよく使われるパッケージは? | インポートのファンイン順位 |
+| `--debt-fanin [--limit N]` | `@MX:DEBT` の付いた対象はどれだけ呼び込まれているか? | `@MX:DEBT` タグの対象を、根拠のある呼び出しファンインの降順で一覧 — ファイルスコープの DEBT はファンイン 0 に `(self)` 表示で併せて出ます |
 | `--specs-no-code` | コードとつながっていない SPEC は? | edges.jsonl に `@MX:SPEC` エッジが0個の SPEC の一覧 |
 | `--milestones-no-card` | カードなしで通過したマイルストーンは? | カード交差検査の行がカードを主張していないか、主張したカードが生存するバックログキューにないマイルストーン |
 
@@ -44,6 +45,7 @@ $ moai graph build
 $ moai graph query --callers SPEC-FOO-001
 $ moai graph query --blast internal/config
 $ moai graph query --fanin --limit 20
+$ moai graph query --debt-fanin
 $ moai graph query --specs-no-code
 $ moai graph query --milestones-no-card
 ```
@@ -61,11 +63,15 @@ mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
 edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 ```
 
-グラフの3層 — codemaps · @MX インデックス · edges.jsonl — がコードにどれだけ遅れているかを、層ごとに自分の指標で測り、`fresh` / `stale` / `absent` の判定を返します。codemaps はスタンプされた生成コミット以降に変わった記述対象ファイル数(戻した変更は0と数えます)、@MX インデックスは内容ハッシュが変わったファイル数、edges.jsonl はソースフィンガープリントの不一致を見ます。
+グラフの3層 — codemaps · @MX インデックス · edges.jsonl — がコードにどれだけ遅れているかを、層ごとに自分の指標で測り、`fresh` / `stale` / `absent` の判定を返します。codemaps はコンテンツアンカー — codemaps 本文が最後に実際に変わった地点 — 以降に変わった記述対象ファイル数(戻した変更は0と数えます)、@MX インデックスは内容ハッシュが変わったファイル数、edges.jsonl はソースフィンガープリントの不一致を見ます。
+
+測定の起点はスタンプされたコミットではなく**コンテンツアンカー**です。作業ツリーの codemaps 本文がスタンプ時点の本文と違えばアンカーはスタンプコミット自身であり(`content_anchor_source=working-tree-differs-from-stamp`)、一致していればスタンプ自身の履歴で本文に最後に触れたコミットがアンカーになります(`last-body-change`)。アンカーとその出所は stderr と `--json` に `content_anchor` · `content_anchor_source` として出ます。本文をそのままにして `moai graph stamp codemaps` だけ打ち直しても測定窓が0に戻らないのはこのためです — ゲートが赤いときはスタンプを打ち直すのではなく、`/moai codemaps` で本文を作り直してからスタンプしてください。
 
 各成果物は provenance ブロックで、どのツリー·コミットの産物かを明かします。ブロックのないものは `absent` — 判断不能を fresh と偽らず、absent も失敗です。新しいワークツリーにはそもそもこれらの成果物がないため、すべて absent として報告されます。終了コードは 0(すべて fresh)· 1(stale または absent)· 2(システムエラー)で、プリコミット品質ゲートの graph-freshness ステップと CI の graph-freshness ジョブがこの値をそのまま消費します。しきい値は gate.yaml の `graph_freshness` セクションで調整します。
 
 mtime はどこでも読みません。新しいチェックアウトはすべての mtime を初期化するため、mtime 基準の指標は再生成直後と誤判します — だからここにある指標は内容ハッシュと git diff、フィンガープリントだけです。
+
+stale 判定には原因の内訳が付くようになりました。`codemaps` 層が stale になると、stderr にはこの変更自身が寄与したファイル数(`contribution`)と測定基準のコミット(`contribution_base`、通常は `HEAD^1`)がまず出力され、続いてドリフトを起こした経路が最大10件まで列挙され、それ以上は `... and N more` にまとめられます。`--json` では同じ情報が `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` フィールドとして出ます。この red を単に引き継いだだけか(寄与0)、自分で起こしたのか(寄与>0)を stderr 一行で見分けられます。
 
 ## moai graph stamp codemaps
 
@@ -75,7 +81,21 @@ OK: stamped .moai/project/codemaps/provenance.json
 provenance: tree=/path/to/project commit=1a2b3c4d5e6
 ```
 
-codemaps を再生成した後の最後のステップとして実行します。文書の内容は `/moai codemaps` が整えますが、その内容が**どのツリー状態を記述しているか**はこのコマンドが `provenance.json` に記録します。`moai graph check` が codemaps 層を判定するよりどころがこの記録です。
+codemaps を再生成した後の最後のステップとして実行します。文書の内容は `/moai codemaps` が整えますが、その内容が**どのツリー状態を記述しているか**はこのコマンドが `provenance.json` に記録します。`moai graph check` はこの記録を出発点にコンテンツアンカーを解決し、codemaps 層を判定します。
+
+### マージを生き残るコミットの指定 (`--commit`)
+
+```bash
+$ moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+フラグなしで実行すると、スタンプは現在チェックアウトしている HEAD を記録します。機能ブランチではこれが落とし穴です。このリポジトリはプルリクエストを**スカッシュマージ**で統合するため、ブランチのコミット — HEAD も含め — は main の履歴に一切入りません。ブランチローカルの HEAD を指すスタンプは、スカッシュマージが決まった瞬間に孤児になり、その後に開くすべてのプルリクエストが graph-freshness の赤判定（`not comparable`、exit 2）を受け継ぎます。この失敗は実際に一度発生し、`0d15864ae90b` インシデントとして追跡されました。
+
+`--commit <rev>` は `git rev-parse` の式（フル sha、短縮ハッシュ、ref 名のどれでも）を受け取り、フル sha に解決してそのまま記録します。上の merge-base レシピが安全な形です。`git merge-base HEAD origin/main` は main の祖先なのでスカッシュマージを生き残り、同時に分岐点での described ソースと内容が一致するため、他の PR が統合した変更まで自分のドリフトとして数えられません。 ただし実際の測定起点はこのコミットではなくコンテンツアンカーなので、本文がそれより前のコミット以降変わっていなければ、その前のコミットから測ります。ブランチローカルの HEAD で再スタンプしないでください。また、described ソースに未コミットの変更がある状態で `--commit` を使うと即座に拒否されます — コミット指定とコンテンツフィンガープリントは異なる正直性の主張であり、スキーマのアンカーは一つしか持てないからです。
+
+この規律は CI が機械的に支えます。graph-freshness ワークフローは鮮度判定を報告する前に、追跡されているスタンプのコミットがプルリクエストのベースブランチの祖先かどうかを検証します。孤児になるスタンプは、マージ後の無名の exit 2 ではなく、名前付きでその場で失敗します。
 
 ## 2つのセレクタへの注意書き
 

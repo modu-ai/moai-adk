@@ -67,6 +67,15 @@ type WizardResult struct {
 	// nothing rather than restating the shipped default in every project.
 	FeedbackAutoSubmit *bool // feedback.auto_submit
 
+	// ProjectContinuation (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010): the
+	// /moai project Phase 14 completion selection, reusing the
+	// config.ProjectContinuation* enum. A plain string, not a pointer: the
+	// default is a NAMED token of the domain (card), so "" and "card" carry the
+	// same meaning to the resolver, and "" additionally means the wizard did not
+	// reach the question (--non-interactive) — which the writer reads as "write
+	// nothing".
+	ProjectContinuation string // workflow.project.continuation: none|card|pipeline
+
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).
@@ -82,6 +91,13 @@ type WizardResult struct {
 	AuditGateGLM      string // audit.gates.glm: off|advisory|required
 	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
 	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
+
+	// AgentWiring (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-001/002): the
+	// interactive LLM-harness selection, reusing the --llm closed set
+	// {claude, codex, both}. Empty means the wizard did not run (or did not
+	// reach the question), which resolveAgentWiringWithWizard resolves to the
+	// claude fallback — the same fallback the flag path has always used.
+	AgentWiring string // agent harness: claude, codex, both
 }
 
 // QuestionType represents the type of wizard question.

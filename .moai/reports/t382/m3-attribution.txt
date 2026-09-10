@@ -1,0 +1,32 @@
+BEFORE  total=715 grandfathered=286 modern_era_clean=422  buckets={'V2.x': 144, 'V3R2-R4': 118, 'V3R5': 24, 'V3R6': 205}  EraUnclassified=0
+AFTER  total=715 grandfathered=263 modern_era_clean=445  buckets={'V2.x': 144, 'V3R2-R4': 118, 'V3R5': 1, 'V3R6': 228}  EraUnclassified=0
+
+SPECs whose era changed: 23
+  SPEC-ASTGREP-BREADTH-001                                 V3R5     -> V3R6      justification: created=2026-08-25
+  SPEC-ASTGREP-LANG16-001                                  V3R5     -> V3R6      justification: created=2026-08-24
+  SPEC-CLOCAL-AUDIT-001                                    V3R5     -> V3R6      justification: created=2026-08-27
+  SPEC-CONFIG-DEAD-SWEEP-001                               V3R5     -> V3R6      justification: created=2026-08-04
+  SPEC-DWF-CODEMAPS-PILOT-001                              V3R5     -> V3R6      justification: phase=v3.0.0, created=2026-06-05
+  SPEC-ERA-H3-NARROWING-001                                V3R5     -> V3R6      justification: created=2026-08-31
+  SPEC-GITFLOW-DOCTRINE-ALIGN-001                          V3R5     -> V3R6      justification: created=2026-08-27
+  SPEC-GLM-EFFORT-REBALANCE-001                            V3R5     -> V3R6      justification: created=2026-08-14
+  SPEC-HARNESS-LEARNING-EVO-001                            V3R5     -> V3R6      justification: created=2026-08-09
+  SPEC-HARNESS-LEARNING-EVO-002                            V3R5     -> V3R6      justification: created=2026-08-09
+  SPEC-HOOK-DISCIPLINE-WIRING-001                          V3R5     -> V3R6      justification: created=2026-06-11
+  SPEC-HOOK-PREEDIT-INVESTIGATE-001                        V3R5     -> V3R6      justification: phase=v3.0.0, created=2026-07-07
+  SPEC-INTERNAL-ARCH-001                                   V3R5     -> V3R6      justification: phase=v3.0.x target, created=2026-07-08
+  SPEC-KANBAN-BOOTSTRAP-001                                V3R5     -> V3R6      justification: created=2026-08-10
+  SPEC-KANBAN-PR-CARD-TRACEABILITY-001                     V3R5     -> V3R6      justification: created=2026-08-24
+  SPEC-KANBAN-QUEUE-PR-SYNC-001                            V3R5     -> V3R6      justification: created=2026-08-24
+  SPEC-KANBAN-TODO-CLI-001                                 V3R5     -> V3R6      justification: created=2026-08-14
+  SPEC-KANBAN-WORKTREE-001                                 V3R5     -> V3R6      justification: created=2026-08-10
+  SPEC-LSPMCP-RETIRE-001                                   V3R5     -> V3R6      justification: phase=v3.0.0, created=2026-06-03
+  SPEC-PREPUSH-WIRING-001                                  V3R5     -> V3R6      justification: created=2026-06-08
+  SPEC-SEC-SCAN-SURFACE-001                                V3R5     -> V3R6      justification: created=2026-08-24
+  SPEC-UPDATE-VERSION-FLAG-001                             V3R5     -> V3R6      justification: created=2026-08-03
+  SPEC-V3R6-SESSION-HANDOFF-AUTO-001                       V3R5     -> V3R6      justification: phase=v3.0.0, created=2026-05-23
+
+IDs only in before: 0 []
+IDs only in after:  0 []
+
+OK: every era change carries a modern-era signal; EraUnclassified stayed 0.

@@ -1,0 +1,4 @@
+# t502 cell E6
+[[skills.config]]
+path = ".agents/skills/t502probe/SKILL.md"
+enabled = false

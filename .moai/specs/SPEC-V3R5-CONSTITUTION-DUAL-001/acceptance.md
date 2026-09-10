@@ -2,7 +2,6 @@
 id: SPEC-V3R5-CONSTITUTION-DUAL-001
 title: "Constitution Dual-Zone Formalization with Validate CLI — Acceptance Criteria"
 version: "0.1.0"
-status: draft
 created: 2026-05-20
 updated: 2026-05-20
 author: GOOS Kim

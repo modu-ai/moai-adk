@@ -1,0 +1,12 @@
+# spec-lint iter-5 — SPEC-VERSION-STAMP-GUARD-001 v0.5.0
+# (plan-audit iter-3 PASS-WITH-DEBT 0.90 부채 F1/F2/F4/F5/F6 정리 후)
+# date: 2026-09-01
+# worktree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t388
+# branch: WT-version-sync-list   HEAD: c6aed3c36
+# binary: /tmp/t388-spec5-moai — 이 트리에서 `go build -o /tmp/t388-spec5-moai ./cmd/moai` (rc=0)
+#   빌드 시점 `git status --porcelain -- cmd internal pkg` = 0 lines (빌드 전후 모두 확인)
+#   PATH 바이너리(v3.1.2 / 343399d2f)는 이 트리 소스가 아니므로 그 초록은 귀속 불가 — 사용하지 않음
+# cmd: /tmp/t388-spec5-moai spec lint .moai/specs/SPEC-VERSION-STAMP-GUARD-001/spec.md
+---
+✓ No findings — all SPEC documents are valid
+--- exit: 0 ---

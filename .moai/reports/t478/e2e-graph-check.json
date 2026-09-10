@@ -1,0 +1,52 @@
+{
+  "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t478",
+  "layers": [
+    {
+      "layer": "codemaps",
+      "metric": "described-source-diff",
+      "value": 146,
+      "threshold": 40,
+      "verdict": "stale",
+      "contribution": 2,
+      "contribution_base": "cd28923f2fa24241d7bfc4668f8a6bbdd4b81945",
+      "content_anchor": "ad272be20abff9e4f3b1b363fce3e48dac4c5132",
+      "content_anchor_source": "working-tree-differs-from-stamp",
+      "driving_paths": [
+        "internal/chain/node.go",
+        "internal/chain/populate.go",
+        "internal/chain/prune.go",
+        "internal/cli/cc.go",
+        "internal/cli/cg.go",
+        "internal/cli/doctor.go",
+        "internal/cli/doctor_codex.go",
+        "internal/cli/doctor_hook_delivery.go",
+        "internal/cli/doctor_hook_wiring.go",
+        "internal/cli/epic.go"
+      ],
+      "driving_paths_omitted": 136
+    },
+    {
+      "layer": "mx-index",
+      "metric": "inventory-content-diff",
+      "value": 0,
+      "threshold": 1,
+      "verdict": "absent",
+      "reason": "mx-index absent (untracked runtime artifact — fresh worktree state)"
+    },
+    {
+      "layer": "edges",
+      "metric": "source-fingerprint-mismatch",
+      "value": 0,
+      "threshold": 0,
+      "verdict": "absent",
+      "reason": "edges.jsonl absent (untracked derived artifact — fresh worktree state)"
+    },
+    {
+      "layer": "citations",
+      "metric": "positive-cited-path-absence",
+      "value": 0,
+      "threshold": 0,
+      "verdict": "fresh"
+    }
+  ]
+}

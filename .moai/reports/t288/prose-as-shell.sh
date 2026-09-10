@@ -1,0 +1,1 @@
+Every blocking acceptance criterion in .moai/specs/SPEC-XXX/acceptance.md has its PASS evidence surfaced in the conversation (test output, build exit 0, or explicit AC-id: PASS line); AND `go test ./...` exit 0 is surfaced; AND no test file outside the SPEC scope was modified (surfaced via git status). Stop when all hold.

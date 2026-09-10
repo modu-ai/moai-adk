@@ -24,9 +24,13 @@ on:
       - 'docs-site/content/**'
       - 'scripts/docs-i18n-check.sh'
       - '.github/workflows/docs-i18n-check.yml'
+  # develop is the integration branch under git-flow: lane work merges into it
+  # directly, with no card PR to carry the pull_request trigger. Without develop
+  # here the check never runs on the branch where the content actually lands.
   push:
     branches:
       - main
+      - develop
     paths:
       - 'docs-site/content/**'
       - 'scripts/docs-i18n-check.sh'
@@ -65,7 +69,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "strict=${{ inputs.strict }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == "push" ]]; then
-            # push to main: warn-only during Phase 1 rollout (matches PR behavior).
+            # push to main/develop: warn-only during Phase 1 rollout (matches PR behavior).
             # Flip to strict after the baseline 35 drifts are cleared (Phase 2)
             # via SPEC-V3R3-DOCS-PARITY-001 or equivalent — see CLAUDE.local.md §17.3.
             echo "strict=false" >> "$GITHUB_OUTPUT"

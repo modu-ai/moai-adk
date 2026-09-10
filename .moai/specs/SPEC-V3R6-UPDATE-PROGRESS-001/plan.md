@@ -2,7 +2,6 @@
 id: SPEC-V3R6-UPDATE-PROGRESS-001
 title: "SPEC-V3R6-UPDATE-PROGRESS-001 — Implementation Plan"
 version: "0.1.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

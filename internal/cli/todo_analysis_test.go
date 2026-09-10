@@ -122,16 +122,17 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 		t.Fatalf("add over a legacy file: %v", err)
 	}
 
-	raw, err := os.ReadFile(store.Path())
-	if err != nil {
-		t.Fatalf("read queue file: %v", err)
-	}
+	// The document CONTRACT outlives the storage swap: the record still
+	// serializes to the shape a legacy reader expects, which is what the
+	// downgrade path regenerates. Assert it on the canonical serialization of
+	// the stored record rather than on file bytes that are no longer JSON.
+	raw := queueStateBytes(t, store.Path())
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &top); err != nil {
-		t.Fatalf("parse queue file: %v", err)
+		t.Fatalf("parse queue state: %v", err)
 	}
 	if _, ok := top["findings"]; !ok {
-		t.Error("queue file lost the additive top-level findings key")
+		t.Error("queue record lost the additive top-level findings key")
 	}
 	var items []map[string]json.RawMessage
 	if err := json.Unmarshal(top["items"], &items); err != nil {

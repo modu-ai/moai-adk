@@ -1,0 +1,9 @@
+id: sec-template-injection-html
+snapshots:
+  ? |
+    w.Write(template.HTML(userReview))
+  : labels:
+    - source: template.HTML(userReview)
+      style: primary
+      start: 8
+      end: 33

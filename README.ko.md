@@ -77,7 +77,7 @@ moai cc -f lane-1             # 레인 하나, 각자 별도 터미널에서
 moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 ```
 
-레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이 형태는 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 번호는 풀려서 다시 쓰인다. 어느 번호를 누가 쥐고 있는지는 `.moai/state/factory/workers.json`에 적히고, 남은 claim도 여기서 치운다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
+레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이 형태는 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 번호는 풀려서 다시 쓰인다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
 
 > 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -338,7 +338,7 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 모든 백엔드는 fail-open이다 — GLM(`~/.moai/.env.glm`)과 codex(`~/.codex/auth.json`)는 선택적이며, 사용 불가 백엔드는 `inconclusive`를 반환할 뿐 hard error가 아니다.
 
-듀얼 하네스(`moai init --agent codex|both`)에서 Codex의 상태 표시줄은 기본 식별자 배열(`tui.status_line`)만 지원하므로, goal·todo·SPEC 상태 같은 MoAI 전용 항목은 표시할 수 없다 — 명령 기반 상태 표시줄을 지원하는 openai/codex#17827이 해소되기 전까지의 한계다.
+Codex가 활성화된 하네스(`moai init --llm codex|both`)에서 Codex의 상태 표시줄은 기본 식별자 배열(`tui.status_line`)만 지원하므로, goal·todo·SPEC 상태 같은 MoAI 전용 항목은 표시할 수 없다 — 명령 기반 상태 표시줄을 지원하는 openai/codex#17827이 해소되기 전까지의 한계다.
 
 > 자세히: [MCP 서버 가이드](https://adk.mo.ai.kr/ko/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ko/claude-code/extensibility/mcp)
 
@@ -408,10 +408,10 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
 ### moai web 콘솔
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 11개 설정 탭" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 설정 탭" width="90%">
 </p>
 
-`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP·Cross-Session 열한 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Codex·Agents·Report·MCP·Cross-Session·Feedback·Quality Gate 열네 개 탭으로 나뉜다. Codex 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
@@ -736,6 +736,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 세션 |
+| `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
@@ -745,8 +746,8 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
 | `moai memory <doctor\|archive>` | 에이전트 메모리 점검과 오래된 항목 보관 |
 | `moai tokens record` | 풀별 토큰 사용 원장 기록 |
-| `moai clean [--home]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치운다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
-| `moai web` | 웹 콘솔 — 6개 화면(Overview · Kanban · Specs · Monitor · Settings · Todo), 11-탭 설정 |
+| `moai clean [--home] [--codex-skills]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치우고, `--codex-skills`를 붙이면 `~/.codex/config.toml`에서 선언된 경로가 부재로 증명된 `[[skills.config]]` 등록을 지운다. 스코프는 한 번에 하나만 고른다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
+| `moai web` | 웹 콘솔 — 6개 화면(Overview · Kanban · Specs · Monitor · Settings · Todo), 14-탭 설정 |
 
 > 전체 49개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 

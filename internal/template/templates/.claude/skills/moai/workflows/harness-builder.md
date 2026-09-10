@@ -331,7 +331,7 @@ Subagents reachable from the Builder (Explore agents in ANALYZE, the opus-xhigh 
 
 ## Cross-references
 
-- Entry workflow: `${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md` (Phases 0-3: Discovery, name derivation, approval gate).
+- Entry workflow: `.claude/skills/moai/workflows/harness-build-entry.md` (Phases 0-3: Discovery, name derivation, approval gate).
 - moai SKILL.md § harness Branch B (dispatcher routing).
 - Manifest schema: companion design document § manifest schema section.
 - Runner contract: companion design document § Runner section.

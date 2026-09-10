@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "fork_turns": {
+      "type": "string",
+      "description": "Optional number of turns to fork. Defaults to `all`. Use `none`, `all`, or a positive integer string such as `3` to fork only the most recent turns."
+    },
+    "message": {
+      "type": "string",
+      "description": "Initial plain-text task for the new agent."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model override for the new agent. Omit unless an explicit override is needed."
+    },
+    "reasoning_effort": {
+      "type": "string",
+      "description": "Reasoning effort override for the new agent. Omit to inherit the parent effort."
+    },
+    "task_name": {
+      "type": "string",
+      "description": "Task name for the new agent. Use lowercase letters, digits, and underscores."
+    }
+  },
+  "required": [
+    "message",
+    "task_name"
+  ],
+  "additionalProperties": false
+}

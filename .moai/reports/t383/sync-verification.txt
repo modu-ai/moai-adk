@@ -1,0 +1,120 @@
+sync-phase verification record — card t383, SPEC-MEMORY-STORE-RECONCILE-001
+Measured in worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t383,
+branch WT-memory-index-budget, against tree HEAD 4064c7857 plus the uncommitted
+sync-phase edits listed at the bottom. Tool: ./bin/moai (tree build, not the
+PATH binary) for spec lint; system go toolchain for the rest.
+
+--- 1. B12 self-test A — pre-emission duplicate grep (before writing CHANGELOG)
+$ grep -c 'SPEC-MEMORY-STORE-RECONCILE-001' CHANGELOG.md
+0
+
+--- 2. B12 self-test B — AC count
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/acceptance.md | sort -u | wc -l
+      16
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' ... | sort -u
+AC-MSR-001 AC-MSR-002 AC-MSR-003 AC-MSR-004 AC-MSR-005 AC-MSR-006 AC-MSR-007
+AC-MSR-008 AC-MSR-009 AC-MSR-010 AC-MSR-011 AC-MSR-012 AC-MSR-013 AC-MSR-014
+AC-MSR-015 AC-MSR-016
+(non-zero and matching progress.md §E.2's 16-row PASS matrix; a count of 0 would
+have been a red flag, not a pass)
+
+--- 3. B12 self-test C — file-path / identifier verification for the CHANGELOG entry
+$ grep -n 'func TestFixedSlotsExistInRepoTree' internal/config/token_budget_guard_test.go
+357:func TestFixedSlotsExistInRepoTree(t *testing.T) {
+$ grep -n 'copied' .moai/reports/t383/reconcile-copy-log.txt | tail -3
+60:copied:         58
+$ tail -3 .moai/reports/t383/reconcile-copy-log.txt
+skipped_exists: 0
+no_source:      0
+dry_run:        0
+$ grep -rn 'mx query' internal/cli/*.go | head -3
+internal/cli/mx_query_debt_test.go:12,38,44  (the `moai mx query --kind DEBT`
+CLI contract exists and is test-pinned; the CHANGELOG cites it as a real verb)
+
+--- 4. Go verification (affected package only; NOT `go test ./...`)
+$ go vet ./internal/config/...
+(exit 0, no output)
+$ go test ./internal/config/...
+ok  	github.com/modu-ai/moai-adk/internal/config	3.549s
+ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	0.719s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	(cached)
+
+--- 5. gofmt — SCOPED, deliberately not stated as a package-wide pass
+$ gofmt -l internal/config/token_budget_guard.go
+(empty — the file this phase edited is formatted)
+$ gofmt -l internal/config/
+internal/config/audit_struct_yaml_symmetry_test.go
+internal/config/model_routing_test.go
+internal/config/profile_test.go
+internal/config/slice.go
+internal/config/template_removed_key_test.go
+internal/config/toolpolicy/codegen.go
+internal/config/toolpolicy/settings_region.go
+(seven pre-existing unformatted files, none in
+`git diff --name-only 297a21ea7..HEAD`, none touched by this card. Recorded, not
+reformatted — a drive-by fix is out of scope. An unqualified "gofmt clean" would
+have been false.)
+
+--- 6. Template-First mirror parity — re-measured this phase, not inherited
+$ diff -q .claude/rules/moai/workflow/moai-memory.md internal/template/templates/.claude/rules/moai/workflow/moai-memory.md   ; rc1=0
+$ diff -q .claude/rules/moai/core/moai-constitution.md internal/template/templates/.claude/rules/moai/core/moai-constitution.md ; rc2=0
+$ diff -q .claude/output-styles/moai/moai.md internal/template/templates/.claude/output-styles/moai/moai.md                    ; rc3=0
+(sync-phase edited none of these six files; `make build` not re-run because no
+template source changed in this phase.)
+
+--- 7. SPEC lint after the status transition (tree-built binary, targeted)
+$ ./bin/moai spec lint .moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/spec.md
+lint_exit=0
+✓ No findings — all SPEC documents are valid
+(exported verbatim to .moai/reports/t383/sync-spec-lint.txt)
+
+Whole-repo form, for delta attribution:
+$ ./bin/moai spec lint
+0 error(s), 1096 warning(s)
+[exited with code 0]
+Identical to the run-phase figure recorded in progress.md §E.3
+("0 error(s), 1096 warning(s)"), so the sync-phase status transition introduced
+no new finding. Same tree-built binary; same command; delta 0.
+
+--- 8. Frontmatter read-back after the transition
+$ sed -n '1,16p' .moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/spec.md | grep -n 'status\|updated\|^id'
+2:id: SPEC-MEMORY-STORE-RECONCILE-001
+5:status: completed
+7:updated: 2026-09-01
+$ grep -c '^status:' plan.md acceptance.md progress.md
+plan.md:0   acceptance.md:0   progress.md:0
+(the siblings correctly carry no status field; none was added)
+
+--- 9. §E.4 YAML block parses
+$ python3 -c "yaml.safe_load(<the §E.4 fenced block>)"
+YAML OK keys= 19
+gaps_open = ['G4', 'G6', 'G7', 'M0-sampling', 'G8-docs-site']
+
+--- 10. Docs-surface sweep (the sync-phase finding)
+$ grep -c 'MEMORY\.md' README.md README.ko.md README.ja.md README.zh.md   -> 0,0,0,0
+$ grep -c '25KB'      README.md README.ko.md README.ja.md README.zh.md   -> 0,0,0,0
+$ grep -rn 'MEMORY.md' .moai/project/*.md                                 -> (no matches)
+$ grep -rn '200 lines or 25KB|앞 200줄|冒頭 200 行|前 200 行|first 200 lines' docs-site/content | wc -l
+      16
+$ grep -rl ... docs-site/content | sort
+docs-site/content/en/claude-code/context-memory/context-window.md
+docs-site/content/en/claude-code/context-memory/memory.md
+docs-site/content/ja/claude-code/context-memory/context-window.md
+docs-site/content/ja/claude-code/context-memory/memory.md
+docs-site/content/ko/claude-code/context-memory/context-window.md
+docs-site/content/ko/claude-code/context-memory/memory.md
+docs-site/content/zh/claude-code/context-memory/context-window.md
+docs-site/content/zh/claude-code/context-memory/memory.md
+(8 files, 16 lines assert the same unconfirmed cut this SPEC withdrew from the
+in-repo surfaces. NOT corrected — outside spec.md §A.5's enumerated surface, and
+this SPEC records the cut as unconfirmed rather than asserting its negation.
+Recorded as gap G8-docs-site and reported to the lead.)
+
+--- Files this sync phase modified
+CHANGELOG.md                                                   (Unreleased > Added entry)
+.moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/spec.md            (frontmatter `status:` only)
+.moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/progress.md        (§E.4 block only)
+internal/config/token_budget_guard.go                          (@MX:DEBT marker only)
+.moai/reports/t383/sync-spec-lint.txt                          (new evidence)
+.moai/reports/t383/sync-verification.txt                       (this file)
+No memory-store file is among them. No .moai/state/, no agent-memory/.

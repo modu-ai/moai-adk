@@ -1,0 +1,15 @@
+✓ No findings — all SPEC documents are valid
+
+provenance: binary built from tree 9328a5242 via `go build -o /tmp/t388-moai4 ./cmd/moai`
+            (NOT the PATH install /Users/goos/go/bin/moai, which reports v3.1.2 / 343399d2f)
+            `git status --porcelain -- cmd internal pkg` empty at build time
+command:    /tmp/t388-moai4 spec lint .moai/specs/SPEC-VERSION-STAMP-GUARD-001/spec.md
+exit:       0
+spec:       SPEC-VERSION-STAMP-GUARD-001 v0.4.0 (iter-4, plan-audit iter-2 defect closure)
+counts:     6 REQ / 6 AC / 5 Out-of-Scope sub-headings (Tier S ceiling 8/8)
+            REQ-VSG-001..006 and AC-VSG-001..006 extracted across all four artifacts,
+            no gap, no duplicate
+weasel:     적절|합리적|충분히|적당|reasonable|appropriate|adequate|proper over the three
+            artifacts -> rc=1 (no match)
+note:       D1 closure — per-assertion RED observation (E3-a/b/c), expected RED literals
+            pinned in plan.md §D before measurement; D3 enumeration corrected 2 -> 8 files

@@ -523,8 +523,8 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M1..M5), no push
 
 ```yaml
 sync_complete_at: 2026-08-24
-sync_commit_sha: "pending-backfill-sync"   # D3 self-reference exemption — a commit cannot know its own SHA; backfilled after the PR merges (lead owns the implemented → completed transition + this backfill)
-sync_status: implemented-pending-merge
+sync_commit_sha: baa100ce5   # PR #1642 squash merge; the sync-phase commit 638737651 was squashed away and is not an origin/develop ancestor
+sync_status: complete   # merged and backfilled by t252
 b12_self_test_a: pass   # grep -c 'SPEC-V3R6-AUDIT-MODEL-PIN-001' CHANGELOG.md → 0 (pre-emission, rc=1) — no duplicate entry
 b12_self_test_b: pass   # acceptance.md §D distinct AC count = 8 (AC-AMP-001..008, §D.1 severity table rows); the grep's 9th token AC-MTP-032 is the AC-AMP-006 heading's "closes AC-MTP-032b" cross-reference, not a §D AC
 b12_self_test_c: pass   # every CHANGELOG-claimed surface verified on disk (4x docs-site/content/{ko,en,ja,zh}/advanced/config-sections.md, internal/cli/mcp_glm.go, internal/template/templates/.moai/config/sections/workflow.yaml, .moai/config/sections/workflow.yaml)
@@ -548,7 +548,7 @@ docs_site_scope_decision: minimal-4-locale-addition   # config-sections.md enume
 
 **Residual-risk / Gaps (VCI §3.4-3.5):**
 
-- `sync_commit_sha` is a pending-backfill placeholder per the D3 exemption — resolves only after the commit lands (lead's post-merge step).
+- `sync_commit_sha` was a pending-backfill placeholder per the D3 exemption; it was resolved to `baa100ce5` by card t252 after PR #1642 landed. RESOLVED — no longer a gap.
 - Version-sync (verify §6) not re-run: no version display was touched by this sync (CHANGELOG `[Unreleased]` carries no stamp by dispatch instruction).
 - The duplicate placeholder `## §E.3 Run-phase Audit-Ready Signal` heading formerly above this §E.4 block was REMOVED in the CR round-1 response (CodeRabbit MD024; lane edit 2026-08-24) — the completed run-phase §E.3 record above remains the single anchor.
 

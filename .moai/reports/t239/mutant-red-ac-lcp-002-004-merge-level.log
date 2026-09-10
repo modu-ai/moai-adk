@@ -1,0 +1,7 @@
+=== RUN   TestZZTeethProbe
+TEETH AC-LCP-002: DeepMerge3Way(new-missing-key, old-missing-key, base) merged contains performance_tier -> false (want false: the e2e delivery assertion is sensitive to the delivery path)
+TEETH AC-LCP-004: map-roundtrip keeps 'Profile matrix' sentinel -> false (want false: the comment assertions detect comment loss)
+TEETH AC-LCP-004: map-roundtrip keeps 'GLM reasoning-effort mapping' sentinel -> false (want false)
+--- PASS: TestZZTeethProbe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.411s

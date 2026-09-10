@@ -1,0 +1,5 @@
+=== RUN   TestAlwaysLoadedTokenBudget
+    token_budget_guard_test.go:69: always-loaded surface = 76556 tokens (budget 77600, headroom 1044, 17 entries)
+--- PASS: TestAlwaysLoadedTokenBudget (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.558s

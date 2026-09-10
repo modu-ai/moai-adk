@@ -118,7 +118,7 @@ ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
 
 The pattern mirrors the SPEC-ID pattern the lint engine enforces: first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
 
-- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-RETIRED-DDD-001` (multi-segment domains, including retired-marker prefixes, remain canonical)
+- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-EXAMPLE-DOMAIN-001` (multi-segment domains remain canonical)
 - Invalid: `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase)
 
 On `FAIL`, halt the Write and return a structured blocker report naming the offending segment and proposing the canonical correction. On `PASS`, proceed to the Step 5 frontmatter schema validation, then Write/Edit.

@@ -21,8 +21,9 @@ import (
 // serving binary's json.Unmarshal leaves the field at its zero value, so a
 // fingerprint-valid cache silently masks the file value (observed when
 // Workflow gained AgentStopGuard: an old-binary cache served enabled=false
-// over an enabled:true workflow.yaml).
-const configCacheSchemaVersion = 2
+// over an enabled:true workflow.yaml). Bumped to 3 when Workflow gained
+// SettingsDriftGate, for exactly that reason.
+const configCacheSchemaVersion = 3
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

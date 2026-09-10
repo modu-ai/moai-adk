@@ -2,7 +2,6 @@
 id: SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001
 title: "Design — Template Internal-Content Isolation"
 version: "0.1.3"
-status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

@@ -198,8 +198,8 @@ func TestTextualFanInCounter_CountEmptyProjectRoot(t *testing.T) {
 // TestIsTestFile_UserPattern_IntegrationDir uses a user glob pattern to classify an integration directory as a test file.
 // AC-SPC-004-11: user-defined TestPaths glob support (G-05).
 func TestIsTestFile_UserPattern_IntegrationDir(t *testing.T) {
-	// isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"}) -> true
-	got := isTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"})
+	// IsTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"}) -> true
+	got := IsTestFileWithPatterns("internal/foo/integration/bar.go", []string{"**/integration/**"})
 	if !got {
 		t.Errorf("isTestFileWithPatterns: **/integration/** 패턴으로 integration 디렉토리 파일을 테스트 파일로 판별해야 함")
 	}
@@ -208,8 +208,8 @@ func TestIsTestFile_UserPattern_IntegrationDir(t *testing.T) {
 // TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded tests the hardcoded fallback when a user pattern does not match.
 // AC-SPC-004-11: hardcoded _test.go fallback when the user pattern does not match (G-05).
 func TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded(t *testing.T) {
-	// isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"}) -> true (hardcoded _test.go fallback)
-	got := isTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"})
+	// IsTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"}) -> true (hardcoded _test.go fallback)
+	got := IsTestFileWithPatterns("internal/foo/foo_test.go", []string{"**/integration/**"})
 	if !got {
 		t.Errorf("isTestFileWithPatterns: 사용자 패턴 불일치 시 _test.go 하드코딩 폴백으로 true 반환해야 함")
 	}

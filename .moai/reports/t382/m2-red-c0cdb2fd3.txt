@@ -1,0 +1,21 @@
+--- FAIL: TestClassifyEra_NoV3R5WhileModernSignal (0.00s)
+    era_test.go:321: modern signal (created="" phase="v3.0.0" e2=true sha=false) classified V3R5 (rule "H-3 (§E.2 present, sync_commit_sha missing)")
+    era_test.go:326: H-3-eligible modern input (created="" phase="v3.0.0") resolved by "H-3 (§E.2 present, sync_commit_sha missing)", want H-5
+    era_test.go:321: modern signal (created="2026-03-15" phase="v3.0.0" e2=true sha=false) classified V3R5 (rule "H-3 (§E.2 present, sync_commit_sha missing)")
+    era_test.go:326: H-3-eligible modern input (created="2026-03-15" phase="v3.0.0") resolved by "H-3 (§E.2 present, sync_commit_sha missing)", want H-5
+    era_test.go:321: modern signal (created="2026-08-25" phase="" e2=true sha=false) classified V3R5 (rule "H-3 (§E.2 present, sync_commit_sha missing)")
+    era_test.go:326: H-3-eligible modern input (created="2026-08-25" phase="") resolved by "H-3 (§E.2 present, sync_commit_sha missing)", want H-5
+    era_test.go:321: modern signal (created="2026-08-25" phase="v3.0.0" e2=true sha=false) classified V3R5 (rule "H-3 (§E.2 present, sync_commit_sha missing)")
+    era_test.go:326: H-3-eligible modern input (created="2026-08-25" phase="v3.0.0") resolved by "H-3 (§E.2 present, sync_commit_sha missing)", want H-5
+    era_test.go:321: modern signal (created="2026-08-25" phase="v3.2.0 target" e2=true sha=false) classified V3R5 (rule "H-3 (§E.2 present, sync_commit_sha missing)")
+    era_test.go:326: H-3-eligible modern input (created="2026-08-25" phase="v3.2.0 target") resolved by "H-3 (§E.2 present, sync_commit_sha missing)", want H-5
+--- FAIL: TestClassifyEra_HeuristicTable (0.00s)
+    --- FAIL: TestClassifyEra_HeuristicTable/AC-EH3-002_H-3_deferred_on_phase_signal_→_V3R6_via_H-5 (0.00s)
+        era_test.go:247: ClassifyEra() era = V3R5, want V3R6 (rule: H-3 (§E.2 present, sync_commit_sha missing))
+        era_test.go:250: ClassifyEra() rule = "H-3 (§E.2 present, sync_commit_sha missing)", want substring "H-5"
+    --- FAIL: TestClassifyEra_HeuristicTable/AC-EH3-001_H-3_deferred_on_created_signal_→_V3R6_via_H-5 (0.00s)
+        era_test.go:247: ClassifyEra() era = V3R5, want V3R6 (rule: H-3 (§E.2 present, sync_commit_sha missing))
+        era_test.go:250: ClassifyEra() rule = "H-3 (§E.2 present, sync_commit_sha missing)", want substring "H-5"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.372s
+FAIL

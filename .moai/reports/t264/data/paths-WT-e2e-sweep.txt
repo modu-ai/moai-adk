@@ -1,0 +1,8 @@
+.moai/reports/t179/verdict.md
+.moai/specs/SPEC-V3R4-CC2X-ADOPT-002/research.md
+.moai/specs/SPEC-V3R4-CC2X-MCP-001/spec.md
+.moai/specs/SPEC-V3R4-CC2X-MSGR-001/spec.md
+docs-site/content/en/multi-llm/kanban-mode.md
+docs-site/content/ja/multi-llm/kanban-mode.md
+docs-site/content/ko/multi-llm/kanban-mode.md
+docs-site/content/zh/multi-llm/kanban-mode.md

@@ -2,7 +2,6 @@
 id: SPEC-GLM-KEY-INPUT-001
 title: "Acceptance Criteria — GLM API Key Input Surface in the moai web Settings Console"
 version: "0.2.0"
-status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

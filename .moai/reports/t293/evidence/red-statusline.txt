@@ -1,0 +1,18 @@
+--- FAIL: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing (0.00s)
+    --- FAIL: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_none,_absent_cache (0.00s)
+        forge_spawn_gate_test.go:69: spawn attempts = 1, want 0 — an explicit no-forge override must gate the refresh child
+    --- FAIL: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_off,_absent_cache (0.00s)
+        forge_spawn_gate_test.go:69: spawn attempts = 2, want 0 — an explicit no-forge override must gate the refresh child
+    --- FAIL: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_none,_stale_cache_still_spawns_nothing (0.00s)
+        forge_spawn_gate_test.go:69: spawn attempts = 3, want 0 — an explicit no-forge override must gate the refresh child
+    --- FAIL: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/a_typo_names_no_forge_either (0.00s)
+        forge_spawn_gate_test.go:69: spawn attempts = 4, want 0 — an explicit no-forge override must gate the refresh child
+--- FAIL: TestBuilder_SegmentGateSuppressesPairAndSpawn (0.05s)
+    forge_spawn_gate_test.go:171: gated render spawn attempts = 1, want 0 (REQ-001: the segment gate must reach the spawn, not just the render)
+    forge_spawn_gate_test.go:179: enabled render spawn attempts = 2, want 1 — the gate must be the only delta
+    forge_spawn_gate_test.go:182: enabled render "🤖 glm-5.3 | 🗿 v3.1.3\n🔋 5H: ░░░░░░░░░░ 0% | 🔋 7D: ░░░░░░░░░░ 0%\n📁 001" must serve the cached pair
+--- FAIL: TestForgeOptOut_TwoWayRevert (0.00s)
+    forge_spawn_gate_test.go:218: pre-revert spawn attempts = 1, want 0
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	0.479s
+FAIL

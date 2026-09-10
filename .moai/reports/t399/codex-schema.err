@@ -1,0 +1,6 @@
+error: the following required arguments were not provided:
+  --out <DIR>
+
+Usage: codex app-server generate-json-schema --out <DIR>
+
+For more information, try '--help'.

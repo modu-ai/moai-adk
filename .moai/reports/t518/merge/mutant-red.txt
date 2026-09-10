@@ -1,0 +1,5 @@
+=== RUN   TestTableCollection_CorpusListFindingsUnchanged
+    lint_req_table_test.go:477: scanned 812 documents; per-code narrow == live-non-advisory: map[LegacyEARSKeyword:7]
+--- PASS: TestTableCollection_CorpusListFindingsUnchanged (0.36s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.722s

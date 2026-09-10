@@ -1,0 +1,13 @@
+=== RUN   TestProbe_FlockErrnoSurface
+    zz_errno_probe_test.go:43: A contention   errno=resource temporarily unavailable EWOULDBLOCK=true EAGAIN=true
+    zz_errno_probe_test.go:55: B closed fd    errno=bad file descriptor EBADF=true
+    zz_errno_probe_test.go:65: C invalid how  errno=<nil>            EINVAL=false
+    zz_errno_probe_test.go:78: mapping A contention   -> IsBoardLockHeld=true
+    zz_errno_probe_test.go:78: mapping B closed fd    -> IsBoardLockHeld=true
+    zz_errno_probe_test.go:74: mapping C invalid how  -> no error produced; nothing to map
+--- PASS: TestProbe_FlockErrnoSurface (0.00s)
+=== RUN   TestProbe_RealCallSiteReachability
+    zz_errno_probe_test.go:93: second AcquireBoardLock -> err=kanban board lock held IsBoardLockHeld=true
+--- PASS: TestProbe_RealCallSiteReachability (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.232s

@@ -1,0 +1,5 @@
+--- FAIL: TestGateGraphFreshness_AllLayersFreshNotice (0.58s)
+    gate_graph_freshness_test.go:208: fresh posture must carry the literal all-fresh notice, got: "graph-freshness: citations=absent(value=0 threshold=0) (advisory)"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	2.591s
+FAIL

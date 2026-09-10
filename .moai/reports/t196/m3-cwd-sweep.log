@@ -1,0 +1,64 @@
+### S1. every explicit working-directory assignment in the launcher family
+internal/cli/codex_launcher.go:252:	req := codexLaunchRequest{Program: binaryPath, Args: append([]string{verb}, tail...), Dir: dir}
+internal/cli/codex_launcher.go:271:	c.Dir = req.Dir
+
+### S2. the codex launcher's root resolution and its degradation branch
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
+		return &exitCodeError{code: 1}
+	}
+
+	// The launch cwd is the PROJECT ROOT, not the process cwd (AC-CL-002):
+	// a call from a subdirectory still launches at the root. An unresolvable
+	// root degrades to the process cwd rather than refusing to launch.
+	dir := ""
+	if root, rerr := findProjectRootFn(); rerr == nil && root != "" {
+		dir = root
+	} else if cwd, gerr := os.Getwd(); gerr == nil {
+		dir = cwd
+	}
+
+	req := codexLaunchRequest{Program: binaryPath, Args: append([]string{verb}, tail...), Dir: dir}
+	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site both
+	// launch verbs pass through right before launching. The gate takes no
+	// spawn argument: both launch paths cross the same function (REQ-CI-002).
+
+### S3. every .Dir assignment across the CLI package (is any other spawn path relevant?)
+internal/cli/audit_blind_verdict_test.go
+internal/cli/codex_launcher_test.go
+internal/cli/codex_launcher.go
+internal/cli/doctor_agentemit_embed.go
+internal/cli/hook_flush_test.go
+internal/cli/hook_install_precommit_attribution_test.go
+internal/cli/hook_install_precommit_test.go
+internal/cli/hook_worktree_create_test.go
+internal/cli/integration_lock_owner_liveness_test.go
+internal/cli/launcher_worktree_force_test.go
+internal/cli/launcher.go
+internal/cli/mcp_server_test.go
+internal/cli/plan_audit_d7_d8_test.go
+internal/cli/precommit_relocation_test.go
+internal/cli/session_worktree_base_test.go
+internal/cli/spec_close_test.go
+internal/cli/worktree/guard_test.go
+internal/cli/worktree/guard.go
+
+### S4. does anything in the repo force cwd for a directly-launched codex session?
+internal/cli/codex_init_test.go:151:// directory, the fake home, the fake CODEX_HOME, and any escape target.
+internal/cli/codex_launcher_readout_test.go:416:// root, CODEX_HOME, and profile dir inside it) with the launch stubbed: the
+internal/cli/codex_readiness_test.go:10://   - AC-CL-012 — the CODEX_HOME leg (no directory is ever created)
+internal/cli/codex_readiness_test.go:468:// ─── AC-CL-012 — CODEX_HOME leg: report the gap, never create the directory ───
+internal/cli/codex_readiness.go:135:// resolveCodexHomeInfo interprets CODEX_HOME (resolveCodexHomeDir) and checks
+internal/cli/mcp_codex_test.go:317:	t.Setenv("CODEX_HOME", t.TempDir())
+internal/cli/mcp_codex_test.go:474:	t.Setenv("CODEX_HOME", t.TempDir())
+internal/cli/mcp_codex.go:1655:// codexHomeEnvVar / codexHomeDirName drive CODEX_HOME resolution (REQ-CL-005).
+internal/cli/mcp_codex.go:1682:// resolveCodexHomeDir returns the resolved CODEX_HOME and which source
+
+### S5. skills tree presence relative to THIS process's cwd (the premise, exercised)
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+.claude/skills resolves from cwd: yes
+
+### S6. spec.md §A.7 carries the three AC-CSN-013 items
+42:  **D2 — 결론은 맞았으나 근거가 틀렸다.** §A.7 은 상대 경로가 두 하네스에서 같게 해석되는 이유를 "미러가 심볼릭 링크라서"로 댔다. **미러 모드와 무관하다** — 루트 기준 경로는 정본을 직접 지목하므로 미러가 링크든 복사든 부재든 상관없다. 실제로 기대는 전제는 **읽는 프로세스의 cwd 가 프로젝트 루트라는 것**이고, 그 전제는 `internal/cli/codex_launcher.go:245-250` 한 곳에서만 지지되며 루트 해석 실패 시 프로세스 cwd 로 강등된다. 귀결로 REQ-CSN-009 는 **깨질 수 없는 팔**(복사 폴백)에 관측 의무를 걸고 정작 깨질 수 있는 팔은 안 묶고 있었다. §A.7 을 다시 세우고 REQ-CSN-009 를 cwd 팔로 재조준했다.
+138:그 전제는 한 경로에서만 지지되고 다른 경로에서는 방어되지 않는다. `internal/cli/codex_launcher.go:245-250` 이 실행 디렉터리를 프로젝트 루트로 잡는다:
+149:주석(`:242-244`)이 의도를 명시한다 — 하위 디렉터리에서 불러도 루트에서 띄우며, **루트 해석이 실패하면 거부하지 않고 프로세스 cwd 로 강등한다**(`:248-250`). 그리고 `moai codex` 를 거치지 않고 직접 띄운 코덱스 세션은 사용자의 cwd 를 그대로 물려받는다 — 이 저장소에는 그것을 묶는 장치가 없다.
+341:- `internal/cli/codex_launcher.go:242-250` — 실행 cwd 를 프로젝트 루트로 잡는 분기와 그 강등 분기 (§A.7 의 근거)

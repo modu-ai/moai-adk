@@ -541,6 +541,12 @@ func TestGLMReasoningEnvVarsForModel(t *testing.T) {
 // launcher in glm mode with the kanban signal published, confirming parity
 // with `moai cc`. Both launchers are single-backend, so both support the mode.
 func TestGLM_KanbanFlagParity(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: the kanban launch claims the lead name
+	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd),
+	// which the findProjectRootFn stub below does not intercept — the claim
+	// lands in internal/cli/.moai. Redirect the resolver to a temp sandbox.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	origLaunch := unifiedLaunchFunc
 	defer func() { unifiedLaunchFunc = origLaunch }()
 

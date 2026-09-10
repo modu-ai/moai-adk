@@ -312,8 +312,15 @@ func TestTodoNewVerbsAreHeadless(t *testing.T) {
 
 // runTodoWithClosedStdin runs a todo verb with a closed stdin, so a verb
 // that tried to read from the terminal would error rather than block.
+//
+// t422 fail-loud guard: same contract as runTodo — no todoFixture(t), no
+// execution. The queue root resolving to the live repository means the
+// operator's real backlog is one verb away.
 func runTodoWithClosedStdin(t *testing.T, args ...string) error {
 	t.Helper()
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("todo queue isolation guard: %s", reason)
+	}
 	closed, err := os.Open(os.DevNull)
 	if err != nil {
 		t.Fatalf("open %s: %v", os.DevNull, err)

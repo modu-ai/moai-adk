@@ -1,0 +1,41 @@
+diff --git a/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/acceptance.md b/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/acceptance.md
+index 0c99801f0..cc6a8ad71 100644
+--- a/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/acceptance.md
++++ b/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/acceptance.md
+@@ -1,6 +1,7 @@
+ # SPEC-INTEGRATION-LOCK-LIVENESS-001 — Acceptance Criteria (card t298)
+ 
+-Baseline tree for every RED-now cell: `d29b8942e` @ `WT-integration-lock` (worktree t298).
++Baseline tree for every RED-now cell: `d29b8942e` @ `WT-integration-lock` (worktree t298);
++cells re-measured after the develop merge name `c67a6ea64` and cite the drift check.
+ Two-cell discipline per `.claude/rules/moai/development/verification-completeness.md` §2: each
+ criterion carries a RED-now cell stating why it is red (or, for preserved-invariant criteria,
+ its mutant-guard pairing) and a green-path cell naming the flipping milestone. All tests run
+@@ -205,8 +206,8 @@ stale-reclaim), never to a refusal.
+   exits — so `current.Stale()` is true and control takes the `case current.Stale():` reclaim
+   arm (line 163) instead: the bare acquire SUCCEEDS and reports `displaced: sess-a`
+   (`internal/cli/integration.go:196-199`). Both clauses therefore fail today. Existing coverage
+-  cannot see this: `runIntegration` (integration_lock_cli_test.go:26-43, quoted verbatim in the
+-  §E.1 repair note) executes the cobra command **in-process**, so the recorded pid is the
++  cannot see this: `runIntegration` (integration_lock_cli_test.go:26-43) executes the cobra
++  command **in-process**, so the recorded pid is the
+   still-alive `go test` process and the two existing refusal tests —
+   `TestIntegrationAcquire_RefusesASecondLane` (integration_lock_cli_test.go:106) and
+   `TestAcquireIntegrationLock_RefusesASecondLiveSession` (internal/kanban/integration_lock_test.go:60)
+diff --git a/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/spec.md b/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/spec.md
+index a8e14889d..0fcf71b57 100644
+--- a/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/spec.md
++++ b/.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/spec.md
+@@ -188,9 +188,9 @@ code shape. REQ numbering: REQ-INL-NNN.
+   gone — fail-open on uncertainty, unchanged.
+ 
+ - **REQ-INL-009** (Event-driven / documentation) — **When** the fix lands, the two local
+-  documents in scope shall state the restored serialization guarantee: the
+-  `.claude/rules/local/gitflow-lane-protocol.md` §3 blockquote, which enshrines the defect as a
+-  workaround, shall be rewritten; `CLAUDE.local.md` §4.1, which is silent on the guarantee,
++  documents in scope shall state the restored session-anchored liveness guarantee and the
++  legacy re-acquire consequence: the `.claude/rules/local/gitflow-lane-protocol.md` §3
++  blockquote, which enshrines the defect as a workaround, shall be rewritten; `CLAUDE.local.md` §4.1, which is silent on the guarantee,
+   shall be extended with it (per §B item 13's measured distinction).
+ 
+ - **REQ-INL-010** (Unwanted) — The acquire verb shall not silently overwrite another lane's

@@ -63,11 +63,11 @@ type ApplyOptions struct {
 // alongside); true on a successful apply (including the idempotent no-op
 // resume case where every subtree was already applied).
 type ApplyResult struct {
-	Applied           bool
-	AppliedSubtreeIDs []string
-	LiveDocSHAs       map[string]string // docSurface → resulting content SHA
-	SkippedAlready    []string          // subtree IDs skipped (DBT-2 idempotence)
-	ExcludedOutOfScope []string         // subtree IDs excluded (REQ-NS5-013)
+	Applied            bool
+	AppliedSubtreeIDs  []string
+	LiveDocSHAs        map[string]string // docSurface → resulting content SHA
+	SkippedAlready     []string          // subtree IDs skipped (DBT-2 idempotence)
+	ExcludedOutOfScope []string          // subtree IDs excluded (REQ-NS5-013)
 }
 
 // Sentinel errors for the token-refusal path (AC-NS5-008d). The CLI caller

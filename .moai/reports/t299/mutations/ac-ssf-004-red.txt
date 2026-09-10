@@ -1,0 +1,12 @@
+--- FAIL: TestNeedsSHABackfill_OutOfAllowlistPlaceholder (0.00s)
+    closer_syncsha_test.go:40: needsSHABackfill("pending-backfill-sync") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("pending-backfill") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("pending-backfill-SYNC") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("pending-backfill-after-merge") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("null") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("TBD (filled post-commit)") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("pending  # backfilled via L60 atomic chore") = false, want true (not a commit SHA, so the slot is still owed one)
+    closer_syncsha_test.go:40: needsSHABackfill("<pending>  # backfilled post-commit") = false, want true (not a commit SHA, so the slot is still owed one)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.383s
+FAIL

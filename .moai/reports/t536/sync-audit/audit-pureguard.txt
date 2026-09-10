@@ -1,0 +1,4 @@
+=== RUN   TestTodoQueueRoot_PureGuardIsSilent
+--- PASS: TestTodoQueueRoot_PureGuardIsSilent (0.08s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.303s

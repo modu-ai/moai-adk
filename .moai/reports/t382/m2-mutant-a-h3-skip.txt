@@ -1,0 +1,26 @@
+--- FAIL: TestClassifyEra_FiveBucketCoverage (0.00s)
+    era_test.go:365: case 0 → era=V2.x rule=H-1 (progress.md absent)
+    era_test.go:365: case 1 → era=V3R2-R4 rule=H-2 (progress.md without §E.* markers)
+    era_test.go:365: case 2 → era=unclassified rule=H-6 (no heuristic matched)
+    era_test.go:365: case 3 → era=V3R6 rule=H-4-legacy (§E.2 + §E.5 + both commit_sha — migration window)
+    era_test.go:365: case 4 → era=unclassified rule=H-6 (no heuristic matched)
+    era_test.go:370: Era bucket V3R5 not exercised (5-bucket coverage required by AC-LSG-002)
+--- FAIL: TestClassifyEra_HeuristicTable (0.00s)
+    --- FAIL: TestClassifyEra_HeuristicTable/AC-EH3-003_pre-threshold_created_keeps_grandfather_protection_→_V3R5_via_H-3 (0.00s)
+        era_test.go:247: ClassifyEra() era = unclassified, want V3R5 (rule: H-6 (no heuristic matched))
+        era_test.go:250: ClassifyEra() rule = "H-6 (no heuristic matched)", want substring "H-3"
+    --- FAIL: TestClassifyEra_HeuristicTable/H-3_§E.2_+_§E.4_present_but_sync_commit_sha_empty_→_V3R5_(sync_not_yet_complete) (0.00s)
+        era_test.go:247: ClassifyEra() era = unclassified, want V3R5 (rule: H-6 (no heuristic matched))
+        era_test.go:250: ClassifyEra() rule = "H-6 (no heuristic matched)", want substring "H-3"
+    --- FAIL: TestClassifyEra_HeuristicTable/H-3_§E.2_present_+_null_sync_commit_sha_→_V3R5 (0.00s)
+        era_test.go:247: ClassifyEra() era = unclassified, want V3R5 (rule: H-6 (no heuristic matched))
+        era_test.go:250: ClassifyEra() rule = "H-6 (no heuristic matched)", want substring "H-3"
+    --- FAIL: TestClassifyEra_HeuristicTable/H-3_§E.2_present_but_sync_commit_sha_empty_→_V3R5 (0.00s)
+        era_test.go:247: ClassifyEra() era = unclassified, want V3R5 (rule: H-6 (no heuristic matched))
+        era_test.go:250: ClassifyEra() rule = "H-6 (no heuristic matched)", want substring "H-3"
+    --- FAIL: TestClassifyEra_HeuristicTable/AC-EH3-004_no_signal_at_all_stays_V3R5,_does_not_fall_to_H-6 (0.00s)
+        era_test.go:247: ClassifyEra() era = unclassified, want V3R5 (rule: H-6 (no heuristic matched))
+        era_test.go:250: ClassifyEra() rule = "H-6 (no heuristic matched)", want substring "H-3"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.370s
+FAIL

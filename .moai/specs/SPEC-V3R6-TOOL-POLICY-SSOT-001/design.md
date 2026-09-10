@@ -2,7 +2,6 @@
 id: SPEC-V3R6-TOOL-POLICY-SSOT-001
 title: "Tool/Permission Policy SSOT — Design (schema, codegen approach, drift-prevention)"
 version: "0.1.0"
-status: in-progress
 created: 2026-06-18
 updated: 2026-06-18
 author: manager-spec

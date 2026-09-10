@@ -1,0 +1,21 @@
+=== RUN   TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits
+    integration_lock_owner_liveness_test.go:184: window reads reclaimable while the owning session (this test process, pid 51880) is alive; recorded pid 52493 is the exited acquire CLI's: {"held":true,"lock":{"session_id":"sess-owner-a","session_name":"lane-owner-a","pid":52493,"branch":"","worktree":"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExi4201774157/002","acquired_at":"2026-08-27T11:18:38Z"},"root":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExi4201774157/002","stale":true}
+    integration_lock_owner_liveness_test.go:188: recorded pid = 52493, want the owning session's pid 51880
+    integration_lock_owner_liveness_test.go:194: record pid_source = "", want "session-owner"; record = map[acquired_at:2026-08-27T11:18:38Z branch: pid:52493 session_id:sess-owner-a session_name:lane-owner-a worktree:/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExi4201774157/002]
+--- FAIL: TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits (5.02s)
+=== RUN   TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits
+    integration_lock_owner_liveness_test.go:221: window reads reclaimable while the stamped owner (pid 51880) is alive: {"held":true,"lock":{"session_id":"sess-owner-b","session_name":"lane-owner-b","pid":53059,"branch":"","worktree":"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits1637937126/002","acquired_at":"2026-08-27T11:18:42Z"},"root":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits1637937126/002","stale":true}
+    integration_lock_owner_liveness_test.go:224: recorded pid = 53059, want the stamped MOAI_SESSION_PID 51880
+--- FAIL: TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits (3.77s)
+=== RUN   TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder
+    integration_lock_owner_liveness_test.go:249: bare acquire by sess-b took the window from live holder sess-a (exit 0): time=2026-08-27T20:18:46.122+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder685516600/002/.moai/config/sections
+        release-integration window acquired by sess-b on 
+          displaced: sess-a (pid 53400), held since 2026-08-27T11:18:46Z
+    integration_lock_owner_liveness_test.go:256: on-disk session_id = "sess-b", want "sess-a" (the window must not have been transferred); record = map[acquired_at:2026-08-27T11:18:46Z branch: pid:53628 session_id:sess-b session_name:lane-b worktree:/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder685516600/002]
+    integration_lock_owner_liveness_test.go:261: refused acquire reported a displacement; displaced-holder bookkeeping belongs to --force and stale-reclaim only: time=2026-08-27T20:18:46.122+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder685516600/002/.moai/config/sections
+        release-integration window acquired by sess-b on 
+          displaced: sess-a (pid 53400), held since 2026-08-27T11:18:46Z
+--- FAIL: TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder (3.74s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	13.331s
+FAIL

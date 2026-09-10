@@ -87,9 +87,9 @@ func TestWriteWorkflowAuditYAML_CodexReviewGateOptIn(t *testing.T) {
 	}
 
 	opts := InitOptions{
-		ProjectRoot:      root,
-		AuditConfigSet:   true,
-		AuditModel:       config.AuditModelCodex,
+		ProjectRoot:       root,
+		AuditConfigSet:    true,
+		AuditModel:        config.AuditModelCodex,
 		CodexAuditEnabled: true,
 	}
 	if err := writeWorkflowAuditYAML(sectionsDir, opts, &InitResult{}); err != nil {
@@ -205,9 +205,9 @@ func TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset(t *testing.T) {
 
 	// AuditConfigSet=false (the zero value). Audit fields populated but ignored.
 	opts := InitOptions{
-		ProjectRoot:     root,
-		AuditConfigSet:  false,
-		AuditModel:      config.AuditModelMulti,
+		ProjectRoot:    root,
+		AuditConfigSet: false,
+		AuditModel:     config.AuditModelMulti,
 		MCPProvision:   true,
 	}
 	if err := writeWorkflowAuditYAML(sectionsDir, opts, &InitResult{}); err != nil {

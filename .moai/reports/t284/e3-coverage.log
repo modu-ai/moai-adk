@@ -1,0 +1,17 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	318.659s	coverage: 80.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	2.417s	coverage: 86.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	10.505s	coverage: 80.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	3.587s	coverage: 91.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.238s	coverage: 85.8% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	6.656s	coverage: 97.0% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	4.387s	coverage: 100.0% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	5.657s	coverage: 92.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	6.815s	coverage: 98.8% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	1.095s	coverage: 88.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	2.973s	coverage: 90.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	4.091s	coverage: 91.6% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.589s	coverage: 92.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	3.197s	coverage: 95.0% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	6.022s	coverage: 92.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	10.062s	coverage: 92.3% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	10.092s	coverage: 86.8% of statements

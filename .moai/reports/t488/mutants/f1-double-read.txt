@@ -1,0 +1,12 @@
+--- FAIL: TestLedgerDigestDescribesThePreservedBytes (1.23s)
+    settings_drift_test.go:780: the ledger digest does not describe the preserved bytes:
+         ledger:    8d39bb027e9dc2f980612460729cf754be386c725ff0a300baa217faa1859028
+         preserved: 92733cfa5e922781efae8739382ca015c9a34dc6b84a6783b8d0180e50eb5652
+        the file was read twice, and something wrote to it in between
+    settings_drift_test.go:784: ledger size_bytes 22 does not match the preserved copy's 38 bytes
+    settings_drift_test.go:789: preserved copy is not the content that was measured
+         got: "{\n  \"written-by-someone-else\": true\n}\n"
+        want: "{\n  \"drifted\": true\n}\n"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	1.677s
+FAIL

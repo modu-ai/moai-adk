@@ -1,0 +1,14 @@
+# Test pair for the ignored-error rule. The valid sample handles the error, the
+# invalid sample discards it with _ using the bare assignment form the rule
+# pattern targets.
+id: go-error-ignored-blank
+valid:
+  - |
+    out, err := combine()
+    if err != nil {
+        return err
+    }
+invalid:
+  - |
+    _, res = produce()
+    use(res)

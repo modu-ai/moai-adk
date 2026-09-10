@@ -26,7 +26,7 @@ import (
 
 // stubTodoHome points the queue resolution's home seam at a throwaway
 // directory, so no test reads or resolves against the developer's real
-// ~/.moai/todo.
+// ~/.moai/db.
 func stubTodoHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()

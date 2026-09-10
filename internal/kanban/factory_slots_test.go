@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"testing"
 )
 
@@ -125,10 +126,10 @@ func TestBacklogQueuedCountSharedShape(t *testing.T) {
 		}
 	})
 
-	t.Run("path helper lands under .moai/state/kanban", func(t *testing.T) {
+	t.Run("path helper lands under .moai/state/todo", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		want := filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+		want := filepath.Join(root, ".moai", "state", "todo", "backlog.json")
 		if got := BacklogPathForRoot(root); got != want {
 			t.Errorf("BacklogPathForRoot = %q, want %q", got, want)
 		}
@@ -158,5 +159,41 @@ func TestFactoryRegistryRoundTrip(t *testing.T) {
 	}
 	if got := LoadFactoryRegistry(FactoryRegistryPath(root)); len(got) != 0 {
 		t.Errorf("malformed registry = %v, want empty (fail-open)", got)
+	}
+}
+
+func TestClaimFactoryWorkerNameConcurrentClaimsAreUnique(t *testing.T) {
+	root := t.TempDir()
+	const workers = 10
+	results := make(chan string, workers)
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(pid int) {
+			defer wg.Done()
+			label, err := ClaimFactoryWorkerName(root, "lane-1", pid, func(int) bool { return true })
+			results <- label
+			errs <- err
+		}(10000 + i)
+	}
+	wg.Wait()
+	close(results)
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	seen := map[string]bool{}
+	for label := range results {
+		if seen[label] {
+			t.Fatalf("duplicate concurrent claim %q", label)
+		}
+		seen[label] = true
+	}
+	if len(seen) != workers {
+		t.Fatalf("unique claims=%d, want %d: %v", len(seen), workers, seen)
 	}
 }

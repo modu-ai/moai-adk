@@ -19,6 +19,7 @@ import (
 func newCleanCmd() *cobra.Command {
 	var force bool
 	var home bool
+	var codexSkills bool
 
 	cmd := &cobra.Command{
 		Use:   "clean",
@@ -28,17 +29,37 @@ Default: dry-run mode (no actual deletion). Use --force to actually delete.
 
 retention_days is read from .moai/config/sections/state.yaml.
 
-With --home, clean the ~/.moai home directory instead of the project scope:
-aged per-profile debug/ entries, releases/ binaries beyond the current
-version + the 3 newest, aged root logs/, and aged backups/removed-*
-directories. Only ~/.moai is touched — ~/.claude is never modified. Home
-retention comes from state.home_retention_days in ~/.moai/config/sections/
-state.yaml (default 30 days; explicit 0 disables).`,
+Exactly one scope is cleaned per invocation. --home and --codex-skills select
+different files and may not be combined.
+
+With --home, clean the ~/.moai home directory instead of the project scope.
+The default is a report-only dry-run. --force removes per-profile projects/
+entries older than 180 days, debug/ entries older than 30 days, and the oldest
+projects/ entries needed to bring a profile under 5 GiB. It also repairs every
+directory under ~/.moai to mode 0700. Profiles unused for 90 days and byte-identical
+plugin trees are reported but never deleted automatically. Releases, root
+logs/, and backups/removed-* retain the existing home-retention policy. This
+scope touches only ~/.moai — ~/.claude is never modified.
+
+With --codex-skills, remove ghost [[skills.config]] registrations from
+~/.codex/config.toml (or $CODEX_HOME/config.toml) — entries whose declared
+path is provably absent. This scope MODIFIES ~/.codex/config.toml. An entry
+is kept whenever its absence cannot be proven: a relative or oddly-formed
+path, an unresolvable home, a stat that did not complete, a path that
+resolves, or a line range holding anything the parser did not recognise.
+Under --force the file is backed up first and the backup path and sha256 are
+reported.`,
 		GroupID: "tools",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Status output routes through the Printer to stderr
 			// (SPEC-CLI-TUX-V3-001 REQ-CTX-012/017 ratchet migration).
 			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+			if home && codexSkills {
+				return fmt.Errorf("--home and --codex-skills select different scopes; pass exactly one")
+			}
+			if codexSkills {
+				return runCleanCodexSkills(p, force)
+			}
 			if home {
 				return runCleanHome(p, force)
 			}
@@ -48,6 +69,7 @@ state.yaml (default 30 days; explicit 0 disables).`,
 
 	cmd.Flags().BoolVar(&force, "force", false, "Actually delete files (default: dry-run)")
 	cmd.Flags().BoolVar(&home, "home", false, "Clean the ~/.moai home directory (allowlist-only; dry-run by default)")
+	cmd.Flags().BoolVar(&codexSkills, "codex-skills", false, "Remove provably-absent [[skills.config]] entries from ~/.codex/config.toml (dry-run by default)")
 
 	return cmd
 }

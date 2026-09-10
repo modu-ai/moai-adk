@@ -23,6 +23,22 @@ import (
 // without a TTY.
 func runInitForAutonomyAtHome(t *testing.T, homeDir string, wizResult *wizard.WizardResult, flags map[string]string) (projectDir string) {
 	t.Helper()
+	projectDir, _ = runInitForAutonomyAtHomeCapturingOut(t, homeDir, wizResult, flags)
+	return projectDir
+}
+
+// runInitForAutonomyAtHomeCapturingOut is runInitForAutonomyAtHome plus the
+// captured stdout (SPEC-INIT-HARNESS-PROMPT-001 M2.0). The buffer was already
+// built and bound here; it was simply discarded, which left the .mcp.json
+// provisioning announcement — the only user-visible signal of whether the
+// ensure-entry call ran (acceptance.md §A.1) — unobservable from a test.
+//
+// It is a SIBLING rather than a signature change: runInitForAutonomyAtHome
+// delegates to it, so the 11 existing invocation sites are untouched AND no
+// setup is duplicated. The plan.md M2.0 default was "sibling unless it would
+// duplicate meaningful setup"; delegation satisfies both halves at once.
+func runInitForAutonomyAtHomeCapturingOut(t *testing.T, homeDir string, wizResult *wizard.WizardResult, flags map[string]string) (projectDir, stdout string) {
+	t.Helper()
 
 	if wizResult != nil {
 		origInteractive := isInteractiveStdin
@@ -52,7 +68,7 @@ func runInitForAutonomyAtHome(t *testing.T, homeDir string, wizResult *wizard.Wi
 	if err := runInit(cmd, []string{projectDir}); err != nil {
 		t.Fatalf("runInit: %v (stderr: %s)", err, errBuf.String())
 	}
-	return projectDir
+	return projectDir, out.String()
 }
 
 // runInitForAutonomy runs a full init in a temp project. HOME is isolated via

@@ -17,6 +17,9 @@ note: "Passing a value to sh -c lets shell metacharacters execute. Prefer exec.C
 metadata:
   owasp: "A03:2021 - Injection"
   cwe: "CWE-78"
+  anchor: >-
+    cite: Go standard library, os/exec - func Command(name string, arg ...string)
+    *Cmd; invoking it with "sh" "-c" routes the third argument through a shell.
 rule:
   pattern: exec.Command("sh", "-c", $CMD)
 ---
@@ -28,6 +31,9 @@ note: "shell=True and os.system route the command through a shell, so metacharac
 metadata:
   owasp: "A03:2021 - Injection"
   cwe: "CWE-78"
+  anchor: >-
+    cite: Python standard library - os.system(command) and the subprocess
+    Popen/run/call shell=True argument, both of which execute through a shell.
 rule:
   any:
     - pattern: subprocess.call($CMD, shell=True)
@@ -43,6 +49,9 @@ note: "child_process.exec runs the command through a shell, so metacharacters ex
 metadata:
   owasp: "A03:2021 - Injection"
   cwe: "CWE-78"
+  anchor: >-
+    cite: Node.js child_process - child_process.exec(command[, options][,
+    callback]) spawns a shell and executes the command within it.
 rule:
   any:
     - pattern: child_process.exec($CMD)
@@ -56,6 +65,9 @@ note: "child_process.exec runs the command through a shell, so metacharacters ex
 metadata:
   owasp: "A03:2021 - Injection"
   cwe: "CWE-78"
+  anchor: >-
+    cite: Node.js child_process - child_process.exec(command[, options][,
+    callback]) spawns a shell and executes the command within it.
 rule:
   any:
     - pattern: child_process.exec($CMD)

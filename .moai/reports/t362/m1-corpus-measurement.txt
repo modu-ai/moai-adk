@@ -1,0 +1,112 @@
+# SPEC-COVERAGE-RULE-SCOPE-001 M1 — corpus REQ widening measurement
+# produced by: MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/... -run TestCorpusREQWideningMeasurement -v
+scan_root=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t362
+scan_glob=.moai/specs/SPEC-*/spec.md
+
+[1] total spec.md scanned
+total_spec_md=704
+parse_errors=0
+
+[2] files with >=1 REQ definition line
+files_narrow=16
+files_wide=63
+
+[3] REQ definition LINE count
+lines_narrow=239
+lines_wide=1085
+
+[4] containment: (file, reqID) in NARROW absent from WIDE
+narrow_not_in_wide=0
+
+[5] simulated CoverageIncomplete (real Go AC path vs WIDE REQ set)
+sim_coverage_incomplete_total=846
+sim_coverage_incomplete_specs=47
+sim_top=  37  SPEC-V3R5-HARNESS-AUTONOMY-001
+sim_top=  35  SPEC-V3R2-RT-006
+sim_top=  34  SPEC-HARNESS-CADENCE-BUILD-001
+sim_top=  32  SPEC-V3R2-RT-007
+sim_top=  28  SPEC-AGENT-MODEL-ENFORCE-001
+sim_top=  27  SPEC-V3R2-RT-002
+sim_top=  27  SPEC-V3R2-RT-003
+sim_top=  27  SPEC-V3R2-RT-004
+sim_top=  27  SPEC-V3R2-RT-005
+sim_top=  25  SPEC-CC2219-UPSTREAM-ALIGN-001
+
+[6] InvalidREQID the WIDE set would produce against the frozen PRE-M2 pattern
+measured_against_pattern=^REQ-[A-Z]{2,5}-\d{3}-\d{3}$
+invalid_req_id_count=825
+
+[7] tier breakdown of newly-collecting files (wide>0 AND narrow==0)
+newly_collecting_files=47
+newly_collecting_tier=(absent) 17
+newly_collecting_tier=2 7
+newly_collecting_tier=3 5
+newly_collecting_tier=L 7
+newly_collecting_tier=M 8
+newly_collecting_tier=S 3
+
+[8] per-file detail for every file with >=1 wide REQ line
+# format: perfile=<spec-dir> narrow=<n> wide=<n> uncovered=<n> tier=<v>
+perfile=SPEC-AGENT-MODEL-ENFORCE-001 narrow=0 wide=28 uncovered=28 tier=M
+perfile=SPEC-ARTIFACT-STATELESS-001 narrow=16 wide=16 uncovered=0 tier=M
+perfile=SPEC-ASTGREP-MULTILANG-001 narrow=0 wide=12 uncovered=12 tier=M
+perfile=SPEC-CACHE-ORDER-001 narrow=0 wide=16 uncovered=16 tier=3
+perfile=SPEC-CC2219-UPSTREAM-ALIGN-001 narrow=0 wide=25 uncovered=25 tier=L
+perfile=SPEC-CLI-TUX-V3-001 narrow=0 wide=25 uncovered=25 tier=L
+perfile=SPEC-CLI-TUX-V3-002 narrow=0 wide=18 uncovered=18 tier=M
+perfile=SPEC-CLI-TUX-V3-003 narrow=0 wide=20 uncovered=20 tier=L
+perfile=SPEC-CLI-TUX-V3-004 narrow=0 wide=12 uncovered=12 tier=M
+perfile=SPEC-CLIFIX-CONCURRENCY-001 narrow=6 wide=6 uncovered=0 tier=M
+perfile=SPEC-CLIFIX-CONTRACT-001 narrow=8 wide=8 uncovered=0 tier=M
+perfile=SPEC-CLIFIX-CRITICAL-001 narrow=9 wide=9 uncovered=0 tier=M
+perfile=SPEC-CLIFIX-HYGIENE-001 narrow=8 wide=8 uncovered=0 tier=L
+perfile=SPEC-CLIFIX-LINTER-STALE-001 narrow=6 wide=6 uncovered=0 tier=M
+perfile=SPEC-CONFIG-001 narrow=0 wide=6 uncovered=6 tier=(absent)
+perfile=SPEC-CONFIG-AUDIT-REPAIR-001 narrow=0 wide=2 uncovered=2 tier=L
+perfile=SPEC-CONTEXT-INJ-001 narrow=0 wide=16 uncovered=16 tier=2
+perfile=SPEC-COVERAGE-RULE-SCOPE-001 narrow=8 wide=8 uncovered=0 tier=M
+perfile=SPEC-CRON-PATTERN-001 narrow=0 wide=16 uncovered=16 tier=3
+perfile=SPEC-GLM-KEY-INPUT-001 narrow=22 wide=22 uncovered=0 tier=M
+perfile=SPEC-HANDOFF-CTXGUIDE-001 narrow=0 wide=6 uncovered=6 tier=(absent)
+perfile=SPEC-HANDOFF-MSGMODE-001 narrow=0 wide=10 uncovered=10 tier=(absent)
+perfile=SPEC-HARNESS-CADENCE-BUILD-001 narrow=0 wide=34 uncovered=34 tier=M
+perfile=SPEC-HARNESS-CLI-COVERAGE-001 narrow=0 wide=22 uncovered=22 tier=S
+perfile=SPEC-MEM-SCOPE-001 narrow=0 wide=19 uncovered=19 tier=2
+perfile=SPEC-METRICS-001 narrow=0 wide=16 uncovered=16 tier=3
+perfile=SPEC-MOVING-REF-GUARD-001 narrow=0 wide=9 uncovered=9 tier=M
+perfile=SPEC-NO-HYBRID-001 narrow=0 wide=16 uncovered=16 tier=3
+perfile=SPEC-PARALLEL-COOK-001 narrow=0 wide=15 uncovered=15 tier=2
+perfile=SPEC-PROFILE-MEMORY-001 narrow=0 wide=24 uncovered=24 tier=L
+perfile=SPEC-RESUME-MSG-001 narrow=0 wide=16 uncovered=16 tier=3
+perfile=SPEC-SKILL-DESC-001 narrow=0 wide=19 uncovered=19 tier=2
+perfile=SPEC-STOP-HOOK-001 narrow=0 wide=17 uncovered=17 tier=2
+perfile=SPEC-TODO-SQLITE-001 narrow=0 wide=18 uncovered=18 tier=L
+perfile=SPEC-TOOL-AUDIT-001 narrow=0 wide=17 uncovered=17 tier=2
+perfile=SPEC-UTIL-001 narrow=26 wide=26 uncovered=0 tier=(absent)
+perfile=SPEC-UTIL-002 narrow=0 wide=21 uncovered=21 tier=(absent)
+perfile=SPEC-V3R2-CON-001 narrow=15 wide=15 uncovered=0 tier=(absent)
+perfile=SPEC-V3R2-CON-002 narrow=19 wide=19 uncovered=0 tier=(absent)
+perfile=SPEC-V3R2-CON-003 narrow=18 wide=18 uncovered=0 tier=(absent)
+perfile=SPEC-V3R2-RT-001 narrow=0 wide=25 uncovered=25 tier=(absent)
+perfile=SPEC-V3R2-RT-002 narrow=0 wide=27 uncovered=27 tier=(absent)
+perfile=SPEC-V3R2-RT-003 narrow=0 wide=27 uncovered=27 tier=(absent)
+perfile=SPEC-V3R2-RT-004 narrow=0 wide=27 uncovered=27 tier=(absent)
+perfile=SPEC-V3R2-RT-005 narrow=0 wide=27 uncovered=27 tier=(absent)
+perfile=SPEC-V3R2-RT-006 narrow=0 wide=35 uncovered=35 tier=(absent)
+perfile=SPEC-V3R2-RT-007 narrow=0 wide=32 uncovered=32 tier=(absent)
+perfile=SPEC-V3R2-SPC-001 narrow=18 wide=18 uncovered=0 tier=(absent)
+perfile=SPEC-V3R2-SPC-002 narrow=22 wide=22 uncovered=0 tier=(absent)
+perfile=SPEC-V3R2-SPC-003 narrow=20 wide=20 uncovered=0 tier=(absent)
+perfile=SPEC-V3R2-SPC-004 narrow=18 wide=18 uncovered=0 tier=(absent)
+perfile=SPEC-V3R5-CONSTITUTION-DUAL-001 narrow=0 wide=19 uncovered=19 tier=(absent)
+perfile=SPEC-V3R5-CORE-SLIM-001 narrow=0 wide=4 uncovered=4 tier=(absent)
+perfile=SPEC-V3R5-CORE-SLIM-B-001 narrow=0 wide=7 uncovered=7 tier=S
+perfile=SPEC-V3R5-HARNESS-AUTONOMY-001 narrow=0 wide=37 uncovered=37 tier=(absent)
+perfile=SPEC-V3R5-LINT-CLEAN-001 narrow=0 wide=7 uncovered=7 tier=(absent)
+perfile=SPEC-V3R5-WORKFLOW-OPT-001 narrow=0 wide=15 uncovered=15 tier=(absent)
+perfile=SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001 narrow=0 wide=3 uncovered=3 tier=M
+perfile=SPEC-V3R6-HARNESS-RENAME-001 narrow=0 wide=9 uncovered=9 tier=S
+perfile=SPEC-WEB-CONSOLE-007 narrow=0 wide=14 uncovered=14 tier=(absent)
+perfile=SPEC-WEB-CONSOLE-014 narrow=0 wide=16 uncovered=16 tier=M
+perfile=SPEC-WEB-CONSOLE-REDESIGN-001 narrow=0 wide=25 uncovered=25 tier=L
+perfile=SPEC-WT-DOC-001 narrow=0 wide=15 uncovered=15 tier=2

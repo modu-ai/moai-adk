@@ -1,0 +1,13 @@
+--- FAIL: TestInboxCap_RotatesOverCapInbox (0.00s)
+    inbox_lifecycle_test.go:192: seed inbox: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxCap_RotatesOverCapInbox3834563846/001/.moai/lessons-inbox.jsonl: no such file or directory
+--- FAIL: TestInboxCap_BoundaryAtCapRotates (0.00s)
+    inbox_lifecycle_test.go:223: seed inbox: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxCap_BoundaryAtCapRotates3416743196/001/.moai/lessons-inbox.jsonl: no such file or directory
+--- FAIL: TestInboxRetention_MaxTwoGenerations (0.00s)
+    inbox_lifecycle_test.go:284: seed inbox: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxRetention_MaxTwoGenerations2138281352/001/.moai/lessons-inbox.jsonl: no such file or directory
+--- FAIL: TestInboxRotation_PreEraLeftoverArchivesIdempotent (0.00s)
+    inbox_lifecycle_test.go:304: seed .1: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxRotation_PreEraLeftoverArchivesIdempotent1060825357/001/.moai/lessons-inbox.jsonl.1: no such file or directory
+--- FAIL: TestInboxCap_FailOpenOnRotationFailure (0.00s)
+    inbox_lifecycle_test.go:338: seed inbox: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInboxCap_FailOpenOnRotationFailure3472000083/001/.moai/lessons-inbox.jsonl: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.740s
+FAIL

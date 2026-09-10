@@ -175,8 +175,10 @@ func trailerAgentOwnerKind(agent string) expectedOwnerKind {
 //
 // CommitSHA + AuthoredByAgent는 SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M4 (AC-LSG-004 / D5)에서
 // 추가된 필드다. AuthoredByAgent는 commit body의 `Authored-By-Agent: <agent>` trailer 값으로,
-// transition을 수행한 주체를 나타내는 기계적 신호다. trailer가 없으면 (legacy / non-MoAI commit)
-// 빈 문자열이며, 그 경우 commit subject prefix 분류 경로로 fallback한다 (F13 호환).
+// transition을 수행한 주체를 나타내는 기계적 신호다. trailer가 없으면 빈 문자열이며,
+// OwnershipTransitionRule은 그 전환을 OwnershipTransitionUnmeasured Info로 보고한다
+// (SPEC-OWNERSHIP-SILENCE-001 — 측정 불가 상태의 명시 보고. subject prefix fallback
+// 경로는 존재하지 않는다).
 type ownershipTransitionRecord struct {
 	PreviousStatus  string
 	CurrentStatus   string
@@ -359,12 +361,14 @@ func hasOwnershipSkipOptOut(doc *SPECDoc) bool {
 //   - non-git or untracked SPEC: emits Info "OwnershipTransitionUnreachable" (graceful)
 //   - unmapped transition (역행, terminal already): silently skipped
 //   - mismatched owner: emits Warning "OwnershipTransitionInvalid"
-//   - trailer-less commit (legacy / non-MoAI): silently skipped (M4 AC-LSG-004)
+//   - trailer-less commit: emits Info "OwnershipTransitionUnmeasured"
+//     (SPEC-OWNERSHIP-SILENCE-001 — formerly a silent skip)
 //   - unclassifiable commit subject: silently skipped (false-positive guard)
 //
 // Owner-detection precedence (M4 AC-LSG-004 / D5):
-//  1. `Authored-By-Agent:` commit-body trailer — the mechanical WHO signal
-//  2. fallback: commit subject prefix classification (F13 legacy compatibility)
+//  1. `Authored-By-Agent:` commit-body trailer — the mechanical WHO signal.
+//     There is NO fallback: a trailer-less transition commit is reported as
+//     OwnershipTransitionUnmeasured (Info), never classified by subject prefix.
 func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	fm := doc.Frontmatter
 	if fm.ID == "" || fm.Status == "" {
@@ -384,7 +388,7 @@ func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		}
 	}
 
-	rec, err := getOwnershipTransitionRunner(doc.Path, fm.ID)
+	rec, err := cachedOwnershipTransition(doc.Path, fm.ID)
 	if err != nil {
 		// REQ-AAT-010: Info severity, never blocks
 		return []Finding{
@@ -406,13 +410,33 @@ func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		return nil
 	}
 
-	// M4 AC-LSG-004 / D5: the `Authored-By-Agent:` trailer is the gating signal.
-	// Commits WITHOUT the trailer (legacy / non-MoAI / pre-v3.0.1) are NOT subject to
-	// OwnershipTransitionRule — silent SKIP. This is the false-positive guard required by
-	// the M4 exit criterion ("moai spec lint against repo emits no false positives"):
-	// most existing commits predate the trailer convention.
+	// SPEC-OWNERSHIP-SILENCE-001: the `Authored-By-Agent:` trailer is the gating signal.
+	// A commit WITHOUT the trailer is not exempt from judgment — it is UNMEASURED: the
+	// transition was found and the matrix has an expected owner, but the mechanical WHO
+	// signal is absent. The former M4 silent skip (AC-LSG-004 false-positive guard)
+	// rested on the premise that trailer-less commits are legacy/non-MoAI; on the
+	// current tree trailer-less is the default state of recent MoAI commits, so the
+	// silence read as a green on every transition. Report it as a plain Info finding —
+	// a statement about measurement state, not a violation (strict promotion is
+	// Warning-only at lint.go:62, so this never changes the exit status).
 	if rec.AuthoredByAgent == "" {
-		return nil
+		return []Finding{
+			{
+				File:     doc.Path,
+				Line:     1,
+				Severity: SeverityInfo,
+				Code:     "OwnershipTransitionUnmeasured",
+				Message: fmt.Sprintf(
+					"SPEC %s transition %q → %q expected owner %q but commit %s (%s) has no Authored-By-Agent trailer — ownership transition unmeasured",
+					fm.ID,
+					emptyOrValue(rec.PreviousStatus),
+					rec.CurrentStatus,
+					expected.String(),
+					rec.CommitSHA,
+					rec.CommitSubject,
+				),
+			},
+		}
 	}
 
 	actual := trailerAgentOwnerKind(rec.AuthoredByAgent)

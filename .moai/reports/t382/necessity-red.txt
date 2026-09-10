@@ -1,0 +1,7 @@
+--- FAIL: TestAudit_EraClassification5Buckets (0.00s)
+    audit_test.go:121: era V3R5 not observed in findings; got eraCounts=map[V2.x:2 V3R2-R4:2 V3R6:2 unclassified:1]
+    audit_test.go:127: Grandfathered = 2, want 3
+    audit_test.go:131: ModernEraClean = 2, want 1
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.399s
+FAIL

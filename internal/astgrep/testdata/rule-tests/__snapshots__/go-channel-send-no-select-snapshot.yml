@@ -1,0 +1,9 @@
+id: go-channel-send-no-select
+snapshots:
+  ? |
+    outbound <- struct{}{}
+  : labels:
+    - source: outbound <- struct{}{}
+      style: primary
+      start: 0
+      end: 22

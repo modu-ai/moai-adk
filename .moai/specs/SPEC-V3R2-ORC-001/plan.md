@@ -3,7 +3,6 @@ spec_id: SPEC-V3R2-ORC-001
 phase: "1B — Implementation Plan"
 created_at: 2026-05-09
 author: manager-spec
-status: audit-ready
 base_commit: "464366583"
 branch: feature/SPEC-V3R2-ORC-001-roster
 ---

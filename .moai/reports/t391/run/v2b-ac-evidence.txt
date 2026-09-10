@@ -1,0 +1,242 @@
+=== RUN   TestCodexLaunchVerb_BareInvocationLaunches
+--- PASS: TestCodexLaunchVerb_BareInvocationLaunches (0.00s)
+=== RUN   TestCodexLaunchVerb_StatusStaysTheReadout
+--- PASS: TestCodexLaunchVerb_StatusStaysTheReadout (0.00s)
+=== RUN   TestCodexLaunchVerb_BareAndCliBuildTheSameRequest
+--- PASS: TestCodexLaunchVerb_BareAndCliBuildTheSameRequest (0.00s)
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal/launch
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal/run
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal/bogus
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal/cl
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal/CLI
+=== RUN   TestCodexLaunchVerb_RoutingSetsAfterReversal/start
+--- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal (0.00s)
+    --- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal/launch (0.00s)
+    --- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal/run (0.00s)
+    --- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal/bogus (0.00s)
+    --- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal/cl (0.00s)
+    --- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal/CLI (0.00s)
+    --- PASS: TestCodexLaunchVerb_RoutingSetsAfterReversal/start (0.00s)
+=== RUN   TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild
+=== RUN   TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild/bare
+=== RUN   TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild/cli
+--- PASS: TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild (0.00s)
+    --- PASS: TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild/bare (0.00s)
+    --- PASS: TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild/cli (0.00s)
+=== RUN   TestCodexLaunchVerb_AppTokenStillForwarded
+--- PASS: TestCodexLaunchVerb_AppTokenStillForwarded (0.00s)
+=== RUN   TestCodexLaunchVerb_TailPassesThroughVerbatim
+=== RUN   TestCodexLaunchVerb_TailPassesThroughVerbatim/bare
+=== RUN   TestCodexLaunchVerb_TailPassesThroughVerbatim/cli
+--- PASS: TestCodexLaunchVerb_TailPassesThroughVerbatim (0.00s)
+    --- PASS: TestCodexLaunchVerb_TailPassesThroughVerbatim/bare (0.00s)
+    --- PASS: TestCodexLaunchVerb_TailPassesThroughVerbatim/cli (0.00s)
+=== RUN   TestCodexLaunchVerb_CodexHomeExplicitToChild
+=== RUN   TestCodexLaunchVerb_CodexHomeExplicitToChild/env-supplied
+=== RUN   TestCodexLaunchVerb_CodexHomeExplicitToChild/parent_unset_falls_back_to_the_default_and_is_still_explicit
+--- PASS: TestCodexLaunchVerb_CodexHomeExplicitToChild (0.00s)
+    --- PASS: TestCodexLaunchVerb_CodexHomeExplicitToChild/env-supplied (0.00s)
+    --- PASS: TestCodexLaunchVerb_CodexHomeExplicitToChild/parent_unset_falls_back_to_the_default_and_is_still_explicit (0.00s)
+=== RUN   TestCodexLaunchVerb_ParentEnvPreserved
+--- PASS: TestCodexLaunchVerb_ParentEnvPreserved (0.00s)
+=== RUN   TestCodexLaunchVerb_SpawnCarriesTheSameCodexHome
+--- PASS: TestCodexLaunchVerb_SpawnCarriesTheSameCodexHome (0.00s)
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/short_name,_two_tokens
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/short_name,_equals_form
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/long_flag
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/long_flag,_equals_form
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/after_an_explicit_verb
+=== RUN   TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/with_a_passthrough_tail
+--- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/short_name,_two_tokens (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/short_name,_equals_form (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/long_flag (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/long_flag,_equals_form (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/after_an_explicit_verb (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/with_a_passthrough_tail (0.00s)
+=== RUN   TestCodexLaunchVerb_WorktreeResolvesNeverCreates
+=== RUN   TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(i)_absolute_path_outside_the_accepted_prefixes
+=== RUN   TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(ii)_named_worktree_that_does_not_exist
+=== RUN   TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(iii)_bare_-w_with_no_value
+--- PASS: TestCodexLaunchVerb_WorktreeResolvesNeverCreates (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(i)_absolute_path_outside_the_accepted_prefixes (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(ii)_named_worktree_that_does_not_exist (0.00s)
+    --- PASS: TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(iii)_bare_-w_with_no_value (0.00s)
+=== RUN   TestCodexLaunchVerb_GateInheritedByBareForm
+=== RUN   TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_absent
+=== RUN   TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_empty_dir
+=== RUN   TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_hooks_only
+=== RUN   TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_config_only
+=== RUN   TestCodexLaunchVerb_GateInheritedByBareForm/wired_does_not_block
+--- PASS: TestCodexLaunchVerb_GateInheritedByBareForm (0.00s)
+    --- PASS: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_absent (0.00s)
+    --- PASS: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_empty_dir (0.00s)
+    --- PASS: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_hooks_only (0.00s)
+    --- PASS: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_config_only (0.00s)
+    --- PASS: TestCodexLaunchVerb_GateInheritedByBareForm/wired_does_not_block (0.00s)
+=== RUN   TestCodexLaunchPath_CrossPlatformPropertyHolds
+=== RUN   TestCodexLaunchPath_CrossPlatformPropertyHolds/real_files_score_zero
+=== RUN   TestCodexLaunchPath_CrossPlatformPropertyHolds/mutation_control_-_planted_violations_are_caught
+--- PASS: TestCodexLaunchPath_CrossPlatformPropertyHolds (0.00s)
+    --- PASS: TestCodexLaunchPath_CrossPlatformPropertyHolds/real_files_score_zero (0.00s)
+    --- PASS: TestCodexLaunchPath_CrossPlatformPropertyHolds/mutation_control_-_planted_violations_are_caught (0.00s)
+=== RUN   TestCodexSentinel_CrossSurfacesCommandAndMCP
+=== RUN   TestCodexSentinel_CrossSurfacesCommandAndMCP/(a)_launcher_readout_command
+=== RUN   TestCodexSentinel_CrossSurfacesCommandAndMCP/(b)_codex_setup_MCP_tool_response
+--- PASS: TestCodexSentinel_CrossSurfacesCommandAndMCP (0.00s)
+    --- PASS: TestCodexSentinel_CrossSurfacesCommandAndMCP/(a)_launcher_readout_command (0.00s)
+    --- PASS: TestCodexSentinel_CrossSurfacesCommandAndMCP/(b)_codex_setup_MCP_tool_response (0.00s)
+=== RUN   TestCodexSpecFiles_NoBuildTagsOrSyscall
+--- PASS: TestCodexSpecFiles_NoBuildTagsOrSyscall (0.00s)
+=== RUN   TestCodexSpecFiles_ExecPrimitivesCodexOnly
+--- PASS: TestCodexSpecFiles_ExecPrimitivesCodexOnly (0.00s)
+=== RUN   TestCodexSpawn_TmuxDiagnosticSingleSource
+--- PASS: TestCodexSpawn_TmuxDiagnosticSingleSource (0.01s)
+=== RUN   TestCodexReadout_CommandTenCells
+=== RUN   TestCodexReadout_CommandTenCells/absent/status
+=== RUN   TestCodexReadout_CommandTenCells/empty_dir/status
+=== RUN   TestCodexReadout_CommandTenCells/hooks_only/status
+=== RUN   TestCodexReadout_CommandTenCells/config_only/status
+=== RUN   TestCodexReadout_CommandTenCells/invalid_hooks/status
+--- PASS: TestCodexReadout_CommandTenCells (0.00s)
+    --- PASS: TestCodexReadout_CommandTenCells/absent/status (0.00s)
+    --- PASS: TestCodexReadout_CommandTenCells/empty_dir/status (0.00s)
+    --- PASS: TestCodexReadout_CommandTenCells/hooks_only/status (0.00s)
+    --- PASS: TestCodexReadout_CommandTenCells/config_only/status (0.00s)
+    --- PASS: TestCodexReadout_CommandTenCells/invalid_hooks/status (0.00s)
+=== RUN   TestCodexReadout_WiredStateOmitsAction
+--- PASS: TestCodexReadout_WiredStateOmitsAction (0.00s)
+=== RUN   TestCodexReadout_SentinelRowsAtCommandSurface
+=== RUN   TestCodexReadout_SentinelRowsAtCommandSurface/status
+--- PASS: TestCodexReadout_SentinelRowsAtCommandSurface (0.00s)
+    --- PASS: TestCodexReadout_SentinelRowsAtCommandSurface/status (0.00s)
+=== RUN   TestCodexReadout_UnknownAuthFourAxes
+=== RUN   TestCodexReadout_UnknownAuthFourAxes/no_auth_file,_both_streams_empty,_rc_0
+=== RUN   TestCodexReadout_UnknownAuthFourAxes/no_auth_file,_runner_returns_an_error
+=== RUN   TestCodexReadout_UnknownAuthFourAxes/no_auth_file,_non-zero_rc,_grammar-mismatch_line
+=== RUN   TestCodexReadout_UnknownAuthFourAxes/unparseable_auth_file_descends_and_still_gaps
+--- PASS: TestCodexReadout_UnknownAuthFourAxes (0.00s)
+    --- PASS: TestCodexReadout_UnknownAuthFourAxes/no_auth_file,_both_streams_empty,_rc_0 (0.00s)
+    --- PASS: TestCodexReadout_UnknownAuthFourAxes/no_auth_file,_runner_returns_an_error (0.00s)
+    --- PASS: TestCodexReadout_UnknownAuthFourAxes/no_auth_file,_non-zero_rc,_grammar-mismatch_line (0.00s)
+    --- PASS: TestCodexReadout_UnknownAuthFourAxes/unparseable_auth_file_descends_and_still_gaps (0.00s)
+=== RUN   TestCodexReadout_BinaryAbsentFourCells
+=== RUN   TestCodexReadout_BinaryAbsentFourCells/wired/status
+=== RUN   TestCodexReadout_BinaryAbsentFourCells/absent/status
+--- PASS: TestCodexReadout_BinaryAbsentFourCells (0.00s)
+    --- PASS: TestCodexReadout_BinaryAbsentFourCells/wired/status (0.00s)
+    --- PASS: TestCodexReadout_BinaryAbsentFourCells/absent/status (0.00s)
+=== RUN   TestCodexLauncher_NoWriteSnapshot
+=== RUN   TestCodexLauncher_NoWriteSnapshot/bare
+=== RUN   TestCodexLauncher_NoWriteSnapshot/status
+=== RUN   TestCodexLauncher_NoWriteSnapshot/cli
+=== RUN   TestCodexLauncher_NoWriteSnapshot/app
+=== RUN   TestCodexLauncher_NoWriteSnapshot/bare_with_absent_CODEX_HOME
+=== RUN   TestCodexLauncher_NoWriteSnapshot/status_with_absent_CODEX_HOME
+=== RUN   TestCodexLauncher_NoWriteSnapshot/cli_with_absent_CODEX_HOME
+=== RUN   TestCodexLauncher_NoWriteSnapshot/app_with_absent_CODEX_HOME
+=== RUN   TestCodexLauncher_NoWriteSnapshot/absent_CODEX_HOME_still_absent_and_reported
+--- PASS: TestCodexLauncher_NoWriteSnapshot (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/bare (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/status (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/cli (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/app (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/bare_with_absent_CODEX_HOME (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/status_with_absent_CODEX_HOME (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/cli_with_absent_CODEX_HOME (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/app_with_absent_CODEX_HOME (0.00s)
+    --- PASS: TestCodexLauncher_NoWriteSnapshot/absent_CODEX_HOME_still_absent_and_reported (0.00s)
+=== RUN   TestCodexCommand_HelpExitsZero
+--- PASS: TestCodexCommand_HelpExitsZero (0.00s)
+=== RUN   TestCodexVerbRouting_LaunchCountsPerVerb
+=== RUN   TestCodexVerbRouting_LaunchCountsPerVerb/bare
+=== RUN   TestCodexVerbRouting_LaunchCountsPerVerb/status
+=== RUN   TestCodexVerbRouting_LaunchCountsPerVerb/cli
+=== RUN   TestCodexVerbRouting_LaunchCountsPerVerb/app
+--- PASS: TestCodexVerbRouting_LaunchCountsPerVerb (0.00s)
+    --- PASS: TestCodexVerbRouting_LaunchCountsPerVerb/bare (0.00s)
+    --- PASS: TestCodexVerbRouting_LaunchCountsPerVerb/status (0.00s)
+    --- PASS: TestCodexVerbRouting_LaunchCountsPerVerb/cli (0.00s)
+    --- PASS: TestCodexVerbRouting_LaunchCountsPerVerb/app (0.00s)
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected/bogus
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected/cl
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected/CLI
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected/Cli
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected/--model
+=== RUN   TestCodexVerbRouting_UnknownTokenRejected/-x
+--- PASS: TestCodexVerbRouting_UnknownTokenRejected (0.00s)
+    --- PASS: TestCodexVerbRouting_UnknownTokenRejected/bogus (0.00s)
+    --- PASS: TestCodexVerbRouting_UnknownTokenRejected/cl (0.00s)
+    --- PASS: TestCodexVerbRouting_UnknownTokenRejected/CLI (0.00s)
+    --- PASS: TestCodexVerbRouting_UnknownTokenRejected/Cli (0.00s)
+    --- PASS: TestCodexVerbRouting_UnknownTokenRejected/--model (0.00s)
+    --- PASS: TestCodexVerbRouting_UnknownTokenRejected/-x (0.00s)
+=== RUN   TestCodexVerbRouting_CwdCrossChecked
+=== RUN   TestCodexVerbRouting_CwdCrossChecked/called_at_project_root
+=== RUN   TestCodexVerbRouting_CwdCrossChecked/called_from_a_subdirectory_still_resolves_to_the_root
+=== RUN   TestCodexVerbRouting_CwdCrossChecked/called_inside_a_worktree_resolves_to_the_worktree_root
+--- PASS: TestCodexVerbRouting_CwdCrossChecked (0.00s)
+    --- PASS: TestCodexVerbRouting_CwdCrossChecked/called_at_project_root (0.00s)
+    --- PASS: TestCodexVerbRouting_CwdCrossChecked/called_from_a_subdirectory_still_resolves_to_the_root (0.00s)
+    --- PASS: TestCodexVerbRouting_CwdCrossChecked/called_inside_a_worktree_resolves_to_the_worktree_root (0.00s)
+=== RUN   TestCodexVerbRouting_AppArgvExact
+--- PASS: TestCodexVerbRouting_AppArgvExact (0.00s)
+=== RUN   TestCodexVerbRouting_ExitCodePropagation
+=== RUN   TestCodexVerbRouting_ExitCodePropagation/0
+=== RUN   TestCodexVerbRouting_ExitCodePropagation/1
+=== RUN   TestCodexVerbRouting_ExitCodePropagation/2
+=== RUN   TestCodexVerbRouting_ExitCodePropagation/126
+=== RUN   TestCodexVerbRouting_ExitCodePropagation/127
+--- PASS: TestCodexVerbRouting_ExitCodePropagation (0.00s)
+    --- PASS: TestCodexVerbRouting_ExitCodePropagation/0 (0.00s)
+    --- PASS: TestCodexVerbRouting_ExitCodePropagation/1 (0.00s)
+    --- PASS: TestCodexVerbRouting_ExitCodePropagation/2 (0.00s)
+    --- PASS: TestCodexVerbRouting_ExitCodePropagation/126 (0.00s)
+    --- PASS: TestCodexVerbRouting_ExitCodePropagation/127 (0.00s)
+=== RUN   TestCodexVerbRouting_StdioIdentity
+--- PASS: TestCodexVerbRouting_StdioIdentity (0.00s)
+=== RUN   TestCodexVerbRouting_PassthroughTailExact
+--- PASS: TestCodexVerbRouting_PassthroughTailExact (0.00s)
+=== RUN   TestCodexSpawn_Parity
+=== RUN   TestCodexSpawn_Parity/cli_spawn_once,_direct_zero
+=== RUN   TestCodexSpawn_Parity/app_spawn_once,_direct_zero
+=== RUN   TestCodexSpawn_Parity/spawn_capture_token-identical_to_direct_capture
+--- PASS: TestCodexSpawn_Parity (0.00s)
+    --- PASS: TestCodexSpawn_Parity/cli_spawn_once,_direct_zero (0.00s)
+    --- PASS: TestCodexSpawn_Parity/app_spawn_once,_direct_zero (0.00s)
+    --- PASS: TestCodexSpawn_Parity/spawn_capture_token-identical_to_direct_capture (0.00s)
+=== RUN   TestCodexSpawn_TmuxAbsentDiagnosticBytes
+--- PASS: TestCodexSpawn_TmuxAbsentDiagnosticBytes (0.00s)
+=== RUN   TestCodexSpawn_RejectedOnReadoutForms
+=== RUN   TestCodexSpawn_RejectedOnReadoutForms/status
+--- PASS: TestCodexSpawn_RejectedOnReadoutForms (0.00s)
+    --- PASS: TestCodexSpawn_RejectedOnReadoutForms/status (0.00s)
+=== RUN   TestCodexSpawn_RealAssemblyThroughStubTmux
+--- PASS: TestCodexSpawn_RealAssemblyThroughStubTmux (0.00s)
+=== RUN   TestCodexVerbRouting_HelpAfterDashDashIsNotHelp
+--- PASS: TestCodexVerbRouting_HelpAfterDashDashIsNotHelp (0.00s)
+=== RUN   TestCodexVerbRouting_UnresolvableRootFallsBackToCwd
+--- PASS: TestCodexVerbRouting_UnresolvableRootFallsBackToCwd (0.00s)
+=== RUN   TestCodexCommand_HelpCopyGuidance
+=== RUN   TestCodexCommand_HelpCopyGuidance/wiring_action_matches_the_generator
+=== RUN   TestCodexCommand_HelpCopyGuidance/every_routing_verb_documented
+=== RUN   TestCodexCommand_HelpCopyGuidance/examples_are_copy-pasteable
+--- PASS: TestCodexCommand_HelpCopyGuidance (0.00s)
+    --- PASS: TestCodexCommand_HelpCopyGuidance/wiring_action_matches_the_generator (0.00s)
+    --- PASS: TestCodexCommand_HelpCopyGuidance/every_routing_verb_documented (0.00s)
+    --- PASS: TestCodexCommand_HelpCopyGuidance/examples_are_copy-pasteable (0.00s)
+=== RUN   TestLaunchers_BareInvocationConvention
+=== RUN   TestLaunchers_BareInvocationConvention/cc
+=== RUN   TestLaunchers_BareInvocationConvention/glm
+=== RUN   TestLaunchers_BareInvocationConvention/codex
+--- PASS: TestLaunchers_BareInvocationConvention (0.00s)
+    --- PASS: TestLaunchers_BareInvocationConvention/cc (0.00s)
+    --- PASS: TestLaunchers_BareInvocationConvention/glm (0.00s)
+    --- PASS: TestLaunchers_BareInvocationConvention/codex (0.00s)
+=== RUN   TestCodexCommand_HelpDescribesReversedDefault
+--- PASS: TestCodexCommand_HelpDescribesReversedDefault (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.154s

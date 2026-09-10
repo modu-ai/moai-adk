@@ -1,0 +1,8 @@
+=== RUN   TestT459_MarkerRemovalArmsTheCap
+    t459_repro_test.go:48: STATE A (curator, marker present): inbox=1049682 bytes, cap=1048576
+    t459_repro_test.go:57: STATE A result: no .1 archive, inbox=1049788 bytes -> stand-down HELD
+    t459_repro_test.go:72: STATE B result: cap ARMED — 1049788 bytes moved to .1, live inbox now 106 bytes
+    t459_repro_test.go:79: HARM: drain-reachable stubs=1, archived-unreachable stubs=4183
+--- PASS: TestT459_MarkerRemovalArmsTheCap (0.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.575s

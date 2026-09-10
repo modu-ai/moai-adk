@@ -16,12 +16,13 @@ Three properties bound everything below:
 
 ## Availability constraints
 
-"On with nothing to enable" holds only where the platform provides the channel. Four constraints bound where it exists at all — and because Kanban Mode delegates through the queue on disk, using this channel only to nudge companions, they bound where its nudges reach:
+"On with nothing to enable" holds only where the platform provides the channel. Five constraints bound where it exists at all — and because Kanban Mode delegates through the queue on disk, using this channel only to nudge companions, they bound where its nudges reach:
 
-- **Operating system** — macOS and Linux (including Linux inside WSL 2) only. Claude Code does not provide cross-session messaging on native Windows.
-- **Providers** — unavailable on Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry.
+- **Operating system** — macOS, Windows, and Linux (Linux inside WSL 2 included). Same-machine messaging works on native Windows since Claude Code v2.1.234, where the inbox socket is a named pipe. Cross-machine reach from native Windows is not documented — an explicit gap; claim nothing either way.
+- **Providers** — Two axes. Same machine: available on every provider — Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry included — since v2.1.248; delivery rides a per-session socket on the machine and never leaves it. Beyond this machine: still unavailable with an API key and on Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry.
 - **Versions** — v2.1.224+ for the channel itself; v2.1.225+ to open a cross-machine conversation first; v2.1.232+ for @mentions and the /config rows; v2.1.236+ for the `notify_when_idle` request.
-- **Flag evaluation** — any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` disables the feature-flag evaluation the channel depends on, turning messaging off silently. Diagnostic: `/list-agents` (alias `/peers`) recognized → present; unrecognized → absent.
+- **Flag evaluation** — any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` disables the feature-flag evaluation. Since v2.1.248, same-machine messaging works in sessions with feature-flag fetching off, on every provider (class-level statement — no per-flag claims for the four flags). Below v2.1.248 such sessions had no same-machine messaging; the capability is new in that release. Diagnostic: `/list-agents` (alias `/peers`) recognized → present; unrecognized → absent.
+- **The shared flag slot** — the gate reads one machine-global, last-writer-wins slot, `cachedGrowthBookFeatures.tengu_harbor_kite` in `~/.claude.json`, that only a first-party session ever writes; third-party-backend sessions (`moai glm`, the GLM panes of `moai cg`) inherit whatever a first-party session last left and can lose or regain the channel mid-session. Diagnostic, mechanism, and the manual escape hatch: `cross-session-messaging-detail.md` § The shared flag slot.
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 

@@ -10,7 +10,10 @@
 //	     branch inherits every other card's commits, so the noise scales with
 //	     integration rather than with the card.
 //
-//	Q2 — landed: "is this card's work already in origin/main?"
+//	Q2 — landed: "is this card's work already in the branch this project
+//	     integrates on?" The ref is RESOLVED from configuration
+//	     (LandedRefFor), not hardcoded: asking origin/main in a project that
+//	     integrates on develop answers a question nobody posed.
 //	     Carrier: landed commit messages, and nothing else. The inherited-commit
 //	     noise that ruins the commit carrier for Q1 is HARMLESS here, because a
 //	     commit that rode in on another branch is still genuinely landed.
@@ -27,10 +30,11 @@ import (
 	"sort"
 )
 
-// PRLinkKind is one of the four mutually distinguishable outcome kinds
-// (REQ-1.7). A consumer tells "already in origin/main" from "nobody has
-// started this" from "several candidates" by kind ALONE — never by
-// inspecting whether some other field happens to be empty.
+// PRLinkKind is one of the five mutually distinguishable outcome kinds
+// (REQ-1.7; the fifth added by SPEC-TODO-LANDING-STATE-001 REQ-TLS-004). A
+// consumer tells "already on the landed ref" from "nobody has started this"
+// from "several candidates" from "the question could not be asked" by kind
+// ALONE — never by inspecting whether some other field happens to be empty.
 type PRLinkKind string
 
 const (
@@ -39,12 +43,18 @@ const (
 	// PRLinkAmbiguous marks a card whose token appears in more than one open
 	// pull request body. Every candidate is enumerated; none is chosen.
 	PRLinkAmbiguous PRLinkKind = "ambiguous"
-	// PRLinkLanded marks a card whose id is named by origin/main history.
-	// It is a boolean fact and nothing more (REQ-1.10).
+	// PRLinkLanded marks a card whose id is named by the resolved landed
+	// ref's history. It is a boolean fact and nothing more (REQ-1.10).
 	PRLinkLanded PRLinkKind = "landed"
 	// PRLinkNoLink marks a card no open pull request and no landed commit
 	// names — genuinely untouched work.
 	PRLinkNoLink PRLinkKind = "no-link"
+	// PRLinkUnknown marks a card whose landed question could NOT be asked —
+	// the ref does not resolve, git is absent, the query failed. It is a
+	// distinct kind rather than a degraded no-link precisely because the two
+	// used to render identically: an unstarted card and an unanswerable one
+	// are different facts (REQ-TLS-004).
+	PRLinkUnknown PRLinkKind = "unknown"
 )
 
 // PRLinkConfidence labels how a linked outcome was reached (REQ-1.1). The set
@@ -73,13 +83,16 @@ type PRRecord struct {
 
 // LandedQuerier answers Q2 and nothing else.
 //
-// The method returns a BOOLEAN (REQ-1.10). It deliberately exposes no commit
-// SHA and no commit subject, because a card's first matching commit may be
-// another card's report commit that merely mentions it — so any "first match
-// is the delivering commit" reading attributes wrongly. There is no accessor
-// to add one through.
+// The method returns a THREE-VALUED answer (REQ-1.10, REQ-TLS-003). It
+// deliberately exposes no commit SHA and no commit subject, because a card's
+// first matching commit may be another card's report commit that merely
+// mentions it — so any "first match is the delivering commit" reading
+// attributes wrongly. There is no accessor to add one through.
+//
+// The answer is a return VALUE rather than a flag on some other field, so a
+// caller that ignores it does not compile.
 type LandedQuerier interface {
-	Landed(cardID string) (bool, error)
+	Landed(cardID string) (LandingAnswer, error)
 }
 
 // PRLinkOutcome is the single outcome record the resolver returns per card
@@ -87,7 +100,7 @@ type LandedQuerier interface {
 // off Kind rather than off emptiness.
 type PRLinkOutcome struct {
 	CardID string `json:"card_id"`
-	// Kind is the load-bearing field: four values, mutually distinguishable.
+	// Kind is the load-bearing field: five values, mutually distinguishable.
 	Kind PRLinkKind `json:"outcome"`
 	// PRs carries the delivering pull request for a linked outcome and every
 	// candidate for an ambiguous one, ascending. Empty for landed / no-link.
@@ -129,14 +142,16 @@ var validCardToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 //  3. several PR BODY hits    → ambiguous, every candidate enumerated,
 //     never collapsed to a best guess (REQ-1.4, REQ-1.6)
 //  4. no PR hit at all        → ask the landed querier (REQ-1.9):
-//     at least one commit → landed; none → no-link
+//     at least one commit → landed; none → no-link; question unanswerable →
+//     unknown (REQ-TLS-004)
 //
 // Commit messages are consulted at step 4 ONLY, through the querier, and only
 // for Q2. Step 1-3 never see them (REQ-1.5).
 //
-// A landed-query failure degrades fail-open: the outcome is no-link and the
-// error is returned alongside it, so a caller can report the degradation
-// without losing the rest of the render.
+// A landed-query failure degrades fail-open, but NOT into no-link: the
+// outcome is `unknown` and the error is returned alongside it, so a caller can
+// report the degradation without losing the rest of the render AND without a
+// card that was never checked rendering as one that was.
 func ResolveCardPRLink(cardID string, prs []PRRecord, landed LandedQuerier) (PRLinkOutcome, error) {
 	out := PRLinkOutcome{CardID: cardID, Kind: PRLinkNoLink}
 
@@ -175,12 +190,18 @@ func ResolveCardPRLink(cardID string, prs []PRRecord, landed LandedQuerier) (PRL
 	if landed == nil {
 		return out, nil
 	}
-	isLanded, err := landed.Landed(cardID)
+	answer, err := landed.Landed(cardID)
 	if err != nil {
+		out.Kind = PRLinkUnknown
 		return out, err
 	}
-	if isLanded {
+	switch answer {
+	case LandingLanded:
 		out.Kind = PRLinkLanded
+	case LandingUnknown:
+		// An answer of unknown WITHOUT an error still means the question was
+		// not answered; it must not fall through to no-link.
+		out.Kind = PRLinkUnknown
 	}
 	return out, nil
 }

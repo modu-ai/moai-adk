@@ -1,0 +1,13 @@
+ok  	github.com/modu-ai/moai-adk/internal/binlag	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook	30.257s
+ok  	github.com/modu-ai/moai-adk/internal/hook/handoff	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx/complexity	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/perf	10.150s
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/security	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/testutil	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/hook/trace	(cached)
+ok  	github.com/modu-ai/moai-adk/pkg/version	(cached)

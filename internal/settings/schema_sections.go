@@ -161,7 +161,14 @@ func gitStrategyFields() []FieldDef {
 	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
 	modeField.Description = "fieldDesc.git_strategy.mode"
-	fields := []FieldDef{modeField}
+	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-014: free text, NOT a closed option set.
+	// A select carrying main / develop would bake two repository-specific branch
+	// names into the shipped schema, so a user whose default branch is `trunk`
+	// could not pick their own. The two common names live in the description
+	// (prose), never in an option set.
+	baseBranch := typedField(SectionGitStrategy, "git_strategy", "worktree_base_branch", TypeText)
+	baseBranch.Description = "fieldDesc.git_strategy.worktree_base_branch"
+	fields := []FieldDef{modeField, baseBranch}
 	// merge_method 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생한다
 	// (REQ-WC14-011 — 리터럴 재선언 금지; B3 — map-range 비결정성 제거를 위해 정렬
 	// 후 사용. 정렬은 파생이지 재선언이 아님). 3개 profile 공유.
@@ -355,7 +362,20 @@ func seamSectionFields() []FieldDef {
 		// template ships no todo block, so the seam writer upserts the nested
 		// mapping on first edit. The polarity is the opposite though — this key
 		// is default-ON, so the console's "absent" rendering means enabled.
-		s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled"),
+		// AbsentDefault declares that runtime polarity so the value-invariant
+		// write gate treats an explicit OFF as a real change (sync-audit F1).
+		withAbsentDefault(s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled")),
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-011: the /moai project
+		// Phase 14 completion selector. UNLIKE its two neighbours above, the
+		// distributed template DOES ship this key (`continuation: card`) — a
+		// three-value enum's domain is not discoverable from the key's absence,
+		// so shipping it is how `none` and `pipeline` become visible at all.
+		// The enum LABELS stay English by design (applyI18n's ".opt." guard);
+		// what each value DOES is carried by per-option descriptions whose keys
+		// avoid that substring so they follow the locale.
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.project.continuation.opt.",
+			config.ValidProjectContinuations(), "", "", "workflow", "project", "continuation"),
+			"f.workflow.project.continuation.option."),
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
 		// selection surfaced in the web console. These are PersistSeam fields
 		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
@@ -562,6 +582,17 @@ func withEmptySubmits(f FieldDef) FieldDef {
 	return f
 }
 
+// withAbsentDefault declares a bool field's runtime polarity for an ABSENT
+// key: "true" when the key's interpreter is default-ON / fail-open (absent
+// means enabled), empty for the default-off reading (absent means false).
+// The value-invariant write gate (ApplySchemaEdits) is the consumer — without
+// this declaration an explicit OFF save on a default-ON absent key would be
+// silently skipped as a no-op (sync-audit F1, SPEC-WEB-WRITE-SAFETY-001).
+func withAbsentDefault(f FieldDef) FieldDef {
+	f.AbsentDefault = "true"
+	return f
+}
+
 // crossSessionFields는 crosssession 섹션의 편집 FieldDef를 반환한다:
 // inbound(select, EmptySubmits) + isolate_machines(bool) + dialog_expiry
 // (select, EmptySubmits). 옵션 집합은 config.ValidCrossSession* 공유 접근자에서
@@ -595,7 +626,18 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, reportFields()...)  // report.format (launch tab)
 	fields = append(fields, mcpFields()...)     // SPEC-MCP-CONSOLE-001 M1
 	fields = append(fields, crossSessionFields()...)
+	fields = append(fields, gateFields()...) // SPEC-PRECOMMIT-GATE-SCOPE-001 M2
 	return fields
+}
+
+// gateFields는 gate 섹션의 편집 FieldDef를 반환한다: pre_commit.enabled(bool).
+// yamlpatch seam으로 gate.yaml의 gate.pre_commit.enabled에 기록되며, 게이트
+// 러너는 MOAI_PRECOMMIT=1 마커 하에서만 이 키를 존중한다
+// (SPEC-PRECOMMIT-GATE-SCOPE-001 REQ-009).
+func gateFields() []FieldDef {
+	return []FieldDef{
+		seamField(SectionGate, "gate", TypeBool, "gate", "pre_commit", "enabled"),
+	}
 }
 
 // mcpFields generates one enablement bool per MCP tool declared in the shared
@@ -604,12 +646,15 @@ func sectionExtraFields() []FieldDef {
 // C-C-5 / AC-C-005). The list is DERIVED from the single catalog declaration —
 // no second tool list lives here — so a tool added to registration cannot go
 // unrepresented in the schema (AP-C-4). Default enabled (owner decision).
+// AbsentDefault declares that fail-open polarity (sync-audit F1): an absent
+// key means the tool IS enabled, so an explicit OFF submission is a real
+// change the value-invariant gate must write.
 func mcpFields() []FieldDef {
 	tools := mcpcat.MoaiMCPTools()
 	fields := make([]FieldDef, 0, len(tools))
 	for _, t := range tools {
-		fields = append(fields, seamField(SectionMCP, "mcp", TypeBool,
-			"mcp", "tools", t.Name, "enabled"))
+		fields = append(fields, withAbsentDefault(seamField(SectionMCP, "mcp", TypeBool,
+			"mcp", "tools", t.Name, "enabled")))
 	}
 	return fields
 }
@@ -703,5 +748,6 @@ func SchemaSectionIDs() []SectionID {
 		SectionSecurity,
 		SectionHandoff,
 		SectionCache,
+		SectionGate,
 	}
 }

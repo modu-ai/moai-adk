@@ -225,8 +225,11 @@ func EnsureDir(name string) error {
 		return fmt.Errorf("invalid profile name %q: must not contain path separators or start with '.'", name)
 	}
 	profileDir := filepath.Join(GetBaseDir(), name)
-	if err := os.MkdirAll(profileDir, 0755); err != nil {
+	if err := os.MkdirAll(profileDir, 0o700); err != nil {
 		return fmt.Errorf("failed to create profile directory: %w", err)
+	}
+	if err := os.Chmod(profileDir, 0o700); err != nil {
+		return fmt.Errorf("secure profile directory: %w", err)
 	}
 	if err := os.Setenv("CLAUDE_CONFIG_DIR", profileDir); err != nil {
 		return fmt.Errorf("set CLAUDE_CONFIG_DIR: %w", err)
@@ -362,6 +365,48 @@ func asString(v any) string {
 	return s
 }
 
+// lookupSubtreeProjectKey resolves a directory that has no ledger entry of its
+// own to the profile of its deepest REGISTERED ancestor
+// (SPEC-STATUSLINE-PROFILE-RESPECT-001 REQ-006..008, kickoff decision D1: the
+// walk lives here in the READ path, only after lookupProjectKey's exact/alias
+// scan has missed — lookupProjectKey itself is untouched).
+//
+// The chain of filepath.Dir steps makes the match structural rather than
+// lexical: "/proj" is an ancestor of "/proj/worktrees/x" but never of
+// "/proj-other", because no Dir step ever produces the latter from the former.
+// Walking outward from the session directory, the FIRST registered ancestor is
+// by construction the deepest (REQ-007). Each ancestor must exist on disk —
+// a registration for a directory that is gone (a deleted worktree) is skipped
+// rather than matched, and the walk continues outward to the enclosing live
+// project.
+//
+// A hit whose profile directory has vanished (launchCandidateIsUsable false)
+// is likewise skipped, mirroring the exact path's fall-through to "" rather
+// than dead-ending on a stale entry.
+//
+// @MX:NOTE: [AUTO] subtree resolution walk — the read-side twin of
+// registeredAncestorKey (t297, REQ-009): the write side now folds subtree
+// launches into the registered ancestor this walk resolves to, so the walk
+// stays the resolver for subtree directories and its stale-entry skip remains
+// the rare fallback (dead rows are reclaimed by PruneStaleProjectEntries).
+func lookupSubtreeProjectKey(projects map[string]any, dir, baseDir string) (string, bool) {
+	if dir == "" || len(projects) == 0 {
+		return "", false
+	}
+	for cur := filepath.Dir(dir); ; cur = filepath.Dir(cur) {
+		if _, ok := projects[cur]; ok {
+			if info, err := os.Stat(cur); err == nil && info.IsDir() {
+				if name := asString(projects[cur]); launchCandidateIsUsable(baseDir, name) {
+					return name, true
+				}
+			}
+		}
+		if parent := filepath.Dir(cur); parent == cur {
+			return "", false // reached the volume root: no registered ancestor
+		}
+	}
+}
+
 // loadLaunchLedger reads and decodes the ledger as a generic map so unknown and
 // legacy keys are tolerated rather than rejected. A missing or corrupt file
 // yields an error the callers translate into "no fallback".
@@ -430,6 +475,12 @@ func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 				if name, ok := projects[stored].(string); ok && launchCandidateIsUsable(baseDir, name) {
 					return name
 				}
+			} else if name, found := lookupSubtreeProjectKey(projects, key, baseDir); found {
+				// The directory has no entry of its own but sits inside a
+				// registered project's subtree — a fresh worktree, typically.
+				// The walk reuses the already-normalized key so both sides of
+				// the comparison went through the same EvalSymlinks spelling.
+				return name
 			}
 		}
 	}
@@ -494,6 +545,12 @@ func RecordLastUsedProfile(name string) error {
 // side silently skips it. The launcher therefore records only after it has
 // created the directory (see unifiedLaunchDefault step 4.5 → step 5).
 //
+// The projects: entry is normalized at write time (REQ-009, card t297): a
+// launch recorded from inside a registered project's subtree — a worktree,
+// typically — updates the registered root's row instead of adding one, so
+// creating worktrees no longer grows the ledger. See resolveWriteProjectKey
+// for the exact precedence.
+//
 // projectRoot == "" leaves the projects map untouched and writes last_profile
 // only, which is what makes RecordLastUsedProfile a behavior-preserving wrapper.
 func RecordLastUsedProfileForProject(projectRoot, name string) error {
@@ -525,25 +582,90 @@ func RecordLastUsedProfileForProject(projectRoot, name string) error {
 		if !ok {
 			projects = make(map[string]any)
 		}
-		// Reuse the key already recorded for this directory when one exists.
-		// Writing the caller's spelling instead would leave two entries naming
-		// one project, and the pair drifts apart on the next launch from the
-		// other spelling.
-		if stored, found := lookupProjectKey(projects, key); found {
-			key = stored
-		}
-		projects[key] = name
+		projects[resolveWriteProjectKey(projects, key)] = name
 		existing[projectsKey] = projects
 	}
 
-	out, err := yaml.Marshal(existing)
+	return saveLaunchLedger(baseDir, existing)
+}
+
+// resolveWriteProjectKey returns the ledger key a launch recorded from the
+// normalized directory key should be written under (REQ-009, card t297).
+//
+// Precedence mirrors the read side so a write and a later lookup agree:
+//
+//  1. An exact or alias entry for this directory wins — the path is a
+//     registered project in its own right, and its row is updated in place.
+//     This is what keeps nested INDEPENDENT projects (/mono and /mono/lib,
+//     both registered) from folding into one another, and what keeps a legacy
+//     row written by a pre-normalization binary self-consistent.
+//  2. Otherwise, the deepest registered ancestor wins (registeredAncestorKey):
+//     the launch came from a subtree of a registered project — a worktree —
+//     and folding it into the root's row is what stops the ledger growing one
+//     row per worktree.
+//  3. Otherwise the normalized key itself: with nothing registered above it,
+//     the row lives at the path it names. It stays live while the directory
+//     does and is reclaimed with it by PruneStaleProjectEntries.
+//
+// @MX:NOTE: [AUTO] write-key precedence for subtree launches — exact/alias,
+// then registered ancestor (fold), then the path itself (t297, REQ-009).
+func resolveWriteProjectKey(projects map[string]any, key string) string {
+	if key == "" {
+		return ""
+	}
+	if stored, found := lookupProjectKey(projects, key); found {
+		return stored
+	}
+	if ancestor, found := registeredAncestorKey(projects, key); found {
+		return ancestor
+	}
+	return key
+}
+
+// registeredAncestorKey walks key's real path-segment ancestors outward and
+// returns the first one that names a REGISTERED project whose directory still
+// exists — the structural twin of the read-side lookupSubtreeProjectKey walk,
+// so a key folded on write is exactly the key a later subtree lookup resolves
+// to. The Dir-step chain makes the match structural (a path-segment
+// boundary), never lexical.
+//
+// Deliberate asymmetry with the read side: the walk does NOT consult
+// launchCandidateIsUsable. The read side must skip an ancestor whose recorded
+// profile has vanished; the write side is about to OVERWRITE the value with a
+// profile the recorder has just verified (the directory-existence guard in
+// RecordLastUsedProfileForProject), so folding into such an ancestor repairs
+// the row rather than preserving a stale value.
+func registeredAncestorKey(projects map[string]any, key string) (string, bool) {
+	if key == "" || len(projects) == 0 {
+		return "", false
+	}
+	for cur := filepath.Dir(key); ; cur = filepath.Dir(cur) {
+		if _, ok := projects[cur]; ok {
+			if info, err := os.Stat(cur); err == nil && info.IsDir() {
+				return cur, true
+			}
+		}
+		if parent := filepath.Dir(cur); parent == cur {
+			return "", false // reached the volume root: no registered ancestor
+		}
+	}
+}
+
+// saveLaunchLedger marshals and atomically writes the ledger (write-temp +
+// os.Rename, the same pattern as settings.go) so a crash cannot leave a
+// half-written file. The caller owns the map's contents; unknown and legacy
+// keys survive because they were loaded into it.
+func saveLaunchLedger(baseDir string, ledger map[string]any) error {
+	out, err := yaml.Marshal(ledger)
 	if err != nil {
 		return fmt.Errorf("marshal launch ledger: %w", err)
 	}
 
-	// Atomic write: write-temp + os.Rename (same pattern as settings.go).
-	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+	if err := os.MkdirAll(baseDir, 0o700); err != nil {
 		return fmt.Errorf("create base dir: %w", err)
+	}
+	if err := os.Chmod(baseDir, 0o700); err != nil {
+		return fmt.Errorf("secure base dir: %w", err)
 	}
 	tmp, err := os.CreateTemp(baseDir, ".launch-*.tmp")
 	if err != nil {
@@ -564,5 +686,64 @@ func RecordLastUsedProfileForProject(projectRoot, name string) error {
 		return fmt.Errorf("close temp file: %w", err)
 	}
 
-	return os.Rename(tmpName, ledgerPath)
+	return os.Rename(tmpName, filepath.Join(baseDir, launchLedgerFile))
+}
+
+// PruneStaleProjectEntries removes projects[] entries whose directory no
+// longer exists on disk, and returns the removed keys in sorted order.
+//
+// A dead key is unrecoverable by every read path — lookupProjectKey requires
+// os.Stat, the subtree walk requires Stat + IsDir — so removing it is
+// semantics-preserving by construction, which is what makes the prune
+// idempotent and safe to run at any worktree disposal: the second run finds
+// nothing to remove. Keys naming live directories are never touched, and the
+// non-projects keys (last_profile, model, bypass, ...) survive untouched.
+// Only the key's own directory is judged: an entry whose PROFILE directory
+// vanished is kept — the binding may be wanted again, and the read side
+// already falls through it.
+//
+// This is the reclamation half of the ledger's lifecycle (card t297): the
+// write side stopped creating dead rows (resolveWriteProjectKey), and this
+// removes the ones that predate it and the cold-start rows whose worktree has
+// since been disposed. Callers report the returned count; a missing ledger is
+// a no-op (nil, nil), a corrupt one is an error.
+//
+// @MX:ANCHOR: [AUTO] dead-row reclamation for the launch ledger's projects map
+// @MX:REASON: wired at every moai worktree disposal path (remove/done/clean
+// sweeps); weakening the dead-directory predicate to also drop entries whose
+// PROFILE is missing would silently erase wanted project bindings, and
+// skipping the sorted delete-order changes which keys a partially-failed
+// save leaves behind.
+func PruneStaleProjectEntries() ([]string, error) {
+	baseDir := GetBaseDir()
+	ledger, err := loadLaunchLedger(baseDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil // no ledger yet — nothing to reclaim
+		}
+		return nil, fmt.Errorf("load launch ledger: %w", err)
+	}
+	projects, ok := ledger[projectsKey].(map[string]any)
+	if !ok || len(projects) == 0 {
+		return nil, nil
+	}
+
+	var pruned []string
+	for key := range projects {
+		if info, err := os.Stat(key); err == nil && info.IsDir() {
+			continue
+		}
+		pruned = append(pruned, key)
+	}
+	if len(pruned) == 0 {
+		return nil, nil // nothing to write — the file is left byte-identical
+	}
+	sort.Strings(pruned)
+	for _, key := range pruned {
+		delete(projects, key)
+	}
+	if err := saveLaunchLedger(baseDir, ledger); err != nil {
+		return nil, fmt.Errorf("save pruned launch ledger: %w", err)
+	}
+	return pruned, nil
 }

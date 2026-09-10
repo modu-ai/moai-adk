@@ -1,0 +1,21 @@
+{"Time":"2026-08-29T18:08:20.94634+09:00","Action":"start","Package":"example.com/censusfix/alpha"}
+{"Time":"2026-08-29T18:08:20.946426+09:00","Action":"start","Package":"example.com/censusfix/beta"}
+{"Time":"2026-08-29T18:08:20.946461+09:00","Action":"output","Package":"example.com/censusfix/beta","Output":"?   \texample.com/censusfix/beta\t[no test files]\n"}
+{"Time":"2026-08-29T18:08:20.946476+09:00","Action":"skip","Package":"example.com/censusfix/beta","Elapsed":0}
+{"Time":"2026-08-29T18:08:21.285904+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses"}
+{"Time":"2026-08-29T18:08:21.286053+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"=== RUN   TestAlphaPasses\n"}
+{"Time":"2026-08-29T18:08:21.28629+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"--- PASS: TestAlphaPasses (0.00s)\n"}
+{"Time":"2026-08-29T18:08:21.286357+09:00","Action":"pass","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Elapsed":0}
+{"Time":"2026-08-29T18:08:21.286377+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips"}
+{"Time":"2026-08-29T18:08:21.286388+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"=== RUN   TestAlphaSkips\n"}
+{"Time":"2026-08-29T18:08:21.286397+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"    alpha_test.go:7: environment not available\n"}
+{"Time":"2026-08-29T18:08:21.286441+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"--- SKIP: TestAlphaSkips (0.00s)\n"}
+{"Time":"2026-08-29T18:08:21.286453+09:00","Action":"skip","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Elapsed":0}
+{"Time":"2026-08-29T18:08:21.286462+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails"}
+{"Time":"2026-08-29T18:08:21.28647+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"=== RUN   TestAlphaFails\n"}
+{"Time":"2026-08-29T18:08:21.286479+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"    alpha_test.go:10: expected 7, got 3\n"}
+{"Time":"2026-08-29T18:08:21.286489+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"--- FAIL: TestAlphaFails (0.00s)\n"}
+{"Time":"2026-08-29T18:08:21.286498+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Elapsed":0}
+{"Time":"2026-08-29T18:08:21.28651+09:00","Action":"output","Package":"example.com/censusfix/alpha","Output":"FAIL\n"}
+{"Time":"2026-08-29T18:08:21.287084+09:00","Action":"output","Package":"example.com/censusfix/alpha","Output":"FAIL\texample.com/censusfix/alpha\t0.341s\n"}
+{"Time":"2026-08-29T18:08:21.287141+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Elapsed":0.341}

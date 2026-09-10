@@ -2,7 +2,6 @@
 id: SPEC-V3R6-CODE-COMMENTS-EN-001
 title: "Design — Mass migration of Korean comments to English"
 version: "0.2.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

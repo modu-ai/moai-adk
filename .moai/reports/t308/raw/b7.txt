@@ -1,0 +1,52 @@
+=== INV-081 template hook timeouts
+   5 "timeout": 10
+   1 "timeout": 120
+   2 "timeout": 30
+  23 "timeout": 5
+   3 "timeout": 60
+   2 "timeout": 900
+=== INV-082 quality.yaml
+5:    test_coverage_target: 85
+6:    coverage_threshold: 0
+16:        min_coverage_per_commit: 80
+18:    coverage_exemptions:
+.moai/config/evaluator-profiles/strict.md:11:| Craft | 20% | Coverage >= 90%, mutation testing score >= 80% |
+.moai/config/evaluator-profiles/strict.md:24:- Coverage below 90% = Craft FAIL
+.moai/config/evaluator-profiles/strict.md:60:| 1.00 | Coverage >= 90%, mutation score >= 80%, zero linting warnings, excellent naming |
+=== INV-090 applyEnvOverrides
+1:398:func applyEnvOverrides(cfg *Config) {
+2:399-	if mode := os.Getenv(EnvDevelopmentMode); mode != "" {
+5:402-	if level := os.Getenv(EnvLogLevel); level != "" {
+8:405-	if format := os.Getenv(EnvLogFormat); format != "" {
+11:408-	if noColor := os.Getenv(EnvNoColor); noColor == "true" || noColor == "1" {
+=== envkeys
+22:	EnvHome = "MOAI_HOME"
+25:	EnvConfigDir = "MOAI_CONFIG_DIR"
+34:	EnvConfigCacheDisabled = "MOAI_CONFIG_CACHE_DISABLED"
+37:	EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"
+40:	EnvLogLevel = "MOAI_LOG_LEVEL"
+43:	EnvLogFormat = "MOAI_LOG_FORMAT"
+46:	EnvNoColor = "MOAI_NO_COLOR"
+49:	EnvStatuslineMode = "MOAI_STATUSLINE_MODE"
+56:	EnvStatuslineContextSize = "MOAI_STATUSLINE_CONTEXT_SIZE"
+59:	EnvSkipBinaryUpdate = "MOAI_SKIP_BINARY_UPDATE"
+62:	EnvGLMNoAutoTools = "MOAI_GLM_NO_AUTO_TOOLS"
+65:	EnvGitConvention = "MOAI_GIT_CONVENTION"
+68:	EnvEnforceOnPush = "MOAI_ENFORCE_ON_PUSH"
+74:	EnvPrePushMode = "MOAI_PRE_PUSH"
+77:	EnvUpdateSource = "MOAI_UPDATE_SOURCE"
+80:	EnvReleasesDir = "MOAI_RELEASES_DIR"
+83:	EnvUpdateURL = "MOAI_UPDATE_URL"
+90:	EnvNoProfileFallback = "MOAI_NO_PROFILE_FALLBACK"
+96:	EnvSecurityCommitReview = "MOAI_SECURITY_COMMIT_REVIEW"
+103:	EnvSecurityTurnReview = "MOAI_SECURITY_TURN_REVIEW"
+=== INV-091 zero readers
+internal/config/CLAUDE.md:12:- **Configuration priority order**: (1) Environment variables (`MOAI_USER_NAME`, `MOAI_CONVERSATION_LANG`, ...) override file values. (2) User config in `.moai/config/sections/*.yaml`. (3) Template defaults from `internal/template/templates/.moai/config/`. Tests MUST verify this priority via `t.Setenv` + fixture file combinations.
+internal/config/CLAUDE.md:13:- **Env var naming (CLAUDE.local.md §14 [HARD])**: All env var names live as constants in `envkeys.go` (e.g., `EnvUserName = "MOAI_USER_NAME"`). NEVER inline `os.Getenv("MOAI_*")` strings in consuming code — they MUST reference these constants. Hardcoded env names elsewhere are §14 violations subject to lint enforcement.
+(grep rc=0)
+=== INV-100 embed
+4:// into the moai binary at compile time via //go:embed. This includes agent
+28://go:embed all:templates
+29://go:embed catalog.yaml
+32:// @MX:ANCHOR: [AUTO] go:embed template filesystem access point - depended on by 6 or more callers including init/update/deployer
+ls: internal/template/embedded.go: No such file or directory

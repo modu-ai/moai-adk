@@ -64,10 +64,12 @@ var moaiMCPTools = []ToolDef{
 	{Name: "session_msg_send", WriteCapable: true},
 	{Name: "session_msg_poll", WriteCapable: true},
 	// Graph code-query family (SPEC-V3R6-GRAPH-FRESHNESS-001 M5): all
-	// read-only surfaces over the per-tree graph artifacts.
+	// read-only surfaces over the per-tree graph artifacts. The shortest-
+	// path addition rides SPEC-GRAPH-REPORT-001 REQ-GR-001.
 	{Name: "graph_file_api", WriteCapable: false},
 	{Name: "graph_find_code", WriteCapable: false},
 	{Name: "graph_trace_calls", WriteCapable: false},
+	{Name: "graph_shortest_path", WriteCapable: false},
 }
 
 // MoaiMCPTools returns the single shared declaration of the moai MCP server's

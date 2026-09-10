@@ -2,7 +2,6 @@
 id: SPEC-RULE-DIET-002
 title: "Rule diet: scope 6 reference-doctrine rules out of the always-loaded context surface — Implementation Plan"
 version: "0.1.0"
-status: draft
 created: 2026-07-02
 updated: 2026-07-02
 author: manager-spec

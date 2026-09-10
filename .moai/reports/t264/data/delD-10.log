@@ -1,0 +1,5 @@
+error: cannot delete branch 'WT-windows-stamp-liveness' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t337'
+error: cannot delete branch 'WT-zone-registry-f13' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t268'
+Deleted branch WT-workflow-docs (was 0040a2ce6).
+Deleted branch WT-worktree-reaper (was ca097280e).
+Deleted branch WT-zone-registry-drift (was 45ba36f95).

@@ -1,0 +1,55 @@
+=== RUN   TestSkillTreeHasNoClaudeSkillDirToken
+=== PAUSE TestSkillTreeHasNoClaudeSkillDirToken
+=== CONT  TestSkillTreeHasNoClaudeSkillDirToken
+    skill_dir_token_guard_test.go:87: census: 46 line(s) carrying CLAUDE_SKILL_DIR across 255 file(s) walked — expected 0.
+        Replace ${CLAUDE_SKILL_DIR}/X with the project-root-relative form .claude/skills/<skill-name>/X.
+          .claude/skills/moai/SKILL.md:125: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
+          .claude/skills/moai/SKILL.md:133: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
+          .claude/skills/moai/SKILL.md:141: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
+          .claude/skills/moai/SKILL.md:149: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
+          .claude/skills/moai/SKILL.md:157: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
+          .claude/skills/moai/SKILL.md:164: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
+          .claude/skills/moai/SKILL.md:173: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
+          .claude/skills/moai/SKILL.md:181: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
+          .claude/skills/moai/SKILL.md:189: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
+          .claude/skills/moai/SKILL.md:196: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
+          .claude/skills/moai/SKILL.md:204: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
+          .claude/skills/moai/SKILL.md:212: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
+          .claude/skills/moai/SKILL.md:219: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
+          .claude/skills/moai/SKILL.md:228: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
+          .claude/skills/moai/SKILL.md:236: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
+          .claude/skills/moai/SKILL.md:242: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
+          .claude/skills/moai/SKILL.md:259: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
+          .claude/skills/moai/SKILL.md:273: Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `${CLAUDE…
+          .claude/skills/moai/SKILL.md:274: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
+          .claude/skills/moai/workflows/harness-build-entry.md:46: - Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A — reserved verbs)
+          .claude/skills/moai/workflows/harness-build-entry.md:47: - Builder module (orchestrator-direct 4 phases): `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` (ANALYZE / PLAN / GE…
+          .claude/skills/moai/workflows/harness-build-entry.md:55: [HARD] If `$ARGUMENTS` (trimmed, first token) matches any reserved verb — the learning-lifecycle verbs (`status` / `ap…
+          .claude/skills/moai/workflows/harness-build-entry.md:131: **Read the Builder module for the full phase logic**: `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md`. That module do…
+          .claude/skills/moai/workflows/harness-build-entry.md:163: - Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A)
+          .claude/skills/moai/workflows/harness-builder.md:334: - Entry workflow: `${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md` (Phases 0-3: Discovery, name derivation, approv…
+          .claude/skills/moai/workflows/project/meta-harness.md:35: Compose a natural-language harness-creation request from `.moai/project/harness-spec.yaml` (the machine-readable intervi…
+          .claude/skills/moai/workflows/project/meta-harness.md:39: On approval, the entry workflow transitions directly into the orchestrator-direct Builder (`${CLAUDE_SKILL_DIR}/workflow…
+          .claude/skills/moai/workflows/run/task-decomposition.md:238: - Invoke review workflow explicitly: Read `${CLAUDE_SKILL_DIR}/workflows/review.md` and execute its multi-perspective an…
+          .claude/skills/moai-domain-svg-infographic/SKILL.md:235: node ${CLAUDE_SKILL_DIR}/scripts/check-svg.mjs diagram.svg          # human-readable diagnostics
+          .claude/skills/moai-domain-svg-infographic/SKILL.md:236: node ${CLAUDE_SKILL_DIR}/scripts/check-svg.mjs diagram.svg --json   # machine-readable
+          .claude/skills/moai-domain-svg-infographic/SKILL.md:237: node ${CLAUDE_SKILL_DIR}/scripts/check-svg.mjs diagram.svg --strict # warnings also fail
+          .claude/skills/moai-domain-svg-infographic/SKILL.md:269: node ${CLAUDE_SKILL_DIR}/scripts/render.mjs diagram.svg --out diagram.png            # 2x default
+          .claude/skills/moai-domain-svg-infographic/SKILL.md:270: node ${CLAUDE_SKILL_DIR}/scripts/render.mjs diagram.svg --out diagram.png --scale 3
+          .claude/skills/moai-workflow-project/references/navigator-audit.md:4: > `${CLAUDE_SKILL_DIR}/scripts/navigator-audit.sh` (sibling to `navigator-regen.sh`).
+          .claude/skills/moai-workflow-project/references/navigator.md:88: bash "${CLAUDE_SKILL_DIR}/scripts/navigator-regen.sh"
+          .claude/skills/moai-workflow-testing/SKILL.md:85: See [TRUST 5 detailed dimensions and scoring](${CLAUDE_SKILL_DIR}/references/trust5-framework.md) for full assessment ru…
+          .claude/skills/moai-workflow-testing/SKILL.md:111: See [debugging/refactoring/performance step-by-step walkthroughs](${CLAUDE_SKILL_DIR}/references/workflow-processes.md) …
+          .claude/skills/moai-workflow-testing/SKILL.md:132: See [PR review multi-agent architecture and output format](${CLAUDE_SKILL_DIR}/references/pr-review-multi-agent.md) for …
+          .claude/skills/moai-workflow-testing/SKILL.md:138: See [multi-language toolchain reference](${CLAUDE_SKILL_DIR}/references/multi-language-support.md) for per-language test…
+          .claude/skills/moai-workflow-testing/SKILL.md:158: See [CI/CD integration patterns (GitHub Actions + Docker)](${CLAUDE_SKILL_DIR}/references/integration-patterns.md) for j…
+          .claude/skills/moai-workflow-testing/SKILL.md:162: Playwright patterns (Page Object Model, cross-browser, visual regression) and documentation-lookup integration. See [Pla…
+          .claude/skills/moai-workflow-testing/SKILL.md:170: the [modules index](${CLAUDE_SKILL_DIR}/modules/INDEX.md), or jump to a stage:
+          .claude/skills/moai-workflow-testing/SKILL.md:172: - [AI-Powered Debugging](${CLAUDE_SKILL_DIR}/modules/ai-debugging.md) — error classification + solution candidates
+          .claude/skills/moai-workflow-testing/SKILL.md:173: - [Smart Refactoring](${CLAUDE_SKILL_DIR}/modules/smart-refactoring.md) — technical-debt analysis + safe transforms
+          .claude/skills/moai-workflow-testing/SKILL.md:174: - [Performance Optimization](${CLAUDE_SKILL_DIR}/modules/performance-optimization.md) — profiling + bottleneck detecti…
+          .claude/skills/moai-workflow-testing/SKILL.md:175: - [Automated Code Review](${CLAUDE_SKILL_DIR}/modules/automated-code-review.md) — TRUST 5 scoring + static analysis
+--- FAIL: TestSkillTreeHasNoClaudeSkillDirToken (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.254s
+FAIL

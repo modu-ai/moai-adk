@@ -1,0 +1,4 @@
+=== RUN   TestSyncSHASlot_SilentOnSHA
+--- PASS: TestSyncSHASlot_SilentOnSHA (2.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	2.441s

@@ -1,0 +1,11 @@
+package alpha
+
+import "testing"
+
+func TestAlphaPasses(t *testing.T) {}
+
+func TestAlphaSkips(t *testing.T) { t.Skip("environment not available") }
+
+func TestAlphaFails(t *testing.T) {
+	t.Errorf("expected 7, got 3")
+}

@@ -1,0 +1,19 @@
+scratch: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/tmp.J7jLhTnC1x
+before injection, Out of Scope headings:
+5
+after injection, Out of Scope headings:
+0
+
+===== pre-fix binary: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t382/bin/moai-pre-t382 =====
+rc=0
+--- MissingExclusions findings + severity histogram ---
+{'code': 'MissingExclusions', 'severity': 'warning', 'advisory': True, 'message': "'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]"}
+severity histogram (severity, advisory): {('warning', True): 3, ('info', False): 1}
+non-advisory ERROR codes (these decide --strict rc): {}
+
+===== post-fix binary: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t382/bin/moai =====
+rc=1
+--- MissingExclusions findings + severity histogram ---
+{'code': 'MissingExclusions', 'severity': 'error', 'advisory': None, 'message': "'Out of Scope' section has no items — minimum one item required"}
+severity histogram (severity, advisory): {('error', False): 1, ('info', False): 1, ('warning', True): 2}
+non-advisory ERROR codes (these decide --strict rc): {'MissingExclusions': 1}

@@ -1,0 +1,15 @@
+== M-A3 recount control + arithmetic, re-derived by the auditor ==
+$ gunzip -c out-b7.txt.gz | shasum -a 256
+15645cb7c6b57263e3cdb4acf6d71e2b5ff47bbccece47d80fad32e3dd084e21  -
+$ gunzip -c out-dev.txt.gz | shasum -a 256
+15645cb7c6b57263e3cdb4acf6d71e2b5ff47bbccece47d80fad32e3dd084e21  -
+(identical => the ~190-commit absorption contributed 0 to lint behaviour)
+
+$ added.txt by code
+  16 CoverageIncomplete
+ 481 ModalityUnjudged
+  81 REQTableRowsRejected
+$ removed.txt by code
+ 237 ModalityMalformed
+
+578 added - 237 removed = 341 = 4757 - 4416

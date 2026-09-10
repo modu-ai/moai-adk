@@ -1,0 +1,5 @@
+--- FAIL: TestVCIOrderingClausePresence (0.00s)
+    vci_ordering_clause_guard_test.go:103: VCI_ORDERING_CLAUSE_MISSING: template-mirror copy of .claude/rules/moai/core/verification-claim-integrity.md carries no "### 2.3 Ordering attribution" heading — the ordering-attribution clause was deleted or retitled. Restore it in BOTH trees (repo copy + internal/template/templates mirror).
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.411s
+FAIL

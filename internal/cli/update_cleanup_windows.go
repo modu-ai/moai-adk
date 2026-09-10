@@ -5,18 +5,20 @@
 // Windows-specific process-liveness probe for SPEC-V3R3-UPDATE-CLEANUP-001
 // stale-lock detection.
 //
-// SPEC-V2.20.0-RC1 hotfix: extracted from update_cleanup.go to fix
-// `syscall.Kill undefined` compile error on the windows/amd64 target.
-// Conservative implementation: always returns true to avoid false-positive
-// stale-lock detection on Windows. Proper Windows-native PID validation
-// (OpenProcess + GetExitCodeProcess) is deferred — see follow-up SPEC.
+// SPEC-V2.20.0RC1 hotfix extracted this file to fix `syscall.Kill undefined`
+// on the windows/amd64 target; the placeholder here reported every PID as
+// alive, which the mcp_server_runtime liveness split and the doctor's
+// dead-record pruning then inherited (t426 windows census axis 2a). The probe
+// now delegates to the shared session implementation (OpenProcess +
+// GetExitCodeProcess).
 
 package cli
 
-// isProcessAlive is conservative on Windows: always returns true to avoid
-// false-positive stale-lock detection. A subsequent SPEC will introduce
-// proper Windows-native PID validation via OpenProcess/GetExitCodeProcess.
+import (
+	"github.com/modu-ai/moai-adk/internal/session"
+)
+
+// isProcessAlive delegates to the shared per-platform probe.
 func isProcessAlive(pid int) bool {
-	_ = pid
-	return true
+	return session.IsProcessAlive(pid)
 }

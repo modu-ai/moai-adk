@@ -25,12 +25,15 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -45,10 +48,15 @@ func init() {
 }
 
 // todoBacklogPath returns the backlog file location under root — the same
-// .moai/state/kanban/backlog.json the todo skill and the dispatch protocol
-// name (REQ-TODO-001). The root itself is resolved by resolveTodoQueueRoot.
+// path the todo skill and the dispatch protocol name (REQ-TODO-001). The root
+// itself is resolved by resolveTodoQueueRoot.
+//
+// This is the ADOPTING form: the `moai todo` command path is where the
+// one-time relocation of the legacy state directory belongs, because it is
+// where the queue lock is already in play (REQ-TOSQ-015). The read-only
+// surfaces — the console, the statusline — use the pure form and move nothing.
 func todoBacklogPath(root string) string {
-	return kanban.BacklogPathForRoot(root)
+	return kanban.BacklogPathForRootAdopting(root)
 }
 
 // resolveTodoQueueRoot returns the directory the backlog queue hangs from
@@ -66,10 +74,112 @@ func resolveTodoQueueRoot() string {
 	return kanban.ResolveTodoQueueRootAdopting(resolveProjectDir())
 }
 
+// warnTempOriginQueueRefusal surfaces the temporary-origin refusal on the
+// COMMAND path (SPEC-TODO-HOME-TEMP-GUARD-001, REQ-THG-006): the queue-root
+// resolution declined to create a home queue under ~/.moai/db because the
+// launch directory lives inside a temporary root, and the run continues
+// against the project-local queue instead.
+//
+// Three things the guidance must carry, because a refusal that reads as a
+// silent success is indistinguishable from the bug it replaced: WHICH temp
+// root matched, WHICH root the run continues against, and that the run is in
+// fact continuing. The exit code is unchanged — refusing the home queue is
+// already the whole of the protection, so failing the command would withdraw
+// working behaviour from every script that runs `moai todo` inside a temp
+// directory without preventing anything further.
+//
+// Silent on every other path, the console included: this is called only from
+// the command's PersistentPreRun, and the pure resolver the web console
+// imports neither writes nor speaks.
+func warnTempOriginQueueRefusal(cmd *cobra.Command) {
+	substitute, matched, refused := kanban.TempOriginRefusal(resolveProjectDir())
+	if !refused {
+		return
+	}
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/db/<project-key>/todo; continuing against the project-local queue at %s\n",
+		matched, substitute)
+}
+
 // newTodoStore is the single constructor every todo verb goes through, so
 // every verb resolves — and sees — the same queue file.
 func newTodoStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
+}
+
+// todoLandedRef is the single place the todo surface resolves the ref the
+// landing question is asked about, so the help text, the flag description, the
+// refusal, and the query itself can never name different refs.
+//
+// It resolves against the SAME root the queue does — the primary checkout —
+// because the queue and the integration branch are properties of one
+// repository, not of whichever worktree the command happens to run in.
+func todoLandedRef() string {
+	return kanban.LandedRefFor(resolveTodoQueueRoot())
+}
+
+// todoLandedRefResolved is todoLandedRef with its provenance: which chain
+// level answered. The `todo done` verdict discloses levels below the
+// configured key (REQ-TLA-011) — a ref the repository supplied through its
+// own recorded default rather than through configuration is the exceptional
+// path, and a silent fallback is exactly how the wrong-ref answer hid.
+func todoLandedRefResolved() (string, kanban.LandedRefLevel) {
+	return kanban.LandedRefForWithLevel(resolveTodoQueueRoot())
+}
+
+// todoRefLevelSource names where a chain level's answer came from, for the
+// disclosure line.
+func todoRefLevelSource(level kanban.LandedRefLevel) string {
+	switch level {
+	case kanban.LandedRefOriginHEAD:
+		return "refs/remotes/origin/HEAD"
+	default:
+		return "the compiled-in default"
+	}
+}
+
+// todoLandedRefOnce resolves the landed ref at most once per process, and only
+// when something actually asks for it.
+//
+// Resolving it eagerly is what made the resolution expensive out of all
+// proportion to its use: cobra builds the WHOLE command tree at process start,
+// so every `moai <anything>` invocation — `moai statusline`, once per render,
+// included — paid a `git rev-parse` for each command that named the ref in its
+// help text, for help it was never going to print. Worse, the root resolution
+// takes the ADOPTING entry point, which can write to the filesystem; that has
+// no business firing on a pure render path.
+var todoLandedRefOnce = sync.OnceValue(todoLandedRef)
+
+// withResolvedLandedRef defers the parts of cmd's help surface that name the
+// landed ref until help is actually rendered, and applies them at most once.
+//
+// The help function is the hook because `--help` returns before RunE, so a
+// PreRun hook would silently drop the resolved ref from the printed text. The
+// usage function is hooked for the same reason on the error path, which prints
+// flag usage without printing help.
+//
+// Both delegate up to the PARENT's function rather than naming a renderer,
+// because the effective one differs between the fang-wrapped binary and the
+// in-process test path; resolving it at call time keeps both intact.
+func withResolvedLandedRef(cmd *cobra.Command, apply func(ref string)) {
+	var once sync.Once
+	resolve := func() { once.Do(func() { apply(todoLandedRefOnce()) }) }
+
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		resolve()
+		if p := c.Parent(); p != nil {
+			p.HelpFunc()(c, args)
+			return
+		}
+		_ = c.Usage()
+	})
+	cmd.SetUsageFunc(func(c *cobra.Command) error {
+		resolve()
+		if p := c.Parent(); p != nil {
+			return p.UsageFunc()(c)
+		}
+		return nil
+	})
 }
 
 // newTodoCmd creates the `moai todo` parent command.
@@ -77,13 +187,14 @@ func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/kanban/backlog.json.
+		Long: `Operate the kanban backlog queue at ~/.moai/db/<project-key>/todo/backlog.db.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
-to and reads the same file the lead and the foreman loop see. A project
-without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.json
-instead.
+to and reads the same store the lead and the foreman loop see. A project
+without git metadata uses the same project-keyed home layout. A backlog.json
+left at the former project-local path is NOT the queue — it is
+an export or a legacy leftover, and its contents can be arbitrarily stale.
 
 The backlog is the operator's queue: entry into the board is the operator's
 act (add), and picking the next card is the operator's act too (next <n>).
@@ -123,17 +234,25 @@ adds any text verbatim.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return runTodoList(cmd, false)
+				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
 			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
 		},
+		// PersistentPreRun fires once per `moai todo ...` invocation, for the
+		// parent and every subcommand alike, which is why the guidance lives
+		// here rather than inside resolveTodoQueueRoot: that helper is called
+		// several times per run (store, landed ref, ...) and would repeat the
+		// notice once per call.
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			warnTempOriginQueueRefusal(cmd)
+		},
 		GroupID: "tools",
 	}
-	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoNextCmd(),
+	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd())
+		newTodoPRCmd(), newTodoLandedCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
 	return cmd
 }
 
@@ -268,11 +387,34 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	return nil
 }
 
+// todoListDefaultLimit is the list render's default bound — the same shape
+// (and value) as the history verb's REQ-TAQ-007 contract: a bounded read is
+// the default, --limit raises or lowers it, --limit 0 lifts it entirely,
+// and a truncated listing states the withheld count on stderr because a
+// truncated read must never be mistaken for a complete one.
+const todoListDefaultLimit = 20
+
 // runTodoList renders the backlog lock-free. It backs both entry points —
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
 // drift apart in output.
-func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
+//
+// The default view renders live cards only (queued + picked) and collapses
+// the dropped set into one count line naming the recovery path: a dropped
+// card never leaves rec.Items, so rendering it forever made the list length
+// diverge from the queue's actual load. `--dropped` renders the discarded
+// set instead — the surface `undrop` needs to find a card and its reason
+// (t153's exact-reversal contract is untouched; only the render filters).
+//
+// The render is bounded at limit rows (t403): an unbounded render pushed the
+// truncation downstream to the reading harness, where rows vanished from the
+// visible output with no withheld count. `--json` ignores the limit — the
+// structured record is the full read, and a bounded JSON would be the same
+// silent truncation.
+func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	store := newTodoStore()
+	// REQ-BJD-002 — probed before the read, because Load adopts (see
+	// todo_disclosure.go). stderr only: stdout is what the foreman reads.
+	_ = discloseQueueLayout(cmd, "todo")
 	rec, err := store.Load()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -291,7 +433,26 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
 	}
+	if limit < 0 {
+		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
+	}
+	var visible []kanban.BacklogItem
+	dropped := 0
 	for _, it := range rec.Items {
+		isDropped := it.State == kanban.BacklogStateDropped
+		if isDropped {
+			dropped++
+		}
+		if isDropped != droppedOnly {
+			continue
+		}
+		visible = append(visible, it)
+	}
+	shown := len(visible)
+	if limit > 0 && limit < shown {
+		shown = limit
+	}
+	for _, it := range visible[:shown] {
 		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
@@ -300,60 +461,207 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 			_, _ = fmt.Fprintln(out, todoFindingLine(rec, it.ID, f))
 		}
 	}
+	if droppedOnly && shown == 0 {
+		_, _ = fmt.Fprintln(out, "no dropped cards")
+		return nil
+	}
+	if !droppedOnly && dropped > 0 {
+		_, _ = fmt.Fprintf(out, "%d dropped (hidden — see: moai todo list --dropped)\n", dropped)
+	}
+	if withheld := len(visible) - shown; withheld > 0 {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"list: %d rows withheld — showing %d of %d (--limit 0 lists all)\n",
+			withheld, shown, len(visible))
+	}
 	return nil
 }
 
-// newTodoListCmd — `moai todo list [--json]` (REQ-TODO-003): render the
-// queue lock-free; --json emits the structured records.
+// newTodoListCmd — `moai todo list [--json] [--dropped] [--limit <n>]`
+// (REQ-TODO-003): render the queue lock-free; --json emits the structured
+// records, --dropped renders the discarded set the default view hides behind
+// a count line, and --limit bounds the row render (0 = unbounded; ignored
+// with --json).
 func newTodoListCmd() *cobra.Command {
 	var jsonOutput bool
+	var droppedOnly bool
+	var limit int
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Render the backlog queue (lock-free)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTodoList(cmd, jsonOutput)
+			return runTodoList(cmd, jsonOutput, droppedOnly, limit)
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false,
 		"Emit the backlog records as JSON on stdout")
+	cmd.Flags().BoolVar(&droppedOnly, "dropped", false,
+		"Render only the dropped cards (the default view hides them behind a count line)")
+	cmd.Flags().IntVar(&limit, "limit", todoListDefaultLimit,
+		"Maximum rows to render (0 = unbounded; ignored with --json)")
 	return cmd
 }
 
-// newTodoDoneCmd — `moai todo done <n>` (REQ-TODO-004): remove the
-// addressed row under the lock. A bare <n> is normalized to the item id
-// t<n>; the explicit id is the preferred form because queue positions move
-// under concurrent adds.
+// newTodoDoneCmd — `moai todo done <n>` (REQ-TODO-004): take the addressed
+// row out of the live queue under the lock. A bare <n> is normalized to the
+// item id t<n>; the explicit id is the preferred form because queue positions
+// move under concurrent adds.
+//
+// The row is ARCHIVED rather than discarded (SPEC-TODO-DESTRUCTIVE-GUARD-001
+// REQ-TDG-003), so `undone` can put it back. `done` keeps its plain meaning —
+// the card leaves the queue and no live reader sees it again — but it is no
+// longer the one destructive verb with no way back.
+//
+// Two opt-in guards refuse INSIDE the mutation callback, so each inherits
+// Mutate's byte-identity-on-refusal contract: `--expect <prefix>` follows the
+// convention `next`, `edit`, `drop` and `undrop` already carry, and
+// `--require-landed` asks the landing question with its limit stated.
 func newTodoDoneCmd() *cobra.Command {
-	return &cobra.Command{
+	var expect string
+	var requireLanded bool
+	cmd := &cobra.Command{
 		Use:   "done <n>",
-		Short: "Remove a card from the backlog queue by id",
+		Short: "Archive a card out of the backlog queue by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			var specID string
+			// Resolved once, up front, so the query, the verdict line, and the
+			// disclosure all name the same ref (todoLandedRef's contract).
+			ref, refLevel := todoLandedRefResolved()
+			// Unknown until a query answers otherwise. Absent the flag no
+			// query runs at all, and `unknown` is the honest report of that.
+			verdict := kanban.LandingUnknown
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-				for i, it := range rec.Items {
-					if it.ID == id {
-						rec.Items = append(rec.Items[:i], rec.Items[i+1:]...)
-						// A finding outliving its subject points at a card
-						// the operator can no longer see, so the card and
-						// every finding naming it leave together.
-						rec.RemoveFindingsNaming(id)
-						return nil
+				// Refused mutations below: Mutate writes nothing, so the
+				// record stays byte-identical on every one of them.
+				at := -1
+				for i := range rec.Items {
+					if rec.Items[i].ID == id {
+						at = i
+						break
 					}
 				}
-				// Refused mutation: Mutate writes nothing, so the file stays
-				// byte-identical on a miss.
-				return fmt.Errorf("no backlog item %s", id)
+				if at < 0 {
+					return fmt.Errorf("no backlog item %s", id)
+				}
+				if rec.Items[at].SpecID != nil {
+					specID = *rec.Items[at].SpecID
+				}
+				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
+					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+						id, todoTextPrefix(rec.Items[at].Text), expect)
+				}
+				if requireLanded {
+					answer, err := todoRequireLanded(cmd, id, ref, refLevel)
+					if err != nil {
+						return err
+					}
+					verdict = answer
+				}
+				return rec.ArchiveCard(id)
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s\n", id)
+			// One line per act, carrying exactly one landing verdict — a second
+			// line would give an operator script two records for one event.
+			// The suffix preserves the `done <id>` prefix every existing
+			// reader keys off. The answering ref is appended (REQ-TLA-010)
+			// only when a landing query actually ran: without the flag no ref
+			// answered, and naming one would dress "the guard did not run" up
+			// as "the guard answered against ref X".
+			if requireLanded {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s ref=%s\n", id, verdict, ref)
+			} else {
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
+			}
+			recordFactoryCardState(id, specID, "completed", "card.completed")
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&expect, "expect", "",
+		"Refuse unless the card text starts with this prefix")
+	cmd.Flags().BoolVar(&requireLanded, "require-landed", false, "")
+	withResolvedLandedRef(cmd, func(landedRef string) {
+		cmd.Long = todoDoneLong(landedRef)
+		cmd.Flags().Lookup("require-landed").Usage =
+			"Refuse unless a commit on " + landedRef + " names the card (opt-in; see --help for its limit)"
+	})
+	return cmd
+}
+
+// todoDoneLong renders `todo done`'s help body against the ref the landing
+// guard will actually ask about. Resolved lazily — see withResolvedLandedRef.
+func todoDoneLong(landedRef string) string {
+	return `Move the addressed card out of the live queue as one locked write.
+
+The card and every finding naming it move into the archive rather than being
+discarded, so ` + "`moai todo undone <n>`" + ` restores both. Archived rows are invisible
+to every live-queue reader (` + "`list`, `next`, `why`, `analyze`" + `, the counts).
+
+` + "`--expect <prefix>`" + ` refuses unless the addressed card's text starts with the
+prefix — the guard against closing the wrong card.
+
+` + "`--require-landed`" + ` refuses unless a commit on ` + landedRef + ` names the card.
+It is OPT-IN and honestly limited: it answers "has anything naming this card
+landed on that ref", NOT "has this card's last step landed", so it cannot tell a
+run commit from a sync commit. Absent the flag no landing query runs at all.
+
+Every successful invocation prints one landing verdict on stdout —
+` + "`done <id> landing=landed|not-landed|unknown`" + `, with ` + "`ref=<answering ref>`" + `
+appended when ` + "`--require-landed`" + ` ran — without the flag no query ran, so
+no ref answered and none is named — and the ` + "`done <id> `" + ` prefix every
+existing reader keys off is preserved. Without the flag the verdict is
+` + "`unknown`" + `, because no query ran: "the guard passed" and "the guard did not
+run" are different facts and no longer the same bytes. When the answering
+ref came from BELOW the configured ` + "`git_strategy.worktree_base_branch`" + ` — the
+repository's own recorded default or the compiled-in fallback — the chain
+level that supplied it is disclosed on stderr; a configured project gets
+no such notice.`
+}
+
+// todoRequireLanded answers the opt-in landing question for id.
+//
+// It refuses ONLY on positive evidence of not-landed, and PROCEEDS when the
+// answer is inconclusive — no git, no such ref, a query error. That asymmetry
+// is the point: the guard exists to catch a card closed before its work
+// shipped, and a guard that also blocked every machine without the ref would
+// be refusing on the absence of evidence rather than on evidence.
+//
+// The limit is stated rather than hidden. The predicate asks whether ANY
+// commit on the ref names the card, so a card whose run commit landed reads as
+// landed even though its sync commit has not — the exact case that motivated
+// this SPEC. Making it answer the right question needs a persisted
+// landing-state field, which is a separate card's scope; this ships the seam
+// and says plainly what it can and cannot answer (spec.md §A.4).
+func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel kanban.LandedRefLevel) (kanban.LandingAnswer, error) {
+	// The answering level is disclosed when it sits BELOW the configured key:
+	// a ref the repository supplied through refs/remotes/origin/HEAD or the
+	// compiled-in default is the exceptional path, and the operator sees the
+	// source rather than inferring it (REQ-TLA-011). A configured project
+	// (level 1) gets no notice — the exceptional path is what the notice
+	// marks, not every path.
+	if refLevel != kanban.LandedRefConfigured {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"note: landed ref %s was supplied by chain level %d (%s) — this project does not configure git_strategy.worktree_base_branch\n",
+			ref, refLevel, todoRefLevelSource(refLevel))
+	}
+	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: ref}
+	answer, err := q.Landed(id)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"note: --require-landed could not answer for %s against %s (%v) — proceeding, because an unanswerable query is not evidence of not-landed\n",
+			id, q.LandedRef(), err)
+		return kanban.LandingUnknown, nil
+	}
+	if answer == kanban.LandingNotLanded {
+		return answer, fmt.Errorf("backlog item %s is named by no commit on %s — --require-landed refuses "+
+			"(the check asks whether anything naming the card has landed on that ref, not whether the card's last step has)",
+			id, q.LandedRef())
+	}
+	return answer, nil
 }
 
 // newTodoNextCmd — `moai todo next [<n>] [--spec <SPEC-ID>]` (REQ-TODO-005).
@@ -427,6 +735,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
+			recordFactoryCardState(id, specID, "picked", "card.assigned")
 			_, _ = fmt.Fprintf(out, "picked %s %s\n", id, todoTextPrefix(pickedText))
 			return nil
 		},
@@ -472,10 +781,26 @@ func newTodoUnpickCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
+			recordFactoryCardState(id, "", "queued", "card.unpicked")
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "unpicked %s %s\n", id, todoTextPrefix(text))
 			return nil
 		},
 	}
+}
+
+func recordFactoryCardState(cardID, specID, state, eventKind string) {
+	runID := os.Getenv(config.EnvMoaiKanbanID)
+	if runID == "" || os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
+		return
+	}
+	owner := os.Getenv(config.EnvMoaiFactoryWorker)
+	if owner == "" {
+		owner = "lead"
+	}
+	// Queue mutations resolve through the primary checkout, but provenance must
+	// describe the lane checkout that actually selected and executed the card.
+	// OpenFactory canonicalizes only the DB routing after capture.
+	_ = kanban.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit

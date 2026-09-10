@@ -1,7 +1,6 @@
 ---
 spec_id: SPEC-EVALLIB-001
 version: 1.0.0
-status: backfilled
 created_at: 2026-04-24
 author: manager-spec (backfill)
 backfill_reason: |

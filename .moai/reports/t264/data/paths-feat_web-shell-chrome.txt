@@ -1,0 +1,13 @@
+internal/web/assets/app.js
+internal/web/assets/console.css
+internal/web/assets/i18n.js
+internal/web/i18n_untranslated_allowlist_test.go
+internal/web/render_helpers.go
+internal/web/screen_chrome_test.go
+internal/web/screens.go
+internal/web/screens.templ
+internal/web/screens_templ.go
+internal/web/shell.templ
+internal/web/shell_templ.go
+internal/web/widgets.templ
+internal/web/widgets_templ.go

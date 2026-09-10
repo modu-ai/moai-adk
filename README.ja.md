@@ -77,7 +77,7 @@ moai cc -f lane-1             # レーン 1 本、各自別ターミナルで
 moai glm -f lane-3            # …GLM バックエンドのレーンも同じ形
 ```
 
-レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。どの番号を誰が握っているかは `.moai/state/factory/workers.json` に記録され、残った claim もそこで片づける。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。`moai cg` はファクトリーモードを拒否する。
+レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。`moai cg` はファクトリーモードを拒否する。
 
 > 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -338,7 +338,7 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 すべてのバックエンドは fail-open だ — GLM（`~/.moai/.env.glm`）と codex（`~/.codex/auth.json`）はオプションであり、利用不能なバックエンドは `inconclusive` を返すだけで hard error ではない。
 
-デュアルハーネス（`moai init --agent codex|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
+Codex を有効にしたハーネス（`moai init --llm codex|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
 
 > 詳しくは: [MCP サーバー・ガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ja/claude-code/extensibility/mcp)
 
@@ -408,10 +408,10 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
 ### moai web コンソール
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと 11 個の設定タブ" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Codex・Agents・Report・MCP・Cross-Session・Feedback・Quality Gate の 14 タブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -736,6 +736,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッドのセッション |
+| `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |
@@ -745,8 +746,8 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |
-| `moai clean [--home]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付ける。既定は dry-run で、`--force` を与えて初めて実際に消す |
-| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、11 タブ設定 |
+| `moai clean [--home] [--codex-skills]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付け、`--codex-skills` を付けると `~/.codex/config.toml` から、宣言されたパスが不在と証明された `[[skills.config]]` 登録を削除する。スコープは一度に一つだけ。既定は dry-run で、`--force` を与えて初めて実際に消す |
+| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、14 タブ設定 |
 
 > 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 

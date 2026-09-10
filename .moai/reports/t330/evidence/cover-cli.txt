@@ -1,0 +1,1 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	300.387s	coverage: 79.8% of statements

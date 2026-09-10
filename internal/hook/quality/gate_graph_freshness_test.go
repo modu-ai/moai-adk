@@ -136,9 +136,9 @@ func TestGateGraphFreshness_FreshNoticeBeforeLanguageDetection(t *testing.T) {
 	}
 }
 
-// gfStampAllLayers stamps an IN-SYNC state for all three graph layers on the
-// fixture — mirrors the CLI fixture's stampAllLayers (graph_check_test.go):
-// codemaps provenance at HEAD, mx sidecar over the fixture's own file
+// gfStampAllLayers stamps an IN-SYNC state for all graph layers on the
+// fixture — codemaps provenance at HEAD (plus a citation-free codemaps doc
+// for the fourth, citations layer), mx sidecar over the fixture's own file
 // inventory, and an edges meta stamped against the CURRENT source
 // fingerprints (order matters — the mx sidecar write must precede the
 // fingerprint computation or the edges layer reads back stale).
@@ -160,6 +160,14 @@ func gfStampAllLayers(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), pvJSON, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The citations layer (fourth row, SPEC-CODEMAPS-ACCURACY-001 REQ-CMA-002)
+	// judges the codemaps docs themselves — a doc-less directory is
+	// unjudgeable-absent, not fresh (mirrors writeCodemapsProvenance in
+	// internal/graph/check_test.go). No cited paths in the doc, so the
+	// citations row reads fresh.
+	if err := os.WriteFile(filepath.Join(cmDir, "modules.md"), []byte("# modules\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,8 +198,9 @@ func gfStampAllLayers(t *testing.T, root string) {
 }
 
 // REQ-GFR-002 / CR round-2 3855002099 — the all-fresh posture: a fixture
-// with ALL THREE layers stamped in sync passes carrying the LITERAL fresh
-// notice (gate.go:1216 "graph-freshness: all layers fresh"), not merely any
+// with ALL layers (graph layers plus the citations row, REQ-CMA-002)
+// stamped in sync passes carrying the LITERAL fresh
+// notice (gate.go "graph-freshness: all layers fresh"), not merely any
 // "graph-freshness" substring — the other postures (stale/disabled) also
 // contain the substring, so only the literal distinguishes fresh.
 func TestGateGraphFreshness_AllLayersFreshNotice(t *testing.T) {

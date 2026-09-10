@@ -106,7 +106,7 @@ moai goal clear                         # 删除条件 (结束循环)
 - 必需后端之间出现分裂 → 保守的 `FAIL` 并设 `disagreement_flag`。
 - 与仅建议性后端的冲突 → `PASS` 并设 `disagreement_flag`。
 
-分歧通过 `ConvergenceResult` 的 `disagreement_flag` 和 `residual_risk_note` 显露, 其本身绝不会硬性阻断流程。独立性由结构保证。次级展开 goroutine 只接收 `(target, focus, model, effort)`, 绝不接收 `claude_verdict`。因此 codex 与 GLM 给出的是不相关的第二意见, 而非被污染的再采样。故障开放双向成立。缺失或未认证的可选后端返回 `VerdictInconclusive` 并回落到 claude, 永远不会变成硬错误。
+分歧通过 `ConvergenceResult` 的 `disagreement_flag` 和 `residual_risk_note` 显露, 其本身绝不会硬性阻断流程。`disagreement_flag` 与 `participant_count`(给出可比较 `pass`/`fail` 判定的后端数)相配合取三值: `true` = 观测到分歧(含单一参与者自身合成中的分歧), `false` = 两个及以上参与者比较后无分歧, `null` = 参与者不足两个, 一致与不一致都无法成立。独立性由结构保证。次级展开 goroutine 只接收 `(target, focus, model, effort)`, 绝不接收 `claude_verdict`。因此 codex 与 GLM 给出的是不相关的第二意见, 而非被污染的再采样。故障开放双向成立。缺失或未认证的可选后端返回 `VerdictInconclusive` 并回落到 claude, 永远不会变成硬错误。
 
 ### `moai hook multi-review-gate` Stop 钩子
 

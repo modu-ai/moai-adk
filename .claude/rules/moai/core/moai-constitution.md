@@ -8,6 +8,7 @@ MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoA
 
 Rules:
 - Delegate implementation tasks to specialized agents
+- A factory lane or kanban companion session is an orchestrator for its card: the delegation duty and the matching spawn authority bind it identically — it spawns the Status Transition Ownership Matrix's specialist for the stage at hand (depth-1 only) and never edits phase-owned artifacts directly (see `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority)
 - [ZONE:Frozen] [HARD] AskUserQuestion is the sole user-facing question channel, used ONLY by the MoAI orchestrator (subagents must never prompt users); all preload (`ToolSearch(query: "select:AskUserQuestion")` before each call), Socratic-interview, and option-standard mechanics live in the canonical reference below
 - Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` § Channel Monopoly / § ToolSearch Preload Procedure / § Socratic Interview Structure / § Option Description Standards
 
@@ -148,9 +149,16 @@ Rules:
 Capture and reuse learnings from user corrections and agent failures across sessions.
 
 - When the user corrects agent behavior, capture the pattern in auto-memory as a topic file — one
-  fact per `feedback_*.md` under `~/.claude/projects/{project-hash}/memory/`, indexed by
-  `MEMORY.md`. That convention is the single designated lesson store; the legacy `lessons.md` is
-  superseded.
+  fact per `feedback_*.md` in the project's auto-memory store (resolve it with
+  `moai memory doctor`), indexed by `MEMORY.md`. That convention is the single designated lesson
+  store; the legacy `lessons.md` is superseded.
+- [ZONE:Evolvable] [HARD] **A long index never justifies dropping a lesson.** Write the topic file
+  **and** its `MEMORY.md` index line — both, always. Not "write the file, skip the index line": a
+  topic file loads on demand and is found only through the index, so an unindexed one is
+  unreachable, not merely unlisted. Not "skip the lesson": that loss is permanent and silent. If
+  the index must shrink, make entries shorter, never fewer — see
+  `.claude/rules/moai/workflow/moai-memory.md` § MEMORY.md Index Budget, which states no loading
+  limit and tells you to measure with `moai memory doctor` instead of estimating.
 - Each entry records category, the incorrect pattern, the correct approach, and the date. Review
   the relevant ones before starting work in the same domain.
 - Lessons are additive: never overwrite one — append corrections as updates, and supersede by

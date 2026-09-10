@@ -1,0 +1,66 @@
+=== RUN   TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003
+=== RUN   TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/claude_only_(spec_§A.2_case_3)
+=== RUN   TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/claude_pass_+_two_inconclusive_(spec_§A.2_case_1)
+=== RUN   TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/empty_verdict_slice
+--- PASS: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003 (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/claude_only_(spec_§A.2_case_3) (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/claude_pass_+_two_inconclusive_(spec_§A.2_case_1) (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/empty_verdict_slice (0.00s)
+=== RUN   TestConverge_TwoMeasuredInputs_DerivedSummaryDiffers_AC_APC_004
+--- PASS: TestConverge_TwoMeasuredInputs_DerivedSummaryDiffers_AC_APC_004 (0.00s)
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/a:_no_entries
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/b:_claude_required=pass
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/c:_claude_required=pass_+_codex/glm_advisory_inconclusive
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/d:_codex_advisory=pass_+_glm_advisory=pass
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/e:_claude_required=pass_+_codex_required=fail
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/f:_claude/codex_required_pass_+_glm_advisory_pass
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/g:_claude_required=pass_+_codex_gate-OFF_pass
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/h:_claude_required=inconclusive_+_codex_required=inconclusive
+=== RUN   TestConverge_ParticipantCount_Table_AC_APC_001/empty_slice:_null_flag_+_vacuous_pass_(acceptance_§B)
+--- PASS: TestConverge_ParticipantCount_Table_AC_APC_001 (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/a:_no_entries (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/b:_claude_required=pass (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/c:_claude_required=pass_+_codex/glm_advisory_inconclusive (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/d:_codex_advisory=pass_+_glm_advisory=pass (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/e:_claude_required=pass_+_codex_required=fail (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/f:_claude/codex_required_pass_+_glm_advisory_pass (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/g:_claude_required=pass_+_codex_gate-OFF_pass (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/h:_claude_required=inconclusive_+_codex_required=inconclusive (0.00s)
+    --- PASS: TestConverge_ParticipantCount_Table_AC_APC_001/empty_slice:_null_flag_+_vacuous_pass_(acceptance_§B) (0.00s)
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/claude_only_(spec_§A.2_case_3)
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/claude_pass_+_two_inconclusive_(spec_§A.2_case_1)
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/empty_verdict_slice
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/all_entries_inconclusive_(acceptance_§B)
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/RequiredFailWithInconclusive_(measured_count_1_—_the_one_existing_case_whose_asserted_false_becomes_null)
+=== RUN   TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/DQ-2_refusal_(zero_participants)
+--- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002 (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/claude_only_(spec_§A.2_case_3) (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/claude_pass_+_two_inconclusive_(spec_§A.2_case_1) (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/empty_verdict_slice (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/all_entries_inconclusive_(acceptance_§B) (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/RequiredFailWithInconclusive_(measured_count_1_—_the_one_existing_case_whose_asserted_false_becomes_null) (0.00s)
+    --- PASS: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/DQ-2_refusal_(zero_participants) (0.00s)
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/AllRequiredPass_(measured_3,_false)
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/AllRequiredFail_(measured_2,_false)
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/NoRequiredBackends_VacuousPass_(measured_2,_false_—_the_inclusive_boundary)
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/RequiredSplit_(measured_3,_true)
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/AdvisoryOnlyConflict_(measured_3,_true)
+=== RUN   TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/DisagreementAdvisoryNotBlock_(measured_2,_true)
+--- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005 (0.00s)
+    --- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/AllRequiredPass_(measured_3,_false) (0.00s)
+    --- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/AllRequiredFail_(measured_2,_false) (0.00s)
+    --- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/NoRequiredBackends_VacuousPass_(measured_2,_false_—_the_inclusive_boundary) (0.00s)
+    --- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/RequiredSplit_(measured_3,_true) (0.00s)
+    --- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/AdvisoryOnlyConflict_(measured_3,_true) (0.00s)
+    --- PASS: TestConverge_TwoOrMore_BooleanUnchanged_AC_APC_005/DisagreementAdvisoryNotBlock_(measured_2,_true) (0.00s)
+=== RUN   TestConverge_Undetermined_GatesNothing_AC_APC_006
+--- PASS: TestConverge_Undetermined_GatesNothing_AC_APC_006 (0.00s)
+=== RUN   TestLoadConvergenceResult_OldStateFile_Decodes_AC_APC_007
+--- PASS: TestLoadConvergenceResult_OldStateFile_Decodes_AC_APC_007 (0.00s)
+=== RUN   TestConverge_SingleParticipantDivergence_CarveOut_AC_APC_008
+--- PASS: TestConverge_SingleParticipantDivergence_CarveOut_AC_APC_008 (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.062s

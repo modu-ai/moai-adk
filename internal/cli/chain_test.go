@@ -47,12 +47,12 @@ func TestChainStatus(t *testing.T) {
 	dir := setupChainTestDir(t)
 	populateChainLedger(t, dir, []chain.ChainEvent{
 		{
-			EventType:   chain.EventNodeEnter,
-			NodeID:      "N1",
+			EventType:    chain.EventNodeEnter,
+			NodeID:       "N1",
 			WorktreePath: dir,
 			SpecID:       "SPEC-AUTH-001",
 			Milestone:    "M2",
-			Depth:       1,
+			Depth:        1,
 			EnteredAt:    "2026-08-13T10:00:00Z",
 			ResumeTarget: "Continue M2",
 		},
@@ -108,11 +108,11 @@ func TestChainBack(t *testing.T) {
 			ResumeCommand: "/moai run SPEC-AUTH-001",
 		},
 		{
-			EventType:   chain.EventNodeEnter,
-			NodeID:      "N2",
+			EventType:    chain.EventNodeEnter,
+			NodeID:       "N2",
 			WorktreePath: dir,
 			ParentNodeID: "N1",
-			Depth:       2,
+			Depth:        2,
 		},
 	})
 	t.Setenv(config.EnvChainNodeID, "N2")
@@ -245,9 +245,9 @@ func TestChainFlagAgnostic(t *testing.T) {
 // TestClassifyStaleness verifies the staleness classification logic.
 func TestClassifyStaleness(t *testing.T) {
 	entries := []struct {
-		name     string
+		name      string
 		sessionID string
-		expected nodeStaleness
+		expected  nodeStaleness
 	}{
 		{"empty_session", "", stalenessExited},
 		{"not_in_registry", "unknown-sess", stalenessExited},

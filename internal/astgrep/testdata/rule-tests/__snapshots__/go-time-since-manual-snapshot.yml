@@ -1,0 +1,11 @@
+id: go-time-since-manual
+snapshots:
+  ? |
+    elapsed := time.Now().Sub(startedAt)
+  : fixed: |
+      elapsed := time.Since(startedAt)
+    labels:
+    - source: time.Now().Sub(startedAt)
+      style: primary
+      start: 11
+      end: 36

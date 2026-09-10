@@ -1,0 +1,3 @@
+.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/acceptance.md
+.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/plan.md
+.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/spec.md

@@ -1,0 +1,10 @@
+error: the branch 'WT-lead-batch-push' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D WT-lead-batch-push'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+error: the branch 'WT-web-i18n-keys' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D WT-web-i18n-keys'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+error: the branch 'WT-doctor-codex-check' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D WT-doctor-codex-check'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+Deleted branch worktree-factory-mode (was b56f5dbc2).

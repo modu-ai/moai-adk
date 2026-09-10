@@ -1,0 +1,102 @@
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✗ Error: L1:FAIL L2:FAIL L3:FAIL L4:FAIL L5:FAIL L6:FAIL
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                                                                                                                                    │
+│  System Diagnostics                                                                                                                                                                                                                                                │
+│  System ---                                                                                                                                                                                                                                                        │
+│    STATUS  CHECK         MESSAGE                                                                                                                                                                                                                                   │
+│    ok      Go Runtime    go 1.26.4 (darwin/arm64)                                                                                                                                                                                                                  │
+│    ok      Git           git version 2.50.1 (Apple Git-155)                                                                                                                                                                                                        │
+│    ok      Claude Code   2.1.257 (Claude Code)                                                                                                                                                                                                                     │
+│    ok      GitHub CLI    gh version 2.92.0 (2026-04-28)                                                                                                                                                                                                            │
+│    ok      ast-grep CLI  ast-grep 0.40.5                                                                                                                                                                                                                           │
+│    5 ok, 0 warn, 0 fail                                                                                                                                                                                                                                            │
+│                                                                                                                                                                                                                                                                    │
+│  MoAI-ADK ---                                                                                                                                                                                                                                                      │
+│    STATUS  CHECK                  MESSAGE                                                                                                                                                                                                                          │
+│    ok      MoAI Config            configuration directory found                                                                                                                                                                                                    │
+│    ok      Claude Config          Claude Code configuration found                                                                                                                                                                                                  │
+│    ok      MoAI Version           moai-adk v3.1.2                                                                                                                                                                                                                  │
+│    warn    Binary Freshness       binary is behind source tree (binary: 64bba61aa, HEAD: 58fbc3b5e)                                                                                                                                                                │
+│    ok      MCP Scope Duplicates   4 project, 0 global MCP servers — no duplicates                                                                                                                                                                                  │
+│    ok      MCP Server Version     no running moai MCP server recorded                                                                                                                                                                                              │
+│    ok      Agent Emit Embed       skipped: no readable binary to judge at /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t429/bin/moai — 11 committed artifacts unjudged; build one with `make build` or aim the check elsewhere with MOAI_EMBED_CHECK_BIN=<path>  │
+│    ok      Constitution Registry  registry OK — 101 entries (57 Frozen, 44 Evolvable)                                                                                                                                                                              │
+│    fail    Harness 5-Layer        L1:FAIL L2:FAIL L3:FAIL L4:FAIL L5:FAIL L6:FAIL                                                                                                                                                                                  │
+│    ok      Migration              current version 0                                                                                                                                                                                                                │
+│    ok      Plugin Deployment      no plugin marker (binary-managed)                                                                                                                                                                                                │
+│    ok      Home Disk Usage        ~/.moai 6.0G (claude-profiles 5.5G, backups 361.8M, releases 139.4M) — cleanable ~64B; ~/.claude 1.5G (report-only)                                                                                                              │
+│    10 ok, 1 warn, 1 fail                                                                                                                                                                                                                                           │
+│                                                                                                                                                                                                                                                                    │
+│  Workspace ---                                                                                                                                                                                                                                                     │
+│    STATUS  CHECK                 MESSAGE                                                                                                                                                                                                                           │
+│    ok      Hooks Config          hook handlers directory found                                                                                                                                                                                                     │
+│    ok      Hook opt-in:          enabled                                                                                                                                                                                                                           │
+│    ok      Slash Commands        2 command file(s) registered                                                                                                                                                                                                      │
+│    ok      Skills Allowlist      44 skill(s) verified                                                                                                                                                                                                              │
+│    ok      MX Tag Config         MX tag configuration present                                                                                                                                                                                                      │
+│    ok      Worktree State        worktree state directory found                                                                                                                                                                                                    │
+│    ok      Worktree Base Branch  refs/remotes/origin/HEAD names develop, matching git_strategy.worktree_base_branch                                                                                                                                                │
+│    ok      BODP Config           BODP audit trail directory found                                                                                                                                                                                                  │
+│    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                                                                                                                          │
+│    warn    Glamour Cache         glamour not integrated                                                                                                                                                                                                            │
+│    ok      Codex Wiring          not wired (claude-only project) — skipped                                                                                                                                                                                         │
+│    9 ok, 2 warn, 0 fail                                                                                                                                                                                                                                            │
+│                                                                                                                                                                                                                                                                    │
+│   Pass 24    Warn 3    Fail 1                                                                                                                                                                                                                                      │
+│                                                                                                                                                                                                                                                                    │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

@@ -1,0 +1,57 @@
+=== RUN   TestCheckCodemaps_Absent
+=== RUN   TestCheckCodemaps_Absent/1_codemaps_directory_missing
+=== RUN   TestCheckCodemaps_Absent/2_provenance_file_missing
+=== RUN   TestCheckCodemaps_Absent/3_provenance_unparseable
+=== RUN   TestCheckCodemaps_Absent/4_described_root_invalid
+=== RUN   TestCheckCodemaps_Absent/5_dirty_path,_roots_unreadable
+=== RUN   TestCheckCodemaps_Absent/6_clean_stamp_carries_no_commit_sha
+=== RUN   TestCheckCodemaps_Absent/7_stamped_commit_not_comparable
+--- PASS: TestCheckCodemaps_Absent (2.63s)
+    --- PASS: TestCheckCodemaps_Absent/1_codemaps_directory_missing (0.37s)
+    --- PASS: TestCheckCodemaps_Absent/2_provenance_file_missing (0.36s)
+    --- PASS: TestCheckCodemaps_Absent/3_provenance_unparseable (0.37s)
+    --- PASS: TestCheckCodemaps_Absent/4_described_root_invalid (0.37s)
+    --- PASS: TestCheckCodemaps_Absent/5_dirty_path,_roots_unreadable (0.36s)
+    --- PASS: TestCheckCodemaps_Absent/6_clean_stamp_carries_no_commit_sha (0.40s)
+    --- PASS: TestCheckCodemaps_Absent/7_stamped_commit_not_comparable (0.40s)
+=== RUN   TestCheckCodemaps_Contribution
+=== RUN   TestCheckCodemaps_Contribution/inheriting_merge_contributes_nothing_while_the_cumulative_is_red
+=== RUN   TestCheckCodemaps_Contribution/no_first_parent_reports_the_contribution_absent,_never_0
+--- PASS: TestCheckCodemaps_Contribution (1.73s)
+    --- PASS: TestCheckCodemaps_Contribution/inheriting_merge_contributes_nothing_while_the_cumulative_is_red (1.19s)
+    --- PASS: TestCheckCodemaps_Contribution/no_first_parent_reports_the_contribution_absent,_never_0 (0.55s)
+=== RUN   TestCheckCodemaps_DrivingPaths
+=== RUN   TestCheckCodemaps_DrivingPaths/over_the_display_bound,_the_listing_truncates_and_declares_the_overflow
+=== RUN   TestCheckCodemaps_DrivingPaths/under_the_display_bound,_every_driving_path_is_listed_and_nothing_is_omitted
+--- PASS: TestCheckCodemaps_DrivingPaths (1.09s)
+    --- PASS: TestCheckCodemaps_DrivingPaths/over_the_display_bound,_the_listing_truncates_and_declares_the_overflow (0.52s)
+    --- PASS: TestCheckCodemaps_DrivingPaths/under_the_display_bound,_every_driving_path_is_listed_and_nothing_is_omitted (0.57s)
+=== RUN   TestCheckCodemaps_BareRestampStaysStale
+    check_restamp_anchor_test.go:96: verdict = "fresh", want "stale" — a bare re-stamp over an untouched body must not buy a green gate
+    check_restamp_anchor_test.go:99: value = 0, want >= threshold 40 — the window must start at the body's last change, not at the stamp
+    check_restamp_anchor_test.go:102: content_anchor_source = "", want "last-body-change"
+    check_restamp_anchor_test.go:105: content_anchor = "", want the body commit "9099bad04eae4d11389ef899164feec029fcb32d"
+--- FAIL: TestCheckCodemaps_BareRestampStaysStale (0.88s)
+=== RUN   TestCheckCodemaps_UncommittedRegenerationIsFresh
+    check_restamp_anchor_test.go:139: content_anchor = "", want the stamped sha "f8d7f9112dbcc6b9fff5824bd0b95aca592b5b2a"
+    check_restamp_anchor_test.go:142: content_anchor_source = "", want "working-tree-differs-from-stamp"
+--- FAIL: TestCheckCodemaps_UncommittedRegenerationIsFresh (0.87s)
+=== RUN   TestCheckCodemaps_CommittedRegenerationIsFresh
+    check_restamp_anchor_test.go:176: content_anchor = "", want the regeneration commit "cd3464271d8c1090fb780e915977a81191a110c8"
+    check_restamp_anchor_test.go:179: content_anchor_source = "", want "last-body-change"
+--- FAIL: TestCheckCodemaps_CommittedRegenerationIsFresh (1.02s)
+=== RUN   TestCheckCodemaps_RuleBAnchorIsAncestorOfStamp
+    check_restamp_anchor_test.go:203: fixture did not resolve via rule B: source = ""
+--- FAIL: TestCheckCodemaps_RuleBAnchorIsAncestorOfStamp (0.89s)
+=== RUN   TestCheckCodemaps_UnresolvableAnchorIsAbsentPlusError
+    check_restamp_anchor_test.go:232: an unresolvable anchor must surface a system error, got verdict "fresh" value 0
+--- FAIL: TestCheckCodemaps_UnresolvableAnchorIsAbsentPlusError (0.74s)
+=== RUN   TestCheckCodemaps_UntrackedBodyResolvesViaRuleA
+    check_restamp_anchor_test.go:271: content_anchor = "", want the stamped sha "200cb40793d7db425b87f45782a8faeb571570fc" (rule A)
+    check_restamp_anchor_test.go:274: content_anchor_source = "", want "working-tree-differs-from-stamp"
+--- FAIL: TestCheckCodemaps_UntrackedBodyResolvesViaRuleA (0.52s)
+=== RUN   TestCheckCodemaps_DirtyPathCarriesNoAnchor
+--- PASS: TestCheckCodemaps_DirtyPathCarriesNoAnchor (0.40s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	11.302s
+FAIL

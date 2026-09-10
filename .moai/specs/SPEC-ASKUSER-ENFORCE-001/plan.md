@@ -1,7 +1,6 @@
 ---
 id: SPEC-ASKUSER-ENFORCE-001
 version: "1.0.0"
-status: draft
 created: "2026-04-25"
 updated: "2026-04-25"
 author: GOOS

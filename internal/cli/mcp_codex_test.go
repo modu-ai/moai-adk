@@ -235,6 +235,18 @@ func TestCodexAudit_AdversarialDispatchesTurnStart(t *testing.T) {
 	if !strContains(sess.sent[2], codexMethodTurnStart) {
 		t.Errorf("3rd request must be %q; got %s", codexMethodTurnStart, sess.sent[2])
 	}
+	// SPEC-CODEX-REVIEW-TARGET-001 AC-CRT-007. This was the ONLY codex test in
+	// the repository holding the string `baseBranch`, and it asserted nothing
+	// about it: turn/start carries no target at all, so the argument above was
+	// inert — a `baseBranch` that was never on the wire could not fail however
+	// malformed the review/start path was. Assert the fact that makes it inert,
+	// so the argument stops looking like coverage it never provided. The native
+	// baseBranch target shape is pinned in codex_review_target_test.go.
+	turnReq := sentRequest(t, sess.sent[2])
+	turnParams, _ := turnReq["params"].(map[string]any)
+	if _, has := turnParams["target"]; has {
+		t.Errorf("adversarial mode must not serialize a target (turn/start declares none); params=%v", turnParams)
+	}
 	if !jsonResultHasVerict(res, "fail") {
 		t.Errorf("adversarial result must surface verdict fail")
 	}
@@ -310,12 +322,19 @@ func TestCodexTools_Registered(t *testing.T) {
 }
 
 func TestCodexSetup_GoProbeNoNodeBridge(t *testing.T) {
+	// Isolate stage 1 (empty CODEX_HOME ⇒ no auth.json ⇒ descend) and feed the
+	// status line through the login-status seam — without isolation the
+	// developer's real auth.json decides auth_provider, so the assertion below
+	// would track the machine's login state instead of the probe under test.
+	t.Setenv("CODEX_HOME", t.TempDir())
 	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
 	withCodexRunner(t, &fakeCodexRunner{
 		stdoutByCmd: map[string]string{
-			"--version":    "codex 1.2.3\n",
-			"login status": "Logged in to ChatGPT via OAuth\n",
+			"--version": "codex 1.2.3\n",
 		},
+	})
+	withCodexLoginStatusRunner(t, func(_ context.Context, _ string) ([]byte, []byte, int, error) {
+		return nil, []byte("Logged in using ChatGPT\n"), 0, nil // field-observed channel: stderr
 	})
 
 	res, err := handleCodexSetup(context.Background(), mcp.CallToolRequest{
@@ -458,26 +477,38 @@ func TestRealCodexRunner_HappyAndError(t *testing.T) {
 	}
 }
 
-// TestClassifyCodexAuth_Branches covers each auth-provider classification arm.
+// TestClassifyCodexAuth_Branches covers each auth-provider classification arm
+// through the two-stage ladder (SPEC-CODEX-LAUNCHER-001 M1). CODEX_HOME is
+// isolated to an empty temp dir so stage 1 finds no auth.json and every case
+// reaches the stage-2 probe — without isolation the developer's real auth.json
+// short-circuits the ladder and the result follows the machine, not the case.
 func TestClassifyCodexAuth_Branches(t *testing.T) {
+	t.Setenv("CODEX_HOME", t.TempDir())
 	cases := map[string]string{
-		"Logged in to ChatGPT":             codexAuthChatGPT,
-		"Auth mode: API key (sk-...)":      codexAuthAPIKey,
-		"Configured custom provider 'foo'": codexAuthProvider,
+		// Whole-line grammar positives — the two classification arms (REQ-CL-009).
+		"Logged in using ChatGPT": codexAuthChatGPT,
+		"Logged in using API key": codexAuthAPIKey,
+		// Substring-era lines the whole-line grammar deliberately rejects: a
+		// line merely CONTAINING a provider term never classifies.
+		"Logged in to ChatGPT":             codexAuthUnknown,
+		"Auth mode: API key (sk-...)":      codexAuthUnknown,
+		"Configured custom provider 'foo'": codexAuthUnknown,
 		"":                                 codexAuthUnknown,
 		"something unrecognized":           codexAuthUnknown,
 	}
 	for out, want := range cases {
-		// drive classifyCodexAuth via the runner seam returning the canned stdout.
-		withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-		withCodexRunner(t, &fakeCodexRunner{stdout: out}) // "" ⇒ the out=="" arm → unknown
+		// drive classifyCodexAuth via the login-status seam returning the canned stdout.
+		withCodexLoginStatusRunner(t, func(_ context.Context, _ string) ([]byte, []byte, int, error) {
+			return []byte(out), nil, 0, nil // "" ⇒ no grammar line ⇒ unknown
+		})
 		if got := classifyCodexAuth(context.Background(), "/fake/codex"); got != want {
 			t.Errorf("classifyCodexAuth(%q) = %q, want %q", out, got, want)
 		}
 	}
-	// error arm: runner returns err ⇒ unknown.
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{err: errFakeCodexCrash})
+	// error arm: probe runner returns err ⇒ unknown (an unreadable probe is a gap).
+	withCodexLoginStatusRunner(t, func(_ context.Context, _ string) ([]byte, []byte, int, error) {
+		return nil, nil, -1, errFakeCodexCrash
+	})
 	if got := classifyCodexAuth(context.Background(), "/fake/codex"); got != codexAuthUnknown {
 		t.Errorf("classifyCodexAuth on runner error = %q, want %q", got, codexAuthUnknown)
 	}
@@ -517,5 +548,139 @@ func TestReadCodexReviewGateEnabled_ConfigBranches(t *testing.T) {
 	// empty projectDir ⇒ false
 	if readCodexReviewGateEnabled("") {
 		t.Errorf("empty projectDir ⇒ want false")
+	}
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M2 (REQ-CTG-002 / AC-CTG-002) ───────────────
+
+// TestCodexIDMatches is the 5-arm table over codexIDMatches, the JSON-RPC id
+// discriminator between awaitCodexResponse and everything else on the wire:
+// a notification (no id) must miss, an integer id must match exactly, a
+// string id must match through the strconv arm, and input that unmarshals as
+// neither number nor string must miss rather than panic or match.
+func TestCodexIDMatches(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  json.RawMessage
+		want int
+		hit  bool
+	}{
+		{"empty raw is a miss (notification)", nil, 7, false},
+		{"integer id match", json.RawMessage("7"), 7, true},
+		{"integer id mismatch", json.RawMessage("8"), 7, false},
+		{"string id match (strconv arm)", json.RawMessage(`"7"`), 7, true},
+		{"malformed — neither number nor string", json.RawMessage(`[7]`), 7, false},
+	}
+	for _, tc := range cases {
+		if got := codexIDMatches(tc.raw, tc.want); got != tc.hit {
+			t.Errorf("%s: codexIDMatches(%s, %d) = %t, want %t", tc.name, tc.raw, tc.want, got, tc.hit)
+		}
+	}
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M3 (REQ-CTG-003 / AC-CTG-003) ───────────────
+
+// TestAwaitCodexResponse pins the context-cancel return of the read loop: a
+// canceled context must come back AS the context error — not as a match, not
+// as the stdout-closed EOF error — even when the connection still has
+// non-matching noise lines buffered.
+func TestAwaitCodexResponse(t *testing.T) {
+	sent := []string{}
+	conn := &fakeCodexConn{
+		lines: []string{
+			`{"method":"turn/started","params":{"threadId":"tid-fake"}}`,
+			`{"id":99,"result":{"other":"request"}}`,
+		},
+		sent: &sent,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	msg, err := awaitCodexResponse(conn, 1, ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("awaitCodexResponse with a canceled context = (msg %+v, err %v), want the context.Canceled error", msg, err)
+	}
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M5 (REQ-CTG-007 / AC-CTG-007) ───────────────
+
+// TestCodexSessionError pins the delegation contract of codexSessionError,
+// constructed through the production fail-open shape (codexHandshakeFailure):
+// Error() defers verbatim to the cause (the operator sees codex's words, not
+// our summary), Unwrap reaches the cause, and both errors.Is and errors.As
+// traverse the wrap. The summary is preserved on the struct for callers that
+// need the fail-open framing.
+func TestCodexSessionError(t *testing.T) {
+	cause := errors.New("codex initialize write failed: broken pipe")
+	err := codexHandshakeFailure(&fakeCodexConn{}, "codex initialize rejected", cause)
+	if err == nil {
+		t.Fatal("codexHandshakeFailure returned a nil error")
+	}
+	if err.Error() != cause.Error() {
+		t.Errorf("Error() = %q, want the cause verbatim %q", err.Error(), cause.Error())
+	}
+	if unwrapped := errors.Unwrap(err); unwrapped != cause {
+		t.Errorf("Unwrap() = %v, want the cause itself", unwrapped)
+	}
+	if !errors.Is(err, cause) {
+		t.Error("errors.Is must reach the cause through the wrap")
+	}
+	var se *codexSessionError
+	if !errors.As(err, &se) {
+		t.Fatal("errors.As must reach *codexSessionError through the wrap")
+	}
+	if se.summary != "codex initialize rejected" {
+		t.Errorf("summary = %q, want the fail-open framing preserved on the struct", se.summary)
+	}
+	if se.cause != cause {
+		t.Errorf("cause field = %v, want the construction cause", se.cause)
+	}
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M6 (REQ-CTG-012 / AC-CTG-012) ───────────────
+
+// TestRealCodexConnPid covers the 3-branch pid read directly, same package,
+// no subprocess: nil cmd → 0, cmd without a Process → 0, and a Process from
+// os.FindProcess(os.Getpid()) → that pid. The nil arms are a disjunction —
+// cmd == nil must short-circuit before cmd.Process is dereferenced
+// (acceptance.md §D.1).
+func TestRealCodexConnPid(t *testing.T) {
+	if got := (&realCodexConn{}).pid(); got != 0 {
+		t.Errorf("pid on a zero conn = %d, want 0", got)
+	}
+	if got := (&realCodexConn{cmd: &exec.Cmd{}}).pid(); got != 0 {
+		t.Errorf("pid with cmd but no Process = %d, want 0", got)
+	}
+	self, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatalf("FindProcess(os.Getpid()): %v", err)
+	}
+	if got := (&realCodexConn{cmd: &exec.Cmd{Process: self}}).pid(); got != os.Getpid() {
+		t.Errorf("pid with a live Process = %d, want %d", got, os.Getpid())
+	}
+}
+
+// ─── SPEC-CODEX-COVER-RESIDUAL-001 M2 (REQ-CCR-005 / AC-CCR-006) ──────────
+
+// TestCodexSessionHandlePid covers the 3-branch pid read on the session handle
+// directly, same package, no subprocess: a nil receiver → 0, a handle with a
+// nil conn → 0, and a handle whose conn is a fakeCodexConn → fakeCodexConnPID.
+//
+// It is the sibling of TestRealCodexConnPid above — the same 3-arm nil-guard
+// shape on the other receiver — and the nil arms are likewise a disjunction:
+// h == nil MUST short-circuit before h.conn is dereferenced, or the typed-nil
+// call panics rather than returning 0.
+//
+// Constructing &fakeCodexConn{} with a nil sent field is safe here: pid() reads
+// no field of the conn beyond the interface dispatch, and send is never called.
+func TestCodexSessionHandlePid(t *testing.T) {
+	if got := (*codexSessionHandle)(nil).pid(); got != 0 {
+		t.Errorf("pid on a nil handle = %d, want 0", got)
+	}
+	if got := (&codexSessionHandle{}).pid(); got != 0 {
+		t.Errorf("pid on a handle with no conn = %d, want 0", got)
+	}
+	if got := (&codexSessionHandle{conn: &fakeCodexConn{}}).pid(); got != fakeCodexConnPID {
+		t.Errorf("pid with a process-bearing conn = %d, want %d", got, fakeCodexConnPID)
 	}
 }

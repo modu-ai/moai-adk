@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-BOARD-001
 title: "Research — measurements underlying the six-column kanban board model"
 version: "0.6.0"
-status: draft
 created: 2026-08-10
 updated: 2026-08-14
 author: manager-spec

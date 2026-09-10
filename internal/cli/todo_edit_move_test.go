@@ -9,7 +9,6 @@
 package cli
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -40,15 +39,11 @@ func todoOrder(t *testing.T, store *kanban.BacklogStore) []string {
 	return ids
 }
 
-// readBacklogBytes returns the raw queue file, for byte-identity assertions
-// on refused mutations.
+// readBacklogBytes returns the queue's stored record in canonical document
+// form, for invariance assertions on refused mutations.
 func readBacklogBytes(t *testing.T, root string) []byte {
 	t.Helper()
-	raw, err := os.ReadFile(todoBacklogPath(root))
-	if err != nil {
-		t.Fatalf("read backlog: %v", err)
-	}
-	return raw
+	return queueStateBytes(t, todoBacklogPath(root))
 }
 
 func TestTodoEdit_RewritesTextPreservingIdentity(t *testing.T) {

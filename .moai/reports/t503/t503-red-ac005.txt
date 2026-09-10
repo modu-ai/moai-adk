@@ -1,0 +1,7 @@
+--- FAIL: TestCollisionRefused (0.00s)
+    emit_test.go:69: Emit succeeded over a colliding name; want refusal diagnostic
+--- FAIL: TestCollisionRefusedReportsAllCollisions (0.00s)
+    emit_test.go:94: Emit succeeded over two colliding names; want refusal
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/commandemit	0.158s
+FAIL

@@ -1,0 +1,5 @@
+--- FAIL: TestVersionSyncListNamesOnlyExistingPaths (0.00s)
+    version_sync_list_test.go:91: version-sync list names a path that does not exist: docs-site/NOPE-sync-mutant.toml
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.061s
+FAIL

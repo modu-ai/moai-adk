@@ -25,6 +25,12 @@ type UsageRecord struct {
 	IsTestPass bool   `json:"is_test_pass,omitempty"` // 이진 증거: test-pass 관측됨
 	IsTestFail bool   `json:"is_test_fail,omitempty"` // 이진 증거: test-fail 관측됨
 	PathKind   string `json:"path_kind,omitempty"`    // "docs-only" | "code-change" (빈 값 = 추론)
+
+	// --- 신규 (SPEC-SELECTOR-CENSUS-001, omitempty, backward-compatible) ---
+	// 0개를 실행한 테스트 러너 호출을 양성으로 기록한다. 기록이 사라지는 것과
+	// 판정이 멈춘 것을 구별하기 위한 필드다 — IsTestPass/IsTestFail 이 둘 다
+	// false 인 상태는 "신호 없음"과 "0-실행"을 가르지 못한다.
+	IsZeroExecution bool `json:"is_zero_execution,omitempty"`
 }
 
 // Path-kind 버킷 상수 (design.md §2.2 taxonomy; CLAUDE.local §14 하드코딩 금지).

@@ -158,6 +158,55 @@ func TestResolveSessionPID_PrefersEnvOverride(t *testing.T) {
 	}
 }
 
+// TestResolveOwnerPID_Precedence pins the exported seam's three outcomes
+// (card t298): the env stamp wins, the ancestry walk answers next, and an
+// unresolvable owner is reported AS unresolvable rather than papered over with
+// os.Getpid(). The third row is the one that matters — a caller whose record
+// outlives its own process needs to know it did not find an owner, because
+// recording this process's pid there is the integration-lock defect.
+func TestResolveOwnerPID_Precedence(t *testing.T) {
+	t.Run("env stamp wins", func(t *testing.T) {
+		const override = 8250
+		withFakeAncestry(t,
+			map[int]fakeProcess{os.Getpid(): {ppid: 9999, comm: "moai"}, 9999: {ppid: 1, comm: "claude"}},
+			map[int]bool{override: true, 9999: true},
+		)
+		t.Setenv(config.EnvMoaiSessionPID, "8250")
+
+		pid, ok := ResolveOwnerPID()
+		if !ok || pid != override {
+			t.Errorf("ResolveOwnerPID = (%d, %v), want (%d, true)", pid, ok, override)
+		}
+	})
+
+	t.Run("ancestry answers when no stamp", func(t *testing.T) {
+		const owner = 9999
+		withFakeAncestry(t,
+			map[int]fakeProcess{os.Getpid(): {ppid: owner, comm: "moai"}, owner: {ppid: 1, comm: "claude"}},
+			map[int]bool{owner: true},
+		)
+		t.Setenv(config.EnvMoaiSessionPID, "")
+
+		pid, ok := ResolveOwnerPID()
+		if !ok || pid != owner {
+			t.Errorf("ResolveOwnerPID = (%d, %v), want (%d, true)", pid, ok, owner)
+		}
+	})
+
+	t.Run("unresolvable reports zero, never os.Getpid()", func(t *testing.T) {
+		withFakeAncestry(t, map[int]fakeProcess{}, map[int]bool{})
+		t.Setenv(config.EnvMoaiSessionPID, "")
+
+		pid, ok := ResolveOwnerPID()
+		if ok || pid != 0 {
+			t.Errorf("ResolveOwnerPID = (%d, %v), want (0, false)", pid, ok)
+		}
+		if pid == os.Getpid() {
+			t.Error("ResolveOwnerPID fell back to os.Getpid(); that fallback belongs to the registry alone")
+		}
+	})
+}
+
 // TestResolveSessionPID_FallsBackToSelf covers the unsupported-platform path:
 // with no override and no readable ancestry, the resolver keeps the
 // pre-existing behavior rather than recording nothing.

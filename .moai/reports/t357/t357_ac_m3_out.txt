@@ -1,0 +1,18 @@
+HEAD=cb473a1a4
+BASE_M3=30b8e3fef  baseline_N=393
+--- AC-AST-001-06 (D1 residual across the whole corpus) ---
+D1 remaining (whole corpus) = 0
+AC-06 PASS
+--- AC-AST-001-07 (D1 not D2: only status lines removed, none missed) ---
+removed lines total:      393   (baseline N = 393)
+removed non-status lines: 0
+AC-07 PASS
+--- AC-AST-001-08 (spec.md / progress.md untouched) ---
+cleanup-target files in range = 393
+no spec.md/progress.md touched: AC-08 PASS
+--- AC-AST-001-09 (rule registered AND residual 0, together) ---
+rule_matches=2 d1_remaining=0
+AC-09 PASS
+--- AC-AST-001-10 (out-of-scope axes untouched) ---
+tier edits=0  status additions=0
+AC-10 PASS

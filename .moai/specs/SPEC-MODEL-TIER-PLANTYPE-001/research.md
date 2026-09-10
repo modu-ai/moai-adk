@@ -2,7 +2,6 @@
 id: SPEC-MODEL-TIER-PLANTYPE-001
 title: "Research — GLM backend reasoning-control & effort-collapse design"
 version: "0.3.1"
-status: completed
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec

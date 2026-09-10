@@ -1,0 +1,10 @@
+=== RUN   TestPrecommitE2EDefaultAllowsUnrelatedCommit
+--- PASS: TestPrecommitE2EDefaultAllowsUnrelatedCommit (0.92s)
+=== RUN   TestPrecommitE2EOptInBlocksAndGuides
+--- PASS: TestPrecommitE2EOptInBlocksAndGuides (0.51s)
+=== RUN   TestPrecommitE2EExplicitOptOutAllowsCommit
+--- PASS: TestPrecommitE2EExplicitOptOutAllowsCommit (0.55s)
+=== RUN   TestPrecommitE2ENoMoaiOnPathPasses
+--- PASS: TestPrecommitE2ENoMoaiOnPathPasses (0.42s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.303s

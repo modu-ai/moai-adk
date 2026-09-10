@@ -115,18 +115,18 @@ func TestCWDCollisionResolution(t *testing.T) {
 	wtPath := "/tmp/wt-collision"
 	// Two nodes, same worktree_path, different session_id.
 	_ = s.Append(ChainEvent{
-		EventType:   EventNodeEnter,
-		NodeID:      "node-A",
+		EventType:    EventNodeEnter,
+		NodeID:       "node-A",
 		WorktreePath: wtPath,
-		SessionID:   "sess-A",
-		Depth:       1,
+		SessionID:    "sess-A",
+		Depth:        1,
 	})
 	_ = s.Append(ChainEvent{
-		EventType:   EventNodeEnter,
-		NodeID:      "node-B",
+		EventType:    EventNodeEnter,
+		NodeID:       "node-B",
 		WorktreePath: wtPath,
-		SessionID:   "sess-B",
-		Depth:       1,
+		SessionID:    "sess-B",
+		Depth:        1,
 	})
 
 	// Resolve by (worktree_path, session_id_A) → node-A.
@@ -199,10 +199,10 @@ func TestSpawnBoundaryNodeCreation(t *testing.T) {
 	// Parent at depth 1.
 	parentChain := []string{"N0", "N1"}
 	_ = s.Append(ChainEvent{
-		EventType:   EventNodeEnter,
-		NodeID:      "N1",
+		EventType:    EventNodeEnter,
+		NodeID:       "N1",
 		ParentNodeID: "N0",
-		Depth:       1,
+		Depth:        1,
 		OriginChain:  parentChain,
 	})
 
@@ -210,10 +210,10 @@ func TestSpawnBoundaryNodeCreation(t *testing.T) {
 	childChain := append([]string{}, parentChain...)
 	childChain = append(childChain, "N2")
 	_ = s.Append(ChainEvent{
-		EventType:   EventNodeEnter,
-		NodeID:      "N2",
+		EventType:    EventNodeEnter,
+		NodeID:       "N2",
 		ParentNodeID: "N1",
-		Depth:       2,
+		Depth:        2,
 		OriginChain:  childChain,
 	})
 
@@ -250,11 +250,11 @@ func TestSessionIDBackfill(t *testing.T) {
 
 	// Phase 1: skeleton node-enter with session_id="".
 	_ = s.Append(ChainEvent{
-		EventType:   EventNodeEnter,
-		NodeID:      "N1",
-		SessionID:   "",
+		EventType:    EventNodeEnter,
+		NodeID:       "N1",
+		SessionID:    "",
 		WorktreePath: "/tmp/wt-1",
-		Depth:       1,
+		Depth:        1,
 	})
 
 	// Phase 2: node-update backfills session_id.

@@ -1,0 +1,7 @@
+CLAUDE.local.md
+internal/hook/session_start.go
+internal/hook/session_start_kanban.go
+internal/hook/session_start_kanban_i18n.go
+internal/hook/session_start_kanban_i18n_test.go
+internal/hook/session_start_kanban_surface_test.go
+internal/hook/session_start_kanban_test.go

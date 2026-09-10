@@ -1,0 +1,10 @@
+id: go-error-ignored-blank
+snapshots:
+  ? |
+    _, res = produce()
+    use(res)
+  : labels:
+    - source: _, res = produce()
+      style: primary
+      start: 0
+      end: 18

@@ -25,11 +25,22 @@ layout:
 # Optional-field emission switches. A false switch means the field is omitted
 # from every emitted TOML (Codex default inheritance).
 fields:
-  # model: omitted on all 11 agents in v1 (R-011). P-03 MEASURED: an omitted
-  # model key registers and delegates (inherits the subagent default); an
-  # arbitrary bogus model string is silently accepted at parse — emitting a
-  # Claude alias would be accepted-but-wrong, so omission is the only safe
-  # choice. manager-git's "sonnet" pin is a documented drop below.
+  # model: omitted on all 11 agents in v1 (R-011). P-03 MEASURED (codex-cli
+  # 0.147.0): an omitted model key registers and delegates (inherits the
+  # subagent default); an arbitrary bogus model string is silently accepted
+  # at parse — emitting a Claude alias would be accepted-but-wrong, so
+  # omission is the only safe choice. Re-confirmed and strengthened on
+  # codex-cli 0.153.4: the agent-file model is precedence-winning over BOTH
+  # the parent default and the [agents] table default (tag-pinned docs;
+  # agent_role_config.rs flattens ConfigToml per-role), so an emitted pin
+  # becomes a dual-source hazard; valid model ids are never enumerated and
+  # churn per release (0.153.4 adds "Astra", #42874); and open-bug #32587
+  # shows the documented precedence is itself unstable (desktop app ignores
+  # the agent-file model). Flipping fields.model.emit today is inert:
+  # renderTOML (writer.go:87-155) has no model branch and the validator
+  # (manifest.go:126-137) ignores unknown fields keys — a real flip = a new
+  # writer branch + validator work + the AC-009 no-model golden inversion.
+  # manager-git's "sonnet" pin is a documented drop below.
   model:
     emit: false
   # model_reasoning_effort: identity mapping, P-02 MEASURED (codex-cli
@@ -80,6 +91,7 @@ tool_classes:
   DesignSync: design-sync
   SendMessage: cross-session-messaging
   ListAgents: cross-session-messaging
+  AskUserQuestion: question-channel
   mcp__moai__: moai-mcp
 
 # Per-class dispositions — every semantic class carries exactly one, with
@@ -114,12 +126,39 @@ classes:
       The Claude task-tool family has no known Codex equivalent; body prose
       degrades gracefully (workflows fall back to prose reporting).
   - class: skill-loader
-    disposition: deferred-m1
+    disposition: documented-drop
     rationale: >-
-      skills.config value set is unmeasured and M1 owns skills
-      canonicalization to .agents/skills; M5 emits no skills field. When M1
-      lands this row switches from deferred to an emission rule without any
-      M5 artifact change.
+      Refreshed on codex-cli 0.153.4 (tag-pinned skills_config.rs): the
+      per-role SkillConfig shape is {path?, name?, enabled} — an
+      enable/disable OVERRIDE of already-discovered skills, not a grant —
+      and enabled is required (t504 MEASURED at global scope: a missing
+      enabled hard-fails every codex invocation, rc=1). t505 probes P4-P7
+      MEASURED (0.153.4, isolated CODEX_HOME, zero model calls): an
+      agent-TOML model, a bogus model, and skills.config both with and
+      without enabled are ALL silent on codex debug prompt-input +
+      doctor --json, so the value set stays unobservable and the
+      ship-omitted rule still applies under either reading ("not read" vs
+      "read leniently"). Measured on codex-cli 0.152.1 (retained finding,
+      t452 m2-verdict.md:142): an agent-role skills key is not
+      observable at all on the non-interactive path, so the ship-omitted rule
+      applies and no skills field is emitted. Probes ran in an isolated /tmp
+      project with an isolated CODEX_HOME. codex debug prompt-input renders
+      the skill roots table but never the project agent roles; a session
+      asked to print the spawn_agent tool schema returned one carrying no
+      role-selection parameter; and two controls placed in turn at
+      .codex/agents/moai/ and at .codex/agents/ — a known-bad sandbox_mode,
+      the field this manifest records as producing a visible "Ignoring
+      malformed agent role definition" on the earlier measured version, and a
+      syntactically invalid TOML — both left codex exec silent at exit 0. A
+      parser cannot silently accept invalid TOML, so the project agent-role
+      directory is unread on that path and the value set is unobservable
+      rather than merely unconfirmed. Session skill loading itself IS
+      confirmed on this version (the roots table lists the project
+      .agents/skills), so this drop is about the per-agent grant, not about
+      skills reaching a session. Re-probe when an observable agent-role
+      surface exists; the top-level codex_measured_version deliberately still
+      names the earlier version, which is the one the fields above were
+      measured against.
   - class: subagent-spawn
     disposition: documented-drop
     rationale: >-
@@ -140,6 +179,17 @@ classes:
       server-level moai-mcp grant — manager-lead already carries
       mcp__moai__* tokens, so its TOML grants the server; the deputy's
       cross-session messaging doctrine lives in the agent body prose.
+  - class: question-channel
+    disposition: documented-drop
+    rationale: >-
+      Covers the Claude question channel: the AskUserQuestion tool and any
+      future tokens naming that channel. Measured on codex-cli 0.150.1 probes:
+      told to invoke the question tool, codex reported it unavailable and
+      substituted a prose question; its own request_user_input tool errors
+      "unavailable in Default mode" under the approval-never mode the project
+      launcher runs. No per-agent agent-TOML carrier exists; the AGENTS.md
+      capability-binding table directs the substitute behavior — return a
+      blocker report instead of asking the user directly.
   - class: moai-mcp
     disposition: emit-field
     field: mcp_servers
@@ -164,6 +214,11 @@ classes:
     rationale: >-
       The model field is omitted for all 11 agents in v1 (R-011): a Claude
       alias is not a Codex model id, so emitting it would be a guess.
+      codex-cli 0.153.4 strengthens the judgment: the agent-file model is
+      precedence-winning over both the parent and [agents] defaults, valid
+      model ids churn per release (#42874), and open-bug #32587 leaves the
+      documented semantics unstable — see the fields.model comment above
+      for the full evidence set.
   - class: frontmatter-hooks
     disposition: documented-drop
     rationale: >-
@@ -187,7 +242,10 @@ documented_drops:
     rationale: >-
       manager-git pins the Claude alias "sonnet"; a Claude alias is not a
       Codex model id. Its cost intent already travels via effort: low, so the
-      TOML omits model entirely.
+      TOML omits model entirely. codex-cli 0.153.4: a Codex-side pin would
+      additionally be precedence-winning over both the parent and [agents]
+      defaults (dual-source hazard) against per-release model-id churn
+      (#42874) — see the fields.model comment above.
   - id: per-tool-mcp-filtering
     rationale: >-
       Codex exposes an MCP server's tools as a unit; restricting which of the
@@ -212,6 +270,63 @@ documented_drops:
     rationale: >-
       memory scope, color, and permissionMode are Claude session/UI state
       with no Codex equivalent.
+
+  # Judgment record — the global [agents] config.toml table (t505; this is
+  # the explicit t494 A1 overturn carrier). codex-cli 0.153.4 MEASURED
+  # per-key type map (.moai/reports/t505/probe-01534.md; isolated
+  # CODEX_HOME per cell, zero model calls; wrong-typed controls went red by
+  # design, so the schema check is alive):
+  #   enabled: bool, default true — emitting true is a no-op; false would
+  #     un-register the 11 moai agents.
+  #   max_threads: usize — legacy alias of max_concurrent_threads_per_session
+  #     (both parse); no moai codex resource policy exists, and limits
+  #     written into a user-editable config.toml are invasive.
+  #   max_concurrent_threads_per_session: usize — same grounds.
+  #   max_depth: source-only (V1-unstable surface); no moai policy to carry.
+  #   default_subagent_model: string — a SECOND precedence-winning model
+  #     source (dual-source hazard, same shape as fields.model) and
+  #     session-global.
+  #   default_subagent_reasoning_effort: string — no-op for moai: all 11
+  #     agents already carry per-agent model_reasoning_effort via the P-02
+  #     identity map, which overrides the global default.
+  #   interrupt_message: BOOL, default true — the docs' name implies a
+  #     message string; MEASURED docs-schema mismatch (string value rc=1
+  #     "invalid type: string, expected a boolean"; bool value rc=0).
+  #   job_max_runtime_seconds: no-op per the source.
+  #   unknown flat keys: parsed as ROLE entries (struct AgentRoleToml,
+  #     measured P3) — [agents] is both a settings table and a role
+  #     registration map; a wrong-typed KNOWN key bricks codex startup
+  #     rc=1 (measured P2/B3b/B6).
+  #   [agents.<name>] {config_file, description}: role registration —
+  #     redundant with .codex/agents/ auto-discovery (t91 P-04 MEASURED).
+  # Overturn record: t494 candidate A1 (.moai/reports/t494/
+  # codex-doc-survey.md:266, section 5(d)) recommended ADOPTING this table
+  # (default_subagent_model / default_subagent_reasoning_effort /
+  # max_concurrent_threads_per_session) on a documentation read that
+  # PREDATES the measured type map and the dual-source semantics. That
+  # recommendation is OVERTURNED on the measured evidence above: every key
+  # A1 named fails the wire test. Never re-adopt silently; re-measure at
+  # the deciding codex version first (the schema churns per release).
+  - id: codex-global-agents-table
+    rationale: >-
+      The global [agents] config.toml table is NOT wired. Per-key judgment
+      (codex-cli 0.153.4 type map in the comment block above): enabled is a
+      no-op or, flipped, a de-registration hazard; the thread-cap keys
+      would write limits into a user-editable file moai has no policy for;
+      default_subagent_model is a second precedence-winning model source
+      (dual-source hazard, session-global); default_subagent_reasoning_effort
+      is a no-op against moai's per-agent effort keys; interrupt_message is
+      a measured docs-schema mismatch (bool, not a message string). Parsing
+      is strict — a wrong-typed known key bricks codex startup rc=1 — and
+      unknown flat keys parse as role entries, not settings. Role
+      registration ([agents.<name>]) is redundant with .codex/agents/
+      auto-discovery (t91 P-04). Wiring would also add a third merge
+      surface into .codex/config.toml (alongside EnsureMCPTable /
+      EnsureStatusLine, internal/codexwiring/configtoml.go) with new
+      idempotence obligations. This record EXPLICITLY OVERTURNS t494
+      candidate A1 (codex-doc-survey.md:266), which recommended adopting
+      the table on a documentation read predating the measured type map
+      and the dual-source semantics.
 
 # The server-level MCP grant emitted as a TOML table on every agent carrying
 # mcp__moai__* tools. Shape measured on codex-cli 0.147.0 (the array form is

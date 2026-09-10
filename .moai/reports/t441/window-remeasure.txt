@@ -1,0 +1,15 @@
+--- FAIL: TestCatalogHashParity (0.06s)
+    catalog_hash_test.go:192: CATALOG_HASH_DRIFT: entry "sync-auditor" | stored=f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0 | computed=545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f (source=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t441/internal/template/templates/.claude/agents/moai/sync-auditor.md) — run gen-catalog-hashes.go --all to refresh
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	71.091s
+--- FAIL: TestManifestHashFormat (0.09s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: sync-auditor stored hash=f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0, computed hash=545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f (source=.claude/agents/moai/sync-auditor.md)
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	28.839s
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    golden_test.go:109: .codex/agents/moai/sync-auditor.toml: committed artifact differs from emission (sha256 mismatch) — regenerate or stop hand-editing
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit	0.991s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+FAIL

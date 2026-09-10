@@ -1,0 +1,33 @@
+=== INV-122 full
+CLAUDE.local.md
+.moai/specs/SPEC-AGENT-PARALLEL-OPT-001/progress.md
+.moai/specs/SPEC-AGENT-PARALLEL-OPT-001/spec.md
+.moai/specs/SPEC-AGENT-PARALLEL-OPT-001/acceptance.md
+.moai/specs/SPEC-V3R6-DEV-HARNESS-SPLIT-001/progress.md
+.moai/specs/SPEC-V3R6-DEV-HARNESS-SPLIT-001/spec.md
+.moai/specs/SPEC-CLOCAL-AUDIT-001/plan.md
+.moai/specs/SPEC-HNS-PREFIX-RENAME-001/spec.md
+.moai/specs/SPEC-HNS-PREFIX-RENAME-001/plan.md
+.moai/docs/dev-only-commands-isolation.md
+.moai/docs/harness-namespace-doctrine.md
+.moai/reports/t308/claims-inventory.md
+internal/template/split_namespace_test.go
+=== INV-107 catalog
+268
+--- lsp.yaml langs
+=== INV-138 loadGLMKey body
+func loadGLMKey() string {
+	return glmcred.Load()
+}
+
+// escapeDotenvValue / unescapeDotenvValue delegate to glmcred. Retained as
+// thin wrappers because the existing internal/cli test suite (glm_new_test,
+// coverage_improvement_test, target_coverage_test, glm_test) calls them
+// directly; repointing every call site would be a no-op change that risks
+// breaking test compilation.
+func escapeDotenvValue(value string) string   { return glmcred.EscapeValue(value) }
+func unescapeDotenvValue(value string) string { return glmcred.UnescapeValue(value) }
+
+// getGLMAPIKey returns the GLM API key from multiple sources.
+=== INV-136 coding-standards content
+11:All instruction documents must be in English:

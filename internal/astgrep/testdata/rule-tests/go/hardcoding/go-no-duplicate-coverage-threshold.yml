@@ -1,0 +1,9 @@
+# Test pair for the duplicated coverage-threshold rule. The valid sample
+# references a shared constant instead of redefining the value locally.
+id: go-no-duplicate-coverage-threshold
+valid:
+  - |
+    const limit = policy.MinCoverage
+invalid:
+  - |
+    const minLimit = 85.0

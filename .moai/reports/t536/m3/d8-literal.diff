@@ -1,0 +1,454 @@
+diff --git a/internal/config/defaults.go b/internal/config/defaults.go
+index 45809dd55..20ba81f28 100644
+--- a/internal/config/defaults.go
++++ b/internal/config/defaults.go
+@@ -1101,6 +1101,7 @@ func defaultInterviewConfig() InterviewConfig {
+ 			MaxRounds:         3,
+ 			QuestionsPerRound: 3,
+ 		},
++		RecommendationMode: "push",
+ 		SkipConditions: []string{
+ 			"resume_spec_id_present",
+ 			"skip_interview_flag",
+diff --git a/internal/config/interview_recommendation_mode_test.go b/internal/config/interview_recommendation_mode_test.go
+new file mode 100644
+index 000000000..964dbd0e4
+--- /dev/null
++++ b/internal/config/interview_recommendation_mode_test.go
+@@ -0,0 +1,125 @@
++package config
++
++import (
++	"os"
++	"path/filepath"
++	"testing"
++)
++
++// writeInterviewFile writes a minimal interview.yaml carrying the given
++// recommendation_mode value into t.TempDir() and returns its path.
++func writeInterviewFile(t *testing.T, modeLine string) string {
++	t.Helper()
++	content := "interview:\n  enabled: true\n  clarity_threshold: 4\n" + modeLine
++	path := filepath.Join(t.TempDir(), "interview.yaml")
++	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
++		t.Fatalf("setup: %v", err)
++	}
++	return path
++}
++
++// TestRecommendationModeDefaultIsPush pins the distributed default: absent key
++// resolves to push, and defaultInterviewConfig carries the explicit push value.
++// Maps to: REQ-JFM-001, REQ-JFM-002, REQ-JFM-004; AC-JFM-002/003 companions.
++func TestRecommendationModeDefaultIsPush(t *testing.T) {
++	def := defaultInterviewConfig()
++	if def.RecommendationMode != "push" {
++		t.Errorf("defaultInterviewConfig().RecommendationMode: want \"push\", got %q", def.RecommendationMode)
++	}
++	if got := def.ResolvedRecommendationMode(); got != "push" {
++		t.Errorf("default resolved mode: want \"push\", got %q", got)
++	}
++
++	path := writeInterviewFile(t, "")
++	cfg, err := LoadInterviewConfig(path)
++	if err != nil {
++		t.Fatalf("LoadInterviewConfig(absent key): unexpected error: %v", err)
++	}
++	if cfg.RecommendationMode != "" {
++		t.Errorf("RecommendationMode on file without the key: want \"\", got %q", cfg.RecommendationMode)
++	}
++	if got := cfg.ResolvedRecommendationMode(); got != "push" {
++		t.Errorf("resolved mode on file without the key: want \"push\", got %q", got)
++	}
++}
++
++// TestRecommendationModePullRoundTrip verifies that a section file setting
++// recommendation_mode: pull resolves to pull through the loader.
++// Maps to: REQ-JFM-001, REQ-JFM-003; AC-JFM-003.
++func TestRecommendationModePullRoundTrip(t *testing.T) {
++	path := writeInterviewFile(t, "  recommendation_mode: pull\n")
++	cfg, err := LoadInterviewConfig(path)
++	if err != nil {
++		t.Fatalf("LoadInterviewConfig(pull): unexpected error: %v", err)
++	}
++	if cfg.RecommendationMode != "pull" {
++		t.Errorf("RecommendationMode: want \"pull\", got %q", cfg.RecommendationMode)
++	}
++	if got := cfg.ResolvedRecommendationMode(); got != "pull" {
++		t.Errorf("resolved mode: want \"pull\", got %q", got)
++	}
++}
++
++// TestRecommendationModeExplicitPushIsPush verifies the explicit push value
++// round-trips and resolves to push.
++// Maps to: REQ-JFM-001, REQ-JFM-002.
++func TestRecommendationModeExplicitPushIsPush(t *testing.T) {
++	path := writeInterviewFile(t, "  recommendation_mode: push\n")
++	cfg, err := LoadInterviewConfig(path)
++	if err != nil {
++		t.Fatalf("LoadInterviewConfig(push): unexpected error: %v", err)
++	}
++	if got := cfg.ResolvedRecommendationMode(); got != "push" {
++		t.Errorf("resolved mode: want \"push\", got %q", got)
++	}
++}
++
++// TestRecommendationModeUnrecognizedFallsBackToPush verifies the REQ-JFM-003
++// triple on a bogus value: the load succeeds, the resolved mode is push, and
++// the unrecognized value is recorded verbatim rather than discarded.
++// Maps to: REQ-JFM-003; AC-JFM-002.
++func TestRecommendationModeUnrecognizedFallsBackToPush(t *testing.T) {
++	path := writeInterviewFile(t, "  recommendation_mode: bogus\n")
++	cfg, err := LoadInterviewConfig(path)
++	if err != nil {
++		t.Fatalf("LoadInterviewConfig(bogus): unexpected error (REQ-JFM-003 requires the load to succeed): %v", err)
++	}
++	if cfg.RecommendationMode != "bogus" {
++		t.Errorf("RecommendationMode: want verbatim \"bogus\", got %q", cfg.RecommendationMode)
++	}
++	if got := cfg.ResolvedRecommendationMode(); got != "push" {
++		t.Errorf("resolved mode: want \"push\" fallback, got %q", got)
++	}
++}
++
++// TestRecommendationModeEmptyFallsBackToPush verifies the empty-string value
++// behaves like absence (REQ-JFM-002 names empty alongside absent and push).
++// Maps to: REQ-JFM-002.
++func TestRecommendationModeEmptyFallsBackToPush(t *testing.T) {
++	path := writeInterviewFile(t, "  recommendation_mode: \"\"\n")
++	cfg, err := LoadInterviewConfig(path)
++	if err != nil {
++		t.Fatalf("LoadInterviewConfig(empty): unexpected error: %v", err)
++	}
++	if got := cfg.ResolvedRecommendationMode(); got != "push" {
++		t.Errorf("resolved mode on empty value: want \"push\", got %q", got)
++	}
++}
++
++// TestRecommendationModeCaseIsLiteral verifies the axis is exactly the two
++// literal values push/pull: "Pull" is unrecognized and falls back to push with
++// its value recorded verbatim (no case normalization).
++// Maps to: REQ-JFM-001, REQ-JFM-003.
++func TestRecommendationModeCaseIsLiteral(t *testing.T) {
++	path := writeInterviewFile(t, "  recommendation_mode: Pull\n")
++	cfg, err := LoadInterviewConfig(path)
++	if err != nil {
++		t.Fatalf("LoadInterviewConfig(Pull): unexpected error: %v", err)
++	}
++	if cfg.RecommendationMode != "Pull" {
++		t.Errorf("RecommendationMode: want verbatim \"Pull\", got %q", cfg.RecommendationMode)
++	}
++	if got := cfg.ResolvedRecommendationMode(); got != "push" {
++		t.Errorf("resolved mode: want \"push\" fallback for unrecognized case, got %q", got)
++	}
++}
+diff --git a/internal/config/testdata/shipped_key_inventory.yaml b/internal/config/testdata/shipped_key_inventory.yaml
+index 20172d9dd..898ac7229 100644
+--- a/internal/config/testdata/shipped_key_inventory.yaml
++++ b/internal/config/testdata/shipped_key_inventory.yaml
+@@ -1,6 +1,6 @@
+ # Shipped key inventory for SPEC-CONFIG-KEY-HONESTY-001 M1
+ # Code baseline: ed70e4354
+-# Total entries: 963
++# Total entries: 976
+ # Classification: W=wire, P=prose-consumed, R=reserved, D=delete
+ # Evidence: 'reader' = Go production reader; prose file path = P consumer; 'none' = R/D
+ 
+@@ -849,6 +849,9 @@
+ - path: "interview.project.questions_per_round"
+   class: R
+   evidence: none
++- path: "interview.recommendation_mode"
++  class: W
++  evidence: reader
+ - path: "interview.skip_conditions"
+   class: R
+   evidence: none
+diff --git a/internal/config/types.go b/internal/config/types.go
+index b655febee..e845f1895 100644
+--- a/internal/config/types.go
++++ b/internal/config/types.go
+@@ -1316,11 +1316,24 @@ type ContextTokenBudget struct {
+ // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
+ // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
+ type InterviewConfig struct {
+-	ClarityThreshold int           `yaml:"clarity_threshold"`
+-	Enabled          bool          `yaml:"enabled"`
+-	Plan             InterviewMode `yaml:"plan"`
+-	Project          InterviewMode `yaml:"project"`
+-	SkipConditions   []string      `yaml:"skip_conditions"`
++	ClarityThreshold   int           `yaml:"clarity_threshold"`
++	Enabled            bool          `yaml:"enabled"`
++	Plan               InterviewMode `yaml:"plan"`
++	Project            InterviewMode `yaml:"project"`
++	RecommendationMode string        `yaml:"recommendation_mode"`
++	SkipConditions     []string      `yaml:"skip_conditions"`
++}
++
++// ResolvedRecommendationMode returns the resolved recommendation-mode axis:
++// "pull" only when the key holds exactly "pull"; "push" otherwise — including
++// when the key is absent, empty, or unrecognized (REQ-JFM-002, REQ-JFM-003).
++// The raw value stays on RecommendationMode, so an unrecognized setting is
++// recorded verbatim rather than silently discarded.
++func (c InterviewConfig) ResolvedRecommendationMode() string {
++	if c.RecommendationMode == "pull" {
++		return "pull"
++	}
++	return "push"
+ }
+ 
+ // InterviewMode holds per-mode interview settings.
+diff --git a/internal/stateanchor/stateanchor.go b/internal/stateanchor/stateanchor.go
+index 03fccf859..f26e75d05 100644
+--- a/internal/stateanchor/stateanchor.go
++++ b/internal/stateanchor/stateanchor.go
+@@ -24,6 +24,7 @@
+ package stateanchor
+ 
+ import (
++	"os"
+ 	"path/filepath"
+ 
+ 	"github.com/modu-ai/moai-adk/internal/core/git"
+@@ -51,21 +52,27 @@ type Session struct {
+ 
+ // Resolve returns the state anchor for a session context, following the
+ // fixed REQ-SA-002 precedence: ProjectDir → OriginalCwd → a git resolution
+-// of CurrentDir (or CWD). Returns "" when nothing resolves — callers skip
+-// the state write and carry on (REQ-SA-003). A context with no directory
+-// fields at all resolves to "": the process working directory is
+-// deliberately NOT consulted, so a render whose payload carries no location
+-// can never reach the operator's real checkout through the resolver —
+-// no directory context, no anchor.
++// of CurrentDir (or CWD). A session-derived candidate (chain steps 1 and 2)
++// is returned only when it validates (isAnchorCandidate): an absolute path
++// naming an existing directory. A candidate that fails validation does not
++// fail the resolution — the chain falls through to the next step, preserving
++// the REQ-SA-003 graceful degradation (a stale project_dir must not switch
++// the state writes off; the original_cwd and the git walk-up still get their
++// chance). Returns "" when nothing resolves — callers skip the state write
++// and carry on (REQ-SA-003). A context with no directory fields at all
++// resolves to "": the process working directory is deliberately NOT
++// consulted, so a render whose payload carries no location can never reach
++// the operator's real checkout through the resolver — no directory context,
++// no anchor.
+ //
+ // @MX:ANCHOR: [AUTO] single state-anchor seam — every state read/write member resolves through here
+ // @MX:REASON: SPEC-STATE-ANCHOR-001 REQ-SA-001/002; the fixed precedence chain is the repair for GH #1694 and member-specific anchors are the defect being removed
+ // @MX:SPEC: SPEC-STATE-ANCHOR-001
+ func Resolve(s Session) string {
+-	if s.ProjectDir != "" {
++	if isAnchorCandidate(s.ProjectDir) {
+ 		return s.ProjectDir
+ 	}
+-	if s.OriginalCwd != "" {
++	if isAnchorCandidate(s.OriginalCwd) {
+ 		return s.OriginalCwd
+ 	}
+ 	dir := s.CurrentDir
+@@ -75,6 +82,25 @@ func Resolve(s Session) string {
+ 	return FromDirectory(dir)
+ }
+ 
++// isAnchorCandidate reports whether a session-derived anchor candidate
++// qualifies: an absolute path (filepath.IsAbs) that names an existing
++// directory (os.Stat succeeding with directory mode). An empty value means
++// "absent" — it fails trivially and the chain falls through, unchanged from
++// the pre-validation behavior (REQ-SAV-003). The candidate is returned
++// verbatim on success: no EvalSymlinks rewriting of the anchor value
++// (REQ-SAV-006), and no git membership check — the git budget belongs to
++// chain step 3 (REQ-SAV-004). Any Stat error (including absence) rejects the
++// candidate; it is a rejected candidate, not a process error.
++//
++// @MX:SPEC: SPEC-STATE-ANCHOR-VALIDATE-001
++func isAnchorCandidate(path string) bool {
++	if path == "" || !filepath.IsAbs(path) {
++		return false
++	}
++	info, err := os.Stat(path)
++	return err == nil && info.IsDir()
++}
++
+ // FromDirectory resolves the anchor from a directory alone — the CLI chain's
+ // shape, where no session payload exists. The resolution is a function of the
+ // REPOSITORY, never of the caller's location: the git common directory is
+diff --git a/internal/stateanchor/stateanchor_test.go b/internal/stateanchor/stateanchor_test.go
+index 44387bd25..893cfbf68 100644
+--- a/internal/stateanchor/stateanchor_test.go
++++ b/internal/stateanchor/stateanchor_test.go
+@@ -17,33 +17,53 @@ func initGitRepo(t *testing.T, dir string) {
+ 	}
+ }
+ 
+-// TestResolve_ProjectDirWins is chain step 1: the runtime-reported project
+-// root beats everything else, so a session that cd'd away still anchors to
+-// its project (the GH #1694 repair).
+-func TestResolve_ProjectDirWins(t *testing.T) {
++// TestResolve_ProjectDirValidDirWins is chain step 1: the runtime-reported
++// project root beats everything else, so a session that cd'd away still
++// anchors to its project (the GH #1694 repair). Contract update
++// (SPEC-STATE-ANCHOR-VALIDATE-001 plan §D8): a candidate must be a valid
++// absolute existing directory, so the fixture is a real t.TempDir() path —
++// the former "/proj" fixture pinned the now-removed unconditional return.
++// The worktree-shaped subcase keeps the candidate git-free (REQ-SAV-004): a
++// directory that is NOT a git common-dir parent is still returned as-is,
++// not walked up to some repository root.
++func TestResolve_ProjectDirValidDirWins(t *testing.T) {
+ 	t.Parallel()
+ 
++	proj := t.TempDir()
++	wt := filepath.Join(proj, "wt-card-x")
++	if err := os.Mkdir(wt, 0o755); err != nil {
++		t.Fatal(err)
++	}
++	primary := t.TempDir()
++	visited := t.TempDir()
++
+ 	got := Resolve(Session{
+-		ProjectDir:  "/proj",
+-		OriginalCwd: "/primary",
+-		CurrentDir:  "/somewhere/visited",
++		ProjectDir:  wt,
++		OriginalCwd: primary,
++		CurrentDir:  visited,
+ 	})
+-	if got != "/proj" {
+-		t.Errorf("Resolve() = %q, want /proj (chain step 1)", got)
++	if got != wt {
++		t.Errorf("Resolve() = %q, want %q (chain step 1, worktree-shaped candidate)", got, wt)
+ 	}
+ }
+ 
+ // TestResolve_OriginalCwdSecond is chain step 2: a worktree session without
+-// project_dir anchors to the primary checkout via original_cwd.
++// project_dir anchors to the primary checkout via original_cwd. Contract
++// update (SPEC-STATE-ANCHOR-VALIDATE-001 plan §D8): the candidate must be a
++// real existing directory — the former "/primary" fixture pinned the
++// now-removed unconditional return.
+ func TestResolve_OriginalCwdSecond(t *testing.T) {
+ 	t.Parallel()
+ 
++	primary := t.TempDir()
++	visited := t.TempDir()
++
+ 	got := Resolve(Session{
+-		OriginalCwd: "/primary",
+-		CurrentDir:  "/primary/.claude/worktrees/card-x",
++		OriginalCwd: primary,
++		CurrentDir:  visited,
+ 	})
+-	if got != "/primary" {
+-		t.Errorf("Resolve() = %q, want /primary (chain step 2)", got)
++	if got != primary {
++		t.Errorf("Resolve() = %q, want %q (chain step 2)", got, primary)
+ 	}
+ }
+ 
+@@ -97,6 +117,108 @@ func TestResolve_EmptySessionIsEmpty(t *testing.T) {
+ 	}
+ }
+ 
++// TestResolve_RelativeProjectDirFallsThrough pins the absolute-path half of
++// REQ-SAV-001 (SPEC-STATE-ANCHOR-VALIDATE-001): a relative project_dir would
++// be interpreted against the statusline process's cwd — the wrong reference
++// point — so it is rejected and the chain falls through. With no follow-up
++// fields the fall-through lands on "" (the REQ-SA-003 skip path).
++func TestResolve_RelativeProjectDirFallsThrough(t *testing.T) {
++	t.Parallel()
++
++	got := Resolve(Session{ProjectDir: "relative/dir"})
++	if got != "" {
++		t.Errorf("Resolve() = %q, want \"\" (relative candidate rejected, chain empty)", got)
++	}
++}
++
++// TestResolve_StaleProjectDirFallsThrough pins the existence half of
++// REQ-SAV-001: an absolute path that no longer exists must not anchor —
++// anchor-derived MkdirAll writes would resurrect it as a fresh directory
++// tree (SPEC §1.1, the t510 F1 revival mechanism).
++func TestResolve_StaleProjectDirFallsThrough(t *testing.T) {
++	t.Parallel()
++
++	stale := filepath.Join(t.TempDir(), "gone")
++	if err := os.Mkdir(stale, 0o755); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Remove(stale); err != nil {
++		t.Fatal(err)
++	}
++
++	got := Resolve(Session{ProjectDir: stale})
++	if got != "" {
++		t.Errorf("Resolve() = %q, want \"\" (stale candidate rejected, chain empty)", got)
++	}
++}
++
++// TestResolve_ProjectDirFileCandidateRejected pins the mode half of the
++// predicate: an absolute path that EXISTS but is a FILE is rejected —
++// os.Stat succeeding is not enough, the candidate must name a directory
++// (REQ-SAV-001). This is the admission-condition test for the
++// Stat-success-regardless-of-mode mutant.
++func TestResolve_ProjectDirFileCandidateRejected(t *testing.T) {
++	t.Parallel()
++
++	file := filepath.Join(t.TempDir(), "plainfile")
++	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
++		t.Fatal(err)
++	}
++
++	got := Resolve(Session{ProjectDir: file})
++	if got != "" {
++		t.Errorf("Resolve() = %q, want \"\" (file candidate rejected, chain empty)", got)
++	}
++}
++
++// TestResolve_InvalidProjectDirFallsThroughToOriginalCwd pins REQ-SAV-002's
++// fall-through against the hard-"" mutant: an invalid chain step 1 must give
++// step 2 its chance — a valid original_cwd rescues the session, and the
++// exact fixture value is returned (equality, not merely non-empty, so
++// fall-through is distinguishable from a hard-"" early return only when both
++// would differ; here a hard-"" returns "" while fall-through returns the
++// fixture path).
++func TestResolve_InvalidProjectDirFallsThroughToOriginalCwd(t *testing.T) {
++	t.Parallel()
++
++	primary := t.TempDir()
++
++	got := Resolve(Session{
++		ProjectDir:  "/nonexistent/anchor-candidate",
++		OriginalCwd: primary,
++	})
++	if got != primary {
++		t.Errorf("Resolve() = %q, want %q (invalid step 1 falls through to valid step 2)", got, primary)
++	}
++}
++
++// TestResolve_OriginalCwdInvalidFallsThrough pins chain step 2 under the
++// same predicate (REQ-SAV-001/002): an original_cwd that is not an absolute
++// existing directory is rejected and the chain continues — with nothing
++// behind it, "" (REQ-SA-003).
++func TestResolve_OriginalCwdInvalidFallsThrough(t *testing.T) {
++	t.Parallel()
++
++	got := Resolve(Session{OriginalCwd: "relative/cwd"})
++	if got != "" {
++		t.Errorf("Resolve() = %q, want \"\" (relative original_cwd rejected, chain empty)", got)
++	}
++}
++
++// TestResolve_OriginalCwdValidReturned pins the step-2 happy path: a valid
++// absolute existing directory as original_cwd is returned AS-IS — no
++// EvalSymlinks rewriting of the value (REQ-SAV-006).
++func TestResolve_OriginalCwdValidReturned(t *testing.T) {
++	t.Parallel()
++
++	primary := t.TempDir()
++
++	got := Resolve(Session{OriginalCwd: primary})
++	if got != primary {
++		t.Errorf("Resolve() = %q, want %q (valid step 2 returned as-is)", got, primary)
++	}
++}
++
+ // TestFromDirectory_WorktreeResolvesPrimaryCheckout pins the one-root
+ // property the seam exists for: from a linked worktree the git common
+ // directory still points at the primary checkout, so the anchor is the same

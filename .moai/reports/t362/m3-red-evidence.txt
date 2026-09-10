@@ -1,0 +1,28 @@
+=== RUN   TestParseSPECDoc_CollectsWidenedShapes
+    lint_req_widen_wiring_test.go:64: expected 4 REQs in the live path, got 1: []spec.REQEntry{spec.REQEntry{ID:"REQ-FIXW-001-001", Text:"The system shall do a fourth thing.", Line:7, Widened:false}}
+--- FAIL: TestParseSPECDoc_CollectsWidenedShapes (0.00s)
+=== RUN   TestParseSPECDoc_MarksWidenedOnlyEntries
+    lint_req_widen_wiring_test.go:87: expected 2 REQs, got 1
+--- FAIL: TestParseSPECDoc_MarksWidenedOnlyEntries (0.00s)
+=== RUN   TestCoverageRule_EmitsAdvisoryWarning
+    lint_req_widen_wiring_test.go:112: severity: want "warning", got "error"
+    lint_req_widen_wiring_test.go:115: Advisory must be set at the emission site so --strict does not escalate it
+--- FAIL: TestCoverageRule_EmitsAdvisoryWarning (0.00s)
+=== RUN   TestCoverageRule_AdvisoryWarningDoesNotGateStrict
+    lint_req_widen_wiring_test.go:129: --strict escalated the CoverageIncomplete warning; Advisory is not being honored
+--- FAIL: TestCoverageRule_AdvisoryWarningDoesNotGateStrict (0.00s)
+=== RUN   TestWidenedOnlyFindingsAreAdvisory
+=== RUN   TestWidenedOnlyFindingsAreAdvisory/ModalityMalformed_on_a_widened-only_REQ
+    lint_req_widen_wiring_test.go:150: widened-only finding must be an advisory warning, got severity="error" advisory=false
+=== RUN   TestWidenedOnlyFindingsAreAdvisory/ModalityMalformed_on_a_narrow_REQ_stays_an_error
+=== RUN   TestWidenedOnlyFindingsAreAdvisory/InvalidREQID_on_a_widened-only_REQ
+    lint_req_widen_wiring_test.go:180: widened-only finding must be an advisory warning, got severity="error" advisory=false
+=== RUN   TestWidenedOnlyFindingsAreAdvisory/InvalidREQID_on_a_narrow_REQ_stays_an_error
+--- FAIL: TestWidenedOnlyFindingsAreAdvisory (0.00s)
+    --- FAIL: TestWidenedOnlyFindingsAreAdvisory/ModalityMalformed_on_a_widened-only_REQ (0.00s)
+    --- PASS: TestWidenedOnlyFindingsAreAdvisory/ModalityMalformed_on_a_narrow_REQ_stays_an_error (0.00s)
+    --- FAIL: TestWidenedOnlyFindingsAreAdvisory/InvalidREQID_on_a_widened-only_REQ (0.00s)
+    --- PASS: TestWidenedOnlyFindingsAreAdvisory/InvalidREQID_on_a_narrow_REQ_stays_an_error (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.547s
+FAIL

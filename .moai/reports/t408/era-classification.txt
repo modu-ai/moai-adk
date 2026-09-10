@@ -1,0 +1,22 @@
+audited_at = 2026-09-02T11:39:21.958855Z
+total_specs = 744
+grandfathered = 263
+modern_era_clean = 479
+drift_findings total = 515
+  SPEC-DEVPROT-REQUIRED-001                  drift findings: 1
+      {"spec_id": "SPEC-DEVPROT-REQUIRED-001", "era": "V3R6", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-5 (modern phase or created date)"}}
+  SPEC-EVIDENCE-CLAIM-INVARIANT-001          drift findings: 1
+      {"spec_id": "SPEC-EVIDENCE-CLAIM-INVARIANT-001", "era": "V3R2-R4", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-2 (progress.md without §E.* markers)"}}
+  SPEC-FOURDIM-PHANTOM-001                   drift findings: 1
+      {"spec_id": "SPEC-FOURDIM-PHANTOM-001", "era": "V3R6", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"}}
+  SPEC-HARNESS-OUTCOME-CAPTURE-001           drift findings: 0
+  SPEC-PREPUSH-WIRING-001                    drift findings: 1
+      {"spec_id": "SPEC-PREPUSH-WIRING-001", "era": "V3R6", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-5 (modern phase or created date)"}}
+  SPEC-SEC-HARDEN-003                        drift findings: 1
+      {"spec_id": "SPEC-SEC-HARDEN-003", "era": "V3R6", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"}}
+  SPEC-STOP-EVIDENCE-WRITER-001              drift findings: 0
+  SPEC-V3R6-AGENT-TEAM-REBUILD-001           drift findings: 1
+      {"spec_id": "SPEC-V3R6-AGENT-TEAM-REBUILD-001", "era": "V3R2-R4", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-2 (progress.md without §E.* markers)"}}
+  SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001        drift findings: 1
+      {"spec_id": "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001", "era": "V3R2-R4", "finding_type": "EraAutoDetected", "severity": "INFO", "details": {"heuristic_matched": "H-2 (progress.md without §E.* markers)"}}
+  SPEC-WEB-CONSOLE-007                       drift findings: 0

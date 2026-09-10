@@ -1,0 +1,5 @@
+.moai/reports/t214/verdict.md
+internal/hook/pre_tool.go
+internal/hook/pre_tool_astgrep_reason_test.go
+internal/hook/pre_tool_commit_gate_test.go
+internal/template/templates/.claude/settings.json.tmpl

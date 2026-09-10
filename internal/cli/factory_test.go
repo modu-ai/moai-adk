@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -490,7 +492,7 @@ func TestEnterFactoryWorkerModeUnknownCount(t *testing.T) {
 func TestResolveFactoryWorkerName(t *testing.T) {
 	t.Run("free name is kept and registered", func(t *testing.T) {
 		root := t.TempDir()
-		if got := resolveFactoryWorkerName(root, "lane-1", nil); got != "lane-1" {
+		if got, err := resolveFactoryWorkerName(root, "lane-1", nil); err != nil || got != "lane-1" {
 			t.Fatalf("free name = %q, want lane-1", got)
 		}
 		reg := loadFactoryRegistry(factoryRegistryPath(root))
@@ -514,7 +516,10 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		defer func() { factoryProcessAlive = probe }()
 
 		var notes bytes.Buffer
-		got := resolveFactoryWorkerName(root, "lane-2", &notes)
+		got, err := resolveFactoryWorkerName(root, "lane-2", &notes)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if got != "lane-4" {
 			t.Fatalf("bumped name = %q, want lane-4 (2 and 3 are live)", got)
 		}
@@ -534,7 +539,10 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		factoryProcessAlive = func(int) bool { return false }
 		defer func() { factoryProcessAlive = probe }()
 
-		got := resolveFactoryWorkerName(root, "lane-2", nil)
+		got, err := resolveFactoryWorkerName(root, "lane-2", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if got != "lane-2" {
 			t.Fatalf("dead claim should free the name, got %q", got)
 		}
@@ -552,8 +560,21 @@ func TestResolveFactoryWorkerName(t *testing.T) {
 		}
 		root := blocker // .moai/state/factory/ resolves under a file → fails
 
-		if got := resolveFactoryWorkerName(root, "lane-7", nil); got != "lane-7" {
-			t.Fatalf("fail-open name = %q, want lane-7 as supplied", got)
+		if got, err := resolveFactoryWorkerName(root, "lane-7", nil); err == nil || got != "" {
+			t.Fatalf("fail-closed name = %q err=%v", got, err)
+		}
+	})
+
+	t.Run("migration marker blocks resolver before registration", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv("MOAI_HOME", filepath.Join(t.TempDir(), "home"))
+		release, err := homestate.AcquireMigrationAdmission(root, "factory-block")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = release(true) }()
+		if got, err := resolveFactoryWorkerName(root, "lane-1", nil); err == nil || got != "" {
+			t.Fatalf("resolver admitted marker: got=%q err=%v", got, err)
 		}
 	})
 }
@@ -708,6 +729,7 @@ func TestFactoryDefaultWorkersConstant(t *testing.T) {
 // there, which is the point — the signal REQ-FM-023 transports).
 type factoryLaunchCapture struct {
 	args    []string
+	runID   string
 	workers string
 	worker  string
 	addr    string
@@ -722,6 +744,7 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 	origLaunch := unifiedLaunchFunc
 	unifiedLaunchFunc = func(_ string, _ string, args []string) error {
 		c.args = args
+		c.runID = os.Getenv(config.EnvMoaiKanbanID)
 		c.workers = os.Getenv(config.EnvMoaiFactoryWorkers)
 		c.worker = os.Getenv(config.EnvMoaiFactoryWorker)
 		c.addr = os.Getenv(config.EnvMoaiKanbanLeadAddr)
@@ -740,11 +763,49 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 	return c
 }
 
+func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
+	clearFactoryTestEnv(t)
+	root := t.TempDir()
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Setenv("MOAI_HOME", t.TempDir())
+	c := installFactoryLaunchSeam(t)
+	if err := runCC(ccCmd, []string{"-f"}); err != nil {
+		t.Fatalf("runCC(-f): %v", err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var manifestRaw string
+	if err := db.DB.QueryRow(`SELECT manifest_json FROM runs WHERE run_id=?`, c.runID).Scan(&manifestRaw); err != nil {
+		t.Fatalf("factory run row missing: %v", err)
+	}
+	var manifest map[string]string
+	if err := json.Unmarshal([]byte(manifestRaw), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest["captured_at"] == "" {
+		t.Fatalf("captured_at missing: %s", manifestRaw)
+	}
+	if manifest["spec_path"] != "" || manifest["spec_sha256"] != "" || manifest["git_commit"] != "" {
+		t.Fatalf("absent-spec/non-git metadata must fail open to empty values: %s", manifestRaw)
+	}
+}
+
 // TestCC_FactoryEntryThroughRunCC drives the t118 -f surface through the real
 // cc command: the token never reaches the launcher, the lead shapes publish
 // the factory signal with the t118 socket scheme, and the incremental worker
 // shape desugars into the lane branch with the per-lane cap live at launch.
 func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: every subtest drives the real runCC
+	// factory path, whose lead-name and worker-name claims resolve their root
+	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd) —
+	// not the findProjectRootFn stub installFactoryLaunchSeam swaps in. Under
+	// that resolver the registries land in internal/cli/.moai; pointing the env
+	// at a temp dir keeps both writes in the test-owned sandbox.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	t.Run("bare -f is the one-lane factory lead", func(t *testing.T) {
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
@@ -827,6 +888,12 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 // lane form selects the lane branch there too (same parse, same
 // environment contract, GLM backend constant).
 func TestGLM_FactoryWorkerEntry(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: the lane entry claims the worker name
+	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd),
+	// a resolver the findProjectRootFn stub does not intercept — redirect it to
+	// a temp sandbox so the registry write stays out of the package cwd.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	clearFactoryTestEnv(t)
 	c := installFactoryLaunchSeam(t)
 

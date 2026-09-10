@@ -8,10 +8,39 @@
 package kanban
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/sys/unix"
 )
+
+// classifyBoardFlockErr maps a flock(2) failure to the board-lock error
+// contract: EWOULDBLOCK/EAGAIN is contention, every other errno is a hard
+// error that preserves the underlying errno for errors.Is inspection and
+// names the lock path (SPEC-BOARDLOCK-ERRNO-001 REQ-BLE-001/002/003).
+//
+// This is defensive narrowing, NOT a repair of an observed misclassification:
+// the measured misclassification count at the sole call site is ZERO. Of the
+// three cases the plan-phase probe induced, only EWOULDBLOCK/EAGAIN was
+// reachable through the real path, and it was already classified correctly.
+//
+// Both EWOULDBLOCK and EAGAIN are named although they share a value on linux
+// and darwin — that is portability notation, not redundancy.
+//
+// EINTR falls on the non-contention side. Today it is absorbed by the
+// contention retry budget in acquireBoardLockSerialized; here it becomes an
+// immediate hard error. That is an accepted behaviour change on an input
+// whose reachability is UNMEASURED, recorded as such in spec.md §1.3.1, and
+// it sits outside REQ-BLE-005's measured-reachable scope.
+func classifyBoardFlockErr(err error, lockPath string) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, unix.EWOULDBLOCK) || errors.Is(err, unix.EAGAIN) {
+		return ErrBoardLockHeld
+	}
+	return fmt.Errorf("lock board lock %s: %w", lockPath, err)
+}
 
 // flockBoardLock holds an open descriptor with flock(LOCK_EX|LOCK_NB) held.
 type flockBoardLock struct {
@@ -40,7 +69,7 @@ func acquireBoardLockImpl(lockPath string) (boardLockImpl, error) {
 	}
 	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
 		_ = unix.Close(fd)
-		return nil, ErrBoardLockHeld
+		return nil, classifyBoardFlockErr(err, lockPath)
 	}
 
 	record := newLockOwnerRecord()

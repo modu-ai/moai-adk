@@ -1,0 +1,20 @@
+=== RUN   TestJudgeCodexSkillEntry_SeparatorConversion
+--- PASS: TestJudgeCodexSkillEntry_SeparatorConversion (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion
+--- PASS: TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative
+--- PASS: TestJudgeCodexSkillEntry_HomeRelativeStatTargetStaysNative (0.00s)
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins/missing_means_eligible
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins/resolving_means_kept
+=== RUN   TestJudgeCodexSkillEntry_EligibilityGatingPins/backslash_declaration_is_oddly_formed_and_never_statted
+--- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/missing_means_eligible (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/resolving_means_kept (0.00s)
+    --- PASS: TestJudgeCodexSkillEntry_EligibilityGatingPins/backslash_declaration_is_oddly_formed_and_never_statted (0.00s)
+=== RUN   TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard
+    codex_stale_skill_readback_test.go:55: summary: ~/.codex/config.toml: 1 stale skill entry
+    codex_stale_skill_readback_test.go:56: detail: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard3539790134/003/.codex/config.toml declares 4 [[skills.config]] entries; 1 with a path that no longer exists (1 enabled, 0 disabled, 0 unspecified, 0 non-boolean) — remove the stale entries or restore the skill files; 1 relative entry (not checked: the resolution base is not observed); 1 oddly-formed entry (not checked: backslash or ~other-user shape)
+--- PASS: TestCodexStaleSkillFinding_ShapeReadbackBaselineGuard (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.952s

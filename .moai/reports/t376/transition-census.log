@@ -1,0 +1,31 @@
+=== RUN   TestT376TransitionCensus
+    zz_t376_census_test.go:51: CENSUS scanned=714  no-transition-record=1  with-record=713
+    zz_t376_census_test.go:53: CENSUS   217  in-progress -> completed          e.g. SPEC-AC-COUNT-DISCRIMINATOR-001
+    zz_t376_census_test.go:53: CENSUS   125  implemented -> completed          e.g. SPEC-AGENTS-MD-CANON-001
+    zz_t376_census_test.go:53: CENSUS   104  (none) -> completed               e.g. SPEC-AGENT-PARALLEL-OPT-001
+    zz_t376_census_test.go:53: CENSUS    50  draft -> completed                e.g. SPEC-CODEX-LAUNCHER-001
+    zz_t376_census_test.go:53: CENSUS    50  draft -> implemented              e.g. SPEC-ASKUSER-ENFORCE-001
+    zz_t376_census_test.go:53: CENSUS    48  completed -> implemented          e.g. SPEC-AGENCY-ABSORB-001
+    zz_t376_census_test.go:53: CENSUS    23  in-progress -> implemented        e.g. SPEC-BACKLOG-LOCK-BUDGET-001
+    zz_t376_census_test.go:53: CENSUS    17  in-progress -> archived           e.g. SPEC-ASTG-UPGRADE-001
+    zz_t376_census_test.go:53: CENSUS    15  (none) -> implemented             e.g. SPEC-FACTORY-WORKER-FANOUT-001
+    zz_t376_census_test.go:53: CENSUS    12  draft -> archived                 e.g. SPEC-DB-SYNC-002
+    zz_t376_census_test.go:53: CENSUS    11  planned -> implemented            e.g. SPEC-AGENT-001
+    zz_t376_census_test.go:53: CENSUS    10  (none) -> draft                   e.g. SPEC-ASTGREP-BREADTH-001
+    zz_t376_census_test.go:53: CENSUS     5  draft -> in-progress              e.g. SPEC-ASTGREP-LANG16-001
+    zz_t376_census_test.go:53: CENSUS     4  planned -> completed              e.g. SPEC-V3R2-ORC-002
+    zz_t376_census_test.go:53: CENSUS     4  draft -> superseded               e.g. SPEC-ADVISOR-RUNG-001
+    zz_t376_census_test.go:53: CENSUS     4  (none) -> in-progress             e.g. SPEC-GITFLOW-DOCTRINE-ALIGN-001
+    zz_t376_census_test.go:53: CENSUS     3  Completed -> completed            e.g. SPEC-CONFIG-001
+    zz_t376_census_test.go:53: CENSUS     2  (none) -> archived                e.g. SPEC-I18N-001-ARCHIVED
+    zz_t376_census_test.go:53: CENSUS     2  completed -> superseded           e.g. SPEC-HOOK-PREEDIT-INVESTIGATE-001
+    zz_t376_census_test.go:53: CENSUS     1  archived -> superseded            e.g. SPEC-LSPMCP-001
+    zz_t376_census_test.go:53: CENSUS     1  approved -> completed             e.g. SPEC-SDD-001
+    zz_t376_census_test.go:53: CENSUS     1  Superseded -> superseded          e.g. SPEC-LSP-001
+    zz_t376_census_test.go:53: CENSUS     1  (none) -> "in-progress"           e.g. SPEC-CLOCAL-AUDIT-001
+    zz_t376_census_test.go:53: CENSUS     1  synced -> completed               e.g. SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001
+    zz_t376_census_test.go:53: CENSUS     1  implemented -> superseded         e.g. SPEC-V3R6-AGENT-FOLDER-SPLIT-001
+    zz_t376_census_test.go:53: CENSUS     1  cancelled -> rejected             e.g. SPEC-WEB-CONSOLE-CONFIG-DIET-001
+--- PASS: TestT376TransitionCensus (229.58s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	229.795s

@@ -16,12 +16,12 @@ import (
 // was written, how many entries were emitted into each permissions list, and
 // whether the file's template directive was preserved (for .tmpl targets).
 type CodegenResult struct {
-	Path           string
-	AllowEmitted   int
-	AskEmitted     int
-	DenyEmitted    int
+	Path            string
+	AllowEmitted    int
+	AskEmitted      int
+	DenyEmitted     int
 	EnvGatedSkipped int // entries with env_gate — emitted as audit only, not static permissions
-	TargetKind     TargetKind
+	TargetKind      TargetKind
 }
 
 // TargetKind distinguishes the two codegen strategies (design.md §B.1 / D7).

@@ -1,0 +1,10 @@
+# Test pair for the child_process.exec injection family (javascript /
+# typescript variants under one id). The valid sample uses execFile with an
+# explicit argument list.
+id: sec-command-injection-exec
+valid:
+  - |
+    child_process.execFile("node", ["--version"]);
+invalid:
+  - |
+    child_process.exec(script);

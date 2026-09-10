@@ -1,0 +1,24 @@
+=== RUN   TestMirrorAgentMemoryNoOps
+=== PAUSE TestMirrorAgentMemoryNoOps
+=== RUN   TestMirrorAgentMemoryWrapperInputTolerance
+=== PAUSE TestMirrorAgentMemoryWrapperInputTolerance
+=== RUN   TestMirrorAgentMemoryRelativePath
+--- PASS: TestMirrorAgentMemoryRelativePath (0.00s)
+=== RUN   TestMirrorAgentMemoryCopiesToPrimary
+--- PASS: TestMirrorAgentMemoryCopiesToPrimary (0.00s)
+=== RUN   TestMirrorFailsOpenOnUnresolvablePrimary
+--- PASS: TestMirrorFailsOpenOnUnresolvablePrimary (0.00s)
+=== RUN   TestMirrorNoOpInPrimarySession
+--- PASS: TestMirrorNoOpInPrimarySession (0.00s)
+=== RUN   TestMirrorIgnoresUnanchoredPath
+--- PASS: TestMirrorIgnoresUnanchoredPath (0.00s)
+=== RUN   TestMirrorAgentMemoryDispatchedInWriteEditBranch
+=== PAUSE TestMirrorAgentMemoryDispatchedInWriteEditBranch
+=== CONT  TestMirrorAgentMemoryDispatchedInWriteEditBranch
+=== CONT  TestMirrorAgentMemoryNoOps
+=== CONT  TestMirrorAgentMemoryWrapperInputTolerance
+--- PASS: TestMirrorAgentMemoryDispatchedInWriteEditBranch (0.00s)
+--- PASS: TestMirrorAgentMemoryWrapperInputTolerance (0.00s)
+--- PASS: TestMirrorAgentMemoryNoOps (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.538s

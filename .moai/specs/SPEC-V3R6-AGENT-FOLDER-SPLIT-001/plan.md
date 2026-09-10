@@ -2,7 +2,6 @@
 id: SPEC-V3R6-AGENT-FOLDER-SPLIT-001
 title: "Implementation Plan — Agent Folder Split"
 version: "0.1.1"
-status: draft
 created: 2026-05-22
 updated: 2026-05-22
 author: manager-spec

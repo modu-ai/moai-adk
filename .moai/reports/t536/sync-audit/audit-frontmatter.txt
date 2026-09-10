@@ -1,0 +1,35 @@
+=== spec.md frontmatter verbatim ===
+---
+id: SPEC-TODO-HOME-TEMP-GUARD-001
+title: "생산 홈 폴백의 임시-디렉터 기원 거부 — SPEC-STATE-ANCHOR-001 §5 결정 이행"
+version: "0.1.4"
+status: completed
+created: 2026-09-08
+updated: 2026-09-08
+author: manager-spec
+priority: P2
+phase: "v3.2.0 target"
+module: "internal/kanban"
+lifecycle: spec-anchored
+tags: "todo-queue, home-pollution, temp-dir-guard, t536, state-anchor-followup"
+tier: M
+era: V3R6
+related_specs: [SPEC-STATE-ANCHOR-001, SPEC-WEB-TODO-QUEUE-001]
+---
+
+# SPEC: 생산 홈 폴백의 임시-디렉터 기원 거부
+
+## HISTORY
+
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 0.1.4 | 2026-09-08 | manager-spec | plan-audit 4차(FAIL — D14·D16 닫힘, D15 미닫힘) 수리 + **리드의 Tier 판정 이행**. ⑴ **접힘 해제(unfold)** — REQ-THG-002에 접었던 판별식 주입 이음매를 **REQ-THG-009로 분리**하고 `tier: S → M`. 근거: 접힌 상태에서 그 절은 주어가 *분류 동작*인 요구사항 안의 종속절이라, REQ-THG-002를 정리하는 후속 편집자가 **어떤 AC도 눈치채지 못한 채** 지울 수 있다 — 그런데 이음매가 없으면 `t.TempDir()` 아래에서 홈 폴백 가지를 밟을 픽스처가 존재하지 않아 **가드가 시험 불가 상태로 출하된다**. 이 SPEC은 공허한 초록을 세 번 냈고(D2·D10·D14), *관측 가능성을 보장하려고 존재하는* 요구사항은 독립적으로 지목 가능해야 한다. D9 선례와는 모양이 다르다: D9의 절은 같은 사건의 **결과**(거부가 무엇을 돌려주는가)였고, 이음매는 그 사건을 **관측하는 도구**다 — 결과와 도구는 다른 축이다. ⑵ **D18** — §C.1의 「전수 8건」이 전수가 아니었다. 인용된 grep 패턴이 대문자 `R`로 시작해 CLI의 소문자 래퍼 `resolveTodoQueueRoot()`(`internal/cli/todo.go:71`)를 **원리상 볼 수 없었다**(실측: `/usr/bin/grep -c 'func Resolve' internal/cli/todo.go` = **0**). 두 축(대소문자 무관 심볼 · 간접 소비자)으로 재열거해 **14건**으로 정정(A행 4→6 · C행 5→7). ⑶ **AC-SA-011 교차-SPEC 판정** — `SPEC-STATE-ANCHOR-001`(completed)의 §5·§5:115·REQ-SA-011 2번째 가지 셋이 같은 방향을 가리킨다: 철회가 아니라 **그 요구사항이 문서화한 두 번째 가지로의 이행**이며, 본 카드가 §5가 위임한 결정의 **이행 주체**다. 그 SPEC은 한 글자도 수정하지 않는다. ⑷ **D19** — C행 판정식이 5건 중 4건에 공허했다(부재 단언 2 · 단언 대상이 가드 반환값과 동일 2). 관측 대상을 반환값에서 **판별식의 직접 단언**(`TempOriginReason(base)`의 `isTemp == false`)으로 옮기고, **그 판정식이 실제로 RED가 되는 조건을 M2가 실연**하도록 종료 조건에 넣었다. ⑸ **D21/D22** — 이음매의 산출 AC 매트릭스 행 정정, 교차 절의 산출 And절 추가. D17은 범위 밖으로 열린 채 |
+=== catch-all: does sync_commit_sha exist ANYWHERE in this SPEC dir? ===
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:419:sync_commit_sha: pending-backfill       # 이 커밋은 자기 해시를 인용할 수 없다 (D3 백필 창)
+.moai/specs/SPEC-TODO-HOME-TEMP-GUARD-001/progress.md:469:- **`sync_commit_sha` 는 이 커밋에서 `pending-backfill` 이다.** 뒤따르는 커밋이 실 SHA 로 채우기 전까지 이 절은 자기 커밋을 지목하지 못한다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
+=== control: sync_commit_sha DOES exist in a sibling completed SPEC ===
+.moai/specs/SPEC-INTERNAL-SECURITY-001/progress.md
+.moai/specs/SPEC-DIAGRAM-PROFILE-IMPORT-001/progress.md
+.moai/specs/SPEC-INVOCATION-MODEL-002/progress.md
+.moai/specs/SPEC-CI-DOCTOR-BIN-001/progress.md
+.moai/specs/SPEC-V3R6-WORKFLOW-DOCS-001/progress.md

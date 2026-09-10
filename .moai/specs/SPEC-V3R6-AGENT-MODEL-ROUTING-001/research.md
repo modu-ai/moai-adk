@@ -2,7 +2,6 @@
 id: SPEC-V3R6-AGENT-MODEL-ROUTING-001-RESEARCH
 title: "Research — Agent 23개 모델 명시 라우팅 (baseline, A/B framework, cost validation methodology)"
 version: "0.2.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

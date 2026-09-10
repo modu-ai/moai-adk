@@ -1,0 +1,16 @@
+{"kind":"code-import","source":"internal/alpha/alpha.go","target":"fmt","line":3,"grade":"name-based"}
+{"kind":"code-import","source":"internal/beta/beta.go","target":"fmt","line":4,"grade":"name-based"}
+{"kind":"code-import","source":"internal/beta/beta.go","target":"internal/alpha","line":6,"grade":"name-based"}
+{"kind":"import","source":"internal/alpha","target":"b[\"internal/beta\"]"}
+{"kind":"milestone-card","source":"demo#S1","target":"t999"}
+{"kind":"mx-anchor","source":"internal/beta/tags.go","target":"Anchored","line":6}
+{"kind":"mx-debt","source":"internal/beta/tags.go","target":"Debted","line":18}
+{"kind":"mx-debt","source":"internal/beta/tags.go","target":"Rotting","line":25}
+{"kind":"mx-legacy","source":"internal/beta/tags.go","target":"internal/beta/tags.go","line":3}
+{"kind":"mx-note","source":"internal/beta/beta.go","target":"internal/beta/beta.go","line":9}
+{"kind":"mx-note","source":"scripts/fix.py","target":"scripts/fix.py","line":1}
+{"kind":"mx-spec","source":"internal/beta/beta.go","target":"SPEC-GF-001","line":9}
+{"kind":"mx-todo","source":"internal/beta/tags.go","target":"Todoed","line":31}
+{"kind":"mx-warn","source":"internal/beta/tags.go","target":"Warned","line":12}
+{"kind":"report-milestone","source":".moai/reports/demo.md","target":"demo#S1"}
+{"kind":"spec-depends","source":"SPEC-GF-001","target":"SPEC-GF-DEP-001"}

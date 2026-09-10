@@ -17,12 +17,14 @@ import (
 
 // readTodoQueue resolves the backlog queue for the served project and reads it.
 //
-// Resolution goes through the PURE resolver, which performs no filesystem
-// mutation on any branch, so rendering a page never migrates the operator's
-// backlog (REQ-WTQ-001, REQ-WTQ-004); adoption stays reachable only from the
-// `moai todo` command path. The read itself takes no lock — lock-guarded writes
-// and id issuance belong to SPEC-KANBAN-TODO-CLI-001, and the console is a
-// consumer.
+// BOTH halves are pure. Resolution goes through the PURE root resolver, and the
+// read goes through LoadPure, which serves whichever storage layout it finds
+// and migrates nothing — so rendering a page never moves the operator's backlog
+// (REQ-WTQ-001, REQ-WTQ-004). Calling the adopting Load here would make a page
+// render perform the one-time storage cutover, which is the `moai todo`
+// command path's act. Adoption stays reachable only from there. The read itself
+// takes no lock — lock-guarded writes and id issuance belong to
+// SPEC-KANBAN-TODO-CLI-001, and the console is a consumer.
 //
 // Every failure mode — an absent file, an empty file, malformed JSON — yields
 // an empty queue rather than an error (REQ-WTQ-006). All three states are
@@ -30,7 +32,7 @@ import (
 func readTodoQueue(projectRoot string) TodoVM {
 	root := kanban.ResolveTodoQueueRoot(projectRoot)
 	vm := TodoVM{Root: root}
-	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
+	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
 	if err != nil || rec == nil {
 		return vm
 	}

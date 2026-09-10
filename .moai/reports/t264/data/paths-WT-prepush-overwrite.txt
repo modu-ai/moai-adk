@@ -1,0 +1,9 @@
+.moai/reports/t257/measurement.md
+internal/cli/hook_install.go
+internal/cli/hook_install_precommit.go
+internal/cli/hook_install_precommit_attribution_test.go
+internal/cli/hook_install_prepush_preserve_test.go
+internal/cli/hook_install_shared.go
+internal/cli/hook_install_test.go
+internal/cli/init.go
+internal/cli/update_template_sync.go

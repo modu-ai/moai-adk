@@ -236,6 +236,18 @@ moai update --dry-run
 moai update --yes
 ```
 
+### 기존 프로젝트에 Codex 추가
+
+재초기화 없이 claude-only 프로젝트에 codex 하네스 배선을 추가합니다:
+
+```bash
+moai tool enable codex
+```
+
+- `.codex/hooks.json`(화이트리스트 게이트를 통과한 훅 렌더)·`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 사용자가 추가한 항목은 보존)·`.moai/state/codex-wiring.json`(신뢰 사이드카)을 만들거나 갱신합니다
+- `.mcp.json`은 건드리지 않으며, 재실행은 멱등입니다 — 이미 배선돼 있으면 아무것도 기록하지 않고 재신뢰 안내도 출력하지 않습니다
+- `moai tool enable codex --dry-run`을 실행하면 파일시스템을 바꾸지 않고 배선 계획만 미리 보여 줍니다
+
 ## 업데이트 후 절차
 
 ### 1단계: 버전 확인

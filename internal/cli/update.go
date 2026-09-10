@@ -80,6 +80,7 @@ func init() {
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
+
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
@@ -359,6 +360,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		// The early return itself does NOT move (REQ-RIL2-026): it stays
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
+		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
 
@@ -505,6 +507,18 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// content-changing refresh prints the re-trust guidance (REQ-CW-008)
 	// inside the helper.
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
+
+	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
+	// .agents/skills mirror. Both of its producers live inside Deploy, which
+	// the version-match branch of runTemplateSyncWithProgress returns before
+	// reaching — so without this call a deleted mirror is permanent for a
+	// version-matched project. Deliberately BESIDE the early return, at the
+	// same position as the wiring refresh above and for the same reason: the
+	// repair does not depend on a template redeploy, and the optimization
+	// stays exactly where it is (C-2). Existence-gated on the project's
+	// recorded template_version, so a pre-mirror project gets nothing created
+	// (C-1).
+	repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())
 
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled

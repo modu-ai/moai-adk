@@ -1,0 +1,17 @@
+.claude/rules/local/ci-autofix-protocol.md
+.claude/rules/local/ci-watch-protocol.md
+.claude/rules/local/lifecycle-sync-gate.md
+.claude/rules/local/repo-local-pr-policy.md
+.claude/skills/hns-workflow-ci-loop/SKILL.md
+.moai/astgrep-rules/go/concurrency.yml
+.moai/astgrep-rules/go/error-handling.yml
+.moai/astgrep-rules/go/hardcoding.yml
+.moai/astgrep-rules/go/idioms.yml
+.moai/astgrep-rules/go/resource-safety.yml
+.moai/astgrep-rules/security/credentials.yml
+.moai/astgrep-rules/security/crypto.yml
+.moai/astgrep-rules/security/injection.yml
+.moai/astgrep-rules/security/secrets.yml
+.moai/astgrep-rules/security/web.yml
+.moai/astgrep-rules/sgconfig.yml
+.moai/config/sections/gate.yaml

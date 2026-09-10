@@ -2,7 +2,6 @@
 id: SPEC-WORKTREE-DOCS-001
 title: "Worktree Workflow Documentation Harmonization (L1/L2/L3 Opt-In Policy)"
 version: "0.1.0"
-status: draft
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec

@@ -1,0 +1,78 @@
+# t299 sync — bidirectional observation, extract (NOT a verbatim copy)
+#
+# Source runs live at .moai/state/verify/t299-sync/0{2,3,4,5}-*.txt inside the
+# card worktree. That path is gitignored by the `.moai/state/` rule in
+# .gitignore and vanishes with the worktree, so this extract is the citable
+# carrier. The rule is named without a line number on purpose: a line number is
+# a moving coordinate, and the `:284` this header used to cite had already
+# moved. Each source is ~134KB of whole-corpus lint output; only the probe's own
+# lines and the totals line are decision-bearing, so those are what is extracted
+# here.
+#
+# Extraction command, per run:
+#   grep -n 'T299-E2E-PROBE' <run>.txt ; tail -1 <run>.txt
+#
+# Source provenance (sha256 / bytes), measured 2026-08-31 in worktree
+# .claude/worktrees/t299 at HEAD 19b6f7625:
+#   02-e2e-prose.txt        93ac5be4565388eb02b19e5599125539725ff74781bd37b6685d0064b00ab8f7  134060
+#   03-e2e-sha.txt          a22a858b2a6213516e4c3864fa5653673097a3aefe54ca62b22a28564e3a56f2  133370
+#   04-e2e-placeholder.txt  a22a858b2a6213516e4c3864fa5653673097a3aefe54ca62b22a28564e3a56f2  133370
+#   05-e2e-blank.txt        7d62e3bb7753937fcacd93217d7d04bd4c7465c33a35367e17dce7afe51820f8  134043
+#
+# NOTE: 03 and 04 are byte-identical. The two passing paths (a real SHA with a
+# trailing annotation, and the canonical placeholder) produce indistinguishable
+# linter output — which is the point: neither is flagged.
+#
+# Probe SPEC: SPEC-T299-E2E-PROBE-001, created for this observation and removed
+# afterwards. The four ERROR rows below are the probe's own incomplete
+# frontmatter, not findings of this card's rule; they are kept so the extract is
+# not a hand-picked subset of each run's probe lines.
+
+===== 02-e2e-prose =====
+63:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: phase
+64:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: lifecycle
+65:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: tags
+66:ERROR     MissingExclusions           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required
+67:WARNING   SyncSHASlotFormat           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/progress.md                        1     `sync_commit_sha` holds "see", which is neither a commit SHA nor a recognized backfill placeholder, so no close will be triggered to repair it and no reader can tell what the slot was meant to say. Write the commit SHA that carried the sync phase, or — while the backfill is genuinely still owed — the canonical placeholder `pending-backfill` (a `-`-suffixed member of that family, e.g. `pending-backfill-sync`, is equally admitted). A trailing annotation after the value is ignored and needs no removal.
+--- totals ---
+exit status 1
+
+===== 03-e2e-sha =====
+63:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: phase
+64:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: lifecycle
+65:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: tags
+66:ERROR     MissingExclusions           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required
+--- totals ---
+4 error(s), 179 warning(s)
+
+===== 04-e2e-placeholder =====
+63:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: phase
+64:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: lifecycle
+65:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: tags
+66:ERROR     MissingExclusions           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required
+--- totals ---
+4 error(s), 179 warning(s)
+
+===== 05-e2e-blank =====
+63:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: phase
+64:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: lifecycle
+65:ERROR     FrontmatterInvalid          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     Frontmatter required field missing: tags
+66:ERROR     MissingExclusions           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/spec.md                            1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required
+67:WARNING   SyncSHASlotFormat           /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-T299-E2E-PROBE-001/progress.md                        1     `sync_commit_sha` holds "", which is neither a commit SHA nor a recognized backfill placeholder, so no close will be triggered to repair it and no reader can tell what the slot was meant to say. Write the commit SHA that carried the sync phase, or — while the backfill is genuinely still owed — the canonical placeholder `pending-backfill` (a `-`-suffixed member of that family, e.g. `pending-backfill-sync`, is equally admitted). A trailing annotation after the value is ignored and needs no removal.
+--- totals ---
+4 error(s), 180 warning(s)
+
+===== correction: 02-e2e-prose totals =====
+# Run 02 was invoked via `go run ./cmd/moai spec lint`, so its last line is the
+# go-run wrapper's `exit status 1` rather than the linter's totals. The linter's
+# own totals line, `grep -n 'error(s),' 02-e2e-prose.txt`:
+188:4 error(s), 180 warning(s)
+
+===== the discriminator, in one line =====
+# prose   180 warning(s)   <- +1, the SyncSHASlotFormat finding
+# SHA     179 warning(s)
+# holder  179 warning(s)
+# blank   180 warning(s)   <- +1, same finding on an empty token
+# The whole-corpus baseline is 179; the card's rule contributes exactly the one
+# warning it should, on exactly the two values it should, and nothing else in
+# the 179 moves between runs.

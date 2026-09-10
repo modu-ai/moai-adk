@@ -1,0 +1,8 @@
+✓ No findings — all SPEC documents are valid
+
+provenance: binary built from tree 9328a5242 via `go build -o /tmp/t388-moai2 ./cmd/moai`
+            (NOT the PATH install /Users/goos/go/bin/moai, which reports v3.1.2 / 343399d2f)
+            no uncommitted tracked change under cmd/ internal/ pkg/ at build time
+command:    /tmp/t388-moai2 spec lint .moai/specs/SPEC-VERSION-STAMP-GUARD-001/spec.md
+exit:       0
+spec:       SPEC-VERSION-STAMP-GUARD-001 v0.2.0 (iter-2, D2 left OPEN by design)

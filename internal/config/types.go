@@ -110,12 +110,29 @@ type ModeProfile struct {
 	PushToRemote      bool   `yaml:"push_to_remote"`
 
 	// Mode-conditional optional fields (zero value when the mode lacks the key).
-	AutoCheckpoint   string `yaml:"auto_checkpoint"`   // manual mode only
-	BranchPrefix     string `yaml:"branch_prefix"`     // personal/team modes only
-	MainBranch       string `yaml:"main_branch"`       // personal/team modes only
-	DraftPR          bool   `yaml:"draft_pr"`          // team mode only
-	RequiredReviews  int    `yaml:"required_reviews"`  // team mode only
-	BranchProtection bool   `yaml:"branch_protection"` // team mode only
+	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
+	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
+	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
+	// Manual-mode git-flow keys. ReleaseBranchPrefix and RCVersionFormat have
+	// no Go consumer — they are pass-through fields whose only job is to
+	// survive a typed load-and-save round trip (SPEC-WORKTREE-BASEREF-001
+	// REQ-WBR-013 / AC-WBR-014). DevelopBranch gained one (card t449): the
+	// `moai integration acquire` record resolves its branch default through
+	// LoadGitFlowDevelopBranch.
+	//
+	// Measured before they existed: saving git_strategy through the typed path
+	// re-marshals this struct, so a `worktree_base_branch` edit made from the
+	// web console silently DELETED all three from git-strategy.yaml. Modelling
+	// them does not repair the wider schema divergence — no accessor and no
+	// consumer is added — it only stops the write path this SPEC introduces
+	// from newly exposing it.
+	DevelopBranch       string `yaml:"develop_branch"`        // manual mode, git-flow only
+	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
+	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
+
+	DraftPR          bool `yaml:"draft_pr"`          // team mode only
+	RequiredReviews  int  `yaml:"required_reviews"`  // team mode only
+	BranchProtection bool `yaml:"branch_protection"` // team mode only
 
 	// MergeMethod selects the PR merge method for this mode.
 	// One of "squash", "merge", "rebase". Empty unmarshals to the Go zero value
@@ -146,6 +163,18 @@ type GitStrategyConfig struct {
 	Provider       string       `yaml:"provider"` // "github", "gitlab"
 	GitHubUsername string       `yaml:"github_username"`
 	GitLab         GitLabConfig `yaml:"gitlab"`
+
+	// WorktreeBaseBranch names the branch card worktrees are cut from
+	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-001). It is a repository-wide fact,
+	// so it sits at the git_strategy root rather than inside a mode profile.
+	//
+	// The empty string is the neutral default and means "take no action"
+	// (REQ-WBR-002): the SessionStart origin/HEAD alignment step no-ops and
+	// `git worktree add` is invoked with no base operand, byte-identically to
+	// the pre-SPEC behavior. The shipped template ships it empty
+	// (REQ-WBR-003) — naming a branch there would not be neutral across
+	// downstream projects.
+	WorktreeBaseBranch string `yaml:"worktree_base_branch"`
 
 	// Mode profile forward-compat scaffolds.
 	Manual   ModeProfile `yaml:"manual"`
@@ -389,6 +418,11 @@ type WorkflowConfig struct {
 	// directly: the pointer inside distinguishes "key absent" (= enabled)
 	// from "explicitly disabled", which a plain bool cannot express.
 	Todo WorkflowTodoConfig `yaml:"todo"`
+	// Project carries the /moai project Phase 14 completion-continuation key
+	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Read through
+	// Config.ProjectContinuation, never directly: the resolver supplies the
+	// absent-key default and reports an unmatched value rather than applying it.
+	Project WorkflowProjectConfig `yaml:"project"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -422,6 +456,17 @@ type WorkflowConfig struct {
 	// maintainer of a multi-lane batch opts in via local config. Sibling of
 	// BranchGuard — same opt-in shape, same default-OFF neutrality.
 	IntegrationLock IntegrationLockConfig `yaml:"integration_lock"`
+
+	// SettingsDriftGate gates the REFUSAL layer of the pre-merge
+	// `.claude/settings.json` drift assertion run by `moai integration
+	// acquire`. Default false: detection, preservation and the ledger row run
+	// on every acquire regardless of this value, and only the refusal is
+	// opt-in. Sibling of BranchGuard — same opt-in shape, same default-OFF
+	// neutrality. Deliberately NOT a sub-key of IntegrationLock: that flag's
+	// own contract scopes it to the PreToolUse deny layer, and one flag gating
+	// two refusals at two different surfaces cannot say which one a maintainer
+	// meant to turn off.
+	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
@@ -590,6 +635,18 @@ type WorkflowTodoConfig struct {
 	Enabled *bool `yaml:"enabled"`
 }
 
+// WorkflowProjectConfig mirrors workflow.project.* — the /moai project Phase 14
+// completion-continuation key (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001).
+//
+// Continuation is a plain string, NOT a *string. The pointer on
+// WorkflowTodoConfig.Enabled buys a distinction this domain does not have: the
+// default here is a NAMED token of the closed set — card — so "absent" and
+// "card" mean exactly the same thing, and no requirement reads a nil case.
+// Read it through Config.ProjectContinuation rather than dereferencing here.
+type WorkflowProjectConfig struct {
+	Continuation string `yaml:"continuation"`
+}
+
 // BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
 // Branch-State Guard opt-in gate (SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-3).
 // When Enabled is false (the distributed default), the hook returns the allow
@@ -609,6 +666,18 @@ type BranchGuardConfig struct {
 // `moai integration` CLI that writes it, are unaffected by this flag: only the
 // DENY layer is gated, exactly as BranchGuard gates only its deny.
 type IntegrationLockConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in
+// gate for the REFUSAL layer of the pre-merge `.claude/settings.json` drift
+// assertion. When Enabled is false (the distributed default) `moai integration
+// acquire` still runs the predicate, still preserves a drifted working copy,
+// still appends the ledger row and still reports — it simply records the
+// window instead of refusing it. Only the refusal is gated: an implementation
+// that skipped detection while the flag is off would remove the very property
+// the default-OFF posture was chosen for, and would pass every other check.
+type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
@@ -805,6 +874,22 @@ type GateConfig struct {
 	DisabledSteps map[string]bool `yaml:"disabled_steps"`
 	// Typecheck configures the type-check axis.
 	Typecheck GateTypecheck `yaml:"typecheck"`
+	// PreCommit scopes the heavy gate's pre-commit context
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001). The runner honors it ONLY when the
+	// invoking hook exports the MOAI_PRECOMMIT=1 marker; a standalone
+	// `moai gate` run never reads it, so its existing gate.enabled contract is
+	// unchanged (operator decision 2).
+	PreCommit GatePreCommitConfig `yaml:"pre_commit"`
+}
+
+// GatePreCommitConfig configures the heavy gate's pre-commit context.
+type GatePreCommitConfig struct {
+	// Enabled opts the git pre-commit hook's heavy gate in. Default false:
+	// under the MOAI_PRECOMMIT=1 marker the runner skips the project-wide
+	// heavy steps (vet/lint/test/typecheck) so a pre-existing failure
+	// unrelated to the staged change cannot block unrelated commits. The
+	// standalone `moai gate` CLI ignores this key entirely.
+	Enabled bool `yaml:"enabled"`
 }
 
 // GateTypecheck configures the gate's type-check axis.
@@ -857,6 +942,11 @@ type GateTimeouts struct {
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// LockWait bounds how long a starting gate run waits for the gate-run
+	// lock — the advisory lock serializing concurrent manual `moai gate` runs
+	// in one project — before degrading to an unserialized run. In seconds,
+	// like its siblings; a policy knob, not a step budget.
+	LockWait int `yaml:"lock_wait"`
 }
 
 // VetTimeoutDuration converts the Vet timeout to time.Duration.
@@ -894,6 +984,17 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// LockWaitDuration converts the gate-run lock wait budget to time.Duration.
+// Returns 30s when the value is zero or negative — long enough that a
+// concurrent run finishing normally is waited out, short enough that a
+// starting run is not held hostage by one that will not.
+func (g *GateConfig) LockWaitDuration() time.Duration {
+	if g.Timeouts.LockWait <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(g.Timeouts.LockWait) * time.Second
 }
 
 // SunsetConfig defines the Build-to-Delete framework configuration.
@@ -1215,11 +1316,24 @@ type ContextTokenBudget struct {
 // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
-	ClarityThreshold int           `yaml:"clarity_threshold"`
-	Enabled          bool          `yaml:"enabled"`
-	Plan             InterviewMode `yaml:"plan"`
-	Project          InterviewMode `yaml:"project"`
-	SkipConditions   []string      `yaml:"skip_conditions"`
+	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	Enabled            bool          `yaml:"enabled"`
+	Plan               InterviewMode `yaml:"plan"`
+	Project            InterviewMode `yaml:"project"`
+	RecommendationMode string        `yaml:"recommendation_mode"`
+	SkipConditions     []string      `yaml:"skip_conditions"`
+}
+
+// ResolvedRecommendationMode returns the resolved recommendation-mode axis:
+// "pull" only when the key holds exactly "pull"; "push" otherwise — including
+// when the key is absent, empty, or unrecognized (REQ-JFM-002, REQ-JFM-003).
+// The raw value stays on RecommendationMode, so an unrecognized setting is
+// recorded verbatim rather than silently discarded.
+func (c InterviewConfig) ResolvedRecommendationMode() string {
+	if c.RecommendationMode == "pull" {
+		return "pull"
+	}
+	return "push"
 }
 
 // InterviewMode holds per-mode interview settings.

@@ -246,7 +246,7 @@ func TestPhaseValueShape_NotEraDemotable(t *testing.T) {
 		{Code: "FrontmatterPhaseInvalid", Severity: SeverityError, Message: "m"},
 		{Code: "FrontmatterInvalid", Severity: SeverityError, Message: "m"},
 	}
-	out := applyEraDemotion(in, true)
+	out := applyEraDemotion(in, demotionCause{GrandfatheredEra: true})
 
 	if out[0].Severity != SeverityError || out[0].Advisory {
 		t.Errorf("FrontmatterPhaseInvalid must survive era demotion as a non-advisory error, got severity=%q advisory=%v",

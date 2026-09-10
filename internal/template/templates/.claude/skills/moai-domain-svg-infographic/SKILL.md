@@ -232,9 +232,9 @@ and the two-direction fixture check are in `references/authoring.md` section 8.
 ## Linting the source
 
 ```bash
-node ${CLAUDE_SKILL_DIR}/scripts/check-svg.mjs diagram.svg          # human-readable diagnostics
-node ${CLAUDE_SKILL_DIR}/scripts/check-svg.mjs diagram.svg --json   # machine-readable
-node ${CLAUDE_SKILL_DIR}/scripts/check-svg.mjs diagram.svg --strict # warnings also fail
+node .claude/skills/moai-domain-svg-infographic/scripts/check-svg.mjs diagram.svg          # human-readable diagnostics
+node .claude/skills/moai-domain-svg-infographic/scripts/check-svg.mjs diagram.svg --json   # machine-readable
+node .claude/skills/moai-domain-svg-infographic/scripts/check-svg.mjs diagram.svg --strict # warnings also fail
 ```
 
 Every diagnostic carries `file:line:column`, a stable code, and a message. The
@@ -266,8 +266,8 @@ report it as a manual check — never as a lint result.
 ## Rendering and verifying the PNG
 
 ```bash
-node ${CLAUDE_SKILL_DIR}/scripts/render.mjs diagram.svg --out diagram.png            # 2x default
-node ${CLAUDE_SKILL_DIR}/scripts/render.mjs diagram.svg --out diagram.png --scale 3
+node .claude/skills/moai-domain-svg-infographic/scripts/render.mjs diagram.svg --out diagram.png            # 2x default
+node .claude/skills/moai-domain-svg-infographic/scripts/render.mjs diagram.svg --out diagram.png --scale 3
 ```
 
 The renderer resolves a Chromium-family executable from `CHROME_PATH`, then from

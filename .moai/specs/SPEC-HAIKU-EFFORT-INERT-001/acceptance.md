@@ -2,7 +2,6 @@
 id: SPEC-HAIKU-EFFORT-INERT-001
 title: "Acceptance criteria — remove inert effort field from haiku-tier agents"
 version: "0.1.1"
-status: completed
 created: 2026-07-01
 updated: 2026-07-01
 author: manager-spec

@@ -1,0 +1,54 @@
+=== RUN   TestCodexAudit_NativeBaseBranchCarriesBranch
+    codex_review_target_test.go:193: baseBranch target must carry a non-empty `branch` (schema required set is [branch, type]); target=map[type:baseBranch]
+--- FAIL: TestCodexAudit_NativeBaseBranchCarriesBranch (0.42s)
+=== RUN   TestCodexAudit_BaseBranchResolutionChain
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/step1_remote_default_head
+    codex_review_target_test.go:210: target.branch = "", want "main" (origin/HEAD → origin/main, prefix stripped)
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/step2_main_when_remote_head_absent
+    codex_review_target_test.go:221: target.branch = "", want "main" — a missing step 1 must not become a silent skip
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/worktree_base_branch_is_not_read
+    codex_review_target_test.go:243: target.branch = "", want "main" — worktree_base_branch must NOT be read on this path (spec.md §A.7)
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/dangling_remote_head_falls_through
+    codex_review_target_test.go:258: target.branch = "", want "main" — an unresolvable name must not be returned
+--- FAIL: TestCodexAudit_BaseBranchResolutionChain (1.60s)
+    --- FAIL: TestCodexAudit_BaseBranchResolutionChain/step1_remote_default_head (0.43s)
+    --- FAIL: TestCodexAudit_BaseBranchResolutionChain/step2_main_when_remote_head_absent (0.35s)
+    --- FAIL: TestCodexAudit_BaseBranchResolutionChain/worktree_base_branch_is_not_read (0.44s)
+    --- FAIL: TestCodexAudit_BaseBranchResolutionChain/dangling_remote_head_falls_through (0.38s)
+=== RUN   TestCodexAudit_UncommittedChangesShapeUnchanged
+--- PASS: TestCodexAudit_UncommittedChangesShapeUnchanged (0.44s)
+=== RUN   TestCodexAudit_UnresolvableBaseBranchIsNotASilentOtherReview
+    codex_review_target_test.go:320: review/start must NOT be sent when the base branch cannot be resolved; params=map[target:map[type:baseBranch] threadId:tid-fake]
+    codex_review_target_test.go:331: verdict = "pass", want "inconclusive"
+    codex_review_target_test.go:335: summary must name the unresolvable base branch as the cause; got "clean change, no findings"
+--- FAIL: TestCodexAudit_UnresolvableBaseBranchIsNotASilentOtherReview (0.32s)
+=== RUN   TestCodexAudit_IncompleteVariantsAreNotSerialized
+=== RUN   TestCodexAudit_IncompleteVariantsAreNotSerialized/commit
+    codex_review_target_test.go:359: an incomplete commit target must never be serialized (required [sha type]); line:
+        {"id":3,"jsonrpc":"2.0","method":"review/start","params":{"target":{"type":"commit"},"threadId":"tid-fake"}}
+=== RUN   TestCodexAudit_IncompleteVariantsAreNotSerialized/custom
+    codex_review_target_test.go:359: an incomplete custom target must never be serialized (required [instructions type]); line:
+        {"id":3,"jsonrpc":"2.0","method":"review/start","params":{"target":{"type":"custom"},"threadId":"tid-fake"}}
+--- FAIL: TestCodexAudit_IncompleteVariantsAreNotSerialized (0.45s)
+    --- FAIL: TestCodexAudit_IncompleteVariantsAreNotSerialized/commit (0.00s)
+    --- FAIL: TestCodexAudit_IncompleteVariantsAreNotSerialized/custom (0.00s)
+=== RUN   TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet
+=== RUN   TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/uncommittedChanges
+=== RUN   TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/baseBranch
+    codex_review_target_test.go:394: baseBranch target is missing required key "branch"; got map[type:baseBranch]
+--- FAIL: TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet (0.42s)
+    --- PASS: TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/uncommittedChanges (0.00s)
+    --- FAIL: TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/baseBranch (0.00s)
+=== RUN   TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget
+=== RUN   TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/commit
+    codex_review_target_test.go:436: the commit target object must not appear; target=map[type:commit]
+    codex_review_target_test.go:438: no review/start may be sent in place of an unsupported commit target; substituted target=map[type:commit]
+=== RUN   TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/custom
+    codex_review_target_test.go:436: the custom target object must not appear; target=map[type:custom]
+    codex_review_target_test.go:438: no review/start may be sent in place of an unsupported custom target; substituted target=map[type:custom]
+--- FAIL: TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget (0.42s)
+    --- FAIL: TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/commit (0.00s)
+    --- FAIL: TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/custom (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	5.092s
+FAIL

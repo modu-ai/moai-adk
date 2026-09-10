@@ -49,6 +49,26 @@ else
   fail "non-silent after drain; output: $OUT"
 fi
 
+# t459: post-rotation silence. The collector-side cap (SPEC-INBOX-DRAIN-GAP-001)
+# rotates the live inbox into lessons-inbox.jsonl.1 whenever the LSEL marker
+# (.moai/state/lsel/) is absent. Rotation collapses the LIVE line count, so the
+# backlog advisory goes quiet at exactly the moment stubs left the drain's reach
+# — drain.sh reads only --inbox and carries zero references to any .N archive
+# (measured: .moai/reports/t459/r2-drain-reach.log). Archived lines are undrained
+# by the drain's own accounting: rotation implies the marker was absent, and the
+# offset file lives inside that marker directory, so it read 0.
+ROT_INBOX="$FIXTURE/rotated.jsonl"
+ROT_STATE="$FIXTURE/rot-state"   # deliberately NOT created — marker absent
+printf '{"event_key":"live"}\n' > "$ROT_INBOX"
+printf '{"event_key":"archived"}\n%.0s' {1..40} > "$ROT_INBOX.1"
+
+OUT=$(bash "$SCRIPT" --inbox "$ROT_INBOX" --state-dir "$ROT_STATE" --threshold 25 2>&1 || true)
+if echo "$OUT" | grep -q "40 archived"; then
+  pass "t459: rotation-archived stubs reported (advisory does not go silent)"
+else
+  fail "t459: advisory silent after rotation — 40 archived stubs unreported; output: $OUT"
+fi
+
 if [[ "$FAIL" -ne 0 ]]; then exit 1; fi
 log "backlog_check_test: PASS"
 exit 0

@@ -1,0 +1,14 @@
+=== test census ===
+BUILD FAILED  example.com/censusfix/delta
+  # example.com/censusfix/delta
+  delta/broken.go:3:14: syntax error: unexpected {, expected )
+FAILED        example.com/censusfix/alpha  TestAlphaFails
+  === RUN   TestAlphaFails
+      alpha_test.go:10: expected 7, got 3
+  --- FAIL: TestAlphaFails (0.00s)
+FAILED PKG    example.com/censusfix/gamma
+  exit status 1
+  FAIL	example.com/censusfix/gamma	0.393s
+NOTHING RAN   example.com/censusfix/beta
+SKIPPED TEST  example.com/censusfix/alpha  TestAlphaSkips
+=== totals: packages=4 passed=1 skipped=1 nothing-ran=1 failed=1 build-failed=1 ===

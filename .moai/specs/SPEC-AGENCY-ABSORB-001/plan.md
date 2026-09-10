@@ -1,7 +1,6 @@
 ---
 id: SPEC-AGENCY-ABSORB-001
 version: 0.2.0
-status: draft
 created_at: 2026-04-20
 updated_at: 2026-04-20
 author: GOOS

@@ -1,0 +1,8 @@
+.moai/specs/SPEC-KANBAN-BOARD-001/acceptance.md
+.moai/specs/SPEC-KANBAN-BOARD-001/design.md
+.moai/specs/SPEC-KANBAN-BOARD-001/plan.md
+.moai/specs/SPEC-KANBAN-BOARD-001/spec.md
+.moai/specs/SPEC-KANBAN-WORKTREE-001/acceptance.md
+.moai/specs/SPEC-KANBAN-WORKTREE-001/design.md
+.moai/specs/SPEC-KANBAN-WORKTREE-001/plan.md
+.moai/specs/SPEC-KANBAN-WORKTREE-001/spec.md

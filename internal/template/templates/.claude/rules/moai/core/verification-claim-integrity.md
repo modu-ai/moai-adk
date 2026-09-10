@@ -45,6 +45,79 @@ Concretely, an attributed claim names:
 
 Anything else (an inferred value, a stale figure, a "should be" estimate) is unattributed and MUST be reported as a Gap (§3.4), not as a Claim.
 
+### 2.1 Moving-ref attribution — the anchor-or-subject predicate
+
+[ZONE:Evolvable] [HARD] A claim decided against a **moving ref** — `origin/main`, `origin/develop`, `origin/HEAD`, or any other name that resolves to a different commit as work lands — carries no baseline in the sense §2 requires. The ref is an address that moves; the sentence containing it does not. What was measured against the tip on Monday is re-served as current on Friday, unchanged in text and false in fact. The same hazard rides any moving coordinate, a source line number included, so the predicate is written for coordinates generally and merely detected on the git-ref form.
+
+The corrective is **not** "pin every ref". Some claims are *about* the moving thing — what mainline currently carries, which tip a reader is to start from, a coordinate that is itself the subject of a correction — and pinning those destroys exactly the information they exist to record. Indiscriminate pinning is therefore the dominant failure mode of this clause, not its compliant outcome. The predicate decides, per claim, which case is at hand.
+
+[HARD] The predicate is applied, not recalled. Before remediating any moving-ref or moving-coordinate claim, read `verification-claim-integrity-detail.md` § Moving-ref predicate and run its four tests in order; they return one of two classes — **ANCHOR** (an address at which a measurement was taken) or **SUBJECT** (the claim is *about* the moving thing) — and that companion also carries the five adjudicated instances and the detection limits L1-L7 a mechanism enforcing this clause cannot see. Reaching a remedy below without having run the tests is indiscriminate pinning by another name.
+
+#### Classification and remedy are two separate steps
+
+[HARD] The tests return a **class**; the class does not name the remedy. There are **two classes and four remedies** — ANCHOR selects between R1 and R2, SUBJECT between R3 and R4. Collapsing the two steps is the second, subtler route to indiscriminate pinning: a reader who believes the class *is* the remedy has only as many remedies as there are classes, and reaches for the first one that fits.
+
+#### The four remediation branches
+
+| | Branch | Class | When | Form |
+|---|---|---|---|---|
+| **R1** | Pin the literal SHA | ANCHOR | the anchor value is already known at authoring time | replace the ref with the resolved 40-hex SHA, recorded with the tree and date it was resolved in |
+| **R2** | Freeze at pre-flight *(the anchor-class default)* | ANCHOR | the value is not knowable when the criterion is written — the usual case for a run-phase PRESERVE criterion | `BASELINE_SHA=$(git rev-parse origin/main)` captured before the first run-phase commit; criteria decided against `$BASELINE_SHA`, resolved value recorded in the progress record |
+| **R3** | Keep the moving ref, declare the exemption | SUBJECT / S1 | narrative — nothing is measured at read time | leave the ref; add the inline marker with a stated reason |
+| **R4** | State the measuring command; demote the value to a dated reference | SUBJECT / S2 | the claim asserts the current state of a moving thing and a reader will act on it | lead with the command that must be run at read time; any value follows it, parenthesized, dated, and explicitly labelled a reference |
+
+R2 is preferred over R1 for run-phase criteria: it removes R1's authoring-time knowledge requirement while giving the same fixed-value guarantee.
+
+**R4's ordering is load-bearing, not stylistic.** A value written first reads as the criterion and demotes re-measurement to a confirmation step. Command first, value second and marked as a reference, so a reader who only skims still sees an instruction to measure rather than a number to trust.
+
+**Every remedy costs the author something, and the count is what does the work.** With one remedy on offer the author pins; with four, none of them free, choosing requires applying the predicate.
+
+| Remedy | What it costs the author |
+|---|---|
+| R1 | resolving the SHA and recording the tree and date it was resolved in |
+| R2 | capturing the baseline before the first run-phase commit, and recording the resolved value |
+| R3 | writing a non-empty reason a reviewer can disagree with |
+| R4 | naming the deciding command, which a later reader will run |
+
+R4's cost is its own definition made binding: the command it names must be the one that actually decides the claim. Left unpriced, R4 would be the cheapest available silencer — rephrasing into a shape is always cheaper than writing a justification — and that is bulk suppression reached by another road. A wrong or vague command is visible to the next reader who runs it, which is what makes the price real.
+
+#### The exemption marker
+
+The tests are judgments about meaning. No regex decides them, so the exemption is **author-declared**, written after applying the predicate:
+
+```
+<!-- moving-ref-ok: <reason> -->
+```
+
+- **Scope**: the flagged line, or the line immediately above it. Nothing wider — a per-claim judgment does not get document granularity.
+- **Form**: an HTML comment, invisible in the rendered artifact. The marker is an author-to-linter annotation, not content for a reader of the rendered document.
+- **The reason is mandatory and non-empty.** A bare marker would make "silence the warning" cheaper than "pin the SHA", inverting the incentive this clause sets. With a reason required, declaring and pinning cost about the same and the author picks on the merits.
+- **An empty or whitespace-only reason does not suppress.** It produces a finding reporting the marker as *incomplete* — the one outcome that keeps the reason from becoming a formality.
+
+A document-wide lint skip is not the exemption path: it silences a whole file, which is the wrong granularity for a per-claim judgment.
+
+### 2.2 Tool-provenance attribution — which build judged the tree
+
+[ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
+
+The failure is silent by construction, and its silence is **symmetric**. Where the judging build is behind the tree, rules that landed after that build simply do not run: the output is a clean pass, the exit status is zero, the error stream is empty. Where the judging build matches the tree, the output is *also* a clean pass, the exit status is *also* zero, the error stream is *also* empty. Nothing in either result says which case occurred — so a green result is not evidence that the checks passed, only that whatever checks the invoked build happens to carry reported nothing.
+
+**The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
+
+- build the tool from the tree and invoke that build **by its path**, rather than letting a shell path resolve to an installed one; or
+- verify — and state alongside the citation — that the installed build's commit is not a strict ancestor of the tree's HEAD.
+
+**What the citation carries.** A cited tool measurement names the judging build's commit next to the tree's HEAD. A measurement citing only the tree is unattributed under §2: a Gap, not a Claim.
+
+**Where it does not bind.** A build with no repository to compare against — a released artifact inside a user's project, a checkout without history — has no lag to state, and this clause requires nothing of it. A missing second coordinate is a defect only where the coordinate exists.
+
+**Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
+
+
+### 2.3 Ordering attribution — the commit graph is the only sequencing witness
+
+[ZONE:Evolvable] [HARD] When a claim's validity depends on a measurement having been taken BEFORE the change it measures (a baseline-first acceptance criterion), the baseline artifact MUST land in its own commit that precedes the change's commit. Git snapshots the tree per commit and cannot witness authoring order inside one commit, so a baseline committed together with the implementation it measured leaves the ordering claim permanently unverifiable — however truthfully the commit message asserts the sequence. A commit message and a session record ASSERT ordering; only the commit graph witnesses it. Where committing the baseline ahead is impossible (measurement and change are inherently one atomic act), the acceptance criterion's ordering clause is rewritten to what the commit graph can verify — never silently left to rest on a same-commit pair. (Motivating instance, recorded as a permanent deviation: a baseline artifact that a baseline-first acceptance criterion depended on shared its commit with the implementation it measured, and a later audit could not re-witness the asserted ordering from git history; recurrence prevention is this clause.)
+
 ## 3. The 5-Section Evidence-Bearing Report Format
 
 [ZONE:Evolvable] [HARD] Verification and completion reports — on either binding surface (§1.1) — SHOULD be structured as the following five sections. The format is the operational mechanism that enforces §1 and §2: it forces the actor to separate what is claimed from what was observed, and to make the unobserved explicit. Apply the format to every report, not only the first.
@@ -67,5 +140,5 @@ failure.
 
 ---
 
-Version: 1.2.0
+Version: 1.3.0
 Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.

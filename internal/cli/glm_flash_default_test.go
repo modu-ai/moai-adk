@@ -7,10 +7,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestGLMFlashDefaultEnvInjection is the boot smoke for the flash default
-// switch: with NO llm.yaml on disk (the default configuration), a `moai glm`
-// launch resolves glm-5.3-flash into every ANTHROPIC_DEFAULT_*_MODEL slot and
-// sizes the statusline/auto-compact windows at 1,000,000. The observation is
+// TestGLMFlashDefaultEnvInjection is the boot smoke for the GLM slot defaults:
+// with NO llm.yaml on disk (the default configuration), a `moai glm` launch
+// resolves glm-5.3-flash into the Opus/Sonnet/Haiku ANTHROPIC_DEFAULT_*_MODEL
+// slots, glm-5.3 into the Fable slot, and sizes the statusline/auto-compact
+// windows at 1,000,000 — the window figure is shared because BOTH models are
+// 1M, which is the invariant the mixed slot set rests on. The observation is
 // env-level ONLY — the injection maps the launcher builds — with NO live z.ai
 // API dependency, no interactive prompt, and no API round-trip.
 //
@@ -33,7 +35,14 @@ func TestGLMFlashDefaultEnvInjection(t *testing.T) {
 		t.Fatalf("loadGLMConfig on an absent llm.yaml should fall to defaults, got: %v", err)
 	}
 
-	want := config.DefaultGLM53Flash
+	// Per-slot expectation: the Fable slot is the one non-flash slot, so a
+	// single shared `want` would stop distinguishing a wrong slot value.
+	want := map[string]string{
+		config.EnvAnthropicDefaultOpusModel:   config.DefaultGLM53Flash,
+		config.EnvAnthropicDefaultSonnetModel: config.DefaultGLM53Flash,
+		config.EnvAnthropicDefaultHaikuModel:  config.DefaultGLM53Flash,
+		config.EnvAnthropicDefaultFableModel:  config.DefaultGLM53,
+	}
 	slotEnvs := []string{
 		config.EnvAnthropicDefaultOpusModel,
 		config.EnvAnthropicDefaultSonnetModel,
@@ -47,16 +56,16 @@ func TestGLMFlashDefaultEnvInjection(t *testing.T) {
 		config.EnvAnthropicDefaultFableModel:  glmConfig.Models.Fable,
 	}
 	for _, envKey := range slotEnvs {
-		if slots[envKey] != want {
-			t.Errorf("default slot feeding %s = %q, want %q", envKey, slots[envKey], want)
+		if slots[envKey] != want[envKey] {
+			t.Errorf("default slot feeding %s = %q, want %q", envKey, slots[envKey], want[envKey])
 		}
 	}
 
 	// Leg 1 — the mutation-free tmux injection map.
 	injectVars := buildTmuxInjectVars(glmConfig, "some-token")
 	for _, envKey := range slotEnvs {
-		if got := injectVars[envKey]; got != want {
-			t.Errorf("buildTmuxInjectVars[%s] = %q, want %q (tmux session env)", envKey, got, want)
+		if got := injectVars[envKey]; got != want[envKey] {
+			t.Errorf("buildTmuxInjectVars[%s] = %q, want %q (tmux session env)", envKey, got, want[envKey])
 		}
 	}
 	if got := injectVars[config.EnvStatuslineContextSize]; got != "1000000" {
@@ -86,8 +95,8 @@ func TestGLMFlashDefaultEnvInjection(t *testing.T) {
 	}
 	setGLMEnv(glmConfig, "some-token")
 	for _, envKey := range slotEnvs {
-		if got := os.Getenv(envKey); got != want {
-			t.Errorf("process env %s = %q after setGLMEnv, want %q", envKey, got, want)
+		if got := os.Getenv(envKey); got != want[envKey] {
+			t.Errorf("process env %s = %q after setGLMEnv, want %q", envKey, got, want[envKey])
 		}
 	}
 	if got := os.Getenv(config.EnvClaudeCodeAutoCompactWindow); got != "1000000" {

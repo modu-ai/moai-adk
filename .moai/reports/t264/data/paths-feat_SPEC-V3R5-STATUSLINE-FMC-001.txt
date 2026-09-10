@@ -1,0 +1,13 @@
+.moai/config/sections/statusline.yaml
+.moai/specs/SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001/acceptance.md
+.moai/specs/SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001/plan.md
+.moai/specs/SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001/spec.md
+docs-site/content/en/advanced/statusline.md
+docs-site/content/ja/advanced/statusline.md
+docs-site/content/ko/advanced/statusline.md
+docs-site/content/zh/advanced/statusline.md
+internal/cli/update.go
+internal/statusline/builder_test.go
+internal/statusline/renderer.go
+internal/statusline/renderer_test.go
+internal/template/templates/.moai/config/sections/statusline.yaml

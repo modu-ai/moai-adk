@@ -1,0 +1,14 @@
+# Test pair for the CSRF-absence rule, whose pattern is the shape of every Go
+# HTTP handler. The valid sample is an ordinary helper function so the handler
+# shape produces zero findings on it.
+id: sec-csrf-no-token-check
+valid:
+  - |
+    func add(left int, right int) int {
+        return left + right
+    }
+invalid:
+  - |
+    func createUser(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusCreated)
+    }

@@ -1,0 +1,28 @@
+$ ls <ten named per-criterion evidence files>
+-rw-r--r--@ 1 goos  staff   445 Aug 31 21:03 .moai/reports/t381/verify/ac-iec-001.txt
+-rw-r--r--@ 1 goos  staff   160 Aug 31 21:03 .moai/reports/t381/verify/ac-iec-002.txt
+-rw-r--r--@ 1 goos  staff    97 Aug 31 21:03 .moai/reports/t381/verify/ac-iec-003.txt
+-rw-r--r--@ 1 goos  staff   274 Aug 31 21:04 .moai/reports/t381/verify/ac-iec-004.txt
+-rw-r--r--@ 1 goos  staff   235 Aug 31 21:04 .moai/reports/t381/verify/ac-iec-005.txt
+-rw-r--r--@ 1 goos  staff   499 Aug 31 21:04 .moai/reports/t381/verify/ac-iec-006.txt
+-rw-r--r--@ 1 goos  staff   248 Aug 31 21:04 .moai/reports/t381/verify/ac-iec-007.txt
+-rw-r--r--@ 1 goos  staff    46 Aug 31 21:19 .moai/reports/t381/verify/ac-iec-010.txt
+-rw-r--r--@ 1 goos  staff  1853 Aug 31 21:14 .moai/reports/t381/verify/ac-iec-011.txt
+-rw-r--r--@ 1 goos  staff   185 Aug 31 21:04 .moai/reports/t381/verify/ac-iec-012.txt
+exit=0
+
+$ git check-ignore -v .moai/reports/t381/verify
+exit=1 (1 = NOT ignored = PASS)
+
+$ ls .moai/state/verify
+ls: .moai/state/verify: No such file or directory
+exit=1
+
+--- iter5 re-verification (2026-08-31, HEAD 0e903d464) ---
+$ ls <ten named per-criterion evidence files>
+exit=0                    <- all ten still present
+$ git check-ignore -v .moai/reports/t381/verify
+exit=1                    <- NOT ignored (tracked path) = PASS
+$ ls .moai/state/verify
+ls: .moai/state/verify: No such file or directory
+                          <- nothing written under .moai/state/ by this card, including in iter5

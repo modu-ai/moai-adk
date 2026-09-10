@@ -52,9 +52,12 @@ import (
 // readability in test failure output) and a compiled regex.
 //
 // Pattern notes:
-//   - C1 (SPEC ID): matches `SPEC-V3R2-`…`SPEC-V3R6-` / `SPEC-AGENCY-` /
-//     `SPEC-WORKTREE-` prefix patterns that are unambiguously moai-adk-internal.
-//     Generic placeholder `SPEC-XXX-001` (in example fixtures) does NOT match.
+//   - C1 (SPEC ID): the GENERAL internal form `SPEC-<DOMAIN>-NNN` (uppercase
+//     multi-segment domain + numeric tail), plus the historical
+//     `SPEC-V3R2-`…`SPEC-V3R6-` / `SPEC-AGENCY-` / `SPEC-WORKTREE-`
+//     alternation for non-numeric-tailed shapes (card t262). Legitimate
+//     pedagogical placeholders and byte-parity-enforced provenance are
+//     separated by the pedagogical allowlist below — NOT by pattern narrowing.
 //   - C2 (REQ/AC token): matches `REQ-XYZ-NNN` or `AC-XYZ-NNN` where XYZ is
 //     2+ uppercase letters and NNN is 3 digits. This matches moai-adk
 //     internal tracking tokens like REQ-ATR-007 / AC-WO-013 while leaving
@@ -145,10 +148,15 @@ const skillMoaiPrefix = ".claude/skills/moai/"
 // entries about external Anthropic releases, etc.) is tracked as a
 // follow-up tightening tier in §25.1 evolution policy.
 //
-//   - C1 (SPEC ID prefix): `SPEC-V3R2-`…`SPEC-V3R6-` / `SPEC-AGENCY-` /
-//     `SPEC-WORKTREE-` (current project-internal series, whole-tree). Future
-//     series prefixes require explicit extension here + cross-reference to
-//     CLAUDE.local.md §25.1.
+//   - C1 (SPEC ID, general form): `SPEC-<DOMAIN>-NNN` — any uppercase
+//     multi-segment domain with a numeric tail — plus the historical
+//     `SPEC-V3R2-`…`SPEC-V3R6-` / `SPEC-AGENCY-` / `SPEC-WORKTREE-`
+//     alternation, whole-tree. Supersedes the former enumerated-prefix-only
+//     policy (card t262): prefix enumeration let unseen SPEC families
+//     (e.g. SPEC-CODEX-SESSION-MSG-001) pass while violating the doctrine.
+//     False positives are separated by the pedagogicalAllowlist, so a new
+//     pedagogical placeholder requires an explicit allowlist entry, and a
+//     new internal SPEC family requires NO guard change.
 //   - C2 (REQ/AC token prefix-allowlist): only known project-internal REQ/AC
 //     prefixes — `ATR`, `WO`, `COORD`, `UNP`, `LNC`, `TII`, `HRN`, `ORC`. New
 //     SPEC families add their prefix here.
@@ -167,8 +175,24 @@ const skillMoaiPrefix = ".claude/skills/moai/"
 // via env flag MOAI_TEMPLATE_LEAK_STRICT=1).
 var leakClasses = []leakClass{
 	{
+		// C1 — internal SPEC identifiers, GENERAL form. Card t262: the class
+		// previously matched only an enumerated prefix list (V3R[2-6] /
+		// AGENCY / WORKTREE), so every other project SPEC family (e.g.
+		// SPEC-CODEX-SESSION-MSG-001) passed the guard while violating the
+		// C1 doctrine (CLAUDE.local.md §25.1: ALL internal SPEC IDs are
+		// forbidden in templates) — guard pass no longer implied doctrine
+		// compliance. The primary alternative below is the doctrine's
+		// intent: SPEC-<DOMAIN>-NNN, an uppercase multi-segment domain with
+		// a numeric tail. False-positive separation is by the
+		// pedagogicalAllowlist below — one reviewed (file, literal) entry
+		// per legitimate illustration — NEVER by narrowing the pattern: a
+		// new pedagogical placeholder is an explicit allowlist act, and any
+		// unseen internal SPEC ID is caught by default. The enumerated
+		// V3R/AGENCY/WORKTREE alternation is retained as a second
+		// alternative so non-numeric-tailed shapes from the historical
+		// families remain covered.
 		name:    "C1-spec-id-prefix",
-		pattern: regexp.MustCompile(`\bSPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
+		pattern: regexp.MustCompile(`\bSPEC-[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-[0-9]{3}\b|\bSPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+\b`),
 	},
 	{
 		name:    "C2-req-ac-internal-prefix",
@@ -268,16 +292,17 @@ var leakClasses = []leakClass{
 	// policy-preserved REQ-HRN-FND tokens in moai-harness-learner /
 	// moai-meta-harness (see skillMoaiPrefix doc comment).
 	{
-		// C1c — non-V3R/AGENCY/WORKTREE SPEC-ID prefixes (REQ-SKF-053c). The
-		// whole-tree C1 class above matches only SPEC-(V3R[2-6]|AGENCY|WORKTREE)-;
-		// this sibling enumerates known single-domain-family prefixes that
-		// escape it (e.g. SPEC-DB-SYNC-RELOC-001, SPEC-PROJECT-DB-HINT-001).
-		// Deliberately NARROW (enumerated families, not a generic
-		// `SPEC-[A-Z-]+-[0-9]+` wildcard): a generic form would flag dozens
-		// of legitimate pedagogical placeholder SPEC IDs used throughout
-		// skill bodies (SPEC-BUG-042, SPEC-X-001, SPEC-PAY-001, etc.). New
-		// families require an explicit extension here, matching the C1
-		// enumeration precedent. Whole-tree (no skill scoping), matching C1.
+		// C1c — non-V3R/AGENCY/WORKTREE SPEC-ID prefixes (REQ-SKF-053c).
+		// Card t262 SUPERSEDED this class's original rationale: C1 above now
+		// carries the general SPEC-<DOMAIN>-NNN form, which subsumes both
+		// enumerated families below (SPEC-DB-SYNC-RELOC-001,
+		// SPEC-PROJECT-DB-HINT-001), and the false-positive concern that
+		// motivated the narrow enumeration ("a generic form would flag dozens
+		// of legitimate pedagogical placeholders") is now handled by the
+		// pedagogicalAllowlist instead of by pattern narrowing. The class is
+		// RETAINED whole-tree for REQ-SKF-053 test-name stability and as
+		// belt-and-suspenders alongside C1 — do not add new families here;
+		// the general form already catches them.
 		name:    "C1c-spec-id-non-v3r-known-families",
 		pattern: regexp.MustCompile(`\bSPEC-(DB-SYNC-RELOC|PROJECT-DB-HINT)-[0-9]{3}\b`),
 	},
@@ -520,6 +545,352 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 		LineEnd:   325,
 		SpecID:    "REQ-002",
 		Rationale: "Generic placeholder requirement code in an illustrative task-decomposition table example (format demonstration, not a tracked internal REQ)",
+	},
+
+	// --- Card t262: C1 general-form widening — adjudicated residues ----------
+	//
+	// Widening C1 to the general SPEC-<DOMAIN>-NNN form flagged 67 tree
+	// occurrences. Each distinct (file, literal) pair was adjudicated into
+	// exactly one of two dispositions:
+	//
+	//   1. CLEANED — the literal was a real internal-citation; the template
+	//      text was genericized (hooks guard comments, rules provenance
+	//      notes, skill headings, sanitized-pair mirrors). Not listed here.
+	//   2. ALLOWLISTED below — either byte-parity-enforced provenance
+	//      (stripping the mirror alone would break rule_template_mirror_test)
+	//      or pedagogical placeholders that teach the SPEC-ID grammar /
+	//      frontmatter schema / workflow examples. Every entry names a
+	//      literal absent from the .moai/specs/ registry except the two
+	//      byte-parity provenance tokens, which are verified internal SPECs
+	//      whose citations live on BOTH trees by design.
+	//
+	// Maintenance rule: a NEW pedagogical placeholder or a newly enrolled
+	// byte-parity file lands here FIRST, with a rationale — never by
+	// narrowing the C1 pattern.
+	//
+	// Byte-parity-enforced provenance (mirror parity retained on both trees):
+	{
+		File:      ".claude/rules/moai/development/model-policy.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AGENT-ARCH-V2-001",
+		Rationale: "Mirror-parity-enforced provenance (model-policy.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees (t262 adjudication)",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/spec-workflow.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUDIT-SNAPSHOT-001",
+		Rationale: "Mirror-parity-enforced provenance (spec-workflow.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees (t262 adjudication)",
+	},
+	// Grammar / schema teaching placeholders (verified absent from the registry):
+	{
+		File:      ".claude/agents/moai/manager-spec.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-Z-001",
+		Rationale: "Frontmatter optional-field example (related_specs list) in the SPEC-ID grammar walkthrough",
+	},
+	{
+		File:      ".claude/agents/moai/manager-spec.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-NEW-001",
+		Rationale: "Frontmatter optional-field example (superseded_by) in the SPEC-ID grammar walkthrough",
+	},
+	{
+		File:      ".claude/agents/moai/manager-spec.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-A-001",
+		Rationale: "Frontmatter optional-field example (partially_superseded_by) in the SPEC-ID grammar walkthrough",
+	},
+	{
+		File:      ".claude/agents/moai/manager-spec.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-EXAMPLE-DOMAIN-001",
+		Rationale: "Valid-example placeholder in the SPEC-ID grammar walkthrough (t262 genericization of the former real SPEC citation; matches the taught regex by construction)",
+	},
+	{
+		File:      ".claude/agents/moai/plan-auditor.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID grammar valid-example in the D7 evidence-extraction walkthrough",
+	},
+	{
+		File:      ".claude/agents/moai/plan-auditor.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-EXAMPLE-DOMAIN-001",
+		Rationale: "Multi-segment ID example placeholder in the D7-1 extraction instruction (t262 genericization of the former real SPEC citation)",
+	},
+	{
+		File:      ".claude/rules/moai/development/spec-frontmatter-schema.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "spec_id field-format example in the frontmatter schema documentation",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/session-handoff-examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-MYPROJ-001",
+		Rationale: "Resume-message teaching example (byte-parity-enrolled file; the examples are the content on both trees)",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/session-handoff-examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-MYPROJ-002",
+		Rationale: "Resume-message teaching example (byte-parity-enrolled file; the examples are the content on both trees)",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/session-handoff-examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-MYPROJ-003",
+		Rationale: "Resume-message teaching example (byte-parity-enrolled file; the examples are the content on both trees)",
+	},
+	{
+		File:      ".claude/rules/moai/workflow/session-handoff-examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-X-001",
+		Rationale: "Resume-message teaching example (byte-parity-enrolled file; the examples are the content on both trees)",
+	},
+	{
+		File:      ".claude/skills/moai/SKILL.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the unified-skill body",
+	},
+	{
+		File:      ".claude/skills/moai/references/mx-tag.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-XXX-000",
+		Rationale: "@MX:SPEC broken-link example in the MX tag reference (illustrative dead SPEC)",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/plan/spec-assembly.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the plan-assembly workflow",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/run/context-loading.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the run context-loading workflow",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/run/mode-orchestration.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the run mode-orchestration workflow",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/run/mode-orchestration.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-BUG-042",
+		Rationale: "Illustrative SPEC example in the run mode-orchestration workflow",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/run.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the run workflow entry",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/sync/delivery.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the sync delivery workflow",
+	},
+	{
+		File:      ".claude/skills/moai-ref-git-workflow/SKILL.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "SPEC-ID format illustration in the git-workflow reference skill",
+	},
+	{
+		File:      ".claude/skills/moai-ref-git-workflow/SKILL.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-BUG-042",
+		Rationale: "Illustrative SPEC example in the git-workflow reference skill",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/navigator-audit.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-X-999",
+		Rationale: "Illustrative spec_id in the navigator audit override-file schema example",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/navigator-audit.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Illustrative spec_id in the navigator audit documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/navigator-audit.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTONOMY-WORKFLOW-001",
+		Rationale: "Worked example in the audit-known-matches.yaml override-file schema (user-authored file format demonstration, absent from the registry)",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/navigator-audit.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-DEPRECATED-001",
+		Rationale: "Illustrative ignored-entry in the audit-known-matches.yaml override-file schema example",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/navigator.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-X-001",
+		Rationale: "Illustrative spec_id in the navigator documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-spec/references/migration-guide.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Unnumbered-to-numbered SPEC migration walkthrough example",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-spec/references/migration-guide.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-REDESIGN-001",
+		Rationale: "Unnumbered-to-numbered SPEC migration walkthrough example (SPEC-REDESIGN → SPEC-REDESIGN-001)",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-spec/references/migration-guide.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-002",
+		Rationale: "Duplicate-numbering resolution walkthrough example (SPEC-AUTH-001-duplicate → SPEC-AUTH-002)",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/modules/parallel-workflows.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Illustrative SPEC example in the parallel-workflows module",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/modules/parallel-workflows.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-PAY-001",
+		Rationale: "Illustrative SPEC example in the parallel-workflows module",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/modules/parallel-workflows.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-DASH-001",
+		Rationale: "Illustrative SPEC example in the parallel-workflows module",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/modules/worktree-commands.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Illustrative SPEC example in the worktree-commands module",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-PAY-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-DASH-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-FULL-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-UI-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-DEBUG-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/examples.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-CONFLICT-001",
+		Rationale: "Illustrative SPEC example in the worktree examples reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/reference.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-PROTO-001",
+		Rationale: "Illustrative SPEC example in the worktree reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/reference.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-AUTH-001",
+		Rationale: "Illustrative SPEC example in the worktree reference",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-worktree/references/reference.md",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-PAY-001",
+		Rationale: "Illustrative SPEC example in the worktree reference",
+	},
+	{
+		File:      ".claude/workflows/sync-audit-4dim.js",
+		LineStart: 0,
+		LineEnd:   0,
+		SpecID:    "SPEC-FOO-001",
+		Rationale: "Illustrative spec_id arg in the workflow launch example comment",
 	},
 }
 
@@ -1584,6 +1955,84 @@ func TestReqSkf053NewLeakClassesDetectShapes(t *testing.T) {
 					tc.class, tc.text, tc.outScopePath, outViolations)
 			}
 		})
+	}
+}
+
+// TestC1GeneralFormWidening pins the card-t262 widening of C1 to the general
+// SPEC-<DOMAIN>-NNN form. The former class matched only an enumerated prefix
+// list (V3R[2-6] / AGENCY / WORKTREE), so unseen SPEC families passed the
+// guard while violating the C1 doctrine (CLAUDE.local.md §25.1). The named
+// mutant for this card is "extend the prefix list by one or two entries
+// instead of adopting the general form" — every leaky probe below therefore
+// shares NO prefix with that enumeration, so the mutant cannot pass here.
+//
+// The negative half pins the false-positive separation: pedagogical
+// placeholders pass ONLY via the (file, literal) allowlist — the same
+// literal in an unregistered file still fires — and the grammar boundaries
+// (no numeric tail, digit-leading domain) stay outside the class.
+func TestC1GeneralFormWidening(t *testing.T) {
+	t.Parallel()
+
+	var c1Name string
+	var c1Re *regexp.Regexp
+	for i := range leakClasses {
+		if leakClasses[i].name == "C1-spec-id-prefix" {
+			c1Name = leakClasses[i].name
+			c1Re = leakClasses[i].pattern
+			break
+		}
+	}
+	if c1Re == nil {
+		t.Fatal("C1-spec-id-prefix class not found in leakClasses")
+	}
+
+	// (1) General-form internal IDs must fire WHOLE-TREE. Each probe uses a
+	// family the historical enumeration never named; the first is a REAL
+	// .moai/specs/ registry member that passed the old guard (the card's own
+	// example).
+	leakyProbes := []struct {
+		text string
+		path string // relForAllowlist surface the literal must be caught on
+	}{
+		{"owned by SPEC-CODEX-SESSION-MSG-001", ".claude/hooks/moai/handle-agent-hook.sh"},
+		{"delivered by SPEC-CODEX-SESSION-MSG-001", ".claude/agents/moai/manager-spec.md"},
+		{"see SPEC-CODEX-SESSION-MSG-001 for the policy", ".claude/skills/moai/workflows/run.md"},
+		{"delivered by SPEC-UNSEENFAMILY-TOKEN-001", ".claude/hooks/moai/handle-stop-goal.sh"},
+		{"see SPEC-UNSEENFAMILY-TOKEN-001 for details", ".claude/rules/moai/workflow/spec-workflow.md"},
+	}
+	for _, tc := range leakyProbes {
+		violations := collectLeakViolations(tc.path, tc.path, tc.text, leakClasses)
+		if !anyViolationHasClass(violations, c1Name) {
+			t.Errorf("C1 general form failed to flag %q at %q; violations: %v", tc.text, tc.path, violations)
+		}
+	}
+
+	// (2) Pedagogical placeholders pass ONLY through the (file, literal)
+	// allowlist. The same literal in an unregistered file MUST still fire —
+	// the allowlist never whitelists a literal tree-wide.
+	pedagogical := "SPEC-PAY-001"
+	registered := ".claude/skills/moai-workflow-worktree/references/examples.md"
+	allowed := collectLeakViolations(registered, registered,
+		"illustrative example "+pedagogical+" in an example", leakClasses)
+	if len(allowed) != 0 {
+		t.Errorf("allowlisted pedagogical placeholder %q must pass in its registered file; got: %v", pedagogical, allowed)
+	}
+	unregistered := ".claude/hooks/moai/handle-agent-hook.sh"
+	elsewhere := collectLeakViolations(unregistered, unregistered,
+		"illustrative example "+pedagogical+" in a hook", leakClasses)
+	if !anyViolationHasClass(elsewhere, c1Name) {
+		t.Errorf("pedagogical-shaped literal %q in an unregistered file must fire (allowlist is per (file, literal)); got: %v", pedagogical, elsewhere)
+	}
+
+	// (3) Grammar boundaries stay outside the class.
+	for _, clean := range []string{
+		"placeholder SPEC-XXX (no numeric tail)",
+		"example SPEC-X (no numeric tail)",
+		"fixture SPEC-001-REQ-01 (digit-leading domain is not SPEC-<DOMAIN>-NNN)",
+	} {
+		if c1Re.MatchString(clean) {
+			t.Errorf("C1 general form must NOT match grammar non-member %q", clean)
+		}
 	}
 }
 

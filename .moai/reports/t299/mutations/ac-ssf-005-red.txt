@@ -1,0 +1,5 @@
+--- FAIL: TestNeedsSHABackfill_LegacySetPreserved (0.00s)
+    closer_syncsha_test.go:59: needsSHABackfill("") = false, want true (retired-allowlist value must stay caught)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.373s
+FAIL

@@ -34,7 +34,7 @@ triggers:
 
 ## Phase Owners (per the canonical agent catalog policy)
 
-Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §F.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
+Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §E.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
 
 Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 1 SKIP Rationale; Phase 4 Mode Selection autopilot logging at `progress.md` § Phase 4 Mode Selection.
 

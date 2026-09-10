@@ -1,0 +1,1 @@
+ok  	github.com/modu-ai/moai-adk/internal/kanban	13.463s	coverage: 87.0% of statements

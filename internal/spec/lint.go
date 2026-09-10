@@ -5,6 +5,7 @@ package spec
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -127,6 +128,14 @@ func NewLinter(opts LinterOptions) *Linter {
 	l.rules = []Rule{
 		&EARSModalityRule{},
 		&REQIDUniquenessRule{},
+		// REQTableRejectionRule — SPEC-SPEC-LINT-BLIND-AXES-001 REQ-SLB-005
+		// (axis 1, M-A2b). Reports the tables discriminator C-d declined to
+		// read as definition tables, one advisory line per table carrying the
+		// rejected-row count. Advisory is set at the emission site for the
+		// whole code, so the entry is deliberately NOT in eraDemotableCodes:
+		// that map demotes ERRORS, and an inert entry in a policy map reads as
+		// intent.
+		&REQTableRejectionRule{},
 		&CoverageRule{},
 		&FrontmatterSchemaRule{},
 		&DependencyExistsRule{},
@@ -136,6 +145,40 @@ func NewLinter(opts LinterOptions) *Linter {
 		&StatusCaseNormalizationRule{},
 		&StatusGitConsistencyRule{},
 		&OwnershipTransitionRule{},
+		// StatusTransitionValidityRule — SPEC-STATUS-TRANSITION-VALIDITY-001
+		// (card t376). Sits beside OwnershipTransitionRule and answers a
+		// different question: is the (prev, curr) pair itself a legal edge,
+		// regardless of who signed the commit. Emits two codes —
+		// StatusTransitionInvalid and StatusTokenUnrecognized — neither of
+		// which belongs in eraDemotableCodes: that map is consulted only for
+		// SeverityError findings, so an entry there would be inert while
+		// reading as intent.
+		&StatusTransitionValidityRule{},
+		// ArtifactStatusFieldForbiddenRule — SPEC-ARTIFACT-STATELESS-001 M2,
+		// REQ-AST-001-004. Per-SPEC: it reads the SPEC's own sibling artifacts
+		// via filepath.Dir(doc.Path). Severity is `error` and the code is
+		// deliberately NOT in eraDemotableCodes — that absence holds only
+		// because the D1 corpus cleanup lands in the same SPEC (REQ-AST-001-006
+		// / -010); splitting the cleanup out inverts the decision.
+		&ArtifactStatusFieldForbiddenRule{},
+		// MovingRefUnpinnedRule — SPEC-MOVING-REF-GUARD-001 M3, REQ-MRG-001.
+		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling artifacts
+		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.
+		// Severity is warning only (spec.md §D.5) and the code is deliberately
+		// NOT in eraDemotableCodes.
+		&MovingRefUnpinnedRule{},
+		// SyncSHASlotFormatRule — SPEC-SYNC-SHA-SLOT-FORMAT-001 M3, REQ-SSF-004.
+		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling progress.md
+		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.
+		// Severity is warning only (spec.md §D.3) — all five corpus findings sit
+		// in `completed` SPECs, which terminalStatusEnum already shelters, so the
+		// rule contributes nothing to the --strict exit status on the corpus as
+		// it stands; an `error` would put five closed SPECs' history into the
+		// strict path with no shelter and make lint.skip the rational response.
+		// The code is deliberately NOT in eraDemotableCodes (REQ-SSF-007): that
+		// map demotes ERRORS, so the entry would be inert for a warning, and an
+		// inert entry in a policy map reads as intent. AC-SSF-010 guards it.
+		&SyncSHASlotFormatRule{},
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
@@ -211,8 +254,14 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 			ruleFindings = applylintSkip(ruleFindings, doc.LintSkip)
 			docFindings = append(docFindings, ruleFindings...)
 		}
-		demote := isGrandfatheredSpecDir(filepath.Dir(doc.Path)) || terminalStatusEnum[doc.Frontmatter.Status]
-		findings = append(findings, applyEraDemotion(docFindings, demote)...)
+		// The two disjuncts are kept separate so the demotion annotation can
+		// name the one that fired (REQ-STV-008). The decision itself — demote
+		// when EITHER holds — is unchanged.
+		cause := demotionCause{
+			GrandfatheredEra: isGrandfatheredSpecDir(filepath.Dir(doc.Path)),
+			TerminalStatus:   terminalStatusEnum[doc.Frontmatter.Status],
+		}
+		findings = append(findings, applyEraDemotion(docFindings, cause)...)
 	}
 
 	for _, rule := range l.rules {
@@ -261,6 +310,35 @@ func isGrandfatheredSpecDir(specDir string) bool {
 	return era.EraFinal()
 }
 
+// demotionCause records WHY a SPEC's findings are being demoted. The two
+// reasons are independent and either alone is sufficient, so the annotation
+// appended to a demoted finding must be able to name the one that actually
+// fired: a document demoted solely because its status is terminal is not
+// grandfathered, and saying so misstates the finding's own cause
+// (REQ-STV-008, SPEC-STATUS-TRANSITION-VALIDITY-001).
+type demotionCause struct {
+	// GrandfatheredEra: the SPEC directory classifies as V2.x / V3R2-R4 / V3R5.
+	GrandfatheredEra bool
+	// TerminalStatus: the frontmatter status is in terminalStatusEnum.
+	TerminalStatus bool
+}
+
+// demoted reports whether any cause fired.
+func (c demotionCause) demoted() bool { return c.GrandfatheredEra || c.TerminalStatus }
+
+// String names the cause(s) that fired, for the demotion annotation.
+func (c demotionCause) String() string {
+	switch {
+	case c.GrandfatheredEra && c.TerminalStatus:
+		return "grandfathered era + terminal lifecycle status"
+	case c.TerminalStatus:
+		return "terminal lifecycle status"
+	case c.GrandfatheredEra:
+		return "grandfathered era"
+	}
+	return ""
+}
+
 // applyEraDemotion downgrades structural ERROR findings on protected SPECs
 // to advisory warnings, and marks the SPEC's remaining warnings advisory so
 // --strict does not escalate them. Protected = grandfather-era (V2.x /
@@ -268,17 +346,22 @@ func isGrandfatheredSpecDir(specDir string) bool {
 // history — retro-enforcing later structural rules on closed SPECs is the
 // same false-positive class the grandfather clause exists for). Active
 // modern-era SPECs pass through untouched — full enforcement.
-func applyEraDemotion(findings []Finding, grandfathered bool) []Finding {
-	if !grandfathered {
+//
+// The appended annotation names the cause that fired (REQ-STV-008). Only the
+// message changed; the demotion DECISION and its blanket Advisory marking are
+// unchanged (spec.md §C non-goal).
+func applyEraDemotion(findings []Finding, cause demotionCause) []Finding {
+	if !cause.demoted() {
 		return findings
 	}
+	annotation := " [" + cause.String() + " — downgraded to warning]"
 	for i := range findings {
 		f := &findings[i]
 		switch {
 		case f.Severity == SeverityError && eraDemotableCodes[f.Code]:
 			f.Severity = SeverityWarning
 			f.Advisory = true
-			f.Message += " [grandfathered era — downgraded to warning]"
+			f.Message += annotation
 		case f.Severity == SeverityWarning:
 			f.Advisory = true
 		}
@@ -339,6 +422,14 @@ func discoverSPECs(baseDir string) ([]string, error) {
 // for each. discoverSPECs silently skips these; this function surfaces them so
 // accidentally-committed roadmap documents or non-SPEC directories are visible.
 //
+// It also emits SpecsDirMissingSpecFile for a SPEC-*/ directory that carries no
+// spec.md. Such a directory escapes BOTH filters otherwise: discoverSPECs skips
+// it (no spec.md to glob) and the foreign-entry check exempts it (the name IS
+// SPEC-*), leaving every lint rule blind to its contents. The schema admits no
+// Tier without spec.md (S=2 files, M=3, L=5), so the state is a defect rather
+// than a legitimate shape, and the correct repair is to make the directory
+// visible — not to widen discovery onto a file that does not exist.
+//
 // Whitelist: entries whose name starts with "_" (e.g. "_archive") are exempt —
 // the underscore prefix is the established ignore convention.
 //
@@ -357,6 +448,8 @@ func lintSpecsDirRootIntegrity(baseDir string) []Finding {
 		return nil
 	}
 
+	const missingSpecMsgTmpl = "%q: SPEC directory has no spec.md — discoverSPECs globs SPEC-*/spec.md, so every per-SPEC lint rule skips this directory without visiting it; add spec.md (required by every Tier: S=2 files, M=3, L=5) or move the directory out of .moai/specs/"
+
 	const msgTmpl = "%q: non-SPEC entry in .moai/specs/ — only SPEC-<DOMAIN>-<NNN>/ directories allowed; ROADMAP/planning docs belong in .moai/plans/ or project root (see spec-frontmatter-schema.md § Root Integrity)"
 
 	var findings []Finding
@@ -366,8 +459,23 @@ func lintSpecsDirRootIntegrity(baseDir string) []Finding {
 		if strings.HasPrefix(name, "_") {
 			continue
 		}
-		// Valid SPEC-* directories are the expected occupants.
+		// Valid SPEC-* directories are the expected occupants — but only
+		// when they carry the spec.md that discoverSPECs globs for. Without
+		// it, the directory is not passing the per-SPECDoc rules; it is never
+		// visited by them at all, so every rule is silently blind to whatever
+		// the directory holds. Surface that here, at the same directory level,
+		// rather than widening discoverSPECs (which would hand every rule a
+		// SPECDoc parsed from a file that does not exist).
 		if entry.IsDir() && strings.HasPrefix(name, "SPEC-") {
+			if _, statErr := os.Stat(filepath.Join(baseDir, name, "spec.md")); statErr != nil {
+				findings = append(findings, Finding{
+					File:     filepath.Join(baseDir, name),
+					Line:     1,
+					Severity: SeverityWarning,
+					Code:     "SpecsDirMissingSpecFile",
+					Message:  fmt.Sprintf(missingSpecMsgTmpl, name),
+				})
+			}
 			continue
 		}
 		// Anything else is foreign: loose files (any extension) and
@@ -427,6 +535,55 @@ type REQEntry struct {
 	ID   string
 	Text string
 	Line int
+
+	// Widened records that this entry reached doc.REQs ONLY because the
+	// extraction pattern was widened by SPEC-COVERAGE-RULE-SCOPE-001 — the
+	// narrow reqLinePattern did not collect it. It is the provenance flag the
+	// severity treatment keys on: a widened-only entry is one the linter was
+	// blind to until now, so a finding against it is a newly-surfaced corpus
+	// fact rather than a regression the author introduced, and it reports
+	// without gating. An entry the narrow pattern already collected carries
+	// false here and its rules behave exactly as before.
+	Widened bool
+
+	// Source records the SHAPE the entry was written in — a markdown list item
+	// or a table row. SPEC-SPEC-LINT-BLIND-AXES-001 REQ-SLB-013.
+	//
+	// It exists for ONE consumer: the corpus recount (REQ-SLB-009), which must
+	// split each row of its delta table into "surfaced by table collection" and
+	// "surfaced by the t385 separator widening". Those two causes share the
+	// Widened flag, so without a second field the recount can report a total but
+	// cannot attribute it — and an unattributable total does not answer the
+	// question that card asks.
+	//
+	// [HARD] Source MUST NOT reach reqFindingSeverity, or any other severity
+	// decision. Severity has exactly one decision point (Widened, via
+	// reqFindingSeverity); a second axis would mean every rule that reads a
+	// REQEntry has to handle both, and the first rule that forgets one lets an
+	// advisory finding gate. spec.md §B.2 rejects that trade explicitly, and
+	// TestTableCollection_SourceDoesNotDecideSeverity measures the prohibition
+	// by flipping every Source value and requiring the severity distribution to
+	// be unchanged.
+	Source REQSource
+}
+
+// REQSource is the shape a REQ definition was written in. The zero value is
+// REQSourceList, so every construction site that predates
+// SPEC-SPEC-LINT-BLIND-AXES-001 keeps reporting the shape it actually collects.
+type REQSource uint8
+
+const (
+	// REQSourceList is a markdown list-item definition (`- **REQ-X-001** — …`).
+	REQSourceList REQSource = iota
+	// REQSourceTable is a table-row definition (`| REQ-X-001 | … |`).
+	REQSourceTable
+)
+
+func (s REQSource) String() string {
+	if s == REQSourceTable {
+		return "table"
+	}
+	return "list"
 }
 
 // SPECDoc represents a parsed SPEC document.
@@ -440,8 +597,58 @@ type SPECDoc struct {
 	LintSkip    []string
 }
 
-// reqIDPattern is a regular expression to validate REQ-<DOMAIN>-<NNN>-<NNN> format
-var reqIDPattern = regexp.MustCompile(`^REQ-[A-Z]{2,5}-\d{3}-\d{3}$`)
+// reqIDPattern validates a REQ ID. It is the VALIDATION half of a pair whose
+// other half is the extraction pattern that populates doc.REQs; the two must be
+// kept in a deliberate relationship, because InvalidREQIDRule can only ever
+// judge IDs the extraction hands it.
+//
+// SPEC-COVERAGE-RULE-SCOPE-001 M2 widened this from `^REQ-[A-Z]{2,5}-\d{3}-\d{3}$`.
+// That shape admitted 260 of the 1,085 REQ definition lines the corpus actually
+// carries; the widened extraction (reqLineWidePattern) would have made the other
+// 825 fire InvalidREQID corpus-wide. The shapes now accepted, all measured live:
+//
+//	REQ-HOOK-001          three-segment
+//	REQ-WF001-001         digits inside the domain segment
+//	REQ-VNRN-RT-001-001   five-segment, two-part domain
+//	REQ-HRN-FND-001       two-part alpha domain
+//	REQ-TUX1-001          domain ending in a digit
+//	REQ-WC01-001          alphanumeric domain
+//
+// It is deliberately NARROWER than the extraction, and that gap is load-bearing.
+// Aligning validation exactly to extraction would make InvalidREQIDRule vacuous:
+// every ID it judges would pass by construction, and the rule's non-execution
+// would be indistinguishable from its success
+// (`.claude/rules/moai/development/verification-completeness.md` §1.1). The
+// retained rejection class — a domain segment not starting with a letter, a
+// domain of three or more segments, a numeric tail that is not one or two groups
+// of exactly three digits — is reachable through the extraction, and
+// TestReqIDPattern_RejectsShapesTheExtractionAccepts is the mutant probe that
+// keeps it reachable.
+//
+// The rejection class is REACHABLE, and that is measured rather than inferred
+// from this pattern's shape. Corpus-level mutant probe
+// (TestCorpusRejectedREQIDDecomposition section [F]): validation aligned exactly
+// to the extraction — the option-(ii) mutant — fires InvalidREQID 0 times across
+// the corpus, while this pattern fires 6. A delta of 0 would have meant the
+// rejection class is unreachable on real documents whatever the regexp says;
+// the delta is 6.
+//
+// Those 6 are REQ-256K-001..006 in SPEC-HANDOFF-CTXGUIDE-001, whose domain
+// segment starts with a digit. They are genuine convention violations, also
+// measured: 0 of 706 SPEC directories carry a digit-initial domain segment, and
+// specIDPattern codifies the same letter-initial rule for SPEC IDs. Six
+// digit-initial domain tokens out of 1,085 REQ definitions is an outlier, not an
+// unrepresented convention.
+//
+// Consequently InvalidREQIDRule is NOT a deletion candidate: it fires on real
+// input, and `moai spec lint --help` advertises "REQ ID uniqueness" against a
+// rule that still checks something. Had the residual been 0, the rule would have
+// been a deletion candidate — an advertised check that cannot fire is the exact
+// defect SPEC-COVERAGE-RULE-SCOPE-001 was opened to document, and leaving one in
+// place while repairing a vacuous parser would reproduce the defect inside its
+// own repair. Deletion is not this SPEC's decision to make either way; the
+// disposition is recorded so it stays visible.
+var reqIDPattern = regexp.MustCompile(`^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$`)
 
 // REQ-SPC-003-001: The system SHALL do X."
 var reqLinePattern = regexp.MustCompile(`-\s+(REQ-[A-Z]{2,5}-\d{3}-\d{3})\s*:\s*(.+)`)
@@ -468,8 +675,9 @@ func parseSPECDoc(path string) *SPECDoc {
 	doc.Body = body
 	doc.LintSkip = fm.LintConfig.Skip
 
-	// Parse REQ list
-	doc.REQs = parseREQs(body)
+	// Parse REQ list with the widened pattern, marking every entry the narrow
+	// pattern would NOT have collected. SPEC-COVERAGE-RULE-SCOPE-001 M3.
+	doc.REQs = parseREQsWithProvenance(body)
 
 	// Parse Acceptance Criteria
 	criteria, _ := ParseAcceptanceCriteria(body, false)
@@ -523,6 +731,38 @@ func parseREQs(body string) []REQEntry {
 	return reqs
 }
 
+// reqFindingSeverity resolves the severity and advisory flag for a finding
+// emitted against a single REQ entry.
+//
+// A finding on a WIDENED-ONLY entry (one the narrow reqLinePattern never
+// collected) reports without gating: the linter was blind to that line until
+// SPEC-COVERAGE-RULE-SCOPE-001 M3 wired the widened collector, so the finding
+// is a newly-surfaced corpus fact rather than a regression the author
+// introduced. Landing 25 ModalityMalformed and 6 InvalidREQID errors — the
+// measured live counts — on a corpus that was never linted against them would
+// make bulk suppression the rational response, which is the outcome the
+// widening exists to avoid.
+//
+// A finding on an entry the narrow pattern already collected is untouched, so
+// every pre-existing behavior is byte-identical.
+//
+// Advisory is set at the emission site because eraDemotableCodes is consulted
+// only for SeverityError findings — a warning can never reach it.
+//
+// THE DEBT: like CoverageRule's advisory severity, this is a guard that
+// declares without enforcing on the widened population. The promotion condition
+// is that the widened-only corpus findings are remediated or exempted, after
+// which the `Widened` branch is deleted and every finding gates. That condition
+// is prose and nothing here fires when it is met; forgetting it leaves a check
+// whose non-execution is indistinguishable from its success — the defect class
+// this SPEC exists to document.
+func reqFindingSeverity(req REQEntry, base Severity) (Severity, bool) {
+	if req.Widened {
+		return SeverityWarning, true
+	}
+	return base, false
+}
+
 // collectAllREQIDs collects REQ IDs from all nodes (leaf + non-leaf) in Acceptance tree
 func collectAllREQIDs(criteria []Acceptance) map[string]bool {
 	covered := make(map[string]bool)
@@ -564,23 +804,55 @@ func (r *EARSModalityRule) Code() string { return "ModalityMalformed" }
 func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	var findings []Finding
 	for _, req := range doc.REQs {
-		// Existing legacy check (unchanged) — emits error when SHALL is missing.
-		if isModalityMalformed(req.Text) {
+		sev, adv := reqFindingSeverity(req, SeverityError)
+		switch judgeModality(req.Text) {
+		case modalityJudgedMalformed:
+			// Existing legacy check (unchanged) — emits error when SHALL is missing.
 			findings = append(findings, Finding{
 				File:     doc.Path,
 				Line:     req.Line,
-				Severity: SeverityError,
+				Severity: sev,
+				Advisory: adv,
 				Code:     "ModalityMalformed",
 				Message:  fmt.Sprintf("REQ %s: EARS modality violation — SHALL missing or format mismatch: %q", req.ID, req.Text),
+			})
+		case modalityUnjudged:
+			// SPEC-SPEC-LINT-BLIND-AXES-001 REQ-SLB-006/007/008 (axis 2, branch B).
+			//
+			// The check has NO OPINION about this text, and says so. Before this
+			// code existed the same situation produced nothing at all, which is
+			// byte-identical to what a well-formed requirement produces.
+			//
+			// [HARD] Advisory is set HERE, for the whole code, and NOT through
+			// reqFindingSeverity. That is not a second severity axis on the REQ
+			// entry: severity still has exactly one entry-keyed decision point
+			// (Widened), and this is a per-CODE property — a signal that only
+			// reports "not judged" must never gate a build, whatever the entry
+			// it sits on. CoverageRule and MovingRefUnpinnedRule set Advisory at
+			// their emission sites for the same reason.
+			//
+			// The message states the absence positively. "No finding" was the
+			// defect; a finding whose text hedges would reproduce it in prose.
+			findings = append(findings, Finding{
+				File:     doc.Path,
+				Line:     req.Line,
+				Severity: SeverityWarning,
+				Advisory: true, // reports, never gates — see the block above
+				Code:     "ModalityUnjudged",
+				Message: fmt.Sprintf(
+					"REQ %s: modality NOT JUDGED — the text opens with none of the English modality keywords (WHEN/WHILE/WHERE/IF/THE) and carries no SHALL token, so this linter has no opinion about it. This is NOT a claim that the requirement is malformed, and it is NOT a claim that it is well formed: %q",
+					req.ID, req.Text),
 			})
 		}
 		// NEW: GEARS migration warning for legacy IF/THEN patterns.
 		// SPEC-V3R6-GEARS-MIGRATION-001 REQ-GM-002 + REQ-GM-006.
 		if isLegacyEARSPattern(req.Text) {
+			_, legacyAdv := reqFindingSeverity(req, SeverityWarning)
 			findings = append(findings, Finding{
 				File:     doc.Path,
 				Line:     req.Line,
 				Severity: SeverityWarning,
+				Advisory: legacyAdv,
 				Code:     "LegacyEARSKeyword",
 				Message:  fmt.Sprintf("REQ %s: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation", req.ID),
 			})
@@ -589,27 +861,131 @@ func (r *EARSModalityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	return findings
 }
 
-// isModalityMalformed checks if REQ text violates EARS modality
-func isModalityMalformed(text string) bool {
-	upper := strings.ToUpper(text)
+// --- Modality judgment — SPEC-SPEC-LINT-BLIND-AXES-001 axis 2, branch B ----
+//
+// THE DEFECT THIS REPLACES. isModalityMalformed read five ENGLISH prefixes and
+// returned false for everything else. For a Korean requirement that false was
+// indistinguishable from "well formed": the function had no opinion, and having
+// no opinion looked exactly like approving. A reader could not tell "no
+// requirement is malformed here" from "no requirement here was ever judged".
+//
+// THE REPAIR IS TO ANNOUNCE, NOT TO JUDGE. Branch A — accepting `해야 한다` /
+// `해서는 안 된다` as SHALL equivalents and grading Korean modality on them — is
+// OUT of scope by operator decision (spec.md §E, §I): a lexicon that decides a
+// verdict is the same kind of decision the discriminator axis already made this
+// round, and two of them in one round makes neither reviewable. What lands here
+// is the third verdict: UNJUDGED, emitted as its own advisory finding code so
+// the count of unjudgeable requirements becomes readable. That count is this
+// milestone's deliverable and it sizes the follow-up card.
+//
+// WHAT MAKES A TEXT JUDGEABLE. Two things, and neither is a Korean lexicon:
+//
+//   - one of the five English modality prefixes, which selects the existing
+//     malformed/conforming verdict unchanged; or
+//   - a SHALL token anywhere in the text, matched at a WORD BOUNDARY.
+//
+// The second is the ONLY reason a Korean requirement is judged at all, and it
+// judges nothing about Korean: the corpus writes `…해야 한다(SHALL)`, so the
+// SHALL the existing lexicon already knows is right there, parenthesized. This
+// is why REQ-SLB-014's word-boundary repair is INSIDE branch B rather than an
+// extension of it — with the old leading-space contact condition `(SHALL)` is
+// invisible, every such requirement is miscounted as unjudgeable, and the count
+// that is this milestone's deliverable is wrong from the start.
+//
+// WHAT IS STILL NOT JUDGED, DELIBERATELY. A requirement with neither a prefix
+// nor a SHALL token gets no verdict — it gets the announcement. An English
+// sentence with a SHALL but no prefix (`System shall X`) is treated as
+// conforming, exactly as before; widening the prefix set is not this card's.
 
-	if strings.HasPrefix(upper, "WHEN ") && !strings.Contains(upper, " SHALL") {
-		return true
+// shallWordPattern matches SHALL as a WHOLE WORD in already-uppercased text.
+//
+// It replaces `strings.Contains(upper, " SHALL")` (REQ-SLB-014). That form
+// required a LEADING SPACE, so it missed SHALL at the start of the string and
+// SHALL after any punctuation — including `…(SHALL)`, the shape the corpus
+// actually writes. It also accepted " SHALLOW" as a SHALL. Both directions
+// move corpus figures, and both movements are published in the milestone
+// record rather than silently absorbed.
+var shallWordPattern = regexp.MustCompile(`\bSHALL\b`)
+
+// modalityPrefixes are the five ENGLISH modality openers the judgment knows.
+// They are listed ONCE: inlining the contact condition at five call sites is
+// how a later round forgets one, and that omission would be silent — the same
+// failure shape this file is repairing.
+var modalityPrefixes = []string{"WHEN ", "WHILE ", "WHERE ", "IF ", "THE "}
+
+// modalityVerdict is the tri-state result of the modality check. The third
+// state is the point: before this SPEC there were only two, and "not judged"
+// was reported as "conforming".
+type modalityVerdict int
+
+const (
+	// modalityJudgedConforming — the text was judged and carries SHALL.
+	modalityJudgedConforming modalityVerdict = iota
+	// modalityJudgedMalformed — the text was judged and SHALL is missing.
+	modalityJudgedMalformed
+	// modalityUnjudged — the check has no opinion about this text. It is NOT
+	// a claim that the text is wrong, and it MUST NOT be reported as a claim
+	// that the text is right.
+	modalityUnjudged
+)
+
+func (v modalityVerdict) String() string {
+	switch v {
+	case modalityJudgedMalformed:
+		return "malformed"
+	case modalityUnjudged:
+		return "unjudged"
+	default:
+		return "conforming"
 	}
-	if strings.HasPrefix(upper, "WHILE ") && !strings.Contains(upper, " SHALL") {
-		return true
+}
+
+// judgeModality returns the tri-state modality verdict for one REQ text.
+//
+// The three outcomes, and the boundary between them, are the point of this
+// function (SPEC-SPEC-LINT-BLIND-AXES-001 axis 2):
+//
+//   - CONFORMING — an English modality prefix AND a SHALL, or a SHALL alone.
+//   - MALFORMED  — an English modality prefix and NO SHALL. A verdict.
+//   - UNJUDGED   — neither. NOT a verdict: the check has no opinion, and a
+//     caller that reads it as "fine" reproduces the defect this SPEC exists to
+//     remove. Only isModalityMalformed's false collapses the last two, which is
+//     why its own doc says a false no longer means "well formed".
+//
+// SHALL is matched at a WORD BOUNDARY (shallWordPattern), replacing a leading-
+// space contact condition that could not see `…해야 한다(SHALL)` — the shape the
+// Korean corpus actually writes. That replacement is what lets a Korean
+// requirement be judged at all, and it judges nothing about Korean: the SHALL
+// the existing lexicon already knows is right there, parenthesized. The corpus
+// figures it moved are published in the milestone record, not absorbed.
+func judgeModality(text string) modalityVerdict {
+	upper := strings.ToUpper(text)
+	hasShall := shallWordPattern.MatchString(upper)
+
+	for _, prefix := range modalityPrefixes {
+		if strings.HasPrefix(upper, prefix) {
+			if hasShall {
+				return modalityJudgedConforming
+			}
+			return modalityJudgedMalformed
+		}
 	}
-	if strings.HasPrefix(upper, "WHERE ") && !strings.Contains(upper, " SHALL") {
-		return true
+	if hasShall {
+		return modalityJudgedConforming
 	}
-	if strings.HasPrefix(upper, "IF ") && !strings.Contains(upper, " SHALL") {
-		return true
-	}
-	// Ubiquitous format: Must start with "The [system] SHALL"
-	if strings.HasPrefix(upper, "THE ") && !strings.Contains(upper, " SHALL") {
-		return true
-	}
-	return false
+	return modalityUnjudged
+}
+
+// isModalityMalformed reports whether REQ text was JUDGED and found malformed.
+//
+// [HARD] A false from this function no longer means "well formed" — it means
+// "not malformed", which now includes "not judged". Callers that need the
+// difference MUST read judgeModality. The blast-radius harness in
+// lint_req_widen_decompose_test.go is a legitimate caller: it counts the
+// findings EARSModalityRule would emit under this code, which is exactly this
+// predicate.
+func isModalityMalformed(text string) bool {
+	return judgeModality(text) == modalityJudgedMalformed
 }
 
 // isLegacyEARSPattern returns true ONLY for IF ... THEN REQs.
@@ -643,13 +1019,15 @@ func (r *REQIDUniquenessRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	seen := make(map[string]int) // ID → first occurrence line
 
 	for _, req := range doc.REQs {
+		sev, adv := reqFindingSeverity(req, SeverityError)
 		if !reqIDPattern.MatchString(req.ID) {
 			findings = append(findings, Finding{
 				File:     doc.Path,
 				Line:     req.Line,
-				Severity: SeverityError,
+				Severity: sev,
+				Advisory: adv,
 				Code:     "InvalidREQID",
-				Message:  fmt.Sprintf("REQ ID %q does not match pattern REQ-[A-Z]{{2,5}}-NNN-NNN", req.ID),
+				Message:  fmt.Sprintf("REQ ID %q does not match pattern REQ-<DOMAIN>[-<DOMAIN>]-NNN[-NNN] (each DOMAIN segment starts with an uppercase letter; each numeric group is exactly three digits)", req.ID),
 			})
 			continue
 		}
@@ -657,7 +1035,8 @@ func (r *REQIDUniquenessRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			findings = append(findings, Finding{
 				File:     doc.Path,
 				Line:     req.Line,
-				Severity: SeverityError,
+				Severity: sev,
+				Advisory: adv,
 				Code:     "DuplicateREQID",
 				Message:  fmt.Sprintf("REQ ID %q is duplicated (first occurrence: line %d)", req.ID, firstLine),
 			})
@@ -674,12 +1053,48 @@ type CoverageRule struct{}
 
 func (r *CoverageRule) Code() string { return "CoverageIncomplete" }
 
+// Severity is `warning` with `Advisory: true` set at the EMISSION SITE, NEVER
+// `error` (SPEC-COVERAGE-RULE-SCOPE-001 M3, plan.md §D option A).
+//
+// Before M3 this rule was an `error` that fired 0 times on the live corpus —
+// not because the corpus was covered, but because the narrow reqLinePattern
+// collected REQ definition lines from 16 of 704 spec.md files, so the rule's
+// `len(doc.REQs) == 0` early return took almost every document. Wiring the
+// widened collector turns the same rule on across 47 SPECs and 846 uncovered
+// REQs. Landing that as `error` would redden the corpus on the first run and
+// make bulk suppression the rational response — the outcome this SPEC exists to
+// prevent.
+//
+// The mechanism is deliberately the emission site, NOT eraDemotableCodes. That
+// map is consulted only for `SeverityError` findings, so a warning can never
+// reach it, and the findings sit on modern-era SPECs no era path would demote.
+// MovingRefUnpinnedRule (lint_movingref.go) reached the same emission-site
+// conclusion by the same route; ArtifactStatusFieldForbiddenRule sits outside
+// the same map for the OPPOSITE reason (it emits `error`, so the map WOULD
+// reach it, and staying out is affordable only because its corpus cleanup lands
+// alongside). Reading either as precedent for the other inverts both.
+//
+// THE DEBT: this guard now declares without enforcing. The promotion condition
+// is that the ~846 corpus findings are remediated or exempted, after which the
+// severity returns to `error`. That condition is prose, and prose does not
+// fire — nothing in this file will notice when it is met. A guard left advisory
+// past its promotion point is a check whose non-execution is indistinguishable
+// from its success, which is precisely the defect class this SPEC was opened to
+// document. MovingRefUnpinnedRule is the FIRST rule sleeping on a prose
+// promotion condition in this package; this is the second.
 func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	if len(doc.REQs) == 0 {
 		return nil
 	}
 
+	// The covered set is the UNION of the inline AC section and the sibling
+	// acceptance.md, which is the AC SSOT for Tier M/L. See
+	// lint_coverage_sibling.go for why the sibling is read here rather than
+	// merged into doc.Criteria, and why it is read whole.
 	covered := collectAllREQIDs(doc.Criteria)
+	for id := range siblingAcceptanceCoveredREQIDs(doc.Path) {
+		covered[id] = true
+	}
 
 	var findings []Finding
 	for _, req := range doc.REQs {
@@ -687,7 +1102,8 @@ func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 			findings = append(findings, Finding{
 				File:     doc.Path,
 				Line:     req.Line,
-				Severity: SeverityError,
+				Severity: SeverityWarning,
+				Advisory: true, // reports, never gates — see the rule doc above
 				Code:     "CoverageIncomplete",
 				Message:  fmt.Sprintf("REQ %s is not referenced by any AC", req.ID),
 			})
@@ -1160,7 +1576,17 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	// Get git-implied status
 	gitStatus, err := getGitImpliedStatus(fm.ID)
 	if err != nil {
-		// If git history is unavailable, skip this check
+		// Observation failed. "Not observed" and "observed-and-matching" must
+		// not share one output (REQ-SLGB-001, SPEC-SPECLINT-GITBLIND-001):
+		// where the failure means the git signal is unobservable for this
+		// repository, surface the Info finding instead of silently skipping.
+		// Either way there is no StatusGitConsistency verdict — there is no
+		// gitStatus to compare against.
+		if gitObservationUnreachable(err) && takeUnreachableEmission() {
+			return []Finding{statusGitUnreachableFinding(doc, err)}
+		}
+		// Observed-and-harmless failure (shapes ②/③ in a full repository),
+		// or a repeat occurrence after this run's single emission (§2.2).
 		return nil
 	}
 
@@ -1177,4 +1603,57 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	}
 
 	return findings
+}
+
+// gitObservationUnreachable decides whether a getGitImpliedStatus error
+// means the git signal is UNOBSERVED for this repository, as opposed to
+// observed-and-harmless (SPEC-SPECLINT-GITBLIND-001 §2.1):
+//   - shape ① (errGitQueryFailed): base ref unresolvable / git unusable — a
+//     repository-level blindness that fires unconditionally;
+//   - shapes ② and ③: harmless in a full repository (no lifecycle commits /
+//     cosmetic-only commits), but in a shallow clone the truncated window can
+//     fabricate them — observation failure only while shallow.
+//
+// The deciding predicate for ②/③ is repository-level (shallow state), so it
+// rides the same per-run cache as cachedMainBranch: the shape decision never
+// spawns a per-SPEC subprocess.
+func gitObservationUnreachable(err error) bool {
+	switch {
+	case errors.Is(err, errGitQueryFailed):
+		return true
+	case errors.Is(err, errNoGitHistory), errors.Is(err, errNoClassifiableCommit):
+		return cachedIsShallowRepository()
+	default:
+		return false
+	}
+}
+
+// statusGitUnreachableFinding renders the Info-severity StatusGitUnreachable
+// finding — the observability surface of SPEC-SPECLINT-GITBLIND-001 M1.
+// REQ-SLGB-002: for the ref-resolution shape the message names the candidate
+// base refs whose resolution was attempted. §2.2: the message states both the
+// repository-wide scope and the resulting rule-wide skip explicitly, because
+// the one finding stands in for every SPEC the rule could not observe.
+// REQ-SLGB-005: Info severity, never changes the --strict exit code.
+func statusGitUnreachableFinding(doc *SPECDoc, err error) Finding {
+	detail := "shallow clone window makes the git signal unreliable"
+	if errors.Is(err, errGitQueryFailed) {
+		detail = fmt.Sprintf("no usable base ref (tried: %s)", triedBaseRefsSummary())
+	}
+	return Finding{
+		File:     doc.Path,
+		Line:     1,
+		Severity: SeverityInfo,
+		Code:     "StatusGitUnreachable",
+		Message: fmt.Sprintf(
+			"SPEC %s git status NOT OBSERVED — %s; this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (%v)",
+			doc.Frontmatter.ID, detail, err),
+	}
+}
+
+// triedBaseRefsSummary names the base refs the resolution chain consults, for
+// the REQ-SLGB-002 message. Sourced from the single mainBranchCandidates
+// chain (gitquery_cache.go) so the message and the walk cannot drift apart.
+func triedBaseRefsSummary() string {
+	return strings.Join(mainBranchCandidates, ", ")
 }

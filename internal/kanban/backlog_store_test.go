@@ -9,7 +9,6 @@ package kanban
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -144,29 +143,35 @@ func TestBacklogAdd_CreatesVersion1File(t *testing.T) {
 		t.Fatalf("queue position = %d, want 1", pos)
 	}
 
-	raw, err := os.ReadFile(store.Path())
+	// The physical carrier changed with the storage swap; the record it
+	// carries did not. Read it back through the store's own surface — that
+	// surface is what every caller contracts on (REQ-TOSQ-010), and asserting
+	// against the file bytes would only re-assert which engine is underneath.
+	rec, err := store.Load()
 	if err != nil {
-		t.Fatalf("read created file: %v", err)
+		t.Fatalf("Load after Add: %v", err)
 	}
-	var probe struct {
-		Version int            `json:"version"`
-		LastSeq int            `json:"last_seq"`
-		Items   []BacklogItem  `json:"items"`
+	if rec.Version != 1 {
+		t.Fatalf("stored version = %d, want 1", rec.Version)
 	}
-	if err := json.Unmarshal(raw, &probe); err != nil {
-		t.Fatalf("created file is not valid JSON: %v\n%s", err, raw)
+	if rec.LastSeq != 1 {
+		t.Fatalf("stored last_seq = %d, want 1", rec.LastSeq)
 	}
-	if probe.Version != 1 {
-		t.Fatalf("created file version = %d, want 1", probe.Version)
+	if len(rec.Items) != 1 || rec.Items[0].ID != "t1" {
+		t.Fatalf("stored items = %+v, want exactly [t1]", rec.Items)
 	}
-	if probe.LastSeq != 1 {
-		t.Fatalf("created file last_seq = %d, want 1", probe.LastSeq)
+	if rec.Items[0] != *item {
+		t.Fatalf("stored item %+v != issued item %+v", rec.Items[0], *item)
 	}
-	if len(probe.Items) != 1 || probe.Items[0].ID != "t1" {
-		t.Fatalf("created file items = %+v, want exactly [t1]", probe.Items)
+
+	// The physical artifact is the sibling database, and nothing else claims
+	// to be the queue.
+	dbPath := filepath.Join(filepath.Dir(store.Path()), "backlog.db")
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Fatalf("engine artifact absent at %s: %v", dbPath, err)
 	}
-	if raw[len(raw)-1] != '\n' {
-		t.Fatal("created file does not end in a newline")
+	if _, err := os.Stat(store.Path()); err == nil {
+		t.Fatal("a legacy backlog.json was created — the engine is the only writer now")
 	}
 }
 
@@ -396,47 +401,37 @@ func TestBacklogRoundTrip_PreservesFieldsAndVersion(t *testing.T) {
 		t.Fatalf("Add: %v", err)
 	}
 
-	raw, err := os.ReadFile(store.Path())
+	// Read back through the store surface: the seeded JSON migrated into the
+	// engine and the mutation landed on top of it, so this asserts the whole
+	// seed -> migrate -> mutate chain preserved every field.
+	rec, err := store.Load()
 	if err != nil {
-		t.Fatalf("read round-tripped file: %v", err)
+		t.Fatalf("Load after round trip: %v", err)
 	}
-	var probe struct {
-		Version int           `json:"version"`
-		LastSeq int           `json:"last_seq"`
-		Items   []map[string]any `json:"items"`
+	if rec.Version != 1 {
+		t.Fatalf("version = %d, want 1 (no version bump)", rec.Version)
 	}
-	if err := json.Unmarshal(raw, &probe); err != nil {
-		t.Fatalf("round-tripped file is not valid JSON: %v", err)
+	if rec.LastSeq != 20 {
+		t.Fatalf("last_seq = %d, want 20", rec.LastSeq)
 	}
-	if probe.Version != 1 {
-		t.Fatalf("version = %d, want 1 (no version bump)", probe.Version)
+	if len(rec.Items) != 4 {
+		t.Fatalf("items = %d, want 4 (3 preserved + 1 added)", len(rec.Items))
 	}
-	if probe.LastSeq != 20 {
-		t.Fatalf("last_seq = %d, want 20", probe.LastSeq)
+	if rec.Items[0].ID != "t2" || rec.Items[0].State != BacklogStateQueued || rec.Items[0].SpecID != nil {
+		t.Fatalf("item t2 not preserved verbatim: %+v", rec.Items[0])
 	}
-	if len(probe.Items) != 4 {
-		t.Fatalf("items = %d, want 4 (3 preserved + 1 added)", len(probe.Items))
+	if rec.Items[1].ID != "t5" || rec.Items[1].State != BacklogStatePicked ||
+		rec.Items[1].SpecID == nil || *rec.Items[1].SpecID != "SPEC-KANBAN-TODO-CLI-001" {
+		t.Fatalf("item t5 not preserved verbatim: %+v", rec.Items[1])
 	}
-
-	wantFields := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true}
-	for i, item := range probe.Items {
-		if len(item) != len(wantFields) {
-			t.Fatalf("item[%d] fields = %v, want exactly %v (no per-item addition)", i, item, wantFields)
-		}
-		for k := range item {
-			if !wantFields[k] {
-				t.Fatalf("item[%d] carries new field %q", i, k)
-			}
-		}
+	if rec.Items[2].ID != "t19" || rec.Items[2].State != BacklogStateDropped {
+		t.Fatalf("item t19 not preserved verbatim: %+v", rec.Items[2])
 	}
-	if probe.Items[0]["id"] != "t2" || probe.Items[0]["state"] != "queued" || probe.Items[0]["spec_id"] != nil {
-		t.Fatalf("item t2 not preserved verbatim: %v", probe.Items[0])
-	}
-	if probe.Items[1]["id"] != "t5" || probe.Items[1]["state"] != "picked" || probe.Items[1]["spec_id"] != "SPEC-KANBAN-TODO-CLI-001" {
-		t.Fatalf("item t5 not preserved verbatim: %v", probe.Items[1])
-	}
-	if probe.Items[2]["id"] != "t19" || probe.Items[2]["state"] != "dropped" {
-		t.Fatalf("item t19 not preserved verbatim: %v", probe.Items[2])
+	// The seed carries no last_seq, so the mark derives from max-present (t19)
+	// and the new card takes t20 — the derive-on-absent rule surviving the
+	// migration intact.
+	if rec.Items[3].ID != "t20" {
+		t.Fatalf("added item id = %q, want t20 (derived past max-present t19)", rec.Items[3].ID)
 	}
 }
 
@@ -449,10 +444,17 @@ func TestBacklogWrite_NoTmpResidue(t *testing.T) {
 	if _, _, err := store.Add("residue probe"); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	allowed := map[string]bool{"backlog.json": true, "backlog.lock": true}
+	// The engine's own artifacts are the database and its WAL siblings; the
+	// lock is unchanged. Anything else in the directory is residue.
+	allowed := map[string]bool{
+		"backlog.db":     true,
+		"backlog.db-wal": true,
+		"backlog.db-shm": true,
+		"backlog.lock":   true,
+	}
 	for _, name := range readBacklogDirNames(t, store) {
 		if !allowed[name] {
-			t.Fatalf("backlog dir holds leaked file %q — the temp must be renamed away", name)
+			t.Fatalf("backlog dir holds leaked file %q — no write path may leave residue", name)
 		}
 	}
 }

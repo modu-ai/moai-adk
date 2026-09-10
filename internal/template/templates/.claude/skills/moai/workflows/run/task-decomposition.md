@@ -235,7 +235,7 @@ Purpose: Multi-dimensional review iteration for high-quality output. This phase 
 - User flow validation: End-to-end correctness
 
 **Security/Performance review** (conditional, triggered when changes affect security/performance/UX domains OR --review flag):
-- Invoke review workflow explicitly: Read `${CLAUDE_SKILL_DIR}/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
+- Invoke review workflow explicitly: Read `.claude/skills/moai/workflows/review.md` and execute its multi-perspective analysis (security, performance, quality, UX reviewers)
 - This replaces the previous vague "delegate to review workflow" with an explicit skill invocation
 
 Iteration behavior:

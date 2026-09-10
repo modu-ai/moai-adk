@@ -1,0 +1,19 @@
+=== progress.md disposition rows ===
+75:#### §C.1 14행 처분 이행
+77:| 행 | 테스트 | 처분 | 이행 |
+79:| A1 | `kanban.TestResolveTodoQueueRoot_FallbackNoGit` | 보존 이관 | `declareNonTemporary(t)` 추가, **홈 루트 단언 원문 유지** — PASS |
+80:| A2 | `kanban.TestResolveTodoQueueRoot_PopulatedFallbackWins` | 보존 이관 | 동일 — PASS |
+81:| A3 | `kanban.TestResolveTodoQueueRootAdopting_AdoptsLocalQueue` (AC-WTQ-008) | 보존 이관 (필수) | 동일, adopt-not-shadow 단언 원문 유지 — PASS |
+82:| A4 | `cli.TestResolveTodoQueueRoot_FallbackNoGit` | 보존 이관 | `declareNonTemporaryQueueBase(t)` + `assertQueueSeamHeard(t, dir)` — PASS |
+83:| A5 | `cli.TestTodoQueue_FallbackAdoptsExistingLocalQueue` | 보존 이관 | 동일 — PASS |
+84:| A6 | `cli.TestGuardBypassMutant_ObserveHomePollution` (AC-SA-011) | **가지 이행** | REQ-SA-011 2번째 가지로 전환: 오염 부재를 관측하고 층 경계를 보고. 공허화 방지를 위해 ⑴ base가 임시 기원임 ⑵ 반환 루트 = 대체 루트 ⑶ 카드가 project-local 큐에 실제 착지 를 **양성 단언**. `t.Logf`가 M3 경계 보고 경로를 지목 — PASS |
+85:| B1 | `kanban.TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing` | 의도적 갱신 | 단언을 `dir/.moai/state/todo` → `dir`로 갱신. **근거는 REQ-THG-001의 교차 고정(D16)이며 편의가 아니다** — 종전 값은 소비자가 `BacklogPathForRoot`를 덧붙이는 루트보다 한 계층 아래다. 무쓰기 절반은 보존(+`dir/.moai` 부재까지 확장) — PASS |
+86:| C1 | `kanban.TestResolveTodoQueueRoot_PureFallbackWritesNothing` | 비임시 사본 | `..._NonTemp` 신설, 원본 유지. 판별식 직접 단언 포함 — PASS |
+87:| C2 | `kanban.TestResolveTodoQueueRoot_ReadThroughToProjectLocal` | 비임시 사본 | 동일 — PASS |
+88:| C3 | `kanban.TestAdoptionLandsWhereConsumersRead` | 비임시 사본 | 동일 — PASS |
+89:| C4 | `kanban.TestAdoptingAndPureResolversAgreeWhenAdoptionFails` | 비임시 사본 | 동일 — PASS |
+90:| C5 | `web.TestTodoSectionReadsThroughToProjectLocalQueue` | 비임시 사본 | `..._NonTemp` 신설(세 번째 패키지). `kanban.TempRootsFn` exported 요건이 여기서 실제로 구속됐다 — PASS |
+91:| C6 | `cli.TestTodoQueueRootGuard_SilentOnHomeFallbackFixture` | 비임시 사본 | `..._NonTemp` 신설. 사본은 **홈 폴백 루트임을 먼저 단언**한 뒤 침묵을 판정 — PASS |
+92:| C7 | `cli.TestAxisACanaryHomeSweep_TodoFamily` | **수용된 손실** | 사본 구성 불가(`exec.Command` 자식 프로세스는 패키지 수준 이음매를 물려받지 않는다). 테스트는 **한 줄도 수정하지 않았다**; 기본 실행에서 SKIP. 6건에 합산하지 않았다 — 사본 처분 6, 공허화 7 |
+94:계수 확인: A행 6(보존 5 + 가지 이행 1) · B행 1 · C행 7(사본 6 + 수용 손실 1) = **14**.
+391:preserve_list_post_run_count: 14        # plan.md §C.1 영향 테스트 14건 전수, 처분 이행 후 전부 PASS

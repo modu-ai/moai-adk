@@ -143,6 +143,32 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 - **When** M5's first implementation commit is inspected
 - **Then** a baseline artifact at `.moai/reports/t250/m5-baseline.md` exists, recording per-task counts of Grep and Read tool-use events for that task set — counted from the executing session's transcript, only those two tools, each measurement stamped with session id and date — with a measurement date preceding the first implementation commit; **When** the same task set runs after M5 with the code-query tools available, **Then** the post-run artifact at `.moai/reports/t250/m5-post.md` (same counting method) records lower Grep/Read call counts than baseline. A baseline dated after implementation began fails the first clause.
 
+> **Recorded deviation (operator decision 2026-08-27, decision A):** the ordering clause of this
+> AC — "a measurement date preceding the first implementation commit" — is permanently
+> unverifiable, not merely deferred. Status stays `completed` with this recorded deviation;
+> recurrence prevention is tracked as backlog card t300. Every claim below was re-measured in
+> this tree on 2026-08-27 and can be re-measured with the commands shown:
+>
+> - Both artifacts exist: `.moai/reports/t250/m5-baseline.md` and `.moai/reports/t250/m5-post.md`
+>   are present in this tree.
+> - The baseline artifact and the implementation it measured landed in ONE commit:
+>   `git show --stat 7f2e9e77d` lists `.moai/reports/t250/m5-baseline.md | 67 +` alongside
+>   `internal/cli/mcp_code_tools.go`, `internal/graph/codequery.go`, and the other M5
+>   implementation files. The commit message asserts the baseline was "recorded BEFORE this
+>   first M5 commit", but git cannot witness that ordering — artifact and code share a single
+>   commit.
+> - That commit is unreachable from both integrated branches: `git merge-base --is-ancestor
+>   7f2e9e77d origin/main` exits 1 and the same check against `origin/develop` exits 1
+>   (orphaned by PR #1648's squash merge `6786c3fa4`, which is what carries `m5-baseline.md`
+>   and `m5-post.md` into reachable history — the squash stat lists both files).
+> - With the implementation already existing, no method can retroactively measure a
+>   pre-implementation baseline.
+>
+> Verified vs unmeasurable: the post artifact's existence and content — and the baseline
+> artifact's content — are verifiable and were verified; the ORDERING of baseline measurement
+> before implementation is not. This mirrors the §E.4 open_followups row (2026-08-27, CR #1665
+> thread 3865025070) recorded from the sync side.
+
 ## §D.1 Severity Classification
 
 | Severity | ACs | Meaning |

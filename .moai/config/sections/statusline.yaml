@@ -2,6 +2,15 @@ statusline:
   # Theme — exactly 2 themes exist: catppuccin-mocha (seeded) | catppuccin-latte
   theme: "catppuccin-mocha"
 
+  # Forge opt-out for THIS repo (SPEC-STATUSLINE-PROFILE-RESPECT-001 M7,
+  # t293): stops both the forge-pair render and the detached refresh child.
+  # OPERATIONAL AND KNOWINGLY EPHEMERAL — this file lives under the
+  # template-managed .moai/config root, which `moai update`
+  # (CleanMoaiManagedPaths) wipes and re-deploys, so this hand-added key
+  # silently vanishes on the next update (CLAUDE.local.md §2.3). Deliberately
+  # NOT mirrored to internal/template/templates/ (template neutrality).
+  forge: "none"
+
   # Individual segment toggles — the only runtime lever.
   # All 16 segments default-on; graceful no-output handles inactive states.
   segments:

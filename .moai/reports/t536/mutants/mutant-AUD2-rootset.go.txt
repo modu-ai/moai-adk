@@ -1,0 +1,21 @@
+package kanban
+
+// MUTANT M-AUD-2 (temporary, never compiled in place — preserved as .txt so it
+// never joins `go build ./...`): the sync-audit's root-set reduction. Only the
+// two-line body below differs from the production internal/kanban/temp_origin.go;
+// everything else in that file is unchanged.
+//
+// Before the F1 repair this mutant passed the ENTIRE internal/kanban +
+// internal/cli suite green — no test judged the root set's membership, only
+// classifications that happened to depend on it. It is NOT an equivalent
+// mutant: the same probe on both versions flips /tmp/t203-probe from
+// isTemp=true reason="/tmp" to isTemp=false reason="" (see
+// ../sync-audit/audit-rootset-probe.txt), and that path is the origin of the
+// single production contamination this SPEC recovered.
+//
+// After the repair, TestDefaultTempRoots_Membership catches it. RED evidence:
+// ../f1-repair/02-red-under-mutant.txt.
+
+func defaultTempRoots() []string {
+	return []string{os.TempDir()}
+}

@@ -173,6 +173,9 @@ func init() {
 	// SPEC-V3R2-RT-004 REQ-031: register clean subcommand
 	rootCmd.AddCommand(newCleanCmd())
 
+	// SPEC-CODEX-SKILL-DISABLE-001: per-layer skill exposure (`moai skills`).
+	rootCmd.AddCommand(newSkillsCmd())
+
 	// SPEC-PROJECT-NAVIGATOR-003: AST enrichment entry point for /moai codemaps.
 	rootCmd.AddCommand(newNavigatorEnrichCmd())
 
@@ -223,6 +226,10 @@ func init() {
 	// SSOT from which the settings.json permissions block is generated.
 	rootCmd.AddCommand(newToolPolicyCmd())
 
+	// Project harness lifecycle commands. Keep this namespace distinct from
+	// tool-policy, which manages the maintainer permission-policy SSOT.
+	rootCmd.AddCommand(newToolCmd())
+
 	// SPEC-MOAI-MCP-SERVER-001 M1: register the `moai mcp-server` subcommand —
 	// a thin stdio JSON-RPC MCP server over the internal/ core. The server and
 	// its .mcp.json provisioning ship opt-in / default-off (REQ-MCP-002 / C6);
@@ -258,4 +265,10 @@ func init() {
 	// submission, plus the retry-queue verbs. The verdict rides the stdout
 	// JSON; the exit code signals tool failure only.
 	rootCmd.AddCommand(newFeedbackCmd())
+
+	// SPEC-INBOX-DRAIN-GAP-001 M3: register the `moai inbox` lifecycle surface
+	// (status + manual drain). The collector's write-time cap is the passive
+	// half; these two manual verbs are the active half (REQ-IBX-010: no other
+	// scheduling or opportunistic surface exists).
+	rootCmd.AddCommand(newInboxCmd())
 }

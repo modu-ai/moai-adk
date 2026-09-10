@@ -196,13 +196,10 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 		`DROP\s+DATABASE`,
 		`DROP\s+SCHEMA`,
 		`TRUNCATE\s+TABLE`,
-		// Unix dangerous file operations
-		`rm\s+-rf\s+/`,
-		`rm\s+-rf\s+~`,
-		`rm\s+-rf\s+\*`,
-		`rm\s+-rf\s+\.\*`,
-		`rm\s+-rf\s+\.git\b`,
-		`rm\s+-rf\s+node_modules\s*$`,
+		// Unix file removal is checked structurally by dangerousRemovalTarget
+		// rather than by pattern, because a literal flag cluster is bypassed by
+		// reordering it and a trailing slash makes every absolute path a target
+		// (issue #1658). See dangerous_removal.go.
 		// Windows dangerous file operations (CMD)
 		`rd\s+/s\s+/q\s+[A-Za-z]:\\`,
 		`rmdir\s+/s\s+/q\s+[A-Za-z]:\\`,
@@ -641,6 +638,16 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		stopAdvisory = advisory
 	}
 
+	// AskUserQuestion observation. The third branch of the same kind as the two
+	// above, and the only one with no enforcement layer at all: it returns
+	// nothing, so there is no deny path to reach in either recommendation mode,
+	// on any input, malformed included. An observer that can block the question
+	// channel can deadlock the only path to the user, which is why the
+	// never-denies property is structural here rather than a runtime check.
+	if input.ToolName == "AskUserQuestion" {
+		h.observeQuestionChannel(input)
+	}
+
 	out := NewSafeDefaultOutput(permissionModeOf(input))
 	if gateNotice != "" {
 		out.SystemMessage = gateNotice
@@ -935,16 +942,29 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 		return "", ""
 	}
 
+	// File removal is decided on the resolved target, before the pattern scan,
+	// so that quoting a target cannot hide it (issue #1658).
+	if target := dangerousRemovalTarget(command); target != "" {
+		return DecisionDeny, fmt.Sprintf("Dangerous command blocked: removal of protected path %q", target)
+	}
+
+	// Collapse quoted spans to a placeholder before the pattern scan, matching
+	// what the branch guard already does (substituteQuotedArguments). Without
+	// this, a command that merely PRINTS or STORES a dangerous form — a commit
+	// message, a backlog card, a report about this very guard — is refused for
+	// text it never executes.
+	scanned := substituteQuotedArguments(command)
+
 	// Check dangerous patterns (deny)
 	for _, pattern := range h.policy.DangerousBashPatterns {
-		if pattern.MatchString(command) {
+		if pattern.MatchString(scanned) {
 			return DecisionDeny, fmt.Sprintf("Dangerous command blocked: %s", pattern.String())
 		}
 	}
 
 	// Check ask patterns (require confirmation)
 	for _, pattern := range h.policy.AskBashPatterns {
-		if pattern.MatchString(command) {
+		if pattern.MatchString(scanned) {
 			return DecisionAsk, "This command may have significant effects. Please confirm."
 		}
 	}

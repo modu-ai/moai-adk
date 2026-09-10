@@ -2,7 +2,6 @@
 id: SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001
 title: "Observability hook 3계열 opt-in — Implementation Plan (Tier S, M1-M3)"
 version: "0.2.0"
-status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: Author Name

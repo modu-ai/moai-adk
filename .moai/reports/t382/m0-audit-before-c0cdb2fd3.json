@@ -1,0 +1,4529 @@
+{
+  "audited_at": "2026-08-31T12:40:00.609337Z",
+  "total_specs": 715,
+  "grandfathered": 286,
+  "modern_era_clean": 422,
+  "drift_findings": [
+    {
+      "spec_id": "SPEC-AGENCY-ABSORB-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AGENT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AGENT-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AGENT-PARALLEL-OPT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AGENTS-MD-CANON-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ARTIFACT-STATELESS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ASKUSER-ENFORCE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ASTG-UPGRADE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ASTGREP-BREADTH-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ASTGREP-DOGFOOD-CLEANUP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ASTGREP-EDIT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ASTGREP-LANG16-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AUDIT-GATE-INTEGRITY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AUDIT-MULTI-MODEL-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AUDIT-SNAPSHOT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AUTONOMY-RUN-GOAL-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-AUTONOMY-TIERS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-BACKLOG-LOCK-BUDGET-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-BACKLOG-LOCK-BUDGET-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-BACKLOG-LOCK-BUDGET-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "pending-backfill-sync"
+      }
+    },
+    {
+      "spec_id": "SPEC-BINARY-LAG-VISIBILITY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-BINLAG-INVOCATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-BRAND-DIR-REMOVE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CACHE-ORDER-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC-DOCS-ALIGNMENT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2122-HOOK-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2122-HOOK-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2122-MCP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2122-STATUSLINE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2178-DOCS-ALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2178-TEAM-API-ALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC2219-UPSTREAM-ALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CC297-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CCSYNC-CLAUDEMD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CCSYNC-DYNWF-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CCSYNC-TOOLCAT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CHAIN-CORE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CI-FLAKE-SERIES-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-CI-FLAKE-SERIES-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "3a7aaab37\" — backfill 커밋에서 실제 short SHA로 교체 (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CI-FLAKY-STABILIZE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CI-LOOP-DEVONLY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CI-MULTI-LLM-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CI-TEST-OBSERVABILITY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CICD-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CLEANUP-EVALUATOR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CLI-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CLI-TUI-MODERNIZE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CLI-TUX-INIT-UPDATE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CLI-WIZARD-RESTRUCTURE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CLOCAL-AUDIT-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CODEX-DUAL-AGENTS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CODEX-PHASE2-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CODEX-SKILLS-CANONICAL-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CODEX-VERDICT-SYNTH-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CONFIG-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CONFIG-AUDIT-REPAIR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CONFIG-DEAD-SWEEP-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CONTEXT-ENGINE-RIGHTSIZE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CONTEXT-INJ-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CORE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CORE-BEHAV-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-COVERAGE-RULE-SCOPE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CRON-PATTERN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-CURATION-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-CMD-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-RETIRE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-SYNC-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-SYNC-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-SYNC-HARDEN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-SYNC-RELOC-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DB-TEMPLATES-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DEEPIV-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DEPLOY-RESULT-WIRE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-ATTACH-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-DOCS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-DOCS-V31-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-MOAIWEBV2-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-MOAIWEBV2-002",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DESIGN-PENCIL-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DISCOVERY-UNKNOWNS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DOCS-SB-REMOVE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DOCS-SITE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DOCS-V313-CATCHUP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DOCS-WTRGO-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DOCTOR-PROMOTION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DRIFT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-DWF-CODEMAPS-PILOT-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EMBED-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ENVKEY-ANTHROPIC-SSOT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EPIC-STATUS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ERA-H3-NARROWING-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EVAL-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EVALLIB-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EVIDENCE-CITATION-CANON-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EVIDENCE-CLAIM-INVARIANT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-EVO-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-FACTORY-BOOTSTRAP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-FACTORY-MODE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-FOURDIM-PHANTOM-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-FULL-SUITE-DOCTRINE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-FULL-SUITE-DOCTRINE-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-FULL-SUITE-DOCTRINE-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "b904de9a3` — sync 커밋은 자기 sha를 담을 수 없어 placeholder로 두었고, 이 값은 레인 오케스트레이터가 바로 다음 커밋에서 역채웠다."
+      }
+    },
+    {
+      "spec_id": "SPEC-GATE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GATE-ASTGREP-REPAIR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GIT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GITFLOW-DOCTRINE-ALIGN-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GITHUB-WORKFLOW",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-EFFORT-REBALANCE-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-EFFORT-TUNE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-FLASH-DEFAULT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-KEY-INPUT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-MCP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-MODEL-ALLOWLIST-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GLM-WEBTOOL-ROUTING-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GO-TOOLCHAIN-SEC-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GOAL-DOCS-RETIRE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GOAL-HTML-FLOW-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GOAL-HTML-WIRING-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GOAL-SURFACE-UNIFY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-GOPLS-BRIDGE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HAIKU-EFFORT-INERT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HANDOFF-FANOUT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HANDOFF-GOALFIX-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HANDOFF-ONEPASTE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-CADENCE-BUILD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-EVO-PIPE-REPAIR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-EVO-RUN-REPORT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-LEARNING-EVO-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-LEARNING-EVO-002",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-LOOP-CLOSURE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-5 (modern phase or created date)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HARNESS-TOKEN-OPT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HIERARCHICAL-TEAM-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HNS-PREFIX-RENAME-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-004",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-005",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-006",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-007",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-008",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-009",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-CONFIG-SAFETY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-DEADCODE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-DISCIPLINE-WIRING-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-EVENT-REGISTRY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-FACTFORCE-ADVISORY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-FAILURE-CLASSIFY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-OFFICIAL-COMPLIANCE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-PREEDIT-INVESTIGATE-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-SESSIONSTART-PROBE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOK-TRACE-FLUSH-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HOOKWAVE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-HUMANIZE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-I18N-001-ARCHIVED",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-I18N-GOVERNANCE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INFINITE-GOAL-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INIT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INIT-WIZARD-REPAIR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTEGRATION-LOCK-ATOMIC-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTEGRATION-LOCK-ATOMIC-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-INTEGRATION-LOCK-ATOMIC-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "92e1f211b   # the sync commit; backfilled here per the SHA-placeholder exemption"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTEGRATION-LOCK-LIVENESS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTERNAL-ARCH-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTERNAL-PERF-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTERNAL-SECURITY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTERNAL-TEST-003",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INTERNAL-TEST-004",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INVOCATION-MODEL-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-INVOCATION-MODEL-002",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-BOARD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-BOOTSTRAP-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-PR-CARD-TRACEABILITY-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-QUEUE-PR-SYNC-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-RENAME-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-TODO-CLI-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KANBAN-WORKTREE-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-KARPATHY-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LAI-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LEAD-DEBOTTLENECK-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LOOP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSEL-LOCAL-EVOLUTION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-AGG-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-CORE-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-FLAKY-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-FLAKY-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-LOOP-005",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-MULTI-006",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSP-QGATE-004",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSPMCP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-LSPMCP-RETIRE-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MCP-AGENT-WIRING-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MCP-CONSOLE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MCP-DEFAULT-ON-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MEM-SCOPE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MEMO-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MEMORY-DIET-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MERGE-METHOD-CONFIG-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-METRICS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MOAI-MCP-SERVER-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MOAI-SKILL-DOCTRINE-FIX-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MOAI-WORKFLOW-SCHEDULE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MODEL-PROFILE-MATRIX-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MX-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MX-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MX-ASSOCIATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-MX-SCANNER-DOCS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-NO-HYBRID-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-OBS-ENABLED-GATE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-OBSERVE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-OPUS47-COMPAT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-ORCH-GIT-RELAX-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PARALLEL-COOK-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PERSIST-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PHASE-FIELD-VALIDATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PHASE-FRONTMATTER-OWNER-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PIPELINE-FANOUT-ACTIVATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PLAYWRIGHT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PRECOMMIT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PRECOMMIT-PRESERVE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PREPUSH-WIRING-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PRETOOL-GATE-MOVE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PROFILE-MEMORY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PROJECT-DB-HINT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PROJECT-NAVIGATOR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PROJECT-NAVIGATOR-004",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-PSR-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-QUALITY-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-RALPH-CONFIG-REDESIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-RED-NOW-THRESHOLD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-REF-SEO-ABSORB-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-REFACTOR-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-REFLECT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-RESUME-MSG-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SDD-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SEARCH-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SEC-HARDEN-003",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SEC-SCAN-SURFACE-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SECURITY-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SELECTOR-CENSUS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SEMAP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SESSION-WORKTREE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILL-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILL-DESC-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILL-ENHANCE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILL-GALLERY-BENCH-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILL-GATE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILLPORT-CLAIM-CHECK-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILLPORT-HUMANIZE-LEDGER-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SKILLPORT-SVG-INFOGRAPHIC-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SLE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SLQG-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SLV3-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SRS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SRS-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SRS-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STATUS-AUTO-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STATUSLINE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STATUSLINE-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STATUSLINE-PROFILE-RESPECT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STATUSLINE-PROFILE-RESPECT-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-STATUSLINE-PROFILE-RESPECT-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "2114ed981   # this SPEC's sync commit; backfilled by its immediate successor"
+      }
+    },
+    {
+      "spec_id": "SPEC-STOP-EVIDENCE-GATE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STOP-HOOK-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STOPCHAIN-TRIM-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STRESS-INVARIANT-VERDICT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-STRESS-INVARIANT-VERDICT-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-STRESS-INVARIANT-VERDICT-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "pending-backfill-sync"
+      }
+    },
+    {
+      "spec_id": "SPEC-SUBAGENT-NESTING-DOCTRINE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SUBCOMMAND-RETIRE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SUNSET-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SVG-GEOMETRY-CHECKS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SYNC-AUDIT-FALSIFICATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SYNC-PARALLEL-DOCS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-SYNC-STRATEGY-KEY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TABSCHEMA-AUTOBRANCH-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TDD-ANTICHEAT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEAM-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEAMMATE-REVIVAL-GUARD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TELEMETRY-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEMPDIR-CLEANUP-RACE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEMPLATE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEMPLATE-DATE-NEUTRALITY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEMPLATE-DATE-NEUTRALITY-002",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEMPLATE-RULES-CLEANUP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEST-AUTH-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEST-ORC-LIKE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TEST-OVERRIDE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TODO-ANALYSIS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TODO-DESTRUCTIVE-GUARD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TODO-LANDING-STATE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TODO-SQLITE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TOKEN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TOKEN-VERIFY-DIET-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TOOL-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-TOOL-AUDIT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UI-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UI-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UI-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UPDATE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UPDATE-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UPDATE-GUARD-EFFICACY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UPDATE-REINSTALL-LOOP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UPDATE-VERSION-FLAG-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UTIL-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UTIL-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UTIL-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UTIL-004",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UTIL-005",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-UTIL-006",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-CON-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-CON-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-CON-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-EXT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-EXT-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-EXT-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-EXT-004",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-HRN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-HRN-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-HRN-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-MIG-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-MIG-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-MIG-003",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-ORC-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-ORC-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-ORC-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-ORC-004",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-ORC-005",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-004",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-005",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-006",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-RT-007",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-SPC-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-SPC-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-SPC-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-SPC-004",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-WF-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-WF-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-WF-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-WF-004",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-WF-005",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R2-WF-006",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-ARCH-007",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-BRAIN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-CI-AUTONOMY-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-CLI-TUI-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-CMD-CLEANUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-COV-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-DEF-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-DEF-007",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-DESIGN-FOLDER-FIX-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-DESIGN-PIPELINE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-HARNESS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-HARNESS-LEARNING-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-PATTERNS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-PROJECT-HARNESS-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-RETIRED-AGENT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-RETIRED-DDD-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-STATUSLINE-FALLBACK-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-UPDATE-CLEANUP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R3-WEB-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-CATALOG-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-CATALOG-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-CC2X-ADOPT-001",
+      "era": "",
+      "finding_type": "AuditError",
+      "severity": "INFO",
+      "details": {
+        "error": "load era signals: read spec.md: open .moai/specs/SPEC-V3R4-CC2X-ADOPT-001/spec.md: no such file or directory"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-CC2X-ADOPT-002",
+      "era": "",
+      "finding_type": "AuditError",
+      "severity": "INFO",
+      "details": {
+        "error": "load era signals: read spec.md: open .moai/specs/SPEC-V3R4-CC2X-ADOPT-002/spec.md: no such file or directory"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-CI-FASTTRACK-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-CI-INFRA-FIX-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-HARNESS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-HARNESS-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-HARNESS-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-HARNESS-NAMESPACE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-HOOK-HARDEN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-LINT-SKIP-CLEANUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-LINT-SPECID-GREP-FIX-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-SPECLINT-DEBT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-SPECLINT-DEBT-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-STATUS-LIFECYCLE-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R4-WORKFLOW-SPLIT-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-ATOMIC-WRITE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-CLAUDE-REFRESH-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-CONSTITUTION-DUAL-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-CORE-SLIM-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-CORE-SLIM-B-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-DOCS-SECURITY-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-GIT-STRATEGY-SCHEMA-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-HARNESS-AUTONOMY-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-INIT-WIZARD-EXPANSION-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-LATE-BRANCH-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-LINT-CLEAN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-SECURITY-CRIT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-STATUSLINE-FULL-MODE-CLEANUP-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-STATUSLINE-PROFILE-WIZARD-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-STATUSLINE-STDINFIELDS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-STATUSLINE-V2145-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-WORKFLOW-LEAN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-WORKFLOW-OPT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-ABSORB-CLEANUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-AGENT-FOLDER-SPLIT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-AGENT-MODEL-ROUTING-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-AGENT-RESPONSIBILITY-REALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-AGENT-TEAM-REBUILD-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-AUDIT-MODEL-PIN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-AUDIT-MODEL-PIN-001",
+      "era": "V3R6",
+      "finding_type": "SyncStatusDrift",
+      "severity": "MUST-FIX",
+      "remediation": "moai spec close SPEC-V3R6-AUDIT-MODEL-PIN-001 --backfill-only",
+      "details": {
+        "reason": "§E.2 + §E.4 + sync_commit_sha present (sync complete) but status != completed",
+        "spec_md_status": "implemented",
+        "sync_commit_sha": "pending-backfill-sync\"   # D3 self-reference exemption — a commit cannot know its own SHA; backfilled after the PR merges (lead owns the implemented → completed transition + this backfill)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CATALOG-SSOT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CG-MODE-HARDENING-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CHANGELOG-CLEANUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CI-BASELINE-DRIFT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CI-FLAKY-STABILIZE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CI-FLAKY-STABILIZE-002",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-5 (modern phase or created date)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CI-FLAKY-STABILIZE-003",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CLI-AUDIT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CODE-COMMENTS-EN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-CODERABBIT-ADOPTION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DEV-HARNESS-SPLIT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DOCS-CMD-CATALOG-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DOCS-I18N-PARITY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DOCS-USER-DRIFT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-GEARS-MIGRATION-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HANDOFF-GOAL-BINDING-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HARNESS-LEARNER-FIX-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HARNESS-NAMESPACE-V2-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HARNESS-PROPOSAL-GEN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HARNESS-RENAME-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HOOK-ASYNC-EXPAND-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HOOK-CONTRACT-FIX-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-I18N-VALIDATOR-BUDGET-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-LEGACY-CLEANUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-LEGACY-CLEANUP-002",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-LEGACY-CLEANUP-003",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-LIFECYCLE-SYNC-GATE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4-legacy (§E.2 + §E.5 + both commit_sha — migration window)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-MAIN-RED-REMEDIATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-MULTI-SESSION-COORD-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-5 (modern phase or created date)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-PROMPT-CACHE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-5 (modern phase or created date)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-RULES-COMPRESS-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-RULES-CONST-RULEID-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-RULES-HOTFIX-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-RULES-PATH-SCOPE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-RULES-VERSION-FORMAT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SEQ-THINKING-RETIRE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SESSION-HANDOFF-AUTO-001",
+      "era": "V3R5",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-3 (§E.2 present, sync_commit_sha missing)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SESSION-LEGACY-COVERAGE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SKILL-COMPRESS-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SKILL-CONSOLIDATE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SKILL-GEARS-ALIGN-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SKILLS-AUDIT-RUN-MD-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SPEC-ID-VALIDATION-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-5 (modern phase or created date)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-SPEC-LINT-CLEANUP-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-STATUSLINE-MILLION-BUDGET-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-TEMPLATE-MIRROR-CASCADE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-TEST-REFACTOR-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-UPDATE-NOISE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-UPDATE-PROGRESS-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-WORKFLOW-DOCS-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-WORKFLOW-EFFORT-MAP-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-WORKFLOW-PLAN-GEARS-ALIGN-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-V3R6-ZONE-REGISTRY-PACKAGING-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-002",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-003",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-004",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-005",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-006",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEB-CONSOLE-010",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WEBCONF-SIMPLIFY-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WF-AUDIT-GATE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKFLOW-LIFECYCLE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKTREE-001",
+      "era": "V3R2-R4",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-2 (progress.md without §E.* markers)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKTREE-002",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKTREE-BASEREF-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKTREE-DOCS-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKTREE-REAPER-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WORKTREE-SQUASH-MERGE-001",
+      "era": "V3R6",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-4 (§E.2 + §E.4 + sync_commit_sha)"
+      }
+    },
+    {
+      "spec_id": "SPEC-WT-DOC-001",
+      "era": "V2.x",
+      "finding_type": "EraAutoDetected",
+      "severity": "INFO",
+      "details": {
+        "heuristic_matched": "H-1 (progress.md absent)"
+      }
+    }
+  ]
+}

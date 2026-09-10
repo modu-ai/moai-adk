@@ -1,0 +1,9 @@
+--- FAIL: TestResolveLaunchProfileForProject_SubtreeWorktreeResolves (0.00s)
+    subtree_resolve_test.go:60: subtree session resolved to "", want "alpha"
+--- FAIL: TestResolveLaunchProfileForProject_DeepestRegisteredAncestorWins (0.00s)
+    subtree_resolve_test.go:79: nested subtree resolved to "", want "beta" (deepest registered ancestor)
+--- FAIL: TestResolveLaunchProfileForProject_StaleAncestorSkippedNotDeadEnd (0.00s)
+    subtree_resolve_test.go:145: session under a stale registration resolved to "", want "alpha" (walk continues past the unusable entry)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/profile	0.402s
+FAIL

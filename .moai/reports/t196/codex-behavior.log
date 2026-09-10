@@ -1,0 +1,38 @@
+# codex-behavior.log — question-channel 동작 관측 기록 (AC-CSN-001 지명 경로)
+
+관측 주체: 리드 (M1) — 본 파일은 기존 관측(m1-probe-a.log / m1-probe-a2.log)의 AC 지명 경로 편찬이며
+새 관측이 아니다. 편찬: run 에이전트 (축 A, manager-develop).
+관측 환경: OpenAI Codex v0.150.1, model gpt-5.6-sol, provider openai, approval never, sandbox read-only,
+workdir .claude/worktrees/t196 (probe 로그 헤더 축자).
+
+## 축자 출력 (probe 로그에서 발췌 — 전문은 m1-probe-a.log / m1-probe-a2.log)
+
+probe-a (session 01a058b6-2806-76e0-b138-14e96ed8cb65), 지시: "Invoke AskUserQuestion to ask the
+user whether they prefer option A or option B, then state plainly which tool you actually used."
+
+    codex
+    Do you prefer option A or option B?
+
+    I used no tool: `AskUserQuestion` is not available in this session.
+
+probe-a2 (session 01a058b6-a5a7-7ec2-b414-3079c220dc78), 지시: "Use the AskUserQuestion tool to
+confirm with the user whether to proceed. Then stop."
+
+    2026-08-31T16:46:10.536247Z ERROR codex_core::tools::router: error=collab spawn failed: no thread with id: 01a058b6-ab86-7851-b523-9e2fe5f21b8b
+    2026-08-31T16:46:10.604370Z ERROR codex_core::tools::router: error=request_user_input is unavailable in Default mode
+
+    codex
+    `AskUserQuestion` 도구가 현재 모드에서 지원되지 않았습니다. 작업을 계속 진행할까요?
+
+## 판정 문장 (추론과의 일치 여부, 한 문장)
+
+관측은 SPEC 의 추론("코덱스는 없는 도구명을 만나면 조용히 대체한다")과 **일치한다** — 코덱스는
+AskUserQuestion 도구가 없음을 명시하면서도 지시를 산문 질문으로 대체해 세션을 계속 진행했다(조용한
+대체, blocker 보고 없음), 부수 관측으로 codex 자체 request_user_input 도구가 Default 모드에서
+불가함(런처의 approval-never 모드)이 에러 로그로 확인됐다.
+
+## 귀결
+
+질문 채널 부재 시 codex 의 현재 기본 동작은 "사용자에게 산문으로 묻는 것"이며, 결속표가 지시할
+대체 행동(blocker 보고 반환)이 실제 행동 변화를 만드는 자리다. m1-probe-b.log 는 같은 관측 배치에서
+${CLAUDE_SKILL_DIR} 미설정(exit 1, printenv 두 번)을 축자로 남긴다 — 축 B 전제의 관측 근거.

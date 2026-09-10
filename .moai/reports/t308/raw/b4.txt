@@ -1,0 +1,23 @@
+# REGENERATED 2026-08-27 in the resumed run-phase session at HEAD 8d8da0b2b (branch WT-clocal-audit).
+# The original batch-4 invocation printed inline and was never redirected to disk; the command below is
+# byte-identical to the original and the tree is unchanged, so the attribution for CHK-018/019/020 holds.
+# ---
+--- INV-039
+-rw-r--r--@  1 goos  staff   7254 Aug 27 17:40 hns-github-specialist.md
+-rw-r--r--@  1 goos  staff  27562 Aug 27 17:41 hns-release-specialist.md
+-rw-r--r--@  1 goos  staff  13933 Aug 27 17:40 hns-release-update-specialist.md
+--- INV-042
+total 24
+drwxr-xr-x@  3 goos  staff    96 Aug 27 17:40 .
+drwxr-xr-x@ 46 goos  staff  1472 Aug 27 17:40 ..
+-rw-r--r--@  1 goos  staff  9744 Aug 27 17:40 SKILL.md
+--- INV-030 template counterpart
+ls: internal/template/templates/.claude/settings.local.json: No such file or directory
+--- INV-034/035 no-mirror
+ls: internal/template/templates/.claude/rules/local/: No such file or directory
+--- INV-045 producer
+.claude/agents/harness/hns-release-update-specialist.md
+--- INV-047 cache producer
+internal/update/cache.go:33:// If path is empty, defaults to ~/.moai/cache/update_check.json.
+internal/worktree/state_guard.go:53:	".moai/cache/",
+internal/statusline/usage.go:77:// Cache is stored at ~/.moai/cache/usage.json (REQ-V3-API-002).

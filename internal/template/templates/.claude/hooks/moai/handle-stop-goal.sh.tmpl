@@ -6,7 +6,7 @@
 # entry alongside handle-stop.sh and sync-phase-quality-gate.sh; it does NOT
 # replace them. Both wrappers read the same stdin JSON independently.
 #
-# SPEC-STOPCHAIN-TRIM-001 (A10 / AC-001): shell-layer precondition. A session
+# Stop-chain trim guard: shell-layer precondition. A session
 # with NO armed goal pays ZERO moai-binary cold-starts at turn-end. Before any
 # binary resolution, the wrapper (1) captures stdin once, (2) extracts
 # session_id from the Stop hook JSON at the shell layer (no jq — the hook may
@@ -37,7 +37,7 @@ if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
     fi
 fi
 
-# --- SPEC-STOPCHAIN-TRIM-001 A10: capture stdin + shell precondition ---
+# --- Stop-chain trim guard: capture stdin + shell precondition ---
 # Read the Stop hook JSON ONCE so it can be re-fed to the moai binary later
 # (exec inherits stdin; once we consume it here, the binary would see EOF
 # unless we replay it).

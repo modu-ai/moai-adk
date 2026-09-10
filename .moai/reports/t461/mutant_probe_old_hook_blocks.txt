@@ -1,0 +1,4 @@
+
+[pre-commit] FAILED: moai gate reported errors above.
+[pre-commit] Hint: address the reported issues, then re-commit.
+[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit

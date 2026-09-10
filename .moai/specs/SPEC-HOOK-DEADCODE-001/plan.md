@@ -2,7 +2,6 @@
 id: SPEC-HOOK-DEADCODE-001
 title: "internal/hook package dead-code cleanup (3 corroborated scopes)"
 version: "0.1.0"
-status: completed
 created: 2026-07-03
 updated: 2026-07-12
 author: manager-spec

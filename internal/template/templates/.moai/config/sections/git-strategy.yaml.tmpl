@@ -5,6 +5,11 @@ git_strategy:
   mode: "{{.GitMode}}"                # manual, personal, team
   provider: "{{.GitProvider}}"          # github, gitlab
   github_username: "{{.GitHubUsername}}"  # GitHub username (for personal/team modes)
+  # Branch that card worktrees are cut from. Empty = take no action (the
+  # neutral default): origin/HEAD is left alone and `git worktree add` runs
+  # with no base operand, exactly as before this key existed. Set it to your
+  # repository's integration branch — e.g. main, develop, trunk.
+  worktree_base_branch: ""
   gitlab:
     instance_url: "{{.GitLabInstanceURL}}"  # GitLab instance URL
 

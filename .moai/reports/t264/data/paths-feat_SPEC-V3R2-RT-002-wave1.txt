@@ -1,0 +1,8 @@
+.moai/config/sections/security.yaml
+internal/cli/doctor_permission_test.go
+internal/permission/resolver_test.go
+internal/permission/spawn.go
+internal/permission/spawn_test.go
+internal/permission/stack.go
+internal/template/agent_frontmatter_audit_test.go
+internal/template/templates/.moai/config/sections/security.yaml

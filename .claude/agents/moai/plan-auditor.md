@@ -69,7 +69,8 @@ A `Given … When … Then …` acceptance criterion is therefore the CORRECT fo
 - Event-driven: "When [trigger], the <subject> shall [response]"
 - State-driven: "While [condition], the <subject> shall [response]"
 - Where (capability-gate / feature flag / static config): "Where [capability exists], the <subject> shall [response]" — GEARS reframes `Where` as capability gate / feature flag / static config; NOT "feature option" (legacy EARS Optional usage)
-- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, per the canonical GEARS migration policy]` annotation
+- Event-detected: "**When** [undesired-condition-detected], the <subject> shall [response]" — the fifth GEARS pattern, replacing the legacy EARS `If [undesired condition], then the [system] shall [response]` form, which carries the `[DEPRECATED — use When <event-detected>, per the canonical GEARS migration policy]` annotation
+- Unwanted ("The <subject> shall not [action]"): NOT a GEARS pattern — legacy EARS negative usage only. Never canonical, never steered toward; it may be counted only as a legacy equivalent under the Score 1.0 allowance above, never as a fifth pattern
 
 Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` (any subset of the three modifiers chained) is PASS-equivalent at Score 1.0.
 
@@ -132,7 +133,7 @@ An unsubstantiated PASS verdict is automatically downgraded to UNVERIFIED, which
 
 ### M5: Must-Pass Firewall
 
-Seven criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
+Eight criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
@@ -147,6 +148,32 @@ Seven criteria cannot be compensated by high scores in other dimensions. ANY sin
 **(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 **(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+
+<!-- MOAI-REDNOW-BEGIN -->
+**(MP-8) RED-now cell re-execution**: For every acceptance criterion classified **release-blocking**, the RED-now cell must carry the four elements `.claude/rules/moai/development/verification-completeness.md` §2.1 requires — the command, that command's verbatim stdout, that command's exit code, and the tree SHA (a document-level pin is inherited by any criterion carrying no pin of its own). **Re-execute** the cited command against the **current tree** and confirm the **RED reproduces**. This check is possible at plan-phase and nowhere else: the cell pins the pre-implementation tree, and at plan-phase that tree is the working tree.
+
+A cited command whose RED does not reproduce is an unresolved MP-8 violation. Fold it into `## Defects Found` at `severity=critical` and set `Verdict: FAIL` **regardless of the aggregate score** — an aggregate never absorbs this finding.
+
+Where no acceptance criterion is classified release-blocking, or where `acceptance.md` is absent, mark MP-8 `N/A` and **state the reason**, following the **MP-4 precedent** (N/A auto-passes).
+
+**Execution discipline.** The commands re-executed here are strings a SPEC author typed, not strings you composed, so the form is constrained and the refusal branch is explicit. A conforming command is a read-only shell invocation completing in a single invocation; the machine-checkable half of that form is the metacharacter list below, and read-only-ness stays your judgment. When a cited command fails to run, is refused for not matching the form, names an operation this repository's execution discipline prohibits — a local full test suite being the standing example — or does not return within your existing Bash **timeout**, you **shall not execute it further**, **shall not record the criterion as a pass**, and shall apply the §2.1 demotion instead. **Repository execution discipline takes precedence** over a criterion's citation. The timeout branch adds no new machinery: your Bash tool already bounds every invocation, so a conforming-but-expensive command is refused on the same terms as a prohibited one rather than stalling the audit.
+
+**Verdict rule for a test-runner citation.** Where the cited command is a test runner, key the verdict on the **count of tests actually executed**, and **not treat the presence of an `ok` token** as evidence that the RED failed to reproduce. A selector matching zero tests exits 0 and prints `ok` alongside `no tests to run`: that run executed nothing and therefore reproduces nothing. Reading it as a pass inverts exactly what this criterion exists to detect.
+
+**Boundary, stated rather than implied.** Re-execution confirms a command's output. It does not confirm that the command measures the premise its author claims for it, and MP-8 makes no such claim.
+
+```
+forbidden-metacharacter: |
+forbidden-metacharacter: &&
+forbidden-metacharacter: ;
+forbidden-metacharacter: >
+forbidden-metacharacter: <
+forbidden-metacharacter: $(
+forbidden-metacharacter: (
+```
+
+Each token above is a violation only when it appears **outside** quotes: a quoted `|` inside a regex is a literal, and refusing it would reject commands that are in fact single invocations.
+<!-- MOAI-REDNOW-END -->
 
 ### M6: Finding-consumption discipline (over-engineering brake)
 
@@ -292,6 +319,7 @@ Execute each check in order against the full document — every REQ entry and ev
 - AC-3: No AC contains weasel words: "appropriate", "adequate", "reasonable", "good", "proper"
 - AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability)
 - AC-5: Each REQ-XXX has at least one corresponding AC (Traceability)
+- AC-6: Each release-blocking AC carries a RED-now cell with the command, its verbatim stdout, its exit code, and a pinned tree SHA, and that command re-executes to a reproducing RED on the current tree (MP-8)
 
 ### Group 5: Language Neutrality
 
@@ -364,9 +392,11 @@ A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: 
 
 ## Output Format
 
-Write the audit report to `.moai/reports/plan-audit/{SPEC-ID}-review-{iteration}.md`.
+[HARD] **Export mandate — an audit is complete only when its verdict is exported.** Write the verdict to a file in the same turn it is rendered: `.moai/reports/<card-id>/plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration; `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card). An audit response without an exported file is an **incomplete audit**. Minimum content per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`): the verdict token and score, per-defect findings, the commands run with their observed outputs in the five-section evidence-bearing format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and iteration history for repeated audits. Never write the verdict to a gitignored location — the report directory the convention declares FORBIDDEN (`audit-artifact-convention.md` § Where) receives verdicts as disposal, not export.
 
-This report belongs to the **plan-phase review stream** (`{SPEC-ID}-review-{N}.md`, iteration-based) — deliberately distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based) that the Phase 1 Plan Audit Gate writes into the same directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.
+**Side-talk discipline** — advice attached to a verdict follows the audit-artifact convention (`audit-artifact-convention.md` § Side-talk): advice lives in a separate section titled as unverified (for example "Operational Notes (unverified)") at the end of the artifact — never woven into the verdict, the dimension scores, or the defect list it follows; each advice line is a measurement instruction ("Measure X — command Y"), not a conclusion; and every advice line carries a status label — `measured` (the command and its recorded output are present per the convention), `inferred` (the reasoning rule is named so the reader can check it), or `assumption` (a naked claim — the weakest standing).
+
+The exported verdict is the **plan-phase review stream** of the two-stream contract — distinct from the **run-gate stream** (`<SPEC-ID>-<YYYY-MM-DD>.md`, date-based), a Go runtime record the Phase 1 Plan Audit Gate persists under its own gitignored record directory (see `.claude/rules/moai/workflow/spec-workflow.md` § Report Persistence for the two-stream contract). The review stream's final-iteration verdict is the input the run-gate consults for skip-eligibility; the run-gate's date-file is a verdict record surface only.
 
 ```
 # SPEC Review Report: {SPEC-ID}
@@ -382,6 +412,7 @@ Overall Score: {0.0-1.0}
 - [PASS/FAIL/N/A] MP-5 D7 cross-SPEC reconciliation: {D7 verification evidence or "no BLOCKING finding"; N/A only when the D7 verb is not executable}
 - [PASS/FAIL/N/A] MP-6 D8 cross-platform discipline: {D8 verification evidence or "no BLOCKING finding"; N/A only when the D8 verb is not executable}
 - [PASS/FAIL/N/A] MP-7 clarification gate: {`grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` evidence or "no [NEEDS CLARIFICATION] markers"; N/A only when neither plan.md nor research.md exists}
+- [PASS/FAIL/N/A] MP-8 RED-now cell re-execution: {per release-blocking AC, the re-executed command and its observed output; N/A only when no AC is release-blocking or acceptance.md is absent, with the reason stated}
 
 ## Category Scores (0.0-1.0, rubric-anchored)
 | Dimension | Score | Rubric Band | Evidence |

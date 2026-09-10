@@ -26,6 +26,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/spf13/cobra"
 )
 
@@ -48,9 +49,24 @@ const sessionWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktree
 // Function-variable seams for test injection. Each has a Real counterpart
 // below; tests swap these via swapSessionWorktreeSeams and restore on cleanup.
 var (
-	// sessionWorktreeGitWorktreeAdd runs `git worktree add -b <branch> <dest>`
-	// and returns the absolute worktree path on success.
+	// sessionWorktreeGitWorktreeAdd runs `git worktree add -b <branch> <dest>
+	// [<base>]` and returns the absolute worktree path on success. The base is
+	// the configured git_strategy.worktree_base_branch value
+	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-010); an empty base reproduces the
+	// pre-SPEC invocation byte-identically.
 	sessionWorktreeGitWorktreeAdd = gitWorktreeAddReal
+
+	// sessionWorktreeBaseResolvable decides whether a configured base value is
+	// usable. It delegates AT CALL TIME to hook.WorktreeBaseBranchResolvable,
+	// which is the SOLE resolvability authority for both consumers of this
+	// setting (REQ-WBR-011). This package deliberately carries no second rule:
+	// a `git rev-parse --verify` or local-branch check of its own would be a
+	// requirement violation even where its runtime behaviour agrees today,
+	// because the two consumers must not be able to drift apart on whether a
+	// value is usable.
+	sessionWorktreeBaseResolvable = func(branch string) bool {
+		return hook.WorktreeBaseBranchResolvable(branch)
+	}
 
 	// sessionWorktreeInGitWorktree reports whether cwd is already inside a git
 	// worktree (git-dir != git-common-dir) — REQ-SW-012.
@@ -189,7 +205,19 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// tree, so the parent is correct.
 	projectRoot := filepath.Dir(commonDir)
 	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)
-	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch)
+
+	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-010/011: cut the new tree from the
+	// configured base branch. With no operand `git worktree add` branches from
+	// the invoking tree's HEAD, which is how card worktrees ended up on the
+	// wrong base. Empty or unresolvable falls back to that no-operand form
+	// (plan §A D4): a tree on the wrong base is recoverable, a tree that failed
+	// to materialize blocks the lane.
+	base := config.LoadWorktreeBaseBranch(projectRoot)
+	if base != "" && !sessionWorktreeBaseResolvable(base) {
+		base = ""
+	}
+
+	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch, base)
 	if err != nil {
 		return "", fmt.Errorf("git worktree add: %w", err)
 	}
@@ -212,10 +240,25 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 
 // --- real implementations (overridable in tests via the seams above) ---
 
-// gitWorktreeAddReal runs `git worktree add -b <branch> <dest>` and returns
-// the absolute destination path on success.
-func gitWorktreeAddReal(destDir, branch string) (string, error) {
-	cmd := exec.Command("git", "worktree", "add", "-b", branch, destDir)
+// gitWorktreeAddArgs builds the `git worktree add` argv, appending the base as
+// the FINAL operand only when it is non-empty.
+//
+// The empty-base form must stay byte-identical to the pre-SPEC invocation
+// (AC-WBR-008): a trailing empty-string operand is not the same command, so the
+// append is conditional rather than unconditional.
+func gitWorktreeAddArgs(destDir, branch, base string) []string {
+	args := []string{"git", "worktree", "add", "-b", branch, destDir}
+	if base != "" {
+		args = append(args, base)
+	}
+	return args
+}
+
+// gitWorktreeAddReal runs `git worktree add -b <branch> <dest> [<base>]` and
+// returns the absolute destination path on success.
+func gitWorktreeAddReal(destDir, branch, base string) (string, error) {
+	argv := gitWorktreeAddArgs(destDir, branch, base)
+	cmd := exec.Command(argv[0], argv[1:]...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
 		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).

@@ -2,6 +2,13 @@
 
 > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
 
+> **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 카드 작업은 `develop`에서 분기하고 카드 단위 PR 없이 `develop`으로 직접 병합되며, `origin/develop`의 CI가 통합을 판정한다. 정본: `CLAUDE.local.md` §4.1 + `.claude/rules/local/gitflow-lane-protocol.md`.
+>
+> - **초과분(superseded)**: 이 문서의 "모든 변경은 **`main`으로 향하는** PR을 경유한다"는 적용 대상 — 일상 카드 작업은 이제 `main` PR을 내지 않는다. §23.9의 tier별 PR ceremony도 카드 단위로는 발생하지 않는다.
+> - **여전히 구속력 있음**: `enforce_admins: true` 로 인한 `main` 직접 push 전면 차단, `main`은 **릴리스 PR로만** 갱신된다는 규칙, self-merge 허용 조건(승인 0 + CI status check 통과), pre-push/pre-commit 훅 설정, PR merge 후 로컬 동기화 패턴(A4/A5/A6). 이들은 릴리스 PR 경로에 그대로 적용된다.
+>
+> 아래 본문은 그 구분 아래 읽는다.
+
 ## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
 
 > **[HARD] POLICY CHANGE (2026-07-20) — Hybrid Trunk main-direct RETIRED.** modu-ai/moai-adk main branch에 `enforce_admins: true` 적용됨 (`gh api`로 live 검증). 이제 admin 포함 **누구도 main에 직접 push 불가**. 모든 변경 (daily Tier S/M commit 포함)은 PR을 경유해야 한다. self-merge는 허용 (`required_approving_review_count: 0`) — 4개 CI status check (Test ubuntu-latest / Lint / Build linux/amd64 / CodeQL) 통과 시 리뷰어 대기 없이 본인이 머지. 종전 "모든 tier main 직진 push 허용" 정책 (2026-05-22 `cd9eead14`)은 폐기(RETIRED)되었으며, 아래 본문에서 superseded로 표시된 문장은 역사적 기록으로만 유지한다.
@@ -140,13 +147,20 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `git reset --hard` 대신 `--keep` 사용 (sandbox 안전)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
-- [HARD] **(2026-07-20 신규) PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유.** `enforce_admins: true`로 main direct push는 admin 포함 완전 차단. self-merge 허용 (0 approvals) — 4개 CI status check 통과 시 리뷰어 대기 없이 본인 머지. tier는 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향.
-- [HARD] **`git push origin main` 금지** — 시도 시 server-side rejected. 항상 feat/fix/chore/docs/release 브랜치 → `gh pr create` → CI green → `gh pr merge` 흐름.
+- [HARD] **(2026-08-27 개정 / 2026-09-02 push 소관 변경)** 카드 변경은 PR 없이 통합된다 — 카드 워크트리는 `develop`에서 분기하고, 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 합친 뒤 로컬 병합 SHA를 리드에게 보고한다(push는 레인 소관이 아니다). develop push는 리드가 일괄로 수행하며 `origin/develop` CI가 통합을 판정한다. ~~PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유~~ **[RETIRED 2026-08-27 — 카드 변경은 더 이상 PR을 만들지 않는다]**. main direct push 금지는 변함 없다(`enforce_admins: true`, 아래 불릿); PR 경로는 릴리스 전용이다(`release/vX.Y.Z` → `main`, manager-git 위임). self-merge 조건(0 approvals + 필수 status check 통과)은 릴리스 경로 PR에 그대로 적용되며, tier는 그 ceremony 무게만 결정한다.
+- [HARD] **`git push origin main` 금지** — 시도 시 server-side rejected. ~~항상 feat/fix/chore/docs/release 브랜치 → `gh pr create` → CI green → `gh pr merge` 흐름~~ **[RETIRED 2026-08-27 — 카드 변경에는 더 이상 적용되지 않는다]**. 릴리스 경로(`release/vX.Y.Z` → `main`, manager-git 위임)만 PR을 경유하며, 카드 변경은 로컬 `develop` 병합으로 통합된다.
 - ~~[HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용~~ **[RETIRED 2026-07-20 — enforce_admins: true 적용으로 무효]** (종전: CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호, §23.0 chore commit `cd9eead14`, 2026-05-22 채택. 이 문장은 역사적 기록으로만 유지.)
 
 ### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001; 2026-07-20 PR-mandatory 개정)
 
-[HARD] **(2026-07-20 개정) 모든 tier (S/M/L)는 이제 PR을 경유한다.** `enforce_admins: true` 적용으로 main direct push가 완전히 차단되었으므로, tier는 더 이상 "main-direct vs PR" 을 가르지 않는다. tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부)뿐이다. 모든 경우 PR 생성·머지는 `manager-git` 서브에이전트가 담당한다.
+**(2026-08-27 현행 — git-flow 카드 routing, gitflow-lane-protocol.md 준수):**
+- (a) **카드/SPEC 작업**: 워크트리를 `develop`에서 분기하고, 검증을 마친 카드는 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 통합한다. **카드 PR은 만들지 않는다** — `origin/develop`의 CI가 통합을 판정한다.
+- (b) **릴리스**: `release/vX.Y.Z`를 `develop`에서 분기 → `main` 대상 릴리스 PR(`manager-git` 위임, merge commit strategy) — required status check 통과 시 self-merge 허용(0 approvals).
+- (c) **명시적 `--pr`**: 카드 흐름에서는 더 이상 존재하지 않는다(정본: 카드는 PR을 만들지 않음 — 연구 기록 SPEC-GITFLOW-DOCTRINE-ALIGN-001 research.md F-6). review round가 필요하면 릴리스 경로 또는 운영자 지시로 처리한다.
+
+> **[RETIRED 2026-08-27]** 아래 (2026-07-20 세부 — 모든-tier PR ceremony 표와 routing 결정 흐름)은 카드 단위 PR 체제의 역사 기록이다. 카드 적용에는 무효이며, ceremony 규격은 현행 규칙 (b)의 릴리스 경로에 계승된다.
+
+~~[HARD] **(2026-07-20 개정) 모든 tier (S/M/L)는 이제 PR을 경유한다.** `enforce_admins: true` 적용으로 main direct push가 완전히 차단되었으므로, tier는 더 이상 "main-direct vs PR" 을 가르지 않는다. tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부)뿐이다. 모든 경우 PR 생성·머지는 `manager-git` 서브에이전트가 담당한다.~~ **[RETIRED 2026-08-27 — 카드 변경은 더 이상 PR을 경유하지 않는다]**: 현행은 위 3항(a/b/c)이며, PR 생성은 릴리스 경로 전용이다(manager-git).
 
 | Tier / 조건 | 기본 routing | Owner | PR ceremony 무게 |
 |------------|-------------|-------|------|
@@ -157,11 +171,11 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 > **[RETIRED 2026-07-20]** 종전 이 표의 Tier S/M 행은 "main 직접 push (manager-develop/manager-docs commit 직접 수행)" 이었다. `enforce_admins: true` 로 main-direct가 불가능해지면서 두 행 모두 PR routing으로 통합. `manager-develop`/`manager-docs`는 여전히 commit을 수행하되, push·PR은 `manager-git`이 담당한다 (self-merge 흐름).
 
-**Owner 명시 (REQ-ATR-020 정합)**: 모든 tier에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 이제 push도 PR 경유.)
+**Owner 명시 (REQ-ATR-020 정합)** — **[RETIRED 2026-08-27 — 카드 경로에는 무효; ceremony owner 규격은 릴리스 경로에 계승]**: 모든 tier에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 이제 push도 PR 경유.)
 
 **Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern 참조.
 
-**Routing 결정 흐름 (2026-07-20 PR-mandatory)**:
+**Routing 결정 흐름 (2026-07-20 PR-mandatory)** — **[RETIRED 2026-08-27 — 현행은 위 (a)/(b)/(c) 3항]**:
 1. 모든 SPEC/변경 → `manager-git` routing으로 PR 생성 (main-direct 불가)
 2. SPEC tier 가 L OR 사용자가 `--pr` 명시 → 무거운 ceremony (Late-Branch 4-Phase + 풀 CI 매트릭스)
 3. Tier S/M (without `--pr`) → 경량 ceremony (단기 브랜치 + Tier 1 CI 통과 즉시 self-merge) — 여전히 PR 경유이나 리뷰 오버헤드 최소
@@ -181,7 +195,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 **완화 정책 4중 (Defense in Depth)**:
 
-1. **[HARD] Pre-spawn fetch obligation**: `.claude/rules/moai/core/agent-common-protocol.md` §Pre-Spawn Sync Check (L1) — implementation Agent spawn 전 `git fetch origin && git rev-list --count --left-right origin/main...HEAD` 의무. `N 0` (origin ahead) 감지 시 STOP + AskUserQuestion (rebase / inspect / abort 3 옵션).
+1. **[HARD] Pre-spawn fetch obligation**: `.claude/rules/moai/core/agent-common-protocol.md` §Pre-Spawn Sync Check (L1) — implementation Agent spawn 전 `git fetch origin && git rev-list --count --left-right origin/main...HEAD` 의무. **[2026-08-27 주의]** 이 baseline은 배포되는 SSOT(`agent-common-protocol.md`)의 문구 그대로이며 `origin/main`을 가리킨다 — git-flow로 전환한 이 리포에서 카드 작업의 실제 발산 기준점은 `origin/develop`이므로, 로컬 카드 작업에는 `origin/develop...HEAD`로 읽는다(SSOT 수정은 이 문서의 범위 밖). `N 0` (origin ahead) 감지 시 STOP + AskUserQuestion (rebase / inspect / abort 3 옵션).
 
 2. **[SHOULD] Multi-session 인지 시 worktree opt-in 권장**: 사용자가 동일 cwd에서 2+ 세션 작업 패턴이면 `moai cc -w <이름>`으로 SPEC별 working tree 분리. Memory는 여전히 공유되나 git working tree는 분리 → race 원천 차단. CLAUDE.md §14 [SHOULD] worktree advisory + session-handoff.md Block 0 패턴 활용.
 
@@ -194,7 +208,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - `ps aux | grep claude` 또는 `tmux list-panes` 다중 결과
 - mystery commit 1회 이상 발견된 경험 있음
 
-본 정책 적용 시 §23.9 PR-mandatory routing (모든 tier PR 경유, 2026-07-20)은 single/multi-session 공통 기본값. Multi-session 시 사용자는 L2 worktree로 자발적 분리 OR SPEC별 독립 feat 브랜치로 race 원천 차단 (branch 격리가 PR-mandatory 체제에서 자연스러운 완화책). ~~§23.7 일반화 (모든 tier main 직진)는 single-session 환경 기본값~~ **[RETIRED 2026-07-20]**.
+본 정책 적용 시 §23.9 **현행 카드 routing (2026-08-27 git-flow — 카드 워크트리는 `develop`에서 분기하고 PR 없이 로컬 `develop`에 병합)** 은 single/multi-session 공통 기본값이다. ~~§23.9 PR-mandatory routing (모든 tier PR 경유, 2026-07-20)~~ **[RETIRED 2026-08-27]**. Multi-session 시 race는 **카드별 워크트리 격리**로 원천 차단된다 — git-flow 체제에서 카드마다 독립 워크트리·독립 `WT-<slug>` 브랜치를 갖는 것이 곧 격리이므로, 별도 완화책을 추가할 필요가 없다. ~~§23.7 일반화 (모든 tier main 직진)는 single-session 환경 기본값~~ **[RETIRED 2026-07-20]**.
 
 선례: SPEC-V3R6-LEGACY-CLEANUP-001 race incident (2026-05-23) + agent-common-protocol.md §Pre-Spawn Sync Check L1 정책 도입.
 

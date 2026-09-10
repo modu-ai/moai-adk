@@ -1,0 +1,8 @@
+# Test pair for the weak-hash rule. The valid sample uses SHA-256.
+id: sec-weak-hash-md5
+valid:
+  - |
+    digest := sha256.New()
+invalid:
+  - |
+    digest := md5.New()

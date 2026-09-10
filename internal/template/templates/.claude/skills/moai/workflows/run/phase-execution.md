@@ -35,7 +35,7 @@ Store hash as `plan_artifact_hash` for Step 2 cache lookup.
 
 The cache is **sticky (hash-keyed)**: a cached PASS verdict whose
 `plan_artifact_hash` matches the current hash is valid regardless of elapsed
-time. SPEC-AUDIT-SNAPSHOT-001 (A1) retired the prior 24h age condition; the
+time. The audit-snapshot policy retired the prior 24h age condition; the
 single authoritative skip contract (the three conditions: verdict PASS, score
 ≥ per-tier threshold, artifact-hash unchanged) lives in
 `.claude/rules/moai/workflow/spec-workflow.md` § Phase Transitions / Plan Audit

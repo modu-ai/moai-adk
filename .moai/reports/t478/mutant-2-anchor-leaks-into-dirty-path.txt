@@ -1,0 +1,6 @@
+=== RUN   TestCheckCodemaps_DirtyPathCarriesNoAnchor
+    check_restamp_anchor_test.go:309: dirty path reported anchor ""/"working-tree-differs-from-stamp", want both empty — it measures a fingerprint, not a commit window
+--- FAIL: TestCheckCodemaps_DirtyPathCarriesNoAnchor (0.61s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	1.116s
+FAIL

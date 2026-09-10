@@ -1,0 +1,16 @@
+== isolated repo: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/tmp.hL6lc5FQeJ
+time=2026-08-28T08:05:04.522+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/tmp.hL6lc5FQeJ/.moai/config/sections
+t1 1
+time=2026-08-28T08:05:04.579+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/tmp.hL6lc5FQeJ/.moai/config/sections
+t2 2
+new done t1 -> rc=0 out=done t1
+== archive rows in the database
+t1|0
+== stamped schema_version
+1
+== OLD binary opens the same database
+old list -> rc=0
+t2	queued	beta work
+== OLD binary can still mutate the queue
+old add -> rc=0 out=t3 2
+PASS: AC-TDG-005 downgrade half

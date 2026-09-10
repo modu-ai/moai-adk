@@ -1,0 +1,36 @@
+=== INV-106 project_markers
+internal/config/testdata/shipped_key_inventory.yaml
+internal/template/templates/.moai/config/sections/lsp.yaml.tmpl
+internal/lsp/config/types.go
+internal/lsp/config/types_test.go
+internal/lsp/config/completeness_test.go
+=== INV-107 langs in subject
+
+```
+go, python, typescript, javascript, rust, java, kotlin, csharp,
+ruby, php, elixir, cpp, scala, r, flutter, swift
+```
+
+Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
+
+### 체크리스트 (템플릿 수정 시)
+
+=== catalog langs
+=== INV-121 workflows
+total 816 drwxr-xr-x@ 28 goos  staff    896 Aug 27 17:40 . drwxr-xr-x@  5 goos  staff    160 Aug 27 17:40 .. -rw-r--r--@  1 goos  staff  12962 Aug 27 17:40 clean.md -rw-r--r--@  1 goos  staff   9180 Aug 27 17:40 codemaps.md -rw-r--r--@  1 goos  staff   8959 Aug 27 17:40 design.md -rw-r--r--@  1 goos  staff  25391 Aug 27 17:40 e2e.md -rw-r--r--@  1 goos  staff  10904 Aug 27 17:40 factory.md -rw-r--r--@  1 goos  staff  13454 Aug 27 17:40 feedback.md -rw-r--r--@  1 goos  staff  19457 Aug 27 17:40 fix.md -rw-r--r--@  1 goos  staff   8006 Aug 27 17:40 gate.md -rw-r--r--@  1 goos  staff  10955 Aug 27 17:40 goal.md -rw-r--r--@  1 goos  staff  18128 Aug 27 17:40 harness-build-entry.md -rw-r--r--@  1 goos  staff  36891 Aug 27 17:40 harness-builder.md -rw-r--r--@  1 goos  staff  24617 Aug 27 17:40 harness.md -rw-r--r--@  1 goos  staff  34026 Aug 27 17:40 loop.md -rw-r--r--@  1 goos  staff  24308 Aug 27 17:40 moai.md -rw-r--r--@  1 goos  staff   8893 Aug 27 17:40 mx.md drwxr-xr-x@  6 goos  staff    192 Aug 27 17:40 plan -rw-r--r--@  1 goos  staff  11307 Aug 27 17:40 plan.md drwxr-xr-x@  7 goos  staff    224 Aug 27 17:40 project -rw-r--r--@  1 goos  staff   6485 Aug 27 17:40 project.md drwxr-xr-x@  3 goos  staff     96 Aug 27 17:40 references -rw-r--r--@  1 goos  staff  38394 Aug 27 17:40 review.md drwxr-xr-x@  7 goos  staff    224 Aug 27 17:40 run -rw-r--r--@  1 goos  staff  19689 Aug 27 17:40 run.md drwxr-xr-x@  7 goos  staff    224 Aug 27 17:40 sync -rw-r--r--@  1 goos  staff  13655 Aug 27 17:40 sync.md -rw-r--r--@  1 goos  staff  13711 Aug 27 17:40 todo.md 
+=== INV-122 sentinel
+CLAUDE.local.md
+.moai/specs/SPEC-AGENT-PARALLEL-OPT-001/spec.md
+.moai/specs/SPEC-AGENT-PARALLEL-OPT-001/progress.md
+.moai/specs/SPEC-AGENT-PARALLEL-OPT-001/acceptance.md
+.moai/specs/SPEC-V3R6-DEV-HARNESS-SPLIT-001/progress.md
+=== INV-136/137 rule files
+-rw-r--r--@ 1 goos  staff  34859 Aug 27 17:40 .claude/rules/moai/development/agent-authoring.md
+-rw-r--r--@ 1 goos  staff  11276 Aug 27 17:40 .claude/rules/moai/development/coding-standards.md
+-rw-r--r--@ 1 goos  staff  24484 Aug 27 17:40 .claude/rules/moai/development/skill-authoring.md
+=== INV-138 loadGLMKey
+internal/cli/glm.go:963:func loadGLMKey() string {
+internal/hook/session_start.go:1200:func loadGLMKeyFromEnvFile() string {
+internal/config/envkeys.go:17:	// worktrees/, claude-profiles/, .env.glm, user-tier settings) resolves
+internal/glmcred/glmcred_test.go:25:	want := filepath.Join(dir, ".moai", ".env.glm")
+internal/glmcred/glmcred_test.go:72:	envPath := filepath.Join(dir, ".moai", ".env.glm")

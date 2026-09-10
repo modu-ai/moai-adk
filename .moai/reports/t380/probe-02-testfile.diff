@@ -1,0 +1,13 @@
+diff --git a/internal/spec/lint_syncsha_test.go b/internal/spec/lint_syncsha_test.go
+index f80f8ca92..8b212ca23 100644
+--- a/internal/spec/lint_syncsha_test.go
++++ b/internal/spec/lint_syncsha_test.go
+@@ -123,7 +123,7 @@ func TestSyncSHASlot_FlagsProse(t *testing.T) {
+ // Mutation that must turn it red: narrow the SHA pattern to {40} — `sha-short`
+ // and `sha-quoted` must produce findings.
+ func TestSyncSHASlot_SilentOnSHA(t *testing.T) {
+-	for _, c := range []string{"sha-short", "sha-full", "sha-quoted", "sha-annotated"} {
++	for _, c := range []string{"sha-min7", "sha-short", "sha-full", "sha-quoted", "sha-annotated"} {
+ 		if got := syncSHAFindings(t, c); len(got) != 0 {
+ 			t.Errorf("%s: expected 0 findings on a well-formed SHA, got %d: %v", c, len(got), got)
+ 		}

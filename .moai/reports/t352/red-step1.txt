@@ -1,0 +1,10 @@
+2026/08/28 22:36:01 INFO session started session_id=t352-guard cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard3295968642 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard3295968642
+2026/08/28 22:36:01 WARN configuration not available, proceeding with defaults session_id=t352-guard
+2026/08/28 22:36:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/08/28 22:36:01 INFO session start (deferred): MX index built via cold-start scan project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard3295968642 tags=8000
+--- FAIL: TestSessionStartDeferredWriteDoesNotOutliveHandle (1.92s)
+    session_start_deferred_write_test.go:131: a durable write outlived Handle: 1 entr(ies) appeared under the caller's directory during the 1s settle window after Handle returned: [.moai/state/mx-index.json]
+        REQ-TCR-001 requires every durable write into the caller's ProjectDir to complete before Handle returns.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.764s
+FAIL

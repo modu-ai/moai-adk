@@ -1,0 +1,13 @@
+| Capability | In Claude harness | When absent in this harness |
+|---|---|---|
+| file-read | Read, Grep, Glob tools | use built-in file read |
+| file-write | Write, Edit tools | use built-in file edit |
+| shell | Bash tool | use built-in shell |
+| web | WebFetch, WebSearch tools | global config, no per-agent grant |
+| task-list | TaskCreate, TaskUpdate, TaskList, TaskGet | report progress in prose |
+| skill-loader | Skill tool | read the skill SKILL.md directly |
+| subagent-spawn | Agent tool | do the work in-session |
+| design-sync | DesignSync tool | skip design sync |
+| cross-session-messaging | SendMessage, ListAgents tools | use the moai MCP broker |
+| moai-mcp | mcp__moai__* tools | run without the MCP server |
+| question-channel | AskUserQuestion tool | return a blocker report |

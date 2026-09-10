@@ -106,7 +106,7 @@ moai goal clear                         # 条件削除 (ループ終了)
 - 必須バックエンド間の分裂 → 保守的 `FAIL` に `disagreement_flag` を付加。
 - アドバイザリ専用バックエンドとの衝突 → `PASS` に `disagreement_flag` を付加。
 
-不一致は `ConvergenceResult` の `disagreement_flag` と `residual_risk_note` で表面化し、それ自体がフローをハードブロックすることはありません。独立性は構造的に保証されます。セカンダリ展開ゴルーチンは `(target, focus, model, effort)` のみを受け取り、`claude_verdict` を一切受け取りません。よって codex と GLM は汚染された再サンプルではなく相関のない第二意見を生成します。フェイルオープンは両方向で成り立ちます。欠落または未認証のオプショナルバックエンドは `VerdictInconclusive` を返し claude にフォールバックするだけで、ハードエラーになりません。
+不一致は `ConvergenceResult` の `disagreement_flag` と `residual_risk_note` で表面化し、それ自体がフローをハードブロックすることはありません。`disagreement_flag` は `participant_count`(比較可能な `pass`/`fail` 判定を出したバックエンドの数)と併せて3値を取ります。`true` は分かれが観測されたこと(単一参加者自身の合成内での分かれを含む)、`false` は参加者2以上の比較で分かれがなかったこと、`null` は参加者が2未満で一致も不一致も根拠づけられない状態です。独立性は構造的に保証されます。セカンダリ展開ゴルーチンは `(target, focus, model, effort)` のみを受け取り、`claude_verdict` を一切受け取りません。よって codex と GLM は汚染された再サンプルではなく相関のない第二意見を生成します。フェイルオープンは両方向で成り立ちます。欠落または未認証のオプショナルバックエンドは `VerdictInconclusive` を返し claude にフォールバックするだけで、ハードエラーになりません。
 
 ### `moai hook multi-review-gate` Stop フック
 

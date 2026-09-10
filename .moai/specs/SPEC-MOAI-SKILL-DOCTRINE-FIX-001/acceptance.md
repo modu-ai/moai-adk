@@ -2,7 +2,6 @@
 id: SPEC-MOAI-SKILL-DOCTRINE-FIX-001
 title: "moai Skill Folder Doctrine Drift Remediation — Acceptance Criteria"
 version: "0.1.0"
-status: completed
 created: 2026-07-08
 updated: 2026-07-08
 author: manager-spec

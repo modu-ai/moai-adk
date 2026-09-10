@@ -1,0 +1,13 @@
+ultrathink. t228 SPEC-ASTGREP-LANG16-001 run 진입.
+applied lessons: feedback_invariant_assertions_pin_a_sha, feedback_closed_hole_has_a_mirror, feedback_agent_file_artifact_required
+source_session_id: 494a61ca-7c8e-41ad-856b-5a0c4cf5b592
+
+전제 검증:
+1) `moai cc -w t228` → cwd가 .claude/worktrees/t228, 브랜치 WT-astgrep-16-langs
+2) `git rev-parse --short HEAD` → 057e0c51a, `git status --porcelain` → 0줄
+3) `.moai/reports/t228/plan-audit-iter5.md` 존재 → plan PASS 0.88 확인 (감사 라운드 추가 불필요)
+4) `sg --version` → ast-grep 0.40.5 (다르면 §H 증거표와 r/flutter 제외 근거를 재측정)
+
+실행: 리드 판정 → 운영자 Kickoff 승인을 받은 뒤 `/moai run SPEC-ASTGREP-LANG16-001` (M1: sg test 하네스 — sgconfig.yml testConfigs + 리포측 rule-tests 루트 + 기존 26룰 스냅샷 기준선)
+
+후속: SPEC-ASTGREP-BREADTH-001 자체 plan 단계 (언어별 룰 + 코퍼스 픽스처 짝)

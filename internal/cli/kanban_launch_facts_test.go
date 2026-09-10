@@ -16,7 +16,7 @@ import (
 // reproducible in a way the live directory is not.
 func TestLauncherWritesNoKanbanRecord(t *testing.T) {
 	root := t.TempDir()
-	recordDir := filepath.Join(root, ".moai", "state", "kanban")
+	recordDir := kanban.StateDirForRoot(root)
 	if err := os.MkdirAll(recordDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}

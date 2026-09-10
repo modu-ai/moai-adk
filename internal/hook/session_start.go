@@ -19,9 +19,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
-	"github.com/modu-ai/moai-adk/internal/mx"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
@@ -35,11 +35,72 @@ import (
 // the execution environment (REQ-HOOK-030).
 type sessionStartHandler struct {
 	cfg ConfigProvider
+
+	// syncDeferredScans records that this handler's constructor was given
+	// WithSynchronousDeferredScans. Per-handler rather than a package-level
+	// setter: a process-global toggle would be mutable shared state and would
+	// race across parallel tests — the exact defect internal/hook's own
+	// TestMain seam exists to prevent (SPEC-TEMPDIR-CLEANUP-RACE-001
+	// REQ-TCR-001).
+	syncDeferredScans bool
+}
+
+// Option configures a SessionStart handler at construction time.
+//
+// The parameter is variadic so that the existing production call site
+// (internal/cli/deps.go) keeps compiling unchanged; a second positional
+// argument would have broken it (SPEC-TEMPDIR-CLEANUP-RACE-001 REQ-TCR-006).
+type Option func(*sessionStartHandler)
+
+// WithSynchronousDeferredScans makes every deferred step of Handle run inline,
+// so that nothing dispatched by Handle outlives its return.
+//
+// This exists for a caller that OWNS the directory it passes as ProjectDir and
+// destroys it when Handle returns — a cross-package test using t.TempDir is the
+// motivating case. Handle's deferred MX cold-start scan writes
+// <ProjectDir>/.moai/state/mx-index.json from a goroutine joined with a bounded
+// deadline, so on a tree large enough for the scan to outrun that bound the
+// write lands after the caller has begun deleting the directory, and the
+// deletion fails with "unlinkat ... directory not empty". internal/hook's own
+// test binary avoids this by flipping a package-private variable in TestMain,
+// which cannot cross a test-binary boundary; this option is the same capability
+// made reachable by a caller outside the package.
+//
+// It is OFF by default and changes nothing for a caller that does not pass it:
+// production keeps the async path and its bounded join, which is a deliberate
+// input-lag design (REQ-TCR-002).
+//
+// Scope: the option covers EVERY deferred step Handle dispatches — the advisory
+// scan and its MX cold-start write, the binary-lag comparison, the
+// guard-liveness refresh, and the guard-liveness advisory read. Only the first
+// of those writes into the caller's ProjectDir, but an option named
+// "synchronous deferred scans" that still left three goroutines running past
+// Handle would be misnamed, and those goroutines are a leak for any caller that
+// checks for one.
+//
+// @MX:NOTE: [AUTO] opt-in cross-package sync seam — a caller that owns and deletes ProjectDir needs this
+func WithSynchronousDeferredScans() Option {
+	return func(h *sessionStartHandler) { h.syncDeferredScans = true }
 }
 
 // NewSessionStartHandler creates a new SessionStart event handler.
-func NewSessionStartHandler(cfg ConfigProvider) Handler {
-	return &sessionStartHandler{cfg: cfg}
+func NewSessionStartHandler(cfg ConfigProvider, opts ...Option) Handler {
+	h := &sessionStartHandler{cfg: cfg}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(h)
+		}
+	}
+	return h
+}
+
+// asyncDeferredScans reports whether THIS handler's deferred steps run in a
+// background goroutine. It is the conjunction of the package-private
+// test-binary seam (deferredScansAsyncEnabled) and the per-handler option: a
+// caller that asked for synchronous scans gets them regardless of the seam, and
+// a caller that did not is unaffected by the option's existence.
+func (h *sessionStartHandler) asyncDeferredScans() bool {
+	return deferredScansAsyncEnabled() && !h.syncDeferredScans
 }
 
 // EventType returns EventSessionStart.
@@ -69,6 +130,39 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		"cwd", input.CWD,
 		"project_dir", input.ProjectDir,
 	)
+	admissionRoot := input.ProjectDir
+	if admissionRoot == "" {
+		admissionRoot = input.CWD
+	}
+	if admissionRoot != "" {
+		admissionLock, lockErr := homestate.AcquireAdmissionLock(admissionRoot)
+		if lockErr != nil {
+			out := &HookOutput{StopReason: lockErr.Error()}
+			out.SetContinue(false)
+			return out, nil
+		}
+		defer func() { _ = admissionLock.Release() }()
+		if err := homestate.CheckRuntimeAdmission(admissionRoot); err != nil {
+			out := &HookOutput{StopReason: err.Error()}
+			out.SetContinue(false)
+			return out, nil
+		}
+	}
+	registerProfileLease(ctx, input)
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
+	// guard firing-liveness refresh.
+	//
+	// Placed at the top of Handle deliberately. Everything below it can return
+	// early — the marshal failure a few hundred lines down does — and an
+	// invocation sitting after such a return is unconditional only on the
+	// activations that got that far. The refresh is never awaited, so entering
+	// here costs the input-lag budget nothing.
+	guardLivenessRoot := input.ProjectDir
+	if guardLivenessRoot == "" {
+		guardLivenessRoot = input.CWD
+	}
+	guardLivenessRefresh(ctx, guardLivenessRoot, h.asyncDeferredScans())
 
 	data := map[string]any{
 		"session_id": input.SessionID,
@@ -172,6 +266,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return nil
 		})
 
+		// Task 5 — card-worktree base-branch alignment (SPEC-WORKTREE-BASEREF-001
+		// REQ-WBR-004). Touches only refs/remotes/origin/HEAD, shares no file
+		// with Tasks 1-4, and gates itself on the primary checkout before
+		// reading anything. Fail-open like the rest of the group.
+		var worktreeBaseData map[string]any
+		g.Go(func() error {
+			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
+			return nil
+		})
+
 		if err := g.Wait(); err != nil {
 			// Best-effort contract preserved: Handle never returns a non-nil
 			// error from these steps. errgroup.WithContext cancels on first
@@ -181,7 +285,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				"error", err.Error())
 		}
 
-		mergeData(data, settingsData, registryData, skillData, migrationData)
+		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
@@ -217,17 +321,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		driftTimeout := sessionStartDriftTimeout
 		projectDir := input.ProjectDir
 
-		// MX sidecar index freshness (SPEC-MX-ACTIVATION P0-1): cheap
-		// synchronous check — does .moai/state/mx-index.json exist AND is its
-		// ScannedAt within mxIndexFreshnessThreshold? The result gates whether
-		// the deferred goroutine runs an expensive full ScanDir. ScanDir itself
-		// NEVER runs on the synchronous path (Advisory-Check Discipline); only
-		// this stat + one-field read does.
-		//
-		// @MX:NOTE: [AUTO] MX index freshness — sync check gates deferred cold-start scan
-		mxScanNeeded := mxIndexNeedsRebuild(projectDir)
-
-		if deferredScansAsyncEnabled() {
+		if h.asyncDeferredScans() {
 			// Production path: spawn a background goroutine and join with a
 			// short bounded deadline.
 			//
@@ -235,7 +329,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// this goroutine) so the deferred goroutine never reads the
 			// package-level var. nil in production.
 			completed := snapshotDeferredScanCompleted()
-			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed, mxScanNeeded)
+			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed)
 
 			// Timeout-bound join. On receive, merge the advisory keys into
 			// `data` before the final marshal so they ship in this session's
@@ -249,9 +343,11 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				}
 			case <-joinTimer.C:
 				// Scan exceeded the bound; advisory keys for this session are
-				// dropped (non-blocking). The goroutine continues to completion
-				// in the background (durable side effects still land) and sends
-				// into the buffered channel without blocking.
+				// dropped (non-blocking). The goroutine's send never blocks —
+				// the channel is buffered — but it does NOT run to completion:
+				// this is a short-lived CLI process, so once Handle returns the
+				// process exits and the runtime tears the goroutine down
+				// wherever it happens to be.
 				slog.Debug("session start: deferred advisory scan exceeded join bound (non-blocking)",
 					"bound", deferredScanJoinBound.String())
 			}
@@ -264,12 +360,6 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
 			if len(advisory) > 0 {
 				maps.Copy(data, advisory)
-			}
-			// MX cold-start scan runs AFTER the advisory keys are merged so it
-			// never delays them; it is a durable side effect (index write),
-			// not an advisory. Time-boxed and fail-open (see runMXColdStartScan).
-			if mxScanNeeded {
-				runMXColdStartScan(projectDir)
 			}
 		}
 	}
@@ -448,7 +538,67 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// SPEC-BINARY-LAG-VISIBILITY-001 REQ-BLV-001/002/008: the deployment-lag
+	// verdict, emitted without anyone asking for it.
+	//
+	// The comparison this renders already existed and was already correct; it
+	// simply had no caller but a human typing `moai doctor`, so on the day it
+	// mattered it reached nobody through five steps and three observers. This
+	// is the automatic caller. It runs before any lane observes anything,
+	// which is the only point in that sequence cheap enough to check on every
+	// session and early enough to matter.
+	//
+	// additionalContext, not systemMessage and not the Data map: Data carries
+	// json:"-" (see the attribution comment above), so a verdict placed there
+	// would be computed correctly and rendered by no one — reproducing the
+	// exact dead end this closes.
+	lagRoot := input.ProjectDir
+	if lagRoot == "" {
+		lagRoot = input.CWD
+	}
+	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot, h.asyncDeferredScans()))
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
+	// firing-liveness verdict, emitted without anyone asking for it.
+	//
+	// It joins THIS block through the same helper rather than opening a surface
+	// of its own. A second channel would split one concern across two, and a
+	// reader who learns to skip one has no reason to treat the other
+	// differently — which is the filtering mechanism this card is about,
+	// applied twice.
+	//
+	// The read is of a persisted verdict; the refresh that produces the next
+	// one was initiated at the top of Handle and is not waited on here.
+	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
+
 	return out, nil
+}
+
+func registerProfileLease(ctx context.Context, input *HookInput) {
+	profilePath := os.Getenv("CLAUDE_CONFIG_DIR")
+	if profilePath == "" || input == nil {
+		return
+	}
+	store, err := homestate.OpenProfileLeases()
+	if err != nil {
+		slog.Warn("session_start: profile lease unavailable", "error", err)
+		return
+	}
+	defer func() { _ = store.Close() }()
+	pid := os.Getppid()
+	fingerprint, state := homestate.ProbeProcessIdentity(pid)
+	if state != homestate.ProcessIdentityLive {
+		fingerprint = ""
+	}
+	token := os.Getenv("MOAI_PROFILE_LEASE_TOKEN")
+	if token != "" && store.Enrich(ctx, token, input.SessionID, pid, fingerprint) == nil {
+		return
+	}
+	name := filepath.Base(profilePath)
+	token, err = store.CreateProvisional(ctx, homestate.ProfileLease{ProfileName: name, ProfilePath: profilePath, ProjectKey: homestate.ProjectKey(input.ProjectDir), PID: pid, ProcessFingerprint: fingerprint, SessionID: input.SessionID})
+	if err == nil {
+		_ = store.Enrich(ctx, token, input.SessionID, pid, fingerprint)
+	}
 }
 
 // getConfig safely retrieves the configuration, returning nil if unavailable.
@@ -554,17 +704,17 @@ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) ma
 // `completed` is the test-only join seam (nil in production): when non-nil
 // the goroutine closes it on exit so a test can join for goleak hygiene.
 //
-// `mxScanNeeded` (computed synchronously by the caller via mxIndexNeedsRebuild)
-// gates whether the MX cold-start full scan runs after the advisories. The
-// scan is a durable side effect (index write) and is dispatched AFTER the
-// advisory result is sent so it never delays advisory keys landing in the
-// session's Data payload.
+// Work dispatched from this goroutine is NOT guaranteed to finish. The hook
+// runs in a short-lived CLI process that exits as soon as Handle returns, so
+// the runtime tears the goroutine down wherever it happens to be. Advisory
+// results are safe because they are only ever consumed through the buffered
+// channel before that point; a side effect that must land belongs in the
+// process that needs it.
 func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 	projectDir string,
 	driftFn func(context.Context, string) (int, error),
 	driftTimeout time.Duration,
 	completed chan struct{},
-	mxScanNeeded bool,
 ) <-chan map[string]any {
 	resultCh := make(chan map[string]any, 1)
 	go func() {
@@ -572,13 +722,7 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 			defer close(completed)
 		}
 		advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
-		// Send advisories FIRST (buffered channel → never blocks even after
-		// the join bound elapses), THEN run the MX cold-start scan as a
-		// best-effort durable side effect.
 		resultCh <- advisory
-		if mxScanNeeded {
-			runMXColdStartScan(projectDir)
-		}
 	}()
 	return resultCh
 }
@@ -1372,8 +1516,10 @@ const driftTimeoutAdvisory = "⚠ SPEC status drift check timed out. Run 'moai s
 // deferredScanJoinBound is the maximum time Handle waits for the deferred
 // advisory scan goroutine before returning. It is the drop-mitigation bound:
 // scans that finish within it land their advisory keys in this session's Data
-// map; slower scans are abandoned for this session (advisory dropped, durable
-// side effects still complete, idempotent re-derive next session).
+// map; slower scans are abandoned for this session (advisory dropped, next
+// session re-derives idempotently). "Abandoned" is literal: the process exits
+// once Handle returns and the goroutine is torn down wherever it is, so
+// nothing dispatched there is guaranteed to finish.
 //
 // Value choice (250ms): the drift scan's own time-box is
 // DefaultSessionStartDriftTimeout (2s) — that is the scan's CEILING on huge
@@ -1476,118 +1622,4 @@ func detectStatusDrift(projectDir string) string {
 	}
 
 	return ""
-}
-
-// mxIndexFreshnessThreshold is how long an MX sidecar index is considered
-// fresh. An index whose ScannedAt is older than this (or absent/corrupt)
-// triggers the deferred cold-start full scan so 'moai mx query' returns fresh
-// results without a manual 'moai mx scan' after checkout/clone/worktree
-// creation. Measured staleness on a fresh worktree (2026-08-04): 764 missing
-// tags (1,567 actual vs 803 indexed). 7 days mirrors the MX ArchiveStale TTL.
-const mxIndexFreshnessThreshold = 7 * 24 * time.Hour
-
-// mxIndexScanTimeoutDefault bounds the deferred cold-start ScanDir so its cost
-// cannot grow unboundedly with repo size. The scan runs in the deferred
-// background goroutine; the deferredScanJoinBound (250ms) further caps added
-// input lag. On a timeout the scan is abandoned for this session (fail-open,
-// non-blocking); the next session re-derives idempotently.
-//
-// @MX:NOTE: [AUTO] cold-start scan timeout — fail-open ceiling, never blocks the 5s hook budget
-const mxIndexScanTimeoutDefault = 2 * time.Second
-
-// mxIndexScanTimeout is the test-overridable seam for the cold-start scan
-// ceiling (mirrors the sessionStartDriftTimeout pattern). Production points at
-// mxIndexScanTimeoutDefault.
-var mxIndexScanTimeout = mxIndexScanTimeoutDefault
-
-// mxIndexNeedsRebuild is the CHEAP synchronous check that gates the deferred
-// cold-start scan. It performs one file stat + one JSON field read of
-// ScannedAt — never ScanDir. Returns true when the index is absent, empty,
-// corrupt, has a zero ScannedAt, or is older than mxIndexFreshnessThreshold.
-func mxIndexNeedsRebuild(projectDir string) bool {
-	if projectDir == "" {
-		return false
-	}
-	idxPath := filepath.Join(projectDir, ".moai", "state", mx.SidecarFileName)
-	info, err := os.Stat(idxPath)
-	if err != nil || info.Size() == 0 {
-		return true // absent or empty
-	}
-	data, err := os.ReadFile(idxPath)
-	if err != nil {
-		return true
-	}
-	var head struct {
-		ScannedAt time.Time `json:"scanned_at"`
-	}
-	if err := json.Unmarshal(data, &head); err != nil {
-		return true // corrupt
-	}
-	if head.ScannedAt.IsZero() {
-		return true
-	}
-	return time.Since(head.ScannedAt) > mxIndexFreshnessThreshold
-}
-
-// runMXColdStartScan performs a full-project ScanDir and writes the sidecar
-// index, time-boxed by mxIndexScanTimeout and fail-open: on timeout or error
-// it logs at warn/info and returns without blocking. ScanDir is not
-// context-aware, so the scan runs in a helper goroutine whose result is
-// selected against the timeout context — when the context fires the result is
-// abandoned. In production the SessionStart process may exit and kill the
-// helper goroutine (safe — idempotent, next session re-derives); the scan
-// only lands if it finishes before the process exits.
-//
-// @MX:WARN @MX:REASON ScanDir walks the whole repo; the time-box + helper
-// goroutine bound cost and guarantee the caller is never blocked past the
-// ceiling (Advisory-Check Discipline).
-func runMXColdStartScan(projectDir string) {
-	if projectDir == "" {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), mxIndexScanTimeout)
-	defer cancel()
-
-	type scanResult struct {
-		tags []mx.Tag
-		err  error
-	}
-	resCh := make(chan scanResult, 1) // buffered → helper goroutine never blocks on send
-	go func() {
-		s := mx.NewScanner()
-		s.SetIgnorePatterns(mx.DefaultScanIgnore)
-		tags, err := s.ScanDir(projectDir)
-		resCh <- scanResult{tags: tags, err: err}
-	}()
-
-	select {
-	case <-ctx.Done():
-		slog.Info("session start (deferred): MX cold-start scan timed out (non-blocking)",
-			"project_dir", projectDir,
-			"timeout", mxIndexScanTimeout.String())
-		return
-	case r := <-resCh:
-		if r.err != nil {
-			slog.Warn("session start (deferred): MX cold-start scan failed (non-blocking)",
-				"project_dir", projectDir,
-				"error", r.err.Error())
-			return
-		}
-		stateDir := filepath.Join(projectDir, ".moai", "state")
-		mgr := mx.NewManager(stateDir)
-		sidecar := &mx.Sidecar{
-			SchemaVersion: mx.SchemaVersion,
-			Tags:          r.tags,
-			ScannedAt:     time.Now(),
-		}
-		if err := mgr.Write(sidecar); err != nil {
-			slog.Warn("session start (deferred): MX cold-start scan write failed (non-blocking)",
-				"project_dir", projectDir,
-				"error", err.Error())
-			return
-		}
-		slog.Info("session start (deferred): MX index built via cold-start scan",
-			"project_dir", projectDir,
-			"tags", len(r.tags))
-	}
 }

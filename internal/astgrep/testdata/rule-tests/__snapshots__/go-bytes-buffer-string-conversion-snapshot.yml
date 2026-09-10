@@ -1,0 +1,9 @@
+id: go-bytes-buffer-string-conversion
+snapshots:
+  ? |
+    label := string([]byte{'a', 'b', 'c'})
+  : labels:
+    - source: string([]byte{'a', 'b', 'c'})
+      style: primary
+      start: 9
+      end: 38

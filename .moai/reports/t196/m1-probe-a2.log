@@ -1,0 +1,50 @@
+Reading additional input from stdin...
+OpenAI Codex v0.150.1
+--------
+workdir: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a058b6-a5a7-7ec2-b414-3079c220dc78
+--------
+user
+Use the AskUserQuestion tool to confirm with the user whether to proceed. Then stop.
+2026-08-31T16:46:00.674804Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:46:00.892791Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.facebook.com/.well-known/oauth-protected-resource/ads\", scope=\"ads_management ads_read catalog_management business_management pages_show_list instagram_basic ads_mcp_management\"" })
+2026-08-31T16:46:00.892925Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse("HTTP 404: \n<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Not Found</title>\n</head>\n<body>\n  <h1>Not Found</h1><p>The requested resource was not found on this server.</p>\n</body>\n</html>\n")
+2026-08-31T16:46:00.911398Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+2026-08-31T16:46:00.928321Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:46:01.157013Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.slack.com/.well-known/oauth-protected-resource\"" })
+2026-08-31T16:46:01.306713Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+2026-08-31T16:46:01.454046Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+2026-08-31T16:46:01.723844Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.facebook.com/.well-known/oauth-protected-resource/ads\", scope=\"ads_management ads_read catalog_management business_management pages_show_list instagram_basic ads_mcp_management\"" })
+2026-08-31T16:46:01.761070Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse("HTTP 404: \n<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Not Found</title>\n</head>\n<body>\n  <h1>Not Found</h1><p>The requested resource was not found on this server.</p>\n</body>\n</html>\n")
+2026-08-31T16:46:01.930422Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:46:01.971034Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.slack.com/.well-known/oauth-protected-resource\"" })
+2026-08-31T16:46:02.266720Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+2026-08-31T16:46:02.447733Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+warning: Exceeded skills context budget. All skill descriptions were removed and 209 additional skills were not included in the model-visible skills list.
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: UserPromptSubmit
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+hook: UserPromptSubmit Completed
+2026-08-31T16:46:05.749576Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+2026-08-31T16:46:10.536247Z ERROR codex_core::tools::router: error=collab spawn failed: no thread with id: 01a058b6-ab86-7851-b523-9e2fe5f21b8b
+hook: PreToolUse
+2026-08-31T16:46:10.604370Z ERROR codex_core::tools::router: error=request_user_input is unavailable in Default mode
+hook: PreToolUse Completed
+2026-08-31T16:46:11.143988Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+codex
+`AskUserQuestion` 도구가 현재 모드에서 지원되지 않았습니다. 작업을 계속 진행할까요?
+hook: Stop
+hook: Stop Completed
+tokens used
+18,406
+`AskUserQuestion` 도구가 현재 모드에서 지원되지 않았습니다. 작업을 계속 진행할까요?

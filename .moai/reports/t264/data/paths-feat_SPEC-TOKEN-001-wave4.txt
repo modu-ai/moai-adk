@@ -1,0 +1,3 @@
+internal/template/catalog.yaml
+internal/template/skill_reduction_test.go
+internal/template/templates/.claude/agents/moai/manager-brain.md

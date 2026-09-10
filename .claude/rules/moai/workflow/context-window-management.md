@@ -21,8 +21,9 @@ reimplement them. Rationale and the layer vocabulary:
 | Opus 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Fable (256K) | 256,000 tokens | **90%** | ~230,000 tokens |
-| Sonnet/Opus standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
+| Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Sonnet 4.x / earlier standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
 The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
@@ -61,7 +62,7 @@ another. Detail: `context-window-management-detail.md`.
 
 ## User Responsibilities
 
-User monitors via Claude Code statusline / `/cost` and intervenes at threshold (50% on 1M / GLM-5.3, 90% on 200K/256K).
+User monitors via Claude Code statusline / `/cost` and intervenes at threshold (50% on 1M / GLM-5.3, 90% on 200K).
 
 [ZONE:Evolvable] [HARD] When usage crosses the model-specific threshold:
 1. Save in-flight state to `.moai/specs/<SPEC-ID>/progress.md` if not already saved (orchestrator does this automatically)
@@ -77,11 +78,11 @@ User monitors via Claude Code statusline / `/cost` and intervenes at threshold (
 
 The orchestrator MUST proactively recognize the model-specific boundary and prepare the user for a clean handoff.
 
-[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (50% on 1M / GLM-5.3, 90% on 200K/256K), it MUST:
+[ZONE:Evolvable] [HARD] Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold (50% on 1M / GLM-5.3, 90% on 200K), it MUST:
 1. Stop initiating new large tool calls or `Agent()` delegations
 2. Persist all in-flight progress to `.moai/specs/<SPEC-ID>/progress.md`
 3. Emit a structured "resume message" the user can paste verbatim after `/clear`
-4. Recommend `/clear` via natural-language guidance (status announcement, not a question — `AskUserQuestion` not required)
+4. Recommend `/clear` via natural-language guidance (status announcement, not a question — `AskUserQuestion` not required). This is the `push`-mode phrasing. While `interview.recommendation_mode` is `pull`, the announcement **states the observation and the available action without recommending**: it reports the measured usage against the model-specific threshold and names `/clear` as the action that resets it, leaving the decision to the user. The announcement still fires — the mode changes its phrasing, never whether the threshold is surfaced — and it remains a status announcement rather than a question in both modes. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 [ZONE:Evolvable] [HARD] Resume message format: include all of the following so the next session is self-sufficient (locale renderings per `session-handoff.md` § Localization Table — do not redefine a parallel format here):
 ```

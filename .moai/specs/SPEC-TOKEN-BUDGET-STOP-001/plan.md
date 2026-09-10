@@ -2,7 +2,6 @@
 id: SPEC-TOKEN-BUDGET-STOP-001
 title: "Token Budget Graceful-Abort + /tmp Evidence Persistence — Implementation Plan"
 version: "0.1.0"
-status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

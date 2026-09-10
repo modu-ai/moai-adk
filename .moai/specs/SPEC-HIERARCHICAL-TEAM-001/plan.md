@@ -127,7 +127,7 @@ Each item follows the 5-section Evidence-Bearing Report format (Claim / Evidence
 - Apply the OQ-1 decision: `auto` at Tier L / `opt-in` at Tier M / `off` config flag wired into `.moai/config/sections/workflow.yaml` (default per OQ-1).
 - Mirror to `internal/template/templates/`; run `make build`.
 
-**Self-verify**: AC-FOLD-001, AC-FOLD-002, AC-FOLD-003; evidence path resolves at audit time; `/compact` invocation verified available in a subagent context (assumption 3 — if NOT available, blocker report and re-plan).
+**Self-verify**: AC-FOLD-001, AC-FOLD-002, AC-FOLD-003; fold-row citations resolve at audit time under `.moai/reports/<card-id>/` (tracked — scratch under `.moai/state/verify/` is recorded but never cited, per REQ-FOLD-002 as revised by t390); `/compact` invocation verified available in a subagent context (assumption 3 — if NOT available, blocker report and re-plan).
 
 **Priority**: Medium (depends on M1; high value for Tier L but lower than M1/M2 because Tier L runs can still fall back to `/clear` + handoff without it).
 

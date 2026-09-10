@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/mcp_convergence_participant_test.go:164:9: r.ParticipantCount undefined (type ConvergenceResult has no field or method ParticipantCount)
+internal/cli/mcp_convergence_participant_test.go:165:107: r.ParticipantCount undefined (type ConvergenceResult has no field or method ParticipantCount)
+internal/cli/mcp_convergence_participant_test.go:173:28: invalid operation: r.DisagreementFlag != nil (mismatched types bool and untyped nil)
+internal/cli/mcp_convergence_participant_test.go:174:68: invalid operation: cannot indirect r.DisagreementFlag (variable of type bool)
+internal/cli/mcp_convergence_participant_test.go:212:9: r.ParticipantCount undefined (type ConvergenceResult has no field or method ParticipantCount)
+internal/cli/mcp_convergence_participant_test.go:213:89: r.ParticipantCount undefined (type ConvergenceResult has no field or method ParticipantCount)
+internal/cli/mcp_convergence_participant_test.go:215:29: invalid operation: r.DisagreementFlag != nil (mismatched types bool and untyped nil)
+internal/cli/mcp_convergence_participant_test.go:216:155: invalid operation: cannot indirect r.DisagreementFlag (variable of type bool)
+internal/cli/mcp_convergence_participant_test.go:236:8: r.ParticipantCount undefined (type ConvergenceResult has no field or method ParticipantCount)
+internal/cli/mcp_convergence_participant_test.go:237:77: r.ParticipantCount undefined (type ConvergenceResult has no field or method ParticipantCount)
+internal/cli/mcp_convergence_participant_test.go:237:77: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

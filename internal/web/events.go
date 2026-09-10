@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 const debounce = 250 * time.Millisecond
@@ -27,8 +29,10 @@ var watchMap = map[string][]string{
 	"session": {".moai/state"},
 	"goal":    {".moai/state/goal"},
 	"verify":  {".moai/state/verify"},
-	"kanban":  {".moai/state/kanban"},
-	"config":  {".moai/config/sections"},
+	// SSE event KEY stays "kanban" — it is a frontend-visible contract. Only
+	// the watched PATH moved with the state-directory rename.
+	"kanban": {".moai/state/todo"},
+	"config": {".moai/config/sections"},
 }
 
 // Hub 는 열린 SSE 연결 집합이다. 값을 나르지 않으므로 상태는 채널뿐이다.
@@ -121,14 +125,10 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 	}
 	defer func() { _ = w.Close() }()
 
-	pathEvent := map[string]string{}
-	for event, dirs := range watchMap {
-		for _, d := range dirs {
-			abs := filepath.Join(root, d)
-			if err := w.Add(abs); err != nil {
-				continue // 아직 없는 디렉터리는 건너뛴다 (프로젝트 초기 상태)
-			}
-			pathEvent[abs] = event
+	pathEvent := resolvedWatchPaths(root)
+	for abs := range pathEvent {
+		if err := w.Add(abs); err != nil {
+			delete(pathEvent, abs) // absent directories use browser fallback polling
 		}
 	}
 
@@ -163,6 +163,21 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 			// 감시 실패는 치명적이지 않다. 브라우저가 폴백 폴링으로 내려간다.
 		}
 	}
+}
+
+func resolvedWatchPaths(root string) map[string]string {
+	pathEvent := map[string]string{}
+	for event, dirs := range watchMap {
+		for _, d := range dirs {
+			abs := filepath.Join(root, d)
+			pathEvent[abs] = event
+		}
+	}
+	pathEvent[kanban.StateDirForRoot(root)] = "kanban"
+	if factoryDir, err := homestate.FactoryDir(root); err == nil {
+		pathEvent[factoryDir] = "kanban"
+	}
+	return pathEvent
 }
 
 // eventFor 는 변경된 경로를 가장 구체적인 감시 경로에 귀속시킨다.

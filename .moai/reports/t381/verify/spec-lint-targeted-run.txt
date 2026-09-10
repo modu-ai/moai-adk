@@ -1,0 +1,2 @@
+✓ No findings — all SPEC documents are valid
+exit=0

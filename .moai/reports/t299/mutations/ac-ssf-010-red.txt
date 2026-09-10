@@ -1,0 +1,13 @@
+--- FAIL: TestSyncSHASlotFormat_AbsentFromEraDemotableCodes (0.00s)
+    syncsha_test.go:180: SyncSHASlotFormat is present in eraDemotableCodes; the entry is inert for a warning and reads as intent (REQ-SSF-007, AC-SSF-010)
+    syncsha_test.go:184: eraDemotableCodes has 3 entries, want exactly 2 (map[FrontmatterInvalid:true MissingExclusions:true]); got map[FrontmatterInvalid:true MissingExclusions:true SyncSHASlotFormat:true]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.384s
+FAIL
+var eraDemotableCodes = map[string]bool{
+	"MissingExclusions":  true,
+	"FrontmatterInvalid": true,
+	"SyncSHASlotFormat":  true,
+}
+
+// isGrandfatheredSpecDir reuses the era classifier (era.go — the SSOT shared

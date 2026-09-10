@@ -21,13 +21,18 @@ func withSpawnStubs(t *testing.T, inTmux bool, paneID string, spawnErr error) *s
 
 	origInTmux := inTmuxFn
 	origSpawn := tmuxSpawnFn
+	origLookPath := spawnLookPath
 	t.Cleanup(func() {
 		inTmuxFn = origInTmux
 		tmuxSpawnFn = origSpawn
+		spawnLookPath = origLookPath
 	})
 
 	cap := &spawnCapture{}
 	inTmuxFn = func() bool { return inTmux }
+	// Pin PATH resolution to succeed so the prereq gate is decided by the
+	// stubs, not by which binaries the host happens to have installed.
+	spawnLookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
 	tmuxSpawnFn = func(cwd, command string) (string, error) {
 		cap.cwd = cwd
 		cap.command = command
@@ -37,16 +42,20 @@ func withSpawnStubs(t *testing.T, inTmux bool, paneID string, spawnErr error) *s
 	return cap
 }
 
-// requireTmuxBinary skips when tmux is absent. spawnLaunch checks LookPath
-// before doing anything else, so the happy-path assertions cannot run without
-// it — and stubbing LookPath would stop the test from covering that check.
-func requireTmuxBinary(t *testing.T) {
+// failSpawnLookPath makes PATH resolution fail for exactly one binary name and
+// succeed for every other, so a single prereq branch fires deterministically on
+// any host. Call it AFTER withSpawnStubs, which pins the succeeding baseline.
+func failSpawnLookPath(t *testing.T, missing string) {
 	t.Helper()
-	if _, err := exec.LookPath("tmux"); err != nil {
-		t.Skip("tmux not installed; spawnLaunch cannot reach the tmux stub")
-	}
-	if _, err := exec.LookPath("moai"); err != nil {
-		t.Skip("moai not in PATH; spawnLaunch cannot reach the tmux stub")
+
+	orig := spawnLookPath
+	t.Cleanup(func() { spawnLookPath = orig })
+
+	spawnLookPath = func(file string) (string, error) {
+		if file == missing {
+			return "", exec.ErrNotFound
+		}
+		return "/usr/bin/" + file, nil
 	}
 }
 
@@ -184,8 +193,6 @@ func TestBuildSpawnCommand(t *testing.T) {
 // same command minus --spawn, rooted at the project directory, and must NOT
 // replace the current process (spawnLaunch returns normally).
 func TestSpawnLaunchOpensWindow(t *testing.T) {
-	requireTmuxBinary(t)
-
 	tmpRoot := t.TempDir()
 	origRoot := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return tmpRoot, nil }
@@ -239,8 +246,6 @@ func TestSpawnLaunchRequiresTmuxSession(t *testing.T) {
 // as an error (non-zero exit) rather than a silent no-op. A silent no-op would
 // leave the user believing a teammate is running when none is.
 func TestSpawnLaunchPropagatesTmuxFailure(t *testing.T) {
-	requireTmuxBinary(t)
-
 	withSpawnStubs(t, true, "", os.ErrPermission)
 
 	var out bytes.Buffer
@@ -250,6 +255,52 @@ func TestSpawnLaunchPropagatesTmuxFailure(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "spawn tmux window") {
 		t.Errorf("error should identify the spawn step; got %v", err)
+	}
+}
+
+// TestSpawnLaunchRequiresTmuxBinary pins the second prereq: being inside a tmux
+// session is not enough — without the tmux binary there is nothing to open the
+// window with, so --spawn must refuse before touching anything.
+func TestSpawnLaunchRequiresTmuxBinary(t *testing.T) {
+	cap := withSpawnStubs(t, true, "%1", nil)
+	failSpawnLookPath(t, "tmux")
+
+	var out bytes.Buffer
+	err := spawnLaunch(&out, "cc", []string{"-w", "feat"})
+	if err == nil {
+		t.Fatal("expected an error when the tmux binary is missing; got nil")
+	}
+	if !strings.Contains(err.Error(), "requires the tmux binary") {
+		t.Errorf("error should name the tmux binary requirement; got %v", err)
+	}
+	if cap.calls != 0 {
+		t.Errorf("tmux must not be invoked without its binary; calls = %d", cap.calls)
+	}
+	if out.Len() != 0 {
+		t.Errorf("no success output expected on refusal; got %q", out.String())
+	}
+}
+
+// TestSpawnLaunchRequiresMoaiOnPath pins the third prereq: the spawned window
+// runs `moai ...`, so a missing moai binary would open a window that dies
+// immediately. Refusing up front keeps the failure where the user can read it.
+func TestSpawnLaunchRequiresMoaiOnPath(t *testing.T) {
+	cap := withSpawnStubs(t, true, "%1", nil)
+	failSpawnLookPath(t, "moai")
+
+	var out bytes.Buffer
+	err := spawnLaunch(&out, "cc", []string{"-w", "feat"})
+	if err == nil {
+		t.Fatal("expected an error when moai is absent from PATH; got nil")
+	}
+	if !strings.Contains(err.Error(), "needs the moai binary in PATH") {
+		t.Errorf("error should name the moai PATH requirement; got %v", err)
+	}
+	if cap.calls != 0 {
+		t.Errorf("tmux must not be invoked without moai on PATH; calls = %d", cap.calls)
+	}
+	if out.Len() != 0 {
+		t.Errorf("no success output expected on refusal; got %q", out.String())
 	}
 }
 

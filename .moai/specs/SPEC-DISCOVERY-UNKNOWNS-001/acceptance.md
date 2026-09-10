@@ -2,7 +2,6 @@
 id: SPEC-DISCOVERY-UNKNOWNS-001
 title: "Unknowns framework Tier-1 for Context-First Discovery — Blind Spot Pass + decision-reversibility ordering + 4-quadrant lens"
 version: "0.1.0"
-status: completed
 created: 2026-07-05
 updated: 2026-07-13
 author: manager-spec

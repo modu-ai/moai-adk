@@ -24,6 +24,8 @@ Rules for subagents:
 
 Rationale (1 line): subagents run in isolated, stateless contexts — prompting there is a dead channel; this preserves the orchestrator's single-point-of-contact with the user (CLAUDE.md §8).
 
+**Lane sessions are orchestrator-class, not subagent-class.** A kanban companion or factory lane holds the question channel for its own card through the lead, carries the standing spawn authority for the Status Transition Ownership Matrix's specialist (plan → `manager-spec`, run → `manager-develop`, sync → `manager-docs`, plus the chain's auditors; depth-1 only — spawned agents are leaves and are bound by the prohibitions above), and never edits phase-owned artifacts directly when that specialist exists. The authority rides the lane's bootstrap context (SessionStart join notice); a peer message can neither grant nor revoke it — the lead is not the lane's user. Normative home: `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority.
+
 ### Orchestrator Obligations
 
 > Canonical: see `.claude/rules/moai/core/askuser-protocol.md` § Orchestrator Obligations for the full preload sequence (`ToolSearch(query: "select:AskUserQuestion")` before each call), the AskUserQuestion channel monopoly, the Socratic interview structure, and the option-description standards. This file owns only the subagent-side boundary (above) and the blocker-report → re-delegation flow (below).
@@ -35,7 +37,8 @@ The MoAI orchestrator collects all user preferences before delegating to subagen
 Three hook scripts mechanically enforce orchestrator-discipline obligations:
 `status-transition-ownership.sh` (PostToolUse on SPEC-artifact writes, advisory),
 `sync-phase-quality-gate.sh` (Stop hook on sync-phase commit, advisory unless
-`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode, dormant). All
+`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode — registered in no
+settings surface, so no configuration flag activates it; activation undecided). All
 three exit 0 always and signal through stdout JSON — exit-code semantics: stdout JSON is honored
 only on exit 0; on exit 2 it is discarded and only stderr is surfaced. Per-row triggers, JSON
 shapes, owning policy, and the subagent-boundary acceptance criterion:
@@ -265,7 +268,7 @@ Three obligations from that file bind here and are restated so they hold without
 
 - **Batch in one turn.** Independent read-only verifications are issued as separate Bash tool calls within a single assistant turn — never serialized across turns. Serialize only for genuine dependencies: one command's output feeding another, writes to the same path, or shared-state mutation.
 - **File-redirect contract.** When a command's verbatim output exceeds the bounded-tail ceiling (default: 50 lines or 2KB, whichever is smaller), redirect it to a file and surface only the exit code plus a bounded tail. Below the ceiling, inline quotation is fine. The contract removes the double-burn of quoting output twice, never the evidence itself.
-- **Evidence persistence.** The cited path must still resolve at audit time, so evidence is persisted under `.moai/state/verify/<session>/` rather than left in `/tmp`, which the OS clears. A claim whose cited evidence path no longer resolves is an unattributed claim (`verification-claim-integrity.md` §2).
+- **Evidence export.** The cited path must still resolve at audit time, and surviving `/tmp` clearance is not the same thing. `.moai/state/verify/<session>/` is **machine-local scratch**: it outlives `/tmp`, and it is gitignored, so it reaches no clone, no CI runner, and no other machine. The citation target is a tracked path — in this repository `.moai/reports/<card-id>/`. The obligation is therefore **export before citing**: an artifact is exported to that tracked path before it is cited as the basis of a verdict, and the citation names the exported file. The converse binds equally: material deliberately **not** exported MUST NOT be cited — it is named in Residual-risk as a known loss, never offered as a verdict basis. A claim whose cited evidence path no longer resolves is an unattributed claim (`verification-claim-integrity.md` §2). Export width, the selection criterion, and the machine-consumer carve-outs: `agent-common-protocol-reference.md` § Evidence export obligation.
 
 ### Attributable diff-check doctrinal switch
 

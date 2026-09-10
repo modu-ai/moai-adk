@@ -2,7 +2,6 @@
 id: SPEC-V3R6-CLI-AUDIT-001
 title: "Implementation Plan — moai CLI inventory + dead command + integration analysis (research-only baseline)"
 version: "0.2.0"
-status: implemented
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

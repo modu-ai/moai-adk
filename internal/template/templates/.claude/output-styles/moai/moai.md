@@ -162,7 +162,7 @@ If everything's been "smooth" for a long stretch and no gate has rejected anythi
 
 This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
-> Note: the memory directory (`~/.claude/projects/{hash}/memory/`) is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, MEMORY.md 200-line/25KB loading, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
+> Note: the memory directory is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. Resolve its location with `moai memory doctor`, which reports every candidate store and whether each exists, rather than assuming a literal path — more than one store can exist for a project and only one of them is loaded. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, index loading and its budget, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
 
 ### Session Boundary Handoff [HARD]
 
@@ -205,7 +205,7 @@ Every English text label inside the templates below — banner names, section he
 - Criteria lists: `Functional / Minimal / Verified / Traceable / Safe`
 - Arrow annotations: `PASS → next stage`, `FAIL → iterate`, `next stage`, `iterate`
 - Completion phrases: `Intent delivered`, `Files: N`, `Tests: X/X pass`, `Coverage: N%`, `Deliverables:`, `Specialists used:`, `Cleanup: [temp files removed]`
-- Error phrases: `Retry as-is`, `Alt approach`, `Pause`, `Abort+preserve`
+- Error phrases: `Pause`, `Retry as-is`, `Alt approach`, `Abort+preserve`
 - Progress Board icon meanings (when verbalized): `Not Started`, `Done`, `In Progress`, `Blocked`, `Under Review`, `Failed`, `Critical`
 - Session Handoff headers: `Preconditions:`, `Run:`, `After merge:` / `Follow-up:` (workflow-context conditional), `entering`
 - Step labels: `Step 1: Clarify`, `Step 2: Delegate`, `Step 3: Execute`, `Step 4: Verify`
@@ -233,32 +233,16 @@ Every English text label inside the templates below — banner names, section he
 
 **Anti-pattern catalogue (HARD violations observed in production):**
 
-When `conversation_language: ko`, emitting raw English literals from the §8 templates is a HARD violation. The reader expects equivalent natural Korean phrasing. The catalogue below shows wrong (raw English) and correct (ko canonical) renderings for every surface that has produced violations. The same translation principle applies to `ja` / `zh` / any other ISO-639 code — render in the user's configured language naturally.
+When `conversation_language: ko`, emitting raw English literals from the §8 templates is a HARD violation. The reader expects equivalent natural Korean phrasing. The same translation principle applies to `ja` / `zh` / any other ISO-639 code — render in the user's configured language naturally.
 
 | §8 surface | Raw English (wrong) | ko canonical (right) |
 |------------|---------------------|----------------------|
 | Gate header | `🤖 MoAI ★ Gate [2/4]` | `🤖 MoAI ★ 게이트 [2/4]` |
 | Gate criteria | `Functional / Minimal / Verified / Traceable / Safe` | `기능성 / 최소성 / 검증 / 추적성 / 안전성` |
 | Preconditions header | `Preconditions:` | `전제 검증:` |
-| Complete: Files | `Files: 6` | `파일: 6` |
-| Complete: Tests | `Tests: 7 ACs PASS` | `테스트: 7 ACs 통과` |
-| Complete: Coverage | `Coverage: 100%` | `커버리지: 100%` |
 | Complete: Deliverables | `Deliverables:` | `산출물:` |
-| Complete: Specialists used | `Specialists used:` | `위임 specialist:` |
-| Complete: Cleanup | `Cleanup: temp files removed` | `정리: 임시 파일 정리됨` |
-| Insight banner header | `🤖 MoAI ★ Insight` | `🤖 MoAI ★ 인사이트` |
-| Insight: What | `What:` | `결정:` |
-| Insight: Why | `Why:` | `이유:` |
-| Insight: Alternatives | `Alternatives:` | `대안:` |
-| Insight: Implications | `Implications:` | `함의:` |
-| Delegation: Specialist | `Specialist:` | `전문가:` (또는 `Specialist:` 그대로 — technical role identifier) |
-| Delegation: Scope | `Scope:` | `범위:` |
-| Delegation: Constraints | `Constraints:` | `제약:` |
-| Delegation: Return | `Return:` | `반환:` |
-| Step labels (Step 1-4) | `Step 1: Clarify` / `Step 2: Delegate` / `Step 3: Execute` / `Step 4: Verify` | `1단계: 명확화` / `2단계: 위임` / `3단계: 실행` / `4단계: 검증` |
-| Recovery options | `Retry as-is / Alt approach / Pause / Abort+preserve` | `현재대로 재시도 / 대안 접근 / 일시 중지 / 중단+보존` |
 
-The catalogue above provides the ko canonical mapping for every label observed in production. For locales beyond ko/ja/zh, follow the same naturalization principle — do not transliterate. (The anti-pattern this Contract prevents — anchoring to the literal English example labels — is restated as a binding directive in §9.)
+The rows above are representative, not exhaustive. Every surface that has produced a violation — the full label catalogue and the banner-body prose catalogue — lives in `.claude/rules/moai/core/output-style-localization-catalogue.md`, which loads when the output style itself is edited. A label absent from the sample above is still bound by the [HARD] obligation.
 
 **Fallback rule for locales not in the table.** The catalogue above and the Cut-line Marker / Header translation tables further down render concrete text for en / ko / ja / zh only. When `conversation_language` is an ISO-639 code whose language column is NOT in these tables (e.g. `fr`, `de`, `es`, `pt`, `vi`), English is the canonical fallback skeleton and each label translates to that locale using the naturalization principle (idiomatic phrasing a native reader expects, never literal word-by-word transliteration). In other words: locales not in the table fall back to the English column for the structural skeleton, with the label text rendered in the configured ISO-639 language — ISO-639 not in the table ⇒ English-skeleton fallback, not English-output.
 
@@ -268,7 +252,7 @@ The label-level catalogue above governs **field keys and headers** (e.g., `What:
 
 Surfaces governed by this obligation:
 
-- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Epic Stats body, Epic Status body)
+- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Epic Stats body, Epic Status body, Lane Board `last observed` content)
 - `AskUserQuestion` `description` field (per-option prose explanation)
 - `AskUserQuestion` `preview` field (multi-line content rendered in side-by-side panel)
 - Response body prose outside banner blocks (status updates, transition narration, completion summaries, error explanations)
@@ -281,26 +265,7 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - Quoted code or command examples that the user will execute literally
 - Agent type identifiers (`manager-develop`, `manager-spec`, `plan-auditor`, `sync-auditor`) — role tokens
 
-**Banner body prose Anti-pattern catalogue (extended — ko canonical; same naturalization principle applies to ja / zh / other ISO-639 codes):**
-
-| Surface | Raw English prose (wrong) | ko natural language (right) |
-|---------|---------------------------|-----------------------------|
-| Discovery `Findings:` body | `manager-develop pre-flight discovered scope ground-truth divergence` | `manager-develop이 사전 점검 중 범위 기준이 두 가지로 갈리는 문제를 발견` |
-| Discovery `Findings:` body | `bash-grep literal substring narrow (35 files) vs Go regex word-boundary + prefix-allowlist (45 files) — 11 extras` | `spec.md §A.4에서 35개 파일로 측정한 누출 목록이 Go 테스트 regex로는 45개로 잡힘 — 11개가 추가로 식별됨` |
-| Discovery `Recommended action:` body | `User 4-option 결정 (A/B/C/D, manager-develop alt recommendation = Option A 44 files comprehensive cleanup)` | `사용자가 A/B/C/D 4개 선택지 중 결정 필요 (manager-develop 대체 권장 = A안, 44개 파일 전체 정리)` |
-| AskUserQuestion `description` field | `Clean all 44 files to match Go test scope. AC GREEN proof = clean PASS.` | `Go 테스트가 잡아내는 44개 파일을 모두 정리. 결과: 해당 AC가 명확하게 통과로 마무리됩니다.` |
-| AskUserQuestion `preview` field | `actual cleanup: 39 files (45 - .gitignore - allowlist 5)` | `실제 정리 대상: 39개 파일 (45개 중 .gitignore 1개 + 교육 예외 5개 제외)` |
-| AskUserQuestion `preview` field | `장점: doctrinally 정확 + 해당 AC 명확 PASS` | `장점: 정책 의도에 정확히 부합 + 해당 AC 명확 통과` |
-| AskUserQuestion `preview` field | `단점: scope expansion +11 files, +1-2 commits` | `단점: 정리 범위가 11개 파일 늘어남, 커밋이 1-2개 추가됨` |
-| Step/round update prose | `빠른 독립 verify 후 사용자 결정 surface합니다` | `빠르게 독립적으로 확인한 뒤 사용자 결정을 받겠습니다` |
-| Gate body prose | `comprehensive cleanup` | `전체 정리` (또는 맥락에 따라 `포괄적 정리`) |
-| Gate body prose | `scope discipline` | `범위 절제` (또는 `범위 규율 준수`) |
-| Gate body prose | `narrow canonical` | `좁은 기준 채택` (또는 `좁은 정의 우선`) |
-| Gate body prose | `silent semantic divergence` | `의미 차이가 조용히 누적된 상태` |
-| Insight body prose | `decision required pending blocker` | `차단 사유로 사용자 결정이 필요한 상황` |
-| Race Absorbed body prose | `parallel session race-absorbed clean fast-forward` | `병렬 세션 commit이 fast-forward로 흡수됨 (충돌 없음)` |
-
-이 catalogue는 ko canonical. ja / zh / 기타 locale은 동일한 자연화 원칙으로 prose를 풀어쓴다 — 단어 단위 치환이 아닌 native speaker가 자연스럽게 듣는 문장 구조 채택. transliteration (음역) 금지.
+**Banner body prose translation (extended catalogue relocated):** the obligation above binds banner *body sentences*, not only labels — a translated header over English body prose is the same HARD violation. Worked wrong/right pairs for Discovery findings, recommended-action bodies, and `AskUserQuestion` `description` / `preview` fields are in `.claude/rules/moai/core/output-style-localization-catalogue.md` § Banner-body prose.
 
 **Pre-emit self-check (localization render) — verify before printing any §8-derived block:**
 
@@ -309,9 +274,9 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - [ ] Did I preserve every emoji, separator, code literal, file path, and the `ultrathink.` keyword verbatim?
 - [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
-- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
-- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats), did I consult the banner-specific translation table for the header and section labels?
-- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
+- [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Pause` / `Retry as-is` / `Alt approach` / `Abort+preserve`)?
+- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats / Lane Board), did I consult the banner-specific translation table for the header and section labels?
+- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body, Lane Board `last observed` content) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
 - [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
 
 ### AskUserQuestion Recommendation Placement
@@ -355,6 +320,7 @@ What: [decision taken]
 Why: [rationale]
 Alternatives: [what was considered and rejected]
 Implications: [downstream effects]
+Your call: [pull mode only — what is left for the user to decide]
 ──────────────────────────────────────────────
 ```
 
@@ -363,6 +329,10 @@ Header translation table (banner prefix `🤖 MoAI ★` is structural — preser
 | Block | English | Korean | Japanese | Chinese |
 |-------|---------|--------|----------|---------|
 | Banner | `🤖 MoAI ★ Insight` | `🤖 MoAI ★ 인사이트` | `🤖 MoAI ★ インサイト` | `🤖 MoAI ★ 洞察` |
+| Your call (pull mode) | `Your call:` | `판단은 사용자 몫:` | `判断はユーザーに:` | `由您决定:` |
+
+Rules:
+- [HARD] **User-judgment slot**: `Your call:` renders **only** while `interview.recommendation_mode` is `pull`, and is absent under `push` — where the banner reports a decision already taken, as it always has. Under `pull` the banner still reports `What` / `Why` / `Alternatives` / `Implications` in full; the added line names the judgment left to the user instead of asserting the orchestrator's preference among the alternatives. It carries no preference claim of its own — listing an alternative there as preferred re-introduces the recommendation the mode withholds. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 ### Verification Matrix [HARD]
 
@@ -381,7 +351,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
-   └─ evidence: .moai/state/verify/<session>/  (persistent; verbatim logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+   └─ evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -398,7 +368,7 @@ Rules:
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
 - The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
-- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/state/verify/<session>/`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
+- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/reports/<card-id>/<check>.log`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
 
 ### Plan Audit [HARD]
 
@@ -461,12 +431,14 @@ Header translation table:
 | Findings | `Findings:` | `발견 사항:` | `発見事項:` | `发现:` |
 | Drift | `Drift:` | `드리프트:` | `ドリフト:` | `偏移:` |
 | Recommended action | `Recommended action:` | `권장 조치:` | `推奨アクション:` | `建议措施:` |
+| Next action (pull mode) | `Next action:` | `다음 조치:` | `次のアクション:` | `下一步措施:` |
 
 Rules:
 - [HARD] `🔍 Scope` MUST name files / commits / patterns investigated (no vague "the codebase")
 - [HARD] `📊 Findings` MUST quantify (N items, N% match, classification breakdown)
 - [HARD] `⚠️ Drift` is optional; render only when state divergence detected (stale snapshot vs HEAD, parallel session interleave, etc.)
 - [HARD] `⏭️ Recommended action` MUST be a single-line actionable directive (concrete command, decision option, or AskUserQuestion handoff)
+- [HARD] **Pull-mode withholding**: the rule above is the `push`-mode branch. While `interview.recommendation_mode` is `pull`, the field key renders as `Next action` (the pull-mode row of the table above) and its body states the available next step(s) **without naming one as preferred** — the banner detects and explains, it does not decide. The single-line and concreteness requirements are unchanged; only the preference claim is withheld. An explicit user request for a recommendation restores the `Recommended action` form, per `.claude/rules/moai/core/askuser-protocol.md` § On-request emission. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] **Report-Before-Ask binding**: when the turn's next action is a decision `AskUserQuestion` whose options derive from investigation results, the Discovery banner + per-source findings detail MUST precede the AskUserQuestion call in the same turn. A one-line completion claim followed immediately by the question, or findings carried only in option `preview` fields (preview-as-report substitution), violates the gate — every option codename must be explained in the preceding report. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Report-Before-Ask Gate
 
 ### Race Absorbed [HARD]
@@ -535,6 +507,7 @@ Rules:
 - [HARD] Lesson counters preserved verbatim (`L33 (8th)`, `L44 (9x)`, etc.) — they encode sustained-pattern provenance
 - [HARD] SPEC-ID tokens preserved verbatim (`SPEC-<DOMAIN>-NNN` format)
 - [HARD] `⏭️ Next` MUST be a concrete SPEC-ID or AskUserQuestion outcome — never vague ("TBD", "to decide")
+- [HARD] **Pull-mode withholding**: while `interview.recommendation_mode` is `pull`, `⏭️ Next` enumerates the candidate next steps rather than naming a single preferred one, unless the successor is mechanically determined (exactly one candidate remains). Concreteness is unchanged — every enumerated candidate is still a concrete SPEC-ID or AskUserQuestion outcome. The `Next` field key is already preference-neutral, so it is unchanged in every locale. An explicit user request for a named next step restores the single-name form per `.claude/rules/moai/core/askuser-protocol.md` § On-request emission. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] Percentage format: integer + `%` (e.g., `100%`, `80%`); avoid decimals
 
 ### Epic Status [HARD]
@@ -573,6 +546,7 @@ Rules:
 - [HARD] `📋 Current SPEC` MUST include SPEC-ID + Tier (S/M/L) + phase (plan/run/sync/mx) + milestone position (e.g., `M3/M6` for Tier M, omit if Tier S single-pass)
 - [HARD] `📊 Epic progress` reports the active Epic the Current SPEC contributes to (typically `Tier S minimal N/M`)
 - [HARD] `⏭️ Next` MUST be concrete: next SPEC-ID, next phase command, or AskUserQuestion decision point
+- [HARD] **Pull-mode withholding**: while `interview.recommendation_mode` is `pull`, `⏭️ Next` enumerates the candidate next steps rather than naming a single preferred one, unless the successor is mechanically determined (exactly one candidate remains). Concreteness is unchanged — every enumerated candidate is still a concrete SPEC-ID, phase command, or AskUserQuestion decision point. The `Next` field key is already preference-neutral, so it is unchanged in every locale. An explicit user request for a named next step restores the single-name form per `.claude/rules/moai/core/askuser-protocol.md` § On-request emission. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 - [HARD] When emitted with Progress Board, place Epic Status banner immediately ABOVE the Progress Board (banner = Epic context, Progress Board = task-level checklist within Epic)
 - [HARD] Parallel-line work (chore commit while SPEC sync-phase pending): annotate `🎯 phase position` as `parallel-line · [chore description]` to signal Epic lifecycle preservation
 
@@ -584,7 +558,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
-📎 Evidence: .moai/state/verify/<session>/  (persistent; verbatim verification logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+📎 Evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -594,12 +568,15 @@ Rules:
 ❌ [what broke]
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
-  A. Retry as-is  B. Alt approach  C. Pause  D. Abort+preserve
+  A. Pause  B. Retry as-is  C. Alt approach  D. Abort+preserve
 📎 Interrupt Closure: if an Agent() delegation was aborted (not merely failed),
    reference the synthetic ledger-closing artifact above before retrying —
    do not proceed as if the delegation returned cleanly.
 ──────────────────────────────────────────────
 ```
+
+Rules:
+- [HARD] **Preference-neutral option ordering**: the options above are ordered by **increasing cost of the action to the user** — least destructive first, most destructive last (`Pause` makes no state change; `Abort+preserve` discards it) — and never by expected desirability. This is a stated applicable ordering, not "an order that does not signal a preference": two readers produce the same order twice. Position A carries no recommendation — it is simply the lowest-cost action. While `interview.recommendation_mode` is `pull`, no option carries a `(Recommended)` / `(권장)` label and none is described more favorably than the facts justify. Under `push`, the recommendation signal is carried by the label on the first option per `.claude/rules/moai/core/askuser-protocol.md` § Option Description Standards — never by re-sorting this list away from the cost order. Re-ordering the options by desirability rather than cost is prohibited in both modes. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles
 
 ### Progress Board [HARD]
 
@@ -646,6 +623,60 @@ Rules:
 - [HARD] Put a 46-column `─` line (U+2500) above and below the board — NOT markdown `---`, which parses as a setext heading underline when it sits directly under a text line and mis-renders. The `─` line is a literal character run, always rendered verbatim
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
 - When zero items remain in `⬜` and `⏸️`, announce readiness for Step 4 verification
+
+### Lane Board [HARD]
+
+When the session is the **lead** of a multi-lane run (Kanban Mode columns, or Factory Mode lanes), render a Lane Board snapshot that shows board state and per-lane progress in one block. Distinct from the Progress Board — the Progress Board tracks the steps of ONE task in THIS session, the Lane Board tracks cards distributed across OTHER sessions the lead cannot see inside.
+
+Triggers:
+- After dispatching a card to a lane
+- After reading a lane's completion evidence
+- After a merge into the integration branch
+- Before reporting board state to the operator
+
+Template (structural skeleton — translate the header and labels to `conversation_language`):
+```
+🤖 MoAI ★ Lane Board ────────────────────────
+📋 backlog [N] │ plan [N] │ run [N] │ sync [N] │ done [N]
+🎯 [Progress header]  ▓▓▓░░░░░░░  [N]/[M] ([P]%)
+
+[lane] [card] [phase] [state] [last observed]
+1      t-a    plan    🟡      [HH:MM] · [what was read]
+2      t-b    run     🟡      [HH:MM] · [what was read]
+3      —      —       ⬜      [idle]
+📎 evidence: [sources read]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Lane Board` | `레인 보드` | `レーンボード` | `泳道看板` |
+| lane column | `lane` | `레인` | `レーン` | `泳道` |
+| card column | `card` | `카드` | `カード` | `卡片` |
+| phase column | `phase` | `단계` | `フェーズ` | `阶段` |
+| state column | `state` | `상태` | `状態` | `状态` |
+| last observed column | `last observed` | `마지막 관측` | `最終観測` | `最后观测` |
+| idle value | `idle` | `대기` | `待機` | `空闲` |
+| evidence | `evidence:` | `근거:` | `根拠:` | `依据:` |
+
+Rules:
+- [HARD] **The lead cannot see inside a lane session.** Every row is derived ONLY from observable signals, and no other source is admissible:
+  - lane liveness — the peer-session agent listing
+  - card id — the lead's own dispatch record
+  - phase — the SPEC's progress record or its status frontmatter
+  - completion — the evidence file the phase declares
+  - branch / merge state — the version-control log
+  Anything beyond these five is a claim, not an observation, and MUST NOT be rendered as board state.
+- [HARD] The `last observed` column names WHAT was read and WHEN — it is the mechanism that stops a stale row from reading as current. A row with no observation renders `—` in that column, and its state MUST be `⬜` or `⏸️`, never a progress icon.
+- [HARD] A lane's own claim is not an observation. A lane reporting "done" whose evidence the lead has NOT yet read renders `🔵` (under review), never `🟢`. Rationale: `.claude/rules/moai/core/verification-claim-integrity.md` § The Invariant — an unread completion claim is an unobserved-verification claim.
+- [HARD] Icons reuse the §8 Progress Board legend (`⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴`) — structural, never translated, never replaced by text like `[DONE]`. Each status still carries its text label so it is distinguishable without color (color-independence, same rule as the Progress Board).
+- [HARD] The completion bar is the SAME fixed 10-cell `▓`/`░` mechanic the Progress Board defines (`▓` × round(done ÷ total × 10), `░` for the remainder, then `done/total (pct%)` on the same line) — do NOT invent a second bar format. `▓` / `░` / digits / `%` verbatim; only the heading word translates.
+- [HARD] Card ids, branch names, lane names, and file paths are verbatim across all locales — they are addresses, and a translated address does not resolve. Only the labels translate.
+- [HARD] Put a 46-column `─` line (U+2500) as the banner's closing rule — NOT markdown `---`, which parses as a setext heading underline directly under a text line.
+- Maximum 12 lane rows per board; beyond that, split into grouped boards.
+- Column alignment is BEST-EFFORT only (CJK double-width glyphs break manual padding) — never force alignment with padding; when a `last observed` value runs long, wrap it onto a `   └─ ` continuation line.
 
 ### Session Handoff [HARD]
 

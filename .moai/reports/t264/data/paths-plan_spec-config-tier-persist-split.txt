@@ -1,0 +1,6 @@
+.claude/rules/moai/workflow/moai-memory.md
+.moai/docs/docs-site-design-components.md
+CLAUDE.local.md
+CLAUDE.md
+internal/template/templates/.claude/rules/moai/workflow/moai-memory.md
+internal/template/templates/CLAUDE.md

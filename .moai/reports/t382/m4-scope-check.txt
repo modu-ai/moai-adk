@@ -1,0 +1,5 @@
+ .claude/rules/local/lifecycle-sync-gate.md |  26 ++++-
+ internal/spec/audit_test.go                |   8 ++
+ internal/spec/era.go                       |  31 +++++-
+ internal/spec/era_test.go                  | 150 +++++++++++++++++++++++++++++
+ 4 files changed, 208 insertions(+), 7 deletions(-)

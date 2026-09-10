@@ -1,0 +1,9 @@
+CLAUDE.local.md
+internal/cli/mcp_project_root_test.go
+internal/cli/mcp_server.go
+internal/cli/session.go
+internal/hook/cwd_changed.go
+internal/hook/post_tool.go
+internal/hook/post_tool_worktree.go
+internal/hook/post_tool_worktree_test.go
+internal/template/templates/.claude/settings.json.tmpl

@@ -1,7 +1,6 @@
 ---
 id: SPEC-KARPATHY-001
 version: "0.1.0"
-status: planned
 created_at: 2026-04-28
 updated_at: 2026-04-28
 author: manager-spec

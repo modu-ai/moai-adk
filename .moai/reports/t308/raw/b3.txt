@@ -1,0 +1,41 @@
+# REGENERATED 2026-08-27 in the resumed run-phase session at HEAD 8d8da0b2b (branch WT-clocal-audit).
+# The original batch-3 invocation printed inline and was never redirected to disk; the command below is
+# byte-identical to the original and the tree is unchanged, so the attribution for CHK-018 holds.
+# Command (batch 3):
+#   for p in <23 paths>; do [ -e "$p" ] && t=EXISTS || t=ABSENT; g=$(git ls-files --error-unmatch "$p" >/dev/null 2>&1 && echo tracked || echo untracked); echo "$t $g $p"; done
+#   ls -d .claude/commands/harness/release-update* .claude/commands/harness/github* .claude/commands/harness/release* | sort -u
+#   ls .claude/agents/harness/ | grep -c specialist ; ls .moai/research/cc-update-*.md | wc -l ; ls .claude/skills/hns-workflow-ci-loop | head -3
+# ---
+EXISTS untracked .claude/settings.local.json
+EXISTS tracked .claude/settings.json
+EXISTS untracked .claude/agent-memory
+EXISTS tracked .claude/rules/local/lifecycle-sync-gate.md
+EXISTS tracked .claude/rules/local/repo-local-pr-policy.md
+EXISTS tracked .claude/rules/local/gitflow-lane-protocol.md
+EXISTS tracked .claude/commands/harness/release-update/manifest.json
+EXISTS tracked .claude/workflows/hns-release-update-run.js
+EXISTS tracked .claude/skills/hns-workflow-ci-loop
+EXISTS tracked .claude/rules/local/ci-watch-protocol.md
+EXISTS tracked .claude/rules/local/ci-autofix-protocol.md
+ABSENT untracked .moai/state/last-cc-version.json
+ABSENT untracked .moai/cache
+EXISTS untracked .moai/logs
+EXISTS tracked .moai/state
+EXISTS tracked .moai/specs
+EXISTS tracked .moai/plans
+EXISTS tracked .moai/reports
+EXISTS tracked .moai/manifest.json
+EXISTS tracked .moai/status_line.sh
+EXISTS tracked .moai/astgrep-rules
+EXISTS tracked internal/template/templates/.claude/settings.json.tmpl
+EXISTS tracked internal/template/templates/.moai/status_line.sh.tmpl
+--- globs
+-rw-r--r--@ 1 goos  staff  713 Aug 27 17:40 .claude/commands/harness/github.md
+-rw-r--r--@ 1 goos  staff  828 Aug 27 17:41 .claude/commands/harness/release.md
+-rw-r--r--@ 1 goos  staff  908 Aug 27 17:40 .claude/commands/harness/release-update.md
+drwxr-xr-x@ 3 goos  staff   96 Aug 27 17:40 .claude/commands/harness/release-update
+10
+       3
+total 24
+drwxr-xr-x@  3 goos  staff    96 Aug 27 17:40 .
+drwxr-xr-x@ 46 goos  staff  1472 Aug 27 17:40 ..

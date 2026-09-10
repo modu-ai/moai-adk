@@ -53,12 +53,15 @@ type stubLanded struct {
 	asked  []string
 }
 
-func (s *stubLanded) Landed(cardID string) (bool, error) {
+func (s *stubLanded) Landed(cardID string) (LandingAnswer, error) {
 	s.asked = append(s.asked, cardID)
 	if s.err != nil {
-		return false, s.err
+		return LandingUnknown, s.err
 	}
-	return s.landed[cardID], nil
+	if s.landed[cardID] {
+		return LandingLanded, nil
+	}
+	return LandingNotLanded, nil
 }
 
 // AC-001 — an id in the PR title resolves `exact` (REQ-1.2).
@@ -220,15 +223,33 @@ func TestResolve_LandedCarriesNoCommit(t *testing.T) {
 	}
 }
 
-// A landed-query failure degrades fail-open rather than aborting the render.
-func TestResolve_LandedErrorDegradesToNoLink(t *testing.T) {
+// AC-TLS-004 / AC-TLS-005 — a landed-query failure degrades fail-open rather
+// than aborting the render, and it degrades to `unknown`, NOT to `no-link`.
+//
+// This assertion was deliberately REVERSED by SPEC-TODO-LANDING-STATE-001: the
+// former expectation (`no-link`) is the defect, because it renders a card that
+// was never checked identically to one that was checked and found untouched.
+func TestResolve_LandedErrorDegradesToUnknown(t *testing.T) {
 	boom := errors.New("git unavailable")
 	got, err := ResolveCardPRLink("t777", pinnedOpenPRs(), &stubLanded{err: boom})
 	if !errors.Is(err, boom) {
 		t.Errorf("err = %v, want the querier's error", err)
 	}
-	if got.Kind != PRLinkNoLink {
-		t.Errorf("kind = %q, want %q on a degraded landed query", got.Kind, PRLinkNoLink)
+	if got.Kind != PRLinkUnknown {
+		t.Errorf("kind = %q, want %q on a degraded landed query", got.Kind, PRLinkUnknown)
+	}
+	// The control that makes the above non-vacuous: a card whose query
+	// SUCCEEDS and finds nothing still renders no-link, so the two outcomes
+	// are genuinely distinguished rather than uniformly renamed.
+	clean, cleanErr := ResolveCardPRLink("t777", pinnedOpenPRs(), &stubLanded{})
+	if cleanErr != nil {
+		t.Fatalf("resolve (answerable query): %v", cleanErr)
+	}
+	if clean.Kind != PRLinkNoLink {
+		t.Errorf("kind = %q, want %q for an answered query that found nothing", clean.Kind, PRLinkNoLink)
+	}
+	if clean.Kind == got.Kind {
+		t.Error("an unanswerable query and an answered-empty one render the same kind — the SPEC's whole delta")
 	}
 }
 

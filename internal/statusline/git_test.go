@@ -15,9 +15,15 @@ type mockGitRepo struct {
 	branchErr error
 	status    *gitpkg.GitStatus
 	statusErr error
+
+	// branchCalls counts CurrentBranch invocations, so a test can assert the
+	// fallback query did NOT run — the whole point of taking the branch off
+	// the status header is that it costs no extra git spawn.
+	branchCalls int
 }
 
 func (m *mockGitRepo) CurrentBranch() (string, error) {
+	m.branchCalls++
 	return m.branch, m.branchErr
 }
 
@@ -144,6 +150,66 @@ func TestGitCollector_CollectGitStatus(t *testing.T) {
 			}
 			if got.Available != tt.wantAvail {
 				t.Errorf("Available = %v, want %v", got.Available, tt.wantAvail)
+			}
+		})
+	}
+}
+
+// TestGitCollector_BranchSourcePreference pins the inversion: the branch comes
+// off the status header when it carries one, and the CurrentBranch spawn runs
+// ONLY in the two cases the header cannot answer — a failed status, and a
+// detached HEAD (reported as no branch at all).
+func TestGitCollector_BranchSourcePreference(t *testing.T) {
+	tests := []struct {
+		name            string
+		repo            *mockGitRepo
+		wantBranch      string
+		wantBranchCalls int
+	}{
+		{
+			name: "header carries the branch: no fallback query",
+			repo: &mockGitRepo{
+				branch: "should-not-be-used",
+				status: &gitpkg.GitStatus{Branch: "main", Ahead: 2},
+			},
+			wantBranch:      "main",
+			wantBranchCalls: 0,
+		},
+		{
+			name: "detached HEAD: header is empty, fallback runs and also fails",
+			repo: &mockGitRepo{
+				branchErr: errors.New("detached HEAD"),
+				status:    &gitpkg.GitStatus{Branch: ""},
+			},
+			wantBranch:      "",
+			wantBranchCalls: 1,
+		},
+		{
+			name: "status failed: fallback supplies the branch",
+			repo: &mockGitRepo{
+				branch:    "develop",
+				statusErr: errors.New("git status failed"),
+			},
+			wantBranch:      "develop",
+			wantBranchCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			got, err := NewGitCollector(tt.repo).CollectGitStatus(ctx)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.Branch != tt.wantBranch {
+				t.Errorf("Branch = %q, want %q", got.Branch, tt.wantBranch)
+			}
+			if tt.repo.branchCalls != tt.wantBranchCalls {
+				t.Errorf("CurrentBranch called %d time(s), want %d",
+					tt.repo.branchCalls, tt.wantBranchCalls)
 			}
 		})
 	}

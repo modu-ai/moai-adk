@@ -1,0 +1,40 @@
+# t380 plan-phase probe — the surviving mutant turns RED on a 7-character fixture
+#
+# Tree: .claude/worktrees/t380, branch WT-shared-predicate-guard, base 3f03d9c36
+# (= origin/develop). Probe applied, observed, and fully reverted; the tree
+# carried no source change when this file was written.
+#
+# STEP 1 — why the mutant survived in t299. The fixture named "sha-short" is
+# NINE characters, not seven:
+#
+#   $ grep -n 'sync_commit_sha' internal/spec/testdata/syncsha/sha-short/progress.md
+#   9:sync_commit_sha: a6bbbf82b          <- 9 hex chars
+#
+# The band is [7,40]. Every SHA fixture sits at 9 or 40, so no fixture is at the
+# band FLOOR. A mutant narrowing 7->8 moves the floor by one and nothing in the
+# corpus notices. The test's own comment anticipated a narrowing to {40}, which
+# 9 characters DOES catch -- the one-step narrowing is what slips through.
+#
+# STEP 2 — add one fixture at the floor (sha-min7, value 19b6f76) and register it
+# in the existing TestSyncSHASlot_SilentOnSHA case list. Clean tree, GREEN:
+#
+#   $ go test ./internal/spec/ -run TestSyncSHASlot_SilentOnSHA -count=1 -v
+#   --- PASS: TestSyncSHASlot_SilentOnSHA (1.82s)
+#   ok  github.com/modu-ai/moai-adk/internal/spec 2.199s
+#
+# STEP 3 — plant the t299 surviving mutant (inline ^[0-9a-fA-F]{8,40}$ in
+# lint_syncsha.go in place of the isCommitSHAToken call). RED, verbatim:
+
+--- FAIL: TestSyncSHASlot_SilentOnSHA (1.35s)
+    lint_syncsha_test.go:128: sha-min7: expected 0 findings on a well-formed SHA, got 1: [{testdata/syncsha/sha-min7/progress.md 9 warning SyncSHASlotFormat `sync_commit_sha` holds "19b6f76", which is neither a commit SHA nor a recognized backfill placeholder, ...}]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	1.723s
+
+# STEP 4 — mutant reverted, suite GREEN again:
+#   $ go test ./internal/spec/ -run TestSyncSHASlot -count=1
+#   ok  github.com/modu-ai/moai-adk/internal/spec 2.418s
+#
+# CONSEQUENCE. The debt is not "AC-SSF-007 has no CI carrier". It is "the fixture
+# corpus has no value at the band boundary". One fixture plus one list entry
+# closes it through the test that already exists -- no source-scan guard, no
+# structural change to the two gates.

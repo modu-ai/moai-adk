@@ -2,7 +2,6 @@
 id: SPEC-V3R2-WF-002
 document: plan
 version: "0.1.0"
-status: audit-ready
 created: 2026-04-30
 updated: 2026-04-30
 author: manager-spec (plan-phase enrichment)

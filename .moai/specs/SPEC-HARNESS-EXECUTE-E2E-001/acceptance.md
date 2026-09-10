@@ -2,7 +2,6 @@
 id: SPEC-HARNESS-EXECUTE-E2E-001
 title: "Harness execute regression-gate 측정 root 결함 수정 + e2e 재현 테스트 — 인수 기준"
 version: "0.2.0"
-status: draft
 created: 2026-06-15
 updated: 2026-06-15
 author: manager-spec

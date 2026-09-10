@@ -59,9 +59,9 @@ type StatVM struct {
 }
 
 type AttentionVM struct {
-	Icon      string // alert | clock
-	Source    string
-	Text      string
+	Icon   string // alert | clock
+	Source string
+	Text   string
 	// Role 는 이 행이 칸반 미기동 역할 알림일 때 그 역할 이름이다. 비어 있으면
 	// Text 를 그대로 렌더하고, 차 있으면 Text 대신 Role + i18n 키 조각으로
 	// 렌더한다 — 같은 안내가 체인 띠와 여기 두 경로로 나오는데 번역 키를
@@ -225,11 +225,7 @@ func sessionState(lastHeartbeat time.Time, pid int, now time.Time) string {
 }
 
 func processAlive(pid int) bool {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return p.Signal(syscallZero) == nil
+	return session.IsProcessAlive(pid)
 }
 
 // roleOf 는 칸반 기록에서 역할을 읽는다. 기록이 없으면 빈 문자열을 돌려주고,
@@ -504,9 +500,11 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 	return out, byID
 }
 
-// loadKanbanRecords 는 .moai/state/kanban/*.json 을 읽는다.
+// loadKanbanRecords 는 프로젝트 상태 디렉터리의 세션 레코드(*.json)를 읽는다.
+// 디렉터리 이름은 kanban.RecordPath 로 해석한다 — 이름을 여기에 적어 두면
+// 이름이 바뀐 뒤에도 조용히 옛 경로를 읽는다.
 func loadKanbanRecords(root string) []KanbanRecord {
-	dir := filepath.Join(root, ".moai", "state", "kanban")
+	dir := filepath.Dir(kanban.RecordPath(root, "probe"))
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil

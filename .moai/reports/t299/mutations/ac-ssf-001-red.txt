@@ -1,0 +1,5 @@
+--- FAIL: TestSyncSHASlot_FlagsProse (0.23s)
+    lint_syncsha_test.go:93: expected exactly 1 SyncSHASlotFormat finding, got 0: []
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.486s
+FAIL

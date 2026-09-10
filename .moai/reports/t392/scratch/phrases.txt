@@ -1,0 +1,11 @@
+aged-out token
+registered as `prose`
+inlined inside a file the exclusion set hides
+not a version token at all
+renders the version rather than carrying it
+the repository does not track
+this list is not exhaustive
+version_stamp_registry_test.go
+edits the registry in that same commit
+the check fails naming the path
+A version bump does not touch the registry

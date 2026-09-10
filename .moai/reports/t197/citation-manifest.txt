@@ -1,0 +1,82 @@
+# t197 citation manifest — the binding a citation gate can actually check.
+#
+# One row per (citing file, transcript range). Fields separated by `~`:
+#
+#   citing_file ~ transcript_range ~ claim_regex ~ support_regex
+#
+#   claim_regex    must match the citing line — selects which row governs a
+#                  citation when one line cites several ranges.
+#   support_regex  must match INSIDE the cited transcript range — this is the
+#                  check that catches a citation whose range is valid but whose
+#                  content does not show the claim (the iteration-7 F1 shape).
+#
+# What this manifest does NOT prove: that the Korean prose around the citation
+# is a fair reading of the matched line. It proves the range exists, is bound to
+# a claim, and contains the evidence token that claim rests on. Semantics stay a
+# reviewer's job — stating that limit is the point, since the previous sweep
+# claimed more than it checked.
+#
+# A citation with no row here FAILS the gate. A row here whose (file,range) is
+# no longer cited FAILS the gate as stale. Both directions, on purpose.
+
+.moai/reports/t197/measurement.md ~ L2-4 ~ bash 3\.2\.57 ~ bash=3\.2\.57
+.moai/reports/t197/measurement.md ~ L19-21 ~ 67초 ~ elapsed=67s
+.moai/reports/t197/measurement.md ~ L24-26 ~ 1ed61e4ac ~ ^1ed61e4ac$
+.moai/reports/t197/measurement.md ~ L28-31 ~ 더티 ~ git status --short
+.moai/reports/t197/measurement.md ~ L283-285 ~ WT-codex-launcher ~ ^WT-codex-launcher$
+.moai/reports/t197/measurement.md ~ L33-34 ~ merge-base ~ merge-base --is-ancestor 7b217da7c
+.moai/reports/t197/measurement.md ~ L36-54 ~ M-1 ~ M-1 no moai codex
+.moai/reports/t197/measurement.md ~ L41-50 ~ LAUNCH COMMANDS ~ LAUNCH COMMANDS
+.moai/reports/t197/measurement.md ~ L51-53 ~ codex-review-gate ~ codex-review-gate
+.moai/reports/t197/measurement.md ~ L55-116 ~ M-2 ~ M-2 auth stream
+.moai/reports/t197/measurement.md ~ L56-58 ~ Logged in using ChatGPT ~ Logged in using ChatGPT
+.moai/reports/t197/measurement.md ~ L60-66 ~ stderr ~ ^ +24$
+.moai/reports/t197/measurement.md ~ L68-81 ~ realCodexRunner ~ cmd\.Stderr = &bytes\.Buffer\{\}
+.moai/reports/t197/measurement.md ~ L83-102 ~ classifyCodexAuth ~ return codexAuthUnknown
+.moai/reports/t197/measurement.md ~ L104-115 ~ 공유 표면 ~ codex_state\.go
+.moai/reports/t197/measurement.md ~ L117-167 ~ M-2b ~ M-2b structured auth source
+.moai/reports/t197/measurement.md ~ L118-125 ~ stored auth mode ~ stored auth mode +chatgpt
+.moai/reports/t197/measurement.md ~ L127-144 ~ auth\.credentials ~ "id": "auth\.credentials"
+.moai/reports/t197/measurement.md ~ L146-148 ~ rollout ~ state\.rollout_db_parity
+.moai/reports/t197/measurement.md ~ L150-166 ~ auth_mode ~ tokens non-empty values: 4
+.moai/reports/t197/measurement.md ~ L168-209 ~ M-3 ~ M-3 codex CLI surface
+.moai/reports/t197/measurement.md ~ L169-204 ~ Commands ~ ^Commands:$
+.moai/reports/t197/measurement.md ~ L206-208 ~ 28 ~ ^28$
+.moai/reports/t197/measurement.md ~ L210-249 ~ M-4 ~ M-4 wiring surface
+.moai/reports/t197/measurement.md ~ L211-214 ~ hooks\.json ~ HooksRelPath = "\.codex/hooks\.json"
+.moai/reports/t197/measurement.md ~ L216-232 ~ 11종 ~ manager-lead\.toml
+.moai/reports/t197/measurement.md ~ L234-236 ~ 생성기 ~ must be one of: claude, codex, both
+.moai/reports/t197/measurement.md ~ L238-240 ~ checkCodexWiring ~ func checkCodexWiring
+.moai/reports/t197/measurement.md ~ L242-244 ~ harness codex ~ codexHarnessFlagValue = "codex"
+.moai/reports/t197/measurement.md ~ L246-248 ~ 없음, rc 1 ~ No such file or directory
+.moai/reports/t197/measurement.md ~ L250-253 ~ CODEX_HOME ~ M-5 CODEX_HOME readers
+.moai/reports/t197/measurement.md ~ L254-269 ~ M-6 ~ M-6 launcher convergence
+.moai/reports/t197/measurement.md ~ L260-264 ~ unifiedLaunch ~ return unifiedLaunch\(
+.moai/reports/t197/measurement.md ~ L266-268 ~ spawnLaunch ~ func spawnLaunch
+.moai/reports/t197/measurement.md ~ L270-276 ~ M-7 ~ M-7 runner implementations
+
+.moai/specs/SPEC-CODEX-LAUNCHER-001/spec.md ~ L24-26 ~ 1ed61e4ac ~ ^1ed61e4ac$
+.moai/specs/SPEC-CODEX-LAUNCHER-001/plan.md ~ L24-26 ~ 1ed61e4ac ~ ^1ed61e4ac$
+.moai/specs/SPEC-CODEX-LAUNCHER-001/plan.md ~ L283-285 ~ WT-codex-launcher ~ ^WT-codex-launcher$
+
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L303-305 ~ init\.go:170 ~ codexwiring\.Wire\(projectRoot
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L292-295 ~ 두 경로 ~ hooksPath := filepath\.Join
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L297-301 ~ writeAtomic|쓰기 호출 ~ writeAtomic\(hooksPath,
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L211-214 ~ 경로 상수 ~ ConfigRelPath = "\.codex/config\.toml"
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L234-236 ~ --agent ~ must be one of: claude, codex, both
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L216-232 ~ TOML ~ manager-lead\.toml
+.moai/specs/SPEC-CODEX-INIT-001/spec.md ~ L246-248 ~ ls -a ~ No such file or directory
+
+# rules-applied.md — the round's record. Its F1 table cites both the ranges that
+# did NOT support a claim and the addendum ranges that replaced them, so several
+# rows below deliberately bind a range to the statement that it is insufficient.
+.moai/reports/t197/rules-applied.md ~ L280-316 ~ 부록 ~ ADDENDUM A
+.moai/reports/t197/rules-applied.md ~ L234-236 ~ 오류 문구 ~ must be one of: claude, codex, both
+.moai/reports/t197/rules-applied.md ~ L211-214 ~ 경로 상수 ~ HooksRelPath = "\.codex/hooks\.json"
+.moai/reports/t197/rules-applied.md ~ L288-290 ~ Wire. 선언 ~ func Wire\(projectRoot
+.moai/reports/t197/rules-applied.md ~ L292-295 ~ 경로 조립 ~ hooksPath := filepath\.Join
+.moai/reports/t197/rules-applied.md ~ L297-301 ~ writeAtomic ~ writeAtomic\(hooksPath,
+.moai/reports/t197/rules-applied.md ~ L303-305 ~ init\.go ~ codexwiring\.Wire\(projectRoot
+.moai/reports/t197/rules-applied.md ~ L24-26 ~ HEAD 만 ~ ^1ed61e4ac$
+.moai/reports/t197/rules-applied.md ~ L283-285 ~ abbrev-ref ~ ^WT-codex-launcher$
+.moai/reports/t197/rules-applied.md ~ L28-31 ~ 더티 상태 ~ git status --short

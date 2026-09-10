@@ -1,0 +1,41 @@
+=== RUN   TestT376Probe
+=== RUN   TestT376Probe/draft_to_completed
+    zz_t376_probe_test.go:133: PROBE[draft_to_completed] draft -> completed : 1 findings
+    zz_t376_probe_test.go:135: PROBE[draft_to_completed]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+=== RUN   TestT376Probe/completed_to_draft
+    zz_t376_probe_test.go:133: PROBE[completed_to_draft] completed -> draft : 1 findings
+    zz_t376_probe_test.go:135: PROBE[completed_to_draft]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+=== RUN   TestT376Probe/implemented_to_completed_wrong_owner
+    zz_t376_probe_test.go:133: PROBE[implemented_to_completed_wrong_owner] implemented -> completed : 2 findings
+    zz_t376_probe_test.go:135: PROBE[implemented_to_completed_wrong_owner]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+    zz_t376_probe_test.go:135: PROBE[implemented_to_completed_wrong_owner]   code=OwnershipTransitionInvalid severity=warning advisory=true msg=SPEC SPEC-FIXTURE-TRANSITION-001 transition "implemented" → "completed" expected owner "orchestrator|manager-docs" but commit 2c6044f020f420bf3f703318da83f238bf7c450d (Authored-By-Agent: manager-develop) maps to "manager-develop"
+=== RUN   TestT376Probe/implemented_to_completed_right_owner
+    zz_t376_probe_test.go:133: PROBE[implemented_to_completed_right_owner] implemented -> completed : 1 findings
+    zz_t376_probe_test.go:135: PROBE[implemented_to_completed_right_owner]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+=== RUN   TestT376Probe/implemented_to_completed_no_trailer
+    zz_t376_probe_test.go:133: PROBE[implemented_to_completed_no_trailer] implemented -> completed : 1 findings
+    zz_t376_probe_test.go:135: PROBE[implemented_to_completed_no_trailer]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+=== RUN   TestT376Probe/draft_to_inprogress_wrong_owner
+    zz_t376_probe_test.go:133: PROBE[draft_to_inprogress_wrong_owner] draft -> in-progress : 3 findings
+    zz_t376_probe_test.go:135: PROBE[draft_to_inprogress_wrong_owner]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+    zz_t376_probe_test.go:135: PROBE[draft_to_inprogress_wrong_owner]   code=StatusGitConsistency severity=warning advisory=true msg=SPEC SPEC-FIXTURE-TRANSITION-001 frontmatter status 'in-progress' disagrees with git-implied status 'implemented'
+    zz_t376_probe_test.go:135: PROBE[draft_to_inprogress_wrong_owner]   code=OwnershipTransitionInvalid severity=warning advisory=true msg=SPEC SPEC-FIXTURE-TRANSITION-001 transition "draft" → "in-progress" expected owner "manager-develop" but commit f3f93cf3d9a1b4bcfd183791af925db98098eada (Authored-By-Agent: manager-docs) maps to "manager-docs"
+=== RUN   TestT376Probe/draft_to_inprogress_wrong_owner_modern
+    zz_t376_probe_test.go:133: PROBE[draft_to_inprogress_wrong_owner_modern] draft -> in-progress : 3 findings
+    zz_t376_probe_test.go:135: PROBE[draft_to_inprogress_wrong_owner_modern]   code=MissingExclusions severity=error advisory=false msg='Out of Scope' section has no items — minimum one item required
+    zz_t376_probe_test.go:135: PROBE[draft_to_inprogress_wrong_owner_modern]   code=StatusGitConsistency severity=warning advisory=true msg=SPEC SPEC-FIXTURE-TRANSITION-001 frontmatter status 'in-progress' disagrees with git-implied status 'implemented'
+    zz_t376_probe_test.go:135: PROBE[draft_to_inprogress_wrong_owner_modern]   code=OwnershipTransitionInvalid severity=warning advisory=false msg=SPEC SPEC-FIXTURE-TRANSITION-001 transition "draft" → "in-progress" expected owner "manager-develop" but commit 934e299854c88d892f3daaa125d557843c3b649d (Authored-By-Agent: manager-docs) maps to "manager-docs"
+=== RUN   TestT376Probe/draft_to_completed_modern
+    zz_t376_probe_test.go:133: PROBE[draft_to_completed_modern] draft -> completed : 1 findings
+    zz_t376_probe_test.go:135: PROBE[draft_to_completed_modern]   code=MissingExclusions severity=warning advisory=true msg='Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+--- PASS: TestT376Probe (3.47s)
+    --- PASS: TestT376Probe/draft_to_completed (0.40s)
+    --- PASS: TestT376Probe/completed_to_draft (0.50s)
+    --- PASS: TestT376Probe/implemented_to_completed_wrong_owner (0.40s)
+    --- PASS: TestT376Probe/implemented_to_completed_right_owner (0.41s)
+    --- PASS: TestT376Probe/implemented_to_completed_no_trailer (0.41s)
+    --- PASS: TestT376Probe/draft_to_inprogress_wrong_owner (0.49s)
+    --- PASS: TestT376Probe/draft_to_inprogress_wrong_owner_modern (0.48s)
+    --- PASS: TestT376Probe/draft_to_completed_modern (0.38s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	3.678s

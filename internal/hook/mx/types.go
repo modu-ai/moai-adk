@@ -61,6 +61,13 @@ type Violation struct {
 	MissingTag string
 	// Reason describes why this violation was detected.
 	Reason string
+	// Source labels which fan-in evidence source produced a P1 verdict
+	// (REQ-MTE-011): empty for the default textual path (the default
+	// constructor's behavior is unchanged), the injected source's label
+	// (e.g. "edges", "edges(stale)") when it answered, or
+	// "textual-fallback" when the injected source was unavailable. Always
+	// empty for non-P1 violations.
+	Source string
 	// Blocking indicates whether this violation blocks sync/CI.
 	Blocking bool
 }

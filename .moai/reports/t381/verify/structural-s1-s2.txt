@@ -1,0 +1,9 @@
+$ grep -c "git grep -n '..moai/state/verify' -- . ':!\*.md'" spec.md
+1
+$ grep -cE '^\| B[1-6] \|' spec.md
+6
+$ grep -c '^### Out of Scope' spec.md
+5
+$ grep -c 'class C4' spec.md ; grep -c 're-produced' spec.md
+1
+1

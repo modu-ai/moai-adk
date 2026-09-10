@@ -1,0 +1,9 @@
+id: go-no-duplicate-coverage-threshold
+snapshots:
+  ? |
+    const minLimit = 85.0
+  : labels:
+    - source: const minLimit = 85.0
+      style: primary
+      start: 0
+      end: 21

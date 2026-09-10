@@ -1,0 +1,1757 @@
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 25:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:67 +0x38
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 27:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:131 +0x1a4
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 25 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 27 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x0001084870c8 by goroutine 28:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:162 +0x38
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 27:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:130 +0x10c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 28 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 27 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 28:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:163 +0x50
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 25:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:72 +0x30
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 28 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 25 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x0001084870c8 by goroutine 26:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:98 +0x50
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 28:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:164 +0xc4
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 26 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 28 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 26:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:99 +0x68
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 28:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:165 +0x100
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 26 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 28 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_NoFlagIsNoop (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Write at 0x0001084870c8 by goroutine 27:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:133 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 26:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:104 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 27 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 26 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x000108487508 by goroutine 27:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:134 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 26:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:105 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 27 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 26 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_RejectsBadUsage (0.00s)
+    testing.go:1712: race detected during execution of test
+    --- FAIL: TestResolveWorktreeExistingBranch_RejectsBadUsage/no_-w_value (0.00s)
+        testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_WiresAndStrips (0.00s)
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_MaterializeErrorPropagates (0.03s)
+    worktree_branch_flag_test.go:175: err = --branch: check branch "develop": git show-ref: fatal: not a git repository (or any of the parent directories): .git, want materialize failed (sentinel)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 37:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:128 +0x54
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 35:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:72 +0x30
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 37 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 35 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 38:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:163 +0x50
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 37:
+--- FAIL: TestResolveWorktreeExistingBranch_NoFlagIsNoop (0.00s)
+    testing.go:1712: race detected during execution of test
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:131 +0x1a4
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 38 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 37 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x0001084870c8 by goroutine 37:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:133 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 38:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:164 +0xc4
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 37 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 38 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x000108487508 by goroutine 37:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:134 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 38:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:165 +0x100
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 37 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 38 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_RejectsBadUsage (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Write at 0x000108487508 by goroutine 36:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:102 +0x1bc
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous read at 0x000108487508 by goroutine 38:
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x17c
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 36 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 38 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x0001084870c8 by goroutine 38:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates.func3()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:169 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.Goexit()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:694 +0x5c
+  testing.(*common).Fatalf()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1228 +0x84
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:175 +0x360
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 36:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:104 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 38 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 36 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x000108487508 by goroutine 38:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates.func3()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:170 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.Goexit()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:694 +0x5c
+  testing.(*common).Fatalf()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1228 +0x84
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:175 +0x360
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 36:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:105 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 38 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 36 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_WiresAndStrips (0.00s)
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_MaterializeErrorPropagates (0.00s)
+    worktree_branch_flag_test.go:175: err = <nil>, want materialize failed (sentinel)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 47:
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x17c
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 45:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:105 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 47 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 45 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_WiresAndStrips (0.00s)
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_MaterializeErrorPropagates (0.00s)
+    worktree_branch_flag_test.go:175: err = <nil>, want materialize failed (sentinel)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 53:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:67 +0x38
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 56:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:165 +0x100
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 53 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 56 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_NoFlagIsNoop (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x0001084870c8 by goroutine 55:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:127 +0x3c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 56:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:164 +0xc4
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 55 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 56 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_RejectsBadUsage (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 56:
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x17c
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 55:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:134 +0x70
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 56 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 55 (finished) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_WiresAndStrips (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Write at 0x0001084870c8 by goroutine 56:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates.func3()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:169 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 55:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:133 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 56 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 55 (finished) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_MaterializeErrorPropagates (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 64:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:128 +0x54
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 62:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:68 +0xac
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 64 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 62 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x0001084870c8 by goroutine 65:
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:70 +0x7c
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 64:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:130 +0x10c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 65 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 64 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x000108487508 by goroutine 62:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:72 +0x30
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 65:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:165 +0x100
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 62 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 65 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_NoFlagIsNoop (0.00s)
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_RejectsBadUsage (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x0001084870c8 by goroutine 63:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:98 +0x50
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 64:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:133 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 63 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 64 (finished) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000140600 by goroutine 65:
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:91 +0x88
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize-fm()
+      <autogenerated>:1 +0x34
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x1b0
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x00c000140600 by goroutine 63:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:100 +0x8c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 65 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 63 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000530080 by goroutine 65:
+  runtime.growslice()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/slice.go:178 +0x0
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:91 +0xb8
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize-fm()
+      <autogenerated>:1 +0x34
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x1b0
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x00c000530080 by goroutine 63:
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:91 +0xd8
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize-fm()
+      <autogenerated>:1 +0x34
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x1b0
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:108 +0x3d8
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 65 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 63 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Read at 0x00c000140618 by goroutine 65:
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:92 +0x154
+  github.com/modu-ai/moai-adk/internal/cli.(*branchMaterializeRecorder).materialize-fm()
+      <autogenerated>:1 +0x34
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x1b0
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x00c000140618 by goroutine 63:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:100 +0x8c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 65 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 63 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_MaterializeErrorPropagates (0.00s)
+    worktree_branch_flag_test.go:175: err = <nil>, want materialize failed (sentinel)
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_WiresAndStrips (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 74:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:163 +0x50
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 71:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:68 +0xac
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 74 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 71 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+==================
+WARNING: DATA RACE
+Write at 0x000108487508 by goroutine 74:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:165 +0x100
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 73:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_RejectsBadUsage()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:131 +0x1a4
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 74 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 73 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_NoFlagIsNoop (0.00s)
+    testing.go:1712: race detected during execution of test
+--- FAIL: TestResolveWorktreeExistingBranch_RejectsBadUsage (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Read at 0x000108487508 by goroutine 72:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:99 +0x68
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x000108487508 by goroutine 71:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:72 +0x30
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 72 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 71 (finished) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_WiresAndStrips (0.00s)
+    testing.go:1712: race detected during execution of test
+==================
+WARNING: DATA RACE
+Write at 0x0001084870c8 by goroutine 74:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates.func3()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:169 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.gopanic()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x128
+  testing.(*common).Error()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1207 +0x74
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop.func1()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:69 +0x5c
+  github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x1b0
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x26c
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous write at 0x0001084870c8 by goroutine 72:
+  github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_WiresAndStrips.func2()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:104 +0x34
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Goroutine 74 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+
+Goroutine 72 (finished) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  github.com/modu-ai/moai-adk/internal/cli.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/main_test.go:230 +0x104
+  main.main()
+      _testmain.go:6446 +0x104
+==================
+--- FAIL: TestResolveWorktreeExistingBranch_MaterializeErrorPropagates (0.00s)
+    testing.go:1712: race detected during execution of test
+panic: Fail in goroutine after TestResolveWorktreeExistingBranch_NoFlagIsNoop has completed [recovered, repanicked]
+
+goroutine 165 [running]:
+testing.tRunner.func1.2({0x108062dc0, 0xc00083e120})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x2b8
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x460
+panic({0x108062dc0?, 0xc00083e120?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+testing.(*common).Fail(0xc0001bab48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:969 +0x134
+testing.(*common).Error(0xc0001bab48, {0xc0000a3cc8, 0x1, 0x1})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1207 +0x78
+github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_NoFlagIsNoop.func1({0xc0002ca000?, 0x2?}, {0x4?, 0x1?}, {0x0?, 0xc29e8f11cbdbfed8?}, {0x10803b020?, 0x1101a4e80?})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:69 +0x60
+github.com/modu-ai/moai-adk/internal/cli.resolveWorktreeExistingBranch({0xc0000a3e78, 0x4, 0x4}, {0x1082e9938, 0xc000002058})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag.go:74 +0x1b4
+github.com/modu-ai/moai-adk/internal/cli.TestResolveWorktreeExistingBranch_MaterializeErrorPropagates(0xc0001bb688)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t464/internal/cli/worktree_branch_flag_test.go:173 +0x270
+testing.tRunner(0xc0001bb688, 0x1082ce7b8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x168
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7c0
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.206s
+FAIL

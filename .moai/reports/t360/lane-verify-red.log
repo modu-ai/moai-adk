@@ -1,0 +1,6 @@
+--- FAIL: TestBuildEnvForGLMLaunch_KeysCollapseToTheSessionSlot (0.00s)
+    --- FAIL: TestBuildEnvForGLMLaunch_KeysCollapseToTheSessionSlot/fable_session_on_a_non-flash_slot_keeps_its_stored_low (0.00s)
+        glm_slot_model_wire_test.go:53: ANTHROPIC_REASONING_EFFORT = "max", want "low" — the fable slot runs glm-5.3 (not flash), so a stored low must survive; keying the collapse to the high slot (glm-5.3-flash) discards it
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.969s
+FAIL

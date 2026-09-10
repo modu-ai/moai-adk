@@ -91,8 +91,10 @@ The orchestrator performs architecture analysis directly (no Agent() spawn) from
 Analysis inputs:
 
 - Explore agent results from Phase 1
-- Existing .moai/project/codemaps/ content (if --force not set, for incremental updates)
+- Existing .moai/project/codemaps/ content (if --force not set, for incremental updates — narrative quality only, NEVER as an authority for package existence: stale docs carry phantom package names that re-enter the output as context, which is how renamed/removed packages survive regeneration)
 - Output format preference (from --format flag)
+
+Package existence is decided ONLY by the working tree (deterministic extractors + the Phase 1 exploration), never by what a previous codemaps document says.
 
 Analysis Tasks:
 
@@ -124,7 +126,8 @@ If --format json: Generate machine-readable JSON alongside markdown.
 
 ## Phase 4: Verification
 
-- Verify all referenced files and modules actually exist
+- Verify all referenced files and modules actually exist — runnable check: `moai graph check` (read the `citations` row; it reports `positive-cited-path-absence`, threshold 0, so any positively-cited absent path is red). A freshness-gate green stamp is NOT accuracy proof — freshness and accuracy are separate axes
+- Negative citations — paths cited precisely because they do NOT exist (removed-package records, rename histories, warning notes) — MUST use blockquote form (a `>`-prefixed line): the citations check exempts blockquote lines as negative context. This is a form mandate for negative citations, not a claim that blockquotes may only carry negative citations
 - Check that dependency relationships are bidirectionally consistent
 - Validate entry points are reachable
 - Compare with existing .moai/project/codemaps/ to highlight changes (if not --force)

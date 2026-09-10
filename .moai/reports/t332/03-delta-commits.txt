@@ -1,0 +1,649 @@
+COMMIT 52c3fe590
+merge: WT-ci-test-observability into develop (t358)
+
+---END---
+COMMIT 220a42547
+Merge remote-tracking branch 'origin/develop' into WT-ci-test-observability
+
+---END---
+COMMIT d7010f86a
+merge(WT-freshness-trigger): SPEC-CI-PR-TRIGGER-FILTER-001 — graph-freshness pull_request branch filter (t294)
+Card t294. The pull_request trigger now names [main, develop] explicitly
+instead of firing on a pull request whatever its base. The unfiltered
+form predated develop as a PR base and was equivalent to [main] when
+authored; the git-flow switch widened it without a recorded decision.
+
+Scope axis B (concurrency.group re-key) was excluded at kickoff, so the
+duplicate-run behaviour the card text promises is NOT closed here — that
+work is card t363. spec.md 0 states the non-delivery.
+
+🗿 MoAI
+
+---END---
+COMMIT c9d701594
+merge(develop): absorb 68ecbfe4a into WT-freshness-trigger (t294)
+🗿 MoAI
+
+---END---
+COMMIT 6c958153f
+chore(SPEC-CI-TEST-OBSERVABILITY-001): backfill sync_commit_sha (t358)
+progress.md §E.4 sync_commit_sha -> 022ec0923, the sync commit that carries
+the 3-phase close. Mechanical placeholder completion: a commit cannot cite
+its own hash, so the value is written in the immediately following commit.
+
+🗿 MoAI
+
+---END---
+COMMIT 022ec0923
+docs(SPEC-CI-TEST-OBSERVABILITY-001): sync-phase artifacts, 3-phase close (t358)
+Card t358. Closes the SPEC in-progress -> completed on this single sync
+commit (3-phase plan->run->sync; MX Tag validation is a sync sub-step, not
+a fourth phase).
+
+Three items move OUT of the debt list into observed records, each verified
+against dispatch run 33308057570 in this phase rather than transcribed:
+
+  - AC-CTO-005b (artifact on a FAILED run): both red legs uploaded --
+    macOS 1,496,723 B, windows 1,286,458 B, "Upload test event stream"
+    reporting success on jobs 99248050297 / 99248050298.
+  - AC-CTO-003 CI-level red path: both red legs printed the census with
+    FAILED rows carrying the test name and its captured output, and the
+    job still exited non-zero.
+  - spec.md A.1 full-suite size: measured, no longer extrapolated --
+    ubuntu 23,256,287 B uncompressed -> 1,733,071 B gzipped (13.4x).
+
+The debt classification is preserved in place rather than deleted: it was
+correct when written, and erasing it would lose the record.
+
+spec.md J's windows/macOS census-portability gap is closed for tooling
+availability (jq, gzip, upload worked on all three runners).
+
+Two gaps are recorded rather than resolved:
+
+  - Only ONE of the four converted call sites has run in CI. The dispatch
+    exercised release-pr-multi-os.yml alone; ci.yml on develop carries no
+    workflow_dispatch, so its three sites -- including the required test
+    job -- get their first verdict on the post-integration develop push.
+  - The census sort -u dedup is locale-dependent, dropping six CJK-named
+    subtests under a UTF-8 collation (19507 vs LC_ALL=C 19513). Latent
+    (all three runners matched C); not fixed here -- sync-phase does not
+    modify the run-phase deliverable.
+
+Also lands the internal/lockfile windows zero-test observation report.
+
+No README / docs-site / CONTRIBUTING change: checked, none warranted.
+No template mirror and no make build: neither workflow is distributed and
+scripts/ is not a template root.
+
+sync_commit_sha is a placeholder here -- a commit cannot cite its own
+hash -- and is backfilled in the immediately following commit.
+
+🗿 MoAI
+
+---END---
+COMMIT 66a44c278
+docs(SPEC-CI-PR-TRIGGER-FILTER-001): name t363 as the axis-B inheritor in CHANGELOG (t294)
+The deferral was recorded without the receiving card id, so a reader
+could not follow the duplicate-run work to where it actually lives.
+
+🗿 MoAI
+
+---END---
+COMMIT c2ee32703
+chore(SPEC-CI-PR-TRIGGER-FILTER-001): backfill sync_commit_sha (t294)
+progress.md §E.4 sync_commit_sha placeholder -> f36f65f44 (the sync
+commit itself, per the SHA placeholder backfill exemption).
+
+🗿 MoAI
+
+---END---
+COMMIT f36f65f44
+docs(SPEC-CI-PR-TRIGGER-FILTER-001): sync-phase close — 3-phase (t294)
+CHANGELOG entry (Fixed section) states what the graph-freshness.yml
+pull_request branch filter delivers and what it explicitly does not:
+it removes zero firings today (99/100 recent PRs base main, 1 base
+develop) and declares the already-in-force firing set, but the
+duplicate-run behaviour on a develop-head PR survives unchanged
+because branches: filters the base, not the head — that follow-up
+is a separate card by kickoff decision.
+
+progress.md §E.2 gains three sync-phase additions: (a) a file-level
+split of the mixed run commit df4466d12 — plan-phase axis (spec.md
+§0/§1.6/§1.7, plan.md M0 closure, both authored at kickoff but left
+uncommitted until this run-phase session inherited them) vs run-phase
+axis (graph-freshness.yml, the SPEC's only implementation change),
+named honestly rather than silently blended; (b) a re-verification of
+the origin/develop moving-ref pin — refetched to 68ecbfe4aa5 (advanced
+from the run-phase ab897947a), .github/workflows/ still untouched,
+pin still valid; (c) the amendment is recorded as a fact, not hidden.
+
+progress.md §E.4 records the sync close: B12 self-tests (CHANGELOG
+dedup grep, AC count against spec.md §3 inline AC — Tier S has no
+acceptance.md, file-existence check), the explicit 4-locale-sync
+judgement (not needed — internal CI wiring, no shipped template
+mirror, no user-facing surface), and the completed status transition.
+
+.moai/reports/t294/investigation.md gains a tooling note: `moai spec
+lint` does not walk the full ~700-SPEC catalogue on a directory
+argument (it fails fast with ParseFailure: is a directory) — the
+catalogue-wide scan that blows the 120s budget (measured: 125.01s
+wall, killed by timeout) fires on a bare no-argument invocation.
+Pointing at spec.md directly returns in under a second.
+
+spec.md frontmatter: status in-progress -> completed (this commit
+carries the 3-phase close; sync_commit_sha recorded as a
+pending-backfill placeholder in progress.md §E.4, backfilled next).
+
+Not pushed; not merged into develop; .github/workflows/graph-freshness.yml
+itself is unchanged by this commit (its sole edit landed in df4466d12).
+
+🗿 MoAI
+
+---END---
+COMMIT 451690025
+docs(SPEC-CI-TEST-OBSERVABILITY-001): record AC-CTO-007 from the one dispatch (t358)
+Terminal AC PASS, observed on a single workflow_dispatch run (33308057570,
+head 09dd1bee9). No re-run.
+
+The census ran, printed, and classified correctly on all three OS legs —
+including on the two RED legs:
+
+  ubuntu  success  packages=136 passed=19513 skipped=100 nothing-ran=3 failed=0
+  macos   failure  packages=136 passed=19512 skipped=91  nothing-ran=3 failed=1
+  windows failure  packages=136 passed=18854 skipped=332 nothing-ran=4 failed=146
+
+Both pre-existing control skips (TestProfilePhaseDistributions,
+TestReadOAuthToken_Keychain) are named on all three. Nothing was planted.
+
+Three debts discharged by observation rather than argument: the artifact IS
+present on a failed run (both red legs uploaded); the CI-level red path DOES
+print the census with failing test names; and the full-suite artifact size is
+now measured (1.73/1.50/1.29 MB gzipped) rather than extrapolated. The
+windows/macOS portability gap is closed — jq, gzip and upload all worked.
+
+Found by the census on its first real run: internal/lockfile reports NOTHING RAN
+on windows-latest while running tests on ubuntu and macOS. A package executing
+zero tests on exactly one OS is invisible under rc-only reporting. Out of scope
+here; reported to the lead as card material.
+
+Both red legs are attributed away from this change: macOS is the known unrepaired
+TestGitDiffNameCount_Predicate TempDir race, windows is the known internal/cli
+failure population. On both, Compress and Upload report success and only the test
+step is red.
+
+🗿 MoAI
+
+---END---
+COMMIT 703eb9f9d
+chore(SPEC-CI-PR-TRIGGER-FILTER-001): backfill run_commit_sha in progress.md §E.3 (t294)
+Mechanical placeholder completion: df4466d12 could not name its own hash, so
+§E.3 carried `pending-backfill-run`. No other field changes.
+
+🗿 MoAI
+
+---END---
+COMMIT df4466d12
+fix(ci): declare graph-freshness pull_request branch filter explicitly (t294)
+SPEC-CI-PR-TRIGGER-FILTER-001 (card t294, Tier S).
+
+`.github/workflows/graph-freshness.yml` carried a bare `pull_request:` with no
+`branches:` filter, so it fired on a pull request whatever its base branch. The
+unfiltered form was authored (6786c3fa4) one day before develop existed as a PR
+base, when it was equivalent to `branches: [main]`; the git-flow switch
+(11216d13f) touched only the `push:` line and silently widened the same
+statement. This names the git-flow integration branches explicitly, plus an
+adjacent comment recording why, following the in-repo precedent of
+spec-lint.yml and docs-i18n-check.yml.
+
+The change removes no firing that occurs today (measured: of the last 100 PRs,
+99 base `main` and 1 base `develop`); it declares the firing set already in
+force instead of inheriting it.
+
+NOT delivered: the duplicate-run behaviour on a develop-head pull request. The
+`branches:` filter matches the base branch, not the head, so that duplication
+is caused by the ref-keyed `concurrency.group` and survives this change. The
+concurrency block is byte-unchanged (spec.md §0, REQ-PTF-004); re-keying it is
+a separate card.
+
+Evidence: AC-PTF-001..006 all PASS (progress.md §E.2). Execution-based firing
+observation is registered as a deferred check, not performed — develop is
+frozen, so no develop-head PR can be opened (REQ-PTF-005).
+
+Scope: 1 workflow file (5 insertions, all inside the `on:` block) + this SPEC's
+artifacts. spec.md status draft -> in-progress; the uncommitted plan-phase
+edits authored at kickoff (spec.md 0.2.0 §0/§1.6/§1.7, plan.md M0 closure) ride
+this commit as they were not previously committed on this branch.
+
+🗿 MoAI
+
+---END---
+COMMIT 68ecbfe4a
+Merge branch 'WT-ci-doctor-bin' into develop (t346)
+Records the CI-delta gap and the fix-card owners in the t346 verdict.
+Scope: 1 commit (19ee40b94), 1 file, +2/-1 in .moai/reports/t346/verdict.md.
+
+Observed while taking this window: the installed binary at ~/go/bin/moai
+carries no t357 artifact-status rule (strings | grep -c
+ArtifactStatusFieldForbidden -> 0), while origin/develop has it in
+internal/spec/{lint.go:2, lint_artifact_status.go:5,
+lint_artifact_status_test.go:3}. A green `moai spec lint` run through the
+installed binary can therefore mean the rule did not execute, not that it
+passed. Recorded for the operator; no card issued.
+
+---END---
+COMMIT ab897947a
+Merge branch 'WT-red-now-threshold' into develop (t343)
+SPEC-RED-NOW-THRESHOLD-001 — RED-now cell adoption gate.
+
+A release-blocking acceptance criterion's RED-now cell must now carry the
+command, its verbatim stdout, its exit code, and the tree it was measured on;
+plan-auditor re-executes that command under the new must-pass MP-8 and confirms
+the RED reproduces. A repository-local Go test enforces the form
+carrier-independently and class-independently, so neither demotion nor
+relocation removes a command from scope.
+
+Known boundary, recorded rather than papered over: MP-8 checks that a cited
+command reproduces its RED, not that the command measures its stated premise,
+so it would not have caught the incident that motivated this card (mutant M-6).
+
+🗿 MoAI
+
+---END---
+COMMIT b2370b2bf
+merge(develop): absorb ee50984ab into WT-freshness-trigger (t294)
+🗿 MoAI
+
+---END---
+COMMIT 3b25daa53
+Merge remote-tracking branch 'origin/develop' into WT-red-now-threshold
+# Conflicts:
+#	CHANGELOG.md
+
+---END---
+COMMIT 6f121ebc6
+docs(SPEC-RED-NOW-THRESHOLD-001): record B12 AC-count discrepancy for t338 (t343)
+The B12 counter returns 17 against 16 actual criteria: two quoted plan-auditor
+Group 4 identifiers (AC-5, AC-6) over-count, and the lettered pair
+AC-RNT-009a/009b collapses to one under a digit-terminated pattern. Non-zero, so
+not the vacuous-pass shape, but wrong in both directions.
+
+Evidence only, for t338's closing verdict. No card issued.
+
+🗿 MoAI
+
+---END---
+COMMIT 09dd1bee9
+merge: absorb origin/develop ee50984ab into WT-ci-test-observability (t358)
+
+---END---
+COMMIT 42dd07a0d
+docs(SPEC-RED-NOW-THRESHOLD-001): backfill sync_commit_sha e0bc3c1f1 (t343)
+Writes the §E.4 sync_commit_sha slot in canonical form, naming the sync commit
+that carried the 3-phase close. The slot was omitted rather than
+placeholder-filled in that commit: a commit cannot cite its own hash, and prose
+in a SHA slot is the defect card t299 is closing.
+
+Verified before writing: git cat-file -t e0bc3c1f1 -> commit;
+git merge-base --is-ancestor e0bc3c1f1 HEAD -> exit 0;
+git branch --contains e0bc3c1f1 -> WT-red-now-threshold.
+
+🗿 MoAI
+
+---END---
+COMMIT e0bc3c1f1
+docs(SPEC-RED-NOW-THRESHOLD-001): sync-phase close — RED-now cell adoption gate (t343)
+3-phase close (plan -> run -> sync). Card t343.
+
+- spec.md frontmatter: in-progress -> completed (merged close on this commit).
+  plan.md / acceptance.md / progress.md carry no frontmatter and are stateless
+  on the status axis by schema, so no sibling field was transitioned.
+- progress.md §E.3: run_commit_sha backfilled to "dc817409f", replacing the
+  prose placeholder that occupied the SHA slot. Verified: git cat-file -t ->
+  commit; git merge-base --is-ancestor -> exit 0.
+- progress.md §E.4: sync-phase audit-ready signal. sync_commit_sha is omitted
+  here rather than placeholder-filled (a commit cannot cite its own hash) and
+  is written in the immediately following backfill commit.
+- CHANGELOG.md [Unreleased] / Added: first entry, above SPEC-MOVING-REF-GUARD-001.
+- MX-tag validation run as a sync sub-step: zero tags on the one added Go file,
+  which declares no exported identifier; matches the reused-seam sibling.
+
+Documentation only. No Go file is touched: the four LSP style hints on
+internal/spec/red_now_cell_test.go are hints golangci-lint does not raise, and
+a code edit does not belong in a documentation-transition commit.
+
+Evidence (this tree, this run): go test ./internal/spec/ -count=1 -> ok 34.714s,
+exit 0; golangci-lint ./internal/spec/... -> "0 issues.", exit 0; go build ./...
+and GOOS=windows go build ./... -> exit 0. Full suite NOT run locally and the
+branch is unpushed, so there is no CI verdict.
+
+Carried openly, not closed: the 0.800 plan-audit score describes the iteration-2
+text and no audit has seen the current one; mutant M-6 (MP-8 does not verify a
+command measures its premise) is a design fact; M-3, the Go test's own
+non-execution, and three self-application form findings stay open.
+
+🗿 MoAI
+
+---END---
+COMMIT dc817409f
+docs(SPEC-RED-NOW-THRESHOLD-001): run-phase evidence, 16/16 AC PASS (t343)
+progress.md E.2 run-phase evidence + E.3 audit-ready signal. Records the AC
+matrix with the command and observed output per criterion, the closure gates,
+the sentinel-spelling deviation from plan.md M2 and its reason, the two
+same-SPEC cascades (agents-emit, catalog hash), and three boundaries reached
+during the run - including a throwaway self-application probe over this SPEC's
+own acceptance.md (20 commands, zero element findings, three form findings all
+on the D.0.1 illustration placeholders).
+
+Evidence (this tree, HEAD f60403c07):
+  $ go test ./internal/spec/ -count=1
+  ok  github.com/modu-ai/moai-adk/internal/spec  36.588s        (exit 0)
+  $ go test -cover ./internal/spec/ -count=1
+  ok  ...  coverage: 89.1% of statements                        (exit 0)
+  $ golangci-lint run --timeout=5m ./internal/spec/...
+  0 issues.                                                      (exit 0)
+  $ go build ./...                                               (exit 0)
+  $ GOOS=windows GOARCH=amd64 go build ./...                     (exit 0)
+  $ go test ./internal/template/... -count=1
+  ok internal/template 23.889s; ok internal/template/agentemit 0.421s (exit 0)
+
+🗿 MoAI
+
+---END---
+COMMIT f60403c07
+chore(SPEC-RED-NOW-THRESHOLD-001): M4 template mirrors + build (t343)
+Hand-applies the M2 clause to the plan-auditor mirror (the pair legitimately
+differs elsewhere, so no cp) and mirrors the M1 rule edit (that pair was
+byte-identical at start and stays so). Two same-SPEC cascades follow from the
+mirror edit: the generated .codex carrier (make agents-emit) and the template
+catalog hash (make build).
+
+REQ-RNT-010, REQ-RNT-011.
+
+Evidence (this tree, HEAD 5f0b9d7c1):
+  RED before this commit: .moai/reports/t343/m4-mirror-red.txt (exit 1 - three
+    mirror assertions failing)
+  $ go test ./internal/spec/ -run 'TestMP8Mirror|TestRuleMirror' -count=1
+  --- PASS: TestMP8MirrorSpanIsByteEqual
+  --- PASS: TestRuleMirrorIsByteIdentical
+  --- PASS: TestMP8MirrorSpanIsNeutral
+  ok  github.com/modu-ai/moai-adk/internal/spec  0.431s      (exit 0)
+  $ make build
+  exit 0   (.moai/reports/t343/m4-make-build.txt)
+  $ go test ./internal/template/... -count=1
+  ok internal/template 23.889s; ok internal/template/agentemit 0.421s  (exit 0)
+  $ grep -c "MOAI-REDNOW-BEGIN" internal/template/templates/.claude/agents/moai/plan-auditor.md
+  1   (exit 0; was 0 at exit 1)
+  $ grep -rl "red_now" internal/template/templates/
+  (empty stdout, exit 1 - nothing leaked)
+
+🗿 MoAI
+
+---END---
+COMMIT 5f0b9d7c1
+test(SPEC-RED-NOW-THRESHOLD-001): M3 repository-local RED-now form test (t343)
+internal/spec/red_now_cell_test.go on the ac_count_clause_test.go seam: the MP-8
+form contract is EXTRACTED from the sentinel span in plan-auditor.md, never
+restated, and exactly-one-non-empty is asserted before any comparison. Fixtures
+live under internal/spec/testdata/red_now and ship nothing.
+
+Both directions are observed on named fixtures, and four mutants are observed
+failing rather than argued:
+  M-2 zero-pair / two-pair / empty-span extraction  -> rejected
+  MP-8 report-row deletion (liveness, REQ-RNT-014)  -> detected
+  M-4 class laundering (violating fixture)          -> class-scoped 0 findings,
+                                                       class-independent 1
+  M-5 carrier relocation (ledger fixture)           -> cell-scoped 0 findings,
+                                                       carrier-independent 1
+The two narrowed predicates are run against the same input as the adopted one so
+the divergence is measured, per verification-completeness 5.
+
+REQ-RNT-008, REQ-RNT-009, REQ-RNT-012, REQ-RNT-014.
+
+Evidence (this tree):
+  RED, before M1/M2 landed:  .moai/reports/t343/m3-red.txt   (exit 1, 19 FAIL lines)
+  GREEN, whole package:      .moai/reports/t343/m3-green-spec-pkg.txt (exit 1 -
+    only the three mirror assertions fail; they are RED by construction at this
+    commit and M4 closes them: .moai/reports/t343/m4-mirror-red.txt)
+
+  $ ls internal/spec/red_now_cell_test.go
+  internal/spec/red_now_cell_test.go   (exit 0; was ENOENT at exit 1)
+  $ go vet ./internal/spec/
+  (no output, exit 0)
+
+🗿 MoAI
+
+---END---
+COMMIT 51d2935d3
+feat(SPEC-RED-NOW-THRESHOLD-001): M2 MP-8 must-pass in plan-auditor (t343)
+Adds MP-8 to the M5 Must-Pass Firewall (wrapped in a MOAI-REDNOW sentinel pair
+so the form contract is extracted rather than restated), the Group 4 AC-6
+checklist item, and the Must-Pass Results report row. MP-8 re-executes a
+release-blocking criterion's cited RED command against the current tree, folds
+an unresolved violation into Defects Found at severity=critical, and forces
+Verdict: FAIL regardless of the aggregate score. Carries the N/A branch on the
+MP-4 precedent, the execution-discipline refusal branch, and the executed-count
+verdict rule for a test-runner citation.
+
+The sentinel is an HTML comment, not a "# "-prefixed line as plan.md M2 spelled
+it: a "# " line in markdown prose is an H1 heading, which renders visibly and
+terminates the enclosing M5 section, breaking the containment assertion. The
+token inside the comment is unchanged, so the ledger greps still resolve.
+
+REQ-RNT-004, REQ-RNT-005, REQ-RNT-006, REQ-RNT-007, REQ-RNT-013, REQ-RNT-015.
+
+Evidence (this tree, HEAD 3dc185382):
+  $ grep -c "MP-8" .claude/agents/moai/plan-auditor.md
+  6   (exit 0; was 0 at exit 1 before this commit)
+  $ grep -c "AC-6:" .claude/agents/moai/plan-auditor.md
+  1   (exit 0; was 0 at exit 1)
+  $ grep -c "MOAI-REDNOW-BEGIN" .claude/agents/moai/plan-auditor.md
+  1   (exit 0; was 0 at exit 1)
+  $ grep -c -e tense -e mood -e counterfactual -e "future.sense" .claude/agents/moai/plan-auditor.md
+  0   (exit 1; unchanged - the regression-guard holds)
+
+🗿 MoAI
+
+---END---
+COMMIT 3dc185382
+feat(SPEC-RED-NOW-THRESHOLD-001): M1 RED-now cell content contract (t343)
+Adds verification-completeness.md 2.1: the four elements a release-blocking
+RED-now cell carries (command, verbatim stdout, exit code, tree SHA), the two
+admitted carriers (table cell or fenced evidence-ledger entry), the
+structural-not-lexical constraint, and the undecidable disposition (demotion to
+regression-guard, never recorded as a pass).
+
+Also commits the plan-phase artifacts, which were untracked in this worktree,
+and transitions spec.md draft -> in-progress on this first run-phase commit.
+
+REQ-RNT-001, REQ-RNT-002, REQ-RNT-003.
+
+Evidence (this tree, HEAD 15453140a):
+  $ grep -c "RED-now cell content" .claude/rules/moai/development/verification-completeness.md
+  1   (exit 0; was 0 at exit 1 before this commit)
+  $ grep -c "regression-guard" .claude/rules/moai/development/verification-completeness.md
+  1   (exit 0; was 0 at exit 1 before this commit)
+  $ grep -c -e tense -e mood -e counterfactual -e "future.sense" .claude/rules/moai/development/verification-completeness.md
+  0   (exit 1; unchanged - the regression-guard holds)
+
+🗿 MoAI
+
+---END---
+COMMIT 3b9a7a7ad
+docs(SPEC-CI-TEST-OBSERVABILITY-001): correct the falsified stderr premise (t358)
+The SPEC asserted that build and toolchain errors reach stderr, so redirecting
+only stdout would keep them console-visible. Measurement falsified it: under
+`-json`, `go test` routes compiler diagnostics into stdout as `build-output`
+events terminated by `build-fail`, and stderr is 0 bytes. A bare stdout redirect
+therefore SWALLOWS build failures from the console.
+
+Measured twice independently (rc=1; stderr 0 B both times; stdout 859 B and
+666 B, differing only in diagnostic text).
+
+Consequence recorded as load-bearing: console visibility of a build failure is
+restored only by the census emitting an explicit BUILD FAILED row. Deleting that
+row yields a red job whose console says nothing about why — and no green run can
+contradict its removal, the same hazard shape as simplifying `|| rc=$?` back to
+`; rc=$?`.
+
+REQ-CTO-011 keeps its force; only its rationale was wrong — the reason to keep
+stderr out of the stream is stream integrity, not console visibility.
+
+Also records two items as neither defect nor pass: test-stream.json sits in the
+repo root mid-run (gitignored; unmeasured against filesystem-walking tests), and
+the census has run on darwin/arm64 only — the four jq-using workflows in this
+repo are all ubuntu, so the 3-OS legs are its first exposure to windows/macOS.
+
+No AC pass criteria changed. AC-CTO-007 untouched.
+
+🗿 MoAI
+
+---END---
+COMMIT 1abe56dd3
+merge: absorb origin/develop into WT-ci-test-observability (t358)
+
+---END---
+COMMIT 7ff0de0c0
+docs(SPEC-CI-PR-TRIGGER-FILTER-001): plan-phase — graph-freshness pull_request branch filter (t294)
+Card t294 plan phase. The unfiltered pull_request trigger in
+graph-freshness.yml is an omission, not intent: git blame dates the line
+to 6786c3fa4 (2026-08-26), one day before develop existed as a PR base,
+and 11216d13f scoped itself to the push trigger only.
+
+Correction carried in the SPEC: pull_request branches filters match the
+PR base, not the head, so the duplicate-run concern the card names is
+caused by the ref-keyed concurrency group and is NOT closed by adding
+the filter. Two scope axes are left open for the kickoff gate.
+
+- SPEC-CI-PR-TRIGGER-FILTER-001: spec/plan/progress (Tier S, status draft)
+- .moai/reports/t294/investigation.md: 18-workflow sweep + provenance
+
+🗿 MoAI
+
+---END---
+COMMIT 97fe97294
+docs(t358): correct total_run_phase_files to the measured count
+Card t358 · SPEC-CI-TEST-OBSERVABILITY-001.
+
+31, not 24 — the earlier figure was an estimate written as if measured.
+Measured: git diff 1a635aea8 --name-only | wc -l
+
+🗿 MoAI
+
+---END---
+COMMIT 583013046
+docs(t358): record run-phase evidence for M1-M3 in progress.md §E.2/§E.3
+Card t358 · SPEC-CI-TEST-OBSERVABILITY-001.
+
+AC matrix with the command and verbatim output behind each row, the mutant
+probe result, the eight artifact names, four stated deviations from the plan,
+the two named debts, and the gaps — chief among them that run-phase performed
+NO CI run at all: M4 (push, dispatch, positive control) is lead-owned and was
+not attempted, so AC-CTO-007 is open and AC-CTO-005a is closed only on its
+declaration half.
+
+Also recorded: the SPEC's own stderr assumption (spec.md §F.2, plan.md §B.2)
+is measured false. Under -json, go test writes compiler diagnostics into the
+stream on stdout and leaves stderr empty, so a plain stdout redirect swallows
+the build error. Correcting that prose is manager-spec's, not run-phase's.
+
+🗿 MoAI
+
+---END---
+COMMIT d89998b13
+feat(t358): M2+M3 — wire the census into all four go test call sites
+Card t358 · SPEC-CI-TEST-OBSERVABILITY-001 · milestones M2 and M3.
+
+M2 and M3 land as one commit because three of the four sites live in ci.yml:
+splitting them would leave an intermediate state where the paths filter names
+a script only some steps use. All four are the identical shape.
+
+  ci.yml:test              required Test (ubuntu-latest), coverage retained
+  ci.yml:test-race         advisory Race Test
+  ci.yml:test-integration  advisory, 3-OS matrix
+  release-pr-multi-os.yml:full-matrix-test  required gate, 3-OS matrix
+
+Each site now writes -json to test-stream.json, captures rc with the
+double-pipe form, runs the shared census, and re-raises rc. Eight artifact
+names across eight matrix legs, none colliding; all uploads carry
+"if: always()" (this SPEC's own addition, since the house convention at the
+ci.yml build job does not) plus the house upload-artifact@v7 and
+retention-days: 7.
+
+The double-pipe capture is NOT interchangeable with the semicolon form.
+Measured this run on a tree with one planted failing test, under the exact CI
+shell string "bash --noprofile --norc -e -o pipefail": the semicolon form
+exits rc=1 with an EMPTY console, because -e kills the step at the failing
+go test, so neither the census nor the failure text ever prints. The
+double-pipe form prints the census with the failing test name and its captured
+output, and still exits 1. On a green run the two are indistinguishable.
+
+Also here:
+- scripts/ci-census/** added to the detect paths filter. The test steps shell
+  out to it, so without it a PR editing the census alone would get the
+  skip-marker stub and the edit would never be exercised.
+- test-stream.json and its .gz gitignored, so the file the suite writes at the
+  repo root does not make the tree look dirty to a test that shells out to git.
+- workflow_dispatch added to ci.yml as an enabling change only. It does not
+  become dispatchable until the file carrying it exists on the default branch,
+  so it does nothing for this card's own observation.
+
+Coverage unchanged: -coverprofile and -covermode retained, and Codecov reads
+the coverage.out FILE. Measured: coverage.out written with "mode: atomic",
+47 lines, identical to the pre-change baseline.
+
+No job name value changed; the test and test-skip-marker "if:" conditions
+remain strict complements.
+
+🗿 MoAI
+
+---END---
+COMMIT 13ec99545
+feat(t358): M1 — per-test census over the go test -json stream, with its own fixture check
+Card t358 · SPEC-CI-TEST-OBSERVABILITY-001 · milestone M1.
+
+CI runs `go test` without -v or -json, so an rc=0 cannot distinguish "the test
+passed" from "the test skipped" from "the selector matched nothing". This adds
+the one census implementation the four call sites will share, plus the check
+that makes the census itself verifiable WITHOUT a CI run.
+
+- scripts/ci-census/test-census.sh — reads a `go test -json` stream file and
+  prints what did not run and what failed. Both forms of "did not run" come
+  from ONE Action=="skip" pass, labelled apart by the presence of .Test
+  (REQ-CTO-006); splitting that into two detections is the defect the check
+  below rejects.
+- scripts/ci-census/census-check.sh + testdata/ — fixture-based check. The
+  fixture is not hand-written: every event shape in it came from a real
+  `go test -json` run, preserved with its provenance under
+  .moai/reports/t358/censusfix/.
+
+Measured finding, which corrects spec.md §F.2 and plan.md §B.2: under -json,
+`go test` writes compiler diagnostics into the STREAM as build-output /
+build-fail events on stdout, and stderr is EMPTY (0 bytes, measured on a tree
+with a planted syntax error). A step that redirects stdout therefore SWALLOWS
+the build error rather than leaving it console-visible. The census prints
+BUILD FAILED rows for exactly this reason.
+
+Mutant probe (AC-CTO-002): planting `Action=="skip" and .Test != null` made the
+check fail with the NOTHING RAN row missing; reverted, check passes.
+
+SPEC status draft -> in-progress on this first run-phase commit.
+
+🗿 MoAI
+
+---END---
+COMMIT 19ee40b94
+docs(t346): record the CI-delta gap and the fix-card owners in the verdict
+The develop CI verdict never arrived: both landed heads (61d5d56c9 and
+3fcbf8e3a) had their CI job end as cancelled, because nine lanes converge on
+the same branch and each push cancels the prior run through the concurrency
+group. Cancelled is neither a pass nor a fail, so the doctor family's
+disappearance is not claimed from those runs. The lead takes the reading once
+the merge queue drains.
+
+Also separates the two card axes the report had conflated: t322/t306
+introduced the remaining defects, while t349/t352/t326/t354 are the cards
+issued to fix them.
+
+🗿 MoAI
+
+---END---

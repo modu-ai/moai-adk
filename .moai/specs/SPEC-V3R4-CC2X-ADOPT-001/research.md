@@ -1,7 +1,6 @@
 ---
 spec_id: SPEC-V3R4-CC2X-ADOPT-001
 title: Claude Code v2.1.0+ Adoption — Master Research (Umbrella)
-status: research-only
 phase: research
 created: 2026-05-12
 author: MoAI orchestrator + GOOS

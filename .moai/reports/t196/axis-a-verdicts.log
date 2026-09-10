@@ -1,0 +1,107 @@
+# axis-a-verdicts.log — 축 A 구현 검증 배터리 (run 에이전트: manager-develop)
+# 귀속: 워크트리 .claude/worktrees/t196, HEAD 91f80cb6f, 브랜치 WT-codex-skill-neutral,
+#       축 A 편집 적용 상태(미커밋 — 커밋은 리드 소관)의 워킹 트리에서 실측.
+
+=== 편집 전 기준선 ===
+$ go test ./internal/config/ -run 'TestCodexContractByteCeiling|TestAlwaysLoadedTokenBudget$' -v
+    token_budget_guard_test.go:69: always-loaded surface = 75799 tokens (budget 76000, headroom 201, 18 entries)
+    token_budget_guard_test.go:108: contract document AGENTS.md = 14229 bytes (ceiling 24576, headroom 10347)
+    token_budget_guard_test.go:108: contract document internal/template/templates/AGENTS.md = 14229 bytes (ceiling 24576, headroom 10347)
+$ wc -c AGENTS.md internal/template/templates/AGENTS.md && cmp AGENTS.md internal/template/templates/AGENTS.md
+   14229 AGENTS.md
+   14229 internal/template/templates/AGENTS.md
+cmp: identical (exit 0)
+
+=== AC-CSN-012 사전값 (구현 착수 시점 측정 — 5번째 파일 포함) ===
+$ grep -cE 'SPEC-[A-Z0-9]+-[A-Z0-9-]*[0-9]{3}|\b(REQ|AC)-[A-Z0-9]+-[0-9]{3}\b|\b[0-9a-f]{7,40}\b|20[0-9]{2}-[0-9]{2}-[0-9]{2}' \
+    AGENTS.md internal/template/templates/AGENTS.md \
+    internal/template/templates/.claude/rules/moai/development/skill-authoring.md \
+    internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md \
+    internal/template/agentemit/agents-codex.yaml
+AGENTS.md:0
+internal/template/templates/AGENTS.md:0
+internal/template/templates/.claude/rules/moai/development/skill-authoring.md:2
+internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md:0
+internal/template/agentemit/agents-codex.yaml:0
+
+=== 방출 불변 사전 확인 — AskUserQuestion 의 tools: CSV 부재 ===
+$ grep -n 'AskUserQuestion' internal/template/templates/.claude/agents/moai/{plan-auditor,super-advisor,sync-auditor}.md
+  → 3곳 전부 본문 산문 (sync-auditor.md:141 경계 서술 / super-advisor.md:68 / plan-auditor.md:149 MP-7 검증 산문)
+$ grep -rn 'tools:' internal/template/templates/.claude/agents/moai/*.md | grep -i 'AskUser' | wc -l
+1  ← 이 1매치의 실체는 CSV 가 아니라 manager-lead.md:127 산문 줄이다 — "`tools:` list" 문구와
+     파일명 agent_askuser_audit_test.go 가 같은 줄에 있어 대소문자 무시 2차 grep 이 걸렸을 뿐.
+     프론트매터 tools: CSV 줄 직접 판독(super-advisor.md:13, sync-auditor.md:9, plan-auditor.md:7 전수)으로
+     어떤 에이전트의 CSV 에도 AskUserQuestion 이 없음이 정본 확인이다.
+
+=== AC-CSN-012 사후값 (압축 적용 최종 상태 재측정) ===
+AGENTS.md:0
+internal/template/templates/AGENTS.md:0
+internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md:0
+internal/template/templates/.claude/rules/moai/development/skill-authoring.md:2
+internal/template/agentemit/agents-codex.yaml:0
+→ 사후 ≤ 사전 전부 성립. skill-authoring.md 잔여 2건의 위치:
+$ grep -nE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' internal/template/templates/.claude/rules/moai/development/skill-authoring.md
+45:- updated: ISO date as string (e.g., "2026-01-28")
+89:  updated: "2026-01-28"
+→ AC-CSN-012 가 열거한 기존 항목(:45·:89 프론트매터 예시 날짜)과 정확히 일치.
+
+=== 양성 대조 (같은 정규식, SPEC 문서 — 0 이 아님을 확인) ===
+$ grep -cE '<동일 정규식>' .moai/specs/SPEC-CODEX-SKILL-NEUTRAL-001/spec.md
+58
+→ 0 이 아님 = 정규식 생존 확인. (자기참조 측정값 — 이 수치는 SPEC 문서 편집 시 움직이므로
+  progress.md 에는 수치 없이 조건만 기재; 판정 시점 재측정 대상)
+
+=== AC-CSN-002 — 집합 차이 (차집합 공집합) ===
+$ grep '^| [a-z]' AGENTS.md | awk -F'|' '{gsub(/ /,"",$2); print $2}' | sort -u > /tmp/csn-table-names.txt
+$ awk '/^tool_classes:/{f=1;next} /^[^ ]/{f=0} f&&NF==2{gsub(":","",$2);print $2}' internal/template/agentemit/agents-codex.yaml | sort -u > /tmp/csn-class-values.txt
+$ comm -23 /tmp/csn-table-names.txt /tmp/csn-class-values.txt
+(빈 출력 = PASS)
+표 이름 집합: design-sync, question-channel, task-list
+클래스 값 집합(11): cross-session-messaging, design-sync, file-read, file-write, moai-mcp,
+                   question-channel, shell, skill-loader, subagent-spawn, task-list, web
+
+=== AC-CSN-005 — 두 사본 동일 + 바이트 상한 ===
+$ wc -c AGENTS.md internal/template/templates/AGENTS.md && cmp AGENTS.md internal/template/templates/AGENTS.md
+   14774 AGENTS.md
+   14774 internal/template/templates/AGENTS.md
+cmp: identical
+$ go test ./internal/config/ -run 'TestCodexContractByteCeiling|TestAlwaysLoadedTokenBudget$' -v
+    token_budget_guard_test.go:69: always-loaded surface = 75935 tokens (budget 76000, headroom 65, 18 entries)
+    --- PASS: TestAlwaysLoadedTokenBudget
+    token_budget_guard_test.go:108: contract document AGENTS.md = 14774 bytes (ceiling 24576, headroom 9802)
+    token_budget_guard_test.go:108: contract document internal/template/templates/AGENTS.md = 14774 bytes (ceiling 24576, headroom 9802)
+    --- PASS: TestCodexContractByteCeiling
+→ 결속표 실제 비용: +545 bytes/사본 = +136 tokens (여유 201 → 65)
+→ 중간 판(720 B, 여유 21)에서 §B.D7 설계 의도에 따라 문구만 압축 — 기준(3행, (c) 행동 규칙) 불변
+
+=== 셀렉터 매치 수 (AC-CSN-009 [HARD] 규율 상속) ===
+$ go test -list 'TestGoldenCommittedArtifactsMatchEmission' ./internal/template/agentemit/
+TestGoldenCommittedArtifactsMatchEmission        → 1매치
+$ go test -list 'TestRuleTemplateMirrorDrift' ./internal/template/
+TestRuleTemplateMirrorDrift                      → 1매치 (서브테스트 8: hooks-system, spec-workflow, session-handoff, worktree-integration, session-handoff-examples, model-policy, default, frontend)
+$ go test -list 'TestSkillTreeHasNoClaudeSkillDirToken' ./internal/template/
+TestSkillTreeHasNoClaudeSkillDirToken            → 1매치
+
+=== 최종 상태 검증 배터리 (압축 후 트리, 전부 재실행) ===
+$ make build                          → make_build_exit=0 (첫 단계가 agents-emit-check — 방출 드리프트 0)
+$ go vet ./internal/config/ ./internal/template/   → vet_exit=0
+$ go test -count=1 ./internal/config/              → ok  github.com/modu-ai/moai-adk/internal/config 2.150s
+$ go test -count=1 ./internal/template/agentemit/ -run 'TestGoldenCommittedArtifactsMatchEmission' -v
+    --- PASS: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.324s
+$ go test -count=1 ./internal/template/ -run 'TestRuleTemplateMirrorDrift|TestSkillTreeHasNoClaudeSkillDirToken' -v
+    --- PASS: TestRuleTemplateMirrorDrift (0.00s)
+    --- PASS: TestSkillTreeHasNoClaudeSkillDirToken (0.01s)
+    ok  	github.com/modu-ai/moai-adk/internal/template	0.521s
+
+=== 변경 집합 (E6) ===
+$ git diff --stat HEAD -- AGENTS.md internal/template/templates/AGENTS.md internal/template/agentemit/agents-codex.yaml
+ AGENTS.md                                     |  9 +++++++++
+ internal/template/agentemit/agents-codex.yaml | 12 ++++++++++++
+ internal/template/templates/AGENTS.md         |  9 +++++++++
+ 3 files changed, 30 insertions(+)
+$ git status --porcelain (빌드 후)
+ M AGENTS.md
+ M internal/template/agentemit/agents-codex.yaml
+ M internal/template/templates/AGENTS.md
+→ PRESERVE 표면(codex_launcher.go, renderer.go, 스킬 트리, 규칙 트리) 무변경. catalog.yaml 재생성 무차분.

@@ -47,11 +47,138 @@ func TestAcquireIntegrationLock_RecordsHolder(t *testing.T) {
 	if got.SessionID != "lane-8" {
 		t.Errorf("session_id = %q, want lane-8", got.SessionID)
 	}
-	if got.PID != os.Getpid() {
-		t.Errorf("pid = %d, want this process %d", got.PID, os.Getpid())
+	// The caller supplied no pid, and none is invented here. Filling it with
+	// os.Getpid() is the defect card t298 removed: this process outlives
+	// nothing, so its pid would be dead before any reader probes it. An unset
+	// pid stays 0, which Stale() reads as live.
+	if got.PID != 0 {
+		t.Errorf("pid = %d, want 0; acquire must not substitute a pid the caller did not supply", got.PID)
+	}
+	if got.Stale() {
+		t.Error("a record with no resolvable owner reads reclaimable; the conservative direction is live")
 	}
 	if got.AcquiredAt == "" {
 		t.Error("acquired_at is empty; staleness triage has nothing to read")
+	}
+}
+
+// The owner pid the caller resolved is what lands on disk, verbatim, alongside
+// the marker naming whose pid it is.
+func TestAcquireIntegrationLock_RecordsTheCallersOwnerPID(t *testing.T) {
+	root := t.TempDir()
+	if _, err := AcquireIntegrationLock(root, IntegrationLock{
+		SessionID: "lane-8",
+		PID:       os.Getpid(),
+		PIDSource: PIDSourceSessionOwner,
+	}, false); err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+
+	got, err := ReadIntegrationLock(root)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got.PID != os.Getpid() {
+		t.Errorf("pid = %d, want the supplied owner pid %d", got.PID, os.Getpid())
+	}
+	if got.PIDSource != PIDSourceSessionOwner {
+		t.Errorf("pid_source = %q, want %q", got.PIDSource, PIDSourceSessionOwner)
+	}
+	if got.Stale() {
+		t.Error("a live owner reads reclaimable")
+	}
+}
+
+// AC-INL-004: an anchored record whose owner could not be resolved (pid 0)
+// reads LIVE, and stays that way until an explicit release or a recorded
+// --force. This is the mutant guard against "fill pid 0 so the field is never
+// empty" reintroducing the defect under another name.
+func TestAcquireIntegrationLock_AnchoredPIDZeroIsLiveNotStale(t *testing.T) {
+	root := t.TempDir()
+	if _, err := AcquireIntegrationLock(root, IntegrationLock{
+		SessionID: "unresolvable-owner",
+		PID:       0,
+		PIDSource: PIDSourceSessionOwner,
+	}, false); err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+
+	got, err := ReadIntegrationLock(root)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got.PID != 0 || got.PIDSource != PIDSourceSessionOwner {
+		t.Fatalf("record is not the anchored pid-0 shape: %+v", got)
+	}
+	if got.Stale() {
+		t.Error("an anchored pid-0 record reads reclaimable; an unresolvable owner must read live")
+	}
+	// A bare acquire by another lane must therefore be refused.
+	if _, err := AcquireIntegrationLock(root, IntegrationLock{
+		SessionID: "lane-5",
+		PID:       0,
+		PIDSource: PIDSourceSessionOwner,
+	}, false); !IsIntegrationLockHeld(err) {
+		t.Errorf("bare acquire over an anchored pid-0 holder: err = %v, want the contention sentinel", err)
+	}
+}
+
+// AC-INL-007: a record written before the anchor existed carries no
+// pid_source, and is read exactly as it always was — it parses, a dead
+// recorded pid still reads reclaimable, and a foreign acquire takes it over.
+// The schema change is additive; there is no upgrade wedge.
+func TestReadIntegrationLock_LegacyRecordWithoutPIDSource(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Dir(lockPathFor(t, root)), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Hand-written in the pre-anchor shape: no pid_source key at all.
+	legacy := `{
+  "session_id": "legacy-lane",
+  "session_name": "lane-legacy",
+  "pid": 2147483632,
+  "branch": "release/v9.9.9",
+  "worktree": "/tmp/wt",
+  "acquired_at": "2026-08-27T00:00:00Z"
+}
+`
+	if err := os.WriteFile(lockPathFor(t, root), []byte(legacy), 0o644); err != nil {
+		t.Fatalf("seed legacy record: %v", err)
+	}
+
+	got, err := ReadIntegrationLock(root)
+	if err != nil {
+		t.Fatalf("legacy record did not parse: %v", err)
+	}
+	if got.SessionID != "legacy-lane" || got.PID != 0x7FFFFFF0 {
+		t.Errorf("legacy record parsed wrong: %+v", got)
+	}
+	if got.PIDSource != "" {
+		t.Errorf("pid_source = %q on a legacy record, want empty", got.PIDSource)
+	}
+	if !got.Stale() {
+		t.Skip("the seeded legacy pid is live on this machine; the reclaimable path is not exercisable here")
+	}
+
+	replaced, err := AcquireIntegrationLock(root, IntegrationLock{
+		SessionID: "lane-5",
+		PID:       os.Getpid(),
+		PIDSource: PIDSourceSessionOwner,
+	}, false)
+	if err != nil {
+		t.Fatalf("legacy stale window was not reclaimable: %v", err)
+	}
+	if replaced == nil || replaced.SessionID != "legacy-lane" {
+		t.Errorf("takeover did not report the displaced legacy holder: %+v", replaced)
+	}
+
+	// Re-acquiring a window the caller already holds still refreshes it.
+	if _, err := AcquireIntegrationLock(root, IntegrationLock{
+		SessionID: "lane-5",
+		PID:       os.Getpid(),
+		PIDSource: PIDSourceSessionOwner,
+	}, false); err != nil {
+		t.Errorf("holder could not re-acquire its own window: %v", err)
 	}
 }
 

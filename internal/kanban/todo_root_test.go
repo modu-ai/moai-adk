@@ -99,6 +99,12 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	dir := t.TempDir() // deliberately NOT a git repository
 	home := t.TempDir()
 	stubHome(t, home)
+	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer: t.TempDir() is
+	// inside os.TempDir(), so the temporary-origin guard would otherwise
+	// refuse this home queue and the assertion below could never be reached.
+	// The fixture moves to a NON-temporary base through the temp-root seam;
+	// the assertion itself is unchanged and still names the home root.
+	declareNonTemporary(t)
 
 	got := ResolveTodoQueueRoot(dir)
 	want := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
@@ -179,6 +185,10 @@ func TestResolveTodoQueueRoot_PopulatedFallbackWins(t *testing.T) {
 	dir := t.TempDir() // no git
 	home := t.TempDir()
 	stubHome(t, home)
+	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer (see
+	// TestResolveTodoQueueRoot_FallbackNoGit): the read-priority assertion
+	// keeps walking the home-fallback branch on a non-temporary base.
+	declareNonTemporary(t)
 	seedLocalQueue(t, dir, 2)
 
 	fallbackRoot := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
@@ -201,6 +211,17 @@ func TestResolveTodoQueueRoot_PopulatedFallbackWins(t *testing.T) {
 // TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing — the third branch
 // (plan.md §G): no git AND no home. It returns the in-project root and, like
 // every other branch of the pure resolver, writes nothing.
+//
+// INTENTIONAL UPDATE (SPEC-TODO-HOME-TEMP-GUARD-001, REQ-THG-001): the base
+// here is a t.TempDir(), so "no home" and "temporary origin" hold TOGETHER,
+// and that requirement fixes the return on their intersection at the launch
+// BASE. The asserted value therefore moves from dir/.moai/state/todo to dir.
+// This is the implementation of a decision, not an accommodation of the
+// implementation: the old value is one layer below the root every consumer
+// extends with BacklogPathForRoot, and re-picking it here would have let
+// predicate PLACEMENT decide the return. The temp-origin half of this
+// intersection is covered by AC-THG-001 branch (c); this test keeps the
+// no-home branch's own "writes nothing" half.
 func TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing(t *testing.T) {
 	dir := t.TempDir()
 	orig := HomeDirFn
@@ -208,12 +229,17 @@ func TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing(t *testing.T) {
 	t.Cleanup(func() { HomeDirFn = orig })
 
 	got := ResolveTodoQueueRoot(dir)
-	want := filepath.Join(dir, ".moai", "state", "kanban")
-	if got != want {
-		t.Fatalf("home-unresolvable root = %q, want %q", got, want)
+	if got != dir {
+		t.Fatalf("home-unresolvable root = %q, want the launch base %q", got, dir)
 	}
-	if _, err := os.Stat(want); !os.IsNotExist(err) {
-		t.Fatalf("home-unresolvable branch created %q (stat err = %v)", want, err)
+	// Nothing was created on the way: neither the state directory the old
+	// return named, nor anything else under the base.
+	stateDir := filepath.Join(dir, ".moai", "state", "todo")
+	if _, err := os.Stat(stateDir); !os.IsNotExist(err) {
+		t.Fatalf("home-unresolvable branch created %q (stat err = %v)", stateDir, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".moai")); !os.IsNotExist(err) {
+		t.Fatalf("home-unresolvable branch created %q", filepath.Join(dir, ".moai"))
 	}
 }
 
@@ -224,6 +250,12 @@ func TestResolveTodoQueueRootAdopting_AdoptsLocalQueue(t *testing.T) {
 	dir := t.TempDir() // no git
 	home := t.TempDir()
 	stubHome(t, home)
+	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer: this is
+	// SPEC-WEB-TODO-QUEUE-001's AC-WTQ-008 producer, so its adopt-not-shadow
+	// assertion is preserved verbatim on a non-temporary base rather than
+	// rewritten to the guarded behaviour — rewriting it would withdraw that
+	// criterion silently.
+	declareNonTemporary(t)
 	local := seedLocalQueue(t, dir, 3)
 
 	root := ResolveTodoQueueRootAdopting(dir)

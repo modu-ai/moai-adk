@@ -1,0 +1,5 @@
+--- FAIL: TestAgentFMGLMReasoningKeysTheAgentsOwnSlot (0.01s)
+    agentfm_glm_reasoning_test.go:190: manager-git (sonnet → medium slot, glm-5.3) lost its low chip — the chip is keyed to the flash high slot instead of the agent's own slot
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.626s
+FAIL

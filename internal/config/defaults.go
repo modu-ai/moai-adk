@@ -129,8 +129,10 @@ const (
 	// agent spawned into a Sonnet or Haiku slot inherits that window. Give those
 	// slots smaller models and the window overstates what they can actually hold:
 	// the spawn runs past its real limit with compaction still waiting for a
-	// ceiling it will never reach. Pointing every slot at the same 1M model is
-	// what makes the single window true for all of them.
+	// ceiling it will never reach. Pointing every slot at a 1M model is what
+	// makes the single window true for all of them — the Fable slot holds
+	// glm-5.3 rather than glm-5.3-flash, and the invariant is the 1M context
+	// both carry, not model identity.
 	//
 	// Tier differentiation does not disappear — it moves to the effort axis,
 	// which is where z.ai actually implements it. See glm_effort_overlay.go: the
@@ -142,10 +144,11 @@ const (
 	// suffixed id as unknown, so the window comes from the resolved context
 	// window (glmAutoCompactWindow) instead.
 	//
-	// The default is glm-5.3-flash. glm-5.3 (DefaultGLM53) stays a named
-	// constant and a ValidGLMModels() member so an explicit selection keeps
-	// loading — the offered set is derived from these constants, so the
-	// non-default ids need their own declarations to survive a default switch.
+	// The default is glm-5.3-flash for the High, Medium, and Low slots and
+	// glm-5.3 for the Fable slot. Both stay named constants and ValidGLMModels()
+	// members so an explicit selection keeps loading — the offered set is derived
+	// from these constants, so the non-default ids need their own declarations to
+	// survive a default switch.
 	//
 	// glm-5.3 is reachable on the Anthropic-compatible endpoint this client uses.
 	// It is not granted on the native paas surface for every account, so a key
@@ -156,9 +159,13 @@ const (
 	DefaultGLMHigh    = DefaultGLM53Flash
 	DefaultGLMMedium  = DefaultGLM53Flash
 	DefaultGLMLow     = DefaultGLM53Flash
-	DefaultGLMFable   = DefaultGLM53Flash
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.3,
-	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
+	DefaultGLMFable   = DefaultGLM53
+	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
+	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
+	// web console locks the tier effort select to max when a tier slot holds
+	// it, and the effort overlay branches per-model.
+	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
+	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
 	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
 	// surface. glm-5.2 left the offered set when a single model became every
 	// tier's default, but stays declared so an existing llm.yaml naming it still
@@ -210,9 +217,27 @@ const (
 	// `state.home_retention_days` key read from ~/.moai/config/sections/state.yaml;
 	// DefaultReleaseKeep is how many non-current release binaries beyond the
 	// current version survive `clean --home`.
-	DefaultHomeDiskWarnBytes      = 500 * 1024 * 1024
-	DefaultHomeCleanRetentionDays = 30
-	DefaultReleaseKeep            = 3
+	DefaultHomeDiskWarnBytes            = 500 * 1024 * 1024
+	DefaultHomeCleanRetentionDays       = 30
+	DefaultReleaseKeep                  = 3
+	DefaultProfileProjectsRetentionDays = 180
+	DefaultProfileDebugRetentionDays    = 30
+	DefaultProfileUnusedDays            = 90
+	DefaultProfileMaxBytes              = 5 * 1024 * 1024 * 1024
+
+	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
+	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
+	// literals). DefaultInboxMaxBytes is the collector-side write-time size cap
+	// for .moai/lessons-inbox.jsonl: an append observing the live file at or
+	// over this size rotates it into a bounded archive (marker-absent installs
+	// only — the LSEL curator owns the inbox lifecycle on its own machine).
+	// 1 MiB sits just under the measured t259 drain-stall scale (~1.1 MB), so
+	// a stalled drain no longer grows the inbox past roughly one generation.
+	// DefaultInboxArchiveGenerations is the retained rotated-generation count
+	// (lessons-inbox.jsonl.1, lessons-inbox.jsonl.2); the rotation chain is
+	// derived from it, never restated at the call site.
+	DefaultInboxMaxBytes           = 1 << 20
+	DefaultInboxArchiveGenerations = 2
 
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
@@ -307,7 +332,7 @@ var SandboxProofKinds = []string{
 	"docker", "podman", "gvisor", "firecracker", "e2b", "devcontainer", "kata", "sandbox-runtime",
 }
 
-// DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
+// DefaultHandoffStaleTTL is the age past which a pending resume handoff row is
 // considered stale and silently removed by the SessionStart handler — auto-mode
 // ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale
 // pending record (REQ-009 pure no-op). Single source of truth consumed by the
@@ -431,6 +456,15 @@ var (
 	// most 2 parts (text + optional data); the headroom tolerates future
 	// part kinds without a schema change.
 	DefaultSessionMsgMaxParts = 8
+	// DefaultSessionMsgMaxPending is the depth ceiling on one agent's
+	// pending mailbox: Store.Send rejects a send that would push the
+	// recipient's pending count to it (card t253, PR #1606 review). Without
+	// a ceiling a looping or malfunctioning sender fills a mailbox until the
+	// 24h message TTL, and every subsequent Poll pays read-and-unmarshal
+	// cost for the whole backlog. Four polls' worth of headroom above
+	// DefaultSessionMsgPollBatch — a full mailbox therefore means a receiver
+	// that stopped polling, never ordinary traffic.
+	DefaultSessionMsgMaxPending = 64
 )
 
 // DefaultFactoryWorkers is the fan-out size the count-less `-k --name
@@ -561,6 +595,10 @@ func NewDefaultGateConfig() GateConfig {
 			Lint:      60,
 			Test:      120,
 			Typecheck: 300,
+			// The gate-run lock's wait budget: a policy knob, not a step
+			// budget. 30s waits out a concurrently finishing run while never
+			// holding a starting run without bound.
+			LockWait: 30,
 		},
 		// The typecheck axis is ON by default. A project with no type-check
 		// surface reports the skip and passes, so enabling it costs nothing
@@ -585,6 +623,15 @@ func NewDefaultGateConfig() GateConfig {
 			CodemapsChangedFiles: DefaultGraphFreshnessCodemapsChangedFiles,
 			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
 			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
+		},
+		// The pre-commit context's heavy gate is default-OFF (the BranchGuard /
+		// agent_stop_guard opt-in pattern): a project-wide failure unrelated to
+		// the staged change must not block unrelated commits. Opt in via
+		// gate.yaml pre_commit.enabled (editable from `moai web`). A standalone
+		// `moai gate` run ignores this key (operator decision 2,
+		// SPEC-PRECOMMIT-GATE-SCOPE-001).
+		PreCommit: GatePreCommitConfig{
+			Enabled: false,
 		},
 	}
 }
@@ -820,6 +867,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fact that ABSENT and TRUE are the same answer, and that only a
 		// literal `enabled: false` turns the guidance off.
 		Todo: WorkflowTodoConfig{},
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-002: the construction-time
+		// default is the named token, not the empty string. Absent and `card`
+		// resolve identically either way (ProjectContinuation maps "" to card),
+		// so this line is belt-and-braces: it makes the default readable from
+		// the struct rather than only from the resolver.
+		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local
@@ -833,6 +886,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// serialize. Template neutrality: no `enabled: true` anywhere under
 		// internal/template/templates/.
 		IntegrationLock: IntegrationLockConfig{
+			Enabled: false,
+		},
+		// The pre-merge settings.json drift gate ships with its REFUSAL layer
+		// off, and only that layer: detection, preservation and the ledger row
+		// run on every acquire regardless. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
 		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
@@ -1045,6 +1105,7 @@ func defaultInterviewConfig() InterviewConfig {
 			MaxRounds:         3,
 			QuestionsPerRound: 3,
 		},
+		RecommendationMode: "push",
 		SkipConditions: []string{
 			"resume_spec_id_present",
 			"skip_interview_flag",

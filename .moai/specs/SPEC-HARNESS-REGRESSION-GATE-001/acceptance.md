@@ -2,7 +2,6 @@
 id: SPEC-HARNESS-REGRESSION-GATE-001
 title: "Acceptance Criteria — Harness M2-lite 비회귀 게이트"
 version: "0.1.1"
-status: draft
 created: 2026-06-14
 updated: 2026-06-14
 author: manager-spec

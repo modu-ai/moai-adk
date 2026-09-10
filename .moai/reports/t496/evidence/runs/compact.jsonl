@@ -1,0 +1,8 @@
+{"type":"thread.started","thread_id":"01a07a6a-38bd-72c3-9e3f-08fd726e242b"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_1","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_2","type":"error","message":"clamping SessionEnd hook timeout to 3s in /private/tmp/t496-campaign-en7H7wVT/home/hooks.json"}}
+{"type":"item.completed","item":{"id":"item_3","type":"error","message":"clamping Interrupt hook timeout to 3s in /private/tmp/t496-campaign-en7H7wVT/home/hooks.json"}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_4","type":"agent_message","text":"T496COMPACTOK"}}
+{"type":"turn.completed","usage":{"input_tokens":192872,"cached_input_tokens":12160,"cache_write_input_tokens":0,"output_tokens":9,"reasoning_output_tokens":0}}

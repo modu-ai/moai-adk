@@ -1,0 +1,9 @@
+id: sec-hardcoded-api-key
+snapshots:
+  ? |
+    const openAiKey = "sk-live-alpha"
+  : labels:
+    - source: openAiKey = "sk-live-alpha"
+      style: primary
+      start: 6
+      end: 33

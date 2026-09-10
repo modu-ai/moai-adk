@@ -1,0 +1,3 @@
+internal/statusline/builder_test.go
+internal/statusline/usage.go
+internal/statusline/usage_test.go

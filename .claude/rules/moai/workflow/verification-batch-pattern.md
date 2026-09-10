@@ -42,7 +42,7 @@ Serialize dependent ops; batch independent read-only verifications by default.
 
 | Group | Members | Typical Total Time |
 |-------|---------|-------------------:|
-| A. Functional | `go test ./...`, coverage | 30-120 s |
+| A. Functional | change-scoped `go test ./internal/<pkg>/...`, coverage | measure per run |
 | B. Boundary | subagent-boundary grep, sentinel scan, frontmatter check | 1-5 s |
 | C. Quality | golangci-lint, spec-lint | 10-60 s |
 | D. Smoke | CLI --version, --help | 1-3 s |

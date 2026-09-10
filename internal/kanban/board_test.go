@@ -121,9 +121,14 @@ func TestBoardRoot_FallbackForcedThroughIndirection(t *testing.T) {
 
 // TestBoardPath_OwnSegments — the board's path-segment constant is its own
 // (REQ-KB-005, AP-24): `.moai/state/kanban-board/`, distinct from the session
-// record's per-tree `.moai/state/kanban/` that record.go's stateDirSegments
-// names. A board path built from the record's segments is the failure this
-// test exists to catch.
+// record's per-tree state directory that state_dir.go resolves. A board path
+// built from the record's segments is the failure this test exists to catch.
+//
+// The board directory deliberately KEPT its name through the state-directory
+// rename (SPEC-TODO-SQLITE-001 §F: only `.moai/state/kanban/` relocates), so
+// the two names are now `kanban-board` and `todo` — further apart than before,
+// which makes it the more important half of this assertion that the record
+// directory is resolved rather than spelled out here.
 func TestBoardPath_OwnSegments(t *testing.T) {
 	t.Parallel()
 	root := string(filepath.Separator) + "primary-root"
@@ -133,8 +138,10 @@ func TestBoardPath_OwnSegments(t *testing.T) {
 	if p != want {
 		t.Fatalf("BoardPath = %q, want %q", p, want)
 	}
-	// The sibling's directory must not be the board's directory.
-	recordDir := filepath.Join(root, ".moai", "state", "kanban")
+	// The sibling's directory must not be the board's directory. Resolve it
+	// through the shared resolver rather than restating the name: a spelled-out
+	// name would keep passing after a rename it no longer tracks.
+	recordDir := filepath.Dir(RecordPath(root, "probe"))
 	if filepath.Dir(p) == recordDir {
 		t.Fatalf("board directory %q equals the session-record directory %q", filepath.Dir(p), recordDir)
 	}

@@ -1,0 +1,12 @@
+.claude/rules/moai/development/coding-standards.md
+.moai/specs/SPEC-SESSIONSTART-PERF-001/progress.md
+internal/config/defaults.go
+internal/hook/session_start.go
+internal/hook/session_start_timebox_test.go
+internal/spec/drift.go
+internal/spec/drift_perf_test.go
+internal/spec/drift_timebox_test.go
+internal/template/templates/.claude/rules/moai/development/coding-standards.md
+scripts/i18n-validator/lockset.go
+scripts/i18n-validator/main.go
+scripts/i18n-validator/main_test.go

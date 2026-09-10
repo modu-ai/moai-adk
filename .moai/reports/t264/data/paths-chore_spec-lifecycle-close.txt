@@ -1,0 +1,6 @@
+.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/progress.md
+.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md
+.moai/specs/SPEC-CONFIG-TIER-PERSIST-001/spec.md
+.moai/specs/SPEC-KANBAN-RENAME-001/progress.md
+.moai/specs/SPEC-KANBAN-RENAME-001/spec.md
+CHANGELOG.md

@@ -1,0 +1,608 @@
+graph-freshness	UNKNOWN STEP	﻿2026-08-31T10:32:16.3160153Z Current runner version: '2.336.0'
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3187349Z ##[group]Runner Image Provisioner
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3188483Z Hosted Compute Agent
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3189181Z Version: 20260819.586
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3189958Z Commit: 3cc4a88dfa507ef76119ad1bb3eccc6378bb2b76
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3190861Z Build Date: 2026-08-18T23:20:18Z
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3192759Z Worker ID: {8fa4e948-654e-4f47-81cf-3c327a3544ef}
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3194194Z Azure Region: westus3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3195768Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3198098Z ##[group]Operating System
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3199398Z Ubuntu
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3200425Z 24.04.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3201586Z LTS
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3202705Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3203836Z ##[group]Runner Image
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3205385Z Image: ubuntu-24.04
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3206644Z Version: 20260823.283.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3209068Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260823.283/images/ubuntu/Ubuntu2404-Readme.md
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3211886Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260823.283
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3213844Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3216153Z ##[group]GITHUB_TOKEN Permissions
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3219271Z Contents: read
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3220329Z Metadata: read
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3221343Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3224520Z Secret source: Actions
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3227124Z Prepare workflow directory
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3607962Z Prepare all required actions
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.3656179Z Getting action download info
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.6706252Z Download action repository 'actions/checkout@v7' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:16.7896976Z Download action repository 'actions/setup-go@v7' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.6266217Z Complete job name: graph-freshness
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7102323Z ##[group]Run actions/checkout@v7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7103359Z with:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7103848Z   fetch-depth: 0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7104391Z   repository: modu-ai/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7108977Z   token: ***
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7109498Z   ssh-strict: true
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7109988Z   ssh-user: git
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7110480Z   persist-credentials: true
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7111014Z   clean: true
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7111503Z   sparse-checkout-cone-mode: true
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7112070Z   fetch-tags: false
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7112561Z   show-progress: true
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7113056Z   lfs: false
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7113521Z   submodules: false
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7114037Z   set-safe-directory: true
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7114596Z   allow-unsafe-pr-checkout: false
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.7115675Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8130853Z Syncing repository: modu-ai/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8134026Z ##[group]Getting Git version info
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8136122Z Working directory is '/home/runner/work/moai-adk/moai-adk'
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8138402Z [command]/usr/bin/git version
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8247572Z git version 2.55.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8304293Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8317339Z Temporarily overriding HOME='/home/runner/work/_temp/8f66e28d-2415-4102-9137-75bdac21c962' before making global git config changes
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8320123Z Adding repository directory to the temporary git global config as a safe directory
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8326724Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/moai-adk/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8378182Z Deleting the contents of '/home/runner/work/moai-adk/moai-adk'
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8381983Z ##[group]Determining repository object format
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8384458Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8386471Z ##[group]Initializing the repository
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8390531Z [command]/usr/bin/git init /home/runner/work/moai-adk/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8504337Z hint: Using 'master' as the name for the initial branch. This default branch name
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8507061Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8511209Z hint: to use in all of your new repositories, which will suppress this warning,
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8514384Z hint: call:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8515782Z hint:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8517106Z hint: 	git config --global init.defaultBranch <name>
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8519169Z hint:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8521000Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8523159Z hint: 'development'. The just-created branch can be renamed via this command:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8525917Z hint:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8527557Z hint: 	git branch -m <name>
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8529222Z hint:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8531357Z hint: Disable this message with "git config set advice.defaultBranchName false"
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8534545Z Initialized empty Git repository in /home/runner/work/moai-adk/moai-adk/.git/
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8538760Z [command]/usr/bin/git remote add origin https://github.com/modu-ai/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8580799Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8582074Z ##[group]Disabling automatic garbage collection
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8583551Z [command]/usr/bin/git config --local gc.auto 0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8619785Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8621165Z ##[group]Setting up auth
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8622158Z Removing SSH command configuration
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8627902Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.8666346Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9054350Z Removing HTTP extra header
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9060706Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9098416Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9319586Z Removing includeIf entries pointing to credentials config files
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9325446Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9361660Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9590645Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9632164Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path /home/runner/work/_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9665979Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9703073Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9737335Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9769045Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9769889Z ##[group]Fetching the repository
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:17.9776784Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/* +57085c1f7995c3febda748a92457a27c975cfa3e:refs/remotes/pull/1685/merge
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8602025Z From https://github.com/modu-ai/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8606886Z  * [new branch]          WT-astgrep-16-langs      -> origin/WT-astgrep-16-langs
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8608209Z  * [new branch]          WT-card-landing-state    -> origin/WT-card-landing-state
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8609492Z  * [new branch]          WT-codex-launcher        -> origin/WT-codex-launcher
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8610353Z  * [new branch]          WT-freshness-sync        -> origin/WT-freshness-sync
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8611211Z  * [new branch]          WT-gate-three-axes       -> origin/WT-gate-three-axes
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8612077Z  * [new branch]          WT-hook-wiring-drift     -> origin/WT-hook-wiring-drift
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8612999Z  * [new branch]          WT-main-stamp-repair     -> origin/WT-main-stamp-repair
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8613860Z  * [new branch]          WT-ossdocs-v311          -> origin/WT-ossdocs-v311
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8614587Z  * [new branch]          WT-precommit-vet         -> origin/WT-precommit-vet
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8615888Z  * [new branch]          WT-t69                   -> origin/WT-t69
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8616826Z  * [new branch]          WT-wscfg-graph           -> origin/WT-wscfg-graph
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8617828Z  * [new branch]          WT-wscfg-worktree        -> origin/WT-wscfg-worktree
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8619217Z  * [new branch]          add-claude-github-actions-1782270028926 -> origin/add-claude-github-actions-1782270028926
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8620580Z  * [new branch]          chore/backfill-sw-sync   -> origin/chore/backfill-sw-sync
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8621791Z  * [new branch]          chore/cc-v21-adoption-tooling -> origin/chore/cc-v21-adoption-tooling
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8623029Z  * [new branch]          chore/config-dead-sweep-resume -> origin/chore/config-dead-sweep-resume
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8624134Z  * [new branch]          chore/lang-en-mx-tags    -> origin/chore/lang-en-mx-tags
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8625420Z  * [new branch]          chore/lang-en-mx-tags-v2 -> origin/chore/lang-en-mx-tags-v2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8626985Z  * [new branch]          chore/spec-lint-legacy-frontmatter-backfill -> origin/chore/spec-lint-legacy-frontmatter-backfill
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8628342Z  * [new branch]          chore/v3r2-wave-pile     -> origin/chore/v3r2-wave-pile
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8629367Z  * [new branch]          ci/status-sync-skip      -> origin/ci/status-sync-skip
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8630468Z  * [new branch]          claude/issue-1014-20260519-1629 -> origin/claude/issue-1014-20260519-1629
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8631610Z  * [new branch]          claude/issue-1022-20260520-0336 -> origin/claude/issue-1022-20260520-0336
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8632720Z  * [new branch]          claude/issue-1056-20260604-0711 -> origin/claude/issue-1056-20260604-0711
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8633800Z  * [new branch]          claude/issue-1059-20260606-0119 -> origin/claude/issue-1059-20260606-0119
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8635373Z  * [new branch]          claude/issue-1061-20260606-1650 -> origin/claude/issue-1061-20260606-1650
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8636563Z  * [new branch]          claude/issue-1064-20260613-1220 -> origin/claude/issue-1064-20260613-1220
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8637650Z  * [new branch]          claude/issue-618-20260410-0528 -> origin/claude/issue-618-20260410-0528
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8638833Z  * [new branch]          claude/issue-671-20260417-0048 -> origin/claude/issue-671-20260417-0048
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8639966Z  * [new branch]          claude/issue-756-20260501-0519 -> origin/claude/issue-756-20260501-0519
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8641304Z  * [new branch]          claude/issue-778-20260504-1144 -> origin/claude/issue-778-20260504-1144
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8641957Z  * [new branch]          claude/issue-780-20260504-1203 -> origin/claude/issue-780-20260504-1203
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8642577Z  * [new branch]          claude/issue-782-20260504-2011 -> origin/claude/issue-782-20260504-2011
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8643207Z  * [new branch]          claude/issue-919-20260515-0139 -> origin/claude/issue-919-20260515-0139
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8643865Z  * [new branch]          claude/issue-932-20260515-1325 -> origin/claude/issue-932-20260515-1325
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8644486Z  * [new branch]          claude/issue-936-20260515-1522 -> origin/claude/issue-936-20260515-1522
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8645826Z  * [new branch]          dependabot/go_modules/gomod-minor-patch-501f2721b5 -> origin/dependabot/go_modules/gomod-minor-patch-501f2721b5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8646561Z  * [new branch]          develop                  -> origin/develop
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8647215Z  * [new branch]          docs/spec-V3R3-CI-AUTONOMY-001-closure -> origin/docs/spec-V3R3-CI-AUTONOMY-001-closure
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8647929Z  * [new branch]          feat/SPEC-AGENT-001-wave5 -> origin/feat/SPEC-AGENT-001-wave5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8648595Z  * [new branch]          feat/SPEC-CLI-TUX-INIT-UPDATE-001 -> origin/feat/SPEC-CLI-TUX-INIT-UPDATE-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8649242Z  * [new branch]          feat/SPEC-DRIFT-001-wave5 -> origin/feat/SPEC-DRIFT-001-wave5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8649882Z  * [new branch]          feat/SPEC-GOAL-HTML-WIRING-001 -> origin/feat/SPEC-GOAL-HTML-WIRING-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8650902Z  * [new branch]          feat/SPEC-PLAYWRIGHT-001-wave5 -> origin/feat/SPEC-PLAYWRIGHT-001-wave5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8652196Z  * [new branch]          feat/SPEC-PRETOOL-GATE-MOVE-001 -> origin/feat/SPEC-PRETOOL-GATE-MOVE-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8653163Z  * [new branch]          feat/SPEC-RALPH-CONFIG-REDESIGN-001 -> origin/feat/SPEC-RALPH-CONFIG-REDESIGN-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8653921Z  * [new branch]          feat/SPEC-SEARCH-001-wave4 -> origin/feat/SPEC-SEARCH-001-wave4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8654620Z  * [new branch]          feat/SPEC-SESSION-WORKTREE-001 -> origin/feat/SPEC-SESSION-WORKTREE-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8655566Z  * [new branch]          feat/SPEC-TOKEN-001-wave4 -> origin/feat/SPEC-TOKEN-001-wave4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8656232Z  * [new branch]          feat/SPEC-V3R2-ORC-002-wave3 -> origin/feat/SPEC-V3R2-ORC-002-wave3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8656939Z  * [new branch]          feat/SPEC-V3R2-ORC-003-wave3 -> origin/feat/SPEC-V3R2-ORC-003-wave3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8657831Z  * [new branch]          feat/SPEC-V3R2-ORC-004-wave1 -> origin/feat/SPEC-V3R2-ORC-004-wave1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8658549Z  * [new branch]          feat/SPEC-V3R2-RT-002-wave1 -> origin/feat/SPEC-V3R2-RT-002-wave1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8659215Z  * [new branch]          feat/SPEC-V3R2-RT-003-wave2 -> origin/feat/SPEC-V3R2-RT-003-wave2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8659871Z  * [new branch]          feat/SPEC-V3R2-RT-006-wave2 -> origin/feat/SPEC-V3R2-RT-006-wave2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8660688Z  * [new branch]          feat/SPEC-V3R2-wave-1-2-runtime-foundation -> origin/feat/SPEC-V3R2-wave-1-2-runtime-foundation
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8661730Z  * [new branch]          feat/SPEC-V3R3-CI-AUTONOMY-001-wave-7 -> origin/feat/SPEC-V3R3-CI-AUTONOMY-001-wave-7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8662657Z  * [new branch]          feat/SPEC-V3R4-STATUS-LIFECYCLE-001-wave-3 -> origin/feat/SPEC-V3R4-STATUS-LIFECYCLE-001-wave-3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8663497Z  * [new branch]          feat/SPEC-V3R5-ATOMIC-WRITE-001 -> origin/feat/SPEC-V3R5-ATOMIC-WRITE-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8664421Z  * [new branch]          feat/SPEC-V3R5-STATUSLINE-FMC-001 -> origin/feat/SPEC-V3R5-STATUSLINE-FMC-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8665571Z  * [new branch]          feat/SPEC-WORKTREE-ENTRY-STRATEGY-001 -> origin/feat/SPEC-WORKTREE-ENTRY-STRATEGY-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8666394Z  * [new branch]          feat/lsp-astgrep-implementation -> origin/feat/lsp-astgrep-implementation
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8667196Z  * [new branch]          feat/lsp-suite-backlog   -> origin/feat/lsp-suite-backlog
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8667822Z  * [new branch]          feat/moai-ref-ui-polish  -> origin/feat/moai-ref-ui-polish
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8668526Z  * [new branch]          feat/statusline-improvements -> origin/feat/statusline-improvements
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8669396Z  * [new branch]          feature/SPEC-V3R4-HARNESS-003 -> origin/feature/SPEC-V3R4-HARNESS-003
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8670168Z  * [new branch]          feature/wave-1-tier0     -> origin/feature/wave-1-tier0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8670767Z  * [new branch]          feature/wave-2-tier1     -> origin/feature/wave-2-tier1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8671344Z  * [new branch]          fix/astgrep-bundle       -> origin/fix/astgrep-bundle
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8672183Z  * [new branch]          fix/ci-max-turns-40      -> origin/fix/ci-max-turns-40
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8672965Z  * [new branch]          fix/git-auth-security-wizard -> origin/fix/git-auth-security-wizard
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8673691Z  * [new branch]          fix/gopls-bridge-bundle  -> origin/fix/gopls-bridge-bundle
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8674388Z  * [new branch]          fix/heavy-gate-nested-toolchain -> origin/fix/heavy-gate-nested-toolchain
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8675271Z  * [new branch]          fix/issue-615            -> origin/fix/issue-615
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8675838Z  * [new branch]          fix/issue-626            -> origin/fix/issue-626
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8676531Z  * [new branch]          fix/windows-test-portability -> origin/fix/windows-test-portability
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8677182Z  * [new branch]          main                     -> origin/main
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8677821Z  * [new branch]          plan/SPEC-V3R4-CI-FASTTRACK-001 -> origin/plan/SPEC-V3R4-CI-FASTTRACK-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8678562Z  * [new branch]          plan/spec-config-mode-migrate -> origin/plan/spec-config-mode-migrate
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8679385Z  * [new branch]          plan/v2.15-util-perf-backlog -> origin/plan/v2.15-util-perf-backlog
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8679991Z  * [new branch]          release/v3.1.4           -> origin/release/v3.1.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8681234Z  * [new branch]          sync/SPEC-TEMPLATE-I18N-CANONICAL-001 -> origin/sync/SPEC-TEMPLATE-I18N-CANONICAL-001
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8682736Z  * [new branch]          worktree-agent-a06d06a2f644438e7 -> origin/worktree-agent-a06d06a2f644438e7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8684186Z  * [new branch]          worktree-agent-a1651acae861e7fd2 -> origin/worktree-agent-a1651acae861e7fd2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8686073Z  * [new branch]          worktree-agent-a7c68d7bb03508261 -> origin/worktree-agent-a7c68d7bb03508261
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8687494Z  * [new branch]          worktree-agent-a81985fc45381e515 -> origin/worktree-agent-a81985fc45381e515
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8688946Z  * [new branch]          worktree-agent-ab699739d0b242c89 -> origin/worktree-agent-ab699739d0b242c89
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8690460Z  * [new branch]          worktree-agent-acb5439ce5ad32de8 -> origin/worktree-agent-acb5439ce5ad32de8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8692073Z  * [new branch]          worktree-agent-ada0603163d6379ce -> origin/worktree-agent-ada0603163d6379ce
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8693411Z  * [new branch]          worktree-docs-v31-blockers -> origin/worktree-docs-v31-blockers
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8694564Z  * [new branch]          worktree-readme-redesign -> origin/worktree-readme-redesign
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8695928Z  * [new tag]             SPEC-010-COMPLETE-20250925_045104 -> SPEC-010-COMPLETE-20250925_045104
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8697024Z  * [new tag]             SPEC-HOOKS-PYTHON-001-v0.1.0 -> SPEC-HOOKS-PYTHON-001-v0.1.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8698012Z  * [new tag]             SPEC-INSTALL-001-v0.1.0  -> SPEC-INSTALL-001-v0.1.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8699104Z  * [new tag]             SPEC-UPDATE-ENHANCE-001-v0.0.1-draft -> SPEC-UPDATE-ENHANCE-001-v0.0.1-draft
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8700153Z  * [new tag]             backup-before-v0.0.1     -> backup-before-v0.0.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8701488Z  * [new tag]             backup-feature-group-a-20251122_143502 -> backup-feature-group-a-20251122_143502
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8702257Z  * [new tag]             backup-local-chore-1778338725 -> backup-local-chore-1778338725
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8702935Z  * [new tag]             backup-pre-merge-20251122-134826 -> backup-pre-merge-20251122-134826
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8703736Z  * [new tag]             checkpoint-pre-nextra-migration-commit -> checkpoint-pre-nextra-migration-commit
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8704544Z  * [new tag]             checkpoint-session-3-20251122_053405 -> checkpoint-session-3-20251122_053405
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8705682Z  * [new tag]             checkpoint/tag-system-refactor-20250930-045434 -> checkpoint/tag-system-refactor-20250930-045434
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8782550Z  * [new tag]             develop-merge-20251122-143534 -> develop-merge-20251122-143534
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8783705Z  * [new tag]             go-v2.0.0                -> go-v2.0.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8784488Z  * [new tag]             go-v2.0.0-test1          -> go-v2.0.0-test1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8785596Z  * [new tag]             milestone-specs-complete-v0.2.3-dev -> milestone-specs-complete-v0.2.3-dev
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8786410Z  * [new tag]             moai/SPEC-WORKTREE-001/sync-complete -> moai/SPEC-WORKTREE-001/sync-complete
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8787354Z  * [new tag]             moai_cp/20251017_010038_sync-minimal-gitignore-cleanup -> moai_cp/20251017_010038_sync-minimal-gitignore-cleanup
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8788117Z  * [new tag]             moai_cp/20251017_135319  -> moai_cp/20251017_135319
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8788727Z  * [new tag]             pre-refactor-baseline    -> pre-refactor-baseline
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8789272Z  * [new tag]             spec-009-completion      -> spec-009-completion
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8789786Z  * [new tag]             spec-010-created         -> spec-010-created
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8790250Z  * [new tag]             v0.1.18                  -> v0.1.18
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8790680Z  * [new tag]             v0.1.28                  -> v0.1.28
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8791103Z  * [new tag]             v0.10.0                  -> v0.10.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8791528Z  * [new tag]             v0.10.1                  -> v0.10.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8791945Z  * [new tag]             v0.11.0                  -> v0.11.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8792365Z  * [new tag]             v0.11.1                  -> v0.11.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8792781Z  * [new tag]             v0.12.0                  -> v0.12.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8793201Z  * [new tag]             v0.12.1                  -> v0.12.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8793849Z  * [new tag]             v0.13.0                  -> v0.13.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8794284Z  * [new tag]             v0.14.0                  -> v0.14.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8795088Z  * [new tag]             v0.15.0                  -> v0.15.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8795556Z  * [new tag]             v0.15.1                  -> v0.15.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8795995Z  * [new tag]             v0.15.2                  -> v0.15.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8796412Z  * [new tag]             v0.16.0                  -> v0.16.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8796834Z  * [new tag]             v0.17.0                  -> v0.17.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8797257Z  * [new tag]             v0.17.1                  -> v0.17.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8797675Z  * [new tag]             v0.17.2                  -> v0.17.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8798096Z  * [new tag]             v0.2.0                   -> v0.2.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8798512Z  * [new tag]             v0.2.1                   -> v0.2.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8798941Z  * [new tag]             v0.2.10                  -> v0.2.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8799387Z  * [new tag]             v0.2.12                  -> v0.2.12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8799827Z  * [new tag]             v0.2.13                  -> v0.2.13
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8800288Z  * [new tag]             v0.2.14                  -> v0.2.14
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8800717Z  * [new tag]             v0.2.15                  -> v0.2.15
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8801138Z  * [new tag]             v0.2.16                  -> v0.2.16
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8801565Z  * [new tag]             v0.2.17                  -> v0.2.17
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8801983Z  * [new tag]             v0.2.2                   -> v0.2.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8802409Z  * [new tag]             v0.2.29                  -> v0.2.29
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8802827Z  * [new tag]             v0.2.30                  -> v0.2.30
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8803328Z  * [new tag]             v0.2.31-typescript-final -> v0.2.31-typescript-final
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8803816Z  * [new tag]             v0.2.4                   -> v0.2.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8804247Z  * [new tag]             v0.2.6                   -> v0.2.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8804671Z  * [new tag]             v0.20.0                  -> v0.20.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8805546Z  * [new tag]             v0.20.1                  -> v0.20.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8805979Z  * [new tag]             v0.21.0                  -> v0.21.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8806400Z  * [new tag]             v0.21.1                  -> v0.21.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8806820Z  * [new tag]             v0.21.2                  -> v0.21.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8807238Z  * [new tag]             v0.22.0                  -> v0.22.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8807652Z  * [new tag]             v0.22.3                  -> v0.22.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8808066Z  * [new tag]             v0.22.4                  -> v0.22.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8808485Z  * [new tag]             v0.22.5                  -> v0.22.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8808898Z  * [new tag]             v0.25.0                  -> v0.25.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8809321Z  * [new tag]             v0.25.1                  -> v0.25.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8809742Z  * [new tag]             v0.25.10                 -> v0.25.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8810178Z  * [new tag]             v0.25.11                 -> v0.25.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8810605Z  * [new tag]             v0.25.2                  -> v0.25.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8811021Z  * [new tag]             v0.25.3                  -> v0.25.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8811438Z  * [new tag]             v0.25.4                  -> v0.25.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8811862Z  * [new tag]             v0.25.5                  -> v0.25.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8812274Z  * [new tag]             v0.25.6                  -> v0.25.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8812690Z  * [new tag]             v0.25.7                  -> v0.25.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8813103Z  * [new tag]             v0.25.8                  -> v0.25.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8813519Z  * [new tag]             v0.25.9                  -> v0.25.9
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8814122Z  * [new tag]             v0.26-backup-cleanup     -> v0.26-backup-cleanup
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8814607Z  * [new tag]             v0.27.0                  -> v0.27.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8815407Z  * [new tag]             v0.27.1                  -> v0.27.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8815849Z  * [new tag]             v0.27.2                  -> v0.27.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8816280Z  * [new tag]             v0.28.0                  -> v0.28.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8816699Z  * [new tag]             v0.3.0                   -> v0.3.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8817114Z  * [new tag]             v0.3.1                   -> v0.3.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8817533Z  * [new tag]             v0.3.10                  -> v0.3.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8817952Z  * [new tag]             v0.3.11                  -> v0.3.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8818371Z  * [new tag]             v0.3.12                  -> v0.3.12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8818786Z  * [new tag]             v0.3.13                  -> v0.3.13
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8819243Z  * [new tag]             v0.3.14                  -> v0.3.14
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8819684Z  * [new tag]             v0.3.2                   -> v0.3.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8820100Z  * [new tag]             v0.3.3                   -> v0.3.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8820520Z  * [new tag]             v0.3.4                   -> v0.3.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8820933Z  * [new tag]             v0.3.5                   -> v0.3.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8821348Z  * [new tag]             v0.3.6                   -> v0.3.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8821759Z  * [new tag]             v0.3.7                   -> v0.3.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8822171Z  * [new tag]             v0.3.9                   -> v0.3.9
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8822593Z  * [new tag]             v0.30.0                  -> v0.30.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8823014Z  * [new tag]             v0.30.1                  -> v0.30.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8823438Z  * [new tag]             v0.30.2                  -> v0.30.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8823856Z  * [new tag]             v0.31.1                  -> v0.31.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8824279Z  * [new tag]             v0.31.2                  -> v0.31.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8824895Z  * [new tag]             v0.31.3                  -> v0.31.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8825545Z  * [new tag]             v0.31.4                  -> v0.31.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8825970Z  * [new tag]             v0.32.0                  -> v0.32.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8826423Z  * [new tag]             v0.32.10                 -> v0.32.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8826849Z  * [new tag]             v0.32.11                 -> v0.32.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8827274Z  * [new tag]             v0.32.12                 -> v0.32.12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8827706Z  * [new tag]             v0.32.12.1               -> v0.32.12.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8828132Z  * [new tag]             v0.32.13                 -> v0.32.13
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8828553Z  * [new tag]             v0.32.3                  -> v0.32.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8828987Z  * [new tag]             v0.32.5                  -> v0.32.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8829442Z  * [new tag]             v0.32.6                  -> v0.32.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8829871Z  * [new tag]             v0.33.0                  -> v0.33.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8830283Z  * [new tag]             v0.33.1                  -> v0.33.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8830705Z  * [new tag]             v0.34.0                  -> v0.34.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8831118Z  * [new tag]             v0.35.0                  -> v0.35.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8831529Z  * [new tag]             v0.35.1                  -> v0.35.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8831937Z  * [new tag]             v0.35.2                  -> v0.35.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8832345Z  * [new tag]             v0.36.0                  -> v0.36.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8832762Z  * [new tag]             v0.36.1                  -> v0.36.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8833180Z  * [new tag]             v0.36.2                  -> v0.36.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8833599Z  * [new tag]             v0.4.0                   -> v0.4.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8834019Z  * [new tag]             v0.4.1                   -> v0.4.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8834601Z  * [new tag]             v0.4.10                  -> v0.4.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8835337Z  * [new tag]             v0.4.11                  -> v0.4.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8835776Z  * [new tag]             v0.4.2                   -> v0.4.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8836214Z  * [new tag]             v0.4.3                   -> v0.4.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8836627Z  * [new tag]             v0.4.4                   -> v0.4.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8837043Z  * [new tag]             v0.4.5                   -> v0.4.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8837458Z  * [new tag]             v0.4.6                   -> v0.4.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8837866Z  * [new tag]             v0.4.7                   -> v0.4.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8838274Z  * [new tag]             v0.4.8                   -> v0.4.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8838683Z  * [new tag]             v0.40.0                  -> v0.40.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8839092Z  * [new tag]             v0.40.1                  -> v0.40.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8839517Z  * [new tag]             v0.41.0                  -> v0.41.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8839940Z  * [new tag]             v0.41.1                  -> v0.41.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8840369Z  * [new tag]             v0.41.2                  -> v0.41.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8840785Z  * [new tag]             v0.5.0                   -> v0.5.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8841202Z  * [new tag]             v0.5.1                   -> v0.5.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8841616Z  * [new tag]             v0.5.2                   -> v0.5.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8842025Z  * [new tag]             v0.5.3                   -> v0.5.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8842431Z  * [new tag]             v0.5.4                   -> v0.5.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8842842Z  * [new tag]             v0.5.5                   -> v0.5.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8843249Z  * [new tag]             v0.5.6                   -> v0.5.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8843660Z  * [new tag]             v0.5.8                   -> v0.5.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8844079Z  * [new tag]             v0.6.0                   -> v0.6.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8844487Z  * [new tag]             v0.6.1                   -> v0.6.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8845116Z  * [new tag]             v0.6.3                   -> v0.6.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8845692Z  * [new tag]             v0.7.0                   -> v0.7.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8846105Z  * [new tag]             v0.8.0                   -> v0.8.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8846536Z  * [new tag]             v0.8.1                   -> v0.8.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8846955Z  * [new tag]             v0.8.2                   -> v0.8.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8847360Z  * [new tag]             v0.8.3                   -> v0.8.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8847777Z  * [new tag]             v0.9.0                   -> v0.9.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8848185Z  * [new tag]             v0.9.1                   -> v0.9.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8848623Z  * [new tag]             v0.99.0-test             -> v0.99.0-test
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8849056Z  * [new tag]             v1.0.0                   -> v1.0.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8849471Z  * [new tag]             v1.0.1                   -> v1.0.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8849879Z  * [new tag]             v1.1.0                   -> v1.1.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8850292Z  * [new tag]             v1.11.0                  -> v1.11.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8850707Z  * [new tag]             v1.11.1                  -> v1.11.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8851122Z  * [new tag]             v1.11.2                  -> v1.11.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8851545Z  * [new tag]             v1.12.0                  -> v1.12.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8851959Z  * [new tag]             v1.12.1                  -> v1.12.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8852383Z  * [new tag]             v1.12.10                 -> v1.12.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8852805Z  * [new tag]             v1.12.11                 -> v1.12.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8853229Z  * [new tag]             v1.12.15                 -> v1.12.15
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8853648Z  * [new tag]             v1.12.5                  -> v1.12.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8854067Z  * [new tag]             v1.13.0                  -> v1.13.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8854906Z  * [new tag]             v1.14.0                  -> v1.14.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8855465Z  * [new tag]             v1.14.5                  -> v1.14.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8855904Z  * [new tag]             v1.2.0                   -> v1.2.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8856323Z  * [new tag]             v1.3.1                   -> v1.3.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8856739Z  * [new tag]             v1.3.10                  -> v1.3.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8857158Z  * [new tag]             v1.3.5                   -> v1.3.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8857574Z  * [new tag]             v1.3.6                   -> v1.3.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8857984Z  * [new tag]             v1.3.7                   -> v1.3.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8858391Z  * [new tag]             v1.3.8                   -> v1.3.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8858807Z  * [new tag]             v1.3.9                   -> v1.3.9
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8859224Z  * [new tag]             v1.4.0                   -> v1.4.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8859640Z  * [new tag]             v1.4.1                   -> v1.4.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8860049Z  * [new tag]             v1.4.5                   -> v1.4.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8860467Z  * [new tag]             v1.4.6                   -> v1.4.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8860876Z  * [new tag]             v1.5.0                   -> v1.5.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8861286Z  * [new tag]             v1.5.2                   -> v1.5.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8861693Z  * [new tag]             v1.5.3                   -> v1.5.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8862102Z  * [new tag]             v1.5.4                   -> v1.5.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8862507Z  * [new tag]             v1.5.5                   -> v1.5.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8862917Z  * [new tag]             v1.6.0                   -> v1.6.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8863322Z  * [new tag]             v1.6.1                   -> v1.6.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8863725Z  * [new tag]             v1.6.2                   -> v1.6.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8864132Z  * [new tag]             v1.6.3                   -> v1.6.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8864545Z  * [new tag]             v1.6.4                   -> v1.6.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8865291Z  * [new tag]             v1.7.0                   -> v1.7.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8865886Z  * [new tag]             v1.8.0                   -> v1.8.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8866308Z  * [new tag]             v1.8.1                   -> v1.8.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8866741Z  * [new tag]             v1.8.10                  -> v1.8.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8867169Z  * [new tag]             v1.8.11                  -> v1.8.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8867588Z  * [new tag]             v1.8.12                  -> v1.8.12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8868007Z  * [new tag]             v1.8.13                  -> v1.8.13
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8868422Z  * [new tag]             v1.8.2                   -> v1.8.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8868829Z  * [new tag]             v1.8.3                   -> v1.8.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8869244Z  * [new tag]             v1.8.4                   -> v1.8.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8869665Z  * [new tag]             v1.8.6                   -> v1.8.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8870074Z  * [new tag]             v1.8.7                   -> v1.8.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8870495Z  * [new tag]             v1.8.8                   -> v1.8.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8870905Z  * [new tag]             v1.8.9                   -> v1.8.9
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8871310Z  * [new tag]             v1.9.0                   -> v1.9.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8871715Z  * [new tag]             v2.0.0                   -> v2.0.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8872119Z  * [new tag]             v2.0.1                   -> v2.0.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8872522Z  * [new tag]             v2.0.2                   -> v2.0.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8872925Z  * [new tag]             v2.0.3                   -> v2.0.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8873328Z  * [new tag]             v2.0.4                   -> v2.0.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8873729Z  * [new tag]             v2.0.5                   -> v2.0.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8874140Z  * [new tag]             v2.1.0                   -> v2.1.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8874668Z  * [new tag]             v2.1.1                   -> v2.1.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8875361Z  * [new tag]             v2.1.2                   -> v2.1.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8875796Z  * [new tag]             v2.10.0                  -> v2.10.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8876217Z  * [new tag]             v2.10.1                  -> v2.10.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8876635Z  * [new tag]             v2.10.2                  -> v2.10.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8877048Z  * [new tag]             v2.12.0                  -> v2.12.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8877463Z  * [new tag]             v2.13.0                  -> v2.13.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8877885Z  * [new tag]             v2.13.1                  -> v2.13.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8878298Z  * [new tag]             v2.13.2                  -> v2.13.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8878714Z  * [new tag]             v2.14.0                  -> v2.14.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8879128Z  * [new tag]             v2.2.0                   -> v2.2.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8879540Z  * [new tag]             v2.2.1                   -> v2.2.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8879946Z  * [new tag]             v2.2.2                   -> v2.2.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8880357Z  * [new tag]             v2.2.3                   -> v2.2.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8880759Z  * [new tag]             v2.2.4                   -> v2.2.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8881164Z  * [new tag]             v2.2.5                   -> v2.2.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8881572Z  * [new tag]             v2.2.6                   -> v2.2.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8881974Z  * [new tag]             v2.2.7                   -> v2.2.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8882376Z  * [new tag]             v2.2.8                   -> v2.2.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8882783Z  * [new tag]             v2.3.0                   -> v2.3.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8883186Z  * [new tag]             v2.3.1                   -> v2.3.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8883587Z  * [new tag]             v2.4.0                   -> v2.4.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8883999Z  * [new tag]             v2.4.1                   -> v2.4.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8884401Z  * [new tag]             v2.4.2                   -> v2.4.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8885023Z  * [new tag]             v2.4.3                   -> v2.4.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8885612Z  * [new tag]             v2.4.4                   -> v2.4.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8886015Z  * [new tag]             v2.4.5                   -> v2.4.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8886418Z  * [new tag]             v2.4.6                   -> v2.4.6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8886820Z  * [new tag]             v2.4.7                   -> v2.4.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8887223Z  * [new tag]             v2.5.0                   -> v2.5.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8887625Z  * [new tag]             v2.5.1                   -> v2.5.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8888027Z  * [new tag]             v2.5.2                   -> v2.5.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8888436Z  * [new tag]             v2.5.3                   -> v2.5.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8888846Z  * [new tag]             v2.6.0                   -> v2.6.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8889286Z  * [new tag]             v2.6.1-teddy             -> v2.6.1-teddy
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8889725Z  * [new tag]             v2.6.10                  -> v2.6.10
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8890150Z  * [new tag]             v2.6.11                  -> v2.6.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8890566Z  * [new tag]             v2.6.12                  -> v2.6.12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8890980Z  * [new tag]             v2.6.15                  -> v2.6.15
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8891566Z  * [new tag]             v2.6.2-teddy             -> v2.6.2-teddy
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8892014Z  * [new tag]             v2.6.3                   -> v2.6.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8892428Z  * [new tag]             v2.6.4                   -> v2.6.4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8892840Z  * [new tag]             v2.6.5                   -> v2.6.5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8893250Z  * [new tag]             v2.6.8                   -> v2.6.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8893658Z  * [new tag]             v2.7.0                   -> v2.7.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8894200Z  * [new tag]             v2.7.1                   -> v2.7.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8894627Z  * [new tag]             v2.7.11                  -> v2.7.11
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8895312Z  * [new tag]             v2.7.12                  -> v2.7.12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8895739Z  * [new tag]             v2.7.13                  -> v2.7.13
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8896152Z  * [new tag]             v2.7.14                  -> v2.7.14
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8896571Z  * [new tag]             v2.7.15                  -> v2.7.15
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8896987Z  * [new tag]             v2.7.16                  -> v2.7.16
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8897395Z  * [new tag]             v2.7.2                   -> v2.7.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8897803Z  * [new tag]             v2.7.20                  -> v2.7.20
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8898210Z  * [new tag]             v2.7.21                  -> v2.7.21
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8898621Z  * [new tag]             v2.7.22                  -> v2.7.22
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8899027Z  * [new tag]             v2.7.3                   -> v2.7.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8899439Z  * [new tag]             v2.7.7                   -> v2.7.7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8899850Z  * [new tag]             v2.7.8                   -> v2.7.8
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8900262Z  * [new tag]             v2.7.9                   -> v2.7.9
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8900675Z  * [new tag]             v2.8.0                   -> v2.8.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8901074Z  * [new tag]             v2.8.1                   -> v2.8.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8901476Z  * [new tag]             v2.8.2                   -> v2.8.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8901879Z  * [new tag]             v2.8.3                   -> v2.8.3
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8902276Z  * [new tag]             v2.9.0                   -> v2.9.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8902675Z  * [new tag]             v2.9.1                   -> v2.9.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8903074Z  * [new tag]             v3.0.0                   -> v3.0.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8903506Z  * [new tag]             v3.0.0-rc1               -> v3.0.0-rc1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8903957Z  * [new tag]             v3.0.0-rc12              -> v3.0.0-rc12
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8904399Z  * [new tag]             v3.0.0-rc2               -> v3.0.0-rc2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8905259Z  * [new tag]             v3.0.0-rc4               -> v3.0.0-rc4
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8905712Z  * [new tag]             v3.0.0-rc5               -> v3.0.0-rc5
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8906150Z  * [new tag]             v3.0.0-rc6               -> v3.0.0-rc6
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8906594Z  * [new tag]             v3.0.0-rc7               -> v3.0.0-rc7
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8907027Z  * [new tag]             v3.0.1                   -> v3.0.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8907447Z  * [new tag]             v3.1.0                   -> v3.1.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8907861Z  * [new tag]             v3.1.1                   -> v3.1.1
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8908268Z  * [new tag]             v3.1.2                   -> v3.1.2
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8908782Z  * [new ref]             57085c1f7995c3febda748a92457a27c975cfa3e -> pull/1685/merge
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8910264Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8910747Z ##[group]Determining the checkout info
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8911255Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8911571Z [command]/usr/bin/git sparse-checkout disable
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8912552Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8913558Z ##[group]Checking out the ref
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:31.8914048Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1685/merge
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.8933752Z Updating files:  65% (6479/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9016459Z Updating files:  66% (6524/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9080803Z Updating files:  67% (6623/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9155779Z Updating files:  68% (6722/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9240558Z Updating files:  69% (6820/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9309371Z Updating files:  70% (6919/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9381777Z Updating files:  71% (7018/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9455073Z Updating files:  72% (7117/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9520939Z Updating files:  73% (7216/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9592684Z Updating files:  74% (7315/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9657216Z Updating files:  75% (7413/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9736273Z Updating files:  76% (7512/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9805920Z Updating files:  77% (7611/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9883446Z Updating files:  78% (7710/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:32.9956322Z Updating files:  79% (7809/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0033418Z Updating files:  80% (7908/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0105026Z Updating files:  81% (8007/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0176524Z Updating files:  82% (8105/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0236574Z Updating files:  83% (8204/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0310060Z Updating files:  84% (8303/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0376535Z Updating files:  85% (8402/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0452286Z Updating files:  86% (8501/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0516599Z Updating files:  87% (8600/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0591663Z Updating files:  88% (8698/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0668652Z Updating files:  89% (8797/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0725819Z Updating files:  90% (8896/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0790533Z Updating files:  91% (8995/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0861925Z Updating files:  92% (9094/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.0931712Z Updating files:  93% (9193/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1007495Z Updating files:  94% (9291/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1069068Z Updating files:  95% (9390/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1105222Z Updating files:  96% (9489/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1195924Z Updating files:  97% (9588/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1282013Z Updating files:  98% (9687/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1345254Z Updating files:  99% (9786/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1346189Z Updating files: 100% (9884/9884)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1346652Z Updating files: 100% (9884/9884), done.
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1473298Z Note: switching to 'refs/remotes/pull/1685/merge'.
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1473615Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1473860Z You are in 'detached HEAD' state. You can look around, make experimental
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1474446Z changes and commit them, and you can discard any commits you make in this
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1475228Z state without impacting any branches by switching back to a branch.
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1475568Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1476010Z If you want to create a new branch to retain commits you create, you may
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1476548Z do so (now or later) by using -c with the switch command. Example:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1476860Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1476980Z   git switch -c <new-branch-name>
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1477207Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1477336Z Or undo this operation with:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1477539Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1477647Z   git switch -
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1477799Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1478075Z Turn off this advice by setting config variable advice.detachedHead to false
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1478472Z 
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1478929Z HEAD is now at 57085c1f7 Merge 26898312eee07e9ff28d635a05b074594713e2d3 into 48239c7dc7428c8751a04f6321887c2d36123884
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1532317Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1584866Z [command]/usr/bin/git log -1 --format=%H
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1619916Z 57085c1f7995c3febda748a92457a27c975cfa3e
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1843125Z ##[group]Run REPO="$PWD"
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1843457Z ^[[36;1mREPO="$PWD"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1843772Z ^[[36;1mPROV=".moai/project/codemaps/provenance.json"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1844131Z ^[[36;1mset -euo pipefail^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1844428Z ^[[36;1mSHA=$(jq -r '.commit_sha // empty' "$PROV")^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1844926Z ^[[36;1mif [ -z "$SHA" ]; then^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1845516Z ^[[36;1m  echo "guard: provenance carries no commit anchor (dirty/content-fingerprint anchor) — reachability not judgeable, skipping"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1846103Z ^[[36;1m  exit 0^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1846296Z ^[[36;1mfi^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1846591Z ^[[36;1mif ! git -C "$REPO" cat-file -e "${SHA}^{commit}" 2>/dev/null; then^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1847190Z ^[[36;1m  echo "::error::codemaps provenance names commit ${SHA} which does not exist in this checkout's history"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1847679Z ^[[36;1m  exit 1^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1847867Z ^[[36;1mfi^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1848120Z ^[[36;1mif [ -z "${GITHUB_BASE_REF:-}" ]; then^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1848524Z ^[[36;1m  echo "guard: push event (no base ref) — object presence verified only"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1848906Z ^[[36;1m  exit 0^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1849094Z ^[[36;1mfi^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1849496Z ^[[36;1mif ! git -C "$REPO" merge-base --is-ancestor "$SHA" "origin/${GITHUB_BASE_REF}" 2>/dev/null; then^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1850378Z ^[[36;1m  echo "::error::codemaps provenance stamp ${SHA} is NOT an ancestor of PR base origin/${GITHUB_BASE_REF} — orphan-bound stamp (a squash merge would strand it)"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1851061Z ^[[36;1m  exit 1^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1851246Z ^[[36;1mfi^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1851547Z ^[[36;1mecho "guard: stamp ${SHA} reachable from origin/${GITHUB_BASE_REF}"^[[0m
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1893369Z shell: /usr/bin/bash -e {0}
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1893637Z env:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1893835Z   GITHUB_BASE_REF: main
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.1894056Z ##[endgroup]
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.2142655Z ##[error]codemaps provenance stamp 7fc0af324cf47f65d343ac3f936ca4f22bde9c51 is NOT an ancestor of PR base origin/main — orphan-bound stamp (a squash merge would strand it)
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.2154313Z ##[error]Process completed with exit code 1.
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.2300034Z Post job cleanup.
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3105429Z [command]/usr/bin/git version
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3148034Z git version 2.55.0
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3217976Z Temporarily overriding HOME='/home/runner/work/_temp/45f3d9f5-eee4-4056-a24f-5c1759ea6e5e' before making global git config changes
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3219338Z Adding repository directory to the temporary git global config as a safe directory
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3224271Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/moai-adk/moai-adk
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3259335Z Removing SSH command configuration
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3266545Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3310464Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3575906Z Removing HTTP extra header
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3582590Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3647529Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.3993367Z Removing includeIf entries pointing to credentials config files
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4022626Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4036043Z includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4037117Z includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4038187Z includeif.gitdir:/github/workspace/.git.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4039135Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4047488Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4085916Z /home/runner/work/_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4099499Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-160dda7e\-cf2d\-4e23\-bb62\-5b4038c25c32\.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4141080Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4179713Z /home/runner/work/_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4190320Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/moai-adk/moai-adk/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-160dda7e\-cf2d\-4e23\-bb62\-5b4038c25c32\.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4231592Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4259762Z /github/runner_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4268578Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-160dda7e\-cf2d\-4e23\-bb62\-5b4038c25c32\.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4304285Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4329738Z /github/runner_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4337975Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-160dda7e\-cf2d\-4e23\-bb62\-5b4038c25c32\.config
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4374266Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4607049Z Removing credentials config '/home/runner/work/_temp/git-credentials-160dda7e-cf2d-4e23-bb62-5b4038c25c32.config'
+graph-freshness	UNKNOWN STEP	2026-08-31T10:32:33.4749048Z Cleaning up orphan processes

@@ -1,0 +1,22 @@
+=== INV-130 primary settings.local.json SessionStart lsel
+=== INV-131/132/134 scripts (worktree surface)
+ls: .claude/skills/hns-lsel-curator/scripts/: No such file or directory 
+.claude/skills/hns-lsel-curator/backlog_check.sh:15:THRESHOLD="${LSEL_BACKLOG_THRESHOLD:-25}"
+=== INV-133 clusters-history (PRIMARY)
+drwxr-xr-x@ 60 goos  staff  1920 Aug 27 19:19 <PRIMARY>/.moai/state/lsel/clusters-history
+      61
+=== INV-135 lessons-inbox (PRIMARY)
+-rw-r--r--@ 1 goos  staff  1293610 Aug 27 19:24 <PRIMARY>/.moai/lessons-inbox.jsonl
+=== INV-058 SKILL headings
+32:## What this skill does
+45:## The mechanical core — `drain.sh`
+76:### `clusters.json` schema
+100:### Empty-delta no-op
+105:## The model-mediated layer (you, when invoked)
+120:## What this skill does NOT do (M1 boundaries)
+132:## Durable operations — the session-start trigger (`session_drain.sh`)
+170:## Verification (run before declaring a drain complete)
+198:## Characterization test
+208:## Cross-references
+222:## PROPOSE stage (M2 — shadow proposals)
+233:### Retrieval-before-propose (Reflexion)

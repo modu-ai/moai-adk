@@ -1,0 +1,6 @@
+V3R5-classified SPECs swept: 24
+  era-exempt rows:      23
+  terminal-exempt rows: 1  ['SPEC-HOOK-PREEDIT-INVESTIGATE-001']
+  other/missing rows:   0  []
+  of the era-exempt rows, carrying a modern signal (unearned exemption): 22
+  of the era-exempt rows, no modern signal (earned exemption): 1  ['SPEC-V3R5-INIT-WIZARD-EXPANSION-001']

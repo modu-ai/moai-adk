@@ -1,0 +1,6 @@
+# github.com/modu-ai/moai-adk/internal/config [github.com/modu-ai/moai-adk/internal/config.test]
+internal/config/gate_precommit_test.go:22:9: cfg.PreCommit undefined (type GateConfig has no field or method PreCommit)
+internal/config/gate_precommit_test.go:39:15: cfg.Gate.PreCommit undefined (type GateConfig has no field or method PreCommit)
+internal/config/gate_precommit_test.go:59:14: cfg.Gate.PreCommit undefined (type GateConfig has no field or method PreCommit)
+FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+FAIL

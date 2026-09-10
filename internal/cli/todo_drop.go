@@ -57,9 +57,11 @@ const (
 // move a queued card to the dropped state, recording why in its text.
 //
 // The card STAYS in the file. `done` removes a finished card; `drop` keeps a
-// discarded one visible with the reason attached, so a later reader can see
-// what was decided and reverse it if the judgement was wrong. A dropped card
-// is not a pick candidate — bare `next` lists queued cards only.
+// discarded one with the reason attached, so a later reader can see what was
+// decided and reverse it if the judgement was wrong — `moai todo list
+// --dropped` renders the discarded set (the default view hides it behind a
+// count line, card t384). A dropped card is not a pick candidate — bare
+// `next` lists queued cards only.
 func newTodoDropCmd() *cobra.Command {
 	var expect string
 	cmd := &cobra.Command{
@@ -70,8 +72,9 @@ write, prefixing its text with ` + "`[DROPPED — <reason>] `" + ` — the conve
 already in use on hand-written dropped cards.
 
 The card stays in the file: ` + "`done`" + ` removes a finished card, ` + "`drop`" + ` keeps a
-discarded one visible with its reason, and ` + "`undrop <n>`" + ` reverses it exactly.
-A dropped card is not a pick candidate.
+discarded one with its reason, and ` + "`undrop <n>`" + ` reverses it exactly.
+The default list hides dropped cards behind a count line; ` + "`moai todo list --dropped`" + `
+renders the discarded set. A dropped card is not a pick candidate.
 
 Only a queued card may be dropped — a picked card is unpicked first, so
 nothing that undrop cannot restore is ever taken. ` + "`--expect <prefix>`" + `

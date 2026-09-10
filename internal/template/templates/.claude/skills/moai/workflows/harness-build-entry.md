@@ -43,8 +43,8 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary
 - Context-First Discovery: CLAUDE.md §7 Rule 5 (trigger conditions + Socratic interview)
 - Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`hns-*` user-owned vs `moai-harness-*` template-builder)
-- Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A — reserved verbs)
-- Builder module (orchestrator-direct 4 phases): `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` (ANALYZE / PLAN / GENERATE / ACTIVATE — the orchestrator-side logic Phase 8 below transitions into)
+- Companion learning-lifecycle workflow: `.claude/skills/moai/workflows/harness.md` (Branch A — reserved verbs)
+- Builder module (orchestrator-direct 4 phases): `.claude/skills/moai/workflows/harness-builder.md` (ANALYZE / PLAN / GENERATE / ACTIVATE — the orchestrator-side logic Phase 8 below transitions into)
 
 ## Input
 
@@ -52,7 +52,7 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 
 ## Phase 1: Reserved-Verb Guard
 
-[HARD] If `$ARGUMENTS` (trimmed, first token) matches any reserved verb — the learning-lifecycle verbs (`status` / `apply` / `rollback` / `disable`) OR the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) — STOP — this is a misroute. The learning-lifecycle verbs belong to `${CLAUDE_SKILL_DIR}/workflows/harness.md`; the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) route to the `moai harness <verb>` Go binary subcommand. Re-emit the routing guidance and halt. This guard is defense-in-depth; the dispatcher in `SKILL.md` already filters, but this workflow body re-verifies to catch direct-invocation edge cases.
+[HARD] If `$ARGUMENTS` (trimmed, first token) matches any reserved verb — the learning-lifecycle verbs (`status` / `apply` / `rollback` / `disable`) OR the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) — STOP — this is a misroute. The learning-lifecycle verbs belong to `.claude/skills/moai/workflows/harness.md`; the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) route to the `moai harness <verb>` Go binary subcommand. Re-emit the routing guidance and halt. This guard is defense-in-depth; the dispatcher in `SKILL.md` already filters, but this workflow body re-verifies to catch direct-invocation edge cases.
 
 ## Phase 2: Context-First Discovery (extract domain / goal / constraints / scope)
 
@@ -128,7 +128,7 @@ This single round carries BOTH the final-round harness-generation proposal (Phas
 
 On `Build` approval, the orchestrator transitions directly into the Builder — it does NOT delegate to a dynamic-workflow script and does NOT spawn a separate Builder agent. The Builder is **orchestrator-side logic**: the orchestrator continues executing in the same session, running the 4 signal-driven phases (ANALYZE / PLAN / GENERATE / ACTIVATE) using ordinary `Agent()` spawn. Intermediate results are held in the orchestrator's session context.
 
-**Read the Builder module for the full phase logic**: `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md`. That module documents:
+**Read the Builder module for the full phase logic**: `.claude/skills/moai/workflows/harness-builder.md`. That module documents:
 
 - **ANALYZE** — orchestrator parallel `Agent(agentType: "Explore", effort: "low")` fan-out across the codebase + docs + existing harness surfaces + SPEC history (read-only, main tree). Produces a domain profile + task-pattern inventory.
 - **PLAN** — orchestrator spawns a single `Agent(model: "opus", effort: "xhigh")` that selects/combines patterns from the 6-pattern catalog, defines specialist roles, maps each to an execution primitive, and drafts the manifest. The orchestrator then runs an **AskUserQuestion approval gate** at the PLAN→GENERATE boundary (first-class, because the orchestrator holds the boundary — this is the self-contradiction resolution that made the Builder orchestrator-direct).
@@ -160,7 +160,7 @@ After the Builder's ACTIVATE phase completes, render a one-paragraph summary in 
 ## Cross-references
 
 - Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`hns-*` user-owned)
-- Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A)
+- Companion learning-lifecycle workflow: `.claude/skills/moai/workflows/harness.md` (Branch A)
 - moai SKILL.md § harness (dispatcher — argument-branching routing rule)
 - AskUserQuestion canonical: `.claude/rules/moai/core/askuser-protocol.md`
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary

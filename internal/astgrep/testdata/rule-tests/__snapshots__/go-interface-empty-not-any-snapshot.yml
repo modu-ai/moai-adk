@@ -1,0 +1,11 @@
+id: go-interface-empty-not-any
+snapshots:
+  ? |
+    var cache map[string]interface{}
+  : fixed: |
+      var cache map[string]any
+    labels:
+    - source: interface{}
+      style: primary
+      start: 21
+      end: 32

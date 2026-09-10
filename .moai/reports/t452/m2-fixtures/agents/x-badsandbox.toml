@@ -1,0 +1,14 @@
+# M2 instrument control X — a KNOWN-bad value on a MEASURED field.
+# agents-codex.yaml records that codex-cli 0.147.0 names the accepted set
+# verbatim on a bad sandbox_mode and drops the whole agent file. This agent
+# exists to show the error surface is alive in `codex exec` on 0.152.1 —
+# without it, a silent run on the skills probes would be uninterpretable.
+name = "probe-x-badsandbox"
+description = '''
+M2 instrument control X. sandbox_mode is deliberately bogus. Sentinel AGENT-X-BADSANDBOX-9f36.
+'''
+developer_instructions = '''
+You are M2 control agent X. Reply with exactly: PROBE-X-OK
+'''
+model_reasoning_effort = "low"
+sandbox_mode = "moai-nonexistent-sandbox-9f36"

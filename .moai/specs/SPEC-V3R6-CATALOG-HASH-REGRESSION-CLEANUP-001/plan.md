@@ -2,7 +2,6 @@
 id: SPEC-V3R6-CATALOG-HASH-REGRESSION-CLEANUP-001
 title: "Catalog Hash Regression Cleanup — Plan"
 version: "0.1.1"
-status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

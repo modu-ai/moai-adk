@@ -67,8 +67,8 @@ func TestConverge_SurfacesSignalDivergence_WithoutBlocking(t *testing.T) {
 	got := converge(withNote)
 	baseline := converge(without)
 
-	if !got.DisagreementFlag {
-		t.Error("disagreement_flag = false; a backend whose own signals diverged must be surfaced")
+	if got.DisagreementFlag == nil || !*got.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-false; a backend whose own signals diverged must be surfaced as non-nil true (single participant — the REQ-APC-003 carve-out keeps it)")
 	}
 	if !strings.Contains(got.ResidualRiskNote, "diverged") {
 		t.Errorf("residual_risk_note = %q; want the divergence named in it", got.ResidualRiskNote)

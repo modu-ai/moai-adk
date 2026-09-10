@@ -1,0 +1,5 @@
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/progress.md:47  advisory=true  severity=warning
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-V3R6-SESSION-LEGACY-COVERAGE-001/progress.md:259  advisory=true  severity=warning
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-V3R6-SPEC-ID-VALIDATION-001/progress.md:103  advisory=true  severity=warning
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-V3R6-SPEC-LINT-CLEANUP-001/progress.md:45  advisory=true  severity=warning
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t299/.moai/specs/SPEC-V3R6-TEST-REFACTOR-001/progress.md:149  advisory=true  severity=warning

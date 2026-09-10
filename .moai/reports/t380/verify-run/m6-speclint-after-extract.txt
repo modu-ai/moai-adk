@@ -1,0 +1,59 @@
+# moai spec lint — extract (card t380, SPEC-SYNCSHA-BAND-BOUNDARY-001 M6)
+#
+# The full output is 341,577 bytes / 1,101 lines and is NOT committed. This file
+# records its provenance and the parts actually cited in progress.md §E.2, plus
+# the exact commands to regenerate and re-extract it.
+#
+# SOURCE
+#   produced by : ./bin/moai spec lint
+#   binary from : go build -o bin/moai ./cmd/moai   (exit 0)
+#   tree        : f28a7424f  (branch WT-shared-predicate-guard, worktree .claude/worktrees/t380)
+#   written to  : .moai/reports/t380/verify-run/m6-speclint-after.txt  (transient, not committed)
+#   sha256      : 178729c73535a25de9a35c2b127ad8d8d07ae2259975388a261288a5d1ada689
+#   bytes       : 341577
+#   lines       : 1101
+#   exit code   : 0
+#
+# REGENERATE
+#   go build -o bin/moai ./cmd/moai
+#   ./bin/moai spec lint > /tmp/speclint.txt 2>&1; echo "exit_code: $?"
+#   shasum -a 256 /tmp/speclint.txt      # compare against the sha256 above
+#
+# ---------------------------------------------------------------------------
+# EXTRACT 1 — summary line
+#   command: tail -3 .moai/reports/t380/verify-run/m6-speclint-after.txt
+
+0 error(s), 1096 warning(s)
+exit_code: 0
+
+# ---------------------------------------------------------------------------
+# EXTRACT 2 — by-rule split
+#   command: grep -E '^(ERROR|WARNING)' .moai/reports/t380/verify-run/m6-speclint-after.txt \
+#              | awk '{print $1, $2}' | sort | uniq -c | sort -rn
+
+ 846 WARNING CoverageIncomplete
+ 114 WARNING MovingRefUnpinned
+  43 WARNING LegacyEARSKeyword
+  25 WARNING ModalityMalformed
+  24 WARNING MissingExclusions
+  18 WARNING StatusGitConsistency
+  14 WARNING FrontmatterInvalid
+   6 WARNING InvalidREQID
+   5 WARNING SyncSHASlotFormat
+   1 WARNING OwnershipTransitionInvalid
+
+# (846+114+43+25+24+18+14+6+5+1 = 1096 — the split accounts for the total.)
+#
+# ---------------------------------------------------------------------------
+# EXTRACT 3 — the fixtures are outside the linted corpus (the load-bearing check)
+#   command: grep -c 'testdata' .moai/reports/t380/verify-run/m6-speclint-after.txt
+#   command: grep -c 'SSFA'     .moai/reports/t380/verify-run/m6-speclint-after.txt
+
+testdata occurrences: 0
+SSFA occurrences:     0
+
+# An unmoved total is consistent both with the fixtures being outside the corpus
+# and with their being inside it and clean. Zero occurrences of `testdata` and of
+# the fixtures' shared SPEC id `SSFA` in the whole output is what establishes
+# that `moai spec lint` never reached them — so this card cannot have moved the
+# count. That is the ground on which plan.md §G's prediction is confirmed.

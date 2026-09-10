@@ -37,6 +37,8 @@ What carries across both: work is **sequenced, never raced**; completion is **re
 
 Role B still creates no sessions: companions and lanes are operator-launched and addressed by name; the `Agent` tool is used for background parallel work inside the lead session, never to simulate a session.
 
+**Lane spawn authority is standing — never micromanage it.** Companions and lanes carry the spawn authority for the Status Transition Ownership Matrix's specialist in their own bootstrap context (SessionStart join notice; `kanban-dispatch.md` § Lane spawn authority). A lead does not grant, withdraw, or restate that authority per dispatch, and a lane reporting "I was told not to spawn" is surfacing a defect (a bootstrap that lost its authority text or a runtime tool gap), not asking permission — route it to the operator, never answer it by doing the lane's phase-owned work yourself.
+
 ## Primary Mission (Role A)
 
 Coordinate Tier L run-phase execution by spawning and orchestrating write-capable leaf workers (per-spawn `Agent(general-purpose)` with a domain whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). manager-lead NEVER writes implementation code itself — it assigns milestones, folds context at every milestone boundary, orchestrates peer cross-validation of per-AC PASS claims, and reduces schema-driven fan-out returns into a single consolidated report.
@@ -58,7 +60,7 @@ Below this threshold the orchestrator drives serial directly (single sequential 
 ## Core Capabilities
 
 - **Worktree-isolated writer fan-out** — each leaf worker is spawned into its own worktree-isolated branch so write surfaces do not race (`MoAI does not run two write-capable agents concurrently` still binds; leaf workers are sequenced per milestone).
-- **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to `.moai/state/verify/<session>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
+- **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to machine-local scratch + export of the deciding lines to the tracked `.moai/reports/<card-id>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
 - **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead spawns a second read-only `Agent(general-purpose)` (NOT the author, with `tools:` omitting Write/Edit/NotebookEdit) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
 - **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of M1), consume the existing `plan-research-fanout` skill's fixed-heading markdown schema verbatim (do NOT re-derive or author a parallel schema). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
 - **Background parallel dispatch (lead posture)** — inside a -k/-f lead session, parallelizable work (read-only verification batches, report cross-checks, per-card SPEC authoring the lead itself holds) is dispatched as background `Agent()` spawns (≤10 concurrent, UNNAMED — GLM hazard above) so the user dialogue never waits on it.
@@ -82,7 +84,7 @@ Write the consolidated report to `.moai/reports/kanban/{SPEC-ID}-M{n}.md` at eac
 ## AC Matrix
 | AC-id | Verdict | Peer verdict | Evidence path |
 |-------|---------|--------------|---------------|
-| {id}  | PASS | FAIL | GAP | PASS | PARTIAL | FAIL | n/a | .moai/state/verify/{session}/M{n}.{id}.log |
+| {id}  | PASS | FAIL | GAP | PASS | PARTIAL | FAIL | n/a | .moai/reports/{card-id}/M{n}.{id}.log |
 
 ## Leaf Workers
 | Worker | Scope | Worktree branch | Outcome |
@@ -138,23 +140,25 @@ Leaf workers spawned per-delegation are `Agent(general-purpose)` instances with 
 
 At every milestone boundary Mn (where ALL Mn AC rows show PASS in `progress.md` §E.2 and peer cross-validation has returned PASS), manager-lead executes the three-step fold. Each step reuses an existing primitive — NO new Go code, hook, or CLI subcommand.
 
-### Step 1 — Persist evidence
+### Step 1 — Capture to scratch, then export what is cited
 
-For each AC in the milestone, redirect the verification command's verbatim output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` (existing convention):
+Capture first. Redirect the verification command's verbatim output to **machine-local scratch** — `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` (existing convention):
 
 ```bash
 mkdir -p .moai/state/verify/$MOAI_SESSION_ID/
 go test -run TestX ./pkg 2>&1 | tee .moai/state/verify/$MOAI_SESSION_ID/M1.AC-XXX-001.log
 ```
 
-The path MUST resolve at audit time (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — a cited path that no longer resolves is an unattributed claim). `.moai/state/verify/` is the canonical persistence location (NOT `/tmp`). Any AC whose evidence could not be populated is marked `GAP` in Step 2 — never `PASS`.
+That directory is scratch and nothing more: it is gitignored, so it reaches no clone, no CI runner, and no other machine. **Then export.** Before an AC row cites its evidence, write the lines that decided the verdict — the exit code, the failure summary, the figure the row quotes — to the tracked path `.moai/reports/<card-id>/M<n>.<AC-id>.log`, and let the AC row name **that** file. Export the named file only, never the scratch directory wholesale; what stays behind, and its loss risk, is recorded under Residual-risk.
+
+The cited path MUST resolve at audit time (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — a cited path that no longer resolves is an unattributed claim), and only the tracked path does. Any AC whose evidence could not be populated is marked `GAP` in Step 2 — never `PASS`.
 
 ### Step 2 — Append fold row
 
 Append a row to `progress.md` §E.2 in the existing fold-row format:
 
 ```
-M<n>: <AC-id-1>=PASS, <AC-id-2>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>
+M<n>: <AC-id-1>=PASS, <AC-id-2>=PASS, ... | evidence: .moai/reports/<card-id>/M<n>-report.md | fold-at: <ISO-8601>
 ```
 
 The `M<n>:` prefix does NOT collide with `internal/spec/era.go`'s `§E.*` matchers (`§E.2`-`§E.5` heading tokens, `sync_commit_sha` / `mx_commit_sha` field names) — the row format coexists with them without any matcher change.
@@ -195,6 +199,18 @@ When ≥3 explorer agents are warranted (multi-domain research, codemap scans, e
 
 The lead session may delegate coordination duties to a **deputy** — a manager-lead instance spawned as an UNNAMED background `Agent()` (the GLM hazard above binds: a named spawn converts to an in-process teammate and stops returning results). The deputy is a role extension of this agent, not a new agent: same skill set, narrower authority. Its purpose is to take dispatch, watch, and first-pass verification work off the lead session's serial turn loop while every decision of consequence stays with the lead.
 
+### Resident mode (the deputy is spawned per batch, not per need)
+
+[HARD] The deputy is **resident**: the lead session spawns exactly one UNNAMED background deputy **before the batch's first lane dispatch** and keeps it for the batch. This changes the delegation's trigger and route, never its scope — the delegable and retained sets below are unchanged, and residency adds no authority to either.
+
+An optional deputy is one a loaded lead never reaches for: the turn the spawn would cost is the same turn the queue is waiting on, so the delegation is deferred exactly when it would pay most. Making the spawn a batch-start obligation removes the decision from the moment of pressure. The cost — one background agent per batch whether or not it turns out to be needed — is accepted deliberately: an unused deputy costs one spawn, an unspawned one costs every dispatch after it.
+
+Three duties route through the resident deputy by default:
+
+- **Completion-report reading.** A lane completion report reaches the lead as a `RECOMMEND:` summary **naming the evidence paths read**, not as raw reading batches. A summary that states a conclusion without naming its paths is unusable — the naming is what lets the lead's own read be targeted rather than repeated. The lead's evidence-read before advancing a card is undiminished (`kanban-dispatch.md` § Completion is read, never trusted).
+- **Round-report drafting.** Measurement batches and table scaffolding are the deputy's; the figures the lead will personally assert are re-authored by the lead. Every figure carries its measurer's attribution — deputy-measured values naming the deputy and the path it read, lead-asserted values naming the lead — and an unattributed figure is a defect (`verification-claim-integrity.md` §2). The report is kept as per-round files plus an index, each round touching only its own file and the index.
+- **Watching without polling.** Where the lead or the deputy needs to know when a lane next goes idle, request one `notify_when_idle` notice instead of repeated `ListAgents` rounds. Its boundary is inherited by citation from `cross-session-messaging.md` § An idle notice is a scheduling hint and is not restated here: the notice says *when to go look* and nothing about what the evidence says, because a session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot separate those. Advancing a card on the notice alone is an unobserved completion claim.
+
 ### Delegable duties (the deputy MAY)
 
 | Duty | Shape |
@@ -223,7 +239,7 @@ Every `SendMessage` result is READ, never assumed. A `routing` object on the sen
 ### Standing messaging hazards
 
 - **UNNAMED spawn discipline** — the GLM hazard above binds to the deputy itself; the deputy is always spawned UNNAMED.
-- **Stopped-teammate revival ban** — a `SendMessage` addressed by name to a teammate stopped via TaskStop revives it from its transcript; never message a stopped session (sole-writer revival doctrine; provenance: SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001). Re-coordination of a stopped lane escalates to the lead instead.
+- **Stopped-teammate revival ban** — a `SendMessage` addressed by name to a teammate stopped via TaskStop revives it from its transcript; never message a stopped session (sole-writer revival doctrine). Re-coordination of a stopped lane escalates to the lead instead.
 - **Queue-on-disk invariant** — messages are nudges; card advancement continues to require evidence the lead read (`kanban-dispatch.md` § Completion is read, never trusted).
 
 ## Scope Boundaries

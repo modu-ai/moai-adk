@@ -1,0 +1,7 @@
+--- FAIL: TestAcquireRefusesOnDriftWithGateEnabled (0.50s)
+    integration_settings_drift_test.go:179: acquire succeeded on a drifted tree with the refusal layer on
+        output: release-integration window acquired by sess-lane8 on main
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.389s
+FAIL
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.835s

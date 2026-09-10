@@ -106,9 +106,9 @@ type glmMessagesRequest struct {
 	// reasoning_effort control — the delivery field SELECTED BY LIVE EVIDENCE
 	// (AC-AMP-006's first differential ran hypothesis A, the Anthropic-style
 	// thinking object, and measured budget_tokens IGNORED — output tokens
-	// 3667 vs 3480 under budgets 3072 vs 1024, ratio 1.02; evidence
-	// .moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md). The
-	// state name is transmitted VERBATIM; empty omits the field.
+	// 3667 vs 3480 under budgets 3072 vs 1024, ratio 1.02; measured by card
+	// t225's AC-AMP-006 differential). The state name is transmitted
+	// VERBATIM; empty omits the field.
 	ReasoningEffort string       `json:"reasoning_effort,omitempty"`
 	MaxTokens       int          `json:"max_tokens"`
 	System          string       `json:"system"`
@@ -219,11 +219,36 @@ func resolveGLMModelForAgent(agentKey string) string {
 //
 // It NEVER invokes AskUserQuestion (subagent boundary, REQ-MCP-014).
 func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// The tree comes from resolveToolProjectRoot — the same caller-named-root
+	// contract codex_audit has (SPEC-MCP-WORKTREE-ROOT-001): a worktree session
+	// MUST be able to name its own tree, because the server's own resolution
+	// names the primary checkout. Absent ⇒ resolveProjectDir(), exactly what
+	// this call did before the parameter existed. An unusable path is a tool
+	// error, not the fail-open verdict — fail-open covers a broken GLM, not a
+	// caller input the caller can correct. Resolved BEFORE the key check so a
+	// caller-input error keeps its precedence (codex_audit resolves the same
+	// way before touching its backend).
+	root, rootErr := resolveToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("glm_audit", rootErr), nil
+	}
+
+	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
+	// result this handler returns below, fail-open exits included — an
+	// inconclusive verdict is still a verdict that must name its binary.
+	buildCommit, buildLag := auditBuildIdentity(ctx, root)
+	// review shapes every glm_audit result this handler returns, identity
+	// fields attached — one assembly point for the whole handler.
+	review := func(out ReviewOutput) *mcp.CallToolResult {
+		out.BuildCommit, out.BuildLag = buildCommit, buildLag
+		return reviewToolResult(out)
+	}
+
 	key := glmKeyLoader()
 	if key == "" {
 		// Fail-open (C2 / REQ-MCP-012): a missing optional dependency must not
 		// hard-block. The workflow falls back to the active auditor (claude).
-		return reviewToolResult(glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")), nil
+		return review(glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")), nil
 	}
 
 	focus := req.GetString("focus", "")
@@ -235,17 +260,6 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// carried in the request. No diff ⇒ no review: fail open to inconclusive
 	// rather than ask z.ai for a verdict on code it will never see (card t178).
 	//
-	// The tree comes from resolveToolProjectRoot — the same caller-named-root
-	// contract codex_audit has (SPEC-MCP-WORKTREE-ROOT-001): a worktree session
-	// MUST be able to name its own tree, because the server's own resolution
-	// names the primary checkout. Absent ⇒ resolveProjectDir(), exactly what
-	// this call did before the parameter existed. An unusable path is a tool
-	// error, not the fail-open verdict — fail-open covers a broken GLM, not a
-	// caller input the caller can correct.
-	root, rootErr := resolveToolProjectRoot(req)
-	if rootErr != nil {
-		return toolErr("glm_audit", rootErr), nil
-	}
 	// Resolved BELOW the root (CR #8): the pin must come from the SAME tree as
 	// the diff under review — a worktree session names its own root, and
 	// resolving through projectDirResolver() here could read a different
@@ -256,15 +270,15 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	}
 	diff, err := collectReviewDiff(root, target)
 	if err != nil {
-		return reviewToolResult(glmInconclusive("no reviewable change: " + err.Error())), nil
+		return review(glmInconclusive("no reviewable change: " + err.Error())), nil
 	}
 	if strings.TrimSpace(diff) == "" {
-		return reviewToolResult(glmInconclusive("no reviewable change: target " + target + " produced an empty diff")), nil
+		return review(glmInconclusive("no reviewable change: target " + target + " produced an empty diff")), nil
 	}
 
 	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
 	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
-	return reviewToolResult(out), nil
+	return review(out), nil
 }
 
 // callGLMAudit posts the audit prompt to z.ai and parses the response into a

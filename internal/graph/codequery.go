@@ -126,6 +126,10 @@ type CodeMatch struct {
 	Line   int    `json:"Line"`
 	Grade  string `json:"Grade"`
 	Via    string `json:"Via"` // how the layer observed the symbol
+	// Confidence is the source code-call edge's resolution confidence
+	// (REQ-GEC-008); 0 and omitted on legacy artifacts that predate the
+	// field (REQ-GEC-009: unknown, never an error).
+	Confidence float64 `json:"Confidence,omitempty"`
 }
 
 // FindCode searches the code-derived layer for a symbol name: callee sites
@@ -147,7 +151,7 @@ func FindCode(projectRoot, query string) ([]CodeMatch, string, error) {
 			key := "callee:" + e.Source + ":" + e.Target + ":" + fmt.Sprint(e.Line)
 			if !seen[key] {
 				seen[key] = true
-				out = append(out, CodeMatch{Symbol: e.Target, File: file, Line: e.Line, Grade: e.Grade, Via: "callee (called at)"})
+				out = append(out, CodeMatch{Symbol: e.Target, File: file, Line: e.Line, Grade: e.Grade, Via: "callee (called at)", Confidence: e.Confidence})
 			}
 		}
 		if fn == query {
@@ -157,7 +161,7 @@ func FindCode(projectRoot, query string) ([]CodeMatch, string, error) {
 			key := "caller:" + file + ":" + e.Target + ":" + fmt.Sprint(e.Line)
 			if !seen[key] {
 				seen[key] = true
-				out = append(out, CodeMatch{Symbol: fn, File: file, Line: e.Line, Grade: e.Grade, Via: "caller (calls " + e.Target + ")"})
+				out = append(out, CodeMatch{Symbol: fn, File: file, Line: e.Line, Grade: e.Grade, Via: "caller (calls " + e.Target + ")", Confidence: e.Confidence})
 			}
 		}
 	}
@@ -168,10 +172,14 @@ func FindCode(projectRoot, query string) ([]CodeMatch, string, error) {
 
 // CallTraceEdge is one traversed code-call edge.
 type CallTraceEdge struct {
-	From  string `json:"from"` // file:func (caller) or bare callee name
-	To    string `json:"to"`
-	Line  int    `json:"line"`
-	Grade string `json:"grade"`
+	From string `json:"from"` // file:func (caller) or bare callee name
+	To   string `json:"to"`
+	Line int    `json:"line"`
+	// Grade is the per-language capability grade of the source edge;
+	// Confidence is its resolution confidence (REQ-GEC-008), 0/omitted on
+	// legacy artifacts (REQ-GEC-009).
+	Grade      string  `json:"grade"`
+	Confidence float64 `json:"confidence,omitempty"`
 }
 
 // TraceCalls traverses code-call edges from a symbol: callers = who reaches
@@ -211,7 +219,7 @@ func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallT
 		var next []string
 		for _, node := range frontier {
 			for _, e := range byTarget[node] {
-				callers = append(callers, CallTraceEdge{From: e.Source, To: e.Target, Line: e.Line, Grade: e.Grade})
+				callers = append(callers, CallTraceEdge{From: e.Source, To: e.Target, Line: e.Line, Grade: e.Grade, Confidence: e.Confidence})
 				if _, fn := splitCodeNode(e.Source); fn != "" && !revSeen[fn] {
 					revSeen[fn] = true
 					next = append(next, fn)
@@ -227,7 +235,7 @@ func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallT
 		var next []string
 		for _, node := range frontier {
 			for _, e := range byCaller[node] {
-				callees = append(callees, CallTraceEdge{From: e.Source, To: e.Target, Line: e.Line, Grade: e.Grade})
+				callees = append(callees, CallTraceEdge{From: e.Source, To: e.Target, Line: e.Line, Grade: e.Grade, Confidence: e.Confidence})
 				if !fwdSeen[e.Target] {
 					fwdSeen[e.Target] = true
 					next = append(next, e.Target)

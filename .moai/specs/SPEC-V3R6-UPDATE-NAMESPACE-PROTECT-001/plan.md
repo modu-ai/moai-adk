@@ -2,7 +2,6 @@
 id: SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
 title: "moai update User-Owned Namespace Protection + Backup Standardization — Plan"
 version: "0.1.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

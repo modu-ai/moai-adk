@@ -1,0 +1,46 @@
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                      │
+│  System Diagnostics                                                                                                                                  │
+│  System ---                                                                                                                                          │
+│    STATUS  CHECK         MESSAGE                                                                                                                     │
+│    ok      Go Runtime    go 1.99.99 (testos/testarch)                                                                                                │
+│    ok      Git           git version 9.99.99                                                                                                         │
+│    ok      Claude Code   test-claude-99                                                                                                              │
+│    ok      GitHub CLI    gh version 9.99.99 (2099-12-31)                                                                                             │
+│    ok      ast-grep CLI  ast-grep 9.99.99                                                                                                            │
+│    5 ok, 0 warn, 0 fail                                                                                                                              │
+│                                                                                                                                                      │
+│  MoAI-ADK ---                                                                                                                                        │
+│    STATUS  CHECK                  MESSAGE                                                                                                            │
+│    warn    MoAI Config            .moai/ directory not found (run 'moai init')                                                                       │
+│    warn    Claude Config          .claude/ directory not found                                                                                       │
+│    ok      MoAI Version           moai-adk v3.1.3                                                                                                    │
+│    ok      Binary Freshness       development build (no commit metadata)                                                                             │
+│    ok      MCP Scope Duplicates   no MCP configuration found (project or global)                                                                     │
+│    ok      MCP Server Version     no running moai MCP server recorded                                                                                │
+│    ok      Agent Emit Embed       not applicable: no committed agent-emit artifacts (not a MoAI project root)                                        │
+│    warn    Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
+│    ok      Harness 5-Layer        .moai/harness/ not present (no harness configured)                                                                 │
+│    ok      Migration              current version 0                                                                                                  │
+│    ok      Plugin Deployment      no plugin marker (binary-managed)                                                                                  │
+│    ok      Home Disk Usage        no ~/.moai home found — nothing to report                                                                          │
+│    9 ok, 3 warn, 0 fail                                                                                                                              │
+│                                                                                                                                                      │
+│  Workspace ---                                                                                                                                       │
+│    STATUS  CHECK                 MESSAGE                                                                                                             │
+│    warn    Hooks Config          .claude/hooks/ not found — hook handlers unavailable                                                                │
+│    ok      Hook opt-in:          disabled                                                                                                            │
+│    warn    Slash Commands        .claude/commands/ not found — slash commands unavailable                                                            │
+│    warn    Skills Allowlist      .claude/skills/ not found                                                                                           │
+│    warn    MX Tag Config         .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                     │
+│    warn    Worktree State        .moai/state/ not found — worktree checkpoint storage unavailable                                                    │
+│    ok      Worktree Base Branch  git_strategy.worktree_base_branch unset — card worktrees follow the repository default                              │
+│    warn    BODP Config           .moai/branches/ not found — BODP audit trail disabled                                                               │
+│    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                            │
+│    warn    Glamour Cache         glamour not integrated                                                                                              │
+│    ok      Codex Wiring          not wired (claude-only project) — skipped                                                                           │
+│    3 ok, 8 warn, 0 fail                                                                                                                              │
+│                                                                                                                                                      │
+│   Pass 17    Warn 11    Fail 0                                                                                                                       │
+│                                                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

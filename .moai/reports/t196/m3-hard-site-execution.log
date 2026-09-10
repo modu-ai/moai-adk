@@ -1,0 +1,23 @@
+### pwd (the cwd premise the root-relative form rests on)
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+
+### node --version
+v25.9.0
+
+### CONTROL — the path an empty ${CLAUDE_SKILL_DIR} expansion produces
+### command: node /scripts/check-svg.mjs .moai/reports/t196/probe.svg
+node:internal/modules/cjs/loader:1478
+  throw err;
+  ^
+
+exit=1
+
+### REPLACED — verbatim from SKILL.md:235
+### command: node .claude/skills/moai-domain-svg-infographic/scripts/check-svg.mjs .moai/reports/t196/probe.svg
+.moai/reports/t196/probe.svg:1:1  error  SVG002  root <svg> has no viewBox attribute
+.moai/reports/t196/probe.svg:1:1  error  SVG060  root <svg> has no role; an informative diagram needs role="img" (a decorative graphic needs aria-hidden="true" instead)
+.moai/reports/t196/probe.svg:1:1  error  SVG062  root <svg> has no <title>; the diagram has no accessible name
+.moai/reports/t196/probe.svg:1:1  error  SVG063  root <svg> has no <desc>; state in one sentence what the diagram shows
+.moai/reports/t196/probe.svg:1:1  error  SVG061  root <svg> has no aria-labelledby naming the <title> and <desc> ids; role="img" alone resolves no name
+5 errors, 0 warnings
+exit=1

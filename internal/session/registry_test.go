@@ -217,6 +217,11 @@ func TestQueryActiveWorkFilter(t *testing.T) {
 // Uses FakeClock to deterministically advance time.
 func TestPurgeStale(t *testing.T) {
 	r, clock := newTestRegistry(t)
+	// Pin every liveness probe to "positively dead" so the heartbeat-floor
+	// assertions below stay meaningful: Register records a live PID (this
+	// test process), and the liveness-aware purge keeps live sessions past
+	// the floor (see registry_purge_liveness_test.go).
+	livenessProbeFake{}.install(t)
 
 	// Register 3 entries with distinct started_at + heartbeat times.
 	if err := r.Register("uuid-fresh", "SPEC-A", "plan"); err != nil {
@@ -261,6 +266,9 @@ func TestPurgeStale(t *testing.T) {
 // back to DefaultStaleMinutes.
 func TestPurgeStaleDefaultThreshold(t *testing.T) {
 	r, clock := newTestRegistry(t)
+	// Pin every liveness probe to "positively dead" — same reason as
+	// TestPurgeStale above.
+	livenessProbeFake{}.install(t)
 	if err := r.Register("uuid-old", "SPEC-A", "plan"); err != nil {
 		t.Fatal(err)
 	}

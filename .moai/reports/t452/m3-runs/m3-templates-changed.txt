@@ -1,0 +1,1 @@
+internal/template/templates/.codex/agents/moai/sync-auditor.toml

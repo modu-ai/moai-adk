@@ -1,0 +1,10 @@
+=== RUN   TestZZT518ProbeBothMaps
+    zz_t518_probe_test.go:46: SCANNED 812
+    zz_t518_probe_test.go:47: NARROW_ALL(unfiltered, the old operand) map[CoverageIncomplete:16 LegacyEARSKeyword:7]
+    zz_t518_probe_test.go:48: NARROW_NONADVISORY(repaired operand)    map[LegacyEARSKeyword:7]
+    zz_t518_probe_test.go:49: LIVE_NONADVISORY                        map[LegacyEARSKeyword:7]
+    zz_t518_probe_test.go:50: DUPLICATE_REQID narrow=0 live=0
+    zz_t518_probe_test.go:51: LEGACY_EARS     narrow=7 live=7
+--- PASS: TestZZT518ProbeBothMaps (0.27s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.631s

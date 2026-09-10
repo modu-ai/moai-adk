@@ -160,3 +160,70 @@ func TestCheckIntegrationLock_OnlyGuardsMerge(t *testing.T) {
 		}
 	}
 }
+
+// AC-INL-008 — the guard follows the ANCHORED liveness (card t298).
+//
+// Before the owner-pid anchor, every record carried the acquire CLI's own
+// (dead) pid, so a genuinely live holder took the stale branch and the guard
+// ALLOWED exactly the merge it exists to refuse. These three legs pin the
+// three anchored record shapes on one run; the legacy shape is covered by the
+// pre-existing rows above, unchanged.
+func TestCheckIntegrationLock_FollowsAnchoredLiveness(t *testing.T) {
+	const merge = "git merge --no-ff WT-some-lane"
+
+	t.Run("anchored live holder denies", func(t *testing.T) {
+		root := t.TempDir()
+		seedLock(t, root, kanban.IntegrationLock{
+			SessionID:   "sess-holder",
+			SessionName: "lane-5",
+			PID:         os.Getpid(), // the owning session, alive
+			PIDSource:   kanban.PIDSourceSessionOwner,
+			Branch:      "release/v9.9.9",
+			AcquiredAt:  "2026-08-27T00:00:00Z",
+		})
+		decision, reason := checkIntegrationLock(lockGuardInput(t, "sess-other", merge), root)
+		if decision != DecisionDeny {
+			t.Fatalf("decision = %q, want deny for a live anchored holder", decision)
+		}
+		if !strings.Contains(reason, integrationLockViolationPrefix) {
+			t.Errorf("reason lacks the sentinel: %s", reason)
+		}
+		if !strings.Contains(reason, "lane-5") {
+			t.Errorf("reason does not name the holder: %s", reason)
+		}
+	})
+
+	t.Run("anchored dead holder allows", func(t *testing.T) {
+		root := t.TempDir()
+		dead := kanban.IntegrationLock{
+			SessionID:  "sess-holder",
+			PID:        0x7FFFFFF0, // almost certainly not running
+			PIDSource:  kanban.PIDSourceSessionOwner,
+			Branch:     "release/v9.9.9",
+			AcquiredAt: "2026-08-27T00:00:00Z",
+		}
+		if !dead.Stale() {
+			t.Skip("the seeded pid is live on this machine; the reclaim path is not exercisable here")
+		}
+		seedLock(t, root, dead)
+		decision, _ := checkIntegrationLock(lockGuardInput(t, "sess-other", merge), root)
+		if decision != "" {
+			t.Errorf("decision = %q, want allow (the anchored owner is gone)", decision)
+		}
+	})
+
+	t.Run("anchored pid-0 holder denies conservatively", func(t *testing.T) {
+		root := t.TempDir()
+		seedLock(t, root, kanban.IntegrationLock{
+			SessionID:  "sess-holder",
+			PID:        0, // owner unresolvable at acquire time
+			PIDSource:  kanban.PIDSourceSessionOwner,
+			Branch:     "release/v9.9.9",
+			AcquiredAt: "2026-08-27T00:00:00Z",
+		})
+		decision, _ := checkIntegrationLock(lockGuardInput(t, "sess-other", merge), root)
+		if decision != DecisionDeny {
+			t.Errorf("decision = %q, want deny; an unresolvable owner reads live, and the cheap failure is an operator asking the holder to release", decision)
+		}
+	})
+}

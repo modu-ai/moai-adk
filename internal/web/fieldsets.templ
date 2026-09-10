@@ -247,7 +247,13 @@ templ fieldsetGLMKey(view pageView) {
 templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 	switch f.Type {
 		case settings.TypeBool:
-			@schemaToggleRow(f, view.SchemaValues[f.Name] == "true")
+			// AbsentDefault polarity (sync-audit F1-D, SPEC-WEB-WRITE-SAFETY-001):
+			// the write gate interprets an ABSENT key through the field's declared
+			// runtime default, so the render must agree — a default-ON field shows
+			// checked while its key is absent (same reading as mcpToolRow's
+			// `!= "false"` below). An `== "true"` check here drew absent as OFF,
+			// and the untouched-rendered save then recorded enabled: false.
+			@schemaToggleRow(f, view.SchemaValues[f.Name] == "true" || (view.SchemaValues[f.Name] == "" && f.AbsentDefault == "true"))
 		case settings.TypeSelect:
 			@schemaSelectRow(f, view.SchemaValues[f.Name], view.FieldErrors)
 		case settings.TypeRadio:

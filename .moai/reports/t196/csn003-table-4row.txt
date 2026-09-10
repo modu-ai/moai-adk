@@ -1,0 +1,6 @@
+| Capability | In Claude harness | When absent in this harness |
+|---|---|---|
+| question-channel | AskUserQuestion tool | return a blocker report |
+| task-list | TaskCreate, TaskUpdate, TaskList, TaskGet | report progress in prose |
+| design-sync | DesignSync tool | skip design sync |
+| cross-session-messaging | SendMessage, ListAgents tools | use the moai MCP broker |

@@ -1,0 +1,12 @@
+### judgment — the 4 unguarded files this SPEC edits
+AGENTS.md:0
+internal/template/templates/AGENTS.md:0
+internal/template/templates/.claude/rules/moai/development/skill-authoring.md:2
+internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md:0
+
+### remaining matches in skill-authoring.md (must be the two frontmatter example dates)
+45:- updated: ISO date as string (e.g., "2026-01-28")
+89:  updated: "2026-01-28"
+
+### positive control — SAME command against this SPEC's own spec.md; pass = non-zero
+50

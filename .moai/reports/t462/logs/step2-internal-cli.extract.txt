@@ -1,0 +1,82 @@
+# t462 step2: MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -timeout 1800s -v ./internal/cli/...
+# exit=0 duration=773s swept(=== RUN)=6660 PASS=6629 SKIP=31 FAIL=0
+# tree SHA bd7c58201; full 1.0M verbose log machine-local at /tmp/t462-run-step2.log
+# --- SKIP inventory (preceding reason line + skip line):
+    audit_pin_live_test.go:182: MOAI_AUDIT_PIN_LIVE != 1 — the live audit-pin gates are opt-in (they spend real z.ai / codex quota)
+--- SKIP: TestAuditPinLive_GLMDifferential (0.00s)
+    audit_pin_live_test.go:301: MOAI_AUDIT_PIN_LIVE != 1 — the live audit-pin gates are opt-in (they spend real z.ai / codex quota)
+--- SKIP: TestAuditPinLive_CodexPinConfirmation (0.00s)
+    codex_live_protocol_probe_test.go:177: MOAI_CODEX_LIVE_PROBE != 1 — live protocol probe is opt-in (it spends real codex quota)
+--- SKIP: TestCodexLive_ThreadReuseAndTurnInterrupt (0.00s)
+    codex_live_protocol_probe_test.go:330: MOAI_CODEX_LIVE_PROBE != 1 — live protocol probe is opt-in (it spends real codex quota)
+--- SKIP: TestCodexLive_SandboxPolicyStickiness (0.00s)
+    codex_live_protocol_probe_test.go:395: MOAI_CODEX_LIVE_PROBE != 1 — live protocol probe is opt-in (it spends real codex quota)
+--- SKIP: TestCodexLive_OmittedSandboxPolicyBaseline (0.00s)
+    codex_live_protocol_probe_test.go:461: MOAI_CODEX_LIVE_PROBE != 1 — live protocol probe is opt-in (it spends real codex quota)
+--- SKIP: TestCodexLive_ExplicitReadOnlyApprovalStall (0.00s)
+    codex_live_protocol_probe_test.go:508: MOAI_CODEX_LIVE_PROBE != 1 — live protocol probe is opt-in (it spends real codex quota)
+--- SKIP: TestCodexLive_ReviewStartEmitsTurnStarted (0.00s)
+    codex_review_gate_live_test.go:36: MOAI_SKIP_LIVE_CODEX=1
+--- SKIP: TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey (0.00s)
+    codex_review_target_live_test.go:137: MOAI_SKIP_LIVE_CODEX=1 — AC-CRT-010 UNOBSERVED (a skip is not a pass)
+--- SKIP: TestCodexLive_ReviewStartBaseBranchIsNotRejected (0.00s)
+    gate_lock_cli_test.go:40: helper process only
+--- SKIP: TestGateLockHelperSleep (0.00s)
+    glm_team_test.go:187: not in a git repository
+--- SKIP: TestCleanupMoaiWorktrees (0.00s)
+    glm_tools_test.go:697: 읽기 전용 디렉토리에 파일 생성 불가 — 환경 제한으로 스킵
+--- SKIP: TestGLMToolsEnable_AtomicWriteProtectsOriginal (0.00s)
+    launch_session_pid_exec_posix_test.go:31: helper process for TestExecOrSpawnClaude_StampsLiveSessionPID
+--- SKIP: TestSessionPIDStampExecHelper (0.00s)
+    mcp_glm_test.go:357: structural guard lives in mcp_audit_test.go package-wide grep
+--- SKIP: TestGLMAudit_NoAskUserQuestion (0.00s)
+        stat /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t462/internal/cli/cmd/moai: directory not found
+--- SKIP: TestMCPServer_StdioRoundTripSubprocess (0.02s)
+    spec_view_test.go:195: E2E test requires proper spec file parsing - skipping for now
+--- SKIP: TestViewAcceptanceCriteria_ShapeTraceE2E (0.00s)
+--- PASS: TestLegacySkillIDsNotEmbedded (0.00s)
+    --- SKIP: TestLegacySkillIDsNotEmbedded/manifest_error (0.00s)
+    --- SKIP: TestLegacySkillIDsNotEmbedded/manifest_empty (0.00s)
+    update_version_test.go:645: test requires non-TTY stdin; run via `go test` (pipe), not an interactive shell
+--- SKIP: TestRunVersionBranch_NonTTYProceeds (0.00s)
+    migration_test.go:11: waiting for migration CLI implementation
+--- SKIP: TestMigrationStatus_Human (0.00s)
+    migration_test.go:18: waiting for migration CLI implementation
+--- SKIP: TestMigrationStatus_JSON (0.00s)
+    migration_test.go:25: waiting for migration CLI implementation
+--- SKIP: TestMigrationRun_AppliesPending (0.00s)
+    migration_test.go:31: waiting for migration CLI implementation
+--- SKIP: TestMigrationRun_NoPending (0.00s)
+    migration_test.go:38: waiting for migration CLI implementation
+--- SKIP: TestMigrationRollback_NoRollbackable (0.00s)
+    migration_test.go:45: waiting for migration CLI implementation
+--- SKIP: TestMigrationRollback_Succeeds (0.00s)
+    migration_test.go:52: waiting for migration CLI implementation
+--- SKIP: TestMigrationRollback_M001_Rejected (0.00s)
+    wave1_sync_test.go:94: template not found at /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t462/internal/template/templates/scripts/ci-mirror/cross-compile.sh — skipping: open /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t462/internal/template/templates/scripts/ci-mirror/cross-compile.sh: no such file or directory
+--- SKIP: TestCrossCompileScriptMirrorsCanonical (0.00s)
+--- PASS: TestResolveRulesDir (0.00s)
+    --- SKIP: TestResolveRulesDir/windows_volume-letter_gate.yaml_value_passes_through_unjoined (0.00s)
+    agent_lint_test.go:1958: fixture-lr04-dead-hook.md not found, skipping
+--- SKIP: TestCheckDeadHooks_ViaLintAgentFile (0.00s)
+--- PASS: TestMakeSymlink_SkipsWhenCreationFails (0.00s)
+    --- SKIP: TestMakeSymlink_SkipsWhenCreationFails/collision (0.00s)
+    merge_test.go:787: Embedded template loading error requires different test setup
+--- SKIP: TestMergeUserFiles_EmbeddedTemplateError (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	769.011s
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	2.045s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	11.068s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	2.753s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	6.241s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	7.582s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	3.076s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	1.538s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	4.068s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	6.957s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	6.482s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	3.808s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	5.028s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	5.768s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	4.434s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	10.906s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	14.916s

@@ -2,7 +2,6 @@
 id: SPEC-ASTGREP-EDIT-001
 title: "Acceptance criteria — ast-grep wiring repair and moai ast-edit"
 version: "0.3.0"
-status: completed
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS

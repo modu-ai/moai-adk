@@ -28,6 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -85,11 +86,24 @@ provision the entry (M4).`,
 // until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
 // internally (derived from os signals); there is no ctx to thread here.
 func runMCPServer() error {
+	projectDir := resolveProjectDir()
+	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
+	if lockErr != nil {
+		return lockErr
+	}
+	if err := homestate.CheckRuntimeAdmission(projectDir); err != nil {
+		_ = admissionLock.Release()
+		return err
+	}
 	// Stamp this process's build identity so `moai doctor` can detect a host
 	// still talking to a previously-installed build (mcp_server_runtime.go).
 	// Best-effort by contract: a failed stamp never blocks serving.
-	if recordPath, err := writeMCPServerRuntimeRecord(resolveProjectDir()); err == nil {
+	if recordPath, err := writeMCPServerRuntimeRecord(projectDir); err == nil {
 		defer removeMCPServerRuntimeRecord(recordPath)
+		_ = admissionLock.Release()
+	} else {
+		_ = admissionLock.Release()
+		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
 	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
@@ -192,6 +206,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("verify_snapshot", mcp.NewTool(
 		"verify_snapshot",
 		mcp.WithDescription("Read (or record into) the per-key verification snapshot. Wraps verify.Load (+ verify.RecordCheck when a check is supplied). First CLI/MCP surface for verify."),
+		projectRootOption(),
 		mcp.WithString("key", mcp.Required(), mcp.Description("Snapshot key (HEAD:digest form).")),
 		mcp.WithString("command", mcp.Description("When set, RECORD a check entry via verify.RecordCheck instead of reading.")),
 		mcp.WithInteger("exit_code", mcp.Description("Exit code for a recorded check (used with 'command').")),
@@ -201,6 +216,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("verify_trend", mcp.NewTool(
 		"verify_trend",
 		mcp.WithDescription("Read the per-key verification check history (trend). Wraps verify.Load, surfacing the Checks sequence."),
+		projectRootOption(),
 		mcp.WithString("key", mcp.Required(), mcp.Description("Snapshot key whose check trend is read.")),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleVerifyTrend)
@@ -252,7 +268,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"codex_audit",
 		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open)."),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
-		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'.")),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
 		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
 		projectRootOption(),
@@ -493,7 +509,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 
 	add("graph_find_code", mcp.NewTool(
 		"graph_find_code",
-		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade. Answer names the tree root + commit."),
+		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade and per-edge resolution confidence (1.0 extracted / 0.95 intra-package / 0.85 inferred; absent on pre-upgrade artifacts). Answer names the tree root + commit."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Symbol name to search for (e.g. 'CheckFreshness').")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -501,12 +517,25 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 
 	add("graph_trace_calls", mcp.NewTool(
 		"graph_trace_calls",
-		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer. Answer names the tree root + commit."),
+		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer, each edge carrying its resolution confidence (absent on pre-upgrade artifacts). Answer names the tree root + commit."),
 		mcp.WithString("symbol", mcp.Required(), mcp.Description("Symbol name to trace from (e.g. 'RefreshIndex').")),
 		mcp.WithInteger("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphTraceCalls)
+
+	// SPEC-GRAPH-REPORT-001 REQ-GR-001: the A→B reachability query. The
+	// description restates the shared 8-hop cap exactly as graph_trace_calls
+	// does (REQ-GR-002) — a static string cannot reference the const, which
+	// remains the enforced bound (codequery.go maxTraceDepth).
+	add("graph_shortest_path", mcp.NewTool(
+		"graph_shortest_path",
+		mcp.WithDescription("Shortest call path from one symbol to another over code-call edges (capped at 8 hops), each hop carrying its line and resolution confidence (absent on pre-upgrade artifacts). Endpoints are file:function node ids or bare symbol names resolving to exactly one node; no-path and ambiguous-name answers are structured results naming both endpoints and the cap. Answer names the tree root + commit."),
+		mcp.WithString("from", mcp.Required(), mcp.Description("Path start: a node id (file:function) or a bare symbol name resolving to exactly one node.")),
+		mcp.WithString("to", mcp.Required(), mcp.Description("Path end: a node id (file:function) or a bare symbol name resolving to exactly one node.")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphShortestPath)
 }
 
 // readMCPToolEnablement reads the per-tool enablement map from
@@ -613,7 +642,7 @@ func handleGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 // (parseCondition classification; the infinite-goal fail-closed: max_turns == 0
 // requires max_duration > 0) WITHOUT re-implementing internal/goal logic. The
 // CLI-only stderr warnings / flag UX are presentation, not core.
-func handleGoalArm(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGoalArm(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root := resolveProjectDir()
 	if root == "" {
 		return toolErr("goal_arm", fmt.Errorf("cannot resolve project root (set CLAUDE_PROJECT_DIR or run from the project directory)")), nil
@@ -639,6 +668,19 @@ func handleGoalArm(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 	}
 
 	cond := parseCondition(conditionText) // same classifier the CLI uses
+	// Inherited rule (same predicate the CLI applies): a mechanical condition
+	// whose first word resolves to no command can never exit 0, so arming it
+	// buys a goal that blocks every turn-end to the ceiling. Both arm paths call
+	// parseCondition, so both need the gate — a CLI-only check would leave the
+	// MCP path arming exactly what the CLI refuses.
+	// An explicit `cmd:` prefix exempts the condition here exactly as it does on
+	// the CLI path (declaredMechanical) — the two arm surfaces must not disagree
+	// about which conditions are armable.
+	if cond.Type == goal.ConditionMechanical && !declaredMechanical(conditionText) {
+		if tok, bad := unrunnableCommandToken(ctx, cond.Cmd); bad {
+			return toolErr("goal_arm", unrunnableConditionError("goal_arm", tok, cond.Cmd)), nil
+		}
+	}
 	g := goal.NewGoal(sessionID, conditionText, []goal.Condition{cond})
 	if maxTurns >= 0 {
 		g.Ceiling.MaxTurns = maxTurns
@@ -657,7 +699,7 @@ func handleGoalArm(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 
 // handleSpecProgress wraps spec.ListDocs (listdocs.go:36) — the SPEC scanner.
 func handleSpecProgress(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := resolveToolProjectRoot(req)
+	root, source, err := resolveToolProjectRootWithSource(req)
 	if err != nil {
 		return toolErr("spec_progress", err), nil
 	}
@@ -668,13 +710,17 @@ func handleSpecProgress(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	return toolJSON("spec_progress", map[string]any{
 		"count": len(records),
 		"specs": records,
+		"_root": rootProvenanceMap(root, source),
 	}), nil
 }
 
 // handleVerifySnapshot wraps verify.Load (store.go:38); when a `command` arg is
 // supplied it records via verify.RecordCheck (store.go:107).
 func handleVerifySnapshot(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root := resolveProjectDir()
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("verify_snapshot", err), nil
+	}
 	key := req.GetString("key", "")
 	if key == "" {
 		return toolErr("verify_snapshot", fmt.Errorf("key must not be empty")), nil
@@ -689,22 +735,26 @@ func handleVerifySnapshot(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 		if err != nil {
 			return toolErr("verify_snapshot", err), nil
 		}
-		return toolJSON("verify_snapshot", map[string]any{"action": "record", "snapshot": snap}), nil
+		return toolJSON("verify_snapshot", map[string]any{"action": "record", "snapshot": snap, "_root": rootProvenanceMap(root, source)}), nil
 	}
 	snap, err := verify.Load(root, key)
 	if err != nil {
 		return toolErr("verify_snapshot", err), nil
 	}
-	return toolJSON("verify_snapshot", map[string]any{"action": "load", "snapshot": snap}), nil
+	return toolJSON("verify_snapshot", map[string]any{"action": "load", "snapshot": snap, "_root": rootProvenanceMap(root, source)}), nil
 }
 
 // handleVerifyTrend wraps verify.Load (store.go:38), surfacing the Checks trend.
 func handleVerifyTrend(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, source, err := resolveToolProjectRootWithSource(req)
+	if err != nil {
+		return toolErr("verify_trend", err), nil
+	}
 	key := req.GetString("key", "")
 	if key == "" {
 		return toolErr("verify_trend", fmt.Errorf("key must not be empty")), nil
 	}
-	snap, err := verify.Load(resolveProjectDir(), key)
+	snap, err := verify.Load(root, key)
 	if err != nil {
 		return toolErr("verify_trend", err), nil
 	}
@@ -712,7 +762,7 @@ func handleVerifyTrend(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	if snap != nil {
 		checks = snap.Checks
 	}
-	return toolJSON("verify_trend", map[string]any{"key": key, "checks": checks}), nil
+	return toolJSON("verify_trend", map[string]any{"key": key, "checks": checks, "_root": rootProvenanceMap(root, source)}), nil
 }
 
 // handleSpecAudit wraps spec.Audit (audit.go:156).
@@ -736,7 +786,7 @@ func handleSpecAudit(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 
 // handleSpecDrift wraps spec.Audit (audit.go:156), filtered to modern-era drift.
 func handleSpecDrift(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := resolveToolProjectRoot(req)
+	root, source, err := resolveToolProjectRootWithSource(req)
 	if err != nil {
 		return toolErr("spec_drift", err), nil
 	}
@@ -748,6 +798,7 @@ func handleSpecDrift(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		"total_specs":    result.TotalSpecs,
 		"modern_clean":   result.ModernEraClean,
 		"drift_findings": result.DriftFindings,
+		"_root":          rootProvenanceMap(root, source),
 	}), nil
 }
 

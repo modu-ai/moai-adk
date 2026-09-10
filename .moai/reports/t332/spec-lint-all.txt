@@ -1,0 +1,6 @@
+SEVERITY  CODE          FILE                                                LINE  MESSAGE
+--------  ----          ----                                                ----  -------
+ERROR     ParseFailure  .moai/specs/SPEC-BACKLOG-HYGIENE-001/plan.md        1     SPEC parsing failed: frontmatter parsing error: YAML frontmatter missing or does not start with '---'
+ERROR     ParseFailure  .moai/specs/SPEC-BACKLOG-HYGIENE-001/acceptance.md  1     SPEC parsing failed: frontmatter parsing error: YAML frontmatter missing or does not start with '---'
+
+2 error(s), 0 warning(s)

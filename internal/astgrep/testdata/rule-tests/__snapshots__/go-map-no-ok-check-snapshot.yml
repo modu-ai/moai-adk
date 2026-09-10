@@ -1,0 +1,9 @@
+id: go-map-no-ok-check
+snapshots:
+  ? |
+    v = table[key]
+  : labels:
+    - source: v = table[key]
+      style: primary
+      start: 0
+      end: 14

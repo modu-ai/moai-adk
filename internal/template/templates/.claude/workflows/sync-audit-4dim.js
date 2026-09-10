@@ -1,8 +1,8 @@
 // sync-audit-4dim.js — 4-dimension sync-phase quality verdict (Context → Judge → Verdict)
 //
 // VERDICT SCOPING (what this workflow IS and is NOT):
-//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. SPEC-AUDIT-SNAPSHOT-001
-//   (A3) PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
+//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. The audit-snapshot
+//   policy PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
 //   four dims above their floor, not INCOMPLETE, and no contested finding, the orchestrator treats
 //   this workflow's harmonic-mean verdict as the binding sync-phase verdict and does NOT spawn the
 //   cold `sync-auditor` subagent. The cold auditor remains the FALLBACK verdict owner for the
@@ -50,7 +50,7 @@
 
 export const meta = {
   name: 'sync-audit-4dim',
-  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; execution vehicle, NOT the binding sync-auditor verdict owner',
+  description: 'Sync-phase 4-dimension quality read (Functionality/Security/Craft/Consistency) — parallel read-only judges + in-script harmonic-mean verdict; BINDING sync-phase verdict owner on the happy path (PASS, no dim 0, not INCOMPLETE, no contested finding — IsBinding), cold sync-auditor subagent is the fallback verdict owner otherwise',
   phases: [
     { title: 'Context', detail: 'one read-only Explore agent extracts the SPEC audit surface (id, acceptance criteria, changed files, test command)' },
     { title: 'Judge', detail: 'four parallel read-only Explore judges, one per dimension, each scoring 0-1 with command+verbatim-output evidence under a skeptical-auditor stance' },

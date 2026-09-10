@@ -35,6 +35,7 @@ func newGraphCmd() *cobra.Command {
 	cmd.AddCommand(newGraphQueryCmd())
 	cmd.AddCommand(newGraphCheckCmd())
 	cmd.AddCommand(newGraphStampCmd())
+	cmd.AddCommand(newGraphReportCmd())
 	return cmd
 }
 
@@ -80,7 +81,7 @@ func liveQueueCards() (live map[string]bool, ok bool) {
 // @MX:NOTE: [AUTO] moai graph query — read-only consumer of edges.jsonl; agents use it instead of re-running go list -deps per question
 func newGraphQueryCmd() *cobra.Command {
 	var callersNode, blastNode, edgesPath, rootArg string
-	var fanin, specsNoCode, milestonesNoCard bool
+	var fanin, debtFanin, specsNoCode, milestonesNoCard bool
 	var limit int
 
 	cmd := &cobra.Command{
@@ -93,8 +94,12 @@ func newGraphQueryCmd() *cobra.Command {
   --blast <node>      transitive blast radius of a change at <node> (BFS over
                       reverse edges; mx-spec edges propagate both ways, so a
                       code file reaches the SPECs it implements)
-  --fanin             import fan-in ranking (stand-in for an @MX:DEBT fan-in
-                      query — edges.jsonl carries no tag-kind edges yet)
+  --fanin             import fan-in ranking (package-level dependency
+                      questions; for @MX:DEBT fan-in use --debt-fanin)
+  --debt-fanin        rank @MX:DEBT tag targets by graph fan-in
+                      (evidence-backed distinct caller files, descending,
+                      ties by target; file-scope DEBT ranks 0 and is listed
+                      with a (self) marker)
   --specs-no-code     SPEC ids (spec.md frontmatter universe) with zero
                       mx-spec edges in the artifact
   --milestones-no-card
@@ -106,17 +111,18 @@ Examples:
   moai graph query --callers SPEC-FOO-001
   moai graph query --blast internal/config
   moai graph query --fanin --limit 20
+  moai graph query --debt-fanin --limit 20
   moai graph query --specs-no-code
   moai graph query --milestones-no-card`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selectors := 0
-			for _, on := range []bool{callersNode != "", blastNode != "", fanin, specsNoCode, milestonesNoCard} {
+			for _, on := range []bool{callersNode != "", blastNode != "", fanin, debtFanin, specsNoCode, milestonesNoCard} {
 				if on {
 					selectors++
 				}
 			}
 			if selectors != 1 {
-				return fmt.Errorf("exactly one of --callers, --blast, --fanin, --specs-no-code, --milestones-no-card is required")
+				return fmt.Errorf("exactly one of --callers, --blast, --fanin, --debt-fanin, --specs-no-code, --milestones-no-card is required")
 			}
 
 			projectRoot, err := resolveGraphRoot(rootArg)
@@ -151,7 +157,17 @@ Examples:
 			// round-2 3855149254), with the gate-calibrated drift red line.
 			if refreshNeeded := edgesRefreshNeeded(projectRoot, edgesFile, graph.DefaultThresholds().MXIndexChangedFiles); refreshNeeded {
 				if stats, rErr := refreshEdgesArtifact(projectRoot, edgesFile); rErr != nil {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
+					// REQ-GR-009 fail-safe: a shrink refusal is stated as
+					// such (the removed edges and their unscanned sources
+					// are named by the report) and the answer below comes
+					// from the EXISTING artifact — never a shrunk write,
+					// never a lost artifact (AC-GR-014).
+					var refuse *graph.ShrinkRefusalError
+					if errors.As(rErr, &refuse) {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh refused — unexplained shrink (answering from the existing artifact): %s\n", refuse.Report.Describe())
+					} else {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
+					}
 				} else if over := graphRefreshOverrun(projectRoot, stats.duration); over > 0 {
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 						"graph refresh cost %s exceeded the %dms update budget by %.0fms (warning only, answer follows)\n",
@@ -187,6 +203,16 @@ Examples:
 				_, _ = fmt.Fprintf(out, "import fan-in: top %d\n", len(rows))
 				for _, r := range rows {
 					_, _ = fmt.Fprintf(out, "%d\t%s\n", r.FanIn, r.Package)
+				}
+			case debtFanin:
+				rows := graph.DebtFanIn(edges, limit)
+				_, _ = fmt.Fprintf(out, "debt fan-in (evidence-backed caller files): top %d\n", len(rows))
+				for _, r := range rows {
+					file := r.File
+					if r.Self {
+						file = "(self)"
+					}
+					_, _ = fmt.Fprintf(out, "%d\t%s\t%s\n", r.FanIn, r.Target, file)
 				}
 			case specsNoCode:
 				deps, err := mx.LoadSpecDependencies(projectRoot)
@@ -244,6 +270,7 @@ Examples:
 	cmd.Flags().StringVar(&callersNode, "callers", "", "direct reverse neighbors of this node (package path, file path, or SPEC id)")
 	cmd.Flags().StringVar(&blastNode, "blast", "", "transitive blast radius of a change at this node")
 	cmd.Flags().BoolVar(&fanin, "fanin", false, "import fan-in ranking (default top 10, --limit 0 for all)")
+	cmd.Flags().BoolVar(&debtFanin, "debt-fanin", false, "rank @MX:DEBT targets by evidence-backed graph fan-in (default top 10, --limit 0 for all)")
 	cmd.Flags().BoolVar(&specsNoCode, "specs-no-code", false, "SPEC ids with zero mx-spec edges in the artifact")
 	cmd.Flags().BoolVar(&milestonesNoCard, "milestones-no-card", false, "milestones claiming no card, or whose claimed card is absent from the live backlog queue")
 	cmd.Flags().IntVar(&limit, "limit", 10, "rows to show for --fanin (0 = all)")
@@ -293,7 +320,7 @@ Examples:
 			if allDisagreements {
 				mode = graph.DisagreementAll
 			}
-			edges, matrix, err := graph.BuildWithCodeLayersMode(projectRoot, mode)
+			edges, scanned, matrix, err := graph.BuildWithCodeLayersMode(projectRoot, mode)
 			if err != nil {
 				return fmt.Errorf("build graph: %w", err)
 			}
@@ -307,6 +334,20 @@ Examples:
 					return fmt.Errorf("resolve --out: %w", absErr)
 				}
 				target = abs
+			}
+			// REQ-GR-008/AC-GR-012 (second clause): the explicit build path
+			// applies the same shrink guard pre-write — a refusal exits
+			// NON-ZERO naming the removed edges, with the prior artifact
+			// left byte-identical (zero writes). An unreadable prior
+			// artifact skips the guard: there is nothing to protect.
+			if existing, lErr := graph.LoadJSONL(target); lErr == nil {
+				scannedSet := make(map[string]bool, len(scanned))
+				for _, f := range scanned {
+					scannedSet[f] = true
+				}
+				if report := graph.DetectUnexplainedShrink(existing, edges, scannedSet, projectRoot); !report.Empty() {
+					return fmt.Errorf("refusing to overwrite %s — %s", target, report.Describe())
+				}
 			}
 			if err := graph.WriteJSONL(target, edges); err != nil {
 				return fmt.Errorf("write edges: %w", err)
@@ -342,6 +383,81 @@ Examples:
 	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
 	cmd.Flags().BoolVar(&allDisagreements, "all-disagreements", false,
 		"also mark the suppressed direction: local code-import dependencies the doc layer does not record (revival path for the default's code-found/doc-silent suppression)")
+
+	return cmd
+}
+
+// newGraphReportCmd 'moai graph report' renders the rotating architecture
+// report (god nodes / surprising connections / import cycles) from the
+// persisted edges.jsonl. The output path is FIXED (D1 ADOPTED): the
+// regenerating derived artifact at <root>/.moai/reports/graph-report.md —
+// no --out flag exists, so the report can never land on a committed
+// location. Empty sections still emit with their stated reason and the
+// command exits 0 (REQ-GR-006); only an absent edges artifact errors, with
+// the build remedy named.
+//
+// @MX:NOTE: [AUTO] fixed rotating report path — D1 resolution: dated paths are for one-off analyses; this artifact regenerates in place and is never committed (SPEC-GRAPH-REPORT-001)
+func newGraphReportCmd() *cobra.Command {
+	var rootArg string
+	var limit int
+
+	cmd := &cobra.Command{
+		Use:   "report",
+		Short: "Render the architecture report (god nodes / surprising connections / import cycles)",
+		Long: `Render the architecture report from the persisted edges.jsonl (run 'moai graph build' first):
+
+  god nodes              targets ranked by distinct-source fan-in over the
+                         import + code-call layers (bare callees normalized
+                         to their package directory; ambiguous callees
+                         excluded), highest first, ties by node id
+  surprising connections INFERRED code-call edges crossing package
+                         directories, ranked by confidence then total order
+  import cycles          import-edge SCCs — the canonical member list per SCC
+                         (a simple cycle renders its rotation), SCC count as
+                         the primary datum
+
+The report is written to the FIXED rotating path
+<root>/.moai/reports/graph-report.md — a regenerating derived artifact,
+never committed; there is deliberately no --out flag.
+
+Empty sections are emitted with their reason (e.g. "code layer absent:
+CGO disabled or no extraction") and the command exits 0.
+
+Examples:
+  moai graph report
+  moai graph report --root /path/to/project --limit 20`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			projectRoot, err := resolveGraphRoot(rootArg)
+			if err != nil {
+				return err
+			}
+
+			edgesFile := filepath.Join(projectRoot, ".moai", "project", "graph", "edges.jsonl")
+			edges, err := graph.LoadJSONL(edgesFile)
+			// errors.Is (not os.IsNotExist): LoadJSONL wraps the open error
+			// with %w, and os.IsNotExist does not follow wrap chains.
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("edges artifact not found at %s — run 'moai graph build' first", edgesFile)
+			}
+			if err != nil {
+				return fmt.Errorf("load edges: %w", err)
+			}
+
+			body := graph.RenderArchitectureReport(edges, limit)
+			target := filepath.Join(projectRoot, filepath.FromSlash(graph.GraphReportRelPath))
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return fmt.Errorf("mkdir %s: %w", filepath.Dir(target), err)
+			}
+			if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
+				return fmt.Errorf("write report: %w", err)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK: wrote report to %s\n", target)
+			return nil
+		},
+	}
+
+	cmd.Flags().IntVar(&limit, "limit", 10, "god-nodes rows to show (0 = all)")
+	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
 
 	return cmd
 }

@@ -62,7 +62,7 @@ func allPassResult() ConvergenceResult {
 			{Backend: BackendGLM, Gate: config.AuditGateAdvisory, Verdict: "pass"},
 		},
 		OverallVerdict:   overallVerdictPass,
-		DisagreementFlag: false,
+		DisagreementFlag: boolPtr(false),
 	}
 }
 
@@ -77,7 +77,7 @@ func requiredFailResult() ConvergenceResult {
 			{Backend: BackendGLM, Gate: config.AuditGateAdvisory, Verdict: "pass"},
 		},
 		OverallVerdict:   overallVerdictFail,
-		DisagreementFlag: true,
+		DisagreementFlag: boolPtr(true),
 		ResidualRiskNote: "required split",
 	}
 }
@@ -92,7 +92,7 @@ func advisoryOnlyFailResult() ConvergenceResult {
 			{Backend: BackendGLM, Gate: config.AuditGateAdvisory, Verdict: "fail"},
 		},
 		OverallVerdict:   overallVerdictPass,
-		DisagreementFlag: true,
+		DisagreementFlag: boolPtr(true),
 		ResidualRiskNote: "advisory-only conflict",
 	}
 }

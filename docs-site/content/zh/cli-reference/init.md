@@ -29,6 +29,7 @@ moai init [project-name]
 | `--all` | 部署完整目录(core + 可选包 + 生成的 harness)。默认是 core-only slim 模式 |
 | `--force` | 重新初始化既有项目(会备份当前 `.moai/`) |
 | `--no-hooks` | 跳过 git 钩子安装 |
+| `--llm <claude\|codex\|both>` | 选择要接入的 LLM harness (默认: `claude`) |
 
 ### 项目默认值
 

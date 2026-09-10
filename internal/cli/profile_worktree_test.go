@@ -31,7 +31,7 @@ func TestEnterSessionWorktree_ProfileSubcommand(t *testing.T) {
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return "/repo/.git", nil },
-		add:       func(dest, branch string) (string, error) { return dest, nil },
+		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})
 	cfg := &config.Config{Workflow: config.WorkflowConfig{SessionWorktree: config.SessionWorktreeConfig{Enabled: false}}}
@@ -124,7 +124,7 @@ func TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry(t *testing.T) {
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt: func() bool { return false },
-		add: func(string, string) (string, error) {
+		add: func(string, string, string) (string, error) {
 			t.Fatal("EC-7: read-only profile subverb MUST NOT invoke worktree materialization")
 			return "", nil
 		},

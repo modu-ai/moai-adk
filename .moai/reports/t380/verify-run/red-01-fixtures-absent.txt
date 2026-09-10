@@ -1,0 +1,7 @@
+--- FAIL: TestSyncSHASlot_FlagsOutOfBand (0.00s)
+    lint_syncsha_test.go:191: sha-below6: expected exactly 1 SyncSHASlotFormat finding, got 0: []
+    lint_syncsha_test.go:191: sha-above41: expected exactly 1 SyncSHASlotFormat finding, got 0: []
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	2.618s
+FAIL
+exit=1

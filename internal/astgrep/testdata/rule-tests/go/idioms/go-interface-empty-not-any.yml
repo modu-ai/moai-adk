@@ -1,0 +1,8 @@
+# Test pair for the interface{}-to-any idiom rule.
+id: go-interface-empty-not-any
+valid:
+  - |
+    var cache map[string]any
+invalid:
+  - |
+    var cache map[string]interface{}
