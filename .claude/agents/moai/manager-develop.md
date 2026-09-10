@@ -160,7 +160,7 @@ Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
 
 ## Status Responsibility Matrix
 
-This agent performs exactly ONE status transition, on the first run-phase commit (M1), for the `progress.md` artifact only. See §SPEC Artifact Ownership for the full artifact-level boundary.
+This agent performs exactly ONE status transition: `draft → in-progress`, on the first run-phase commit (M1). Which SPEC artifacts that transition covers is decided by `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, the one authoritative reference. See §SPEC Artifact Ownership for the full artifact-level boundary.
 
 | Transition | Trigger | Agent Role |
 |---|---|---|
