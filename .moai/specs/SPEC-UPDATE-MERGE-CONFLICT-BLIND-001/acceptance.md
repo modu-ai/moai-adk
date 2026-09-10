@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "Acceptance criteria — update merge conflict blindness"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-10
 ---
 
@@ -204,8 +204,59 @@ Decides: `plan.md` §D. The full-suite verdict is CI's, not this run's.
 - Every unmeasured cell or criterion recorded in the Gaps section of the phase
   report — an empty Gaps section asserts that nothing was left unobserved, which
   must itself be true.
-- The withdrawn framing (`spec.md` §A.2) absent from every artifact:
-  `grep -rn 'merge is broken' .moai/specs/SPEC-UPDATE-MERGE-CONFLICT-BLIND-001/`
-  reports zero matches outside the HISTORY line that records the withdrawal.
+- The withdrawn framing (`spec.md` §A.2, HISTORY) does not appear as an
+  **assertion** in any artifact of this SPEC directory.
+
+  The discriminator is **mention versus use**, not presence versus absence. The
+  phrase is present three times *because* it is banned — the `spec.md` HISTORY
+  line that records the withdrawal, the `plan.md` §G anti-pattern that forbids it,
+  and this criterion's own command — so a criterion reading on presence alone can
+  never pass, whatever the artifacts say. It is not the ban that was wrong; it was
+  the reading.
+
+  The deciding command strips single-line double-quoted and backtick-delimited
+  spans from each line, then searches what is left:
+
+  ```bash
+  perl -ne 'BEGIN { $p = "merge is broken" } $l = $.; close ARGV if eof; s/\x60[^\x60\n]*\x60|\x22[^\x22\n]*\x22//g; if (/$p/i) { print "$ARGV:$l:$_"; $n++ } END { exit($n ? 1 : 0) }' .moai/specs/SPEC-UPDATE-MERGE-CONFLICT-BLIND-001/*.md
+  ```
+
+  **PASS** = no output and exit 0. **FAIL** = one or more lines printed and exit
+  1; each names the file, the line number, and the offending text. The pattern is
+  held in a double-quoted variable and the two delimiters are written `\x22` /
+  `\x60` deliberately: the command must survive its own criterion, and it does
+  only if the phrase it searches for is itself a quoted mention.
+
+  The line number is captured into `$l` **before** the per-file counter is reset,
+  and `$l` is what gets printed. Printing `$.` after the reset makes a match on a
+  file's last line report as line `0` — observed while adopting this criterion:
+  the control caught the inserted assertion and then mislabelled where it was.
+  (A `continue { close ARGV if eof }` block is not the fix; `perl -ne` rejects it
+  with a syntax error, which was also observed.)
+
+  Two conventions follow from the discriminator, and they bind every artifact in
+  this directory:
+
+  1. A mention MUST be quoted — double quotes or backticks.
+  2. A mention MUST fit on one line. A quotation broken across two lines is
+     reported. That is **fail-closed** (a spurious FAIL a human resolves), never a
+     false pass.
+
+  [HARD] **This criterion is adopted with a control, and the control is the
+  point** (`.claude/rules/moai/development/verification-completeness.md` §2 — a
+  criterion loosened until it matches nothing has removed the gate rather than
+  repaired it). Adoption requires both cells, each with verbatim output in the
+  phase report:
+
+  - **Clean cell** — the command above, run against the artifacts as they stand,
+    reports nothing and exits 0.
+  - **RED cell** — the banned framing inserted as an unquoted body sentence (not a
+    quotation, not a HISTORY line) into a **throwaway copy** of an artifact placed
+    outside this SPEC directory; the command run against that copy MUST report the
+    inserted line and exit 1. The copy is deleted afterwards, so this directory is
+    never left carrying the phrase as an assertion.
+
+  A clean cell without a RED cell leaves the repair unverified, and the phase
+  report MUST say so rather than claim the criterion works.
 
 🗿 MoAI

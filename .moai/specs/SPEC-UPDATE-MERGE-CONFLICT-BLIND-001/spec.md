@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "moai update merge: an unreachable conflict detector and no signal when a shared key is preserved"
-version: "0.1.0"
+version: "0.2.0"
 status: in-progress
 created: 2026-09-10
 updated: 2026-09-10
@@ -22,6 +22,7 @@ tier: M
 
 - 2026-09-10 — plan-phase artifacts authored (Tier M: spec.md + plan.md + acceptance.md + progress.md). Origin: card **t576**, whose investigation is committed verbatim at `.moai/reports/t576/verdict.md`. The card arrived describing a `permissions.ask` symptom in `.claude/settings.json`; the investigation established the symptom's writer as external to this repository and surfaced this merge finding as a **latent second finding**, static-derived and explicitly **not executed**. This SPEC's first milestone is therefore the reproduction, not a repair.
 - 2026-09-10 — a framing used earlier in the t576 investigation — "the merge is broken because the both-changed branch cannot fire" — is **withdrawn** and MUST NOT reappear in this SPEC or its siblings. See §A.2.
+- 2026-09-10 — **third framing revision**, authored after M1 was executed. M1's `untouched_shared` cell measured the merge writing the user's value for a key whose template value had changed, which establishes a fact wider than §A's plan-phase premise: for a top-level JSON key the user's file already carries, `moai update` cannot change that key's value at all. Recorded as §A.6. The two earlier framings are **retained** — the withdrawn one in §A.2's opening record, the plan-phase two-defect reading in §A.2 proper — rather than erased; §A.6 supersedes the plan-phase reading in breadth only.
 
 ## §A Context
 
@@ -29,13 +30,15 @@ tier: M
 
 `moai update` deploys the embedded template over the user's file, then runs a per-file 3-way merge to carry the user's customizations back in (`internal/cli/update/merge/merge.go` `MergeUserFiles`). A 3-way merge needs a base — the template content the user's file was originally deployed from — and that content is not stored anywhere. `internal/cli/update/merge/base.go` therefore **derives** a base: the freshly deployed template, narrowed to the keys the user's file also carries (`pruneToShared`).
 
-The derivation states its own intent verbatim at `internal/cli/update/merge/base.go:105-107`:
+The derivation states its own intent verbatim at `internal/cli/update/merge/base.go:109-111`:
 
 > Values always come from updated. A key present on both sides therefore enters the base carrying the template's value, which is what makes a user's edit to that key read as their change during the merge.
 
-So for any key both sides carry, `baseVal == updVal` by construction (`base.go:126`, `pruned[key] = updatedVal`), and a user's value winning on a shared key is the **designed** outcome. The same file's header comment already names the one thing the derived base cannot express — a template value change to a key the user never touched — and names its closure: snapshotting the deployed template at deploy time, which is the surface of `SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`.
+So for any key both sides carry, `baseVal == updVal` by construction (`base.go:128`, `pruned[key] = updatedVal`), and a user's value winning on a shared key is the **designed** outcome. The same file's header comment already names the one thing the derived base cannot express — a template value change to a key the user never touched — and names its closure: snapshotting the deployed template at deploy time, which is the surface of `SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001`.
 
 ### §A.2 The two defects, and what they are not
+
+> **Superseded in breadth by §A.6, and retained as the record of the first two framings.** The plan-phase reading below — two defects sitting in the gap between the code's stated intent and its instrumentation — remains correct as far as it goes. M1 measured something wider, which §A.6 states. Nothing here is deleted: the withdrawn framing is recorded in HISTORY, and this section is the plan-phase framing it replaced.
 
 [HARD] A user's value winning on a shared key is **designed behaviour, not a defect**. A SPEC that calls the code's stated intent a defect collapses on one reading of the source. The defects sit in the **gap between that intent and its instrumentation**.
 
@@ -46,28 +49,58 @@ baseChanged := !valuesEqual(baseVal, curVal)
 updChanged  := !valuesEqual(baseVal, updVal)
 ```
 
-Because the derived base set `baseVal` **to** `updVal` for every shared key, `updChanged` is always false there. The `default:` both-changed arm at `strategies.go:434` — the arm that appends a `Conflict` and raises `MergeResult.HasConflict` — therefore cannot execute for any shared key. Only the `baseChanged && !updChanged` arm ("only user changed", `strategies.go:426`, `result[key] = curVal`) can fire.
+Because the derived base set `baseVal` **to** `updVal` for every shared key, `updChanged` is always false there. The `default:` both-changed arm at `strategies.go:435-436` — the arm that appends a `Conflict` and raises `MergeResult.HasConflict` — therefore cannot execute for any shared key. Only the `baseChanged && !updChanged` arm ("only user changed", `strategies.go:427-429`, `result[key] = curVal`) can fire.
 
 A reader of `mergeJSON` / `mergeYAML` sees a populated `Conflicts` slice and a `HasConflict` flag and believes `moai update` detects template-versus-user conflicts. It does not, for any shared key, and nothing in the code or in the user-facing output says so. This repository already names this shape: **an unreachable check is an instrument defect.**
 
 **Defect 2 — no path for the template to re-assert, and no signal when it matters.** Whatever the user's file holds for a shared key wins, whatever wrote it. For most keys that is correct and desirable. For a **security-relevant key emptied by an unidentified writer**, that state is preserved indefinitely and the user is never told.
 
-### §A.3 Scope is wider than the card's subject
+### §A.3 Scope is wider than the card's subject — measured breadth, and the breadth still open
 
-[HARD] Both defects bind **every shared key** in every JSON and YAML file that passes through this merge — not `permissions.ask` alone. `permissions.ask` is the **instance that exposed them**, not the extent of them.
+[HARD] The scope is wider than `permissions.ask`, which is the **instance that exposed the defects**, not the extent of them. But the measured breadth and the asserted breadth must not be confused, so this section states them separately.
+
+**Measured (M1, `progress.md` §E.2).** Both defects bind every **top-level JSON key** the user's file and the deployed template both carry. That is the breadth of the fixture M1 ran: a flat JSON document, four top-level keys, one merge.
+
+**Not measured — an explicit open measurement.** Two breadth claims are NOT established and MUST NOT be asserted:
+
+- The **recursive path.** `pruneToShared` recurses wherever both sides hold a nested map (`base.go:124-126`), and reading it suggests a nested shared leaf behaves as a top-level shared key does. M1 exercised no nested key, so that reading is a hypothesis.
+- The **YAML path.** `mergeYAML` was never entered. Every M1 reading came through the JSON strategy.
+
+[HARD] Until both are measured, `§A.2`'s defects and `§A.6`'s value-invariance finding are stated of top-level JSON keys and of nothing else. `plan.md` §F makes the two measurements the **precondition of M2**, ahead of any repair, because `.moai/config/sections/*.yaml` — 32 files — travels the YAML path: repairing without knowing the exposure means the fixed scope and the believed scope diverge, and the divergence is silent.
 
 ### §A.4 The healing boundary — omitted heals, empty does not
 
 Measurable in the same code, and load-bearing for the reproduction:
 
-- A key **absent** from the user's file is not shared, so `pruneToShared` leaves it out of the base (`base.go:117-121`); the merge reads the template as *introducing* it and the template's value lands. The key **heals**.
+- A key **absent** from the user's file is not shared, so `pruneToShared` leaves it out of the base (`base.go:116-120`); the merge reads the template as *introducing* it and the template's value lands. The key **heals**.
 - A key present but holding an **empty array** is shared, so the user's `[]` wins. The key does **not** heal.
 
 This is why the in-repo `toolpolicy` writers — which omit `ask` entirely when it is empty (`internal/config/toolpolicy/settings_region.go:204`) — would have self-healed on the next update, while the literal `"ask": []` produced by a writer **outside this repository** would not.
 
-### §A.5 Everything above is unexecuted
+### §A.5 What was unexecuted at plan-phase, and what M1 has since measured
 
-[HARD] §A.1-§A.4 are derived from reading `base.go` and `strategies.go`. No test was run against a live file. Until the reproduction in §C M1 is observed, Defect 1 and Defect 2 are **hypotheses**, and no downstream milestone may cite them as established.
+The plan-phase statement, retained as the record it was: §A.1-§A.4 were derived from reading `base.go` and `strategies.go`; no test had been run against a live file; Defect 1 and Defect 2 were **hypotheses** until the §C M1 reproduction was observed.
+
+**M1 has since been executed.** Its evidence is `progress.md` §E.2, and it discharges the hypothesis marker **only at the breadth it measured** — top-level JSON keys (§A.3). What it established, and what it did not:
+
+- **Established at that breadth.** §A.4's healing boundary (an omitted key heals, an emptied one does not); the shared-key conflict surface reading `HasConflict=false` / `len(Conflicts)=0` on a genuinely divergent shared key, against a control on the same engine and the same key that fired `true` / `1` under a base differing from both sides — so the reading is a property of the derived base, not of the harness.
+- **Not established.** The recursive path and the YAML path (§A.3); any end-to-end `moai update` run; any real checkout. No production code changed, so no `REQ-UMC-008` / `009` / `011` obligation is discharged and M2's design choice stays open.
+
+### §A.6 Third framing revision (post-M1) — the merge cannot change a value the user already carries
+
+[HARD] This is the **current** framing. It supersedes §A.2's plan-phase reading in breadth, not in correctness, and erases nothing: §A.2 stands as the record of the plan-phase framing, and the first framing's withdrawal stands in HISTORY.
+
+**The measured fact.** M1's `untouched_shared` cell held `["template-old"]` on the user's side and `["template-new"]` on the template's. The merge wrote `["template-old"]`. Stated generally, for a top-level JSON key (§A.3):
+
+> `moai update` cannot change the VALUE of a key the user's file already carries. Only keys the user's file **lacks** receive a template value.
+
+**The mechanism.** `pruneToShared` sets the base to the template's value for every shared key (`base.go:128`), so at `strategies.go:419-420` `updChanged` is always false there, while `baseChanged` is true whenever the user's value differs from the incoming template's — which is the ordinary case for a user sitting on an older template. The `baseChanged && !updChanged` arm ("only user changed", `strategies.go:427-429`) returns the user's value. Of the four arms of the shared-key switch (`strategies.go:422-462`), only two are reachable: **"Only template changed" (`strategies.go:431-433`) and "Both changed" (`strategies.go:435-436`) cannot execute for a shared key.**
+
+**The load-bearing point.** `pruneToShared` states its intent at `base.go:109-111`: a key on both sides enters the base carrying the template's value, "which is what makes a user's edit to that key read as their change during the merge." The mechanism **cannot distinguish "the user edited this" from "the user is on an older template version"** — both present as a difference between the user's value and the incoming template's, and both therefore read as the user's change. The stated intent is satisfiable only under an assumption that is false for the ordinary updating user, which is precisely the population `moai update` exists to serve.
+
+This is why §A.2's Defect 2 needs a remedy of its own and why `REQ-UMC-010` is not in tension with it: the resolution is designed and stays, but a subsystem that cannot tell an edit from a stale deployment must not present a surface implying it can.
+
+**The breadth of each sentence above, stated so the two are not read as one.** The *measured fact* is scoped to top-level JSON keys — that is the fixture M1 ran (§A.3). The *mechanism* paragraph reads `pruneToShared` and `strategies.go` and says "every shared key"; that reach is **static-derived**, exactly as §A.2 was before M1, and it is a hypothesis for the recursive and YAML paths until `plan.md` §F M2.0 measures them. Citing this section at full breadth before that measurement is an unobserved claim.
 
 ## §B Requirements (GEARS)
 
@@ -95,7 +128,7 @@ This is why the in-repo `toolpolicy` writers — which omit `ask` entirely when 
 
 **REQ-UMC-009** — The merge subsystem shall not present a conflict-detection surface — a `Conflicts` slice, a `HasConflict` flag, or user-facing output derived from either — that a shared key cannot reach.
 
-**REQ-UMC-010** — The merge subsystem shall continue to resolve a shared key in favour of the user's value, preserving the behaviour `base.go:105-107` states as its intent; no remedy for REQ-UMC-008 or REQ-UMC-009 shall change which value the merge writes for a shared key.
+**REQ-UMC-010** — The merge subsystem shall continue to resolve a shared key in favour of the user's value, preserving the behaviour `base.go:109-111` states as its intent; no remedy for REQ-UMC-008 or REQ-UMC-009 shall change which value the merge writes for a shared key.
 
 ### §B.4 Signal on preserved-and-security-relevant state
 
@@ -115,8 +148,8 @@ This is why the in-repo `toolpolicy` writers — which omit `ask` entirely when 
 
 Decision-reversibility order, most-likely-to-change first. Full plan in `plan.md`.
 
-- **M1 — Reproduction (no code change).** Observe the four cells. Everything downstream is conditional on what M1 records.
-- **M2 — Instrument honesty.** REQ-UMC-008/009/010. The design decision (make the arm reachable, or declare the surface's limit) is deliberately left open until M1 is read.
+- **M1 — Reproduction (no code change).** Observe the four cells. **Executed** — evidence in `progress.md` §E.2; it produced the §A.6 revision. Everything downstream is conditional on what M1 records.
+- **M2 — Instrument honesty.** REQ-UMC-008/009/010. Entered by a **precondition measurement**: the recursive `pruneToShared` path and the `mergeYAML` path are measured **before** any repair (§A.3), because the fixed scope and the believed scope diverge silently otherwise. The design decision (make the arm reachable, or declare the surface's limit) is deliberately left open until that measurement is read alongside M1's.
 - **M3 — The signal.** REQ-UMC-011/012/013.
 
 ## §D Exclusions
@@ -149,8 +182,9 @@ Decision-reversibility order, most-likely-to-change first. Full plan in `plan.md
 ## §E Cross-references
 
 - `.moai/reports/t576/verdict.md` — the authoritative investigation input; §A restates it, and the verdict's Gaps section is binding on what this SPEC may claim.
-- `internal/cli/update/merge/base.go:105-107`, `:117-121`, `:126` — the derived base and its stated intent.
-- `internal/merge/strategies.go:419-420`, `:426`, `:434` — the arms of the shared-key switch.
+- [HARD] Every source line cited in this SPEC was re-read and re-confirmed against tree **`715078afb`** (worktree `.claude/worktrees/t576`, branch `WT-permissions-ask-empty`). A line citation decays like a HEAD reading, so the SHA travels with it; a reader on a later tree re-measures rather than trusting the number.
+- `internal/cli/update/merge/base.go:109-111` (the stated intent), `:116-120` (the not-shared `continue`), `:124-126` (the nested-map recursion), `:128` (`pruned[key] = updatedVal`) — the derived base.
+- `internal/merge/strategies.go:418` (the shared-key case), `:419-420` (`baseChanged` / `updChanged`), `:422-462` (the four arms), `:427-429` (only user changed), `:431-433` (only template changed — unreachable), `:435-436` (both changed — unreachable), `:452-458` (the `Conflict` append) — the arms of the shared-key switch.
 - `internal/config/toolpolicy/settings_region.go:204` — the in-repo key-omission behaviour that makes the §A.4 boundary observable.
 - `CLAUDE.local.md` §2.3 — the wholesale-redeploy behaviour REQ-UMC-014 derives from.
 - Cards **t598**, **t599** — the sibling instrumentation gaps, excluded above.

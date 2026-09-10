@@ -15,9 +15,13 @@ Worktree: `.claude/worktrees/t576` · branch `WT-permissions-ask-empty` · base
    therefore **two** events to explain, not one.
 2. **E1 (the emptying)** was a whole-file JSON rewrite by a writer that
    preserves its own key insertion order. It is **not** any code path in this
-   Go repository, and it is **not** a human edit or a git operation. The
-   signature matches the tool that owns the file — Claude Code itself. The
-   exact triggering action is **NOT established**.
+   Go repository, **not** a hand edit of the file, and **not** a git
+   operation. The writer is Claude Code's own permission-rule editing surface
+   — first narrowed to it by a key-order signature, then **witnessed
+   reproducing that exact signature live** during this card (see § E1's
+   mechanism, witnessed live). A person instructing that surface is the
+   actor; for the live event the operator states the deletion was deliberate.
+   The 09-08 actor was never observed and stays an inference.
 3. **E2 (the restoration)** was a `moai update` redeploy followed by the
    `git restore` step that `CLAUDE.local.md` §2.3 documents as post-update
    procedure. It silently overtook the operator's 2026-09-08 decision to
@@ -188,6 +192,77 @@ Consequences, both unnoticed at the time:
   mtime evidence for E1**. This is why E1 had to be pursued through key
   order rather than through timestamps.
 
+### E1's mechanism, witnessed live — the writer is no longer an inference
+
+**This section supersedes the "NOT established" entry for E1's trigger in
+§ Gaps.** While this card was being worked, the operator ran Claude Code's
+`/permissions` command in this session, whose working directory is the t576
+worktree. Its output:
+
+```
+Deleted ask rule Bash(chmod:*)
+Deleted ask rule Bash(chown:*)
+Deleted ask rule Bash(rm:*)
+Deleted ask rule Bash(sudo:*)
+Deleted ask rule Read(./.env.*)
+Deleted ask rule Read(./.env)
+```
+
+Those are the same six entries the 09-08 drift lost. Measured immediately
+afterwards, in the worktree whose project root the session held:
+
+```
+$ jq -c '{has_ask:(.permissions|has("ask")), ask_len:((.permissions.ask//[])|length),
+          allow:(.permissions.allow|length), deny:(.permissions.deny|length)}' .claude/settings.json
+{"has_ask":true,"ask_len":0,"allow":114,"deny":48}
+```
+
+`ask` present but empty, `allow` and `deny` intact at 114 and 48 — the exact
+shape of the 09-08 snapshot. And the discriminator this investigation used to
+identify the writer reproduces:
+
+```
+$ diff <(jq -r 'keys_unsorted|.[]' .claude/settings.json) \
+       <(jq -r 'keys_unsorted|.[]' <the 09-08 drift snapshot>)
+KEY-ORDER-IDENTICAL=yes
+```
+
+The two files are **not** byte-identical — 26389 bytes against 23556, because
+this worktree's committed content is develop-line and the 09-08 file was
+main-line. The *content* differs while the *key order* matches exactly. That
+is what a writer signature is: it survives a change of content, because it is
+a property of the writer rather than of the data.
+
+So the writer is established by observation: **Claude Code's permission-rule
+editing surface rewrites the project `settings.json` of the session's own
+project root, reordering the top-level keys into its insertion order and
+leaving `ask` as a literal `[]`.** Every candidate the key-order table
+eliminated stays eliminated; the surviving one is now witnessed rather than
+narrowed to.
+
+Three boundaries on that claim:
+
+- **The primary checkout was not touched.** Its file kept mtime
+  `2026-09-10 11:37:28` and sha256 `9f4818a6…`, still carrying the six
+  entries. The write followed the session's working directory into the
+  worktree. This is also why the earlier reading of `git status` inside the
+  worktree showed ` M .claude/settings.json` while the primary was clean —
+  two different files with the same relative path.
+- **Intent, for this event, is the operator's stated intent**: asked directly,
+  they answered that the deletion was deliberate. That closes the intent
+  question for *this* occurrence only.
+- **The 09-08 actor remains an inference, not an observation.** The signature
+  match is strong evidence that the same surface produced it, and a
+  deliberate operator action through that surface is the most economical
+  explanation — but nobody observed 09-08, and this document does not record
+  it as observed.
+
+One consequence worth stating plainly: no change in this repository can
+prevent this. The writer is the tool that owns the file, acting on a person's
+instruction. What this repository can affect is whether such a state is
+*noticed* and whether it can *heal* — which is why the latent finding below,
+and cards t598 / t599, are where the repairable surface actually is.
+
 ### Axis 3 — is the empty `ask` dangerous?
 
 ```
@@ -218,7 +293,7 @@ which is a deliberate operating choice for this batch, not a drift.
 written up as "the merge is broken because the both-changed branch cannot
 fire". That framing is wrong and is withdrawn: it contradicts the code's own
 statement of intent. `pruneToShared` says so verbatim
-(`internal/cli/update/merge/base.go:105-107`):
+(`internal/cli/update/merge/base.go:109-111`):
 
 > Values always come from updated. A key present on both sides therefore
 > enters the base carrying the template's value, **which is what makes a
@@ -241,11 +316,11 @@ updChanged  := !valuesEqual(baseVal, updVal)
 ```
 
 Because `pruneToShared` set `baseVal` **to** `updVal` for a shared key
-(`base.go:126`, `pruned[key] = updatedVal`), `updChanged` is **always false**
-there. The `default:` both-changed arm (`strategies.go:434`) — the one that
+(`base.go:128`, `pruned[key] = updatedVal`), `updChanged` is **always false**
+there. The `default:` both-changed arm (`strategies.go:435-436`) — the one that
 detects a template-versus-user conflict and would surface it — therefore
 cannot execute for any shared key. Only `baseChanged && !updChanged` ("only
-user changed", `strategies.go:426`) can.
+user changed", `strategies.go:427-429`) can.
 
 A reader of this code believes `moai update` detects and reports
 template-versus-user conflicts. It does not, and nothing says so. This is the
@@ -261,7 +336,7 @@ signal reaches the user.
 
 One precise boundary, measurable in the same code: an **omitted** key heals,
 an **empty array** does not. A key absent from the user's file is not shared,
-so `pruneToShared` leaves it out of the base (`base.go:117-121`), the merge
+so `pruneToShared` leaves it out of the base (`base.go:116-120`), the merge
 sees the template introducing it, and the template's value lands. This is why
 the in-repo toolpolicy writers — which omit `ask` entirely when empty
 (`settings_region.go:204`) — would have self-healed on the next update, while
@@ -293,19 +368,28 @@ The writer enumeration was produced by a read-only sweep in this worktree with
 `file:line`. No figure is carried from the card text: the card's `ask = 0`
 premise was re-measured and found stale, which is finding 1.
 
+**Coordinate attribution.** Every `file:line` in this document was re-measured
+against this worktree at tree `715078afb` and each one was read back to confirm
+it lands on the cited construct. An earlier revision of this document carried
+coordinates from a first pass that had drifted by two to three lines
+(`base.go:105-107` for the stated intent, `:126`, `strategies.go:426`, `:434`,
+`base.go:117-121`); those are corrected above rather than left to be trusted. A
+line citation decays like a `HEAD` reading — after a merge or rebase these
+require re-measurement, which is why the SHA is pinned here.
+
 ## Gaps
 
-- **The exact triggering action for E1 is NOT established.** The writer is
-  narrowed to the insertion-order-preserving tool that owns the file, and the
-  Go codebase is eliminated by enumeration — but *which* Claude Code action
-  rewrote it (a `/config` change, a permission-mode switch, a plugin or
-  marketplace operation, a settings migration on version upgrade) is
-  unknown. No non-interactive CLI surface for writing project settings was
-  found (`claude config` is not a subcommand), so reproduction needs an
-  isolated interactive probe. Not attempted here.
-- **Intent is NOT established.** Nothing observed distinguishes a deliberate
-  removal from an incidental loss. Per the card's instruction, this is
-  reported as unestablished rather than assumed benign.
+- ~~**The exact triggering action for E1 is NOT established.**~~ **CLOSED by
+  observation** — see § E1's mechanism, witnessed live. The triggering surface
+  is Claude Code's `/permissions` rule editing, observed producing the exact
+  shape and the exact key-order signature. The gap this bullet described no
+  longer stands; it is kept struck-through rather than deleted so a reader can
+  see which question the investigation opened with.
+- ~~**Intent is NOT established.**~~ **Closed for the live event only**: asked
+  directly, the operator stated the deletion was deliberate. It stays open for
+  09-08, whose actor was never observed — the signature match makes the same
+  surface the economical explanation, and this document does not upgrade that
+  to an observation.
 - **The tool version live at E1 is not recoverable.** The installed binary is
   `v3.2.0-rc.5 / 84fa4ece4`, built `2026-09-09T02:48:44Z` — *after* E1. What
   ran on 09-08 cannot be read off this tree, and the Claude Code version then

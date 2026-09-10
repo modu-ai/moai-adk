@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "Implementation plan — update merge conflict blindness"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-10
 ---
 
@@ -9,11 +9,18 @@ created: 2026-09-10
 
 ## §A Context
 
-Read `spec.md` §A first; it is not restated here. The single fact that shapes this
-plan: everything the SPEC asserts about merge behaviour is **static-derived and
-unexecuted** (`spec.md` §A.5). The plan is therefore ordered so that the
+Read `spec.md` §A first; it is not restated here. The fact that shaped this plan
+at authoring time: everything the SPEC asserted about merge behaviour was
+**static-derived and unexecuted**. The plan is therefore ordered so that the
 observation comes before any design decision that depends on it, and so that the
 decisions most likely to change sit at the top where review is cheapest.
+
+**M1 has since been executed** (`progress.md` §E.2), and it found something wider
+than the plan-phase premise — `spec.md` §A.6: for a top-level JSON key the user's
+file already carries, the merge cannot change that key's value at all. Two
+consequences bind the rest of this plan: the breadth is **top-level JSON keys
+only** (`spec.md` §A.3), and M2 therefore opens with a precondition measurement
+(§F M2.0) rather than with a design choice.
 
 ## §B Known issues carried in from the investigation
 
@@ -27,6 +34,15 @@ decisions most likely to change sit at the top where review is cheapest.
 3. **`bypassPermissions` is set in `settings.local.json`.** Any claim that this
    work hardens the permission layer would be an unobserved claim while that mode
    is active.
+4. **The breadth M1 measured is narrower than the breadth the finding invites.**
+   `spec.md` §A.6 reads as a statement about the merge; it is established for
+   top-level JSON keys and for nothing else (`spec.md` §A.3). The recursive
+   `pruneToShared` path and `mergeYAML` were never entered. Citing §A.6 at full
+   breadth before M2.0 measures those two paths is an unobserved claim.
+5. **`.moai/config/sections/*.yaml` (32 files) travels the YAML path.** So the
+   unmeasured path is not a corner: it carries the bulk of the config surface a
+   repair would be judged on. This is why M2.0 is a precondition and not a
+   follow-up.
 
 ## §C Pre-flight
 
@@ -99,11 +115,49 @@ the harness — investigate before adjusting either.
 
 M1's exit is the recorded evidence, not a repair. Reading it decides M2's design.
 
-### M2 — Instrument honesty (Priority: High; design open until M1 is read)
+**Status: executed.** Evidence: `progress.md` §E.2. All four cells held their
+predictions, and the conflict-surface reading (`HasConflict=false`,
+`len(Conflicts)=0`) is paired with a control on the same engine and key that fired
+`true` / `1` under a base differing from both sides — so the reading is a property
+of the derived base, not of the harness. The cell that mattered most was
+`untouched_shared`: the user's value standing where the template's had changed is
+what produced the `spec.md` §A.6 revision.
+
+### M2 — Instrument honesty (Priority: High; design open until M2.0 is read)
+
+#### M2.0 — Precondition: measure the recursive path and the YAML path (no repair)
+
+[HARD] M2 does **not** begin with the design choice. It begins with a
+measurement, and no repair is authored until that measurement is recorded.
+
+What is unmeasured, and why it blocks: M1's fixture was a flat JSON document, so
+`spec.md` §A.6 is established for **top-level JSON keys only** (`spec.md` §A.3).
+Two paths were never entered:
+
+1. The **recursive** `pruneToShared` path (`base.go:124-126`) — a shared key whose
+   two sides both hold a nested map, measured down to a nested leaf.
+2. The **`mergeYAML`** path — the same four control cells expressed as a YAML
+   fixture, driven through the YAML strategy rather than the JSON one.
+
+Each is measured the way M1 measured its cells: predictions fixed before the run,
+readings taken from `MergeResult` as the engine returned it, an unmeasured cell
+recorded as a gap rather than inferred from a sibling (`REQ-UMC-007`), and a
+counter-cell that would fail if the harness were measuring nothing.
+
+Why it is a precondition rather than a follow-up: `.moai/config/sections/*.yaml`
+is 32 files and travels the YAML path. Repairing on the JSON-only reading means
+the **fixed scope and the believed scope diverge** — the repair lands, the
+instrument reads honest on JSON, and the YAML surface keeps whatever behaviour it
+had, unmeasured and now also unexamined. The divergence produces no signal, which
+is what makes measuring first cheaper than measuring after.
+
+M2.0's exit is the recorded evidence. Only then is the choice below made.
+
+#### M2.1 — The design choice
 
 `REQ-UMC-008`, `REQ-UMC-009`, `REQ-UMC-010`. Two candidate shapes, deliberately
 not chosen here — the choice is a decision for the orchestrator and the operator
-after M1's evidence exists:
+after both M1's and M2.0's evidence exist:
 
 - **(a) Make the surface honest about its limit.** Keep the resolution as-is and
   make the merge report that a shared key's divergence was resolved without a
@@ -141,11 +195,18 @@ document. Recorded here so the coupling is not discovered late.
 
 ## §G Anti-patterns
 
-- **Re-asserting the withdrawn framing.** "The merge is broken because the
-  conflict branch cannot fire" contradicts `base.go:105-107`. The defect is the
-  unreachable instrument, not the resolution.
-- **Narrowing to `permissions.ask`.** Both defects bind every shared key
-  (`spec.md` §A.3). A repair scoped to one key leaves the instrument defect intact.
+- **Re-asserting the withdrawn framing.** The withdrawn sentence — "The merge is broken because the conflict branch cannot fire" — contradicts `base.go:109-111`. The defect is the unreachable instrument, not the resolution. (A mention like this one is quoted on a single line on purpose: `acceptance.md` §D.3's criterion strips single-line quoted and backticked spans before searching, so a mention passes and a use is caught. A quotation broken across two lines is reported — fail-closed, not a false pass.)
+- **Citing `spec.md` §A.6 at full breadth.** The value-invariance finding is
+  measured for top-level JSON keys only (`spec.md` §A.3). Stating it of "every
+  shared key" before M2.0 measures the recursive and YAML paths is an unobserved
+  claim.
+- **Repairing before M2.0.** A repair authored on the JSON-only reading fixes a
+  scope narrower than the scope it will be believed to cover, and nothing signals
+  the difference.
+- **Narrowing to `permissions.ask`.** Both defects bind every shared key at the
+  breadth measured so far — top-level JSON keys (`spec.md` §A.3) — and
+  `permissions.ask` is one instance of that class. A repair scoped to one key
+  leaves the instrument defect intact.
 - **Passing on cells (i)-(iii) alone.** All three predict "user's side stands", so
   a harness that copied the user's file passes them. Cell (iv) is the counter-cell.
 - **Citing §A as established.** Until M1 lands, `spec.md` §A is a hypothesis
