@@ -1,0 +1,6 @@
+doc: internal/template/templates/.claude/skills/moai/workflows/codemaps.md
+--- stdout ---
+COLLECTED: fold=5 omission=15
+UNCOVERED: internal/settings/yamlpatch
+--- stderr ---
+EXIT=0
