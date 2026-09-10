@@ -1,0 +1,1507 @@
+=== RUN   TestCardRecord_RoundTrip
+=== PAUSE TestCardRecord_RoundTrip
+=== RUN   TestAdmission_WipKnobVaries
+=== PAUSE TestAdmission_WipKnobVaries
+=== RUN   TestAdmission_WipDefaultsToTwo
+=== PAUSE TestAdmission_WipDefaultsToTwo
+=== RUN   TestAdmission_UnheldInRunIsLegalSteadyState
+=== PAUSE TestAdmission_UnheldInRunIsLegalSteadyState
+=== RUN   TestAdmission_BacklogDoneNotDispatchable
+=== PAUSE TestAdmission_BacklogDoneNotDispatchable
+=== RUN   TestNormalizeCardText
+=== RUN   TestNormalizeCardText/already_normal
+=== RUN   TestNormalizeCardText/case_folded
+=== RUN   TestNormalizeCardText/trimmed
+=== RUN   TestNormalizeCardText/internal_runs_collapsed
+=== RUN   TestNormalizeCardText/combined
+=== RUN   TestNormalizeCardText/nfc_composed
+=== RUN   TestNormalizeCardText/punctuation_kept
+=== RUN   TestNormalizeCardText/empty
+--- PASS: TestNormalizeCardText (0.00s)
+    --- PASS: TestNormalizeCardText/already_normal (0.00s)
+    --- PASS: TestNormalizeCardText/case_folded (0.00s)
+    --- PASS: TestNormalizeCardText/trimmed (0.00s)
+    --- PASS: TestNormalizeCardText/internal_runs_collapsed (0.00s)
+    --- PASS: TestNormalizeCardText/combined (0.00s)
+    --- PASS: TestNormalizeCardText/nfc_composed (0.00s)
+    --- PASS: TestNormalizeCardText/punctuation_kept (0.00s)
+    --- PASS: TestNormalizeCardText/empty (0.00s)
+=== RUN   TestTokenSetJaccard
+=== RUN   TestTokenSetJaccard/identical
+=== RUN   TestTokenSetJaccard/disjoint
+=== RUN   TestTokenSetJaccard/one_token_dropped_from_six
+=== RUN   TestTokenSetJaccard/case_and_space_insensitive
+=== RUN   TestTokenSetJaccard/empty_left
+=== RUN   TestTokenSetJaccard/both_empty
+=== RUN   TestTokenSetJaccard/repeated_tokens_collapse_to_a_set
+--- PASS: TestTokenSetJaccard (0.00s)
+    --- PASS: TestTokenSetJaccard/identical (0.00s)
+    --- PASS: TestTokenSetJaccard/disjoint (0.00s)
+    --- PASS: TestTokenSetJaccard/one_token_dropped_from_six (0.00s)
+    --- PASS: TestTokenSetJaccard/case_and_space_insensitive (0.00s)
+    --- PASS: TestTokenSetJaccard/empty_left (0.00s)
+    --- PASS: TestTokenSetJaccard/both_empty (0.00s)
+    --- PASS: TestTokenSetJaccard/repeated_tokens_collapse_to_a_set (0.00s)
+=== RUN   TestClassifyCardText
+=== RUN   TestClassifyCardText/exact_against_a_queued_card
+=== RUN   TestClassifyCardText/exact_against_a_picked_card
+=== RUN   TestClassifyCardText/near_above_the_threshold
+=== RUN   TestClassifyCardText/below_the_threshold_is_none
+=== RUN   TestClassifyCardText/semantically_similar_but_textually_distinct_is_none
+=== RUN   TestClassifyCardText/a_dropped_card_is_not_a_comparison_subject
+=== RUN   TestClassifyCardText/a_token_permutation_scoring_1.0_is_not_near
+=== RUN   TestClassifyCardText/empty_queue
+--- PASS: TestClassifyCardText (0.00s)
+    --- PASS: TestClassifyCardText/exact_against_a_queued_card (0.00s)
+    --- PASS: TestClassifyCardText/exact_against_a_picked_card (0.00s)
+    --- PASS: TestClassifyCardText/near_above_the_threshold (0.00s)
+    --- PASS: TestClassifyCardText/below_the_threshold_is_none (0.00s)
+    --- PASS: TestClassifyCardText/semantically_similar_but_textually_distinct_is_none (0.00s)
+    --- PASS: TestClassifyCardText/a_dropped_card_is_not_a_comparison_subject (0.00s)
+    --- PASS: TestClassifyCardText/a_token_permutation_scoring_1.0_is_not_near (0.00s)
+    --- PASS: TestClassifyCardText/empty_queue (0.00s)
+=== RUN   TestBacklogArchive_StateEnumUnchanged
+--- PASS: TestBacklogArchive_StateEnumUnchanged (0.00s)
+=== RUN   TestBacklogArchive_PerItemContractFrozen
+--- PASS: TestBacklogArchive_PerItemContractFrozen (0.00s)
+=== RUN   TestBacklogArchive_SchemaVersionNotBumped
+--- PASS: TestBacklogArchive_SchemaVersionNotBumped (0.01s)
+=== RUN   TestBacklogArchive_TablesLandOnAnExistingDatabase
+--- PASS: TestBacklogArchive_TablesLandOnAnExistingDatabase (0.01s)
+=== RUN   TestBacklogArchive_RestorePreservesPositions
+--- PASS: TestBacklogArchive_RestorePreservesPositions (0.02s)
+=== RUN   TestBacklogArchive_RestoreClampsWhenTheQueueMovedOn
+--- PASS: TestBacklogArchive_RestoreClampsWhenTheQueueMovedOn (0.00s)
+=== RUN   TestBacklogArchive_RestoreRefusesAReissuedID
+--- PASS: TestBacklogArchive_RestoreRefusesAReissuedID (0.00s)
+=== RUN   TestBacklogArchive_LastSeqClearsArchivedIDs
+--- PASS: TestBacklogArchive_LastSeqClearsArchivedIDs (0.00s)
+=== RUN   TestBacklogArchive_RestoreIsNotRepeatable
+--- PASS: TestBacklogArchive_RestoreIsNotRepeatable (0.00s)
+=== RUN   TestBacklogArchive_SurvivesLegacyMigration
+--- PASS: TestBacklogArchive_SurvivesLegacyMigration (0.01s)
+=== RUN   TestInspectArchiveVouch_ProbeSeesDroppedTables
+--- PASS: TestInspectArchiveVouch_ProbeSeesDroppedTables (0.01s)
+=== RUN   TestInspectArchiveVouch_VouchedStore
+--- PASS: TestInspectArchiveVouch_VouchedStore (0.00s)
+=== RUN   TestInspectArchiveVouch_LegacyJSON
+--- PASS: TestInspectArchiveVouch_LegacyJSON (0.00s)
+=== RUN   TestInspectArchiveVouch_NoStore
+--- PASS: TestInspectArchiveVouch_NoStore (0.00s)
+=== RUN   TestConcurrencyStress
+=== PAUSE TestConcurrencyStress
+=== RUN   TestStressAddClassificationToleratesStarvation
+=== PAUSE TestStressAddClassificationToleratesStarvation
+=== RUN   TestStressZeroProgressFloorFailsTotalStarvation
+=== PAUSE TestStressZeroProgressFloorFailsTotalStarvation
+=== RUN   TestDuplicateIDRejectedByStorage
+=== PAUSE TestDuplicateIDRejectedByStorage
+=== RUN   TestReorderedItemsRoundTrip
+=== PAUSE TestReorderedItemsRoundTrip
+=== RUN   TestBacklogCountsForRoot
+=== PAUSE TestBacklogCountsForRoot
+=== RUN   TestQueuedBacklogCountForRootAgreesWithCounts
+=== PAUSE TestQueuedBacklogCountForRootAgreesWithCounts
+=== RUN   TestBacklogStoreSiblingPaths
+=== PAUSE TestBacklogStoreSiblingPaths
+=== RUN   TestIsBacklogBusy
+=== PAUSE TestIsBacklogBusy
+=== RUN   TestBacklogDowngrade_PreChangeBinaryStillServes
+=== RUN   TestBacklogDowngrade_PreChangeBinaryStillServes/(a)_pre-change_statements_run_verbatim
+=== RUN   TestBacklogDowngrade_PreChangeBinaryStillServes/(b)_the_reconstructed_pre-change_open_path_accepts_the_database
+=== RUN   TestBacklogDowngrade_PreChangeBinaryStillServes/(c)_the_frozen_replica_has_not_drifted_from_the_live_source
+--- PASS: TestBacklogDowngrade_PreChangeBinaryStillServes (0.01s)
+    --- PASS: TestBacklogDowngrade_PreChangeBinaryStillServes/(a)_pre-change_statements_run_verbatim (0.00s)
+    --- PASS: TestBacklogDowngrade_PreChangeBinaryStillServes/(b)_the_reconstructed_pre-change_open_path_accepts_the_database (0.00s)
+    --- PASS: TestBacklogDowngrade_PreChangeBinaryStillServes/(c)_the_frozen_replica_has_not_drifted_from_the_live_source (0.00s)
+=== RUN   TestBacklogFindingNames
+=== PAUSE TestBacklogFindingNames
+=== RUN   TestBacklogFindingSamePairAs
+=== PAUSE TestBacklogFindingSamePairAs
+=== RUN   TestBacklogRecordFindingTupleAndAppendOnce
+=== PAUSE TestBacklogRecordFindingTupleAndAppendOnce
+=== RUN   TestBacklogRecordFindingsNaming
+=== PAUSE TestBacklogRecordFindingsNaming
+=== RUN   TestBacklogRecordRemoveFindingsNaming
+=== PAUSE TestBacklogRecordRemoveFindingsNaming
+=== RUN   TestBacklogRecordHasAgentFindingForPair
+=== PAUSE TestBacklogRecordHasAgentFindingForPair
+=== RUN   TestInspectArchiveVouch_StateD_ReportsNonAuthoritativeJSON
+--- PASS: TestInspectArchiveVouch_StateD_ReportsNonAuthoritativeJSON (0.00s)
+=== RUN   TestInspectArchiveVouch_SteadyState_NoJSONToDisclose
+--- PASS: TestInspectArchiveVouch_SteadyState_NoJSONToDisclose (0.00s)
+=== RUN   TestInspectArchiveVouch_LegacyJSON_IsAuthoritative
+--- PASS: TestInspectArchiveVouch_LegacyJSON_IsAuthoritative (0.00s)
+=== RUN   TestInspectArchiveVouch_NoStore_NothingToDisclose
+--- PASS: TestInspectArchiveVouch_NoStore_NothingToDisclose (0.00s)
+=== RUN   TestInspectArchiveVouch_ReadOnlyDatabase
+--- PASS: TestInspectArchiveVouch_ReadOnlyDatabase (0.00s)
+=== RUN   TestBacklogLanding_RoundTripPreservesEvidence
+--- PASS: TestBacklogLanding_RoundTripPreservesEvidence (0.01s)
+=== RUN   TestBacklogLanding_ParityComparesEvidence
+=== PAUSE TestBacklogLanding_ParityComparesEvidence
+=== RUN   TestBacklogLanding_SurvivesDoneAndUndone
+--- PASS: TestBacklogLanding_SurvivesDoneAndUndone (0.09s)
+=== RUN   TestBacklogLanding_ItemsColumnShape
+--- PASS: TestBacklogLanding_ItemsColumnShape (0.01s)
+=== RUN   TestBacklogLanding_ArchivedItemsColumnShape
+--- PASS: TestBacklogLanding_ArchivedItemsColumnShape (0.00s)
+=== RUN   TestBacklogLanding_MigrationIsIdempotent
+--- PASS: TestBacklogLanding_MigrationIsIdempotent (0.01s)
+=== RUN   TestMigrationParity
+=== PAUSE TestMigrationParity
+=== RUN   TestMigrationIDContinuity
+=== PAUSE TestMigrationIDContinuity
+=== RUN   TestMigrationQuarantinesLegacyByteIdentical
+=== PAUSE TestMigrationQuarantinesLegacyByteIdentical
+=== RUN   TestMigrationBothPresentPrefersDatabase
+=== PAUSE TestMigrationBothPresentPrefersDatabase
+=== RUN   TestMigrationNeverOverwritesExistingQuarantine
+=== PAUSE TestMigrationNeverOverwritesExistingQuarantine
+=== RUN   TestMigrationMalformedAbortsWithoutDestroying
+=== PAUSE TestMigrationMalformedAbortsWithoutDestroying
+=== RUN   TestMigrationPartialFailureRemovesArtifacts
+=== PAUSE TestMigrationPartialFailureRemovesArtifacts
+=== RUN   TestMigrationParityCatchesTamperedRecord
+=== PAUSE TestMigrationParityCatchesTamperedRecord
+=== RUN   TestQueuedCountIsPureAcrossBothLayouts
+=== PAUSE TestQueuedCountIsPureAcrossBothLayouts
+=== RUN   TestLoadPureNeverMovesBytes
+=== PAUSE TestLoadPureNeverMovesBytes
+=== RUN   TestTodoHistoryAddsNoSchemaChange
+--- PASS: TestTodoHistoryAddsNoSchemaChange (0.01s)
+=== RUN   TestBacklogEnginePragmas
+--- PASS: TestBacklogEnginePragmas (0.00s)
+=== RUN   TestBacklogEnginePragmasSurviveConnectionChurn
+--- PASS: TestBacklogEnginePragmasSurviveConnectionChurn (0.02s)
+=== RUN   TestBacklogEngineSchemaShape
+--- PASS: TestBacklogEngineSchemaShape (0.00s)
+=== RUN   TestBacklogEngineReopenIsIdempotent
+--- PASS: TestBacklogEngineReopenIsIdempotent (0.01s)
+=== RUN   TestBacklogEngineRefusesUnknownSchemaVersionWithoutDestroying
+--- PASS: TestBacklogEngineRefusesUnknownSchemaVersionWithoutDestroying (0.01s)
+=== RUN   TestBacklogEngineNotADatabaseMapsToCorrupt
+--- PASS: TestBacklogEngineNotADatabaseMapsToCorrupt (0.00s)
+=== RUN   TestClassifyBacklogEngineCode
+=== RUN   TestClassifyBacklogEngineCode/busy_primary
+=== RUN   TestClassifyBacklogEngineCode/busy_extended_(snapshot)
+=== RUN   TestClassifyBacklogEngineCode/corrupt_primary
+=== RUN   TestClassifyBacklogEngineCode/corrupt_extended
+=== RUN   TestClassifyBacklogEngineCode/not_a_database
+=== RUN   TestClassifyBacklogEngineCode/unclassified_io_error
+--- PASS: TestClassifyBacklogEngineCode (0.00s)
+    --- PASS: TestClassifyBacklogEngineCode/busy_primary (0.00s)
+    --- PASS: TestClassifyBacklogEngineCode/busy_extended_(snapshot) (0.00s)
+    --- PASS: TestClassifyBacklogEngineCode/corrupt_primary (0.00s)
+    --- PASS: TestClassifyBacklogEngineCode/corrupt_extended (0.00s)
+    --- PASS: TestClassifyBacklogEngineCode/not_a_database (0.00s)
+    --- PASS: TestClassifyBacklogEngineCode/unclassified_io_error (0.00s)
+=== RUN   TestMapBacklogEngineErrorPreservesChain
+--- PASS: TestMapBacklogEngineErrorPreservesChain (0.00s)
+=== RUN   TestBacklogSQLitePath
+--- PASS: TestBacklogSQLitePath (0.00s)
+=== RUN   TestBacklogDSNURIShape
+=== RUN   TestBacklogDSNURIShape/posix_path_is_unchanged
+=== RUN   TestBacklogDSNURIShape/windows_drive_path_becomes_root-absolute
+=== RUN   TestBacklogDSNURIShape/hash_is_percent-encoded
+=== RUN   TestBacklogDSNURIShape/percent_is_percent-encoded
+=== RUN   TestBacklogDSNURIShape/space_is_percent-encoded
+--- PASS: TestBacklogDSNURIShape (0.00s)
+    --- PASS: TestBacklogDSNURIShape/posix_path_is_unchanged (0.00s)
+    --- PASS: TestBacklogDSNURIShape/windows_drive_path_becomes_root-absolute (0.00s)
+    --- PASS: TestBacklogDSNURIShape/hash_is_percent-encoded (0.00s)
+    --- PASS: TestBacklogDSNURIShape/percent_is_percent-encoded (0.00s)
+    --- PASS: TestBacklogDSNURIShape/space_is_percent-encoded (0.00s)
+=== RUN   TestBacklogEngineOpensAwkwardPaths
+=== RUN   TestBacklogEngineOpensAwkwardPaths/with_space
+=== RUN   TestBacklogEngineOpensAwkwardPaths/with?question
+=== RUN   TestBacklogEngineOpensAwkwardPaths/with#hash
+=== RUN   TestBacklogEngineOpensAwkwardPaths/with%percent
+--- PASS: TestBacklogEngineOpensAwkwardPaths (0.02s)
+    --- PASS: TestBacklogEngineOpensAwkwardPaths/with_space (0.00s)
+    --- PASS: TestBacklogEngineOpensAwkwardPaths/with?question (0.00s)
+    --- PASS: TestBacklogEngineOpensAwkwardPaths/with#hash (0.00s)
+    --- PASS: TestBacklogEngineOpensAwkwardPaths/with%percent (0.00s)
+=== RUN   TestBacklogLoad_PathIsDirectorySurfacesReadError
+=== PAUSE TestBacklogLoad_PathIsDirectorySurfacesReadError
+=== RUN   TestBacklogMutate_CallbackRefusalLeavesFileUnchanged
+=== PAUSE TestBacklogMutate_CallbackRefusalLeavesFileUnchanged
+=== RUN   TestBacklogMutate_ParentIsFileFailsBeforeLock
+=== PAUSE TestBacklogMutate_ParentIsFileFailsBeforeLock
+=== RUN   TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError
+=== PAUSE TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError
+=== RUN   TestBacklogWrite_UnwritableDirFailsLoudly
+=== PAUSE TestBacklogWrite_UnwritableDirFailsLoudly
+=== RUN   TestBacklogRead_UnwritableDirSurfacesEngineFailure
+=== PAUSE TestBacklogRead_UnwritableDirSurfacesEngineFailure
+=== RUN   TestBacklogNormalize_MinimalFiles
+=== PAUSE TestBacklogNormalize_MinimalFiles
+=== RUN   TestParseBacklogSeq_Refusals
+=== PAUSE TestParseBacklogSeq_Refusals
+=== RUN   TestJoinBacklogReleaseErr_BothFailuresSurvive
+=== PAUSE TestJoinBacklogReleaseErr_BothFailuresSurvive
+=== RUN   TestJoinBacklogReleaseErr_SingleAndCleanPaths
+=== PAUSE TestJoinBacklogReleaseErr_SingleAndCleanPaths
+=== RUN   TestBacklogLoad_MissingFileIsEmptyQueue
+=== PAUSE TestBacklogLoad_MissingFileIsEmptyQueue
+=== RUN   TestBacklogAdd_CreatesVersion1File
+=== PAUSE TestBacklogAdd_CreatesVersion1File
+=== RUN   TestBacklogLock_TimeoutNamesLockPath
+=== PAUSE TestBacklogLock_TimeoutNamesLockPath
+=== RUN   TestBacklogMutate_LoserSerializedNotFailed
+=== PAUSE TestBacklogMutate_LoserSerializedNotFailed
+=== RUN   TestBacklogIDIssuedUnderLock_SequentialMutations
+=== PAUSE TestBacklogIDIssuedUnderLock_SequentialMutations
+=== RUN   TestBacklogHighWater_SurvivesRemoval
+=== PAUSE TestBacklogHighWater_SurvivesRemoval
+=== RUN   TestBacklogHighWater_DeriveOnAbsent
+=== PAUSE TestBacklogHighWater_DeriveOnAbsent
+=== RUN   TestBacklogHighWater_HandEditedLowSeq
+=== PAUSE TestBacklogHighWater_HandEditedLowSeq
+=== RUN   TestBacklogMalformed_ReportedEverywhereFileUntouched
+=== PAUSE TestBacklogMalformed_ReportedEverywhereFileUntouched
+=== RUN   TestBacklogRoundTrip_PreservesFieldsAndVersion
+=== PAUSE TestBacklogRoundTrip_PreservesFieldsAndVersion
+=== RUN   TestBacklogWrite_NoTmpResidue
+=== PAUSE TestBacklogWrite_NoTmpResidue
+=== RUN   TestBacklogConcurrentAdd_UniqueIDs
+=== PAUSE TestBacklogConcurrentAdd_UniqueIDs
+=== RUN   TestBacklogStore_NoLeadRoleGuard
+=== PAUSE TestBacklogStore_NoLeadRoleGuard
+=== RUN   TestNewBacklogStore_SweepsLegacyLockArtifact
+--- PASS: TestNewBacklogStore_SweepsLegacyLockArtifact (0.00s)
+=== RUN   TestBoardRoot_NonGitDirFails
+=== PAUSE TestBoardRoot_NonGitDirFails
+=== RUN   TestTransitionIntoRun_Branches
+=== PAUSE TestTransitionIntoRun_Branches
+=== RUN   TestDeclareRole_EmptyRoleRejected
+=== PAUSE TestDeclareRole_EmptyRoleRejected
+=== RUN   TestBoardLock_PathDiagnostics
+=== PAUSE TestBoardLock_PathDiagnostics
+=== RUN   TestWriteBoardState_UnwritableDirSurfacesError
+=== PAUSE TestWriteBoardState_UnwritableDirSurfacesError
+=== RUN   TestLoadBoard_NullCardsNormalized
+=== PAUSE TestLoadBoard_NullCardsNormalized
+=== RUN   TestClearStaleBoardLock_UnixGatedOutOnUnreadableArtifact
+=== PAUSE TestClearStaleBoardLock_UnixGatedOutOnUnreadableArtifact
+=== RUN   TestBoardMutation_SerializedAcrossProcesses
+--- PASS: TestBoardMutation_SerializedAcrossProcesses (0.02s)
+=== RUN   TestBoardMutation_ConcurrencyPositiveControl
+--- PASS: TestBoardMutation_ConcurrencyPositiveControl (0.02s)
+=== RUN   TestWriteBoardState_ConcurrentReaderSeparateProcess
+    board_lock_cross_test.go:172: reader report: READS=4633 FAILURES=0 (writes=1634)
+--- PASS: TestWriteBoardState_ConcurrentReaderSeparateProcess (3.01s)
+=== RUN   TestBoardFlockErrnoContentionRemainsHeld
+--- PASS: TestBoardFlockErrnoContentionRemainsHeld (0.00s)
+=== RUN   TestBoardFlockErrnoNonContentionIsNotHeld
+=== RUN   TestBoardFlockErrnoNonContentionIsNotHeld/no_locks_available
+=== RUN   TestBoardFlockErrnoNonContentionIsNotHeld/bad_file_descriptor
+=== RUN   TestBoardFlockErrnoNonContentionIsNotHeld/operation_not_supported_on_socket
+=== RUN   TestBoardFlockErrnoNonContentionIsNotHeld/interrupted_system_call
+--- PASS: TestBoardFlockErrnoNonContentionIsNotHeld (0.00s)
+    --- PASS: TestBoardFlockErrnoNonContentionIsNotHeld/no_locks_available (0.00s)
+    --- PASS: TestBoardFlockErrnoNonContentionIsNotHeld/bad_file_descriptor (0.00s)
+    --- PASS: TestBoardFlockErrnoNonContentionIsNotHeld/operation_not_supported_on_socket (0.00s)
+    --- PASS: TestBoardFlockErrnoNonContentionIsNotHeld/interrupted_system_call (0.00s)
+=== RUN   TestBoardFlockErrnoPreservesErrnoAndPath
+=== RUN   TestBoardFlockErrnoPreservesErrnoAndPath/no_locks_available
+=== RUN   TestBoardFlockErrnoPreservesErrnoAndPath/bad_file_descriptor
+=== RUN   TestBoardFlockErrnoPreservesErrnoAndPath/operation_not_supported_on_socket
+=== RUN   TestBoardFlockErrnoPreservesErrnoAndPath/interrupted_system_call
+--- PASS: TestBoardFlockErrnoPreservesErrnoAndPath (0.00s)
+    --- PASS: TestBoardFlockErrnoPreservesErrnoAndPath/no_locks_available (0.00s)
+    --- PASS: TestBoardFlockErrnoPreservesErrnoAndPath/bad_file_descriptor (0.00s)
+    --- PASS: TestBoardFlockErrnoPreservesErrnoAndPath/operation_not_supported_on_socket (0.00s)
+    --- PASS: TestBoardFlockErrnoPreservesErrnoAndPath/interrupted_system_call (0.00s)
+=== RUN   TestBoardFlockErrnoFailurePathClosesDescriptor
+--- PASS: TestBoardFlockErrnoFailurePathClosesDescriptor (0.01s)
+=== RUN   TestJoinBoardReleaseErr_BothFailuresSurvive
+=== PAUSE TestJoinBoardReleaseErr_BothFailuresSurvive
+=== RUN   TestJoinBoardReleaseErr_SingleAndCleanPaths
+=== PAUSE TestJoinBoardReleaseErr_SingleAndCleanPaths
+=== RUN   TestBoardLock_ExcludesAcrossProcesses
+--- PASS: TestBoardLock_ExcludesAcrossProcesses (0.02s)
+=== RUN   TestClearStaleBoardLock_UnixGatedOut
+--- PASS: TestClearStaleBoardLock_UnixGatedOut (0.00s)
+=== RUN   TestBoardLockWaitBudgetDerivedFromNamedInputs
+=== PAUSE TestBoardLockWaitBudgetDerivedFromNamedInputs
+=== RUN   TestBoardLockWaitBudgetCoversSerializedMutations
+=== PAUSE TestBoardLockWaitBudgetCoversSerializedMutations
+=== RUN   TestBoardLockRetryWaitIsNotLockstep
+=== PAUSE TestBoardLockRetryWaitIsNotLockstep
+=== RUN   TestBacklogLockStuckHolderSurfacesBoundedNamedError
+=== PAUSE TestBacklogLockStuckHolderSurfacesBoundedNamedError
+=== RUN   TestRecoverBoard_ReadPathNeverRepairs
+=== PAUSE TestRecoverBoard_ReadPathNeverRepairs
+=== RUN   TestRecoverBoard_BoundedRecovery
+=== PAUSE TestRecoverBoard_BoundedRecovery
+=== RUN   TestRecoverBoard_ReadableBoardRecoveredUnchanged
+=== PAUSE TestRecoverBoard_ReadableBoardRecoveredUnchanged
+=== RUN   TestRecoverBoard_NonLeadRefused
+=== PAUSE TestRecoverBoard_NonLeadRefused
+=== RUN   TestRecoverBoard_AbsentNeedsNoRecovery
+=== PAUSE TestRecoverBoard_AbsentNeedsNoRecovery
+=== RUN   TestWriteBoardState_NonLeadRefused_BoardUnchanged
+=== PAUSE TestWriteBoardState_NonLeadRefused_BoardUnchanged
+=== RUN   TestWriteBoardState_LeadSucceeds
+=== PAUSE TestWriteBoardState_LeadSucceeds
+=== RUN   TestWriteBoardState_UndeclaredSessionRefused
+=== PAUSE TestWriteBoardState_UndeclaredSessionRefused
+=== RUN   TestWriteBoardState_CreatesStateDirectory
+=== PAUSE TestWriteBoardState_CreatesStateDirectory
+=== RUN   TestWriteBoardState_NoLeftoverTempFiles
+=== PAUSE TestWriteBoardState_NoLeftoverTempFiles
+=== RUN   TestWriteBoardState_ConcurrentReaderSeesWholeBoards
+=== PAUSE TestWriteBoardState_ConcurrentReaderSeesWholeBoards
+=== RUN   TestTransitionIntoRun_WipBound
+=== PAUSE TestTransitionIntoRun_WipBound
+=== RUN   TestBoardRoot_SingleOrigin
+=== PAUSE TestBoardRoot_SingleOrigin
+=== RUN   TestBoardRoot_FallbackForcedThroughIndirection
+--- PASS: TestBoardRoot_FallbackForcedThroughIndirection (0.24s)
+=== RUN   TestBoardPath_OwnSegments
+=== PAUSE TestBoardPath_OwnSegments
+=== RUN   TestLoadBoard_AbsentVsUnreadable
+=== PAUSE TestLoadBoard_AbsentVsUnreadable
+=== RUN   TestLoadBoard_ColumnRecordedNotDerived
+=== PAUSE TestLoadBoard_ColumnRecordedNotDerived
+=== RUN   TestLoadBoard_RoundTrip
+=== PAUSE TestLoadBoard_RoundTrip
+=== RUN   TestBase36
+=== PAUSE TestBase36
+=== RUN   TestBase36IsMonotonicAndRunIDShaped
+=== PAUSE TestBase36IsMonotonicAndRunIDShaped
+=== RUN   TestNewRunIDMatchesCurrentSecond
+=== PAUSE TestNewRunIDMatchesCurrentSecond
+=== RUN   TestCompanionRolesAreTheThreePhases
+=== PAUSE TestCompanionRolesAreTheThreePhases
+=== RUN   TestSplitCompanionLabel
+=== PAUSE TestSplitCompanionLabel
+=== RUN   TestCompanionLabelRoundTrips
+=== PAUSE TestCompanionLabelRoundTrips
+=== RUN   TestCompanionNumberLabelRoundTrips
+=== PAUSE TestCompanionNumberLabelRoundTrips
+=== RUN   TestLeadLabelIsBareRole
+=== PAUSE TestLeadLabelIsBareRole
+=== RUN   TestLeadNumberLabelIsNotACompanion
+=== PAUSE TestLeadNumberLabelIsNotACompanion
+=== RUN   TestSplitLeadLabelRoundTrip
+=== PAUSE TestSplitLeadLabelRoundTrip
+=== RUN   TestSplitLeadLabelRejectsNonLeadShapes
+=== PAUSE TestSplitLeadLabelRejectsNonLeadShapes
+=== RUN   TestSplitLeadLabelAndCompanionAreDisjoint
+=== PAUSE TestSplitLeadLabelAndCompanionAreDisjoint
+=== RUN   TestColumn_EnumerationExactlyFiveOrdered
+=== PAUSE TestColumn_EnumerationExactlyFiveOrdered
+=== RUN   TestColumn_ParseRejectsOutsideSet
+=== PAUSE TestColumn_ParseRejectsOutsideSet
+=== RUN   TestColumn_ParseAcceptsEveryDeclaredValue
+=== PAUSE TestColumn_ParseAcceptsEveryDeclaredValue
+=== RUN   TestColumn_DispatchableColumnConditional
+=== PAUSE TestColumn_DispatchableColumnConditional
+=== RUN   TestReadCardStatus_RejectsTraversalSpecID
+=== PAUSE TestReadCardStatus_RejectsTraversalSpecID
+=== RUN   TestTransitionIntoRun_RejectsTraversalSpecID
+=== PAUSE TestTransitionIntoRun_RejectsTraversalSpecID
+=== RUN   TestReadCardStatus_AcceptsCanonicalSpecID
+=== PAUSE TestReadCardStatus_AcceptsCanonicalSpecID
+=== RUN   TestReconcileCard_UnresolvedLiteralIsInconsistent
+=== PAUSE TestReconcileCard_UnresolvedLiteralIsInconsistent
+=== RUN   TestReconcileCard_GenuineUnresolvedSourceStaysUnresolved
+=== PAUSE TestReconcileCard_GenuineUnresolvedSourceStaysUnresolved
+=== RUN   TestReportedBranch_DetachedHEADReturnsEmptyCleanly
+--- PASS: TestReportedBranch_DetachedHEADReturnsEmptyCleanly (0.64s)
+=== RUN   TestReportedBranch_GitToolFailureIsAnError
+--- PASS: TestReportedBranch_GitToolFailureIsAnError (0.00s)
+=== RUN   TestReadBranchStatus_DeletedRefIsAnErrorNotNoFile
+--- PASS: TestReadBranchStatus_DeletedRefIsAnErrorNotNoFile (0.43s)
+=== RUN   TestFactoryLaneLabelJoinSplitRoundTrips
+=== PAUSE TestFactoryLaneLabelJoinSplitRoundTrips
+=== RUN   TestSplitFactoryLaneLabelRejectsNonShapes
+=== PAUSE TestSplitFactoryLaneLabelRejectsNonShapes
+=== RUN   TestFactoryLaneLabelNeverKanbanShape
+=== PAUSE TestFactoryLaneLabelNeverKanbanShape
+=== RUN   TestWithRoleAdmitsLane
+=== PAUSE TestWithRoleAdmitsLane
+=== RUN   TestRecordFactoryRunStartRecordsMetadataWithoutClaimingSpecProvenance
+--- PASS: TestRecordFactoryRunStartRecordsMetadataWithoutClaimingSpecProvenance (1.01s)
+=== RUN   TestFactoryFreeSlots
+=== PAUSE TestFactoryFreeSlots
+=== RUN   TestPruneFactoryDeadClaims
+=== PAUSE TestPruneFactoryDeadClaims
+=== RUN   TestBacklogQueuedCountSharedShape
+=== PAUSE TestBacklogQueuedCountSharedShape
+=== RUN   TestFactoryRegistryRoundTrip
+=== PAUSE TestFactoryRegistryRoundTrip
+=== RUN   TestClaimFactoryWorkerNameConcurrentClaimsAreUnique
+--- PASS: TestClaimFactoryWorkerNameConcurrentClaimsAreUnique (2.96s)
+=== RUN   TestWriteBoardState_RejectsTraversalSpecIDFromMutate
+=== PAUSE TestWriteBoardState_RejectsTraversalSpecIDFromMutate
+=== RUN   TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard
+=== PAUSE TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard
+=== RUN   TestWriteBoardState_TraversalRenameInPlaceStillRefused
+=== PAUSE TestWriteBoardState_TraversalRenameInPlaceStillRefused
+=== RUN   TestForemanQueueWatch_FiresOnMutation
+=== RUN   TestForemanQueueWatch_FiresOnMutation/local
+=== RUN   TestForemanQueueWatch_FiresOnMutation/template
+--- PASS: TestForemanQueueWatch_FiresOnMutation (40.10s)
+    --- PASS: TestForemanQueueWatch_FiresOnMutation/local (20.05s)
+    --- PASS: TestForemanQueueWatch_FiresOnMutation/template (20.06s)
+=== RUN   TestForemanQueueWatch_ShippedJSONTargetIsSilent
+--- PASS: TestForemanQueueWatch_ShippedJSONTargetIsSilent (20.04s)
+=== RUN   TestForemanQueueWatch_FiresWithStaleJSONPresent
+--- PASS: TestForemanQueueWatch_FiresWithStaleJSONPresent (20.05s)
+=== RUN   TestForemanQueueWatch_WatchTargetsAgree
+--- PASS: TestForemanQueueWatch_WatchTargetsAgree (0.00s)
+=== RUN   TestForemanQueueWatch_DBOnlyTargetMissesWALDeferral
+--- PASS: TestForemanQueueWatch_DBOnlyTargetMissesWALDeferral (20.07s)
+=== RUN   TestForemanQueueWatch_SeesWALDeferredCommit
+    foreman_queue_watch_wal_test.go:151: baseline cksum(backlog.db) = 958506464 40960
+    foreman_queue_watch_wal_test.go:168: Given established: backlog.db-wal = 12392 bytes, cksum(backlog.db) unmoved at 958506464 40960
+--- PASS: TestForemanQueueWatch_SeesWALDeferredCommit (20.15s)
+=== RUN   TestIntegrationLockAcquire_SerializedAcrossProcesses
+    integration_lock_cross_test.go:266: A: RESULT=acquired REPLACED=none SESSION=lane-a
+    integration_lock_cross_test.go:267: B: RESULT=held REPLACED=none SESSION=lane-b
+    integration_lock_cross_test.go:268: round: successes=1 refusals=1 other=0 sessions_differ=true mid_record_held=false mid_record_stale=false final_holder="lane-a" final_record_stale=false
+--- PASS: TestIntegrationLockAcquire_SerializedAcrossProcesses (0.53s)
+=== RUN   TestIntegrationLockAcquire_ConcurrencyPositiveControl
+    integration_lock_cross_test.go:341: positive control: both children acquired as lane-same; record holder="lane-same"
+--- PASS: TestIntegrationLockAcquire_ConcurrencyPositiveControl (0.02s)
+=== RUN   TestIntegrationLockBusy_IsNotHeld
+--- PASS: TestIntegrationLockBusy_IsNotHeld (0.00s)
+=== RUN   TestAcquireIntegrationLock_RecordsHolder
+--- PASS: TestAcquireIntegrationLock_RecordsHolder (0.00s)
+=== RUN   TestAcquireIntegrationLock_RecordsTheCallersOwnerPID
+--- PASS: TestAcquireIntegrationLock_RecordsTheCallersOwnerPID (0.00s)
+=== RUN   TestAcquireIntegrationLock_AnchoredPIDZeroIsLiveNotStale
+--- PASS: TestAcquireIntegrationLock_AnchoredPIDZeroIsLiveNotStale (0.00s)
+=== RUN   TestReadIntegrationLock_LegacyRecordWithoutPIDSource
+--- PASS: TestReadIntegrationLock_LegacyRecordWithoutPIDSource (0.00s)
+=== RUN   TestAcquireIntegrationLock_RefusesASecondLiveSession
+--- PASS: TestAcquireIntegrationLock_RefusesASecondLiveSession (0.00s)
+=== RUN   TestAcquireIntegrationLock_SameSessionReacquires
+--- PASS: TestAcquireIntegrationLock_SameSessionReacquires (0.00s)
+=== RUN   TestAcquireIntegrationLock_TakesOverAStaleHolder
+--- PASS: TestAcquireIntegrationLock_TakesOverAStaleHolder (0.00s)
+=== RUN   TestAcquireIntegrationLock_ForceTakesOverALiveHolder
+--- PASS: TestAcquireIntegrationLock_ForceTakesOverALiveHolder (0.00s)
+=== RUN   TestReadIntegrationLock_CorruptRecordIsNotAFreeWindow
+--- PASS: TestReadIntegrationLock_CorruptRecordIsNotAFreeWindow (0.00s)
+=== RUN   TestReleaseIntegrationLock_HolderAndForeign
+--- PASS: TestReleaseIntegrationLock_HolderAndForeign (0.00s)
+=== RUN   TestReleaseIntegrationLock_EmptyIsReported
+--- PASS: TestReleaseIntegrationLock_EmptyIsReported (0.00s)
+=== RUN   TestReadIntegrationLock_AbsentRecord
+--- PASS: TestReadIntegrationLock_AbsentRecord (0.00s)
+=== RUN   TestWriteIntegrationLock_UniqueStagingPath
+--- PASS: TestWriteIntegrationLock_UniqueStagingPath (0.00s)
+=== RUN   TestKanbanHelperProcess
+--- PASS: TestKanbanHelperProcess (0.00s)
+=== RUN   TestLandingEvidence_CarriesAllSixFacts
+--- PASS: TestLandingEvidence_CarriesAllSixFacts (0.00s)
+=== RUN   TestLandingEvidence_AbsenceIsSQLNull
+--- PASS: TestLandingEvidence_AbsenceIsSQLNull (0.01s)
+=== RUN   TestLandingEvidence_RefHeadIsNotADeliveringSHA
+--- PASS: TestLandingEvidence_RefHeadIsNotADeliveringSHA (0.00s)
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance/sha_without_provenance
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance/provenance_without_sha
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance/sha_with_a_non-operator_provenance
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance/no_ref
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance/no_ref_head
+=== RUN   TestLandingEvidence_RefusesUnpairedProvenance/no_observation_instant
+--- PASS: TestLandingEvidence_RefusesUnpairedProvenance (0.00s)
+    --- PASS: TestLandingEvidence_RefusesUnpairedProvenance/sha_without_provenance (0.00s)
+    --- PASS: TestLandingEvidence_RefusesUnpairedProvenance/provenance_without_sha (0.00s)
+    --- PASS: TestLandingEvidence_RefusesUnpairedProvenance/sha_with_a_non-operator_provenance (0.00s)
+    --- PASS: TestLandingEvidence_RefusesUnpairedProvenance/no_ref (0.00s)
+    --- PASS: TestLandingEvidence_RefusesUnpairedProvenance/no_ref_head (0.00s)
+    --- PASS: TestLandingEvidence_RefusesUnpairedProvenance/no_observation_instant (0.00s)
+=== RUN   TestLandingEvidence_UnknownSpecStatusIsExplicit
+--- PASS: TestLandingEvidence_UnknownSpecStatusIsExplicit (0.00s)
+=== RUN   TestLandingEvidence_DecodeRefusesGarbage
+--- PASS: TestLandingEvidence_DecodeRefusesGarbage (0.00s)
+=== RUN   TestResolver_NamesNoDeliveringCommit
+--- PASS: TestResolver_NamesNoDeliveringCommit (0.64s)
+=== RUN   TestLandedPredicate_PinnedCorpusReproduction
+--- PASS: TestLandedPredicate_PinnedCorpusReproduction (0.35s)
+=== RUN   TestLandedPredicate_Form1_ConventionalScope
+--- PASS: TestLandedPredicate_Form1_ConventionalScope (0.40s)
+=== RUN   TestLandedPredicate_Form2_TrailingParenthetical
+--- PASS: TestLandedPredicate_Form2_TrailingParenthetical (0.47s)
+=== RUN   TestLandedPredicate_Form2b_ReferenceGroup
+--- PASS: TestLandedPredicate_Form2b_ReferenceGroup (0.22s)
+=== RUN   TestLandedPredicate_Form3_Merges
+=== RUN   TestLandedPredicate_Form3_Merges/clause_1_and_2
+=== RUN   TestLandedPredicate_Form3_Merges/clause_3_—_absorb-direction_merges_attribute_nothing
+=== RUN   TestLandedPredicate_Form3_Merges/clause_4_—_form_3b's_green_direction
+=== RUN   TestLandedPredicate_Form3_Merges/clause_5_—_absorb_siblings_of_a_landed_target
+=== RUN   TestLandedPredicate_Form3_Merges/clause_6_—_the_target_is_derived_from_the_resolved_ref,_never_spelled
+--- PASS: TestLandedPredicate_Form3_Merges (2.10s)
+    --- PASS: TestLandedPredicate_Form3_Merges/clause_1_and_2 (0.35s)
+    --- PASS: TestLandedPredicate_Form3_Merges/clause_3_—_absorb-direction_merges_attribute_nothing (0.46s)
+    --- PASS: TestLandedPredicate_Form3_Merges/clause_4_—_form_3b's_green_direction (0.40s)
+    --- PASS: TestLandedPredicate_Form3_Merges/clause_5_—_absorb_siblings_of_a_landed_target (0.52s)
+    --- PASS: TestLandedPredicate_Form3_Merges/clause_6_—_the_target_is_derived_from_the_resolved_ref,_never_spelled (0.36s)
+=== RUN   TestLandedPredicate_Form3a_3c_CardLedMerges
+--- PASS: TestLandedPredicate_Form3a_3c_CardLedMerges (0.74s)
+=== RUN   TestLandedPredicate_BodyMentionNeverAttributes
+--- PASS: TestLandedPredicate_BodyMentionNeverAttributes (0.79s)
+=== RUN   TestLandedPredicate_SubstringIsNotAttribution
+--- PASS: TestLandedPredicate_SubstringIsNotAttribution (0.27s)
+=== RUN   TestLandedPredicate_EmptyHistoryIsNotLandedNotUnknown
+--- PASS: TestLandedPredicate_EmptyHistoryIsNotLandedNotUnknown (0.16s)
+=== RUN   TestLandedCheck_Controls
+--- PASS: TestLandedCheck_Controls (0.55s)
+=== RUN   TestLandedCheck_BooleanOnly
+--- PASS: TestLandedCheck_BooleanOnly (0.35s)
+=== RUN   TestLandedQuerier_RefusesNonToken
+--- PASS: TestLandedQuerier_RefusesNonToken (0.00s)
+=== RUN   TestLandedQuerier_NoRunnerErrors
+--- PASS: TestLandedQuerier_NoRunnerErrors (0.00s)
+=== RUN   TestLandedQuerier_GitFailureIsNotFalse
+--- PASS: TestLandedQuerier_GitFailureIsNotFalse (0.00s)
+=== RUN   TestLandedSubjectArgs_Tripwire
+--- PASS: TestLandedSubjectArgs_Tripwire (0.00s)
+=== RUN   TestLandedRefFor_ChainLevel2_OriginHEAD
+--- PASS: TestLandedRefFor_ChainLevel2_OriginHEAD (0.16s)
+=== RUN   TestLandedRefFor_ChainLevel3_SymrefAbsent
+--- PASS: TestLandedRefFor_ChainLevel3_SymrefAbsent (0.13s)
+=== RUN   TestLandedRefForWithLevel_ReportsTheAnsweringLevel
+--- PASS: TestLandedRefForWithLevel_ReportsTheAnsweringLevel (0.32s)
+=== RUN   TestLandedRefForWithLevel_Level1SkipsLevel2
+--- PASS: TestLandedRefForWithLevel_Level1SkipsLevel2 (0.00s)
+=== RUN   TestLandedRefForWithLevel_ResolutionWritesNothing
+--- PASS: TestLandedRefForWithLevel_ResolutionWritesNothing (0.06s)
+=== RUN   TestLandedRefFor
+=== RUN   TestLandedRefFor/configured_develop
+=== RUN   TestLandedRefFor/configured_with_surrounding_space
+=== RUN   TestLandedRefFor/configured_main_is_still_main
+=== RUN   TestLandedRefFor/empty_configuration_keeps_the_default
+--- PASS: TestLandedRefFor (0.06s)
+    --- PASS: TestLandedRefFor/configured_develop (0.00s)
+    --- PASS: TestLandedRefFor/configured_with_surrounding_space (0.00s)
+    --- PASS: TestLandedRefFor/configured_main_is_still_main (0.00s)
+    --- PASS: TestLandedRefFor/empty_configuration_keeps_the_default (0.03s)
+=== RUN   TestLandedSubjectArgs_CarriesTheResolvedRef
+--- PASS: TestLandedSubjectArgs_CarriesTheResolvedRef (0.00s)
+=== RUN   TestLandedQuerier_AnswersAboutTheConfiguredRef
+--- PASS: TestLandedQuerier_AnswersAboutTheConfiguredRef (0.50s)
+=== RUN   TestResolve_ExactFromTitle
+--- PASS: TestResolve_ExactFromTitle (0.00s)
+=== RUN   TestResolve_InferredFromSingleBody
+--- PASS: TestResolve_InferredFromSingleBody (0.00s)
+=== RUN   TestResolve_AmbiguousNotCollapsed
+--- PASS: TestResolve_AmbiguousNotCollapsed (0.00s)
+=== RUN   TestResolve_IgnoresCommitTokensForAttribution
+--- PASS: TestResolve_IgnoresCommitTokensForAttribution (0.00s)
+=== RUN   TestResolve_FourOutcomeKindsDistinct
+--- PASS: TestResolve_FourOutcomeKindsDistinct (0.00s)
+=== RUN   TestResolve_WholeTokenOnly
+--- PASS: TestResolve_WholeTokenOnly (0.00s)
+=== RUN   TestResolve_LandedCarriesNoCommit
+--- PASS: TestResolve_LandedCarriesNoCommit (0.00s)
+=== RUN   TestResolve_LandedErrorDegradesToUnknown
+--- PASS: TestResolve_LandedErrorDegradesToUnknown (0.00s)
+=== RUN   TestResolve_LandedNotConsultedWhenLinked
+--- PASS: TestResolve_LandedNotConsultedWhenLinked (0.00s)
+=== RUN   TestResolve_RefusesNonToken
+--- PASS: TestResolve_RefusesNonToken (0.00s)
+=== RUN   TestResolve_TwoTitlesAreAmbiguousNotExact
+--- PASS: TestResolve_TwoTitlesAreAmbiguousNotExact (0.00s)
+=== RUN   TestResolve_NilLandedQuerier
+--- PASS: TestResolve_NilLandedQuerier (0.00s)
+=== RUN   TestCompatibilityTable_EveryPairing
+=== PAUSE TestCompatibilityTable_EveryPairing
+=== RUN   TestCompatibilityTable_IllegalPairRepairsNothing
+=== PAUSE TestCompatibilityTable_IllegalPairRepairsNothing
+=== RUN   TestCompatibilityTable_NoSpecMDRows
+=== PAUSE TestCompatibilityTable_NoSpecMDRows
+=== RUN   TestReconcileCard_CollisionsAreAmbiguousNotResolved
+=== PAUSE TestReconcileCard_CollisionsAreAmbiguousNotResolved
+=== RUN   TestShouldCreateCard_TerminalsProduceNoCard
+=== PAUSE TestShouldCreateCard_TerminalsProduceNoCard
+=== RUN   TestReconcileCard_PlannedAdmittedOnlyInBacklogAndPlan
+=== PAUSE TestReconcileCard_PlannedAdmittedOnlyInBacklogAndPlan
+=== RUN   TestReconcileCard_InvalidRecordedColumn
+=== PAUSE TestReconcileCard_InvalidRecordedColumn
+=== RUN   TestLaneNumberIsRecordedDistinctlyFromRole
+=== PAUSE TestLaneNumberIsRecordedDistinctlyFromRole
+=== RUN   TestWithLaneIgnoresNonPositiveNumbers
+=== PAUSE TestWithLaneIgnoresNonPositiveNumbers
+=== RUN   TestCardIdentifierRoundTripsDistinctFromSpecID
+=== PAUSE TestCardIdentifierRoundTripsDistinctFromSpecID
+=== RUN   TestNewFieldsAreOmittedWhenEmpty
+=== PAUSE TestNewFieldsAreOmittedWhenEmpty
+=== RUN   TestPreChangeRecordReadsAndRewritesByteIdentically
+=== PAUSE TestPreChangeRecordReadsAndRewritesByteIdentically
+=== RUN   TestWriteThenReadRoundTripsEveryField
+--- PASS: TestWriteThenReadRoundTripsEveryField (0.00s)
+=== RUN   TestRecordPathIsSessionKeyedUnderStateTodo
+--- PASS: TestRecordPathIsSessionKeyedUnderStateTodo (0.00s)
+=== RUN   TestWrittenJSONCarriesTheDocumentedKeys
+--- PASS: TestWrittenJSONCarriesTheDocumentedKeys (0.00s)
+=== RUN   TestVerifyRungRoundTripsEveryRung
+=== RUN   TestVerifyRungRoundTripsEveryRung/PRIMARY
+=== RUN   TestVerifyRungRoundTripsEveryRung/FALLBACK
+=== RUN   TestVerifyRungRoundTripsEveryRung/DEGRADED
+--- PASS: TestVerifyRungRoundTripsEveryRung (0.00s)
+    --- PASS: TestVerifyRungRoundTripsEveryRung/PRIMARY (0.00s)
+    --- PASS: TestVerifyRungRoundTripsEveryRung/FALLBACK (0.00s)
+    --- PASS: TestVerifyRungRoundTripsEveryRung/DEGRADED (0.00s)
+=== RUN   TestAbsentRungIsDistinguishableFromEmptyRung
+=== RUN   TestAbsentRungIsDistinguishableFromEmptyRung/absent
+=== RUN   TestAbsentRungIsDistinguishableFromEmptyRung/recorded_empty
+--- PASS: TestAbsentRungIsDistinguishableFromEmptyRung (0.00s)
+    --- PASS: TestAbsentRungIsDistinguishableFromEmptyRung/absent (0.00s)
+    --- PASS: TestAbsentRungIsDistinguishableFromEmptyRung/recorded_empty (0.00s)
+=== RUN   TestReadReturnsErrorWhenRecordIsAbsent
+--- PASS: TestReadReturnsErrorWhenRecordIsAbsent (0.00s)
+=== RUN   TestReadReturnsErrorOnMalformedJSON
+--- PASS: TestReadReturnsErrorOnMalformedJSON (0.00s)
+=== RUN   TestWriteRejectsUnusableSessionIDs
+=== RUN   TestWriteRejectsUnusableSessionIDs/empty
+=== RUN   TestWriteRejectsUnusableSessionIDs/path_separator
+=== RUN   TestWriteRejectsUnusableSessionIDs/parent_escape
+--- PASS: TestWriteRejectsUnusableSessionIDs (0.00s)
+    --- PASS: TestWriteRejectsUnusableSessionIDs/empty (0.00s)
+    --- PASS: TestWriteRejectsUnusableSessionIDs/path_separator (0.00s)
+    --- PASS: TestWriteRejectsUnusableSessionIDs/parent_escape (0.00s)
+=== RUN   TestWriteBestEffortFailsOpenOnUnwritableStateDirectory
+--- PASS: TestWriteBestEffortFailsOpenOnUnwritableStateDirectory (0.00s)
+=== RUN   TestNewRecordStampsAnRFC3339EnteredAt
+--- PASS: TestNewRecordStampsAnRFC3339EnteredAt (0.00s)
+=== RUN   TestRecordWithoutSpecIDRoundTrips
+--- PASS: TestRecordWithoutSpecIDRoundTrips (0.00s)
+=== RUN   TestRevisionMatchHappyPath
+--- PASS: TestRevisionMatchHappyPath (0.00s)
+=== RUN   TestRevisionMatchAbsentDirectoryIsFalse
+--- PASS: TestRevisionMatchAbsentDirectoryIsFalse (0.00s)
+=== RUN   TestRevisionMatchAbsentRevisionJSONIsFalse
+--- PASS: TestRevisionMatchAbsentRevisionJSONIsFalse (0.00s)
+=== RUN   TestLoadRevisionUnreadableFileIsError
+--- PASS: TestLoadRevisionUnreadableFileIsError (0.00s)
+=== RUN   TestLoadRevisionMalformedJSONIsError
+--- PASS: TestLoadRevisionMalformedJSONIsError (0.00s)
+=== RUN   TestRevisionMatchCommitMismatchIsFalse
+--- PASS: TestRevisionMatchCommitMismatchIsFalse (0.00s)
+=== RUN   TestRevisionMatchNonRepoScopeIsFalse
+--- PASS: TestRevisionMatchNonRepoScopeIsFalse (0.00s)
+=== RUN   TestRevisionMatchDirtyTreeWithWorkingTreeExcluded
+--- PASS: TestRevisionMatchDirtyTreeWithWorkingTreeExcluded (0.00s)
+=== RUN   TestRevisionMatchFindingsCompleteness
+--- PASS: TestRevisionMatchFindingsCompleteness (0.00s)
+=== RUN   TestRevisionMatchUnparseableFindingsLineIsFalse
+--- PASS: TestRevisionMatchUnparseableFindingsLineIsFalse (0.00s)
+=== RUN   TestMatchesNilRevisionIsFalse
+--- PASS: TestMatchesNilRevisionIsFalse (0.00s)
+=== RUN   TestSuppressStep0551RungAllowList
+=== RUN   TestSuppressStep0551RungAllowList/recorded_PRIMARY_suppresses
+=== RUN   TestSuppressStep0551RungAllowList/recorded_FALLBACK_suppresses
+=== RUN   TestSuppressStep0551RungAllowList/recorded_DEGRADED_does_not_suppress
+=== RUN   TestSuppressStep0551RungAllowList/never-recorded_rung_does_not_suppress
+=== RUN   TestSuppressStep0551RungAllowList/recorded-empty_rung_does_not_suppress
+=== RUN   TestSuppressStep0551RungAllowList/unrecognized_rung_does_not_suppress
+=== RUN   TestSuppressStep0551RungAllowList/failing_predicate_does_not_suppress_even_on_PRIMARY
+--- PASS: TestSuppressStep0551RungAllowList (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/recorded_PRIMARY_suppresses (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/recorded_FALLBACK_suppresses (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/recorded_DEGRADED_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/never-recorded_rung_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/recorded-empty_rung_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/unrecognized_rung_does_not_suppress (0.00s)
+    --- PASS: TestSuppressStep0551RungAllowList/failing_predicate_does_not_suppress_even_on_PRIMARY (0.00s)
+=== RUN   TestRoleDeclaration_WorkersReadLead
+=== PAUSE TestRoleDeclaration_WorkersReadLead
+=== RUN   TestRoleDeclaration_LeadReadsWorkers
+=== PAUSE TestRoleDeclaration_LeadReadsWorkers
+=== RUN   TestRoleDeclaration_CrossProcessResolution
+--- PASS: TestRoleDeclaration_CrossProcessResolution (0.01s)
+=== RUN   TestRoleDeclaration_LabelDistinct
+=== PAUSE TestRoleDeclaration_LabelDistinct
+=== RUN   TestResolveDeclaredRole_AbsentFails
+=== PAUSE TestResolveDeclaredRole_AbsentFails
+=== RUN   TestResolveDeclaredRole_RejectsUnsafeSessionIDs
+=== PAUSE TestResolveDeclaredRole_RejectsUnsafeSessionIDs
+=== RUN   TestT549_BacklogPathForRootTreatsArgumentAsRoot
+    root_layer_repro_test.go:55: BacklogPathForRoot(root)     = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_BacklogPathForRootTreatsArgumentAsRoot785168655/001/.moai/state/todo/backlog.json
+    root_layer_repro_test.go:56: BacklogPathForRoot(stateDir) = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_BacklogPathForRootTreatsArgumentAsRoot785168655/001/.moai/state/todo/.moai/state/todo/backlog.json
+--- PASS: TestT549_BacklogPathForRootTreatsArgumentAsRoot (0.12s)
+=== RUN   TestT549_NoHomeFallbackReadsTheExistingQueue
+    root_layer_repro_test.go:114: pure: root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue1999537292/001 path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue1999537292/001/.moai/state/todo/backlog.json items=3 err=<nil>
+    root_layer_repro_test.go:114: adopting: root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue1999537292/001 path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT549_NoHomeFallbackReadsTheExistingQueue1999537292/001/.moai/state/todo/backlog.json items=3 err=<nil>
+--- PASS: TestT549_NoHomeFallbackReadsTheExistingQueue (0.24s)
+=== RUN   TestT549_SymlinkedTempBaseWithDefaultRootsReturnsBase
+--- PASS: TestT549_SymlinkedTempBaseWithDefaultRootsReturnsBase (0.20s)
+=== RUN   TestSettingsDriftPredicateHit
+=== PAUSE TestSettingsDriftPredicateHit
+=== RUN   TestSettingsDriftPredicatePass
+=== PAUSE TestSettingsDriftPredicatePass
+=== RUN   TestSettingsDriftPredicateIgnoresOtherFile
+=== PAUSE TestSettingsDriftPredicateIgnoresOtherFile
+=== RUN   TestSettingsDriftPredicateScopedToWatchedPath
+=== PAUSE TestSettingsDriftPredicateScopedToWatchedPath
+=== RUN   TestSettingsDriftPredicateArgvRecordedAtExecutionBoundary
+=== PAUSE TestSettingsDriftPredicateArgvRecordedAtExecutionBoundary
+=== RUN   TestSettingsDriftPredicateFailureIsNotPass
+=== PAUSE TestSettingsDriftPredicateFailureIsNotPass
+=== RUN   TestAssessSettingsDriftPreservesAndLedgers
+=== PAUSE TestAssessSettingsDriftPreservesAndLedgers
+=== RUN   TestAssessSettingsDriftDoesNotOverwriteOnCollision
+=== PAUSE TestAssessSettingsDriftDoesNotOverwriteOnCollision
+=== RUN   TestAssessSettingsDriftLeavesOriginalUntouched
+=== PAUSE TestAssessSettingsDriftLeavesOriginalUntouched
+=== RUN   TestAssessSettingsDriftPreserveFailureKeepsVerdict
+=== PAUSE TestAssessSettingsDriftPreserveFailureKeepsVerdict
+=== RUN   TestAssessSettingsDriftCleanTree
+=== PAUSE TestAssessSettingsDriftCleanTree
+=== RUN   TestLedgerDigestDescribesThePreservedBytes
+--- PASS: TestLedgerDigestDescribesThePreservedBytes (2.42s)
+=== RUN   TestSettingsDriftLabelFallsBackWithoutBreakingThePath
+=== PAUSE TestSettingsDriftLabelFallsBackWithoutBreakingThePath
+=== RUN   TestPreserveUsesTheBranchWhenNoCardIsGiven
+=== PAUSE TestPreserveUsesTheBranchWhenNoCardIsGiven
+=== RUN   TestAssessSettingsDriftUndetermined
+=== PAUSE TestAssessSettingsDriftUndetermined
+=== RUN   TestStateDirRelocationUnderHeldLock
+=== PAUSE TestStateDirRelocationUnderHeldLock
+=== RUN   TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource
+=== PAUSE TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource
+=== RUN   TestRelocateQueueArtifactsRemovesIncompleteTargetOnWriteFailure
+--- PASS: TestRelocateQueueArtifactsRemovesIncompleteTargetOnWriteFailure (0.01s)
+=== RUN   TestRelocateQueueArtifactsNeverOverwritesExistingHomeQueue
+=== PAUSE TestRelocateQueueArtifactsNeverOverwritesExistingHomeQueue
+=== RUN   TestRelocateQueueArtifactsSerializesOnTargetQueueLock
+--- PASS: TestRelocateQueueArtifactsSerializesOnTargetQueueLock (0.13s)
+=== RUN   TestAdoptingPathMigratesLegacyHomeQueue
+--- PASS: TestAdoptingPathMigratesLegacyHomeQueue (0.87s)
+=== RUN   TestAdoptingPathFindsLegacyHomeQueueWithPreSanitizationKey
+--- PASS: TestAdoptingPathFindsLegacyHomeQueueWithPreSanitizationKey (1.08s)
+=== RUN   TestBacklogSQLiteArtifactsArePrivateWhileOpen
+--- PASS: TestBacklogSQLiteArtifactsArePrivateWhileOpen (0.02s)
+=== RUN   TestStateDirRelocatesLegacyWithRegistryFiles
+=== PAUSE TestStateDirRelocatesLegacyWithRegistryFiles
+=== RUN   TestStateDirBothPresentLeavesLegacyUntouched
+=== PAUSE TestStateDirBothPresentLeavesLegacyUntouched
+=== RUN   TestStateDirRelocationRefusedFallsBackToLegacyRead
+=== PAUSE TestStateDirRelocationRefusedFallsBackToLegacyRead
+=== RUN   TestStateDirPureResolutionNeverRelocates
+=== PAUSE TestStateDirPureResolutionNeverRelocates
+=== RUN   TestStateDirFirstRunUsesCurrentName
+=== PAUSE TestStateDirFirstRunUsesCurrentName
+=== RUN   TestReadCardStatus_LiveWorktreeSuppliesStatus
+--- PASS: TestReadCardStatus_LiveWorktreeSuppliesStatus (2.49s)
+=== RUN   TestReadCardStatus_NoLiveWorktreeReadsPrimary
+--- PASS: TestReadCardStatus_NoLiveWorktreeReadsPrimary (1.64s)
+=== RUN   TestReadCardStatus_NoBranchAtAllReadsPrimary
+--- PASS: TestReadCardStatus_NoBranchAtAllReadsPrimary (1.46s)
+=== RUN   TestReadCardStatus_CommittedStateOnly
+--- PASS: TestReadCardStatus_CommittedStateOnly (2.19s)
+=== RUN   TestReadCardStatus_DetachedWorktreeIsUnresolved
+--- PASS: TestReadCardStatus_DetachedWorktreeIsUnresolved (2.01s)
+=== RUN   TestBranchNamesSpec_ExactTokenRule
+=== PAUSE TestBranchNamesSpec_ExactTokenRule
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (1.64s)
+=== RUN   TestUnresolvedCard_OutcomeDistinctAndByteUnchanged
+--- PASS: TestUnresolvedCard_OutcomeDistinctAndByteUnchanged (1.42s)
+=== RUN   TestReadPrimarySpecStatus_RefusesTraversingSpecID
+=== PAUSE TestReadPrimarySpecStatus_RefusesTraversingSpecID
+=== RUN   TestTempOrigin_SymlinkSpellingEquivalence
+    temp_origin_test.go:53: spellings differ: unresolved="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence891293323/001" resolved="/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence891293323/001"
+--- PASS: TestTempOrigin_SymlinkSpellingEquivalence (0.00s)
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/empty
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set
+--- PASS: TestTempOrigin_FailsOpenOnUnresolvable (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/empty (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set (0.00s)
+=== RUN   TestTempOrigin_ComponentBoundary
+=== RUN   TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp
+--- PASS: TestTempOrigin_ComponentBoundary (0.00s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/" "/tmp" "/var/folders"]
+--- PASS: TestDefaultTempRoots_Membership (0.00s)
+=== RUN   TestTempRootsSeam_ReadAtCallTime
+    temp_origin_test.go:229: call-time evidence for base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempRootsSeam_ReadAtCallTime53489707/001": before stub (isTemp=true reason="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/") -> after stub (isTemp=false reason="")
+--- PASS: TestTempRootsSeam_ReadAtCallTime (0.00s)
+=== RUN   TestAdoptionLandsWhereConsumersRead
+--- PASS: TestAdoptionLandsWhereConsumersRead (0.11s)
+=== RUN   TestAdoptingAndPureResolversAgreeWhenAdoptionFails
+--- PASS: TestAdoptingAndPureResolversAgreeWhenAdoptionFails (0.22s)
+=== RUN   TestNoBareJoinBacklogPathSurvives
+--- PASS: TestNoBareJoinBacklogPathSurvives (0.27s)
+=== RUN   TestResolveTodoQueueRoot_PureFallbackWritesNothing_NonTemp
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing_NonTemp (0.51s)
+=== RUN   TestResolveTodoQueueRoot_ReadThroughToProjectLocal_NonTemp
+--- PASS: TestResolveTodoQueueRoot_ReadThroughToProjectLocal_NonTemp (0.54s)
+=== RUN   TestAdoptionLandsWhereConsumersRead_NonTemp
+--- PASS: TestAdoptionLandsWhereConsumersRead_NonTemp (0.76s)
+=== RUN   TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp
+--- PASS: TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp (1.10s)
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins
+--- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.95s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.50s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.16s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.28s)
+=== RUN   TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback
+--- PASS: TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback (1.04s)
+=== RUN   TestTodoQueueRoot_PureGuardIsSilent
+--- PASS: TestTodoQueueRoot_PureGuardIsSilent (0.16s)
+=== RUN   TestTodoQueueRoot_GitBranchUnreachedByGuard
+--- PASS: TestTodoQueueRoot_GitBranchUnreachedByGuard (0.29s)
+=== RUN   TestTempOrigin_LexicalResembler
+--- PASS: TestTempOrigin_LexicalResembler (0.00s)
+=== RUN   TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary
+--- PASS: TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary (0.23s)
+=== RUN   TestResolveTodoQueueRoot_FallbackNoGit
+--- PASS: TestResolveTodoQueueRoot_FallbackNoGit (0.94s)
+=== RUN   TestResolveTodoQueueRoot_PureFallbackWritesNothing
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing (0.25s)
+=== RUN   TestResolveTodoQueueRoot_ReadThroughToProjectLocal
+--- PASS: TestResolveTodoQueueRoot_ReadThroughToProjectLocal (0.15s)
+=== RUN   TestResolveTodoQueueRoot_PopulatedFallbackWins
+--- PASS: TestResolveTodoQueueRoot_PopulatedFallbackWins (0.53s)
+=== RUN   TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing
+--- PASS: TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing (0.13s)
+=== RUN   TestResolveTodoQueueRootAdopting_AdoptsLocalQueue
+--- PASS: TestResolveTodoQueueRootAdopting_AdoptsLocalQueue (0.76s)
+=== RUN   TestResolveTodoQueueRootAdopting_GitBranchIsPure
+--- PASS: TestResolveTodoQueueRootAdopting_GitBranchIsPure (0.14s)
+=== CONT  TestSplitFactoryLaneLabelRejectsNonShapes
+=== CONT  TestCardRecord_RoundTrip
+=== CONT  TestSettingsDriftLabelFallsBackWithoutBreakingThePath
+=== CONT  TestPreserveUsesTheBranchWhenNoCardIsGiven
+=== CONT  TestResolveDeclaredRole_AbsentFails
+=== CONT  TestBacklogStore_NoLeadRoleGuard
+=== RUN   TestSettingsDriftLabelFallsBackWithoutBreakingThePath/card_wins
+=== CONT  TestFactoryLaneLabelJoinSplitRoundTrips
+=== PAUSE TestSettingsDriftLabelFallsBackWithoutBreakingThePath/card_wins
+=== CONT  TestReconcileCard_GenuineUnresolvedSourceStaysUnresolved
+=== RUN   TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_no_card
+=== CONT  TestLeadNumberLabelIsNotACompanion
+--- PASS: TestSplitFactoryLaneLabelRejectsNonShapes (0.00s)
+--- PASS: TestFactoryLaneLabelJoinSplitRoundTrips (0.00s)
+--- PASS: TestReconcileCard_GenuineUnresolvedSourceStaysUnresolved (0.00s)
+=== CONT  TestBoardPath_OwnSegments
+=== CONT  TestSplitCompanionLabel
+=== CONT  TestCompanionRolesAreTheThreePhases
+=== CONT  TestSettingsDriftPredicateFailureIsNotPass
+=== CONT  TestNewRunIDMatchesCurrentSecond
+=== CONT  TestBase36IsMonotonicAndRunIDShaped
+=== CONT  TestBase36
+=== CONT  TestLoadBoard_RoundTrip
+=== CONT  TestAssessSettingsDriftCleanTree
+=== CONT  TestResolveDeclaredRole_RejectsUnsafeSessionIDs
+=== PAUSE TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_no_card
+=== CONT  TestCompanionNumberLabelRoundTrips
+=== CONT  TestSettingsDriftPredicateArgvRecordedAtExecutionBoundary
+=== CONT  TestAssessSettingsDriftPreserveFailureKeepsVerdict
+=== CONT  TestAssessSettingsDriftLeavesOriginalUntouched
+=== CONT  TestAssessSettingsDriftDoesNotOverwriteOnCollision
+=== CONT  TestCompanionLabelRoundTrips
+=== CONT  TestLoadBoard_ColumnRecordedNotDerived
+=== CONT  TestAssessSettingsDriftPreservesAndLedgers
+--- PASS: TestLeadNumberLabelIsNotACompanion (0.00s)
+=== CONT  TestLeadLabelIsBareRole
+=== CONT  TestColumn_ParseAcceptsEveryDeclaredValue
+=== CONT  TestSettingsDriftPredicateScopedToWatchedPath
+=== RUN   TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_card_is_blank
+=== PAUSE TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_card_is_blank
+=== RUN   TestSettingsDriftLabelFallsBackWithoutBreakingThePath/unknown_when_neither
+=== PAUSE TestSettingsDriftLabelFallsBackWithoutBreakingThePath/unknown_when_neither
+=== RUN   TestSettingsDriftLabelFallsBackWithoutBreakingThePath/punctuation_collapses
+=== PAUSE TestSettingsDriftLabelFallsBackWithoutBreakingThePath/punctuation_collapses
+--- PASS: TestSplitCompanionLabel (0.00s)
+--- PASS: TestCompanionRolesAreTheThreePhases (0.00s)
+--- PASS: TestBoardPath_OwnSegments (0.00s)
+--- PASS: TestNewRunIDMatchesCurrentSecond (0.00s)
+--- PASS: TestBase36IsMonotonicAndRunIDShaped (0.00s)
+--- PASS: TestBase36 (0.00s)
+--- PASS: TestCompanionNumberLabelRoundTrips (0.00s)
+--- PASS: TestCompanionLabelRoundTrips (0.00s)
+--- PASS: TestLeadLabelIsBareRole (0.00s)
+--- PASS: TestColumn_ParseAcceptsEveryDeclaredValue (0.00s)
+=== CONT  TestReconcileCard_UnresolvedLiteralIsInconsistent
+--- PASS: TestReconcileCard_UnresolvedLiteralIsInconsistent (0.00s)
+=== CONT  TestLoadBoard_AbsentVsUnreadable
+=== RUN   TestLoadBoard_AbsentVsUnreadable/absent_file_is_legitimately_empty_board
+--- PASS: TestResolveDeclaredRole_AbsentFails (0.00s)
+=== CONT  TestSettingsDriftPredicateIgnoresOtherFile
+--- PASS: TestResolveDeclaredRole_RejectsUnsafeSessionIDs (0.01s)
+=== RUN   TestLoadBoard_AbsentVsUnreadable/truncated_json_is_unknown
+=== CONT  TestReconcileCard_CollisionsAreAmbiguousNotResolved
+--- PASS: TestReconcileCard_CollisionsAreAmbiguousNotResolved (0.00s)
+=== CONT  TestSettingsDriftPredicatePass
+--- PASS: TestLoadBoard_RoundTrip (0.01s)
+=== CONT  TestReadCardStatus_AcceptsCanonicalSpecID
+--- PASS: TestReadCardStatus_AcceptsCanonicalSpecID (0.00s)
+=== CONT  TestTransitionIntoRun_RejectsTraversalSpecID
+--- PASS: TestLoadBoard_ColumnRecordedNotDerived (0.02s)
+=== CONT  TestReadCardStatus_RejectsTraversalSpecID
+--- PASS: TestCardRecord_RoundTrip (0.02s)
+=== CONT  TestColumn_DispatchableColumnConditional
+--- PASS: TestColumn_DispatchableColumnConditional (0.00s)
+=== CONT  TestRoleDeclaration_LabelDistinct
+=== RUN   TestLoadBoard_AbsentVsUnreadable/well_formed_same_size_reads_successfully
+--- PASS: TestReadCardStatus_RejectsTraversalSpecID (0.00s)
+=== CONT  TestWithLaneIgnoresNonPositiveNumbers
+--- PASS: TestWithLaneIgnoresNonPositiveNumbers (0.00s)
+=== CONT  TestSettingsDriftPredicateHit
+--- PASS: TestBacklogStore_NoLeadRoleGuard (0.02s)
+=== CONT  TestLaneNumberIsRecordedDistinctlyFromRole
+--- PASS: TestLaneNumberIsRecordedDistinctlyFromRole (0.00s)
+=== CONT  TestReconcileCard_InvalidRecordedColumn
+--- PASS: TestReconcileCard_InvalidRecordedColumn (0.00s)
+=== CONT  TestReconcileCard_PlannedAdmittedOnlyInBacklogAndPlan
+--- PASS: TestReconcileCard_PlannedAdmittedOnlyInBacklogAndPlan (0.00s)
+=== CONT  TestShouldCreateCard_TerminalsProduceNoCard
+--- PASS: TestShouldCreateCard_TerminalsProduceNoCard (0.00s)
+=== CONT  TestCardIdentifierRoundTripsDistinctFromSpecID
+=== RUN   TestLoadBoard_AbsentVsUnreadable/permission_denied_is_unknown
+--- PASS: TestTransitionIntoRun_RejectsTraversalSpecID (0.01s)
+=== CONT  TestRoleDeclaration_WorkersReadLead
+--- PASS: TestRoleDeclaration_LabelDistinct (0.01s)
+=== CONT  TestPreChangeRecordReadsAndRewritesByteIdentically
+--- PASS: TestCardIdentifierRoundTripsDistinctFromSpecID (0.01s)
+=== CONT  TestNewFieldsAreOmittedWhenEmpty
+--- PASS: TestRoleDeclaration_WorkersReadLead (0.00s)
+=== CONT  TestRoleDeclaration_LeadReadsWorkers
+--- PASS: TestLoadBoard_AbsentVsUnreadable (0.03s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/absent_file_is_legitimately_empty_board (0.01s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/truncated_json_is_unknown (0.01s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/well_formed_same_size_reads_successfully (0.01s)
+    --- PASS: TestLoadBoard_AbsentVsUnreadable/permission_denied_is_unknown (0.00s)
+=== CONT  TestSplitLeadLabelAndCompanionAreDisjoint
+--- PASS: TestSplitLeadLabelAndCompanionAreDisjoint (0.00s)
+=== CONT  TestColumn_ParseRejectsOutsideSet
+--- PASS: TestColumn_ParseRejectsOutsideSet (0.00s)
+=== CONT  TestMigrationPartialFailureRemovesArtifacts
+--- PASS: TestPreChangeRecordReadsAndRewritesByteIdentically (0.00s)
+=== CONT  TestColumn_EnumerationExactlyFiveOrdered
+--- PASS: TestColumn_EnumerationExactlyFiveOrdered (0.00s)
+=== CONT  TestBacklogConcurrentAdd_UniqueIDs
+--- PASS: TestNewFieldsAreOmittedWhenEmpty (0.00s)
+=== CONT  TestClearStaleBoardLock_UnixGatedOutOnUnreadableArtifact
+--- PASS: TestRoleDeclaration_LeadReadsWorkers (0.01s)
+=== CONT  TestBacklogLockStuckHolderSurfacesBoundedNamedError
+--- PASS: TestClearStaleBoardLock_UnixGatedOutOnUnreadableArtifact (0.00s)
+=== CONT  TestBoardLockRetryWaitIsNotLockstep
+--- PASS: TestBoardLockRetryWaitIsNotLockstep (0.00s)
+=== CONT  TestBacklogWrite_NoTmpResidue
+--- PASS: TestMigrationPartialFailureRemovesArtifacts (0.01s)
+=== CONT  TestBacklogRoundTrip_PreservesFieldsAndVersion
+--- PASS: TestBacklogWrite_NoTmpResidue (0.02s)
+=== CONT  TestBacklogMalformed_ReportedEverywhereFileUntouched
+--- PASS: TestBacklogMalformed_ReportedEverywhereFileUntouched (0.00s)
+=== CONT  TestBacklogHighWater_HandEditedLowSeq
+--- PASS: TestBacklogRoundTrip_PreservesFieldsAndVersion (0.02s)
+=== CONT  TestRecoverBoard_ReadPathNeverRepairs
+--- PASS: TestRecoverBoard_ReadPathNeverRepairs (0.00s)
+=== CONT  TestBoardRoot_SingleOrigin
+--- PASS: TestSettingsDriftPredicateFailureIsNotPass (0.08s)
+=== CONT  TestTransitionIntoRun_WipBound
+--- PASS: TestBacklogHighWater_HandEditedLowSeq (0.02s)
+=== CONT  TestWriteBoardState_ConcurrentReaderSeesWholeBoards
+--- PASS: TestTransitionIntoRun_WipBound (0.00s)
+=== CONT  TestBacklogHighWater_DeriveOnAbsent
+--- PASS: TestBacklogConcurrentAdd_UniqueIDs (0.06s)
+=== CONT  TestWriteBoardState_NoLeftoverTempFiles
+--- PASS: TestWriteBoardState_NoLeftoverTempFiles (0.00s)
+=== CONT  TestBacklogHighWater_SurvivesRemoval
+--- PASS: TestBacklogHighWater_DeriveOnAbsent (0.01s)
+=== CONT  TestWriteBoardState_CreatesStateDirectory
+--- PASS: TestWriteBoardState_CreatesStateDirectory (0.01s)
+=== CONT  TestBacklogIDIssuedUnderLock_SequentialMutations
+--- PASS: TestBacklogHighWater_SurvivesRemoval (0.02s)
+=== CONT  TestWriteBoardState_UndeclaredSessionRefused
+--- PASS: TestWriteBoardState_UndeclaredSessionRefused (0.00s)
+=== CONT  TestBacklogMutate_LoserSerializedNotFailed
+--- PASS: TestBacklogIDIssuedUnderLock_SequentialMutations (0.01s)
+=== CONT  TestWriteBoardState_LeadSucceeds
+--- PASS: TestWriteBoardState_LeadSucceeds (0.00s)
+=== CONT  TestWriteBoardState_NonLeadRefused_BoardUnchanged
+--- PASS: TestWriteBoardState_NonLeadRefused_BoardUnchanged (0.00s)
+=== CONT  TestRecoverBoard_AbsentNeedsNoRecovery
+--- PASS: TestRecoverBoard_AbsentNeedsNoRecovery (0.00s)
+=== CONT  TestRecoverBoard_NonLeadRefused
+--- PASS: TestRecoverBoard_NonLeadRefused (0.00s)
+=== CONT  TestBacklogLock_TimeoutNamesLockPath
+--- PASS: TestBacklogMutate_LoserSerializedNotFailed (0.09s)
+=== CONT  TestRecoverBoard_ReadableBoardRecoveredUnchanged
+--- PASS: TestRecoverBoard_ReadableBoardRecoveredUnchanged (0.00s)
+=== CONT  TestRecoverBoard_BoundedRecovery
+--- PASS: TestRecoverBoard_BoundedRecovery (0.01s)
+=== CONT  TestJoinBoardReleaseErr_SingleAndCleanPaths
+--- PASS: TestJoinBoardReleaseErr_SingleAndCleanPaths (0.00s)
+=== CONT  TestBoardLockWaitBudgetDerivedFromNamedInputs
+--- PASS: TestBoardLockWaitBudgetDerivedFromNamedInputs (0.00s)
+=== CONT  TestWriteBoardState_RejectsTraversalSpecIDFromMutate
+--- PASS: TestWriteBoardState_RejectsTraversalSpecIDFromMutate (0.01s)
+=== CONT  TestCompatibilityTable_NoSpecMDRows
+--- PASS: TestCompatibilityTable_NoSpecMDRows (0.00s)
+=== CONT  TestCompatibilityTable_IllegalPairRepairsNothing
+--- PASS: TestCompatibilityTable_IllegalPairRepairsNothing (0.01s)
+=== CONT  TestCompatibilityTable_EveryPairing
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/draft
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/draft
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/planned
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/planned
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/in-progress
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/in-progress
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/implemented
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/implemented
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/completed
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/completed
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/superseded
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/superseded
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/archived
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/archived
+=== RUN   TestCompatibilityTable_EveryPairing/backlog/rejected
+=== PAUSE TestCompatibilityTable_EveryPairing/backlog/rejected
+=== RUN   TestCompatibilityTable_EveryPairing/plan/draft
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/draft
+=== RUN   TestCompatibilityTable_EveryPairing/plan/planned
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/planned
+=== RUN   TestCompatibilityTable_EveryPairing/plan/in-progress
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/in-progress
+=== RUN   TestCompatibilityTable_EveryPairing/plan/implemented
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/implemented
+=== RUN   TestCompatibilityTable_EveryPairing/plan/completed
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/completed
+=== RUN   TestCompatibilityTable_EveryPairing/plan/superseded
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/superseded
+=== RUN   TestCompatibilityTable_EveryPairing/plan/archived
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/archived
+=== RUN   TestCompatibilityTable_EveryPairing/plan/rejected
+=== PAUSE TestCompatibilityTable_EveryPairing/plan/rejected
+=== RUN   TestCompatibilityTable_EveryPairing/run/draft
+=== PAUSE TestCompatibilityTable_EveryPairing/run/draft
+=== RUN   TestCompatibilityTable_EveryPairing/run/planned
+=== PAUSE TestCompatibilityTable_EveryPairing/run/planned
+=== RUN   TestCompatibilityTable_EveryPairing/run/in-progress
+=== PAUSE TestCompatibilityTable_EveryPairing/run/in-progress
+=== RUN   TestCompatibilityTable_EveryPairing/run/implemented
+=== PAUSE TestCompatibilityTable_EveryPairing/run/implemented
+=== RUN   TestCompatibilityTable_EveryPairing/run/completed
+=== PAUSE TestCompatibilityTable_EveryPairing/run/completed
+=== RUN   TestCompatibilityTable_EveryPairing/run/superseded
+=== PAUSE TestCompatibilityTable_EveryPairing/run/superseded
+=== RUN   TestCompatibilityTable_EveryPairing/run/archived
+=== PAUSE TestCompatibilityTable_EveryPairing/run/archived
+=== RUN   TestCompatibilityTable_EveryPairing/run/rejected
+=== PAUSE TestCompatibilityTable_EveryPairing/run/rejected
+=== RUN   TestCompatibilityTable_EveryPairing/sync/draft
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/draft
+=== RUN   TestCompatibilityTable_EveryPairing/sync/planned
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/planned
+=== RUN   TestCompatibilityTable_EveryPairing/sync/in-progress
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/in-progress
+=== RUN   TestCompatibilityTable_EveryPairing/sync/implemented
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/implemented
+=== RUN   TestCompatibilityTable_EveryPairing/sync/completed
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/completed
+=== RUN   TestCompatibilityTable_EveryPairing/sync/superseded
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/superseded
+=== RUN   TestCompatibilityTable_EveryPairing/sync/archived
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/archived
+=== RUN   TestCompatibilityTable_EveryPairing/sync/rejected
+=== PAUSE TestCompatibilityTable_EveryPairing/sync/rejected
+=== RUN   TestCompatibilityTable_EveryPairing/done/draft
+=== PAUSE TestCompatibilityTable_EveryPairing/done/draft
+=== RUN   TestCompatibilityTable_EveryPairing/done/planned
+=== PAUSE TestCompatibilityTable_EveryPairing/done/planned
+=== RUN   TestCompatibilityTable_EveryPairing/done/in-progress
+=== PAUSE TestCompatibilityTable_EveryPairing/done/in-progress
+=== RUN   TestCompatibilityTable_EveryPairing/done/implemented
+=== PAUSE TestCompatibilityTable_EveryPairing/done/implemented
+=== RUN   TestCompatibilityTable_EveryPairing/done/completed
+=== PAUSE TestCompatibilityTable_EveryPairing/done/completed
+=== RUN   TestCompatibilityTable_EveryPairing/done/superseded
+=== PAUSE TestCompatibilityTable_EveryPairing/done/superseded
+=== RUN   TestCompatibilityTable_EveryPairing/done/archived
+=== PAUSE TestCompatibilityTable_EveryPairing/done/archived
+=== RUN   TestCompatibilityTable_EveryPairing/done/rejected
+=== PAUSE TestCompatibilityTable_EveryPairing/done/rejected
+=== CONT  TestWriteBoardState_TraversalRenameInPlaceStillRefused
+--- PASS: TestWriteBoardState_TraversalRenameInPlaceStillRefused (0.01s)
+=== CONT  TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard
+--- PASS: TestWriteBoardState_EmptySpecIDDoesNotWedgeBoard (0.01s)
+=== CONT  TestBacklogAdd_CreatesVersion1File
+--- PASS: TestWriteBoardState_ConcurrentReaderSeesWholeBoards (0.20s)
+=== CONT  TestBacklogLoad_MissingFileIsEmptyQueue
+--- PASS: TestBacklogAdd_CreatesVersion1File (0.02s)
+=== CONT  TestJoinBacklogReleaseErr_SingleAndCleanPaths
+--- PASS: TestJoinBacklogReleaseErr_SingleAndCleanPaths (0.00s)
+=== CONT  TestJoinBacklogReleaseErr_BothFailuresSurvive
+--- PASS: TestJoinBacklogReleaseErr_BothFailuresSurvive (0.00s)
+=== CONT  TestParseBacklogSeq_Refusals
+--- PASS: TestParseBacklogSeq_Refusals (0.00s)
+=== CONT  TestStateDirBothPresentLeavesLegacyUntouched
+--- PASS: TestBacklogLoad_MissingFileIsEmptyQueue (0.01s)
+=== CONT  TestReadPrimarySpecStatus_RefusesTraversingSpecID
+--- PASS: TestReadPrimarySpecStatus_RefusesTraversingSpecID (0.00s)
+=== CONT  TestBranchNamesSpec_ExactTokenRule
+--- PASS: TestBranchNamesSpec_ExactTokenRule (0.00s)
+=== CONT  TestBoardLockWaitBudgetCoversSerializedMutations
+    board_lock_wait_test.go:134: constant coherence: the lock policy budgets 10 supported writers x 5 headroom = 50 serialized mutations; the stress test serializes 8 x 6 = 48. The per-mutation cost cancels on both sides, so this relation is cost-independent — it states nothing about the wait any real machine needs, and a change to boardLockCIMutationCost (declared 33ms) would not be caught here.
+--- PASS: TestBoardLockWaitBudgetCoversSerializedMutations (0.00s)
+=== CONT  TestBacklogNormalize_MinimalFiles
+--- PASS: TestStateDirBothPresentLeavesLegacyUntouched (0.02s)
+=== CONT  TestBacklogRead_UnwritableDirSurfacesEngineFailure
+--- PASS: TestBacklogRead_UnwritableDirSurfacesEngineFailure (0.00s)
+=== CONT  TestBacklogWrite_UnwritableDirFailsLoudly
+--- PASS: TestBacklogWrite_UnwritableDirFailsLoudly (0.00s)
+=== CONT  TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError
+--- PASS: TestBacklogMutate_LockPathIsDirectorySurfacesNonLockError (0.00s)
+=== CONT  TestBacklogMutate_ParentIsFileFailsBeforeLock
+--- PASS: TestBacklogMutate_ParentIsFileFailsBeforeLock (0.00s)
+=== CONT  TestBacklogMutate_CallbackRefusalLeavesFileUnchanged
+--- PASS: TestBacklogMutate_CallbackRefusalLeavesFileUnchanged (0.01s)
+=== CONT  TestBacklogLoad_PathIsDirectorySurfacesReadError
+--- PASS: TestBacklogLoad_PathIsDirectorySurfacesReadError (0.00s)
+=== CONT  TestLoadPureNeverMovesBytes
+=== RUN   TestLoadPureNeverMovesBytes/legacy_layout_is_served_in_place
+=== RUN   TestLoadPureNeverMovesBytes/database_layout_is_served_in_place
+--- PASS: TestBacklogNormalize_MinimalFiles (0.04s)
+=== CONT  TestJoinBoardReleaseErr_BothFailuresSurvive
+--- PASS: TestJoinBoardReleaseErr_BothFailuresSurvive (0.00s)
+=== CONT  TestStateDirFirstRunUsesCurrentName
+=== RUN   TestLoadPureNeverMovesBytes/state_D_leaves_both_artifacts_untouched
+=== RUN   TestLoadPureNeverMovesBytes/absent_queue_reads_as_empty,_not_as_an_error
+--- PASS: TestLoadPureNeverMovesBytes (0.05s)
+    --- PASS: TestLoadPureNeverMovesBytes/legacy_layout_is_served_in_place (0.00s)
+    --- PASS: TestLoadPureNeverMovesBytes/database_layout_is_served_in_place (0.03s)
+    --- PASS: TestLoadPureNeverMovesBytes/state_D_leaves_both_artifacts_untouched (0.01s)
+    --- PASS: TestLoadPureNeverMovesBytes/absent_queue_reads_as_empty,_not_as_an_error (0.00s)
+=== CONT  TestStateDirPureResolutionNeverRelocates
+--- PASS: TestStateDirPureResolutionNeverRelocates (0.10s)
+=== CONT  TestStateDirRelocationRefusedFallsBackToLegacyRead
+--- PASS: TestStateDirFirstRunUsesCurrentName (0.19s)
+=== CONT  TestSplitLeadLabelRoundTrip
+--- PASS: TestSplitLeadLabelRoundTrip (0.00s)
+=== CONT  TestSplitLeadLabelRejectsNonLeadShapes
+--- PASS: TestSplitLeadLabelRejectsNonLeadShapes (0.00s)
+=== CONT  TestTransitionIntoRun_Branches
+--- PASS: TestTransitionIntoRun_Branches (0.00s)
+=== CONT  TestQueuedCountIsPureAcrossBothLayouts
+=== RUN   TestQueuedCountIsPureAcrossBothLayouts/legacy_layout_is_read_without_migrating
+=== RUN   TestQueuedCountIsPureAcrossBothLayouts/database_layout_is_read_through_the_aggregate
+=== RUN   TestQueuedCountIsPureAcrossBothLayouts/absent_queue_counts_zero
+--- PASS: TestQueuedCountIsPureAcrossBothLayouts (0.02s)
+    --- PASS: TestQueuedCountIsPureAcrossBothLayouts/legacy_layout_is_read_without_migrating (0.00s)
+    --- PASS: TestQueuedCountIsPureAcrossBothLayouts/database_layout_is_read_through_the_aggregate (0.02s)
+    --- PASS: TestQueuedCountIsPureAcrossBothLayouts/absent_queue_counts_zero (0.00s)
+=== CONT  TestMigrationParityCatchesTamperedRecord
+=== RUN   TestMigrationParityCatchesTamperedRecord/altered_finding
+=== RUN   TestMigrationParityCatchesTamperedRecord/altered_state
+=== RUN   TestMigrationParityCatchesTamperedRecord/altered_text
+=== RUN   TestMigrationParityCatchesTamperedRecord/dropped_finding
+=== RUN   TestMigrationParityCatchesTamperedRecord/dropped_item
+=== RUN   TestMigrationParityCatchesTamperedRecord/last_seq_lowered
+=== RUN   TestMigrationParityCatchesTamperedRecord/reordered_items
+=== RUN   TestMigrationParityCatchesTamperedRecord/spec_id_invented
+=== RUN   TestMigrationParityCatchesTamperedRecord/spec_id_nulled
+=== RUN   TestMigrationParityCatchesTamperedRecord/version_bumped
+--- PASS: TestMigrationParityCatchesTamperedRecord (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/altered_finding (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/altered_state (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/altered_text (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/dropped_finding (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/dropped_item (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/last_seq_lowered (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/reordered_items (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/spec_id_invented (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/spec_id_nulled (0.00s)
+    --- PASS: TestMigrationParityCatchesTamperedRecord/version_bumped (0.00s)
+=== CONT  TestBoardRoot_NonGitDirFails
+--- PASS: TestStateDirRelocationRefusedFallsBackToLegacyRead (0.09s)
+=== CONT  TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource
+--- PASS: TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource (0.01s)
+=== CONT  TestStateDirRelocatesLegacyWithRegistryFiles
+=== CONT  TestRelocateQueueArtifactsNeverOverwritesExistingHomeQueue
+--- PASS: TestBoardRoot_NonGitDirFails (0.08s)
+--- PASS: TestRelocateQueueArtifactsNeverOverwritesExistingHomeQueue (0.01s)
+=== CONT  TestFactoryRegistryRoundTrip
+--- PASS: TestStateDirRelocatesLegacyWithRegistryFiles (0.13s)
+=== CONT  TestBacklogQueuedCountSharedShape
+=== RUN   TestBacklogQueuedCountSharedShape/missing_file_and_empty_root_read_as_zero
+=== PAUSE TestBacklogQueuedCountSharedShape/missing_file_and_empty_root_read_as_zero
+=== RUN   TestBacklogQueuedCountSharedShape/only_queued_items_count
+=== PAUSE TestBacklogQueuedCountSharedShape/only_queued_items_count
+=== RUN   TestBacklogQueuedCountSharedShape/path_helper_lands_under_.moai/state/todo
+=== PAUSE TestBacklogQueuedCountSharedShape/path_helper_lands_under_.moai/state/todo
+=== CONT  TestPruneFactoryDeadClaims
+--- PASS: TestPruneFactoryDeadClaims (0.00s)
+=== CONT  TestWithRoleAdmitsLane
+--- PASS: TestWithRoleAdmitsLane (0.00s)
+=== CONT  TestFactoryFreeSlots
+=== RUN   TestFactoryFreeSlots/missing_registry_means_all_free
+=== PAUSE TestFactoryFreeSlots/missing_registry_means_all_free
+=== RUN   TestFactoryFreeSlots/live_claim_makes_its_slot_busy
+=== PAUSE TestFactoryFreeSlots/live_claim_makes_its_slot_busy
+=== RUN   TestFactoryFreeSlots/dead_claim_is_pruned_and_reads_free
+=== PAUSE TestFactoryFreeSlots/dead_claim_is_pruned_and_reads_free
+=== RUN   TestFactoryFreeSlots/claims_beyond_workers_do_not_widen_the_result
+=== PAUSE TestFactoryFreeSlots/claims_beyond_workers_do_not_widen_the_result
+=== CONT  TestBoardLock_PathDiagnostics
+--- PASS: TestBoardLock_PathDiagnostics (0.00s)
+=== CONT  TestLoadBoard_NullCardsNormalized
+--- PASS: TestLoadBoard_NullCardsNormalized (0.00s)
+=== CONT  TestWriteBoardState_UnwritableDirSurfacesError
+--- PASS: TestWriteBoardState_UnwritableDirSurfacesError (0.00s)
+=== CONT  TestMigrationParity
+=== RUN   TestMigrationParity/item_count
+=== RUN   TestMigrationParity/per-item_field_equality
+=== RUN   TestMigrationParity/spec_id_null_shape
+=== RUN   TestMigrationParity/insertion_order_preserved
+=== RUN   TestMigrationParity/findings_order_and_tuples
+=== RUN   TestMigrationParity/last_seq_above_max-present_survives
+=== RUN   TestMigrationParity/physical_schema_present
+--- PASS: TestMigrationParity (0.02s)
+    --- PASS: TestMigrationParity/item_count (0.00s)
+    --- PASS: TestMigrationParity/per-item_field_equality (0.00s)
+    --- PASS: TestMigrationParity/spec_id_null_shape (0.00s)
+    --- PASS: TestMigrationParity/insertion_order_preserved (0.00s)
+    --- PASS: TestMigrationParity/findings_order_and_tuples (0.00s)
+    --- PASS: TestMigrationParity/last_seq_above_max-present_survives (0.00s)
+    --- PASS: TestMigrationParity/physical_schema_present (0.00s)
+=== CONT  TestMigrationMalformedAbortsWithoutDestroying
+--- PASS: TestMigrationMalformedAbortsWithoutDestroying (0.00s)
+=== CONT  TestStressZeroProgressFloorFailsTotalStarvation
+--- PASS: TestSettingsDriftPredicatePass (1.42s)
+=== CONT  TestMigrationNeverOverwritesExistingQuarantine
+=== CONT  TestMigrationBothPresentPrefersDatabase
+=== RUN   TestMigrationBothPresentPrefersDatabase/interrupted_migration_completes_its_quarantine
+--- PASS: TestSettingsDriftPredicateHit (1.42s)
+=== PAUSE TestMigrationBothPresentPrefersDatabase/interrupted_migration_completes_its_quarantine
+=== RUN   TestMigrationBothPresentPrefersDatabase/a_downgrade_export_is_left_exactly_where_it_was_put
+=== PAUSE TestMigrationBothPresentPrefersDatabase/a_downgrade_export_is_left_exactly_where_it_was_put
+=== CONT  TestMigrationQuarantinesLegacyByteIdentical
+--- PASS: TestSettingsDriftPredicateIgnoresOtherFile (1.45s)
+=== CONT  TestMigrationIDContinuity
+--- PASS: TestMigrationQuarantinesLegacyByteIdentical (0.02s)
+=== CONT  TestBacklogRecordRemoveFindingsNaming
+--- PASS: TestBacklogRecordRemoveFindingsNaming (0.00s)
+=== CONT  TestBacklogLanding_ParityComparesEvidence
+=== RUN   TestBacklogLanding_ParityComparesEvidence/live_evidence_dropped
+=== RUN   TestBacklogLanding_ParityComparesEvidence/live_evidence_altered
+=== RUN   TestBacklogLanding_ParityComparesEvidence/archived_evidence_dropped
+=== RUN   TestBacklogLanding_ParityComparesEvidence/archived_evidence_altered
+--- PASS: TestBacklogLanding_ParityComparesEvidence (0.00s)
+    --- PASS: TestBacklogLanding_ParityComparesEvidence/live_evidence_dropped (0.00s)
+    --- PASS: TestBacklogLanding_ParityComparesEvidence/live_evidence_altered (0.00s)
+    --- PASS: TestBacklogLanding_ParityComparesEvidence/archived_evidence_dropped (0.00s)
+    --- PASS: TestBacklogLanding_ParityComparesEvidence/archived_evidence_altered (0.00s)
+=== CONT  TestIsBacklogBusy
+--- PASS: TestIsBacklogBusy (0.00s)
+=== CONT  TestBacklogRecordHasAgentFindingForPair
+--- PASS: TestBacklogRecordHasAgentFindingForPair (0.00s)
+=== CONT  TestBacklogStoreSiblingPaths
+--- PASS: TestBacklogStoreSiblingPaths (0.00s)
+=== CONT  TestBacklogFindingNames
+--- PASS: TestBacklogFindingNames (0.00s)
+=== CONT  TestFactoryLaneLabelNeverKanbanShape
+--- PASS: TestFactoryLaneLabelNeverKanbanShape (0.00s)
+=== CONT  TestReorderedItemsRoundTrip
+--- PASS: TestMigrationNeverOverwritesExistingQuarantine (0.03s)
+=== CONT  TestDeclareRole_EmptyRoleRejected
+--- PASS: TestDeclareRole_EmptyRoleRejected (0.00s)
+=== CONT  TestQueuedBacklogCountForRootAgreesWithCounts
+--- PASS: TestMigrationIDContinuity (0.03s)
+=== CONT  TestAdmission_BacklogDoneNotDispatchable
+--- PASS: TestAdmission_BacklogDoneNotDispatchable (0.00s)
+=== CONT  TestDuplicateIDRejectedByStorage
+--- PASS: TestReorderedItemsRoundTrip (0.03s)
+=== CONT  TestStressAddClassificationToleratesStarvation
+--- PASS: TestDuplicateIDRejectedByStorage (0.02s)
+=== CONT  TestBacklogRecordFindingsNaming
+--- PASS: TestBacklogRecordFindingsNaming (0.00s)
+=== CONT  TestConcurrencyStress
+--- PASS: TestSettingsDriftPredicateScopedToWatchedPath (1.60s)
+=== CONT  TestBacklogRecordFindingTupleAndAppendOnce
+--- PASS: TestBacklogRecordFindingTupleAndAppendOnce (0.00s)
+=== CONT  TestAdmission_WipKnobVaries
+=== RUN   TestAdmission_WipKnobVaries/wip1
+=== PAUSE TestAdmission_WipKnobVaries/wip1
+=== RUN   TestAdmission_WipKnobVaries/wip2
+=== PAUSE TestAdmission_WipKnobVaries/wip2
+=== RUN   TestAdmission_WipKnobVaries/wip3
+=== PAUSE TestAdmission_WipKnobVaries/wip3
+=== CONT  TestBacklogCountsForRoot
+=== RUN   TestBacklogCountsForRoot/database_layout
+--- PASS: TestQueuedBacklogCountForRootAgreesWithCounts (0.15s)
+=== CONT  TestStateDirRelocationUnderHeldLock
+--- PASS: TestSettingsDriftPredicateArgvRecordedAtExecutionBoundary (1.69s)
+=== CONT  TestAssessSettingsDriftUndetermined
+=== NAME  TestStateDirRelocationUnderHeldLock
+    state_dir_lock_test.go:55: relocation under a held lock: relocated=true (dir=todo)
+--- PASS: TestBacklogLockStuckHolderSurfacesBoundedNamedError (1.68s)
+=== CONT  TestAdmission_WipDefaultsToTwo
+--- PASS: TestStateDirRelocationUnderHeldLock (0.10s)
+=== CONT  TestAdmission_UnheldInRunIsLegalSteadyState
+--- PASS: TestAdmission_WipDefaultsToTwo (0.01s)
+=== CONT  TestBacklogFindingSamePairAs
+--- PASS: TestBacklogFindingSamePairAs (0.00s)
+=== CONT  TestSettingsDriftLabelFallsBackWithoutBreakingThePath/card_wins
+=== CONT  TestSettingsDriftLabelFallsBackWithoutBreakingThePath/punctuation_collapses
+=== CONT  TestSettingsDriftLabelFallsBackWithoutBreakingThePath/unknown_when_neither
+=== CONT  TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_card_is_blank
+=== CONT  TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_no_card
+--- PASS: TestSettingsDriftLabelFallsBackWithoutBreakingThePath (0.00s)
+    --- PASS: TestSettingsDriftLabelFallsBackWithoutBreakingThePath/card_wins (0.00s)
+    --- PASS: TestSettingsDriftLabelFallsBackWithoutBreakingThePath/punctuation_collapses (0.00s)
+    --- PASS: TestSettingsDriftLabelFallsBackWithoutBreakingThePath/unknown_when_neither (0.00s)
+    --- PASS: TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_card_is_blank (0.00s)
+    --- PASS: TestSettingsDriftLabelFallsBackWithoutBreakingThePath/branch_when_no_card (0.00s)
+=== CONT  TestCompatibilityTable_EveryPairing/run/completed
+=== CONT  TestCompatibilityTable_EveryPairing/done/rejected
+=== CONT  TestCompatibilityTable_EveryPairing/done/archived
+=== CONT  TestCompatibilityTable_EveryPairing/done/superseded
+=== CONT  TestCompatibilityTable_EveryPairing/done/completed
+=== CONT  TestCompatibilityTable_EveryPairing/done/implemented
+=== CONT  TestCompatibilityTable_EveryPairing/done/in-progress
+=== CONT  TestCompatibilityTable_EveryPairing/done/planned
+=== CONT  TestCompatibilityTable_EveryPairing/done/draft
+=== CONT  TestCompatibilityTable_EveryPairing/sync/rejected
+=== CONT  TestCompatibilityTable_EveryPairing/sync/archived
+=== CONT  TestCompatibilityTable_EveryPairing/sync/superseded
+=== CONT  TestCompatibilityTable_EveryPairing/sync/completed
+=== CONT  TestCompatibilityTable_EveryPairing/sync/implemented
+=== CONT  TestCompatibilityTable_EveryPairing/sync/in-progress
+=== CONT  TestCompatibilityTable_EveryPairing/sync/planned
+=== CONT  TestCompatibilityTable_EveryPairing/sync/draft
+=== CONT  TestCompatibilityTable_EveryPairing/run/rejected
+=== CONT  TestCompatibilityTable_EveryPairing/run/archived
+=== CONT  TestCompatibilityTable_EveryPairing/run/superseded
+=== CONT  TestCompatibilityTable_EveryPairing/plan/in-progress
+=== CONT  TestCompatibilityTable_EveryPairing/run/implemented
+=== CONT  TestCompatibilityTable_EveryPairing/run/in-progress
+=== CONT  TestCompatibilityTable_EveryPairing/run/planned
+=== CONT  TestCompatibilityTable_EveryPairing/run/draft
+=== CONT  TestCompatibilityTable_EveryPairing/plan/rejected
+=== CONT  TestCompatibilityTable_EveryPairing/plan/archived
+=== CONT  TestCompatibilityTable_EveryPairing/plan/superseded
+=== CONT  TestCompatibilityTable_EveryPairing/plan/completed
+=== CONT  TestCompatibilityTable_EveryPairing/plan/implemented
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/superseded
+=== CONT  TestCompatibilityTable_EveryPairing/plan/planned
+=== CONT  TestCompatibilityTable_EveryPairing/plan/draft
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/rejected
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/archived
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/in-progress
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/completed
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/implemented
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/planned
+=== CONT  TestCompatibilityTable_EveryPairing/backlog/draft
+=== CONT  TestBacklogQueuedCountSharedShape/missing_file_and_empty_root_read_as_zero
+--- PASS: TestCompatibilityTable_EveryPairing (0.02s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/completed (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/rejected (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/archived (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/superseded (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/completed (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/implemented (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/in-progress (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/planned (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/done/draft (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/rejected (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/archived (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/superseded (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/completed (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/implemented (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/in-progress (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/planned (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/sync/draft (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/rejected (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/archived (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/superseded (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/in-progress (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/implemented (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/in-progress (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/planned (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/run/draft (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/rejected (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/archived (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/superseded (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/completed (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/implemented (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/superseded (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/planned (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/plan/draft (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/archived (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/in-progress (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/completed (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/implemented (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/planned (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/draft (0.00s)
+    --- PASS: TestCompatibilityTable_EveryPairing/backlog/rejected (0.00s)
+--- PASS: TestAdmission_UnheldInRunIsLegalSteadyState (0.01s)
+=== CONT  TestFactoryFreeSlots/missing_registry_means_all_free
+=== RUN   TestBacklogCountsForRoot/legacy_layout_is_counted_without_migrating
+--- PASS: TestBacklogLock_TimeoutNamesLockPath (1.66s)
+=== CONT  TestBacklogQueuedCountSharedShape/path_helper_lands_under_.moai/state/todo
+=== NAME  TestConcurrencyStress
+    backlog_concurrency_test.go:235: SPEC-STRESS-INVARIANT-VERDICT-001: 8 writers x 6 adds = 48 attempts; 48 succeeded, 0 starved (tolerated), 0 hard failures; 48 distinct ids, 48 stored items, last_seq 48; back-derived per-mutation cost 7.066915ms (elapsed 339.211958ms / 48 successful mutations)
+=== CONT  TestBacklogQueuedCountSharedShape/only_queued_items_count
+--- PASS: TestConcurrencyStress (0.34s)
+=== CONT  TestFactoryFreeSlots/dead_claim_is_pruned_and_reads_free
+=== RUN   TestBacklogCountsForRoot/absent_and_empty-root_read_as_unavailable
+=== CONT  TestFactoryFreeSlots/claims_beyond_workers_do_not_widen_the_result
+--- PASS: TestBoardRoot_SingleOrigin (1.86s)
+=== CONT  TestFactoryFreeSlots/live_claim_makes_its_slot_busy
+--- PASS: TestBacklogQueuedCountSharedShape (0.00s)
+    --- PASS: TestBacklogQueuedCountSharedShape/missing_file_and_empty_root_read_as_zero (0.13s)
+    --- PASS: TestBacklogQueuedCountSharedShape/path_helper_lands_under_.moai/state/todo (0.13s)
+    --- PASS: TestBacklogQueuedCountSharedShape/only_queued_items_count (0.11s)
+=== CONT  TestMigrationBothPresentPrefersDatabase/interrupted_migration_completes_its_quarantine
+=== RUN   TestBacklogCountsForRoot/corrupt_database_is_unavailable,_not_zero
+=== CONT  TestMigrationBothPresentPrefersDatabase/a_downgrade_export_is_left_exactly_where_it_was_put
+--- PASS: TestMigrationBothPresentPrefersDatabase (0.00s)
+    --- PASS: TestMigrationBothPresentPrefersDatabase/interrupted_migration_completes_its_quarantine (0.03s)
+    --- PASS: TestMigrationBothPresentPrefersDatabase/a_downgrade_export_is_left_exactly_where_it_was_put (0.01s)
+=== CONT  TestAdmission_WipKnobVaries/wip1
+=== CONT  TestAdmission_WipKnobVaries/wip3
+=== CONT  TestAdmission_WipKnobVaries/wip2
+--- PASS: TestAdmission_WipKnobVaries (0.00s)
+    --- PASS: TestAdmission_WipKnobVaries/wip1 (0.00s)
+    --- PASS: TestAdmission_WipKnobVaries/wip3 (0.01s)
+    --- PASS: TestAdmission_WipKnobVaries/wip2 (0.01s)
+=== RUN   TestBacklogCountsForRoot/corrupt_legacy_json_is_unavailable,_not_zero
+--- PASS: TestBacklogCountsForRoot (0.63s)
+    --- PASS: TestBacklogCountsForRoot/database_layout (0.15s)
+    --- PASS: TestBacklogCountsForRoot/legacy_layout_is_counted_without_migrating (0.11s)
+    --- PASS: TestBacklogCountsForRoot/absent_and_empty-root_read_as_unavailable (0.11s)
+    --- PASS: TestBacklogCountsForRoot/corrupt_database_is_unavailable,_not_zero (0.16s)
+    --- PASS: TestBacklogCountsForRoot/corrupt_legacy_json_is_unavailable,_not_zero (0.09s)
+=== NAME  TestStressZeroProgressFloorFailsTotalStarvation
+    backlog_concurrency_test.go:354: AC-SIV-005: zero-success outcome rejected ("0 of 1 attempted adds succeeded (starved=1, hard failures=0) — total starvation is a broken lock, not tolerable contention"); 1-success outcome admitted
+--- PASS: TestStressZeroProgressFloorFailsTotalStarvation (1.67s)
+--- PASS: TestAssessSettingsDriftCleanTree (2.56s)
+--- PASS: TestAssessSettingsDriftUndetermined (1.13s)
+--- PASS: TestFactoryRegistryRoundTrip (2.67s)
+--- PASS: TestFactoryFreeSlots (0.00s)
+    --- PASS: TestFactoryFreeSlots/missing_registry_means_all_free (0.73s)
+    --- PASS: TestFactoryFreeSlots/dead_claim_is_pruned_and_reads_free (1.36s)
+    --- PASS: TestFactoryFreeSlots/live_claim_makes_its_slot_busy (1.35s)
+    --- PASS: TestFactoryFreeSlots/claims_beyond_workers_do_not_widen_the_result (1.46s)
+--- PASS: TestPreserveUsesTheBranchWhenNoCardIsGiven (3.90s)
+--- PASS: TestAssessSettingsDriftLeavesOriginalUntouched (4.02s)
+--- PASS: TestAssessSettingsDriftPreserveFailureKeepsVerdict (4.20s)
+--- PASS: TestAssessSettingsDriftDoesNotOverwriteOnCollision (4.26s)
+--- PASS: TestAssessSettingsDriftPreservesAndLedgers (4.53s)
+=== NAME  TestStressAddClassificationToleratesStarvation
+    backlog_concurrency_test.go:302: AC-SIV-001: 2/2 adds starved under a seeded holder, all satisfying IsBoardLockHeld, 0 hard failures
+--- PASS: TestStressAddClassificationToleratesStarvation (3.38s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	170.351s

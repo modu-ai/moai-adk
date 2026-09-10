@@ -1,0 +1,33 @@
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 16:42:10 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn367139778/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn367139778/001
+2026/09/10 16:42:10 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 16:42:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 16:42:10 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.45s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 16:42:10 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1771916670/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1771916670/001
+2026/09/10 16:42:10 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 16:42:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 16:42:11 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.45s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 16:42:11 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2613266404/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2613266404/001
+2026/09/10 16:42:11 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 16:42:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 16:42:11 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.46s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 16:42:11 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2703102691/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2703102691/001
+2026/09/10 16:42:11 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 16:42:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 16:42:12 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.44s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 16:42:12 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2204805648/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2204805648/001
+2026/09/10 16:42:12 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 16:42:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 16:42:12 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.47s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.930s
+EXIT=0

@@ -1,0 +1,11 @@
+t564 reproduction — predicted before running (binary /tmp/t623-lane9/moai-t561-fixed; parser.go, errors.go, lint.go, ears.go, spec_view.go unchanged since its base 8203040b8)
+
+fixture A SPEC-DUPREPRO-001: citing bullet (no maps) ABOVE the real declaration (maps REQ-DUPREPRO-001-001)
+  spec lint --json: no finding naming the duplicate id; CoverageIncomplete for REQ-DUPREPRO-001-001 (the declaration's mapping was dropped)
+  spec view: non-zero exit, stderr/err contains "parse error"
+fixture B SPEC-DUPREPRO-002: real declaration ABOVE the citing bullet
+  spec lint --json: no finding naming the duplicate id; NO CoverageIncomplete for REQ-DUPREPRO-002-001
+  spec view: non-zero exit, contains "parse error" (same fatal as A: the asymmetry does not depend on order)
+fixture C SPEC-DUPREPRO-003: declaration only, no duplicate (control)
+  spec lint --json: NO CoverageIncomplete for REQ-DUPREPRO-003-001
+  spec view: exit 0, prints the tree containing AC-DUPREPRO-003-01

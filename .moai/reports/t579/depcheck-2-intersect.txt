@@ -1,0 +1,82 @@
+miss .claude/skills/moai/workflows/goal.md
+miss .moai/reports/t549/absorb-merge.txt
+miss .moai/reports/t549/cli-todo-postfix.meta
+miss .moai/reports/t549/cli-todo-postfix.txt
+miss .moai/reports/t549/cli-todo-selector-static.txt
+miss .moai/reports/t549/index-lock-attempt1.txt
+miss .moai/reports/t549/kanban-postfix.txt
+miss .moai/reports/t549/merged-kanban.txt
+miss .moai/reports/t549/merged-web.txt
+miss .moai/reports/t549/probe-develop-d3b7d438d.txt
+miss .moai/reports/t549/repro-develop-d3b7d438d.txt
+miss .moai/reports/t549/t549-tests-postfix.txt
+miss .moai/reports/t549/verdict.md
+miss .moai/reports/t549/vet-kanban.txt
+miss .moai/reports/t549/web-postfix.txt
+miss .moai/reports/t549/window-acquire.txt
+miss .moai/reports/t554/absorb2.txt
+miss .moai/reports/t554/baseline-4fail.txt
+miss .moai/reports/t554/cli-deps-test-merged.txt
+miss .moai/reports/t554/cli-deps.txt
+miss .moai/reports/t554/delta2-commits.txt
+miss .moai/reports/t554/delta2-files.txt
+miss .moai/reports/t554/gotest-cli.txt
+miss .moai/reports/t554/remeasure-merged.txt
+miss .moai/reports/t554/remeasure-precommit-v.txt
+miss .moai/reports/t554/verdict.md
+miss .moai/reports/t554/window-precommit-v.txt
+miss .moai/reports/t556/merge-tree-catalog.txt
+miss .moai/reports/t556/merge-tree-goal-pkg.txt
+miss .moai/reports/t556/merge-tree-goal-tests.txt
+miss .moai/reports/t556/remeasure.md
+miss .moai/reports/t556/verdict.md
+miss .moai/reports/t581/reproduction.md
+miss .moai/reports/t581/verdict.md
+miss .moai/reports/t581/window-20260910.md
+miss .moai/reports/t582/absorb-delta-files.txt
+miss .moai/reports/t582/absorb-delta-pkgs.txt
+miss .moai/reports/t582/absorb-merge.log
+miss .moai/reports/t582/cli-test-deps-local.txt
+miss .moai/reports/t582/cli-test-deps.txt
+miss .moai/reports/t582/full-suite-concurrency.log
+miss .moai/reports/t582/full-suite.exit
+miss .moai/reports/t582/full-suite.log
+miss .moai/reports/t582/full-suite.start
+miss .moai/reports/t582/green-after-fix.log
+miss .moai/reports/t582/integration-acquire.log
+miss .moai/reports/t582/merged-scope-expected.txt
+miss .moai/reports/t582/merged-scope-passed.txt
+miss .moai/reports/t582/merged-tree-scoped.log
+miss .moai/reports/t582/red-before-fix.log
+miss .moai/reports/t582/repro-premise.log
+miss .moai/reports/t582/repro/main.go
+miss .moai/reports/t582/verdict.md
+miss .moai/reports/t611/mutant-no-specid.log
+miss .moai/reports/t611/post-fix-green.log
+miss .moai/reports/t611/post-fix-pkg-before-fixture.log
+miss .moai/reports/t611/post-restore-green.log
+miss .moai/reports/t611/pre-edit-red.log
+miss .moai/reports/t611/run-evidence.md
+miss .moai/reports/t611/verdict.md
+miss .moai/reports/t611/vet-post-restore.log
+miss .moai/reports/t611/vet.log
+miss .moai/specs/SPEC-PRECOMMIT-VET-MONOREPO-001/spec.md
+HIT  internal/cli/codex_skills_disable.go  <- dep internal/cli/
+HIT  internal/cli/codex_skills_dotdot_test.go  <- dep internal/cli/
+HIT  internal/cli/doctor_codex.go  <- dep internal/cli/
+HIT  internal/cli/doctor_codex_seam_use_guard_test.go  <- dep internal/cli/
+HIT  internal/cli/goal.go  <- dep internal/cli/
+HIT  internal/cli/goal_arm_prose_shape_test.go  <- dep internal/cli/
+HIT  internal/cli/goal_runnable.go  <- dep internal/cli/
+HIT  internal/cli/hook_install_precommit.go  <- dep internal/cli/
+HIT  internal/cli/hook_install_precommit_test.go  <- dep internal/cli/
+HIT  internal/cli/mcp_server.go  <- dep internal/cli/
+HIT  internal/kanban/root_layer_repro_test.go  <- dep internal/kanban/
+HIT  internal/kanban/todo_root.go  <- dep internal/kanban/
+HIT  internal/kanban/todo_root_temp_guard_test.go  <- dep internal/kanban/
+HIT  internal/session/store.go  <- dep internal/session/
+HIT  internal/session/store_resolve_scope_test.go  <- dep internal/session/
+HIT  internal/session/store_test.go  <- dep internal/session/
+HIT  internal/template/catalog.yaml  <- dep internal/template/
+HIT  internal/template/templates/.claude/skills/moai/workflows/goal.md  <- dep internal/template/
+HIT  internal/template/templates/.git_hooks/pre-commit  <- dep internal/template/

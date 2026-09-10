@@ -1,0 +1,2 @@
+939547cc38b5b1f8707356a1828b8f654c50249be0ef99a8c99b22f017b247c8  internal/hook/session_start.go
+EXIT=0

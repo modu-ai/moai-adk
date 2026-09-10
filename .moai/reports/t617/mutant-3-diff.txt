@@ -1,0 +1,14 @@
+diff --git a/internal/hook/session_start.go b/internal/hook/session_start.go
+index 224968b6f..d17f7c3ba 100644
+--- a/internal/hook/session_start.go
++++ b/internal/hook/session_start.go
+@@ -670,7 +670,7 @@ func runSkillSymlinks(projectDir string) map[string]any {
+ // ConfigProvider).
+ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) map[string]any {
+ 	d := make(map[string]any)
+-	if cfg == nil || !cfg.System.Migrations.Disabled {
++	if true || cfg == nil || !cfg.System.Migrations.Disabled {
+ 		runner := migration.NewRunner(projectDir)
+ 		applied, err := runner.Apply(ctx)
+ 		if err != nil {
+EXIT=0

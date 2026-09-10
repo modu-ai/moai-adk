@@ -1,0 +1,8 @@
+command : git show --numstat --format= HEAD -- CHANGELOG.md .moai/project/product.md .moai/project/structure.md .moai/project/codemaps/overview.md .moai/project/codemaps/modules.md
+HEAD    : 4516fbe40 (sync commit)
+
+1	1	.moai/project/codemaps/modules.md
+1	1	.moai/project/codemaps/overview.md
+2	2	.moai/project/product.md
+1	1	.moai/project/structure.md
+1	0	CHANGELOG.md

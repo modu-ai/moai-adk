@@ -1,0 +1,42 @@
+247d0985a:internal/web/assets/app.js:163:      // signal.NotifyContext cancel, but this avoids duplicate dialogs).
+247d0985a:internal/web/assets/i18n.js:736:    // en copies here would duplicate the .md text into a second surface that
+247d0985a:internal/web/factory_lanes.go:11:// deduplicates by session id alone, so two entries can carry one pid. Either
+247d0985a:internal/web/factory_lanes_test.go:8:// deduplicates by session id alone, so two of its entries may carry one pid.
+247d0985a:internal/web/factory_lanes_test.go:151:// TestFactoryLanesDuplicatePIDFactorySide — AC-WC15-047 first half: two lanes
+247d0985a:internal/web/factory_lanes_test.go:153:func TestFactoryLanesDuplicatePIDFactorySide(t *testing.T) {
+247d0985a:internal/web/factory_lanes_test.go:177:// TestFactoryLanesDuplicatePIDSessionSide — AC-WC15-047 second half: one lane,
+247d0985a:internal/web/factory_lanes_test.go:178:// one pid, but TWO session entries bearing it. The registry deduplicates by
+247d0985a:internal/web/factory_lanes_test.go:180:func TestFactoryLanesDuplicatePIDSessionSide(t *testing.T) {
+247d0985a:internal/web/fieldsets.templ:714:// not duplicate that path. The hint is already truncated to the final four
+247d0985a:internal/web/fieldsets_templ.go:3461:// not duplicate that path. The hint is already truncated to the final four
+247d0985a:internal/web/handlers.go:617:// duplicate of the agentfm performance tier). Its ProfilePreferences field is
+247d0985a:internal/web/i18n_governance_test.go:303:			t.Errorf("duplicate allowlist entry for key %q", e.Key)
+247d0985a:internal/web/i18n_untranslated_allowlist_test.go:267:		Justification: "English reads the agent .md frontmatter description (the SSOT) as the server-rendered baseline; applyI18n leaves the node untouched when the key is absent, so an en copy would duplicate the .md text into a second surface that silently goes stale.",
+247d0985a:internal/web/mcp_glmkey_surface_test.go:120:// introduce a duplicate credential read. Generated _templ.go files are excluded
+247d0985a:internal/web/profile_bar_test.go:27:// TestProfileManagerCardAbsent verifies AC-WCR-040: the duplicate card is gone.
+247d0985a:internal/web/schemaform.go:330:		// first value can belong to a hidden duplicate tab while the user's
+247d0985a:internal/web/schemaform.go:333:		// duplicate and join the atomic-reject error set (EC-2). The hidden
+247d0985a:internal/web/schemaform.go:336:			errs[f.Name] = "duplicate form values submitted"
+247d0985a:internal/web/schemaform.go:340:			errs[f.Name] = "duplicate form values submitted"
+247d0985a:internal/web/schemaform_test.go:56:// report.format select, while the launch panel no longer duplicates
+247d0985a:internal/web/webux_followup_test.go:305:// server-side baseline (so en renders the SSOT, never a duplicated copy).
+247d0985a:internal/web/webux_followup_test.go:350:// would duplicate the .md text into a second surface that silently goes stale
+247d0985a:internal/web/webux_followup_test.go:356:		t.Error("the en locale defines agentdesc.* keys — en must read the agent .md description (SSOT), not a duplicated copy")
+247d0985a:internal/web/widget_contract_test.go:176:				t.Errorf("roNoteBaseline(%q) duplicates another baseline — the distinction is not visible", key)
+247d0985a:internal/web/write_safety_test.go:5:// AC-WWS-006 (duplicate form values are not silently resolved to the first
+247d0985a:internal/web/write_safety_test.go:228:// TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst carries AC-WWS-006
+247d0985a:internal/web/write_safety_test.go:231:// duplicate into the atomic-reject error set (or apply a documented resolution
+247d0985a:internal/web/write_safety_test.go:234:func TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst(t *testing.T) {
+247d0985a:internal/web/write_safety_test.go:235:	// Use a real TypeText schema field so the duplicate rides the same code
+247d0985a:internal/web/write_safety_test.go:236:	// path a browser duplicate submission would.
+247d0985a:internal/web/write_safety_test.go:259:		t.Errorf("duplicate form value for %q not detected — parser silently adopted %q", textField, edits[textField])
+247d0985a:internal/web/write_safety_test.go:261:	if _, duplicated := edits[textField]; duplicated {
+247d0985a:internal/web/write_safety_test.go:262:		t.Errorf("duplicate form value for %q resolved to a single edit %q instead of being detected", textField, edits[textField])
+247d0985a:internal/web/write_safety_test.go:266:// TestParseSchemaFormDuplicateCompanionRejected covers the hidden-bool
+247d0985a:internal/web/write_safety_test.go:267:// companion duplicate branch: name+"__present" submitted twice is the same
+247d0985a:internal/web/write_safety_test.go:268:// defect shape as a duplicated value field.
+247d0985a:internal/web/write_safety_test.go:269:func TestParseSchemaFormDuplicateCompanionRejected(t *testing.T) {
+247d0985a:internal/web/write_safety_test.go:293:		t.Errorf("duplicate companion for %q not detected; edits=%v errs=%v", boolField, edits, errs)
+247d0985a:internal/web/write_safety_test.go:295:	if _, duplicated := edits[boolField]; duplicated {
+247d0985a:internal/web/write_safety_test.go:296:		t.Errorf("duplicated companion still produced an edit for %q", boolField)
+247d0985a:internal/web/write_safety_test.go:301:// duplicate guard must not break: for those fields a "" submission IS the

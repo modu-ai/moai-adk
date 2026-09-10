@@ -1,0 +1,93 @@
+# t613 mutation runs — go test -overlay (tracked files never edited)
+# mutant sources + overlay JSONs lived in the session scratchpad, outside the tree
+
+===== m1: original method-scoped gate (Host check inside the POST/PUT/PATCH case), taken verbatim from 4a81fb5dc:internal/web/app.go
+gate line: switch r.Method { case POST/PUT/PATCH: if !isLoopbackHost(r.Host) { 403 } ... }
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m1_overlay.json ./internal/web/...
+exit=1  (expected: non-zero)
+build_failed_lines=0  loopback_control_failures=0  top_level_FAIL=11
+failing top-level tests: TestCJKFontServedFromStatic TestFontServedFromStatic TestGoldenPath_ReadWriteRoundTrip TestHostCheckGatesGetFromForeignHost TestHostGateControlMatrix TestHostGateCoversEveryRouteAndMethod TestHtmxEmbeddedAndServed TestI18nDictionaryEmbedded TestMascotPosesEmbeddedAndServed TestSSHTunnelModel_LoopbackHostThroughForwarder TestStaticAssetsServedFromEmbed
+failing TestHostGateControlMatrix cells: TestHostGateControlMatrix/absent/settings TestHostGateControlMatrix/absent/static TestHostGateControlMatrix/foreign/settings TestHostGateControlMatrix/foreign/static
+TestHostGateCoversEveryRouteAndMethod hostile cells refused-check failures: 64
+  2 x DELETE /
+  2 x DELETE /events
+  2 x DELETE /kanban
+  2 x DELETE /monitor
+  2 x DELETE /settings
+  2 x DELETE /specs
+  2 x DELETE /static/app.js
+  2 x DELETE /todo
+  2 x GET /
+  2 x GET /events
+  2 x GET /kanban
+  2 x GET /monitor
+  2 x GET /settings
+  2 x GET /specs
+  2 x GET /static/app.js
+  2 x GET /todo
+  2 x HEAD /
+  2 x HEAD /events
+  2 x HEAD /kanban
+  2 x HEAD /monitor
+  2 x HEAD /settings
+  2 x HEAD /specs
+  2 x HEAD /static/app.js
+  2 x HEAD /todo
+  2 x OPTIONS /
+  2 x OPTIONS /events
+  2 x OPTIONS /kanban
+  2 x OPTIONS /monitor
+  2 x OPTIONS /settings
+  2 x OPTIONS /specs
+  2 x OPTIONS /static/app.js
+  2 x OPTIONS /todo
+tail:
+  FAIL
+  FAIL	github.com/modu-ai/moai-adk/internal/web	18.690s
+  FAIL
+
+===== m2: gate exempts paths with prefix /static/
+gate line: if !strings.HasPrefix(r.URL.Path, "/static/") && !isLoopbackHost(r.Host) {
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m2_overlay.json ./internal/web/...
+exit=1  (expected: non-zero)
+build_failed_lines=0  loopback_control_failures=0  top_level_FAIL=8
+failing top-level tests: TestCJKFontServedFromStatic TestFontServedFromStatic TestHostGateControlMatrix TestHostGateCoversEveryRouteAndMethod TestHtmxEmbeddedAndServed TestI18nDictionaryEmbedded TestMascotPosesEmbeddedAndServed TestStaticAssetsServedFromEmbed
+failing TestHostGateControlMatrix cells: TestHostGateControlMatrix/absent/static TestHostGateControlMatrix/foreign/static
+TestHostGateCoversEveryRouteAndMethod hostile cells refused-check failures: 8
+  2 x DELETE /static/app.js
+  2 x GET /static/app.js
+  2 x HEAD /static/app.js
+  2 x OPTIONS /static/app.js
+tail:
+  FAIL
+  FAIL	github.com/modu-ai/moai-adk/internal/web	20.752s
+  FAIL
+
+===== m3: gate exempts HEAD and OPTIONS
+gate line: if r.Method != http.MethodHead && r.Method != http.MethodOptions && !isLoopbackHost(r.Host) {
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m3_overlay.json ./internal/web/...
+exit=1  (expected: non-zero)
+build_failed_lines=0  loopback_control_failures=0  top_level_FAIL=1
+failing top-level tests: TestHostGateCoversEveryRouteAndMethod
+failing TestHostGateControlMatrix cells: (none — matrix has no HEAD/OPTIONS cell)
+TestHostGateCoversEveryRouteAndMethod hostile cells refused-check failures: 32
+  2 x HEAD /
+  2 x HEAD /events
+  2 x HEAD /kanban
+  2 x HEAD /monitor
+  2 x HEAD /settings
+  2 x HEAD /specs
+  2 x HEAD /static/app.js
+  2 x HEAD /todo
+  2 x OPTIONS /
+  2 x OPTIONS /events
+  2 x OPTIONS /kanban
+  2 x OPTIONS /monitor
+  2 x OPTIONS /settings
+  2 x OPTIONS /specs
+  2 x OPTIONS /static/app.js
+  2 x OPTIONS /todo
+tail:
+  FAIL
+  FAIL	github.com/modu-ai/moai-adk/internal/web	19.987s
+  FAIL

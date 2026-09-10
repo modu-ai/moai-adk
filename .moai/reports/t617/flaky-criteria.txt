@@ -1,0 +1,35 @@
+t617 step 5 addendum — load classification, fixed BEFORE any classified run
+
+Machine: hw.ncpu = 16 (flaky-env.txt). First observed load: 12.78 10.48 7.63 (flaky-env.txt).
+
+Process observer
+- Snapshot: ps -eo pid,etime,comm,args, full output into the run's evidence file.
+- COMM is truncated to 16 characters on this host (flaky-ps-layout.txt line 3:
+  "/usr/libexec/nsu"), so executable identity is read from the ARGS text, not COMM,
+  and no awk column positions are used.
+- A "go test process" is a snapshot line whose ARGS contains "go test" or a test
+  binary name ending in ".test" (go-build temp path), EXCLUDING lines whose text
+  contains "zsh" (the tool shell whose -c argument embeds the command string).
+- Foreign = present in a before/after snapshot of a run, because this session runs
+  no other go test at those moments.
+- The observer is trusted to report absence only after it has caught a go test
+  process that is certainly running (liveness pair, flaky-load-0-*).
+
+Load classes (per run, from the uptime immediately before and after)
+- QUIET:  1-minute load <= 4.0 before AND after, and no foreign go test process
+          in either snapshot.
+- LOADED: 1-minute load >= 8.0 before OR after, or a foreign go test process in
+          either snapshot.
+- Otherwise INTERMEDIATE: recorded, not used for the conclusion.
+
+What the test measures
+- TestSessionStart_DeferredScanDoesNotBlockReturn fails when Handle's wall-clock
+  elapsed exceeds 500ms (session_start_parallel_test.go:96-97). The value is only
+  printed on FAIL; on PASS the -v test duration is an upper bound on elapsed.
+
+Conclusion rule (from the lead)
+- Blocks only under LOADED -> not a defect, stated with the load evidence.
+- Blocks under QUIET too -> candidate follow-up card with measured values.
+- If QUIET or LOADED is never observed, that condition is a Gap; no guess.
+- The ten earlier step-5 runs (step5-deferred-*.txt) carry no load record and are
+  NOT classified.

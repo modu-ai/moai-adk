@@ -33,6 +33,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"gopkg.in/yaml.v3"
@@ -362,10 +363,26 @@ func blankReviewInconclusive() ReviewOutput {
 // body of whitespace passed all four as if it were content
 // (SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001, plan.md §B.2).
 //
-// strings.TrimSpace cuts on unicode.IsSpace, which includes U+00A0, so a body of
-// non-breaking spaces alone is blank. That is deliberate and asserted.
+// Filler is classified by category, never by a hand-listed rune set: a body is
+// blank when every rune in it is whitespace (unicode.IsSpace, which includes
+// U+00A0, so a body of non-breaking spaces alone is blank) or a format character
+// (general category Cf). Format characters count because unicode.IsSpace
+// excludes them — U+200B ZERO WIDTH SPACE is Cf, not space — so a body of
+// zero-width spaces alone is blank too. Both decisions are deliberate and
+// asserted.
+//
+// strings.TrimFunc trims only the ends, so a Cf character INSIDE real content is
+// left untouched: the discriminator never alters or rejects a body, it only
+// answers whether the body is empty.
 func codexReviewTextIsBlank(s string) bool {
-	return strings.TrimSpace(s) == ""
+	return strings.TrimFunc(s, isReviewBlankFiller) == ""
+}
+
+// isReviewBlankFiller reports whether r can make up a review body that carries
+// no reviewable content: whitespace, or a format character (general category Cf)
+// such as a zero-width space, a byte-order mark, or a bidirectional control.
+func isReviewBlankFiller(r rune) bool {
+	return unicode.IsSpace(r) || unicode.Is(unicode.Cf, r)
 }
 
 // ─── injectable command-execution seams (cross-platform testable, no PATH stubs) ───

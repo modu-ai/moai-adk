@@ -1,0 +1,3 @@
+COLLECTED: 7 milestones in plan order (M1 M2 M3 M4 M5 M6 M7), 9 exit bindings, 0 ordering candidates
+NONE: 0 records in .moai/specs/SPEC-TODO-ENABLE-FLAG-001/acceptance.md match (before|after|first|prior to|pre-change) (case-insensitive) — an observed absence
+exit=0

@@ -1,0 +1,32 @@
+--- FAIL: TestCatalogHashCoversSkillSubfiles (0.12s)
+    catalog_tier_audit_test.go:491: CATALOG_HASH_SKINNY: moai hash=1d23838da0314421a863c31a9cbd099dd00c6a7e82e041673b5c177246e8ad42 does not cover the deployed directory tree (whole-tree hash fa683eb7fdb42944cc80a6461415cb371edb277a90c13e04e0ba079a68aa22b6) — run gen-catalog-hashes.go --all (card t323)
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+--- FAIL: TestManifestHashFormat (0.13s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: moai stored hash=1d23838da0314421a863c31a9cbd099dd00c6a7e82e041673b5c177246e8ad42, computed hash=fa683eb7fdb42944cc80a6461415cb371edb277a90c13e04e0ba079a68aa22b6 (source=.claude/skills/moai/ (whole tree))
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	37.145s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	1.636s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.386s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+--- FAIL: TestCatalogHashParity (0.13s)
+    catalog_hash_test.go:192: CATALOG_HASH_DRIFT: entry "moai" | stored=1d23838da0314421a863c31a9cbd099dd00c6a7e82e041673b5c177246e8ad42 | computed=fa683eb7fdb42944cc80a6461415cb371edb277a90c13e04e0ba079a68aa22b6 (source=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t631/internal/template/templates/.claude/skills/moai/ (whole tree)) — run gen-catalog-hashes.go --all to refresh
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	91.839s
+ok  	github.com/modu-ai/moai-adk/internal/skills	1.166s
+ok  	github.com/modu-ai/moai-adk/internal/harness	4.307s
+ok  	github.com/modu-ai/moai-adk/internal/harness/capture	2.012s
+ok  	github.com/modu-ai/moai-adk/internal/harness/cluster	1.270s
+ok  	github.com/modu-ai/moai-adk/internal/harness/curator	4.480s
+ok  	github.com/modu-ai/moai-adk/internal/harness/delegationmap	1.655s
+ok  	github.com/modu-ai/moai-adk/internal/harness/harnessrun	2.422s
+ok  	github.com/modu-ai/moai-adk/internal/harness/proposalgen	5.805s
+ok  	github.com/modu-ai/moai-adk/internal/harness/router	4.777s
+ok  	github.com/modu-ai/moai-adk/internal/harness/routing	3.262s
+ok  	github.com/modu-ai/moai-adk/internal/harness/safety	2.849s
+ok  	github.com/modu-ai/moai-adk/internal/harness/seeds	5.440s
+ok  	github.com/modu-ai/moai-adk/internal/harness/throttle	5.107s
+ok  	github.com/modu-ai/moai-adk/internal/harness/tier	5.905s
+ok  	github.com/modu-ai/moai-adk/internal/harness/v4manifest	5.812s
+ok  	github.com/modu-ai/moai-adk/internal/lsp/config	5.580s
+FAIL

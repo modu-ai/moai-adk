@@ -153,18 +153,40 @@ func TestValidatePrefs_AllValidEmpty(t *testing.T) {
 
 // TestIsLoopbackHost covers the host-classification branches directly.
 func TestIsLoopbackHost(t *testing.T) {
+	// The accepted set is written out as committed evidence: localhost in any
+	// letter case (host names are case-insensitive), all of 127.0.0.0/8, ::1 with
+	// or without brackets, and IPv4-mapped loopback. The trailing-dot form
+	// "localhost." is deliberately left unpinned.
 	cases := map[string]bool{
-		"127.0.0.1:8080":  true,
-		"127.0.0.1":       true,
-		"localhost:8080":  true,
-		"localhost":       true,
-		"[::1]:8080":      true,
-		"::1":             true,
-		"0.0.0.0:8080":    false,
-		"10.0.0.5:8080":   false,
-		"example.com:80":  false,
-		"":                false,
-		"not a host:port": false,
+		"127.0.0.1:8080":                 true,
+		"127.0.0.1":                      true,
+		"localhost:8080":                 true,
+		"localhost":                      true,
+		"LOCALHOST":                      true,
+		"LocalHost:3041":                 true,
+		"Localhost:8080":                 true,
+		"127.1.2.3:3041":                 true,
+		"127.255.255.254":                true,
+		"[::1]:8080":                     true,
+		"::1":                            true,
+		"[::ffff:127.0.0.1]:3041":        true,
+		"::ffff:127.0.0.1":               true,
+		"0.0.0.0:8080":                   false,
+		"0.0.0.0":                        false,
+		"10.0.0.5:8080":                  false,
+		"example.com:80":                 false,
+		"attacker.example.com":           false,
+		"localhost.attacker.example.com": false,
+		"LOCALHOST.attacker.example.com": false,
+		"":                               false,
+		"not a host:port":                false,
+		// Host-name case-insensitivity is ASCII-only (RFC 4343). U+017F (LATIN
+		// SMALL LETTER LONG S) is the only non-ASCII simple-fold equivalent of a
+		// letter in "localhost", so these spellings must stay rejected. The rune
+		// is built by conversion so no non-ASCII byte appears in this file.
+		"localho" + string(rune(0x17F)) + "t":      false,
+		"localho" + string(rune(0x17F)) + "t:3041": false,
+		"LOCALHO" + string(rune(0x17F)) + "T":      false,
 	}
 	for host, want := range cases {
 		if got := isLoopbackHost(host); got != want {

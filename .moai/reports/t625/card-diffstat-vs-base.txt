@@ -1,0 +1,5 @@
+ .claude/agents/moai/manager-develop.md                             | 7 ++++---
+ internal/template/catalog.yaml                                     | 2 +-
+ internal/template/templates/.claude/agents/moai/manager-develop.md | 7 ++++---
+ 3 files changed, 9 insertions(+), 7 deletions(-)
+git diff --stat 2160d4e92 HEAD -- internal .claude EXIT=0

@@ -208,10 +208,14 @@ become a card), while a phrase of two or more words falls through to add:
 needs the explicit add verb — the price of keeping typos loud.
 
 One fallthrough shape is refused outright: a verb-shaped first token followed
-by a card id (` + "`moai todo pick t151`" + `) is a mistyped verb, not a card, and
-becomes an error naming the known verbs. A card text that merely mentions an
-id later in the sentence still falls through, and ` + "`moai todo add \"<text>\"`" + `
-adds any text verbatim.`,
+by a card address (` + "`moai todo pick t151`" + `, ` + "`moai todo pick 151`" + `) is a mistyped
+verb, not a card, and becomes an error naming the known verbs. The address
+forms are the ones the verbs themselves accept — an explicit ` + "`t<n>`" + ` anywhere,
+or a bare ` + "`<n>`" + ` when it is the whole remainder or the first token is a
+near-miss of a real verb (` + "`moai todo drp 401 stale`" + `). A number after an
+ordinary word is still card text (` + "`moai todo fix 3 flaky tests`" + `). A card text that merely
+mentions an id later in the sentence still falls through, and
+` + "`moai todo add \"<text>\"`" + ` adds any text verbatim.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			// t69 fallthrough: two or more words are natural language → add.
 			// Deliberate failure modes: a single token (the mistyped verb
@@ -257,16 +261,39 @@ adds any text verbatim.`,
 }
 
 // todoVerbShaped matches a first token that reads as a command verb: one
-// lowercase ASCII word, optionally hyphenated. Bounded in length so a long
-// word in a card text cannot pass for a verb.
-var todoVerbShaped = regexp.MustCompile(`^[a-z][a-z-]{1,15}$`)
+// ASCII word, optionally carrying digits, hyphens, or underscores. Bounded in
+// length so a long word in a card text cannot pass for a verb.
+//
+// t555 (#1654) widened this from `^[a-z][a-z-]{1,15}$`, which admitted only
+// the lowercase spelling. A mistyped verb is mistyped in more ways than that:
+// the measured leaks were `Show t401` / `SHOW t401` (case), `show2 t401`
+// (adjacent-key typo), `show_it t401` (separator), and `s t401` (an
+// abbreviation the single-character floor excluded). Each one addressed a
+// real card id and each one silently became a card.
+//
+// Staying ASCII is the deliberate boundary, not an oversight: a non-ASCII
+// first token is prose in the operator's own language, never a mistyped
+// English verb, so a Korean/Japanese/Chinese card text still falls through
+// to add.
+var todoVerbShaped = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,23}$`)
 
 // todoCardIDShaped matches the id form the queue issues (`t<decimal>`, see
-// kanban.BacklogStore). Deliberately NOT the looser reference form the verbs
-// accept (`done 151` normalizes a bare number): a bare number is ordinary
-// card text ("fix 3 flaky tests"), while an explicit `t151` in second
-// position is an address.
+// kanban.BacklogStore). An explicit id in second position is an address at
+// any arity.
 var todoCardIDShaped = regexp.MustCompile(`^t\d+$`)
+
+// todoBareRefShaped matches the looser reference form the verbs themselves
+// accept: normalizeTodoRef maps a bare `<n>` to the id `t<n>` (REQ-TODO-004),
+// so `done 151` and `done t151` address the same card.
+//
+// t555: the guard used to exclude this form outright, on the reasoning that a
+// bare number is ordinary card text ("fix 3 flaky tests"). That reasoning
+// holds for a number sitting inside a phrase, and only there — `show 401` is
+// the very address grammar the verbs publish, and it leaked.
+//
+// A leading zero is excluded because the queue never issues one
+// (`fmt.Sprintf("t%d", …)`), so `0401` addresses no card the store can hold.
+var todoBareRefShaped = regexp.MustCompile(`^[1-9][0-9]*$`)
 
 // todoMistypedVerbGuard refuses the one fallthrough shape that is almost
 // never a card: a verb-shaped first token followed by a card id
@@ -284,14 +311,110 @@ func todoMistypedVerbGuard(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
 		return nil
 	}
-	if !todoVerbShaped.MatchString(args[0]) || !todoCardIDShaped.MatchString(args[1]) {
+	if !todoVerbShaped.MatchString(args[0]) {
+		return nil
+	}
+	kind := todoCardAddressKind(cmd, args)
+	if kind == "" {
 		return nil
 	}
 	phrase := strings.Join(args, " ")
 	return fmt.Errorf(
-		"todo: %q is not a todo verb and %q is a card id — refusing to create a card named %q.\n"+
+		"todo: %q is not a todo verb and %q is %s — refusing to create a card named %q.\n"+
 			"Known verbs: %s\nTo add this text as a card anyway: moai todo add %q",
-		args[0], args[1], phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+		args[0], args[1], kind, phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+}
+
+// todoCardAddressKind reports how args[1] addresses a card, or "" when it does
+// not address one at all. The two forms are the two the verbs themselves
+// accept (normalizeTodoRef): an explicit `t<n>`, and a bare `<n>`.
+//
+// The two are NOT symmetric, and the asymmetry is the whole difficulty. A
+// `t<n>` is unambiguous wherever it appears, so it needs no further test. A
+// bare number is genuinely ambiguous: `drp 401 stale` (a mistyped `drop`) and
+// `fix 3 flaky tests` (a card) have the SAME shape — word, number, word — so
+// no shape test can separate them. What separates them is the first token:
+// `drp` is one edit from a registered verb and `fix` is not.
+//
+// So the bare form is read as an address in two situations, and only these:
+//   - it is the whole remainder (`show 401`), or
+//   - the first token is a near-miss of a registered verb (`drp 401 stale`).
+//
+// The near-miss arm is what the arity test alone could not reach: three verbs
+// take TWO positional arguments — `relate <a> <b>`, `drop <n> <reason>`,
+// `edit <n> <text>` — so a mistyped call of any of them is three tokens or
+// more and slips straight past an arity-only condition.
+//
+// The returned string is the message fragment naming the form, so the refusal
+// tells the operator which grammar it recognized.
+func todoCardAddressKind(cmd *cobra.Command, args []string) string {
+	switch {
+	case todoCardIDShaped.MatchString(args[1]):
+		return "a card id"
+	case !todoBareRefShaped.MatchString(args[1]):
+		return ""
+	case len(args) == 2 || todoNearMissVerb(cmd, args[0]):
+		return "a card reference"
+	default:
+		return ""
+	}
+}
+
+// todoNearMissVerb reports whether tok reads as a mistyping of one of the
+// registered verbs: equal ignoring case, within a single edit, or a prefix of
+// one from three characters up (`relat` for `relate`).
+//
+// Derived from the command tree, like the verb list in the refusal message, so
+// a verb added later is covered without a second edit here.
+func todoNearMissVerb(cmd *cobra.Command, tok string) bool {
+	lowered := strings.ToLower(tok)
+	for _, verb := range todoVerbNames(cmd) {
+		if withinOneEdit(lowered, verb) {
+			return true
+		}
+		if len(lowered) >= 3 && strings.HasPrefix(verb, lowered) {
+			return true
+		}
+	}
+	return false
+}
+
+// withinOneEdit reports whether a and b are at most one insertion, deletion,
+// or substitution apart.
+//
+// Bounded at one, so it is a short scan rather than the usual edit-distance
+// matrix: at that bound the strings differ in length by at most one, which
+// leaves exactly two cases — equal lengths differ in at most one position, and
+// unequal lengths mean the longer is the shorter with one character inserted.
+// (internal/harness carries its own unexported copy for prefix-conflict
+// detection; exporting across that package boundary for this one call would be
+// a wider change than the twenty lines it saves.)
+func withinOneEdit(a, b string) bool {
+	if len(b) < len(a) {
+		a, b = b, a
+	}
+	if len(b)-len(a) > 1 {
+		return false
+	}
+	if len(a) == len(b) {
+		diffs := 0
+		for i := range a {
+			if a[i] != b[i] {
+				diffs++
+				if diffs > 1 {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	// b is one longer: b must be a with one character inserted.
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return a[i:] == b[i+1:]
+		}
+	}
+	return true
 }
 
 // todoVerbNames lists the registered verb names, so the guard's message is

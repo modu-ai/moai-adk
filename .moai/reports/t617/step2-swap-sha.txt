@@ -1,0 +1,2 @@
+fda221426aa9f045f49e179a7694819db3b2124f88a6f5db26a5f4664daa57c5  internal/hook/session_start_migration_test.go
+EXIT=0

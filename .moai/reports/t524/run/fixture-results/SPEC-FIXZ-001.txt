@@ -1,0 +1,2 @@
+COLLECTED: 0 REQ definitions (acceptance input: read)
+GAP: 0 REQ definitions collected — traceability not observed

@@ -1,0 +1,1 @@
+[{"file":".moai/specs/SPEC-DUPREPRO-002/spec.md","line":18,"severity":"warning","code":"DuplicateAcceptanceID","message":"AC AC-DUPREPRO-002-01 is declared on more than one line; the first line's text is kept and the REQ mappings of every line count as coverage","advisory":true}]

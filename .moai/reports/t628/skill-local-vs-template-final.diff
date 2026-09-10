@@ -1,0 +1,76 @@
+21c21
+<   updated: "2026-01-08"
+---
+>   updated: "2026-07-10"
+47c47
+< - Seamless Integration: Works with /moai:1-plan, /moai:2-run, /moai:3-sync workflow
+---
+> - Seamless Integration: Works with /moai plan, /moai run, /moai sync workflow
+129c129
+< During the Plan Phase using /moai:1-plan, the SPEC is created, and the launcher (`moai cc -w <name>`) enters an isolated worktree for it.
+---
+> During the Plan Phase using /moai plan, the SPEC is created, and the launcher (`moai cc -w <name>`) enters an isolated worktree for it.
+133c133
+< During the Sync Phase using /moai:3-sync, the worktree sync command ensures clean integration with conflict resolution support.
+---
+> During the Sync Phase using /moai sync, the worktree sync command ensures clean integration with conflict resolution support.
+147c147
+< First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai:2-run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai:2-run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
+---
+> First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
+159c159
+< During Plan Phase Integration with /moai:1-plan, after SPEC creation, enter the worktree through the launcher: `moai cc -w <name>` works inside it, and `moai cc -w <name> --spawn` opens it in a new tmux window.
+---
+> During Plan Phase Integration with /moai plan, after SPEC creation, enter the worktree through the launcher: `moai cc -w <name>` works inside it, and `moai cc -w <name> --spawn` opens it in a new tmux window.
+161c161
+< During Development Phase with /moai:2-run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
+---
+> During Development Phase with /moai run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
+163c163
+< During Sync Phase with /moai:3-sync, before PR creation run the sync command for the SPEC. After PR merge, run the clean command with the merged-only flag to remove completed worktrees.
+---
+> During Sync Phase with /moai sync, before PR creation run the sync command for the SPEC. After PR merge, run the clean command with the merged-only flag to remove completed worktrees.
+193c193
+< - The new window is created detached (`tmux new-window -d`), so focus stays in the caller's pane. The printed pane id (e.g. `%7`) is the handle for switching to it.
+---
+> - The new window is created detached, so focus stays in the caller's pane. The printed pane id (e.g. `%7`) is the handle for switching to it.
+206c206
+< No settings are mutated before these checks run, so a refusal leaves the environment untouched. The spawned command performs its own mode setup (`applyCCMode` / `applyCGMode`) inside the new window.
+---
+> No settings are mutated before these checks run, so a refusal leaves the environment untouched. The spawned command performs its own backend setup inside the new window.
+208c208
+< Relationship to the retired `--team` flag: `moai worktree new --team` previously created a worktree and launched a session in one step, across four patterns. Three of them are now covered by `-w` alone (in-place launch, and its handoff-guidance fallback), and the fourth — the new-tmux-window spawn — is `--spawn`. Its write-only swarm registry was retired with it; nothing ever read `.moai/state/swarm/`.
+---
+> Platform note: tmux is POSIX-only, so `--spawn` is unavailable on Windows and reports the missing binary. Entering a worktree in place with `-w` works on every platform.
+209a210,211
+> Detailed Reference: the launcher's spawn entry point — flag stripping, command reconstruction with shell quoting, and the tmux window invocation.
+> 
+243,246c245,248
+< - moai:1-plan - SPEC creation with automatic worktree setup
+< - moai:2-run - Development in isolated worktree environment
+< - moai:3-sync - Integration with automatic worktree sync
+< - moai:9-feedback - Worktree workflow improvements
+---
+> - /moai plan - SPEC creation with automatic worktree setup
+> - /moai run - Development in isolated worktree environment
+> - /moai sync - Integration with automatic worktree sync
+> - /moai feedback - Worktree workflow improvements
+252c254
+< - moai-git-strategy - Git workflow optimization
+---
+> - moai-ref-git-workflow - Git workflow optimization
+256,257c258
+< - Rich CLI - Formatted terminal output
+< - Click framework - Command-line interface framework
+---
+> - Cobra - CLI command framework and formatted output
+263c264
+< For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai:1-plan.
+---
+> For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai plan.
+280,281c281,282
+< Full Examples: Refer to examples.md
+< External Resources: Refer to reference.md
+---
+> Full Examples: Refer to references/examples.md
+> External Resources: Refer to references/reference.md

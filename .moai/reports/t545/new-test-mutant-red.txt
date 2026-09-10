@@ -1,0 +1,13 @@
+=== RUN   TestSettingsRenderFormNamesUnique
+2026/09/10 23:02:46 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsRenderFormNamesUnique3871703011/001/.moai/config/sections
+2026/09/10 23:02:46 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsRenderFormNamesUnique3871703011/001/.moai/config/sections
+2026/09/10 23:02:46 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsRenderFormNamesUnique3871703011/001/.moai/config/sections
+    settings_form_names_test.go:111: the /settings render ships duplicate form-control names inside #settings-form:
+          feedback.repository x2 (input:text)
+          git_strategy.worktree_base_branch x2 (input:text)
+          workflow.audit.codex.model x2 (input:text)
+        parseSchemaForm rejects the whole save when a name is submitted more than once; fix the template that renders the duplicate, not the parser
+--- FAIL: TestSettingsRenderFormNamesUnique (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.719s
+FAIL

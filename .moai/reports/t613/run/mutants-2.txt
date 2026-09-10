@@ -1,0 +1,31 @@
+# t613 follow-up mutation run — go test -overlay (tracked files never edited)
+# mutant source + overlay JSON lived in the session scratchpad, outside the tree
+
+===== m4: localhost comparison reverted to case-sensitive
+GREEN line:  if strings.EqualFold(hostname, "localhost") {
+mutant line: if hostname == "localhost" {        (replacement count in mutant copy: 1)
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m4_overlay.json ./internal/web/...
+exit=1  (expected: non-zero)
+build_failed_lines=0  panic_or_race=0  top_level_FAIL=2  subtest_FAIL=6
+failing lines:
+  --- FAIL: TestIsLoopbackHost (0.00s)
+      coverage_test.go:186: isLoopbackHost("LOCALHOST") = false, want true
+      coverage_test.go:186: isLoopbackHost("LocalHost:3041") = false, want true
+      coverage_test.go:186: isLoopbackHost("Localhost:8080") = false, want true
+  --- FAIL: TestHostGateControlMatrix (0.16s)
+      --- FAIL: TestHostGateControlMatrix/localhost-upper/static (0.00s)
+          host_gate_test.go:66: GET /static/app.js with Host "LOCALHOST": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-upper/settings (0.00s)
+          host_gate_test.go:87: GET /settings with Host "LOCALHOST": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-upper/save (0.00s)
+          host_gate_test.go:126: POST /save with Host "LOCALHOST": status = 403, want 2xx; body:
+      --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/static (0.00s)
+          host_gate_test.go:66: GET /static/app.js with Host "LocalHost:3041": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/settings (0.00s)
+          host_gate_test.go:87: GET /settings with Host "LocalHost:3041": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/save (0.00s)
+          host_gate_test.go:126: POST /save with Host "LocalHost:3041": status = 403, want 2xx; body:
+  FAIL	github.com/modu-ai/moai-adk/internal/web	24.587s
+
+The failing set is identical to red-2.txt (the pre-fix code): only the uppercase
+cells fail; every pinned wider-set row and every rejection row still passes.

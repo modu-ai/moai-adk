@@ -1,0 +1,657 @@
+=== RUN   TestResolver_ResolveAnchorCallsites_LSP
+--- PASS: TestResolver_ResolveAnchorCallsites_LSP (0.00s)
+=== RUN   TestResolver_ResolveAnchorCallsites_TextualFallback
+--- PASS: TestResolver_ResolveAnchorCallsites_TextualFallback (0.00s)
+=== RUN   TestResolver_ResolveAnchor_BackwardCompat
+--- PASS: TestResolver_ResolveAnchor_BackwardCompat (0.00s)
+=== RUN   TestResolver_ResolveAnchorCallsites_IncludeTests
+--- PASS: TestResolver_ResolveAnchorCallsites_IncludeTests (0.00s)
+=== RUN   TestResolver_ResolveAnchorCallsites_AnchorNotFound
+--- PASS: TestResolver_ResolveAnchorCallsites_AnchorNotFound (0.00s)
+=== RUN   TestCodemapsFingerprint_ProducerConsumer
+--- PASS: TestCodemapsFingerprint_ProducerConsumer (0.41s)
+=== RUN   TestGetCommentPrefix
+=== RUN   TestGetCommentPrefix/Go_files_use_//
+=== RUN   TestGetCommentPrefix/Python_files_use_#
+=== RUN   TestGetCommentPrefix/TypeScript_files_use_//
+=== RUN   TestGetCommentPrefix/JavaScript_files_use_//
+=== RUN   TestGetCommentPrefix/Rust_files_use_//
+=== RUN   TestGetCommentPrefix/Java_files_use_//
+=== RUN   TestGetCommentPrefix/Kotlin_files_use_//
+=== RUN   TestGetCommentPrefix/C#_files_use_//
+=== RUN   TestGetCommentPrefix/Ruby_files_use_#
+=== RUN   TestGetCommentPrefix/PHP_files_use_//
+=== RUN   TestGetCommentPrefix/Elixir_.ex_files_use_#
+=== RUN   TestGetCommentPrefix/Elixir_.exs_files_use_#
+=== RUN   TestGetCommentPrefix/C++_files_use_//
+=== RUN   TestGetCommentPrefix/C++_header_files_use_//
+=== RUN   TestGetCommentPrefix/C++_.cc_files_use_//
+=== RUN   TestGetCommentPrefix/C++_.cxx_files_use_//
+=== RUN   TestGetCommentPrefix/Scala_files_use_//
+=== RUN   TestGetCommentPrefix/R_.R_files_use_#
+=== RUN   TestGetCommentPrefix/R_.r_files_use_#
+=== RUN   TestGetCommentPrefix/Dart_files_use_//
+=== RUN   TestGetCommentPrefix/Swift_files_use_//
+=== RUN   TestGetCommentPrefix/JavaScript_module_files_use_//
+=== RUN   TestGetCommentPrefix/Unsupported_extension_returns_empty
+=== RUN   TestGetCommentPrefix/Empty_extension_returns_empty
+--- PASS: TestGetCommentPrefix (0.00s)
+    --- PASS: TestGetCommentPrefix/Go_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Python_files_use_# (0.00s)
+    --- PASS: TestGetCommentPrefix/TypeScript_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/JavaScript_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Rust_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Java_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Kotlin_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/C#_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Ruby_files_use_# (0.00s)
+    --- PASS: TestGetCommentPrefix/PHP_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Elixir_.ex_files_use_# (0.00s)
+    --- PASS: TestGetCommentPrefix/Elixir_.exs_files_use_# (0.00s)
+    --- PASS: TestGetCommentPrefix/C++_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/C++_header_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/C++_.cc_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/C++_.cxx_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Scala_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/R_.R_files_use_# (0.00s)
+    --- PASS: TestGetCommentPrefix/R_.r_files_use_# (0.00s)
+    --- PASS: TestGetCommentPrefix/Dart_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Swift_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/JavaScript_module_files_use_// (0.00s)
+    --- PASS: TestGetCommentPrefix/Unsupported_extension_returns_empty (0.00s)
+    --- PASS: TestGetCommentPrefix/Empty_extension_returns_empty (0.00s)
+=== RUN   TestAll16LanguagesSupported
+=== RUN   TestAll16LanguagesSupported/.go
+=== RUN   TestAll16LanguagesSupported/.py
+=== RUN   TestAll16LanguagesSupported/.ts
+=== RUN   TestAll16LanguagesSupported/.js
+=== RUN   TestAll16LanguagesSupported/.rs
+=== RUN   TestAll16LanguagesSupported/.java
+=== RUN   TestAll16LanguagesSupported/.kt
+=== RUN   TestAll16LanguagesSupported/.cs
+=== RUN   TestAll16LanguagesSupported/.rb
+=== RUN   TestAll16LanguagesSupported/.php
+=== RUN   TestAll16LanguagesSupported/.ex
+=== RUN   TestAll16LanguagesSupported/.cpp
+=== RUN   TestAll16LanguagesSupported/.scala
+=== RUN   TestAll16LanguagesSupported/.R
+=== RUN   TestAll16LanguagesSupported/.dart
+=== RUN   TestAll16LanguagesSupported/.swift
+--- PASS: TestAll16LanguagesSupported (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.go (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.py (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.ts (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.js (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.rs (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.java (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.kt (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.cs (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.rb (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.php (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.ex (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.cpp (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.scala (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.R (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.dart (0.00s)
+    --- PASS: TestAll16LanguagesSupported/.swift (0.00s)
+=== RUN   TestDangerCategoryMatcher_Match
+=== RUN   TestDangerCategoryMatcher_Match/goroutine_leak_→_concurrency
+=== RUN   TestDangerCategoryMatcher_Match/unbounded_channel_→_concurrency
+=== RUN   TestDangerCategoryMatcher_Match/race_condition_→_concurrency
+=== RUN   TestDangerCategoryMatcher_Match/missing_Close_→_resource-leak
+=== RUN   TestDangerCategoryMatcher_Match/fd_leak_→_resource-leak
+=== RUN   TestDangerCategoryMatcher_Match/defer_missing_→_cleanup
+=== RUN   TestDangerCategoryMatcher_Match/hardcoded_credential_→_security
+=== RUN   TestDangerCategoryMatcher_Match/sql_injection_→_security
+=== RUN   TestDangerCategoryMatcher_Match/goroutine_leak_≠_resource-leak
+=== RUN   TestDangerCategoryMatcher_Match/관련_없는_텍스트
+=== RUN   TestDangerCategoryMatcher_Match/대소문자_구분_없는_매칭
+--- PASS: TestDangerCategoryMatcher_Match (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/goroutine_leak_→_concurrency (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/unbounded_channel_→_concurrency (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/race_condition_→_concurrency (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/missing_Close_→_resource-leak (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/fd_leak_→_resource-leak (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/defer_missing_→_cleanup (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/hardcoded_credential_→_security (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/sql_injection_→_security (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/goroutine_leak_≠_resource-leak (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/관련_없는_텍스트 (0.00s)
+    --- PASS: TestDangerCategoryMatcher_Match/대소문자_구분_없는_매칭 (0.00s)
+=== RUN   TestDangerCategoryMatcher_CategoryOf
+=== RUN   TestDangerCategoryMatcher_CategoryOf/goroutine_leak_detected
+=== RUN   TestDangerCategoryMatcher_CategoryOf/missing_Close_on_error
+=== RUN   TestDangerCategoryMatcher_CategoryOf/defer_missing_in_handler
+=== RUN   TestDangerCategoryMatcher_CategoryOf/hardcoded_credential_found
+=== RUN   TestDangerCategoryMatcher_CategoryOf/관련_없는_텍스트
+--- PASS: TestDangerCategoryMatcher_CategoryOf (0.00s)
+    --- PASS: TestDangerCategoryMatcher_CategoryOf/goroutine_leak_detected (0.00s)
+    --- PASS: TestDangerCategoryMatcher_CategoryOf/missing_Close_on_error (0.00s)
+    --- PASS: TestDangerCategoryMatcher_CategoryOf/defer_missing_in_handler (0.00s)
+    --- PASS: TestDangerCategoryMatcher_CategoryOf/hardcoded_credential_found (0.00s)
+    --- PASS: TestDangerCategoryMatcher_CategoryOf/관련_없는_텍스트 (0.00s)
+=== RUN   TestDangerCategoryMatcher_ValidateCategory
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/valid:concurrency
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/valid:resource-leak
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/valid:cleanup
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/valid:security
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/invalid:nonexistent
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/invalid:random
+=== RUN   TestDangerCategoryMatcher_ValidateCategory/invalid:
+--- PASS: TestDangerCategoryMatcher_ValidateCategory (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/valid:concurrency (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/valid:resource-leak (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/valid:cleanup (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/valid:security (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/invalid:nonexistent (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/invalid:random (0.00s)
+    --- PASS: TestDangerCategoryMatcher_ValidateCategory/invalid: (0.00s)
+=== RUN   TestDangerCategoryMatcher_CustomConfig
+--- PASS: TestDangerCategoryMatcher_CustomConfig (0.00s)
+=== RUN   TestLoadDangerConfig_UserCustomCategories
+--- PASS: TestLoadDangerConfig_UserCustomCategories (0.00s)
+=== RUN   TestLoadDangerConfig_FileMissing_DefaultUsed
+--- PASS: TestLoadDangerConfig_FileMissing_DefaultUsed (0.00s)
+=== RUN   TestDangerCategoryMatcher_KnownCategories
+--- PASS: TestDangerCategoryMatcher_KnownCategories (0.00s)
+=== RUN   TestDescribedWorthy
+--- PASS: TestDescribedWorthy (0.00s)
+=== RUN   TestLSPFanInCounter_BasicCount
+--- PASS: TestLSPFanInCounter_BasicCount (0.00s)
+=== RUN   TestLSPFanInCounter_TextualFallback
+--- PASS: TestLSPFanInCounter_TextualFallback (0.00s)
+=== RUN   TestLSPFanInCounter_StrictMode_LSPRequiredError
+--- PASS: TestLSPFanInCounter_StrictMode_LSPRequiredError (0.00s)
+=== RUN   TestLSPFanInCounter_ExcludeTests
+--- PASS: TestLSPFanInCounter_ExcludeTests (0.00s)
+=== RUN   TestLSPFanInCounter_InterfaceCompliance
+--- PASS: TestLSPFanInCounter_InterfaceCompliance (0.00s)
+=== RUN   TestLSPFanInCounter_LSPErrorFallback
+--- PASS: TestLSPFanInCounter_LSPErrorFallback (0.00s)
+=== RUN   TestLSPFanInCounter_StrictMode_Env
+--- PASS: TestLSPFanInCounter_StrictMode_Env (0.00s)
+=== RUN   TestTextualFanInCounter_Count
+--- PASS: TestTextualFanInCounter_Count (0.00s)
+=== RUN   TestMockFanInCounter
+--- PASS: TestMockFanInCounter (0.00s)
+=== RUN   TestFanInCounter_InterfaceCompliance
+--- PASS: TestFanInCounter_InterfaceCompliance (0.00s)
+=== RUN   TestIsTestFile
+=== RUN   TestIsTestFile/internal/auth/handler_test.go
+=== RUN   TestIsTestFile/internal/auth/handler.go
+=== RUN   TestIsTestFile/tests/fixtures/mock.go
+=== RUN   TestIsTestFile/testdata/fixture.go
+=== RUN   TestIsTestFile/internal/fixtures/data.go
+=== RUN   TestIsTestFile/pkg/utils/helper.go
+=== RUN   TestIsTestFile/cmd/moai/main.go
+--- PASS: TestIsTestFile (0.00s)
+    --- PASS: TestIsTestFile/internal/auth/handler_test.go (0.00s)
+    --- PASS: TestIsTestFile/internal/auth/handler.go (0.00s)
+    --- PASS: TestIsTestFile/tests/fixtures/mock.go (0.00s)
+    --- PASS: TestIsTestFile/testdata/fixture.go (0.00s)
+    --- PASS: TestIsTestFile/internal/fixtures/data.go (0.00s)
+    --- PASS: TestIsTestFile/pkg/utils/helper.go (0.00s)
+    --- PASS: TestIsTestFile/cmd/moai/main.go (0.00s)
+=== RUN   TestTextualFanInCounter_CountWithRealFiles
+--- PASS: TestTextualFanInCounter_CountWithRealFiles (0.00s)
+=== RUN   TestTextualFanInCounter_CountEmptyAnchorID
+--- PASS: TestTextualFanInCounter_CountEmptyAnchorID (0.00s)
+=== RUN   TestTextualFanInCounter_CountEmptyProjectRoot
+--- PASS: TestTextualFanInCounter_CountEmptyProjectRoot (0.00s)
+=== RUN   TestIsTestFile_UserPattern_IntegrationDir
+--- PASS: TestIsTestFile_UserPattern_IntegrationDir (0.00s)
+=== RUN   TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded
+--- PASS: TestIsTestFile_UserPattern_NoMatch_FallbackHardcoded (0.00s)
+=== RUN   TestTextualFanInCounter_RespectsUserTestPaths
+--- PASS: TestTextualFanInCounter_RespectsUserTestPaths (0.00s)
+=== RUN   TestTextualFanInCounter_ExcludeTests
+--- PASS: TestTextualFanInCounter_ExcludeTests (0.00s)
+=== RUN   TestResolveCommit
+=== RUN   TestResolveCommit/full_sha
+=== RUN   TestResolveCommit/short_rev
+=== RUN   TestResolveCommit/ref_name
+=== RUN   TestResolveCommit/named_parent_sha
+--- PASS: TestResolveCommit (0.72s)
+    --- PASS: TestResolveCommit/full_sha (0.03s)
+    --- PASS: TestResolveCommit/short_rev (0.03s)
+    --- PASS: TestResolveCommit/ref_name (0.03s)
+    --- PASS: TestResolveCommit/named_parent_sha (0.03s)
+=== RUN   TestStampCodemaps_ExplicitCommit
+--- PASS: TestStampCodemaps_ExplicitCommit (0.64s)
+=== RUN   TestStampCodemaps_ExplicitCommitDirtyRejected
+--- PASS: TestStampCodemaps_ExplicitCommitDirtyRejected (1.31s)
+=== RUN   TestStampCodemaps_DefaultPathUnchanged
+--- PASS: TestStampCodemaps_DefaultPathUnchanged (1.25s)
+=== RUN   TestStampCodemaps_ExplicitCommitAllowsTestdataOnlyDirty
+--- PASS: TestStampCodemaps_ExplicitCommitAllowsTestdataOnlyDirty (1.71s)
+=== RUN   TestStampCodemaps_ExplicitCommitRejectsUntrackedDescribedSource
+--- PASS: TestStampCodemaps_ExplicitCommitRejectsUntrackedDescribedSource (0.73s)
+=== RUN   TestStampCodemaps_DefaultPathTestdataOnlyDirtyRecordsCommit
+--- PASS: TestStampCodemaps_DefaultPathTestdataOnlyDirtyRecordsCommit (0.73s)
+=== RUN   TestRefreshIndex_ChangedFilesOnly
+--- PASS: TestRefreshIndex_ChangedFilesOnly (0.08s)
+=== RUN   TestRefreshIndex_ReflectsUncommittedEdits
+--- PASS: TestRefreshIndex_ReflectsUncommittedEdits (0.08s)
+=== RUN   TestRefreshIndex_WrongTreeFullRescan
+--- PASS: TestRefreshIndex_WrongTreeFullRescan (0.09s)
+=== RUN   TestRefreshIndex_PicksUpNewFiles
+--- PASS: TestRefreshIndex_PicksUpNewFiles (0.08s)
+=== RUN   TestRefreshIndex_TagHashSurvivesLineDrift
+--- PASS: TestRefreshIndex_TagHashSurvivesLineDrift (0.08s)
+=== RUN   TestRefreshIndex_DropsVanishedFiles
+--- PASS: TestRefreshIndex_DropsVanishedFiles (0.09s)
+=== RUN   TestResolver_AllSixteenLanguages
+--- PASS: TestResolver_AllSixteenLanguages (0.00s)
+=== RUN   TestResolver_AllSixteenLanguages_FanInReference
+--- PASS: TestResolver_AllSixteenLanguages_FanInReference (0.02s)
+=== RUN   TestResolve_SpecAndKindFilter
+--- PASS: TestResolve_SpecAndKindFilter (0.00s)
+=== RUN   TestResolve_FanInFilter
+--- PASS: TestResolve_FanInFilter (0.00s)
+=== RUN   TestResolve_DangerFilter
+--- PASS: TestResolve_DangerFilter (0.00s)
+=== RUN   TestResolve_SidecarUnavailable
+--- PASS: TestResolve_SidecarUnavailable (0.00s)
+=== RUN   TestResolve_JSONSchema
+--- PASS: TestResolve_JSONSchema (0.00s)
+=== RUN   TestResolve_Pagination
+--- PASS: TestResolve_Pagination (0.00s)
+=== RUN   TestResolve_TextualFallbackAnnotation
+--- PASS: TestResolve_TextualFallbackAnnotation (0.00s)
+=== RUN   TestResolve_StrictMode
+--- PASS: TestResolve_StrictMode (0.00s)
+=== RUN   TestResolve_TestFixtureExclusion
+--- PASS: TestResolve_TestFixtureExclusion (0.00s)
+=== RUN   TestResolve_EmptyResult
+--- PASS: TestResolve_EmptyResult (0.00s)
+=== RUN   TestResolve_CombinedFilters
+--- PASS: TestResolve_CombinedFilters (0.00s)
+=== RUN   TestResolve_SpecAssociationFromBody
+--- PASS: TestResolve_SpecAssociationFromBody (0.00s)
+=== RUN   TestResolve_MarkdownFormat
+--- PASS: TestResolve_MarkdownFormat (0.00s)
+=== RUN   TestResolve_TableFormat
+--- PASS: TestResolve_TableFormat (0.00s)
+=== RUN   TestExtractSpecIDs
+=== RUN   TestExtractSpecIDs/단순_SPEC_ID
+=== RUN   TestExtractSpecIDs/여러_SPEC_ID
+=== RUN   TestExtractSpecIDs/SPEC_ID_없음
+=== RUN   TestExtractSpecIDs/중복_SPEC_ID
+--- PASS: TestExtractSpecIDs (0.00s)
+    --- PASS: TestExtractSpecIDs/단순_SPEC_ID (0.00s)
+    --- PASS: TestExtractSpecIDs/여러_SPEC_ID (0.00s)
+    --- PASS: TestExtractSpecIDs/SPEC_ID_없음 (0.00s)
+    --- PASS: TestExtractSpecIDs/중복_SPEC_ID (0.00s)
+=== RUN   TestFormatMarkdown_TableStructure
+--- PASS: TestFormatMarkdown_TableStructure (0.00s)
+=== RUN   TestFormatJSON
+--- PASS: TestFormatJSON (0.00s)
+=== RUN   TestResolve_LargeSidecarTruncation
+--- PASS: TestResolve_LargeSidecarTruncation (0.00s)
+=== RUN   TestValidateQuery_UnknownDanger_InvalidQueryError
+--- PASS: TestValidateQuery_UnknownDanger_InvalidQueryError (0.00s)
+=== RUN   TestResolve_InvalidKind
+--- PASS: TestResolve_InvalidKind (0.00s)
+=== RUN   TestResolve_FilePrefix
+--- PASS: TestResolve_FilePrefix (0.00s)
+=== RUN   TestResolve_OffsetPagination
+--- PASS: TestResolve_OffsetPagination (0.00s)
+=== RUN   TestResolveAnchor
+--- PASS: TestResolveAnchor (0.00s)
+=== RUN   TestResolve_SinceFilter
+--- PASS: TestResolve_SinceFilter (0.00s)
+=== RUN   TestResolveLimit_MaxEnforcement
+--- PASS: TestResolveLimit_MaxEnforcement (0.00s)
+=== RUN   TestResolveLimit_Normalization
+--- PASS: TestResolveLimit_Normalization (0.00s)
+=== RUN   TestSidecarUnavailableError
+--- PASS: TestSidecarUnavailableError (0.00s)
+=== RUN   TestInvalidQueryError
+--- PASS: TestInvalidQueryError (0.00s)
+=== RUN   TestLSPRequiredError
+--- PASS: TestLSPRequiredError (0.00s)
+=== RUN   TestFormatTable_Empty
+--- PASS: TestFormatTable_Empty (0.00s)
+=== RUN   TestFormatMarkdown_WithTruncation
+--- PASS: TestFormatMarkdown_WithTruncation (0.00s)
+=== RUN   TestTruncateStr
+--- PASS: TestTruncateStr (0.00s)
+=== RUN   TestResolve_ResolveAll
+--- PASS: TestResolve_ResolveAll (0.00s)
+=== RUN   TestResolve_ListAnchors
+--- PASS: TestResolve_ListAnchors (0.00s)
+=== RUN   TestResolve_AuditLowFanIn
+--- PASS: TestResolve_AuditLowFanIn (0.00s)
+=== RUN   TestScanDebtTagAndSubLines
+--- PASS: TestScanDebtTagAndSubLines (0.00s)
+=== RUN   TestScanDebtRotRiskNoTrigger
+=== RUN   TestScanDebtRotRiskNoTrigger/no-trigger_when_@MX:UPGRADE_absent
+=== RUN   TestScanDebtRotRiskNoTrigger/empty_RotRisk_when_@MX:UPGRADE_present
+=== RUN   TestScanDebtRotRiskNoTrigger/no-trigger_when_neither_sub-line_present_(EC-1)
+--- PASS: TestScanDebtRotRiskNoTrigger (0.00s)
+    --- PASS: TestScanDebtRotRiskNoTrigger/no-trigger_when_@MX:UPGRADE_absent (0.00s)
+    --- PASS: TestScanDebtRotRiskNoTrigger/empty_RotRisk_when_@MX:UPGRADE_present (0.00s)
+    --- PASS: TestScanDebtRotRiskNoTrigger/no-trigger_when_neither_sub-line_present_(EC-1) (0.00s)
+=== RUN   TestScanLegacyNotDroppedBySubLineSet
+--- PASS: TestScanLegacyNotDroppedBySubLineSet (0.00s)
+=== RUN   TestParseTagSubLineSentinel
+=== RUN   TestParseTagSubLineSentinel/CEILING_sub-line
+=== RUN   TestParseTagSubLineSentinel/UPGRADE_sub-line
+=== RUN   TestParseTagSubLineSentinel/REASON_sub-line
+=== RUN   TestParseTagSubLineSentinel/SPEC_sub-line
+=== RUN   TestParseTagSubLineSentinel/TEST_sub-line
+=== RUN   TestParseTagSubLineSentinel/PRIORITY_sub-line
+=== RUN   TestParseTagSubLineSentinel/DEBT_is_a_tag
+=== RUN   TestParseTagSubLineSentinel/LEGACY_stays_a_tag_(excluded_from_set)
+=== RUN   TestParseTagSubLineSentinel/unknown_kind_still_errors
+--- PASS: TestParseTagSubLineSentinel (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/CEILING_sub-line (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/UPGRADE_sub-line (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/REASON_sub-line (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/SPEC_sub-line (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/TEST_sub-line (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/PRIORITY_sub-line (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/DEBT_is_a_tag (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/LEGACY_stays_a_tag_(excluded_from_set) (0.00s)
+    --- PASS: TestParseTagSubLineSentinel/unknown_kind_still_errors (0.00s)
+=== RUN   TestPendingWarn_C1_ReasonlessWarnThenNote_EmitsMissingReason
+    scanner_pending_warn_test.go:59: tag line=3 kind=NOTE spec="" reason=""
+    scanner_pending_warn_test.go:59: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_C1_ReasonlessWarnThenNote_EmitsMissingReason2796260148/001/fixture.go:2 - WARN tag without REASON before the next tag]
+--- PASS: TestPendingWarn_C1_ReasonlessWarnThenNote_EmitsMissingReason (0.00s)
+=== RUN   TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingReason
+    scanner_pending_warn_test.go:72: warnings=2 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingRe1448370052/001/fixture.go:2 - WARN tag without REASON before the next tag MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingRe1448370052/001/fixture.go:3 - WARN tag without REASON]
+--- PASS: TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingReason (0.00s)
+=== RUN   TestPendingWarn_C3_WarnThenReason_NoMissingReason
+    scanner_pending_warn_test.go:88: tag line=2 kind=WARN spec="" reason="shared state"
+    scanner_pending_warn_test.go:88: warnings=0 []
+--- PASS: TestPendingWarn_C3_WarnThenReason_NoMissingReason (0.00s)
+=== RUN   TestPendingWarn_C4_SpecBetweenWarnAndReason_AttachesToWarn
+    scanner_pending_warn_test.go:101: tag line=2 kind=NOTE spec="" reason=""
+    scanner_pending_warn_test.go:101: tag line=3 kind=WARN spec="SPEC-WARN-001" reason="shared state"
+    scanner_pending_warn_test.go:101: warnings=0 []
+--- PASS: TestPendingWarn_C4_SpecBetweenWarnAndReason_AttachesToWarn (0.00s)
+=== RUN   TestPendingWarn_C5_SpecAfterReason_AttachesToWarn
+    scanner_pending_warn_test.go:109: tag line=2 kind=NOTE spec="" reason=""
+    scanner_pending_warn_test.go:109: tag line=3 kind=WARN spec="SPEC-WARN-001" reason="shared state"
+    scanner_pending_warn_test.go:109: warnings=0 []
+--- PASS: TestPendingWarn_C5_SpecAfterReason_AttachesToWarn (0.00s)
+=== RUN   TestPendingWarnExit_E1_WindowExpiryOnPlainLine_DiagnosticOnly
+    scanner_pending_warn_test.go:140: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarnExit_E1_WindowExpiryOnPlainLine_DiagnosticOnly1125306682/001/fixture.go:2 - WARN tag without REASON within 3 lines]
+--- PASS: TestPendingWarnExit_E1_WindowExpiryOnPlainLine_DiagnosticOnly (0.00s)
+=== RUN   TestPendingWarnExit_E2_TooLateReason_DiagnosticOnly
+    scanner_pending_warn_test.go:149: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarnExit_E2_TooLateReason_DiagnosticOnly4251421795/001/fixture.go:2 - WARN tag without REASON within 3 lines]
+--- PASS: TestPendingWarnExit_E2_TooLateReason_DiagnosticOnly (0.01s)
+=== RUN   TestPendingWarnExit_E3_EndOfFile_DiagnosticOnly
+    scanner_pending_warn_test.go:156: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarnExit_E3_EndOfFile_DiagnosticOnly3374593242/001/fixture.go:2 - WARN tag without REASON]
+--- PASS: TestPendingWarnExit_E3_EndOfFile_DiagnosticOnly (0.00s)
+=== RUN   TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling
+    scanner_pending_warn_test.go:177: tag line=2 kind=WARN spec="SPEC-WARN-001" reason="shared state"
+    scanner_pending_warn_test.go:177: warnings=0 []
+--- PASS: TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling (0.00s)
+=== RUN   TestScannerSpecRef_Capture
+--- PASS: TestScannerSpecRef_Capture (0.00s)
+=== RUN   TestAC006_DanglingSpecRefWarning
+--- PASS: TestAC006_DanglingSpecRefWarning (0.00s)
+=== RUN   TestScanFile
+--- PASS: TestScanFile (0.00s)
+=== RUN   TestScanAll16Languages
+=== RUN   TestScanAll16Languages/.dart
+=== RUN   TestScanAll16Languages/.swift
+=== RUN   TestScanAll16Languages/.go
+=== RUN   TestScanAll16Languages/.py
+=== RUN   TestScanAll16Languages/.ts
+=== RUN   TestScanAll16Languages/.kt
+=== RUN   TestScanAll16Languages/.rb
+=== RUN   TestScanAll16Languages/.php
+=== RUN   TestScanAll16Languages/.scala
+=== RUN   TestScanAll16Languages/.js
+=== RUN   TestScanAll16Languages/.java
+=== RUN   TestScanAll16Languages/.cs
+=== RUN   TestScanAll16Languages/.ex
+=== RUN   TestScanAll16Languages/.exs
+=== RUN   TestScanAll16Languages/.cpp
+=== RUN   TestScanAll16Languages/.R
+=== RUN   TestScanAll16Languages/.rs
+--- PASS: TestScanAll16Languages (0.00s)
+    --- PASS: TestScanAll16Languages/.dart (0.00s)
+    --- PASS: TestScanAll16Languages/.swift (0.00s)
+    --- PASS: TestScanAll16Languages/.go (0.00s)
+    --- PASS: TestScanAll16Languages/.py (0.00s)
+    --- PASS: TestScanAll16Languages/.ts (0.00s)
+    --- PASS: TestScanAll16Languages/.kt (0.00s)
+    --- PASS: TestScanAll16Languages/.rb (0.00s)
+    --- PASS: TestScanAll16Languages/.php (0.00s)
+    --- PASS: TestScanAll16Languages/.scala (0.00s)
+    --- PASS: TestScanAll16Languages/.js (0.00s)
+    --- PASS: TestScanAll16Languages/.java (0.00s)
+    --- PASS: TestScanAll16Languages/.cs (0.00s)
+    --- PASS: TestScanAll16Languages/.ex (0.00s)
+    --- PASS: TestScanAll16Languages/.exs (0.00s)
+    --- PASS: TestScanAll16Languages/.cpp (0.00s)
+    --- PASS: TestScanAll16Languages/.R (0.00s)
+    --- PASS: TestScanAll16Languages/.rs (0.00s)
+=== RUN   TestScanFileWithWarnReason
+=== RUN   TestScanFileWithWarnReason/WARN_with_REASON_on_next_line
+=== RUN   TestScanFileWithWarnReason/WARN_without_REASON
+=== RUN   TestScanFileWithWarnReason/WARN_with_REASON_after_3_lines
+--- PASS: TestScanFileWithWarnReason (0.00s)
+    --- PASS: TestScanFileWithWarnReason/WARN_with_REASON_on_next_line (0.00s)
+    --- PASS: TestScanFileWithWarnReason/WARN_without_REASON (0.00s)
+    --- PASS: TestScanFileWithWarnReason/WARN_with_REASON_after_3_lines (0.00s)
+=== RUN   TestDuplicateAnchorID
+--- PASS: TestDuplicateAnchorID (0.00s)
+=== RUN   TestScanDir
+--- PASS: TestScanDir (0.00s)
+=== RUN   TestIgnorePatterns
+--- PASS: TestIgnorePatterns (0.00s)
+=== RUN   TestDetectChanges
+--- PASS: TestDetectChanges (0.00s)
+=== RUN   TestParseTag
+=== RUN   TestParseTag/NOTE_tag
+=== RUN   TestParseTag/WARN_tag
+=== RUN   TestParseTag/ANCHOR_tag_with_ID
+=== RUN   TestParseTag/ANCHOR_tag_without_ID
+=== RUN   TestParseTag/TODO_tag
+=== RUN   TestParseTag/LEGACY_tag
+=== RUN   TestParseTag/invalid_kind
+=== RUN   TestParseTag/malformed_tag
+--- PASS: TestParseTag (0.00s)
+    --- PASS: TestParseTag/NOTE_tag (0.00s)
+    --- PASS: TestParseTag/WARN_tag (0.00s)
+    --- PASS: TestParseTag/ANCHOR_tag_with_ID (0.00s)
+    --- PASS: TestParseTag/ANCHOR_tag_without_ID (0.00s)
+    --- PASS: TestParseTag/TODO_tag (0.00s)
+    --- PASS: TestParseTag/LEGACY_tag (0.00s)
+    --- PASS: TestParseTag/invalid_kind (0.00s)
+    --- PASS: TestParseTag/malformed_tag (0.00s)
+=== RUN   TestExtractReason
+=== RUN   TestExtractReason///_@MX:REASON:_This_is_the_reason
+=== RUN   TestExtractReason/#_@MX:REASON:_Python_reason
+=== RUN   TestExtractReason///_@MX:REASON:reason_with_spaces
+=== RUN   TestExtractReason///_@MX:NOTE_something_else
+=== RUN   TestExtractReason///_regular_comment
+--- PASS: TestExtractReason (0.00s)
+    --- PASS: TestExtractReason///_@MX:REASON:_This_is_the_reason (0.00s)
+    --- PASS: TestExtractReason/#_@MX:REASON:_Python_reason (0.00s)
+    --- PASS: TestExtractReason///_@MX:REASON:reason_with_spaces (0.00s)
+    --- PASS: TestExtractReason///_@MX:NOTE_something_else (0.00s)
+    --- PASS: TestExtractReason///_regular_comment (0.00s)
+=== RUN   TestExtractTagContent
+=== RUN   TestExtractTagContent/valid_Go_comment
+=== RUN   TestExtractTagContent/valid_Python_comment
+=== RUN   TestExtractTagContent/comment_without_@MX
+=== RUN   TestExtractTagContent/comment_before_@MX_prefix
+=== RUN   TestExtractTagContent/wrong_comment_prefix
+--- PASS: TestExtractTagContent (0.00s)
+    --- PASS: TestExtractTagContent/valid_Go_comment (0.00s)
+    --- PASS: TestExtractTagContent/valid_Python_comment (0.00s)
+    --- PASS: TestExtractTagContent/comment_without_@MX (0.00s)
+    --- PASS: TestExtractTagContent/comment_before_@MX_prefix (0.00s)
+    --- PASS: TestExtractTagContent/wrong_comment_prefix (0.00s)
+=== RUN   TestScanFileTimestamps
+--- PASS: TestScanFileTimestamps (0.00s)
+=== RUN   TestNewManager
+--- PASS: TestNewManager (0.00s)
+=== RUN   TestWriteAndLoad
+--- PASS: TestWriteAndLoad (0.00s)
+=== RUN   TestAtomicWrite
+--- PASS: TestAtomicWrite (0.00s)
+=== RUN   TestLoadNonExistent
+--- PASS: TestLoadNonExistent (0.00s)
+=== RUN   TestLoadCorrupt
+--- PASS: TestLoadCorrupt (0.00s)
+=== RUN   TestUpdateFile
+--- PASS: TestUpdateFile (0.00s)
+=== RUN   TestArchiveStale
+--- PASS: TestArchiveStale (0.00s)
+=== RUN   TestArchiveStaleBoundary
+=== RUN   TestArchiveStaleBoundary/1_hour_ago
+=== RUN   TestArchiveStaleBoundary/6_days_ago
+=== RUN   TestArchiveStaleBoundary/7_days_ago
+=== RUN   TestArchiveStaleBoundary/8_days_ago
+--- PASS: TestArchiveStaleBoundary (0.00s)
+    --- PASS: TestArchiveStaleBoundary/1_hour_ago (0.00s)
+    --- PASS: TestArchiveStaleBoundary/6_days_ago (0.00s)
+    --- PASS: TestArchiveStaleBoundary/7_days_ago (0.00s)
+    --- PASS: TestArchiveStaleBoundary/8_days_ago (0.00s)
+=== RUN   TestGetTag
+--- PASS: TestGetTag (0.00s)
+=== RUN   TestGetAllTags
+--- PASS: TestGetAllTags (0.00s)
+=== RUN   TestSidecarJSONSerialization
+--- PASS: TestSidecarJSONSerialization (0.00s)
+=== RUN   TestArchiveJSONSerialization
+--- PASS: TestArchiveJSONSerialization (0.00s)
+=== RUN   TestAC004_Characterization_PathBodyUnchanged
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/path-only_association
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/body-only_association
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/path+body_overlap_(de-dup)
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/no_association
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/WARN-with-reason_(path-based)
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/ANCHOR_(path-based,_second_module_path)
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/DEBT_(path-based)
+=== RUN   TestAC004_Characterization_PathBodyUnchanged/TODO_(body-based,_two_SPEC_IDs)
+--- PASS: TestAC004_Characterization_PathBodyUnchanged (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/path-only_association (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/body-only_association (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/path+body_overlap_(de-dup) (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/no_association (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/WARN-with-reason_(path-based) (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/ANCHOR_(path-based,_second_module_path) (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/DEBT_(path-based) (0.00s)
+    --- PASS: TestAC004_Characterization_PathBodyUnchanged/TODO_(body-based,_two_SPEC_IDs) (0.00s)
+=== RUN   TestAC004_SubLineAdditiveDoesNotShrinkCharacterization
+--- PASS: TestAC004_SubLineAdditiveDoesNotShrinkCharacterization (0.00s)
+=== RUN   TestAC005_ProductionValidatorNoNewErrorVocabulary
+--- PASS: TestAC005_ProductionValidatorNoNewErrorVocabulary (0.01s)
+=== RUN   TestAC002_CoverageLiftOnVsOff
+    spec_assoc_coverage_test.go:45: known-SPEC set size: 825
+    spec_assoc_coverage_test.go:56: tags scanned: 1045
+    spec_assoc_coverage_test.go:85: AC-002 measurement:
+    spec_assoc_coverage_test.go:86:   coverage_on      = 20.3 % (212 / 1045)
+    spec_assoc_coverage_test.go:87:   coverage_off     = 10.1 % (106 / 1045)
+    spec_assoc_coverage_test.go:88:   associated_delta = 106 (on - off)
+[AC002] coverage_on=20.3 coverage_off=10.1 delta=106
+--- PASS: TestAC002_CoverageLiftOnVsOff (1.01s)
+=== RUN   TestAC001_SubLineDrivesAssociationWithNoPathOrBodyMatch
+--- PASS: TestAC001_SubLineDrivesAssociationWithNoPathOrBodyMatch (0.00s)
+=== RUN   TestAC007_SubLineAndBodyDeDup
+--- PASS: TestAC007_SubLineAndBodyDeDup (0.00s)
+=== RUN   TestAC003_UnresolvedSpecRefFlagButKeep
+--- PASS: TestAC003_UnresolvedSpecRefFlagButKeep (0.00s)
+=== RUN   TestAC003_ResolvedSpecRefNoWarning
+--- PASS: TestAC003_ResolvedSpecRefNoWarning (0.00s)
+=== RUN   TestExtractSpecIDs_Patterns
+=== RUN   TestExtractSpecIDs_Patterns/단순_SPEC_ID
+=== RUN   TestExtractSpecIDs_Patterns/V3R2_형식_SPEC_ID
+=== RUN   TestExtractSpecIDs_Patterns/여러_SPEC_ID
+=== RUN   TestExtractSpecIDs_Patterns/SPEC_ID_없음
+=== RUN   TestExtractSpecIDs_Patterns/소문자_SPEC-ID_매칭_안됨
+=== RUN   TestExtractSpecIDs_Patterns/중복_제거
+--- PASS: TestExtractSpecIDs_Patterns (0.00s)
+    --- PASS: TestExtractSpecIDs_Patterns/단순_SPEC_ID (0.00s)
+    --- PASS: TestExtractSpecIDs_Patterns/V3R2_형식_SPEC_ID (0.00s)
+    --- PASS: TestExtractSpecIDs_Patterns/여러_SPEC_ID (0.00s)
+    --- PASS: TestExtractSpecIDs_Patterns/SPEC_ID_없음 (0.00s)
+    --- PASS: TestExtractSpecIDs_Patterns/소문자_SPEC-ID_매칭_안됨 (0.00s)
+    --- PASS: TestExtractSpecIDs_Patterns/중복_제거 (0.00s)
+=== RUN   TestSpecAssociator_Associate_ByBody
+--- PASS: TestSpecAssociator_Associate_ByBody (0.00s)
+=== RUN   TestSpecAssociator_Associate_ByModulePath
+--- PASS: TestSpecAssociator_Associate_ByModulePath (0.00s)
+=== RUN   TestSpecAssociator_Associate_NoDuplicate
+--- PASS: TestSpecAssociator_Associate_NoDuplicate (0.00s)
+=== RUN   TestIsFileUnderModules
+=== RUN   TestIsFileUnderModules/파일이_모듈_하위
+=== RUN   TestIsFileUnderModules/파일이_모듈_하위_아님
+=== RUN   TestIsFileUnderModules/여러_모듈_중_하나
+=== RUN   TestIsFileUnderModules/모듈_없음
+=== RUN   TestIsFileUnderModules/sibling_directory_sharing_a_name_prefix_does_not_match
+=== RUN   TestIsFileUnderModules/module_without_trailing_slash_still_matches_its_own_files
+=== RUN   TestIsFileUnderModules/file_path_equal_to_the_module_path_matches
+=== RUN   TestIsFileUnderModules/prefix_match_is_rejected_within_a_single_path_segment
+--- PASS: TestIsFileUnderModules (0.00s)
+    --- PASS: TestIsFileUnderModules/파일이_모듈_하위 (0.00s)
+    --- PASS: TestIsFileUnderModules/파일이_모듈_하위_아님 (0.00s)
+    --- PASS: TestIsFileUnderModules/여러_모듈_중_하나 (0.00s)
+    --- PASS: TestIsFileUnderModules/모듈_없음 (0.00s)
+    --- PASS: TestIsFileUnderModules/sibling_directory_sharing_a_name_prefix_does_not_match (0.00s)
+    --- PASS: TestIsFileUnderModules/module_without_trailing_slash_still_matches_its_own_files (0.00s)
+    --- PASS: TestIsFileUnderModules/file_path_equal_to_the_module_path_matches (0.00s)
+    --- PASS: TestIsFileUnderModules/prefix_match_is_rejected_within_a_single_path_segment (0.00s)
+=== RUN   TestLoadSpecModules_StringFormat
+--- PASS: TestLoadSpecModules_StringFormat (0.00s)
+=== RUN   TestLoadSpecModules_ArrayFormat
+--- PASS: TestLoadSpecModules_ArrayFormat (0.00s)
+=== RUN   TestLoadSpecModules_EmptyModule
+--- PASS: TestLoadSpecModules_EmptyModule (0.00s)
+=== RUN   TestLoadSpecModules_NoSpecsDir
+--- PASS: TestLoadSpecModules_NoSpecsDir (0.00s)
+=== RUN   TestSpecAssociator_PathBased_FromLoader
+--- PASS: TestSpecAssociator_PathBased_FromLoader (0.00s)
+=== RUN   TestLoadSpecDependencies_FlowSequence
+--- PASS: TestLoadSpecDependencies_FlowSequence (0.00s)
+=== RUN   TestLoadSpecDependencies_AbsentField
+--- PASS: TestLoadSpecDependencies_AbsentField (0.00s)
+=== RUN   TestLoadSpecDependencies_NoSpecsDir
+--- PASS: TestLoadSpecDependencies_NoSpecsDir (0.00s)
+=== RUN   TestTagKind
+=== RUN   TestTagKind/NOTE_kind
+=== RUN   TestTagKind/WARN_kind
+=== RUN   TestTagKind/ANCHOR_kind
+=== RUN   TestTagKind/TODO_kind
+=== RUN   TestTagKind/LEGACY_kind
+--- PASS: TestTagKind (0.00s)
+    --- PASS: TestTagKind/NOTE_kind (0.00s)
+    --- PASS: TestTagKind/WARN_kind (0.00s)
+    --- PASS: TestTagKind/ANCHOR_kind (0.00s)
+    --- PASS: TestTagKind/TODO_kind (0.00s)
+    --- PASS: TestTagKind/LEGACY_kind (0.00s)
+=== RUN   TestTagKey
+--- PASS: TestTagKey (0.00s)
+=== RUN   TestTagIsStale
+=== RUN   TestTagIsStale/fresh_tag
+=== RUN   TestTagIsStale/6_days_old
+=== RUN   TestTagIsStale/7_days_old
+=== RUN   TestTagIsStale/8_days_old
+--- PASS: TestTagIsStale (0.00s)
+    --- PASS: TestTagIsStale/fresh_tag (0.00s)
+    --- PASS: TestTagIsStale/6_days_old (0.00s)
+    --- PASS: TestTagIsStale/7_days_old (0.00s)
+    --- PASS: TestTagIsStale/8_days_old (0.00s)
+=== RUN   TestTagFields
+--- PASS: TestTagFields (0.00s)
+=== RUN   TestTagKindString
+=== RUN   TestTagKindString/NOTE
+=== RUN   TestTagKindString/WARN
+=== RUN   TestTagKindString/ANCHOR
+=== RUN   TestTagKindString/TODO
+=== RUN   TestTagKindString/LEGACY
+--- PASS: TestTagKindString (0.00s)
+    --- PASS: TestTagKindString/NOTE (0.00s)
+    --- PASS: TestTagKindString/WARN (0.00s)
+    --- PASS: TestTagKindString/ANCHOR (0.00s)
+    --- PASS: TestTagKindString/TODO (0.00s)
+    --- PASS: TestTagKindString/LEGACY (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/mx	9.289s

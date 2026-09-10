@@ -1,0 +1,14 @@
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-015
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-001
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-001
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-002
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-004
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-005
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-007
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-011
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-008
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-010
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-013
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-014
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-015
+/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/acrows-SPEC-ZONE-REGISTRY-RESYNC-001.txt:REQ-ZRR-012

@@ -1,0 +1,7 @@
+Excerpt of local raw file flaky-load-0-during.txt (raw machine-wide ps output not committed).
+--- snapshot: single ---
+17:30  up 2 days, 11:23, 15 users, load averages: 11.11 10.35 7.80
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1395)
+go test/.test lines: 0 (self shell lines containing zsh: 0; other: 0)
+EXIT=0

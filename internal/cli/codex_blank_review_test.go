@@ -97,6 +97,48 @@ func TestCodexBlankReview_BlankDiscriminator(t *testing.T) {
 	}
 }
 
+// TestCodexBlankReview_ZeroWidthDiscriminator pins the format-character half of
+// the discriminator. unicode.IsSpace excludes general category Cf, so before the
+// discriminator classified by category a body of zero-width spaces alone was read
+// as content and could synthesize `pass`.
+func TestCodexBlankReview_ZeroWidthDiscriminator(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want bool
+	}{
+		// (i)(ii) already blank before this fix: the empty body and whitespace,
+		// including the non-breaking space.
+		{"i-empty", "", true},
+		{"ii-whitespace", "\n\t  \n", true},
+		{"ii-nbsp", "\u00a0\u00a0", true},
+
+		// (iii) the defect: bodies made only of format characters, alone or mixed
+		// with whitespace, carry no reviewable content.
+		{"iii-zwsp", "\u200b", true},
+		{"iii-zwsp-run", "\u200b\u200b\u200b", true},
+		{"iii-zw-mix", "\u200b\u200c\u200d\u2060\ufeff", true},
+		{"iii-zw-plus-ws", " \u200b\n", true},
+
+		// (iv) over-repair guard: a legitimate review that contains a zero-width
+		// character must NOT be discarded as blank.
+		{"iv-zw-lead", "\u200bThe change introduces no blocking issues.", false},
+		{"iv-zw-trail", "- [P1] injection\u200b", false},
+		{"iv-zw-inner", "no\u200bissues", false},
+
+		// (v) ordinary review bodies are unchanged.
+		{"v-normal-clean", "The change introduces no blocking issues.", false},
+		{"v-normal-finding", "- [P1] unvalidated input reaches the shell", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := codexReviewTextIsBlank(tc.body); got != tc.want {
+				t.Errorf("cell %s: codexReviewTextIsBlank(%q) = %v, want %v", tc.name, tc.body, got, tc.want)
+			}
+		})
+	}
+}
+
 // --- AC-CBR-001 (state A) ---
 
 // TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass: a body with no
@@ -196,6 +238,42 @@ func TestCodexBlankReview_AC002_RealCleanReviewStillPasses(t *testing.T) {
 	}
 	if out.Summary != realCleanReview {
 		t.Errorf("summary = %q, want the review prose verbatim %q", out.Summary, realCleanReview)
+	}
+}
+
+// TestCodexBlankReview_ZeroWidthBodyDoesNotSynthesizePass mirrors AC-CBR-001 for
+// a body of a single U+200B ZERO WIDTH SPACE, driven through the production
+// runCodexReviewRPC path: no reviewable content, so inconclusive — never pass.
+func TestCodexBlankReview_ZeroWidthBodyDoesNotSynthesizePass(t *testing.T) {
+	const body = "\u200b"
+	out, err := runCodexTurnWithLines(t, codexSessionScript(body))
+	if out.Verdict == "pass" {
+		t.Errorf("verdict = pass for a zero-width-only body %q — a review that produced no verdict was reported as one that found nothing wrong", body)
+	}
+	if out.Verdict != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q for body %q", out.Verdict, VerdictInconclusive, body)
+	}
+	if err == nil {
+		t.Error("blank output must surface its cause alongside the fail-open struct")
+	}
+}
+
+// TestCodexBlankReview_ZeroWidthInsideRealReviewStillPasses is the over-repair
+// control, mirroring AC-CBR-002: a real clean review carrying a leading U+200B is
+// still a completed review and reaches the same verdict. The Summary is asserted
+// by containment only, because the discriminator never alters a body and a
+// leading format character is not whitespace.
+func TestCodexBlankReview_ZeroWidthInsideRealReviewStillPasses(t *testing.T) {
+	body := "\u200b" + realCleanReview
+	out, err := runCodexTurnWithLines(t, codexSessionScript(body))
+	if err != nil {
+		t.Fatalf("a completed clean review must not error: %v", err)
+	}
+	if out.Verdict != "pass" {
+		t.Errorf("verdict = %q, want pass for %q — a real review containing a zero-width character must not be discarded as blank", out.Verdict, body)
+	}
+	if !strings.Contains(out.Summary, realCleanReview) {
+		t.Errorf("summary = %q, want it to carry the review prose %q", out.Summary, realCleanReview)
 	}
 }
 

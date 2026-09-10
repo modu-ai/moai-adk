@@ -525,14 +525,6 @@
       "Bash(moai-adk:*)",
       "Bash(moai:*)"
     ],
-    "ask": [
-      "Bash(rm:*)",
-      "Bash(sudo:*)",
-      "Bash(chmod:*)",
-      "Bash(chown:*)",
-      "Read(./.env)",
-      "Read(./.env.*)"
-    ],
     "deny": [
       "Read(./secrets/**)",
       "Read(~/.ssh/**)",

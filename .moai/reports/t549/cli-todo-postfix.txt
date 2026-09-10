@@ -1,0 +1,532 @@
+=== RUN   TestTodoAddRefusesExactDuplicate
+--- PASS: TestTodoAddRefusesExactDuplicate (0.85s)
+=== RUN   TestTodoAddForceAdmitsAndRecords
+--- PASS: TestTodoAddForceAdmitsAndRecords (0.70s)
+=== RUN   TestTodoAddNearDuplicateRecordsOnly
+--- PASS: TestTodoAddNearDuplicateRecordsOnly (0.84s)
+=== RUN   TestTodoAnalysisNeverReordersQueue
+--- PASS: TestTodoAnalysisNeverReordersQueue (1.68s)
+=== RUN   TestTodoExactRefusalWorksWithoutAgent
+--- PASS: TestTodoExactRefusalWorksWithoutAgent (0.75s)
+=== RUN   TestTodoAnalyzeRerunIsIdempotent
+--- PASS: TestTodoAnalyzeRerunIsIdempotent (0.52s)
+=== RUN   TestTodoDoneReclaimsFindings
+--- PASS: TestTodoDoneReclaimsFindings (1.16s)
+=== RUN   TestTodoLegacyRecordRoundTrips
+--- PASS: TestTodoLegacyRecordRoundTrips (0.51s)
+=== RUN   TestTodoSweepSelectorMatchesFamily
+    todo_axisa_guard_test.go:51: selector TestTodo matches 157 test functions (swept-set liveness guard)
+--- PASS: TestTodoSweepSelectorMatchesFamily (0.06s)
+=== RUN   TestAxisACanaryHomeSweep_TodoFamily
+    todo_axisa_guard_test.go:73: set MOAI_AXIS_A_CANARY_SWEEP=1 to re-run the canary-HOME sweep (runs the todo family as a child go test)
+--- SKIP: TestAxisACanaryHomeSweep_TodoFamily (0.00s)
+=== RUN   TestTodoComposedUpgrade_FromLegacyV312Layout
+--- PASS: TestTodoComposedUpgrade_FromLegacyV312Layout (0.54s)
+=== RUN   TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive
+--- PASS: TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive (0.46s)
+=== RUN   TestTodoDone_VerdictNamesRefAndDisclosesLevel2
+--- PASS: TestTodoDone_VerdictNamesRefAndDisclosesLevel2 (0.64s)
+=== RUN   TestTodoDone_DisclosesLevel3
+--- PASS: TestTodoDone_DisclosesLevel3 (0.54s)
+=== RUN   TestTodoDone_NoDisclosureAtLevel1
+--- PASS: TestTodoDone_NoDisclosureAtLevel1 (0.46s)
+=== RUN   TestTodoDone_WithoutFlagNoRefNamed
+--- PASS: TestTodoDone_WithoutFlagNoRefNamed (0.64s)
+=== RUN   TestTodoDrop_MarksDroppedAndRecordsTheReason
+--- PASS: TestTodoDrop_MarksDroppedAndRecordsTheReason (0.47s)
+=== RUN   TestTodoDrop_UndropIsAnExactReversal
+--- PASS: TestTodoDrop_UndropIsAnExactReversal (1.06s)
+=== RUN   TestTodoDrop_UndropRestoresAHandWrittenDroppedCard
+--- PASS: TestTodoDrop_UndropRestoresAHandWrittenDroppedCard (0.50s)
+=== RUN   TestTodoDrop_RefusalsLeaveTheFileByteIdentical
+--- PASS: TestTodoDrop_RefusalsLeaveTheFileByteIdentical (1.96s)
+=== RUN   TestTodoDrop_AlreadyDropped_Refused
+--- PASS: TestTodoDrop_AlreadyDropped_Refused (0.75s)
+=== RUN   TestTodoDrop_DroppedCardIsNotAPickCandidate
+--- PASS: TestTodoDrop_DroppedCardIsNotAPickCandidate (0.82s)
+=== RUN   TestTodoDrop_ExpectMatchAllowsTheDrop
+--- PASS: TestTodoDrop_ExpectMatchAllowsTheDrop (0.58s)
+=== RUN   TestTodoEdit_RewritesTextPreservingIdentity
+--- PASS: TestTodoEdit_RewritesTextPreservingIdentity (0.65s)
+=== RUN   TestTodoEdit_PrintsPriorTextSoTheEditIsReversible
+--- PASS: TestTodoEdit_PrintsPriorTextSoTheEditIsReversible (0.48s)
+=== RUN   TestTodoEdit_EmptyText_RefusedNoWrite
+--- PASS: TestTodoEdit_EmptyText_RefusedNoWrite (0.52s)
+=== RUN   TestTodoEdit_UnknownID_RefusedNoWrite
+--- PASS: TestTodoEdit_UnknownID_RefusedNoWrite (0.54s)
+=== RUN   TestTodoEdit_ExpectMismatch_RefusedNoWrite
+--- PASS: TestTodoEdit_ExpectMismatch_RefusedNoWrite (0.66s)
+=== RUN   TestTodoMove_TopAndBottom
+--- PASS: TestTodoMove_TopAndBottom (1.10s)
+=== RUN   TestTodoMove_BeforeAndAfter
+--- PASS: TestTodoMove_BeforeAndAfter (1.18s)
+=== RUN   TestTodoMove_PreservesEveryItem
+--- PASS: TestTodoMove_PreservesEveryItem (0.81s)
+=== RUN   TestTodoMove_PositionFlagContract
+--- PASS: TestTodoMove_PositionFlagContract (1.25s)
+=== RUN   TestTodoExportJSON_RoundTripsThroughTheLegacyShape
+--- PASS: TestTodoExportJSON_RoundTripsThroughTheLegacyShape (1.35s)
+=== RUN   TestTodoExportJSON_LeavesTheLiveStoreAuthoritative
+--- PASS: TestTodoExportJSON_LeavesTheLiveStoreAuthoritative (0.47s)
+=== RUN   TestTodoExportJSON_NoTempResidue
+--- PASS: TestTodoExportJSON_NoTempResidue (0.52s)
+=== RUN   TestTodoExportJSON_SurvivesSubsequentVerbs
+--- PASS: TestTodoExportJSON_SurvivesSubsequentVerbs (1.09s)
+=== RUN   TestTodoExportJSON_FailurePathsSurface
+=== RUN   TestTodoExportJSON_FailurePathsSurface/unwritable_queue_directory_is_reported,_not_swallowed
+=== RUN   TestTodoExportJSON_FailurePathsSurface/no_residue_is_left_when_the_write_fails
+--- PASS: TestTodoExportJSON_FailurePathsSurface (1.02s)
+    --- PASS: TestTodoExportJSON_FailurePathsSurface/unwritable_queue_directory_is_reported,_not_swallowed (0.46s)
+    --- PASS: TestTodoExportJSON_FailurePathsSurface/no_residue_is_left_when_the_write_fails (0.57s)
+=== RUN   TestTodoCommandRegisteredRegardlessOfFlag
+--- PASS: TestTodoCommandRegisteredRegardlessOfFlag (0.18s)
+=== RUN   TestTodoVerbsUnaffectedByFlag
+--- PASS: TestTodoVerbsUnaffectedByFlag (0.48s)
+=== RUN   TestTodoHelp_NamesTheDatabaseStore
+--- PASS: TestTodoHelp_NamesTheDatabaseStore (0.07s)
+=== RUN   TestTodoStoreClaims_NoStaleGoSourceSite
+--- PASS: TestTodoStoreClaims_NoStaleGoSourceSite (0.20s)
+=== RUN   TestTodoHistoryReportsLiveCard
+--- PASS: TestTodoHistoryReportsLiveCard (1.98s)
+=== RUN   TestTodoHistoryReportsArchivedCard
+--- PASS: TestTodoHistoryReportsArchivedCard (1.68s)
+=== RUN   TestTodoHistoryReportsAbsentCard
+--- PASS: TestTodoHistoryReportsAbsentCard (1.78s)
+=== RUN   TestTodoHistoryNormalizesBareOrdinal
+--- PASS: TestTodoHistoryNormalizesBareOrdinal (1.88s)
+=== RUN   TestTodoHistoryListsNewestFirst
+--- PASS: TestTodoHistoryListsNewestFirst (1.58s)
+=== RUN   TestTodoHistoryEmptyArchiveIsExplicit
+--- PASS: TestTodoHistoryEmptyArchiveIsExplicit (0.56s)
+=== RUN   TestTodoHistoryDisclosesPreArchiveQueue
+--- PASS: TestTodoHistoryDisclosesPreArchiveQueue (1.79s)
+=== RUN   TestTodoHistoryDegradesWithoutArchiveTables
+=== RUN   TestTodoHistoryDegradesWithoutArchiveTables/dropped_archive_tables
+=== RUN   TestTodoHistoryDegradesWithoutArchiveTables/legacy_json_only
+--- PASS: TestTodoHistoryDegradesWithoutArchiveTables (0.92s)
+    --- PASS: TestTodoHistoryDegradesWithoutArchiveTables/dropped_archive_tables (0.66s)
+    --- PASS: TestTodoHistoryDegradesWithoutArchiveTables/legacy_json_only (0.26s)
+=== RUN   TestTodoHistoryLimitBound
+--- PASS: TestTodoHistoryLimitBound (11.40s)
+=== RUN   TestTodoHistoryRefusesNegativeLimit
+--- PASS: TestTodoHistoryRefusesNegativeLimit (1.60s)
+=== RUN   TestTodoHistoryStatesWithheldCount
+--- PASS: TestTodoHistoryStatesWithheldCount (11.04s)
+=== RUN   TestTodoHistoryLeavesStorageByteIdentical
+--- PASS: TestTodoHistoryLeavesStorageByteIdentical (1.27s)
+=== RUN   TestTodoHistoryNeverPrompts
+--- PASS: TestTodoHistoryNeverPrompts (0.05s)
+=== RUN   TestTodoReadSurface_DisclosesNonAuthoritativeJSON
+=== RUN   TestTodoReadSurface_DisclosesNonAuthoritativeJSON/bare
+=== RUN   TestTodoReadSurface_DisclosesNonAuthoritativeJSON/list
+=== RUN   TestTodoReadSurface_DisclosesNonAuthoritativeJSON/why
+=== RUN   TestTodoReadSurface_DisclosesNonAuthoritativeJSON/pr
+=== RUN   TestTodoReadSurface_DisclosesNonAuthoritativeJSON/history
+--- PASS: TestTodoReadSurface_DisclosesNonAuthoritativeJSON (2.58s)
+    --- PASS: TestTodoReadSurface_DisclosesNonAuthoritativeJSON/bare (0.49s)
+    --- PASS: TestTodoReadSurface_DisclosesNonAuthoritativeJSON/list (0.48s)
+    --- PASS: TestTodoReadSurface_DisclosesNonAuthoritativeJSON/why (0.58s)
+    --- PASS: TestTodoReadSurface_DisclosesNonAuthoritativeJSON/pr (0.58s)
+    --- PASS: TestTodoReadSurface_DisclosesNonAuthoritativeJSON/history (0.45s)
+=== RUN   TestTodoReadSurface_StdoutUnpolluted
+=== RUN   TestTodoReadSurface_StdoutUnpolluted/bare
+=== RUN   TestTodoReadSurface_StdoutUnpolluted/list
+=== RUN   TestTodoReadSurface_StdoutUnpolluted/why
+=== RUN   TestTodoReadSurface_StdoutUnpolluted/pr
+=== RUN   TestTodoReadSurface_StdoutUnpolluted/history
+--- PASS: TestTodoReadSurface_StdoutUnpolluted (3.70s)
+    --- PASS: TestTodoReadSurface_StdoutUnpolluted/bare (0.74s)
+    --- PASS: TestTodoReadSurface_StdoutUnpolluted/list (0.77s)
+    --- PASS: TestTodoReadSurface_StdoutUnpolluted/why (0.71s)
+    --- PASS: TestTodoReadSurface_StdoutUnpolluted/pr (0.86s)
+    --- PASS: TestTodoReadSurface_StdoutUnpolluted/history (0.63s)
+=== RUN   TestTodoReadSurface_SilentWithoutJSON
+=== RUN   TestTodoReadSurface_SilentWithoutJSON/bare
+=== RUN   TestTodoReadSurface_SilentWithoutJSON/list
+=== RUN   TestTodoReadSurface_SilentWithoutJSON/why
+=== RUN   TestTodoReadSurface_SilentWithoutJSON/pr
+=== RUN   TestTodoReadSurface_SilentWithoutJSON/history
+--- PASS: TestTodoReadSurface_SilentWithoutJSON (2.56s)
+    --- PASS: TestTodoReadSurface_SilentWithoutJSON/bare (0.49s)
+    --- PASS: TestTodoReadSurface_SilentWithoutJSON/list (0.51s)
+    --- PASS: TestTodoReadSurface_SilentWithoutJSON/why (0.48s)
+    --- PASS: TestTodoReadSurface_SilentWithoutJSON/pr (0.61s)
+    --- PASS: TestTodoReadSurface_SilentWithoutJSON/history (0.47s)
+=== RUN   TestTodoWriteVerbs_CarryNoDisclosure
+--- PASS: TestTodoWriteVerbs_CarryNoDisclosure (0.46s)
+=== RUN   TestTodoDisclosure_LeavesBacklogJSONUntouched
+--- PASS: TestTodoDisclosure_LeavesBacklogJSONUntouched (1.41s)
+=== RUN   TestTodoDoctrine_MirrorParityAndStatedColumnCount
+--- PASS: TestTodoDoctrine_MirrorParityAndStatedColumnCount (0.37s)
+=== RUN   TestTodoLanded_OneRecordUnderTheLock
+--- PASS: TestTodoLanded_OneRecordUnderTheLock (0.96s)
+=== RUN   TestTodoLanded_StateCheckAndStatesUntouched
+--- PASS: TestTodoLanded_StateCheckAndStatesUntouched (0.85s)
+=== RUN   TestTodoLanded_WholeQueueUnmoved
+--- PASS: TestTodoLanded_WholeQueueUnmoved (0.56s)
+=== RUN   TestTodoLanded_ReplaceAndClear
+--- PASS: TestTodoLanded_ReplaceAndClear (1.34s)
+=== RUN   TestTodoLanded_ClearIsExclusive
+--- PASS: TestTodoLanded_ClearIsExclusive (0.56s)
+=== RUN   TestTodoLanded_SpecStatusReadNeverInvented
+--- PASS: TestTodoLanded_SpecStatusReadNeverInvented (1.07s)
+=== RUN   TestTodoLanded_NoSHADerivedFromTheGrep
+--- PASS: TestTodoLanded_NoSHADerivedFromTheGrep (0.51s)
+=== RUN   TestTodoLanded_SHAValidation
+=== RUN   TestTodoLanded_SHAValidation/reachable_accepts_and_stores_the_full_SHA
+=== RUN   TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable
+=== RUN   TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/non-existent_object
+=== RUN   TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/unreachable_commit
+=== RUN   TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/unresolvable_ref
+=== RUN   TestTodoLanded_SHAValidation/no_git_is_unrunnable_and_refuses
+=== RUN   TestTodoLanded_SHAValidation/the_card_id_reaches_neither_check
+--- PASS: TestTodoLanded_SHAValidation (4.46s)
+    --- PASS: TestTodoLanded_SHAValidation/reachable_accepts_and_stores_the_full_SHA (0.71s)
+    --- PASS: TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable (1.28s)
+        --- PASS: TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/non-existent_object (0.37s)
+        --- PASS: TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/unreachable_commit (0.39s)
+        --- PASS: TestTodoLanded_SHAValidation/refusing_branches_exit_1,_write_nothing,_and_are_distinguishable/unresolvable_ref (0.27s)
+    --- PASS: TestTodoLanded_SHAValidation/no_git_is_unrunnable_and_refuses (0.50s)
+    --- PASS: TestTodoLanded_SHAValidation/the_card_id_reaches_neither_check (1.97s)
+=== RUN   TestTodoPR_UnanswerableRendersUnknownNotNoLink
+--- PASS: TestTodoPR_UnanswerableRendersUnknownNotNoLink (0.54s)
+=== RUN   TestTodoPR_UnknownReachesJSON
+--- PASS: TestTodoPR_UnknownReachesJSON (0.37s)
+=== RUN   TestTodoPR_RowCarriesQueueState
+--- PASS: TestTodoPR_RowCarriesQueueState (0.37s)
+=== RUN   TestTodoDone_StdoutCarriesTheLandingVerdict
+=== RUN   TestTodoDone_StdoutCarriesTheLandingVerdict/landed
+=== RUN   TestTodoDone_StdoutCarriesTheLandingVerdict/unanswerable
+=== RUN   TestTodoDone_StdoutCarriesTheLandingVerdict/no_query_at_all
+--- PASS: TestTodoDone_StdoutCarriesTheLandingVerdict (1.69s)
+    --- PASS: TestTodoDone_StdoutCarriesTheLandingVerdict/landed (0.56s)
+    --- PASS: TestTodoDone_StdoutCarriesTheLandingVerdict/unanswerable (0.60s)
+    --- PASS: TestTodoDone_StdoutCarriesTheLandingVerdict/no_query_at_all (0.53s)
+=== RUN   TestTodoDone_UnknownStillProceeds
+--- PASS: TestTodoDone_UnknownStillProceeds (0.55s)
+=== RUN   TestTodoList_DroppedHiddenByDefault
+=== RUN   TestTodoList_DroppedHiddenByDefault/bare_invocation
+=== RUN   TestTodoList_DroppedHiddenByDefault/list
+--- PASS: TestTodoList_DroppedHiddenByDefault (1.41s)
+    --- PASS: TestTodoList_DroppedHiddenByDefault/bare_invocation (0.20s)
+    --- PASS: TestTodoList_DroppedHiddenByDefault/list (0.20s)
+=== RUN   TestTodoList_DroppedFlagRendersDroppedOnly
+--- PASS: TestTodoList_DroppedFlagRendersDroppedOnly (1.24s)
+=== RUN   TestTodoList_DroppedFlagEmptySaysSo
+--- PASS: TestTodoList_DroppedFlagEmptySaysSo (0.50s)
+=== RUN   TestTodoList_AllDroppedDefaultView
+--- PASS: TestTodoList_AllDroppedDefaultView (0.71s)
+=== RUN   TestTodoList_JSONKeepsDroppedCards
+--- PASS: TestTodoList_JSONKeepsDroppedCards (1.23s)
+=== RUN   TestTodoList_DefaultBoundedWithWithheldNotice
+--- PASS: TestTodoList_DefaultBoundedWithWithheldNotice (4.84s)
+=== RUN   TestTodoList_BareInvocationBoundedToo
+--- PASS: TestTodoList_BareInvocationBoundedToo (4.88s)
+=== RUN   TestTodoList_LimitRaisesLowersLifts
+=== RUN   TestTodoList_LimitRaisesLowersLifts/raises
+=== RUN   TestTodoList_LimitRaisesLowersLifts/lowers
+=== RUN   TestTodoList_LimitRaisesLowersLifts/lifts
+--- PASS: TestTodoList_LimitRaisesLowersLifts (5.17s)
+    --- PASS: TestTodoList_LimitRaisesLowersLifts/raises (0.20s)
+    --- PASS: TestTodoList_LimitRaisesLowersLifts/lowers (0.20s)
+    --- PASS: TestTodoList_LimitRaisesLowersLifts/lifts (0.22s)
+=== RUN   TestTodoList_LimitNegativeRefused
+--- PASS: TestTodoList_LimitNegativeRefused (0.88s)
+=== RUN   TestTodoList_JSONIgnoresLimit
+--- PASS: TestTodoList_JSONIgnoresLimit (4.68s)
+=== RUN   TestTodoList_LimitComposesWithDroppedCollapse
+--- PASS: TestTodoList_LimitComposesWithDroppedCollapse (5.01s)
+=== RUN   TestTodoPR_SevenColumnsCardTextLast
+    todo_pr_landing_test.go:132: rendered rows (tabs shown as \t):
+        t1\tlinked\t#1614\tinferred\tqueued\t\tlinked card
+        t2\tlanded\t\t\tpicked\tlanded@origin/develop:c9f7122(operator)\tlanded card
+        t3\tno-link\t\t\tqueued\t\tuntouched card
+--- PASS: TestTodoPR_SevenColumnsCardTextLast (0.66s)
+=== RUN   TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution
+=== RUN   TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution/distinct_SHAs
+=== RUN   TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution/ref_head_substituted_with_the_asserted_SHA
+--- PASS: TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution (1.38s)
+    --- PASS: TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution/distinct_SHAs (0.65s)
+    --- PASS: TestTodoPR_AssertionVersusObservationSurvivesSHASubstitution/ref_head_substituted_with_the_asserted_SHA (0.73s)
+=== RUN   TestTodoPR_NoRecordRendersEmptyEvidenceCell
+--- PASS: TestTodoPR_NoRecordRendersEmptyEvidenceCell (0.74s)
+=== RUN   TestTodoPR_ProjectRootUnchangedWithEvidence
+--- PASS: TestTodoPR_ProjectRootUnchangedWithEvidence (0.71s)
+=== RUN   TestTodoPR_QueueDirUnchanged
+=== RUN   TestTodoPR_QueueDirUnchanged/linked_and_ambiguous
+=== RUN   TestTodoPR_QueueDirUnchanged/json_form
+=== RUN   TestTodoPR_QueueDirUnchanged/landed_path
+=== RUN   TestTodoPR_QueueDirUnchanged/fail-open_path
+=== RUN   TestTodoPR_QueueDirUnchanged/landed_and_picked
+=== RUN   TestTodoPR_QueueDirUnchanged/unanswerable_path
+--- PASS: TestTodoPR_QueueDirUnchanged (2.75s)
+    --- PASS: TestTodoPR_QueueDirUnchanged/linked_and_ambiguous (0.40s)
+    --- PASS: TestTodoPR_QueueDirUnchanged/json_form (0.54s)
+    --- PASS: TestTodoPR_QueueDirUnchanged/landed_path (0.39s)
+    --- PASS: TestTodoPR_QueueDirUnchanged/fail-open_path (0.38s)
+    --- PASS: TestTodoPR_QueueDirUnchanged/landed_and_picked (0.48s)
+    --- PASS: TestTodoPR_QueueDirUnchanged/unanswerable_path (0.55s)
+=== RUN   TestTodoPR_FailOpenNoGh
+--- PASS: TestTodoPR_FailOpenNoGh (0.43s)
+=== RUN   TestTodoPR_FailOpenGhNonZero
+--- PASS: TestTodoPR_FailOpenGhNonZero (0.41s)
+=== RUN   TestTodoList_NoSubprocess
+--- PASS: TestTodoList_NoSubprocess (0.94s)
+=== RUN   TestTodoPR_RendersOutcomeAndConfidence
+--- PASS: TestTodoPR_RendersOutcomeAndConfidence (0.70s)
+=== RUN   TestTodoPR_ExactlyOneGhInvocation
+=== RUN   TestTodoPR_ExactlyOneGhInvocation/3-cards
+=== RUN   TestTodoPR_ExactlyOneGhInvocation/10-cards
+--- PASS: TestTodoPR_ExactlyOneGhInvocation (0.79s)
+    --- PASS: TestTodoPR_ExactlyOneGhInvocation/3-cards (0.37s)
+    --- PASS: TestTodoPR_ExactlyOneGhInvocation/10-cards (0.42s)
+=== RUN   TestTodoPR_SingleCardArgument
+--- PASS: TestTodoPR_SingleCardArgument (0.39s)
+=== RUN   TestTodoPR_SaturatedPageIsReported
+--- PASS: TestTodoPR_SaturatedPageIsReported (0.43s)
+=== RUN   TestTodoPR_UnsaturatedPageIsSilent
+--- PASS: TestTodoPR_UnsaturatedPageIsSilent (0.38s)
+=== RUN   TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary
+--- PASS: TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary (0.14s)
+=== RUN   TestResolveTodoQueueRoot_PrimaryIsItself
+--- PASS: TestResolveTodoQueueRoot_PrimaryIsItself (0.13s)
+=== RUN   TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot
+--- PASS: TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot (0.11s)
+=== RUN   TestResolveTodoQueueRoot_FallbackNoGit
+--- PASS: TestResolveTodoQueueRoot_FallbackNoGit (0.65s)
+=== RUN   TestTodoQueue_FallbackAdoptsExistingLocalQueue
+--- PASS: TestTodoQueue_FallbackAdoptsExistingLocalQueue (0.86s)
+=== RUN   TestTodoQueueRootGuard_FiresOnLiveRepository
+--- PASS: TestTodoQueueRootGuard_FiresOnLiveRepository (0.03s)
+=== RUN   TestTodoQueueRootGuard_SilentOnFixture
+--- PASS: TestTodoQueueRootGuard_SilentOnFixture (0.16s)
+=== RUN   TestTodoQueueRootGuard_SilentOnHomeFallbackFixture
+--- PASS: TestTodoQueueRootGuard_SilentOnHomeFallbackFixture (0.04s)
+=== RUN   TestTodoQueue_WorktreeSeesPrimaryQueue
+--- PASS: TestTodoQueue_WorktreeSeesPrimaryQueue (0.52s)
+=== RUN   TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp
+--- PASS: TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp (1.07s)
+=== RUN   TestTodoRelateAndUnrelateTouchNoCard
+--- PASS: TestTodoRelateAndUnrelateTouchNoCard (0.51s)
+=== RUN   TestTodoListJSONIsIdempotent
+--- PASS: TestTodoListJSONIsIdempotent (0.52s)
+=== RUN   TestTodoListShowsFindingAndNextStep
+--- PASS: TestTodoListShowsFindingAndNextStep (0.31s)
+=== RUN   TestTodoWhySaysNothingFound
+--- PASS: TestTodoWhySaysNothingFound (0.37s)
+=== RUN   TestTodoNewVerbsAreHeadless
+=== RUN   TestTodoNewVerbsAreHeadless/add
+=== RUN   TestTodoNewVerbsAreHeadless/analyze
+=== RUN   TestTodoNewVerbsAreHeadless/relate
+=== RUN   TestTodoNewVerbsAreHeadless/why
+=== RUN   TestTodoNewVerbsAreHeadless/list
+=== RUN   TestTodoNewVerbsAreHeadless/unrelate
+--- PASS: TestTodoNewVerbsAreHeadless (1.30s)
+    --- PASS: TestTodoNewVerbsAreHeadless/add (0.17s)
+    --- PASS: TestTodoNewVerbsAreHeadless/analyze (0.17s)
+    --- PASS: TestTodoNewVerbsAreHeadless/relate (0.17s)
+    --- PASS: TestTodoNewVerbsAreHeadless/why (0.20s)
+    --- PASS: TestTodoNewVerbsAreHeadless/list (0.21s)
+    --- PASS: TestTodoNewVerbsAreHeadless/unrelate (0.17s)
+=== RUN   TestTodoSkillDocumentsHistoryVerb
+--- PASS: TestTodoSkillDocumentsHistoryVerb (0.00s)
+=== RUN   TestTodoVerbSurfaceZeroDelta
+=== PAUSE TestTodoVerbSurfaceZeroDelta
+=== RUN   TestTodoVerbExitCodesUnchanged
+=== RUN   TestTodoVerbExitCodesUnchanged/list_succeeds
+=== RUN   TestTodoVerbExitCodesUnchanged/list_--json_succeeds
+=== RUN   TestTodoVerbExitCodesUnchanged/analyze_succeeds
+=== RUN   TestTodoVerbExitCodesUnchanged/why_on_an_existing_card_succeeds
+=== RUN   TestTodoVerbExitCodesUnchanged/done_on_a_missing_id_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/unpick_on_a_queued_card_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/next_out_of_range_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/edit_with_empty_text_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/drop_without_a_reason_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/relate_without_--relation_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/unrelate_out_of_range_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/unknown_verb_is_refused
+=== RUN   TestTodoVerbExitCodesUnchanged/unknown_flag_is_refused
+--- PASS: TestTodoVerbExitCodesUnchanged (2.58s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/list_succeeds (0.25s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/list_--json_succeeds (0.22s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/analyze_succeeds (0.17s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/why_on_an_existing_card_succeeds (0.20s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/done_on_a_missing_id_is_refused (0.31s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/unpick_on_a_queued_card_is_refused (0.17s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/next_out_of_range_is_refused (0.17s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/edit_with_empty_text_is_refused (0.15s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/drop_without_a_reason_is_refused (0.11s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/relate_without_--relation_is_refused (0.15s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/unrelate_out_of_range_is_refused (0.17s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/unknown_verb_is_refused (0.10s)
+    --- PASS: TestTodoVerbExitCodesUnchanged/unknown_flag_is_refused (0.10s)
+=== RUN   TestTodoAdd_PrintsIDAndPosition
+--- PASS: TestTodoAdd_PrintsIDAndPosition (0.50s)
+=== RUN   TestTodoPickInFactoryRecordsCardAndEvent
+--- PASS: TestTodoPickInFactoryRecordsCardAndEvent (2.27s)
+=== RUN   TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit
+--- PASS: TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit (1.80s)
+=== RUN   TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD
+--- PASS: TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD (1.97s)
+=== RUN   TestTodoAdd_EmptyText_RejectedNoWrite
+--- PASS: TestTodoAdd_EmptyText_RejectedNoWrite (0.27s)
+=== RUN   TestTodoList_EmptyQueueIsNotAnError
+--- PASS: TestTodoList_EmptyQueueIsNotAnError (0.37s)
+=== RUN   TestTodoList_JSONStructured
+--- PASS: TestTodoList_JSONStructured (0.92s)
+=== RUN   TestTodoList_LockFreeWhileForeignProcessHoldsLock
+--- PASS: TestTodoList_LockFreeWhileForeignProcessHoldsLock (1.69s)
+=== RUN   TestTodoDone_RemovesByID
+--- PASS: TestTodoDone_RemovesByID (0.90s)
+=== RUN   TestTodoDone_MissReportedFileUntouched
+--- PASS: TestTodoDone_MissReportedFileUntouched (0.59s)
+=== RUN   TestTodoNextBare_ReadOnlyOldestFirst
+--- PASS: TestTodoNextBare_ReadOnlyOldestFirst (0.83s)
+=== RUN   TestTodoNextPick_OneLockedWrite
+--- PASS: TestTodoNextPick_OneLockedWrite (0.85s)
+=== RUN   TestTodoNext_OutOfRangeFileUntouched
+--- PASS: TestTodoNext_OutOfRangeFileUntouched (0.49s)
+=== RUN   TestTodoConcurrentAdd_8Processes
+--- PASS: TestTodoConcurrentAdd_8Processes (0.87s)
+=== RUN   TestTodoHelperProcess
+--- PASS: TestTodoHelperProcess (0.00s)
+=== RUN   TestTodoCmd_NoAskUserQuestion
+--- PASS: TestTodoCmd_NoAskUserQuestion (0.00s)
+=== RUN   TestTodoBareInvocationLists
+--- PASS: TestTodoBareInvocationLists (0.84s)
+=== RUN   TestTodoUnknownSubcommandStillErrors
+--- PASS: TestTodoUnknownSubcommandStillErrors (0.20s)
+=== RUN   TestTodoMultiWordFallthroughAdds
+--- PASS: TestTodoMultiWordFallthroughAdds (0.50s)
+=== RUN   TestTodoSingleWordNaturalLanguageStillErrors
+--- PASS: TestTodoSingleWordNaturalLanguageStillErrors (0.41s)
+=== RUN   TestTodoMistypedVerbWithCardIDErrors
+=== RUN   TestTodoMistypedVerbWithCardIDErrors/pick_t151
+=== RUN   TestTodoMistypedVerbWithCardIDErrors/finish_t20
+=== RUN   TestTodoMistypedVerbWithCardIDErrors/un-pick_t7
+--- PASS: TestTodoMistypedVerbWithCardIDErrors (0.60s)
+    --- PASS: TestTodoMistypedVerbWithCardIDErrors/pick_t151 (0.20s)
+    --- PASS: TestTodoMistypedVerbWithCardIDErrors/finish_t20 (0.19s)
+    --- PASS: TestTodoMistypedVerbWithCardIDErrors/un-pick_t7 (0.21s)
+=== RUN   TestTodoNaturalLanguageCardsSurviveVerbGuard
+=== RUN   TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_the_flaky_gate
+=== RUN   TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_3_flaky_tests
+=== RUN   TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_the_drift_found_in_t151
+=== RUN   TestTodoNaturalLanguageCardsSurviveVerbGuard/t151_regression_follow-up
+--- PASS: TestTodoNaturalLanguageCardsSurviveVerbGuard (1.30s)
+    --- PASS: TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_the_flaky_gate (0.32s)
+    --- PASS: TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_3_flaky_tests (0.30s)
+    --- PASS: TestTodoNaturalLanguageCardsSurviveVerbGuard/fix_the_drift_found_in_t151 (0.33s)
+    --- PASS: TestTodoNaturalLanguageCardsSurviveVerbGuard/t151_regression_follow-up (0.35s)
+=== RUN   TestTodoVerbNamesDerivedFromCommandTree
+--- PASS: TestTodoVerbNamesDerivedFromCommandTree (0.07s)
+=== RUN   TestTodoAddPick_OneLockedWrite
+--- PASS: TestTodoAddPick_OneLockedWrite (0.48s)
+=== RUN   TestTodoAddPick_ConcurrentProcesses
+--- PASS: TestTodoAddPick_ConcurrentProcesses (0.64s)
+=== RUN   TestTodoUnpick_RevertsPickedToQueued
+--- PASS: TestTodoUnpick_RevertsPickedToQueued (0.73s)
+=== RUN   TestTodoUnpick_RefusalsLeaveFileUntouched
+--- PASS: TestTodoUnpick_RefusalsLeaveFileUntouched (0.76s)
+=== RUN   TestTodoNextPick_ConfirmationShowsText
+--- PASS: TestTodoNextPick_ConfirmationShowsText (0.48s)
+=== RUN   TestTodoNextPick_ExpectGuard
+--- PASS: TestTodoNextPick_ExpectGuard (0.86s)
+=== RUN   TestTodoUndone_RestoresTheCard
+--- PASS: TestTodoUndone_RestoresTheCard (0.95s)
+=== RUN   TestTodoDone_UndoneRoundTripIsByteIdentical
+--- PASS: TestTodoDone_UndoneRoundTripIsByteIdentical (1.20s)
+=== RUN   TestTodoDone_ArchivesRatherThanDiscards
+--- PASS: TestTodoDone_ArchivesRatherThanDiscards (0.69s)
+=== RUN   TestTodoUndone_SurvivesMigrationFromLegacyJSON
+--- PASS: TestTodoUndone_SurvivesMigrationFromLegacyJSON (0.50s)
+=== RUN   TestTodoDone_ArchivedRowsInvisibleToLiveReaders
+--- PASS: TestTodoDone_ArchivedRowsInvisibleToLiveReaders (1.87s)
+=== RUN   TestTodoDone_ExpectRefusesMismatch
+--- PASS: TestTodoDone_ExpectRefusesMismatch (0.58s)
+=== RUN   TestTodoDone_RequireLandedRefusesWhenNotLanded
+--- PASS: TestTodoDone_RequireLandedRefusesWhenNotLanded (0.65s)
+=== RUN   TestTodoDone_RequireLandedProceedsWhenInconclusive
+--- PASS: TestTodoDone_RequireLandedProceedsWhenInconclusive (0.56s)
+=== RUN   TestTodoDone_NoLandingQueryWithoutTheFlag
+--- PASS: TestTodoDone_NoLandingQueryWithoutTheFlag (1.00s)
+=== RUN   TestTodoDoneUndone_RefusalsWriteNothing
+--- PASS: TestTodoDoneUndone_RefusalsWriteNothing (1.62s)
+=== RUN   TestTodoDoneUndone_NeverPrompt
+    todo_undone_test.go:408: [done t1 --expect zzz] terminated with mutate backlog /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoDoneUndone_NeverPrompt3271551162/001/.moai/state/todo/backlog.json: mutation refused: backlog item t1 is "alpha work", not matching --expect "zzz"
+    todo_undone_test.go:408: [done t99] terminated with mutate backlog /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoDoneUndone_NeverPrompt3271551162/001/.moai/state/todo/backlog.json: mutation refused: no backlog item t99
+    todo_undone_test.go:408: [done t1 --require-landed] terminated with mutate backlog /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoDoneUndone_NeverPrompt3271551162/001/.moai/state/todo/backlog.json: mutation refused: backlog item t1 is named by no commit on origin/main — --require-landed refuses (the check asks whether anything naming the card has landed on that ref, not whether the card's last step has)
+    todo_undone_test.go:408: [done t1] terminated with <nil>
+    todo_undone_test.go:408: [undone t1] terminated with <nil>
+    todo_undone_test.go:408: [undone t1] terminated with mutate backlog /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoDoneUndone_NeverPrompt3271551162/001/.moai/state/todo/backlog.json: mutation refused: no archived backlog item t1
+--- PASS: TestTodoDoneUndone_NeverPrompt (1.66s)
+=== RUN   TestTodoUndone_ReissuedIDRefuses
+--- PASS: TestTodoUndone_ReissuedIDRefuses (0.79s)
+=== RUN   TestTodoExportJSON_CarriesArchiveAndDisclosesDowngrade
+--- PASS: TestTodoExportJSON_CarriesArchiveAndDisclosesDowngrade (0.93s)
+=== RUN   TestTodoExportJSON_NoDisclosureWithoutArchivedRows
+--- PASS: TestTodoExportJSON_NoDisclosureWithoutArchivedRows (0.46s)
+=== RUN   TestTodoUndone_EmptiesTheArchiveEntry
+--- PASS: TestTodoUndone_EmptiesTheArchiveEntry (1.15s)
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/lowercase_explicit_id
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/capitalized
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/uppercase
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/digit_typo
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/underscore
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/single_char
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/long_word
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/bare_number
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/bare_number_capitalized
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/explicit_id_longer_phrase
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/near_miss_relate
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/near_miss_drop
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/near_miss_edit
+=== RUN   TestTodoVerbGuardRefusesWidenedMistypes/near_miss_prefix
+--- PASS: TestTodoVerbGuardRefusesWidenedMistypes (3.01s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/lowercase_explicit_id (0.21s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/capitalized (0.20s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/uppercase (0.21s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/digit_typo (0.20s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/underscore (0.23s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/single_char (0.24s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/long_word (0.23s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/bare_number (0.20s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/bare_number_capitalized (0.21s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/explicit_id_longer_phrase (0.21s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/near_miss_relate (0.21s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/near_miss_drop (0.23s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/near_miss_edit (0.23s)
+    --- PASS: TestTodoVerbGuardRefusesWidenedMistypes/near_miss_prefix (0.20s)
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs/list_t401
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs/list_401
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs/done_t401
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs/done_401
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs/pr_t401
+=== RUN   TestTodoVerbGuardControlRegisteredVerbs/pr_401
+--- PASS: TestTodoVerbGuardControlRegisteredVerbs (3.24s)
+    --- PASS: TestTodoVerbGuardControlRegisteredVerbs/list_t401 (0.21s)
+    --- PASS: TestTodoVerbGuardControlRegisteredVerbs/list_401 (0.23s)
+    --- PASS: TestTodoVerbGuardControlRegisteredVerbs/done_t401 (0.37s)
+    --- PASS: TestTodoVerbGuardControlRegisteredVerbs/done_401 (0.37s)
+    --- PASS: TestTodoVerbGuardControlRegisteredVerbs/pr_t401 (1.08s)
+    --- PASS: TestTodoVerbGuardControlRegisteredVerbs/pr_401 (0.98s)
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses/show_card
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses/show_T401
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses/show_t401x
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses/재현_t401
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses/fix_3_flaky_tests
+=== RUN   TestTodoVerbGuardStillAddsNonAddresses/epic_7_planning
+--- PASS: TestTodoVerbGuardStillAddsNonAddresses (1.89s)
+    --- PASS: TestTodoVerbGuardStillAddsNonAddresses/show_card (0.30s)
+    --- PASS: TestTodoVerbGuardStillAddsNonAddresses/show_T401 (0.30s)
+    --- PASS: TestTodoVerbGuardStillAddsNonAddresses/show_t401x (0.36s)
+    --- PASS: TestTodoVerbGuardStillAddsNonAddresses/재현_t401 (0.33s)
+    --- PASS: TestTodoVerbGuardStillAddsNonAddresses/fix_3_flaky_tests (0.29s)
+    --- PASS: TestTodoVerbGuardStillAddsNonAddresses/epic_7_planning (0.30s)
+=== CONT  TestTodoVerbSurfaceZeroDelta
+--- PASS: TestTodoVerbSurfaceZeroDelta (0.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	188.352s

@@ -1,0 +1,16 @@
+internal/hook/session_start.go:681:			d["migration_error"] = err.Error()
+internal/hook/session_start_migration_test.go:9:// error, which runMigration records as Data["migration_error"] — that key has no
+internal/hook/session_start_migration_test.go:85:		if msg, _ := data["migration_error"].(string); msg == "" {
+internal/hook/session_start_migration_test.go:86:			t.Fatalf("Data[migration_error] absent: runner.Apply was not invoked (Data=%v)", data)
+internal/hook/session_start_migration_test.go:89:	t.Run("control: absent version file yields no migration_error", func(t *testing.T) {
+internal/hook/session_start_migration_test.go:92:		if v, ok := data["migration_error"]; ok {
+internal/hook/session_start_migration_test.go:93:			t.Fatalf("Data[migration_error]=%v on a clean project; the key must not be unconditional", v)
+internal/hook/session_start_migration_test.go:111:	if msg, _ := data["migration_error"].(string); msg == "" {
+internal/hook/session_start_migration_test.go:112:		t.Fatalf("Data[migration_error] absent: the failure was swallowed without a record (Data=%v)", data)
+internal/hook/session_start_migration_test.go:138:		if v, ok := data["migration_error"]; ok {
+internal/hook/session_start_migration_test.go:139:			t.Fatalf("Data[migration_error]=%v with migrations.disabled=true; the runner must be skipped", v)
+internal/hook/session_start_migration_test.go:145:		if msg, _ := data["migration_error"].(string); msg == "" {
+internal/hook/session_start_migration_test.go:146:			t.Fatalf("Data[migration_error] absent with migrations.disabled=false (Data=%v)", data)
+internal/hook/session_start_migration_test.go:166:			if msg, _ := data["migration_error"].(string); msg == "" {
+internal/hook/session_start_migration_test.go:167:				t.Fatalf("Data[migration_error] absent: runner not invoked by default (Data=%v)", data)
+EXIT=0

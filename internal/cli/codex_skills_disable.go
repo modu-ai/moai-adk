@@ -261,6 +261,12 @@ func upsertCodexSkillDisable(content []byte, skillPath string) ([]byte, codexSki
 	if strings.ContainsAny(skillPath, "\"\\\n\r") {
 		return skip("the path contains a character this config format cannot carry verbatim (%q)", skillPath)
 	}
+	// The same ".." segment the read side refuses (card t582). Publishing one
+	// would write an entry that prune and doctor classify as oddly-formed, so
+	// the two sides would disagree about a registration this verb created.
+	if hasCodexDotDotSegment(skillPath) {
+		return skip("the path contains a \"..\" segment, which the config readers refuse (%q)", skillPath)
+	}
 
 	lines, term := codexwiring.SplitConfigLines(content)
 	var matches []codexwiring.SkillEntry

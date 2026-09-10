@@ -1,0 +1,1 @@
+git diff --stat 2160d4e92 HEAD -- internal/template/templates/.codex/ EXIT=0 (empty output above = C3 untouched)

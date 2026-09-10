@@ -1,0 +1,10 @@
+=== RUN   TestManifestHashFormat
+=== PAUSE TestManifestHashFormat
+=== CONT  TestManifestHashFormat
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: plan-auditor stored hash=2403bfb3e0747467ba328cdbfe3767c0801db95702568d5cb606596655d771fb, computed hash=621cb9eea7abe2c649be12d5aa3f494feb7fd525b3f278f94c497b6f9d306298 (source=.claude/agents/moai/plan-auditor.md)
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+--- FAIL: TestManifestHashFormat (0.06s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.576s
+FAIL
+EXIT=1

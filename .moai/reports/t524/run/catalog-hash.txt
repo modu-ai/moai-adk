@@ -1,0 +1,29 @@
+card t524 — catalog entry for templates/.claude/agents/moai/plan-auditor.md
+
+BEFORE the Group 4 edit (tree a6c9e406c), recorded by:
+  grep -n -A2 'agents/moai/plan-auditor.md' internal/template/catalog.yaml
+    144: path: templates/.claude/agents/moai/plan-auditor.md
+    145: hash: 2403bfb3e0747467ba328cdbfe3767c0801db95702568d5cb606596655d771fb
+  shasum -a 256 internal/template/templates/.claude/agents/moai/plan-auditor.md
+    621cb9eea7abe2c649be12d5aa3f494feb7fd525b3f278f94c497b6f9d306298
+  => the entry was already stale before this card's edit (2403bfb3... != 621cb9ee...).
+
+INTERMEDIATE (verb + clause, before the ORPHAN prose amendment):
+  dry-run and write both printed 8f82cf5abcf65e0ed53c1a499c16de51b07ec47c71997539a47a3eb088e6bffb,
+  equal to the file sha256 at that point. Superseded by the final value below.
+
+FINAL (after the ORPHAN prose amendment; the verb bytes are unchanged, cmp exit=0):
+  go run ./internal/template/scripts/gen-catalog-hashes.go --entry plan-auditor --dry-run
+    [dry-run] plan-auditor: d7be4a4a8695459dc5d80d76543a7091476a6423f28ffbf542ab30032fe711b3
+    [dry-run] catalog.yaml not modified
+  go run ./internal/template/scripts/gen-catalog-hashes.go --entry plan-auditor
+    plan-auditor: d7be4a4a8695459dc5d80d76543a7091476a6423f28ffbf542ab30032fe711b3
+    catalog.yaml updated successfully (12899 bytes)
+  shasum -a 256 internal/template/templates/.claude/agents/moai/plan-auditor.md
+    d7be4a4a8695459dc5d80d76543a7091476a6423f28ffbf542ab30032fe711b3
+  => catalog hash == final file sha256.
+
+Regeneration on the final tree:
+  make agents-emit       -> exit=0 (ok internal/template/agentemit)
+  make agents-emit-check -> exit=0 (agents-emit-check.txt / .exit)
+  go test -count=1 -timeout 600s ./internal/template/ -> see template-test.txt / .exit

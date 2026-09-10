@@ -1,0 +1,90 @@
+=== Symbol Results ===
+
+Vulnerability #1: GO-2026-6218
+    Avoid quadratic complexity in resolvePath in net/url
+  More info: https://pkg.go.dev/vuln/GO-2026-6218
+  Standard library
+    Found in: net/url@go1.26.4
+    Fixed in: net/url@go1.26.6
+    Example traces found:
+      #1: internal/update/checker.go:76:26: update.checker.CheckLatest calls http.Client.Do, which eventually calls url.URL.Parse
+      #2: internal/cli/mcp_progress.go:32:2: cli.init calls server.init, which eventually calls url.URL.ResolveReference
+
+Vulnerability #2: GO-2026-6091
+    Fix Javascript regexp context tracking in html/template
+  More info: https://pkg.go.dev/vuln/GO-2026-6091
+  Standard library
+    Found in: html/template@go1.26.4
+    Fixed in: html/template@go1.26.6
+    Example traces found:
+      #1: internal/goal/dashboard.go:100:24: goal.RenderDashboardReArm calls template.Template.Execute
+
+Vulnerability #3: GO-2026-6090
+    Limit handshake messages we are willing to accept post-handshake in
+    crypto/tls
+  More info: https://pkg.go.dev/vuln/GO-2026-6090
+  Standard library
+    Found in: crypto/tls@go1.26.4
+    Fixed in: crypto/tls@go1.26.6
+    Example traces found:
+      #1: internal/web/server.go:258:23: web.ListenAndServe calls http.Server.Serve, which eventually calls tls.Conn.HandshakeContext
+      #2: internal/update/updater.go:93:22: update.updaterImpl.Download calls io.Copy, which eventually calls tls.Conn.Read
+      #3: internal/constitution/human_oversight.go:43:21: constitution.humanOversight.Approve calls bufio.Writer.Flush, which calls tls.Conn.Write
+      #4: internal/update/checker.go:76:26: update.checker.CheckLatest calls http.Client.Do, which eventually calls tls.Dialer.DialContext
+
+Vulnerability #4: GO-2026-6089
+    Apply ReadHeaderTimeout when doing unencrypted HTTP/2 check in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6089
+  Standard library
+    Found in: net/http@go1.26.4
+    Fixed in: net/http@go1.26.6
+    Example traces found:
+      #1: internal/web/server.go:258:23: web.ListenAndServe calls http.Server.Serve
+
+Vulnerability #5: GO-2026-6088
+    Add recursion depth guard during decode in encoding/xml
+  More info: https://pkg.go.dev/vuln/GO-2026-6088
+  Standard library
+    Found in: encoding/xml@go1.26.4
+    Fixed in: encoding/xml@go1.26.6
+    Example traces found:
+      #1: internal/cli/glamour_style.go:24:2: cli.init calls ansi.init, which eventually calls xml.Decoder.Decode
+      #2: internal/cli/glamour_style.go:24:2: cli.init calls ansi.init, which eventually calls xml.Decoder.DecodeElement
+      #3: internal/cli/glamour_style.go:24:2: cli.init calls ansi.init, which eventually calls xml.Decoder.Token
+
+Vulnerability #6: GO-2026-5972
+    Enforce maximum recursion depth in encoding/asn1
+  More info: https://pkg.go.dev/vuln/GO-2026-5972
+  Standard library
+    Found in: encoding/asn1@go1.26.4
+    Fixed in: encoding/asn1@go1.26.6
+    Example traces found:
+      #1: internal/web/server.go:258:23: web.ListenAndServe calls http.Server.Serve, which eventually calls asn1.Unmarshal
+
+Vulnerability #7: GO-2026-5856
+    Invoking Encrypted Client Hello privacy leak in crypto/tls
+  More info: https://pkg.go.dev/vuln/GO-2026-5856
+  Standard library
+    Found in: crypto/tls@go1.26.4
+    Fixed in: crypto/tls@go1.26.5
+    Example traces found:
+      #1: internal/web/server.go:258:23: web.ListenAndServe calls http.Server.Serve, which eventually calls tls.Conn.HandshakeContext
+      #2: internal/update/updater.go:93:22: update.updaterImpl.Download calls io.Copy, which eventually calls tls.Conn.Read
+      #3: internal/constitution/human_oversight.go:43:21: constitution.humanOversight.Approve calls bufio.Writer.Flush, which calls tls.Conn.Write
+      #4: internal/update/checker.go:76:26: update.checker.CheckLatest calls http.Client.Do, which eventually calls tls.Dialer.DialContext
+
+Vulnerability #8: GO-2026-5026
+    Invoking failure to reject ASCII-only Punycode-encoded labels in
+    golang.org/x/net/idna
+  More info: https://pkg.go.dev/vuln/GO-2026-5026
+  Standard library
+    Found in: net/http@go1.26.4
+    Fixed in: net/http@go1.26.6
+    Example traces found:
+      #1: internal/update/checker.go:76:26: update.checker.CheckLatest calls http.Client.Do
+
+Your code is affected by 8 vulnerabilities from the Go standard library.
+This scan also found 2 vulnerabilities in packages you import and 3
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.
+Use '-show verbose' for more details.

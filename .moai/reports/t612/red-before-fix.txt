@@ -1,0 +1,38 @@
+=== RUN   TestPendingWarn_C1_ReasonlessWarnThenNote_EmitsMissingReason
+    scanner_pending_warn_test.go:59: tag line=3 kind=NOTE spec="" reason=""
+    scanner_pending_warn_test.go:59: warnings=0 []
+    scanner_pending_warn_test.go:62: MissingReasonForWarn for WARN at line 2: want 1, got 0 ([])
+--- FAIL: TestPendingWarn_C1_ReasonlessWarnThenNote_EmitsMissingReason (0.00s)
+=== RUN   TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingReason
+    scanner_pending_warn_test.go:72: warnings=1 [MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingRe1452273202/001/fixture.go:3 - WARN tag without REASON]
+    scanner_pending_warn_test.go:75: MissingReasonForWarn for first WARN at line 2: want 1, got 0 ([MissingReasonForWarn: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingRe1452273202/001/fixture.go:3 - WARN tag without REASON])
+--- FAIL: TestPendingWarn_C2_ReasonlessWarnThenWarn_FirstWarnGetsMissingReason (0.00s)
+=== RUN   TestPendingWarn_C3_WarnThenReason_NoMissingReason
+    scanner_pending_warn_test.go:88: tag line=2 kind=WARN spec="" reason="shared state"
+    scanner_pending_warn_test.go:88: warnings=0 []
+--- PASS: TestPendingWarn_C3_WarnThenReason_NoMissingReason (0.00s)
+=== RUN   TestPendingWarn_C4_SpecBetweenWarnAndReason_AttachesToWarn
+    scanner_pending_warn_test.go:101: tag line=2 kind=NOTE spec="SPEC-WARN-001" reason=""
+    scanner_pending_warn_test.go:101: tag line=3 kind=WARN spec="" reason="shared state"
+    scanner_pending_warn_test.go:101: warnings=0 []
+    scanner_pending_warn_test.go:103: NOTE: want kind=NOTE spec="", got kind=NOTE spec="SPEC-WARN-001"
+    scanner_pending_warn_test.go:103: WARN: want kind=WARN spec=SPEC-WARN-001 reason="shared state", got kind=WARN spec="" reason="shared state"
+--- FAIL: TestPendingWarn_C4_SpecBetweenWarnAndReason_AttachesToWarn (0.00s)
+=== RUN   TestPendingWarn_C5_SpecAfterReason_AttachesToWarn
+    scanner_pending_warn_test.go:109: tag line=2 kind=NOTE spec="" reason=""
+    scanner_pending_warn_test.go:109: tag line=3 kind=WARN spec="SPEC-WARN-001" reason="shared state"
+    scanner_pending_warn_test.go:109: warnings=0 []
+--- PASS: TestPendingWarn_C5_SpecAfterReason_AttachesToWarn (0.00s)
+=== RUN   TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling
+    scanner_pending_warn_test.go:177: tag line=2 kind=WARN spec="" reason="shared state"
+    scanner_pending_warn_test.go:177: warnings=1 [DanglingSpecRef: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling2661094298/001/fixture.go:3 - @MX:SPEC "SPEC-WARN-001" without a preceding tag]
+    scanner_pending_warn_test.go:181: tags: want one WARN spec=SPEC-WARN-001 reason="shared state", got [{Kind:WARN File:/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling2661094298/001/fixture.go Line:2 ContentHash:28d2b1404b92a09fc054667983f48e4bb80f217d5b090523b87867b4b49e0043 Body:danger Reason:shared state SpecRef: RotRisk: AnchorID: CreatedBy:scanner LastSeenAt:2026-09-10 15:28:12.877369 +0900 KST m=+0.004159460}]
+    scanner_pending_warn_test.go:184: DanglingSpecRef: want 0, got 1 ([DanglingSpecRef: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling2661094298/001/fixture.go:3 - @MX:SPEC "SPEC-WARN-001" without a preceding tag])
+--- FAIL: TestPendingWarn_SpecOnPendingWarnWithoutPriorTag_NotDangling (0.00s)
+=== RUN   TestScannerSpecRef_Capture
+--- PASS: TestScannerSpecRef_Capture (0.00s)
+=== RUN   TestAC006_DanglingSpecRefWarning
+--- PASS: TestAC006_DanglingSpecRefWarning (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/mx	0.176s
+FAIL

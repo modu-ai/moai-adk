@@ -1,0 +1,5 @@
+mutant C (cell boundary removed: all requirement-headed cells of a row are joined with ", " and expanded as one cell, so a bare tail in one cell expands from a full id in a neighbouring cell)
+predicted before run:
+  FAIL OnlyHeaderColumnsAndOnlySameCell  (got [REQ-CST-002-003]: Related-REQ tail 002 now expands from REQ-CST-002-001 in the REQ cell)
+  PASS HeaderColumnWithSameCellExpansion (one requirement column only, joining changes nothing)
+  PASS RowWithoutACIsNotCoverage, UnidentifiedHeaderCollectsNothing, 3 existing sibling tests

@@ -1,0 +1,21 @@
+ok  	github.com/modu-ai/moai-adk/internal/template	47.177s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.549s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	1.380s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+ok  	github.com/modu-ai/moai-adk/internal/spec	115.968s
+ok  	github.com/modu-ai/moai-adk/internal/skills	1.915s
+ok  	github.com/modu-ai/moai-adk/internal/harness	5.985s
+ok  	github.com/modu-ai/moai-adk/internal/harness/capture	4.452s
+ok  	github.com/modu-ai/moai-adk/internal/harness/cluster	5.315s
+ok  	github.com/modu-ai/moai-adk/internal/harness/curator	1.218s
+ok  	github.com/modu-ai/moai-adk/internal/harness/delegationmap	3.328s
+ok  	github.com/modu-ai/moai-adk/internal/harness/harnessrun	4.092s
+ok  	github.com/modu-ai/moai-adk/internal/harness/proposalgen	1.577s
+ok  	github.com/modu-ai/moai-adk/internal/harness/router	4.884s
+ok  	github.com/modu-ai/moai-adk/internal/harness/routing	1.951s
+ok  	github.com/modu-ai/moai-adk/internal/harness/safety	3.714s
+ok  	github.com/modu-ai/moai-adk/internal/harness/seeds	2.620s
+ok  	github.com/modu-ai/moai-adk/internal/harness/throttle	2.937s
+ok  	github.com/modu-ai/moai-adk/internal/harness/tier	5.650s
+ok  	github.com/modu-ai/moai-adk/internal/harness/v4manifest	2.294s
+ok  	github.com/modu-ai/moai-adk/internal/lsp/config	5.022s

@@ -1,0 +1,10 @@
+117:            - name: manager-develop
+118-              tier: core
+119-              path: templates/.claude/agents/moai/manager-develop.md
+120-              hash: b8fa8c95eb18654a65b5ce81bd605c4c6befda29cec263e56a906962a17eae82
+--
+142:            - name: plan-auditor
+143-              tier: core
+144-              path: templates/.claude/agents/moai/plan-auditor.md
+145-              hash: 2403bfb3e0747467ba328cdbfe3767c0801db95702568d5cb606596655d771fb
+EXIT=0

@@ -1,0 +1,43 @@
+# t613 follow-up increment 3 — mutation runs via go test -overlay (tracked files never edited)
+# mutant sources + overlay JSONs lived in the session scratchpad, outside the tree
+# GREEN-3 line: if len(hostname) == len("localhost") && strings.EqualFold(hostname, "localhost") {
+# Each mutant copy was built from the GREEN-3 app.go with exactly one replacement (guard_count=1).
+
+===== m5: ASCII guard removed (plain strings.EqualFold)
+mutant line: if strings.EqualFold(hostname, "localhost") {
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m5_overlay.json ./internal/web/...
+exit=1  (expected: non-zero)
+build_failed_lines=0  panic_or_race=0  top_level_FAIL=1  subtest_FAIL=0
+failing lines:
+  --- FAIL: TestIsLoopbackHost (0.00s)
+      coverage_test.go:193: isLoopbackHost("localhoſt") = true, want false
+      coverage_test.go:193: isLoopbackHost("localhoſt:3041") = true, want false
+      coverage_test.go:193: isLoopbackHost("LOCALHOſT") = true, want false
+  FAIL	github.com/modu-ai/moai-adk/internal/web	18.125s
+(the three failing hosts contain U+017F LATIN SMALL LETTER LONG S; the ASCII uppercase rows still pass under m5)
+
+===== m4 (re-run on GREEN-3): case-sensitive comparison
+mutant line: if hostname == "localhost" {
+$ GOMAXPROCS=2 go test -p 1 -count=1 -timeout 600s -overlay <scratch>/m4b_overlay.json ./internal/web/...
+exit=1  (expected: non-zero)
+build_failed_lines=0  panic_or_race=0  top_level_FAIL=2  subtest_FAIL=6
+failing lines:
+  --- FAIL: TestIsLoopbackHost (0.00s)
+      coverage_test.go:193: isLoopbackHost("LocalHost:3041") = false, want true
+      coverage_test.go:193: isLoopbackHost("Localhost:8080") = false, want true
+      coverage_test.go:193: isLoopbackHost("LOCALHOST") = false, want true
+  --- FAIL: TestHostGateControlMatrix (0.12s)
+      --- FAIL: TestHostGateControlMatrix/localhost-upper/static (0.00s)
+          host_gate_test.go:66: GET /static/app.js with Host "LOCALHOST": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-upper/settings (0.00s)
+          host_gate_test.go:87: GET /settings with Host "LOCALHOST": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-upper/save (0.00s)
+          host_gate_test.go:126: POST /save with Host "LOCALHOST": status = 403, want 2xx; body:
+      --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/static (0.00s)
+          host_gate_test.go:66: GET /static/app.js with Host "LocalHost:3041": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/settings (0.00s)
+          host_gate_test.go:87: GET /settings with Host "LocalHost:3041": status = 403, want 200
+      --- FAIL: TestHostGateControlMatrix/localhost-mixed-port/save (0.00s)
+          host_gate_test.go:126: POST /save with Host "LocalHost:3041": status = 403, want 2xx; body:
+  FAIL	github.com/modu-ai/moai-adk/internal/web	20.144s
+(the U+017F rows pass under m4 — a case-sensitive compare rejects them too)

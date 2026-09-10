@@ -1,0 +1,72 @@
+=== RUN   TestPlanAuditOrder_ConflictIsReported
+=== PAUSE TestPlanAuditOrder_ConflictIsReported
+=== RUN   TestPlanAuditOrder_SatisfiableAfterIsClean
+=== PAUSE TestPlanAuditOrder_SatisfiableAfterIsClean
+=== RUN   TestPlanAuditOrder_SatisfiableBeforeIsClean
+=== PAUSE TestPlanAuditOrder_SatisfiableBeforeIsClean
+=== RUN   TestPlanAuditOrder_AfterConflictIsReported
+=== PAUSE TestPlanAuditOrder_AfterConflictIsReported
+=== RUN   TestPlanAuditOrder_MilestoneHeadingFormIsRead
+=== PAUSE TestPlanAuditOrder_MilestoneHeadingFormIsRead
+=== RUN   TestPlanAuditOrder_SectionCriterionIsTheSubject
+=== PAUSE TestPlanAuditOrder_SectionCriterionIsTheSubject
+=== RUN   TestPlanAuditOrder_ShorthandExitBinding
+=== PAUSE TestPlanAuditOrder_ShorthandExitBinding
+=== RUN   TestPlanAuditOrder_SubheadingKeepsBinding
+=== PAUSE TestPlanAuditOrder_SubheadingKeepsBinding
+=== RUN   TestPlanAuditOrder_ExitOutsideMilestoneDoesNotBind
+=== PAUSE TestPlanAuditOrder_ExitOutsideMilestoneDoesNotBind
+=== RUN   TestPlanAuditOrder_UnboundPlanYieldsCandidateOnly
+=== PAUSE TestPlanAuditOrder_UnboundPlanYieldsCandidateOnly
+=== RUN   TestPlanAuditOrder_NoOrderingClauseIsNone
+=== PAUSE TestPlanAuditOrder_NoOrderingClauseIsNone
+=== RUN   TestPlanAuditOrder_NoMilestonesIsGap
+=== PAUSE TestPlanAuditOrder_NoMilestonesIsGap
+=== RUN   TestPlanAuditOrder_UnreadableInputIsGap
+=== PAUSE TestPlanAuditOrder_UnreadableInputIsGap
+=== RUN   TestPlanAuditOrder_VerbIdenticalAcrossCopies
+=== PAUSE TestPlanAuditOrder_VerbIdenticalAcrossCopies
+=== RUN   TestPlanAuditOrder_ClausesPresent
+=== PAUSE TestPlanAuditOrder_ClausesPresent
+=== CONT  TestPlanAuditOrder_ConflictIsReported
+=== CONT  TestPlanAuditOrder_ExitOutsideMilestoneDoesNotBind
+=== CONT  TestPlanAuditOrder_AfterConflictIsReported
+=== CONT  TestPlanAuditOrder_SatisfiableAfterIsClean
+=== CONT  TestPlanAuditOrder_MilestoneHeadingFormIsRead
+=== CONT  TestPlanAuditOrder_SubheadingKeepsBinding
+=== CONT  TestPlanAuditOrder_ShorthandExitBinding
+=== CONT  TestPlanAuditOrder_SectionCriterionIsTheSubject
+=== CONT  TestPlanAuditOrder_UnreadableInputIsGap
+=== CONT  TestPlanAuditOrder_ClausesPresent
+=== CONT  TestPlanAuditOrder_VerbIdenticalAcrossCopies
+=== CONT  TestPlanAuditOrder_NoOrderingClauseIsNone
+=== CONT  TestPlanAuditOrder_NoMilestonesIsGap
+=== CONT  TestPlanAuditOrder_UnboundPlanYieldsCandidateOnly
+=== CONT  TestPlanAuditOrder_SatisfiableBeforeIsClean
+--- PASS: TestPlanAuditOrder_VerbIdenticalAcrossCopies (0.00s)
+--- PASS: TestPlanAuditOrder_ClausesPresent (0.01s)
+--- PASS: TestPlanAuditOrder_UnreadableInputIsGap (0.02s)
+=== NAME  TestPlanAuditOrder_ConflictIsReported
+    plan_audit_order_conflict_test.go:118: Group 6 output:
+        CANDIDATE: acceptance.md:10: - AC-ORD-001's RED output recorded verbatim, captured BEFORE the M1 render change,   with the command and its exit code.
+        CONFLICT: acceptance.md:10 orders AC-ORD-001 before M1, but plan.md binds AC-ORD-001 to the exit of M2, which the plan places after M1
+        COLLECTED: 3 milestones in plan order (M1 M2 M3), 3 exit bindings, 1 ordering candidates
+--- PASS: TestPlanAuditOrder_ConflictIsReported (0.03s)
+--- PASS: TestPlanAuditOrder_ExitOutsideMilestoneDoesNotBind (0.03s)
+--- PASS: TestPlanAuditOrder_SatisfiableAfterIsClean (0.03s)
+--- PASS: TestPlanAuditOrder_ShorthandExitBinding (0.03s)
+--- PASS: TestPlanAuditOrder_SectionCriterionIsTheSubject (0.03s)
+--- PASS: TestPlanAuditOrder_NoMilestonesIsGap (0.03s)
+--- PASS: TestPlanAuditOrder_SubheadingKeepsBinding (0.04s)
+=== NAME  TestPlanAuditOrder_MilestoneHeadingFormIsRead
+    plan_audit_order_conflict_test.go:181: Group 6 output:
+        CANDIDATE: acceptance.md:10: - AC-ORD-001's RED output recorded verbatim, captured BEFORE the M1 render change,   with the command and its exit code.
+        CONFLICT: acceptance.md:10 orders AC-ORD-001 before M1, but plan.md binds AC-ORD-001 to the exit of M2, which the plan places after M1
+        COLLECTED: 3 milestones in plan order (M1 M2 M3), 3 exit bindings, 1 ordering candidates
+--- PASS: TestPlanAuditOrder_UnboundPlanYieldsCandidateOnly (0.03s)
+--- PASS: TestPlanAuditOrder_MilestoneHeadingFormIsRead (0.04s)
+--- PASS: TestPlanAuditOrder_SatisfiableBeforeIsClean (0.03s)
+--- PASS: TestPlanAuditOrder_AfterConflictIsReported (0.04s)
+--- PASS: TestPlanAuditOrder_NoOrderingClauseIsNone (0.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.476s

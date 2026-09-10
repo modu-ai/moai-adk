@@ -1,0 +1,15 @@
+t617 flaky-test summary — parsed with line-anchored ### RUN / ### AFTER markers;
+asserts: 5 split parts, ps header in both snapshots, a package result line in RUN.
+Class rule: flaky-criteria.txt. Observer liveness: flaky-load-1-during.txt caught pid 4388 go test and pid 4514 hook.test mid-run.
+
+run-0 (.moai/reports/t617/flaky-load-0-liveness.txt) (-count=20; its during-snapshot ran AFTER the run ended and caught nothing -> liveness NOT shown by run-0)
+  load1 before=10.4 after=11.11; foreign go test before=0 after=0 -> LOADED
+  FAIL=13 PASS=7 total=20 exit=['EXIT=1']
+  blocked_ms n=13 min=500.350708 max=676.39275
+run-1 (.moai/reports/t617/flaky-load-1-liveness.txt) (-count=40 -timeout 300s, background; during-snapshot taken mid-run)
+  load1 before=11.05 after=10.65; foreign go test before=0 after=0 -> LOADED
+  FAIL=25 PASS=15 total=40 exit=['EXIT=1']
+  blocked_ms n=25 min=500.626166 max=643.215
+quiet-check-1 (flaky-quiet-check-1.txt): load1=10.45 foreign go test=0 -> not QUIET (load1 >= 8.0)
+
+Committed evidence: the *.excerpt.txt files (uptime, ps header, line count, every go test/.test line, and the verbatim RUN section). The raw machine-wide ps snapshots they were cut from stay local and untracked, because they carry other sessions command lines.

@@ -604,19 +604,32 @@ construction at plan-phase.
 **Falsification**: fails if either side lacks the cross-reference. Passes only when both SPECs agree
 on who owns the `internal/config/CLAUDE.md` env-var fix.
 
-#### AC-UDD-021 — no template-tree file is modified
+#### AC-UDD-021 (left endpoint revised at v0.3.1) — no template-tree file is modified
+
+The range lines run on this SPEC's branch, before it merges into `develop`:
 
 ```bash
-git diff --stat 7f61332ef..HEAD -- internal/template/templates/
-git log --oneline 7f61332ef..HEAD -- internal/template/templates/ | wc -l
+CARD_BASE=$(git merge-base develop HEAD)
+git diff --name-only "$CARD_BASE"..HEAD | wc -l
+git diff --stat "$CARD_BASE"..HEAD -- internal/template/templates/
+git log --oneline "$CARD_BASE"..HEAD -- internal/template/templates/ | wc -l
 git diff --stat -- internal/template/templates/
 ```
 
-Expected: the first produces no output, the second prints `0`, the third produces no output
-(NFR-UDD-002). The baseline-relative form is required because the run-phase workflow commits its
-edits — an unstaged-only check falls silent at exactly the moment the constraint is violated.
+Expected: the unfiltered control (first count) `>= 1`, then the range diff produces no output, the
+range log prints `0`, and the unstaged check produces no output (NFR-UDD-002). A control of `0` means
+the range holds none of this SPEC's commits, and both range probes read empty / `0` on such a range
+too — report it as **not measurable**, never as "no template-tree change". The committed-range form
+is required because the run-phase workflow commits its edits — an unstaged-only check falls silent
+at exactly the moment the constraint is violated.
 
-Baseline at `7f61332ef` (the baseline commit itself): all three empty / `0`.
+`CARD_BASE` is derived at read time and the range lines are pre-merge only, exactly as in AC-UDD-023
+(the absorbed-ref principle and the post-merge evidence are stated there and in
+`.claude/rules/local/gitflow-lane-protocol.md` §8).
+
+(Reference reading 2026-08-14, not the criterion: the v0.3.0 form, whose two range lines were pinned
+at `7f61332ef`, read all three empty / `0` at the baseline commit itself — the range lines over a
+range with no commits in it, which the control above now reports as not measurable.)
 
 Supporting fact, that none of the four target files is mirrored:
 
@@ -653,18 +666,33 @@ Recorded as known and out of scope, carried forward from v0.2.0 so it is not red
 `TestBranchGuard_Latency` in `internal/hook` is load-sensitive and fails under a parallel full-suite
 run while passing alone. It is not diagnosed here.
 
-#### AC-UDD-023 (rewritten at v0.3.0) — this SPEC modifies no Go file
+#### AC-UDD-023 (rewritten at v0.3.0, left endpoint revised at v0.3.1) — this SPEC modifies no Go file
+
+Run on this SPEC's branch, before it merges into `develop`:
 
 ```bash
-git diff --name-only 7f61332ef..HEAD | grep -c '\.go$'
-git diff --name-only 7f61332ef..HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
+CARD_BASE=$(git merge-base develop HEAD)
+git diff --name-only "$CARD_BASE"..HEAD | wc -l
+git diff --name-only "$CARD_BASE"..HEAD | grep -c '\.go$'
+git diff --name-only "$CARD_BASE"..HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
 ```
 
-Expected: `0` and `0`. No Go file differs from the baseline, and every changed path lies inside this
-SPEC's declared write surface: its own SPEC directory, the two always-loaded instruction files, and
-the two re-anchored `.moai/docs/` targets.
+Expected: the unfiltered control (first count) `>= 1`, then `0` and `0`. No Go file differs from
+`CARD_BASE`, and every changed path lies inside this SPEC's declared write surface: its own SPEC
+directory, the two always-loaded instruction files, and the two re-anchored `.moai/docs/` targets.
+A control of `0` means the range holds none of this SPEC's commits, and both probes print `0` on
+such a range too — report it as **not measurable**, never as "no Go change".
 
-Baseline at `7f61332ef` (the baseline commit itself): `0` and `0`.
+`CARD_BASE` is derived when the criterion is read and never pinned: it is the merge-base with the
+ref this branch absorbed — local `develop` under this repository's lane procedure,
+`origin/develop` for a procedure that absorbs the remote — because a literal base SHA sweeps every
+absorbed commit into the range. The criterion is pre-merge only: once the branch merges into
+`develop` the merge-base is the branch tip and the range holds nothing, so post-merge evidence is
+merge-tree / branch-tree identity (`.claude/rules/local/gitflow-lane-protocol.md` §8).
+
+(Reference reading 2026-08-14, not the criterion: the v0.3.0 form, a literal range pinned at
+`7f61332ef`, read `0` and `0` at the baseline commit itself — a range with no commits in it, which
+the control above now reports as not measurable.)
 
 **Why this replaces the v0.2.0 form.** That criterion snapshotted `git status --porcelain` before and
 after a test run to prove tests wrote nothing outside `t.TempDir()`. With no tests added, it measures
@@ -780,8 +808,9 @@ is run *before* the M2 edit, not after.
 - Falsification procedures C-1 through C-4 produce their stated contradictions.
 - Every documentation correction cites the `file:line` or content-anchored symbol it was verified
   against (NFR-UDD-004).
-- No Go file is modified (AC-UDD-023) and `internal/template/templates/**` is unmodified relative to
-  `7f61332ef` (AC-UDD-021).
+- No Go file is modified (AC-UDD-023) and `internal/template/templates/**` is unmodified over this
+  SPEC's own range as AC-UDD-021 measures it (read-time `CARD_BASE`, pre-merge), not relative to a
+  fixed SHA.
 - No criterion is closed on a command that cannot observe its own expectation (§A clause 6), and no
   correction retracts a claim by quoting it (§A clause 8).
 - `progress.md` §E.2 cites the observed command output for every claim, per

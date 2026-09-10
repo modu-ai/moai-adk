@@ -2,7 +2,6 @@ package web
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -16,8 +15,8 @@ import (
 // and the offline zero-network invariant holds.
 
 // TestHtmxEmbeddedAndServed verifies AC-WC6-006/015: htmx.min.js is embedded into
-// the binary, served from /static/htmx.min.js (200, offline, not Host-gated on
-// GET), and is the real htmx library (not an empty/placeholder file).
+// the binary, served from /static/htmx.min.js (200 to a loopback Host, offline),
+// and is the real htmx library (not an empty/placeholder file).
 func TestHtmxEmbeddedAndServed(t *testing.T) {
 	// Embedded under assets/ and reachable via the static FS.
 	js := readEmbeddedAsset(t, "htmx.min.js")
@@ -28,13 +27,13 @@ func TestHtmxEmbeddedAndServed(t *testing.T) {
 		t.Errorf("embedded htmx.min.js is only %d bytes — looks truncated/placeholder", len(js))
 	}
 
-	// Served from /static/htmx.min.js (200, offline). GET on a static asset is not
-	// Host-gated, so a foreign host still reaches it.
+	// Served from /static/htmx.min.js (200, offline) to a loopback Host. Static
+	// assets are Host-gated like every other route, so a foreign Host is refused.
 	a := newTestApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/static/htmx.min.js", nil)
-	req.Host = "evil.example.com"
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	if foreign := serveWithHost(t, a.routes(), http.MethodGet, "/static/htmx.min.js", "evil.example.com"); foreign.Code != http.StatusForbidden {
+		t.Errorf("GET /static/htmx.min.js from a foreign Host: status = %d, want 403", foreign.Code)
+	}
+	rec := serveGet(t, a.routes(), "/static/htmx.min.js")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /static/htmx.min.js status = %d, want 200", rec.Code)
 	}

@@ -114,5 +114,10 @@ func siblingAcceptanceCoveredREQIDs(specPath string) map[string]bool {
 	for _, id := range ExtractRequirementMappings(string(data)) {
 		covered["REQ-"+id] = true
 	}
+	// Table-form mappings (card t561): read only requirement-headed columns;
+	// see lint_coverage_sibling_table.go for the two scopings.
+	for _, id := range siblingTableREQIDs(string(data)) {
+		covered[id] = true
+	}
 	return covered
 }

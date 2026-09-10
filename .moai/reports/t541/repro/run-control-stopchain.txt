@@ -1,0 +1,5 @@
+CANDIDATE: .moai/specs/SPEC-STOPCHAIN-TRIM-001/acceptance.md:42: **Test shape:** shell fixture — set HEAD to a non-sync subject (e.g. via a test git dir), install counting wrappers around `go vet` / `go build` / `golangci-lint`, fire Stop, assert each command's invocation count is 0; flip HEAD to a sync-commit subject, fire Stop, assert the commands run as before (no false negative on the positive case).
+CANDIDATE: .moai/specs/SPEC-STOPCHAIN-TRIM-001/acceptance.md:102: **Test shape:** unset the token, run the full hook surface end-to-end (sync-gate blocking, commit gate verifying, lifecycle hooks active), assert zero behavior delta from a baseline captured before the SPEC lands. This AC MUST be green for the SPEC to be considered non-regressive.
+COLLECTED: 0 milestones in plan order (none), 0 exit bindings, 2 ordering candidates
+GAP: 0 milestone headings collected from the plan — milestone order not observed
+exit=0

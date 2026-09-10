@@ -1,0 +1,2 @@
+49
+grep -c top-level '=== RUN' lines in test-template-scoped.txt EXIT=0

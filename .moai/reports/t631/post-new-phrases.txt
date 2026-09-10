@@ -1,0 +1,6 @@
+.claude/skills/moai/workflows/sync.md:1
+.claude/skills/moai/workflows/run.md:2
+.claude/skills/moai/workflows/plan/spec-assembly.md:1
+internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md:1
+internal/template/templates/.claude/skills/moai/workflows/sync.md:1
+internal/template/templates/.claude/skills/moai/workflows/run.md:2

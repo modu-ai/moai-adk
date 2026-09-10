@@ -137,6 +137,11 @@ func NewLinter(opts LinterOptions) *Linter {
 		// intent.
 		&REQTableRejectionRule{},
 		&CoverageRule{},
+		// DuplicateAcceptanceIDRule — card t564. Reports an inline AC id declared
+		// on more than one line; the parser unions those lines' REQ mappings, so
+		// this finding is what keeps the widened coverage visible. Warning only,
+		// deliberately NOT in eraDemotableCodes (see lint_duplicate_acid.go).
+		&DuplicateAcceptanceIDRule{},
 		&FrontmatterSchemaRule{},
 		&DependencyExistsRule{},
 		&OutOfScopeRule{},
@@ -595,6 +600,9 @@ type SPECDoc struct {
 	REQs        []REQEntry
 	ParseError  error
 	LintSkip    []string
+	// DuplicateACIDs are the inline AC ids declared on more than one line,
+	// kept from the parse for DuplicateAcceptanceIDRule (card t564).
+	DuplicateACIDs []*DuplicateAcceptanceID
 }
 
 // reqIDPattern validates a REQ ID. It is the VALIDATION half of a pair whose
@@ -679,9 +687,16 @@ func parseSPECDoc(path string) *SPECDoc {
 	// pattern would NOT have collected. SPEC-COVERAGE-RULE-SCOPE-001 M3.
 	doc.REQs = parseREQsWithProvenance(body)
 
-	// Parse Acceptance Criteria
-	criteria, _ := ParseAcceptanceCriteria(body, false)
+	// Parse Acceptance Criteria. Duplicate AC ids are kept for
+	// DuplicateAcceptanceIDRule (card t564); every other parse error is still
+	// discarded here, as before.
+	criteria, parseErrs := ParseAcceptanceCriteria(body, false)
 	doc.Criteria = criteria
+	for _, err := range parseErrs {
+		if dup, ok := err.(*DuplicateAcceptanceID); ok {
+			doc.DuplicateACIDs = append(doc.DuplicateACIDs, dup)
+		}
+	}
 
 	return doc
 }

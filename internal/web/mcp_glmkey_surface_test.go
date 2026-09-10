@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,9 +66,7 @@ func TestAC_C_010_GLMKeyStateSurfacedInMCPSection(t *testing.T) {
 func TestAC_C_010_GLMKeyStateRenderedViaRoute(t *testing.T) {
 	a := newTestApp(t)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("AC-C-010: GET / status = %d, want 200", rec.Code)
 	}

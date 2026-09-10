@@ -1,0 +1,40 @@
+=== RUN   TestParseCondition_CanonicalAcConvergeIsModel
+=== PAUSE TestParseCondition_CanonicalAcConvergeIsModel
+=== RUN   TestParseCondition_ShellCommandsStayMechanical
+=== PAUSE TestParseCondition_ShellCommandsStayMechanical
+=== RUN   TestParseCondition_TranscriptReferentsAreModel
+=== PAUSE TestParseCondition_TranscriptReferentsAreModel
+=== RUN   TestRunmdAcConvergeProseMatchesFixture
+=== PAUSE TestRunmdAcConvergeProseMatchesFixture
+=== RUN   TestPlan_NoAskUserQuestion
+--- PASS: TestPlan_NoAskUserQuestion (0.00s)
+=== RUN   TestGoal_NoAskUserQuestion
+--- PASS: TestGoal_NoAskUserQuestion (0.00s)
+=== RUN   TestSpecAssembly_RewrittenToCLIPath
+--- PASS: TestSpecAssembly_RewrittenToCLIPath (0.00s)
+=== RUN   TestSpecAssembly_NoNewInternalTokens
+--- PASS: TestSpecAssembly_NoNewInternalTokens (0.00s)
+=== RUN   TestAC009_AcConvergeDocCorrectedToActual30Turns
+--- PASS: TestAC009_AcConvergeDocCorrectedToActual30Turns (0.00s)
+=== CONT  TestParseCondition_CanonicalAcConvergeIsModel
+=== CONT  TestParseCondition_TranscriptReferentsAreModel
+=== CONT  TestParseCondition_ShellCommandsStayMechanical
+--- PASS: TestParseCondition_CanonicalAcConvergeIsModel (0.00s)
+=== CONT  TestRunmdAcConvergeProseMatchesFixture
+--- PASS: TestParseCondition_TranscriptReferentsAreModel (0.00s)
+--- PASS: TestRunmdAcConvergeProseMatchesFixture (0.00s)
+=== RUN   TestParseCondition_ShellCommandsStayMechanical/plain_command
+=== PAUSE TestParseCondition_ShellCommandsStayMechanical/plain_command
+=== RUN   TestParseCondition_ShellCommandsStayMechanical/trailing_exits_clause
+=== PAUSE TestParseCondition_ShellCommandsStayMechanical/trailing_exits_clause
+=== RUN   TestParseCondition_ShellCommandsStayMechanical/non-zero_expected_exit
+=== PAUSE TestParseCondition_ShellCommandsStayMechanical/non-zero_expected_exit
+=== CONT  TestParseCondition_ShellCommandsStayMechanical/plain_command
+=== CONT  TestParseCondition_ShellCommandsStayMechanical/non-zero_expected_exit
+=== CONT  TestParseCondition_ShellCommandsStayMechanical/trailing_exits_clause
+--- PASS: TestParseCondition_ShellCommandsStayMechanical (0.00s)
+    --- PASS: TestParseCondition_ShellCommandsStayMechanical/plain_command (0.00s)
+    --- PASS: TestParseCondition_ShellCommandsStayMechanical/non-zero_expected_exit (0.00s)
+    --- PASS: TestParseCondition_ShellCommandsStayMechanical/trailing_exits_clause (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.950s

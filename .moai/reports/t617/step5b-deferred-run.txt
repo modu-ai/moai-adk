@@ -1,0 +1,22 @@
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:28:44 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3255898060/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3255898060/001
+2026/09/10 17:28:44 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:28:44 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 572.885709ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.58s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:28:45 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3497736495/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3497736495/001
+2026/09/10 17:28:45 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:28:45 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 577.812875ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.58s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:28:45 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1541492950/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1541492950/001
+2026/09/10 17:28:46 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:28:46 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 555.436916ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.56s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.707s
+FAIL
+EXIT=1

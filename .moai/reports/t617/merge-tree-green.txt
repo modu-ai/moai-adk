@@ -1,0 +1,53 @@
+=== RUN   TestSessionStart_InvokesMigrationRunner
+=== RUN   TestSessionStart_InvokesMigrationRunner/malformed_version_file_is_read_by_the_runner
+2026/09/10 18:03:43 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_InvokesMigrationRunnermalformed_version_file_i637210003/001
+2026/09/10 18:03:43 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 18:03:43 WARN session start: migration apply failed error="version 읽기 실패: version-file 파싱 실패: strconv.Atoi: parsing \"not-a-number\": invalid syntax" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_InvokesMigrationRunnermalformed_version_file_i637210003/001
+2026/09/10 18:03:43 INFO teammateMode updated mode=auto in_tmux=false
+=== RUN   TestSessionStart_InvokesMigrationRunner/control:_absent_version_file_yields_no_migration_error
+2026/09/10 18:03:43 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_InvokesMigrationRunnercontrol_absent_version_110071867/001
+2026/09/10 18:03:44 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 18:03:44 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_InvokesMigrationRunner (0.46s)
+    --- PASS: TestSessionStart_InvokesMigrationRunner/malformed_version_file_is_read_by_the_runner (0.24s)
+    --- PASS: TestSessionStart_InvokesMigrationRunner/control:_absent_version_file_yields_no_migration_error (0.22s)
+=== RUN   TestSessionStart_MigrationFailure_DoesNotBlockSession
+2026/09/10 18:03:44 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationFailure_DoesNotBlockSession2917442860/001
+2026/09/10 18:03:44 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 18:03:44 WARN session start: migration apply failed error="version 읽기 실패: version-file 파싱 실패: strconv.Atoi: parsing \"not-a-number\": invalid syntax" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationFailure_DoesNotBlockSession2917442860/001
+2026/09/10 18:03:44 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_MigrationFailure_DoesNotBlockSession (0.25s)
+=== RUN   TestSessionStart_MigrationsDisabled_SkipsRunner
+=== RUN   TestSessionStart_MigrationsDisabled_SkipsRunner/disabled:_runner_skipped
+2026/09/10 18:03:44 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnerdisabled_runner1054170879/001
+2026/09/10 18:03:44 INFO session start: migrations disabled via config project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnerdisabled_runner1054170879/001
+2026/09/10 18:03:44 INFO teammateMode updated mode=auto in_tmux=false
+=== RUN   TestSessionStart_MigrationsDisabled_SkipsRunner/control:_enabled_on_the_same_fixture_runs_the_runner
+2026/09/10 18:03:44 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnercontrol_enabled1336298030/001
+2026/09/10 18:03:44 WARN session start: migration apply failed error="version 읽기 실패: version-file 파싱 실패: strconv.Atoi: parsing \"not-a-number\": invalid syntax" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_MigrationsDisabled_SkipsRunnercontrol_enabled1336298030/001
+2026/09/10 18:03:44 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_MigrationsDisabled_SkipsRunner (0.51s)
+    --- PASS: TestSessionStart_MigrationsDisabled_SkipsRunner/disabled:_runner_skipped (0.23s)
+    --- PASS: TestSessionStart_MigrationsDisabled_SkipsRunner/control:_enabled_on_the_same_fixture_runs_the_runner (0.28s)
+=== RUN   TestSessionStart_EnabledByDefault
+=== RUN   TestSessionStart_EnabledByDefault/nil_ConfigProvider
+2026/09/10 18:03:44 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultnil_ConfigProvider425847601/001
+2026/09/10 18:03:45 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 18:03:45 WARN session start: migration apply failed error="version 읽기 실패: version-file 파싱 실패: strconv.Atoi: parsing \"not-a-number\": invalid syntax" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultnil_ConfigProvider425847601/001
+2026/09/10 18:03:45 INFO teammateMode updated mode=auto in_tmux=false
+=== RUN   TestSessionStart_EnabledByDefault/provider_returning_nil_config
+2026/09/10 18:03:45 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultprovider_returning_nil_config1087845473/001
+2026/09/10 18:03:45 WARN configuration not available, proceeding with defaults session_id=t617-migration
+2026/09/10 18:03:45 WARN session start: migration apply failed error="version 읽기 실패: version-file 파싱 실패: strconv.Atoi: parsing \"not-a-number\": invalid syntax" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultprovider_returning_nil_config1087845473/001
+2026/09/10 18:03:45 INFO teammateMode updated mode=auto in_tmux=false
+=== RUN   TestSessionStart_EnabledByDefault/default_config_(key_missing)
+2026/09/10 18:03:45 INFO session started session_id=t617-migration cwd="" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultdefault_config_(key_missing)3308333427/001
+2026/09/10 18:03:45 WARN session start: migration apply failed error="version 읽기 실패: version-file 파싱 실패: strconv.Atoi: parsing \"not-a-number\": invalid syntax" project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_EnabledByDefaultdefault_config_(key_missing)3308333427/001
+2026/09/10 18:03:45 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_EnabledByDefault (0.87s)
+    --- PASS: TestSessionStart_EnabledByDefault/nil_ConfigProvider (0.26s)
+    --- PASS: TestSessionStart_EnabledByDefault/provider_returning_nil_config (0.29s)
+    --- PASS: TestSessionStart_EnabledByDefault/default_config_(key_missing) (0.31s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	2.808s
+EXIT=0

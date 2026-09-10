@@ -1,0 +1,56 @@
+# t613 follow-up increment 3 — isLoopbackHost accepted range on the GREEN-3 tree (RED-3 fa58df3f0 + ASCII-only guard)
+# Part A + Part C: overlay probes (probe test files + overlay JSON in the session scratchpad); Part C inputs built with chr(0x17F)
+$ GOMAXPROCS=2 go test -count=1 -timeout 120s -overlay <scratch>/probe3_overlay.json -run '^(TestT613LoopbackProbe2|TestT613FoldProbe)$' -v ./internal/web/
+exit=0
+=== RUN   TestT613FoldProbe
+    zz_t613_fold_probe_test.go:7: FOLD host="localhoſt" isLoopbackHost=false
+    zz_t613_fold_probe_test.go:7: FOLD host="localhoſt:3041" isLoopbackHost=false
+    zz_t613_fold_probe_test.go:7: FOLD host="LOCALHOſT" isLoopbackHost=false
+    zz_t613_fold_probe_test.go:7: FOLD host="localhost" isLoopbackHost=true
+    zz_t613_fold_probe_test.go:7: FOLD host="attacker.example.com" isLoopbackHost=false
+--- PASS: TestT613FoldProbe (0.00s)
+=== RUN   TestT613LoopbackProbe2
+    zz_t613_loopback_probe2_test.go:7: PROBE host="127.0.0.1:3041" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="127.0.0.1" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="127.1.2.3:3041" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="127.255.255.254" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="[::ffff:127.0.0.1]:3041" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="::ffff:127.0.0.1" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="::1" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="[::1]" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="[::1]:3041" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="localhost" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="localhost:3041" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="LOCALHOST" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="LocalHost:3041" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="Localhost:8080" isLoopbackHost=true
+    zz_t613_loopback_probe2_test.go:7: PROBE host="localhost." isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="LOCALHOST." isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="0.0.0.0" isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="0.0.0.0:8080" isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="10.0.0.5:8080" isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="attacker.example.com" isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="localhost.attacker.example.com" isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="LOCALHOST.attacker.example.com" isLoopbackHost=false
+    zz_t613_loopback_probe2_test.go:7: PROBE host="" isLoopbackHost=false
+--- PASS: TestT613LoopbackProbe2 (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.693s
+
+# Part B: committed table test + GLM reveal handler test (the second isLoopbackHost caller), verbose
+$ GOMAXPROCS=2 go test -count=1 -timeout 120s -run '^(TestIsLoopbackHost|TestGLMKeyRevealLoopbackOnly)$' -v ./internal/web/
+exit=0
+=== RUN   TestIsLoopbackHost
+--- PASS: TestIsLoopbackHost (0.00s)
+=== RUN   TestGLMKeyRevealLoopbackOnly
+=== RUN   TestGLMKeyRevealLoopbackOnly/loopback_returns_plaintext
+=== RUN   TestGLMKeyRevealLoopbackOnly/non-loopback_host_refused
+=== RUN   TestGLMKeyRevealLoopbackOnly/cross-site_refused
+=== RUN   TestGLMKeyRevealLoopbackOnly/GET_refused
+--- PASS: TestGLMKeyRevealLoopbackOnly (0.00s)
+    --- PASS: TestGLMKeyRevealLoopbackOnly/loopback_returns_plaintext (0.00s)
+    --- PASS: TestGLMKeyRevealLoopbackOnly/non-loopback_host_refused (0.00s)
+    --- PASS: TestGLMKeyRevealLoopbackOnly/cross-site_refused (0.00s)
+    --- PASS: TestGLMKeyRevealLoopbackOnly/GET_refused (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.481s

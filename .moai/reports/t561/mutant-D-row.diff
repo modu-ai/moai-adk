@@ -1,0 +1,13 @@
+diff --git a/internal/spec/lint_coverage_sibling_table.go b/internal/spec/lint_coverage_sibling_table.go
+index 172a2f430..6f8759a92 100644
+--- a/internal/spec/lint_coverage_sibling_table.go
++++ b/internal/spec/lint_coverage_sibling_table.go
+@@ -81,7 +81,7 @@ func siblingTableREQIDs(text string) []string {
+ 			if !strings.HasPrefix(row, "|") {
+ 				break
+ 			}
+-			if !tableRowACIDPattern.MatchString(row) {
++			if false && !tableRowACIDPattern.MatchString(row) { // MUTANT D: row condition removed
+ 				continue
+ 			}
+ 			cells := splitTableRow(row)

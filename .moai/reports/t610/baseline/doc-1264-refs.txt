@@ -1,0 +1,6 @@
+./go.mod:3:go 1.26.4
+./.moai/project/product.md:244:The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-test Go source files** and **~1000 test files**, organized into **46 internal/ top-level packages** (318 subpackages) + **2 pkg/ packages** (`models`, `version`) + **1 cmd** binary. The single binary embeds all Claude Code templates via `//go:embed all:templates` in `internal/template/embed.go` (no separate `embedded.go` is generated). Module path: `github.com/modu-ai/moai-adk` (Go 1.26.4).
+./.moai/project/product.md:300:- **Go 1.26.4**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
+./.moai/project/structure.md:132:├── go.mod                            # module github.com/modu-ai/moai-adk, go 1.26.4
+./.moai/project/codemaps/overview.md:6:**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.4
+./.moai/project/codemaps/modules.md:6:**모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.4

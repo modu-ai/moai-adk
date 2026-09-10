@@ -1,0 +1,11 @@
+# AC-GTS2-006 scoped package tests (internal/cli excluded per lead slot rule; no -run selector)
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+tree: e6ec2991e4ce028b83d2be0658844ddb3813a8dd
+shell env GOTOOLCHAIN: unset
+
+$ go test -count=1 -timeout 600s ./internal/web/... ./internal/update/... ./internal/goal/... ./pkg/...
+ok  	github.com/modu-ai/moai-adk/internal/web	19.832s
+ok  	github.com/modu-ai/moai-adk/internal/update	6.486s
+ok  	github.com/modu-ai/moai-adk/internal/goal	1.318s
+ok  	github.com/modu-ai/moai-adk/pkg/models	2.612s
+ok  	github.com/modu-ai/moai-adk/pkg/version	0.796s

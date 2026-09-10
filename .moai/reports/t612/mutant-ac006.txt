@@ -1,0 +1,6 @@
+=== RUN   TestAC006_DanglingSpecRefWarning
+    scanner_specref_test.go:73: expected DanglingSpecRef warning naming SPEC-X-001, got []
+--- FAIL: TestAC006_DanglingSpecRefWarning (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/mx	0.346s
+FAIL

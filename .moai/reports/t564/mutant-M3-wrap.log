@@ -1,0 +1,14 @@
+=== RUN   TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping
+    parser_duplicate_union_test.go:49: leaf = [{ID:AC-DUP-001-01.a Given: When: Then:cited here only as a cross-reference note RequirementIDs:[] Children:[]}], want one child carrying DUP-001-001
+--- FAIL: TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping (0.00s)
+=== RUN   TestParser_DuplicateID_UnionsMappingsOfEveryLine
+--- PASS: TestParser_DuplicateID_UnionsMappingsOfEveryLine (0.00s)
+=== RUN   TestParser_DuplicateID_DeclarationAboveStillReported
+--- PASS: TestParser_DuplicateID_DeclarationAboveStillReported (0.00s)
+=== RUN   TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage
+--- PASS: TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage (0.64s)
+=== RUN   TestLintDuplicateACID_NoDuplicateNoFinding
+--- PASS: TestLintDuplicateACID_NoDuplicateNoFinding (0.38s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	1.419s
+FAIL

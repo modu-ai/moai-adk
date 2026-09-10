@@ -4,7 +4,7 @@ title: "pre-commit go vet — run from each staged file's module root so monorep
 version: "0.1.0"
 status: completed
 created: 2026-09-04
-updated: 2026-09-04
+updated: 2026-09-10
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -43,6 +43,7 @@ Branch `t312-precommit-vet` @ `b6f478b1a` (read via `git show b6f478b1a`) implem
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-09-04 | 0.1.0 | Initial plan-phase artifacts (Tier M, card t237). Root cause verified against b9298de32. Reference patch b6f478b1a read and judged; adoption-by-re-authoring recorded in §A. |
+| 2026-09-10 | 0.1.0 | REQ-PVM-002 superseded by REQ-PVM-010 (card t554, GH #1641 + #1679, commit `4ac6c5913` on branch `WT-vet-module`). A staged `.go` file with no findable module root is now SKIPPED rather than vetted from the repo root: the fallback's "never less vet coverage" premise holds only when the repo root carries a `go.mod`, and in the module-less layout it produced a guaranteed spurious block carrying a false message. Coverage invariance, the pre-fix measurement (GH #1679 case T3), the mutation guard, and the two new regression tests are recorded in §C.1.1. Twin-edit discipline (REQ-PVM-006) held — both surfaces edited in the same commit. Documentation-only edit; `status` unchanged. |
 
 ## §C Requirements (GEARS)
 
@@ -50,7 +51,41 @@ Branch `t312-precommit-vet` @ `b6f478b1a` (read via `git show b6f478b1a`) implem
 
 **REQ-PVM-001** — **When** the pre-commit hook's fast subset runs with staged `.go` files present and `go` on PATH, the system shall determine each staged file's nearest enclosing module root (walking upward from the file's directory to the nearest directory containing `go.mod`) and shall execute `go vet` once per distinct module root, from within that module root, over the module-relative package paths of the staged files it owns.
 
-**REQ-PVM-002** — **When** a staged `.go` file has no findable module root (no `go.mod` at or above its directory up to the repo root), the system shall treat the repo root (`.`) as that file's module root. The worst case is therefore the previous behavior — never less vet coverage than before the fix.
+**REQ-PVM-002** — **[SUPERSEDED by REQ-PVM-010 — card t554, commit `4ac6c5913`, GH #1679 case T3]** — *(original text, retained verbatim for the audit trail; no longer in force)* — **When** a staged `.go` file has no findable module root (no `go.mod` at or above its directory up to the repo root), the system shall treat the repo root (`.`) as that file's module root. The worst case is therefore the previous behavior — never less vet coverage than before the fix.
+
+**REQ-PVM-010** *(supersedes REQ-PVM-002)* — **When** a staged `.go` file has no findable module root — no `go.mod` at or above its directory, up to and including the repo root — the system shall **skip** that file: it is excluded from every per-module package list and no `go vet` invocation is made on its behalf. **Where** the repo root does hold a `go.mod`, the upward walk returns `.` exactly as before and the file is vetted from the repo root unchanged. **When** every staged `.go` file is outside any module, `MODROOTS` is empty, the per-module loop never runs, and the hook shall exit 0.
+
+Delivery vehicle: the `_moai_module_root()` helper already signals "no module found anywhere up to the repo root" with a non-zero return; both call sites discarded that signal with `|| _mr="."` / `|| _m="."`, and those are now `|| continue`. The twin-edit discipline of **REQ-PVM-006** still binds — `internal/cli/hook_install_precommit.go` (the `preCommitHookContent` constant) and `internal/template/templates/.git_hooks/pre-commit` were edited byte-identically in the same commit, enforced by `TestPreCommitTemplateMatchesConstant`.
+
+#### §C.1.1 Supersession record for REQ-PVM-002 (card t554)
+
+**Why the original rationale does not hold.** REQ-PVM-002's justification was "the worst case is the previous behavior — never less vet coverage". That premise holds **only when the repository root carries a `go.mod`**. Where the root holds no module, falling back to it cannot produce vet coverage at all: `go vet ./<dir>` from a module-less root always exits non-zero with `cannot find main module`, and the hook reported that module-resolution failure as a vet finding — which is false. So in exactly the layout this SPEC exists to fix, the fallback produced a guaranteed spurious block carrying a false message, not "the previous behavior" as a safe floor.
+
+**Coverage invariance.** Where the repo root DOES hold a `go.mod`, the upward walk returns `.` exactly as before, so single-module layouts keep byte-identical behaviour and full vet coverage. Where it does not, no module could have vetted the file at all, so skipping loses zero coverage and removes only the false block. When every staged file is outside any module, `MODROOTS` is empty and the per-module loop never runs, so the hook exits 0.
+
+**Measurement (pre-fix reproduction).** Reproduced against the PRE-FIX constant through the existing test harness (`runPreCommitHook`, `internal/cli/hook_install_precommit_test.go`). Fixture: repo root holds no `go.mod`, the module lives at `submod/`, and the staged file is `scripts/tool.go` (gofmt-clean, trivially vet-clean). This is case **T3** of the verification matrix in GH #1679, whose expected value is `exit 0` (skip, no false block).
+
+```
+=== RUN   TestProbe_T554_OutsideAnyModule
+    PROBE T3 exit=1 stderr=
+        [pre-commit] FAILED: go vet reported issues in the staged packages (module root: .).
+        [pre-commit] Hint: cd . && go vet ./scripts
+        [pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit
+--- FAIL: TestProbe_T554_OutsideAnyModule (1.68s)
+```
+
+**Mutation guard** (proves the new regression test is not vacuously green) — restoring the `|| _mr="."` fallback turns it red:
+
+```
+--- FAIL: TestPreCommitHook_OutsideAnyModuleSkips (0.42s)
+    hook_install_precommit_test.go:674: expected exit 0 (file outside any module is skipped), got 1
+        [pre-commit] FAILED: go vet reported issues in the staged packages (module root: .).
+```
+
+**Replacement's delivery vehicle — two new regression tests** (`internal/cli/hook_install_precommit_test.go`):
+
+- `TestPreCommitHook_OutsideAnyModuleSkips` — pins T3 (exit 0, no `FAILED` line emitted).
+- `TestPreCommitHook_RootModuleStillVets` — the vacuous-green guard: with a `go.mod` AT the repo root, a real vet diagnostic must still block and name `module root: .`.
 
 **REQ-PVM-003** — **When** a per-module `go vet` invocation fails, the hook's failure message shall name the module root the vet ran from (form: `module root: <path>`), and the remediation hint shall carry the reproduction shape `cd <module-root> && go vet <packages>` so the user can reproduce the failure in their own shell.
 
@@ -74,7 +109,8 @@ Branch `t312-precommit-vet` @ `b6f478b1a` (read via `git show b6f478b1a`) implem
 
 ## §D Success Criteria
 
-- All 9 requirements pass; the twin pair is byte-identical on every commit of the run phase (REQ-PVM-006 held continuously, not just at the end).
+- *(Closure record of the ORIGINAL run — scoped to the nine requirements as they stood at 2026-09-04: REQ-PVM-001..009.)* All 9 requirements pass; the twin pair is byte-identical on every commit of the run phase (REQ-PVM-006 held continuously, not just at the end).
+  - REQ-PVM-010 is NOT in that count: it supersedes REQ-PVM-002 under card t554 and carries its own criteria, measurement, and mutation guard in §C.1.1. Nothing about its outcome is asserted here — read §C.1.1 for its evidence.
 - Both contrast tests exist and are adopted per the two-cell discipline: verbatim RED output + exit code + fixture + tree SHA captured against the PRE-EDIT constant before the twin edit lands, then GREEN after (verification-completeness §2).
 - The 5 preserved-behavior guard tests (§C.4) stay green throughout.
 - `go test ./internal/cli/...` exit 0 on the run-phase tree (timeout floor 600s per the internal/cli budget; exit code observed unpiped).
