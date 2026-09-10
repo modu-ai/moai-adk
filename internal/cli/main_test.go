@@ -52,10 +52,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
@@ -186,6 +188,138 @@ func sandboxProfileBaseDir() func() {
 	}
 }
 
+// HOME SANDBOX (card t661).
+//
+// userHomeDirFn (glm_tools.go) resolves HOME-first through paths.Home(), so
+// under `go test` it returns the developer's real home unless a test overrides
+// it. Code paths several frames below a cobra RunE write there:
+// ensureGlobalSettingsEnv (update.go) runs os.RemoveAll on
+// <home>/.claude/hooks/moai and rewrites <home>/.claude/settings.json, and it
+// is reached from the tail of the update template sync. A test author driving
+// `moai update` has no local signal that the run touches $HOME — the same
+// situation sandboxProfileBaseDir closes for the profile ledger — so the net is
+// package-wide rather than per-test.
+//
+// The wrapper redirects ONLY the real home. It captures the real home once,
+// before any test runs, and passes every other result through unchanged: a
+// test that sets HOME (t.Setenv) or replaces userHomeDirFn keeps exactly the
+// behavior it has today on every platform. The capture deliberately uses
+// paths.Home() — the function userHomeDir delegates to — and never
+// os.UserHomeDir(), which ignores HOME on Windows and would misjudge a
+// HOME-overridden test as the real home there.
+//
+// glmcred.HomeDirFn (glm.go init) and kanban.HomeDirFn (todo.go init) are
+// closures that call userHomeDirFn at call time, so they are covered too.
+// Production sites that call paths.Home() or os.UserHomeDir() directly are
+// NOT covered by this net.
+
+// homeSandboxEnv and realHomeEnv carry the sandbox path and the captured real
+// home from a test process to any test binary it re-executes (see
+// profileBaseDirEnv for the helper-subprocess pattern). The real home travels
+// with the sandbox so a child whose HOME was overridden still compares against
+// the parent's real home rather than against its own HOME.
+const (
+	homeSandboxEnv = "MOAI_CLI_TEST_HOME_SANDBOX"
+	realHomeEnv    = "MOAI_CLI_TEST_REAL_HOME"
+)
+
+// capturedRealHome is the home paths.Home() resolved to when TestMain started,
+// before any test could change HOME. Empty when resolution failed.
+var capturedRealHome string
+
+// homeSandboxDir is the directory userHomeDirFn returns in place of the real
+// home for the rest of the package run.
+var homeSandboxDir string
+
+// homeRedirectLogOnce makes the redirect announcement fire at most once per
+// process. homeRedirectStderr is the stderr captured in TestMain, so a test
+// that swaps os.Stderr for a pipe does not receive the line.
+var (
+	homeRedirectLogOnce sync.Once
+	homeRedirectStderr  *os.File
+)
+
+// homeRedirectingFn wraps orig so that a result equal to capturedRealHome is
+// replaced by homeSandboxDir. Every other result — including errors — passes
+// through untouched. announce controls the one-time stderr line that lets a
+// run prove the net actually fired.
+func homeRedirectingFn(orig func() (string, error), announce bool) func() (string, error) {
+	return func() (string, error) {
+		home, err := orig()
+		if err != nil || capturedRealHome == "" || filepath.Clean(home) != filepath.Clean(capturedRealHome) {
+			return home, err
+		}
+		if announce {
+			homeRedirectLogOnce.Do(func() {
+				fmt.Fprintf(homeRedirectStderr,
+					"moai-cli-test: userHomeDirFn redirected real home to sandbox %s\n", homeSandboxDir)
+			})
+		}
+		return homeSandboxDir, nil
+	}
+}
+
+// sandboxUserHomeDir installs homeRedirectingFn over userHomeDirFn for the
+// whole package run and returns the restore function.
+//
+// t.TempDir() is unavailable in TestMain (no *testing.T), so the directory is
+// created and removed manually, mirroring sandboxProfileBaseDir.
+func sandboxUserHomeDir() func() {
+	orig := userHomeDirFn
+	homeRedirectStderr = os.Stderr
+
+	// A re-executed child adopts the parent's sandbox and real home, removes
+	// nothing, and stays silent: helper bodies end in os.Exit (see
+	// sandboxProfileBaseDir), and several helpers' combined output is read by
+	// the parent test, so an extra stderr line there would be noise the parent
+	// never asked for. The parent process is the one that proves the net fired.
+	if inherited := os.Getenv(homeSandboxEnv); inherited != "" {
+		capturedRealHome = os.Getenv(realHomeEnv)
+		homeSandboxDir = inherited
+		userHomeDirFn = homeRedirectingFn(orig, false)
+		return func() { userHomeDirFn = orig }
+	}
+
+	if resolved, err := paths.Home(); err == nil {
+		capturedRealHome = resolved
+	}
+
+	dir, err := os.MkdirTemp("", "moai-cli-home-")
+	if err != nil {
+		// Fall back to a path under the OS temp dir rather than silently
+		// leaving the real home in play.
+		dir = filepath.Join(os.TempDir(), "moai-cli-home-fallback")
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	homeSandboxDir = dir
+	userHomeDirFn = homeRedirectingFn(orig, true)
+	_ = os.Setenv(homeSandboxEnv, dir)
+	_ = os.Setenv(realHomeEnv, capturedRealHome)
+	return func() {
+		userHomeDirFn = orig
+		_ = os.Unsetenv(homeSandboxEnv)
+		_ = os.Unsetenv(realHomeEnv)
+		_ = os.RemoveAll(dir)
+	}
+}
+
+// requireNotRealHome fails the test when home is the developer's real home as
+// captured in TestMain (card t661). Tests that drive the update template sync
+// call it before the drive, so a path change that lets them reach the
+// <home>/.claude sink cannot silently operate on the real home.
+func requireNotRealHome(t *testing.T, home string) {
+	t.Helper()
+	if capturedRealHome == "" {
+		t.Fatalf("TestMain captured no real home (paths.Home() failed); the " +
+			"real-home comparison would be vacuous")
+	}
+	if filepath.Clean(home) == filepath.Clean(capturedRealHome) {
+		t.Fatalf("home resolves to the real home %q: this test drives code that "+
+			"can rewrite <home>/.claude, so it must run against an injected or "+
+			"sandboxed home (card t661)", home)
+	}
+}
+
 // RESIDUE GUARD (SPEC-CLI-TEST-CWD-ISOLATION-001 REQ-3).
 //
 // Go test binaries run with cwd = the package directory, so any state write
@@ -212,6 +346,7 @@ func sandboxProfileBaseDir() func() {
 // out and pass vacuously.
 func TestMain(m *testing.M) {
 	restoreProfileBaseDir := sandboxProfileBaseDir()
+	restoreUserHomeDir := sandboxUserHomeDir()
 
 	// Pin the watched path from the entry cwd (absolute) so a test that chdirs
 	// cannot move the locus out from under the post-run check.
@@ -240,6 +375,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 
+	restoreUserHomeDir()
 	restoreProfileBaseDir()
 	os.Exit(code)
 }
@@ -279,6 +415,60 @@ func TestProfileBaseDirIsSandboxed(t *testing.T) {
 		t.Fatalf("profile.GetBaseDir() = %q, which is the real user profile "+
 			"base. Tests in this package must never resolve to it.", got)
 	}
+}
+
+// TestUserHomeDirFnSandboxesRealHome is the guard for sandboxUserHomeDir
+// (card t661). It pins both branches of the wrapper without touching the real
+// home: nothing is read from or written under either path.
+//
+// Branch 1 fails if the TestMain call is removed — userHomeDirFn then returns
+// the real home. Its expected value is resolved independently here via
+// paths.Home() rather than read from capturedRealHome, so deleting the call
+// (which also leaves capturedRealHome empty) still fails on the load-bearing
+// assertion instead of on a precondition.
+//
+// Branch 2 fails if the wrapper redirects unconditionally — a HOME-overriding
+// test would then silently lose its own temp home.
+//
+// It changes HOME and relies on userHomeDirFn, so it must not call t.Parallel().
+func TestUserHomeDirFnSandboxesRealHome(t *testing.T) {
+	t.Run("real_home_redirects_to_sandbox", func(t *testing.T) {
+		realHome, err := paths.Home()
+		if err != nil {
+			t.Fatalf("paths.Home(): %v", err)
+		}
+		got, err := userHomeDirFn()
+		if err != nil {
+			t.Fatalf("userHomeDirFn(): %v", err)
+		}
+		if filepath.Clean(got) == filepath.Clean(realHome) {
+			t.Fatalf("userHomeDirFn() = %q, which is the real home. TestMain must "+
+				"call sandboxUserHomeDir() before m.Run(); without it, any test "+
+				"reaching ensureGlobalSettingsEnv deletes <home>/.claude/hooks/moai "+
+				"and rewrites <home>/.claude/settings.json.", got)
+		}
+		if capturedRealHome != realHome {
+			t.Fatalf("HOME changed since TestMain started (captured %q, now %q): "+
+				"an earlier test leaked its HOME override, so this branch cannot "+
+				"be interpreted", capturedRealHome, realHome)
+		}
+		if homeSandboxDir == "" || got != homeSandboxDir {
+			t.Fatalf("userHomeDirFn() = %q; want the sandbox %q", got, homeSandboxDir)
+		}
+	})
+
+	t.Run("overridden_home_passes_through", func(t *testing.T) {
+		tmp := t.TempDir()
+		t.Setenv("HOME", tmp)
+		got, err := userHomeDirFn()
+		if err != nil {
+			t.Fatalf("userHomeDirFn(): %v", err)
+		}
+		if got != tmp {
+			t.Fatalf("userHomeDirFn() = %q with HOME=%q; want the overridden HOME "+
+				"returned unchanged — the sandbox must redirect only the real home", got, tmp)
+		}
+	})
 }
 
 // TestWarmUpReachability is the REQ-CFS-004 guard. It runs serially (no
