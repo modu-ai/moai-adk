@@ -1,0 +1,96 @@
+=== RUN   TestCodexBlankReview_BlankDiscriminator
+--- PASS: TestCodexBlankReview_BlankDiscriminator (0.00s)
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/i-empty
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/ii-whitespace
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/ii-nbsp
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iii-zwsp
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iii-zwsp-run
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iii-zw-mix
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iii-zw-plus-ws
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iv-zw-lead
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iv-zw-trail
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/iv-zw-inner
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/v-normal-clean
+=== RUN   TestCodexBlankReview_ZeroWidthDiscriminator/v-normal-finding
+--- PASS: TestCodexBlankReview_ZeroWidthDiscriminator (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/i-empty (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/ii-whitespace (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/ii-nbsp (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iii-zwsp (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iii-zwsp-run (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iii-zw-mix (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iii-zw-plus-ws (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iv-zw-lead (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iv-zw-trail (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/iv-zw-inner (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/v-normal-clean (0.00s)
+    --- PASS: TestCodexBlankReview_ZeroWidthDiscriminator/v-normal-finding (0.00s)
+=== RUN   TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass
+=== RUN   TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/exactly-empty
+=== RUN   TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/space-only
+=== RUN   TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/newline-only
+=== RUN   TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/mixed-whitespace
+--- PASS: TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass (0.00s)
+    --- PASS: TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/exactly-empty (0.00s)
+    --- PASS: TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/space-only (0.00s)
+    --- PASS: TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/newline-only (0.00s)
+    --- PASS: TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass/mixed-whitespace (0.00s)
+=== RUN   TestCodexBlankReview_GuardKeepsSharedDiscriminator
+--- PASS: TestCodexBlankReview_GuardKeepsSharedDiscriminator (0.00s)
+=== RUN   TestCodexBlankReview_AC002_RealCleanReviewStillPasses
+--- PASS: TestCodexBlankReview_AC002_RealCleanReviewStillPasses (0.00s)
+=== RUN   TestCodexBlankReview_ZeroWidthBodyDoesNotSynthesizePass
+--- PASS: TestCodexBlankReview_ZeroWidthBodyDoesNotSynthesizePass (0.00s)
+=== RUN   TestCodexBlankReview_ZeroWidthInsideRealReviewStillPasses
+--- PASS: TestCodexBlankReview_ZeroWidthInsideRealReviewStillPasses (0.00s)
+=== RUN   TestCodexBlankReview_AC003_BlankStructuredReviewDoesNotShadowAgentMessage
+--- PASS: TestCodexBlankReview_AC003_BlankStructuredReviewDoesNotShadowAgentMessage (0.00s)
+=== RUN   TestCodexBlankReview_AC004_UnavailableBackendStillFailsOpen
+--- PASS: TestCodexBlankReview_AC004_UnavailableBackendStillFailsOpen (0.00s)
+=== RUN   TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable
+    codex_blank_review_test.go:347: fail-open cause: codex review output was blank: no verdict text was produced
+=== RUN   TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable/state-c
+--- PASS: TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable (0.00s)
+    --- PASS: TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable/state-c (0.00s)
+=== RUN   TestCodexBlankReview_AC006_BlankBodyIsNeverFail
+=== RUN   TestCodexBlankReview_AC006_BlankBodyIsNeverFail/exactly-empty
+    codex_blank_review_test.go:395: fail-open cause: codex review output was blank: no verdict text was produced
+=== RUN   TestCodexBlankReview_AC006_BlankBodyIsNeverFail/space-only
+    codex_blank_review_test.go:395: fail-open cause: codex review output was blank: no verdict text was produced
+=== RUN   TestCodexBlankReview_AC006_BlankBodyIsNeverFail/newline-only
+    codex_blank_review_test.go:395: fail-open cause: codex review output was blank: no verdict text was produced
+=== RUN   TestCodexBlankReview_AC006_BlankBodyIsNeverFail/mixed-whitespace
+    codex_blank_review_test.go:395: fail-open cause: codex review output was blank: no verdict text was produced
+--- PASS: TestCodexBlankReview_AC006_BlankBodyIsNeverFail (0.00s)
+    --- PASS: TestCodexBlankReview_AC006_BlankBodyIsNeverFail/exactly-empty (0.00s)
+    --- PASS: TestCodexBlankReview_AC006_BlankBodyIsNeverFail/space-only (0.00s)
+    --- PASS: TestCodexBlankReview_AC006_BlankBodyIsNeverFail/newline-only (0.00s)
+    --- PASS: TestCodexBlankReview_AC006_BlankBodyIsNeverFail/mixed-whitespace (0.00s)
+=== RUN   TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput
+--- PASS: TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput (0.00s)
+=== RUN   TestCodexBlankReview_AC008_NonBlankUnrecognizedBodyUnchanged
+--- PASS: TestCodexBlankReview_AC008_NonBlankUnrecognizedBodyUnchanged (0.00s)
+=== RUN   TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne
+=== RUN   TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/review:_real_then_blank
+=== RUN   TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/review:_blank_then_real_(kills_first-wins)
+=== RUN   TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/agent:_real_then_blank
+=== RUN   TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/agent:_blank_then_real_(kills_first-wins)
+--- PASS: TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne (0.00s)
+    --- PASS: TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/review:_real_then_blank (0.00s)
+    --- PASS: TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/review:_blank_then_real_(kills_first-wins) (0.00s)
+    --- PASS: TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/agent:_real_then_blank (0.00s)
+    --- PASS: TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne/agent:_blank_then_real_(kills_first-wins) (0.00s)
+=== RUN   TestCodexBlankReview_M5_InconclusiveDoesNotBlockTheConvergenceLayer
+--- PASS: TestCodexBlankReview_M5_InconclusiveDoesNotBlockTheConvergenceLayer (0.00s)
+=== RUN   TestCodexBlankReview_ThreeStateControlMatrix
+=== RUN   TestCodexBlankReview_ThreeStateControlMatrix/A-blank
+    codex_blank_review_test.go:542: fail-open cause: codex review output was blank: no verdict text was produced
+=== RUN   TestCodexBlankReview_ThreeStateControlMatrix/B-reviewed-zero-findings
+=== RUN   TestCodexBlankReview_ThreeStateControlMatrix/C-backend-unavailable
+--- PASS: TestCodexBlankReview_ThreeStateControlMatrix (0.00s)
+    --- PASS: TestCodexBlankReview_ThreeStateControlMatrix/A-blank (0.00s)
+    --- PASS: TestCodexBlankReview_ThreeStateControlMatrix/B-reviewed-zero-findings (0.00s)
+    --- PASS: TestCodexBlankReview_ThreeStateControlMatrix/C-backend-unavailable (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.152s
