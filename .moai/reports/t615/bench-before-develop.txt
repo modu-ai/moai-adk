@@ -1,0 +1,18 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/modu-ai/moai-adk/internal/merge
+cpu: Apple M4 Max
+BenchmarkAuditDiffLinesIdentical/100-16         	   32419	     40002 ns/op	   93184 B/op	     102 allocs/op
+BenchmarkAuditDiffLinesIdentical/100-16         	   28640	     39132 ns/op	   93184 B/op	     102 allocs/op
+BenchmarkAuditDiffLinesIdentical/100-16         	   27085	     37871 ns/op	   93184 B/op	     102 allocs/op
+BenchmarkAuditDiffLinesIdentical/1000-16        	     477	   2945975 ns/op	 8224804 B/op	    1002 allocs/op
+BenchmarkAuditDiffLinesIdentical/1000-16        	     429	   3091442 ns/op	 8224801 B/op	    1002 allocs/op
+BenchmarkAuditDiffLinesIdentical/1000-16        	     411	   2734732 ns/op	 8224786 B/op	    1002 allocs/op
+BenchmarkAuditDiffLinesIdentical/2000-16        	     128	   8682690 ns/op	32833553 B/op	    2002 allocs/op
+BenchmarkAuditDiffLinesIdentical/2000-16        	     121	   9344981 ns/op	32833614 B/op	    2002 allocs/op
+BenchmarkAuditDiffLinesIdentical/2000-16        	     127	   9331153 ns/op	32833576 B/op	    2002 allocs/op
+BenchmarkAuditDiffLinesIdentical/2001-16        	  383198	      3138 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAuditDiffLinesIdentical/2001-16        	  390344	      3169 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAuditDiffLinesIdentical/2001-16        	  388370	      3072 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/merge	19.679s

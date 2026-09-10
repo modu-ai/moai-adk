@@ -1,0 +1,7 @@
+snapshot: before widened internal/hook package run
+2026-09-10T09:04:02Z
+18:04  up 2 days, 11:57, 15 users, load averages: 27.71 18.88 17.93
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1494)
+observer control - the ps process itself: 1
+go test/.test lines (zsh/python excluded): 0
