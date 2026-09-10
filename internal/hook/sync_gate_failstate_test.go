@@ -38,6 +38,7 @@ const (
 	sgfBaseSubject = "feat(fx): base commit"
 	sgfSyncSubject = "docs(fx): sync-phase artifacts"
 	sgfRecordName  = "sync-quality-gate.last"
+	sgfPayloadName = "sync-quality-gate.payload"
 	sgfBlockingEnv = "MOAI_SYNC_GATE_BLOCKING"
 	sgfStaleAge    = 120 * time.Second
 	sgfRunGuard    = 90 * time.Second
@@ -62,6 +63,10 @@ type sgfStubSpec struct {
 	defaultExit int
 	writeMarker bool // create the marker file before sleeping or exiting
 	sleep       bool // sleep in a self-bounded loop (at most 30 x 1s)
+	// probePayload (AC-013 S2 only): on every invocation, append "present" or
+	// "absent" for the payload file to the fixture probe file. Unset, the stub
+	// script bytes are unchanged for every other row.
+	probePayload bool
 }
 
 type sgfFixture struct {
@@ -73,6 +78,7 @@ type sgfFixture struct {
 	gtmp     string
 	counter  string
 	marker   string
+	probe    string
 	script   string
 }
 
@@ -94,6 +100,7 @@ func newSGFFixture(t *testing.T, o sgfOpts) *sgfFixture {
 		gtmp:    filepath.Join(tmp, "tmp"),
 		counter: filepath.Join(tmp, "stub.count"),
 		marker:  filepath.Join(tmp, "stub.marker"),
+		probe:   filepath.Join(tmp, "stub.probe"),
 		script:  filepath.Join(sgfRepoRoot(t), ".claude", "hooks", "moai", "sync-phase-quality-gate.sh"),
 	}
 	for _, d := range []string{f.repo, f.stubBin, f.home, f.gtmp} {
@@ -158,6 +165,9 @@ func (f *sgfFixture) setStub(s sgfStubSpec) {
 	var b strings.Builder
 	b.WriteString("#!/bin/bash\n")
 	fmt.Fprintf(&b, "echo 1 >> '%s'\n", f.counter)
+	if s.probePayload {
+		fmt.Fprintf(&b, "if [ -e '%s' ]; then echo present >> '%s'; else echo absent >> '%s'; fi\n", f.payloadPath(), f.probe, f.probe)
+	}
 	if s.writeMarker {
 		fmt.Fprintf(&b, ": > '%s'\n", f.marker)
 	}
@@ -203,6 +213,8 @@ func (f *sgfFixture) count() int { return readCounter(f.t, f.counter) }
 func (f *sgfFixture) stateDir() string { return filepath.Join(f.repo, ".moai", "state") }
 
 func (f *sgfFixture) recordPath() string { return filepath.Join(f.stateDir(), sgfRecordName) }
+
+func (f *sgfFixture) payloadPath() string { return filepath.Join(f.stateDir(), sgfPayloadName) }
 
 func (f *sgfFixture) writeRecord(content string) {
 	f.t.Helper()
@@ -742,6 +754,118 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
 		}
 		if n := f.count(); n != before3 {
 			t.Errorf("%s: call 3 ran the checks (stub %d -> %d)", tag, before3, n)
+		}
+	})
+	// S2: while an invocation runs the checks, the stored payload is already gone.
+	t.Run("S2", func(t *testing.T) {
+		tag := "AC-013 S2 [" + rgClass + "]"
+		f := newSGFFixture(t, sgfOpts{vetExit: 1})
+		f.setStub(sgfStubSpec{exits: map[string]int{"vet": 1, "build": 0}, probePayload: true})
+		out1, _ := f.run("{}")
+		if !sgfHasBlock(out1) {
+			t.Errorf("%s: call 1 is not a block; stdout=%q", tag, out1)
+		}
+		if err := os.Remove(f.recordPath()); err != nil {
+			t.Fatalf("%s: remove record: %v", tag, err)
+		}
+		if _, err := os.Stat(f.payloadPath()); err != nil {
+			t.Fatalf("%s setup: payload file does not exist before call 2 (%v); the row cannot be interpreted", tag, err)
+		}
+		if err := os.WriteFile(f.probe, nil, 0o644); err != nil {
+			t.Fatalf("%s: empty probe file: %v", tag, err)
+		}
+		before2 := f.count()
+		out2, _ := f.run("{}")
+		delta2 := f.count() - before2
+		raw, err := os.ReadFile(f.probe)
+		if err != nil {
+			t.Fatalf("%s: read probe file: %v", tag, err)
+		}
+		obs := strings.Fields(string(raw))
+		t.Logf("%s call 2 stub delta=%d observations=%v stdout=%q", tag, delta2, obs, out2)
+		if len(obs) == 0 {
+			t.Errorf("%s: the probe holds no observation from call 2 (stub delta %d); the checks never ran — a gap, not a pass", tag, delta2)
+		}
+		present := 0
+		for _, o := range obs {
+			switch o {
+			case "absent":
+			case "present":
+				present++
+			default:
+				t.Errorf("%s: unexpected probe observation %q", tag, o)
+			}
+		}
+		if present != 0 {
+			t.Errorf("%s: %d of %d stub invocation(s) during call 2 saw the payload file present; want every observation absent", tag, present, len(obs))
+		}
+	})
+	// S3: after a partial write (payload move refused, fail record written), the
+	// stale call-1 payload is not re-delivered; call 3 re-runs the checks.
+	t.Run("S3", func(t *testing.T) {
+		tag := "AC-013 S3 [" + rgClass + "]"
+		if runtime.GOOS == "windows" {
+			t.Skip("S3 installs a POSIX mv shim first on PATH")
+		}
+		f := newSGFFixture(t, sgfOpts{vetExit: 1})
+		head := f.rev("HEAD")
+		out1, _ := f.run("{}")
+		if !sgfHasBlock(out1) {
+			t.Errorf("%s: call 1 is not a block; stdout=%q", tag, out1)
+		}
+		if err := os.Remove(f.recordPath()); err != nil {
+			t.Fatalf("%s: remove record: %v", tag, err)
+		}
+		realMv, err := exec.LookPath("mv")
+		if err != nil {
+			t.Fatalf("%s: resolve system mv before installing the shim: %v", tag, err)
+		}
+		if realMv, err = filepath.Abs(realMv); err != nil {
+			t.Fatalf("%s: absolute system mv path: %v", tag, err)
+		}
+		shimLog := filepath.Join(filepath.Dir(f.counter), "mv-shim.log")
+		shim := filepath.Join(f.stubBin, "mv")
+		shimBody := fmt.Sprintf("#!/bin/bash\nlast=\nfor a in \"$@\"; do last=$a; done\nif [ \"$last\" = '%s' ]; then echo \"refused $last\" >> '%s'; exit 1; fi\nexec '%s' \"$@\"\n",
+			f.payloadPath(), shimLog, realMv)
+		if err := os.WriteFile(shim, []byte(shimBody), 0o755); err != nil {
+			t.Fatalf("%s: install mv shim: %v", tag, err)
+		}
+		before2 := f.count()
+		out2, _ := f.run("{}")
+		delta2 := f.count() - before2
+		if err := os.Remove(shim); err != nil {
+			t.Fatalf("%s: remove mv shim: %v", tag, err)
+		}
+		logRaw, _ := os.ReadFile(shimLog)
+		refused := strings.Count(string(logRaw), "refused "+f.payloadPath())
+		t.Logf("%s call 2 stub delta=%d refused-moves=%d stdout=%q", tag, delta2, refused, out2)
+		// Reachability, asserted separately: a failure here is a gap, never S3 passing.
+		if refused < 1 {
+			t.Errorf("%s setup: the shim logged no refused move to %s during call 2; the run cannot be interpreted", tag, f.payloadPath())
+		}
+		if delta2 < 1 {
+			t.Errorf("%s setup: call 2 stub count did not increase (delta %d)", tag, delta2)
+		}
+		if rec, ok := f.readRecord(tag); ok && rec != head+" fail" {
+			t.Errorf("%s setup: record after call 2 = %q; want %q", tag, rec, head+" fail")
+		}
+		if t.Failed() {
+			return
+		}
+		if _, err := os.Stat(f.payloadPath()); err == nil {
+			t.Errorf("%s: a payload file exists after call 2; want none", tag)
+		} else if !os.IsNotExist(err) {
+			t.Errorf("%s: stat payload after call 2: %v", tag, err)
+		}
+		before3 := f.count()
+		out3, _ := f.run("{}")
+		delta3 := f.count() - before3
+		t.Logf("%s call 3 stub delta=%d stdout=%q", tag, delta3, out3)
+		if delta3 < 1 {
+			t.Errorf("%s: call 3 stub count unchanged (delta %d); want increased — the checks must re-run", tag, delta3)
+		}
+		if !sgfHasBlock(out3) {
+			t.Errorf("%s: call 3 stdout is not a block; stdout=%q", tag, out3)
 		}
 	})
 }
