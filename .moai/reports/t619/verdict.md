@@ -122,3 +122,16 @@ settings.json.tmpl 권한 영역의 항목 집합을 커밋본 allow+deny 와 `c
 
 - 수리 방향: **YAML 을 settings.json 에 맞춤** (Grep deny 4개 포함 삭제. 적용 권한 변화 0)
 - 드리프트 검사 위치: **make build 선행 + CI** (agents-emit-check 선례, 읽기 전용)
+
+plan 제안 검토 뒤 받은 추가 결정: 집합 비교, 거짓 진술 전수 정정, 워킹 트리 settings.json 판독.
+
+## 8. plan 감사 경과와 오케스트레이터 직접 확인 (2026-09-10)
+
+SPEC-TOOLPOLICY-DRIFT-GUARD-001 plan 감사는 1회차 FAIL 0.71, 2회차 FAIL 0.79(Tier M 상한 2회 도달, 운영자가 3회차 1회 승인), 3회차 FAIL 0.89(blocking D21 1건)였다. 운영자는 "지금 고치고 진행"을 골랐고, v0.1.3 의 D21-D23 수정은 독립 재감사 없이 오케스트레이터가 아래를 직접 확인했다.
+
+- lint: `moai spec lint SPEC-TOOLPOLICY-DRIFT-GUARD-001` → `0 error(s), 5 warning(s)` (경고는 한국어 요구 문장의 ModalityUnjudged).
+- 이스케이프·Cf 스캔: 다섯 파일 모두 `(0, 0)`, 대조군 `(1, 1)`.
+- D21 fixture 네 쌍(acceptance.md AC-TDG-005): 양쪽 고유 집합이 같고 어긋나는 규칙은 하나뿐임을 쌍마다 대조했다. allow 중복(Read×2), ask 중복(WebFetch×2, YAML 에도 ask WebFetch), deny 중복(Bash(rm)×2), 겹침(Read 가 allow 와 deny 양쪽, YAML 에도 같은 선언). 두 뮤턴트가 각자 자기 쪽 하위 테스트만 붉게 만든다는 서술도 이 구성과 논리적으로 맞다.
+- D22 고정 fixture `{"permissions":{"allow":["Read"],"deny":["Bash(rm -rf /:*)"],}}`: 괄호 2:2·대괄호 2:2, Python `json.loads` 는 `Illegal trailing comma` 로 거부. 스크래치 루트에서 `moai tool-policy build --local-only` 출력은 `permissions object parse: invalid character '}' looking for beginning of object key string` — 권한 블록 위치는 찾고 해석 단계에서 실패한다. 대조군(쉼표만 뺀 같은 JSON)은 `allow=108 ask=0 deny=60 env_gated_skipped=5` 로 정상 생성.
+
+갭: 뮤턴트와 새 비교 함수는 아직 코드가 없어 실행하지 않았다. 위 확인은 fixture 구성과 생성기 경로에 대한 것이며, plan-auditor 판정을 대신하지 않는다.
