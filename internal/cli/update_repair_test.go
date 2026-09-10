@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -281,6 +282,44 @@ func TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors(t *testing.T) {
 
 		if err := applyWizardConfig(root, result()); err == nil {
 			t.Errorf("applyWizardConfig returned nil when system.yaml could not be read or written")
+		}
+	})
+
+	// The directory fixture above fails at the read, so it never reaches the
+	// write. Here the file stays readable and only its directory refuses new
+	// entries, which isolates the write-error branch.
+	t.Run("unwritable_directory_is_reported", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("directory write permission bits are not enforced on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory write permission")
+		}
+		root := setupSectionsDir(t)
+		sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+		systemPath := filepath.Join(sectionsDir, defs.SystemYAML)
+		const valid = "moai:\n  model_policy: low\n"
+		if err := os.WriteFile(systemPath, []byte(valid), defs.FilePerm); err != nil {
+			t.Fatalf("write fixture: %v", err)
+		}
+		if err := os.Chmod(sectionsDir, 0o500); err != nil {
+			t.Fatalf("make sections dir read-only: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(sectionsDir, defs.DirPerm) })
+		// Reachability: the read must still succeed, or this is the case above.
+		if _, err := os.ReadFile(systemPath); err != nil {
+			t.Fatalf("fixture system.yaml is not readable, so the read fails before the write: %v", err)
+		}
+
+		err := applyWizardConfig(root, result())
+		if err == nil {
+			t.Fatalf("applyWizardConfig returned nil when system.yaml could not be written")
+		}
+		if !strings.Contains(err.Error(), "write system.yaml") {
+			t.Errorf("error = %v, want the system.yaml write failure", err)
+		}
+		if data, _ := os.ReadFile(systemPath); string(data) != valid {
+			t.Errorf("system.yaml changed despite the failed write: %q", data)
 		}
 	})
 }

@@ -60,17 +60,16 @@
 
 ## 미검증
 
-- 이웃 테스트 셋은 돌리지 않았다: `TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently`, `TestRunUpdate_ThreeRunIdempotency_V3Project`, `TestReproduction_NonProjectDirectoryPollution_Issue1086`. 모두 `updateCmd.RunE` 로 update 전체를 돌리는데 홈 시접을 바꾸지 않아, 실제 `~/.claude/settings.json` 에 닿을 수 있다. F6 의 순서 변경을 update 전체 흐름에서 확인하는 테스트는 이 셋뿐이다.
-- 같은 이유로 `TestSkipSyncNoArchive/skip_sync_with_force_does_invoke_archive` 도 돌리지 않았다.
+- **미실행, t661 소관:** `TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently`, `TestRunUpdate_ThreeRunIdempotency_V3Project`, `TestReproduction_NonProjectDirectoryPollution_Issue1086`, `TestSkipSyncNoArchive/skip_sync_with_force_does_invoke_archive`. 넷 모두 홈 시접을 바꾸지 않은 채 update 를 돌려 실제 `~/.claude/settings.json` 에 닿을 수 있다. 리드 결정으로 돌리지 않고, 격리 결함은 카드 t661 로 발행됐다. F6 의 순서 변경을 update 전체 흐름에서 확인하는 테스트는 앞의 셋뿐이다.
 - `config.LoadGitMode` 에는 internal/config 패키지 단위 테스트가 없다. 동작은 internal/cli 테스트의 두 경로로만 확인했다.
-- F7 쓰기 오류 분기는 테스트가 닿지 않는다. 경로를 디렉터리로 만든 픽스처는 읽기 단계에서 먼저 실패하므로 `atomicfile.Write` 오류 반환을 되돌리는 뮤턴트는 살아남을 것이다. 돌려 보지는 않았다.
+- F7 쓰기 오류 분기: 슬롯 테스트는 닿지 않았다(경로를 디렉터리로 만든 픽스처는 읽기에서 먼저 실패). 리드 결정으로 읽기는 되고 쓰기만 실패하는 서브테스트 `unwritable_directory_is_reported` 를 추가했다(sections 디렉터리 0500, windows·root 에선 skip, `atomicfile.Write` 가 같은 디렉터리에 임시 파일을 만들어서 실패함 — `internal/config/atomicfile/write.go:53-56`). 통합 창 재측정 전까지 미실행.
 - F5 는 설정 파일을 렌더링하는 순간만 확인했다. `git-strategy.yaml` 의 모드가 설정 복원(3-way 병합) 뒤에 그대로 남는지는 재지 않았다.
 - CI(darwin·windows 매트릭스)는 보지 않았다.
 
 ## 잔여 위험
 
 - **누락 손실 보고는 여전히 의미가 있다.** 판단 근거는 `slot/m3.txt` 32행이다. 보관이 돌지 않았을 때 `archived 0 of 1 skills present before sync` 경고가 찍혔다. 순서를 바꾼 뒤에도 보관에 실패한 스킬은 바로 뒤 정리 단계에서 지워지므로, 이 경고는 실제 손실을 알린다.
-- **그러나 경고의 원인 설명은 이제 틀렸다.** `update_archive.go:424` 는 "정리 단계가 보관보다 먼저 원본을 지웠다"고 말하지만, 이제 그 순서로는 일어나지 않는다. 남은 원인은 보관 자체의 실패다. 문구 수정 여부는 리드 판단으로 남겼다. `TestReportArchiveShortfall` 은 "0 of 3" 과 `!` 표시만 고정하므로 문구를 바꿔도 깨지지 않는다.
+- **경고의 원인 설명은 교환으로 틀려져서 이 카드에서 고쳤다(리드 결정).** 옛 문구는 "정리 단계가 보관보다 먼저 원본을 지웠다"였고, 이제 그 순서로는 일어나지 않는다. 새 문구는 "the rest could not be archived — the managed-path cleanup that follows deleted them without archival" 이다(`update_archive.go:425`, 함수 주석 포함). `TestReportArchiveShortfall` 에 `could not be archived` 단언을 추가했다. 옛 문구로 되돌린 뮤턴트 확인은 통합 창 재측정에서 한다.
 - 렌더링을 실제로 결정하는 곳은 Validate 컨텍스트다(배포기의 렌더 캐시). 누군가 Validate 단계를 없애거나 배포기를 새로 만들면 Deploy 쪽 줄이 결정하게 된다. 두 곳 모두에 넘기도록 해 두었다.
 - **코드만 읽어서 세운 가설:** 동기화의 Deploy 컨텍스트가 넘기는 `readHookOptInEnabled(projectRoot)` 는 정리 단계가 `.moai/config` 를 지운 뒤에 system.yaml 을 읽는다. 다만 위 캐시 때문에 실제 렌더링은 Validate 쪽 값(정리 전에 읽음)을 쓸 가능성이 높다. 이 카드 범위 밖이다.
 
