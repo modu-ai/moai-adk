@@ -161,6 +161,41 @@ go test ./internal/cli/... (전체)          → §6 참조
 
 ---
 
+## 2.7 병합 트리 — 흡수 후 재측정 판정
+
+통합 창 안에서 로컬 develop `c8203fbf3` 을 흡수했다. 흡수는 **코드를 들여왔다** — 따라서 「마크다운뿐이므로 재측정 대상 없음」 논거는 이 카드에 성립하지 않는다. 들어온 Go 파일 전수는 둘이다:
+
+```
+internal/hook/quality/gate.go              (+12)
+internal/hook/quality/gate_oxlint_lint_test.go  (신규, +374)
+```
+
+두 갈래로 나눠 판정했다.
+
+**(1) 들어온 코드가 사는 패키지는 직접 쟀다.** `internal/hook/quality` 는 슬롯이 걸린 패키지가 아니므로 그대로 실행했다:
+
+```
+$ go test ./internal/hook/quality/... -timeout 600s
+ok  github.com/modu-ai/moai-adk/internal/hook/quality  18.827s
+GOTEST_EXIT=0
+$ go build ./...      → BUILD_EXIT=0
+```
+
+**(2) 내 표면은 트리 동일성으로 이월했다.** 흡수 diff 에 `internal/cli` 적중 0건이고(같은 패턴의 양성 대조는 1건 적중 — 패턴이 죽어서 0 이 나온 것이 아니다), 서브트리 해시가 흡수 전후 바이트 동일하다:
+
+```
+$ git rev-parse 957f52edd^{tree}:internal/cli
+7f2701f69edc115dba5e4f1c8188cd7442252787
+$ git rev-parse HEAD^{tree}:internal/cli
+7f2701f69edc115dba5e4f1c8188cd7442252787
+```
+
+같은 트리이므로 §2.3 의 60칸 행렬과 §2.6 의 게이트 결과가 병합 트리에 그대로 성립한다. 이것은 「diff 에 안 보였다」가 아니라 **내용 해시가 같다**는 진술이다.
+
+[HARD] **이 논거가 성립하지 않는 경우**: 흡수가 `internal/cli` 에 한 줄이라도 들여왔다면 위 두 해시가 갈라지고, 그때는 이월이 아니라 재측정이 필요하다 — 그 경우 `internal/cli` 슬롯을 따로 요청해야 한다.
+
+---
+
 ## 3. Baseline-attribution
 
 - 트리: 워크트리 `.claude/worktrees/t555`, 브랜치 `WT-todo-verb-guard`, HEAD `d060e0d13`(로컬 develop 과 동일 — `git merge develop --ff-only` 로 fast-forward)
