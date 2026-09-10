@@ -181,7 +181,7 @@ What can be edited is fixed by a single source of truth, and the console writes 
 **Host check on every request.** Every route, static files included, refuses any request — regardless of method — whose `Host` header is not a loopback name (`localhost`, `127.0.0.1`, `[::1]`, with or without a port) or has no `Host` header at all; the response is 403. Loopback binding alone does not stop DNS rebinding — a page on another site can make the browser connect to `127.0.0.1` while carrying the attacker's domain as `Host`, and the browser then lets that page read the response. The same-origin (`Sec-Fetch-Site`) check still applies only to state-changing requests.
 
 {{< callout type="info" >}}
-Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel. An SSH tunnel still works with this check, since the browser still opens the console at a `localhost` address.
+Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel. An SSH tunnel still works with this check, since the browser still opens the console at a `localhost` address. That said, this was confirmed in a test setup that simulates port forwarding rather than a real SSH server, so treat it as expected behavior rather than a verified guarantee.
 {{< /callout >}}
 
 ## Four-locale interface
