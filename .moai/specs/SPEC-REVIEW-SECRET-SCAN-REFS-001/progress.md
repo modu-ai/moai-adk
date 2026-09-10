@@ -137,7 +137,72 @@ after the operator decision, on top of `af7eb142b`
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Run cautions
+
+Recorded at the lead's instruction before the M1 gate (card t629, 2026-09-11). These notes read plan
+audit iteration 3 (`.moai/reports/t629/plan-audit-iter3.md`); they change nothing in `spec.md`,
+`plan.md`, or `acceptance.md`.
+
+1. N1: AC-001 files a non-zero exit from R1-R4 under a construction gap, while AC-008 and AC-009 read
+   the same exit as a predicate failure. A procedure that errors under AC-001 therefore stays a gap and
+   never becomes an explicit fail, although the Definition of Done still blocks it. When AC-001 is
+   read, a non-zero exit caused by the procedure itself counts as a failure signal.
+2. N2: AC-004's Given names all of the card's commits, but its diff range ends at `K`; commits made
+   after `K` are outside that range.
+3. N3: the findings counting rule assumes each finding line carries the matched source line. Findings
+   are written as the source line, whatever display form the procedure uses.
+4. Exit codes (iteration 3, out-of-scope note): AC-008 and gate cell 1 require every scan to exit 0.
+   The gate keeps "no match" apart from "tool error": the pinned scan commands end in no filter that
+   exits non-zero on an empty result, a search tool's no-match exit (grep exit 1) is read as a zero
+   count and never as a scan failure, and a tool error (grep exit 2, a non-zero git exit) is recorded
+   and never swallowed.
+5. Gap (D19a): AC-016 proves that each pinned line appears in the edited section, not that the
+   section prescribes no other timing for tip recording.
+
+### Pinned procedure
+
+Pinned on branch `WT-secret-scan-refs` on top of `f16f7c095`, in a commit of its own that precedes the
+first gate command. The regex below is written exactly as `review.md` writes it. Paths are relative to
+the project root.
+
+Tip recording: before the scan starts, record the tip of every ref with `git for-each-ref --format='%(objectname)' > .moai/state/secrets-scan-tips.next`, and replace `.moai/state/secrets-scan-tips.txt` with that file only after the scan that carries the final result exits 0.
+Full-history scan: git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+Scan command: git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' --not $(cat .moai/state/secrets-scan-tips.txt)
+Missing-tip handling: when the scan exits non-zero and its error output reports `bad object` for a tip listed in `.moai/state/secrets-scan-tips.txt`, report that tip as missing and run the full-history scan in its place; any other non-zero exit is a scan failure that is reported and leaves `.moai/state/secrets-scan-tips.txt` unchanged.
+Uncovered commits: Commits that no ref and no HEAD reaches, such as commits reachable only through a reflog, are outside every scan step in this procedure, and no step scans them.
+
+Which step runs: the full-history scan runs when `.moai/state/secrets-scan-tips.txt` does not exist,
+and the scan command runs otherwise. Because the tips are recorded before the scan starts, a commit
+that lands while the scan runs is outside the recorded tips and falls to the next review instead of
+being skipped; a commit that lands between the recording and the scan's own read of the refs is
+scanned twice. `Uncovered commits:` carries the REQ-004 sentence that AC-006 checks, fixed here before
+any document edit.
+
+Gate execution method, fixed before the gate. This session's worktree guard refuses a `git` command
+that contains a command substitution, so the gate runs the scan command with
+`$(cat .moai/state/secrets-scan-tips.txt)` replaced by the store's lines typed as separate arguments in
+store order, read with `cat` in the command immediately before, and checks the argument count against
+`wc -l` of the store. For a store of full-length object names, one per line, shell word splitting of
+the substitution yields exactly those arguments. Not exercised by this method: the substitution itself,
+an empty store, and argument-list limits. On the fixture the tip store sits at `.moai/state/` under the
+fixture's own root, the pinned path.
+
+Design probes taken before this pin, on a separate throwaway repository in the session scratchpad with
+no markers and no `-G`; they are syntax checks, not gate evidence. `git --version` →
+`git version 2.50.1 (Apple Git-155)`.
+
+- `git for-each-ref --format='^%(objectname)'` to a file → exit 0, one caret-prefixed line.
+- `git log -p --all --stdin` reading a caret-prefixed line for an object that does not exist → exit
+  128, stdout 0 bytes, stderr `fatal: bad object <name>` naming the object without the caret. A
+  caret-prefixed store would therefore not hold the tip the way the error names it, so the store holds
+  plain object names.
+- The same form over a store of existing tips → exit 0.
+- `man git-log`: a `--not` given on the command line does not affect revisions read through `--stdin`.
+  A `--not` inside the store is honoured by this git build; it was not adopted, because acceptance
+  AC-006 needs `--not` on the `git log -p` line itself.
+- The worktree guard refused a `printf` carrying `--not`, and refused
+  `git log -p --all --not $(cat <store>)` as a form too complex to verify; hence the execution method
+  above.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

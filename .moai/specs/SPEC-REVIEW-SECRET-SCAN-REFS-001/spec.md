@@ -2,9 +2,9 @@
 id: SPEC-REVIEW-SECRET-SCAN-REFS-001
 title: "Review workflow secret scan — coverage of refs not reachable from HEAD"
 version: "0.2.2"
-status: draft
+status: in-progress
 created: 2026-09-10
-updated: 2026-09-10
+updated: 2026-09-11
 author: manager-spec (card t629)
 priority: P1
 phase: "v3.2.0 target"
