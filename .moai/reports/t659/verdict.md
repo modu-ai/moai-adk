@@ -135,3 +135,20 @@ SPEC `SPEC-V3R2-CON-002` frontmatter 는 `status: implemented` 인데, REQ-CON-0
 
 1. REQ-CON-002-012 — 안전 게이트 실패 시 `.moai/research/rejected-amendments/` 기록 구현(현재 코드 0건).
 2. SPEC-V3R2-CON-002 frontmatter `status: implemented` 정정 — REQ-011 이 이 카드로 착지하기 전까지 사실과 다르다.
+
+## 8. 리드 판정 — plan 설계 공백 (SPEC-CON-AMEND-APPLY-001 `7b4d1ac89` 판독 뒤)
+
+- **G1 로그 해석 실패**: fail-closed 확인(Frozen 게이트는 편의보다 안전). 오류는 해석할 수 없는 항목을 파일·줄·키로 이름 대야 한다. AC 로 고정.
+- **G2 새 clause 중복**: 적용 전 새 clause(after) 문자열이 원문에 0회여야 한다. 아니면 적용 거부, 원문 무변경.
+- **G3 Before 검사**: `Execute` 에 넣는다(방어 심층). Before 가 현재 clause 와 다르면 `Execute` 가 거부, CLI 검사는 조기 안내로 유지.
+- **G4 복원 실패**: 채택. 백업 삭제 금지, 백업 경로를 담아 오류 반환. 복원 실패 경로도 실패 주입 테스트 1개.
+- **G5 CLI 검증**: 축소 승인. CLI 는 dry-run 만 테스트, 비-dry-run CLI 경로는 Gap(Execute 수준 테스트가 적용을 커버).
+- **범위 추가 (a)**: 등록부 경로를 단일 해석기로 통일하고 AC 1개. 이 카드가 실제 쓰기를 켜는 순간, CLI 가 검증한 등록부와 `Execute` 가 쓰는 등록부가 다를 수 있다는 점은 잠재 결함이 아니라 쓰기 사고가 된다.
+- **progress.md**: plan-audit 전에 만든다(run 증거 자리).
+- 다음: SPEC 반영 → plan-auditor.
+
+### 8.1 후속 카드 후보 추가 (큐 이전 뒤 발행)
+
+3. dry-run 환경 변수 값 불일치 — SPEC-V3R2-CON-002 REQ-031·AC-07 은 `MOAI_CONSTITUTION_DRY_RUN=1`, `internal/cli/constitution.go:470` 은 `== "true"`.
+4. EVO-HRN-002 항목 오기 — `const_registry_entry: CONST-V3R2-153` 인데 그 등록부 항목의 file 은 `.claude/rules/moai/workflow/session-handoff.md`(zone-registry.md:678-681), 로그의 `target_file` 은 `.claude/rules/moai/design/constitution.md`.
+5. `MarkRolledBack` 손실 재직렬화 위험 — 파서가 사람 작성 항목을 읽게 되면 `rewriteEvolutionLog` 가 그 항목을 코드 형식으로 다시 써서 원래 필드를 잃을 수 있다(에이전트 판독, 프로덕션 호출자 0 — 미실측).
