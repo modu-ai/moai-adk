@@ -1,0 +1,28 @@
+
+  Manage Git worktrees for parallel SPEC development. Supports creating, syncing, removing, and cleaning worktrees.     
+                                                                                                                        
+  Entering a worktree is the launchers' job, not this command's:                                                        
+    moai cc -w <name>            work inside the worktree                                                               
+    moai cc -w <name> --spawn    open it in a new tmux window, keep this session                                        
+                                                                                                                        
+  For inspection, use git directly: git worktree list                                                                   
+         
+  USAGE  
+         
+    moai worktree [command] [--flags]  
+            
+  COMMANDS  
+            
+    sync [branch-name] [--flags]  Sync worktree with base branch
+    remove [path] [--flags]       Remove a worktree
+    clean [--flags]               Clean stale worktree references
+    recover                       Repair worktree registry
+    done [branch-name] [--flags]  Complete worktree and cleanup
+    snapshot [--flags]            Capture working tree state snapshot for guard verification
+    verify [--flags]              Verify working tree state against snapshot + check agent response
+    restore [--flags]             Restore working tree to a snapshot's HEAD state
+         
+  FLAGS  
+         
+    -h --help                     Help for worktree
+

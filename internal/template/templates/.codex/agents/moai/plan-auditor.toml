@@ -313,9 +313,80 @@ Execute each check in order against the full document — every REQ entry and ev
 - AC-1: Each AC is expressed as a Given-When-Then scenario (the verification-layer format — see M3 § Scope). The GEARS obligation belongs to the `REQ-XXX` requirement layer and is checked by RQ-6/MP-2, NOT here; do not apply a GEARS pattern test to an AC.
 - AC-2: Each AC is binary-testable — a tester can determine PASS/FAIL without judgment calls
 - AC-3: No AC contains weasel words: "appropriate", "adequate", "reasonable", "good", "proper"
-- AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability)
-- AC-5: Each REQ-XXX has at least one corresponding AC (Traceability)
+- AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability) — decided from the verb below: every `ORPHAN:` line is a candidate failure, read against the AC text
+- AC-5: Each REQ-XXX has at least one corresponding AC (Traceability) — decided from the verb below: every `UNCOVERED:` line is a candidate failure, and the `COLLECTED:` count is the measurement both AC-4 and AC-5 rest on
 - AC-6: Each release-blocking AC carries a RED-now cell with the command, its verbatim stdout, its exit code, and a pinned tree SHA, and that command re-executes to a reproducing RED on the current tree (MP-8)
+
+Verification verb (executed inside this agent during audit):
+
+```bash
+# Trace REQ definitions to AC mappings; the auditor decides AC-4 and AC-5
+spec="<new-spec.md>"
+acc="<acceptance.md>"
+if [ ! -r "$spec" ]; then
+  echo "GAP: $spec is not readable — traceability was not observed"
+else
+  set -- "$spec"
+  accstate=absent
+  if [ -r "$acc" ]; then set -- "$@" "$acc"; accstate=read; fi
+  awk -v accstate="$accstate" '
+    function scan(seg,   tok, prefix, rest, c) {
+      while (match(seg, id)) {
+        tok = substr(seg, RSTART, RLENGTH)
+        mapped[tok] = 1
+        prefix = tok
+        sub(/[0-9]+$/, "", prefix)
+        seg = substr(seg, RSTART + RLENGTH)
+        # a bare numeric tail expands only while the comma-separated list continues
+        while (match(seg, /^[ \t]*,[ \t]*[0-9]+/)) {
+          rest = substr(seg, RLENGTH + 1)
+          c = rest
+          sub(/^[ \t]+/, "", c)
+          if (c != "" && index(",;)]", substr(c, 1, 1)) == 0 && !(c ~ /^\.([ \t]|$)/)) break
+          tok = substr(seg, 1, RLENGTH)
+          sub(/^[ \t]*,[ \t]*/, "", tok)
+          mapped[prefix tok] = 1
+          seg = rest
+        }
+      }
+    }
+    BEGIN {
+      id = "REQ-([A-Z][A-Z0-9]*-)*[0-9]+"
+      deflist = "^[ \t]*[-*+][ \t]+(\\*\\*" id "|" id "[ \t]*:)"
+      defhead = "^#+[ \t]+(\\*\\*)?" id
+      defrow = "^[ \t]*\\|[ \t]*(\\*\\*)?" id "(\\*\\*)?[ \t]*\\|"
+    }
+    { sub(/\r$/, "") }
+    FILENAME == ARGV[1] && ($0 ~ deflist || $0 ~ defhead || $0 ~ defrow) {
+      match($0, id)
+      def[substr($0, RSTART, RLENGTH)] = 1
+    }
+    (" " $0) ~ /[^A-Za-z0-9_-]AC-([A-Z0-9]+-)*[0-9]+/ {
+      n = split($0, cells, "|")
+      for (i = 1; i <= n; i++) scan(cells[i])
+    }
+    END {
+      count = 0
+      for (k in def) count++
+      printf "COLLECTED: %d REQ definitions (acceptance input: %s)\n", count, accstate
+      if (count == 0) { print "GAP: 0 REQ definitions collected — traceability not observed"; exit }
+      for (k in def) if (!(k in mapped)) print "UNCOVERED: " k
+      for (k in mapped) if (!(k in def)) print "ORPHAN: " k
+    }
+  ' "$@" | LC_ALL=C sort
+fi
+```
+
+The script narrows where to read; the auditor decides AC-4 and AC-5. It never prints PASS and always exits 0.
+
+- `COLLECTED: N REQ definitions (acceptance input: read|absent)` — the requirement definitions read from the spec in any of three forms (a list item opening with the ID followed by a colon or in bold, a heading opening with the ID, a table row whose first cell is the ID), and whether an acceptance.md was read. This count is the auditor's own measurement on the traceability axis: record it with the AC-4 / AC-5 result. `acceptance input: absent` is expected when the ACs live inline in the spec; for a SPEC that should carry an acceptance.md, it means the mapping side was not observed.
+- `UNCOVERED: REQ-…` — defined in the spec, named on no line that also names an AC. Feeds AC-5. Read the ACs before recording FAIL: a mapping phrased without the requirement ID is still a mapping.
+- `ORPHAN: REQ-…` — named on an AC-bearing line, defined nowhere in the spec. Feeds AC-4: a typo, a removed requirement, a definition written in a form the script does not read, or another SPEC's requirement cited next to that SPEC's AC (a cross-SPEC reference, not a defect of this SPEC).
+- `GAP: …` — the axis was not observed: the spec is unreadable, or zero definitions were collected. Report it as a gap, never read it as a pass, and never let a zero count stand behind an AC-4 / AC-5 PASS.
+
+A requirement counts as mapped when its ID appears on any line that also names an AC. Shorthand expands under one rule only: inside the same table cell or the same comma-separated list, a bare number that follows a complete ID takes that ID's prefix, so `REQ-X-001, 002` maps `REQ-X-001` and `REQ-X-002`. Nothing else expands — not a range, not a number in another table cell, not a number in running prose. A clean result is not an automatic pass either: an ID that merely appears on an AC line counts as mapped, so read the AC behind any mapping that looks incidental.
+
+**Citation discipline — another tool's silence.** A different tool reporting no traceability finding for this SPEC (a SPEC linter's coverage rule, for example) may be cited as corroboration only after showing that tool collected N > 0 requirements on that axis for this SPEC. When that count is 0, or is not shown, record "the tool said nothing on this axis" — never corroboration. The failure this prevents: a tool that recognizes only some definition forms collects nothing from a SPEC written in another form and stays silent, and that silence is then cited as agreement with the auditor's own reading, so a requirement no AC covers passes on the strength of two readings of which only one ever looked.
 
 ### Group 5: Language Neutrality
 
