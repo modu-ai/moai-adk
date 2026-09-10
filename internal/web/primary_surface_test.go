@@ -45,6 +45,7 @@ func TestSettingsPageHeaderKeepsAllFourteenTabs(t *testing.T) {
 	a := newTestApp(t)
 	for _, tab := range consoleTabs() {
 		req := httptest.NewRequest(http.MethodGet, "/settings?tab="+tab.ID, nil)
+		req.Host = "127.0.0.1"
 		rec := httptest.NewRecorder()
 		a.routes().ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
