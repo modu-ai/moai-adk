@@ -234,4 +234,71 @@ m1_to_mN_commit_strategy: "마일스톤마다 커밋 1개(M1, M2, M3 자동 대�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-11
+sync_commit_sha: pending-backfill-sync-commit   # backfilled in the follow-up commit (spec-frontmatter-schema.md D3)
+sync_status: complete-with-attributed-preexisting-failure
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged into this sync commit)"
+  plan_md: "n/a — stateless on the status axis (spec-frontmatter-schema.md Artifact Statelessness), no frontmatter status field"
+  acceptance_md: "n/a — stateless on the status axis, no frontmatter status field"
+  spec_compact_md: "n/a — stateless on the status axis, no frontmatter status field"
+  progress_md: "n/a — records phase progress in body sections, not frontmatter"
+changelog_entry_position: "CHANGELOG.md line 12, first bullet under '## [Unreleased]' / '### Fixed'"
+b12_self_test_a: "grep -c 'SPEC-TOOLPOLICY-DRIFT-GUARD-001' CHANGELOG.md -> 1 (post-insertion; pre-insertion was 0) — no duplicate entry"
+b12_self_test_b: "grep -oE 'AC-TDG-[0-9]{3}' .moai/specs/SPEC-TOOLPOLICY-DRIFT-GUARD-001/acceptance.md | sort -u | wc -l -> 10, matches CHANGELOG '10 acceptance criteria' claim"
+b12_self_test_c: "ls -la internal/config/toolpolicy/drift_check_test.go .moai/config/sections/tool-policy.yaml .claude/settings.json Makefile .github/workflows/ci.yml internal/config/toolpolicy/types.go -> all six exist"
+pre_sync_gate:
+  head: 1ff407dfe
+  go_version: go1.26.4 (local toolchain; gap — see gaps below)
+  go_vet: "go vet ./internal/config/toolpolicy/... -> exit 0"
+  gofmt: "gofmt -l internal/config/toolpolicy/ -> empty output"
+  golangci_lint: "golangci-lint run --timeout=3m ./internal/config/toolpolicy/... -> 0 issues."
+  go_test_cover: "go test -count=1 -cover ./internal/config/toolpolicy/... -> ok, coverage: 89.1% of statements"
+  drift_check: "make tool-policy-drift-check -> exit 0"
+sync_audit:
+  verdict: PASS
+  overall_score: 90.7
+  dimensions:
+    functionality: 88
+    security: 95
+    craft: 90
+    consistency: 92
+  report: .moai/reports/t619/sync-audit.md
+  ac_breakdown: "9 PASS / 1 FAIL (AC-TDG-009 attributed out-of-scope pre-existing failure; AC-TDG-004 PASS relied on the run-phase recorded mutation chain, not re-executed by the auditor)"
+security_review:
+  phase: "Phase 8 Step 0.55.1 — per-spawn read-only reviewer"
+  exported_to_file: false
+  note: "orchestrator-relayed summary, not an independently-citable verdict basis"
+  critical: 0
+  high: 0
+  medium: 0
+  low: 2
+  low_1: "duplicate 'permissions' JSON key first-vs-last parse ambiguity in pre-existing settings_region.go:92-120 (out of this SPEC's scope)"
+  low_2: "YAML reconciliation removed declared-but-unenforced Write/Grep/Glob secret-path denies; enforcement itself is unchanged, but whether Read/Edit denies already cover the same paths is unverified"
+  dedup_predicate: "FALSE — run-exit deep scan scope was branch-level not repo-level, scanned_commit 1977040b7 != HEAD 1ff407dfe; only verdict.md changed since scan, so Step 0.55.1 ran fresh"
+mx_tag_validation:
+  tags_added: 0
+  p1_p2_findings: none
+  note: "types.go change is comment-only; drift_check_test.go is a test file with unexported helpers, no goroutines — no new @MX obligation"
+ac_tdg_009_disposition:
+  status: FAIL
+  attribution: pre-existing
+  cause_commit: "1ac333952 (t609) removed the six permissions.ask rules from template, local settings, and the policy SSOT"
+  scope_check: "internal/cli/ unchanged between base d1b61005d and HEAD 1ff407dfe"
+  repair_card: t660
+  gate: "must land before the develop push per operator decision D1"
+follow_up_candidates_forwarded_to_lead:
+  - "secret-path Write/Grep/Glob deny gap in .claude/settings.json (security_review low_2)"
+  - "Makefile:68 failure message always reads 'permissions differ' regardless of which check failed"
+  - "duplicate-permissions-key parse robustness in settings_region.go (previously forwarded, still open)"
+delivery:
+  route: "git-flow (per CLAUDE.local.md §4.1)"
+  branch: WT-toolpolicy-drift
+  push_state: "not pushed — awaiting lead integration window (local develop merge)"
+  integration_window_remeasure: "pending, to be run on go1.26.8 per lane discipline"
+gaps:
+  - "local toolchain measured at go1.26.4, not the go1.26.8 lane standard; re-measure at integration window"
+  - "full test suite not run locally per CLAUDE.local.md §6 — CI owns the full-suite verdict"
+  - "README / docs-site / .moai/project docs intentionally untouched per operator decision D2 (internal developer check, no user-facing change)"
+```

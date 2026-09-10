@@ -2,9 +2,9 @@
 id: SPEC-TOOLPOLICY-DRIFT-GUARD-001
 title: "tool-policy.yaml ↔ settings.json 권한 블록 드리프트 검사 도입과 YAML 정합 복구"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-09-10
-updated: 2026-09-10
+updated: 2026-09-11
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
