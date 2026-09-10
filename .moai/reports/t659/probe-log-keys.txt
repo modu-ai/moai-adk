@@ -1,0 +1,23 @@
+=== RUN   TestT659ProbeEvolutionLogKeys
+    zz_t659_probe_test.go:26: READ id="LEARN-20260428-001" ruleID="" clauseBefore="" approvedBy="" approvedAtZero=true
+    zz_t659_probe_test.go:41: WRITTEN:
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: a
+        clauseafter: b
+        canaryverdict: ""
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    zz_t659_probe_test.go:47: ROUNDTRIP id="LEARN-20260911-001" ruleID="CONST-V3R2-003" approvedAtZero=false
+--- PASS: TestT659ProbeEvolutionLogKeys (0.10s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.521s
+EXIT=0
