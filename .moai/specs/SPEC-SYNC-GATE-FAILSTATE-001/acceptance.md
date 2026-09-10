@@ -1,9 +1,15 @@
 # Acceptance — SPEC-SYNC-GATE-FAILSTATE-001
 
 > Harness: **standard**. Document-level pin: every observation below that carries no pin of
-> its own was measured on tree `fa96fe644fcff8a15ac336833a4e816fc0a46fe3`. Ledger rows L-15 to
-> L-19 carry their own pin, `ad0ad6f9b`, where the target files are unchanged from `fa96fe644`
-> (L-17).
+> its own was measured on tree `fa96fe644fcff8a15ac336833a4e816fc0a46fe3`.
+> Ledger pins that differ from the document-level pin:
+> - L-15, L-17, L-19 and the L-16 baseline: `ad0ad6f9b`;
+> - L-18 and its control: `3f5dc3f8c`;
+> - L-21: pending, measured at the M1 commit.
+>
+> The target files are unchanged from `fa96fe644` at both commit pins. At `ad0ad6f9b` this is
+> L-17. At `3f5dc3f8c`, `git diff --stat fa96fe644 --` on the two hook copies and the two
+> document copies printed nothing, exit 0.
 > Verification scope: `go test ./internal/hook/ ./internal/template/`. No local full suite, no
 > `make build`.
 
@@ -68,12 +74,38 @@ the tool reporting no error (exit 0).
 | L-14 | pin | `grep -c "SPEC-" internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | `0` | 1 |
 | L-15 | `ad0ad6f9b` | `/usr/bin/grep -n "^Purpose: Ensure code has appropriate @MX annotations for AI agent context" internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md` (and the same on the local copy) | `160:Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.` (identical for both copies) | 0 |
 | L-17 | `ad0ad6f9b` | `git diff --stat fa96fe644 -- internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md .claude/skills/moai/workflows/sync/quality-gates-quality.md` | *(empty)* | 0 |
-| L-18 | `a130f891a` | `/usr/bin/grep -cE '(^\|[;&\|(]\|\$\(\|(then\|do)[[:space:]])[[:space:]]*jq([[:space:]]\|$)' internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | `0` | 1 |
+| L-18 | `3f5dc3f8c` | fenced block **L-18 command** below this table | `0` | 1 |
 | L-19 | `ad0ad6f9b` | `/usr/bin/grep -cE '(^\|[^A-Za-z0-9_])t[0-9]{2,4}([^A-Za-z0-9_]\|$)\|20[0-9]{2}-[0-9]{2}-[0-9]{2}' internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md` | `…/sync-phase-quality-gate.sh:0` and `…/quality-gates-quality.md:0` | 1 |
-| L-21 | M1 commit | **Pending — measured at M1, not assumed.** Commit-SHA coverage of the delegated template-leak guards for the two template files: `go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak\|TestLeakClassNoDateShaInDefaultTier\|TestC7PackageRestriction' -count=1 -v`, plus a read of those tests' per-path tier assignment for `.claude/hooks/moai/sync-phase-quality-gate.sh` and `.claude/skills/moai/workflows/sync/quality-gates-quality.md` | *(recorded in `progress.md §E.2` at M1: verbatim output, and whether each path is in a tier whose class checks 7-40-hex SHA tokens)* | *(recorded at M1)* |
+| L-21 | M1 commit | **Pending — measured at M1, not assumed.** Commit-SHA coverage of the delegated template-leak guards for the two template files: fenced block **L-21 command** below this table, plus a read of those tests' per-path tier assignment for `.claude/hooks/moai/sync-phase-quality-gate.sh` and `.claude/skills/moai/workflows/sync/quality-gates-quality.md` | *(recorded in `progress.md §E.2` at M1: verbatim output, and whether each path is in a tier whose class checks 7-40-hex SHA tokens)* | *(recorded at M1)* |
 
-(In the L-18 and L-19 cells, `\|` renders a literal `|` inside the table; the executed regex
-contains a plain `|`.)
+(In the L-19 cell, `\|` renders a literal `|` inside the table; the executed regex contains a
+plain `|`. The L-18 and L-21 commands are given in the fenced blocks below instead. A table
+cell's raw bytes carry `\|`, and that form is not the command: copied verbatim, the L-21 `-run`
+selector lists **zero** tests, a vacuous pass (measured in `.moai/reports/t624/plan-audit-r3.md`,
+baseline table). The fenced blocks carry a plain `|` and run verbatim.)
+
+L-18 command (tree `3f5dc3f8c`; stdout `0`, exit 1):
+
+```
+/usr/bin/grep -cE '(^|[;&|(]|\$\(|(^|[^A-Za-z0-9_])(then|do)[[:space:]])[[:space:]]*jq([[:space:]]|$)' internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh
+```
+
+L-21 command (run at M1; its verbose output must name all three tests before the result is read,
+because a selector that matches nothing still exits 0):
+
+```
+go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak|TestLeakClassNoDateShaInDefaultTier|TestC7PackageRestriction' -count=1 -v
+```
+
+- **L-21 contingency:** if M1 finds that the commit-SHA class of those guards does not cover
+  both template paths, M1 does two things, without editing this criterion:
+  - It records each uncovered path in the `progress.md` run evidence.
+  - It runs a scoped check on each such file:
+    `/usr/bin/grep -nE '(^|[^0-9A-Za-z])[0-9a-f]{7,40}([^0-9A-Za-z]|$)' <uncovered template file>`,
+    recording the command and its verbatim output, and reading and classifying every hit.
+
+  If that check cannot decide a hit, REQ-012's commit-SHA clause is recorded as an explicit gap
+  for that path.
 
 L-11 verbatim stdout:
 
@@ -90,11 +122,18 @@ Non-single-invocation baselines (regression-guard support only, not RED cells):
 - **L-16** (`ad0ad6f9b`) — a process-substitution `diff` of each document copy through the
   anchor line (`sed '/^Purpose: Ensure code has appropriate @MX annotations for AI agent
   context/q'`) printed nothing, exit 0.
-- **L-18 control** (`a130f891a`) — the L-18 regex was fed five lines through `printf … |
-  /usr/bin/grep -cE`: `x=$(echo "$in" | jq -r .a)`, a comment line naming jq, `jq . file`,
-  `if true; then jq -r .x f; fi`, and `for f in a; do jq . "$f"; done`. It printed `4`: all four
-  invocations matched, including after the shell keywords `then` and `do`, and the comment line
-  was skipped. Backtick command substitution is not covered by this regex.
+- **L-18 control** (`3f5dc3f8c`, the bounded regex of the L-18 command block) — two probes, both
+  fed through `printf … | /usr/bin/grep -cE`:
+  - **Five lines:** `x=$(echo "$in" | jq -r .a)`, a comment line naming jq, `jq . file`,
+    `if true; then jq -r .x f; fi`, and `for f in a; do jq . "$f"; done`. It printed `4`: all
+    four invocations matched, including after the shell keywords `then` and `do`, and the
+    comment line was skipped.
+  - **One line:** `# todo jq cleanup` printed `0`, exit 1. The unbounded predecessor regex
+    matched it (`1`, measured in `.moai/reports/t624/plan-audit-r3.md`).
+
+  The word boundary requires `then` / `do` to be a whole token. A comment in which a
+  standalone `then` or `do` token precedes `jq` would still match, and backtick command
+  substitution is not covered.
 - **L-20** — a line-filtered `grep -n` sweep of the template document showed line 71 carrying
   `HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores`,
   and lines 136-137 and 156 carrying the CRITICAL-only / HIGH-warning wording.
@@ -396,8 +435,12 @@ Each row calls the hook twice on the same failing HEAD.
 
   A selector that matches zero tests is not a pass.
 - **And (no jq invocation):** the L-18 invocation-pattern regex prints `0` for the template
-  hook. A comment naming the tool does not count, and the L-18 control shows the regex does match
-  real invocations.
+  hook. The pattern counts `jq` only at a command position: line start, after `;`, `&`, `|`,
+  `(`, or `$(`, or after a whole `then` / `do` token. A comment whose `jq` has none of those
+  before it does not count; `# todo jq cleanup` is one such comment, observed `0` in the L-18
+  control. A comment that happens to contain a standalone `then jq` or `do jq` would still count.
+  That failure is safe: a false red, never a false green. The L-18 control shows the regex does
+  match real invocations.
 - **And (template neutrality):** for both the template hook and the template document:
   - `grep -c "SPEC-"` prints `0`;
   - the L-19 card-id and date regex prints `0` for each file.
@@ -477,7 +520,7 @@ Each row calls the hook twice on the same failing HEAD.
 - **RED reason:** the named stale-window variable does not exist on `fa96fe644`. The settings
   entry reads `"timeout": 60`.
 - **Scope note:** this criterion pins the declaration only. That the comparison actually uses
-  it is pinned by AC-006 rows a50 and b70.
+  it is pinned by AC-006 rows a50, b61, and b70.
 
 ## §D.15 AC-015 — gate notices never block and never consume the Stop-hook block cap (release-blocking)
 
@@ -518,12 +561,13 @@ Each row calls the hook twice on the same failing HEAD.
     the bare SHA (hook lines 183-186), runs the checks once, and emits one `decision:block`.
   - Calls 2-9 find that bare SHA (the refresh changed only the mtime), short-circuit, and write
     empty stdout.
-  - Observed today: a `decision` count of **1** (not 0), a stub count grown by **1**, 8 empty
-    stdouts (8 of 9 lacking `"systemMessage"`), and a final record that is the bare SHA.
+  - Observed today: a `decision` count of **1** (not 0), a stub count grown by **one check run
+    (2 stub invocations: `go vet`, then `go build`)**, 8 empty stdouts (8 of 9 lacking
+    `"systemMessage"`), and a final record that is the bare SHA.
 - **Named RED reason, N2b** (full-content rewrite): *the fresh-running notice is absent.* Every
   call finds the rewritten `<HEAD> running`, runs the checks, and blocks. The `decision` count
-  is **9** and the stub count grows by **9**. Each block JSON carries a `"systemMessage"`, so
-  that one assertion passes.
+  is **9** and the stub count grows by **nine check runs (18 stub invocations)**. Each block
+  JSON carries a `"systemMessage"`, so that one assertion passes.
 - **Green path:** M2 (REQ-008, REQ-009; lead ruling B1). The notice path neither runs the checks
   nor rewrites the record, so N2a and N2b both yield 9 notices.
 

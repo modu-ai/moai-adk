@@ -42,6 +42,36 @@ tier: M
 
   REQ-010 is restated as an invariant over call history. REQ-013 is anchored on content rather
   than line numbers.
+- 2026-09-10: lead-requested additions made before audit round 2.
+  - B7 approved as a D1 state-representation decision: every failing run stores its payload
+    (block or advisory message) before the `fail` record.
+  - Torn-write rows added to AC-005 (payload present with record not `fail`; neither written),
+    with mutants M23 and M24.
+  - The mtime-unreadable fallback recorded as an explicit gap.
+
+  This revision was audited in round 2 (`.moai/reports/t624/plan-audit-r2.md`, FAIL 0.86).
+- 2026-09-10: plan-audit round 2 findings applied (N-1..N-8, O2), inside the existing decisions.
+  - AC-015 N2 split into N2a (mtime-only refresh) and N2b (full record rewrite), with M26.
+  - AC-004 F4 tab form added, with M25. REQ-005 narrowed: no top-level claim; nested keys are an
+    explicit gap.
+  - REQ-008/009 boundary defined (stale only when the age is strictly greater than 60 s); b61
+    row and M27 added; the exact-60 s point recorded as an explicit gap.
+  - Interrupted-run harness: per-run marker lifecycle and non-fatal assertions.
+  - U4 read step added; L-18 regex extended to `then` / `do`; L-21 pending ledger row added.
+
+  This revision was audited in round 3 (`.moai/reports/t624/plan-audit-r3.md`, FAIL 0.86, 1
+  blocking).
+- 2026-09-10: operator decision after round 3 — PASS-with-debt. Implementation Kickoff was
+  approved on condition that NEW-1 is resolved before M1. The debt is paid in this revision, the
+  first run-phase change set:
+  - NEW-1: the AC-015 N2a/N2b stub-count deltas are stated as check runs with their invocation
+    counts.
+  - NEW-2: the L-21 selector runs verbatim, with a coverage contingency.
+  - NEW-3: a word boundary before `then` / `do` in the L-18 regex.
+  - NEW-4: stale cross-references updated.
+  - NEW-5: HISTORY entries and plan §A verdict pointers.
+
+  Status stays `draft`; the `draft → in-progress` transition belongs to the run-phase owner.
 
 ## §1 Background and problem statement
 

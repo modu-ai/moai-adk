@@ -11,8 +11,14 @@ first, mechanical steps last.
 - SPEC artifacts: `.moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/{spec,plan,acceptance,progress}.md`.
 - Defect evidence: `.moai/reports/t624/h01-repro-develop.md` plus `h01-develop-{call1,call2,ctrlA,ctrlB1,ctrlB2}.out`
   (tree `d5dc42959`; target files identical at `fa96fe644`, acceptance.md §D.0 L-01).
-- Plan-audit round 1 verdict: `.moai/reports/t624/plan-audit.md` (FAIL 0.60; every finding is
-  dispositioned in this revision).
+- Plan-audit verdicts, all three:
+  - round 1: `.moai/reports/t624/plan-audit.md` (FAIL 0.60, 11 blocking);
+  - round 2: `.moai/reports/t624/plan-audit-r2.md` (FAIL 0.86, 4 blocking);
+  - round 3: `.moai/reports/t624/plan-audit-r3.md` (FAIL 0.86, 1 blocking, NEW-1).
+
+  Every finding of all three rounds is dispositioned in the current artifacts. After round 3 the
+  operator approved Implementation Kickoff as PASS-with-debt, with NEW-1 paid before M1
+  (`progress.md §E.1`, provenance record).
 - Files in scope:
   - `internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` (source) and
     `.claude/hooks/moai/sync-phase-quality-gate.sh` (byte-identical copy).
@@ -103,9 +109,9 @@ Behavior on invocation, for a sync-phase HEAD with a code delta (the unchanged e
 | `fail` + advisory payload | any | nothing (B2, B3) | empty |
 | `fail` + **no** payload file | any | run checks; rewrite record (B7) | check output |
 | legacy bare SHA / empty / unreadable / unknown token / extra field | any | run checks; rewrite record | check output |
-| `running`, age within window | any | no checks | `systemMessage` notice only ("previous run has not completed") |
-| `running`, stale, no retry marker for this SHA | any | run checks as the stale re-run (marker written) | check output |
-| `running`, stale, retry marker for this SHA | any | no checks (B1) | `systemMessage` notice only ("this HEAD's gate run has not completed; delete the state file to force a re-gate"); never `decision` |
+| `running`, age ≤ window (exactly 60 s is fresh) | any | no checks | `systemMessage` notice only ("previous run has not completed") |
+| `running`, age > window (stale), no retry marker for this SHA | any | run checks as the stale re-run (marker written) | check output |
+| `running`, age > window (stale), retry marker for this SHA | any | no checks (B1) | `systemMessage` notice only ("this HEAD's gate run has not completed; delete the state file to force a re-gate"); never `decision` |
 
 ## §D Constraints (DO NOT VIOLATE)
 
@@ -241,7 +247,7 @@ Behavior on invocation, for a sync-phase HEAD with a code delta (the unchanged e
 | Crash between the payload write and the `fail` record | a torn state reads as a silent pass | torn states read as a notice or a re-gate, never silent; AC-005 torn-write rows TA1-TA5, TB1-TB2; mutants M23, M24 |
 | Re-emit printf becomes the compliance first match | `TestHookOfficialCompliance_AC002` fails or passes vacuously | §D printf rule; AC-009 |
 | A stored block re-emitted under an advisory resolution | advisory users suddenly blocked | REQ-006; AC-008 rows A5, A7, A8 |
-| The 60-second constant drifts from the settings timeout, or the comparison uses another value | fresh runs misread as stale, or the reverse | AC-014 equality; AC-006 50 s / 70 s boundary rows |
+| The 60-second constant drifts from the settings timeout, or the comparison uses another value | fresh runs misread as stale, or the reverse | AC-014 equality; AC-006 50 s / 61 s / 70 s boundary rows |
 | mtime unreadable on a platform | a stale `running` record is never re-gated (notice repeats), or the fresh branch is never taken | fall toward stale (runs checks, never silence); recorded as an explicit unverified Gap in acceptance.md §D.0 — no criterion pins it |
 | Two sessions share `.moai/state/` | interleaved records | atomic rename; locking out of scope |
 | An unbounded stdin read | hook hangs until the 60-second kill | `[ -t 0 ]` guard; AC-007 R11 `/dev/null` run |
