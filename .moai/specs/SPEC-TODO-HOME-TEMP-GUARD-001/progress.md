@@ -604,3 +604,57 @@ measurement_branch: WT-home-fallback
 - **CHANGELOG 항목의 AC 수 8 은 매트릭스 판독에 의존한다.** B12 자가시험 (b) 의 원시 계수는 10 이고, 8 은 그중 교차-SPEC 인용 2건(AC-SA-011 · AC-WTQ-006)을 제외한 값이다. 그 제외 판단이 틀리면 CHANGELOG 의 수가 틀린다 — 그래서 원시 계수와 제외 근거를 위 자가시험 칸에 함께 남겼다.
 - **`sync_commit_sha` 는 이 커밋(`029ab039f`)에서 `pending-backfill` 이었고, 후속 커밋 `586f26f2a` 가 실 SHA 로 채웠다.** 그 후속 커밋 전까지 이 절은 자기 커밋을 지목하지 못했다. 빈 칸이 아니라 자리표시자를 쓰는 이유는, 빈 칸은 갚을 빚을 기록하지 않기 때문이다.
 - **가드 경계 보고는 테스트 한 건에 걸려 있다.** `TestGuardBypassMutant_ObserveHomePollution` 이 약화되면 route (i) 대조군이 인용하는 「오염 0」의 의미도 함께 약해진다(§E.2 M3 잔여 위험과 같은 항목이며 sync 가 바꾸지 않았다).
+
+### 개정 0.1.5 — sync-phase 재close (카드 t574, 2026-09-10)
+
+위 §E.4 블록은 첫 close(0.1.4)의 sync 신호이며 고쳐 쓰지 않는다. 이 블록은 개정 0.1.5의 sync 재close 기록을 덧붙인다. 코드 변경은 없다 — AC-THG-006 양의 방향 절 추가와 그 판정 명령의 plan/run 재측정만 있었다(위 §E.1·§E.3 개정 블록).
+
+```yaml
+amendment_sync_status: audit-ready
+amendment_sync_complete_at: 2026-09-10
+amendment_version: "0.1.5"
+card: t574
+measurement_tree: .claude/worktrees/t574
+measurement_branch: WT-temp-roots-ac
+sync_entry_head: 4eff56551
+
+commit_chain:
+  - ac751bc48   # feat — in-place amendment AC-THG-006 positive clause
+  - 559fd8de6   # docs — export plan-audit verdict for AC-THG-006 amendment
+  - d937cd68d   # docs — address plan-audit minor defects D1 D3 D4 D5 D6
+  - 0f30477af   # test — pin mutant M-574 prediction before run-phase injection
+  - 4eff56551   # test — run-phase re-measure for amendment 0.1.5, close plan-audit D2
+  - (this commit)  # docs — sync re-close amendment 0.1.5
+
+plan_audit:
+  verdict: PASS
+  score: 0.94
+  evidence: .moai/reports/t574/plan-audit.md
+
+run_reremeasure_evidence:
+  - .moai/reports/t574/run-baseline.txt
+  - .moai/reports/t574/run-mutant-source.diff
+  - .moai/reports/t574/run-mutant-prediction.md
+  - .moai/reports/t574/run-mutant.txt
+  - .moai/reports/t574/run-mutant-revert.txt
+  - .moai/reports/t574/run-kanban-pkg.txt
+
+status_transition: "in-progress → completed (spec.md frontmatter: status + updated 두 필드만, 본문 무수정)"
+code_change: none
+user_facing_docs: none    # CHANGELOG/README/docs-site 무편집 — 요구사항 본문·AC 8개·§D.0 매핑 불변, 내부 SPEC의 검증 텍스트만 바뀌었다 (b12 self-test 아래)
+
+b12_self_test_a: "grep -c 'SPEC-TODO-HOME-TEMP-GUARD-001' CHANGELOG.md → 1 (기존 0.1.4 close 항목). AC 수·서술 모두 이번 개정으로 거짓이 되지 않아 편집하지 않는다"
+b12_self_test_b: "/usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10, 0 아님. 8건(AC-THG-001..008)이 본 SPEC 소유이며 개정 후에도 그 수는 불변 — 기존 CHANGELOG 항목의 '8 acceptance criteria' 서술과 일치"
+b12_self_test_c: "ls 로 실재 확인 — spec.md · progress.md (이 커밋이 편집) · .moai/reports/t574/plan-audit.md · run-baseline.txt · run-mutant.txt · run-mutant-revert.txt · run-kanban-pkg.txt — 전부 존재"
+
+evidence_root: .moai/reports/t574/
+```
+
+### 미검증 (Gaps) — sync 재close
+
+- 코드 변경이 없으므로 이 회차의 sync 재close는 컴파일 대상을 다시 재지 않았다 — 판정의 근거는 위 §E.3 개정 블록의 run 재측정과 §E.1 개정 블록의 plan-audit이다.
+- 리눅스·윈도우 셀 미측정은 첫 close 때와 동일하게 남아 있다(위 §E.4 원 블록의 Gaps 참조) — 이 개정이 새로 만든 갭이 아니다.
+
+### 잔여 위험 (Residual risk) — sync 재close
+
+- 이 커밋은 자기 해시를 인용할 수 없어 `(this commit)`로 표기했다 — 첫 close(0.1.4) 때의 백필-플레이스홀더 관행과 달리, 이번 개정 블록은 애초에 era.go가 원 §E.4 블록에서 읽는 해시 필드 이름을 쓰지 않는다(그 필드로 읽는 값을 이 블록이 흔들지 않도록).

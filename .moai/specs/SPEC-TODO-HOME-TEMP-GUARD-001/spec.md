@@ -2,7 +2,7 @@
 id: SPEC-TODO-HOME-TEMP-GUARD-001
 title: "생산 홈 폴백의 임시-디렉터 기원 거부 — SPEC-STATE-ANCHOR-001 §5 결정 이행"
 version: "0.1.5"
-status: in-progress
+status: completed
 created: 2026-09-08
 updated: 2026-09-10
 amendment_of: SPEC-TODO-HOME-TEMP-GUARD-001
