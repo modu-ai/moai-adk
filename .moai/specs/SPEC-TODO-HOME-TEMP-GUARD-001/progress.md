@@ -34,6 +34,7 @@ coverage_mapping_changed: false                   # acceptance.md §D.0 의 "AC-
 evidence: [.moai/reports/t574/repro-summary.md, .moai/reports/t574/mutant-kanban.txt]
 open_questions: none                              # 개정 형태(기존 AC 확장, 신규 AC 없음)는 운영자 결정
 next: "run 재측정(AC-THG-006 확장 판정 명령) → sync 재close — 각 단계가 기존 블록 아래에 덧붙인다"
+expected_audit_drift: "개정 창 동안(status in-progress) 트리 빌드 `moai spec audit`와 MCP `spec_audit`가 SyncStatusDrift(MUST-FIX)를 낸다 — 예상된 경보다. 해소 경로는 manager-docs의 정상 sync 재close이며, 권고 조치 `moai spec close --backfill-only`는 run 재측정을 건너뛰고 status만 되돌리므로 실행하지 않는다"
 ```
 
 ## §E.2 Run-phase Evidence
