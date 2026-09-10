@@ -115,3 +115,32 @@
 - C3 는 이 브랜치에서 재생성했으므로 병합 뒤 develop 의 `agentemit` 골든 테스트와 `agents-emit-check` 는 초록이어야 한다. 병합 창에서 흡수한 트리 기준으로 다시 확인한다. 이미 설치된 바이너리는 배치 끝 리드의 빌드 전까지 옛 정의를 임베드한다(임베드 축은 `make embed-check` 소관).
 - AC-10의 새 전제 조건 문장은 `ci-autofix-protocol.md`의 "Entry Condition"과 "Prerequisites" 구성을 가리킨다. 그 규칙 파일의 절 구성이 바뀌면 이 참조가 어긋날 수 있다.
 - AC-06 문장이 산출물 범위를 SSOT에 맡겼으므로, 앞으로 SSOT 행이 바뀌면 "Status transitions owned" 항목(4개 산출물 명시)과 다시 어긋날 수 있다. 그 항목은 이번 범위 밖이라 손대지 않았다.
+
+## 6. 병합 트리 재측정 — 통합 창 안 (lane-6)
+
+리드 지명 후 창을 잡고(`moai integration acquire --name lane-6`) 로컬 develop 을 흡수한 트리에서 다시 쟀다. 흡수 전 측정은 병합 뒤 근거로 재사용하지 않는다.
+
+**흡수 대상과 흡수.** `git fetch origin develop` 후 `git rev-list --count --left-right origin/develop...develop` → `0 120` 이므로 흡수 대상은 로컬 develop `6d228ea19` 이다. t610 병합 `296ba7aa5` 가 그 조상이다(exit 0). 흡수 뒤 HEAD 는 `454b2b264`, 트리는 `bb4f6d689` 이며, 흡수 전 `git merge-tree` 가 예측한 트리와 같다(충돌 파일 0).
+
+**도구체인** — `merge-tree-go-version.txt`: `go version go1.26.8 darwin/arm64`, `go.mod` 의 `go 1.26.8`.
+
+**델타 판정** — `merge-tree-delta.txt`. 카드 기준 `f3c4ca50c` 이후 develop 이 바꾼 파일 177개를, 병합 트리에서 잰 `go list -deps -test ./internal/template/ ./internal/template/agentemit/` 의 모듈 내부 패키지 13개와 대조했다. 의존 패키지 안에서 바뀐 `.go` 파일은 0개다. `go.mod` 는 바뀌었다(도구체인 지시어). embed 후보는 `plan-auditor.md` 와 `plan-auditor.toml` 2개다. 도구체인이 바뀌었으므로 아래를 새 도구체인으로 다시 쟀다.
+
+| 명령 | 결과 | 증거 |
+|---|---|---|
+| `go test ./internal/template/ -count=1 -v -run 'Catalog\|ManagerDevelop\|AgentFrontmatter\|Embed'` | EXIT=0, 최상위 49개 실행, `--- PASS` 72줄, `--- FAIL` 0줄 | `merge-tree-template-scoped.txt` |
+| `go test ./internal/template/agentemit/... -count=1 -v` | EXIT=0, `--- PASS` 24 / `--- FAIL` 0, `TestGoldenCommittedArtifactsMatchEmission` 통과 | `merge-tree-agentemit.txt` |
+| `make agents-emit-check` | EXIT=0 | `merge-tree-agents-emit-check.txt` |
+
+**catalog 해시 — 선택 범위가 놓친 검사.** 위 `-run` 선택자에는 catalog 해시를 실제 내용과 대조하는 `TestManifestHashFormat` 이 들어가지 않는다(이름이 선택자와 맞지 않음). 그래서 이 테스트를 따로 돌렸다.
+
+| 트리 | 결과 | 증거 |
+|---|---|---|
+| 병합 트리 `454b2b264` | EXIT=1. 실패 줄은 `CATALOG_HASH_UNSTABLE: plan-auditor stored hash=2403bfb3…, computed hash=621cb9ee…` 하나뿐 | `merge-tree-manifest-hash.txt` |
+| 흡수 전 develop 트리(`.claude/worktrees/develop`, 대조) | EXIT=1. 같은 실패 줄 하나 | `develop-control-manifest-hash.txt` |
+
+- 대조 트리의 신원: develop 워크트리에 있는 `catalog.yaml`, `plan-auditor.md`, `manager-develop.md` 의 sha256 이 커밋 `6d228ea19` 의 같은 파일 blob 과 모두 같다(`develop-control-tree-identity.txt`). 따라서 대조 실행은 `6d228ea19` 의 내용을 쟀다.
+- manager-develop 해시: 실패 줄에 `manager-develop` 은 없다. 생성기 dry-run 도 `b8fa8c95…` 를 계산했고, 이는 catalog 에 기록한 값과 같다(`merge-tree-hash-dryrun-manager-develop.txt`, `merge-tree-catalog-entries.txt`). 같은 dry-run 이 plan-auditor 에서는 기록값과 다른 `621cb9ee…` 를 내므로, 불일치를 잡을 수 있는 계산이라는 것도 확인했다(`merge-tree-hash-dryrun-plan-auditor-control.txt`).
+- 판정: 이 실패는 흡수 전 develop 에도 똑같이 있으므로 이 카드에서 온 것이 아니다. develop 에 먼저 들어간 plan-auditor 변경에서 온 회귀이며, 수리 카드가 따로 배정됐다. 리드 규칙에 따라 병합을 막지 않는다.
+
+**이 절의 Gaps.** `internal/template` 패키지 전체는 돌리지 않았다. 앞의 선택자가 `TestManifestHashFormat` 을 놓쳤듯, 선택 범위 밖에 이 카드와 관련된 다른 검사가 있는지는 전수 확인하지 않았다.
