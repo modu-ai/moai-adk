@@ -808,8 +808,9 @@ is run *before* the M2 edit, not after.
 - Falsification procedures C-1 through C-4 produce their stated contradictions.
 - Every documentation correction cites the `file:line` or content-anchored symbol it was verified
   against (NFR-UDD-004).
-- No Go file is modified (AC-UDD-023) and `internal/template/templates/**` is unmodified relative to
-  `7f61332ef` (AC-UDD-021).
+- No Go file is modified (AC-UDD-023) and `internal/template/templates/**` is unmodified over this
+  SPEC's own range as AC-UDD-021 measures it (read-time `CARD_BASE`, pre-merge), not relative to a
+  fixed SHA.
 - No criterion is closed on a command that cannot observe its own expectation (§A clause 6), and no
   correction retracts a claim by quoting it (§A clause 8).
 - `progress.md` §E.2 cites the observed command output for every claim, per
