@@ -65,6 +65,7 @@ jobs:
       #   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
       #   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
       #   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)
+      #   .claude/settings.json           internal/config/toolpolicy/drift_check_test.go (permissions block vs tool-policy.yaml, fail-loud)
       #   scripts/ci-census/**            the test steps below shell out to it;
       #                                    without it here, a PR that edits the
       #                                    census alone gets the skip-marker
@@ -88,6 +89,7 @@ jobs:
               - '.claude/agents/**'
               - '.claude/rules/moai/**'
               - '.claude/output-styles/moai/**'
+              - '.claude/settings.json'
               - 'CLAUDE.md'
               - 'scripts/ci-census/**'
 

@@ -1,0 +1,28 @@
+=== RUN   TestUpdateRepair_RecoverHintFlagExists
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes
+    update_repair_test.go:87: report.RenderOutcome(AlreadyUpToDate): recovery hint names --restore-config, which `moai update` does not define
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome
+=== RUN   TestUpdateRepair_RecoverHintFlagExists/source_literals
+    update_repair_test.go:127: update/report/outcome.go: recovery hint names --restore-config, which `moai update` does not define
+--- FAIL: TestUpdateRepair_RecoverHintFlagExists (0.07s)
+    --- FAIL: TestUpdateRepair_RecoverHintFlagExists/rendered_report_outcomes (0.00s)
+    --- PASS: TestUpdateRepair_RecoverHintFlagExists/rendered_tux_outcome (0.00s)
+    --- FAIL: TestUpdateRepair_RecoverHintFlagExists/source_literals (0.06s)
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/template_sync
+2026/09/10 23:30:06 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+=== RUN   TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall
+--- PASS: TestUpdateRepair_RenderUsesProjectGitMode (0.22s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/template_sync (0.20s)
+    --- PASS: TestUpdateRepair_RenderUsesProjectGitMode/clean_reinstall (0.02s)
+=== RUN   TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup
+--- PASS: TestUpdateRepair_SyncArchivesLegacySkillsBeforeCleanup (0.24s)
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported
+--- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.488s
+FAIL

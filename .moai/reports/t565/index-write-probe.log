@@ -1,0 +1,3 @@
+23:15:45.168768 exec-cmd.c:145          trace: resolved executable path from Darwin stack: /Applications/Xcode.app/Contents/Developer/usr/bin/git
+23:15:45.176430 exec-cmd.c:267          trace: resolved executable dir: /Applications/Xcode.app/Contents/Developer/usr/bin
+23:15:45.219753 git.c:476               trace: built-in: git update-index --refresh

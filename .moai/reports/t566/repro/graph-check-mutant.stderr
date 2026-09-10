@@ -1,0 +1,17 @@
+graph check: layer codemaps verdict=stale value=47 threshold=40 — 
+  measured from: f7b491954 (working-tree-differs-from-stamp)
+  contribution: 17 described-worthy file(s) vs first parent d060e0d13 (originated by this change)
+    internal/cli/claude_binary.go
+    internal/cli/codex_contract.go
+    internal/cli/codex_init.go
+    internal/cli/codex_launcher.go
+    internal/cli/codex_readiness.go
+    internal/cli/codex_skills_disable.go
+    internal/cli/doctor_codex.go
+    internal/cli/factory_handoff_recover.go
+    internal/cli/goal.go
+    internal/cli/goal_runnable.go
+    ... and 37 more (listing bounded)
+graph check: layer mx-index verdict=absent value=0 threshold=1 — mx-index absent (untracked runtime artifact — fresh worktree state)
+graph check: layer edges verdict=absent value=0 threshold=0 — edges.jsonl absent (untracked derived artifact — fresh worktree state)
+exit status 1

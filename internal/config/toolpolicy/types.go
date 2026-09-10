@@ -1,8 +1,10 @@
 // Package toolpolicy implements the declarative tool/permission policy SSOT
 // (SPEC-V3R6-TOOL-POLICY-SSOT-001). The YAML at
 // .moai/config/sections/tool-policy.yaml is the single source from which the
-// settings.json permissions block (enforcement surface) and the YAML header
-// comment (audit surface) are generated.
+// settings.json permissions block (enforcement surface) is generated. The YAML
+// header comment is hand-maintained; the generator never writes it. Drift
+// between the YAML and the committed permissions block is not prevented by
+// construction: it is caught by the read-only `make tool-policy-drift-check`.
 //
 // Schema origin: book1 ch08 6-field approval template (action/risk/requestor/
 // decision/rationale/impact) made machine-readable. Drift-class analogy:
@@ -92,10 +94,11 @@ type PolicyEntry struct {
 }
 
 // Metadata carries the YAML header metadata (cross-references + generation
-// targets). This block is the audit surface that, together with the generated
-// settings.json permissions block (enforcement surface), is derived from the
-// same YAML source — structurally preventing YAML↔settings.json drift
-// (design.md §D.1 SSOT invariant).
+// targets). It is hand-maintained audit data: the generator reads the entries,
+// not this block, and writes only the settings.json permissions block
+// (enforcement surface). Agreement between the YAML and that block is checked
+// by the read-only `make tool-policy-drift-check`, not guaranteed by sharing a
+// source.
 type Metadata struct {
 	Version       string   `yaml:"version"        json:"version"`
 	GeneratedInto []string `yaml:"generated_into" json:"generated_into"`
