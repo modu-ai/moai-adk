@@ -343,9 +343,41 @@ the in-repo toolpolicy writers — which omit `ask` entirely when empty
 the literal `"ask": []` that the external writer actually produced would not.
 
 Had E2's `git restore` not intervened, the empty `ask` would have survived
-every subsequent `moai update`. Static-derived from reading `base.go` and
-`strategies.go`; **NOT executed** — until it is reproduced in an isolated
-sandbox with controls, (i) and (ii) are hypotheses.
+every subsequent `moai update`.
+
+**Now executed.** The hypothesis marker above is discharged. Under
+`SPEC-UPDATE-MERGE-CONFLICT-BLIND-001`, M1 measured the top-level JSON breadth
+and M2.0 measured the recursive and YAML breadths — 20 predictions, 0 failed,
+each breadth carrying its own discriminator cell that inverted and its own
+conflict-surface control that made the same engine report `true`/`1`. YAML was
+established to reach the **identical** `deepMergeMap` call rather than a
+separate strategy (`internal/merge/strategies.go:343` and `:314` are the same
+call; `three_way.go:56-59` dispatches both), and every YAML cell asserts
+`MergeResult.Strategy == yaml_deep` so a YAML reading cannot be a JSON reading
+wearing a `.yaml` filename. Evidence: `progress.md` §E.2 of that SPEC and
+`internal/cli/update/merge/conflict_blind_{repro,breadth}_test.go`.
+
+**One refinement the measurement forced, and it is a granularity correction
+rather than a defect.** The claim "the value of a key the user already carries
+cannot change" is true at **leaf** granularity and **false at container
+granularity**. A shared container's value does change: when the template adds
+a leaf inside a container both sides carry, the merged container is neither
+side's — measured, in the same run:
+
+```
+container written = {"changed_shared":["user-choice"], "emptied_shared":[],
+                     "omitted_leaf":["template-only"], "untouched_shared":["template-old"],
+                     "user_only":["user-addition"]}
+```
+
+user leaves plus the template's new leaf. So the correct statement is about
+leaves: **a shared leaf's value cannot change; a leaf absent on the user's
+side lands, and a container's value changes only by gaining such leaves.** Any
+citation of the broader wording is an unobserved claim and the SPEC's §A.6
+needs restating at leaf granularity.
+
+Not observable from `MergeResult`, and therefore not claimed: **which** arm of
+`strategies.go:418-462` fires for a shared container key.
 
 ### Secondary observation — a non-canonical evidence path in the ledger
 
@@ -408,6 +440,34 @@ require re-measurement, which is why the SHA is pinned here.
   between the settings console and the project file cannot be excluded with
   full confidence, though the commit that reworked that console shows no
   `permissions`/`ask` touches.
+- **`acceptance.md` carries 17 `AC-UMC-` entries against a Tier M cap of 16.**
+  Recorded here because a sync-phase gate may read that count. It is
+  **pre-existing and was not introduced by the framing or DoD revisions**: the
+  authoring pass created all 17, the revision pass added none (its own report
+  states it added no AC, and the M2.0 precondition it was asked to introduce
+  went into `plan.md` §F rather than as a new criterion). Removing an AC is
+  outside the revision scope that was requested, so it was reported rather
+  than fixed — deleting a criterion to satisfy a count is how a gate gets
+  quietly weakened.
+- **Two files the operator changed are not landed, and this document does not
+  pretend otherwise.** The operator instructed removal of the six `ask`
+  entries from `internal/template/templates/.claude/settings.json.tmpl` and
+  from the primary checkout's `.claude/settings.json`. Measured after a fetch:
+  local `develop` (`c8203fbf3`) still carries the key in the template and all
+  six entries in `.claude/settings.json`; the edits are uncommitted in the
+  primary checkout, which has `main` checked out and therefore cannot commit
+  to `develop`. The landing path is card **t609**. Every template observation
+  in this document is therefore attributed to tree `a79e8601c` /
+  `develop c8203fbf3`, and the time boundary will be added when t609 lands —
+  not before, because recording something that has not happened is the same
+  class of error as failing to record something that did.
+
+  One consequence worth separating: the template's six entries were only a
+  **supporting** reason for eliminating "template deploy" as E1's writer. The
+  load-bearing reasons are the key order and the three template-only keys
+  (`model`, `includeGitInstructions`, `plansDirectory`), neither of which
+  depends on whether the template carries `ask`. The elimination therefore
+  survives t609 landing.
 
 ## Residual-risk
 
