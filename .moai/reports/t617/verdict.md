@@ -168,3 +168,29 @@ step5b 의 시각은 직전 2026-09-10T08:28:34Z, 직후 08:28:49Z 이고, 실�
 
 제안 카드 문구:
 > `system.yaml` 의 `migrations.disabled` 를 로더에 바인딩한다 (REQ-V3R2-RT-007-032). `internal/config/loader_system.go` 의 `systemFileWrapper` 가 `hook` 블록만 디코딩해서, `migrations.disabled: true` 가 `cfg.System.Migrations.Disabled` 에 닿지 않는다. 기본값을 유지하는 부분 덮어쓰기 계약을 지키면서 `migrations` 블록을 바인딩하고, 설정 표면 정직성 인벤토리(SPEC-CONFIG-KEY-HONESTY-001)의 분류도 고친다. 수락 기준: `system.yaml` 픽스처로 `Loader.Load` 를 거쳐 세션 시작 러너가 건너뛰어지는 것을 확인하고, 키를 지운 뮤턴트에서 실패해야 한다.
+
+## 7. 병합 트리 재측정 — 통합 창 안 (lane-6)
+
+리드 지명 후 창을 잡고(`moai integration acquire --name lane-6`) 로컬 develop 을 흡수한 트리에서 다시 쟀다. 흡수 전 측정은 병합 뒤 근거로 재사용하지 않는다.
+
+**흡수 대상의 최신성.** `git fetch origin develop` 후 `git rev-list --count --left-right origin/develop...develop` → `0 84`. 원격에만 있는 커밋은 없으므로 흡수 대상은 로컬 develop `f66cdc918` 이다.
+
+**흡수.** `git merge --no-edit develop` → HEAD `fedfe3f43`, 트리 `a8622d6a9`. 흡수 전에 `git merge-tree --write-tree --name-only develop HEAD` 가 예측한 트리와 같다(충돌 파일 0).
+
+**델타 판정** — `merge-tree-delta.txt`. 카드 기준 `d3b7d438d` 이후 develop 이 바꾼 파일 145개를, 병합 트리에서 잰 `go list -deps -test ./internal/hook/` 의 모듈 내부 패키지 68개와 대조했다.
+
+- `go.mod` / `go.sum` 변경: 없음.
+- hook 테스트가 의존하는 패키지 안에서 바뀐 `.go` 파일 10개. 운영 코드는 `internal/kanban/todo_root.go`, `internal/merge/differ.go`, `internal/mx/scanner.go`, `internal/session/store.go` 이고 나머지는 해당 패키지의 테스트다.
+- 의존 패키지 디렉터리 아래에서 바뀐 비-`.go` 파일(embed 후보) 4개. 모두 `internal/template` 아래다.
+- 대조: `internal/hook` 자신이 의존 목록에 잡힌다(참).
+
+델타가 `internal/hook` 밖의 의존에 닿으므로, 리드 지시대로 범위를 넓혀 `internal/hook` 패키지 전체를 한 번 돌렸다.
+
+| 명령 | 결과 | 증거 |
+|---|---|---|
+| `go test ./internal/hook/ -v -count=1 -run '^(이 카드의 네 테스트)$'` | EXIT=0, 최상위 `--- PASS:` 4건 — `InvokesMigrationRunner` · `MigrationFailure_DoesNotBlockSession` · `MigrationsDisabled_SkipsRunner` · `EnabledByDefault` | `merge-tree-green.txt` |
+| `go test ./internal/hook/ -count=1 -timeout 600s` | EXIT=1. 실패는 `TestSessionStart_DeferredScanDoesNotBlockReturn` 한 건뿐(`Handle blocked 606.187625ms`), 나머지는 통과. `FAIL … 110.478s` | `merge-tree-hook-package.txt` |
+
+패키지 실행의 부하 조건은 `merge-tree-hook-load-before.txt` / `merge-tree-hook-load-after.txt` 에 발췌만 기록했다. 직전(2026-09-10T09:04:02Z) 1분 load 는 **27.71**, 직후(09:06:10Z)는 **61.06** 이었다. 두 스냅샷 모두 다른 `go test` 줄은 0 이었고, 관측기가 `ps` 자신을 잡는 것은 확인했다. load 기준으로 이 실행은 LOADED 다. 따라서 이 실패도 §2.6.1 과 마찬가지로 경합 아래의 빨강이라 판정 근거가 아니다. 조용한 조건 미측정 Gap(§4 의 4번)은 그대로 남는다.
+
+**이 절의 Gaps.** 델타가 닿은 의존 패키지(`internal/kanban`, `internal/merge`, `internal/mx`, `internal/session`, `internal/template`) 자체의 테스트는 여기서 돌리지 않았다. 그 변경을 가져온 카드들이 각자의 창에서 잰 몫이다. `internal/hook` 하위 패키지(`internal/hook/...`)도 돌리지 않았다. 전체 판정은 리드의 일괄 push 뒤 CI 몫이다.
