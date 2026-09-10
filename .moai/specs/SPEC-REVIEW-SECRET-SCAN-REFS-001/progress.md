@@ -193,6 +193,34 @@ therefore holds plain object names — is superseded by SPEC 0.3.0, whose store 
 names and whose missing-tip handling removes the caret before comparing (`spec.md` §3.4 § Tip store
 and scan command).
 
+### Pinned procedure
+
+Gate round 2. Pinned on branch `WT-secret-scan-refs` on top of `e298f7336`, in a commit of its own that
+precedes the first command of this round. It replaces the round 1 pin, now in
+`.moai/reports/t629/gate-round-1.md`, and follows `spec.md` 0.3.0 § Tip store and scan command. The
+regex below is written exactly as `review.md` writes it. Paths are relative to the project root.
+
+Tip recording: before the scan starts, record the tip of every ref with `git for-each-ref --format='^%(objectname)' > .moai/state/secrets-scan-tips.next`, and replace `.moai/state/secrets-scan-tips.txt` with that file only after the scan that carries the final result exits 0.
+Full-history scan: git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+Scan command: git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' --stdin < .moai/state/secrets-scan-tips.txt
+Missing-tip handling: when the scan exits non-zero and its error output reports `bad object` for a tip whose line in `.moai/state/secrets-scan-tips.txt`, without its leading caret, names that object, report that tip as missing and run the full-history scan in its place; any other non-zero exit is a scan failure that is reported and leaves `.moai/state/secrets-scan-tips.txt` unchanged.
+Uncovered commits: Commits that no ref and no HEAD reaches, such as commits reachable only through a reflog, are outside every scan step in this procedure, and no step scans them.
+
+Which step runs: the full-history scan runs when `.moai/state/secrets-scan-tips.txt` does not exist,
+and the scan command runs otherwise. Because the tips are recorded before the scan starts, a commit
+that lands while the scan runs is outside the recorded tips and falls to the next review instead of
+being skipped; a commit that lands between the recording and the scan's own read of the refs is
+scanned twice. `Uncovered commits:` carries the REQ-004 sentence that AC-006 checks, fixed here before
+any document edit. It is reused verbatim from round 1: the stdin form does not make it false, because
+every store line is a negated revision and adds nothing to the scope `--all` sets.
+
+Gate execution method, fixed before the gate. The gate runs these commands as written: the scan
+command reads the store through standard input, so no tip is typed by hand and no command
+substitution is involved. On the fixture, `git` runs with `-C <fixture root>`, and each path under
+`.moai/state/` that a command names is written with the fixture root in front, because the shell, not
+`git`, resolves a redirect; the arguments are otherwise unchanged. The tip store sits at
+`.moai/state/` under the fixture's own root, the pinned path.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
