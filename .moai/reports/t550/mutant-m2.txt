@@ -1,0 +1,32 @@
+=== RUN   TestNodeLintRunsOxlintStepOnOxlintProject
+--- PASS: TestNodeLintRunsOxlintStepOnOxlintProject (0.14s)
+=== RUN   TestNodeLintOxlintViolationFailsGate
+--- PASS: TestNodeLintOxlintViolationFailsGate (0.13s)
+=== RUN   TestNodeLintOxlintConfigFilenames
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.json
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.jsonc
+    gate_oxlint_lint_test.go:157: config file .oxlintrc.jsonc: oxlint outcome = "skipped" (reason "none of its config files exist in the project directory (.oxlintrc.json)"), want "executed"
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.ts
+    gate_oxlint_lint_test.go:157: config file oxlint.config.ts: oxlint outcome = "skipped" (reason "none of its config files exist in the project directory (.oxlintrc.json)"), want "executed"
+=== RUN   TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.mts
+    gate_oxlint_lint_test.go:157: config file oxlint.config.mts: oxlint outcome = "skipped" (reason "none of its config files exist in the project directory (.oxlintrc.json)"), want "executed"
+--- FAIL: TestNodeLintOxlintConfigFilenames (0.16s)
+    --- PASS: TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.json (0.15s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/.oxlintrc.jsonc (0.00s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.ts (0.00s)
+    --- FAIL: TestNodeLintOxlintConfigFilenames/oxlint_config/oxlint.config.mts (0.00s)
+=== RUN   TestNodeLintOxlintStepShape
+    gate_oxlint_lint_test.go:206: oxlint configFiles has 1 entries, want exactly 4: [.oxlintrc.json]
+    gate_oxlint_lint_test.go:211: missing config file name: .oxlintrc.jsonc (declared: [.oxlintrc.json])
+    gate_oxlint_lint_test.go:211: missing config file name: oxlint.config.ts (declared: [.oxlintrc.json])
+    gate_oxlint_lint_test.go:211: missing config file name: oxlint.config.mts (declared: [.oxlintrc.json])
+--- FAIL: TestNodeLintOxlintStepShape (0.00s)
+=== RUN   TestNodeLintEslintProjectUnaffectedByOxlint
+--- PASS: TestNodeLintEslintProjectUnaffectedByOxlint (0.21s)
+=== RUN   TestNodeLintBiomeProjectUnaffectedByOxlint
+--- PASS: TestNodeLintBiomeProjectUnaffectedByOxlint (0.15s)
+=== RUN   TestNodeLintLinterFreeScaffoldStillPasses
+--- PASS: TestNodeLintLinterFreeScaffoldStillPasses (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	1.368s
+FAIL
