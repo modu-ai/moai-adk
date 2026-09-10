@@ -1,0 +1,1 @@
+./.goreleaser.yml:12:      - CGO_ENABLED=0
