@@ -1,0 +1,13 @@
+=== RUN   TestManifestHashFormat
+=== PAUSE TestManifestHashFormat
+=== RUN   TestCatalogHashCoversSkillSubfiles
+=== PAUSE TestCatalogHashCoversSkillSubfiles
+=== CONT  TestManifestHashFormat
+=== CONT  TestCatalogHashCoversSkillSubfiles
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+--- PASS: TestCatalogHashCoversSkillSubfiles (0.03s)
+=== NAME  TestManifestHashFormat
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+--- PASS: TestManifestHashFormat (0.03s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.365s

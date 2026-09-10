@@ -472,9 +472,199 @@ The diff against `edecbff54` has two hunks per copy. Hunk 1 changes line 3 (`# P
 - The hook captures `git diff` stderr into the same file (`2>&1`). A `git diff` error would therefore also set `deps_modified=1`. "When that diff is non-empty" omits that edge.
 - The after-anchor comparison uses fa96fe644. The pre-flight showed the documents unchanged between fa96fe644 and edecbff54, so the result also holds against edecbff54.
 
+### M4 — mutant probes and run-phase AC matrix, recorded 2026-09-11 by manager-develop
+
+#### Tree check and restore baseline (before the first mutant)
+
+| # | Command | Verbatim stdout | Exit |
+|---|---|---|---|
+| T1 | `git rev-parse --show-toplevel` | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t624` | 0 |
+| T2 | `git branch --show-current` | `WT-sync-gate-failstate` | 0 |
+| T3 | `git rev-parse --short HEAD` | `989ef144b` | 0 |
+| T4 | `git --no-optional-locks status --short` | *(empty)* | 0 |
+
+| File | sha256 (restore baseline) |
+|---|---|
+| `.claude/hooks/moai/sync-phase-quality-gate.sh` | `3fdce8e697b7afc91a7005d6c371b91759287d08db3e8fefc35988a138fbe866` |
+| `internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | same |
+| `.claude/skills/moai/workflows/sync/quality-gates-quality.md` | `72d7888b8a5d7809cb0b619d5350fad2543a958e3bd45e7cb208273d75ecbd09` |
+| `internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md` | `c0c3310a3d1a4d4b32fe71d2f937ec8669abf0977797e20f5eaa97d609460df3` |
+
+#### Method
+
+- One mutant at a time. Hook mutants edit the LOCAL hook (the copy every `sgfFixture` drives); M9 edits both document copies (the copies the AC-011 grep rows read).
+- Each mutant runs only the tests carrying its named §D.16 rows: `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ -run '<named test>' -count=1 -v`, output to `.moai/reports/t624/m4-mutant-MNN.txt` (M9: the AC-011 grep rows).
+- Revert by copying a pristine copy back (no `git stash` / `checkout` / `restore`), then prove the restore: sha256 equals the baseline above and `git --no-optional-locks diff --stat` is empty.
+- M1-M27 in the first pass were measured on HEAD `989ef144b`. The M18 rerun was measured on HEAD `21216ae6f` plus the S2/S3 test edit, which is the tree of test commit `7791c0e7d`.
+
+#### Mutant table (§D.16; M22 was probed as two mutants, one per clause)
+
+Restore proof for every row: hook sha256 `3fdce8e6…fbe866` (M9: both document hashes above) and an empty `git diff --stat`.
+
+| Mutant | Mutation (one line) | Named rows | Exit | Red assertion (quoted) | Evidence |
+|---|---|---|---|---|---|
+| M1 | `if stop_hook_active_set; then` → `if false; then` | AC-004 (a) | 1 | F1-F4 (a) `flagged call carries "decision"` | `m4-mutant-M01.txt` |
+| M2 | re-emit `tail -n +2` → no-op | AC-001, AC-004 (b), AC-008 A4/A9 | 1 | AC-001 call 2 0 bytes; AC-004 F1-F4 (b)(c); A4, A9 `call 2 stdout is not byte-identical` | `m4-mutant-M02.txt` |
+| M3 | `if [ "$PAYLOAD_VALID" = "1" ]` → `if false` | AC-001 (count) | 1 | `stub count after call 2 = 4, after call 1 = 2; want equal` | `m4-mutant-M03.txt` |
+| M4 | `if [ "$MODE" != "blocking" ]` → `if false` | AC-008 A5 | 1 | A5 (also A7, A8) `call 2 stdout = … want empty` | `m4-mutant-M04.txt` |
+| M5 | fresh-running condition → `if false` | AC-006 a0, AC-015 N2a/N2b | 1 | a0, a50 `stub invoked 2 time(s)…want 0`; N2a `5 of 9 stdouts carry decision`; N2b `1 of 9 … decision` | `m4-mutant-M05.txt` |
+| M6 | retry-marker condition → `if false` | AC-006c | 1 | assertions 3, 4, 5 | `m4-mutant-M06.txt` |
+| M7 | flag grep → `grep -q 'stop_hook_active'` | AC-004 (c) | 1 | (c) `call1 237 bytes, now 0 bytes` | `m4-mutant-M07.txt` |
+| M8 | `if stop_hook_active_set; then exit 0; fi` after `RERUN_OF_RUNNING=0` | AC-007 R10a/R10b | 1 | R10a, R10b `final invocation is not a block; stdout=""` | `m4-mutant-M08.txt` |
+| M9 | deps_modified paragraph deleted in both documents | AC-011 `deps_modified` rows | 1 | `deps_modified` template `0` exit 1, local `0` exit 1 | `m4-mutant-M09.txt` |
+| M10 | `"$HEAD_SHA fail")` → `*" fail")`, SHA check dropped | AC-007 R8 | 1 | R8 `stub count did not increase on the final invocation (delta 0)` | `m4-mutant-M10.txt` |
+| M11 | exhausted-retry notice → no-op | AC-006c, AC-015 N1 | 1 | AC-006c assertion 5 `stdout=""`; N1 `9 of 9 stdouts lack systemMessage` | `m4-mutant-M11.txt` |
+| M12 | exhausted notice printed as a `decision` block | AC-015 N1 | 1 | N1 `9 of 9 stdouts carry "decision"; want exactly 0` | `m4-mutant-M12.txt` |
+| M13 | `tail -n +2 "$PAYLOAD_FILE"` before the advisory exit | AC-008 A1-A3 | 1 | A1, A2, A3 (A6) `call 2 stdout = {systemMessage WARNING…}; want empty` | `m4-mutant-M13.txt` |
+| M14 | flag grep → exactly one space after the colon | AC-004 F2/F3 | 1 | F2, F3 (F4) (a) `flagged call carries decision` | `m4-mutant-M14.txt` |
+| M15 | `unset MOAI_SYNC_GATE_BLOCKING` before re-delivery `resolve_gate_mode` | AC-008 A7 | 1 | A7 `call 2 stdout = {block…}; want empty` | `m4-mutant-M15.txt` |
+| M16 | `C1_EXIT="$P_C1"` → `C1_EXIT=0` | AC-008 A8 | 1 | A8 `call 2 stdout = {block…}; want empty` | `m4-mutant-M16.txt` |
+| M17 | `&& [ "$C2_EXIT" -eq 0 ]` dropped in the automatic branch | AC-008 A9 | 1 | A9 `call 1 is not a block` / `call 2 stdout is not byte-identical` | `m4-mutant-M17.txt` |
+| M18 (first pass) | `rm -f "$PAYLOAD_FILE" 2>/dev/null \|\| true` → no-op | AC-013 S1 (as named at `989ef144b`) | **0** | **survived**: `--- PASS` for D1 and S1 | `m4-mutant-M18.txt` |
+| M18 (rerun, after amendment) | same mutation | AC-013 S2, S3 (as named at `21216ae6f`) | 1 | S2 `2 of 2 stub invocation(s) during call 2 saw the payload file present; want every observation absent`; S3 `a payload file exists after call 2; want none` and `call 3 stub count unchanged (delta 0); want increased — the checks must re-run` | `m4-mutant-M18-rerun.txt` |
+| M19 | `"$HEAD_SHA "*) exit 0 ;;` before `esac` | AC-005 U1 | 1 | U1 (also U2) `stub invoked 0 time(s)`, `stdout is not a block` | `m4-mutant-M19.txt` |
+| M20 | fresh comparison `-le 100` | AC-006 b70 | 1 | b70 (also b61) `stub invoked 0 time(s)…want >= 1` | `m4-mutant-M20.txt` |
+| M21 | fresh comparison `-le 40` | AC-006 a50 | 1 | a50 `stub invoked 2 time(s)…want 0` | `m4-mutant-M21.txt` |
+| M22a | `if [ "$P_KIND" = "advisory" ]` → `if false` | AC-008 A6 | 1 | A6 `call 2 stdout = {systemMessage WARNING…}; want empty` | `m4-mutant-M22a.txt` |
+| M22b | `exit 0` before the "fail record without a usable payload" re-gate | AC-005 U5 | 1 | U5 `stub invoked 0 time(s) on this call; want >= 1`, `stdout is not a block; stdout=""` | `m4-mutant-M22b.txt` |
+| M23 | advisory payload for HEAD → `exit 0` before the record `case` | AC-005 TA1-TA5 | 1 | TA2, TA3, TA4, TA5-bare, TA5-pass `stub invoked 0 time(s) on this call; want >= 1` (TA1 also FAIL) | `m4-mutant-M23.txt` |
+| M24 | `if [ ! -f "$PAYLOAD_FILE" ]; then exit 0; fi` in the running arm | AC-005 TB2 | 1 | TB2 `stub invoked 0 time(s) on this call; want >= 1`, `stdout is not a block; stdout=""` | `m4-mutant-M24.txt` |
+| M25 | flag grep `[ ${shas_tab}]*` → `[ ]*` | AC-004 F4 | 1 | F4 (a) `flagged call carries "decision"` | `m4-mutant-M25.txt` |
+| M26 | fresh-notice branch rewrites the record to the bare SHA | AC-015 N2a | 1 | N2a `5 of 9 stdouts carry "decision"; want exactly 0`; `record after run 9 = "<HEAD> fail"; want "<HEAD> running"` | `m4-mutant-M26.txt` |
+| M27 | fresh comparison `-le 65` | AC-006 b61 | 1 | b61 `stub invoked 0 time(s) on this call; want >= 1` | `m4-mutant-M27.txt` |
+
+(`\|` inside the table is table escaping.)
+
+#### M18: survival, amendment, rerun
+
+- **First pass (HEAD `989ef144b`).** M18 left AC-013 green (`test_exit=0`, D1 and S1 PASS). S1's call 2 is a failing advisory run, and hook lines 564-566 rewrite the payload before the `fail` record, so the stale call-1 payload was overwritten before call 3 read it. manager-develop stopped before the evidence commit and returned a blocker report.
+- **Amendment.** The lead chose option A. manager-spec amended AC-013 in `21216ae6f` (rows S2 and S3; the §D.16 M18 row now names S2 and S3, and S1 is explicitly not an M18 target). SPEC status was unchanged and there was no re-audit (lead-approved under the kickoff debt rule).
+- **Test commit `7791c0e7d`** (`internal/hook/sync_gate_failstate_test.go` only, 124 insertions, 0 deletions):
+  - `sgfStubSpec.probePayload` (line 69) and the guarded probe line in `setStub` (line 168). The probe line is emitted only when the field is set, so every other row's stub script is byte-identical.
+  - `sgfPayloadName` (line 41) and `payloadPath()` (line 217).
+  - S2 (line 760): the probe records `present`/`absent` per stub invocation. There is a setup assertion that the payload exists before call 2; the Then requires at least one observation and every observation `absent`.
+  - S3 (line 805): an `mv` shim in `f.stubBin` refuses only when its last argument is the payload path, otherwise it execs the system `mv` resolved by `exec.LookPath` before the shim is written. Reachability (refused move logged, call-2 stub delta ≥ 1, record `<HEAD> fail`) is asserted separately and stops the row before the Then when it fails. S3 skips on Windows, following the file's U4 convention.
+- **Green on the unmutated tree** (`m4-ac013-green.txt`, exit 0):
+  - S2 `observations=[absent absent]`, S3 `refused-moves=1`, call 3 `stub delta=2`.
+  - `--- PASS` for D1, S1, S2, S3.
+- **Rerun** (`m4-mutant-M18-rerun.txt`, exit 1): S2 and S3 FAIL with the lines quoted in the table, D1 and S1 PASS.
+  - Restore: both hooks `3fdce8e697b7afc91a7005d6c371b91759287d08db3e8fefc35988a138fbe866`; `git diff --stat -- .claude internal/template` empty.
+- **Other mutants re-checked:** none. The fixture change is opt-in, and no other §D.16 row names AC-013.
+
+#### Part 2 checks (tree of `7791c0e7d`; measured on the same bytes just before that commit, docs and hooks byte-identical to `c0e56ab09` per `git diff --stat c0e56ab09 HEAD -- <4 files>` → empty)
+
+| Check | Command | Exit | Verbatim tail / result | Evidence |
+|---|---|---|---|---|
+| M1 selector | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ -run '^TestSyncGateFailState' -count=1 -v` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/hook	98.081s`; 13 lines `^--- PASS: TestSyncGateFailState`, 0 `^--- FAIL`, 0 nested `--- FAIL`, 0 `no tests to run`; AC013 lists D1, S1, S2, S3 | `m4-selector-full.txt` |
+| Six guards | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ ./internal/template/ -run '^(TestHookWrapperCopiesStayIdentical\|TestAC004_SyncGateAdvisoryAtFullyAutonomous\|TestAC002_NonSyncHeadSkipsVetBuild\|TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput\|TestTemplateNoInternalContentLeak\|TestTemplateNeutralityAudit)$' -count=1 -v` | 0 | six `--- PASS:` lines by name; `ok  	…/internal/hook	8.127s` / `ok  	…/internal/template	3.005s` | `m4-guards.txt` |
+| Both packages (AC-009 When), first run on `7791c0e7d` — superseded, kept as history | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ ./internal/template/ -count=1` | 1 | `ok  	…/internal/hook	125.585s`; `--- FAIL: TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE: moai stored hash=1d23838d…, computed hash=773956f6… (source=.claude/skills/moai/ (whole tree))`), `--- FAIL: TestCatalogHashCoversSkillSubfiles` (`CATALOG_HASH_SKINNY … run gen-catalog-hashes.go --all`); `FAIL	…/internal/template	27.860s`. Attribution: M2's run at `edecbff54` passed `internal/template` (`m2-packages-run.txt`); `git diff --stat edecbff54 HEAD -- internal/template/templates/.claude/skills/moai/ internal/template/catalog.yaml` shows only `quality-gates-quality.md` (M3 `c0e56ab09`, 6+/6−), so M3's document edit left the `moai` catalog hash stale. M3 did not run the package tests | `m4-ac009-packages-before-regen.txt` |
+| Both packages (AC-009 When), re-measured on HEAD `dc9feafb2` after the catalog regen, run alone | same command | 0 | `ok` for `internal/hook` (159.262s) and `ok` for `internal/template` (51.493s); `pkg_exit=0` (verbatim lines in the file) | `m4-ac009-packages.txt` |
+| Catalog tests by name, HEAD `dc9feafb2` | `go test ./internal/template/ -run '^(TestManifestHashFormat\|TestCatalogHashCoversSkillSubfiles)$' -count=1 -v` | 0 | `--- PASS: TestCatalogHashCoversSkillSubfiles`, `--- PASS: TestManifestHashFormat`; `audited 45 catalog entries`, `audited 34 directory entries` | `m4-catalog-tests.txt` |
+
+The catalog regen commit `dc9feafb2` changes only `internal/template/catalog.yaml`. The test file and both hooks are unchanged by it, so every other row in this table stays attributable to tree `7791c0e7d`.
+| go vet | `go vet ./internal/hook/...` | 0 | *(empty)* | `m4-vet.txt` |
+| golangci-lint | `golangci-lint run ./internal/hook/...` | 0 | `0 issues.` | `m4-lint.txt` |
+| Windows vet | `GOOS=windows GOARCH=amd64 go vet ./internal/hook/` | 0 | *(empty)* | `m4-vet-windows.txt` |
+| Hook parity | `cmp <local hook> <template hook>` | 0 | *(empty)* | `m4-ac010.txt` |
+| AC-010 anchors | anchor `grep -c` both docs; through-anchor `diff`; after-anchor `diff` against `fa96fe644`, both copies | 0 | `1` / `1`; `head_diff_exit=0`; `tmpl_tail_diff_exit=0`; `local_tail_diff_exit=0` | `m4-ac010.txt` |
+| AC-009/011/012 document rows | the M3 row commands, re-run on this tree with `/usr/bin/grep` | see file | all rows at their green values (below) | `m4-ac-docrows.txt` |
+
+#### AC-009: first failure, cause, catalog regen (history kept)
+
+- **First failure.** On `7791c0e7d` the AC-009 package run exited 1. `internal/template` failed `TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE`) and `TestCatalogHashCoversSkillSubfiles` (`CATALOG_HASH_SKINNY`) (`m4-ac009-packages-before-regen.txt`).
+- **Cause.** M3 `c0e56ab09` edited the template copy of `quality-gates-quality.md`, which changed the `moai` skill's whole-tree hash; `catalog.yaml` was not regenerated, and M3's re-run used named selectors only. manager-develop stopped before this evidence commit with a blocker; the coordinator reproduced it and chose regeneration.
+- **Regen.** `go run internal/template/scripts/gen-catalog-hashes.go --all` exited 0. `git diff` changed one line, the `moai` hash `1d23838d…` → `773956f641a95d67bb5d49ffb5f77c4736425861b3ce16bfa5e9badf3daf92b7`, and no other file. It was committed alone as `dc9feafb2` (`m4-catalog-regen.txt`).
+- **Single-entry equivalence.** The lead's correction (use `--entry moai`, not `--all`) arrived after `dc9feafb2` landed, so the equivalence was checked on a scratch copy instead of rewriting history:
+  - the pre-regen catalog has 0 comment lines;
+  - `--entry moai --dry-run` computes `773956f641a95d67bb5d49ffb5f77c4736425861b3ce16bfa5e9badf3daf92b7` (64 characters, equal to the test's required value);
+  - `--entry moai` changes exactly one line (`diff -U0`: one `-`, one `+`);
+  - `cmp` of that result against the `dc9feafb2` bytes exits 0.
+
+  The script's write path (lines 257-269) re-marshals the whole file for `--entry` and `--all` alike; the committed bytes equal the single-entry result.
+- **Contended re-run.** The first re-run on `dc9feafb2`, issued in the same turn as other `go run` / `go test` jobs, printed `ok` for `internal/template`. `internal/hook` failed two timing tests: `TestSessionStart_DeferredScanDoesNotBlockReturn` (`blocked 629.1065ms`) and `TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory` (`blocked 767.00875ms; expected return near the 250ms bound`). Evidence: `m4-ac009-packages-after-regen-contended.txt`.
+- **Solo re-run.** The same command re-run alone printed `ok` for both packages (`m4-ac009-packages.txt`). The 1-minute load average was 19.73 at its start. Contention is the likely cause of the two timing failures; it is not proven.
+
+#### AC matrix (15 criteria)
+
+| AC | Status | Command | Actual output | Evidence |
+|---|---|---|---|---|
+| AC-001 | PASS | M1 selector | `--- PASS: TestSyncGateFailState_AC001_FailureRedeliveredOnSameHead (1.84s)` | `m4-selector-full.txt` |
+| AC-002 | PASS | M1 selector | `--- PASS: TestSyncGateFailState_AC002_NewFailingHeadBlocksWithNewResult (2.66s)` | `m4-selector-full.txt` |
+| AC-003 | PASS | M1 selector | `--- PASS: TestSyncGateFailState_AC003_PassThenSameHeadStaysSilent (1.78s)` | `m4-selector-full.txt` |
+| AC-004 | PASS | M1 selector | `--- PASS: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery (6.87s)` | `m4-selector-full.txt` |
+| AC-005 | PASS | M1 selector | `--- PASS: …AC005_UnknownAndLegacyRecordsRegate (9.18s)`, `--- PASS: …AC005_TornWriteNeverSilentPass (10.27s)` | `m4-selector-full.txt` |
+| AC-006 | PASS | M1 selector | `--- PASS: …AC006_RunningRecordStaleWindow (4.77s)`, `--- PASS: …AC006c_RetryBoundAndNotice (1.20s)` | `m4-selector-full.txt` |
+| AC-007 | PASS | M1 selector | `--- PASS: …AC007_NoPathLooserThanToday (30.32s)` | `m4-selector-full.txt` |
+| AC-008 | PASS | M1 selector | `--- PASS: …AC008_RedeliveryFollowsModeResolution (12.61s)` | `m4-selector-full.txt` |
+| AC-009 | PASS (packages re-measured on HEAD `dc9feafb2` after the catalog regen; the first run on `7791c0e7d` failed, see the AC-009 history above) | six guards; both packages; catalog tests; M1 selector; template rows | six guards PASS by name; packages `ok`/`ok` on `dc9feafb2`; catalog tests PASS; `SPEC-` `0`/`0`; L-19 `0`/`0`; SHA scan no hits; L-18 jq `0` | `m4-guards.txt`, `m4-ac009-packages.txt`, `m4-catalog-tests.txt`, `m4-ac-docrows.txt` |
+| AC-010 | PASS | `cmp` + anchor checks | `cmp_exit=0`; `1`/`1`; three diffs exit 0 | `m4-ac010.txt` |
+| AC-011 | PASS | document/hook `grep -c` rows | scan `0`/`0`; `deps_modified` `1`/`1`; "only check" `0`/`0`; "Audit ALL" `0`/`0`; `manifest audit` `0`/`0` | `m4-ac-docrows.txt`; `m3-ac-rows.txt` (header match, reviewer read) |
+| AC-012 | PASS | `grep -c` rows | (a) `sync-auditor FAIL` `1`/`1`; (b) HARD THRESHOLD `1`/`1` | `m4-ac-docrows.txt`; `m3-ac-rows.txt` (CRITICAL-only lines) |
+| AC-013 | PASS | M1 selector | `--- PASS: …AC013_RetryByDeletionNoStaleAuxState (6.34s)` with D1, S1, S2, S3 PASS | `m4-selector-full.txt`, `m4-ac013-green.txt` |
+| AC-014 | PASS | M1 selector | `--- PASS: …AC014_StaleWindowEqualsRegisteredTimeout (0.00s)` | `m4-selector-full.txt` |
+| AC-015 | PASS | M1 selector | `--- PASS: …AC015_NoticesNeverBlockOrConsumeCap (9.73s)` | `m4-selector-full.txt` |
+
+#### §D.0 unverified gaps (not claimed)
+
+These three behaviors stay explicit unverified gaps. Closing the card does not claim them:
+
+- the mtime-unreadable fallback;
+- nested `stop_hook_active` key discrimination;
+- the exact-60 s boundary point.
+
+#### Gaps (not observed in M4)
+
+- M1-M17 and M19-M22b were measured before the S2/S3 test commit. The later test diff is additive (124 insertions, 0 deletions), and the probe line is guarded. They were not re-run on `7791c0e7d`.
+- S3 skips on Windows, so on Windows M18 is guarded by S2 alone. No Windows run was observed (Windows vet only).
+- The AC-011 header row and the AC-012 reviewer reads are carried from M3 (`m3-ac-rows.txt`); the bytes are unchanged since `c0e56ab09`.
+- No `go test ./...`, `internal/cli` tests, `make build`, or push. No live Stop event exercised the hook.
+
+#### Residual risk
+
+- S3 depends on the hook calling `mv` by bare name inside `write_state_file`. A later change to an absolute-path `mv` makes the S3 setup assertion fail. That is reported as a gap by design, never as a pass.
+- S2 relies on the go stub being invoked only after the payload invalidation. A future `go` call placed before hook line 372 would read `present` on a correct hook, a false red, not a false green.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-11
+run_status: audit-ready
+run_commits:
+  - 1a3b12ce5   # plan-audit debt paid (NEW-1), pre-M1
+  - f611a7060   # M1 RED tests (test-only)
+  - 2232e1a5f   # M1 evidence
+  - 6f098a45e   # M2 hook outcome record and auxiliary state
+  - edecbff54   # M2 evidence
+  - c0e56ab09   # M3 wording (docs + hook comments)
+  - 989ef144b   # M3 evidence
+  - 21216ae6f   # AC-013 amendment (manager-spec)
+  - 7791c0e7d   # AC-013 S2/S3 tests guarding mutant M18
+  - dc9feafb2   # moai catalog hash regenerated after the M3 template doc edit
+  - pending-backfill   # this M4 evidence commit
+run_commit_sha: pending-backfill
+ac_pass_count: 15
+ac_fail_count: 0
+mutants_red: 27/27   # M18 red only after the 21216ae6f amendment
+d0_unverified_gaps_not_claimed: [mtime-unreadable fallback, nested stop_hook_active key, exact-60s boundary]
+new_warnings_or_lints_introduced: 0   # golangci-lint "0 issues."
+cross_platform_build:
+  go_vet_darwin: pass
+  go_vet_windows_amd64: pass
+spec_status_changed: false
+m1_to_mN_commit_strategy: test-first M1 commit, then per-milestone implementation and evidence commits
+```
+
+Definition of Done (§D.17):
+
+| DoD item | State | Where |
+|---|---|---|
+| All 15 criteria pass, recorded with command, output, tree SHA | met (AC-009 after the `dc9feafb2` catalog regen) | AC matrix above, `m4-ac009-packages.txt`, `m4-catalog-tests.txt` |
+| M1 test-only commit precedes every hook/document change, with the four RED elements | met | `f611a7060`; §E.2 M1 |
+| All 27 §D.16 mutants turn their named rows red | met (M18 after the `21216ae6f` amendment) | mutant table above |
+| Three §D.0 behaviors remain unverified gaps, not claimed | met | §D.0 list above |
+| `cmp` of the hook copies exits 0; AC-010 anchor checks hold | met | `m4-ac010.txt` |
+| `go vet` and `golangci-lint` clean on `internal/hook` | met | `m4-vet.txt`, `m4-lint.txt` |
+| No `go test ./...`, no `make build`, no push; every commit names `t624` | met | commit subjects |
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
