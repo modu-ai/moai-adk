@@ -640,8 +640,8 @@ run_commits:
   - 21216ae6f   # AC-013 amendment (manager-spec)
   - 7791c0e7d   # AC-013 S2/S3 tests guarding mutant M18
   - dc9feafb2   # moai catalog hash regenerated after the M3 template doc edit
-  - pending-backfill   # this M4 evidence commit
-run_commit_sha: pending-backfill
+  - a73b3e663   # M4 evidence
+run_commit_sha: a73b3e663
 ac_pass_count: 15
 ac_fail_count: 0
 mutants_red: 27/27   # M18 red only after the 21216ae6f amendment
