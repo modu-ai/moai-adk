@@ -124,14 +124,20 @@ precommit-exit=0
 
 실패 목록 (`.moai/reports/t554/gotest-cli.txt`):
 
-| 테스트 | 지목한 파일 |
+| 테스트 | 성질 |
 |---|---|
-| `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile` | `internal/cli/launcher.go` |
-| `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition` | `internal/cli/launcher.go` |
-| `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite` | 위 두 건의 중첩 스위트 파급 |
-| `TestAuditLagUsesBinlagSeam` | `internal/cli/home_state_coverage.go:243/245/251/253` |
+| `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile` | 기지 적색 |
+| `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition` | 기지 적색 |
+| `TestAuditLagUsesBinlagSeam` | 기지 적색 |
+| `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite` | 위 건들의 중첩 스위트 파급 |
 
-넷 다 이 카드가 건드리지 않은 파일을 지목한다. 그러나 "안 건드렸으니 무관하다"는 도달성 논거일 뿐이므로, **수리를 되돌린 베이스라인에서 다시 쟀다**:
+**[HARD] 이 4건은 테스트 이름으로만 식별한다 — 에러가 지목하는 파일명은 무작위다.**
+`expectedBlobs` **map 순회**의 첫 적중을 출력하므로 같은 실패가 실행마다 다른 파일을 지목한다
+(lane-6 실측: 3차 실행 `mcp_server.go`, 격리 재실행 `launcher.go`; 이 트리에서는 `launcher.go`).
+따라서 아래 인용에 등장하는 파일명은 **귀속 근거가 아니다** — 초판 이 표가 파일명을 키로 삼았던 것을
+2026-09-10 리드 통지를 받아 정정한다.
+
+귀속은 파일명이 아니라 재측정으로 세웠다 — **수리를 되돌린 베이스라인에서 다시 쟀다**:
 
 ```
 $ # 훅 두 파일을 수리 이전 상태로 되돌린 뒤
@@ -146,6 +152,10 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	8.462s
 ```
 
 메시지가 바이트 단위로 동일하다 — base `develop d060e0d13`가 이미 안고 있던 실패다. 증거: `.moai/reports/t554/baseline-4fail.txt`.
+
+**독립 확인**: lane-6이 다른 경로로 같은 결론에 도달했다 — 지목 파일들이 develop과 자기 HEAD 사이에서 blob 동일함을 보여 develop 자체가 빨갛다고 판정했다. 서로 다른 두 경로(수리 되돌린 베이스라인 재현 / blob 동일성)가 같은 4건을 가리킨다. 리드가 이를 배치 공식 기준선으로 고정했다.
+
+**병합 통과 기준(2026-09-10 리드 정책)**: 실패 집합이 위 4건의 **부분집합**이고 이 카드의 테스트가 통과할 것. 5번째 실패가 나오면 병합하지 않는다.
 
 
 ### 5.5 임베드 재생성
@@ -164,4 +174,5 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	8.462s
 1. **삼켜진 vet 진단** — 실패 시 `go vet`의 실제 출력이 `/dev/null`로 사라져 사용자는 이유를 볼 수 없다. #1679가 명시적으로 지적한 항목이며 이번 수리로 거짓 메시지의 빈도는 줄었지만 원인 자체는 남아 있다. 별도 카드 권장.
 2. **모듈 루트 경로에 공백이 있으면** `for _mr in $MODROOTS`의 비인용 단어 분리가 깨진다. 착지분에서 넘어온 선재 성질이며 이번 편집이 만들지 않았다.
 3. **`.moai/config/build-tags`가 존재하되 유효 줄이 없으면** `set -e` 아래에서 `[ -n "$_bt_line" ] && BT_TAGS=...`가 상태 1로 훅을 중단시킬 수 있다. 역시 선재 성질이며 미측정 — 확인 필요하면 별도 카드.
-4. **`internal/cli` 선재 실패 4건**(§5.4)은 이 카드 소관이 아니지만 develop에 남아 있다. `home_state_coverage.go`의 ancestry 비교가 `binlag.Evaluate` 밖으로 나갔다는 `TestAuditLagUsesBinlagSeam`의 지적(REQ-ABI-006)은 별도 카드감으로 보인다 — 리드 판정 요청.
+4. **`internal/cli` 선재 실패 4건**(§5.4)은 이 카드 소관이 아니지만 develop에 남아 있다. 리드가 t600으로 발행했다. `TestAuditLagUsesBinlagSeam`은 REQ-ABI-006 계약 위반을 주장하는 성질이 달라 분리 판단이 필요할 수 있다.
+5. **에러가 지목하는 파일명이 무작위라는 성질 자체**(§5.4)가 별개의 계기 결함이다. `expectedBlobs` map 순회의 첫 적중을 출력하므로, 실패를 파일명으로 귀속하려는 다음 사람은 실행마다 다른 답을 얻는다. t600에 딸린 축으로 보이며 리드 판정 요청.
