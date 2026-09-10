@@ -1,0 +1,5 @@
++++ b/internal/template/templates/.claude/agents/moai/manager-develop.md
++**cycle_type**: Must be specified as `ddd`, `tdd`, or `autofix` in the spawn prompt.
++- **autofix**: For the CI auto-fix loop on a failing required check. Protocol: see § cycle_type=autofix Mode (CI auto-fix loop) below.
++**Preconditions**: For `cycle_type=ddd` or `cycle_type=tdd`: SPEC document exists with `status: draft` and plan-auditor PASS + Implementation Kickoff Approval granted. Implementation plan approved. Target files identified. For `cycle_type=autofix`: the SPEC premise does not apply; the preconditions are the entry condition and prerequisites of the canonical CI auto-fix protocol referenced in § cycle_type=autofix Mode. **cycle_type parameter provided**.
++This agent performs exactly ONE status transition: `draft → in-progress`, on the first run-phase commit (M1). Which SPEC artifacts that transition covers is decided by `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix, the one authoritative reference. See §SPEC Artifact Ownership for the full artifact-level boundary.

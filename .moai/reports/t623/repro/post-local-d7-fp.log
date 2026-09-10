@@ -1,0 +1,4 @@
+SHOULD: referenced SPEC SPEC-FIXTURE-NEW-001 not found in .moai/specs/
+REVIEW: SPEC-FIXTURE-OLD-001 has status=superseded — confirm explicit reconciliation in the same section or paragraph before emitting BLOCKING
+  reconciliation candidate (paragraph 4): This SPEC supersedes SPEC-FIXTURE-OLD-001: its eviction requirement is absorbed here, and the old SPEC stays retired.
+exit=0

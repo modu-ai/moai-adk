@@ -1,0 +1,1159 @@
+=== RUN   TestBranchCreate_Success
+--- PASS: TestBranchCreate_Success (1.28s)
+=== RUN   TestBranchCreate_AlreadyExists
+--- PASS: TestBranchCreate_AlreadyExists (0.89s)
+=== RUN   TestBranchCreate_InvalidName
+=== RUN   TestBranchCreate_InvalidName/contains_double_dots_(..)
+=== RUN   TestBranchCreate_InvalidName/contains_tilde_(~)
+=== RUN   TestBranchCreate_InvalidName/contains_caret_(^)
+=== RUN   TestBranchCreate_InvalidName/contains_colon_(:)
+=== RUN   TestBranchCreate_InvalidName/contains_space
+=== RUN   TestBranchCreate_InvalidName/empty_string
+=== RUN   TestBranchCreate_InvalidName/starts_with_dot
+=== RUN   TestBranchCreate_InvalidName/ends_with_.lock
+--- PASS: TestBranchCreate_InvalidName (2.73s)
+    --- PASS: TestBranchCreate_InvalidName/contains_double_dots_(..) (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/contains_tilde_(~) (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/contains_caret_(^) (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/contains_colon_(:) (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/contains_space (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/empty_string (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/starts_with_dot (0.00s)
+    --- PASS: TestBranchCreate_InvalidName/ends_with_.lock (0.00s)
+=== RUN   TestBranchSwitch_Success
+--- PASS: TestBranchSwitch_Success (2.47s)
+=== RUN   TestBranchSwitch_NotFound
+--- PASS: TestBranchSwitch_NotFound (0.61s)
+=== RUN   TestBranchSwitch_DirtyWorkingTree
+--- PASS: TestBranchSwitch_DirtyWorkingTree (0.80s)
+=== RUN   TestBranchDelete_Success
+--- PASS: TestBranchDelete_Success (1.26s)
+=== RUN   TestBranchDelete_CurrentBranch
+--- PASS: TestBranchDelete_CurrentBranch (0.56s)
+=== RUN   TestBranchDelete_NotFound
+--- PASS: TestBranchDelete_NotFound (0.73s)
+=== RUN   TestBranchList
+--- PASS: TestBranchList (1.73s)
+=== RUN   TestValidateBranchName
+=== RUN   TestValidateBranchName/valid:main
+=== RUN   TestValidateBranchName/valid:feature/login
+=== RUN   TestValidateBranchName/valid:release/v1.0.0
+=== RUN   TestValidateBranchName/valid:fix-123
+=== RUN   TestValidateBranchName/valid:a
+=== RUN   TestValidateBranchName/invalid:empty
+=== RUN   TestValidateBranchName/invalid:starts_with_dot
+=== RUN   TestValidateBranchName/invalid:double_dots
+=== RUN   TestValidateBranchName/invalid:tilde
+=== RUN   TestValidateBranchName/invalid:caret
+=== RUN   TestValidateBranchName/invalid:colon
+=== RUN   TestValidateBranchName/invalid:space
+=== RUN   TestValidateBranchName/invalid:ends_with_.lock
+=== RUN   TestValidateBranchName/invalid:backslash
+=== RUN   TestValidateBranchName/invalid:at-brace
+--- PASS: TestValidateBranchName (0.00s)
+    --- PASS: TestValidateBranchName/valid:main (0.00s)
+    --- PASS: TestValidateBranchName/valid:feature/login (0.00s)
+    --- PASS: TestValidateBranchName/valid:release/v1.0.0 (0.00s)
+    --- PASS: TestValidateBranchName/valid:fix-123 (0.00s)
+    --- PASS: TestValidateBranchName/valid:a (0.00s)
+    --- PASS: TestValidateBranchName/invalid:empty (0.00s)
+    --- PASS: TestValidateBranchName/invalid:starts_with_dot (0.00s)
+    --- PASS: TestValidateBranchName/invalid:double_dots (0.00s)
+    --- PASS: TestValidateBranchName/invalid:tilde (0.00s)
+    --- PASS: TestValidateBranchName/invalid:caret (0.00s)
+    --- PASS: TestValidateBranchName/invalid:colon (0.00s)
+    --- PASS: TestValidateBranchName/invalid:space (0.00s)
+    --- PASS: TestValidateBranchName/invalid:ends_with_.lock (0.00s)
+    --- PASS: TestValidateBranchName/invalid:backslash (0.00s)
+    --- PASS: TestValidateBranchName/invalid:at-brace (0.00s)
+=== RUN   TestResolveGitDirs_PrimaryCheckout
+=== PAUSE TestResolveGitDirs_PrimaryCheckout
+=== RUN   TestResolveGitDirs_Worktree
+=== PAUSE TestResolveGitDirs_Worktree
+=== RUN   TestResolveGitDirs_InsideSubdirectory
+=== PAUSE TestResolveGitDirs_InsideSubdirectory
+=== RUN   TestResolveGitDirs_FallbackForcedThroughIndirection
+--- PASS: TestResolveGitDirs_FallbackForcedThroughIndirection (1.21s)
+=== RUN   TestResolveGitDirs_FallbackNormalizesRelativeCommonDir
+--- PASS: TestResolveGitDirs_FallbackNormalizesRelativeCommonDir (0.56s)
+=== RUN   TestResolveGitDirs_NonGitDir
+=== PAUSE TestResolveGitDirs_NonGitDir
+=== RUN   TestIsPrimaryCheckout_PrimaryAndWorktree
+=== PAUSE TestIsPrimaryCheckout_PrimaryAndWorktree
+=== RUN   TestHasConflicts_NoConflicts
+--- PASS: TestHasConflicts_NoConflicts (2.86s)
+=== RUN   TestHasConflicts_Detected
+--- PASS: TestHasConflicts_Detected (4.01s)
+=== RUN   TestHasConflicts_TargetNotFound
+--- PASS: TestHasConflicts_TargetNotFound (1.59s)
+=== RUN   TestHasConflicts_WorktreeUnmodified
+--- PASS: TestHasConflicts_WorktreeUnmodified (2.91s)
+=== RUN   TestMergeBase
+--- PASS: TestMergeBase (1.27s)
+=== RUN   TestMergeBase_NoCommonAncestor
+--- PASS: TestMergeBase_NoCommonAncestor (0.74s)
+=== RUN   TestEventDetector_BranchSwitch
+--- PASS: TestEventDetector_BranchSwitch (0.97s)
+=== RUN   TestEventDetector_NewCommit
+--- PASS: TestEventDetector_NewCommit (0.89s)
+=== RUN   TestEventDetector_NoChanges
+--- PASS: TestEventDetector_NoChanges (1.01s)
+=== RUN   TestEventDetector_PollingCancellation
+--- PASS: TestEventDetector_PollingCancellation (1.05s)
+=== RUN   TestEventDetector_PollDetectsChanges
+--- PASS: TestEventDetector_PollDetectsChanges (1.46s)
+=== RUN   TestExecGit_FailureKeepsStderrVisible
+2026/09/10 22:52:31 ERROR detect changes failed module=git.event error="detect changes: git rev-parse: chdir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestEventDetector_PollDetectsChanges3148667169/001: no such file or directory"
+2026/09/10 22:52:31 ERROR detect changes failed module=git.event error="detect changes: git rev-parse: chdir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestEventDetector_PollDetectsChanges3148667169/001: no such file or directory"
+--- PASS: TestExecGit_FailureKeepsStderrVisible (0.05s)
+=== RUN   TestExecGit_FailureDoesNotSatisfyStructuralExitCoder
+--- PASS: TestExecGit_FailureDoesNotSatisfyStructuralExitCoder (0.05s)
+=== RUN   TestExecGit_DeadlineKillIsLegible
+--- PASS: TestExecGit_DeadlineKillIsLegible (0.00s)
+=== RUN   TestNewRepository_Valid
+--- PASS: TestNewRepository_Valid (0.74s)
+=== RUN   TestNewRepository_InvalidPath
+--- PASS: TestNewRepository_InvalidPath (0.18s)
+=== RUN   TestNewRepository_Subdirectory
+--- PASS: TestNewRepository_Subdirectory (1.17s)
+=== RUN   TestCurrentBranch_Normal
+--- PASS: TestCurrentBranch_Normal (1.05s)
+=== RUN   TestCurrentBranch_DetachedHEAD
+--- PASS: TestCurrentBranch_DetachedHEAD (1.37s)
+=== RUN   TestStatus_Clean
+--- PASS: TestStatus_Clean (0.71s)
+=== RUN   TestStatus_Dirty
+--- PASS: TestStatus_Dirty (0.90s)
+=== RUN   TestStatus_NoUpstream
+--- PASS: TestStatus_NoUpstream (0.76s)
+=== RUN   TestStatus_AheadBehind
+--- PASS: TestStatus_AheadBehind (4.06s)
+=== RUN   TestLog
+=== RUN   TestLog/request_3_of_5
+=== RUN   TestLog/request_more_than_available
+--- PASS: TestLog (2.02s)
+    --- PASS: TestLog/request_3_of_5 (0.08s)
+    --- PASS: TestLog/request_more_than_available (0.07s)
+=== RUN   TestDiff
+--- PASS: TestDiff (1.13s)
+=== RUN   TestIsClean_True
+--- PASS: TestIsClean_True (0.70s)
+=== RUN   TestIsClean_False
+--- PASS: TestIsClean_False (0.63s)
+=== RUN   TestRoot
+--- PASS: TestRoot (0.66s)
+=== RUN   TestStatusBranchHeaderShapes
+--- PASS: TestStatusBranchHeaderShapes (5.02s)
+=== RUN   TestParseStatusBranchHeader
+=== RUN   TestParseStatusBranchHeader/diverged
+=== RUN   TestParseStatusBranchHeader/ahead_only
+=== RUN   TestParseStatusBranchHeader/behind_only
+=== RUN   TestParseStatusBranchHeader/in_sync
+=== RUN   TestParseStatusBranchHeader/no_upstream
+=== RUN   TestParseStatusBranchHeader/fresh_repo
+=== RUN   TestParseStatusBranchHeader/fresh_repo_with_upstream
+=== RUN   TestParseStatusBranchHeader/detached
+=== RUN   TestParseStatusBranchHeader/slashed_branch
+=== RUN   TestParseStatusBranchHeader/dotted_branch
+=== RUN   TestParseStatusBranchHeader/unrecognised_shape
+--- PASS: TestParseStatusBranchHeader (0.00s)
+    --- PASS: TestParseStatusBranchHeader/diverged (0.00s)
+    --- PASS: TestParseStatusBranchHeader/ahead_only (0.00s)
+    --- PASS: TestParseStatusBranchHeader/behind_only (0.00s)
+    --- PASS: TestParseStatusBranchHeader/in_sync (0.00s)
+    --- PASS: TestParseStatusBranchHeader/no_upstream (0.00s)
+    --- PASS: TestParseStatusBranchHeader/fresh_repo (0.00s)
+    --- PASS: TestParseStatusBranchHeader/fresh_repo_with_upstream (0.00s)
+    --- PASS: TestParseStatusBranchHeader/detached (0.00s)
+    --- PASS: TestParseStatusBranchHeader/slashed_branch (0.00s)
+    --- PASS: TestParseStatusBranchHeader/dotted_branch (0.00s)
+    --- PASS: TestParseStatusBranchHeader/unrecognised_shape (0.00s)
+=== RUN   TestStatusSkipsBranchHeaderEntry
+--- PASS: TestStatusSkipsBranchHeaderEntry (2.48s)
+=== RUN   TestStatusCategorization
+--- PASS: TestStatusCategorization (0.94s)
+=== RUN   TestStatusAheadBehindFromHeader
+--- PASS: TestStatusAheadBehindFromHeader (3.36s)
+=== RUN   TestStatusDetachedHEADLeavesBranchEmpty
+--- PASS: TestStatusDetachedHEADLeavesBranchEmpty (0.98s)
+=== RUN   TestNewRepositoryErrorTaxonomy
+--- PASS: TestNewRepositoryErrorTaxonomy (1.06s)
+=== RUN   TestNewRepositoryResolvesRoot
+--- PASS: TestNewRepositoryResolvesRoot (0.79s)
+=== RUN   TestStatusDoesNotRewriteIndex
+    status_optional_locks_test.go:96: control: plain status rewrote .git/index: sha 1f135824b5c55220ff9c55049a40ad6191c309708f4d4158db6d194037fcdd4d -> bf6ebc18c3972298b9cd2d95efa8356c6b1d97085a026638f283b63576eab79a
+--- PASS: TestStatusDoesNotRewriteIndex (4.12s)
+=== RUN   TestTrimBranchListMarker
+=== RUN   TestTrimBranchListMarker/current_branch_marker
+=== RUN   TestTrimBranchListMarker/worktree_branch_marker
+=== RUN   TestTrimBranchListMarker/no_marker
+=== RUN   TestTrimBranchListMarker/marker-like_name_is_not_stripped
+--- PASS: TestTrimBranchListMarker (0.00s)
+    --- PASS: TestTrimBranchListMarker/current_branch_marker (0.00s)
+    --- PASS: TestTrimBranchListMarker/worktree_branch_marker (0.00s)
+    --- PASS: TestTrimBranchListMarker/no_marker (0.00s)
+    --- PASS: TestTrimBranchListMarker/marker-like_name_is_not_stripped (0.00s)
+=== RUN   TestWorktreeIsBranchMerged_BranchCheckedOutInWorktree
+--- PASS: TestWorktreeIsBranchMerged_BranchCheckedOutInWorktree (1.08s)
+=== RUN   TestWorktreeRepair
+--- PASS: TestWorktreeRepair (0.69s)
+=== RUN   TestWorktreeRoot
+--- PASS: TestWorktreeRoot (0.60s)
+=== RUN   TestWorktreeSync_Merge
+--- PASS: TestWorktreeSync_Merge (1.78s)
+=== RUN   TestWorktreeSync_Rebase
+--- PASS: TestWorktreeSync_Rebase (1.71s)
+=== RUN   TestWorktreeDeleteBranch
+--- PASS: TestWorktreeDeleteBranch (0.65s)
+=== RUN   TestWorktreeIsBranchMerged
+--- PASS: TestWorktreeIsBranchMerged (0.87s)
+=== RUN   TestWorktreeIsBranchMerged_NotMerged
+--- PASS: TestWorktreeIsBranchMerged_NotMerged (1.61s)
+=== RUN   TestManagerLog
+--- PASS: TestManagerLog (0.95s)
+=== RUN   TestManagerDiff
+--- PASS: TestManagerDiff (1.34s)
+=== RUN   TestManagerIsClean
+--- PASS: TestManagerIsClean (0.76s)
+=== RUN   TestManagerRoot
+--- PASS: TestManagerRoot (0.66s)
+=== RUN   TestManagerStatus_WithRenamedFile
+--- PASS: TestManagerStatus_WithRenamedFile (0.95s)
+=== RUN   TestManagerCurrentBranch
+--- PASS: TestManagerCurrentBranch (0.60s)
+=== RUN   TestNewRepository_NotARepo
+--- PASS: TestNewRepository_NotARepo (0.06s)
+=== RUN   TestEventDetector_Poll
+--- PASS: TestEventDetector_Poll (0.80s)
+=== RUN   TestParsePorcelainWorktreeList_DetachedHEAD
+--- PASS: TestParsePorcelainWorktreeList_DetachedHEAD (0.00s)
+=== RUN   TestParsePorcelainWorktreeList_EmptyOutput
+--- PASS: TestParsePorcelainWorktreeList_EmptyOutput (0.00s)
+=== RUN   TestWorktreeRemove_Force
+--- PASS: TestWorktreeRemove_Force (1.01s)
+=== RUN   TestWorktreeSync_FetchError
+--- PASS: TestWorktreeSync_FetchError (1.75s)
+=== RUN   TestWorktreeDeleteBranch_NonExistent
+--- PASS: TestWorktreeDeleteBranch_NonExistent (1.01s)
+=== RUN   TestWorktreeRemove_LockedTreeMapsToSentinel
+--- PASS: TestWorktreeRemove_LockedTreeMapsToSentinel (1.32s)
+=== RUN   TestWorktreeRemoveTimeoutBudget
+--- PASS: TestWorktreeRemoveTimeoutBudget (0.00s)
+=== RUN   TestBuildWorktreeAddArgs_DashDashBeforeOperands
+=== PAUSE TestBuildWorktreeAddArgs_DashDashBeforeOperands
+=== RUN   TestBuildWorktreeAddArgs_NoRegressionLegitimate
+=== PAUSE TestBuildWorktreeAddArgs_NoRegressionLegitimate
+=== RUN   TestIsBranchMerged_SquashMerged
+--- PASS: TestIsBranchMerged_SquashMerged (1.79s)
+=== RUN   TestIsBranchMerged_RebaseMerged
+--- PASS: TestIsBranchMerged_RebaseMerged (2.06s)
+=== RUN   TestIsBranchMerged_Reachability_TrueMergeCommit
+--- PASS: TestIsBranchMerged_Reachability_TrueMergeCommit (1.29s)
+=== RUN   TestIsBranchMerged_Reachability_StrictlyBehind
+--- PASS: TestIsBranchMerged_Reachability_StrictlyBehind (1.02s)
+=== RUN   TestIsBranchMerged_EmptyDiffBranch
+--- PASS: TestIsBranchMerged_EmptyDiffBranch (1.90s)
+=== RUN   TestIsBranchMerged_PartiallyApplied
+--- PASS: TestIsBranchMerged_PartiallyApplied (2.42s)
+=== RUN   TestIsBranchMerged_UnmergedControl
+--- PASS: TestIsBranchMerged_UnmergedControl (1.77s)
+=== RUN   TestIsBranchMerged_RevertRemovedFromBase
+--- PASS: TestIsBranchMerged_RevertRemovedFromBase (2.26s)
+=== RUN   TestIsBranchMerged_Superset
+--- PASS: TestIsBranchMerged_Superset (2.14s)
+=== RUN   TestIsBranchMerged_RenameReAddSquash
+--- PASS: TestIsBranchMerged_RenameReAddSquash (3.24s)
+=== RUN   TestIsBranchMerged_RenameReAddCherryPick
+--- PASS: TestIsBranchMerged_RenameReAddCherryPick (2.43s)
+=== RUN   TestIsBranchMerged_NonASCIIPathRemoved
+--- PASS: TestIsBranchMerged_NonASCIIPathRemoved (2.43s)
+=== RUN   TestIsBranchMerged_ColonPathRemovedFromBase
+--- PASS: TestIsBranchMerged_ColonPathRemovedFromBase (2.38s)
+=== RUN   TestIsBranchMerged_TextconvDriverCollapsesChange
+--- PASS: TestIsBranchMerged_TextconvDriverCollapsesChange (1.95s)
+=== RUN   TestIsBranchMerged_SubmoduleIgnoreDirective
+--- PASS: TestIsBranchMerged_SubmoduleIgnoreDirective (4.23s)
+=== RUN   TestIsBranchMerged_ModeOnlyDivergence
+--- PASS: TestIsBranchMerged_ModeOnlyDivergence (2.15s)
+=== RUN   TestIsBranchMerged_SymlinkFileOIDCollision
+--- PASS: TestIsBranchMerged_SymlinkFileOIDCollision (1.85s)
+=== RUN   TestIsBranchMerged_ProbeExit_Table
+=== RUN   TestIsBranchMerged_ProbeExit_Table/UnknownBase
+=== RUN   TestIsBranchMerged_ProbeExit_Table/UnrelatedHistories
+=== RUN   TestIsBranchMerged_ProbeExit_Table/NonEmptyDiffNoError
+=== RUN   TestIsBranchMerged_ProbeExit_Table/EmptyDiffMerged
+--- PASS: TestIsBranchMerged_ProbeExit_Table (4.08s)
+    --- PASS: TestIsBranchMerged_ProbeExit_Table/UnknownBase (1.05s)
+    --- PASS: TestIsBranchMerged_ProbeExit_Table/UnrelatedHistories (0.89s)
+    --- PASS: TestIsBranchMerged_ProbeExit_Table/NonEmptyDiffNoError (1.31s)
+    --- PASS: TestIsBranchMerged_ProbeExit_Table/EmptyDiffMerged (0.83s)
+=== RUN   TestSyntheticCommit_DeterministicIdentity
+--- PASS: TestSyntheticCommit_DeterministicIdentity (3.39s)
+=== RUN   TestWorktreeAdd_NewBranch
+--- PASS: TestWorktreeAdd_NewBranch (0.68s)
+=== RUN   TestWorktreeAdd_ExistingBranch
+--- PASS: TestWorktreeAdd_ExistingBranch (1.09s)
+=== RUN   TestWorktreeAdd_PathExists
+--- PASS: TestWorktreeAdd_PathExists (0.60s)
+=== RUN   TestWorktreeList
+--- PASS: TestWorktreeList (0.91s)
+=== RUN   TestWorktreeList_PorcelainParsing
+--- PASS: TestWorktreeList_PorcelainParsing (0.00s)
+=== RUN   TestWorktreeRemove_Success
+--- PASS: TestWorktreeRemove_Success (0.81s)
+=== RUN   TestWorktreeRemove_NotFound
+--- PASS: TestWorktreeRemove_NotFound (0.44s)
+=== RUN   TestWorktreePrune
+--- PASS: TestWorktreePrune (0.66s)
+=== CONT  TestResolveGitDirs_PrimaryCheckout
+=== CONT  TestIsPrimaryCheckout_PrimaryAndWorktree
+=== CONT  TestBuildWorktreeAddArgs_NoRegressionLegitimate
+--- PASS: TestBuildWorktreeAddArgs_NoRegressionLegitimate (0.00s)
+=== CONT  TestResolveGitDirs_InsideSubdirectory
+=== CONT  TestResolveGitDirs_NonGitDir
+=== CONT  TestResolveGitDirs_Worktree
+=== CONT  TestBuildWorktreeAddArgs_DashDashBeforeOperands
+=== RUN   TestBuildWorktreeAddArgs_DashDashBeforeOperands/existing_branch:_add_--_path_branch
+=== PAUSE TestBuildWorktreeAddArgs_DashDashBeforeOperands/existing_branch:_add_--_path_branch
+=== RUN   TestBuildWorktreeAddArgs_DashDashBeforeOperands/new_branch:_add_-b_branch_--_path
+=== PAUSE TestBuildWorktreeAddArgs_DashDashBeforeOperands/new_branch:_add_-b_branch_--_path
+=== CONT  TestBuildWorktreeAddArgs_DashDashBeforeOperands/existing_branch:_add_--_path_branch
+=== CONT  TestBuildWorktreeAddArgs_DashDashBeforeOperands/new_branch:_add_-b_branch_--_path
+--- PASS: TestBuildWorktreeAddArgs_DashDashBeforeOperands (0.00s)
+    --- PASS: TestBuildWorktreeAddArgs_DashDashBeforeOperands/existing_branch:_add_--_path_branch (0.00s)
+    --- PASS: TestBuildWorktreeAddArgs_DashDashBeforeOperands/new_branch:_add_-b_branch_--_path (0.00s)
+--- PASS: TestResolveGitDirs_NonGitDir (0.06s)
+--- PASS: TestResolveGitDirs_PrimaryCheckout (0.47s)
+--- PASS: TestResolveGitDirs_Worktree (0.64s)
+--- PASS: TestResolveGitDirs_InsideSubdirectory (0.68s)
+--- PASS: TestIsPrimaryCheckout_PrimaryAndWorktree (0.69s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/git	139.848s
+=== RUN   TestApplyAutonomyTierBundle_AutomaticWritesUserDefaultModeAuto
+--- PASS: TestApplyAutonomyTierBundle_AutomaticWritesUserDefaultModeAuto (0.01s)
+=== RUN   TestApplyAutonomyTierBundle_SemiAutoIsZeroDelta
+--- PASS: TestApplyAutonomyTierBundle_SemiAutoIsZeroDelta (0.00s)
+=== RUN   TestApplyAutonomyTierBundle_EmptyIsZeroDelta
+--- PASS: TestApplyAutonomyTierBundle_EmptyIsZeroDelta (0.00s)
+=== RUN   TestApplyAutonomyTierBundle_FullyAutonomousDowngradedWithoutProof
+--- PASS: TestApplyAutonomyTierBundle_FullyAutonomousDowngradedWithoutProof (0.01s)
+=== RUN   TestApplyAutonomyTierBundle_FullyAutonomousWithProofDeploysBypass
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+--- PASS: TestApplyAutonomyTierBundle_FullyAutonomousWithProofDeploysBypass (0.00s)
+=== RUN   TestApplyAutonomyTierBundle_PolicyDocFullBundle
+--- PASS: TestApplyAutonomyTierBundle_PolicyDocFullBundle (0.01s)
+=== RUN   TestFindProjectRoot_WithMoAI
+--- PASS: TestFindProjectRoot_WithMoAI (0.00s)
+=== RUN   TestFindProjectRoot_NoMoAI
+--- PASS: TestFindProjectRoot_NoMoAI (0.00s)
+=== RUN   TestFindProjectRootOrCurrent_WithMoAI
+--- PASS: TestFindProjectRootOrCurrent_WithMoAI (0.00s)
+=== RUN   TestFindProjectRootOrCurrent_NoMoAI
+--- PASS: TestFindProjectRootOrCurrent_NoMoAI (0.00s)
+=== RUN   TestMustFindProjectRoot_Panics
+--- PASS: TestMustFindProjectRoot_Panics (0.00s)
+=== RUN   TestMustFindProjectRoot_Success
+--- PASS: TestMustFindProjectRoot_Success (0.00s)
+=== RUN   TestNoOpReporter
+--- PASS: TestNoOpReporter (0.00s)
+=== RUN   TestPhaseExecutor_SetReporter
+--- PASS: TestPhaseExecutor_SetReporter (0.00s)
+=== RUN   TestValidateYAMLFiles_UnreadableFile
+--- PASS: TestValidateYAMLFiles_UnreadableFile (0.00s)
+=== RUN   TestValidateJSONFile_UnreadableFile
+--- PASS: TestValidateJSONFile_UnreadableFile (0.00s)
+=== RUN   TestValidateYAMLFiles_UnreadableDir
+--- PASS: TestValidateYAMLFiles_UnreadableDir (0.00s)
+=== RUN   TestFindProjectRoot_ChildDir
+--- PASS: TestFindProjectRoot_ChildDir (0.00s)
+=== RUN   TestDetectLanguages
+=== RUN   TestDetectLanguages/go_project_with_go.mod_and_go_files
+=== RUN   TestDetectLanguages/python_project_with_pyproject.toml
+=== RUN   TestDetectLanguages/javascript_project_with_package.json
+=== RUN   TestDetectLanguages/rust_project_with_Cargo.toml
+=== RUN   TestDetectLanguages/multi-language_project_sorts_by_confidence
+=== RUN   TestDetectLanguages/empty_project_returns_nil
+=== RUN   TestDetectLanguages/config_file_only_(no_source_files)_still_detects_language
+=== RUN   TestDetectLanguages/java_project_with_pom.xml
+=== RUN   TestDetectLanguages/ruby_project_with_Gemfile
+=== RUN   TestDetectLanguages/php_project_with_composer.json
+=== RUN   TestDetectLanguages/dart_project_with_pubspec.yaml
+=== RUN   TestDetectLanguages/elixir_project_with_mix.exs
+=== RUN   TestDetectLanguages/scala_project_with_build.sbt
+--- PASS: TestDetectLanguages (0.03s)
+    --- PASS: TestDetectLanguages/go_project_with_go.mod_and_go_files (0.00s)
+    --- PASS: TestDetectLanguages/python_project_with_pyproject.toml (0.00s)
+    --- PASS: TestDetectLanguages/javascript_project_with_package.json (0.00s)
+    --- PASS: TestDetectLanguages/rust_project_with_Cargo.toml (0.00s)
+    --- PASS: TestDetectLanguages/multi-language_project_sorts_by_confidence (0.00s)
+    --- PASS: TestDetectLanguages/empty_project_returns_nil (0.00s)
+    --- PASS: TestDetectLanguages/config_file_only_(no_source_files)_still_detects_language (0.00s)
+    --- PASS: TestDetectLanguages/java_project_with_pom.xml (0.00s)
+    --- PASS: TestDetectLanguages/ruby_project_with_Gemfile (0.00s)
+    --- PASS: TestDetectLanguages/php_project_with_composer.json (0.00s)
+    --- PASS: TestDetectLanguages/dart_project_with_pubspec.yaml (0.00s)
+    --- PASS: TestDetectLanguages/elixir_project_with_mix.exs (0.00s)
+    --- PASS: TestDetectLanguages/scala_project_with_build.sbt (0.00s)
+=== RUN   TestDetectLanguages_InvalidRoot
+--- PASS: TestDetectLanguages_InvalidRoot (0.00s)
+=== RUN   TestDetectFrameworks
+=== RUN   TestDetectFrameworks/react_in_package.json_dependencies
+=== RUN   TestDetectFrameworks/next.js_in_package.json
+=== RUN   TestDetectFrameworks/vue_in_package.json
+=== RUN   TestDetectFrameworks/gin_in_go.mod
+=== RUN   TestDetectFrameworks/fastapi_in_pyproject.toml
+=== RUN   TestDetectFrameworks/django_in_pyproject.toml
+=== RUN   TestDetectFrameworks/flask_in_requirements.txt
+=== RUN   TestDetectFrameworks/actix_in_Cargo.toml
+=== RUN   TestDetectFrameworks/no_framework_detected
+--- PASS: TestDetectFrameworks (0.01s)
+    --- PASS: TestDetectFrameworks/react_in_package.json_dependencies (0.00s)
+    --- PASS: TestDetectFrameworks/next.js_in_package.json (0.00s)
+    --- PASS: TestDetectFrameworks/vue_in_package.json (0.00s)
+    --- PASS: TestDetectFrameworks/gin_in_go.mod (0.00s)
+    --- PASS: TestDetectFrameworks/fastapi_in_pyproject.toml (0.00s)
+    --- PASS: TestDetectFrameworks/django_in_pyproject.toml (0.00s)
+    --- PASS: TestDetectFrameworks/flask_in_requirements.txt (0.00s)
+    --- PASS: TestDetectFrameworks/actix_in_Cargo.toml (0.00s)
+    --- PASS: TestDetectFrameworks/no_framework_detected (0.00s)
+=== RUN   TestDetectFrameworks_PackageJSON_HasVersion
+--- PASS: TestDetectFrameworks_PackageJSON_HasVersion (0.00s)
+=== RUN   TestDetectProjectType
+=== RUN   TestDetectProjectType/cli_project_with_cmd_directory
+=== RUN   TestDetectProjectType/cli_project_with_main.go
+=== RUN   TestDetectProjectType/web_app_with_public_directory
+=== RUN   TestDetectProjectType/web_app_with_src/pages
+=== RUN   TestDetectProjectType/api_project_with_api_directory
+=== RUN   TestDetectProjectType/api_project_with_routes_directory
+=== RUN   TestDetectProjectType/library_project_(default)
+=== RUN   TestDetectProjectType/empty_project_defaults_to_library
+--- PASS: TestDetectProjectType (0.01s)
+    --- PASS: TestDetectProjectType/cli_project_with_cmd_directory (0.00s)
+    --- PASS: TestDetectProjectType/cli_project_with_main.go (0.00s)
+    --- PASS: TestDetectProjectType/web_app_with_public_directory (0.00s)
+    --- PASS: TestDetectProjectType/web_app_with_src/pages (0.00s)
+    --- PASS: TestDetectProjectType/api_project_with_api_directory (0.00s)
+    --- PASS: TestDetectProjectType/api_project_with_routes_directory (0.00s)
+    --- PASS: TestDetectProjectType/library_project_(default) (0.00s)
+    --- PASS: TestDetectProjectType/empty_project_defaults_to_library (0.00s)
+=== RUN   TestWriteWorkflowAuditYAML_InsertsBlockPreservingNeighbors
+=== PAUSE TestWriteWorkflowAuditYAML_InsertsBlockPreservingNeighbors
+=== RUN   TestWriteWorkflowAuditYAML_CodexReviewGateOptIn
+=== PAUSE TestWriteWorkflowAuditYAML_CodexReviewGateOptIn
+=== RUN   TestWriteWorkflowAuditYAML_FreshFile
+=== PAUSE TestWriteWorkflowAuditYAML_FreshFile
+=== RUN   TestWriteWorkflowAuditYAML_PatchesExistingBlock
+=== PAUSE TestWriteWorkflowAuditYAML_PatchesExistingBlock
+=== RUN   TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset
+=== PAUSE TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset
+=== RUN   TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock
+=== PAUSE TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock
+=== RUN   TestInit_FallbackPathPersistsAuditBlock
+--- PASS: TestInit_FallbackPathPersistsAuditBlock (0.01s)
+=== RUN   TestInit_FallbackPathAuditUnsetLeavesFallbackBaseline
+--- PASS: TestInit_FallbackPathAuditUnsetLeavesFallbackBaseline (0.01s)
+=== RUN   TestWriteLSPYAML
+=== PAUSE TestWriteLSPYAML
+=== RUN   TestWriteDesignYAML
+=== PAUSE TestWriteDesignYAML
+=== RUN   TestWriteQualityExpansionYAML_Fresh
+=== PAUSE TestWriteQualityExpansionYAML_Fresh
+=== RUN   TestWriteQualityExpansionYAML_ExistingFile
+=== PAUSE TestWriteQualityExpansionYAML_ExistingFile
+=== RUN   TestWritePhase1Configs_AllFiles
+=== PAUSE TestWritePhase1Configs_AllFiles
+=== RUN   TestWritePhase1Configs_PatchesExistingFiles
+=== PAUSE TestWritePhase1Configs_PatchesExistingFiles
+=== RUN   TestYamlContains
+=== PAUSE TestYamlContains
+=== RUN   TestSplitLines
+=== PAUSE TestSplitLines
+=== RUN   TestPatchYAMLKey
+=== PAUSE TestPatchYAMLKey
+=== RUN   TestWriteProjectModeYAML_FreshFile
+=== PAUSE TestWriteProjectModeYAML_FreshFile
+=== RUN   TestWritePhase1ConfigsPersistsFeedbackAutoSubmit
+=== PAUSE TestWritePhase1ConfigsPersistsFeedbackAutoSubmit
+=== RUN   TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered
+=== PAUSE TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered
+=== RUN   TestWritePhase1ConfigsFeedbackNoFile
+=== PAUSE TestWritePhase1ConfigsFeedbackNoFile
+=== RUN   TestInit_MirrorCopyFallbackReachesWarnings
+--- PASS: TestInit_MirrorCopyFallbackReachesWarnings (0.03s)
+=== RUN   TestInit_NoMirrorFallbackAddsNoWarning
+--- PASS: TestInit_NoMirrorFallbackAddsNoWarning (0.02s)
+=== RUN   TestInit_SkippedWarningsAreNotForwarded
+--- PASS: TestInit_SkippedWarningsAreNotForwarded (0.02s)
+=== RUN   TestInit_PlainDeployerStillDeploys
+--- PASS: TestInit_PlainDeployerStillDeploys (0.02s)
+=== RUN   TestDeployerPath_Page3AnswersPersist_ScenarioA
+--- PASS: TestDeployerPath_Page3AnswersPersist_ScenarioA (6.00s)
+=== RUN   TestDeployerPath_Page3AnswersPersist_ScenarioB
+--- PASS: TestDeployerPath_Page3AnswersPersist_ScenarioB (0.52s)
+=== RUN   TestDeployerPath_PersistenceIsNonDestructive
+--- PASS: TestDeployerPath_PersistenceIsNonDestructive (0.35s)
+=== RUN   TestDeployerPath_NestedSameNamedKeysSurvive
+--- PASS: TestDeployerPath_NestedSameNamedKeysSurvive (0.37s)
+=== RUN   TestDeployerPath_SlimDeployerAlsoPersists
+--- PASS: TestDeployerPath_SlimDeployerAlsoPersists (0.48s)
+=== RUN   TestInit_PlatformDefaultsToGOOS
+--- PASS: TestInit_PlatformDefaultsToGOOS (0.05s)
+=== RUN   TestInit_BasicInitialization
+--- PASS: TestInit_BasicInitialization (0.01s)
+=== RUN   TestInit_UserYAMLContent
+--- PASS: TestInit_UserYAMLContent (0.01s)
+=== RUN   TestInit_LanguageYAMLContent
+--- PASS: TestInit_LanguageYAMLContent (0.01s)
+=== RUN   TestInit_QualityYAMLContent
+--- PASS: TestInit_QualityYAMLContent (0.01s)
+=== RUN   TestInit_ReportYAMLWithSelectedFormat
+--- PASS: TestInit_ReportYAMLWithSelectedFormat (0.01s)
+=== RUN   TestInit_ReportYAMLDefaultsToHTMLMD
+--- PASS: TestInit_ReportYAMLDefaultsToHTMLMD (0.01s)
+=== RUN   TestInit_InvalidDevelopmentModeFallsBackToTDD
+--- PASS: TestInit_InvalidDevelopmentModeFallsBackToTDD (0.01s)
+=== RUN   TestInit_CLAUDEMDContent
+--- PASS: TestInit_CLAUDEMDContent (0.02s)
+=== RUN   TestInit_NoDynamicTokensInGeneratedFiles
+--- PASS: TestInit_NoDynamicTokensInGeneratedFiles (0.02s)
+=== RUN   TestInit_YAMLFilesAreParseable
+--- PASS: TestInit_YAMLFilesAreParseable (0.01s)
+=== RUN   TestInit_ManifestIsValidJSON
+--- PASS: TestInit_ManifestIsValidJSON (0.05s)
+=== RUN   TestInit_ContextCancellation
+--- PASS: TestInit_ContextCancellation (0.00s)
+=== RUN   TestInit_FilePathsAreClean
+--- PASS: TestInit_FilePathsAreClean (0.01s)
+=== RUN   TestResolveLanguageName
+=== RUN   TestResolveLanguageName/en
+=== RUN   TestResolveLanguageName/ko
+=== RUN   TestResolveLanguageName/ja
+=== RUN   TestResolveLanguageName/zh
+=== RUN   TestResolveLanguageName/es
+=== RUN   TestResolveLanguageName/fr
+=== RUN   TestResolveLanguageName/de
+=== RUN   TestResolveLanguageName/unknown
+--- PASS: TestResolveLanguageName (0.00s)
+    --- PASS: TestResolveLanguageName/en (0.00s)
+    --- PASS: TestResolveLanguageName/ko (0.00s)
+    --- PASS: TestResolveLanguageName/ja (0.00s)
+    --- PASS: TestResolveLanguageName/zh (0.00s)
+    --- PASS: TestResolveLanguageName/es (0.00s)
+    --- PASS: TestResolveLanguageName/fr (0.00s)
+    --- PASS: TestResolveLanguageName/de (0.00s)
+    --- PASS: TestResolveLanguageName/unknown (0.00s)
+=== RUN   TestInit_WithDeployer
+--- PASS: TestInit_WithDeployer (0.03s)
+=== RUN   TestInit_WithDeployerError
+--- PASS: TestInit_WithDeployerError (0.06s)
+=== RUN   TestInit_WithDeployerNoManifest
+--- PASS: TestInit_WithDeployerNoManifest (0.02s)
+=== RUN   TestInit_WorkflowYAMLContent
+--- PASS: TestInit_WorkflowYAMLContent (0.01s)
+=== RUN   TestInit_ManifestPreservesDeployedEntries
+--- PASS: TestInit_ManifestPreservesDeployedEntries (0.03s)
+=== RUN   TestWritePhase1ConfigsPersistsTodoEnabled
+=== PAUSE TestWritePhase1ConfigsPersistsTodoEnabled
+=== RUN   TestWritePhase1ConfigsSkipsTodoWhenUnanswered
+=== PAUSE TestWritePhase1ConfigsSkipsTodoWhenUnanswered
+=== RUN   TestWritePhase1ConfigsTodoNoWorkflowFile
+=== PAUSE TestWritePhase1ConfigsTodoNoWorkflowFile
+=== RUN   TestWriteWorkflowTogglesYAML_AllTrackersFalseIsByteIdentical
+--- PASS: TestWriteWorkflowTogglesYAML_AllTrackersFalseIsByteIdentical (0.00s)
+=== RUN   TestWriteWorkflowTogglesYAML_PatchesExistingWorktreeKeys
+--- PASS: TestWriteWorkflowTogglesYAML_PatchesExistingWorktreeKeys (0.00s)
+=== RUN   TestWriteWorkflowTogglesYAML_InsertsBranchGuardWhenAbsent
+--- PASS: TestWriteWorkflowTogglesYAML_InsertsBranchGuardWhenAbsent (0.00s)
+=== RUN   TestWriteWorkflowTogglesYAML_OnlySetKeysArePatched
+--- PASS: TestWriteWorkflowTogglesYAML_OnlySetKeysArePatched (0.00s)
+=== RUN   TestWriteWorkflowTogglesYAML_ExplicitFalsePersisted
+--- PASS: TestWriteWorkflowTogglesYAML_ExplicitFalsePersisted (0.01s)
+=== RUN   TestWriteWorkflowTogglesYAML_FreshFileFallback
+--- PASS: TestWriteWorkflowTogglesYAML_FreshFileFallback (0.00s)
+=== RUN   TestWriteWorkflowTogglesYAML_FreshFileAllTrackersFalseSkips
+--- PASS: TestWriteWorkflowTogglesYAML_FreshFileAllTrackersFalseSkips (0.00s)
+=== RUN   TestInsertWorkflowTogglePath_NoWorkflowLineAppends
+--- PASS: TestInsertWorkflowTogglePath_NoWorkflowLineAppends (0.00s)
+=== RUN   TestWorkflowChildIndent_Edges
+--- PASS: TestWorkflowChildIndent_Edges (0.00s)
+=== RUN   TestDetectMethodology
+=== RUN   TestDetectMethodology/greenfield_project_recommends_tdd
+=== RUN   TestDetectMethodology/brownfield_no_tests_recommends_ddd
+=== RUN   TestDetectMethodology/brownfield_high_coverage_recommends_tdd
+=== RUN   TestDetectMethodology/brownfield_partial_tests_recommends_tdd
+=== RUN   TestDetectMethodology/python_project_no_tests_recommends_ddd
+=== RUN   TestDetectMethodology/python_project_with_test_files_recommends_based_on_coverage
+=== RUN   TestDetectMethodology/typescript_project_with_spec_files
+--- PASS: TestDetectMethodology (0.03s)
+    --- PASS: TestDetectMethodology/greenfield_project_recommends_tdd (0.00s)
+    --- PASS: TestDetectMethodology/brownfield_no_tests_recommends_ddd (0.00s)
+    --- PASS: TestDetectMethodology/brownfield_high_coverage_recommends_tdd (0.01s)
+    --- PASS: TestDetectMethodology/brownfield_partial_tests_recommends_tdd (0.01s)
+    --- PASS: TestDetectMethodology/python_project_no_tests_recommends_ddd (0.00s)
+    --- PASS: TestDetectMethodology/python_project_with_test_files_recommends_based_on_coverage (0.00s)
+    --- PASS: TestDetectMethodology/typescript_project_with_spec_files (0.00s)
+=== RUN   TestDetectMethodology_InvalidRoot
+--- PASS: TestDetectMethodology_InvalidRoot (0.00s)
+=== RUN   TestIsInTestDir
+=== RUN   TestIsInTestDir/tests/test_main.py
+=== RUN   TestIsInTestDir/src/tests/test_main.py
+=== RUN   TestIsInTestDir/test/main_test.go
+=== RUN   TestIsInTestDir/__tests__/app.test.js
+=== RUN   TestIsInTestDir/spec/models/user_spec.rb
+=== RUN   TestIsInTestDir/src/main.go
+=== RUN   TestIsInTestDir/internal/handler.go
+=== RUN   TestIsInTestDir/pkg/util.go
+--- PASS: TestIsInTestDir (0.00s)
+    --- PASS: TestIsInTestDir/tests/test_main.py (0.00s)
+    --- PASS: TestIsInTestDir/src/tests/test_main.py (0.00s)
+    --- PASS: TestIsInTestDir/test/main_test.go (0.00s)
+    --- PASS: TestIsInTestDir/__tests__/app.test.js (0.00s)
+    --- PASS: TestIsInTestDir/spec/models/user_spec.rb (0.00s)
+    --- PASS: TestIsInTestDir/src/main.go (0.00s)
+    --- PASS: TestIsInTestDir/internal/handler.go (0.00s)
+    --- PASS: TestIsInTestDir/pkg/util.go (0.00s)
+=== RUN   TestCountFilesWithPattern
+--- PASS: TestCountFilesWithPattern (0.00s)
+=== RUN   TestCountFilesWithPattern_SkipsDirs
+--- PASS: TestCountFilesWithPattern_SkipsDirs (0.00s)
+=== RUN   TestEnsureDir
+--- PASS: TestEnsureDir (0.00s)
+=== RUN   TestDetectMethodology_EmptyLanguages
+--- PASS: TestDetectMethodology_EmptyLanguages (0.00s)
+=== RUN   TestEstimateCoverage
+=== RUN   TestEstimateCoverage/no_code_files
+=== RUN   TestEstimateCoverage/no_test_files
+=== RUN   TestEstimateCoverage/equal_files
+=== RUN   TestEstimateCoverage/many_tests
+=== RUN   TestEstimateCoverage/few_tests
+=== RUN   TestEstimateCoverage/half_tests
+--- PASS: TestEstimateCoverage (0.00s)
+    --- PASS: TestEstimateCoverage/no_code_files (0.00s)
+    --- PASS: TestEstimateCoverage/no_test_files (0.00s)
+    --- PASS: TestEstimateCoverage/equal_files (0.00s)
+    --- PASS: TestEstimateCoverage/many_tests (0.00s)
+    --- PASS: TestEstimateCoverage/few_tests (0.00s)
+    --- PASS: TestEstimateCoverage/half_tests (0.00s)
+=== RUN   TestPhaseExecutor_Execute_NonInteractive
+--- PASS: TestPhaseExecutor_Execute_NonInteractive (0.02s)
+=== RUN   TestPhaseExecutor_Execute_ExplicitDevelopmentMode
+--- PASS: TestPhaseExecutor_Execute_ExplicitDevelopmentMode (0.01s)
+=== RUN   TestPhaseExecutor_Execute_InvalidDevelopmentMode
+--- PASS: TestPhaseExecutor_Execute_InvalidDevelopmentMode (0.00s)
+=== RUN   TestPhaseExecutor_Execute_ExistingProjectWithoutForce
+--- PASS: TestPhaseExecutor_Execute_ExistingProjectWithoutForce (0.00s)
+=== RUN   TestPhaseExecutor_Execute_ExistingProjectWithForce
+--- PASS: TestPhaseExecutor_Execute_ExistingProjectWithForce (0.01s)
+=== RUN   TestPhaseExecutor_Execute_ContextCancellation
+--- PASS: TestPhaseExecutor_Execute_ContextCancellation (0.00s)
+=== RUN   TestPhaseExecutor_Execute_AutoDetectsMethodology
+--- PASS: TestPhaseExecutor_Execute_AutoDetectsMethodology (0.01s)
+=== RUN   TestApplyDetectedDefaults
+=== RUN   TestApplyDetectedDefaults/all_defaults_applied
+=== RUN   TestApplyDetectedDefaults/detected_language_used
+=== RUN   TestApplyDetectedDefaults/detected_framework_used
+=== RUN   TestApplyDetectedDefaults/explicit_values_not_overridden
+--- PASS: TestApplyDetectedDefaults (0.00s)
+    --- PASS: TestApplyDetectedDefaults/all_defaults_applied (0.00s)
+    --- PASS: TestApplyDetectedDefaults/detected_language_used (0.00s)
+    --- PASS: TestApplyDetectedDefaults/detected_framework_used (0.00s)
+    --- PASS: TestApplyDetectedDefaults/explicit_values_not_overridden (0.00s)
+=== RUN   TestOsUserName
+=== RUN   TestOsUserName/uses_USER_env_var
+=== RUN   TestOsUserName/falls_back_to_USERNAME
+=== RUN   TestOsUserName/falls_back_to_default
+--- PASS: TestOsUserName (0.00s)
+    --- PASS: TestOsUserName/uses_USER_env_var (0.00s)
+    --- PASS: TestOsUserName/falls_back_to_USERNAME (0.00s)
+    --- PASS: TestOsUserName/falls_back_to_default (0.00s)
+=== RUN   TestPhaseExecutor_Execute_MethodologyFallback
+--- PASS: TestPhaseExecutor_Execute_MethodologyFallback (0.01s)
+=== RUN   TestWriteWorkflowProjectContinuationYAML
+=== RUN   TestWriteWorkflowProjectContinuationYAML/unasked_question_leaves_the_file_byte-identical
+=== RUN   TestWriteWorkflowProjectContinuationYAML/answer_patches_the_existing_key
+=== RUN   TestWriteWorkflowProjectContinuationYAML/upserts_into_a_workflow.yaml_carrying_no_project_block
+=== RUN   TestWriteWorkflowProjectContinuationYAML/no-deployer_fallback_creates_a_minimal_block
+--- PASS: TestWriteWorkflowProjectContinuationYAML (0.01s)
+    --- PASS: TestWriteWorkflowProjectContinuationYAML/unasked_question_leaves_the_file_byte-identical (0.00s)
+    --- PASS: TestWriteWorkflowProjectContinuationYAML/answer_patches_the_existing_key (0.00s)
+    --- PASS: TestWriteWorkflowProjectContinuationYAML/upserts_into_a_workflow.yaml_carrying_no_project_block (0.00s)
+    --- PASS: TestWriteWorkflowProjectContinuationYAML/no-deployer_fallback_creates_a_minimal_block (0.00s)
+=== RUN   TestValidate
+=== RUN   TestValidate/new_project_is_valid
+=== RUN   TestValidate/existing_moai_project_is_invalid
+=== RUN   TestValidate/moai_dir_with_only_cache_artifact_is_treated_as_uninitialized
+=== RUN   TestValidate/moai_dir_with_cache_artifact_plus_any_real_content_stays_invalid
+=== RUN   TestValidate/moai_dir_with_unexpected_state_content_stays_invalid
+=== RUN   TestValidate/existing_claude_directory_triggers_warning
+=== RUN   TestValidate/existing_CLAUDE.md_triggers_warning
+=== RUN   TestValidate/no_git_directory_triggers_warning
+=== RUN   TestValidate/with_git_directory_no_git_warning
+--- PASS: TestValidate (0.03s)
+    --- PASS: TestValidate/new_project_is_valid (0.00s)
+    --- PASS: TestValidate/existing_moai_project_is_invalid (0.00s)
+    --- PASS: TestValidate/moai_dir_with_only_cache_artifact_is_treated_as_uninitialized (0.00s)
+    --- PASS: TestValidate/moai_dir_with_cache_artifact_plus_any_real_content_stays_invalid (0.01s)
+    --- PASS: TestValidate/moai_dir_with_unexpected_state_content_stays_invalid (0.01s)
+    --- PASS: TestValidate/existing_claude_directory_triggers_warning (0.00s)
+    --- PASS: TestValidate/existing_CLAUDE.md_triggers_warning (0.00s)
+    --- PASS: TestValidate/no_git_directory_triggers_warning (0.00s)
+    --- PASS: TestValidate/with_git_directory_no_git_warning (0.00s)
+=== RUN   TestValidate_InvalidRoot
+--- PASS: TestValidate_InvalidRoot (0.00s)
+=== RUN   TestValidateMoAI
+=== RUN   TestValidateMoAI/no_moai_directory_is_invalid
+=== RUN   TestValidateMoAI/complete_moai_structure_is_valid
+=== RUN   TestValidateMoAI/missing_subdirectory_reports_error
+=== RUN   TestValidateMoAI/invalid_yaml_reports_error
+=== RUN   TestValidateMoAI/invalid_manifest_json_reports_error
+--- PASS: TestValidateMoAI (0.04s)
+    --- PASS: TestValidateMoAI/no_moai_directory_is_invalid (0.00s)
+    --- PASS: TestValidateMoAI/complete_moai_structure_is_valid (0.01s)
+    --- PASS: TestValidateMoAI/missing_subdirectory_reports_error (0.01s)
+    --- PASS: TestValidateMoAI/invalid_yaml_reports_error (0.01s)
+    --- PASS: TestValidateMoAI/invalid_manifest_json_reports_error (0.01s)
+=== RUN   TestBackupExistingProject
+=== RUN   TestBackupExistingProject/backs_up_existing_moai_directory
+=== RUN   TestBackupExistingProject/returns_empty_for_non-existing_moai_directory
+--- PASS: TestBackupExistingProject (0.01s)
+    --- PASS: TestBackupExistingProject/backs_up_existing_moai_directory (0.01s)
+    --- PASS: TestBackupExistingProject/returns_empty_for_non-existing_moai_directory (0.00s)
+=== RUN   TestValidateMoAI_MissingClaudeDir
+--- PASS: TestValidateMoAI_MissingClaudeDir (0.01s)
+=== RUN   TestValidateMoAI_MissingCLAUDEMD
+--- PASS: TestValidateMoAI_MissingCLAUDEMD (0.00s)
+=== RUN   TestValidateMoAI_MissingManifest
+--- PASS: TestValidateMoAI_MissingManifest (0.00s)
+=== RUN   TestValidateMoAI_NonYAMLFilesSkipped
+--- PASS: TestValidateMoAI_NonYAMLFilesSkipped (0.01s)
+=== RUN   TestValidateMoAI_ClaudeDirMissingSubdir
+--- PASS: TestValidateMoAI_ClaudeDirMissingSubdir (0.00s)
+=== RUN   TestValidateRoot_NotADirectory
+--- PASS: TestValidateRoot_NotADirectory (0.00s)
+=== RUN   TestPatchYAMLPathValue_PreservesNestedSameNamedKeys
+=== PAUSE TestPatchYAMLPathValue_PreservesNestedSameNamedKeys
+=== RUN   TestPatchYAMLPathValue_DiscriminatesAgainstPatchYAMLKey
+=== PAUSE TestPatchYAMLPathValue_DiscriminatesAgainstPatchYAMLKey
+=== RUN   TestPatchYAMLPathValue_NoMatch
+=== PAUSE TestPatchYAMLPathValue_NoMatch
+=== RUN   TestPatchYAMLPathValue_PreservesSurroundingDocument
+=== PAUSE TestPatchYAMLPathValue_PreservesSurroundingDocument
+=== CONT  TestWriteWorkflowAuditYAML_InsertsBlockPreservingNeighbors
+=== CONT  TestSplitLines
+--- PASS: TestSplitLines (0.00s)
+=== CONT  TestPatchYAMLPathValue_PreservesSurroundingDocument
+--- PASS: TestPatchYAMLPathValue_PreservesSurroundingDocument (0.00s)
+=== CONT  TestPatchYAMLPathValue_DiscriminatesAgainstPatchYAMLKey
+=== CONT  TestWritePhase1ConfigsFeedbackNoFile
+--- PASS: TestPatchYAMLPathValue_DiscriminatesAgainstPatchYAMLKey (0.00s)
+=== CONT  TestWritePhase1ConfigsPersistsTodoEnabled
+=== CONT  TestWriteDesignYAML
+=== RUN   TestWriteDesignYAML/both_enabled_(default)
+=== PAUSE TestWriteDesignYAML/both_enabled_(default)
+=== RUN   TestWriteDesignYAML/design_disabled
+=== PAUSE TestWriteDesignYAML/design_disabled
+=== RUN   TestWriteDesignYAML/design_enabled,_claude_design_disabled
+=== PAUSE TestWriteDesignYAML/design_enabled,_claude_design_disabled
+=== CONT  TestWriteDesignYAML/both_enabled_(default)
+=== CONT  TestWritePhase1ConfigsPersistsFeedbackAutoSubmit
+=== CONT  TestWriteQualityExpansionYAML_ExistingFile
+=== CONT  TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered
+=== CONT  TestWriteLSPYAML
+=== RUN   TestWriteLSPYAML/disabled_(default)
+=== CONT  TestWritePhase1Configs_AllFiles
+=== PAUSE TestWriteLSPYAML/disabled_(default)
+=== RUN   TestWriteLSPYAML/enabled
+=== CONT  TestWriteQualityExpansionYAML_Fresh
+=== PAUSE TestWriteLSPYAML/enabled
+=== CONT  TestWriteLSPYAML/disabled_(default)
+=== CONT  TestPatchYAMLPathValue_NoMatch
+=== RUN   TestPatchYAMLPathValue_NoMatch/absent_leaf
+=== PAUSE TestPatchYAMLPathValue_NoMatch/absent_leaf
+=== RUN   TestPatchYAMLPathValue_NoMatch/absent_parent
+=== PAUSE TestPatchYAMLPathValue_NoMatch/absent_parent
+=== RUN   TestPatchYAMLPathValue_NoMatch/wrong_depth_(leaf_addressed_as_top_level)
+=== PAUSE TestPatchYAMLPathValue_NoMatch/wrong_depth_(leaf_addressed_as_top_level)
+=== RUN   TestPatchYAMLPathValue_NoMatch/deeper_than_the_document
+=== PAUSE TestPatchYAMLPathValue_NoMatch/deeper_than_the_document
+=== CONT  TestPatchYAMLPathValue_NoMatch/absent_leaf
+=== CONT  TestPatchYAMLPathValue_PreservesNestedSameNamedKeys
+=== RUN   TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.enabled_at_depth_2_(Scenario_B_row_6)
+=== PAUSE TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.enabled_at_depth_2_(Scenario_B_row_6)
+=== RUN   TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.claude_design.enabled_at_depth_4_(Scenario_A_row_5)
+=== PAUSE TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.claude_design.enabled_at_depth_4_(Scenario_A_row_5)
+=== RUN   TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/lsp.enabled_at_depth_2_(Scenario_A_row_2)
+=== PAUSE TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/lsp.enabled_at_depth_2_(Scenario_A_row_2)
+=== CONT  TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.enabled_at_depth_2_(Scenario_B_row_6)
+=== CONT  TestWritePhase1ConfigsTodoNoWorkflowFile
+=== CONT  TestWritePhase1Configs_PatchesExistingFiles
+=== CONT  TestWriteProjectModeYAML_FreshFile
+=== CONT  TestWriteDesignYAML/design_enabled,_claude_design_disabled
+=== CONT  TestWriteWorkflowAuditYAML_PatchesExistingBlock
+=== CONT  TestWriteDesignYAML/design_disabled
+=== CONT  TestWriteWorkflowAuditYAML_CodexReviewGateOptIn
+--- PASS: TestWriteQualityExpansionYAML_ExistingFile (0.01s)
+=== CONT  TestWriteWorkflowAuditYAML_FreshFile
+--- PASS: TestWriteWorkflowAuditYAML_InsertsBlockPreservingNeighbors (0.01s)
+=== CONT  TestPatchYAMLPathValue_NoMatch/wrong_depth_(leaf_addressed_as_top_level)
+=== CONT  TestWritePhase1ConfigsSkipsTodoWhenUnanswered
+=== CONT  TestPatchYAMLPathValue_NoMatch/deeper_than_the_document
+=== CONT  TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/lsp.enabled_at_depth_2_(Scenario_A_row_2)
+=== CONT  TestPatchYAMLPathValue_NoMatch/absent_parent
+--- PASS: TestPatchYAMLPathValue_NoMatch (0.00s)
+    --- PASS: TestPatchYAMLPathValue_NoMatch/absent_leaf (0.00s)
+    --- PASS: TestPatchYAMLPathValue_NoMatch/wrong_depth_(leaf_addressed_as_top_level) (0.00s)
+    --- PASS: TestPatchYAMLPathValue_NoMatch/deeper_than_the_document (0.00s)
+    --- PASS: TestPatchYAMLPathValue_NoMatch/absent_parent (0.00s)
+=== CONT  TestWriteLSPYAML/enabled
+--- PASS: TestWriteQualityExpansionYAML_Fresh (0.02s)
+=== CONT  TestPatchYAMLKey
+--- PASS: TestPatchYAMLKey (0.00s)
+=== CONT  TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock
+=== CONT  TestYamlContains
+--- PASS: TestYamlContains (0.00s)
+=== CONT  TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.claude_design.enabled_at_depth_4_(Scenario_A_row_5)
+--- PASS: TestPatchYAMLPathValue_PreservesNestedSameNamedKeys (0.00s)
+    --- PASS: TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.enabled_at_depth_2_(Scenario_B_row_6) (0.00s)
+    --- PASS: TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/lsp.enabled_at_depth_2_(Scenario_A_row_2) (0.00s)
+    --- PASS: TestPatchYAMLPathValue_PreservesNestedSameNamedKeys/design.claude_design.enabled_at_depth_4_(Scenario_A_row_5) (0.00s)
+--- PASS: TestWriteDesignYAML (0.00s)
+    --- PASS: TestWriteDesignYAML/both_enabled_(default) (0.01s)
+    --- PASS: TestWriteDesignYAML/design_disabled (0.02s)
+    --- PASS: TestWriteDesignYAML/design_enabled,_claude_design_disabled (0.02s)
+--- PASS: TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered (0.03s)
+=== CONT  TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset
+--- PASS: TestWriteWorkflowAuditYAML_PatchesExistingBlock (0.03s)
+--- PASS: TestWriteWorkflowAuditYAML_FreshFile (0.02s)
+--- PASS: TestWritePhase1ConfigsFeedbackNoFile (0.03s)
+--- PASS: TestWritePhase1ConfigsTodoNoWorkflowFile (0.03s)
+--- PASS: TestWriteProjectModeYAML_FreshFile (0.03s)
+--- PASS: TestWriteLSPYAML (0.00s)
+    --- PASS: TestWriteLSPYAML/disabled_(default) (0.02s)
+    --- PASS: TestWriteLSPYAML/enabled (0.02s)
+--- PASS: TestWriteWorkflowAuditYAML_CodexReviewGateOptIn (0.02s)
+--- PASS: TestWritePhase1ConfigsPersistsTodoEnabled (0.04s)
+--- PASS: TestWritePhase1ConfigsPersistsFeedbackAutoSubmit (0.04s)
+--- PASS: TestWritePhase1Configs_AllFiles (0.04s)
+--- PASS: TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock (0.01s)
+--- PASS: TestWritePhase1ConfigsSkipsTodoWhenUnanswered (0.02s)
+--- PASS: TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset (0.01s)
+--- PASS: TestWritePhase1Configs_PatchesExistingFiles (0.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/project	9.478s
+=== RUN   TestFullValidation_AllPass
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestFullValidation_AllPass (0.00s)
+=== RUN   TestFullValidation_TestedFails
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestFullValidation_TestedFails (0.00s)
+=== RUN   TestFullValidation_MultipleFail
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestFullValidation_MultipleFail (0.00s)
+=== RUN   TestSinglePrinciple_ValidName
+--- PASS: TestSinglePrinciple_ValidName (0.00s)
+=== RUN   TestSinglePrinciple_InvalidName
+--- PASS: TestSinglePrinciple_InvalidName (0.00s)
+=== RUN   TestContextCancellation_Deadline
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestContextCancellation_Deadline (0.20s)
+=== RUN   TestContextCancellation_Manual
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestContextCancellation_Manual (0.10s)
+=== RUN   TestPlanPhaseBaseline
+2026/09/10 22:51:58 INFO quality gate validation started phase=plan principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO plan phase baseline captured errors=5 warnings=12 type_errors=2
+--- PASS: TestPlanPhaseBaseline (0.00s)
+=== RUN   TestRunPhaseZeroTolerance_Pass
+2026/09/10 22:51:58 INFO quality gate validation started phase=run principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestRunPhaseZeroTolerance_Pass (0.00s)
+=== RUN   TestRunPhaseZeroTolerance_FailErrors
+2026/09/10 22:51:58 INFO quality gate validation started phase=run principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestRunPhaseZeroTolerance_FailErrors (0.00s)
+=== RUN   TestRunPhaseZeroTolerance_FailTypeErrors
+2026/09/10 22:51:58 INFO quality gate validation started phase=run principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestRunPhaseZeroTolerance_FailTypeErrors (0.00s)
+=== RUN   TestRunPhaseZeroTolerance_FailLintErrors
+2026/09/10 22:51:58 INFO quality gate validation started phase=run principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestRunPhaseZeroTolerance_FailLintErrors (0.00s)
+=== RUN   TestSyncPhaseClean_Pass
+2026/09/10 22:51:58 INFO quality gate validation started phase=sync principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestSyncPhaseClean_Pass (0.00s)
+=== RUN   TestSyncPhaseClean_FailWarnings
+2026/09/10 22:51:58 INFO quality gate validation started phase=sync principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestSyncPhaseClean_FailWarnings (0.00s)
+=== RUN   TestSyncPhaseClean_FailErrors
+2026/09/10 22:51:58 INFO quality gate validation started phase=sync principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestSyncPhaseClean_FailErrors (0.00s)
+=== RUN   TestNoRegressionImprovement
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestNoRegressionImprovement (0.00s)
+=== RUN   TestErrorRegression
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestErrorRegression (0.00s)
+=== RUN   TestWarningRegression_WithinThreshold
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestWarningRegression_WithinThreshold (0.00s)
+=== RUN   TestWarningRegression_ExceedsThreshold
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestWarningRegression_ExceedsThreshold (0.00s)
+=== RUN   TestTypeErrorRegression
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+--- PASS: TestTypeErrorRegression (0.00s)
+=== RUN   TestNoBaselineRegression
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestNoBaselineRegression (0.00s)
+=== RUN   TestNoPanic_LSPFailure
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestNoPanic_LSPFailure (0.00s)
+=== RUN   TestTimeoutEnforcement
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=1 development_mode=ddd
+--- PASS: TestTimeoutEnforcement (0.20s)
+=== RUN   TestConfigImmutability
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestConfigImmutability (0.00s)
+=== RUN   TestScoreCalculation
+--- PASS: TestScoreCalculation (0.00s)
+=== RUN   TestScoreCalculation_BelowThreshold
+--- PASS: TestScoreCalculation_BelowThreshold (0.00s)
+=== RUN   TestJSONSerialization
+--- PASS: TestJSONSerialization (0.00s)
+=== RUN   TestReportTimestamp
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestReportTimestamp (0.00s)
+=== RUN   TestDDDModeQualityGate
+=== RUN   TestDDDModeQualityGate/characterization_tests_missing
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+=== RUN   TestDDDModeQualityGate/PRESERVE_before_IMPROVE_required
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+=== RUN   TestDDDModeQualityGate/all_DDD_checks_pass
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestDDDModeQualityGate (0.00s)
+    --- PASS: TestDDDModeQualityGate/characterization_tests_missing (0.00s)
+    --- PASS: TestDDDModeQualityGate/PRESERVE_before_IMPROVE_required (0.00s)
+    --- PASS: TestDDDModeQualityGate/all_DDD_checks_pass (0.00s)
+=== RUN   TestTDDModeQualityGate
+=== RUN   TestTDDModeQualityGate/test_first_not_verified
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=tdd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+=== RUN   TestTDDModeQualityGate/coverage_exemption_rejected
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=tdd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+=== RUN   TestTDDModeQualityGate/commit_coverage_below_minimum
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=tdd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestTDDModeQualityGate (0.00s)
+    --- PASS: TestTDDModeQualityGate/test_first_not_verified (0.00s)
+    --- PASS: TestTDDModeQualityGate/coverage_exemption_rejected (0.00s)
+    --- PASS: TestTDDModeQualityGate/commit_coverage_below_minimum (0.00s)
+=== RUN   TestMethodologyTransitionWarning
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=tdd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+2026/09/10 22:51:58 WARN development mode changed from=ddd to=tdd
+--- PASS: TestMethodologyTransitionWarning (0.00s)
+=== RUN   TestReportIncludesDevelopmentMode
+=== RUN   TestReportIncludesDevelopmentMode/ddd
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+=== RUN   TestReportIncludesDevelopmentMode/tdd
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=tdd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestReportIncludesDevelopmentMode (0.00s)
+    --- PASS: TestReportIncludesDevelopmentMode/ddd (0.00s)
+    --- PASS: TestReportIncludesDevelopmentMode/tdd (0.00s)
+=== RUN   TestInvalidDevelopmentMode
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=invalid
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestInvalidDevelopmentMode (0.00s)
+=== RUN   TestParallelValidation
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestParallelValidation (0.10s)
+=== RUN   TestPartialResultOnGoroutineError
+2026/09/10 22:51:58 INFO quality gate validation started phase="" principles=5 development_mode=ddd
+2026/09/10 22:51:58 INFO no baseline available, skipping regression detection
+--- PASS: TestPartialResultOnGoroutineError (0.10s)
+=== RUN   TestValidPrinciples
+--- PASS: TestValidPrinciples (0.00s)
+=== RUN   TestDevelopmentModeIsValid
+=== RUN   TestDevelopmentModeIsValid/ddd
+=== RUN   TestDevelopmentModeIsValid/tdd
+=== RUN   TestDevelopmentModeIsValid/invalid
+=== RUN   TestDevelopmentModeIsValid/#00
+--- PASS: TestDevelopmentModeIsValid (0.00s)
+    --- PASS: TestDevelopmentModeIsValid/ddd (0.00s)
+    --- PASS: TestDevelopmentModeIsValid/tdd (0.00s)
+    --- PASS: TestDevelopmentModeIsValid/invalid (0.00s)
+    --- PASS: TestDevelopmentModeIsValid/#00 (0.00s)
+=== RUN   TestDefaultQualityConfig
+--- PASS: TestDefaultQualityConfig (0.00s)
+=== RUN   TestAllIssues
+--- PASS: TestAllIssues (0.00s)
+=== RUN   TestTestedValidator
+=== RUN   TestTestedValidator/all_checks_pass
+=== RUN   TestTestedValidator/coverage_below_threshold
+=== RUN   TestTestedValidator/type_errors_present
+=== RUN   TestTestedValidator/general_errors_present
+=== RUN   TestTestedValidator/no_coverage_target
+--- PASS: TestTestedValidator (0.00s)
+    --- PASS: TestTestedValidator/all_checks_pass (0.00s)
+    --- PASS: TestTestedValidator/coverage_below_threshold (0.00s)
+    --- PASS: TestTestedValidator/type_errors_present (0.00s)
+    --- PASS: TestTestedValidator/general_errors_present (0.00s)
+    --- PASS: TestTestedValidator/no_coverage_target (0.00s)
+=== RUN   TestTestedValidator_LSPError
+--- PASS: TestTestedValidator_LSPError (0.00s)
+=== RUN   TestReadableValidator
+=== RUN   TestReadableValidator/clean_-_no_lint_errors
+=== RUN   TestReadableValidator/lint_errors_present
+=== RUN   TestReadableValidator/non-lint_diagnostics_ignored
+--- PASS: TestReadableValidator (0.00s)
+    --- PASS: TestReadableValidator/clean_-_no_lint_errors (0.00s)
+    --- PASS: TestReadableValidator/lint_errors_present (0.00s)
+    --- PASS: TestReadableValidator/non-lint_diagnostics_ignored (0.00s)
+=== RUN   TestUnderstandableValidator
+=== RUN   TestUnderstandableValidator/acceptable_-_all_checks_pass
+=== RUN   TestUnderstandableValidator/warnings_exceed_threshold
+=== RUN   TestUnderstandableValidator/doc_incomplete
+=== RUN   TestUnderstandableValidator/complexity_too_high
+=== RUN   TestUnderstandableValidator/security_warnings_not_counted_as_general_warnings
+--- PASS: TestUnderstandableValidator (0.00s)
+    --- PASS: TestUnderstandableValidator/acceptable_-_all_checks_pass (0.00s)
+    --- PASS: TestUnderstandableValidator/warnings_exceed_threshold (0.00s)
+    --- PASS: TestUnderstandableValidator/doc_incomplete (0.00s)
+    --- PASS: TestUnderstandableValidator/complexity_too_high (0.00s)
+    --- PASS: TestUnderstandableValidator/security_warnings_not_counted_as_general_warnings (0.00s)
+=== RUN   TestSecuredValidator
+=== RUN   TestSecuredValidator/clean_-_no_security_warnings
+=== RUN   TestSecuredValidator/security_vulnerabilities_found
+=== RUN   TestSecuredValidator/non-security_diagnostics_ignored
+--- PASS: TestSecuredValidator (0.00s)
+    --- PASS: TestSecuredValidator/clean_-_no_security_warnings (0.00s)
+    --- PASS: TestSecuredValidator/security_vulnerabilities_found (0.00s)
+    --- PASS: TestSecuredValidator/non-security_diagnostics_ignored (0.00s)
+=== RUN   TestTrackableValidator
+=== RUN   TestTrackableValidator/clean_-_all_checks_pass
+=== RUN   TestTrackableValidator/invalid_commit_message
+=== RUN   TestTrackableValidator/no_structured_logs
+=== RUN   TestTrackableValidator/no_diagnostic_tracking
+=== RUN   TestTrackableValidator/all_checks_fail
+--- PASS: TestTrackableValidator (0.00s)
+    --- PASS: TestTrackableValidator/clean_-_all_checks_pass (0.00s)
+    --- PASS: TestTrackableValidator/invalid_commit_message (0.00s)
+    --- PASS: TestTrackableValidator/no_structured_logs (0.00s)
+    --- PASS: TestTrackableValidator/no_diagnostic_tracking (0.00s)
+    --- PASS: TestTrackableValidator/all_checks_fail (0.00s)
+=== RUN   TestTrackableValidator_GitError
+--- PASS: TestTrackableValidator_GitError (0.00s)
+=== RUN   TestIsConventionalCommit
+=== RUN   TestIsConventionalCommit/feat:_add_new_feature
+=== RUN   TestIsConventionalCommit/fix(auth):_resolve_login_bug
+=== RUN   TestIsConventionalCommit/feat(quality):_add_TRUST_5_validation
+=== RUN   TestIsConventionalCommit/refactor(core):_simplify_handler
+=== RUN   TestIsConventionalCommit/docs:_update_README
+=== RUN   TestIsConventionalCommit/test:_add_unit_tests
+=== RUN   TestIsConventionalCommit/chore:_update_dependencies
+=== RUN   TestIsConventionalCommit/build:_update_Makefile
+=== RUN   TestIsConventionalCommit/ci:_add_GitHub_Actions
+=== RUN   TestIsConventionalCommit/perf:_optimize_query
+=== RUN   TestIsConventionalCommit/style:_format_code
+=== RUN   TestIsConventionalCommit/feat!:_breaking_change
+=== RUN   TestIsConventionalCommit/fix(api)!:_breaking_fix
+=== RUN   TestIsConventionalCommit/fixed_stuff
+=== RUN   TestIsConventionalCommit/wip
+=== RUN   TestIsConventionalCommit/#00
+=== RUN   TestIsConventionalCommit/FEAT:_uppercase_type
+=== RUN   TestIsConventionalCommit/feat:
+=== RUN   TestIsConventionalCommit/feat:no_space
+=== RUN   TestIsConventionalCommit/update:_not_a_valid_type
+--- PASS: TestIsConventionalCommit (0.00s)
+    --- PASS: TestIsConventionalCommit/feat:_add_new_feature (0.00s)
+    --- PASS: TestIsConventionalCommit/fix(auth):_resolve_login_bug (0.00s)
+    --- PASS: TestIsConventionalCommit/feat(quality):_add_TRUST_5_validation (0.00s)
+    --- PASS: TestIsConventionalCommit/refactor(core):_simplify_handler (0.00s)
+    --- PASS: TestIsConventionalCommit/docs:_update_README (0.00s)
+    --- PASS: TestIsConventionalCommit/test:_add_unit_tests (0.00s)
+    --- PASS: TestIsConventionalCommit/chore:_update_dependencies (0.00s)
+    --- PASS: TestIsConventionalCommit/build:_update_Makefile (0.00s)
+    --- PASS: TestIsConventionalCommit/ci:_add_GitHub_Actions (0.00s)
+    --- PASS: TestIsConventionalCommit/perf:_optimize_query (0.00s)
+    --- PASS: TestIsConventionalCommit/style:_format_code (0.00s)
+    --- PASS: TestIsConventionalCommit/feat!:_breaking_change (0.00s)
+    --- PASS: TestIsConventionalCommit/fix(api)!:_breaking_fix (0.00s)
+    --- PASS: TestIsConventionalCommit/fixed_stuff (0.00s)
+    --- PASS: TestIsConventionalCommit/wip (0.00s)
+    --- PASS: TestIsConventionalCommit/#00 (0.00s)
+    --- PASS: TestIsConventionalCommit/FEAT:_uppercase_type (0.00s)
+    --- PASS: TestIsConventionalCommit/feat: (0.00s)
+    --- PASS: TestIsConventionalCommit/feat:no_space (0.00s)
+    --- PASS: TestIsConventionalCommit/update:_not_a_valid_type (0.00s)
+=== RUN   TestNewWorktreeValidator
+=== PAUSE TestNewWorktreeValidator
+=== RUN   TestNewWorktreeValidator_NilGateFactory
+=== PAUSE TestNewWorktreeValidator_NilGateFactory
+=== RUN   TestWorktreeValidator_Validate_InvalidPath
+=== PAUSE TestWorktreeValidator_Validate_InvalidPath
+=== RUN   TestWorktreeValidator_Validate_NotADirectory
+=== PAUSE TestWorktreeValidator_Validate_NotADirectory
+=== RUN   TestWorktreeValidator_Validate_PassingQuality
+=== PAUSE TestWorktreeValidator_Validate_PassingQuality
+=== RUN   TestWorktreeValidator_Validate_FailingQuality
+=== PAUSE TestWorktreeValidator_Validate_FailingQuality
+=== RUN   TestWorktreeValidator_ValidateWithConfig_Override
+=== PAUSE TestWorktreeValidator_ValidateWithConfig_Override
+=== RUN   TestWorktreeValidator_Validate_GateError
+=== PAUSE TestWorktreeValidator_Validate_GateError
+=== RUN   TestValidateWorktreePath_ValidDir
+=== PAUSE TestValidateWorktreePath_ValidDir
+=== RUN   TestValidateWorktreePath_Nonexistent
+=== PAUSE TestValidateWorktreePath_Nonexistent
+=== RUN   TestValidateWorktreePath_File
+=== PAUSE TestValidateWorktreePath_File
+=== CONT  TestNewWorktreeValidator
+--- PASS: TestNewWorktreeValidator (0.00s)
+=== CONT  TestValidateWorktreePath_File
+=== CONT  TestWorktreeValidator_Validate_FailingQuality
+=== CONT  TestWorktreeValidator_Validate_NotADirectory
+=== CONT  TestWorktreeValidator_Validate_InvalidPath
+=== CONT  TestNewWorktreeValidator_NilGateFactory
+--- PASS: TestNewWorktreeValidator_NilGateFactory (0.00s)
+=== CONT  TestWorktreeValidator_Validate_PassingQuality
+=== CONT  TestValidateWorktreePath_ValidDir
+--- PASS: TestWorktreeValidator_Validate_InvalidPath (0.00s)
+=== CONT  TestWorktreeValidator_Validate_GateError
+=== CONT  TestWorktreeValidator_ValidateWithConfig_Override
+=== CONT  TestValidateWorktreePath_Nonexistent
+--- PASS: TestValidateWorktreePath_Nonexistent (0.00s)
+2026/09/10 22:51:58 INFO starting worktree quality validation module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_Validate_FailingQuality4104941132/001 development_mode=tdd coverage_target=85
+2026/09/10 22:51:58 INFO worktree quality validation complete module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_Validate_FailingQuality4104941132/001 passed=false score=0.5
+2026/09/10 22:51:58 INFO starting worktree quality validation module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_Validate_PassingQuality1558704965/001 development_mode=tdd coverage_target=85
+2026/09/10 22:51:58 INFO worktree quality validation complete module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_Validate_PassingQuality1558704965/001 passed=true score=1
+2026/09/10 22:51:58 INFO starting worktree quality validation module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_ValidateWithConfig_Override1139102333/001 development_mode=tdd coverage_target=0
+2026/09/10 22:51:58 INFO worktree quality validation complete module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_ValidateWithConfig_Override1139102333/001 passed=true score=1
+--- PASS: TestWorktreeValidator_Validate_FailingQuality (0.00s)
+--- PASS: TestWorktreeValidator_Validate_PassingQuality (0.00s)
+2026/09/10 22:51:58 INFO starting worktree quality validation module=worktree-validator path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWorktreeValidator_Validate_GateError4143141492/001 development_mode=tdd coverage_target=85
+--- PASS: TestWorktreeValidator_Validate_NotADirectory (0.00s)
+--- PASS: TestValidateWorktreePath_File (0.00s)
+--- PASS: TestValidateWorktreePath_ValidDir (0.00s)
+--- PASS: TestWorktreeValidator_Validate_GateError (0.00s)
+--- PASS: TestWorktreeValidator_ValidateWithConfig_Override (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/quality	1.098s
+EXIT=0

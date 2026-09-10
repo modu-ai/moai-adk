@@ -13,7 +13,6 @@ package web
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,9 +23,7 @@ import (
 func renderAppBody(t *testing.T, a *app) string {
 	t.Helper()
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
 	}
@@ -158,9 +155,7 @@ func TestAC_C_008_CodexAbsentGraceful(t *testing.T) {
 	}
 	a := codexTestApp(t, state)
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("AC-C-008: codex-absent GET / status = %d, want 200 (must not error)", rec.Code)
 	}

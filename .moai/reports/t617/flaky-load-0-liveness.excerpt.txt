@@ -1,0 +1,147 @@
+Excerpt of local raw file flaky-load-0-liveness.txt (raw machine-wide ps output not committed).
+--- snapshot: before ---
+17:30  up 2 days, 11:23, 15 users, load averages: 10.40 10.19 7.70
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1385)
+go test/.test lines: 1 (self shell lines containing zsh: 1; other: 0)
+  SELF(shell, args truncated): 99275       00:00 /bin/zsh         /bin/zsh -c source /Users/goos/.moai/claude-profiles/mo ...
+### RUN (verbatim)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:16 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1683238531/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1683238531/001
+2026/09/10 17:30:16 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:16 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 548.858375ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.55s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:17 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1536464793/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1536464793/001
+2026/09/10 17:30:17 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:17 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 593.8955ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.60s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:17 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3475916350/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3475916350/001
+2026/09/10 17:30:18 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:18 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 608.611542ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.61s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:18 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1697956331/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1697956331/001
+2026/09/10 17:30:18 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:18 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 529.190125ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.53s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:19 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1568081946/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1568081946/001
+2026/09/10 17:30:19 INFO session start (deferred): status drift detected count=99
+2026/09/10 17:30:19 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:19 INFO session start (deferred): status drift detected count=99
+    session_start_parallel_test.go:97: Handle blocked 676.39275ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.68s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:19 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1107996526/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1107996526/001
+2026/09/10 17:30:19 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:20 INFO session start (deferred): status drift detected count=99
+    session_start_parallel_test.go:97: Handle blocked 594.890334ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.60s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:20 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3362489213/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3362489213/001
+2026/09/10 17:30:20 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:20 INFO session start (deferred): status drift detected count=99
+2026/09/10 17:30:20 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.50s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:20 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1438054930/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1438054930/001
+2026/09/10 17:30:20 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:21 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.49s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:21 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3907403277/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3907403277/001
+2026/09/10 17:30:21 INFO session start (deferred): status drift detected count=99
+2026/09/10 17:30:21 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:21 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 505.428125ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.51s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:21 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3219656838/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3219656838/001
+2026/09/10 17:30:21 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:22 INFO session start (deferred): status drift detected count=99
+2026/09/10 17:30:22 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.49s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:22 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn755311575/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn755311575/001
+2026/09/10 17:30:22 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:22 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.49s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:22 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2170994474/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2170994474/001
+2026/09/10 17:30:22 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:22 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 523.598333ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.52s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:23 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn941281784/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn941281784/001
+2026/09/10 17:30:23 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:23 INFO session start (deferred): status drift detected count=99
+2026/09/10 17:30:23 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.49s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:23 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1376396252/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn1376396252/001
+2026/09/10 17:30:23 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:24 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.47s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:24 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3959230954/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3959230954/001
+2026/09/10 17:30:24 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:24 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.49s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:24 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3873160473/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3873160473/001
+2026/09/10 17:30:24 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/10 17:30:25 INFO session start (deferred): status drift detected count=99
+    session_start_parallel_test.go:97: Handle blocked 503.463209ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.51s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:25 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3240996887/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3240996887/001
+2026/09/10 17:30:25 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:25 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 584.374ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.59s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:25 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn770010809/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn770010809/001
+2026/09/10 17:30:26 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:26 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 526.054208ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.53s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:26 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn70986246/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn70986246/001
+2026/09/10 17:30:26 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:26 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 500.350708ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.50s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/10 17:30:26 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3495014195/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3495014195/001
+2026/09/10 17:30:27 INFO session start (deferred): status drift detected count=99
+2026/09/10 17:30:27 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/10 17:30:27 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:97: Handle blocked 502.11025ms waiting for advisory scan; expected deferred (non-blocking) return
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.51s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	11.409s
+FAIL
+EXIT=1
+--- snapshot: after ---
+17:30  up 2 days, 11:23, 15 users, load averages: 11.11 10.35 7.80
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1392)
+go test/.test lines: 1 (self shell lines containing zsh: 1; other: 0)
+  SELF(shell, args truncated): 99275       00:15 /bin/zsh         /bin/zsh -c source /Users/goos/.moai/claude-profiles/mo ...
