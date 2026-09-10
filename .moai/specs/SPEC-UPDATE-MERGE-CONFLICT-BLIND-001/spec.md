@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "moai update merge: an unreachable conflict detector and no signal when a shared key is preserved"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-10
 updated: 2026-09-10
 author: manager-spec
