@@ -74,3 +74,28 @@ ok  	github.com/modu-ai/moai-adk/internal/template	0.442s
 
 ### Residual-risk
 - 앞으로도 템플릿을 고치는 카드의 검증에 카탈로그 테스트가 빠지면 같은 종류의 낡은 해시가 다시 남을 수 있다.
+
+## 3. 통합 창 — develop 흡수 · 병합 트리 재측정
+
+### Claim
+로컬 develop `c7dd269f3` 흡수는 충돌 없이 끝났고, 흡수 트리(`b77f70712`)에서 plan-auditor 해시는 여전히 생성기 계산과 일치하며 `go test ./internal/template/`(선택자 없음)가 exit 0 이다.
+
+### Evidence
+창 획득(11:31:41Z): 직전 `git rev-parse --short develop` → `c7dd269f3`, `git rev-parse --short HEAD` → `b55cd9a1c`, `git status --short` 출력 없음. `moai integration acquire --name lane-9` → `acquire_exit=0`, `release-integration window acquired by e5c0032b-ffbd-44b0-8997-c16d09d3541b on WT-catalog-auditor-hash`.
+
+흡수: `git merge --no-edit c7dd269f3` → `merge_exit=0`, `git log -1 --format='%h %p'` → `b77f70712 b55cd9a1c c7dd269f3`, `MERGE_HEAD` 없음(`merge_head_exit=1`).
+
+델타: `git diff --name-only 6d228ea19 c7dd269f3` → 56개 파일. 그중 `internal/template/catalog.yaml` 과 `internal/template/templates/.claude/agents/moai/manager-develop.md`(t625) 가 들어 있다. `plan-auditor.md` 는 델타에 없다. 대조: 같은 awk 로 `internal/template/` 파일 3개를 셌다.
+
+병합된 catalog.yaml 판독:
+- `git diff -U0 c7dd269f3 b77f70712 -- internal/template/catalog.yaml` → 145행 한 헝크뿐(`-2403bfb3…` → `+621cb9ee…`). develop 에서 들어온 다른 변경과 겹치지 않았다.
+- 현재 파일: `manager-develop` hash `b8fa8c95eb18654a65b5ce81bd605c4c6befda29cec263e56a906962a17eae82`(t625 반영분 보존), `plan-auditor` hash `621cb9eea7abe2c649be12d5aa3f494feb7fd525b3f278f94c497b6f9d306298`.
+- 흡수 트리 생성기 재계산: `go run ./internal/template/scripts/gen-catalog-hashes.go --dry-run --entry plan-auditor` → `dryrun_exit=0`, `[dry-run] plan-auditor: 621cb9ee…`, `catalog.yaml not modified`. 충돌이 없었으므로 재생성으로 파일을 바꾸지 않았다.
+
+전체 패키지 테스트(11:32:09Z–11:32:37Z): `go test ./internal/template/ -count=1 > merged-template-full.log 2>&1` → `test_exit=0`, 마지막 줄 `ok  	github.com/modu-ai/moai-adk/internal/template	27.069s`. `--- FAIL`·`^FAIL`·`panic:`·`CATALOG_HASH` 줄 0.
+
+### Baseline-attribution
+워크트리 `WT-catalog-auditor-hash` HEAD `b77f70712`(부모 `b55cd9a1c`, `c7dd269f3`), 이 실행.
+
+### Gaps
+- `make build`·embed-check 는 돌리지 않았다(배치 끝, 리드 몫).
