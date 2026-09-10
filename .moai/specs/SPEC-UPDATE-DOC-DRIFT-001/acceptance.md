@@ -604,19 +604,32 @@ construction at plan-phase.
 **Falsification**: fails if either side lacks the cross-reference. Passes only when both SPECs agree
 on who owns the `internal/config/CLAUDE.md` env-var fix.
 
-#### AC-UDD-021 — no template-tree file is modified
+#### AC-UDD-021 (left endpoint revised at v0.3.1) — no template-tree file is modified
+
+The range lines run on this SPEC's branch, before it merges into `develop`:
 
 ```bash
-git diff --stat 7f61332ef..HEAD -- internal/template/templates/
-git log --oneline 7f61332ef..HEAD -- internal/template/templates/ | wc -l
+CARD_BASE=$(git merge-base develop HEAD)
+git diff --name-only "$CARD_BASE"..HEAD | wc -l
+git diff --stat "$CARD_BASE"..HEAD -- internal/template/templates/
+git log --oneline "$CARD_BASE"..HEAD -- internal/template/templates/ | wc -l
 git diff --stat -- internal/template/templates/
 ```
 
-Expected: the first produces no output, the second prints `0`, the third produces no output
-(NFR-UDD-002). The baseline-relative form is required because the run-phase workflow commits its
-edits — an unstaged-only check falls silent at exactly the moment the constraint is violated.
+Expected: the unfiltered control (first count) `>= 1`, then the range diff produces no output, the
+range log prints `0`, and the unstaged check produces no output (NFR-UDD-002). A control of `0` means
+the range holds none of this SPEC's commits, and both range probes read empty / `0` on such a range
+too — report it as **not measurable**, never as "no template-tree change". The committed-range form
+is required because the run-phase workflow commits its edits — an unstaged-only check falls silent
+at exactly the moment the constraint is violated.
 
-Baseline at `7f61332ef` (the baseline commit itself): all three empty / `0`.
+`CARD_BASE` is derived at read time and the range lines are pre-merge only, exactly as in AC-UDD-023
+(the absorbed-ref principle and the post-merge evidence are stated there and in
+`.claude/rules/local/gitflow-lane-protocol.md` §8).
+
+(Reference reading 2026-08-14, not the criterion: the v0.3.0 form, whose two range lines were pinned
+at `7f61332ef`, read all three empty / `0` at the baseline commit itself — the range lines over a
+range with no commits in it, which the control above now reports as not measurable.)
 
 Supporting fact, that none of the four target files is mirrored:
 
