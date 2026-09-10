@@ -41,7 +41,7 @@ func TestExecuteStep_SkipsWhenProjectHasNoSources(t *testing.T) {
 	writeFile(t, dir, "pyproject.toml", "[project]\nname = \"scaffold\"\n")
 
 	g := &QualityGate{config: &GateConfig{Enabled: true, ProjectDir: dir}}
-	ok, msg := g.executeStep(context.Background(), alwaysFailingStep("mypy", []string{".py", ".pyi"}), 30*time.Second)
+	ok, msg := g.executeStep(context.Background(), alwaysFailingStep("mypy", []string{".py", ".pyi"}), dir, 30*time.Second)
 
 	if !ok {
 		t.Fatalf("source-free scaffold failed the gate: %s", msg)
@@ -57,7 +57,7 @@ func TestExecuteStep_RunsWhenProjectHasOneSource(t *testing.T) {
 	writeFile(t, dir, "src/app.py", "x = 1\n")
 
 	g := &QualityGate{config: &GateConfig{Enabled: true, ProjectDir: dir}}
-	ok, _ := g.executeStep(context.Background(), alwaysFailingStep("mypy", []string{".py", ".pyi"}), 30*time.Second)
+	ok, _ := g.executeStep(context.Background(), alwaysFailingStep("mypy", []string{".py", ".pyi"}), dir, 30*time.Second)
 
 	if ok {
 		t.Fatal("step was skipped although the project has a .py source; the guard over-skips")
@@ -71,7 +71,7 @@ func TestExecuteStep_NoSourceExtsUnaffected(t *testing.T) {
 	writeFile(t, dir, "pyproject.toml", "[project]\nname = \"scaffold\"\n")
 
 	g := &QualityGate{config: &GateConfig{Enabled: true, ProjectDir: dir}}
-	ok, _ := g.executeStep(context.Background(), alwaysFailingStep("other", nil), 30*time.Second)
+	ok, _ := g.executeStep(context.Background(), alwaysFailingStep("other", nil), dir, 30*time.Second)
 
 	if ok {
 		t.Fatal("a step with no sourceExts was skipped; the guard is not opt-in")
@@ -86,7 +86,7 @@ func TestExecuteStep_PyiCountsAsSource(t *testing.T) {
 	writeFile(t, dir, "stubs/app.pyi", "def f() -> int: ...\n")
 
 	g := &QualityGate{config: &GateConfig{Enabled: true, ProjectDir: dir}}
-	if ok, _ := g.executeStep(context.Background(), alwaysFailingStep("mypy", []string{".py", ".pyi"}), 30*time.Second); ok {
+	if ok, _ := g.executeStep(context.Background(), alwaysFailingStep("mypy", []string{".py", ".pyi"}), dir, 30*time.Second); ok {
 		t.Fatal("a .pyi-only project was treated as source-free")
 	}
 }

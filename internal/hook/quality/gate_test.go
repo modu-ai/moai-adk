@@ -162,7 +162,7 @@ func TestQualityGate_runStep_UnknownCommand(t *testing.T) {
 	cfg := DefaultGateConfig()
 	g := NewQualityGate(cfg)
 
-	passed, output := g.runStep(context.Background(), "test-step", 5*time.Second, "this-binary-does-not-exist-12345")
+	passed, output := g.runStep(context.Background(), "test-step", "", 5*time.Second, "this-binary-does-not-exist-12345")
 
 	if passed {
 		t.Error("runStep with missing binary should fail")
@@ -181,7 +181,7 @@ func TestQualityGate_runStep_TimeoutMessage(t *testing.T) {
 	g := NewQualityGate(cfg)
 
 	// sleep for a very long time but timeout after 10ms.
-	passed, output := g.runStep(context.Background(), "slow-step", 10*time.Millisecond, "sleep", "60")
+	passed, output := g.runStep(context.Background(), "slow-step", "", 10*time.Millisecond, "sleep", "60")
 
 	if passed {
 		t.Error("runStep should fail on timeout")
@@ -202,7 +202,7 @@ func TestQualityGate_runStep_Success(t *testing.T) {
 	cfg := DefaultGateConfig()
 	g := NewQualityGate(cfg)
 
-	passed, output := g.runStep(context.Background(), "noop", 5*time.Second, "true")
+	passed, output := g.runStep(context.Background(), "noop", "", 5*time.Second, "true")
 
 	if !passed {
 		t.Errorf("runStep with 'true' should pass, output: %q", output)
@@ -221,7 +221,7 @@ func TestQualityGate_executeStep_SkipsOptionalMissing(t *testing.T) {
 	g := NewQualityGate(cfg)
 
 	step := gateStep{name: "missing-tool", binary: "this-binary-does-not-exist-12345", optional: true}
-	passed, output := g.executeStep(context.Background(), step, 5*time.Second)
+	passed, output := g.executeStep(context.Background(), step, "", 5*time.Second)
 
 	if !passed {
 		t.Error("executeStep with missing optional binary should pass (skip)")
@@ -256,7 +256,7 @@ func TestQualityGate_executeStep_SkipsWhenConfigFileMissing(t *testing.T) {
 			".eslintrc.js", ".eslintrc.json",
 		},
 	}
-	passed, output := g.executeStep(context.Background(), step, 5*time.Second)
+	passed, output := g.executeStep(context.Background(), step, "", 5*time.Second)
 
 	if !passed {
 		t.Error("step with missing config files should skip (pass)")
@@ -288,7 +288,7 @@ func TestQualityGate_executeStep_RunsWhenConfigFileExists(t *testing.T) {
 		optional:    true,
 		configFiles: []string{"eslint.config.js", ".eslintrc.json"},
 	}
-	passed, output := g.executeStep(context.Background(), step, 5*time.Second)
+	passed, output := g.executeStep(context.Background(), step, "", 5*time.Second)
 
 	if !passed {
 		t.Errorf("step should run and pass when config file exists, output: %q", output)
@@ -657,7 +657,7 @@ func TestQualityGate_SkipsDotnetFormatWhenNoCSharpStaged(t *testing.T) {
 	})
 
 	// No .cs detected via stagedFiles → dotnet format skipped
-	passed, out := g.executeStep(context.Background(), step, 5*time.Second)
+	passed, out := g.executeStep(context.Background(), step, "", 5*time.Second)
 
 	if !passed {
 		t.Errorf("dotnet format must be skipped when no C# files are staged (expected passed=true), output: %q", out)
@@ -721,7 +721,7 @@ func TestQualityGate_RunsDotnetFormatWhenCSharpStaged(t *testing.T) {
 	})
 
 	// .cs file is staged → dotnet format must run → fake dotnet exits 0
-	passed, out := g.executeStep(context.Background(), step, 60*time.Second)
+	passed, out := g.executeStep(context.Background(), step, "", 60*time.Second)
 
 	if !passed {
 		t.Errorf("dotnet format must pass when .cs files are staged, output: %q", out)
