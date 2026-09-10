@@ -40,10 +40,11 @@ var StatusLineAllowlist = []string{
 }
 
 // defaultStatusLine is the fixed default configuration (operator directive
-// 2026-08-24): the 5 canonical tokens, a superset of Codex's own 3-token
-// default plus git-branch and thread-id.
+// 2026-09-10): the 8 canonical tokens covering model, context, repository,
+// rate-limit, and thread-title status.
 var defaultStatusLine = []string{
-	"model-with-reasoning", "context-remaining", "git-branch", "current-dir", "thread-id",
+	"model-with-reasoning", "context-remaining", "git-branch", "current-dir",
+	"branch-changes", "five-hour-limit", "weekly-limit", "thread-title",
 }
 
 // DefaultStatusLine returns a copy of the default status_line configuration.
