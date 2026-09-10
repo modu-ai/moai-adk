@@ -1,0 +1,11 @@
+=== RUN   TestCoverageSiblingTable_HeaderColumnWithSameCellExpansion
+    lint_coverage_sibling_table_test.go:48: uncovered REQs = [REQ-CST-001-001 REQ-CST-001-002 REQ-CST-001-003], want none
+--- FAIL: TestCoverageSiblingTable_HeaderColumnWithSameCellExpansion (0.29s)
+=== RUN   TestCoverageSiblingTable_OnlyHeaderColumnsAndOnlySameCell
+    lint_coverage_sibling_table_test.go:67: uncovered REQs = [REQ-CST-002-001 REQ-CST-002-002 REQ-CST-002-003], want [REQ-CST-002-002 REQ-CST-002-003]
+--- FAIL: TestCoverageSiblingTable_OnlyHeaderColumnsAndOnlySameCell (0.29s)
+=== RUN   TestCoverageSiblingTable_UnidentifiedHeaderCollectsNothing
+--- PASS: TestCoverageSiblingTable_UnidentifiedHeaderCollectsNothing (0.26s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	1.203s
+FAIL
