@@ -215,7 +215,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: 340fc97c573f8c8c1966e16d36446562a55f76f597b48d08edcecbea7ec093b6
+                  hash: db67a26971ee6d01029a793d7e43643d4ac28160e14e834629600d1477d4a144
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops
