@@ -81,3 +81,97 @@ t528 대조(카드의 첫 과제):
 ### Gaps
 - 수리 코드는 아직 없다. t647(카탈로그 해시 누락) 끼어들기가 먼저이며, 그 병합 뒤 재개한다.
 - 원본 JSON 은 추적되지 않는 `/tmp` 에만 있다 — 이 판정의 근거로 인용하는 것은 TSV 두 개뿐이다.
+
+## 4. 수리 · RED/GREEN · 뮤턴트 4종
+
+### Claim
+수리 커밋 `54f0509af` 는 리드 판정 세 가지(헤더 식별 열만, 같은 칸 안 축약 전개만, 형제 전용 추출기)에 행 조건(같은 행에 `AC-…` id 가 있을 때만, 판정 (A))을 더해 구현한다. 새 테스트 4개는 수리 전 트리에서 빨갛고 수리 뒤 초록이다. 규칙 하나를 지운 뮤턴트 3종(B 헤더 식별 제거·C 칸 경계 제거·D 행 조건 제거)과 수리 자체를 끈 뮤턴트 A 가 모두 **실행 전에 적어 둔 테스트에서, 적어 둔 값으로** 빨개졌다. `ExtractRequirementMappings` 는 손대지 않았다.
+
+### Evidence
+수리 커밋 `git show --stat 54f0509af` → 13 files, 412 insertions, 삭제 0:
+- `internal/spec/lint_coverage_sibling_table.go`(신규 130행) — `siblingTableREQIDs`·`splitTableRow`·`cellREQIDs`
+- `internal/spec/lint_coverage_sibling.go`(+5) — 기존 `maps` 수집 뒤에 표 수집을 합집합으로 더함
+- `internal/spec/lint_coverage_sibling_table_test.go`(신규 95행) + 픽스처 4종(`sibling-table-expand`·`-scoped`·`-no-header`·`-req-first`)
+
+RED(`red-before-fix.log`, 수리 전 트리, 당시 테스트 3개) — `exit` FAIL:
+- `HeaderColumnWithSameCellExpansion` FAIL: `uncovered REQs = [REQ-CST-001-001 REQ-CST-001-002 REQ-CST-001-003], want none`
+- `OnlyHeaderColumnsAndOnlySameCell` FAIL: `uncovered REQs = [REQ-CST-002-001 REQ-CST-002-002 REQ-CST-002-003], want [REQ-CST-002-002 REQ-CST-002-003]`
+- `UnidentifiedHeaderCollectsNothing` PASS — 오늘의 동작을 고정하는 대조 테스트라 수리 전에도 초록이 맞다.
+
+GREEN(`green-after-fix.log`) — 형제 테스트 7개 전부 PASS, `ok github.com/modu-ai/moai-adk/internal/spec 2.572s`.
+
+뮤턴트(명령은 모두 `go test ./internal/spec -count=1 -run '^TestCoverageSibling' -v > <log>`, 한 번에 하나, 실행 뒤 원복):
+
+| 뮤턴트 | 바꾼 곳 | 예측(실행 전 기록) | 관측 | exit |
+|---|---|---|---|---|
+| A 수리 끔 | 합집합 루프 본문을 `_ = id` 로 | (파일 기록 없음 — Gaps) | FAIL 3: expand `[001 002 003]`, scoped `[002-001 002-002 002-003]`, req-first `[REQ-CST-004-001 REQ-CST-004-002]` / PASS 4 | 1 |
+| B 헤더 식별 제거 | 헤더 조건에 `\|\| true` | FAIL scoped `[REQ-CST-002-002]`, FAIL no-header `[]` | 예측과 같음(`mutant-B-header.log`) / 나머지 PASS 5 | 1 |
+| C 칸 경계 제거 | REQ 열 칸들을 `", "` 로 이어 한 칸처럼 전개 | FAIL scoped `[REQ-CST-002-003]` | 예측과 같음(`mutant-C-cell.log`) / 나머지 PASS 6 | 1 |
+| D 행 조건 제거 | 행 조건에 `false &&` | FAIL req-first `[]` | 예측과 같음(`mutant-D-row.log`) / 나머지 PASS 6 | 1 |
+
+- A 는 `RowWithoutACIsNotCoverage` 의 RED 도 겸한다: 이 테스트는 행 조건 판정 뒤에 추가돼 수리 전 트리 RED 로그에 없다. 수리를 끄면 `[REQ-CST-004-001 REQ-CST-004-002]` 로 빨개진다.
+- D 적용 중 `git diff 54f0509af -- internal/` 의 변경 줄은 정확히 2줄(행 조건 한 줄의 전/후, `mutant-D-row.diff`) — 앞선 C 원복이 완전했다는 증거.
+- 마지막 원복 뒤 `git diff --stat 54f0509af -- internal/` → 0 바이트(`post-mutation-diff.txt`), 같은 테스트 재실행 7개 PASS, `test_exit=0`(`green-post-mutation.log`).
+
+### Baseline-attribution
+워크트리 `WT-lint-sibling-ac` HEAD `54f0509af`, 이 실행. RED 는 수리 전 트리(`7d1f95bb1`)에서, GREEN·뮤턴트·원복 확인은 `54f0509af` 트리(뮤턴트는 그 위 단일 편집)에서 쟀다.
+
+### Gaps
+- 뮤턴트 A 의 예측은 실행 전에 파일로 남기지 않았다. B·C·D 는 `.predicted` 파일이 로그보다 먼저 쓰였다(파일 시각으로 확인 가능).
+- `internal/spec` 전체 패키지 테스트는 이 절에서 돌리지 않았다 — 창에서 흡수한 트리 위에서 재측정한다.
+- 인라인(`spec.md`) 판정 불변은 코드 범위(`ExtractRequirementMappings` 무변경)로만 주장하며, 코퍼스 수준에서는 §5 의 다른 규칙 15종 불변이 간접 증거다.
+
+### Residual-risk
+- 칸 분리는 `|` 기준이라 칸 안 인라인 코드의 파이프가 칸을 일찍 자른다. 이 경우 매핑을 잃을 수는 있어도 새로 만들지는 않는다(파일 머리주석에 적음).
+
+## 5. 코퍼스 수리 전/후 · 표본 대조
+
+### Claim
+전 코퍼스 `CoverageIncomplete` 는 **3623 → 2010(−1613)** 이다. 새로 생긴 발견은 **0건**이고, 다른 규칙 15종의 건수는 한 건도 바뀌지 않았다. 사라진 발견 무작위 5건은 모두 요구사항 헤더 열·AC id 가 있는 행·완전형 REQ id 로 원문에서 확인된다. AC 없는 행은 여전히 커버리지를 만들지 않는다 — 다만 리드가 요구한 "무작위 5건이 여전히 발견으로 남는다"는 **3건만 성립**하고 2건은 사라졌으며, 그 2건은 같은 파일의 AC 우선 표가 정당하게 매핑한 경우다(아래). 이 차이는 수리의 결함이 아니라 "AC 없는 행" 표본 정의가 같은 REQ 의 다른 매핑을 배제하지 않았기 때문이다.
+
+### Evidence
+측정 바이너리 확인 — 수리 후 코퍼스 lint 는 `/tmp/t623-lane9/moai-t561-fixed`(22:03:53 빌드, 수리 커밋 20초 전, 뮤턴트 A 적용 전)로 돌렸다:
+- `go version -m` 의 `vcs.revision=2213871af…`, `vcs.modified=true` 는 **워크트리가 아니라 primary 체크아웃의 HEAD** 다(워크트리 HEAD 는 당시 `7d1f95bb1`). 그래서 출처 근거로 쓰지 않았다(`binary-fixed-buildinfo.txt`).
+- 대신 바이너리 내용을 직접 봤다(`/usr/bin/grep -a -c`): 새 파일에만 있는 정규식 문자열 3개(헤더 `uirements?)?`, 숫자 꼬리 `^\s*,\s*([0-9]+)\b`, 행 조건 `\bAC-[A-Z0-9]+(?:-[A-Z0-9]+)*`) — 수리 후 바이너리 각 `1`(exit 0), 수리 전 바이너리 각 `0`(exit 1). 양성 대조 `CoverageIncomplete` 는 두 바이너리 모두 `1`. 세 문자열이 소스 트리에서 `lint_coverage_sibling_table.go` 한 곳에만 있음을 `/usr/bin/grep -rn --include='*.go'` 로 확인했다.
+
+수리 후 lint: `moai-t561-fixed spec lint --json > t561-corpus-after.json` → 13:04:06Z–13:09:17Z, `LINT_EXIT=0`, stderr 0 바이트, JSON 1227235 바이트, 배열 길이 3325.
+
+추출 계기 검증: 수리 전 TSV 를 같은 `jq` 식(`select(.code=="CoverageIncomplete")` → 워크트리 접두어 제거한 파일 경로 ⇥ 메시지의 REQ id, `LC_ALL=C sort`)으로 다시 만들어 기록본과 `cmp` → `cmp_exit=0`(바이트 동일). 같은 식으로 `corpus-after-coverage.tsv` 2010행.
+
+규칙별 수(`corpus-before-codes.tsv` / `corpus-after-codes.tsv`): `CoverageIncomplete` 3623 → 2010, 나머지 15종(`FrontmatterInvalid` 14 … `SyncSHASlotFormat` 6) 전부 동일. 비커버리지 합계 4938−3623 = 1315 = 3325−2010.
+
+집합 차: `LC_ALL=C comm -23 before after` → `corpus-disappeared.tsv` 1613행, `comm -13` → `corpus-appeared.tsv` 0행.
+
+사라진 발견 무작위 5건 — `awk 'BEGIN{srand(561)} …'` 로 키를 붙여 정렬한 앞 5행(`disappeared-sample5.tsv`). 원문 행과 그 표의 헤더(구분선 바로 앞 줄):
+
+| 발견 | 원문(acceptance.md) | 헤더 | 판독 |
+|---|---|---|---|
+| `SPEC-PRETOOL-GATE-MOVE-001` REQ-PGM-005 | 15행 `\| AC-PGM-006 \| Fast PreToolUse preserved — ast-grep \| REQ-PGM-005 \| MUST-PASS \| M4 \|` (16·24행도) | 8행 `\| AC ID \| Description \| Maps to REQ \| Severity \| M-plan \|` | REQ 헤더 열, AC 행, 완전형 |
+| `SPEC-TEMPLATE-RULES-CLEANUP-001` REQ-TRC-060 | 80행 `\| AC-TRC-F3 \| REQ-TRC-060..063 \| … \|` | 76행 `\| AC \| 대응 REQ \| 검증 명령 \| 기대 결과 \|` | 완전형 `REQ-TRC-060` 만 수집. `..063` 범위 표기는 전개하지 않아 061·062·063 은 수리 후에도 발견으로 남는다(3건 확인) |
+| `SPEC-PROFILE-MEMORY-001` REQ-PM-023 | 39행 `\| AC-PM-015 \| REQ-PM-023 \| 하드코딩 부재 \|` | 23행 `\| AC \| 대응 REQ \| 성격 \|` | REQ 헤더 열, AC 행, 완전형 |
+| `SPEC-PROGRESS-MARKER-CANON-001` REQ-PMC-002 | 10행 `\| AC-PMC-002 \| REQ-PMC-002 \| MUST \| … \|` (13행도) | 7행 `\| AC ID \| REQ \| Severity \| Summary \|` | REQ 헤더 열, AC 행, 완전형 |
+| `SPEC-INTEGRATION-LOCK-LIVENESS-001` REQ-INL-010 | 19행 `\| AC-INL-005 \| REQ-INL-010 \| Preserved invariant \| M3 \|` (20·26행도) | 13행 `\| AC \| Requirement \| Kind \| Flipping milestone \|` | REQ 헤더 열, AC 행, 완전형 |
+
+AC 없는 REQ 우선 행 — 127행(`acless-rows-127.tsv`) 중 수리 전 발견이던 70건(`acless-flagged-before-70.tsv`)을 **전수** 대조했다: `comm -23 acless70 after` → **15행이 수리 후 발견에서 빠졌다**(`acless70-not-flagged-after.tsv`), 55건은 남았다. 빠진 15행은 전부 `SPEC-ZONE-REGISTRY-RESYNC-001` 의 REQ-ZRR-001~015 다(수리 후 이 SPEC 의 발견 0, 수리 전 15).
+- 그 파일 197~213행 `§D.3 추적성` 표 `| REQ | AC |` 는 AC 칸에 `002, 006` 처럼 `AC-` 접두어 없는 숫자만 적는다 → 행 조건에 걸려 **수집되지 않는다**. 이 표가 "AC 없는 행" 표본에 들어간 이유다.
+- 같은 파일 11~26행 `§D AC 매트릭스` 표(헤더 `| AC | 요구사항 | RED (현재 트리) | GREEN (목표) |`)가 15개 REQ 를 모두 AC 행에서 매핑한다: 015(13·25행), 001·003·005(14행 `REQ-ZRR-001, 003, 005` 같은 칸 전개), 001·003·013(15행), 002·003·009(16행), 004·006(17행), 005(18행), 007·008·011(19행), 011(20행), 008(21행), 010(22행), 013(23행), 014(24행), 012(26행). 15개가 빠짐없이 덮인다.
+
+무작위 5건(`acless-sample5.tsv`): `comm -12 sample5 after` → 3건 남음(`REQ-WFD-008`, `REQ-WC9-007`, `REQ-WC9-014`, `acless-sample5-after.tsv`), `REQ-ZRR-005`·`REQ-ZRR-015` 는 위 이유로 빠졌다.
+
+### Baseline-attribution
+수리 전: develop 트리 빌드 바이너리 `moai-t561`, 09:25:06Z–09:33:44Z 실행(§3). 수리 후: `54f0509af` 내용이 들어간 `moai-t561-fixed`, 13:04:06Z–13:09:17Z 실행. 두 실행 모두 워크트리 루트, 같은 `.moai/specs` 트리: `git diff --stat 467c33a50 HEAD -- .moai/specs` → 0 바이트(`specs-tree-diff.txt`), 대조로 같은 명령의 `-- internal` → 751 바이트, `git status --short -- .moai/specs` 출력 없음.
+
+### Gaps
+- 수리 후 바이너리의 출처는 커밋 SHA 가 아니라 **바이너리 안의 새 문자열 3개**로 세웠다. 빌드와 커밋 사이 20초 동안 다른 편집이 없었다는 것은 그 문자열로는 증명되지 않는다 — 창에서 흡수한 트리로 다시 빌드해 재측정하면 닫힌다(리드 슬롯 승인 필요).
+- AC 없는 행 무작위 5건을 뽑은 명령은 기록에서 복구하지 못했다. 표본 파일 자체는 커밋에 싣고, 대신 70건 전수 대조로 보완했다.
+- 사라진 1613건 전부를 원문 대조하지는 않았다 — 무작위 5건만.
+- 남은 55건이 "REQ 헤더 열에 있는 AC 없는 행"이라서 남았는지(행 조건이 막음) 아니면 헤더가 REQ 가 아니어서 남았는지는 표마다 확인하지 않았다. 행 조건의 차단은 코퍼스가 아니라 뮤턴트 D 로 세웠다.
+- 원본 JSON 두 개는 `/tmp` 에만 있다. 판정 근거는 커밋한 TSV 들이다.
+
+### Residual-risk
+- `REQ-TRC-060..063` 같은 범위 표기와, `§D.3` 처럼 AC 칸에 접두어 없는 숫자만 적은 REQ 우선 표는 여전히 수집하지 않는다. 판정 규칙대로의 보수적 결과지만, 그런 표에만 매핑이 있는 SPEC 은 계속 오탐으로 남는다 — 넓힐지는 별도 판단이다.
+- 헤더 정규식 `\breq(s|uirements?)?\b|요구` 는 `REQ` 가 들어간 어떤 헤더(예: `Related REQ`, `대응 REQ`)도 요구사항 열로 본다. 그 열에 매핑이 아닌 언급을 적은 표가 있으면 커버리지로 센다.
+
+### 사건 기록 — 계측 도구
+- 이 셸의 `grep`(ugrep 래퍼)은 바이너리 파일을 조용히 건너뛰어 대조군까지 출력 없이 `exit=1` 을 냈다. `/usr/bin/grep -a` 로 다시 쟀다.
+- Go 의 VCS 스탬프는 워크트리(`.git` 이 파일)에서 primary 저장소의 HEAD 를 적었다. 워크트리 빌드의 출처 근거로 `vcs.revision` 을 쓰면 틀린다.
