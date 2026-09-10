@@ -251,7 +251,7 @@ func homeRedirectingFn(orig func() (string, error), announce bool) func() (strin
 		}
 		if announce {
 			homeRedirectLogOnce.Do(func() {
-				fmt.Fprintf(homeRedirectStderr,
+				_, _ = fmt.Fprintf(homeRedirectStderr,
 					"moai-cli-test: userHomeDirFn redirected real home to sandbox %s\n", homeSandboxDir)
 			})
 		}
