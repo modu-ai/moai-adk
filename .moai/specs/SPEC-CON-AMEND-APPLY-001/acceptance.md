@@ -4,6 +4,8 @@ Verification layer. Each AC is a Given-When-Then scenario with its verifying com
 
 Revision 0.1.1 (same as spec.md HISTORY): AC-CAA-018 … AC-CAA-022 and mutants M-15 … M-19 appended for the verdict §8 rulings; AC-CAA-012 amended for on-disk backups; AC-CAA-014 and AC-CAA-017 amended. Existing IDs unchanged.
 
+Revision 0.1.2 (same as spec.md HISTORY): AC-CAA-023 and mutant M-20 appended for the verdict §9 ruling on G6; AC-CAA-022 gains a note on how it fits with AC-CAA-023. Existing IDs unchanged.
+
 Common rules for every AC:
 - Fixtures live under `t.TempDir()`: a project dir with `.claude/rules/moai/core/zone-registry.md`, a real rule file the target entry points at (current clause once, new clause absent unless the AC says otherwise), and `.moai/research/evolution-log.md` where needed. The lock path is pinned inside the temp dir; `fakeOversight` approves non-dry-run runs; the proposal's `Before` equals the current clause unless the AC says otherwise.
 - Every test that calls `Execute` or `runConstitutionAmend` sets `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` with `t.Setenv` (empty unless the AC says otherwise) — REQ-CAA-015.
@@ -37,6 +39,7 @@ Common rules for every AC:
 | AC-CAA-020 | REQ-CAA-017 | dry-run `Execute` with a stale `Before` succeeds — baseline-first | M-17 |
 | AC-CAA-021 | REQ-CAA-011, REQ-CAA-018 | seams do not exist — the discriminating RED is the mutant | M-18 |
 | AC-CAA-022 | REQ-CAA-019 | `Execute` joins `projectDir`, fails to load the registry at the env path — baseline-first | M-19 |
+| AC-CAA-023 | REQ-CAA-020 | `Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error (code unchanged at `92c8c3f36`) — baseline-first | M-20 |
 
 ### §D.0 REQ coverage (machine-readable)
 
@@ -62,8 +65,9 @@ Common rules for every AC:
 - AC-CAA-020 maps REQ-CAA-017
 - AC-CAA-021 maps REQ-CAA-011, REQ-CAA-018
 - AC-CAA-022 maps REQ-CAA-019
+- AC-CAA-023 maps REQ-CAA-020
 
-The union is REQ-CAA-001 … REQ-CAA-019; no requirement lacks an AC.
+The union is REQ-CAA-001 … REQ-CAA-020; no requirement lacks an AC.
 
 ## §D.1 AC Details
 
@@ -281,6 +285,24 @@ Command: `go test ./internal/constitution/ -run '^TestExecute_UsesSharedRegistry
 
 Baseline-first: against current code, `Execute` loads the default location in `P`, finds clause `A`, and — once REQ-CAA-017 lands — rejects `Before = B`; today it passes the gates and fails at the stub. Either way the success assertion is RED. The mutant M-19 keeps `Execute`'s own `projectDir` join and turns the AC RED the same way.
 
+Relation to AC-CAA-023: this AC fixes *which* path the one resolver chooses; AC-CAA-023 fixes *whether* the chosen path is admitted (REQ-CAA-020). They do not contradict each other. Here `MOAI_CONSTITUTION_REGISTRY` names a path inside `P`, outranks `CLAUDE_PROJECT_DIR = Q`, and the loader admits it. In AC-CAA-023 `MOAI_CONSTITUTION_REGISTRY` is empty, so `CLAUDE_PROJECT_DIR = Q` supplies a path inside `Q`, and the loader refuses it. In both, nothing under `Q` is written.
+
+### AC-CAA-023 — a registry in another tree stops Execute before any write
+
+- **Given** two sibling `t.TempDir()` trees `P` and `Q` (neither inside the other) and a third `t.TempDir()` `L` holding the lock path; `P` is a valid fixture (registry at the default location, a rule file whose relative `file:` path resolves inside `P` and contains the current clause once and the new clause not at all, and an existing evolution log); `Q` holds a byte copy of `P`'s registry at its default location `Q/.claude/rules/moai/core/zone-registry.md`; the proposal's `Before` equals the current clause; `MOAI_CONSTITUTION_REGISTRY` is empty and `CLAUDE_PROJECT_DIR = Q`, both set with `t.Setenv`; oversight, canary, and contradiction doubles record whether they were called; the path set and sha256 of every file under `P` and `Q` are captured before the call,
+- **When** `Execute` runs with `projectDir = P` in real mode and, on a fresh copy of the same fixture, in dry-run mode,
+- **Then** each returns the registry load error (its text contains `registry load error` and `escapes project dir`),
+- **And** no gate double was called,
+- **And** the path set and every sha256 under `P` and under `Q` equal their pre-call snapshots,
+- **And** in real mode no lock file remains under `L` (the lock was released);
+- **And given** the control `CLAUDE_PROJECT_DIR = P` on a fresh copy of the same fixture, **when** `Execute` runs with `projectDir = P` in real mode, **then** it returns a log entry and no error, `P`'s rule file, registry, and log carry the amendment, and every sha256 under `Q` is unchanged — so the refusal comes from the tree mismatch, not from a check that refuses everything.
+
+Command: `go test ./internal/constitution/ -run '^TestExecute_RegistryOutsideProjectDir_Refused$' -count=1 -v` — expect 1 top-level RUN with subtests `divergent_root_real`, `divergent_root_dry_run`, `same_root_control`.
+
+Why `Q` holds a copy of `P`'s registry: without the containment check, the loader would accept `Q`'s registry, find the same entry with a clause equal to `Before`, and resolve its `file:` against `P`, so the apply would succeed and write `P`'s rule file, `Q`'s registry, and `P`'s log — a cross-tree write. The fixture makes mutant M-20 fail the error, byte-identity, and path-set assertions together, not only the error text.
+
+Baseline-first: against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and loads `P`'s registry; `divergent_root_dry_run` returns success and `divergent_root_real` returns the stub error, so both are RED on the error assertion. `same_root_control` stays RED on the stub until M5.
+
 ## §D.2 Mutant list (each must turn its AC RED; record in progress.md §E.2)
 
 | ID | Mutation | Must turn RED |
@@ -309,6 +331,7 @@ Baseline-first: against current code, `Execute` loads the default location in `P
 | M-17 | Remove the `Execute` `Before` check while the CLI `--before` check stays | AC-CAA-020 |
 | M-18 | On restore failure, delete the backups; separately, omit the backup paths from the error | AC-CAA-021 |
 | M-19 | `Execute` keeps its own `projectDir` join instead of the shared resolver | AC-CAA-022 |
+| M-20 | Remove the containment check from `LoadRegistry` (the escape refusal at `internal/constitution/loader.go:80-88`) | AC-CAA-023 `divergent_root_real` and `divergent_root_dry_run` |
 
 M-15 and M-18 each carry separate variants; each variant is injected and observed on its own, so one kill cannot hide the survival of another.
 
@@ -316,8 +339,8 @@ A mutant that cannot be injected, or whose AC run shows fewer top-level RUN line
 
 ## §D.3 Definition of Done
 
-- All 22 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
-- All 24 mutants (M-15 and M-18 with every listed variant) observed RED and reverted.
+- All 23 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
+- All 25 mutants (M-15 and M-18 with every listed variant) observed RED and reverted.
 - `go vet` and `golangci-lint` clean on `internal/constitution` and `internal/cli`.
 - The five tests in plan.md §C.2 replaced, none silently deleted.
 - plan.md §C.1 real-file sha256 equals the post-run sha256 (AC-CAA-017).

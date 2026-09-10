@@ -1,10 +1,10 @@
 # plan.md — SPEC-CON-AMEND-APPLY-001
 
-Card t659 · Tier M (3 artifacts + progress.md) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change).
+Card t659 · Tier M (3 artifacts + progress.md) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change).
 
 ## §A Context
 
-The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them is a stub (`internal/constitution/pipeline.go:256-267`), dry-run skips it entirely (`pipeline.go:133-137`), the evolution log is unreadable in both directions (`evolution_log.go:19-50`, `amendment.go:192-219`), and the CLI validates a registry `Execute` may not be the one writing (`internal/cli/constitution.go:144-155` vs `pipeline.go:66`). The lead has ruled on every design question (`.moai/reports/t659/verdict.md` §7, §8). This plan orders the work so the decisions most likely to change are reviewed first.
+The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them is a stub (`internal/constitution/pipeline.go:256-267`), dry-run skips it entirely (`pipeline.go:133-137`), the evolution log is unreadable in both directions (`evolution_log.go:19-50`, `amendment.go:192-219`), and the CLI validates a registry `Execute` may not be the one writing (`internal/cli/constitution.go:144-155` vs `pipeline.go:66`). The lead has ruled on every design question raised so far (`.moai/reports/t659/verdict.md` §7, §8, §9); one question that surfaced while encoding §9 is open (spec.md §G item 1, G7). This plan orders the work so the decisions most likely to change are reviewed first.
 
 ## §B Known Issues (measured — do not re-litigate)
 
@@ -16,13 +16,13 @@ The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them i
 | Real log parses to 0 entries (`---` split meets `\|---\|` rows) | verdict §2.3 |
 | 97/97 live registry clauses occur exactly once in their file; 4 retired entries occur 0 times | verdict §2.3 |
 | CLI resolves the registry by env precedence; `Execute` joins `projectDir` | `constitution.go:144-155`, `pipeline.go:66` |
-| `LoadRegistry` rejects a registry path escaping `projectDir` | `loader.go:80-88` |
+| `LoadRegistry` rejects an absolute registry path escaping `projectDir` — the intended boundary (verdict §9, REQ-CAA-020); a relative path is not checked (spec.md §G, G7) | `loader.go:80-88` |
 | Every existing `Execute` test passes a `Before` equal to its fixture clause (REQ-CAA-017 breaks none) | `pipeline_test.go` lines 108-262 read at `ff11e752f` |
 | No `t.Parallel` in the affected test files (so `t.Setenv` is usable) | `grep -c 't.Parallel()'` = 0 per file at `ff11e752f` |
 | `MarkRolledBack` has 0 production callers | grep for `MarkRolledBack(` over `internal cmd pkg` Go files excluding `_test.go` → definition line only (tree `034d55c56`) |
 | Default lock path is cwd-relative | `pipeline.go:227` |
 
-Gaps carried: the non-dry-run CLI path (spec.md §E.4, approved reduction G5); source and log paths under a divergent environment (spec.md §G item 1, open).
+Gaps carried: the non-dry-run CLI path (spec.md §E.4, approved reduction G5). Open: path shapes the containment boundary does not reach (spec.md §G item 1, G7). G6 is resolved (REQ-CAA-020).
 
 ## §C Pre-flight (run at run-phase entry; stop and report on any mismatch)
 
@@ -84,11 +84,12 @@ Covers REQ-CAA-005 … REQ-CAA-009. The field mapping of REQ-CAA-008 and the err
 
 ### M2 — Shared registry path resolver (new cross-package interface)
 
-Covers REQ-CAA-019. A new function both packages call is an interface decision; it lands before the apply wiring that depends on it.
+Covers REQ-CAA-019 and REQ-CAA-020. A new function both packages call is an interface decision; it lands before the apply wiring that depends on it.
 
 - Baseline first: AC-CAA-022 RED against the current `Execute` (it joins `projectDir` and cannot load the registry at the env path).
 - Approach: move the precedence of `resolveRegistryPath` into `internal/constitution` (for example `ResolveRegistryPath(projectDir string) string`); `internal/cli.resolveRegistryPath` becomes a thin call to it or is replaced; `Execute` calls it instead of its own join.
-- Exit: AC-CAA-022 GREEN; M-19 RED. Existing `internal/cli` constitution tests re-run with the compile slot.
+- Containment (REQ-CAA-020): `Execute` hands the resolved path to `LoadRegistry` with `projectDir` unchanged, so the loader's existing refusal applies; no new check is written for the shape verdict §9 names. The source rule file and the log keep their `projectDir` joins. Baseline-first: AC-CAA-023 RED against current code (`Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error).
+- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run` GREEN (subtest `same_root_control` turns GREEN at M5, once the apply is wired). Existing `internal/cli` constitution tests re-run with the compile slot.
 
 ### M3 — Source and registry transforms, in memory (Q1/Q2, G2)
 
@@ -110,7 +111,7 @@ Covers REQ-CAA-010, REQ-CAA-011, REQ-CAA-018.
 
 ### M5 — Wire into `Execute` / `applyAmendment` (G3)
 
-Replace the stub calls; add the REQ-CAA-017 `Before` check after registry lookup and before Layer 1 (both modes); retire the stub tests per §C.2. Exit: AC-CAA-001, AC-CAA-002, AC-CAA-020 GREEN through `Execute(dryRun=false)` with `fakeOversight` and a `t.TempDir()` lock path; AC-CAA-016 GREEN; M-17 RED.
+Replace the stub calls; add the REQ-CAA-017 `Before` check after registry lookup and before Layer 1 (both modes); retire the stub tests per §C.2. Exit: AC-CAA-001, AC-CAA-002, AC-CAA-020 GREEN through `Execute(dryRun=false)` with `fakeOversight` and a `t.TempDir()` lock path; AC-CAA-016 and AC-CAA-023 GREEN; M-17 and M-20 RED.
 
 ### M6 — Dry-run validation and CLI
 
@@ -127,7 +128,7 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 | R-1 | Existing fixtures point at a missing `dummy.md`; dry-run tests flip RED once validation runs | §C.2 disposition; fix fixtures, do not relax REQ-CAA-012 |
 | R-2 | REQ-CAA-009 fail-closed blocks every amendment if the human log gains a malformed entry | confirmed by the lead (G1); the error names path, line, and key so a human can fix it |
 | R-3 | A leftover temp or backup file inside `.claude/rules/**` is loaded as a rule | non-`.md` suffixes; cleanup asserted in AC-CAA-012; a retained backup after a failed restore (REQ-CAA-018) is still non-`.md` |
-| R-4 | After REQ-CAA-019, a session-exported `CLAUDE_PROJECT_DIR` steers any test that reaches the resolver toward the real registry | REQ-CAA-015 obliges tests to set both variables; AC-CAA-017 runs once with `CLAUDE_PROJECT_DIR` pointed at the repository root; `LoadRegistry`'s escape check is a second line of defence |
+| R-4 | After REQ-CAA-019, a session-exported `CLAUDE_PROJECT_DIR` steers any test that reaches the resolver toward the real registry | REQ-CAA-015 obliges tests to set both variables; AC-CAA-017 runs once with `CLAUDE_PROJECT_DIR` pointed at the repository root; `LoadRegistry`'s escape check is a second line of defence and is now required behaviour (REQ-CAA-020, AC-CAA-023) |
 | R-5 | REQ-CAA-016 rejects a new clause that is a substring of the current clause (e.g. shortening a sentence by removing its tail) | literal consequence of the G2 ruling, stated in REQ-CAA-016; the user rewrites the proposal |
 | R-6 | Once human entries are readable, the unused `MarkRolledBack` becomes lossy | 0 production callers; follow-up candidate (spec.md §F) |
 
@@ -145,4 +146,4 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 - `spec.md` §C (ruling map), §D (requirements), §E.4 (approved gap), §F (exclusions), §G (open question)
 - `acceptance.md` §D (AC matrix), §D.2 (mutants)
 - `progress.md` (run-phase evidence skeleton)
-- `.moai/reports/t659/verdict.md` §7, §8
+- `.moai/reports/t659/verdict.md` §7, §8, §9
