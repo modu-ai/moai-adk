@@ -1,0 +1,10 @@
+## positive control: new read-time form present in acceptance.md (expect hits, incl. AC-UDD-021 block)
+612:CARD_BASE=$(git merge-base develop HEAD)
+674:CARD_BASE=$(git merge-base develop HEAD)
+EXIT=0
+## target: literal 7f61332ef..HEAD range in acceptance.md / plan.md (expect no hit; grep EXIT=1 = zero hits)
+EXIT=1
+## note: target EXIT=1 = zero hits; no literal range remains as a command in any criterion or pre-flight block. Remaining 7f61332ef mentions in AC-UDD-021/023 are the dated 'Reference reading 2026-08-14' paragraphs (no ..HEAD range). One prose mention outside the edit scope remains in the Definition of Done (grep below): 'unmodified relative to 7f61332ef (AC-UDD-021)' - not a command, left untouched per scope, reported as a Gap.
+811-- No Go file is modified (AC-UDD-023) and `internal/template/templates/**` is unmodified relative to
+812:  `7f61332ef` (AC-UDD-021).
+EXIT=0

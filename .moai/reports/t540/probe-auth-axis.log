@@ -1,0 +1,15 @@
+# t540 — auth-axis probe: deciding lines
+# Extracted from scratch, not retyped. Raw render NOT exported (see Residual-risk).
+# codex-cli 0.153.4 · darwin · isolated CODEX_HOME · 2026-09-08
+
+$ CODEX_HOME=<scratch>/codex-auth-probe/home timeout 90 codex debug prompt-input "hi" < /dev/null
+rc=0
+stderr bytes: 0
+stdout bytes: 34534
+
+# rendered skill roots (the arbitrary declared path is absent from this table):
+`r0` = `/Users/goos/.agents/skills`
+`r1` = `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/a3be7c8f-4efa-4739-a28f-fe531c281b05/scratchpad/codex-auth-probe/home/skills/.system`
+
+# declared-path hit count (the probe declared at an arbitrary path outside any root):
+grep -c 'codex-auth-probe/skills/probe' out.txt -> 0

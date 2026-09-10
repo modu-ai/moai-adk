@@ -2,6 +2,17 @@
 
 Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was adopted ONLY after observing RED on the pre-implementation tree by actually running its command. Each AC carries two paired facts: RED-NOW (exact command + observed output + why it fails) and GREEN-PATH (which milestone flips it + passing output). All RED observations were measured on 2026-08-25 in worktree t273, branch `WT-workflow-docs`, HEAD `db1362739`.
 
+## HISTORY
+
+- 2026-09-08: AC-WFD-001·007·011 검증식 정정 — 비(非)Latin 로케일(ko/ja/zh) 문서 산문·라벨 자리에 ASCII 토큰의 존재를 요구하던 계수식을 **로케일별 원어-병렬(원어 OR ASCII) 계수**로. 승인 귀속: 리드 승인 — 카드 t573 발행 dispatch (SPEC-AC-LOCALE-TOKEN-001 M2; census `.moai/reports/t573/census.md` §3 배치 3).
+  - 사유: ASCII 존재 계수는 그 수를 채우기 위해 해당 로케일 문서의 쓰기를 ASCII 괄호 보강 쪽으로 왜곡시킨다. 관측된 실해 — ja `kanban-mode.md:253` 「3つのクラス(Class A · Class B · Class C)」, zh `kanban-mode.md:253` 「三个类别(Class A · Class B · Class C)」, 4-로케일 `spec-lifecycle.md:33` 머메이드 노드 「実装着手承認(Implementation Kickoff Approval…)」 계열, ja `spec-lifecycle.md:79` 산문 한복판 「— **Functionality / Security / Craft / Consistency** —」. 원어 토큰(クラスA·类别A·클래스 A, 実装着手承認·구현 착수 승인·实现启动审批)은 각 페이지에서 이미 운용 중이다.
+  - 측정(트리 `0e1f248cd`, 워크트리 `WT-ascii-token-criterion`, 2026-09-08, 모두 `/usr/bin/grep`):
+    - before (옛 검증식 — 본 트리): `/usr/bin/grep -c 'Class A' docs-site/content/ja/advanced/kanban-mode.md` → `1` (유일 히트가 글로스 행 :253), `/usr/bin/grep -c 'Implementation Kickoff' docs-site/content/ja/core-concepts/spec-lifecycle.md` → `2` (글로스 자리 :33 등), `/usr/bin/grep -c 'Functionality' docs-site/content/ja/core-concepts/spec-lifecycle.md` → `1` (:79 산문 글로스).
+    - 뮤턴트 probe (왜곡 수리 = 글로스 제거 사본): `sed 's/(Class A · Class B · Class C)//g' docs-site/content/ja/advanced/kanban-mode.md > /tmp/t573-ja-mutant.md` 후 `/usr/bin/grep -c 'Class A' /tmp/t573-ja-mutant.md` → `0` (옛 기준 FAIL — 옛 기준은 정확히 왜곡 수리에서 실패), `/usr/bin/grep -cE 'クラス ?A' /tmp/t573-ja-mutant.md` → `1` (재작성 기준 PASS).
+    - after (재작성 검증식 — 본 트리): ko `클래스 ?A` 1 / en `Class ?A` 1 / ja `クラス ?A` 1 / zh `类别 ?A` 1; kickoff 병렬 en 3 / ko 3 / ja 3 / zh 3 (원어 단독 각 3); dimension 병렬 12조합 각 1.
+  - **판정 영향 없음**: 옛 읽기와 새 읽기 모두에서 현재 트리는 통과다. 정정은 계측기가 기준이 말하는 대상(클래스·게이트·차원의 존재)을 로케일 중립적으로 재게 만들 뿐, 통과 기준을 완화하지 않는다 (t538 HISTORY AC-008 정정과 동일 종류).
+  - 상위 정합 (cross-layer sweep): spec.md §C.4의 "Protocol values stay locale-verbatim" 문구도 동일 날짜 항목으로 정정했다 (기계 리터럴은 locale-verbatim 유지, 의미 라벨은 원어-병렬).
+
 ## §D AC Matrix
 
 ### AC-WFD-001 — card-class section on kanban-mode.md, 4 locales (REQ-WFD-001)
@@ -9,7 +20,7 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 **Given** the docs-site kanban-mode page **When** a reader looks for card classes **Then** all four locales carry a section with the normative heading token (ko `카드 클래스` / en `Card Classes` / ja `カードクラス` / zh `卡片类别`) presenting A/B/C semantics.
 
 - RED-NOW: `grep -rn -E "카드 클래스|Class A|클래스 A|类别 A|卡片类别" docs-site/content/{ko,en,ja,zh}/advanced/kanban-mode.md README.ko.md README.md README.ja.md README.zh.md` → **no output (exit 1)** — zero matches in all 8 files; the concept is absent from every public surface. (Re-verified on explicit 8-file paths at tree `59bdf63db`, iter-1 revision.)
-- GREEN-PATH: M3 → per locale: `grep -c "<locale heading token>" docs-site/content/<locale>/advanced/kanban-mode.md` ≥ 1 AND the substantive semantics tokens `grep -c "Class A"` ≥ 1, `grep -c "Class B"` ≥ 1, `grep -c "Class C"` ≥ 1 on the same file (`Class A/B/C` locale-verbatim per spec.md §C.4 — a page carrying only the heading token cannot pass). ×4 locales; missing-in-one = FAIL (both directions counted).
+- GREEN-PATH: M3 → per locale: `grep -c "<locale heading token>" docs-site/content/<locale>/advanced/kanban-mode.md` ≥ 1 AND the class semantics tokens on the same file, **per-locale bilingual (native-or-ASCII) counting**: ko `/usr/bin/grep -cE '클래스 ?A' docs-site/content/ko/advanced/kanban-mode.md` ≥ 1, en `/usr/bin/grep -cE 'Class ?A' docs-site/content/en/advanced/kanban-mode.md` ≥ 1, ja `/usr/bin/grep -cE 'クラス ?A' docs-site/content/ja/advanced/kanban-mode.md` ≥ 1, zh `/usr/bin/grep -cE '类别 ?A' docs-site/content/zh/advanced/kanban-mode.md` ≥ 1 (Class B·C도 동일 형태 — 각 로케일 대응 원어 토큰으로; a page carrying only the heading token cannot pass). [2026-09-08 검증식 정정 — 아래 HISTORY 동일 날짜 항목. 종전 `grep -c "Class A" ≥ 1` ×4는 ja·zh 산문을 ASCII 괄호 글로스로 왜곡했다 — 본 트리(`0e1f248cd`) 실측: ko 1 / en 1 / ja 1 / zh 1, 글로스 제거 뮤턴트에서 ja ASCII 0·원어 1.] ×4 locales; missing-in-one = FAIL (both directions counted).
 
 ### AC-WFD-002 — card-class table in README kanban section, 4 files (REQ-WFD-002)
 
@@ -51,7 +62,7 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 **Given** the lifecycle page **When** the gates section is read **Then** Implementation Kickoff Approval is named and the per-tier PASS thresholds appear (numbers locale-verbatim).
 
 - RED-NOW: page absent — `grep -c "Implementation Kickoff" docs-site/content/ko/core-concepts/spec-lifecycle.md` → **"No such file or directory" (exit 2)** (re-verified at tree `59bdf63db`, iter-1 revision).
-- GREEN-PATH: M1 → `grep -c "Implementation Kickoff" <page>` ≥ 1 AND ALL THREE threshold greps ≥ 1: `grep -c "0.75"` ≥ 1, `grep -c "0.80"` ≥ 1, `grep -c "0.85"` ≥ 1 (a page carrying only `0.85` cannot pass — the per-tier row is 0.75/0.80/0.85, all locale-verbatim per spec.md §C.4); ×4 locales for all four greps.
+- GREEN-PATH: M1 → kickoff 게이트 명칭 — **로케일별 원어-우선 병렬 토큰 계수**: en `/usr/bin/grep -c 'Implementation Kickoff' <page>` ≥ 1, ko `/usr/bin/grep -cE '구현 착수 승인|Implementation Kickoff' <page>` ≥ 1, ja `/usr/bin/grep -cE '実装着手承認|Implementation Kickoff' <page>` ≥ 1, zh `/usr/bin/grep -cE '实现启动审批|Implementation Kickoff' <page>` ≥ 1 (본 트리 `0e1f248cd` 실측: en 3 / ko 3 / ja 3 / zh 3 — 원어 단독 계수도 각 3이므로 ASCII 괄호 글로스 제거 후에도 통과한다). [2026-09-08 검증식 정정 — 아래 HISTORY 동일 날짜 항목] AND ALL THREE threshold greps ≥ 1: `grep -c "0.75"` ≥ 1, `grep -c "0.80"` ≥ 1, `grep -c "0.85"` ≥ 1 (수치는 로케일 불변 리터럴 — locale-verbatim 유지; a page carrying only `0.85` cannot pass — the per-tier row is 0.75/0.80/0.85); ×4 locales for all greps.
 
 ### AC-WFD-008 — bidirectional cross-link spec-lifecycle ↔ spec-based-dev (REQ-WFD-006)
 
@@ -79,7 +90,7 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 **Given** the lifecycle page **When** the third gate is documented **Then** the sync-auditor agent is named (4-dimension quality scoring owner).
 
 - RED-NOW: page absent — `grep -c "sync-auditor" docs-site/content/ko/core-concepts/spec-lifecycle.md` → **"No such file or directory" (exit 2)** (re-verified at tree `59bdf63db`, iter-1 revision).
-- GREEN-PATH: M1 → `grep -c "sync-auditor" <page>` ≥ 1 AND each of the four dimension names ≥ 1 on the same file: `grep -c "Functionality"`, `grep -c "Security"`, `grep -c "Craft"`, `grep -c "Consistency"` (dimension names locale-verbatim per spec.md §C.4 — a page naming only `sync-auditor` cannot pass; the four names ARE the 4-dimension scoring semantics in their cheapest grep-able form). ×4 locales.
+- GREEN-PATH: M1 → `grep -c "sync-auditor" <page>` ≥ 1 (에이전트 id — 코드 식별자, locale-verbatim 유지) AND each of the four dimension names ≥ 1 on the same file, **per-locale bilingual (native-or-ASCII) counting**: en `grep -c "Functionality"` / `grep -c "Security"` / `grep -c "Craft"` / `grep -c "Consistency"` 각 ≥ 1 (en 은 Latin 로케일 — ASCII 그대로), ko `/usr/bin/grep -cE 'Functionality|기능성'`·`'Security|보안'`·`'Craft|크래프트'`·`'Consistency|일관성'` 각 ≥ 1, ja `/usr/bin/grep -cE 'Functionality|機能性'`·`'Security|セキュリティ'`·`'Craft|工芸'`·`'Consistency|一貫性'` 각 ≥ 1, zh `/usr/bin/grep -cE 'Functionality|功能性'`·`'Security|安全性'`·`'Craft|工艺'`·`'Consistency|一致性'` 각 ≥ 1 (본 트리 `0e1f248cd` 실측: 12조합 전부 1 — 현재는 ASCII 측이 채우며, 페이지가 원어로 옮기면 원어 측이 채운다 — 어느 쪽이든 통과, hence 계수가 쓰기 방식을 강제하지 않는다). [2026-09-08 검증식 정정 — 아래 HISTORY 동일 날짜 항목; a page naming only `sync-auditor` cannot pass — the four names ARE the 4-dimension scoring semantics]. ×4 locales.
 
 ## §D.1 Severity
 

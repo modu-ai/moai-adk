@@ -1,0 +1,10 @@
+=== GREEN on restored tree ===
+sha256 of production file at run time:
+0ed1a6d408b1e2fc214890697f97c469bf43d1646ddc3c2072c9abb9fc645cbd  internal/kanban/temp_origin.go
+
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/" "/tmp" "/var/folders"]
+--- PASS: TestDefaultTempRoots_Membership (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.396s
+exit=0

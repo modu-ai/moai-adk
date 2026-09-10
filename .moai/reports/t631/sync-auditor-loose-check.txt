@@ -1,0 +1,8 @@
+--- .claude/agents/moai/sync-auditor.md lines=     180
+loose 'review mode' / 'spec review' / 'spec-review' / 'plan phase' / 'plan-phase':
+8:  NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
+control 'post-implementation' count=4
+--- internal/template/templates/.claude/agents/moai/sync-auditor.md lines=     180
+loose 'review mode' / 'spec review' / 'spec-review' / 'plan phase' / 'plan-phase':
+8:  NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
+control 'post-implementation' count=4

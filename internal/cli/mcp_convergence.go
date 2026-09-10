@@ -165,7 +165,11 @@ type ConvergenceResult struct {
 // Fail-open: when all required backends returned VerdictInconclusive (or a
 // pass/inconclusive mix with no required FAIL), the overall verdict falls back
 // to the claude verdict (AC-AMM-021 / EC-4). A missing optional backend is
-// evidence-of-absence, NOT evidence-of-failure (C2).
+// evidence-of-absence, NOT evidence-of-failure (C2). This function is PURE and
+// stays fail-open unconditionally: the sole production caller (runMultiAudit)
+// layers the explicit-required gate enforcement (enforceRequiredGateUnmet) on
+// its result, so a gate the project explicitly configured `required` still
+// fails the overall verdict when left unmet.
 //
 // disagreement_flag is set when (a) the required set contains both pass and
 // fail (a split), OR (b) an advisory backend's pass/fail verdict conflicts with
@@ -582,7 +586,11 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 //     and NEVER the claude verdict (super-review independence).
 //  3. Assembles per_backend_verdicts (claude anchor + secondary results).
 //  4. converge()s them into a ConvergenceResult.
-//  5. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
+//  5. Enforces the explicit-required gates (GH #1632 item 3): a gate the
+//     audited tree's workflow.yaml explicitly configures `required` fails the
+//     overall verdict when its backend returned no verdict (see
+//     enforceRequiredGateUnmet). Unset gates keep the fail-open behavior.
+//  6. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
 //
 // It NEVER returns a hard error — every path produces a structured
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
@@ -702,6 +710,18 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// persistence-side code).
 	result.BuildCommit, result.BuildLag = buildCommit, buildLag
 
+	// ── explicit-required gate enforcement (GH #1632 item 3) ──
+	// converge above is deliberately fail-open: a required backend that
+	// returned no verdict falls back to the claude anchor, so an unmet gate
+	// rode to an overall pass. The operator decision closes that gap for gates
+	// the project EXPLICITLY configured `required`: such a gate left unmet
+	// fails the overall verdict. The raw workflow.yaml value decides — an
+	// UNSET gate keeps the fail-open behavior byte-for-byte, because the
+	// engine's distributed default (codex required) is not an opt-in. Runs
+	// BEFORE persist so the state file the multi-review-gate Stop hook reads
+	// carries the enforced verdict.
+	result = enforceRequiredGateUnmet(result, verdicts, workflowAuditGates(cfg.ProjectRoot))
+
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
 	// block the flow (fail-open). The convergence result is valid regardless of
@@ -719,6 +739,85 @@ func gateOr(g, dflt string) string {
 		return dflt
 	}
 	return g
+}
+
+// ─── explicit-required gate enforcement (GH #1632 item 3) ───
+
+// enforceRequiredGateUnmet fails the overall verdict when a backend the
+// project EXPLICITLY configured `required` returned no verdict, instead of
+// letting it ride the claude-anchor fall-through to a pass. Operator decision:
+// fail-closed for an explicit `required`; the annotate-only fail-open behavior
+// is preserved byte-for-byte when `required` is NOT set.
+//
+// The gates argument is the audited tree's RAW workflow.audit.gates block (zero
+// values where unset) — the same value applyGateUnmet reads at the
+// single-backend surface, and deliberately NOT the engine-defaulted gate: the
+// distributed default (codex required, glm advisory, applied via gateOr when
+// the key is absent) must never count as an opt-in, or every existing project
+// would flip to fail-closed.
+//
+// Only overall_verdict and residual_risk_note move. per_backend_verdicts keeps
+// the backend's true inconclusive verdict and fail_open_backends keeps naming
+// it, so the audit trail still says "this backend never ran" — the enforcement
+// changes what the verdict DECIDES, not what the backends REPORTED.
+func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict, gates config.AuditGates) ConvergenceResult {
+	var unmet []string
+	for _, v := range verdicts {
+		if v.Verdict != VerdictInconclusive {
+			continue // a pass/fail verdict satisfied (or failed) its gate on the existing contracts
+		}
+		if explicitGateFor(gates, v.Backend) != config.AuditGateRequired {
+			continue // not explicitly configured required — fail-open preserved
+		}
+		unmet = append(unmet, v.Backend)
+	}
+	if len(unmet) == 0 {
+		return r
+	}
+	r.OverallVerdict = overallVerdictFail
+	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
+	if r.ResidualRiskNote != "" {
+		note += " | " + r.ResidualRiskNote
+	}
+	r.ResidualRiskNote = note
+	return r
+}
+
+// explicitGateFor returns the backend's raw configured gate token from the
+// workflow.audit.gates block. Unconfigured backends return "" — the
+// engine-default application (gateOr) deliberately does NOT run here, because
+// the enforcement keys on what the project wrote, not on the distributed
+// default.
+func explicitGateFor(gates config.AuditGates, backend string) string {
+	switch backend {
+	case BackendClaude:
+		return gates.Claude
+	case BackendCodex:
+		return gates.Codex
+	case BackendGLM:
+		return gates.GLM
+	default:
+		return ""
+	}
+}
+
+// workflowAuditGates reads the audited tree's raw workflow.audit.gates block —
+// the same section-file seam (workflowAuditPins) applyGateUnmet uses at the
+// single-backend surface, so both surfaces read one config the same way.
+// projectRoot names the tree when the caller supplied one (SPEC-MCP-WORKTREE-
+// ROOT-001); empty falls back to resolveProjectDir, the same convention
+// performGLMAudit uses. Absent file, unreadable file, and parse errors all
+// yield zero gates — the enforcement fails OPEN on config trouble, so a broken
+// workflow.yaml can never invent a block.
+func workflowAuditGates(projectRoot string) config.AuditGates {
+	root := strings.TrimSpace(projectRoot)
+	if root == "" {
+		root = resolveProjectDir()
+	}
+	if root == "" {
+		return config.AuditGates{}
+	}
+	return workflowAuditPins(root).Gates
 }
 
 // ─── DQ-1: state-file persistence ───

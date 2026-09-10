@@ -760,6 +760,7 @@ func TestBuildEnvForLaunch(t *testing.T) {
 func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai directory
+	t.Setenv("HOME", tmpDir)
 
 	origDir, _ := os.Getwd()
 	defer func() { _ = os.Chdir(origDir) }()

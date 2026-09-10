@@ -1,0 +1,19 @@
+=== RUN   TestDangerousRemovalDeployed_DeniesProtectedTargetsAllOrders
+    dangerous_removal_test.go:265: command "rm -fr /": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -r -f /": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm --recursive --force /": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -rf \"/\"": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -rf \"$HOME\"": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -fr ~": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -fr $HOME": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -fr .git": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -fr node_modules": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "rm -rf /usr": decision = "", want "deny"
+    dangerous_removal_test.go:265: command "echo x && rm -fr /": decision = "", want "deny"
+--- FAIL: TestDangerousRemovalDeployed_DeniesProtectedTargetsAllOrders (0.02s)
+=== RUN   TestDangerousRemovalDeployed_DeniesHeredocBodyProtectedTarget
+    dangerous_removal_test.go:285: command "cat > /tmp/t511-protected-note.md <<'EOF'\nrm -rf /\nEOF\necho WROTE_OK": decision = "", want "deny"
+--- FAIL: TestDangerousRemovalDeployed_DeniesHeredocBodyProtectedTarget (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.688s
+FAIL

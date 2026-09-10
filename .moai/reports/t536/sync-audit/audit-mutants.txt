@@ -1,0 +1,37 @@
+===== M-AUD-1: TempOriginReason -> constant false =====
+1
+--- FAIL: TestTempOrigin_SymlinkSpellingEquivalence (0.00s)
+    temp_origin_test.go:51: spellings differ: unresolved="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence2819904938/001" resolved="/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence2819904938/001"
+    temp_origin_test.go:56: unresolved spelling "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence2819904938/001" classified NOT temporary
+    temp_origin_test.go:60: resolved spelling "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence2819904938/001" classified NOT temporary
+    temp_origin_test.go:67: a temporary verdict must name the matched root, got empty reason
+--- FAIL: TestTempOrigin_ComponentBoundary (0.00s)
+    temp_origin_test.go:120: the temp root itself "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary1417562384/001" classified NOT temporary
+    temp_origin_test.go:124: a path beneath the temp root "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary1417562384/001/a/b" classified NOT temporary
+--- FAIL: TestTempRootsSeam_ReadAtCallTime (0.00s)
+    temp_origin_test.go:154: precondition: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempRootsSeam_ReadAtCallTime3637739560/001" must be temporary under the production root set (reason "")
+--- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.08s)
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.00s)
+        todo_root_temp_guard_test.go:65: precondition: base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueueno_local_queue_bot3908076907/001" must classify temporary under the production root set (reason "")
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.04s)
+        todo_root_temp_guard_test.go:105: adopting root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuelocal_queue_present1456760478/002/.moai/todo/001-792fd58b", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuelocal_queue_present1456760478/001"
+    --- FAIL: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.04s)
+        todo_root_temp_guard_test.go:149: temp-origin ∧ home-unresolvable root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuetemporary_origin_AN3214244884/001/.moai/state/todo", want the launch base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_TempOriginRefusesHomeQueuetemporary_origin_AN3214244884/001"
+--- FAIL: TestTodoQueueRoot_PureGuardIsSilent (0.08s)
+    todo_root_temp_guard_test.go:242: TempOriginRefusal reported no refusal for temporary origin "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_PureGuardIsSilent4046048413/001"
+--- FAIL: TestTodoQueueRoot_GitBranchUnreachedByGuard (0.06s)
+    todo_root_temp_guard_test.go:270: precondition: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoQueueRoot_GitBranchUnreachedByGuard3451340729/001" must classify temporary, or this test proves nothing
+--- FAIL: TestTempOrigin_LexicalResembler (0.00s)
+    todo_root_temp_guard_test.go:329: control failed: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_LexicalResembler2927449253/001/tmp/project" is beneath the injected root "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_LexicalResembler2927449253/001/tmp" yet classified NOT temporary — the negative above proves nothing
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.697s
+--- FAIL: TestTempOriginGuidance_NamesRootsAndContinues (0.00s)
+    todo_temp_guard_test.go:41: precondition: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOriginGuidance_NamesRootsAndContinues1572570701/001" must classify as a temporary origin
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.000s
+FAIL
+===== M-AUD-2: drop /tmp from defaultTempRoots =====
+1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.883s
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.164s
+===== RESTORE CHECK 1 =====

@@ -1,0 +1,573 @@
+==============================================================
+MUTANT M1 — ID resolver removed (AC-SLI-001a/001b/001c)
+command: go test ./internal/cli/ -run 'TestSpecLint|TestSpecStatusIDPattern|TestShapeFunction'
+mutation landed in source: yes
+tests matched by selector: 12
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:22:34
+@@ -201,7 +201,7 @@
+ 			continue
+ 		}
+ 
+-		if !specid.HasCanonicalSpecIDShape(arg) {
++		if true {
+ 			// Not a path signal and not ID-shaped: treat it as a path, which
+ 			// is the pre-existing behaviour for anything unrecognised.
+ 			targets = append(targets, expandSpecDirArg(arg))
+--- output ---
+=== RUN   TestSpecLint_IDArg_ResolvesToSpecMD
+    spec_lint_test.go:173: ParseFailure count = 1, want 0 (rc=1)
+        SEVERITY  CODE          FILE          LINE  MESSAGE
+        --------  ----          ----          ----  -------
+        ERROR     ParseFailure  SPEC-FIX-001  1     SPEC parsing failed: failed to read file: open SPEC-FIX-001: no such file or directory
+        
+        1 error(s), 0 warning(s)
+--- FAIL: TestSpecLint_IDArg_ResolvesToSpecMD (0.00s)
+=== RUN   TestSpecLint_IDArg_EqualsPathForm
+    spec_lint_test.go:196: exit codes differ: id=1 path=0
+        --- id ---
+        SEVERITY  CODE          FILE          LINE  MESSAGE
+        --------  ----          ----          ----  -------
+        ERROR     ParseFailure  SPEC-FIX-001  1     SPEC parsing failed: failed to read file: open SPEC-FIX-001: no such file or directory
+        
+        1 error(s), 0 warning(s)
+        
+        --- path ---
+        SEVERITY  CODE                            FILE                                                                                                                             LINE  MESSAGE
+        --------  ----                            ----                                                                                                                             ----  -------
+        WARNING   CoverageIncomplete              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  5     REQ REQ-FIX-001 is not referenced by any AC
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: author [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: priority [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: phase [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: module [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: lifecycle [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: tags [grandfathered era — downgraded to warning]
+        WARNING   MissingExclusions               /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+        INFO      StatusGitUnreachable            /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 git status NOT OBSERVED — no usable base ref (tried: main, origin/main, master, origin/master); this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (git log failed: exited with status 128: fatal: not a git repository (or any of the parent directories): .git)
+        INFO      OwnershipTransitionUnreachable  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm92609399/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 ownership transition validation skipped (git unreachable: git unreachable: git rev-parse --git-dir failed)
+        
+        0 error(s), 8 warning(s)
+--- FAIL: TestSpecLint_IDArg_EqualsPathForm (0.12s)
+=== RUN   TestSpecLint_IDArg_FromSubdirectory
+    spec_lint_test.go:225: ParseFailure count = 1, want 0 from a subdirectory
+        SEVERITY  CODE          FILE          LINE  MESSAGE
+        --------  ----          ----          ----  -------
+        ERROR     ParseFailure  SPEC-FIX-001  1     SPEC parsing failed: failed to read file: open SPEC-FIX-001: no such file or directory
+        
+        1 error(s), 0 warning(s)
+--- FAIL: TestSpecLint_IDArg_FromSubdirectory (0.00s)
+=== RUN   TestSpecLint_DirectoryArg
+--- PASS: TestSpecLint_DirectoryArg (0.28s)
+=== RUN   TestSpecLint_UnresolvableID_IsArgumentError
+    spec_lint_test.go:259: exit code = 1, want 3
+        SEVERITY  CODE          FILE           LINE  MESSAGE
+        --------  ----          ----           ----  -------
+        ERROR     ParseFailure  SPEC-NOPE-999  1     SPEC parsing failed: failed to read file: open SPEC-NOPE-999: no such file or directory
+        
+        1 error(s), 0 warning(s)
+--- FAIL: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+=== RUN   TestSpecLint_PathForm_Unchanged
+--- PASS: TestSpecLint_PathForm_Unchanged (0.14s)
+=== RUN   TestSpecLint_MissingPathArg_StillParseFailure
+--- PASS: TestSpecLint_MissingPathArg_StillParseFailure (0.00s)
+=== RUN   TestSpecLint_AnchorInvariant_SPEC_A_1
+--- PASS: TestSpecLint_AnchorInvariant_SPEC_A_1 (0.00s)
+=== RUN   TestSpecLintHelp_NamesThreeArgumentShapes
+--- PASS: TestSpecLintHelp_NamesThreeArgumentShapes (0.00s)
+=== RUN   TestSpecLint_MixedArgs
+    spec_lint_test.go:382: order [SPEC-MIX-002 /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md]: ParseFailure count = 1, want 0 (rc=1)
+        SEVERITY  CODE                            FILE                                                                                                                   LINE  MESSAGE
+        --------  ----                            ----                                                                                                                   ----  -------
+        ERROR     ParseFailure                    SPEC-MIX-002                                                                                                           1     SPEC parsing failed: failed to read file: open SPEC-MIX-002: no such file or directory
+        WARNING   CoverageIncomplete              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  5     REQ REQ-FIX-001 is not referenced by any AC
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: author [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: priority [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: phase [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: module [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: lifecycle [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: tags [grandfathered era — downgraded to warning]
+        WARNING   MissingExclusions               /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+        INFO      StatusGitUnreachable            /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 git status NOT OBSERVED — no usable base ref (tried: main, origin/main, master, origin/master); this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (git log failed: exited with status 128: fatal: not a git repository (or any of the parent directories): .git)
+        INFO      OwnershipTransitionUnreachable  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs600511368/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 ownership transition validation skipped (git unreachable: git unreachable: git rev-parse --git-dir failed)
+        
+        1 error(s), 8 warning(s)
+--- FAIL: TestSpecLint_MixedArgs (0.13s)
+=== RUN   TestSpecStatusIDPattern_LiteralFrozen
+--- PASS: TestSpecStatusIDPattern_LiteralFrozen (0.00s)
+=== RUN   TestShapeFunction_HomeAndName
+--- PASS: TestShapeFunction_HomeAndName (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.571s
+FAIL
+==============================================================
+MUTANT M2 — directory branch removed (AC-SLI-002)
+command: go test ./internal/cli/ -run 'TestSpecLint_DirectoryArg'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:22:42
+@@ -262,7 +262,7 @@
+ // leaves everything else alone — including paths that do not exist, which must
+ // keep producing the same ParseFailure they produced before (REQ-SLI-004).
+ func expandSpecDirArg(arg string) string {
+-	if info, err := os.Stat(arg); err == nil && info.IsDir() {
++	if false {
+ 		return filepath.Join(arg, "spec.md")
+ 	}
+ 	return arg
+--- output ---
+=== RUN   TestSpecLint_DirectoryArg
+    spec_lint_test.go:240: ParseFailure count = 1 for directory form, want 0 (rc=1)
+        SEVERITY  CODE          FILE                      LINE  MESSAGE
+        --------  ----          ----                      ----  -------
+        ERROR     ParseFailure  .moai/specs/SPEC-FIX-001  1     SPEC parsing failed: failed to read file: read .moai/specs/SPEC-FIX-001: is a directory
+        
+        1 error(s), 0 warning(s)
+--- FAIL: TestSpecLint_DirectoryArg (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.860s
+FAIL
+==============================================================
+MUTANT M3 — rc=3 diagnostic removed (AC-SLI-003)
+command: go test ./internal/cli/ -run 'TestSpecLint_UnresolvableID_IsArgumentError'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:22:47
+@@ -228,7 +228,7 @@
+ 		}
+ 
+ 		specPath := filepath.Join(projectRoot, ".moai", "specs", arg, "spec.md")
+-		if _, err := os.Stat(specPath); err != nil {
++		if false {
+ 			// An argument-shape mistake is an argument error, not a finding
+ 			// about a document (REQ-SLI-005). The path that was tried is named
+ 			// so the reader can see what the ID was taken to mean. The first
+--- output ---
+=== RUN   TestSpecLint_UnresolvableID_IsArgumentError
+    spec_lint_test.go:259: exit code = 1, want 3
+        SEVERITY  CODE          FILE                                                                                                                                          LINE  MESSAGE
+        --------  ----          ----                                                                                                                                          ----  -------
+        ERROR     ParseFailure  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_UnresolvableID_IsArgumentError1273683013/001/.moai/specs/SPEC-NOPE-999/spec.md  1     SPEC parsing failed: failed to read file: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_UnresolvableID_IsArgumentError1273683013/001/.moai/specs/SPEC-NOPE-999/spec.md: no such file or directory
+        
+        1 error(s), 0 warning(s)
+--- FAIL: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.858s
+FAIL
+==============================================================
+MUTANT M4 — path-signal pre-exclusion removed, anchored shape intact (AC-SLI-004a)
+command: go test ./internal/cli/ -run 'TestSpecLint_PathForm_Unchanged'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=0  => NOT CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:22:52
+@@ -196,7 +196,7 @@
+ 		// pre-exclusion is what stops a path being misread as an ID, which is
+ 		// the worse of the two misreadings: the user believes the file they
+ 		// named was the file that was checked.
+-		if hasPathSignal(arg) {
++		if false {
+ 			targets = append(targets, expandSpecDirArg(arg))
+ 			continue
+ 		}
+--- output ---
+=== RUN   TestSpecLint_PathForm_Unchanged
+--- PASS: TestSpecLint_PathForm_Unchanged (0.13s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.983s
+==============================================================
+MUTANT M4b — path-signal pre-exclusion removed AND shape loosened (AC-SLI-004a)
+command: go test ./internal/cli/ -run 'TestSpecLint_PathForm_Unchanged'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:22:57
+@@ -196,12 +196,12 @@
+ 		// pre-exclusion is what stops a path being misread as an ID, which is
+ 		// the worse of the two misreadings: the user believes the file they
+ 		// named was the file that was checked.
+-		if hasPathSignal(arg) {
++		if false {
+ 			targets = append(targets, expandSpecDirArg(arg))
+ 			continue
+ 		}
+ 
+-		if !specid.HasCanonicalSpecIDShape(arg) {
++		if !specIDPattern.MatchString(arg) {
+ 			// Not a path signal and not ID-shaped: treat it as a path, which
+ 			// is the pre-existing behaviour for anything unrecognised.
+ 			targets = append(targets, expandSpecDirArg(arg))
+--- output ---
+=== RUN   TestSpecLint_PathForm_Unchanged
+    spec_lint_test.go:281: path form exit code = 3, want the pre-repair 0 or 1
+        spec lint: SPEC-ID must be a simple identifier, not an absolute path: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged216036479/001/.moai/specs/SPEC-FIX-001/spec.md"
+--- FAIL: TestSpecLint_PathForm_Unchanged (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.854s
+FAIL
+==============================================================
+MUTANT M5 — all unresolvable arguments routed to exit 3 (AC-SLI-004b)
+command: go test ./internal/cli/ -run 'TestSpecLint_MissingPathArg_StillParseFailure'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:02
+@@ -192,6 +192,9 @@
+ 	var projectRoot string
+ 	targets := make([]string, 0, len(args))
+ 	for _, arg := range args {
++		if _, serr := os.Stat(arg); serr != nil && !specid.HasCanonicalSpecIDShape(arg) {
++			return nil, &exitCodeError{code: 3, msg: "spec lint: unresolved argument"}
++		}
+ 		// Path signals win first (plan.md D1: signal → shape → path). The
+ 		// pre-exclusion is what stops a path being misread as an ID, which is
+ 		// the worse of the two misreadings: the user believes the file they
+--- output ---
+=== RUN   TestSpecLint_MissingPathArg_StillParseFailure
+    spec_lint_test.go:304: ParseFailure count = 0, want 1 (rc=3)
+--- FAIL: TestSpecLint_MissingPathArg_StillParseFailure (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.847s
+FAIL
+==============================================================
+MUTANT M6 — discriminator swapped for spec_status.go:18 unanchored specIDPattern (AC-SLI-005)
+command: go test ./internal/cli/ -run 'TestSpecLint_AnchorInvariant_SPEC_A_1'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:07
+@@ -201,7 +201,7 @@
+ 			continue
+ 		}
+ 
+-		if !specid.HasCanonicalSpecIDShape(arg) {
++		if !specIDPattern.MatchString(arg) {
+ 			// Not a path signal and not ID-shaped: treat it as a path, which
+ 			// is the pre-existing behaviour for anything unrecognised.
+ 			targets = append(targets, expandSpecDirArg(arg))
+--- output ---
+=== RUN   TestSpecLint_AnchorInvariant_SPEC_A_1
+    spec_lint_test.go:326: SPEC-A-1 was treated as an ID (rc=3); the anchored shape must reject it
+        spec lint: no SPEC document found for "SPEC-A-1" (tried: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_AnchorInvariant_SPEC_A_11057082226/001/.moai/specs/SPEC-A-1/spec.md)
+--- FAIL: TestSpecLint_AnchorInvariant_SPEC_A_1 (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.912s
+FAIL
+==============================================================
+MUTANT M7 — help text reverted to 'lint [spec.md...]' (AC-SLI-006)
+command: go test ./internal/cli/ -run 'TestSpecLintHelp_NamesThreeArgumentShapes'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:13
+@@ -27,20 +27,9 @@
+ 	)
+ 
+ 	cmd := &cobra.Command{
+-		Use:   "lint [SPEC-ID | path/to/spec.md | SPEC directory ...]",
++		Use:   "lint [spec.md...]",
+ 		Short: "Lint SPEC documents for EARS compliance and structural validity",
+-		Long: `Accepted arguments (SPEC-SPEC-LINT-ID-ARG-001) — three shapes, mixable in
+-one invocation, and with no argument the whole corpus is scanned as before:
+-- a SPEC-ID, e.g. SPEC-SPC-001, resolved to .moai/specs/<SPEC-ID>/spec.md
+-  under the project root (the same rule 'moai spec view' uses)
+-- a file path, e.g. .moai/specs/SPEC-SPC-001/spec.md
+-- a SPEC directory, e.g. .moai/specs/SPEC-SPC-001, read as the spec.md inside it
+-
+-An argument that looks like a SPEC-ID but resolves to nothing is an argument
+-error (exit code 3) naming the path that was tried — not a finding about a
+-document.
+-
+-Validate SPEC documents against:
++		Long: `Validate SPEC documents against:
+ - EARS modality compliance (SHALL, WHEN, WHILE, WHERE, IF)
+ - REQ ID uniqueness
+ - AC→REQ coverage (100% required)
+--- output ---
+=== RUN   TestSpecLintHelp_NamesThreeArgumentShapes
+    spec_lint_test.go:350: help does not mention "SPEC-ID"
+        --- Use ---
+        lint [spec.md...]
+        --- Long ---
+        Validate SPEC documents against:
+        - EARS modality compliance (SHALL, WHEN, WHILE, WHERE, IF)
+        - REQ ID uniqueness
+        - AC→REQ coverage (100% required)
+        - Frontmatter schema validation
+        - Dependency DAG (no cycles, all deps exist)
+        - Out of Scope section presence
+        - Zone registry cross-references
+        
+        Exit codes:
+        0 = success (no errors)
+        1 = errors found
+        2 = linter crash
+        3 = invalid arguments
+--- FAIL: TestSpecLintHelp_NamesThreeArgumentShapes (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.849s
+FAIL
+==============================================================
+MUTANT M8 — only the first argument resolved (AC-SLI-007)
+command: go test ./internal/cli/ -run 'TestSpecLint_MixedArgs'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:18
+@@ -191,7 +191,11 @@
+ 
+ 	var projectRoot string
+ 	targets := make([]string, 0, len(args))
+-	for _, arg := range args {
++	for argIdx, arg := range args {
++		if argIdx > 0 {
++			targets = append(targets, arg)
++			continue
++		}
+ 		// Path signals win first (plan.md D1: signal → shape → path). The
+ 		// pre-exclusion is what stops a path being misread as an ID, which is
+ 		// the worse of the two misreadings: the user believes the file they
+--- output ---
+=== RUN   TestSpecLint_MixedArgs
+    spec_lint_test.go:382: order [/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md SPEC-MIX-002]: ParseFailure count = 1, want 0 (rc=1)
+        SEVERITY  CODE                            FILE                                                                                                                    LINE  MESSAGE
+        --------  ----                            ----                                                                                                                    ----  -------
+        ERROR     ParseFailure                    SPEC-MIX-002                                                                                                            1     SPEC parsing failed: failed to read file: open SPEC-MIX-002: no such file or directory
+        WARNING   CoverageIncomplete              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  5     REQ REQ-FIX-001 is not referenced by any AC
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: author [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: priority [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: phase [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: module [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: lifecycle [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: tags [grandfathered era — downgraded to warning]
+        WARNING   MissingExclusions               /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+        INFO      StatusGitUnreachable            /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 git status NOT OBSERVED — no usable base ref (tried: main, origin/main, master, origin/master); this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (git log failed: exited with status 128: fatal: not a git repository (or any of the parent directories): .git)
+        INFO      OwnershipTransitionUnreachable  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs1309807581/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 ownership transition validation skipped (git unreachable: git unreachable: git rev-parse --git-dir failed)
+        
+        1 error(s), 8 warning(s)
+--- FAIL: TestSpecLint_MixedArgs (0.27s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.122s
+FAIL
+==============================================================
+MUTANT M9 — ID base swapped from findProjectRootFn to cwd (AC-SLI-001c)
+command: go test ./internal/cli/ -run 'TestSpecLint_IDArg_FromSubdirectory'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:24
+@@ -220,7 +220,7 @@
+ 		}
+ 
+ 		if projectRoot == "" {
+-			root, err := findProjectRootFn()
++			root, err := os.Getwd()
+ 			if err != nil {
+ 				return nil, argumentError(stderr, "spec lint: cannot resolve SPEC-ID %q: failed to find project root: %v", arg, err)
+ 			}
+--- output ---
+=== RUN   TestSpecLint_IDArg_FromSubdirectory
+    spec_lint_test.go:222: lint reported 'no such SPEC' from a subdirectory while view resolves it; rc=3
+        spec lint: no SPEC document found for "SPEC-FIX-001" (tried: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_FromSubdirectory2797915797/001/internal/.moai/specs/SPEC-FIX-001/spec.md)
+--- FAIL: TestSpecLint_IDArg_FromSubdirectory (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.860s
+FAIL
+==============================================================
+MUTANT M10 — option-alpha local copy of the shape check in spec_lint.go (AC-SLI-009 branch 1)
+command: go test ./internal/cli/ -run 'TestShapeFunction_HomeAndName'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:30
+@@ -5,6 +5,7 @@
+ 	"io"
+ 	"os"
+ 	"path/filepath"
++	"regexp"
+ 	"strings"
+ 	"text/tabwriter"
+ 
+@@ -250,6 +251,12 @@
+ 	return &exitCodeError{code: 3, msg: msg}
+ }
+ 
++func HasCanonicalSpecIDShape(s string) bool {
++	return specidShapeLocal.MatchString(s)
++}
++
++var specidShapeLocal = regexp.MustCompile(`^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`)
++
+ // hasPathSignal reports whether the argument carries a syntactic path signal.
+ // Structural only — no filesystem lookup — so the classification cannot change
+ // underneath a caller depending on what happens to exist (plan.md D1 rejects
+--- output ---
+=== RUN   TestShapeFunction_HomeAndName
+    spec_lint_test.go:443: shape function is declared in spec_lint.go (option alpha); beta was ruled
+--- FAIL: TestShapeFunction_HomeAndName (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.850s
+FAIL
+==============================================================
+MUTANT M14 — diagnostic no longer written to stderr, rc=3 unchanged (AC-SLI-003 non-vacuity)
+command: go test ./internal/cli/ -run 'TestSpecLint_UnresolvableID_IsArgumentError'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_lint.go	2026-09-08 01:22:34
++++ internal/cli/spec_lint.go	2026-09-08 01:23:36
+@@ -245,8 +245,8 @@
+ // argumentError writes the diagnostic where the user can read it and returns
+ // the exit-3 error that carries the same text to the process exit code.
+ func argumentError(stderr io.Writer, format string, a ...any) error {
++	_ = stderr
+ 	msg := fmt.Sprintf(format, a...)
+-	_, _ = fmt.Fprintln(stderr, msg)
+ 	return &exitCodeError{code: 3, msg: msg}
+ }
+ 
+--- output ---
+=== RUN   TestSpecLint_UnresolvableID_IsArgumentError
+    spec_lint_test.go:266: message does not name the attempted path "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_UnresolvableID_IsArgumentError3628762181/001/.moai/specs/SPEC-NOPE-999/spec.md"
+--- FAIL: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.859s
+FAIL
+==============================================================
+MUTANT M11 — ValidateSpecID stops rejecting '..' (AC-SLI-009 branch 2 non-vacuity)
+command: go test ./internal/cli/specid/ -run 'TestValidateSpecID'
+mutation landed in source: yes
+tests matched by selector: 8
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/specid.go	2026-09-08 01:22:34
++++ internal/cli/specid/specid.go	2026-09-08 01:23:41
+@@ -69,7 +69,7 @@
+ 		return fmt.Errorf("SPEC-ID must be a simple identifier, not an absolute path: %q", specID)
+ 	}
+ 	// ".." 거부
+-	if strings.Contains(specID, "..") {
++	if strings.Contains(specID, "....") {
+ 		return fmt.Errorf("SPEC-ID must not contain '..': %q", specID)
+ 	}
+ 	// 경로 구분자("/" 또는 "\") 거부 — 크로스 플랫폼 (validateSkillID와 동일 패턴)
+--- output ---
+=== RUN   TestValidateSpecID
+=== PAUSE TestValidateSpecID
+=== CONT  TestValidateSpecID
+=== RUN   TestValidateSpecID/legitimate_canonical_spec_id
+=== PAUSE TestValidateSpecID/legitimate_canonical_spec_id
+=== RUN   TestValidateSpecID/legitimate_short_spec_id
+=== PAUSE TestValidateSpecID/legitimate_short_spec_id
+=== RUN   TestValidateSpecID/dotdot_traversal
+=== PAUSE TestValidateSpecID/dotdot_traversal
+=== RUN   TestValidateSpecID/embedded_dotdot
+=== PAUSE TestValidateSpecID/embedded_dotdot
+=== RUN   TestValidateSpecID/forward_slash_separator
+=== PAUSE TestValidateSpecID/forward_slash_separator
+=== RUN   TestValidateSpecID/backslash_separator
+=== PAUSE TestValidateSpecID/backslash_separator
+=== RUN   TestValidateSpecID/absolute_path_unix
+=== PAUSE TestValidateSpecID/absolute_path_unix
+=== CONT  TestValidateSpecID/legitimate_canonical_spec_id
+=== CONT  TestValidateSpecID/absolute_path_unix
+=== CONT  TestValidateSpecID/dotdot_traversal
+=== CONT  TestValidateSpecID/embedded_dotdot
+=== CONT  TestValidateSpecID/backslash_separator
+=== CONT  TestValidateSpecID/legitimate_short_spec_id
+=== CONT  TestValidateSpecID/forward_slash_separator
+=== NAME  TestValidateSpecID/embedded_dotdot
+    specid_test.go:39: ValidateSpecID("SPEC-..-001") = nil, want non-nil error
+--- FAIL: TestValidateSpecID (0.00s)
+    --- PASS: TestValidateSpecID/legitimate_canonical_spec_id (0.00s)
+    --- PASS: TestValidateSpecID/absolute_path_unix (0.00s)
+    --- PASS: TestValidateSpecID/dotdot_traversal (0.00s)
+    --- PASS: TestValidateSpecID/backslash_separator (0.00s)
+    --- PASS: TestValidateSpecID/legitimate_short_spec_id (0.00s)
+    --- PASS: TestValidateSpecID/forward_slash_separator (0.00s)
+    --- FAIL: TestValidateSpecID/embedded_dotdot (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/specid	0.329s
+FAIL
+==============================================================
+MUTANT M12 — spec_status.go:18 literal given anchors (AC-SLI-010 branch 2)
+command: go test ./internal/cli/ -run 'TestSpecStatusIDPattern_LiteralFrozen'
+mutation landed in source: yes
+tests matched by selector: 1
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/spec_status.go	2026-09-08 01:22:34
++++ internal/cli/spec_status.go	2026-09-08 01:23:42
+@@ -15,7 +15,7 @@
+ )
+ 
+ // specIDPattern matches SPEC-XXX patterns in git commit messages
+-var specIDPattern = regexp.MustCompile(`SPEC-[A-Z0-9-]+-[0-9]+`)
++var specIDPattern = regexp.MustCompile(`^SPEC-[A-Z0-9-]+-[0-9]+$`)
+ 
+ // newSpecStatusCmd creates the 'moai spec status' subcommand
+ func newSpecStatusCmd() *cobra.Command {
+--- output ---
+=== RUN   TestSpecStatusIDPattern_LiteralFrozen
+    spec_lint_test.go:414: spec_status.go specIDPattern literal moved:
+         got: ^SPEC-[A-Z0-9-]+-[0-9]+$
+        want: SPEC-[A-Z0-9-]+-[0-9]+
+--- FAIL: TestSpecStatusIDPattern_LiteralFrozen (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.845s
+FAIL
+==============================================================
+MUTANT M13 — copied shape literal widened to \d+ (REQ-SLI-006 drift guard)
+command: go test ./internal/cli/specid/ -run 'TestHasCanonicalSpecIDShape|TestCanonicalShapeLiteral'
+mutation landed in source: yes
+tests matched by selector: 2
+rc=1  => CAUGHT
+--- diff of the mutation ---
+--- /tmp/t518-mutant-bk/specid.go	2026-09-08 01:22:34
++++ internal/cli/specid/specid.go	2026-09-08 01:23:47
+@@ -34,7 +34,7 @@
+ // purpose — it scrapes SPEC-IDs out of git commit messages. Reusing that one
+ // as an argument discriminator misreads a path as an ID; the risk has a name,
+ // same-name/different-meaning reuse drift, and spec.md §H records it.
+-const CanonicalSpecIDShapeLiteral = `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`
++const CanonicalSpecIDShapeLiteral = `^SPEC(-[A-Z][A-Z0-9]*)+-\d+$`
+ 
+ var canonicalSpecIDShape = regexp.MustCompile(CanonicalSpecIDShapeLiteral)
+ 
+--- output ---
+=== RUN   TestHasCanonicalSpecIDShape
+    specid_shape_test.go:51: HasCanonicalSpecIDShape("SPEC-A-1") = true, want false
+    specid_shape_test.go:51: HasCanonicalSpecIDShape("SPEC-FIX-0011") = true, want false
+--- FAIL: TestHasCanonicalSpecIDShape (0.00s)
+=== RUN   TestCanonicalShapeLiteral_MatchesInternalSpecSource
+    specid_shape_test.go:81: shape literal drifted from internal/spec:
+         internal/spec: ^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$
+         this copy:     ^SPEC(-[A-Z][A-Z0-9]*)+-\d+$
+--- FAIL: TestCanonicalShapeLiteral_MatchesInternalSpecSource (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/specid	0.335s
+FAIL

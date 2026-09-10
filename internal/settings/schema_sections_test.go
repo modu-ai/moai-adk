@@ -618,7 +618,15 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 		}
 		switch f.Type {
 		case TypeBool:
-			edits[f.Name] = "true"
+			// sync-audit F1: a default-ON bool key that is ABSENT on disk treats
+			// "true" as a no-op (absent IS enabled), so the round-trip-exercising
+			// submission for such fields is "false" — the explicit OFF that the
+			// polarity-aware gate must write. Everything else keeps "true".
+			if f.AbsentDefault == "true" {
+				edits[f.Name] = "false"
+			} else {
+				edits[f.Name] = "true"
+			}
 		case TypeInt:
 			edits[f.Name] = "5"
 		case TypeFloat:

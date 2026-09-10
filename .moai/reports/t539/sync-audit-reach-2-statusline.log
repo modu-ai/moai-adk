@@ -1,0 +1,15 @@
+panic: REACHPROBE [recovered, repanicked]
+
+goroutine 921 [running]:
+sync.(*WaitGroup).Go.func1.1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/sync/waitgroup.go:251 +0x48
+panic({0x1035551a0?, 0x1036460a0?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/statusline.(*defaultBuilder).collectAll.func1()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/statusline/builder.go:362 +0x2c
+sync.(*WaitGroup).Go.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/sync/waitgroup.go:258 +0x48
+created by sync.(*WaitGroup).Go in goroutine 920
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/sync/waitgroup.go:238 +0x70
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	0.560s
+FAIL

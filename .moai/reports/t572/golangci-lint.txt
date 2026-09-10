@@ -1,0 +1,5 @@
+internal/spec/zz_t528_overacceptance_test.go:100:15: Error return value of `f.Close` is not checked (errcheck)
+	defer f.Close()
+	             ^
+1 issues:
+* errcheck: 1

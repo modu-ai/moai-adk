@@ -3,7 +3,7 @@ package wizard
 // SPEC-INIT-HARNESS-PROMPT-001 — the agent-harness wizard question.
 //
 // The harness selection ({claude, codex, both}) used to be reachable only
-// through `moai init --agent`, so an interactive user was never asked and
+// through `moai init --llm`, so an interactive user was never asked and
 // silently received the claude default (spec.md §1). These tests pin the
 // question's presence, shape, English source text, capture into WizardResult,
 // and the D3 leak guard that keeps it out of `moai update --reconfigure`.
@@ -17,7 +17,7 @@ import (
 
 // TestAgentWiringQuestion_InInitSetWithClosedOptionSet asserts AC-IHP-001: the
 // interactive init set carries exactly one harness question, of Select type,
-// offering the same closed set the --agent flag accepts, with claude
+// offering the same closed set the --llm flag accepts, with claude
 // pre-selected as the recommended default.
 func TestAgentWiringQuestion_InInitSetWithClosedOptionSet(t *testing.T) {
 	t.Parallel()
@@ -46,7 +46,7 @@ func TestAgentWiringQuestion_InInitSetWithClosedOptionSet(t *testing.T) {
 		values = append(values, opt.Value)
 	}
 	if want := []string{"claude", "codex", "both"}; !slices.Equal(values, want) {
-		t.Errorf("agent_wiring option values = %v, want %v (the --agent closed set, REQ-IHP-011)", values, want)
+		t.Errorf("agent_wiring option values = %v, want %v (the --llm closed set, REQ-IHP-011)", values, want)
 	}
 	if q.Default != "claude" {
 		t.Errorf("agent_wiring default = %q, want %q (recommended default, REQ-IHP-001)", q.Default, "claude")

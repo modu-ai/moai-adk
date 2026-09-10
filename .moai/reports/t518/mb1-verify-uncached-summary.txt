@@ -1,0 +1,42 @@
+# M-B1 검증 — 무캐시 1차 실행 (요약본)
+
+명령:
+    go test -count=1 ./internal/cli/ ./internal/cli/specid/ ./internal/kanban/
+
+이 파일은 원본 출력 242,405 bytes 를 판정 줄만 남겨 줄인 것이다. 버린 것은
+테스트가 stdout 으로 흘린 로그(세션 시작 알림, 임시 디렉터리 경로 등)이며
+판정에 쓰이지 않았다. 위 명령을 다시 실행하면 같은 판정이 재유도된다.
+
+## 판정 줄 (원본에서 그대로)
+
+    FAIL	github.com/modu-ai/moai-adk/internal/cli	602.408s
+    ok  	github.com/modu-ai/moai-adk/internal/cli/specid	0.491s
+    ok  	github.com/modu-ai/moai-adk/internal/kanban	147.061s
+    FAIL
+
+## 판별식 — 실패인가 시간 초과인가
+
+종료 상태만으로는 갈리지 않아 두 계수로 판정했다.
+
+    /usr/bin/grep -c '^--- FAIL' <원본>   →  0     (깨진 테스트 0건)
+    /usr/bin/grep -m1 'panic:'   <원본>   →  panic: test timed out after 10m0s
+
+`--- FAIL` 이 0이면서 타임아웃 패닉이 있으므로, `FAIL` 은 테스트 실패가 아니라
+go test 의 기본 10분 타임아웃 초과다. 이 저장소에는 `internal/cli` 가 600s
+하한을 갖는다는 기록이 이미 있다.
+
+## 왜 캐시를 껐는가
+
+앞선 실행은 `ok ... (cached)` 였다. 캐시된 ok 는 과거 어느 시점의 통과를
+말하지 그 실행이 일어났음을 말하지 않는다. 이 카드가 하루 종일 다룬 것이
+「초록인데 실제로 돌았는가」이므로 `-count=1` 로 강제 실행했고, 그 결과
+타임아웃이 드러났다. 캐시된 ok 를 그대로 받았다면 안 돈 것을 돌았다고
+보고했을 것이고, FAIL 을 그대로 받았다면 멀쩡한 것을 깨졌다고 보고했을 것이다.
+
+## 후속
+
+    go test -count=1 -timeout 20m ./internal/cli/
+    →  ok  github.com/modu-ai/moai-adk/internal/cli  549.549s
+       `--- FAIL` 0건 · 타임아웃 패닉 0건
+
+전문은 mb1-verify-cli-20m.txt 참조.

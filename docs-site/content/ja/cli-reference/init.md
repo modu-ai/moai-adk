@@ -29,6 +29,7 @@ moai init [project-name]
 | `--all` | カタログ全体を配置 (core + 選択パック + ハーネス生成物)。デフォルトは core-only slim モード |
 | `--force` | 既存プロジェクトの再初期化 (現在の `.moai/` をバックアップ) |
 | `--no-hooks` | git フックのインストールを省略 |
+| `--llm <claude\|codex\|both>` | 接続する LLM ハーネスを選択 (デフォルト: `claude`) |
 
 ### プロジェクトデフォルト
 

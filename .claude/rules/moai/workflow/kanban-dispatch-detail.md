@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record, sub-agent-first design intent, manager-lead working mode, per-card fan-out, Factory in-lane 3-stage, pre-dispatch cross-check rationale, PR-title carrier measurements"
+description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record, sub-agent-first design intent, manager-lead working mode, per-card fan-out, Factory in-lane 3-stage, pre-dispatch cross-check rationale, PR-title carrier measurements, pre-merge settings-drift assertion"
 paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/todo.md"
 ---
 
@@ -133,6 +133,14 @@ The `-k` / `-f` lead session does not draft its own coordination: it spawns the 
 
 The lead's turn loop is the scarcest surface on the board: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and while it is occupied the lead cannot judge anything else. The deputy exists to move that occupancy. The lead session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface). This section adds only what the board sees of it.
 
+**Why the deputy is resident rather than optional.** An optional mechanism is one a loaded lead never reaches for: the turn the spawn would cost is the same turn the queue is waiting on, so the delegation is deferred exactly when it would pay most, and the surface goes unused while the serial pressure that motivated it keeps rising. Making the spawn a batch-start obligation (stub § Deputy dispatch surface) removes the decision from the moment of pressure. The cost is one background agent per batch whether or not the batch turns out to need it — deliberately accepted, because an unused deputy costs one spawn while an unspawned one costs every dispatch after it.
+
+**Reading the completion report.** A lane's completion report names evidence paths; reading those paths is several tool batches, and every one of them sits in the lead's turn. The deputy performs that read and returns a `RECOMMEND:` summary naming what it read. What moves is the occupancy, never the obligation: the lead still reads the evidence before advancing the card, because a deputy report is one more claim until the evidence under it has been read (stub § Completion is read, never trusted). A deputy that returns a conclusion without naming the paths it read has returned nothing usable — the naming is what lets the lead's own read be targeted rather than repeated from scratch.
+
+**Round-report drafting.** The measurement batches and the table scaffolding are mechanical and belong to the deputy; the figures the lead will personally assert are re-authored by the lead, because a cited figure carries its measurer's attribution and an unattributed one is a defect (`verification-claim-integrity.md` §2). In the report this shows as two attributions side by side — deputy-measured values naming the deputy and the path, lead-asserted values naming the lead. Keeping the report as per-round files plus an index is the structural half of the same rule: a single file rewritten from its header every round makes each round's authoring cost grow with the batch's age, which is a drafting cost the delegation cannot remove.
+
+**Watching without polling.** Repeated listing rounds to learn whether a lane has finished are pure turn occupancy that returns no information most of the time. One `notify_when_idle` request replaces the loop (`cross-session-messaging.md` § An idle notice is a scheduling hint) — opt-in, one-shot, so a second notice needs a second request. Its boundary is inherited by citation and not restated: the notice says *when to go look* and nothing about what the evidence says, because a session goes idle when it finishes, when it stops at a permission prompt, and when it dies, and the notice cannot separate those. Advancing a card on the notice alone is an unobserved completion claim.
+
 **What the deputy does in the background:**
 
 - **Dispatch sends with delivery-shape verification.** The deputy sends the fixed-field address blocks for ALREADY-PICKED cards and reads every send result. A `routing` object on the result means an in-process mailbox took the block — lost, not delivered — and the deputy re-sends to the `name [ref]` form the `ListAgents` listing printed (§ The dispatch cycle). A rapid-burst refusal is read and reported; the queue already carries the delegation, so a refused nudge stalls nothing.
@@ -217,6 +225,32 @@ Two properties make the shared checkout the wrong place for a card:
 
 - Several sessions read it at once, so a branch switch, a `git stash`, or a `git add -A` there sweeps another session's uncommitted work into a commit that was never meant to carry it.
 - A card outlives a phase. Its worktree spans run through sync, which is why disposal is triggered by the merge rather than by the phase finishing.
+
+## The pre-merge settings-drift assertion
+
+The stub's `acquire` clause has a narrow subject: the **tracked** `.claude/settings.json` in the tree the lane is standing in when it takes the window. Twice, a card worktree has been found with that file modified in the working copy and no author anyone could name. Neither was caught by the merge window — the first surfaced because a merge happened to be refused, the second in a full sweep of every worktree nine days later. Authorship was closed as unattributable, which leaves detection as the only end that can be fixed: an unnoticed modification cannot be traced, but it can be caught before it rides a merge.
+
+`acquire` is the right point because of cwd. The procedure has a lane run it from its own card worktree and only then enter the release worktree, so the tree standing under `acquire` is the tree about to be merged. Code does not enforce that ordering, so the report always names the tree it measured: measuring a different tree is acceptable, measuring one quietly is not.
+
+The predicate:
+
+```
+git --no-optional-locks status --porcelain -- .claude/settings.json
+```
+
+Three properties of it are load-bearing.
+
+- **`--no-optional-locks` is mandatory.** A plain `git status` takes an index WRITE lock for tens of milliseconds. A check that runs immediately before a merge, on a machine with several lanes on it, would otherwise manufacture the contention it exists to protect against.
+- **The verdict is the match count, never an exit code.** Zero lines is a pass, one or more is drift.
+- **A failed measurement is its own state.** `clean` / `drift` / `undetermined` are three states, not two with a fallback: an unmeasured tree that reports `clean` is precisely the nine-day silence, and the absence of a signal is not evidence of cleanliness.
+
+What happens on a hit, in order: the working copy is copied under the primary checkout's state directory (visible to the lead, who is not in the lane's tree), one row goes into `ledger.jsonl` beside it, and the path plus its sha256 and size are reported. The file's contents are never printed and never committed — it is runtime-written and can carry tokens, absolute paths, and pane ids, so it stays untracked and promoting it into history needs a human secret-scan first.
+
+**Nothing is ever restored, reverted, or deleted.** For the same reason: an automatic restore of a file holding machine-specific values is itself data destruction. Disposal is a human decision.
+
+Two surfaces, and neither is redundant. Without the `acquire` precondition, running the check would be a social protocol — the same gap the announcement rule named about itself. Without `moai integration preflight [path]`, there would be no way to ask the question without taking a window.
+
+Refusal is the only part that is opt-in (`workflow.settings_drift_gate.enabled`, default off, the same posture as the repository's other guards). Detection, preservation, the ledger row and the report run on every `acquire` regardless — the observed failure was nine days of nobody looking, not nine days of nothing being blocked, so gating the observation would remove the very thing the default-off posture rests on. Where refusal is on, `--allow-settings-drift` records the window anyway and stamps the bypass into the lock record; `--force` does not and must not, because it answers a different question ("take the window from a live holder") and one flag carrying both leaves the record unable to say which was meant. An `undetermined` verdict does not refuse — it is reported loudly and the window is recorded, matching every other guard's fail-open posture on uncertainty.
 
 ## Verification load incident record
 

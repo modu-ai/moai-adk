@@ -77,7 +77,7 @@ moai cc -f lane-1             # 一条泳道，在自己的终端里
 moai glm -f lane-3            # ……GLM 后端上的一条泳道
 ```
 
-用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。哪个编号被谁占着，记在 `.moai/state/factory/workers.json` 里，残留的占用也从这里清掉。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
+用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -338,7 +338,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 所有后端都是 fail-open —— GLM（`~/.moai/.env.glm`）和 codex（`~/.codex/auth.json`）是可选的；不可用的后端返回 `inconclusive`，绝不是 hard error。
 
-在双 harness（`moai init --agent codex|both`）下，Codex 的状态栏只支持内置标识符数组（`tui.status_line`），因此 goal、todo、SPEC 状态等 MoAI 专属条目无法显示 —— 这是在 openai/codex#17827 落地命令驱动的状态栏之前的已知限制。
+在启用 Codex 的 harness（`moai init --llm codex|both`）下，Codex 的状态栏只支持内置标识符数组（`tui.status_line`），因此 goal、todo、SPEC 状态等 MoAI 专属条目无法显示 —— 这是在 openai/codex#17827 落地命令驱动的状态栏之前的已知限制。
 
 > 详见：[MCP 服务器指南](https://adk.mo.ai.kr/zh/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/zh/claude-code/extensibility/mcp)
 
@@ -408,10 +408,10 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
 ### moai web 控制台
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和 11 个设置标签页" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成十一个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Agents、Report、MCP、Cross-Session。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成十四个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Codex、Agents、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
@@ -746,8 +746,8 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
-| `moai clean [--home]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`。默认是 dry-run，要加 `--force` 才真正删除 |
-| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、11 标签页设置 |
+| `moai clean [--home] [--codex-skills]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`；加上 `--codex-skills` 则从 `~/.codex/config.toml` 删除那些声明路径已被证明不存在的 `[[skills.config]]` 注册。一次只能选一个范围。默认是 dry-run，要加 `--force` 才真正删除 |
+| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、14 标签页设置 |
 
 > 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
 

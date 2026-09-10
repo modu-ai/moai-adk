@@ -1,0 +1,19 @@
+## AC-CSRB-007 — doctor seam-out pin (card-diff delta form)
+### primary pin: M2 commit diff body
+git show c007e5409 --format="" -- internal/cli/doctor_codex.go | /usr/bin/grep -c osStatFn => 0
+added-lines-only (^+): 0
+### positive control (pattern proves it matches the seam token when present)
+/usr/bin/grep -c osStatFn internal/cli/codex_skills_prune.go => 1
+### provenance context (absorbed t563 seam, NOT card-authored)
+/usr/bin/grep -c osStatFn internal/cli/doctor_codex.go => 2
+### methodology witness: without --format='' the commit message inflates the count
+git show c007e5409 -- doctor_codex.go | grep -c osStatFn => 2
+### generalized card-authored delta: EVERY first-parent non-merge card commit, added osStatFn lines in doctor_codex.go
+  4aa8915ee -> added-osStatFn-lines=0
+  835215bab -> added-osStatFn-lines=0
+  c007e5409 -> added-osStatFn-lines=0
+  b78d2e425 -> added-osStatFn-lines=0
+  f1654c924 -> added-osStatFn-lines=0
+  fe2c8f51f -> added-osStatFn-lines=0
+### absorb-merge provenance (NOT card-authored): the two occurrences arrive with 2d1dad058
+2

@@ -1,0 +1,73 @@
+=== baseline (unmutated) ===
+exit=0 failed=[] build_failed=False
+
+M1 unjudged emission removed (the announcement is deleted)                     CAUGHT
+   red: ['TestModality_AdvisoryDoesNotLeakIntoErrors', 'TestModality_KoreanControlAnnounced', 'TestModality_SilenceDiffersFromConformance', 'TestModality_UnjudgedIsAdvisory', 'TestModality_UnjudgedIsNotReportedConforming']
+
+M2 SHALL contact reverted to leading-space (strings.Contains(upper, " SHALL")) CAUGHT
+   red: ['TestModality_CorpusUnjudgedCensus', 'TestModality_ShallContactIsWordBoundary', 'TestModality_SilenceDiffersFromConformance', 'TestModality_UnjudgedIsNotReportedConforming', 'TestTableCollection_CorpusListFindingsUnchanged']
+
+M3 unjudged verdict routed into conforming (the third state is erased)         CAUGHT
+   red: ['TestModality_AdvisoryDoesNotLeakIntoErrors', 'TestModality_CorpusUnjudgedCensus', 'TestModality_KoreanControlAnnounced', 'TestModality_SilenceDiffersFromConformance', 'TestModality_UnjudgedIsAdvisory', 'TestModality_UnjudgedIsNotReportedConforming']
+
+M4 unjudged finding loses its Advisory marking                                 CAUGHT
+   red: ['TestModality_AdvisoryDoesNotLeakIntoErrors', 'TestModality_UnjudgedIsAdvisory', 'TestTableCollection_CorpusListFindingsUnchanged']
+
+M5 unjudged finding promoted to error severity                                 CAUGHT
+   red: ['TestModality_AdvisoryDoesNotLeakIntoErrors', 'TestModality_UnjudgedIsAdvisory']
+
+M6 [boundary] SHALL word boundary widened to a bare substring (SHALLOW counts) CAUGHT
+   red: ['TestModality_ShallContactIsWordBoundary']
+
+M7 [boundary] the SHALL-token route to judgeability removed (prefix only)      CAUGHT
+   red: ['TestModality_SilenceDiffersFromConformance', 'TestModality_UnjudgedIsNotReportedConforming', 'TestTableCollection_CorpusListFindingsUnchanged']
+
+M8 [boundary] one English prefix dropped from the list ("THE ")                NOT CAUGHT
+   red: -
+
+M9 [boundary] prefix match made case-sensitive against the RAW text            CAUGHT
+   red: ['TestModality_EnglishControlStillJudged', 'TestModality_KoreanControlAnnounced', 'TestModality_ShallContactIsWordBoundary', 'TestModality_UnjudgedIsNotReportedConforming', 'TestTableCollection_AdvisoryDoesNotGate']
+
+=== restore check ===
+exit=0 failed=[]
+
+=== SUMMARY ===
+M1 unjudged emission removed (the announcement is deleted)                     CAUGHT
+      RED: TestModality_AdvisoryDoesNotLeakIntoErrors
+      RED: TestModality_KoreanControlAnnounced
+      RED: TestModality_SilenceDiffersFromConformance
+      RED: TestModality_UnjudgedIsAdvisory
+      RED: TestModality_UnjudgedIsNotReportedConforming
+M2 SHALL contact reverted to leading-space (strings.Contains(upper, " SHALL")) CAUGHT
+      RED: TestModality_CorpusUnjudgedCensus
+      RED: TestModality_ShallContactIsWordBoundary
+      RED: TestModality_SilenceDiffersFromConformance
+      RED: TestModality_UnjudgedIsNotReportedConforming
+      RED: TestTableCollection_CorpusListFindingsUnchanged
+M3 unjudged verdict routed into conforming (the third state is erased)         CAUGHT
+      RED: TestModality_AdvisoryDoesNotLeakIntoErrors
+      RED: TestModality_CorpusUnjudgedCensus
+      RED: TestModality_KoreanControlAnnounced
+      RED: TestModality_SilenceDiffersFromConformance
+      RED: TestModality_UnjudgedIsAdvisory
+      RED: TestModality_UnjudgedIsNotReportedConforming
+M4 unjudged finding loses its Advisory marking                                 CAUGHT
+      RED: TestModality_AdvisoryDoesNotLeakIntoErrors
+      RED: TestModality_UnjudgedIsAdvisory
+      RED: TestTableCollection_CorpusListFindingsUnchanged
+M5 unjudged finding promoted to error severity                                 CAUGHT
+      RED: TestModality_AdvisoryDoesNotLeakIntoErrors
+      RED: TestModality_UnjudgedIsAdvisory
+M6 [boundary] SHALL word boundary widened to a bare substring (SHALLOW counts) CAUGHT
+      RED: TestModality_ShallContactIsWordBoundary
+M7 [boundary] the SHALL-token route to judgeability removed (prefix only)      CAUGHT
+      RED: TestModality_SilenceDiffersFromConformance
+      RED: TestModality_UnjudgedIsNotReportedConforming
+      RED: TestTableCollection_CorpusListFindingsUnchanged
+M8 [boundary] one English prefix dropped from the list ("THE ")                NOT CAUGHT
+M9 [boundary] prefix match made case-sensitive against the RAW text            CAUGHT
+      RED: TestModality_EnglishControlStillJudged
+      RED: TestModality_KoreanControlAnnounced
+      RED: TestModality_ShallContactIsWordBoundary
+      RED: TestModality_UnjudgedIsNotReportedConforming
+      RED: TestTableCollection_AdvisoryDoesNotGate

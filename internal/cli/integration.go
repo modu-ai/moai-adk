@@ -172,7 +172,7 @@ The deny layer is opt-in (workflow.integration_lock.enabled, default false);
 these verbs work regardless, so a project may keep the record as a
 coordination signal without enabling refusal.`,
 	}
-	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd())
+	cmd.AddCommand(newIntegrationStatusCmd(), newIntegrationAcquireCmd(), newIntegrationReleaseCmd(), newIntegrationPreflightCmd())
 	return cmd
 }
 
@@ -221,7 +221,7 @@ func newIntegrationStatusCmd() *cobra.Command {
 
 func newIntegrationAcquireCmd() *cobra.Command {
 	var sessionFlag, nameFlag, branchFlag, cardFlag string
-	var force, jsonOut bool
+	var force, jsonOut, allowSettingsDrift bool
 	cmd := &cobra.Command{
 		Use:   "acquire",
 		Short: "Record this session as the holder of the release-integration window",
@@ -231,6 +231,18 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				return fmt.Errorf("cannot resolve this session's id; pass --session <id> (a lock with an invented holder can be neither released by its holder nor recognized by the guard)")
 			}
 			root := integrationLockRoot()
+
+			// The settings-drift precondition runs BEFORE the record is
+			// written (card t488). Its detection, preservation and ledger row
+			// are unconditional; only its refusal is gated on
+			// workflow.settings_drift_gate.enabled. A refusal returns here, so
+			// no window is taken — a gate that refuses and takes the window
+			// anyway would be the worst of both.
+			drift, driftErr := acquireSettingsDriftPrecondition(cmd, root, cardFlag, allowSettingsDrift)
+			if driftErr != nil {
+				return driftErr
+			}
+
 			branch, wt := resolveIntegrationTarget(branchFlag, config.LoadGitFlowDevelopBranch(root))
 			// The pid recorded is the OWNING SESSION's, never this process's.
 			// This command exits the moment it returns, so its own pid is dead
@@ -248,16 +260,22 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				Branch:      branch,
 				Worktree:    wt,
 				Card:        cardFlag,
+				// Recorded only when a refusal was actually bypassed; the
+				// precondition resolves that, so the flag alone does not stamp
+				// the record.
+				SettingsDriftBypass:    drift.Bypassed,
+				SettingsDriftPreserved: settingsDriftBypassPreservedPath(drift),
 			}, force)
 			if err != nil {
 				return err
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
-					"acquired": true,
-					"session":  sessionID,
-					"branch":   branch,
-					"replaced": replaced,
+					"acquired":       true,
+					"session":        sessionID,
+					"branch":         branch,
+					"replaced":       replaced,
+					"settings_drift": settingsDriftJSON(drift),
 				})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window acquired by %s on %s\n", sessionID, branch)
@@ -274,8 +292,19 @@ func newIntegrationAcquireCmd() *cobra.Command {
 	cmd.Flags().StringVar(&branchFlag, "branch", "", "Branch being integrated (default: the configured git-flow develop branch, else the current branch)")
 	cmd.Flags().StringVar(&cardFlag, "card", "", "Card id this integration belongs to")
 	cmd.Flags().BoolVar(&force, "force", false, "Take the window over from a live holder (recorded, never silent)")
+	cmd.Flags().BoolVar(&allowSettingsDrift, "allow-settings-drift", false, "Record the window despite a refused settings-drift verdict (recorded in the lock, never silent). Deliberately separate from --force, which is a different decision")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Emit machine-readable JSON")
 	return cmd
+}
+
+// settingsDriftBypassPreservedPath returns the preserved copy's path only when
+// a refusal was actually bypassed. Recording it otherwise would put a bypass
+// artefact on a record that bypassed nothing.
+func settingsDriftBypassPreservedPath(r kanban.SettingsDriftResult) string {
+	if !r.Bypassed {
+		return ""
+	}
+	return r.PreservedPath
 }
 
 func newIntegrationReleaseCmd() *cobra.Command {

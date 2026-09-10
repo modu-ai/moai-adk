@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/codexwiring"
 )
 
 // ─── fixtures — wiring states (acceptance common fixture table) ────────────
@@ -681,8 +683,8 @@ func TestCodexInitAcceptDelegation(t *testing.T) {
 					if got := codexTestExecImports(t, claudePath, codexLinkAgentsDirective); got != 1 {
 						t.Errorf("executing @AGENTS.md imports in CLAUDE.md = %d, want 1", got)
 					}
-					if got := codexTestExecImports(t, agentsPath, codexLinkLocalDirective); got != 0 {
-						t.Errorf("executing @CLAUDE.local.md imports in AGENTS.md = %d, want 0 (no local file exists)", got)
+					if got := codexTestExecImports(t, agentsPath, codexTestLocalImportDirective); got != 0 {
+						t.Errorf("executing @AGENTS.local.md imports in AGENTS.md = %d, want 0", got)
 					}
 					// launch: exactly once, on the requested site.
 					direct, spawnN := 1, 0
@@ -844,7 +846,7 @@ func TestCodexInitFailurePaths(t *testing.T) {
 				}
 			},
 			layDisk:  func(t *testing.T, proj string) {},
-			wantCall: "stage AGENTS.md",
+			wantCall: "stage CLAUDE.md",
 		},
 		{
 			name: "e3_partial_output_then_fails",
@@ -1013,4 +1015,62 @@ func codexTestRawOccurrences(t *testing.T, path, needle string) int {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return strings.Count(string(data), needle)
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M7 (REQ-CTG-005 / AC-CTG-005) ───────────────
+
+// t501ErrWriter is an io.Writer whose every write fails — the diagnostic
+// sink the refusal report cannot rely on.
+type t501ErrWriter struct {
+	calls int
+}
+
+func (w *t501ErrWriter) Write(p []byte) (int, error) {
+	w.calls++
+	return 0, errors.New("disk full (t501 fixture)")
+}
+
+// TestCodexGatePrintf pins the failed-write arm of the best-effort
+// diagnostic: a write error is observed and DROPPED — the call returns
+// silently and no panic escapes it, because a failed write on a refusal
+// report must never mask the refusal it accompanies (codex_init.go).
+func TestCodexGatePrintf(t *testing.T) {
+	w := &t501ErrWriter{}
+	codexGatePrintf(w, "codex wiring is %s — %s", "not wired", "run moai init --llm codex")
+	if w.calls != 1 {
+		t.Errorf("erroring writer was called %d times, want 1", w.calls)
+	}
+	codexGatePrintf(nil, "anything %d", 1) // nil-writer arm: silent no-op
+}
+
+// ─── SPEC-CODEX-TEST-GAPS-001 M7 (REQ-CTG-006 / AC-CTG-006) ───────────────
+
+// TestDefaultCodexInitGenerator pins the error arm of the default generator
+// seam. The failure is induced through the ONE hard-failure path
+// codexwiring.Wire has (REQ-CW-003): an existing hooks.json carrying a
+// top-level key outside the measured whitelist is carried through the merge
+// verbatim, so the rendered bytes trip ValidateConfig and Wire returns
+// ErrValidationRefused. The default generator must WRAP that cause —
+// errors.Is reaches the sentinel AND the message names the failing seam —
+// not pass it through bare.
+func TestDefaultCodexInitGenerator(t *testing.T) {
+	proj := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(proj, ".codex"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hooks := filepath.Join(proj, ".codex", "hooks.json")
+	if err := os.WriteFile(hooks, []byte(`{"version":"1"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := defaultCodexInitGenerator(codexGeneratorRequest{ProjectRoot: proj, Agent: codexGeneratorAgentCodex})
+	if err == nil {
+		t.Fatal("default generator returned nil on a whitelist-refused wiring")
+	}
+	if !errors.Is(err, codexwiring.ErrValidationRefused) {
+		t.Fatalf("errors.Is must reach codexwiring.ErrValidationRefused; got %v", err)
+	}
+	if !strings.HasPrefix(err.Error(), "codex wiring generator: ") {
+		t.Errorf("the generator must WRAP the cause, not pass it through bare; got %q", err.Error())
+	}
 }

@@ -337,30 +337,17 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // unwritable registry degrades to using the label as supplied, exactly like
 // every other launch-path state write — the launch must never block on it.
 // notes, when non-nil, receives the operator-visible bump line.
-func resolveFactoryWorkerName(root, label string, notes io.Writer) string {
-	path := factoryRegistryPath(root)
-	reg := kanban.PruneFactoryDeadClaims(loadFactoryRegistry(path), factoryProcessAlive)
-
-	final := label
-	if n, ok := kanban.SplitFactoryLaneLabel(label); ok {
-		for {
-			claim, taken := reg[final]
-			if !taken || claim.PID <= 0 || !factoryProcessAlive(claim.PID) {
-				break
-			}
-			n++
-			final = kanban.FactoryLaneLabel(n)
-		}
-		if final != label && notes != nil {
-			// The note is best-effort operator guidance; the SessionStart
-			// lane notice is the reliable surface for the final name.
-			_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", label, final)
-		}
+func resolveFactoryWorkerName(root, label string, notes io.Writer) (string, error) {
+	final, err := kanban.ClaimFactoryWorkerName(root, label, os.Getpid(), factoryProcessAlive)
+	if err != nil {
+		return "", fmt.Errorf("claim factory worker %s: %w", label, err)
 	}
-
-	reg[final] = kanban.NewFactoryWorkerEntry()
-	_ = saveFactoryRegistry(path, reg)
-	return final
+	if final != label && notes != nil {
+		// The note is best-effort operator guidance; the SessionStart
+		// lane notice is the reliable surface for the final name.
+		_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", label, final)
+	}
+	return final, nil
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal

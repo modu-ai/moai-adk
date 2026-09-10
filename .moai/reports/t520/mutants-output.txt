@@ -1,0 +1,83 @@
+
+================ MUTANT RESULTS ================
+
+### AC-UMH-003 — ignore the version gate
+guard: TestUpdateMirrorHeal_NoCreateBelowStamp
+exit=1  caught=YES
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+
+### AC-UMH-004 — treat "0.0.0" as satisfying the gate
+guard: TestUpdateMirrorHeal_NoCreateWithoutStamp
+exit=1  caught=YES
+    update_mirror_heal_test.go:319: .agents exists after an unstamped run (err=<nil>)
+    update_mirror_heal_test.go:322: unstamped run changed the project; diff: [.agents/skills/moai-clean/SKILL.md|file|229|mtime=1788770423459622078 .agents/skills/moai-clean|dir|0| .agents/skills/moai-codemaps/SKILL.md|file|242|mtime=1788770423459812703 .agents/skills/moai-codemaps|dir|0| .agents/skills/moai-e2e/SKILL.md|file|267|mtime=1788770423459986704 .agents/skills/moai-e2e|dir|0| .agents/skills/moai-feedback/SKILL.md|file|246|mtime=1788770423460140996 .agents/skills/moai-feedback|dir|0| .agents/skills/moai-fix/SKILL.md|file|229|mtime=1788770423460291872 .agents/skills/moai-fix|dir|0| .agents/skills/moai-gate/SKILL.md|file|237|mtime=1788770423460455998 .agents/skills/moai-gate|dir|0| .agents/skills/moai-goal/SKILL.md|file|240|mtime=1788770423460614082 .agents/skills/moai-goal|dir|0| .agents/skills/moai-harness/SKILL.md|file|349|mtime=1788770423460767082 .agents/skills/moai-harness|dir|0| .agents/skills/moai-loop/SKILL.md|file|235|mtime=1788770423460925875 .agents/skills/moai-loop|dir|0| .agents/skills/moai-mx/SKILL.md|file|227|mtime=1788770423461080709 .agents/skills/moai-mx|dir|0| .agents/skills/moai-plan/SKILL.md|file|242|mtime=1788770423461239376 .agents/skills/moai-plan|dir|0| .agents/skills/moai-project/SKILL.md|file|251|mtime=1788770423461395585 .agents/skills/moai-project|dir|0| .agents/skills/moai-review/SKILL.md|file|226|mtime=1788770423461560877 .agents/skills/moai-review|dir|
+
+### AC-UMH-006 — rewrite published files unconditionally
+guard: TestUpdateMirrorHeal_HealthyIsNoop
+exit=1  caught=YES
+    update_mirror_heal_test.go:408: repair changed a healthy mirror; diff: [skills/moai-clean/SKILL.md|file|229|mtime=1788770428950918477 skills/moai-clean/SKILL.md|file|229|mtime=1788770429064505826 skills/moai-codemaps/SKILL.md|file|242|mtime=1788770428951191020 skills/moai-codemaps/SKILL.md|file|242|mtime=1788770429064657118 skills/moai-e2e/SKILL.md|file|267|mtime=1788770428951388813 skills/moai-e2e/SKILL.md|file|267|mtime=1788770429064793786 skills/moai-feedback/SKILL.md|file|246|mtime=1788770428951615730 skills/moai-feedback/SKILL.md|file|246|mtime=1788770429064943661 skills/moai-fix/SKILL.md|file|229|mtime=1788770428951790606 skills/moai-fix/SKILL.md|file|229|mtime=1788770429065077870 skills/moai-gate/SKILL.md|file|237|mtime=1788770428951970440 skills/moai-gate/SKILL.md|file|237|mtime=1788770429065212287 skills/moai-goal/SKILL.md|file|240|mtime=1788770428952146191 skills/moai-goal/SKILL.md|file|240|mtime=1788770429065347746 skills/moai-harness/SKILL.md|file|349|mtime=1788770428952328192 skills/moai-harness/SKILL.md|file|349|mtime=1788770429065488455 skills/moai-loop/SKILL.md|file|235|mtime=1788770428952496276 skills/moai-loop/SKILL.md|file|235|mtime=1788770429065631622 skills/moai-mx/SKILL.md|file|227|mtime=1788770428952666901 skills/moai-mx/SKILL.md|file|227|mtime=1788770429065765498 skills/moai-plan/SKILL.md|file|242|mtime=1788770428952833402 skills/moai-plan/SKILL.md|file|242|mtime=1788770429065931040 skills/moai-project/SKILL.md|file|251|mtime=1788770428952999361 sk
+
+### AC-UMH-007 — remove and replace a non-symlink occupant
+guard: TestUpdateMirrorHeal_SkipsForeignOccupant
+exit=1  caught=YES
+    update_mirror_heal_test.go:447: user file gone after repair: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateMirrorHeal_SkipsForeignOccupant966617099/001/.agents/skills/moai/MINE.md: no such file or directory
+--- FAIL: TestUpdateMirrorHeal_SkipsForeignOccupant (0.24s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.092s
+FAIL
+
+### AC-UMH-008 — widen the scope set to every dir under .claude/skills (S1)
+guard: TestUpdateMirrorHeal_ScopeExcludesLocalSkills
+exit=1  caught=YES
+    update_mirror_heal_test.go:480: the repair mirrored a locally-authored skill no deploy produced (scope S1, not S2)
+--- FAIL: TestUpdateMirrorHeal_ScopeExcludesLocalSkills (0.22s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.069s
+FAIL
+
+### AC-UMH-011 — reintroduce the "does not restore it" phrasing
+guard: TestUpdateMirrorHeal_DoctorGuidance
+exit=1  caught=YES
+    update_mirror_heal_test.go:561: the doctor still asserts a routine update cannot restore the mirror — false after this card (REQ-UMH-008):
+--- FAIL: TestUpdateMirrorHeal_DoctorGuidance (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.840s
+FAIL
+
+### AC-UMH-012 — add a write call inside the doctor mirror span
+guard: TestUpdateMirrorHeal_DoctorRemainsReadOnly
+exit=1  caught=YES
+    update_mirror_heal_test.go:605: the doctor mirror span contains 1 write call(s) — C-4 says the doctor reports and never repairs
+--- FAIL: TestUpdateMirrorHeal_DoctorRemainsReadOnly (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.849s
+FAIL
+
+### AC-UMH-015 — remove the REQ-UMH-010 target-existence filter
+guard: TestUpdateMirrorHeal_PartialDeployPathA
+exit=1  caught=YES
+    update_mirror_heal_test.go:697: the repair created 34 Path A entries on a project with no .claude/skills
+    update_mirror_heal_test.go:700: the repair created 34 dangling entries — damage, not repair (a moai doctor finding in its own right)
+--- FAIL: TestUpdateMirrorHeal_PartialDeployPathA (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.868s
+FAIL
+
+### EXTRA-noop — neuter the whole repair pass (positive-criteria RED probe)
+guard: TestUpdateMirrorHeal_RestoresPathA|TestUpdateMirrorHeal_RestoresPathB|TestUpdateMirrorHeal_EarlyReturnPreserved|TestUpdateMirrorHeal_ScopeExcludesLocalSkills|TestUpdateMirrorHeal_PartialDeployPathB
+exit=1  caught=YES
+    update_mirror_heal_test.go:219: restored mirror entry set != pre-deletion set; symmetric difference: [moai moai-clean moai-codemaps moai-domain-backend moai-domain-database moai-domain-design-dna moai-domain-frontend moai-domain-html-report moai-domain-humanize moai-domain-svg-infographic moai-e2e moai-feedback moai-fix moai-foundation-cc moai-foundation-core moai-foundation-quality moai-foundation-thinking moai-gate moai-goal moai-harness moai-harness-learner moai-kanban-foreman moai-loop moai-meta-harness moai-mx moai-plan moai-project moai-ref-api-patterns moai-ref-cross-model-audit moai-ref-git-workflow moai-ref-llm-security moai-ref-owasp-checklist moai-ref-react-patterns moai-ref-secops moai-ref-seo moai-ref-supply-chain moai-ref-testing-pyramid moai-ref-ui-polish moai-review moai-run moai-sync moai-todo moai-workflow-ddd moai-workflow-docs-claim-check moai-workflow-loop moai-workflow-project moai-workflow-spec moai-workflow-tdd moai-workflow-testing moai-workflow-worktree]
+    update_mirror_heal_test.go:222: repair restored no entries at all
+--- FAIL: TestUpdateMirrorHeal_RestoresPathA (0.21s)
+    update_mirror_heal_test.go:252: published artifact not restored: .agents/skills/moai-project/SKILL.md: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateMirrorHeal_RestoresPathB2915994791/001/.agents/skills/moai-project/SKILL.md: no such file or directory
+    update_mirror_heal_test.go:252: published artifact not restored: .agents/skills/moai-run/SKILL.md: o
+
+================ REVERT CHECK ================
+grep -rn MUTANT internal/cli internal/template -> exit=0
+internal/cli/graph_refresh_test.go:30:// AC-GF-008 (graph side) / MUTANT B guard — a query after a source edit must
+internal/cli/graph_refresh_test.go:62:		t.Fatal("MUTANT B (graph side): edges artifact unchanged after a source moved — stamp-only refresh")
+internal/cli/graph_check_test.go:144:// AC-GF-004 (CLI surface, MUTANT A): a stale layer produces an error whose
+internal/cli/graph_check_test.go:171:		t.Fatal("MUTANT A: stale check must return an error (exit 1 path) — reporting-only implementations return nil")
+

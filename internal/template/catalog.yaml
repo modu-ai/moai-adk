@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 91c36c2cc4a3cd1fc7cf502b9cdeb34fcbe1530a98fe743fc8b9f78622d484f5
+              hash: 06701a7eefe06e66bd51ddfb2dc7055d119f761ab120c71f4fa7128343efb1b4
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -71,7 +71,7 @@ catalog:
             - name: moai-workflow-project
               tier: core
               path: templates/.claude/skills/moai-workflow-project/
-              hash: 1789cc64d918d10315a886a45bd2372f03b43af542b04b91afd4c3f797f593e4
+              hash: 2009a4dc5f1ac7d342a9f22450b81679db27ae6b25a35682a1598611128886a2
               version: 1.0.0
             - name: moai-workflow-spec
               tier: core
@@ -91,7 +91,7 @@ catalog:
             - name: moai-workflow-worktree
               tier: core
               path: templates/.claude/skills/moai-workflow-worktree/
-              hash: 05920664ac48c144d23360f58c8cd932a3095cdfa56c4b290165968d0d89f762
+              hash: ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa
               version: 1.0.0
             - name: moai-domain-html-report
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: ad390185637655a3b7e68ff5c0fd3c9258559a6bfc01aa72d3243838de94d2f0
+              hash: b8fa8c95eb18654a65b5ce81bd605c4c6befda29cec263e56a906962a17eae82
               version: 1.0.0
             - name: manager-docs
               tier: core
@@ -127,12 +127,12 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
+              hash: 061fe4fb0dfee5b06a2c67b51835c5512f45f0c56a888fbf786c5d9220099b07
               version: 1.0.0
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 720d71689cddb17185b046de94c91b56cc42107d816a7fa11316f3030152284d
+              hash: a5d6809ef6131ffb22342a51297906ff0670128d5c3335183e9e7c1b66a7305e
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -142,7 +142,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 2403bfb3e0747467ba328cdbfe3767c0801db95702568d5cb606596655d771fb
+              hash: dea6916d4289d16a1448053c24479f9ecba87e72aa14fd00879114a05a97112d
               version: 1.0.0
             - name: super-advisor
               tier: core
@@ -152,12 +152,12 @@ catalog:
             - name: manager-design
               tier: core
               path: templates/.claude/agents/moai/manager-design.md
-              hash: fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a
+              hash: 3863fa6a6b4748985468ee51637de389475ec8bbebb4f4f424d0feed40aae0e2
               version: 1.0.0
             - name: e2e-tester
               tier: core
               path: templates/.claude/agents/moai/e2e-tester.md
-              hash: 910a13c9857493611eb0ee6f434bc2b5abd40c49bc25df5d48bb2ab88bea87d8
+              hash: 9a8894afaf84e3f03e21ebcf1a859f2561f1a7fb9de2dad114cd089b00c604f0
               version: 1.0.0
     optional_packs:
         backend:
@@ -215,7 +215,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: 340fc97c573f8c8c1966e16d36446562a55f76f597b48d08edcecbea7ec093b6
+                  hash: db67a26971ee6d01029a793d7e43643d4ac28160e14e834629600d1477d4a144
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops

@@ -1,0 +1,8 @@
+=== RUN   TestDoctorExitCode_CodexEnabledFatal
+--- PASS: TestDoctorExitCode_CodexEnabledFatal (20.86s)
+=== RUN   TestDoctorExitCode_CodexCleanStaysZero
+--- PASS: TestDoctorExitCode_CodexCleanStaysZero (18.15s)
+=== RUN   TestDoctorExitCode_CodexAdvisoryOnlyStaysZero
+--- PASS: TestDoctorExitCode_CodexAdvisoryOnlyStaysZero (17.43s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	57.347s

@@ -38,6 +38,7 @@ templ page(vm ShellVM, view pageView) {
 		if view.Banner != "" {
 			@banner(view)
 		}
+		@settingsPageHeader(vm, view)
 		// HTMX foundation (REQ-WC6-015): hx-boost is progressive enhancement
 		// only — with htmx loaded the submit becomes an AJAX full-page swap, and
 		// with JS/htmx disabled the form degrades to the existing full-page POST
@@ -80,6 +81,15 @@ templ page(vm ShellVM, view pageView) {
 							@fieldsetAgentFrontmatter(view)
 						case "mcp":
 							@fieldsetMCP(view)
+						case "codex":
+							// SPEC-WEB-CODEX-PANEL-001: the read-only codex
+							// mirror. It cannot go through the generic
+							// fieldsetSchemaSection default branch — that
+							// branch renders inputs, and a second control for
+							// an already-rendered field loses the user's edit
+							// silently (one form, PostFormValue reads the
+							// first value only).
+							@fieldsetCodex(view)
 						default:
 							@fieldsetSchemaSection(view, schemaPanelMeta(tab.ID))
 					}
@@ -87,6 +97,28 @@ templ page(vm ShellVM, view pageView) {
 			}
 		</form>
 	}
+}
+
+// settingsPageHeader makes the active setting legible before a user reaches
+// the field rows: what this page owns, when its values take effect, and how
+// many sibling pages remain available in the 14-page contract.
+templ settingsPageHeader(vm ShellVM, view pageView) {
+	<section class="settings-page-head" aria-labelledby="settings-page-title">
+		<div class="settings-page-head__copy">
+			<span class="eyebrow" data-i18n="settings.detail.eyebrow">Settings detail</span>
+			<h2 id="settings-page-title" class="settings-page-head__title" data-i18n={ activeSettingsTabLabelKey(vm) }>{ activeSettingsTabLabel(vm) }</h2>
+			<p class="settings-page-head__desc" data-i18n={ activeSettingsTabDescKey(vm) }>{ activeSettingsTabDesc(vm) }</p>
+		</div>
+		<div class="settings-page-head__meta">
+			<span><span data-i18n="settings.detail.profile">Profile</span> <code class="mono">{ view.SelectedProfile }</code></span>
+			<span><span data-i18n="settings.detail.pages">Pages</span> <code class="mono">{ itoa(len(vm.Tabs)) }</code><span data-i18n="settings.detail.pages.suffix"> total</span></span>
+			<span class="badge badge--outline" data-i18n={ activeSettingsTabEffectKey(vm) }>{ activeSettingsTabEffect(vm) }</span>
+			<a class="settings-page-head__link" href={ templ.SafeURL("/settings?tab=" + vm.Tab) }>
+				<span data-i18n="settings.detail.direct">Open direct link</span>
+				@iconAt("external", 13)
+			</a>
+		</div>
+	</section>
 }
 
 // profileModifiable reports whether the create/rename/delete controls may act

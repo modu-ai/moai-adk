@@ -1,0 +1,16 @@
+diff --git a/internal/hook/session_start.go b/internal/hook/session_start.go
+index 224968b6f..31c2a9210 100644
+--- a/internal/hook/session_start.go
++++ b/internal/hook/session_start.go
+@@ -389,6 +389,10 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
+ 	// Gated on input.SessionID != "" (research.md §D.0/D.1 P1-outcome
+ 	// implication): an empty UUID is never injected or written.
+ 	out := &HookOutput{Data: jsonData}
++	if _, ok := data["migration_error"]; ok {
++		out.StopReason = "migration failed"
++		out.SetContinue(false)
++	}
+ 	if input.SessionID != "" && input.ProjectDir != "" {
+ 		out.HookSpecificOutput = &HookSpecificOutput{
+ 			HookEventName: string(EventSessionStart),
+EXIT=0

@@ -238,10 +238,18 @@ func TestSettingsTemplateRequiredEnvVars(t *testing.T) {
 // path — rather than a shell-form command string.
 //
 // Exec form is chosen for three reasons, all observed rather than assumed:
+//
 //   - it bypasses the shell, so a profile that echoes unconditionally cannot
 //     prepend text to the hook's stdout JSON and break parsing;
+//
 //   - invoking bash explicitly removes any dependency on the script's exec bit;
+//
 //   - it renders identically on every platform, so no per-OS branch is needed.
+//
+//     SPEC-WIN-SMARTPATH-001 scope correction: the "no per-OS branch" claim
+//     above stays true for the exec-form hook surface this test covers, but
+//     it no longer describes env.PATH generation — buildSmartPATHFor
+//     (settings.go) carries a windows branch since GH #1690.
 //
 // The placeholder ${CLAUDE_PROJECT_DIR} is substituted by the runtime inside
 // args, so the path resolves without a shell.
@@ -1206,5 +1214,235 @@ func TestRender_DbSchemaChangeHook_Removed(t *testing.T) {
 				t.Errorf("%s PostToolUse entries = %d, want 1 (db-schema-change block was removed in SPEC-DB-SYNC-RELOC-001)", platform, got)
 			}
 		})
+	}
+}
+
+// --- Windows PATH generation (SPEC-WIN-SMARTPATH-001, GH #1690) ---
+
+// fixtureDarwinSmartPATH is the byte-exact output of the UN-refactored
+// BuildSmartPATH() on darwin, captured at 6a46c0edb with HOMEBREW_PREFIX
+// unset and HOME/USERPROFILE pinned to /home/fixture-user (os.UserHomeDir
+// reads $HOME on unix). It is the byte-stability baseline for the
+// GOOS-injected refactor: the darwin branch must reproduce it exactly.
+const fixtureDarwinSmartPATH = "/home/fixture-user/.local/bin:/home/fixture-user/go/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+// fixtureLinuxSmartPATH is the output the UN-refactored linux branch
+// assembles at 6a46c0edb (code-derived, not machine-captured: home entries
+// via filepath.Join + "/usr/local/bin" + "/usr/local/sbin" + the POSIX tail,
+// joined with the unix list separator ":" — identical on darwin and linux
+// builds).
+const fixtureLinuxSmartPATH = "/home/fixture-user/.local/bin:/home/fixture-user/go/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+// t515EnvLookup turns a fixture env map into an envLookup function.
+func t515EnvLookup(env map[string]string) func(string) string {
+	return func(key string) string { return env[key] }
+}
+
+// t515StatFound returns a stat function reporting true only for the listed
+// directories (the probe semantics buildSmartPATHFor consumes).
+func t515StatFound(dirs ...string) func(string) bool {
+	set := make(map[string]bool, len(dirs))
+	for _, d := range dirs {
+		set[d] = true
+	}
+	return func(p string) bool { return set[p] }
+}
+
+// TestBuildSmartPATHWindows pins the windows branch of buildSmartPATHFor to
+// exact output strings (SPEC-WIN-SMARTPATH-001, GH #1690): home entries
+// always present, System32 only when SystemRoot is set, Git Bash candidates
+// only when the probe reports an existing directory, joined with ";" — and
+// with NO POSIX entry ever under windows. The darwin/linux rows assert
+// byte-equality with the pre-refactor fixtures (non-regression).
+//
+// Path assembly note: filepath.Join is pinned to the BUILD host's path
+// separator, so in a darwin/linux test build the windows rows' sub-path
+// joins render with "/" (e.g. `C:\Users\u\.local/bin`). The expected values
+// are therefore built with the same filepath.Join expressions the
+// implementation uses, which keeps every assertion byte-exact on any build
+// GOOS — and would match the all-`\` forms a real windows build produces.
+func TestBuildSmartPATHWindows(t *testing.T) {
+	const home = `C:\Users\u`
+	envFull := map[string]string{
+		"SystemRoot":        `C:\Windows`,
+		"ProgramFiles":      `C:\Program Files`,
+		"ProgramFiles(x86)": `C:\Program Files (x86)`,
+		"LOCALAPPDATA":      `C:\Users\u\AppData\Local`,
+	}
+
+	// Candidate paths exactly as filepath.Join assembles them on this build.
+	pfGit := filepath.Join(envFull["ProgramFiles"], "Git", "bin")
+	pf86Git := filepath.Join(envFull["ProgramFiles(x86)"], "Git", "bin")
+	ladGit := filepath.Join(envFull["LOCALAPPDATA"], "Programs", "Git", "bin")
+	system32 := filepath.Join(envFull["SystemRoot"], "System32")
+
+	// wantWindows builds the expected full windows value: the two home
+	// entries always first, then the supplied entries in append order.
+	wantWindows := func(entries ...string) string {
+		return strings.Join(append([]string{
+			filepath.Join(home, ".local", "bin"),
+			filepath.Join(home, "go", "bin"),
+		}, entries...), ";")
+	}
+
+	t.Run("all_candidates_found", func(t *testing.T) {
+		got := buildSmartPATHFor("windows", home, t515EnvLookup(envFull), t515StatFound(pfGit, pf86Git, ladGit), false)
+		if got != wantWindows(system32, pfGit, pf86Git, ladGit) {
+			t.Errorf("windows all-found mismatch (POSIX entries must never appear under windows):\ngot:  %s\nwant: %s", got, wantWindows(system32, pfGit, pf86Git, ladGit))
+		}
+	})
+
+	t.Run("no_candidate_exists_never_empty", func(t *testing.T) {
+		// E1: every probe reports false — the value must still carry the two
+		// home entries (never empty, never POSIX; this is what keeps the
+		// clean-install `env.PATH = ""` guard away).
+		got := buildSmartPATHFor("windows", home, t515EnvLookup(envFull), func(string) bool { return false }, false)
+		if got != wantWindows(system32) {
+			t.Errorf("windows none-found mismatch (home entries must survive):\ngot:  %s\nwant: %s", got, wantWindows(system32))
+		}
+	})
+
+	t.Run("mixed_probe_takes_existing_only", func(t *testing.T) {
+		got := buildSmartPATHFor("windows", home, t515EnvLookup(envFull), t515StatFound(pfGit), false)
+		if got != wantWindows(system32, pfGit) {
+			t.Errorf("windows mixed-probe mismatch:\ngot:  %s\nwant: %s", got, wantWindows(system32, pfGit))
+		}
+	})
+
+	t.Run("system_root_unset_omits_system32", func(t *testing.T) {
+		// E2: SystemRoot unset → System32 omitted, everything else unchanged.
+		envNoSystemRoot := map[string]string{
+			"ProgramFiles":      envFull["ProgramFiles"],
+			"ProgramFiles(x86)": envFull["ProgramFiles(x86)"],
+			"LOCALAPPDATA":      envFull["LOCALAPPDATA"],
+		}
+		got := buildSmartPATHFor("windows", home, t515EnvLookup(envNoSystemRoot), t515StatFound(pfGit), false)
+		if got != wantWindows(pfGit) {
+			t.Errorf("windows SystemRoot-unset mismatch:\ngot:  %s\nwant: %s", got, wantWindows(pfGit))
+		}
+	})
+
+	t.Run("env_vars_unset_skip_candidates_even_if_stat_true", func(t *testing.T) {
+		// An unset env var means no candidate at all: the probe never sees a
+		// bare relative path like "Git/bin" — stat returning true must not
+		// resurrect an entry whose base was never set.
+		got := buildSmartPATHFor("windows", home, t515EnvLookup(map[string]string{}), t515StatFound(pfGit, pf86Git, ladGit), false)
+		if got != wantWindows() {
+			t.Errorf("windows env-unset mismatch (only home entries expected):\ngot:  %s\nwant: %s", got, wantWindows())
+		}
+	})
+
+	t.Run("darwin_matches_unrefactored_fixture", func(t *testing.T) {
+		got := buildSmartPATHFor("darwin", "/home/fixture-user", t515EnvLookup(nil), func(string) bool { return false }, false)
+		if got != fixtureDarwinSmartPATH {
+			t.Errorf("darwin output diverged from the un-refactored fixture (byte-stability regression):\ngot:      %s\nfixture:  %s", got, fixtureDarwinSmartPATH)
+		}
+	})
+
+	t.Run("linux_matches_unrefactored_branch", func(t *testing.T) {
+		got := buildSmartPATHFor("linux", "/home/fixture-user", t515EnvLookup(nil), func(string) bool { return false }, false)
+		if got != fixtureLinuxSmartPATH {
+			t.Errorf("linux output diverged from the un-refactored branch (byte-stability regression):\ngot:      %s\nfixture:  %s", got, fixtureLinuxSmartPATH)
+		}
+	})
+
+	t.Run("linux_wsl2_captures_mount_paths", func(t *testing.T) {
+		env := map[string]string{"PATH": "/usr/bin:/bin:/mnt/c/Windows/System32"}
+		got := buildSmartPATHFor("linux", "/home/fixture-user", t515EnvLookup(env), func(string) bool { return false }, true)
+		if want := fixtureLinuxSmartPATH + ":/mnt/c/Windows/System32"; got != want {
+			t.Errorf("WSL2 /mnt/ capture behavior changed (issue #495 regression):\ngot:  %s\nwant: %s", got, want)
+		}
+	})
+}
+
+// TestBuildSmartPATHWrapperMatchesFixture asserts the thin wrapper wiring:
+// with the real environment pinned to the fixture conditions, BuildSmartPATH
+// (os.UserHomeDir + os.Getenv + os.Stat + IsWSL2 injected) must reproduce the
+// fixture for this build's GOOS. On a windows build this test skips — the
+// windows rows are covered by the GOOS-injected table above, since
+// GOOS=windows cross-builds compile no tests.
+func TestBuildSmartPATHWrapperMatchesFixture(t *testing.T) {
+	t.Setenv("HOMEBREW_PREFIX", "")
+	t.Setenv("HOME", "/home/fixture-user")
+	t.Setenv("USERPROFILE", "/home/fixture-user")
+	t.Setenv("WSL_DISTRO_NAME", "")
+
+	// Keep IsWSL2's /proc/version fallback deterministic on any host.
+	orig := procVersionPath
+	procVersionPath = filepath.Join(t.TempDir(), "nonexistent")
+	t.Cleanup(func() { procVersionPath = orig })
+
+	var want string
+	switch runtime.GOOS {
+	case "darwin":
+		want = fixtureDarwinSmartPATH
+	case "linux":
+		want = fixtureLinuxSmartPATH
+	default:
+		t.Skipf("fixture not defined for build GOOS %q", runtime.GOOS)
+	}
+
+	if got := BuildSmartPATH(); got != want {
+		t.Errorf("BuildSmartPATH wrapper output diverged from the %s fixture:\ngot:  %s\nwant: %s", runtime.GOOS, got, want)
+	}
+}
+
+// TestSettingsRenderWindowsPATH renders a windows-shaped SmartPATH through
+// the real embedded settings.json.tmpl (SPEC-WIN-SMARTPATH-001, GH #1690):
+// the rendered settings.json must be valid JSON, the env.PATH value must
+// round-trip byte-exactly as a ";-joined" Windows-form value with no POSIX
+// entry, and the {{jsonEscape .SmartPATH}} directive must still appear
+// exactly once in the template source (REQ-CWSP-002; the full AC-TPS-014
+// sentinel lives in internal/config/toolpolicy).
+func TestSettingsRenderWindowsPATH(t *testing.T) {
+	smartPath := strings.Join([]string{
+		`C:\Users\u\.local\bin`,
+		`C:\Users\u\go\bin`,
+		`C:\Windows\System32`,
+		`C:\Program Files\Git\bin`,
+	}, ";")
+
+	ctx := NewTemplateContext(
+		WithPlatform("windows"),
+		WithSmartPATH(smartPath),
+		WithGoBinPath("/usr/local/go/bin"),
+		WithHomeDir("/home/test"),
+	)
+	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+	trimmed := strings.TrimSpace(output)
+	if !json.Valid([]byte(trimmed)) {
+		t.Fatalf("rendered settings.json is not valid JSON:\n%s", trimmed)
+	}
+
+	var settings map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	env, ok := settings["env"].(map[string]any)
+	if !ok {
+		t.Fatal("missing env section")
+	}
+	gotPath, ok := env["PATH"].(string)
+	if !ok {
+		t.Fatal("env.PATH is not a string")
+	}
+	if gotPath != smartPath {
+		t.Errorf("env.PATH round-trip mismatch:\ngot:  %s\nwant: %s", gotPath, smartPath)
+	}
+	if strings.Contains(gotPath, "/usr/") || strings.Contains(gotPath, "/opt/") || strings.Contains(gotPath, ":/bin") {
+		t.Errorf("windows env.PATH must not contain POSIX entries: %s", gotPath)
+	}
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+	src, err := fs.ReadFile(fsys, ".claude/settings.json.tmpl")
+	if err != nil {
+		t.Fatalf("ReadFile error: %v", err)
+	}
+	if n := strings.Count(string(src), "{{jsonEscape .SmartPATH}}"); n != 1 {
+		t.Errorf("{{jsonEscape .SmartPATH}} directive count = %d, want 1", n)
 	}
 }

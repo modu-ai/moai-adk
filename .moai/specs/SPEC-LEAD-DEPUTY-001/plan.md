@@ -3,7 +3,7 @@ id: SPEC-LEAD-DEPUTY-001
 title: "plan — 리드 세션 직렬 병목 해소 (상주 deputy 채택)"
 version: "0.1.0"
 created: 2026-09-03
-updated: 2026-09-03
+updated: 2026-09-06
 author: manager-spec (card t471)
 tier: M
 ---

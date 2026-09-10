@@ -1,0 +1,11 @@
+t564 fixtures A/B/C rerun with the fixed binary /tmp/t623-lane9/moai-t564-fixed — predicted before running
+
+fixture A SPEC-DUPREPRO-001 (citing bullet above the declaration)
+  spec lint --json: exactly 1 DuplicateAcceptanceID finding naming AC-DUPREPRO-001-01; NO CoverageIncomplete
+  spec view: exit 0, stderr "Warning: duplicate acceptance criteria ID: AC-DUPREPRO-001-01 ...", stdout tree containing AC-DUPREPRO-001-01 and REQ-DUPREPRO-001-001
+fixture B SPEC-DUPREPRO-002 (declaration above the citing bullet)
+  spec lint --json: exactly 1 DuplicateAcceptanceID finding naming AC-DUPREPRO-002-01; NO CoverageIncomplete
+  spec view: exit 0, same warning shape, tree containing AC-DUPREPRO-002-01 and REQ-DUPREPRO-002-001
+fixture C SPEC-DUPREPRO-003 (control)
+  spec lint --json: 0 findings
+  spec view: exit 0, empty stderr, tree identical to repro-C-view.out

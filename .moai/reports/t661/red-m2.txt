@@ -1,0 +1,11 @@
+=== RUN   TestUserHomeDirFnSandboxesRealHome
+=== RUN   TestUserHomeDirFnSandboxesRealHome/real_home_redirects_to_sandbox
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-1496958171
+=== RUN   TestUserHomeDirFnSandboxesRealHome/overridden_home_passes_through
+    main_test.go:468: userHomeDirFn() = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-1496958171" with HOME="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUserHomeDirFnSandboxesRealHomeoverridden_home_passes_throug3208502710/001"; want the overridden HOME returned unchanged — the sandbox must redirect only the real home
+--- FAIL: TestUserHomeDirFnSandboxesRealHome (0.00s)
+    --- PASS: TestUserHomeDirFnSandboxesRealHome/real_home_redirects_to_sandbox (0.00s)
+    --- FAIL: TestUserHomeDirFnSandboxesRealHome/overridden_home_passes_through (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.666s
+FAIL

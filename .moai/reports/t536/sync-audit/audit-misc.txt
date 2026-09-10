@@ -1,0 +1,69 @@
+=== AC-THG-002 test body (darwin-only scope?) ===
+	t.Helper()
+	orig := TempRootsFn
+	TempRootsFn = func() []string { return roots }
+	t.Cleanup(func() { TempRootsFn = orig })
+}
+
+// TestTempOrigin_SymlinkSpellingEquivalence — AC-THG-002.
+//
+// The unresolved spelling (what os.TempDir() reports: /var/folders/... on
+// macOS) and the resolved spelling (/private/var/folders/...) name the SAME
+// directory, so the discriminant must classify them alike and name the same
+// matched root. A one-sided comparison — normalizing the base but not the root,
+// or strings.HasPrefix(abs, os.TempDir()) — fails on exactly one of the two and
+// fails SILENTLY.
+func TestTempOrigin_SymlinkSpellingEquivalence(t *testing.T) {
+	unresolved := t.TempDir()
+	resolved, err := filepath.EvalSymlinks(unresolved)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", unresolved, err)
+	}
+	// Recorded, not asserted: on a platform where the temp tree sits behind no
+	// symlink the two spellings coincide and this test degenerates to a single
+	// case. The log says which cell this run measured.
+	if resolved == unresolved {
+		t.Logf("spellings coincide on this platform (%s): %q", os.Getenv("GOOS")+runtimeNote(), unresolved)
+	} else {
+		t.Logf("spellings differ: unresolved=%q resolved=%q", unresolved, resolved)
+	}
+
+	reasonUnresolved, tempUnresolved := TempOriginReason(unresolved)
+	if !tempUnresolved {
+		t.Errorf("unresolved spelling %q classified NOT temporary", unresolved)
+	}
+	reasonResolved, tempResolved := TempOriginReason(resolved)
+	if !tempResolved {
+		t.Errorf("resolved spelling %q classified NOT temporary", resolved)
+	}
+	if reasonUnresolved != reasonResolved {
+		t.Errorf("the two spellings named different temp roots: %q vs %q",
+			reasonUnresolved, reasonResolved)
+	}
+	if reasonUnresolved == "" {
+		t.Errorf("a temporary verdict must name the matched root, got empty reason")
+	}
+}
+
+// TestTempOrigin_FailsOpenOnUnresolvable — AC-THG-004.
+//
+// Inputs the discriminant cannot resolve are reported NOT temporary, and no
+// input panics or propagates an error. The asymmetry is the point: a false
+// negative keeps today's behaviour, a false positive withdraws a real
+=== build-tag / GOOS gating anywhere in the new test files? ===
+=== is the docs-site narrowing tracked in followup-candidates.md? ===
+3:카드 t536(`SPEC-TODO-HOME-TEMP-GUARD-001`)의 plan-phase 도중 관측됐으나 **이 카드의 범위 밖**으로 판정된 항목이다. 카드 발행은 운영자 결재 사안이므로 여기서 발행하지 않는다 — 이 문서는 **조용히 잊히지 않게 하는 기록**이고, 리드가 다음 결재 때 함께 올린다.
+69:## 이 문서가 주장하지 않는 것
+=== catch-all control: the file does contain other headings ===
+2
+=== is /tmp root-set coverage tracked anywhere as a follow-up? ===
+internal/kanban/temp_origin.go:45:var TempRootsFn = defaultTempRoots
+internal/kanban/temp_origin.go:47:// defaultTempRoots is the production temp-root set (REQ-THG-002).
+internal/kanban/temp_origin.go:60:func defaultTempRoots() []string {
+.moai/reports/t536/mutants/mutantD.go.txt:13:var TempRootsFn = defaultTempRoots
+.moai/reports/t536/mutants/mutantD.go.txt:18:func defaultTempRoots() []string {
+.moai/reports/t536/mutants/mutantC.go.txt:12:var TempRootsFn = defaultTempRoots
+.moai/reports/t536/mutants/mutantC.go.txt:14:func defaultTempRoots() []string {
+.moai/reports/t536/mutants/mutantA.go.txt:13:var TempRootsFn = defaultTempRoots
+.moai/reports/t536/mutants/mutantA.go.txt:15:func defaultTempRoots() []string {
+.moai/reports/t536/sync-audit/audit-mutants.txt:33:===== M-AUD-2: drop /tmp from defaultTempRoots =====

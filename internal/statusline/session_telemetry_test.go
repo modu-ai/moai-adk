@@ -24,7 +24,9 @@ func buildForSession(t *testing.T, projDir, sessionID string) {
 
 	in := StdinData{
 		SessionID: sessionID,
-		Workspace: &WorkspaceInfo{CurrentDir: projDir},
+		// SPEC-STATE-ANCHOR-001: the telemetry write anchors to project_dir
+		// (chain step 1), so the fixture carries it.
+		Workspace: &WorkspaceInfo{CurrentDir: projDir, ProjectDir: projDir},
 		ContextWindow: &ContextWindowInfo{
 			ContextWindowSize: 256000,
 			UsedPercentage:    new(90.0),

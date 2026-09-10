@@ -1,0 +1,51 @@
+# M1 — 판별식 확정 + 스윕 산출물 고정 (t539 / SPEC-CTX-BLIND-DOUBLE-001)
+# 트리: .claude/worktrees/t539  브랜치: WT-ctx-blind-double  HEAD: dbc1f7125
+# 측정 시각: 2026-09-08 (run-phase M1)
+
+## 1. 스캐너 재실행 — 같은 트리, 같은 집계
+
+$ go run .moai/reports/t539/ctxsweep/main.go internal > /tmp/t539-sweep-test-rerun.tsv
+exit=0
+stderr: (무출력)
+wc -l: 442
+
+$ cmp /tmp/t539-sweep-test-rerun.tsv .moai/reports/t539/sweep-test.tsv
+cmp_exit=0        # 바이트 동일
+
+## 2. 집계 재유도 — 본문 숫자가 아니라 신선한 출력에서
+
+$ awk -F'\t' '{c[$1"/"$6]++} END {for (k in c) print k, c[k]}' /tmp/t539-sweep-test-rerun.tsv | sort
+funclit/ 196
+funclit/no 52
+funclit/yes 12
+method/ 127
+method/no 26
+method/yes 29
+
+# sweep.md 기대치: method 127/26/29 (합 182), funclit 196/52/12 (합 260) → 재현됨
+
+## 3. 스캐너 위치 — internal/ 승격 없음 (REQ-CBD-004)
+
+$ /usr/bin/grep -rl ctxsweep internal/
+grep_exit=1       # 무출력 = 부재. 셸 grep 이 아니라 /usr/bin/grep 으로 측정 (REQ-CBD-015)
+
+## 4. 판정 기준 주석 일치 (도구 헤더 ↔ research.md §4)
+
+ctxsweep/main.go 헤더:
+  context.Context  — any use of the identifier in the body
+  *http.Request    — a call of <name>.Context() somewhere in the body
+                     Reading req.URL or req.Body is NOT consulting the context
+research.md:92-99 §4 판별식 표 — (b) 축 "ctxsweep 기계 판정", 위임 예외 명시
+→ 두 서술이 같은 규칙을 말한다.
+
+## 5. 빌드 + 린트 기준선
+
+$ go build ./...                          exit=0
+$ GOOS=windows GOARCH=amd64 go build ./... exit=0
+$ golangci-lint run --timeout=5m           exit=0 → "0 issues."   (baseline: lint-baseline.log)
+
+## 판정
+
+AC-CBD-001 / AC-CBD-002 / AC-CBD-003 은 regression-guard 로서 **깨지지 않았음**만 확인한다
+(acceptance.md 분류 주석 + verification-completeness.md §2.1 undecidable disposition).
+통과로 기록하지 않는다. 이 로그는 "이미 선 것이 무너지지 않았다" 의 증거다.

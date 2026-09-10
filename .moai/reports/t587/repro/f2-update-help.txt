@@ -1,0 +1,29 @@
+time=2026-09-10T23:12:19.789+09:00 level=WARN msg="config sections directory not found, using defaults" path=/tmp/t587-repro/f2/.moai/config/sections
+
+  Check for binary updates, install if available, then synchronize embedded templates with the project.                 
+                                                                                                                        
+  Note: moai init / moai update do NOT auto-enter a worktree. To work inside a worktree, enter one with the launcher    
+  flag (moai cc -w <name>).                                                                                             
+         
+  USAGE  
+         
+    moai update [--flags]  
+         
+  FLAGS  
+         
+    --binary          Update binary only, skip template sync
+    --check           Check if a newer binary version is available (informational)
+    -c --config       Re-Run the init wizard to edit project configuration (no template sync; bare 'moai update' syncs templates)
+    --dry-run         Show planned archive and install operations without modifying the filesystem
+    --force           Force update: bypass version-match skip, force backup+merge, and overwrite archive drift (backed up to .moai/archive/skills/v2.16-drift-<UTC-timestamp>/)
+    -h --help         Help for update
+    --no-hooks        Skip git hook installation (REQ-CIAUT-002)
+    --profile         Override the model+effort profile: high, medium, or low (persists to llm.yaml profile)
+    --restore         Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)
+    --shell-env       Configure shell environment variables for Claude Code
+    --templates-only  Skip binary update, sync templates only
+    --verbose         Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)
+    --version         Install a specific release tag (stable / rc / previous version) instead of the latest
+    --yes             Auto-Confirm all prompts (CI/CD mode)
+
+exit=0

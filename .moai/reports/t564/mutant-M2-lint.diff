@@ -1,0 +1,13 @@
+diff --git a/internal/spec/lint.go b/internal/spec/lint.go
+index e96e1982b..b92ee3401 100644
+--- a/internal/spec/lint.go
++++ b/internal/spec/lint.go
+@@ -693,7 +693,7 @@ func parseSPECDoc(path string) *SPECDoc {
+ 	criteria, parseErrs := ParseAcceptanceCriteria(body, false)
+ 	doc.Criteria = criteria
+ 	for _, err := range parseErrs {
+-		if dup, ok := err.(*DuplicateAcceptanceID); ok {
++		if dup, ok := err.(*DuplicateAcceptanceID); ok && false { // MUTANT M2: lint capture disabled
+ 			doc.DuplicateACIDs = append(doc.DuplicateACIDs, dup)
+ 		}
+ 	}

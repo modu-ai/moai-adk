@@ -1,0 +1,27 @@
+=== RUN   TestTodoSweepSelectorMatchesFamily
+    todo_axisa_guard_test.go:51: selector TestTodo matches 138 test functions (swept-set liveness guard)
+--- PASS: TestTodoSweepSelectorMatchesFamily (0.04s)
+=== RUN   TestAxisACanaryHomeSweep_TodoFamily
+    todo_axisa_guard_test.go:73: set MOAI_AXIS_A_CANARY_SWEEP=1 to re-run the canary-HOME sweep (runs the todo family as a child go test)
+--- SKIP: TestAxisACanaryHomeSweep_TodoFamily (0.00s)
+=== RUN   TestGuardBypassMutant_ObserveHomePollution
+    todo_axisa_guard_test.go:223: REQ-SA-011 second branch: the bypass mutant produced NO pollution under /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGuardBypassMutant_ObserveHomePollution2410058176/001/.moai/todo. Boundary revealed: t422's runTodo gate (test layer) is bypassed, but SPEC-TODO-HOME-TEMP-GUARD-001's temporary-origin refusal (resolver layer) never resolves to a home root for this base, so the card landed in the project-local queue at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGuardBypassMutant_ObserveHomePollution2410058176/002/.moai/state/todo/backlog.json instead. Full report with the pre-guard control run: .moai/reports/t536/guard-boundary.md
+--- PASS: TestGuardBypassMutant_ObserveHomePollution (0.13s)
+=== RUN   TestResolveTodoQueueRoot_FallbackNoGit
+--- PASS: TestResolveTodoQueueRoot_FallbackNoGit (0.05s)
+=== RUN   TestTodoQueue_FallbackAdoptsExistingLocalQueue
+--- PASS: TestTodoQueue_FallbackAdoptsExistingLocalQueue (0.10s)
+=== RUN   TestTodoQueueRootGuard_FiresOnLiveRepository
+--- PASS: TestTodoQueueRootGuard_FiresOnLiveRepository (0.03s)
+=== RUN   TestTodoQueueRootGuard_SilentOnFixture
+--- PASS: TestTodoQueueRootGuard_SilentOnFixture (0.10s)
+=== RUN   TestTodoQueueRootGuard_SilentOnHomeFallbackFixture
+--- PASS: TestTodoQueueRootGuard_SilentOnHomeFallbackFixture (0.04s)
+=== RUN   TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp
+--- PASS: TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp (0.08s)
+=== RUN   TestTempOriginGuidance_NamesRootsAndContinues
+--- PASS: TestTempOriginGuidance_NamesRootsAndContinues (0.16s)
+=== RUN   TestTempOriginGuidance_SilentOnNonTemporaryBase
+--- PASS: TestTempOriginGuidance_SilentOnNonTemporaryBase (0.14s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.597s

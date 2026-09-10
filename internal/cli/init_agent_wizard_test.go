@@ -1,7 +1,7 @@
 package cli
 
 // SPEC-INIT-HARNESS-PROMPT-001 — the wizard's agent-harness answer reaches
-// BOTH consumers of the harness selection, and the --agent flag still beats it.
+// BOTH consumers of the harness selection, and the --llm flag still beats it.
 //
 // The centre of gravity is the resolution seam, not the question: before this
 // change resolveAgentWiring read only the cobra flag, so no wizard answer could
@@ -52,7 +52,7 @@ func assertCodexArtifacts(t *testing.T, projectDir string, want bool) {
 	}
 }
 
-// TestRunInit_WizardCodexReachesBothConsumers asserts AC-IHP-003: with --agent
+// TestRunInit_WizardCodexReachesBothConsumers asserts AC-IHP-003: with --llm
 // absent and the wizard answering codex, the selection reaches BOTH consumers
 // in one test — (a) the Codex wiring call wrote all three artifacts, and (b)
 // the MCP precedence switch declined provisioning, so the announcement is
@@ -107,7 +107,7 @@ func TestRunInit_WizardCodexDeclinesMCPProvisioning(t *testing.T) {
 }
 
 // TestRunInit_FlagClaudeBeatsWizardCodex asserts the AC-IHP-004 claude row:
-// an explicit --agent claude discards a wizard answer of codex, so no Codex
+// an explicit --llm claude discards a wizard answer of codex, so no Codex
 // artifact is written and provisioning follows the mcp_provision answer.
 //
 // The outcome alone is vacuous (the wizard answer was discarded before this
@@ -121,16 +121,16 @@ func TestRunInit_FlagClaudeBeatsWizardCodex(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, map[string]string{"agent": "claude"})
+	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, map[string]string{"llm": "claude"})
 
 	assertCodexArtifacts(t, projectDir, false)
 	if !strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("--agent claude must leave the mcp_provision answer (yes) intact, so the announcement is expected; stdout:\n%s", stdout)
+		t.Errorf("--llm claude must leave the mcp_provision answer (yes) intact, so the announcement is expected; stdout:\n%s", stdout)
 	}
 }
 
 // TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning asserts the
-// AC-IHP-004 both row: --agent both beats a wizard answer of codex AND forces
+// AC-IHP-004 both row: --llm both beats a wizard answer of codex AND forces
 // provisioning on over an explicit mcp_provision decline.
 //
 // mcp_provision is pinned to NO deliberately: with a yes the announcement
@@ -142,11 +142,11 @@ func TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning(t *testing.T) {
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
 
-	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, map[string]string{"agent": "both"})
+	projectDir, stdout := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, map[string]string{"llm": "both"})
 
 	assertCodexArtifacts(t, projectDir, true)
 	if !strings.Contains(stdout, mcpProvisionAnnouncement) {
-		t.Errorf("--agent both must force provisioning on over an explicit mcp_provision decline (REQ-IHP-009); stdout:\n%s", stdout)
+		t.Errorf("--llm both must force provisioning on over an explicit mcp_provision decline (REQ-IHP-009); stdout:\n%s", stdout)
 	}
 }
 
@@ -172,7 +172,7 @@ func TestRunInit_WizardBothForcesProvisioningOverDecline(t *testing.T) {
 // TestRunInit_FlagAbsentNonInteractivePreservesCodexAbsence asserts AC-IHP-006a
 // — the narrowed SPEC-CODEX-WIRING-001 REQ-CW-001 clause (spec.md §2 C3).
 //
-// With no --agent flag and no wizard, NONE of the three Codex artifacts is
+// With no --llm flag and no wizard, NONE of the three Codex artifacts is
 // created and the provisioning announcement is ABSENT. The announcement
 // direction is pinned in the assertion rather than left to prose: on this path
 // opts.MCPProvision keeps its zero value false (its sole writer runs inside the

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // execOrSpawnClaude spawns the claude binary as a child process, waits for it,
@@ -40,7 +42,19 @@ func execOrSpawnClaude(claudeBin string, args, env []string) error {
 	child.Stderr = os.Stderr
 	child.Env = env
 
-	if err := child.Run(); err != nil {
+	if err := child.Start(); err != nil {
+		return fmt.Errorf("launch claude on windows: %w", err)
+	}
+	childFingerprint, state := homestate.ProbeProcessIdentity(child.Process.Pid)
+	if state != homestate.ProcessIdentityLive {
+		_ = child.Process.Kill()
+		return fmt.Errorf("launch claude on windows: child identity indeterminate")
+	}
+	if err := transferProfileLeaseToChild(env, os.Getpid(), homestate.CurrentProcessFingerprint(), child.Process.Pid, childFingerprint); err != nil {
+		_ = child.Process.Kill()
+		return err
+	}
+	if err := child.Wait(); err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) {
 			os.Exit(ee.ExitCode())

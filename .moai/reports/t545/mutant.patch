@@ -1,0 +1,14 @@
+--- a/internal/web/fieldsets_templ.go
++++ b/internal/web/fieldsets_templ.go
+@@ default: branch of the schema fieldset row switch (text rows) @@
+ 		default:
+ 			templ_7745c5c3_Err = schemaTextRow(f, view.SchemaValues[f.Name], view.FieldErrors).Render(ctx, templ_7745c5c3_Buffer)
+ 			if templ_7745c5c3_Err != nil {
+ 				return templ_7745c5c3_Err
+ 			}
++			// MUTANT (t545, temporary): ship the text field's name twice.
++			templ_7745c5c3_Err = schemaTextRow(f, view.SchemaValues[f.Name], view.FieldErrors).Render(ctx, templ_7745c5c3_Buffer)
++			if templ_7745c5c3_Err != nil {
++				return templ_7745c5c3_Err
++			}
+ 		}

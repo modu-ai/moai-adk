@@ -77,7 +77,7 @@ moai cc -f lane-1             # a lane, in its own terminal
 moai glm -f lane-3            # …and one lane on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Which numbers are held is recorded in `.moai/state/factory/workers.json`, and that is where stale claims get cleared. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
+Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db`; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -338,7 +338,7 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 All backends are fail-open — GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional; an unavailable backend returns `inconclusive`, never a hard error.
 
-In the dual harness (`moai init --agent codex|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
+In the Codex-enabled harness (`moai init --llm codex|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
 
 > Details: [MCP Server Guide](https://adk.mo.ai.kr/en/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/en/claude-code/extensibility/mcp)
 
@@ -408,10 +408,10 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
 ### moai web console
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 11 setting tabs" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into fourteen tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Codex, Agents, Report, MCP, Cross-Session, Feedback, Quality Gate. The Codex tab is a read-only screen that gathers the scattered codex settings in one place — each value is still edited on its owning tab. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
@@ -746,8 +746,8 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |
-| `moai clean [--home]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist. Dry run by default; `--force` to actually delete |
-| `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 11-tab settings |
+| `moai clean [--home] [--codex-skills]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist; with `--codex-skills` it removes the `[[skills.config]]` registrations in `~/.codex/config.toml` whose declared path is provably absent. Exactly one scope per invocation. Dry run by default; `--force` to actually delete |
+| `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 14-tab settings |
 
 > All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
 

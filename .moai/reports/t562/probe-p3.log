@@ -1,0 +1,21 @@
+=== RUN   TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion
+--- FAIL: TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion (0.00s)
+panic: MX-PROBE-P3-CLASSIFY-SITE [recovered, repanicked]
+
+goroutine 39 [running]:
+testing.tRunner.func1.2({0x104fc90a0, 0x10520c320})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x104fc90a0?, 0x10520c320?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.judgeCodexSkillEntry({{0x101d5e707, 0x13}, 0x1, 0x0, 0x3, 0xffffffffffffffff})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune.go:76 +0x198
+github.com/modu-ai/moai-adk/internal/cli.TestJudgeCodexSkillEntry_ClassifiesDeclaredFormBeforeConversion(0x153228ee8908)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t562/internal/cli/codex_skills_prune_readback_test.go:107 +0x8c
+testing.tRunner(0x153228ee8908, 0x1052000c8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.274s
+FAIL

@@ -278,6 +278,14 @@ type LLMConfig struct {
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
+	// ClaudeBin pins the Claude Code binary the launcher launches (issue
+	// #1697): when non-empty, launchClaudeDefault launches THIS path instead
+	// of searching PATH for `claude`. Resolution order: the MOAI_CLAUDE_BIN
+	// env var → this key → PATH lookup (unchanged default). The path must
+	// exist and be executable; an invalid pin is a launch error, not a silent
+	// fallback — a pin that silently fell back would re-expose the
+	// broken-release blast radius the pin exists to stop.
+	ClaudeBin string `yaml:"claude_bin,omitempty"`
 	// Performance tier: "high", "medium", "low" (canonical), plus "max" accepted
 	// as the superseded name of the top tier. Controls model selection for all
 	// sub-agents. Since the top column was renamed max -> high this axis shares the
@@ -456,6 +464,17 @@ type WorkflowConfig struct {
 	// maintainer of a multi-lane batch opts in via local config. Sibling of
 	// BranchGuard — same opt-in shape, same default-OFF neutrality.
 	IntegrationLock IntegrationLockConfig `yaml:"integration_lock"`
+
+	// SettingsDriftGate gates the REFUSAL layer of the pre-merge
+	// `.claude/settings.json` drift assertion run by `moai integration
+	// acquire`. Default false: detection, preservation and the ledger row run
+	// on every acquire regardless of this value, and only the refusal is
+	// opt-in. Sibling of BranchGuard — same opt-in shape, same default-OFF
+	// neutrality. Deliberately NOT a sub-key of IntegrationLock: that flag's
+	// own contract scopes it to the PreToolUse deny layer, and one flag gating
+	// two refusals at two different surfaces cannot say which one a maintainer
+	// meant to turn off.
+	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
@@ -655,6 +674,18 @@ type BranchGuardConfig struct {
 // `moai integration` CLI that writes it, are unaffected by this flag: only the
 // DENY layer is gated, exactly as BranchGuard gates only its deny.
 type IntegrationLockConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SettingsDriftGateConfig mirrors workflow.settings_drift_gate.* — the opt-in
+// gate for the REFUSAL layer of the pre-merge `.claude/settings.json` drift
+// assertion. When Enabled is false (the distributed default) `moai integration
+// acquire` still runs the predicate, still preserves a drifted working copy,
+// still appends the ledger row and still reports — it simply records the
+// window instead of refusing it. Only the refusal is gated: an implementation
+// that skipped detection while the flag is off would remove the very property
+// the default-OFF posture was chosen for, and would pass every other check.
+type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
@@ -1293,11 +1324,24 @@ type ContextTokenBudget struct {
 // Hot path: SPEC-V3R2-WF-003 discovery mode consumes clarity_threshold, plan.max_rounds,
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
-	ClarityThreshold int           `yaml:"clarity_threshold"`
-	Enabled          bool          `yaml:"enabled"`
-	Plan             InterviewMode `yaml:"plan"`
-	Project          InterviewMode `yaml:"project"`
-	SkipConditions   []string      `yaml:"skip_conditions"`
+	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	Enabled            bool          `yaml:"enabled"`
+	Plan               InterviewMode `yaml:"plan"`
+	Project            InterviewMode `yaml:"project"`
+	RecommendationMode string        `yaml:"recommendation_mode"`
+	SkipConditions     []string      `yaml:"skip_conditions"`
+}
+
+// ResolvedRecommendationMode returns the resolved recommendation-mode axis:
+// "pull" only when the key holds exactly "pull"; "push" otherwise — including
+// when the key is absent, empty, or unrecognized (REQ-JFM-002, REQ-JFM-003).
+// The raw value stays on RecommendationMode, so an unrecognized setting is
+// recorded verbatim rather than silently discarded.
+func (c InterviewConfig) ResolvedRecommendationMode() string {
+	if c.RecommendationMode == "pull" {
+		return "pull"
+	}
+	return "push"
 }
 
 // InterviewMode holds per-mode interview settings.

@@ -80,6 +80,7 @@ func init() {
 	updateCmd.Flags().Bool("yes", false, "Auto-confirm all prompts (CI/CD mode)")
 	updateCmd.Flags().Bool("templates-only", false, "Skip binary update, sync templates only")
 	updateCmd.Flags().Bool("binary", false, "Update binary only, skip template sync")
+
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().String("restore", "", "Restore .moai/config from a backup directory left by a previous update (works on a tree whose .moai/config/sections/system.yaml was destroyed)")
@@ -359,6 +360,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		// The early return itself does NOT move (REQ-RIL2-026): it stays
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
+		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
 
@@ -481,16 +483,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// t40 defect 1: snapshot (read-only) which legacy skills exist BEFORE the
-	// template sync — the sync's managed cleanup removes .claude/skills/moai*
-	// before the archive step runs, and without this snapshot the resulting
-	// "total: 0 skills archived" is indistinguishable from "nothing to
-	// archive".
-	var preSyncLegacySkills []string
-	if cwd, err := os.Getwd(); err == nil {
-		preSyncLegacySkills = presentLegacySkillIDs(cwd)
-	}
-
+	// Legacy skills are archived inside the template sync, before its managed
+	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
+	// which keeps REQ-UAC-004.
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		return err
@@ -505,6 +500,18 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// content-changing refresh prints the re-trust guidance (REQ-CW-008)
 	// inside the helper.
 	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
+
+	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
+	// .agents/skills mirror. Both of its producers live inside Deploy, which
+	// the version-match branch of runTemplateSyncWithProgress returns before
+	// reaching — so without this call a deleted mirror is permanent for a
+	// version-matched project. Deliberately BESIDE the early return, at the
+	// same position as the wiring refresh above and for the same reason: the
+	// repair does not depend on a template redeploy, and the optimization
+	// stays exactly where it is (C-2). Existence-gated on the project's
+	// recorded template_version, so a pre-mirror project gets nothing created
+	// (C-1).
+	repairSkillMirrorBestEffort(out, cmd.ErrOrStderr())
 
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled
@@ -539,26 +546,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if notice := migrateProfileAdvisory(cwd); notice != "" {
 			_, _ = fmt.Fprintln(out, notice)
 		}
-	}
-
-	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
-	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
-	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
-	// so that drift-detection routes through the overwrite + backup path
-	// instead of returning ARCHIVE_DRIFT.
-	{
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("get working directory for archive: %w", err)
-		}
-		archived, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force"))
-		if archiveErr != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
-		}
-		// t40 defect 1: make the shortfall loud — skills that existed before
-		// the sync but were not archived (their sources were removed by the
-		// managed cleanup before this step) are reported as a loss.
-		reportArchiveShortfall(preSyncLegacySkills, archived, out)
 	}
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects

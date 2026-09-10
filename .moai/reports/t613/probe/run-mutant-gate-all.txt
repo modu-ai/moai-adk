@@ -1,0 +1,647 @@
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMPolicy_EmptyValueHints1621519355/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMPolicy_EmptyValueHints1621519355/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMPolicy_EmptyValueHints1621519355/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMNoSubTabs1043419019/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMNoSubTabs1043419019/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMNoSubTabs1043419019/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMDescriptionShown2373937285/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMDescriptionShown2373937285/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMDescriptionShown2373937285/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMTierSortOrder738628595/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMTierSortOrder738628595/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMTierSortOrder738628595/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMDescriptionAbsentGraceful2939367788/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMDescriptionAbsentGraceful2939367788/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMDescriptionAbsentGraceful2939367788/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/Users/test/moai-adk-go/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/Users/test/moai-adk-go/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestShellContextChipsOmitEmptyValues1845775079/001/.moai/config/sections
+2026/09/10 15:29:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestShellContextChipsOmitEmptyValues1845775079/001/.moai/config/sections
+--- FAIL: TestAuditRadioRendersStackedOptionDesc (0.00s)
+    audit_option_desc_test.go:115: GET / status = 403, want 200
+--- FAIL: TestAutonomyStubResolved (0.00s)
+    autonomy_console_test.go:37: GET / status = 403, want 200
+--- FAIL: TestBoard_Render (0.01s)
+    board_test.go:77: GET /specs = 403, want 200
+--- FAIL: TestBoard_RemediationCopyable (0.01s)
+    board_test.go:144: /specs missing the remediation command text "moai spec close SPEC-BOARD-DRIFT-002 --backfill-only"
+    board_test.go:147: remediation copy button missing data-copy="moai spec close SPEC-BOARD-DRIFT-002 --backfill-only" attribute
+--- FAIL: TestBoard_TierBadge (0.01s)
+    --- FAIL: TestBoard_TierBadge/present (0.00s)
+        board_test.go:160: tier badge missing for a SPEC that declares tier: L:
+            forbidden: non-loopback Host header
+    --- FAIL: TestBoard_TierBadge/absent (0.00s)
+        board_test.go:169: untiered render = 403, want 200 (tier absence is not an error)
+--- FAIL: TestBoard_GETOnly (0.01s)
+    board_test.go:197: GET /specs = 403, want 200
+--- FAIL: TestBoard_BoardRouteRetired (0.00s)
+    board_test.go:210: GET /specs/board = 403, want 404 (the standalone board page was retired)
+--- FAIL: TestBoard_I18nParity (0.00s)
+    board_test.go:279: no board.* data-i18n keys found in the rendered SPEC screen
+--- FAIL: TestBoard_CoverageEdges (0.00s)
+    board_test.go:316: edge render = 403, want 200
+--- FAIL: TestBoard_EmptyProject (0.00s)
+    board_test.go:334: empty-project /specs = 403, want 200
+--- FAIL: TestCodexCard_SentinelPropagationCrossSurface (0.00s)
+    codex_card_sentinel_test.go:40: GET / status = 403, want 200 (body: forbidden: non-loopback Host header
+        )
+--- FAIL: TestCodexCard_ProbeSeamIsTheSoleSource (0.00s)
+    codex_card_sentinel_test.go:65: GET / status = 403, want 200 (body: forbidden: non-loopback Host header
+        )
+--- FAIL: TestCodexPanel_NoNamedFormElements (0.00s)
+    codex_panel_test.go:105: GET / status = 403, want 200
+--- FAIL: TestCodexMirrorFieldsStayOnOwningPanel (0.00s)
+    codex_panel_test.go:138: GET / status = 403, want 200
+--- FAIL: TestCodexMirrorRowLinksToOwningTab (0.01s)
+    codex_panel_test.go:225: GET / status = 403, want 200 (body: forbidden: non-loopback Host header
+        )
+--- FAIL: TestCodexPanel_ProbeSentinel (0.01s)
+    codex_panel_test.go:319: GET / status = 403, want 200 (body: forbidden: non-loopback Host header
+        )
+--- FAIL: TestCodexTabRailCount (0.00s)
+    codex_panel_test.go:358: GET / status = 403, want 200
+--- FAIL: TestCodexMirrorDeclaredException (0.00s)
+    codex_panel_test.go:372: GET / status = 403, want 200
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBrandMarkHasNoFill431039158/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBrandMarkHasNoFill431039158/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBrandMarkHasNoFill431039158/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestEffortGoUnboundWording1869266822/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestEffortGoUnboundWording1869266822/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestEffortGoUnboundWording1869266822/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMSinglePanel2770534192/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMSinglePanel2770534192/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentFMSinglePanel2770534192/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentTierBadgeGlyphConsistency3359633507/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentTierBadgeGlyphConsistency3359633507/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgentTierBadgeGlyphConsistency3359633507/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServer_HandlerAccessor1227032646/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServer_HandlerAccessor1227032646/001/.moai/config/sections
+2026/09/10 15:29:31 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServer_HandlerAccessor1227032646/001/.moai/config/sections
+--- FAIL: TestCrossSessionPanelRendered (0.00s)
+    crosssession_test.go:80: GET / status = 403, want 200
+--- FAIL: TestDeadConfigAbsentFromRender (0.00s)
+    dead_config_guard_test.go:46: GET / status = 403, want 200
+--- FAIL: TestGitStrategyRendered (0.00s)
+    dead_config_guard_test.go:88: GET / status = 403, want 200
+--- FAIL: TestGitWorktreePanelRegistered (0.00s)
+    dead_config_guard_test.go:107: GET / status = 403, want 200
+--- FAIL: TestLaneSectionRendersCompleteRow (0.48s)
+    factory_lane_section_test.go:51: GET /kanban status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestLaneSectionMarksEstimatedStageOnlyWhenEstimated (0.43s)
+    factory_lane_section_test.go:83: GET /kanban status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestLaneSectionPresentWithNoRegistry (0.39s)
+    --- FAIL: TestLaneSectionPresentWithNoRegistry/absent (0.00s)
+        factory_lane_section_test.go:106: GET /kanban status = 403, want 200
+            body:
+            forbidden: non-loopback Host header
+    --- FAIL: TestLaneSectionPresentWithNoRegistry/malformed (0.39s)
+        factory_lane_section_test.go:123: GET /kanban status = 403, want 200
+            body:
+            forbidden: non-loopback Host header
+--- FAIL: TestLaneSectionRendersUnresolvedRows (0.29s)
+    factory_lane_section_test.go:146: GET /kanban status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestKanbanNoteBannerCorrected (0.00s)
+    factory_lane_section_test.go:181: GET /kanban status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestLaneSectionAddsNoTransportSurface (0.26s)
+    factory_lane_section_test.go:254: GET /kanban status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestFeedbackPanelRendered (0.00s)
+    feedback_panel_test.go:17: GET / status = 403, want 200
+--- FAIL: TestGatePanelRendered (0.00s)
+    gate_panel_test.go:22: GET / status = 403, want 200
+--- FAIL: TestGLMEffortTierDefaults (0.00s)
+    glm_tier_test.go:153: GET / status = 403, want 200
+--- FAIL: TestGLMTierLabelVsKey (0.00s)
+    glm_tier_test.go:166: GET / status = 403, want 200
+--- FAIL: TestGLMEffortScopeBadge (0.00s)
+    glm_tier_test.go:207: GET / status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyNeverEchoedByDefault4177547607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyNeverEchoedByDefault4177547607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyNeverEchoedByDefault4177547607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyField_Renders1389038342/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyField_Renders1389038342/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyField_Renders1389038342/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyField_SecretClass893376170/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyField_SecretClass893376170/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyField_SecretClass893376170/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_Persists3996732995/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_Persists3996732995/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_Persists3996732995/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_Persists3996732995/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_Persists3996732995/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_Persists3996732995/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_BannerNoEcho1354215470/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_BannerNoEcho1354215470/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_BannerNoEcho1354215470/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_BannerNoEcho1354215470/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_BannerNoEcho1354215470/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_BannerNoEcho1354215470/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NoFullKeyInResponse4088863930/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NoFullKeyInResponse4088863930/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NoFullKeyInResponse4088863930/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_TrailingFourOnly720389937/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_TrailingFourOnly720389937/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_TrailingFourOnly720389937/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_TrailingFourOnly720389937/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_TrailingFourOnly720389937/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_TrailingFourOnly720389937/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothinginel705289343/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothinginel705289343/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothinginel705289343/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothinginel705289343/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothinginel705289343/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothinginel705289343/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingnel2654870185/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingnel2654870185/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingnel2654870185/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingnel2654870185/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingnel2654870185/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingnel2654870185/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingx3870485857/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingx3870485857/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingx3870485857/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingx3870485857/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingx3870485857/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeyHint_ShortKeyDisclosesNothingx3870485857/004/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_EmptyPreserves153772364/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_EmptyPreserves153772364/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_EmptyPreserves153772364/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_EmptyPreserves153772364/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_EmptyPreserves153772364/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_EmptyPreserves153772364/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_TrimsSurroundingWhitespace2904958607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_TrimsSurroundingWhitespace2904958607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_TrimsSurroundingWhitespace2904958607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_TrimsSurroundingWhitespace2904958607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_TrimsSurroundingWhitespace2904958607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_TrimsSurroundingWhitespace2904958607/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NewlineRejected394487027/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NewlineRejected394487027/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NewlineRejected394487027/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_OnlyCredentialFileHoldsKey1801742034/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_OnlyCredentialFileHoldsKey1801742034/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_OnlyCredentialFileHoldsKey1801742034/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_OnlyCredentialFileHoldsKey1801742034/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_OnlyCredentialFileHoldsKey1801742034/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_OnlyCredentialFileHoldsKey1801742034/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_AtomicRejectLeavesCredentialUntouched167286587/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_AtomicRejectLeavesCredentialUntouched167286587/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_AtomicRejectLeavesCredentialUntouched167286587/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_FailureSurfaced1846122521/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_FailureSurfaced1846122521/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_FailureSurfaced1846122521/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_FailureSurfaced1846122521/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_FailureSurfaced1846122521/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NarrowsExistingWideMode395368677/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NarrowsExistingWideMode395368677/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NarrowsExistingWideMode395368677/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NarrowsExistingWideMode395368677/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NarrowsExistingWideMode395368677/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGLMKeySave_NarrowsExistingWideMode395368677/002/.moai/config/sections
+--- FAIL: TestStaticAssetsServedFromEmbed (0.00s)
+    handlers_test.go:56: /static/console.css: status = 403, want 200
+    handlers_test.go:56: /static/app.js: status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexRendersPopulatedForm269793683/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexRendersPopulatedForm269793683/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexRendersPopulatedForm269793683/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexNeutralDefaultsForZeroValueProfile3729466373/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexNeutralDefaultsForZeroValueProfile3729466373/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexNeutralDefaultsForZeroValueProfile3729466373/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileSelectionShownForMultipleProfiles2589767896/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileSelectionShownForMultipleProfiles2589767896/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileSelectionShownForMultipleProfiles2589767896/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileSelectionShownForMultipleProfiles2589767896/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileSelectionShownForMultipleProfiles2589767896/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileSelectionShownForMultipleProfiles2589767896/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileQueryParamSelectsProfile2887664759/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileQueryParamSelectsProfile2887664759/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIndexProfileQueryParamSelectsProfile2887664759/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidRoundTrip3270531343/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidRoundTrip3270531343/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidRoundTrip3270531343/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidRoundTrip3270531343/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidRoundTrip3270531343/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfilenamed_profile_is_recorded2730520329/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfilenamed_profile_is_recorded2730520329/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfilenamed_profile_is_recorded2730520329/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfilenamed_profile_is_recorded2730520329/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfilenamed_profile_is_recorded2730520329/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfiledefault_is_not_recorded185459762/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfiledefault_is_not_recorded185459762/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfiledefault_is_not_recorded185459762/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfiledefault_is_not_recorded185459762/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRecordsLastUsedProfiledefault_is_not_recorded185459762/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSurvivesLedgerFailure416112776/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSurvivesLedgerFailure416112776/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSurvivesLedgerFailure416112776/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSurvivesLedgerFailure416112776/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSurvivesLedgerFailure416112776/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidPermissionModeRejected2034973480/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidPermissionModeRejected2034973480/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidPermissionModeRejected2034973480/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSyncFailureSurfacesReadableError1631185870/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveSyncFailureSurfacesReadableError1631185870/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveScopeBoundary2716120029/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveScopeBoundary2716120029/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveScopeBoundary2716120029/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveScopeBoundary2716120029/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveScopeBoundary2716120029/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckAllowsLoopbackHostsOnPost1250255151/001/.moai/config/sections
+--- FAIL: TestHostCheckDoesNotGateGet (0.00s)
+    handlers_test.go:505: GET / was Host-gated (403); read must remain accessible
+    handlers_test.go:508: GET / with foreign Host status = 403, want 200
+--- FAIL: TestHtmxEmbeddedAndServed (0.00s)
+    htmx_test.go:39: GET /static/htmx.min.js status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxLinkedBeforeAppJS1906917321/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxLinkedBeforeAppJS1906917321/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxLinkedBeforeAppJS1906917321/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxFoundationNoPartialSwap2989206333/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxFoundationNoPartialSwap2989206333/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxFoundationNoPartialSwap2989206333/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxOfflineZeroNetwork1690319180/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxOfflineZeroNetwork1690319180/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHtmxOfflineZeroNetwork1690319180/001/.moai/config/sections
+--- FAIL: TestCJKFontServedFromStatic (0.00s)
+    i18n_test.go:122: GET NotoSansCJKjp-Bold.subset.woff2 status = 403, want 200
+--- FAIL: TestI18nDictionaryEmbedded (0.00s)
+    i18n_test.go:180: GET /static/i18n.js status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDataI18nWiring3792663290/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDataI18nWiring3792663290/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDataI18nWiring3792663290/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDataI18nKeysSubsetOfDictionary2436188921/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDataI18nKeysSubsetOfDictionary2436188921/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDataI18nKeysSubsetOfDictionary2436188921/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNoReviewKeys855719075/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNoReviewKeys855719075/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNoReviewKeys855719075/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLangpickRendered1643948333/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLangpickRendered1643948333/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLangpickRendered1643948333/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLangpickNotFormField1937790658/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLangpickNotFormField1937790658/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLangpickNotFormField1937790658/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestI18nLoadDefault3673865109/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestI18nLoadDefault3673865109/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestI18nLoadDefault3673865109/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServerContractPreserved3356494297/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServerContractPreserved3356494297/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServerContractPreserved3356494297/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServerContractPreserved3356494297/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServerContractPreserved3356494297/002/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServerContractPreserved3356494297/002/.moai/config/sections
+--- FAIL: TestGitStrategySectionIDNotATab (0.00s)
+    m4_description_test.go:22: GET / status = 403, want 200
+--- FAIL: TestM4QualityExtrasToggleOnLaunch (0.00s)
+    m4_description_test.go:98: GET / status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5AgentFMRenderBadgeAndSelects3430405531/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5AgentFMRenderBadgeAndSelects3430405531/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5AgentFMRenderBadgeAndSelects3430405531/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5bD1_AtomicSave_AllPanelsInDOM2031405081/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5bD1_AtomicSave_AllPanelsInDOM2031405081/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5bD1_AtomicSave_AllPanelsInDOM2031405081/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5bD3D4_NoCodeChipDataI18n330117766/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5bD3D4_NoCodeChipDataI18n330117766/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestM5bD3D4_NoCodeChipDataI18n330117766/001/.moai/config/sections
+--- FAIL: TestMascotPosesEmbeddedAndServed (0.00s)
+    mascots_test.go:43: GET /static/mascots/mascot-coffee.png status = 403, want 200
+    mascots_test.go:43: GET /static/mascots/mascot-explaining.png status = 403, want 200
+    mascots_test.go:43: GET /static/mascots/mascot-pointing.png status = 403, want 200
+    mascots_test.go:43: GET /static/mascots/mascot-searching.png status = 403, want 200
+    mascots_test.go:43: GET /static/mascots/mascot-teaching.png status = 403, want 200
+    mascots_test.go:43: GET /static/mascots/mascot-thinking.png status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRailBrandIsInlineMark399803638/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRailBrandIsInlineMark399803638/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRailBrandIsInlineMark399803638/001/.moai/config/sections
+--- FAIL: TestAC_C_006_ProbeStateDisplayed (0.00s)
+    mcp_codex_surface_test.go:61: GET / status = 403, want 200 (body: forbidden: non-loopback Host header
+        )
+--- FAIL: TestAC_C_007_UnauthenticatedNamesCommand (0.00s)
+    mcp_codex_surface_test.go:115: GET / status = 403, want 200 (body: forbidden: non-loopback Host header
+        )
+--- FAIL: TestAC_C_008_CodexAbsentGraceful (0.00s)
+    mcp_codex_surface_test.go:165: AC-C-008: codex-absent GET / status = 403, want 200 (must not error)
+--- FAIL: TestMCPConsoleRendersAllTools (0.00s)
+    mcp_console_test.go:33: GET / status = 403, want 200
+--- FAIL: TestMCPConsoleToolCountMatchesCatalog (0.00s)
+    mcp_console_test.go:53: GET / status = 403, want 200
+--- FAIL: TestMCPConsoleWriteCapableTextDistinction (0.00s)
+    mcp_console_test.go:87: GET / status = 403, want 200
+--- FAIL: TestAC_C_010_GLMKeyStateRenderedViaRoute (0.00s)
+    mcp_glmkey_surface_test.go:74: AC-C-010: GET / status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMXRawViewRendered541056358/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMXRawViewRendered541056358/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMXRawViewRendered541056358/001/.moai/config/sections
+--- FAIL: TestEveryOptionDescRendersOnConsolePage (0.00s)
+    option_desc_test.go:82: GET / status = 403, want 200
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileManagerCardAbsent1326138960/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileManagerCardAbsent1326138960/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileManagerCardAbsent1326138960/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileFormsNotNested355123209/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileFormsNotNested355123209/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileFormsNotNested355123209/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenameok4037277334/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenameok4037277334/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenameok4037277334/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamedefault_refused1048077032/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamedefault_refused1048077032/001/.moai/config/sections
+2026/09/10 15:29:38 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamedefault_refused1048077032/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamecurrent_refused3785501335/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamecurrent_refused3785501335/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamecurrent_refused3785501335/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenameconflict_refused2952658360/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenameconflict_refused2952658360/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenameconflict_refused2952658360/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenametraversal_refused2804128867/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenametraversal_refused2804128867/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenametraversal_refused2804128867/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenametraversal_in_source_refused4270091655/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenametraversal_in_source_refused4270091655/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenametraversal_in_source_refused4270091655/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamemissing_source_refused3536924180/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamemissing_source_refused3536924180/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileRenamemissing_source_refused3536924180/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileBarMarksCurrentAndSelected4067815551/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileBarMarksCurrentAndSelected4067815551/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileBarMarksCurrentAndSelected4067815551/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDFlow2345149296/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDFlow2345149296/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDFlow2345149296/002/.moai/config/sections
+--- FAIL: TestProfileCRUDFlow (0.01s)
+    profile_crud_test.go:69: GET / did not list 'work' (status 403)
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteGuards2072521066/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteGuards2072521066/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteGuards2072521066/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteGuards2072521066/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteGuards2072521066/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteGuards2072521066/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCreateInvalidName142812480/002/.moai/config/sections
+--- FAIL: TestProfileCRUDMethodNotAllowed (0.00s)
+    profile_crud_test.go:177: GET /profile/create status = 403, want 405
+    profile_crud_test.go:177: GET /profile/delete status = 403, want 405
+    profile_crud_test.go:177: GET /profile/rename status = 403, want 405
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteNonexistent1341738672/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteNonexistent1341738672/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteNonexistent1341738672/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileDeleteInvalidName2949038651/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDSeamErrors3554667032/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDSeamErrors3554667032/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDSeamErrors3554667032/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDSeamErrors3554667032/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDSeamErrors3554667032/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileCRUDSeamErrors3554667032/002/.moai/config/sections
+--- FAIL: TestProfilePopoverRendered (0.00s)
+    profile_crud_test.go:306: GET / status = 403, want 200
+--- FAIL: TestFontServedFromStatic (0.00s)
+    restyle_test.go:149: GET woff2 status = 403, want 200
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestComponentChromePresent2027869101/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestComponentChromePresent2027869101/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestComponentChromePresent2027869101/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppbarRendered3114255212/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppbarRendered3114255212/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppbarRendered3114255212/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLoopbackIndicatorShowsRealBindAddr2599053591/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLoopbackIndicatorShowsRealBindAddr2599053591/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLoopbackIndicatorShowsRealBindAddr2599053591/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNoNonCanonicalOptions2686802931/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNoNonCanonicalOptions2686802931/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNoNonCanonicalOptions2686802931/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNameAttributesPreserved2284611368/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNameAttributesPreserved2284611368/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNameAttributesPreserved2284611368/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNameAttributesPreserved2284611368/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNameAttributesPreserved2284611368/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNameAttributesPreserved2284611368/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileSwitchTargetsTheLoadPath4219509888/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileSwitchTargetsTheLoadPath4219509888/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProfileSwitchTargetsTheLoadPath4219509888/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBannerKindMapping2449508637/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDarkThemeAbsence4028692998/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDarkThemeAbsence4028692998/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestDarkThemeAbsence4028692998/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInlineSVGIconsNoCDN1703529228/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInlineSVGIconsNoCDN1703529228/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInlineSVGIconsNoCDN1703529228/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAccessibilityCues2819902995/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAccessibilityCues2819902995/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAccessibilityCues2819902995/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAccessibilityCues2819902995/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAccessibilityCues2819902995/002/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAccessibilityCues2819902995/002/.moai/config/sections
+--- FAIL: TestGoormSansCodeSelfHosted (0.00s)
+    restyle_test.go:663: GET GoormSansCode subset status = 403, want 200
+--- FAIL: TestSchemaEmptyLabelParity (0.00s)
+    schema_label_test.go:17: GET / status = 403, want 200
+--- FAIL: TestWebRendersSchemaFieldSet (0.00s)
+    schema_render_test.go:51: GET / status = 403, want 200
+--- FAIL: TestWebStatuslineNoPresetControl (0.00s)
+    schema_render_test.go:115: GET / status = 403, want 200
+--- FAIL: TestWebStatuslineSectionNotRendered (0.00s)
+    schema_render_test.go:130: GET / status = 403, want 200
+--- FAIL: TestConsoleRendersReportTab (0.00s)
+    schemaform_test.go:59: GET / status = 403, want 200
+--- FAIL: TestReportFormatRendersAsRadio (0.00s)
+    schemaform_test.go:93: GET / status = 403, want 200
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGETReadPathAllowsValidProfileName795296046/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGETReadPathAllowsValidProfileName795296046/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGETReadPathAllowsValidProfileName795296046/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGETReadPathAllowsValidProfileName795296046/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSameOriginPostAllowed2321323496/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSameOriginPostAllowed2321323496/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSameOriginPostAllowed2321323496/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSameOriginPostAllowed2321323496/001/.moai/config/sections
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSameOriginPostAllowed2321323496/001/.moai/config/sections
+moai web: could not open browser (no browser available); open http://127.0.0.1:53259 manually
+2026/09/10 15:29:39 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestServer_AutoOpenFailureNonFatal599818860/001/.moai/config/sections
+--- FAIL: TestStatuslineSectionAbsentFromConsole (0.00s)
+    statusline_test.go:43: GET / status = 403
+--- FAIL: TestTabPanelRenderOrderMatchesTabs (0.00s)
+    tab_layout_test.go:51: GET / status = 403, want 200
+--- FAIL: TestWorkflowTabRetainsProseConsumedFields (0.00s)
+    tab_layout_test.go:112: GET / status = 403, want 200
+--- FAIL: TestGitWorktreeTabFields (0.00s)
+    tab_layout_test.go:124: GET / status = 403, want 200
+--- FAIL: TestAuditTabFields (0.00s)
+    tab_layout_test.go:147: GET / status = 403, want 200
+--- FAIL: TestEveryTabHasAPanel (0.00s)
+    tab_layout_test.go:172: GET / status = 403, want 200
+--- FAIL: TestTodoRouteServesPage (0.00s)
+    todo_route_test.go:39: GET /todo status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestTodoNavRowIsSixthAndCurrent (0.00s)
+    todo_route_test.go:102: rail carries 0 navigation rows ([]), want 6
+--- FAIL: TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp (0.14s)
+    todo_section_nontemp_copy_test.go:55: GET /todo status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestTodoSectionListsAllThreeStates (0.04s)
+    todo_section_test.go:81: GET /todo status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestTodoSectionEmptyStates (0.08s)
+    --- FAIL: TestTodoSectionEmptyStates/absent_file (0.00s)
+        todo_section_test.go:133: GET /todo status = 403, want 200
+            body:
+            forbidden: non-loopback Host header
+    --- FAIL: TestTodoSectionEmptyStates/empty_file (0.04s)
+        todo_section_test.go:133: GET /todo status = 403, want 200
+            body:
+            forbidden: non-loopback Host header
+    --- FAIL: TestTodoSectionEmptyStates/malformed_JSON (0.04s)
+        todo_section_test.go:133: GET /todo status = 403, want 200
+            body:
+            forbidden: non-loopback Host header
+--- FAIL: TestTodoSectionCarriesExistingKanbanMarker (0.04s)
+    todo_section_test.go:155: GET /todo status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestTodoSectionFromWorktreeReadsPrimaryQueue (0.12s)
+    todo_section_test.go:180: GET /todo status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+--- FAIL: TestTodoSectionReadsThroughToProjectLocalQueue (0.12s)
+    todo_section_test.go:205: GET /todo status = 403, want 200
+        body:
+        forbidden: non-loopback Host header
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidModelRejected710062443/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidModelRejected710062443/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidModelRejected710062443/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidModelPersisted3696777012/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidModelPersisted3696777012/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidModelPersisted3696777012/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidModelPersisted3696777012/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidModelPersisted3696777012/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidEffortLevelRejected2960773583/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidEffortLevelRejected2960773583/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveInvalidEffortLevelRejected2960773583/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidEffortLevelPersisted3748262568/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidEffortLevelPersisted3748262568/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidEffortLevelPersisted3748262568/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidEffortLevelPersisted3748262568/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidEffortLevelPersisted3748262568/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyFormIgnored1289774000/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyFormIgnored1289774000/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyFormIgnored1289774000/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyFormIgnored1289774000/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyFormIgnored1289774000/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRenderModelEffortPolicyAreSelects3698294816/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRenderModelEffortPolicyAreSelects3698294816/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRenderModelEffortPolicyAreSelects3698294816/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyCarriedForward1393989702/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyCarriedForward1393989702/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyCarriedForward1393989702/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyCarriedForward1393989702/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveModelPolicyCarriedForward1393989702/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApplySchemaCurrentBestEffortKeepsValuesOnSuccess4247156296/001/.moai/config/sections
+--- FAIL: TestSpecsScreenSurvivesUnreadableRoot (0.00s)
+    viewmodel_degradation_test.go:99: GET /specs status = 403, want 200 (an unreadable root renders empty, not as an error page)
+--- FAIL: TestBoolFieldsRenderAsRadio (0.00s)
+    widget_policy_test.go:60: GET / status = 403, want 200
+--- FAIL: TestSchemaTogglePresentCompanion (0.00s)
+    widget_policy_test.go:84: GET / status = 403, want 200
+--- FAIL: TestWorktreeBaseBranchLiveKeyGuard (0.00s)
+    worktree_base_branch_guard_test.go:39: GET / status = 403, want 200
+--- FAIL: TestWorktreeBaseBranchRendersFreeTextInput (0.00s)
+    worktree_base_branch_guard_test.go:107: GET / status = 403, want 200
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestReadProjectConfig_AbsentFiles2276215483/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestReadProjectConfig_AbsentFiles2276215483/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveProjectWriteFailureSurfacesError1988809380/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveProjectWriteFailureSurfacesError1988809380/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveProjectWriteFailureSurfacesError1988809380/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEC2AtomicReject2546602516/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEC2AtomicReject2546602516/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEC2AtomicReject2546602516/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEmptyProjectConfigPasses4131148274/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEmptyProjectConfigPasses4131148274/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEmptyProjectConfigPasses4131148274/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEmptyProjectConfigPasses4131148274/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveEmptyProjectConfigPasses4131148274/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidProjectConfigPersists185479086/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidProjectConfigPersists185479086/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidProjectConfigPersists185479086/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidProjectConfigPersists185479086/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveValidProjectConfigPersists185479086/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRejectsBogusConvention2795714270/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRejectsBogusConvention2795714270/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRejectsBogusConvention2795714270/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRejectsBogusDevelopmentMode1924128552/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRejectsBogusDevelopmentMode1924128552/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSaveRejectsBogusDevelopmentMode1924128552/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppJsHxBoostPreserved1295955488/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppJsHxBoostPreserved1295955488/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppJsHxBoostPreserved1295955488/001/.moai/config/sections
+2026/09/10 15:29:40 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestWriteProjectConfigabsent_config_creates_section_(EC-5)3670860106/001/.moai/config/sections
+2026/09/10 15:29:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestReadProjectNestedConfigDefaults1358827/001/.moai/config/sections
+2026/09/10 15:29:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectNestedReadFailureRendersInlineError533880790/001/.moai/config/sections
+2026/09/10 15:29:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectNestedWriteFailureSurfacesError3447177154/001/.moai/config/sections
+2026/09/10 15:29:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectNestedWriteFailureSurfacesError3447177154/001/.moai/config/sections
+2026/09/10 15:29:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectNestedWriteFailureSurfacesError3447177154/001/.moai/config/sections
+2026/09/10 15:29:41 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectNestedWriteFailureSurfacesError3447177154/001/.moai/config/sections
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	11.144s
+FAIL

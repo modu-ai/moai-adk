@@ -50,6 +50,16 @@ func consoleTabs() []consoleTab {
 		// The move is a RENDER placement only — the fields keep SectionWorkflow
 		// and the workflow.yaml seam persist target (AP-4).
 		{ID: "audit", LabelKey: "tab.audit.title", Baseline: "Audit"},
+		// codex (SPEC-WEB-CODEX-PANEL-001): a READ-ONLY MIRROR of the codex
+		// settings scattered across audit and mcp. It owns no field and removes
+		// none — every mirrored field stays declared, rendered and editable on
+		// its owning tab. Placed immediately after audit, where its
+		// most-consulted values live, and deliberately NOT last: panelHTML
+		// slices a panel from its marker to the NEXT one and falls back to
+		// end-of-document for the final panel, so a codex panel placed last
+		// would silently widen every panel-scoped assertion into a whole-page
+		// one.
+		{ID: "codex", LabelKey: "tab.codex.title", Baseline: "Codex"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 		// SPEC-MCP-CONSOLE-001 M2: the per-tool MCP enablement panel. Each of the
@@ -313,6 +323,21 @@ func parseSchemaForm(r *http.Request, current map[string]string) (map[string]str
 
 	for _, f := range settings.AllFields() {
 		if !schemaEditableField(f) {
+			continue
+		}
+		// REQ-WWS-006 (SPEC-WEB-WRITE-SAFETY-001): a form name submitted more
+		// than once must not be silently resolved to its first value — the
+		// first value can belong to a hidden duplicate tab while the user's
+		// actual value sits in a later submission (observed: unedited workflow
+		// scalars zeroed by a value-invariant full-form save). Detect the
+		// duplicate and join the atomic-reject error set (EC-2). The hidden
+		// bool companion follows the same rule.
+		if vals := r.PostForm[f.Name]; len(vals) > 1 {
+			errs[f.Name] = "duplicate form values submitted"
+			continue
+		}
+		if vals := r.PostForm[f.Name+"__present"]; len(vals) > 1 {
+			errs[f.Name] = "duplicate form values submitted"
 			continue
 		}
 		switch f.Type {

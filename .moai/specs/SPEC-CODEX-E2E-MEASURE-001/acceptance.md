@@ -2,7 +2,6 @@
 id: SPEC-CODEX-E2E-MEASURE-001
 title: "Acceptance criteria — codex-axis e2e measurement"
 version: "0.2.0"
-status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec

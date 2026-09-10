@@ -1,0 +1,7 @@
+ .moai/reports/t570/plan-audit.md                   | 273 +++++++++++++++++++++
+ .../SPEC-CODEX-DOCTOR-PATH-GUARD-001/acceptance.md | 205 ++++++++++++++++
+ .../specs/SPEC-CODEX-DOCTOR-PATH-GUARD-001/plan.md | 134 ++++++++++
+ .../SPEC-CODEX-DOCTOR-PATH-GUARD-001/progress.md   | 110 +++++++++
+ .../specs/SPEC-CODEX-DOCTOR-PATH-GUARD-001/spec.md | 226 +++++++++++++++++
+ internal/cli/doctor_codex_path_guard_test.go       | 134 ++++++++++
+ 6 files changed, 1082 insertions(+)

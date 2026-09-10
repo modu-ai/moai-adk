@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/graph"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
@@ -66,6 +68,10 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 		"session_id", input.SessionID,
 		"project_dir", input.ProjectDir,
 	)
+	if store, leaseErr := homestate.OpenProfileLeases(); leaseErr == nil {
+		_ = store.ReleaseSession(ctx, input.SessionID)
+		_ = store.Close()
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -254,6 +260,10 @@ func projectSlug(absPath string) string {
 func getModifiedGoFiles(ctx context.Context, projectDir string) []string {
 	cmd := exec.CommandContext(ctx, "git", "diff", "--name-only", "HEAD")
 	cmd.Dir = projectDir
+	// cmd.Dir does not decide which repository this reads: a GIT_DIR inherited
+	// from a hook outranks it, and the modified-file list would then come from
+	// another repository entirely.
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		// git diff may fail in non-git environments; this is expected

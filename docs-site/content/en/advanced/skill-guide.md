@@ -113,6 +113,10 @@ Which diagram kinds `moai-domain-svg-infographic` can produce was measured, not 
 
 Each form is expressed on top of the four base layouts (stack, left-to-right flow, side-by-side comparison, hierarchy tree) in a way that preserves the information structure. The per-form verdict table and gate logs live in `.moai/reports/t272/verdict.md`.
 
+This skill's source lint mechanically enforces two families of rules. `SVG060`-`SVG064` form the accessibility contract: the root `<svg>` needs `role="img"`, an accessible name supplied through `aria-labelledby`, a `<title>` as its very first child, a `<desc>`, and ids carrying a per-diagram prefix. A graphic that lacks them is announced as an unnamed image, and none of the `<text>` inside it is read out (only a purely decorative graphic is exempt, via `aria-hidden="true"`).
+
+`SVG070`-`SVG074` cover connector geometry. A connector label's mask must clear its own stroke by 6 to 10 units - under 6 is an error, over 10 a warning, and a mask is associated with a connector only within 16 units - two connectors arriving at the same box edge must keep their arrival points apart, and a label mask must never partially overlap a shape painted after it.
+
 ### Reference (Best Practices) - 11
 
 | Skill name                  | Description                                              |

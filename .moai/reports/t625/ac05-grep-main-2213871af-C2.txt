@@ -1,0 +1,5 @@
+93:- **`ddd` only — detect project scale**: count test files and source lines (excluding vendor, node_modules, generated). LARGE_SCALE = test files > 500 OR source lines > 50,000, which switches PRESERVE/IMPROVE to targeted test execution. Step 5 always runs the full suite regardless of scale.
+127:3. **Verify behavior**: run tests — targeted when `ddd` LARGE_SCALE, otherwise the full suite (memory guard: module-level batches when needed).
+133:- Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)
+136:- Issue the independent read-only verifications (full suite, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
+EXIT=0

@@ -120,7 +120,7 @@ func TestCodexReadout_CommandTenCells(t *testing.T) {
 				if !strings.Contains(lines[3], codexWiringAction) {
 					t.Errorf("wiring row missing action phrase: %q", lines[3])
 				}
-				if !strings.Contains(stdout, "moai init --agent codex") {
+				if !strings.Contains(stdout, "moai init --llm codex") {
 					t.Errorf("readout missing the remediation action")
 				}
 				if hits := codexBannedWordHits(stdout); hits != 0 {
@@ -147,7 +147,7 @@ func TestCodexReadout_WiredStateOmitsAction(t *testing.T) {
 	if len(lines) != 6 || lines[3] != wantWiringRowWired {
 		t.Fatalf("wiring row = %q (lines %d), want %q", lines, len(lines), wantWiringRowWired)
 	}
-	if strings.Contains(stdout, "moai init --agent codex") {
+	if strings.Contains(stdout, "moai init --llm codex") {
 		t.Errorf("wired readout recommends the action: %q", stdout)
 	}
 }
