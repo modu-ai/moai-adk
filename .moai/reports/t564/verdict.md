@@ -199,3 +199,50 @@ GREEN:
 
 ### Residual-risk
 - A 의 `spec view` 는 인용 문구를 AC 본문으로 보여 준다(§3 잔여 위험의 실측). 작성자는 경고 줄로만 이를 알 수 있다.
+
+## 5. 통합 창 — 흡수 · 병합 트리 재측정
+
+### Claim
+- 리드가 지명한 창에서 로컬 develop `93182d137` 을 카드 브랜치로 흡수했다(`2dd2634d6`).
+- 흡수 델타는 `internal/spec`·그 의존 패키지·`internal/cli/spec_view*.go` 를 건드리지 않는다. 그래서 리드 승인 조건에 따라 코퍼스 재측정은 하지 않았다.
+- 흡수한 트리 `5d0855ba0d032b0d330b17e639e136ec1b9a3c9e` 에서 다음이 통과한다:
+  - `internal/spec` 패키지 전체와 새 테스트 5개
+  - 창 슬롯 1회로 다시 돌린 spec view 테스트 4개(델타의 `internal/core/git` 때문에 `internal/cli` 가 다시 컴파일되는 것을 리드가 슬롯으로 승인)
+
+### Evidence
+창 획득과 흡수:
+- `moai integration acquire --name lane-9` → `acquire_exit=0`, `release-integration window acquired by e5c0032b-ffbd-44b0-8997-c16d09d3541b on WT-dup-ac-id`(`window-acquire.log`).
+- 흡수 대상: `git rev-parse develop` → `93182d137159c4facbf87c66dea3fd69160a6b8b`(리드 지명과 같음). `git merge-base HEAD develop` → `c3b931784…`(이 가지의 base).
+- 흡수 델타: `git diff --name-only c3b931784 93182d137` → 194파일(`window-absorb-delta-files.txt`).
+  - `^internal/spec/` 0건(exit 1), `^internal/cli/spec_view` 0건(exit 1).
+  - 코드 경로는 `internal/cli/plan_audit_order_conflict_test.go`, `internal/core/git/manager.go`, `internal/core/git/status_optional_locks_test.go`, `internal/template/` 아래 8파일(catalog.yaml·에이전트·스킬 문서).
+- 의존: `go list -deps` 로 흡수한 트리에서 `internal/spec` 의 저장소 패키지를 셌다. `config/atomicfile`·`defs`·`paths`·`pkg/models`·`config`·`constitution`·`execerr`·`spec` 8개이고, 모두 `embed=[]` 다(`window-merged-spec-deps.txt`). `internal/core/git`·`internal/template` 은 의존에 없다.
+- 흡수 병합: `git merge --no-ff -m "Merge local develop 93182d137 into WT-dup-ac-id (card t564 window)" 93182d137` → `merge_exit=0`, `2dd2634d6 5cf566807 93182d137`, MERGE_HEAD 없음(exit 1)(`window-absorb-merge.log`).
+
+사건 기록 — `index.lock`:
+- 병합 직후와 14:08:35Z 에 `/Users/goos/MoAI/moai-adk-go/.git/worktrees/t564/index.lock`(0 바이트, 23:08 로컬 생성)이 있었다.
+- 당시 HEAD `2dd2634d6`, MERGE_HEAD 없음, 추적 파일 변경 없음. 병합 커밋은 이미 만들어진 뒤라 실패한 명령은 없었다.
+- 손으로 지우지 않았다. 14:10:51Z 에 다시 보니 경로가 없었다(exit 1). 같은 시각 `ps` 에 `git` 프로세스는 없었다(`window-git-procs.out` 빈 파일). 어느 프로세스의 락이었는지는 확인하지 못했다.
+
+병합 트리 재측정:
+- `go test ./internal/spec -count=1` → `pkg_exit=0`, `ok github.com/modu-ai/moai-adk/internal/spec 103.447s`(`window-merged-spec-package.log`).
+- `go test ./internal/spec -count=1 -run '^(TestParser_DuplicateID_|TestLintDuplicateACID_)' -v` → `new_exit=0`, 5개 PASS(`window-merged-new-tests.log`).
+
+슬롯(창 안 1회):
+- 첫 사전 확인(14:10:51Z): 양성 대조 2줄 매치. 실제 `ps` 1475줄 중 1줄 매치 `32552 go go build -o /tmp/moai-t574-audit ./cmd/moai` — 다른 레인의 빌드다. 리드 지시대로 기다렸다(`window-slot-precheck-real.out`).
+- 14:11:06Z `ps -p 32552` → 없음(exit 1).
+- 두 번째 사전 확인(14:11:20Z): 양성 대조 2줄 매치, 실제 1476줄 중 매치 0(`window-slot-precheck2-real.out`). 매치가 없을 때만 테스트를 돌리는 조건으로 한 명령에 묶었다.
+- `go test ./internal/cli -count=1 -run '^(TestSpecView_|TestSpecViewPlain_)' -v` → `cli_test_exit=0`, 4개 PASS(새 `TestSpecView_DuplicateACIDWarnsAndRendersTree` 포함), `ok … 0.984s`(`window-slot-cli-specview.log`, 14:11:20Z–14:11:30Z).
+
+측정 트리: `git rev-parse HEAD HEAD^{tree}` → `2dd2634d679524218b155167580652ad4acb3873` / `5d0855ba0d032b0d330b17e639e136ec1b9a3c9e`. 추적 파일 변경 없음, `index.lock` 없음.
+
+### Baseline-attribution
+카드 브랜치 흡수 커밋 `2dd2634d6`(트리 `5d0855ba0…`), 이 창 안의 실행. 이 절을 담는 증거 커밋은 `.moai/reports/t564/` 만 바꾼다. develop 병합 커밋의 트리가 그 증거 커밋의 트리와 같은지는 병합 직후 확인하고, 병합 SHA 와 함께 완료 보고로 전달한다.
+
+### Gaps
+- darwin 로컬 실행이다. windows·linux 는 develop push 뒤 CI 판정에 맡긴다.
+- `internal/cli` 는 spec view 테스트 4개만 돌렸다(창 규칙상 전체 금지). 델타의 `internal/core/git` 변경이 다른 `internal/cli` 테스트에 주는 영향은 이 카드에서 재지 않았다.
+- `index.lock` 을 만든 프로세스는 확인하지 못했다.
+
+### Residual-risk
+- `go list -deps` 는 기본 빌드 태그 기준이다. 다른 태그에서만 import 하는 의존은 목록에 없다.
