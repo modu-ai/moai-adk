@@ -1,0 +1,3 @@
+Computing hash for entry "moai"...
+  [dry-run] moai: fa683eb7fdb42944cc80a6461415cb371edb277a90c13e04e0ba079a68aa22b6 (source: internal/template/templates/.claude/skills/moai (whole tree))
+[dry-run] catalog.yaml not modified
