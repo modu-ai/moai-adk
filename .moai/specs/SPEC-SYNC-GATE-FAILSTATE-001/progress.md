@@ -211,6 +211,147 @@ measured.
   counts, but the observed counts (2 per check run, 0 on short-circuit) match the named reasons, which argues against
   that.
 
+### M2 — outcome record and auxiliary state in the hook (GREEN), recorded 2026-09-11 by manager-develop
+
+**Interruption note.** The first M2 verification batch ran on 2026-09-10 and was never reported. An
+API rate limit ended the session first. The coordinator's instruction on resumption was to treat
+those `m2-*.txt` files as unattributed. Every verification below was therefore **re-run on
+2026-09-11 in the resumed run**, and each file under `.moai/reports/t624/m2-*.txt` was overwritten
+by that re-run. One fact from the interrupted session is carried here only because it explains the
+committed code, not as evidence:
+
+- The first selector run against the new hook failed `TestSyncGateFailState_AC014_StaleWindowEqualsRegisteredTimeout`
+  with `want exactly one stale-window assignment; got [SYNC_GATE_STALE_WINDOW STALE_RERUN]`.
+- Cause: an internal flag named `STALE_RERUN=0` also matched the test's `STALE` contract.
+- Fix: the flag was renamed `RERUN_OF_RUNNING` in the hook. The test was not changed.
+- The re-run below is the evidence that this fix holds.
+
+#### Pre-flight (resumed run, before any commit)
+
+| # | Command | Verbatim stdout | Exit |
+|---|---|---|---|
+| P1 | `git rev-parse --show-toplevel` | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t624` | 0 |
+| P2 | `git branch --show-current` | `WT-sync-gate-failstate` | 0 |
+| P3 | `git rev-parse --short HEAD` | `2232e1a5f` | 0 |
+| P4 | `git --no-optional-locks status --short` | ` M .claude/hooks/moai/sync-phase-quality-gate.sh` / ` M internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` / five `?? .moai/reports/t624/m2-*.txt` | 0 |
+| P5 | `git diff --stat` | both hook copies `284 +++++++++++++++++----`; `2 files changed, 466 insertions(+), 102 deletions(-)` | 0 |
+| P6 | `cmp .claude/hooks/moai/sync-phase-quality-gate.sh internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | *(empty)* | 0 |
+
+Neither M1 test file appears in P4 or P5, so no test file changed.
+
+#### Hook commit
+
+- Commit `6f098a45e8ec098b11e9cbbd6323d1c6dd6c60f7`:
+  `feat(t624): M2 record gate outcome and re-deliver stored failure in sync quality gate`.
+  `git show --stat` lists exactly the two hook copies (`2 files changed, 466 insertions(+), 102 deletions(-)`).
+- Trailer: `git log -1 --format='%(trailers:key=Authored-By-Agent,valueonly)'` → `manager-develop`.
+- Attribution: the verification batch below ran on the uncommitted tree at HEAD `2232e1a5f`.
+  `git diff --stat 6f098a45e -- <both hook copies>` printed nothing, so the measured hook bytes equal
+  the committed ones.
+
+New header block (template hook, lines 28-55, verbatim):
+
+```
+# Outcome record: for the HEAD it gates, the hook keeps one line
+# "<head-sha> <outcome>" in .moai/state/sync-quality-gate.last. <outcome> is
+# exactly one of running, pass, fail. The record reads "running" before any check
+# starts, then "fail" if a check failed (whether the mode blocked or only advised)
+# or "pass" otherwise. On a later turn with the same HEAD:
+#   - pass: no checks, empty stdout.
+#   - fail: no checks. The failing run's exact stdout, its kind (block or
+#     advisory), and the failed-check exit codes are kept in
+#     .moai/state/sync-quality-gate.payload. A stored block is re-delivered
+#     byte-identical while the mode resolved on that turn is blocking; a stored
+#     block under an advisory resolution, or a stored advisory message, stays
+#     silent (the advisory warning is written once, by the run that checked).
+#   - stop_hook_active: when stdin carries "stop_hook_active": true, a stored
+#     block is not re-delivered on that turn and no state changes, so the next
+#     turn without the flag re-delivers it. The flag never suppresses the output
+#     of a run that executes the checks.
+#   - running: a run did not finish. While the record is at most
+#     SYNC_GATE_STALE_WINDOW seconds old, no checks run and a non-blocking notice
+#     is emitted. An older record gets ONE re-run for that HEAD, recorded in
+#     .moai/state/sync-quality-gate.retry; once that re-run is used, later turns
+#     emit a non-blocking notice instead of re-running.
+#   - no record, a record for another HEAD, or an empty, unreadable, legacy
+#     (bare SHA), or malformed record: the checks run.
+# Every state write goes through a temporary file renamed into place, and a
+# failing run writes its payload before its "fail" record.
+#
+# Forcing a re-gate: delete .moai/state/sync-quality-gate.last (or .moai/state as
+# a whole). There is no flag or environment variable for retrying.
+```
+
+#### Verification (resumed run)
+
+| Check | Command | Exit | Verbatim tail | Full output |
+|---|---|---|---|---|
+| M1 selector | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ -run '^TestSyncGateFailState' -count=1 -v` | 0 | `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/hook	148.147s` | `m2-green-run.txt` |
+| Six existing guards | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ ./internal/template/ -run '^(TestHookWrapperCopiesStayIdentical\|TestAC004_SyncGateAdvisoryAtFullyAutonomous\|TestAC002_NonSyncHeadSkipsVetBuild\|TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput\|TestTemplateNoInternalContentLeak\|TestTemplateNeutralityAudit)$' -count=1 -v` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/hook	11.201s` / `ok  	github.com/modu-ai/moai-adk/internal/template	2.724s` | `m2-guards-run.txt` |
+| Both packages | `unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ ./internal/template/ -count=1` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/hook	165.423s` / `ok  	github.com/modu-ai/moai-adk/internal/template	42.197s` | `m2-packages-run.txt` |
+| Lint | `golangci-lint run ./internal/hook/...` | 0 | `0 issues.` | `m2-lint.txt` |
+| Windows cross-vet | `GOOS=windows GOARCH=amd64 go vet ./internal/hook/` | 0 | *(empty; file size 0 bytes)* | `m2-vet-windows.txt` |
+| Format | `gofmt -l internal/hook/` | 0 | *(empty)* | — |
+| Shell syntax, local copy | `bash -n .claude/hooks/moai/sync-phase-quality-gate.sh` | 0 | *(empty)* | — |
+| Shell syntax, template copy | `bash -n internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh` | 0 | *(empty)* | — |
+
+(`\|` in the guard selector is table escaping; the executed selector carries a plain `|`.)
+
+M1 selector swept set: `grep -c '^=== RUN' m2-green-run.txt` → `69`; `grep -c 'no tests to run'` → `0`;
+subtests `--- PASS` → `56`, `--- FAIL|SKIP` → `0`. All 13 top-level tests PASS:
+
+1. `TestSyncGateFailState_AC001_FailureRedeliveredOnSameHead`
+2. `TestSyncGateFailState_AC002_NewFailingHeadBlocksWithNewResult`
+3. `TestSyncGateFailState_AC003_PassThenSameHeadStaysSilent`
+4. `TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery`
+5. `TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate`
+6. `TestSyncGateFailState_AC005_TornWriteNeverSilentPass`
+7. `TestSyncGateFailState_AC006_RunningRecordStaleWindow`
+8. `TestSyncGateFailState_AC007_NoPathLooserThanToday`
+9. `TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution`
+10. `TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState`
+11. `TestSyncGateFailState_AC014_StaleWindowEqualsRegisteredTimeout`
+12. `TestSyncGateFailState_AC006c_RetryBoundAndNotice`
+13. `TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap`
+
+Guards, each reported `--- PASS` by name in `m2-guards-run.txt`: `TestAC004_SyncGateAdvisoryAtFullyAutonomous`,
+`TestAC002_NonSyncHeadSkipsVetBuild`, `TestHookWrapperCopiesStayIdentical`,
+`TestTemplateNoInternalContentLeak`, `TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput`,
+`TestTemplateNeutralityAudit`; `grep -c 'no tests to run'` → `0`.
+
+Neutrality positive control: `grep -c -- '--- PASS: TestTemplateNeutralityAudit ' m2-guards-run.txt` →
+`1`. The neutrality test this evidence relies on ran by name and passed. It was not selected away.
+
+#### Test edits
+
+None. The M1 test files are byte-unchanged: they appear in neither P4 nor P5. The only fix needed
+during M2 was in the hook (the `STALE_RERUN` rename above).
+
+#### Gaps (not observed in M2)
+
+- AC-009's L-18 jq regex, the L-19 card-id/date regex, and the SHA-token scan were run on the
+  template hook in the interrupted session, with 0 hits each, and were not re-run in the resumed
+  run. The template-leak and neutrality guards above did run by name and passed; the standalone greps
+  belong to AC-009, which is checked after M3.
+- AC-010, AC-011, and AC-012 are M3. AC-013's reviewer read of the new header is not recorded as a
+  verdict here. Mutant probes are M4.
+- The mtime-unreadable fallback, nested `stop_hook_active` keys, and the exact 60 s point remain the
+  explicit unverified gaps of acceptance.md §D.0.
+- No Windows execution of the hook. No live Claude Code Stop event: the real stdin shape and the
+  runtime block cap were not exercised.
+- `internal/cli` tests were not run.
+
+#### Residual risk
+
+- Age is read with `stat -c %Y`, falling back to `stat -f %m`. A platform where both fail treats the
+  record as stale and re-runs; this path is unverified.
+- `stop_hook_active` detection is line-based. A payload that splits the key and the value across
+  lines would not be detected, and the re-delivery would then happen on that turn.
+- State writes swallow failures to keep exit 0 on every path. An unwritable `.moai/state` therefore
+  degrades to re-gating every turn, never to a silent pass.
+- The payload file carries the full stdout of the failing run. That is the bytes already written to
+  the log channel, so no new data leaves the project.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
