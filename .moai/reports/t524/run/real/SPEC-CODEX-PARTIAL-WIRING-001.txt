@@ -1,0 +1,3 @@
+COLLECTED: 11 REQ definitions (acceptance input: read)
+ORPHAN: REQ-CW-009
+ORPHAN: REQ-CW-010

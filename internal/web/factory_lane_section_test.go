@@ -11,7 +11,6 @@ package web
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,9 +26,7 @@ func kanbanBodyFor(t *testing.T, projectRoot string) string {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: projectRoot, ProfileName: "default"})
 	a.recordLastProfile = func(string) error { return nil }
-	req := httptest.NewRequest(http.MethodGet, "/kanban", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/kanban")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /kanban status = %d, want 200\nbody:\n%s", rec.Code, rec.Body.String())
 	}
