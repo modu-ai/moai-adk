@@ -1,0 +1,5 @@
+internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md:15:## Entry Condition
+internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md:26:**Prerequisites** (all must be satisfied before loop entry):
+.claude/rules/moai/workflow/ci-autofix-protocol.md:15:## Entry Condition
+.claude/rules/moai/workflow/ci-autofix-protocol.md:26:**Prerequisites** (all must be satisfied before loop entry):
+EXIT=0
