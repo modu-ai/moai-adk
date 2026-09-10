@@ -129,7 +129,7 @@ html[lang="en"] .nav__en{display:none}
 .util{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--fg-2);font-size:11.5px;cursor:pointer}
 .util:hover{color:var(--fg-1);border-color:var(--line-strong)}
 .util--icon{width:36px;padding:0;justify-content:center}
-@media (max-width:1200px){.rail__qual,.nav__row span:not(.count),.nav__en,.subnav,.ctx-btn__k,.ctx-btn__v,.host span{display:none}.nav__row{justify-content:center}}
+@media (max-width:1200px){.rail__brand{justify-content:center;padding-left:8px;padding-right:8px}.rail__word,.rail__qual,.nav__row span:not(.count),.nav__en,.subnav,.ctx-btn__k,.ctx-btn__v,.host>span:not(.dot){display:none}.host{justify-content:center;margin-left:8px;margin-right:8px;padding-left:6px;padding-right:6px}.nav__row{justify-content:center}.rail__utils{flex-direction:column;align-items:center}.rail__utils .langpick{width:36px;min-width:36px;max-width:100%;padding-left:2px;padding-right:2px;font-size:0}}
 
 .main{display:flex;flex-direction:column;min-width:0}
 .top{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:20px;min-height:var(--wc-top);padding:0 var(--wc-pad-x);background:var(--surface);border-bottom:1px solid var(--line)}
@@ -259,6 +259,21 @@ html[lang="en"] .nav__en{display:none}
 .tr--sel{background:var(--bg-2)}
 .tr--override{box-shadow:inset 2px 0 0 var(--fg-1)}
 .tr--error{box-shadow:inset 2px 0 0 var(--danger)}
+.tr--todo{grid-template-columns:70px minmax(0,1fr) 90px 210px;min-height:44px}
+.todo-row__id{min-width:0}
+.todo-row__text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todo-row__state{display:flex;align-items:center;min-width:0}
+.todo-row__spec{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr--spec{grid-template-columns:230px minmax(0,1fr) 118px 44px 54px 92px 92px;min-height:44px}
+.tr--spec-head{min-height:30px}
+.tr--spec .tr__status{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+.tr--spec .tr__meta{display:contents}
+.tr--spec .tr__tier,.tr--spec .tr__era,.tr--spec .tr__updated,.tr--spec .tr__drift{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr--monitor{grid-template-columns:110px minmax(0,1fr) 86px 130px;min-height:44px}
+.tr--monitor-head{min-height:30px}
+.monitor-row__session{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monitor-row__spec,.monitor-row__heartbeat{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monitor-row__backend{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tr__name{font-family:var(--font-mono);font-size:12.5px;display:flex;align-items:center;gap:7px}
 .tr__desc{color:var(--fg-3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 에이전트 frontmatter 표 — 이름+설명 / 모델 / effort 3열. 행 높이를 셀렉트에
@@ -356,6 +371,15 @@ html[lang="en"] .nav__en{display:none}
 .rows{display:flex;flex-direction:column}
 .row-link{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
 .row-link:hover{background:var(--fill);text-decoration:none}
+.todo-root{margin-left:auto;max-width:50%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spec-summary-row__id{flex:0 0 210px;font-size:11.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spec-summary-row__title{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spec-summary-row__updated{flex:0 0 82px;text-align:right;white-space:nowrap}
+.mustfix-row{align-items:flex-start;flex-wrap:wrap}
+.mustfix-row__spec{flex:0 0 210px;min-width:0;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mustfix-row__type{flex:0 0 150px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mustfix-row__cmd{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mustfix-row__copy{flex:0 0 auto}
 .chainbar{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:10px 14px;display:flex;flex-direction:column;gap:9px}
 .chainbar__h{display:flex;align-items:center;gap:10px}
 .chainbar__l{list-style:none;margin:0;padding:0;display:flex;gap:6px}
@@ -364,6 +388,8 @@ html[lang="en"] .nav__en{display:none}
 .cpill__r{font-size:12.5px;font-weight:600}
 
 .roles{display:flex;align-items:stretch;gap:4px}
+.roles--lanes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.roles--lanes .role{min-width:0}
 .role{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
 .role--idle{border-style:dashed;border-color:var(--danger);background:var(--danger-bg)}
 .role__h{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 10px;background:var(--bg-2);border-bottom:1px solid var(--line-soft)}
@@ -375,7 +401,7 @@ html[lang="en"] .nav__en{display:none}
 .role__kv>span:nth-child(odd){color:var(--fg-3)}
 .role__f{color:var(--fg-3);font:var(--text-caption);border-top:1px solid var(--line-soft);padding-top:7px}
 .arrow{align-self:center;flex:0 0 14px;text-align:center;color:var(--fg-3);font-size:12px}
-@media (max-width:1100px){.roles{flex-wrap:wrap}.role{flex:1 1 30%}.arrow{display:none}}
+@media (max-width:1100px){.roles--chain{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.roles--lanes{grid-template-columns:repeat(3,minmax(0,1fr))}.roles--chain .arrow{display:none}}
 
 .board{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
 .kcol{flex:1 1 232px;min-width:232px;display:flex;flex-direction:column;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
@@ -415,7 +441,17 @@ html[lang="en"] .nav__en{display:none}
 }
 @media (max-width:700px){
   :root{--wc-pad-x:16px}
+  .top{flex-wrap:wrap;gap:6px 10px;min-height:0;padding-top:8px;padding-bottom:8px;align-items:center}
+  .top__title{flex:1 1 auto;min-width:0}
+  .top__right{gap:8px;max-width:100%}
+  .top__ctx{order:3;flex:1 1 100%;width:100%;padding-bottom:2px;flex-wrap:wrap;overflow:visible}
+  .chip-kv{min-height:28px}
+  .live__ts{display:none}
+  .save{max-width:100%;flex-wrap:wrap;justify-content:flex-end;gap:6px}
   .body{padding-top:14px}
+  .panel__head{flex-wrap:wrap;align-items:center;gap:6px 10px}
+  .panel__head .panel__title{flex:1 1 100%;min-width:0}
+  .todo-root{order:3;flex:1 1 100%;max-width:100%;margin-left:0 !important}
   .overview-hero{padding:20px}
   .overview-hero__title{font-size:28px}
   .overview-hero__actions{width:100%}
@@ -431,7 +467,36 @@ html[lang="en"] .nav__en{display:none}
   [data-density="dense"] .field__help{grid-column:1}
   .nav__row,.subnav__row,.ctx-btn{min-height:44px}
   .util,.chip,.search{min-height:44px}
+  .search{width:100%}
+  .sel{width:100%;min-width:0;max-width:100%}
   .btn{min-height:44px}
+  .roles--chain,.roles--lanes{grid-template-columns:minmax(0,1fr);gap:8px}
+  .tbl--todo,.tbl--spec,.tbl--monitor{border:0;overflow:visible;gap:8px}
+  .tbl--todo .tr--todo-head,.tbl--spec .tr--spec-head,.tbl--monitor .tr--monitor-head{display:none}
+  .tbl--todo .tr--todo{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"id state" "text text" "spec spec";gap:7px 10px;min-height:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-md)}
+  .tbl--todo .todo-row__id{grid-area:id}
+  .tbl--todo .todo-row__state{grid-area:state;justify-self:end}
+  .tbl--todo .todo-row__text{grid-area:text;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;line-height:1.45}
+  .tbl--todo .todo-row__spec{grid-area:spec}
+  .tbl--spec .tr--spec-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name status" "desc desc" "meta meta";gap:7px 10px;min-height:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-md)}
+  .tbl--spec .tr--spec-row .tr__name{grid-area:name}
+  .tbl--spec .tr--spec-row .tr__desc{grid-area:desc;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.45}
+  .tbl--spec .tr--spec-row .tr__status{grid-area:status;justify-self:end}
+  .tbl--spec .tr--spec-row .tr__meta{grid-area:meta;display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;min-width:0}
+  .tbl--spec .tr--spec-row .tr__tier,.tbl--spec .tr--spec-row .tr__era,.tbl--spec .tr--spec-row .tr__updated,.tbl--spec .tr--spec-row .tr__drift{overflow:visible;white-space:normal}
+  .tbl--monitor .tr--monitor-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"session backend" "spec heartbeat";gap:7px 10px;min-height:0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-md)}
+  .tbl--monitor .monitor-row__session{grid-area:session}
+  .tbl--monitor .monitor-row__backend{grid-area:backend;justify-self:end}
+  .tbl--monitor .monitor-row__spec{grid-area:spec}
+  .tbl--monitor .monitor-row__heartbeat{grid-area:heartbeat;justify-self:end;text-align:right}
+  .spec-summary-row,.mustfix-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;align-items:start;padding:10px 0}
+  .spec-summary-row__id{grid-column:1;flex-basis:auto}
+  .spec-summary-row__title{grid-column:1 / -1;white-space:normal;line-height:1.45}
+  .spec-summary-row__updated{grid-column:2;grid-row:1;flex-basis:auto}
+  .mustfix-row{grid-template-columns:auto minmax(0,1fr)}
+  .mustfix-row__spec,.mustfix-row__type,.mustfix-row__cmd,.mustfix-row__copy{grid-column:1 / -1;grid-row:auto;flex-basis:auto}
+  .mustfix-row__cmd{white-space:normal;overflow-wrap:anywhere;line-height:1.45}
+  .mustfix-row__copy{justify-self:start}
 }
 
 .quad{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -445,6 +510,7 @@ html[lang="en"] .nav__en{display:none}
 .kv span{color:var(--fg-3)}
 .kv b{font-weight:500;text-align:right}
 .sess{display:flex;flex-direction:column;gap:2px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-2)}
+@media (max-width:700px){.quad{grid-template-columns:minmax(0,1fr)}.vrow{flex-wrap:wrap;gap:8px}.bar{flex:1 1 120px;width:auto;min-width:0}}
 
 /* ── §10 팝오버 (프로필 CRUD) ─────────────────────────── */
 .pop{position:absolute;z-index:60;width:280px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--elev-raised);overflow:hidden}

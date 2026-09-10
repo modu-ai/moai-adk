@@ -570,7 +570,7 @@ window.MOAI_I18N = {
     "f.workflow.todo.enabled.title": "Backlog queue (todo)",
     "f.workflow.todo.enabled.desc": "Show backlog guidance: the queue summary at session start and the statusline TODO segment. The `moai todo` command keeps working when off.",
     "f.workflow.project.continuation.title": "Project completion (continuation)",
-    "f.workflow.project.continuation.desc": "How `/moai project` ends: whether it issues a first-feature backlog card, and how far the recommended next step carries the session. It never decides whether the next-steps question is asked."
+    "f.workflow.project.continuation.desc": "How `/moai project` ends: whether it issues a first-feature backlog card, and how far the recommended next step carries the session. It never decides whether the next-steps question is asked.",
     "f.workflow.audit.model.title": "Audit model",
     "f.workflow.audit.model.desc": "Active review backend that gates merges (claude/codex/glm/multi).",
     "f.workflow.audit.gates.claude.title": "Claude audit gate",
@@ -1437,7 +1437,7 @@ window.MOAI_I18N = {
     "f.workflow.todo.enabled.title": "백로그 큐(todo)",
     "f.workflow.todo.enabled.desc": "백로그 안내를 표시합니다 — 세션 시작 시 대기 카드 요약과 상태줄 TODO 표시. 꺼도 `moai todo` 명령은 그대로 동작합니다.",
     "f.workflow.project.continuation.title": "프로젝트 완료 방식(continuation)",
-    "f.workflow.project.continuation.desc": "`/moai project`가 끝나는 방식입니다 — 첫 기능 백로그 카드를 발급할지, 그리고 권장 다음 단계가 세션을 어디까지 끌고 갈지. 다음 단계 질문을 할지 말지는 이 값이 정하지 않습니다."
+    "f.workflow.project.continuation.desc": "`/moai project`가 끝나는 방식입니다 — 첫 기능 백로그 카드를 발급할지, 그리고 권장 다음 단계가 세션을 어디까지 끌고 갈지. 다음 단계 질문을 할지 말지는 이 값이 정하지 않습니다.",
     "f.workflow.audit.model.title": "감사 모델",
     "f.workflow.audit.model.desc": "병합을 게이트하는 활성 리뷰 백엔드(claude/codex/glm/multi).",
     "f.workflow.audit.gates.claude.title": "Claude 감사 게이트",
@@ -2193,7 +2193,7 @@ window.MOAI_I18N = {
     "f.workflow.todo.enabled.title": "バックログキュー(todo)",
     "f.workflow.todo.enabled.desc": "バックログの案内を表示します — セッション開始時の待機カード要約とステータスラインの TODO 表示。無効でも `moai todo` コマンドはそのまま動きます。",
     "f.workflow.project.continuation.title": "プロジェクト完了の方法(continuation)",
-    "f.workflow.project.continuation.desc": "`/moai project` の終わり方です — 最初の機能のバックログカードを発行するか、そして推奨される次の一手がセッションをどこまで進めるか。次の一手を尋ねるかどうかは、この値では決まりません。"
+    "f.workflow.project.continuation.desc": "`/moai project` の終わり方です — 最初の機能のバックログカードを発行するか、そして推奨される次の一手がセッションをどこまで進めるか。次の一手を尋ねるかどうかは、この値では決まりません。",
     "f.workflow.audit.model.title": "監査モデル",
     "f.workflow.audit.model.desc": "マージをゲートするアクティブなレビューバックエンド(claude/codex/glm/multi)。",
     "f.workflow.audit.gates.claude.title": "Claude 監査ゲート",
@@ -2949,7 +2949,7 @@ window.MOAI_I18N = {
     "f.workflow.todo.enabled.title": "待办队列(todo)",
     "f.workflow.todo.enabled.desc": "显示待办提示 — 会话开始时的等待卡片数量和状态栏 TODO。关闭后 `moai todo` 命令照常工作。",
     "f.workflow.project.continuation.title": "项目收尾方式(continuation)",
-    "f.workflow.project.continuation.desc": "`/moai project` 的收尾方式 — 是否发出首个功能的待办卡片，以及推荐的下一步把会话带到哪一步。是否询问下一步，不由该值决定。"
+    "f.workflow.project.continuation.desc": "`/moai project` 的收尾方式 — 是否发出首个功能的待办卡片，以及推荐的下一步把会话带到哪一步。是否询问下一步，不由该值决定。",
     "f.workflow.audit.model.title": "审计模型",
     "f.workflow.audit.model.desc": "gating 合并的活跃审查后端(claude/codex/glm/multi)。",
     "f.workflow.audit.gates.claude.title": "Claude 审计闸门",
