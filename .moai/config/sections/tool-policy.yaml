@@ -386,34 +386,6 @@ entries:
     owner_agent: orchestrator
     audit: "GCP credentials protection"
     source: ".claude/settings.json#permissions.deny"
-  - tool: "Write"
-    args_pattern: "./secrets/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "secret dir write protection (tamper prevention)"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Write"
-    args_pattern: "~/.ssh/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "SSH key tamper protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Write"
-    args_pattern: "~/.aws/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "AWS credentials tamper protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Write"
-    args_pattern: "~/.config/gcloud/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "GCP credentials tamper protection"
-    source: ".claude/settings.json#permissions.deny"
   - tool: "Edit"
     args_pattern: "./secrets/**"
     risk_tier: irreversible
@@ -442,62 +414,6 @@ entries:
     owner_agent: orchestrator
     audit: "GCP credentials edit protection"
     source: ".claude/settings.json#permissions.deny"
-  - tool: "Grep"
-    args_pattern: "./secrets/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "secret content grep protection (leakage via search)"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Grep"
-    args_pattern: "~/.ssh/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "SSH key grep protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Grep"
-    args_pattern: "~/.aws/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "AWS credentials grep protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Grep"
-    args_pattern: "~/.config/gcloud/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "GCP credentials grep protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Glob"
-    args_pattern: "./secrets/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "secret dir enumeration protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Glob"
-    args_pattern: "~/.ssh/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "SSH key enumeration protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Glob"
-    args_pattern: "~/.aws/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "AWS credentials enumeration protection"
-    source: ".claude/settings.json#permissions.deny"
-  - tool: "Glob"
-    args_pattern: "~/.config/gcloud/**"
-    risk_tier: irreversible
-    decision: deny
-    owner_agent: orchestrator
-    audit: "GCP credentials enumeration protection"
-    source: ".claude/settings.json#permissions.deny"
 
   # -------------------------------------------------------------------------
   # §D.2 Write-tier (filesystem-mutating; current behavior preserved)
@@ -517,13 +433,6 @@ entries:
     decision: allow
     owner_agent: orchestrator
     audit: "file edit (foreground)"
-    source: ".claude/settings.json#permissions.allow"
-  - tool: "MultiEdit"
-    args_pattern: ""
-    risk_tier: write
-    decision: allow
-    owner_agent: orchestrator
-    audit: "multi-file edit (foreground)"
     source: ".claude/settings.json#permissions.allow"
   - tool: "NotebookEdit"
     args_pattern: ""
@@ -870,6 +779,55 @@ entries:
     decision: allow
     owner_agent: orchestrator
     audit: "background shell termination"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "CronCreate"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "schedule a recurring or one-shot prompt in this session"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "CronDelete"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "cancel a scheduled prompt"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "CronList"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "list scheduled prompts"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "EnterPlanMode"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "switch the session into plan mode"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "ExitPlanMode"
+    args_pattern: ""
+    risk_tier: read
+    decision: allow
+    owner_agent: orchestrator
+    audit: "leave plan mode after presenting the plan"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "EnterWorktree"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "enter or create an isolated git worktree for the session"
+    source: ".claude/settings.json#permissions.allow"
+  - tool: "ExitWorktree"
+    args_pattern: ""
+    risk_tier: write
+    decision: allow
+    owner_agent: orchestrator
+    audit: "leave the session worktree (keep or remove)"
     source: ".claude/settings.json#permissions.allow"
 
   - tool: "WebFetch"
