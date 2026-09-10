@@ -236,7 +236,7 @@ m1_to_mN_commit_strategy: "마일스톤마다 커밋 1개(M1, M2, M3 자동 대�
 
 ```yaml
 sync_complete_at: 2026-09-11
-sync_commit_sha: pending-backfill-sync-commit   # backfilled in the follow-up commit (spec-frontmatter-schema.md D3)
+sync_commit_sha: aa40907ae4283f1c6aa6768aa95a58a155a2a80c
 sync_status: complete-with-attributed-preexisting-failure
 frontmatter_status_transitions:
   spec_md: "in-progress -> implemented -> completed (merged into this sync commit)"
