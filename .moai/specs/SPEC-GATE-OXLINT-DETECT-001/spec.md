@@ -2,7 +2,7 @@
 id: SPEC-GATE-OXLINT-DETECT-001
 title: "moai gate Node lint axis — oxlint detection"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-10
 updated: 2026-09-10
 author: manager-spec (card t550)

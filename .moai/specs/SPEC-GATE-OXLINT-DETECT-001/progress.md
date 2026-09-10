@@ -154,4 +154,70 @@ m1_to_mN_commit_strategy: >-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-10
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged into this single sync commit)"
+  plan_md: "n/a - carries no frontmatter (status-axis stateless per spec-frontmatter-schema.md)"
+  acceptance_md: "n/a - carries no frontmatter (status-axis stateless)"
+  progress_md: "n/a - phase state recorded in body sections, not frontmatter"
+  updated_field: "2026-09-10 (spec.md only; the sole artifact carrying frontmatter)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Fixed, first bullet (line 12)"
+b12_self_test_a:
+  name: duplicate-entry pre-emission grep
+  command: "grep -c 'SPEC-GATE-OXLINT-DETECT-001' CHANGELOG.md"
+  observed: "0 (grep exit 1 - no match)"
+  verdict: PASS - no prior entry, emission proceeds
+b12_self_test_b:
+  name: AC count match
+  command: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l"
+  observed: "9 (AC-001 .. AC-009, all live - no [RETIRED]/[REF] markers)"
+  verdict: PASS - non-zero and equal to the count the CHANGELOG entry states
+b12_self_test_c:
+  name: claimed-file-path verification
+  command: "ls -la internal/hook/quality/gate.go internal/hook/quality/gate_oxlint_lint_test.go .claude/rules/moai/languages/javascript.md internal/template/templates/.claude/rules/moai/languages/javascript.md"
+  observed: "all four resolved, ls exit 0"
+  verdict: PASS
+mx_tag_validation:
+  performed_as: sync sub-step (not a separate phase)
+  tags_added: 0
+  finding: >-
+    No MX quality-gate trigger fires on this diff. The change is one entry in
+    the `toolchains` data table - no new exported function, no function reaching
+    fan_in >= 3, no goroutine, no complexity >= 15, and no untested public
+    function (the entry is covered by 7 tests plus 4 subtests). No sibling entry
+    in the table (eslint, biome, or any non-Node toolchain) carries an MX tag, so
+    tagging oxlint alone would break the file's local consistency. gate.go's two
+    existing tags sit on the high-fan_in `Run` function (@MX:ANCHOR fan_in=35);
+    both were left untouched and remain accurate.
+out_of_scope_clauses_standing:
+  zero_config_oxlint: "STANDING - spec.md §5, unedited; verified by re-read at close"
+  co_resident_linter_configs: "STANDING - spec.md §5, unedited; no follow-up card raised"
+  verification: "git diff d060e0d13..<sync commit> -- spec.md shows frontmatter-only change"
+docs_site_judgement:
+  verdict: no docs-site or README edit warranted
+  scope: reported only - not acted on (lead-scoped card)
+  detail: >-
+    See the sync report. The four-locale `utility-commands/moai-gate.md` pages
+    carry no Node linter list; they name Go and Python as illustrative toolchains
+    only. The eslint/biome mentions elsewhere in docs-site are generic tooling
+    examples in unrelated subsystems, not a mirror of the gate's Node lintSteps.
+sync_scope:
+  files_changed: 3
+  paths:
+    - CHANGELOG.md
+    - .moai/specs/SPEC-GATE-OXLINT-DETECT-001/spec.md
+    - .moai/specs/SPEC-GATE-OXLINT-DETECT-001/progress.md
+  spec_body_modified: false
+  plan_or_acceptance_modified: false
+  implementation_source_modified: false
+```
+
+> **`sync_commit_sha` placeholder.** A commit cannot cite its own hash, so the
+> sync commit writes the canonical `pending-backfill-sync` placeholder and the
+> real SHA lands in the immediately following commit. This is the sanctioned D3
+> backfill window (`spec-frontmatter-schema.md` § SHA placeholder backfill
+> exemption), not a defect; leaving the slot empty would record no owed work and
+> is the failure mode the placeholder exists to prevent.
