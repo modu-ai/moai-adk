@@ -14,7 +14,10 @@ to the operator (`spec.md` §3).
 
 - The defect is live on develop; the secret-scan section is unchanged since main.
 - On this repository, 14 of 15 full-scan matches are reachable only through refs other than HEAD;
-  their content was not examined (`cost-baseline.md` § Gaps).
+  their content was not examined (`cost-baseline.md` § Gaps). The lead later classified all
+  matches by file path only as examples or fixtures — 0 real-leak candidates by path and shape,
+  with the gap that a path-only judgement cannot tell a real value inside a documentation or
+  example folder apart (`spec.md` §3.3; lead-reported, not re-measured by the lane).
 - The only cost measurement was taken under heavy contention.
 
 ## §C Pre-flight (before any document edit)
@@ -102,6 +105,11 @@ the first document-edit commit). Populate `progress.md` §E.2 and §E.3.
 - **Regex alternatives:** only the PEM-header alternative was exercised.
 - **Cost is repository-specific and contended:** the ratio on a project with few branches is not
   measured.
+- **Full-history steps surface known example matches:** on this repository, full-history steps
+  (Option 1 on every review, Option 3's periodic scan, Option 2's first scan — the last inferred)
+  report the 15 path-classified example/fixture matches (`spec.md` §3.3). Handling them — an
+  example-value allowlist or path exclusions — is a follow-on operator decision, and path
+  exclusions narrow scan coverage (inferred, not measured).
 - **No enforcement:** the checkpoint is prose; whether any agent runs this section is not observed.
 
 ## §H Anti-patterns to avoid

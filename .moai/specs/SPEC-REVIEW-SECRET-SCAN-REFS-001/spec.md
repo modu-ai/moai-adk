@@ -1,7 +1,7 @@
 ---
 id: SPEC-REVIEW-SECRET-SCAN-REFS-001
 title: "Review workflow secret scan — coverage of refs not reachable from HEAD"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-10
 updated: 2026-09-10
@@ -26,6 +26,8 @@ tier: M
 - The choice between the options in §3 is **deliberately left open**. The card reserves any
   narrowing of security-scan coverage for cost to the operator; this SPEC records the options
   and does not choose.
+- 2026-09-10 (0.1.1): §3.3 folds in the lead's path-only classification of the full-scan matches
+  (lead-reported, not re-measured by the lane). The decision in §3 is still pending.
 
 ## §1 Background and problem statement
 
@@ -68,7 +70,9 @@ merged.
 Source: `cost-baseline.md`. The full `--all` scan matched the regex in **15** commits: **1**
 reachable from HEAD, **14** reachable only through other refs. The content of those commits was
 deliberately not examined; they may be fixtures, documentation examples, or real leaks. A
-HEAD-anchored incremental scan would never reach the 14.
+HEAD-anchored incremental scan would never reach the 14. For the lead's later path-only
+classification of these matches (0 real-leak candidates by path and shape, with the gap that a
+path cannot tell a real value inside a documentation or example folder apart), see §3.3.
 
 ## §2 GEARS requirements
 
@@ -160,6 +164,44 @@ full scan runs. The period is not specified here and would be part of the operat
 
 Common to Options 1 and 2 (inferred, not measured): `--all` follows refs, so commits reachable only
 from a reflog, or from no ref at all, are outside both.
+
+### §3.3 Design input — full-scan matches on this repository
+
+**Attribution.** The classification below was reported by the lead after this SPEC was first
+drafted. It is the lead's classification **by file path only** — the content of the matched
+commits was never opened — and this lane has neither re-measured nor verified it.
+
+- The 15 commits matched by the full `--all` scan (§1.2) contain 22 matching file pairs. The lead
+  classified all 22 by path as examples or fixtures: a template example file, skill example and
+  security-explanation documents, Go test fixtures, and a `.gitignore` whose three matching lines
+  equal AWS's published documentation example key (compared without printing the value).
+- Real-leak candidates by path and shape: **0**.
+- The matches are mostly copies of an old Python tree.
+- **Gap (named by the lead):** a path-based judgement cannot, in principle, tell a real value placed
+  inside a documentation or example folder apart from an example value. The 0 above is a
+  classification by path and shape, not a statement about content.
+
+**Which steps surface these matches.** On the current history, a step whose scope reaches these
+commits reports them as matches:
+
+- Option 1 — on every review, since every review runs the full `--all` scan.
+- Option 3 — at each periodic full scan.
+- Option 2 — on its first completed scan, which has no previous tips to exclude and so reaches the
+  full ref-reachable history (**inferred, not measured**; §3.2 records no fixture or timing
+  measurement for Option 2).
+- The procedure the workflow document prescribes today — its first-run full scan reaches them too.
+
+**Follow-on decision.** Any option that runs a full-history step therefore needs a way to handle
+known example values: an example-value allowlist or path exclusions. That choice is also reserved
+to the operator, and is separate from the coverage-versus-cost choice above.
+
+- Path exclusions remove the excluded paths from scan coverage, so they are themselves a coverage
+  narrowing — the class of choice card t629 reserves to the operator (**inferred, not measured**).
+- An allowlist keyed on exact example values narrows coverage less, because a value that differs
+  from the listed examples is still reported wherever it sits (**inferred, not measured**).
+
+This subsection records design input only. It does not choose an option or a handling method; the
+decision above remains pending.
 
 ## §4 Constraints
 
