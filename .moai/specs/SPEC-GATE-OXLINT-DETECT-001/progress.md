@@ -156,7 +156,7 @@ m1_to_mN_commit_strategy: >-
 
 ```yaml
 sync_complete_at: 2026-09-10
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: e597a9ac1ebe294a485b86a72298b17fa7f3a7e2
 sync_status: complete
 frontmatter_status_transitions:
   spec_md: "in-progress -> implemented -> completed (merged into this single sync commit)"
