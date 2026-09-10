@@ -70,6 +70,28 @@ pathInsideTempDir=true isTemp=false (reason "") git=false root=…/001/link/.moa
 
 셀렉터 대조: 정적 목록(`cli-todo-selector-static.txt`)은 165개였지만 그중 3개(`TestSaveBoolAnswerTodoEnabled`, `TestTodoEnabledQuestion`, `TestTodoEnabledTranslationsExist`)는 하위 패키지 `internal/cli/wizard/todo_enabled_test.go` 소속이다. git pathspec 의 `*` 가 디렉터리를 넘어 매칭해 과다 집계됐다. `./internal/cli/` 패키지 기준 기대치는 162이고, 실행 이름 집합과 `comm` 대조 결과 양방향 차이 0이다. SKIP 1개는 `TestAxisACanaryHomeSweep_TodoFamily` — `MOAI_AXIS_A_CANARY_SWEEP=1` 을 켜야 자식 `go test` 를 띄우는 opt-in canary 라 의도적으로 돌리지 않았다.
 
+### 2.5 통합 창 — 흡수와 병합 트리 재측정 (2026-09-10, 리드 지명)
+
+| 단계 | 명령 | 관측 |
+|---|---|---|
+| 창 획득 | `moai integration acquire --name lane-10` | exit 0, `release-integration window acquired by b52e4248-… on WT-root-rederive` (`window-acquire.txt`) |
+| 흡수 전 | `git rev-list --count --left-right develop...HEAD` | `26 2`, develop = `80e9e0039` |
+| 흡수 | `git merge --no-ff … develop` | exit 0, HEAD `146622b4f` (`absorb-merge.txt`) |
+
+델타 판정 (흡수 범위 `d3b7d438d..80e9e0039`):
+- `git diff --name-only d3b7d438d 80e9e0039` → 50 파일, `go.mod`/`go.sum` 0. 패키지 계열: `internal/cli`, `internal/mx`, `internal/session`, `internal/template`(템플릿 비 Go 파일은 embed 하는 `internal/template` 로 귀속).
+- 서브트리 해시: `internal/kanban` `edca4c15` 불변 · `internal/web` `55471e04` 불변 · `internal/template` `9ee2c67f → b7dab51d` 변경.
+- `go list -deps -test ./internal/kanban ./internal/web` (병합 트리, 로컬 패키지 76개)와 대조: 정확히 일치하는 것은 `internal/mx`, `internal/session`, `internal/template` 셋이다. `internal/cli` 는 접두로만 걸렸고 실제 의존은 하위 패키지 `internal/cli/preference`·`internal/cli/specid` 인데, 흡수 범위의 cli 변경은 루트 패키지 `internal/cli` 파일뿐이라 교집합이 아니다. 교집합이 비어 있지 않으므로 kanban·web 은 병합 트리에서 재측정 대상. 대조군 `internal/kanban` 1.
+
+병합 트리(`146622b4f`) 재측정:
+
+| 명령 | 결과 | 파일 |
+|---|---|---|
+| `go test ./internal/kanban/ -count=1 -v` | exit 0, `ok … 170.351s`, 최상위 `--- FAIL` 0, `TestT549_*` 3개 이름으로 PASS | `merged-kanban.txt` |
+| `go test ./internal/web/ -count=1` | exit 0, `ok … 19.974s` | `merged-web.txt` |
+
+internal/cli 는 리드 면제로 병합 트리에서 돌리지 않았다(§5 Gap 4).
+
 ## 3. 스윕 — 「루트를 받는 함수가 그것을 무엇으로 취급하는가」
 
 production Go(`*_test.go` 제외)의 해당 함수 전수. 명령: `git grep -n -E 'resolveStateDir\(|BacklogPathForRoot|homeTodoQueueRoot|fallbackTodoQueueRoot|ResolveTodoQueueRoot|StateDirForRoot\(|RuntimeStateDirForRoot\(' -- '*.go' ':!*_test.go'`
