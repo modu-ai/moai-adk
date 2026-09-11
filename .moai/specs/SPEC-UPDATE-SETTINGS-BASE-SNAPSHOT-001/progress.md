@@ -253,6 +253,22 @@ ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.613s	coverage: 90.
 
 Coverage is at or above the M1 baseline (merge 92.1 → 92.9, backup 90.1 → 90.3). `internal/merge` and `internal/template/templates/` are untouched (`git diff --stat 41a470641 HEAD -- internal/merge internal/template/templates` is empty — re-measure after the final commit per AC-USB-015).
 
+### §E.2.9 AC-USB-015 — repository hygiene (after commit, tree `45956bd92`)
+
+`<CARD_BASE>` = `git merge-base develop HEAD` = `0db675bedcae69c7ade2f02f106649a715fb14f6`.
+
+| Command | Output | exit | Expected |
+|---|---|---|---|
+| `git check-ignore -v .moai/cache/template-snapshot/claude/settings.json` | `.gitignore:352:.moai/cache/	.moai/cache/template-snapshot/claude/settings.json` | 0 | 0, rule `.moai/cache/` ✓ |
+| `git check-ignore -v .moai/cache/template-snapshot/claude/settings.json.pending` | `.gitignore:352:.moai/cache/	.moai/cache/template-snapshot/claude/settings.json.pending` | 0 | 0 ✓ |
+| `git check-ignore -v .claude/settings.json` | (empty) | 1 | 1 (control) ✓ |
+| `git diff --name-only <CARD_BASE>..HEAD \| wc -l` (measured at `b5b5883e9`) | `53` | 0 | ≥ 1 (control) ✓ |
+| `git diff --name-only <CARD_BASE>..HEAD -- internal/merge/ internal/template/templates/` | (empty) | 0 | empty ✓ |
+| `git diff <CARD_BASE>..HEAD -G 'Setenv\("HOME"' --name-only -- '*_test.go'` | (empty) | 0 | empty ✓ |
+| positive control: same range, `-G 'homeSeamSpy'` | `internal/cli/update_settings_snapshot_test.go` | 0 | non-empty ✓ |
+
+The first `-G 'Setenv\("HOME"'` run at `b5b5883e9` printed `internal/cli/update_settings_snapshot_test.go`: a file comment spelled out the forbidden call. No code called it; the comment was reworded in `45956bd92` and the check re-run above. The line count (53) includes plan-phase commits between the card base and the run base.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M4/M5-cli/M6 evidence from the lead slot is still owed; see §E.2.8>_
