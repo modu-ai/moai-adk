@@ -45,7 +45,7 @@ plan-auditor iter1 returned FAIL 0.74 (Tier M threshold 0.80; Testability 0.55; 
   included).
 - D2 — every deciding command moved out of the matrix into fenced blocks CMD-ILT-001..016; §A.2
   requires `-v`, no `no tests to run`, and one `--- PASS:` line per named test. Measured in this
-  pass: `printf '+%s\n' 'see t637 and SPEC-X-001' | grep '^+[^+]' | grep -cE 't[0-9]{3}|SPEC-|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9}'`
+  pass: the AC-ILT-012 positive-control pipeline `printf '+%s\n' '<sample with a card-id token>' | grep '^+[^+]' | grep -cE 't[0-9]{3}|SPEC-|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9}'`
   → `1` (the AC-ILT-012 positive control matches); `grep -c '^\[moai:integration-lock\] warning:'`
   → `1` on a sample holding the line, `0` on a sample without it.
 - D3 / D4 — AC-ILT-007 adds github-flow + EMPTY develop and personal-mode git-flow + EMPTY develop
@@ -54,6 +54,35 @@ plan-auditor iter1 returned FAIL 0.74 (Tier M threshold 0.80; Testability 0.55; 
   case-sensitively.
 - Every pre-existing test name cited in CMD-ILT-002/007/015/016 exists: a `git grep` for the 13
   `func <Name>(` declarations over `internal/cli` and `internal/template` found 13.
+
+### iter-2 audit repair (v0.3.0)
+
+plan-auditor iter2 returned FAIL 0.88 with three blocking findings (report
+`.moai/reports/t637/plan-audit-SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001-iter2.md`). Operator granted
+one extra iteration (iter3 final). Repaired on HEAD `e51428db1`; acceptance.md and plan.md only,
+no requirement or scope change:
+
+- N1 — every fixture call and CMD-ILT-010(b) spells `/tmp/t637-fx-bin/moai`; the `BIN` variable is
+  gone. `EV` remains, used only as a redirect/file argument (the iter2 guard probe accepted that
+  form). Measured in this pass: `grep -n '\$BIN'` over acceptance.md matches only the §A.4 prose
+  that explains the refusal.
+- N2 — row b names only `TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn`, with the
+  parenthetical corrected; new row i (absent config treated as git-flow) names
+  `TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn`; §D.6 reads "rows a-i".
+- N3 — the three fixture cells run `acquire` inside `( cd /tmp/t637-fx-wt/cardA && … )`; every
+  command using worktree-relative paths (CMD-ILT-001..010, 014, 015, 016, §D.5) begins with
+  `cd /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637 &&` in its own invocation.
+- N4 — the seam test is `TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch`, selected with
+  `^(…)$`.
+- N5 — CMD-ILT-014 adds a fourth count, `--card <` on the release line, expected `0`.
+- N6 — the positive control is `'see t637 here'`; measured in this pass through the same pipeline
+  → `1`. The earlier SPEC-ID-shaped sample string was also removed from this file.
+- iter1 D13 remains **declined**. The `OwnershipTransitionUnmeasured` INFO names the
+  `(none) → draft` creation commit `a3b913b85`, which has already landed; a trailer on any later
+  commit does not measure that transition, and rewriting the landed commit is out of bounds. In
+  addition, git only reads a custom trailer from the message's final paragraph, and this card's
+  dispatch requires `🗿 MoAI` to be the final line, so a trailer cannot be both parsed and
+  compliant. The INFO does not affect the lint exit status.
 
 ## §E.2 Run-phase Evidence
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001
 title: "Integration lock: surface the branch's provenance and the card in the window record (card t637)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -22,6 +22,7 @@ tier: M
 |---|---|---|---|
 | 0.1.0 | 2026-09-11 | manager-spec | Initial draft (card t637). Scope = operator decision "option C, all four items", recorded in `.moai/reports/t637/verdict.md` §8. |
 | 0.2.0 | 2026-09-11 | manager-spec | plan-audit iter1 repair (`.moai/reports/t637/plan-audit-SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001-iter1.md`, FAIL 0.74). REQ-ILT-006 fixes when the warning is emitted (after the record is written; never on a refused acquire) — D10. REQ-ILT-010 narrowed to the sites enumerated in §B premise 7, with runtime guidance messages excluded in §E — D6. §D adds `internal/template` to the verification scope — D7. acceptance.md rewritten for D1-D5, D11, D12, D15. |
+| 0.3.0 | 2026-09-11 | manager-spec | plan-audit iter2 repair (`.moai/reports/t637/plan-audit-SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001-iter2.md`, FAIL 0.88), acceptance.md and plan.md only — no requirement, design, or scope change. N1: the fixture binary is written literally, the `BIN` variable is removed. N2: mutation row b names only the github-flow cell; new row i (absent config treated as git-flow) names the no-config cell. N3: fixture `cd` runs in a subshell and every relative-path command carries its own `cd`. N4: the seam test is named concretely with an anchored selector. N5: the release line is checked to carry no `--card <`. N6: the neutrality positive control is no longer SPEC-ID-shaped. iter1 D13 (ownership trailer) stays declined — reason recorded in `progress.md` §E.1. |
 
 ## §A Context and Problem
 
@@ -185,4 +186,4 @@ any other tree.
 | Documented invocations | REQ-ILT-010 | AC-ILT-011 |
 | Template mirror | REQ-ILT-011 | AC-ILT-012 |
 | Invariants | REQ-ILT-012, 013 | AC-ILT-013 |
-| Mutation guard (rows a-h) | REQ-ILT-001, 003, 005, 006, 007, 008 | AC-ILT-014 |
+| Mutation guard (rows a-i) | REQ-ILT-001, 003, 005, 006, 007, 008 | AC-ILT-014 |

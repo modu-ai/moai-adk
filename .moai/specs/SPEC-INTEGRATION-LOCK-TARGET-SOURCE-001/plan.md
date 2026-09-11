@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001
 title: "Implementation plan — integration lock target provenance and card visibility (card t637)"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec
@@ -111,8 +111,9 @@ could not read.
 premise 2). Run-phase adds a way to learn "the project is git-flow" separately from "the develop
 branch value", in `internal/config/loader_integration_branch.go`, without changing the existing
 function's contract: the existing test functions in `loader_integration_branch_test.go` (notably
-`TestLoadGitFlowDevelopBranch`) are not modified, and the seam's new tests are ADDED to that file
-(acceptance CMD-ILT-016 runs both). Shape
+`TestLoadGitFlowDevelopBranch`) are not modified, and the seam's new test —
+`TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch` — is ADDED to that file
+(acceptance CMD-ILT-016 runs both with an anchored `-run` selector). Shape
 (second return value, sibling predicate, or small struct) is run-phase latitude; the constraint
 is one file read per `acquire` and no new exported behavior beyond the predicate.
 
@@ -194,7 +195,7 @@ phrase and must not reintroduce "Branch being integrated".
 
 **M6 — Fixture controls and mutation guard (Priority High).** In the lead-gated compile slot,
 build `/tmp/t637-fx-bin/moai` from this worktree (acceptance.md §A.4), run fixture cells C1′, C2′,
-C3′ (CMD-ILT-011..013) and the mutation rows a-h (§D.3); evidence lands in
+C3′ (CMD-ILT-011..013) and the mutation rows a-i (§D.3); evidence lands in
 `.moai/reports/t637/ac-evidence/` and is cited in `progress.md` §E.2.
 
 **M7 — Documentation (Priority Medium, mechanical, last).** §E1 edits, `make build`, the
