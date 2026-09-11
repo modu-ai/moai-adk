@@ -32,6 +32,12 @@ type CachedEntry struct {
 
 	// PlanArtifactHash is the SHA-256 hash of plan artifacts at audit time.
 	PlanArtifactHash string
+
+	// OverallScore and ScorePresent carry the score parsed from the durable
+	// plan-phase review. Keeping the presence bit preserves compatibility with
+	// older review files that predate the snapshot metadata contract.
+	OverallScore float64
+	ScorePresent bool
 }
 
 // AuditCache provides plan artifact hashing and sticky (hash-keyed) verdict caching.
