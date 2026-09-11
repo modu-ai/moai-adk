@@ -1,0 +1,9 @@
+=== RUN   TestRunInit_FlagFullyAutonomousWithoutProofDowngrades
+2026/09/12 04:05:15 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t656/internal/cli/.moai/config/sections
+2026/09/12 04:05:16 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_FlagFullyAutonomousWithoutProofDowngrades3908775445/002/tier-proj/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestRunInit_FlagFullyAutonomousWithoutProofDowngrades (0.59s)
+=== RUN   TestCleanReinstall_NoFallbackEmitsNothing
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-207432390
+--- PASS: TestCleanReinstall_NoFallbackEmitsNothing (0.22s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.784s
