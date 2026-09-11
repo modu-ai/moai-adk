@@ -1,0 +1,49 @@
+=== RUN   TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap
+=== RUN   TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap/N1
+    sync_gate_failstate_unix_test.go:197: AC-015 N1 run 1: marker observed for this run; process group killed
+    sync_gate_failstate_unix_test.go:197: AC-015 N1 run 2: marker observed for this run; process group killed
+    sync_gate_failstate_unix_test.go:173: call 1 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 2 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 3 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 4 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 5 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 6 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 7 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 8 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 9 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the gate run for this HEAD has not completed and its one stale re-run was already used, so no checks ran this turn. Delete .moai/state/sync-quality-gate.last to force a new gate run.\"}\n"
+    sync_gate_failstate_unix_test.go:211: AC-015 N1 [release-blocking] summary: nonzero-exit=0 missing-systemMessage=0 decision-count=0 stub-delta=0
+=== RUN   TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap/N2a
+    sync_gate_failstate_unix_test.go:173: call 1 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 2 stdin={"stop_hook_active":true} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 3 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 4 stdin={"stop_hook_active":true} exit=0 stdout=""
+    sync_gate_failstate_unix_test.go:173: call 5 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 6 stdin={"stop_hook_active":true} exit=0 stdout=""
+    sync_gate_failstate_unix_test.go:173: call 7 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 8 stdin={"stop_hook_active":true} exit=0 stdout=""
+    sync_gate_failstate_unix_test.go:173: call 9 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking] summary: nonzero-exit=0 missing-systemMessage=3 decision-count=5 stub-delta=2
+    sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking]: 3 of 9 stdouts lack "systemMessage"
+    sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking]: 5 of 9 stdouts carry "decision"; want exactly 0
+    sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking]: stub count grew by 2 across the 9 runs; want 0
+    sync_gate_failstate_unix_test.go:226: AC-015 N2a [release-blocking]: record after run 9 = "0dabab764e51b318c8dfd3968411b3f0e764968b fail"; want "0dabab764e51b318c8dfd3968411b3f0e764968b running"
+=== RUN   TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap/N2b
+    sync_gate_failstate_unix_test.go:173: call 1 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 2 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 3 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 4 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 5 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 6 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 7 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 8 stdin={"stop_hook_active":true} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:173: call 9 stdin={} exit=0 stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+    sync_gate_failstate_unix_test.go:239: AC-015 N2b [release-blocking] summary: nonzero-exit=0 missing-systemMessage=0 decision-count=0 stub-delta=0
+=== NAME  TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap
+    sync_gate_failstate_unix_test.go:242: AC-015 swept invocations: 27 (want 27)
+--- FAIL: TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap (13.89s)
+    --- PASS: TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap/N1 (4.65s)
+    --- FAIL: TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap/N2a (4.62s)
+    --- PASS: TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap/N2b (4.62s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	14.604s
+FAIL

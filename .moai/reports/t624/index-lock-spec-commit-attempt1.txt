@@ -1,0 +1,38 @@
+attempt 1 — commit of the SPEC revision (lead decisions B1-B6) on WT-sync-gate-failstate (2026-09-10)
+
+command:
+git rev-parse --short HEAD && git branch --show-current && git --no-optional-locks status --short && git add <4 SPEC files> && git commit -q -m "docs(t624): apply lead decisions B1-B6 to sync gate failure-state SPEC ... Authored-By-Agent: manager-spec" && ...
+
+exit code: 128
+
+full output:
+b569c5446
+WT-sync-gate-failstate
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/acceptance.md
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/plan.md
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/progress.md
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/spec.md
+fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t624/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+
+Post-failure observations:
+- HEAD: b569c5446 (unchanged) · MERGE_HEAD: absent (`git rev-parse -q --verify MERGE_HEAD` exit 1)
+- 18:02:37 `stat` on .git/worktrees/t624/index.lock → No such file or directory (already released)
+- staging (`git --no-optional-locks status --short`): all 4 SPEC paths show `M ` — the `git add` step landed; the failure was the `git commit` step
+- running git processes at the probe: two `git status --porcelain --branch` with etime 00:00 (short-lived). Consistent with a periodic status refresh taking the index write lock; NOT established as the holder of this worktree's lock
+Reading: third transient lock of the same shape in this worktree (see index-lock-attempt1.txt for the evidence-commit case). Not removed by hand. Retry = attempt 2 of 3 (commit only; the staged set is already correct).
+
+attempt 2 — same command plus `git add` of this record file: exit 128, same "index.lock: File exists" message.
+- this time the failing step was `git add` (this file still `??` afterwards; the 4 SPEC paths stayed `M `)
+- 18:03:24 `stat` on the lock → No such file or directory · HEAD b569c5446 · MERGE_HEAD absent
+
+attempt 3 — a single lock-taking invocation: `git commit` of the already-staged 4 SPEC paths only (this record file deliberately left out to halve lock exposure).
+- result: commit 6eda95337 · `git log -1 --format='%(trailers:key=Authored-By-Agent,valueonly)'` → manager-spec
+- processes sampled in the same turn:
+  - `git clean -ffdx` pid 11250 → cwd /Users/goos/actions-runner-modu-ai/_work/mo.ai.kr/mo.ai.kr, parent = actions/checkout node process (a GitHub Actions runner for a different repository — unrelated to this worktree)
+  - `moai statusline` pid 12282 ← `cc-statusline.sh` pid 12278 ← pid 22103, the pid `moai integration status` reported for this lane's own session. A status refresh from this session is a plausible lock holder; not proven (no lock-time sample caught it holding .git/worktrees/t624/index.lock).
