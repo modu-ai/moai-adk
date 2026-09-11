@@ -432,11 +432,11 @@ Before Phase 11, determine the development methodology by reading `.moai/config/
 
 Steps:
 1. Load implementation plan from Phase 6 task decomposition
-2. Invoke sync-auditor to review the plan:
+2. Invoke `plan-auditor` to review the pre-implementation plan:
    - Identify missing edge cases in proposed test coverage
    - Flag security concerns in the implementation approach
    - Verify acceptance criteria are specific and testable
-3. sync-auditor produces contract proposal with:
+3. plan-auditor produces a contract proposal with:
    - Done criteria (specific test cases that must pass)
    - Edge cases identified for coverage
    - Hard thresholds (coverage %, performance targets, security requirements)
@@ -444,7 +444,7 @@ Steps:
 5. Maximum 2 negotiation rounds. If no agreement after 2 rounds, proceed with evaluator's recommendations as the contract.
 
 Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="sync-auditor")
+- Sub-agent mode: Agent(subagent_type="plan-auditor")
 - CG mode: Leader performs contract negotiation inline
 
 **Output**: `.moai/specs/SPEC-{ID}/contract.md`
