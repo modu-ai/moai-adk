@@ -1,0 +1,10 @@
+355:#### Step 3.4: Auto-Merge Behavior
+362:- `is_worktree_context == true` AND `--no-merge` flag NOT set
+363:- OR `--merge` flag explicitly set (deprecated, logged as warning)
+368:3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+373:- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged.
+374:- `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
+380:3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+381:4. Checkout target branch, fetch latest
+421:#### Context-Aware Next Steps
+429:- Auto-Merge PR (/moai sync --merge)

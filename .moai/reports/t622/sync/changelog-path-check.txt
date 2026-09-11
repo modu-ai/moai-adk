@@ -1,0 +1,12 @@
+-rw-r--r--@ 1 goos  staff  10574 Sep 11 21:13 .claude/agents/moai/manager-git.md
+-rw-r--r--@ 1 goos  staff    209 Sep 11 21:05 .claude/commands/moai/sync.md
+-rw-r--r--@ 1 goos  staff  32370 Sep 11 21:04 .claude/skills/moai/SKILL.md
+-rw-r--r--@ 1 goos  staff   8775 Sep 11 21:04 .claude/skills/moai/references/reference.md
+-rw-r--r--@ 1 goos  staff  13883 Sep 11 21:04 .claude/skills/moai/workflows/sync.md
+-rw-r--r--@ 1 goos  staff  24721 Sep 11 21:12 .claude/skills/moai/workflows/sync/delivery.md
+-rw-r--r--@ 1 goos  staff  16183 Sep 12 00:02 .claude/skills/moai/workflows/sync/doc-execution.md
+-rw-r--r--@ 1 goos  staff  10978 Sep 11 21:04 .claude/skills/moai/workflows/sync/quality-gates-context.md
+-rw-r--r--@ 1 goos  staff  17434 Sep 11 21:33 .moai/reports/t622/run/run-report.md
+-rw-r--r--@ 1 goos  staff  69329 Sep 11 21:08 .moai/specs/SPEC-GIT-DELIVERY-PROCEDURE-001/spec.md
+-rw-r--r--@ 1 goos  staff    523 Sep 11 21:05 internal/template/templates/.claude/commands/moai/sync.md.tmpl
+-rw-r--r--@ 1 goos  staff  10628 Sep 11 21:21 internal/template/templates/.codex/agents/moai/manager-git.toml

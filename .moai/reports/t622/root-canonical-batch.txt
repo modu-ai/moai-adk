@@ -1,0 +1,7 @@
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:14:### Canonical 7-item example
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:118:gh pr checks <PR> --json name,state,conclusion | jq '.[] | select(.conclusion != "SUCCESS")'
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:121:# Avoid: gh pr checks <PR> | grep -E 'FAIL|PENDING'  (string parsing, brittle)
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:126:[ZONE:Evolvable] [HARD] The query above **samples** CI once. When the orchestrator instead needs to **wait** for checks to reach a terminal state, it MUST use `gh pr checks --watch`, and it MUST issue that command in the Bash tool's background mode. A hand-rolled `sleep`-and-poll loop is prohibited.
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:130:gh pr checks <PR> --watch --fail-fast
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:141:for i in 1 2 3 4 5; do sleep 60; gh pr checks <PR>; done
+HEAD:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md:168:  `gh pr checks --json` and `jq` literals in proximity.

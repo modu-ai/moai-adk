@@ -1,0 +1,5 @@
+p2-local-skill.md:1: Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx
+p2-local-qgc-flags.md:5: - --merge: deprecated alias of --auto-merge (logs a warning).
+p2-local-sync.md:1: **Flags**: `--pr` (PR 생성) | `--auto-merge` (auto-merge 옵트인) | `--merge` (deprecated alias of `--auto-merge`) | `--skip-mx` (MX 검증 스킵)
+p2-local-dl.md:11: - OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
+p2-local-dl.md:28: - `--merge`: deprecated alias of `--auto-merge` (logs a warning).

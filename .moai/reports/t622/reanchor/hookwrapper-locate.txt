@@ -1,0 +1,1 @@
+internal/hook/wrapper_copies_contract_test.go:73:func TestHookWrapperCopiesStayIdentical(t *testing.T) {

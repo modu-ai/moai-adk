@@ -1,0 +1,2 @@
+snapshot-stale-recheck test-e exit=0
+snapshot-stale-recheck test-s exit=1 (expect 1)

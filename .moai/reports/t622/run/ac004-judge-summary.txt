@@ -1,0 +1,4 @@
+local squash=0 resolved=2 source-exit=0
+377:`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
+template squash=0 resolved=2 source-exit=0
+352:`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).

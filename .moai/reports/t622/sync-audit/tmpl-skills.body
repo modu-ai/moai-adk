@@ -1,0 +1,42 @@
+-argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"
++argument-hint: "[SPEC-XXX] [--auto-merge] [--skip-mx]"
+-Modes: auto, force, status, project. Flags: --merge, --skip-mx
++Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx
+-- --merge: Auto-merge PR and clean up branch after sync
++- --auto-merge: Opt in to auto-merge the PR and clean up the branch after sync
+-/moai sync [mode] [--pr] [--merge] [--skip-mx]
++/moai sync [mode] [--pr] [--auto-merge] [--skip-mx]
+-**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
++**Flags**: `--pr` (PR 생성) | `--auto-merge` (auto-merge 옵트인) | `--merge` (deprecated alias of `--auto-merge`) | `--skip-mx` (MX 검증 스킵)
++Merging is opt-in. The single criterion is the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge; worktree context alone never triggers a merge.
++
+-- `is_worktree_context == true` AND `--no-merge` flag NOT set
+-- OR `--merge` flag explicitly set (deprecated, logged as warning)
++- `--auto-merge` flag set
++- OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
++
++Mode conditions (same as `manager-git.md` § PR Auto-Merge):
++- In team mode, `--auto-merge` merges only after all approvals are obtained.
++- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
+-3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
++3. If all checks pass: Execute `gh pr merge --<merge_method> --delete-branch`
++`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
++
+-- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged.
+-- `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
++- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions above.
++- `--merge`: deprecated alias of `--auto-merge` (logs a warning).
++- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default.
+-3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
++3. If passing and mergeable: Execute `gh pr merge --<merge_method> --delete-branch`
+-- Auto-Merge PR (/moai sync --merge)
++- Auto-Merge PR (/moai sync --auto-merge)
+-- Store result as `is_worktree_context` boolean for use in Phase 13
++- Store result as `is_worktree_context` boolean as informational context only; no later phase reads it
+-This affects auto-merge behavior: worktree contexts default to auto-merge.
++This does not decide auto-merge: the PR merges only on the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge, never on worktree context alone.
+-  - Flag: --merge
++  - Flag: --auto-merge
+-- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
++- --auto-merge: After sync, auto-merge PR and clean up branch (opt-in; merge conditions per `manager-git.md` § PR Auto-Merge). Worktree/branch environment is auto-detected from git context.
++- --merge: deprecated alias of --auto-merge (logs a warning).
