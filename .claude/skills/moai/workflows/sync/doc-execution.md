@@ -115,7 +115,7 @@ Display sync plan report and present options:
 - Proceed with Sync
 - Request Modifications (re-run Phase 11)
 - Review Details (show full project results, re-ask)
-- Abort (exit with no changes)
+- Abort (exit with a mutation-aware report; “no changes” requires verified key equality)
 
 ### Phase 12: Execute Document Synchronization
 

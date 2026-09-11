@@ -444,12 +444,18 @@ Tool: AskUserQuestion with options tailored to delivery result (single-phase con
 
 ## Graceful Exit
 
-When user aborts at any decision point:
+When the user aborts at any decision point, follow
+`.claude/rules/moai/workflow/graceful-exit-mutation-contract.md`:
 
-- No changes made to documents, Git history, or branch state
-- Project remains in current state
-- Display retry command: /moai sync [mode]
-- Exit with code 0
+- Capture `before_tree_key` and `after_tree_key`, then list changed paths and
+  applied/unapplied operations.
+- Say “no changes” only when the keys are equal and no mutation was observed.
+- If a writer ran, report partial changes and rollback status; claim restored
+  paths only after the post-rollback key is verified.
+- Always display the abort reason, evidence gaps, and retry command:
+  `/moai sync [mode]`.
+- Exit with code 0 only as the workflow's control-flow result; it never erases
+  a mutation report.
 
 ---
 
