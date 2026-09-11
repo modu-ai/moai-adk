@@ -68,45 +68,53 @@
 
 set -e
 
-# --- detect_language: directly-invocable, side-effect-free language detector ---
-# Echoes a single language token (go|node|python|rust) or empty string when no
-# recognized marker is present. Marker priority follows the language matrix order.
-# This function MUST remain source-able so it can be unit-tested without first
-# passing the sync-phase-commit git gate below.
-detect_language() {
+# --- detect_languages: directly-invocable, side-effect-free language detector ---
+# Emits one token per line for every language evidenced by a manifest or source
+# suffix. Kotlin Gradle projects are distinguished from Java before the
+# backward-compatible single-language wrapper below is used. This function
+# remains source-able for focused unit tests.
+detect_languages() {
     root="${1:-.}"
-    # Marker priority follows the language matrix order (16 supported languages)
-    if [ -f "$root/go.mod" ]; then
-        echo "go"
-    elif [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ]; then
-        echo "python"
-    elif [ -f "$root/package.json" ]; then
-        echo "node"
-    elif [ -f "$root/Cargo.toml" ]; then
-        echo "rust"
-    elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ]; then
-        echo "java"
-    elif [ -f "$root/Gemfile" ]; then
-        echo "ruby"
-    elif [ -f "$root/composer.json" ]; then
-        echo "php"
-    elif [ -f "$root/mix.exs" ]; then
-        echo "elixir"
-    elif [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ]; then
-        echo "cpp"
-    elif [ -f "$root/build.sbt" ] || [ -f "$root/pom.xml" ]; then
-        echo "scala"
-    elif [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ]; then
-        echo "r"
-    elif [ -f "$root/pubspec.yaml" ]; then
-        echo "flutter"
-    elif [ -f "$root/Package.swift" ]; then
-        echo "swift"
-    elif [ -d "$root/.vs" ] || find "$root" -maxdepth 1 -name '*.csproj' -print -quit 2>/dev/null | grep -q .; then
-        echo "csharp"
-    else
-        echo ""
+    candidates=""
+    add_language() {
+        case " $candidates " in
+            *" $1 "*) ;;
+            *) candidates="$candidates $1" ;;
+        esac
+    }
+    has_suffix() {
+        find "$root" -maxdepth 3 -type f -name "$1" -print -quit 2>/dev/null | grep -q .
+    }
+
+    if [ -f "$root/go.mod" ] || has_suffix '*.go'; then add_language go; fi
+    if [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ] || has_suffix '*.py'; then add_language python; fi
+    if [ -f "$root/package.json" ] || has_suffix '*.js' || has_suffix '*.ts' || has_suffix '*.jsx' || has_suffix '*.tsx'; then add_language node; fi
+    if [ -f "$root/Cargo.toml" ] || has_suffix '*.rs'; then add_language rust; fi
+    if { [ -f "$root/build.gradle.kts" ] && grep -Eiq 'kotlin\(|org\.jetbrains\.kotlin|kotlin-dsl' "$root/build.gradle.kts"; } || has_suffix '*.kt'; then
+        add_language kotlin
+    elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ] || has_suffix '*.java'; then
+        add_language java
     fi
+    if [ -f "$root/Gemfile" ] || has_suffix '*.rb'; then add_language ruby; fi
+    if [ -f "$root/composer.json" ] || has_suffix '*.php'; then add_language php; fi
+    if [ -f "$root/mix.exs" ] || has_suffix '*.ex' || has_suffix '*.exs'; then add_language elixir; fi
+    if [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ] || has_suffix '*.cpp' || has_suffix '*.cc' || has_suffix '*.h'; then add_language cpp; fi
+    if [ -f "$root/build.sbt" ] || has_suffix '*.scala'; then add_language scala; fi
+    if [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ] || has_suffix '*.R' || has_suffix '*.r'; then add_language r; fi
+    if [ -f "$root/pubspec.yaml" ] || has_suffix '*.dart'; then add_language flutter; fi
+    if [ -f "$root/Package.swift" ] || has_suffix '*.swift'; then add_language swift; fi
+    if [ -d "$root/.vs" ] || find "$root" -maxdepth 3 -name '*.csproj' -print -quit 2>/dev/null | grep -q . || has_suffix '*.cs'; then add_language csharp; fi
+
+    for language in $candidates; do
+        printf '%s\n' "$language"
+    done
+}
+
+# Backward-compatible primary language for the fast gate. Multi-language
+# callers must use detect_languages and record every candidate; this wrapper
+# never misclassifies a Kotlin Gradle project as Java.
+detect_language() {
+    detect_languages "${1:-.}" | head -1
 }
 
 # --- code_delta_pattern: per-language source-file extension regex ---
@@ -167,7 +175,8 @@ esac
 # GATE_LANG (not LANG): LANG is the reserved POSIX locale variable — assigning
 # the detected language to it would change the locale of every child tool.
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
-GATE_LANG=$(detect_language "$PROJECT_ROOT")
+GATE_LANG_CANDIDATES=$(detect_languages "$PROJECT_ROOT")
+GATE_LANG=$(printf '%s\n' "$GATE_LANG_CANDIDATES" | head -1)
 
 # Silent pass when no recognized language marker is present (docs-only projects, etc.)
 if [ -z "$GATE_LANG" ]; then
@@ -177,7 +186,6 @@ fi
 
 # Detect code-file changes in HEAD commit; skip if 0 code-file delta (markdown-only sync).
 # On an initial commit HEAD~1 does not exist, so diff against the empty tree instead.
-DELTA_PATTERN=$(code_delta_pattern "$GATE_LANG")
 if git rev-parse --verify -q HEAD~1 >/dev/null 2>&1; then
     DIFF_RANGE="HEAD~1..HEAD"
 else
@@ -185,8 +193,14 @@ else
 fi
 # grep -c is wrapped so its no-match exit (1) under `set -e` does not abort; the
 # result is normalized to a single integer (avoids a "0\n0" double-emit).
-CODE_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
-CODE_DELTA=${CODE_DELTA:-0}
+CODE_DELTA=0
+for detected_language in $GATE_LANG_CANDIDATES; do
+    DELTA_PATTERN=$(code_delta_pattern "$detected_language")
+    if [ -n "$DELTA_PATTERN" ]; then
+        DETECTED_DELTA=$(git diff --name-only "$DIFF_RANGE" 2>/dev/null | grep -cE "$DELTA_PATTERN" || true)
+        CODE_DELTA=$((CODE_DELTA + ${DETECTED_DELTA:-0}))
+    fi
+done
 if [ "$CODE_DELTA" -eq 0 ]; then
     # stdout intentionally empty (Stop schema: decision must be approve|block, not "skip").
     exit 0
@@ -594,7 +608,7 @@ fi
 cat "$GATE_OUTPUT_FILE"
 
 mkdir -p "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [sync-phase-quality-gate] language=$GATE_LANG languages=$(printf '%s' "$GATE_LANG_CANDIDATES" | tr '\n' ',') mode=$MODE decision=$DECISION $C1_LABEL=$C1_EXIT $C2_LABEL=$C2_EXIT deps_modified=$DEPS_MODIFIED head=$HEAD_SHA" \
     >> "${CLAUDE_PROJECT_DIR:-$PWD}/.moai/logs/sync-quality-gate.log"
 
 # The hook always exits 0. In blocking mode the {"decision":"block"} stdout JSON
