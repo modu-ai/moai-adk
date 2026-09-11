@@ -127,3 +127,9 @@ C안 구성(SPEC 후보 범위):
 - C안의 경고는 새 표면이라 kanban-dispatch 문서와 테스트(`integration_lock_cli_test.go`)의 출력 단정에 걸릴 수 있다.
 - 설정만 고치고 C안을 하지 않으면 status 는 `branch: develop` 을 정확히 보여 주지만, 카드 두 장을 병행하는 레인이 어느 카드를 병합 중인지는 여전히 텍스트로 보이지 않는다.
 - 픽스처 `/tmp/t637-fx`, `/tmp/t637-fx-wt/` 는 SPEC 단계 재사용을 위해 남겨 두었다.
+
+## 8. 후속 기록 (2026-09-11 재개 시점)
+
+- **운영자 결정**: C안 전부(① status 텍스트 `card:` 줄 ② `branch_source` 기록 + git-flow 폴백 경고 1줄, 거부 없음 ③ `--branch` 도움말 정정 ④ 문서 acquire 호출에 `--card`). 필드 의미와 t449 수리는 유지.
+- **카드 id 충돌**: develop 에 이 카드가 아닌 작업이 t637 id 를 달고 들어갔다 — `4e192ee82 2026-09-11T14:32:11+09:00 merge: workflow audit F31 into develop (card t637)`. `git merge-base --is-ancestor 4e192ee82 origin/develop` → 조상(origin/develop `ee99507fb`). 번호 충돌이며 이 카드의 산출물이 아니다. 이 카드의 커밋은 `WT-acquire-branch-record` 브랜치에만 있다.
+- **설정 수리(리드, 운영자 결정)**: primary `git-strategy.yaml` manual 블록이 채워졌다 — `main_branch: main`, `develop_branch: develop`, `release_branch_prefix: release/`, `rc_version_format: vX.Y.Z-rc.N` (mtime `Sep 11 12:06:29 2026`). 이제 재현 셀 C3 의 전제가 실제 설정과 같다. 이 레인은 설정을 편집하지 않았다.
