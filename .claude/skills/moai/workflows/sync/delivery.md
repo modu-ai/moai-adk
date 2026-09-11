@@ -166,12 +166,26 @@ fi
 # Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
 # Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
 # example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
-GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &
-GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./<your-module>/ &
-GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./<your-module>/ &
-GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./<your-module>/ &
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
-wait
+declare -A build_pids=()
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64       ./<your-module>/ & build_pids[linux-amd64]=$!
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64       ./<your-module>/ & build_pids[linux-arm64]=$!
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64      ./<your-module>/ & build_pids[darwin-amd64]=$!
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64      ./<your-module>/ & build_pids[darwin-arm64]=$!
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ & build_pids[windows-amd64]=$!
+
+build_failed=0
+for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
+  if wait "${build_pids[$target]}"; then
+    echo "PASS: cross-build ${target}"
+  else
+    status=$?
+    echo "FAIL: cross-build ${target} (exit ${status})" >&2
+    build_failed=1
+  fi
+done
+if (( build_failed != 0 )); then
+  exit 1
+fi
 ```
 
 **Python project** (detected via `pyproject.toml`):
