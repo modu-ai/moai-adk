@@ -1,0 +1,55 @@
+=== RUN   TestSyncGateFailState_AC001_FailureRedeliveredOnSameHead
+    sync_gate_failstate_test.go:332: AC-001 [release-blocking] call1 stdout (237 bytes)="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub=2; call2 stdout (0 bytes)="" stub=2
+    sync_gate_failstate_test.go:337: AC-001 [release-blocking]: call 2 stdout is not byte-identical to call 1 (call1 237 bytes, call2 0 bytes); call2=""
+--- FAIL: TestSyncGateFailState_AC001_FailureRedeliveredOnSameHead (1.09s)
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F1
+    sync_gate_failstate_test.go:410: AC-004 F1 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F2
+    sync_gate_failstate_test.go:410: AC-004 F2 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F3
+    sync_gate_failstate_test.go:410: AC-004 F3 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F4
+    sync_gate_failstate_test.go:410: AC-004 F4 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/c
+    sync_gate_failstate_test.go:420: AC-004 (c) [release-blocking]: stdout is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+--- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery (4.58s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F1 (0.89s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F2 (0.89s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F3 (0.91s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F4 (1.02s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/c (0.87s)
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A1
+    sync_gate_failstate_test.go:684: AC-008 A1 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go build failed (go vet=0 go build=1 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A2
+    sync_gate_failstate_test.go:684: AC-008 A2 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A3
+    sync_gate_failstate_test.go:684: AC-008 A3 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A4
+    sync_gate_failstate_test.go:684: AC-008 A4 [release-blocking] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go build failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go build failed (go vet=0 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+    sync_gate_failstate_test.go:693: AC-008 A4 [release-blocking]: call 2 stdout is not byte-identical to call 1's block (call1 241 bytes, call2 0 bytes); call2=""
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A5
+    sync_gate_failstate_test.go:684: AC-008 A5 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A6
+    sync_gate_failstate_test.go:684: AC-008 A6 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A7
+    sync_gate_failstate_test.go:684: AC-008 A7 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A8
+    sync_gate_failstate_test.go:684: AC-008 A8 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A9
+    sync_gate_failstate_test.go:684: AC-008 A9 [release-blocking] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+    sync_gate_failstate_test.go:693: AC-008 A9 [release-blocking]: call 2 stdout is not byte-identical to call 1's block (call1 237 bytes, call2 0 bytes); call2=""
+--- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution (7.84s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A1 (0.87s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A2 (0.88s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A3 (0.87s)
+    --- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A4 (0.85s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A5 (0.96s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A6 (0.85s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A7 (0.85s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A8 (0.86s)
+    --- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A9 (0.85s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	16.967s
+FAIL

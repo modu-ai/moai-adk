@@ -590,7 +590,7 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// primitives across internal/cli non-test sources equals the measured
 	// baseline exactly (baseline 64bba61aa: 3 hits; additions AND removals
 	// both fail — equal counts alone would not).
-	// todo_landed.go:216 and home_state_coverage.go:243/251 are DECLARED
+	// todo_landed.go:216 and home_state_coverage.go:245/253 are DECLARED
 	// additions, not second binary-lag comparisons. SPEC-TODO-LANDING-EVIDENCE-001
 	// REQ-TLE-020 requires the
 	// recording verb to check that an operator-supplied delivering SHA is
@@ -600,8 +600,8 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// binlag.Evaluate owns. Routing it through the binlag seam would make it
 	// answer that other question.
 	//
-	// The home-state coordinates instead protect evidence-chain integrity: 243
-	// checks each coverage marker descends from its predecessor, and 251 checks
+	// The home-state coordinates instead protect evidence-chain integrity: 245
+	// checks each coverage marker descends from its predecessor, and 253 checks
 	// the final marker is in HEAD's ancestry. Neither compares the running
 	// binary identity with source freshness, so binlag.Evaluate is not the
 	// correct owner for either check.
@@ -613,8 +613,8 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	want := map[string]bool{
 		"graph_stamp.go:68":          true,
 		"graph_stamp.go:131":         true,
-		"home_state_coverage.go:243": true,
-		"home_state_coverage.go:251": true,
+		"home_state_coverage.go:245": true,
+		"home_state_coverage.go:253": true,
 		"mcp_review_material.go:95":  true,
 		"todo_landed.go:216":         true,
 	}

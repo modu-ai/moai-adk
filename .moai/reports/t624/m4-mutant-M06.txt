@@ -1,0 +1,11 @@
+=== RUN   TestSyncGateFailState_AC006c_RetryBoundAndNotice
+    sync_gate_failstate_unix_test.go:114: AC-006c run 1: marker observed for this run; process group killed
+    sync_gate_failstate_unix_test.go:114: AC-006c run 2: marker observed for this run; process group killed
+    sync_gate_failstate_unix_test.go:128: AC-006c [release-blocking] run 3 stdout (237 bytes)="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub delta=2 exit=0
+    sync_gate_failstate_unix_test.go:130: AC-006c [release-blocking] assertion 3: run 3 invoked the stub 2 time(s); want 0
+    sync_gate_failstate_unix_test.go:133: AC-006c [release-blocking] assertion 4: run 3 stdout carries "decision"; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_unix_test.go:136: AC-006c [release-blocking] assertion 5: run 3 stdout is not a systemMessage saying the gate run has not completed and naming deletion of sync-quality-gate.last; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+--- FAIL: TestSyncGateFailState_AC006c_RetryBoundAndNotice (1.59s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.145s
+FAIL

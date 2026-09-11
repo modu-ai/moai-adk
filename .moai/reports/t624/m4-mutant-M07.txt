@@ -1,0 +1,16 @@
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F1
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F2
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F3
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F4
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/c
+    sync_gate_failstate_test.go:420: AC-004 (c) [release-blocking]: stdout is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+--- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery (8.09s)
+    --- PASS: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F1 (1.52s)
+    --- PASS: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F2 (1.65s)
+    --- PASS: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F3 (1.70s)
+    --- PASS: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F4 (1.10s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/c (2.11s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	8.615s
+FAIL

@@ -1,0 +1,12 @@
+--- internal/spec/parser.go	2026-09-11 03:37:53
++++ /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/mutants2/M8/parser.go	2026-09-11 03:39:02
+@@ -73,9 +73,6 @@
+ 	"수락 기준",
+ 	"인수 기준",
+ 	"검수 기준",
+-	"수용 기준",
+-	"성공 기준",
+-	"ac summary",
+ }
+ 
+ // acNegativeSectionMarkers mark a heading about what the SPEC does not cover;
