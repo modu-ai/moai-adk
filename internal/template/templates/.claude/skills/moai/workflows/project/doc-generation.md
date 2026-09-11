@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 6/3.1/3.3/3.5/3.7/4: Documentation Generation and Completion"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ## Phase 6: Documentation Generation
 
@@ -36,7 +37,8 @@ Activation: Controlled by harness.yaml `plan_audit.enabled` setting.
 
 - `minimal`: Skip this phase
 - `standard`: Run plan-auditor once (default)
-- `thorough`: Run plan-auditor + cross-validate with sync-auditor
+- `thorough`: Run plan-auditor + an independent plan-auditor re-review;
+  `sync-auditor` remains post-implementation only
 
 Skip Conditions:
 - harness.yaml `plan_audit.enabled: false`
@@ -46,13 +48,13 @@ Skip Conditions:
 
 Agent: plan-auditor subagent
 
-Delegation pattern: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1."
+Delegation pattern: "Use the plan-auditor subagent with input_type=project to audit product.md, structure.md, and tech.md at .moai/project/ — iteration 1."
 
 Do NOT pass the analysis reasoning or interview context to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the document directory path.
 
 #### Step 3.1.2: Read Verdict
 
-After plan-auditor completes, read the report at `.moai/reports/plan-audit/PROJECT-review-1.md`.
+After plan-auditor completes, read the report at `.moai/reports/PROJECT-review-1.md`.
 
 Extract the verdict line: `Verdict: PASS | FAIL`
 
