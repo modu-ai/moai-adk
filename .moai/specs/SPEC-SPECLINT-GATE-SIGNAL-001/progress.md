@@ -418,20 +418,76 @@ AC-SLGS-010 전반부는 미달이다. 판정은 (a)의 외연을 어느 쪽으�
   `panic: test timed out` 으로 붉어진다 — 실제로 E3-1 이 그렇게 붉어졌다. 실패 모양이
   「테스트가 깨졌다」와 구별되지 않으므로 오진 위험이 있다. 별건으로 기록해 둔다.
 
+### M3.4 — t518 착지 후 간선 + 게이트된 재기준 (2026-09-11, card t525)
+
+REQ-SLGS-011 이 t518 착지 뒤로 미뤄 둔 두 가지 — 의존 간선 추가와 게이트된 재기준 1회 — 를
+흡수한 트리에서 닫았다. 측정 규율은 M3 과 같다: 판정 바이너리는 **이 트리에서 빌드해 경로로
+호출**했고(설치본 미사용), 종료코드는 파이프 없이 읽었으며, 카운트는 `jq` 로 세고 모든 0 에
+양성·음성 대조군을 붙였다. 큰 출력은 `.moai/reports/t525/m3.4/` 에 두고 꼬리만 인용한다.
+
+#### 실측 — attribution table
+
+| # | Claim | Command | Observed output | Tree/HEAD |
+|---|---|---|---|---|
+| M34-A1 | 로컬 develop 1차 흡수 | `git merge` 로컬 develop `f6b121a9c` (충돌 2건 해결 — `.moai/reports/t525/absorb/summary.md`) | 병합 커밋 `e7522225e`, 부모 `715199027`·`f6b121a9c` | tree `520118392` |
+| M34-A2 | 로컬 develop 2차 흡수 | `git merge` 로컬 develop `81c1d58f9` | 병합 커밋 `42c17b5b6`, 부모 `e7522225e`·`81c1d58f9`, 충돌 없음, `git merge-tree` 예측 트리와 실제 트리 동일 | tree `3b9e8016f` |
+| M34-A3 | 흡수 트리 판정(증거 커밋 `02063f715`) | 트리 빌드 바이너리로 `spec lint` / `--strict` / `--baseline .moai/spec-lint-baseline.json` / `--json` | 각 exit 0; `0 error(s), 3133 warning(s)`; `baseline: OK` · `0 non-advisory tracked across 0 recorded rule(s)` · `recorded at: 9e1744469 (2026-09-08)`; 비-advisory warning 0, `DuplicateAcceptanceID` 0 | tree `3b9e8016f` |
+| M34-A4 | t518 착지가 이 브랜치의 조상 | `git merge-base --is-ancestor a4fbaeb82 HEAD; echo $?` / 대조 `git merge-base --is-ancestor 4ac93f755 a4fbaeb82; echo $?` | `0` / 대조 `1` — 판별식이 살아 있다 | HEAD `4ac93f755` |
+| M34-E1 | 간선 추가(커밋 `4ac93f755`, manager-spec 위임) | spec.md 프런트매터 `dependencies: [SPEC-SPEC-LINT-BLIND-AXES-001]` + `updated:` 갱신 → `spec lint --json` | exit 0, 발견 3336, error 0, 비-advisory 0 — `.moai/reports/t525/m3.4/edge-probe.md` | HEAD `02063f715` + 편집 |
+| M34-E2 | 간선 줄을 린터가 실제로 읽는다(양성 대조) | 값을 잠시 `SPEC-NOSUCH-PROBE-999` 로 바꿔 `spec lint` 후 원복 | **exit 1**, `ERROR MissingDependency … Dependency SPEC "SPEC-NOSUCH-PROBE-999" not found`; 원복 뒤 `cmp` exit 0 — 같은 파일 | 〃 |
+| M34-B0 | 판정 바이너리가 이 트리 빌드다 | `go build -o <세션 스크래치>/moai-t525-m34 ./cmd/moai; echo $?` | `0`; 빌드 HEAD `4ac93f755bd65c8f08d0d78f5e6fb20a26ea7da0`, tree `8479fb2d7a4d45375a2d7e7ad98c0af0e2d3c468` (`rebaseline-coordinates.txt`). LDFLAGS 없이 빌드해 `version` 은 `v3.1.3 none unknown` 을 찍는다 — 빌드 커밋은 버전 문자열이 아니라 이 HEAD 로 귀속한다 | HEAD `4ac93f755` |
+| M34-B1 | 재기준 **전** 게이트 | `<bin> spec lint --baseline .moai/spec-lint-baseline.json > before-baseline.txt 2>&1; echo $?` | `0`; `0 error(s), 3133 warning(s)` · `baseline: OK` · `inventory: 3133 warning(s) total (advisory included), 0 non-advisory tracked across 0 recorded rule(s)` · `recorded at: 9e1744469 (2026-09-08)` | HEAD `4ac93f755` |
+| M34-B2 | 재기준 **전** 인구 조사 | `<bin> spec lint --json > before-lint.json` (exit 0, stderr 0바이트) → `jq '[length, error, warning, info]'` 외 | `[3336, 0, 3133, 203]`; 비-advisory warning `0`, 코드별 group_by `[]`; `DuplicateAcceptanceID` `0`; 양성 대조 `MovingRefUnpinned` `116`, `REQTableRowsRejected` `84`; 음성 대조 `NoSuchRuleCodeXYZ` `0` (`census-before.txt`) | HEAD `4ac93f755` |
+| M34-B3 | 재기준 **전** 기준선 파일 | `shasum -a 256 .moai/spec-lint-baseline.json` + 파일 사본 | `0b5541e961497306e07255683bb3fa4bafb34336d724e8726147f160f6ac1c44`; `updated_at: 2026-09-08`, `tree_sha: 9e1744469`, `rules: {}` (`baseline-before.json`) | HEAD `4ac93f755` |
+| **M34-C1** | **게이트된 재기준 1회 (REQ-SLGS-008 경로)** | `<bin> spec lint --baseline .moai/spec-lint-baseline.json --update-baseline --reason "Re-baseline after absorbing t518 (SPEC-SPEC-LINT-BLIND-AXES-001) via local develop 81c1d58f9; absorbed-tree measurement shows 0 non-advisory warnings (3133 warnings, all advisory); card t525 M3.4 gated re-baseline." > rebaseline-update.txt 2>&1; echo $?` | `0`; `baseline: UPDATED — .moai/spec-lint-baseline.json` · `tree_sha: 4ac93f755` · `date: 2026-09-11` · `recorded: 0 non-advisory warning(s) across 0 rule(s)` | HEAD `4ac93f755` |
+| M34-C2 | 재기준 **후** 기준선 파일 | `shasum -a 256` + `cat` | `e9124a70ec0cc3359917a78e39364f8f025a971a673294102342b7b2115455f6`; `version: 1`, `updated_at: 2026-09-11`, `tree_sha: 4ac93f755`, `reason:` 위 문자열 그대로, `rules: {}` | HEAD `4ac93f755` |
+| M34-D1 | 재기준 **후** 게이트 | `<bin> spec lint --baseline .moai/spec-lint-baseline.json > after-baseline.txt 2>&1; echo $?` | `0`; `0 error(s), 3133 warning(s)` · `baseline: OK` · `inventory: 3133 warning(s) total (advisory included), 0 non-advisory tracked across 0 recorded rule(s)` · `recorded at: 4ac93f755 (2026-09-11)` | HEAD `4ac93f755` |
+| M34-D2 | 게이트 실행은 기준선을 다시 쓰지 않는다 | D1 실행 뒤 `shasum -a 256 .moai/spec-lint-baseline.json` | `e9124a70…15455f6` — C2 와 같다 | HEAD `4ac93f755` |
+
+`tree_sha: 4ac93f755` 에 대하여: M3 과 같은 이유로 기록은 **측정한 트리의 HEAD** 다. 이 기준선을
+운반하는 커밋은 `4ac93f755` 의 자식이며, 커밋은 자기 해시를 인용할 수 없다.
+
+**재기준 이동폭**: 규칙 집합은 `{}` → `{}`, 추적 비-advisory 0 → 0. 바뀐 것은 기록 좌표
+(`tree_sha`·`updated_at`·`reason`)뿐이다. 즉 t518 흡수는 비-advisory 인구를 옮기지 않았고,
+재기준은 "흡수 후 트리에서 쟀다"는 사실을 사유와 함께 파일에 남기는 절차적 기록이다.
+
+**리드 결정 (기록 의무)**: t518 밖 비-advisory 코드 1개(DuplicateAcceptanceID, 인구 0) — 재기준 이동폭 기여 0, 향후 발생 시 --strict 가 올림.
+(출처: 카드 t564, 커밋 `d47dbf6da` — Advisory 표지 없는 warning. M34-B2 에서 전 severity 인구 `0` 으로 재관측.)
+
+**회귀 가드 (실행하지 않음)**: 빈 기준선이 새 비-advisory 발견에 붉어지는 방향은
+`internal/cli/spec_lint_test.go:628` `TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule`
+이 지킨다. 이 마일스톤에서는 **돌리지 않았다** — `internal/cli` 테스트 슬롯이 배정되지 않았다.
+실 CLI 크로스프로세스로 붉어짐을 본 마지막 관측은 M3-5b(스크래치 코퍼스, 트리 `9fb52f746`)다.
+
+#### Gaps (관측하지 않은 것)
+
+- **AC-SLGS-011 녹색 CI run 로그의 `inventory:` 줄** — push 뒤에만 관측 가능하고 push 는 리드 일괄
+  소관이다. 리드가 develop push 후 `SPEC Lint` run 로그에서 읽어야 닫힌다.
+- **회귀 가드 단위 테스트 미실행** — 위 절. 이 트리에서 붉어짐 방향은 재관측하지 않았다.
+- **창 안 재흡수가 인구를 옮길 수 있다** — 병합 창에서 그 시점 로컬 develop 을 다시 흡수하면
+  비-advisory 인구가 0 이 아닐 수 있다. 리드는 그 흡수 뒤 `spec lint --baseline` 재확인을
+  요구한다. 이 절의 측정을 창 안 병합 트리의 근거로 재사용하지 말 것.
+- 판정 바이너리는 LDFLAGS 없이 빌드해 버전 스탬프가 비어 있다(M34-B0). 빌드 커밋 귀속은
+  빌드 시점 HEAD 판독에 기댄다.
+- 이 절 자체가 `.moai/specs/` 안이라 lint 대상이다. 편집 뒤 재측정 결과는
+  `.moai/reports/t525/m3.4/after-edit-baseline.txt` 와 `exit-codes.txt` 에 남긴다(이 문장은 결과가
+  아니라 위치를 가리킨다).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_status: **in-progress — 세션 경계에서 중단** (레인 오케스트레이터 lane-5, 2026-09-08)
-run_complete_at: _<미도달>_
+run_status: **audit-ready** (card t525 M3.4 종결, 2026-09-11)
+run_complete_at: 2026-09-11
 
 **작성 시점 좌표 — 이 값들은 낡는다. 다음 세션은 인용하지 말고 재측정한다.**
+(재측정 명령: `git rev-parse --short HEAD` / `git rev-parse --short develop` / `git rev-parse --short origin/develop`(fetch 없이) / `git rev-list --count develop..HEAD`)
 
-| 항목 | 값 (작성 시점) |
+| 항목 | 값 (작성 시점, 2026-09-11) |
 |---|---|
 | tree | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t525` |
-| branch / HEAD | `WT-speclint-red` / `9e1744469` |
-| `origin/develop` | `a4855f0b2` |
-| 로컬 `develop` (흡수 대상) | `768306d27` (한 시간 전 `ee194493f` — 빠르게 움직인다) |
-| 미푸시 (ahead) | 10 |
+| branch / HEAD | `WT-speclint-red` / `4ac93f755` (이 절을 담은 커밋은 그 자식) |
+| `origin/develop` (fetch 없이) | `81c1d58f9` |
+| 로컬 `develop` (흡수 대상) | `81c1d58f9` |
+| ahead (로컬 develop 대비) | 15 (이 절을 담은 커밋 전) · behind 0 |
 
 ### 착지한 마일스톤
 
@@ -441,7 +497,7 @@ run_complete_at: _<미도달>_
 | M2 기제 | `740f4a3cd`, `185c21cff` | ✅ 아래 표 |
 | M4 부수 | `9fb52f746` | ✅ 아래 표 |
 | M3.1~M3.3 배선 | `9e1744469` | ✅ 아래 표 |
-| **M3.4** | — | **미이행 — 남은 작업** |
+| **M3.4** | 흡수 `e7522225e`·`42c17b5b6`, 흡수 증거 `02063f715`, 간선 `4ac93f755`, 게이트된 재기준 = 이 절을 담은 커밋(자기 해시 인용 불가) | ✅ §E.2 「M3.4」 표 (M34-A1..D2) |
 
 **순서 이탈과 그 사유 (범위 불변).** M4 를 M3 앞으로 당겼다. 계획서 §F 는 M3 → M4 이지만,
 M4 가 비-advisory 재고를 비우므로 기준선을 M3 에서 먼저 뜨면 `SpecsDirMissingSpecFile: 2`
@@ -484,6 +540,11 @@ M4 를 먼저 닫으면 기준선이 `rules: {}` 로 나와 비-advisory 경고�
 
 ### [HARD] 기준선은 t518 흡수 **이전** 트리 측정치다
 
+> **[SUPERSEDED — 2026-09-11, M3.4]** 아래 서술은 작성 당시에 참이었던 판독이다. 이후 t518 을
+> 흡수한 트리(HEAD `4ac93f755`)에서 게이트된 재기준을 실행해 기준선이 `tree_sha: 4ac93f755`,
+> `updated_at: 2026-09-11` 로 다시 기록됐다(§E.2 M34-C1/C2). 흡수 후 비-advisory 인구는 0 이었고
+> 게이트는 재기준 전후 모두 exit 0 이었다(M34-B1/D1). 기록 보존을 위해 원문은 지우지 않는다.
+
 `.moai/spec-lint-baseline.json` 의 `tree_sha: 9fb52f746` 은 t518 을 흡수하지 않은 트리다.
 t518 은 `internal/spec/` 를 8커밋 +2096/−20 으로 바꿨고(`lint_req_widen.go` 수정 +
 `lint_req_table*` 신규) 그 내용이 곧 advisory 경계이므로, **흡수하면 비-advisory 인구가
@@ -506,7 +567,7 @@ t518 은 `internal/spec/` 를 8커밋 +2096/−20 으로 바꿨고(`lint_req_wid
 | AC-SLGS-008 | PASS | α 거절(rc=3, 불변) + 정상 경로 기록 |
 | AC-SLGS-009 | PASS | error 우선 + `ErrorOutranksASimultaneousIncrease` (`spec_lint_test.go:390`) |
 | AC-SLGS-010 전반부 | PASS-WITH-CAVEAT | 아래 |
-| **AC-SLGS-010 후반부** | **미이행** | t518 착지 후 간선 + 재기준 — M3.4 |
+| **AC-SLGS-010 후반부** | **PASS** | t518 착지 후 간선(`4ac93f755`, 양성 대조로 린터가 읽음을 관측) + 게이트된 재기준 1회(exit 0, 사유 기록) — §E.2 「M3.4」 M34-A4 / M34-E1·E2 / M34-C1·C2 / M34-D1 |
 | AC-SLGS-011 배선 절반 | PASS | `spec-lint.yml:77` |
 | **AC-SLGS-011 로그 절반** | **Gap — 레인이 못 닫음** | 녹색 CI run 로그 판독은 push 후. 리드가 develop push 후 `SPEC Lint` run 의 `inventory:` 줄을 읽어야 닫힌다 |
 | AC-SLGS-012 | PASS | 위 표 (대조군 포함) |
@@ -520,18 +581,18 @@ sync-auditor 가 이 지점을 독립적으로 판정해야 한다.
 
 ### 남은 작업 — 순서 고정
 
-1. **로컬 `develop` 흡수** — `git merge <로컬 develop>` (원격이 아니라 로컬. 값 재측정 필수)
-2. **M3.4** — 프런트매터에 `dependencies: [SPEC-SPEC-LINT-BLIND-AXES-001]` 추가
-   (필드명 주의: 스키마 문서는 `depends_on` 이나 코드 바인딩은 `dependencies`,
-   `internal/spec/lint.go:500`. 틀리면 디코더가 조용히 버린다) + **게이트된 재기준 1회**
-   (`--update-baseline --reason "<t518 흡수 후 재측정>"`, 흡수 후 트리에서)
-3. **§E.3 종결** — `run_status: audit-ready` 로 갱신
+1. ✅ **로컬 `develop` 흡수** — 완료 2026-09-11: `e7522225e`(develop `f6b121a9c`), `42c17b5b6`(develop `81c1d58f9`), 증거 `02063f715`
+2. ✅ **M3.4** — 완료 2026-09-11: 간선 `dependencies: [SPEC-SPEC-LINT-BLIND-AXES-001]` 커밋 `4ac93f755`
+   + 게이트된 재기준 1회(이 절을 담은 커밋). 근거 §E.2 「M3.4」
+3. **§E.3 종결** — 이 절을 담은 커밋에서 `run_status: audit-ready` 로 갱신
 4. **sync** — 워크트리 안에서 끝낸다. run 만 닫고 병합하면 SPEC 이 `in-progress` 로 develop 에 올라가 창을 다시 받아야 한다
 
 ### 미관측 (Gap)
 
 - 녹색 CI run 로그 (AC-SLGS-011 나머지 절반) — push 필요, 리드 소관
-- **t518 흡수 후 게이트 거동** — 미측정. 위 [HARD] 절 참조
+- ~~**t518 흡수 후 게이트 거동** — 미측정~~ → 2026-09-11 측정: 흡수 트리에서 재기준 전후 게이트 exit 0, 비-advisory 0 (§E.2 M34-B1/B2/D1)
+- 회귀 가드 `TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule` 는 M3.4 에서 실행하지 않았다(`internal/cli` 슬롯 미배정)
+- 병합 창 안에서 로컬 develop 을 다시 흡수하면 인구가 옮겨질 수 있다 — 리드는 그 흡수 뒤 `spec lint --baseline` 재확인을 요구한다
 - windows/darwin 매트릭스 **테스트 실행** — E2 는 컴파일만 증명
 - 주입 위반은 `SpecsDirMissingSpecFile` 1종만 — 다른 규칙 코드의 델타 출력은 코드 읽기일 뿐 실행 관측 아님
 - `--strict` 는 CI 실행 경로에서 사라짐(플래그·코드·문서는 유지). 실행 호출자 0, 회귀는 단위 테스트가 잡는다
