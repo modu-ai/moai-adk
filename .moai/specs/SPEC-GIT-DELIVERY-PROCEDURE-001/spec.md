@@ -1,16 +1,16 @@
 ---
 id: SPEC-GIT-DELIVERY-PROCEDURE-001
 title: "배포 지침의 git 전달 절차 기계적 수리 — fetch 순서, 병합 방식 해석, auto-merge 옵트인 단일 기준과 플래그 의미"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-09-10
 updated: 2026-09-11
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
-module: ".claude/agents/moai/manager-git.md, .claude/rules/moai/core/agent-common-protocol.md, .claude/skills/moai/workflows/sync/delivery.md, .claude/skills/moai/workflows/sync/doc-execution.md, .claude/skills/moai/SKILL.md, .claude/skills/moai/references/reference.md, .claude/skills/moai/workflows/sync/quality-gates-context.md, .claude/skills/moai/workflows/sync.md (+ internal/template/templates mirrors, internal/template/templates/.codex/agents/moai/manager-git.toml)"
+module: ".claude/agents/moai/manager-git.md, .claude/rules/moai/core/agent-common-protocol.md, .claude/skills/moai/workflows/sync/delivery.md, .claude/skills/moai/workflows/sync/doc-execution.md, .claude/skills/moai/SKILL.md, .claude/skills/moai/references/reference.md, .claude/skills/moai/workflows/sync/quality-gates-context.md, .claude/skills/moai/workflows/sync.md, .claude/commands/moai/sync.md (template sync.md.tmpl) (+ internal/template/templates mirrors, internal/template/templates/.codex/agents/moai/manager-git.toml, internal/template/templates/.agents/skills/moai-sync/SKILL.md)"
 lifecycle: spec-anchored
-tags: "git, manager-git, sync-check, fetch-ordering, merge-method, auto-merge, sync-flags, template-mirror, instruction-audit"
+tags: "git, manager-git, sync-check, fetch-ordering, merge-method, auto-merge, sync-flags, commands-emit, template-mirror, instruction-audit"
 era: V3R6
 tier: M
 related_specs: [SPEC-MERGE-METHOD-CONFIG-001]
@@ -27,7 +27,8 @@ related_specs: [SPEC-MERGE-METHOD-CONFIG-001]
 | 0.1.2 | 2026-09-10 | manager-spec | **plan-audit 2회차**(`.moai/reports/t622/plan-audit-iter2.md`) **FAIL 0.75** 반영(결함 N1~N6) — 전체 범위 대상. 운영자 결정 OD-1 = 선택지 1, OD-2 = 선택지 B 반영. |
 | 0.1.3 | 2026-09-10 | manager-spec | 운영자 결정 B1~B3 반영. REQ 23·AC 24로 Tier M 상한 초과, B4·B6 기록. 커밋 `87988e946`. 이 판에 대한 plan-audit은 실행되지 않았다. |
 | 0.2.0 | 2026-09-11 | manager-spec | 운영자 결정 T1 = 분할(리드 경유). 기계적 수리 세 가지와 그 파일들의 부수 의무만 남기고 late-branch 재설계는 카드 t658, amend 적용 도우미 스텁은 카드 t659로 옮겼다(§G). 번호 유지·자리표시 방식. Frozen 비접촉 가드 REQ-GDP-024·AC-GDP-025 추가. plan-audit 회차는 이 판부터 다시 센다. 커밋 `24e20ec50`. |
-| 0.2.1 | 2026-09-11 | manager-spec | **축소판 plan-audit 1회차**(`.moai/reports/t622/plan-audit-reduced-iter1.md`) **FAIL 0.71** 반영. 필수 결함 B1(REQ-GDP-006이 어떤 명령에도 없는 옵트인 플래그를 가리키고 `--merge`·`--no-merge`·비-team 모드를 정하지 않음)에 대해 운영자 하위 결정(플래그 의미)과 리드 공통 항목 판정(모드별 승인 조건)을 반영해 REQ-GDP-025·026, AC-GDP-026~029를 추가했다. `/moai sync` 플래그 표면 네 파일(`SKILL.md:140`, `reference.md:161`, `quality-gates-context.md:30`·`:101`, `sync.md` 플래그 줄)을 범위에 넣고, 명령 표면 소비자 전수 조사 결과를 §A.7·§D에 적었다. 선택 결함 N1(읽기 기록을 PASS 전제로, AC-GDP-006 검출식 확장), N2(AC-GDP-025 레지스트리 양성 대조), N4·N5(생성물 실행 명령), N6(OD-2 표 중립 문구) 반영. N3(t658 카드 문구)은 리드 소관이라 손대지 않았다. |
+| 0.2.1 | 2026-09-11 | manager-spec | **축소판 plan-audit 1회차**(`.moai/reports/t622/plan-audit-reduced-iter1.md`) **FAIL 0.71** 반영. 운영자 하위 결정(플래그 의미)과 리드 공통 항목 판정(모드별 승인 조건)으로 REQ-GDP-025·026, AC-GDP-026~029 추가. 플래그 표면 네 파일을 범위에 넣고 소비자 조사 결과를 차단 항목 X1~X4로 보고. N1·N2·N4·N5·N6 반영. 커밋 `caa601d7c`. |
+| 0.2.2 | 2026-09-11 | manager-spec | 리드 범위 판정(X1~X4) 반영. X1(`workflows/sync.md` 사용법 줄), X2(슬래시 명령 `argument-hint`, 로컬 `.claude/commands/moai/sync.md:3`·템플릿 `sync.md.tmpl:3`), X3(`delivery.md:404` 다음 단계 선택지)를 범위에 넣고, AC-GDP-026·027 조각을 이 세 자리로 넓혔다. X2는 명령 원본이라 `make commands-emit`·`make commands-emit-check` 와 게시본 변화 여부(두 경우 모두 판정)를 AC-GDP-030으로 새로 두고 REQ-GDP-014를 넓혔다. X4(docs-site 네 로케일)는 범위 밖에 두고 후속 문서 카드 입력으로 기록했다(§C.5). 사본 일치·중립성·Frozen·순서 점검 목록을 새 파일로 넓혔다. 판정 대상 REQ 12·AC 16. |
 
 ---
 
@@ -40,10 +41,10 @@ related_specs: [SPEC-MERGE-METHOD-CONFIG-001]
 | AC-11 | `git fetch` 와 그 결과를 읽는 `git rev-list` 를 서로 독립인 병렬 배치로 지시한다 | 기계적 수리 (이 SPEC) |
 | SX-R04 (병합 방식) | `delivery.md` 와 `manager-git.md` 예시가 `gh pr merge --squash` 를 고정한다 | 기계적 수리 (이 SPEC) |
 | SX-R04 (기본값) | 워크트리 문맥의 auto-merge 기본값이 `delivery.md`·`doc-execution.md` 와 `manager-git.md` 에서 반대로 적혀 있다 | OD-2 = 선택지 B (이 SPEC) |
-| SX-R04 (플래그 의미) | `manager-git.md` 의 옵트인 플래그 `--auto-merge` 가 `/moai sync` 표면에 없고, 표면은 `--merge`(폐기 표시가 곳에 따라 다름)와 `--no-merge` 만 서술하며, 비-team 모드의 병합 조건이 없다 | OD-2 하위 결정과 리드 공통 항목 판정 (이 SPEC) |
+| SX-R04 (플래그 의미) | `manager-git.md` 의 옵트인 플래그 `--auto-merge` 가 `/moai sync` 표면에 없고, 표면은 `--merge`(폐기 표시가 곳에 따라 다름)와 `--no-merge` 만 서술하며, 비-team 모드의 병합 조건이 없다 | OD-2 하위 결정, 리드 공통 항목 판정, 리드 범위 판정 (이 SPEC) |
 | AC-01 | 배포 지침이 스스로 금지한 primary checkout 브랜치 변경을 실행하라고 안내한다 | 카드 t658로 이동 (§G) |
 
-인용 줄번호는 `b412f8a33` 기준이며, 따로 적지 않으면 로컬·템플릿 사본에서 같은 줄이다. 0.2.1 작성 시점 HEAD `eea2be13b` 에서 범위 파일 여덟 개(로컬·템플릿), 생성물 `manager-git.toml`, `/moai sync` 명령 원본(`.claude/commands/moai/sync.md`, 템플릿 `sync.md.tmpl`), 관련 테스트 파일, `docs-site/content`, `Makefile` 은 `b412f8a33` 과 차이가 없다(`git diff --stat` 출력 없음, exit 0).
+인용 줄번호는 `b412f8a33` 기준이며, 따로 적지 않으면 로컬·템플릿 사본에서 같은 줄이다. 0.2.2 작성 시점 HEAD `caa601d7c` 에서 범위 파일 열 개(로컬·템플릿), 생성물 `manager-git.toml`, 게시본 `.agents/skills/moai-sync/SKILL.md`(로컬·템플릿), 발행기 `internal/template/commandemit`, 관련 테스트 파일, `docs-site/content`, `Makefile` 은 `b412f8a33` 과 차이가 없다(`git diff --stat` 출력 없음, exit 0).
 
 ### A.2 AC-11 — 결과를 읽는 명령과의 병렬 배치
 
@@ -62,37 +63,40 @@ related_specs: [SPEC-MERGE-METHOD-CONFIG-001]
 | `delivery.md` | 335-338 | 트리거: `is_worktree_context == true` 이고 `--no-merge` 가 없으면 병합(기본 병합), 또는 `--merge` 명시(deprecated) |
 | `delivery.md` | 343, 355 | `gh pr merge --squash --delete-branch` 고정 |
 | `delivery.md` | 348-349 | "`--no-merge`: Skip auto-merge even in worktree context.", "`--merge`: Deprecated. … Auto-merge is now the default for worktree contexts." |
+| `delivery.md` | 404 | Phase 14 다음 단계 선택지 "Auto-Merge PR (/moai sync --merge)" (X3) |
 | `sync/doc-execution.md` | 34-36 | "This affects auto-merge behavior: worktree contexts default to auto-merge." |
 | `moai/SKILL.md` | 140 | "Modes: auto, force, status, project. Flags: --merge, --skip-mx" — `--merge` 를 폐기 표시 없이 나열 |
 | `moai/references/reference.md` | 161 | "- --merge: Auto-merge PR and clean up branch after sync" |
 | `sync/quality-gates-context.md` | 30, 101 | "  - Flag: --merge", "- --merge: After sync, auto-merge PR and clean up branch. …" |
+| `workflows/sync.md` | 로컬 95 / 템플릿 85 | 사용법 줄 `/moai sync [mode] [--pr] [--merge] [--skip-mx]` (X1) |
 | `workflows/sync.md` | 로컬 114 / 템플릿 104 | "**Flags**: `--pr` (PR 생성) \| `--merge` (deprecated, auto-merge) \| `--skip-mx` (MX 검증 스킵)" |
+| `.claude/commands/moai/sync.md` (로컬) · `sync.md.tmpl` (템플릿) | 3 | 슬래시 명령 힌트 `argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"` (X2) |
 | `manager-git.md` (생성물 `.toml:108`) | 114 | 예시 `gh pr merge <PR> --squash --delete-branch   # squash default` |
 | `manager-git.md` (생성물 `.toml:26`) | 32 | `merge_method` 해석 규칙의 기본값 설명 — **유지 대상** |
 | `manager-git.md` (생성물 `.toml:142`) | 148 | Team Mode "Auto-merge: only with the `--auto-merge` flag, per § PR Auto-Merge (Team Mode)" — 유지 |
 | `manager-git.md` (생성물 `.toml:158-166`) | 164-171 | "## PR Auto-Merge (Team Mode)" 절: "Execute only with `--auto-merge` flag AND all approvals obtained:" 와 다섯 단계. 절 제목이 team 한정이고, "### Personal Mode"(133-140)에는 auto-merge 규칙이 없다 |
 
-team 모드이면서 워크트리 문맥이면 두 지침이 반대를 지시한다. 명령 표면 네 곳은 `--merge` 를 auto-merge 플래그로 소개하며 폐기 여부가 서로 다르고, `--auto-merge` 는 어느 표면에도 없다. 병합 방식 치환은 SPEC-MERGE-METHOD-CONFIG-001 REQ-MMC-007/008이 이미 요구한 것이 반영되지 않은 상태다. 워크트리 기본 병합 문구는 커밋 `b7447cb90`(`sync.md`)에서 들어와 `980ccdc56` 이 `delivery.md` 로 옮겼다(`git log -S`, `delivery.md:349` 문장).
+team 모드이면서 워크트리 문맥이면 두 지침이 반대를 지시한다. 명령 표면은 `--merge` 를 auto-merge 플래그로 소개하며 폐기 여부가 서로 다르고, `--auto-merge` 는 어느 표면에도 없다. 병합 방식 치환은 SPEC-MERGE-METHOD-CONFIG-001 REQ-MMC-007/008이 이미 요구한 것이 반영되지 않은 상태다. 워크트리 기본 병합 문구는 커밋 `b7447cb90`(`sync.md`)에서 들어와 `980ccdc56` 이 `delivery.md` 로 옮겼다(`git log -S`, `delivery.md:349` 문장).
 
-### A.4 설정·사본·테스트 사실 (측정)
+### A.4 설정·사본·테스트·생성물 사실 (측정)
 
 | 항목 | 측정 결과 |
 |---|---|
 | `merge_method` | 템플릿 `git-strategy.yaml.tmpl` 세 모드 모두 `squash` · Go 기본값 `internal/config/defaults.go` 738·751·767행 `MergeMethod: "squash"` |
 | 폐기 키 `workflow.worktree.auto_merge` | `internal/config/testdata/shipped_key_inventory.yaml:2940-2943` 에 `class: D`, `evidence: none`, `deprecate_after: "v3.1.0"`. 이 SPEC은 건드리지 않는다 |
-| 로컬·템플릿 사본 | diff exit 0(바이트 동일): `manager-git.md`, `agent-common-protocol.md`, `quality-gates-context.md`. diff exit 1(의도된 차이): `delivery.md` — `275c275`, `278c278`, `479,480c479`; `doc-execution.md` — `138,143d137`; `moai/SKILL.md` — 20개 덩어리(`125c125` … `273,274c273,274`, `392d391`), 140행은 덩어리 밖; `references/reference.md` — `229d228`; `workflows/sync.md` — `65,74d64`, `81c71`(로컬 사본에 10줄이 더 있어 75행부터 번호가 10 밀림) |
-| 바이트 동일 미러 테스트 | `rule_template_mirror_test.go` 의 `workflowOptMirroredPaths`·`lateBranchMirroredPaths` 는 범위 파일 여덟 개 중 어느 것도 담지 않는다. `agent-common-protocol.md`·`manager-git.md`·`moai/SKILL.md` 는 주석으로 "byte-parity 허용 목록에서 제거" 가 명시돼 있다 |
-| 기타 사본·청결 가드 | `sanitized_pair_parity_test.go:71` 이 `agent-common-protocol.md` 를 담는다(`TestSanitizedPairParity`). `internal_content_leak_test.go:1535` `TestTemplateNoInternalContentLeak` 는 템플릿 루트 전체를 걷는다. 나머지 일곱 파일의 로컬·템플릿 사본 일치를 지키는 테스트는 없다 — diff만이 가드다. 새 범위 파일을 이름으로 가리키는 테스트는 사본 일치가 아닌 다른 성질을 본다: `backlog_json_disclosure_mirror_test.go:24`(`moai/SKILL.md` 임베드 사본 = 템플릿 원본), `template_neutrality_audit_test.go:141`(`moai/SKILL.md` C2 허용 목록), `agent_frontmatter_audit_test.go:399`·`:407`(`SKILL.md`·`reference.md` 프론트매터), `agentless_audit_test.go:44`(`sync.md` 를 구현 스킬 목록에 둠) |
-| 생성물 | 템플릿 `manager-git.md` 가 바뀌면 `manager-git.toml` 을 `make agents-emit` 으로 재생성한다. 기준 트리에서 `.toml` 의 `## Synchronization` 절(11줄)과 `## PR Auto-Merge` 절(9줄)은 템플릿 `manager-git.md` 의 같은 절과 diff exit 0 |
-| 명령 원본·게시본 | `.claude/commands/moai/sync.md:3` 과 템플릿 `sync.md.tmpl:3` 의 `argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"`. 게시본 `.agents/skills/moai-sync/SKILL.md`(로컬·템플릿 모두 존재)에는 `merge` 가 없다(`grep -i merge` exit 1) |
+| 로컬·템플릿 사본 | diff exit 0(바이트 동일): `manager-git.md`, `agent-common-protocol.md`, `quality-gates-context.md`, 게시본 `.agents/skills/moai-sync/SKILL.md`. diff exit 1(의도된 차이): `delivery.md` — `275c275`, `278c278`, `479,480c479`; `doc-execution.md` — `138,143d137`; `moai/SKILL.md` — 20개 덩어리(`125c125` … `273,274c273,274`, `392d391`), 140행은 덩어리 밖; `references/reference.md` — `229d228`; `workflows/sync.md` — `65,74d64`, `81c71`(로컬 사본에 10줄이 더 있어 75행부터 번호가 10 밀림); 명령 원본 `.claude/commands/moai/sync.md` 대 `sync.md.tmpl` — `2c2`(2행 `description` 만 다름: 템플릿은 로케일별 Go 템플릿 조건문, 로컬은 영어 문장). 3행 `argument-hint` 는 두 사본에서 같다 |
+| 바이트 동일 미러 테스트 | `rule_template_mirror_test.go` 의 `workflowOptMirroredPaths`·`lateBranchMirroredPaths` 는 범위 파일 열 개 중 어느 것도 담지 않는다. `agent-common-protocol.md`·`manager-git.md`·`moai/SKILL.md` 는 주석으로 "byte-parity 허용 목록에서 제거" 가 명시돼 있다 |
+| 기타 사본·청결 가드 | `sanitized_pair_parity_test.go:71` 이 `agent-common-protocol.md` 를 담는다(`TestSanitizedPairParity`). `internal_content_leak_test.go:1535` `TestTemplateNoInternalContentLeak` 는 템플릿 루트 전체를 걷는다. 나머지 아홉 파일의 로컬·템플릿 사본 일치를 지키는 테스트는 없다 — diff만이 가드다. 새 범위 파일을 이름으로 가리키는 테스트는 사본 일치가 아닌 다른 성질을 본다: `backlog_json_disclosure_mirror_test.go:24`(`moai/SKILL.md` 임베드 사본 = 템플릿 원본), `template_neutrality_audit_test.go:141`(`moai/SKILL.md` C2 허용 목록), `agent_frontmatter_audit_test.go:399`·`:407`(프론트매터), `agentless_audit_test.go:44`(`sync.md` 를 구현 스킬 목록에 둠), `commandemit/golden_test.go`·`published_skills_deploy_test.go`(게시본과 명령 원본의 발행 관계) |
+| 생성물 (에이전트) | 템플릿 `manager-git.md` 가 바뀌면 `manager-git.toml` 을 `make agents-emit` 으로 재생성한다. 기준 트리에서 `.toml` 의 `## Synchronization` 절(11줄)과 `## PR Auto-Merge` 절(9줄)은 템플릿 `manager-git.md` 의 같은 절과 diff exit 0 |
+| 생성물 (명령 게시본) | `make commands-emit` 은 `COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission`, `make commands-emit-check` 는 같은 테스트를 읽기 전용으로 실행(`Makefile:51-60`). 발행기는 템플릿 트리(`internal/template/templates`, `golden_test.go` 의 `templatesDir`)의 명령 원본에서 게시본을 만들고 템플릿 트리 게시본만 쓴다. 게시본 프론트매터는 생성 머리말·`name`·영어 `description` 뿐이고 본문은 원본 본문을 그대로 옮긴다(`emit.go` `renderSkill`). `argument-hint` 와 `allowed-tools` 는 "Claude-only keys and are NOT carried into the published skill" (`loader.go:4-6`). 로컬 게시본 `.agents/skills/moai-sync/SKILL.md` 도 추적 파일이며 템플릿 게시본과 바이트 동일하다. 두 게시본에는 `merge` 가 없다(`grep -i merge` exit 1) |
 
-### A.5 Frozen 비접촉 확인 (0.2.1 작성 시점, 템플릿·로컬 사본)
+### A.5 Frozen 비접촉 확인 (0.2.2 작성 시점, 템플릿·로컬 사본)
 
 | 확인 | 명령과 결과 | 판정 |
 |---|---|---|
-| 범위 파일의 `[ZONE:]` 태그 | `manager-git.md`·`delivery.md`·`doc-execution.md`·`moai/SKILL.md`·`references/reference.md`·`quality-gates-context.md`·`workflows/sync.md` 0줄(로컬·템플릿). `agent-common-protocol.md` 는 `[ZONE:Frozen]` 1줄(17행, User Interaction Boundary)과 `[ZONE:Evolvable]` 16줄 | Pre-Spawn Sync Check 태그는 292행 `[ZONE:Evolvable]` |
-| 레지스트리 등록 절 | `zone-registry.md`(로컬·템플릿)에서 `file:` 이 위 일곱 파일인 항목 0개. `file:` 이 `agent-common-protocol.md` 인 항목 13개(양성 대조). 그중 Frozen은 `CONST-V3R2-006`(13행), `CONST-V3R2-036`·`038`(17행), `CONST-V3R2-037`(52행) — 모두 `#user-interaction-boundary` | 등록 절은 11~110행 구간에만 있다 |
-| 유지 편집 자리 | `agent-common-protocol.md` 290-305, `manager-git.md` 114·156·164-171(와 필요하면 133-148), `delivery.md` 335-338·343·348-349·355, `doc-execution.md` 34-36, `moai/SKILL.md` 140, `references/reference.md` 161, `quality-gates-context.md` 30·101, `workflows/sync.md` 플래그 줄 | 어느 자리도 `[ZONE:Frozen]` 블록이나 등록 절 안에 있지 않다 |
+| 범위 파일의 `[ZONE:]` 태그 | `manager-git.md`·`delivery.md`·`doc-execution.md`·`moai/SKILL.md`·`references/reference.md`·`quality-gates-context.md`·`workflows/sync.md`·명령 원본(`sync.md`, `sync.md.tmpl`) 0줄(로컬·템플릿). `agent-common-protocol.md` 는 `[ZONE:Frozen]` 1줄(17행, User Interaction Boundary)과 `[ZONE:Evolvable]` 16줄 | Pre-Spawn Sync Check 태그는 292행 `[ZONE:Evolvable]` |
+| 레지스트리 등록 절 | `zone-registry.md`(로컬·템플릿)에서 `file:` 이 위 아홉 파일인 항목 0개. `file:` 이 `agent-common-protocol.md` 인 항목 13개(양성 대조). 그중 Frozen은 `CONST-V3R2-006`(13행), `CONST-V3R2-036`·`038`(17행), `CONST-V3R2-037`(52행) — 모두 `#user-interaction-boundary` | 등록 절은 11~110행 구간에만 있다 |
+| 유지 편집 자리 | `agent-common-protocol.md` 290-305, `manager-git.md` 114·156·164-171(와 필요하면 133-148), `delivery.md` 335-338·343·348-349·355·404, `doc-execution.md` 34-36, `moai/SKILL.md` 140, `references/reference.md` 161, `quality-gates-context.md` 30·101, `workflows/sync.md` 사용법 줄과 플래그 줄, 명령 원본 3행 | 어느 자리도 `[ZONE:Frozen]` 블록이나 등록 절 안에 있지 않다 |
 
 ### A.6 선행 SPEC 관계
 
@@ -100,17 +104,16 @@ team 모드이면서 워크트리 문맥이면 두 지침이 반대를 지시한
 |---|---|---|
 | SPEC-MERGE-METHOD-CONFIG-001 | completed | `merge_method` 도입. REQ-MMC-007/008이 `delivery.md`·`manager-git.md` 의 `--squash` 고정 제거를, REQ-MMC-009가 기본값에서 명령 바이트 동일을 요구 |
 
-### A.7 `/moai sync` 명령 표면 소비자 조사 (0.2.1 작성 시점)
+### A.7 `/moai sync` 명령 표면 소비자 조사와 범위 판정
 
-명령: `/usr/bin/grep -rn -e '--merge' -e '--no-merge' -e '--auto-merge' .claude internal/template/templates/.claude internal/template/templates/.agents docs-site` → 167줄. 줄마다 뜻을 읽어 세 갈래로 나눴다.
+조사 명령(0.2.1): `/usr/bin/grep -rn -e '--merge' -e '--no-merge' -e '--auto-merge' .claude internal/template/templates/.claude internal/template/templates/.agents docs-site` → 167줄. 줄마다 뜻을 읽어 나눴고, 0.2.2에서 리드 범위 판정을 반영했다.
 
 | 갈래 | 위치 | 판정 |
 |---|---|---|
-| 범위 (결정된 목록) | `moai/SKILL.md:140`, `references/reference.md:161`, `quality-gates-context.md:30`·`:101`, `workflows/sync.md` 플래그 줄(로컬 114 / 템플릿 104), `delivery.md` 337-338·348-349, `manager-git.md` 148·166 (모두 로컬·템플릿) | REQ-GDP-006·025·026 |
-| 결정과 맞추려면 바뀌어야 하지만 결정된 목록 밖 — **차단 항목** | (X1) `workflows/sync.md` 사용법 줄(로컬 95 / 템플릿 85) `/moai sync [mode] [--pr] [--merge] [--skip-mx]`; (X2) `.claude/commands/moai/sync.md:3`·템플릿 `sync.md.tmpl:3` `argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"`; (X3) `delivery.md:404` 다음 단계 선택지 "Auto-Merge PR (/moai sync --merge)"; (X4) docs-site 네 로케일 — `workflow-commands/moai-sync.md`(en 80·82·188·303·480, ko 80·82·299·473, ja 80·82·299·476·477·482, zh 77·92·97·108·189·304·485·486·491)와 `core-concepts/what-is-moai-adk.md`(en 388, ko 391, ja 391, zh 389). ko 473·en 480은 "워크트리 문맥에서는 자동 머지가 기본", 표는 `--no-merge` 를 "자동 머지 건너뜀" 으로 적는다 | §C.5 |
+| 범위 (0.2.1 결정 목록) | `moai/SKILL.md:140`, `references/reference.md:161`, `quality-gates-context.md:30`·`:101`, `workflows/sync.md` 플래그 줄(로컬 114 / 템플릿 104), `delivery.md` 337-338·348-349, `manager-git.md` 148·166 (모두 로컬·템플릿) | REQ-GDP-006·025·026 |
+| 범위 (0.2.2 리드 범위 판정) | X1 `workflows/sync.md` 사용법 줄(로컬 95 / 템플릿 85), X2 `.claude/commands/moai/sync.md:3`·템플릿 `sync.md.tmpl:3` `argument-hint`, X3 `delivery.md:404` | REQ-GDP-025, X2는 REQ-GDP-014(명령 게시본)도 |
+| 범위 밖 — 후속 문서 카드 | X4 docs-site 네 로케일(§C.5) | §D |
 | 다른 뜻 — 범위 밖 | `gh pr merge --merge`(병합 커밋 방식): `.claude/agents/harness/hns-release-specialist.md` 74·232·371·379(로컬 전용), `moai-ref-git-workflow/SKILL.md:134`(로컬·템플릿), docs-site `worktree/examples.md` 네 로케일. `--merged-only`·`git branch --merged`(워크트리 정리·브랜치 가드 문서, docs-site worktree 문서). `docs-site/README.md:348` `moai update --merge`(다른 명령) | §D |
-
-게시본 `.agents/skills/moai-sync/SKILL.md` 에는 병합 플래그 문구가 없어 결정의 영향을 받지 않는다(§A.4).
 
 ---
 
@@ -135,7 +138,7 @@ team 모드이면서 워크트리 문맥이면 두 지침이 반대를 지시한
 `sync/delivery.md` 의 auto-merge 실행 단계는 병합 명령을 활성 모드의 `git_strategy.<mode>.merge_method`(기본 `squash`)로 해석한 `gh pr merge --<merge_method> --delete-branch` 로 지시해야 한다. 기본값에서 실제 실행 명령은 지금과 바이트 동일해야 한다(SPEC-MERGE-METHOD-CONFIG-001 REQ-MMC-009 연속성).
 
 **REQ-GDP-005** (Unwanted)
-범위 파일 여덟 개(로컬·템플릿)와 생성물 `manager-git.toml` 의 어떤 실행 예시도 `--squash` 를 고정한 `gh pr merge` 명령을 실행할 명령으로 제시해서는 안 된다. `manager-git.md:114` 예시는 `--<merge_method>` 로 적혀야 하고, `manager-git.md:32` 의 기본값 설명 문장은 남아야 한다.
+범위 파일 열 개(로컬·템플릿)와 생성물 `manager-git.toml` 의 어떤 실행 예시도 `--squash` 를 고정한 `gh pr merge` 명령을 실행할 명령으로 제시해서는 안 된다. `manager-git.md:114` 예시는 `--<merge_method>` 로 적혀야 하고, `manager-git.md:32` 의 기본값 설명 문장은 남아야 한다.
 
 ### B.3 SX-R04 — auto-merge 옵트인 단일 기준 (OD-2 = B)
 
@@ -156,10 +159,10 @@ When sync 단계가 PR 병합 여부를 판단할 때, `delivery.md` 의 Auto-Me
 ### B.5 사본·생성물·중립성
 
 **REQ-GDP-013** (Ubiquitous)
-이 SPEC이 바꾼 줄은 로컬 사본(`.claude/…`)과 템플릿 사본(`internal/template/templates/.claude/…`)에서 같아야 한다. 두 사본 사이의 의도된 차이 — `delivery.md` 275·278·479-480행, `doc-execution.md` 로컬 전용 138-143행, `moai/SKILL.md` 의 20개 덩어리, `references/reference.md` 229행, `workflows/sync.md` 로컬 전용 65-74행과 81행 — 는 그대로 남아야 한다.
+이 SPEC이 바꾼 줄은 로컬 사본(`.claude/…`)과 템플릿 사본(`internal/template/templates/.claude/…`)에서 같아야 한다. 두 사본 사이의 의도된 차이 — `delivery.md` 275·278·479-480행, `doc-execution.md` 로컬 전용 138-143행, `moai/SKILL.md` 의 20개 덩어리, `references/reference.md` 229행, `workflows/sync.md` 로컬 전용 65-74행과 81행, 명령 원본 `sync.md`/`sync.md.tmpl` 의 2행 `description` — 는 그대로 남아야 한다.
 
 **REQ-GDP-014** (Ubiquitous)
-템플릿 `manager-git.md` 가 바뀌면 `internal/template/templates/.codex/agents/moai/manager-git.toml` 은 `make agents-emit` 으로 재생성되어 같은 카드에 커밋되어야 하며, 손으로 편집해서는 안 되고, `make agents-emit-check` 가 exit 0 이어야 한다.
+템플릿 `manager-git.md` 가 바뀌면 `internal/template/templates/.codex/agents/moai/manager-git.toml` 은 `make agents-emit` 으로 재생성되어 같은 카드에 커밋되어야 하며, 손으로 편집해서는 안 되고, `make agents-emit-check` 가 exit 0 이어야 한다. 템플릿 명령 원본 `sync.md.tmpl` 이 바뀌면 `make commands-emit` 을 실행하고 `make commands-emit-check` 가 exit 0 이어야 하며, 그로 인해 바뀐 게시본이 있으면 명령 원본을 바꾼 커밋과 같은 커밋에 들어가야 하고, 로컬 게시본 사본은 템플릿 게시본과 같아야 한다.
 
 **REQ-GDP-015** (Unwanted)
 `internal/template/templates/` 아래에 추가되는 문구는 SPEC ID, REQ 토큰, 내부 날짜, 커밋 SHA, `CLAUDE.local` 참조, 16개 지원 프로그래밍 언어 중 특정 언어로 치우친 표현을 담아서는 안 된다.
@@ -178,12 +181,12 @@ When sync 단계가 PR 병합 여부를 판단할 때, `delivery.md` 의 Auto-Me
 ### B.7 Frozen 비접촉
 
 **REQ-GDP-024** (Unwanted)
-이 SPEC의 변경은 범위 파일 여덟 개(로컬·템플릿)의 `[ZONE:Frozen]` 줄과 `zone-registry.md` 에 등록된 Frozen clause 문장을 바꾸거나 지워서는 안 된다.
+이 SPEC의 변경은 범위 파일 열 개(로컬·템플릿)의 `[ZONE:Frozen]` 줄과 `zone-registry.md` 에 등록된 Frozen clause 문장을 바꾸거나 지워서는 안 된다.
 
 ### B.8 `/moai sync` 플래그 의미와 모드별 승인 조건 (OD-2 하위 결정)
 
 **REQ-GDP-025** (Ubiquitous)
-`/moai sync` 의 플래그 표면 — `moai/SKILL.md:140` 의 Flags 줄, `references/reference.md:161` 의 sync 플래그 목록, `quality-gates-context.md:30` 의 `$ARGUMENTS` 목록과 `:101` 의 Supported Flags 절, `workflows/sync.md` 의 `**Flags**:` 줄, `delivery.md` Step 3.4 절 — 은 병합 옵트인 플래그를 `--auto-merge` 로 노출해야 하고, `--merge` 는 `--auto-merge` 의 폐기된 별칭(사용하면 폐기 경고)으로만, `--no-merge` 는 동작을 바꾸지 않고 호환을 위해 남긴 폐기된 no-op(사용하면 폐기 경고)으로만 서술해야 한다. 이 표면은 `--merge` 를 `--auto-merge` 와 별개이거나 폐기되지 않은 auto-merge 플래그로 서술해서는 안 되며, `--no-merge` 를 병합을 건너뛰게 하거나 병합 조건을 바꾸는 플래그로 서술해서는 안 된다.
+`/moai sync` 의 플래그 표면 — `moai/SKILL.md:140` 의 Flags 줄, `references/reference.md:161` 의 sync 플래그 목록, `quality-gates-context.md:30` 의 `$ARGUMENTS` 목록과 `:101` 의 Supported Flags 절, `workflows/sync.md` 의 사용법 줄과 `**Flags**:` 줄, 명령 원본(`.claude/commands/moai/sync.md`, `sync.md.tmpl`)의 `argument-hint`, `delivery.md` Step 3.4 절과 Phase 14 다음 단계 선택지 절 — 은 병합 옵트인 플래그를 `--auto-merge` 로 노출해야 하고, `--merge` 는 `--auto-merge` 의 폐기된 별칭(사용하면 폐기 경고)으로만, `--no-merge` 는 동작을 바꾸지 않고 호환을 위해 남긴 폐기된 no-op(사용하면 폐기 경고)으로만 서술해야 한다. 이 표면은 `--merge` 를 `--auto-merge` 와 별개이거나 폐기되지 않은 auto-merge 플래그로 서술해서는 안 되며, `--no-merge` 를 병합을 건너뛰게 하거나 병합 조건을 바꾸는 플래그로 서술해서는 안 된다.
 
 **REQ-GDP-026** (Event-driven)
 When `--auto-merge`(또는 폐기된 별칭 `--merge`)가 주어져 sync 단계가 PR 병합을 판단할 때, team 모드는 전원 승인을 조건으로 병합해야 하고, personal·manual 모드는 승인 조건 없이 병합해야 한다(승인할 팀원이 없다). `manager-git.md` 의 PR Auto-Merge 절과 `delivery.md` Step 3.4 절은 각각 이 두 조건을 모드 이름을 담은 문장으로 적어야 하며, 두 문서의 조건은 같아야 한다. CI 통과와 충돌 없음 확인은 모든 모드에 그대로 남는다.
@@ -198,8 +201,9 @@ When `--auto-merge`(또는 폐기된 별칭 `--merge`)가 주어져 sync 단계�
 |---|---|---|---|---|
 | OD-2 — 워크트리 문맥 auto-merge 기본값의 단일 기준 | **선택지 B: `manager-git.md` 옵트인(`--auto-merge`)** | 2026-09-10 | 운영자(리드 경유) | 처음에는 선택지 C(설정 키 `workflow.worktree.auto_merge`)가 선택됐다. 그 키가 `class: D`, `evidence: none`, `deprecate_after: "v3.1.0"` 으로 기록돼 있다는 사실이 제시된 뒤 B로 바뀌었다. 이 SPEC은 그 키를 건드리지 않는다 |
 | T1 — SPEC 분할 | **분할.** 이 SPEC은 AC-11, SX-R04 병합 방식, OD-2 = B와 그 파일들의 부수 의무만 남긴다. late-branch 재설계는 카드 t658, amend 적용 도우미 스텁은 카드 t659 | 2026-09-11 | 운영자(리드 경유) | 0.1.3에서 REQ 23·AC 24로 Tier M 상한을 넘은 뒤 결정 |
-| OD-2 하위 결정 — `/moai sync` 플래그 의미 | **`/moai sync` 에 새 플래그 `--auto-merge`(manager-git 옵트인과 같은 이름)를 노출한다. `--merge` 는 `--auto-merge` 의 폐기된 별칭으로 남기고 폐기 경고를 낸다. `--no-merge` 는 병합하지 않는 것이 이제 기본이므로 호환용 no-op으로 남기고 폐기 경고를 낸다.** 범위: `moai/SKILL.md:140`, `references/reference.md:161`, `quality-gates-context.md:30`·`:101`, `workflows/sync.md` 플래그 줄, `delivery.md` 337-338·348-349(로컬·템플릿, 줄 단위) | 2026-09-11 | 운영자(리드 경유) | 축소판 plan-audit 1회차 B1이 세 가지 구현(`--merge` 폐기 취소, `--auto-merge` 추가, 두 플래그 제거)이 모두 가능하다고 지적한 뒤 결정 |
-| 모드별 승인 조건 (공통 항목) | **personal·manual 모드: `--auto-merge` 는 승인 조건 없이 병합(승인할 팀원 없음). team 모드: 전원 승인 조건 유지.** 모드마다 수용 기준을 따로 둔다. `manager-git.md` 의 PR Auto-Merge 절은 지금 team 한정이고 Personal Mode에는 auto-merge 규칙이 없으므로, personal·manual 규칙을 절차가 있는 곳에 적어 `delivery.md` 와 `manager-git.md` 가 같은 말을 하게 하고 `.toml` 은 기존 단계로 재생성한다 | 2026-09-11 | 리드 판정 | — |
+| OD-2 하위 결정 — `/moai sync` 플래그 의미 | **`/moai sync` 에 새 플래그 `--auto-merge`(manager-git 옵트인과 같은 이름)를 노출한다. `--merge` 는 `--auto-merge` 의 폐기된 별칭으로 남기고 폐기 경고를 낸다. `--no-merge` 는 병합하지 않는 것이 이제 기본이므로 호환용 no-op으로 남기고 폐기 경고를 낸다.** 범위: `moai/SKILL.md:140`, `references/reference.md:161`, `quality-gates-context.md:30`·`:101`, `workflows/sync.md` 플래그 줄, `delivery.md` 337-338·348-349(로컬·템플릿, 줄 단위) | 2026-09-11 | 운영자(리드 경유) | 축소판 plan-audit 1회차 B1이 세 가지 구현이 모두 가능하다고 지적한 뒤 결정 |
+| 모드별 승인 조건 (공통 항목) | **personal·manual 모드: `--auto-merge` 는 승인 조건 없이 병합(승인할 팀원 없음). team 모드: 전원 승인 조건 유지.** 모드마다 수용 기준을 따로 둔다. personal·manual 규칙을 `manager-git.md` 절차가 있는 곳에 적어 `delivery.md` 와 같은 말을 하게 하고 `.toml` 은 기존 단계로 재생성한다 | 2026-09-11 | 리드 판정 | — |
+| 소비자 범위 판정 (X1~X4) | **운영자의 "`--auto-merge` 노출" 결정을 일관되게 적용한다. X1(`workflows/sync.md` 사용법 줄), X2(슬래시 명령 `argument-hint`, 로컬 `.md`·템플릿 `.md.tmpl`), X3(`delivery.md:404`)는 범위에 넣는다(로컬·템플릿, 줄 단위). X2는 명령 원본이므로 run-phase가 `make commands-emit` 과 `make commands-emit-check`(exit 0)를 실행하고, 다시 만든 산출물은 원본 편집과 같은 커밋에 넣는다. X4(docs-site 네 로케일)는 범위 밖에 두고 리드가 큐 이관 뒤 별도 문서 카드로 발행한다. 같은 문자열·다른 뜻의 §D 구분은 유지한다. Tier M 유지(요구사항·수용 기준 수로 정하고 파일 수 안내는 참고)** | 2026-09-11 | 리드 판정 | 0.2.1 차단 항목 X1~X4 보고 뒤 |
 
 OD-1·B1·B2·B3의 결정 기록은 카드 t658의 입력(§G)으로 옮겼다. 결정은 Implementation Kickoff Approval을 대신하지 않는다.
 
@@ -207,9 +211,9 @@ OD-1·B1·B2·B3의 결정 기록은 카드 t658의 입력(§G)으로 옮겼다.
 
 plan-auditor MP-1은 "REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL." 로 판정한다(`.claude/agents/moai/plan-auditor.md:138`).
 
-- **택한 방식**: 0.1.3 번호를 유지하고, 옮긴 번호(007-010, 016-023)와 철회된 번호(011, 012)를 §B의 원래 자리에 한 줄 자리표시로 남긴다. §B에 REQ-GDP-001부터 026까지 모든 번호가 정확히 한 번씩 나타난다. 새 요구사항은 다음 번호(024, 025, 026)를 받았다. 축소판 plan-audit 1회차는 이 방식을 결함으로 보지 않았다.
+- **택한 방식**: 0.1.3 번호를 유지하고, 옮긴 번호(007-010, 016-023)와 철회된 번호(011, 012)를 §B의 원래 자리에 한 줄 자리표시로 남긴다. §B에 REQ-GDP-001부터 026까지 모든 번호가 정확히 한 번씩 나타난다. 축소판 plan-audit 1회차는 이 방식을 결함으로 보지 않았다.
 - **다시 매기지 않은 이유**: 다시 매기면 같은 토큰이 이 문서와 커밋 `87988e946`(t658의 입력)에서 서로 다른 요구사항을 가리킨다.
-- **수용 기준도 같은 방식**: AC-GDP-001~024를 유지하고 새 기준은 AC-GDP-025~029를 받는다(acceptance.md §D).
+- **수용 기준도 같은 방식**: AC-GDP-001~024를 유지하고 새 기준은 AC-GDP-025~030을 받는다(acceptance.md §D).
 
 ### C.3 OD-2 검토한 선택지 (결정 당시 자료)
 
@@ -226,22 +230,27 @@ B 행이 적은 "`--merge` 폐기 경고의 논리가 뒤집힌다" 는 §C.1의
 | 신호 | 측정값 | Tier S 기준 | Tier M 기준 |
 |---|---|---|---|
 | 판정 대상 요구사항 수 | 12 (001-006, 013-015, 024-026) | 8 이하 | 16 이하 |
-| 판정 대상 수용 기준 수 | 15 (001-006, 013-016, 025-029) | 8 이하 | 16 이하 |
-| 영향 파일 수 | 17 (범위 파일 여덟 개 × 로컬·템플릿 16 + 생성물 `manager-git.toml` 1) | 5개 미만 | 5~15개 |
+| 판정 대상 수용 기준 수 | 16 (001-006, 013-016, 025-030) | 8 이하 | 16 이하 |
+| 영향 파일 수 | 21 (범위 파일 열 개 × 로컬·템플릿 20 + 생성물 `manager-git.toml` 1). 명령 게시본이 바뀌면(AC-GDP-030 경우 B) 2개 더 | 5개 미만 | 5~15개 (안내) |
 | 예상 변경량 | 수십 줄 규모 | 300줄 미만 | 300~1000줄 |
 
-요구사항·수용 기준 수는 Tier S를 넘고 Tier M 상한 안이다. 영향 파일 수(17)는 Tier M의 파일 수 안내(5~15)를 넘어 Tier L 안내 쪽이지만, 새로 들어온 여덟 파일은 모두 한두 줄 수정이고 변경량은 Tier S 쪽이다. `spec-workflow.md` 는 이 기준표를 "guidance, not enforcement" 로 둔다. **`tier: M` 을 유지하고 파일 수 초과를 리드에게 보고한다.** 자리표시 번호(옮김 12·철회 2)는 판정 대상이 아니므로 상한 계산에 넣지 않았다. §C.5의 차단 항목이 범위에 들어오면 파일 수는 더 늘어난다.
+요구사항·수용 기준 수는 Tier S를 넘고 Tier M 상한 안이다(수용 기준은 상한과 같은 16). 영향 파일 수는 Tier M 파일 수 안내를 넘지만, 리드가 "요구사항·수용 기준 수로 정하고 파일 수 안내는 참고" 로 판정했다(§C.1). **`tier: M` 을 유지한다.** 자리표시 번호(옮김 12·철회 2)는 판정 대상이 아니므로 상한 계산에 넣지 않았다.
 
-### C.5 남은 차단 항목 — 결정된 목록 밖이지만 결정과 맞추려면 바뀌어야 하는 소비자
+### C.5 X4 — 후속 문서 카드의 입력 (범위 밖)
 
-§A.7 조사에서 나왔다. 이 SPEC은 조용히 범위에 넣지 않았고, 수용 기준(AC-GDP-026·027)은 결정된 줄이 들어 있는 절만 판정하도록 범위를 좁혀 이 항목들을 끌어들이지 않는다.
+리드가 큐 이관 뒤 별도 문서 카드로 발행한다. 그때까지 배포된 문서는 옛 플래그와 옛 기본값을 설명한다.
 
-| ID | 위치 | 근거 | 바뀌지 않으면 |
-|---|---|---|---|
-| X1 | `workflows/sync.md` 사용법 줄 (로컬 95 / 템플릿 85) | `/moai sync [mode] [--pr] [--merge] [--skip-mx]` — 같은 파일의 플래그 줄(결정 범위)과 달리 `--merge` 만 나열하고 `--auto-merge` 가 없다 | 같은 파일 안에서 사용법과 플래그 설명이 다른 플래그를 말한다 |
-| X2 | `.claude/commands/moai/sync.md:3`, 템플릿 `.claude/commands/moai/sync.md.tmpl:3` | `argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"` — 사용자가 슬래시 명령 입력 때 보는 힌트 | 사용자는 폐기된 별칭만 보고 `--auto-merge` 를 모른다. 게시본 `.agents/skills/moai-sync/SKILL.md` 에는 이 문구가 없어(§A.4) `commands-emit` 산출물에 끼치는 영향은 관측되지 않았다 |
-| X3 | `delivery.md:404` (로컬·템플릿) | Phase 14 다음 단계 선택지 "Auto-Merge PR (/moai sync --merge)" | 완료 보고가 폐기된 별칭을 권한다 |
-| X4 | docs-site 네 로케일 `workflow-commands/moai-sync.md`, `core-concepts/what-is-moai-adk.md` | ko 473·en 480 "워크트리 문맥에서는 자동 머지가 기본", ja 476-482·zh 485-491 표의 `--no-merge` "자동 머지 건너뜀", zh 77-108 `--merge` 를 자동 병합 플래그로 소개, 네 로케일 `what-is-moai-adk.md` 의 sync 플래그 `--merge` | 공개 문서가 결정과 반대되는 기본값과 플래그를 안내한다. docs-site는 4개 로케일 동기화 규칙을 따른다 |
+측정 명령(기준 트리): `git grep -c -e '--merge' -e '--no-merge' -e '--auto-merge' b412f8a33 -- docs-site/content/{en,ko,ja,zh}/workflow-commands/moai-sync.md docs-site/content/{en,ko,ja,zh}/core-concepts/what-is-moai-adk.md`(경로는 로케일마다 글자 그대로 나열)와 같은 패턴의 `git grep -n`.
+
+| 파일 | en | ko | ja | zh |
+|---|---|---|---|---|
+| `workflow-commands/moai-sync.md` 줄 수 | 5 (80, 82, 188, 303, 480) | 4 (80, 82, 299, 473) | 6 (80, 82, 299, 476, 477, 482) | 9 (77, 92, 97, 108, 189, 304, 485, 486, 491) |
+| `core-concepts/what-is-moai-adk.md` 줄 수 | 1 (388) | 1 (391) | 1 (391) | 1 (389) |
+
+- 워크트리 기본 병합을 설명하는 줄: ko 473 "워크트리 컨텍스트에서는 플래그를 따로 주지 않아도 자동 머지가 기본입니다", en 480 "In a worktree context, auto-merge is the default behavior with no extra flag". 둘 다 "`/moai sync` 가 받는 플래그는 `--pr` / `--merge` (deprecated) / `--skip-mx`" 로 끝난다.
+- `--no-merge` 를 자동 머지 건너뜀으로 적은 표: ja 477 "`--no-merge` | N/A | 自動マージのスキップ" 와 482 "`--no-merge` フラグ未設定"(트리거 조건), zh 486 "`--no-merge` | N/A | 跳过自动合并" 와 491 "未设置 `--no-merge` 标志"(트리거 조건).
+- `--merge` 를 자동 병합 플래그로 소개하는 줄: zh 77 "`/moai sync --merge`" 표, 92 "### --merge 标志", 97, 108, 189 흐름도, 304; en 188 흐름도·303.
+- `what-is-moai-adk.md` 네 로케일의 sync 행은 플래그를 `--merge`, `--skip-mx` 로 적는다.
 
 ---
 
@@ -252,9 +261,9 @@ B 행이 적은 "`--merge` 폐기 경고의 논리가 뒤집힌다" 는 §C.1의
 - late-branch 재설계 전체: AC-01 명령·서술형·단계별 PR 안내, OD-1 선택지 1, B1·B2·B3·B6, `delivery.md` Step 3.2 github-flow와 Step 3.3.5, `spec-workflow.md`·`spec-assembly.md`·`zone-registry.md` 편집 → 카드 t658 (§G).
 - `internal/constitution/pipeline.go` 의 amend 적용 도우미 스텁(B4) → 카드 t659 (t658이 의존).
 
-### Out of Scope — 리드 결정을 기다리는 소비자 (차단 항목)
+### Out of Scope — docs-site 문서 (X4, 후속 문서 카드)
 
-- §C.5의 X1(`workflows/sync.md` 사용법 줄), X2(슬래시 명령 `argument-hint`), X3(`delivery.md:404`), X4(docs-site 네 로케일). 결정된 목록에 없으므로 이 판에서는 범위 밖에 두고 차단 항목으로 올린다.
+- docs-site 네 로케일의 `workflow-commands/moai-sync.md` 와 `core-concepts/what-is-moai-adk.md`. 리드 판정으로 범위 밖에 두며 리드가 큐 이관 뒤 별도 문서 카드로 발행한다. **이 SPEC이 착지한 뒤 후속 카드가 끝날 때까지 배포된 문서는 `--merge` 를 자동 병합 플래그로, `--no-merge` 를 자동 병합 건너뜀으로, 워크트리 문맥의 자동 병합을 기본값으로 설명한다.** 후속 카드 입력은 §C.5.
 
 ### Out of Scope — 같은 문자열이지만 다른 뜻
 
@@ -266,6 +275,7 @@ B 행이 적은 "`--merge` 폐기 경고의 논리가 뒤집힌다" 는 §C.1의
 - `spec-workflow.md`, `spec-assembly.md`, `zone-registry.md`, `worktree-integration.md`.
 - `manager-git.md` 의 Late-Branch Invocation Pattern 절에서는 114행 병합 예시만 고친다. 나머지 절차 줄과 42·160·171행은 t658 소관이다.
 - `delivery.md` Step 3.4 안의 356행 "Checkout target branch, fetch latest" 와 `manager-git.md:171` 은 t658 입력으로 넘긴다(§G.2).
+- 명령 원본의 `description` 줄과 본문, 발행기 코드(`internal/template/commandemit`), 게시본 손편집.
 - 설정 키 `workflow.worktree.auto_merge` 와 사용처 분류 파일, Go 코드, `git-strategy.yaml.tmpl` 값.
 - `[ZONE:Frozen]` 줄과 등록된 Frozen clause 문장(REQ-GDP-024).
 
@@ -280,25 +290,26 @@ B 행이 적은 "`--merge` 폐기 경고의 논리가 뒤집힌다" 는 §C.1의
 ### E.1 미검증 (Gaps)
 
 - `git fetch`/`git rev-list` 경합을 실제로 일으키지 않았다.
-- 범위 파일 중 `agent-common-protocol.md` 를 뺀 일곱 파일(`manager-git.md`, `delivery.md`, `doc-execution.md`, `moai/SKILL.md`, `references/reference.md`, `quality-gates-context.md`, `workflows/sync.md`)은 사본 일치를 지키는 테스트가 없다. 이 파일들의 사본 일치는 이 SPEC의 diff 판정으로만 확인된다.
+- 범위 파일 중 `agent-common-protocol.md` 를 뺀 아홉 파일(`manager-git.md`, `delivery.md`, `doc-execution.md`, `moai/SKILL.md`, `references/reference.md`, `quality-gates-context.md`, `workflows/sync.md`, 명령 원본 `sync.md`/`sync.md.tmpl`)은 로컬·템플릿 사본 일치를 지키는 테스트가 없다. 사본 일치는 이 SPEC의 diff 판정으로만 확인된다.
 - `TestSanitizedPairParity` 는 토큰 정규화 뒤 줄 차이를 허용 오차(`structuralDriftToleranceLines = 4`) 안에서 받아들여, `agent-common-protocol.md` 의 한 줄짜리 사본 차이는 이 테스트만으로 드러나지 않을 수 있다.
-- `/moai sync` 플래그는 Go 코드가 해석하지 않고 스킬 지침을 읽은 오케스트레이터가 해석한다. 이 SPEC의 수용 기준은 지침 문구를 판정할 뿐, 실제 sync 실행에서 `--merge` 가 경고를 내고 `--no-merge` 가 아무것도 바꾸지 않는지는 관측하지 않는다.
-- §C.5 X1~X4가 정해지지 않았다. 슬래시 명령 `argument-hint` 가 `commands-emit` 게시본에 들어가지 않는다는 판단은 게시본 `grep` 결과에 기대며 `make commands-emit-check` 는 실행하지 않았다.
-- `make agents-emit-check` 기준선(재생성 전 exit 0)은 plan 작성 시점에 실행하지 않았다(리드 제약: make 금지).
+- `/moai sync` 플래그는 Go 코드가 해석하지 않고 스킬 지침을 읽은 오케스트레이터가 해석한다. 이 SPEC의 수용 기준은 지침 문구를 판정할 뿐, 실제 sync 실행에서 `--merge` 가 경고를 내고 `--no-merge` 가 아무것도 바꾸지 않는지는 관측하지 않는다. 슬래시 명령 힌트가 실제 입력 창에 어떻게 보이는지도 관측하지 않는다.
+- `argument-hint` 편집이 게시본을 바꾸지 않는다는 예상(AC-GDP-030 경우 A)은 발행기 소스 읽기(`loader.go:4-6`, `emit.go` `renderSkill`)에 근거한다. plan 작성 시점에는 `make commands-emit`·`make commands-emit-check` 를 실행하지 않았다(리드 제약). 발행기는 템플릿 트리 게시본만 쓰므로, 경우 B가 되면 로컬 게시본 사본을 템플릿 게시본으로 맞추는 일이 따로 필요하다.
+- `make agents-emit-check` 기준선(재생성 전 exit 0)도 plan 작성 시점에 실행하지 않았다.
 - 워크트리 기본 병합 문구의 `git log -S` 추적은 `delivery.md:349` 문장에만 수행했다.
 
 ### E.2 잔여 위험
 
 - **t658과의 겹침.** `manager-git.md:114`(이 SPEC)는 t658이 다시 쓸 Late-Branch 절 안에 있다. t658은 이 SPEC이 병합된 뒤의 줄을 입력으로 받아야 하며, 순서가 뒤바뀌면 `--<merge_method>` 치환이 되돌려질 수 있다.
-- **사용자에게 보이는 기본값 변경.** OD-2 = B와 하위 결정으로 워크트리 문맥의 기본 병합이 없어지고 `--no-merge` 는 효과가 없어진다. §C.5 X2~X4가 남아 있는 동안 사용자는 명령 힌트·완료 선택지·공개 문서에서 옛 동작을 읽는다.
+- **사용자에게 보이는 기본값 변경과 문서 공백.** OD-2 = B와 하위 결정으로 워크트리 문맥의 기본 병합이 없어지고 `--no-merge` 는 효과가 없어진다. X4 후속 문서 카드가 끝날 때까지 공개 문서는 옛 동작을 안내한다(§D).
 - **검출식 한계.** AC-GDP-001·006·026~029의 검출식은 줄 단위이며, 한 조건을 여러 줄에 나눠 적거나 검출식이 예상하지 않은 표현을 쓰면 통과할 수 있다. AC-GDP-001·006은 읽기 기록을 PASS 전제로 둬 틈을 좁히지만 오독 가능성이 남는다.
-- **인용 줄번호 전제.** 범위 파일이 `b412f8a33` 과 바이트 동일하다는 전제에 기댄다(HEAD `eea2be13b` 에서 확인). run-phase 전에 develop을 흡수하면 다시 확인해야 한다.
+- **발행 대조의 일시 변경.** AC-GDP-030의 양성 대조는 run-phase 사전 점검에서 템플릿 게시본 한 파일을 잠시 바꿨다가 백업으로 되돌린다. 되돌림은 `cmp` 와 `git status` 로 확인하지만, 그 사이 다른 작업이 같은 파일을 쓰면 섞일 수 있다.
+- **인용 줄번호 전제.** 범위 파일이 `b412f8a33` 과 바이트 동일하다는 전제에 기댄다(HEAD `caa601d7c` 에서 확인). run-phase 전에 develop을 흡수하면 다시 확인해야 한다.
 
 ---
 
 ## §F 수용 기준
 
-`acceptance.md` 가 판정 대상 기준(AC-GDP-001~006, 013~016, 025~029)과 검증 명령, 양성 대조, 뮤턴트 재실행 결과, 옮긴 번호의 자리표시를 담는다.
+`acceptance.md` 가 판정 대상 기준(AC-GDP-001~006, 013~016, 025~030)과 검증 명령, 양성 대조, 뮤턴트 재실행 결과, 옮긴 번호의 자리표시를 담는다.
 
 ---
 
