@@ -210,6 +210,19 @@ Mode-specific deployment:
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
 
+#### Evidence and Decision Ownership
+
+The run-phase four-dimension result is an evidence bundle, not an unconditional
+sync decision. It MUST carry `tree_key`, the resolved AC set, rubric version,
+dimension evidence, and an `evidence_status` of `COMPLETE`, `INCOMPLETE`, or
+`CONTESTED`. Sync may reuse the bundle only when all three identity inputs
+(tree, AC, rubric) match and the status is `COMPLETE`. A changed tree, changed
+AC/rubric, `INCOMPLETE`, or `CONTESTED` finding forces the sync-phase decision
+owner to perform the missing review; the orchestrator records the reason for
+every reuse or re-execution. The sync-auditor/4dim binding predicate remains
+the owner of the sync verdict, while the run result remains attributable
+evidence.
+
 <!-- moai:evolvable-start id="gate-run-2" -->
 ## HUMAN GATE: Implementation Complete
 
