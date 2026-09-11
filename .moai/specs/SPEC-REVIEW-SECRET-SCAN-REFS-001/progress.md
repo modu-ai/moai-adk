@@ -332,6 +332,140 @@ verdict: trustworthy
   by the installed `v3.2.0-rc.7` build, which is neither an ancestor nor a descendant of this tree; it
   is not a build made from this tree.
 
+#### Gate cell 3
+
+Gate round 2, cell ③ — the timing record on this repository (`spec.md` §3.4 cell ③, AC-010). Taken
+2026-09-11 (11:51-11:53 +0900) from this worktree on branch `WT-secret-scan-refs`, HEAD `7e06766c8`
+(the lead-approval commit; parent `f167a9cd8`), clean tree. `git version 2.50.1 (Apple Git-155)`.
+`REGEX` is the scan regex as `review.md` writes it. `SP` is the session scratchpad; every file named
+`SP/g3-*` below was written by a command of this attempt (plain `>` overwrite). The files of the two
+earlier, stopped attempts were not read as evidence. Scan output was read only with `wc -c`, `wc -l`,
+and `/usr/bin/grep -c`; no SHA, path, or matched value of any matching commit is written here.
+
+Lead's start notice, quoted verbatim as received on 2026-09-11:
+
+> [리드 — t629 셀 ③ 시작] lane-10 의 internal/cli 재측정이 끝났고 창도 반납됐습니다(11:31). 셀 ③ 을 시작하세요 — 새 에이전트로 ps 점검(git log -p·go test 0건)·끝점 기록·uptime 부터 새로. lane-3 의 무거운 대조군은 당신 스캔이 끝난 뒤로 잡아 두었습니다. 끝나면 real(total)·exit·범위 수치와 판정 파일 경로를 보고해 주세요. M2 금지 유지.
+
+Lead's approval of the measurement tool, quoted verbatim as received on 2026-09-11:
+
+> [리드 — t629 셀 ③ 측정 도구] A 승인합니다. 판독 기준이 비율이라 `real` → 셸 예약어 `time` 의 `total` 형식 차이는 판정을 바꾸지 않습니다. 조건: (1) 증거에 "승인된 측정 도구 차이: /usr/bin/time -p 가 가드에 거부돼 셸 예약어 time 사용, 리드 승인"과 레인이 재현한 거부/통과 두 명령을 함께 기록 (2) 스캔 명령 본체(`git log -p --all -G 'REGEX' --stdin < 저장소`)는 고정 문자열 그대로, 바뀌는 건 감싸는 래퍼뿐 (3) 낡은 준비물(끝점 729줄, 이전 load)은 쓰지 말고 ps 점검·끝점 기록·uptime 을 새로. AC-010 문구와의 차이는 sync 단계에서 문서에 반영할지 판정 때 정합니다. M2 금지 유지.
+
+Approved measurement-tool difference: `/usr/bin/time -p` is refused by the worktree guard, so the shell
+reserved word `time` is used; wall time is its `total` field rather than `real`; lead-approved.
+Reproduction taken by the orchestrator on 2026-09-11 in worktree t629 at `7e06766c8`, on a one-commit
+range, without `-p` and without `--all`:
+
+| Form | Command | Result |
+|---|---|---|
+| refused | `/usr/bin/time -p git log --format=%h -G '(zz qq\|yy)' HEAD~1..HEAD > SP/lane-probe-time.txt 2> SP/lane-probe-time.err` | guard message begins "This session is isolated in the worktree … but this command hands time the text (zz qq\|yy) …" |
+| passed | `time git log --format=%h -G '(zz qq\|yy)' HEAD~1..HEAD > SP/lane-probe-zsh.txt 2> SP/lane-probe-zsh.err` | tool output `git log --format=%h -G '(zz qq\|yy)' HEAD~1..HEAD >  2>   0.04s user 0.02s system 42% cpu 0.152 total` |
+
+Scan command bodies below are byte-for-byte the pinned strings; only the leading `time` keyword, the
+redirects, and the trailing `; echo "exit=$?"` are added. The `time` line lands in the tool output, not
+in a file; it is copied verbatim.
+
+Pre-start check, immediately before the first run:
+
+| Step | Command | Exit | Reading |
+|---|---|---|---|
+| processes | `ps -axo pid,etime,command > SP/g3-ps-before.txt` | 0 | — |
+| `git log -p` count | `/usr/bin/grep -c '[g]it log -p' SP/g3-ps-before.txt` | 1 | `0` |
+| `go test` count | `/usr/bin/grep -c '[g]o test' SP/g3-ps-before.txt` | 1 | `0` |
+| load | `uptime > SP/g3-load-prestart.txt` | 0 | `load averages: 11.48 7.18 8.10` |
+
+First run (no recorded tips):
+
+| Step | Command | Exit | Reading |
+|---|---|---|---|
+| load before | `uptime > SP/g3-first-load-before.txt` | 0 | `10.93 7.21 8.09` |
+| HEAD | `git rev-parse HEAD > SP/g3-first-head.txt` | 0 | `7e06766c8` |
+| tip recording | `git for-each-ref --format='^%(objectname)' > SP/g3-tips.next` | 0 | `wc -l` `729`; `/usr/bin/grep -vc '^\^'` → `0` (exit 1) |
+| which step runs | `test -e SP/g3-tips.txt` | 1 | no store, so the full-history scan runs |
+| scan | `time git log -p --all -G 'REGEX' > SP/g3-first.txt 2> SP/g3-first.time; echo "exit=$?"` | 0 | `git log -p --all -G  >  2>   56.35s user 0.76s system 95% cpu 1:00.01 total` |
+| load after | `uptime > SP/g3-first-load-after.txt` | 0 | `6.89 6.81 7.86` |
+| store replaced | `mv SP/g3-tips.next SP/g3-tips.txt` | 0 | only after the scan exited 0 |
+| scope | `git log --format=%H --all > SP/g3-first-scope.txt` | 0 | `wc -l` `12490` |
+| matching commits | `/usr/bin/grep -c '^commit ' SP/g3-first.txt` | 0 | `15` |
+| bytes | `wc -c SP/g3-first.txt`; `wc -c SP/g3-first.time` | 0 | `560344`; `0` |
+
+Incremental run (immediately after the first):
+
+| Step | Command | Exit | Reading |
+|---|---|---|---|
+| store snapshot (D26) | `cp SP/g3-tips.txt SP/g3-inc-tips-read.txt`; `cmp SP/g3-tips.txt SP/g3-inc-tips-read.txt` | 0; 0 | both `wc -l` `729` |
+| plain tips | `sed 's/^\^//' SP/g3-inc-tips-read.txt > SP/g3-tips-plain.txt` | 0 | `wc -l` `729` (equal); `/usr/bin/grep -c '^\^'` → `0` (exit 1) |
+| `A` | `git rev-list --count --stdin < SP/g3-tips-plain.txt > SP/g3-A.txt` | 0 | `12488` |
+| `B` | `git rev-list --count --all > SP/g3-B.txt` | 0 | `12490` |
+| `L` | `git rev-list --count --not --all --stdin < SP/g3-tips-plain.txt > SP/g3-L.txt` | 0 | `0` |
+| scope | `git log --format=%H --all --stdin < SP/g3-inc-tips-read.txt > SP/g3-inc-scope.txt` | 0 | `wc -l` `2` |
+| load before | `uptime > SP/g3-inc-load-before.txt` | 0 | `6.66 6.77 7.79` |
+| HEAD | `git rev-parse HEAD > SP/g3-inc-head.txt` | 0 | `7e06766c8` |
+| tip recording | `git for-each-ref --format='^%(objectname)' > SP/g3-tips.next` | 0 | `wc -l` `729` |
+| scan | `time git log -p --all -G 'REGEX' --stdin < SP/g3-tips.txt > SP/g3-inc.txt 2> SP/g3-inc.time; echo "exit=$?"` | 0 | `git log -p --all -G  --stdin <  >  2>   0.09s user 0.07s system 67% cpu 0.229 total` |
+| load after | `uptime > SP/g3-inc-load-after.txt` | 0 | `8.49 7.15 7.91` |
+| store read unchanged | `cmp SP/g3-tips.txt SP/g3-inc-tips-read.txt` | 0 | the store the scan read equals the snapshot |
+| `B2` | `git rev-list --count --all > SP/g3-B2.txt` | 0 | `12490` |
+| store replaced | `mv SP/g3-tips.next SP/g3-tips.txt` | 0 | only after the scan exited 0 and `B2` = `B` |
+| matching commits | `/usr/bin/grep -c '^commit ' SP/g3-inc.txt` | 1 | `0` |
+| bytes | `wc -c SP/g3-inc.txt`; `wc -c SP/g3-inc.time` | 0 | `0`; `0` |
+
+Record per run:
+
+| Field | First run | Incremental run |
+|---|---|---|
+| HEAD | `7e06766c8` | `7e06766c8` |
+| load before / after | `10.93 7.21 8.09` / `6.89 6.81 7.86` | `6.66 6.77 7.79` / `8.49 7.15 7.91` |
+| wall time (`total`) | `1:00.01` (60.01 s) | `0.229` s |
+| exit | `0` | `0` |
+| tips excluded | `0` (no store) | `729` |
+| commits in scope | `12490` | `2` |
+| matching commits (count only) | `15` | `0` |
+| output / error bytes | `560344` / `0` | `0` / `0` |
+
+Bound: `B − A + L` = `12490 − 12488 + 0` = `2`. `B2` = `12490` = `B`, so no ref moved during the
+incremental run. Incremental commits in scope `2` ≤ bound `2` — holds.
+
+Ratios: wall time, first ÷ incremental = `60.01 / 0.229` ≈ `262`; commits in scope, first ÷ incremental
+= `12490 / 2` = `6245`. Measured under contention on a shared machine with other lanes active — the
+ratio is the reading; the absolute seconds are not a clean benchmark.
+
+Predicate (`spec.md` §3.4 cell ③, AC-010): every recorded field is present for both runs — holds; both
+runs exited 0 — holds; `A` and `L` were computed (no recorded tip was absent) — holds; the incremental
+commits-in-scope count `2` is at most `B − A + L` = `2` — holds. None of the untrustworthy shapes
+occurred: no field is missing, no exit is non-zero, and the incremental scope does not exceed the bound
+(a re-scan of all history would have shown a scope of `B` = `12490`).
+
+Differences from AC-010's wording, named here and left for the sync-phase decision:
+
+- Timing tool: the approved difference above. The `time` line is in the tool output, so
+  `SP/g3-<run>.time` carries the scan's error stream only.
+- Store snapshot (D26, lead-approved "회차마다 저장소 사본을 먼저 뜨고 그 사본으로 계산"): the
+  incremental run's plain tips, scope listing, and tips-excluded count come from the snapshot
+  `SP/g3-inc-tips-read.txt`, not from `SP/g3-tips.txt` directly. The scan itself reads `SP/g3-tips.txt`,
+  per the pinned form; `cmp` exited 0 against the snapshot both before and after the scan.
+- File names follow AC-010 where the dispatch named others: the error stream in `SP/g3-<run>.time`
+  (dispatch: `.err`), the plain file `SP/g3-tips-plain.txt` (dispatch: `SP/g3-inc-tips-plain.txt`), and
+  the approval-ordering log `SP/g3-evidence.txt` (dispatch: `SP/g3-e3.txt`).
+- The first run's tips-excluded field is `0` from the store's absence (`test -e` exit 1), since AC-010's
+  `wc -l SP/g3-tips.txt` has no file to count before the first run.
+
+verdict: trustworthy
+
+#### Gaps in cell 3
+
+- AC-010 names `/usr/bin/time -p` and its `real` field; this record uses the shell reserved word `time`
+  and its `total` field (approved difference above). Whether AC-010's wording changes is left for the
+  sync phase.
+- One machine, one git build (`git version 2.50.1 (Apple Git-155)`), one pair of runs, under contention.
+  No clean-machine timing.
+- The first run's scope was listed after its scan finished, while its tips were recorded before the scan
+  started; the two commits counted by `B − A` (`2`) became reachable in that window and fall inside the
+  first run's scope count but not inside its recorded tips. Whether the first scan itself covered them
+  was not observed.
+- A non-pinned side note: one non-git command of this attempt (a compound `cp`/`cmp`/`sed` line written
+  with a shell variable for the scratchpad path) was refused by the worktree guard before anything ran;
+  it was re-issued as plain commands with literal paths. No scan was refused or re-taken.
+
 ### Lead approval for gate cell 3
 
 Recorded by the orchestrator (lane-5) in a commit of its own, after the gate round 2 evidence commit
