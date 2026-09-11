@@ -598,6 +598,8 @@ The exported verdict is the **plan-phase review stream** of the two-stream contr
 Iteration: {N}/3
 Verdict: PASS | FAIL
 Overall Score: {0.0-1.0}
+Plan Artifact Hash: {SHA-256 of the exact plan-artifact subject set}
+Auditor Version: plan-auditor/v{version}
 
 ## Must-Pass Results
 - [PASS/FAIL] MP-1 REQ number consistency: {evidence with line citations}

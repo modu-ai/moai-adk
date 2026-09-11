@@ -46,8 +46,13 @@ single authoritative skip contract (the three conditions: verdict PASS, score
 Gate skip policy. This step CITES that contract — it MUST NOT restate a
 divergent condition set.
 
-Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and
-apply the canonical three-condition skip predicate. The Go helper
+Resolve the highest numbered
+`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md` through the single
+`runtime.ResolveLatestPlanAudit` lookup. The lookup must return the final
+plan-phase verdict, the plan-artifact hash, the score, and auditor version from
+that same review file. Apply the canonical three-condition skip predicate. The
+date-stamped `<SPEC-ID>-<YYYY-MM-DD>.md` file is history only: it is appended
+for observability and MUST NOT decide a cache hit. The Go helper
 `internal/runtime.SkipEligibleByScore(tier, score)` codifies condition 2
 (per-tier PASS threshold: S 0.75 / M 0.80 / L 0.85; the retired flat `≥ 0.90`
 predicate is NOT consulted).
@@ -74,7 +79,10 @@ Timeout: 60 seconds. On timeout, treat as INCONCLUSIVE (Step 4d).
 
 ### Step 4: Verdict Routing (4-Way Branch)
 
-Read the verdict from the report file produced by plan-auditor.
+Read the verdict from the review file produced by plan-auditor. If the
+iteration report is missing, malformed, or lacks the hash metadata, treat the
+lookup as a cache miss and execute a fresh audit; never promote the daily
+history file into a cache source.
 
 **4a. PASS**
 - Log: `[plan-audit] verdict=PASS, persisted to progress.md, proceeding to Phase 5`
