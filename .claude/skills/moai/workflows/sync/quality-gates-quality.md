@@ -16,7 +16,13 @@ Purpose: Detect project language and run language-specific diagnostics (tests, l
 
 #### Step 0.5.1: Language Detection
 
-Check indicator files in priority order (first match wins):
+Resolve all language candidates from repository markers and changed-file
+suffixes, de-duplicate them, and record the list. Do not use first-match wins:
+the routing contract is `.claude/rules/moai/workflow/language-routing-contract.md`.
+For `build.gradle.kts`, inspect the plugin/source evidence before deciding
+Kotlin versus Java. A monorepo may yield multiple candidates; the full quality
+phase routes each candidate, while the Stop hook may retain one bounded
+primary fast check and logs the remaining candidates.
 
 - Python: pyproject.toml, setup.py, requirements.txt, .python-version, Pipfile
 - TypeScript: tsconfig.json, package.json with typescript dependency
