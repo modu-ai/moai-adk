@@ -26,3 +26,20 @@ the fetch is explicitly permitted by the requirement and is what the paragraph a
 
 Result: both answers "Yes" for the one paragraph in each copy. The automatic detector agrees:
 autofail `test -e` 0 / `test -s` 1 for both copies (`ac001-judge-summary.txt`).
+
+## M4 addendum — generated `.toml` copy (run-phase part 2)
+
+Read by: manager-develop (run-phase part 2, card t622) after `make agents-emit` regenerated
+`internal/template/templates/.codex/agents/moai/manager-git.toml` (commit `5708e04d2`). Source:
+`ac001-toml-paras.md` — the only paragraph of the `.toml` `## Synchronization` section containing
+both `fetch` and `rev-list` (`ac001-toml-paras.txt` = 1). `cmp ac001-toml-paras.md
+ac001-template-paras.md` exit 0: it is byte-identical to the template paragraph read above, and the
+whole `.toml` section equals the template section (`ac014-sync.diff` exit 0).
+
+| Question | Answer | Where the paragraph says it |
+|---|---|---|
+| (1) Does it say `git rev-list` runs after `git fetch` has finished? | Yes | "run `git fetch` first and wait until it completes, then run `git rev-list --count --left-right`" |
+| (2) Does it keep fetch and rev-list out of the same batch / list / table / parallel group? | Yes | "never in the same batch as the fetch"; the parallel batch holds only fetch + `git status` + `gh pr checks --json`; `ac001-toml-listgroup.md` empty (`test -s` exit 1) |
+
+Result for the `.toml` copy: both answers "Yes". Automatic detector: autofail `test -e` 0 /
+`test -s` 1 (`ac001-toml-autofail.md`).

@@ -1,0 +1,1 @@
+26:- `merge_method = git_strategy.{mode}.merge_method` (`squash` | `merge` | `rebase`; default `squash`) — every merge is executed as `gh pr merge --<merge_method> --delete-branch`, which under the squash default renders `gh pr merge --squash --delete-branch`
