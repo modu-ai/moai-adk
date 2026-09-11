@@ -1,0 +1,17 @@
+=== RUN   TestDefaults_SlotLeaseDisabled
+    workflow_slot_lease_test.go:43: Workflow.SlotLease.DefaultMaxDuration = "", want a duration string equal to 30m
+--- FAIL: TestDefaults_SlotLeaseDisabled (0.00s)
+=== RUN   TestSlotLeaseConfig_KeyShape
+=== RUN   TestSlotLeaseConfig_KeyShape/round_trip
+=== RUN   TestSlotLeaseConfig_KeyShape/absent_key_keeps_defaults
+    workflow_slot_lease_test.go:86: slot_lease.default_max_duration = "" with the key absent, want the 30m default
+--- FAIL: TestSlotLeaseConfig_KeyShape (0.00s)
+    --- PASS: TestSlotLeaseConfig_KeyShape/round_trip (0.00s)
+    --- FAIL: TestSlotLeaseConfig_KeyShape/absent_key_keeps_defaults (0.00s)
+=== RUN   TestSlotLeaseConfig_MalformedResourceKeepsEnabled
+2026/09/12 04:04:50 WARN failed to load workflow config, using defaults error="parse workflow.yaml: config: invalid YAML syntax"
+    workflow_slot_lease_test.go:112: slot_lease.enabled = false after loading a malformed resource entry — the entry would vanish into the quiet disabled path instead of reaching the guard's fail-open report
+--- FAIL: TestSlotLeaseConfig_MalformedResourceKeepsEnabled (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	0.443s
+FAIL

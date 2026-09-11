@@ -476,6 +476,12 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// SlotLease carries the resource slot lease settings (card t607): the
+	// opt-in PreToolUse guard flag, the default declared maximum duration, and
+	// the per-resource command patterns. Default OFF; the `moai slot` verbs
+	// work regardless of Enabled. Deliberately separate from IntegrationLock.
+	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -687,6 +693,27 @@ type IntegrationLockConfig struct {
 // the default-OFF posture was chosen for, and would pass every other check.
 type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the
+// PreToolUse guard's deny layer only; DefaultMaxDuration is a duration string
+// parsed at use; Resources maps a resource name to its command patterns.
+//
+// M1 STATE: the schema is declared; the shipped default and the lenient
+// per-entry decoding of Resources land in M4.
+type SlotLeaseConfig struct {
+	Enabled            bool                               `yaml:"enabled"`
+	DefaultMaxDuration string                             `yaml:"default_max_duration"`
+	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
+}
+
+// SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
+// against a Bash command with quoted spans scrubbed. Invalid is non-empty when
+// the entry could not be read as a list of pattern strings; such an entry is
+// reported by the guard (fail-open) rather than failing the whole section.
+type SlotLeaseResourceConfig struct {
+	Commands []string `yaml:"commands"`
+	Invalid  string   `yaml:"-"`
 }
 
 // AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
