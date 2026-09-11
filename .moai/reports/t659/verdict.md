@@ -322,3 +322,32 @@ design.md 에서 판정서 문구가 아니라 기존 SPEC 인코딩에서 온 �
 - `internal/spec/lint.go:108-118` `NewLinter` 는 `projectDir := opts.BaseDir` 로 `LoadRegistry` 를 부르고, 적재 실패는 조용히 넘겨 `DanglingRuleReference` 검사를 건너뛴다.
 - 판독: 현 `loader.go:82` 는 절대경로만 검사해 이 상대 경로를 받아들인다. §11 의 규칙(Clean + 절대화 + 루트 접두 비교)은 등록부를 저장소 루트의 `.claude/…` 로, 루트를 `internal/spec/testdata` 로 풀어 거부하게 된다 → 적재 오류가 삼켜짐 → finding 을 기대하는 AC08 테스트가 실패할 것으로 **예측**된다.
 - 결정 필요: 이 거부를 §11 적용 범위의 의도된 결과로 볼지(호출자·테스트 갱신을 계획에 넣음), 경계 검사를 amend 경로에만 적용할지.
+
+## 16. 2회차 수정(0.1.5) · D4 반영(0.1.6) 확인 · lint
+
+### 16.1 0.1.5 — 한도로 끊긴 2회차의 완결 판단
+
+- 2회차 manager-spec 이 세션 한도(`resets 1:40pm (Asia/Seoul)`, HTTP 429, request id `req_011Cevv1WBTDXx3PnKh5LeW2`)로 커밋 전에 중단했다. 약 7시간 뒤 리드 재개 지시로 레인이 미커밋분(acceptance·design·plan·progress·spec, 103+/79-)을 판독했다.
+- 완결 판단 근거(레인 확인): version 0.1.5, REQ 21·AC 25·뮤턴트 29 가 HEAD `54ca2e3b6` 와 같음, Cf 0. D1 — AC-CAA-012 주입기 rename-then-fail 모드와 M-5b 변형별 kill map 문장이 끝까지 있음. D2 — AC-CAA-024 CLI 사례가 사본 clause 를 달리하고 `amendment failed`·`clause mismatch`·`Dry-run success` 부재를 단언, 이유 문장이 끝까지 있음. D3 — `symlinked_registry`·`symlinked_file` 행, M-23 지점별 변형. HISTORY 0.1.5 행이 D1–D3 과 D5–D16 을 각각 기록. plan.md R-8 diff 없음. 추가 108줄에 미완 표식(TODO·TBD·FIXME·XXX) 0.
+- 레인이 카드 id 를 붙여 `193136a6a` 로 커밋했다.
+- Gap: minor D5–D16 을 레인이 하나씩 대조하지는 않았다(HISTORY 기록에 의존). plan-audit 2회차의 확인 대상이다.
+
+### 16.2 0.1.6 — D4 반영 (`564c370b5`, 새 manager-spec)
+
+- 운영자 결정 D4: 경계 검사는 amend 경로(파이프라인 적용 단계·CLI `amend`)에만. `LoadRegistry` 자체와 amend 가 아닌 호출자는 현재 동작을 보존.
+- **호출자 수 정정: 5곳이다.** §15.3 의 비테스트 호출 7곳 중 amend 경로는 `internal/cli/constitution.go:511`(`runConstitutionAmend`)·`internal/constitution/pipeline.go:67` 두 곳이고, 나머지는 `internal/spec/lint.go:114`·`internal/cli/constitution.go:70`·`:160`·`internal/cli/doctor.go:683`·`internal/constitution/validator.go:183` 다섯 곳이다. 리드 지시와 레인 보고의 "6호출자"는 틀린 수였다.
+- 레인 확인: 커밋은 SPEC 파일 5개만 바꿈(79+/56-), 작업 트리 변경 0. version 0.1.6·tier L. 여섯 파일 전체 REQ 21·AC 25, 뮤턴트 29. 부속 4파일 `status:` 0. `plan.md:141` R-8 이 "The containment check is scoped to the amend path only (operator decision D4)." 로 시작. acceptance.md `loader_unchanged` 보존 사례(350행)와 `TestLinter_AC08_DanglingRuleReference` 보존 실행 존재.
+- acceptance.md 등장 횟수(`grep -o -w`): AC-CAA-022 7 · AC-CAA-023 13 · AC-CAA-024 20 · AC-CAA-025 11 · M-19 8 · M-20 15 · M-24 11 · REQ-CAA-021 8. 미편집 대조: AC-CAA-001 3 · M-1 3. 에이전트가 보고한 편집 후 값과 모두 같다.
+- 에이전트가 짚은 뮤턴트 조정(에이전트 판독): D4 로 로더의 절대경로 거부가 남으므로 M-20 (i) 는 AC-CAA-023 `divergent_root_*` 행을 더 못 죽인다 → 그 두 행의 담당을 M-19 로 옮김. M-24 의 AC-CAA-025 킬을 `load` 에서 `dry_run` 으로 옮김(`load` 는 `LoadRegistry` 직접 호출이라 containment 뮤턴트가 닿지 않음). 보존 행을 죽이는 뮤턴트는 새 변형 M-20 (iii)(검사를 `LoadRegistry` 안으로 옮김).
+- Cf 문자 여섯 파일 모두 0(대조 1).
+
+### 16.3 lint (`lint-0.1.6.txt`, 판정 바이너리 `lint-binary-0.1.6.txt`)
+
+```
+/Users/goos/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001
+INFO  OwnershipTransitionUnmeasured  …/spec.md  1  … commit 7b4d1ac89… has no Authored-By-Agent trailer
+0 error(s), 0 warning(s)
+LINT_EXIT=0
+```
+
+- 판정 바이너리 `v3.2.0-rc.7   moai_cp/20260910_130400-275-ged71054d3-dirty   built 2026-09-10T19:18:41Z`, `VERSION_EXIT=0`. 판정 트리 `564c370b5`. 기준 커밋 이후 이 브랜치의 커밋은 SPEC·판정서 문서뿐(Go 코드 변경 0, §10.2). `-dirty` 내용은 미관측(Gap).
