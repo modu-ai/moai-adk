@@ -163,6 +163,15 @@ Before Phase 5, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
   ```
 - The progress.md file persists across sessions and enables seamless resume after interruption.
 
+### Warm/Clear Handoff Decision
+
+Before a phase boundary or new spawn batch, choose `warm` or `clear` using
+`.claude/rules/moai/workflow/context-clear-policy.md`. A warm plan→run handoff
+requires the same approved `plan_artifact_hash` and `tree_key`; a clear path
+first persists `context_snapshot_id`, approval scope, pending tasks, and last
+evidence, then verifies those fields after reload. Record the decision and
+`clear_reason` in progress.md; a bare `/clear` does not prove continuity.
+
 ---
 
 ## Worktree Path Rules [HARD] (All Modes)
