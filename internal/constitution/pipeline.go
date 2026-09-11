@@ -62,11 +62,18 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 		defer p.releaseLock()
 	}
 
-	// Load registry
-	registryPath := filepath.Join(projectDir, ".claude", "rules", "moai", "core", "zone-registry.md")
-	registry, err := LoadRegistry(registryPath, projectDir)
+	// Resolve the registry path with the resolver the CLI uses (REQ-CAA-019)
+	// and admit it, every entry's file:, and the evolution log only when they
+	// lie inside projectDir (REQ-CAA-020, REQ-CAA-021). The registry-path
+	// check runs before the registry is read.
+	registryPath := ResolveRegistryPath(projectDir)
+	registry, err := LoadAmendRegistry(registryPath, projectDir)
 	if err != nil {
 		return nil, fmt.Errorf("registry load error: %w", err)
+	}
+	evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
+	if err := checkContained(projectDir, evolutionLogPath); err != nil {
+		return nil, fmt.Errorf("evolution log load error: %w", err)
 	}
 
 	// Lookup current rule
@@ -112,7 +119,6 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 	}
 
 	// ===== Layer 4: RateLimiter =====
-	evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")
 	if err := p.RateLimiter.Admit(proposal, evolutionLogPath); err != nil {
 		return nil, fmt.Errorf("layer 4 (RateLimiter) failed: %w", err)
 	}

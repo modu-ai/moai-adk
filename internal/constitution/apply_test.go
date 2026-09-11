@@ -656,8 +656,7 @@ func TestPipeline_Execute_StaleBefore_Rejected(t *testing.T) {
 	}
 }
 
-// AC-CAA-022 — the CLI and Execute resolve the same registry. The shared
-// resolver's own assertions join this test when the resolver lands (M2).
+// AC-CAA-022 — the CLI and Execute resolve the same registry.
 func TestExecute_UsesSharedRegistryResolver(t *testing.T) {
 	const clauseB = "Alternate registry clause text."
 	const afterB = "Alternate registry clause text, amended."
@@ -674,6 +673,9 @@ func TestExecute_UsesSharedRegistryResolver(t *testing.T) {
 	standardProject(t, Q)
 	t.Setenv("MOAI_CONSTITUTION_REGISTRY", altRegistry)
 	t.Setenv("CLAUDE_PROJECT_DIR", Q)
+	if got := ResolveRegistryPath(P); got != altRegistry {
+		t.Errorf("ResolveRegistryPath(P) = %q, want %q (the override outranks CLAUDE_PROJECT_DIR)", got, altRegistry)
+	}
 	defaultSHA := fileSHA(t, prjP.registry)
 	beforeQ := snapshotTree(t, Q)
 	p, _, _ := newGatedPipeline(t)
