@@ -61,6 +61,9 @@ func NewPipeline() *Pipeline {
 // - Record in evolution-log.md
 //
 // On failure: returns error from the corresponding layer.
+//
+// @MX:WARN: [AUTO] cyclomatic complexity 22; ordered pre-gate checks, the five FROZEN layers, and the dry-run/real split in one function
+// @MX:REASON: the check order is load-bearing — REQ-CAA-017/020/021 and the empty-After and rule-file alias guards must reject before Layer 1, so no rejection follows Layer 5 approval; moving a branch changes which error a caller sees
 func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRun bool) (*AmendmentLog, error) {
 	// 0. Attempt to acquire single-writer lock
 	if err := p.acquireLock(dryRun); err != nil {

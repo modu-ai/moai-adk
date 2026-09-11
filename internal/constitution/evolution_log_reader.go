@@ -91,6 +91,9 @@ func parseEvolutionLog(path string, content string) ([]AmendmentLog, error) {
 // scanned line-anchored; a segment that is not an entry advances the scan by
 // one delimiter, never by a pair, so the number of horizontal rules before an
 // entry cannot shift the pairing (REQ-CAA-007).
+//
+// @MX:WARN: [AUTO] cyclomatic complexity 17; fence masking and --- delimiter pairing in one scan
+// @MX:REASON: REQ-CAA-007 — fenced lines must be excluded and a non-entry segment must advance by one delimiter, never a pair; an off-by-one silently drops or misreads the entries the Layer 4 gate counts
 func evolutionLogBlocks(content string) []logBlock {
 	lines := strings.Split(content, "\n")
 	inFence := make([]bool, len(lines))
@@ -268,6 +271,9 @@ func parseLogTime(s string) (time.Time, bool) {
 }
 
 // entry maps the decoded fields onto an AmendmentLog (REQ-CAA-006, REQ-CAA-008).
+//
+// @MX:WARN: [AUTO] cyclomatic complexity 17; per-key decoding with fail-closed error paths
+// @MX:REASON: REQ-CAA-008/009 — a missing or unparseable approval time, or a mistyped field, must fail with the file, line, key, and id; turning an error path into a zero value lets an unrecorded amendment escape the rate limiter
 func (d *logEntryDecoder) entry() (AmendmentLog, error) {
 	e := AmendmentLog{ID: d.id}
 	var err error

@@ -72,6 +72,9 @@ func decodeRegistryEntries(content string) ([]rawEntry, error) {
 // the registry's yaml fence (REQ-CAA-003), then re-parses the candidate
 // content the way the loader does and verifies the entry count and the
 // target clause before anything is written (REQ-CAA-004).
+//
+// @MX:WARN: [AUTO] cyclomatic complexity 18; a line-level rewrite inside the yaml fence followed by a re-parse check
+// @MX:REASON: REQ-CAA-003/004 — only the target clause: line may change, and the candidate must re-decode to the same entry count and the new clause before anything is written; loosening one check lets a wrong line or a broken registry reach disk
 func rewriteRegistryClause(path string, content []byte, ruleID, next string) ([]byte, error) {
 	text := string(content)
 	before, err := decodeRegistryEntries(text)

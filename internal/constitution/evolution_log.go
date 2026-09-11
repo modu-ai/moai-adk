@@ -22,8 +22,8 @@ var _ = filepath.Join // referenced by LoadEvolutionLogs path construction
 // line, key, and entry id when a recognized entry has no parseable approval
 // timestamp (SPEC-CON-AMEND-APPLY-001 REQ-CAA-006 … REQ-CAA-009).
 //
-// @MX:ANCHOR: [AUTO] evolution-log read contract shared by the rate limiter, the apply step, and MarkRolledBack
-// @MX:REASON: fan_in >= 3 (rateLimiter.Admit, applyAmendment, MarkRolledBack); a reader that drops entries silently blinds the Layer 4 gate
+// @MX:ANCHOR: [AUTO] evolution-log read contract shared by the rate limiter and MarkRolledBack
+// @MX:REASON: production fan_in 2 (rateLimiter.Admit, MarkRolledBack; the apply step calls parseEvolutionLog directly), below the >= 3 threshold — kept as ANCHOR pending a demotion decision; a reader that drops entries silently blinds the Layer 4 gate
 func LoadEvolutionLogs(path string) ([]AmendmentLog, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
