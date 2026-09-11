@@ -1,0 +1,10 @@
+ac026-base-local-skill.md:1: Modes: auto, force, status, project. Flags: --merge, --skip-mx
+ac026-base-local-ref.md:2: - --merge: Auto-merge PR and clean up branch after sync
+ac026-base-local-qgc-args.md:4:   - Flag: --merge
+ac026-base-local-qgc-flags.md:4: - --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+ac026-base-local-sync.md:1: **Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
+ac026-base-local-dl.md:9: - OR `--merge` flag explicitly set (deprecated, logged as warning)
+ac026-base-local-dl.md:20: - `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
+ac026-base-local-sync-usage.md:1: /moai sync [mode] [--pr] [--merge] [--skip-mx]
+ac026-base-local-hint.md:1: argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"
+ac026-base-local-dl-next.md:9: - Auto-Merge PR (/moai sync --merge)

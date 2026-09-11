@@ -1,0 +1,8 @@
+.claude/rules/moai/workflow/spec-workflow.md
+internal/template/catalog.yaml
+internal/template/templates/.claude/hooks/moai/trace-ledger.sh
+internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/rules/moai/workflow/trace-ledger-contract.md
+internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md
+internal/template/templates/.moai/config/sections/harness.yaml

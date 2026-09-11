@@ -1,0 +1,7 @@
+spec-workflow.md pair lines in mirror-stale.txt: 2
+spec-workflow.md pair in card-range-names grep exit=1 (expect 1)
+card-hits test-e exit=0
+card-hits test-s exit=1 (expect 1)
+mirror-stale paths also in card range: 0
+positive control (card range contains a known path? acp expect 1 absent): exit=1
+positive control toml present in card range grep exit=0 (expect 0)

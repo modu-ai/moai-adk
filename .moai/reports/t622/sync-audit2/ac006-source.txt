@@ -1,0 +1,3 @@
+.moai/reports/t622/sync-audit2/ac006-local-de.md:1
+.moai/reports/t622/sync-audit2/ac006-tmpl-de.md:1
+.moai/reports/t622/sync-audit2/ac006-base-de.md:0

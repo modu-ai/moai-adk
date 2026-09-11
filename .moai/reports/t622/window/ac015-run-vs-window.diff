@@ -1,0 +1,15 @@
+164c164
+< index ed1e282e7..5d8419632 100644
+---
+> index ed1e282e7..27beba1a4 100644
+167c167,169
+< @@ -33,7 +33,7 @@ Detect if the current session is running within a MoAI worktree:
+---
+> @@ -31,9 +31,9 @@ metadata:
+>  Detect if the current session is running within a MoAI worktree:
+>  - Check if current git directory path contains `/.moai/worktrees/` component
+169c171,172
+<  - Store result as `is_worktree_context` boolean for use in Phase 13
+---
+> -- Store result as `is_worktree_context` boolean for use in Phase 13
+> +- Store result as `is_worktree_context` boolean; it selects the worktree delivery route (Phase 13 Step 3.2) and the worktree next-step options (Phase 14), but it never decides auto-merge

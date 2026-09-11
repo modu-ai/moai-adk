@@ -1,0 +1,192 @@
+---
+description: "Sync Phase 1 — Purpose/Scope/Input/Mode/Flags/Context Loading and Phase 1 Pre-Sync Quality Gate through Phase 3 Deployment Readiness Check. Contains HUMAN GATE 1 (Pre-Sync Quality)."
+user-invocable: false
+metadata:
+  parent: moai-workflow-sync
+  phase: "Phase 1: Pre-Sync Context and Deployment Readiness"
+---
+
+<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+
+# Sync Workflow Orchestration
+
+## Purpose
+
+Synchronize documentation with code changes, verify project quality, and finalize pull requests. This is the third step of the Plan-Run-Sync workflow.
+
+## Scope
+
+- Implements Step 4 of MoAI's 4-step workflow (Report and Commit)
+- Receives implementation artifacts from /moai run
+- Produces synchronized documentation, commits, and PR readiness
+
+## Input
+
+- $ARGUMENTS: Mode and optional path
+  - Mode: auto (default), force, status, project
+  - Path: Optional synchronization target path (e.g., src/auth/)
+  - Flag: --merge
+
+## Mode Flag Compatibility
+
+Per the subcommand-classification contract:
+
+- This subcommand is multi-agent (open-ended) but does NOT participate in the
+  `--mode {autopilot|loop|team}` axis.
+- Any `--mode` value supplied to `/moai sync` is silently ignored. The sync workflow
+  proceeds with its default behavior.
+- The `pipeline` value is the only special case: passing `--mode pipeline` triggers
+  `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
+
+See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
+full subcommand × mode matrix.
+
+## Supported Modes
+
+- auto (default): Smart selective sync of changed files only. PR Ready conversion. Daily development workflow.
+- force: Complete regeneration of all documentation. Error recovery and major refactoring use case.
+- status: Read-only health check. Quick project health report with no changes.
+- project: Project-wide documentation updates. Milestone completion and periodic sync use case.
+
+### Project Mode Details (ENHANCED)
+
+The `project` mode performs comprehensive project-wide synchronization:
+
+**When to use:**
+- After completing a milestone or major feature
+- Before releasing a new version
+- Periodic maintenance (weekly/monthly)
+- After significant refactoring
+- When `.moai/project/` documents are outdated
+
+**What project mode does:**
+
+1. **Full Project Scan** (vs. auto mode's selective scan):
+   - Scans ALL source files (not just changed files)
+   - Checks ALL SPEC documents for updates needed
+   - Verifies ALL project documentation consistency
+   - Validates ALL language files for MX tag coverage
+
+2. **SPEC Document Update Detection**:
+   - Compares implementation against SPEC requirements
+   - Detects implemented features not documented in SPEC
+   - Detects SPEC requirements not yet implemented
+   - Flags SPEC documents requiring updates
+
+3. **Project Document Updates**:
+   - Updates `.moai/project/tech.md` when new dependencies/technologies added
+   - Updates `.moai/project/structure.md` when architecture changes
+   - Updates `.moai/project/product.md` when new features added
+   - Updates `.moai/project/codemaps/` when architecture changes detected (delegates to codemaps workflow)
+   - Updates README.md to reflect current project state
+
+4. **Comprehensive Quality Verification**:
+   - Runs full test suite (all languages)
+   - Lint check for ALL source files
+   - Type check for ALL source files
+   - MX tag validation for ALL source files
+
+**Output for project mode:**
+- Complete project health report
+- All SPEC documents requiring updates
+- All project documents requiring updates
+- Recommendations for improvements
+- Full language breakdown of code quality metrics
+
+## Supported Flags
+
+- --pr: Push branch and create/update PR on GitHub after sync. When used, automatically returns to base branch (main/develop) after PR creation (Step 3.3.5).
+- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+- --skip-mx: Skip MX tag validation and annotation during sync.
+
+## Context Loading
+
+Before execution, load these essential files:
+
+- .moai/config/sections/git-strategy.yaml + language.yaml (git strategy, language settings)
+- .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
+- .moai/config/sections/language.yaml (git_commit_messages setting)
+- .moai/specs/ directory listing (SPEC documents for sync)
+- .moai/project/ directory listing (project documents for conditional update)
+- .moai/project/codemaps/ directory listing (architecture maps for conditional update)
+- README.md (current project documentation)
+
+Pre-execution commands: git status, git diff, git branch, git log, find .moai/specs.
+
+---
+
+## Phase Sequence
+
+> **Phase-number namespace note**: The Phase N / Phase N.M labels below (Phase 1, Phase 2, Phase 3, Phase 7, Phase 8, Phase 9, Phase 10, Phase 1, Phase 2, Phase 3, Phase 4) are local to the `/moai sync` workflow only. They are a distinct numbering namespace from `harness.yaml` `levels.<level>.skip_phases`, which governs which `/moai run` phases (task-decomposition.md / phase-execution.md numbering) are skipped at a given harness level. A sync-phase number and a run-phase `skip_phases` entry sharing the same numeral (e.g. both using `0.5`) do NOT refer to the same phase.
+
+### Phase 1: Pre-Sync Quality Gate
+
+<!-- moai:evolvable-start id="gate-sync-1" -->
+### HUMAN GATE: Pre-Sync Quality
+
+**Previous phase output:** Completed SPEC implementation
+**Approval question:** Is the project in a state where documentation can be synced?
+**Cannot proceed until:**
+- [ ] Working tree is clean or only expected changes present
+- [ ] All tests pass
+- [ ] MX tags validated
+- [ ] No HARD rule violations
+<!-- moai:evolvable-end -->
+
+Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
+
+#### Step 0.0.1: Gate Execution
+
+- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`.
+- Execute gate workflow equivalent: lint + format + type-check + test in parallel
+- Auto-fix any fixable issues (lint auto-fix, format auto-fix)
+- If unfixable errors remain: Present summary and offer options via AskUserQuestion
+  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
+  - Skip gate: Proceed to Phase 3 (errors will be caught later but at higher cost)
+  - Abort: Exit sync workflow
+
+Output: gate_report with pass/fail per check category.
+
+### Phase 3: Deployment Readiness Check
+
+Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
+
+#### Step 0.1.1: Test Passage Verification
+
+- Run full test suite for detected project language
+- Verify all tests pass (zero failures required)
+- If tests fail: Present failure summary and offer options via AskUserQuestion
+  - Fix and retry (Recommended): Delegate to manager-develop subagent (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
+  - Continue anyway: Proceed with warning
+  - Abort: Exit sync workflow
+
+#### Step 0.2: Migration Check
+
+- Scan for database schema changes (new models, altered tables, migration files)
+- Scan for configuration format changes (new config keys, changed defaults)
+- Scan for data format changes (API request/response shape changes)
+- If migrations detected: Flag as deployment prerequisite and include in sync report
+
+#### Step 0.3: Environment and Configuration Changes
+
+- Scan for new environment variables referenced in code but not in .env.example or documentation
+- Scan for new configuration files or sections added
+- Scan for changed default values in existing configuration
+- If changes detected: Generate environment change summary for inclusion in PR description
+
+#### Step 0.4: Backward Compatibility Assessment
+
+- Identify public API changes (removed endpoints, changed signatures, removed fields)
+- Identify breaking changes in exported functions or types
+- Identify dependency version changes that may affect consumers
+- Severity classification:
+  - Breaking: Must be documented and versioned (semver major bump)
+  - Deprecation: Must include migration guide
+  - Compatible: No action required
+- If breaking changes detected: Require explicit user acknowledgment via AskUserQuestion
+
+Output: deployment_readiness_report with test_status, migrations_needed, env_changes, breaking_changes, and overall readiness status (READY, NEEDS_ATTENTION, or BLOCKED).
+
+If overall status is BLOCKED: Present blocking issues to user and exit unless user overrides.

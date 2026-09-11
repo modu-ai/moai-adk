@@ -1,0 +1,5 @@
+SEVERITY  CODE                  FILE                                                 LINE  MESSAGE
+--------  ----                  ----                                                 ----  -------
+WARNING   REQTableRowsRejected  .moai/specs/SPEC-GIT-DELIVERY-PROCEDURE-001/spec.md  338   table NOT read as a requirement-definition table (rejected_rows=14): rows here carry a leading REQ ID but none of the modality markers the discriminator keys on (SHALL / 해야 한다 / 해서는 안 된다), so they were not collected. This is NOT a claim that those rows are malformed — it is what keeps "no requirement here" and "not collected here" distinguishable in this output. Counted per table, not per row.
+
+0 error(s), 1 warning(s)
