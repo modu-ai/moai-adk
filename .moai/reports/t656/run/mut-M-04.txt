@@ -1,0 +1,19 @@
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/absent
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/unreadable_dir
+    settings_snapshot_base_test.go:192: MergeUserFiles returned mutant M-04: unusable canonical snapshot, want nil
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/invalid_json
+    settings_snapshot_base_test.go:192: MergeUserFiles returned mutant M-04: unusable canonical snapshot, want nil
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_array
+    settings_snapshot_base_test.go:192: MergeUserFiles returned mutant M-04: unusable canonical snapshot, want nil
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_null
+    settings_snapshot_base_test.go:192: MergeUserFiles returned mutant M-04: unusable canonical snapshot, want nil
+--- FAIL: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase (9.10s)
+    --- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/absent (0.22s)
+    --- FAIL: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/unreadable_dir (0.13s)
+    --- FAIL: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/invalid_json (1.50s)
+    --- FAIL: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_array (3.34s)
+    --- FAIL: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_null (2.53s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	9.740s
+FAIL

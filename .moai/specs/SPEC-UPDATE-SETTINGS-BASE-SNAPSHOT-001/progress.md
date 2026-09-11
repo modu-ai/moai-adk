@@ -188,11 +188,74 @@ exit=0
 ### §E.2.6 Disclosed implementation decisions (lead review)
 
 - **D7 render-byte source.** `StageDeployedSettingsSnapshot` takes the manifest entry the deployer wrote and stages the file only when the entry is template-managed and its `template_hash` (the SHA-256 of the bytes the deployer rendered and wrote) equals the file's hash. The staged bytes are therefore exactly the deployer's render; the forbidden form — reading the disk file with no provenance proof (M-14) — is not used. Taking the bytes out of the deployer's return value would need a change to `internal/template` (a `DeployResult` field), which is outside this SPEC's module; this choice keeps the SPEC's module boundary and the plan's D7 option 2 (manifest record + hash). If the lead reads plan.md D7 ("렌더 바이트는 배포기에서 직접 받는다") as requiring the return-value route, that is a scope expansion to `internal/template` and needs a re-delegation.
+- **Stateless seam.** The lifecycle is three stateless calls (`backup.JudgeLeftoverSettingsSnapshot`, `backup.StageDeployedSettingsSnapshot`, `merge.MergeUserFilesAndSettleSnapshot` / `backup.SettleSettingsSnapshot`); the only state is the staging file on disk plus the merge outcome. Consequences for the mutant table: M-06c, M-06t and M-D5e collapse into one code mutation at seam level (staging promotes itself); M-D5f / M-D5g are placement mutants of the `internal/cli` call sites and are observed in the slot as M-D5f, M-D5g-wb, M-D5g-wd, M-D5g-s.
 - **Preserve-path channel (N3-03).** `MergeUserFilesWithOutcome` returns a per-path `MergeOutcome`; `MergeUserFiles` keeps its signature. A merge that returns an error before writing anything (manifest or embedded-FS load failure) is not a preserve path: the live file still holds the render, so the staging copy is promoted.
+
+### §E.2.7 M5 (part) — mutants observed without the slot
+
+Each mutant was applied to the committed tree `c581a6127`, the named test run with `-count=1`, and the file reverted (`git restore` or an inverse edit); `git status --short internal/` was empty afterwards. Verbatim output: `.moai/reports/t656/run/mut-<ID>.txt`.
+
+| ID | Mutation (file) | Killing cell(s) observed RED | exit |
+|---|---|---|---|
+| M-01 | canonical branch disabled (`merge.go`) | AC-001 `with_canonical`, AC-003, AC-012 `with_canonical`, AC-013 | 1 |
+| M-02 | canonical present → write the new render wholesale (`merge.go`) | AC-002 (`model = sonnet, want opus`), AC-003, AC-012, AC-013 | 1 |
+| M-04 | unusable canonical → merge returns an error (`merge.go`) | AC-004 `unreadable_dir`, `invalid_json`, `json_array`, `json_null` (`absent` stays green, as it must) | 1 |
+| M-06c / M-06t / M-D5e | staging promotes itself right after the write (`settings_snapshot.go`) | AC-006 `single_call_order` and `split_deploy_then_restore_order` (`newKey = <nil>, want 1`), AC-016 c2/c4/c5, AC-008 `promote_failure` (2 lines), and the unit cell `RecordsRenderWithoutTouchingCanonical` | 1 |
+| M-08p | promotion failure printed with the write-failed prefix (`settings_snapshot.go`) | AC-008 `promote_failure` (seam) + both backup promote-failure cells | 1 |
+| M-08s | staging failure printed with the sections wording (`settings_snapshot.go`) | AC-008 `helper` (0 prefixed lines; sections wording present) | 1 |
+| M-09 | `HasSnapshot` inspects the whole snapshot root (`snapshot.go`) | AC-009 cell B (`HasSnapshot = true with only the settings copy present`); cell A stays green | 1 |
+| M-11 | canonical base for every `.json` (`merge.go`) | AC-011 (`.mcp.json statusLine.command = new, want old`) | 1 |
+| M-14 | staging reads the disk file with no manifest proof (`settings_snapshot.go`) | AC-014 `untracked_existing`, `user_modified_existing`; stale-hash unit cell | 1 |
+| M-D5a | always promote — leftover and flow end (`settings_snapshot.go`) | AC-016 c2 next flow, c5 next flow (`a = 1`, `K = <nil>`) | 1 |
+| M-D5b | promote only when the merge wrote a result (`settings_snapshot_flow.go`) | AC-016 c3, c8. c4 and c6 stay green in this design: c4's next-flow promotion goes through the leftover judgement and c6 calls the settle directly with no merge | 1 |
+| M-D5c | flow-end promotion only when live == staging bytes (`settings_snapshot.go`) | AC-016 c1, c6 (and c4/c5 next-flow canonical) | 1 |
+| M-D5d | leftover always discarded (`settings_snapshot.go`) | AC-016 c4 next flow (`a = 2, want 3`) | 1 |
+| M-D5i | preserve judged by live == pre-flow user bytes (`settings_snapshot_flow.go`) | AC-016 c3 (`canonical snapshot = {"a":1}`) | 1 |
+
+Deviation from the acceptance.md §E prediction: M-D5b is killed by c3 and c8 here, not by c4/c6 (reason in the table). The mutant is killed either way.
+
+### §E.2.8 M4 wiring — prepared, not run (lead slot required)
+
+Wiring (`go vet ./internal/cli/` exit 0, `gofmt -l` empty; never compiled into a test binary, never run):
+
+| Point | File:line |
+|---|---|
+| ① leftover judgement, update | `internal/cli/update.go:384` (after the `--dry-run` return, above the deny-rule strip at :404) |
+| ① leftover judgement, init | `internal/cli/init.go:875` (above `executor.Execute` at :877) |
+| ② staging, template sync | `internal/cli/update_template_sync.go:371` (right after the Deploy Templates deploy) |
+| ② staging, clean reinstall | `internal/cli/update_clean_install.go:467` (right after the Step 5 deploy) |
+| ② staging, init | `internal/cli/init.go:891` (after `executor.Execute` succeeds, before the autonomy bundle) |
+| ③ settle, template sync | `internal/cli/update_template_sync.go:551` (outside the `configBackupPath` block, unconditional) |
+| ③ settle, clean reinstall | `internal/cli/update_clean_install.go:515` (before the deny-rule strip at :538) |
+| ③ settle, init | `internal/cli/init.go:921` (flow end, after the bundle) |
+| D8 seams | `internal/cli/update_settings_snapshot.go` — `preMergeSettingsSnapshotHook`, `applyAutonomyTierBundleFn`, `mergeUserFilesSettlingSnapshot` |
+| B7 stale comment | `internal/cli/update_clean_install.go:394-399` rewritten |
+
+Tests written (not run): `internal/cli/update_settings_snapshot_test.go` — AC-005, AC-007 (six cells + the init source-position substitute), AC-008 `clean_reinstall`, N3-06 `update_leftover_promote_failure`. Commands, the RED-stub procedure, regression set and the 15 slot mutants: `.moai/reports/t656/run/slot-request.md`.
+
+Scope checks (this run):
+
+```
+$ go list -deps ./internal/cli/update/merge/... | grep -c "^github.com/modu-ai/moai-adk/internal/cli$"
+0
+$ go list -deps ./internal/cli/update/backup/... | grep -c "^github.com/modu-ai/moai-adk/internal/cli$"
+0
+$ go list -deps -test ./internal/cli/update/merge/ ./internal/cli/update/backup/ | grep -c "^github.com/modu-ai/moai-adk/internal/cli$"
+0
+$ golangci-lint run ./internal/cli/update/...
+0 issues.
+$ GOOS=windows GOARCH=amd64 go build ./internal/cli/update/...
+exit=0
+$ go test -cover ./internal/cli/update/merge/ ./internal/cli/update/backup/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.901s	coverage: 92.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.613s	coverage: 90.3% of statements
+```
+
+Coverage is at or above the M1 baseline (merge 92.1 → 92.9, backup 90.1 → 90.3). `internal/merge` and `internal/template/templates/` are untouched (`git diff --stat 41a470641 HEAD -- internal/merge internal/template/templates` is empty — re-measure after the final commit per AC-USB-015).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending run-phase — M4/M5-cli/M6 evidence from the lead slot is still owed; see §E.2.8>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
