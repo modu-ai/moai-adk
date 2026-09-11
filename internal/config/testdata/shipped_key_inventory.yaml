@@ -801,6 +801,15 @@
 - path: "harness.plan_audit_global.rationale"
   class: R
   evidence: none
+- path: "harness.plan_audit_tier_ceilings.L"
+  class: P
+  evidence: .claude/agents/moai/plan-auditor.md
+- path: "harness.plan_audit_tier_ceilings.M"
+  class: P
+  evidence: .claude/agents/moai/plan-auditor.md
+- path: "harness.plan_audit_tier_ceilings.S"
+  class: P
+  evidence: .claude/agents/moai/plan-auditor.md
 - path: "learning.auto_apply"
   class: R
   evidence: none
