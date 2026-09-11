@@ -1207,17 +1207,15 @@ func TestExecute_EmptyAfter_Rejected(t *testing.T) {
 }
 
 // Execute rejects a target entry whose file: names the registry or the
-// evolution log, in both modes: the check sits in prepareApply, which a
-// dry-run reaches too. It runs after the five layers, so the gate doubles are
-// called — four times, because the fixture entries carry canary_gate: false
-// and Layer 2 is skipped. Each half of the condition has its own case; the
+// evolution log, in both modes, before any gate runs: a rejection that came
+// after Layer 5 would waste the user's approval, so the gate doubles must not
+// be called at all. Each half of the condition has its own case; the
 // control case, a distinct rule file, is not rejected. The registry carries
 // the current clause once by construction; the evolution-log case puts it
 // into the log's prose once, so without the check the later steps would
 // accept that file as a rule file too.
 func TestExecute_RuleFileIsRegistryOrLog_Rejected(t *testing.T) {
 	const wantMsg = "is also the registry or the evolution log"
-	const gatesBeforeApply = 4
 	logWithClause := strings.Replace(fxLogBody, "# Evolution Log\n\n", "# Evolution Log\n\n"+fxBefore+"\n\n", 1)
 	cases := []struct {
 		name, targetFile, ruleBody, logBody string
@@ -1262,8 +1260,8 @@ func TestExecute_RuleFileIsRegistryOrLog_Rejected(t *testing.T) {
 				if !containsPathForm(err.Error(), prj.rule) {
 					t.Errorf("error %q does not name the rule file %s", err, prj.rule)
 				}
-				if gates.calls != gatesBeforeApply {
-					t.Errorf("gate doubles called %d times, want %d (the check runs in prepareApply, after the layers)", gates.calls, gatesBeforeApply)
+				if gates.calls != 0 {
+					t.Errorf("gate doubles called %d times, want 0 (the check runs before Layer 1)", gates.calls)
 				}
 				assertSameTree(t, tc.name+" "+mode.name, dir, before)
 				assertLockReleased(t, lockDir)
