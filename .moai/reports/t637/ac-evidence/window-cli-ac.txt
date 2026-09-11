@@ -1,0 +1,92 @@
+=== RUN   TestIntegrationStatus_ShowsCardLine
+--- PASS: TestIntegrationStatus_ShowsCardLine (0.00s)
+=== RUN   TestIntegrationStatus_NoCardPrintsNoCardLine
+--- PASS: TestIntegrationStatus_NoCardPrintsNoCardLine (0.00s)
+=== RUN   TestIntegrationStatus_OldRecordKeepsTodaysBranchLine
+--- PASS: TestIntegrationStatus_OldRecordKeepsTodaysBranchLine (0.00s)
+=== RUN   TestIntegrationAcquire_BranchFlagHelpNamesTheTarget
+--- PASS: TestIntegrationAcquire_BranchFlagHelpNamesTheTarget (0.00s)
+=== RUN   TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree
+--- PASS: TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree (0.49s)
+=== RUN   TestIntegrationStatus_NoNameKeepsTodaysShape
+--- PASS: TestIntegrationStatus_NoNameKeepsTodaysShape (0.00s)
+=== RUN   TestIntegrationAcquire_RecordsBranchSource
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/flag
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/blank_flag
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/config
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/caller
+2026/09/12 04:58:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_RecordsBranchSourcecaller1128422158/001/.moai/config/sections
+--- PASS: TestIntegrationAcquire_RecordsBranchSource (2.05s)
+    --- PASS: TestIntegrationAcquire_RecordsBranchSource/flag (0.52s)
+    --- PASS: TestIntegrationAcquire_RecordsBranchSource/blank_flag (0.51s)
+    --- PASS: TestIntegrationAcquire_RecordsBranchSource/config (0.51s)
+    --- PASS: TestIntegrationAcquire_RecordsBranchSource/caller (0.51s)
+=== RUN   TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback
+--- PASS: TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback (0.50s)
+=== RUN   TestIntegrationAcquire_CallerFallbackMismatchIsVisible
+--- PASS: TestIntegrationAcquire_CallerFallbackMismatchIsVisible (0.50s)
+=== RUN   TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn
+--- PASS: TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn (0.50s)
+=== RUN   TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn
+--- PASS: TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn (0.53s)
+=== RUN   TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn
+2026/09/12 04:58:20 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn1334095949/001/.moai/config/sections
+--- PASS: TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn (0.55s)
+=== RUN   TestIntegrationAcquire_WarningIsOnStderrOnly
+=== RUN   TestIntegrationAcquire_WarningIsOnStderrOnly/text
+=== RUN   TestIntegrationAcquire_WarningIsOnStderrOnly/json
+--- PASS: TestIntegrationAcquire_WarningIsOnStderrOnly (1.01s)
+    --- PASS: TestIntegrationAcquire_WarningIsOnStderrOnly/text (0.49s)
+    --- PASS: TestIntegrationAcquire_WarningIsOnStderrOnly/json (0.51s)
+=== RUN   TestIntegrationAcquire_RefusedAcquireDoesNotWarn
+--- PASS: TestIntegrationAcquire_RefusedAcquireDoesNotWarn (0.49s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	10.400s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.789s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	4.740s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	4.016s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	5.063s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	6.170s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	0.340s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	2.477s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	1.440s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	2.140s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.738s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	2.880s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	5.510s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	1.050s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	5.841s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	4.380s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	6.238s [no tests to run]

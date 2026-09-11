@@ -1,0 +1,4 @@
+# github.com/modu-ai/moai-adk/internal/config [github.com/modu-ai/moai-adk/internal/config.test]
+internal/config/loader_integration_branch_test.go:166:11: undefined: LoadGitFlowIntegrationConfig
+FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+FAIL

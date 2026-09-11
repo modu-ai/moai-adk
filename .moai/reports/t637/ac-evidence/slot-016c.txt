@@ -1,0 +1,64 @@
+=== RUN   TestCheckIntegrationLock_DeniesAForeignLiveHolder
+--- PASS: TestCheckIntegrationLock_DeniesAForeignLiveHolder (0.00s)
+=== RUN   TestCheckIntegrationLock_AllowsTheHolder
+--- PASS: TestCheckIntegrationLock_AllowsTheHolder (0.00s)
+=== RUN   TestCheckIntegrationLock_FailsOpen
+=== RUN   TestCheckIntegrationLock_FailsOpen/no_record
+=== RUN   TestCheckIntegrationLock_FailsOpen/unreadable_record
+[moai:integration-lock] advisory: cannot read the integration lock (integration lock at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCheckIntegrationLock_FailsOpenunreadable_record3504780656/001/.moai/state/integration-lock.json is unreadable: invalid character 'n' looking for beginning of object key string); allowing
+=== RUN   TestCheckIntegrationLock_FailsOpen/caller_has_no_session_id
+[moai:integration-lock] advisory: this session has no id; cannot tell it from the holder (sess-holder) — allowing
+=== RUN   TestCheckIntegrationLock_FailsOpen/holder_is_gone
+[moai:integration-lock] advisory: holder sess-dead (pid 2147483632) is gone; allowing — reclaim with `moai integration acquire`
+=== RUN   TestCheckIntegrationLock_FailsOpen/empty_project_root
+=== RUN   TestCheckIntegrationLock_FailsOpen/nil_input
+--- PASS: TestCheckIntegrationLock_FailsOpen (0.01s)
+    --- PASS: TestCheckIntegrationLock_FailsOpen/no_record (0.00s)
+    --- PASS: TestCheckIntegrationLock_FailsOpen/unreadable_record (0.00s)
+    --- PASS: TestCheckIntegrationLock_FailsOpen/caller_has_no_session_id (0.00s)
+    --- PASS: TestCheckIntegrationLock_FailsOpen/holder_is_gone (0.00s)
+    --- PASS: TestCheckIntegrationLock_FailsOpen/empty_project_root (0.00s)
+    --- PASS: TestCheckIntegrationLock_FailsOpen/nil_input (0.00s)
+=== RUN   TestCheckIntegrationLock_OnlyGuardsMerge
+--- PASS: TestCheckIntegrationLock_OnlyGuardsMerge (0.00s)
+=== RUN   TestCheckIntegrationLock_FollowsAnchoredLiveness
+=== RUN   TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_live_holder_denies
+=== RUN   TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_dead_holder_allows
+[moai:integration-lock] advisory: holder sess-holder (pid 2147483632) is gone; allowing — reclaim with `moai integration acquire`
+=== RUN   TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_pid-0_holder_denies_conservatively
+--- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness (0.00s)
+    --- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_live_holder_denies (0.00s)
+    --- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_dead_holder_allows (0.00s)
+    --- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_pid-0_holder_denies_conservatively (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	1.362s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/handoff	1.708s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo	0.388s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy	0.729s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx	2.049s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx/complexity	4.211s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/perf	3.516s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	2.565s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/security	3.856s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/testutil	3.187s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook/trace	2.880s [no tests to run]

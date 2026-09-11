@@ -80,6 +80,19 @@ func IsIntegrationLockForeign(err error) bool { return errors.Is(err, ErrIntegra
 // exactly as it always was.
 const PIDSourceSessionOwner = "session-owner"
 
+// Branch provenance values (card t637): which resolution tier decided the
+// recorded Branch. Branch keeps its meaning — the integration TARGET — and the
+// source only says how that value was reached, so a reader can tell a
+// configured target from a caller-tree fallback.
+const (
+	// BranchSourceFlag — a non-blank --branch value decided it.
+	BranchSourceFlag = "flag"
+	// BranchSourceConfig — the configured git-flow develop branch decided it.
+	BranchSourceConfig = "config"
+	// BranchSourceCaller — the caller's own checked-out tree decided it.
+	BranchSourceCaller = "caller"
+)
+
 // integrationLockMutationTestHook is a nil-by-default, TEST-ONLY interleaving
 // point invoked once between the acquire decision and the write. It exists so
 // the cross-process criterion can CONSTRUCT the read-modify-write interleaving
@@ -115,6 +128,13 @@ type IntegrationLock struct {
 	Worktree    string `json:"worktree"`
 	AcquiredAt  string `json:"acquired_at"`
 	Card        string `json:"card,omitempty"`
+
+	// BranchSource names the resolution tier that decided Branch (one of the
+	// BranchSource* values). Additive and optional exactly like PIDSource: a
+	// record written before it existed carries no key and is read as it
+	// always was, and no read path decides on it — it is for the human
+	// reading status, never an input to the guard.
+	BranchSource string `json:"branch_source,omitempty"`
 
 	// SettingsDriftBypass and SettingsDriftPreserved record that the window
 	// was taken over a REFUSED settings-drift verdict (card t488), and where
