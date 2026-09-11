@@ -1,0 +1,83 @@
+# mutant M-20-iii: move the check into LoadRegistry (registry path + every joined file:) — the placement D4 excludes; constitution half
+# edits: [["internal/constitution/registry_path.go", "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n", ""], ["internal/constitution/registry_path.go", "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {", "\t\tif err := error(nil); err != nil {"], ["internal/constitution/loader.go", "\tcleanProjectDir := filepath.Clean(projectDir)\n", "\tcleanProjectDir := filepath.Clean(projectDir)\n\tif err := checkContained(projectDir, path); err != nil {\n\t\treturn nil, err\n\t}\n"], ["internal/constitution/loader.go", "\t\treg.lookup[rule.ID] = len(reg.Entries)", "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, rule.File)); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\treg.lookup[rule.ID] = len(reg.Entries)"]]
+# $ go test ./internal/constitution/ -run ^TestExecute_ContainmentCheck_RefusesEscapes$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/relative_registry
+    apply_test.go:965: LoadRegistry: path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedrel1177963675/001/other/.claude/rules/moai/core/zone-registry.md (resolves to /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedrel1177963675/001/other/.claude/rules/moai/core/zone-registry.md) is outside project dir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedrel1177963675/001/root
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_file
+    apply_test.go:978: LoadRegistry: path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedabs547844015/001/outside/rule.md (resolves to /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedabs547844015/001/outside/rule.md) is outside project dir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedabs547844015/001/root
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/symlinked_registry
+    apply_test.go:993: LoadRegistry: path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedsym2911601137/001/root/linkdir/zone-registry.md (resolves to /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedsym2911601137/001/other/zone-registry.md) is outside project dir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedsym2911601137/001/root
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_escape
+    apply_test.go:1005: LoadRegistry(absolute escape) = path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedabs4045850697/001/other/.claude/rules/moai/core/zone-registry.md (resolves to /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedabs4045850697/001/other/.claude/rules/moai/core/zone-registry.md) is outside project dir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesloader_unchangedabs4045850697/001/root, want the loader's 'escapes project dir' error
+--- FAIL: TestExecute_ContainmentCheck_RefusesEscapes (0.09s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape (0.03s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/real (0.02s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/dry_run (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/dry_run (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/dry_run (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/relative_registry (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_file (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/symlinked_registry (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_escape (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.462s
+FAIL
