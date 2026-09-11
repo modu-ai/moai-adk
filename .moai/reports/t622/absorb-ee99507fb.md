@@ -56,3 +56,13 @@ sanitized_pair_parity_test.go:194: .claude/rules/moai/core/agent-common-protocol
 
 - `TestHookWrapperCopiesStayIdentical` 은 재지 않았다(소속 패키지 미확인).
 - develop 의 로컬 전용 편집이 의도된 분기인지, 템플릿 미러 누락인지는 판정하지 않았다 — 해당 카드(t635·t614 등) 소관이다.
+
+## 4. 재흡수 — develop `f1f034bb4` (dr0911 1부)
+
+- 리드 판단 (a): t635 의 Lane A/B Pre-Spawn 형태를 REQ-GDP-002 충족으로 인정. 템플릿 미러는 dr0911 이 했으므로 이 카드 M5 는 미러하지 않는다.
+- 흡수: `git merge --no-ff develop` → `255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089` (부모 `1f3adf5ee` · `f1f034bb4`), exit 0.
+- dr0911 1부가 바꾼 파일(`git diff --name-only ee99507fb f1f034bb4`): 템플릿 `agent-common-protocol.md`·`manager-docs.md`·`plan-auditor.md`·`sync-phase-quality-gate.sh`, 생성물 `manager-docs.toml`·`plan-auditor.toml`, `catalog.yaml`, `.moai/reports/dr0911/verdict.md`. 이 카드 범위 파일 중 템플릿 `agent-common-protocol.md` 만 겹친다.
+- `cmp` 로컬·템플릿 `agent-common-protocol.md` → exit 0 (바이트 동일 복귀). 템플릿 Pre-Spawn: 290행 제목, 296·297행 Lane A/B 문장, 300–307행 Lane A 블록(`fetch_status=$?` 302, `rev-list` 307), 309행 Lane B.
+- 다른 범위 파일의 로컬·템플릿 차이는 §2 표와 같다(manager-git `5,7c5`, delivery·doc-execution·quality-gates-context·workflows/sync.md 덩어리 불변).
+- 사본 테스트 기준선 2: `go test ./internal/template/ -count=1 -run 'TestSanitizedPairParity|TestRuleTemplateMirrorDrift' -v` → exit 1, PASS 17, FAIL 은 `TestRuleTemplateMirrorDrift/spec-workflow.md` 하나(이 카드 범위 밖, dr0911 2부 소관). 원본: `.moai/reports/t622/absorb2-mirror-baseline.txt`. `TestSanitizedPairParity/agent-common-protocol.md`·`plan-auditor.md` 는 이제 통과.
+- 관측(범위 밖, 기록만): 같은 파일 Pre-Edit Sync Check 360행은 여전히 `git fetch origin main 2>&1; git rev-list …` 한 줄 형태다. 이 카드 M5 범위는 Pre-Spawn 절이다.
