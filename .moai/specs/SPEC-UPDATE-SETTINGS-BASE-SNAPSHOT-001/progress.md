@@ -269,9 +269,81 @@ Coverage is at or above the M1 baseline (merge 92.1 → 92.9, backup 90.1 → 90
 
 The first `-G 'Setenv\("HOME"'` run at `b5b5883e9` printed `internal/cli/update_settings_snapshot_test.go`: a file comment spelled out the forbidden call. No code called it; the comment was reworded in `45956bd92` and the check re-run above. The line count (53) includes plan-phase commits between the card base and the run base.
 
+### §E.2.10 Lead slot run — M4 verification, M5 cli mutants, M6 (2026-09-12, tree `8a44a68bc`)
+
+Slot granted by the lead; executed per `.moai/reports/t656/run/slot-request.md` §0–§5, every command a separate foreground invocation, strictly serial, each `go test` with `-count=1 -timeout 900s`. Pre-flight: `git rev-parse --show-toplevel` = `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t656`, branch `WT-update-value-merge`, HEAD `8a44a68bc`, `git status --short internal/` empty. No process hung.
+
+| Step | Command (abridged) | exit | Result | Evidence |
+|---|---|---|---|---|
+| §1 GREEN | `go test ./internal/cli/ -count=1 -timeout 900s -v -run '^(TestCleanReinstall_SettingsSnapshotStagedBeforeMerge\|TestSettingsSnapshot_WriteSites\|TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute\|TestSettingsSnapshot_WriteFailureDoesNotBlock)$'` | 0 | 12 `--- PASS` (4 top-level + 8 subtests), 0 FAIL; `ok  github.com/modu-ai/moai-adk/internal/cli 1.503s` | `slot-1-green.txt` |
+| §2 RED-stub | same command, six lifecycle calls removed (seams kept) | 1 | 0 PASS; all 4 top-level and 8 subtests FAIL on value assertions (below) | `slot-2-red-stub.txt` |
+| §3 regression | `go test ./internal/cli/ -count=1 -timeout 900s -v -run '^(TestCleanReinstall_SettingsJSONUserKeysPreserved\|…\|TestSeamDefault.*)$'` | 0 | 24 top-level `--- PASS`, 0 FAIL, 0 SKIP; `ok  … 2.935s` | `slot-3-regression.txt` |
+| §4 windows | `GOOS=windows GOARCH=amd64 go build ./internal/cli/...` | 0 | empty output | `slot-4-win-build.txt` |
+| §4 lint | `golangci-lint run ./internal/cli/` | 0 | `0 issues.` | `slot-4-lint.txt` |
+| §5 mutants | 15 mutants, one at a time, each reverted with `git restore` and `git status --short internal/` confirmed empty before the next | 1 ×15 | 15 killed, 0 survived (table below) | `slot-5-<ID>.txt` |
+
+§2 verbatim failures (value assertions, not build errors):
+
+```
+update_settings_snapshot_test.go:296: (ii) staging copy at the pre-merge hook = "", want the render "{\"a\":1,\"permissions\":{\"deny\":[\"Read(./.env)\"]}}"
+update_settings_snapshot_test.go:298: canonical snapshot = {"marker":"prior"}, want {"a":1,"permissions":{"deny":["Read(./.env)"]}}
+update_settings_snapshot_test.go:324: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+update_settings_snapshot_test.go:355: canonical snapshot = {"a":1}, want {"a":2,"K":1}        (×2, both template_sync cells)
+update_settings_snapshot_test.go:376: live a = 2, want 3                                      (update_leftover_abort)
+update_settings_snapshot_test.go:407: canonical snapshot = {"a":1}, want {"a":2,"K":1,"permissions":{"deny":["Write(./secrets/**)"]}}
+update_settings_snapshot_test.go:450: canonical snapshot absent                               (init)
+update_settings_snapshot_test.go:480: judgement at -1, executor.Execute at 16405; both must be present in runInit
+update_settings_snapshot_test.go:514: write-failed lines on stderr = 0, want 1
+update_settings_snapshot_test.go:540: promote-failed lines on stderr = 0, want 1
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.537s
+```
+
+Deviation in §2: removing the calls left `backup` unused in `update.go` and `init.go`, so the first RED-stub run was a build failure (`"…/update/backup" imported and not used`). That is not RED under acceptance.md §C. I added a blank use (`_ = backup.SettingsSnapshotPath`) to the stub, only in the uncommitted stub, and re-ran; the run above is the second one.
+
+§5 mutant results (all exit 1, all reverted):
+
+| ID | Killing cell | Observed failing assertion |
+|---|---|---|
+| M-05 | `TestCleanReinstall_SettingsSnapshotStagedBeforeMerge` | `:296: (ii) staging copy at the pre-merge hook = "", want the render …` |
+| M-06c-w | same | `:293: (i) canonical at the pre-merge hook = "{\"a\":1,…}", want the prior bytes` |
+| M-06t-w | `WriteSites/template_sync_backup_empty` + `_filled` | `:354: live a = 1, want 2` / `live K = <nil>, want 1` (both cells) |
+| M-07a | `WriteSites/init` | `:450: canonical snapshot absent` |
+| M-07b | `WriteSites/template_sync_backup_empty` + `_filled` | `:355: canonical snapshot = {"a":1}, want {"a":2,"K":1}` (both) |
+| M-07c | `WriteSites/clean_reinstall` | `:324: canonical snapshot = {"a":1}, want {"a":2,"K":1}` |
+| M-07d | `WriteSites/template_sync_backup_empty` | `:355: canonical snapshot = {"a":1}, want {"a":2,"K":1}` (live values pass: the skipped merge leaves the render live) |
+| M-07e | `WriteSites/init` | `:450: canonical snapshot absent` |
+| M-08 | `WriteFailureDoesNotBlock/clean_reinstall` | `:511: runCleanReinstall returned mutant M-08: stat …settings.json.pending: not a directory, want nil` |
+| M-08L | `WriteFailureDoesNotBlock/update_leftover_promote_failure` | `:537: runUpdate returned mutant M-08L, want nil` |
+| M-D5g-wb | `WriteSites/update_leftover_version_skip` (abort stays PASS, as predicted) | `:407: canonical snapshot = {"a":1}, want {…Write(./secrets/**)…}` + `:408: staging copy still present after the flow` |
+| M-D5g-wd | `update_leftover_abort` + `update_leftover_version_skip` | `:376: live a = 2, want 3`; `:407: canonical snapshot = {"a":1}` |
+| M-D5g-s | `WriteSites/update_leftover_version_skip` (abort stays PASS) | `:407: canonical snapshot = {"a":1}, want {…Write(./secrets/**)…}` |
+| M-D5f | `WriteSites/update_leftover_abort` | `:376: live a = 2, want 3`; `live L = <nil>, want 1` |
+| M-D5g-init | `TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute` | `:483: the leftover judgement (offset 17355) runs after executor.Execute (offset 16435)` |
+
+Together with the 14 IDs in §E.2.7, all 29 mutant IDs of this run are killed (acceptance.md §E lists 27; the run adds the N3-01/N3-02 splits and M-08L/M-D5g-init).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — M4/M5-cli/M6 evidence from the lead slot is still owed; see §E.2.8>_
+```yaml
+run_complete_at: 2026-09-12
+run_commit_sha: pending-backfill   # the commit carrying this block cannot cite itself
+run_status: complete-local          # the CI verdict on origin/develop is owed after the lead's push
+ac_pass_count: 16                   # AC-USB-001..016, every cell observed PASS in this run
+ac_fail_count: 0
+red_evidence: all RED-now / RED-stub cells observed (§E.2.2, §E.2.4, §E.2.5, §E.2.10 §2)
+mutants_killed: 29
+mutants_survived: 0
+preserve_list_post_run_count: internal/merge and internal/template/templates untouched (§E.2.9)
+l44_pre_commit_fetch: not run (lane rule — the lead batch-pushes develop)
+l44_post_push_fetch: n/a (no push by this lane)
+new_warnings_or_lints_introduced: 0 (golangci-lint ./internal/cli/update/... and ./internal/cli/ both 0 issues)
+cross_platform_build:
+  update_subpackages_windows: exit 0
+  internal_cli_windows: exit 0
+coverage: {merge: 92.9%, backup: 90.3%}  # M1 baseline 92.1% / 90.1%; internal/cli coverage not measured
+total_run_phase_files: 15 Go files (git diff --name-only 41a470641..HEAD -- '*.go' | wc -l → 15) + evidence
+m1_to_mN_commit_strategy: per-milestone commits on WT-update-value-merge, no push
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
