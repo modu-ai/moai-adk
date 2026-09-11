@@ -44,7 +44,9 @@ t583 뒤 실제 질문 집합에는 확인형 질문이 없다(`spec.md` §A.7).
 | AC-ITI-016 (a) | init 첫 페이지 | 실제 `InitQuestions` 의 Basic 그룹 | 제목 2개(`conversation_language`, `user_name`) 순서대로 존재 |
 | AC-ITI-016 (b) | 프로필 위저드 그룹 전부 | 실제 프로필 질문 세트 | 그룹마다 질문 제목 전부 순서대로 존재 |
 | AC-ITI-017 | 설명이 있는 선택 필드 | 실제 `conversation_language` 질문(init·프로필 양쪽) | 옵션 줄 4개(`English`, `Korean (한국어)`, `Japanese (日本語)`, `Chinese (中文)`) 존재 |
-| AC-ITI-018 | init 그룹 | 실제 `InitQuestions` | `buildFormGroups` 결과 그룹 수 |
+| AC-ITI-018 | init 그룹 구성 | 실제 `InitQuestions` | `buildFormGroups` 결과에 `conversation_language`·`agent_wiring` 질문이 각각 존재 |
+| AC-ITI-021 | init 그룹 머리 스테퍼 | 실제 `InitQuestions` | 그룹마다 첫 줄에 `●`·`○` 문자가 1개 이상 |
+| AC-ITI-022 | 그룹 라벨 비렌더 | 픽스처 질문 2개(`Group` 에 센티널 라벨)를 `buildUnifiedForm` 에 넣음, 그리고 실제 `InitQuestions` | 화면에 픽스처 질문 제목 2개와 `agent_wiring` 질문 제목이 존재 |
 
 ## §D AC 매트릭스
 
@@ -85,7 +87,7 @@ t583 뒤 실제 질문 집합에는 확인형 질문이 없다(`spec.md` §A.7).
   - 현지화 라벨이 없는 옵션에서 라벨 자리에 그려지는 값: `template.ModelAliasPickerValues()` 가 돌려주는 문자열 전부, `low`, `medium`, `high`, `xhigh`, `max`, `acceptEdits`, `auto`, `default`, `plan`, `bypassPermissions`, `dontAsk`, `models.ValidDevelopmentModes()` 값 전부
   - 도움말 줄의 키 표기: `enter`, `tab`, `shift+tab`, `esc`, `↑`, `↓`, `←/→`, `/`, `x`, `y`, `n`, `ctrl+e`, `ctrl+u`, `ctrl+d`, `ctrl+a`, `g/home`, `G/end`
   - 고유명사: `MoAI`, `Claude`
-- **AC-ITI-009** (maps REQ-ITI-008; golden) **Given** 흡수된 프로필 위저드 폼과 init 위저드 폼(대조군), **When** 각 그룹을 차례로 `View()` 로 그리면, **Then** 프로필 위저드 각 그룹의 첫 줄(ANSI 제거)에서 `●`·`○` 문자 수의 합이 N 과 같고, 줄이 `<k> / <N>` 으로 끝나며, N 은 보이는 프로필 질문 수(`design.md` §2 의 10)이고 k 는 그 그룹 첫 질문의 순번이다. **And** 같은 규칙을 init 위저드 각 그룹 첫 줄에 적용해도 참이다(N 은 보이는 init 질문 수).
+- **AC-ITI-009** (maps REQ-ITI-008; golden; 선결 V-c) **Given** 흡수된 프로필 위저드 폼과 init 위저드 폼(대조군), **When** 각 그룹을 차례로 `View()` 로 그리면, **Then** 프로필 위저드 각 그룹의 첫 줄(ANSI 제거)에서 `●`·`○` 문자 수의 합이 N 과 같고, 줄이 `<k> / <N>` 으로 끝나며, N 은 보이는 프로필 질문 수(`design.md` §2 의 10)이고 k 는 그 그룹 첫 질문의 순번이다. **And** 같은 규칙을 init 위저드 각 그룹 첫 줄에 적용해도 참이다(N 은 보이는 init 질문 수).
 - **AC-ITI-010** (maps REQ-ITI-010; mech) **Given** 재조준된 가드 9건(`spec.md` §A.5 S1~S9, 대상은 `design.md` §10), **When** 다음을 실행하면, **Then** 모두 기대대로다.
   1. `go test ./internal/cli/ -run '<S1~S9 의 테스트 함수 이름 9개 또는 대체 테스트 이름>' -count=1 -v` 에서 `=== RUN` 최상위 줄이 9개 이상이고 모두 `--- PASS`.
   2. 스캔형으로 남은 가드는 읽는 파일에 기준 문자열(해당 질문 정의의 `ID: "<id>"` 또는 저장 함수 이름)이 있음을 먼저 단정한다. 빈 파일이나 무관한 파일을 가리키게 한 뮤턴트에서 실패함이 관측돼 있다.
@@ -98,13 +100,13 @@ t583 뒤 실제 질문 집합에는 확인형 질문이 없다(`spec.md` §A.7).
 
 ### 잔여 영어 표면 (REQ-ITI-011~013)
 
-- **AC-ITI-012** (maps REQ-ITI-011; golden) **Given** 다운그레이드 확인창과, 작업 디렉터리·활성 프로필을 조합한 네 사례, **When** 각 사례로 언어를 해석해 `View()` 를 그리면, **Then** 제목·설명·두 버튼·도움말 동작 라벨이 기대 로케일로 그려지고 사례별 골든과 일치한다.
+- **AC-ITI-012** (maps REQ-ITI-011; golden; 선결 V-b) **Given** 다운그레이드 확인창과, 작업 디렉터리·활성 프로필을 조합한 네 사례, **When** 각 사례로 언어를 해석해 `View()` 를 그리면, **Then** 제목·설명·두 버튼·도움말 동작 라벨이 기대 로케일로 그려지고 사례별 골든과 일치한다.
   - (a) 작업 디렉터리에 `.moai` 가 있고 `language.yaml` 이 `ja`, 활성 프로필 `ko` → `ja`
   - (b) 작업 디렉터리에 `.moai` 가 없음(프로젝트 밖), 활성 프로필 `ko` → `ko`
   - (c) 프로젝트 밖, 프로필 없음 → `en`
   - (d) 작업 디렉터리에 `.moai` 가 있으나 `language.yaml` 에 `conversation_language` 가 없음, 활성 프로필 `zh` → `zh`
   **And** 프로필을 프로젝트보다 먼저 보는 순서로 바꾼 뮤턴트에서 (a) 가 실패함이 관측돼 있다.
-- **AC-ITI-013** (maps REQ-ITI-012; golden + mech) **Given** 네 표면(init 위저드, `moai update -c` 재구성 위저드, 프로필 위저드, 다운그레이드 확인창), **When** `en`·`ko`·`ja`·`zh` 각각으로 `View()` 를 그리면, **Then** 16개 골든과 모두 일치하고, 각 화면의 도움말 줄에 나온 동작 라벨이 모두 `design.md` §7 표의 해당 로케일 값이며, 표에 없는 동작 라벨이 나오면 실패한다. `ko`·`ja`·`zh` 화면의 도움말 줄에는 `next`, `submit`, `back`, `select`, `up`, `down`, `filter`, `toggle` 이 없다. **And** `git grep -n -E 'HelpSelect|HelpInput' -- '*.go'` → 출력 0줄이고, 같은 형태의 대조군 `git grep -n -E 'ConfirmYes|ConfirmNo' -- 'internal/cli/wizard/*.go'` → 1줄 이상이다.
+- **AC-ITI-013** (maps REQ-ITI-012; golden + mech; 선결 V-b) **Given** 네 표면(init 위저드, `moai update -c` 재구성 위저드, 프로필 위저드, 다운그레이드 확인창), **When** `en`·`ko`·`ja`·`zh` 각각으로 `View()` 를 그리면, **Then** 16개 골든과 모두 일치하고, 각 화면의 도움말 줄에 나온 동작 라벨이 모두 `design.md` §7 표의 해당 로케일 값이며, 표에 없는 동작 라벨이 나오면 실패한다. `ko`·`ja`·`zh` 화면의 도움말 줄에는 `next`, `submit`, `back`, `select`, `up`, `down`, `filter`, `toggle` 이 없다. **And** `git grep -n -E 'HelpSelect|HelpInput' -- '*.go'` → 출력 0줄이고, 같은 형태의 대조군 `git grep -n -E 'ConfirmYes|ConfirmNo' -- 'internal/cli/wizard/*.go'` → 1줄 이상이다.
 - **AC-ITI-014** (maps REQ-ITI-013; mech) **Given** 수리된 트리, **When** 키 참조 스윕 테스트와 로케일 동등성 테스트를 실행하면, **Then** 위저드 번역 테이블과 `profileSetupText` 의 모든 키가 비테스트 코드에서 1회 이상 참조되고, `ko`·`ja`·`zh` 의 키 집합이 `en` 과 같다. **And** 참조되지 않는 키를 하나 심은 뮤턴트와 `ja` 에서 키 하나를 뺀 뮤턴트에서 각각 실패함이 관측돼 있다.
 
 ### 레이아웃 (REQ-ITI-014~017)
@@ -112,12 +114,14 @@ t583 뒤 실제 질문 집합에는 확인형 질문이 없다(`spec.md` §A.7).
 - **AC-ITI-015** (maps REQ-ITI-014; pty + golden) **Given** §C 의 두 표면 (a) 다운그레이드 확인창 (b) 위저드 확인형 픽스처, **When** 각각 pty 캡처와 `View()` 를 뜨면, **Then** 두 결과 모두에서 제목 줄·설명 줄·버튼 줄이 각각 1개 이상 있음을 먼저 단정한 뒤, 버튼 줄의 첫 버튼 라벨 시작 표시 열이 설명 줄 첫 글자의 표시 열과 같다(수리 전 값: v2 7칸, v1 22칸 들여쓰기). 골든이 이를 고정한다.
 - **AC-ITI-016** (maps REQ-ITI-015; pty + golden) **Given** §C 의 표면 (a) init 첫 페이지 (b) 프로필 위저드의 모든 그룹, 그리고 골든에 한해 (c) 재구성 위저드 첫 그룹, **When** pty 캡처와 `View()` 를 뜨면, **Then** 그룹마다 질문 제목이 모두 순서대로 있고 선택 필드의 옵션 줄 수가 옵션 수와 같음을 먼저 단정한 뒤, 연속한 두 필드 사이의 빈 줄이 0 이고 선택 필드 마지막 옵션 줄 바로 아래에 내용 없는 카드 줄(`┃` 뒤 공백뿐인 줄)이 0 이다(수리 전 값: 필드 사이 1줄, 첫 페이지 빈 카드 줄 4줄).
 - **AC-ITI-017** (maps REQ-ITI-016; pty + golden) **Given** §C 의 실제 `conversation_language` 선택 필드(init 과 프로필 양쪽, 라벨에 한글·한자·가나와 영문이 섞임), **When** pty 캡처와 `View()` 를 뜨고 옵션 줄 4개를 찾은 뒤 각 줄에서 설명 시작 위치를 표시 폭(동아시아 전각 문자 2칸)으로 계산하면, **Then** 옵션 줄 4개가 모두 있고, 네 줄의 설명 시작 표시 열이 같다. **And** 룬 수로 열을 맞춘 뮤턴트와 바이트 수로 열을 맞춘 뮤턴트에서 각각 이 검사가 실패함이 관측돼 있다.
-- **AC-ITI-018** (maps REQ-ITI-017; mech + golden) **Given** t583 을 흡수한 트리의 `InitQuestions`, **When** `buildFormGroups` 로 그룹을 만들고 두 번째 그룹을 `View()` 로 그리면, **Then** 그룹이 정확히 2개이고, 첫 그룹이 `conversation_language`·`user_name`, 두 번째 그룹이 `agent_wiring`·`autonomy_tier` 를 이 순서로 담으며, 두 질문의 `Group` 값이 `design.md` §9 의 라벨과 같고, 어떤 init 질문의 `Group` 도 `Quality & Workflow` 가 아니다. **And** 두 번째 그룹 골든에 두 질문 제목과 끝이 `3 / 4` 인 스테퍼 줄이 있다.
+- **AC-ITI-018** (maps REQ-ITI-017; mech — 페이지 수) **Given** t583 을 흡수한 트리의 `InitQuestions`, **When** `buildFormGroups` 로 그룹을 만들면, **Then** 그룹이 정확히 2개이고, `conversation_language`·`user_name` 은 첫 그룹에, `agent_wiring`·`autonomy_tier` 는 마지막 그룹에 이 순서로 함께 있으며, 두 질문의 `Group` 값이 모두 `Agents & Autonomy` 이고, 어떤 init 질문의 `Group` 도 `Quality & Workflow` 가 아니다. 이 AC 는 스테퍼 분모를 단정하지 않는다. **And** 페이지 수 뮤턴트 — `autonomy_tier` 의 `Group` 을 `Autonomy` 로 되돌려 그룹을 다시 나눈 트리(질문 수 4 는 그대로) — 에서 이 AC 는 "그룹 3개"로 실패하고, 같은 뮤턴트에서 AC-ITI-021 은 PASS 임이 함께 관측돼 있다.
+- **AC-ITI-021** (maps REQ-ITI-017; mech — 스테퍼 분모) **Given** t583 을 흡수한 트리의 `InitQuestions`, **When** `buildFormGroups` 의 그룹을 차례로 `View()` 로 그리면(ANSI 제거), **Then** 그룹이 1개 이상 그려졌음을 먼저 단정한 뒤, 각 그룹 첫 줄에서 `●`·`○` 문자 수의 합이 4 이고, 줄이 `<k> / 4` 로 끝나며, k 는 그 그룹 첫 질문의 보이는 순번이다. 이 AC 는 그룹 수를 단정하지 않는다. **And** 분모 뮤턴트 — init 질문 세트의 `user_name` 바로 뒤에 조건 없는 입력형 질문 하나를 `Group: "Basic"` 으로 더한 트리(그룹 수 2 는 그대로) — 에서 이 AC 는 "분모 5"로 실패하고, 같은 뮤턴트에서 AC-ITI-018 은 PASS 임이 함께 관측돼 있다. 두 AC 와 별도로 수리 트리의 두 번째 그룹 골든(두 질문 제목과 끝이 `3 / 4` 인 스테퍼 줄)을 회귀 가드로 커밋하되, 이 골든은 두 뮤턴트 모두에서 달라지므로 어느 한 성질의 증거로 세지 않는다.
+- **AC-ITI-022** (maps REQ-ITI-017; golden + mech — 그룹 라벨 비렌더, 번역 키 없음) **Given** 제목이 서로 다른 조건 없는 픽스처 질문 2개의 `Group` 에 센티널 라벨 `ZZ-GROUP-LABEL-SENTINEL` 을 넣은 질문 목록과, t583 을 흡수한 트리의 실제 `InitQuestions`, **When** 픽스처 목록으로 `buildUnifiedForm` 을 만들어 모든 그룹을 `View()` 로 그리고(ANSI 제거) 실제 init 폼도 모든 그룹을 그리면, **Then** 픽스처 화면에 두 질문 제목이 모두 있음을 먼저 단정한 뒤 센티널 문자열이 0회이고, 실제 init 화면에 `agent_wiring` 질문 제목이 있음을 먼저 단정한 뒤 `Agents & Autonomy` 가 0회다. **And** `git grep -n -F 'Agents & Autonomy' -- internal/cli/wizard/translations.go` 는 출력 0줄(종료 1)이고, 같은 형태의 대조군 `git grep -n -F 'ConfirmYes' -- internal/cli/wizard/translations.go` 는 1줄 이상이다. **And** `git grep -n -E '\.Group([^A-Za-z0-9_.]|$)' -- 'internal/cli/wizard/*.go' ':!*_test.go'` 의 출력에 `buildFormGroups` 안의 `q.Group` 줄이 1줄 이상 있고(대조군 — 이 패턴이 필드 읽기에 닿음), 출력의 모든 줄이 `huh.Group` 타입 이름이거나 `buildFormGroups` 안의 `q.Group` 묶기 비교·대입이다. 그 밖의 줄이 하나라도 있으면(새 파일의 렌더 경로 포함) FAIL 이다. **And** `buildFormGroups` 의 `huh.NewGroup(fields...)` 에 `.Title(pending[0].Group)` 을 붙인 뮤턴트에서 이 AC 가 센티널 1회 이상과 grep 규칙 위반으로 실패함이 관측돼 있다. 판단 근거(그룹 라벨을 읽는 렌더 경로가 없으므로 `en`·`ko`·`ja`·`zh` 번역 표에 그룹 라벨 키를 두지 않음)는 `research.md` §6.1 의 측정이다.
 
 ### 판정 하네스 (REQ-ITI-018)
 
 - **AC-ITI-019** (maps REQ-ITI-018; mech) **Given** pty 캡처 테스트 전체, **When** (a) `MOAI_PTY_CAPTURE` 없이 실행하고 (b) `MOAI_PTY_CAPTURE=1` 에 `tmux` 가 없는 PATH 로 실행하면, **Then** (a) 는 캡처 테스트가 모두 `--- SKIP` 으로 보고되고, 실행 전후 `tmux list-sessions -F '#{session_name}'` 출력(tmux 가 있을 때)이 같다. (b) 는 캡처 테스트가 `--- FAIL` 로 보고되고 `--- PASS`·`--- SKIP` 이 없다.
-- **AC-ITI-020** (maps REQ-ITI-018; mech) **Given** `MOAI_PTY_CAPTURE=1` 과 tmux, 실행 전에 검증자가 만든 센티널 세션 `moai-ptycap-sentinel-<난수>`, **When** 다음 세 실행을 하면, **Then** 모두 기대대로다.
+- **AC-ITI-020** (maps REQ-ITI-018; mech; 선결 V-d — (2)(3) 절) **Given** `MOAI_PTY_CAPTURE=1` 과 tmux, 실행 전에 검증자가 만든 센티널 세션 `moai-ptycap-sentinel-<난수>`, **When** 다음 세 실행을 하면, **Then** 모두 기대대로다.
   1. 정상 실행: 캡처 파일이 생기고 기준 문자열을 담는다. 실행 뒤 `moai-ptycap-` 로 시작하는 세션은 센티널 하나뿐이다.
   2. 강제 실패 실행: 세션을 연 뒤 `t.Fatal` 하는 자기 검증 하위 테스트를 자식 `go test` 로 돌리면, 그 하위 테스트는 FAIL 이고 실행 뒤 그 테스트가 연 세션이 남지 않으며 센티널은 살아 있다.
   3. 강제 기한 초과 실행: 나타나지 않는 기준 문자열을 기다리는 자기 검증 하위 테스트는 기한 초과 메시지와 함께 FAIL 이고, 세션이 남지 않는다.
@@ -125,29 +129,35 @@ t583 뒤 실제 질문 집합에는 확인형 질문이 없다(`spec.md` §A.7).
 
 ## §D.1 판정 방식, 중요도, RED 를 뜰 마일스톤
 
-| AC | 방식 | 중요도 | RED 마일스톤 |
-|---|---|---|---|
-| AC-ITI-001, 002 | mech | MUST | M4 |
-| AC-ITI-003 | pty | MUST | 게이트 직후 |
-| AC-ITI-004 | mech | MUST | plan (§D.3 L1) / M6 |
-| AC-ITI-005, 006 | mech | MUST | M1 / M5 |
-| AC-ITI-007 | mech | MUST | M5 |
-| AC-ITI-008, 009 | golden | MUST | M5 |
-| AC-ITI-010 | mech | MUST | M5 |
-| AC-ITI-011 | mech + golden | MUST | M6 |
-| AC-ITI-012 | golden | MUST | M2 |
-| AC-ITI-013 | golden + mech | MUST | plan (§D.3 L3) / M7 |
-| AC-ITI-014 | mech | SHOULD | M8 |
-| AC-ITI-015 | pty + golden | MUST | M3 (a) / 게이트 직후 (b) |
-| AC-ITI-016, 017 | pty + golden | MUST | 게이트 직후 |
-| AC-ITI-018 | mech + golden | MUST | 게이트 직후 |
-| AC-ITI-019, 020 | mech | MUST | M3 |
+| AC | 방식 | 중요도 | RED 마일스톤 | 선결 |
+|---|---|---|---|---|
+| AC-ITI-001, 002 | mech | MUST | M4 | — |
+| AC-ITI-003 | pty | MUST | 게이트 직후 | — |
+| AC-ITI-004 | mech | MUST | plan (§D.3 L1) / M6 | — |
+| AC-ITI-005, 006 | mech | MUST | M1 / M5 | — |
+| AC-ITI-007 | mech | MUST | M5 | — |
+| AC-ITI-008 | golden | MUST | M5 | — |
+| AC-ITI-009 | golden | MUST | M5 | V-c |
+| AC-ITI-010 | mech | MUST | M5 | — |
+| AC-ITI-011 | mech + golden | MUST | M6 | — |
+| AC-ITI-012 | golden | MUST | M2 | V-b |
+| AC-ITI-013 | golden + mech | MUST | plan (§D.3 L3) / M7 | V-b |
+| AC-ITI-014 | mech | SHOULD | M8 | — |
+| AC-ITI-015 | pty + golden | MUST | M3 (a) / 게이트 직후 (b) | — |
+| AC-ITI-016, 017 | pty + golden | MUST | 게이트 직후 | — |
+| AC-ITI-018 | mech | MUST | 게이트 직후 | — |
+| AC-ITI-019 | mech | MUST | M3 | — |
+| AC-ITI-020 | mech | MUST | M3 | V-d ((2)(3) 절) |
+| AC-ITI-021 | mech | MUST | 게이트 직후 | — |
+| AC-ITI-022 | golden + mech | MUST | 게이트 직후 | — |
 
-방식별 개수: pty 판정 5개(003, 015, 016, 017 + 하네스 자체를 pty 로 도는 020 의 1절) — 수리 판정 pty AC 는 003·015·016·017 의 4개. 골든 판정·가드 8개(008, 009, 011, 012, 013, 015, 016, 017, 018 중 골든 포함 AC; 015~017 은 pty 와 겹침, 011·013·018 은 mech 와 겹침). 기계 검사만으로 판정하는 AC 8개(001, 002, 004, 005, 006, 007, 010, 014)와 하네스 AC 2개(019, 020).
+「선결」 열의 V-a~V-d 는 `plan.md` M1 착수 검증 항목이다. 그 항목이 참으로 닫히기 전에는 해당 AC 를 판정하지 않고, 거짓으로 닫히면 판정 대신 리드에게 올린다. V-a 에 기대는 AC 는 없다.
+
+방식별 개수(AC 22개, 각 AC 를 한 번씩 셈): pty 만으로 판정하는 AC 1개(003). 골든을 포함하는 AC 9개(008, 009, 011, 012, 013, 015, 016, 017, 022; 015~017 은 pty, 011·013·022 는 mech 와 겹침). 기계 검사만으로 판정하는 AC 10개(001, 002, 004, 005, 006, 007, 010, 014, 018, 021; 021 은 `View()` 를 그리지만 저장 골든이 아니라 규칙으로 판정). 하네스 AC 2개(019, 020). 수리 판정 pty AC 는 003·015·016·017 의 4개이고, 020 의 1절은 하네스 자체를 pty 로 돈다.
 
 ## §D.2 추적성
 
-REQ-ITI-001→AC-ITI-001/003 · REQ-ITI-002→AC-ITI-002/003 · REQ-ITI-003→AC-ITI-004 · REQ-ITI-004→AC-ITI-005 · REQ-ITI-005→AC-ITI-006 · REQ-ITI-006→AC-ITI-007 · REQ-ITI-007→AC-ITI-008 · REQ-ITI-008→AC-ITI-009 · REQ-ITI-009→AC-ITI-011 · REQ-ITI-010→AC-ITI-010 · REQ-ITI-011→AC-ITI-012 · REQ-ITI-012→AC-ITI-013 · REQ-ITI-013→AC-ITI-014 · REQ-ITI-014→AC-ITI-015 · REQ-ITI-015→AC-ITI-016 · REQ-ITI-016→AC-ITI-017 · REQ-ITI-017→AC-ITI-018 · REQ-ITI-018→AC-ITI-019/020. 모든 REQ 에 AC 가 1개 이상 있고, 매핑 없는 AC 는 없다.
+REQ-ITI-001→AC-ITI-001/003 · REQ-ITI-002→AC-ITI-002/003 · REQ-ITI-003→AC-ITI-004 · REQ-ITI-004→AC-ITI-005 · REQ-ITI-005→AC-ITI-006 · REQ-ITI-006→AC-ITI-007 · REQ-ITI-007→AC-ITI-008 · REQ-ITI-008→AC-ITI-009 · REQ-ITI-009→AC-ITI-011 · REQ-ITI-010→AC-ITI-010 · REQ-ITI-011→AC-ITI-012 · REQ-ITI-012→AC-ITI-013 · REQ-ITI-013→AC-ITI-014 · REQ-ITI-014→AC-ITI-015 · REQ-ITI-015→AC-ITI-016 · REQ-ITI-016→AC-ITI-017 · REQ-ITI-017→AC-ITI-018/021/022 · REQ-ITI-018→AC-ITI-019/020. 모든 REQ 에 AC 가 1개 이상 있고, 매핑 없는 AC 는 없다.
 
 ## §D.3 RED 기준선
 
@@ -225,8 +235,9 @@ RED 이유: L1 은 v1 importer 5개, L2 는 확인창 문자열 2곳, L3 은 문
 
 ## §D.6 완료 정의
 
-- MUST AC 19개가 모두 PASS 이고, 각 판정에 명령과 원문 출력이 붙어 있다. pty SKIP 은 PASS 가 아니다.
-- 뮤턴트를 요구한 AC(002, 010, 012, 014, 017)의 뮤턴트 실패 원문이 progress 기록에 있다.
+- MUST AC 21개가 모두 PASS 이고, 각 판정에 명령과 원문 출력이 붙어 있다. pty SKIP 은 PASS 가 아니다.
+- 뮤턴트를 요구한 AC(002, 010, 012, 014, 017, 018, 021, 022)의 뮤턴트 실패 원문이 progress 기록에 있다. 018·021 은 상대 AC 가 같은 뮤턴트에서 PASS 인 원문도 함께 있다.
+- `plan.md` M1 착수 검증 V-a~V-d 가 progress 기록에서 참·거짓으로 닫혀 있고, 거짓으로 닫힌 항목에 기대는 AC 의 리드 처분이 기록돼 있다.
 - pty 판정 캡처(수리 전·후)가 `.moai/reports/t586/` 에 반출돼 있고, 수리 전 캡처 커밋이 수리 커밋보다 앞선다.
 - 골든 파일이 커밋돼 있고 CI 에서 돈다.
 - `spec.md` §D 의 D3 한계 목록과 D4 연기 기록이 progress 기록에 남아 있다.

@@ -11,7 +11,7 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 | 항목 | 수 | Tier M 상한 | 판정 |
 |---|---|---|---|
 | REQ | 18 | 16 | 초과 |
-| AC | 20 | 16 | 초과 |
+| AC | 22 | 16 | 초과 |
 | 제품 코드 파일(추정) | 14 | 5-15 | 경계 |
 | 테스트 파일(기존 수정·삭제 + 새 파일, 추정) | 20 이상 | — | 합산 시 15 초과 |
 
@@ -48,7 +48,7 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 
 ## §E 자기 검증 항목 (run 단계 §E 가 인용)
 
-- E1 `acceptance.md` AC 20개 PASS/FAIL 표 — 판정 방식별 명령과 원문 출력. SKIP 은 PASS 로 세지 않는다
+- E1 `acceptance.md` AC 22개 PASS/FAIL 표 — 판정 방식별 명령과 원문 출력. SKIP 은 PASS 로 세지 않는다
 - E2 `go build ./...`, `GOOS=windows GOARCH=amd64 go build ./...`
 - E3 `go test -cover ./internal/cli/wizard/...` 와 `./internal/cli/` 변경 경로 커버리지
 - E4 RED 출력(수리 전 골든·단위 테스트 실패 원문, 뮤턴트 실패 원문)
@@ -62,6 +62,12 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 ### 흡수 게이트 앞 — t583 과 겹치지 않음
 
 #### M1 — 옵션 모양과 프로필 질문 세트 (데이터·타입 결정)
+
+- **착수 검증 — 조사 단계에서 실행으로 확인하지 못한 네 가지**(`research.md` §13 에서 옮김). 이 마일스톤의 다른 작업보다 먼저 연다. 항목마다 명령과 원문 출력을 progress 기록에 남기고 참·거짓으로 닫는다. 이 항목에 기대는 AC(`acceptance.md` §D.1 「선결」 열)는 항목이 참으로 닫히기 전에는 판정하지 않고, 거짓으로 닫히면 판정 대신 리드에게 올린다.
+  - [ ] **V-a** `wizard/translations.go` UI 문자열 표 시작 줄. t583 lane-1 보고값은 548, 이 트리의 `var uiStrings` 는 540 이다(`grep -n 'var uiStrings' internal/cli/wizard/translations.go`). 두 값이 각각 어느 줄을 가리키는지와 차이의 원인을 흡수 트리에서 확정한다. M1 에서는 이 트리 값을 기록만 하고, 판정은 흡수 게이트 재측정(§C 6)에서 낸다. 이 값에 기대는 AC 는 없고, M7 의 `translations.go` 편집 범위 확인에 쓴다.
+  - [ ] **V-b** 로케일별 키맵(`huh.NewDefaultKeyMap()` 에 `SetHelp`, `Form.WithKeyMap`)이 확인창의 `y`/`n` 도움말 항목 라벨까지 바꾸는지. 확인창 하나짜리 폼을 `ko` 키맵으로 `View()` 에 그려 도움말 줄을 읽는다(run 단계 실행 확인). 선결 AC: AC-ITI-012, AC-ITI-013.
+  - [ ] **V-c** 스테퍼를 가시성 판정 클로저로 일반화했을 때(`design.md` §4) huh v2 의 재그리기 바인딩과 호환되는지. `*WizardResult` 가 아닌 결과 구조체를 바인딩 대상으로 넘긴 작은 폼에서 답을 바꾼 뒤 스테퍼 문자열이 다시 계산되는지 `View()` 로 확인한다(run 단계 실행 확인). 선결 AC: AC-ITI-009.
+  - [ ] **V-d** pty 하네스의 강제 실패 자식 실행 자기 검증(`design.md` §11)이 구현 가능한지. `go test -c` 로 빌드한 자식을 `MOAI_PTY_CAPTURE_SELFTEST=fail` 과 `timeout` 으로 돌려, 부모 테스트가 자식의 FAIL 보고와 잔존 세션 0 을 읽을 수 있는지 최소 형태로 시험한다(run 단계 실행 확인). M3 하네스 구현 전에 닫는다. 선결 AC: AC-ITI-020 (2)(3).
 
 - `schemaSelectOptions` 가 버전 중립 `{Label, Value}` 목록을 돌려주도록 바꾼다(`design.md` §3). 테스트 3개 파일 6곳의 `.Key` → `.Label` 을 함께 고친다. `model_policy` 옵션도 같은 모양으로 만든다(`template.ValidModelPolicies()` + 빈 값).
 - 프로필 위저드 질문 세트를 `wizard` 패키지의 **새 파일**로 정의한다(아직 배선하지 않음). 옵션은 인자로 받는다. 질문 id 집합과 그룹 구성은 `design.md` §2.
@@ -105,7 +111,8 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 
 #### M7 — 레이아웃·도움말·그룹 (`wizard.go`, `translations.go`, `questions.go`)
 
-- 확인창 버튼 왼쪽 정렬(REQ-ITI-014), 필드 구분자 축소와 선택 필드 높이(REQ-ITI-015), 옵션 설명 열 정렬(REQ-ITI-016, `wizard.go:290` 단순 연결 대체), 키별 도움말 라벨(REQ-ITI-012), `agent_wiring`·`autonomy_tier` 그룹 재구성(REQ-ITI-017).
+- 확인창 버튼 왼쪽 정렬(REQ-ITI-014), 필드 구분자 축소와 선택 필드 높이(REQ-ITI-015), 옵션 설명 열 정렬(REQ-ITI-016, `wizard.go:290` 단순 연결 대체), 키별 도움말 라벨(REQ-ITI-012), `agent_wiring`·`autonomy_tier` 를 `Agents & Autonomy` 한 그룹으로 묶는 재구성(REQ-ITI-017, 리드 판정 Q5).
+- `questions.go` 두 리터럴의 `Group` 값 편집은 이 마일스톤, 곧 흡수 게이트 뒤에서만 한다. 게이트 앞 마일스톤(M1~M3)은 이 값을 건드리지 않는다(§D 제약). 페이지 수 2(AC-ITI-018), 스테퍼 분모 4(AC-ITI-021), 라벨 비렌더(AC-ITI-022)를 각각 따로 RED 로 세우고, 두 뮤턴트(그룹을 다시 나눈 트리, 질문 하나를 더한 트리)로 앞의 두 판정이 서로 독립임을 보인다.
 - M1·M2 에서 새 파일에 둔 문구를 `translations.go` 체계로 합친다.
 - 각 항목은 골든 RED → 수리 → 골든 GREEN, 이어서 pty 캡처로 수리 판정.
 
@@ -126,6 +133,7 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 | Q2 도움말 줄 형식 | 키별 짧은 라벨 번역을 쓰고 문장형 `HelpSelect`/`HelpInput` 은 지운다 | REQ-ITI-012, AC-ITI-013, `design.md` §7, M7·M8 |
 | Q3 다운그레이드 확인창 언어 | 프로젝트 `language.yaml` → 활성 프로필 → 영어 | REQ-ITI-011, AC-ITI-012, M2 |
 | Q4 프로필 위저드 단계 표시 | init 위저드와 같은 형식 | REQ-ITI-008, AC-ITI-009, M5 |
+| Q5 REQ-ITI-017 그룹 재구성 (2회차) | 제안 채택. `agent_wiring`·`autonomy_tier` 를 `Agents & Autonomy` 한 그룹으로 묶어 init 위저드를 3페이지에서 2페이지로 줄인다. 근거: 그룹 라벨은 그려지지 않고 묶음 키로만 쓰여(`wizard.go:183-186`) 라벨만 바꾸면 한 문항짜리 페이지가 남는다. 조건: 페이지 수와 스테퍼 분모를 따로 판정한다. `questions.go` 편집은 흡수 게이트 뒤(M7)에 한다. 번역 키 필요 여부는 코드 측정으로 정한다 — 측정 결과 라벨을 그리는 경로가 없어 키를 두지 않는다(`research.md` §6.1) | REQ-ITI-017, AC-ITI-018·021·022, `design.md` §9, M7 |
 
 남은 확인 필요 표식은 없다.
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-INIT-TUX-I18N-001
 title: "init/update/profile wizard TUX repair — v1 profile wizard absorbed into huh v2, layout repair, remaining English surfaces localized"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -25,6 +25,7 @@ related_specs: [SPEC-CLI-TUI-MODERNIZE-001, SPEC-CLI-TUX-V3-002, SPEC-CLI-TUX-IN
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-11 | manager-spec | 최초 작성(카드 t586 plan 단계). 재현 판정과 리드·운영자 결정 D1~D6 을 요구사항으로 옮겼다. |
 | 0.2.0 | 2026-09-11 | manager-spec | 1회차 plan 감사 결함 D1~D17 반영. 리드 판정 Q1~Q4 로 미결 4건을 닫았다(init 은 프로필 위저드를 부르지 않음, 도움말은 키별 짧은 라벨, 다운그레이드 확인창 언어 우선순위, 프로필 위저드 단계 표시). SPEC-CLI-TUI-MODERNIZE-001 계약 인수를 명시했다(§A.6.1). 소스 스캔 가드 9건·v1 타입 노출·저장값 보존 4건을 조사와 요구에 넣었다. pty 판정 계약을 공허 초록이 불가능하도록 다시 썼다. t583 충돌 회피 전제를 lane-1 확정 범위로 바꾸고, t583 뒤 남는 그룹 재구성을 새 요구로 넣었다. REQ 18·AC 20 으로 Tier M 요구 상한(16)을 넘어 Tier L 로 올리고 `design.md`·`research.md` 를 보탰다. |
+| 0.2.1 | 2026-09-11 | manager-spec | 리드 판정 Q5 반영. REQ-ITI-017 제안(`agent_wiring`·`autonomy_tier` 를 `Agents & Autonomy` 한 그룹으로 묶어 init 위저드를 3페이지에서 2페이지로)을 확정했다. 페이지 수와 스테퍼 분모를 따로 판정하도록 AC 를 나눴다(AC-ITI-018 페이지 수, AC-ITI-021 분모). 그룹 라벨을 읽는 렌더 경로가 없음을 코드에서 재고, 번역 키를 두지 않는 판단을 AC-ITI-022 로 고정했다. `research.md` §13 의 실행 확인 4건을 `plan.md` M1 착수 검증 V-a~V-d 로 옮기고, 그 결과에 기대는 AC 에 선결 표시를 달았다. REQ 18·AC 22, Tier L 유지. |
 
 ## §A 배경
 
@@ -151,7 +152,7 @@ REQ-TUIM-041(두 팩토리에 같은 토큰-역할 배정)은 뒤집지 않는�
 
 t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / Quality & Workflow 1개(`agent_wiring`) / Autonomy 1개(`autonomy_tier`), 라벨은 그대로다. 확인형(`QuestionTypeConfirm`) 질문 5개(`worktree_auto_create`, `todo_enabled`, `feedback_auto_submit`, `codex_audit_enabled`, `mcp_provision`)는 모두 삭제 목록에 들어 있어, t583 뒤 init·reconfigure 질문 집합에는 확인형 질문이 남지 않는다. `QuestionTypeConfirm` 열거값과 `buildConfirmField` 는 남는다.
 
-**t586 이 새로 맡는 일**: 라벨이 "Quality & Workflow" 인데 `agent_wiring` 하나만 남는 그룹의 정리(REQ-ITI-017). 그룹 라벨은 화면에 그려지지 않고 페이지를 묶는 키로만 쓰이므로(`wizard.go:183-186`), 라벨만 바꾸는 것으로는 사용자가 보는 것이 달라지지 않는다. 결정은 `design.md` §9.
+**t586 이 새로 맡는 일**: 라벨이 "Quality & Workflow" 인데 `agent_wiring` 하나만 남는 그룹의 정리(REQ-ITI-017). 그룹 라벨은 화면에 그려지지 않고 페이지를 묶는 키로만 쓰이므로(`wizard.go:183-186`), 라벨만 바꾸는 것으로는 사용자가 보는 것이 달라지지 않는다. 리드 판정 Q5 로 두 질문을 `Agents & Autonomy` 한 그룹으로 묶는 안을 확정했다(`design.md` §9, `plan.md` §H). 그 결과 init 위저드는 3페이지에서 2페이지가 되고, 스테퍼 분모는 질문 수 4 그대로다.
 
 [HARD] `questions.go`·`wizard.go`·`types.go`·`translations.go`·`init.go` 를 건드리는 run 단계 작업은 **t583 이 develop 에 병합되고 이 워크트리가 그것을 흡수한 뒤, 흡수 트리에서 기준선을 다시 잰 다음에만** 시작한다. 이 다섯 파일과 겹치지 않는 작업(`update_version.go`, `profile_setup.go` 의 옵션 타입, 새 파일, 검증 하네스와 골든 발판)은 먼저 할 수 있다. 같은 Go 패키지의 최상위 식별자는 한 이름공간을 쓰므로, 게이트 앞에 `wizard` 패키지에 새로 두는 식별자는 흡수 직후 `go build ./internal/cli/wizard/` 로 충돌을 확인한다. 순서는 `plan.md` §F.
 
@@ -190,7 +191,7 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 - **REQ-ITI-014** (Ubiquitous): Every confirm field rendered by `internal/cli`, including the downgrade confirmation, **shall** render its first button at the same display column as its description line.
 - **REQ-ITI-015** (Ubiquitous): The init wizard, the reconfigure wizard and the profile wizard **shall** render no blank line between consecutive fields of a group and no empty card row below a select field's last option.
 - **REQ-ITI-016** (Event-driven): **When** a select field's options carry descriptions, the field **shall** render the descriptions in one column whose start position is computed from terminal display width, counting each East Asian wide character as two cells.
-- **REQ-ITI-017** (Ubiquitous): Once the card t583 question set is absorbed, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group under a single group label that names both, and no init question **shall** carry the group label `Quality & Workflow`.
+- **REQ-ITI-017** (Ubiquitous): Once the card t583 question set is absorbed, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group labelled `Agents & Autonomy`, so that the init wizard renders exactly two pages; the init step indicator's denominator **shall** remain the number of visible init questions; no init question **shall** carry the group label `Quality & Workflow`; and no wizard screen **shall** render a question's group label, so the label carries no translation key.
 
 ### B.5 판정 하네스 (D6)
 
@@ -240,7 +241,7 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 ## §E 참조
 
 - `plan.md` — 마일스톤 순서(t583 흡수 게이트 포함), 기술 접근, 위험
-- `acceptance.md` — AC 20개, pty 공통 계약, 픽스처·실제 질문 구분, 완료 정의
+- `acceptance.md` — AC 22개, pty 공통 계약, 픽스처·실제 질문 구분, 완료 정의
 - `design.md` — 흡수 구조, 옵션 전달 모양, 도움말 라벨 표, 그룹 재구성 결정, 가드 재조준, pty 하네스
 - `research.md` — 이 트리에서 다시 잰 조사 원문
 - `progress.md` — 단계별 증거 기록

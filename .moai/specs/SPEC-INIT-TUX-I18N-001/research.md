@@ -141,6 +141,47 @@ t583 lane-1 확정 범위(`spec.md` §A.7)의 시작 좌표와 모두 일치한�
 
 그룹 라벨 사용: `git grep`/`grep -rn '\.Group\b'` 결과 위저드 비테스트 코드에서 `q.Group` 을 읽는 곳은 `wizard.go:183`, `:186`(묶기 비교)뿐이고, `t.Group.Title` 등은 테마 스타일 필드다. 그룹 라벨을 번역하는 표도 없다(`grep -n 'Quality & Workflow' internal/cli/wizard/translations.go` 0건). `agent_wiring`(`questions.go:490-501`)과 `autonomy_tier`(`:513-525`)에는 `Condition` 이 없다.
 
+### §6.1 그룹 라벨 렌더 경로 재측정 (2회차 개정)
+
+측정 트리 HEAD `d8ebb39298b206ec8cc4183e728f27f48994df86`. `git diff --stat 18144b7aca714ea8924363b1eab4640cf101c6d0 HEAD -- internal cmd pkg go.mod go.sum` 출력 없음(종료 0)이라 §0 의 좌표가 그대로 유효하다. 바로 위 문단의 `\.Group\b` 형태는 POSIX ERE 에서 `\b` 가 단어 경계가 아니어서 빈 출력이 공허할 수 있다(이번에 같은 형태를 다시 돌렸더니 `q.Group` 이 있는 트리에서 종료 1 로 비었다). 그래서 경계 없이 대조군과 함께 다시 쟀다.
+
+```
+$ git grep -n -E '\.Group([^A-Za-z0-9_]|$)' -- '*.go' ':!*_test.go'
+internal/cli/huh_theme.go:107:	t.Group.Title = t.Focused.Title
+internal/cli/huh_theme.go:108:	t.Group.Description = t.Focused.Description
+internal/cli/model.go:148:			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort, e.GLMModel, e.GLMReasoning)
+internal/cli/model.go:153:			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort)
+internal/cli/root.go:121:		&cobra.Group{ID: "launch", Title: "Launch Commands:"},
+internal/cli/root.go:122:		&cobra.Group{ID: "project", Title: "Project Commands:"},
+internal/cli/root.go:123:		&cobra.Group{ID: "tools", Title: "Tools:"},
+internal/cli/wizard/wizard.go:158:func buildFormGroups(questions []Question, result *WizardResult, locale *string) []*huh.Group {
+internal/cli/wizard/wizard.go:159:	var groups []*huh.Group
+internal/cli/wizard/wizard.go:183:		if len(pending) > 0 && q.Group != pendingLabel {
+internal/cli/wizard/wizard.go:186:		pendingLabel = q.Group
+internal/cli/wizard/wizard.go:195:func buildConditionalGroup(questions []Question, q *Question, result *WizardResult, locale *string) *huh.Group {
+internal/cli/wizard/wizard.go:204:// buildQuestionGroup creates a huh.Group for a single question.
+internal/cli/wizard/wizard.go:206:func buildQuestionGroup(q *Question, result *WizardResult, locale *string) *huh.Group {
+internal/cli/wizard/wizard.go:587:	t.Group.Title = t.Focused.Title
+internal/cli/wizard/wizard.go:588:	t.Group.Description = t.Focused.Description
+internal/lsp/aggregator/aggregator.go:47:	sf           singleflight.Group
+internal/lsp/core/manager.go:43:	// @MX:NOTE: [AUTO] sf — singleflight.Group; prevents duplicate clientFactory+Start calls for the same language (REQ-UTIL-003-004, REQ-UTIL-003-005)
+internal/lsp/core/manager.go:44:	sf singleflight.Group
+exit=0
+$ git grep -n -E 'q\.Group([^A-Za-z0-9_]|$)' -- 'internal/cli/wizard/wizard.go'   # 대조군
+internal/cli/wizard/wizard.go:183:		if len(pending) > 0 && q.Group != pendingLabel {
+internal/cli/wizard/wizard.go:186:		pendingLabel = q.Group
+exit=0
+$ git grep -n -F 'Quality & Workflow' -- internal/cli/wizard/translations.go
+exit=1
+$ git grep -c -F 'ConfirmYes' -- internal/cli/wizard/translations.go   # 대조군
+internal/cli/wizard/translations.go:6
+exit=0
+$ grep -n 'huh.NewGroup(fields' internal/cli/wizard/wizard.go
+172:		groups = append(groups, huh.NewGroup(fields...))
+```
+
+판독: 질문의 `Group` 필드를 읽는 비테스트 줄은 `wizard.go:183`(묶기 비교)과 `:186`(대입) 둘뿐이다. 나머지 적중은 다른 타입이다 — `t.Group.Title`·`t.Group.Description`(huh 테마 스타일 필드), `e.Group`(`model.go`, 에이전트 모델 표), `cobra.Group`(`root.go`), `singleflight.Group`(`internal/lsp`), `huh.Group` 타입 이름. 라벨 문자열 `Quality & Workflow` 는 `questions.go` 의 `Group:` 값과 주석(`questions.go:26`, `:338`, `types.go:41`, `wizard.go:36`)에만 있고 번역 표에는 없다. `buildFormGroups` 는 `huh.NewGroup(fields...)` 에 제목을 붙이지 않는다(`:172`). 따라서 그룹 라벨을 그리는 경로가 없고, 새 라벨 `Agents & Autonomy` 에는 번역 키가 필요 없다. 이 판단은 AC-ITI-022 가 렌더와 grep 으로 고정한다.
+
 t583 설계(`SPEC-INIT-QUIET-WIZARD-001/design.md` §7)는 남는 4문항 그룹을 Basic / Quality & Workflow / Autonomy 로 두고 "라벨 재구성은 렌더링 결정이라 t586 에 맡긴다"고 적었다.
 
 ## §7 언어 해석 도구
@@ -197,9 +238,11 @@ $ grep -n 'AC-TUIM-02[6-9]' .moai/specs/SPEC-CLI-TUI-MODERNIZE-001/acceptance.md
 
 ## §13 확신도와 공백
 
+이 절은 기록으로 남긴다. 아래 항목 가운데 실행으로 확인해야 하는 네 가지는 run 단계 첫 마일스톤의 착수 검증으로 옮겨 그곳에서 추적한다(`plan.md` §F M1, V-a~V-d). 해당 줄 끝에 옮긴 곳을 적었다.
+
 - t583 미커밋 변경은 이 트리에 없다. 범위는 lane-1 이 plan.md §F.1 로 확정한 목록이며, 시작 좌표만 이 트리에서 대조했다. 병합된 실제 diff 는 게이트에서 다시 본다.
-- `uiStrings` 좌표 548(t583)과 540(이 트리)의 차이는 원인을 확인하지 않았다.
-- huh v2 에서 로케일별 `KeyMap` 을 폼마다 거는 방식이 확인형 `y`/`n` 도움말 라벨(`Accept`/`Reject` 바인딩)까지 바꾸는지는 실행으로 확인하지 않았다. 판정 문서의 가능성 프로브는 `Toggle` 한 바인딩만 확인했다.
-- 스테퍼 일반화(`design.md` §4)가 huh v2 `TitleFunc` 재계산 바인딩과 호환되는지는 실행으로 확인하지 않았다.
+- `uiStrings` 좌표 548(t583)과 540(이 트리)의 차이는 원인을 확인하지 않았다. → `plan.md` M1 V-a
+- huh v2 에서 로케일별 `KeyMap` 을 폼마다 거는 방식이 확인형 `y`/`n` 도움말 라벨(`Accept`/`Reject` 바인딩)까지 바꾸는지는 실행으로 확인하지 않았다. 판정 문서의 가능성 프로브는 `Toggle` 한 바인딩만 확인했다. → `plan.md` M1 V-b
+- 스테퍼 일반화(`design.md` §4)가 huh v2 `TitleFunc` 재계산 바인딩과 호환되는지는 실행으로 확인하지 않았다. → `plan.md` M1 V-c
 - `template.ModelAliasPickerValues()` 의 현재 값 목록은 읽지 않았다. AC-ITI-008 예외 목록은 값 대신 함수 이름으로 닫았다.
-- pty 하네스 설계(`design.md` §11)의 강제 실패 자식 실행 방식은 이 트리에서 시험하지 않았다.
+- pty 하네스 설계(`design.md` §11)의 강제 실패 자식 실행 방식은 이 트리에서 시험하지 않았다. → `plan.md` M1 V-d
