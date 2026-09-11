@@ -1,0 +1,106 @@
+=== RUN   TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+    home_state_coverage_test.go:420: audited production file changed after coverage tip: internal/cli/launcher.go
+--- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (4.91s)
+=== RUN   TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite
+    home_state_coverage_test.go:468: coverage={Covered:0 Total:0 Percent:0} err=coverage cli tests: exit status 1
+        2026/09/11 10:54:13 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCCCmd_Execution_NoDeps948781854/001/.moai/config/sections
+        Launching Claude Code...
+        2026/09/11 10:54:13 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t600/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+        Launching Claude Code...
+        Notice: profile "work" has no Claude Code configuration yet.
+          Claude Code will show the login / onboarding screen on this launch.
+          Account state is not inherited between profiles; sign in once and it
+          persists for this profile.
+        2026/09/11 10:54:14 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_SuccessfulExecution409025753/001/.moai/config/sections
+        Launching Claude Code...
+        2026/09/11 10:54:14 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_WithProjectRoot2199448782/001/.moai/config/sections
+        Launching Claude Code...
+        Team mode disabled (was: glm)
+        Launching Claude Code...
+        Team mode disabled (was: cg)
+        Launching Claude Code...
+        Launching Claude Code...
+        2026/09/11 10:54:14 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_NilConfig3974046581/001/.moai/config/sections
+        Launching Claude Code...
+        Launching Claude Code with GLM backend...
+        Launching Claude Code with GLM backend...
+        Launching Claude Code with GLM backend...
+        Error: --id, --expected-token, and --decision requeue|fail are required
+        Usage:
+          factory handoff recover-resume [flags]
+        
+        Flags:
+              --decision string         Recovery decision: requeue or fail
+              --expected-token string   Current claim token
+          -h, --help                    help for recover-resume
+              --id int                  Resume handoff row id
+        
+        Error: legacy resume unknown owner census: active runtimes=1
+        Usage:
+          factory handoff recover-resume [flags]
+        
+        Flags:
+              --decision string         Recovery decision: requeue or fail
+              --expected-token string   Current claim token
+          -h, --help                    help for recover-resume
+              --id int                  Resume handoff row id
+        
+        --- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (5.02s)
+            home_state_coverage_test.go:420: audited production file changed after coverage tip: internal/hook/session_end.go
+        --- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (4.64s)
+            home_state_coverage_test.go:520: audited production file changed after coverage tip: internal/cli/launcher.go
+        mode: dry-run
+        canonical-root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets1465594372/001
+        project-key: 001-cd52360d
+        source: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets1465594372/001/.moai/state/todo/backlog.db
+        target: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateDryRunClassifiesEquivalentAndDivergentTargets1465594372/002/home/db/001-cd52360d/todo/backlog.db
+        active-census: sessions=0 factory=0 mcp=0 fingerprint=0:0:0
+        logical-count: 2
+        integrity: ok
+        search: not-applicable (no runtime producer)
+        target-status: absent
+        2026/09/11 10:55:33 INFO session started session_id=blocked cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateBarrierAdmissionHaltsAllHosts811389997/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHomeStateBarrierAdmissionHaltsAllHosts811389997/001
+        Error: bare --apply is refused; use --apply --verified-live
+        Error: --migration-id and --backup-id are required
+        Usage:
+          home-state recover [flags]
+        
+        Flags:
+              --backup-id string      Verified backup identifier
+          -h, --help                  help for recover
+              --migration-id string   Migration identifier from the marker
+        
+        Error: migration and backup identities must match
+        Usage:
+          home-state rollback [flags]
+        
+        Flags:
+              --backup-id string      Verified backup identifier
+          -h, --help                  help for rollback
+              --migration-id string   Completed migration identifier
+        
+        Profile: lease-test
+        2026/09/11 10:56:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestContinueLaunchCreatesSingleProvisionalLeaseBeforeChildStart2954360536/001/.moai/config/sections
+        Warning: no model resolved from profile "lease-test" — Claude Code will use the model in .claude/settings.json instead.
+          Check with: moai profile current && moai profile list
+          Select one with: moai cc -p <profile>
+        2026/09/11 10:56:53 INFO session started session_id=t352-guard cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard2630977441 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t352-guard2630977441
+        2026/09/11 10:56:54 WARN configuration not available, proceeding with defaults session_id=t352-guard
+        2026/09/11 10:56:54 INFO teammateMode updated mode=auto in_tmux=false
+        FAIL
+        coverage: 14.7% of statements in ./internal/cli, ./internal/homestate, ./internal/hook/handoff, ./internal/hook, ./internal/kanban
+        FAIL	github.com/modu-ai/moai-adk/internal/cli	165.127s
+        FAIL
+--- FAIL: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (187.10s)
+=== RUN   TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition
+    home_state_coverage_test.go:520: audited production file changed after coverage tip: internal/hook/session_end.go
+--- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (3.03s)
+=== RUN   TestAuditLagUsesBinlagSeam
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:243 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:251 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:253 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:245 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+--- FAIL: TestAuditLagUsesBinlagSeam (1.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	197.342s
+FAIL

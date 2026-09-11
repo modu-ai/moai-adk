@@ -170,11 +170,11 @@ What can be edited is fixed by a single source of truth, and the console writes 
 
 ## Security model
 
-**Loopback only.** The console binds to `127.0.0.1` alone. Another account on the same machine, or a remote host, cannot reach it.
+**Loopback only.** The console binds to `127.0.0.1` alone, so a remote host cannot reach it. Loopback is not divided by account, though: another account logged in to the same machine can connect to the port.
 
 **No database.** Nothing extra is started. Everything it reads and writes lives in files under the current project's `.moai/`.
 
-**No authentication.** Loopback-only is the premise, so there is no login or token layer.
+**No authentication.** There is no login or token layer. Binding to loopback keeps remote hosts out, but not other accounts on the same machine. On a shared machine, those accounts can reach the console while it is running.
 
 **No command execution.** The observation areas refuse any method other than GET, and no screen runs a command on the server. The console does not perform SPEC status transitions either — those belong to each phase's manager agent.
 

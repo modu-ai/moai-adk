@@ -5,9 +5,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 func gitForCoverageTest(t *testing.T, root string, args ...string) {
@@ -414,12 +417,16 @@ func TestParseChangedSurfaceCoverageRejectsMissingZeroAndTamperedProfiles(t *tes
 }
 
 func TestHomeStateChangedSurfaceCoverageConsumesFreshProfile(t *testing.T) {
-	repo, _ := filepath.Abs(filepath.Join("..", ".."))
+	// A fixture repository keeps this test independent of the live history:
+	// against the live tree it fails whenever a later commit touches an
+	// audited file, which is the gate refusing rather than the measurement
+	// being wrong.
+	repo := committedCoverageRepo(t)
 	files, _, err := changedProductionFiles(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	coverage, err := measureChangedSurfaceCoverageWith(t.Context(), repo, func(_ context.Context, _ string, path string) error {
+	fresh := func(_ context.Context, _ string, path string) error {
 		var profile strings.Builder
 		profile.WriteString("mode: set\n")
 		ranges, rangeErr := changedProductionLineRanges(repo, files)
@@ -434,9 +441,21 @@ func TestHomeStateChangedSurfaceCoverageConsumesFreshProfile(t *testing.T) {
 			profile.WriteString("github.com/modu-ai/moai-adk/" + file + ":" + strconv.Itoa(line) + ".1," + strconv.Itoa(line) + ".2 1 1\n")
 		}
 		return os.WriteFile(path, []byte(profile.String()), 0o600)
-	})
+	}
+	coverage, err := measureChangedSurfaceCoverageWith(t.Context(), repo, fresh)
 	if err != nil || coverage != 100 {
 		t.Fatalf("coverage=%.1f err=%v", coverage, err)
+	}
+	// The live pre-apply gate reaches the audited-blob freeze through this
+	// measurement, so a post-tip change to an audited file must still refuse.
+	audited := filepath.Join(repo, "internal", "x", "a.go")
+	if err := os.WriteFile(audited, []byte("package x\nfunc A() int { return 3 }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, repo, "add", "internal/x/a.go")
+	gitForCoverageTest(t, repo, "commit", "-qm", "fix: mutate audited path")
+	if _, err := measureChangedSurfaceCoverageWith(t.Context(), repo, fresh); err == nil || !strings.Contains(err.Error(), "audited production file changed after coverage tip: internal/x/a.go") {
+		t.Fatalf("post-tip audited change accepted: %v", err)
 	}
 	if _, err := measureChangedSurfaceCoverageWith(t.Context(), t.TempDir(), func(context.Context, string, string) error { return context.Canceled }); err == nil {
 		t.Fatal("coverage runner error accepted")
@@ -457,6 +476,13 @@ func TestHomeStateChangedSurfaceCoverageConsumesFreshProfile(t *testing.T) {
 func TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite(t *testing.T) {
 	if os.Getenv("MOAI_HOME_STATE_COVERAGE_CHILD") == "1" {
 		return
+	}
+	// Opt-in: this runs the focused suite against the live repository and
+	// resolves the audited evidence chain at HEAD, so it fails whenever an
+	// audited production file changed after the last certification marker,
+	// until the rollout is re-certified.
+	if os.Getenv(config.EnvTestHomeStateLiveCoverage) != "1" {
+		t.Skipf("set %s=1 to measure changed-surface coverage against the live repository", config.EnvTestHomeStateLiveCoverage)
 	}
 	t.Setenv("MOAI_HOME_STATE_COVERAGE_CHILD", "1")
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
@@ -514,16 +540,36 @@ printf 'mode: set\n' > "$profile"
 }
 
 func TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition(t *testing.T) {
-	repo, _ := filepath.Abs(filepath.Join("..", ".."))
-	native, disposition, err := changedProductionFiles(repo)
+	root := committedCoverageRepo(t)
+	crossCompiled := "only_windows.go"
+	if runtime.GOOS == "windows" {
+		crossCompiled = "only_unix.go"
+	}
+	for rel, body := range map[string]string{
+		"internal/y/b.go":             "package y\nfunc B() int { return 1 }\n",
+		"internal/x/" + crossCompiled: "package x\nfunc P() int { return 1 }\n",
+		"internal/x/a_test.go":        "package x\n",
+		"cmd/tool/main.go":            "package main\nfunc main() {}\n",
+	} {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitForCoverageTest(t, root, "add", "internal", "cmd")
+	gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+	native, disposition, err := changedProductionFiles(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	all := strings.Join(append(append([]string{}, native...), disposition...), "\n")
-	for _, required := range []string{"internal/cli/launcher.go", "internal/cli/mcp_server.go", "internal/homestate/factory.go", "internal/homestate/handoff.go", "internal/hook/session_start.go", "internal/kanban/factory_slots.go", "internal/homestate/admission_lock_windows.go"} {
-		if !strings.Contains(all, required) {
-			t.Errorf("missing changed production file %s", required)
-		}
+	if got, want := strings.Join(native, ","), "internal/x/a.go,internal/y/b.go"; got != want {
+		t.Errorf("native=%q, want %q", got, want)
+	}
+	if got, want := strings.Join(disposition, ","), "internal/x/"+crossCompiled+":cross-compile"; got != want {
+		t.Errorf("disposition=%q, want %q", got, want)
 	}
 }
 
@@ -640,5 +686,67 @@ func TestChangedProductionFilesRejectsDeletion(t *testing.T) {
 	}
 	if _, _, err := changedProductionFiles(root); err == nil || !strings.Contains(err.Error(), "deleted production coverage target") {
 		t.Fatal("deleted production file accepted")
+	}
+}
+
+// resolveRepeatedly runs the change-set resolver the given number of times and
+// counts each distinct error message, so a caller can see whether the file a
+// refusal names depends on map iteration order.
+func resolveRepeatedly(t *testing.T, root string, runs int) map[string]int {
+	t.Helper()
+	seen := map[string]int{}
+	for range runs {
+		_, err := resolveHomeStateCoverageChangeSet(root)
+		if err == nil {
+			t.Fatal("change set accepted")
+		}
+		seen[err.Error()]++
+	}
+	return seen
+}
+
+func TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically(t *testing.T) {
+	root := committedCoverageRepo(t)
+	b := filepath.Join(root, "internal", "y", "b.go")
+	if err := os.MkdirAll(filepath.Dir(b), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(b, []byte("package y\nfunc B() int { return 1 }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "internal/y/b.go")
+	gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+	for rel, body := range map[string]string{
+		"internal/x/a.go": "package x\nfunc A() int { return 3 }\n",
+		"internal/y/b.go": "package y\nfunc B() int { return 2 }\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitForCoverageTest(t, root, "add", "internal")
+	gitForCoverageTest(t, root, "commit", "-qm", "fix: mutate two audited paths")
+	want := "audited production file changed after coverage tip: internal/x/a.go, internal/y/b.go"
+	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
+		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
+	}
+}
+
+func TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically(t *testing.T) {
+	root := committedCoverageRepo(t)
+	for _, name := range []string{"b.go", "c.go"} {
+		if err := os.WriteFile(filepath.Join(root, "internal", "x", name), []byte("package x\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitForCoverageTest(t, root, "add", "internal/x/b.go", "internal/x/c.go")
+	gitForCoverageTest(t, root, "commit", "-qm", "chore: add unaudited files")
+	// A mode-only change lists both files in name-status but produces no hunk,
+	// so neither reaches the changed-line ranges.
+	gitForCoverageTest(t, root, "update-index", "--chmod=+x", "internal/x/b.go", "internal/x/c.go")
+	gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+	want := "changed production file missing from diff: internal/x/b.go, internal/x/c.go"
+	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
+		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
 	}
 }

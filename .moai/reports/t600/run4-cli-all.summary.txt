@@ -1,0 +1,32 @@
+--- SKIP: TestAuditPinLive_GLMDifferential (0.00s)
+--- SKIP: TestAuditPinLive_CodexPinConfirmation (0.00s)
+--- SKIP: TestCodexLive_ThreadReuseAndTurnInterrupt (0.00s)
+--- SKIP: TestCodexLive_SandboxPolicyStickiness (0.00s)
+--- SKIP: TestCodexLive_OmittedSandboxPolicyBaseline (0.00s)
+--- SKIP: TestCodexLive_ExplicitReadOnlyApprovalStall (0.00s)
+--- SKIP: TestCodexLive_ReviewStartEmitsTurnStarted (0.00s)
+--- SKIP: TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey (180.57s)
+--- SKIP: TestGateLockHelperSleep (0.00s)
+--- SKIP: TestCleanupMoaiWorktrees (0.00s)
+--- SKIP: TestGLMToolsEnable_AtomicWriteProtectsOriginal (0.00s)
+panic: test timed out after 10m0s
+		TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (0s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	605.334s
+--- SKIP: TestCheckDeadHooks_ViaLintAgentFile (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	4.075s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	11.704s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	6.371s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	4.256s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	2.239s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	5.959s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	3.063s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	1.225s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	2.332s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	2.934s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	4.373s
+--- SKIP: TestMergeUserFiles_EmbeddedTemplateError (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.689s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	7.171s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	7.557s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	10.596s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	13.243s
