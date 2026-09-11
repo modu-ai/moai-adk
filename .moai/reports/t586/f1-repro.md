@@ -72,4 +72,5 @@ grep -n -F 'func persistProjectConfig(' <scratch>/t586-f1/s2mut/profile_setup.go
 
 ## Residual-risk
 
-- 검색식은 한 줄 단위다. 호출이 여러 줄에 걸쳐 `persistProjectConfig(` 와 인자가 갈라지는 형태로 바뀌어도 첫 줄에 호출 토큰이 남으므로 잡히지만, 호출을 변수에 담은 함수 값으로 부르는 형태로 바뀌면 놓친다.
+- 검색식은 한 줄 단위다. 호출이 여러 줄에 걸쳐 `persistProjectConfig(` 와 인자가 갈라지는 형태로 바뀌어도 첫 줄에 호출 토큰이 남으므로 잡힌다. 호출을 변수에 담은 함수 값으로 부르는 형태로 바뀌면 `persistProjectConfig(` 토큰이 사라져 앵커가 0줄이 되므로, 가드는 결함을 놓치는 것이 아니라 거짓 경보로 실패한다(범위 한정 재감사 `plan-audit-iter4-scoped.md` 지적으로 정정).
+- 호출을 지우고 `persistProjectConfig(` 를 줄 끝 주석이나 문자열 리터럴에 남기는 뮤턴트는 앵커를 통과한다. 앵커는 줄 전체 주석만 거른다. 옛 앵커도 같은 약점을 가졌고, 명세된 AC 뮤턴트에는 영향이 없다(같은 재감사 O1).
