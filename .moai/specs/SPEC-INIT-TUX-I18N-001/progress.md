@@ -84,7 +84,56 @@ tmux 3.6a
 
 The throwaway probe files were deleted after export and are not committed. No V item closed false, so no dependent AC is held.
 
-_Phase A milestone work follows in the next entries._
+#### M1 wizard-side work (profile question set, 4-locale form strings)
+
+New files only, not wired: `internal/cli/wizard/profile_questions.go` (`ProfileOptions`, `ProfileResult`, `ProfileQuestionIDs`, `ProfileQuestions`), `internal/cli/wizard/profile_translations.go` (`profileQuestionTexts`, `LocalizeProfileQuestion`), tests `profile_questions_test.go`, `profile_translations_test.go`. The form strings are the v1 profile strings (`profileSetupText` in `internal/cli/profile_setup_translations.go`, en/ko/ja/zh) copied unchanged; the `profileSetupText` originals are untouched.
+
+| Step | Command | Observed | Evidence |
+|---|---|---|---|
+| RED (own commit `ab0848d05`) | `go test ./internal/cli/wizard/ -run 'TestProfileQuestions_\|TestProfileTranslations_\|TestLocalizeProfileQuestion' -count=1 -v` against empty stubs | exit 1 · `=== RUN` 10 · FAIL 10 (e.g. `ProfileQuestions returned no questions`, `profile translation table carries 0 locales, want 4`) | `.moai/reports/t586/phase-a/m1-red.txt` |
+| GREEN | same command | exit 0 · `=== RUN` 10 · PASS 10 | `.moai/reports/t586/phase-a/m1-green.txt` |
+| Mutants | drop the ja `doc_lang` entry; wire `git_commit_lang` to `ProfileOptions.Model` | `--- FAIL: TestProfileTranslations_FourLocaleKeyParity` (`locale "ja" key set`); `--- FAIL: TestProfileQuestions_TypesAndOptionsPassThrough` (`git_commit_lang: options`); both restored | `.moai/reports/t586/phase-a/m1-mutants.txt` |
+
+What these tests cover: question id set and order equal the `design.md` §2.2 ten ids; group labels and `conversation_language` alone on the first page; no conditional question (N = 10); select/input types; option lists passed through by value (copies, not shared slices); initial values become defaults; 4-locale key parity with non-empty title/description; ko/ja/zh actually translated; English question text sourced from the table; `LocalizeProfileQuestion` changes only title/description.
+
+Pending for Phase B (needs `internal/cli`): the `schemaSelectOptions` `{Label, Value}` shape change and its three test files, and building `ProfileOptions` from the settings schema in `cli`. The wizard side needs no new option type — the existing `wizard.Option{Label, Value, Desc}` is the argument type (`design.md` §3). AC-ITI-005 (4) "option value sets equal the schema" is therefore judged in Phase B, where `cli` builds the lists; Phase A only proves the lists pass through unchanged.
+
+Found while wiring (for M5/M7, not acted on): four profile ids (`conversation_language`, `user_name`, `model_policy`, `development_mode`) also exist in the init translation table (`translations.go:33,38,46,99` for ko, repeated for ja/zh). The shared `buildSelectField`/`buildInputField` localize through `GetLocalizedQuestion`, which is keyed by question id alone, so a profile form routed through them unchanged would render the init wording for those four ids. That is why the profile strings sit in their own table; M5 has to give the profile form a localizer that reads `profileQuestionTexts` (a `wizard.go` edit, after the gate).
+
+#### M3 wizard-side scaffolding (pty harness, HOME watch list, render helpers)
+
+New test files: `ptycap_harness_test.go` (gate, single name function, per-variable `-e` scrub, exact-name cleanup, anchor wait, key send, export, effective-env record and check, child build, subprocess runner), `ptycap_homewatch_test.go` (W1–W6 constant with producing function per row, snapshot, diff, real-HOME check), `ptycap_render_test.go` (`stripANSI`, `displayColumn` via go-runewidth with a fixed East-Asian condition, `compareGolden`, `requireLines`), `ptycap_selfcheck_test.go` (the self-checks and the two child helpers).
+
+| Step | Command | Observed | Evidence |
+|---|---|---|---|
+| RED (own commit `8b51536a9`) | `go test ./internal/cli/wizard/ -run 'Ptycap\|PtyCapture\|HomeWatch' -count=1 -v` without and with `MOAI_PTY_CAPTURE=1`, stubbed harness | exit 1 both · `=== RUN` 29 · FAIL 15, SKIP 2 (child helpers), PASS 1 (`TestPtycapTopLevelResults` — tests a parser defined in the same file) | `.moai/reports/t586/phase-a/m3-red-ungated.txt`, `m3-red-gated.txt` |
+| First gated GREEN attempt | same, `MOAI_PTY_CAPTURE=1` | `TestPtyCapture_NormalRun` FAIL: `child effective environment: [TERM "screen-256color", want "xterm-256color"]` — tmux sets a pane's `TERM` from `default-terminal`, overriding `-e TERM=…` (`man tmux`: "default-terminal … the default value of the TERM environment variable"). The observation layer caught what the `-e` reasoning assumed. Fix: the child command is `TERM=xterm-256color exec <bin> …`; `-e TERM` stays but is not relied on | `.moai/reports/t586/phase-a/m3-gated-run1-term-finding.txt` |
+| GREEN, ungated | `go test ./internal/cli/wizard/... -count=1 -cover -v -timeout 300s` | exit 0 · `=== RUN` 231 · PASS 224 · FAIL 0 · SKIP 7 (the 7 capture tests) · `coverage: 92.9% of statements` | `.moai/reports/t586/phase-a/wizard-full-ungated.txt` |
+| GREEN, gated | `MOAI_PTY_CAPTURE=1 MOAI_PTY_CAPTURE_OUT=<abs>/.moai/reports/t586/phase-a/pty go test ./internal/cli/wizard/ -run 'Ptycap\|PtyCapture\|HomeWatch' -count=1 -v -timeout 600s` | exit 0 · `=== RUN` 29 · PASS 15 · SKIP 2 (child helpers, which run only as children) · FAIL 0 | `.moai/reports/t586/phase-a/m3-green-gated.txt`, captures under `.moai/reports/t586/phase-a/pty/` |
+| Mutant H-a | remove the `t.Cleanup(ptycapKill)` in `ptycapStart`, run `TestPtyCapture_ForcedFailure` | `session moai-ptycap-TestPtyCaptureSelfTestChild-cbf3f197 opened by the failing child survived` · `--- FAIL`; the leaked session was then killed by that exact name; harness restored | `.moai/reports/t586/phase-a/m3-mutant-ha-no-cleanup.txt` |
+| Mutant H-c | `WaitFor` returns the last capture on timeout instead of failing, run `TestPtyCapture_ForcedTimeout` | `self-test child output lacks "not visible within"` · `--- FAIL`; harness restored | `.moai/reports/t586/phase-a/m3-mutant-hc-waitfor-returns.txt` |
+| Lint | `go vet ./internal/cli/wizard/...`; `golangci-lint run ./internal/cli/wizard/...` | vet exit 0; `0 issues.` (first run flagged an unused golden wrapper + flag; removed — the `testdata/golden` wrapper and its update flag land with the first committed golden) | `.moai/reports/t586/phase-a/golangci-wizard.txt` |
+
+AC-ITI-019 / AC-ITI-020 self-check status (harness level, this tree):
+
+| Clause | Test | Observed |
+|---|---|---|
+| 019 (a) ungated → all capture tests SKIP; `moai-ptycap-` set unchanged, sentinel present first | `TestPtyCapture_SkipWithoutGate` | child `-test.run ^TestPtyCapture`: 7 top-level results, all `--- SKIP`; sets equal | 
+| 019 (b) gate on, no tmux on PATH → FAIL, no PASS/SKIP | `TestPtyCapture_FailWithoutTmux` | child `-test.run ^TestPtyCapture_` with `PATH=<empty dir>`: 5 of 5 `--- FAIL` with `MOAI_PTY_CAPTURE=1 but tmux is not on PATH` |
+| 020 (1) normal run: capture file carries the anchor; only the sentinel remains; effective env four checks | `TestPtyCapture_NormalRun` | capture `pty/normal-run-init-first-page.txt` has `Select conversation language` + the four language option lines; `before=[moai-ptycap-sentinel-…] after=[same]`; `child effective environment verified (14 vars)`; child cwd in `/var/folders/…`, repository `/Users/goos/…/t586` |
+| 020 (2) forced failure | `TestPtyCapture_ForcedFailure` | child `--- FAIL: TestPtyCaptureSelfTestChild`, opened session absent afterwards, sentinel alive, sets equal |
+| 020 (3) forced timeout | `TestPtyCapture_ForcedTimeout` | child FAIL with `anchor "ZZ-PTYCAP-ANCHOR-NEVER-RENDERED" not visible within 2s`, session absent afterwards |
+| 020 (4) watch-list positive control on a fake HOME | `TestHomeWatch_PositiveControl` | (i) PASS `changed=[]`; (ii) FAIL names `.claude/settings.json`; (iii) FAIL names `.moai/db/<key>`; (iv) FAIL names `.moai/claude-profiles/p2/preferences.yaml` and the glob; (v) PASS `changed=[]` (runs in every `go test`, never touches the real HOME) |
+| 020 "And" — counts printed, real-HOME comparison PASS | the three pty runs | each prints `real HOME watch list: 17 entries, 11 present on the real HOME` before and after, no change reported |
+
+Host tmux state: `moai-ptycap-` sessions before the gated runs 0, after 0 (`tmux list-sessions -F '#{session_name}' | grep -c '^moai-ptycap-'`). No other session was read or touched; nothing ran `kill-server`.
+
+Harness contract notes for Phase B:
+- Captures are exported only to `MOAI_PTY_CAPTURE_OUT` (absolute path) when set; otherwise to the test's temp dir. The harness never writes into the repository on its own, so the P9 export is an explicit choice of the verdict run's environment.
+- The harness lives in `_test.go` files of package `wizard`, so `internal/cli` tests cannot import it. The AC-ITI-003 case (the `moai init` command path) needs an `internal/cli` child (`design.md` §11 builds `./internal/cli`). Phase B has to either move the harness into a small importable test-support package or give `internal/cli` its own copy; this is a structural choice for the lead, not taken here.
+- D4 observation only (not a verdict, pre-t583 tree): in the 80×30 capture of the current init first page the stepper line is absent — the first captured line is `┃ Select conversation language` and the capture holds 0 `●`/`○` characters. Recorded for the §G deferred item.
+
+Plan-audit iter4 notes: O1 (S2 anchor fooled by a trailing comment) and O2 (design.md §10 wording) concern the S2 guard retarget in M5 inside `internal/cli`; neither applies to Phase A. O2 is a `design.md` body edit, which this agent does not own.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

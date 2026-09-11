@@ -1,0 +1,17 @@
+=== RUN   TestPtyCapture_ForcedTimeout
+    ptycap_selfcheck_test.go:477: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_ForcedTimeout686512044/001/wizard.test
+    ptycap_selfcheck_test.go:477: real HOME watch list: 17 entries, 11 present on the real HOME (before)
+    ptycap_selfcheck_test.go:477: self-test child (timeout) exit=exit status 1 output:
+        === RUN   TestPtyCaptureSelfTestChild
+            ptycap_selfcheck_test.go:419: ptycap session: moai-ptycap-TestPtyCaptureSelfTestChild-e79e59f2
+            ptycap_selfcheck_test.go:426: unreachable: WaitFor must fail on a missing anchor
+        --- FAIL: TestPtyCaptureSelfTestChild (2.03s)
+        FAIL
+    ptycap_selfcheck_test.go:477: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_ForcedTimeout686512044/004/selftest-timeout-child-output.txt
+    ptycap_selfcheck_test.go:477: self-test child output lacks "not visible within"
+    ptycap_selfcheck_test.go:477: opened=[moai-ptycap-TestPtyCaptureSelfTestChild-e79e59f2] before=[moai-ptycap-sentinel-5ba33ade] after=[moai-ptycap-sentinel-5ba33ade]
+    ptycap_selfcheck_test.go:477: real HOME watch list: 17 entries, 11 present on the real HOME (after)
+--- FAIL: TestPtyCapture_ForcedTimeout (3.28s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/wizard	3.709s
+FAIL

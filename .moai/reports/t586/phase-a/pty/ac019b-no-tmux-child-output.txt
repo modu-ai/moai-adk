@@ -1,0 +1,16 @@
+=== RUN   TestPtyCapture_NormalRun
+    ptycap_selfcheck_test.go:439: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+--- FAIL: TestPtyCapture_NormalRun (0.00s)
+=== RUN   TestPtyCapture_ForcedFailure
+    ptycap_selfcheck_test.go:471: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+--- FAIL: TestPtyCapture_ForcedFailure (0.00s)
+=== RUN   TestPtyCapture_ForcedTimeout
+    ptycap_selfcheck_test.go:476: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+--- FAIL: TestPtyCapture_ForcedTimeout (0.00s)
+=== RUN   TestPtyCapture_SkipWithoutGate
+    ptycap_selfcheck_test.go:535: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+--- FAIL: TestPtyCapture_SkipWithoutGate (0.00s)
+=== RUN   TestPtyCapture_FailWithoutTmux
+    ptycap_selfcheck_test.go:567: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+--- FAIL: TestPtyCapture_FailWithoutTmux (0.00s)
+FAIL
