@@ -213,29 +213,13 @@ Detailed Reference: the launcher's spawn entry point — flag stripping, command
 
 ## Advanced Implementation (10+ minutes)
 
-### Multi-Developer Worktree Coordination
+### Synchronization Strategies
 
-Shared Worktree Registry:
+`moai worktree sync` merges the base branch into the worktree by default; `--strategy rebase` rebases the worktree onto the base instead, and `--base` selects the base branch. When a sync stops on a conflict, resolve it with ordinary git inside the worktree and rerun the sync.
 
-Configure team worktree settings by setting the registry type to team mode and specifying a shared registry path accessible to all team members. For developer-specific worktrees within the shared environment, use the developer flag when creating worktrees to prefix entries with the developer name.
+### Capabilities Not Provided
 
-### Advanced Synchronization Strategies
-
-Selective Sync Patterns:
-
-The sync command supports selective synchronization with include and exclude patterns to sync only specific directories or files. For conflict resolution, choose between auto-resolve for simple conflicts, interactive resolution for manual conflict handling, or abort to cancel the sync operation.
-
-### Worktree Templates and Presets
-
-Custom Worktree Templates:
-
-Create worktrees with specific setups using the template flag. A frontend template might include npm install and eslint setup with pre-commit hooks. A backend template might include virtual environment creation, activation, and dependency installation.
-
-### Performance Optimization
-
-Optimized Worktree Operations:
-
-For faster worktree creation, use the shallow flag with a depth value for shallow clones. The background flag enables background synchronization. The parallel flag with all option enables parallel operations across all worktrees. Enable caching through configuration with cache enable and cache TTL settings for faster repeated operations.
+`moai worktree` has no shared or team registry mode, no per-developer prefixing, no selective sync patterns, no conflict auto-resolution or interactive mode, no worktree templates, and no shallow, background, parallel, or cache options. Prepare a worktree after entering it, and see `modules/worktree-commands.md` for the flags that exist.
 
 ---
 
@@ -263,9 +247,9 @@ Tools:
 
 For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai plan.
 
-For parallel development across multiple SPECs, use multiple worktrees with shell integration. The primary approach is maintaining multiple worktrees and the supporting pattern is fast switching between them.
+For parallel development across multiple SPECs, use one worktree and one session per SPEC. The primary approach is maintaining multiple worktrees and the supporting pattern is opening each in its own tmux window with `moai cc -w <name> --spawn`.
 
-For team coordination in shared environments, use shared registry with developer prefixes. The primary approach is the shared registry pattern and the supporting pattern is conflict resolution.
+For team coordination, give each developer their own worktrees and branches. The primary approach is per-developer isolation and the supporting pattern is integrating through the base branch and pull requests.
 
 For code review workflows, use isolated review worktrees. The primary approach is worktree isolation for reviews and the supporting pattern is clean sync after review completion.
 

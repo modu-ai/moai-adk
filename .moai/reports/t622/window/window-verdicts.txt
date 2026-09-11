@@ -1,0 +1,29 @@
+t622 integration-window re-measurement — SPEC-GIT-DELIVERY-PROCEDURE-001
+HEAD (merge) ca2589bf4bb8ad79911a0417b97624e4d03540d4  parents 0f7d52dd6f1c277118fc70f43e499c1f931cbb22 / ac6c42c2dc123ca5142fda7440888c2b0eae13a7
+HEAD^{tree} 052e9db3da2a4c334ab05fe32cce029c24988e89   CARD_BASE ac6c42c2dc123ca5142fda7440888c2b0eae13a7 (card-base-recheck.txt, 1 line)
+Range control: card-range-names.txt 1376 lines, recomputed card-range-names-recheck.txt cmp exit 0
+Snapshot freshness: snapshot-stale-recheck.txt test-e 0 / test-s 1 (BASE exports in ../run/base-* valid)
+
+1  AC-GDP-014  make agents-emit-check exit 0 (ac014-green.*); ac014-changed.txt = 1 line manager-g.it.toml; toml example count 1;
+               Synchronization diff exit 0 (11 lines); PR Auto-Merge section non-empty, diff exit 0 (13 lines)       PASS
+               (agents-emit and the pre-regeneration RED step not run — verification-only window)
+2  AC-GDP-015  template diff test-e 0 / test-s 0, added lines 39; SPEC-ID/REQ/date/CLAUDE.local greps exit 1;
+               hex tokens 0 lines, sha-letter test-e 0 / test-s 1, digit-only tokens 0 (nothing to read);
+               controls specid 8, req 61, date 23, sha-980 1, fixture letter 5 / digits 2                             PASS
+               note: added lines 39 vs run 38 — doc-execution.md template hunk widened by a post-run card commit (ac015-run-vs-window.diff)
+3  AC-GDP-016  ac016-acp-commits.txt test-e 0 / test-s 1; control 2 commits (97ef8e302, 6896eef37); card non-merge commits 43   PASS
+4  AC-GDP-025  scope diff test-e 0 / test-s 0 (402 lines); Frozen add/del lines exit 1 (no [ZONE:Frozen] line in the diff at all);
+               Frozen-line mutant fixture 2 hits; clauses 006/036/037/038 = 1 per copy; registry acp 13/13, others 0/0          PASS
+5  AC-GDP-030  make commands-emit-check exit 0; case (A) — see ac030-outcome.md                                          PASS
+               (commands-emit and the byte-append drift control not run — verification-only window)
+6  AC-GDP-002  (a) order=PASS shape=PASS on base, base-template, local, template blocks; mutant (i) order=FAIL;
+               (b) Pre-Spawn section diff exit 0 local and template vs BASE sections (52 lines); matrix 8 rows diff exit 0;
+               control b412 section vs base exit 1                                                                     PASS
+   AC-GDP-003  Pre-Edit section diff exit 0 local and template vs BASE (35 lines)                                      PASS
+7  AC-GDP-013  (a) acp L-T exit 0, published L-T exit 0; (b) eight pairs base body non-empty, body diff exit 0; (c) hint diff exit 0   PASS
+8  mirror (e)  go test exit 0; PASS 19, FAIL 0; new-fail test-s 1; lost-pass test-s 1                                   PASS
+               set change vs baseline: FAIL TestRuleTemplateMirrorDrift + /spec-workflow.md -> PASS (baseline FAILs cleared);
+               both spec-workflow.md copies are in mirror-stale.txt and absent from card-range-names (mirror-attribution.txt)
+9  carry-over  scope-vs-pre-absorb.txt (21 paths, 0f7d52dd6..HEAD) test-e 0 / test-s 1; control: 176 paths changed by the absorb   PASS
+               -> AC-GDP-001/004/005/006/026-029 content judges carry over from the pre-absorb card tip unchanged
+10 tree        tree.txt = 052e9db3da2a4c334ab05fe32cce029c24988e89

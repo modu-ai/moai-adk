@@ -1,296 +1,118 @@
 # Worktree Commands Module
 
-Purpose: Complete CLI command reference for Git worktree management with detailed usage examples and advanced options.
+Purpose: Accurate reference for the `moai worktree` command group (alias `wt`) — its eight subcommands and their flags — plus where the tasks it does not cover are handled instead.
 
-Version: 2.0.0
-Last Updated: 2026-01-06
+Version: 3.0.0
 
 ---
 
 ## Quick Reference (30 seconds)
 
-Command Categories:
-- Creation: new - Create isolated worktree
-- Navigation: list, switch, go - Browse and navigate
-- Management: sync, remove, clean - Maintain worktrees
-- Status: status - Check worktree state
-- Configuration: config - Manage settings
+`moai worktree` manages worktrees that already exist. It does not create or enter one.
 
-Quick Start:
-1. Create worktree: moai-worktree new SPEC-001 "User Authentication"
-2. Switch to worktree: moai-worktree switch SPEC-001
-3. Or use shell eval: eval $(moai-worktree go SPEC-001)
+| Task | Command |
+|---|---|
+| Create and work inside a worktree | `moai cc -w <name>` (launcher) |
+| Open a worktree in a new tmux window, keep this session | `moai cc -w <name> --spawn` |
+| List worktrees | `git worktree list` |
+| Sync a worktree with its base branch | `moai worktree sync [branch-name]` |
+| Remove a worktree | `moai worktree remove [path]` |
+| Clean stale or merged worktrees | `moai worktree clean` |
+| Repair the worktree registry | `moai worktree recover` |
+| Finish a worktree after its branch merged | `moai worktree done [branch-name]` |
+| Snapshot / verify / restore working-tree state | `moai worktree snapshot` · `verify` · `restore` |
 
----
-
-## Creation Commands
-
-### moai-worktree new - Create Worktree
-
-Create a new isolated Git worktree for SPEC development.
-
-Syntax: moai-worktree new <spec-id> [description] [options]
-
-Arguments:
-- spec-id: SPEC identifier (e.g., SPEC-001, SPEC-AUTH-001)
-- description: Optional description for the worktree
-
-Options:
-- --branch <name>: Create specific branch instead of auto-generated
-- --base <branch>: Base branch for new worktree (default: main)
-- --template <name>: Use predefined template
-- --shallow: Create shallow clone for faster setup
-- --depth <number>: Clone depth for shallow clone
-- --force: Force creation even if worktree exists
-
-Examples:
-- Basic creation: moai-worktree new SPEC-001 "User Auth System"
-- Custom branch: moai-worktree new SPEC-002 "Payment" --branch feature/payment-gateway
-- From develop: moai-worktree new SPEC-003 "API Refactor" --base develop
-- With template: moai-worktree new SPEC-004 "Frontend" --template frontend
-- Fast creation: moai-worktree new SPEC-005 "Bug Fixes" --shallow --depth 1
-
-Auto-Generated Branch Pattern:
-- Format: feature/SPEC-{ID}-{description-kebab-case}
-- Example: SPEC-001 becomes feature/SPEC-001-user-authentication
-
----
-
-## Navigation Commands
-
-### moai-worktree list - List Worktrees
-
-Display all registered worktrees with their status and metadata.
-
-Syntax: moai-worktree list [options]
-
-Options:
-- --format <format>: Output format (table, json, csv)
-- --status <status>: Filter by status (active, merged, stale)
-- --sort <field>: Sort by field (name, created, modified, status)
-- --reverse: Reverse sort order
-- --verbose: Show detailed information
-
-Examples:
-- Table format: moai-worktree list
-- JSON output: moai-worktree list --format json
-- Active only: moai-worktree list --status active
-- Sort by date: moai-worktree list --sort created
-- Detailed: moai-worktree list --verbose
-
-### moai-worktree switch - Switch to Worktree
-
-Change current working directory to the specified worktree.
-
-Syntax: moai-worktree switch <spec-id> [options]
-
-Options:
-- --auto-sync: Automatically sync before switching
-- --force: Force switch even with uncommitted changes
-- --new-terminal: Open in new terminal window
-
-Examples:
-- Basic switch: moai-worktree switch SPEC-001
-- With sync: moai-worktree switch SPEC-002 --auto-sync
-- Force switch: moai-worktree switch SPEC-003 --force
-
-### moai-worktree go - Get Worktree Path
-
-Output the cd command for shell integration.
-
-Syntax: moai-worktree go <spec-id> [options]
-
-Options:
-- --absolute: Show absolute path
-- --relative: Show relative path from current directory
-- --export: Export as environment variable
-
-Shell Integration Methods:
-- eval pattern (recommended): eval $(moai-worktree go SPEC-001)
-- source pattern: moai-worktree go SPEC-001 | source
-- manual cd: cd $(moai-worktree go SPEC-001 --absolute)
+Run `moai worktree <subcommand> --help` for the authoritative flag list of the installed binary.
 
 ---
 
 ## Management Commands
 
-### moai-worktree sync - Synchronize Worktree
+### moai worktree sync [branch-name]
 
-Synchronize worktree with its base branch.
+Sync a worktree with its base branch. With a branch name, syncs the worktree on that branch; with no argument, syncs the worktree at the current directory.
 
-Syntax: moai-worktree sync <spec-id> [options]
+Flags:
+- `--base <branch>`: Base branch to sync from (default `main`)
+- `--strategy <merge|rebase>`: Sync strategy (default `merge`)
 
-Arguments:
-- spec-id: Worktree identifier (or --all for all worktrees)
+### moai worktree remove [path]
 
-Options:
-- --auto-resolve: Automatically resolve simple conflicts
-- --interactive: Interactive conflict resolution
-- --dry-run: Show what would be synced without doing it
-- --force: Force sync even with uncommitted changes
-- --include <pattern>: Include only specific files
-- --exclude <pattern>: Exclude specific files
+Remove the worktree at the given path. The path is required. Refuses while a live session is anchored in the worktree unless `--force` is given.
 
-Examples:
-- Sync specific: moai-worktree sync SPEC-001
-- Sync all: moai-worktree sync --all
-- Interactive: moai-worktree sync SPEC-001 --interactive
-- Preview: moai-worktree sync SPEC-001 --dry-run
-- Include pattern: moai-worktree sync SPEC-001 --include "src/"
-- Exclude pattern: moai-worktree sync SPEC-001 --exclude "node_modules/"
+Flags:
+- `--force`: Remove even with uncommitted changes
 
-Conflict Resolution:
-When conflicts detected, choose from:
-1. Keep worktree version
-2. Accept base branch version
-3. Open merge tool
-4. Skip file
-5. Abort sync
+### moai worktree clean
 
-### moai-worktree remove - Remove Worktree
+Clean stale worktree references.
 
-Remove a worktree and clean up its registration.
+Flags:
+- `--merged-only`: Only remove worktrees whose branches are merged into the base
+- `--stale`: Remove abandoned worktrees that are clean and hold no unique commits (preview unless `--yes`)
+- `--yes`: Actually perform the `--stale` removals instead of previewing them
+- `--json`: Report every non-protected worktree and its state as JSON; removes nothing
+- `--base <branch>`: Base branch for the `--merged-only` and `--stale` checks (default `origin/main`)
 
-Syntax: moai-worktree remove <spec-id> [options]
+### moai worktree recover
 
-Options:
-- --force: Force removal without confirmation
-- --keep-branch: Keep the branch after removing worktree
-- --backup: Create backup before removal
-- --dry-run: Show what would be removed without doing it
+Repair the worktree registry. No flags.
 
-Examples:
-- Interactive: moai-worktree remove SPEC-001
-- Force: moai-worktree remove SPEC-001 --force
-- Keep branch: moai-worktree remove SPEC-001 --keep-branch
-- With backup: moai-worktree remove SPEC-001 --backup
-- Preview: moai-worktree remove SPEC-001 --dry-run
+### moai worktree done [branch-name]
 
-### moai-worktree clean - Clean Up Worktrees
+Complete a worktree and clean up after its work has merged. The branch name is required and names the worktree's branch, not its directory. Merging into the base is done separately (git merge or a PR).
 
-Remove worktrees for merged branches or stale worktrees.
-
-Syntax: moai-worktree clean [options]
-
-Options:
-- --merged-only: Only remove worktrees with merged branches
-- --stale: Remove worktrees not updated in specified days
-- --days <number>: Stale threshold in days (default: 30)
-- --interactive: Interactive selection of worktrees to remove
-- --dry-run: Show what would be cleaned without doing it
-- --force: Skip confirmation prompts
-
-Examples:
-- Merged only: moai-worktree clean --merged-only
-- Stale (30 days): moai-worktree clean --stale
-- Custom threshold: moai-worktree clean --stale --days 14
-- Interactive: moai-worktree clean --interactive
-- Preview: moai-worktree clean --dry-run
-- Force: moai-worktree clean --force
+Flags:
+- `--force`: Remove even with uncommitted changes
+- `--delete-branch`: Delete the branch after removing the worktree
+- `--auto`: No success output, for automation (for example after a PR merge); failures still exit non-zero
 
 ---
 
-## Status and Configuration
+## State Guard Commands
 
-### moai-worktree status - Show Worktree Status
+### moai worktree snapshot
 
-Display detailed status information about worktrees.
+Capture a working-tree state snapshot for guard verification.
 
-Syntax: moai-worktree status [spec-id] [options]
+Flags:
+- `--out <path>`: Output snapshot path (default `.moai/state/worktree-snapshot-<id>.json`)
+- `--agent-name <name>`: Agent name, recorded for a later `verify`
 
-Arguments:
-- spec-id: Specific worktree (optional, shows current if not specified)
+### moai worktree verify
 
-Options:
-- --all: Show status of all worktrees
-- --sync-check: Check if worktrees need sync
-- --detailed: Show detailed Git status
-- --format <format>: Output format (table, json)
+Verify the working-tree state against a snapshot and check an agent response.
 
-Examples:
-- Current worktree: moai-worktree status
-- Specific worktree: moai-worktree status SPEC-001
-- All with sync check: moai-worktree status --all --sync-check
-- Detailed Git status: moai-worktree status SPEC-001 --detailed
-- JSON output: moai-worktree status --all --format json
+Flags:
+- `--snapshot <path>`: Pre-state snapshot JSON (required)
+- `--agent-response <path>`: Agent response JSON (optional, for suspect detection)
+- `--agent-name <name>`: Agent name to record in divergence and suspect logs
 
-Status Output Includes:
-- Worktree path and branch
-- Commits ahead/behind base
-- Modified and untracked files
-- Sync status and last sync time
+### moai worktree restore
 
-### moai-worktree config - Configuration Management
+Restore the working tree to a snapshot's HEAD state.
 
-Manage moai-worktree configuration settings.
-
-Syntax: moai-worktree config <action> [key] [value]
-
-Actions:
-- get [key]: Get configuration value
-- set <key> <value>: Set configuration value
-- list: List all configuration
-- reset [key]: Reset to default value
-- edit: Open configuration in editor
-
-Configuration Keys:
-- worktree_root: Root directory for worktrees
-- auto_sync: Enable automatic sync (true/false)
-- cleanup_merged: Auto-cleanup merged worktrees (true/false)
-- default_base: Default base branch (main/develop)
-- template_dir: Directory for worktree templates
-- sync_strategy: Sync strategy (merge, rebase, squash)
-
-Examples:
-- List all: moai-worktree config list
-- Get value: moai-worktree config get worktree_root
-- Set value: moai-worktree config set auto_sync true
-- Reset: moai-worktree config reset worktree_root
-- Edit: moai-worktree config edit
+Flags:
+- `--snapshot <path>`: Snapshot JSON (required)
+- `--dry-run`: Print the git command without executing it
 
 ---
 
-## Advanced Usage
+## Not Provided by This Command
 
-### Batch Operations
+Earlier documentation described a separate `moai-worktree` program with more subcommands and flags. None of them exist; use the replacements below.
 
-Sync all active worktrees:
-- Use shell loop with list --format json and jq to extract IDs
-- Run sync for each ID in sequence or parallel
-
-Clean all merged worktrees:
-- moai-worktree clean --merged-only --force
-
-Create worktrees from SPEC list:
-- Read SPEC IDs from file
-- Run new command for each
-
-### Shell Aliases
-
-Recommended aliases for .bashrc or .zshrc:
-- mw: Short for moai-worktree
-- mwl: List worktrees
-- mws: Switch to worktree
-- mwg: Navigate with eval pattern
-- mwsync: Sync current worktree
-- mwclean: Clean merged worktrees
-
-### Git Hooks Integration
-
-Post-checkout hook actions:
-- Detect worktree environment
-- Update last access time in registry
-- Check if sync needed with base branch
-- Load worktree-specific environment
-
-Pre-push hook actions:
-- Detect if pushing from worktree
-- Check for uncommitted changes
-- Verify sync status with base
-- Update registry with push timestamp
+| Not available | Use instead |
+|---|---|
+| `new`, `switch`, `go` (create, enter, print a path) | `moai cc -w <name>` to create and enter; `EnterWorktree(<path>)` to re-enter from a session |
+| `list`, `status` | `git worktree list`; `git -C <path> status` |
+| `config` | Worktree behavior is configured in the project's `.moai/config/` sections |
+| sync `--include`, `--exclude`, `--auto-resolve`, `--interactive`, `--all` | Resolve conflicts with ordinary git in the worktree; run `sync` once per worktree |
+| remove `--keep-branch`, `--backup`, `--dry-run` | `remove` keeps the branch; commit or push before removing |
+| clean `--days`, `--interactive` | `clean --stale` previews by default; add `--yes` to act |
+| creation `--template`, `--shallow`, `--depth` | Prepare the worktree after entering it |
 
 ---
 
-Version: 2.0.0
-Last Updated: 2026-01-06
-Module: Complete CLI command reference with usage examples
+Version: 3.0.0
+Module: Command reference for `moai worktree`, matched to the CLI source

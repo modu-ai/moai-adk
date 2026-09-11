@@ -1,0 +1,7 @@
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    golden_test.go:86: .agents/skills/moai-sync/SKILL.md: committed artifact differs from emission (sha256 mismatch) — regenerate via `make commands-emit` or stop hand-editing
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/commandemit	0.174s
+FAIL
+command-skill drift: committed .agents/skills/moai-*/SKILL.md differ from the command source layer — run `make commands-emit`
+make: *** [commands-emit-check] Error 1

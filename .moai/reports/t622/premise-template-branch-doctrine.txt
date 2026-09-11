@@ -1,0 +1,12 @@
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:3:Branch-state isolation rules for the primary project checkout. The checkout is **shared**: several Claude Code sessions, teammates, hooks, and background tools can operate on the same working tree at once. Branch state there is global — a `git switch` in one session changes what every other session sees, mid-operation, with no signal to either side.
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:10:or stash in the primary checkout reaches every concurrent reader mid-operation. Neither resulting
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:16:[ZONE:Evolvable] [HARD] The orchestrator MUST NOT change branch state in the primary project checkout. Specifically forbidden there:
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:26:[ZONE:Evolvable] Permitted in the primary checkout:
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:83:to the primary checkout and would lock out legitimate worktree flows.
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:86:  default is `false`, because the shared-checkout hazard does not apply to single-developer repos.
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:94:- **Fail-open.** The deny fires only on positive evidence — primary checkout confirmed, a
+HEAD:internal/template/templates/AGENTS.md:59:## 2. Git, branches, and the shared checkout
+HEAD:internal/template/templates/AGENTS.md:61:The primary checkout is shared — several sessions may work in it at once, and branch state there is
+HEAD:internal/template/templates/AGENTS.md:64:**Never change branch state in the primary checkout.** Forbidden there: `git checkout <branch>` /
+HEAD:internal/template/templates/AGENTS.md:83:**Never sweep-stage.** In the primary checkout, never `git add -A`, `git add .`, or
+HEAD:internal/template/templates/AGENTS.md:120:**Start a new card in a new worktree.** Exit any previous worktree back to the primary checkout

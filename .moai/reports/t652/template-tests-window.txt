@@ -1,0 +1,13 @@
+--- FAIL: TestCatalogHashCoversSkillSubfiles (0.07s)
+    catalog_tier_audit_test.go:491: CATALOG_HASH_SKINNY: moai hash=5f1127239a3fad0b9632d93d1417531b9a14060ce6faef4706b9fb07b7742fcd does not cover the deployed directory tree (whole-tree hash 55e4d1df0ea71bb00e384dd0a3739b1e0b082dafc65708fe6e05fb4c140277a0) — run gen-catalog-hashes.go --all (card t323)
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+--- FAIL: TestManifestHashFormat (0.07s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: moai stored hash=5f1127239a3fad0b9632d93d1417531b9a14060ce6faef4706b9fb07b7742fcd, computed hash=55e4d1df0ea71bb00e384dd0a3739b1e0b082dafc65708fe6e05fb4c140277a0 (source=.claude/skills/moai/ (whole tree))
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: manager-git stored hash=061fe4fb0dfee5b06a2c67b51835c5512f45f0c56a888fbf786c5d9220099b07, computed hash=676c034b8ee5c9ace684fc9ab2b4d9928fd84f044b1974979f547db3f63d5775 (source=.claude/agents/moai/manager-git.md)
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	31.381s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.983s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.164s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+FAIL

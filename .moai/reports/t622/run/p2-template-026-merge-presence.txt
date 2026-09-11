@@ -1,0 +1,4 @@
+p2-template-skill.md:1
+p2-template-sync.md:1
+p2-template-qgc-flags.md:1
+p2-template-dl.md:2
