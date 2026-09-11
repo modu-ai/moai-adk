@@ -326,3 +326,48 @@ func TestReadIntegrationLock_AbsentRecord(t *testing.T) {
 		t.Error("absent record reported a holder")
 	}
 }
+
+// Card t637: branch_source records how the recorded branch was resolved. It
+// is additive and optional exactly like pid_source — a record that carries it
+// round-trips it, and a record that does not carries no key at all, so a
+// reader of an older record sees today's shape.
+func TestIntegrationLock_BranchSourceRoundTripsAndOmitsWhenEmpty(t *testing.T) {
+	withSource := t.TempDir()
+	if _, err := AcquireIntegrationLock(withSource, IntegrationLock{
+		SessionID:    "lane-8",
+		Branch:       "fixture-integration",
+		BranchSource: BranchSourceConfig,
+	}, false); err != nil {
+		t.Fatalf("acquire with source: %v", err)
+	}
+	data, err := os.ReadFile(lockPathFor(t, withSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"branch_source": "config"`) {
+		t.Errorf("record does not carry branch_source: %s", data)
+	}
+	got, err := ReadIntegrationLock(withSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.BranchSource != BranchSourceConfig {
+		t.Errorf("BranchSource = %q after round trip, want %q", got.BranchSource, BranchSourceConfig)
+	}
+
+	without := t.TempDir()
+	mustAcquire(t, without, "lane-5")
+	data, err = os.ReadFile(lockPathFor(t, without))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "branch_source") {
+		t.Errorf("a record with no source carries a branch_source key: %s", data)
+	}
+
+	// The three values are distinct: a source that could collapse two tiers
+	// into one spelling would make the record unable to tell them apart.
+	if BranchSourceFlag == BranchSourceConfig || BranchSourceConfig == BranchSourceCaller || BranchSourceFlag == BranchSourceCaller {
+		t.Errorf("branch source values collide: %q %q %q", BranchSourceFlag, BranchSourceConfig, BranchSourceCaller)
+	}
+}
