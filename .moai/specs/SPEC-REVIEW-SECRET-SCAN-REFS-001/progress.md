@@ -1062,7 +1062,48 @@ The M5 commit that records this signal follows `K` and is outside the list and t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-11
+sync_base_sha: 9a9cedc3d   # the M5 closure-check commit; parent K = c10626ab7
+sync_commit_sha: pending-backfill   # the sync commit cannot cite its own hash
+changelog_entry_position: "CHANGELOG.md [Unreleased] › ### Fixed, first entry"
+b12_self_test_a: "grep -c 'SPEC-REVIEW-SECRET-SCAN-REFS-001' CHANGELOG.md before emission → 0 (exit 1)"
+b12_self_test_b: "distinct AC IDs in acceptance.md → 16; the entry states 16 (15 PASS, AC-012 not applicable)"
+b12_self_test_c: "every path the entry cites resolved with ls before the commit"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (3-phase close; implemented merged into this commit)"
+  updated: "2026-09-11 (already that date; unchanged)"
+  plan.md / acceptance.md / progress.md: "no frontmatter block; nothing to transition"
+mx_tags: not applicable   # no code change; the change surface is two markdown copies and a catalog hash line
+docs_site: stale, not edited in this segment   # see follow-ups below
+```
+
+**docs-site finding.** The `/moai review` page describes the former single-SHA checkpoint
+(`.moai/state/secrets-scan-checkpoint.txt`, range up to the current HEAD) in all four locales, at
+line 77 of each:
+
+- `docs-site/content/ko/utility-commands/moai-review.md`
+- `docs-site/content/en/utility-commands/moai-review.md`
+- `docs-site/content/ja/utility-commands/moai-review.md`
+- `docs-site/content/zh/utility-commands/moai-review.md`
+
+The 4-locale same-change obligation makes the update a separate step; it is not part of this
+commit.
+
+**Handed to the lead** (not decided in the sync phase):
+
+- (a) AC-010's wording names `real`, while the operator-approved measurement for gate cell 3 used
+  the shell `time` keyword's `total` field. Whether to amend AC-010 is a lead decision; an amendment
+  would be a `manager-spec` edit.
+- (b) AC-011's "oldest `G`" resolves to the superseded round 1 evidence commit `6e56840d5`. The AC
+  passes; the standing round's precedence is shown by AC-016 and by the supplementary
+  `git merge-base --is-ancestor f167a9cd8 cc4092513` check in § Closure checks (M5). Whether the
+  wording changes is a lead decision.
+- (c) §E.3 `run_commit_sha: pending-backfill` belongs to the run-phase owner and is not backfilled
+  here.
+- (d) Follow-up candidate: simplify the thirteen-step suppression procedure, kept in its measured
+  form by operator decision.
 
 ## §F Phase 4 Mode Selection
 
