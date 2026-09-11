@@ -1,0 +1,25 @@
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/covered_path_changed_after_audited_tip
+    home_state_coverage_test.go:217: stale audited production blob accepted
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_audit_marker
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/audit_marker_not_reachable_from_head
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/remediation_marker_is_not_a_descendant
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_remediation_marker
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/versioned_marker_skips_predecessor
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/certification_marker_skips_predecessor
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_certification_marker
+--- FAIL: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence (6.73s)
+    --- FAIL: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/covered_path_changed_after_audited_tip (1.05s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_audit_marker (0.73s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/audit_marker_not_reachable_from_head (0.56s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/remediation_marker_is_not_a_descendant (0.92s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_remediation_marker (0.87s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/versioned_marker_skips_predecessor (0.68s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/certification_marker_skips_predecessor (0.89s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_certification_marker (1.04s)
+=== RUN   TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+    home_state_coverage_test.go:458: post-tip audited change accepted: <nil>
+--- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.08s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	10.753s
+FAIL
