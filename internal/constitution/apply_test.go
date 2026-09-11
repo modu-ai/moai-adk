@@ -1273,29 +1273,37 @@ func TestExecute_RuleFileIsRegistryOrLog_Rejected(t *testing.T) {
 // Sync-audit F1 — G-B decides by file identity when both paths exist, so an
 // alias of the registry is rejected before Layer 1 exactly like the registry
 // path itself: a hard link, a case-variant name on a case-insensitive
-// filesystem, and a symbolic link. absent_log_fallback pins the other branch:
-// a rule file naming an evolution log that does not exist yet is still
-// rejected by the cleaned-absolute-path comparison.
+// filesystem, and a symbolic link. hardlink_log (delta-audit D2) pins the log
+// half of the condition the same way: a hard link to an existing evolution log.
+// absent_log_fallback pins the other branch: a rule file naming an evolution
+// log that does not exist yet is still rejected by the cleaned-absolute-path
+// comparison.
 func TestExecute_RuleFileAliasOfRegistryOrLog_Rejected(t *testing.T) {
 	const wantMsg = "is also the registry or the evolution log"
 	const aliasFile = "rules/alias.md"
 	cases := []struct {
 		name, entryFile string
 		withLog         bool
+		aliasOfLog      bool // the alias names the evolution log, not the registry
 		makeAlias       func(t *testing.T, prj project)
 	}{
-		{"hardlink_registry", aliasFile, true, func(t *testing.T, prj project) {
+		{"hardlink_registry", aliasFile, true, false, func(t *testing.T, prj project) {
 			if err := os.Link(prj.registry, prj.rule); err != nil {
 				t.Skipf("platform refused a hard link (%v) — recorded as a Gap", err)
 			}
 		}},
-		{"case_variant_registry", ".claude/rules/moai/core/ZONE-REGISTRY.md", true, func(t *testing.T, _ project) {
+		{"case_variant_registry", ".claude/rules/moai/core/ZONE-REGISTRY.md", true, false, func(t *testing.T, _ project) {
 			skipUnlessCaseInsensitive(t)
 		}},
-		{"symlink_registry", aliasFile, true, func(t *testing.T, prj project) {
+		{"symlink_registry", aliasFile, true, false, func(t *testing.T, prj project) {
 			symlinkOrSkip(t, prj.registry, prj.rule)
 		}},
-		{"absent_log_fallback", ".moai/research/evolution-log.md", false, nil},
+		{"hardlink_log", aliasFile, true, true, func(t *testing.T, prj project) {
+			if err := os.Link(prj.log, prj.rule); err != nil {
+				t.Skipf("platform refused a hard link (%v) — recorded as a Gap", err)
+			}
+		}},
+		{"absent_log_fallback", ".moai/research/evolution-log.md", false, false, nil},
 	}
 	for _, tc := range cases {
 		for _, mode := range []struct {
@@ -1309,9 +1317,13 @@ func TestExecute_RuleFileAliasOfRegistryOrLog_Rejected(t *testing.T) {
 				if tc.makeAlias != nil {
 					tc.makeAlias(t, prj)
 					// Setup sanity, independent of sameFile: the alias must
-					// read back as the registry's bytes.
-					if readString(t, prj.rule) != readString(t, prj.registry) {
-						t.Fatalf("alias %s does not read as the registry", prj.rule)
+					// read back as its target's bytes.
+					target, targetName := prj.registry, "registry"
+					if tc.aliasOfLog {
+						target, targetName = prj.log, "evolution log"
+					}
+					if readString(t, prj.rule) != readString(t, target) {
+						t.Fatalf("alias %s does not read as the %s", prj.rule, targetName)
 					}
 				} else if _, err := os.Stat(prj.rule); err == nil {
 					t.Fatalf("fallback fixture: %s exists, want it absent", prj.rule)

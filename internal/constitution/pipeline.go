@@ -104,7 +104,8 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 
 	// The rule file must be neither the registry nor the evolution log. The
 	// check runs before any gate, so a rejection never follows the user's
-	// Layer 5 approval; it needs only the three paths, no file I/O.
+	// Layer 5 approval; it needs only the three paths, which it stats, and
+	// reads or writes no file.
 	rulePath := ruleFilePath(projectDir, currentRule.File)
 	if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {
 		return nil, fmt.Errorf("rule file %s: is also the registry or the evolution log", rulePath)
