@@ -276,7 +276,10 @@ When MX tags are added during sync:
 - Tag additions are noted in the PR description
 - Report summarizes tag changes by category
 
-Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
+Status mode early exit: If mode is "status", display the quality report with
+`before_tree_key`, `after_tree_key`, `read_only=true`, and writer-attempt count,
+then exit. No further phases execute. The phrase "no changes" is permitted
+only after the mutation proof in the read-only status contract succeeds.
 
 ### Phase 10: Coverage Analysis and Test Generation
 

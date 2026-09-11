@@ -135,13 +135,20 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 - [ ] No HARD rule violations
 <!-- moai:evolvable-end -->
 
-Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
+Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. In `auto`, `force`, and `project` modes it may catch and auto-fix lint/format/type errors early; `status` is governed by the read-only status contract and never enters a writer path.
 
 #### Step 0.0.1: Gate Execution
 
+- **Mode guard:** Resolve the mode before dispatch. For `status`, set
+  `read_only=true` and `writer_policy=deny`, capture `before_tree_key`, and
+  run only read-only diagnostics. Do not delegate a write-capable agent or
+  invoke auto-fix, tag insertion, generated-document writes, or Git writers.
+  The status result records `after_tree_key`; "no changes" is valid only when
+  the two keys are equal and no writer was attempted (see
+  `.claude/rules/moai/workflow/read-only-status-contract.md`).
 - Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`.
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
-- Auto-fix any fixable issues (lint auto-fix, format auto-fix)
+- In `auto`, `force`, and `project` modes only, auto-fix any fixable issues (lint auto-fix, format auto-fix). In `status`, report the diagnostic result without changing files.
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
   - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
   - Skip gate: Proceed to Phase 3 (errors will be caught later but at higher cost)
