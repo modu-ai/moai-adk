@@ -326,7 +326,7 @@ Together with the 14 IDs in §E.2.7, all 29 mutant IDs of this run are killed (a
 
 ```yaml
 run_complete_at: 2026-09-12
-run_commit_sha: pending-backfill   # the commit carrying this block cannot cite itself
+run_commit_sha: b5b5883e9   # last run-phase commit changing Go behaviour (45956bd92 after it edits one test comment only); slot evidence measured on 8a44a68bc
 run_status: complete-local          # the CI verdict on origin/develop is owed after the lead's push
 ac_pass_count: 16                   # AC-USB-001..016, every cell observed PASS in this run
 ac_fail_count: 0
