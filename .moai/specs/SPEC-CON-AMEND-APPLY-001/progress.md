@@ -55,6 +55,9 @@ Card t659 · branch `WT-amend-apply` · worktree `.claude/worktrees/t659`
 | `db6b70166` | test — M2–M6 mutants (29 runs) | M2–M6 |
 | (this commit) | chore — M7 isolation witness, M-14, vet/lint/coverage, this section | M7 |
 | (guards commit, after `ae58f0383`) | test — the two out-of-SPEC guards pinned by one test and one mutant each (§E.2.6) | — |
+| `0893611ad` | test — G-B test asserts 0 gate calls, RED on the unmoved code (§E.2.6 G-B move) | — |
+| `5801ebda0` | fix — G-B moved into `Execute` before Layer 1, removed from `prepareApply` (§E.2.6 G-B move) | — |
+| (record commit, after `5801ebda0`) | docs — G-B move evidence, mutants re-run, this record | — |
 
 ### E.2.2 RED-before-GREEN evidence (baseline-first ACs)
 
@@ -148,14 +151,16 @@ The run added two checks to `internal/constitution/pipeline.go` that no REQ or A
 | Guard | Where | What it does | Modes it covers |
 |---|---|---|---|
 | G-A | `Execute`, right after the stale-`Before` check (REQ-CAA-017), before Layer 1 | rejects a proposal whose `After` is empty: `proposal for rule <id>: After is empty` | dry-run and real (no gate is called in either) |
-| G-B | `prepareApply`, after the three files are read, before any transform | rejects a target entry whose `file:` names the registry or the evolution log: `rule file <path>: is also the registry or the evolution log`; `sameFile` compares `filepath.Abs` results | dry-run and real — `prepareApply` runs in both modes; it runs AFTER the five layers, so the gate doubles ARE called (4 times: the fixture entries carry `canary_gate: false`, so Layer 2 is skipped) |
+| G-B | `Execute`, right after G-A, before Layer 1 (moved from `prepareApply` on 2026-09-12, see "G-B move" below) | rejects a target entry whose `file:` names the registry or the evolution log: `rule file <path>: is also the registry or the evolution log`; `sameFile` compares `filepath.Abs` results of `ruleFilePath(projectDir, file)`, the resolved registry path, and the evolution-log path — no file I/O | dry-run and real (no gate is called in either) |
 
 What each guard adds over the code without it (observed on the mutants, below): without G-A an empty `After` is still refused, but only after all four gate doubles ran, by the log-entry validation (`evolution log <path>: clause is empty`), with no rule id in the message. Without G-B both halves are admitted: a `file:` pointing at the registry, or at a log that carries the current clause once, passes every later check — `Execute` returns no error in dry-run and real mode (observed). That the real run then commits two changes to the same path is read from `prepareApply` / `commitChanges`, not observed: the test stops at the nil error.
 
 Tests (in `internal/constitution/apply_test.go`):
 
 - `TestExecute_EmptyAfter_Rejected` — subtests `dry_run`, `real`. Asserts the substring `After is empty`, the rule id, 0 gate calls, the fixture tree's path set + per-file sha256 unchanged (`snapshotTree` / `assertSameTree`), and the lock dir empty.
-- `TestExecute_RuleFileIsRegistryOrLog_Rejected` — subtests `registry/{dry_run,real}` (entry `file:` = `.claude/rules/moai/core/zone-registry.md`), `evolution_log/{dry_run,real}` (entry `file:` = `.moai/research/evolution-log.md`, log prose carries the current clause once), `distinct_control/{dry_run,real}` (the standard `rules/target.md`; must NOT be rejected — `Execute` returns no error). The two rejecting cases assert the substring `is also the registry or the evolution log`, the rule-file path (`containsPathForm`), 4 gate calls, the tree snapshot unchanged, and the lock dir empty.
+- `TestExecute_RuleFileIsRegistryOrLog_Rejected` — subtests `registry/{dry_run,real}` (entry `file:` = `.claude/rules/moai/core/zone-registry.md`), `evolution_log/{dry_run,real}` (entry `file:` = `.moai/research/evolution-log.md`, log prose carries the current clause once), `distinct_control/{dry_run,real}` (the standard `rules/target.md`; must NOT be rejected — `Execute` returns no error). The two rejecting cases assert the substring `is also the registry or the evolution log`, the rule-file path (`containsPathForm`), 0 gate calls (4 before the G-B move), the tree snapshot unchanged, and the lock dir empty.
+
+The GREEN run, mutant table, and package state below record the guards commit, when G-B still sat in `prepareApply`; the G-B move that follows supersedes the G-B rows for the current tree.
 
 GREEN (unmutated tree), `.moai/reports/t659/run/guards/green.txt`:
 
@@ -193,7 +198,57 @@ Package state after the change (this run, the guards-commit tree):
 - `go vet ./internal/constitution/` → exit 0, no output (`guards/vet.txt`)
 - `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint.txt`)
 
-Known limit, recorded and not fixed (out of scope): `sameFile` compares `filepath.Abs` results and resolves no symbolic link, so a `file:` that reaches the registry or the log through a symlinked alias is not caught by G-B. No test covers that case.
+#### G-B move — before the gates (lead decision, 2026-09-12)
+
+> 사람이 Y로 승인한 뒤 거부되는 순서는 승인을 헛되게 만드는 UX 결함 (lead, 2026-09-12)
+
+In `prepareApply` G-B ran after all five layers, Layer 5 HumanOversight included, so a user's approval was spent before the rejection. The lead ordered the check moved into the pre-gate validation of `Execute` and its test to assert zero gate calls.
+
+Equivalence of the paths (read from the code at `90ea2b26f`, before the move): `Execute` computes `registryPath := ResolveRegistryPath(projectDir)`, `evolutionLogPath := filepath.Join(projectDir, ".moai", "research", "evolution-log.md")`, and `currentRule` before Layer 1, and passes exactly `currentRule`, `registryPath`, `evolutionLogPath` to `prepareApply`, which built the rule path with the pure `ruleFilePath(projectDir, rule.File)`; `readForChange` stores the path it is given unchanged (`apply_commit.go`, `c := &fileChange{role: role, path: path, …}`). The moved check compares the same three strings.
+
+One ordering difference follows from the move (read from the code, not observed): the old check ran after the three `readForChange` calls, so a `file:` naming an evolution log that does not exist was refused by the rule-file read (`rule file <path>: … no such file …`) before G-B could fire; the moved check refuses it with the G-B message. The test's `evolution_log` case writes the log, so it does not cover the missing-log form.
+
+Commits (the commit graph witnesses RED before the fix, verification-claim-integrity §2.3):
+
+- `0893611ad` — `test(t659): G-B test asserts no gate call before the guard moves`: `TestExecute_RuleFileIsRegistryOrLog_Rejected` requires 0 gate calls in `registry/*` and `evolution_log/*`; commits the RED output with the test, production code untouched
+- `5801ebda0` — `fix(t659): check the rule-file alias before the gates`: the check moved into `Execute` right after G-A, same message text with `%s`; the `prepareApply` copy deleted (no duplicate); `sameFile` unchanged; the `prepareApply` doc comment notes the check now runs earlier
+
+RED on the unmoved code, `.moai/reports/t659/run/guards/gb-move-red.txt` (tree `90ea2b26f` + the test edit):
+
+```
+$ go test ./internal/constitution/ -run '^TestExecute_RuleFileIsRegistryOrLog_Rejected$' -count=1 -v
+exit=1   "=== RUN" lines: 7 (1 top-level + 6 subtests)
+    apply_test.go:1264: gate doubles called 4 times, want 0 (the check runs before Layer 1)   (×4)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real (0.01s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run (0.01s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.527s
+```
+
+The only failing assertion is the gate count: the error text, path, snapshot, and lock assertions already held before the move.
+
+Mutants on the new location — runner `.moai/reports/t659/run/mutate.py`, specs `.moai/reports/t659/run/guards/mutants-guards-moved.json`, per-mutant output `.moai/reports/t659/run/guards/M-*-moved.txt`, summary `mutants-moved-summary.txt`. `pipeline.go` sha256 `05934830…1dd2` and `apply_test.go` sha256 `bfdddf3e…3424` before and after the pass (restored byte-exact; the runner also checks restoration).
+
+| Mutant | Edit (at the moved check) | Selector | Top-level RUN / all RUN | Result | Failing subtests |
+|---|---|---|---|---|---|
+| M-GA | G-A deleted (re-run) | `^TestExecute_EmptyAfter_Rejected$` | 1 / 3 | killed (exit 1) | `dry_run`, `real` — error lacks `After is empty`; `gate doubles called 4 times, want 0` |
+| M-GB | condition → `false` | `^TestExecute_RuleFileIsRegistryOrLog_Rejected$` | 1 / 7 | killed (exit 1) | `registry/*`, `evolution_log/*` — `want a rule-file-is-registry-or-log error, got nil` |
+| M-GB-reg | registry half dropped (log half kept) | `…_Rejected$/^registry$` | 1 / 3 | killed (exit 1) | `registry/dry_run`, `registry/real` — `got nil` |
+| M-GB-log | log half dropped (registry half kept) | `…_Rejected$/^evolution_log$` | 1 / 3 | killed (exit 1) | `evolution_log/dry_run`, `evolution_log/real` — `got nil` |
+| M-GB-always | condition → `true` | `…_Rejected$/^distinct_control$` | 1 / 3 | killed (exit 1) | `distinct_control/dry_run`, `distinct_control/real` — the distinct rule file is rejected |
+
+Counted: 5 mutant runs, 5 killed, 0 survived. The earlier `M-*.txt` files are kept as the pre-move record; the `-moved` files are the current one. The 0-gate-call assertion's own discriminating power is the RED above (4 calls on the unmoved code); the four G-B mutants die earlier, on the nil error.
+
+Package state after the move (tree `5801ebda0`):
+
+- `go test ./internal/constitution/ -count=1 -cover` → `ok  	github.com/modu-ai/moai-adk/internal/constitution	1.954s	coverage: 88.3% of statements` (`guards/cover-moved.txt`)
+- `go vet ./internal/constitution/` → exit 0, no output (`guards/vet-moved.txt`)
+- `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint-moved.txt`)
+
+The symlink limit of `sameFile` is carried in §E.3 `residual_risk`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -229,9 +284,10 @@ compile_slot_commands_pending:
   - "golangci-lint run ./internal/cli/..."
 out_of_spec_guards:                     # §E.2.6 — SPEC 밖 추가, 리드 인정; not counted in ac_* or mutants_* above
   - "G-A: Execute rejects an empty After before Layer 1 — TestExecute_EmptyAfter_Rejected, mutant M-GA killed"
-  - "G-B: prepareApply rejects a rule file that is the registry or the evolution log — TestExecute_RuleFileIsRegistryOrLog_Rejected, mutants M-GB, M-GB-reg, M-GB-log, M-GB-always killed"
-  - "known limit: sameFile uses filepath.Abs without symlink resolution; a symlinked alias is not caught by G-B"
-sync_report_obligation: "the sync report MUST name both guards (G-A, G-B) for sync-auditor review, as additions outside the SPEC accepted by the lead"
+  - "G-B: Execute rejects a rule file that is the registry or the evolution log before Layer 1 (moved from prepareApply 2026-09-12, lead decision; RED 0893611ad, fix 5801ebda0) — TestExecute_RuleFileIsRegistryOrLog_Rejected asserts 0 gate calls, mutants M-GB, M-GB-reg, M-GB-log, M-GB-always killed at the new location, M-GA re-run killed"
+residual_risk:
+  - "G-B symlink limit: sameFile compares filepath.Abs results and resolves no symbolic link, so a rule-file entry that reaches the registry or the evolution log through a symlinked alias is not caught by G-B; no test covers that case"
+sync_report_obligation: "the sync report MUST name both guards (G-A, G-B) for sync-auditor review, as additions outside the SPEC accepted by the lead; both run before Layer 1"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
