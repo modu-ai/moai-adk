@@ -205,3 +205,35 @@ REQ-CAA-020 이 "다른 트리에는 읽기도 쓰기도 닿지 않는다"고 �
 - **AC**: `../other` 상대 env · 절대 `file:` · `..` 포함 `file:` · 루트 안 대조, 각 1행. 실제 등록부 101줄(절대 0·`..` 0)에서 기존 동작 회귀가 없음을 AC 로.
 - **뮤턴트**: (1) 검사 제거 (2) Clean 없이 문자열 접두 비교 — `/root-evil` 이 `/root` 접두를 통과하는 모양.
 - 순서: SPEC 반영 → lint → plan-auditor.
+
+## 12. SPEC 0.1.3 완성 확인 · lint
+
+### 12.1 경과
+
+- 0.1.3 첫 반영 에이전트가 세션 한도(HTTP 429, `resets 8am (Asia/Seoul)`, request id `req_011CevKfhxMhJPGoyGMrqYpd`)로 커밋 없이 중단했다. spec.md·plan.md·progress.md 만 고쳐져 있었고 acceptance.md 는 그대로였다(신규 ID 등장 0, 대조 AC-CAA-023 6·M-20 4). 레인이 `4e9273d0b`(`wip(t659)`, 첫 줄 INCOMPLETE AND INCONSISTENT)로 보존했다.
+- 리드 재개 지시에 따라 새 manager-spec 이 acceptance.md 를 채우고 네 파일을 맞춰 `fa966740d` 로 커밋했다.
+
+### 12.2 레인 직접 확인 (`fa966740d`)
+
+- 커밋은 SPEC 파일 4개만 바꿨다(71+/15-). 작업 트리 변경 0.
+- `spec.md` `version: "0.1.3"`. REQ-CAA 21(acceptance.md 에서 21/21 참조), AC 23→25, 뮤턴트 25→29(`grep -o … | sort -u | wc -l`). progress.md §E.1 `counts: 21 requirements, 25 acceptance criteria, 29 mutants` 와 일치.
+- acceptance.md 안 등장 횟수(`grep -o -w`): AC-CAA-024 13 · AC-CAA-025 6 · M-21 6 · M-22 5 · M-23 4 · M-24 8 · REQ-CAA-021 9. 대조: AC-CAA-023 10 · M-20 7.
+- Cf 문자 네 파일 모두 0(대조 1).
+
+### 12.3 lint (`lint-0.1.3.txt`, 판정 바이너리 `lint-binary-0.1.3.txt`)
+
+```
+/Users/goos/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001
+INFO  OwnershipTransitionUnmeasured  …/spec.md  1  … commit 7b4d1ac89… has no Authored-By-Agent trailer
+0 error(s), 0 warning(s)
+LINT_EXIT=0
+```
+
+- 판정 바이너리: `v3.2.0-rc.7   moai_cp/20260910_130400-275-ged71054d3-dirty   built 2026-09-10T19:18:41Z`, `VERSION_EXIT=0`.
+- 판정 트리: `fa966740d`. 바이너리 기준 `ed71054d3` 는 이 트리의 조상이고, 그 사이 Go 코드 변경은 §10.2 에서 0 으로 확인했으며 이후 커밋도 SPEC·판정서 문서뿐이다. `-dirty` 내용은 미관측(Gap).
+
+### 12.4 에이전트가 §11 범위보다 넓힌 결정 (리드 확인 대상)
+
+1. AC-CAA-024 에 CLI dry-run 사례 추가 — REQ-CAA-021 의 "CLI 와 Execute 가 같은 검사를 쓴다" 조항을 확인하는 인수 조건이 없어서.
+2. M-22 를 변형 둘로 분리 — `filepath.Join` 이 이미 Clean 을 수행해 "Clean 없는 접두 비교"가 join 경로에서는 드러나지 않으므로, (i) 경계 없는 접두 비교(`sibling_prefix_file` RED), (ii) 문자열 이어 붙이기 후 Clean·해석 없는 접두 비교(`dotdot_file` RED)로 나눔.
+- 함께 정리: plan.md 의 `M-21a`/`M-21b` 를 M-21 하나의 변형 둘로 합쳐 뮤턴트 29 유지.
