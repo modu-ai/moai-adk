@@ -42,6 +42,13 @@ Snapshot consumption: before launching, query the shared diagnostic snapshot wit
 
 **Shared-snapshot wiring.** The snapshot is keyed by HEAD SHA (HEAD + porcelain-v2 + diff hash); a new commit invalidates the prior snapshot. Three sync-phase consumers — the `sync-auditor` Evidence cells, the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook, and the `.claude/workflows/sync-audit-4dim.js` 4-dimension judges — all consume this single snapshot keyed by HEAD SHA rather than each independently re-executing `go test` / `golangci-lint` / `go vet` / `go test -cover`. Concurrent recording requests for the SAME HEAD SHA are serialized via the per-key claim/lock mechanism (in-process mutex + cross-process `O_EXCL` claim-stamp with staleness reclaim), so exactly one consumer's recording per dimension lands and the rest read — last-writer-wins never silently drops a dimension.
 
+**Run-evidence reuse boundary.** A run-phase four-dimension report is reusable
+evidence only when its `tree_key`, AC set, and rubric version match the current
+sync inputs and it is `COMPLETE`. `INCOMPLETE`, `CONTESTED`, or any identity
+mismatch triggers the sync-auditor/4dim decision path. The reuse or
+re-execution reason is written into the sync report; evidence is never promoted
+to a PASS merely because a prior consumer was silent.
+
 Launch the test, linter, and type-check tasks through the shared bounded queue
 defined in `.claude/rules/moai/workflow/resource-budget-contract.md`. The
 three tasks may run simultaneously only when the recorded `max_concurrency`
