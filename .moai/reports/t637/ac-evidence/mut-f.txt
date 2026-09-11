@@ -1,0 +1,65 @@
+=== RUN   TestIntegrationStatus_OldRecordKeepsTodaysBranchLine
+    integration_lock_cli_test.go:256: old record's branch line is not today's exact line:
+        release-integration window: held
+          holder:   lane-old (sess-old, pid 0)
+          branch:   fixture-integration (source: )
+          worktree: /tmp/integration-tree
+          since:    2026-01-01T00:00:00Z
+    integration_lock_cli_test.go:259: old record printed a provenance annotation it never recorded:
+        release-integration window: held
+          holder:   lane-old (sess-old, pid 0)
+          branch:   fixture-integration (source: )
+          worktree: /tmp/integration-tree
+          since:    2026-01-01T00:00:00Z
+--- FAIL: TestIntegrationStatus_OldRecordKeepsTodaysBranchLine (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.212s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	0.670s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	0.197s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	0.493s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	0.335s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	2.772s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	2.456s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	0.935s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	3.356s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	3.155s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.293s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	2.335s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	3.019s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	0.803s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	1.090s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	2.634s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	3.358s [no tests to run]
+FAIL

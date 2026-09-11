@@ -1,0 +1,71 @@
+=== RUN   TestIntegration_AcquireStatusRelease
+2026/09/12 04:08:57 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegration_AcquireStatusRelease3388036371/001/.moai/config/sections
+--- PASS: TestIntegration_AcquireStatusRelease (0.35s)
+=== RUN   TestWorktreeForBranch_FindsTheCheckedOutWorktree
+--- PASS: TestWorktreeForBranch_FindsTheCheckedOutWorktree (0.43s)
+=== RUN   TestWorktreeForBranch_UnknownBranchIsEmpty
+--- PASS: TestWorktreeForBranch_UnknownBranchIsEmpty (0.42s)
+=== RUN   TestResolveIntegrationTarget_ExplicitFlagWins
+--- PASS: TestResolveIntegrationTarget_ExplicitFlagWins (0.48s)
+=== RUN   TestResolveIntegrationTarget_ConfiguredBranchUsedWhenFlagAbsent
+--- PASS: TestResolveIntegrationTarget_ConfiguredBranchUsedWhenFlagAbsent (0.46s)
+=== RUN   TestResolveIntegrationTarget_NoWorktreeForBranchRecordsEmpty
+--- PASS: TestResolveIntegrationTarget_NoWorktreeForBranchRecordsEmpty (0.48s)
+=== RUN   TestResolveIntegrationTarget_NoConfigNoFlagFallsBackToCallerTree
+--- PASS: TestResolveIntegrationTarget_NoConfigNoFlagFallsBackToCallerTree (0.45s)
+=== RUN   TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller
+--- PASS: TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller (0.57s)
+=== RUN   TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree
+--- PASS: TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree (0.53s)
+=== RUN   TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree
+--- PASS: TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree (0.52s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.444s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.721s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	1.550s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	1.382s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.220s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	2.064s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	2.808s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	2.378s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	1.925s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	2.527s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.078s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	0.874s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	3.211s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	2.945s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	2.672s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	2.247s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	2.546s [no tests to run]
