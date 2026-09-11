@@ -299,3 +299,26 @@ design.md 에서 판정서 문구가 아니라 기존 SPEC 인코딩에서 온 �
 - manager-spec 이 워크트리 `.claude/agent-memory/manager-spec/` 에 `MEMORY.md` · `feedback_worktree_guard_plain_commands.md` 를 썼다. 지시(SPEC 폴더만 편집)를 벗어난 쓰기다.
 - 그 경로는 `.gitignore` 로 무시되어 커밋·`git status` 에 나타나지 않는다. 처분은 리드 판단에 맡긴다.
 - 레인 확인: 같은 파일이 primary 체크아웃의 공용 저장소에도 있다 — `/Users/goos/MoAI/moai-adk-go/.claude/agent-memory/manager-spec/feedback_worktree_guard_plain_commands.md`(1341 bytes, 11:22, 워크트리 사본과 크기·시각 동일). primary 의 `MEMORY.md`(27136 bytes)도 같은 11:22 에 수정됐다. 워크트리 에이전트 메모리를 primary 로 복사하는 쓰기 시점 미러가 동작한 것으로 보인다(판독 — 미러 로그는 확인하지 않았다). 여러 세션이 공유하는 저장소라 레인은 지우지 않았다.
+
+## 15. plan-audit 1회차 — FAIL 0.78 (Tier L 합격선 0.85)
+
+### 15.1 레인 확인 (`plan-audit-iter1.md`, 감사 HEAD `76144d40a`)
+
+- 감사자가 쓴 파일은 보고서 하나뿐이었다(`git status` → `?? .moai/reports/t659/plan-audit-iter1.md`). 172줄, Cf 0.
+- 보고서 4행 `Verdict: FAIL`, 5행 `Overall Score: 0.78`. 필수 항목 MP-1·2·3·5·6·7 PASS, MP-4 N/A. 범주 점수(감사자): 명확성 0.75 · 완결성 0.85 · 검증 가능성 0.70 · 추적성 0.80.
+- 감사자는 `go test`·`go build` 를 돌리지 않았다. 코드 동작 주장은 모두 판독이다.
+
+### 15.2 major 결함 4건 (감사자 판독)
+
+- **D1** M-5b 는 원리상 죽일 수 없다 — AC-012 `third_rename_log_absent` 에서 세 번째 rename 이 위임 없이 실패하면 로그가 생기지 않아, 부재 파일을 지우지 않는 복원도 통과한다. 권고: 주입기를 "rename 에 위임한 뒤 오류 반환"으로.
+- **D2** AC-024 CLI 사례가 CLI 의 검사 사용 여부를 가려내지 못한다 — `B/other` 가 `P` 등록부의 바이트 사본이라 검사 없는 CLI 도 `Execute` 거부로 같은 결과를 낸다. 권고: 사본 clause 를 다르게, 오류가 파이프라인에 닿지 않았음을 단언.
+- **D3** 심볼릭 링크 해석을 로그 지점에서만 검증 — 등록부 경로·`file:` 지점에서 링크를 해석하지 않는 구현이 모든 AC 를 통과한다. 권고: AC-024 에 `symlinked_file`(가능하면 `symlinked_registry`) 행, M-23 을 지점별로.
+- **D4** 공유 로더 `LoadRegistry` 변경의 영향 범위가 계획에 없다 — 리드 판단 필요(아래).
+
+### 15.3 D4 근거 — 레인이 코드로 확인 (실행 안 함)
+
+- `LoadRegistry(` 의 테스트 아닌 호출자 7곳(레인 grep): `internal/spec/lint.go:114`, `internal/cli/constitution.go:70`·`:160`·`:511`, `internal/cli/doctor.go:683`, `internal/constitution/validator.go:183`, `internal/constitution/pipeline.go:67`.
+- `internal/spec/lint_test.go:14` `const testdataDir = "testdata"`, `:18-22` `testRegistryPath()` 는 상대 경로 `"../../.claude/rules/moai/core/zone-registry.md"` 를 반환. `:218-222` `TestLinter_AC08_DanglingRuleReference` 는 `RegistryPath: testRegistryPath()`, `BaseDir: testdataDir`.
+- `internal/spec/lint.go:108-118` `NewLinter` 는 `projectDir := opts.BaseDir` 로 `LoadRegistry` 를 부르고, 적재 실패는 조용히 넘겨 `DanglingRuleReference` 검사를 건너뛴다.
+- 판독: 현 `loader.go:82` 는 절대경로만 검사해 이 상대 경로를 받아들인다. §11 의 규칙(Clean + 절대화 + 루트 접두 비교)은 등록부를 저장소 루트의 `.claude/…` 로, 루트를 `internal/spec/testdata` 로 풀어 거부하게 된다 → 적재 오류가 삼켜짐 → finding 을 기대하는 AC08 테스트가 실패할 것으로 **예측**된다.
+- 결정 필요: 이 거부를 §11 적용 범위의 의도된 결과로 볼지(호출자·테스트 갱신을 계획에 넣음), 경계 검사를 amend 경로에만 적용할지.
