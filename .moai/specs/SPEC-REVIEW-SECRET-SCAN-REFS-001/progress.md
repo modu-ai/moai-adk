@@ -868,6 +868,86 @@ merge here carried an added line without a conflict.
   and are not exported. The counts, exit codes, and sizes above are the record; the raw files are a
   known loss once the scratchpad is cleared.
 
+### M4 edit
+
+Taken 2026-09-11 from this worktree on branch `WT-secret-scan-refs`. The edit commit `R` is
+`cc40925131937a78cb8573bace47349ddb594bcf`, parent `e8128c708` (the M3 commit); it touches the two
+review workflow copies and `internal/template/catalog.yaml` only. `SP` is the session scratchpad,
+outside this repository. `REGEX` is the scan regex as `review.md` writes it. `SECTION` is
+`SP/section.txt`, extracted from the edited template copy with the `acceptance.md` `sed -n` range
+(61 lines: the 59 section lines, a blank line, and the next heading).
+
+Operator decisions relayed by the lead, quoted verbatim as received on 2026-09-11:
+
+> [리드] t629 운영자 결정: ① 허용 목록 표현 = A(SHA-1 git 블롭 이름 그대로 M4 진행). 누출 검사 오인(3)은 M4의 AC-005 strict 결과로 판정하고, 걸리면 그 자리에서 멈춰 보고하세요. ② 13단계 억제 절차 = 측정된 형태 유지(rm -r 고정 경로 확인 인정). 복잡도는 후속 개선 후보로 verdict에 남겨 주세요. M4 진행하세요. push 금지 유지.
+
+Summary in English: the operator keeps allowlist representation A (the full-length SHA-1 git blob
+object name), judges the leak-check misfire concern by the AC-005 strict run below (stop on a hit),
+and keeps the thirteen-step suppression procedure in its measured form, with the `rm -r` fixed-path
+step accepted.
+
+Follow-up candidate: the thirteen-step suppression procedure could be simplified — for example, a
+single-digest comparison while the list holds one value. It is kept in its measured form by operator
+decision.
+
+How the edit was made. The template copy was edited first: its secrets-scan section was replaced
+with the text of § Draft section wording (M2) inside the four-backtick fence; nothing outside the
+section changed. The local copy then received the same edit, not a copy of the file.
+
+| Check | Command (outline) | Exit | Reading |
+|---|---|---|---|
+| pre-edit identity | `diff -q LOC TPL` | 0 | no output |
+| load before | `ps -axo pid,etime,command > SP/m4-ps.txt`; `/usr/bin/grep -c` for running `go test` and `git log -p` processes; `uptime` | 0 | `0`, `0`; load averages 9.17 11.78 14.02 |
+| section equals the draft | draft extracted with `sed -n '514,572p' PROG` before the edit (59 lines); the first 59 lines of `SECTION` compared with `cmp` | 0 | byte-identical; lines 60-61 are the blank line and `#### Data Isolation Check` |
+| AC-003 (a) | `cmp LOC TPL`; `diff -q LOC TPL` | 0; 0 | no output |
+| AC-003 (b) | `git diff --stat feeecc980 cc4092513 -- LOC TPL` | 0 | both files named, 53 lines changed each (2 files, 94 insertions, 12 deletions) |
+| AC-002 | the exact equivalence phrase, `no finding class is dropped`, and `grep -ci 'same coverage'`, each over `LOC TPL` | 1 each | `0` and `0` for all three |
+| AC-005 greps | `SPEC-`, `t629`, the four cost figures over `TPL`; the 16-name language grep (`-ciwE`) and `R language` over `SECTION` | 1 each | `0`, `0`, `0`, `0`, `0` |
+| AC-005 strict leak | `MOAI_TEMPLATE_LEAK_STRICT=1 go test -v ./internal/template/ -run '^TestTemplateNoInternalContentLeak$' -count=1 > SP/leak.txt 2>&1` | 0 | `SP/leak.txt` 4 lines; `--- PASS: TestTemplateNoInternalContentLeak` count `1`; `--- FAIL` count `0` |
+| AC-006 | `/usr/bin/grep -e 'log -p' SECTION > SP/cmds.txt` (2 lines); `grep -vc -e '--all'` and `grep -c -e '--stdin'` over the commands; `grep -cF '^%(objectname)'`, `grep -ci 'every ref'`, `grep -c 'the HEAD SHA of the last completed scan'` over `SECTION` | 0; 1; 0; 0; 0; 1 | `0`; `1`; `1`; `2`; `0` |
+| AC-006 pinned sentence | the `Uncovered commits: ` line of the pinned block, prefix removed, as a `grep -cF -f` pattern file over `SECTION` | 0 | `1` |
+| AC-015 | `/usr/bin/grep -cE -- 'REGEX' LOC TPL`; control: the same command over `SP/m4-ctl-pem.txt`, one PEM-style header line assembled by `printf` from fragments | 1; 0 | `0` and `0`; control `1` |
+| AC-016 (a) | the `Tip recording: `, `Scan command: `, and `Missing-tip handling: ` lines of the pinned block, each prefix removed with `sed -n 's/^<prefix>//p'` into its own pattern file, then `/usr/bin/grep -cF -f <pattern file> SECTION` | 0 each | each pattern file 1 line, 1 non-empty; counts `1`, `1`, `1` |
+| AC-016 (b), `G` | `git log --format=%H -S` for the gate-evidence heading, `feeecc980..cc4092513~1 -- PROG` | 0 | 3 lines; newest `f167a9cd8`; the heading count at `R~1` is `1` |
+| AC-016 (b), block | the AC-016 `sed -nE` extraction from `git show f167a9cd8:PROG` and from `git show cc4092513~1:PROG`, then `cmp` | 0 | 28 and 28 lines; `cmp` exit 0 |
+| pin unchanged since the pin commit | the same extraction from `git show 68c56be0d:PROG` and from the working tree before this subsection was written, then `cmp` | 0 | 28 and 28 lines; `cmp` exit 0 |
+| AC-007 dry | `git merge-base --is-ancestor af7eb142b cc4092513` | 0 | `D` ≠ `R` |
+| AC-011 dry | `git log --reverse --format=%H feeecc980..cc4092513 -- TPL` and the same for `LOC`; `git merge-base --is-ancestor f167a9cd8 cc4092513`; `git show cc4092513~1:PROG` then `/usr/bin/grep -c` for trustworthy verdict lines | 0; 0; 0 | first line `cc4092513` for both copies, so `R` is the first copy-touching commit; `G` ≠ `R`; count `3` |
+| AC-004 reading at `R` | `git diff feeecc980 cc4092513 --output=SP/m4-card-diff.txt`; `wc -l`; the AC-004 added-line grep | 0; 0; 1 | 3882 lines; count `0` |
+| credential regex, SPEC files | `/usr/bin/grep -cE -- 'REGEX'` over `spec.md`, `plan.md`, `acceptance.md`, `progress.md` | 1 | `0` each |
+| lint | `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001` | 0 | `✓ No findings — all SPEC documents are valid` |
+
+Catalog. The template tree changed, so the hash of catalog entry `moai` (path
+`templates/.claude/skills/moai/`, a whole-tree hash) went stale; only that entry was regenerated.
+
+| Step | Command | Exit | Reading |
+|---|---|---|---|
+| before the edit | `go test ./internal/template/ -run 'TestCatalogHashCoversSkillSubfiles\|TestManifestHashFormat' -count=1 -v` | 0 | 2 PASS lines |
+| after the edit, before regeneration | the same command | 1 | both FAIL: `CATALOG_HASH_UNSTABLE` and `CATALOG_HASH_SKINNY` for `moai`, stored `1d23838d…`, computed `21cf422c…` |
+| dry run | `go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai --dry-run` | 0 | `moai: 21cf422cb335b651a2d646049d4bc4b1e6d5d13270a7cf1c6261c37727c48983`, equal to the value the failing tests computed |
+| regeneration | the same command without `--dry-run` | 0 | `catalog.yaml updated successfully (12899 bytes)` |
+| scope | `git diff --numstat -- internal/template/catalog.yaml`; changed lines of the diff | 0 | `1 1`; one removed and one added `hash:` line of entry `moai`, nothing else |
+| after regeneration | the two catalog tests by name, `-v` | 0 | exactly 2 PASS lines |
+| package tree | `go test ./internal/template/... -count=1` | 0 | `ok` for `internal/template`, `agentemit`, `commandemit`; `scripts` has no test files; no `FAIL` |
+| emitters | `go test ./internal/template/commandemit/... ./internal/template/agentemit/... -count=1` | 0 | `ok` for both; no emitter publishes the edited file, and nothing was regenerated |
+
+Load during the package-tree run: 8.97 10.50 12.96 before, 8.44 10.22 12.77 after (`uptime`).
+
+Tool provenance (`verification-claim-integrity.md` §2.2): the lint ran on the installed
+`v3.2.0-rc.7` build, commit `ed71054d3` with a dirty tree; `git merge-base --is-ancestor ed71054d3
+HEAD` exited 1. It is not a build made from this tree. The `go test` and `go run` readings were
+compiled from this tree.
+
+Gaps and residual risk in M4:
+
+- The strict leak run passed with no failing class, but this run carries no positive control of its
+  own; the 7-8 hex control of § M2 pre-commit readings is the evidence that the pattern detects a
+  short hex run.
+- AC-004, AC-007, AC-011, and AC-016 above were read at `R`, not at `K`; M5 records `K` and re-runs
+  them there. Commits after `R`, including this one, are outside the AC-004 reading.
+- `make build` and the embed check were not run; they belong to the lead at batch close.
+- The fixture evidence of M3 and the scan outputs stay in `SP` and are not exported.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
