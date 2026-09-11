@@ -1,0 +1,16 @@
+diff --cc internal/template/catalog.yaml
+index 799a66cf2,555117735..000000000
+--- a/internal/template/catalog.yaml
++++ b/internal/template/catalog.yaml
+@@@ -6,7 -6,7 +6,11 @@@ catalog
+              - name: moai
+                tier: core
+                path: templates/.claude/skills/moai/
+++<<<<<<< HEAD
+ +              hash: 8b29f29d31b9c54721b03515ad10ba10bd981d6b0a6a3fa947b8c0825e7e2f06
+++=======
++               hash: 55e4d1df0ea71bb00e384dd0a3739b1e0b082dafc65708fe6e05fb4c140277a0
+++>>>>>>> develop
+                version: 1.0.0
+              - name: moai-foundation-cc
+                tier: core

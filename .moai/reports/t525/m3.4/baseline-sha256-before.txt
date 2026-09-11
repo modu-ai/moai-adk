@@ -1,0 +1,1 @@
+0b5541e961497306e07255683bb3fa4bafb34336d724e8726147f160f6ac1c44  .moai/spec-lint-baseline.json

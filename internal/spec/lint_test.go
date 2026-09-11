@@ -1015,8 +1015,10 @@ func TestLinter_SpecsDirMissingSpecFile_BothDirections(t *testing.T) {
 	// the rules still run rather than having been silenced.
 	plant("SPEC-LIVE-001", "missing-coverage")
 
-	// The blind directory: SPEC-named, real content, but no spec.md — exactly
-	// the shape of .moai/specs/SPEC-V3R4-CC2X-ADOPT-001/ in this repo.
+	// The blind directory: SPEC-named, real content, but no spec.md. This was
+	// the shape of .moai/specs/SPEC-V3R4-CC2X-ADOPT-001/ and -002/ until
+	// SPEC-SPECLINT-GATE-SIGNAL-001 M4 relocated both to .moai/research/; the
+	// fixture is synthetic and never depended on those directories existing.
 	blindDir := filepath.Join(specsDir, "SPEC-BLIND-001")
 	if err := os.MkdirAll(blindDir, 0755); err != nil {
 		t.Fatal(err)

@@ -1,0 +1,9 @@
+ac026-base-template-skill.md:0
+ac026-base-template-ref.md:0
+ac026-base-template-qgc-args.md:0
+ac026-base-template-qgc-flags.md:0
+ac026-base-template-sync.md:0
+ac026-base-template-dl.md:0
+ac026-base-template-sync-usage.md:0
+ac026-base-template-hint.md:0
+ac026-base-template-dl-next.md:0

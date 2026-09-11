@@ -1,0 +1,6 @@
+ac002-acp-base-local-block.md: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+ac002-acp-base-template-block.md: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+ac002-mut-i-old.md: fetch=1 revlist=1 joined=0 F=2 S=0 C=0 X=0 R=5 verdict=FAIL
+ac002-mut-ii-joined.md: fetch=1 revlist=0 joined=1 F=2 S=3 C=4 X=6 R=0 verdict=FAIL
+ac002-mut-iii-nostatus.md: fetch=1 revlist=1 joined=0 F=2 S=0 C=0 X=0 R=3 verdict=FAIL
+ac002-mut-iv-reorder.md: fetch=1 revlist=1 joined=0 F=3 S=4 C=5 X=7 R=2 verdict=FAIL

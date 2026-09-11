@@ -1,0 +1,268 @@
+---
+description: "Sync Phase 11~12 — Analysis and Planning (with HUMAN GATE 2: Documentation Scope) and Execute Document Synchronization."
+user-invocable: false
+metadata:
+  parent: moai-workflow-sync
+  phase: "Phase 11~12: Analysis, Planning, and Document Synchronization"
+---
+
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+
+### Phase 11: Analysis and Planning
+
+#### Step 1.1: Verify Prerequisites
+
+- .moai/ directory must exist
+- .claude/ directory must exist
+- Project must be inside a Git repository
+
+
+#### Step 1.2: Analyze Project Status
+
+- Analyze Git changes: git status, git diff, categorize changed files
+- Read project configuration: git_strategy.mode, git_strategy.{mode}.workflow, conversation_language
+- Determine synchronization mode from $ARGUMENTS
+- Detect branch context: Check current branch name
+
+##### Worktree Context Detection
+
+Detect if the current session is running within a MoAI worktree:
+- Check if current git directory path contains `/.moai/worktrees/` component
+- OR check if `.moai/worktrees/registry.json` has an active entry for current SPEC-ID
+- Store result as `is_worktree_context` boolean for use in Phase 13
+
+This affects auto-merge behavior: worktree contexts default to auto-merge.
+
+#### Step 1.3: Project Status Verification
+
+Scan ALL source files (not just changed files) for:
+
+- Broken references and inconsistencies
+- Issues with precise locations
+- Severity classification (Critical, High, Medium, Low)
+
+#### Step 1.4: Synchronization Plan
+
+Agent: manager-docs subagent
+
+Skill injection (applies to every manager-docs spawn in this workflow, per skill-routing.md §1): inject `At start, invoke Skill("moai-workflow-project") for the sync-phase documentation cycle.` into each manager-docs spawn prompt (per `.moai/config/sections/delegation.yaml` sync designation).
+
+Create synchronization strategy based on Git changes, mode, project verification results, and deployment readiness report from Phase 0. Output: documents to update, SPECs requiring sync, project improvements needed, estimated scope, deployment notes to include in PR.
+
+#### Step 1.5: SPEC-Implementation Divergence Analysis
+
+Purpose: Detect differences between the original SPEC plan and actual implementation to ensure documentation accuracy.
+
+For each SPEC associated with the current sync:
+
+- Step 1.5.1: Load SPEC Documents
+  - Read spec.md (requirements), plan.md (implementation plan), acceptance.md (criteria)
+  - Extract planned files, planned features, and planned scope
+
+- Step 1.5.2: Analyze Actual Implementation
+  - Use git diff and git log to identify all files created, modified, or deleted during the run phase
+  - Categorize changes by domain (backend, frontend, tests, config, docs)
+
+- Step 1.5.3: Compare Plan vs Reality
+  - Identify files created that were NOT in the original plan.md
+  - Identify features or endpoints implemented beyond original spec.md scope
+  - Identify planned items that were NOT implemented (deferred or dropped)
+  - Identify unplanned refactoring or dependency changes
+
+- Step 1.5.4: Generate Divergence Report
+  - Categorize divergences: scope_expansion, unplanned_additions, deferred_items, structural_changes
+  - Include: new_directories_created, new_dependencies_added, new_features_implemented
+  - This report feeds into Phase 12 (SPEC updates) and Phase 12 (project doc updates)
+
+#### Step 1.5.0: Freeze the Sync Input Snapshot
+
+Before Phase 7 audit work or the Phase 12 documentation fan-out begins, the
+orchestrator MUST create one immutable `sync_snapshot_id`. The snapshot records
+the HEAD SHA, porcelain-v2 status, diff hash, SPEC artifact hashes, and the
+complete Step 1.5 divergence report. D1-D5 drafters receive that snapshot ID
+and read only its contents; they do not wait for a later Phase 11 result.
+
+If the tree or SPEC artifacts change after the snapshot is sealed, the
+orchestrator invalidates the ID and creates a new snapshot before launching
+any remaining drafter. A missing or stale snapshot is a blocker, not an
+invitation to read whichever phase output happens to be available.
+
+- Step 1.5.5: Check SPEC Lifecycle
+  - Read `lifecycle` from SPEC frontmatter (enum: `spec-anchored`|`spec-lite`|`exploratory`; default `spec-anchored` per `.claude/rules/moai/development/spec-frontmatter-schema.md`)
+  - `spec-anchored` (default): SPEC content will be updated to reflect actual implementation
+  - `spec-lite`: SPEC will be marked completed with an implementation summary appended (no full requirements rewrite)
+  - `exploratory`: Flag discrepancies as warnings only (SPEC content is not modified; implementation is not expected to match exactly)
+
+#### Step 1.6: User Approval
+
+<!-- moai:evolvable-start id="gate-sync-2" -->
+### HUMAN GATE: Documentation Scope
+
+**Previous phase output:** Divergence analysis showing doc/code drift
+**Approval question:** Which documents should be regenerated?
+**Cannot proceed until:**
+- [ ] User has reviewed divergence report
+- [ ] User has approved document regeneration scope
+- [ ] User has confirmed PR description draft
+<!-- moai:evolvable-end -->
+
+Tool: AskUserQuestion
+
+Display sync plan report and present options:
+
+- Proceed with Sync
+- Request Modifications (re-run Phase 11)
+- Review Details (show full project results, re-ask)
+- Abort (exit with a mutation-aware report; “no changes” requires verified key equality)
+
+### Phase 12: Execute Document Synchronization
+
+#### Step 2.1: Create Safety Backup
+
+Before any modifications:
+
+- Generate timestamp identifier
+- Create backup directory: .moai/backups/sync-{timestamp}/
+- Copy critical files: README.md, docs/, .moai/specs/ (record absent paths as
+  explicit backup failures rather than silently skipping them)
+- Create a SHA-256 `manifest.tsv` and verify every copied file with
+  `.claude/hooks/moai/verify-sync-backup.sh verify`; a non-empty directory is
+  not an integrity check
+- Before applying document writes, perform a restore/readback check against the
+  manifest and record the backup path, file count, and result in the sync report
+
+#### Step 2.2: Document Synchronization
+
+Agent: manager-docs subagent
+
+Input: Approved sync plan, project verification results, changed files list, divergence report from Phase 11.
+
+##### Drafter / Applier Structure (read-only fan-out, single writer)
+
+**`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Admission is governed by the shared `max_concurrency` queue in `.claude/rules/moai/workflow/resource-budget-contract.md`; the five-drafter shape is an upper bound, not five slots reserved in addition to MX or judge work. Five read-only drafters launch in a single turn when the queue admits them — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:
+
+| Drafter | Draft scope |
+|---------|-------------|
+| D1 | CHANGELOG entry |
+| D2 | README + docs-site |
+| D3 | project docs (product.md / structure.md / tech.md) |
+| D4 | SPEC artifacts (divergence-driven updates per Step 2.2.1) |
+| D5 | codemaps |
+
+Each drafter reads the changeset and **returns draft text; it writes no final artifact**. A large draft (4-locale docs-site content, for example) MAY instead be staged under `.moai/state/` with only the path returned — that staging path is runtime state, not a sync deliverable, so it does not make the drafter a writer of the output set. `manager-docs` then applies the five drafts **sequentially** and is the single writer of every final artifact (CHANGELOG, README, docs-site, project docs, SPEC frontmatter, codemaps).
+
+**Concurrent scheduling with the Phase 7-10 audit (A5 — SPEC-SYNC-PARALLEL-DOCS-001).** After the immutable `sync_snapshot_id` is sealed, the `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (the prior scheduling read the Phase Routing Table top-to-bottom and serialized the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns.
+
+**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads the immutable `sync_snapshot_id` (SPEC artifacts + git diff + the Step 1.5 divergence report). A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores, and it does not require a future Phase 11 output. The docs draft and the audit are input-independent; a drafter that consumed "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.
+
+**Single-writer applier sequencing at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The A5 concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` is the sole write-capable agent and applies the five drafts sequentially AFTER both the docs-drafter fan-out AND the audit fan-out return — the single-writer applier pass runs at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout the concurrent fan-out; the audit verdict is surfaced to the user at the same gate-sync-2 round, with NO extra human round-trip introduced by A5.
+
+**Independent of the write-concurrency rule.** This structure holds under the current `[HARD]` prohibition on running two write-capable agents concurrently, exactly as that rule stands today: the drafters are read-only, so at no point does more than one write-capable agent run. Nothing here waits on, presumes, or requires any change to that rule — the parallelism is bought entirely by making the drafters read-only, not by loosening the writer constraint.
+
+Boundary: drafters never prompt the user. A drafter missing a required input returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format), and the orchestrator re-delegates that one item while the other four drafts stand. The orchestrator launches the drafters itself — scaling, not subagent nesting, so the flat agent hierarchy is preserved. **Where** the scope covers a single document family, or the fan-out is skipped, `manager-docs` performs the whole of Step 2.2 serially as before, with the same resulting artifacts.
+
+Tasks for manager-docs:
+
+- Reflect changed code in Living Documents
+- Auto-generate and update API documentation
+- Update README if needed
+- Synchronize architecture documents
+- Fix project issues and restore broken references
+- Classify SPEC divergence and hand body changes to `manager-spec`; manager-docs
+  may update only approved frontmatter fields and sync-facing documentation
+- Detect changed domains and generate domain-specific updates
+- Generate sync report: .moai/reports/sync-report-{timestamp}.md
+
+All document updates use conversation_language setting.
+
+##### Step 2.2.1: SPEC Body Handoff (Based on Divergence Report)
+
+`manager-docs` MUST NOT edit `spec.md`, `plan.md`, or `acceptance.md` body
+content. It writes a structured blocker/handoff containing the divergence ID,
+affected artifact, proposed change, and evidence. The orchestrator delegates
+that handoff to `manager-spec`, which performs the body edit and independent
+re-review before `manager-docs` resumes CHANGELOG and project-document work.
+Frontmatter `status` and `updated` transitions remain the only SPEC edits owned
+by `manager-docs` during sync.
+
+Apply updates based on the SPEC `lifecycle` value detected in Phase 11:
+
+spec-anchored (default):
+- Update spec.md requirements to reflect actual implementation
+- Add new GEARS/EARS-format requirements for features implemented beyond original scope
+- Update plan.md with actual implementation steps taken
+- Update acceptance.md with new acceptance criteria for added features
+- Preserve original requirements with "as-implemented" annotations where changed
+
+spec-lite:
+- Append "Implementation Notes" section to spec.md summarizing actual implementation
+- Record scope changes: features added beyond plan, items deferred
+- Mark SPEC as completed (no ongoing maintenance expected)
+
+exploratory:
+- Do NOT modify SPEC content
+- Generate discrepancy report listing implementation deviations from SPEC
+- Flag as warnings in sync report for manual review
+- Recommend either updating SPEC or adjusting implementation
+
+#### Step 2.2.5: Project Document Update (Conditional)
+
+Purpose: Update .moai/project/ documents when significant structural changes are detected.
+
+Condition: Execute this step ONLY when the divergence report from Phase 11 indicates:
+- New directories were created in the project
+- New dependencies or technologies were added
+- New major features or capabilities were implemented
+- Significant architectural changes occurred
+
+Skip condition: If .moai/project/ directory does not exist or contains no files, skip this step entirely.
+
+Agent: manager-docs subagent
+
+Tasks for manager-docs:
+
+- If new directories created: Update structure.md with new directory descriptions and purposes
+- If new dependencies added: Update tech.md with new technology stack entries and rationale
+- If new features implemented: Update product.md with new feature descriptions and use cases
+- If architectural changes: Update structure.md with revised architecture patterns
+- If architectural changes: Regenerate .moai/project/codemaps/ via codemaps workflow (workflows/codemaps.md) when significant structural changes (new directories, dependency graph changes, or module reorganization) are detected
+
+Constraints:
+- Only update sections relevant to detected changes (do not regenerate entire files)
+- Preserve existing content and append or modify incrementally
+- Use conversation_language setting for all updates
+
+#### Step 2.3: Post-Sync Quality Verification
+
+Agent: sync-auditor subagent (independent quality scoring, gated by harness level per `workflows/sync/quality-gates-quality.md` § Step 0.5.4; OR orchestrator verification batch — lint + test + coverage when the evaluator is disabled at the current harness level)
+
+Verify synchronization quality against TRUST 5:
+
+- All project links complete
+- Documents well-formatted
+- All documents consistent
+- No credentials exposed
+- All SPECs properly linked
+
+#### Step 2.4: Update SPEC Status
+
+Update SPEC status based on the `lifecycle` value and implementation completeness:
+
+- spec-anchored (default): Set status to "completed" if all requirements met, or "in-progress" if partial. Schedule next review based on quarterly maintenance policy.
+- spec-lite: Set status to "completed". No further maintenance required.
+- exploratory: Set status based on implementation-SPEC alignment. Flag discrepancies for resolution.
+
+Record version changes, status transitions, and divergence summary. Include in sync report.
+
+#### Step 2.4.1: GitHub Issue Status Sync
+
+When SPEC metadata contains `issue_number` (non-zero):
+
+- If SPEC status set to "completed":
+  - Post completion comment on Issue: `gh issue comment {issue_number} --body "Implementation complete. SPEC-{ID} marked as completed. PR with Fixes #{issue_number} will auto-close this issue on merge."`
+- If SPEC status set to "in-progress":
+  - Post progress comment: `gh issue comment {issue_number} --body "Partial implementation synced. SPEC-{ID} status: in-progress."`
+
+This step is informational only. Actual Issue closure happens automatically via GitHub's `Fixes #N` mechanism when the PR is merged.

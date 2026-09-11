@@ -1,0 +1,7 @@
+base-agent-common-protocol.md:0
+base-doc-execution.md:0
+base-skill.md:0
+base-reference.md:0
+base-qgc.md:0
+base-sync.md:0
+base-command-sync.md:0
