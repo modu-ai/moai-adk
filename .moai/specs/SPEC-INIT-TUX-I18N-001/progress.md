@@ -274,6 +274,25 @@ Host tmux: `no server running` before and after the post-fix run.
 
 Doc divergence (measured, not edited): acceptance.md AC-ITI-015 gives the pre-fix v2 button indent as 7 columns. The v2 downgrade confirm measures 21 columns on the 80-column pty (`예` at column 21) and 20–22 in the 80×40 goldens depending on label width (huh centres the button row across the field width). The 7-column figure evidently belongs to another field width; AC-ITI-015's equality criterion is unaffected.
 
+#### After the batch
+
+Two coverage tests were added after M2 GREEN (`TestHuhV1Options_PreservesLabelAndValue` in cli, `TestNewDowngradeConfirmForm_UnknownLocaleRendersEnglish` in wizard) because the first coverage pass showed `huhV1Options` 0.0% (only the interactive v1 flow reached it) and the unknown-locale branch of `NewDowngradeConfirmForm` uncovered (71.4%).
+
+| Check | Command | Exit | Observed | Evidence |
+|---|---|---|---|---|
+| vet | `go vet ./internal/cli/ ./internal/cli/wizard/... ./internal/cli/ptycaptest/...` | 0 | no output | `.moai/reports/t586/stage-b/after-vet.txt` |
+| lint | `golangci-lint run ./internal/cli/ ./internal/cli/wizard/... ./internal/cli/ptycaptest/...` | 0 | `0 issues.` | `after-golangci.txt` |
+| build | `go build -o <scratchpad>/moai ./cmd/moai/` (output redirected out of the tree; the binary was not run) | 0 | no output | `after-build.txt` |
+| cross build | `GOOS=windows GOARCH=amd64 go build -o <scratchpad>/moai.exe ./cmd/moai/` | 0 | no output | `after-build-windows.txt` |
+| wizard cover | `go test ./internal/cli/wizard/... -count=1 -cover -v -timeout 600s` | 0 | RUN 210 · PASS 206 · FAIL 0 · SKIP 4 (the four pty capture tests, ungated) · `coverage: 93.2% of statements`; `NewDowngradeConfirmForm`, `localizedKeyMap`, `keyMapBindings` 100.0% | `after-wizard-cover.txt`, `after-wizard-changed-func-cover.txt` |
+| ptycaptest cover | `go test ./internal/cli/ptycaptest/... -count=1 -cover -v -timeout 600s` | 0 | RUN 31 · PASS 24 · FAIL 0 · SKIP 7 · `coverage: 38.3% of statements` (unchanged by Stage B; residual already recorded in Phase A) | `after-ptycaptest-cover.txt` |
+| cli changed-path cover | `go test ./internal/cli/ -run '^(TestProfileOptions_\|TestHuhV1Options_\|TestSchemaSelectOptions_\|TestUpdateVersionDowngradeConfirm_\|TestTUIEmptyLabelsSchemaSourced)' -count=1 -v -timeout 600s -coverprofile=<scratchpad>` + `go tool cover -func` | 0 | PASS 9 top-level; `resolveDowngradeLocale` 100.0%, `buildProfileOptions` 100.0%, `schemaSelectOptions` 100.0%, `huhV1Options` 100.0%, `profileLanguageOptions` 88.9% (unknown-value fallback), `profileModelPolicyOptions` 87.5% (empty-label fallback) | `after-cli-new-tests.txt`, `after-cli-changed-func-cover.txt` |
+| step-1 selection, again | `go test ./internal/cli/ -count=1 -list 'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI' -timeout 600s`, then the `-run` form with `-v` | 0 / 0 | 132 selected (129 + `TestProfileOptions_ValueSetsEqualSchema`, `TestProfileOptions_Labels`, `TestUpdateVersionDowngradeConfirm_Localized`) · RUN 224 · PASS 224 · FAIL 0 · SKIP 0 | `after-baseline-cli-list-selection.txt`, `after-baseline-cli-tests.txt` |
+
+Host tmux at the end: `no server running on /private/tmp/tmux-501/default`. No binary was run against the real HOME; every pty child ran with the scrubbed environment (verified per session). No `go test` ran in parallel with another.
+
+AC status after Stage B (this tree): AC-ITI-005 (4) GREEN (mech). AC-ITI-012 GREEN (golden, four cases, three mutants). AC-ITI-015 (a) RED captured pre-fix (v1, column 22) and still RED post-M2 (v2, column 21) — fix is M7. AC-ITI-019 now also asserted over cli's capture tests (SKIP ×5 ungated, FAIL ×4 without tmux). AC-ITI-013 remains M7 (the confirm surface already renders table labels only: `←/→ 전환 • enter 제출 • y 예 • n 아니오`).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

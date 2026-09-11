@@ -1,0 +1,10 @@
+=== RUN   TestHelpActionLabels_MatchDesignTable
+--- PASS: TestHelpActionLabels_MatchDesignTable (0.00s)
+=== RUN   TestDowngradeConfirmTexts_FourLocales
+--- PASS: TestDowngradeConfirmTexts_FourLocales (0.00s)
+=== RUN   TestNewDowngradeConfirmForm_KoRender
+--- PASS: TestNewDowngradeConfirmForm_KoRender (0.00s)
+=== RUN   TestNewDowngradeConfirmForm_UnknownLocaleRendersEnglish
+--- PASS: TestNewDowngradeConfirmForm_UnknownLocaleRendersEnglish (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.430s

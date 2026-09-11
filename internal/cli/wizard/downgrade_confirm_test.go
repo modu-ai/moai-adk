@@ -86,3 +86,19 @@ func TestNewDowngradeConfirmForm_KoRender(t *testing.T) {
 		}
 	}
 }
+
+// TestNewDowngradeConfirmForm_UnknownLocaleRendersEnglish — a locale outside
+// the table renders the English text, buttons, and help.
+func TestNewDowngradeConfirmForm_UnknownLocaleRendersEnglish(t *testing.T) {
+	var v bool
+	view := ptycaptest.StripANSI(newFormDriver(t, NewDowngradeConfirmForm("fr", "v9.9.9", "v1.0.0", &v)).view())
+	ptycaptest.RequireLines(t, view, "Downgrade v9.9.9 → v1.0.0?", "The requested tag is older than the running version.")
+	for _, want := range []string{"Yes", "No", "toggle", "submit"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("fr (unknown) confirm lacks the English %q; view:\n%s", want, view)
+		}
+	}
+	if km := localizedKeyMap("fr"); km.Confirm.Toggle.Help().Desc != "toggle" {
+		t.Errorf("unknown-locale key map toggle help %q, want the default", km.Confirm.Toggle.Help().Desc)
+	}
+}
