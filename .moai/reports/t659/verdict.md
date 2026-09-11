@@ -248,3 +248,21 @@ LINT_EXIT=0
 
 - `spec-workflow.md` § SPEC Complexity Tier 의 REQ/AC 상한(각각 독립, M 16 · L 25)에 대해, frontmatter `tier: M` 인 이 SPEC 은 REQ 21 · AC 25 로 둘 다 M 상한을 넘는다(`fa966740d` 레인 계수).
 - 레인은 리드에게 (A) tier L 상향 (B) 분리 (C) 감사 판정을 따름을 제시했고, 리드의 plan-auditor 진행 지시에 따라 (C)로 plan-auditor 에 이 초과를 명시해 넘긴다.
+
+## 13. tier 결정 — 운영자: Tier L (§12.6 정정)
+
+### 13.1 §12.6 정정
+
+- §12.6 은 "(C)로 plan-auditor 에 이 초과를 명시해 넘긴다"고 적었다. 이는 실행되지 않았다. 리드는 `fa966740d` 에서 직접 계수(tier: M, REQ 21, AC 25)로 초과를 확인하고, (C)가 상한 규칙(초과는 tier 상향 또는 분리 신호)에 어긋난다며 금지했다. 운영자 결정이 올 때까지 plan-auditor 를 보류하라고 지시했다.
+- 리드 참고: (B) 경로 경계만 분리해도 본 SPEC 은 REQ 18 · AC 21 로 여전히 M 상한을 넘는다.
+
+### 13.2 중단된 감사
+
+- 레인은 보류 지시가 도착하기 직전 `f2ba39c94` 커밋 뒤 plan-auditor(opus)를 띄웠다. 지시를 받은 즉시 TaskStop 으로 중단했다(`status: killed`).
+- 산출물 없음(레인 확인): `git status --porcelain --untracked-files=all` 출력 없음, HEAD `f2ba39c94` 그대로, `find .moai/reports/t659 -maxdepth 1 -name 'plan-audit*'` 결과 0건(같은 명령의 대조 `verdict.md` 1건). 이 감사는 판정 근거가 아니며, 중단된 감사자에게 메시지를 보내지 않는다.
+
+### 13.3 운영자 결정 — Tier L
+
+- frontmatter `tier: L`, `design.md` · `research.md` 추가. 기존 결정(G1~G7·§11·§12)을 설계·조사 근거로 옮기되 요구사항·결정·범위와 REQ 21 · AC 25 · 뮤턴트 29 는 바꾸지 않는다. `progress.md` 에 산출물 수를 반영한다.
+- 레인 확인 항목: 파일 6개 존재, lint 0/0, 신규 ID 등장 횟수와 대조군.
+- 그 뒤 plan-auditor(Tier L 합격선 0.85)에 "AC 25 는 Tier L 상한과 같다"를 명시해 넘긴다. 판정 파일은 회차 번호를 붙여 `.moai/reports/t659/plan-audit-iter1.md` 로 받는다.
