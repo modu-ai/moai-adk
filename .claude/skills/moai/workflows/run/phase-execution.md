@@ -12,6 +12,10 @@ All phases execute sequentially. Each phase receives outputs from all previous p
 
 ## Phase 1: Plan Audit Gate
 
+Phase skip/resume decisions follow `.claude/rules/moai/workflow/phase-id-contract.md`.
+The headings below are display labels; the orchestrator records and compares
+canonical `phase_id` values and validates the phase DAG before jumping.
+
 **Purpose**: Mandatory independent audit of plan artifacts before any implementation begins.
 Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 1.
 Source: the plan audit gate contract.
