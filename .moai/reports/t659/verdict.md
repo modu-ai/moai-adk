@@ -368,3 +368,32 @@ LINT_EXIT=0
 ### 17.3 lint (`lint-0.1.7.txt`, 판정 바이너리 `lint-binary-0.1.7.txt`)
 
 - `/Users/goos/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001` → `0 error(s), 0 warning(s)`, `LINT_EXIT=0`. 판정 트리 `183bba916`, 바이너리 `ed71054d3-dirty`(`-dirty` 내용 미관측, Gap).
+
+## 18. run·sync 이후 — 리드 결정과 후속 후보
+
+### 18.1 이 카드에서 처리한 것
+
+- 운영자 결정(리드 전달, 2026-09-11): Kickoff 승인, 백업·임시 쓰기 실패 복원 Gap 공백 승인, X1–X4 재감사 없이 반영(`54b298476`).
+- SPEC 밖 가드 G-A·G-B는 리드가 인정했다. 조건은 테스트 1개와 뮤턴트로 고정하는 것이다(`90ea2b26f`).
+- G-B는 사람 승인 뒤에 거부되던 순서를 게이트 앞으로 옮겼다(`0893611ad` RED → `5801ebda0`).
+- 컴파일 슬롯에서 CLI 칸을 재측정했다(`128a5ea52`). AC 25/25, 뮤턴트 42회 전부 잡힘.
+- sync(`1f9946188`). sync-audit PASS 88.2를 리드가 수용했다(`e5a18feae`).
+- 감사 후속
+  - F5·F6: MX 태그 주석(`e8d16eaee`)
+  - F1: G-B가 파일 동일성으로 비교(`2496053a8` RED → `bca8cf96a`)
+  - F4: CHANGELOG 사실 오류 정정(`b36f50c4c`)
+- 델타 감사 PASS 90.2(`cff2348a8`). 새 결함 D1·D2(Low, optional)는 처분을 리드에게 요청했다.
+
+### 18.2 후속 카드 후보 (리드 결정 2026-09-12: 이 카드에서 구현하지 않고 기록만 한다)
+
+| 후보 | 우선순위 | 내용 | 출처 |
+|---|---|---|---|
+| F2 | **High** (데이터 무결성) | 승인 뒤 레지스트리를 다시 읽을 때 대상 clause가 아직 `Before`인지 재확인하지 않는다. 승인을 기다리는 동안 들어온 다른 수정을 덮어쓸 수 있다 (`apply_transform.go:75-137`) | sync-audit F2 |
+| F3 | 미정 (레인 제안 Medium) | 트리 안 심볼릭 링크 대상에 rename하면 링크가 일반 파일로 바뀐다. 현재 트리의 심볼릭 링크는 0개라 잠재 위험이다 (`apply_commit.go:127-131`) | sync-audit F3 |
+| F7 | 미정 (레인 제안 Medium) | `.moai/research/`가 없고 락이 다른 곳에 있으면 첫 개정이 임시 쓰기에서 실패해, 검증되지 않은 복원 경로를 탄다. CLI 기본 경로는 해당하지 않는다 | sync-audit F7 |
+| F8 | 미정 (레인 제안 Medium) | 공백만 있는 `After`, REQ-CAA-001/002/004/016 검증 실패가 사람 승인 뒤에야 드러난다. G-B를 옮긴 것과 같은 UX 결함이다 | sync-audit F8 |
+| F9 | 미정 (레인 제안 Low) | 거부된 실제 모드 실행이 락 디렉터리를 남길 수 있다(기존 동작, SPEC §F 범위 밖) | sync-audit F9 |
+| structure.md:78 | 미정 (레인 제안 Low) | `internal/constitution` "13 non-test files"는 이 카드 이전부터 틀렸다(BASELINE 14, HEAD 18) | manager-docs sync |
+| MX WARN 3개 | 미정 (레인 제안 Low) | `LoadRegistry`(18), `rateLimiter.Admit`(17), `Validate`(22)는 복잡도 15 이상인데 WARN이 없다. PRESERVE 파일이라 손대지 않았다 | F6 작업 중 측정 |
+| ANCHOR 강등 | 미정 (레인 제안 Low) | `LoadEvolutionLogs` ANCHOR의 프로덕션 fan_in이 2다. NOTE로 강등할지는 리드가 결정한다 | F5 작업 중 측정 |
+| 비-amend 호출자 격리 | 미정 | D4로 제외한 `LoadRegistry` 비-amend 호출자 5곳의 containment check 확장 | §16 D4 (리드 기록) |
