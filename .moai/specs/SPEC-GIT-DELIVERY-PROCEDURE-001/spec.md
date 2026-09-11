@@ -2,7 +2,7 @@
 id: SPEC-GIT-DELIVERY-PROCEDURE-001
 title: "배포 지침의 git 전달 절차 기계적 수리 — fetch 순서, 병합 방식 해석, auto-merge 옵트인 단일 기준과 플래그 의미"
 version: "0.2.6"
-status: draft
+status: in-progress
 created: 2026-09-10
 updated: 2026-09-11
 author: manager-spec

@@ -1,0 +1,4 @@
+ac026-base-local-skill.md:1
+ac026-base-local-sync.md:1
+ac026-base-local-qgc-flags.md:1
+ac026-base-local-dl.md:2
