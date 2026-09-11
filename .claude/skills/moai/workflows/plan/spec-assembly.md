@@ -172,7 +172,10 @@ Skip conditions:
 
 Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
 - `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
-- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
+- `standard`/`thorough`: blocking retry loop using the tier-resolved ceiling
+  from `.moai/config/sections/harness.yaml` (`S=1`, `M=2`, `L=3`); the
+  `remaining_attempts` counter is owned by the orchestrator and is consumed by
+  every reviewer invocation, including cross-validation.
 
 #### Parallel Review Lenses (read-only, conditional)
 
@@ -251,8 +254,8 @@ Present the full defect history to the user:
 
 Harness configuration reference (harness.yaml):
 - `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
-- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
-- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
+- `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true, cross_validate_with_evaluator_active: true
 
 For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
 
