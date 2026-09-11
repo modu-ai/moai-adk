@@ -275,12 +275,12 @@ func (d *logEntryDecoder) entry() (AmendmentLog, error) {
 	// ApprovedAt: fail closed when absent or unparseable (REQ-CAA-009).
 	key, f, ok := d.first(logKeysApprovedAt)
 	if !ok {
-		return AmendmentLog{}, d.fail(d.idLine, "approved_at", "no approval timestamp")
+		return AmendmentLog{}, d.fail(d.idLine, "approved_at", "no approval time recorded")
 	}
 	t, parsed := parseLogTime(f.value.Value)
 	if f.value.Kind != yaml.ScalarNode || !parsed {
 		return AmendmentLog{}, d.fail(d.fileLine(f.key), key,
-			"approval timestamp %q does not parse (want RFC 3339 or YYYY-MM-DD)", f.value.Value)
+			"approval time %q does not parse (want RFC 3339 or YYYY-MM-DD)", f.value.Value)
 	}
 	e.ApprovedAt = t
 
