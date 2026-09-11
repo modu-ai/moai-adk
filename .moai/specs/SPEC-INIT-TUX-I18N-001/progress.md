@@ -130,10 +130,62 @@ Host tmux state: `moai-ptycap-` sessions before the gated runs 0, after 0 (`tmux
 
 Harness contract notes for Phase B:
 - Captures are exported only to `MOAI_PTY_CAPTURE_OUT` (absolute path) when set; otherwise to the test's temp dir. The harness never writes into the repository on its own, so the P9 export is an explicit choice of the verdict run's environment.
-- The harness lives in `_test.go` files of package `wizard`, so `internal/cli` tests cannot import it. The AC-ITI-003 case (the `moai init` command path) needs an `internal/cli` child (`design.md` §11 builds `./internal/cli`). Phase B has to either move the harness into a small importable test-support package or give `internal/cli` its own copy; this is a structural choice for the lead, not taken here.
+- Location decided by the lead (see "Harness move (lead decision)" below): the harness is the test-support package `internal/cli/ptycaptest`, one copy. An `internal/cli` test imports it directly. The AC-ITI-003 child is a `TestPtyCaptureChild` (the name in `ptycaptest.ChildTestName`) in package `cli`, built with `ptycaptest.BuildChild(t, ".")` — `go test` runs a test binary in its package directory, so `"."` is `./internal/cli`, which is what `design.md` §11 builds.
 - D4 observation only (not a verdict, pre-t583 tree): in the 80×30 capture of the current init first page the stepper line is absent — the first captured line is `┃ Select conversation language` and the capture holds 0 `●`/`○` characters. Recorded for the §G deferred item.
 
 Plan-audit iter4 notes: O1 (S2 anchor fooled by a trailing comment) and O2 (design.md §10 wording) concern the S2 guard retarget in M5 inside `internal/cli`; neither applies to Phase A. O2 is a `design.md` body edit, which this agent does not own.
+
+#### Harness move (lead decision)
+
+Decision, as given by the lead: "Move the harness into a small importable test-support package — precedent internal/hook/testutil. Condition: add one check (go list -deps or a test) proving no production (non-_test.go) code imports this package. Do not create two copies."
+
+Package: `internal/cli/ptycaptest` (package `ptycaptest`), path as suggested. It imports `internal/config`, `internal/homestate`, and `go-runewidth` — neither `internal/cli` nor `internal/cli/wizard` (`go list -deps ./internal/cli/ptycaptest/ | grep moai-adk/internal/cli` lists only the package itself). Package doc follows the `internal/hook/testutil` style (test-only, production code MUST NOT import it) and names the guard.
+
+What moved (one copy; the four `internal/cli/wizard/ptycap_{harness,homewatch,render,selfcheck}_test.go` files are deleted):
+
+| File | Exported API |
+|---|---|
+| `harness.go` | gate constants once (`GateEnv`, `ChildEnv`, `SelfTestEnv`, `CaseRootEnv`, `OutDirEnv`, `CanaryEnv`, `EnvOutEnv`), `ChildTestName`, `SessionPrefix`, `Width`/`Height`/`Term`, `AnchorTimeout`; `Gate`, `SessionName`, `ListSessions`, `OpenSentinel`, `Case`/`NewCase`/`(*Case).ChildEnv`, `RecordEnv`, `VerifyChildEnv`, `BuildChild(tb, pkg)`, `Start`, `(*Session).Capture/WaitFor/SendKeys/Close`, `Export`, `SessionsNamedIn`, `SubprocessEnv`, `RunChild`, `AssertSkipWithoutGate`, `AssertFailWithoutTmux` |
+| `homewatch.go` | W1–W6 list (unexported, single constant), `SnapshotHome(root, keys)`, `DiffSnapshots`, `HomeSnapshot.Entries/Existing`, `WatchRealHome` |
+| `render.go` | `StripANSI`, `DisplayColumn` (pinned `runewidth.Condition{EastAsianWidth: false, StrictEmojiNeutral: true}`), `CompareGolden`, `RequireLines` |
+
+All signatures take `testing.TB`. `BuildChild` takes the package argument for `go test -c` and resolves it against the working directory; callers pass `"."`, which is the calling package because `go test` runs a test binary in its package directory. The only behavioral edits are mechanical: `*testing.T` → `testing.TB`, the child test name read from `ChildTestName`, `containsString` → `slices.Contains`, the child binary named `child.test`, and the two AC-ITI-019 test bodies lifted into the shared `Assert…` functions with the capture-test count as a parameter.
+
+Self-check placement:
+
+| Clause | Where | Why there |
+|---|---|---|
+| 020 (1) normal run | `ptycaptest.TestPtyCapture_NormalRun` on a fixture child (prints `PTYCAP FIXTURE READY` + the four language lines, blocks on stdin) **and** `wizard.TestPtyCapture_NormalRun` on the product screen | the package run proves the harness without product coupling; the wizard run proves the product-screen path still works through the moved harness |
+| 020 (2) forced failure, (3) forced timeout | `ptycaptest` only (`TestPtyCaptureSelfTestChild` opens a fixture-child session) | they test harness cleanup and the timeout path, which no product screen changes |
+| 020 (4) watch-list positive control | `ptycaptest.TestHomeWatch_PositiveControl` (pure, fake HOME) | the list and the comparison function live in the package |
+| 019 (a) ungated → all SKIP, (b) no tmux → all FAIL | both packages, bodies shared via `AssertSkipWithoutGate` / `AssertFailWithoutTmux` | the clause is about "all capture tests"; each package asserts over its own set (ptycaptest 7 / 5, wizard 4 / 3) |
+
+Moved tests keep their names; only the package changes. `wizard` keeps `TestPtyCaptureChild` (product child), `TestPtyCapture_NormalRun`, `TestPtyCapture_SkipWithoutGate`, `TestPtyCapture_FailWithoutTmux` in `ptycap_test.go`. Full old → new mapping: `.moai/reports/t586/phase-a/move-before-after-summary.txt`.
+
+Import guard: `ptycaptest.TestNoProductionImport` runs `go list -f '<P line: .Imports> <T line: .TestImports .XTestImports>' ./...` from the module root (`go list -m -f {{.Dir}}`), no compilation. Positive existence first (142 packages scanned, self and wizard listed), positive control (the same scan sees the wizard `_test.go` import of ptycaptest), then the verdict (no `P` line lists ptycaptest). `TestCheckNoProductionImport_Synthetic` pins the matcher (test-only import allowed, production import reported, prefix path not a match).
+
+| Step | Command | Observed | Evidence |
+|---|---|---|---|
+| Before, ungated (own commit `4061b6bda`, tree c7646c48a) | `go test ./internal/cli/wizard/... -count=1 -cover -v -timeout 300s` | exit 0 · RUN 231 · PASS 224 · FAIL 0 · SKIP 7 · cov 92.9% | `.moai/reports/t586/phase-a/move-before-ungated.txt` |
+| Before, gated | `MOAI_PTY_CAPTURE=1 go test ./internal/cli/wizard/ -run 'Ptycap\|PtyCapture\|HomeWatch' -count=1 -v -timeout 600s` | exit 0 · RUN 29 · top-level PASS 15 · SKIP 2 · FAIL 0 | `move-before-gated.txt` |
+| Guard mutant | scratch production file `internal/cli/ptycaptest/zzmutant/mutant.go` importing ptycaptest; `go test ./internal/cli/ptycaptest/ -run '^TestNoProductionImport$' -count=1 -v` | exit 1: `production (non-_test.go) code imports the test-only package …: [github.com/modu-ai/moai-adk/internal/cli/ptycaptest/zzmutant]` (143 packages scanned); scratch removed → exit 0, 142 packages | `move-guard-mutant.txt` |
+| Harness mutants on the moved code | H-a: drop `tb.Cleanup(killSession)` in `Start`; H-c: `WaitFor` returns on timeout | H-a `--- FAIL: TestPtyCapture_ForcedFailure` (`session moai-ptycap-TestPtyCaptureSelfTestChild-61e7d4aa … survived`; killed by that exact name); H-c `--- FAIL: TestPtyCapture_ForcedTimeout` (`lacks "not visible within"`); both restored | `move-after-harness-mutants.txt` |
+| After, wizard ungated (tree = commit `18e97065b`, `git diff HEAD -- internal/` empty at measurement) | same as before | exit 0 · RUN 206 · PASS 202 · FAIL 0 · SKIP 4 · cov 92.9% (231 − 29 moved + 4 kept) | `move-after-ungated.txt` |
+| After, wizard gated | same as before | exit 0 · 4 top-level: NormalRun / SkipWithoutGate / FailWithoutTmux PASS, child SKIP · env verified (14 vars) · sentinel-only sets equal · `real HOME watch list: 17 entries, 11 present` before and after, no change | `move-after-gated.txt` |
+| After, ptycaptest ungated | `go test ./internal/cli/ptycaptest/... -count=1 -cover -v -timeout 300s` | exit 0 · RUN 31 · top-level PASS 12 · SKIP 7 · FAIL 0 · cov 38.3% | `move-after-pkg-ungated.txt` |
+| After, ptycaptest gated | same with `MOAI_PTY_CAPTURE=1`, `-timeout 600s` | exit 0 · top-level PASS 17 · SKIP 2 (child helpers) · FAIL 0 · cov 82.2%; all 17 pre-move top-level names present, plus the 2 guard tests | `move-after-pkg-gated.txt` |
+| Lint / vet | `go vet ./internal/cli/wizard/... ./internal/cli/ptycaptest/...`; `golangci-lint run` (same); `GOOS=windows GOARCH=amd64 go vet ./internal/cli/ptycaptest/ ./internal/cli/wizard/` | exit 0 · `0 issues.` · exit 0 | `move-after-vet.txt`, `move-after-golangci.txt`, `move-after-vet-windows.txt` |
+| Dependency check | `go list -deps -test ./internal/cli/wizard/ \| grep -c 'moai-adk/internal/cli$'`; control `grep -c 'internal/cli/ptycaptest$'` | `0`; control `1` | `move-after-deps.txt` |
+
+Host tmux: `moai-ptycap-` sessions 0 before the before-runs, 0 before and after the after-runs ("no server running" counted as 0). Summary: `move-before-after-summary.txt`.
+
+Coverage note: ptycaptest is 38.3% ungated and 82.2% gated, below the 85% package target. The ungated gap is the tmux-driven code, which runs only under the gate; the gated remainder is error branches (tmux `list-sessions`/`new-session` failure, export directory creation failure, the Windows skip). Recorded as residual, not raised here.
+
+#### Lead dispositions
+
+- (a) `acceptance.md` §B P4 TERM row is a plan-side correction: tmux's `default-terminal` overrides `-e TERM`, and the harness sets `TERM` in the child command (`TERM=xterm-256color exec <bin> …`). Pending — applied at sync, not edited now (this agent does not edit `acceptance.md`).
+- (b) Real-HOME W6: 58 new `~/.moai/run/<key>/home-state-migration.json.lock` directories were created 19:26:13–19:29:44 on 2026-09-11. Not reachable from the wizard package (0 `homestate` deps at that tree); the writer is unidentified → Gap, accepted by the lead as unrelated to this card. W1–W5 before/after identical; W4 absent both times.
+- (c) Process incident: after `/clear` a second manager-develop was spawned while the previous Phase A agent was still running. The second agent detected the HEAD move and wrote nothing, and self-reported to the lead.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
