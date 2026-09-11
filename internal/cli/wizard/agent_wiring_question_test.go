@@ -52,37 +52,41 @@ func TestAgentWiringQuestion_InInitSetWithClosedOptionSet(t *testing.T) {
 		t.Errorf("agent_wiring default = %q, want %q (recommended default, REQ-IHP-001)", q.Default, "claude")
 	}
 
-	// plan.md §B Decision B1: the question is asked unconditionally, and so is
-	// mcp_provision. A Condition func here would contradict a settled decision.
+	// plan.md §B Decision B1: the question is asked unconditionally. A
+	// Condition func here would contradict a settled decision.
 	if q.Condition != nil {
 		t.Error("agent_wiring must carry no Condition func (plan.md §B Decision B1)")
 	}
 }
 
-// TestAgentWiringQuestion_PrecedesMCPProvision asserts the §F M3 placement:
-// the harness question sits immediately before mcp_provision, so the
-// overriding answer is given first (spec.md §4 D3).
-func TestAgentWiringQuestion_PrecedesMCPProvision(t *testing.T) {
+// TestAgentWiringQuestion_PrecedesAutonomyTier asserts the page-3 placement
+// after SPEC-INIT-QUIET-WIZARD-001: mcp_provision is no longer asked (the
+// interactive path provisions by default), and the harness question sits
+// immediately before autonomy_tier. It replaces
+// TestAgentWiringQuestion_PrecedesMCPProvision, whose neighbour is gone.
+func TestAgentWiringQuestion_PrecedesAutonomyTier(t *testing.T) {
 	t.Parallel()
 	questions := Page3Questions(t.TempDir())
 
-	harness, mcp := -1, -1
+	harness, autonomy := -1, -1
 	for i := range questions {
 		switch questions[i].ID {
 		case "agent_wiring":
 			harness = i
+		case "autonomy_tier":
+			autonomy = i
 		case "mcp_provision":
-			mcp = i
+			t.Errorf("mcp_provision is still in Page3Questions at index %d (SPEC-INIT-QUIET-WIZARD-001)", i)
 		}
 	}
 	if harness < 0 {
 		t.Fatal("agent_wiring is not in Page3Questions (spec.md §4 D3)")
 	}
-	if mcp < 0 {
-		t.Fatal("mcp_provision is not in Page3Questions")
+	if autonomy < 0 {
+		t.Fatal("autonomy_tier is not in Page3Questions")
 	}
-	if harness != mcp-1 {
-		t.Errorf("agent_wiring is at index %d and mcp_provision at %d; the harness question must sit immediately before it", harness, mcp)
+	if harness != autonomy-1 {
+		t.Errorf("agent_wiring is at index %d and autonomy_tier at %d; the harness question must sit immediately before it", harness, autonomy)
 	}
 	if got := questions[harness].Group; got != "Quality & Workflow" {
 		t.Errorf("agent_wiring group = %q, want %q", got, "Quality & Workflow")

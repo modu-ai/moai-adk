@@ -54,12 +54,14 @@ type InitOptions struct {
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
 
-	// Worktree advisory. Mirrors the wizard.WorktreeAutoCreate selection when
-	// the flag is absent (REQ-005 precedence). Persisted to
-	// workflow.worktree.auto_create at init ONLY when the WorktreeAutoCreateSet
-	// tracker fired (an explicit --worktree-auto-create flag,
-	// SPEC-INIT-WIZARD-REPAIR-001 REQ-006) — the wizard advisory alone is
-	// informational and leaves the deployed template default untouched.
+	// Worktree advisory. Persisted to workflow.worktree.auto_create at init
+	// ONLY when the WorktreeAutoCreateSet tracker fired — an explicit
+	// --worktree-auto-create flag (tracker-based write, REQ-006). With the
+	// flag absent the deployed template default stays untouched. The
+	// interactive paths that change it are the reconfigure step and the web
+	// console.
+	// @MX:NOTE: [AUTO] init records only the explicit flag tracker; interactive
+	// changes go through reconfigure or the web console.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
 	// TodoEnabled mirrors wizard.WizardResult.TodoEnabled and persists to

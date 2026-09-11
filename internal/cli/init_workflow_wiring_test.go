@@ -94,13 +94,14 @@ func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical(t *testing.T) {
 }
 
 // TestRunInit_WorktreeAutoCreateFlagBeatsWizard asserts AC-007: an explicit
-// --worktree-auto-create=true wins over a wizard advisory answer of false;
-// with the flag absent, the wizard answer applies (false — byte-identical to
-// the template default, REQ-006).
+// --worktree-auto-create=true is persisted on an interactive run; with the
+// flag absent, auto_create stays false (the template default, REQ-006). The
+// wizard no longer asks the worktree question (SPEC-INIT-QUIET-WIZARD-001), so
+// the injected result carries no worktree answer.
 func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
-	wiz := &wizard.WizardResult{WorktreeAutoCreate: false}
+	wiz := &wizard.WizardResult{}
 
-	// Flag present: persisted true despite the wizard's false.
+	// Flag present: persisted true.
 	_, workflowPath := runInitForWorkflow(t, wiz, map[string]string{
 		"worktree-auto-create": "true",
 	})
@@ -112,10 +113,9 @@ func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
 		t.Errorf("flag must beat the wizard answer: auto_create not true; got:\n%s", got)
 	}
 
-	// Flag absent: the wizard answer applies; false equals the template
-	// default. The interactive run legitimately writes the audit block (chain
-	// ③), so assert the VALUE: auto_create stays false and no branch_guard
-	// block is synthesized (no tracker flipped).
+	// Flag absent: false equals the template default. Assert the VALUE:
+	// auto_create stays false and no branch_guard block is synthesized (no
+	// tracker flipped).
 	_, workflowPath2 := runInitForWorkflow(t, wiz, nil)
 	got2, err := os.ReadFile(workflowPath2)
 	if err != nil {
