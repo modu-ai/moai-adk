@@ -285,7 +285,7 @@ duplicate those values inline.
 | `moai tool enable codex` | Add or refresh Codex wiring in an existing project |
 | `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
 | `moai doctor` | Diagnose installation and wiring health |
-| `moai worktree` | Worktree lifecycle (list / snapshot / verify / restore) |
+| `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
 | `moai cc` / `moai glm` / `moai cg` | Session launchers (Claude, GLM, coordinated pairing) |
 | `moai version` | Print build version and provenance |
 
