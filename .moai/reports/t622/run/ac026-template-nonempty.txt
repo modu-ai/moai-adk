@@ -1,0 +1,9 @@
+  test-s skill=0
+  test-s ref=0
+  test-s qgc-args=0
+  test-s qgc-flags=0
+  test-s sync=0
+  test-s dl=0
+  test-s sync-usage=0
+  test-s hint=0
+  test-s dl-next=0

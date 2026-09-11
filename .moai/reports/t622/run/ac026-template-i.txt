@@ -1,0 +1,7 @@
+ac026-template-skill.md:1
+ac026-template-ref.md:1
+ac026-template-sync.md:1
+ac026-template-dl.md:7
+ac026-template-sync-usage.md:1
+ac026-template-hint.md:1
+ac026-template-dl-next.md:1

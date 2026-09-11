@@ -1,0 +1,14 @@
+Execute only with the `--auto-merge` flag (`--merge` is a deprecated alias of `--auto-merge`); without it the PR is not merged. Mode conditions:
+- In team mode, `--auto-merge` merges only after all approvals are obtained.
+- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
+Merging is opt-in. The single criterion is the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge; worktree context alone never triggers a merge.
+- `--auto-merge` flag set
+- OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
+- In team mode, `--auto-merge` merges only after all approvals are obtained.
+- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
+- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions above.
+- `--merge`: deprecated alias of `--auto-merge` (logs a warning).
+- If merge conflicts: Report conflicts, provide manual resolution guidance, do NOT merge
+- If approvals missing (Team mode): Report pending approvals, do NOT merge
+- On failure: Log warning with manual cleanup command
+- Message: "Worktree cleanup warning: {error}. Manual: `moai worktree done SPEC-{ID}`"

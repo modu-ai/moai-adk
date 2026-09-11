@@ -1,0 +1,8 @@
+| Output | Meaning | Action |
+| `0 N` | Local ahead by N (clean — your commits not yet pushed) | Proceed normally |
+| `0 0` | Synced (local == origin/main) | Proceed normally |
+| `N 0` | Origin ahead by N | Proceed normally |
+| `N M` | Diverged (both ahead) | STOP, MUST resolve before spawn |
+| Output | Meaning | Action |
+| `[]` | No other session on this SPEC | Proceed normally |
+| `[{...}]` (≥1 entry from another session) | **Concurrent session race detected on same SPEC** | STOP, surface entries, AskUserQuestion: **wait** / **override** / **abort** |

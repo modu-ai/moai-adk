@@ -58,6 +58,9 @@ moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 | `--sarif` | SARIF 2.1.0 格式输出 |
 | `--strict` | 将警告视为错误 |
 | `--format <fmt>` | 输出格式(table) |
+| `--baseline <path>` | 用检入仓库的按规则基线进行门控,替代 `--strict`——错误始终失败,某规则的非 advisory 警告数仅在超过已记录值时才会阻断,现存警告总数始终显示在输出中 |
+| `--update-baseline` | 重新计算并覆写 `--baseline` 文件(需要 `--reason`) |
+| `--reason "<text>"` | `--update-baseline` 记录的必填非空理由——理由为空或缺失将被拒绝 |
 
 | 参数形式 | 示例 |
 |--------|------|

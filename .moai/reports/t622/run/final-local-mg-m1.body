@@ -1,0 +1,5 @@
+Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx
+- --merge: deprecated alias of --auto-merge (logs a warning).
+**Flags**: `--pr` (PR 생성) | `--auto-merge` (auto-merge 옵트인) | `--merge` (deprecated alias of `--auto-merge`) | `--skip-mx` (MX 검증 스킵)
+- OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
+- `--merge`: deprecated alias of `--auto-merge` (logs a warning).

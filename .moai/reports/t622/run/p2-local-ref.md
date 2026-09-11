@@ -1,0 +1,3 @@
+- Modes (positional): auto (default), force, status, project
+- --auto-merge: Opt in to auto-merge the PR and clean up the branch after sync
+- --skip-mx: Skip MX tag validation during sync

@@ -3,7 +3,6 @@
 Purpose: Comprehensive troubleshooting guide for Git worktree management issues, common errors, and resolution strategies.
 
 Version: 1.0.0
-Last Updated: 2025-12-30
 
 ---
 
@@ -17,9 +16,9 @@ Common Issue Categories:
 - Integration Issues: MoAI workflow integration and command coordination
 
 Quick Diagnostics:
-- Check worktree status: moai-worktree status --all
-- Verify registry integrity: moai-worktree registry validate
 - List Git worktrees: git worktree list
+- Report every worktree and its state: moai worktree clean --json (removes nothing)
+- Repair the worktree registry: moai worktree recover
 - Check branch state: git status
 
 ---
@@ -46,9 +45,9 @@ Resolution Steps:
 5. Retry the worktree creation command
 
 Prevention:
-- Always use moai-worktree remove instead of manual directory deletion
+- Always use moai worktree remove (or git worktree remove) instead of manual directory deletion
 - Run git worktree prune after any failed Git operations
-- Verify registry integrity periodically
+- Run moai worktree recover when the registry and the directories on disk disagree
 
 ### Branch Already Checked Out Error
 
@@ -93,9 +92,9 @@ Resolution Steps:
 ### Registry File Corruption
 
 Symptoms:
-- moai-worktree commands fail with JSON parsing errors
-- Registry file contains invalid JSON syntax
-- Commands report registry not found despite file existing
+- moai worktree commands fail while reading worktree administrative files
+- Worktrees that exist on disk are missing from git worktree list
+- Commands report a worktree not found despite its directory existing
 
 Root Causes:
 - Concurrent write operations corrupted the file
@@ -104,23 +103,15 @@ Root Causes:
 - Process was killed during registry update
 
 Resolution Steps:
-1. Create a backup of the current registry file before making changes
-2. Attempt to parse the registry file to identify the syntax error location
-3. If JSON is repairable, fix the syntax error manually
-4. If JSON is unrecoverable, rebuild registry from existing worktree directories
-5. Use git worktree list to discover existing worktrees and re-register them
-
-Recovery Process:
-- List all directories in the worktree root folder
-- For each valid worktree directory, extract metadata from Git configuration
-- Rebuild registry entries with discovered worktree information
-- Validate the rebuilt registry with moai-worktree status --all
+1. Run moai worktree recover — it scans the worktree root, runs git worktree repair, prunes stale references, and lists what it recovered
+2. Confirm the result with git worktree list
+3. If a directory is still missing from the list, check that it contains a valid .git file before retrying
 
 ### Orphaned Registry Entries
 
 Symptoms:
 - Registry lists worktrees that no longer exist on disk
-- moai-worktree status shows worktrees as missing
+- git worktree list shows entries marked prunable
 - Commands fail when trying to operate on listed worktrees
 
 Root Causes:
@@ -130,9 +121,9 @@ Root Causes:
 - Registry was not updated after worktree removal
 
 Resolution Steps:
-1. Run moai-worktree status --all to identify orphaned entries
+1. Run git worktree list to identify orphaned entries
 2. For each orphaned entry, confirm the directory truly does not exist
-3. Remove orphaned entries from registry using moai-worktree registry prune
+3. Remove orphaned entries with git worktree prune, or run moai worktree recover to repair and prune together
 4. Alternatively, recreate the worktree if the branch still exists
 
 ### Registry Sync Conflicts
@@ -179,7 +170,7 @@ Resolution Steps:
 Prevention:
 - Avoid manual git checkout of commit hashes in worktrees
 - Complete rebase and merge operations before switching worktrees
-- Use moai-worktree commands for standard operations
+- Use moai worktree commands for standard operations
 
 ### Merge Conflicts During Sync
 
@@ -320,14 +311,13 @@ Resolution Steps:
 ### Worktree State Verification
 
 Status Commands:
-- moai-worktree status --all: Shows all worktrees with sync status
 - git worktree list: Native Git worktree listing
-- moai-worktree status SPEC-ID --detailed: Detailed status for specific worktree
+- git -C <path> status: Detailed status for a specific worktree
+- moai worktree clean --json: Every non-protected worktree and its state, as JSON (removes nothing)
 
 Registry Commands:
-- moai-worktree registry validate: Checks registry integrity
-- moai-worktree registry prune: Removes orphaned entries
-- moai-worktree registry export: Exports registry for backup
+- moai worktree recover: Repair administrative files, prune stale references, list the result
+- git worktree prune: Remove stale Git worktree metadata
 
 Git State Commands:
 - git status: Current worktree Git state
@@ -337,13 +327,13 @@ Git State Commands:
 ### Cleanup and Recovery
 
 Cleanup Commands:
-- moai-worktree clean --dry-run: Preview cleanup without changes
-- moai-worktree clean --merged-only: Clean only merged worktrees
+- moai worktree clean --stale: Preview abandoned worktrees (add --yes to remove them)
+- moai worktree clean --merged-only: Clean only merged worktrees
 - git worktree prune: Remove stale Git worktree metadata
 
 Recovery Commands:
-- moai-worktree registry rebuild: Reconstruct registry from directories
-- moai-worktree remove SPEC-ID --keep-branch: Remove worktree, preserve branch
+- moai worktree recover: Reconstruct administrative files from the directories on disk
+- moai worktree remove <path>: Remove a worktree; its branch is kept
 
 ---
 
@@ -352,19 +342,19 @@ Recovery Commands:
 ### Regular Maintenance
 
 Weekly Tasks:
-- Run moai-worktree status --all to check for issues
+- Run git worktree list and moai worktree clean --json to check for issues
 - Sync active worktrees with base branch to minimize conflicts
 - Clean up merged worktrees to reduce clutter
 
 Monthly Tasks:
 - Prune stale Git worktree metadata
-- Validate registry integrity
+- Run moai worktree recover if the registry and the disk disagree
 - Review and archive old worktrees
 
 ### Safe Operation Patterns
 
 Creation:
-- Always use moai-worktree new instead of manual Git commands
+- Always create worktrees with the moai cc -w <name> launcher instead of manual Git commands
 - Verify branch name is unique before creation
 - Use descriptive SPEC IDs for easy identification
 
@@ -374,9 +364,9 @@ Modification:
 - Resolve conflicts immediately rather than deferring
 
 Removal:
-- Use moai-worktree remove instead of manual deletion
-- Consider keeping branch with keep-branch option
-- Create backup for worktrees with uncommitted work
+- Use moai worktree remove instead of manual deletion
+- remove keeps the branch; use moai worktree done <branch-name> --delete-branch to remove both
+- Commit or push work before removing a worktree
 
 ### Team Coordination
 
@@ -393,5 +383,4 @@ Communication:
 ---
 
 Version: 1.0.0
-Last Updated: 2025-12-30
 Module: Comprehensive troubleshooting and problem resolution

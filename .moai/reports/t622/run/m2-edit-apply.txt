@@ -1,0 +1,5 @@
+.claude/skills/moai/workflows/sync/delivery.md: count=1 for '3. If all checks pass: Execute `gh pr me'
+.claude/skills/moai/workflows/sync/delivery.md: count=1 for '3. If passing and mergeable: Execute `gh'
+internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md: count=1 for '3. If all checks pass: Execute `gh pr me'
+internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md: count=1 for '3. If passing and mergeable: Execute `gh'
+applied to 2 files
