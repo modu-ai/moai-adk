@@ -90,6 +90,13 @@ ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.931s
 
 `-run` 선택자 없이 패키지 전체를 돌렸으므로 `rule_template_mirror_test.go`, `template_neutrality_audit_test.go`, `internal_content_leak_test.go`, `catalog_slim_audit_test.go` 가 모두 실행 범위에 든다(리드 확인: 이 패키지는 `internal/cli` 를 컴파일하지 않아 슬롯 불필요).
 
+### 5.2.1 통합 창 (리드 창 지명)
+
+- `moai integration acquire --name lane-3` → acquired. 로컬 develop `e82ef5565` 흡수 → `c46222294` (부모 `dd8e77107`, `e82ef5565`), tree `e5621d041344…`. 충돌 없음.
+- develop 쪽 변경 중 이 카드 경로와 겹치는 것은 `internal/template/catalog.yaml` 한 줄(다른 카드)뿐. `git diff --stat dd8e77107 c46222294 -- <여섯 문서>` 출력 없음(exit 0) — 흡수 뒤에도 여섯 문서는 이 카드의 내용 그대로.
+- 로컬↔템플릿 세 쌍 `cmp` 동일.
+- `go test ./internal/template/... -count=1` → exit 0: `internal/template` 33.341s · `agentemit` · `commandemit` 모두 ok (template-tests-window.txt).
+
 ### 5.3 후속 후보 — A1
 
 branch guard 가 따옴표 구분자 히어독(`<<'WORD'`) 본문도 인용 접기처럼 다루게 하는 안(A1)은 이번 결정에서 제외했다. B 는 절차를 따르는 세션에서만 오탐을 피하므로, 절차를 벗어난 히어독은 여전히 P1·P5 처럼 거부된다. A1 을 진행한다면 본문을 셸이 실행하는 경우(`bash <<'EOF'` 등)를 접지 않을 예외를 함께 설계해야 한다.
