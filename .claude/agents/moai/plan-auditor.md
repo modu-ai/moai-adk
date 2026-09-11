@@ -674,7 +674,19 @@ This prevents the unbounded-iteration anti-pattern documented in `agent-patterns
 
 ## Input Contract
 
-This agent receives one input: the absolute path to the SPEC directory (e.g., `.moai/specs/SPEC-AUTH-001/`).
+This agent receives a typed input: `input_type=spec` (the default for a SPEC)
+or `input_type=project`, plus the absolute input directory. The caller MUST
+pass the type; the auditor must not infer a SPEC from a directory name.
+
+For `input_type=project`, the required input set is `.moai/project/product.md`,
+`.moai/project/structure.md`, and `.moai/project/tech.md`. The project rubric
+checks goal/audience completeness, structure-to-code consistency, and
+technology/tooling reproducibility. Its report is written to
+`.moai/reports/PROJECT-review-<N>.md` and does not require `spec.md` or
+acceptance.md.
+
+For `input_type=spec`, the input directory is the SPEC directory (for example,
+`.moai/specs/SPEC-AUTH-001/`).
 
 The agent uses a **Tier-differentiated input contract**: the artifact set it reads depends on the SPEC's `tier:` frontmatter field.
 
@@ -686,7 +698,11 @@ This Tier-differentiated input contract does NOT conflict with M1 Context Isolat
 
 If the caller passes additional context (author reasoning, prior conversation), the agent MUST ignore it and state: "Reasoning context ignored per M1 Context Isolation."
 
-If the SPEC directory does not exist or spec.md is not found, the agent returns a single-line error: "AUDIT BLOCKED: spec.md not found at {path}" and exits without producing a report.
+If a typed SPEC input does not exist or `spec.md` is not found, the agent
+returns: `AUDIT BLOCKED: spec.md not found at {path}`. If a typed project input
+does not contain all three required project documents, it returns
+`AUDIT BLOCKED: project document set incomplete at {path}`. Neither failure may
+silently fall back to the other input type.
 
 ## Invocation Examples
 

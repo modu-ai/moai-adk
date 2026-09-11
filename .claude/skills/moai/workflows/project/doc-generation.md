@@ -46,13 +46,13 @@ Skip Conditions:
 
 Agent: plan-auditor subagent
 
-Delegation pattern: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1."
+Delegation pattern: "Use the plan-auditor subagent with input_type=project to audit product.md, structure.md, and tech.md at .moai/project/ — iteration 1."
 
 Do NOT pass the analysis reasoning or interview context to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the document directory path.
 
 #### Step 3.1.2: Read Verdict
 
-After plan-auditor completes, read the report at `.moai/reports/plan-audit/PROJECT-review-1.md`.
+After plan-auditor completes, read the report at `.moai/reports/PROJECT-review-1.md`.
 
 Extract the verdict line: `Verdict: PASS | FAIL`
 
