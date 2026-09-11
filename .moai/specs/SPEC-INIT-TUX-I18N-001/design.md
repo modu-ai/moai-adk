@@ -158,7 +158,7 @@ t583 뒤 init 질문 4개는 라벨 기준으로 huh 그룹 3개(Basic 2 / Quali
 | # | 테스트 | 처분 | 새 대상 |
 |---|---|---|---|
 | S1 | `TestProfileSetup_ModelPolicySelectPresent` | 행동 테스트로 대체 | 프로필 질문 세트에 `model_policy` 질문이 있고 옵션 값이 정책 3개 + 빈 값, 저장 결과 `preferences.yaml` 에 `model_policy` 가 기록됨(AC-ITI-005 와 공유 가능) |
-| S2 | `TestTUINestedConfigNoParallelWriter` | 스캔 유지 | 저장 경로가 남는 `profile_setup.go` 와 프로필 위저드 새 파일 모두. 기준 문자열 `persistProjectConfig` 는 `profile_setup.go` 에서 |
+| S2 | `TestTUINestedConfigNoParallelWriter` | 스캔 유지 | 음성 절(`yaml.Marshal`·`os.WriteFile` 부재)은 저장 경로가 남는 `profile_setup.go` 와 프로필 위저드 새 파일 모두. 양성 절의 기준은 함수 이름이 아니라 **저장 함수 호출 줄**이다: `profile_setup.go` 의 주석 아닌 줄 가운데 `persistProjectConfig(` 를 담고 정의 줄 `func persistProjectConfig(` 가 아닌 줄이 1개 이상이어야 한다. 이름만 찾으면 정의 줄(`profile_setup.go:160`)이 남아 호출을 지워도 참이 된다. 흡수 뒤에도 저장 이하는 `runProfileSetup` 에 남고(§2.2) M4 는 `init.go`·`update.go` 만 고치므로 대상 파일은 `profile_setup.go` 그대로다. 측정은 `research.md` §17 |
 | S3 | `TestPermissionModeNormalizeAcceptEdits` | 스캔 유지 + 행동 보강 | `profile_setup.go`(정규화는 저장 쪽에 남음). AC-ITI-006 (2) 가 행동을 판정 |
 | S4 | `TestTUIEmptyLabelsSchemaSourced` | 스캔 대상 이동 | `model_policy` 옵션을 만드는 `cli` 파일(§3). 앞 절의 옵션 목록 검사는 `.Label` 로 |
 | S5 | `TestProfileSetupConstructsProjectSelects` | 행동 테스트로 대체 | 프로필 질문 세트에 `development_mode` 질문, 옵션 값에 `ddd`·`tdd` |

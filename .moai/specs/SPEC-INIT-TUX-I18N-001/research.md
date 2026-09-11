@@ -6,7 +6,7 @@
 - 이전 조사 트리 `e7a7d4bb3` 와의 관계: `git diff --stat e7a7d4bb3 HEAD -- internal cmd pkg go.mod go.sum` 출력 없음(종료 0). 사이의 커밋 두 개(`d0ec7921f`, `18144b7ac`)는 SPEC 문서와 감사 기록뿐이다. 따라서 이전 조사 좌표는 이 트리에서도 유효하다.
 - 1회차 감사(`.moai/reports/t586/plan-audit.md`)가 인용한 좌표 가운데 이 SPEC 이 쓰는 것은 이 트리에서 다시 쟀다. 다시 재지 않은 것은 §13 에 적는다.
 - 명령은 모두 zsh 에서 실행했다. 글롭은 `git grep` 경로 인자로만 넘겨 셸 글롭 확장 실패(`no matches found`)를 피했다.
-- 3회차 개정 측정 트리: HEAD `538b56f1923c7b72e8dcb8379d55d05e4fadb1c5`(로컬 develop 흡수 뒤). `git diff --stat 18144b7aca714ea8924363b1eab4640cf101c6d0 HEAD -- internal cmd pkg go.mod go.sum` 출력은 파일 56개다. 이 SPEC 이 좌표를 인용하는 제품 파일 가운데 바뀐 것은 `internal/cli/update.go` 이고, 인용한 확인창 구간 `update.go:172-192`(제목 `:179`, `runProfileSetup` 호출 `:187`)와 `init.go:651`·`:659` 는 이 트리에서 다시 읽어 `acceptance.md` §D.3 L2·L4 원문과 같음을 확인했다. `update_wizard.go`·`update_tux.go` 도 바뀌었으나 SPEC 문서에 두 파일 이름이 없다(`grep -n -E 'update_wizard|update_tux' .moai/specs/SPEC-INIT-TUX-I18N-001/*.md` 종료 1). `go.mod` 은 바뀌지 않았다. §8.1, §14~§16 은 이 트리에서 쟀다.
+- 3회차 개정 측정 트리: HEAD `538b56f1923c7b72e8dcb8379d55d05e4fadb1c5`(로컬 develop 흡수 뒤). `git diff --stat 18144b7aca714ea8924363b1eab4640cf101c6d0 HEAD -- internal cmd pkg go.mod go.sum` 출력은 파일 56개다. 이 SPEC 이 좌표를 인용하는 제품 파일 가운데 바뀐 것은 `internal/cli/update.go` 이고, 인용한 확인창 구간 `update.go:172-192`(제목 `:179`, `runProfileSetup` 호출 `:187`)와 `init.go:651`·`:659` 는 이 트리에서 다시 읽어 `acceptance.md` §D.3 L2·L4 원문과 같음을 확인했다. `update_wizard.go`·`update_tux.go` 도 바뀌었으나 이 SPEC 이 두 파일의 좌표를 인용하지 않는다. 측정 당시 `grep -n -E 'update_wizard|update_tux' .moai/specs/SPEC-INIT-TUX-I18N-001/*.md` 는 종료 1 이었다. 이 문장이 두 이름을 담은 뒤로는 이 줄 자체가 적중하므로(v0.2.3 개정 트리 `268cffe2c` 에서 이 한 줄, 종료 0), 다시 잴 때는 이 파일을 뺀 다섯 문서(`spec.md`·`plan.md`·`acceptance.md`·`design.md`·`progress.md`)를 대상으로 한다. 같은 트리에서 그 형태는 출력 없이 종료 1 이고, 같은 파일 묶음에 `grep -c 'REQ-ITI-017'` 을 돌린 대조군은 네 파일에서 1 이상이었다. `go.mod` 은 바뀌지 않았다. §8.1, §14~§16 은 이 트리에서 쟀다.
 
 ## §1 v1 표면
 
@@ -139,6 +139,8 @@ $ grep -n 'func saveAnswer\|"project_mode"\|"project_continuation"\|"audit_model
 t583 lane-1 확정 범위(`spec.md` §A.7)의 시작 좌표와 모두 일치한다. `wizard/translations.go` 의 `var uiStrings` 는 540 줄이다(t583 보고값 548 과 다름 — 표 안의 어느 항목을 가리키는지 확인하지 않았다).
 
 `Page3Questions` 의 id·형식(`awk` 로 `ID:`·`Type:` 줄 추출): `project_mode` select, `worktree_auto_create` confirm, `todo_enabled` confirm, `feedback_auto_submit` confirm, `project_continuation` select, `audit_model` select, `audit_gate_claude`·`audit_gate_codex`·`audit_gate_glm` select, `codex_audit_enabled` confirm, `agent_wiring` select, `mcp_provision` confirm, `autonomy_tier` select. 확인형 5개가 모두 t583 삭제 목록 11개에 들어 있다. `DefaultQuestions`·`GitQuestions` 에는 확인형이 없다(select·input 만).
+
+> **§6.1 로 대체됨.** 아래 문단의 판독은 POSIX ERE 에서 단어 경계가 아닌 표기를 쓴 grep 결과에 기대므로 근거로 쓰지 않는다. 같은 결론을 경계 없는 패턴과 대조군으로 다시 잰 기록은 §6.1 이다.
 
 그룹 라벨 사용: `git grep`/`grep -rn '\.Group\b'` 결과 위저드 비테스트 코드에서 `q.Group` 을 읽는 곳은 `wizard.go:183`, `:186`(묶기 비교)뿐이고, `t.Group.Title` 등은 테마 스타일 필드다. 그룹 라벨을 번역하는 표도 없다(`grep -n 'Quality & Workflow' internal/cli/wizard/translations.go` 0건). `agent_wiring`(`questions.go:490-501`)과 `autonomy_tier`(`:513-525`)에는 `Condition` 이 없다.
 
@@ -324,6 +326,7 @@ derive_exit=0
 - `internal/profile/sync.go:140-143` 은 프로젝트의 `sectionsDir` 에 쓴다. 실제 HOME 이 아니다.
 - `EnsureHomeLayout` 이 만드는 최상위 디렉터리 13개의 권한은 다른 세션의 같은 호출도 바꿀 수 있어 비교하지 않는다. 이 함수가 실제 HOME 에 닿으면 같은 호출이 곧이어 W6 키 항목을 만들므로 W6 로 잡는다.
 - Windows PowerShell 프로필은 pty 판정이 Windows 에서 건너뛰므로 뺐다.
+- (v0.2.3 개정, 3회차 감사 F3) `internal/cli/migrate_agency.go:188-194` `checkpointPath` 가 `<홈>/.moai/.migrate-tx-<id>.json`(비어 있지 않은 절대 `MOAI_HOME` 이면 그 아래)을 쓴다. 호출 사슬은 `update_residue_cleanup.go:85` → `update.go:858` `runAgencyMigrationAdapter` 이고 체크포인트 쓰기는 `migrate_agency.go:251`·`:367` 에서 경로를 받는다(v0.2.3 트리 `268cffe2c` 에서 `grep -n 'checkpointPath\|runAgencyMigrationAdapter(' internal/cli/*.go` 로 확인). 1단계 패턴에 `paths.Home(` 과 이 함수가 없어 빠졌던 update 흐름의 홈 쓰기다. pty 사례가 이 경로를 실행하지 않으므로 감시하지 않고, 그 사유를 `acceptance.md` §B 비교 제외 문단에 적었다.
 
 W2 는 이름마다 경로가 달라 `claude-profiles/*/` 한 단계 글롭으로 둔다(하위 트리는 걷지 않음). 운영자가 판정 도중 프로필을 저장하면 W2 가 달라져 FAIL 이 난다. 제품이 쓸 수 있는 파일이 실제로 바뀐 경우이므로 목록에서 빼지 않고, 실패 출력이 경로를 댄다.
 
@@ -390,3 +393,38 @@ c3neg_exit=0
 ```
 
 마지막 명령은 없는 경로에도 `git ls-files` 가 출력 0줄·종료 0 임을 보인다. AC-ITI-011 (1) 이 대조군 경로를 같은 호출에 넣는 이유다.
+
+## §17 S2 양성 절 기준: 호출 줄과 정의 줄 (v0.2.3 개정)
+
+측정 트리 HEAD `268cffe2cb47107c8fcf720301df974c04e383e5`. 3회차 감사 F1 은 옛 S2 기준(주석 아닌 줄에 `persistProjectConfig` 문자열 존재)이 정의 줄 `profile_setup.go:160` 때문에 호출을 지워도 참이라는 것을 테스트 바이너리로 관측했다(`.moai/reports/t586/plan-audit-iter3.md` E-4). 새 기준은 "주석 아닌 줄 가운데 `persistProjectConfig(` 를 담고 `func persistProjectConfig(` 가 아닌 줄이 1개 이상"이다. 같은 기준을 셸 명령으로 옮겨 현재 파일(양성)과 호출만 지운 사본(음성)에 돌렸다. 사본은 저장소 밖 스크래치 디렉터리에 두었고 제품 트리는 건드리지 않았다. 정규식에는 단어 경계 표기를 쓰지 않았다(POSIX ERE 에서 경계가 아니다, §6.1).
+
+```
+$ grep -n -F 'persistProjectConfig(' internal/cli/profile_setup.go
+160:func persistProjectConfig(projectRoot, devMode, convention string) error {
+520:			if err := persistProjectConfig(cwd, developmentMode, ""); err != nil {
+exit=0
+$ diff internal/cli/profile_setup.go <scratch>/profile_setup.go
+520c520
+< 			if err := persistProjectConfig(cwd, developmentMode, ""); err != nil {
+---
+> 			if err := error(nil); err != nil {
+diff_exit=1
+== 양성 (현재 파일)
+$ grep -n -F 'persistProjectConfig(' internal/cli/profile_setup.go | grep -v -E '^[0-9]+:[[:space:]]*//' | grep -v -F 'func persistProjectConfig('
+520:			if err := persistProjectConfig(cwd, developmentMode, ""); err != nil {
+exit=0
+== 음성 대조 (호출만 지우고 정의는 남긴 사본)
+$ grep -n -F 'persistProjectConfig(' <scratch>/profile_setup.go | grep -v -E '^[0-9]+:[[:space:]]*//' | grep -v -F 'func persistProjectConfig('
+(출력 없음)
+exit=1
+== 대조: 사본에 정의 줄은 남아 있다
+$ grep -n -F 'func persistProjectConfig(' <scratch>/profile_setup.go
+160:func persistProjectConfig(projectRoot, devMode, convention string) error {
+exit=0
+```
+
+판독: 걸러내기 전 첫 단계가 두 줄(정의 `:160`, 호출 `:520`)을 읽으므로 빈 결과는 파일을 못 읽어서 생긴 것이 아니다. 새 기준은 현재 파일에서 호출 줄 `:520` 하나만 남기고, 정의 줄만 남은 사본에서는 비어(종료 1) 거짓이 된다. 사본에 정의 줄이 있다는 대조가 이 음성 결과를 옛 기준으로는 참이던 바로 그 상태로 묶는다. 주석 줄 걸러내기는 `// if err := persistProjectConfig(…)` 처럼 호출을 주석으로 막은 뮤턴트도 거짓으로 만든다(현재 파일의 주석 언급 `:152`·`:227`·`:243`·`:518` 은 괄호가 붙지 않아 첫 단계에서 이미 빠진다).
+
+대상 파일: M4 는 `init.go`·`update.go` 의 확인창과 `runProfileSetup` 호출만 지우고(`plan.md` M4), M5 는 폼을 wizard 패키지로 옮기되 저장 이하는 `runProfileSetup` 에 그대로 둔다(`design.md` §2.2 "저장 이하 ← 그대로"). 따라서 흡수 뒤에도 호출 줄은 `profile_setup.go` 에 있고, S2 양성 절의 대상 파일은 바뀌지 않는다.
+
+공백: 이 측정은 셸 명령이다. run 단계에서 가드 테스트 본문을 이 기준으로 바꾼 뒤 호출만 지운 사본에서 `TestTUINestedConfigNoParallelWriter` 가 `--- FAIL` 하는지는 AC-ITI-010 (4) 가 판정한다. 이 개정에서는 테스트를 실행하지 않았다.

@@ -1,7 +1,7 @@
 ---
 id: SPEC-INIT-TUX-I18N-001
 title: "init/update/profile wizard TUX repair — v1 profile wizard absorbed into huh v2, layout repair, remaining English surfaces localized"
-version: "0.2.2"
+version: "0.2.3"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -27,6 +27,7 @@ related_specs: [SPEC-CLI-TUI-MODERNIZE-001, SPEC-CLI-TUX-V3-002, SPEC-CLI-TUX-IN
 | 0.2.0 | 2026-09-11 | manager-spec | 1회차 plan 감사 결함 D1~D17 반영. 리드 판정 Q1~Q4 로 미결 4건을 닫았다(init 은 프로필 위저드를 부르지 않음, 도움말은 키별 짧은 라벨, 다운그레이드 확인창 언어 우선순위, 프로필 위저드 단계 표시). SPEC-CLI-TUI-MODERNIZE-001 계약 인수를 명시했다(§A.6.1). 소스 스캔 가드 9건·v1 타입 노출·저장값 보존 4건을 조사와 요구에 넣었다. pty 판정 계약을 공허 초록이 불가능하도록 다시 썼다. t583 충돌 회피 전제를 lane-1 확정 범위로 바꾸고, t583 뒤 남는 그룹 재구성을 새 요구로 넣었다. REQ 18·AC 20 으로 Tier M 요구 상한(16)을 넘어 Tier L 로 올리고 `design.md`·`research.md` 를 보탰다. |
 | 0.2.1 | 2026-09-11 | manager-spec | 리드 판정 Q5 반영. REQ-ITI-017 제안(`agent_wiring`·`autonomy_tier` 를 `Agents & Autonomy` 한 그룹으로 묶어 init 위저드를 3페이지에서 2페이지로)을 확정했다. 페이지 수와 스테퍼 분모를 따로 판정하도록 AC 를 나눴다(AC-ITI-018 페이지 수, AC-ITI-021 분모). 그룹 라벨을 읽는 렌더 경로가 없음을 코드에서 재고, 번역 키를 두지 않는 판단을 AC-ITI-022 로 고정했다. `research.md` §13 의 실행 확인 4건을 `plan.md` M1 착수 검증 V-a~V-d 로 옮기고, 그 결과에 기대는 AC 에 선결 표시를 달았다. REQ 18·AC 22, Tier L 유지. |
 | 0.2.2 | 2026-09-11 | manager-spec | 2회차 plan 감사 결함 N1~N10 반영. 실제 HOME 무기록 판정을 트리 전체 매니페스트에서 코드로 도출한 감시 목록과 양성 대조군으로 바꿨다(N1). AC-ITI-003 pty 판정에서 단계 표시 줄 조건을 빼고 기준 문자열과 옵션 줄 4개로 도달성을 단정한다(N2). AC-ITI-010 에 양성 가드 성질 제거 뮤턴트 네 개(S2 양성 절·S3·S4·S6)를 더했다(N3). 부재 단정 세 곳(AC-ITI-004 (2)(3), AC-ITI-011 (1))에 같은 형태의 대조군을 붙였다(N4). tmux `-e` 로 변수마다 넘기는 자식 환경 정리 목록과 자식이 기록한 실효 환경 관측을 넣었다(N5). catppuccin 서술 정정(N6), REQ-ITI-017 을 State-driven 으로 고침(N7), tmux 부재 표현을 FAIL 로 통일(N8), t583 SPEC 부재 기록(N9), 세션 목록 비교를 `moai-ptycap-` 접두로 한정(N10). REQ 18·AC 22, Tier L 유지. |
+| 0.2.3 | 2026-09-11 | manager-spec | 3회차 plan 감사 결함 F1~F5 반영(운영자가 승인한 좁은 범위 확장). S2 양성 절의 기준을 함수 이름에서 저장 함수 호출 줄(정의 줄 제외)로 바꿔, 호출만 지운 뮤턴트에서 S2 가 실패하도록 했다(F1, `design.md` §10, AC-ITI-010 (2)(4), 측정 `research.md` §17). 조사 기록의 자기 적중 문장을 고치고(F2), `moai update` 잔여 정리 경로의 이관 체크포인트 쓰기를 감시 제외 사유와 함께 기록했으며(F3), REQ-ITI-017 을 Where 패턴으로 바꾸고(F4), 옛 그룹 라벨 판독 문단에 §6.1 대체 표식을 달았다(F5). REQ 18·AC 22, Tier L 유지. |
 
 ## §A 배경
 
@@ -165,7 +166,7 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 
 ## §B 요구사항 (GEARS)
 
-> 요구 본문은 이 저장소의 GEARS 관례대로 영어 절로 적는다. 패턴 이름은 Ubiquitous / Event-driven / State-driven / Unwanted behavior 중 하나다.
+> 요구 본문은 이 저장소의 GEARS 관례대로 영어 절로 적는다. 패턴 이름은 Ubiquitous / Event-driven / State-driven / Where / Unwanted behavior 중 하나다. Where 는 실행 중에 바뀌는 상태가 아니라 트리 내용·정적 구성에 걸린 조건에 쓴다.
 
 ### B.1 프로필 없음 진입 (D1, Q1)
 
@@ -194,7 +195,7 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 - **REQ-ITI-014** (Ubiquitous): Every confirm field rendered by `internal/cli`, including the downgrade confirmation, **shall** render its first button at the same display column as its description line.
 - **REQ-ITI-015** (Ubiquitous): The init wizard, the reconfigure wizard and the profile wizard **shall** render no blank line between consecutive fields of a group and no empty card row below a select field's last option.
 - **REQ-ITI-016** (Event-driven): **When** a select field's options carry descriptions, the field **shall** render the descriptions in one column whose start position is computed from terminal display width, counting each East Asian wide character as two cells.
-- **REQ-ITI-017** (State-driven): **While** the tree carries the card t583 init question set, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group labelled `Agents & Autonomy`, so that the init wizard renders exactly two pages; the init step indicator's denominator **shall** remain the number of visible init questions; no init question **shall** carry the group label `Quality & Workflow`; and no wizard screen **shall** render a question's group label, so the label carries no translation key.
+- **REQ-ITI-017** (Where): **Where** the source tree carries the card t583 init question set, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group labelled `Agents & Autonomy`, so that the init wizard renders exactly two pages; the init step indicator's denominator **shall** remain the number of visible init questions; no init question **shall** carry the group label `Quality & Workflow`; and no wizard screen **shall** render a question's group label, so the label carries no translation key.
 
 ### B.5 판정 하네스 (D6)
 
