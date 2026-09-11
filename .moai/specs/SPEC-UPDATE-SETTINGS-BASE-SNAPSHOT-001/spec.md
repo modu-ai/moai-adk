@@ -2,9 +2,9 @@
 id: SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001
 title: "moai update 가 .claude/settings.json 의 템플릿 값 변경을 전달하도록 — 배포 직후 렌더 스냅숏을 3-way 병합 base 로"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-12
 author: manager-spec (card t656)
 priority: P1
 phase: "v3.2.0 target"
@@ -38,6 +38,7 @@ related_specs: ["SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001", "SPEC-UPDATE-MERGE-CON
   - 정상 종료 판정 신호를 "병합의 보존 경로"로 정의했다(N-10).
   - 중단 뒤 끼어든 쓰기의 결과를 알려진 한계로 기록했다(N-08).
   - 두 시점 판정 설계를 "운영자 규칙의 구현 방식, 리드 수용"으로 기록했다(§B.4).
+- 2026-09-12 — sync-phase close (`status: in-progress → implemented → completed`, 카드 t656). Run-phase 16개 AC 전부 PASS(29/29 뮤턴트 킬), evidence: `progress.md` §E.2/§E.3, `.moai/reports/t656/run/`. `sync_commit_sha` 는 이 커밋 자신을 가리킬 수 없어 `pending-backfill` 로 기록하고, 후속 커밋에서 백필한다(스키마 D3 예외).
 
 ## §A 배경
 
