@@ -88,3 +88,66 @@ func TestGoalVerbResolvingTokens(t *testing.T) {
 		})
 	}
 }
+
+// TestGoalVerbMisreadWordsRefused pins the fix for card t605: a single word a
+// user would plausibly type as a goal verb is refused with the verb it meant,
+// instead of being armed as a condition. Several of these words resolve as
+// shell commands (reset, done, cancel, stat), so the arm-time runnability gate
+// alone lets them through and the goal blocks every turn-end.
+func TestGoalVerbMisreadWordsRefused(t *testing.T) {
+	for _, tc := range []struct{ word, verb string }{
+		{"cancel", "clear"},
+		{"reset", "clear"},
+		{"stop", "clear"},
+		{"done", "clear"},
+		{"STOP", "clear"},
+		{"show", "status"},
+		{"list", "status"},
+		{"info", "status"},
+		{"stat", "status"},
+	} {
+		t.Run(tc.word, func(t *testing.T) {
+			armed, out, err := goalVerbOutcome(t, "VMISREAD", tc.word)
+			if err == nil || armed {
+				t.Fatalf("%q was armed (armed=%v err=%v out=%q)", tc.word, armed, err, out)
+			}
+			if !strings.Contains(err.Error(), "moai goal "+tc.verb) {
+				t.Errorf("refusal for %q does not suggest %q: %v", tc.word, tc.verb, err)
+			}
+			if !strings.Contains(err.Error(), "cmd:") {
+				t.Errorf("refusal for %q does not name the cmd: escape: %v", tc.word, err)
+			}
+		})
+	}
+}
+
+// TestGoalVerbHelpWordShowsHelp: "help" as the single argument is a request for
+// help, not a condition.
+func TestGoalVerbHelpWordShowsHelp(t *testing.T) {
+	armed, out, err := goalVerbOutcome(t, "VHELP", "help")
+	if err != nil || armed || !strings.Contains(out, "Verbs:") {
+		t.Fatalf("help: armed=%v err=%v out=%q", armed, err, out)
+	}
+}
+
+// TestGoalVerbMisreadCheckStaysNarrow is the over-refusal guard: the check
+// matches a single whole argument only, so an explicit arm verb, a declared
+// cmd: condition, a multi-word condition, and an unlisted command still arm.
+func TestGoalVerbMisreadCheckStaysNarrow(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"explicit arm verb", []string{"arm", "reset"}},
+		{"cmd prefix", []string{"cmd: reset"}},
+		{"multi-word condition", []string{"reset && true"}},
+		{"unlisted command", []string{"ls"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			armed, out, err := goalVerbOutcome(t, "VNARROW", tc.args...)
+			if err != nil || !armed {
+				t.Fatalf("%v was not armed (armed=%v err=%v out=%q)", tc.args, armed, err, out)
+			}
+		})
+	}
+}
