@@ -133,7 +133,7 @@ func TestResolveIntegrationTarget_ExplicitFlagWins(t *testing.T) {
 	repo, integrationWT := scratchRepo(t)
 	chdirRepo(t, repo)
 
-	branch, wt := resolveIntegrationTarget("fixture-integration", "some-other-configured-branch")
+	branch, wt, _ := resolveIntegrationTarget("fixture-integration", "some-other-configured-branch")
 	if branch != "fixture-integration" {
 		t.Errorf("branch = %q, want the explicit flag to win over the configured value", branch)
 	}
@@ -146,7 +146,7 @@ func TestResolveIntegrationTarget_ConfiguredBranchUsedWhenFlagAbsent(t *testing.
 	repo, integrationWT := scratchRepo(t)
 	chdirRepo(t, repo)
 
-	branch, wt := resolveIntegrationTarget("", "fixture-integration")
+	branch, wt, _ := resolveIntegrationTarget("", "fixture-integration")
 	if branch != "fixture-integration" {
 		t.Errorf("branch = %q, want the configured git-flow develop branch", branch)
 	}
@@ -159,7 +159,7 @@ func TestResolveIntegrationTarget_NoWorktreeForBranchRecordsEmpty(t *testing.T) 
 	repo, _ := scratchRepo(t)
 	chdirRepo(t, repo)
 
-	branch, wt := resolveIntegrationTarget("ghost-branch", "")
+	branch, wt, _ := resolveIntegrationTarget("ghost-branch", "")
 	if branch != "ghost-branch" {
 		t.Errorf("branch = %q, want ghost-branch", branch)
 	}
@@ -172,7 +172,7 @@ func TestResolveIntegrationTarget_NoConfigNoFlagFallsBackToCallerTree(t *testing
 	repo, _ := scratchRepo(t)
 	chdirRepo(t, repo)
 
-	branch, wt := resolveIntegrationTarget("", "")
+	branch, wt, _ := resolveIntegrationTarget("", "")
 	if branch != currentBranch() {
 		t.Errorf("branch = %q, want the caller's checked-out branch %q", branch, currentBranch())
 	}
