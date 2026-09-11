@@ -919,6 +919,10 @@ func TestSpecLintBaseline_FlagContractRejections(t *testing.T) {
 			[]string{"--baseline", existing, "--strict"}, "--strict"},
 		{"--update-baseline with a whitespace-only --reason",
 			[]string{"--baseline", existing, "--update-baseline", "--reason", "   "}, "non-empty --reason"},
+		// Not a baseline flag, but the same silent-exit-3 shape: the older
+		// output-format rejection must be just as visible.
+		{"--json with --sarif",
+			[]string{"--json", "--sarif"}, "cannot use --json and --sarif together"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -19,3 +19,11 @@ c4  <bin> spec lint --baseline .moai/spec-lint-baseline.json   (control)
     the full stream's sha256 is in c4-stdout-full.sha256.
 
 Result files: c<N>-exit.txt, c<N>-stdout.txt, c<N>-stderr.txt.
+
+c5 (scope widened to the --json/--sarif rejection, second F1 commit)
+  <bin2> spec lint --json --sarif
+  Judging build: `go build -o <scratch>/moai-t525-f1b ./cmd/moai` (exit 0), built from HEAD
+  85cf76b2d plus the uncommitted diff of the same two files; sha256 of
+  `git diff HEAD -- internal/cli/spec_lint.go internal/cli/spec_lint_test.go` at build time:
+  22511dac8bfd570c3258fb920154e2e29f85b31e334f802576165256e6c2b4d5
+  (the content of the second F1 commit; compare `git diff <commit>~1 <commit> -- <both files>`).

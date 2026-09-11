@@ -73,7 +73,7 @@ Exit codes:
 			// validate arguments. Invalid argument combination exits 3 per
 			// REQ-CONT-001-005 (SPEC-CLIFIX-CONTRACT-001 M2).
 			if jsonOutput && sarifOutput {
-				return &exitCodeError{code: 3, msg: "cannot use --json and --sarif together"}
+				return argumentError(cmd.ErrOrStderr(), "cannot use --json and --sarif together")
 			}
 			if err := validateBaselineFlags(cmd.ErrOrStderr(), baselinePath, updateBaseline, reason, jsonOutput, sarifOutput, strict); err != nil {
 				return err
@@ -346,10 +346,9 @@ func printTable(cmd *cobra.Command, report *spec.Report) {
 // The diagnostic is WRITTEN to stderr as well as carried by the returned
 // error, because the error's message never reaches the terminal on this path:
 // an ExitCoder returned from RunE sets the process exit code and is rendered
-// as nothing. That silence is pre-existing — the older exit-3 case in this same
-// command ("cannot use --json and --sarif together") is silent too — but
-// REQ-SLI-005 asks for a message naming the path that was tried, and an exit
-// code alone does not name anything.
+// as nothing. Every exit-3 path in this command therefore writes its own
+// diagnostic through argumentError; REQ-SLI-005 asks for a message naming the
+// path that was tried, and an exit code alone does not name anything.
 func resolveLintTargets(stderr io.Writer, args []string) ([]string, error) {
 	if len(args) == 0 {
 		return args, nil
