@@ -12,7 +12,8 @@ package cli
 //	AC-USB-008 — a staging or promotion failure never blocks a flow.
 //
 // Isolation: every test works under t.TempDir(), injects the home through
-// homeSeamSpy (never t.Setenv("HOME")), and replaces package-level seams, so
+// homeSeamSpy (never by overriding the HOME environment variable), and
+// replaces package-level seams, so
 // none of these tests may call t.Parallel(). The runUpdate and runInit cells
 // chdir into their project because both flows resolve the project from the
 // working directory.
