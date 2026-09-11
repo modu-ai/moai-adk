@@ -308,6 +308,59 @@ Package state after the fix (tree `bca8cf96a`):
 
 What the alias fix leaves open is carried in §E.3 `residual_risk`.
 
+#### D1/D2 — delta-audit follow-ups (lead decision, 2026-09-12)
+
+> 살아남은 뮤턴트가 있는데 CHANGELOG가 그걸 확인한다고 적고 있으면 주장 쪽을 줄이는 대신 테스트로 받치는 게 맞습니다 (lead, 2026-09-12)
+
+The delta audit (`.moai/reports/t659/sync-audit.md` § Delta audit (e5a18feae..b36f50c4c)) raised two Low/optional findings; the lead chose to fix both in this card.
+
+- **D1** — the G-B call-site comment in `Execute` said the check "needs only the three paths, no file I/O"; since F1, `sameFile` stats both paths. The comment now reads that it needs only the three paths, which it stats, and reads or writes no file. Comment only; no code line changed.
+- **D2** — `TestExecute_RuleFileAliasOfRegistryOrLog_Rejected` built registry-side aliases only, and a mutant reverting just the log half of the G-B condition survived the package, while the CHANGELOG credits this test with log-alias rejection. New subtest `hardlink_log/{dry_run,real}`: `file: rules/alias.md`, created with `os.Link` to the evolution log, which this fixture writes (skips with a stated reason if the platform refuses a hard link). Same assertions as the other alias subtests (G-B substring, rule-file path, 0 gate calls, tree snapshot unchanged, lock dir empty). The setup sanity check now compares the alias with its own target (registry or log) through a new `aliasOfLog` case field, so the log alias is checked to read back as the log's bytes, independently of `sameFile`.
+
+Commit (the production code already handled the log alias, so the RED is observed on a mutant, not on a pre-fix tree):
+
+- `3949cdba4` — `test(t659): back the log-alias claim with a hardlink_log subtest (D2) and fix the G-B comment (D1)`: the subtest, the D1 comment, and the evidence below
+
+RED on the log-half mutant — spec `.moai/reports/t659/run/guards/mutants-guards-d2.json`, runner `.moai/reports/t659/run/mutate.py`, output `.moai/reports/t659/run/guards/d2-red-mutant.txt`. `M-D2-logabs` replaces only `sameFile(rulePath, evolutionLogPath)` with a `filepath.Abs` string equality of the two paths (the pre-F1 comparison); the registry half is untouched. `pipeline.go` sha256 `aa2b1965…1737` and `apply_test.go` sha256 `9eba5497…f427` before and after (restored byte-exact; `shasum -a 256 -c` → OK for both):
+
+```
+$ go test ./internal/constitution/ -run ^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$/^hardlink_log$ -count=1 -v
+exit=1   "=== RUN" lines: 3 (1 top-level + 2 subtests)
+    apply_test.go:1339: error "amendment validation error: rule file …/rules/alias.md: the current clause occurs 0 time(s); want exactly one" lacks "is also the registry or the evolution log"   (×2)
+    apply_test.go:1345: gate doubles called 4 times, want 0 (the check runs before Layer 1)   (×2)
+    --- FAIL: …/hardlink_log/dry_run (0.00s)
+    --- FAIL: …/hardlink_log/real (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.429s
+```
+
+The failure is the missing G-B rejection: G-B admitted the alias, all four gate doubles ran, and a later apply-step check refused it with a different message. The setup sanity check did not fire.
+
+GREEN on the real code, `.moai/reports/t659/run/guards/d2-green.txt`: `^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$` — 1 top-level + 10 subtests, all PASS, 0 skipped (`hardlink_log/{dry_run,real}` included), `ok … 0.396s`.
+
+Guard mutant re-run on the new tree — spec `.moai/reports/t659/run/guards/mutants-guards-f1-d2rerun.json` (a copy of `mutants-guards-f1.json` with only the `out` paths and descriptions changed; every anchor matched unchanged, because the D1 edit touched a comment line none of them uses), per-mutant output `.moai/reports/t659/run/guards/M-*-f1-d2rerun.txt`, summary `mutants-f1-d2rerun-summary.txt` (derived mechanically from the output files). `pipeline.go` sha256 `aa2b1965…1737` after the pass, equal to before.
+
+| Mutant | Selector | Top-level RUN / all RUN | Result | Failing subtests |
+|---|---|---|---|---|
+| M-F1-samefile | `^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$` | 1 / 11 | killed (exit 1) | 8 — `hardlink_registry/*`, `case_variant_registry/*`, `symlink_registry/*`, and now `hardlink_log/*`; `absent_log_fallback/*` passes |
+| M-F1-fallback | `…Alias…_Rejected$/^absent_log_fallback$` | 1 / 3 | killed (exit 1) | 2 — `absent_log_fallback/*` |
+| M-GA | `^TestExecute_EmptyAfter_Rejected$` | 1 / 3 | killed (exit 1) | 2 — `dry_run`, `real` |
+| M-GB | `^TestExecute_RuleFileIsRegistryOrLog_Rejected$` | 1 / 7 | killed (exit 1) | 4 — `registry/*`, `evolution_log/*` |
+| M-GB-reg | `…IsRegistryOrLog_Rejected$/^registry$` | 1 / 3 | killed (exit 1) | 2 — `registry/*` |
+| M-GB-log | `…IsRegistryOrLog_Rejected$/^evolution_log$` | 1 / 3 | killed (exit 1) | 2 — `evolution_log/*` |
+| M-GB-always | `…IsRegistryOrLog_Rejected$/^distinct_control$` | 1 / 3 | killed (exit 1) | 2 — `distinct_control/*` |
+
+Counted: 7 re-runs, 7 killed, 0 survived; with `M-D2-logabs`, 8 guard mutants killed on this tree.
+
+Package state (tree `3949cdba4`):
+
+- `go test ./internal/constitution/ -count=1 -cover` → `ok  	github.com/modu-ai/moai-adk/internal/constitution	0.616s	coverage: 88.4% of statements` (`guards/cover-d2.txt`)
+- `go vet ./internal/constitution/` → exit 0, no output (`guards/vet-d2.txt`)
+- `GOOS=windows GOARCH=amd64 go vet ./internal/constitution/` → exit 0, no output (`guards/vet-windows-d2.txt`)
+- `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint-d2.txt`)
+- `gofmt -l internal/constitution/` → no output
+
+Still untested on the log side: a case-variant name and a symbolic link naming the evolution log. Both reach G-B through the same `sameFile` call that `hardlink_log` now pins, so a regression confined to them would have to live inside `sameFile`, where the registry-side case-variant and symlink subtests already guard it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
