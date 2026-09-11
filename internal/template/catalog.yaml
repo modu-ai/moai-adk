@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 5f1127239a3fad0b9632d93d1417531b9a14060ce6faef4706b9fb07b7742fcd
+              hash: 55e4d1df0ea71bb00e384dd0a3739b1e0b082dafc65708fe6e05fb4c140277a0
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -127,7 +127,7 @@ catalog:
             - name: manager-git
               tier: core
               path: templates/.claude/agents/moai/manager-git.md
-              hash: 061fe4fb0dfee5b06a2c67b51835c5512f45f0c56a888fbf786c5d9220099b07
+              hash: 676c034b8ee5c9ace684fc9ab2b4d9928fd84f044b1974979f547db3f63d5775
               version: 1.0.0
             - name: manager-lead
               tier: core
