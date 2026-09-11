@@ -485,6 +485,225 @@ counts only. Two conditions bind the start: wait for the lead's notice that lane
 run has finished, and confirm immediately before starting that no `git log -p` or `go test` process is
 running. M2 stays forbidden.
 
+### Develop drift note
+
+Recorded at the lead's instruction in the M2 commit (card t629, 2026-09-11). The facts below were
+measured by the orchestrator in its own session; this segment did not re-measure them.
+
+- Card-id collision: local develop's `91aca1011` ("merge: workflow audit F23 into develop (card
+  t629)") is another session's commit that carries this card id. It is not part of card t629's work
+  (lead note).
+- Local develop moved `4c99d973e` → `ee99507fb`. `git diff --stat 4c99d973e ee99507fb -- <both
+  review.md paths>` and `git diff --stat feeecc980 ee99507fb -- <both review.md paths>` printed
+  nothing; `git cat-file -e ee99507fb:<each path>` exited 0 for both paths; the control
+  `git diff --stat 4c99d973e ee99507fb -- <both workflows directories>` reported 19 files changed.
+  Neither copy changed on develop, so this drift does not trigger the pinned-block re-comparison
+  after the absorb. The absorb itself happens later, in the integration window.
+
+### Draft section wording (M2)
+
+Drafted 2026-09-11 on branch `WT-secret-scan-refs` on top of `023a25e7a`, after the lead confirmed
+the M1 gate and approved M2. The block below, without its outer four-backtick fence, is the text M4
+copies verbatim into both copies of the review workflow document, in place of the current
+`#### Secrets Scan (Incremental with Checkpoint)` section. It carries the pinned `Tip recording:`
+and `Missing-tip handling:` lines word for word, the pinned full-history scan and scan command
+inside its command lines, and the pinned `Uncovered commits:` sentence. The pinned procedure itself
+is not changed. The allowlist representation chosen for it is recorded in the next subsection.
+
+````markdown
+#### Secrets Scan (Incremental with Checkpoint)
+
+Scan git history for credential leaks incrementally. The checkpoint is a tip store, `.moai/state/secrets-scan-tips.txt`: the tip of every ref at the last completed scan, one caret-prefixed object name per line. Each line reaches git as a negated revision, so a scan that reads the store leaves out every commit a recorded tip reaches.
+
+Tip recording: before the scan starts, record the tip of every ref with `git for-each-ref --format='^%(objectname)' > .moai/state/secrets-scan-tips.next`, and replace `.moai/state/secrets-scan-tips.txt` with that file only after the scan that carries the final result exits 0.
+
+Where the tip store does not exist (first run), or an explicit full-scan flag is passed, run the full-history scan. It scans every commit reachable from any ref or from HEAD:
+
+```bash
+git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' > .moai/state/secrets-scan-output.txt
+```
+
+Otherwise run the scan command. It scans every commit reachable from any ref or from HEAD that no recorded tip reaches — the commits that became reachable since the last completed scan — and does not scan a commit a recorded tip reaches:
+
+```bash
+git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' --stdin < .moai/state/secrets-scan-tips.txt > .moai/state/secrets-scan-output.txt 2> .moai/state/secrets-scan-error.txt
+```
+
+Missing-tip handling: when the scan exits non-zero and its error output reports `bad object` for a tip whose line in `.moai/state/secrets-scan-tips.txt`, without its leading caret, names that object, report that tip as missing and run the full-history scan in its place; any other non-zero exit is a scan failure that is reported and leaves `.moai/state/secrets-scan-tips.txt` unchanged.
+
+To find the tip the error output names, strip the caret from every store line and search the error output for those object names; a printed line that contains `bad object` names a missing tip:
+
+```bash
+sed 's/^\^//' .moai/state/secrets-scan-tips.txt > .moai/state/secrets-scan-tips-plain.txt
+grep -F -f .moai/state/secrets-scan-tips-plain.txt .moai/state/secrets-scan-error.txt
+```
+
+Because the tips are recorded before the scan starts, a commit that lands while the scan runs is outside the recorded tips and falls to the next review instead of being skipped; a commit that lands between the recording and the scan's own read of the refs is scanned twice.
+
+Merge commits show no patch in the scan output, so a line that only a merge commit's own changes introduce, such as a conflict resolution, is reported by neither scan.
+
+Uncovered commits: Commits that no ref and no HEAD reaches, such as commits reachable only through a reflog, are outside every scan step in this procedure, and no step scans them.
+
+Each review also scans the working tree; the checkpoint does not govern that step, and the example-value rule below applies to its matches as well.
+
+**Known example values.** A match is suppressed only when the text the regex matched equals a listed value exactly, character for character. The list holds only publicly published example values; it has one entry, the example access key ID that AWS publishes in its documentation. No path is excluded from any scan step, and a value that differs from every listed value, even by one character, is still reported wherever it sits. Each listed value is written here as a digest rather than as the value, so this document holds no line the scan's regex matches. The digest is the full-length git blob object name of the value followed by one newline, as `git hash-object --no-filters` computes it in a repository that uses the default SHA-1 object format; in a repository that uses the SHA-256 object format no digest matches, so nothing is suppressed.
+
+Run the following over the output of the scan that carried the final result. Each digest is paired with the value on the same line of `.moai/state/secrets-scan-distinct.txt`, so `mkdir` must create a new, empty directory; if it fails, a previous run left the directory behind: remove it and start again. A `grep` exit status of 1 means no line matched and leaves an empty file; it is not an error.
+
+```bash
+printf '%s\n' 05c61e935c693e4244743a05a1ba4ae33bd71d64 > .moai/state/secrets-scan-allowlist.txt
+grep -oE -- '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})' .moai/state/secrets-scan-output.txt > .moai/state/secrets-scan-matches.txt
+sort -u .moai/state/secrets-scan-matches.txt > .moai/state/secrets-scan-distinct.txt
+mkdir .moai/state/secrets-scan-split
+split -a 6 -l 1 .moai/state/secrets-scan-distinct.txt .moai/state/secrets-scan-split/v.
+find .moai/state/secrets-scan-split -type f > .moai/state/secrets-scan-found.txt
+sort .moai/state/secrets-scan-found.txt > .moai/state/secrets-scan-paths.txt
+git hash-object --no-filters --stdin-paths < .moai/state/secrets-scan-paths.txt > .moai/state/secrets-scan-digests.txt
+paste .moai/state/secrets-scan-digests.txt .moai/state/secrets-scan-distinct.txt > .moai/state/secrets-scan-table.txt
+grep -vwF -f .moai/state/secrets-scan-allowlist.txt .moai/state/secrets-scan-table.txt > .moai/state/secrets-scan-kept.txt
+cut -f2 .moai/state/secrets-scan-kept.txt > .moai/state/secrets-scan-unsuppressed.txt
+grep -F -f .moai/state/secrets-scan-unsuppressed.txt .moai/state/secrets-scan-output.txt > .moai/state/secrets-scan-findings.txt
+rm -r .moai/state/secrets-scan-split
+```
+
+Each line of `.moai/state/secrets-scan-findings.txt` is a finding: a source line of the scan output that carries a matched text no listed value equals, written as the scan printed it. The scan output also prints context lines and every hunk of a matching file; a line printed beside a finding is not a finding, and a line whose only matches are listed values is not reported.
+
+Cross-reference findings against `.gitignore` to distinguish historical leaks from working-tree exposure.
+This scan is separate from working-tree-only scanners.
+````
+
+Wording notes, for the reviewer of this draft:
+
+- The equivalence sentence and the dropped-class sentence of the current section are removed, and
+  nothing replaces them with another coverage claim (REQ-005). Each step now states the commits it
+  scans and the commits it does not (REQ-003, REQ-004).
+- The merge-commit sentence is taken from git's documented behaviour for `log -p` without a
+  `--diff-merges` option; this draft does not measure it. M3 measures it as supplementary evidence,
+  and a contrary reading is a wording-only fix that returns to M2.
+- The working-tree sentence keeps the working-tree step the current section already names. The
+  section still gives no command for it; that is unchanged from the current text.
+- The missing-tip detection command pair is new wording that operationalises the pinned
+  `Missing-tip handling:` line; gate cell 2 measured the same two operations with the missing tip's
+  name taken from a separate file. M3 exercises the worded pair as supplementary evidence.
+
+### Allowlist representation (M2)
+
+Choice: **a full-length digest of each listed value** — the git blob object name of the value
+followed by one newline, as `git hash-object --no-filters` computes it. Rejected: **assembly of
+each listed value from fragments at scan time.**
+
+Reasons, in order of weight:
+
+1. The fragment candidate cannot be drafted. `spec.md` §3.4 and `plan.md` §D forbid any SPEC
+   artifact or evidence file to write a listed value whole or in fragments, and the lead's
+   instruction for this segment forbids writing the value to the repository even as fragments.
+   Under the fragment candidate the section itself carries the fragments, so the draft above could
+   not be recorded here verbatim, and M4 could not copy what was drafted. The digest candidate
+   writes no part of the value anywhere.
+2. Exact-value matching is kept. A match is suppressed only when the blob object name of its exact
+   bytes equals a listed digest, and the `-wF` match over the table rows compares whole
+   40-character names, never a prefix. NEARCELL, which differs from the listed value in its last
+   character, and MIXCELL, which carries a listed and an unlisted value on one line, stay findings
+   by construction (probe below; M3 measures both).
+3. No committed text matches the scan regex: the digest is 40 lowercase hexadecimal characters.
+   The CI strict leak tier flags a 7-8 character run with a word boundary before it
+   (`internal/template/internal_content_leak_test.go` line 373, pattern
+   `\b[0-9a-f]{7,8}([\s\.,;:!?]|$)`); a 40-character run offers no boundary inside it. AC-005 runs
+   the strict tier itself at M4.
+4. Tool availability: `git hash-object` ships with git, which the scan already requires, so the
+   digest adds no platform-specific tool. The alternatives differ by platform — `shasum` (macOS),
+   `sha256sum` (Linux, Git for Windows' shell), `certutil` or `Get-FileHash` (native Windows). The
+   other commands (`printf`, `grep`, `sort`, `mkdir`, `split`, `find`, `paste`, `cut`, `rm`) are
+   POSIX-shaped utilities; their presence on Linux and in Git for Windows' shell is inferred, not
+   measured — every reading below was taken on macOS.
+5. The form runs in a worktree-isolated session: every step is a single plain command, the git
+   step reads its paths from standard input, and no step uses a command substitution, a loop, or a
+   shell variable. The glob form of the git step was refused (probe below), which is why the draft
+   lists the paths with `find` and `sort` first.
+
+Digest derivation, taken 2026-09-11 in the session scratchpad `SP`, outside this repository. The
+listed value is written below only as `<listed value>` and its fragments as `<fragment N>`; neither
+appears in any file of this repository.
+
+| Step | Command | Exit | Reading |
+|---|---|---|---|
+| assemble | `printf '%s%s%s\n' '<fragment 1>' '<fragment 2>' '<fragment 3>' > SP/m2probe/listed.txt` | 0 | `wc -c` 21; `/usr/bin/grep -cE -- 'REGEX'` → `1` |
+| object format | `git rev-parse --show-object-format` (this worktree) | 0 | `sha1` |
+| digest | `git hash-object --no-filters SP/m2probe/listed.txt > SP/m2probe/listed-digest.txt` | 0 | `05c61e935c693e4244743a05a1ba4ae33bd71d64` |
+| independent recomputation | `printf 'blob 21\000' > SP/m2probe/hdr.bin`; `cat SP/m2probe/hdr.bin SP/m2probe/listed.txt > SP/m2probe/blob.bin`; `shasum -a 1 SP/m2probe/blob.bin` | 0 | the same 40 characters |
+
+Mechanics probe of the suppression steps, taken before the draft was fixed, on a probe file of six
+lines — five carrying a match (`LISTCELL <listed value>`, `NEARCELL <near value>`,
+`OTHERCELL <unlisted value>`, `MIXCELL <listed value> <unlisted value>`, a `HEADCELL` PEM-style
+header) and one context line — placed as `.moai/state/secrets-scan-output.txt` under a throwaway
+repository `SP/m2probe/fx`. Every path under `.moai/state/` was written with the probe root in
+front; `grep` ran as `/usr/bin/grep` (BSD grep 2.6.0-FreeBSD) and `find` as `/usr/bin/find`,
+because both names resolve to shell functions in this session.
+
+| Step | Exit | Reading |
+|---|---|---|
+| allowlist `printf` | 0 | one line |
+| `grep -oE` | 0 | 6 lines |
+| `sort -u` | 0 | 5 lines |
+| `mkdir` | 0 | — |
+| `split -a 6 -l 1` | 0 | 5 files, `v.aaaaaa` to `v.aaaaae` |
+| glob form `git -C SP/m2probe/fx hash-object --no-filters <split dir>/v.* > …` | refused | guard: "this command redirects git through a glob pattern that expands at runtime. Refusing to run it" |
+| `find` then `sort` | 0; 0 | 5 paths |
+| `git -C SP/m2probe/fx hash-object --no-filters --stdin-paths < <paths file> > <digests file>` | 0 | 5 lines; the listed digest counted `1` by `/usr/bin/grep -cxF -f <allowlist file>` |
+| `paste` | 0 | 5 rows |
+| `grep -vwF -f <allowlist file>` | 0 | 4 rows |
+| `cut -f2` | 0 | 4 values; the listed value counted `0` by `/usr/bin/grep -cxF -f SP/m2probe/listed.txt` |
+| findings `grep -F -f` | 0 | `LISTCELL` 0, `NEARCELL` 1, `OTHERCELL` 1, `MIXCELL` 1, `HEADCELL` 1 |
+| empty pattern file: `/usr/bin/grep -F -f <empty file> <probe file>` | 1 | 0 lines — an empty unsuppressed list reports nothing |
+| `rm -r` | 0 | the split directory is gone (`test -e` exit 1) |
+
+Gaps and residual risk of the representation:
+
+- Only macOS was exercised (git 2.50.1, BSD grep 2.6.0-FreeBSD). Linux and Windows readings are
+  inferred.
+- A repository using the SHA-256 object format computes other digests, so nothing is suppressed
+  there and the listed value is reported (inferred from git's object-format rule, not measured).
+  The failure direction is over-reporting, never a silent suppression.
+- Suppressing an unlisted value would need a credential-shaped value whose blob object name equals
+  the listed digest — a second preimage of SHA-1. No practical second-preimage attack on SHA-1 is
+  known; the known attacks are collisions between two chosen inputs.
+- The steps rely on `find` and `sort` ordering the split files in the order `split` wrote them.
+  The names differ only in their last six lowercase letters, so the order is the same in any
+  locale; M3 measures it on the fixture.
+
+### M2 pre-commit readings
+
+Taken 2026-09-11 on the working tree on top of `023a25e7a`, with every edit above in place and this
+subsection not yet written. `SP/draft-section.txt` is the draft extracted by a `sed -n` range from
+the `#### Secrets Scan` line through the closing four-backtick fence of PROG (60 lines, the fence
+included);
+`SP/draft-cmds.txt` is its `log -p` lines (`/usr/bin/grep -e 'log -p'`, exit 0, 2 lines). The pinned
+lines were extracted with the AC-016 `sed` form from `git show 68c56be0d:PROG` and from the working
+tree. `REGEX` is the scan regex as `review.md` writes it.
+
+| Check | Command (outline) | Reading |
+|---|---|---|
+| pinned block unchanged | AC-016 `sed` extraction of the pin commit and of the working tree, then `cmp` | 28 and 28 lines; `cmp` exit 0 |
+| AC-016 (a) | `/usr/bin/grep -cF -f <pinned line file> SP/draft-section.txt` for tip recording, scan command, missing-tip handling | `1`, `1`, `1` (each pattern file 1 non-empty line) |
+| pinned full-history scan and uncovered sentence | the same form for `Full-history scan:` and `Uncovered commits:` | `2` (both command lines carry it), `1` |
+| AC-006 | `grep -vc -e '--all'` and `grep -c -e '--stdin'` over the commands; `grep -cF '^%(objectname)'`, `grep -ci 'every ref'`, `grep -c 'the HEAD SHA of the last completed scan'` over the draft | `0`; `1`; `1`; `2`; `0` |
+| AC-015 | `/usr/bin/grep -cE -- 'REGEX'` over the draft; control `SP/ctl-pem.txt` | `0`; `1` |
+| AC-002 | the exact equivalence phrase, `no finding class is dropped`, `grep -ci 'same coverage'` | `0`, `0`, `0` |
+| AC-005 | `SPEC-`, `t629`, the four cost figures, the 16-name language grep (`-ciwE`), `R language` | `0`, `0`, `0`, `0`, `0` |
+| 7-8 hex run | `/usr/bin/grep -cE '(^\|[^0-9A-Za-z_])[0-9a-f]{7,8}([[:space:].,;:!?]\|$)'` over the draft; control line `see abcdef1 here` | `0`; `1` |
+| language control | the 16-name grep over a control line `written in go today` | `1` |
+| full-length digest | `/usr/bin/grep -cE '(^\|[^0-9A-Za-z_])[0-9a-f]{40}([^0-9a-f]\|$)'` over the draft | `1` |
+| date shape | `/usr/bin/grep -cE '202[5-9]-[0-1][0-9]-[0-3][0-9]'` over the draft | `0` |
+| credential regex, SPEC files | `/usr/bin/grep -cE -- 'REGEX'` over `spec.md`, `plan.md`, `acceptance.md`, `progress.md` | `0` each, exit 1 |
+| gate verdict lines | `/usr/bin/grep -c '^verdict: trustworthy$' PROG` | `3` |
+| ordering-anchor strings | `/usr/bin/grep -c` for the five pickaxe strings AC-007, AC-010, AC-011, AC-012 read, over PROG and over `git show HEAD:PROG` | `6` and `6` — this commit adds none |
+| lint | `moai spec lint SPEC-REVIEW-SECRET-SCAN-REFS-001` | exit 0, `✓ No findings — all SPEC documents are valid` |
+| scope | `git diff --stat`; `git diff --stat feeecc980 -- <both review.md paths>` | `progress.md` only; nothing |
+
+Tool provenance (`verification-claim-integrity.md` §2.2): the lint ran on the installed
+`v3.2.0-rc.7` build, commit `ed71054d3` with a dirty tree; `git merge-base --is-ancestor ed71054d3
+HEAD` exited 1. It is not a build made from this tree.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
