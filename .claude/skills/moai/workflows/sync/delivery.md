@@ -151,9 +151,16 @@ go vet ./...
 go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # Check 3: golangci-lint (mirrors CI lint job)
-# Auto-detect if golangci-lint is available
-which golangci-lint && golangci-lint run --timeout=5m \
-  || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+# Tool absence is SKIPPED; an installed tool's non-zero status is FAIL.
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+elif golangci-lint run --timeout=5m; then
+  echo "PASS: golangci-lint"
+else
+  lint_status=$?
+  echo "FAIL: golangci-lint (exit ${lint_status})" >&2
+  exit "$lint_status"
+fi
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
 # Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
