@@ -267,8 +267,19 @@ func (p *Pipeline) prepareApply(proposal *AmendmentProposal, rule Rule, projectD
 	return []*fileChange{source, registry, logFile}, log, nil
 }
 
-// sameFile reports whether two paths name the same file after cleaning.
+// sameFile reports whether two paths name the same file. When both exist it
+// compares file identity with os.SameFile, which catches a case-variant name
+// on a case-insensitive filesystem, a hard link, and — because os.Stat follows
+// links — a symbolic link. When either path cannot be stat'ed it compares the
+// cleaned absolute paths instead: the evolution log may not exist yet, and any
+// other Stat error takes the same fallback so that a Stat failure never turns
+// into a rejection of its own.
 func sameFile(a, b string) bool {
+	infoA, errA := os.Stat(a)
+	infoB, errB := os.Stat(b)
+	if errA == nil && errB == nil {
+		return os.SameFile(infoA, infoB)
+	}
 	absA, errA := filepath.Abs(a)
 	absB, errB := filepath.Abs(b)
 	return errA == nil && errB == nil && absA == absB
