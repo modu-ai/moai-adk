@@ -151,7 +151,7 @@ The run added two checks to `internal/constitution/pipeline.go` that no REQ or A
 | Guard | Where | What it does | Modes it covers |
 |---|---|---|---|
 | G-A | `Execute`, right after the stale-`Before` check (REQ-CAA-017), before Layer 1 | rejects a proposal whose `After` is empty: `proposal for rule <id>: After is empty` | dry-run and real (no gate is called in either) |
-| G-B | `Execute`, right after G-A, before Layer 1 (moved from `prepareApply` on 2026-09-12, see "G-B move" below) | rejects a target entry whose `file:` names the registry or the evolution log: `rule file <path>: is also the registry or the evolution log`; `sameFile` compares `filepath.Abs` results of `ruleFilePath(projectDir, file)`, the resolved registry path, and the evolution-log path — no file I/O | dry-run and real (no gate is called in either) |
+| G-B | `Execute`, right after G-A, before Layer 1 (moved from `prepareApply` on 2026-09-12, see "G-B move" below) | rejects a target entry whose `file:` names the registry or the evolution log: `rule file <path>: is also the registry or the evolution log`; `sameFile` compares `ruleFilePath(projectDir, file)` against the resolved registry path and the evolution-log path — by file identity (`os.Stat` + `os.SameFile`) when both paths exist, otherwise by `filepath.Abs` results (identity branch added by F1 on 2026-09-12, see "F1 alias fix" below; before it the comparison was `filepath.Abs` only, with no file I/O) | dry-run and real (no gate is called in either) |
 
 What each guard adds over the code without it (observed on the mutants, below): without G-A an empty `After` is still refused, but only after all four gate doubles ran, by the log-entry validation (`evolution log <path>: clause is empty`), with no rule id in the message. Without G-B both halves are admitted: a `file:` pointing at the registry, or at a log that carries the current clause once, passes every later check — `Execute` returns no error in dry-run and real mode (observed). That the real run then commits two changes to the same path is read from `prepareApply` / `commitChanges`, not observed: the test stops at the nil error.
 
@@ -248,7 +248,65 @@ Package state after the move (tree `5801ebda0`):
 - `go vet ./internal/constitution/` → exit 0, no output (`guards/vet-moved.txt`)
 - `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint-moved.txt`)
 
-The symlink limit of `sameFile` is carried in §E.3 `residual_risk`.
+#### F1 alias fix — file identity when both paths exist (lead decision, 2026-09-12)
+
+> G-B는 이 카드가 넣은 가드인데, 기본 macOS APFS(대소문자 무시)에서 ZONE-REGISTRY.md 같은 별칭으로 우회된다면 가드가 지킨다고 주장하는 것을 지키지 못합니다 (lead, 2026-09-12)
+
+Sync-audit finding F1 (`.moai/reports/t659/sync-audit.md`): `sameFile` compared `filepath.Abs` strings only, so a `file:` entry that names the registry or the evolution log through an alias — a case-variant name on a case-insensitive filesystem, a hard link, or a symbolic link — passed G-B. The containment check (REQ-CAA-020/021) admits all three, because each alias lies inside `projectDir`.
+
+Change (lead's design, `internal/constitution/pipeline.go` `sameFile` and its comment only): `os.Stat` both paths; when both succeed, return `os.SameFile(infoA, infoB)` — `os.Stat` follows links, so symbolic-link aliases are caught with hard links and case variants. When either `os.Stat` fails — the evolution log may not exist yet, and any other Stat error takes the same branch so that a Stat failure never becomes a rejection of its own — compare `filepath.Abs` results as before. G-B keeps its position (after G-A, before Layer 1) and its error text (`rule file %s: is also the registry or the evolution log`). No @MX tag sits on `sameFile`; none was added.
+
+Test — `TestExecute_RuleFileAliasOfRegistryOrLog_Rejected`, a sibling top-level test in `internal/constitution/apply_test.go` (a sibling rather than new rows in `TestExecute_RuleFileIsRegistryOrLog_Rejected`, because each alias needs its own setup step). Every subtest runs in `dry_run` and `real` and asserts the G-B substring, the rule-file path (`containsPathForm`), 0 gate calls, the fixture tree snapshot unchanged, and the lock dir empty. Alias subtests first check, independently of `sameFile`, that the alias reads back as the registry's bytes.
+
+- `hardlink_registry` — `file: rules/alias.md`, created with `os.Link` to the registry (skips with a stated reason if the platform refuses a hard link).
+- `case_variant_registry` — `file: .claude/rules/moai/core/ZONE-REGISTRY.md`. `skipUnlessCaseInsensitive` writes a probe under a separate `t.TempDir()` and stats its case-flipped name; on a case-sensitive filesystem the subtest skips, naming that reason. **On this machine it ran** (not skipped): the RED and GREEN outputs both list `case_variant_registry/{dry_run,real}` with no `SKIP`.
+- `symlink_registry` — `file: rules/alias.md`, a symbolic link to the registry (`symlinkOrSkip`).
+- `absent_log_fallback` — `file: .moai/research/evolution-log.md` with no log written; pins the Abs-fallback branch. It also covers the missing-log form that the G-B move record above noted as untested.
+
+Commits (the commit graph witnesses RED before the fix, verification-claim-integrity §2.3):
+
+- `2496053a8` — `test(t659): G-B must catch hard-link and case-variant aliases (F1 red)`: the new test plus `.moai/reports/t659/run/guards/f1-red.txt`; production code untouched
+- `bca8cf96a` — `fix(t659): compare G-B aliases by file identity when both exist (F1)`: `sameFile` only
+
+RED on the pre-fix code, `.moai/reports/t659/run/guards/f1-red.txt` (tree `e8d16eaee` + the test):
+
+```
+$ go test ./internal/constitution/ -run '^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$' -count=1 -v
+exit=1   "=== RUN" lines: 9 (1 top-level + 8 subtests)
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil   (×6)
+    --- FAIL: …/hardlink_registry/dry_run, …/hardlink_registry/real
+    --- FAIL: …/case_variant_registry/dry_run, …/case_variant_registry/real
+    --- FAIL: …/symlink_registry/dry_run, …/symlink_registry/real
+    --- PASS: …/absent_log_fallback/dry_run, …/absent_log_fallback/real
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.442s
+```
+
+Every alias failure is the missing G-B rejection (nil error), not setup: the alias read-back and skip-probe `Fatalf`/`Skipf` lines never fire. `absent_log_fallback` passes on both trees by design.
+
+GREEN, `.moai/reports/t659/run/guards/f1-green.txt` (tree `bca8cf96a`): `TestExecute_EmptyAfter_Rejected`, `TestExecute_RuleFileIsRegistryOrLog_Rejected`, and `TestExecute_RuleFileAliasOfRegistryOrLog_Rejected` — 3 top-level, 19 `=== RUN` lines, all PASS, 0 skipped, `ok … 0.413s`.
+
+Mutants — runner `.moai/reports/t659/run/mutate.py`, specs `.moai/reports/t659/run/guards/mutants-guards-f1.json` (new file; the M-GA / M-GB* anchors still match unchanged and were copied only so the outputs carry the `-f1` suffix without overwriting the `-moved` evidence), per-mutant output `.moai/reports/t659/run/guards/M-*-f1.txt`, summary `mutants-f1-summary.txt`. `pipeline.go` sha256 `1ef48dcc…2467` before and after the pass (restored byte-exact; the runner also checks restoration); `apply_test.go` is not edited by any mutant (sha256 `bc5896ec…b11f`).
+
+| Mutant | Edit | Selector | Top-level RUN / all RUN | Result | Failing subtests |
+|---|---|---|---|---|---|
+| M-F1-samefile | identity branch removed (straight to the Abs comparison — the pre-F1 behavior) | `^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$` | 1 / 9 | killed (exit 1) | `hardlink_registry/*`, `case_variant_registry/*`, `symlink_registry/*` — `got nil`; `absent_log_fallback/*` passes |
+| M-F1-fallback | Stat-failure branch returns `false` instead of comparing Abs | `…Alias…_Rejected$/^absent_log_fallback$` | 1 / 3 | killed (exit 1) | `absent_log_fallback/dry_run`, `/real` — the rule-file read fails with `no such file or directory` after the gates, 4 gate calls |
+| M-GA | G-A deleted (re-run) | `^TestExecute_EmptyAfter_Rejected$` | 1 / 3 | killed (exit 1) | `dry_run`, `real` |
+| M-GB | condition → `false` (re-run) | `^TestExecute_RuleFileIsRegistryOrLog_Rejected$` | 1 / 7 | killed (exit 1) | `registry/*`, `evolution_log/*` |
+| M-GB-reg | registry half dropped (re-run) | `…IsRegistryOrLog_Rejected$/^registry$` | 1 / 3 | killed (exit 1) | `registry/dry_run`, `registry/real` |
+| M-GB-log | log half dropped (re-run) | `…IsRegistryOrLog_Rejected$/^evolution_log$` | 1 / 3 | killed (exit 1) | `evolution_log/dry_run`, `evolution_log/real` |
+| M-GB-always | condition → `true` (re-run) | `…IsRegistryOrLog_Rejected$/^distinct_control$` | 1 / 3 | killed (exit 1) | `distinct_control/dry_run`, `distinct_control/real` |
+
+Counted: 7 mutant runs, 7 killed, 0 survived. RUN counts: `grep -c '^=== RUN   [A-Za-z0-9_]*$'` → 1 per file; `grep -c '^=== RUN'` → the second figure.
+
+Package state after the fix (tree `bca8cf96a`):
+
+- `go test ./internal/constitution/ -count=1 -cover` → `ok  	github.com/modu-ai/moai-adk/internal/constitution	0.793s	coverage: 88.4% of statements` (`guards/cover-f1.txt`)
+- `go vet ./internal/constitution/` → exit 0, no output (`guards/vet-f1.txt`)
+- `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint-f1.txt`)
+- `GOOS=windows GOARCH=amd64 go vet ./internal/constitution/` → exit 0, no output (`guards/vet-windows-f1.txt`) — compile only; on Windows the hard-link and symlink subtests skip with a stated reason if the platform refuses the alias, and the case-variant subtest runs or skips by the same probe
+
+What the alias fix leaves open is carried in §E.3 `residual_risk`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -287,10 +345,13 @@ compile_slot_commands_run_2026_09_12:  # all run in the slot; results in .moai/r
 out_of_spec_guards:                     # §E.2.6 — SPEC 밖 추가, 리드 인정; not counted in ac_* or mutants_* above
   - "G-A: Execute rejects an empty After before Layer 1 — TestExecute_EmptyAfter_Rejected, mutant M-GA killed"
   - "G-B: Execute rejects a rule file that is the registry or the evolution log before Layer 1 (moved from prepareApply 2026-09-12, lead decision; RED 0893611ad, fix 5801ebda0) — TestExecute_RuleFileIsRegistryOrLog_Rejected asserts 0 gate calls, mutants M-GB, M-GB-reg, M-GB-log, M-GB-always killed at the new location, M-GA re-run killed"
+  - "G-B F1 alias fix (sync-audit F1, lead decision 2026-09-12; RED 2496053a8, fix bca8cf96a): sameFile compares by file identity (os.Stat + os.SameFile) when both paths exist — TestExecute_RuleFileAliasOfRegistryOrLog_Rejected covers hard-link, case-variant (ran here, case-insensitive temp filesystem) and symbolic-link aliases of the registry plus the Abs fallback for an absent log, 0 gate calls; mutants M-F1-samefile, M-F1-fallback killed, M-GA and the four M-GB* re-run killed (7/7)"
 residual_risk:
-  - "G-B symlink limit: sameFile compares filepath.Abs results and resolves no symbolic link, so a rule-file entry that reaches the registry or the evolution log through a symlinked alias is not caught by G-B; no test covers that case"
+  - "G-B identity comparison applies only when both paths can be stat'ed. When either cannot (the rule file or the evolution log does not exist yet, a symbolic link dangles, or any other Stat error), G-B falls back to comparing filepath.Abs strings, so an alias of a file that does not exist yet (for example a case-variant name of an absent evolution log) is not caught by G-B; such an entry names no existing file, and is refused later by the rule-file read ('no such file') after the gates, with no file written — that later refusal is read from the code for the alias forms; the same refusal was observed for the plain absent-log path with the fallback removed (mutant M-F1-fallback: 'no such file or directory', 4 gate calls)"
+  - "G-B decides file identity once, before the gates; an alias created or removed between that check and prepareApply (while Layer 5 waits for approval) is not re-checked — read from the code, not tested"
+  - "Case-variant alias subtest depends on the temp filesystem: it ran here (case-insensitive APFS); on a case-sensitive filesystem it skips with a stated reason, and the Windows cells are compile-only locally (vet), their run is CI's"
 sync_report_obligation: "the sync report MUST name both guards (G-A, G-B) for sync-auditor review, as additions outside the SPEC accepted by the lead; both run before Layer 1"
-sync_report_behavior_change: "the sync report's behavior-change item MUST carry one line: a rule file whose file: points at an evolution log that does not exist yet was rejected with a 'no such file' error before the G-B move and is now rejected with the G-B message, before any gate (lead, 2026-09-12: intended behavior, kept; inferred from code reading, no test covers it — a test is optional)"
+sync_report_behavior_change: "the sync report's behavior-change item MUST carry one line: a rule file whose file: points at an evolution log that does not exist yet was rejected with a 'no such file' error before the G-B move and is now rejected with the G-B message, before any gate (lead, 2026-09-12: intended behavior, kept; inferred from code reading, no test covers it — a test is optional) [annotation, F1 2026-09-12: the post-move half is now covered by TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback; the pre-move 'no such file' half remains read from code]"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
