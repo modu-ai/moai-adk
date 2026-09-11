@@ -6,6 +6,8 @@
 
 이 결과는 **로컬 구현·검증**에 대한 판정이다. 원격 develop 반영, 설치된 바이너리 교체, 실사용 홈 데이터 이관을 실행했다는 뜻이 아니다. 자세한 명령과 검증 경계는 [최종 판정](../.moai/reports/t647/todo-audit-20260911/verdict.md)에 보존한다.
 
+구현 커밋은 **`3e03b1dc68f7a5b23bfc83f315aff24c2d2ebc7a`**이며, 카드 `t647`는 `done t647 landing=unknown` 이후 `archived`로 다시 확인했다. 여기서 `unknown`은 원격 착지 검사를 실행하지 않았다는 뜻이다. [커밋·카드 완료 기록](../.moai/reports/t647/todo-audit-20260911/completion.md).
+
 ## Claim
 
 기준: origin/develop ee99507fbe3b4a22c6a0a74815723d222dfdc04d. CLI, SQLite 저장 계층, 상태 전환, 보관·복원, 이관, 웹·SSE, 상태줄·훅·설정, 관련 스킬·규칙·배포 문서를 조사했다. 다음 표는 발견 당시의 문제 목록이며, 수정 후 검증과 구별한다. High 7건, Medium 12건, Low 3건으로 총 22건이다.
