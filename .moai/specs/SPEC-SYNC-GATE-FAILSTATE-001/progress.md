@@ -668,7 +668,41 @@ Definition of Done (§D.17):
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-11
+sync_status: audit-ready
+sync_commit_sha: pending-backfill   # this commit cannot cite its own hash; backfilled in a following commit
+changelog_entry: |
+  CHANGELOG.md [Unreleased] — new entry for SPEC-SYNC-GATE-FAILSTATE-001 under ### Fixed,
+  pre-emission grep `grep -c 'SPEC-SYNC-GATE-FAILSTATE-001' CHANGELOG.md` = 0 (verified before
+  emission), AC count 15 taken from acceptance.md §D as SSOT (live-identifier count, no
+  [RETIRED]/[REF] markers present), every cited file path verified via `ls` before commit.
+scope_approved_at_gate: gate-sync-2 (factory lead)
+scope_approved:
+  - "CHANGELOG.md [Unreleased] entry"
+  - "progress.md §E.4 Sync-phase Audit-Ready Signal"
+  - "spec.md frontmatter status + updated only"
+scope_out_of_bounds_noted:
+  - "other project surfaces still describe this hook as 'lint + test + coverage delta' — tracked by the lead as follow-up card t644, not edited here"
+```
+
+**gate-sync-1 evidence cited (verification batch, re-read before this write):**
+
+| # | Command | Verbatim output | Exit |
+|---|---|---|---|
+| 1 | `git rev-parse --short HEAD` | `e5ff08f5d` | 0 |
+| 2 | `git status --short` | *(empty)* | 0 |
+| 3 | `ls .moai/reports/t624/m4-ac009-packages.txt` | `.moai/reports/t624/m4-ac009-packages.txt` | 0 |
+| 4 | see `.moai/reports/t624/m4-ac009-packages.txt` | `ok` for `internal/hook` (159.262s) and `ok` for `internal/template` (51.493s), measured on HEAD `dc9feafb2` after the catalog regen (per §E.2 M4) | 0 |
+| 5 | `go test ./internal/template/ -count=1` (orchestrator re-run, this sync-phase turn) | `ok  	github.com/modu-ai/moai-adk/internal/template	28.645s`, measured on `a73b3e663` | 0 |
+
+Baseline-attribution: the sync-phase gate-sync-1 record above is attributed to HEAD `e5ff08f5d`
+(current tree, clean) and to run-phase evidence already committed at `run_commit_sha: a73b3e663`
+(§E.3). The orchestrator's own re-run (row 5) is a fresh measurement in this run, against this
+tree's dependency closure, not a carried-over figure.
+
+**Next:** sync-audit runs next with lens `--security` (this SPEC's change touches a Stop hook and
+its comment claims about a dependency-manifest observation, per §1.2/§1.3 H03/SX-R05 of `spec.md`).
 
 ## §F Phase 4 Mode Selection
 
