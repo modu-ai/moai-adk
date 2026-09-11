@@ -76,6 +76,19 @@ For each SPEC associated with the current sync:
   - Include: new_directories_created, new_dependencies_added, new_features_implemented
   - This report feeds into Phase 12 (SPEC updates) and Phase 12 (project doc updates)
 
+#### Step 1.5.0: Freeze the Sync Input Snapshot
+
+Before Phase 7 audit work or the Phase 12 documentation fan-out begins, the
+orchestrator MUST create one immutable `sync_snapshot_id`. The snapshot records
+the HEAD SHA, porcelain-v2 status, diff hash, SPEC artifact hashes, and the
+complete Step 1.5 divergence report. D1-D5 drafters receive that snapshot ID
+and read only its contents; they do not wait for a later Phase 11 result.
+
+If the tree or SPEC artifacts change after the snapshot is sealed, the
+orchestrator invalidates the ID and creates a new snapshot before launching
+any remaining drafter. A missing or stale snapshot is a blocker, not an
+invitation to read whichever phase output happens to be available.
+
 - Step 1.5.5: Check SPEC Lifecycle
   - Read `lifecycle` from SPEC frontmatter (enum: `spec-anchored`|`spec-lite`|`exploratory`; default `spec-anchored` per `.claude/rules/moai/development/spec-frontmatter-schema.md`)
   - `spec-anchored` (default): SPEC content will be updated to reflect actual implementation
@@ -135,9 +148,9 @@ Input: Approved sync plan, project verification results, changed files list, div
 
 Each drafter reads the changeset and **returns draft text; it writes no final artifact**. A large draft (4-locale docs-site content, for example) MAY instead be staged under `.moai/state/` with only the path returned — that staging path is runtime state, not a sync deliverable, so it does not make the drafter a writer of the output set. `manager-docs` then applies the five drafts **sequentially** and is the single writer of every final artifact (CHANGELOG, README, docs-site, project docs, SPEC frontmatter, codemaps).
 
-**Concurrent scheduling with the Phase 7-10 audit (A5 — SPEC-SYNC-PARALLEL-DOCS-001).** The `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (the prior scheduling read the Phase Routing Table top-to-bottom and serialized the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns.
+**Concurrent scheduling with the Phase 7-10 audit (A5 — SPEC-SYNC-PARALLEL-DOCS-001).** After the immutable `sync_snapshot_id` is sealed, the `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (the prior scheduling read the Phase Routing Table top-to-bottom and serialized the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns.
 
-**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads its input from SPEC artifacts + git diff + the Phase 11 Step 1.5 divergence report. A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores. The docs draft and the audit are input-independent; a drafter that consumed "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.
+**Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads the immutable `sync_snapshot_id` (SPEC artifacts + git diff + the Step 1.5 divergence report). A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores, and it does not require a future Phase 11 output. The docs draft and the audit are input-independent; a drafter that consumed "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.
 
 **Single-writer applier sequencing at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The A5 concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` is the sole write-capable agent and applies the five drafts sequentially AFTER both the docs-drafter fan-out AND the audit fan-out return — the single-writer applier pass runs at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout the concurrent fan-out; the audit verdict is surfaced to the user at the same gate-sync-2 round, with NO extra human round-trip introduced by A5.
 
