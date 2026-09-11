@@ -62,6 +62,9 @@ func LoadAmendRegistry(registryPath, projectDir string) (*Registry, error) {
 
 // ruleFilePath returns an entry's file: joined with projectDir when relative,
 // and as given when absolute.
+//
+// @MX:ANCHOR: [AUTO] the one join of an entry's file: with projectDir, shared by the containment check, the rule-file alias check, and the apply read
+// @MX:REASON: fan_in 3 (LoadAmendRegistry, Pipeline.Execute, prepareApply); a second join could make the path that is checked differ from the path that is written
 func ruleFilePath(projectDir, file string) string {
 	if filepath.IsAbs(file) {
 		return file

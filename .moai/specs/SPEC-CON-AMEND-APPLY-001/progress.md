@@ -254,7 +254,7 @@ The symlink limit of `sameFile` is carried in §E.3 `residual_risk`.
 
 ```yaml
 run_complete_at: 2026-09-11
-run_commit_sha: pending-backfill        # the M7 commit carrying this block
+run_commit_sha: ae58f038352d7cebef944a58c352cd196550b895   # the M7 commit carrying this block (backfilled in the sync commit, see §E.4 run_commit_sha_backfill)
 baseline_sha: fe8cc9875aea7bad57fe05a88a1b33f8d196fe53
 run_status: complete                   # compile slot measured 2026-09-12 (lane re-measure, .moai/reports/t659/run/slot/summary.md)
 ac_pass_count: 25                      # every cell observed PASS; the four slot cells (AC-CAA-015, 017 CLI half, 022 CLI, 024 CLI) ran in the slot
@@ -295,4 +295,40 @@ sync_report_behavior_change: "the sync report's behavior-change item MUST carry 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync phase run by manager-docs on 2026-09-12 inside the card worktree (branch `WT-amend-apply`, base HEAD `128a5ea52`). git-flow repository: no PR; the lane merges the branch into local develop through the lead's integration window. Nothing was pushed or merged here.
+
+```yaml
+sync_complete_at: 2026-09-12
+sync_commit_sha: pending-backfill        # the sync commit carrying this block; backfilled by the follow-up commit
+sync_status: complete
+sync_agent: manager-docs
+sync_base_head: 128a5ea52c24b92f3e8e1e0bd7f1bb392e2e0086   # last run-phase commit (compile-slot record)
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Fixed, first bullet"
+b12_self_test_a: "grep -c 'SPEC-CON-AMEND-APPLY-001' CHANGELOG.md → 0 before emission, 1 line after"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 25 (AC-CAA-001 … AC-CAA-025); 0 occurrences marked [RETIRED] or [REF]; 25 live, 0 ambiguous; the entry states 25/25"
+b12_self_test_c: "ls on the 14 paths the entry cites → exit 0, all present; both guard test functions found in internal/constitution/apply_test.go (grep -c → 2)"
+frontmatter_status_transitions:
+  spec_md: "status in-progress → implemented → completed, updated 2026-09-11 → 2026-09-12, in the single sync commit; no other frontmatter field and no body line changed"
+  sibling_artifacts: "plan.md, acceptance.md, design.md, research.md carry no frontmatter (stateless on the status axis, spec-frontmatter-schema.md § Artifact Statelessness); progress.md records phases in its body"
+run_commit_sha_backfill: "§E.3 run_commit_sha ← ae58f038352d7cebef944a58c352cd196550b895. The field's own comment names 'the M7 commit carrying this block', and git log -S'run_commit_sha' over progress.md lists only ae58f0383, the commit that introduced the block. The last run-phase commit, 128a5ea52 (compile-slot record), is recorded above as sync_base_head, not in §E.3. Written by manager-docs at the lead's instruction as a mechanical placeholder completion; no other §E.2 / §E.3 line changed"
+docs_site: "no change in any locale — docs-site/content/{ko,en,ja,zh}/cli-reference/constitution.md say the amendment is applied only after the five-layer gate and that --dry-run simulates without modifying files; both statements are true of the implementation, and none of the four pages claims the apply step is unimplemented or describes dry-run validation or error behavior"
+readme: "no change — no README makes a claim about moai constitution amend"
+project_docs_finding: ".moai/project/structure.md:78 says internal/constitution has '13 non-test files'; measured 18 at this HEAD and 14 at BASELINE_SHA (already stale before this card). Not edited — outside the sync dispatch scope; reported for the lead"
+mx_validation:
+  added: "internal/constitution/registry_path.go ruleFilePath — @MX:ANCHOR + @MX:REASON (fan_in 3 distinct production callers: LoadAmendRegistry, Pipeline.Execute, prepareApply); comment-only change, gofmt clean, go vet clean, go test ./internal/constitution/ -count=1 ok (292 RUN lines, env scrubbed)"
+  present_and_valid: "ResolveRegistryPath @MX:ANCHOR (2 callers, REQ-CAA-019 boundary); LoadAmendRegistry @MX:ANCHOR (2 callers, REQ-CAA-021 boundary); commitChanges @MX:WARN with @MX:REASON (multi-file write with rollback)"
+  stale_anchor_reported: "LoadEvolutionLogs @MX:ANCHOR (added in this run) gives 'fan_in >= 3 (rateLimiter.Admit, applyAmendment, MarkRolledBack)'; applyAmendment no longer exists — the apply step calls parseEvolutionLog directly — so production fan_in is 2 (rate_limiter.go:42, evolution_log.go:81). The protocol demotes an ANCHOR below 3 callers to NOTE only via report, never automatically: not edited, reported"
+  warn_candidates_reported: "gocyclo ≥ 15 on new or changed production functions with no @MX:WARN: Pipeline.Execute 22, rewriteRegistryClause 18, evolutionLogBlocks 17, (*logEntryDecoder).entry 17 (golangci-lint gocyclo, min-complexity 15, this tree). SHOULD-level; not added; the baseline complexity of Execute was not measured"
+  below_threshold_note: "checkContained has 3 call sites in 2 functions (LoadAmendRegistry ×2, Execute ×1), below the 3-caller ANCHOR threshold; it is reached through the LoadAmendRegistry ANCHOR"
+out_of_spec_guards:                     # SPEC 밖 추가, 리드 인정 — for sync-auditor review
+  - "G-A: Execute rejects an empty After before Layer 1 — TestExecute_EmptyAfter_Rejected (dry_run, real; asserts 0 gate calls), mutant M-GA killed"
+  - "G-B: Execute rejects a rule file that is the registry or the evolution log before Layer 1 — moved from prepareApply by lead decision 2026-09-12 (RED 0893611ad, fix 5801ebda0); TestExecute_RuleFileIsRegistryOrLog_Rejected asserts 0 gate calls; mutants M-GB, M-GB-reg, M-GB-log, M-GB-always killed at the new location, M-GA re-run killed"
+behavior_change: "a rule file whose file: points at an evolution log that does not exist yet was rejected with a 'no such file' error before the G-B move and is now rejected with the G-B message before any gate (lead: intended, kept) — inferred from code reading, no test covers it"
+residual_risk:
+  - "G-B symlink limit: sameFile compares filepath.Abs results without symlink resolution, so a rule-file entry reaching the registry or the evolution log through a symlinked alias is not caught; no test covers that case"
+  - "backup-write / temporary-write failure restore (spec.md §E.4): implemented in commitChanges but not fault-injected; approved by the operator as a blank, no seam added"
+  - "Windows not run locally: GOOS=windows go vet ./internal/constitution/ and go build ./internal/cli/ pass (compile only); the test verdict on Windows is CI's"
+  - "G5 (spec.md §E.4): the real-apply path through runConstitutionAmend is not exercised at CLI level; the apply is covered at Execute level"
+  - "default lock path .moai/research/.amendment.lock is relative to the process working directory, not projectDir (spec.md §F, observed, not fixed)"
+sync_lint: "moai spec lint SPEC-CON-AMEND-APPLY-001 is run after the sync commit; its result is reported by manager-docs to the lane and is not recorded in this block"
+```
