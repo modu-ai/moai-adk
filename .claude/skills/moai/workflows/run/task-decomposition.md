@@ -81,6 +81,17 @@ Requirements:
 - Write tests before implementation (test-first discipline)
 - Ensure minimum 80% coverage per commit (85% recommended for new code)
 
+### TDD Result Classification (RED is not any failure)
+
+Record the semantic result of every TDD command using
+`.claude/rules/moai/workflow/tdd-result-contract.md`. A RED result is valid
+only when the new AC test reaches its intended assertion and the command's
+verbatim output proves that expected failure. Compile errors, test discovery
+errors, missing fixtures, tool failures, timeouts, and failures in existing
+tests are `TOOL_FAILURE` or `REGRESSION_FAILURE` and block the cycle. GREEN
+must rerun the new AC test plus the regression set; REFACTOR must preserve
+their PASS results.
+
 ### RED-stage Drafter Pool (read-only, conditional)
 
 **`FO-RUN-2`.** **Where** a milestone's RED stage spans several independent test targets — distinct packages, or distinct acceptance criteria with no shared fixture — the orchestrator shall draft them in parallel: one read-only `Agent()` per target in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each drafter reads the SPEC plus the existing test conventions and **returns test source as text — it writes no file and never prompts the user**, returning a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) when an input is missing. The single `manager-develop` subagent then applies the drafts sequentially and drives RED-GREEN-REFACTOR from there: it remains the only writer, so two write-capable agents never run at once. **Where** the targets share fixtures, or the RED stage is a single test, the existing serial path runs unchanged. The orchestrator launches the drafters itself — scaling, not subagent nesting.
