@@ -1,0 +1,24 @@
+== grep -c "dependency vulnerability scan runs automatically via the Stop hook" <template doc>
+0
+exit=1
+== grep -c "dependency vulnerability scan runs automatically via the Stop hook" <local doc>
+0
+exit=1
+== grep -c "deps_modified" <template doc>
+0
+exit=1
+== grep -c "deps_modified" <local doc>
+0
+exit=1
+== grep -c "only check for that drift" <template doc>
+0
+exit=1
+== grep -c "only check for that drift" <local doc>
+0
+exit=1
+== grep -c "Audit ALL of the following manifest files present at project root" <template doc>
+0
+exit=1
+== grep -c "Audit ALL of the following manifest files present at project root" <local doc>
+0
+exit=1

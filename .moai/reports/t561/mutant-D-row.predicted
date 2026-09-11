@@ -1,0 +1,4 @@
+mutant D (row condition removed: rows without an AC-… id are read as mappings)
+predicted before run:
+  FAIL RowWithoutACIsNotCoverage (got []: REQ-CST-004-002 in the (Optional) row now covered)
+  PASS HeaderColumnWithSameCellExpansion, OnlyHeaderColumnsAndOnlySameCell, UnidentifiedHeaderCollectsNothing, 3 existing sibling tests

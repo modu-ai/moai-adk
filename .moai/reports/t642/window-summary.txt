@@ -1,0 +1,4 @@
+measured-on: 2dcad05785cde93843d8e83f98a737f4105f0c4f (tree f6a7d1b635bd30679b097d106a38956276023207)
+uptime-before-remeasure: 11:50  up 3 days,  5:44, 19 users, load averages: 13.27 7.14 8.11
+toolpolicy: go test ./internal/config/toolpolicy/... -count=1 -v -> exit=0, === RUN 70, --- FAIL 0
+template: go test ./internal/template/ -run Settings|Security|Autonomy|Permission|Deny -count=1 -v -> exit=0, === RUN 86 (selector matches), --- FAIL 0

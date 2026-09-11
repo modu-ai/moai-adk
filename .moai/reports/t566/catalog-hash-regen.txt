@@ -1,0 +1,4 @@
+Computing hash for entry "moai"...
+  moai: 06701a7eefe06e66bd51ddfb2dc7055d119f761ab120c71f4fa7128343efb1b4
+catalog.yaml updated successfully (12899 bytes)
+EXIT=0

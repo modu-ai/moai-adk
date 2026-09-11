@@ -1,0 +1,56 @@
+=== RUN   TestT565AnchorSkipsFileMentionOnlyHeading
+    parser_ac_heading_anchor_test.go:41: AC-HDG-01 was NOT collected; got ids [AC-HDG-09]
+    parser_ac_heading_anchor_test.go:41: AC-HDG-09 WAS collected; got ids [AC-HDG-09]
+--- FAIL: TestT565AnchorSkipsFileMentionOnlyHeading (0.00s)
+=== RUN   TestT565AnchorSkipsOutOfScopeHeading
+=== RUN   TestT565AnchorSkipsOutOfScopeHeading/english
+    parser_ac_heading_anchor_test.go:55: AC-HDG-01 was NOT collected; got ids [AC-HDG-09]
+    parser_ac_heading_anchor_test.go:55: AC-HDG-09 WAS collected; got ids [AC-HDG-09]
+=== RUN   TestT565AnchorSkipsOutOfScopeHeading/korean
+--- FAIL: TestT565AnchorSkipsOutOfScopeHeading (0.00s)
+    --- FAIL: TestT565AnchorSkipsOutOfScopeHeading/english (0.00s)
+    --- PASS: TestT565AnchorSkipsOutOfScopeHeading/korean (0.00s)
+=== RUN   TestT565AnchorVocabulary
+=== RUN   TestT565AnchorVocabulary/##_6._Acceptance_Criteria
+=== RUN   TestT565AnchorVocabulary/##_3._수락_기준_—_acceptance.md_(Tier_M)
+=== RUN   TestT565AnchorVocabulary/##_수락_기준
+    parser_ac_heading_anchor_test.go:74: AC-HDG-01 was NOT collected; got ids []
+=== RUN   TestT565AnchorVocabulary/##_인수_기준
+    parser_ac_heading_anchor_test.go:74: AC-HDG-01 was NOT collected; got ids []
+=== RUN   TestT565AnchorVocabulary/##_검수_기준
+    parser_ac_heading_anchor_test.go:74: AC-HDG-01 was NOT collected; got ids []
+=== RUN   TestT565AnchorVocabulary/##_§F_AC_Matrix
+    parser_ac_heading_anchor_test.go:74: AC-HDG-01 was NOT collected; got ids []
+=== RUN   TestT565AnchorVocabulary/##_§E_Success_Criteria
+    parser_ac_heading_anchor_test.go:74: AC-HDG-01 was NOT collected; got ids []
+=== RUN   TestT565AnchorVocabulary/##_§E._Success_criteria
+    parser_ac_heading_anchor_test.go:74: AC-HDG-01 was NOT collected; got ids []
+--- FAIL: TestT565AnchorVocabulary (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_6._Acceptance_Criteria (0.00s)
+    --- PASS: TestT565AnchorVocabulary/##_3._수락_기준_—_acceptance.md_(Tier_M) (0.00s)
+    --- FAIL: TestT565AnchorVocabulary/##_수락_기준 (0.00s)
+    --- FAIL: TestT565AnchorVocabulary/##_인수_기준 (0.00s)
+    --- FAIL: TestT565AnchorVocabulary/##_검수_기준 (0.00s)
+    --- FAIL: TestT565AnchorVocabulary/##_§F_AC_Matrix (0.00s)
+    --- FAIL: TestT565AnchorVocabulary/##_§E_Success_Criteria (0.00s)
+    --- FAIL: TestT565AnchorVocabulary/##_§E._Success_criteria (0.00s)
+=== RUN   TestT565AnchorVocabularyIsNotWide
+--- PASS: TestT565AnchorVocabularyIsNotWide (0.00s)
+=== RUN   TestT565SectionReadsItsOwnSubheadings
+    parser_ac_heading_anchor_test.go:97: AC-HDG-01 was NOT collected; got ids []
+    parser_ac_heading_anchor_test.go:97: AC-HDG-02 was NOT collected; got ids []
+--- FAIL: TestT565SectionReadsItsOwnSubheadings (0.00s)
+=== RUN   TestT565SectionEndsAtSameOrHigherLevel
+=== RUN   TestT565SectionEndsAtSameOrHigherLevel/h3-anchor
+    parser_ac_heading_anchor_test.go:107: AC-HDG-02 was NOT collected; got ids [AC-HDG-01]
+=== RUN   TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2
+    parser_ac_heading_anchor_test.go:112: AC-HDG-09 WAS collected; got ids [AC-HDG-01 AC-HDG-09]
+--- FAIL: TestT565SectionEndsAtSameOrHigherLevel (0.00s)
+    --- FAIL: TestT565SectionEndsAtSameOrHigherLevel/h3-anchor (0.00s)
+    --- FAIL: TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2 (0.00s)
+=== RUN   TestT528SectionScopingInvariant
+--- PASS: TestT528SectionScopingInvariant (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.381s
+FAIL
+exit=1

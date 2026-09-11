@@ -1,0 +1,12 @@
+# AC-GTS2-002 directive + no toolchain line
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+tree: e6ec2991e4ce028b83d2be0658844ddb3813a8dd
+
+$ sed -n 3p go.mod
+go 1.26.8
+
+$ grep -c '^toolchain' go.mod
+0
+
+$ grep -c '^go ' go.mod   (control: exactly one go directive line)
+1

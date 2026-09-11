@@ -26,9 +26,9 @@ triggers:
   phases: ["sync"]
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Sync Workflow Entry Router
 
@@ -38,7 +38,7 @@ triggers:
 
 Skill injection: at each `manager-docs` spawn the orchestrator injects `At start, invoke Skill("moai-workflow-project") for the sync-phase documentation cycle.` (per `.claude/rules/moai/workflow/skill-routing.md` §1 and the delegation map `.moai/config/sections/delegation.yaml`).
 
-Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §E.4 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
+Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §E.4 (lettered per `spec-frontmatter-schema.md` § progress.md Section Map) + the frontmatter status transition that rides the sync commit for all SPEC artifacts, states per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix; MUST NOT modify spec.md/plan.md/acceptance.md body content per the same matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
 
 Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook exits 0 always; in blocking mode (MOAI_SYNC_GATE_BLOCKING=1) it emits stdout JSON {"decision":"block"} on lint/test failure or coverage regression > 5pp. Per Claude Code hook semantics, stdout JSON is honored only on exit 0. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement).
 

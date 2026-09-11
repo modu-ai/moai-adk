@@ -1,0 +1,31 @@
+# t543 spec-repair3 grep evidence (tree: 48b110e29 + uncommitted DoD/HISTORY edit; commands run via python3 subprocess, verbatim stdout + exit code)
+## DoD section start
+$ grep -n ^## §D Definition of Done .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+797:## §D Definition of Done
+EXIT=0
+## file length
+$ wc -l .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+     817 .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+EXIT=0
+## positive control: revised DoD wording present
+$ grep -n SPEC's own range as AC-UDD-021 measures it (read-time `CARD_BASE`, pre-merge) .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+812:  SPEC's own range as AC-UDD-021 measures it (read-time `CARD_BASE`, pre-merge), not relative to a
+EXIT=0
+## positive control 2: token findable in this file at all (expect >= 1)
+$ grep -c 7f61332ef .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+30
+EXIT=0
+## 7f61332ef hits at or after the DoD heading (line 797 to EOF)
+$ awk NR>=797 && /7f61332ef/ {print NR":"$0; n++} END {print "HITS=" n+0} .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+HITS=0
+EXIT=0
+## negative control: old DoD wording gone (expect no output, EXIT=1)
+$ grep -n unmodified relative to .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+
+EXIT=1
+## classification
+DoD-range HITS=0: no §D item names 7f61332ef, either as a criterion base or as a recorded baseline. Every remaining hit in the file sits below line 797 (§A-§C) and is outside this change.
+## control for the DoD-range awk: the same expression over the whole file must reach the grep -c count (30), else HITS=0 above is vacuous
+$ awk NR>=1 && /7f61332ef/ {n++} END {print "HITS=" n+0} .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
+HITS=30
+EXIT=0
