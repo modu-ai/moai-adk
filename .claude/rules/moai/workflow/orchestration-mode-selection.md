@@ -104,13 +104,21 @@ Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) fo
 
 ## §C — Capability Gates
 
-### §C.1 Agent Teams (`agent-team`) — footnote surface (experimental, re-allowed)
+### §C.1 Agent Teams (`agent-team`) — footnote surface (experimental, resolver-gated)
 
-**`agent-team` — re-allowed as experimental** (operator decision). The flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, making the native teammate runtime a sanctioned orchestration surface: spawn teammates with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session), shared TaskList coordination, `moai cg` GLM teammate panes, `moai cc -w <name> --spawn` teammate windows, `~/.claude/teams/` registry.
+**`agent-team` — experimental and resolver-gated** (operator decision). The
+flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is only an input to the resolver;
+it is not a capability proof. An explicit request and a passed current-runtime
+probe are required before the native teammate surface is used. See
+`.claude/rules/moai/workflow/team-capability-resolver.md`.
 
 **Selection rule unchanged**: the Phase 4 decision tree never auto-selects `agent-team` — an explicit operator request (`--team` / `--mode team` / `Team` scale label) selects it; Tier L coordination auto-routing still targets `manager-lead`; multi-domain research routes to `fanout`; coding-heavy work to `serial`; high-volume mechanical transformation to `sweep`.
 
-**Genealogy**: `agent-team` was previously a numbered catalog entry, then retired (tombstone; a forced `--team` emitted the canonical sentinel `MODE_TEAM_UNAVAILABLE` per `spec-workflow.md` § Mode Dispatch and fell back with a `[mode-auto-downgrade]` info log), then re-allowed as experimental. The sentinel string survives as the documented historical fallback marker (`run.md`; CI sentinel audit). Evidence for the re-allow is two-sided on the same runtime version: one session observed 5 named workers (A–E) completing normally with result returns under the enabled flag, while another observed a named spawn converting to an in-process teammate that returned no result over ~1 hour and two status pokes (resolved only by TaskStop, which exposed its `in_process_teammate` type). The discrepancy is unresolved — treat teammate result-return reliability as unproven and verify per session before relying on it.
+**Genealogy**: `agent-team` was previously a numbered catalog entry, then
+retired (tombstone; a forced `--team` emitted `MODE_TEAM_UNAVAILABLE`), then
+documented as experimental again. Those records are historical. The prior
+mixed observations of named-worker result return are not current capability
+evidence; verify per session through the resolver before relying on them.
 
 **Constraints (conditional — apply and re-measure if the teammate conversion resurfaces on a future CC version)**:
 - No nested teams; one team per session; the lead is fixed

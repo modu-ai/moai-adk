@@ -447,9 +447,16 @@ Sync to Cleanup (Route B only):
 
 ## Agent Teams Variant — Re-allowed (experimental)
 
-Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and `agent-team` is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
+Agent Teams usage is an experimental surface gated by the current capability
+resolver (`.claude/rules/moai/workflow/team-capability-resolver.md`). The flag
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and an explicit `--team` / `--mode team`
+request are inputs, not proof; the Phase 4 tree never auto-selects it.
 
-Genealogy: agent-team was previously RETIRED (tombstone; `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode plan/run/fix/review skill files and the `workflow.yaml` team-config block were removed). The sentinel string is retained as documented history. Re-allow evidence: 5 named workers completed normally with result returns under the enabled flag.
+Genealogy: agent-team was previously RETIRED (tombstone; `--team` emitted
+`MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode
+skill files and `workflow.yaml` team-config block were removed). The sentinel
+is historical; current availability and result-return reliability are decided
+by the resolver, not by this genealogy sentence.
 
 The default multi-agent surface remains:
 - Multi-domain research/review → fanout (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn — advisory band; hard bound is the runtime subagent cap, per orchestration-mode-selection.md §C.2).
