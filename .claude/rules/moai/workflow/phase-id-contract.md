@@ -1,3 +1,8 @@
+---
+description: "Stable phase identifiers for run skip and resume"
+paths: ".claude/skills/moai/workflows/run/**,.moai/specs/**/progress.md"
+---
+
 # Stable Phase ID Contract
 
 Phase routing uses stable string IDs, not display numbers. A phase record has

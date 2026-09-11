@@ -1,3 +1,8 @@
+---
+description: "Single severity and exception contract for security gates"
+paths: ".claude/skills/moai/workflows/sync/**,.claude/agents/moai/*auditor.md"
+---
+
 # Security Decision Contract
 
 This is the single severity-to-decision contract for plan, run, sync, and

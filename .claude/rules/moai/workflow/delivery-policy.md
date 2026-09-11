@@ -1,3 +1,8 @@
+---
+description: "Owner and approval boundary for workflow delivery"
+paths: ".claude/skills/moai/workflows/**,.claude/agents/moai/manager-git.md,.git/**"
+---
+
 # Delivery Policy
 
 This rule is the single owner of branch, push, and pull-request decisions for
