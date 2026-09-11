@@ -44,7 +44,7 @@ func writeFile(t *testing.T, dir, name, content string) {
 	}
 }
 
-// TestSnapshotKey exercises the 3-input key composition (HEAD SHA +
+// TestSnapshotKey exercises the 4-input key composition (HEAD SHA +
 // porcelain-v2 digest + diff-HEAD content hash): every tree-state change —
 // including the D13 boundary case of RE-EDITING an already-dirty tracked file,
 // where porcelain-v2 output is byte-identical — must yield a distinct key.
@@ -106,6 +106,30 @@ func TestSnapshotKey(t *testing.T) {
 	gitRun(t, dir, "add", ".")
 	gitRun(t, dir, "commit", "-q", "-m", "advance")
 	record("HEAD advance")
+}
+
+// TestSnapshotKeyUntrackedContentChanges guards the untracked-content leg of
+// the key. Git status records only the path for an untracked file, so changing
+// an already-present untracked file must still invalidate a cached snapshot.
+func TestSnapshotKeyUntrackedContentChanges(t *testing.T) {
+	t.Parallel()
+	dir := initTestRepo(t)
+	ctx := context.Background()
+
+	writeFile(t, dir, "new.go", "package demo\n// first\n")
+	first, err := Key(ctx, dir)
+	if err != nil {
+		t.Fatalf("Key(first untracked content): %v", err)
+	}
+
+	writeFile(t, dir, "new.go", "package demo\n// second\n")
+	second, err := Key(ctx, dir)
+	if err != nil {
+		t.Fatalf("Key(second untracked content): %v", err)
+	}
+	if first == second {
+		t.Fatalf("re-editing an untracked file must change the key: %s", first)
+	}
 }
 
 // TestSnapshotKeyNonRepo asserts a non-git directory returns an error (callers

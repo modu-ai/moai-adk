@@ -1,0 +1,17 @@
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/a0
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/a50
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/b61
+    sync_gate_failstate_test.go:566: AC-006 b61 [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:566: AC-006 b61 [regression-guard]: stdout is not a block; stdout="{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}\n"
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/b70
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/b120
+--- FAIL: TestSyncGateFailState_AC006_RunningRecordStaleWindow (7.33s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/a0 (1.67s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/a50 (1.04s)
+    --- FAIL: TestSyncGateFailState_AC006_RunningRecordStaleWindow/b61 (1.04s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/b70 (1.57s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/b120 (2.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	8.125s
+FAIL

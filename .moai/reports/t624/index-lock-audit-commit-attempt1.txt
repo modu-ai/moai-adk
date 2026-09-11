@@ -1,0 +1,27 @@
+attempt 1 — commit of plan-audit.md + index-lock-spec-commit-attempt1.txt on WT-sync-gate-failstate (2026-09-10)
+
+command:
+git rev-parse --short HEAD && git branch --show-current && git --no-optional-locks status --short && git add .moai/reports/t624/plan-audit.md .moai/reports/t624/index-lock-spec-commit-attempt1.txt && git commit -q -m "docs(t624): record plan-audit FAIL verdict and SPEC commit lock record ..." && ...
+
+exit code: 128
+
+full output:
+6eda95337
+WT-sync-gate-failstate
+?? .moai/reports/t624/index-lock-spec-commit-attempt1.txt
+?? .moai/reports/t624/plan-audit.md
+fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t624/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+
+The failing step was `git add` (both paths still `??` in the next probe).
+
+attempt 2 — probe first, retry only when the lock is absent and HEAD unchanged, in one invocation:
+- 18:16:17 lock_present=no · head=6eda95337 · MERGE_HEAD absent (exit 1) · both paths `??`
+- `git add` + `git commit` → commit ad0ad6f9b · tree clean afterwards · chain exit 0
+
+Reading: fourth transient index.lock contention in this worktree, each on the first commit attempt, each released within seconds, HEAD never moved, the lock never removed by hand. Earlier samples (index-lock-spec-commit-attempt1.txt) caught this session's own `moai statusline` running; the holder is still not established.

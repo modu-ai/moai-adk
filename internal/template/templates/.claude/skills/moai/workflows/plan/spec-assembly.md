@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 9: Pre-Creation Validation Gate
 
@@ -28,7 +29,12 @@ Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
 ### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
 
-[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
+[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST
+resolve the final Tier (S, M, or L). It first consumes the interview's
+`provisional_tier`; it asks this question only when the tier was absent,
+ambiguous, or changed by research. This drives the artifact set, the
+manager-develop delegation prompt template applicability, and the plan-auditor
+PASS threshold.
 
 Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
 
@@ -167,7 +173,10 @@ Skip conditions:
 
 Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
 - `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
-- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
+- `standard`/`thorough`: blocking retry loop using the tier-resolved ceiling
+  from `.moai/config/sections/harness.yaml` (`S=1`, `M=2`, `L=3`); the
+  `remaining_attempts` counter is owned by the orchestrator and is consumed by
+  every reviewer invocation, including cross-validation.
 
 #### Parallel Review Lenses (read-only, conditional)
 
@@ -246,8 +255,8 @@ Present the full defect history to the user:
 
 Harness configuration reference (harness.yaml):
 - `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
-- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
-- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
+- `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true, cross_validate_with_evaluator_active: true
 
 For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
 
