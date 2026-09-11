@@ -36,7 +36,8 @@ Activation: Controlled by harness.yaml `plan_audit.enabled` setting.
 
 - `minimal`: Skip this phase
 - `standard`: Run plan-auditor once (default)
-- `thorough`: Run plan-auditor + cross-validate with sync-auditor
+- `thorough`: Run plan-auditor + an independent plan-auditor re-review;
+  `sync-auditor` remains post-implementation only
 
 Skip Conditions:
 - harness.yaml `plan_audit.enabled: false`
