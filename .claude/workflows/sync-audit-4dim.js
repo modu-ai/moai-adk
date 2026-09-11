@@ -181,14 +181,19 @@ Dimension focus for "${dimension}":
 Return an object with EXACTLY: dimension, score (0..1), findings[{severity,summary,file,evidence}],
 evidence_gaps[]. If you cannot evaluate this dimension at all, return score as null (do NOT fabricate a score).`
 
-// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'), effort 'xhigh'. Each
-// call site inlines the read-only opts so the read-only contract is pinned to the JUDGE site itself.
+// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'). The
+// orchestrator resolves the verify-judge effort profile through args; this
+// script clamps it to the supported runtime policy and never hardcodes xhigh.
 // Thunk order MUST match DIMENSIONS so judges[i] aligns with DIMENSIONS[i] in the Verdict phase.
+const allowedJudgeEfforts = new Set(['low', 'medium', 'high'])
+const requestedJudgeEffort = (args && typeof args.judge_effort === 'string') ? args.judge_effort : 'high'
+const JUDGE_EFFORT = allowedJudgeEfforts.has(requestedJudgeEffort) ? requestedJudgeEffort : 'high'
+
 const judges = await parallel([
-  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
 ])
 
 // ---------------------------------------------------------------------------
