@@ -152,13 +152,22 @@ Tasks for manager-docs:
 - Update README if needed
 - Synchronize architecture documents
 - Fix project issues and restore broken references
-- Update SPEC documents based on divergence analysis and lifecycle level (see Step 2.2.1)
+- Classify SPEC divergence and hand body changes to `manager-spec`; manager-docs
+  may update only approved frontmatter fields and sync-facing documentation
 - Detect changed domains and generate domain-specific updates
 - Generate sync report: .moai/reports/sync-report-{timestamp}.md
 
 All document updates use conversation_language setting.
 
-##### Step 2.2.1: SPEC Document Update (Based on Divergence Report)
+##### Step 2.2.1: SPEC Body Handoff (Based on Divergence Report)
+
+`manager-docs` MUST NOT edit `spec.md`, `plan.md`, or `acceptance.md` body
+content. It writes a structured blocker/handoff containing the divergence ID,
+affected artifact, proposed change, and evidence. The orchestrator delegates
+that handoff to `manager-spec`, which performs the body edit and independent
+re-review before `manager-docs` resumes CHANGELOG and project-document work.
+Frontmatter `status` and `updated` transitions remain the only SPEC edits owned
+by `manager-docs` during sync.
 
 Apply updates based on the SPEC `lifecycle` value detected in Phase 11:
 
