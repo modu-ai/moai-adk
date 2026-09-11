@@ -45,10 +45,10 @@ full subcommand × mode matrix.
 
 ## Supported Modes
 
-- auto (default): Smart selective sync of changed files only. PR Ready conversion. Daily development workflow.
-- force: Complete regeneration of all documentation. Error recovery and major refactoring use case.
+- auto (default): Smart selective sync of changed files and their directly impacted docs/API surface. Its diagnostics and coverage stay within the changed package/import closure unless a recorded widening reason is approved. PR Ready conversion. Daily development workflow.
+- force: Complete regeneration of all documentation and full-repository diagnostics/coverage. Error recovery and major refactoring use case.
 - status: Read-only health check. Quick project health report with no changes.
-- project: Project-wide documentation updates. Milestone completion and periodic sync use case.
+- project: Project-wide documentation updates plus full-repository baseline diagnostics/coverage. Milestone completion and periodic sync use case.
 
 ### Project Mode Details (ENHANCED)
 
