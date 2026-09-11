@@ -1,0 +1,4 @@
+ .../.claude/agents/moai/manager-develop.md         |   7 +-
+ .../templates/.claude/agents/moai/manager-docs.md  |  17 ++
+ .../templates/.claude/agents/moai/plan-auditor.md  | 244 +++++++++++++++++++--
+ 3 files changed, 251 insertions(+), 17 deletions(-)

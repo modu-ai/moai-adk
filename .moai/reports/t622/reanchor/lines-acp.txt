@@ -1,0 +1,50 @@
+== .claude/rules/moai/core/agent-common-protocol.md
+13:`AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
+17:[ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
+52:2. Preload `AskUserQuestion` via `ToolSearch(query: "select:AskUserQuestion")`
+67:```markdown
+77:```
+290:### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
+296:* **Lane A (ordered):** `git fetch origin main` MUST finish and its exit status be observed before `git rev-list --count --left-right origin/main...HEAD` starts. The divergence count is only attributable to the ref that the completed fetch installed; never run these two commands as one parallel batch or as a shell line whose completion cannot be distinguished.
+297:* **Lane B (independent):** `moai session list --json --filter-spec=<SPEC-ID>` may run concurrently with Lane A's fetch because it does not read `origin/main`. Its result is joined with Lane A after both lanes complete.
+299:```bash
+300:# Lane A — ordered; wait for fetch completion before reading origin/main.
+302:fetch_status=$?
+303:if [ "$fetch_status" -ne 0 ]; then
+304:  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+305:  exit "$fetch_status"
+307:git rev-list --count --left-right origin/main...HEAD
+309:# Lane B — can be started while Lane A is fetching, then joined before the
+311:moai session list --json --filter-spec=<SPEC-ID>
+312:```
+341:### Pre-Edit Sync Check (Direct-Edit Race Mitigation)
+356:```bash
+358:moai session list --json | jq '[.[] | select(.cwd == "<project-root>" and .session_id != "<own>")] | length'
+360:git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
+361:```
+375:#### The sweep prohibition
+== internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+13:`AskUserQuestion` is the **only** user-facing question channel. The boundary is asymmetric by design.
+17:[ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
+52:2. Preload `AskUserQuestion` via `ToolSearch(query: "select:AskUserQuestion")`
+67:```markdown
+77:```
+290:### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
+296:* **Lane A (ordered):** `git fetch origin main` MUST finish and its exit status be observed before `git rev-list --count --left-right origin/main...HEAD` starts. The divergence count is only attributable to the ref that the completed fetch installed; never run these two commands as one parallel batch or as a shell line whose completion cannot be distinguished.
+297:* **Lane B (independent):** `moai session list --json --filter-spec=<SPEC-ID>` may run concurrently with Lane A's fetch because it does not read `origin/main`. Its result is joined with Lane A after both lanes complete.
+299:```bash
+300:# Lane A — ordered; wait for fetch completion before reading origin/main.
+302:fetch_status=$?
+303:if [ "$fetch_status" -ne 0 ]; then
+304:  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+305:  exit "$fetch_status"
+307:git rev-list --count --left-right origin/main...HEAD
+309:# Lane B — can be started while Lane A is fetching, then joined before the
+311:moai session list --json --filter-spec=<SPEC-ID>
+312:```
+341:### Pre-Edit Sync Check (Direct-Edit Race Mitigation)
+356:```bash
+358:moai session list --json | jq '[.[] | select(.cwd == "<project-root>" and .session_id != "<own>")] | length'
+360:git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
+361:```
+375:#### The sweep prohibition

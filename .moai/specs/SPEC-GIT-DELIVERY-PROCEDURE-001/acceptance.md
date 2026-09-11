@@ -5,19 +5,20 @@
 ## 공통 변수와 명령 관례
 
 ```bash
-BASE=b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0   # R1 고정: 2026-09-10 이 워크트리에서 해석
+BASE=255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089   # R1 고정(0.2.5 재고정): develop f1f034bb4 두 번째 흡수 병합, 2026-09-11 이 워크트리에서 해석
 E=.moai/reports/t622/run                         # 추적 증거 경로
 T=internal/template/templates                    # 템플릿 루트
 ```
 
 - 명령은 워크트리 루트에서 실행한다. "exit" 는 직전 명령의 exit code를 `echo "exit=$?"` 로 따로 기록한 값이다.
-- **값은 판정 명령에 글자 그대로 넣는다.** 이 파일의 명령에 적힌 `$BASE`·`$E`·`$T` 는 위 세 값을 가리키는 표기다. 실행할 때는 그 자리에 `b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0`·`.moai/reports/t622/run`·`internal/template/templates` 를 글자 그대로 바꿔 넣는다(예: `git log --format=%H b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0..HEAD -- .claude/agents/moai/manager-git.md > .moai/reports/t622/run/ac016-control.txt`). **git 명령과 `manager-git.md` 경로를 담은 명령에는 `BASE=…; E=…; T=…; <판정 명령>` 처럼 변수를 먼저 지정하는 형태를 쓰지 않는다** — 워크트리 가드가 `E=…; … > $E/…` 형태를 거부한다(축소판 plan-audit 3회차 관측: 이 형태의 git 판정과 `manager-git.md` 를 읽는 awk·grep 판정이 거부됐고, 같은 판정을 값을 글자 그대로 넣어 실행하면 돌았다). Bash 호출은 매번 새 프로세스라서 앞 호출에서 지정한 변수는 다음 호출에 남지 않는다. 치환하지 않은 채 돌린 호출에서는 `git log --format=%H $BASE..HEAD` 가 `..HEAD` 로, `git diff $BASE -- $T/` 가 `git diff -- /` 로 바뀌므로 그 출력은 판정 근거가 아니다. `manager-git.md` 경로를 담은 복합 스크립트도 가드가 거부하므로, 한 호출에는 판정 명령 하나만 둔다.
+- **값은 판정 명령에 글자 그대로 넣는다.** 이 파일의 명령에 적힌 `$BASE`·`$E`·`$T` 는 위 세 값을 가리키는 표기다. 실행할 때는 그 자리에 `255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089`·`.moai/reports/t622/run`·`internal/template/templates` 를 글자 그대로 바꿔 넣는다(예: `git log --no-merges --format=%H 255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089..HEAD -- .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md > .moai/reports/t622/run/ac016-acp-commits.txt`). **git 명령과 `manager-git.md` 경로를 담은 명령에는 `BASE=…; E=…; T=…; <판정 명령>` 처럼 변수를 먼저 지정하는 형태를 쓰지 않는다** — 워크트리 가드가 `E=…; … > $E/…` 형태를 거부한다(축소판 plan-audit 3회차 관측: 이 형태의 git 판정과 `manager-git.md` 를 읽는 awk·grep 판정이 거부됐고, 같은 판정을 값을 글자 그대로 넣어 실행하면 돌았다). Bash 호출은 매번 새 프로세스라서 앞 호출에서 지정한 변수는 다음 호출에 남지 않는다. 치환하지 않은 채 돌린 호출에서는 `git log --format=%H $BASE..HEAD` 가 `..HEAD` 로, `git diff $BASE -- $T/` 가 `git diff -- /` 로 바뀌므로 그 출력은 판정 근거가 아니다. `manager-git.md` 경로를 담은 복합 스크립트도 가드가 거부하므로, 한 호출에는 판정 명령 하나만 둔다.
 - 기준 트리 사본은 사전 점검에서 `git show $BASE:<경로> > $E/base-<이름>` 으로 반출해 둔다(대상 목록은 plan.md §C 2단계).
 - 검출식 안의 `git` 은 `[g]it` 으로, `parallel` 은 `para[l]lel` 로, perl 코드 안의 `git` 은 `\x67it` 로 쓴다. 셸 변수를 받는 `sed`·`perl` 과 경로를 만드는 반복문은 가드가 거부할 수 있으므로 경로를 글자 그대로 쓴다.
 - 판정용 grep은 `/usr/bin/grep` 으로 실행한다. 개수가 찍히지 않은 결과는 판정 불가로 기록한다.
 - **빈 결과가 PASS인 판정은 파일 존재부터 확인한다.** 기대가 `test -s <파일>` exit 1 이거나 "빈 파일" 인 판정(그리고 빈 결과로 경우를 가르는 AC-GDP-030 판정)은 바로 앞에 `test -e <파일>` 을 두고 exit 0 을 기대한다. `test -e` 가 exit 1 이면 판정 명령이 파일을 만들지 않은 것이므로 판정 불가로 기록한다(PASS 아님). 존재 확인이 없으면 돌지 않은 판정과 돌아서 아무것도 찍지 않은 판정이 같은 exit 1 을 낸다 — 3회차 감사에서 완료로 보고된 호출이 출력 파일을 만들지 않은 사례가 관측됐다. 뮤턴트는 §D.2.
 - **범위 파일 집합(아홉 개, 로컬·템플릿)** — 로컬·템플릿 사본 한 쌍을 한 파일로 세고, 이름이 다른 명령 원본 `sync.md`/`sync.md.tmpl` 도 한 쌍으로 센다. 생성물과 게시본은 범위 파일로 세지 않는다: `.claude/agents/moai/manager-git.md`, `.claude/rules/moai/core/agent-common-protocol.md`, `.claude/skills/moai/workflows/sync/delivery.md`, `.claude/skills/moai/workflows/sync/doc-execution.md`, `.claude/skills/moai/SKILL.md`, `.claude/skills/moai/references/reference.md`, `.claude/skills/moai/workflows/sync/quality-gates-context.md`, `.claude/skills/moai/workflows/sync.md`, 명령 원본 `.claude/commands/moai/sync.md`(로컬) / `.claude/commands/moai/sync.md.tmpl`(템플릿). 생성물 `$T/.codex/agents/moai/manager-git.toml`, 게시본 `$T/.agents/skills/moai-sync/SKILL.md`(로컬 사본 `.agents/skills/moai-sync/SKILL.md`).
-- **기준 트리 측정**: 0.2.2 작성 시점 HEAD `ea09ca650`(부모 `caa601d7c`, 둘 다 SPEC 파일만 바꿈)에서 범위 파일·생성물·게시본·발행기(`internal/template/commandemit`, `internal/template/agentemit`)·`zone-registry.md`·사본과 발행 관련 테스트 파일 여덟 개·`docs-site/content`·`Makefile` 은 `$BASE` 와 차이가 없고(`git diff --stat b412f8a33 ea09ca650 -- <경로>` 출력 없음), 템플릿 루트 전체도 차이가 없다(`git diff --stat b412f8a33 -- internal/template/templates/` 출력 없음). "plan 작성 시점 측정" 값은 이 트리의 사본으로 잰 기준 트리 값이다. 조각 (7)·(8)·(9)와 명령 원본·게시본 대조는 0.2.2에서 로컬·템플릿 사본 모두에 다시 쟀다.
+- **기준 트리 측정 (0.2.5)**: 0.2.5 작성 시점 HEAD `b24f2e184` 와 `$BASE` 의 차이는 보고서 두 파일뿐이고(`git diff --stat 255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089 HEAD`), 범위 루트(`internal/template/templates/`, `.claude/`, `.agents/`, `Makefile`, `docs-site/content`) 작업 트리는 `$BASE` 와 차이가 없다(빈 출력; 같은 형태를 `b412f8a33..$BASE` 에 돌리면 113개 파일 — 양성 대조). 증거 `.moai/reports/t622/reanchor/`(명령과 관측 값 목록은 `index.md`). "plan 작성 시점 측정" 값 가운데 0.2.5 에서 다시 잰 값은 그렇게 표시했고, 표시가 없는 값은 `b412f8a33` 에서 잰 값이다 — 해당 파일·절이 `b412f8a33..$BASE` 에서 바뀌지 않았거나(템플릿 사본, 생성물, 게시본, 발행기, 테스트 파일), 로컬 사본은 줄만 밀리고 절 본문은 같다(아래 기준마다 적음).
+- **줄번호**: 기대값에 적힌 파일 줄번호는 반출 사본 기준이다. `$E/base-<이름>.md` 는 로컬 사본을 반출하므로 로컬 줄이다(`manager-git.md` 6행부터 템플릿 +2, `delivery.md` 템플릿 279~421행 구간 +25). 템플릿 줄과 다르면 괄호에 템플릿 줄을 적었다(spec.md §A.1 표).
 
 ## §D AC 표
 
@@ -26,7 +27,7 @@ T=internal/template/templates                    # 템플릿 루트
 | AC ID | REQ | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
 | AC-GDP-001 | REQ-GDP-001 | MUST-PASS | 활성 | `manager-git.md`·`.toml` 동기화 절에서 fetch 가 rev-list 와 같은 배치로 묶이지 않고 순서가 지시됨 |
-| AC-GDP-002 | REQ-GDP-002 | MUST-PASS | 활성 | Pre-Spawn 코드 블록에 단독 fetch·단독 rev-list 줄이 없고, 이어 붙인 줄 1개, rev-list 1개 |
+| AC-GDP-002 | REQ-GDP-002 | MUST-PASS | 활성 (0.2.5: 회귀 방지) | 두 사본 Pre-Spawn 코드 블록에서 fetch 1줄 → 바로 다음 줄 `fetch_status=$?` → 0이 아니면 `exit` → rev-list 1줄 순서, fetch·rev-list 한 줄 결합 0, session list 1줄, 해석 표 행이 BASE 와 같음. BASE 에서 이미 초록 — 이 카드의 작업을 재지 않고 보존을 지킨다 |
 | AC-GDP-003 | REQ-GDP-003 | MUST-PASS | 활성 | Pre-Edit Sync Check 절 불변 |
 | AC-GDP-004 | REQ-GDP-004 | MUST-PASS | 활성 | `delivery.md` 병합 명령이 `--<merge_method>` 로 해석 |
 | AC-GDP-005 | REQ-GDP-005 | MUST-PASS | 활성 | 범위 파일과 `.toml` 에서 `--squash` 고정 `gh pr merge` 가 기본값 설명 문장뿐 |
@@ -37,10 +38,10 @@ T=internal/template/templates                    # 템플릿 루트
 | AC-GDP-010 | — | — | 카드 t658로 이동 | 워크트리 흐름·Frozen 기록 |
 | AC-GDP-011 | — | — | 철회(0.1.2) | OD-1 선택지 2 경로 |
 | AC-GDP-012 | — | — | 철회(0.1.2) | OD-1 선택지 3 경로 |
-| AC-GDP-013 | REQ-GDP-013 | MUST-PASS | 활성 (파일 확장) | 범위 파일 아홉 개 사본 일치, 의도된 차이 보존, 범위 파일을 덮는 테스트 2개 실행·통과 |
+| AC-GDP-013 | REQ-GDP-013 | MUST-PASS | 활성 (파일 확장, 0.2.5 기준선 재측정) | 범위 파일 아홉 개 사본 일치(바이트 동일 2쌍, BASE 차이 본문 보존 8쌍), 범위 파일을 덮는 테스트 2개 실행·통과, 미러 테스트가 BASE 기준선 대비 새 FAIL·잃은 PASS 없음 |
 | AC-GDP-014 | REQ-GDP-014 | MUST-PASS | 활성 | `.toml` 재생성, `agents-emit-check` exit 0, `.toml` 두 절이 템플릿 `manager-git.md` 와 같음 |
 | AC-GDP-015 | REQ-GDP-015 | MUST-PASS | 활성 | 템플릿 추가 줄에 SPEC ID·REQ 토큰·날짜·SHA·`CLAUDE.local` 없음 |
-| AC-GDP-016 | 없음 — 절차 점검(plan.md §D 제약) | SHOULD-PASS | 활성 (파일 확장) | `agent-common-protocol.md` 커밋이 마지막 지침 편집 커밋 |
+| AC-GDP-016 | 없음 — 절차 점검(plan.md §D 제약) | SHOULD-PASS | 활성 (0.2.5 재작성) | 이 카드의 커밋(`$BASE..HEAD`, 병합 제외) 가운데 `agent-common-protocol.md` 두 사본을 바꾼 커밋이 0개(양성 대조: 같은 명령이 `b412f8a33..$BASE` 에서 2커밋을 찾음) |
 | AC-GDP-017 ~ AC-GDP-024 | — | — | 카드 t658로 이동 | spec.md §G.1 표 |
 | AC-GDP-025 | REQ-GDP-024 | MUST-PASS | 활성 (파일 확장) | 범위 파일의 `[ZONE:Frozen]` 줄과 등록 Frozen clause 불변 |
 | AC-GDP-026 | REQ-GDP-025 | MUST-PASS | 활성 (조각 확장) | 플래그 표면 아홉 조각이 `--auto-merge` 를 노출하고, `--merge` 를 네 조각에 남긴 채 `--auto-merge` 의 폐기된 별칭으로만 서술(방향 검사, 읽기 기록) |
@@ -89,7 +90,7 @@ awk 'BEGIN{RS=""} /fetch/ && /rev-list/ {c++} END{print c+0}' $E/ac001-base-sync
 # 기대: 1
 awk 'BEGIN{RS=""; ORS="\n\n"} /fetch/ && /rev-list/ && /(batch|para[l]lel|single-turn|multi-Bash|independent)/ && !/(first|before|once|after|completes|wait)/' $E/ac001-base-sync.md > $E/ac001-base-autofail.md
 test -s $E/ac001-base-autofail.md
-# 기대: exit 0 — 자동 실패 검출기는 기준 트리에서 빨강(156행 문단)
+# 기대: exit 0 — 자동 실패 검출기는 기준 트리에서 빨강(로컬 158행 문단, 템플릿 156행)
 ```
 
 판정(로컬·템플릿·생성물 각각 — 아래는 로컬·생성물 명령, 템플릿은 경로만 `$T/.claude/agents/moai/manager-git.md` 로 바꾼다):
@@ -120,7 +121,7 @@ test -s $E/ac001-reading.md
 # 기대: exit 0 — 읽기 기록이 없으면 PASS 불가
 ```
 
-plan 작성 시점 측정: 기준 트리 절 문단 1·autofail 1·목록 묶음 0. 기준 트리 `.toml` 의 `## Synchronization` 절은 템플릿 `manager-git.md` 의 같은 절과 diff exit 0(11줄)이므로 같은 값을 낸다.
+plan 작성 시점 측정: 기준 트리 절 문단 1·autofail 1·목록 묶음 0(0.2.5 에서 BASE 로컬 반출본에 다시 잼: 문단 1, autofail `test -s` exit 0 — `.moai/reports/t622/reanchor/ac001-base-sync.md`). 기준 트리 `.toml` 의 `## Synchronization` 절은 템플릿 `manager-git.md` 의 같은 절과 diff exit 0(11줄)이므로 같은 값을 낸다.
 
 뮤턴트 재실행:
 
@@ -132,66 +133,85 @@ plan 작성 시점 측정: 기준 트리 절 문단 1·autofail 1·목록 묶음
 2회차 올바른 문장                                                   → autofail 0, listgroup 0 → 빨강 아님
 ```
 
-### AC-GDP-002 — Pre-Spawn 코드 블록의 순서 보장
+### AC-GDP-002 — Pre-Spawn 코드 블록의 순서 보장 (0.2.5: 회귀 방지 판정)
 
 ```
-GIVEN agent-common-protocol.md 의 Pre-Spawn Sync Check 절에 있는 bash 코드 블록
-WHEN 편집 뒤 그 블록만 추출해 검사하면
-THEN 앞 공백을 허용해 fetch 로 시작하면서 같은 줄에 rev-list 가 없는 줄이 0개이고
- AND 앞 공백을 허용해 rev-list 로 시작하는 줄이 0개이고
- AND fetch 와 rev-list 를 ";" 또는 "&&" 로 이은 줄이 정확히 1개이고
- AND rev-list 를 담은 줄이 정확히 1개이고
- AND 세 번째 명령 줄과 두 해석 표의 행이 기준 트리와 같다
+GIVEN agent-common-protocol.md 로컬·템플릿 사본의 Pre-Spawn Sync Check 절에 있는 bash 코드 블록
+WHEN 이 카드의 run-phase 가 끝난 뒤 그 블록만 추출해 검사하면
+THEN 주석 줄을 뺀 블록에서 fetch 로 시작하는 줄("git fetch origin main")이 정확히 1개이고
+ AND 그 fetch 줄 바로 다음 코드 줄이 fetch 의 exit status 를 담는 "fetch_status=$?" 이고
+ AND 그 뒤에 fetch_status 가 0이 아닌지 검사하는 줄과, 그 검사 뒤의 exit 줄이 있고
+ AND "git rev-list --count --left-right origin/main...HEAD" 를 담은 줄이 정확히 1개이며 그 exit 줄보다 뒤에 있고
+ AND fetch 와 rev-list 를 한 줄에 담은 줄이 0개이고
+ AND 세 번째 명령(moai session list --json --filter-spec=) 줄이 1개이고
+ AND 두 해석 표의 행이 기준 트리와 같다
 ```
 
-블록 추출(대조·판정 공통):
+**성격 (0.2.5).** 이 기준은 `$BASE` 에서 이미 초록이다 — develop 카드 t635 가 Lane A/B 형태로 고쳤고 dr0911 이 템플릿에 미러했으며, 리드 판단 (a)에 따라 이 카드는 이 파일을 편집하지 않는다. `.claude/rules/moai/development/verification-completeness.md` §2 기준으로 RED-now 셀이 없으므로 이 기준은 **이 카드의 작업을 재지 않는다**. 그 대신 이 카드의 작업(M1~M4 편집, 흡수, 생성물 재생성)이 끝난 뒤에도 REQ-GDP-002 의 성질이 남아 있는지 보는 **회귀 방지 판정**이다. 채택 근거는 §1.1의 관측된 실패다 — 아래 뮤턴트 네 개에서 FAIL 을, 현재 블록 두 개에서 PASS 를 관측했다. green path: 이 카드는 파일을 고치지 않으므로 M5·M6 에서 두 사본 모두 `verdict=PASS` 가 그대로 나오는 것이 기대값이다. 빨강이 나면 원인을 이 카드 편집과 흡수 중에서 가린다(plan.md M5).
+
+블록 추출(대조·판정 공통, 0.2.4 와 같음):
 
 ```bash
 awk '/^### Pre-Spawn Sync Check/{s=1} s && /^```bash/{b=1; next} b && /^```/{exit} b' <파일> > <블록 파일>
 ```
 
-대조(기준 트리):
+순서 판정 검출기(대조·판정·뮤턴트 공통 — 한 줄로 실행한다). 주석 줄은 건너뛴다. `F`=fetch 줄, `S`=fetch 바로 다음 코드 줄이 `fetch_status=$?` 일 때 그 줄, `C`=`fetch_status` 와 `-ne 0` 을 담은 첫 줄, `X`=`C` 뒤 첫 `exit` 줄, `R`=rev-list 줄, `joined`=fetch 와 rev-list 를 한 줄에 담은 줄 수. `F < S < C < X < R` 이고 fetch 1·rev-list 1·joined 0 일 때만 `verdict=PASS`:
+
+```bash
+awk '/^[[:space:]]*#/ {next} /[g]it fetch/ && /[g]it rev-list/ {j++} /^[[:space:]]*[g]it fetch origin main/ {nf++; if(!F) F=NR; w=1; next} w && NF {w=0; if ($0 ~ /^[[:space:]]*fetch_status=[$][?][[:space:]]*$/) S=NR} /fetch_status/ && /-ne 0/ && !C {C=NR} /^[[:space:]]*exit/ && C && !X {X=NR} /[g]it rev-list --count --left-right origin\/main[.][.][.]HEAD/ {nr++; if(!R) R=NR} END {v="PASS"; if(nf!=1||nr!=1||j!=0||!S||S<=F||!C||C<=S||!X||X<=C||!R||R<=X) v="FAIL"; printf "fetch=%d revlist=%d joined=%d F=%d S=%d C=%d X=%d R=%d verdict=%s\n",nf,nr,j,F,S,C,X,R,v}' <블록 파일> > <판정 파일>
+```
+
+대조(기준 트리 — `$BASE` 에서 이미 초록이므로 대조는 "검출기가 옳은 블록을 받는가"를 본다):
 
 ```bash
 awk '/^### Pre-Spawn Sync Check/{s=1} s && /^```bash/{b=1; next} b && /^```/{exit} b' $E/base-agent-common-protocol.md > $E/ac002-base-block.md
-awk '/^[[:space:]]*[g]it fetch/ && !/[g]it rev-list/' $E/ac002-base-block.md > $E/ac002-base-a.txt
-# 기대: 1줄 (블록 2행 — 기준 트리 296행)
-/usr/bin/grep -n -E '^[[:space:]]*[g]it rev-list' $E/ac002-base-block.md > $E/ac002-base-b.txt
-# 기대: exit 0 (블록 5행 — 기준 트리 299행)
-/usr/bin/grep -c -E '^[[:space:]]*[g]it fetch origin main 2>&1[[:space:]]*(;|&&)[[:space:]]*[g]it rev-list --count --left-right origin/main[.][.][.]HEAD' $E/ac002-base-block.md > $E/ac002-base-c.txt
-# 기대: 0
-/usr/bin/grep -c 'rev-list' $E/ac002-base-block.md > $E/ac002-base-d.txt
+# 위 순서 판정 검출기를 $E/ac002-base-block.md 에 실행 → $E/ac002-base-order.txt
+/usr/bin/grep -c 'verdict=PASS$' $E/ac002-base-order.txt > $E/ac002-base-order-pass.txt
+# 기대: 1 (0.2.5 측정: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS — 로컬·템플릿 블록 모두)
+/usr/bin/grep -c 'moai session list --json --filter-spec=' $E/ac002-base-block.md > $E/ac002-base-session.txt
 # 기대: 1
 ```
 
-판정(로컬·템플릿 각각):
+판정(로컬·템플릿 각각 — 템플릿은 경로만 `$T/.claude/rules/moai/core/agent-common-protocol.md` 로, 출력 이름은 `ac002-template-*` 로 바꾼다):
 
 ```bash
 awk '/^### Pre-Spawn Sync Check/{s=1} s && /^```bash/{b=1; next} b && /^```/{exit} b' .claude/rules/moai/core/agent-common-protocol.md > $E/ac002-local-block.md
 test -s $E/ac002-local-block.md
-# 기대: exit 0
-awk '/^[[:space:]]*[g]it fetch/ && !/[g]it rev-list/' $E/ac002-local-block.md > $E/ac002-local-a.txt
-test -e $E/ac002-local-a.txt
-# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
-test -s $E/ac002-local-a.txt
-# 기대: exit 1
-/usr/bin/grep -n -E '^[[:space:]]*[g]it rev-list' $E/ac002-local-block.md > $E/ac002-local-b.txt
-# 기대: exit 1
-/usr/bin/grep -c -E '^[[:space:]]*[g]it fetch origin main 2>&1[[:space:]]*(;|&&)[[:space:]]*[g]it rev-list --count --left-right origin/main[.][.][.]HEAD' $E/ac002-local-block.md > $E/ac002-local-c.txt
-# 기대: 1
-/usr/bin/grep -c 'rev-list' $E/ac002-local-block.md > $E/ac002-local-d.txt
-# 기대: 1
+# 기대: exit 0 — 블록이 비면 판정 불가
+# 위 순서 판정 검출기를 $E/ac002-local-block.md 에 실행 → $E/ac002-local-order.txt
+test -s $E/ac002-local-order.txt
+# 기대: exit 0 — 판정 줄이 없으면 검출기가 돌지 않은 것이다(판정 불가, PASS 아님)
+/usr/bin/grep -c 'verdict=PASS$' $E/ac002-local-order.txt > $E/ac002-local-order-pass.txt
+# 기대: 1 — 개수가 파일에 찍히지 않으면 판정 불가
 /usr/bin/grep -c 'moai session list --json --filter-spec=' $E/ac002-local-block.md > $E/ac002-local-session.txt
 # 기대: 1
 sed -n '/^### Pre-Spawn Sync Check/,/^### Pre-Edit Sync Check/p' $E/base-agent-common-protocol.md > $E/ac002-base-section.md
 sed -n '/^### Pre-Spawn Sync Check/,/^### Pre-Edit Sync Check/p' .claude/rules/moai/core/agent-common-protocol.md > $E/ac002-local-section.md
 /usr/bin/grep -E '^[|] ' $E/ac002-base-section.md > $E/ac002-base-matrix.txt
 /usr/bin/grep -E '^[|] ' $E/ac002-local-section.md > $E/ac002-local-matrix.txt
+test -s $E/ac002-base-matrix.txt
+# 기대: exit 0 — 기준 표 행이 비면 아래 비교가 공허하다
 diff $E/ac002-base-matrix.txt $E/ac002-local-matrix.txt > $E/ac002-matrix.diff
-# 기대: exit 0 (기준 트리의 표 행은 8개)
+# 기대: exit 0 (기준 트리의 표 행은 8개. 0.2.5 측정: `$BASE` 두 사본의 표 행 8개가 `b412f8a33` 의 8개와 diff exit 0 — t635 는 표를 바꾸지 않았다)
 ```
 
-뮤턴트 재실행: fetch 줄 끝 주석 → a 1, b exit 0, c 0 → FAIL; 이어 붙인 줄 + 두 번째 `git -C . rev-list` 줄 → rev-list 2 → FAIL; 올바른 픽스처 → a 0, b exit 1, c 1, rev-list 1 → PASS.
+뮤턴트(0.2.5, `.moai/reports/t622/reanchor/` 에서 실행 — 레인이 같은 명령으로 다시 돌린다). 현재 블록 `B` = `$BASE` 로컬 사본의 블록(12줄: 1 주석, 2 fetch, 3 `fetch_status=$?`, 4-7 검사와 exit, 8 rev-list, 9 빈 줄, 10-11 주석, 12 session list):
+
+```
+(i)   옛 블록 — git show b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0:.claude/rules/moai/core/agent-common-protocol.md 반출본에서 같은 awk 로 추출(9줄: 단독 fetch, 단독 rev-list, 상태 검사 없음)
+(ii)  fetch 와 rev-list 를 ";" 로 한 줄에 — awk 'NR==FNR{if(FNR==8) r=$0; next} FNR==2{print $0 "; " r; next} FNR==8{next} {print}' B B
+(iii) 상태 검사 삭제 — awk 'NR>=3 && NR<=7 {next} {print}' B
+(iv)  rev-list 를 fetch 앞으로 — awk 'NR==FNR{if(FNR==8) r=$0; next} FNR==1{print; print r; next} FNR==8{next} {print}' B B
+관측(순서 판정 검출기, reanchor/ac002-judge-results.txt):
+  현재 로컬 블록   fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+  현재 템플릿 블록 fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+  (i)   fetch=1 revlist=1 joined=0 F=2 S=0 C=0 X=0 R=5 verdict=FAIL
+  (ii)  fetch=1 revlist=0 joined=1 F=2 S=3 C=4 X=6 R=0 verdict=FAIL
+  (iii) fetch=1 revlist=1 joined=0 F=2 S=0 C=0 X=0 R=3 verdict=FAIL
+  (iv)  fetch=1 revlist=1 joined=0 F=3 S=4 C=5 X=7 R=2 verdict=FAIL
+```
+
+0.2.4 의 판정(단독 fetch 줄 0·단독 rev-list 줄 0·결합 줄 1)은 "한 명령" 모양을 요구해 t635 형태를 FAIL 로 읽으므로 버렸다. 한계: 검출기는 `exit` 가 실제로 `if` 블록 안에 있는지, 검사 줄이 `fetch_status` 를 올바른 방향으로 비교하는지까지는 보지 않는다 — 한 번 읽어 판정 기록에 적는다.
 
 ### AC-GDP-003 — Pre-Edit Sync Check 절 불변
 
@@ -201,7 +221,7 @@ WHEN 두 절을 추출해 비교하면
 THEN 차이가 없다
 ```
 
-대조: AC-GDP-002의 `ac002-base-section.md` 와 편집 뒤 `ac002-local-section.md` 를 `diff` 하면 exit 1.
+대조(0.2.5 — 이 카드가 `agent-common-protocol.md` 를 고치지 않으므로 0.2.4 의 "편집 뒤 Pre-Spawn 절 diff exit 1" 대조는 성립하지 않는다): 같은 `sed` 추출 + `diff` 형태가 바뀐 절을 실제로 잡는지, `b412f8a33` 반출본과 `$BASE` 의 Pre-Spawn 절로 확인한다 — `sed -n '/^### Pre-Spawn Sync Check/,/^### Pre-Edit Sync Check/p' $E/b412-agent-common-protocol.md > $E/ac003-control-b412-section.md` 뒤 `diff $E/ac003-control-b412-section.md $E/ac002-base-section.md > $E/ac003-control.diff` → exit 1 기대(0.2.5 측정 exit 1 — t635 가 절을 다시 썼다, `reanchor/ac003-control-section.diff`). Pre-Edit 절 자체는 `b412f8a33` 과 `$BASE` 에서 diff exit 0(35줄, `reanchor/ac003-b412-vs-base.diff` 빈 파일)이다.
 
 ```bash
 sed -n '/^### Pre-Edit Sync Check/,/^#### The sweep prohibition/p' $E/base-agent-common-protocol.md > $E/ac003-base.md
@@ -222,7 +242,7 @@ THEN "gh pr merge --squash --delete-branch" 가 0회이고
 
 ```bash
 /usr/bin/grep -c 'gh pr merge --squash --delete-branch' $E/base-delivery.md > $E/ac004-control-squash.txt
-# 대조 기대: 2 (343·355행)
+# 대조 기대: 2 (로컬 반출본 368·380행, 템플릿 343·355행 — 0.2.5 측정 2)
 /usr/bin/grep -n 'merge_method' $E/base-delivery.md > $E/ac004-control-source.txt
 # 대조 기대: exit 1
 /usr/bin/grep -c 'gh pr merge --squash --delete-branch' .claude/skills/moai/workflows/sync/delivery.md > $E/ac004-local-squash.txt
@@ -248,7 +268,7 @@ THEN manager-git.md 와 .toml 에서만 1줄씩 나오고, 그 줄은 기본값 
 
 ```bash
 /usr/bin/grep -n -E 'gh pr merge[^|]*--squash' $E/base-manager-git.md $E/base-delivery.md $E/base-manager-git.toml > $E/ac005-control.txt
-# 기대: 6줄 — manager-git 32·114, delivery 343·355, .toml 26·108
+# 기대: 6줄 — manager-git 34·116(로컬 반출본; 템플릿 32·114), delivery 368·380(로컬 반출본; 템플릿 343·355), .toml 26·108 (0.2.5 측정 6줄)
 /usr/bin/grep -c -E 'gh pr merge[^|]*--squash' $E/base-agent-common-protocol.md $E/base-doc-execution.md $E/base-skill.md $E/base-reference.md $E/base-qgc.md $E/base-sync.md $E/base-command-sync.md > $E/ac005-control-zero.txt
 # 기대: 파일마다 0
 ```
@@ -277,7 +297,7 @@ GIVEN delivery.md 로컬·템플릿 사본의 Step 3.4 절과 doc-execution.md �
 WHEN 편집 뒤 두 절을 추출해 검사하면
 THEN 워크트리 문맥을 기본 병합과 묶는 문구(확장 검출식)가 두 절 모두 0개이고
  AND 두 절이 각각 manager-git.md 를 기준으로 1회 이상 이름으로 밝히고
- AND manager-git.md 의 옵트인 문장 두 개(148행, 166행)의 --auto-merge 조건이 남아 있고
+ AND manager-git.md 의 옵트인 문장 두 개(148행, 166행 — 로컬 150행, 168행)의 --auto-merge 조건이 남아 있고
  AND 읽기 기록 $E/ac006-reading.md 가 존재하며, 두 절의 모든 문장에 대해 "워크트리 문맥만으로 병합이 일어난다고 말하는가" 에 아니오로 답하고, 병합 조건이 --auto-merge 로 적혀 있음을 확인한다
 ```
 
@@ -302,9 +322,9 @@ awk '/^##### Worktree Context Detection/{s=1; print; next} s && /^#/{exit} s' <d
 awk '/^#### Step 3\.4/{s=1; print; next} s && /^(####|###) /{exit} s' $E/base-delivery.md > $E/ac006-base-dl.md
 awk '/^##### Worktree Context Detection/{s=1; print; next} s && /^#/{exit} s' $E/base-doc-execution.md > $E/ac006-base-de.md
 awk '/default for worktree contexts|worktree contexts default|no-merge.{1,3}flag NOT set|merges? (automatically|by default)|auto-merge (is )?(the )?default|no-merge.{0,12}(absent|not set|missing|NOT set)/ {print FNR}' $E/ac006-base-dl.md > $E/ac006-base-dl-default.txt
-# 기대: 8·20 (파일 기준 337·349행)
+# 기대: 8·20 (로컬 반출본 파일 기준 362·374행, 템플릿 337·349행 — 0.2.5 측정 8·20)
 /usr/bin/grep -n -i -E 'default (to )?auto-merge|worktree contexts default|merges? (automatically|by default)' $E/ac006-base-de.md > $E/ac006-base-de-default.txt
-# 기대: exit 0 — 절 안 8행, 파일 기준 36행
+# 기대: exit 0 — 절 안 8행, 파일 기준 36행(두 사본 같음, 0.2.5 측정)
 /usr/bin/grep -c 'manager-[g]it[.]md' $E/ac006-base-dl.md $E/ac006-base-de.md > $E/ac006-base-source.txt
 # 기대: 파일마다 0
 /usr/bin/grep -c -F 'Execute only with `--auto-merge` flag AND all approvals obtained' $E/base-manager-git.md > $E/ac006-base-optin1.txt
@@ -330,7 +350,7 @@ test -s $E/ac006-local-dl-default.txt
 /usr/bin/grep -c 'manager-[g]it[.]md' $E/ac006-local-dl.md $E/ac006-local-de.md > $E/ac006-local-source.txt
 # 기대: 파일마다 1 이상
 /usr/bin/grep -c -e '--auto-merge' .claude/agents/moai/manager-git.md > $E/ac006-local-optin.txt
-# 기대: 2 이상 (148·166행 옵트인 조건 유지)
+# 기대: 2 이상 (148·166행 옵트인 조건 유지 — 로컬 150·168행)
 test -s $E/ac006-reading.md
 # 기대: exit 0 — 읽기 기록이 없으면 PASS 불가
 ```
@@ -346,46 +366,47 @@ AC-GDP-007·008·009·010은 카드 t658로 옮겼고, AC-GDP-011·012는 0.1.2�
 ```
 GIVEN 범위 파일 아홉 개의 로컬·템플릿 사본과 게시본 moai-sync/SKILL.md 의 로컬·템플릿 사본
 WHEN 편집 뒤 비교하면
-THEN manager-git.md, agent-common-protocol.md, quality-gates-context.md, 게시본 SKILL.md 는 diff exit 0 이고
- AND delivery.md, doc-execution.md, moai/SKILL.md, references/reference.md, workflows/sync.md, 명령 원본(sync.md 대 sync.md.tmpl)은 줄번호 머리를 뺀 차이 본문이 기준 트리와 같고
- AND 명령 원본 두 사본의 argument-hint 줄이 서로 같고
- AND 범위 파일을 덮는 테스트 두 개(TestSanitizedPairParity, TestTemplateNoInternalContentLeak)가 각자 최상위 PASS 줄을 내며 exit 0 이다
+THEN (a) agent-common-protocol.md, 게시본 SKILL.md 는 diff exit 0 이고
+ AND (b) manager-git.md, delivery.md, doc-execution.md, quality-gates-context.md, moai/SKILL.md, references/reference.md, workflows/sync.md,
+     명령 원본(sync.md 대 sync.md.tmpl)은 줄번호 머리를 뺀 차이 본문이 기준 트리($BASE)와 같고
+ AND (c) 명령 원본 두 사본의 argument-hint 줄이 서로 같고
+ AND (d) 범위 파일을 덮는 테스트 두 개(TestSanitizedPairParity, TestTemplateNoInternalContentLeak)가 각자 최상위 PASS 줄을 내며 exit 0 이고
+ AND (e) 미러 테스트 비회귀: TestSanitizedPairParity·TestRuleTemplateMirrorDrift 실행의 FAIL 이 모두 $BASE 기준선 FAIL 집합 안에 있고,
+     기준선 PASS 가 하나도 빠지거나 FAIL 로 바뀌지 않았다(개수가 아니라 집합으로 비교)
 ```
 
-**파일별 사본 가드** (plan 작성 시점 테스트 파일 읽기, `$BASE` 와 차이 없음):
+**0.2.5 기준선 재측정.** develop 흡수로 `$BASE` 에서 사본 관계가 바뀌었다(`.moai/reports/t622/absorb-ee99507fb.md` §2, `reanchor/pair-hunks.txt`). `manager-git.md`·`quality-gates-context.md` 는 바이트 동일 쌍에서 의도된 차이 쌍으로 옮겼고, `delivery.md`·`doc-execution.md`·`workflows/sync.md` 는 덩어리가 늘었다. (b)의 차이 본문 비교는 `$BASE` 의 차이를 기준으로 삼으므로, develop 이 로컬에만 넣은 차이는 이 카드가 만든 차이로 읽히지 않고, 이 카드가 한쪽 사본에만 넣은 편집은 새 본문 줄이 되어 잡힌다(아래 뮤턴트).
 
-| 범위 파일 | 기준 트리 L·T diff | 사본 가드 | 근거 |
+**파일별 사본 가드** (`$BASE` 에서 잰 L·T diff, 테스트 파일은 `b412f8a33..$BASE` 에서 바뀌지 않음):
+
+| 범위 파일 | 기준 트리 L·T diff (`$BASE`) | 사본 가드 | 근거 |
 |---|---|---|---|
-| `agent-common-protocol.md` | exit 0 | `diff` + `TestSanitizedPairParity` | `sanitized_pair_parity_test.go:71` |
-| `manager-git.md` | exit 0 | `diff` 만 | `rule_template_mirror_test.go` 주석이 바이트 동일 목록에서 제거를 명시 |
-| `quality-gates-context.md` | exit 0 | `diff` 만 | 어떤 사본 테스트에도 없음 |
-| `delivery.md` | exit 1 (`275c275`, `278c278`, `479,480c479`) | 차이 본문 `diff` 만 | 어떤 사본 테스트에도 없음. X3(404행)도 이 판정에 들어간다 |
-| `doc-execution.md` | exit 1 (`138,143d137`) | 차이 본문 `diff` 만 | 어떤 사본 테스트에도 없음 |
-| `moai/SKILL.md` | exit 1 (20개 덩어리, `125c125` … `392d391`) | 차이 본문 `diff` 만 | `backlog_json_disclosure_mirror_test.go:24` 는 임베드 사본 = 템플릿 원본을 볼 뿐 로컬 사본을 보지 않는다 |
-| `references/reference.md` | exit 1 (`229d228`) | 차이 본문 `diff` 만 | `agent_frontmatter_audit_test.go:407` 은 프론트매터만 본다 |
-| `workflows/sync.md` | exit 1 (`65,74d64`, `81c71`) | 차이 본문 `diff` 만 | `agentless_audit_test.go:44` 는 사본 일치가 아닌 지침 내용을 본다. X1 사용법 줄(로컬 95 / 템플릿 85)도 이 판정에 들어간다 |
-| 명령 원본 `.claude/commands/moai/sync.md` (로컬) 대 `sync.md.tmpl` (템플릿) | exit 1 (`2c2` — `description` 줄만 다름) | 차이 본문 `diff` + `argument-hint` 줄 비교 | 파일 형식이 다르다: 템플릿은 `moai init` 때 `ConversationLanguage` 로 렌더링되는 Go 템플릿이고 2행 `description` 이 로케일 조건문이다. 로컬은 렌더링된 영어 사본이다. X2가 고치는 3행에는 템플릿 액션이 없어 두 사본에서 글자 그대로 같아야 한다. `commandemit/golden_test.go` 는 템플릿 원본과 게시본의 관계를 보며 로컬 원본을 보지 않는다 |
+| `agent-common-protocol.md` | exit 0 | `diff` + `TestSanitizedPairParity` | `sanitized_pair_parity_test.go:71`. 이 카드는 편집하지 않는다 |
 | 게시본 `.agents/skills/moai-sync/SKILL.md` (로컬) 대 템플릿 게시본 | exit 0 | `diff` | 발행기는 템플릿 게시본만 쓴다(`golden_test.go` `templatesDir`). 로컬 사본은 추적 파일이다 |
+| `manager-git.md` | exit 1 (`5,7c5` — 로컬 프론트매터 설명 +2줄) | 차이 본문 `diff` 만 | `rule_template_mirror_test.go` 주석이 바이트 동일 목록에서 제거를 명시 |
+| `quality-gates-context.md` | exit 1 (`9,11c9,11`, `48,49c48,49`, `51c51`, `138c138`, `142,149c142`, `151c144`, `165c158`) | 차이 본문 `diff` 만 | 어떤 사본 테스트에도 없음. 편집 자리 30·101행은 덩어리 밖 |
+| `delivery.md` | exit 1 (`9,11c9,11`, `49,54c49,50`, `154,163c150,152`, `169,188c158,163`, `300c275`, `303c278`, `447,448c422`, `450,458c424,427`, `510,511c479`) | 차이 본문 `diff` 만 | 어떤 사본 테스트에도 없음. 편집 자리(템플릿 330-356·396-404, 로컬 355-381·421-429)는 `303c278` 과 `447,448c422` 사이. X3 도 이 판정에 들어간다 |
+| `doc-execution.md` | exit 1 (`9,11c9,11`, `79,91d78`, `118c105`, `128,134c115,116`, `144c126`, `156,161d137`, `173,174c149`, `180c155`, `182,189d156`) | 차이 본문 `diff` 만 | 어떤 사본 테스트에도 없음. 편집 자리 34-36행은 덩어리 밖 |
+| `moai/SKILL.md` | exit 1 (20개 덩어리, `125c125` … `392d391` — `b412f8a33` 과 같음) | 차이 본문 `diff` 만 | `backlog_json_disclosure_mirror_test.go:24` 는 임베드 사본 = 템플릿 원본을 볼 뿐 로컬 사본을 보지 않는다 |
+| `references/reference.md` | exit 1 (`229d228`) | 차이 본문 `diff` 만 | `agent_frontmatter_audit_test.go:407` 은 프론트매터만 본다 |
+| `workflows/sync.md` | exit 1 (`29,31c29,31`, `65,74d64`, `81c71`) | 차이 본문 `diff` 만 | `agentless_audit_test.go:44` 는 사본 일치가 아닌 지침 내용을 본다. X1 사용법 줄(로컬 95 / 템플릿 85)도 이 판정에 들어간다 |
+| 명령 원본 `.claude/commands/moai/sync.md` (로컬) 대 `sync.md.tmpl` (템플릿) | exit 1 (`2c2` — `description` 줄만 다름) | 차이 본문 `diff` + `argument-hint` 줄 비교 | 파일 형식이 다르다: 템플릿은 `moai init` 때 `ConversationLanguage` 로 렌더링되는 Go 템플릿이고 2행 `description` 이 로케일 조건문이다. 로컬은 렌더링된 영어 사본이다. X2가 고치는 3행에는 템플릿 액션이 없어 두 사본에서 글자 그대로 같아야 한다. `commandemit/golden_test.go` 는 템플릿 원본과 게시본의 관계를 보며 로컬 원본을 보지 않는다 |
 | 템플릿 사본 전체 | — | `TestTemplateNoInternalContentLeak` (사본 일치가 아니라 템플릿 청결) | `internal_content_leak_test.go:1535`, 템플릿 루트 전체를 걷는다 |
 
-`TestRuleTemplateMirrorDrift`·`TestLateBranchTemplateMirror` 는 허용 목록에 범위 파일이 하나도 없어 선택하지 않는다.
+`TestRuleTemplateMirrorDrift`·`TestLateBranchTemplateMirror` 는 허용 목록에 범위 파일이 하나도 없어 사본 일치 증거로 쓰지 않는다. (e)는 `TestRuleTemplateMirrorDrift` 를 사본 일치가 아니라 **비회귀** 점검으로만 돌린다 — 이 카드가 템플릿 트리를 바꾸는 동안 다른 사본 쌍을 깨지 않았는지를 본다. `TestHookWrapperCopiesStayIdentical`(`internal/hook/wrapper_copies_contract_test.go:73`)은 `.claude/hooks/moai` 의 훅 래퍼 스크립트 여섯 개와 그 템플릿 사본만 읽고, 이 카드의 파일(마크다운 지침·명령 원본·`.toml`·게시본)은 그 목록에 없어 넣지 않는다.
 
-대조: 위 표의 기준 트리 diff 결과, 명령 원본 `argument-hint` 줄 L·T diff exit 0(plan 작성 시점 측정). 본문 비교 검출기는 빈 파일과 차이 본문을 `diff` 하면 exit 1.
+대조: 위 표의 기준 트리 diff 결과(0.2.5 측정, `reanchor/pair-*.diff`), 명령 원본 `argument-hint` 줄 L·T diff exit 0. 본문 비교 검출기는 빈 파일과 차이 본문을 `diff` 하면 exit 1.
 
-판정(바이트 동일 네 파일):
+판정 (a) — 바이트 동일 두 쌍:
 
 ```bash
-diff .claude/agents/moai/manager-git.md $T/.claude/agents/moai/manager-git.md > $E/ac013-manager-git.diff
-# 기대: exit 0
 diff .claude/rules/moai/core/agent-common-protocol.md $T/.claude/rules/moai/core/agent-common-protocol.md > $E/ac013-acp.diff
-# 기대: exit 0
-diff .claude/skills/moai/workflows/sync/quality-gates-context.md $T/.claude/skills/moai/workflows/sync/quality-gates-context.md > $E/ac013-qgc.diff
 # 기대: exit 0
 diff .agents/skills/moai-sync/SKILL.md $T/.agents/skills/moai-sync/SKILL.md > $E/ac013-published.diff
 # 기대: exit 0
 ```
 
-판정(의도된 차이 여섯 파일 — 파일마다 아래 다섯 줄을 경로만 바꿔 실행한다. 기준 트리 반출 이름은 `base-<이름>.md`·`base-<이름>-template.md`):
+판정 (b) — 의도된 차이 여덟 쌍(파일마다 아래 다섯 줄을 경로만 바꿔 실행한다. 기준 트리 반출 이름은 `base-<이름>.md`·`base-<이름>-template.md`, plan.md §C 2단계):
 
 ```bash
 diff $E/base-delivery.md $E/base-delivery-template.md > $E/ac013-delivery-base.diff
@@ -394,12 +415,15 @@ diff .claude/skills/moai/workflows/sync/delivery.md $T/.claude/skills/moai/workf
 /usr/bin/grep -v -E '^[0-9]+(,[0-9]+)?[acd][0-9]+(,[0-9]+)?$' $E/ac013-delivery-post.diff > $E/ac013-delivery-post.body
 diff $E/ac013-delivery-base.body $E/ac013-delivery-post.body > $E/ac013-delivery-body.diff
 # 기대: exit 0
-# 같은 형태: doc-execution.md(base-doc-execution), moai/SKILL.md(base-skill), references/reference.md(base-reference),
-#            workflows/sync.md(base-sync), 명령 원본(base-command-sync 대 base-command-sync-template;
+# 같은 형태: manager-git.md(base-manager-git 대 base-manager-git-template; 경로에 manager-git.md 가 들어가므로 한 호출에 한 명령),
+#            quality-gates-context.md(base-qgc), doc-execution.md(base-doc-execution), moai/SKILL.md(base-skill),
+#            references/reference.md(base-reference), workflows/sync.md(base-sync), 명령 원본(base-command-sync 대 base-command-sync-template;
 #            로컬 .claude/commands/moai/sync.md 대 $T/.claude/commands/moai/sync.md.tmpl)
+test -s $E/ac013-delivery-base.body
+# 기대: exit 0 — 여덟 쌍 모두 기준 본문이 비어 있지 않다(바이트 동일 쌍을 이 형태로 비교하면 빈 본문끼리 비교되어 공허하게 통과한다)
 ```
 
-판정(명령 원본 `argument-hint` 줄):
+판정 (c) — 명령 원본 `argument-hint` 줄:
 
 ```bash
 /usr/bin/grep -E '^argument-hint:' .claude/commands/moai/sync.md > $E/ac013-hint-local.txt
@@ -411,23 +435,60 @@ diff $E/ac013-hint-local.txt $E/ac013-hint-template.txt > $E/ac013-hint.diff
 # 기대: exit 0
 ```
 
-판정(테스트):
+판정 (d) — 테스트:
 
 ```bash
 go test ./internal/template/ -run '^(TestSanitizedPairParity|TestTemplateNoInternalContentLeak)$' -v -count=1 > $E/ac013-gotest.txt 2>&1
-# 기대: exit 0
+# 기대: exit 0 (0.2.5 에서 $BASE 트리에 실행: exit 0, 최상위 PASS 2 — reanchor/ac013-gotest-at-base.txt)
 /usr/bin/grep -c -E '^--- PASS: (TestSanitizedPairParity|TestTemplateNoInternalContentLeak) ' $E/ac013-gotest.txt > $E/ac013-pass-count.txt
 # 기대: 정확히 2
 /usr/bin/grep -c -F 'agent-common-protocol.md' $E/ac013-gotest.txt > $E/ac013-acp-subtest.txt
 # 기대: 1 이상 — TestSanitizedPairParity 가 범위 파일 하위 테스트를 실제로 돌렸다는 기록(빈 선택 방지)
 ```
 
-뮤턴트: 로컬 명령 원본의 `argument-hint` 만 `--auto-merge` 로 바꾸고 템플릿은 그대로 둔 상태 → `ac013-hint.diff` exit 1, 차이 본문에 `argument-hint` 줄 쌍이 더해져 본문 비교 exit 1 → FAIL.
+판정 (e) — 미러 테스트 비회귀(M4 7단계, M6 4단계에서 실행. 기준선 `.moai/reports/t622/reanchor/mirror-baseline-sets.txt` · `mirror-baseline-fail.txt` · `mirror-baseline-pass.txt`, 원본 출력 `.moai/reports/t622/absorb2-mirror-baseline.txt`):
+
+```bash
+go test ./internal/template/ -count=1 -run 'TestSanitizedPairParity|TestRuleTemplateMirrorDrift' -v > $E/mirror-post.txt 2>&1
+# exit 는 기록만 한다 — 기준선이 exit 1(범위 밖 spec-workflow.md 하위 테스트)이라 exit 로 판정하지 않는다
+/usr/bin/grep -E '^[[:space:]]*--- (PASS|FAIL): ' $E/mirror-post.txt > $E/mirror-post-lines.txt
+sed -E 's/^[[:space:]]*--- (PASS|FAIL): ([^ ]+).*/\1 \2/' $E/mirror-post-lines.txt > $E/mirror-post-sets.txt
+/usr/bin/grep '^FAIL ' $E/mirror-post-sets.txt > $E/mirror-post-fail.txt
+/usr/bin/grep '^PASS ' $E/mirror-post-sets.txt > $E/mirror-post-pass.txt
+/usr/bin/grep -c '' $E/mirror-post-pass.txt > $E/mirror-post-pass-count.txt
+# 기대: 17 이상 — 컴파일 실패나 빈 선택이면 PASS 줄이 사라진다(아래 잃은 PASS 판정도 같이 빨강)
+/usr/bin/grep -v -x -F -f .moai/reports/t622/reanchor/mirror-baseline-fail.txt $E/mirror-post-fail.txt > $E/mirror-new-fail.txt
+test -e $E/mirror-new-fail.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
+test -s $E/mirror-new-fail.txt
+# 기대: exit 1 — 기준선 FAIL 집합 밖의 FAIL 이 없다
+/usr/bin/grep -v -x -F -f $E/mirror-post-pass.txt .moai/reports/t622/reanchor/mirror-baseline-pass.txt > $E/mirror-lost-pass.txt
+test -e $E/mirror-lost-pass.txt
+# 기대: exit 0
+test -s $E/mirror-lost-pass.txt
+# 기대: exit 1 — 기준선 PASS 가 하나도 빠지거나 FAIL 로 바뀌지 않았다
+```
+
+기준선(0.2.5, `$BASE` 트리에 재실행 — `reanchor/mirror-baseline-rerun.txt`, 원본 `absorb2-mirror-baseline.txt` 와 PASS/FAIL 집합 `diff` exit 0): exit 1, 집합 19줄 — PASS 17(최상위 `TestSanitizedPairParity` 1 + 하위 16: `TestRuleTemplateMirrorDrift/{default,frontend,hooks-system,model-policy,session-handoff-examples,session-handoff,worktree-integration}.md`, `TestSanitizedPairParity/{agent-common-protocol,askuser-protocol,main-checkout-branch-guard,manager-develop-prompt-template,plan-auditor,runtime-recovery-doctrine,verification-batch-pattern,verification-claim-integrity,zone-registry}.md`), FAIL 2(`TestRuleTemplateMirrorDrift` 최상위와 `TestRuleTemplateMirrorDrift/spec-workflow.md`). `spec-workflow.md` 는 이 카드 범위 밖이고 다른 카드가 고친다 — 그 카드가 먼저 착지해 흡수되면 FAIL 이 사라지는 것은 (e)를 어기지 않는다(빠지는 것은 FAIL 이고, PASS 는 늘어도 된다).
+
+뮤턴트:
+
+```
+(b) 한쪽 사본만 편집 — reanchor/mut013/: 로컬 manager-git.md 116행 예시만 --<merge_method> 로 바꾸고 템플릿은 그대로 둔 픽스처
+    → 본문 비교 exit 1(FAIL 검출, 새 본문 줄 "< gh pr merge <PR> --<merge_method> --delete-branch" / "> … --squash …")
+    두 사본을 같게 바꾼 픽스처 → 본문 비교 exit 0(PASS). 관측 reanchor/mut013/result.txt
+(c) 로컬 명령 원본의 argument-hint 만 --auto-merge 로 바꾸고 템플릿은 그대로 둔 상태 → ac013-hint.diff exit 1,
+    차이 본문에 argument-hint 줄 쌍이 더해져 본문 비교 exit 1 → FAIL
+(e) 집합 비교 — reanchor/mutmirror/result.txt:
+    기준선 그대로                                   → new-fail test -s exit 1, lost-pass test -s exit 1 → PASS
+    PASS TestSanitizedPairParity/agent-common-protocol.md 를 FAIL 로 바꾼 집합 → new-fail 1줄, lost-pass 1줄 → FAIL
+    PASS TestSanitizedPairParity/zone-registry.md 를 뺀 집합                   → new-fail 0줄, lost-pass 1줄 → FAIL
+```
 
 ### AC-GDP-014 — 에이전트 생성물 재생성
 
 ```
-GIVEN 템플릿 manager-git.md 편집(114·156행과 PR Auto-Merge 절)이 끝났고 .toml 은 아직 재생성하지 않은 상태
+GIVEN 템플릿 manager-git.md 편집(템플릿 114·156행과 PR Auto-Merge 절)이 끝났고 .toml 은 아직 재생성하지 않은 상태
 WHEN agents-emit-check → agents-emit → agents-emit-check 순서로 실행하면
 THEN 첫 점검은 exit 1, 재생성은 exit 0, 두 번째 점검은 exit 0 이고
  AND 기준 트리 대비 .codex/agents/moai/ 아래 바뀐 파일은 manager-git.toml 뿐이고
@@ -495,7 +556,7 @@ perl -ne 'next unless /^\+(?!\+\+)/; while (/(?<![0-9A-Za-z])([0-9a-f]{7,40})(?!
 ```bash
 git diff $BASE -- $T/ > $E/ac015-template.diff
 test -s $E/ac015-template.diff
-# 기대: exit 0 — 변경분이 비면 아래 부재 판정이 모두 공허하게 통과한다. 기준 트리에서는 변경분이 없어 exit 1(plan 작성 시점 `git diff --stat b412f8a33 -- internal/template/templates/` 출력 없음)
+# 기대: exit 0 — 변경분이 비면 아래 부재 판정이 모두 공허하게 통과한다. 기준 트리에서는 변경분이 없어 exit 1(0.2.5 측정: `git diff --stat 255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089 -- internal/template/templates/ …` 빈 출력). $BASE 가 흡수 병합이므로 이 변경분은 이 카드의 템플릿 편집만 담는다(develop 의 템플릿 변경은 $BASE 에 이미 들어 있다)
 /usr/bin/grep -c -E '^[+][^+]' $E/ac015-template.diff > $E/ac015-added-count.txt
 # 기대: 1 이상 — 검사할 추가 줄이 실제로 있다
 /usr/bin/grep -n -E '^[+][^+].*SPEC-([A-Z][A-Z0-9]*-)+[0-9]{3}' $E/ac015-template.diff > $E/ac015-specid.txt
@@ -518,37 +579,41 @@ test -s $E/ac015-sha-letter.txt
 
 검출 한계: 대문자 16진, 7자 미만 약식 SHA, 영숫자에 바로 붙은 16진 낱말은 잡지 않는다.
 
-### AC-GDP-016 — 항상 로드 규칙 편집이 마지막 (SHOULD, 절차 점검)
+### AC-GDP-016 — 이 카드의 커밋이 `agent-common-protocol.md` 를 바꾸지 않음 (SHOULD, 절차 점검 — 0.2.5 재작성)
 
 ```
-GIVEN run-phase 커밋들
-WHEN agent-common-protocol.md 의 로컬·템플릿 사본 중 어느 쪽이든 처음 고친 커밋 이후의 커밋을 나머지 범위 지침 파일(로컬·템플릿)로 거르면
-THEN 결과가 비어 있다 — 두 사본의 agent-common-protocol.md 편집이 모두 나머지 범위 파일 편집보다 뒤에 온다
+GIVEN 이 카드의 run-phase·sync-phase 커밋들($BASE..HEAD, 병합 커밋 제외)
+WHEN agent-common-protocol.md 의 로컬·템플릿 두 사본을 바꾼 커밋을 찾으면
+THEN 결과가 비어 있다 — 이 카드는 두 사본 어느 쪽도 고치지 않는다(REQ-GDP-002 는 develop 카드 t635·dr0911 로 충족, 리드 판단 (a))
+ AND 같은 명령 형태가 그 파일을 바꾼 커밋이 있는 구간에서는 커밋을 찾는다(양성 대조)
 ```
+
+0.2.4 의 판정("`agent-common-protocol.md` 커밋이 마지막 지침 편집 커밋")은 이 카드가 그 파일을 고친다는 전제였다. 0.2.5 에서 그 편집이 없어져 판정을 "편집 커밋 없음"으로 바꿨다.
 
 ```bash
-git log --format=%H $BASE..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md > $E/ac016-control.txt
-# 대조 기대: 1줄 이상
-git log --format=%H --reverse $BASE..HEAD -- .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md > $E/ac016-acp-commits.txt
-test -s $E/ac016-acp-commits.txt
-# 기대: exit 0 — 이 커밋이 없으면 아래 목록이 비어 공허하게 통과한다(기준 트리 $BASE..HEAD 에서는 SPEC 파일 커밋뿐이라 exit 1; 0.2.3 작성 시점 HEAD 0af445525 에서 exit 1 관측)
-awk 'NR==1' $E/ac016-acp-commits.txt > $E/ac016-acp-commit.txt
-# 두 사본 중 어느 쪽이든 agent-common-protocol.md 를 처음 고친 커밋. `git log -1 --reverse` 는 제한을 먼저 적용해 가장 최근 커밋을 내므로 쓰지 않는다
-# 치환 단계: $E/ac016-acp-commit.txt 의 40자 SHA를 읽어 아래 명령의 <ACP> 자리에 글자 그대로 넣는다(셸 변수나 명령 치환으로 넘기지 않는다)
-git log --format=%H <ACP>..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md .claude/skills/moai/workflows/sync/doc-execution.md .claude/skills/moai/SKILL.md .claude/skills/moai/references/reference.md .claude/skills/moai/workflows/sync/quality-gates-context.md .claude/skills/moai/workflows/sync.md .claude/commands/moai/sync.md internal/template/templates/.claude/agents/moai/manager-git.md internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/.claude/skills/moai/references/reference.md internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md internal/template/templates/.claude/skills/moai/workflows/sync.md internal/template/templates/.claude/commands/moai/sync.md.tmpl > $E/ac016-after.txt
-test -e $E/ac016-after.txt
+git log --no-merges --format=%H b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0..255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089 -- .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md > $E/ac016-control.txt
+/usr/bin/grep -c '' $E/ac016-control.txt > $E/ac016-control-count.txt
+# 대조 기대: 1 이상 — 같은 명령 형태와 경로 지정이 이 파일을 바꾼 커밋을 실제로 찾는다.
+# 0.2.5 측정: 2줄 — 97ef8e3023e9e7a29e7478289b69d28796dddbd7(dr0911 템플릿 미러), 6896eef3766a5265ac32b21154e95907e1173b54(t635) — reanchor/ac016-control-b412-to-base.txt
+git log --no-merges --format=%H $BASE..HEAD -- .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md > $E/ac016-acp-commits.txt
+test -e $E/ac016-acp-commits.txt
 # 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
-test -s $E/ac016-after.txt
-# 기대: exit 1 — 빈 파일
+test -s $E/ac016-acp-commits.txt
+# 기대: exit 1 — 빈 파일. 0.2.5 작성 시점 HEAD b24f2e184 에서 test -e exit 0 · test -s exit 1 관측(reanchor/ac016-judge-at-head.txt)
 ```
 
-뮤턴트(판정 논리 — 커밋을 만드는 픽스처는 plan 작성 시점에 실행하지 않았다):
+전제와 한계:
+
+- **재흡수.** `$BASE..HEAD` 는 BASE 이후 develop 을 다시 흡수하면 그 흡수가 끌어온 develop 쪽 비병합 커밋까지 담는다. 목록이 비어 있지 않으면 먼저 각 SHA 가 이 카드의 커밋인지(커밋 메시지의 카드 id `t622`) 흡수된 커밋인지 가린다. 흡수된 커밋이면 이 기준의 위반이 아니라 BASE 재고정 사유다(spec.md §E.2).
+- **병합 커밋 안의 편집.** `--no-merges` 는 병합 커밋의 충돌 해결로 들어간 편집을 보지 않는다. 이 카드가 흡수 병합에서 이 파일의 충돌을 손으로 풀었다면 그 병합을 따로 기록한다.
+
+뮤턴트(판정 논리 — 이 카드 이력에 커밋을 만드는 픽스처는 실행하지 않았다. 검출 능력은 위 양성 대조가 실측으로 보인다):
 
 ```
-이력 C1 템플릿 acp → C2 manager-git.md → C3 로컬 acp : 기준 커밋 C1, after 목록에 C2 → FAIL (0.2.2 기준식은 로컬 acp C3를 기준으로 삼아 통과시켰다)
-이력 C1 로컬 acp → C2 delivery.md → C3 템플릿 acp : 기준 커밋 C1, after 목록에 C2 → FAIL
-이력 C1 manager-git.md → C2 로컬 acp → C3 템플릿 acp : 기준 커밋 C2, after 목록 비어 있음 → PASS
-acp 커밋 없음                                        : ac016-acp-commits.txt 비어 test -s exit 1 → 판정 불가(PASS 아님)
+이 카드가 로컬 사본만 고친 커밋 C1   → ac016-acp-commits.txt 에 C1 → test -s exit 0 → FAIL
+이 카드가 템플릿 사본만 고친 커밋 C1 → 같음 → FAIL (두 경로를 한 명령에 담아 어느 쪽 편집이든 잡는다)
+이 카드 커밋이 두 사본을 건드리지 않음 → 빈 파일 → PASS
+판정 명령이 돌지 않음               → test -e exit 1 → 판정 불가(PASS 아님)
 ```
 
 ### AC-GDP-017 ~ AC-GDP-024 — 자리표시
@@ -574,7 +639,7 @@ THEN 변경분에 [ZONE:Frozen] 을 담은 추가·삭제 줄이 없고
 | `CONST-V3R2-037` | `` Preload `AskUserQuestion` via `ToolSearch(query: `` | 52행 |
 | `CONST-V3R2-038` | `AskUserQuestion is reserved exclusively for the MoAI orchestrator` | 17행 |
 
-대조(plan 작성 시점 측정, 템플릿·로컬 사본): `[ZONE:Frozen]` 줄 — `agent-common-protocol.md` 17행 1줄, 나머지 여덟 파일 0줄(명령 원본 `sync.md`·`sync.md.tmpl` 포함). 네 clause 개수 — 사본마다 1·1·1·1. 레지스트리에서 나머지 여덟 파일을 가리키는 `file:` 항목 0개(명령 원본 `file: .claude/commands/moai/sync.md` 0개 포함), `agent-common-protocol.md` 를 가리키는 항목 13개(로컬·템플릿). 뮤턴트: `agent-common-protocol.md` 템플릿 사본의 "MUST NOT prompt" 를 소문자로 바꾼 픽스처 → `CONST-V3R2-036` 개수 0, 기준 사본과의 `diff` 에 `[ZONE:Frozen]` 을 담은 줄 2개 → FAIL. Frozen 줄 판정 뮤턴트: `-[ZONE:Frozen] a` · `+[ZONE:Frozen] b` · ` [ZONE:Frozen] c`(문맥) 세 줄 diff 픽스처 → 2줄 적중, 문맥 줄 미적중. 레지스트리 "나머지 여덟 파일" 검출식 뮤턴트(0.2.2 측정): `file: .claude/commands/moai/sync.md` · `file: .claude/skills/moai/workflows/sync.md` · `file: .claude/rules/moai/core/agent-common-protocol.md` 세 줄 픽스처 → 2 — 검출식이 명령 원본과 새 스킬 경로를 실제로 잡고 `agent-common-protocol.md` 는 잡지 않는다. 이 검출식은 워크트리 가드 때문에 `manager-[g]it` 으로 쓴다.
+대조(plan 작성 시점 측정, 템플릿·로컬 사본 — 0.2.5 에서 `$BASE` 에 다시 재 같은 값: `reanchor/zone-lines-others.txt`·`registry-others.txt`·`lines-acp.txt`·`clause-counts.txt`): `[ZONE:Frozen]` 줄 — `agent-common-protocol.md` 17행 1줄, 나머지 여덟 파일 0줄(명령 원본 `sync.md`·`sync.md.tmpl` 포함). 네 clause 개수 — 사본마다 1·1·1·1. 레지스트리에서 나머지 여덟 파일을 가리키는 `file:` 항목 0개(명령 원본 `file: .claude/commands/moai/sync.md` 0개 포함), `agent-common-protocol.md` 를 가리키는 항목 13개(로컬·템플릿). 뮤턴트: `agent-common-protocol.md` 템플릿 사본의 "MUST NOT prompt" 를 소문자로 바꾼 픽스처 → `CONST-V3R2-036` 개수 0, 기준 사본과의 `diff` 에 `[ZONE:Frozen]` 을 담은 줄 2개 → FAIL. Frozen 줄 판정 뮤턴트: `-[ZONE:Frozen] a` · `+[ZONE:Frozen] b` · ` [ZONE:Frozen] c`(문맥) 세 줄 diff 픽스처 → 2줄 적중, 문맥 줄 미적중. 레지스트리 "나머지 여덟 파일" 검출식 뮤턴트(0.2.2 측정): `file: .claude/commands/moai/sync.md` · `file: .claude/skills/moai/workflows/sync.md` · `file: .claude/rules/moai/core/agent-common-protocol.md` 세 줄 픽스처 → 2 — 검출식이 명령 원본과 새 스킬 경로를 실제로 잡고 `agent-common-protocol.md` 는 잡지 않는다. 이 검출식은 워크트리 가드 때문에 `manager-[g]it` 으로 쓴다.
 
 판정:
 
@@ -644,8 +709,9 @@ awk '/^#### Context-Aware Next Steps/{s=1; print; next} s && /^(####|###|##) /{e
 ```
 조각 줄 수: skill 1, ref 3, qgc-args 4, qgc-flags 6, sync 1, dl 52, sync-usage 1, hint 1, dl-next 24
 (i) --auto-merge 개수: 아홉 조각 모두 0 → 빨강
-(ii) 위반 줄: skill 1(140행), ref 2(161행), qgc-args 4(30행), qgc-flags 4(101행), sync 1(104행), dl 9(338행)·20(349행),
-     sync-usage 1(템플릿 85 / 로컬 95), hint 1(3행), dl-next 9(404행) → 10줄 → 빨강
+(ii) 위반 줄: skill 1(140행), ref 2(161행), qgc-args 4(30행), qgc-flags 4(101행), sync 1(템플릿 104 / 로컬 114), dl 9(템플릿 338 / 로컬 363)·20(템플릿 349 / 로컬 374),
+     sync-usage 1(템플릿 85 / 로컬 95), hint 1(3행), dl-next 9(템플릿 404 / 로컬 429) → 10줄 → 빨강
+     (0.2.5: $BASE 에서 아홉 조각을 로컬·템플릿 모두 다시 뽑아 조각마다 L·T diff exit 0, 줄 수와 위반 조각 줄이 위와 같음 — reanchor/frag/)
      (0.2.3 방향 검사로 다시 잰 값도 같은 10줄)
 (iii) --merge 존재 개수: skill 1, sync 1, qgc-flags 1, dl 2 → 기준 트리에서도 성립(편집이 지우면 빨강)
 ```
@@ -733,7 +799,7 @@ THEN (i) --no-merge 를 담은 줄은 모두 "no-op" 과 "deprecat" 를 함께 �
 
 (ii)는 `--no-merge` 가 병합을 건너뛰게 하거나 트리거 조건(`--no-merge flag NOT set`)으로 쓰이는 서술을 잡는다. `--no-merge` 가 어느 조각에도 없으면 두 조건은 공허하게 참이 되므로, 판정 기록에 조각별 `--no-merge` 줄 수를 함께 적는다(REQ-GDP-025는 `--no-merge` 를 호환용 no-op으로 서술할 것을 요구하므로 `delivery.md` Step 3.4 조각에는 1줄 이상 있어야 한다).
 
-대조(기준 트리, 템플릿 사본): `--no-merge` 줄 — dl 조각 8(337행)·19(348행), 나머지 여덟 조각 0(X1~X3 조각 포함). (i) 위반 8·19 → 빨강. (ii) 위반 8("NOT set")·19("Skip") → 빨강.
+대조(기준 트리, 템플릿 사본 — 로컬 사본 조각도 같음, 0.2.5 측정): `--no-merge` 줄 — dl 조각 8(템플릿 337행 / 로컬 362행)·19(템플릿 348행 / 로컬 373행), 나머지 여덟 조각 0(X1~X3 조각 포함). (i) 위반 8·19 → 빨강. (ii) 위반 8("NOT set")·19("Skip") → 빨강.
 
 판정(로컬·템플릿 각각):
 
@@ -786,7 +852,7 @@ awk '/^## PR Auto-Merge/{s=1; print; next} s && /^## /{exit} s' <manager-git.md>
 awk '/^#### Step 3\.4/{s=1; print; next} s && /^(####|###) /{exit} s' <delivery.md> > <dl 절 파일>
 ```
 
-대조(기준 트리, 템플릿 사본): mg 절 9줄. (a) mg 0(승인 조건 줄에 모드 이름이 없고 절 제목만 team을 말함), dl 0. (b) 0·0. 0.2.3 검출식으로 다시 재도 (a) 0·0, (b) 0·0.
+대조(기준 트리, 템플릿 사본): mg 절 9줄(0.2.5: `$BASE` 로컬 절 — 로컬 166-174행 — 도 9줄이고 템플릿 절과 diff exit 0, `reanchor/mg-pram-*.md`). (a) mg 0(승인 조건 줄에 모드 이름이 없고 절 제목만 team을 말함), dl 0. (b) 0·0. 0.2.3 검출식으로 다시 재도 (a) 0·0, (b) 0·0.
 
 판정(로컬·템플릿 각각):
 
@@ -979,21 +1045,24 @@ test -s $E/ac030-published-flags.txt
 - 빈 결과 판정의 존재 확인 뮤턴트(0.2.4, 스크래치 실행): 판정 명령이 돌지 않아 `ac028-b.txt` 가 없는 상태. 명령 `rm -f <스크래치>/ac028-b.txt` → `test -e <스크래치>/ac028-b.txt; echo "exit=$?"` → `test -s <스크래치>/ac028-b.txt; echo "exit=$?"`. 관측 `exit=1` · `exit=1`. 판정: 존재 확인이 exit 1 이라 FAIL(판정 불가, PASS 아님). 0.2.3의 빈 결과 확인만 있었다면 `test -s` exit 1 이 기대값과 같아 PASS로 읽혔다.
 - `sed -n '/A/,/B/p'` 의 끝 제목이 편집으로 바뀌면 절이 파일 끝까지 늘어난다. `awk` 절 추출은 시작 표지가 사라지면 빈 파일을 낸다 — 빈 파일은 판정 불가로 기록한다. 추출 표지(`## Synchronization`, `## PR Auto-Merge`, `### Pre-Spawn Sync Check`, `### Pre-Edit Sync Check`, `#### The sweep prohibition`, `#### Step 3.4`, `##### Worktree Context Detection`, AC-GDP-026의 아홉 표지)는 편집 뒤에도 남아야 한다. `manager-git.md` 절 제목은 "## PR Auto-Merge" 로 시작하기만 하면 뒤의 괄호를 바꿔도 된다.
 - 자리표시 기준(AC-GDP-007~012, 017~024)은 판정하지 않고 N/A로 기록한다.
-- 의도된 사본 차이가 있는 여섯 파일은 편집으로 줄 수가 바뀌면 차이 줄번호가 밀린다. AC-GDP-013은 줄번호 머리를 빼고 본문만 비교한다. 명령 원본은 로컬 `.md` 와 템플릿 `.md.tmpl` 로 파일 이름 자체가 다르므로 두 경로를 글자 그대로 짝지어 비교한다.
+- 의도된 사본 차이가 있는 여덟 파일(0.2.5 `$BASE` 측정)은 편집으로 줄 수가 바뀌면 차이 줄번호가 밀린다. AC-GDP-013은 줄번호 머리를 빼고 본문만 비교한다. 명령 원본은 로컬 `.md` 와 템플릿 `.md.tmpl` 로 파일 이름 자체가 다르므로 두 경로를 글자 그대로 짝지어 비교한다.
 - 검출식에 `\b` 를 쓰지 않는다(POSIX ERE에서 단어 경계가 아니다). AC-GDP-026의 `--merge` 낱말 경계는 앞뒤 문자 클래스로 표현하며 `--merged-only`·`--auto-merge` 는 걸리지 않고, `[--merge]` 처럼 대괄호에 둘러싸인 형태는 걸린다.
 - AC-GDP-025의 Frozen 줄 판정은 `[ZONE:Frozen]` 을 담은 diff 줄을 먼저 모은 뒤 `-`·`+` 로 시작하는 줄만 고른다. 첫 grep 에 `-n` 을 붙이면 공허하게 통과한다.
 - AC-GDP-026~029는 줄 단위다. 한 조건을 여러 줄에 나눠 적으면 (a)·(i)가 0이 되어 FAIL로 기울고, 검출식이 예상하지 않은 표현은 통과할 수 있다(spec.md §E.2). 그 틈 때문에 AC-GDP-026·028·029는 읽기 기록을 PASS 전제로 둔다(§D.3). AC-GDP-027은 자동 검출만으로 판정한다. 검출식이 받는 문구와 떨어뜨리는 문구의 경계는 plan.md §B.14에 적었다.
 - AC-GDP-030의 양성 대조는 추적 파일을 잠시 바꾼다. 되돌림을 `cmp` 와 `git status` 로 확인하지 못하면 사전 점검을 멈추고 보고한다.
-- `go test -run` 선택자는 `^…$` 로 고정하고, 최상위 PASS 줄 수와 범위 파일 하위 테스트 흔적을 함께 본다.
+- `go test -run` 선택자는 `^…$` 로 고정하고, 최상위 PASS 줄 수와 범위 파일 하위 테스트 흔적을 함께 본다. AC-GDP-013 (e)의 미러 테스트 선택자는 기준선 측정과 같은 문자열(`'TestSanitizedPairParity|TestRuleTemplateMirrorDrift'`, 고정 없음)을 그대로 쓴다 — 기준선과 다른 선택자로 돌리면 집합 비교의 기준이 달라진다.
+- (0.2.5) AC-GDP-002 는 `$BASE` 에서 이미 초록인 회귀 방지 판정이다. 순서 판정 검출기의 실패는 뮤턴트 네 개로 관측했다(§D.1 AC-GDP-002). 이 기준이 초록이라는 사실은 이 카드가 REQ-GDP-002 를 이뤘다는 증거가 아니다 — 이룬 것은 t635·dr0911 이다.
+- (0.2.5) AC-GDP-016 의 `$BASE..HEAD` 는 BASE 이후 develop 재흡수가 없다는 전제에 선다(§D.1 AC-GDP-016 전제와 한계).
 
 ## §D.3 품질 게이트
 
 - 사전 점검의 양성 대조가 모두 기대값을 냈다는 기록이 있어야 판정이 유효하다(AC-GDP-030의 발행 점검 대조 포함).
 - **읽기 단계가 있는 기준(AC-GDP-001, AC-GDP-006, AC-GDP-026, AC-GDP-028, AC-GDP-029)은 읽기 기록 파일(`$E/ac001-reading.md`, `$E/ac006-reading.md`, `$E/ac026-reading.md`, `$E/ac028-reading.md` — AC-GDP-029는 `ac028-reading.md` 를 함께 쓴다)이 존재하고 대상 문단·절·줄의 모든 질문에 답했을 때만 PASS다.** 자동 검출이 통과해도 읽기 기록이 없거나 한 줄이라도 답이 비면 PASS가 아니다. AC-GDP-026의 대상 줄은 `$E/ac026-merge-lines.txt`, AC-GDP-028·029의 대상 줄은 `$E/ac028-mode-lines.txt` 에 로컬·템플릿 사본마다 뽑은 줄 전부다.
 - `go test` 선택 실행이 최상위 PASS 줄 2개를 내지 않으면 합격이 아니다. 로컬 전체 스위트는 돌리지 않는다.
+- 미러 테스트 비회귀 점검(AC-GDP-013 (e))은 M4 와 M6 에서 각각 한 번씩 돌고, 두 번 모두 새 FAIL 0·잃은 PASS 0 이어야 한다. 미러 테스트의 exit 1 은 기준선과 같은 이유(범위 밖 `spec-workflow.md`)일 때 합격을 막지 않는다.
 
 ## §D.4 완료 정의 (Definition of Done)
 
-- 판정 대상 기준 AC-GDP-001~006, 013~015, 025~030이 PASS이고 AC-GDP-016이 PASS 또는 사유 기록. 자리표시 기준은 N/A.
+- 판정 대상 기준 AC-GDP-001~006, 013~015, 025~030이 PASS이고 AC-GDP-016이 PASS 또는 사유 기록. 자리표시 기준은 N/A. AC-GDP-013 은 (a)~(e) 모두 PASS 여야 한다.
 - AC-GDP-030의 경우 이름(A 또는 B)과 근거 출력이 progress 기록에 남는다.
 - 모든 증거 파일이 `.moai/reports/t622/run/` 에 커밋되어 인용 경로가 해석된다.

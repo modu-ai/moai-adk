@@ -1,0 +1,3 @@
+pass-count=17
+new-fail test -s exit=1
+lost-pass test -s exit=1

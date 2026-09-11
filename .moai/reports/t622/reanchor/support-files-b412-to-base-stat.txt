@@ -1,0 +1,7 @@
+ .claude/agents/moai/plan-auditor.md               | 244 ++++++++++++++++++++--
+ Makefile                                          |  12 +-
+ docs-site/content/en/advanced/moai-web-console.md |   4 +-
+ docs-site/content/ja/advanced/moai-web-console.md |   4 +-
+ docs-site/content/ko/advanced/moai-web-console.md |   4 +-
+ docs-site/content/zh/advanced/moai-web-console.md |   4 +-
+ 6 files changed, 252 insertions(+), 20 deletions(-)
