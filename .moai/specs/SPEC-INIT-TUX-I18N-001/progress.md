@@ -228,6 +228,19 @@ WT-init-tux-i18n
 
 The failing run's evidence (`baseline-cli-*.txt`) is kept alongside, not overwritten. Selection count note stands: use `-list '<pattern>'`; `-run … -list '.*'` lists the whole package.
 
+#### Step 2 — M3 cli part: downgrade confirm pre-fix pty RED (before M2)
+
+New test file only: `internal/cli/ptycap_child_test.go`. One child dispatcher `TestPtyCaptureChild` (switch on `ptycaptest.ChildEnv`; later cases such as the AC-ITI-003 init case add a `case`), which records the effective environment, then blocks the network seams without editing their file (`deferredUpdateEnabled`/`deferredUpdateCheck` stubbed, `versionInstallHTTPClient` a transport that refuses every request, `MOAI_UPDATE_URL` set empty), and runs `runVersionBranch` with `version.Version = "v9.9.9"`, tag `v1.0.0`, `--binary`, and `versionInstallBinaryPath` under the case temp dir. The case directory carries `.moai/config/sections/language.yaml` with `conversation_language: ko`. Capture tests: `TestPtyCapture_DowngradeConfirmLocalized` (ko title/description/buttons/help labels, no English strings; also AC-ITI-015 (a) reachability) and `TestPtyCapture_DowngradeConfirmButtonAlignment` (AC-ITI-015 (a): first button label column = description first column), each with the positive-existence gate on title/description/button lines; plus `TestPtyCapture_SkipWithoutGate` / `TestPtyCapture_FailWithoutTmux` calling the shared `AssertSkipWithoutGate` (5 results) / `AssertFailWithoutTmux` (4 results) over cli's capture tests (AC-ITI-019 "all capture tests").
+
+| Step | Command | Observed | Evidence |
+|---|---|---|---|
+| Ungated | `go test ./internal/cli/ -run '^TestPtyCapture' -count=1 -v -timeout 600s` | exit 0 · `=== RUN` 5 · `--- SKIP` 5 | `.moai/reports/t586/stage-b/step2-red-ungated.txt` |
+| Gated pre-fix RED | `MOAI_PTY_CAPTURE=1 MOAI_PTY_CAPTURE_OUT=<abs>/.moai/reports/t586/stage-b/pty-prefix go test ./internal/cli/ -run '^TestPtyCapture' -count=1 -v -timeout 600s` | exit 1 · `=== RUN` 5 · PASS 2 (SkipWithoutGate, FailWithoutTmux) · FAIL 2 · SKIP 1 (child). Localized FAIL for the documented reason — v1 English render in a ko project: `title line "┃ Downgrade v9.9.9 → v1.0.0?" lacks the ko title "다운그레이드할까요? v9.9.9 → v1.0.0"`, description not ko, `button line "┃                     Yes     No" lacks the ko labels 예 / 아니오`, help lacks `전환`/`제출`, frame carries `toggle`, `submit`, `Downgrade`, `older than the running version`. Alignment FAIL: `first button label "Yes" at column 22, description at column 2` — the documented v1 22-column indent. Child env verified (14 vars) in both sessions; real HOME watch list `17 entries, 11 present` before and after, no change | `.moai/reports/t586/stage-b/step2-red-gated.txt`; captures `pty-prefix/downgrade-confirm-localized.txt`, `pty-prefix/downgrade-confirm-alignment.txt`; AC-ITI-019 child outputs `pty-prefix/ac019a-ungated-child-output.txt`, `pty-prefix/ac019b-no-tmux-child-output.txt` |
+
+Host tmux: `no server running` before and after the gated run (0 `moai-ptycap-` sessions).
+
+Divergence — pre-fix **golden** RED: the v1 confirm is built inline inside `runVersionBranch` (`update_version.go:327-331`) and calls `form.Run()` directly; no builder returns the form, so its `View()` cannot be drawn from a test without a product edit, and a test-only copy of those lines would measure a copy, not the product. The pre-fix evidence for this surface is therefore the pty capture above (its ANSI-free screen is the exported file). The golden RED for the confirm surface is AC-ITI-012's four-case golden, established in step 4 as its own commit against a stub helper, before the M2 fix.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
