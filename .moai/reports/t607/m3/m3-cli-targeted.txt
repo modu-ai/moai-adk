@@ -1,0 +1,81 @@
+=== RUN   TestIntegrationStatus_FreeWindow
+--- PASS: TestIntegrationStatus_FreeWindow (0.00s)
+=== RUN   TestIntegration_AcquireStatusRelease
+2026/09/12 04:51:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegration_AcquireStatusRelease250801636/001/.moai/config/sections
+--- PASS: TestIntegration_AcquireStatusRelease (0.28s)
+=== RUN   TestIntegrationAcquire_RefusesASecondLane
+2026/09/12 04:51:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_RefusesASecondLane3757308432/001/.moai/config/sections
+2026/09/12 04:51:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_RefusesASecondLane3757308432/001/.moai/config/sections
+--- PASS: TestIntegrationAcquire_RefusesASecondLane (0.29s)
+=== RUN   TestIntegrationAcquire_ForceReportsWhatItDisplaced
+2026/09/12 04:51:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_ForceReportsWhatItDisplaced3546924522/001/.moai/config/sections
+2026/09/12 04:51:48 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_ForceReportsWhatItDisplaced3546924522/001/.moai/config/sections
+--- PASS: TestIntegrationAcquire_ForceReportsWhatItDisplaced (0.30s)
+=== RUN   TestIntegrationAcquire_RefusesWithoutASessionID
+--- PASS: TestIntegrationAcquire_RefusesWithoutASessionID (0.00s)
+=== RUN   TestIntegrationRelease_EmptyIsReported
+--- PASS: TestIntegrationRelease_EmptyIsReported (0.00s)
+=== RUN   TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits
+--- PASS: TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits (4.67s)
+=== RUN   TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits
+--- PASS: TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits (4.44s)
+=== RUN   TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder
+--- PASS: TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder (4.68s)
+=== RUN   TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller
+--- PASS: TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller (0.57s)
+=== RUN   TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree
+--- PASS: TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree (0.56s)
+=== RUN   TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree
+--- PASS: TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree (0.60s)
+=== RUN   TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree
+--- PASS: TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree (0.65s)
+=== RUN   TestIntegrationStatus_ShowsHolderNameAlongsideID
+--- PASS: TestIntegrationStatus_ShowsHolderNameAlongsideID (0.00s)
+=== RUN   TestIntegrationStatus_NoNameKeepsTodaysShape
+--- PASS: TestIntegrationStatus_NoNameKeepsTodaysShape (0.00s)
+=== RUN   TestRootCmd_AllCommandsRegistered
+--- PASS: TestRootCmd_AllCommandsRegistered (0.00s)
+=== RUN   TestSessionPIDStamp_PlatformBoundary
+--- PASS: TestSessionPIDStamp_PlatformBoundary (0.00s)
+=== RUN   TestSessionPIDStamp_NotSetFromHooks
+--- PASS: TestSessionPIDStamp_NotSetFromHooks (0.03s)
+=== RUN   TestRootCmd_Exists
+--- PASS: TestRootCmd_Exists (0.00s)
+=== RUN   TestRootCmd_Use
+--- PASS: TestRootCmd_Use (0.00s)
+=== RUN   TestRootCmd_Short
+--- PASS: TestRootCmd_Short (0.00s)
+=== RUN   TestRootCmd_Long
+--- PASS: TestRootCmd_Long (0.00s)
+=== RUN   TestRootCmd_HasVersion
+--- PASS: TestRootCmd_HasVersion (0.00s)
+=== RUN   TestRootCmd_HelpOutput
+--- PASS: TestRootCmd_HelpOutput (0.00s)
+=== RUN   TestRootCmd_NoArgs_ShowsHelp
+--- PASS: TestRootCmd_NoArgs_ShowsHelp (0.00s)
+=== RUN   TestRootCmd_UnknownCommandError
+--- PASS: TestRootCmd_UnknownCommandError (0.00s)
+=== RUN   TestRootCmd_DroppedCommandsNotPresent
+--- PASS: TestRootCmd_DroppedCommandsNotPresent (0.00s)
+=== RUN   TestRootCmd_SubcommandCount
+--- PASS: TestRootCmd_SubcommandCount (0.00s)
+=== RUN   TestRootCmd_NoRunE
+--- PASS: TestRootCmd_NoRunE (0.00s)
+=== RUN   TestIntegrationSessionID_EnvBeatsSidecar
+--- PASS: TestIntegrationSessionID_EnvBeatsSidecar (0.00s)
+=== RUN   TestSlotCLI_AcquireJSONFields
+--- PASS: TestSlotCLI_AcquireJSONFields (0.02s)
+=== RUN   TestSlotCLI_OmittedNameAndCommand
+--- PASS: TestSlotCLI_OmittedNameAndCommand (0.04s)
+=== RUN   TestSlotCLI_StatusJSONFree
+--- PASS: TestSlotCLI_StatusJSONFree (0.02s)
+=== RUN   TestSlotCLI_HelpListsVerbs
+--- PASS: TestSlotCLI_HelpListsVerbs (0.00s)
+=== RUN   TestSlotCLI_ForceReportsDisplaced
+--- PASS: TestSlotCLI_ForceReportsDisplaced (0.04s)
+=== RUN   TestSlotCLI_RefusesWithoutSessionID
+--- PASS: TestSlotCLI_RefusesWithoutSessionID (0.00s)
+=== RUN   TestSlotCLI_RootNormalizesWorktreeProjectDir
+--- PASS: TestSlotCLI_RootNormalizesWorktreeProjectDir (0.45s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	18.582s

@@ -130,6 +130,42 @@ func TestSlotLeaseConfig_MalformedResourceKeepsEnabled(t *testing.T) {
 	}
 }
 
+// M3 — the `moai slot acquire` default bound is read from workflow.yaml by a
+// single-key reader (the CLI holds no loaded *Config), falling back to the one
+// DefaultSlotLeaseMaxDuration on every failure path.
+func TestLoadSlotLeaseDefaultMaxDuration(t *testing.T) {
+	write := func(t *testing.T, body string) string {
+		t.Helper()
+		root := t.TempDir()
+		sections := filepath.Join(root, ".moai", "config", "sections")
+		if err := os.MkdirAll(sections, 0o750); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(sections, "workflow.yaml"), []byte(body), 0o600); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+		return root
+	}
+	cases := []struct {
+		name string
+		root string
+		want string
+	}{
+		{"no_file", t.TempDir(), DefaultSlotLeaseMaxDuration},
+		{"configured", write(t, "workflow:\n  slot_lease:\n    default_max_duration: 10m\n"), "10m"},
+		{"key_absent", write(t, "workflow:\n  integration_lock:\n    enabled: false\n"), DefaultSlotLeaseMaxDuration},
+		{"blank_value", write(t, "workflow:\n  slot_lease:\n    default_max_duration: '  '\n"), DefaultSlotLeaseMaxDuration},
+		{"unparseable_file", write(t, "workflow: [\n"), DefaultSlotLeaseMaxDuration},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := LoadSlotLeaseDefaultMaxDuration(tc.root); got != tc.want {
+				t.Errorf("LoadSlotLeaseDefaultMaxDuration = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // Entry shapes other than a mapping are marked, never rejected, and the mark
 // names the shape that was found.
 func TestSlotLeaseConfig_NonMappingEntriesAreMarked(t *testing.T) {

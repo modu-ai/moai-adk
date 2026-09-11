@@ -33,12 +33,16 @@ const (
 )
 
 // scrubSlotGuardEnv pins the environment named by the SPEC's isolation clause.
+//
+// The session-pid override variable is deliberately NOT touched here: the
+// guard never resolves an owner pid (it only reads the pid a record carries),
+// and internal/cli's TestSessionPIDStamp_NotSetFromHooks forbids any hook
+// source, test files included, from naming that variable at all.
 func scrubSlotGuardEnv(t *testing.T, root string) {
 	t.Helper()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
 	t.Setenv("CLAUDE_CODE_SESSION_ID", "")
-	t.Setenv("MOAI_SESSION_PID", "")
 }
 
 // slotGuardRepo is a primary git checkout, so hook-root normalization has a

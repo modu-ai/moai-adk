@@ -222,6 +222,27 @@ GREEN:
 - `GOOS=windows GOARCH=amd64 go build` / `go vet`(kanban·hook·config) → 0 / 0, 네이티브 `go vet` → 0
 - 커버리지(해당 테스트만, 프로파일에서 파일 줄 합산): `slot_lease_guard.go statements=72 covered=68 pct=94.4%`, `slot_lease_config.go statements=25 covered=25 pct=100.0%`
 
+### M3 — CLI `moai slot` (internal/cli) — cli 슬롯 안에서 검증
+
+리드가 heavy-test 슬롯을 lane-10에 넘겼다(코디네이터 전달). 첫 cli 컴파일 전에 `ps -eo pid,command | grep -E 'go (test|build|vet)'`로 확인했을 때 다른 go 프로세스는 없었다(종료 코드 1). 그 뒤 슬롯 사용 중 한 번 다른 레인의 `go test ./internal/cli -run ^TestDefaultLaunchSelectsNativeGateway ...` 프로세스(pid 50142, 명령줄이 `/tmp/t649-default-red.txt`로 출력 — t649 레인)가 관측됐고, `lsof`로 cwd를 보려 했을 때는 이미 끝나 있었다(2026-09-11T19:40:18Z UTC). 우리 쪽 go 명령은 끝까지 한 번에 하나씩만 돌렸다.
+
+1. **M1 CLI RED 먼저**: `go test ./internal/cli/ -run '^TestSlotCLI_' -count=1 -v -timeout 600s` → 종료 코드 1. 컴파일은 됐고(M1의 "컴파일 미검증" 가설 확인), 7개 모두 `slot_test.go:NNN: no \`moai slot\` command registered on the root command`로 실패 — assertion-RED(`.moai/reports/t607/m3/m3-cli-red.txt`).
+2. **config 한 키 읽기 함수**: `TestLoadSlotLeaseDefaultMaxDuration`을 먼저 쓰고 실행 → `internal/config/workflow_slot_lease_test.go:162:14: undefined: LoadSlotLeaseDefaultMaxDuration`(compile-RED). 그다음 `internal/config/loader_slot_lease.go`(`LoadGitFlowDevelopBranch` 방식, 실패 시 `DefaultSlotLeaseMaxDuration`) → 하위 5개 PASS.
+3. **구현**: `internal/cli/slot.go` — `moai slot acquire|status|release`. 루트는 `CLAUDE_PROJECT_DIR`(없으면 cwd)를 `kanban.ResolveSlotLeaseRoot`로 정규화(N1 — 가드와 같은 함수), git 저장소 밖이면 시작 디렉터리 그대로. 세션 id는 통합 창의 `integrationSessionID` 재사용, 소유자 pid는 `session.ResolveOwnerPID()`(풀리지 않으면 0). 종료 코드: held 3, busy 4(재시도 안내 포함), 그 외 1. 두 오류 모두 kanban 센티널이 `errors.Is`로 닿는다. 상태 조회는 빈 이름·명령을 `(not given)`으로 표시하고, `--resource` 없이 부르면 기록된 자원을 모두 나열한다.
+4. **cli 가드에 걸린 회귀와 수리**: 전체 cli 패키지 실행에서 `TestSessionPIDStamp_NotSetFromHooks`가 실패했다 — `hook sources must not set MOAI_SESSION_PID (a hook PID is dead on arrival): [.../internal/hook/slot_lease_guard_test.go]`. 원인은 M1에서 쓴 hook 테스트의 환경 비움 한 줄(`t.Setenv` 세션 pid 변수)이다. 이 가드는 `internal/hook` 아래 모든 `.go`(테스트 포함)에서 그 변수 이름을 금지한다. 가드는 소유자 pid를 해석하지 않으므로 그 줄을 지우고 이유를 주석으로 남겼다. 수리 뒤 `TestSessionPIDStamp_NotSetFromHooks` PASS.
+
+GREEN(트리 = M3 커밋):
+- `go test ./internal/cli/ -run '^TestSlotCLI_' -count=1 -v -timeout 600s` → 종료 코드 0, 11개 `--- PASS`(M1 7개 + 표면 4개 `TestSlotCLI_HeldAndBusyCarryDistinctExitCodes`·`StatusStatesAndList`·`ReleaseRoundTripAndRefusals`·`InputRefusals` — 표면 4개는 구현 뒤 커버리지 보강으로 썼다), `ok  	github.com/modu-ai/moai-adk/internal/cli	1.931s`(`.moai/reports/t607/m3/m3-cli-green.txt`).
+- `go test ./internal/cli/ -run '^(TestSessionPIDStamp_|TestSlotCLI_|TestRootCmd_|TestIntegration)' -count=1 -v -timeout 600s` → 종료 코드 0, `--- PASS` 37, `--- FAIL` 0(`m3-cli-targeted.txt`).
+- `go test ./internal/config/ -run '^(TestLoadSlotLeaseDefaultMaxDuration|TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v` → 종료 코드 0.
+- `go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1` → `ok ... 9.288s`(환경 비움 한 줄 제거 뒤 재실행).
+- `go build ./internal/cli/ ./cmd/moai/` → 0, `go build ./...` → 0, `GOOS=windows GOARCH=amd64 go build ./...` → 0, `go vet ./internal/cli/ ./internal/hook/` → 0, `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` → 0.
+- `golangci-lint run --timeout=10m ./internal/cli/ ./internal/hook/...` → `0 issues.`(그 앞 실행 `./internal/cli/ ./internal/config/... ./internal/hook/... ./internal/kanban/...` → `0 issues.`)
+- 커버리지: `slot.go statements=140 covered=134 pct=95.7%`(TestSlotCLI_ 11개 기준).
+
+미완(Gap):
+- **전체 cli 패키지는 끝까지 돌지 못했다.** `go test ./internal/cli/ -count=1 -timeout 600s` → `panic: test timed out after 10m0s`, 그때 돌던 테스트 `TestSyncGitSpecStatuses_NoSpecIDsInGitLog (0s)`, `FAIL ... 600.769s`. 시한 전에 실패한 테스트는 위 4번 하나뿐이었고 이미 고쳤다(`m3-cli-full-suite-excerpt.txt`). 10분 안에 끝나지 않는 것이 이 머신의 패키지 크기 문제인지, 그 테스트가 멈춘 것인지는 가리지 못했다. 전체 판정은 develop push 뒤 CI 몫이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<run 단계 대기>_
