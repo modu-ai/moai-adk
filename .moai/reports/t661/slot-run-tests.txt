@@ -1,0 +1,53 @@
+=== RUN   TestProfileBaseDirIsSandboxed
+--- PASS: TestProfileBaseDirIsSandboxed (0.00s)
+=== RUN   TestUserHomeDirFnSandboxesRealHome
+=== RUN   TestUserHomeDirFnSandboxesRealHome/real_home_redirects_to_sandbox
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-216220438
+=== RUN   TestUserHomeDirFnSandboxesRealHome/overridden_home_passes_through
+--- PASS: TestUserHomeDirFnSandboxesRealHome (0.00s)
+    --- PASS: TestUserHomeDirFnSandboxesRealHome/real_home_redirects_to_sandbox (0.00s)
+    --- PASS: TestUserHomeDirFnSandboxesRealHome/overridden_home_passes_through (0.00s)
+=== RUN   TestProfileSandbox_HelperSubprocessLeavesNoBaseDir
+--- PASS: TestProfileSandbox_HelperSubprocessLeavesNoBaseDir (0.09s)
+=== RUN   TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently3758590757/002/.agency.archived
+2026/09/11 03:37:12 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- PASS: TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently (0.21s)
+=== RUN   TestReproduction_NonProjectDirectoryPollution_Issue1086
+    update_clean_install_test.go:774: runUpdate returned: not a moai project: .moai/config/sections/system.yaml not found in the current directory
+        
+        Run `moai init` to initialize a project here, or change to an existing project directory and retry
+--- PASS: TestReproduction_NonProjectDirectoryPollution_Issue1086 (0.00s)
+=== RUN   TestRunUpdate_ThreeRunIdempotency_V3Project
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunUpdate_ThreeRunIdempotency_V3Project1449167768/002/.agency.archived
+--- PASS: TestRunUpdate_ThreeRunIdempotency_V3Project (0.19s)
+=== RUN   TestUpdateSubsystem_HomeSeamReach
+=== RUN   TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context
+=== RUN   TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy
+--- PASS: TestUpdateSubsystem_HomeSeamReach (0.25s)
+    --- PASS: TestUpdateSubsystem_HomeSeamReach/clean_reinstall_deploy_context (0.02s)
+    --- PASS: TestUpdateSubsystem_HomeSeamReach/template_sync_validate_and_deploy (0.23s)
+=== RUN   TestSkipSyncNoArchive
+=== RUN   TestSkipSyncNoArchive/version_match_returns_skipped_true
+=== RUN   TestSkipSyncNoArchive/skip_sync_with_force_does_invoke_archive
+--- PASS: TestSkipSyncNoArchive (0.00s)
+    --- PASS: TestSkipSyncNoArchive/version_match_returns_skipped_true (0.00s)
+    --- PASS: TestSkipSyncNoArchive/skip_sync_with_force_does_invoke_archive (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.782s

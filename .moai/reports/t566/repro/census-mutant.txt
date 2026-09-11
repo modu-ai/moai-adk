@@ -1,0 +1,19 @@
+{
+  "label": "mutant",
+  "go_list_exit": 0,
+  "go_list_packages": 137,
+  "hit_zero_count": 37,
+  "fold_hit_zero": [
+    "internal/cli/doctor_hook_delivery.go",
+    "internal/hook/quality/step_git_env.go",
+    "internal/web/fieldsets_codex_templ.go"
+  ],
+  "fold_with_hits": [
+    "internal/core/git",
+    "internal/kanban/prlink_landedref.go"
+  ],
+  "omission_without_hits": [],
+  "fold_packages_in_hit_zero_census": [],
+  "omission_packages_in_hit_zero_census": []
+}
+EXIT=0

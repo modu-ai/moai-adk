@@ -1,0 +1,5 @@
+pre 1789067923 Sep 11 04:18:43 2026 352256 /Users/goos/.moai/run/profile-leases.db
+ 4:22  up 2 days, 22:16, 19 users, load averages: 11.01 10.96 15.63
+pre_competing_exit=1
+post 1789067923 Sep 11 04:18:43 2026 352256 /Users/goos/.moai/run/profile-leases.db
+ 4:24  up 2 days, 22:17, 19 users, load averages: 19.18 13.17 16.02

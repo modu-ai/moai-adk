@@ -1,0 +1,28 @@
+t624 integration window — targeted rerun of three failing internal/cli tests on the merged card tree
+tree: .claude/worktrees/t624, branch WT-sync-gate-failstate, HEAD 47dfaef3c (merge of 1d7af6f21 + develop 81c1d58f9), tree 4af7b3a97ea3841100c0b719ea0ff46d9604b47a
+precondition: `ps -Ao pid,etime,command | grep -E 'go test|\.test( |$)'` → no processes
+command: go test ./internal/cli/ -run 'TestHomeStateChangedSurfaceCoverageConsumesFreshProfile|TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition|TestAuditLagUsesBinlagSeam' -count=1 -v
+exit: 1
+verbatim output:
+=== RUN   TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+    home_state_coverage_test.go:420: audited production file changed after coverage tip: internal/hook/session_end.go
+--- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.16s)
+=== RUN   TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition
+    home_state_coverage_test.go:520: audited production file changed after coverage tip: internal/cli/launcher.go
+--- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (2.67s)
+=== RUN   TestAuditLagUsesBinlagSeam
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:243 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:251 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:245 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:253 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+--- FAIL: TestAuditLagUsesBinlagSeam (0.70s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.552s
+FAIL
+
+card-surface control: `git diff --name-only 81c1d58f9 HEAD -- internal/cli internal/hook/session_end.go` → empty (the card changes none of the files these failures name)
+last develop commits to the failing files: `git log --oneline -4 81c1d58f9 -- internal/cli/home_state_coverage_test.go internal/cli/home_state_coverage.go internal/cli/mcp_build_identity_test.go`
+64a68b118 fix(state): extend committed coverage evidence chain
+1cfc6f544 fix(ci): resolve review and release gate regressions
+e7bd89ee3 fix(state): isolate committed coverage deltas (t592)
+20fb6bfd1 fix(state): stabilize committed coverage evidence (t592)

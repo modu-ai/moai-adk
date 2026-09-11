@@ -113,7 +113,7 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 
 Applies only to a sync entered from a factory chain, whose run-phase verify stage already ran a whole-repository deep security scan. The gate decides one thing: whether that scan's evidence may stand in for the Step 0.55.1 analysis below.
 
-**Scope of the suppression — Step 0.55.1 and nothing else.** A passing gate suppresses only the agent-invoked security analysis of Step 0.55.1. The dependency manifest audit below is a separate mechanism serving a separate purpose — detecting transitive-vulnerability drift unrelated to the current SPEC — and a source-code deep scan does not substitute for it, so it continues to run unconditionally whether or not this gate passes. Skipping the whole of Phase 8 would remove the only check for that drift.
+**Scope of the suppression — Step 0.55.1 and nothing else.** A passing gate suppresses only the agent-invoked security analysis of Step 0.55.1. The dependency manifest-change observation below is a separate, hook-side mechanism that records whether a dependency manifest changed in the HEAD commit; a source-code deep scan does not substitute for it, so it runs whether or not this gate passes. It is informational, it never drives the gate decision, and it is not a vulnerability scan.
 
 **Procedure.** Derive both runtime inputs at sync entry rather than judging them:
 
@@ -137,15 +137,15 @@ Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the r
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report
 
-**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
+**Dependency manifest-change observation (hook-side, informational)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
 
-Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
-`go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
+The Stop hook (`.claude/hooks/moai/sync-phase-quality-gate.sh`) runs `git diff` over the dependency manifests it lists for the detected language, restricted to the HEAD commit, and records `deps_modified=1` when that diff is non-empty. The value appears only in the hook's output message and in `.moai/logs/sync-quality-gate.log`. It is informational: it never drives the block decision, it looks only at manifests the HEAD commit changed, and it is not a vulnerability scan.
 
-When any manifest is detected, the dependency vulnerability scan runs automatically via the Stop hook (`.claude/hooks/moai/sync-phase-quality-gate.sh`) as a mechanical check outside agent delegation. If the Stop hook path is unavailable, a per-spawn `Agent(general-purpose)` security reviewer MAY perform the same scan as a fallback — inject `At start, invoke Skill("moai-ref-supply-chain") for the dependency / transitive-vulnerability baseline.` (per skill-routing.md §1).
-Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
+A dependency or supply-chain review is a separate, agent-invoked step, not a stand-in for anything the hook does. When the change set warrants one, a per-spawn `Agent(general-purpose)` security reviewer MAY perform it — inject `At start, invoke Skill("moai-ref-supply-chain") for the dependency / transitive-vulnerability baseline.` (per skill-routing.md §1).
 
 #### Step 0.55.2: Security Gate Decision
+
+**Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its CRITICAL-only stop gate below never clears an earlier sync-auditor FAIL — a HIGH finding that Phase 8 reports only as a warning still leaves a sync-auditor FAIL standing.
 
 If CRITICAL findings exist:
 - Present findings via AskUserQuestion:
