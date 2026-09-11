@@ -537,7 +537,7 @@ func TestBacklogStore_NoLeadRoleGuard(t *testing.T) {
 // beside the queue file, while the live lock name (backlog.lock) is left to
 // the lock machinery. Installs that lived through the lock rename carry the
 // stale zero-byte twin; the sweep settles the directory on one name.
-func TestNewBacklogStore_SweepsLegacyLockArtifact(t *testing.T) {
+func TestBacklogLoad_SweepsLegacyLockArtifact(t *testing.T) {
 	dir := t.TempDir()
 	legacy := filepath.Join(dir, legacyBacklogLockFileName)
 	live := filepath.Join(dir, backlogLockFileName)
@@ -549,6 +549,9 @@ func TestNewBacklogStore_SweepsLegacyLockArtifact(t *testing.T) {
 	}
 
 	store := NewBacklogStore(filepath.Join(dir, "backlog.json"))
+	if _, err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := os.Stat(legacy); !os.IsNotExist(err) {
 		t.Fatalf("legacy lock artifact survived store construction (stat err = %v)", err)

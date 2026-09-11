@@ -129,7 +129,7 @@ leaving the file untouched.`,
 				return err
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "dropped %s %s (reason: %s)\n",
-				id, todoTextPrefix(original), reason)
+				id, todoTextPrefix(original), todoPRCell(reason))
 			return nil
 		},
 	}

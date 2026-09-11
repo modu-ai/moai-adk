@@ -245,6 +245,64 @@ func backlogDSN(dbPath string) string {
 type backlogEngine struct {
 	db     *sql.DB
 	dbPath string
+	reader backlogQuery
+}
+
+type backlogQuery interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func (e *backlogEngine) queryDB() backlogQuery {
+	if e.reader != nil {
+		return e.reader
+	}
+	return e.db
+}
+
+// openBacklogReader never adopts a schema or changes permissions/journal mode.
+// SQL is query-only. A checkpointed DB uses an existing-file rw connection so
+// SQLite can clean up transient WAL coordination files on close; an active WAL
+// uses ro so this reader does not checkpoint another connection's committed data.
+func openBacklogReader(dbPath string) (*backlogEngine, error) {
+	u, err := url.Parse(backlogDSN(dbPath))
+	if err != nil {
+		return nil, err
+	}
+	v := url.Values{}
+	v.Set("mode", "ro")
+	if !fileExists(dbPath+"-wal") && !fileExists(dbPath+"-shm") {
+		v.Set("mode", "rw")
+	}
+	v.Add("_pragma", "query_only(ON)")
+	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", backlogBusyTimeoutMS))
+	u.RawQuery = v.Encode()
+	db, err := sql.Open(sqliteDriverName, u.String())
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	e := &backlogEngine{db: db, dbPath: dbPath}
+	ctx, cancel := context.WithTimeout(context.Background(), backlogOpenTimeout)
+	defer cancel()
+	version, err := e.schemaVersion(ctx)
+	if err == nil && version != "" && version != backlogSchemaVersion {
+		err = fmt.Errorf("unsupported schema_version %q: %w", version, ErrBacklogCorrupt)
+	}
+	// Older releases published an empty DB before copying legacy records.
+	// Neither a pure read nor an adopting read may call that empty state real.
+	if err == nil && fileExists(strings.TrimSuffix(dbPath, ".db")+".json") {
+		var seq string
+		err = db.QueryRowContext(ctx, `SELECT value FROM meta WHERE key = ?`, backlogMetaKeyLastSeq).Scan(&seq)
+		if errors.Is(err, sql.ErrNoRows) {
+			err = fmt.Errorf("uninitialized database beside legacy queue; inspect migration before retrying: %w", ErrBacklogCorrupt)
+		}
+	}
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return e, nil
 }
 
 // openBacklogEngine opens (creating when absent) the database at dbPath,
@@ -252,6 +310,14 @@ type backlogEngine struct {
 // schema_version when absent. An unrecognized stamped version refuses the
 // open rather than operating against unknown bytes.
 func openBacklogEngine(dbPath string) (*backlogEngine, error) {
+	// Inspect existing schema before any writable connection can run pragmas/DDL.
+	if info, err := os.Stat(dbPath); err == nil && info.Size() > 0 {
+		probe, err := openBacklogReader(dbPath)
+		if err != nil {
+			return nil, err
+		}
+		_ = probe.close()
+	}
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
 		return nil, fmt.Errorf("open backlog store %s: creating dir: %w", dbPath, err)
 	}
@@ -330,7 +396,7 @@ func (e *backlogEngine) schemaVersion(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, backlogOpenTimeout)
 	defer cancel()
 	var version string
-	err := e.db.QueryRowContext(ctx,
+	err := e.queryDB().QueryRowContext(ctx,
 		`SELECT value FROM meta WHERE key = ?`, backlogMetaKeySchemaVersion).Scan(&version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
@@ -389,7 +455,7 @@ func (e *backlogEngine) ensureLandingColumn(ctx context.Context) error {
 // hasColumn reports whether a table already declares the named column.
 func (e *backlogEngine) hasColumn(ctx context.Context, table, column string) (bool, error) {
 	var found string
-	err := e.db.QueryRowContext(ctx,
+	err := e.queryDB().QueryRowContext(ctx,
 		`SELECT name FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&found)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil

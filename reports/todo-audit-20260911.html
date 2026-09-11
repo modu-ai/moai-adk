@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Todo 전수 조사 및 개선 보고</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+:root{--ivory:#FAF9F5;--paper:#fff;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;--sans:Pretendard,system-ui,-apple-system,sans-serif;--mono:ui-monospace,SFMono-Regular,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.75 var(--sans)}main{max-width:1120px;margin:auto;padding:52px 28px 90px}header{background:var(--slate);color:var(--ivory);padding:32px;border-radius:14px;margin-bottom:36px}header p{margin:8px 0}.eyebrow{color:#efb9a6;font-weight:700;letter-spacing:.08em}h1{font-size:34px;line-height:1.3}h2{font-size:24px;margin:44px 0 16px;border-top:2px solid var(--oat);padding-top:20px}h3{font-size:19px;margin-top:30px}a{color:var(--clay-d)}p,li{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;font-size:14px;background:var(--paper);margin:20px 0}th,td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid var(--g300);overflow-wrap:anywhere}th{background:var(--oat)}tr:nth-child(even){background:#faf9f7}pre{background:#20221e;color:#f3f1ea;padding:18px;border-radius:9px;overflow:auto;font-size:12px;line-height:1.65}code{font-family:var(--mono);overflow-wrap:anywhere}p code,li code{background:var(--g100);padding:2px 4px}blockquote{margin:20px 0;padding:14px 22px;background:var(--oat);border-left:4px solid var(--clay)}.guide{padding:22px;background:var(--paper);border:1px solid var(--g300);border-radius:12px}.guide h2{margin:0;border:0;padding:0}.mermaid{background:var(--g100);color:var(--slate)}details{margin:16px 0}summary{cursor:pointer;font-weight:700}nav{font-size:14px}nav ul{padding-left:20px}footer{margin-top:40px;color:var(--g700);font-size:13px}@media(max-width:680px){main{padding:24px 14px}header{padding:22px}h1{font-size:27px}table{display:block;overflow-x:auto}th,td{min-width:90px}pre{font-size:11px}}@media print{body{background:#fff}main{max-width:none;padding:0}header{background:#eee;color:#111}pre{white-space:pre-wrap;background:#eee;color:#111}table{font-size:10px}tr{break-inside:avoid}nav{display:none}h2{break-after:avoid}}
+</style>
+</head>
+<body><main>
+<header><p class="eyebrow">MOAI · TODO · t647</p><h1>카드가 사라지거나 잘못 완료되었다고<br>보이지 않도록</h1><p>22건 구현·관련 회귀 통과 · High 7 / Medium 12 / Low 3</p><p>기준 커밋 ee99507fbe · 2026-09-11 · 로컬 구현 검증 보고서</p></header>
+<section class="guide"><h2>보고서 읽는 법</h2><p>카드 데이터의 보존과 판정 정확성을 먼저 확인하고, 명령어와 화면의 표현, 반복 실행 비용을 그다음 살폈습니다. <strong>High</strong>는 다른 프로젝트의 자료를 잘못 읽거나 카드 데이터가 가려지는 항목입니다. 구현 전 관측과 수정 후 검증은 구분하여 기록합니다.</p><p>예를 들어 카드가 300개라면 보관 여부를 바꾸는 동안에도 한 번의 조회 결과는 합계 300개여야 합니다. 조사에서는 live 300개와 archive 300개가 함께 읽혔습니다. 읽기 트랜잭션은 여러 표를 같은 시점 기준으로 읽어 이 문제를 막는 방법입니다.</p><pre class="mermaid">flowchart LR
+A[명령 또는 웹 조회] --> B[프로젝트 식별]
+B --> C[큐 저장소 해석]
+C --> D[잠금과 트랜잭션]
+D --> E[카드와 보관 이력]
+E --> F[화면 및 JSON 결과]
+</pre><p>흐름: 프로젝트 식별 → 해당 큐 선택 → 일관된 읽기·쓰기 → 카드와 이력 보존 → 결과 표시. 온라인 도식이 로드되지 않아도 위 순서와 본문을 읽을 수 있습니다.</p><noscript><p>도식 대체 설명: 프로젝트마다 큐를 구분하고, 읽기·쓰기를 하나의 일관된 작업으로 처리한 뒤, 실제로 확인한 상태를 표시합니다.</p></noscript></section>
+<details><summary>목차</summary><nav><ul>
+<li><a href="#todo-전수-조사-및-개선-보고"
+id="toc-todo-전수-조사-및-개선-보고">Todo 전수 조사 및 개선 보고</a>
+<ul>
+<li><a href="#결과-요약" id="toc-결과-요약">결과 요약</a></li>
+<li><a href="#claim" id="toc-claim">Claim</a></li>
+<li><a href="#evidence" id="toc-evidence">Evidence</a></li>
+<li><a href="#baseline-attribution"
+id="toc-baseline-attribution">Baseline-attribution</a></li>
+<li><a href="#gaps" id="toc-gaps">Gaps</a></li>
+<li><a href="#residual-risk"
+id="toc-residual-risk">Residual-risk</a></li>
+<li><a href="#성능-개선-관측" id="toc-성능-개선-관측">성능 개선
+관측</a></li>
+<li><a href="#배포-템플릿-무결성" id="toc-배포-템플릿-무결성">배포
+템플릿 무결성</a></li>
+<li><a href="#card-cross-check" id="toc-card-cross-check">Card
+Cross-Check</a></li>
+<li><a href="#구현의-주요-판단" id="toc-구현의-주요-판단">구현의 주요
+판단</a>
+<ul>
+<li><a href="#교차-검토에서-추가로-막은-경로"
+id="toc-교차-검토에서-추가로-막은-경로">교차 검토에서 추가로 막은
+경로</a></li>
+<li><a href="#웹-조회가-스스로-재조회를-유발하는-결함"
+id="toc-웹-조회가-스스로-재조회를-유발하는-결함">웹 조회가 스스로
+재조회를 유발하는 결함</a></li>
+</ul></li>
+<li><a href="#최종-통합-검증" id="toc-최종-통합-검증">최종 통합
+검증</a></li>
+</ul></li>
+</ul></nav></details>
+<h1 id="todo-전수-조사-및-개선-보고">Todo 전수 조사 및 개선 보고</h1>
+<h2 id="결과-요약">결과 요약</h2>
+<p><strong>확인한 개선 항목 22건을 구현하고 관련 회귀 검증을
+통과했다.</strong> 우선순위는 High 7건, Medium 12건, Low 3건이다. 보고
+후 개선 카드 <code>t647</code>를 발행하여 저장 계층·CLI·웹·문서 변경을
+추적했다. 최종 통합 선택 실행은 kanban, CLI, web 세 패키지 모두
+통과했고, 저장·웹 경쟁 상태 검사와 실행 파일 빌드도 성공했다.</p>
+<p>이 결과는 <strong>로컬 구현·검증</strong>에 대한 판정이다. 원격
+develop 반영, 설치된 바이너리 교체, 실사용 홈 데이터 이관을 실행했다는
+뜻이 아니다. 자세한 명령과 검증 경계는 <a
+href="../.moai/reports/t647/todo-audit-20260911/verdict.md">최종
+판정</a>에 보존한다.</p>
+<h2 id="claim">Claim</h2>
+<p>기준: origin/develop ee99507fbe3b4a22c6a0a74815723d222dfdc04d. CLI,
+SQLite 저장 계층, 상태 전환, 보관·복원, 이관, 웹·SSE, 상태줄·훅·설정,
+관련 스킬·규칙·배포 문서를 조사했다. 다음 표는 발견 당시의 문제
+목록이며, 수정 후 검증과 구별한다. High 7건, Medium 12건, Low 3건으로 총
+22건이다.</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>ID</th>
+<th>우선순위</th>
+<th>확인한 문제</th>
+<th>개선 범위</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T01</td>
+<td>High</td>
+<td>프로젝트 A 큐를 읽고 현재 디렉터리 B의 커밋으로 landed 판정</td>
+<td>PR 및 착지 조회를 큐 프로젝트에 고정</td>
+</tr>
+<tr>
+<td>T02</td>
+<td>High</td>
+<td>300개 카드의 동시 보관·복원 중 live 300 + archive 300으로 읽힘</td>
+<td>한 읽기 트랜잭션으로 일관된 스냅샷 확보</td>
+</tr>
+<tr>
+<td>T03</td>
+<td>High</td>
+<td>LoadPure가 없던 archive 테이블 생성</td>
+<td>읽기 전용 연결과 구버전 읽기 호환</td>
+</tr>
+<tr>
+<td>T04</td>
+<td>High</td>
+<td>지원하지 않는 schema_version=999를 거부하기 전에 테이블 1개를 5개로
+늘림</td>
+<td>버전 검사 선행, 거부 전 스키마 변경 방지</td>
+</tr>
+<tr>
+<td>T05</td>
+<td>Medium</td>
+<td>두 관련 카드 보관 후 한 장만 복원하면 보관 중인 카드를 참조하는 live
+관계 생성</td>
+<td>관계 보존과 양 끝 카드 복원 시점 처리</td>
+</tr>
+<tr>
+<td>T06</td>
+<td>Medium</td>
+<td>JSON 격리 실패 후 pending 표지가 지워져 재시도 불가</td>
+<td>성공 전까지 재시도 표지 보존</td>
+</tr>
+<tr>
+<td>T07</td>
+<td>Medium</td>
+<td>dropped 카드에 next 실행 시 폐기 표지를 남긴 채 picked로 전환</td>
+<td>undrop을 통한 명시적 복원 요구</td>
+</tr>
+<tr>
+<td>T08</td>
+<td>Medium</td>
+<td>GH 조회 실패가 JSON에서 no-link로 표시</td>
+<td>조회 불확실성의 기계 판독 가능 표현</td>
+</tr>
+<tr>
+<td>T09</td>
+<td>Medium</td>
+<td>줄바꿈·탭을 포함한 카드가 PR 표에서 가짜 추가 행으로 출력</td>
+<td>표 렌더 경계에서 제어문자 처리, 원문 보존</td>
+</tr>
+<tr>
+<td>T10</td>
+<td>Low</td>
+<td>존재하지 않는 PR 조회 ID가 queue is empty로 성공하고 GH 호출</td>
+<td>대상 ID 검증과 정확한 오류</td>
+</tr>
+<tr>
+<td>T11</td>
+<td>Low</td>
+<td>빈 큐에서 list –limit -1이 성공</td>
+<td>데이터와 무관한 인자 검증</td>
+</tr>
+<tr>
+<td>T12</td>
+<td>Medium</td>
+<td>landed 명령 생성 시 참조를 즉시 조회</td>
+<td>명령 실행·도움말 시점의 지연 해석</td>
+</tr>
+<tr>
+<td>T13</td>
+<td>Medium</td>
+<td>analyze가 매 카드 쌍마다 정규화·토큰 집합을 재생성</td>
+<td>비교 의미를 유지하며 카드별 준비 결과 재사용</td>
+</tr>
+<tr>
+<td>T14</td>
+<td>Medium</td>
+<td>손상된 큐를 웹에서 정상 빈 큐로 표시</td>
+<td>읽기 실패 상태를 화면에 표시</td>
+</tr>
+<tr>
+<td>T15</td>
+<td>Medium</td>
+<td>웹 시작 뒤 생성한 todo 디렉터리가 감시에서 누락되고 SSE ready는 폴링
+중단</td>
+<td>늦게 생성된 디렉터리도 갱신 감시</td>
+</tr>
+<tr>
+<td>T16</td>
+<td>Medium</td>
+<td>배포 스킬·문서에 옛 저장 경로와 temp+rename 설명 잔존</td>
+<td>현재 홈 DB 및 SQLite 계약으로 관련 문서 동기화</td>
+</tr>
+<tr>
+<td>T17</td>
+<td>High</td>
+<td>서로 다른 separate-git-dir 저장소가 같은 부모를 큐 루트로 해석</td>
+<td>작업 트리와 공용 Git 메타데이터 관계를 구별</td>
+</tr>
+<tr>
+<td>T18</td>
+<td>High</td>
+<td>JSON 이관 도중 DB 생성 직후 중단하면 빈 DB가 원본 JSON을 가림</td>
+<td>검증 완료 DB만 게시하고, 기존의 불완전한 이관은 원본을 보존하며
+명시적 오류로 중단</td>
+</tr>
+<tr>
+<td>T19</td>
+<td>Medium</td>
+<td>카드 1개 추가 시 보관 카드 1,000개를 DELETE·INSERT하여 2,000행
+쓰기</td>
+<td>변경되지 않은 보관 이력 재기록 방지</td>
+</tr>
+<tr>
+<td>T20</td>
+<td>Low</td>
+<td>모든 picked 카드가 plan·SPEC으로 간다는 지침과 Class A/B 규칙
+충돌</td>
+<td>Class별 단계와 선택적 SPEC 연결 명시</td>
+</tr>
+<tr>
+<td>T21</td>
+<td>High</td>
+<td>홈 DB 이관 전에 옛 경로를 해석한 writer가 이관 뒤 쓰면 성공을
+반환하지만 새 큐에 카드 없음</td>
+<td>잠금 획득 후 이관된 원본의 쓰기 차단 또는 재해석</td>
+</tr>
+<tr>
+<td>T22</td>
+<td>Medium</td>
+<td>카드 쓰기 없이 HTTP 조회가 SQLite 파일 이벤트를 만들어 SSE 재조회를
+계속 유발</td>
+<td>읽기의 보조 파일 이벤트와 실제 큐 변경을 구별하여 자기 갱신 반복
+차단</td>
+</tr>
+</tbody>
+</table>
+<h2 id="evidence">Evidence</h2>
+<p>저장 계층 재현:
+<code>go test -overlay /tmp/moai-todo-storage-audit.TI3Io7/overlay.json ./internal/kanban -run '^TestAudit' -count=1 -v -timeout=90s</code></p>
+<pre class="text"><code>LoadPure archive tables: before=false after=true
+unsupported schema_version &quot;999&quot; (want &quot;1&quot;): kanban backlog store corrupt; tables before=1 after=5
+restored live finding references archived card
+read 2 mixed commits: live=300 archived=300 total=600 want=300
+after obstruction removed and Load retried: legacy JSON still present=true
+FAIL github.com/modu-ai/moai-adk/internal/kanban 0.264s</code></pre>
+<p>CLI 관측 테스트:
+<code>go test -overlay /tmp/todo-cli-audit.4G91GB/overlay.json ./internal/cli -run '^TestTodoAudit' -count=1 -v -timeout=90s</code>.
+이 테스트의 PASS는 잘못된 기존 동작을 재현했다는 뜻이다.</p>
+<pre class="text"><code>stdout=[{&quot;card_id&quot;:&quot;t1&quot;,&quot;outcome&quot;:&quot;no-link&quot;}]
+stderr=&quot;note: open pull requests unavailable (offline); link column left empty, landed check still ran\n&quot;
+stdout=&quot;queue is empty\n&quot; err=&lt;nil&gt; subprocesses=1
+stdout=&quot;t1\tno-link\t\t\tqueued\t\tcard text\nforged\trow\n&quot; err=&lt;nil&gt; records=2
+stdout=&quot;queue is empty\n&quot; err=&lt;nil&gt;
+stdout=&quot;picked t1 [DROPPED — obsolete] original card\n&quot; err=&lt;nil&gt; state=picked
+constructor populated Long=true refUsage=&quot;Ask about this ref instead of origin/main&quot;
+stdout=[{&quot;card_id&quot;:&quot;t1&quot;,&quot;outcome&quot;:&quot;landed&quot;}]
+PASS
+ok github.com/modu-ai/moai-adk/internal/cli 3.979s</code></pre>
+<p>기존 저장 계층 회귀:
+<code>go test ./internal/kanban -run 'Test(NormalizeCardText|TokenSetJaccard|ClassifyCardText|Backlog)' -count=1 -timeout=120s</code></p>
+<pre class="text"><code>ok github.com/modu-ai/moai-adk/internal/kanban 2.366s</code></pre>
+<h2 id="baseline-attribution">Baseline-attribution</h2>
+<p>초기 참조 검색 후보 217개와 구현 후 동일 검색의 후보 221개 파일은 <a
+href="todo-audit-inventory-20260911.md">조사 목록</a>에 기록했다. CLI,
+저장 계층, 웹·상태줄·훅·설정, 지침·배포 문서에 걸친 조사이다. 전수 검색
+목록과 실제 판독·실행 검증을 구별한다. 파일마다 모든 줄을 정독하거나
+모든 분기를 실행했다는 주장은 하지 않는다.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>영역</th>
+<th>주요 구현 전 위치</th>
+<th>확인 방법</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T01·T08–T10</td>
+<td>internal/cli/todo_pr.go:174,181,212,245</td>
+<td>두 Git 프로젝트 대조군, GH 실패 주입, 다중행 출력</td>
+</tr>
+<tr>
+<td>T07·T11</td>
+<td>internal/cli/todo.go:555,845</td>
+<td>빈 큐와 dropped 상태의 CLI 실행</td>
+</tr>
+<tr>
+<td>T12·T13</td>
+<td>internal/cli/todo_landed.go:53; todo_analysis.go:151</td>
+<td>생성자 검사와 할당량 벤치마크</td>
+</tr>
+<tr>
+<td>T02·T18·T19</td>
+<td>internal/kanban/backlog_migrate.go:49,212,339,493</td>
+<td>동시 SQL writer, 중단 상태 fixture, 쓰기 trigger 계수</td>
+</tr>
+<tr>
+<td>T03·T04</td>
+<td>internal/kanban/backlog_sqlite.go:271,302; backlog_store.go:574</td>
+<td>호출 전후 schema inventory 비교</td>
+</tr>
+<tr>
+<td>T05·T06</td>
+<td>internal/kanban/backlog_store.go:280;
+backlog_migrate.go:529,591</td>
+<td>보관·부분 복원, 격리 장애 제거 후 재시도</td>
+</tr>
+<tr>
+<td>T17·T21</td>
+<td>internal/kanban/todo_root.go:180; state_dir.go:162,191,203;
+internal/homestate/paths.go:50</td>
+<td>separate-git-dir 두 저장소, 이관 뒤 기존 writer 재개</td>
+</tr>
+<tr>
+<td>T14·T15</td>
+<td>internal/web/todo_queue_read.go:38; events.go:129;
+assets/app.js:769</td>
+<td>손상 큐 HTTP 테스트, 실제 watcher와 JS 이벤트 처리</td>
+</tr>
+<tr>
+<td>T16·T20</td>
+<td>.claude/skills/moai/workflows/todo.md:17,194;
+docs-site/content/en/utility-commands/moai-todo.md:91,118</td>
+<td>내장 템플릿·Class A/B 규칙과 비교</td>
+</tr>
+</tbody>
+</table>
+<p>위 줄 번호는 구현 전 기준이다. 구현 후 줄 번호는 변경될 수 있다.</p>
+<p>추가 격리 재현:</p>
+<pre class="text"><code>two independent git repositories resolve to same todo root
+reopened live count=0; retained legacy={&quot;version&quot;:1,&quot;last_seq&quot;:1,&quot;items&quot;:[{&quot;id&quot;:&quot;t1&quot;,&quot;text&quot;:&quot;one&quot;,&quot;state&quot;:&quot;queued&quot;}]}
+late Add returned id=t2; canonical count=1
+FAIL github.com/modu-ai/moai-adk/internal/kanban 0.836s</code></pre>
+<p>성능 원본 관측(감사 담당, Apple M4 Max, 각 1회):</p>
+<pre class="text"><code>BenchmarkTodoAuditAnalyze/100-16  1  5168417 ns/op    5945600 B/op    79208 allocs/op
+BenchmarkTodoAuditAnalyze/500-16  1  128476166 ns/op  149705664 B/op  1996012 allocs/op
+one Add with 1000 unchanged archived cards executes 2000 archive row writes</code></pre>
+<p>벤치마크 명령:
+<code>go test -overlay /tmp/todo-cli-audit.4G91GB/overlay.json ./internal/cli -run '^$' -bench '^BenchmarkTodoAuditAnalyze$' -benchtime=1x -benchmem -count=1</code>.
+절대 시간은 해당 머신의 단일 측정이다. 데이터셋과 비교 의미를 유지한
+수정 후 값을 별도로 기록한다.</p>
+<p>조사는 최신 develop 및 동일 HEAD의 새 런처 워크트리
+<code>todo-audit</code> / <code>WT-todo-audit</code>에서 수행했다.
+재현은 임시 Git 저장소·임시 DB·Go overlay로 격리했다. 기존 t549·t555
+등은 <code>moai todo pr --json</code>에서 landed 후보로 확인되었으며,
+기존 카드의 실제 종결 여부는 별도 판단이다.</p>
+<h2 id="gaps">Gaps</h2>
+<p>Windows 실제 실행, 전원 차단 내구성, 모든 외부 파일시스템의 잠금
+특성은 측정하지 않았다. 결함 후보를 새 버그로 오인하지 않도록 최신
+코드의 재현을 우선했다. 전수 조사는 관련 표면의 조사 범위를 뜻하며 모든
+가능한 입력의 결함 부재를 보증하지 않는다.</p>
+<p>전체 kanban 패키지 실행은 foreman 관측 테스트 도중 120초 제한에
+도달했다. CLI의 넓은 선택 실행에서 나온 파일 무변경 실패는 수정 후 해당
+실패 위치를 모두 재실행하여 통과했지만, 같은 넓은 선택 전체를 마지막에
+다시 실행하지는 않았다. 저장·CLI·웹의 최종 범위별 회귀와 전체 저장소
+CI는 다른 검증이다.</p>
+<h2 id="residual-risk">Residual-risk</h2>
+<p>실사용 홈 상태 이관과 기존 카드의 정리·폐기는 이번 구현에서 별도
+실행하지 않는다. 기존 live 카드 수에는 이미 착지한 작업이 포함될 수
+있다. 이전 59건 보고는 큐 잔류 수이며 실제 미구현 수로 사용할 수
+없다.</p>
+<p>query-only 연결은 카드·스키마에 대한 SQL 쓰기를 거부하지만, SQLite의
+임시 WAL/SHM 조정 파일 사용 자체를 금지하지는 않는다. 정지 상태의 DB는
+조회 종료 후 바이트·파일 목록 보존을, 활성 WAL은 커밋된 카드 조회를
+검증했다. 구버전 바이너리는 새로운 이관 차단 표지를 이해하지 못하므로
+신구 바이너리의 동시 쓰기는 보호 범위 밖이다. 분석은 여전히 카드 쌍을
+모두 비교하며, 보관 이력 읽기·동등성 비교도 이력 크기에 비례한다.</p>
+<h2 id="성능-개선-관측">성능 개선 관측</h2>
+<table>
+<colgroup>
+<col style="width: 21%" />
+<col style="width: 28%" />
+<col style="width: 28%" />
+<col style="width: 21%" />
+</colgroup>
+<thead>
+<tr>
+<th>항목</th>
+<th style="text-align: right;">수정 전</th>
+<th style="text-align: right;">수정 후</th>
+<th>해석</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100개 카드 analyze</td>
+<td style="text-align: right;">5,168,417 ns/op</td>
+<td style="text-align: right;">410,000 ns/op</td>
+<td>동일 합성 입력, 각 1회</td>
+</tr>
+<tr>
+<td>500개 카드 analyze</td>
+<td style="text-align: right;">128,476,166 ns/op</td>
+<td style="text-align: right;">8,709,042 ns/op</td>
+<td>약 14.75배 빠른 단회 관측이며 운영 보장이 아님</td>
+</tr>
+<tr>
+<td>500개 카드 분석 할당량</td>
+<td style="text-align: right;">149,705,664 B/op</td>
+<td style="text-align: right;">228,312 B/op</td>
+<td>카드별 준비 결과 재사용</td>
+</tr>
+<tr>
+<td>500개 카드 분석 할당 횟수</td>
+<td style="text-align: right;">1,996,012 allocs/op</td>
+<td style="text-align: right;">2,503 allocs/op</td>
+<td>비교 판정은 144개 대조 조합으로 보존 확인</td>
+</tr>
+<tr>
+<td>보관 카드 1,000개가 있는 큐에 카드 1개 추가</td>
+<td style="text-align: right;">보관 테이블 2,000행 쓰기</td>
+<td style="text-align: right;">보관 테이블 0행 쓰기</td>
+<td>변경되지 않은 보관 이력에 대한 trigger 계수</td>
+</tr>
+<tr>
+<td>큐 쓰기 없는 HTTP 조회 후 자기 갱신</td>
+<td style="text-align: right;">4/4회 연속 발생</td>
+<td style="text-align: right;">0/4회 발생</td>
+<td>실제 DB·WAL 커밋 알림은 별도 양성 대조군으로 유지 확인</td>
+</tr>
+</tbody>
+</table>
+<p>수정 후 벤치마크 명령은
+<code>go test ./internal/cli -run '^$' -bench '^BenchmarkTodoAuditAnalyze$' -benchtime=1x -benchmem -count=1</code>이다.
+시간값과 할당량의 전체 원문은 CLI 근거에 있다.</p>
+<h2 id="배포-템플릿-무결성">배포 템플릿 무결성</h2>
+<p>Todo 워크플로 문서 수정으로 배포 <code>moai</code> 스킬 트리의 내용
+해시가 달라졌다. 변경 직후 <code>TestManifestHashFormat</code>에서 다음
+오류가 발생했다.</p>
+<pre class="text"><code>CATALOG_HASH_UNSTABLE: moai stored hash=b2e47f5f0131333ca791dc3a039637c10e60729f8f3ec4fbcbe67a1a7ddf3efa, computed hash=fab8717372fcb55360a2ceb0e3a643544851e4105c083bf2747b0fe7a4424bd7 (source=.claude/skills/moai/ (whole tree))
+FAIL github.com/modu-ai/moai-adk/internal/template 0.474s</code></pre>
+<p>기존 생성기
+<code>go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai</code>로
+해당 항목만 재생성했다. 생성기는
+<code>catalog.yaml updated successfully (12899 bytes)</code>를 출력했고,
+diff는 해당 해시 한 줄이다. 다음 명령으로 다시 확인했다.</p>
+<pre class="text"><code>go test ./internal/template -run &#39;TestManifestHashFormat|Test.*Todo|Test.*Kanban&#39; -count=1 -timeout=90s
+ok  github.com/modu-ai/moai-adk/internal/template 0.488s</code></pre>
+<h2 id="card-cross-check">Card Cross-Check</h2>
+<p><code>t647</code> 발행 및 picked 확인. T01–T22를 저장 계층, CLI,
+웹·문서 세 구현 묶음으로 추적한다. 이관 writer와 웹 자기 갱신 반복 재현
+결과는 같은 카드에 추가 반영했다. 기존 t549·t555·t575·t591·t592 등은
+별도 기록을 유지한다.</p>
+<table>
+<thead>
+<tr>
+<th>구현 묶음</th>
+<th>항목</th>
+<th>card</th>
+<th>근거</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>저장·경로·이관</td>
+<td>T02–T06, T17–T19, T21</td>
+<td>t647</td>
+<td>storage.md</td>
+</tr>
+<tr>
+<td>CLI·분석</td>
+<td>T01, T07–T13</td>
+<td>t647</td>
+<td>cli.md</td>
+</tr>
+<tr>
+<td>웹·스킬·규칙·배포 문서</td>
+<td>T14–T16, T20, T22</td>
+<td>t647</td>
+<td>surfaces.md</td>
+</tr>
+</tbody>
+</table>
+<p>세 구현 묶음을 하나의 감사 개선 카드로 발행·추적했으며, 기존 카드에
+대한 추가 종결·폐기 작업은 포함하지 않는다.</p>
+<p>주의: 기준 트리에 과거의 다른 작업에 속한
+<code>.moai/reports/t647/verdict.md</code>가 이미
+존재한다(<code>691f489eb</code>). 현재 큐의 <code>t647</code> 원문은
+이번 감사 작업으로 확인했다. 과거 보고서는 보존하고, 이번 최종 판정은
+<code>.moai/reports/t647/todo-audit-20260911/verdict.md</code>로
+구분한다. 번호 재사용의 원인은 이번 실행에서 확인하지 않았으며, 카드
+번호만으로 과거 작업의 완료와 이번 구현의 완료를 동일시하지 않는다.</p>
+<h2 id="구현의-주요-판단">구현의 주요 판단</h2>
+<ul>
+<li><strong>읽기와 이관을 분리했다.</strong> PR·이력·설명 조회는 순수
+읽기 경로를 사용한다. 구버전 스키마에 없던 필드는 읽기 시 호환 처리하며,
+조회를 이유로 테이블을 추가하지 않는다.</li>
+<li><strong>새 저장소가 준비되기 전에는 권위를 넘기지 않는다.</strong>
+JSON 이관은 같은 디렉터리의 임시 DB에 기록하고 재조회로 내용이
+일치하는지 확인한 뒤 정식 이름으로 게시한다. 옛 버전이 남긴 불완전한
+DB와 JSON의 조합은 자동으로 어느 쪽을 삭제하거나 덮어쓰지 않고 오류를
+반환한다.</li>
+<li><strong>늦은 쓰기는 성공으로 위장하지 않는다.</strong> 이관 원본에는
+쓰기 차단 표지를 남긴다. 옛 경로를 잡은 명령은 명확한 오류를 받고,
+프로젝트 경로를 다시 해석한 명령으로 재시도해야 한다. 롤백용 원본은
+보존한다.</li>
+<li><strong>관계의 양쪽 카드가 복원될 때까지 관계도 보관한다.</strong>
+한 장만 복원했을 때 살아 있는 관계가 아직 보관 중인 카드를 가리키지
+않도록 한다.</li>
+<li><strong>조회 실패와 빈 결과를 구별한다.</strong> PR 조회 실패·상한
+도달은 JSON에도 표시하고, 웹의 DB 읽기 실패는 정상적인 0건과 다른
+화면으로 표시한다.</li>
+<li><strong>비교 결과는 유지하고 반복 준비만 줄인다.</strong> 분석의
+정규화·토큰 집합을 카드별로 한 번 준비한다. 보관 내용이 바뀌지 않은 일반
+카드 추가에서는 보관 테이블을 다시 쓰지 않는다.</li>
+</ul>
+<h3 id="교차-검토에서-추가로-막은-경로">교차 검토에서 추가로 막은
+경로</h3>
+<p>저장소 이관 대상이 이미 존재하는 경우의 조기 반환에서도 옛 원본의
+쓰기 차단이 필요했다. 독립 검토에서 아래 실패를 재현하여 T21의 회귀
+범위를 확장했다.</p>
+<pre class="text"><code>go test -overlay /tmp/todo-surface-audit.IYzgx9/storage-overlay.json ./internal/kanban -run TestPeerRelocationAlreadyPublishedFencesSource -count=1 -v
+stale writer err=&lt;nil&gt;; expected relocated refusal after target already existed
+FAIL github.com/modu-ai/moai-adk/internal/kanban 0.416s</code></pre>
+<p>수정 후 검증 결과는 각 담당 근거와 최종 판정 문서에 기록한다. <a
+href="../.moai/reports/t647/cli.md">CLI 근거</a>, <a
+href="../.moai/reports/t647/storage.md">저장 계층 근거</a>, <a
+href="../.moai/reports/t647/surfaces.md">웹·문서 근거</a>.</p>
+<h3 id="웹-조회가-스스로-재조회를-유발하는-결함">웹 조회가 스스로
+재조회를 유발하는 결함</h3>
+<p><code>TestPeerTodoReadWatcherFeedback</code>는 큐를 만든 뒤 추가
+쓰기를 하지 않고 감시를 시작한다. 아무 조회도 하지 않은 대조 구간에는
+이벤트가 없지만, HTTP <code>/todo</code>를 읽을 때마다
+<code>kanban</code> 이벤트를 받아 다시 읽는 과정이 4회 연속 유지되었다.
+같은 overlay 검사를 원래 기준 트리와 현재 트리에 각각 실행했으므로 이번
+수정이 새로 만든 결함으로 분류하지 않는다.</p>
+<pre class="text"><code>read-triggered kanban cycles=4/4
+HTTP reads sustain todo refresh feedback without queue writes
+FAIL github.com/modu-ai/moai-adk/internal/web 3.889s</code></pre>
+<p>원래 기준 트리에서도 같은 관측으로 실패했다(<code>4.290s</code>).
+T22는 이벤트 알림을 모두 끄는 방식이 아니라, 실제 DB·WAL 커밋 알림을
+유지하는 조건으로 수정한다.</p>
+<p>수정 후 같은 진단 시험은
+<code>read-triggered kanban cycles=0/4</code>와 PASS를
+출력했다(<code>7.042s</code>). 영구 회귀 시험에서는 읽기 후 자기 갱신이
+없음을 확인하고, 종료된 writer의 저장·열린 writer의 WAL 커밋·뒤늦게
+생성된 두 저장 경로의 알림이 유지되는 것을 함께
+확인했다(<code>8.304s</code>).</p>
+<h2 id="최종-통합-검증">최종 통합 검증</h2>
+<p>명령은 프로젝트·홈·Git 경로 override를 한 번의 호출 안에서 제거한 뒤
+실행했다. 상세 선택자는 최종 판정 문서에 그대로 보존했다.</p>
+<pre class="text"><code>ok  github.com/modu-ai/moai-adk/internal/kanban 1.089s
+ok  github.com/modu-ai/moai-adk/internal/cli 26.787s
+ok  github.com/modu-ai/moai-adk/internal/web 9.830s</code></pre>
+<p>웹의 최종 race 선택 실행:</p>
+<pre class="text"><code>go test -race ./internal/web -run &#39;TestTodoUnreadableDoesNotClaimEmpty|TestTodoWatcherRegistersLateDirectories|TestTodoReadsDoNotRefreshThemselves|TestTodoCommitsStillRefresh|TestResolvedWatchPathsIncludeHomeTodoAndFactory&#39; -count=1 -timeout=90s
+ok  github.com/modu-ai/moai-adk/internal/web 11.491s</code></pre>
+<p>최종 통합에서 소스의 줄 번호를 검사하는
+<code>TestAuditLagUsesBinlagSeam</code>의 좌표 불일치도 확인했다.
+<code>home_state_coverage.go</code>의 2개 좌표는 기준 커밋 소스로
+재구성한 검사에서도 실패했고, <code>todo_landed.go</code>의 1개 좌표만
+이번 수정으로 이동했다. 실제 ancestry 검사 코드는 바꾸지 않고 기대
+좌표와 대응 주석만 동기화했다. 별도 실행은 PASS(<code>1.597s</code>), 위
+통합 재실행도 PASS다. 이는 새 기능 수정으로 집계하지 않고 검사 기록의
+정합성 보정으로 구분한다.</p>
+<footer>원본 사실·명령·판정은 같은 이름의 Markdown 보고서에 보존합니다. 이 HTML은 기본 설명형(basic)이며 MoAI-Easy 출력 설정을 따릅니다.</footer>
+</main>
+<script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#FAF9F5',primaryTextColor:'#141413',primaryBorderColor:'#D97757',lineColor:'#87867F'}});</script>
+</body></html>

@@ -127,10 +127,12 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 
 	pathEvent := resolvedWatchPaths(root)
 	for abs := range pathEvent {
-		if err := w.Add(abs); err != nil {
-			delete(pathEvent, abs) // absent directories use browser fallback polling
-		}
+		_ = w.Add(abs) // A first todo write may create this directory later.
 	}
+	// Retry only missing registrations. A healthy SSE connection does not
+	// poll, so recovering a directory also invalidates its rendered snapshot.
+	retry := time.NewTicker(time.Second)
+	defer retry.Stop()
 
 	pending := map[string]bool{}
 	timer := time.NewTimer(time.Hour)
@@ -143,9 +145,31 @@ func (h *Hub) Watch(root string, stop <-chan struct{}) error {
 		select {
 		case <-stop:
 			return nil
+		case <-retry.C:
+			watched := make(map[string]bool)
+			for _, path := range w.WatchList() {
+				watched[path] = true
+			}
+			for path, name := range pathEvent {
+				if !watched[path] && w.Add(path) == nil {
+					h.Publish(name)
+				}
+			}
 		case ev, ok := <-w.Events:
 			if !ok {
 				return nil
+			}
+			// SQLite readers create/remove transient sidecars too. SHM is an
+			// index, not committed card data; an empty WAL's lifecycle is not
+			// a change either. WAL writes remain observable while a writer
+			// holds its connection and the main database has not checkpointed.
+			switch filepath.Base(ev.Name) {
+			case "backlog.db-shm":
+				continue
+			case "backlog.db-wal":
+				if !ev.Has(fsnotify.Write) {
+					continue
+				}
 			}
 			if name := eventFor(pathEvent, ev.Name); name != "" {
 				pending[name] = true

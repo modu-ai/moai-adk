@@ -6,8 +6,9 @@
 // caller sees, and every mutation is still a whole-record read-modify-write
 // under the sibling advisory lock. Only where the bytes rest changed. A write
 // is therefore one transaction that replaces the items and findings tables
-// wholesale — at the queue's scale (hundreds of rows) that costs microseconds,
-// and it keeps the ordering contract trivially exact: array position IS the
+// wholesale, preserving array position as stored order. Unchanged archived
+// rows are excluded from the write to avoid rewriting history on every Add.
+// The ordering contract stays exact: array position IS the
 // stored order, so a `todo move` that reorders the slice round-trips without
 // any reconciliation logic.
 //
@@ -30,6 +31,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -49,6 +51,22 @@ const backlogOpTimeout = 30 * time.Second
 func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) {
 	ctx, cancel := context.WithTimeout(ctx, backlogOpTimeout)
 	defer cancel()
+	conn, err := e.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	// Explicit deferred transaction preserves WAL reader/writer concurrency even
+	// though write transactions use the driver's immediate transaction mode.
+	if _, err := conn.ExecContext(ctx, "BEGIN DEFERRED"); err != nil {
+		return nil, err
+	}
+	defer conn.ExecContext(context.Background(), "ROLLBACK")
+	snapshot := &backlogEngine{dbPath: e.dbPath, reader: conn}
+	return snapshot.readSnapshot(ctx)
+}
+
+func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error) {
 
 	rec := &BacklogRecord{
 		Version:  backlogVersion,
@@ -56,8 +74,14 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 		Findings: []BacklogFinding{},
 	}
 
-	itemRows, err := e.db.QueryContext(ctx,
-		`SELECT id, text, added_at, spec_id, state, landing FROM items ORDER BY seq`)
+	landingColumn := "NULL"
+	if present, err := e.hasColumn(ctx, "items", "landing"); err != nil {
+		return nil, err
+	} else if present {
+		landingColumn = "landing"
+	}
+	itemRows, err := e.queryDB().QueryContext(ctx,
+		`SELECT id, text, added_at, spec_id, state, `+landingColumn+` FROM items ORDER BY seq`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
@@ -97,7 +121,7 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
 
-	findingRows, err := e.db.QueryContext(ctx,
+	findingRows, err := e.queryDB().QueryContext(ctx,
 		`SELECT subject_id, related_id, relation, source, score, note, at FROM findings ORDER BY rowid`)
 	if err != nil {
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
@@ -134,8 +158,24 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 // the archive_seq join column is the entry's 1-based seq — the same
 // position-as-key shape `items` already uses.
 func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) error {
-	rows, err := e.db.QueryContext(ctx,
-		`SELECT seq, id, text, added_at, spec_id, state, position, landing FROM archived_items ORDER BY seq`)
+	var tables int
+	if err := e.queryDB().QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('archived_items','archived_findings')`).Scan(&tables); err != nil {
+		return err
+	}
+	if tables == 0 {
+		return nil
+	}
+	if tables != 2 {
+		return fmt.Errorf("incomplete archive schema: %w", ErrBacklogCorrupt)
+	}
+	landingColumn := "NULL"
+	if present, err := e.hasColumn(ctx, "archived_items", "landing"); err != nil {
+		return err
+	} else if present {
+		landingColumn = "landing"
+	}
+	rows, err := e.queryDB().QueryContext(ctx,
+		`SELECT seq, id, text, added_at, spec_id, state, position, `+landingColumn+` FROM archived_items ORDER BY seq`)
 	if err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
@@ -176,7 +216,7 @@ func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) err
 		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
 	}
 
-	findingRows, err := e.db.QueryContext(ctx,
+	findingRows, err := e.queryDB().QueryContext(ctx,
 		`SELECT archive_seq, position, subject_id, related_id, relation, source, score, note, at
 		 FROM archived_findings ORDER BY archive_seq, rowid`)
 	if err != nil {
@@ -256,7 +296,7 @@ func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *Backl
 // reads as 0, which normalizeBacklogRecord then lifts to max-present.
 func (e *backlogEngine) readLastSeq(ctx context.Context) (int, error) {
 	var raw string
-	err := e.db.QueryRowContext(ctx,
+	err := e.queryDB().QueryRowContext(ctx,
 		`SELECT value FROM meta WHERE key = ?`, backlogMetaKeyLastSeq).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, nil
@@ -283,6 +323,10 @@ func (e *backlogEngine) readLastSeq(ctx context.Context) (int, error) {
 // id violates UNIQUE(id), which aborts the transaction and surfaces as the
 // named id-conflict error rather than a half-written queue.
 func (e *backlogEngine) writeRecord(ctx context.Context, rec *BacklogRecord) (err error) {
+	return e.writeRecordArchive(ctx, rec, true)
+}
+
+func (e *backlogEngine) writeRecordArchive(ctx context.Context, rec *BacklogRecord, writeArchive bool) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, backlogOpTimeout)
 	defer cancel()
 
@@ -336,8 +380,10 @@ func (e *backlogEngine) writeRecord(ctx context.Context, rec *BacklogRecord) (er
 		}
 	}
 
-	if err = e.writeArchive(ctx, tx, rec); err != nil {
-		return err
+	if writeArchive {
+		if err = e.writeArchive(ctx, tx, rec); err != nil {
+			return err
+		}
 	}
 
 	if err = upsertMeta(ctx, tx, backlogMetaKeyLastSeq, strconv.Itoa(rec.LastSeq)); err != nil {
@@ -481,54 +527,59 @@ func loadLegacyBacklogJSON(path string) (*BacklogRecord, error) {
 func migrateLegacyBacklog(queuePath string) error {
 	dbPath := backlogSQLitePath(queuePath)
 	if fileExists(dbPath) {
-		// Another process won the lock and migrated first: state C.
 		return nil
 	}
-
 	source, err := loadLegacyBacklogJSON(queuePath)
 	if err != nil {
 		return err
 	}
-
-	eng, err := openBacklogEngine(dbPath)
-	if err != nil {
-		removeBacklogDBArtifacts(dbPath)
+	if err := publishBacklogRecord(queuePath, source, true); err != nil {
 		return err
 	}
-
-	ctx := context.Background()
-	if err := eng.writeRecord(ctx, source); err != nil {
-		_ = eng.close()
-		removeBacklogDBArtifacts(dbPath)
-		return fmt.Errorf("migrate backlog %s -> %s: %w", queuePath, dbPath, err)
+	if quarantineLegacyBacklog(queuePath) {
+		clearQuarantinePending(dbPath)
 	}
+	return nil
+}
 
-	migrated, err := eng.readRecord(ctx)
+// publishBacklogRecord builds, verifies and closes a sibling database before
+// exposing its canonical name. Caller holds the destination queue lock.
+func publishBacklogRecord(queuePath string, record *BacklogRecord, quarantine bool) error {
+	dbPath := backlogSQLitePath(queuePath)
+	f, err := os.CreateTemp(filepath.Dir(dbPath), ".backlog-migrate-*.db")
 	if err != nil {
-		_ = eng.close()
-		removeBacklogDBArtifacts(dbPath)
-		return fmt.Errorf("migrate backlog %s -> %s: re-reading for parity: %w", queuePath, dbPath, err)
+		return err
 	}
-	if err := assertBacklogParity(source, migrated); err != nil {
-		_ = eng.close()
-		removeBacklogDBArtifacts(dbPath)
-		return fmt.Errorf("migrate backlog %s -> %s: parity check failed, legacy file left authoritative: %w",
-			queuePath, dbPath, err)
+	stage := f.Name()
+	if err := f.Close(); err != nil {
+		return err
 	}
-	if err := eng.markQuarantinePending(ctx); err != nil {
-		_ = eng.close()
-		removeBacklogDBArtifacts(dbPath)
-		return fmt.Errorf("migrate backlog %s -> %s: %w", queuePath, dbPath, err)
+	defer removeBacklogDBArtifacts(stage)
+	eng, err := openBacklogEngine(stage)
+	if err != nil {
+		return err
+	}
+	defer eng.close()
+	ctx := context.Background()
+	if err := eng.writeRecord(ctx, record); err != nil {
+		return err
+	}
+	readback, err := eng.readRecord(ctx)
+	if err != nil {
+		return err
+	}
+	if err := assertBacklogParity(record, readback); err != nil {
+		return err
+	}
+	if quarantine {
+		if err := eng.markQuarantinePending(ctx); err != nil {
+			return err
+		}
 	}
 	if err := eng.close(); err != nil {
-		removeBacklogDBArtifacts(dbPath)
-		return fmt.Errorf("migrate backlog %s -> %s: closing: %w", queuePath, dbPath, err)
+		return err
 	}
-
-	// Authority flips here and not before.
-	quarantineLegacyBacklog(queuePath)
-	clearQuarantinePending(dbPath)
-	return nil
+	return atomicfile.Replace(stage, dbPath)
 }
 
 // markQuarantinePending records the in-flight migration's last outstanding
@@ -588,8 +639,9 @@ func completeInterruptedQuarantine(queuePath string) {
 	if !pending {
 		return
 	}
-	quarantineLegacyBacklog(queuePath)
-	clearQuarantinePending(dbPath)
+	if quarantineLegacyBacklog(queuePath) {
+		clearQuarantinePending(dbPath)
+	}
 }
 
 // quarantineLegacyBacklog RENAMES the legacy file to its .migrated sibling
@@ -602,15 +654,15 @@ func completeInterruptedQuarantine(queuePath string) {
 // bytes the first migration quarantined, which is the one thing no path in
 // this SPEC may do. Leaving the pair keeps the divergence visible instead of
 // silently eating it (design.md R4).
-func quarantineLegacyBacklog(queuePath string) {
+func quarantineLegacyBacklog(queuePath string) bool {
 	if !fileExists(queuePath) {
-		return
+		return true
 	}
 	target := queuePath + backlogMigratedSuffix
 	if fileExists(target) {
-		return
+		return false
 	}
-	_ = os.Rename(queuePath, target)
+	return os.Rename(queuePath, target) == nil
 }
 
 // removeBacklogDBArtifacts deletes a partially written database and its WAL

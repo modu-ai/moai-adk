@@ -50,11 +50,31 @@ func newTodoLandedCmd() *cobra.Command {
 	var sha string
 	var ref string
 	var clear bool
-	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "landed <n>",
 		Short: "Record the operator's landing evidence for a card (or clear it)",
-		Long: `Record what YOU assert about a card's landing, as one locked write.
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if clear && (sha != "" || ref != "") {
+				return &exitCodeError{code: 2,
+					msg: "todo landed: --clear takes neither --sha nor --ref; clearing removes the record rather than recording a different one"}
+			}
+			return runTodoLanded(cmd, normalizeTodoRef(args[0]), sha, ref, clear)
+		},
+	}
+	cmd.Flags().StringVar(&sha, "sha", "",
+		"The delivering commit, on your authority (validated for existence and reachability)")
+	cmd.Flags().StringVar(&ref, "ref", "", "")
+	cmd.Flags().BoolVar(&clear, "clear", false, "Remove the card's landing record")
+	withResolvedLandedRef(cmd, func(landedRef string) {
+		cmd.Long = todoLandedLong(landedRef)
+		cmd.Flags().Lookup("ref").Usage = "Ask about this ref instead of " + landedRef
+	})
+	return cmd
+}
+
+func todoLandedLong(landedRef string) string {
+	return `Record what YOU assert about a card's landing, as one locked write.
 
 The record carries six facts: the ref the observation was made against, that
 ref's head at the observation instant, the instant itself, the delivering
@@ -80,26 +100,7 @@ cannot answer stays permissive, a write that cannot validate refuses.
 
 --clear removes the record, returning the card to the same state as one that
 never carried evidence. It exists because a mistyped --sha would otherwise be
-permanent. It takes no --sha and no --ref.`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// A usage error is exit 2, distinct from the exit 1 a refused
-			// validation returns: one says the invocation was malformed, the
-			// other says it was well-formed and the facts refused it.
-			if clear && (sha != "" || ref != "") {
-				return &exitCodeError{code: 2,
-					msg: "todo landed: --clear takes neither --sha nor --ref; clearing removes the record rather than recording a different one"}
-			}
-			return runTodoLanded(cmd, normalizeTodoRef(args[0]), sha, ref, clear)
-		},
-	}
-	cmd.Flags().StringVar(&sha, "sha", "",
-		"The delivering commit, on your authority (validated for existence and reachability)")
-	cmd.Flags().StringVar(&ref, "ref", "",
-		"Ask about this ref instead of "+landedRef)
-	cmd.Flags().BoolVar(&clear, "clear", false,
-		"Remove the card's landing record")
-	return cmd
+permanent. It takes no --sha and no --ref.`
 }
 
 // runTodoLanded performs the single locked write.

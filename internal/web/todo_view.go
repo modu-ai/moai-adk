@@ -14,6 +14,8 @@ type TodoVM struct {
 	// primary's cards, and the operator can see which file that was.
 	Root  string
 	Items []TodoItemVM
+	// Unavailable distinguishes a read failure from a successfully empty queue.
+	Unavailable bool
 }
 
 // TodoItemVM is one backlog card. The five-field item contract the store holds
