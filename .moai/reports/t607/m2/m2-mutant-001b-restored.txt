@@ -1,0 +1,10 @@
+=== RUN   TestSlotLease_ControlGroupTwoSessions
+=== RUN   TestSlotLease_ControlGroupTwoSessions/probe_then_start
+    slot_lease_cross_test.go:191: control: starts=2 (A: RESULT=started SESSION=lane-a | B: RESULT=started SESSION=lane-b)
+=== RUN   TestSlotLease_ControlGroupTwoSessions/lease
+    slot_lease_cross_test.go:215: lease: acquired=1 refused=1 busy=0 other=0 (A: RESULT=acquired SESSION=lane-a | B: RESULT=held SESSION=lane-b)
+--- PASS: TestSlotLease_ControlGroupTwoSessions (0.56s)
+    --- PASS: TestSlotLease_ControlGroupTwoSessions/probe_then_start (0.03s)
+    --- PASS: TestSlotLease_ControlGroupTwoSessions/lease (0.53s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.783s

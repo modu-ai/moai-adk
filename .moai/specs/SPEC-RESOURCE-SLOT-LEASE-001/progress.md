@@ -157,6 +157,38 @@ go test ./internal/cli/ -run '^(TestSlotCLI_AcquireJSONFields|TestSlotCLI_Omitte
 - M2: AC-RSL-001b 뮤턴트 관측, AC-RSL-002·005·006 뮤턴트 짝. M4: AC-RSL-010·011·016 뮤턴트 표.
 - 계획 대비 편차: 없음. 추가한 것 — AC-RSL-013(a)와 `TestSlotLeaseConfig_KeyShape`, `TestSlotCLI_RefusesWithoutSessionID`를 M1에 함께 썼다(모두 plan.md M2-M4 범위의 판정을 앞당겨 고정한 것).
 
+### M2 — 임대 핵심 (internal/kanban)
+
+- 커밋: `28d58376b`(구현), `c331bc589`(기록 쓰기 함수가 자기 디렉터리를 만들도록 수정 — 아래 뮤턴트 참조). 측정 트리: HEAD `c331bc589`, tree `2c7fa687ec85420372f293cbcd1f92b3d362d301`.
+- 구현: `internal/kanban/slot_lease.go`, `slot_lease_mutation_unix.go`(Unix 잔재 정리 없음), `slot_lease_mutation_windows.go`(`clearStaleLockAtPath` 재사용). 판정표: 보유자 없음·자기 세션 → 획득(재획득은 상한 재시작) / 소유자 사라짐 → `stale` 인수 / 상한 경과 → `expired` 인수 / 강제 → `force` 인수 / 그 외 → held 오류 + `refuse` 감사, 기록 불변.
+- M1 테스트 수정 한 곳: `TestResolveSlotLeaseRoot_NormalizesToPrimary/not_a_repository`의 "스텁 오류가 아닐 것" 조항은 스텁 심볼이 사라져 "오류가 해석하지 못한 디렉터리를 이름으로 댈 것"으로 바꿨다. 새 가장자리 테스트 `TestSlotLease_UnreadableRecordAndInputEdges`(손상 기록은 비어 있음이 아님, 강제로만 정리, 강제 해제 감사 사유, 입력 가장자리)를 추가했다 — 구현 뒤에 쓴 커버리지 보강이며 RED 단계를 거치지 않았다.
+
+GREEN: `go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -v` → 종료 코드 0, `--- PASS` 40줄, `--- FAIL` 0줄(전체 출력 `.moai/reports/t607/m2/m2-kanban-green.txt`).
+
+```text
+    slot_lease_cross_test.go:191: control: starts=2 (A: RESULT=started SESSION=lane-a | B: RESULT=started SESSION=lane-b)
+    slot_lease_cross_test.go:215: lease: acquired=1 refused=1 busy=0 other=0 (A: RESULT=acquired SESSION=lane-a | B: RESULT=held SESSION=lane-b)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	4.686s
+```
+
+뮤턴트(각각 파일 수정 → 해당 테스트 실행 → 되돌림, 되돌린 뒤 `git diff --exit-code --stat -- internal/kanban/slot_lease.go` → 출력 없음, 종료 코드 0 = 커밋본과 동일):
+
+| 뮤턴트 | 변형 | 실행 | 관측(원문) |
+|---|---|---|---|
+| AC-RSL-001b | `withSlotLeaseMutation(projectRoot, req.Resource, decide)` → `decide()` 한 줄 | `-run '^TestSlotLease_ControlGroupTwoSessions$'` 종료 코드 1 | `lease: acquired=2 refused=0 busy=0 other=0 (A: RESULT=acquired SESSION=lane-a \| B: RESULT=acquired SESSION=lane-b)` / `--- FAIL: TestSlotLease_ControlGroupTwoSessions/lease`. 대조 갈래는 같은 실행에서 `starts=2`, PASS |
+| AC-RSL-001b 복구 | 되돌림 | 같은 명령 종료 코드 0 | `m2-mutant-001b-restored.txt` |
+| AC-RSL-002 | busy 경로가 `ErrSlotLeaseHeld`를 감쌈 | `-run '^TestSlotLeaseBusy_IsNotHeld$'` 종료 코드 1 | `acquire under a contended mutation lock: err = slot lease: resource held by another session (waited 1.65s): kanban board lock held, want the busy sentinel` |
+| AC-RSL-005 | `Stale()`이 pid를 보지 않음(항상 살아 있음) | `-run '^TestSlotLease_Liveness$'` 종료 코드 1 | `--- FAIL: TestSlotLease_Liveness/stale_takeover` — `acquire over a dead owner without --force: slot lease: resource held by another session ...` |
+| AC-RSL-006 | 판정표의 `Expired` 가지 삭제 | `-run '^TestSlotLease_DeclaredBound$'` 종료 코드 1 | `--- FAIL: TestSlotLease_DeclaredBound/expired_takeover` — `acquire over an expired live owner without --force: ... held by another session` |
+
+001b 첫 시도에서 알게 된 것: 원래 디렉터리 생성이 `withSlotLeaseMutation` 안에만 있어서, 한 줄 되돌림이 임계 구역과 함께 mkdir까지 없앴다(쓰기가 실패해 `other=2`가 됐을 것이다). 그래서 뮤턴트를 돌리기 전에 `writeSlotLease`가 자기 디렉터리를 만들도록 고치고(`c331bc589`) 테스트를 다시 통과시킨 뒤 뮤턴트를 돌렸다. 되돌림 한 줄이 임계 구역만 끄도록 한 것이다.
+
+회귀·빌드·린트(M2):
+- `go test ./internal/kanban/ -skip '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1` → `ok  	github.com/modu-ai/moai-adk/internal/kanban	153.868s`(측정 트리 `28d58376b` 작업 트리; 이후 변경은 `writeSlotLease`의 mkdir 한 곳)
+- `GOOS=windows GOARCH=amd64 go build ./internal/kanban/` → 0, 같은 조건 `go vet` → 0, 네이티브 `go vet ./internal/kanban/` → 0
+- `golangci-lint run --timeout=5m ./internal/kanban/...` → `0 issues.`
+- 커버리지: `go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -coverprofile=<scratch>/m2-cover.out` 후 프로파일에서 `slot_lease.go` 줄만 합산 → `slot_lease.go statements=189 covered=163 pct=86.2%`(`28d58376b` 작업 트리 기준, mkdir 한 줄 추가 전).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<run 단계 대기>_

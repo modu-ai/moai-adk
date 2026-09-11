@@ -1,0 +1,12 @@
+=== RUN   TestSlotLease_Liveness
+=== RUN   TestSlotLease_Liveness/stale_takeover
+    slot_lease_test.go:355: acquire over a dead owner without --force: slot lease: resource held by another session: lane-s-1 holds "demo" (session s-1, pid 74587) since 2026-09-11T19:26:58Z, bound ends 2026-09-11T20:27:58Z
+=== RUN   TestSlotLease_Liveness/live_refused
+=== RUN   TestSlotLease_Liveness/pid_zero_live
+--- FAIL: TestSlotLease_Liveness (0.01s)
+    --- FAIL: TestSlotLease_Liveness/stale_takeover (0.01s)
+    --- PASS: TestSlotLease_Liveness/live_refused (0.00s)
+    --- PASS: TestSlotLease_Liveness/pid_zero_live (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.406s
+FAIL
