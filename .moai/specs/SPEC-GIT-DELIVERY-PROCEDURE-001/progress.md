@@ -52,7 +52,42 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase part 1 (pre-flight + M1, X2, M2, M3) by manager-develop, cycle_type ddd. Part 2 (M4-M6) is a
+separate delegation. Evidence directory: `.moai/reports/t622/run/`. Tree: worktree
+`.claude/worktrees/t622`, branch `WT-git-procedure-fixes`, start HEAD `fa13c27b6`, CARD_BASE
+`f1f034bb43b06dbde7f7a93c1c51edc5b4d8f5cf` (`card-base.txt`, 1 line), range control 356 names
+(`card-range-names.txt`), snapshot freshness and mirror-baseline freshness both empty.
+
+**Pre-flight (plan.md §C 1-8)**: all passed — `preflight-summary.md`. Every RED cell showed its expected
+hit on the BASE exports. One recorded deviation: the AC-GDP-030 control (c) red step returned make exit 2
+(`make` reports a failed recipe as 2; the recipe line reads `Error 1` and the drift FAIL is printed),
+where acceptance.md writes "exit 1". Sorted mirror sets equal the 0.2.5 baseline (`diff` exit 0).
+
+**Commits (in order)**: `0da3bebf0` pre-flight baseline + status flip (baseline committed before any
+change — verification-claim-integrity §2.3); `3f6c5163f` M1; `2f4dfd803` X2 (command source
+argument-hint); `af54bf1ff` M2 (+ AC-GDP-030 outcome); M3 is the commit carrying this section.
+
+| AC | Scope judged in part 1 | Command (literal, run from the worktree root or `.moai/reports/t622/run`) | Output file(s) | Result | Status |
+|---|---|---|---|---|---|
+| AC-GDP-001 | local + template sections (`.toml` clause waits for M4 regeneration) | `sed -n '/^## Synchronization/,/^## PR Auto-Merge/p' <mg>` → paragraph / autofail / listgroup awk (acceptance.md verbatim) | `ac001-{local,template}-sync.md`, `-paras.txt`, `-autofail.md`, `-listgroup.md`, `ac001-judge-summary.txt`, `ac001-reading.md` | paras 1·1; autofail `test -e` 0, `test -s` 1 (both); listgroup empty; reading both answers Yes | PASS for L·T; `.toml` pending M4 |
+| AC-GDP-004 | both copies | `grep -c 'gh pr merge --squash --delete-branch'` / `grep -c 'gh pr merge --<merge_method> --delete-branch'` / `grep -n -E 'merge_method.*(squash\|default)'` | `ac004-{local,template}-squash.txt`, `-resolved.txt`, `-source.txt`, `ac004-judge-summary.txt` | 0 / 2 / exit 0 (local 377, template 352: the resolution-source sentence) | PASS |
+| AC-GDP-005 | eight scope pairs + manager-git (`.toml` clause waits for M4) | `grep -c -E 'gh pr merge[^\|]*--squash'` per file; default-sentence and example `grep -c -F` | `ac005-{local,template}-mg.txt`, `-mg-default.txt`, `-mg-example.txt`, `-others.txt` | mg 1·1 (the default explanation), default 1·1, example 1·1, others all 0 | PASS for scope files; `.toml` (expected 1) pending M4 |
+| AC-GDP-006 | both copies | Step 3.4 / Worktree Context Detection extraction + extended detector (acceptance.md verbatim) | `ac006-{local,template}-*`, `final-{local,template}-006-*`, `ac006-{local,template}-optin.txt`, `ac006-reading.md` | dl-default `test -e` 0 `test -s` 1; de-default grep exit 1; source dl 2 / de 1; `--auto-merge` in manager-git 4·4; reading all No / `--auto-merge` | PASS |
+| AC-GDP-026 | nine fragments × both copies | fragment extraction + (i)/(ii)/(iii) (acceptance.md verbatim) | `ac026-{local,template}-*`, `final-{local,template}-026-*`, `ac026-frag-lt.txt`, `ac026-reading.md` | (i) every fragment ≥1 (qgc 1+2); (ii) `test -e` 0 `test -s` 1; (iii) 1,1,1,2; 5 merge lines per copy; fragments L=T; reading 10/10 Yes | PASS |
+| AC-GDP-027 | nine fragments × both copies | (i)/(ii) awk (acceptance.md verbatim) | `ac027-{local,template}-*`, `final-{local,template}-027-*` | dl `--no-merge` lines 1; (i) and (ii) `test -e` 0 `test -s` 1; other fragments 0 `--no-merge` lines (`ac027-*-per-fragment.txt`) | PASS |
+| AC-GDP-028 | mg + dl sections × both copies | (a)/(b)/mode-lines awk (acceptance.md verbatim) | `ac028-{local,template}-*`, `final-{local,template}-028-*`, `ac028-reading.md` | (a) mg 1, dl 1; (b) `test -e` 0 `test -s` 1; 14 mode lines, reading 14/14 Yes | PASS |
+| AC-GDP-029 | same sections | (a)/(b) awk | `ac029-{local,template}-*`, `final-{local,template}-029-*`, `ac028-reading.md` | (a) mg 1, dl 1; (b) `test -e` 0 `test -s` 1 | PASS |
+| AC-GDP-030 | command source pair + published pair | control (c), `make commands-emit`, `make commands-emit-check`, post-commit range/commit-list judges | `ac030-*`, `ac030-outcome.md` | control detected drift; emit exit 0; check exit 0; changed list empty; src commits `2f4dfd803…`; artifact commits empty; path control 2; orphan empty; published L/T diff exit 0; flag detector empty | PASS — case (A) |
+
+Not judged in part 1 (M4-M6 scope): AC-GDP-002, 003, 013, 014, 015, 016, 025, and the `.toml` clauses of
+AC-GDP-001/005. Pre-commit parity sanity checks run in part 1 (not the AC-GDP-013 verdict): every edited
+pair's diff body equals its BASE body (`m1-pair-*`, `m2-pair-*`, `m3-pair-*`: body diff exit 0) and the
+`argument-hint` lines match (`ac013-hint.diff` exit 0). Cf: every edited file and its BASE copy count 0
+(`cf-m1-*`, `cf-m2-*`, `cf-m3-*`); counter proven on a 2-character control (`cf-control-2.count` = 2).
+
+Residual noted for part 2 / sync: doc-execution.md line 34 still says `is_worktree_context` is stored
+"for use in Phase 13", although no Phase 13 step reads it after M1 (left unchanged — it does not tie the
+flag to merging, and the next sentence states it is not a merge condition).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

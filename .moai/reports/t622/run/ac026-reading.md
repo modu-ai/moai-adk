@@ -24,5 +24,10 @@ not a reversed relation, a separate flag, an un-deprecated flag, or a flag with 
 Fragments without `--merge` (ref, qgc-args, sync-usage, hint, dl-next) expose `--auto-merge` only
 (per (i) counts in `ac026-{local,template}-i.txt`), which (iii) permits.
 
+Addendum after M2/M3: the final target list (`final-{local,template}-026-merge-lines.txt`) has the
+same five line bodies as the list read above (`final-reading-targets-output.txt`: body diff exit 0
+for both copies); only the delivery coordinate of the Flag Behavior line moved from dl:26 to dl:28
+(M2 inserted two lines above it). The answers therefore carry over unchanged to the final tree.
+
 Result: all ten answers are "Yes". No line reverses the alias, marks `--auto-merge` deprecated, or
 gives `--merge` separate behavior.

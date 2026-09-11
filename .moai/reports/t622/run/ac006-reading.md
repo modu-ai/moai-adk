@@ -32,6 +32,18 @@ Result: every sentence answers "No" to the worktree-default question, and every 
 written as `--auto-merge`. Both sections name `manager-git.md` (dl 2 hits, de 1 hit —
 `ac006-{local,template}-source.txt`).
 
+## Addendum after M2 (final tree, `final-{local,template}-dl.md` / `-de.md`)
+
+M2 changed the Step 3.4 section in two ways: line 20 now executes `gh pr merge --<merge_method>
+--delete-branch`, and a new line 23 reads "`<merge_method>` is resolved from
+`git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default
+`squash`)." Read against the same two questions: line 20 — worktree context alone merges? No; merge
+condition is `--auto-merge`? Yes (it is step 3 under "When auto-merge is triggered"). Line 23 —
+worktree context alone merges? No (it only names the merge method source); merge condition? n/a
+(method sentence, not a trigger). Every other sentence is unchanged; lines after 21 moved down by 2.
+The worktree-detection subsection is unchanged by M2/M3. Final detectors: `final-judges-output.txt`
+(dl-default `test-s` 1, de-default grep exit 1, source dl 2 / de 1, both copies).
+
 Noted residual (not a FAIL of this criterion): doc-execution line 6 still says the flag is stored
 "for use in Phase 13"; after this edit no Phase 13 step reads `is_worktree_context`. The line is
 unchanged because its wording does not tie the flag to merging and line 8 directly below states it

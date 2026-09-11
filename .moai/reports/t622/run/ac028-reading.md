@@ -32,4 +32,12 @@ Cross-document consistency (REQ-GDP-026 "두 문서의 조건은 같아야 한�
 byte-for-byte. CI-pass and no-conflict checks remain for all modes (mg "Steps (all modes; CI checks
 must pass and the PR must have no merge conflicts)", dl lines 18-19).
 
+Addendum after M2/M3: the final target list (`final-{local,template}-028-mode-lines.txt`, 14 lines
+each) has the same line bodies as the list read above (`final-reading-targets-output.txt`: body diff
+exit 0 for both copies). M2 inserted two lines into Step 3.4 after line 21 (a blank line and the
+merge-method source sentence, which carries no approval, review, mode, or `--auto-merge` token), so
+dl:25/26/40/41/57/58 above are dl:27/28/42/43/59/60 in the final tree. The answers carry over
+unchanged. Final detectors: `final-judges-output.txt` (028 (a) 1·1, (b) empty; 029 (a) 1·1, (b)
+empty; both copies).
+
 Result: all 14 answers are "Yes" for each copy.
