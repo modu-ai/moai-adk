@@ -28,7 +28,12 @@ Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
 ### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
 
-[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
+[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST
+resolve the final Tier (S, M, or L). It first consumes the interview's
+`provisional_tier`; it asks this question only when the tier was absent,
+ambiguous, or changed by research. This drives the artifact set, the
+manager-develop delegation prompt template applicability, and the plan-auditor
+PASS threshold.
 
 Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
 

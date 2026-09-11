@@ -17,6 +17,16 @@ Purpose: Gather missing context through a structured, topic-focused interview be
 
 **Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
 
+**Provisional tier before research:** At the end of the clarity loop, record a
+`provisional_tier` in the interview handoff before Phase 6 research starts.
+Reuse an explicit user tier; otherwise classify from the observed scope,
+number of affected files/domains, and security or compatibility risk. This is a
+routing hint, not a final artifact decision. Research may promote S→M or M→L
+when it discovers cross-domain or constitutional risk, but it must not create a
+research artifact solely to decide a tier that was already explicit and narrow.
+If the evidence is ambiguous, carry `provisional_tier: undecided` and ask the
+final Tier question once in spec assembly.
+
 **Round topics:**
 
 | Round | Focus Topic | Example Questions |
