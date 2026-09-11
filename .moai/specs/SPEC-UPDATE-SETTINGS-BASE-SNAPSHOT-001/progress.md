@@ -349,7 +349,7 @@ m1_to_mN_commit_strategy: per-milestone commits on WT-update-value-merge, no pus
 
 ```yaml
 sync_complete_at: 2026-09-12
-sync_commit_sha: pending-backfill   # the commit carrying this block cannot cite itself
+sync_commit_sha: 0b5a1b3b1
 sync_status: complete-local          # origin/develop CI verdict owed after the lead's batch push
 frontmatter_status_transitions:
   spec_md: "in-progress -> implemented -> completed (merged into this sync commit)"
@@ -362,7 +362,7 @@ b12_self_test_b: "grep -oE 'AC-USB-[0-9]+' .moai/specs/SPEC-UPDATE-SETTINGS-BASE
 b12_self_test_c: "ls internal/cli/update/backup/settings_snapshot.go internal/cli/update/merge/settings_snapshot_flow.go internal/cli/update_settings_snapshot.go internal/cli/init.go internal/cli/update.go internal/cli/update_clean_install.go internal/cli/update_template_sync.go internal/cli/update/merge/merge.go internal/cli/update/merge/base.go -> all nine exist"
 run_phase_reconciliation:
   E2_6_D7_status: "resolved, not stale — manager-develop's §E.2.6 disclosed decision flagged D7 render-byte-source (manifest+hash, option 2) as a possible scope question for the lead; plan.md D7 (line 160, '리드 승인 2026-09-11') now records the lead's approval of the manifest-provenance approach in place. No re-delegation followed, so §E.2.6's implementation stands as accepted. manager-docs did not edit §E.2 body (owned by manager-develop, spec-frontmatter-schema.md Forbidden ownership crossings) — this reconciliation is recorded here in §E.4 only."
-  E3_run_commit_sha: "left as pending-backfill in §E.3 — manager-docs did not backfill it directly, because §E.3 is manager-develop's exclusive backfill surface per spec-frontmatter-schema.md SHA placeholder backfill exemption ('the phase-owning agent — manager-develop for §E.3, manager-docs for §E.4'). For traceability: the candidate value is b5b5883e9 (last run-phase Go source commit — 'feat(t656): wire settings.json snapshot into init, update and clean reinstall'); the run-phase evidence-writing commits that follow it (45956bd92, 8a44a68bc, 5ca200c18, b0a664460, 2f1ff2509, e28a34ee9) are documentation/evidence commits on top of that code, with e28a34ee9 the HEAD this sync commit stacks on. manager-develop should backfill §E.3 run_commit_sha = b5b5883e9 in a follow-up commit (or confirm a different convention) — recorded as a gap below, not resolved by this sync commit."
+  E3_run_commit_sha: "resolved — manager-develop backfilled §E.3 run_commit_sha = b5b5883e9 in commit 326149f1a, following manager-docs's traceability note in the prior sync-commit revision of this section (that candidate value matched what manager-develop applied). No further action needed."
 pre_sync_gate:
   head: e28a34ee9
   spec_lint: "moai spec lint SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 -> see command output recorded in this sync commit's delegation return"
@@ -370,8 +370,17 @@ mx_tag_validation:
   tags_added: 0
   p1_p2_findings: none
   note: "no new @MX obligation identified during sync-phase review; run-phase files are seam helpers and CLI wiring, no goroutines, no new exported high-fan-in functions beyond what §E.2 already covers"
+sync_audit:
+  verdict: PASS-WITH-DEBT
+  overall_score: 90.4
+  report: .moai/reports/t656/sync-audit.md
+  note: "harmonic mean of 4 dimensions (93/95/88/86 -> 90.4); all debt items are optional and do not affect code correctness or SPEC requirement satisfaction, per the report's own verdict line"
+  debt_items:
+    F1: "Low, optional — internal/cli/update/merge/settings_snapshot_flow.go:17-19 comment claims merge errors before-write only occur from manifest/embedded-template load, but MergeUserFilesWithOutcome also returns on an in-loop os.WriteFile failure (merge.go:254,276,297,306); when settings.json's own write fails mid-loop, the result is unrecorded, so Preserved reads false and the render gets promoted even though the live file is not actually the render. User data is already corrupted by that write failure, so this is not a new regression. Suggested fix (not applied in this card): correct the comment, or discard the pending base when err != nil and the settings.json result is empty. Not fixed — pending lead decision."
+    F2: "Low, optional — internal/cli/update/backup/settings_snapshot.go:115: a partial-write failure on the pending-snapshot os.WriteFile leaves the pending file in place, and the end-of-flow settle promotes it; LoadSettingsSnapshot's JSON-object validation rejects the truncated file, so the outcome degrades safely to the derived base. Suggested fix (not applied in this card): call discardSettingsSnapshot after the write-failure warning (hygiene). Not fixed — pending lead decision."
+    F5: "Info, optional — settings_snapshot.go promoteSettingsSnapshot: when the canonical-snapshot path is blocked by a directory, both the judge step and the settle step can each warn in the same update, so the 'settings-snapshot-promote-failed:' line can print twice (the version-match path prints once, and AC-008 asserts only that path). Behavior is non-blocking and harmless. Suggested fix (not applied in this card): document 'one warning line per attempt' if this needs stating explicitly. Not fixed — pending lead decision."
 docs_surfaces:
-  changelog: "added — user-visible behavior change (moai update now propagates template value changes to untouched settings.json keys after the first cycle; a user-deleted template key stays deleted)"
+  changelog: "added — user-visible behavior change (moai update now delivers template value changes to settings.json keys the user's file already has, on every update, not only after the first cycle; a user-deleted template key stays deleted)"
   readme: "NOT touched — explicitly out of scope for this card per the sync dispatch (4-locale README obligation not exercised)"
   docs_site: "NOT touched — explicitly out of scope for this card per the sync dispatch (adk.mo.ai.kr not exercised; per docs-i18n-rules this is a gap only if the behavior change is judged user-facing enough to need docs-site coverage — left for the lead to schedule as a follow-up if desired)"
 sibling_spec: "SPEC-UPDATE-MERGE-CONFLICT-BLIND-001 status left untouched (in-progress) per the sync dispatch — not part of this SPEC's scope"
@@ -384,6 +393,5 @@ gaps:
   - "internal/cli package coverage and -race not measured in this sync-phase pass (per §E.3, only internal/cli/update/merge and internal/cli/update/backup coverage was measured in run-phase)"
   - "two ~/.moai mtime changes observed during the run-phase slot, attributed by reading to other live sessions, unconfirmed (carried forward from run-phase notes, not independently re-investigated in sync)"
   - "N-12 (sibling-SPEC old-sense passages) deferred, per run-phase notes — not addressed in this sync-phase pass"
-  - "§E.3 run_commit_sha left as pending-backfill — manager-docs could not backfill it directly per the ownership boundary above; candidate value b5b5883e9 recorded for manager-develop's follow-up backfill commit"
-  - "sync-auditor was not invoked for this card's sync-phase close — this SPEC used manager-docs's own §E.4 self-verification only, no independent 4-dimension audit score is recorded"
+  - "sync-audit debt items F1, F2, F5 (all optional, Low/Info) are recorded above but not fixed in this card — pending lead decision on whether to schedule a follow-up"
 ```
