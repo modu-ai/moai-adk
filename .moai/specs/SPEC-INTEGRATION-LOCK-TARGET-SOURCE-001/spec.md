@@ -2,7 +2,7 @@
 id: SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001
 title: "Integration lock: surface the branch's provenance and the card in the window record (card t637)"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec
