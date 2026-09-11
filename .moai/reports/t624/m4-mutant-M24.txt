@@ -1,0 +1,23 @@
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA1
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA2
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA3
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA4
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-bare
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-pass
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB1
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB2
+    sync_gate_failstate_test.go:532: AC-005 TB2 [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:532: AC-005 TB2 [regression-guard]: stdout is not a block; stdout=""
+--- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass (18.72s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA1 (2.14s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA2 (2.28s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA3 (2.52s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA4 (1.40s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-bare (1.65s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-pass (1.82s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB1 (2.15s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB2 (4.76s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	19.382s
+FAIL

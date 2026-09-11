@@ -1,0 +1,43 @@
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R1
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R2
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R3
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R4
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R5
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R6
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R7
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R8
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R9
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R10a
+    sync_gate_failstate_test.go:642: AC-007 R10a [regression-guard]: final invocation is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R10b
+    sync_gate_failstate_test.go:642: AC-007 R10b [regression-guard]: final invocation is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R11
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R12
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R13
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R14
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R15
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R16
+=== RUN   TestSyncGateFailState_AC007_NoPathLooserThanToday/R17
+--- FAIL: TestSyncGateFailState_AC007_NoPathLooserThanToday (22.51s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R1 (1.21s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R2 (0.95s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R3 (1.01s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R4 (0.99s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R5 (1.26s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R6 (1.30s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R7 (1.32s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R8 (1.70s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R9 (1.11s)
+    --- FAIL: TestSyncGateFailState_AC007_NoPathLooserThanToday/R10a (0.62s)
+    --- FAIL: TestSyncGateFailState_AC007_NoPathLooserThanToday/R10b (0.65s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R11 (1.08s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R12 (0.98s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R13 (1.29s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R14 (1.59s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R15 (1.13s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R16 (1.99s)
+    --- PASS: TestSyncGateFailState_AC007_NoPathLooserThanToday/R17 (2.34s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	22.981s
+FAIL

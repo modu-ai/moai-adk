@@ -1,0 +1,23 @@
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/L1
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U1
+    sync_gate_failstate_test.go:456: AC-005 U1 run-and-block [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:456: AC-005 U1 run-and-block [regression-guard]: stdout is not a block; stdout=""
+    sync_gate_failstate_test.go:467: AC-005 U1 record-format [release-blocking]: record = "ced0409d4b444dfdad272879348b3be94a7294a5 bogus"; want "ced0409d4b444dfdad272879348b3be94a7294a5 fail"
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U2
+    sync_gate_failstate_test.go:456: AC-005 U2 run-and-block [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:456: AC-005 U2 run-and-block [regression-guard]: stdout is not a block; stdout=""
+    sync_gate_failstate_test.go:467: AC-005 U2 record-format [release-blocking]: record = "44003ecfeb77b91180f055e68c2c88197015ab2d fail extra"; want "44003ecfeb77b91180f055e68c2c88197015ab2d fail"
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U3
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U4
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U5
+--- FAIL: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate (7.59s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/L1 (1.61s)
+    --- FAIL: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U1 (0.82s)
+    --- FAIL: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U2 (0.72s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U3 (1.22s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U4 (1.25s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U5 (1.96s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	8.168s
+FAIL

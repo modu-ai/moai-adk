@@ -1,0 +1,11 @@
+ok  	github.com/modu-ai/moai-adk/internal/hook	125.585s
+--- FAIL: TestManifestHashFormat (0.10s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: moai stored hash=1d23838da0314421a863c31a9cbd099dd00c6a7e82e041673b5c177246e8ad42, computed hash=773956f641a95d67bb5d49ffb5f77c4736425861b3ce16bfa5e9badf3daf92b7 (source=.claude/skills/moai/ (whole tree))
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+--- FAIL: TestCatalogHashCoversSkillSubfiles (0.10s)
+    catalog_tier_audit_test.go:491: CATALOG_HASH_SKINNY: moai hash=1d23838da0314421a863c31a9cbd099dd00c6a7e82e041673b5c177246e8ad42 does not cover the deployed directory tree (whole-tree hash 773956f641a95d67bb5d49ffb5f77c4736425861b3ce16bfa5e9badf3daf92b7) — run gen-catalog-hashes.go --all (card t323)
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	27.860s
+FAIL
+pkg_exit=1

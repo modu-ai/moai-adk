@@ -1,0 +1,1 @@
+{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"go vet failed"},"systemMessage":"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log"}
