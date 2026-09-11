@@ -1273,8 +1273,9 @@ func TestExecute_RuleFileIsRegistryOrLog_Rejected(t *testing.T) {
 // Sync-audit F1 — G-B decides by file identity when both paths exist, so an
 // alias of the registry is rejected before Layer 1 exactly like the registry
 // path itself: a hard link, a case-variant name on a case-insensitive
-// filesystem, and a symbolic link. hardlink_log (delta-audit D2) pins the log
-// half of the condition the same way: a hard link to an existing evolution log.
+// filesystem, and a symbolic link. The _log cases (delta-audit D2) pin the log
+// half of the condition with the same three alias forms against an existing
+// evolution log: a hard link, a case-variant name, and a symbolic link.
 // absent_log_fallback pins the other branch: a rule file naming an evolution
 // log that does not exist yet is still rejected by the cleaned-absolute-path
 // comparison.
@@ -1302,6 +1303,12 @@ func TestExecute_RuleFileAliasOfRegistryOrLog_Rejected(t *testing.T) {
 			if err := os.Link(prj.log, prj.rule); err != nil {
 				t.Skipf("platform refused a hard link (%v) — recorded as a Gap", err)
 			}
+		}},
+		{"case_variant_log", ".moai/research/EVOLUTION-LOG.md", true, true, func(t *testing.T, _ project) {
+			skipUnlessCaseInsensitive(t)
+		}},
+		{"symlink_log", aliasFile, true, true, func(t *testing.T, prj project) {
+			symlinkOrSkip(t, prj.log, prj.rule)
 		}},
 		{"absent_log_fallback", ".moai/research/evolution-log.md", false, false, nil},
 	}
