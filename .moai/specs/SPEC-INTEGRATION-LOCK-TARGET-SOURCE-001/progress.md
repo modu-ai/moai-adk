@@ -203,8 +203,64 @@ in the run-phase completion report returned to the orchestrator.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+The lead-gated `internal/cli` compile slot closed the run-phase evidence gap left open in §E.2.5.
+Evidence: `.moai/reports/t637/slot-run.md` (lane-7, 2026-09-12), backed by
+`.moai/reports/t637/ac-evidence/`.
+
+- All 14 acceptance criteria (AC-ILT-001..014) observed PASS in the slot: the 10 named
+  `internal/cli` tests plus subtests (slot-001..010), the pre-existing t449 regression set
+  (slot-016a, 10 tests), the config seam (slot-016b, 13 tests, run outside the slot), the
+  template-neutrality and hook-integration-lock invariant runs (slot-015, slot-016c), and
+  `golangci-lint run ./internal/cli/... ./internal/kanban/... ./internal/config/...` at
+  `0 issues.`.
+- All 13 named mutation rows (a-l, with row i split into i1/i2 per plan-audit iter3 O1) turned
+  their targeted test(s) red; every mutant was restored from a `cp` backup and verified `cmp`
+  byte-identical, then the full AC set was re-run clean (14 PASS, 0 FAIL,
+  `.moai/reports/t637/ac-evidence/restored-pass.txt`).
+- Fixture cells C1′/C2′/C3′ (`/tmp/t637-fx-bin/moai`, `CLAUDE_PROJECT_DIR=/tmp/t637-fx`)
+  reproduced the git-flow caller-fallback warning (C1′, one warning line naming `WT-a`), the
+  cross-tree mismatch made visible (C2′, `card: tB` next to `branch: WT-a (source: caller)`), and
+  the configured-develop-branch silent path (C3′, `branch_source: config`, zero warnings). The
+  real integration-lock file's sha256 was identical before and after every cell
+  (`063ae13b46b700f78ae34e9418bac488933033bf` ×6) — no fixture touched the live window.
+- `make build` exited 0; `internal/template/catalog.yaml` is unchanged (`git diff --stat` empty)
+  after the Makefile's own `gen-catalog-hashes --all` run.
+- Gaps carried forward from the slot report: `go test ./...` was not run (out of scope; CI is the
+  full-suite judge per spec.md §D), the `make build` binary was not itself used for the fixture
+  cells (a separate LDFLAGS-free build was), and cross-platform (windows/linux) builds were not
+  checked locally.
+- Residual risk carried forward: the `CLAUDE.local.md` line-number edits (370/389/403 on this
+  tree) diverge from the primary checkout's uncommitted working copy (338/357/371); a collision
+  is possible when that work lands on `main` or a release PR carries `develop`'s copy across, not
+  at this card's `develop` merge.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-09-12"
+sync_commit_sha: pending-backfill
+sync_status: completed
+b12_self_test_a: "grep -c 'SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001' CHANGELOG.md -> 0 (pre-emission, before this commit's edit)"
+b12_self_test_b: "grep -oE 'AC-ILT-[0-9]+' acceptance.md | sort -u | wc -l -> 14; CHANGELOG entry cites '14 acceptance criteria'"
+b12_self_test_c: "ls internal/cli/integration.go internal/kanban/integration_lock.go internal/config/loader_integration_branch.go .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/local/gitflow-lane-protocol.md .claude/agents/harness/hns-release-specialist.md CLAUDE.local.md -> all resolve"
+changelog_entry_position: "Unreleased > Fixed, appended after the SPEC-SYNC-GATE-FAILSTATE-001 entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status + updated only, this commit)"
+  plan_md: "stateless on the status axis — no transition (spec-frontmatter-schema § Artifact Statelessness)"
+  acceptance_md: "stateless on the status axis — no transition"
+  progress_md: "not a status-bearing artifact — this §E.4 block is the sync signal"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+Docs-site: `grep -rln 'moai integration' docs-site/content` returned no matches — the docs-site
+carries no page describing `moai integration`, so no docs-site change is made by this sync.
+
+MX tags: no new exported function, high-fan-in function, or dangerous pattern was introduced by
+this SPEC's run-phase beyond what `.moai/reports/t637/slot-run.md` already covers; no @MX
+annotation change is made by this sync commit.
+
+`sync_commit_sha` is recorded as `pending-backfill` in this commit — a commit cannot cite its own
+hash — and is backfilled in a following commit, per the pattern already used by
+SPEC-SYNC-GATE-FAILSTATE-001 (CHANGELOG.md, same convention).
