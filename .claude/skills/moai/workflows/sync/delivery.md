@@ -46,8 +46,12 @@ When both the canonical key and the legacy key are present, the canonical key wi
 
 **Tier-based Route gate** (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline): read the SPEC's `tier` field (S/M/L) and whether `--pr` was passed.
 
-- **Route A (Tier S/M default, no `--pr`)**: Agent: manager-docs subagent. manager-docs creates the single sync commit directly on `main` — no `manager-git` spawn, no feature branch, no PR.
-- **Route B (Tier L OR explicit `--pr`)**: Agent: manager-git subagent. manager-git creates the same single sync commit on the sync feature branch (`sync/SPEC-XXX` or `chore/SPEC-XXX-sync`), delivered via PR in Step 3.2.
+- **Route A (Tier S/M default, no `--pr`)**: manager-docs creates the sync
+  commit in the assigned worktree; `manager-git` owns the configured PR or
+  `WT-*` integration delivery. No phase agent pushes directly.
+- **Route B (Tier L OR explicit `--pr`)**: manager-git creates the same single
+  sync commit on the sync feature branch (`sync/SPEC-XXX` or
+  `chore/SPEC-XXX-sync`) and delivers it via PR in Step 3.2.
 
 Both routes:
 - Stage all changed document files, reports, README, docs/
