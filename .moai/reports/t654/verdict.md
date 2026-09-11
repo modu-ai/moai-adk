@@ -2,7 +2,7 @@
 
 - card: t654 (Class B) · worktree `.claude/worktrees/t654` · branch `WT-guard-quoted-span`
 - base: 로컬 develop `00ae57ad7` (fast-forward)
-- 상태: 재현 완료. 코드·문서는 바꾸지 않았다 — 수리 방향이 가드 완화를 포함하므로 운영자 결정 대기.
+- 상태: 재현 완료 → 운영자 결정 **B(절차 변경)** 적용. 가드 코드(`branch_guard.go`)는 바꾸지 않았다(§5). A1 은 후속 후보로 남긴다(§5.3).
 
 ## 1. 결론
 
@@ -64,6 +64,35 @@ P3 이 deny 이므로 가드는 작동 중이고, P2·P4 로 인용 접기와 pr
 (2)는 이 저장소에서 가드를 고칠 방법이 없으므로, **B 없이는 워크트리 세션의 인계 저장이 계속 막힌다.** A 는 primary 체크아웃에서의 (1)만 추가로 푼다.
 
 부수 기록: `worktree-integration.md` 의 "What has been observed to trip the worktree guard" 표에는 JSON 중괄호 본문과 복합 명령만 있다. **git 명령 문구가 든 히어독 본문**은 이번에 새로 1차 관측된 트리거다(W2·W3, 대조군 W1). 표에 추가할지는 B 와 함께 결정하면 된다.
+
+## 5. 운영자 결정 B — 적용
+
+### 5.1 수정 (로컬·템플릿 각 3파일, 수정 전 두 사본은 `cmp` 로 바이트 동일 → 로컬 수정 후 템플릿으로 복사, 복사 후 다시 `cmp` 동일)
+
+| 파일 | 변경 |
+|---|---|
+| `.claude/rules/moai/workflow/session-handoff.md` § Emission-Time Save Obligation (`:27`) | "pipe the block to `moai handoff save --stdin …`" → Write 도구로 파일에 쓰고 `moai handoff save --stdin … < <file>` 로 넘긴다. 인라인 히어독 금지와 그 이유(본문의 git 명령 문구를 가드가 git 실행으로 읽어 branch guard 는 primary 에서 거부, Claude Code 워크트리 가드는 워크트리에서 거부 → fail-open 규칙으로 저장이 조용히 건너뛰어짐) |
+| `.claude/output-styles/moai/moai.md` 저장 의무 요약(`:685`) | 같은 절차로 맞춤 — `session-handoff.md` 의 SSOT↔렌더 표면 동기화 규칙(Drift-mitigation sentinel)을 따름 |
+| `.claude/rules/moai/workflow/worktree-integration.md` 관측 트리거 표 | "git 하위 명령을 이름으로 담은 히어독 본문" 1차 관측 1행 추가(W1~W5 요약), 표 앞뒤 문장의 "two observations / both rows" 를 행 수에 맞게 수정 |
+
+- 템플릿 금지 표지 점검: 추가된 줄에 카드 번호·SPEC ID·날짜·개인 경로 없음(`git diff -U0 | grep -E "^\+[^+]" | grep -i -E "t[0-9]{3}|SPEC-|2026|/Users/|goos|lane"` → 적중 없음).
+- 크기(`git cat-file -s HEAD:<f>` 대 `wc -c <f>`): `session-handoff.md` 21197→21566 (+369B, 항상 로드), `moai.md` 66611→66773 (+162B, 항상 로드), `worktree-integration.md` 48555→49048 (+493B, `paths:` 범위). 항상 로드되는 두 파일 모두 1,000B 미만이라 `rule-authoring.md` §statement duty (b) 대상 아님.
+- `internal/template/catalog.yaml` 에는 세 파일 항목이 없어 재생성할 해시 없음.
+
+### 5.2 검증
+
+```
+go test ./internal/template/... -count=1        exit=0   (template-tests.txt)
+ok  	github.com/modu-ai/moai-adk/internal/template	55.376s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	1.502s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.931s
+```
+
+`-run` 선택자 없이 패키지 전체를 돌렸으므로 `rule_template_mirror_test.go`, `template_neutrality_audit_test.go`, `internal_content_leak_test.go`, `catalog_slim_audit_test.go` 가 모두 실행 범위에 든다(리드 확인: 이 패키지는 `internal/cli` 를 컴파일하지 않아 슬롯 불필요).
+
+### 5.3 후속 후보 — A1
+
+branch guard 가 따옴표 구분자 히어독(`<<'WORD'`) 본문도 인용 접기처럼 다루게 하는 안(A1)은 이번 결정에서 제외했다. B 는 절차를 따르는 세션에서만 오탐을 피하므로, 절차를 벗어난 히어독은 여전히 P1·P5 처럼 거부된다. A1 을 진행한다면 본문을 셸이 실행하는 경우(`bash <<'EOF'` 등)를 접지 않을 예외를 함께 설계해야 한다.
 
 ## Gaps
 
