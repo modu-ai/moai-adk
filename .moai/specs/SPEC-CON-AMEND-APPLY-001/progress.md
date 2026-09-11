@@ -359,7 +359,22 @@ Package state (tree `3949cdba4`):
 - `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint-d2.txt`)
 - `gofmt -l internal/constitution/` → no output
 
-Still untested on the log side: a case-variant name and a symbolic link naming the evolution log. Both reach G-B through the same `sameFile` call that `hardlink_log` now pins, so a regression confined to them would have to live inside `sameFile`, where the registry-side case-variant and symlink subtests already guard it.
+[SUPERSEDED by the D2 completion addendum below] Still untested on the log side: a case-variant name and a symbolic link naming the evolution log. Both reach G-B through the same `sameFile` call that `hardlink_log` now pins, so a regression confined to them would have to live inside `sameFile`, where the registry-side case-variant and symlink subtests already guard it. — This reasoning did not hold: a regression confined to the log half of the condition (not inside `sameFile`) survived, so the gap was closed by tests instead.
+
+##### D2 completion — log-side case-variant and symlink aliases (lead rule above, 2026-09-12)
+
+- `2160f06f4` — `test(t659): cover log-side case-variant and symlink aliases (D2 completion)`: new subtests `case_variant_log/{dry_run,real}` (`file: .moai/research/EVOLUTION-LOG.md`, same case-insensitivity probe as the registry case, `t.Skip` with a stated reason on a case-sensitive filesystem) and `symlink_log/{dry_run,real}` (`file: rules/alias.md`, a symbolic link to the evolution log via `symlinkOrSkip`, skip only where the platform refuses a symlink); both set `aliasOfLog`, same assertions as `hardlink_log`. Evidence under `.moai/reports/t659/run/guards/` (`*d2b*`, `mutants-d2b-summary.txt`).
+- Branches that ran here (darwin/arm64): both new subtests ran in both modes, no skip — the temp filesystem is case-insensitive and symlinks were created. GREEN `d2b-green.txt`: 1 top-level + 14 subtests PASS, 0 SKIP.
+
+| Mutant | Log-half replacement | Selector | Top-level RUN | Result | Failing subtests |
+|---|---|---|---|---|---|
+| M-D2-loglstat | inline `os.Lstat` both + `os.SameFile`, `filepath.Abs` equality on error | `…Alias…_Rejected$/^symlink_log$` | 1 | killed (exit 1) | `symlink_log/{dry_run,real}` |
+| M-D2-logabs-case | plain `filepath.Abs` equality | `…Alias…_Rejected$/^case_variant_log$` | 1 | killed (exit 1) | `case_variant_log/{dry_run,real}` |
+| M-D2-logabs (re-run) | plain `filepath.Abs` equality | `…Alias…_Rejected$/^hardlink_log$` | 1 | killed (exit 1) | `hardlink_log/{dry_run,real}` |
+
+Failure reason in each killed subtest: the error lacks `is also the registry or the evolution log` (the run passed G-B and failed later on `the current clause occurs 0 time(s)`) and the gate doubles ran 4 times instead of 0 — the G-B rejection did not fire. `pipeline.go` sha256 `aa2b1965…1737` before and after (byte-exact restore). With these, 10 guard mutants are killed on this tree (7 re-runs + `M-D2-logabs` + the two above).
+
+Package state (tree `2160f06f4`): `go test ./internal/constitution/ -count=1 -cover` → `coverage: 88.4% of statements` (`guards/cover-d2b.txt`); `go vet` darwin and `GOOS=windows GOARCH=amd64` → exit 0, no output (`guards/vet-d2b.txt`, `guards/vet-windows-d2b.txt`); `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint-d2b.txt`); `gofmt -l internal/constitution/` → no output.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
