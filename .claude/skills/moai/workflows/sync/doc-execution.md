@@ -125,8 +125,13 @@ Before any modifications:
 
 - Generate timestamp identifier
 - Create backup directory: .moai/backups/sync-{timestamp}/
-- Copy critical files: README.md, docs/, .moai/specs/
-- Verify backup integrity (non-empty directory check)
+- Copy critical files: README.md, docs/, .moai/specs/ (record absent paths as
+  explicit backup failures rather than silently skipping them)
+- Create a SHA-256 `manifest.tsv` and verify every copied file with
+  `.claude/hooks/moai/verify-sync-backup.sh verify`; a non-empty directory is
+  not an integrity check
+- Before applying document writes, perform a restore/readback check against the
+  manifest and record the backup path, file count, and result in the sync report
 
 #### Step 2.2: Document Synchronization
 
