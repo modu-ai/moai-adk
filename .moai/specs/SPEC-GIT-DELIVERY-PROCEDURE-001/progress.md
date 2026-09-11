@@ -89,9 +89,66 @@ Residual noted for part 2 / sync: doc-execution.md line 34 still says `is_worktr
 "for use in Phase 13", although no Phase 13 step reads it after M1 (left unchanged — it does not tie the
 flag to merging, and the next sentence states it is not a merge condition).
 
+### Part 2 (M4, M5, M6) — manager-develop, cycle_type ddd
+
+Full report: `.moai/reports/t622/run/run-report.md`. Part-2 start HEAD `7a02b90e2`; M6 judging HEAD
+`35c0e30df`; CARD_BASE `f1f034bb43b06dbde7f7a93c1c51edc5b4d8f5cf` (unchanged, 1 line); range control 760
+names; snapshot and mirror freshness both empty (BASE exports valid, no CARD_BASE re-export). Local
+develop moved to `85868148c` (25 commits past CARD_BASE) — recorded, not absorbed. Scope content is
+identical from the `.toml` commit `5708e04d2` to the final HEAD (`git diff --name-only 5708e04d2 HEAD --
+. ':!.moai/reports/t622/run/'` empty).
+
+**Commits (in order)**: `cc51d8479` M4 agents-emit-check RED evidence (committed before the artifact);
+`5708e04d2` M4 regenerated `manager-git.toml` (`make agents-emit`, never hand-edited); `8a115e0f5` M4
+evidence; `35c0e30df` M5 evidence (no edits); `8d1b8c920` M6 evidence (no edits); the commit carrying
+this section adds `run-report.md`.
+
+| AC | Scope judged in part 2 | Output file(s) (under `.moai/reports/t622/run/`) | Result | Status |
+|---|---|---|---|---|
+| AC-GDP-001 | `.toml` clause (new) + L·T re-run | `ac001-toml-*`, `p2-ac001-*`, `ac001-reading.md` (M4 addendum) | paras 1·1·1; autofail `test -e` 0 / `test -s` 1 ×3; listgroup empty ×3; `.toml` paragraph `cmp` 0 vs template | PASS |
+| AC-GDP-002 | both copies (M5) | `ac002-{local,template}-*`, `ac002-*matrix.diff`, `p2-ac002-mut-i-*` | (a) `order=PASS shape=PASS` ×2; (b) section diff exit 0 ×2, matrix diff exit 0 ×2; control b412 `order=FAIL` | PASS |
+| AC-GDP-003 | both copies (M5) | `ac003-*.md`, `ac003.diff`, `ac003-template.diff` | Pre-Edit section diff exit 0 ×2 | PASS |
+| AC-GDP-004 | re-run | `p2-ac004-*` | squash 0·0, resolved 2·2, source exit 0·0 | PASS |
+| AC-GDP-005 | `.toml` clause (new) + re-run | `ac005-toml*.txt`, `p2-ac005-*` | `.toml` 1 line = default sentence; mg 1·1; others 0 | PASS |
+| AC-GDP-006 | re-run | `p2-{local,template}-006-*`, `p2-ac006-*`, `ac006-reading.md` (final-tree addendum) | dl-default `test -s` 1 ×2, de-default exit 1 ×2, source 2/1, opt-in 4·4 | PASS |
+| AC-GDP-013 | (a)-(e), M4 and M6 | `ac013-*`, `m4-ac013-*`, `ac013-gotest.*`, `mirror-m4*`, `mirror-m6*`, `mirror-new-fail*.txt`, `mirror-lost-pass*.txt` | (a) exit 0·0; (b) 8 body diffs exit 0; (c) hint diff 0; (d) go test exit 0, top-level PASS 2, acp trace 6; (e) new-FAIL and lost-PASS empty both runs, sorted sets equal baseline | PASS |
+| AC-GDP-014 | full | `ac014-*`, `m6-agents-emit-check.*` | RED make exit 2 (recipe `Error 1`, sha256 mismatch) → emit exit 0 → GREEN exit 0; changed = `manager-git.toml` only; example 1; sync/pram diff exit 0 | PASS |
+| AC-GDP-015 | full | `ac015-*`, `p2-ac015-fixture-tokens.txt` | 38 added lines in 9 template files; SPEC/REQ/date/`CLAUDE.local` exit 1; sha-letter `test -s` 1; hex tokens 0; control 5/2 | PASS |
+| AC-GDP-016 | full | `ac016-acp-commits.txt`, `p2-ac016-*` | `test -e` 0 / `test -s` 1 over 34 card commits; control 2 commits | PASS |
+| AC-GDP-025 | M4 and M6 | `ac025-*`, `m4-ac025-*`, `p2-ac025-*` | no Frozen +/- lines; clauses 1·1 ×4; registry 13·13 / 0·0; controls 2 / 2 | PASS |
+| AC-GDP-026 | re-run | `p2-{local,template}-*.md`, `p2-{local,template}-026-*` | (i) all ≥1; (ii) `test -s` 1 ×2; (iii) 1,1,1,2; merge-line bodies `cmp` 0 vs read targets | PASS |
+| AC-GDP-027 | re-run | `p2-{local,template}-027-*` | dl 1 line; (i)/(ii) `test -s` 1 ×2 | PASS |
+| AC-GDP-028 | re-run | `p2-{local,template}-028-*`, `p2-{local,template}-mg.md` | (a) 1/1 ×2; (b) `test -s` 1 ×2; mode-line bodies `cmp` 0 vs read targets | PASS |
+| AC-GDP-029 | re-run | `p2-{local,template}-029-*` | (a) 1/1 ×2; (b) `test -s` 1 ×2 | PASS |
+| AC-GDP-030 | re-run (post-commit judges) | `p2-ac030-*`, `m4-/m6-commands-emit-check.*` | case (A): changed empty, artifact commits empty, src `2f4dfd803…`, path control 2, orphan empty, published diff 0, flags empty; checks exit 0·0 | PASS |
+
+Mirror non-regression, generator RED→GREEN, AC-GDP-016 control and all gaps: `run-report.md` §2-§5.
+Cf: regenerated `.toml` 0, edited reading records 0, counter 2 on the planted control.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-11
+run_commit_sha: pending-backfill-run   # the commit carrying this block cannot cite itself; evidence HEAD before it: 8d1b8c9206b6c95350302f090374f822101221f2
+run_status: audit-ready
+ac_pass_count: 16          # AC-GDP-001..006, 013..016, 025..030 (016 is SHOULD-PASS)
+ac_fail_count: 0
+ac_na_count: 14            # placeholders AC-GDP-007..012, 017..024
+preserve_list_post_run_count: 0   # agent-common-protocol.md (both copies) unchanged: AC-GDP-016 empty, AC-GDP-002 (b)/003 diff exit 0
+l44_pre_commit_fetch: not-run     # lane does not fetch/push; local develop read directly (85868148c), not absorbed
+l44_post_push_fetch: not-applicable   # no push (lead batch-pushes develop)
+new_warnings_or_lints_introduced: none observed   # make agents-emit-check / commands-emit-check exit 0; no Go source changed; golangci-lint not run (no Go edits)
+cross_platform_build:
+  applicable: false        # Markdown / .tmpl / generated .toml only; no Go source edits
+  go_build: not-run
+  goos_windows_build: not-run
+targeted_tests:
+  - "go test ./internal/template/ -run '^(TestSanitizedPairParity|TestTemplateNoInternalContentLeak)$' -v -count=1 -> exit 0, top-level PASS 2"
+  - "mirror non-regression (M4, M6) -> new-FAIL 0, lost-PASS 0"
+total_run_phase_files: 17  # 8 scope pairs (16) + regenerated manager-git.toml; agent-common-protocol.md not edited
+m1_to_mN_commit_strategy: per-milestone commits on WT-git-procedure-fixes (0da3bebf0 baseline, 3f6c5163f M1, 2f4dfd803 X2, af54bf1ff M2, 7a02b90e2 M3, cc51d8479 M4 RED, 5708e04d2 M4 toml, 8a115e0f5 M4 evidence, 35c0e30df M5, 8d1b8c920 M6); no push
+gaps: [ci-not-observed (branch unpushed), develop-not-absorbed (25 commits; range judges are pre-merge), go-test-all-not-run, embed-check-not-run]
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
