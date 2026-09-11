@@ -55,3 +55,35 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Decision: serial
+
+Recorded by the lane (card orchestrator) before the first run-phase `Agent()` spawn, after Implementation Kickoff Approval (operator via lead, 2026-09-11, conditioned on N1-N3, applied in `ccfe3005e`).
+
+**Input parameters**
+
+| Parameter | Value |
+|---|---|
+| tier | M (judged REQ 12, AC 16) |
+| scope (files) | 19 affected (nine scope files as local/template pairs = 18, plus generated `manager-git.toml`); 21 if the published `moai-sync/SKILL.md` pair changes (AC-GDP-030 case B) |
+| domain count | 2 — agent/rule/skill/command instruction text, and generated artifacts via `make agents-emit` / `make commands-emit` |
+| file language mix | Markdown instruction files, one Go-template command source (`.md.tmpl`), generated `.toml` and published `SKILL.md`; no Go source edits |
+| concurrency benefit | LOW — milestones share files (delivery.md in M1 and M2, manager-git.md in M1-M3) and carry ordering obligations: command-source regeneration in the same commit (M1), agent regeneration after all manager-git.md edits (M4), always-loaded rule edit last (M5, AC-GDP-016) |
+| Agent Teams prerequisites | not requested (no `--team`) |
+| tree at selection | HEAD `7f5a4420f` (SPEC 0.2.4 `ccfe3005e` + evidence), clean; `moai session list --json --filter-spec=SPEC-GIT-DELIVERY-PROCEDURE-001` → `[]` |
+
+**Mode evaluation**
+
+| Mode | Result | Rationale |
+|---|---|---|
+| direct | not selected | multi-file, generator runs and acceptance judges exceed a direct orchestrator edit |
+| serial | **selected** | one write-capable `manager-develop` runs M1→M6 in order; shared files and commit-ordering obligations make sequential execution the correct shape |
+| fanout | not selected | below the multi-domain threshold, and parallel writers would race on delivery.md / manager-git.md and break the same-commit and last-edit ordering |
+| sweep | not selected | not ≥ ~30 files and not one uniform mechanical transform |
+| agent-team | not selected | not requested by the operator |
+
+Decision: serial
+
+**Justification.** The run phase edits a small set of instruction files line by line where later milestones depend on earlier commits (M4 regenerates the `.toml` only after M1-M3 finish editing `manager-git.md`; M5 must be the final instruction-file commit). A single sequential `manager-develop` preserves those orderings and keeps one writer on the worktree. Compile scope needs no `internal/cli` slot: `go list -deps -test` of `./internal/template/`, `./internal/template/commandemit/` and `./internal/template/agentemit/` lists no `internal/cli` package (same-form control on `internal/template` hits).
