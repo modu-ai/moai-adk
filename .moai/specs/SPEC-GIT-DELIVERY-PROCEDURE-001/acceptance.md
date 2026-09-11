@@ -11,10 +11,11 @@ T=internal/template/templates                    # 템플릿 루트
 ```
 
 - 명령은 워크트리 루트에서 실행한다. "exit" 는 직전 명령의 exit code를 `echo "exit=$?"` 로 따로 기록한 값이다.
-- **변수는 판정 명령과 같은 호출 안에서 지정한다.** Bash 호출은 매번 새 프로세스라서, 앞 호출에서 지정한 `BASE`·`E`·`T` 는 다음 호출에 남지 않는다. 판정 명령마다 `BASE=b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0; E=.moai/reports/t622/run; T=internal/template/templates; <판정 명령>` 처럼 세 지정을 같은 호출 앞에 붙이거나, 값을 글자 그대로 넣는다. 지정 없이 돌린 호출에서는 `git log --format=%H $BASE..HEAD` 가 `..HEAD` 로, `git diff $BASE -- $T/` 가 `git diff -- /` 로 바뀌므로 그 출력은 판정 근거가 아니다. `manager-git.md` 경로를 담은 복합 스크립트는 워크트리 가드가 거부하므로, 한 호출에는 변수 지정과 판정 명령 하나만 둔다.
+- **값은 판정 명령에 글자 그대로 넣는다.** 이 파일의 명령에 적힌 `$BASE`·`$E`·`$T` 는 위 세 값을 가리키는 표기다. 실행할 때는 그 자리에 `b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0`·`.moai/reports/t622/run`·`internal/template/templates` 를 글자 그대로 바꿔 넣는다(예: `git log --format=%H b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0..HEAD -- .claude/agents/moai/manager-git.md > .moai/reports/t622/run/ac016-control.txt`). **git 명령과 `manager-git.md` 경로를 담은 명령에는 `BASE=…; E=…; T=…; <판정 명령>` 처럼 변수를 먼저 지정하는 형태를 쓰지 않는다** — 워크트리 가드가 `E=…; … > $E/…` 형태를 거부한다(축소판 plan-audit 3회차 관측: 이 형태의 git 판정과 `manager-git.md` 를 읽는 awk·grep 판정이 거부됐고, 같은 판정을 값을 글자 그대로 넣어 실행하면 돌았다). Bash 호출은 매번 새 프로세스라서 앞 호출에서 지정한 변수는 다음 호출에 남지 않는다. 치환하지 않은 채 돌린 호출에서는 `git log --format=%H $BASE..HEAD` 가 `..HEAD` 로, `git diff $BASE -- $T/` 가 `git diff -- /` 로 바뀌므로 그 출력은 판정 근거가 아니다. `manager-git.md` 경로를 담은 복합 스크립트도 가드가 거부하므로, 한 호출에는 판정 명령 하나만 둔다.
 - 기준 트리 사본은 사전 점검에서 `git show $BASE:<경로> > $E/base-<이름>` 으로 반출해 둔다(대상 목록은 plan.md §C 2단계).
 - 검출식 안의 `git` 은 `[g]it` 으로, `parallel` 은 `para[l]lel` 로, perl 코드 안의 `git` 은 `\x67it` 로 쓴다. 셸 변수를 받는 `sed`·`perl` 과 경로를 만드는 반복문은 가드가 거부할 수 있으므로 경로를 글자 그대로 쓴다.
 - 판정용 grep은 `/usr/bin/grep` 으로 실행한다. 개수가 찍히지 않은 결과는 판정 불가로 기록한다.
+- **빈 결과가 PASS인 판정은 파일 존재부터 확인한다.** 기대가 `test -s <파일>` exit 1 이거나 "빈 파일" 인 판정(그리고 빈 결과로 경우를 가르는 AC-GDP-030 판정)은 바로 앞에 `test -e <파일>` 을 두고 exit 0 을 기대한다. `test -e` 가 exit 1 이면 판정 명령이 파일을 만들지 않은 것이므로 판정 불가로 기록한다(PASS 아님). 존재 확인이 없으면 돌지 않은 판정과 돌아서 아무것도 찍지 않은 판정이 같은 exit 1 을 낸다 — 3회차 감사에서 완료로 보고된 호출이 출력 파일을 만들지 않은 사례가 관측됐다. 뮤턴트는 §D.2.
 - **범위 파일 집합(아홉 개, 로컬·템플릿)** — 로컬·템플릿 사본 한 쌍을 한 파일로 세고, 이름이 다른 명령 원본 `sync.md`/`sync.md.tmpl` 도 한 쌍으로 센다. 생성물과 게시본은 범위 파일로 세지 않는다: `.claude/agents/moai/manager-git.md`, `.claude/rules/moai/core/agent-common-protocol.md`, `.claude/skills/moai/workflows/sync/delivery.md`, `.claude/skills/moai/workflows/sync/doc-execution.md`, `.claude/skills/moai/SKILL.md`, `.claude/skills/moai/references/reference.md`, `.claude/skills/moai/workflows/sync/quality-gates-context.md`, `.claude/skills/moai/workflows/sync.md`, 명령 원본 `.claude/commands/moai/sync.md`(로컬) / `.claude/commands/moai/sync.md.tmpl`(템플릿). 생성물 `$T/.codex/agents/moai/manager-git.toml`, 게시본 `$T/.agents/skills/moai-sync/SKILL.md`(로컬 사본 `.agents/skills/moai-sync/SKILL.md`).
 - **기준 트리 측정**: 0.2.2 작성 시점 HEAD `ea09ca650`(부모 `caa601d7c`, 둘 다 SPEC 파일만 바꿈)에서 범위 파일·생성물·게시본·발행기(`internal/template/commandemit`, `internal/template/agentemit`)·`zone-registry.md`·사본과 발행 관련 테스트 파일 여덟 개·`docs-site/content`·`Makefile` 은 `$BASE` 와 차이가 없고(`git diff --stat b412f8a33 ea09ca650 -- <경로>` 출력 없음), 템플릿 루트 전체도 차이가 없다(`git diff --stat b412f8a33 -- internal/template/templates/` 출력 없음). "plan 작성 시점 측정" 값은 이 트리의 사본으로 잰 기준 트리 값이다. 조각 (7)·(8)·(9)와 명령 원본·게시본 대조는 0.2.2에서 로컬·템플릿 사본 모두에 다시 쟀다.
 
@@ -99,6 +100,8 @@ awk 'BEGIN{RS=""} /fetch/ && /rev-list/ {c++} END{print c+0}' $E/ac001-local-syn
 # 기대: 1 이상
 awk 'BEGIN{RS=""; ORS="\n\n"} /fetch/ && /rev-list/' $E/ac001-local-sync.md > $E/ac001-local-paras.md
 awk 'BEGIN{RS=""; ORS="\n\n"} /fetch/ && /rev-list/ && /(batch|para[l]lel|single-turn|multi-Bash|independent)/ && !/(first|before|once|after|completes|wait)/' $E/ac001-local-sync.md > $E/ac001-local-autofail.md
+test -e $E/ac001-local-autofail.md
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac001-local-autofail.md
 # 기대: exit 1
 awk 'BEGIN{RS=""; ORS="\n\n"} /(^|\n)[-*|] [^\n]*fetch/ && /(^|\n)[-*|] [^\n]*rev-list/' $E/ac001-local-sync.md > $E/ac001-local-listgroup.md
@@ -109,6 +112,8 @@ test -s $E/ac001-toml-sync.md
 awk 'BEGIN{RS=""} /fetch/ && /rev-list/ {c++} END{print c+0}' $E/ac001-toml-sync.md > $E/ac001-toml-paras.txt
 # 기대: 1 이상
 awk 'BEGIN{RS=""; ORS="\n\n"} /fetch/ && /rev-list/ && /(batch|para[l]lel|single-turn|multi-Bash|independent)/ && !/(first|before|once|after|completes|wait)/' $E/ac001-toml-sync.md > $E/ac001-toml-autofail.md
+test -e $E/ac001-toml-autofail.md
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac001-toml-autofail.md
 # 기대: exit 1
 test -s $E/ac001-reading.md
@@ -166,6 +171,8 @@ awk '/^### Pre-Spawn Sync Check/{s=1} s && /^```bash/{b=1; next} b && /^```/{exi
 test -s $E/ac002-local-block.md
 # 기대: exit 0
 awk '/^[[:space:]]*[g]it fetch/ && !/[g]it rev-list/' $E/ac002-local-block.md > $E/ac002-local-a.txt
+test -e $E/ac002-local-a.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac002-local-a.txt
 # 기대: exit 1
 /usr/bin/grep -n -E '^[[:space:]]*[g]it rev-list' $E/ac002-local-block.md > $E/ac002-local-b.txt
@@ -314,6 +321,8 @@ test -s $E/ac006-local-dl.md
 test -s $E/ac006-local-de.md
 # 기대: 둘 다 exit 0
 awk '/default for worktree contexts|worktree contexts default|no-merge.{1,3}flag NOT set|merges? (automatically|by default)|auto-merge (is )?(the )?default|no-merge.{0,12}(absent|not set|missing|NOT set)/ {print FNR}' $E/ac006-local-dl.md > $E/ac006-local-dl-default.txt
+test -e $E/ac006-local-dl-default.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac006-local-dl-default.txt
 # 기대: exit 1
 /usr/bin/grep -n -i -E 'default (to )?auto-merge|worktree contexts default|merges? (automatically|by default)' $E/ac006-local-de.md > $E/ac006-local-de-default.txt
@@ -499,6 +508,8 @@ test -s $E/ac015-template.diff
 # 기대: exit 1
 perl -ne 'next unless /^\+(?!\+\+)/; while (/(?<![0-9A-Za-z])([0-9a-f]{7,40})(?![0-9A-Za-z])/g) { print "$.:$1\n" }' -- $E/ac015-template.diff > $E/ac015-hex-tokens.txt
 /usr/bin/grep -v -E ':[0-9]+$' $E/ac015-hex-tokens.txt > $E/ac015-sha-letter.txt
+test -e $E/ac015-sha-letter.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac015-sha-letter.txt
 # 기대: exit 1. 비어 있지 않으면 낱말마다 읽어 커밋 SHA인지 판정
 /usr/bin/grep -E ':[0-9]+$' $E/ac015-hex-tokens.txt > $E/ac015-sha-digits.txt
@@ -525,7 +536,10 @@ awk 'NR==1' $E/ac016-acp-commits.txt > $E/ac016-acp-commit.txt
 # 두 사본 중 어느 쪽이든 agent-common-protocol.md 를 처음 고친 커밋. `git log -1 --reverse` 는 제한을 먼저 적용해 가장 최근 커밋을 내므로 쓰지 않는다
 # 치환 단계: $E/ac016-acp-commit.txt 의 40자 SHA를 읽어 아래 명령의 <ACP> 자리에 글자 그대로 넣는다(셸 변수나 명령 치환으로 넘기지 않는다)
 git log --format=%H <ACP>..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md .claude/skills/moai/workflows/sync/doc-execution.md .claude/skills/moai/SKILL.md .claude/skills/moai/references/reference.md .claude/skills/moai/workflows/sync/quality-gates-context.md .claude/skills/moai/workflows/sync.md .claude/commands/moai/sync.md internal/template/templates/.claude/agents/moai/manager-git.md internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/.claude/skills/moai/references/reference.md internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md internal/template/templates/.claude/skills/moai/workflows/sync.md internal/template/templates/.claude/commands/moai/sync.md.tmpl > $E/ac016-after.txt
-# 기대: 빈 파일
+test -e $E/ac016-after.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
+test -s $E/ac016-after.txt
+# 기대: exit 1 — 빈 파일
 ```
 
 뮤턴트(판정 논리 — 커밋을 만드는 픽스처는 plan 작성 시점에 실행하지 않았다):
@@ -653,6 +667,8 @@ test -s $E/ac026-dl-next.md
 /usr/bin/grep -c -e '--auto-merge' $E/ac026-qgc-args.md $E/ac026-qgc-flags.md > $E/ac026-i-qgc.txt
 # 기대: ac026-i.txt 파일마다 1 이상, ac026-i-qgc.txt 합계 1 이상
 awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && (!/--merge([^A-Za-z-].*)?[Dd]eprecated alias (of|for) .?--auto-merge([^A-Za-z-]|$)/ || /(not|no longer|never) (a |an |the )?[Dd]eprecated/ || /[Uu]n-?deprecat/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac026-ii.txt
+test -e $E/ac026-ii.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac026-ii.txt
 # 기대: exit 1
 /usr/bin/grep -c -E '(^|[^A-Za-z-])--merge([^A-Za-z-]|$)' $E/ac026-skill.md $E/ac026-sync.md $E/ac026-qgc-flags.md $E/ac026-dl.md > $E/ac026-merge-presence.txt
@@ -725,9 +741,13 @@ THEN (i) --no-merge 를 담은 줄은 모두 "no-op" 과 "deprecat" 를 함께 �
 /usr/bin/grep -c -e '--no-merge' $E/ac026-dl.md > $E/ac027-dl-count.txt
 # 기대: 1 이상
 awk '/--no-merge/ && !(/no-op/ && /[Dd]eprecat/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac027-i.txt
+test -e $E/ac027-i.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac027-i.txt
 # 기대: exit 1
 awk '/--no-merge/ && (/[Ss]kip/ || /[Nn][Oo][Tt] set/ || /[Pp]revent/ || /unless/ || /[Dd]isabl/ || /[Oo]verrid/ || /[Tt]urns? off/ || /[Ss]uppress/ || /[Bb]ypass/ || /[Cc]ancel/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac027-ii.txt
+test -e $E/ac027-ii.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac027-ii.txt
 # 기대: exit 1
 ```
@@ -778,9 +798,11 @@ awk '/[Tt]eam mode/ && /--auto-merge/ && /(^|[^A-Za-z])[Aa]ll( [A-Za-z-]+)?( [A-
 awk '/[Tt]eam mode/ && /--auto-merge/ && /(^|[^A-Za-z])[Aa]ll( [A-Za-z-]+)?( [A-Za-z-]+)? approv/ {c++} END{print c+0}' $E/ac026-dl.md > $E/ac028-a-dl.txt
 # 기대: 각각 1 이상
 awk '/[Tt]eam mode/ && (/without (any |an )?approv/ || /no approv/ || /approv[a-z]* (are |is )?(not required|not needed|optional|unnecessary)/ || /optional approv/ || /regardless of approv/ || /at least one approv/ || /(a|one) single approv/ || /(after|on|once|upon|with) (any|one|an|a|some|the first) approv/ || /majority/) {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac028-b.txt
+test -e $E/ac028-b.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac028-b.txt
 # 기대: exit 1
-awk '/[Aa]pprov/ || /[Rr]eview/ || /[Tt]eam mode/ || /[Pp]ersonal/ || /[Mm]anual/ {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac028-mode-lines.txt
+awk '/[Aa]pprov/ || /[Rr]eview/ || /[Tt]eam mode/ || /[Pp]ersonal/ || /[Mm]anual/ || /--auto-merge/ {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac028-mode-lines.txt
 test -s $E/ac028-mode-lines.txt
 # 기대: exit 0 — (a)와 AC-GDP-029 (a)가 성립하면 비지 않는다. 로컬·템플릿 각각의 이 목록 줄이 모두 읽기 기록의 대상이다
 test -s $E/ac028-reading.md
@@ -811,6 +833,17 @@ test -s $E/ac028-reading.md
       11줄만 담은 절은 029 (b) 적중 → FAIL. 6·9·10줄은 029 (b)에 걸리지 않음 → 이 줄만 담은 절은 PASS. 5줄만 담은 절은 029 (a) 0 → FAIL.
 ```
 
+뮤턴트(0.2.4, 읽기 목록 선택자 — 스크래치 픽스처 m-n3.md 3줄):
+
+```
+  1 "In team mode, `--auto-merge` merges only after all approvals are obtained."  (양성 대조 — 두 선택자 모두 선택)
+  2 "`--auto-merge` merges as soon as CI checks pass."                              (모드 이름·승인 낱말이 없는 병합 조건)
+  3 "Unrelated line about the changelog."                                           (음성 대조)
+명령: 0.2.3 선택자(끝 항목 /[Mm]anual/)와 위 판정의 선택자(|| /--auto-merge/ 추가)를 {print FNR ": " $0} 로 m-n3.md 에 실행
+관측: 0.2.3 선택자 1 · 0.2.4 선택자 1·2 · 3줄은 둘 다 선택하지 않음
+판정: 2줄은 이제 $E/ac028-mode-lines.txt 에 들어가 읽기 기록의 대상이 된다(0.2.3 선택자에서는 빠져 028·029 (a)·(b)만으로 통과할 수 있었다).
+```
+
 ### AC-GDP-029 — personal·manual 모드: 승인 조건 없음
 
 ```
@@ -832,6 +865,8 @@ awk '/[Pp]ersonal/ && /[Mm]anual/ && /--auto-merge/ {c++} END{print c+0}' $E/ac0
 awk '/[Pp]ersonal/ && /[Mm]anual/ && /--auto-merge/ {c++} END{print c+0}' $E/ac026-dl.md > $E/ac029-a-dl.txt
 # 기대: 각각 1 이상
 awk '(/[Pp]ersonal/ || /[Mm]anual/) && (((/[Aa]pprov/ || /[Rr]eview/) && !(/without (requiring )?(any |an )?(approv|review)/ || /no (approv|review)/ || /not required/ || /not needed/ || /no teammates/)) || /(after|once|until|pending|requires?) (a |an |the |all |one |at least one )?(code )?(approv|review)/) {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac029-b.txt
+test -e $E/ac029-b.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac029-b.txt
 # 기대: exit 1
 test -s $E/ac028-reading.md
@@ -877,6 +912,8 @@ cmp /tmp/t622-moai-sync-SKILL.backup.md $T/.agents/skills/moai-sync/SKILL.md
 make commands-emit-check > $E/ac030-control-green.txt 2>&1
 # 기대: exit 0
 git status --porcelain -- $T/.agents/skills/ .agents/skills/ > $E/ac030-control-clean.txt
+test -e $E/ac030-control-clean.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac030-control-clean.txt
 # 기대: exit 1 — 되돌림 뒤 게시본 경로에 변경 없음
 git ls-files -- $T/.agents/skills/moai-sync/SKILL.md .agents/skills/moai-sync/SKILL.md > $E/ac030-tracked.txt
@@ -893,6 +930,8 @@ make commands-emit > $E/ac030-emit.txt 2>&1
 make commands-emit-check > $E/ac030-check.txt 2>&1
 # 기대: exit 0
 git status --porcelain -- $T/.agents/skills/ .agents/skills/ > $E/ac030-emit-status.txt
+test -e $E/ac030-emit-status.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 # 비어 있으면 경우 (A) 후보, 비어 있지 않으면 경우 (B) 후보 — 비어 있지 않으면 바뀐 게시본을 원본과 함께 스테이징한다
 ```
 
@@ -901,15 +940,21 @@ git status --porcelain -- $T/.agents/skills/ .agents/skills/ > $E/ac030-emit-sta
 ```bash
 git diff --name-only $BASE -- $T/.agents/skills/ .agents/skills/ > $E/ac030-changed.txt
 # (A): 빈 파일. (B): 두 줄 이하이며 internal/template/templates/.agents/skills/moai-sync/SKILL.md, .agents/skills/moai-sync/SKILL.md 만
+test -e $E/ac030-changed.txt
+# 기대: 두 경우 모두 exit 0 — 파일이 없으면 판정 불가(PASS 아님). (A)이면 이어서 test -s $E/ac030-changed.txt → exit 1
 git log --format=%H $BASE..HEAD -- $T/.claude/commands/moai/sync.md.tmpl > $E/ac030-src-commits.txt
 git log --format=%H $BASE..HEAD -- $T/.agents/skills/moai-sync/SKILL.md .agents/skills/moai-sync/SKILL.md > $E/ac030-artifact-commits.txt
 # (A): ac030-artifact-commits.txt 빈 파일. (B): ac030-artifact-commits.txt 의 모든 줄이 ac030-src-commits.txt 에 있음(같은 커밋)
+test -e $E/ac030-artifact-commits.txt
+# 기대: 두 경우 모두 exit 0 — 파일이 없으면 판정 불가(PASS 아님). (A)이면 이어서 test -s $E/ac030-artifact-commits.txt → exit 1
 test -s $E/ac030-src-commits.txt
 # 기대: 두 경우 모두 exit 0 — 원본 편집 커밋이 실제로 있다(없으면 아래 부분집합 판정이 공허해진다)
 git diff --name-only $BASE -- $T/.claude/commands/moai/sync.md.tmpl .claude/commands/moai/sync.md > $E/ac030-src-changed.txt
 /usr/bin/grep -c '' $E/ac030-src-changed.txt > $E/ac030-src-changed-count.txt
 # 기대: 2 — 같은 git diff 경로 형태가 바뀐 파일을 실제로 본다(ac030-changed.txt 가 빈 것이 경로 오류가 아니라는 양성 대조)
 /usr/bin/grep -v -x -F -f $E/ac030-src-commits.txt $E/ac030-artifact-commits.txt > $E/ac030-orphan-artifact-commits.txt
+test -e $E/ac030-orphan-artifact-commits.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac030-orphan-artifact-commits.txt
 # 기대: 두 경우 모두 exit 1 — 원본 편집 커밋에 없는 게시본 커밋이 없다. (B)이면 추가로 test -s $E/ac030-artifact-commits.txt → exit 0
 # 뮤턴트(0.2.2 스크래치 측정): 원본 {aaa1111}·게시본 {bbb2222} → 위 grep exit 0(FAIL 검출); 게시본 {aaa1111} → exit 1; 빈 원본 목록 → exit 0, 1줄 출력(FAIL)
@@ -918,6 +963,8 @@ test -s $T/.agents/skills/moai-sync/SKILL.md
 diff .agents/skills/moai-sync/SKILL.md $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-lt.diff
 # 기대: 두 경우 모두 exit 0
 awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && (!/--merge([^A-Za-z-].*)?[Dd]eprecated alias (of|for) .?--auto-merge([^A-Za-z-]|$)/ || /(not|no longer|never) (a |an |the )?[Dd]eprecated/ || /[Uu]n-?deprecat/) {print FNR ": " $0}' $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-flags.txt
+test -e $E/ac030-published-flags.txt
+# 기대: exit 0 — 파일이 없으면 판정 명령이 돌지 않은 것이다(판정 불가, PASS 아님)
 test -s $E/ac030-published-flags.txt
 # 기대: 두 경우 모두 exit 1
 ```
@@ -929,6 +976,7 @@ test -s $E/ac030-published-flags.txt
 ## §D.2 경계 사례
 
 - `grep -c` 는 줄 수를 센다. SHA는 AC-GDP-015에서 낱말 단위로 센다.
+- 빈 결과 판정의 존재 확인 뮤턴트(0.2.4, 스크래치 실행): 판정 명령이 돌지 않아 `ac028-b.txt` 가 없는 상태. 명령 `rm -f <스크래치>/ac028-b.txt` → `test -e <스크래치>/ac028-b.txt; echo "exit=$?"` → `test -s <스크래치>/ac028-b.txt; echo "exit=$?"`. 관측 `exit=1` · `exit=1`. 판정: 존재 확인이 exit 1 이라 FAIL(판정 불가, PASS 아님). 0.2.3의 빈 결과 확인만 있었다면 `test -s` exit 1 이 기대값과 같아 PASS로 읽혔다.
 - `sed -n '/A/,/B/p'` 의 끝 제목이 편집으로 바뀌면 절이 파일 끝까지 늘어난다. `awk` 절 추출은 시작 표지가 사라지면 빈 파일을 낸다 — 빈 파일은 판정 불가로 기록한다. 추출 표지(`## Synchronization`, `## PR Auto-Merge`, `### Pre-Spawn Sync Check`, `### Pre-Edit Sync Check`, `#### The sweep prohibition`, `#### Step 3.4`, `##### Worktree Context Detection`, AC-GDP-026의 아홉 표지)는 편집 뒤에도 남아야 한다. `manager-git.md` 절 제목은 "## PR Auto-Merge" 로 시작하기만 하면 뒤의 괄호를 바꿔도 된다.
 - 자리표시 기준(AC-GDP-007~012, 017~024)은 판정하지 않고 N/A로 기록한다.
 - 의도된 사본 차이가 있는 여섯 파일은 편집으로 줄 수가 바뀌면 차이 줄번호가 밀린다. AC-GDP-013은 줄번호 머리를 빼고 본문만 비교한다. 명령 원본은 로컬 `.md` 와 템플릿 `.md.tmpl` 로 파일 이름 자체가 다르므로 두 경로를 글자 그대로 짝지어 비교한다.

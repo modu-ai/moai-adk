@@ -1,7 +1,7 @@
 ---
 id: SPEC-GIT-DELIVERY-PROCEDURE-001
 title: "배포 지침의 git 전달 절차 기계적 수리 — fetch 순서, 병합 방식 해석, auto-merge 옵트인 단일 기준과 플래그 의미"
-version: "0.2.3"
+version: "0.2.4"
 status: draft
 created: 2026-09-10
 updated: 2026-09-11
@@ -30,6 +30,7 @@ related_specs: [SPEC-MERGE-METHOD-CONFIG-001]
 | 0.2.1 | 2026-09-11 | manager-spec | **축소판 plan-audit 1회차**(`.moai/reports/t622/plan-audit-reduced-iter1.md`) **FAIL 0.71** 반영. 운영자 하위 결정(플래그 의미)과 리드 공통 항목 판정(모드별 승인 조건)으로 REQ-GDP-025·026, AC-GDP-026~029 추가. 플래그 표면 네 파일을 범위에 넣고 소비자 조사 결과를 차단 항목 X1~X4로 보고. N1·N2·N4·N5·N6 반영. 커밋 `caa601d7c`. |
 | 0.2.2 | 2026-09-11 | manager-spec | 리드 범위 판정(X1~X4) 반영. X1(`workflows/sync.md` 사용법 줄), X2(슬래시 명령 `argument-hint`, 로컬 `.claude/commands/moai/sync.md:3`·템플릿 `sync.md.tmpl:3`), X3(`delivery.md:404` 다음 단계 선택지)를 범위에 넣고, AC-GDP-026·027 조각을 이 세 자리로 넓혔다. X2는 명령 원본이라 `make commands-emit`·`make commands-emit-check` 와 게시본 변화 여부(두 경우 모두 판정)를 AC-GDP-030으로 새로 두고 REQ-GDP-014를 넓혔다. X4(docs-site 네 로케일)는 범위 밖에 두고 후속 문서 카드와 그 입력을 §D에 기록했다. 사본 일치·중립성·Frozen·순서 점검 목록을 새 파일로 넓혔다. 판정 대상 REQ 12·AC 16. 앞선 작성 시도는 세션 한도로 멈췄고 부분 편집은 WIP 커밋 `ea09ca650` 으로 보존됐다. 이 판은 그 커밋에서 이어 완성했다 — 부분 편집의 조각·대조 값을 트리에서 다시 쟀고, AC-GDP-025 레지스트리 검출식의 `manager-git` 을 워크트리 가드가 받는 `manager-[g]it` 으로 고쳤고, 빈 집합으로 통과하지 못하게 하는 대조를 AC-GDP-015·016·025·030에 더했다. |
 | 0.2.3 | 2026-09-11 | manager-spec | **축소판 plan-audit 2회차**(`.moai/reports/t622/plan-audit-reduced-iter2.md`) **FAIL 0.75** 반영. 운영자 결정(리드 경유)에 따라 결함 D1~D8을 검출식 문자열과 문구만 고쳐 좁게 수리했다. 요구사항·결정·범위는 그대로이고 판정 대상 REQ 12·AC 16도 그대로다. D1: AC-GDP-026에 `--merge` 존재 검사 (iii)과 방향 검사, 읽기 기록 추가. D2: AC-GDP-028 (a)가 전원 승인을 요구하고 (b)가 부분 승인 문구를 잡으며 읽기 기록 추가. D3: AC-GDP-029 (b)가 올바른 문구를 떨어뜨리지 않고 리뷰 조건을 잡음. D4: AC-GDP-027 (ii)에 효과 낱말 추가. D5: 범위 파일 수를 아홉 개로 다시 세고 영향 파일 19(경우 B 21)로 정정. D6: §E.2 HEAD 인용 갱신. D7: 변수를 판정 명령과 같은 호출에서 지정하도록 명시. D8: AC-GDP-016 기준 커밋에 템플릿 사본 포함. 이어지는 3회차 감사는 D1~D8과 그로 인한 퇴행만 보며 마지막 회차다. |
+| 0.2.4 | 2026-09-11 | manager-spec | **축소판 plan-audit 3회차**(`.moai/reports/t622/plan-audit-reduced-iter3.md`)의 선택 발견 N1~N3 반영. 운영자 결정(리드 경유): 구현 착수는 N1~N3을 먼저 적용하는 조건으로 승인됐고 재감사는 없다. 요구사항·결정·범위와 판정 대상 REQ 12·AC 16은 그대로다. N1: 명령 관례를 값을 글자 그대로 넣는 형태로 바꾸고, git 명령과 `manager-git.md` 를 담은 명령에는 변수 지정 형태를 쓰지 않는다고 적었다(가드 거부 관측). N2: 빈 결과가 PASS인 판정 열여섯 곳과 AC-GDP-030 경우 선택 한 곳 앞에 `test -e` 존재 확인을 두고 뮤턴트를 §D.2에 기록했다. N3: AC-GDP-028·029 읽기 목록 선택자에 `--auto-merge` 줄을 더하고 뮤턴트를 기록했다. |
 
 ---
 
