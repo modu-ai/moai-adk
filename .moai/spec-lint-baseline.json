@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-11",
+  "tree_sha": "4ac93f755",
+  "reason": "Re-baseline after absorbing t518 (SPEC-SPEC-LINT-BLIND-AXES-001) via local develop 81c1d58f9; absorbed-tree measurement shows 0 non-advisory warnings (3133 warnings, all advisory); card t525 M3.4 gated re-baseline.",
+  "rules": {}
+}
