@@ -6,6 +6,18 @@ metadata:
   phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
 ---
 
+# Approved Plan Handoff
+
+The run phase receives an immutable handoff from plan containing
+`plan_artifact_hash`, `task_graph_id`, the approved scope, and the approval
+record. Before delegating implementation, the orchestrator recomputes the
+artifact hash and validates the task graph against the current tree. When the
+identity and scope are unchanged, this is an input-validation step: do not
+re-invoke `manager-spec` to repeat plan analysis or ask the same approval
+question. When the hash, scope, dependency set, or risk classification changes,
+record the mismatch and route only the affected portion back to planning for
+re-approval. The approval meaning is preserved in both paths.
+
 # Phase 11: Implementation (Mode-Dependent)
 
 **[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-develop) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See context-loading.md "Worktree Path Rules [HARD]" section.
