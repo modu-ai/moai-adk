@@ -53,3 +53,31 @@
 
 - 설치된 `~/go/bin/moai`(rev `2213871af`, dirty)는 t436·t556을 포함하지 않아 재현에 쓰지 않았다. 실제 CLI 바이너리로 `moai goal stat`을 치는 종단 재현은 하지 않았고, cobra 라우팅 결론은 cobra 소스 판독과 테스트 시접(`newGoalCmd`를 루트에 붙인 테스트 루트)에 근거한다.
 - 슬롯 한 번에 한 번만 돌렸다.
+
+---
+
+## 6. 수리 — 운영자 결정 B(명시 목록)
+
+- 기준 트리: 로컬 develop `0db675bed` 흡수(`ab15b5591`, 로컬=원격 확인). 흡수 범위에 `goal.go` 변경 없음.
+- `statusCmd.SuggestFor = [show, list, info, stat]`, `clearCmd.SuggestFor = [cancel, reset, stop, done]`.
+- bare `goal <한 단어>`만 검사한다. 단어가 목록과 대소문자 무시로 일치하면 무장하지 않고 거절하며, 의도했을 동사와 `cmd:` 탈출구를 안내한다. `help`는 도움말을 보여준다.
+- 적용하지 않는 경우: `goal arm <단어>`(의도가 명시됨), `cmd:`/`model:` 접두 조건, 여러 단어 조건, 목록에 없는 명령(`ls`, `rm`).
+- 커밋 순서: RED 테스트 단독 `1e03a9af1` → 수리 커밋(이 기록과 함께).
+
+### 측정 (리드 지명 internal/cli 슬롯, 명령은 모두 `go test ./internal/cli -run TestGoalVerb -count=1 -v`)
+
+| 단계 | 트리 | 결과 |
+|---|---|---|
+| RED | `1e03a9af1` (수리 없음) | exit 1 · RUN 33 / PASS 22 / FAIL 11 / SKIP 0 — `TestGoalVerbMisreadWordsRefused` 서브테스트 9개와 `TestGoalVerbHelpWordShowsHelp` 실패, `TestGoalVerbMisreadCheckStaysNarrow`는 통과 |
+| GREEN | 패치 적용 | exit 0 · RUN 33 / PASS 33 / FAIL 0 / SKIP 0, `go vet ./internal/cli/` exit 0 |
+| 뮤턴트 | 두 `SuggestFor` 목록을 빈 목록으로 | exit 1 · PASS 23 / FAIL 10 — `TestGoalVerbMisreadWordsRefused` 실패. `help`는 목록과 별도 분기라 통과(의도한 결과) |
+
+- 뮤턴트를 되돌린 뒤 `git diff -- internal/cli/goal.go`가 GREEN 때 적용한 패치와 `cmp`로 동일했다. 따라서 GREEN 측정이 커밋되는 코드에 그대로 해당한다.
+- `.moai/state/goal/` 세 곳의 전후 목록: 23줄 → 23줄, `diff` exit 0.
+- GREEN 로그의 한 단어 결과: `stat`·`reset`·`done`·`cancel`·`list`·`show`는 거절+제안, `help`는 도움말, `ls`·`rm`은 무장 유지.
+
+### 6.1 Gaps · Residual-risk
+
+- RED 실행 1회는 다른 세션의 `internal/cli/ptycaptest` 테스트와 동시에 돌았다(대기가 끝난 직후 그 테스트가 새로 시작됨). 이 테스트의 단정은 무장 여부와 오류 문구뿐이라 부하에 영향받지 않는다고 판단했다. GREEN·뮤턴트는 실행 직전 `ps`로 다른 `go test`가 없음을 확인한 뒤 돌렸다.
+- `rm`은 등록 동사 `arm`과 편집 거리 1인데도 결정 목록에 없어 여전히 무장된다. 목록 밖 오타를 막는 편집 거리 규칙(A안)은 채택하지 않았다.
+- 패키지 전체와 darwin/windows 판정은 develop push 후 CI 몫이다.
