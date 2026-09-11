@@ -1,0 +1,17 @@
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences
+    constitution_amend_apply_test.go:121: runConstitutionAmend: want an error on a two-occurrence fixture, got nil
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/valid
+--- FAIL: TestConstitutionAmend_DryRun_SurfacesValidation (0.00s)
+    --- FAIL: TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences (0.00s)
+    --- PASS: TestConstitutionAmend_DryRun_SurfacesValidation/valid (0.00s)
+=== RUN   TestResolveRegistryPath_MatchesExecute
+--- PASS: TestResolveRegistryPath_MatchesExecute (0.00s)
+=== RUN   TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape
+    constitution_amend_apply_test.go:189: error "clause mismatch: --before differs from current clause\nCurrent: A different clause outside the root.\nInput: Keep every amendment small and reviewable." does not name the offending registry /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape4089884561/001/other/.claude/rules/moai/core/zone-registry.md
+    constitution_amend_apply_test.go:193: error "clause mismatch: --before differs from current clause\nCurrent: A different clause outside the root.\nInput: Keep every amendment small and reviewable." carries "clause mismatch" — the refusal did not come from the CLI's own registry validation
+--- FAIL: TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.046s
+FAIL
+exit=1

@@ -1,0 +1,24 @@
+# mutant M-5b-i: restore only the files whose forward rename reported success
+# edits: [["internal/constitution/apply_commit.go", "\tfor _, c := range changes {\n\t\tif err := restore(c.path, c.oldData, c.existed); err != nil {", "\tfor _, c := range changes {\n\t\tif c.temp != \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif err := restore(c.path, c.oldData, c.existed); err != nil {"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RenameFault_RestoresAll$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RenameFault_RestoresAll
+=== RUN   TestApply_RenameFault_RestoresAll/first_rename_applied
+    apply_seams_test.go:118: first_rename_applied: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllfirst_rename_applied4122318230/001 changed: [changed rules/target.md]
+=== RUN   TestApply_RenameFault_RestoresAll/second_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_applied
+    apply_seams_test.go:118: third_rename_applied: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_applied1501840488/001 changed: [changed .moai/research/evolution-log.md]
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_log_absent
+    apply_seams_test.go:118: third_rename_log_absent: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_log_absent1625289631/001 changed: [added .moai/research/evolution-log.md]
+=== RUN   TestApply_RenameFault_RestoresAll/no_fault_clean
+--- FAIL: TestApply_RenameFault_RestoresAll (0.04s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/first_rename_applied (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/second_rename (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_applied (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_log_absent (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/no_fault_clean (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.404s
+FAIL

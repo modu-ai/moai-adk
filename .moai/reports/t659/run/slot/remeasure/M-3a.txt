@@ -1,0 +1,10 @@
+# mutant M-3a: re-serialize the parsed registry instead of rewriting one line
+# edits: [["internal/constitution/apply_transform.go", "\trewritten := text[:start] + strings.Join(lines, \"\") + text[start+len(fence):]", "\tvar reser []rawEntry\n\t_ = yaml.Unmarshal([]byte(fence), &reser)\n\tfor i := range reser {\n\t\tif reser[i].ID == ruleID {\n\t\t\treser[i].Clause = next\n\t\t}\n\t}\n\tout, _ := yaml.Marshal(reser)\n\trewritten := text[:start] + \"\\n\" + string(out) + text[start+len(fence):]"]]
+# $ go test ./internal/constitution/ -run ^TestUpdateRegistryClause_SingleLineRoundTrip$ -count=1 -v
+# exit=1
+=== RUN   TestUpdateRegistryClause_SingleLineRoundTrip
+    apply_test.go:433: registry line count 32 -> 30
+--- FAIL: TestUpdateRegistryClause_SingleLineRoundTrip (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.382s
+FAIL

@@ -1,0 +1,26 @@
+# mutant M-5a: remove the restore call on rename failure
+# edits: [["internal/constitution/apply_commit.go", "if rerr := p.restoreAll(changes); rerr != nil {", "if rerr := error(nil); rerr != nil {"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RenameFault_RestoresAll$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RenameFault_RestoresAll
+=== RUN   TestApply_RenameFault_RestoresAll/first_rename_applied
+    apply_seams_test.go:118: first_rename_applied: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllfirst_rename_applied2351274435/001 changed: [changed rules/target.md]
+=== RUN   TestApply_RenameFault_RestoresAll/second_rename
+    apply_seams_test.go:118: second_rename: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllsecond_rename3930503140/001 changed: [changed rules/target.md]
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename
+    apply_seams_test.go:118: third_rename: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename4071165128/001 changed: [changed .claude/rules/moai/core/zone-registry.md changed rules/target.md]
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_applied
+    apply_seams_test.go:118: third_rename_applied: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_applied3973337005/001 changed: [changed .claude/rules/moai/core/zone-registry.md changed .moai/research/evolution-log.md changed rules/target.md]
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_log_absent
+    apply_seams_test.go:118: third_rename_log_absent: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_log_absent3877929345/001 changed: [added .moai/research/evolution-log.md changed .claude/rules/moai/core/zone-registry.md changed rules/target.md]
+=== RUN   TestApply_RenameFault_RestoresAll/no_fault_clean
+--- FAIL: TestApply_RenameFault_RestoresAll (0.11s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/first_rename_applied (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/second_rename (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_applied (0.03s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_log_absent (0.02s)
+    --- PASS: TestApply_RenameFault_RestoresAll/no_fault_clean (0.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.504s
+FAIL

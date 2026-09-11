@@ -1,0 +1,20 @@
+# mutant M-19: Execute keeps its own projectDir join instead of the shared resolver
+# edits: [["internal/constitution/pipeline.go", "\tregistryPath := ResolveRegistryPath(projectDir)", "\tregistryPath := filepath.Join(projectDir, \".claude\", \"rules\", \"moai\", \"core\", \"zone-registry.md\")"]]
+# $ go test ./internal/constitution/ -run ^(TestExecute_UsesSharedRegistryResolver|TestExecute_RegistryOutsideProjectDir_Refused)$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_UsesSharedRegistryResolver
+    apply_test.go:684: Execute: proposal for rule CONST-V3R6-789: Before differs from the current registry clause
+--- FAIL: TestExecute_UsesSharedRegistryResolver (0.19s)
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_real
+    apply_test.go:720: Execute: want a registry load error, got nil
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_dry_run
+    apply_test.go:720: Execute: want a registry load error, got nil
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/same_root_control
+--- FAIL: TestExecute_RegistryOutsideProjectDir_Refused (0.03s)
+    --- FAIL: TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_real (0.01s)
+    --- FAIL: TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_dry_run (0.01s)
+    --- PASS: TestExecute_RegistryOutsideProjectDir_Refused/same_root_control (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.586s
+FAIL

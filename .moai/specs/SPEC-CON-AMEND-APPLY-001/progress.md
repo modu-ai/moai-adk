@@ -256,25 +256,27 @@ The symlink limit of `sameFile` is carried in §E.3 `residual_risk`.
 run_complete_at: 2026-09-11
 run_commit_sha: pending-backfill        # the M7 commit carrying this block
 baseline_sha: fe8cc9875aea7bad57fe05a88a1b33f8d196fe53
-run_status: complete-except-compile-slot
-ac_pass_count: 21                      # ACs whose every cell is observed PASS
-ac_partial_pending_slot: [AC-CAA-017, AC-CAA-022, AC-CAA-024]   # constitution cells PASS, CLI cell pending
-ac_pending_slot: [AC-CAA-015]
+run_status: complete                   # compile slot measured 2026-09-12 (lane re-measure, .moai/reports/t659/run/slot/summary.md)
+ac_pass_count: 25                      # every cell observed PASS; the four slot cells (AC-CAA-015, 017 CLI half, 022 CLI, 024 CLI) ran in the slot
+ac_partial_pending_slot: []
+ac_pending_slot: []
 ac_fail_count: 0
-mutants_killed_runs: 39                # 38 distinct mutants/variants; M-20 (iii) ran against two selectors
+mutants_killed_runs: 42                # 39 re-measured by the lane in the slot (remeasure/) + 3 CLI mutants (M-13, M-20-i CLI cell, M-20-ii); guard mutants counted separately
 mutants_survived: 0
-mutants_pending_slot: [M-13, M-20-ii, M-20-i-cli-cell]
+mutants_pending_slot: []
+cli_baseline_observation: "299bae37d (tests before CLI change 38928086f), exported with git archive: AC-CAA-015 two_occurrences FAIL (got nil) and AC-CAA-024 CLI FAIL (clause mismatch) as predicted; AC-CAA-022 CLI PASS (preservation) — slot/s5-cli-baseline-red-299bae37d.txt"
+cli_lint: "golangci-lint run ./internal/cli/... — 0 issues (slot/s3-lint-cli.txt)"
 preserve_list_post_run_count: "LoadRegistry unchanged (loader.go not in BASELINE..HEAD); filepath.IsAbs(cleanPath) count 1"
 l44_pre_commit_fetch: not-run           # lane does not fetch/push (lead batch push, CLAUDE.local.md §4.1)
 l44_post_push_fetch: not-applicable      # nothing pushed
-new_warnings_or_lints_introduced: 0     # golangci-lint ./internal/constitution/... 0 issues; internal/cli not linted
+new_warnings_or_lints_introduced: 0     # golangci-lint 0 issues on ./internal/constitution/... and ./internal/cli/... (the latter in the slot)
 cross_platform_build:
   darwin_arm64_tests: pass
   windows_amd64_vet_constitution: pass
   windows_amd64_build_cli: pass
 total_run_phase_files: 15              # Go source and test files; evidence and SPEC records excluded
 m1_to_mN_commit_strategy: per-milestone commits, baseline RED commits ahead of each production change
-compile_slot_commands_pending:
+compile_slot_commands_run_2026_09_12:  # all run in the slot; results in .moai/reports/t659/run/slot/summary.md
   - "unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR MOAI_CONSTITUTION_DRY_RUN && go test ./internal/cli/ -run '^TestConstitutionAmend_DryRun_SurfacesValidation$' -count=1 -v -timeout 600s"
   - "go test ./internal/cli/ -run '^TestResolveRegistryPath_MatchesExecute$' -count=1 -v -timeout 600s"
   - "go test ./internal/cli/ -run '^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$' -count=1 -v -timeout 600s"

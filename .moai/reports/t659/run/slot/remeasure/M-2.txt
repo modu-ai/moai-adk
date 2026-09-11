@@ -1,0 +1,11 @@
+# mutant M-2: normalize whitespace before counting the current clause
+# edits: [["internal/constitution/apply_transform.go", "if n := countOccurrences(content, current); n != 1 {", "if n := countOccurrences([]byte(strings.Join(strings.Fields(string(content)), \" \")), current); n != 1 {"]]
+# $ go test ./internal/constitution/ -run ^TestApply_NoWhitespaceNormalization$ -count=1 -v
+# exit=1
+=== RUN   TestApply_NoWhitespaceNormalization
+    apply_test.go:415: error "amendment validation error: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NoWhitespaceNormalization3505875525/001/rules/target.md: the current clause occurs 2 time(s); want exactly one" lacks the number 0 (path-stripped: "amendment validation error: rule file : the current clause occurs 2 time(s); want exactly one")
+    apply_test.go:415: error "amendment validation error: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NoWhitespaceNormalization3505875525/001/rules/target.md: the current clause occurs 2 time(s); want exactly one" carries the number 2 (path-stripped: "amendment validation error: rule file : the current clause occurs 2 time(s); want exactly one")
+--- FAIL: TestApply_NoWhitespaceNormalization (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.370s
+FAIL
