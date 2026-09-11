@@ -1,6 +1,6 @@
 # design.md — SPEC-CON-AMEND-APPLY-001
 
-Tier L design artifact, added in revision 0.1.4 when the SPEC was raised from Tier M to Tier L (`.moai/reports/t659/verdict.md` §13.3). It records the architecture that the lead rulings already fixed: verdict §7 (Q1–Q5), §8 (G1–G5 and scope addition (a)), §9 (G6), §11 (G7), the two agent extensions the lead accepted in §12.5, and operator decision D4 on plan-audit iteration 1 (revision 0.1.6; `spec.md` §G). **No decision is introduced here.** Where the SPEC's encoding of a ruling adds a detail the verdict does not state word for word, the section says so and names the requirement that carries it.
+Tier L design artifact, added in revision 0.1.4 when the SPEC was raised from Tier M to Tier L (`.moai/reports/t659/verdict.md` §13.3). It records the architecture that the lead rulings already fixed: verdict §7 (Q1–Q5), §8 (G1–G5 and scope addition (a)), §9 (G6), §11 (G7), the two agent extensions the lead accepted in §12.5, and operator decision D4 on plan-audit iteration 1 (revision 0.1.6; `spec.md` §G). Revision 0.1.7 (plan-audit iteration 2) states where REQ-CAA-020 already puts the registry-path check — before the registry is read (§B, §C.2). **No decision is introduced here.** Where the SPEC's encoding of a ruling adds a detail the verdict does not state word for word, the section says so and names the requirement that carries it.
 
 Requirement wording lives in `spec.md` §D, verification in `acceptance.md`, milestone order in `plan.md` §F, and the codebase findings these decisions rest on in `research.md`. Function names, the exact shape of the two seams, the resolver's package home, and backup file naming are run-phase decisions (`spec.md` §E.1) and are not fixed here.
 
@@ -27,11 +27,12 @@ The sequence below restates what REQ-CAA-012, REQ-CAA-017, REQ-CAA-019, REQ-CAA-
 Execute(proposal, projectDir, dryRun)
   0  acquire lock (real mode only; behaviour unchanged, spec.md §E.2)
   1  resolve the registry path with the shared resolver            §D   scope addition (a)
-  2  containment check on the registry path and on every
-     entry's joined file: (right after the registry is loaded;
-     LoadRegistry itself runs no check), and on the
-     evolution-log path (before Layer 1)                           §C   G6, G7, D4
-       refused -> load error naming the path; nothing written; lock released
+  2  containment check on the registry path, before LoadRegistry
+     reads it; then load the registry (LoadRegistry itself runs no
+     check) and check every entry's joined file: immediately after
+     the load; and check the evolution-log path (before Layer 1)  §C   G6, G7, D4
+       refused -> load error naming the path; nothing written; a refused
+       registry is never read; lock released
   3  look up the rule; Before must equal the current clause        §E.1 G3
        mismatch -> error naming the rule ID; no gate runs; lock released
   4  Layers 1-5 (order and semantics unchanged, spec.md §E.2)
@@ -42,7 +43,7 @@ Execute(proposal, projectDir, dryRun)
   7  release lock
 ```
 
-Steps 2 and 3 run in dry-run and real mode alike (REQ-CAA-017, REQ-CAA-020, REQ-CAA-021). Step 5 is the "validation half" of the apply step that dry-run executes (REQ-CAA-012).
+Steps 2 and 3 run in dry-run and real mode alike (REQ-CAA-017, REQ-CAA-020, REQ-CAA-021). Step 5 is the "validation half" of the apply step that dry-run executes (REQ-CAA-012). Inside step 2 the registry-path check precedes the read because REQ-CAA-020 bars any read of another tree; no acceptance criterion can observe that order, so it is confirmed by code review (`spec.md` §E.4).
 
 ## §C One containment check (G6 option (ii), G7 option A)
 
@@ -64,13 +65,13 @@ Two details come from the SPEC's encoding of the ruling, not from the verdict's 
 
 | Site | When | Value shapes covered | Ruling | Acceptance rows | Mutant |
 |---|---|---|---|---|---|
-| Registry path returned by the resolver (§D) | on the amend path, at registry load | absolute; relative value from `MOAI_CONSTITUTION_REGISTRY` or `CLAUDE_PROJECT_DIR`; a path through a directory that is a symbolic link out of the root | G6 (ii); G7 item 1 | AC-CAA-023 `divergent_root_real`, `divergent_root_dry_run` (an absolute escape, which the loader's retained refusal also stops — see C.3); AC-CAA-024 `relative_env_escape`, `symlinked_registry`, and its CLI case | M-20 variants (i) and (ii), M-23 (registry-path variant) |
-| Every registry entry's `file:`, joined with `projectDir` when relative | on the amend path, right after the registry is loaded, for every entry, not only the target | absolute; relative containing `..`; absolute sibling whose name begins with the root's name; relative through a directory that is a symbolic link out of the root | G7 item 2 | AC-CAA-024 `absolute_file` (target and `non_target`), `dotdot_file`, `sibling_prefix_file`, `symlinked_file` | M-21 (`file:` variant), M-22 (both variants), M-23 (`file:` variant) |
+| Registry path returned by the resolver (§D) | on the amend path, before `LoadRegistry` reads the file, so a refused registry is never read (REQ-CAA-020; the order is reviewed, not tested — `spec.md` §E.4) | absolute; relative value from `MOAI_CONSTITUTION_REGISTRY` or `CLAUDE_PROJECT_DIR`; a path through a directory that is a symbolic link out of the root | G6 (ii); G7 item 1 | AC-CAA-023 `divergent_root_real`, `divergent_root_dry_run` (an absolute escape, which the loader's retained refusal also stops — see C.3); AC-CAA-024 `relative_env_escape`, `symlinked_registry`, and its CLI case | M-20 variants (i) and (ii), M-23 (registry-path variant) |
+| Every registry entry's `file:`, joined with `projectDir` when relative | on the amend path, immediately after the registry is loaded, for every entry, not only the target | absolute; relative containing `..`; absolute sibling whose name begins with the root's name; relative through a directory that is a symbolic link out of the root | G7 item 2 | AC-CAA-024 `absolute_file` (target and `non_target`), `dotdot_file`, `sibling_prefix_file`, `symlinked_file` | M-21 (`file:` variant), M-22 (both variants), M-23 (`file:` variant) |
 | Evolution-log path `<projectDir>/.moai/research/evolution-log.md` | before Layer 1 | a directory on the path that is a symbolic link out of the root | G7 item 3 | AC-CAA-024 `symlinked_log` | M-21 (log variant), M-23 (log variant) |
 
 The in-root controls — AC-CAA-023 `same_root_control`, AC-CAA-024 `in_root_control` (`plain`, `symlinked_root`), and AC-CAA-025 — show the refusals come from the escaping shapes, not from a check that refuses everything. M-24 kills the case where only the candidate side is resolved.
 
-The preservation controls — AC-CAA-024 `loader_unchanged` and the AC-CAA-025 `internal/spec` preservation run — show the check is not applied where D4 excludes it: `LoadRegistry` called directly still admits a relative registry path outside the root, an absolute `file:`, and a symlinked registry path, still refuses an absolute registry path outside the root with its present error, and the existing linter test still passes. M-20 variant (iii), which moves the check into the loader, kills both.
+The preservation controls — AC-CAA-024 `loader_unchanged` and the AC-CAA-025 `internal/spec` preservation run — show the check is not applied where D4 excludes it: `LoadRegistry` called directly still admits a relative registry path outside the root, an absolute `file:`, and a symlinked registry path, still refuses an absolute registry path outside the root with its present error, and the existing linter test still passes. M-20 variant (iii), which moves the check into the loader, kills both; variant (iv), which drops the loader's present refusal, kills `loader_unchanged` case `absolute_escape`.
 
 ### C.3 One check, two callers, amend path only (D4)
 
@@ -97,6 +98,7 @@ A refused path yields a load error that names the offending path, in dry-run and
 ### C.6 Residual risk and gaps
 
 - A symbolic link swapped between the check and the write is not a requirement of this SPEC; whoever can rewrite links inside the root already controls its files (plan.md R-9).
+- The fixtures of AC-CAA-024 and AC-CAA-025 resolve their base with `filepath.EvalSymlinks(t.TempDir())`, so a platform temporary directory under a symbolic link (darwin's `/var`) does not blunt the symbolic-link mutants; only the links a row creates on purpose remain (plan.md R-7).
 - Where the platform refuses to create a symbolic link, the symlink rows call `t.Skip`; the skip is a Gap and every variant of M-23, and M-24, are unobserved on that platform (verdict §12.5).
 
 ## §D One registry path resolver (scope addition (a))
