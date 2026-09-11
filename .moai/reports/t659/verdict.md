@@ -237,3 +237,14 @@ LINT_EXIT=0
 1. AC-CAA-024 에 CLI dry-run 사례 추가 — REQ-CAA-021 의 "CLI 와 Execute 가 같은 검사를 쓴다" 조항을 확인하는 인수 조건이 없어서.
 2. M-22 를 변형 둘로 분리 — `filepath.Join` 이 이미 Clean 을 수행해 "Clean 없는 접두 비교"가 join 경로에서는 드러나지 않으므로, (i) 경계 없는 접두 비교(`sibling_prefix_file` RED), (ii) 문자열 이어 붙이기 후 Clean·해석 없는 접두 비교(`dotdot_file` RED)로 나눔.
 - 함께 정리: plan.md 의 `M-21a`/`M-21b` 를 M-21 하나의 변형 둘로 합쳐 뮤턴트 29 유지.
+
+### 12.5 에이전트 확장 2건 — 리드 수용
+
+- **AC-CAA-024 CLI dry-run 사례: 수용.** REQ-CAA-021 의 "CLI 와 Execute 가 같은 검사를 쓴다" 조항을 검증하는 AC 가 없던 구멍을 메운 것이라 요구사항 범위 안이다.
+- **M-22 변형 둘 분리 + M-21a/b 를 M-21 하나로 합침(총 29 유지): 수용.** `filepath.Join` 이 이미 Clean 을 수행해 한 변형으로는 결함이 드러나지 않는 문제를 고친 뮤턴트 설계 개선이다.
+- 둘 다 새 요구사항·범위가 아니므로 되돌리지 않는다. 심볼릭 링크를 만들 수 없는 환경(Windows)에서 M-23·M-24 가 skip 되는 것을 미관측 Gap 으로 적은 표기도 유지한다.
+
+### 12.6 tier 예산 초과 — 감사에 명시해 넘김
+
+- `spec-workflow.md` § SPEC Complexity Tier 의 REQ/AC 상한(각각 독립, M 16 · L 25)에 대해, frontmatter `tier: M` 인 이 SPEC 은 REQ 21 · AC 25 로 둘 다 M 상한을 넘는다(`fa966740d` 레인 계수).
+- 레인은 리드에게 (A) tier L 상향 (B) 분리 (C) 감사 판정을 따름을 제시했고, 리드의 plan-auditor 진행 지시에 따라 (C)로 plan-auditor 에 이 초과를 명시해 넘긴다.
