@@ -1,7 +1,7 @@
 # SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001 — progress (card t637)
 
 Plan-phase artifacts authored 2026-09-11 on HEAD `1ad0fdc09` @ `WT-acquire-branch-record`
-(worktree `.claude/worktrees/t637`). Tier M. Status: in-progress (run-phase, pre-slot done; see §E.2).
+(worktree `.claude/worktrees/t637`). Tier M. Status: completed (sync-phase closed; see §E.4).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -184,12 +184,15 @@ tests would require a temporary worktree at `2a1029aea`, which the dispatch forb
   no count, so no earlier run's number can be re-counted. This is the only deviation from the
   verbatim CMD-ILT-011..013 text.
 
-### E.2.5 Awaiting the lead-gated compile slot (NOT observed)
+### E.2.5 Awaiting the lead-gated compile slot (NOT observed at run-phase write time; resolved in §E.3)
 
 AC-ILT-001..010 (Go halves), AC-ILT-004/005/006 fixture halves (C3′/C1′/C2′), AC-ILT-012 lines
 5-6 (template test, `make build`), AC-ILT-013 lines 1-3 (cli / config / hook invariant runs), and
 AC-ILT-014 rows a-i on the `internal/cli` side (plus supplementary j, k, l). The ordered batch is
 in the run-phase completion report returned to the orchestrator.
+
+**Resolved in §E.3** — the lead-gated slot ran on 2026-09-12 (`.moai/reports/t637/slot-run.md`);
+every item listed above is observed PASS there, and none remains open.
 
 ### E.2.6 Residual risks named for the lead
 
@@ -257,9 +260,14 @@ canary_compliance_check:
 Docs-site: `grep -rln 'moai integration' docs-site/content` returned no matches — the docs-site
 carries no page describing `moai integration`, so no docs-site change is made by this sync.
 
-MX tags: no new exported function, high-fan-in function, or dangerous pattern was introduced by
-this SPEC's run-phase beyond what `.moai/reports/t637/slot-run.md` already covers; no @MX
-annotation change is made by this sync commit.
+MX tags: this SPEC's run-phase does introduce new exported symbols —
+`config.LoadGitFlowIntegrationConfig`, `config.GitFlowIntegrationConfig`,
+`(GitFlowIntegrationConfig).IsGitFlow`, and `kanban.BranchSourceFlag` /
+`kanban.BranchSourceConfig` / `kanban.BranchSourceCaller`. `LoadGitFlowIntegrationConfig` has 2
+non-test callers (`LoadGitFlowDevelopBranch` and `internal/cli/integration.go`'s acquire path),
+so fan_in < 3 and no @MX:ANCHOR is required; its exported godoc already states the contract, so no
+@MX:NOTE is added either. No dangerous pattern (goroutine, complexity >= 15) was introduced. No
+@MX annotation change is made by this sync commit.
 
 `sync_commit_sha` is recorded as `pending-backfill` in this commit — a commit cannot cite its own
 hash — and is backfilled in a following commit, per the pattern already used by
