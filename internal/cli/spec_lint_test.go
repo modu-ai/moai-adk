@@ -577,8 +577,24 @@ func slFileSHA256(t *testing.T, path string) string {
 }
 
 // slRunLint executes the real cobra command in `dir`, returning combined
-// stdout, stderr and the exit code the process would have used.
+// stdout and stderr as the user would see them, plus the exit code the process
+// would have used.
 func slRunLint(t *testing.T, dir string, args ...string) (string, int) {
+	t.Helper()
+	stdout, stderr, code := slRunLintStreams(t, dir, args...)
+	return stdout + stderr, code
+}
+
+// slRunLintStreams is slRunLint with the two streams kept apart, for tests that
+// must tell where a message was written and how many times.
+//
+// The error's own message is appended to stderr ONLY where the real binary
+// would render it. An *exitCodeError is rendered as nothing (moaiErrorHandler
+// stays silent for ExitCoder carriers), so its text reaches the user only if
+// the command wrote it itself; appending it here would let a test assert on
+// text the user never sees — the same rule runSpecLint documents. Any other
+// error is rendered by fang's default handler, so it is appended to mirror that.
+func slRunLintStreams(t *testing.T, dir string, args ...string) (string, string, int) {
 	t.Helper()
 	t.Chdir(dir)
 
@@ -591,15 +607,14 @@ func slRunLint(t *testing.T, dir string, args ...string) (string, int) {
 	cmd.SilenceErrors = true
 
 	err := cmd.Execute()
-	combined := out.String() + errBuf.String()
 	if err == nil {
-		return combined, 0
+		return out.String(), errBuf.String(), 0
 	}
 	var ec *exitCodeError
 	if errors.As(err, &ec) {
-		return combined + "\n" + err.Error(), ec.ExitCode()
+		return out.String(), errBuf.String(), ec.ExitCode()
 	}
-	return combined + "\n" + err.Error(), 1
+	return out.String(), errBuf.String() + err.Error() + "\n", 1
 }
 
 // slCaptureBaseline captures the corpus's current state as the baseline file.
@@ -902,15 +917,32 @@ func TestSpecLintBaseline_FlagContractRejections(t *testing.T) {
 			[]string{"--baseline", existing, "--sarif"}, "--sarif"},
 		{"--baseline with --strict",
 			[]string{"--baseline", existing, "--strict"}, "--strict"},
+		{"--update-baseline with a whitespace-only --reason",
+			[]string{"--baseline", existing, "--update-baseline", "--reason", "   "}, "non-empty --reason"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			out, code := slRunLint(t, root, tc.args...)
+			stdout, stderr, code := slRunLintStreams(t, root, tc.args...)
 			if code != 3 {
-				t.Fatalf("want exit 3, got %d\n%s", code, out)
+				t.Fatalf("want exit 3, got %d\nstdout:\n%s\nstderr:\n%s", code, stdout, stderr)
 			}
-			if !strings.Contains(out, tc.wantWord) {
-				t.Errorf("the message must name %q:\n%s", tc.wantWord, out)
+			// The rejection happens before any lint runs, so nothing belongs on
+			// stdout; the diagnostic belongs on stderr, written exactly once.
+			// An exit code alone names nothing — the real binary renders an
+			// exit-3 error as silence, so stderr is the only place the cause
+			// can reach the user.
+			if stdout != "" {
+				t.Errorf("a flag rejection must write nothing to stdout, got:\n%s", stdout)
+			}
+			if stderr == "" {
+				t.Fatalf("the rejection must be written to stderr; stderr is empty (the user sees nothing)")
+			}
+			lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n")
+			if len(lines) != 1 {
+				t.Fatalf("the rejection must be written to stderr exactly once, got %d line(s):\n%s", len(lines), stderr)
+			}
+			if !strings.Contains(lines[0], tc.wantWord) {
+				t.Errorf("the stderr message must name %q:\n%s", tc.wantWord, stderr)
 			}
 		})
 	}

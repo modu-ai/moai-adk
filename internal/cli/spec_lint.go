@@ -75,7 +75,7 @@ Exit codes:
 			if jsonOutput && sarifOutput {
 				return &exitCodeError{code: 3, msg: "cannot use --json and --sarif together"}
 			}
-			if err := validateBaselineFlags(baselinePath, updateBaseline, reason, jsonOutput, sarifOutput, strict); err != nil {
+			if err := validateBaselineFlags(cmd.ErrOrStderr(), baselinePath, updateBaseline, reason, jsonOutput, sarifOutput, strict); err != nil {
 				return err
 			}
 
@@ -159,15 +159,19 @@ Exit codes:
 // exit 3. Each rejection is explicit on purpose: a silently-ignored flag, or a
 // silent fallback to today's behaviour, is the failure mode the baseline gate
 // exists to remove.
-func validateBaselineFlags(baselinePath string, updateBaseline bool, reason string, jsonOutput, sarifOutput, strict bool) error {
+//
+// Each rejection is WRITTEN to stderr through argumentError, not only carried by
+// the returned error: an ExitCoder returned from RunE is rendered as nothing, so
+// a rejection that lived only inside the error would exit 3 in silence.
+func validateBaselineFlags(stderr io.Writer, baselinePath string, updateBaseline bool, reason string, jsonOutput, sarifOutput, strict bool) error {
 	if reason != "" && !updateBaseline {
-		return &exitCodeError{code: 3, msg: "--reason is only meaningful with --update-baseline"}
+		return argumentError(stderr, "--reason is only meaningful with --update-baseline")
 	}
 	if updateBaseline && baselinePath == "" {
-		return &exitCodeError{code: 3, msg: "--update-baseline requires --baseline <path> naming the file to write"}
+		return argumentError(stderr, "--update-baseline requires --baseline <path> naming the file to write")
 	}
 	if updateBaseline && strings.TrimSpace(reason) == "" {
-		return &exitCodeError{code: 3, msg: `--update-baseline requires a non-empty --reason "<text>"; an unexplained rebaseline is baseline manipulation`}
+		return argumentError(stderr, `--update-baseline requires a non-empty --reason "<text>"; an unexplained rebaseline is baseline manipulation`)
 	}
 	if baselinePath == "" {
 		return nil
@@ -175,19 +179,19 @@ func validateBaselineFlags(baselinePath string, updateBaseline bool, reason stri
 	// The JSON and SARIF payloads carry the raw finding list and have no
 	// baseline dimension, so accepting the flag there would silently ignore it.
 	if jsonOutput {
-		return &exitCodeError{code: 3, msg: "cannot use --baseline with --json (the JSON payload carries no baseline verdict)"}
+		return argumentError(stderr, "cannot use --baseline with --json (the JSON payload carries no baseline verdict)")
 	}
 	if sarifOutput {
-		return &exitCodeError{code: 3, msg: "cannot use --baseline with --sarif (the SARIF payload carries no baseline verdict)"}
+		return argumentError(stderr, "cannot use --baseline with --sarif (the SARIF payload carries no baseline verdict)")
 	}
 	// --strict and --baseline are two escalation policies over the same
 	// dimension. Running both splits the gate's meaning across two flags.
 	if strict {
-		return &exitCodeError{code: 3, msg: "cannot use --baseline and --strict together: both gate on non-advisory warnings, and --baseline supersedes --strict for that purpose"}
+		return argumentError(stderr, "cannot use --baseline and --strict together: both gate on non-advisory warnings, and --baseline supersedes --strict for that purpose")
 	}
 	if !updateBaseline {
 		if _, statErr := os.Stat(baselinePath); statErr != nil {
-			return &exitCodeError{code: 3, msg: fmt.Sprintf("--baseline file not found: %s (create it with --update-baseline --reason \"<text>\")", baselinePath)}
+			return argumentError(stderr, "--baseline file not found: %s (create it with --update-baseline --reason \"<text>\")", baselinePath)
 		}
 	}
 	return nil
@@ -209,7 +213,11 @@ func runBaselineGate(cmd *cobra.Command, report *spec.Report, path string, updat
 	if update {
 		b := spec.NewBaselineFromReport(report, resolveTreeSHA(cwd), time.Now().Format("2006-01-02"), strings.TrimSpace(reason))
 		if writeErr := spec.WriteBaseline(path, b); writeErr != nil {
-			return &exitCodeError{code: 2, msg: fmt.Sprintf("spec lint: %v", writeErr)}
+			// Written to stderr for the same reason as argumentError: the
+			// exit-2 error is rendered as nothing at the terminal.
+			msg := fmt.Sprintf("spec lint: %v", writeErr)
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), msg)
+			return &exitCodeError{code: 2, msg: msg}
 		}
 		recorded := 0
 		for _, n := range b.Rules {
@@ -232,7 +240,7 @@ func runBaselineGate(cmd *cobra.Command, report *spec.Report, path string, updat
 
 	baseline, loadErr := spec.LoadBaseline(path)
 	if loadErr != nil {
-		return &exitCodeError{code: 3, msg: fmt.Sprintf("spec lint: %v", loadErr)}
+		return argumentError(cmd.ErrOrStderr(), "spec lint: %v", loadErr)
 	}
 
 	verdict := spec.CompareBaseline(report, baseline)

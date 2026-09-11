@@ -1,0 +1,21 @@
+F1 cross-process check — card t525, SPEC-SPECLINT-GATE-SIGNAL-001
+
+Judging build: `go build -o <scratch>/moai-t525-f1 ./cmd/moai` (exit 0), built from the
+worktree at HEAD cb1b9a16d plus the uncommitted F1 diff of internal/cli/spec_lint.go and
+internal/cli/spec_lint_test.go (no other modified tracked file). sha256 of
+`git diff HEAD -- internal/cli/spec_lint.go internal/cli/spec_lint_test.go` at build time:
+b1e95a99b16e6c73406436cf668ada10f9ec1ca71d3d008ee52b63f98490c6b3
+The same diff is the content of the F1 commit (compare `git diff <commit>~1 <commit> -- <both files>`).
+Invoked by path; the installed moai was not used. All runs from the worktree root, unpiped,
+stdout and stderr to separate files.
+
+c1  <bin> spec lint --baseline .moai/spec-lint-baseline.json --strict
+c2  <bin> spec lint --baseline /nonexistent-t525-baseline.json
+c3  <bin> spec lint --baseline .moai/spec-lint-baseline.json --update-baseline --reason "   "
+    (rejected in validateBaselineFlags, which RunE calls before any lint or write;
+     c3-sha256-before.txt / c3-sha256-after.txt bracket the run)
+c4  <bin> spec lint --baseline .moai/spec-lint-baseline.json   (control)
+    stdout was 1142480 bytes; only its last 5 lines are kept (c4-stdout-tail.txt),
+    the full stream's sha256 is in c4-stdout-full.sha256.
+
+Result files: c<N>-exit.txt, c<N>-stdout.txt, c<N>-stderr.txt.
