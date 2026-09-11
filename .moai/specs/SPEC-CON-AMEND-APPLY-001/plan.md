@@ -17,7 +17,7 @@ The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them i
 | 97/97 live registry clauses occur exactly once in their file; 4 retired entries occur 0 times | verdict §2.3 |
 | CLI resolves the registry by env precedence; `Execute` joins `projectDir` | `constitution.go:144-155`, `pipeline.go:66` |
 | `LoadRegistry` rejects only an absolute registry path escaping `projectDir`; a relative path is not checked, and `applyAmendment` joins `file:` with no check — both closed by REQ-CAA-021 (verdict §11) | `loader.go:80-88`, `pipeline.go:192-195` |
-| Real registry `file:` shape: 101 lines, 17 distinct, 87 under `.claude/`, 14 `CLAUDE.md`, 0 absolute, 0 containing `..`, 101 existing | read-only Python scan at `578afca87` (AC-CAA-025) |
+| Real registry `file:` shape: 101 lines, 17 distinct, 87 under `.claude/`, 14 `CLAUDE.md`, 0 absolute, 0 containing `..`, 101 existing | read-only Python scan at `578afca87`, same figures re-measured at `4e9273d0b` (AC-CAA-025) |
 | Every existing `Execute` test passes a `Before` equal to its fixture clause (REQ-CAA-017 breaks none) | `pipeline_test.go` lines 108-262 read at `ff11e752f` |
 | No `t.Parallel` in the affected test files (so `t.Setenv` is usable) | `grep -c 't.Parallel()'` = 0 per file at `ff11e752f` |
 | `MarkRolledBack` has 0 production callers | grep for `MarkRolledBack(` over `internal cmd pkg` Go files excluding `_test.go` → definition line only (tree `034d55c56`) |
@@ -65,7 +65,7 @@ Fixture consequences:
 - [HARD] Lane-local verification is scoped: `go test ./internal/constitution/ -count=1` plus the named `internal/cli` selectors, never the full suite. `internal/cli` runs need the compile slot granted at run-phase and `-timeout 600s`.
 - Environment-scrubbed runs use one compound `unset … && go test …` invocation. The tests must not depend on that scrub — they set the variables themselves (REQ-CAA-015); AC-CAA-017 deliberately runs once without it.
 - A leftover temporary or backup file must never land as `*.md` inside `.claude/rules/**`, where Claude Code loads markdown as rules. Name them with a non-`.md` suffix (for example `.<base>.amend-tmp-<random>` and `.<base>.amend-bak-<random>`), created in the target's own directory so the rename stays on one filesystem.
-- Tests that use `t.Chdir` (AC-CAA-024 `relative_env_escape`) change the process working directory; they stay non-parallel and pin the lock path, so the cwd-relative default lock path is never created.
+- Tests that use `t.Chdir` (AC-CAA-024 `relative_env_escape`, `in_root_control`, and its CLI case) change the process working directory; they stay non-parallel and pin the lock path, so the cwd-relative default lock path is never created.
 - No new dependency. Reuse `extractYAMLFence` and the `rawEntry` decoding for REQ-CAA-004 rather than a second parser.
 - The resolver reads env names from constants, not string literals (CLAUDE.local.md §14): reuse `config.EnvClaudeProjectDir` and move or re-export the existing `MOAI_CONSTITUTION_REGISTRY` constant rather than duplicating it.
 
@@ -93,7 +93,7 @@ Covers REQ-CAA-019, REQ-CAA-020, and REQ-CAA-021. A new function both packages c
 - Baseline first: AC-CAA-022 RED against the current `Execute` (it joins `projectDir` and cannot load the registry at the env path).
 - Approach: move the precedence of `resolveRegistryPath` into `internal/constitution` (for example `ResolveRegistryPath(projectDir string) string`); `internal/cli.resolveRegistryPath` becomes a thin call to it or is replaced; `Execute` calls it instead of its own join.
 - Containment (REQ-CAA-020, REQ-CAA-021): one check function — clean, make absolute, resolve symbolic links (nearest existing ancestor for a path not yet created), compare with the resolved root at a separator boundary — called for the registry path and for every entry's joined `file:` at registry load, and for the evolution-log path before Layer 1. It replaces the loader's absolute-only refusal. The source rule file and the log keep their `projectDir` joins; the check only admits or refuses them. Baseline-first: AC-CAA-023 RED against current code (`Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error). AC-CAA-024's five escape rows are RED the same way, since no check exists for them.
-- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run` and AC-CAA-024's escape rows (real and dry-run) GREEN; M-20, M-21a, M-21b, M-22, and M-23 RED. AC-CAA-023 `same_root_control`, AC-CAA-024 `in_root_control`, and AC-CAA-025 turn GREEN at M5, once the apply is wired. Existing `internal/cli` constitution tests re-run with the compile slot.
+- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run`, AC-CAA-024's five escape rows (real and dry-run), and AC-CAA-024's CLI case (compile slot) GREEN; M-20, M-21 (both variants), M-22 (both variants), and M-23 RED. AC-CAA-023 `same_root_control`, the real cases of AC-CAA-024 `in_root_control`, and AC-CAA-025 `real` turn GREEN at M5, once the apply is wired. Existing `internal/cli` constitution tests re-run with the compile slot.
 
 ### M3 — Source and registry transforms, in memory (Q1/Q2, G2)
 
@@ -132,7 +132,7 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 | R-1 | Existing fixtures point at a missing `dummy.md`; dry-run tests flip RED once validation runs | §C.2 disposition; fix fixtures, do not relax REQ-CAA-012 |
 | R-2 | REQ-CAA-009 fail-closed blocks every amendment if the human log gains a malformed entry | confirmed by the lead (G1); the error names path, line, and key so a human can fix it |
 | R-3 | A leftover temp or backup file inside `.claude/rules/**` is loaded as a rule | non-`.md` suffixes; cleanup asserted in AC-CAA-012; a retained backup after a failed restore (REQ-CAA-018) is still non-`.md` |
-| R-4 | After REQ-CAA-019, a session-exported `CLAUDE_PROJECT_DIR` steers any test that reaches the resolver toward the real registry | REQ-CAA-015 obliges tests to set both variables; AC-CAA-017 runs once with `CLAUDE_PROJECT_DIR` pointed at the repository root; `LoadRegistry`'s escape check is a second line of defence and is now required behaviour (REQ-CAA-020, AC-CAA-023) |
+| R-4 | After REQ-CAA-019, a session-exported `CLAUDE_PROJECT_DIR` steers any test that reaches the resolver toward the real registry | REQ-CAA-015 obliges tests to set both variables; AC-CAA-017 runs once with `CLAUDE_PROJECT_DIR` pointed at the repository root; the containment check is a second line of defence and is required behaviour (REQ-CAA-020, REQ-CAA-021, AC-CAA-023, AC-CAA-024) |
 | R-5 | REQ-CAA-016 rejects a new clause that is a substring of the current clause (e.g. shortening a sentence by removing its tail) | literal consequence of the G2 ruling, stated in REQ-CAA-016; the user rewrites the proposal |
 | R-6 | Once human entries are readable, the unused `MarkRolledBack` becomes lossy | 0 production callers; follow-up candidate (spec.md §F) |
 | R-7 | An over-strict containment check refuses legitimate paths — a root reached through a symbolic link (the macOS temp directory is one), or a log not yet created | REQ-CAA-021 resolves both sides and judges a missing path by its nearest existing ancestor; AC-CAA-024 `in_root_control`, AC-CAA-025, M-24 |
@@ -150,7 +150,7 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 
 ## §I Cross-References
 
-- `spec.md` §C (ruling map), §D (requirements), §E.4 (approved gap), §F (exclusions), §G (open question)
+- `spec.md` §C (ruling map), §D (requirements), §E.4 (approved gap), §F (exclusions), §G (no open question)
 - `acceptance.md` §D (AC matrix), §D.2 (mutants)
 - `progress.md` (run-phase evidence skeleton)
-- `.moai/reports/t659/verdict.md` §7, §8, §9
+- `.moai/reports/t659/verdict.md` §7, §8, §9, §11

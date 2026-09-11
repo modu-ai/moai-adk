@@ -6,6 +6,8 @@ Revision 0.1.1 (same as spec.md HISTORY): AC-CAA-018 … AC-CAA-022 and mutants 
 
 Revision 0.1.2 (same as spec.md HISTORY): AC-CAA-023 and mutant M-20 appended for the verdict §9 ruling on G6; AC-CAA-022 gains a note on how it fits with AC-CAA-023. Existing IDs unchanged.
 
+Revision 0.1.3 (same as spec.md HISTORY): AC-CAA-024, AC-CAA-025 and mutants M-21 … M-24 appended for the verdict §11 ruling on G7; AC-CAA-023 now asserts the offending path instead of the loader's present wording; M-20 now names the registry-path site of the one containment check and also turns AC-CAA-024 `relative_env_escape` and its CLI case RED. Existing IDs unchanged.
+
 Common rules for every AC:
 - Fixtures live under `t.TempDir()`: a project dir with `.claude/rules/moai/core/zone-registry.md`, a real rule file the target entry points at (current clause once, new clause absent unless the AC says otherwise), and `.moai/research/evolution-log.md` where needed. The lock path is pinned inside the temp dir; `fakeOversight` approves non-dry-run runs; the proposal's `Before` equals the current clause unless the AC says otherwise.
 - Every test that calls `Execute` or `runConstitutionAmend` sets `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` with `t.Setenv` (empty unless the AC says otherwise) — REQ-CAA-015.
@@ -40,6 +42,8 @@ Common rules for every AC:
 | AC-CAA-021 | REQ-CAA-011, REQ-CAA-018 | seams do not exist — the discriminating RED is the mutant | M-18 |
 | AC-CAA-022 | REQ-CAA-019 | `Execute` joins `projectDir`, fails to load the registry at the env path — baseline-first | M-19 |
 | AC-CAA-023 | REQ-CAA-020 | `Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error (code unchanged at `92c8c3f36`) — baseline-first | M-20 |
+| AC-CAA-024 | REQ-CAA-020, REQ-CAA-021 | escape rows: `Execute` ignores both environment variables and joins `file:` with no check, so each returns dry-run success or the stub error; the CLI case prints `Dry-run success`; `in_root_control` real cases return the stub error (code unchanged at `578afca87`) — baseline-first | M-20, M-21, M-22, M-23, M-24 |
+| AC-CAA-025 | REQ-CAA-021 | `load` and `dry_run`: none expected — the current loader admits relative `file:` values; invariant guard whose RED cell is the mutant. `real`: stub error — baseline-first | M-24 |
 
 ### §D.0 REQ coverage (machine-readable)
 
@@ -66,8 +70,10 @@ Common rules for every AC:
 - AC-CAA-021 maps REQ-CAA-011, REQ-CAA-018
 - AC-CAA-022 maps REQ-CAA-019
 - AC-CAA-023 maps REQ-CAA-020
+- AC-CAA-024 maps REQ-CAA-020, REQ-CAA-021
+- AC-CAA-025 maps REQ-CAA-021
 
-The union is REQ-CAA-001 … REQ-CAA-020; no requirement lacks an AC.
+The union is REQ-CAA-001 … REQ-CAA-021; no requirement lacks an AC.
 
 ## §D.1 AC Details
 
@@ -291,7 +297,7 @@ Relation to AC-CAA-023: this AC fixes *which* path the one resolver chooses; AC-
 
 - **Given** two sibling `t.TempDir()` trees `P` and `Q` (neither inside the other) and a third `t.TempDir()` `L` holding the lock path; `P` is a valid fixture (registry at the default location, a rule file whose relative `file:` path resolves inside `P` and contains the current clause once and the new clause not at all, and an existing evolution log); `Q` holds a byte copy of `P`'s registry at its default location `Q/.claude/rules/moai/core/zone-registry.md`; the proposal's `Before` equals the current clause; `MOAI_CONSTITUTION_REGISTRY` is empty and `CLAUDE_PROJECT_DIR = Q`, both set with `t.Setenv`; oversight, canary, and contradiction doubles record whether they were called; the path set and sha256 of every file under `P` and `Q` are captured before the call,
 - **When** `Execute` runs with `projectDir = P` in real mode and, on a fresh copy of the same fixture, in dry-run mode,
-- **Then** each returns the registry load error (its text contains `registry load error` and `escapes project dir`),
+- **Then** each returns the registry load error, whose text contains the offending registry path `Q/.claude/rules/moai/core/zone-registry.md` in its cleaned absolute form or its symbolic-link-resolved form (the test computes both; the wording around the path is not asserted, because REQ-CAA-021 replaces the loader's present check),
 - **And** no gate double was called,
 - **And** the path set and every sha256 under `P` and under `Q` equal their pre-call snapshots,
 - **And** in real mode no lock file remains under `L` (the lock was released);
@@ -302,6 +308,51 @@ Command: `go test ./internal/constitution/ -run '^TestExecute_RegistryOutsidePro
 Why `Q` holds a copy of `P`'s registry: without the containment check, the loader would accept `Q`'s registry, find the same entry with a clause equal to `Before`, and resolve its `file:` against `P`, so the apply would succeed and write `P`'s rule file, `Q`'s registry, and `P`'s log — a cross-tree write. The fixture makes mutant M-20 fail the error, byte-identity, and path-set assertions together, not only the error text.
 
 Baseline-first: against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and loads `P`'s registry; `divergent_root_dry_run` returns success and `divergent_root_real` returns the stub error, so both are RED on the error assertion. `same_root_control` stays RED on the stub until M5.
+
+### AC-CAA-024 — the containment check refuses every escaping path shape before any write
+
+- **Given** a base `B = t.TempDir()` holding the project root `P = B/root`, a sibling `B/root-evil`, and outside trees `B/other`, `B/outside`, and `B/outside-research`; a lock path pinned under a separate `t.TempDir()` `L`; `P` a valid fixture (registry at the default location, a target Evolvable entry whose rule file holds the current clause once and the new clause not at all, and an existing evolution log) except for the one escaping shape its row names; wherever a row's escaping path names a rule file, that file also holds the current clause once and the new clause not at all, so the containment check is the only thing that can stop the apply; `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` empty unless the row says otherwise, set with `t.Setenv`; oversight, canary, and contradiction doubles that record whether they were called; the path set and the sha256 of every file under `B` captured before the call; and these rows, each on a fresh fixture:
+
+  | Row (subtest) | Escaping shape | Offending path the error names |
+  |---|---|---|
+  | `relative_env_escape` | working directory set to `P` with `t.Chdir`; `B/other` holds a byte copy of `P`'s registry at its default location. Case `registry_var`: `MOAI_CONSTITUTION_REGISTRY = ../other/.claude/rules/moai/core/zone-registry.md`, `CLAUDE_PROJECT_DIR` empty. Case `project_dir_var`: `MOAI_CONSTITUTION_REGISTRY` empty, `CLAUDE_PROJECT_DIR = ../other` | `B/other/.claude/rules/moai/core/zone-registry.md` |
+  | `absolute_file` | the target entry's `file:` is the absolute path `B/outside/rule.md`. Case `non_target`: the target entry's `file:` stays relative and inside `P`, and a different entry carries that absolute `file:` | `B/outside/rule.md` |
+  | `dotdot_file` | the target entry's `file:` is the relative value `../outside/rule.md` | `B/outside/rule.md` |
+  | `sibling_prefix_file` | the target entry's `file:` is the absolute path `B/root-evil/rule.md`, a sibling whose name begins with the root's name | `B/root-evil/rule.md` |
+  | `symlinked_log` | `P/.moai/research` is a symbolic link to `B/outside-research`, which holds the existing log | `P/.moai/research/evolution-log.md` |
+
+- **When** `Execute` runs with `projectDir = P` in real mode and, on a fresh copy of the same fixture, in dry-run mode,
+- **Then** each returns an error whose text contains the row's offending path in its cleaned absolute form or its symbolic-link-resolved form (the test computes both),
+- **And** no gate double was called,
+- **And** the path set and every sha256 under `B` equal their pre-call snapshots — inside `P` and in every tree outside it,
+- **And** in real mode no lock file remains under `L`;
+- **And given** the control row `in_root_control` on a fresh fixture with every path inside the root — case `plain`: `projectDir = P`, working directory `P`, `MOAI_CONSTITUTION_REGISTRY = .claude/rules/moai/core/zone-registry.md` (a relative value inside the root), and `P/.moai/research/` present with no log file yet; case `symlinked_root`: the same, except that `P` is reached through a symbolic link `B/link → B/root`, so `projectDir = B/link` and the working directory is `B/link` — **when** `Execute` runs in real mode, **then** it returns a log entry and no error, the target rule file and the registry carry the amendment, the log now exists and holds exactly the one new entry, and every sha256 under `B` outside `P` is unchanged; **and when** `Execute` runs in dry-run mode on a fresh copy, **then** it returns a log entry, no error, and an unchanged snapshot of `B` — so the refusals come from the escaping shapes, not from a check that refuses relative values, a root reached through a link, or a log not yet created;
+- **And given** the CLI case in `internal/cli` on the `relative_env_escape` `project_dir_var` fixture, **when** `runConstitutionAmend(stdout, stderr, P, ruleID, before, after, "", true)` runs, **then** it returns a non-nil error containing the offending path, stdout does not contain `Dry-run success`, and the snapshot of `B` is unchanged — the CLI's registry validation uses the same check (REQ-CAA-021).
+
+Commands: `go test ./internal/constitution/ -run '^TestExecute_ContainmentCheck_RefusesEscapes$' -count=1 -v` — expect 1 top-level RUN with subtests `relative_env_escape`, `absolute_file`, `dotdot_file`, `sibling_prefix_file`, `symlinked_log`, and `in_root_control`, each reporting its `real` and `dry_run` cases and the nested cases named above; and, with the compile slot, `go test ./internal/cli/ -run '^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$' -count=1 -v -timeout 600s` — expect 1 top-level RUN.
+
+Symbolic links: where the platform refuses to create a symbolic link, `symlinked_log` and `in_root_control/symlinked_root` call `t.Skip` with the error. A skip is recorded in `progress.md` §E.2 as a Gap, never as a PASS, and M-23 and M-24 are then unobserved on that platform.
+
+Baseline-first: against current code (`git diff --stat 578afca87 4e9273d0b -- internal/constitution` prints nothing), `Execute` ignores both environment variables and joins `file:` with no check, so every escape row returns dry-run success or, in real mode, the stub error — RED on the error assertion. `in_root_control` real cases stay RED on the stub until M5. The CLI case is predicted RED from code reading: the CLI resolver returns the relative path, `LoadRegistry` checks containment only for an absolute path (`internal/constitution/loader.go:82`) and reads `B/other`'s registry, and the dry-run prints success.
+
+Mutant coverage: M-20 turns `relative_env_escape` (both cases) and the CLI case RED; M-21 at the `file:` site turns `absolute_file` (both cases), `dotdot_file`, and `sibling_prefix_file` RED, and at the log site turns `symlinked_log` RED; M-22 variant (i) turns `sibling_prefix_file` RED and variant (ii) turns `dotdot_file` RED; M-23 turns `symlinked_log` RED; M-24 turns `in_root_control/symlinked_root` RED.
+
+### AC-CAA-025 — the real registry's `file:` shape is still admitted
+
+- **Given** a base `B = t.TempDir()` with the project root `P = B/root` reached through a symbolic link `B/link → B/root`; the repository's real `.claude/rules/moai/core/zone-registry.md` opened read-only and copied byte for byte to `P/.claude/rules/moai/core/zone-registry.md`; a drift witness on that copy asserting its shape — 101 `file:` lines, 0 whose value is absolute, 0 whose value contains `..`; every distinct `file:` path of the copy created under `P`, the file of one live Evolvable target entry holding its current clause once and the new clause not at all, and the other files holding placeholder text that contains neither clause of the proposal; `P/.moai/research/` present with no log file yet; `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` empty, set with `t.Setenv`; a lock path under a separate `t.TempDir()` `L`; the path set and sha256 of every file under `B`, and the sha256 of the real registry and the real log, captured before the calls,
+- **When** `LoadRegistry` runs on the copy with `projectDir = B/link`, then `Execute` runs with `projectDir = B/link` in dry-run mode, and then, on a fresh copy of the fixture, in real mode,
+- **Then** `LoadRegistry` returns 101 entries and no error,
+- **And** dry-run returns a log entry, no error, and an unchanged snapshot of `B`,
+- **And** real mode returns a log entry and no error, the target rule file, the registry copy, and the new log carry the amendment, and every other file under `B` is byte-identical,
+- **And** the real registry and the real log keep the sha256 captured before the calls (REQ-CAA-015).
+
+Command: `go test ./internal/constitution/ -run '^TestExecute_RealRegistryShape_Admitted$' -count=1 -v` — expect 1 top-level RUN with subtests `load`, `dry_run`, and `real`.
+
+Shape measured for the witness: a read-only scan of the real registry at `4e9273d0b` prints 101 `file:` lines, 17 distinct values, 0 absolute, 0 containing `..`, 87 beginning with `.claude/`, 14 equal to `CLAUDE.md`, 101 existing (the same figures plan.md §B records at `578afca87`; `git diff --stat 578afca87 4e9273d0b -- .claude/rules/moai/core/zone-registry.md` prints nothing). If the real registry later gains an absolute or `..` `file:` value, this AC fails on the witness rather than on the check: such a registry is refused at load under REQ-CAA-021 (plan.md R-8), and the registry change is reviewed rather than the witness relaxed.
+
+Where the platform refuses the symbolic link, the test calls `t.Skip` with the error; the skip is recorded as a Gap and M-24 is unobserved on that platform.
+
+Baseline-first: against current code `load` and `dry_run` are expected GREEN — the loader admits relative `file:` values and `Execute` joins `projectDir` — so they are regression guards whose RED cell is M-24; `real` is RED on the stub until M5.
 
 ## §D.2 Mutant list (each must turn its AC RED; record in progress.md §E.2)
 
@@ -331,16 +382,20 @@ Baseline-first: against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and
 | M-17 | Remove the `Execute` `Before` check while the CLI `--before` check stays | AC-CAA-020 |
 | M-18 | On restore failure, delete the backups; separately, omit the backup paths from the error | AC-CAA-021 |
 | M-19 | `Execute` keeps its own `projectDir` join instead of the shared resolver | AC-CAA-022 |
-| M-20 | Remove the containment check from `LoadRegistry` (the escape refusal at `internal/constitution/loader.go:80-88`) | AC-CAA-023 `divergent_root_real` and `divergent_root_dry_run` |
+| M-20 | Remove the containment check at the registry-path site (today the absolute-only escape refusal at `internal/constitution/loader.go:80-88`; after REQ-CAA-021, the one check's call on the registry path) | AC-CAA-023 `divergent_root_real` and `divergent_root_dry_run`; AC-CAA-024 `relative_env_escape` (both cases) and its CLI case |
+| M-21 | Remove the containment check's call on each entry's joined `file:`; separately, remove its call on the evolution-log path | `file:` variant: AC-CAA-024 `absolute_file` (both cases), `dotdot_file`, `sibling_prefix_file`; log variant: AC-CAA-024 `symlinked_log` |
+| M-22 | (i) Replace the separator-boundary comparison with a plain string prefix test on the cleaned, resolved paths, so `B/root-evil/rule.md` passes as inside `B/root`; separately, (ii) compare the uncleaned candidate — the root and the `file:` value concatenated with a separator, with no `filepath.Clean`, no absolutization, and no symbolic-link resolution — against the root with a plain string prefix test | (i) AC-CAA-024 `sibling_prefix_file`; (ii) AC-CAA-024 `dotdot_file` |
+| M-23 | Resolve no symbolic links on either side (clean and make absolute only) | AC-CAA-024 `symlinked_log` |
+| M-24 | Resolve symbolic links on the candidate path but not on `projectDir` | AC-CAA-024 `in_root_control/symlinked_root`; AC-CAA-025 `load` |
 
-M-15 and M-18 each carry separate variants; each variant is injected and observed on its own, so one kill cannot hide the survival of another.
+M-15, M-18, M-21, and M-22 each carry separate variants; each variant is injected and observed on its own, so one kill cannot hide the survival of another.
 
 A mutant that cannot be injected, or whose AC run shows fewer top-level RUN lines than stated, is recorded as a Gap, not a kill.
 
 ## §D.3 Definition of Done
 
-- All 23 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
-- All 25 mutants (M-15 and M-18 with every listed variant) observed RED and reverted.
+- All 25 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
+- All 29 mutants (M-15, M-18, M-21, and M-22 with every listed variant) observed RED and reverted; a mutant left unobserved because a platform refused a symbolic link (AC-CAA-024, AC-CAA-025) is a Gap, not a kill.
 - `go vet` and `golangci-lint` clean on `internal/constitution` and `internal/cli`.
 - The five tests in plan.md §C.2 replaced, none silently deleted.
 - plan.md §C.1 real-file sha256 equals the post-run sha256 (AC-CAA-017).
