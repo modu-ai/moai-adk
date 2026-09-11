@@ -150,6 +150,12 @@ m1_to_mN_commit_strategy: per-milestone commits on WT-git-procedure-fixes (0da3b
 gaps: [ci-not-observed (branch unpushed), develop-not-absorbed (25 commits; range judges are pre-merge), go-test-all-not-run, embed-check-not-run]
 ```
 
+## Sync step 1 record (manager-docs, pre-audit — not the §E.4 close)
+
+- **Edited** (commit `0dc007201`, on top of run HEAD `28f9cc6c9`): `doc-execution.md:34` in both copies (`.claude/skills/moai/workflows/sync/doc-execution.md`, template mirror), identical edit — "Store result as `is_worktree_context` boolean for use in Phase 13" → "Store result as `is_worktree_context` boolean as informational context only; no later phase reads it". Line 36 unchanged (`cksum` equal to HEAD). CHANGELOG `[Unreleased]` → `### Changed` top entry (B12: pre-emission `grep -c` 0; 16 judged ACs per acceptance.md; 12 cited paths `ls` exit 0 — `changelog-path-check.txt`). spec.md frontmatter `status: implemented`, `updated: 2026-09-12`; no body edit. README: no merge-flag text (`grep -c -E 'auto-merge|no-merge|moai sync'` → 3 per locale, all plain `/moai sync` usage), not edited.
+- **Judges re-run** (`.moai/reports/t622/sync/`): AC-GDP-006 doc-execution L·T — section `test -s` 0·0, default detector grep exit 1·1, extended detector `test -e` 0 / `test -s` 1 ×2, `manager-[g]it[.]md` 1·1, `--auto-merge` in manager-git.md 4·4; BASE control grep exit 0 (section line 8). AC-GDP-013 (b) doc-execution — BASE L·T diff exit 1, post diff exit 1 (same 9 hunk headers), body diff exit 0, base body 6008 B `cmp` 0 vs `run/ac013-doc-execution-base.body`; one-copy mutant body diff exit 1. AC-GDP-015 on `git diff develop...HEAD -- internal/template/templates/` (post-commit) — `test -s` 0, 39 added lines over 9 files, SPEC/REQ/date/`CLAUDE.local` greps exit 1 ×4, hex tokens 0, sha-letter `test -e` 0 / `test -s` 1; controls spec.md 8/61/23, fixture 5 letter / 2 digit. `make commands-emit-check` exit 0, `make agents-emit-check` exit 0. Cf: local 0, template 0, CHANGELOG entry 0, planted control 2.
+- **Pending**: sync-auditor, lane verdict (`.moai/reports/t622/verdict.md`), then the separate close step (`status: completed`, §E.4, `sync_commit_sha`).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_

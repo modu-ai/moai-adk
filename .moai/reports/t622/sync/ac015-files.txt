@@ -1,0 +1,9 @@
+internal/template/templates/.claude/agents/moai/manager-git.md
+internal/template/templates/.claude/commands/moai/sync.md.tmpl
+internal/template/templates/.claude/skills/moai/SKILL.md
+internal/template/templates/.claude/skills/moai/references/reference.md
+internal/template/templates/.claude/skills/moai/workflows/sync.md
+internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md
+internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md
+internal/template/templates/.codex/agents/moai/manager-git.toml
