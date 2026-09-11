@@ -188,6 +188,24 @@ go vet ./internal/cli/ ./internal/config/          vet-exit=0   (run6-vet.txt, �
 golangci-lint run ./internal/cli/ ./internal/config/   lint-exit=0   0 issues.   (run6-lint.txt)
 ```
 
+### 6.6 통합 창 — 병합 트리 재측정 (리드 창 지명)
+
+- `moai integration acquire --name lane-3` → `release-integration window acquired by 13eeea3c-6d1c-43d6-9178-3f2b3b59a8de on develop`
+- 증거 커밋 `52a4de177` 뒤 로컬 develop `f1f034bb4` 흡수 → `e84652111` (부모 `52a4de177`, `f1f034bb4`), `e84652111^{tree}` = `edb79c0838ac69e08d9679df61d69ff5a3a45258`.
+- `ee99507fb..f1f034bb4` 변경: `.moai/reports/dr0911/verdict.md`, `internal/template/catalog.yaml`, 템플릿 `manager-docs.md`/`plan-auditor.md` 와 그 `.codex` 사본, `sync-phase-quality-gate.sh`, `agent-common-protocol.md` (8파일). go:embed 로 `internal/cli` 에 전이되지만 카드 테스트 넷은 템플릿을 읽지 않는다.
+
+```
+go test ./internal/cli/ -count=1 -run '^(…네 테스트…)$' -v   test-exit=0   (run7-window-four.txt)
+TestHomeStateChangedSurfaceCoverageConsumesFreshProfile PASS=1 FAIL=0 SKIP=0
+TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition PASS=1 FAIL=0 SKIP=0
+TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite PASS=0 FAIL=0 SKIP=1
+TestAuditLagUsesBinlagSeam PASS=1 FAIL=0 SKIP=0
+ok  	github.com/modu-ai/moai-adk/internal/cli	8.739s
+go vet ./internal/cli/ ./internal/config/   vet-exit=0   (run7-window-vet.txt, 0바이트)
+```
+
+이 절과 run7 파일은 재측정 뒤 커밋되므로, 카드 브랜치 최종 tip 의 트리는 `edb79c08…` 와 `.moai/reports/t600/` 아래 파일만 다르다. 코드 트리 동일성은 develop 병합 뒤 `git diff --stat edb79c08… <develop 병합>^{tree}` 로 보인다.
+
 ## 7. 동작상 부수 효과
 
 live apply 의 자식 스위트 패턴(`TestHomeState.*`, `TestChangedProduction.*`)에 위 두 테스트가 들어 있다. 이제 둘은 fixture 기반이라 자식 실행에서 먼저 실패하지 않고, 거부는 `home_state_coverage.go:100` 의 resolve 한 곳에서 일어난다. 게이트의 판정 자체는 바뀌지 않는다.
