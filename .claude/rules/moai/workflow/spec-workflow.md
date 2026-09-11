@@ -18,7 +18,9 @@ Per the canonical agent catalog policy, the MoAI agent catalog consists of exact
 
 ## SPEC Phase Discipline
 
-> L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
+> Phase work is isolated through the launcher worktree. The shared primary
+> checkout is read-only for orchestration; integration happens in the named
+> local integration worktree. See `.claude/rules/moai/workflow/delivery-policy.md`.
 
 [ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle (plan → run → sync). How each phase transition is *triggered* depends on the **route** the SPEC takes. There are exactly TWO routes, and the route is determined by Tier (per § SPEC Complexity Tier) and the explicit `--pr` flag:
 
@@ -27,13 +29,13 @@ Per the canonical agent catalog policy, the MoAI agent catalog consists of exact
 
 The route governs the trigger vocabulary in § Phase Transitions below (commit/push event vs PR merge). Neither route changes the phase *ordering* (plan → run → sync) or the *artifact* set (per Tier).
 
-**Route A — Hybrid Trunk main-direct (default, Tier S / M):**
+**Route A — WT integration (default, Tier S / M):**
 
 | Step | Location | Command | Branch | Merge strategy | Lifecycle event (trigger) |
 |------|----------|---------|--------|----------------|---------------------------|
-| 1 (plan) | main checkout | `/moai plan SPEC-XXX` | `main` (direct) | n/a (no PR) | plan-phase artifacts committed + pushed to `main` |
-| 2 (run)  | main checkout | `/moai run SPEC-XXX` | `main` (direct) | n/a (no PR) | run-phase commits pushed to `main` + tests green |
-| 3 (sync) | main checkout | `/moai sync SPEC-XXX` | `main` (direct) | n/a (no PR) | single sync commit pushed to `main` (carries `implemented → completed`) |
+| 1 (plan) | launcher worktree | `moai cc -w SPEC-XXX` then `/moai plan SPEC-XXX` | `WT-*` | local integration | plan artifacts committed; push deferred |
+| 2 (run)  | same card worktree | `/moai run SPEC-XXX` | `WT-*` | local integration | run commits tested; push deferred |
+| 3 (sync) | same card worktree | `/moai sync SPEC-XXX` | `WT-*` | local integration | sync commit tested; push deferred |
 
 **Route B — PR route (Tier L OR explicit `--pr`):**
 
@@ -47,19 +49,20 @@ The route governs the trigger vocabulary in § Phase Transitions below (commit/p
 \* Route B PR strategy is the configured `merge_method` (`git_strategy.<mode>.merge_method`; one of `squash` | `merge` | `rebase`), **default `squash`**. Squash remains the documented recommendation — one squash commit per phase yields clean, revertable SPEC history — and is the value applied when `merge_method` is absent or unset. The method is configurable (per the per-mode `merge_method` field) so that workflows such as gitflow `release/*` may opt into a merge commit; the FROZEN default and its rationale are unchanged. Route A has no PR and therefore no `merge_method` — it pushes directly to `main`. Step 4 (worktree cleanup) applies to Route B only when an L2 worktree was created.
 
 [ZONE:Frozen] [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
-- Step 2 (run) — **Route A** commits + pushes directly to `main` (no branch, no worktree). **Route B** SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if the user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness.
+- Step 1 (plan) MUST execute in the launcher worktree. Plan artifacts are
+  committed on `WT-*`; the integration owner records the local merge before
+  any push.
+- Step 2 (run) executes in the same card worktree and never changes the shared
+  checkout. A fresh card starts from the local integration branch through the
+  launcher; no ad-hoc branch switch or reset is permitted.
 - Step 3 (sync) — **Route A** emits the single sync commit directly on `main` (carrying the `implemented → completed` transition; see § Phase Transitions). **Route B** SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
-- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (the Late-Branch closure contract):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
+- Step 4 cleanup happens only after the local integration merge is verified and
+  the delivery owner has recorded the final push. The shared primary checkout
+  is never repaired by a branch switch or destructive reset. The launcher
+  registry is the source of truth for disposal.
 
-  ```bash
-  git checkout main
-  git fetch origin
-  git reset --hard origin/main
-  git pull origin main   # verify
-  ```
-
-  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
+  Any remote readback uses `git -C <integration-worktree>` and is performed by
+  `manager-git` after the final push.
 
 [SHOULD] Anti-patterns (advisory):
 - Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
@@ -163,7 +166,8 @@ Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigatio
 
 ## Plan Phase
 
-[ZONE:Frozen] [HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
+[ZONE:Frozen] [HARD] Execute in the launcher worktree. Never switch the shared
+primary checkout. See § SPEC Phase Discipline (Step 1).
 
 Create comprehensive specification using EARS format.
 
@@ -189,7 +193,8 @@ Output:
 
 ## Run Phase
 
-[SHOULD] When the user has opted into a worktree, enter it with `moai cc -w SPEC-XXX` and execute there; otherwise execute on the `feat/SPEC-XXX` branch in the main checkout. See § SPEC Phase Discipline (Step 2). Worktree use is opt-in; the default is main checkout + feature branch.
+[HARD] Enter the card worktree with `moai cc -w SPEC-XXX` and execute there.
+The shared primary checkout is not an execution fallback.
 
 Implement specification using configured development methodology.
 
