@@ -99,6 +99,14 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 		return nil, fmt.Errorf("proposal for rule %s: After is empty", proposal.RuleID)
 	}
 
+	// The rule file must be neither the registry nor the evolution log. The
+	// check runs before any gate, so a rejection never follows the user's
+	// Layer 5 approval; it needs only the three paths, no file I/O.
+	rulePath := ruleFilePath(projectDir, currentRule.File)
+	if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {
+		return nil, fmt.Errorf("rule file %s: is also the registry or the evolution log", rulePath)
+	}
+
 	// Skip Canary for rules with canary_gate=false
 	skipCanary := !currentRule.CanaryGate
 
@@ -212,6 +220,8 @@ func (p *Pipeline) createLogEntry(proposal *AmendmentProposal, originalZone Zone
 // three files and returns their new contents plus the new log entry, writing
 // nothing (REQ-CAA-001 … REQ-CAA-004, REQ-CAA-009, REQ-CAA-016). The evolution
 // log content is its pre-apply bytes followed by the new entry (REQ-CAA-010).
+// Execute has already rejected a rule file that is the registry or the
+// evolution log, before the gates.
 func (p *Pipeline) prepareApply(proposal *AmendmentProposal, rule Rule, projectDir, registryPath, logPath string) ([]*fileChange, *AmendmentLog, error) {
 	source, err := readForChange("rule file", ruleFilePath(projectDir, rule.File), false)
 	if err != nil {
@@ -225,10 +235,6 @@ func (p *Pipeline) prepareApply(proposal *AmendmentProposal, rule Rule, projectD
 	if err != nil {
 		return nil, nil, err
 	}
-	if sameFile(source.path, registry.path) || sameFile(source.path, logFile.path) {
-		return nil, nil, fmt.Errorf("rule file %s: is also the registry or the evolution log", source.path)
-	}
-
 	if source.newData, err = replaceSourceClause(source.path, source.oldData, rule.Clause, proposal.After); err != nil {
 		return nil, nil, err
 	}
