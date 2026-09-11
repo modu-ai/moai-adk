@@ -682,6 +682,98 @@ func TestSlotLease_SeparateFromIntegrationWindow(t *testing.T) {
 	})
 }
 
+// plan.md §B4 — the lease core treats an unreadable record as an ERROR, never
+// as a free resource; only an explicit --force clears it. Plus the remaining
+// input edges of the core (missing session id, empty start, empty audit root,
+// unparseable expiry, the holder-label fallback).
+func TestSlotLease_UnreadableRecordAndInputEdges(t *testing.T) {
+	writeCorrupt := func(t *testing.T, root string) {
+		t.Helper()
+		path := slotRecordPath(root, slotTestResource)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(path, []byte("{ not json"), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+
+	t.Run("corrupt_record_is_not_free", func(t *testing.T) {
+		root := t.TempDir()
+		scrubSlotLeaseEnv(t, root)
+		writeCorrupt(t, root)
+		if _, err := ReadSlotLease(root, slotTestResource); err == nil {
+			t.Fatal("a corrupt record read as a valid lease")
+		}
+		if _, err := AcquireSlotLease(root, SlotLeaseRequest{Resource: slotTestResource, SessionID: "s-2", MaxDuration: time.Hour}); err == nil {
+			t.Fatal("acquire over a corrupt record succeeded without --force")
+		}
+		if _, err := ReleaseSlotLease(root, slotTestResource, "s-2", false); err == nil {
+			t.Fatal("release over a corrupt record succeeded without --force")
+		}
+	})
+
+	t.Run("force_clears_corrupt_record", func(t *testing.T) {
+		root := t.TempDir()
+		scrubSlotLeaseEnv(t, root)
+		writeCorrupt(t, root)
+		if _, err := ReleaseSlotLease(root, slotTestResource, "s-2", true); err != nil {
+			t.Fatalf("forced release of a corrupt record: %v", err)
+		}
+		writeCorrupt(t, root)
+		got, err := AcquireSlotLease(root, SlotLeaseRequest{Resource: slotTestResource, SessionID: "s-2", MaxDuration: time.Hour, Force: true})
+		if err != nil || got.SessionID != "s-2" {
+			t.Fatalf("forced acquire over a corrupt record = (%+v, %v), want s-2", got, err)
+		}
+	})
+
+	t.Run("forced_foreign_release_is_audited_as_force", func(t *testing.T) {
+		root := t.TempDir()
+		scrubSlotLeaseEnv(t, root)
+		seedSlotLease(t, root, liveLease("s-1"))
+		if _, err := ReleaseSlotLease(root, slotTestResource, "s-2", true); err != nil {
+			t.Fatalf("forced foreign release: %v", err)
+		}
+		if event, reason := lastAudit(t, root); event != "release" || reason != SlotDisplacedForce {
+			t.Errorf("last audit = (%q, %q), want (release, force)", event, reason)
+		}
+	})
+
+	t.Run("input_edges", func(t *testing.T) {
+		root := t.TempDir()
+		scrubSlotLeaseEnv(t, root)
+		if _, err := AcquireSlotLease(root, SlotLeaseRequest{Resource: slotTestResource, MaxDuration: time.Hour}); err == nil {
+			t.Error("acquire without a session id succeeded; a holder identity must never be invented")
+		}
+		if _, err := ResolveSlotLeaseRoot("  "); err == nil {
+			t.Error("ResolveSlotLeaseRoot(empty) returned no error")
+		}
+		if err := AppendSlotLeaseAudit("", SlotLeaseAuditEntry{Event: "acquire"}); err == nil {
+			t.Error("AppendSlotLeaseAudit with no root returned no error")
+		}
+		odd := SlotLease{Resource: slotTestResource, SessionID: "s-1", ExpiresAt: "not-a-time"}
+		if odd.Expired(time.Now()) {
+			t.Error("an unparseable expiry reads as expired; the conservative reading is not expired")
+		}
+		if (&SlotLease{}).Expired(time.Now()) {
+			t.Error("an empty lease reads as expired")
+		}
+		for _, tc := range []struct {
+			lease *SlotLease
+			want  string
+		}{
+			{nil, "unknown"},
+			{&SlotLease{}, "unknown"},
+			{&SlotLease{SessionID: "s-9"}, "s-9"},
+			{&SlotLease{SessionID: "s-9", SessionName: "lane-9"}, "lane-9"},
+		} {
+			if got := tc.lease.holderLabel(); got != tc.want {
+				t.Errorf("holderLabel(%+v) = %q, want %q", tc.lease, got, tc.want)
+			}
+		}
+	})
+}
+
 // slotGitFixture builds a primary repository with one commit and a linked
 // worktree, under one temp parent pinned as the git ceiling.
 func slotGitFixture(t *testing.T) (primary, worktree string) {
@@ -753,8 +845,8 @@ func TestResolveSlotLeaseRoot_NormalizesToPrimary(t *testing.T) {
 		if err == nil {
 			t.Fatalf("ResolveSlotLeaseRoot(non-repo) = %q with no error; an unresolvable root must be reported, never replaced by the unnormalized start", got)
 		}
-		if errors.Is(err, errSlotLeaseNotImplemented) {
-			t.Fatalf("ResolveSlotLeaseRoot(non-repo) answered with the M1 stub error, not a resolution failure: %v", err)
+		if !strings.Contains(err.Error(), plain) {
+			t.Errorf("ResolveSlotLeaseRoot(non-repo) error does not name the directory it could not resolve: %v", err)
 		}
 	})
 }
