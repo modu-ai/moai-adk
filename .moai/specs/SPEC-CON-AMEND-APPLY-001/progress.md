@@ -54,6 +54,7 @@ Card t659 · branch `WT-amend-apply` · worktree `.claude/worktrees/t659`
 | `e79b17147` | feat — M6 dry-run validation, fixture update | M6 |
 | `db6b70166` | test — M2–M6 mutants (29 runs) | M2–M6 |
 | (this commit) | chore — M7 isolation witness, M-14, vet/lint/coverage, this section | M7 |
+| (guards commit, after `ae58f0383`) | test — the two out-of-SPEC guards pinned by one test and one mutant each (§E.2.6) | — |
 
 ### E.2.2 RED-before-GREEN evidence (baseline-first ACs)
 
@@ -138,6 +139,62 @@ Counted: 39 mutant runs killed (38 distinct mutants or variants — M-20 (iii) r
 - `GOOS=windows GOARCH=amd64 go vet ./internal/constitution/` and `GOOS=windows GOARCH=amd64 go build ./internal/cli/` → exit 0 (compile only; no Windows test run)
 - REQ-CAA-015 witness: see AC-CAA-017 row; the mutant runs (including M-14 under the session environment) left both real sha256 values unchanged
 
+### E.2.6 Out-of-SPEC guards G-A (empty After) and G-B (rule file is the registry or the log)
+
+SPEC 밖 추가, 리드 인정 (2026-09-11, relayed by the lead session)
+
+The run added two checks to `internal/constitution/pipeline.go` that no REQ or AC asks for. The lead accepted keeping both as trust-boundary input validation on condition that each is pinned by exactly one test and one mutant, recorded here, and named in the sync report for sync-auditor review. They carry no AC id and are not counted in the §E.2.3 matrix or the §E.3 AC counts.
+
+| Guard | Where | What it does | Modes it covers |
+|---|---|---|---|
+| G-A | `Execute`, right after the stale-`Before` check (REQ-CAA-017), before Layer 1 | rejects a proposal whose `After` is empty: `proposal for rule <id>: After is empty` | dry-run and real (no gate is called in either) |
+| G-B | `prepareApply`, after the three files are read, before any transform | rejects a target entry whose `file:` names the registry or the evolution log: `rule file <path>: is also the registry or the evolution log`; `sameFile` compares `filepath.Abs` results | dry-run and real — `prepareApply` runs in both modes; it runs AFTER the five layers, so the gate doubles ARE called (4 times: the fixture entries carry `canary_gate: false`, so Layer 2 is skipped) |
+
+What each guard adds over the code without it (observed on the mutants, below): without G-A an empty `After` is still refused, but only after all four gate doubles ran, by the log-entry validation (`evolution log <path>: clause is empty`), with no rule id in the message. Without G-B both halves are admitted: a `file:` pointing at the registry, or at a log that carries the current clause once, passes every later check — `Execute` returns no error in dry-run and real mode (observed). That the real run then commits two changes to the same path is read from `prepareApply` / `commitChanges`, not observed: the test stops at the nil error.
+
+Tests (in `internal/constitution/apply_test.go`):
+
+- `TestExecute_EmptyAfter_Rejected` — subtests `dry_run`, `real`. Asserts the substring `After is empty`, the rule id, 0 gate calls, the fixture tree's path set + per-file sha256 unchanged (`snapshotTree` / `assertSameTree`), and the lock dir empty.
+- `TestExecute_RuleFileIsRegistryOrLog_Rejected` — subtests `registry/{dry_run,real}` (entry `file:` = `.claude/rules/moai/core/zone-registry.md`), `evolution_log/{dry_run,real}` (entry `file:` = `.moai/research/evolution-log.md`, log prose carries the current clause once), `distinct_control/{dry_run,real}` (the standard `rules/target.md`; must NOT be rejected — `Execute` returns no error). The two rejecting cases assert the substring `is also the registry or the evolution log`, the rule-file path (`containsPathForm`), 4 gate calls, the tree snapshot unchanged, and the lock dir empty.
+
+GREEN (unmutated tree), `.moai/reports/t659/run/guards/green.txt`:
+
+```
+$ go test ./internal/constitution/ -run '^(TestExecute_EmptyAfter_Rejected|TestExecute_RuleFileIsRegistryOrLog_Rejected)$' -count=1 -v
+exit=0   top-level "=== RUN" lines: 2
+--- PASS: TestExecute_EmptyAfter_Rejected (0.01s)
+    --- PASS: TestExecute_EmptyAfter_Rejected/dry_run (0.01s)
+    --- PASS: TestExecute_EmptyAfter_Rejected/real (0.01s)
+--- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected (0.03s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real (0.01s)
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.489s
+```
+
+Mutants — runner `.moai/reports/t659/run/mutate.py`, specs `.moai/reports/t659/run/guards/mutants-guards.json`, per-mutant output `.moai/reports/t659/run/guards/M-*.txt`; `pipeline.go` sha256 `eb258e65…a4a2` before and after both mutant passes (restored byte-exact). The guards predate the tests, so each mutant run is the RED observation for its test.
+
+| Mutant | Edit | Selector | Top-level RUN | Result | Failing subtests |
+|---|---|---|---|---|---|
+| M-GA | G-A deleted | `^TestExecute_EmptyAfter_Rejected$` | 1 | killed (exit 1) | `dry_run`, `real` — error `…evolution log <path>: clause is empty` lacks `After is empty` and the rule id; `gate doubles called 4 times, want 0` |
+| M-GB | condition → `false` | `^TestExecute_RuleFileIsRegistryOrLog_Rejected$` | 1 | killed (exit 1) | `registry/*`, `evolution_log/*` — `want a rule-file-is-registry-or-log error, got nil` |
+| M-GB-reg | registry half dropped (log half kept) | `…_Rejected$/^registry$` | 1 | killed (exit 1) | `registry/dry_run`, `registry/real` — `got nil` |
+| M-GB-log | log half dropped (registry half kept) | `…_Rejected$/^evolution_log$` | 1 | killed (exit 1) | `evolution_log/dry_run`, `evolution_log/real` — `got nil` |
+| M-GB-always | condition → `true` | `…_Rejected$/^distinct_control$` | 1 | killed (exit 1) | `distinct_control/dry_run`, `distinct_control/real` — the distinct rule file is rejected |
+
+Counted: 5 mutant runs, 5 killed, 0 survived. M-GA and M-GB are the "one mutant each"; M-GB-reg and M-GB-log pin each half of the `||` with its own subtest; M-GB-always pins the control.
+
+Package state after the change (this run, the guards-commit tree):
+
+- `go test ./internal/constitution/ -count=1 -cover` → `ok  	github.com/modu-ai/moai-adk/internal/constitution	1.107s	coverage: 88.3% of statements` (`guards/cover.txt`; the M7 figure in §E.2.5 was 88.1% on the `ae58f0383` tree)
+- `go vet ./internal/constitution/` → exit 0, no output (`guards/vet.txt`)
+- `golangci-lint run ./internal/constitution/...` → `0 issues.` (`guards/lint.txt`)
+
+Known limit, recorded and not fixed (out of scope): `sameFile` compares `filepath.Abs` results and resolves no symbolic link, so a `file:` that reaches the registry or the log through a symlinked alias is not caught by G-B. No test covers that case.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -170,6 +227,11 @@ compile_slot_commands_pending:
   - "baseline observation: the three CLI tests at 299bae37d (before 38928086f) — AC-CAA-024 CLI case predicted `clause mismatch`, AC-CAA-015 two_occurrences predicted success line"
   - "mutants M-13, M-20 (ii), M-20 (i) CLI cell via mutate.py against internal/cli"
   - "golangci-lint run ./internal/cli/..."
+out_of_spec_guards:                     # §E.2.6 — SPEC 밖 추가, 리드 인정; not counted in ac_* or mutants_* above
+  - "G-A: Execute rejects an empty After before Layer 1 — TestExecute_EmptyAfter_Rejected, mutant M-GA killed"
+  - "G-B: prepareApply rejects a rule file that is the registry or the evolution log — TestExecute_RuleFileIsRegistryOrLog_Rejected, mutants M-GB, M-GB-reg, M-GB-log, M-GB-always killed"
+  - "known limit: sameFile uses filepath.Abs without symlink resolution; a symlinked alias is not caught by G-B"
+sync_report_obligation: "the sync report MUST name both guards (G-A, G-B) for sync-auditor review, as additions outside the SPEC accepted by the lead"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal

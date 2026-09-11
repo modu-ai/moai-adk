@@ -1168,3 +1168,106 @@ func TestExecute_RealRegistryShape_Admitted(t *testing.T) {
 		}
 	})
 }
+
+// Out-of-SPEC guards (card t659, accepted by the lead as trust-boundary input
+// validation): each is pinned by one test and one mutant. They carry no AC id.
+
+// Execute rejects a proposal whose After is empty before any gate runs, in
+// both modes.
+func TestExecute_EmptyAfter_Rejected(t *testing.T) {
+	const wantMsg = "After is empty"
+	for _, mode := range []struct {
+		name   string
+		dryRun bool
+	}{{"dry_run", true}, {"real", false}} {
+		t.Run(mode.name, func(t *testing.T) {
+			isolateEnv(t)
+			dir := t.TempDir()
+			standardProject(t, dir)
+			before := snapshotTree(t, dir)
+			p, gates, lockDir := newGatedPipeline(t)
+
+			_, err := p.Execute(proposal(fxBefore, ""), dir, mode.dryRun)
+			if err == nil {
+				t.Fatal("Execute: want an empty-After error, got nil")
+			}
+			if !strings.Contains(err.Error(), wantMsg) {
+				t.Errorf("error %q lacks %q", err, wantMsg)
+			}
+			if !strings.Contains(err.Error(), fxRuleID) {
+				t.Errorf("error %q does not name the rule %s", err, fxRuleID)
+			}
+			if gates.calls != 0 {
+				t.Errorf("gate doubles called %d times, want 0 (the check runs before Layer 1)", gates.calls)
+			}
+			assertSameTree(t, mode.name, dir, before)
+			assertLockReleased(t, lockDir)
+		})
+	}
+}
+
+// Execute rejects a target entry whose file: names the registry or the
+// evolution log, in both modes: the check sits in prepareApply, which a
+// dry-run reaches too. It runs after the five layers, so the gate doubles are
+// called — four times, because the fixture entries carry canary_gate: false
+// and Layer 2 is skipped. Each half of the condition has its own case; the
+// control case, a distinct rule file, is not rejected. The registry carries
+// the current clause once by construction; the evolution-log case puts it
+// into the log's prose once, so without the check the later steps would
+// accept that file as a rule file too.
+func TestExecute_RuleFileIsRegistryOrLog_Rejected(t *testing.T) {
+	const wantMsg = "is also the registry or the evolution log"
+	const gatesBeforeApply = 4
+	logWithClause := strings.Replace(fxLogBody, "# Evolution Log\n\n", "# Evolution Log\n\n"+fxBefore+"\n\n", 1)
+	cases := []struct {
+		name, targetFile, ruleBody, logBody string
+		wantReject                          bool
+	}{
+		{"registry", RegistryRelPath, "", "", true},
+		{"evolution_log", ".moai/research/evolution-log.md", "", logWithClause, true},
+		{"distinct_control", fxRuleFile, fxRuleBody, "", false},
+	}
+	for _, tc := range cases {
+		for _, mode := range []struct {
+			name   string
+			dryRun bool
+		}{{"dry_run", true}, {"real", false}} {
+			t.Run(tc.name+"/"+mode.name, func(t *testing.T) {
+				isolateEnv(t)
+				dir := t.TempDir()
+				prj := buildProject(t, dir, standardEntries(tc.targetFile), tc.targetFile, tc.ruleBody, true)
+				if tc.logBody != "" {
+					writeFixtureFile(t, prj.log, tc.logBody)
+				}
+				before := snapshotTree(t, dir)
+				p, gates, lockDir := newGatedPipeline(t)
+
+				_, err := p.Execute(proposal(fxBefore, fxAfter), dir, mode.dryRun)
+				if !tc.wantReject {
+					if err != nil {
+						t.Fatalf("Execute on a distinct rule file: %v", err)
+					}
+					if prj.rule == prj.registry || prj.rule == prj.log {
+						t.Fatalf("control fixture is not distinct: rule %s", prj.rule)
+					}
+					assertLockReleased(t, lockDir)
+					return
+				}
+				if err == nil {
+					t.Fatal("Execute: want a rule-file-is-registry-or-log error, got nil")
+				}
+				if !strings.Contains(err.Error(), wantMsg) {
+					t.Errorf("error %q lacks %q", err, wantMsg)
+				}
+				if !containsPathForm(err.Error(), prj.rule) {
+					t.Errorf("error %q does not name the rule file %s", err, prj.rule)
+				}
+				if gates.calls != gatesBeforeApply {
+					t.Errorf("gate doubles called %d times, want %d (the check runs in prepareApply, after the layers)", gates.calls, gatesBeforeApply)
+				}
+				assertSameTree(t, tc.name+" "+mode.name, dir, before)
+				assertLockReleased(t, lockDir)
+			})
+		}
+	}
+}
