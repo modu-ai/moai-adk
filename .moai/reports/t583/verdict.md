@@ -225,3 +225,23 @@ command grep -c '^+func Test' .moai/state/verify/t583/debt-d17-committed.diff .m
 기대: 대조군 1 이상, 두 diff 파일 모두 `^+func Test` 계수 0. 대조군이 0 이면 "측정 불가"로 보고한다.
 
 plan 시점 관측(2026-09-11, HEAD `120436f58`): 대조군 명령의 파이프 형태 `git diff --name-only --diff-filter=M develop...HEAD -- ':(glob)internal/cli/*_test.go' | wc -l` 출력 `0` — 카드 커밋이 아직 없으니 옳은 이유로 측정 불가 상태다. 판정식이 실제로 빨개지는지(기존 파일에 `func Test` 를 더한 입력)는 실행하지 않았다(Gap).
+
+## 9. run 착수 전 흡수와 인용 좌표 재측정 (2026-09-11)
+
+- **Kickoff**: 운영자 승인(리드 전달), 대상 SPEC v0.1.4, D17 PASS-with-debt.
+- **plan 산출물 커밋**: `f92c04952` (16 파일, 경로 명시 스테이징, 트레일러 `Authored-By-Agent: manager-spec` 파싱 확인).
+- **흡수 전 신선도**: `git fetch origin develop -q` 뒤 `git rev-list --count --left-right origin/develop...develop` → `0	0`. `git rev-parse develop` → `4c99d973e92a8c74ab16136ce9e2c49ec4e2636c`(리드 전달값과 일치).
+- **흡수**: `git merge --no-ff develop` → 병합 `2723447be`, `git rev-parse HEAD^2` → `4c99d973e…`, 이후 `git status --porcelain` 무출력.
+- **SPEC 대상 경로 변화**: `git diff --stat 120436f58 HEAD -- internal/cli/wizard internal/cli/init.go internal/cli/update_wizard.go internal/cli/update.go internal/core/project internal/shell internal/cli/init_workflow_flags.go internal/template/templates/.moai/config/sections/workflow.yaml` → `update.go | 33`, `update_wizard.go | 17` 두 파일뿐.
+- **인용 경로 교집합**: SPEC 산출물이 인용한 코드 경로 36개(`grep -rhoE '(internal|pkg|cmd)/…' | sort -u`)와 흡수로 바뀐 코드 파일 목록(`git diff --name-only 120436f58 HEAD -- internal pkg cmd`)의 교집합은 위 두 파일뿐이다. 나머지 인용 좌표는 해당 파일이 바이트 불변이라 그대로 유효하다.
+
+| 인용 | 흡수 전(`120436f58`) | 흡수 뒤(`2723447be`) | 판정 |
+|---|---|---|---|
+| `internal/cli/update.go:824` (spec.md:204, design.md:101, research.md:109, spec-compact.md:46) | `configurator := shell.NewEnvConfigurator(nil)` | 같은 줄이 **797행** (`grep -n 'NewEnvConfigurator(' internal/cli/update.go` → `797:`) | 줄 번호만 이동. t587 이 legacy skill archive 블록 두 곳(483·548 부근)을 걷어냄 |
+| 운영 코드의 셸 설정 기록 호출 "두 곳" | 두 곳 | `git grep -n 'NewEnvConfigurator(' -- internal ':!*_test.go'` → `update.go:797`, `initializer.go:678` (+ 정의 `env.go:32`, 내부 `:197`) | 주장 유지 |
+| `update_wizard.go:64` | `wizard.ReconfigureQuestions(cwd)` | 같음 | 유지 |
+| `update_wizard.go:133` | `func applyWizardConfig(…)` | 같음 | 유지 |
+| `update_wizard.go:307-310` | `ModelPolicy` 적용 | 같음 | 유지 |
+| `update_wizard.go:133-373` (verdict.md:161) | 함수 끝 `373` | 함수 끝 **`382`** | 끝 줄 이동(t587 +13/−4) |
+
+SPEC 문서는 고치지 않는다(리드 지시). `update.go` 경로는 이 SPEC 범위 밖이라 797행 이동이 요구·AC 판정에 영향을 주지 않는다. run 위임문에는 흡수 뒤 좌표를 싣는다.

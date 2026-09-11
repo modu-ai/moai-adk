@@ -75,3 +75,29 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Recorded by the lane orchestrator (card t583) before the first run-phase `Agent()` spawn, after Implementation Kickoff Approval (operator, relayed by the lead, 2026-09-11) and the develop absorb (`2723447be`, HEAD^2 `4c99d973e`).
+
+Input parameters:
+- tier: L (spec.md; 6 milestones M1-M6)
+- scope: about 15 files across `internal/cli/wizard`, `internal/cli`, `internal/core/project` (plan.md §F)
+- domain count: 1 (Go CLI init path and its tests); no template, docs, or hook work
+- file language mix: Go source and Go tests
+- concurrency benefit: LOW — coding-heavy, milestones depend in order (M1 seam lands before M2 tests), and every `internal/cli` / `internal/core/project` compile or test run is a lead-granted slot with a real-home fingerprint (AC-IQW-015)
+- Agent Teams: not requested
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | semantic multi-file change, not a trivial edit |
+| serial | **yes** | one `manager-develop` (cycle_type=tdd) per milestone, lane runs slot-gated verification between steps |
+| fanout | no | single domain, coding-heavy; parallel writers would race on `init.go` and the wizard files |
+| sweep | no | not a uniform mechanical transform |
+| manager-lead | no | entry predicate needs cross-domain fan-out; this card is one domain with serial dependencies |
+
+Decision: serial
+
+Justification: the milestones are ordered by a hard dependency (REQ-IQW-011 seam before any init execution test), and verification cannot run inside the writer because test slots are granted by the lead one at a time. A single sequential writer with lane-run slots keeps one writer on the tree and keeps every `go test` call declared and fingerprinted.
+
+Boundary case: none of the numeric thresholds is at ±1; the deciding factor is the slot-gated verification, not file count.
