@@ -1,4 +1,4 @@
-package wizard
+package ptycaptest
 
 // Real HOME watch list for the pty capture tests (acceptance.md §B P8).
 //
@@ -82,11 +82,11 @@ var homeWatchList = []homeWatchItem{
 	{ID: "W6", Base: watchBaseMoai, Rel: "cache/search/" + watchKeyToken, Kind: watchAbsent, Producer: "homestate.EnsureProjectLayout (init)"},
 }
 
-// homeSnapshot maps a HOME-relative path (or a glob: entry) to its fingerprint.
-type homeSnapshot map[string]string
+// HomeSnapshot maps a HOME-relative path (or a glob: entry) to its fingerprint.
+type HomeSnapshot map[string]string
 
-// existing counts the watched paths that exist (glob bookkeeping excluded).
-func (s homeSnapshot) existing() int {
+// Existing counts the watched paths that exist (glob bookkeeping excluded).
+func (s HomeSnapshot) Existing() int {
 	n := 0
 	for k, v := range s {
 		if !strings.HasPrefix(k, watchGlobPrefix) && v != watchAbsentMark {
@@ -96,8 +96,8 @@ func (s homeSnapshot) existing() int {
 	return n
 }
 
-// entries counts the watched paths (glob bookkeeping excluded).
-func (s homeSnapshot) entries() int {
+// Entries counts the watched paths (glob bookkeeping excluded).
+func (s HomeSnapshot) Entries() int {
 	n := 0
 	for k := range s {
 		if !strings.HasPrefix(k, watchGlobPrefix) {
@@ -107,10 +107,11 @@ func (s homeSnapshot) entries() int {
 	return n
 }
 
-// homeWatchSnapshot fingerprints every watch-list path under home (M is
-// home/.moai). keys are the project keys substituted for {key}.
-func homeWatchSnapshot(home string, keys []string) (homeSnapshot, error) {
-	snap := homeSnapshot{}
+// SnapshotHome fingerprints every watch-list path under the root home (M is
+// home/.moai). keys are the project keys substituted for {key}. The root is an
+// argument so the same function runs on the real HOME and on a fake one.
+func SnapshotHome(home string, keys []string) (HomeSnapshot, error) {
+	snap := HomeSnapshot{}
 	for _, it := range homeWatchList {
 		base := home
 		if it.Base == watchBaseMoai {
@@ -197,9 +198,9 @@ func fingerprint(path string, kind homeWatchKind) (string, error) {
 	}
 }
 
-// homeWatchDiff lists every entry whose fingerprint differs between the two
+// DiffSnapshots lists every entry whose fingerprint differs between the two
 // snapshots, over the union of their keys, as "path (before -> after)".
-func homeWatchDiff(before, after homeSnapshot) []string {
+func DiffSnapshots(before, after HomeSnapshot) []string {
 	keys := map[string]bool{}
 	for k := range before {
 		keys[k] = true
@@ -225,33 +226,34 @@ func homeWatchDiff(before, after homeSnapshot) []string {
 	return changed
 }
 
-// ptycapWatchRealHome snapshots the watch list on the real HOME now and
-// returns the check to call once the case is over. Both points print the
-// entry count and how many entries exist on the real HOME.
-func ptycapWatchRealHome(t *testing.T, workDirs ...string) func() {
-	t.Helper()
+// WatchRealHome snapshots the watch list on the real HOME now and returns the
+// check to call once the case is over. Both points print the entry count and
+// how many entries exist on the real HOME. workDirs are the case working
+// directories whose project keys fill the W6 rows.
+func WatchRealHome(tb testing.TB, workDirs ...string) func() {
+	tb.Helper()
 	home, err := os.UserHomeDir()
 	if err != nil {
-		t.Fatalf("real HOME: %v", err)
+		tb.Fatalf("real HOME: %v", err)
 	}
 	keys := make([]string, len(workDirs))
 	for i, d := range workDirs {
 		keys[i] = homestate.ProjectKey(d)
 	}
-	before, err := homeWatchSnapshot(home, keys)
+	before, err := SnapshotHome(home, keys)
 	if err != nil {
-		t.Fatalf("real HOME snapshot: %v", err)
+		tb.Fatalf("real HOME snapshot: %v", err)
 	}
-	t.Logf("real HOME watch list: %d entries, %d present on the real HOME (before)", before.entries(), before.existing())
+	tb.Logf("real HOME watch list: %d entries, %d present on the real HOME (before)", before.Entries(), before.Existing())
 	return func() {
-		t.Helper()
-		after, err := homeWatchSnapshot(home, keys)
+		tb.Helper()
+		after, err := SnapshotHome(home, keys)
 		if err != nil {
-			t.Fatalf("real HOME snapshot: %v", err)
+			tb.Fatalf("real HOME snapshot: %v", err)
 		}
-		t.Logf("real HOME watch list: %d entries, %d present on the real HOME (after)", after.entries(), after.existing())
-		if changed := homeWatchDiff(before, after); len(changed) > 0 {
-			t.Errorf("real HOME watch list changed during the case: %v", changed)
+		tb.Logf("real HOME watch list: %d entries, %d present on the real HOME (after)", after.Entries(), after.Existing())
+		if changed := DiffSnapshots(before, after); len(changed) > 0 {
+			tb.Errorf("real HOME watch list changed during the case: %v", changed)
 		}
 	}
 }

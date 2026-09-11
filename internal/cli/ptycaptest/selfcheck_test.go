@@ -1,25 +1,48 @@
-package wizard
+package ptycaptest
 
-// Self-checks for the pty capture harness (ptycap_harness_test.go), the real
-// HOME watch list (ptycap_homewatch_test.go), and the render helpers
-// (ptycap_render_test.go). The harness has to be trustworthy before any
-// rendering verdict is read from it: it must fail when it cannot run, fail
-// when an anchor never appears, never leave a session behind, never kill a
-// session it did not open, and observe — not assume — the child environment.
+// Self-checks for the harness (harness.go), the real HOME watch list
+// (homewatch.go), and the render helpers (render.go). The harness has to be
+// trustworthy before any rendering verdict is read from it: it must fail when
+// it cannot run, fail when an anchor never appears, never leave a session
+// behind, never kill a session it did not open, and observe — not assume — the
+// child environment.
+//
+// The pty self-checks run a trivial fixture child (TestPtyCaptureChild below)
+// so they exercise the harness itself, independent of any product screen. The
+// product-screen normal run lives with the product package (internal/cli/wizard).
 //
 // Tests named TestPtyCapture_* need tmux and run only under MOAI_PTY_CAPTURE=1.
 // Everything else here is pure and runs in every `go test`.
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
+
+const (
+	// fixtureCase is the fixture child case: it prints fixtureAnchor and the
+	// fixture lines, then blocks on stdin until the session is interrupted.
+	fixtureCase = "fixture-anchor"
+	// fixtureAnchor is what the fixture child paints first.
+	fixtureAnchor = "PTYCAP FIXTURE READY"
+	// neverAnchor is a string no case ever renders.
+	neverAnchor = "ZZ-PTYCAP-ANCHOR-NEVER-RENDERED"
+	// selfTestTimeout bounds the forced-timeout self-test's wait.
+	selfTestTimeout = 2 * time.Second
+)
+
+// fixtureLines are painted after the anchor; the normal run requires them.
+var fixtureLines = []string{"English", "Korean (한국어)", "Japanese (日本語)", "Chinese (中文)"}
 
 // ---------------------------------------------------------------------------
 // Render helpers
@@ -37,8 +60,8 @@ func TestPtycapStripANSI(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := stripANSI(tc.in); got != tc.want {
-				t.Errorf("stripANSI(%q) = %q, want %q", tc.in, got, tc.want)
+			if got := StripANSI(tc.in); got != tc.want {
+				t.Errorf("StripANSI(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
 	}
@@ -47,7 +70,7 @@ func TestPtycapStripANSI(t *testing.T) {
 func TestPtycapDisplayColumn(t *testing.T) {
 	line := "┃ Korean (한국어) - 한국어"
 	// "┃ " = 2 columns, "Korean (" = 8, "한국어" = 3 wide runes = 6, ") " = 2.
-	if got := displayColumn(line, "- 한국어"); got != 18 {
+	if got := DisplayColumn(line, "- 한국어"); got != 18 {
 		t.Errorf("display column of the description dash = %d, want 18", got)
 	}
 	// The same position measured in runes and in bytes differs, which is what
@@ -59,10 +82,10 @@ func TestPtycapDisplayColumn(t *testing.T) {
 	if idx == 18 {
 		t.Errorf("fixture does not separate display width from byte offset (both 18)")
 	}
-	if got := displayColumn(line, "absent"); got != -1 {
+	if got := DisplayColumn(line, "absent"); got != -1 {
 		t.Errorf("display column of an absent substring = %d, want -1", got)
 	}
-	if got := displayColumn("Japanese (日本語) - 日本語", "Japanese"); got != 0 {
+	if got := DisplayColumn("Japanese (日本語) - 日本語", "Japanese"); got != 0 {
 		t.Errorf("display column at line start = %d, want 0", got)
 	}
 }
@@ -70,29 +93,29 @@ func TestPtycapDisplayColumn(t *testing.T) {
 func TestPtycapCompareGolden(t *testing.T) {
 	dir := t.TempDir()
 
-	if err := compareGolden(dir, "missing", "frame\n", false); err == nil || !strings.Contains(err.Error(), "missing") {
+	if err := CompareGolden(dir, "missing", "frame\n", false); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatalf("absent golden without update: want a 'missing' error, got %v", err)
 	}
-	if err := compareGolden(dir, "fresh", "line one\nline two\n", true); err != nil {
+	if err := CompareGolden(dir, "fresh", "line one\nline two\n", true); err != nil {
 		t.Fatalf("update of an absent golden: %v", err)
 	}
 	if b, err := os.ReadFile(filepath.Join(dir, "fresh.golden")); err != nil || string(b) != "line one\nline two\n" {
 		t.Fatalf("update wrote %q (err %v)", b, err)
 	}
-	if err := compareGolden(dir, "fresh", "line one\nline two\n", false); err != nil {
+	if err := CompareGolden(dir, "fresh", "line one\nline two\n", false); err != nil {
 		t.Fatalf("identical frame: %v", err)
 	}
-	err := compareGolden(dir, "fresh", "line one\nline 2\n", false)
+	err := CompareGolden(dir, "fresh", "line one\nline 2\n", false)
 	if err == nil {
 		t.Fatal("changed frame compared equal")
 	}
 	if !strings.Contains(err.Error(), "line 2") || !strings.Contains(err.Error(), "line two") {
 		t.Errorf("mismatch error does not show both sides of the changed line: %v", err)
 	}
-	if err := compareGolden(dir, "fresh", "line one\nline 2\n", true); err != nil {
+	if err := CompareGolden(dir, "fresh", "line one\nline 2\n", true); err != nil {
 		t.Fatalf("update of a changed golden: %v", err)
 	}
-	if err := compareGolden(dir, "fresh", "line one\nline 2\n", false); err != nil {
+	if err := CompareGolden(dir, "fresh", "line one\nline 2\n", false); err != nil {
 		t.Fatalf("after update the new frame must match: %v", err)
 	}
 }
@@ -198,21 +221,21 @@ func TestHomeWatch_PositiveControl(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			home := seedFakeHome(t)
-			before, err := homeWatchSnapshot(home, []string{key})
+			before, err := SnapshotHome(home, []string{key})
 			if err != nil {
 				t.Fatal(err)
 			}
 			// Seeded: W1 default preferences, W2 p1, W3, the W4 directory, W5 .zshrc.
-			if before.existing() != 5 {
-				t.Fatalf("seeded fake HOME shows %d existing watch entries, want 5 (positive existence first)", before.existing())
+			if before.Existing() != 5 {
+				t.Fatalf("seeded fake HOME shows %d existing watch entries, want 5 (positive existence first)", before.Existing())
 			}
 			tc.mutate(t, home)
-			after, err := homeWatchSnapshot(home, []string{key})
+			after, err := SnapshotHome(home, []string{key})
 			if err != nil {
 				t.Fatal(err)
 			}
-			changed := homeWatchDiff(before, after)
-			t.Logf("result %q: entries=%d existing=%d changed=%v", tc.name, len(after), after.existing(), changed)
+			changed := DiffSnapshots(before, after)
+			t.Logf("result %q: entries=%d existing=%d changed=%v", tc.name, len(after), after.Existing(), changed)
 			if tc.wantPass {
 				if len(changed) != 0 {
 					t.Errorf("want PASS, comparison reported %v", changed)
@@ -252,7 +275,7 @@ func TestPtycapScrubList_KanbanVarsMatchEnvKeys(t *testing.T) {
 		t.Fatal("no MOAI_KANBAN constant found in envkeys.go (positive existence first)")
 	}
 	inList := map[string]bool{}
-	for _, name := range ptycapKanbanVars {
+	for _, name := range kanbanVars {
 		inList[name] = true
 	}
 	for _, m := range declared {
@@ -260,16 +283,16 @@ func TestPtycapScrubList_KanbanVarsMatchEnvKeys(t *testing.T) {
 			t.Errorf("envkeys.go declares %s but the child scrub list does not carry it", m[1])
 		}
 	}
-	if len(ptycapKanbanVars) != len(declared) {
-		t.Errorf("scrub list carries %d MOAI_KANBAN vars, envkeys.go declares %d", len(ptycapKanbanVars), len(declared))
+	if len(kanbanVars) != len(declared) {
+		t.Errorf("scrub list carries %d MOAI_KANBAN vars, envkeys.go declares %d", len(kanbanVars), len(declared))
 	}
 }
 
 func TestPtycapChildEnv_Values(t *testing.T) {
-	c := ptycapNewCase(t, "")
+	c := NewCase(t, "")
 	env := map[string]string{}
 	var order []string
-	for _, kv := range c.childEnv() {
+	for _, kv := range c.ChildEnv() {
 		k, v, ok := strings.Cut(kv, "=")
 		if !ok {
 			t.Fatalf("malformed env entry %q", kv)
@@ -285,7 +308,7 @@ func TestPtycapChildEnv_Values(t *testing.T) {
 		config.EnvHome:            filepath.Join(c.Dir, "moai-home"),
 		config.EnvClaudeConfigDir: "",
 		"TERM":                    "xterm-256color",
-		ptycapEnvOutEnv:           filepath.Join(c.Dir, "child-env.txt"),
+		EnvOutEnv:                 filepath.Join(c.Dir, "child-env.txt"),
 	}
 	for k, want := range checks {
 		got, ok := env[k]
@@ -300,10 +323,10 @@ func TestPtycapChildEnv_Values(t *testing.T) {
 	if !filepath.IsAbs(env[config.EnvHome]) {
 		t.Errorf("%s must be absolute, got %q", config.EnvHome, env[config.EnvHome])
 	}
-	if env[ptycapCanaryEnv] == "" || env[ptycapCanaryEnv] != c.Canary {
-		t.Errorf("canary %q does not match the case canary %q", env[ptycapCanaryEnv], c.Canary)
+	if env[CanaryEnv] == "" || env[CanaryEnv] != c.Canary {
+		t.Errorf("canary %q does not match the case canary %q", env[CanaryEnv], c.Canary)
 	}
-	for _, k := range ptycapKanbanVars {
+	for _, k := range kanbanVars {
 		v, ok := env[k]
 		if !ok {
 			t.Errorf("child env does not carry %s", k)
@@ -311,13 +334,13 @@ func TestPtycapChildEnv_Values(t *testing.T) {
 			t.Errorf("child env %s=%q, want empty", k, v)
 		}
 	}
-	if other := ptycapNewCase(t, ""); other.Canary == c.Canary {
+	if other := NewCase(t, ""); other.Canary == c.Canary {
 		t.Error("two cases share a canary")
 	}
 }
 
 func TestPtycapCheckChildEnvRecord(t *testing.T) {
-	c := ptycapNewCase(t, "")
+	c := NewCase(t, "")
 	realHome, realMoai := "/real/home", "/real/home/.moai"
 	good := func() map[string]string {
 		m := map[string]string{
@@ -325,16 +348,16 @@ func TestPtycapCheckChildEnvRecord(t *testing.T) {
 			config.EnvHome:            filepath.Join(c.Dir, "moai-home"),
 			config.EnvClaudeConfigDir: "",
 			"TERM":                    "xterm-256color",
-			ptycapCanaryEnv:           c.Canary,
+			CanaryEnv:                 c.Canary,
 		}
-		for _, k := range ptycapKanbanVars {
+		for _, k := range kanbanVars {
 			m[k] = ""
 		}
 		return m
 	}
 	render := func(m map[string]string) string {
 		var b strings.Builder
-		for _, k := range ptycapRecordedVars() {
+		for _, k := range recordedVars() {
 			if v, ok := m[k]; ok {
 				b.WriteString(k + "=" + v + "\n")
 			}
@@ -346,7 +369,7 @@ func TestPtycapCheckChildEnvRecord(t *testing.T) {
 		t.Fatalf("a correct record reported problems: %v", problems)
 	}
 	mutants := map[string]func(m map[string]string){
-		"wrong canary":         func(m map[string]string) { m[ptycapCanaryEnv] = "not-the-canary" },
+		"wrong canary":         func(m map[string]string) { m[CanaryEnv] = "not-the-canary" },
 		"real HOME leaked":     func(m map[string]string) { m["HOME"] = realHome },
 		"real MOAI_HOME":       func(m map[string]string) { m[config.EnvHome] = realMoai },
 		"kanban identity":      func(m map[string]string) { m[config.EnvMoaiKanbanID] = "t999" },
@@ -365,9 +388,9 @@ func TestPtycapCheckChildEnvRecord(t *testing.T) {
 
 func TestPtycapSessionName(t *testing.T) {
 	re := regexp.MustCompile(`^moai-ptycap-[A-Za-z0-9-]+-[0-9a-f]{8}$`)
-	a := ptycapSessionName("TestSomething/sub case")
-	b := ptycapSessionName("TestSomething/sub case")
-	for _, n := range []string{a, b, ptycapSessionName("sentinel")} {
+	a := SessionName("TestSomething/sub case")
+	b := SessionName("TestSomething/sub case")
+	for _, n := range []string{a, b, SessionName("sentinel")} {
 		if !re.MatchString(n) {
 			t.Errorf("session name %q does not match %s", n, re)
 		}
@@ -375,244 +398,9 @@ func TestPtycapSessionName(t *testing.T) {
 	if a == b {
 		t.Errorf("two names for the same label collide: %q", a)
 	}
-	if !strings.HasPrefix(ptycapSessionName("sentinel"), ptycapSessionPrefix+"sentinel-") {
+	if !strings.HasPrefix(SessionName("sentinel"), SessionPrefix+"sentinel-") {
 		t.Error("sentinel name must read moai-ptycap-sentinel-<rand>")
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Child helpers (run only as a child of a harness test)
-// ---------------------------------------------------------------------------
-
-// TestPtyCaptureChild is the program a pty session runs. It records its
-// effective environment first, then runs the named case on the real TTY.
-func TestPtyCaptureChild(t *testing.T) {
-	name := os.Getenv(ptycapChildEnv)
-	if name == "" {
-		t.Skip("runs only inside a pty capture session")
-	}
-	if err := ptycapRecordEnv(); err != nil {
-		t.Fatalf("record child env: %v", err)
-	}
-	switch name {
-	case ptycapCaseInitFirstPage:
-		cwd, _ := os.Getwd()
-		form := buildUnifiedForm(InitQuestions(cwd), &WizardResult{}, "en")
-		err := form.Run()
-		t.Logf("form returned: %v", err)
-	default:
-		t.Fatalf("unknown child case %q", name)
-	}
-}
-
-// TestPtyCaptureSelfTestChild opens a real harness session and then fails on
-// purpose (fail) or waits for an anchor that never renders (timeout). A parent
-// test runs it as a separate `go test` process and inspects what it left.
-func TestPtyCaptureSelfTestChild(t *testing.T) {
-	mode := os.Getenv(ptycapSelfTestEnv)
-	if mode == "" {
-		t.Skip("runs only as a self-test child")
-	}
-	ptycapGate(t)
-	bin := ptycapBuildChild(t)
-	c := ptycapNewCase(t, os.Getenv(ptycapCaseRootEnv))
-	s := ptycapStart(t, c, bin, ptycapCaseInitFirstPage)
-	switch mode {
-	case "fail":
-		s.WaitFor("Select conversation language", ptycapAnchorTimeout)
-		t.Fatal("forced failure after the session opened")
-	case "timeout":
-		s.WaitFor(ptycapNeverAnchor, ptycapSelfTestTimeout)
-		t.Fatal("unreachable: WaitFor must fail on a missing anchor")
-	default:
-		t.Fatalf("unknown self-test mode %q", mode)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// pty self-checks (need tmux, gated by MOAI_PTY_CAPTURE=1)
-// ---------------------------------------------------------------------------
-
-// TestPtyCapture_NormalRun — AC-ITI-020 (1) plus the effective-environment
-// observation and the real HOME watch comparison.
-func TestPtyCapture_NormalRun(t *testing.T) {
-	ptycapGate(t)
-	bin := ptycapBuildChild(t)
-	c := ptycapNewCase(t, "")
-	checkHome := ptycapWatchRealHome(t, c.Dir)
-
-	sentinel := ptycapOpenSentinel(t)
-	before := ptycapListSessions(t)
-	if !containsString(before, sentinel) {
-		t.Fatalf("sentinel %s not listed before the run: %v", sentinel, before)
-	}
-
-	s := ptycapStart(t, c, bin, ptycapCaseInitFirstPage)
-	frame := s.WaitFor("Select conversation language", ptycapAnchorTimeout)
-	ptycapVerifyChildEnv(t, c)
-	requireLines(t, frame, "Select conversation language",
-		"English", "Korean (한국어)", "Japanese (日本語)", "Chinese (中文)")
-	path := ptycapExport(t, "normal-run-init-first-page", frame)
-	if b, err := os.ReadFile(path); err != nil || !strings.Contains(string(b), "Select conversation language") {
-		t.Fatalf("capture file %s does not carry the anchor (err %v)", path, err)
-	}
-	s.SendKeys("C-c")
-	s.Close()
-
-	after := ptycapListSessions(t)
-	t.Logf("moai-ptycap- sessions before=%v after=%v", before, after)
-	if strings.Join(before, ",") != strings.Join(after, ",") {
-		t.Errorf("moai-ptycap- session set changed: before=%v after=%v", before, after)
-	}
-	checkHome()
-}
-
-func TestPtyCapture_ForcedFailure(t *testing.T) {
-	ptycapGate(t)
-	ptycapRunSelfTest(t, "fail", "forced failure after the session opened")
-}
-
-func TestPtyCapture_ForcedTimeout(t *testing.T) {
-	ptycapGate(t)
-	ptycapRunSelfTest(t, "timeout", "not visible within")
-}
-
-// ptycapRunSelfTest runs TestPtyCaptureSelfTestChild in a separate process and
-// checks AC-ITI-020 (2)/(3): the child reports FAIL with the expected message,
-// the session it opened is gone, the sentinel survives, and the real HOME
-// watch list is unchanged.
-func ptycapRunSelfTest(t *testing.T, mode, wantMsg string) {
-	t.Helper()
-	bin := ptycapBuildChild(t)
-	caseRoot := t.TempDir()
-	checkHome := ptycapWatchRealHome(t, filepath.Join(caseRoot, "case"))
-
-	sentinel := ptycapOpenSentinel(t)
-	before := ptycapListSessions(t)
-	if !containsString(before, sentinel) {
-		t.Fatalf("sentinel %s not listed before the run: %v", sentinel, before)
-	}
-
-	out, err := ptycapRunChild(t, bin, ptycapSubprocessEnv(t, map[string]string{
-		ptycapGateEnv:     "1",
-		ptycapSelfTestEnv: mode,
-		ptycapCaseRootEnv: caseRoot,
-	}), "-test.run", "^TestPtyCaptureSelfTestChild$", "-test.v", "-test.timeout", "60s")
-	t.Logf("self-test child (%s) exit=%v output:\n%s", mode, err, out)
-	ptycapExport(t, "selftest-"+mode+"-child-output", out)
-
-	if err == nil {
-		t.Errorf("self-test child exited 0; want a failing exit")
-	}
-	if !strings.Contains(out, "--- FAIL: TestPtyCaptureSelfTestChild") {
-		t.Errorf("self-test child output carries no FAIL line")
-	}
-	if !strings.Contains(out, wantMsg) {
-		t.Errorf("self-test child output lacks %q", wantMsg)
-	}
-	opened := ptycapSessionsNamedIn(out)
-	if len(opened) == 0 {
-		t.Fatal("self-test child reported no opened session (positive existence first)")
-	}
-	after := ptycapListSessions(t)
-	t.Logf("opened=%v before=%v after=%v", opened, before, after)
-	for _, n := range opened {
-		if containsString(after, n) {
-			t.Errorf("session %s opened by the failing child survived", n)
-		}
-	}
-	if !containsString(after, sentinel) {
-		t.Errorf("sentinel %s did not survive", sentinel)
-	}
-	if strings.Join(before, ",") != strings.Join(after, ",") {
-		t.Errorf("moai-ptycap- session set changed: before=%v after=%v", before, after)
-	}
-	checkHome()
-}
-
-// TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a).
-func TestPtyCapture_SkipWithoutGate(t *testing.T) {
-	ptycapGate(t)
-	bin := ptycapBuildChild(t)
-	sentinel := ptycapOpenSentinel(t)
-	before := ptycapListSessions(t)
-	if !containsString(before, sentinel) {
-		t.Fatalf("sentinel %s not listed before the run: %v", sentinel, before)
-	}
-
-	out, err := ptycapRunChild(t, bin, ptycapSubprocessEnv(t, map[string]string{ptycapGateEnv: ""}),
-		"-test.run", "^TestPtyCapture", "-test.v")
-	t.Logf("ungated child exit=%v output:\n%s", err, out)
-	ptycapExport(t, "ac019a-ungated-child-output", out)
-	if err != nil {
-		t.Errorf("ungated child exited non-zero: %v", err)
-	}
-	results := topLevelResults(out)
-	if len(results) < 7 {
-		t.Fatalf("ungated child reported %d top-level results, want >= 7 capture tests: %v", len(results), results)
-	}
-	for name, res := range results {
-		if res != "SKIP" {
-			t.Errorf("ungated: %s reported %s, want SKIP", name, res)
-		}
-	}
-	after := ptycapListSessions(t)
-	if strings.Join(before, ",") != strings.Join(after, ",") {
-		t.Errorf("moai-ptycap- session set changed: before=%v after=%v", before, after)
-	}
-}
-
-// TestPtyCapture_FailWithoutTmux — AC-ITI-019 (b).
-func TestPtyCapture_FailWithoutTmux(t *testing.T) {
-	ptycapGate(t)
-	bin := ptycapBuildChild(t)
-	emptyPath := t.TempDir()
-	out, err := ptycapRunChild(t, bin, ptycapSubprocessEnv(t, map[string]string{
-		ptycapGateEnv: "1",
-		"PATH":        emptyPath,
-	}), "-test.run", "^TestPtyCapture_", "-test.v")
-	t.Logf("tmux-less child exit=%v output:\n%s", err, out)
-	ptycapExport(t, "ac019b-no-tmux-child-output", out)
-	if err == nil {
-		t.Errorf("tmux-less child exited 0; want a failing exit")
-	}
-	results := topLevelResults(out)
-	if len(results) < 5 {
-		t.Fatalf("tmux-less child reported %d top-level results, want >= 5: %v", len(results), results)
-	}
-	for name, res := range results {
-		if res != "FAIL" {
-			t.Errorf("tmux absent: %s reported %s, want FAIL", name, res)
-		}
-	}
-	if !strings.Contains(out, "tmux") {
-		t.Error("failure output does not name tmux")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// small helpers used by the self-checks
-// ---------------------------------------------------------------------------
-
-func containsString(list []string, s string) bool {
-	for _, v := range list {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
-var topLevelResultRe = regexp.MustCompile(`(?m)^--- (PASS|FAIL|SKIP): (\S+)`)
-
-// topLevelResults maps each top-level test name in `go test -v` output to its
-// result. Subtest lines are indented and therefore excluded.
-func topLevelResults(out string) map[string]string {
-	res := map[string]string{}
-	for _, m := range topLevelResultRe.FindAllStringSubmatch(out, -1) {
-		res[m[2]] = m[1]
-	}
-	return res
 }
 
 func TestPtycapTopLevelResults(t *testing.T) {
@@ -627,4 +415,172 @@ func TestPtycapTopLevelResults(t *testing.T) {
 			t.Errorf("%s: got %s, want %s", k, got[k], v)
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Child helpers (run only as a child of a harness test)
+// ---------------------------------------------------------------------------
+
+// TestPtyCaptureChild is the fixture program a pty session runs. It records
+// its effective environment first, paints the fixture anchor and lines, then
+// blocks on its TTY until the session interrupts it.
+func TestPtyCaptureChild(t *testing.T) {
+	name := os.Getenv(ChildEnv)
+	if name == "" {
+		t.Skip("runs only inside a pty capture session")
+	}
+	if err := RecordEnv(); err != nil {
+		t.Fatalf("record child env: %v", err)
+	}
+	switch name {
+	case fixtureCase:
+		fmt.Println(fixtureAnchor)
+		for _, l := range fixtureLines {
+			fmt.Println(l)
+		}
+		_, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		t.Logf("fixture stdin returned: %v", err)
+	default:
+		t.Fatalf("unknown child case %q", name)
+	}
+}
+
+// TestPtyCaptureSelfTestChild opens a real harness session and then fails on
+// purpose (fail) or waits for an anchor that never renders (timeout). A parent
+// test runs it as a separate `go test` process and inspects what it left.
+func TestPtyCaptureSelfTestChild(t *testing.T) {
+	mode := os.Getenv(SelfTestEnv)
+	if mode == "" {
+		t.Skip("runs only as a self-test child")
+	}
+	Gate(t)
+	bin := BuildChild(t, ".")
+	c := NewCase(t, os.Getenv(CaseRootEnv))
+	s := Start(t, c, bin, fixtureCase)
+	switch mode {
+	case "fail":
+		s.WaitFor(fixtureAnchor, AnchorTimeout)
+		t.Fatal("forced failure after the session opened")
+	case "timeout":
+		s.WaitFor(neverAnchor, selfTestTimeout)
+		t.Fatal("unreachable: WaitFor must fail on a missing anchor")
+	default:
+		t.Fatalf("unknown self-test mode %q", mode)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// pty self-checks (need tmux, gated by MOAI_PTY_CAPTURE=1)
+// ---------------------------------------------------------------------------
+
+// TestPtyCapture_NormalRun — AC-ITI-020 (1) on the fixture child, plus the
+// effective-environment observation and the real HOME watch comparison.
+func TestPtyCapture_NormalRun(t *testing.T) {
+	Gate(t)
+	bin := BuildChild(t, ".")
+	c := NewCase(t, "")
+	checkHome := WatchRealHome(t, c.Dir)
+
+	sentinel := OpenSentinel(t)
+	before := ListSessions(t)
+	if !slices.Contains(before, sentinel) {
+		t.Fatalf("sentinel %s not listed before the run: %v", sentinel, before)
+	}
+
+	s := Start(t, c, bin, fixtureCase)
+	frame := s.WaitFor(fixtureAnchor, AnchorTimeout)
+	VerifyChildEnv(t, c)
+	RequireLines(t, frame, append([]string{fixtureAnchor}, fixtureLines...)...)
+	path := Export(t, "normal-run-fixture", frame)
+	if b, err := os.ReadFile(path); err != nil || !strings.Contains(string(b), fixtureAnchor) {
+		t.Fatalf("capture file %s does not carry the anchor (err %v)", path, err)
+	}
+	s.SendKeys("C-c")
+	s.Close()
+
+	after := ListSessions(t)
+	t.Logf("moai-ptycap- sessions before=%v after=%v", before, after)
+	if strings.Join(before, ",") != strings.Join(after, ",") {
+		t.Errorf("moai-ptycap- session set changed: before=%v after=%v", before, after)
+	}
+	checkHome()
+}
+
+// TestPtyCapture_ForcedFailure — AC-ITI-020 (2).
+func TestPtyCapture_ForcedFailure(t *testing.T) {
+	Gate(t)
+	runSelfTest(t, "fail", "forced failure after the session opened")
+}
+
+// TestPtyCapture_ForcedTimeout — AC-ITI-020 (3).
+func TestPtyCapture_ForcedTimeout(t *testing.T) {
+	Gate(t)
+	runSelfTest(t, "timeout", "not visible within")
+}
+
+// runSelfTest runs TestPtyCaptureSelfTestChild in a separate process and
+// checks AC-ITI-020 (2)/(3): the child reports FAIL with the expected message,
+// the session it opened is gone, the sentinel survives, and the real HOME
+// watch list is unchanged.
+func runSelfTest(t *testing.T, mode, wantMsg string) {
+	t.Helper()
+	bin := BuildChild(t, ".")
+	caseRoot := t.TempDir()
+	checkHome := WatchRealHome(t, filepath.Join(caseRoot, "case"))
+
+	sentinel := OpenSentinel(t)
+	before := ListSessions(t)
+	if !slices.Contains(before, sentinel) {
+		t.Fatalf("sentinel %s not listed before the run: %v", sentinel, before)
+	}
+
+	out, err := RunChild(t, bin, SubprocessEnv(t, map[string]string{
+		GateEnv:     "1",
+		SelfTestEnv: mode,
+		CaseRootEnv: caseRoot,
+	}), "-test.run", "^TestPtyCaptureSelfTestChild$", "-test.v", "-test.timeout", "60s")
+	t.Logf("self-test child (%s) exit=%v output:\n%s", mode, err, out)
+	Export(t, "selftest-"+mode+"-child-output", out)
+
+	if err == nil {
+		t.Errorf("self-test child exited 0; want a failing exit")
+	}
+	if !strings.Contains(out, "--- FAIL: TestPtyCaptureSelfTestChild") {
+		t.Errorf("self-test child output carries no FAIL line")
+	}
+	if !strings.Contains(out, wantMsg) {
+		t.Errorf("self-test child output lacks %q", wantMsg)
+	}
+	opened := SessionsNamedIn(out)
+	if len(opened) == 0 {
+		t.Fatal("self-test child reported no opened session (positive existence first)")
+	}
+	after := ListSessions(t)
+	t.Logf("opened=%v before=%v after=%v", opened, before, after)
+	for _, n := range opened {
+		if slices.Contains(after, n) {
+			t.Errorf("session %s opened by the failing child survived", n)
+		}
+	}
+	if !slices.Contains(after, sentinel) {
+		t.Errorf("sentinel %s did not survive", sentinel)
+	}
+	if strings.Join(before, ",") != strings.Join(after, ",") {
+		t.Errorf("moai-ptycap- session set changed: before=%v after=%v", before, after)
+	}
+	checkHome()
+}
+
+// TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a) over this package's seven
+// capture tests.
+func TestPtyCapture_SkipWithoutGate(t *testing.T) {
+	Gate(t)
+	AssertSkipWithoutGate(t, BuildChild(t, "."), "^TestPtyCapture", 7)
+}
+
+// TestPtyCapture_FailWithoutTmux — AC-ITI-019 (b) over this package's five
+// TestPtyCapture_* tests.
+func TestPtyCapture_FailWithoutTmux(t *testing.T) {
+	Gate(t)
+	AssertFailWithoutTmux(t, BuildChild(t, "."), "^TestPtyCapture_", 5)
 }

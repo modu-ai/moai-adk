@@ -1,8 +1,7 @@
-package wizard
+package ptycaptest
 
-// Render helpers shared by the golden (View()) tests and the pty capture
-// tests: ANSI stripping, display-width column measurement, and golden-file
-// comparison.
+// Render helpers shared by golden (View()) tests and pty capture tests: ANSI
+// stripping, display-width column measurement, and golden-file comparison.
 
 import (
 	"errors"
@@ -20,8 +19,8 @@ import (
 // OSC sequences terminated by BEL or ST (hyperlinks, title).
 var ansiRe = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
 
-// stripANSI removes terminal escape sequences, leaving the painted text.
-func stripANSI(s string) string {
+// StripANSI removes terminal escape sequences, leaving the painted text.
+func StripANSI(s string) string {
 	return ansiRe.ReplaceAllString(s, "")
 }
 
@@ -31,10 +30,10 @@ func stripANSI(s string) string {
 // locale environment variables go-runewidth otherwise consults.
 var columnWidth = &runewidth.Condition{EastAsianWidth: false, StrictEmojiNeutral: true}
 
-// displayColumn returns the 0-based display column at which sub first starts
+// DisplayColumn returns the 0-based display column at which sub first starts
 // in line, or -1 when sub is absent. Columns are display cells, not runes or
 // bytes, so a Hangul/Kanji/Hanzi rune advances the column by 2.
-func displayColumn(line, sub string) int {
+func DisplayColumn(line, sub string) int {
 	idx := strings.Index(line, sub)
 	if idx < 0 {
 		return -1
@@ -42,13 +41,12 @@ func displayColumn(line, sub string) int {
 	return columnWidth.StringWidth(line[:idx])
 }
 
-// compareGolden compares got with <dir>/<name>.golden. With update set it
+// CompareGolden compares got with <dir>/<name>.golden. With update set it
 // (re)writes the file and returns nil. A missing golden is an error, never an
 // implicit pass. A mismatch error names every differing line with both sides.
-// Golden tests pass it an ANSI-stripped View() frame (stripANSI); the
-// testdata/golden directory and its -update flag arrive with the first
-// committed golden.
-func compareGolden(dir, name, got string, update bool) error {
+// Golden tests pass it an ANSI-stripped View() frame (StripANSI); the caller
+// owns the golden directory and its update flag.
+func CompareGolden(dir, name, got string, update bool) error {
 	path := filepath.Join(dir, name+".golden")
 	if update {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -87,10 +85,10 @@ func compareGolden(dir, name, got string, update bool) error {
 	return errors.New(b.String())
 }
 
-// requireLines is the positive-existence gate: every want must appear on some
+// RequireLines is the positive-existence gate: every want must appear on some
 // line of frame before any absence or layout property is judged.
-func requireLines(t *testing.T, frame string, wants ...string) {
-	t.Helper()
+func RequireLines(tb testing.TB, frame string, wants ...string) {
+	tb.Helper()
 	var missing []string
 	for _, w := range wants {
 		if !strings.Contains(frame, w) {
@@ -98,6 +96,6 @@ func requireLines(t *testing.T, frame string, wants ...string) {
 		}
 	}
 	if len(missing) > 0 {
-		t.Fatalf("frame lacks %q; frame:\n%s", missing, frame)
+		tb.Fatalf("frame lacks %q; frame:\n%s", missing, frame)
 	}
 }
