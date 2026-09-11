@@ -1,0 +1,8 @@
+Excerpt of local raw file flaky-quiet-check-2.txt (raw machine-wide ps output not committed).
+--- snapshot: single ---
+17:34  up 2 days, 11:27, 15 users, load averages: 9.11 9.79 8.14
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1379)
+go test/.test lines: 0 (self shell lines containing zsh: 0; other: 0)
+EXIT=0
+class: LOADED (load1=9.11, foreign go test=0)

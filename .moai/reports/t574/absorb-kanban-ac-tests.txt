@@ -1,0 +1,40 @@
+=== RUN   TestTempOrigin_SymlinkSpellingEquivalence
+    temp_origin_test.go:53: spellings differ: unresolved="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence4061500628/001" resolved="/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence4061500628/001"
+--- PASS: TestTempOrigin_SymlinkSpellingEquivalence (0.00s)
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/empty
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set
+--- PASS: TestTempOrigin_FailsOpenOnUnresolvable (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/empty (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set (0.00s)
+=== RUN   TestTempOrigin_ComponentBoundary
+=== RUN   TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp
+--- PASS: TestTempOrigin_ComponentBoundary (0.00s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/" "/tmp" "/var/folders"]
+--- PASS: TestDefaultTempRoots_Membership (0.00s)
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins
+--- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.52s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.29s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.09s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.13s)
+=== RUN   TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback
+--- PASS: TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback (0.71s)
+=== RUN   TestTodoQueueRoot_PureGuardIsSilent
+--- PASS: TestTodoQueueRoot_PureGuardIsSilent (0.14s)
+=== RUN   TestTodoQueueRoot_GitBranchUnreachedByGuard
+--- PASS: TestTodoQueueRoot_GitBranchUnreachedByGuard (0.24s)
+=== RUN   TestResolveTodoQueueRoot_PureFallbackWritesNothing
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing (0.14s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	2.186s

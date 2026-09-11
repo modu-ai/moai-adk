@@ -1,0 +1,9 @@
+t564 RED — predicted before running, on d02b892c2 + test files only (no implementation)
+
+command: go test ./internal/spec -count=1 -run '^(TestParser_DuplicateID_|TestLintDuplicateACID_)' -v
+
+FAIL TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping   (REQ-DUP-001-001 not collected: the declaration line is dropped)
+FAIL TestParser_DuplicateID_UnionsMappingsOfEveryLine             (only the first line's REQ-DUP-002-002 collected, REQ-DUP-002-001 missing)
+PASS TestParser_DuplicateID_DeclarationAboveStillReported        (first wins keeps the declaration today; the duplicate error is already returned)
+FAIL TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage       (0 DuplicateAcceptanceID findings: lint.go discards parse errors and no rule emits the code; CoverageIncomplete 1)
+PASS TestLintDuplicateACID_NoDuplicateNoFinding                   (control)

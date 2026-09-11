@@ -1,0 +1,14 @@
+t565 reproduction — predicted before running (binary /tmp/t623-lane9/moai-t564-fixed; internal/spec on this tree equals c77ef6247, the tree it was built from)
+
+fixture L SPEC-HDGREPRO-001 (loose): a `### Out of Scope — ... acceptance.md ...` heading appears BEFORE the real `## 6. Acceptance Criteria` section
+  findACSectionStart anchors on the ### heading (first heading starting "##" that contains "acceptance");
+  extractACLines reads until the next heading starting "##" (the ### 2.3 / ## 5 heading) and never reaches the real AC section
+  spec lint --json: CoverageIncomplete for REQ-HDGREPRO-001-001 (the real AC's mapping is never read)
+  spec view: exit 0, stdout "No acceptance criteria found in SPEC-HDGREPRO-001"
+fixture N SPEC-HDGREPRO-002 (narrow): the AC section heading is `## 6. 수락 기준` (no English "acceptance")
+  findACSectionStart returns -1 -> generic error "acceptance criteria section not found"
+  spec lint --json: CoverageIncomplete for REQ-HDGREPRO-002-001
+  spec view: exit 1, stderr contains "acceptance criteria section not found" (spec_view treats non-warning errors as fatal)
+fixture C SPEC-HDGREPRO-003 (control): only `## 6. Acceptance Criteria`
+  spec lint --json: no CoverageIncomplete
+  spec view: exit 0, tree containing AC-HDGREPRO-003-01

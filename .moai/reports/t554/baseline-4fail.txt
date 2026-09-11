@@ -1,0 +1,10 @@
+--- FAIL: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (5.42s)
+    home_state_coverage_test.go:520: audited production file changed after coverage tip: internal/cli/launcher.go
+--- FAIL: TestAuditLagUsesBinlagSeam (1.57s)
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:243 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:643: sweep: baseline hit home_state_coverage.go:251 MISSING — the ancestry comparison moved or was reimplemented outside binlag
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:253 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+    mcp_build_identity_test.go:648: sweep: NEW ancestry hit home_state_coverage.go:245 — a second comparison outside binlag.Evaluate (REQ-ABI-006 violation)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	8.462s
+FAIL

@@ -51,9 +51,15 @@ Three properties this plan depends on:
 ```bash
 git rev-parse --short HEAD                    # expect 7f61332ef or a recorded successor
 git branch --show-current                     # expect docs/spec-doc-drift-rewrite
-git diff --name-only 7f61332ef..HEAD | grep -c '\.go$'   # expect 0 (no Go change in this SPEC)
+CARD_BASE=$(git merge-base develop HEAD)      # left endpoint: derive at read time, never pin
+git diff --name-only "$CARD_BASE"..HEAD | wc -l             # control: expect >= 1 (0 = not measurable)
+git diff --name-only "$CARD_BASE"..HEAD | grep -c '\.go$'   # expect 0 (no Go change in this SPEC)
 go build ./... && go vet ./...                # expect exit 0, exit 0
 ```
+
+The two range lines are pre-merge only and read against the ref the branch absorbed (acceptance.md
+AC-UDD-023, `.claude/rules/local/gitflow-lane-protocol.md` §8). Before the first run-phase commit the
+control prints `0`, which reads as not measurable rather than as a pass.
 
 No test package is in pre-flight scope. This SPEC edits no Go file, so binding it to any suite would
 gate a documentation change on unrelated conditions — in particular on `TestBranchGuard_Latency` in

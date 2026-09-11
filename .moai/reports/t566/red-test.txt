@@ -1,0 +1,56 @@
+=== RUN   TestCodemapsFoldJudgments
+=== PAUSE TestCodemapsFoldJudgments
+=== RUN   TestCodemapsFoldJudgments_VerbIdenticalAcrossCopies
+=== PAUSE TestCodemapsFoldJudgments_VerbIdenticalAcrossCopies
+=== CONT  TestCodemapsFoldJudgments
+=== CONT  TestCodemapsFoldJudgments_VerbIdenticalAcrossCopies
+=== RUN   TestCodemapsFoldJudgments/green_normal_state
+=== PAUSE TestCodemapsFoldJudgments/green_normal_state
+=== RUN   TestCodemapsFoldJudgments/red_fold_prose
+=== PAUSE TestCodemapsFoldJudgments/red_fold_prose
+=== RUN   TestCodemapsFoldJudgments/red_uncovered_omission
+=== PAUSE TestCodemapsFoldJudgments/red_uncovered_omission
+=== RUN   TestCodemapsFoldJudgments/gap_missing_judgments
+=== PAUSE TestCodemapsFoldJudgments/gap_missing_judgments
+=== RUN   TestCodemapsFoldJudgments/gap_empty_judgments
+=== PAUSE TestCodemapsFoldJudgments/gap_empty_judgments
+=== RUN   TestCodemapsFoldJudgments/gap_malformed_line
+=== PAUSE TestCodemapsFoldJudgments/gap_malformed_line
+=== RUN   TestCodemapsFoldJudgments/gap_no_documents
+=== PAUSE TestCodemapsFoldJudgments/gap_no_documents
+=== CONT  TestCodemapsFoldJudgments/green_normal_state
+=== CONT  TestCodemapsFoldJudgments/gap_empty_judgments
+=== NAME  TestCodemapsFoldJudgments_VerbIdenticalAcrossCopies
+    codemaps_fold_judgments_test.go:204: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== CONT  TestCodemapsFoldJudgments/red_uncovered_omission
+--- FAIL: TestCodemapsFoldJudgments_VerbIdenticalAcrossCopies (0.00s)
+=== CONT  TestCodemapsFoldJudgments/red_fold_prose
+=== CONT  TestCodemapsFoldJudgments/gap_no_documents
+=== CONT  TestCodemapsFoldJudgments/gap_malformed_line
+=== CONT  TestCodemapsFoldJudgments/gap_missing_judgments
+=== NAME  TestCodemapsFoldJudgments/red_fold_prose
+    codemaps_fold_judgments_test.go:134: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== NAME  TestCodemapsFoldJudgments/gap_empty_judgments
+    codemaps_fold_judgments_test.go:166: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== NAME  TestCodemapsFoldJudgments/green_normal_state
+    codemaps_fold_judgments_test.go:121: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== NAME  TestCodemapsFoldJudgments/gap_no_documents
+    codemaps_fold_judgments_test.go:191: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== NAME  TestCodemapsFoldJudgments/red_uncovered_omission
+    codemaps_fold_judgments_test.go:145: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== NAME  TestCodemapsFoldJudgments/gap_malformed_line
+    codemaps_fold_judgments_test.go:178: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+=== NAME  TestCodemapsFoldJudgments/gap_missing_judgments
+    codemaps_fold_judgments_test.go:154: PLAN_AUDIT_D7_D8_HEURISTIC_DRIFT: no bash block under "### Fold and Omission Judgment Check" in ../template/templates/.claude/skills/moai/workflows/codemaps.md
+--- FAIL: TestCodemapsFoldJudgments (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/red_fold_prose (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/gap_empty_judgments (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/green_normal_state (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/gap_no_documents (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/red_uncovered_omission (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/gap_malformed_line (0.00s)
+    --- FAIL: TestCodemapsFoldJudgments/gap_missing_judgments (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.280s
+FAIL
+EXIT=1

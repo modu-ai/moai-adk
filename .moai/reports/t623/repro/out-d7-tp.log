@@ -1,0 +1,3 @@
+SHOULD: referenced SPEC SPEC-FIXTURE-NEW-001 not found in .moai/specs/
+BLOCKING: SPEC-FIXTURE-OLD-001 has status=superseded but is referenced without reconciliation
+exit=0

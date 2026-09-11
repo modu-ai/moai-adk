@@ -27,7 +27,7 @@ package spec
 //
 // WHY THE WHOLE FILE, AND WHY ExtractRequirementMappings. The inline path is
 // ParseAcceptanceCriteria, which is scoped twice over: findACSectionStart needs
-// an `##` heading containing "acceptance", and parseSingleACLine needs the
+// a heading that names the acceptance criteria section, and parseSingleACLine needs the
 // `AC-…:` colon form. BOTH scopings exist because spec.md is a mixed document
 // in which prose must not be read as AC. acceptance.md is not mixed — the file
 // IS the acceptance criteria, by name and by convention — so neither scoping
@@ -113,6 +113,11 @@ func siblingAcceptanceCoveredREQIDs(specPath string) map[string]bool {
 	}
 	for _, id := range ExtractRequirementMappings(string(data)) {
 		covered["REQ-"+id] = true
+	}
+	// Table-form mappings (card t561): read only requirement-headed columns;
+	// see lint_coverage_sibling_table.go for the two scopings.
+	for _, id := range siblingTableREQIDs(string(data)) {
+		covered[id] = true
 	}
 	return covered
 }
