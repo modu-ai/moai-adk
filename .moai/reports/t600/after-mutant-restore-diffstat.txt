@@ -1,0 +1,4 @@
+ internal/cli/home_state_coverage_test.go | 66 +++++++++++++++++++++++++++-----
+ internal/cli/mcp_build_identity_test.go  | 10 ++---
+ internal/config/envkeys.go               |  7 ++++
+ 3 files changed, 68 insertions(+), 15 deletions(-)
