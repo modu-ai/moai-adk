@@ -6,9 +6,9 @@ metadata:
   phase: "Phase 7~10: Quality Verification and Coverage"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 7: Quality Verification
 
@@ -16,7 +16,13 @@ Purpose: Detect project language and run language-specific diagnostics (tests, l
 
 #### Step 0.5.1: Language Detection
 
-Check indicator files in priority order (first match wins):
+Resolve all language candidates from repository markers and changed-file
+suffixes, de-duplicate them, and record the list. Do not use first-match wins:
+the routing contract is `.claude/rules/moai/workflow/language-routing-contract.md`.
+For `build.gradle.kts`, inspect the plugin/source evidence before deciding
+Kotlin versus Java. A monorepo may yield multiple candidates; the full quality
+phase routes each candidate, while the Stop hook may retain one bounded
+primary fast check and logs the remaining candidates.
 
 - Python: pyproject.toml, setup.py, requirements.txt, .python-version, Pipfile
 - TypeScript: tsconfig.json, package.json with typescript dependency
@@ -38,11 +44,24 @@ Check indicator files in priority order (first match wins):
 
 #### Step 0.5.2: Execute Diagnostics in Parallel
 
-Snapshot consumption: before launching, query the shared diagnostic snapshot with `moai verify check --key-current`. **Where** a fresh snapshot — key equality AND within the TTL — already covers one of the three categories below (recorded by the run-phase pre-review gate at run Phase 15, or by sync Phase 1 on the unchanged tree), consume the recorded result instead of re-executing that category; the quality report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence, and the freshness rule is what keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below and record the fresh result via `moai verify record`.
+Snapshot consumption: before launching, query the shared diagnostic snapshot with `moai verify check --key-current` and register the exact verification key from `.claude/rules/moai/workflow/verification-plan-contract.md`. **Where** a fresh snapshot — key equality AND within the TTL — already covers one of the three categories below (recorded by the run-phase pre-review gate at run Phase 15, or by sync Phase 1 on the unchanged tree), consume the recorded result instead of re-executing that category; the quality report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence, and the freshness rule is what keeps the attribution valid). A stale, incomplete, or key-mismatched snapshot is never cited: record the rerun reason and execute the check once for the new key.
 
 **Shared-snapshot wiring.** The snapshot is keyed by HEAD SHA (HEAD + porcelain-v2 + diff hash); a new commit invalidates the prior snapshot. Three sync-phase consumers — the `sync-auditor` Evidence cells, the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook, and the `.claude/workflows/sync-audit-4dim.js` 4-dimension judges — all consume this single snapshot keyed by HEAD SHA rather than each independently re-executing `go test` / `golangci-lint` / `go vet` / `go test -cover`. Concurrent recording requests for the SAME HEAD SHA are serialized via the per-key claim/lock mechanism (in-process mutex + cross-process `O_EXCL` claim-stamp with staleness reclaim), so exactly one consumer's recording per dimension lands and the rest read — last-writer-wins never silently drops a dimension.
 
-Launch three background tasks simultaneously:
+**Run-evidence reuse boundary.** A run-phase four-dimension report is reusable
+evidence only when its `tree_key`, AC set, and rubric version match the current
+sync inputs and it is `COMPLETE`. `INCOMPLETE`, `CONTESTED`, or any identity
+mismatch triggers the sync-auditor/4dim decision path. The reuse or
+re-execution reason is written into the sync report; evidence is never promoted
+to a PASS merely because a prior consumer was silent.
+
+Launch the test, linter, and type-check tasks through the shared bounded queue
+defined in `.claude/rules/moai/workflow/resource-budget-contract.md`. The
+three tasks may run simultaneously only when the recorded `max_concurrency`
+budget admits them; otherwise they remain queued with queue-wait evidence.
+Each task has one verification-plan owner and is skipped when an exact
+COMPLETE key is already available; duplicate commands with a different key
+must state the rerun reason.
 
 - Test Runner: Language-specific test command (pytest, npm test, go test, cargo test, etc.)
 - Linter: Language-specific lint command (ruff, eslint, golangci-lint, clippy, etc.)
@@ -132,10 +151,7 @@ Then call the **revision-match predicate** with the results directory recorded f
 
 Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9).
 
-Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode:
-- Only CRITICAL findings block the sync pipeline
-- HIGH findings are reported as warnings in PR description
-- MEDIUM and LOW findings are logged in sync report
+Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode. Apply the single severity contract in `.claude/rules/moai/core/security-decision-contract.md`: Critical and High block; Medium and Low are advisory.
 
 **Dependency manifest-change observation (hook-side, informational)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
 
@@ -147,13 +163,18 @@ A dependency or supply-chain review is a separate, agent-invoked step, not a sta
 
 **Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its CRITICAL-only stop gate below never clears an earlier sync-auditor FAIL — a HIGH finding that Phase 8 reports only as a warning still leaves a sync-auditor FAIL standing.
 
-If CRITICAL findings exist:
+Security severity follows `.claude/rules/moai/core/security-decision-contract.md`:
+Critical and High findings block; Medium and Low findings are advisory. A
+user-approved exception must be recorded with an ID, rationale, scope,
+approver, expiry, and review condition before a blocking finding can proceed.
+
+If a Critical or High finding exists:
 - Present findings via AskUserQuestion:
   - Fix now (Recommended): Delegate to a per-spawn `Agent(general-purpose)` security reviewer for auto-fix, then re-scan
-  - Continue with warning: Proceed to Phase 9 with security warnings embedded in PR description
+  - Continue by approved exception: proceed only after recording the required exception fields
   - Abort: Exit sync workflow
 
-If no CRITICAL findings: Proceed to Phase 9. Include any HIGH/MEDIUM findings in the sync report.
+If no blocking finding exists: Proceed to Phase 9. Include all advisory findings in the sync report.
 
 ### Phase 9: MX Tag Validation (Multi-Language)
 
@@ -264,7 +285,10 @@ When MX tags are added during sync:
 - Tag additions are noted in the PR description
 - Report summarizes tag changes by category
 
-Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
+Status mode early exit: If mode is "status", display the quality report with
+`before_tree_key`, `after_tree_key`, `read_only=true`, and writer-attempt count,
+then exit. No further phases execute. The phrase "no changes" is permitted
+only after the mutation proof in the read-only status contract succeeds.
 
 ### Phase 10: Coverage Analysis and Test Generation
 
@@ -274,7 +298,12 @@ Purpose: Measure test coverage, identify gaps, and generate missing tests to mee
 
 Agent: manager-develop subagent
 
-Measure current coverage using language-specific tools:
+Resolve the mode-specific `coverage_scope` before invoking a tool. In `auto`,
+measure changed packages and the dependency/import closure only; in `force` or
+`project`, measure the full repository. Record the selected packages and any
+pre-existing coverage debt rather than silently widening the auto run.
+
+Measure coverage using language-specific tools:
 - Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`
 - Python: `pytest --cov --cov-report=json`
 - TypeScript/JavaScript: `vitest run --coverage` or `jest --coverage --json`
@@ -309,8 +338,11 @@ Per-package fan-out (`FO-SYNC-3`, read-only drafting): **Where** the gaps span s
 #### Step 0.7.4: Verification
 
 After test generation:
-- Run the full test suite to ensure no regressions
-- Re-measure coverage to confirm improvement
+- If the writer generated tests, record the new tree key and run one
+  post-write test/coverage plan for that key; do not repeat the same command in
+  both the gate and this phase.
+- If no writer ran, reuse the exact COMPLETE test/coverage result and cite its
+  owner/key instead of re-running it.
 - Compare before/after coverage percentages
 
 Behavior:
