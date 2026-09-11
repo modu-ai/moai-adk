@@ -238,7 +238,7 @@ Evidence: `.moai/reports/t637/slot-run.md` (lane-7, 2026-09-12), backed by
 
 ```yaml
 sync_complete_at: "2026-09-12"
-sync_commit_sha: pending-backfill
+sync_commit_sha: 38c058c09
 sync_status: completed
 b12_self_test_a: "grep -c 'SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001' CHANGELOG.md -> 0 (pre-emission, before this commit's edit)"
 b12_self_test_b: "grep -oE 'AC-ILT-[0-9]+' acceptance.md | sort -u | wc -l -> 14; CHANGELOG entry cites '14 acceptance criteria'"
