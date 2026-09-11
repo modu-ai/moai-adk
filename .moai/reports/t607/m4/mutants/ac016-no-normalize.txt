@@ -1,0 +1,14 @@
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny
+    slot_lease_guard_test.go:441: hook root in a linked worktree: decision = "", want deny — the guard read the worktree's empty state instead of the primary's record
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git
+    slot_lease_guard_test.go:464: no advisory for an unresolvable root; got ""
+    slot_lease_guard_test.go:470: last audit under the unnormalized hook root = ("allow-unheld", "", present=true), want a fail-open line
+--- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary (0.54s)
+    --- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny (0.00s)
+    --- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny (0.00s)
+    --- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.171s
+FAIL

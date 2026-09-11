@@ -12,8 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 func loadWorkflowYAML(t *testing.T, body string) (*Config, error) {
@@ -124,5 +127,39 @@ func TestSlotLeaseConfig_MalformedResourceKeepsEnabled(t *testing.T) {
 	good := sl.Resources["good"]
 	if !reflect.DeepEqual(good.Commands, []string{"heavy-suite"}) || good.Invalid != "" {
 		t.Errorf("resources.good = %+v, want its patterns intact beside the malformed siblings", good)
+	}
+}
+
+// Entry shapes other than a mapping are marked, never rejected, and the mark
+// names the shape that was found.
+func TestSlotLeaseConfig_NonMappingEntriesAreMarked(t *testing.T) {
+	cfg, err := loadWorkflowYAML(t, "workflow:\n"+
+		"  slot_lease:\n"+
+		"    enabled: true\n"+
+		"    resources:\n"+
+		"      scalar-entry: 5\n"+
+		"      list-entry:\n"+
+		"        - heavy-suite\n"+
+		"      no-commands:\n"+
+		"        note: nothing to match\n")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	sl := cfg.Workflow.SlotLease
+	if !sl.Enabled {
+		t.Fatalf("slot_lease.enabled = false after non-mapping entries")
+	}
+	for name, want := range map[string]string{"scalar-entry": "scalar", "list-entry": "list"} {
+		if got := sl.Resources[name].Invalid; !strings.Contains(got, want) {
+			t.Errorf("resources.%s.Invalid = %q, want it to name the %s shape", name, got, want)
+		}
+	}
+	if entry := sl.Resources["no-commands"]; entry.Invalid != "" || len(entry.Commands) != 0 {
+		t.Errorf("resources.no-commands = %+v, want a valid entry with no patterns", entry)
+	}
+	for kind, want := range map[yaml.Kind]string{yaml.AliasNode: "alias", yaml.DocumentNode: "document", yaml.MappingNode: "mapping"} {
+		if got := yamlKindName(kind); got != want {
+			t.Errorf("yamlKindName(%v) = %q, want %q", kind, got, want)
+		}
 	}
 }

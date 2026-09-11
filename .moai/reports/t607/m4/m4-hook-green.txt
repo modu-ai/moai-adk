@@ -1,0 +1,61 @@
+=== RUN   TestSlotLeaseGuard_DenyMatrix
+=== RUN   TestSlotLeaseGuard_DenyMatrix/base
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-enabled
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-match
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-quoted
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-self
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-alive
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-bound
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-held
+=== RUN   TestSlotLeaseGuard_DenyMatrix/multi
+--- PASS: TestSlotLeaseGuard_DenyMatrix (3.35s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/base (0.43s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-enabled (0.34s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-match (0.35s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-quoted (0.34s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-self (0.38s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-alive (0.41s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-bound (0.37s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-held (0.37s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/multi (0.36s)
+=== RUN   TestSlotLeaseGuard_FailOpen
+=== RUN   TestSlotLeaseGuard_FailOpen/corrupt_record
+=== RUN   TestSlotLeaseGuard_FailOpen/missing_session_id
+=== RUN   TestSlotLeaseGuard_FailOpen/uncompilable_pattern
+=== RUN   TestSlotLeaseGuard_FailOpen/missing_project_root
+=== RUN   TestSlotLeaseGuard_FailOpen/uninterpretable_resource_entry
+--- PASS: TestSlotLeaseGuard_FailOpen (1.88s)
+    --- PASS: TestSlotLeaseGuard_FailOpen/corrupt_record (0.37s)
+    --- PASS: TestSlotLeaseGuard_FailOpen/missing_session_id (0.37s)
+    --- PASS: TestSlotLeaseGuard_FailOpen/uncompilable_pattern (0.39s)
+    --- PASS: TestSlotLeaseGuard_FailOpen/missing_project_root (0.36s)
+    --- PASS: TestSlotLeaseGuard_FailOpen/uninterpretable_resource_entry (0.39s)
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/live_foreign_holder
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/corrupt_record
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/live_foreign_holder
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/corrupt_record
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/live_foreign_holder
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/corrupt_record
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/live_foreign_holder_denies
+2026/09/12 04:32:01 WARN slot lease denied tool_name=Bash session_id=s-2 reason="SLOT_LEASE_VIOLATION: resource \"demo\" is held by lane-s-1 (session s-1, pid 92940) until 2026-09-11T20:32:01Z. Wait until `moai slot status --resource demo` shows it free, ask the holder to run `moai slot release --resource demo`, or take it over deliberately with `moai slot acquire --resource demo --force`."
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/corrupt_record_advises
+--- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies (2.98s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/live_foreign_holder (0.36s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/corrupt_record (0.46s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/live_foreign_holder (0.35s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/corrupt_record (0.36s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/live_foreign_holder (0.33s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/corrupt_record (0.36s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/live_foreign_holder_denies (0.39s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/corrupt_record_advises (0.37s)
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git
+--- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary (0.53s)
+    --- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny (0.03s)
+    --- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny (0.03s)
+    --- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	9.434s

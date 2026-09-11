@@ -1,0 +1,26 @@
+=== RUN   TestSlotLeaseGuard_DenyMatrix
+=== RUN   TestSlotLeaseGuard_DenyMatrix/base
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-enabled
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-match
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-quoted
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-self
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-alive
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-bound
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-held
+    slot_lease_guard_test.go:243: decision = deny (SLOT_LEASE_VIOLATION: resource "demo" is held by  (session , pid 0) until . Wait until `moai slot status --resource demo` shows it free, ask the holder to run `moai slot release --resource demo`, or take it over deliberately with `moai slot acquire --resource demo --force`.), want allow
+=== RUN   TestSlotLeaseGuard_DenyMatrix/multi
+    slot_lease_guard_test.go:239: reason does not name "demo" (resource / holder / how to wait, release, or take over): SLOT_LEASE_VIOLATION: resource "alpha" is held by  (session , pid 0) until . Wait until `moai slot status --resource alpha` shows it free, ask the holder to run `moai slot release --resource alpha`, or take it over deliberately with `moai slot acquire --resource alpha --force`.
+    slot_lease_guard_test.go:239: reason does not name "lane-s-1" (resource / holder / how to wait, release, or take over): SLOT_LEASE_VIOLATION: resource "alpha" is held by  (session , pid 0) until . Wait until `moai slot status --resource alpha` shows it free, ask the holder to run `moai slot release --resource alpha`, or take it over deliberately with `moai slot acquire --resource alpha --force`.
+--- FAIL: TestSlotLeaseGuard_DenyMatrix (3.51s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/base (0.39s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-enabled (0.37s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-match (0.35s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-quoted (0.35s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-self (0.40s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-alive (0.45s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-bound (0.39s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/n-held (0.41s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/multi (0.39s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	4.155s
+FAIL

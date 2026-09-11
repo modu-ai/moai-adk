@@ -189,6 +189,39 @@ ok  	github.com/modu-ai/moai-adk/internal/kanban	4.686s
 - `golangci-lint run --timeout=5m ./internal/kanban/...` → `0 issues.`
 - 커버리지: `go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -coverprofile=<scratch>/m2-cover.out` 후 프로파일에서 `slot_lease.go` 줄만 합산 → `slot_lease.go statements=189 covered=163 pct=86.2%`(`28d58376b` 작업 트리 기준, mkdir 한 줄 추가 전).
 
+### M4 — 설정 키와 PreToolUse 가드 (internal/config, internal/hook)
+
+- 커밋: `dff5dee4a`(구현, tree `f8dfe502339c9f610757e7cdabb7b744945a53c8`). 뒤이은 증거 커밋에 설정 가장자리 테스트 `TestSlotLeaseConfig_NonMappingEntriesAreMarked`(구현 뒤 커버리지 보강, RED를 거치지 않음)와 뮤턴트 실행기가 들어간다.
+- 변경: `defaults.go`에 `DefaultSlotLeaseMaxDuration = "30m"`(정의는 이 한 곳)과 `SlotLease{Enabled: false, DefaultMaxDuration}`. `slot_lease_config.go`에 자원 항목별 관대한 `UnmarshalYAML`(맵이 아닌 항목·목록이 아닌 `commands`·문자열이 아닌 원소는 `Invalid`만 채우고 섹션은 살린다). `cache.go`의 `configCacheSchemaVersion` 3 → 4. `pre_tool.go`에서 통합 가드 바로 뒤에 `checkSlotLease` 배선 — `slotLeaseConfig()`가 꺼짐(nil 제공자·nil 설정 포함)을 돌려주면 `h.projectRoot()`조차 부르지 않는다. 가드는 매칭된 호출에서만 `kanban.ResolveSlotLeaseRoot`로 루트를 정규화한다(CLI와 같은 함수, N1).
+
+GREEN:
+- `go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1 -v` → 종료 코드 0, `ok  	github.com/modu-ai/moai-adk/internal/hook	9.434s`. DenyMatrix 9행, FailOpen 5행, DisabledNeverReadsNorDenies 6조합 + 양성 대조 2개, NormalizesWorktreeRootToPrimary 3행 모두 `--- PASS`(`.moai/reports/t607/m4/m4-hook-green.txt`).
+- `go test ./internal/config/ -run '^(TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v` → 종료 코드 0, 테스트 4개 `--- PASS`(`.moai/reports/t607/m4/m4-config-green.txt`).
+
+뮤턴트 표(`.moai/reports/t607/m4/m4_mutants.py` — 실행기가 파일을 스크래치 백업으로 `cp` → 치환 한 곳(정확히 한 번 일치 단언) → 해당 테스트 → 백업에서 `cp`로 복구 → `filecmp` 바이트 비교. 실행 뒤 `git diff --quiet -- internal/hook/slot_lease_guard.go` → 종료 코드 0, `cmp <backup> internal/hook/slot_lease_guard.go` → 종료 코드 0):
+
+| 뮤턴트 | 변형 | 실패 행(원문) |
+|---|---|---|
+| 설정 검사 삭제 | `!cfg.Enabled ||` 제거 | `--- FAIL: TestSlotLeaseGuard_DenyMatrix/n-enabled` |
+| 패턴 검사 삭제 | `if true \|\| re.MatchString(...)` | `n-match`, `n-quoted` |
+| 따옴표 제거 삭제 | `scrubbed := command` | `n-quoted` |
+| 세션 비교 삭제 | `allow-self` 가지 제거 | `n-self` |
+| 생존 검사 삭제 | `allow-stale` 가지 제거 | `n-alive` |
+| 만료 검사 무효화 | `case false && lease.Expired(now):` | `n-bound` |
+| 보유자 있음 검사 삭제 | `allow-unheld` 가지 제거 | `n-held`, `multi` |
+| 첫 자원만 판정 | `range matched[:1]` | `multi` |
+| AC-RSL-016 정규화 제거 | `root, err := hookRoot, error(nil)` | `NormalizesWorktreeRootToPrimary/wt-deny`, `/no-git` |
+| AC-RSL-016 실패 시 비정규화 루트로 진행 | 오류 가지가 `root = hookRoot` | `NormalizesWorktreeRootToPrimary/no-git` |
+
+모든 뮤턴트는 종료 코드 1이었고 복구 비교는 모두 `True`였다. 만료 뮤턴트의 첫 형태(가지 삭제)는 `now`가 쓰이지 않아 **컴파일이 실패했다** — `slot_lease_guard.go:127:2: declared and not used: now`, FAIL 행 0. 이 실행은 아무것도 재지 않았으므로 판정에 쓰지 않고, 가지를 `false &&`로 무효화하는 형태로 다시 돌려 `n-bound` 실패를 관측했다(`summary.tsv`에 두 줄이 모두 남아 있다).
+
+회귀·빌드·린트(M4, 트리 `dff5dee4a`):
+- `go test ./internal/config/ -count=1` → `ok  	github.com/modu-ai/moai-adk/internal/config	3.204s`
+- `go test ./internal/hook/ -run 'IntegrationLock|BranchGuard|PreTool|SlotLease' -count=1 -v` → `ok  	github.com/modu-ai/moai-adk/internal/hook	24.830s`, `--- PASS` 306줄, `--- FAIL` 0줄
+- `golangci-lint run --timeout=5m ./internal/kanban/... ./internal/hook/... ./internal/config/...` → `0 issues.`
+- `GOOS=windows GOARCH=amd64 go build` / `go vet`(kanban·hook·config) → 0 / 0, 네이티브 `go vet` → 0
+- 커버리지(해당 테스트만, 프로파일에서 파일 줄 합산): `slot_lease_guard.go statements=72 covered=68 pct=94.4%`, `slot_lease_config.go statements=25 covered=25 pct=100.0%`
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<run 단계 대기>_

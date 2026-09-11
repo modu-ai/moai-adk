@@ -1,0 +1,24 @@
+=== RUN   TestSlotLeaseGuard_DenyMatrix
+=== RUN   TestSlotLeaseGuard_DenyMatrix/base
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-enabled
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-match
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-quoted
+    slot_lease_guard_test.go:243: decision = deny (SLOT_LEASE_VIOLATION: resource "demo" is held by lane-s-1 (session s-1, pid 11496) until 2026-09-11T20:34:30Z. Wait until `moai slot status --resource demo` shows it free, ask the holder to run `moai slot release --resource demo`, or take it over deliberately with `moai slot acquire --resource demo --force`.), want allow
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-self
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-alive
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-bound
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-held
+=== RUN   TestSlotLeaseGuard_DenyMatrix/multi
+--- FAIL: TestSlotLeaseGuard_DenyMatrix (3.83s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/base (0.39s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-enabled (0.37s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-match (0.39s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/n-quoted (0.51s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-self (0.44s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-alive (0.44s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-bound (0.46s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-held (0.43s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/multi (0.39s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	4.468s
+FAIL
