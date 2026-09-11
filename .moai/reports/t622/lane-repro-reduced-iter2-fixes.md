@@ -60,6 +60,36 @@ awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && (!/--merge([^A-Za-z-].*)?[Dd]eprec
 - 번호·개수: `**REQ-GDP-NNN**` 26개, 판정 대상 AC 제목 001–006·013–016·025–030(자리표시 007·017 별도).
 - 보이지 않는 문자: `perl -CSD` `\p{Cf}` → SPEC 네 파일 0, 심어 둔 대조 파일 1.
 
+## 추가 — 착수 전 선반영 N2·N3 (SPEC 0.2.4)
+
+- 지시: 리드 — 운영자가 Implementation Kickoff 를 승인하면서 N1·N2·N3 선반영을 조건으로 둠. 레인은 N2·N3 각각 반례 하나로 판정이 바뀌는 것을 재현.
+- 측정: 커밋 전 워킹 사본(HEAD `06c243b49` 위). 재현 직후 같은 세 파일을 명시 경로로 스테이징해 `ccfe3005e`(SPEC 0.2.4)로 커밋했다.
+
+### N3 — AC-GDP-028/029 읽기 목록 선택식 (acceptance.md 805행)
+
+반례 파일 세 줄: `` In team mode, `--auto-merge` merges only after all approvals are obtained. `` · `` `--auto-merge` merges as soon as CI checks pass. `` · `Unrelated line about release notes.`
+
+| 선택식 | 뽑힌 줄 |
+|---|---|
+| 옛 선택식 `awk '/[Aa]pprov/ \|\| /[Rr]eview/ \|\| /[Tt]eam mode/ \|\| /[Pp]ersonal/ \|\| /[Mm]anual/'` | 1행만 — 모드 이름 없는 병합 조건(2행)을 놓침 |
+| 새 선택식 (805행, `\|\| /--auto-merge/` 추가) | 1행, 2행 — 2행이 읽기 목록에 들어감 |
+
+### N2 — 빈 파일이면 PASS 인 판정의 존재 확인
+
+```
+missing: test -e exit=1 (new check, expect 1 -> FAIL)
+missing: test -s exit=1 (old check alone read 1 as PASS)
+empty: test -e exit=0 (expect 0)
+empty: test -s exit=1 (expect 1 -> PASS)
+```
+
+없는 파일은 새 존재 확인에서 FAIL(판정 불가)이 되고, 옛 빈 파일 검사만으로는 PASS 로 읽혔다. 판정 명령이 실제로 돌아 빈 파일을 남긴 경우는 두 검사를 모두 통과한다.
+
+### 요구사항·수용 기준 불변
+
+- `git diff -U0 HEAD -- acceptance.md spec.md` → 바뀐 줄 61개 중 `^[-+]\| AC-GDP-` 또는 `^[-+]\*\*REQ-GDP-` 형태 0개.
+- 같은 패턴의 대조: 원본에서 `^\| AC-GDP-` 23줄, `^\*\*REQ-GDP-` 26줄이 잡힘 — 검출식이 표 행과 정의 줄을 실제로 잡는다.
+
 ## 미검증 (Gaps)
 
 - D5–D8(표기·인용·환경 변수 안내·AC-016 기준 커밋)은 문구 수정이라 이 기록에서 반례를 돌리지 않았다. 3회차 감사 범위에 포함된다.
