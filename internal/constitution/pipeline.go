@@ -23,6 +23,14 @@ type Pipeline struct {
 
 	// LockFilePath is the single-writer lock file path.
 	LockFilePath string
+
+	// rename is the forward-rename operation of the apply step; nil means
+	// os.Rename. restore writes one file's pre-apply bytes back, or removes a
+	// file that did not exist; nil means restoreFile. Per-pipeline fields, not
+	// package variables, so a test can fail the Nth rename or a restore without
+	// touching process-global state (SPEC-CON-AMEND-APPLY-001 REQ-CAA-011).
+	rename  func(oldpath, newpath string) error
+	restore func(path string, data []byte, existed bool) error
 }
 
 // NewPipeline creates a Pipeline with default implementations.
