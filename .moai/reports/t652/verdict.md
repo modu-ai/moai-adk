@@ -140,6 +140,15 @@ go test ./internal/template/... -count=1 → exit 0   (template-tests.txt)
   ok  internal/template 29.033s · ok agentemit · ok commandemit
 ```
 
+### 6.3 통합 창 (리드 창 지명) — t622 누락분 동승
+
+- `moai integration acquire --name lane-3` → acquired. 정정 커밋 `54dfb4c43` 뒤 로컬 develop `907a73948` 흡수 → `52537d112` (충돌 없음). develop 쪽 변경 중 이 카드 파일(`AGENTS.md`·워크트리 스킬·`catalog.yaml`)과 겹침 0 (`git diff --stat ac6c42c2d 907a73948 -- <그 경로들>` 출력 없음).
+- 흡수 트리 1차 측정: `go test ./internal/template/... -count=1` → **exit 1** — `TestCatalogHashCoversSkillSubfiles`, `TestManifestHashFormat` FAIL (template-tests-window.txt). 불일치 항목 2개는 이 카드 밖: `moai` 저장 `5f1127239a3f…` / 계산 `55e4d1df0ea7…`, `manager-git` 저장 `061fe4fb0dfe…` / 계산 `676c034b8ee5…`.
+- 원인: `ac6c42c2d..907a73948`(t622)이 `skills/moai` 6파일과 `agents/moai/manager-git.md` 를 바꿨으나 그 범위에서 `catalog.yaml` 변경 0 — 생성물 해시 재생성 누락.
+- **t622 누락분 동승 (리드 결정 A)**: `gen-catalog-hashes.go --entry moai --dry-run` = `55e4d1df…`, `--entry manager-git --dry-run` = `676c034b…` 로 테스트 계산값과 일치 확인 후 재생성. 정정 커밋과 섞지 않고 **별도 커밋** `chore(catalog): regenerate moai and manager-git hashes missed by t622 (card t652)` 으로 넣었다. `git diff` 는 해시 두 줄만. 이 카드 항목 `moai-workflow-worktree` 는 dry-run `2be92941…` = 저장값으로 원래 정상이었다.
+- 재측정: `go test ./internal/template/... -count=1` → **exit 0** (`internal/template` 32.030s · `agentemit` · `commandemit` ok, template-tests-window2.txt). local↔template `diff -rq` 출력 없음.
+- 추론 경계: develop(`907a73948`) 트리 자체에서 테스트를 돌리지는 않았다. develop 의 빨강 여부는 리드가 `907a73948` CI 로 확인한다.
+
 ## Gaps
 
 - 설치 바이너리의 `--help` 는 읽지 않았다(리드 지시: 소스 리터럴 기준). 설치본(rc.7)이 develop 보다 오래돼 도움말이 다를 수 있다.
