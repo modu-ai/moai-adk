@@ -59,6 +59,17 @@ Each dimension has N sub-criteria. Scores MUST use the canonical anchors 0.25, 0
 
 ## Per-Dimension Mechanical Verification (project-language auto-detection)
 
+Before scoring any dimension, run the shared snapshot check once:
+
+```bash
+moai verify check --key-current
+```
+
+Include the exact command and verbatim output in the audit evidence. A miss,
+unavailable command, stale key, or failed check is an `evidence_gap`, never a
+PASS. The shared-snapshot consumer contract is
+`.claude/rules/moai/workflow/snapshot-consumer-contract.md`.
+
 **While** scoring any of the 4 evaluation dimensions, execute at least 1 dimension-specific mechanical verification command and cite its **verbatim** output as the Evidence cell (per `verification-claim-integrity.md` §1.1 surface 2 + §3.2 — a summarized Evidence cell is not acceptable evidence). Detect the project language automatically from project markers (e.g., `go.mod`, `pyproject.toml`, `package.json`, `Cargo.toml`) and run that language's toolchain; tools that are not installed are skipped gracefully (report the skip as a Gap, never as a PASS). The 4 languages below are equal examples — no language is primary; apply the same pattern to any other project language.
 
 | Dimension | Mechanical verification command (per detected project language) |
