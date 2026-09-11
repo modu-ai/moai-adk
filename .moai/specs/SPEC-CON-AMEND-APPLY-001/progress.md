@@ -29,7 +29,11 @@ Card t659 · branch `WT-amend-apply` · worktree `.claude/worktrees/t659`
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- run-phase entry: 2026-09-11, cycle_type=tdd, go1.26.8 darwin/arm64
+- BASELINE_SHA = `fe8cc9875aea7bad57fe05a88a1b33f8d196fe53` — the HEAD before the first run-phase commit (plan.md §C.1); it is the merge that absorbed local develop `85868148c`, and `git diff --stat 7a6af9ea0 fe8cc9875 -- internal/constitution internal/cli/constitution*.go internal/spec/lint*.go` printed nothing (lead measurement relayed in the run dispatch)
+- pre-flight re-measure: every plan.md §C.1 expectation matched — `.moai/reports/t659/run/preflight.txt` (2 stub lines; 0 / 7 yaml tags; 1 resolver; 0 / 0 EvalSymlinks; 1 absolute-only check; 8 `LoadRegistry(` lines; real registry sha256 `f7707b1d…be21`, real log sha256 `f5735051…69f0`)
+
+_<remaining run-phase evidence pending>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 

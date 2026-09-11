@@ -2,7 +2,7 @@
 id: SPEC-CON-AMEND-APPLY-001
 title: "Constitution amendment apply step: exact-once source replacement, line-scoped registry update, readable evolution log, and three-file atomic apply"
 version: "0.1.8"
-status: draft
+status: in-progress
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec
