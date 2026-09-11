@@ -33,3 +33,16 @@
 
 측정 명령: `git merge-base --is-ancestor WT-acquire-branch-record develop` / `... origin/develop`
 2026-09-12T00:10+0900 기준 두 명령 모두 rc=1이었다. `f680dab46`은 `eb50af5a8`의 조상이 아니므로 문서 편집은 보류한다.
+
+## 3. plan 단계 결과
+
+| 단계 | 커밋 | 결과 |
+|---|---|---|
+| SPEC 초안 v0.1.0 | `1a178c174` | `SPEC-RESOURCE-SLOT-LEASE-001`, Tier M, REQ 16 / AC 16 |
+| plan-audit 1회차 | `e50cfea93` | FAIL 0.78 — 막는 결함 D1–D6 (`plan-audit-iter1.md`) |
+| SPEC 수리 v0.2.0 | `e79d6761f` | D1–D12 전부 반영 |
+| plan-audit 2회차 | `759009244` | **PASS 0.90**, 막는 결함 없음 (`plan-audit-iter2.md`) |
+
+run 단계로 넘길 선택 사항(2회차 N1–N4): N1은 CLI도 가드와 같은 루트 해석 함수를 쓰게 할 것(D1의 거울상), N2는 AC-RSL-003c 분류, N3은 `<TOOL_TOKENS>`를 파일로 빼 `grep -f`로 돌릴 것, N4는 no-git 행의 감사 로그 경로 명시다.
+
+다음 관문은 Implementation Kickoff Approval이다. 승인 전에는 run에 들어가지 않는다. t637 게이트는 이 기록 시점에도 rc=1이다.
