@@ -671,11 +671,21 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 	return nil
 }
 
-// configureShellEnv sets up shell environment variables for Claude Code.
+// ConfigureShellEnvFn performs the Step 6 shell-config write. Production uses
+// defaultConfigureShellEnv; tests swap in a spy so they can observe that Step 6
+// was reached without writing the user's real shell rc files.
+//
+// @MX:NOTE: [AUTO] Step 6 shell-config write goes through this variable; the production default writes real rc files, tests swap in a counting spy.
+// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
+// @MX:WARN: [AUTO] Package-global seam swapped by tests; a test that swaps it must not call t.Parallel and must restore it with t.Cleanup.
+// @MX:REASON: The shell configurator resolves HOME directly, so a test that bypasses this seam (or leaves the real function in place) writes the developer's real home rc files.
+var ConfigureShellEnvFn = defaultConfigureShellEnv
+
+// defaultConfigureShellEnv sets up shell environment variables for Claude Code.
 // This adds CLAUDE_DISABLE_PATH_WARNING=1 and PATH entry to the appropriate
 // shell configuration file (.zshenv, .profile, or config.fish).
-func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
-	configurator := shell.NewEnvConfigurator(i.logger)
+func defaultConfigureShellEnv(logger *slog.Logger) (*shell.ConfigResult, error) {
+	configurator := shell.NewEnvConfigurator(logger)
 
 	return configurator.Configure(shell.ConfigOptions{
 		AddClaudeWarningDisable: true,
@@ -683,4 +693,10 @@ func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
 		AddGoBinPath:            true,
 		PreferLoginShell:        true,
 	})
+}
+
+// configureShellEnv runs the Step 6 shell-config write through the
+// ConfigureShellEnvFn seam.
+func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
+	return ConfigureShellEnvFn(i.logger)
 }
