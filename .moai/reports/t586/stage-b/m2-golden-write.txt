@@ -1,0 +1,12 @@
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh
+--- PASS: TestUpdateVersionDowngradeConfirm_Localized (0.03s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko (0.02s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.852s

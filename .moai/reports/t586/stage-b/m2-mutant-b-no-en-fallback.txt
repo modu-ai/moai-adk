@@ -1,0 +1,14 @@
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile
+    update_version_downgrade_test.go:146: resolved locale "", want "en"
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh
+--- FAIL: TestUpdateVersionDowngradeConfirm_Localized (0.02s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko (0.01s)
+    --- FAIL: TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.147s
+FAIL
