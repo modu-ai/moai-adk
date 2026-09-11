@@ -142,3 +142,11 @@ Constitution Check CI 단계(`./bin/moai constitution validate`, 2 errors)는 `c
 - `moai constitution validate`는 아직 실행하지 않았다(`internal/cli` 컴파일 슬롯 필요).
 - spec-workflow.md byte 동일과 파일 내부 모순 해소는 결정이 필요하다: t614·t645 참조 문서 둘을 템플릿에 미러해 남은 hunk를 전파할지, 아니면 t614·t645도 복원할지.
 - t646 trace-ledger 주석이 들어간 나머지 로컬 스킬 14곳의 템플릿 대응은 여전히 점검하지 않았다.
+
+### 2부 추가 — (B) 운영자 결정 반영: spec-workflow.md diff 0
+
+- 결정: 로컬의 t614·t645 hunk는 템플릿 문구로 되돌리고, 중립인 t607 hunk만 템플릿에 전파한다. 참조 문서 `delivery-policy.md`·`team-capability-resolver.md`는 템플릿에 미러하지 않고 로컬 파일은 그대로 둔다. t614·t645의 의도는 후속 검토 카드로 넘긴다.
+- 반영: 템플릿 412행에 t607 문단(`runtime.ResolveLatestPlanAudit`, 정확한 바이트 해시, 메타데이터 없는 리뷰 파일은 캐시 미스)을 넣은 뒤, 템플릿을 로컬에 복사했다. 복사 직전 diff는 t614(25-26행)·t645(445-454행) 두 영역뿐이었고, 복사 후 `cmp`가 두 파일이 동일하다고 보고했다.
+- 결과: 한 파일에 두 모델이 공존하던 문제(t614 요약 vs 복원된 표)가 사라졌다. Route A는 병합 전 문구 그대로다.
+- 잔여(이번에 손대지 않음): `.claude/hooks/tests/test-shared-checkout-contract.sh`는 t615의 새 문구를 전제하므로 현재 문구에서는 실패한다. 호출하는 Go 테스트·CI·Makefile은 0건이다.
+- Constitution Check: `a9b15fb62` 트리로 빌드한 바이너리(스크래치 경로)로 `MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md moai constitution validate` → exit 0, `OK — no drift or violations detected`. 같은 바이너리를 `ee99507fb` 전체 트리 사본에서 실행하면 exit 1, `[DRIFT] CONST-V3R5-027`·`CONST-V3R5-028`(CI의 2 errors와 일치)이 나와 검사기가 실제로 판정함을 확인했다. 출력의 "0 entries checked"는 검사 수가 아니라 문제 항목 수를 가리킨다(`constitution list`는 101개 항목). 이번 (B) 반영은 레지스트리 조항 문구를 바꾸지 않으므로 validate를 다시 돌리지 않고 `TestRegistrySyncGuard`로 재측정했다.
