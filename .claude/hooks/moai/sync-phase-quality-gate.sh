@@ -208,8 +208,10 @@ SYNC_GATE_STALE_WINDOW=60
 
 # write_state_file <path>: copy stdin into <path> through a temporary file in the
 # state dir renamed into place, so a reader never sees a half-written file.
-# Failures are swallowed: the gate exits 0 on every path, and a missing write
-# leaves a state that later re-gates or notifies, never a silent pass.
+# write_state_file's own failures are swallowed and a missing write leaves a
+# state that later re-gates or notifies, never a silent pass; the script is
+# meant to exit 0 throughout, but the final log mkdir below still runs under
+# set -e and can exit 1 when .moai/logs is not a directory.
 write_state_file() {
     wsf_tmp="$STATE_DIR/.${1##*/}.tmp.$$"
     if cat > "$wsf_tmp" 2>/dev/null && mv -f "$wsf_tmp" "$1" 2>/dev/null; then
