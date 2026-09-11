@@ -288,6 +288,7 @@ out_of_spec_guards:                     # §E.2.6 — SPEC 밖 추가, 리드 �
 residual_risk:
   - "G-B symlink limit: sameFile compares filepath.Abs results and resolves no symbolic link, so a rule-file entry that reaches the registry or the evolution log through a symlinked alias is not caught by G-B; no test covers that case"
 sync_report_obligation: "the sync report MUST name both guards (G-A, G-B) for sync-auditor review, as additions outside the SPEC accepted by the lead; both run before Layer 1"
+sync_report_behavior_change: "the sync report's behavior-change item MUST carry one line: a rule file whose file: points at an evolution log that does not exist yet was rejected with a 'no such file' error before the G-B move and is now rejected with the G-B message, before any gate (lead, 2026-09-12: intended behavior, kept; inferred from code reading, no test covers it — a test is optional)"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
