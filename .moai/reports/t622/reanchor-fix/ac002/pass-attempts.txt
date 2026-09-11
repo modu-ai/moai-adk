@@ -1,0 +1,5 @@
+try-x1-heading: section extract 0 lines, section-diff exit 1 -> (b) FAIL
+try-x2-dupsection: section extract 55 lines (two ranges), section-diff exit 1 -> (b) FAIL
+try-x3-shfence: block extract falls through to the Pre-Edit block; judge order=PASS shape=FAIL (joined ; line); section-diff exit 1 -> (b) FAIL
+try-x4-template-only: template section (mut-viii applied) vs base template section diff exit 1 -> (b) FAIL
+mut-ix-outside-override: order=PASS shape=PASS, section-diff exit 0, wholefile-diff exit 1 -> AC-GDP-002 PASS (not caught by AC-GDP-002)

@@ -1,0 +1,6 @@
+20,21c20,21
+< # Lane B — can be started while Lane A is fetching, then joined before the
+< # divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
+---
+> # Lane B — MUST NOT start until Lane A has fully finished; never run it
+> # concurrently with the fetch.

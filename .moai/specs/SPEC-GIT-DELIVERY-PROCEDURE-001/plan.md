@@ -6,11 +6,11 @@
 
 - 카드: t622 (지침 감사 G1). Class C, Tier M, era V3R6. 판정 대상 REQ 12·AC 16으로 Tier M 상한(16/16) 안이다. 이 카드가 바꾸는 파일 17개(명령 게시본이 바뀌면 19개 — 0.2.5에서 `agent-common-protocol.md` 두 사본이 편집 대상에서 빠짐)는 Tier M 파일 수 안내를 넘지만, 리드가 "요구사항·수용 기준 수로 정하고 파일 수 안내는 참고" 로 판정했다(spec.md §C.1·§C.4).
 - 워크트리: `.claude/worktrees/t622`, 브랜치 `WT-git-procedure-fixes`.
-- 기준 트리(R1 고정, 0.2.5 재고정): `BASE=255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089` — 로컬 develop `f1f034bb4` 를 두 번째로 흡수한 병합 커밋. 이 카드는 아직 범위 파일을 고치지 않았으므로 이 커밋이 run-phase 이전 상태다. 0.2.5 작성 시점 HEAD `b24f2e184` 와의 차이는 보고서 두 파일뿐이고, 범위 루트 작업 트리는 BASE 와 차이 없다(spec.md §A.1, 증거 `.moai/reports/t622/reanchor/`). 0.2.4 까지의 기준 `b412f8a33` 은 HISTORY 기록이다.
+- 기준 트리(R1 고정, 0.2.5 재고정): `BASE=255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089` — 로컬 develop `f1f034bb4` 를 두 번째로 흡수한 병합 커밋. 이 카드는 아직 범위 파일을 고치지 않았으므로 이 커밋이 run-phase 이전 상태다. 0.2.5 작성 시점 HEAD `b24f2e184` 와의 차이는 보고서 두 파일뿐이고, 범위 루트 작업 트리는 BASE 와 차이 없다(spec.md §A.1, 증거 `.moai/reports/t622/reanchor/`). 0.2.4 까지의 기준 `b412f8a33` 은 HISTORY 기록이다. BASE 는 고정 스냅숏(기준 사본 반출·양성 대조·사본 덩어리·미러 기준선·AC-GDP-002·003 기준 절)에만 쓴다. "이 카드가 바꾼 것" 을 재는 범위의 왼쪽 끝은 읽는 시점의 `git merge-base develop HEAD`(`$CARD_BASE`)다 — spec.md §E.2, acceptance.md 관례(0.2.6).
 - 줄번호: 이 문서의 줄번호는 템플릿 사본 기준이다. 로컬 사본이 다른 곳 — `manager-git.md` 6행부터 +2, `delivery.md` 템플릿 279~421행 구간 +25, `workflows/sync.md` 65행 이후 +10 — 은 괄호에 로컬 값을 적는다(spec.md §A.1 표). 편집·판정은 줄번호가 아니라 표지로 자리를 찾는다.
 - 범위: AC-11 fetch 순서, SX-R04 병합 방식 해석, OD-2 = B auto-merge 옵트인 단일 기준, `/moai sync` 플래그 의미와 모드별 승인 조건, 소비자 X1~X3(사용법 줄·슬래시 명령 힌트·다음 단계 선택지), 명령 원본 편집에 따른 게시본 발행, 그 파일들의 부수 의무. late-branch 재설계는 카드 t658, amend 적용 도우미 스텁은 카드 t659(spec.md §G). docs-site 네 로케일(X4)은 후속 문서 카드(spec.md §D).
 - 결정: OD-2 = 선택지 B(2026-09-10), T1 = 분할(2026-09-11), OD-2 하위 결정 플래그 의미(2026-09-11) — 운영자(리드 경유). 모드별 승인 조건(2026-09-11), 소비자 범위 판정 X1~X4(2026-09-11) — 리드 판정. 흡수 뒤 REQ-GDP-002 처리 선택지 (a)(2026-09-11) — 리드 판단(운영자 경유, 최종): t635 형태가 충족, `agent-common-protocol.md` 비편집·비미러, Kickoff 승인 유지. 결정은 Implementation Kickoff Approval을 대신하지 않는다.
-- 0.2.5 재고정 뒤의 plan-auditor 는 REQ-GDP-002·AC-GDP-002 변경분과 그 파생 항목(BASE, 사본 기준선, M5, AC-GDP-016, 미러 테스트 비회귀 점검, 로컬 줄 인용)만 본다.
+- 0.2.5 재고정 뒤의 plan-auditor 는 REQ-GDP-002·AC-GDP-002 변경분과 그 파생 항목(BASE, 사본 기준선, M5, AC-GDP-016, 미러 테스트 비회귀 점검, 로컬 줄 인용)만 본다. 그 감사(`.moai/reports/t622/plan-audit-reanchor.md`, FAIL 0.75)의 D1~D6 을 0.2.6 에서 반영했다 — 다음 감사는 D1~D3 과 그로 인한 퇴행만 본다.
 - plan-audit 회차: 분할 뒤 1회차 FAIL 0.71(`.moai/reports/t622/plan-audit-reduced-iter1.md`). 0.2.1 판에 대한 감사 파일은 `.moai/reports/t622/` 에 없다(0.2.2 작성 시점 목록). 이 판이 축소판 2회차 대상이다. 분할 전 두 회차(FAIL 0.67, FAIL 0.75)는 전체 범위 기록이다.
 - run-phase 증거 디렉터리: `.moai/reports/t622/run/` (추적 경로).
 - 남은 차단 항목: 없음.
@@ -44,10 +44,15 @@
 
 모두 읽기 전용이다(5번의 발행 대조만 추적 파일 하나를 잠시 바꿨다가 되돌린다). 결과는 `.moai/reports/t622/run/` 에 파일로 남기고 exit code를 따로 기록한다.
 
-1. 트리 확인: `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD`, `git status --porcelain`. `git diff --stat $BASE HEAD -- <범위 파일·생성물·게시본·발행기>` 가 비어 있는지 확인한다(0.2.5 작성 시점 비어 있음). BASE 이후 develop 을 다시 흡수했다면 멈추고 SPEC 재고정을 요청한다(spec.md §E.2).
-2. 기준 트리 사본 반출: `git show $BASE:<경로> > .moai/reports/t622/run/base-<이름>`. 명령마다 경로를 글자 그대로 쓴다.
+1. 트리 확인과 범위의 왼쪽 끝(0.2.6):
+   - `git rev-parse --show-toplevel`, `git branch --show-current`, `git rev-parse HEAD`, `git status --porcelain`.
+   - `git merge-base --all develop HEAD > .moai/reports/t622/run/card-base.txt` — 정확히 1줄이어야 한다(2줄 이상이면 범위 판정 불가로 보고). 이 값이 `$CARD_BASE` 다. SPEC 에 핀하지 않고, 판정할 때마다 다시 구해 명령에 글자 그대로 넣는다(워크트리 가드가 git 명령 안의 `$(…)` 를 거부한다).
+   - 범위 대조: `git diff --name-only develop...HEAD > .moai/reports/t622/run/card-range-names.txt` → `test -e` exit 0, `test -s` exit 0(1줄 이상). 0줄이면 "측정 불가" 로 보고하고 멈춘다 — "변경 없음" 이 아니다.
+   - 스냅숏 신선도 점검: `git diff --name-only $BASE $CARD_BASE -- <스냅숏 경로 21개: 범위 파일 로컬·템플릿 18, 게시본 로컬·템플릿 2, 생성물 manager-git.toml 1>` → `test -e` exit 0, `test -s` exit 1. 비어 있지 않으면 흡수가 그 파일을 바꾼 것이다 — 그 파일의 기준 사본은 2단계에서 `$CARD_BASE` 로 반출하고, 그 파일이 쓰는 기준선을 다시 재어 기록한 뒤 리드에 올린다(spec.md §E.2). 미러 기준선용 점검 `git diff --name-only $BASE $CARD_BASE -- internal/template/ .claude/rules/moai/` 도 함께 기록한다(비어 있지 않으면 8단계와 AC-GDP-013 (e)의 귀속 규칙을 쓴다).
+   - 0.2.5 의 "BASE 이후 develop 을 다시 흡수했다면 멈추고 SPEC 재고정을 요청한다" 는 폐기했다. 재흡수는 통합 창의 예정된 단계이고, BASE 를 흡수 병합으로 옮기지 않는다(옮기면 카드 커밋이 범위에서 빠진다).
+2. 기준 트리 사본 반출: `git show $BASE:<경로> > .moai/reports/t622/run/base-<이름>`(1단계 신선도 점검에서 낡은 것으로 나온 파일만 `$CARD_BASE` 에서 반출). 명령마다 경로를 글자 그대로 쓴다.
    - 로컬 경로 → `base-<이름>.md`: `manager-git`(`.claude/agents/moai/manager-git.md`), `agent-common-protocol`, `delivery`, `doc-execution`, `skill`(`.claude/skills/moai/SKILL.md`), `reference`, `qgc`(`quality-gates-context.md`), `sync`(`.claude/skills/moai/workflows/sync.md`), `command-sync`(`.claude/commands/moai/sync.md`), `published-sync`(`.agents/skills/moai-sync/SKILL.md`).
-   - 템플릿 경로 → `base-<이름>-template.md`: `manager-git`(`internal/template/templates/.claude/agents/moai/manager-git.md`), `delivery`, `doc-execution`, `skill`, `reference`, `qgc`, `sync`, `command-sync`(`internal/template/templates/.claude/commands/moai/sync.md.tmpl`), `published-sync`(`internal/template/templates/.agents/skills/moai-sync/SKILL.md`). `manager-git`·`qgc` 는 0.2.5에서 더했다 — BASE 에서 두 사본이 달라져 AC-GDP-013 본문 비교 대상이 됐다.
+   - 템플릿 경로 → `base-<이름>-template.md`: `manager-git`(`internal/template/templates/.claude/agents/moai/manager-git.md`), `delivery`, `doc-execution`, `skill`, `reference`, `qgc`, `sync`, `command-sync`(`internal/template/templates/.claude/commands/moai/sync.md.tmpl`), `published-sync`(`internal/template/templates/.agents/skills/moai-sync/SKILL.md`). `manager-git`·`qgc` 는 0.2.5에서 더했다 — BASE 에서 두 사본이 달라져 AC-GDP-013 본문 비교 대상이 됐다. `agent-common-protocol`(`internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md`)은 0.2.6에서 더했다 — AC-GDP-002 (b)의 템플릿 기준 절이다.
    - 생성물 `base-manager-git.toml`.
    - AC-GDP-002 뮤턴트 (i)·AC-GDP-003 대조용 옛 사본: `git show b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0:.claude/rules/moai/core/agent-common-protocol.md > .moai/reports/t622/run/b412-agent-common-protocol.md`.
 3. 양성 대조(RED 셀) 측정 — `acceptance.md` 각 기준의 "대조" 명령을 기준 트리 사본에 실행한다. 기대 적중이 안 나오면 편집 전에 멈추고 blocker로 보고한다.
@@ -55,7 +60,9 @@
 5. AC-GDP-030 발행 점검 양성 대조(c): 템플릿 게시본 한 파일을 잠시 바꾼 상태에서 `make commands-emit-check` exit 1 → 백업으로 되돌림 → `cmp` exit 0 → `make commands-emit-check` exit 0 → 게시본 경로 `git status --porcelain` 빈 출력. 되돌림을 확인하지 못하면 멈추고 보고한다.
 6. 사본 diff 기준선(BASE): `agent-common-protocol.md`·게시본 exit 0; 나머지 여덟 파일(`manager-git.md`, `delivery.md`, `doc-execution.md`, `quality-gates-context.md`, `moai/SKILL.md`, `references/reference.md`, `workflows/sync.md`, 명령 원본) exit 1. 덩어리 머리를 spec.md §A.4 목록과 대조해 기록한다(0.2.5 측정 `.moai/reports/t622/reanchor/pair-hunks.txt`).
 7. Frozen 기준선: AC-GDP-025의 네 clause 개수, `[ZONE:Frozen]` 줄 위치, 레지스트리 양성 대조 13·기타 0, 기타 검출식 뮤턴트 픽스처 2.
-8. 미러 테스트 기준선: `go test ./internal/template/ -count=1 -run 'TestSanitizedPairParity|TestRuleTemplateMirrorDrift' -v > .moai/reports/t622/run/mirror-pre.txt 2>&1` → exit 1 기대. PASS/FAIL 집합을 뽑아 `.moai/reports/t622/reanchor/mirror-baseline-sets.txt`(0.2.5 측정: PASS 17줄, FAIL {`TestRuleTemplateMirrorDrift`, `TestRuleTemplateMirrorDrift/spec-workflow.md`})와 같은지 본다. 다르면 편집 전에 멈추고 blocker 로 보고한다(AC-GDP-013 (e)).
+8. 미러 테스트 기준선: `go test ./internal/template/ -count=1 -run 'TestSanitizedPairParity|TestRuleTemplateMirrorDrift' -v > .moai/reports/t622/run/mirror-pre.txt 2>&1` → exit 1 기대. PASS/FAIL 집합을 뽑아 `.moai/reports/t622/reanchor/mirror-baseline-sets.txt`(0.2.5 측정: PASS 17줄, FAIL {`TestRuleTemplateMirrorDrift`, `TestRuleTemplateMirrorDrift/spec-workflow.md`})와 같은지 본다. **비교 전에 양쪽을 `sort` 한다** — `sort <집합 파일> > <정렬본>` 두 번 뒤 두 정렬본을 `diff`. 하위 테스트가 병렬로 돌아 출력 순서가 매번 달라서, 정렬하지 않은 `diff` 는 같은 집합에서도 exit 1 이다(재고정 감사 D5, 재현 `.moai/reports/t622/reanchor-fix/d5-*.sorted`: 정렬 전 exit 1, 정렬 뒤 exit 0). AC-GDP-013 (e)의 양방향 `grep -v -x -F -f` 판정은 순서와 무관하므로 그대로 쓴다. 다르면 편집 전에 멈추고 blocker 로 보고한다 — 단 1단계 미러 기준선용 점검이 비어 있지 않았다면(흡수가 미러 대상 파일을 바꿈) 달라진 원소를 AC-GDP-013 (e)의 귀속 규칙으로 가려 기록한다.
+
+**통합 창 흡수 뒤 재측정 (0.2.6).** 판정을 결정하는 검증은 통합 창에서 로컬 develop 을 흡수한 **뒤** 병합 트리에서 한다. 그때 1단계를 다시 한다 — `$CARD_BASE` 는 방금 흡수한 develop 커밋으로 바뀌고, 범위 판정(AC-GDP-014·015·016·025·030, M5)은 그 값에서 다시 잰다. BASE 는 옮기지 않는다. 스냅숏 신선도 점검이 비어 있지 않으면 해당 스냅숏만 다시 반출·재측정하고 리드에 올린다. 흡수를 여러 번 해도 같은 절차를 되풀이한다.
 
 ## §D 제약
 
@@ -131,8 +138,8 @@
 
 - 대상: REQ-GDP-002, 003
 - 0.2.5 리드 판단 (a): Pre-Spawn 절은 develop 카드 t635 의 Lane A/B 형태로 REQ-GDP-002 를 이미 충족하고, 템플릿 미러는 카드 dr0911 이 했다. **이 단계는 아무 파일도 고치지 않는다.**
-- AC-GDP-002(회귀 방지 — 두 사본 Pre-Spawn bash 블록의 fetch → status 관측 → 실패 시 exit → rev-list 순서, session list 1줄, 해석 표 행이 BASE 와 같음)와 AC-GDP-003(Pre-Edit 절이 BASE 와 같음)을 실행해 PASS 를 기록한다.
-- 두 판정이 빨강이면 이 카드의 편집이 원인인지(`git log --no-merges $BASE..HEAD -- <두 사본>` 목록) 흡수가 원인인지 가려 blocker 로 보고한다 — 이 카드가 그 파일을 고쳐 맞추지 않는다.
+- AC-GDP-002(회귀 방지 — (a) 두 사본 Pre-Spawn bash 블록에서 fetch 가 끝난 뒤 rev-list 가 시작되는 순서, (b) 두 사본 Pre-Spawn 절 전체가 고정 기준 절과 같음)와 AC-GDP-003(Pre-Edit 절이 기준 절과 같음)을 실행해 PASS 를 기록한다. 기준 절은 §C 1단계 신선도 점검이 빈 결과일 때 BASE 반출본이다.
+- 두 판정이 빨강이면 이 카드의 편집이 원인인지(`git log --no-merges --format=%H HEAD --not develop -- .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` 목록 — 이 카드의 비병합 커밋만 담는다) 흡수가 원인인지(§C 1단계 신선도 점검에 `agent-common-protocol.md` 가 나옴) 가려 blocker 로 보고한다 — 이 카드가 그 파일을 고쳐 맞추지 않는다.
 
 ### M6 — 최종 검증 (편집 없음)
 
@@ -160,6 +167,7 @@
 - `agent-common-protocol.md` 를 고치거나 미러하는 것(REQ-GDP-002 는 t635·dr0911 로 충족, 0.2.5), 17행 `[ZONE:Frozen]` 이나 등록 clause 를 건드리는 것.
 - 파일 통째 복사나 되돌리기로 develop 이 로컬 사본에만 넣은 차이 덩어리를 지우는 것.
 - 읽기 기록 없이 AC-GDP-001·006·026·028·029를 PASS로 적는 것.
+- "이 카드가 바꾼 것" 을 리터럴 `$BASE..HEAD`·`git diff $BASE` 로 재거나, develop 흡수 뒤 BASE 를 흡수 병합으로 옮기는 것(앞은 흡수된 develop 커밋을 카드 것으로 읽고, 뒤는 카드 커밋을 범위에서 뺀다 — spec.md §E.2). 범위 대조가 0줄인데 "변경 없음" 으로 적는 것, 병합 뒤 빈 범위를 통과로 읽는 것.
 - 검증 출력을 `| head`·`| tail`·`| grep` 로 잘라 exit code를 잃는 것, 개수가 찍히지 않은 grep 결과를 0으로 읽는 것, 빈 diff·빈 커밋 목록을 통과로 읽는 것.
 
 ## §H 교차 참조
