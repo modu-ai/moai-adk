@@ -18,7 +18,7 @@ metadata:
   version: "1.1.0"
   category: "workflow"
   status: "active"
-  updated: "2026-01-08"
+  updated: "2026-07-10"
   modularized: "true"
   tags: "git, worktree, parallel, development, spec, isolation"
 
@@ -44,7 +44,7 @@ Key Features:
 - Isolated Workspaces: Each SPEC gets its own worktree with independent Git state
 - Automatic Registration: Worktree registry tracks all active workspaces
 - Parallel Development: Multiple SPECs can be developed simultaneously
-- Seamless Integration: Works with /moai:1-plan, /moai:2-run, /moai:3-sync workflow
+- Seamless Integration: Works with /moai plan, /moai run, /moai sync workflow
 - Smart Synchronization: Automatic sync with base branch when needed
 - Cleanup Automation: Automatic cleanup of merged worktrees
 
@@ -126,11 +126,11 @@ Purpose: Enable true parallel development without context switching.
 
 Workflow Integration:
 
-During the Plan Phase using /moai:1-plan, the SPEC is created, and the launcher (`moai cc -w <name>`) enters an isolated worktree for it.
+During the Plan Phase using /moai plan, the SPEC is created, and the launcher (`moai cc -w <name>`) enters an isolated worktree for it.
 
 During the Development Phase, the isolated worktree environment provides independent Git state with zero context switching overhead.
 
-During the Sync Phase using /moai:3-sync, the worktree sync command ensures clean integration with conflict resolution support.
+During the Sync Phase using /moai sync, the worktree sync command ensures clean integration with conflict resolution support.
 
 During the Cleanup Phase, the worktree clean command provides automatic cleanup with registry maintenance.
 
@@ -144,7 +144,7 @@ Parallel Development Benefits:
 
 Example Workflow:
 
-First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai:2-run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai:2-run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
+First, create a worktree for SPEC-001 with a description like "User Authentication" and switch to that directory. Then run /moai run SPEC-001 to develop in isolation. Next, navigate back to the main repository and create another worktree for SPEC-002 with description "Payment Integration". Switch to that worktree and run /moai run SPEC-002 for parallel development. When needed, switch between worktrees and continue development. Finally, sync both worktrees when ready for integration.
 
 Detailed Reference: Refer to Parallel Development Module at modules/parallel-development.md
 
@@ -156,11 +156,11 @@ Purpose: Seamless integration with MoAI-ADK Plan-Run-Sync workflow.
 
 Integration Points:
 
-During Plan Phase Integration with /moai:1-plan, after SPEC creation, enter the worktree through the launcher: `moai cc -w <name>` works inside it, and `moai cc -w <name> --spawn` opens it in a new tmux window.
+During Plan Phase Integration with /moai plan, after SPEC creation, enter the worktree through the launcher: `moai cc -w <name>` works inside it, and `moai cc -w <name> --spawn` opens it in a new tmux window.
 
-During Development Phase with /moai:2-run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
+During Development Phase with /moai run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
 
-During Sync Phase with /moai:3-sync, before PR creation run the sync command for the SPEC. After PR merge, run the clean command with the merged-only flag to remove completed worktrees.
+During Sync Phase with /moai sync, before PR creation run the sync command for the SPEC. After PR merge, run the clean command with the merged-only flag to remove completed worktrees.
 
 Auto-Detection Patterns:
 
@@ -190,7 +190,7 @@ moai glm -w feat-auth --spawn   # all-GLM teammate
 
 Behavior:
 
-- The new window is created detached (`tmux new-window -d`), so focus stays in the caller's pane. The printed pane id (e.g. `%7`) is the handle for switching to it.
+- The new window is created detached, so focus stays in the caller's pane. The printed pane id (e.g. `%7`) is the handle for switching to it.
 - The spawned window starts at the project root, so a short `-w <name>` value resolves against `.claude/worktrees/<name>/`.
 - `--spawn` is consumed by MoAI and never reaches Claude Code. Tokens after the `--` pass-through marker are left untouched.
 - Arguments are shell-quoted, so a worktree name containing spaces or shell metacharacters reaches the spawned process intact.
@@ -203,68 +203,53 @@ Requirements — each is refused with a clear error rather than a silent fallbac
 | `tmux` binary | `--spawn requires the tmux binary` |
 | `moai` binary in `PATH` | `--spawn needs the moai binary in PATH` |
 
-No settings are mutated before these checks run, so a refusal leaves the environment untouched. The spawned command performs its own mode setup (`applyCCMode` / `applyCGMode`) inside the new window.
+No settings are mutated before these checks run, so a refusal leaves the environment untouched. The spawned command performs its own backend setup inside the new window.
 
-Relationship to the retired `--team` flag: `moai worktree new --team` previously created a worktree and launched a session in one step, across four patterns. Three of them are now covered by `-w` alone (in-place launch, and its handoff-guidance fallback), and the fourth — the new-tmux-window spawn — is `--spawn`. Its write-only swarm registry was retired with it; nothing ever read `.moai/state/swarm/`.
+Platform note: tmux is POSIX-only, so `--spawn` is unavailable on Windows and reports the missing binary. Entering a worktree in place with `-w` works on every platform.
+
+Detailed Reference: the launcher's spawn entry point — flag stripping, command reconstruction with shell quoting, and the tmux window invocation.
 
 ---
 
 ## Advanced Implementation (10+ minutes)
 
-### Multi-Developer Worktree Coordination
+### Synchronization Strategies
 
-Shared Worktree Registry:
+`moai worktree sync` merges the base branch into the worktree by default; `--strategy rebase` rebases the worktree onto the base instead, and `--base` selects the base branch. When a sync stops on a conflict, resolve it with ordinary git inside the worktree and rerun the sync.
 
-Configure team worktree settings by setting the registry type to team mode and specifying a shared registry path accessible to all team members. For developer-specific worktrees within the shared environment, use the developer flag when creating worktrees to prefix entries with the developer name.
+### Capabilities Not Provided
 
-### Advanced Synchronization Strategies
-
-Selective Sync Patterns:
-
-The sync command supports selective synchronization with include and exclude patterns to sync only specific directories or files. For conflict resolution, choose between auto-resolve for simple conflicts, interactive resolution for manual conflict handling, or abort to cancel the sync operation.
-
-### Worktree Templates and Presets
-
-Custom Worktree Templates:
-
-Create worktrees with specific setups using the template flag. A frontend template might include npm install and eslint setup with pre-commit hooks. A backend template might include virtual environment creation, activation, and dependency installation.
-
-### Performance Optimization
-
-Optimized Worktree Operations:
-
-For faster worktree creation, use the shallow flag with a depth value for shallow clones. The background flag enables background synchronization. The parallel flag with all option enables parallel operations across all worktrees. Enable caching through configuration with cache enable and cache TTL settings for faster repeated operations.
+`moai worktree` has no shared or team registry mode, no per-developer prefixing, no selective sync patterns, no conflict auto-resolution or interactive mode, no worktree templates, and no shallow, background, parallel, or cache options. Prepare a worktree after entering it, and see `modules/worktree-commands.md` for the flags that exist.
 
 ---
 
 ## Works Well With
 
 Commands:
-- moai:1-plan - SPEC creation with automatic worktree setup
-- moai:2-run - Development in isolated worktree environment
-- moai:3-sync - Integration with automatic worktree sync
-- moai:9-feedback - Worktree workflow improvements
+- /moai plan - SPEC creation with automatic worktree setup
+- /moai run - Development in isolated worktree environment
+- /moai sync - Integration with automatic worktree sync
+- /moai feedback - Worktree workflow improvements
 
 Skills:
 - moai-foundation-core - Parallel development patterns
 - moai-workflow-project - Project management integration
 - moai-workflow-spec - SPEC-driven development
-- moai-git-strategy - Git workflow optimization
+- moai-ref-git-workflow - Git workflow optimization
 
 Tools:
 - Git worktree - Native Git worktree functionality
-- Rich CLI - Formatted terminal output
-- Click framework - Command-line interface framework
+- Cobra - CLI command framework and formatted output
 
 ---
 
 ## Quick Decision Guide
 
-For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai:1-plan.
+For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai plan.
 
-For parallel development across multiple SPECs, use multiple worktrees with shell integration. The primary approach is maintaining multiple worktrees and the supporting pattern is fast switching between them.
+For parallel development across multiple SPECs, use one worktree and one session per SPEC. The primary approach is maintaining multiple worktrees and the supporting pattern is opening each in its own tmux window with `moai cc -w <name> --spawn`.
 
-For team coordination in shared environments, use shared registry with developer prefixes. The primary approach is the shared registry pattern and the supporting pattern is conflict resolution.
+For team coordination, give each developer their own worktrees and branches. The primary approach is per-developer isolation and the supporting pattern is integrating through the base branch and pull requests.
 
 For code review workflows, use isolated review worktrees. The primary approach is worktree isolation for reviews and the supporting pattern is clean sync after review completion.
 
@@ -277,8 +262,8 @@ Module Deep Dives:
 - Integration Patterns: Refer to modules/integration-patterns.md for MoAI-ADK integration
 - Troubleshooting: Refer to modules/troubleshooting.md for problem resolution
 
-Full Examples: Refer to examples.md
-External Resources: Refer to reference.md
+Full Examples: Refer to references/examples.md
+External Resources: Refer to references/reference.md
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
