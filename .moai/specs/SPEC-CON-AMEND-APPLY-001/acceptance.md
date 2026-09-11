@@ -8,16 +8,19 @@ Revision 0.1.2 (same as spec.md HISTORY): AC-CAA-023 and mutant M-20 appended fo
 
 Revision 0.1.3 (same as spec.md HISTORY): AC-CAA-024, AC-CAA-025 and mutants M-21 … M-24 appended for the verdict §11 ruling on G7; AC-CAA-023 now asserts the offending path instead of the loader's present wording; M-20 now names the registry-path site of the one containment check and also turns AC-CAA-024 `relative_env_escape` and its CLI case RED. Existing IDs unchanged.
 
+Revision 0.1.5 (same as spec.md HISTORY): plan-audit iteration 1 defects fixed without new IDs. AC-CAA-012 gains a rename-then-fail injector and subtests `first_rename_applied` and `third_rename_applied`; AC-CAA-024 gains rows `symlinked_registry` and `symlinked_file` and a discriminating CLI case; AC-CAA-003, AC-CAA-005 (b), AC-CAA-007, AC-CAA-014, and AC-CAA-025 amended; M-5b and M-23 split into variants, and the registry-path mutant gains a CLI-only variant; every RED statement is labelled a code-reading prediction. Existing IDs unchanged.
+
 Common rules for every AC:
 - Fixtures live under `t.TempDir()`: a project dir with `.claude/rules/moai/core/zone-registry.md`, a real rule file the target entry points at (current clause once, new clause absent unless the AC says otherwise), and `.moai/research/evolution-log.md` where needed. The lock path is pinned inside the temp dir; `fakeOversight` approves non-dry-run runs; the proposal's `Before` equals the current clause unless the AC says otherwise.
 - Every test that calls `Execute` or `runConstitutionAmend` sets `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` with `t.Setenv` (empty unless the AC says otherwise) — REQ-CAA-015.
 - "Byte-identical" means equal to a sha256 captured **before** the operation. "No leftover files" means the set of paths under the fixture dir equals the set captured before (plus exactly the intended changes on success).
 - Selectors are anchored `^…$`. A run whose top-level `=== RUN` count is below the stated number is not a PASS.
 - ACs marked **baseline-first** are run against unchanged production code and their RED output is committed before the production change (plan.md §F).
+- Every RED statement in this file, in the matrix and in §D.1, is a prediction from code reading at `54ca2e3b6`; production code is unchanged since `5a066994b` (a diff of `internal/constitution` and `internal/cli/constitution.go` between those two commits prints nothing). Where a verdict observation is cited, it covers the underlying behaviour, not the proposed test. A RED becomes an observation only when the run-phase baseline commit records the failing output.
 
 ## §D AC Matrix
 
-| AC | Requirement | RED at `ff11e752f` (predicted from code reading unless cited) | Mutant(s) |
+| AC | Requirement | RED predicted from code reading (see common rules; first read at `ff11e752f`) | Mutant(s) |
 |---|---|---|---|
 | AC-CAA-001 | REQ-CAA-001, REQ-CAA-014 | stub error (verdict §2.1) — baseline-first | M-1 |
 | AC-CAA-002 | REQ-CAA-002, REQ-CAA-014 | stub error, not an occurrence error — baseline-first | M-1 |
@@ -25,7 +28,7 @@ Common rules for every AC:
 | AC-CAA-004 | REQ-CAA-003 | stub error — baseline-first | M-3a, M-3b |
 | AC-CAA-005 | REQ-CAA-004 | stub error — baseline-first | M-4 |
 | AC-CAA-006 | REQ-CAA-005 | writer emits `ruleid:` / `zonebefore: 0` (verdict §2.2) — baseline-first | M-9 |
-| AC-CAA-007 | REQ-CAA-006 | none expected — the untagged decoder reads legacy keys today; invariant guard whose RED cell is the mutant | M-6 |
+| AC-CAA-007 | REQ-CAA-006 | legacy-only assertions: none expected — the untagged decoder reads legacy keys today, so their RED cell is the mutant; both-forms assertion (`rule_id: A` with `ruleid: B`): RED — the untagged decoder ignores `rule_id` and reads `RuleID = B` — baseline-first | M-6 |
 | AC-CAA-008 | REQ-CAA-006, REQ-CAA-014 | `RuleID` empty on the snake_case fixture (verdict §2.2) — baseline-first | M-7 |
 | AC-CAA-009 | REQ-CAA-007 | `---` split fabricates or drops entries (verdict §2.3) — baseline-first | M-12 |
 | AC-CAA-010 | REQ-CAA-008, REQ-CAA-009 | 0 entries from the real log (verdict §2.3) — baseline-first | M-8a, M-8b |
@@ -42,7 +45,7 @@ Common rules for every AC:
 | AC-CAA-021 | REQ-CAA-011, REQ-CAA-018 | seams do not exist — the discriminating RED is the mutant | M-18 |
 | AC-CAA-022 | REQ-CAA-019 | `Execute` joins `projectDir`, fails to load the registry at the env path — baseline-first | M-19 |
 | AC-CAA-023 | REQ-CAA-020 | `Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error (code unchanged at `92c8c3f36`) — baseline-first | M-20 |
-| AC-CAA-024 | REQ-CAA-020, REQ-CAA-021 | escape rows: `Execute` ignores both environment variables and joins `file:` with no check, so each returns dry-run success or the stub error; the CLI case prints `Dry-run success`; `in_root_control` real cases return the stub error (code unchanged at `578afca87`) — baseline-first | M-20, M-21, M-22, M-23, M-24 |
+| AC-CAA-024 | REQ-CAA-020, REQ-CAA-021 | escape rows: `Execute` ignores both environment variables and joins `file:` with no check, so each returns dry-run success or the stub error; the CLI case returns `clause mismatch`, an error without the offending path; `in_root_control` real cases return the stub error (code unchanged at `578afca87`) — baseline-first | M-20, M-21, M-22, M-23, M-24 |
 | AC-CAA-025 | REQ-CAA-021 | `load` and `dry_run`: none expected — the current loader admits relative `file:` values; invariant guard whose RED cell is the mutant. `real`: stub error — baseline-first | M-24 |
 
 ### §D.0 REQ coverage (machine-readable)
@@ -101,8 +104,8 @@ Command: `go test ./internal/constitution/ -run '^TestApply_OccurrenceCount_Reje
 ### AC-CAA-003 — no whitespace normalization
 
 - **Given** a rule file where the clause text appears once with a doubled internal space, and once more elsewhere wrapped across a newline, while the registry clause uses single spaces on one line,
-- **When** the apply step validates,
-- **Then** the exact-match count is `0`, the apply fails, and all three files are byte-identical.
+- **When** `Execute(dryRun=false)` runs with an approving oversight double,
+- **Then** it returns an error naming the rule file path and the exact-match count `0`, and all three files are byte-identical to their pre-apply snapshots.
 
 Command: `go test ./internal/constitution/ -run '^TestApply_NoWhitespaceNormalization$' -count=1 -v` — expect 1 top-level RUN.
 
@@ -117,9 +120,9 @@ Command: `go test ./internal/constitution/ -run '^TestUpdateRegistryClause_Singl
 
 ### AC-CAA-005 — re-parse verification blocks a corrupt registry
 
-- **Given** three fixtures: (a) the target entry's clause is a double-quoted scalar continued onto a second line, so rewriting only the `clause:` line leaves an orphaned continuation; (b) the target entry has no `clause:` line; (c) the new clause contains a newline,
+- **Given** three fixtures: (a) the target entry's clause is a double-quoted scalar continued onto a second line, so rewriting only the `clause:` line leaves an orphaned continuation; (b) the target entry is a one-line yaml flow mapping, `- {id: <RuleID>, zone: Evolvable, file: <rule file>, clause: "<current clause>"}` plus any further field the fixture's other entries carry, which the loader decodes with the current clause while no `- id:` line and no `clause:` line of its own exist to rewrite — its rule file holds the current clause once and the new clause not at all, so every check before the registry rewrite passes; (c) the new clause contains a newline,
 - **When** `Execute(dryRun=false)` runs on each,
-- **Then** each returns an error and all three files are byte-identical to their pre-apply snapshots.
+- **Then** each returns an error whose text contains the registry path (REQ-CAA-004), and all three files are byte-identical to their pre-apply snapshots.
 
 Command: `go test ./internal/constitution/ -run '^TestApply_RegistryReparse_Rejects$' -count=1 -v` — expect 1 top-level RUN with subtests `continuation`, `no_clause_line`, `newline_clause`.
 
@@ -142,6 +145,8 @@ Command: `go test ./internal/constitution/ -run '^TestAppendEvolutionLog_SnakeCa
 
 Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs_LegacyKeys$' -count=1 -v` — expect 1 top-level RUN.
 
+Baseline-first (predicted from code reading at `54ca2e3b6`): with production code unchanged, the both-forms assertion must fail — `AmendmentLog` carries no yaml tags, so the decoder ignores `rule_id` and reads `RuleID = B`. The legacy-only assertions pass today and are guarded by M-6.
+
 ### AC-CAA-008 — TestLoadEvolutionLogs asserts RuleID and ApprovedAt
 
 - **Given** the existing snake_case fixtures in `TestLoadEvolutionLogs`,
@@ -150,7 +155,7 @@ Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs_LegacyKe
 
 Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs$' -count=1 -v` — expect 1 top-level RUN.
 
-Baseline-first: with only the assertions added and production code unchanged, this test must FAIL on `RuleID` (verdict §2.2 observed `ruleID=""`). A PASS at that point means the assertion is not reaching the field.
+Baseline-first (predicted from code reading at `54ca2e3b6`; verdict §2.2 observed the underlying `ruleID=""` read, not this test): with only the assertions added and production code unchanged, this test must FAIL on `RuleID`. A PASS at that point means the assertion is not reaching the field.
 
 ### AC-CAA-009 — markdown rules and table separators do not disturb parsing
 
@@ -180,18 +185,27 @@ Command: `go test ./internal/constitution/ -run '^TestLoadEvolutionLogs_HumanFor
 
 Command: `go test ./internal/constitution/ -run '^TestRateLimiter_SeesHumanFormatEntry$' -count=1 -v` — expect 1 top-level RUN.
 
-### AC-CAA-012 — failed 2nd or 3rd rename restores all three files
+### AC-CAA-012 — a failed rename restores all three files
 
-- **Given** a valid fixture whose log file exists, and a pipeline whose rename seam fails on call N (N = 2, then separately N = 3) and otherwise delegates to `os.Rename`, with the default restore seam,
-- **When** `Execute(dryRun=false)` runs,
+- **Given** a valid fixture, the default restore seam, and a rename seam that, on call N, fails in one of two modes and otherwise delegates to `os.Rename`: **fail-before** returns an error without renaming; **rename-then-fail** renames through `os.Rename`, records whether the destination path exists afterwards, and then returns an error,
+- **When** `Execute(dryRun=false)` runs in each subtest below, on a fresh fixture,
 - **Then** it returns an error naming the failed rename,
-- **And** the rename seam was called exactly N times (reachability — without this, an injector that never fires is indistinguishable from a correct restore),
-- **And** the rule file, registry, and log are byte-identical to their pre-apply sha256 snapshots,
-- **And** no temporary or backup path remains under the fixture dir;
-- **And given** the same N = 3 case on a fixture whose log file does not exist yet, **then** after the failure the log path does not exist;
-- **And given** no injected failure, **then** the apply succeeds and no temporary or backup path remains.
+- **And** the rename seam was called exactly N times (reachability — without this, an injector that never fires is indistinguishable from a correct restore), and in rename-then-fail mode the recorded destination existed after the delegated rename, so the failing step had taken effect before the restore ran,
+- **And** the rule file, registry, and log are byte-identical to their pre-apply sha256 snapshots, and the path set under the fixture dir equals its pre-apply snapshot, so no temporary or backup path remains:
 
-Command: `go test ./internal/constitution/ -run '^TestApply_RenameFault_RestoresAll$' -count=1 -v` — expect 1 top-level RUN with subtests `second_rename`, `third_rename`, `third_rename_log_absent`, `no_fault_clean`.
+  | Subtest | Mode | N | Log before apply | What only a correct restore passes |
+  |---|---|---|---|---|
+  | `first_rename_applied` | rename-then-fail | 1 | exists | the rule file, already replaced, is rewritten from its backup |
+  | `second_rename` | fail-before | 2 | exists | the rule file, renamed by call 1, is restored |
+  | `third_rename` | fail-before | 3 | exists | the rule file and the registry, renamed by calls 1 and 2, are restored |
+  | `third_rename_applied` | rename-then-fail | 3 | exists | the log, already replaced, is rewritten from its backup |
+  | `third_rename_log_absent` | rename-then-fail | 3 | absent | the log the failing call created is removed, so the log path does not exist |
+
+- **And given** no injected failure (`no_fault_clean`), **then** the apply succeeds and no temporary or backup path remains.
+
+Command: `go test ./internal/constitution/ -run '^TestApply_RenameFault_RestoresAll$' -count=1 -v` — expect 1 top-level RUN with subtests `first_rename_applied`, `second_rename`, `third_rename`, `third_rename_applied`, `third_rename_log_absent`, `no_fault_clean`.
+
+Kill map: M-5a (no restore) fails every subtest except `no_fault_clean`. M-5b variant (i) (restore only the files whose rename reported success) fails `first_rename_applied`, `third_rename_applied`, and `third_rename_log_absent`; it passes `second_rename` and `third_rename`, where restoring only renamed files is the correct outcome. M-5b variant (ii) (skip removing a file recorded absent) fails `third_rename_log_absent`. M-11a fails `no_fault_clean`. M-5c is killed by AC-CAA-013. A fail-before injector alone could not kill either variant of M-5b: the failing rename never takes effect, so there is nothing a partial restore leaves behind.
 
 ### AC-CAA-013 — rename order is source, registry, log
 
@@ -205,7 +219,7 @@ Command: `go test ./internal/constitution/ -run '^TestApply_RenameOrder$' -count
 
 - **Given** six fixtures: (a) valid; (b) current clause occurs twice; (c) registry continuation line (AC-CAA-005 a); (d) rule file missing; (e) new clause already present in the rule file; (f) proposal `Before` differs from the current clause,
 - **When** `Execute(dryRun=true)` runs on each,
-- **Then** (a) returns a log entry and no error; (b)–(f) each return an error of the same kind a real apply returns on that fixture,
+- **Then** (a) returns a log entry and no error; (b)–(f) each return an error containing the substrings below, and `Execute(dryRun=false)` on a fresh copy of the same fixture returns an error containing the same substrings: (b) the rule file path and `2`; (c) the registry path; (d) the rule file path; (e) the rule file path and `1`; (f) the rule ID,
 - **And** for all six, the snapshot of every path and sha256 under the fixture dir is identical before and after, and no lock file was created.
 
 Command: `go test ./internal/constitution/ -run '^TestPipeline_Execute_DryRun_Validates$' -count=1 -v` — expect 1 top-level RUN with subtests `valid`, `two_occurrences`, `registry_continuation`, `missing_rule_file`, `new_clause_present`, `stale_before`. The former `TestPipeline_Execute_DryRun_Success` is folded into subtest `valid` or kept with an existing rule file (plan.md §C.2).
@@ -265,7 +279,7 @@ Command: `go test ./internal/constitution/ -run '^TestApply_NewClausePresent_Rej
 
 Command: `go test ./internal/constitution/ -run '^TestPipeline_Execute_StaleBefore_Rejected$' -count=1 -v` — expect 1 top-level RUN with subtests `dry_run` and `real`.
 
-Baseline-first: against current code, the `dry_run` subtest must FAIL (dry-run `Execute` returns success today). The mutant M-17 keeps the CLI `--before` check and removes only the `Execute` check; the AC stays RED because it calls `Execute` directly.
+Baseline-first (predicted from code reading at `54ca2e3b6`): against current code, the `dry_run` subtest must FAIL (dry-run `Execute` returns success today). The mutant M-17 keeps the CLI `--before` check and removes only the `Execute` check; the AC stays RED because it calls `Execute` directly.
 
 ### AC-CAA-021 — a failed restore keeps the backups and names them
 
@@ -289,7 +303,7 @@ Command: `go test ./internal/constitution/ -run '^TestApply_RestoreFault_KeepsBa
 
 Command: `go test ./internal/constitution/ -run '^TestExecute_UsesSharedRegistryResolver$' -count=1 -v` (expect 1 top-level RUN) and, with the compile slot, `go test ./internal/cli/ -run '^TestResolveRegistryPath_MatchesExecute$' -count=1 -v -timeout 600s` (expect 1 top-level RUN).
 
-Baseline-first: against current code, `Execute` loads the default location in `P`, finds clause `A`, and — once REQ-CAA-017 lands — rejects `Before = B`; today it passes the gates and fails at the stub. Either way the success assertion is RED. The mutant M-19 keeps `Execute`'s own `projectDir` join and turns the AC RED the same way.
+Baseline-first (predicted from code reading at `54ca2e3b6`): against current code, `Execute` loads the default location in `P`, finds clause `A`, and — once REQ-CAA-017 lands — rejects `Before = B`; today it passes the gates and fails at the stub. Either way the success assertion is RED. The mutant M-19 keeps `Execute`'s own `projectDir` join and turns the AC RED the same way.
 
 Relation to AC-CAA-023: this AC fixes *which* path the one resolver chooses; AC-CAA-023 fixes *whether* the chosen path is admitted (REQ-CAA-020). They do not contradict each other. Here `MOAI_CONSTITUTION_REGISTRY` names a path inside `P`, outranks `CLAUDE_PROJECT_DIR = Q`, and the loader admits it. In AC-CAA-023 `MOAI_CONSTITUTION_REGISTRY` is empty, so `CLAUDE_PROJECT_DIR = Q` supplies a path inside `Q`, and the loader refuses it. In both, nothing under `Q` is written.
 
@@ -307,7 +321,7 @@ Command: `go test ./internal/constitution/ -run '^TestExecute_RegistryOutsidePro
 
 Why `Q` holds a copy of `P`'s registry: without the containment check, the loader would accept `Q`'s registry, find the same entry with a clause equal to `Before`, and resolve its `file:` against `P`, so the apply would succeed and write `P`'s rule file, `Q`'s registry, and `P`'s log — a cross-tree write. The fixture makes mutant M-20 fail the error, byte-identity, and path-set assertions together, not only the error text.
 
-Baseline-first: against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and loads `P`'s registry; `divergent_root_dry_run` returns success and `divergent_root_real` returns the stub error, so both are RED on the error assertion. `same_root_control` stays RED on the stub until M5.
+Baseline-first (predicted from code reading at `54ca2e3b6`): against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and loads `P`'s registry; `divergent_root_dry_run` returns success and `divergent_root_real` returns the stub error, so both are RED on the error assertion. `same_root_control` stays RED on the stub until M5.
 
 ### AC-CAA-024 — the containment check refuses every escaping path shape before any write
 
@@ -319,6 +333,8 @@ Baseline-first: against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and
   | `absolute_file` | the target entry's `file:` is the absolute path `B/outside/rule.md`. Case `non_target`: the target entry's `file:` stays relative and inside `P`, and a different entry carries that absolute `file:` | `B/outside/rule.md` |
   | `dotdot_file` | the target entry's `file:` is the relative value `../outside/rule.md` | `B/outside/rule.md` |
   | `sibling_prefix_file` | the target entry's `file:` is the absolute path `B/root-evil/rule.md`, a sibling whose name begins with the root's name | `B/root-evil/rule.md` |
+  | `symlinked_registry` | `P/linkdir` is a symbolic link to `B/other`, which holds a byte copy of `P`'s registry as `B/other/zone-registry.md`; `MOAI_CONSTITUTION_REGISTRY = P/linkdir/zone-registry.md` (absolute), `CLAUDE_PROJECT_DIR` empty | `P/linkdir/zone-registry.md` |
+  | `symlinked_file` | `P/linked` is a symbolic link to `B/outside`; the target entry's `file:` is the relative value `linked/rule.md`, so the file it reaches is `B/outside/rule.md` | `P/linked/rule.md` |
   | `symlinked_log` | `P/.moai/research` is a symbolic link to `B/outside-research`, which holds the existing log | `P/.moai/research/evolution-log.md` |
 
 - **When** `Execute` runs with `projectDir = P` in real mode and, on a fresh copy of the same fixture, in dry-run mode,
@@ -327,21 +343,21 @@ Baseline-first: against current code, `Execute` ignores `CLAUDE_PROJECT_DIR` and
 - **And** the path set and every sha256 under `B` equal their pre-call snapshots — inside `P` and in every tree outside it,
 - **And** in real mode no lock file remains under `L`;
 - **And given** the control row `in_root_control` on a fresh fixture with every path inside the root — case `plain`: `projectDir = P`, working directory `P`, `MOAI_CONSTITUTION_REGISTRY = .claude/rules/moai/core/zone-registry.md` (a relative value inside the root), and `P/.moai/research/` present with no log file yet; case `symlinked_root`: the same, except that `P` is reached through a symbolic link `B/link → B/root`, so `projectDir = B/link` and the working directory is `B/link` — **when** `Execute` runs in real mode, **then** it returns a log entry and no error, the target rule file and the registry carry the amendment, the log now exists and holds exactly the one new entry, and every sha256 under `B` outside `P` is unchanged; **and when** `Execute` runs in dry-run mode on a fresh copy, **then** it returns a log entry, no error, and an unchanged snapshot of `B` — so the refusals come from the escaping shapes, not from a check that refuses relative values, a root reached through a link, or a log not yet created;
-- **And given** the CLI case in `internal/cli` on the `relative_env_escape` `project_dir_var` fixture, **when** `runConstitutionAmend(stdout, stderr, P, ruleID, before, after, "", true)` runs, **then** it returns a non-nil error containing the offending path, stdout does not contain `Dry-run success`, and the snapshot of `B` is unchanged — the CLI's registry validation uses the same check (REQ-CAA-021).
+- **And given** the CLI case in `internal/cli`, on a fixture built as `relative_env_escape` case `project_dir_var` except that the registry copy under `B/other` gives the target entry a different clause, **when** `runConstitutionAmend(stdout, stderr, P, ruleID, before, after, "", true)` runs with `before` equal to `P`'s current clause, **then** it returns a non-nil error containing the offending path, the error text contains neither `amendment failed` (the CLI's wrapper around a pipeline error, `internal/cli/constitution.go:544`) nor `clause mismatch` (the CLI's own `--before` error, `:529`), stdout does not contain `Dry-run success`, and the snapshot of `B` is unchanged — so the refusal came from the CLI's own registry validation using the same check (REQ-CAA-021), before the pipeline was reached. Why the copy differs: with a byte copy, a CLI that read `B/other` without the check would pass its `--before` comparison, call `Execute`, and return `Execute`'s refusal — the same path, output, and snapshot as a CLI that ran the check. With a different clause, that CLI stops at `clause mismatch`, an error naming no path, and the case fails.
 
-Commands: `go test ./internal/constitution/ -run '^TestExecute_ContainmentCheck_RefusesEscapes$' -count=1 -v` — expect 1 top-level RUN with subtests `relative_env_escape`, `absolute_file`, `dotdot_file`, `sibling_prefix_file`, `symlinked_log`, and `in_root_control`, each reporting its `real` and `dry_run` cases and the nested cases named above; and, with the compile slot, `go test ./internal/cli/ -run '^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$' -count=1 -v -timeout 600s` — expect 1 top-level RUN.
+Commands: `go test ./internal/constitution/ -run '^TestExecute_ContainmentCheck_RefusesEscapes$' -count=1 -v` — expect 1 top-level RUN with subtests `relative_env_escape`, `absolute_file`, `dotdot_file`, `sibling_prefix_file`, `symlinked_registry`, `symlinked_file`, `symlinked_log`, and `in_root_control`, each reporting its `real` and `dry_run` cases and the nested cases named above; and, with the compile slot, `go test ./internal/cli/ -run '^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$' -count=1 -v -timeout 600s` — expect 1 top-level RUN.
 
-Symbolic links: where the platform refuses to create a symbolic link, `symlinked_log` and `in_root_control/symlinked_root` call `t.Skip` with the error. A skip is recorded in `progress.md` §E.2 as a Gap, never as a PASS, and M-23 and M-24 are then unobserved on that platform.
+Symbolic links: where the platform refuses to create a symbolic link, `symlinked_registry`, `symlinked_file`, `symlinked_log`, and `in_root_control/symlinked_root` call `t.Skip` with the error. A skip is recorded in `progress.md` §E.2 as a Gap, never as a PASS, and every variant of M-23, and M-24, are then unobserved on that platform.
 
-Baseline-first: against current code (`git diff --stat 578afca87 4e9273d0b -- internal/constitution` prints nothing), `Execute` ignores both environment variables and joins `file:` with no check, so every escape row returns dry-run success or, in real mode, the stub error — RED on the error assertion. `in_root_control` real cases stay RED on the stub until M5. The CLI case is predicted RED from code reading: the CLI resolver returns the relative path, `LoadRegistry` checks containment only for an absolute path (`internal/constitution/loader.go:82`) and reads `B/other`'s registry, and the dry-run prints success.
+Baseline-first (predicted from code reading at `54ca2e3b6`; see the common rules for the unchanged-code check): against current code, `Execute` ignores both environment variables and joins `file:` with no check, so every escape row returns dry-run success or, in real mode, the stub error — RED on the error assertion. `in_root_control` real cases stay RED on the stub until M5. The CLI case is predicted RED as well: the CLI resolver returns the relative path, `LoadRegistry` checks containment only for an absolute path (`internal/constitution/loader.go:82`) and reads `B/other`'s registry, and the CLI returns `clause mismatch` (`internal/cli/constitution.go:529`), an error without the offending path.
 
-Mutant coverage: M-20 turns `relative_env_escape` (both cases) and the CLI case RED; M-21 at the `file:` site turns `absolute_file` (both cases), `dotdot_file`, and `sibling_prefix_file` RED, and at the log site turns `symlinked_log` RED; M-22 variant (i) turns `sibling_prefix_file` RED and variant (ii) turns `dotdot_file` RED; M-23 turns `symlinked_log` RED; M-24 turns `in_root_control/symlinked_root` RED.
+Mutant coverage: M-20 variant (i) turns `relative_env_escape` (both cases), `symlinked_registry`, and the CLI case RED, and variant (ii) turns the CLI case RED; M-21 at the `file:` site turns `absolute_file` (both cases), `dotdot_file`, `sibling_prefix_file`, and `symlinked_file` RED, and at the log site turns `symlinked_log` RED; M-22 variant (i) turns `sibling_prefix_file` RED and variant (ii) turns `dotdot_file` RED; M-23 variant (i) turns `symlinked_registry` RED, variant (ii) `symlinked_file`, and variant (iii) `symlinked_log`; M-24 turns `in_root_control/symlinked_root` RED.
 
 ### AC-CAA-025 — the real registry's `file:` shape is still admitted
 
-- **Given** a base `B = t.TempDir()` with the project root `P = B/root` reached through a symbolic link `B/link → B/root`; the repository's real `.claude/rules/moai/core/zone-registry.md` opened read-only and copied byte for byte to `P/.claude/rules/moai/core/zone-registry.md`; a drift witness on that copy asserting its shape — 101 `file:` lines, 0 whose value is absolute, 0 whose value contains `..`; every distinct `file:` path of the copy created under `P`, the file of one live Evolvable target entry holding its current clause once and the new clause not at all, and the other files holding placeholder text that contains neither clause of the proposal; `P/.moai/research/` present with no log file yet; `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` empty, set with `t.Setenv`; a lock path under a separate `t.TempDir()` `L`; the path set and sha256 of every file under `B`, and the sha256 of the real registry and the real log, captured before the calls,
-- **When** `LoadRegistry` runs on the copy with `projectDir = B/link`, then `Execute` runs with `projectDir = B/link` in dry-run mode, and then, on a fresh copy of the fixture, in real mode,
-- **Then** `LoadRegistry` returns 101 entries and no error,
+- **Given** a base `B = t.TempDir()` with the project root `P = B/root` reached through a symbolic link `B/link → B/root`; the repository's real `.claude/rules/moai/core/zone-registry.md` opened read-only and copied byte for byte to `P/.claude/rules/moai/core/zone-registry.md`; a drift witness on that copy asserting its shape — 0 `file:` values that are absolute and 0 that contain `..` (the entry-count pin is not repeated here: it lives in `wantRegistryEntries`, `internal/constitution/registry_sync_test.go:49`, whose own rule updates it with any deliberate registry change, and whose package `constitution_test` this package-internal test cannot import); every distinct `file:` path of the copy created under `P`; a target entry chosen by rule rather than by ID — the first entry in registry order whose zone is `Evolvable` and whose clause does not begin with `[SUPERSEDED` — whose file holds its current clause once and the new clause not at all, and the other files holding placeholder text that contains neither clause of the proposal; `P/.moai/research/` present with no log file yet; `MOAI_CONSTITUTION_REGISTRY` and `CLAUDE_PROJECT_DIR` empty, set with `t.Setenv`; a lock path under a separate `t.TempDir()` `L`; the path set and sha256 of every file under `B`, and the sha256 of the real registry and the real log, captured before the calls,
+- **When** `LoadRegistry("B/link/.claude/rules/moai/core/zone-registry.md", "B/link")` runs — the registry path given through the link, not as `B/root/…` — then `Execute` runs with `projectDir = B/link` in dry-run mode, and then, on a fresh copy of the fixture, in real mode,
+- **Then** `LoadRegistry` returns no error and as many entries as the test counts `- id:` lines inside the copy's yaml fence with a line scan,
 - **And** dry-run returns a log entry, no error, and an unchanged snapshot of `B`,
 - **And** real mode returns a log entry and no error, the target rule file, the registry copy, and the new log carry the amendment, and every other file under `B` is byte-identical,
 - **And** the real registry and the real log keep the sha256 captured before the calls (REQ-CAA-015).
@@ -352,7 +368,7 @@ Shape measured for the witness: a read-only scan of the real registry at `4e9273
 
 Where the platform refuses the symbolic link, the test calls `t.Skip` with the error; the skip is recorded as a Gap and M-24 is unobserved on that platform.
 
-Baseline-first: against current code `load` and `dry_run` are expected GREEN — the loader admits relative `file:` values and `Execute` joins `projectDir` — so they are regression guards whose RED cell is M-24; `real` is RED on the stub until M5.
+Baseline-first (predicted from code reading at `54ca2e3b6`): against current code `load` and `dry_run` are expected GREEN — the loader admits relative `file:` values, `load` passes its registry path through `B/link` so the absolute-only check sees it inside `projectDir = B/link` (the `B/root/…` form would be refused today, `internal/constitution/loader.go:84-86`), and `Execute` joins `projectDir` — so they are regression guards whose RED cell is M-24; `real` is RED on the stub until M5.
 
 ## §D.2 Mutant list (each must turn its AC RED; record in progress.md §E.2)
 
@@ -363,8 +379,8 @@ Baseline-first: against current code `load` and `dry_run` are expected GREEN —
 | M-3a | Re-serialize the parsed registry instead of rewriting one line | AC-CAA-004 (line diff ≠ 1) |
 | M-3b | Interpolate the new clause into `"…"` without escaping `"` and `\` | AC-CAA-004 (round-trip) |
 | M-4 | Skip the re-parse check | AC-CAA-005 (a) |
-| M-5a | Remove the restore call on rename failure | AC-CAA-012 `second_rename`, `third_rename` |
-| M-5b | Restore only files already renamed, or skip removing a log recorded absent | AC-CAA-012 `third_rename_log_absent` |
+| M-5a | Remove the restore call on rename failure | AC-CAA-012 `first_rename_applied`, `second_rename`, `third_rename`, `third_rename_applied`, `third_rename_log_absent` |
+| M-5b | (i) Restore only the files whose forward rename reported success; separately, (ii) restore bytes but skip removing a file recorded absent | (i) AC-CAA-012 `first_rename_applied`, `third_rename_applied`, `third_rename_log_absent`; (ii) AC-CAA-012 `third_rename_log_absent` |
 | M-5c | Rename the log before the registry | AC-CAA-013 |
 | M-6 | Drop the legacy concatenated-key aliases | AC-CAA-007 |
 | M-7 | Drop the snake_case tag on `rule_id` (read side) | AC-CAA-008 |
@@ -382,20 +398,20 @@ Baseline-first: against current code `load` and `dry_run` are expected GREEN —
 | M-17 | Remove the `Execute` `Before` check while the CLI `--before` check stays | AC-CAA-020 |
 | M-18 | On restore failure, delete the backups; separately, omit the backup paths from the error | AC-CAA-021 |
 | M-19 | `Execute` keeps its own `projectDir` join instead of the shared resolver | AC-CAA-022 |
-| M-20 | Remove the containment check at the registry-path site (today the absolute-only escape refusal at `internal/constitution/loader.go:80-88`; after REQ-CAA-021, the one check's call on the registry path) | AC-CAA-023 `divergent_root_real` and `divergent_root_dry_run`; AC-CAA-024 `relative_env_escape` (both cases) and its CLI case |
+| M-20 | (i) Remove the containment check at the registry-path site (today the absolute-only escape refusal at `internal/constitution/loader.go:80-88`; after REQ-CAA-021, the one check's call on the registry path), for the CLI and `Execute` alike; separately, (ii) the CLI's registry validation reads the registry without the check while `Execute` keeps it | (i) AC-CAA-023 `divergent_root_real` and `divergent_root_dry_run`; AC-CAA-024 `relative_env_escape` (both cases), `symlinked_registry`, and its CLI case; (ii) AC-CAA-024 CLI case |
 | M-21 | Remove the containment check's call on each entry's joined `file:`; separately, remove its call on the evolution-log path | `file:` variant: AC-CAA-024 `absolute_file` (both cases), `dotdot_file`, `sibling_prefix_file`; log variant: AC-CAA-024 `symlinked_log` |
 | M-22 | (i) Replace the separator-boundary comparison with a plain string prefix test on the cleaned, resolved paths, so `B/root-evil/rule.md` passes as inside `B/root`; separately, (ii) compare the uncleaned candidate — the root and the `file:` value concatenated with a separator, with no `filepath.Clean`, no absolutization, and no symbolic-link resolution — against the root with a plain string prefix test | (i) AC-CAA-024 `sibling_prefix_file`; (ii) AC-CAA-024 `dotdot_file` |
-| M-23 | Resolve no symbolic links on either side (clean and make absolute only) | AC-CAA-024 `symlinked_log` |
+| M-23 | Resolve no symbolic links on the candidate path at one site, leaving the other sites and the root resolved: (i) the registry path; separately, (ii) each entry's joined `file:`; separately, (iii) the evolution-log path | (i) AC-CAA-024 `symlinked_registry`; (ii) AC-CAA-024 `symlinked_file`; (iii) AC-CAA-024 `symlinked_log` |
 | M-24 | Resolve symbolic links on the candidate path but not on `projectDir` | AC-CAA-024 `in_root_control/symlinked_root`; AC-CAA-025 `load` |
 
-M-15, M-18, M-21, and M-22 each carry separate variants; each variant is injected and observed on its own, so one kill cannot hide the survival of another.
+Every mutant whose row lists variants — (i), (ii), (iii) — carries separate variants; each variant is injected and observed on its own, so one kill cannot hide the survival of another. Every mutant and every variant names at least one subtest that only a correct implementation passes.
 
 A mutant that cannot be injected, or whose AC run shows fewer top-level RUN lines than stated, is recorded as a Gap, not a kill.
 
 ## §D.3 Definition of Done
 
 - All 25 ACs GREEN with commands and verbatim tails in `progress.md` §E.2; baseline-first REDs committed before their production change.
-- All 29 mutants (M-15, M-18, M-21, and M-22 with every listed variant) observed RED and reverted; a mutant left unobserved because a platform refused a symbolic link (AC-CAA-024, AC-CAA-025) is a Gap, not a kill.
+- All 29 mutants, each variant of a variant-carrying mutant on its own, observed RED and reverted; a mutant left unobserved because a platform refused a symbolic link (AC-CAA-024, AC-CAA-025) is a Gap, not a kill.
 - `go vet` and `golangci-lint` clean on `internal/constitution` and `internal/cli`.
 - The five tests in plan.md §C.2 replaced, none silently deleted.
 - plan.md §C.1 real-file sha256 equals the post-run sha256 (AC-CAA-017).

@@ -1,10 +1,10 @@
 # plan.md — SPEC-CON-AMEND-APPLY-001
 
-Card t659 · Tier L (5 artifacts + progress.md; raised from Tier M in revision 0.1.4, verdict §13.3) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change).
+Card t659 · Tier L (5 artifacts + progress.md; raised from Tier M in revision 0.1.4, verdict §13.3) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change); revision 0.1.4 authored on `699bedd7c` (verdict additions and 0.1.3 lint evidence added, no code change); revision 0.1.5 authored on `54ca2e3b6` (verdict additions, the plan-audit iteration 1 report, and 0.1.4 lint evidence added, no code change).
 
 ## §A Context
 
-The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them is a stub (`internal/constitution/pipeline.go:256-267`), dry-run skips it entirely (`pipeline.go:133-137`), the evolution log is unreadable in both directions (`evolution_log.go:19-50`, `amendment.go:192-219`), and the CLI validates a registry `Execute` may not be the one writing (`internal/cli/constitution.go:144-155` vs `pipeline.go:66`). The lead has ruled on every design question (`.moai/reports/t659/verdict.md` §7, §8, §9, §11); none is open. This plan orders the work so the decisions most likely to change are reviewed first.
+The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them is a stub (`internal/constitution/pipeline.go:256-267`), dry-run skips it entirely (`pipeline.go:133-137`), the evolution log is unreadable in both directions (`evolution_log.go:19-50`, `amendment.go:192-219`), and the CLI validates a registry `Execute` may not be the one writing (`internal/cli/constitution.go:144-154` vs `pipeline.go:66`). The lead has ruled on every design question (`.moai/reports/t659/verdict.md` §7, §8, §9, §11); the one question plan-audit iteration 1 raised, D4, is open (`spec.md` §G). This plan orders the work so the decisions most likely to change are reviewed first.
 
 ## §B Known Issues (measured — do not re-litigate)
 
@@ -15,7 +15,7 @@ The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them i
 | Writer emits `ruleid`/`approvedat` and integer zones; snake_case logs read back empty | verdict §2.2 |
 | Real log parses to 0 entries (`---` split meets `\|---\|` rows) | verdict §2.3 |
 | 97/97 live registry clauses occur exactly once in their file; 4 retired entries occur 0 times | verdict §2.3 |
-| CLI resolves the registry by env precedence; `Execute` joins `projectDir` | `constitution.go:144-155`, `pipeline.go:66` |
+| CLI resolves the registry by env precedence; `Execute` joins `projectDir` | `constitution.go:144-154`, `pipeline.go:66` |
 | `LoadRegistry` rejects only an absolute registry path escaping `projectDir`; a relative path is not checked, and `applyAmendment` joins `file:` with no check — both closed by REQ-CAA-021 (verdict §11) | `loader.go:80-88`, `pipeline.go:192-195` |
 | Real registry `file:` shape: 101 lines, 17 distinct, 87 under `.claude/`, 14 `CLAUDE.md`, 0 absolute, 0 containing `..`, 101 existing | read-only Python scan at `578afca87`, same figures re-measured at `4e9273d0b` (AC-CAA-025) |
 | Every existing `Execute` test passes a `Before` equal to its fixture clause (REQ-CAA-017 breaks none) | `pipeline_test.go` lines 108-262 read at `ff11e752f` |
@@ -23,7 +23,7 @@ The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them i
 | `MarkRolledBack` has 0 production callers | grep for `MarkRolledBack(` over `internal cmd pkg` Go files excluding `_test.go` → definition line only (tree `034d55c56`) |
 | Default lock path is cwd-relative | `pipeline.go:227` |
 
-Gaps carried: the non-dry-run CLI path (spec.md §E.4, approved reduction G5). G6 and G7 are resolved (REQ-CAA-020, REQ-CAA-021); no open question remains.
+Gaps carried: the non-dry-run CLI path (spec.md §E.4, approved reduction G5). G6 and G7 are resolved (REQ-CAA-020, REQ-CAA-021). [NEEDS CLARIFICATION: D4 from plan-audit iteration 1 — whether the REQ-CAA-021 containment check applies to the shared `LoadRegistry` for every non-test caller or only to the amend path; operator decision pending, recorded in `spec.md` §G]
 
 ## §C Pre-flight (run at run-phase entry; stop and report on any mismatch)
 
@@ -90,16 +90,16 @@ Covers REQ-CAA-005 … REQ-CAA-009. The field mapping of REQ-CAA-008 and the err
 
 Covers REQ-CAA-019, REQ-CAA-020, and REQ-CAA-021. A new function both packages call is an interface decision; it lands before the apply wiring that depends on it.
 
-- Baseline first: AC-CAA-022 RED against the current `Execute` (it joins `projectDir` and cannot load the registry at the env path).
+- Baseline first: AC-CAA-022 is predicted RED from code reading at `54ca2e3b6` against the current `Execute` (it joins `projectDir` and cannot load the registry at the env path); the run-phase baseline commit is where the RED is observed.
 - Approach: move the precedence of `resolveRegistryPath` into `internal/constitution` (for example `ResolveRegistryPath(projectDir string) string`); `internal/cli.resolveRegistryPath` becomes a thin call to it or is replaced; `Execute` calls it instead of its own join.
-- Containment (REQ-CAA-020, REQ-CAA-021): one check function — clean, make absolute, resolve symbolic links (nearest existing ancestor for a path not yet created), compare with the resolved root at a separator boundary — called for the registry path and for every entry's joined `file:` at registry load, and for the evolution-log path before Layer 1. It replaces the loader's absolute-only refusal. The source rule file and the log keep their `projectDir` joins; the check only admits or refuses them. Baseline-first: AC-CAA-023 RED against current code (`Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error). AC-CAA-024's five escape rows are RED the same way, since no check exists for them.
-- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run`, AC-CAA-024's five escape rows (real and dry-run), and AC-CAA-024's CLI case (compile slot) GREEN; M-20, M-21 (both variants), M-22 (both variants), and M-23 RED. AC-CAA-023 `same_root_control`, the real cases of AC-CAA-024 `in_root_control`, and AC-CAA-025 `real` turn GREEN at M5, once the apply is wired. Existing `internal/cli` constitution tests re-run with the compile slot.
+- Containment (REQ-CAA-020, REQ-CAA-021): one check function — clean, make absolute, resolve symbolic links (nearest existing ancestor for a path not yet created), compare with the resolved root at a separator boundary — called for the registry path and for every entry's joined `file:` at registry load, and for the evolution-log path before Layer 1. It replaces the loader's absolute-only refusal. The source rule file and the log keep their `projectDir` joins; the check only admits or refuses them. Baseline-first, predicted from code reading at `54ca2e3b6` and observed only in the baseline commit: AC-CAA-023 RED against current code (`Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error). AC-CAA-024's seven escape rows are predicted RED the same way, since no check exists for them.
+- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run`, AC-CAA-024's seven escape rows (real and dry-run), and AC-CAA-024's CLI case (compile slot) GREEN; M-20 (both variants), M-21 (both variants), M-22 (both variants), and M-23 (all three variants) RED. AC-CAA-023 `same_root_control`, the real cases of AC-CAA-024 `in_root_control`, and AC-CAA-025 `real` turn GREEN at M5, once the apply is wired. Existing `internal/cli` constitution tests re-run with the compile slot.
 
 ### M3 — Source and registry transforms, in memory (Q1/Q2, G2)
 
 Covers REQ-CAA-001 … REQ-CAA-004, REQ-CAA-016. Pure functions from (bytes, current clause, new clause) to new bytes or an error; no file I/O yet, so dry-run (M6) and real apply (M5) share one validation path.
 
-- Baseline first: replacement tests for `updateSourceFile` / `updateRegistryClause` RED against the stubs.
+- Baseline first: replacement tests for `updateSourceFile` / `updateRegistryClause` are predicted RED against the stubs (code reading at `54ca2e3b6`; observed in the baseline commit).
 - Order of checks on the source: new-clause occurrence count must be 0 (REQ-CAA-016), then current-clause count must be 1 (REQ-CAA-001/002). Both errors name path and count.
 - Registry rewrite: locate the fence as the loader does; locate the target entry by its `- id: <RuleID>` line and that entry's own `clause:` line before the next `- id:`; require exactly one such line; emit a single-line double-quoted yaml scalar for the new clause (escape `\` and `"`; a new clause containing a newline cannot be one line and is rejected through the REQ-CAA-004 error path); re-parse the whole candidate content through the loader's fence + `[]rawEntry` decode; compare entry count and target clause.
 - Exit: AC-CAA-001 … AC-CAA-005 and AC-CAA-019 GREEN at function level; mutants M-1, M-2, M-3a, M-3b, M-4, M-16 RED.
@@ -108,10 +108,10 @@ Covers REQ-CAA-001 … REQ-CAA-004, REQ-CAA-016. Pure functions from (bytes, cur
 
 Covers REQ-CAA-010, REQ-CAA-011, REQ-CAA-018.
 
-- Seams: two `Pipeline` fields — forward rename (default `os.Rename`) and restore write (default: write backup bytes to the target, or remove it when recorded absent). Struct fields rather than package variables, so parallel tests cannot race on them.
+- Seams: two `Pipeline` fields — forward rename (default `os.Rename`) and restore write (default: write backup bytes to the target, or remove it when recorded absent). Struct fields rather than package variables, so parallel tests cannot race on them. The test injector for the forward rename has two failure modes: fail call N without renaming, and rename through the default operation on call N and then return an error, so a file the failing call already put in place exists when the restore runs (AC-CAA-012).
 - Sequence: validate (M3) → write backup files → write three temps → rename source, registry, log through the rename seam → on failure restore all three through the restore seam → on complete restore remove temps and backups → on any restore failure remove temps but keep every backup and return an error listing all backup paths and the failed restore step.
 - Log content = pre-apply bytes + one appended entry (REQ-CAA-010), which replaces the current `O_APPEND` writer on this path.
-- Exit: AC-CAA-012, AC-CAA-013, AC-CAA-021 GREEN; M-5a, M-5b, M-5c, M-11a, M-18 RED.
+- Exit: AC-CAA-012, AC-CAA-013, AC-CAA-021 GREEN; M-5a, M-5b (both variants), M-5c, M-11a, M-18 RED.
 
 ### M5 — Wire into `Execute` / `applyAmendment` (G3)
 
@@ -143,6 +143,7 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 
 - Deleting a stub test instead of replacing it (§C.2).
 - A fault-injection test that never reaches the injected call. Always assert each seam's call count alongside the byte-identity or file-presence check — an unreached injector and a correct restore look identical otherwise.
+- A rename injector that only fails before renaming. It cannot show that the restore removes or rewrites a file the failing call already put in place, so AC-CAA-012 also renames and then fails.
 - Comparing file bytes by re-reading after the operation without a pre-captured snapshot.
 - Unanchored `-run` selectors: every AC command anchors `^…$` and states the expected top-level `=== RUN` count.
 - Relying on the shell's `unset` for isolation instead of setting the variables in the test.

@@ -63,15 +63,15 @@ Two details come from the SPEC's encoding of the ruling, not from the verdict's 
 
 | Site | When | Value shapes covered | Ruling | Acceptance rows | Mutant |
 |---|---|---|---|---|---|
-| Registry path returned by the resolver (§D) | at registry load | absolute; relative value from `MOAI_CONSTITUTION_REGISTRY` or `CLAUDE_PROJECT_DIR` | G6 (ii); G7 item 1 | AC-CAA-023 `divergent_root_real`, `divergent_root_dry_run`; AC-CAA-024 `relative_env_escape` and its CLI case | M-20 |
-| Every registry entry's `file:`, joined with `projectDir` when relative | at registry load, for every entry, not only the target | absolute; relative containing `..`; absolute sibling whose name begins with the root's name | G7 item 2 | AC-CAA-024 `absolute_file` (target and `non_target`), `dotdot_file`, `sibling_prefix_file` | M-21 (`file:` variant), M-22 (both variants) |
-| Evolution-log path `<projectDir>/.moai/research/evolution-log.md` | before Layer 1 | a directory on the path that is a symbolic link out of the root | G7 item 3 | AC-CAA-024 `symlinked_log` | M-21 (log variant), M-23 |
+| Registry path returned by the resolver (§D) | at registry load | absolute; relative value from `MOAI_CONSTITUTION_REGISTRY` or `CLAUDE_PROJECT_DIR`; a path through a directory that is a symbolic link out of the root | G6 (ii); G7 item 1 | AC-CAA-023 `divergent_root_real`, `divergent_root_dry_run`; AC-CAA-024 `relative_env_escape`, `symlinked_registry`, and its CLI case | M-20 (both variants), M-23 (registry-path variant) |
+| Every registry entry's `file:`, joined with `projectDir` when relative | at registry load, for every entry, not only the target | absolute; relative containing `..`; absolute sibling whose name begins with the root's name; relative through a directory that is a symbolic link out of the root | G7 item 2 | AC-CAA-024 `absolute_file` (target and `non_target`), `dotdot_file`, `sibling_prefix_file`, `symlinked_file` | M-21 (`file:` variant), M-22 (both variants), M-23 (`file:` variant) |
+| Evolution-log path `<projectDir>/.moai/research/evolution-log.md` | before Layer 1 | a directory on the path that is a symbolic link out of the root | G7 item 3 | AC-CAA-024 `symlinked_log` | M-21 (log variant), M-23 (log variant) |
 
 The in-root controls — AC-CAA-023 `same_root_control`, AC-CAA-024 `in_root_control` (`plain`, `symlinked_root`), and AC-CAA-025 — show the refusals come from the escaping shapes, not from a check that refuses everything. M-24 kills the case where only the candidate side is resolved.
 
 ### C.3 One check, two callers
 
-The CLI's registry validation and `Execute` call the same check (REQ-CAA-021). It replaces the loader's present refusal, which checks containment only for an absolute path (`internal/constitution/loader.go:80-88`; `research.md` §G). The CLI dry-run case of AC-CAA-024 was added by the plan-phase agent to verify the "same check" clause and was accepted by the lead as within the requirement (verdict §12.4 item 1, §12.5).
+The CLI's registry validation and `Execute` call the same check (REQ-CAA-021). It replaces the loader's present refusal, which checks containment only for an absolute path (`internal/constitution/loader.go:80-88`; `research.md` §G). The CLI dry-run case of AC-CAA-024 was added by the plan-phase agent to verify the "same check" clause and was accepted by the lead as within the requirement (verdict §12.4 item 1, §12.5). Revision 0.1.5 made the case discriminating (plan-audit iteration 1, D2): the out-of-root registry copy carries a different clause, so a CLI that skipped the check would stop at its own `--before` comparison with an error naming no path, and the case asserts the error never passed through `Execute`.
 
 ### C.4 Refusal shape
 
@@ -86,12 +86,12 @@ A refused path yields a load error that names the offending path, in dry-run and
 | Keep the loader's absolute-only check | verdict §10.3, §11 | leaves the relative registry path and the `file:` join unchecked (`research.md` §G) |
 | Plain string prefix test without a separator boundary | verdict §11 (mutant (2)); split into two variants at §12.4 item 2, accepted §12.5 | `/root-evil` passes as inside `/root`; M-22 (i) |
 | Prefix test on the concatenated, uncleaned candidate | same | `..` survives into the comparison; M-22 (ii). `filepath.Join` already cleans, so this variant is the one that exposes a missing `Clean` on the join path |
-| No symbolic-link resolution, or resolution on the candidate only | verdict §11 ("심볼릭 링크 해석"), encoded in REQ-CAA-021 | a symlinked directory escapes (M-23); a symlinked root is refused (M-24) |
+| No symbolic-link resolution, or resolution on the candidate only | verdict §11 ("심볼릭 링크 해석"), encoded in REQ-CAA-021 | a symlinked directory escapes at any of the three sites (M-23, one variant per site); a symlinked root is refused (M-24) |
 
 ### C.6 Residual risk and gaps
 
 - A symbolic link swapped between the check and the write is not a requirement of this SPEC; whoever can rewrite links inside the root already controls its files (plan.md R-9).
-- Where the platform refuses to create a symbolic link, the symlink rows call `t.Skip`; the skip is a Gap and M-23 and M-24 are unobserved on that platform (verdict §12.5).
+- Where the platform refuses to create a symbolic link, the symlink rows call `t.Skip`; the skip is a Gap and every variant of M-23, and M-24, are unobserved on that platform (verdict §12.5).
 
 ## §D One registry path resolver (scope addition (a))
 
@@ -237,7 +237,8 @@ The apply step runs these steps in order (REQ-CAA-010; verdict §7 Q4):
 A rename is atomic per file only; atomicity across three files needs further design (verdict §6 Q4). The ruling combines the two approaches the question offered: temporary write then rename for each file, plus backups and a full restore to cover the span between the first and the last rename (verdict §7 Q4).
 
 - Order: source, registry, log (Q4; AC-CAA-013; M-5c).
-- A log recorded absent must be removed on restore, not left half-created (AC-CAA-012 `third_rename_log_absent`; M-5b).
+- A log recorded absent must be removed on restore, not left half-created (AC-CAA-012 `third_rename_log_absent`; M-5b variant (ii)). The test injector renames and then reports failure, so the log exists when the restore runs; an injector that fails before renaming would leave no log to remove and could not tell a correct restore from one that skips the removal.
+- Every file is restored whether or not its rename reported success. A restore limited to files whose rename succeeded is M-5b variant (i), killed where the failing rename had already taken effect (`first_rename_applied`, `third_rename_applied`, `third_rename_log_absent`).
 - Removing the restore call is M-5a.
 
 ### H.3 A failed restore keeps the evidence (G4)
@@ -253,7 +254,7 @@ Q4 requires fault-injection tests for the second and third renames; G4 adds one 
 
 | Seam | Default | Used by |
 |---|---|---|
-| Forward rename | `os.Rename` | AC-CAA-012 (fail call N = 2, then N = 3), AC-CAA-013 (recording) |
+| Forward rename | `os.Rename` | AC-CAA-012 (fail call N without renaming, for N = 2 and N = 3; rename on call N and then fail, for N = 1 and N = 3), AC-CAA-013 (recording) |
 | Restore write | write the backup bytes to the target, or remove the target when recorded absent | AC-CAA-021 (fail first call) |
 
 - Both are struct fields on `Pipeline`, not package variables, so parallel tests cannot race on them (plan.md M4).
@@ -267,6 +268,7 @@ Temporary and backup files are created in the target's own directory, so each re
 ### H.6 Boundaries
 
 - Crash recovery across process death between renames is out of scope (`spec.md` §F).
+- A failed backup write or temporary write is not injected, so the restore it requires is unobserved; this Gap is recorded, not yet approved (`spec.md` §E.4).
 - The single-writer lock is unchanged, and its cwd-relative default path is a recorded observation, not fixed. The lock serializes concurrent amenders; atomicity concerns one amender's three writes (`spec.md` §F).
 
 ## §I Dry-run runs the validation steps (Q4)
