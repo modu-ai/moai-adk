@@ -73,6 +73,123 @@ internal/template/templates/.gitignore:241:.moai/cache/
 
 Coverage baseline for the DoD "no lower than M1": merge 92.1%, backup 90.1%.
 
+### §E.2.2 M1 — RED-now, merge base (AC-USB-001/003/012/013)
+
+Tree: HEAD `0083064c8` with the new test file `internal/cli/update/merge/settings_snapshot_base_test.go` uncommitted and **no production change**. Full output: `.moai/reports/t656/run/m1-red-merge.txt`.
+
+```
+$ go test ./internal/cli/update/merge/ -run 'TestMergeUserFiles_Snapshot' -count=1 -v
+    settings_snapshot_base_test.go:105: statusLine.command = old, want new
+    settings_snapshot_base_test.go:108: env.PATH = /old, want /new
+    settings_snapshot_base_test.go:111: permissions.deny = [A], want [A B]
+    --- FAIL: TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange/with_canonical (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange/control_no_canonical (0.00s)
+--- PASS: TestMergeUserFiles_SnapshotBaseKeepsUserEdit (0.00s)
+    settings_snapshot_base_test.go:158: conflict line count = 0, want 1:
+--- FAIL: TestMergeUserFiles_SnapshotBaseBothChangedReportsConflict (0.00s)
+--- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase (0.02s)   [5 subtests PASS]
+--- PASS: TestMergeUserFiles_SnapshotBaseAddsNewTemplateKey (0.00s)
+--- PASS: TestMergeUserFiles_SnapshotBaseScopedToSettingsJSON (0.00s)
+    settings_snapshot_base_test.go:249: user-deleted statusLine came back: map[model:sonnet statusLine:map[command:x]]
+    --- FAIL: TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion/with_canonical (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion/control_no_canonical (0.00s)
+    settings_snapshot_base_test.go:275: conflict line count = 0, want 1:
+--- FAIL: TestMergeUserFiles_SnapshotBaseArrayIsWholeLeaf (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.601s
+exit=1
+```
+
+Each RED is a value assertion, for the stated reason (the derived base reads every shared leaf as "user changed"). The guards AC-002/004/010/011 and both control cells pass before implementation, as acceptance.md §C predicts.
+
+### §E.2.3 M1 — restore behaviour (plan.md D5 verification item)
+
+`internal/cli/update/backup/settings_snapshot_restore_test.go` drives `RestoreFromBackupDir` over a sections backup and over a legacy (no `sections/`) backup that carries `in-memory-backups/.claude/settings.json` and a root `.claude/settings.json`; a control asserts the restore wrote under `.moai/config` (so the check is not vacuous).
+
+```
+$ go test ./internal/cli/update/backup/ -run 'TestRestoreFromBackupDir_NeverWritesLiveSettingsJSON' -count=1 -v
+    --- PASS: TestRestoreFromBackupDir_NeverWritesLiveSettingsJSON/sections_backup (0.01s)
+    --- PASS: TestRestoreFromBackupDir_NeverWritesLiveSettingsJSON/legacy_backup_without_sections (0.02s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.514s
+exit=0
+```
+
+Finding: the restore command never writes the live `.claude/settings.json` — every write target is confined to `.moai/config` by `RestoreTargetContained` (`backup.go:310`), so a backed-up settings file lands under `.moai/config/in-memory-backups/…`. D5 case 5 therefore arises only from a hand revert, and the rule stands as written.
+
+### §E.2.4 M2 — snapshot data model (backup)
+
+RED-stub: skeleton functions returning zero values, tests written against them. Tree: HEAD `0083064c8` + uncommitted skeleton + tests. Full output: `.moai/reports/t656/run/m2-red-backup.txt`.
+
+```
+$ go test ./internal/cli/update/backup/ -run '<M2 tests>' -count=1 -v
+    settings_snapshot_test.go:117: LoadSettingsSnapshot ok = false, want true
+    settings_snapshot_test.go:137: .moai/cache/template-snapshot/claude/settings.json.pending is absent, want {"a":2}
+    settings_snapshot_test.go:199: .moai/cache/template-snapshot/claude/settings.json is absent, want {"a":2,"K":1}
+--- FAIL: TestInitSettingsSnapshot_SkippedDeployRecordsNothing/fresh_dir
+    --- PASS: .../untracked_existing   --- PASS: .../user_modified_existing
+    settings_snapshot_test.go:223: "settings-snapshot-write-failed:" lines = 0, want 1:
+    settings_snapshot_test.go:251: .moai/cache/template-snapshot/claude/settings.json = {"a":1}, want {"a":2}
+    settings_snapshot_test.go:291: .moai/cache/template-snapshot/claude/settings.json = {"a":1}, want {"a":2}
+    settings_snapshot_test.go:328: "settings-snapshot-promote-failed:" lines = 0, want 1:
+--- PASS: TestSectionsSnapshot_UnaffectedBySettingsSubpath (0.03s)   [cell A, cell B]
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.536s
+exit=1
+```
+
+GREEN after implementation (committed as `e27866e4c`):
+
+```
+$ go test ./internal/cli/update/backup/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.820s
+exit=0
+```
+
+AC-USB-014 is driven here, through the real non-force deployer (`template.NewDeployer`) plus the staging helper, not through a stub: `fresh_dir` records the render (RED above), the two existing-file cells record nothing and leave the user file byte-identical. The init-flow wiring order is covered by AC-USB-007 `init` (slot).
+
+### §E.2.5 M3 — base selection and flow seam (merge)
+
+GREEN for AC-001/003/012/013 after base selection (the whole merge package, existing tests included):
+
+```
+$ go test ./internal/cli/update/merge/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.741s
+exit=0
+```
+
+RED-stub for the seam: `MergeUserFilesAndSettleSnapshot` with an empty settle (no promotion). Full output: `.moai/reports/t656/run/m3-red-stub-flow.txt`.
+
+```
+$ go test ./internal/cli/update/merge/ -run 'TestSettingsSnapshotFlow' -count=1 -v
+    settings_snapshot_flow_test.go:167: model = sonnet, want haiku
+    --- FAIL: TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender/single_call_order
+    --- FAIL: TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender/split_deploy_then_restore_order
+    settings_snapshot_flow_test.go:199: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+    settings_snapshot_flow_test.go:225: canonical snapshot = {"a":2,"K":1}, want {"a":3,"K":1,"L":1}
+    settings_snapshot_flow_test.go:236: canonical snapshot = {"a":1}, want {"a":3,"K":1,"L":1}
+    settings_snapshot_flow_test.go:249: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+    --- FAIL: .../c1 .../c2 .../c3 .../c4 .../c5 .../c8
+    --- PASS: .../c6_init_writes_promotes_despite_bundle_rewrite
+    settings_snapshot_flow_test.go:265: promote-failed lines = 0, want 1:
+--- FAIL: TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.899s
+exit=1
+```
+
+c6 is green against this stub because init has no merge: the cell calls `backup.SettleSettingsSnapshot` directly, whose RED was observed in §E.2.4 (`TestSettleSettingsSnapshot/not_preserved_promotes`). The c2/c5 next-flow values are recorded against this stub, per N3-05.
+
+GREEN after wiring the settle:
+
+```
+$ go test ./internal/cli/update/merge/ ./internal/cli/update/backup/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.092s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.257s
+exit=0
+```
+
+### §E.2.6 Disclosed implementation decisions (lead review)
+
+- **D7 render-byte source.** `StageDeployedSettingsSnapshot` takes the manifest entry the deployer wrote and stages the file only when the entry is template-managed and its `template_hash` (the SHA-256 of the bytes the deployer rendered and wrote) equals the file's hash. The staged bytes are therefore exactly the deployer's render; the forbidden form — reading the disk file with no provenance proof (M-14) — is not used. Taking the bytes out of the deployer's return value would need a change to `internal/template` (a `DeployResult` field), which is outside this SPEC's module; this choice keeps the SPEC's module boundary and the plan's D7 option 2 (manifest record + hash). If the lead reads plan.md D7 ("렌더 바이트는 배포기에서 직접 받는다") as requiring the return-value route, that is a scope expansion to `internal/template` and needs a re-delegation.
+- **Preserve-path channel (N3-03).** `MergeUserFilesWithOutcome` returns a per-path `MergeOutcome`; `MergeUserFiles` keeps its signature. A merge that returns an error before writing anything (manifest or embedded-FS load failure) is not a preserve path: the live file still holds the render, so the staging copy is promoted.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
