@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001
 title: "Acceptance criteria — integration lock target provenance and card visibility (card t637)"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec
@@ -18,55 +18,224 @@ tier: M
 Every criterion is decided by the observable output of a NAMED command; none may be satisfied by
 reading code. Go test names below are the names run-phase is expected to create; where run-phase
 chooses a different name, `progress.md` §E.2 records the mapping and the deciding command changes
-with it. Commands are scoped to the touched packages; `go test ./...` appears nowhere and is not
-run locally — CI is the full-suite judge.
+with it. Commands are scoped to the touched packages; `go test ./...` is not run locally — CI is
+the full-suite judge.
 
 ## §A Shared conventions
 
-- **Go tests** use `t.TempDir()` scratch repositories (the existing `scratchRepo` /
-  `writeGitStrategyFixture` helpers in `internal/cli/integration_target_test.go`) and pin
-  `CLAUDE_PROJECT_DIR` to the scratch root, so no test reads or writes this repository's
-  `.moai/state` or configuration.
-- **Stream separation.** Criteria that assert where the warning is written use a helper that
-  captures standard output and standard error in SEPARATE buffers. The existing `runIntegration`
-  helper merges both streams and therefore cannot decide them.
-- **Fixture cells** use the fixture left by the verdict: root `/tmp/t637-fx` (branch `main`),
-  worktrees `/tmp/t637-fx-wt/develop` (`develop`), `/tmp/t637-fx-wt/cardA` (`WT-a`),
-  `/tmp/t637-fx-wt/cardB` (`WT-b`); configuration
-  `/tmp/t637-fx/.moai/config/sections/git-strategy.yaml` (`mode: "manual"`, `workflow: git-flow`,
-  `develop_branch: develop` at plan time). `$BIN` is a binary built **from this tree** in
-  run-phase (never the installed `moai`, which predates the change). Every fixture invocation
-  sets `CLAUDE_PROJECT_DIR=/tmp/t637-fx` **in the same invocation**, and every cell ends with
-  `CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration release --session fx-lane4`.
-- **Real-window guard.** Before and after each fixture cell run
-  `shasum /Users/goos/MoAI/moai-adk-go/.moai/state/integration-lock.json 2>&1` — the two outputs
-  must be identical (a matching "No such file" on both sides also counts as identical).
-- **Evidence** is persisted under `.moai/reports/t637/` (or `.moai/state/verify/<session>/`) and
-  cited verbatim in `progress.md` §E.2.
-- **Config toggle for fixture cells.** Empty the develop branch with
-  `sed -i '' 's/^\( *develop_branch:\).*/\1 ""/' /tmp/t637-fx/.moai/config/sections/git-strategy.yaml`
-  and restore it with
-  `sed -i '' 's/^\( *develop_branch:\).*/\1 develop/' /tmp/t637-fx/.moai/config/sections/git-strategy.yaml`;
-  confirm each toggle with `grep -n develop_branch /tmp/t637-fx/.moai/config/sections/git-strategy.yaml`.
+### A.1 Commands live in fenced blocks, never in tables
+
+Every deciding command is in a numbered fenced block (`CMD-ILT-nnn`) below the matrix and is
+copied **verbatim** — the matrix only points at it. A pipe or a regex alternation written inside
+a markdown table has to be escaped as `\|`, and copied verbatim that escape turns
+`go test -run 'A|B'` into a literal-`|` pattern that selects nothing (`[no tests to run]`, a
+vacuous green) and turns a `grep -E 'a|b'` alternation into a pattern that never matches.
+
+### A.2 A go-test criterion must prove that its tests ran
+
+Every go-test command runs with `-v`, and every go-test criterion carries two conditions on top of
+PASS:
+
+1. the output contains **no** `no tests to run`, and
+2. the output contains one `--- PASS: <Name>` line for **each** test the criterion names
+   (subtests counted by their full `Parent/sub` name).
+
+A PASS with fewer `--- PASS:` lines than named tests is a selection defect and fails the
+criterion.
+
+### A.3 Stream separation
+
+Criteria that assert where the warning is written use a test helper that captures standard output
+and standard error in SEPARATE buffers. The existing `runIntegration` helper merges both streams
+(`integration_lock_cli_test.go:32-34`) and cannot decide them. The warning is written through the
+command's error writer (`cmd.ErrOrStderr()`), so a test buffer set with `SetErr` receives it.
+
+### A.4 Fixture preamble (binding for every fixture command)
+
+The fixture cells run a binary built **from this worktree** by the lead-gated compile slot; the
+installed `moai` predates the change and is never used. The lead builds it once:
+
+```bash
+cd /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637 && mkdir -p /tmp/t637-fx-bin && go build -o /tmp/t637-fx-bin/moai ./cmd/moai
+```
+
+Every fixture command is ONE Bash invocation that begins with this exact preamble — each Bash call
+is a fresh process, so a variable set in an earlier call does not reach a later one:
+
+```bash
+EV=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637/.moai/reports/t637/ac-evidence; BIN=/tmp/t637-fx-bin/moai; mkdir -p "$EV" && test -x "$BIN" &&
+```
+
+and every `acquire`, `status`, and `release` call in it carries the prefix
+`CLAUDE_PROJECT_DIR=/tmp/t637-fx` in the same invocation, so the real window is never read or
+written.
+
+### A.5 Fixture layout and rebuild recipe
+
+Layout (present at plan time): root `/tmp/t637-fx` (branch `main`), worktrees
+`/tmp/t637-fx-wt/develop` (`develop`), `/tmp/t637-fx-wt/cardA` (`WT-a`), `/tmp/t637-fx-wt/cardB`
+(`WT-b`); configuration `/tmp/t637-fx/.moai/config/sections/git-strategy.yaml`. If the OS has
+cleared `/tmp`, rebuild it in one invocation:
+
+```bash
+rm -rf /tmp/t637-fx /tmp/t637-fx-wt && mkdir -p /tmp/t637-fx/.moai/config/sections /tmp/t637-fx/.moai/state /tmp/t637-fx-wt && git -C /tmp/t637-fx init -q -b main && printf 'seed\n' > /tmp/t637-fx/seed.txt && git -C /tmp/t637-fx add seed.txt && git -C /tmp/t637-fx -c user.name=t -c user.email=t@example.invalid commit -q -m seed && git -C /tmp/t637-fx branch develop && git -C /tmp/t637-fx branch WT-a && git -C /tmp/t637-fx branch WT-b && git -C /tmp/t637-fx worktree add -q /tmp/t637-fx-wt/develop develop && git -C /tmp/t637-fx worktree add -q /tmp/t637-fx-wt/cardA WT-a && git -C /tmp/t637-fx worktree add -q /tmp/t637-fx-wt/cardB WT-b && printf 'git_strategy:\n  mode: "manual"\n  manual:\n    workflow: git-flow\n    develop_branch: develop\n' > /tmp/t637-fx/.moai/config/sections/git-strategy.yaml
+```
+
+Confirm with `git -C /tmp/t637-fx worktree list` (four entries: main, develop, WT-a, WT-b).
+
+### A.6 Config toggle and real-window guard
+
+```bash
+# empty the develop branch (cells C1′, C2′)
+sed -i '' 's/^\( *develop_branch:\).*/\1 ""/' /tmp/t637-fx/.moai/config/sections/git-strategy.yaml && grep -n develop_branch /tmp/t637-fx/.moai/config/sections/git-strategy.yaml
+# restore it (cell C3′, and after the last cell)
+sed -i '' 's/^\( *develop_branch:\).*/\1 develop/' /tmp/t637-fx/.moai/config/sections/git-strategy.yaml && grep -n develop_branch /tmp/t637-fx/.moai/config/sections/git-strategy.yaml
+# real-window guard: run before AND after each fixture cell; the two outputs must be identical
+shasum /Users/goos/MoAI/moai-adk-go/.moai/state/integration-lock.json 2>&1
+```
+
+A matching "No such file" on both sides counts as identical.
 
 ## §D AC Matrix
 
 | AC | Requirement(s) | Claim | Deciding command | Observable that decides it |
 |---|---|---|---|---|
-| AC-ILT-001 | REQ-ILT-001 | A record carrying a card prints a `card:` line in text status | `go test ./internal/cli/... -run TestIntegrationStatus_ShowsCardLine -count=1 -v` | PASS; the test asserts the status text contains the line `  card:     t-fixture` for a record seeded with `Card: "t-fixture"` |
-| AC-ILT-002 | REQ-ILT-002 | A card-less record prints no `card:` line | `go test ./internal/cli/... -run 'TestIntegrationStatus_NoCardPrintsNoCardLine\|TestIntegrationStatus_NoNameKeepsTodaysShape' -count=1 -v` | PASS; the new test asserts the substring `card:` is ABSENT; the pre-existing shape test passes unedited |
-| AC-ILT-003 | REQ-ILT-003, 004, 007 | Flag source — an explicit `--branch` records `branch_source: flag` and emits no warning, even in a git-flow project whose develop branch is empty | `go test ./internal/cli/... -run TestIntegrationAcquire_RecordsBranchSource/flag -count=1 -v` | PASS; the test asserts the on-disk record's `branch_source == "flag"`, the recorded branch equals the flag value, and the captured standard error contains no `[moai:integration-lock] warning:` |
-| AC-ILT-004 | REQ-ILT-003, 004, 007 | Config source — git-flow with a configured develop branch records `branch_source: config`, no warning | (a) `go test ./internal/cli/... -run TestIntegrationAcquire_RecordsBranchSource/config -count=1 -v`; (b) fixture cell C3′ (§D.2) | (a) PASS with `branch_source == "config"`, branch `fixture-integration`, standard error free of the warning prefix. (b) status text line `  branch:   develop (source: config)`, `c3.stderr` empty, `status --json` lock object carries `"branch_source":"config"` |
-| AC-ILT-005 | REQ-ILT-003, 004, 006 | **Control 1 — same tree, own branch**: with an empty develop branch the record matches the merge target, is marked `caller`, and exactly one warning is emitted | (a) `go test ./internal/cli/... -run TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback -count=1 -v`; (b) fixture cell C1′ (§D.2) | (a) PASS; standard error holds exactly one line, beginning `[moai:integration-lock] warning:` and containing the caller branch and both remedy tokens `develop_branch` and `--branch`; record `branch_source == "caller"`. (b) exit 0; `grep -c '' c1.stderr` prints `1`; the line names `WT-a`; status text shows `  card:     tA` and `  branch:   WT-a (source: caller)` and `  worktree: /tmp/t637-fx-wt/cardA` (or its `/private` form) — the record matches the tree being merged; real-window guard identical |
-| AC-ILT-006 | REQ-ILT-001, 003, 004, 006 | **Control 2 — other tree, other branch**: a lane in tree A merging card B produces a record whose mismatch is now visible from text status alone | (a) `go test ./internal/cli/... -run TestIntegrationAcquire_CallerFallbackMismatchIsVisible -count=1 -v`; (b) fixture cell C2′ (§D.2) | (a) PASS; from a caller tree on branch `main` with `--card t-other`, status text carries both `card:     t-other` and `(source: caller)` on the branch line naming `main`, and one warning line is emitted. (b) exit 0; one warning line naming `WT-a`; status text shows `  card:     tB` together with `  branch:   WT-a (source: caller)` — card B against branch A, with the provenance saying the branch came from the caller's tree; real-window guard identical |
-| AC-ILT-007 | REQ-ILT-007 | **No-warn negative** — a caller fallback in a project that is not git-flow, or has no git strategy file, emits no warning | `go test ./internal/cli/... -run 'TestIntegrationAcquire_NonGitFlowCallerFallbackDoesNotWarn\|TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn\|TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree' -count=1 -v` | PASS; with `workflow: github-flow` (develop branch present) and with no git strategy file, standard error contains no `[moai:integration-lock] warning:`, `branch_source == "caller"`, and the pre-existing t449 test passes unedited |
-| AC-ILT-008 | REQ-ILT-008 | The warning neither refuses nor leaks onto standard output | `go test ./internal/cli/... -run TestIntegrationAcquire_WarningIsOnStderrOnly -count=1 -v` | PASS; in the warning scenario the command returns a nil error, the record is written, text-mode standard output equals exactly the `release-integration window acquired by <session> on <branch>` line, and `--json` standard output decodes as ONE JSON object with `"acquired": true` while the warning appears only in the standard-error buffer |
-| AC-ILT-009 | REQ-ILT-005 | **Old-record compatibility** — a record without `branch_source` reads cleanly and is not rewritten | `go test ./internal/cli/... -run TestIntegrationStatus_OldRecordKeepsTodaysBranchLine -count=1 -v` | PASS; the test writes a record JSON with NO `branch_source` key directly to the lock file, runs `status` and `status --json`, and asserts: nil error; the branch line equals exactly `  branch:   <branch>` with no `(source:` suffix; the JSON lock object has no `branch_source` key; the lock file bytes are identical before and after |
-| AC-ILT-010 | REQ-ILT-009 | The `--branch` help names the integration TARGET | (a) `go test ./internal/cli/... -run TestIntegrationAcquire_BranchFlagHelpNamesTheTarget -count=1 -v`; (b) `"$BIN" integration acquire --help 2>&1 \| grep -- '--branch'` | (a) PASS; the flag's usage contains `integration target` and does NOT contain `Branch being integrated`. (b) prints one line containing `integration target` and the default-resolution wording (`git-flow develop branch`) |
-| AC-ILT-011 | REQ-ILT-010 | Every documented lane acquire carries `--card <card-id>`; the release invocation states it has no card | `git grep -n "moai integration acquire" -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/local/gitflow-lane-protocol.md .claude/agents/harness/hns-release-specialist.md CLAUDE.local.md` | Exactly 8 lines print (base measurement on `1ad0fdc09`: the same 8 sites, 0 carrying `--card`); every line except the `hns-release-specialist.md` one contains `--card <card-id>`; the `hns-release-specialist.md` line contains `no card` and no `--card <` |
-| AC-ILT-012 | REQ-ILT-011 | The template mirror stays byte-identical and neutral, and the embed is rebuilt | `diff -q .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md`; `git diff 1ad0fdc09 -- internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md \| grep '^+[^+]' \| grep -cE 't[0-9]{3}\|SPEC-\|20[0-9]{2}-[0-9]{2}-[0-9]{2}\|[0-9a-f]{9}'` (no `\b` — it is not a word boundary in POSIX ERE); `make build` | `diff -q` prints nothing (exit 0); the count prints `0` (base measurement: the same pattern over today's line 230 prints `0`), AND the added-line count from `git diff 1ad0fdc09 -- <template path> \| grep -c '^+[^+]'` is `1` so the `0` is not an empty-input zero; `make build` exits 0 |
-| AC-ILT-013 | REQ-ILT-012, 013 | Invariants — resolution order, recorded values, and guard behavior unchanged | `go test ./internal/cli/... -run 'TestResolveIntegrationTarget\|TestWorktreeForBranch\|TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller\|TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree\|TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree\|TestIntegration_AcquireStatusRelease' -count=1`; `go test ./internal/hook/... -run IntegrationLock -count=1`; `git diff --stat 1ad0fdc09 -- internal/hook/integration_lock_guard.go` | Both test runs PASS; the pre-existing test functions' assertions are unchanged (any edit to them is additive and listed in §E.2); the guard diff prints nothing |
-| AC-ILT-014 | REQ-ILT-001, 003, 006, 007 (mutation guard) | The new tests are not vacuous | For each row of §D.3: apply the one-line mutation, run its named test, restore, run again | Each mutated run FAILS its named test; each restored run PASSES; all outputs recorded verbatim in `progress.md` §E.2 |
+| AC-ILT-001 | REQ-ILT-001 | A record carrying a card prints a `card:` line in text status | CMD-ILT-001 | PASS per §A.2 (1 named test); the test asserts the status text contains the line `  card:     t-fixture` for a record seeded with `Card: "t-fixture"` |
+| AC-ILT-002 | REQ-ILT-002 | A card-less record prints no `card:` line | CMD-ILT-002 | PASS per §A.2 (2 named tests); the new test asserts `card:` is ABSENT; the pre-existing shape test passes with its assertions unedited |
+| AC-ILT-003 | REQ-ILT-003, 004, 007 | Flag source — a non-blank `--branch` records `flag` with no warning, even in a git-flow project whose develop branch is empty; a blank `--branch` never records `flag` | CMD-ILT-003 | PASS per §A.2 (subtests `flag` and `blank_flag`); `flag`: `branch_source == "flag"`, branch = the flag value, stderr buffer has no `[moai:integration-lock] warning:`; `blank_flag` (`--branch "   "`, develop configured): `branch_source == "config"` |
+| AC-ILT-004 | REQ-ILT-003, 004, 007 | Config source — git-flow with a configured develop branch records `config`, no warning | CMD-ILT-004 (Go) and CMD-ILT-013 (fixture cell C3′) | Go: PASS per §A.2 with `branch_source == "config"`, branch `fixture-integration`, stderr free of the prefix. Fixture: `rc=0`; `c3.warn-count` is `0`; status text has `  branch:   develop (source: config)`; `c3.status.json` contains `"branch_source":"config"` |
+| AC-ILT-005 | REQ-ILT-003, 004, 006 | **Control 1 — same tree, own branch**: with an empty develop branch the record matches the merge target, is marked `caller`, and exactly one warning line is emitted | CMD-ILT-005 (Go) and CMD-ILT-011 (fixture cell C1′) | Go: PASS per §A.2; the stderr buffer holds exactly one line starting `[moai:integration-lock] warning:` that contains the caller branch and both remedy tokens `develop_branch` and `--branch`; `branch_source == "caller"`. Fixture: `rc=0`; `c1.warn-count` is `1` (this is also the positive control for the prefix pattern used by the `0` counts); that line names `WT-a`; status text has `  card:     tA`, `  branch:   WT-a (source: caller)` and a `worktree:` line ending `/t637-fx-wt/cardA`; real-window guard identical |
+| AC-ILT-006 | REQ-ILT-001, 003, 004, 006 | **Control 2 — other tree, other branch**: a lane in tree A merging card B produces a record whose mismatch is visible from text status alone | CMD-ILT-006 (Go) and CMD-ILT-012 (fixture cell C2′) | Go: PASS per §A.2; from a caller tree on `main` with `--card t-other`, status text carries `card:     t-other` and `branch:   main (source: caller)`, and one warning line is emitted. Fixture: `rc=0` (not refused); `c2.warn-count` is `1`, naming `WT-a`; status text has `  card:     tB` together with `  branch:   WT-a (source: caller)`; real-window guard identical |
+| AC-ILT-007 | REQ-ILT-006, 007 | **No-warn negatives** — each half of the git-flow predicate is pinned: github-flow with an EMPTY develop branch, a git-flow workflow in a non-manual mode with an EMPTY develop branch, a missing git strategy file, and the pre-existing github-flow cell | CMD-ILT-007 | PASS per §A.2 (4 named tests). In the three new cells the stderr buffer contains no `[moai:integration-lock] warning:` and `branch_source == "caller"`; the pre-existing t449 test passes with its assertions unedited |
+| AC-ILT-008 | REQ-ILT-006, 008 | Warn-only: the warning neither refuses nor leaks onto standard output, and a refused acquire emits no warning | CMD-ILT-008 | PASS per §A.2 (2 named tests). `WarningIsOnStderrOnly`: nil error; record written; text-mode stdout equals exactly the `release-integration window acquired by <session> on <branch>` line; `--json` stdout decodes as ONE JSON object with `"acquired": true`; the warning appears only in the stderr buffer. `RefusedAcquireDoesNotWarn`: with the window held by another live session, acquire in the warning scenario returns the held error and the stderr buffer contains no warning prefix |
+| AC-ILT-009 | REQ-ILT-005 | **Old-record compatibility** — a record without `branch_source` reads cleanly and is not rewritten | CMD-ILT-009 | PASS per §A.2; the test writes record JSON with NO `branch_source` key straight to the lock file, runs `status` and `status --json`, and asserts: nil error; branch line exactly `  branch:   <branch>` with no `(source:`; JSON lock object has no `branch_source` key; lock file bytes identical before and after |
+| AC-ILT-010 | REQ-ILT-009 | The `--branch` help names the integration TARGET | CMD-ILT-010 | Go: PASS per §A.2; the usage string contains `integration target` (case-SENSITIVE, lowercase — plan.md M5 wording contains it verbatim) and does NOT contain `Branch being integrated`. Binary: the grep prints exactly one line, containing `integration target` and `git-flow develop branch` |
+| AC-ILT-011 | REQ-ILT-010 | Every enumerated lane acquire site carries `--card <card-id>`; the release site says it has no card | CMD-ILT-014 | First count ≥ `8` and equal to the site count re-measured after run-phase absorbs `develop` (recorded in §E.2; plan-time base: `8` sites, `0` carrying `--card`); second count `0`; third count `1` |
+| AC-ILT-012 | REQ-ILT-011 | The template mirror stays byte-identical and neutral, and the embed is rebuilt | CMD-ILT-015 | `diff -q` prints nothing (exit 0); added-line count `1`; neutrality count `0`; positive control `1`; template tests PASS per §A.2 (1 named test); `make build` exits 0 |
+| AC-ILT-013 | REQ-ILT-012, 013 | Invariants — resolution order, recorded values, config contract, and guard behavior unchanged | CMD-ILT-016 | All three test runs PASS per §A.2 (every named test has a `--- PASS:` line); pre-existing test functions keep their assertions — mechanical call-site adaptation to a changed signature is allowed and listed in §E.2; the guard diff prints nothing |
+| AC-ILT-014 | REQ-ILT-001, 003, 005, 006, 007, 008 (mutation guard) | The new tests are not vacuous | §D.3 | Each mutated run FAILS its named test(s); each restored run PASSES; all outputs recorded verbatim in `progress.md` §E.2 |
+
+## §D.0 Deciding commands (copy verbatim)
+
+Go commands run from the worktree root `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637`.
+`$EV` is the evidence directory from §A.4; each block that uses it carries the preamble itself.
+
+**CMD-ILT-001**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationStatus_ShowsCardLine$' -count=1 -v
+```
+
+**CMD-ILT-002**
+```bash
+go test ./internal/cli/... -run '^(TestIntegrationStatus_NoCardPrintsNoCardLine|TestIntegrationStatus_NoNameKeepsTodaysShape)$' -count=1 -v
+```
+
+**CMD-ILT-003**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationAcquire_RecordsBranchSource$/^(flag|blank_flag)$' -count=1 -v
+```
+
+**CMD-ILT-004**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationAcquire_RecordsBranchSource$/^config$' -count=1 -v
+```
+
+**CMD-ILT-005**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback$' -count=1 -v
+```
+
+**CMD-ILT-006**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationAcquire_CallerFallbackMismatchIsVisible$' -count=1 -v
+```
+
+**CMD-ILT-007**
+```bash
+go test ./internal/cli/... -run '^(TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn|TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn|TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn|TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree)$' -count=1 -v
+```
+
+The non-manual cell writes its own git strategy body, because the existing
+`writeGitStrategyFixture` helper hard-codes `mode: manual`:
+
+```yaml
+git_strategy:
+    mode: personal
+    personal:
+        workflow: git-flow
+        develop_branch: ""
+```
+
+**CMD-ILT-008**
+```bash
+go test ./internal/cli/... -run '^(TestIntegrationAcquire_WarningIsOnStderrOnly|TestIntegrationAcquire_RefusedAcquireDoesNotWarn)$' -count=1 -v
+```
+
+**CMD-ILT-009**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationStatus_OldRecordKeepsTodaysBranchLine$' -count=1 -v
+```
+
+**CMD-ILT-010**
+```bash
+go test ./internal/cli/... -run '^TestIntegrationAcquire_BranchFlagHelpNamesTheTarget$' -count=1 -v
+```
+```bash
+BIN=/tmp/t637-fx-bin/moai; test -x "$BIN" && "$BIN" integration acquire --help 2>&1 | grep -- '--branch'
+```
+
+**CMD-ILT-011 — fixture cell C1′ (Control 1).** Precondition: develop branch emptied (§A.6), real-window guard captured.
+```bash
+EV=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637/.moai/reports/t637/ac-evidence; BIN=/tmp/t637-fx-bin/moai; mkdir -p "$EV" && test -x "$BIN" && cd /tmp/t637-fx-wt/cardA && CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration acquire --session fx-lane4 --name lane-4 --card tA 2>"$EV/c1.stderr"; echo "rc=$?"; grep -c '^\[moai:integration-lock\] warning:' "$EV/c1.stderr" | tee "$EV/c1.warn-count"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status | tee "$EV/c1.status.txt"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status --json > "$EV/c1.status.json"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration release --session fx-lane4
+```
+
+**CMD-ILT-012 — fixture cell C2′ (Control 2).** Precondition: develop branch still emptied, guard captured. Intent: merge `WT-b` (card `tB`) while standing in cardA.
+```bash
+EV=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637/.moai/reports/t637/ac-evidence; BIN=/tmp/t637-fx-bin/moai; mkdir -p "$EV" && test -x "$BIN" && cd /tmp/t637-fx-wt/cardA && CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration acquire --session fx-lane4 --name lane-4 --card tB 2>"$EV/c2.stderr"; echo "rc=$?"; grep -c '^\[moai:integration-lock\] warning:' "$EV/c2.stderr" | tee "$EV/c2.warn-count"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status | tee "$EV/c2.status.txt"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status --json > "$EV/c2.status.json"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration release --session fx-lane4
+```
+
+**CMD-ILT-013 — fixture cell C3′ (configured target).** Precondition: develop branch restored (§A.6), guard captured.
+```bash
+EV=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637/.moai/reports/t637/ac-evidence; BIN=/tmp/t637-fx-bin/moai; mkdir -p "$EV" && test -x "$BIN" && cd /tmp/t637-fx-wt/cardA && CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration acquire --session fx-lane4 --name lane-4 --card tB 2>"$EV/c3.stderr"; echo "rc=$?"; grep -c '^\[moai:integration-lock\] warning:' "$EV/c3.stderr" | tee "$EV/c3.warn-count"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status | tee "$EV/c3.status.txt"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status --json > "$EV/c3.status.json"; CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration release --session fx-lane4
+```
+
+The warning count is taken by prefix, not by total stderr line count, so an unrelated advisory
+the binary may print (a version-lag notice, for example) cannot flip the result. Cell C1′'s `1`
+is the positive control for the `0` of cell C3′.
+
+**CMD-ILT-014 — documented invocations**
+```bash
+EV=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t637/.moai/reports/t637/ac-evidence; mkdir -p "$EV" && git grep -n "moai integration acquire" -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/local/gitflow-lane-protocol.md .claude/agents/harness/hns-release-specialist.md CLAUDE.local.md > "$EV/ac-011.txt"; wc -l < "$EV/ac-011.txt"; grep -v 'hns-release-specialist.md' "$EV/ac-011.txt" | grep -vc -- '--card <card-id>'; grep 'hns-release-specialist.md' "$EV/ac-011.txt" | grep -c 'no card'
+```
+
+**CMD-ILT-015 — template mirror, neutrality, embed**
+```bash
+diff -q .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md; echo "diff-rc=$?"
+git diff 1ad0fdc09 -- internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md | grep -c '^+[^+]'
+git diff 1ad0fdc09 -- internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md | grep '^+[^+]' | grep -cE 't[0-9]{3}|SPEC-|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9}'
+printf '+%s\n' 'see t637 and SPEC-X-001' | grep '^+[^+]' | grep -cE 't[0-9]{3}|SPEC-|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9}'
+go test ./internal/template/... -run '^TestTemplateNoInternalContentLeak$' -count=1 -v
+make build
+```
+
+Expected, in order: `diff-rc=0` with no diff output; `1`; `0`; `1` (the positive control — the
+same pattern does match a forbidden token); PASS per §A.2; exit 0. `TestRuleTemplateMirrorDrift`
+is not used here: its path list does not include the kanban-dispatch rule
+(`git grep -n "kanban-dispatch" -- 'internal/template/*_test.go'` printed nothing at plan time), so
+the `diff -q` above is the mirror check.
+
+**CMD-ILT-016 — invariants**
+```bash
+go test ./internal/cli/... -run '^(TestResolveIntegrationTarget_ExplicitFlagWins|TestResolveIntegrationTarget_ConfiguredBranchUsedWhenFlagAbsent|TestResolveIntegrationTarget_NoWorktreeForBranchRecordsEmpty|TestResolveIntegrationTarget_NoConfigNoFlagFallsBackToCallerTree|TestWorktreeForBranch_FindsTheCheckedOutWorktree|TestWorktreeForBranch_UnknownBranchIsEmpty|TestIntegrationAcquire_RecordsTheIntegrationWorktreeNotTheCaller|TestIntegrationAcquire_ExplicitBranchResolvesItsWorktree|TestIntegrationAcquire_NoMatchingWorktreeRecordsEmptyWorktree|TestIntegration_AcquireStatusRelease)$' -count=1 -v
+go test ./internal/config/... -run '^(TestLoadGitFlowDevelopBranch|TestGitFlowPredicate)' -count=1 -v
+go test ./internal/hook/... -run 'IntegrationLock' -count=1 -v
+git diff --stat 1ad0fdc09 -- internal/hook/integration_lock_guard.go
+```
+
+`TestGitFlowPredicate` stands for the §D seam test run-phase adds in
+`loader_integration_branch_test.go`; its real name is recorded in §E.2 and substituted here. The
+cli run must show ten `--- PASS:` lines; the config run one line per named test plus subtests;
+the hook run at least one.
 
 ## §D.1 Severity
 
@@ -81,42 +250,46 @@ claimable from a local run.
 
 **AC-ILT-005 — Control 1, same tree / own branch (fixture cell C1′)**
 
-- **Given** the fixture with `develop_branch` emptied (toggle in §A), the real-window guard
-  captured, and `$BIN` built from this tree
-- **When** `cd /tmp/t637-fx-wt/cardA && CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration acquire --session fx-lane4 --name lane-4 --card tA 2>"$EV/c1.stderr"; echo "rc=$?"`
-  runs, followed by `CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status` and
-  `CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration status --json`
-- **Then** `rc=0`; `c1.stderr` holds exactly one line beginning `[moai:integration-lock] warning:`
-  and naming `WT-a`; the status text shows `card:     tA`, `branch:   WT-a (source: caller)` and
-  the cardA worktree; the JSON lock object carries `"branch_source":"caller"` and `"card":"tA"`;
-  the record matches the branch actually being merged; the real-window guard is identical
+- **Given** the fixture with `develop_branch` emptied (§A.6), the real-window guard captured, and
+  `/tmp/t637-fx-bin/moai` built from this worktree (§A.4)
+- **When** CMD-ILT-011 runs as one invocation
+- **Then** `rc=0`; `c1.warn-count` is `1` and that line names `WT-a`; `c1.status.txt` shows
+  `card:     tA`, `branch:   WT-a (source: caller)` and the cardA worktree; `c1.status.json`
+  carries `"branch_source":"caller"` and `"card":"tA"`; the record matches the branch actually
+  being merged; the real-window guard is identical
 
 **AC-ILT-006 — Control 2, other tree / other branch (fixture cell C2′)**
 
 - **Given** the same emptied fixture, and a lane standing in `/tmp/t637-fx-wt/cardA` whose intent
   is to merge `WT-b` (card `tB`)
-- **When** `cd /tmp/t637-fx-wt/cardA && CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration acquire --session fx-lane4 --name lane-4 --card tB 2>"$EV/c2.stderr"; echo "rc=$?"`
-  runs, followed by `status` as in C1′
-- **Then** `rc=0` (not refused); exactly one warning line naming `WT-a`; the status text shows
+- **When** CMD-ILT-012 runs as one invocation
+- **Then** `rc=0` (not refused); `c2.warn-count` is `1`, naming `WT-a`; `c2.status.txt` shows
   `card:     tB` next to `branch:   WT-a (source: caller)` — the verdict's silent C2 mismatch is
   now readable from text status alone; the real-window guard is identical
 
-**AC-ILT-004(b) — configured target (fixture cell C3′)**
+**AC-ILT-004 — configured target (fixture cell C3′)**
 
 - **Given** the fixture with `develop_branch: develop` restored
-- **When** `cd /tmp/t637-fx-wt/cardA && CLAUDE_PROJECT_DIR=/tmp/t637-fx "$BIN" integration acquire --session fx-lane4 --name lane-4 --card tB 2>"$EV/c3.stderr"; echo "rc=$?"`
-  runs, followed by `status` and `status --json`
-- **Then** `rc=0`; `c3.stderr` is empty; the status text shows `card:     tB` and
-  `branch:   develop (source: config)` with the develop worktree; JSON carries
+- **When** CMD-ILT-013 runs as one invocation
+- **Then** `rc=0`; `c3.warn-count` is `0`; `c3.status.txt` shows `card:     tB` and
+  `branch:   develop (source: config)` with the develop worktree; `c3.status.json` carries
   `"branch_source":"config"`
 
 **AC-ILT-007 — no warning where the fallback is legitimate**
 
-- **Given** a scratch repository whose git strategy is `github-flow` (a develop branch value
-  present), and separately one with no git strategy file
+- **Given** a scratch repository whose git strategy is `github-flow` with an EMPTY develop branch;
+  separately one whose mode is `personal` with a git-flow workflow and an EMPTY develop branch;
+  separately one with no git strategy file
 - **When** `acquire` runs from the repository root with no `--branch`
-- **Then** the record's branch is the caller's `main`, `branch_source == "caller"`, and the
-  standard-error buffer contains no warning line
+- **Then** in each the record's branch is the caller's `main`, `branch_source == "caller"`, and
+  the stderr buffer contains no warning line — in the first two cells the git-flow predicate is
+  the ONLY difference from the AC-ILT-005 warning cell
+
+**AC-ILT-008 — refused acquire**
+
+- **Given** the AC-ILT-005 warning scenario and a window already held by another live session
+- **When** `acquire` runs without `--force`
+- **Then** it returns the held error, writes no record, and emits no warning
 
 **AC-ILT-009 — old record**
 
@@ -128,43 +301,54 @@ claimable from a local run.
 
 ## §D.3 Mutation guard (AC-ILT-014)
 
-| Row | One-line mutation (production code) | Test that MUST fail |
+| Row | One-line mutation (production code) | Test(s) that MUST fail |
 |---|---|---|
-| a | The REQ-ILT-006 warning condition never holds (warning disabled) | `TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback` |
-| b | The warning condition drops the git-flow predicate (warns on every caller fallback) | `TestIntegrationAcquire_NonGitFlowCallerFallbackDoesNotWarn` |
+| a | The warning condition never holds (warning disabled) | `TestIntegrationAcquire_GitFlowEmptyDevelopWarnsOnCallerFallback` |
+| b | The warning condition drops the workflow half of the git-flow predicate (warns whenever the develop value is empty) | `TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn`, `TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn` |
 | c | The status printer's `card:` line is removed | `TestIntegrationStatus_ShowsCardLine` |
-| d | `branch_source` is hard-coded to `caller` | `TestIntegrationAcquire_RecordsBranchSource/flag` and `/config` |
-| e | The warning is written to standard output instead of standard error | `TestIntegrationAcquire_WarningIsOnStderrOnly` |
+| d | `branch_source` is hard-coded to `caller` | `TestIntegrationAcquire_RecordsBranchSource/flag`, `TestIntegrationAcquire_RecordsBranchSource/config` |
+| e | The warning is written to standard output instead of the error writer | `TestIntegrationAcquire_WarningIsOnStderrOnly` |
 | f | The provenance suffix is printed even when `branch_source` is empty | `TestIntegrationStatus_OldRecordKeepsTodaysBranchLine` |
+| g | The warning condition drops the `mode == manual` half of the git-flow predicate | `TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn` |
+| h | The source is decided from the untrimmed `--branch` value (`!= ""`) | `TestIntegrationAcquire_RecordsBranchSource/blank_flag` |
 
-A mutation that leaves its named test green is a vacuous test and blocks the card until the test
-is repaired; it is not "passed by construction".
+Each row is run with the corresponding named test command from §D.0, once mutated and once
+restored. A mutation that leaves its named test green is a vacuous test and blocks the card until
+the test is repaired; it is not "passed by construction".
 
 ## §D.4 Edge cases
 
 - `--branch "   "` (blank) behaves as no flag: the configured tier or the caller decides, and
-  `branch_source` names whichever did (never `flag`).
+  `branch_source` names whichever did (never `flag`) — pinned by `blank_flag` and row h.
 - A git-flow project with `develop_branch` blank AND a non-blank `--branch`: source `flag`, no
-  warning (the operator chose the target explicitly).
-- A personal/team mode profile carrying `workflow: git-flow`: treated as not git-flow (same
-  predicate as the configured tier) — no warning.
+  warning — pinned by the `flag` subtest.
+- A personal/team mode profile carrying `workflow: git-flow`: not git-flow, no warning — pinned by
+  the non-manual cell and row g.
+- A refused acquire emits no warning — pinned by `RefusedAcquireDoesNotWarn`.
 - A stale record (holder gone) prints the card line and the provenance suffix like a live one.
 - A record with `card` but no `branch_source` prints the card line and today's branch line.
+- A record written by the new binary is readable by an older binary: the record decoder does not
+  reject unknown keys, so the added key is ignored there (compatibility in the other direction;
+  no criterion, stated for completeness).
 
 ## §D.5 Quality gates
 
-- `go vet ./internal/cli/... ./internal/kanban/... ./internal/config/...` exits 0.
-- `golangci-lint run ./internal/cli/... ./internal/kanban/... ./internal/config/...` reports no
-  new findings.
-- `gofmt -l internal/cli internal/kanban internal/config` prints nothing.
-- No `go test ./...` locally; the pushed `develop` head's CI is the full-suite verdict.
+```bash
+go vet ./internal/cli/... ./internal/kanban/... ./internal/config/...
+golangci-lint run ./internal/cli/... ./internal/kanban/... ./internal/config/...
+gofmt -l internal/cli internal/kanban internal/config
+```
+
+`go vet` exits 0; `golangci-lint` reports no new findings; `gofmt -l` prints nothing. No
+`go test ./...` locally; the pushed `develop` head's CI is the full-suite verdict.
 
 ## §D.6 Definition of Done
 
-- All MUST-PASS criteria observed PASS with verbatim evidence in `progress.md` §E.2; SHOULD-PASS
-  results recorded (PASS, or FAIL with judgement).
-- Mutation rows a-f each observed failing then passing.
-- Fixture cells C1′, C2′, C3′ run with `$BIN` from this tree, real-window guard identical, fixture
-  configuration restored to `develop_branch: develop` afterwards.
+- All MUST-PASS criteria observed PASS with verbatim evidence in `progress.md` §E.2, including the
+  `--- PASS:` line counts required by §A.2; SHOULD-PASS results recorded (PASS, or FAIL with
+  judgement).
+- Mutation rows a-h each observed failing then passing.
+- Fixture cells C1′, C2′, C3′ run with `/tmp/t637-fx-bin/moai`, real-window guard identical, and
+  the fixture configuration restored to `develop_branch: develop` afterwards.
 - Template mirror identical to the local copy; `make build` exit 0.
 - The CLAUDE.local.md divergence risk (plan.md §E3) named in the completion report.

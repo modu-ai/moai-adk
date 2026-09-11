@@ -34,6 +34,27 @@ Plan-phase artifacts authored 2026-09-11 on HEAD `1ad0fdc09` @ `WT-acquire-branc
   git-flow predicate (§B3), release invocation carries no card (§E2), no catalog entry covers the
   kanban-dispatch rule (§E4).
 
+### iter-1 audit repair (v0.2.0)
+
+plan-auditor iter1 returned FAIL 0.74 (Tier M threshold 0.80; Testability 0.55; report
+`.moai/reports/t637/plan-audit-SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001-iter1.md`). Repaired on HEAD
+`fe92308e3` (the audit-report commit on top of `a3b913b85`):
+
+- D1 — acceptance.md §A.4 defines `EV` and `BIN` as absolute paths with a one-invocation preamble;
+  every fixture `acquire` / `status` / `release` carries `CLAUDE_PROJECT_DIR=/tmp/t637-fx` (C3′
+  included).
+- D2 — every deciding command moved out of the matrix into fenced blocks CMD-ILT-001..016; §A.2
+  requires `-v`, no `no tests to run`, and one `--- PASS:` line per named test. Measured in this
+  pass: `printf '+%s\n' 'see t637 and SPEC-X-001' | grep '^+[^+]' | grep -cE 't[0-9]{3}|SPEC-|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9}'`
+  → `1` (the AC-ILT-012 positive control matches); `grep -c '^\[moai:integration-lock\] warning:'`
+  → `1` on a sample holding the line, `0` on a sample without it.
+- D3 / D4 — AC-ILT-007 adds github-flow + EMPTY develop and personal-mode git-flow + EMPTY develop
+  cells; §D.3 row b names the first (plus absent config), new row g names the second.
+- D5 — plan M5 wording carries lowercase `integration target`; AC-ILT-010 checks it
+  case-sensitively.
+- Every pre-existing test name cited in CMD-ILT-002/007/015/016 exists: a `git grep` for the 13
+  `func <Name>(` declarations over `internal/cli` and `internal/template` found 13.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

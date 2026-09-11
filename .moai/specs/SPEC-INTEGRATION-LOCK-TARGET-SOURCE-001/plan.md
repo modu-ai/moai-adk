@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTEGRATION-LOCK-TARGET-SOURCE-001
 title: "Implementation plan — integration lock target provenance and card visibility (card t637)"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec
@@ -59,6 +59,11 @@ Prefix: `[moai:integration-lock] warning:` (same family as the guard's advisory 
 names the recorded caller branch and both remedies (`git_strategy.manual.develop_branch`, or
 `--branch`). Exact wording beyond the prefix and those three tokens is run-phase latitude.
 
+Writer: the line is written through the command's error writer (`cmd.ErrOrStderr()`), not
+`os.Stderr` directly, so a test that sets `SetErr` receives it. Timing: it is written only after
+`AcquireIntegrationLock` has succeeded — a refused acquire (window held) returns its error and
+emits no warning (spec.md REQ-ILT-006; acceptance AC-ILT-008).
+
 Test implication: the existing `runIntegration` helper merges both streams into one buffer
 (`integration_lock_cli_test.go:26-43`), so it cannot tell a stderr warning from a stdout one. The
 warning tests need a stream-separating helper; otherwise the "warning moved to stdout" mutation
@@ -92,7 +97,12 @@ could not read.
   it except the `status` printer (B2). The field is additive in the same way `pid_source` was.
 - The provenance is decided where the branch is decided: the resolution function reports which
   tier won, so the source can never disagree with the recorded value. Keeping the value computed
-  in one place is what makes AC-ILT-014 row d (source hard-coded) observable.
+  in one place is what makes AC-ILT-014 row d (source hard-coded) observable. The source is
+  decided from the TRIMMED flag value, the same value that decides the branch (row h).
+- Signature change allowance: if the resolution function gains a return value, the four existing
+  call sites in `integration_target_test.go` (`TestResolveIntegrationTarget_*`, lines 134, 147,
+  160, 173 on `1ad0fdc09`) are adapted mechanically (for example `branch, wt, _ :=`). That
+  adaptation is not an edit to their assertions; run-phase lists it in `progress.md` §E.2.
 - The guard (`internal/hook/integration_lock_guard.go`) is not edited (REQ-ILT-013).
 
 ## §D Configuration seam
@@ -100,7 +110,9 @@ could not read.
 `LoadGitFlowDevelopBranch` returns `""` for three cases the warning must tell apart (spec.md §B
 premise 2). Run-phase adds a way to learn "the project is git-flow" separately from "the develop
 branch value", in `internal/config/loader_integration_branch.go`, without changing the existing
-function's contract (its tests in `loader_integration_branch_test.go` stay unedited). Shape
+function's contract: the existing test functions in `loader_integration_branch_test.go` (notably
+`TestLoadGitFlowDevelopBranch`) are not modified, and the seam's new tests are ADDED to that file
+(acceptance CMD-ILT-016 runs both). Shape
 (second return value, sibling predicate, or small struct) is run-phase latitude; the constraint
 is one file read per `acquire` and no new exported behavior beyond the predicate.
 
@@ -137,6 +149,12 @@ flag, change nothing else on the line, no reflow), and name the risk in the comp
 the lead reconciles it when the primary's changes are committed. This lane does not touch the
 primary checkout's copy.
 
+Where the conflict surfaces: the primary checkout has `main` checked out, and `main`'s blob of
+`CLAUDE.local.md` is 603 lines (plan-audit iter1 measurement), so the primary's 734-line copy is
+uncommitted work on top of `main`, while this worktree's 772-line copy equals the local `develop`
+blob. The collision therefore appears when that uncommitted work is committed on `main`, or when
+the release PR brings `develop`'s copy to `main` — not at this card's `develop` merge.
+
 ### E4. Template build and catalog
 
 - `internal/template/catalog.yaml` has **no entry** covering the kanban-dispatch rule — it lists
@@ -152,9 +170,11 @@ primary checkout's copy.
 
 **M1 — Failing tests first (Priority High).** Add the tests that pin every behavioral REQ before
 any production edit, and record their RED output on `1ad0fdc09` in `progress.md` §E.2:
-source recorded (flag / config / caller), git-flow-empty warning on stderr, no warning for
-github-flow / absent config / flag / config, card line present and absent, provenance suffix,
-old-record status, `--branch` help text. Tests live in `internal/cli/integration_target_test.go`
+source recorded (flag / blank flag / config / caller), git-flow-empty warning on stderr, no
+warning for github-flow with an EMPTY develop branch / non-manual mode with git-flow and an EMPTY
+develop branch / absent config / flag / config, no warning on a refused acquire, card line present
+and absent, provenance suffix, old-record status, `--branch` help text. The test names are the
+ones acceptance.md §D.0 lists. Tests live in `internal/cli/integration_target_test.go`
 (resolution + warning) and `internal/cli/integration_lock_cli_test.go` (status + help), plus
 `internal/config/loader_integration_branch_test.go` for the §D seam. Scratch repositories use
 `t.TempDir()`; every `runIntegration` call pins `CLAUDE_PROJECT_DIR`.
@@ -166,13 +186,16 @@ writes the source and emits the B1 warning under the B3 predicate.
 
 **M4 — Status printer (Priority High).** B2 card line and provenance suffix.
 
-**M5 — Flag help (Priority Medium).** REQ-ILT-009 wording, e.g. "Integration target branch — the
-branch the merge lands on, not the card branch being merged (default: the configured git-flow
-develop branch, else the current branch)".
+**M5 — Flag help (Priority Medium).** REQ-ILT-009 wording: "The integration target branch the
+merge lands on, not the card branch being merged (default: the configured git-flow develop
+branch, else the current branch)". The phrase `integration target` appears in lowercase, and
+acceptance AC-ILT-010 checks it case-SENSITIVELY; any rewording must keep that exact lowercase
+phrase and must not reintroduce "Branch being integrated".
 
-**M6 — Fixture controls and mutation guard (Priority High).** Run the AC-ILT-005/006 fixture
-cells with a binary built from this tree; run the AC-ILT-014 mutations; persist verbatim output
-under `.moai/reports/t637/` and cite it in `progress.md` §E.2.
+**M6 — Fixture controls and mutation guard (Priority High).** In the lead-gated compile slot,
+build `/tmp/t637-fx-bin/moai` from this worktree (acceptance.md §A.4), run fixture cells C1′, C2′,
+C3′ (CMD-ILT-011..013) and the mutation rows a-h (§D.3); evidence lands in
+`.moai/reports/t637/ac-evidence/` and is cited in `progress.md` §E.2.
 
 **M7 — Documentation (Priority Medium, mechanical, last).** §E1 edits, `make build`, the
 AC-ILT-011/012 checks.
