@@ -1,10 +1,10 @@
 # plan.md — SPEC-CON-AMEND-APPLY-001
 
-Card t659 · Tier M (3 artifacts + progress.md) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change).
+Card t659 · Tier M (3 artifacts + progress.md) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change).
 
 ## §A Context
 
-The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them is a stub (`internal/constitution/pipeline.go:256-267`), dry-run skips it entirely (`pipeline.go:133-137`), the evolution log is unreadable in both directions (`evolution_log.go:19-50`, `amendment.go:192-219`), and the CLI validates a registry `Execute` may not be the one writing (`internal/cli/constitution.go:144-155` vs `pipeline.go:66`). The lead has ruled on every design question raised so far (`.moai/reports/t659/verdict.md` §7, §8, §9); one question that surfaced while encoding §9 is open (spec.md §G item 1, G7). This plan orders the work so the decisions most likely to change are reviewed first.
+The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them is a stub (`internal/constitution/pipeline.go:256-267`), dry-run skips it entirely (`pipeline.go:133-137`), the evolution log is unreadable in both directions (`evolution_log.go:19-50`, `amendment.go:192-219`), and the CLI validates a registry `Execute` may not be the one writing (`internal/cli/constitution.go:144-155` vs `pipeline.go:66`). The lead has ruled on every design question (`.moai/reports/t659/verdict.md` §7, §8, §9, §11); none is open. This plan orders the work so the decisions most likely to change are reviewed first.
 
 ## §B Known Issues (measured — do not re-litigate)
 
@@ -16,13 +16,14 @@ The five safety gates of SPEC-V3R2-CON-002 run, but the apply step behind them i
 | Real log parses to 0 entries (`---` split meets `\|---\|` rows) | verdict §2.3 |
 | 97/97 live registry clauses occur exactly once in their file; 4 retired entries occur 0 times | verdict §2.3 |
 | CLI resolves the registry by env precedence; `Execute` joins `projectDir` | `constitution.go:144-155`, `pipeline.go:66` |
-| `LoadRegistry` rejects an absolute registry path escaping `projectDir` — the intended boundary (verdict §9, REQ-CAA-020); a relative path is not checked (spec.md §G, G7) | `loader.go:80-88` |
+| `LoadRegistry` rejects only an absolute registry path escaping `projectDir`; a relative path is not checked, and `applyAmendment` joins `file:` with no check — both closed by REQ-CAA-021 (verdict §11) | `loader.go:80-88`, `pipeline.go:192-195` |
+| Real registry `file:` shape: 101 lines, 17 distinct, 87 under `.claude/`, 14 `CLAUDE.md`, 0 absolute, 0 containing `..`, 101 existing | read-only Python scan at `578afca87` (AC-CAA-025) |
 | Every existing `Execute` test passes a `Before` equal to its fixture clause (REQ-CAA-017 breaks none) | `pipeline_test.go` lines 108-262 read at `ff11e752f` |
 | No `t.Parallel` in the affected test files (so `t.Setenv` is usable) | `grep -c 't.Parallel()'` = 0 per file at `ff11e752f` |
 | `MarkRolledBack` has 0 production callers | grep for `MarkRolledBack(` over `internal cmd pkg` Go files excluding `_test.go` → definition line only (tree `034d55c56`) |
 | Default lock path is cwd-relative | `pipeline.go:227` |
 
-Gaps carried: the non-dry-run CLI path (spec.md §E.4, approved reduction G5). Open: path shapes the containment boundary does not reach (spec.md §G item 1, G7). G6 is resolved (REQ-CAA-020).
+Gaps carried: the non-dry-run CLI path (spec.md §E.4, approved reduction G5). G6 and G7 are resolved (REQ-CAA-020, REQ-CAA-021); no open question remains.
 
 ## §C Pre-flight (run at run-phase entry; stop and report on any mismatch)
 
@@ -35,6 +36,8 @@ git branch --show-current
 /usr/bin/grep -c 'yaml:"' internal/constitution/amendment.go                  # expect 0 (no tags on AmendmentLog)
 /usr/bin/grep -c 'yaml:"' internal/constitution/loader.go                     # control: expect >0 (rawEntry tags)
 /usr/bin/grep -n 'func resolveRegistryPath' internal/cli/constitution.go      # expect 1 line
+/usr/bin/grep -c 'EvalSymlinks' internal/constitution/loader.go internal/constitution/pipeline.go   # expect 0 each (no symlink resolution yet)
+/usr/bin/grep -c 'filepath.IsAbs(cleanPath)' internal/constitution/loader.go  # expect 1 (absolute-only containment)
 shasum -a 256 .claude/rules/moai/core/zone-registry.md .moai/research/evolution-log.md   # record; AC-CAA-017 compares
 ```
 
@@ -62,6 +65,7 @@ Fixture consequences:
 - [HARD] Lane-local verification is scoped: `go test ./internal/constitution/ -count=1` plus the named `internal/cli` selectors, never the full suite. `internal/cli` runs need the compile slot granted at run-phase and `-timeout 600s`.
 - Environment-scrubbed runs use one compound `unset … && go test …` invocation. The tests must not depend on that scrub — they set the variables themselves (REQ-CAA-015); AC-CAA-017 deliberately runs once without it.
 - A leftover temporary or backup file must never land as `*.md` inside `.claude/rules/**`, where Claude Code loads markdown as rules. Name them with a non-`.md` suffix (for example `.<base>.amend-tmp-<random>` and `.<base>.amend-bak-<random>`), created in the target's own directory so the rename stays on one filesystem.
+- Tests that use `t.Chdir` (AC-CAA-024 `relative_env_escape`) change the process working directory; they stay non-parallel and pin the lock path, so the cwd-relative default lock path is never created.
 - No new dependency. Reuse `extractYAMLFence` and the `rawEntry` decoding for REQ-CAA-004 rather than a second parser.
 - The resolver reads env names from constants, not string literals (CLAUDE.local.md §14): reuse `config.EnvClaudeProjectDir` and move or re-export the existing `MOAI_CONSTITUTION_REGISTRY` constant rather than duplicating it.
 
@@ -84,12 +88,12 @@ Covers REQ-CAA-005 … REQ-CAA-009. The field mapping of REQ-CAA-008 and the err
 
 ### M2 — Shared registry path resolver (new cross-package interface)
 
-Covers REQ-CAA-019 and REQ-CAA-020. A new function both packages call is an interface decision; it lands before the apply wiring that depends on it.
+Covers REQ-CAA-019, REQ-CAA-020, and REQ-CAA-021. A new function both packages call is an interface decision; it lands before the apply wiring that depends on it.
 
 - Baseline first: AC-CAA-022 RED against the current `Execute` (it joins `projectDir` and cannot load the registry at the env path).
 - Approach: move the precedence of `resolveRegistryPath` into `internal/constitution` (for example `ResolveRegistryPath(projectDir string) string`); `internal/cli.resolveRegistryPath` becomes a thin call to it or is replaced; `Execute` calls it instead of its own join.
-- Containment (REQ-CAA-020): `Execute` hands the resolved path to `LoadRegistry` with `projectDir` unchanged, so the loader's existing refusal applies; no new check is written for the shape verdict §9 names. The source rule file and the log keep their `projectDir` joins. Baseline-first: AC-CAA-023 RED against current code (`Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error).
-- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run` GREEN (subtest `same_root_control` turns GREEN at M5, once the apply is wired). Existing `internal/cli` constitution tests re-run with the compile slot.
+- Containment (REQ-CAA-020, REQ-CAA-021): one check function — clean, make absolute, resolve symbolic links (nearest existing ancestor for a path not yet created), compare with the resolved root at a separator boundary — called for the registry path and for every entry's joined `file:` at registry load, and for the evolution-log path before Layer 1. It replaces the loader's absolute-only refusal. The source rule file and the log keep their `projectDir` joins; the check only admits or refuses them. Baseline-first: AC-CAA-023 RED against current code (`Execute` ignores `CLAUDE_PROJECT_DIR`, loads the registry inside `projectDir`, and returns dry-run success or the stub error instead of a registry load error). AC-CAA-024's five escape rows are RED the same way, since no check exists for them.
+- Exit: AC-CAA-022 GREEN; M-19 RED; AC-CAA-023 subtests `divergent_root_real` and `divergent_root_dry_run` and AC-CAA-024's escape rows (real and dry-run) GREEN; M-20, M-21a, M-21b, M-22, and M-23 RED. AC-CAA-023 `same_root_control`, AC-CAA-024 `in_root_control`, and AC-CAA-025 turn GREEN at M5, once the apply is wired. Existing `internal/cli` constitution tests re-run with the compile slot.
 
 ### M3 — Source and registry transforms, in memory (Q1/Q2, G2)
 
@@ -111,7 +115,7 @@ Covers REQ-CAA-010, REQ-CAA-011, REQ-CAA-018.
 
 ### M5 — Wire into `Execute` / `applyAmendment` (G3)
 
-Replace the stub calls; add the REQ-CAA-017 `Before` check after registry lookup and before Layer 1 (both modes); retire the stub tests per §C.2. Exit: AC-CAA-001, AC-CAA-002, AC-CAA-020 GREEN through `Execute(dryRun=false)` with `fakeOversight` and a `t.TempDir()` lock path; AC-CAA-016 and AC-CAA-023 GREEN; M-17 and M-20 RED.
+Replace the stub calls; add the REQ-CAA-017 `Before` check after registry lookup and before Layer 1 (both modes); retire the stub tests per §C.2. Exit: AC-CAA-001, AC-CAA-002, AC-CAA-020 GREEN through `Execute(dryRun=false)` with `fakeOversight` and a `t.TempDir()` lock path; AC-CAA-016, AC-CAA-023, AC-CAA-024, and AC-CAA-025 GREEN; M-17, M-20, and M-24 RED.
 
 ### M6 — Dry-run validation and CLI
 
@@ -131,6 +135,9 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 | R-4 | After REQ-CAA-019, a session-exported `CLAUDE_PROJECT_DIR` steers any test that reaches the resolver toward the real registry | REQ-CAA-015 obliges tests to set both variables; AC-CAA-017 runs once with `CLAUDE_PROJECT_DIR` pointed at the repository root; `LoadRegistry`'s escape check is a second line of defence and is now required behaviour (REQ-CAA-020, AC-CAA-023) |
 | R-5 | REQ-CAA-016 rejects a new clause that is a substring of the current clause (e.g. shortening a sentence by removing its tail) | literal consequence of the G2 ruling, stated in REQ-CAA-016; the user rewrites the proposal |
 | R-6 | Once human entries are readable, the unused `MarkRolledBack` becomes lossy | 0 production callers; follow-up candidate (spec.md §F) |
+| R-7 | An over-strict containment check refuses legitimate paths — a root reached through a symbolic link (the macOS temp directory is one), or a log not yet created | REQ-CAA-021 resolves both sides and judges a missing path by its nearest existing ancestor; AC-CAA-024 `in_root_control`, AC-CAA-025, M-24 |
+| R-8 | Refusal at registry load also reaches commands that load the registry without amending (`moai constitution list`, `guard`) and entries the amendment does not target | intended by verdict §11 (load error); the real registry has 0 absolute and 0 `..` `file:` values of 101, so no current registry is refused (AC-CAA-025) |
+| R-9 | A symbolic link swapped between the check and the write | not a requirement of this SPEC — whoever can rewrite links inside the project root already controls its files; recorded for plan-audit as residual risk |
 
 ## §H Anti-Patterns
 

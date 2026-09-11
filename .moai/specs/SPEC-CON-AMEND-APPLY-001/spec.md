@@ -1,7 +1,7 @@
 ---
 id: SPEC-CON-AMEND-APPLY-001
 title: "Constitution amendment apply step: exact-once source replacement, line-scoped registry update, readable evolution log, and three-file atomic apply"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -21,11 +21,12 @@ related_specs: [SPEC-V3R2-CON-002]
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.3 | 2026-09-11 | manager-spec | Lead ruling G7 (`.moai/reports/t659/verdict.md` §11, option A) applied: the same-root invariant of REQ-CAA-020 is enforced in full. New REQ-CAA-021 — one containment check (clean, make absolute, resolve symbolic links, compare against the resolved root at a path-separator boundary) applied to the registry path including relative environment values, every registry entry's `file:`, and the evolution-log path; refusal is a load error before any write. New AC-CAA-024 (relative environment escape, absolute `file:`, `file:` containing `..`, sibling-prefix `file:`, symlinked log, in-root control) and AC-CAA-025 (real-registry `file:` shape copied into a `t.TempDir()` fixture, no regression). New mutants M-21 (check removed at the `file:` site; separately at the log site), M-22 (raw-string prefix test), M-23 (no symbolic-link resolution), M-24 (candidate resolved, root not); M-20 extended to AC-CAA-024. REQ-CAA-020 now points at REQ-CAA-021; AC-CAA-023 asserts the offending path instead of the loader's present wording. Option B recorded as rejected in §C and §F. G7 removed from §G; no open question remains. IDs kept stable; new IDs appended. |
 | 0.1.2 | 2026-09-11 | manager-spec | Lead ruling G6 (`.moai/reports/t659/verdict.md` §9, option (ii)) applied. New REQ-CAA-020 — the registry, the source rule file, and the evolution log all come from inside `projectDir`; the registry loader's refusal of a registry path outside `projectDir` is the intended boundary, so a `CLAUDE_PROJECT_DIR` naming another tree stops `Execute` with a registry load error before any write (new AC-CAA-023, new mutant M-20). Option (i) — making the source and log paths follow the resolved root — recorded as rejected in §C, §D.2, and §F. AC-CAA-022 and AC-CAA-023 reconciled: the resolver chooses the path, the loader admits or refuses it. G6 removed from §G; one question surfaced while encoding it (G7) is recorded there. IDs kept stable; new IDs appended. |
 | 0.1.1 | 2026-09-11 | manager-spec | Lead rulings on the plan design gaps (`.moai/reports/t659/verdict.md` §8) applied. G1: REQ-CAA-009 amended — the fail-closed error names file path, line number, and key (new AC-CAA-018). G2: new REQ-CAA-016 — the new clause must occur 0 times in the source file before apply (AC-CAA-019). G3: new REQ-CAA-017 — `Execute` rejects `Before` ≠ current clause (AC-CAA-020). G4: REQ-CAA-010 amended to on-disk backups, REQ-CAA-011 amended with a restore seam, new REQ-CAA-018 — a failed restore keeps the backups and names them (AC-CAA-021). G5: non-dry-run CLI path recorded as Gap §E.4. Scope (a): new REQ-CAA-019 — one registry path resolver shared by CLI and `Execute` (AC-CAA-022); removed from exclusions. REQ-CAA-012 and REQ-CAA-015 amended for the new validations and the environment the resolver reads. Exclusions (b)(c)(d) recorded as follow-up card candidates. §G now holds no G1–G5 or (a) item. IDs kept stable; new IDs appended. |
 | 0.1.0 | 2026-09-11 | manager-spec | Initial plan-phase draft for card t659. Encodes the lead rulings in `.moai/reports/t659/verdict.md` §7 (Q1-Q5) without reopening them. Delivers SPEC-V3R2-CON-002 REQ-CON-002-011 (three-file atomic apply), which that SPEC's frontmatter reports as `implemented` but which the repro in verdict §2.1 shows is not. |
 
-Card: **t659** (lane-6). Worktree `.claude/worktrees/t659`, branch `WT-amend-apply`. Code coordinates were read at `034d55c56`; the 0.1.1 revision was authored on `ff11e752f`, whose only change after `7b4d1ac89` is verdict §8 (no code change). The 0.1.2 revision was authored on `92c8c3f36`, whose only change after `01af243ae` is verdict §9 (`git diff --stat 01af243ae 92c8c3f36` lists `.moai/reports/t659/verdict.md` only).
+Card: **t659** (lane-6). Worktree `.claude/worktrees/t659`, branch `WT-amend-apply`. Code coordinates were read at `034d55c56`; the 0.1.1 revision was authored on `ff11e752f`, whose only change after `7b4d1ac89` is verdict §8 (no code change). The 0.1.2 revision was authored on `92c8c3f36`, whose only change after `01af243ae` is verdict §9 (`git diff --stat 01af243ae 92c8c3f36` lists `.moai/reports/t659/verdict.md` only). The 0.1.3 revision was authored on `578afca87`, whose only changes after `e693f0583` are verdict §10–§11 and two lint evidence files (`git diff --stat e693f0583 578afca87` lists `.moai/reports/t659/verdict.md`, `lint-0.1.2.txt`, and `lint-binary.txt`).
 
 ## §A Problem — measured shape
 
@@ -36,13 +37,13 @@ The evidence below is from `.moai/reports/t659/verdict.md` §2 (run on tree `5a0
 3. **The evolution-log schema is mismatched on both sides.** `AmendmentLog` (`internal/constitution/amendment.go:192-219`) carries no yaml tags, so the writer emits concatenated-lowercase keys (`ruleid`, `approvedat`) and integer zones (`zonebefore: 0`). A log written in snake_case (the SPEC-V3R2-CON-002 REQ-CON-002-004 notation, and the existing test fixture) reads back with empty `RuleID` and zero `ApprovedAt` (verdict §2.2). `TestLoadEvolutionLogs` asserts only `ID`, so the mismatch passes.
 4. **The real log parses to zero entries, which blinds the rate limiter.** `LoadEvolutionLogs` splits on the substring `---`. The tracked `.moai/research/evolution-log.md` is human-authored: a HISTORY table with `|---|` separator rows, `---` horizontal rules, and one `## EVO-HRN-002` heading followed by a fenced yaml block. The split yields zero segments with a top-level `id:` (verdict §2.3). `rateLimiter.Admit` (`internal/constitution/rate_limiter.go:41-121`) therefore counts nothing — no 7-day window, no cooldown, no active cap.
 5. **The exact-once rule is attainable on the real corpus.** Of 101 registry entries, the 97 live ones have their clause occur exactly once in their source file; the 4 with zero occurrences are the `[SUPERSEDED …]` retired entries (CONST-V3R2-021..024) (verdict §2.3). All 101 clauses are one-line double-quoted scalars inside the single yaml fence of `zone-registry.md`.
-6. **The CLI and `Execute` can read different registries.** `runConstitutionAmend` validates `--before` against the registry `resolveRegistryPath` returns (`MOAI_CONSTITUTION_REGISTRY`, then `CLAUDE_PROJECT_DIR`, then cwd — `internal/cli/constitution.go:144-155`), while `Execute` loads `<projectDir>/.claude/rules/moai/core/zone-registry.md` (`pipeline.go:66`). Once this card turns writing on, that split is a write to a file the user never validated (verdict §8, scope addition (a)). When `CLAUDE_PROJECT_DIR` names a tree other than `projectDir`, the resolver returns a registry path in that other tree, and the registry loader already refuses it: `LoadRegistry` rejects an absolute path that escapes `projectDir` (`internal/constitution/loader.go:80-88`, read at `92c8c3f36`). Verdict §9 makes that refusal the boundary.
+6. **The CLI and `Execute` can read different registries.** `runConstitutionAmend` validates `--before` against the registry `resolveRegistryPath` returns (`MOAI_CONSTITUTION_REGISTRY`, then `CLAUDE_PROJECT_DIR`, then cwd — `internal/cli/constitution.go:144-155`), while `Execute` loads `<projectDir>/.claude/rules/moai/core/zone-registry.md` (`pipeline.go:66`). Once this card turns writing on, that split is a write to a file the user never validated (verdict §8, scope addition (a)). When `CLAUDE_PROJECT_DIR` names a tree other than `projectDir`, the resolver returns a registry path in that other tree, and the registry loader already refuses it: `LoadRegistry` rejects an absolute path that escapes `projectDir` (`internal/constitution/loader.go:80-88`, read at `92c8c3f36`). Verdict §9 makes that refusal the boundary. The refusal is partial: the loader checks containment only for an absolute path (`loader.go:82`), and `applyAmendment` joins the entry's `file:` to `projectDir` with no check (`pipeline.go:192-195`). Verdict §11 extends the boundary to relative registry paths, every entry's `file:`, and the evolution-log path.
 
 ## §B Goal
 
 When all five gates pass and the user approves, the amendment lands in the source rule file, the registry, and the evolution log together or not at all; the registry written is the registry the CLI validated; a dry-run fails exactly where a real apply would fail; and the rate limiter reads every entry the log actually contains, including the human-authored one.
 
-## §C Lead rulings encoded (verdict §7, §8, and §9 — authoritative, not reopened)
+## §C Lead rulings encoded (verdict §7, §8, §9, and §11 — authoritative, not reopened)
 
 | Ruling | Encoded as |
 |---|---|
@@ -61,10 +62,12 @@ When all five gates pass and the user approves, the amendment lands in the sourc
 | §8.1 items 3–5 follow-up card candidates | §F |
 | §9 G6 option (ii): the registry loader's refusal of a registry path outside `projectDir` is the intended boundary; the registry, the source rule file, and the evolution log all come from the one project root | REQ-CAA-020 |
 | §9 G6 option (i) rejected: making the source rule file and evolution-log paths follow the resolved root would widen the set of directory trees an amendment can write | §D.2 rationale under REQ-CAA-020, §F |
+| §11 G7 option A: enforce the same-root invariant in full with one containment check — clean, make absolute, resolve symbolic links, compare against the resolved root at a path-separator boundary — applied to the registry path (relative environment values included), every entry's `file:`, and the evolution-log path; refusal is a load error before any write | REQ-CAA-020 (amended), REQ-CAA-021 |
+| §11 G7 option B rejected: narrowing REQ-CAA-020 to an absolute registry path would leave a declared invariant half-enforced, and once this card turns writing on an out-of-root write is a path-traversal defect | §F |
 
 ## §D Requirements (GEARS)
 
-Terms used below. The **apply step** is the part of `Execute` that runs after Layer 5 approval (and, per REQ-CAA-012, its validation half under dry-run). The **registry path** is the path returned by the resolver of REQ-CAA-019. The **three files** are the target rule's source file, the registry at the registry path, and the evolution log at `<projectDir>/.moai/research/evolution-log.md`. The **current clause** is the target entry's `clause` value as decoded by the registry loader. The **pre-apply validations** are REQ-CAA-001 … REQ-CAA-004, REQ-CAA-016, and REQ-CAA-017.
+Terms used below. The **apply step** is the part of `Execute` that runs after Layer 5 approval (and, per REQ-CAA-012, its validation half under dry-run). The **registry path** is the path returned by the resolver of REQ-CAA-019. The **three files** are the target rule's source file, the registry at the registry path, and the evolution log at `<projectDir>/.moai/research/evolution-log.md`. The **current clause** is the target entry's `clause` value as decoded by the registry loader. The **pre-apply validations** are REQ-CAA-001 … REQ-CAA-004, REQ-CAA-016, and REQ-CAA-017. The **containment check** is the check of REQ-CAA-021.
 
 ### §D.1 Source rule file
 
@@ -86,7 +89,11 @@ Terms used below. The **apply step** is the part of `Execute` that runs after La
 
 - **REQ-CAA-020** (ubiquitous) — The registry, the source rule file, and the evolution log that one `Execute` call reads and writes shall all lie inside the same project root, `projectDir`; no read or write of the apply step shall reach another directory tree. **When** the registry path of REQ-CAA-019 lies outside `projectDir` — as it does when `MOAI_CONSTITUTION_REGISTRY` is empty and `CLAUDE_PROJECT_DIR` names a directory outside `projectDir` — `Execute` shall return the registry loader's load error, in dry-run and real mode alike, before Layer 1 and before the check of REQ-CAA-017, and shall leave every file in both trees byte-identical, adding or removing no path in either; a lock it acquired shall be released. The source rule file and the evolution log shall keep resolving against `projectDir`, never against the root the environment names.
 
-  Rationale (verdict §9, G6): the loader's refusal (`internal/constitution/loader.go:80-88`) is the boundary, not a gap to close. The alternative, option (i) — letting the source rule file and evolution-log paths follow the resolved root, so that a divergent environment moves all three files to the other tree — was rejected because it widens the set of directory trees an amendment can write. How this fits with REQ-CAA-019: REQ-CAA-019 decides *which* registry path is chosen; this requirement decides *whether* the chosen path is admitted. Together they mean a `CLAUDE_PROJECT_DIR` naming a tree outside `projectDir` can only yield a refused path, while an override inside `projectDir` (AC-CAA-022) is admitted. Two path shapes this boundary does not yet reach are §G item 1 (G7).
+  Rationale (verdict §9, G6): the loader's refusal (`internal/constitution/loader.go:80-88`) is the boundary, not a gap to close. The alternative, option (i) — letting the source rule file and evolution-log paths follow the resolved root, so that a divergent environment moves all three files to the other tree — was rejected because it widens the set of directory trees an amendment can write. How this fits with REQ-CAA-019: REQ-CAA-019 decides *which* registry path is chosen; this requirement decides *whether* the chosen path is admitted. Together they mean a `CLAUDE_PROJECT_DIR` naming a tree outside `projectDir` can only yield a refused path, while an override inside `projectDir` (AC-CAA-022) is admitted. REQ-CAA-021 defines the one containment check that enforces this invariant for the registry path, every entry's `file:`, and the evolution-log path.
+
+- **REQ-CAA-021** (event-detected) — One containment check shall decide whether a path lies inside the project root, and the CLI's registry validation and `Execute` shall use that same check. The path is cleaned, made absolute against the process working directory, and has its symbolic links resolved; it is inside only when the result equals the likewise resolved `projectDir` or continues from it past a path separator, so a sibling such as `<root>-evil` is outside `<root>`. A path that does not exist yet is judged by resolving its nearest existing ancestor and appending the remaining components, so a not-yet-created evolution log under `projectDir` is inside. **When** the check finds any of the following outside `projectDir`, `Execute` shall return a load error naming the offending path, in dry-run and real mode alike, before Layer 1 and before any backup, temporary file, or write, and the source rule file, the registry, and the evolution log shall stay byte-identical: (1) the registry path of REQ-CAA-019, including a relative value taken from `MOAI_CONSTITUTION_REGISTRY` or `CLAUDE_PROJECT_DIR`; (2) every registry entry's `file:`, a relative value after it is joined with `projectDir` and an absolute value as given; (3) the evolution-log path.
+
+  Rationale (verdict §11, G7): a SPEC that declares the same-root invariant but enforces half of it is not acceptable, because once this card turns on real writes an out-of-root write is a path-traversal defect. Because refusal happens at registry load, it also reaches an escaping `file:` in an entry the amendment does not target and any command that loads the registry. On the real registry that refuses nothing: of 101 `file:` lines, 0 are absolute, 0 contain `..`, and all 101 exist (read-only scan at `578afca87`; AC-CAA-025).
 
 ### §D.3 Evolution log
 
@@ -144,7 +151,7 @@ Function names, the shapes of the two seams, the resolver's package home, and ba
 
 - Five-layer gate order and every gate's semantics are unchanged. REQ-CAA-017 is a precondition checked before Layer 1, not a sixth layer.
 - `acquireLock` / `releaseLock` behaviour is unchanged (see §F on the default lock path).
-- The registry loader's parse rules (`internal/constitution/loader.go`) are unchanged; REQ-CAA-004 reuses them rather than adding a second parser. Its containment check (`loader.go:80-88`) is unchanged too, and is now required behaviour (REQ-CAA-020) rather than an incidental guard.
+- The registry loader's parse rules (`internal/constitution/loader.go`) are unchanged; REQ-CAA-004 reuses them rather than adding a second parser. Its containment check (`loader.go:80-88`, absolute paths only today) is replaced by the one check of REQ-CAA-021, which also covers relative registry paths and every entry's `file:`. This change is deliberate (verdict §11) and refuses nothing on the real registry (AC-CAA-025).
 - The resolver's precedence is the one `resolveRegistryPath` has today; REQ-CAA-019 moves `Execute` onto it and does not change what the CLI resolves.
 - No new third-party dependency (`gopkg.in/yaml.v3` is already used).
 
@@ -155,7 +162,7 @@ Function names, the shapes of the two seams, the resolver's package home, and ba
 
 ### §E.4 Gaps (approved reductions)
 
-- **G5 — non-dry-run CLI path not tested at CLI level.** Approved by the lead (verdict §8 G5). CLI tests cover dry-run only (AC-CAA-015). The real-apply path through `runConstitutionAmend` is not exercised by any test in this SPEC: it would need a stdin seam (`NewHumanOversight` hardcodes `os.Stdin`, `internal/constitution/human_oversight.go:20-24`) and would create the cwd-relative lock file inside the package directory (§F). The apply itself is covered at `Execute` level (AC-CAA-001, 002, 005, 012, 013, 019, 020, 021, 022, 023). What stays unobserved is only the CLI wrapper around a successful or failed real apply: its output lines and exit status.
+- **G5 — non-dry-run CLI path not tested at CLI level.** Approved by the lead (verdict §8 G5). CLI tests cover dry-run only (AC-CAA-015). The real-apply path through `runConstitutionAmend` is not exercised by any test in this SPEC: it would need a stdin seam (`NewHumanOversight` hardcodes `os.Stdin`, `internal/constitution/human_oversight.go:20-24`) and would create the cwd-relative lock file inside the package directory (§F). The apply itself is covered at `Execute` level (AC-CAA-001, 002, 005, 012, 013, 019, 020, 021, 022, 023, 024, 025). What stays unobserved is only the CLI wrapper around a successful or failed real apply: its output lines and exit status.
 
 ## §F Out of Scope
 
@@ -181,6 +188,10 @@ Function names, the shapes of the two seams, the resolver's package home, and ba
 
 - Resolving the source rule file and the evolution log against the root `CLAUDE_PROJECT_DIR` names (verdict §9, G6 option (i)). Rejected: it widens the set of directory trees an amendment can write. REQ-CAA-020 keeps all three files inside `projectDir` instead.
 
+### Out of Scope — half-enforced containment
+
+- Narrowing REQ-CAA-020 to an absolute registry path and recording relative registry paths and escaping `file:` entries as observed but not fixed (verdict §10.3, option B). Rejected by verdict §11; REQ-CAA-021 enforces the invariant for all three paths.
+
 ### Out of Scope — follow-up card candidates (verdict §8.1)
 
 - **Dry-run environment value mismatch** (verdict §8.1 item 3). The CLI reads `MOAI_CONSTITUTION_DRY_RUN == "true"` (`internal/cli/constitution.go:470`) while SPEC-V3R2-CON-002 REQ-CON-002-031 and AC-CON-002-07 say `=1`. Not changed here.
@@ -194,17 +205,11 @@ Function names, the shapes of the two seams, the resolver's package home, and ba
 
 ## §G Open questions for the lead
 
-All §7, §8, and §9 items (Q1–Q5, G1–G6, scope addition (a)) are resolved and encoded in §C; none of them remains open. One question surfaced while encoding G6 and is not decided here:
-
-1. **G7 — path shapes the containment boundary does not reach.** REQ-CAA-020 states that nothing the apply step reads or writes lies outside `projectDir`. Code reading at `92c8c3f36` (not executed) finds two shapes the current checks do not refuse:
-   - **A relative registry path.** `LoadRegistry` checks containment only when the cleaned path is absolute (`loader.go:82`); a relative path goes straight to `os.ReadFile` (`loader.go:90`) and is read against the process working directory, not `projectDir`. The resolver returns a relative path when `MOAI_CONSTITUTION_REGISTRY` holds a relative value, or when it is empty and `CLAUDE_PROJECT_DIR` holds one (for example `../other`).
-   - **A registry entry whose `file:` is absolute or climbs out with `..`.** `applyAmendment` uses an absolute `file:` as given and joins a relative one to `projectDir` with no containment check (`pipeline.go:192-195`), so the source rule file an apply writes can lie outside `projectDir`. On the real registry this shape is latent: of 101 `file:` lines, 0 start with `/` and 0 contain `..` (`/usr/bin/grep -cE` over `.claude/rules/moai/core/zone-registry.md` at `92c8c3f36`; control: 87 of the 101 start with `.claude/`).
-
-   Should REQ-CAA-020 be enforced for both shapes (run-phase adds the refusals, each with an AC and a mutant), or be narrowed to an absolute registry path, with both shapes recorded in §F as observed and not fixed? Until this is decided, AC-CAA-023 covers only the shape verdict §9 names.
+All §7, §8, §9, and §11 items (Q1–Q5, G1–G7, scope addition (a)) are resolved and encoded in §C. No open question remains.
 
 ## §H Cross-References
 
-- `.moai/reports/t659/verdict.md` — repro evidence (§2), lead rulings (§7, §8, §9), follow-up candidates (§7.1, §8.1)
+- `.moai/reports/t659/verdict.md` — repro evidence (§2), lead rulings (§7, §8, §9, §11), SPEC 0.1.2 check and lint (§10), follow-up candidates (§7.1, §8.1)
 - `.moai/specs/SPEC-V3R2-CON-002/spec.md` — REQ-CON-002-004 (log fields), REQ-CON-002-011 (atomic apply), REQ-CON-002-031 (dry-run)
 - `internal/constitution/pipeline.go`, `evolution_log.go`, `amendment.go`, `loader.go`, `rate_limiter.go`, `human_oversight.go`
 - `internal/cli/constitution.go` — `newConstitutionAmendCmd`, `runConstitutionAmend`, `resolveRegistryPath`
