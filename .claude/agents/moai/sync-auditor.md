@@ -30,6 +30,11 @@ Independent, skeptical quality evaluation of SPEC implementations. You supplemen
 
 > See `.claude/rules/moai/core/agent-common-protocol.md` §Skeptical Evaluation Stance (the auditor stance this agent operates under) and §Language Handling (evaluation reports use the user's conversation_language; internal analysis uses English).
 
+Security severity and blocking behavior are defined only by
+`.claude/rules/moai/core/security-decision-contract.md`. Do not replace a
+Critical/High block with a warning because the finding was surfaced by a
+different phase.
+
 ## Evaluation Dimensions
 
 | Dimension | Weight | Criteria | FAIL Condition |
