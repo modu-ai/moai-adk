@@ -328,6 +328,28 @@ verdict: trustworthy
   not exercised.
 - Not exercised: an empty store, a non-zero scan exit other than a missing tip (the pinned "any other
   non-zero exit" branch), and a commit landing between the tip recording and the scan.
+- Tool provenance (`verification-claim-integrity.md` §2.2): `moai spec lint` for this round was judged
+  by the installed `v3.2.0-rc.7` build, which is neither an ancestor nor a descendant of this tree; it
+  is not a build made from this tree.
+
+### Lead approval for gate cell 3
+
+Recorded by the orchestrator (lane-5) in a commit of its own, after the gate round 2 evidence commit
+`f167a9cd8` and before any gate cell 3 command (`plan.md` §C item 4, AC-010). The lead's message,
+quoted verbatim as received on 2026-09-11:
+
+> [리드 — t629 셀 ③ 승인]
+> 셀 ①② 판정 수용합니다. 제가 읽은 근거는 보고 본문이고, 증거 커밋 f167a9cd8 에 대해서는 판정 전에 한 번 더 읽겠습니다. Gap 3건(빈 저장소, 그 밖의 non-zero 분기, 스캔 도중 착지한 커밋)과 lint 판정 빌드 귀속 Gap(VCI §2.2)은 그대로 Gap 으로 남기세요.
+> 셀 ③ 은 보고한 계획대로 승인합니다: 실행 방식 (ii), 고정 명령 `/usr/bin/time -p git log -p --all -G 'REGEX' --stdin < SP/g3-tips.txt`, 회차마다 저장소 사본을 먼저 뜨고 그 사본으로 계산, uptime 전후·real·exit·B/B2 기록, 경합 속 측정이라 비율로 판독, 매칭 커밋은 개수만 기록. M2 금지는 유지합니다.
+> 실행 순서 조건: 지금 lane-3 이 internal/cli 테스트 슬롯을 쓰고 있습니다(load 12.83). 그 실행이 끝났다고 제가 알릴 때까지 셀 ③ 은 시작하지 마세요. 그 전에 승인 인용 단독 커밋은 해 두셔도 됩니다. 시작하기 직전에 git log -p / go test 프로세스가 0건인지 확인하세요.
+
+Summary in English: the lead accepts the round 2 cell 1 and cell 2 verdicts (and will re-read
+`f167a9cd8` before judging), keeps the four gaps above as gaps, and approves gate cell 3 on the
+reported plan — execution form (ii), per-run store snapshots, load averages before and after, wall
+time, exit codes, `B`/`B2` re-checks, ratios as the reading under contention, and matching commits as
+counts only. Two conditions bind the start: wait for the lead's notice that lane-3's `internal/cli` test
+run has finished, and confirm immediately before starting that no `git log -p` or `go test` process is
+running. M2 stays forbidden.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
