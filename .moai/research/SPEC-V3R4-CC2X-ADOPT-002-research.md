@@ -4,8 +4,13 @@
 > 2026-08-23 (Phase 5 gate resolved as **Option C** — plan + docs sync + child stubs).
 > Child stubs: `SPEC-V3R4-CC2X-MSGR-001` (Windows messaging doctrine
 > refresh), `SPEC-V3R4-CC2X-MCP-001` (CC 2.1.238/239 MCP behavior notes).
-> Canonical dev-only copy of this research also lives at
-> `.moai/research/cc-update-2.1.237-to-2.1.239.md` (untracked).
+> This file IS the canonical copy of this research, tracked at
+> `.moai/research/SPEC-V3R4-CC2X-ADOPT-002-research.md`. It previously lived at
+> `.moai/specs/SPEC-V3R4-CC2X-ADOPT-002/research.md` and named an untracked
+> dev-only copy at `.moai/research/cc-update-2.1.237-to-2.1.239.md` as canonical;
+> that path never existed in this tree, so the SPEC-directory copy was the only
+> one. Relocated here by SPEC-SPECLINT-GATE-SIGNAL-001 M4 (card t525) — the
+> document is research, not a SPEC, so it does not belong under `.moai/specs/`.
 
 - **Run date**: 2026-08-23 (hns-release-update-specialist, Phases 0–5 + 7.5)
 - **Since version**: 2.1.237 (from `.moai/state/last-cc-version.json`, verified this run)
