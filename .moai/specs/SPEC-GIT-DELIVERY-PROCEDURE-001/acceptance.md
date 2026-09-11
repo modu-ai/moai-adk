@@ -15,7 +15,7 @@ T=internal/template/templates                    # 템플릿 루트
 - 검출식 안의 `git` 은 `[g]it` 으로, `parallel` 은 `para[l]lel` 로, perl 코드 안의 `git` 은 `\x67it` 로 쓴다. 셸 변수를 받는 `sed`·`perl` 과 경로를 만드는 반복문은 가드가 거부할 수 있으므로 경로를 글자 그대로 쓴다.
 - 판정용 grep은 `/usr/bin/grep` 으로 실행한다. 개수가 찍히지 않은 결과는 판정 불가로 기록한다.
 - **범위 파일 집합(열 개, 로컬·템플릿)**: `.claude/agents/moai/manager-git.md`, `.claude/rules/moai/core/agent-common-protocol.md`, `.claude/skills/moai/workflows/sync/delivery.md`, `.claude/skills/moai/workflows/sync/doc-execution.md`, `.claude/skills/moai/SKILL.md`, `.claude/skills/moai/references/reference.md`, `.claude/skills/moai/workflows/sync/quality-gates-context.md`, `.claude/skills/moai/workflows/sync.md`, 명령 원본 `.claude/commands/moai/sync.md`(로컬) / `.claude/commands/moai/sync.md.tmpl`(템플릿). 생성물 `$T/.codex/agents/moai/manager-git.toml`, 게시본 `$T/.agents/skills/moai-sync/SKILL.md`(로컬 사본 `.agents/skills/moai-sync/SKILL.md`).
-- **기준 트리 측정**: 0.2.2 작성 시점 HEAD `caa601d7c` 에서 범위 파일·생성물·게시본·발행기(`internal/template/commandemit`)·관련 테스트 파일·`docs-site/content`·`Makefile` 은 `$BASE` 와 차이가 없다(`git diff --stat` 출력 없음, exit 0). "plan 작성 시점 측정" 값은 이 템플릿 사본으로 잰 기준 트리 값이다.
+- **기준 트리 측정**: 0.2.2 작성 시점 HEAD `ea09ca650`(부모 `caa601d7c`, 둘 다 SPEC 파일만 바꿈)에서 범위 파일·생성물·게시본·발행기(`internal/template/commandemit`, `internal/template/agentemit`)·`zone-registry.md`·사본과 발행 관련 테스트 파일 여덟 개·`docs-site/content`·`Makefile` 은 `$BASE` 와 차이가 없고(`git diff --stat b412f8a33 ea09ca650 -- <경로>` 출력 없음), 템플릿 루트 전체도 차이가 없다(`git diff --stat b412f8a33 -- internal/template/templates/` 출력 없음). "plan 작성 시점 측정" 값은 이 트리의 사본으로 잰 기준 트리 값이다. 조각 (7)·(8)·(9)와 명령 원본·게시본 대조는 0.2.2에서 로컬·템플릿 사본 모두에 다시 쟀다.
 
 ## §D AC 표
 
@@ -482,6 +482,10 @@ perl -ne 'next unless /^\+(?!\+\+)/; while (/(?<![0-9A-Za-z])([0-9a-f]{7,40})(?!
 
 ```bash
 git diff $BASE -- $T/ > $E/ac015-template.diff
+test -s $E/ac015-template.diff
+# 기대: exit 0 — 변경분이 비면 아래 부재 판정이 모두 공허하게 통과한다. 기준 트리에서는 변경분이 없어 exit 1(plan 작성 시점 `git diff --stat b412f8a33 -- internal/template/templates/` 출력 없음)
+/usr/bin/grep -c -E '^[+][^+]' $E/ac015-template.diff > $E/ac015-added-count.txt
+# 기대: 1 이상 — 검사할 추가 줄이 실제로 있다
 /usr/bin/grep -n -E '^[+][^+].*SPEC-([A-Z][A-Z0-9]*-)+[0-9]{3}' $E/ac015-template.diff > $E/ac015-specid.txt
 # 기대: exit 1
 /usr/bin/grep -n -E '^[+][^+].*REQ-([A-Z][A-Z0-9]*-)+[0-9]{3}' $E/ac015-template.diff > $E/ac015-req.txt
@@ -512,6 +516,8 @@ THEN 결과가 비어 있다
 git log --format=%H $BASE..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md > $E/ac016-control.txt
 # 대조 기대: 1줄 이상
 git log --format=%H -1 $BASE..HEAD -- .claude/rules/moai/core/agent-common-protocol.md > $E/ac016-acp-commit.txt
+test -s $E/ac016-acp-commit.txt
+# 기대: exit 0 — 이 커밋이 없으면 아래 목록이 비어 공허하게 통과한다(기준 트리 $BASE..HEAD 에서는 SPEC 파일 커밋뿐이라 exit 1)
 git log --format=%H <ac016-acp-commit.txt 의 SHA>..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md .claude/skills/moai/workflows/sync/doc-execution.md .claude/skills/moai/SKILL.md .claude/skills/moai/references/reference.md .claude/skills/moai/workflows/sync/quality-gates-context.md .claude/skills/moai/workflows/sync.md .claude/commands/moai/sync.md internal/template/templates/.claude/agents/moai/manager-git.md internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/.claude/skills/moai/references/reference.md internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md internal/template/templates/.claude/skills/moai/workflows/sync.md internal/template/templates/.claude/commands/moai/sync.md.tmpl > $E/ac016-after.txt
 # 기대: 빈 파일
 ```
@@ -539,12 +545,14 @@ THEN 변경분에 [ZONE:Frozen] 을 담은 추가·삭제 줄이 없고
 | `CONST-V3R2-037` | `` Preload `AskUserQuestion` via `ToolSearch(query: `` | 52행 |
 | `CONST-V3R2-038` | `AskUserQuestion is reserved exclusively for the MoAI orchestrator` | 17행 |
 
-대조(plan 작성 시점 측정, 템플릿·로컬 사본): `[ZONE:Frozen]` 줄 — `agent-common-protocol.md` 17행 1줄, 나머지 아홉 파일 0줄(명령 원본 `sync.md`·`sync.md.tmpl` 포함). 네 clause 개수 — 사본마다 1·1·1·1. 레지스트리에서 나머지 아홉 파일을 가리키는 `file:` 항목 0개(명령 원본 `file: .claude/commands/moai/sync.md` 0개 포함), `agent-common-protocol.md` 를 가리키는 항목 13개(로컬·템플릿). 뮤턴트: `agent-common-protocol.md` 템플릿 사본의 "MUST NOT prompt" 를 소문자로 바꾼 픽스처 → `CONST-V3R2-036` 개수 0, 기준 사본과의 `diff` 에 `[ZONE:Frozen]` 을 담은 줄 2개 → FAIL. Frozen 줄 판정 뮤턴트: `-[ZONE:Frozen] a` · `+[ZONE:Frozen] b` · ` [ZONE:Frozen] c`(문맥) 세 줄 diff 픽스처 → 2줄 적중, 문맥 줄 미적중.
+대조(plan 작성 시점 측정, 템플릿·로컬 사본): `[ZONE:Frozen]` 줄 — `agent-common-protocol.md` 17행 1줄, 나머지 아홉 파일 0줄(명령 원본 `sync.md`·`sync.md.tmpl` 포함). 네 clause 개수 — 사본마다 1·1·1·1. 레지스트리에서 나머지 아홉 파일을 가리키는 `file:` 항목 0개(명령 원본 `file: .claude/commands/moai/sync.md` 0개 포함), `agent-common-protocol.md` 를 가리키는 항목 13개(로컬·템플릿). 뮤턴트: `agent-common-protocol.md` 템플릿 사본의 "MUST NOT prompt" 를 소문자로 바꾼 픽스처 → `CONST-V3R2-036` 개수 0, 기준 사본과의 `diff` 에 `[ZONE:Frozen]` 을 담은 줄 2개 → FAIL. Frozen 줄 판정 뮤턴트: `-[ZONE:Frozen] a` · `+[ZONE:Frozen] b` · ` [ZONE:Frozen] c`(문맥) 세 줄 diff 픽스처 → 2줄 적중, 문맥 줄 미적중. 레지스트리 "나머지 아홉 파일" 검출식 뮤턴트(0.2.2 측정): `file: .claude/commands/moai/sync.md` · `file: .claude/skills/moai/workflows/sync.md` · `file: .claude/rules/moai/core/agent-common-protocol.md` 세 줄 픽스처 → 2 — 검출식이 명령 원본과 새 스킬 경로를 실제로 잡고 `agent-common-protocol.md` 는 잡지 않는다. 이 검출식은 워크트리 가드 때문에 `manager-[g]it` 으로 쓴다.
 
 판정:
 
 ```bash
 git diff $BASE -- .claude/agents/moai/manager-git.md .claude/rules/moai/core/agent-common-protocol.md .claude/skills/moai/workflows/sync/delivery.md .claude/skills/moai/workflows/sync/doc-execution.md .claude/skills/moai/SKILL.md .claude/skills/moai/references/reference.md .claude/skills/moai/workflows/sync/quality-gates-context.md .claude/skills/moai/workflows/sync.md .claude/commands/moai/sync.md $T/.claude/agents/moai/manager-git.md $T/.claude/rules/moai/core/agent-common-protocol.md $T/.claude/skills/moai/workflows/sync/delivery.md $T/.claude/skills/moai/workflows/sync/doc-execution.md $T/.claude/skills/moai/SKILL.md $T/.claude/skills/moai/references/reference.md $T/.claude/skills/moai/workflows/sync/quality-gates-context.md $T/.claude/skills/moai/workflows/sync.md $T/.claude/commands/moai/sync.md.tmpl > $E/ac025-scope.diff
+test -s $E/ac025-scope.diff
+# 기대: exit 0 — 범위 변경분이 비면 아래 Frozen 줄 판정이 공허하게 통과한다(기준 트리에서는 변경분이 없어 exit 1)
 /usr/bin/grep -F '[ZONE:Frozen]' $E/ac025-scope.diff > $E/ac025-frozen-any.txt
 /usr/bin/grep -n -E '^[-+].*\[ZONE:Frozen\]' $E/ac025-frozen-any.txt > $E/ac025-frozen-lines.txt
 # 기대: exit 1 (문맥 줄 ' …[ZONE:Frozen]' 은 허용, 추가·삭제 줄은 불허).
@@ -556,7 +564,7 @@ git diff $BASE -- .claude/agents/moai/manager-git.md .claude/rules/moai/core/age
 # 기대: 네 파일 모두 사본마다 1
 /usr/bin/grep -c -E 'file: \.claude/rules/moai/core/agent-common-protocol\.md' .claude/rules/moai/core/zone-registry.md $T/.claude/rules/moai/core/zone-registry.md > $E/ac025-registry-control.txt
 # 기대: 사본마다 13 — 검출식 형태가 레지스트리 항목을 실제로 잡는다는 양성 대조
-/usr/bin/grep -c -E 'file: \.claude/(agents/moai/manager-git\.md|skills/moai/workflows/sync/(delivery|doc-execution|quality-gates-context)\.md|skills/moai/SKILL\.md|skills/moai/references/reference\.md|skills/moai/workflows/sync\.md|commands/moai/sync\.md)' .claude/rules/moai/core/zone-registry.md $T/.claude/rules/moai/core/zone-registry.md > $E/ac025-registry-others.txt
+/usr/bin/grep -c -E 'file: \.claude/(agents/moai/manager-[g]it\.md|skills/moai/workflows/sync/(delivery|doc-execution|quality-gates-context)\.md|skills/moai/SKILL\.md|skills/moai/references/reference\.md|skills/moai/workflows/sync\.md|commands/moai/sync\.md)' .claude/rules/moai/core/zone-registry.md $T/.claude/rules/moai/core/zone-registry.md > $E/ac025-registry-others.txt
 # 기대: 사본마다 0
 ```
 
@@ -745,7 +753,9 @@ THEN (c) 양성 대조: 템플릿 게시본 한 파일을 잠시 바꾼 상태�
          게시본이 AC-GDP-026 (ii)·AC-GDP-027 규칙을 어기는 줄을 담지 않는다
 ```
 
-**plan 작성 시점 예상: 경우 (A).** 근거: 발행기는 명령 원본의 `argument-hint`·`allowed-tools` 를 게시본에 옮기지 않는다("Claude-only keys and are NOT carried into the published skill", `internal/template/commandemit/loader.go:4-6`). 게시본은 생성 머리말·`name`·영어 `description`·원본 본문만 담는다(`emit.go` `renderSkill`). X2 편집은 3행만 바꾸고 2행 `description` 과 본문을 바꾸지 않는다. 기준 트리의 템플릿·로컬 게시본은 서로 바이트 동일하고 `merge` 를 담지 않는다(`grep -i merge` exit 1). 예상은 판정을 대신하지 않는다 — 두 경우를 모두 명령으로 판정한다. 발행기는 템플릿 게시본만 쓰므로(`golden_test.go` `templatesDir = "../templates"`) 경우 (B)가 되면 로컬 게시본 사본은 템플릿 게시본을 그대로 복사해 같은 커밋에 넣는다.
+**plan 작성 시점 예상: 경우 (A).** 근거: 발행기는 명령 원본의 `argument-hint`·`allowed-tools` 를 게시본에 옮기지 않는다("Claude-only keys and are NOT carried into the published skill", `internal/template/commandemit/loader.go:4-6`). 게시본은 생성 머리말·`name`·영어 `description`·원본 본문만 담는다(`emit.go:122-130` `renderSkill`). X2 편집은 3행만 바꾸고 2행 `description` 과 본문을 바꾸지 않는다. 기준 트리의 템플릿·로컬 게시본은 서로 바이트 동일하고(각 7줄) `merge` 를 담지 않는다(`grep -ci merge` 0·0). 예상은 판정을 대신하지 않는다 — 두 경우를 모두 명령으로 판정한다. 발행기는 템플릿 게시본만 쓰므로(`golden_test.go:28` `templatesDir = "../templates"`, 갱신 분기 `:57-74`) 경우 (B)가 되면 로컬 게시본 사본은 템플릿 게시본을 그대로 복사해 같은 커밋에 넣는다.
+
+발행 명령 근거: `make commands-emit` = `COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission`(`Makefile:51-52`), `make commands-emit-check` = 같은 테스트를 `COMMAND_EMIT_UPDATE=` 로 비워 읽기 전용 실행(`Makefile:58-60`, 실패 시 "command-skill drift" 를 내고 exit 1). `TestCommandSourcesUnmodified`(`golden_test.go:94-106`)는 한 실행 안의 발행 전후 해시 비교라 원본 편집만으로는 실패하지 않는다 — 원본 편집 뒤 빨강이 날 수 있는 점검은 게시본 대조뿐이고, 그래서 아래 양성 대조가 게시본을 바꿔 빨강을 확인한다.
 
 양성 대조(run-phase 사전 점검, 원본 편집 전):
 
@@ -762,6 +772,10 @@ make commands-emit-check > $E/ac030-control-green.txt 2>&1
 git status --porcelain -- $T/.agents/skills/ .agents/skills/ > $E/ac030-control-clean.txt
 test -s $E/ac030-control-clean.txt
 # 기대: exit 1 — 되돌림 뒤 게시본 경로에 변경 없음
+git ls-files -- $T/.agents/skills/moai-sync/SKILL.md .agents/skills/moai-sync/SKILL.md > $E/ac030-tracked.txt
+/usr/bin/grep -c '' $E/ac030-tracked.txt > $E/ac030-tracked-count.txt
+# 기대: 2 — 아래 git status·git diff·git log 의 경로 지정이 추적 파일을 실제로 가리킨다.
+# 경로가 틀리면 빈 목록이 "변화 없음"(경우 A)으로 읽히므로 이 개수가 2가 아니면 판정 불가. plan 작성 시점 측정: 두 경로 모두 출력
 ```
 
 판정(원본 편집 직후, 커밋 전):
@@ -783,6 +797,17 @@ git diff --name-only $BASE -- $T/.agents/skills/ .agents/skills/ > $E/ac030-chan
 git log --format=%H $BASE..HEAD -- $T/.claude/commands/moai/sync.md.tmpl > $E/ac030-src-commits.txt
 git log --format=%H $BASE..HEAD -- $T/.agents/skills/moai-sync/SKILL.md .agents/skills/moai-sync/SKILL.md > $E/ac030-artifact-commits.txt
 # (A): ac030-artifact-commits.txt 빈 파일. (B): ac030-artifact-commits.txt 의 모든 줄이 ac030-src-commits.txt 에 있음(같은 커밋)
+test -s $E/ac030-src-commits.txt
+# 기대: 두 경우 모두 exit 0 — 원본 편집 커밋이 실제로 있다(없으면 아래 부분집합 판정이 공허해진다)
+git diff --name-only $BASE -- $T/.claude/commands/moai/sync.md.tmpl .claude/commands/moai/sync.md > $E/ac030-src-changed.txt
+/usr/bin/grep -c '' $E/ac030-src-changed.txt > $E/ac030-src-changed-count.txt
+# 기대: 2 — 같은 git diff 경로 형태가 바뀐 파일을 실제로 본다(ac030-changed.txt 가 빈 것이 경로 오류가 아니라는 양성 대조)
+/usr/bin/grep -v -x -F -f $E/ac030-src-commits.txt $E/ac030-artifact-commits.txt > $E/ac030-orphan-artifact-commits.txt
+test -s $E/ac030-orphan-artifact-commits.txt
+# 기대: 두 경우 모두 exit 1 — 원본 편집 커밋에 없는 게시본 커밋이 없다. (B)이면 추가로 test -s $E/ac030-artifact-commits.txt → exit 0
+# 뮤턴트(0.2.2 스크래치 측정): 원본 {aaa1111}·게시본 {bbb2222} → 위 grep exit 0(FAIL 검출); 게시본 {aaa1111} → exit 1; 빈 원본 목록 → exit 0, 1줄 출력(FAIL)
+test -s $T/.agents/skills/moai-sync/SKILL.md
+# 기대: exit 0 — 아래 플래그 검사가 빈 파일 위에서 통과하지 않는다
 diff .agents/skills/moai-sync/SKILL.md $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-lt.diff
 # 기대: 두 경우 모두 exit 0
 awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && !(/[Dd]eprecat/ && /--auto-merge/) {print FNR ": " $0}' $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-flags.txt
