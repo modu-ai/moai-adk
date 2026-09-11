@@ -54,6 +54,13 @@ hugo --source docs-site --destination <scratchpad> --logLevel warn → hugo-exit
 빌드 결과 ko·en 페이지에 새 문장이 렌더됨(grep 적중)
 ```
 
+### 4.1 통합 창 (리드 창 지명)
+
+- `moai integration acquire --name lane-3` → acquired. 로컬 develop `0db675bed` 흡수 → `85bb6b494` (부모 `ca1fc6141`, `0db675bed`), tree `d99bbadc8d34…`.
+- `git diff --stat dae1b070b 0db675bed -- <네 페이지>` 출력 없음(develop 은 이 페이지를 건드리지 않음).
+- `git diff 0db675bed 85bb6b494 -- docs-site/content` 의 변경 줄은 네 로케일 × (`:173`, `:177`) = 8줄뿐. `grep -n` 으로 네 로케일 모두 정정 문단이 173·177행에 있음을 확인.
+- `hugo --source docs-site --destination <scratchpad> --logLevel warn` → hugo-exit=0, warn/error 0줄, Pages 187/185/185/185 (hugo-build-window.txt).
+
 ## 5. 운영자 결정 필요 — 인증
 
 다른 로컬 계정이 콘솔 포트에 닿을 수 있다는 것이 실측으로 확인됐다. 콘솔에 인증(예: 프로세스별 토큰)을 넣을지는 이 카드의 범위가 아니며 운영자 결정으로 올린다. 이 카드는 문서를 사실에 맞췄을 뿐 동작은 바꾸지 않았다.
