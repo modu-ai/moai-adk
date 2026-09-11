@@ -320,16 +320,17 @@ var validHarnessLevels = map[string]bool{
 // knownHarnessTopLevelKeys is the set of recognized top-level keys under harnessFileWrapper.Harness.
 // REQ-HRN-001-019: reference set for detecting unknown keys.
 var knownHarnessTopLevelKeys = map[string]bool{
-	"default_profile":      true,
-	"mode_defaults":        true,
-	"auto_detection":       true,
-	"escalation":           true,
-	"effort_mapping":       true,
-	"levels":               true,
-	"model_upgrade_review": true,
-	"plan_audit_global":    true,
-	"evaluator":            true,
-	"learning":             true, // LIVE: harness learning sub-system, consumed by internal/cli/hook.go
+	"default_profile":          true,
+	"mode_defaults":            true,
+	"auto_detection":           true,
+	"escalation":               true,
+	"effort_mapping":           true,
+	"levels":                   true,
+	"model_upgrade_review":     true,
+	"plan_audit_global":        true,
+	"plan_audit_tier_ceilings": true, // prose-consumed by the plan-auditor agent body; no Go reader
+	"evaluator":                true,
+	"learning":                 true, // LIVE: harness learning sub-system, consumed by internal/cli/hook.go
 }
 
 // LoadHarnessConfig reads the harness.yaml file at the given path and returns a HarnessConfig.

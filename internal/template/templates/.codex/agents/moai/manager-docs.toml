@@ -62,6 +62,23 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 
 ### B12 CHANGELOG emission discipline (mandatory self-test before commit)
 
+Before the AC self-test, resolve the source by the SPEC tier. Use
+`spec.md` when `tier: S` (the ACs are inline), and use `acceptance.md` when
+`tier: M` or `tier: L`. The resolver must distinguish three states:
+`resolved`, `missing`, and `empty`; `missing` or `empty` is a blocker and is
+never treated as zero live criteria. Record `ac_source=<path>` and the tier in
+the sync evidence so a CHANGELOG count is attributable to the correct file.
+A reusable shell shape is:
+
+```bash
+case "${SPEC_TIER:-L}" in
+  S) AC_FILE="$SPEC_DIR/spec.md" ;;
+  M|L) AC_FILE="$SPEC_DIR/acceptance.md" ;;
+  *) echo "BLOCKER: unknown SPEC tier" >&2; exit 1 ;;
+esac
+test -s "$AC_FILE" || { echo "BLOCKER: AC source missing or empty: $AC_FILE" >&2; exit 1; }
+```
+
 Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3 self-tests per `.claude/rules/moai/development/manager-develop-prompt-template.md` § B-relevant.12:
 
 1. **Pre-emission grep**: `grep -c '<SPEC-ID>' CHANGELOG.md` — if count ≥ 1, halt emission and return blocker report (avoids duplicate entries from parallel BATCH-SYNC sessions)
