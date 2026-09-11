@@ -187,6 +187,23 @@ Coverage note: ptycaptest is 38.3% ungated and 82.2% gated, below the 85% packag
 - (b) Real-HOME W6: 58 new `~/.moai/run/<key>/home-state-migration.json.lock` directories were created 19:26:13–19:29:44 on 2026-09-11. Not reachable from the wizard package (0 `homestate` deps at that tree); the writer is unidentified → Gap, accepted by the lead as unrelated to this card. W1–W5 before/after identical; W4 absent both times.
 - (c) Process incident: after `/clear` a second manager-develop was spawned while the previous Phase A agent was still running. The second agent detected the HEAD move and wrote nothing, and self-reported to the lead.
 
+### Stage B (internal/cli slot)
+
+Slot granted by the lead (confirmed "유지"). Opening state: HEAD `0e3718b7d`, branch `WT-init-tux-i18n`, no `.moai/reports/t586/stage-b/` directory (a previous attempt died on a rate limit before running anything). `plan.md` §F places M2 under "흡수 게이트 앞 — t583 과 겹치지 않음", i.e. before the absorption gate, so the batch order holds. Host tmux before the batch: `no server running on /private/tmp/tmux-501/default` (0 `moai-ptycap-` sessions).
+
+#### Step 1 — plan.md §C 2, `internal/cli` half — STOPPED (baseline FAIL)
+
+| Command | Exit | Observed | Evidence |
+|---|---|---|---|
+| `go test ./internal/cli/ -run 'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI' -count=1 -list '.*' -timeout 600s` (as dispatched) | 0 | 3602 names — `-list` takes its own regexp and ignores `-run`, so this counts every test/benchmark in the package, not the selection | `.moai/reports/t586/stage-b/baseline-cli-list.txt` |
+| `go test ./internal/cli/ -count=1 -list 'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI' -timeout 600s` (selection count) | 0 | 129 top-level `Test…` names (non-zero) | `.moai/reports/t586/stage-b/baseline-cli-list-selection.txt` |
+| `go test ./internal/cli/ -run 'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI' -count=1 -v -timeout 600s` | **1** | `=== RUN` 217 · `--- PASS` 216 · `--- FAIL` 1 · `--- SKIP` 0. The failure: `--- FAIL: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (6.04s)` with `home_state_coverage_test.go:420: audited production file changed after coverage tip: internal/cli/launcher.go` | `.moai/reports/t586/stage-b/baseline-cli-tests.txt` |
+
+Attribution (read-only, no fix attempted — the dispatch says stop on any baseline FAIL):
+- The test is selected only because its name contains `Profile`; it reads git history (`resolveHomeStateCoverageChangeSet`, `internal/cli/home_state_coverage.go:196-300`) and fails when a file audited by the t592 home-state coverage marker commits has a different blob at HEAD.
+- `internal/cli/launcher.go` was last changed by `6010d5d82 feat(launcher): support pinning the Claude Code binary (#1697)` (2026-09-10), after the t592 marker `0c86e61d0` (`git merge-base --is-ancestor 0c86e61d0 6010d5d82` → 0). `6010d5d82` is an ancestor of this branch's base `500a73d44` (exit 0), and this branch changed none of `launcher.go`, `home_state_coverage.go`, `home_state_coverage_test.go` since the base (`git diff --stat 500a73d44 HEAD -- …` empty, exit 0). The failure is inherited from local develop, not produced by this card.
+- Consequence: steps 2–4 were not started. No product or test file was changed in Stage B.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
