@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
@@ -105,7 +106,7 @@ func normalizeModelLegacy1M(m string) string {
 	return alias + "[1m]"
 }
 
-// schemaSelectOptions builds a huh option list for a schema select field from
+// schemaSelectOptions builds the option list for a schema select field from
 // settings.FieldOptionDefs — the SHARED option-list SSOT that internal/web already
 // reads — so the TUI wizard and the web console cannot drift apart. Each option's
 // wire value is the schema's canonical value (for "model" that is the short alias
@@ -120,19 +121,33 @@ func normalizeModelLegacy1M(m string) string {
 // console but the wizard has never offered one (it defaults to acceptEdits and
 // normalizes that back to "" on save).
 //
+// The list is version neutral ({Label, Value}, design.md §3): the v2 profile
+// wizard takes it as wizard.Option arguments, and the v1 form below converts
+// it with huhV1Options until the v2 absorption retires that form.
+//
 // @MX:NOTE: [AUTO] Single derivation site for every wizard select backed by the shared schema.
-func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []huh.Option[string] {
+func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []wizard.Option {
 	defs := settings.FieldOptionDefs(field)
-	opts := make([]huh.Option[string], 0, len(defs)+1)
+	opts := make([]wizard.Option, 0, len(defs)+1)
 	if withEmpty {
 		if empty := settings.EmptyLabelFor(field); empty != "" {
-			opts = append(opts, huh.NewOption(empty, ""))
+			opts = append(opts, wizard.Option{Label: empty, Value: ""})
 		}
 	}
 	for _, d := range defs {
-		opts = append(opts, huh.NewOption(optionLabelFor(t, d), d.Value))
+		opts = append(opts, wizard.Option{Label: optionLabelFor(t, d), Value: d.Value})
 	}
 	return opts
+}
+
+// huhV1Options converts a version-neutral option list to the huh v1 option
+// type the current profile form renders.
+func huhV1Options(opts []wizard.Option) []huh.Option[string] {
+	out := make([]huh.Option[string], 0, len(opts))
+	for _, o := range opts {
+		out = append(out, huh.NewOption(o.Label, o.Value))
+	}
+	return out
 }
 
 // readCurrentProjectConfig reads the current development_mode + git_convention
@@ -392,7 +407,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 			huh.NewSelect[string]().
 				Title(t.ModelOverrideTitle).
 				Description(t.ModelOverrideDesc).
-				Options(schemaSelectOptions(t, "model", true)...).
+				Options(huhV1Options(schemaSelectOptions(t, "model", true))...).
 				Value(&model),
 			// model_policy stays a CLI-only field: the web console dropped it (it
 			// duplicates the agentfm performance tier), so it has no schema entry
@@ -411,7 +426,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 			huh.NewSelect[string]().
 				Title(t.EffortLevelTitle).
 				Description(t.EffortLevelDesc).
-				Options(schemaSelectOptions(t, "effort_level", true)...).
+				Options(huhV1Options(schemaSelectOptions(t, "effort_level", true))...).
 				Value(&effortLevel),
 			// S-4: option order — acceptEdits, auto, default, plan, bypass, dontAsk.
 			// The schema's permissionModeOptions() mirrors that exact order, and the
@@ -420,7 +435,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 			huh.NewSelect[string]().
 				Title(t.PermissionModeTitle).
 				Description(t.PermissionModeDesc).
-				Options(schemaSelectOptions(t, "permission_mode", false)...).
+				Options(huhV1Options(schemaSelectOptions(t, "permission_mode", false))...).
 				Value(&permissionMode),
 		).Title(t.ModelSettingsTitle),
 
@@ -436,7 +451,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 			huh.NewSelect[string]().
 				Title(t.DevelopmentModeTitle).
 				Description(t.DevelopmentModeDesc).
-				Options(schemaSelectOptions(t, "development_mode", true)...).
+				Options(huhV1Options(schemaSelectOptions(t, "development_mode", true))...).
 				Value(&developmentMode),
 		).Title(t.DevelopmentModeTitle),
 	).WithTheme(moaiHuhTheme())

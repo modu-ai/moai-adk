@@ -109,8 +109,8 @@ func TestTUIEmptyLabelsSchemaSourced(t *testing.T) {
 			t.Errorf("field %q: wizard offers no empty option", field)
 			continue
 		}
-		if opts[0].Key != want {
-			t.Errorf("field %q: empty option label = %q, want the schema label %q", field, opts[0].Key, want)
+		if opts[0].Label != want {
+			t.Errorf("field %q: empty option label = %q, want the schema label %q", field, opts[0].Label, want)
 		}
 	}
 
