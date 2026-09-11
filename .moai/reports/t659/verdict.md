@@ -266,3 +266,36 @@ LINT_EXIT=0
 - frontmatter `tier: L`, `design.md` · `research.md` 추가. 기존 결정(G1~G7·§11·§12)을 설계·조사 근거로 옮기되 요구사항·결정·범위와 REQ 21 · AC 25 · 뮤턴트 29 는 바꾸지 않는다. `progress.md` 에 산출물 수를 반영한다.
 - 레인 확인 항목: 파일 6개 존재, lint 0/0, 신규 ID 등장 횟수와 대조군.
 - 그 뒤 plan-auditor(Tier L 합격선 0.85)에 "AC 25 는 Tier L 상한과 같다"를 명시해 넘긴다. 판정 파일은 회차 번호를 붙여 `.moai/reports/t659/plan-audit-iter1.md` 로 받는다.
+
+## 14. Tier L 반영 확인 · lint
+
+### 14.1 레인 직접 확인 (`51454e5e5`)
+
+- 커밋 `51454e5e5` 는 SPEC 폴더만 바꿨다: `design.md` 307+ · `research.md` 273+ 신규, `spec.md` · `plan.md` · `progress.md` 수정, `acceptance.md` 무변경(5 files, 597+/11-). 작업 트리 변경 0.
+- 산출물 6개 존재: acceptance.md · design.md · plan.md · progress.md · research.md · spec.md.
+- `spec.md`: `version: "0.1.4"`, `status: draft`, `tier: L`.
+- 구별 ID 수(여섯 파일 전체): REQ-CAA 21, AC-CAA 25. 뮤턴트(acceptance.md) 29. 변경 전(§12.2)과 같다.
+- 부속 문서 `^status:` 줄 수: plan.md 0 · acceptance.md 0 · design.md 0 · research.md 0.
+- acceptance.md 등장 횟수(`grep -o -w`): AC-CAA-024 13 · AC-CAA-025 6 · M-21 6 · M-22 5 · M-23 4 · M-24 8 · REQ-CAA-021 9. 대조: AC-CAA-023 10 · M-20 7. §12.2 와 모두 같다.
+- Cf 문자 여섯 파일 모두 0(대조 1).
+
+### 14.2 lint (`lint-0.1.4.txt`, 판정 바이너리 `lint-binary-0.1.4.txt`)
+
+```
+/Users/goos/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001
+INFO  OwnershipTransitionUnmeasured  …/spec.md  1  … commit 7b4d1ac89… has no Authored-By-Agent trailer
+0 error(s), 0 warning(s)
+LINT_EXIT=0
+```
+
+- 판정 바이너리: `v3.2.0-rc.7   moai_cp/20260910_130400-275-ged71054d3-dirty   built 2026-09-10T19:18:41Z`, `VERSION_EXIT=0`. 판정 트리 `51454e5e5`. 기준 커밋 이후 Go 코드 변경 0(§10.2), 이후 커밋은 SPEC·판정서 문서뿐. `-dirty` 내용은 미관측(Gap).
+
+### 14.3 에이전트 보고 중 판정 출처 표시가 필요한 세부 (에이전트 판독)
+
+design.md 에서 판정서 문구가 아니라 기존 SPEC 인코딩에서 온 것으로 표시된 세 가지 — 경로 구분자 경계(§11 두 번째 뮤턴트 `/root-evil` 차단 형태), 양쪽 경로 해석과 존재하는 가장 가까운 상위 경로 판정(REQ-CAA-021 · plan.md R-7), 소스 검사 순서(새 clause 0회 검사 먼저, plan.md M3).
+
+### 14.4 범위 밖 쓰기 1건 (에이전트 자진 보고)
+
+- manager-spec 이 워크트리 `.claude/agent-memory/manager-spec/` 에 `MEMORY.md` · `feedback_worktree_guard_plain_commands.md` 를 썼다. 지시(SPEC 폴더만 편집)를 벗어난 쓰기다.
+- 그 경로는 `.gitignore` 로 무시되어 커밋·`git status` 에 나타나지 않는다. 처분은 리드 판단에 맡긴다.
+- 레인 확인: 같은 파일이 primary 체크아웃의 공용 저장소에도 있다 — `/Users/goos/MoAI/moai-adk-go/.claude/agent-memory/manager-spec/feedback_worktree_guard_plain_commands.md`(1341 bytes, 11:22, 워크트리 사본과 크기·시각 동일). primary 의 `MEMORY.md`(27136 bytes)도 같은 11:22 에 수정됐다. 워크트리 에이전트 메모리를 primary 로 복사하는 쓰기 시점 미러가 동작한 것으로 보인다(판독 — 미러 로그는 확인하지 않았다). 여러 세션이 공유하는 저장소라 레인은 지우지 않았다.
