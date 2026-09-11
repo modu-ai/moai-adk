@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001
 title: "moai update 가 .claude/settings.json 의 템플릿 값 변경을 전달하도록 — 배포 직후 렌더 스냅숏을 3-way 병합 base 로"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec (card t656)

@@ -38,7 +38,40 @@ red_now_observed: none (plan phase forbids go test — recorded at run-phase M1)
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase started 2026-09-11 (Implementation Kickoff Approval granted by the operator via the lead). Worktree `.claude/worktrees/t656`, branch `WT-update-value-merge`, run base HEAD `41a470641` (local develop `0db675bed` absorbed). Long outputs live under `.moai/reports/t656/run/`.
+
+### §E.2.0 Plan-audit iteration-3 minors (N3-01..N3-06) — disposition
+
+The SPEC ownership matrix (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings) forbids manager-develop from editing `spec.md` / `plan.md` / `acceptance.md` body content. Every N3 fix below is a body edit of `plan.md` or `acceptance.md`, so none is applied to those files in the run phase. Each is recorded as **debt for manager-spec** together with the run-phase handling that keeps the implementation and its evidence correct without the wording change.
+
+| id | Where | Wording debt (manager-spec) | Run-phase handling (no SPEC body edit) |
+|---|---|---|---|
+| N3-01 | acceptance.md:124, :285 (M-D5g-w) | Split the row into M-D5g-wb (judgement moved to the backup step → killed only by `update_leftover_version_skip`) and M-D5g-wd (judgement moved after deploy → killed by `update_leftover_abort` `a == 2` and by `update_leftover_version_skip`) | The slot-request mutant list carries the two variants as separate mutants with their own killing cells |
+| N3-02 | acceptance.md:115-116 | Add a retired deny entry to the `update_leftover_version_skip` cell and a mutant row M-D5g-s | The run-phase test gives the leftover R2 and the live file the retired entry `Write(./secrets/**)` (a strictly stronger fixture of the same cell); M-D5g-s is in the slot-request mutant list |
+| N3-03 | plan.md:151 (D3) vs :207 (M3) | Name the preserve-path signal channel in D3 | Implemented as a sibling function `MergeUserFilesWithOutcome` that returns a per-path outcome; `MergeUserFiles` keeps its signature and becomes a thin wrapper, so D3 ("signature and base injection unchanged") still holds |
+| N3-04 | plan.md:208 vs :217, acceptance.md:81 | State the pre-merge observation hook in one milestone | The hook is introduced once, in the `internal/cli` wiring (M4), next to its only consumer AC-USB-005 — consistent with acceptance.md:81. AC-USB-006/016 observe between flows and need no hook |
+| N3-05 | acceptance.md:232, :235 | Relabel the c2/c5 next-flow cells: they are green only against the empty-promotion stub with base selection in place, not before implementation | The RED/GREEN evidence below records these cells against that stub, not against the pre-implementation tree |
+| N3-06 | acceptance.md:135-137 | Optional: add a leftover-promotion-failure cell | A `backup` package test drives the leftover judgement with a directory planted at the canonical path and asserts a nil-free, non-blocking result with exactly one `settings-snapshot-promote-failed:` line; the `runUpdate` call-site cell is in the slot request |
+
+### §E.2.1 M1 — baseline (this run, tree `41a470641`)
+
+```
+$ go test ./internal/cli/update/merge/... ./internal/cli/update/backup/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.656s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.323s
+exit=0
+
+$ go test -cover ./internal/cli/update/merge/ ./internal/cli/update/backup/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.581s	coverage: 92.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.197s	coverage: 90.1% of statements
+exit=0
+
+$ grep -n "^\.moai/cache/$" .gitignore internal/template/templates/.gitignore
+internal/template/templates/.gitignore:241:.moai/cache/
+.gitignore:352:.moai/cache/
+```
+
+Coverage baseline for the DoD "no lower than M1": merge 92.1%, backup 90.1%.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
