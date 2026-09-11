@@ -492,6 +492,11 @@ func writeSlotLease(path string, lease *SlotLease) error {
 		return fmt.Errorf("slot lease: %w", err)
 	}
 	data = append(data, '\n')
+	// The writer owns its directory rather than relying on the caller's lock
+	// setup having created it, so the write is correct on its own terms.
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("slot lease: %w", err)
+	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".slot-lease-*.tmp")
 	if err != nil {
 		return fmt.Errorf("slot lease: %w", err)
