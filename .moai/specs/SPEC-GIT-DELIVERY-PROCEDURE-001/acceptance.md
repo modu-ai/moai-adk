@@ -11,10 +11,11 @@ T=internal/template/templates                    # 템플릿 루트
 ```
 
 - 명령은 워크트리 루트에서 실행한다. "exit" 는 직전 명령의 exit code를 `echo "exit=$?"` 로 따로 기록한 값이다.
+- **변수는 판정 명령과 같은 호출 안에서 지정한다.** Bash 호출은 매번 새 프로세스라서, 앞 호출에서 지정한 `BASE`·`E`·`T` 는 다음 호출에 남지 않는다. 판정 명령마다 `BASE=b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0; E=.moai/reports/t622/run; T=internal/template/templates; <판정 명령>` 처럼 세 지정을 같은 호출 앞에 붙이거나, 값을 글자 그대로 넣는다. 지정 없이 돌린 호출에서는 `git log --format=%H $BASE..HEAD` 가 `..HEAD` 로, `git diff $BASE -- $T/` 가 `git diff -- /` 로 바뀌므로 그 출력은 판정 근거가 아니다. `manager-git.md` 경로를 담은 복합 스크립트는 워크트리 가드가 거부하므로, 한 호출에는 변수 지정과 판정 명령 하나만 둔다.
 - 기준 트리 사본은 사전 점검에서 `git show $BASE:<경로> > $E/base-<이름>` 으로 반출해 둔다(대상 목록은 plan.md §C 2단계).
 - 검출식 안의 `git` 은 `[g]it` 으로, `parallel` 은 `para[l]lel` 로, perl 코드 안의 `git` 은 `\x67it` 로 쓴다. 셸 변수를 받는 `sed`·`perl` 과 경로를 만드는 반복문은 가드가 거부할 수 있으므로 경로를 글자 그대로 쓴다.
 - 판정용 grep은 `/usr/bin/grep` 으로 실행한다. 개수가 찍히지 않은 결과는 판정 불가로 기록한다.
-- **범위 파일 집합(열 개, 로컬·템플릿)**: `.claude/agents/moai/manager-git.md`, `.claude/rules/moai/core/agent-common-protocol.md`, `.claude/skills/moai/workflows/sync/delivery.md`, `.claude/skills/moai/workflows/sync/doc-execution.md`, `.claude/skills/moai/SKILL.md`, `.claude/skills/moai/references/reference.md`, `.claude/skills/moai/workflows/sync/quality-gates-context.md`, `.claude/skills/moai/workflows/sync.md`, 명령 원본 `.claude/commands/moai/sync.md`(로컬) / `.claude/commands/moai/sync.md.tmpl`(템플릿). 생성물 `$T/.codex/agents/moai/manager-git.toml`, 게시본 `$T/.agents/skills/moai-sync/SKILL.md`(로컬 사본 `.agents/skills/moai-sync/SKILL.md`).
+- **범위 파일 집합(아홉 개, 로컬·템플릿)** — 로컬·템플릿 사본 한 쌍을 한 파일로 세고, 이름이 다른 명령 원본 `sync.md`/`sync.md.tmpl` 도 한 쌍으로 센다. 생성물과 게시본은 범위 파일로 세지 않는다: `.claude/agents/moai/manager-git.md`, `.claude/rules/moai/core/agent-common-protocol.md`, `.claude/skills/moai/workflows/sync/delivery.md`, `.claude/skills/moai/workflows/sync/doc-execution.md`, `.claude/skills/moai/SKILL.md`, `.claude/skills/moai/references/reference.md`, `.claude/skills/moai/workflows/sync/quality-gates-context.md`, `.claude/skills/moai/workflows/sync.md`, 명령 원본 `.claude/commands/moai/sync.md`(로컬) / `.claude/commands/moai/sync.md.tmpl`(템플릿). 생성물 `$T/.codex/agents/moai/manager-git.toml`, 게시본 `$T/.agents/skills/moai-sync/SKILL.md`(로컬 사본 `.agents/skills/moai-sync/SKILL.md`).
 - **기준 트리 측정**: 0.2.2 작성 시점 HEAD `ea09ca650`(부모 `caa601d7c`, 둘 다 SPEC 파일만 바꿈)에서 범위 파일·생성물·게시본·발행기(`internal/template/commandemit`, `internal/template/agentemit`)·`zone-registry.md`·사본과 발행 관련 테스트 파일 여덟 개·`docs-site/content`·`Makefile` 은 `$BASE` 와 차이가 없고(`git diff --stat b412f8a33 ea09ca650 -- <경로>` 출력 없음), 템플릿 루트 전체도 차이가 없다(`git diff --stat b412f8a33 -- internal/template/templates/` 출력 없음). "plan 작성 시점 측정" 값은 이 트리의 사본으로 잰 기준 트리 값이다. 조각 (7)·(8)·(9)와 명령 원본·게시본 대조는 0.2.2에서 로컬·템플릿 사본 모두에 다시 쟀다.
 
 ## §D AC 표
@@ -35,16 +36,16 @@ T=internal/template/templates                    # 템플릿 루트
 | AC-GDP-010 | — | — | 카드 t658로 이동 | 워크트리 흐름·Frozen 기록 |
 | AC-GDP-011 | — | — | 철회(0.1.2) | OD-1 선택지 2 경로 |
 | AC-GDP-012 | — | — | 철회(0.1.2) | OD-1 선택지 3 경로 |
-| AC-GDP-013 | REQ-GDP-013 | MUST-PASS | 활성 (파일 확장) | 범위 파일 열 개 사본 일치, 의도된 차이 보존, 범위 파일을 덮는 테스트 2개 실행·통과 |
+| AC-GDP-013 | REQ-GDP-013 | MUST-PASS | 활성 (파일 확장) | 범위 파일 아홉 개 사본 일치, 의도된 차이 보존, 범위 파일을 덮는 테스트 2개 실행·통과 |
 | AC-GDP-014 | REQ-GDP-014 | MUST-PASS | 활성 | `.toml` 재생성, `agents-emit-check` exit 0, `.toml` 두 절이 템플릿 `manager-git.md` 와 같음 |
 | AC-GDP-015 | REQ-GDP-015 | MUST-PASS | 활성 | 템플릿 추가 줄에 SPEC ID·REQ 토큰·날짜·SHA·`CLAUDE.local` 없음 |
 | AC-GDP-016 | 없음 — 절차 점검(plan.md §D 제약) | SHOULD-PASS | 활성 (파일 확장) | `agent-common-protocol.md` 커밋이 마지막 지침 편집 커밋 |
 | AC-GDP-017 ~ AC-GDP-024 | — | — | 카드 t658로 이동 | spec.md §G.1 표 |
 | AC-GDP-025 | REQ-GDP-024 | MUST-PASS | 활성 (파일 확장) | 범위 파일의 `[ZONE:Frozen]` 줄과 등록 Frozen clause 불변 |
-| AC-GDP-026 | REQ-GDP-025 | MUST-PASS | 활성 (조각 확장) | 플래그 표면 아홉 조각이 `--auto-merge` 를 노출하고 `--merge` 를 폐기된 별칭으로만 서술 |
-| AC-GDP-027 | REQ-GDP-025 | MUST-PASS | 활성 (조각 확장) | `--no-merge` 는 폐기된 no-op으로만 서술되고 병합 조건·동작에 쓰이지 않음 |
-| AC-GDP-028 | REQ-GDP-026 | MUST-PASS | 활성 | team 모드: `--auto-merge` 가 전원 승인 조건과 함께 적힘, 승인 없는 병합 문장 없음 |
-| AC-GDP-029 | REQ-GDP-026 | MUST-PASS | 활성 | personal·manual 모드: `--auto-merge` 가 승인 조건 없이 병합한다고 적힘, 승인을 요구하는 문장 없음 |
+| AC-GDP-026 | REQ-GDP-025 | MUST-PASS | 활성 (조각 확장) | 플래그 표면 아홉 조각이 `--auto-merge` 를 노출하고, `--merge` 를 네 조각에 남긴 채 `--auto-merge` 의 폐기된 별칭으로만 서술(방향 검사, 읽기 기록) |
+| AC-GDP-027 | REQ-GDP-025 | MUST-PASS | 활성 (조각 확장) | `--no-merge` 는 폐기된 no-op으로만 서술되고 병합 조건·동작(건너뜀·끔·덮어씀 등)에 쓰이지 않음 |
+| AC-GDP-028 | REQ-GDP-026 | MUST-PASS | 활성 | team 모드: `--auto-merge` 가 전원 승인(all … approvals) 조건과 함께 적힘, 승인 없음·부분 승인 문장 없음, 읽기 기록 |
+| AC-GDP-029 | REQ-GDP-026 | MUST-PASS | 활성 | personal·manual 모드: `--auto-merge` 가 승인 조건 없이 병합한다고 적힘, 승인·리뷰를 요구하는 문장 없음, 읽기 기록(028과 공유) |
 | AC-GDP-030 | REQ-GDP-014 | MUST-PASS | 활성 (신규) | 명령 원본 편집 뒤 `commands-emit`·`commands-emit-check` exit 0, 게시본 변화 여부를 두 경우 모두 판정, 바뀐 게시본은 원본과 같은 커밋 |
 
 판정 대상: 16개(AC-GDP-001~006, 013~016, 025~030). AC-GDP-016은 요구사항 추적 밖의 절차 점검이다.
@@ -53,8 +54,10 @@ T=internal/template/templates                    # 템플릿 루트
 
 | 잘못된 구현 | 잡는 기준 |
 |---|---|
-| `--merge` 를 별개이거나 폐기되지 않은 auto-merge 플래그로 서술 (결정 목록 줄, X1 사용법 줄, X2 `argument-hint`, X3 다음 단계 선택지 포함) | AC-GDP-026 (ii) — 그리고 `--auto-merge` 누락은 (i) |
-| `--no-merge` 가 여전히 동작을 바꿈(건너뜀·트리거 조건) | AC-GDP-027 (i)·(ii) |
+| `--merge` 를 별개이거나 폐기되지 않은 auto-merge 플래그로 서술 (결정 목록 줄, X1 사용법 줄, X2 `argument-hint`, X3 다음 단계 선택지 포함) | AC-GDP-026 (ii) 방향 검사와 읽기 기록 — 그리고 `--auto-merge` 누락은 (i) |
+| 별칭 방향을 뒤집음(`--auto-merge` 를 폐기됐다고 적거나 `--auto-merge` 를 `--merge` 의 별칭으로 서술) | AC-GDP-026 (ii) 방향 검사와 읽기 기록 |
+| `--merge` 를 모든 표면에서 지움(폐기된 별칭을 문서화하지 않음) | AC-GDP-026 (iii) |
+| `--no-merge` 가 여전히 동작을 바꿈(건너뜀·트리거 조건, "no-op" 이라 적고 끔·덮어씀) | AC-GDP-027 (i)·(ii) |
 | 워크트리 문맥에서 여전히 기본 병합 | AC-GDP-006 (확장 검출식), AC-GDP-027 (ii) 트리거 조건 |
 | team 모드가 승인 없이 병합 | AC-GDP-028 (a)·(b) |
 | personal·manual 모드가 승인을 요구 | AC-GDP-029 (a)·(b) |
@@ -228,7 +231,7 @@ THEN "gh pr merge --squash --delete-branch" 가 0회이고
 ### AC-GDP-005 — 고정 `--squash` 병합 예시 부재, 기본값 설명 유지
 
 ```
-GIVEN 범위 파일 열 개(로컬·템플릿)와 생성물 manager-git.toml
+GIVEN 범위 파일 아홉 개(로컬·템플릿)와 생성물 manager-git.toml
 WHEN 편집 뒤 --squash 가 붙은 gh pr merge 를 모두 찾으면
 THEN manager-git.md 와 .toml 에서만 1줄씩 나오고, 그 줄은 기본값 설명 문장이며
  AND 나머지 여덟 파일에서는 0줄이다
@@ -332,7 +335,7 @@ AC-GDP-007·008·009·010은 카드 t658로 옮겼고, AC-GDP-011·012는 0.1.2�
 ### AC-GDP-013 — 사본 일치와 의도된 차이 보존
 
 ```
-GIVEN 범위 파일 열 개의 로컬·템플릿 사본과 게시본 moai-sync/SKILL.md 의 로컬·템플릿 사본
+GIVEN 범위 파일 아홉 개의 로컬·템플릿 사본과 게시본 moai-sync/SKILL.md 의 로컬·템플릿 사본
 WHEN 편집 뒤 비교하면
 THEN manager-git.md, agent-common-protocol.md, quality-gates-context.md, 게시본 SKILL.md 는 diff exit 0 이고
  AND delivery.md, doc-execution.md, moai/SKILL.md, references/reference.md, workflows/sync.md, 명령 원본(sync.md 대 sync.md.tmpl)은 줄번호 머리를 뺀 차이 본문이 기준 트리와 같고
@@ -451,7 +454,7 @@ plan 작성 시점 측정: 기준 트리에서 두 절의 diff 는 exit 0(11줄,
 ### AC-GDP-015 — 템플릿 중립성
 
 ```
-GIVEN 기준 트리 대비 템플릿 변경분(범위 파일 열 개의 템플릿 사본, 명령 원본 sync.md.tmpl, 게시본 포함)
+GIVEN 기준 트리 대비 템플릿 변경분(범위 파일 아홉 개의 템플릿 사본, 명령 원본 sync.md.tmpl, 게시본 포함)
 WHEN 추가 줄(+++ 머리 줄 제외)을 검사하면
 THEN SPEC ID, REQ 토큰, 날짜, CLAUDE.local 참조가 추가 줄에 없고
  AND 7~40자 16진 낱말 가운데 a-f 문자를 담은 것이 없으며
@@ -508,18 +511,30 @@ test -s $E/ac015-sha-letter.txt
 
 ```
 GIVEN run-phase 커밋들
-WHEN agent-common-protocol.md 를 고친 커밋 이후의 커밋을 나머지 범위 지침 파일로 거르면
-THEN 결과가 비어 있다
+WHEN agent-common-protocol.md 의 로컬·템플릿 사본 중 어느 쪽이든 처음 고친 커밋 이후의 커밋을 나머지 범위 지침 파일(로컬·템플릿)로 거르면
+THEN 결과가 비어 있다 — 두 사본의 agent-common-protocol.md 편집이 모두 나머지 범위 파일 편집보다 뒤에 온다
 ```
 
 ```bash
 git log --format=%H $BASE..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md > $E/ac016-control.txt
 # 대조 기대: 1줄 이상
-git log --format=%H -1 $BASE..HEAD -- .claude/rules/moai/core/agent-common-protocol.md > $E/ac016-acp-commit.txt
-test -s $E/ac016-acp-commit.txt
-# 기대: exit 0 — 이 커밋이 없으면 아래 목록이 비어 공허하게 통과한다(기준 트리 $BASE..HEAD 에서는 SPEC 파일 커밋뿐이라 exit 1)
-git log --format=%H <ac016-acp-commit.txt 의 SHA>..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md .claude/skills/moai/workflows/sync/doc-execution.md .claude/skills/moai/SKILL.md .claude/skills/moai/references/reference.md .claude/skills/moai/workflows/sync/quality-gates-context.md .claude/skills/moai/workflows/sync.md .claude/commands/moai/sync.md internal/template/templates/.claude/agents/moai/manager-git.md internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/.claude/skills/moai/references/reference.md internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md internal/template/templates/.claude/skills/moai/workflows/sync.md internal/template/templates/.claude/commands/moai/sync.md.tmpl > $E/ac016-after.txt
+git log --format=%H --reverse $BASE..HEAD -- .claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md > $E/ac016-acp-commits.txt
+test -s $E/ac016-acp-commits.txt
+# 기대: exit 0 — 이 커밋이 없으면 아래 목록이 비어 공허하게 통과한다(기준 트리 $BASE..HEAD 에서는 SPEC 파일 커밋뿐이라 exit 1; 0.2.3 작성 시점 HEAD 0af445525 에서 exit 1 관측)
+awk 'NR==1' $E/ac016-acp-commits.txt > $E/ac016-acp-commit.txt
+# 두 사본 중 어느 쪽이든 agent-common-protocol.md 를 처음 고친 커밋. `git log -1 --reverse` 는 제한을 먼저 적용해 가장 최근 커밋을 내므로 쓰지 않는다
+# 치환 단계: $E/ac016-acp-commit.txt 의 40자 SHA를 읽어 아래 명령의 <ACP> 자리에 글자 그대로 넣는다(셸 변수나 명령 치환으로 넘기지 않는다)
+git log --format=%H <ACP>..HEAD -- .claude/agents/moai/manager-git.md .claude/skills/moai/workflows/sync/delivery.md .claude/skills/moai/workflows/sync/doc-execution.md .claude/skills/moai/SKILL.md .claude/skills/moai/references/reference.md .claude/skills/moai/workflows/sync/quality-gates-context.md .claude/skills/moai/workflows/sync.md .claude/commands/moai/sync.md internal/template/templates/.claude/agents/moai/manager-git.md internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md internal/template/templates/.claude/skills/moai/SKILL.md internal/template/templates/.claude/skills/moai/references/reference.md internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md internal/template/templates/.claude/skills/moai/workflows/sync.md internal/template/templates/.claude/commands/moai/sync.md.tmpl > $E/ac016-after.txt
 # 기대: 빈 파일
+```
+
+뮤턴트(판정 논리 — 커밋을 만드는 픽스처는 plan 작성 시점에 실행하지 않았다):
+
+```
+이력 C1 템플릿 acp → C2 manager-git.md → C3 로컬 acp : 기준 커밋 C1, after 목록에 C2 → FAIL (0.2.2 기준식은 로컬 acp C3를 기준으로 삼아 통과시켰다)
+이력 C1 로컬 acp → C2 delivery.md → C3 템플릿 acp : 기준 커밋 C1, after 목록에 C2 → FAIL
+이력 C1 manager-git.md → C2 로컬 acp → C3 템플릿 acp : 기준 커밋 C2, after 목록 비어 있음 → PASS
+acp 커밋 없음                                        : ac016-acp-commits.txt 비어 test -s exit 1 → 판정 불가(PASS 아님)
 ```
 
 ### AC-GDP-017 ~ AC-GDP-024 — 자리표시
@@ -529,11 +544,11 @@ git log --format=%H <ac016-acp-commit.txt 의 SHA>..HEAD -- .claude/agents/moai/
 ### AC-GDP-025 — Frozen 줄과 등록 Frozen clause 불변
 
 ```
-GIVEN 범위 파일 열 개의 로컬·템플릿 사본
+GIVEN 범위 파일 아홉 개의 로컬·템플릿 사본
 WHEN 기준 트리 대비 변경분과 등록 Frozen clause 를 검사하면
 THEN 변경분에 [ZONE:Frozen] 을 담은 추가·삭제 줄이 없고
  AND agent-common-protocol.md 두 사본 모두 등록 Frozen clause 네 문장이 기준 트리와 같은 개수로 남아 있고
- AND zone-registry.md 에서 나머지 아홉 파일을 가리키는 항목이 여전히 0개이며, 같은 검출식 형태로 센 agent-common-protocol.md 항목이 13개다(양성 대조)
+ AND zone-registry.md 에서 나머지 여덟 파일을 가리키는 항목이 여전히 0개이며, 같은 검출식 형태로 센 agent-common-protocol.md 항목이 13개다(양성 대조)
 ```
 
 등록 Frozen clause (`zone-registry.md`, 모두 `file: .claude/rules/moai/core/agent-common-protocol.md`, `#user-interaction-boundary`):
@@ -545,7 +560,7 @@ THEN 변경분에 [ZONE:Frozen] 을 담은 추가·삭제 줄이 없고
 | `CONST-V3R2-037` | `` Preload `AskUserQuestion` via `ToolSearch(query: `` | 52행 |
 | `CONST-V3R2-038` | `AskUserQuestion is reserved exclusively for the MoAI orchestrator` | 17행 |
 
-대조(plan 작성 시점 측정, 템플릿·로컬 사본): `[ZONE:Frozen]` 줄 — `agent-common-protocol.md` 17행 1줄, 나머지 아홉 파일 0줄(명령 원본 `sync.md`·`sync.md.tmpl` 포함). 네 clause 개수 — 사본마다 1·1·1·1. 레지스트리에서 나머지 아홉 파일을 가리키는 `file:` 항목 0개(명령 원본 `file: .claude/commands/moai/sync.md` 0개 포함), `agent-common-protocol.md` 를 가리키는 항목 13개(로컬·템플릿). 뮤턴트: `agent-common-protocol.md` 템플릿 사본의 "MUST NOT prompt" 를 소문자로 바꾼 픽스처 → `CONST-V3R2-036` 개수 0, 기준 사본과의 `diff` 에 `[ZONE:Frozen]` 을 담은 줄 2개 → FAIL. Frozen 줄 판정 뮤턴트: `-[ZONE:Frozen] a` · `+[ZONE:Frozen] b` · ` [ZONE:Frozen] c`(문맥) 세 줄 diff 픽스처 → 2줄 적중, 문맥 줄 미적중. 레지스트리 "나머지 아홉 파일" 검출식 뮤턴트(0.2.2 측정): `file: .claude/commands/moai/sync.md` · `file: .claude/skills/moai/workflows/sync.md` · `file: .claude/rules/moai/core/agent-common-protocol.md` 세 줄 픽스처 → 2 — 검출식이 명령 원본과 새 스킬 경로를 실제로 잡고 `agent-common-protocol.md` 는 잡지 않는다. 이 검출식은 워크트리 가드 때문에 `manager-[g]it` 으로 쓴다.
+대조(plan 작성 시점 측정, 템플릿·로컬 사본): `[ZONE:Frozen]` 줄 — `agent-common-protocol.md` 17행 1줄, 나머지 여덟 파일 0줄(명령 원본 `sync.md`·`sync.md.tmpl` 포함). 네 clause 개수 — 사본마다 1·1·1·1. 레지스트리에서 나머지 여덟 파일을 가리키는 `file:` 항목 0개(명령 원본 `file: .claude/commands/moai/sync.md` 0개 포함), `agent-common-protocol.md` 를 가리키는 항목 13개(로컬·템플릿). 뮤턴트: `agent-common-protocol.md` 템플릿 사본의 "MUST NOT prompt" 를 소문자로 바꾼 픽스처 → `CONST-V3R2-036` 개수 0, 기준 사본과의 `diff` 에 `[ZONE:Frozen]` 을 담은 줄 2개 → FAIL. Frozen 줄 판정 뮤턴트: `-[ZONE:Frozen] a` · `+[ZONE:Frozen] b` · ` [ZONE:Frozen] c`(문맥) 세 줄 diff 픽스처 → 2줄 적중, 문맥 줄 미적중. 레지스트리 "나머지 여덟 파일" 검출식 뮤턴트(0.2.2 측정): `file: .claude/commands/moai/sync.md` · `file: .claude/skills/moai/workflows/sync.md` · `file: .claude/rules/moai/core/agent-common-protocol.md` 세 줄 픽스처 → 2 — 검출식이 명령 원본과 새 스킬 경로를 실제로 잡고 `agent-common-protocol.md` 는 잡지 않는다. 이 검출식은 워크트리 가드 때문에 `manager-[g]it` 으로 쓴다.
 
 판정:
 
@@ -583,8 +598,15 @@ GIVEN 플래그 표면 아홉 조각의 로컬·템플릿 사본
       (9) delivery.md 의 "#### Context-Aware Next Steps" 절 (X3, 404행 선택지를 담음)
 WHEN 편집 뒤 조각을 추출해 검사하면
 THEN (i) 조각 (1)·(2)·(5)·(6)·(7)·(8)·(9)와 조각 (3)·(4)를 합친 quality-gates-context 조각이 각각 --auto-merge 를 1회 이상 담고
- AND (ii) --merge 낱말(앞뒤가 영문자·하이픈이 아닌 --merge)을 담은 줄은 모두 "deprecat" 와 "--auto-merge" 를 함께 담는다
-     (위반 줄 0개)
+ AND (ii) --merge 낱말(앞뒤가 영문자·하이픈이 아닌 --merge)을 담은 줄은 모두, 그 낱말 뒤에
+     "deprecated alias of --auto-merge"(또는 "deprecated alias for", --auto-merge 앞에 백틱·따옴표 한 글자 허용) 구절을 담고
+     "not/no longer/never deprecated" 나 "un-deprecated" 를 담지 않는다 (위반 줄 0개)
+     — --merge 가 --auto-merge 의 폐기된 별칭이라는 방향만 통과한다. --auto-merge 를 폐기됐다고 적거나 별칭 관계를 뒤집은 줄은 위반이다
+ AND (iii) --merge 낱말이 조각 (1) SKILL Flags 줄, (5) workflows/sync.md 의 **Flags**: 줄, (4) Supported Flags 절, (6) Step 3.4 절에
+     각각 1줄 이상 남아 있다 — 폐기된 별칭은 지우지 않고 문서화한다(운영자 결정, spec.md §C.1). 조각 (2)·(3)·(7)·(8)·(9)에서는 빼도 된다
+ AND 읽기 기록 $E/ac026-reading.md 가 존재하며, ac026-merge-lines.txt 의 모든 줄(로컬·템플릿)에 대해
+     "이 줄은 --merge 가 --auto-merge 의 폐기된 별칭이라고 말하는가 — 뒤집힌 관계, 별개 플래그, 폐기되지 않은 플래그, 자체 동작을 가진 플래그가 아닌가"
+     에 예로 답한다 (자동 검출 (ii)는 보조이고 읽기 기록이 PASS의 전제다, §D.3)
 ```
 
 조각 추출(대조·판정 공통, `<SKILL>` 등은 로컬·템플릿 경로):
@@ -610,6 +632,8 @@ awk '/^#### Context-Aware Next Steps/{s=1; print; next} s && /^(####|###|##) /{e
 (i) --auto-merge 개수: 아홉 조각 모두 0 → 빨강
 (ii) 위반 줄: skill 1(140행), ref 2(161행), qgc-args 4(30행), qgc-flags 4(101행), sync 1(104행), dl 9(338행)·20(349행),
      sync-usage 1(템플릿 85 / 로컬 95), hint 1(3행), dl-next 9(404행) → 10줄 → 빨강
+     (0.2.3 방향 검사로 다시 잰 값도 같은 10줄)
+(iii) --merge 존재 개수: skill 1, sync 1, qgc-flags 1, dl 2 → 기준 트리에서도 성립(편집이 지우면 빨강)
 ```
 
 판정(로컬·템플릿 각각):
@@ -628,10 +652,19 @@ test -s $E/ac026-dl-next.md
 /usr/bin/grep -c -e '--auto-merge' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac026-i.txt
 /usr/bin/grep -c -e '--auto-merge' $E/ac026-qgc-args.md $E/ac026-qgc-flags.md > $E/ac026-i-qgc.txt
 # 기대: ac026-i.txt 파일마다 1 이상, ac026-i-qgc.txt 합계 1 이상
-awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && !(/[Dd]eprecat/ && /--auto-merge/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac026-ii.txt
+awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && (!/--merge([^A-Za-z-].*)?[Dd]eprecated alias (of|for) .?--auto-merge([^A-Za-z-]|$)/ || /(not|no longer|never) (a |an |the )?[Dd]eprecated/ || /[Uu]n-?deprecat/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac026-ii.txt
 test -s $E/ac026-ii.txt
 # 기대: exit 1
+/usr/bin/grep -c -E '(^|[^A-Za-z-])--merge([^A-Za-z-]|$)' $E/ac026-skill.md $E/ac026-sync.md $E/ac026-qgc-flags.md $E/ac026-dl.md > $E/ac026-merge-presence.txt
+# 기대: (iii) 네 파일 모두 1 이상 — exit code가 아니라 파일에 찍힌 개수로 판정한다. 하나라도 0이면 FAIL
+awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac026-merge-lines.txt
+test -s $E/ac026-merge-lines.txt
+# 기대: exit 0 — (iii)가 성립하면 비지 않는다. 로컬·템플릿 각각의 이 목록 줄이 모두 읽기 기록의 대상이다
+test -s $E/ac026-reading.md
+# 기대: exit 0 — 읽기 기록이 없거나 목록의 한 줄이라도 답이 비면 PASS 불가
 ```
+
+(ii)의 방향 검사가 받는 모양: `--merge` 낱말 뒤 같은 줄에 "deprecated alias of `--auto-merge`" 또는 "deprecated alias for `--auto-merge`". "`--auto-merge` (deprecated alias: `--merge`)" 처럼 뜻은 맞지만 어순이 다른 문구는 위반으로 잡힌다(FAIL 쪽으로 기운다) — plan.md §B.14가 받는 문구를 적어 둔다.
 
 뮤턴트(plan 작성 시점, 스크래치 픽스처):
 
@@ -647,13 +680,39 @@ X1~X3 픽스처 6줄: "/moai sync [mode] [--pr] [--auto-merge] [--merge] [--skip
     → 3줄이나 5줄만 남은 조각은 (i) 0 과 (ii) 적중으로 FAIL, 2·4·6줄만 남은 조각은 PASS
 ```
 
+뮤턴트(0.2.3, 스크래치 픽스처 — 레인이 같은 줄로 다시 돌린다):
+
+```
+m026.md 10줄 (감사 2회차 줄은 글자 그대로):
+  1 "- `--auto-merge`: deprecated alias of `--merge`; use `--merge` to auto-merge the PR"            (뒤집힌 별칭, 감사)
+  2 "- `--merge`: auto-merge the PR after sync (the older `--auto-merge` spelling is deprecated)"     (뒤집힌 별칭·폐기 해제, 감사)
+  3 "- `--merge`: alias of `--auto-merge`"                                                           (폐기 표시 없음, 감사)
+  4 "- `--merge`: deprecated alias of `--auto-merge` (logs a warning)"                               (올바름)
+  5 "- `--merge` is no longer a deprecated alias of `--auto-merge`; it is the primary flag."         (부정)
+  6 "Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx" (올바름, 한 줄 목록)
+  7 "moai clean --merged-only"                                                                       (다른 플래그)
+  8 "Modes: … Flags: --merge, --skip-mx"   9 "Modes: … Flags: --auto-merge, --merge, --skip-mx"   10 "- `--merge` (deprecated)"
+명령: 위 판정의 (ii) awk 를 m026.md x13.md 에 실행 (x13.md = 위 X1~X3 픽스처 6줄)
+관측: m026.md:1 2 3 5 8 9 10, x13.md:1 3 5 적중 / m026.md 4·6·7 미적중 → 올바른 줄만 통과
+
+제거 픽스처 rm026/ (감사 줄 "Modes: auto, force, status, project. Flags: --auto-merge, --skip-mx" 를 skill.md 로,
+  "**Flags**: --pr, --auto-merge, --skip-mx" 를 sync.md 로, "## Supported Flags" + "- `--auto-merge`: merge the PR after sync" 를 qgc-flags.md 로,
+  "#### Step 3.4" + 같은 목록 줄을 dl.md 로):
+명령: /usr/bin/grep -c -E '(^|[^A-Za-z-])--merge([^A-Za-z-]|$)' skill.md sync.md qgc-flags.md dl.md
+관측: skill.md:0 sync.md:0 qgc-flags.md:0 dl.md:0 (exit 1) → (iii) FAIL
+
+양성 대조 pos026/ (skill.md = 6번 줄, sync.md = "**Flags**: --pr, --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx",
+  qgc-flags.md = "## Supported Flags" + 4번 줄, dl.md = "#### Step 3.4" + 4번 줄):
+관측: (iii) 1 1 1 1 · (ii) 출력 파일 test -s exit 1 · (i) --auto-merge 개수 1 1 1 1 → PASS
+```
+
 ### AC-GDP-027 — `--no-merge` 는 폐기된 no-op으로만
 
 ```
 GIVEN AC-GDP-026 의 아홉 조각(로컬·템플릿)
 WHEN 편집 뒤 --no-merge 를 담은 줄을 검사하면
 THEN (i) --no-merge 를 담은 줄은 모두 "no-op" 과 "deprecat" 를 함께 담고
- AND (ii) --no-merge 를 담은 줄 가운데 건너뜀·조건 낱말(skip, not set, prevent, unless)을 담은 줄이 0개다
+ AND (ii) --no-merge 를 담은 줄 가운데 효과·조건 낱말(skip, not set, prevent, unless, disable, override, turn(s) off, suppress, bypass, cancel)을 담은 줄이 0개다
 ```
 
 (ii)는 `--no-merge` 가 병합을 건너뛰게 하거나 트리거 조건(`--no-merge flag NOT set`)으로 쓰이는 서술을 잡는다. `--no-merge` 가 어느 조각에도 없으면 두 조건은 공허하게 참이 되므로, 판정 기록에 조각별 `--no-merge` 줄 수를 함께 적는다(REQ-GDP-025는 `--no-merge` 를 호환용 no-op으로 서술할 것을 요구하므로 `delivery.md` Step 3.4 조각에는 1줄 이상 있어야 한다).
@@ -668,21 +727,35 @@ THEN (i) --no-merge 를 담은 줄은 모두 "no-op" 과 "deprecat" 를 함께 �
 awk '/--no-merge/ && !(/no-op/ && /[Dd]eprecat/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac027-i.txt
 test -s $E/ac027-i.txt
 # 기대: exit 1
-awk '/--no-merge/ && (/[Ss]kip/ || /[Nn][Oo][Tt] set/ || /[Pp]revent/ || /unless/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac027-ii.txt
+awk '/--no-merge/ && (/[Ss]kip/ || /[Nn][Oo][Tt] set/ || /[Pp]revent/ || /unless/ || /[Dd]isabl/ || /[Oo]verrid/ || /[Tt]urns? off/ || /[Ss]uppress/ || /[Bb]ypass/ || /[Cc]ancel/) {print FILENAME ":" FNR ": " $0}' $E/ac026-skill.md $E/ac026-ref.md $E/ac026-qgc-args.md $E/ac026-qgc-flags.md $E/ac026-sync.md $E/ac026-dl.md $E/ac026-sync-usage.md $E/ac026-hint.md $E/ac026-dl-next.md > $E/ac027-ii.txt
 test -s $E/ac027-ii.txt
 # 기대: exit 1
 ```
 
-뮤턴트(plan 작성 시점, 스크래치 픽스처 4줄): "- `--no-merge`: Skip auto-merge even in worktree context." · "- `--no-merge`: Deprecated no-op; skips auto-merge." · "- `is_worktree_context == true` AND `--no-merge` flag not set" · "- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default."(올바름) → (i)이 1·3줄, (ii)가 1·2·3줄을 잡고 4줄은 둘 다 잡지 않음.
+(ii)의 효과 낱말은 "no-op" 이라 적고도 효과를 말하는 줄을 잡는다. 올바른 줄이 "does not disable anything" 처럼 부정문으로 효과 낱말을 쓰면 위반으로 잡힌다(FAIL 쪽으로 기운다) — 받는 문구는 plan.md §B.14.
+
+뮤턴트(0.1.x 4줄에 감사 2회차 3줄을 더한 스크래치 픽스처 m027.md 7줄 — 워크트리 가드가 픽스처 쓰기 명령 속 `worktree` 낱말을 거부해 1·3줄의 해당 낱말만 줄였고 검출과 무관하다):
+  1 "- `--no-merge`: Skip auto-merge even in context." · 2 "- `--no-merge`: Deprecated no-op; skips auto-merge." · 3 "- `is_wt_context == true` AND `--no-merge` flag not set"
+  · 4 "- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default."(올바름)
+  · 5 "- `--no-merge`: Deprecated no-op; disables auto-merge for this run."(감사) · 6 "- `--no-merge`: Deprecated no-op that overrides `--auto-merge`."(감사)
+  · 7 "- `--no-merge`: Deprecated no-op; turns off merging even when `--auto-merge` is given."(감사)
+명령: 위 (i)·(ii) awk 를 m027.md 에 실행. 관측: (i) 1·3줄, (ii) 1·2·3·5·6·7줄 적중, 4줄은 둘 다 미적중 → 올바른 줄만 통과. 기준 트리 dl 조각: (i) 8·19, (ii) 8·19(0.2.2와 같음).
 
 ### AC-GDP-028 — team 모드: 전원 승인 조건
 
 ```
 GIVEN manager-git.md 로컬·템플릿 사본의 "## PR Auto-Merge" 로 시작하는 절(다음 "## " 제목 앞까지)과 delivery.md 로컬·템플릿 사본의 Step 3.4 절
 WHEN 편집 뒤 두 절을 검사하면
-THEN (a) 두 절 각각에 "team mode"·"--auto-merge"·"approv" 를 함께 담은 줄이 1개 이상 있고
- AND (b) 두 절 어디에도 "team mode" 를 담으면서 승인 없이 병합한다는 문구(without approval, no approval, approvals not required, regardless of approval)를 담은 줄이 없다
+THEN (a) 두 절 각각에 "team mode"·"--auto-merge" 와 전원 승인 구절 — "all" 뒤 낱말 두 개 안에 "approv" 가 오는 구절(all approvals, all required approvals) — 을 함께 담은 줄이 1개 이상 있고
+ AND (b) 두 절 어디에도 "team mode" 를 담으면서 승인 없이 또는 일부 승인만으로 병합한다는 문구
+     (without approval, no approval, approvals not required·not needed·optional·unnecessary, optional approval, regardless of approval,
+      at least one approval, a single approval, after·on·once·upon·with + any·one·an·a·some·the first + approval, majority)를 담은 줄이 없고
+ AND 읽기 기록 $E/ac028-reading.md 가 존재하며, ac028-mode-lines.txt 의 모든 줄(로컬·템플릿)에 대해
+     "team 모드 줄이면 전원 승인을 병합 조건으로 두고 그 조건을 낮추거나 빼는 말이 없는가 / personal·manual 줄이면 승인·리뷰 조건 없이 병합한다고 말하는가 /
+      그 밖의 줄이면 어느 모드의 승인·리뷰 조건도 더하거나 빼지 않는가" 에 예로 답한다 (AC-GDP-029도 이 기록을 쓴다, §D.3)
 ```
+
+전원 승인 구절을 (a)에 넣은 까닭은 "approvals are optional" 이나 "at least one approval" 처럼 "approv" 를 담기만 한 약한 문장이 (a)를 채우지 못하게 하려는 것이다. (b)의 낱말 목록은 부분 승인 표현을 모두 담지 못하므로 읽기 기록이 PASS의 전제다.
 
 검출식은 "team mode" 두 낱말로 판정한다. "team" 한 낱말은 "teammates" 에 걸려 personal·manual 문장(승인할 팀원 없음)을 team 규칙으로 잘못 읽는다.
 
@@ -693,7 +766,7 @@ awk '/^## PR Auto-Merge/{s=1; print; next} s && /^## /{exit} s' <manager-git.md>
 awk '/^#### Step 3\.4/{s=1; print; next} s && /^(####|###) /{exit} s' <delivery.md> > <dl 절 파일>
 ```
 
-대조(기준 트리, 템플릿 사본): mg 절 9줄. (a) mg 0(승인 조건 줄에 모드 이름이 없고 절 제목만 team을 말함), dl 0. (b) 0·0.
+대조(기준 트리, 템플릿 사본): mg 절 9줄. (a) mg 0(승인 조건 줄에 모드 이름이 없고 절 제목만 team을 말함), dl 0. (b) 0·0. 0.2.3 검출식으로 다시 재도 (a) 0·0, (b) 0·0.
 
 판정(로컬·템플릿 각각):
 
@@ -701,15 +774,42 @@ awk '/^#### Step 3\.4/{s=1; print; next} s && /^(####|###) /{exit} s' <delivery.
 awk '/^## PR Auto-Merge/{s=1; print; next} s && /^## /{exit} s' .claude/agents/moai/manager-git.md > $E/ac028-mg.md
 test -s $E/ac028-mg.md
 # 기대: exit 0
-awk '/[Tt]eam mode/ && /--auto-merge/ && /[Aa]pprov/ {c++} END{print c+0}' $E/ac028-mg.md > $E/ac028-a-mg.txt
-awk '/[Tt]eam mode/ && /--auto-merge/ && /[Aa]pprov/ {c++} END{print c+0}' $E/ac026-dl.md > $E/ac028-a-dl.txt
+awk '/[Tt]eam mode/ && /--auto-merge/ && /(^|[^A-Za-z])[Aa]ll( [A-Za-z-]+)?( [A-Za-z-]+)? approv/ {c++} END{print c+0}' $E/ac028-mg.md > $E/ac028-a-mg.txt
+awk '/[Tt]eam mode/ && /--auto-merge/ && /(^|[^A-Za-z])[Aa]ll( [A-Za-z-]+)?( [A-Za-z-]+)? approv/ {c++} END{print c+0}' $E/ac026-dl.md > $E/ac028-a-dl.txt
 # 기대: 각각 1 이상
-awk '/[Tt]eam mode/ && (/without (any |an )?approv/ || /no approv/ || /approvals? (are |is )?not required/ || /regardless of approv/) {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac028-b.txt
+awk '/[Tt]eam mode/ && (/without (any |an )?approv/ || /no approv/ || /approv[a-z]* (are |is )?(not required|not needed|optional|unnecessary)/ || /optional approv/ || /regardless of approv/ || /at least one approv/ || /(a|one) single approv/ || /(after|on|once|upon|with) (any|one|an|a|some|the first) approv/ || /majority/) {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac028-b.txt
 test -s $E/ac028-b.txt
 # 기대: exit 1
+awk '/[Aa]pprov/ || /[Rr]eview/ || /[Tt]eam mode/ || /[Pp]ersonal/ || /[Mm]anual/ {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac028-mode-lines.txt
+test -s $E/ac028-mode-lines.txt
+# 기대: exit 0 — (a)와 AC-GDP-029 (a)가 성립하면 비지 않는다. 로컬·템플릿 각각의 이 목록 줄이 모두 읽기 기록의 대상이다
+test -s $E/ac028-reading.md
+# 기대: exit 0 — 읽기 기록이 없거나 목록의 한 줄이라도 답이 비면 AC-GDP-028·029 모두 PASS 불가
 ```
 
-뮤턴트(스크래치 픽스처 6줄): "In team mode, `--auto-merge` merges once checks pass."(승인 없음) · "In team mode, `--auto-merge` merges regardless of approvals." · "In team mode, `--auto-merge` merges only after all approvals are obtained."(올바름) · "In personal and manual modes, `--auto-merge` merges after all approvals." · "In personal mode, `--auto-merge` merges without an approval condition." · "In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve)." → (a)가 2·3줄, (b)가 2줄을 잡음. 1줄만 있는 절은 (a) 0 → FAIL. 6줄은 (a)·(b) 모두 잡지 않음.
+뮤턴트(0.2.3, 스크래치 픽스처 m028.md 15줄 — 1~6줄은 0.2.2 픽스처, 7~11줄은 감사 2회차 줄 글자 그대로, 12~15줄은 이번에 더한 줄):
+
+```
+  1 "In team mode, `--auto-merge` merges once checks pass."                          (승인 없음)
+  2 "In team mode, `--auto-merge` merges regardless of approvals."                   (승인 무시)
+  3 "In team mode, `--auto-merge` merges only after all approvals are obtained."     (올바름 — team 양성 대조)
+  4 "In personal and manual modes, `--auto-merge` merges after all approvals."       (personal·manual 에 승인 조건)
+  5 "In personal mode, `--auto-merge` merges without an approval condition."         (manual 누락)
+  6 "In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve)." (올바름 — personal·manual 양성 대조)
+  7 "In team mode, `--auto-merge` merges once CI passes; approvals are optional."    (감사)
+  8 "In team mode, `--auto-merge` merges after at least one approval."              (감사)
+  9 "In personal and manual modes, `--auto-merge` merges without requiring approval." (감사, 올바름)
+ 10 "In personal and manual modes, `--auto-merge` merges; approval is not needed."   (감사, 올바름)
+ 11 "In personal and manual modes, `--auto-merge` merges after a code review."       (감사, 리뷰 조건)
+ 12 "In team mode, `--auto-merge` merges after a single approval."                   (부분 승인)
+ 13 "In team mode, `--auto-merge` merges once any approval is recorded."             (부분 승인)
+ 14 "In personal and manual modes, `--auto-merge` merges after a code review; approval not required." (리뷰 조건 + 없음 표현)
+ 15 "In team mode, `--auto-merge` waits for all required approvals before merging."  (올바름 — team 변형)
+명령: 위 판정의 AC-GDP-028 (a)·(b) awk 와 AC-GDP-029 (a)·(b) awk 를 {print FILENAME ":" FNR} 로 m028.md 에 실행
+관측: 028 (a) 3·15 · 028 (b) 2·7·8·12·13 · 029 (a) 4·6·9·10·11·14 · 029 (b) 4·11·14
+판정: 7줄이나 8줄만 담은 절은 028 (a) 0 이고 (b) 적중 → FAIL. 3줄만 담은 절은 028 (a) 1·(b) 0 → PASS.
+      11줄만 담은 절은 029 (b) 적중 → FAIL. 6·9·10줄은 029 (b)에 걸리지 않음 → 이 줄만 담은 절은 PASS. 5줄만 담은 절은 029 (a) 0 → FAIL.
+```
 
 ### AC-GDP-029 — personal·manual 모드: 승인 조건 없음
 
@@ -717,10 +817,13 @@ test -s $E/ac028-b.txt
 GIVEN AC-GDP-028 과 같은 두 절(로컬·템플릿)
 WHEN 편집 뒤 검사하면
 THEN (a) 두 절 각각에 "personal"·"manual"·"--auto-merge" 를 함께 담은 줄이 1개 이상 있고
- AND (b) 두 절 어디에도 personal 또는 manual 을 담고 "approv" 를 담으면서 승인이 없음을 말하지 않는(without approval, no approval, not required, no teammates 가 없는) 줄이 없다
+ AND (b) 두 절 어디에도 personal 또는 manual 을 담으면서 다음 어느 하나에 해당하는 줄이 없다
+     (1) "approv" 나 "review" 를 담는데 없음 표현(without [requiring] [any|an] approval·review, no approval·review, not required, not needed, no teammates)이 없는 줄
+     (2) 없음 표현과 상관없이 조건 구절(after·once·until·pending·require·requires + [a|an|the|all|one|at least one] [code] + approval·review)을 담은 줄
+ AND AC-GDP-028의 읽기 기록 $E/ac028-reading.md 가 존재하고 모든 질문에 답했다
 ```
 
-대조(기준 트리, 템플릿 사본): (a) mg 절 0, dl 절 0. (b) 0·0.
+대조(기준 트리, 템플릿 사본): (a) mg 절 0, dl 절 0. (b) 0·0. 0.2.3 검출식으로 다시 재도 (a) 0·0, (b) 0·0.
 
 판정(로컬·템플릿 각각):
 
@@ -728,12 +831,16 @@ THEN (a) 두 절 각각에 "personal"·"manual"·"--auto-merge" 를 함께 담�
 awk '/[Pp]ersonal/ && /[Mm]anual/ && /--auto-merge/ {c++} END{print c+0}' $E/ac028-mg.md > $E/ac029-a-mg.txt
 awk '/[Pp]ersonal/ && /[Mm]anual/ && /--auto-merge/ {c++} END{print c+0}' $E/ac026-dl.md > $E/ac029-a-dl.txt
 # 기대: 각각 1 이상
-awk '(/[Pp]ersonal/ || /[Mm]anual/) && /[Aa]pprov/ && !(/without (any |an )?approv/ || /no approv/ || /not required/ || /no teammates/) {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac029-b.txt
+awk '(/[Pp]ersonal/ || /[Mm]anual/) && (((/[Aa]pprov/ || /[Rr]eview/) && !(/without (requiring )?(any |an )?(approv|review)/ || /no (approv|review)/ || /not required/ || /not needed/ || /no teammates/)) || /(after|once|until|pending|requires?) (a |an |the |all |one |at least one )?(code )?(approv|review)/) {print FILENAME ":" FNR ": " $0}' $E/ac028-mg.md $E/ac026-dl.md > $E/ac029-b.txt
 test -s $E/ac029-b.txt
 # 기대: exit 1
+test -s $E/ac028-reading.md
+# 기대: exit 0
 ```
 
-뮤턴트: AC-GDP-028과 같은 픽스처 → (a)가 4·6줄, (b)가 4줄을 잡음. 5줄(manual 누락)만 있는 절은 (a) 0 → FAIL. 올바른 6줄은 (b)에 걸리지 않음.
+(b)의 (2)는 "approval not required" 같은 없음 표현을 덧붙여 리뷰·승인 조건을 숨긴 줄(14줄)을 잡는다. "without waiting for approval" 처럼 없음 표현 목록 밖의 올바른 문구는 위반으로 잡힌다(FAIL 쪽으로 기운다) — 받는 문구는 plan.md §B.14.
+
+뮤턴트: AC-GDP-028의 m028.md 15줄과 관측을 함께 쓴다(위 코드 블록).
 
 ### AC-GDP-030 — 명령 원본 편집 뒤 게시본 발행
 
@@ -810,7 +917,7 @@ test -s $T/.agents/skills/moai-sync/SKILL.md
 # 기대: exit 0 — 아래 플래그 검사가 빈 파일 위에서 통과하지 않는다
 diff .agents/skills/moai-sync/SKILL.md $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-lt.diff
 # 기대: 두 경우 모두 exit 0
-awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && !(/[Dd]eprecat/ && /--auto-merge/) {print FNR ": " $0}' $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-flags.txt
+awk '/(^|[^A-Za-z-])--merge([^A-Za-z-]|$)/ && (!/--merge([^A-Za-z-].*)?[Dd]eprecated alias (of|for) .?--auto-merge([^A-Za-z-]|$)/ || /(not|no longer|never) (a |an |the )?[Dd]eprecated/ || /[Uu]n-?deprecat/) {print FNR ": " $0}' $T/.agents/skills/moai-sync/SKILL.md > $E/ac030-published-flags.txt
 test -s $E/ac030-published-flags.txt
 # 기대: 두 경우 모두 exit 1
 ```
@@ -827,14 +934,14 @@ test -s $E/ac030-published-flags.txt
 - 의도된 사본 차이가 있는 여섯 파일은 편집으로 줄 수가 바뀌면 차이 줄번호가 밀린다. AC-GDP-013은 줄번호 머리를 빼고 본문만 비교한다. 명령 원본은 로컬 `.md` 와 템플릿 `.md.tmpl` 로 파일 이름 자체가 다르므로 두 경로를 글자 그대로 짝지어 비교한다.
 - 검출식에 `\b` 를 쓰지 않는다(POSIX ERE에서 단어 경계가 아니다). AC-GDP-026의 `--merge` 낱말 경계는 앞뒤 문자 클래스로 표현하며 `--merged-only`·`--auto-merge` 는 걸리지 않고, `[--merge]` 처럼 대괄호에 둘러싸인 형태는 걸린다.
 - AC-GDP-025의 Frozen 줄 판정은 `[ZONE:Frozen]` 을 담은 diff 줄을 먼저 모은 뒤 `-`·`+` 로 시작하는 줄만 고른다. 첫 grep 에 `-n` 을 붙이면 공허하게 통과한다.
-- AC-GDP-026~029는 줄 단위다. 한 조건을 여러 줄에 나눠 적으면 (a)·(i)가 0이 되어 FAIL로 기울고, 검출식이 예상하지 않은 표현은 통과할 수 있다(spec.md §E.2).
+- AC-GDP-026~029는 줄 단위다. 한 조건을 여러 줄에 나눠 적으면 (a)·(i)가 0이 되어 FAIL로 기울고, 검출식이 예상하지 않은 표현은 통과할 수 있다(spec.md §E.2). 그 틈 때문에 AC-GDP-026·028·029는 읽기 기록을 PASS 전제로 둔다(§D.3). AC-GDP-027은 자동 검출만으로 판정한다. 검출식이 받는 문구와 떨어뜨리는 문구의 경계는 plan.md §B.14에 적었다.
 - AC-GDP-030의 양성 대조는 추적 파일을 잠시 바꾼다. 되돌림을 `cmp` 와 `git status` 로 확인하지 못하면 사전 점검을 멈추고 보고한다.
 - `go test -run` 선택자는 `^…$` 로 고정하고, 최상위 PASS 줄 수와 범위 파일 하위 테스트 흔적을 함께 본다.
 
 ## §D.3 품질 게이트
 
 - 사전 점검의 양성 대조가 모두 기대값을 냈다는 기록이 있어야 판정이 유효하다(AC-GDP-030의 발행 점검 대조 포함).
-- **읽기 단계가 있는 기준(AC-GDP-001, AC-GDP-006)은 읽기 기록 파일(`$E/ac001-reading.md`, `$E/ac006-reading.md`)이 존재하고 대상 문단·절의 모든 질문에 답했을 때만 PASS다.** 자동 검출이 통과해도 읽기 기록이 없거나 한 문단이라도 답이 비면 PASS가 아니다.
+- **읽기 단계가 있는 기준(AC-GDP-001, AC-GDP-006, AC-GDP-026, AC-GDP-028, AC-GDP-029)은 읽기 기록 파일(`$E/ac001-reading.md`, `$E/ac006-reading.md`, `$E/ac026-reading.md`, `$E/ac028-reading.md` — AC-GDP-029는 `ac028-reading.md` 를 함께 쓴다)이 존재하고 대상 문단·절·줄의 모든 질문에 답했을 때만 PASS다.** 자동 검출이 통과해도 읽기 기록이 없거나 한 줄이라도 답이 비면 PASS가 아니다. AC-GDP-026의 대상 줄은 `$E/ac026-merge-lines.txt`, AC-GDP-028·029의 대상 줄은 `$E/ac028-mode-lines.txt` 에 로컬·템플릿 사본마다 뽑은 줄 전부다.
 - `go test` 선택 실행이 최상위 PASS 줄 2개를 내지 않으면 합격이 아니다. 로컬 전체 스위트는 돌리지 않는다.
 
 ## §D.4 완료 정의 (Definition of Done)

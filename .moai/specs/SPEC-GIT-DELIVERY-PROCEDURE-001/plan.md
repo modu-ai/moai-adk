@@ -4,9 +4,9 @@
 
 ## §A 맥락
 
-- 카드: t622 (지침 감사 G1). Class C, Tier M, era V3R6. 판정 대상 REQ 12·AC 16으로 Tier M 상한(16/16) 안이다. 영향 파일 21개는 Tier M 파일 수 안내를 넘지만, 리드가 "요구사항·수용 기준 수로 정하고 파일 수 안내는 참고" 로 판정했다(spec.md §C.1·§C.4).
+- 카드: t622 (지침 감사 G1). Class C, Tier M, era V3R6. 판정 대상 REQ 12·AC 16으로 Tier M 상한(16/16) 안이다. 영향 파일 19개(명령 게시본이 바뀌면 21개)는 Tier M 파일 수 안내를 넘지만, 리드가 "요구사항·수용 기준 수로 정하고 파일 수 안내는 참고" 로 판정했다(spec.md §C.1·§C.4).
 - 워크트리: `.claude/worktrees/t622`, 브랜치 `WT-git-procedure-fixes`.
-- 기준 트리(R1 고정): `BASE=b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0`. 0.2.2 작성 시점 HEAD `ea09ca650`(부모 `caa601d7c`, 둘 다 SPEC 파일만 바꿈)에서 범위 파일 열 개(L·T), `manager-git.toml`, 게시본 `moai-sync/SKILL.md`(L·T), `internal/template/commandemit`·`agentemit`, `zone-registry.md`(L·T), 사본·발행 관련 테스트 파일, `docs-site/content`, `Makefile` 은 `$BASE` 와 차이 없음.
+- 기준 트리(R1 고정): `BASE=b412f8a33b9f82ec5f85ccb5eeb960ef125dd8c0`. 0.2.2 작성 시점 HEAD `ea09ca650`(부모 `caa601d7c`, 둘 다 SPEC 파일만 바꿈)에서 범위 파일 아홉 개(L·T), `manager-git.toml`, 게시본 `moai-sync/SKILL.md`(L·T), `internal/template/commandemit`·`agentemit`, `zone-registry.md`(L·T), 사본·발행 관련 테스트 파일, `docs-site/content`, `Makefile` 은 `$BASE` 와 차이 없음.
 - 범위: AC-11 fetch 순서, SX-R04 병합 방식 해석, OD-2 = B auto-merge 옵트인 단일 기준, `/moai sync` 플래그 의미와 모드별 승인 조건, 소비자 X1~X3(사용법 줄·슬래시 명령 힌트·다음 단계 선택지), 명령 원본 편집에 따른 게시본 발행, 그 파일들의 부수 의무. late-branch 재설계는 카드 t658, amend 적용 도우미 스텁은 카드 t659(spec.md §G). docs-site 네 로케일(X4)은 후속 문서 카드(spec.md §D).
 - 결정: OD-2 = 선택지 B(2026-09-10), T1 = 분할(2026-09-11), OD-2 하위 결정 플래그 의미(2026-09-11) — 운영자(리드 경유). 모드별 승인 조건(2026-09-11), 소비자 범위 판정 X1~X4(2026-09-11) — 리드 판정. 결정은 Implementation Kickoff Approval을 대신하지 않는다.
 - plan-audit 회차: 분할 뒤 1회차 FAIL 0.71(`.moai/reports/t622/plan-audit-reduced-iter1.md`). 0.2.1 판에 대한 감사 파일은 `.moai/reports/t622/` 에 없다(0.2.2 작성 시점 목록). 이 판이 축소판 2회차 대상이다. 분할 전 두 회차(FAIL 0.67, FAIL 0.75)는 전체 범위 기록이다.
@@ -21,14 +21,20 @@
 4. **발행기는 템플릿 트리의 게시본만 쓴다.** `internal/template/commandemit/golden_test.go:28` `templatesDir = "../templates"`, `:67-74` 갱신 분기가 템플릿 게시본 경로에 쓴다. 로컬 게시본 `.agents/skills/moai-sync/SKILL.md` 는 추적 파일이지만 발행기가 쓰지 않는다 — 게시본이 바뀌면(AC-GDP-030 경우 B) 로컬 사본은 템플릿 게시본을 바이트 그대로 복사해 맞춘다.
 5. **`argument-hint` 는 게시본에 실리지 않는다.** `loader.go:4-6`("Claude-only keys and are NOT carried into the published skill"), `emit.go:122-130` `renderSkill` 은 생성 머리말·`name`·`description`·본문만 쓴다. 그래서 경우 (A)(변화 없음)가 예상이지만, 예상은 판정이 아니다 — 두 경우를 명령으로 가른다.
 6. **`TestCommandSourcesUnmodified`(`golden_test.go:94-106`)는 한 실행 안에서 발행 전후 해시를 비교한다.** 원본 편집 자체로는 실패하지 않는다. 원본을 고치면 실패하는 검사는 `make commands-emit-check` 쪽이며, 원본 편집이 게시본을 바꾸는 경우에만 빨강이다.
-7. **사본 일치 가드가 파일마다 다르다.** `agent-common-protocol.md` 만 `TestSanitizedPairParity` 와 diff, 나머지 아홉 파일은 diff만 가드다(acceptance.md AC-GDP-013 표).
+7. **사본 일치 가드가 파일마다 다르다.** `agent-common-protocol.md` 만 `TestSanitizedPairParity` 와 diff, 나머지 여덟 파일은 diff만 가드다(acceptance.md AC-GDP-013 표).
 8. **`agent-common-protocol.md` 는 항상 로드되는 규칙이다.** 세션 도중 고치면 로드된 프롬프트 접두부가 무효화된다.
 9. **`manager-git.md:32` 의 `gh pr merge --squash --delete-branch` 는 기본값 설명이다.** 지우면 안 된다. 148·166행 `--auto-merge` 조건도 남는다.
 10. **`manager-git.md` 의 PR Auto-Merge 절은 지금 team 한정이다.** 절 제목은 "## PR Auto-Merge" 로 시작하게 유지하고(수용 기준 추출 표지), personal·manual 규칙을 이 절에 모드 이름을 담은 문장으로 더한다. `delivery.md` Step 3.4에도 같은 두 조건을 적는다.
 11. **생성물 `.toml` 과 게시본은 손으로 고치지 않는다.** `.toml` 은 `make agents-emit`, 템플릿 게시본은 `make commands-emit` 으로만 다시 만든다(§B 4의 로컬 게시본 복사는 예외).
 12. **`manager-git.md:114` 는 t658이 다시 쓸 Late-Branch 절 안에 있다.** 이 SPEC은 그 줄의 병합 예시만 치환한다.
-13. **`agent-common-protocol.md` 17행은 `[ZONE:Frozen]` 이고 13·17·52행에 등록 Frozen clause 가 있다.** 편집 자리(290-305)와 떨어져 있으며 건드리지 않는다(REQ-GDP-024). 나머지 아홉 파일(명령 원본 포함)에는 `[ZONE:]` 태그와 레지스트리 항목이 없다.
-14. **줄 단위 검출식의 모양.** AC-GDP-026~029는 한 줄에 조건을 모아 적어야 잡힌다: `--merge` 를 말하는 줄은 "deprecated" 와 `--auto-merge` 를 함께, `--no-merge` 를 말하는 줄은 "no-op" 과 "deprecated" 를 함께, team 조건 줄은 "team mode"·`--auto-merge`·"approval" 을 함께, personal·manual 조건 줄은 두 모드 이름과 `--auto-merge` 를 함께 담는다. X1 사용법 줄과 X2 `argument-hint` 는 한 줄짜리 형식이라 폐기 표시를 넣기 어렵다 — 이 두 줄에 `[--merge]` 를 남기면 같은 줄에 "deprecated" 와 `--auto-merge` 가 함께 있어야 한다. 폐기된 별칭 서술은 Flags 줄·Supported Flags 절이 맡는다.
+13. **`agent-common-protocol.md` 17행은 `[ZONE:Frozen]` 이고 13·17·52행에 등록 Frozen clause 가 있다.** 편집 자리(290-305)와 떨어져 있으며 건드리지 않는다(REQ-GDP-024). 나머지 여덟 파일(명령 원본 포함)에는 `[ZONE:]` 태그와 레지스트리 항목이 없다.
+14. **줄 단위 검출식의 모양.** AC-GDP-026~029는 한 줄에 조건을 모아 적어야 잡힌다(검출식과 읽기 기록은 acceptance.md). 받아들이는 문구 모양:
+    - `--merge` 를 말하는 줄은 `--merge` 뒤에 "deprecated alias of `--auto-merge`"(또는 "deprecated alias for") 구절을 담는다. 예: "- `--merge`: deprecated alias of `--auto-merge` (logs a warning)", 한 줄 목록이면 "--merge (deprecated alias of --auto-merge)". `--auto-merge` 를 폐기됐다고 적거나 `--merge` 를 별칭 구절 없이 적은 줄은 FAIL이다.
+    - `--merge` 는 `moai/SKILL.md` Flags 줄, `workflows/sync.md` 의 `**Flags**:` 줄, Supported Flags 절, `delivery.md` Step 3.4 절에 각각 1줄 이상 남긴다(AC-GDP-026 (iii)). 나머지 조각에서는 빼도 된다.
+    - `--no-merge` 를 말하는 줄은 "no-op" 과 "deprecated" 를 함께 담고, 효과를 말하는 낱말(skip, not set, prevent, unless, disable, override, turn off, suppress, bypass, cancel)을 담지 않는다. 예: "- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default."
+    - team 조건 줄은 "team mode"·`--auto-merge` 와 "all … approvals"(all 과 approv 사이 낱말 2개까지)를 함께 담는다. 예: "In team mode, `--auto-merge` merges only after all approvals are obtained."
+    - personal·manual 조건 줄은 두 모드 이름과 `--auto-merge` 를 함께 담고, 승인·리뷰를 말하면 "without an approval condition", "without requiring approval", "not needed", "no teammates" 같은 없음 표현으로만 말한다. 예: "In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve)."
+    - X1 사용법 줄과 X2 `argument-hint` 는 한 줄짜리 형식이라 별칭 구절을 넣기 어렵다 — `[--merge]` 를 남기려면 같은 줄에 별칭 구절이 있어야 하므로, 이 두 줄에서는 `--merge` 를 빼는 편이 쉽다. 폐기된 별칭 서술은 Flags 줄·Supported Flags 절·Step 3.4 절이 맡는다.
 15. **워크트리 세션 가드**는 복합 명령 안의 `git`·`parallel` 낱말, 셸 변수를 받는 `sed`·`perl`, 경로를 만드는 반복문, 여러 명령을 이은 git 스크립트를 거부한다. 검출식은 `[g]it`·`para[l]lel`·`\x67it` 로 쓰고(`manager-[g]it` 포함) 경로는 글자 그대로 쓴다.
 16. **셸 `grep` 래퍼는 UTF-8이 아닌 파일을 출력 없이 건너뛴다.** 판정은 `/usr/bin/grep` 으로 한다.
 
@@ -69,9 +75,9 @@
 - E4: `go test ./internal/template/ -run '^(TestSanitizedPairParity|TestTemplateNoInternalContentLeak)$' -v -count=1` 출력, 최상위 PASS 줄 수(정확히 2), 범위 파일 하위 테스트 흔적.
 - E5: 사본 diff 결과(네 파일 exit 0, 여섯 파일 차이 본문 동일, 명령 원본 `argument-hint` 줄 일치).
 - E6: 커밋 SHA 목록과 `agent-common-protocol.md` 커밋이 마지막 지침 편집 커밋이라는 확인.
-- E7: 읽기 기록 `ac001-reading.md`·`ac006-reading.md`(PASS 전제), AC-GDP-015 읽기 목록.
+- E7: 읽기 기록 `ac001-reading.md`·`ac006-reading.md`·`ac026-reading.md`·`ac028-reading.md`(PASS 전제), AC-GDP-015 읽기 목록.
 - E8: AC-GDP-025 Frozen 확인 결과.
-- E9: AC-GDP-026~029 아홉 조각별 판정 파일과 `--no-merge` 줄 수.
+- E9: AC-GDP-026~029 아홉 조각별 판정 파일, `--merge` 존재 개수(`ac026-merge-presence.txt`), `--no-merge` 줄 수.
 - E10: 명령 게시본 — AC-GDP-030 발행 대조(c)의 네 출력, `commands-emit`·`commands-emit-check` 출력, `ac030-outcome.md`(경우 이름과 근거 파일 내용).
 
 ## §F 마일스톤
@@ -128,7 +134,7 @@
 1. M5 뒤에 사본 diff와 AC-GDP-025를 다시 실행한다.
 2. `make agents-emit-check`·`make commands-emit-check` 를 다시 실행해 둘 다 exit 0 을 확인한다(읽기 전용).
 3. 선택 테스트 두 개와 최상위 PASS 줄 2개, 범위 파일 하위 테스트 흔적(AC-GDP-013).
-4. 읽기 기록 두 개 확인(acceptance.md §D.3).
+4. 읽기 기록 네 개 확인(`ac001`·`ac006`·`ac026`·`ac028`, acceptance.md §D.3).
 5. `agent-common-protocol.md` 커밋 뒤에 다른 범위 지침 파일을 고친 커밋이 없는지 확인(AC-GDP-016).
 
 ## §G 안티패턴
@@ -145,7 +151,7 @@
 - `manager-git.md:114` 를 고치면서 주변 late-branch 절차 줄까지 손대는 것(t658 소관).
 - `.toml` 을 손으로 맞추는 것.
 - `agent-common-protocol.md` 를 run-phase 초반에 고치는 것, 17행 `[ZONE:Frozen]` 이나 등록 clause 를 건드리는 것.
-- 읽기 기록 없이 AC-GDP-001·006을 PASS로 적는 것.
+- 읽기 기록 없이 AC-GDP-001·006·026·028·029를 PASS로 적는 것.
 - 검증 출력을 `| head`·`| tail`·`| grep` 로 잘라 exit code를 잃는 것, 개수가 찍히지 않은 grep 결과를 0으로 읽는 것, 빈 diff·빈 커밋 목록을 통과로 읽는 것.
 
 ## §H 교차 참조
