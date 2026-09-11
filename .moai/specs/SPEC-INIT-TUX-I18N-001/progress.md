@@ -204,6 +204,30 @@ Attribution (read-only, no fix attempted — the dispatch says stop on any basel
 - `internal/cli/launcher.go` was last changed by `6010d5d82 feat(launcher): support pinning the Claude Code binary (#1697)` (2026-09-10), after the t592 marker `0c86e61d0` (`git merge-base --is-ancestor 0c86e61d0 6010d5d82` → 0). `6010d5d82` is an ancestor of this branch's base `500a73d44` (exit 0), and this branch changed none of `launcher.go`, `home_state_coverage.go`, `home_state_coverage_test.go` since the base (`git diff --stat 500a73d44 HEAD -- …` empty, exit 0). The failure is inherited from local develop, not produced by this card.
 - Consequence: steps 2–4 were not started. No product or test file was changed in Stage B.
 
+#### Develop absorption (lead disposition (b)) and baseline re-capture
+
+Disposition: option (b), carried out by the orchestrator. Local develop `eb50af5a8ec51862e3df76c2e3b08377ce01c4d8` — which carries the t600 `5b7927b15` and t606 `92494400f` fixes to `internal/cli/home_state_coverage{,_test}.go`, the file pair behind the step-1 FAIL — was merged into `WT-init-tux-i18n` as `cd7dc491c66eedd490a5422e643a579486746b5f` (parents `7b63ea61d` and `eb50af5a8`, clean merge). Checked in this run: `git diff --stat 7b63ea61d cd7dc491c -- internal/cli/wizard internal/cli/init.go internal/cli/update_version.go internal/cli/profile_setup.go internal/cli/update.go` prints nothing (exit 0); the merge brings 63 files, none of them in the t583-overlap set or this card's M1/M2 targets.
+
+This is a **non-t583 absorption**. plan.md §C 1 capture at the absorption commit:
+
+```
+$ git rev-parse HEAD
+cd7dc491c66eedd490a5422e643a579486746b5f
+$ git branch --show-current
+WT-init-tux-i18n
+```
+
+`BASELINE_SHA=cd7dc491c66eedd490a5422e643a579486746b5f` for Stage B. The post-t583 §C 1 capture (the absorption-gate one) is still pending.
+
+#### Step 1 re-run on `cd7dc491c` — GREEN
+
+| Command | Exit | Observed | Evidence |
+|---|---|---|---|
+| `go test ./internal/cli/ -count=1 -list 'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI' -timeout 600s` | 0 | 129 top-level `Test…` names | `.moai/reports/t586/stage-b/baseline2-cli-list-selection.txt` |
+| `go test ./internal/cli/ -run 'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI' -count=1 -v -timeout 600s` | 0 | `=== RUN` 217 (129 top-level, matching the list count) · `--- PASS` 217 · FAIL 0 · SKIP 0; `--- PASS: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (4.30s)` | `.moai/reports/t586/stage-b/baseline2-cli-tests.txt` |
+
+The failing run's evidence (`baseline-cli-*.txt`) is kept alongside, not overwritten. Selection count note stands: use `-list '<pattern>'`; `-run … -list '.*'` lists the whole package.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
