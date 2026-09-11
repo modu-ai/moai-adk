@@ -111,7 +111,7 @@ git switch -c feat/SPEC-XXX
 git push -u origin feat/SPEC-XXX
 gh pr create --base main --title "..." --body "..."
 # CI passes → merge with the resolved merge_method (§ Configuration Loading and Resolution);
-gh pr merge <PR> --squash --delete-branch   # squash default
+gh pr merge <PR> --<merge_method> --delete-branch   # squash default
 ```
 
 Phase D — Local main reset (canonical Late-branch closure):
