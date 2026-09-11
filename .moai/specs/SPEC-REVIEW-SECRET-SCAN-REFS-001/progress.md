@@ -948,9 +948,117 @@ Gaps and residual risk in M4:
 - `make build` and the embed check were not run; they belong to the lead at batch close.
 - The fixture evidence of M3 and the scan outputs stay in `SP` and are not exported.
 
+### Closure checks (M5)
+
+Taken 2026-09-11 from this worktree on branch `WT-secret-scan-refs`, clean tree, before the develop
+absorb. `SP` is the session scratchpad, outside this repository; every `git` output below went to a
+file under `SP` and every exit code was read with `; echo "exit=$?"`, never through a pipe.
+
+**K.** `git rev-parse HEAD`, read at the start of this segment →
+`c10626ab72901b20e7ff89d4f0b0a3461df51727` (the M4 evidence commit; parent `cc4092513`, the edit
+commit `R`). Every range and revision below ends at `K`, never at `HEAD` (`acceptance.md`
+§ Closure-check anchor). `git diff --stat cc4092513 K` names `progress.md` only (80 insertions), so
+the copies at `K` are the copies the M4 readings measured at `R`.
+
+| AC | Command (outline, `K` as above) | Exit | Reading |
+|---|---|---|---|
+| AC-003 (a) | `diff -q LOC TPL` | 0 | no output |
+| AC-003 (b) | `git diff --stat feeecc980 K -- LOC TPL > SP/m5-ac003-stat.txt` | 0 | both files named, 53 lines changed each; `2 files changed, 94 insertions(+), 12 deletions(-)` |
+| AC-004 | `git diff feeecc980 K --output=SP/card-diff-k.txt`; `wc -l`; the AC-004 added-line grep over that file | 0; 0; 1 | `3962` lines; count `0`. Control: the same grep over `SP/m5-ctl-diffline.txt`, one `+`-prefixed PEM-style header line assembled by `printf` from fragments → `1`, exit 0 |
+| AC-007, `D` | `git log --format=%H -S 'Decision:** Option' -- spec.md > SP/m5-ac007-d.txt` | 0 | 1 line, `af7eb142b` |
+| AC-007, `R` | `git log --reverse --format=%H feeecc980..K -- TPL > SP/r-tpl.txt`; the same for `LOC` into `SP/r-loc.txt` | 0; 0 | first line `cc4092513` in both (1 line each) |
+| AC-007 | `git merge-base --is-ancestor af7eb142b cc4092513` | 0 | `D` ≠ `R`; `LOC` resolves to the same `R`, so the same check covers it |
+| AC-010, ordering | `git log --format=%H -S '### Lead approval for gate cell 3' feeecc980..K -- PROG > SP/g3-approval.txt`; `git log --format=%H -S '#### Gate cell 3' feeecc980..K -- PROG > SP/g3-evidence.txt` | 0; 0 | 1 line each: `P` = `7e06766c8`, `E3` = `023a25e7a` |
+| AC-010, ordering | `git merge-base --is-ancestor 7e06766c8 023a25e7a` | 0 | `P` ≠ `E3` |
+| AC-011, `G` | `git log --reverse --format=%H -S '### Gate evidence' feeecc980..K -- PROG > SP/g-commit.txt` | 0 | 3 lines; first `6e56840d5` (the round 1 evidence commit), then `e298f7336` (round 1 moved out), then `f167a9cd8` (round 2 evidence) |
+| AC-011 | `git merge-base --is-ancestor 6e56840d5 cc4092513` | 0 | `G` ≠ `R`; `LOC` resolves to the same `R`. Supplementary: `git merge-base --is-ancestor f167a9cd8 cc4092513` → exit 0, so the standing round 2 evidence also precedes the edit |
+| AC-011, verdicts | `git show cc4092513~1:PROG > SP/pre-edit-progress.txt`; `/usr/bin/grep -c '^verdict: trustworthy$'` | 0; 0 | `3` |
+| AC-016, `G` | `git log --format=%H -S '### Gate evidence' feeecc980..cc4092513~1 -- PROG > SP/g-rounds.txt` | 0 | 3 lines; newest `f167a9cd8`. It differs from AC-011's `G` because a second gate round ran (`plan.md` M3); the heading count at `R~1` is `1` (`/usr/bin/grep -c '^### Gate evidence$' SP/prog-r1.txt`, exit 0) |
+| AC-016 (b) | `git show f167a9cd8:PROG > SP/prog-g.txt`; `git show cc4092513~1:PROG > SP/prog-r1.txt`; the AC-016 `sed -nE` extraction into `SP/pin-g.txt` and `SP/pin-r1.txt`; `cmp` | 0 each | 28 and 28 lines; `cmp` exit 0 |
+| pin unchanged since the pin commit | the same extraction from `git show 68c56be0d:PROG` into `SP/pin-68c.txt`, then `cmp` against `SP/pin-r1.txt` | 0 | 28 lines; `cmp` exit 0 |
+| AC-016 (a) | `git show K:TPL > SP/tpl-k.txt`; `SECTION` extracted from it with the `acceptance.md` `sed -n` range into `SP/section-k.txt`; the three prefixed pin lines of `SP/pin-r1.txt` into `SP/pin-tips.txt`, `SP/pin-scan.txt`, `SP/pin-gone.txt`; `/usr/bin/grep -cF -f <pattern file> SP/section-k.txt` | 0 each | `SECTION` 61 lines; each pattern file 1 line, 1 non-empty; counts `1`, `1`, `1` |
+
+AC-012 is not applicable: `git show K:PROG > SP/prog-k.txt`, then `/usr/bin/grep -c
+'^verdict: trustworthy$'` → `3` (exit 0), at lines 270 (`#### Gate cell 1`), 312 (`#### Gate cell 2`),
+and 452 (`#### Gate cell 3`); `/usr/bin/grep -c 'verdict: untrustworthy'` → `0` (exit 1); and
+`/usr/bin/grep -c 'Run phase stopped'` → `0` (exit 1). No gate cell was untrustworthy, so no stop
+occurred.
+
+Run caution N2 applies to AC-004: its range ends at `K`, so this commit and any later commit are
+outside it.
+
+Consolidated AC matrix (`acceptance.md` §D.19):
+
+| AC | Status | Evidence in this file | Measured at |
+|---|---|---|---|
+| AC-001 | PASS | § Fixture proof (M3) › AC-001 review sequence | tree `d22b4466b` (draft wording), fixture `SP/m3/fx1`; the draft equals the first 59 lines of the edited section (§ M4 edit, `cmp` exit 0) |
+| AC-002 | PASS | § M4 edit | edited copies at `R` (`cc4092513`), unchanged to `K` |
+| AC-003 | PASS | § Closure checks (M5) | `K` |
+| AC-004 | PASS | § Closure checks (M5) | `feeecc980..K` |
+| AC-005 | PASS | § M4 edit (greps and the strict leak run) | `R`, unchanged to `K` |
+| AC-006 | PASS | § M4 edit | `R`, unchanged to `K` |
+| AC-007 | PASS | § Closure checks (M5) | `K` |
+| AC-008 | PASS | § Gate evidence › Gate cell 1 (`verdict: trustworthy`) | tree `68c56be0d`, fixture `SP/m1gate3/fx` |
+| AC-009 | PASS | § Gate evidence › Gate cell 2 (`verdict: trustworthy`) | tree `68c56be0d`, fixture `SP/m1gate3/fx` |
+| AC-010 | PASS | § Gate evidence › Gate cell 3 (`verdict: trustworthy`); approval ordering in § Closure checks (M5) | timing on this repository at `7e06766c8`; ordering at `K` |
+| AC-011 | PASS | § Closure checks (M5) | `K` |
+| AC-012 | not applicable | § Closure checks (M5), three `verdict: trustworthy` lines | `K` |
+| AC-013 | PASS | § Fixture proof (M3) › AC-013 and AC-014 allowlist controls | tree `d22b4466b`, fixture `SP/m3/fx2` |
+| AC-014 | PASS | § Fixture proof (M3) › AC-013 and AC-014 allowlist controls | tree `d22b4466b`, fixture `SP/m3/fx2` |
+| AC-015 | PASS | § M4 edit | `R`, unchanged to `K` |
+| AC-016 | PASS | § Closure checks (M5) | `K` |
+
+Summary: 15 PASS, AC-012 not applicable, 0 FAIL.
+
+Standing gaps:
+
+- AC-010 names `/usr/bin/time -p` and its `real` field; gate cell 3 used the shell reserved word `time`
+  and its `total` field, an operator-approved measurement-tool difference. Whether AC-010's wording
+  changes is left for the sync phase.
+- Gate cell 3 rests on one machine, one git build (`git version 2.50.1 (Apple Git-155)`), and one pair
+  of runs under contention.
+- In gate cell 3, the two commits counted by `B − A` became reachable between the first run's tip
+  recording and its scope listing; whether the first scan itself covered them was not observed.
+- `moai spec lint` is judged by the installed `v3.2.0-rc.7` build (`moai version` → `v3.2.0-rc.7
+  moai_cp/20260910_130400-275-ged71054d3-dirty`); `git merge-base --is-ancestor ed71054d3 K` exited
+  1, so it is not a build made from this tree (`verification-claim-integrity.md` §2.2).
+- AC-004 covers commits up to `K` only (run caution N2).
+- The thirteen-step suppression procedure is kept in its measured form by operator decision; its
+  simplification is a follow-up candidate.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-09-11
+k_sha: c10626ab72901b20e7ff89d4f0b0a3461df51727
+run_commit_sha: pending-backfill   # the M5 commit, after K, cannot cite its own hash
+ac_pass_count: 15
+ac_fail_count: 0
+ac_not_applicable: [AC-012]
+cross_platform_build: not measured   # make build and the embed check belong to the lead at batch close
+m1_to_mN_commit_strategy: one commit per step, stacked on the card branch, unpushed
+evidence: "§E.2 › Closure checks (M5)"
+```
+
+Run-phase commits, `f16f7c095` through `K`:
+
+- `f16f7c095` docs(t629): record the Phase 4 mode selection and kickoff approval before run (card t629)
+- `b8c0ef74b` docs(t629): pin the Option 2 procedure before the measure-first gate (card t629)
+- `6e56840d5` docs(t629): record measure-first gate cells 1 and 2 (card t629)
+- `9dab82a4a` docs(t629): amend the SPEC to a caret-prefixed tip store read through stdin (card t629)
+- `2b1808efe` docs(t629): add scoped amendment audit report, iteration 4 PASS 0.87 (card t629)
+- `e298f7336` docs(t629): move superseded gate round 1 out of the progress record (card t629)
+- `68c56be0d` docs(t629): pin the caret-store stdin procedure for gate round 2 (card t629)
+- `f167a9cd8` docs(t629): record gate round 2 cells 1 and 2 on the stdin pin (card t629)
+- `7e06766c8` docs(t629): quote the lead approval for gate cell 3 before any cell 3 command (card t629)
+- `023a25e7a` docs(t629): record gate round 2 cell 3 timing on this repository (card t629)
+- `d22b4466b` docs(t629): draft the secrets-scan section wording and allowlist representation (card t629)
+- `e8128c708` docs(t629): record the fixture proof of the worded secrets-scan procedure (card t629)
+- `cc4092513` docs(t629): replace the secrets-scan section with the tip-store procedure and exact allowlist (card t629)
+- `c10626ab7` docs(t629): record the M4 edit readings (card t629)
+
+The M5 commit that records this signal follows `K` and is outside the list and the AC-004 range.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
