@@ -289,7 +289,12 @@ Purpose: Measure test coverage, identify gaps, and generate missing tests to mee
 
 Agent: manager-develop subagent
 
-Measure current coverage using language-specific tools:
+Resolve the mode-specific `coverage_scope` before invoking a tool. In `auto`,
+measure changed packages and the dependency/import closure only; in `force` or
+`project`, measure the full repository. Record the selected packages and any
+pre-existing coverage debt rather than silently widening the auto run.
+
+Measure coverage using language-specific tools:
 - Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`
 - Python: `pytest --cov --cov-report=json`
 - TypeScript/JavaScript: `vitest run --coverage` or `jest --coverage --json`
