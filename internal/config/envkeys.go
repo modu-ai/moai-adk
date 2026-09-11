@@ -345,6 +345,13 @@ const (
 
 	// EnvTestGLMKey provides a test GLM API key for integration tests.
 	EnvTestGLMKey = "MOAI_TEST_GLM_KEY"
+
+	// EnvTestHomeStateLiveCoverage opts in to the internal/cli test that
+	// measures home-state changed-surface coverage against the live repository
+	// when set to "1". It resolves the audited evidence chain at HEAD, so it
+	// fails whenever an audited production file changed after the last
+	// certification marker — the live pre-apply gate refusing, as designed.
+	EnvTestHomeStateLiveCoverage = "MOAI_TEST_HOME_STATE_LIVE_COVERAGE"
 )
 
 // Claude Code environment variables (set by Claude Code runtime).

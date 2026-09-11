@@ -1,0 +1,11 @@
+=== RUN   TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+--- PASS: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (2.34s)
+=== RUN   TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite
+    home_state_coverage_test.go:485: set MOAI_TEST_HOME_STATE_LIVE_COVERAGE=1 to measure changed-surface coverage against the live repository
+--- SKIP: TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite (0.00s)
+=== RUN   TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition
+--- PASS: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (1.44s)
+=== RUN   TestAuditLagUsesBinlagSeam
+--- PASS: TestAuditLagUsesBinlagSeam (0.82s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	5.590s
