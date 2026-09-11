@@ -53,6 +53,14 @@
 | F5 | Info | optional | `settings_snapshot.go` `promoteSettingsSnapshot` | 확정본 자리가 디렉터리로 막히면 한 번의 update 에서 판정 단계와 settle 단계가 각각 경고해 `settings-snapshot-promote-failed:` 줄이 두 번 나올 수 있다(버전 일치 경로는 한 번, AC-008 이 그 경로만 단정). 동작은 비차단이라 무해 | 필요하면 문서에 "경고는 시도당 한 줄"로 명시 | 중간 |
 | F6 | Info | optional | `progress.md` §E.4 gaps 마지막 줄 | "sync-auditor was not invoked" 는 이 감사로 낡았다 | 백필 커밋 때 이 감사 경로(`.moai/reports/t656/sync-audit.md`)로 갱신 | 높음 |
 
+### 후속 카드용 재현 조건 (리드 요청, 2026-09-12 · 이 카드에서 미수정)
+
+F3·F4·F6 은 수정 완료(`063d230d2`, `326149f1a`). 남은 세 건의 재현 조건은 아래와 같다. 모두 코드 판독으로 세운 조건이며 실행해 확인하지는 않았다.
+
+- **F1** — 대기본이 기록된 update 흐름에서 `MergeUserFilesWithOutcome` 의 `.claude/settings.json` `os.WriteFile` 이 부분 기록 뒤 실패하면(예: 쓰기 시접이 절반을 쓰고 오류 반환) 결과가 기록되지 않는다. 그러면 settle 이 대기본을 확정본으로 승격하지만, 살아 있는 파일은 렌더가 아니다.
+- **F2** — `StageDeployedSettingsSnapshot` 의 `.pending` 쓰기가 부분 기록 뒤 실패하면 잘린 `.pending` 이 남는다. settle 이 그것을 승격하고, 다음 update 에서 `LoadSettingsSnapshot` 이 무효 JSON 으로 거부해 유도 base 로 폴백한다.
+- **F5** — 확정본 경로 `.moai/cache/template-snapshot/claude/settings.json` 자리에 디렉터리를 두고, 남은 대기본이 있는 상태에서 버전 일치가 아닌 update 를 실행하면 잔여 판정과 settle 이 각각 `settings-snapshot-promote-failed:` 를 출력해 경고가 두 줄 나온다.
+
 ## 정확성 위험 점검 결과
 
 - **A1 회귀(사용자 편집 값이 템플릿 값으로 덮이는 경로)**: 확정본은 배포기가 쓴 바이트임이 매니페스트 `template_managed` + `template_hash == HashBytes(파일)` 로 증명될 때만 기록된다(`internal/template/deployer.go:274-278` 에서 해시는 쓴 바이트의 해시). 사용자 편집 키는 current ≠ base 라 사용자 변경으로 읽힌다. init 의 자율성 번들 재기록은 스테이징 뒤라 사용자 변경으로 읽힌다(c6). 병합이 보존 경로를 타면 대기본을 버려 이전 base 를 유지한다(c2). 덮어쓰기 경로를 찾지 못했다.
