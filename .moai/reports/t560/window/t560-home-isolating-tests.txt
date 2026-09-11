@@ -1,0 +1,1 @@
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t560/internal/hook/session_start_profile_lease_test.go

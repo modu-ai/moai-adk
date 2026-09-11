@@ -1,0 +1,11 @@
+--- internal/spec/parser.go	2026-09-11 03:18:01
++++ /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/mutants/M1/parser.go	2026-09-11 03:21:26
+@@ -100,7 +100,7 @@
+ func isACSectionHeading(trimmed string) bool {
+ 	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
+ 	for _, marker := range acNegativeSectionMarkers {
+-		if strings.Contains(text, marker) {
++		if false && strings.Contains(text, marker) {
+ 			return false
+ 		}
+ 	}

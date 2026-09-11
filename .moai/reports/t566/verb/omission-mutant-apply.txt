@@ -1,0 +1,21 @@
+{
+  "unit": "internal/settings/yamlpatch",
+  "files": {
+    "data-flow.md": {
+      "removed_lines": 1,
+      "original": "d6a265fa26c2c05f00558df8cb1d8101d783b44633c715156946715f005ff682",
+      "mutated": "b29b99148ef7467f05c102ab2c7b8dbfe5c03639251c11d70986cb3f13392f20"
+    },
+    "dependencies.md": {
+      "removed_lines": 2,
+      "original": "b3b5ace994b6217cf5980fbe9ee4773e96551c9c6fa0e10ef9124598df07e4e1",
+      "mutated": "6410897ae96028199800a32d6c183cbda1ae00e215c2d9cbe6c724d22c331211"
+    },
+    "modules.md": {
+      "removed_lines": 1,
+      "original": "d57e59f5b540d74c296deb501fc4f3980ff657e1616d50157250699cd7ce7c97",
+      "mutated": "355c2c7b9142d0ba1edc1137494c96cecb825507a992f7015e5cedb59fa20620"
+    }
+  }
+}
+EXIT=0

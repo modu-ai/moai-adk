@@ -1,0 +1,7 @@
+slot pre-check before the t566-cli-fold run
+2026-09-10T18:34:22Z
+ 3:34  up 2 days, 21:27, 18 users, load averages: 19.59 26.76 25.10
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1427)
+observer control - the ps process itself: 1
+go test/.test lines (zsh/python excluded): 0

@@ -27,7 +27,7 @@ package spec
 //
 // WHY THE WHOLE FILE, AND WHY ExtractRequirementMappings. The inline path is
 // ParseAcceptanceCriteria, which is scoped twice over: findACSectionStart needs
-// an `##` heading containing "acceptance", and parseSingleACLine needs the
+// a heading that names the acceptance criteria section, and parseSingleACLine needs the
 // `AC-…:` colon form. BOTH scopings exist because spec.md is a mixed document
 // in which prose must not be read as AC. acceptance.md is not mixed — the file
 // IS the acceptance criteria, by name and by convention — so neither scoping

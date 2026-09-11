@@ -1,0 +1,52 @@
+{
+  "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t566",
+  "layers": [
+    {
+      "layer": "codemaps",
+      "metric": "described-source-diff",
+      "value": 47,
+      "threshold": 40,
+      "verdict": "stale",
+      "contribution": 17,
+      "contribution_base": "d060e0d136f173f07353e46a709382d08ae25dd2",
+      "content_anchor": "f7b4919541f10b6415173b6bc9fb7192e8824450",
+      "content_anchor_source": "working-tree-differs-from-stamp",
+      "driving_paths": [
+        "internal/cli/claude_binary.go",
+        "internal/cli/codex_contract.go",
+        "internal/cli/codex_init.go",
+        "internal/cli/codex_launcher.go",
+        "internal/cli/codex_readiness.go",
+        "internal/cli/codex_skills_disable.go",
+        "internal/cli/doctor_codex.go",
+        "internal/cli/factory_handoff_recover.go",
+        "internal/cli/goal.go",
+        "internal/cli/goal_runnable.go"
+      ],
+      "driving_paths_omitted": 37
+    },
+    {
+      "layer": "mx-index",
+      "metric": "inventory-content-diff",
+      "value": 0,
+      "threshold": 1,
+      "verdict": "absent",
+      "reason": "mx-index absent (untracked runtime artifact — fresh worktree state)"
+    },
+    {
+      "layer": "edges",
+      "metric": "source-fingerprint-mismatch",
+      "value": 0,
+      "threshold": 0,
+      "verdict": "absent",
+      "reason": "edges.jsonl absent (untracked derived artifact — fresh worktree state)"
+    },
+    {
+      "layer": "citations",
+      "metric": "positive-cited-path-absence",
+      "value": 0,
+      "threshold": 0,
+      "verdict": "fresh"
+    }
+  ]
+}

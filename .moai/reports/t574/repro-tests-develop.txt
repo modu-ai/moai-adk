@@ -1,0 +1,9 @@
+=== RUN   TestTempOrigin_ComponentBoundary
+=== RUN   TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp
+--- PASS: TestTempOrigin_ComponentBoundary (0.00s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+=== RUN   TestDefaultTempRoots_Membership
+    temp_origin_test.go:182: os.TempDir() on this platform: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"; full set: ["/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/" "/tmp" "/var/folders"]
+--- PASS: TestDefaultTempRoots_Membership (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.392s

@@ -1,0 +1,7 @@
+doc: internal/template/templates/.claude/skills/moai/workflows/codemaps.md
+--- stdout ---
+COLLECTED: fold=5 omission=15
+FOLD-PROSE: internal/core/git 1
+FOLD-PROSE: internal/kanban/prlink_landedref.go 1
+--- stderr ---
+EXIT=0

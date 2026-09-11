@@ -1,0 +1,11 @@
+=== RUN   TestT565ReproLint
+    zz_t565_repro_lint_test.go:39: finding: SPEC-HDGREPRO-001	OwnershipTransitionUnmeasured	SPEC SPEC-HDGREPRO-001 transition "(none)" → "draft" expected owner "manager-spec" but commit ce37a31b97502fae113b1729f7dfcffc7882ce6c (docs(t565): reproduce AC heading anchor loose/narrow and measure the corpus) has no Authored-By-Agent trailer — ownership transition unmeasured
+    zz_t565_repro_lint_test.go:39: finding: SPEC-HDGREPRO-002	OwnershipTransitionUnmeasured	SPEC SPEC-HDGREPRO-002 transition "(none)" → "draft" expected owner "manager-spec" but commit ce37a31b97502fae113b1729f7dfcffc7882ce6c (docs(t565): reproduce AC heading anchor loose/narrow and measure the corpus) has no Authored-By-Agent trailer — ownership transition unmeasured
+    zz_t565_repro_lint_test.go:39: finding: SPEC-HDGREPRO-003	OwnershipTransitionUnmeasured	SPEC SPEC-HDGREPRO-003 transition "(none)" → "draft" expected owner "manager-spec" but commit ce37a31b97502fae113b1729f7dfcffc7882ce6c (docs(t565): reproduce AC heading anchor loose/narrow and measure the corpus) has no Authored-By-Agent trailer — ownership transition unmeasured
+    zz_t565_repro_lint_test.go:53: SPEC-HDGREPRO-001 CoverageIncomplete = 0
+    zz_t565_repro_lint_test.go:53: SPEC-HDGREPRO-002 CoverageIncomplete = 0
+    zz_t565_repro_lint_test.go:53: SPEC-HDGREPRO-003 CoverageIncomplete = 0
+--- PASS: TestT565ReproLint (1.52s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	1.942s
+exit=0

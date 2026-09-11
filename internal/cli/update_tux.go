@@ -184,7 +184,7 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 		_, _ = fmt.Fprintln(w, paintToken(breakdown, th.Dim, false))
 	}
 	if backupPath != "" {
-		note := "Backup: " + backupPath + "\nRecover: moai update --restore-config " + backupPath
+		note := "Backup: " + backupPath + "\nRecover: moai update --restore " + backupPath
 		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
 	}
 }

@@ -1,0 +1,12 @@
+internal/atomicfile
+internal/cli/specid
+internal/config
+internal/config/atomicfile
+internal/core/git
+internal/defs
+internal/execerr
+internal/foundation
+internal/homestate
+internal/kanban
+internal/paths
+pkg/models

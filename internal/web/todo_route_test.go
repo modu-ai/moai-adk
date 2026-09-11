@@ -2,10 +2,10 @@ package web
 
 // todo_route_test.go — SPEC-WEB-TODO-QUEUE-001 M2: the /todo route surface.
 //
-// Resolved decision G-4 chose a top-level route over a panel on /kanban, so the
-// cost is in scope and pinned here: one route, a sixth navigation row marked as
-// the current location, an iconAt case (a missing one renders a blank glyph
-// rather than an error), and nav.todo in all four locale maps.
+// Resolved decision G-4 chose a top-level route over a panel on /kanban. The
+// route remains a first-class screen, while the primary rail is intentionally
+// limited to Overview, Todo, and Settings; the route's icon and four-locale
+// translation remain covered here.
 
 import (
 	"net/http"
@@ -85,27 +85,26 @@ func TestTodoRouteRejectsNonGET(t *testing.T) {
 	}
 }
 
-// TestTodoNavRowIsSixthAndCurrent — AC-WTQ-002 second half: the rail carries
-// six rows, the sixth links to /todo, and it is marked as the current location
-// while /todo is being served (REQ-WTQ-002).
-func TestTodoNavRowIsSixthAndCurrent(t *testing.T) {
+// TestTodoNavRowIsSecondAndCurrent — the rail carries the three primary rows,
+// the second links to /todo, and it is marked current on the Todo route.
+func TestTodoNavRowIsSecondAndCurrent(t *testing.T) {
 	a := newTestApp(t)
 
 	body := getTodoPage(t, a).Body.String()
 
 	hrefs := navRowHrefRe.FindAllStringSubmatch(body, -1)
-	if len(hrefs) != 6 {
+	if len(hrefs) != 3 {
 		got := make([]string, 0, len(hrefs))
 		for _, m := range hrefs {
 			got = append(got, m[1])
 		}
-		t.Fatalf("rail carries %d navigation rows (%v), want 6", len(hrefs), got)
+		t.Fatalf("rail carries %d navigation rows (%v), want 3", len(hrefs), got)
 	}
-	if hrefs[5][1] != "/todo" {
-		t.Errorf("sixth navigation row links to %q, want \"/todo\"", hrefs[5][1])
+	if hrefs[1][1] != "/todo" {
+		t.Errorf("second navigation row links to %q, want \"/todo\"", hrefs[1][1])
 	}
-	// The six rows keep their existing order with todo appended sixth.
-	want := []string{"/", "/kanban", "/specs", "/monitor", "/settings", "/todo"}
+	// The primary rail deliberately exposes only the three focused surfaces.
+	want := []string{"/", "/todo", "/settings"}
 	for i, w := range want {
 		if hrefs[i][1] != w {
 			t.Errorf("navigation row %d links to %q, want %q", i, hrefs[i][1], w)

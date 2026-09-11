@@ -103,6 +103,12 @@ func TestReportArchiveShortfall(t *testing.T) {
 	if !strings.HasPrefix(out.String(), "!") {
 		t.Errorf("shortfall must render with the warn marker (!), got:\n%s", out.String())
 	}
+	// The archive now runs before the managed cleanup, so the only cause left
+	// is an entry the archive could not copy; the warning must say so rather
+	// than blame the cleanup order.
+	if !strings.Contains(out.String(), "could not be archived") {
+		t.Errorf("shortfall warning must name the archive failure as the cause, got:\n%s", out.String())
+	}
 
 	// No shortfall: everything archived → silent.
 	out.Reset()

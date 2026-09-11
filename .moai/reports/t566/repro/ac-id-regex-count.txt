@@ -1,0 +1,4 @@
+source: .moai/specs/SPEC-CODEMAPS-REFRESH-002/acceptance.md (this tree)
+canonical  AC-([A-Z0-9]+-)*[0-9]+      distinct=12
+suffixed   AC-([A-Z0-9]+-)*[0-9]+[a-z]? distinct=13
+only-in-suffixed: ['AC-CM2-003a']

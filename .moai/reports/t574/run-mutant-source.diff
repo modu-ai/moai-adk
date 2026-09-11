@@ -1,0 +1,13 @@
+diff --git a/internal/kanban/temp_origin.go b/internal/kanban/temp_origin.go
+index 633b09c24..1bce2b25a 100644
+--- a/internal/kanban/temp_origin.go
++++ b/internal/kanban/temp_origin.go
+@@ -58,7 +58,7 @@ var TempRootsFn = defaultTempRoots
+ // living under it is higher than under /tmp. The exclusion is fail-open —
+ // a /var/tmp launch keeps today's home fallback.
+ func defaultTempRoots() []string {
+-	return []string{os.TempDir(), "/tmp", "/var/folders"}
++	return []string{os.TempDir()}
+ }
+ 
+ // TempOriginReason classifies base as a temporary-directory origin, reporting

@@ -1,0 +1,7 @@
+4982b6c8f0c0539db3674577aec8dd14986d5eb1
+CHANGELOG.md
+
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Auto-merging internal/hook/quality/gate.go
+Auto-merging internal/hook/session_end.go

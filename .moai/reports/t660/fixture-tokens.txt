@@ -1,0 +1,8 @@
+control_leaks 1
+Bash irreversible deny leaks []
+Bash read allow leaks []
+Read read allow leaks []
+Write write ask leaks []
+Bash irreversible ask leaks []
+entries 5 total_leaks 0
+EXIT=0

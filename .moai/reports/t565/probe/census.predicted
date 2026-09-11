@@ -1,0 +1,12 @@
+t565 heading-anchor census — expectation recorded before the first run (probe/zz_t565_heading_census_test.go)
+
+These are order-of-magnitude expectations from the t528 probe (807 spec.md, 2026-09-08), not pinned
+values: the corpus is now ~834 spec.md, so exact equality is not expected.
+
+- walked >= 800 (the probe fails otherwise)
+- anchors on ### or deeper (h3+/*): about 9 files (t528: 9)
+- anchors on a heading naming acceptance.md (*/file-only + */file+word): about 41 files (t528: 41, most are real "Acceptance Criteria (summary ... acceptance.md)" sections, i.e. file+word)
+- h2/file-only + h3+/*: the genuinely misanchored set, expected small (single digits to low tens), including SPEC-AC-COLLECTOR-ANCHOR-001 (h3+ Out of Scope heading)
+- declaration lines parser-accepted but outside any anchored section: order of 180 (t528 card text)
+- misanchored files with a later real acceptance heading: >= 1 (SPEC-AC-COLLECTOR-ANCHOR-001 is expected to be one, if its real AC heading comes after the Out of Scope heading)
+- korean-acceptance-word bucket among outside/unanchored decls: expected non-zero (the narrow side)

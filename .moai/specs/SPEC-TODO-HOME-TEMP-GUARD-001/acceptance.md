@@ -2,7 +2,7 @@
 
 측정 기준 트리: `.claude/worktrees/t536` @ `412c8cb14` (`WT-home-fallback`). 아래 RED는 **예정 형태**다 — 채택 판정(RED 실측)은 plan.md §F의 해당 마일스톤이 수행하고, 실측 출력 전문을 `progress.md` §E.2에 남긴다.
 
-판본: **0.1.4**(spec.md HISTORY와 같은 판본). 0.1.4의 변경은 AC-THG-001 갈래 (c) 추가(D22), AC-THG-003 매트릭스 행의 REQ-THG-009 반영(D21), DoD의 영향 테스트 8→14건과 C행 판정식 교체(D18·D19)다. **AC 개수는 8로 불변이다.**
+판본: **0.1.5**(spec.md HISTORY와 같은 판본). 0.1.5의 변경은 AC-THG-006에 생산 임시 루트 집합 소속 절(양의 방향)을 더한 것과 그에 맞춘 §D 매트릭스 행 갱신뿐이다 — 카드 t574의 제자리 개정이며 근거는 spec.md § Amendments에 있다. 0.1.4의 변경은 AC-THG-001 갈래 (c) 추가(D22), AC-THG-003 매트릭스 행의 REQ-THG-009 반영(D21), DoD의 영향 테스트 8→14건과 C행 판정식 교체(D18·D19)다. **AC 개수는 8로 불변이다.**
 
 등급 용어: **blocking** = RED-now 셀 + green path 셀을 갖춘 릴리스 게이트. **blocking (RED 관측 전)** = 예상 RED 형태 + 코드 근거를 기록해두고 실측 RED는 run-phase가 관측하는 것. **invariant-guard** = 기준 트리에서 이미 GREEN이라 RED-now 셀을 가질 수 없는 불변 방어(release-blocking 자격 없음, 기록도 pass로 남기지 않는다).
 
@@ -19,7 +19,7 @@
 | AC-THG-003 | REQ-THG-005, REQ-THG-009 | (범위 정확성 — 현재는 홈 폴백이 동작) | 비임시 비git base는 홈 폴백 **유지** | blocking |
 | AC-THG-004 | REQ-THG-004 | 정규화 실패 입력에서 임시로 오분류 가능 (M1 RED 관측 예정) | "임시 아님" 보고 (fail-open) | blocking (RED 관측 전) |
 | AC-THG-005 | REQ-THG-006, 007 | (안내 부재 — 현재는 조용히 홈 큐 생성) | 명령 경로: 안내 관측 + 홈 디렉터 0. 순수 경로: 무쓰기·무에러·무안내 | blocking (RED 관측 전) |
-| AC-THG-006 | REQ-THG-002 | 생문자열 접두사 구현이면 `/tmpfoo`를 임시로 오분류 (M1 RED 관측 예정) | 구성요소 경계에서 비임시로 분류 | blocking (RED 관측 전) |
+| AC-THG-006 | REQ-THG-002 | **경계 절**: 생문자열 접두사 구현이면 `/tmpfoo`를 임시로 오분류 (M1 RED 관측 예정). **소속 절**(0.1.5): 기준 트리에서 이미 GREEN이라 RED-now 셀이 없다 — RED는 뮤턴트 M-574 대조로만 나오며 **관측됨**(`TestDefaultTempRoots_Membership` FAIL, `.moai/reports/t574/mutant-kanban.txt`) | 구성요소 경계에서 비임시로 분류 + **생산 집합 소속 단언**(0.1.5): 스텁이 아닌 `defaultTempRoots()`가 `os.TempDir()`·`/tmp`·`/var/folders`를 담고 원소가 정확히 3개, `/var/tmp`는 고정 원소로 없음 (`TestDefaultTempRoots_Membership`) | **절마다 다르다** — 경계 절: blocking (RED 관측 전) · 소속 절: invariant-guard 모양(RED-now 없음, 판별 증거는 뮤턴트 대조) |
 | AC-THG-007 | REQ-THG-001 (판별 증거) | (뮤턴트 오염은 **AC-THG-001 (b) 픽스처에서** 재현 가능 — 그것이 증거) | 판별식 무력화 뮤턴트가 (b) 픽스처에서 canary HOME 오염을 재현하고 (a)·(b) 단언이 모두 FAIL | invariant-guard |
 | AC-THG-008 | REQ-THG-007, 008 | (불변 대상 — 현재 상태가 기준) | 키 유도·git 가지·순수성 불변 + `~/.moai/todo` 계수 불변 | invariant-guard |
 
@@ -145,11 +145,27 @@ Given이 **두 갈래**다. 갈래를 나누지 않으면 아래 RED 정정이 �
 - **Then** 비임시로 보고된다.
 - **And** 임시 루트 **자기 자신**과 그 **하위** 경로는 임시로 보고된다.
 
-판정 명령(제안): `go test ./internal/kanban/ -run TestTempOrigin_ComponentBoundary -count=1`
+**생산 집합 소속 — 양의 방향 (0.1.5, 카드 t574)**
+
+위 절의 양의 방향(루트 자신과 하위는 임시)은 이음매로 **스텁한 루트**를 상대로 판정되고, 생산 집합을 상대로 하는 판정은 음의 방향(`/tmpfoo`) 하나뿐이다. 두 판정 모두 생산 집합에서 원소를 빼도 그대로 성립한다. 그래서 아래 절이 생산 집합 **자체**를 묻는다.
+
+- **Given** 스텁을 걸지 않은 생산 기본값, 즉 `defaultTempRoots()`가 돌려주는 집합 자체가 판정 대상이고(`TempRootsFn` 이음매도, `TempOriginReason`의 분류도 거치지 않는다),
+- **When** 그 집합을 읽으면,
+- **Then** `os.TempDir()`, `/tmp`, `/var/folders` 세 원소를 모두 담고 있다 — `/tmp`와 `/var/folders`는 리터럴 값으로 판정하고, `os.TempDir()`은 플랫폼과 `TMPDIR`에 따라 값이 달라지므로 존재만 판정한다.
+- **And** 원소는 정확히 3개다 — 원소가 빠지는 쪽뿐 아니라 늘어나는 쪽(가드의 확대)도 막는다.
+- **And** `/var/tmp`는 고정 원소로 들어 있지 않다(spec.md §8의 의도적 제외). 단, `TMPDIR`이 `/var/tmp`를 가리켜 그 값이 가변 원소 `os.TempDir()` 자리로 들어온 경우는 제외 위반이 아니다.
+
+판정 명령(제안): `go test ./internal/kanban/ -run '^(TestTempOrigin_ComponentBoundary|TestDefaultTempRoots_Membership)$' -count=1 -v`
+
+선택자는 `^…$`로 앵커를 건다. 기대하는 최상위 `=== RUN`은 **정확히 2건**(두 테스트 각 1건, 서브테스트 줄은 세지 않는다)이다. 2건보다 적게 돌았으면 PASS로 읽지 않는다 — 한쪽 이름이 바뀌어 선택자가 나머지만 골랐다는 뜻이고, 그 초록은 공허하다.
 
 **RED (M1 관측 예정)**: `strings.HasPrefix` 구현에서 `/tmpfoo`가 임시로 오분류된다.
 
-**GREEN (M1)**: 테스트 PASS.
+**RED 대조 — 뮤턴트 M-574 (관측됨, 0.1.5 개정의 근거)**: `defaultTempRoots()`를 `{os.TempDir()}` 하나로 줄인 뮤턴트 아래에서 `TestDefaultTempRoots_Membership`**만** FAIL하고(`fixed temp root "/tmp" missing` · `fixed temp root "/var/folders" missing` · `has 1 members, want 3`), 뮤턴트 실행에서 **실제로 돈** 나머지 kanban 최상위 테스트 8건은 모두 PASS한다 — `TestTempOrigin_SymlinkSpellingEquivalence` · `TestTempOrigin_FailsOpenOnUnresolvable` · `TestTempOrigin_ComponentBoundary` · `TestTodoQueueRoot_TempOriginRefusesHomeQueue` · `TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback` · `TestTodoQueueRoot_PureGuardIsSilent` · `TestTodoQueueRoot_GitBranchUnreachedByGuard` · `TestResolveTodoQueueRoot_PureFallbackWritesNothing`(패키지 판정 FAIL, exit 1). 같은 뮤턴트 아래 cli 테스트 3건(`TestTempOriginGuidance_NamesRootsAndContinues` · `TestTempOriginGuidance_SilentOnNonTemporaryBase` · `TestTempOriginGuidance_SilentWithExplicitAbsoluteMOAIHome`)도 PASS다(exit 0, `.moai/reports/t574/mutant-cli.txt`). **범위 한정**: 증거가 덮는 것은 위 11건뿐이다. AC-THG-007 본문이 이름 부른 `TestAdoptionLandsWhereConsumersRead`와 `TestResolveTodoQueueRootAdopting_AdoptsLocalQueue`는 이 뮤턴트 실행에 포함되지 않았으므로(RUN 줄 없음) 뮤턴트 아래 결과를 주장하지 않는다. 측정 트리 `7da398808`(일시 주입한 뮤턴트는 되돌림), darwin/arm64, go1.26.8. 전문: `.moai/reports/t574/repro-summary.md` · `.moai/reports/t574/mutant-kanban.txt`. 이 대조가 곧 0.1.4의 AC-THG-006이 이 뮤턴트에 **공허했다**는 증거다 — 소속 절이 없으면 이 FAIL을 요구하는 AC가 하나도 없다.
+
+**리눅스 셀 (미측정)**: 코드 판독상 리눅스에서 `TMPDIR`이 설정되지 않았거나 빈 값이면 `os.TempDir()`은 `/tmp`이므로, 같은 뮤턴트는 `/tmp`를 남기고 `/var/folders`만 잃는다. 잃는 원소는 달라도 소속 절이 FAIL하는 것은 같다. 같은 조건(`TMPDIR` 미설정·빈 값)에서 리눅스의 생산 집합에는 `/tmp`가 두 번 들어간다 — 「원소 3개」는 중복을 허용한 개수다. `TMPDIR`이 다른 경로를 가리키면 `os.TempDir()`은 그 값이 되고 중복은 생기지 않는다. 이 셀은 로컬에서 재지 않았고 CI 몫이다.
+
+**GREEN**: 두 테스트 모두 PASS. 0.1.5는 코드를 바꾸지 않는다 — 트리에 이미 있는 테스트(`TestDefaultTempRoots_Membership`은 sync-audit F1 수리 `1d091087b`에서 착지)를 AC가 요구하도록 만든 개정이다.
 
 ### AC-THG-007 — 가드가 잡는 것의 뮤턴트 증명
 

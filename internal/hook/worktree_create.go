@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // worktreeCreateHandler processes WorktreeCreate events.
@@ -143,6 +144,10 @@ func (h *worktreeCreateHandler) registerEntry(input *HookInput, path, branch str
 func resolveWorktreeRepoRoot(dir string) (string, error) {
 	full := []string{"-C", dir, "rev-parse", "--show-toplevel"}
 	cmd := exec.Command("git", full...)
+	// `git -C dir` only changes the directory; an inherited GIT_DIR outranks it
+	// and would resolve the toplevel of the caller's repository instead of the
+	// one being created.
+	cmd.Env = gitenv.Env()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

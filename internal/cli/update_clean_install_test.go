@@ -429,6 +429,13 @@ func TestRunCleanReinstall_PopulatesPATHContext(t *testing.T) {
 // runAgencyMigrationAdapter BEFORE detectV2Fingerprint, so `.agency.archived/`
 // is created regardless of the v2 fingerprint verdict.
 func TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently(t *testing.T) {
+	// Card t661: this test drives the full update template sync, whose tail
+	// (ensureGlobalSettingsEnv) removes <home>/.claude/hooks/moai and rewrites
+	// <home>/.claude/settings.json. Inject a per-test home through the seam and
+	// refuse to run if it is somehow the real home.
+	injectedHome, _ := homeSeamSpy(t)
+	requireNotRealHome(t, injectedHome)
+
 	// Fixture: v3 project with lingering .agency/. The PRESERVE seed is
 	// included so isMoAIProject sees a real moai project (system.yaml is the
 	// positive marker; the SPEC file makes the tree look non-empty).
@@ -726,6 +733,15 @@ func TestReproduction_NonProjectDirectoryPollution_Issue1086(t *testing.T) {
 	// dir stands in for the incidental legacy residue an arbitrary directory
 	// may carry (acceptance.md §D.6 Edge-3) and makes Signal 2 positive too,
 	// so IsV2 is unambiguously true pre-fix.
+	// Card t661: today the project-marker gate returns before the update sync,
+	// so this test never reaches ensureGlobalSettingsEnv. If a path change ever
+	// lets it through, it must not do so against the real home.
+	home, homeErr := userHomeDirFn()
+	if homeErr != nil {
+		t.Fatalf("userHomeDirFn(): %v", homeErr)
+	}
+	requireNotRealHome(t, home)
+
 	root := t.TempDir()
 	makeTestDir(t, root, ".agency")
 	writeTestFile(t, root, "README.md", "just some random directory\n")
@@ -822,6 +838,13 @@ func TestReproduction_NonProjectDirectoryPollution_Issue1086(t *testing.T) {
 // M1 v3-version negative-override converges the fingerprint; this test pins the
 // convergence across three runs (AC-CRR-009(a)(b)(c)).
 func TestRunUpdate_ThreeRunIdempotency_V3Project(t *testing.T) {
+	// Card t661: up to three runs of the full update template sync, whose tail
+	// (ensureGlobalSettingsEnv) removes <home>/.claude/hooks/moai and rewrites
+	// <home>/.claude/settings.json. Inject a per-test home through the seam and
+	// refuse to run if it is somehow the real home.
+	injectedHome, _ := homeSeamSpy(t)
+	requireNotRealHome(t, injectedHome)
+
 	// Fixture per AC-CRR-009: a v3 project (system.yaml v3.0.0-rc2) with a
 	// user-modified language.yaml. The .agency/ + deprecated residue is the
 	// #1084 loop trigger that must NOT re-fire clean-reinstall on a v3 project.

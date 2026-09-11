@@ -5,60 +5,50 @@ import (
 	"testing"
 )
 
-// i18n_chrome_wiring_test.go — kanban card t45 regression net: the console
-// chrome strings that compose a count into the sentence ("4 in-progress",
-// "registry 5", "Showing the 10 most recently updated of 40") and the idle-role
-// attention row carry data-i18n wiring whose baseline is English but whose
-// displayed language is decided client-side. The i18n governance suite covers
-// the dictionary; these tests pin the EMITTED attributes so a templ refactor
-// cannot silently drop the wiring back to untranslated English.
+// i18n_chrome_wiring_test.go — the primary overview and route-specific screens
+// share the same i18n contract. These tests pin the emitted attributes so a
+// templ refactor cannot silently drop the overview copy back to English or
+// reintroduce retired operational links to the primary surface.
 
-// TestOverviewCountedChromeWiring asserts the overview screen emits param-carrying
-// i18n attributes for the counted stat notes, the Sessions registry meta, the
-// registry banner, and the idle-role attention row (which must share the
-// chain.stopped key with the chain band — one message, one key).
-func TestOverviewCountedChromeWiring(t *testing.T) {
+// TestOverviewPrimarySurfaceWiring asserts that Overview is a focused entry
+// point for health, Todo, Settings, and safe quick actions. Kanban, Specs, and
+// Monitor remain separately testable routes but are not primary navigation.
+func TestOverviewPrimarySurfaceWiring(t *testing.T) {
 	t.Parallel()
 
-	vm := OverviewVM{
+	o := OverviewVM{
 		Stats: []StatVM{
-			{Label: "SPEC", Value: "29", Note: "4 in-progress", NoteKey: "statNote.in-progress", NoteParams: "4"},
-			{Label: "drift", Value: "3", Note: "MUST-FIX", NoteKey: "statNote.must-fix"},
+			{Label: "work tracked", Value: "29", Note: "4 in-progress", NoteKey: "statNote.in-progress", NoteParams: "4"},
+			{Label: "review", Value: "3", Note: "needs review", NoteKey: "statNote.needs-review"},
 			{Label: "session", Value: "2/5", Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
 			{Label: "verify", Value: "pass", Note: "12 keys", NoteKey: "statNote.keys", NoteParams: "12"},
 		},
-		Chain: ChainVM{Present: true, IdleRole: "lead"},
-		Attention: []AttentionVM{{
-			Icon:      "alert",
-			Source:    "kanban",
-			Text:      "lead session not started — the chain stops here",
-			Role:      "lead",
-			Badge:     "idle",
-			BadgeKind: "danger",
-			Href:      "/kanban",
-		}},
 	}
-	html := renderTempl(t, Overview(ShellVM{Area: "overview", Title: "Overview"}, vm))
+	q := TodoVM{Root: "/tmp/backlog.db", Items: []TodoItemVM{{ID: "t1", Text: "review settings", State: "queued"}}}
+	html := renderTempl(t, Overview(ShellVM{Area: "overview", Title: "Overview", Profile: "default", Project: "moai-adk-go", Host: "127.0.0.1"}, o, q))
 
 	for _, want := range []string{
+		`data-i18n="overview.eyebrow"`,
+		`data-i18n="overview.title"`,
+		`data-i18n="overview.health.title"`,
+		`data-i18n="overview.todo.title"`,
+		`data-i18n="overview.actions.title"`,
+		`data-i18n="overview.scope.title"`,
+		`data-i18n="stat.work-tracked"`,
+		`data-i18n="stat.review"`,
 		`data-i18n="statNote.in-progress" data-i18n-params="4"`,
-		`data-i18n="statNote.must-fix"`,
+		`data-i18n="statNote.needs-review"`,
 		`data-i18n="statNote.pid-confirmed-registry"`,
 		`data-i18n="statNote.keys" data-i18n-params="12"`,
-		`data-i18n="panelMeta.registry" data-i18n-params="0"`,
-		`data-i18n="banner.registry"`,
-		// The attention row renders through the SAME keys the chain band uses,
-		// so the two paths cannot drift apart in translation coverage again.
-		`data-i18n="chain.sessionNotStarted"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("overview markup is missing %s", want)
 		}
 	}
-	// chain.stopped appears exactly twice: once in the chain band, once in the
-	// attention row — the dual render path unified onto one key.
-	if n := strings.Count(html, `data-i18n="chain.stopped"`); n != 2 {
-		t.Errorf("chain.stopped wiring count = %d, want 2 (chain band + attention row)", n)
+	for _, retired := range []string{`href="/kanban"`, `href="/specs"`, `href="/monitor"`} {
+		if strings.Contains(html, retired) {
+			t.Errorf("overview primary surface exposes retired navigation link %s", retired)
+		}
 	}
 }
 

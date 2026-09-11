@@ -1,0 +1,7 @@
+{
+  "audited_at": "2026-09-10T14:33:30.943012Z",
+  "total_specs": 1,
+  "grandfathered": 0,
+  "modern_era_clean": 1,
+  "drift_findings": []
+}

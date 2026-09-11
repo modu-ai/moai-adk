@@ -1,0 +1,10 @@
+=== RUN   TestUserHomeDirFnSandboxesRealHome
+=== RUN   TestUserHomeDirFnSandboxesRealHome/real_home_redirects_to_sandbox
+    main_test.go:443: userHomeDirFn() = "/Users/goos", which is the real home. TestMain must call sandboxUserHomeDir() before m.Run(); without it, any test reaching ensureGlobalSettingsEnv deletes <home>/.claude/hooks/moai and rewrites <home>/.claude/settings.json.
+=== RUN   TestUserHomeDirFnSandboxesRealHome/overridden_home_passes_through
+--- FAIL: TestUserHomeDirFnSandboxesRealHome (0.00s)
+    --- FAIL: TestUserHomeDirFnSandboxesRealHome/real_home_redirects_to_sandbox (0.00s)
+    --- PASS: TestUserHomeDirFnSandboxesRealHome/overridden_home_passes_through (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.943s
+FAIL

@@ -1,0 +1,7 @@
+86e2d9b63abd4d027b4f65bcdc3b41e127b55c9d65c5c8061d17f36b247cc5eb  /Users/goos/.claude/settings.json
+5c86ea83c9614fcfa63554206db35e678db349b48d11edf35b3c655d0f4b6a8a  /Users/goos/.zshenv
+054460e629ba7a5bb8787b88af16ae533dbaeaea433b20bb8839b5be4abd5bec  /Users/goos/.zshrc
+edb6b08a213801ec8649ffacb3515ef1fac6705c0b60524b034540c734ad1bec  /Users/goos/.zprofile
+1f36c48ef1b9a82b901222a30807d1c611892b71b609eab083473aef9230e342  /Users/goos/.profile
+b3e443c6644bb09a94c9122abc6a56c20687c74b5abf2671f955d365069dfaad  /Users/goos/.bash_profile
+25b18ecc55a091e645870619fd6bd9dd05448b3b13b1acd0059ae943e3a83348  /Users/goos/.bashrc

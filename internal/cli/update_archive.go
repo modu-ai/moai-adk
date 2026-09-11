@@ -410,9 +410,10 @@ func presentLegacySkillIDs(projectRoot string) []string {
 }
 
 // reportArchiveShortfall makes the archive step's quiet failure loud: when
-// skills that existed before the sync were not archived (managed cleanup
-// removes their sources before the archive step runs), the user is told what
-// was lost instead of reading an unexplained "total: 0 skills archived".
+// skills that existed before the sync were not archived (an entry the archive
+// could not copy is still deleted by the managed cleanup that runs right after
+// it), the user is told what was lost instead of reading an unexplained
+// "total: 0 skills archived".
 // Silent when nothing was present or everything present was archived.
 func reportArchiveShortfall(preSyncIDs []string, archived int, out io.Writer) {
 	if len(preSyncIDs) == 0 || archived >= len(preSyncIDs) {
@@ -421,7 +422,7 @@ func reportArchiveShortfall(preSyncIDs []string, archived int, out io.Writer) {
 	th := resolveTheme()
 	_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive",
 		fmt.Sprintf("archived %d of %d skills present before sync", archived, len(preSyncIDs)),
-		"managed-path cleanup removed the sources before the archive step ran — the rest were deleted without archival", &th))
+		"the rest could not be archived — the managed-path cleanup that follows deleted them without archival", &th))
 }
 
 // copyFile copies a single file from src to dst, preserving the source's

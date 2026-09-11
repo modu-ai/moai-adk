@@ -23,6 +23,7 @@ import (
 	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/merge"
@@ -233,6 +234,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// account for what was deleted (and what the templates do not restore).
 	var preCleanFiles []string
 
+	// The Clean Managed Paths step removes .moai/config before Deploy Templates
+	// renders, so the project's git mode is read here, while the file exists.
+	// Without it every render falls back to the template default (manual).
+	gitMode := config.LoadGitMode(projectRoot)
+
 	// Define deployment steps
 	steps := []struct {
 		name    string
@@ -276,6 +282,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
+					template.WithGitMode(gitMode),
 				)
 
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
@@ -293,6 +300,21 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    cleanManagedPathsStage,
 			message: "Removing old MoAI-managed files",
 			execute: func() error {
+				// Archive legacy skills (BC-V3R3-007) BEFORE the removal below:
+				// they live under .claude/skills/moai*, which this step deletes,
+				// so archiving afterwards finds no source. --force is propagated
+				// so drift routes through the overwrite + backup path
+				// (SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002). An archive
+				// failure warns and does not stop the update.
+				legacyBefore := presentLegacySkillIDs(projectRoot)
+				archived, archiveErr := archiveLegacySkills(projectRoot, out, forceBackup)
+				if archiveErr != nil {
+					_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
+				}
+				// A skill present now but not archived is deleted by the removal
+				// below, so the shortfall is reported as a loss.
+				reportArchiveShortfall(legacyBefore, archived, out)
+
 				// t40 defect 2: snapshot what exists under the managed roots
 				// BEFORE the removal (read-only; the deletion below is
 				// unchanged).
@@ -336,6 +358,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
+					template.WithGitMode(gitMode),
 				)
 
 				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {

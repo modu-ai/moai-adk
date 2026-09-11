@@ -1,0 +1,60 @@
+=== RUN   TestT565HeadingAnchorCensus
+    zz_t565_heading_census_test.go:193: spec.md walked = 834  anchored = 367  unanchored = 467
+    zz_t565_heading_census_test.go:195:   anchor kind h2/file+word     files=29   in-section decl-shaped=109   in-section parser-accepted=101
+    zz_t565_heading_census_test.go:195:   anchor kind h2/file-only     files=10   in-section decl-shaped=5     in-section parser-accepted=5
+    zz_t565_heading_census_test.go:195:   anchor kind h2/word          files=319  in-section decl-shaped=1071  in-section parser-accepted=994
+    zz_t565_heading_census_test.go:195:   anchor kind h3+/file-only    files=4    in-section decl-shaped=0     in-section parser-accepted=0
+    zz_t565_heading_census_test.go:195:   anchor kind h3+/word         files=5    in-section decl-shaped=0     in-section parser-accepted=0
+    zz_t565_heading_census_test.go:195:   anchor kind none             files=467  in-section decl-shaped=0     in-section parser-accepted=0
+    zz_t565_heading_census_test.go:197: OUTSIDE the anchored section (anchored files): decl-shaped=107 parser-accepted=55
+    zz_t565_heading_census_test.go:199:     under heading bucket ac-token                   parser-accepted=17
+    zz_t565_heading_census_test.go:199:     under heading bucket english-acceptance-word    parser-accepted=22
+    zz_t565_heading_census_test.go:199:     under heading bucket other                      parser-accepted=16
+    zz_t565_heading_census_test.go:201: IN UNANCHORED files: decl-shaped=78 parser-accepted=17
+    zz_t565_heading_census_test.go:203:     under heading bucket korean-acceptance-word     parser-accepted=2
+    zz_t565_heading_census_test.go:203:     under heading bucket other                      parser-accepted=15
+    zz_t565_heading_census_test.go:205: MISANCHORED files with a later real acceptance heading = 2, parser-accepted decls under it (never read) = 8
+    zz_t565_heading_census_test.go:207:   misanchored sample: h3+/file-only  ../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md  ->  ### Out of Scope — 형제 `acceptance.md` 인라인 파싱
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-AGENT-EMIT-LINEAGE-001/spec.md  ->  ## 3. 수락 기준 — `acceptance.md` (Tier M)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-HARNESS-EXECUTE-E2E-001/spec.md  ->  ## §E — 인수 기준 요약 (상세는 acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h3+/word  ../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md  ->  ### Preservation tests required GREEN (run in acceptance)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h3+/word  ../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md  ->  ### Preservation tests required GREEN (run in acceptance)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-NAVIGATOR-SYNC-001/spec.md  ->  ## §F. AC Matrix (summary — full detail in acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-NAVIGATOR-SYNC-003/spec.md  ->  ## §F. AC Matrix (summary — full Given-When-Then detail in acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/spec.md  ->  ## §F Success Criteria (summary; full AC in acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-SPEC-LINT-ID-ARG-001/spec.md  ->  ## §D 수용 기준 — `acceptance.md`가 소유한다
+    zz_t565_heading_census_test.go:207:   misanchored sample: h3+/file-only  ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md  ->  ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-SYNC-AUDIT-FALSIFICATION-001/spec.md  ->  ## §H AC summary (full GWT in acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h3+/word  ../../.moai/specs/SPEC-V3R4-STATUS-LIFECYCLE-001/spec.md  ->  ### Phase-Gate Acceptance
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md  ->  ## §H. 성공 기준 (요약; 상세는 acceptance.md)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h3+/file-only  ../../.moai/specs/SPEC-V3R6-CHANGELOG-CLEANUP-001/spec.md  ->  ### A.3 — Fact 3: 4 sibling SPEC AC 카운트 드리프트 점검 (acceptance.md as SSOT)
+    zz_t565_heading_census_test.go:207:   misanchored sample: h2/file-only  ../../.moai/specs/SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001/spec.md  ->  ## §E. AC Matrix (summary — full Given-When-Then in acceptance.md)
+    zz_t565_heading_census_test.go:210:   later-real sample: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)  |  later: ## E. Acceptance Criteria Reference  |  live decls under later = 8
+    zz_t565_heading_census_test.go:210:   later-real sample: ../../.moai/specs/SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002/spec.md  anchor: ### §B.5 Reproduction-First Acceptance (test shape — run-phase authored)  |  later: ## §D Acceptance Index  |  live decls under later = 0
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:126  under: ### 구조 및 스키마 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:127  under: ### 구조 및 스키마 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:128  under: ### 구조 및 스키마 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:129  under: ### 구조 및 스키마 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:133  under: ### 동작 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:134  under: ### 동작 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:135  under: ### 동작 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [ac-token]: ../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md:136  under: ### 동작 AC  |  anchor: ## Acceptance Criteria
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:171  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:172  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:173  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:174  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:175  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:176  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:177  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [english-acceptance-word]: ../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:178  under: ## E. Acceptance Criteria Reference  |  anchor: ### A.1 Observed ground-truth (re-verified live; commands + output recorded in §F.1 / acceptance.md)
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md:275  under: ### 1.2 거절 원인 — 코퍼스에서 유도했다  |  anchor: ### Out of Scope — 형제 `acceptance.md` 인라인 파싱
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md:276  under: ### 1.2 거절 원인 — 코퍼스에서 유도했다  |  anchor: ### Out of Scope — 형제 `acceptance.md` 인라인 파싱
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md:277  under: ### 1.2 거절 원인 — 코퍼스에서 유도했다  |  anchor: ### Out of Scope — 형제 `acceptance.md` 인라인 파싱
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md:395  under: #### 종전 주장의 철회 — 「가드를 약화시키지 않는다」는 틀렸다  |  anchor: ### Out of Scope — 형제 `acceptance.md` 인라인 파싱
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-V3R5-WORKFLOW-LEAN-001/spec.md:60  under: ### 3.1 Tier Classification  |  anchor: ## 3. EARS Requirements + Acceptance Criteria (inline)
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-V3R5-WORKFLOW-LEAN-001/spec.md:61  under: ### 3.1 Tier Classification  |  anchor: ## 3. EARS Requirements + Acceptance Criteria (inline)
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-V3R5-WORKFLOW-LEAN-001/spec.md:70  under: ### 3.2 Section A-E Template Optional  |  anchor: ## 3. EARS Requirements + Acceptance Criteria (inline)
+    zz_t565_heading_census_test.go:214:   outside sample [other]: ../../.moai/specs/SPEC-V3R5-WORKFLOW-LEAN-001/spec.md:80  under: ### 3.3 plan-auditor Escalation + Bounds  |  anchor: ## 3. EARS Requirements + Acceptance Criteria (inline)
+--- PASS: TestT565HeadingAnchorCensus (0.30s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.725s

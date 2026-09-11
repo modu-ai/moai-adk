@@ -483,16 +483,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// t40 defect 1: snapshot (read-only) which legacy skills exist BEFORE the
-	// template sync — the sync's managed cleanup removes .claude/skills/moai*
-	// before the archive step runs, and without this snapshot the resulting
-	// "total: 0 skills archived" is indistinguishable from "nothing to
-	// archive".
-	var preSyncLegacySkills []string
-	if cwd, err := os.Getwd(); err == nil {
-		preSyncLegacySkills = presentLegacySkillIDs(cwd)
-	}
-
+	// Legacy skills are archived inside the template sync, before its managed
+	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
+	// which keeps REQ-UAC-004.
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		return err
@@ -553,26 +546,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if notice := migrateProfileAdvisory(cwd); notice != "" {
 			_, _ = fmt.Fprintln(out, notice)
 		}
-	}
-
-	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
-	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
-	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
-	// so that drift-detection routes through the overwrite + backup path
-	// instead of returning ARCHIVE_DRIFT.
-	{
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("get working directory for archive: %w", err)
-		}
-		archived, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force"))
-		if archiveErr != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
-		}
-		// t40 defect 1: make the shortfall loud — skills that existed before
-		// the sync but were not archived (their sources were removed by the
-		// managed cleanup before this step) are reported as a loss.
-		reportArchiveShortfall(preSyncLegacySkills, archived, out)
 	}
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects

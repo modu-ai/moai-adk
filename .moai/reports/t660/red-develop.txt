@@ -1,0 +1,35 @@
+=== RUN   TestToolPolicyList_QueryFilters
+=== PAUSE TestToolPolicyList_QueryFilters
+=== CONT  TestToolPolicyList_QueryFilters
+=== RUN   TestToolPolicyList_QueryFilters/all_entries
+=== PAUSE TestToolPolicyList_QueryFilters/all_entries
+=== RUN   TestToolPolicyList_QueryFilters/filter_irreversible
+=== PAUSE TestToolPolicyList_QueryFilters/filter_irreversible
+=== RUN   TestToolPolicyList_QueryFilters/filter_allow
+=== PAUSE TestToolPolicyList_QueryFilters/filter_allow
+=== RUN   TestToolPolicyList_QueryFilters/filter_deny
+=== PAUSE TestToolPolicyList_QueryFilters/filter_deny
+=== RUN   TestToolPolicyList_QueryFilters/filter_ask
+=== PAUSE TestToolPolicyList_QueryFilters/filter_ask
+=== RUN   TestToolPolicyList_QueryFilters/filter_tool_Bash
+=== PAUSE TestToolPolicyList_QueryFilters/filter_tool_Bash
+=== CONT  TestToolPolicyList_QueryFilters/all_entries
+=== CONT  TestToolPolicyList_QueryFilters/filter_deny
+=== CONT  TestToolPolicyList_QueryFilters/filter_allow
+=== CONT  TestToolPolicyList_QueryFilters/filter_irreversible
+=== CONT  TestToolPolicyList_QueryFilters/filter_tool_Bash
+=== CONT  TestToolPolicyList_QueryFilters/filter_ask
+    tool_policy_test.go:97: output missing substring "ask";
+        got:
+        TOOL  ARGS  RISK  DECISION  OWNER  AUDIT
+--- FAIL: TestToolPolicyList_QueryFilters (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_deny (0.01s)
+    --- PASS: TestToolPolicyList_QueryFilters/all_entries (0.02s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_allow (0.02s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_tool_Bash (0.02s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_irreversible (0.02s)
+    --- FAIL: TestToolPolicyList_QueryFilters/filter_ask (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.327s
+FAIL
+EXIT=1

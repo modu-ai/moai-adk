@@ -36,6 +36,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -450,6 +451,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		template.WithPlatform(runtime.GOOS),
 		template.WithVersion(version.GetVersion()),
 		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
+		// Step 4 removes only deprecated paths, so git-strategy.yaml is still on
+		// disk here; without the mode the reinstall renders the template default.
+		template.WithGitMode(config.LoadGitMode(projectRoot)),
 	)
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {

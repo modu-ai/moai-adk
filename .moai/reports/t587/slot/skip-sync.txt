@@ -1,0 +1,6 @@
+=== RUN   TestSkipSyncNoArchive
+=== RUN   TestSkipSyncNoArchive/version_match_returns_skipped_true
+--- PASS: TestSkipSyncNoArchive (0.00s)
+    --- PASS: TestSkipSyncNoArchive/version_match_returns_skipped_true (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.850s

@@ -46,7 +46,7 @@ type RetainedKeyRef struct {
 //
 // Legacy retained-key reporting: this entry re-emits the per-key advisory text
 // to retainedKeySink (os.Stderr in production) for callers not yet routed
-// through the TUI renderer (clean-reinstall, --restore-config). The update
+// through the TUI renderer (clean-reinstall, --restore). The update
 // template-sync path calls RestoreMoaiConfigRetained instead and renders the
 // advisory through its own output channel (t63).
 //

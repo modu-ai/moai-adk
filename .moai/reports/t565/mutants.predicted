@@ -1,0 +1,31 @@
+t565 mutant predictions — written before any mutant is applied (fixed parser.go, uncommitted, on top of RED baseline commit)
+
+Selector for every mutant: go test ./internal/spec -count=1 -run '^(TestT565|TestT528)' -v
+Tests not named under a mutant are predicted PASS.
+
+M1 negative exclusion removed (the acNegativeSectionMarkers loop deleted)
+   FAIL TestT565AnchorSkipsOutOfScopeHeading/english  (Out of Scope heading anchors via "acceptance"; its ### level ends the section at ## 6, so AC-HDG-01 is missed)
+   FAIL TestT565AnchorSkipsOutOfScopeHeading/korean   (anchors via 수락 기준)
+
+M2 file-name removal dropped (vocabulary matched on the raw lower-cased heading)
+   FAIL TestT565AnchorSkipsFileMentionOnlyHeading
+   ("## 3. 수락 기준 — acceptance.md" still PASS: it anchors either way)
+
+M3 vocabulary reduced to {"acceptance"}
+   FAIL TestT565AnchorVocabulary: 수락 기준, 인수 기준, 검수 기준, §F AC Matrix, §E Success Criteria, §E. Success criteria,
+        and "## 3. 수락 기준 — acceptance.md (Tier M)" (with the file name removed it has no vocabulary hit left) — 7 subtests
+   "## 6. Acceptance Criteria" PASS
+
+M4 section end reverted to the old rule (break on any trimmed line starting with "##")
+   FAIL TestT565SectionReadsItsOwnSubheadings                 (breaks at its own ### 6.1)
+   FAIL TestT565SectionEndsAtSameOrHigherLevel/h3-anchor      (breaks at its own ####)
+   FAIL TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2     ("# Appendix" does not break)
+
+M5 section end made strict (break only on level < anchor level)
+   FAIL TestT565SectionReadsItsOwnSubheadings                 (## 7. Notes no longer ends a ## section: decoy read)
+   FAIL TestT565SectionEndsAtSameOrHigherLevel/h3-anchor      (### 6.2 no longer ends a ### section: decoy read)
+   PASS TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2     (# is still < ##)
+   FAIL TestT528SectionScopingInvariant                       (## Notes no longer ends it: AC-AUDIT-SNAPSHOT-017 read)
+
+M6 file-name exclusion widened to "a heading mentioning acceptance.md never anchors"
+   FAIL TestT565AnchorVocabulary/"## 3. 수락 기준 — acceptance.md (Tier M)"

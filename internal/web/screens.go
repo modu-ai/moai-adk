@@ -124,7 +124,7 @@ func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
 	// The other three screens carry a descriptive crumb; overview carried none,
 	// so it was the one screen that never named the project it was reporting on.
 	vm := a.shellVM(r, "overview", "Overview", filepath.Base(a.cfg.ProjectRoot))
-	a.renderPage(w, Overview(vm, o))
+	a.renderPage(w, Overview(vm, o, a.buildTodo()))
 }
 
 func (a *app) handleKanban(w http.ResponseWriter, r *http.Request) {
