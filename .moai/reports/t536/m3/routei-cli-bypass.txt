@@ -1,0 +1,5 @@
+--- FAIL: TestGuardBypassMutant_ObserveHomePollution (0.09s)
+    todo_axisa_guard_test.go:202: the mutant produced home pollution under /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGuardBypassMutant_ObserveHomePollution690346063/001/.moai/todo (1 entr(ies)) — the resolver-layer temporary-origin guard regressed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.943s
+FAIL

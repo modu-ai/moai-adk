@@ -1,0 +1,11 @@
+# AC-GTS2-001 toolchain gate
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+tree: e6ec2991e4ce028b83d2be0658844ddb3813a8dd
+shell env GOTOOLCHAIN: unset (no GOTOOLCHAIN/GOFLAGS in env)
+
+$ go -C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t610 version
+go version go1.26.8 darwin/arm64
+
+$ go -C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t610 env GOTOOLCHAIN GOMOD
+auto
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t610/go.mod

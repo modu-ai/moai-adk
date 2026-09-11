@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/specid"
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
@@ -30,9 +32,20 @@ func newSpecLintCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "lint [spec.md...]",
+		Use:   "lint [SPEC-ID | path/to/spec.md | SPEC directory ...]",
 		Short: "Lint SPEC documents for EARS compliance and structural validity",
-		Long: `Validate SPEC documents against:
+		Long: `Accepted arguments (SPEC-SPEC-LINT-ID-ARG-001) — three shapes, mixable in
+one invocation, and with no argument the whole corpus is scanned as before:
+- a SPEC-ID, e.g. SPEC-SPC-001, resolved to .moai/specs/<SPEC-ID>/spec.md
+  under the project root (the same rule 'moai spec view' uses)
+- a file path, e.g. .moai/specs/SPEC-SPC-001/spec.md
+- a SPEC directory, e.g. .moai/specs/SPEC-SPC-001, read as the spec.md inside it
+
+An argument that looks like a SPEC-ID but resolves to nothing is an argument
+error (exit code 3) naming the path that was tried — not a finding about a
+document.
+
+Validate SPEC documents against:
 - EARS modality compliance (SHALL, WHEN, WHILE, WHERE, IF)
 - REQ ID uniqueness
 - AC→REQ coverage (100% required)
@@ -75,6 +88,15 @@ Exit codes:
 			baseDir := detectBaseDir(cwd)
 			registryPath := detectRegistryPath(cwd)
 
+			// SPEC-SPEC-LINT-ID-ARG-001 — resolve the argument shapes
+			// (SPEC-ID / file path / SPEC directory) into lint targets. With
+			// no arguments this is a no-op, which is what keeps the whole-
+			// corpus scan on detectBaseDir(cwd) exactly as it was.
+			targets, resolveErr := resolveLintTargets(cmd.ErrOrStderr(), args)
+			if resolveErr != nil {
+				return resolveErr
+			}
+
 			linterOpts := spec.LinterOptions{
 				RegistryPath: registryPath,
 				BaseDir:      baseDir,
@@ -82,7 +104,7 @@ Exit codes:
 			}
 
 			linter := spec.NewLinter(linterOpts)
-			report, lintErr := linter.Lint(args)
+			report, lintErr := linter.Lint(targets)
 			if lintErr != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "linter error: %v\n", lintErr)
 				return &exitCodeError{code: 2, msg: fmt.Sprintf("spec lint: linter error: %v", lintErr)}
@@ -301,6 +323,107 @@ func printTable(cmd *cobra.Command, report *spec.Report) {
 		}
 	}
 	_, _ = fmt.Fprintf(out, "\n%d error(s), %d warning(s)\n", errCount, warnCount)
+}
+
+// resolveLintTargets maps each CLI argument onto the path that should be
+// linted. SPEC-SPEC-LINT-ID-ARG-001 (REQ-SLI-001, REQ-SLI-003, REQ-SLI-005).
+//
+// An empty argument list is returned untouched: the whole-corpus scan is a
+// different code path with a different base directory (detectBaseDir(cwd)), and
+// leaving it alone is what keeps a no-argument invocation unchanged.
+//
+// The project root is looked up LAZILY — only once an ID-shaped argument is
+// actually seen. Doing it eagerly would make a path-only invocation fail
+// outside a project, and the path form is this SPEC's control group.
+// The diagnostic is WRITTEN to stderr as well as carried by the returned
+// error, because the error's message never reaches the terminal on this path:
+// an ExitCoder returned from RunE sets the process exit code and is rendered
+// as nothing. That silence is pre-existing — the older exit-3 case in this same
+// command ("cannot use --json and --sarif together") is silent too — but
+// REQ-SLI-005 asks for a message naming the path that was tried, and an exit
+// code alone does not name anything.
+func resolveLintTargets(stderr io.Writer, args []string) ([]string, error) {
+	if len(args) == 0 {
+		return args, nil
+	}
+
+	var projectRoot string
+	targets := make([]string, 0, len(args))
+	for _, arg := range args {
+		// Path signals win first (plan.md D1: signal → shape → path). The
+		// pre-exclusion is what stops a path being misread as an ID, which is
+		// the worse of the two misreadings: the user believes the file they
+		// named was the file that was checked.
+		if hasPathSignal(arg) {
+			targets = append(targets, expandSpecDirArg(arg))
+			continue
+		}
+
+		if !specid.HasCanonicalSpecIDShape(arg) {
+			// Not a path signal and not ID-shaped: treat it as a path, which
+			// is the pre-existing behaviour for anything unrecognised.
+			targets = append(targets, expandSpecDirArg(arg))
+			continue
+		}
+
+		// Sibling-command idiom (spec view/status/close): sanitize before the
+		// ID reaches filepath.Join. Note this call is UNREACHABLE defence in
+		// depth here — ValidateSpecID rejects absolute paths, ".." and path
+		// separators, and every one of those carries a path signal that the
+		// branch above has already consumed. It is kept because the idiom is
+		// the boundary contract, not because a rejection is expected; no
+		// acceptance criterion asserts that it fires.
+		if err := specid.ValidateSpecID(arg); err != nil {
+			return nil, argumentError(stderr, "spec lint: %v", err)
+		}
+
+		if projectRoot == "" {
+			root, err := findProjectRootFn()
+			if err != nil {
+				return nil, argumentError(stderr, "spec lint: cannot resolve SPEC-ID %q: failed to find project root: %v", arg, err)
+			}
+			projectRoot = root
+		}
+
+		specPath := filepath.Join(projectRoot, ".moai", "specs", arg, "spec.md")
+		if _, err := os.Stat(specPath); err != nil {
+			// An argument-shape mistake is an argument error, not a finding
+			// about a document (REQ-SLI-005). The path that was tried is named
+			// so the reader can see what the ID was taken to mean. The first
+			// failure ends the run: a partial run followed by exit 3 blurs
+			// what was actually checked (plan.md D2).
+			return nil, argumentError(stderr, "spec lint: no SPEC document found for %q (tried: %s)", arg, specPath)
+		}
+		targets = append(targets, specPath)
+	}
+
+	return targets, nil
+}
+
+// argumentError writes the diagnostic where the user can read it and returns
+// the exit-3 error that carries the same text to the process exit code.
+func argumentError(stderr io.Writer, format string, a ...any) error {
+	msg := fmt.Sprintf(format, a...)
+	_, _ = fmt.Fprintln(stderr, msg)
+	return &exitCodeError{code: 3, msg: msg}
+}
+
+// hasPathSignal reports whether the argument carries a syntactic path signal.
+// Structural only — no filesystem lookup — so the classification cannot change
+// underneath a caller depending on what happens to exist (plan.md D1 rejects
+// probe-ordered discrimination for exactly that reason).
+func hasPathSignal(arg string) bool {
+	return strings.ContainsAny(arg, `/\`) || strings.HasSuffix(arg, ".md")
+}
+
+// expandSpecDirArg turns a SPEC directory into the spec.md inside it, and
+// leaves everything else alone — including paths that do not exist, which must
+// keep producing the same ParseFailure they produced before (REQ-SLI-004).
+func expandSpecDirArg(arg string) string {
+	if info, err := os.Stat(arg); err == nil && info.IsDir() {
+		return filepath.Join(arg, "spec.md")
+	}
+	return arg
 }
 
 // detectBaseDir determine project base directory.

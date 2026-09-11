@@ -292,11 +292,11 @@ func TestClassifyCodexWiring_SixStateMatrix(t *testing.T) {
 		"partial":   wantWiringRowPartialNoConfig,
 		"invalid":   wantWiringRowInvalid,
 	} {
-		if !strings.Contains(row, "moai init --agent codex") {
+		if !strings.Contains(row, "moai init --llm codex") {
 			t.Errorf("%s row lacks the action phrase: %q", name, row)
 		}
 	}
-	if strings.Contains(wantWiringRowWired, "moai init --agent codex") {
+	if strings.Contains(wantWiringRowWired, "moai init --llm codex") {
 		t.Errorf("wired row must not recommend an action: %q", wantWiringRowWired)
 	}
 }
@@ -348,10 +348,10 @@ func TestCodexReadiness_NoBannedWordsAllStates(t *testing.T) {
 				}
 			}
 			joined := strings.Join(rows[:], "\n")
-			if st.wantAction && !strings.Contains(joined, "moai init --agent codex") {
+			if st.wantAction && !strings.Contains(joined, "moai init --llm codex") {
 				t.Errorf("incomplete state readout lacks the action phrase:\n%s", joined)
 			}
-			if !st.wantAction && strings.Contains(joined, "moai init --agent codex") {
+			if !st.wantAction && strings.Contains(joined, "moai init --llm codex") {
 				t.Errorf("wired state readout recommends an action:\n%s", joined)
 			}
 		})

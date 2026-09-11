@@ -1,0 +1,9 @@
+../../.moai/specs/SPEC-DB-CMD-001/spec.md
+../../.moai/specs/SPEC-FACTORY-WORKER-FANOUT-001/spec.md
+../../.moai/specs/SPEC-KARPATHY-001/spec.md
+../../.moai/specs/SPEC-PLAN-AUDITOR-RESIDUE-001/spec.md
+../../.moai/specs/SPEC-SKILLPORT-CLAIM-CHECK-001/spec.md
+../../.moai/specs/SPEC-SPECLINT-ARTIFACT-STATUS-001/spec.md
+../../.moai/specs/SPEC-V3R3-PATTERNS-001/spec.md
+../../.moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/spec.md
+../../.moai/specs/SPEC-V3R6-MAIN-RED-REMEDIATION-001/spec.md

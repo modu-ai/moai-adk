@@ -1,0 +1,63 @@
+## AC-CSRB-008 — scope pin (CARD_BASE re-derived at read time)
+CARD_BASE=c72dc1bafe8023628b7f9fdc746bc168bf93e6ad  (= merge-base origin/develop HEAD; origin/develop=91d25bc617a71344a4183149c876ef8b6f1543b5)
+HEAD=4aa8915ee181e3dd9b638a644aadd9a26d929000
+### full changed-file listing (the NON-ZERO control for the probe below)
+.moai/reports/t540/ac-006-base.log
+.moai/reports/t540/ac-006.log
+.moai/reports/t540/lab/ts.go
+.moai/reports/t540/plan-audit.md
+.moai/reports/t540/reader-census.md
+.moai/reports/t540/run-m1-m2.md
+.moai/reports/t562/ac-csrb-001.txt
+.moai/reports/t562/ac-csrb-006-baseline.log
+.moai/reports/t562/ac-csrb-006-baseline.md
+.moai/reports/t562/green-csrb-002-m2.log
+.moai/reports/t562/green-csrb-002-m2.md
+.moai/reports/t562/plan-audit.md
+.moai/reports/t562/red-csrb-002.log
+.moai/reports/t562/red-csrb-002.md
+.moai/reports/t562/step0-symbol-enumeration.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-READBACK-001/acceptance.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-READBACK-001/plan.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-READBACK-001/progress.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-READBACK-001/spec.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-SLASH-001/acceptance.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-SLASH-001/plan.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-SLASH-001/progress.md
+.moai/specs/SPEC-CODEX-SKILL-PATH-SLASH-001/spec.md
+internal/cli/codex_config_path.go
+internal/cli/codex_config_path_test.go
+internal/cli/codex_skills_disable.go
+internal/cli/codex_skills_disable_path_test.go
+internal/cli/codex_skills_prune.go
+internal/cli/codex_skills_prune_readback_test.go
+internal/cli/codex_stale_skill_readback_test.go
+internal/cli/doctor_codex.go
+changed-file count = 31
+### probe: internal/codexwiring/skills.go (expect EMPTY)
+probe line count = 0
+### PRESERVE-list probe: t540 absorbed surface must carry NO card-authored change
+  first-parent card-authored diff for internal/cli/codex_config_path.go: in CARD_BASE..HEAD listing = 1 (absorb-provenance; see note)
+  first-parent card-authored diff for internal/cli/codex_config_path_test.go: in CARD_BASE..HEAD listing = 1 (absorb-provenance; see note)
+  first-parent card-authored diff for internal/cli/codex_skills_disable.go: in CARD_BASE..HEAD listing = 1 (absorb-provenance; see note)
+  first-parent card-authored diff for internal/cli/codex_skills_disable_path_test.go: in CARD_BASE..HEAD listing = 1 (absorb-provenance; see note)
+### card commit line (first-parent, CARD_BASE..HEAD)
+4aa8915ee docs(SPEC-CODEX-SKILL-PATH-READBACK-001): t562 amend AC-CSRB-007 to the card-diff delta pin (t562)
+835215bab docs(SPEC-CODEX-SKILL-PATH-READBACK-001): t562 M2 - record post-commit osStatFn diff-body measurement (t562)
+c007e5409 fix(SPEC-CODEX-SKILL-PATH-READBACK-001): t562 M2 - convert the absolute-branch stat target via the t540 seam (t562)
+b78d2e425 test(SPEC-CODEX-SKILL-PATH-READBACK-001): t562 M2 step 0 - rename card recorder to pruneReadbackStatRecorder (t562)
+2d1dad058 merge: absorb origin/develop c72dc1baf (t563 doctor stat seam lands via absorb, not authored here) into WT-codex-read-inverse for t562 M2 (card t562)
+f1654c924 test(SPEC-CODEX-SKILL-PATH-READBACK-001): t562 M1 - RED for prune stat-target conversion + doctor baseline (t562)
+69cfdce6f merge: absorb lane-1 WT-codex-path-escape (t540 M1 seam + M2 publisher) for t562 run M1 (card t562)
+5f8eab47e merge: absorb origin/develop 706853e1b into WT-codex-read-inverse (card t562)
+fe2c8f51f docs(spec): add SPEC-CODEX-SKILL-PATH-READBACK-001 plan artifacts (card t562)
+### absorb merge commit:
+2d1dad058 merge: absorb origin/develop c72dc1baf (t563 doctor stat seam lands via absorb, not authored here) into WT-codex-read-inverse for t562 M2 (card t562)
+69cfdce6f merge: absorb lane-1 WT-codex-path-escape (t540 M1 seam + M2 publisher) for t562 run M1 (card t562)
+5f8eab47e merge: absorb origin/develop 706853e1b into WT-codex-read-inverse (card t562)
+### PRESERVE strengthened: diff of the four absorbed files between the absorb merge and HEAD (must be EMPTY)
+  line count = 0
+  NON-ZERO control (same range, all paths):
+ internal/cli/codex_skills_prune_readback_test.go   | 12 ++-
+ internal/cli/doctor_codex.go                       |  6 +-
+ 10 files changed, 227 insertions(+), 30 deletions(-)

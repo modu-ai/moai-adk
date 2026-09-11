@@ -27,7 +27,7 @@ import (
 // wireProjectForDoctor wires a fresh temp project doctor should find HEALTHY,
 // and returns its root.
 //
-// It carries a skill mirror because a real `moai init --agent codex` project
+// It carries a skill mirror because a real `moai init --llm codex` project
 // does: wiring and the template deploy that creates `.agents/skills` happen on
 // the same run. A wired root WITHOUT a mirror is a state the mirror diagnostic
 // reports (SPEC-CODEX-MIRROR-DOCTOR-001 REQ-CMD-004), so leaving it out here
@@ -217,7 +217,7 @@ func TestCheckCodexWiring_UnwiredWithCodexInstalledWarns(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("unwired project with codex installed status = %v, want Warn: %+v", check.Status, check)
 	}
-	if !strings.Contains(check.Message, "moai init --agent codex") {
+	if !strings.Contains(check.Message, "moai init --llm codex") {
 		t.Errorf("action directive missing from Message (Detail is --verbose-only): %+v", check)
 	}
 	// The absent paths are evidence, not a directive, so they ride in Detail

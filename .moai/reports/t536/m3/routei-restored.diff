@@ -1,0 +1,8 @@
+# Post-restore diff — SPEC-TODO-HOME-TEMP-GUARD-001 M3 (card t536)
+# tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t536  HEAD: db45d8209  branch: WT-home-fallback
+# command: git diff -- internal/kanban/todo_root.go internal/cli/todo.go internal/kanban/temp_origin.go
+# Paired control: m3/routei-injected.diff holds the SAME command's output while route (i) was injected
+#                 (731 bytes). The emptiness below is therefore a restored tree, not an unreached filter.
+# --- verbatim command output begins on the next line ---
+# --- verbatim command output ended (zero bytes) ---
+# byte count: 0

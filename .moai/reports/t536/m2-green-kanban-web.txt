@@ -1,0 +1,96 @@
+=== RUN   TestTempOrigin_SymlinkSpellingEquivalence
+    temp_origin_test.go:51: spellings differ: unresolved="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence2955958387/001" resolved="/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence2955958387/001"
+--- PASS: TestTempOrigin_SymlinkSpellingEquivalence (0.00s)
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/empty
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root
+=== RUN   TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set
+--- PASS: TestTempOrigin_FailsOpenOnUnresolvable (0.01s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/empty (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root (0.00s)
+    --- PASS: TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set (0.00s)
+=== RUN   TestTempOrigin_ComponentBoundary
+=== RUN   TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp
+--- PASS: TestTempOrigin_ComponentBoundary (0.01s)
+    --- PASS: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+=== RUN   TestTempRootsSeam_ReadAtCallTime
+    temp_origin_test.go:169: call-time evidence for base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempRootsSeam_ReadAtCallTime1578657438/001": before stub (isTemp=true reason="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/") -> after stub (isTemp=false reason="")
+--- PASS: TestTempRootsSeam_ReadAtCallTime (0.00s)
+=== RUN   TestAdoptionLandsWhereConsumersRead
+--- PASS: TestAdoptionLandsWhereConsumersRead (0.05s)
+=== RUN   TestAdoptingAndPureResolversAgreeWhenAdoptionFails
+--- PASS: TestAdoptingAndPureResolversAgreeWhenAdoptionFails (0.08s)
+=== RUN   TestResolveTodoQueueRoot_PureFallbackWritesNothing_NonTemp
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing_NonTemp (0.05s)
+=== RUN   TestResolveTodoQueueRoot_ReadThroughToProjectLocal_NonTemp
+--- PASS: TestResolveTodoQueueRoot_ReadThroughToProjectLocal_NonTemp (0.05s)
+=== RUN   TestAdoptionLandsWhereConsumersRead_NonTemp
+--- PASS: TestAdoptionLandsWhereConsumersRead_NonTemp (0.05s)
+=== RUN   TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp
+--- PASS: TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp (0.08s)
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read
+=== RUN   TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins
+--- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue (0.17s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/no_local_queue:_both_resolvers_return_the_launch_base (0.08s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/local_queue_present:_the_returned_root_is_where_that_queue_is_read (0.05s)
+    --- PASS: TestTodoQueueRoot_TempOriginRefusesHomeQueue/temporary_origin_AND_home_unresolvable:_the_base_still_wins (0.04s)
+=== RUN   TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback
+--- PASS: TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback (0.09s)
+=== RUN   TestTodoQueueRoot_PureGuardIsSilent
+--- PASS: TestTodoQueueRoot_PureGuardIsSilent (0.11s)
+=== RUN   TestTodoQueueRoot_GitBranchUnreachedByGuard
+--- PASS: TestTodoQueueRoot_GitBranchUnreachedByGuard (0.13s)
+=== RUN   TestTempOrigin_LexicalResembler
+--- PASS: TestTempOrigin_LexicalResembler (0.00s)
+=== RUN   TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary
+--- PASS: TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary (0.12s)
+=== RUN   TestResolveTodoQueueRoot_FallbackNoGit
+--- PASS: TestResolveTodoQueueRoot_FallbackNoGit (0.04s)
+=== RUN   TestResolveTodoQueueRoot_PureFallbackWritesNothing
+--- PASS: TestResolveTodoQueueRoot_PureFallbackWritesNothing (0.05s)
+=== RUN   TestResolveTodoQueueRoot_ReadThroughToProjectLocal
+--- PASS: TestResolveTodoQueueRoot_ReadThroughToProjectLocal (0.05s)
+=== RUN   TestResolveTodoQueueRoot_PopulatedFallbackWins
+--- PASS: TestResolveTodoQueueRoot_PopulatedFallbackWins (0.04s)
+=== RUN   TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing
+--- PASS: TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing (0.04s)
+=== RUN   TestResolveTodoQueueRootAdopting_AdoptsLocalQueue
+--- PASS: TestResolveTodoQueueRootAdopting_AdoptsLocalQueue (0.05s)
+=== RUN   TestResolveTodoQueueRootAdopting_GitBranchIsPure
+--- PASS: TestResolveTodoQueueRootAdopting_GitBranchIsPure (0.09s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	1.766s
+=== RUN   TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp4068368831/002/.moai/config/sections
+--- PASS: TestTodoSectionReadsThroughToProjectLocalQueue_NonTemp (0.08s)
+=== RUN   TestTodoSectionListsAllThreeStates
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionListsAllThreeStates4197662109/002/.moai/config/sections
+--- PASS: TestTodoSectionListsAllThreeStates (0.04s)
+=== RUN   TestTodoSectionEmptyStates
+=== RUN   TestTodoSectionEmptyStates/absent_file
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionEmptyStatesabsent_file1428406710/002/.moai/config/sections
+=== RUN   TestTodoSectionEmptyStates/empty_file
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionEmptyStatesempty_file1335698366/002/.moai/config/sections
+=== RUN   TestTodoSectionEmptyStates/malformed_JSON
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionEmptyStatesmalformed_JSON1653450389/002/.moai/config/sections
+--- PASS: TestTodoSectionEmptyStates (0.12s)
+    --- PASS: TestTodoSectionEmptyStates/absent_file (0.04s)
+    --- PASS: TestTodoSectionEmptyStates/empty_file (0.04s)
+    --- PASS: TestTodoSectionEmptyStates/malformed_JSON (0.04s)
+=== RUN   TestTodoSectionCarriesExistingKanbanMarker
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionCarriesExistingKanbanMarker3212593551/002/.moai/config/sections
+--- PASS: TestTodoSectionCarriesExistingKanbanMarker (0.04s)
+=== RUN   TestTodoSectionFromWorktreeReadsPrimaryQueue
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionFromWorktreeReadsPrimaryQueue814647994/003/wt/.moai/config/sections
+--- PASS: TestTodoSectionFromWorktreeReadsPrimaryQueue (0.12s)
+=== RUN   TestTodoSectionReadsThroughToProjectLocalQueue
+2026/09/08 05:11:34 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoSectionReadsThroughToProjectLocalQueue305751902/002/.moai/config/sections
+--- PASS: TestTodoSectionReadsThroughToProjectLocalQueue (0.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	1.275s

@@ -1,0 +1,5 @@
+internal/cli/todo.go:97:13: Error return value of `fmt.Fprintf` is not checked (errcheck)
+	fmt.Fprintf(cmd.ErrOrStderr(),
+	           ^
+1 issues:
+* errcheck: 1

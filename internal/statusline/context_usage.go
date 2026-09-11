@@ -270,4 +270,3 @@ func sameSemanticPayload(a, b *SessionTelemetryRecord) bool {
 		a.Model == b.Model &&
 		a.Effort == b.Effort
 }
-

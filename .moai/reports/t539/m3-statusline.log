@@ -1,0 +1,30 @@
+# M3 후보군 2 — statusline 프로바이더 (구성원 4) · t539
+# 판정: 생존 (수리하지 않음 — 후속 카드 요청 대상, AC-CBD-009)
+
+## 씨앗 — internal/statusline/builder.go:362
+프로덕션이 컨텍스트를 인터페이스로 넘기는 지점:
+  result, err := b.gitProvider.CollectGitStatus(ctx)   ← GitProvider(types.go:418)
+
+뮤턴트:
+  before: result, err := b.gitProvider.CollectGitStatus(ctx)
+  after : result, err := b.gitProvider.CollectGitStatus(context.Background())
+
+$ git diff --stat                                  → internal/statusline/builder.go | 2 +-
+$ go test ./internal/statusline/ -list . -count=1   → grep -c '^Test' = 318
+$ go test ./internal/statusline/... -count=1        → ok  ...internal/statusline  23.423s
+
+판정: **생존**. statusline 은 렌더 예산이 걸린 자리(issue #646 — 블로킹 호출이 예산을 넘겨
+statusline 이 사라진 전례)인데도, 수집기가 자기 컨텍스트에서 분리되는 것을 318건 중 누구도 보지 못한다.
+
+귀속 구성원 (4건 전부 이 seam 뒤에 있다 — gitProvider 2건 + 형제 프로바이더 2건):
+  internal/statusline/builder_test.go:21           mockGitProvider.CollectGitStatus
+  internal/statusline/builder_test.go:31           mockUpdateProvider.CheckUpdate
+  internal/statusline/builder_test.go:543          mockUsageProvider.CollectUsage
+  internal/statusline/forge_spawn_gate_test.go:151 fakeGitProvider.CollectGitStatus
+
+형제 프로바이더(updateProvider :373 / usageProvider :388)는 같은 builder 함수 안에서 같은 `ctx` 를
+같은 모양으로 넘긴다. 한 seam 의 판정이 세 seam 을 대표한다고 **주장하지 않는다** — 대표성은
+측정하지 않았고, 이 로그의 실측은 gitProvider seam 1건이다. 나머지 두 seam 의 개별 측정은
+후속 카드 요청에 포함한다.
+
+$ (되돌림) git diff --stat                          → 무출력

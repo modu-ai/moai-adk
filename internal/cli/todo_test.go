@@ -14,6 +14,8 @@ package cli
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -92,6 +96,182 @@ func TestTodoAdd_PrintsIDAndPosition(t *testing.T) {
 	}
 	if rec.Version != 1 || len(rec.Items) != 2 {
 		t.Errorf("record = version %d, %d items; want version 1, 2 items", rec.Version, len(rec.Items))
+	}
+}
+
+func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root, store := todoFixture(t)
+	if _, _, err := store.Add("factory card"); err != nil {
+		t.Fatal(err)
+	}
+	specPath := filepath.Join(root, ".moai", "specs", "SPEC-CARD-001", "spec.md")
+	if err := os.MkdirAll(filepath.Dir(specPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	specBody := []byte("# card spec\n")
+	if err := os.WriteFile(specPath, specBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", ".moai/specs/SPEC-CARD-001/spec.md"}, {"commit", "-qm", "add card spec"}} {
+		if out, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	commitRaw, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCommit := strings.TrimSpace(string(commitRaw))
+	wantSpecPath, err := filepath.EvalSymlinks(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+	t.Setenv(config.EnvMoaiKanbanID, "run-card-test")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
+	if _, _, err := runTodo(t, "next", "--spec", "SPEC-CARD-001", "1"); err != nil {
+		t.Fatal(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var owner, state string
+	var version int
+	if err := db.DB.QueryRow(`SELECT owner_label,state,version FROM cards WHERE run_id=? AND card_id=?`, "run-card-test", "t1").Scan(&owner, &state, &version); err != nil {
+		t.Fatalf("factory card row missing: %v", err)
+	}
+	if owner != "lane-2" || state != "picked" || version != 1 {
+		t.Fatalf("card=(%q,%q,%d), want (lane-2,picked,1)", owner, state, version)
+	}
+	var payloadRaw string
+	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE run_id=? AND kind='card.assigned'`, "run-card-test").Scan(&payloadRaw); err != nil {
+		t.Fatalf("assignment event missing: %v", err)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	wantSum := sha256.Sum256(specBody)
+	if payload["spec_id"] != "SPEC-CARD-001" || payload["spec_path"] != wantSpecPath ||
+		payload["spec_sha256"] != hex.EncodeToString(wantSum[:]) || payload["git_commit"] != wantCommit || payload["captured_at"] == "" {
+		t.Fatalf("assignment provenance=%v", payload)
+	}
+	if _, _, err := runTodo(t, "unpick", "1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.DB.QueryRow(`SELECT owner_label,state,version FROM cards WHERE run_id=? AND card_id=?`, "run-card-test", "t1").Scan(&owner, &state, &version); err != nil {
+		t.Fatalf("updated factory card row missing: %v", err)
+	}
+	if owner != "lane-2" || state != "queued" || version != 2 {
+		t.Fatalf("updated card=(%q,%q,%d), want (lane-2,queued,2)", owner, state, version)
+	}
+	var events int
+	if err := db.DB.QueryRow(`SELECT count(*) FROM events WHERE run_id=? AND kind='card.unpicked'`, "run-card-test").Scan(&events); err != nil || events != 1 {
+		t.Fatalf("unpick events=%d err=%v, want 1", events, err)
+	}
+}
+
+func TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvMoaiKanbanID, "run-fail-open")
+	if _, _, err := runTodo(t, "add", "unscoped card"); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(root, "outside", "spec.md")
+	if err := os.MkdirAll(filepath.Dir(outside), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(outside, []byte("must not be captured\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := runTodo(t, "next", "--spec", "../../../outside", "1"); err != nil {
+		t.Fatal(err)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var payloadRaw string
+	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE run_id=? AND kind='card.assigned'`, "run-fail-open").Scan(&payloadRaw); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["spec_id"] != "../../../outside" || payload["spec_path"] != "" || payload["spec_sha256"] != "" || payload["git_commit"] != "" || payload["captured_at"] == "" {
+		t.Fatalf("fail-open provenance=%v", payload)
+	}
+}
+
+func TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD(t *testing.T) {
+	primary := t.TempDir()
+	initGitRepo(t, primary)
+	gitRun := func(dir string, args ...string) string {
+		t.Helper()
+		out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git -C %s %v: %v: %s", dir, args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	specRel := filepath.Join(".moai", "specs", "SPEC-LANE-001", "spec.md")
+	primarySpec := filepath.Join(primary, specRel)
+	if err := os.MkdirAll(filepath.Dir(primarySpec), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(primarySpec, []byte("# primary\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(primary, "add", specRel)
+	gitRun(primary, "commit", "-qm", "primary spec")
+	lane := filepath.Join(t.TempDir(), "lane")
+	gitRun(primary, "worktree", "add", "-q", "-b", "lane-test", lane)
+	laneBody := []byte("# lane revision\n")
+	laneSpec := filepath.Join(lane, specRel)
+	if err := os.WriteFile(laneSpec, laneBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(lane, "add", specRel)
+	gitRun(lane, "commit", "-qm", "lane spec")
+	laneCommit := gitRun(lane, "rev-parse", "HEAD")
+
+	t.Setenv("MOAI_HOME", t.TempDir())
+	t.Setenv("CLAUDE_PROJECT_DIR", primary)
+	if _, _, err := runTodo(t, "add", "lane card"); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", lane)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvMoaiKanbanID, "run-linked-lane")
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-1")
+	if _, _, err := runTodo(t, "next", "--spec", "SPEC-LANE-001", "1"); err != nil {
+		t.Fatal(err)
+	}
+	db, err := homestate.OpenFactory(primary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	var raw string
+	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE run_id=? AND kind='card.assigned'`, "run-linked-lane").Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		t.Fatal(err)
+	}
+	wantPath, _ := filepath.EvalSymlinks(laneSpec)
+	wantHash := sha256.Sum256(laneBody)
+	if payload["spec_path"] != wantPath || payload["spec_sha256"] != hex.EncodeToString(wantHash[:]) || payload["git_commit"] != laneCommit {
+		t.Fatalf("linked-lane provenance=%v, want path=%s commit=%s", payload, wantPath, laneCommit)
 	}
 }
 

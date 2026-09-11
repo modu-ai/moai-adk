@@ -1,0 +1,1 @@
+bfs: error: /Users/goos/.claude/hooks/moai: No such file or directory.

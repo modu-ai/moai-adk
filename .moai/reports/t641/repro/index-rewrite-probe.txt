@@ -1,0 +1,4 @@
+plain: index_sha_changed=True index_mtime_changed=True status_output='## main'
+no-optional-locks: index_sha_changed=False index_mtime_changed=False status_output='## main'
+RESULT plain_rewrote_index=True nol_rewrote_index=False
+EXIT=0

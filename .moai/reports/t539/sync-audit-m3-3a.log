@@ -1,0 +1,7 @@
+--- FAIL: TestGetDiagnostics_timeout_returnsEmptyWhenNoCache (0.20s)
+    aggregator_test.go:553: timeout (no cache): got 1 diagnostics, want 0
+--- FAIL: TestGetDiagnostics_timeout_returnsCachedOnSlowUpstream (0.30s)
+    aggregator_test.go:530: got message "fresh", want "stale cached" (stale cache)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/lsp/aggregator	0.813s
+FAIL

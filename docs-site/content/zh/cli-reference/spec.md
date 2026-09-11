@@ -13,7 +13,7 @@ draft: false
 | `moai spec status` | 更新或列出 SPEC 状态 |
 | `moai spec drift` | 检测 frontmatter status 与 git log 之间的漂移 |
 | `moai spec view <SPEC-ID>` | 以树状结构查看验收标准 |
-| `moai spec lint [spec.md...]` | lint EARS 合规性与结构有效性 |
+| `moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]` | lint EARS 合规性与结构有效性 |
 | `moai spec close <SPEC-ID>` | 原子化 4-phase 关闭(status: completed + progress.md backfill) |
 | `moai spec audit` | SPEC era 分类与 modern-era 状态漂移审计 |
 | `moai spec archive` | 将已关闭的 SPEC 归档至 `.moai/specs/` 之外 |
@@ -49,7 +49,7 @@ moai spec drift
 ## moai spec lint
 
 ```bash
-moai spec lint [spec.md...]
+moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 ```
 
 | 标志 | 说明 |
@@ -58,6 +58,16 @@ moai spec lint [spec.md...]
 | `--sarif` | SARIF 2.1.0 格式输出 |
 | `--strict` | 将警告视为错误 |
 | `--format <fmt>` | 输出格式(table) |
+
+| 参数形式 | 示例 |
+|--------|------|
+| SPEC-ID | `SPEC-SPC-001` — 解析为项目根目录下的 `.moai/specs/SPEC-SPC-001/spec.md`(与 `moai spec view` 规则相同) |
+| 文件路径 | `.moai/specs/SPEC-SPC-001/spec.md` |
+| SPEC 目录 | `.moai/specs/SPEC-SPC-001` — 读取其中的 `spec.md` |
+
+三种形式可在一次调用中混用;不带参数时仍按原方式扫描整个语料库。看起来像 SPEC-ID 却解析不到文件的参数,不是对文档的指摘,而是 **参数错误(退出码 3)**,并会一并给出尝试过的路径。
+
+此处会产生两个 advisory 级别的警告。`ModalityUnjudged` 会报告 linter 无法判定的需求,而不是静默略过。`REQTableRowsRejected` 会报告未被读作 REQ 定义的表格行。两者均为 advisory:`--strict` 不会将其提升为错误,也不改变退出码。
 
 ## moai spec close
 

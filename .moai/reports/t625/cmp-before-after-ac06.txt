@@ -1,0 +1,1 @@
+cmp before vs after-ac06 EXIT=0

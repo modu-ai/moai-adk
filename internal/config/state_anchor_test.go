@@ -46,8 +46,8 @@ func initGitRepoConfig(t *testing.T, dir string) {
 // the stray is untouched, and the non-git directory gains no .moai (the
 // existing config-dir-exists guard never materializes one).
 func TestConfigCacheAnchorsToProject(t *testing.T) {
-	t.Setenv(EnvConfigDir, "")            // pin the derivation, not an env override
-	t.Setenv(EnvConfigCacheDisabled, "")  // the cache write must happen
+	t.Setenv(EnvConfigDir, "")           // pin the derivation, not an env override
+	t.Setenv(EnvConfigCacheDisabled, "") // the cache write must happen
 
 	root := t.TempDir()
 	initGitRepoConfig(t, root)

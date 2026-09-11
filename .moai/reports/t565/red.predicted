@@ -1,0 +1,18 @@
+t565 RED predictions — written before parser_ac_heading_anchor_test.go is first run (unfixed parser.go, HEAD ce37a31b9)
+
+TestT565AnchorSkipsFileMentionOnlyHeading            FAIL  (anchors on "## 3. Plan — ... acceptance.md": decoy AC-HDG-09 read, AC-HDG-01 missed)
+TestT565AnchorSkipsOutOfScopeHeading/english         FAIL  ("### Out of Scope — rewriting acceptance criteria" anchors: decoy read, real missed)
+TestT565AnchorSkipsOutOfScopeHeading/korean          PASS  (non-discriminating on the unfixed parser: Korean is not vocabulary yet; it guards the vocabulary-without-negative-exclusion mutant)
+TestT565AnchorVocabulary/ 6. Acceptance Criteria     PASS  (control)
+TestT565AnchorVocabulary/ 3. 수락 기준 — acceptance.md PASS  (control on the unfixed parser via the file name; after the fix it must still anchor via the vocabulary — guards an over-wide file-only exclusion)
+TestT565AnchorVocabulary/ 수락 기준                   FAIL
+TestT565AnchorVocabulary/ 인수 기준                   FAIL
+TestT565AnchorVocabulary/ 검수 기준                   FAIL
+TestT565AnchorVocabulary/ §F AC Matrix               FAIL
+TestT565AnchorVocabulary/ §E Success Criteria        FAIL
+TestT565AnchorVocabulary/ §E. Success criteria       FAIL
+TestT565AnchorVocabularyIsNotWide                    PASS  (control: "## 7. Review Criteria" anchors nothing before and after)
+TestT565SectionReadsItsOwnSubheadings                FAIL  (## anchor breaks at its own ### 6.1: AC-HDG-01 and AC-HDG-02 missed)
+TestT565SectionEndsAtSameOrHigherLevel/h3-anchor     FAIL  (breaks at its own ####: AC-HDG-02 missed; AC-HDG-09 correctly not read)
+TestT565SectionEndsAtSameOrHigherLevel/h1-ends-h2    FAIL  ("# Appendix" does not end the section: decoy AC-HDG-09 read)
+TestT528SectionScopingInvariant                      PASS  (existing, must stay green before and after)

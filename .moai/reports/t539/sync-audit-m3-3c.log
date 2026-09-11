@@ -1,0 +1,35 @@
+panic: test timed out after 1m30s
+	running tests:
+		TestCallWithTimeout_DeadlineExceeded (1m30s)
+
+goroutine 3 [running]:
+testing.(*M).startAlarm.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2802 +0x2cc
+created by time.goFunc
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/time/sleep.go:215 +0x38
+
+goroutine 1 [chan receive]:
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1993 +0x3c8
+testing.tRunner(0x519f665ea008, 0x519f66596c48)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2042 +0x100
+testing.runTests({0x104db34f9, 0x1b}, {0x104dba256, 0x32}, 0x519f665ac018, {0x104f73ca0, 0x20, 0x20}, {0x80808080073f511d?, 0x104daf7de?, ...})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x3f0
+testing.(*M).Run(0x519f6659a140)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0x578
+main.main()
+	_testmain.go:110 +0x80
+
+goroutine 26 [chan receive (nil chan)]:
+github.com/modu-ai/moai-adk/internal/lsp/transport_test.(*blockingTransport).Call(0x519f66692170?, {0x104f4d630, 0x104f9ec40}, {0x0?, 0x0?}, {0x519f666ac000?, 0x104f784c0?}, {0x104d01c00?, 0x519f666ac010?})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/transport/request_test.go:150 +0x34
+github.com/modu-ai/moai-adk/internal/lsp/transport.CallWithTimeout({0x104f4d898, 0x519f666ac000}, {0x104f4d7b8?, 0x104f9ec40?}, {0x104db06c8, 0x12}, {0x0?, 0x0?}, {0x0?, 0x0?}, ...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/transport/request.go:53 +0x94
+github.com/modu-ai/moai-adk/internal/lsp/transport_test.TestCallWithTimeout_DeadlineExceeded(0x519f66524fc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/lsp/transport/request_test.go:116 +0x90
+testing.tRunner(0x519f66524fc8, 0x104f4a800)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/lsp/transport	90.338s
+FAIL

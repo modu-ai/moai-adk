@@ -1,0 +1,137 @@
+=== RUN   TestSpecLint_IDArg_ResolvesToSpecMD
+    spec_lint_test.go:162: ParseFailure count = 1, want 0 (rc=1)
+        SEVERITY  CODE          FILE          LINE  MESSAGE
+        --------  ----          ----          ----  -------
+        ERROR     ParseFailure  SPEC-FIX-001  1     SPEC parsing failed: failed to read file: open SPEC-FIX-001: no such file or directory
+        
+        1 error(s), 0 warning(s)
+        
+        spec lint: error-severity findings detected
+--- FAIL: TestSpecLint_IDArg_ResolvesToSpecMD (0.00s)
+=== RUN   TestSpecLint_IDArg_EqualsPathForm
+    spec_lint_test.go:185: exit codes differ: id=1 path=0
+        --- id ---
+        SEVERITY  CODE          FILE          LINE  MESSAGE
+        --------  ----          ----          ----  -------
+        ERROR     ParseFailure  SPEC-FIX-001  1     SPEC parsing failed: failed to read file: open SPEC-FIX-001: no such file or directory
+        
+        1 error(s), 0 warning(s)
+        
+        spec lint: error-severity findings detected
+        --- path ---
+        SEVERITY  CODE                            FILE                                                                                                                               LINE  MESSAGE
+        --------  ----                            ----                                                                                                                               ----  -------
+        WARNING   CoverageIncomplete              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  5     REQ REQ-FIX-001 is not referenced by any AC
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: author [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: priority [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: phase [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: module [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: lifecycle [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: tags [grandfathered era — downgraded to warning]
+        WARNING   MissingExclusions               /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+        INFO      StatusGitUnreachable            /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 git status NOT OBSERVED — no usable base ref (tried: main, origin/main, master, origin/master); this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (git log failed: exited with status 128: fatal: not a git repository (or any of the parent directories): .git)
+        INFO      OwnershipTransitionUnreachable  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_IDArg_EqualsPathForm3603088579/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 ownership transition validation skipped (git unreachable: git unreachable: git rev-parse --git-dir failed)
+        
+        0 error(s), 8 warning(s)
+--- FAIL: TestSpecLint_IDArg_EqualsPathForm (0.12s)
+=== RUN   TestSpecLint_IDArg_FromSubdirectory
+    spec_lint_test.go:214: ParseFailure count = 1, want 0 from a subdirectory
+        SEVERITY  CODE          FILE          LINE  MESSAGE
+        --------  ----          ----          ----  -------
+        ERROR     ParseFailure  SPEC-FIX-001  1     SPEC parsing failed: failed to read file: open SPEC-FIX-001: no such file or directory
+        
+        1 error(s), 0 warning(s)
+        
+        spec lint: error-severity findings detected
+--- FAIL: TestSpecLint_IDArg_FromSubdirectory (0.00s)
+=== RUN   TestSpecLint_DirectoryArg
+    spec_lint_test.go:229: ParseFailure count = 1 for directory form, want 0 (rc=1)
+        SEVERITY  CODE          FILE                      LINE  MESSAGE
+        --------  ----          ----                      ----  -------
+        ERROR     ParseFailure  .moai/specs/SPEC-FIX-001  1     SPEC parsing failed: failed to read file: read .moai/specs/SPEC-FIX-001: is a directory
+        
+        1 error(s), 0 warning(s)
+        
+        spec lint: error-severity findings detected
+--- FAIL: TestSpecLint_DirectoryArg (0.00s)
+=== RUN   TestSpecLint_UnresolvableID_IsArgumentError
+    spec_lint_test.go:248: exit code = 1, want 3
+        SEVERITY  CODE          FILE           LINE  MESSAGE
+        --------  ----          ----           ----  -------
+        ERROR     ParseFailure  SPEC-NOPE-999  1     SPEC parsing failed: failed to read file: open SPEC-NOPE-999: no such file or directory
+        
+        1 error(s), 0 warning(s)
+        
+        spec lint: error-severity findings detected
+--- FAIL: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+=== RUN   TestSpecLint_PathForm_Unchanged
+    spec_lint_test.go:279: path-form census moved:
+         got: INFO/OwnershipTransitionUnreachable,INFO/StatusGitUnreachable,WARNING/CoverageIncomplete,WARNING/FrontmatterInvalid,WARNING/FrontmatterInvalid,WARNING/FrontmatterInvalid,WARNING/FrontmatterInvalid,WARNING/FrontmatterInvalid,WARNING/FrontmatterInvalid,WARNING/MissingExclusions
+        want: WARNING/CoverageIncomplete
+        SEVERITY  CODE                            FILE                                                                                                                             LINE  MESSAGE
+        --------  ----                            ----                                                                                                                             ----  -------
+        WARNING   CoverageIncomplete              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  5     REQ REQ-FIX-001 is not referenced by any AC
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: author [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: priority [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: phase [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: module [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: lifecycle [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: tags [grandfathered era — downgraded to warning]
+        WARNING   MissingExclusions               /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+        INFO      StatusGitUnreachable            /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 git status NOT OBSERVED — no usable base ref (tried: main, origin/main, master, origin/master); this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (git log failed: exited with status 128: fatal: not a git repository (or any of the parent directories): .git)
+        INFO      OwnershipTransitionUnreachable  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_PathForm_Unchanged1829665695/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 ownership transition validation skipped (git unreachable: git unreachable: git rev-parse --git-dir failed)
+        
+        0 error(s), 8 warning(s)
+--- FAIL: TestSpecLint_PathForm_Unchanged (0.12s)
+=== RUN   TestSpecLint_MissingPathArg_StillParseFailure
+--- PASS: TestSpecLint_MissingPathArg_StillParseFailure (0.00s)
+=== RUN   TestSpecLint_AnchorInvariant_SPEC_A_1
+--- PASS: TestSpecLint_AnchorInvariant_SPEC_A_1 (0.00s)
+=== RUN   TestSpecLintHelp_NamesThreeArgumentShapes
+    spec_lint_test.go:339: help does not mention "SPEC-ID"
+        --- Use ---
+        lint [spec.md...]
+        --- Long ---
+        Validate SPEC documents against:
+        - EARS modality compliance (SHALL, WHEN, WHILE, WHERE, IF)
+        - REQ ID uniqueness
+        - AC→REQ coverage (100% required)
+        - Frontmatter schema validation
+        - Dependency DAG (no cycles, all deps exist)
+        - Out of Scope section presence
+        - Zone registry cross-references
+        
+        Exit codes:
+        0 = success (no errors)
+        1 = errors found
+        2 = linter crash
+        3 = invalid arguments
+--- FAIL: TestSpecLintHelp_NamesThreeArgumentShapes (0.00s)
+=== RUN   TestSpecLint_MixedArgs
+    spec_lint_test.go:361: ParseFailure count = 1, want 0 (rc=1)
+        SEVERITY  CODE                            FILE                                                                                                                    LINE  MESSAGE
+        --------  ----                            ----                                                                                                                    ----  -------
+        ERROR     ParseFailure                    SPEC-MIX-002                                                                                                            1     SPEC parsing failed: failed to read file: open SPEC-MIX-002: no such file or directory
+        WARNING   CoverageIncomplete              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  5     REQ REQ-FIX-001 is not referenced by any AC
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: author [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: priority [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: phase [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: module [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: lifecycle [grandfathered era — downgraded to warning]
+        WARNING   FrontmatterInvalid              /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     Frontmatter required field missing: tags [grandfathered era — downgraded to warning]
+        WARNING   MissingExclusions               /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     'Out of Scope' section has no items — minimum one item required [grandfathered era — downgraded to warning]
+        INFO      StatusGitUnreachable            /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 git status NOT OBSERVED — no usable base ref (tried: main, origin/main, master, origin/master); this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (git log failed: exited with status 128: fatal: not a git repository (or any of the parent directories): .git)
+        INFO      OwnershipTransitionUnreachable  /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSpecLint_MixedArgs3527399435/001/.moai/specs/SPEC-FIX-001/spec.md  1     SPEC SPEC-FIX-001 ownership transition validation skipped (git unreachable: git unreachable: git rev-parse --git-dir failed)
+        
+        1 error(s), 8 warning(s)
+        
+        spec lint: error-severity findings detected
+--- FAIL: TestSpecLint_MixedArgs (0.12s)
+=== RUN   TestSpecStatusIDPattern_LiteralFrozen
+--- PASS: TestSpecStatusIDPattern_LiteralFrozen (0.00s)
+=== RUN   TestShapeFunction_HomeAndName
+    spec_lint_test.go:414: shape function is not declared in internal/cli/specid/specid.go
+--- FAIL: TestShapeFunction_HomeAndName (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.397s
+FAIL

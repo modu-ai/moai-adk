@@ -1,0 +1,84 @@
+# M2 — GLM audit 경로 취소 가드 (t539 / SPEC-CTX-BLIND-DOUBLE-001)
+# 트리: .claude/worktrees/t539  브랜치: WT-ctx-blind-double  기준: 6fe7a4141 (M1)
+# 뮤턴트: internal/cli/mcp_glm.go:305
+#   before: httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+#   after : httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+# 삼단 측정: 생존 → 수리 → 사망. 커버리지는 채택 증거가 아니다(AC-CBD-014).
+
+## 기준선 -list (가드 추가 전, 파일로 보존 — plan 단계 D8 간극 폐쇄)
+
+$ go test ./internal/cli/ -list GLM     -count=1 > list-GLM-baseline.log      → grep -c '^Test' = 223
+$ go test ./internal/cli/ -list Audit   -count=1 > list-Audit-baseline.log    → grep -c '^Test' =  99
+$ go test ./internal/cli/ -list Converg -count=1 > list-Converg-baseline.log  → grep -c '^Test' =  32
+# plan 본문 숫자 223/99/32 가 이제 파일에서 재유도된다.
+
+## 창 1 — RED-now 수립 (AC-CBD-004): 가드 없이 뮤턴트 주입
+
+$ git diff --stat                → internal/cli/mcp_glm.go | 2 +- (주입 확인)
+$ go test ./internal/cli/ -run GLM     -count=1 -timeout 1800s → ok  ...internal/cli  11.610s
+$ go test ./internal/cli/ -run Audit   -count=1 -timeout 1800s → ok  ...internal/cli  31.061s
+$ go test ./internal/cli/ -run Converg -count=1 -timeout 1800s → ok  ...internal/cli   1.314s
+
+판정: **생존**. 223+99+32 건의 셀렉터 집합 전체가 컨텍스트 분리 결함을 보지 못한다.
+      = 이 자리에 가드가 없다는 실측. (판독이 아니라 뮤턴트가 세운 사실)
+
+$ (되돌림) git diff --stat        → 무출력. 창 1 종료.
+
+## 가드 작성
+
+internal/cli/mcp_glm_audit_ctx_test.go (신규, 테스트 전용)
+  - TestGLMAudit_CancelledContext_IsNotSwallowed
+      진입점: handleGLMAudit (MCP 호스트가 실제로 부르는 최외곽 — callGLMAudit 이 아니다.
+      "결함이 사는 층 아래 걸린 가드는 그 층을 지키지 않는다")
+      대역: ctxAwareGLMDoer (glm_task_bg_context_test.go:48, 같은 package cli 재사용 — 중복 타입 없음)
+      seam: withGLMSeams (audit 경로 glmHTTPClient. withGLMTaskSeams 아님)
+      단언: 이미 취소된 ctx → 통조림 성공("pass")이 아니라 VerdictInconclusive 이고
+            summary 가 "context canceled" 를 담는다.
+  - TestGLMAudit_LiveContext_StillReachesTheDoer (거울상)
+      살아 있는 ctx → 같은 대역이 "pass" 를 돌려준다.
+      = 위 단언이 "아무 실패로나 만족되는" 공허한 가드가 아님을 세운다.
+
+공허성 가드: $ go test ./internal/cli/ -list TestGLMAudit_CancelledContext_IsNotSwallowed → 1 건 (0건 아님)
+
+## 창 2 — RED 시연 (AC-CBD-005): 가드가 있는 상태에서 같은 뮤턴트 재주입
+
+$ go test ./internal/cli/ -run TestGLMAudit_CancelledContext_IsNotSwallowed -count=1 -timeout 1800s
+--- FAIL: TestGLMAudit_CancelledContext_IsNotSwallowed (0.45s)
+    mcp_glm_audit_ctx_test.go:89: a cancelled audit returned the canned success verdict "pass" — the request reached the transport detached from its context (check http.NewRequestWithContext at mcp_glm.go:305)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.468s
+
+창 1 에서 초록이던 넓은 셀렉터도 이제 빨갛다:
+$ go test ./internal/cli/ -run GLM   -count=1 -timeout 1800s → FAIL (같은 테스트)  9.024s
+$ go test ./internal/cli/ -run Audit -count=1 -timeout 1800s → FAIL (같은 테스트) 20.540s
+
+판정: **사망**. 삼단(생존 → 수리 → 사망) 완성.
+
+$ (되돌림) git diff --stat        → 무출력. 창 2 종료. 프로덕션 diff 0줄.
+
+## 비회귀 (AC-CBD-006 / AC-CBD-007) — 뮤턴트가 없는 깨끗한 트리에서
+
+$ go test ./internal/cli/ -run GLM         -count=1 -timeout 1800s → ok   8.837s   (-list 225, 기준선 223 대비 +2)
+$ go test ./internal/cli/ -run Audit       -count=1 -timeout 1800s → ok  20.907s   (-list 101, 기준선  99 대비 +2)
+$ go test ./internal/cli/ -run Converg     -count=1 -timeout 1800s → ok   0.980s   (-list  32, 기준선  32 = 동일)
+$ go test ./internal/cli/ -run TestGLMTask -count=1 -timeout 1800s → ok   1.276s   (-list  16)
+$ go test ./internal/cli/ -run GLM -race   -count=1 -timeout 1800s → ok  11.937s
+$ go vet ./internal/cli/...                                        → exit 0
+$ golangci-lint run --timeout=5m ./internal/cli/...                → 0 issues.
+
+# 건수는 어느 셀렉터에서도 줄지 않았다(+2/+2/+0 — 새 가드 2건이 GLM·Audit 양쪽에 잡힌다).
+# -list 출력은 list-{GLM,Audit,Converg}.log 로 보존됨 → grep -c '^Test' 로 재유도 가능.
+
+## 대역 소유권 결정 — stubGLMDoer 는 눈먼 채로 둔다
+
+$ git diff dbc1f7125..HEAD -- internal/cli/mcp_glm_test.go | wc -l → 0
+   = stubGLMDoer 타입 정의 변경 0줄.
+근거: stubGLMDoer 는 7개 파일 31개 호출 지점을 갖고, 그 시험 주제는 URL·요청 본문·fail-open
+     판정이지 취소가 아니다. 공유 대역을 컨텍스트 인식형으로 바꾸면 이 파일 하나가 지키려는
+     축을 위해 나머지 30개 테스트의 의미를 바꾸게 된다(plan §G "일괄 교체" 안티패턴).
+     컨텍스트 축은 새 파일의 자기 대역(ctxAwareGLMDoer)으로 덮는다.
+
+## 프로덕션 변경 0줄
+
+$ git diff --stat -- internal/cli/mcp_glm.go → 무출력
+프로덕션은 이미 옳았다(:305 는 처음부터 NewRequestWithContext 였다). 없던 것은 가드다.

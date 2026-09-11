@@ -14,9 +14,12 @@ import (
 // so it is skipped unless explicitly requested. CI cost is therefore zero.
 const corpusScanEnv = "MOAI_T362_CORPUS_SCAN"
 
-// corpusMeasurementRelPath is where the machine-readable measurement is written,
-// relative to the repository root.
-const corpusMeasurementRelPath = ".moai/reports/t362/m1-corpus-measurement.txt"
+// corpusReportFilename is the bare filename of the machine-readable
+// measurement. Its directory is resolved per run by t362ReportPath —
+// t.TempDir() by default, or the MOAI_T362_EVIDENCE_OUT override for durable
+// capture — so a re-run can never rewrite repository-tracked evidence
+// (SPEC-HARNESS-EVIDENCE-WRITE-001).
+const corpusReportFilename = "m1-corpus-measurement.txt"
 
 // corpusSpecGlobRel is the glob (relative to the repository root) that defines
 // the scanned set. Recorded verbatim in the report so the scanned set is
@@ -46,9 +49,10 @@ type corpusFileDetail struct {
 //
 // AC-CRS-001-002 (maps REQ-CRS-001-001, REQ-CRS-001-004).
 //
-// It writes a machine-readable report to .moai/reports/t362/m1-corpus-measurement.txt
-// and asserts nothing about the numbers — it is an instrument, and the numbers are
-// the deliverable.
+// It writes a machine-readable report (m1-corpus-measurement.txt) under a
+// per-run t.TempDir() directory — or under MOAI_T362_EVIDENCE_OUT when the
+// operator sets it before the run — and asserts nothing about the numbers —
+// it is an instrument, and the numbers are the deliverable.
 func TestCorpusREQWideningMeasurement(t *testing.T) {
 	if os.Getenv(corpusScanEnv) != "1" {
 		t.Skipf("corpus scan skipped; set %s=1 to run", corpusScanEnv)
@@ -193,6 +197,9 @@ func TestCorpusREQWideningMeasurement(t *testing.T) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# SPEC-COVERAGE-RULE-SCOPE-001 M1 — corpus REQ widening measurement\n")
 	fmt.Fprintf(&b, "# produced by: MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/... -run TestCorpusREQWideningMeasurement -v\n")
+	fmt.Fprintf(&b, "# output location: a per-run t.TempDir() directory (exact path announced via t.Logf).\n")
+	fmt.Fprintf(&b, "# durable capture: set MOAI_T362_EVIDENCE_OUT=<dir> BEFORE the run; the report then\n")
+	fmt.Fprintf(&b, "# lands at <dir>/m1-corpus-measurement.txt (no-clobber: an existing file fails the run).\n")
 	fmt.Fprintf(&b, "scan_root=%s\n", root)
 	fmt.Fprintf(&b, "scan_glob=%s\n", corpusSpecGlobRel)
 	fmt.Fprintf(&b, "\n[1] total spec.md scanned\n")
@@ -236,10 +243,7 @@ func TestCorpusREQWideningMeasurement(t *testing.T) {
 			d.spec, d.narrow, d.wide, d.uncovered, d.tier)
 	}
 
-	out := filepath.Join(root, corpusMeasurementRelPath)
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
-		t.Fatalf("mkdir %q: %v", filepath.Dir(out), err)
-	}
+	out := t362ReportPath(t, corpusReportFilename)
 	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
 		t.Fatalf("write %q: %v", out, err)
 	}

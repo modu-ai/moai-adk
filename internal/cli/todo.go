@@ -25,6 +25,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -32,6 +33,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -70,6 +72,33 @@ func todoBacklogPath(root string) string {
 // the pure one, which never writes.
 func resolveTodoQueueRoot() string {
 	return kanban.ResolveTodoQueueRootAdopting(resolveProjectDir())
+}
+
+// warnTempOriginQueueRefusal surfaces the temporary-origin refusal on the
+// COMMAND path (SPEC-TODO-HOME-TEMP-GUARD-001, REQ-THG-006): the queue-root
+// resolution declined to create a home queue under ~/.moai/db because the
+// launch directory lives inside a temporary root, and the run continues
+// against the project-local queue instead.
+//
+// Three things the guidance must carry, because a refusal that reads as a
+// silent success is indistinguishable from the bug it replaced: WHICH temp
+// root matched, WHICH root the run continues against, and that the run is in
+// fact continuing. The exit code is unchanged — refusing the home queue is
+// already the whole of the protection, so failing the command would withdraw
+// working behaviour from every script that runs `moai todo` inside a temp
+// directory without preventing anything further.
+//
+// Silent on every other path, the console included: this is called only from
+// the command's PersistentPreRun, and the pure resolver the web console
+// imports neither writes nor speaks.
+func warnTempOriginQueueRefusal(cmd *cobra.Command) {
+	substitute, matched, refused := kanban.TempOriginRefusal(resolveProjectDir())
+	if !refused {
+		return
+	}
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		"moai todo: the launch directory is inside the temporary root %s, so no home queue was created under ~/.moai/db/<project-key>/todo; continuing against the project-local queue at %s\n",
+		matched, substitute)
 }
 
 // newTodoStore is the single constructor every todo verb goes through, so
@@ -158,13 +187,13 @@ func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.db.
+		Long: `Operate the kanban backlog queue at ~/.moai/db/<project-key>/todo/backlog.db.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
 to and reads the same store the lead and the foreman loop see. A project
-without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.db
-instead. A backlog.json sitting beside the database is NOT the queue — it is
+without git metadata uses the same project-keyed home layout. A backlog.json
+left at the former project-local path is NOT the queue — it is
 an export or a legacy leftover, and its contents can be arbitrarily stale.
 
 The backlog is the operator's queue: entry into the board is the operator's
@@ -179,10 +208,14 @@ become a card), while a phrase of two or more words falls through to add:
 needs the explicit add verb — the price of keeping typos loud.
 
 One fallthrough shape is refused outright: a verb-shaped first token followed
-by a card id (` + "`moai todo pick t151`" + `) is a mistyped verb, not a card, and
-becomes an error naming the known verbs. A card text that merely mentions an
-id later in the sentence still falls through, and ` + "`moai todo add \"<text>\"`" + `
-adds any text verbatim.`,
+by a card address (` + "`moai todo pick t151`" + `, ` + "`moai todo pick 151`" + `) is a mistyped
+verb, not a card, and becomes an error naming the known verbs. The address
+forms are the ones the verbs themselves accept — an explicit ` + "`t<n>`" + ` anywhere,
+or a bare ` + "`<n>`" + ` when it is the whole remainder or the first token is a
+near-miss of a real verb (` + "`moai todo drp 401 stale`" + `). A number after an
+ordinary word is still card text (` + "`moai todo fix 3 flaky tests`" + `). A card text that merely
+mentions an id later in the sentence still falls through, and
+` + "`moai todo add \"<text>\"`" + ` adds any text verbatim.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			// t69 fallthrough: two or more words are natural language → add.
 			// Deliberate failure modes: a single token (the mistyped verb
@@ -209,27 +242,58 @@ adds any text verbatim.`,
 			}
 			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
 		},
+		// PersistentPreRun fires once per `moai todo ...` invocation, for the
+		// parent and every subcommand alike, which is why the guidance lives
+		// here rather than inside resolveTodoQueueRoot: that helper is called
+		// several times per run (store, landed ref, ...) and would repeat the
+		// notice once per call.
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			warnTempOriginQueueRefusal(cmd)
+		},
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
+		newTodoPRCmd(), newTodoLandedCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
 	return cmd
 }
 
 // todoVerbShaped matches a first token that reads as a command verb: one
-// lowercase ASCII word, optionally hyphenated. Bounded in length so a long
-// word in a card text cannot pass for a verb.
-var todoVerbShaped = regexp.MustCompile(`^[a-z][a-z-]{1,15}$`)
+// ASCII word, optionally carrying digits, hyphens, or underscores. Bounded in
+// length so a long word in a card text cannot pass for a verb.
+//
+// t555 (#1654) widened this from `^[a-z][a-z-]{1,15}$`, which admitted only
+// the lowercase spelling. A mistyped verb is mistyped in more ways than that:
+// the measured leaks were `Show t401` / `SHOW t401` (case), `show2 t401`
+// (adjacent-key typo), `show_it t401` (separator), and `s t401` (an
+// abbreviation the single-character floor excluded). Each one addressed a
+// real card id and each one silently became a card.
+//
+// Staying ASCII is the deliberate boundary, not an oversight: a non-ASCII
+// first token is prose in the operator's own language, never a mistyped
+// English verb, so a Korean/Japanese/Chinese card text still falls through
+// to add.
+var todoVerbShaped = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]{0,23}$`)
 
 // todoCardIDShaped matches the id form the queue issues (`t<decimal>`, see
-// kanban.BacklogStore). Deliberately NOT the looser reference form the verbs
-// accept (`done 151` normalizes a bare number): a bare number is ordinary
-// card text ("fix 3 flaky tests"), while an explicit `t151` in second
-// position is an address.
+// kanban.BacklogStore). An explicit id in second position is an address at
+// any arity.
 var todoCardIDShaped = regexp.MustCompile(`^t\d+$`)
+
+// todoBareRefShaped matches the looser reference form the verbs themselves
+// accept: normalizeTodoRef maps a bare `<n>` to the id `t<n>` (REQ-TODO-004),
+// so `done 151` and `done t151` address the same card.
+//
+// t555: the guard used to exclude this form outright, on the reasoning that a
+// bare number is ordinary card text ("fix 3 flaky tests"). That reasoning
+// holds for a number sitting inside a phrase, and only there — `show 401` is
+// the very address grammar the verbs publish, and it leaked.
+//
+// A leading zero is excluded because the queue never issues one
+// (`fmt.Sprintf("t%d", …)`), so `0401` addresses no card the store can hold.
+var todoBareRefShaped = regexp.MustCompile(`^[1-9][0-9]*$`)
 
 // todoMistypedVerbGuard refuses the one fallthrough shape that is almost
 // never a card: a verb-shaped first token followed by a card id
@@ -247,14 +311,110 @@ func todoMistypedVerbGuard(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
 		return nil
 	}
-	if !todoVerbShaped.MatchString(args[0]) || !todoCardIDShaped.MatchString(args[1]) {
+	if !todoVerbShaped.MatchString(args[0]) {
+		return nil
+	}
+	kind := todoCardAddressKind(cmd, args)
+	if kind == "" {
 		return nil
 	}
 	phrase := strings.Join(args, " ")
 	return fmt.Errorf(
-		"todo: %q is not a todo verb and %q is a card id — refusing to create a card named %q.\n"+
+		"todo: %q is not a todo verb and %q is %s — refusing to create a card named %q.\n"+
 			"Known verbs: %s\nTo add this text as a card anyway: moai todo add %q",
-		args[0], args[1], phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+		args[0], args[1], kind, phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+}
+
+// todoCardAddressKind reports how args[1] addresses a card, or "" when it does
+// not address one at all. The two forms are the two the verbs themselves
+// accept (normalizeTodoRef): an explicit `t<n>`, and a bare `<n>`.
+//
+// The two are NOT symmetric, and the asymmetry is the whole difficulty. A
+// `t<n>` is unambiguous wherever it appears, so it needs no further test. A
+// bare number is genuinely ambiguous: `drp 401 stale` (a mistyped `drop`) and
+// `fix 3 flaky tests` (a card) have the SAME shape — word, number, word — so
+// no shape test can separate them. What separates them is the first token:
+// `drp` is one edit from a registered verb and `fix` is not.
+//
+// So the bare form is read as an address in two situations, and only these:
+//   - it is the whole remainder (`show 401`), or
+//   - the first token is a near-miss of a registered verb (`drp 401 stale`).
+//
+// The near-miss arm is what the arity test alone could not reach: three verbs
+// take TWO positional arguments — `relate <a> <b>`, `drop <n> <reason>`,
+// `edit <n> <text>` — so a mistyped call of any of them is three tokens or
+// more and slips straight past an arity-only condition.
+//
+// The returned string is the message fragment naming the form, so the refusal
+// tells the operator which grammar it recognized.
+func todoCardAddressKind(cmd *cobra.Command, args []string) string {
+	switch {
+	case todoCardIDShaped.MatchString(args[1]):
+		return "a card id"
+	case !todoBareRefShaped.MatchString(args[1]):
+		return ""
+	case len(args) == 2 || todoNearMissVerb(cmd, args[0]):
+		return "a card reference"
+	default:
+		return ""
+	}
+}
+
+// todoNearMissVerb reports whether tok reads as a mistyping of one of the
+// registered verbs: equal ignoring case, within a single edit, or a prefix of
+// one from three characters up (`relat` for `relate`).
+//
+// Derived from the command tree, like the verb list in the refusal message, so
+// a verb added later is covered without a second edit here.
+func todoNearMissVerb(cmd *cobra.Command, tok string) bool {
+	lowered := strings.ToLower(tok)
+	for _, verb := range todoVerbNames(cmd) {
+		if withinOneEdit(lowered, verb) {
+			return true
+		}
+		if len(lowered) >= 3 && strings.HasPrefix(verb, lowered) {
+			return true
+		}
+	}
+	return false
+}
+
+// withinOneEdit reports whether a and b are at most one insertion, deletion,
+// or substitution apart.
+//
+// Bounded at one, so it is a short scan rather than the usual edit-distance
+// matrix: at that bound the strings differ in length by at most one, which
+// leaves exactly two cases — equal lengths differ in at most one position, and
+// unequal lengths mean the longer is the shorter with one character inserted.
+// (internal/harness carries its own unexported copy for prefix-conflict
+// detection; exporting across that package boundary for this one call would be
+// a wider change than the twenty lines it saves.)
+func withinOneEdit(a, b string) bool {
+	if len(b) < len(a) {
+		a, b = b, a
+	}
+	if len(b)-len(a) > 1 {
+		return false
+	}
+	if len(a) == len(b) {
+		diffs := 0
+		for i := range a {
+			if a[i] != b[i] {
+				diffs++
+				if diffs > 1 {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	// b is one longer: b must be a with one character inserted.
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return a[i:] == b[i+1:]
+		}
+	}
+	return true
 }
 
 // todoVerbNames lists the registered verb names, so the guard's message is
@@ -489,6 +649,7 @@ func newTodoDoneCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			var specID string
 			// Resolved once, up front, so the query, the verdict line, and the
 			// disclosure all name the same ref (todoLandedRef's contract).
 			ref, refLevel := todoLandedRefResolved()
@@ -507,6 +668,9 @@ func newTodoDoneCmd() *cobra.Command {
 				}
 				if at < 0 {
 					return fmt.Errorf("no backlog item %s", id)
+				}
+				if rec.Items[at].SpecID != nil {
+					specID = *rec.Items[at].SpecID
 				}
 				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
 					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
@@ -536,6 +700,7 @@ func newTodoDoneCmd() *cobra.Command {
 			} else {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
 			}
+			recordFactoryCardState(id, specID, "completed", "card.completed")
 			return nil
 		},
 	}
@@ -693,6 +858,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
+			recordFactoryCardState(id, specID, "picked", "card.assigned")
 			_, _ = fmt.Fprintf(out, "picked %s %s\n", id, todoTextPrefix(pickedText))
 			return nil
 		},
@@ -738,10 +904,26 @@ func newTodoUnpickCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
+			recordFactoryCardState(id, "", "queued", "card.unpicked")
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "unpicked %s %s\n", id, todoTextPrefix(text))
 			return nil
 		},
 	}
+}
+
+func recordFactoryCardState(cardID, specID, state, eventKind string) {
+	runID := os.Getenv(config.EnvMoaiKanbanID)
+	if runID == "" || os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
+		return
+	}
+	owner := os.Getenv(config.EnvMoaiFactoryWorker)
+	if owner == "" {
+		owner = "lead"
+	}
+	// Queue mutations resolve through the primary checkout, but provenance must
+	// describe the lane checkout that actually selected and executed the card.
+	// OpenFactory canonicalizes only the DB routing after capture.
+	_ = kanban.RecordFactoryCardState(resolveProjectDir(), runID, cardID, owner, specID, state, eventKind)
 }
 
 // normalizeTodoRef maps a bare <n> argument to the item id t<n>; an explicit

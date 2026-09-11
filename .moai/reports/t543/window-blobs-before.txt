@@ -1,0 +1,5 @@
+card-branch blobs read before absorbing (HEAD a28e462bf), same order as window-blobs-after.txt:
+.claude/rules/local/gitflow-lane-protocol.md 8a9b097988ba1bd06c67d0937a1f29195bb1d46d
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md d6472fcf6c8c8ab2dacd8ddb6e4a0c6e16d73f6a
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/plan.md df2e045526cfd009cf8cb10006fcdd3dcb37a2a1
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/spec.md 6507567d8457a4e4265a49bf5b6f4087882741d9

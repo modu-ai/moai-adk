@@ -1,0 +1,24 @@
+# AC-GTS2-004 baseline ID absence in .moai/reports/t610/run/ac004-govulncheck.log
+HEAD: 41f445fa54f3a4949491bbe9fe06c68a97cf283e
+tree: e6ec2991e4ce028b83d2be0658844ddb3813a8dd
+
+$ grep -c 'GO-2026-6218' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-6091' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-6090' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-6089' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-6088' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-5972' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-5856' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'GO-2026-5026' .moai/reports/t610/run/ac004-govulncheck.log
+0
+$ grep -c 'Your code is affected by 0 vulnerabilities' .moai/reports/t610/run/ac004-govulncheck.log
+1
+$ grep -c 'vulnerabilities in modules you require' .moai/reports/t610/run/ac004-govulncheck.log
+1

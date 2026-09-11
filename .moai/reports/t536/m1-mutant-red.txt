@@ -1,0 +1,42 @@
+########## MUTANT A ##########
+--- FAIL: TestTempOrigin_SymlinkSpellingEquivalence (0.00s)
+    temp_origin_test.go:51: spellings differ: unresolved="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence3154153467/001" resolved="/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence3154153467/001"
+    temp_origin_test.go:60: resolved spelling "/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_SymlinkSpellingEquivalence3154153467/001" classified NOT temporary
+    temp_origin_test.go:63: the two spellings named different temp roots: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/" vs ""
+--- FAIL: TestTempOrigin_ComponentBoundary (0.00s)
+    temp_origin_test.go:128: sibling "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary1373790116/001foo" classified temporary against root "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary1373790116/001" (reason "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary1373790116/001") — raw string-prefix matching
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.456s
+FAIL
+exit=1
+########## MUTANT C ##########
+--- FAIL: TestTempOrigin_FailsOpenOnUnresolvable (0.00s)
+    --- FAIL: TestTempOrigin_FailsOpenOnUnresolvable/whitespace_only (0.00s)
+        temp_origin_test.go:93: base "   " classified temporary (reason "unresolvable"); fail-open requires NOT temporary
+    --- FAIL: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_absolute_path_outside_every_temp_root (0.00s)
+        temp_origin_test.go:93: base "/moai-t536-does-not-exist/deep/path" classified temporary (reason "unresolvable"); fail-open requires NOT temporary
+    --- FAIL: TestTempOrigin_FailsOpenOnUnresolvable/non-existent_relative_path_outside_every_temp_root (0.00s)
+        temp_origin_test.go:93: base "../../moai-t536-nope" classified temporary (reason "unresolvable"); fail-open requires NOT temporary
+--- FAIL: TestTempOrigin_ComponentBoundary (0.00s)
+    temp_origin_test.go:128: sibling "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary663482368/001foo" classified temporary against root "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary663482368/001" (reason "unresolvable") — raw string-prefix matching
+    --- FAIL: TestTempOrigin_ComponentBoundary/production_roots:_/tmpfoo_is_not_inside_/tmp (0.00s)
+        temp_origin_test.go:136: /tmpfoo classified temporary (reason "unresolvable")
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.399s
+FAIL
+exit=1
+########## MUTANT D ##########
+--- FAIL: TestTempOrigin_FailsOpenOnUnresolvable (0.00s)
+    --- FAIL: TestTempOrigin_FailsOpenOnUnresolvable/unusable_roots_in_the_injected_set (0.00s)
+        temp_origin_test.go:105: base "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_FailsOpenOnUnresolvableunusable_roots_in_the_inj2891468964/002" matched an unusable root set (reason "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/")
+--- FAIL: TestTempOrigin_ComponentBoundary (0.00s)
+    temp_origin_test.go:128: sibling "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary653637023/001foo" classified temporary against root "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempOrigin_ComponentBoundary653637023/001" (reason "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/") — raw string-prefix matching
+--- FAIL: TestTempRootsSeam_ReadAtCallTime (0.00s)
+    temp_origin_test.go:165: the stub was ignored: "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempRootsSeam_ReadAtCallTime714884033/001" still temporary (reason "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/") after the root set was replaced with "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTempRootsSeam_ReadAtCallTime714884033/002/isolated-root" — the set is being read at init time, not at call time
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.403s
+FAIL
+exit=1
+########## RESTORED IMPLEMENTATION ##########
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.241s
+exit=0

@@ -714,3 +714,97 @@ func TestRunCodexSkillDisableReasonsAreDistinct(t *testing.T) {
 		seen[body] = name
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// §E exit-code contract (SPEC-CODEX-DISABLE-EXIT-001)
+// ─────────────────────────────────────────────────────────────────────────
+
+// AC-CDE-002 (Outcome B, M2 operator decision) — a guard refusal is a REFUSED
+// request, not a success: the verb returns a non-zero error so a script can
+// see that nothing was disabled. The Skipped: report STAYS on stdout — the
+// human still reads the reason — and the config stays byte-invariant.
+//
+// RED was observed on the pre-change tree (progress.md §E.2, E8): the branch
+// returned nil, so a refused request was indistinguishable from a performed
+// one.
+//
+// The fixture refuses through the duplicate-entry guard — two entries declare
+// the same path, which is `moai clean --codex-skills`'s job to collapse — so
+// exit 0 hides that handoff from a script exactly as the SPEC describes.
+func TestRunCodexSkillDisableSkippedExitsNonZero(t *testing.T) {
+	const skill = "t502probe"
+	proj := mirrorFixture(t, "copy", skill)
+	target := filepath.Join(proj, ".agents", "skills", skill, "SKILL.md")
+	entry := "[[skills.config]]\npath = \"" + target + "\"\n"
+	_, cfg := codexHomeWith(t, entry+"enabled = true\n"+entry+"enabled = false\n", 0o600)
+	before := mustRead(t, cfg)
+
+	var out, errBuf bytes.Buffer
+	p := printer.New(printer.WithWriters(&out, &errBuf))
+	err := runCodexSkillDisable(p, codexSkillDisableOptions{
+		Skill: skill, ProjectRoot: proj, HomeDir: emptyHome(t), Force: true,
+	})
+	if err == nil {
+		t.Fatalf("guard refusal returned nil error — a refused request is indistinguishable from a performed one")
+	}
+	body := out.String() + errBuf.String()
+	if !strings.Contains(body, "Skipped: ") {
+		t.Errorf("the refusal lost the Skipped marker on stdout\n--- report ---\n%s", body)
+	}
+	if !strings.Contains(body, "moai clean --codex-skills") {
+		t.Errorf("the refusal does not name the verb that collapses the duplicates\n--- report ---\n%s", body)
+	}
+	if !bytes.Equal(before, mustRead(t, cfg)) {
+		t.Errorf("config changed on the refusal path")
+	}
+}
+
+// AC-CDE-002 (Outcome B) — the other half of the distinctness rule: an
+// UNCHANGED verdict is the performed class (the desired state already holds),
+// so it stays exit 0. Same fixture shape as the Skipped test with the
+// duplicate entry removed, so the two tests read as the rule's two sides.
+func TestRunCodexSkillDisableUnchangedExitsZero(t *testing.T) {
+	const skill = "t502probe"
+	proj := mirrorFixture(t, "copy", skill)
+	target := filepath.Join(proj, ".agents", "skills", skill, "SKILL.md")
+	_, cfg := codexHomeWith(t, "[[skills.config]]\npath = \""+target+"\"\nenabled = false\n", 0o600)
+	before := mustRead(t, cfg)
+
+	var out, errBuf bytes.Buffer
+	p := printer.New(printer.WithWriters(&out, &errBuf))
+	if err := runCodexSkillDisable(p, codexSkillDisableOptions{
+		Skill: skill, ProjectRoot: proj, HomeDir: emptyHome(t), Force: true,
+	}); err != nil {
+		t.Fatalf("already-disabled returned error %v — the desired state already holds", err)
+	}
+	body := out.String() + errBuf.String()
+	if !strings.Contains(body, "Unchanged: ") {
+		t.Errorf("no Unchanged marker on stdout\n--- report ---\n%s", body)
+	}
+	if !bytes.Equal(before, mustRead(t, cfg)) {
+		t.Errorf("config changed on the no-op path")
+	}
+}
+
+// AC-CDE-003 — the third absent input: a Codex home that does not resolve at
+// all (blank CODEX_HOME over a failing os.UserHomeDir). The documented
+// fail-open doctrine covers it, and no earlier test reached this branch.
+func TestRunCodexSkillDisableFailsOpenOnUnresolvedHome(t *testing.T) {
+	const skill = "t502probe"
+	proj := mirrorFixture(t, "copy", skill)
+	orig := codexUserHomeDir
+	t.Cleanup(func() { codexUserHomeDir = orig })
+	codexUserHomeDir = func() (string, error) { return "", errors.New("no home in this test") }
+	t.Setenv("CODEX_HOME", "   ") // blank falls through to the failing default
+
+	var out, errBuf bytes.Buffer
+	p := printer.New(printer.WithWriters(&out, &errBuf))
+	if err := runCodexSkillDisable(p, codexSkillDisableOptions{
+		Skill: skill, ProjectRoot: proj, HomeDir: emptyHome(t), Force: true,
+	}); err != nil {
+		t.Fatalf("unresolved Codex home returned error %v — a missing input is not an error", err)
+	}
+	if body := out.String() + errBuf.String(); !strings.Contains(body, "does not resolve") {
+		t.Errorf("the report does not say the home failed to resolve\n--- report ---\n%s", body)
+	}
+}

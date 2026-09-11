@@ -1,0 +1,53 @@
+=== RUN   TestCodexStaleSkillFinding_AbsoluteExistingNotCounted
+--- PASS: TestCodexStaleSkillFinding_AbsoluteExistingNotCounted (0.00s)
+=== RUN   TestCodexStaleSkillFinding_AbsoluteMissingSplitsEnabledStates
+--- PASS: TestCodexStaleSkillFinding_AbsoluteMissingSplitsEnabledStates (0.00s)
+=== RUN   TestCodexStaleSkillFinding_HomeRelativeExpansionBuckets
+--- PASS: TestCodexStaleSkillFinding_HomeRelativeExpansionBuckets (0.00s)
+=== RUN   TestCodexStaleSkillFinding_BareTildeResolvesHome
+--- PASS: TestCodexStaleSkillFinding_BareTildeResolvesHome (0.00s)
+=== RUN   TestCodexStaleSkillFinding_RelativeShapeNeverCountedMissing
+--- PASS: TestCodexStaleSkillFinding_RelativeShapeNeverCountedMissing (0.00s)
+=== RUN   TestCodexStaleSkillFinding_OddlyFormedShapeNeverCountedMissing
+--- PASS: TestCodexStaleSkillFinding_OddlyFormedShapeNeverCountedMissing (0.00s)
+=== RUN   TestCodexStaleSkillFinding_UnresolvableHomeExpansionIndeterminate
+--- PASS: TestCodexStaleSkillFinding_UnresolvableHomeExpansionIndeterminate (0.00s)
+=== RUN   TestCodexStaleSkillFinding_IndeterminateOnlyStaysSilent
+--- PASS: TestCodexStaleSkillFinding_IndeterminateOnlyStaysSilent (0.00s)
+=== RUN   TestCodexStaleSkillFinding_EmptyPathEntrySkipped
+--- PASS: TestCodexStaleSkillFinding_EmptyPathEntrySkipped (0.00s)
+=== RUN   TestCodexStaleSkillFinding_UnreadableConfigFailsOpen
+--- PASS: TestCodexStaleSkillFinding_UnreadableConfigFailsOpen (0.00s)
+=== RUN   TestCodexStaleSkillFinding_UnresolvableCodexHomeSkipsLoop
+--- PASS: TestCodexStaleSkillFinding_UnresolvableCodexHomeSkipsLoop (0.00s)
+=== RUN   TestCodexStaleSkillFinding_SymlinkLoopIndeterminateNotMissing
+--- PASS: TestCodexStaleSkillFinding_SymlinkLoopIndeterminateNotMissing (0.00s)
+=== RUN   TestInspectSkillMirror_AbsentMirrorIsNotIndeterminate
+--- PASS: TestInspectSkillMirror_AbsentMirrorIsNotIndeterminate (0.00s)
+=== RUN   TestInspectSkillMirror_ResolvingSymlinkUncounted
+--- PASS: TestInspectSkillMirror_ResolvingSymlinkUncounted (0.00s)
+=== RUN   TestInspectSkillMirror_DanglingSymlinkNamedInDangling
+--- PASS: TestInspectSkillMirror_DanglingSymlinkNamedInDangling (0.00s)
+=== RUN   TestInspectSkillMirror_RealDirCountsCopyModeAndUnmirrored
+--- PASS: TestInspectSkillMirror_RealDirCountsCopyModeAndUnmirrored (0.00s)
+=== RUN   TestInspectSkillMirror_RegularFileOnMirrorPathUncounted
+--- PASS: TestInspectSkillMirror_RegularFileOnMirrorPathUncounted (0.00s)
+=== RUN   TestInspectSkillMirror_SymlinkLoopEntryIsIndeterminate
+--- PASS: TestInspectSkillMirror_SymlinkLoopEntryIsIndeterminate (0.00s)
+=== RUN   TestInspectSkillMirror_UnreadableCanonicalIsIndeterminateNotUnmirrored
+--- PASS: TestInspectSkillMirror_UnreadableCanonicalIsIndeterminateNotUnmirrored (0.00s)
+=== RUN   TestInspectSkillMirror_AbsentCanonicalNotIndeterminate
+--- PASS: TestInspectSkillMirror_AbsentCanonicalNotIndeterminate (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.935s
+
+=== M1 scoped verification (this run, this tree @ c07fb0dac) ===
+selector: go test ./internal/cli/ -run 'TestCodexStaleSkillFinding_|TestInspectSkillMirror_' -count=1 -timeout 1800s -v
+swept test COUNT: 20 (12 TestCodexStaleSkillFinding_* + 8 TestInspectSkillMirror_*) — all PASS
+result line: PASS / ok github.com/modu-ai/moai-adk/internal/cli 0.935s
+
+$ go vet ./internal/cli/            → exit 0 (VET_EXIT=0, no output)
+$ golangci-lint run internal/cli/... → exit 0 ("0 issues.")
+$ go test ./internal/cli/ -run 'Codex' -count=1 -timeout 1800s
+  → ok github.com/modu-ai/moai-adk/internal/cli 149.381s (pre-existing indirect suite incl. the new file: green)
+No local full suite (REQ-007 — 10+ lanes active; CI owns the full verdict).

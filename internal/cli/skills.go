@@ -69,6 +69,18 @@ The entry names the project's skill mirror file,
 --force to actually write, and the config is backed up first (its sha256 is
 reported) and keeps its own permission mode.
 
+Exit codes, by outcome class — a script can branch on them:
+
+  performed  0  the entry was written, or it already reads enabled = false
+                (Unchanged — the desired state already holds).
+  refused    1  a guard declined the write (Skipped), or the name does not
+                resolve (unresolved / ambiguous — a typo). The reason prints
+                either way; two Skipped reasons are fixed by
+                'moai clean --codex-skills'.
+  absent     0  the project has no skill mirror, the Codex home does not
+                resolve, or the config is absent or unreadable. Nothing to
+                act on is not an error.
+
 Three things worth knowing, because Codex reports none of them:
 
   1. Start Codex from the project root. The .agents/skills root is resolved

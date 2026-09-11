@@ -248,23 +248,32 @@ func TestReadContextUsage_Corrupt(t *testing.T) {
 // the statusline adapter (SPEC-STATE-ANCHOR-001). Replaces the former
 // TestResolveProjectDir_Chain: the old chain anchored the state write to
 // workspace.current_dir — the GH #1694 defect — and was removed.
+//
+// The step-1/2 fixtures are REAL directories (t.TempDir): the seam validates
+// its candidates since SPEC-STATE-ANCHOR-VALIDATE-001 — a candidate is
+// returned only when it is an absolute path naming an existing directory —
+// so a fake path can no longer demonstrate precedence. These fixtures express
+// the SAME precedence with paths that satisfy that contract.
 func TestResolveStateAnchor_Chain(t *testing.T) {
 	t.Parallel()
+
+	proj := t.TempDir()
+	primary := t.TempDir()
 
 	// Chain step 1: workspace.project_dir wins — a session that cd'd away
 	// still anchors to its project root.
 	if got := resolveStateAnchor(&StdinData{
-		Workspace: &WorkspaceInfo{CurrentDir: "/ws/visited", ProjectDir: "/proj"},
+		Workspace: &WorkspaceInfo{CurrentDir: "/ws/visited", ProjectDir: proj},
 		CWD:       "/legacy",
-	}); got != "/proj" {
+	}); got != proj {
 		t.Errorf("workspace.project_dir should win, got %q", got)
 	}
 	// Chain step 2: worktree.original_cwd when project_dir is absent.
 	if got := resolveStateAnchor(&StdinData{
-		Workspace: &WorkspaceInfo{CurrentDir: "/primary/.claude/worktrees/card-x"},
-		Worktree:  &WorktreeInfo{OriginalCwd: "/primary"},
+		Workspace: &WorkspaceInfo{CurrentDir: filepath.Join(primary, ".claude", "worktrees", "card-x")},
+		Worktree:  &WorktreeInfo{OriginalCwd: primary},
 		CWD:       "/legacy",
-	}); got != "/primary" {
+	}); got != primary {
 		t.Errorf("worktree.original_cwd should be chain step 2, got %q", got)
 	}
 	// Chain step 3 miss: no project_dir, no original_cwd, and a current_dir

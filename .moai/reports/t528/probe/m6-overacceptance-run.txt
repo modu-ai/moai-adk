@@ -1,0 +1,24 @@
+=== RUN   TestT528NonDeclarationBulletsStayRejected
+=== RUN   TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range
+=== RUN   TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range_2
+=== RUN   TestT528NonDeclarationBulletsStayRejected/global_scope_line_naming_an_ac
+=== RUN   TestT528NonDeclarationBulletsStayRejected/tier_grouping_line_listing_acs
+=== RUN   TestT528NonDeclarationBulletsStayRejected/prose_note_mentioning_an_anchor
+=== RUN   TestT528NonDeclarationBulletsStayRejected/bare_ears_clause_bullet
+=== RUN   TestT528NonDeclarationBulletsStayRejected/verification_command_bullet
+=== RUN   TestT528NonDeclarationBulletsStayRejected/given_prelude_bullet
+--- PASS: TestT528NonDeclarationBulletsStayRejected (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/milestone_line_naming_an_ac_range_2 (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/global_scope_line_naming_an_ac (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/tier_grouping_line_listing_acs (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/prose_note_mentioning_an_anchor (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/bare_ears_clause_bullet (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/verification_command_bullet (0.00s)
+    --- PASS: TestT528NonDeclarationBulletsStayRejected/given_prelude_bullet (0.00s)
+=== RUN   TestT528NonDeclarationBulletsCorpusSweep
+    zz_t528_overacceptance_test.go:138: non-declaration bullets swept = 335, read as declarations = 0
+--- PASS: TestT528NonDeclarationBulletsCorpusSweep (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.434s
+EXIT=0

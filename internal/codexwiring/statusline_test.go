@@ -26,10 +26,13 @@ var parseOnlyStatusLineAliases = []string{
 	"context-usage", "session-id",
 }
 
-// TestStatusLineDefaultIsCanonicalFive verifies the default configuration is
-// exactly the 5 canonical tokens the operator directive fixed (AC-CW-013a).
-func TestStatusLineDefaultIsCanonicalFive(t *testing.T) {
-	want := []string{"model-with-reasoning", "context-remaining", "git-branch", "current-dir", "thread-id"}
+// TestStatusLineDefaultIsCanonicalEight verifies the operator-selected
+// 2026-09-10 default is exactly the 8 canonical tokens in the chosen order.
+func TestStatusLineDefaultIsCanonicalEight(t *testing.T) {
+	want := []string{
+		"model-with-reasoning", "context-remaining", "git-branch", "current-dir",
+		"branch-changes", "five-hour-limit", "weekly-limit", "thread-title",
+	}
 	got := DefaultStatusLine()
 	if len(got) != len(want) {
 		t.Fatalf("DefaultStatusLine() = %v (len %d), want %v (len %d)", got, len(got), want, len(want))

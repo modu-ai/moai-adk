@@ -1,0 +1,29 @@
+[DEBUG] Setting secret TEST_SECRET=s...alue for repo owner/repo
+[DEBUG] Setting secret TEST_SECRET=s...alue for repo owner/repo
+[DEBUG] Deleting secret TEST_SECRET from repo owner/repo
+2026/09/08 03:27:13 WARN failed to add resolved label module=github.issue_closer issue=55 error="github: add label failed after 1 attempts: github: maximum retries exceeded: label error"
+2026/09/08 03:27:13 INFO issue closed successfully module=github.issue_closer issue=55 comment_posted=true label_added=false
+2026/09/08 03:27:13 INFO starting PR review module=pr-reviewer pr=999 spec_id=SPEC-ISSUE-999
+2026/09/08 03:27:13 INFO starting merge attempt module=pr-merger pr=105 auto_merge=true
+--- FAIL: TestReview_PRNotFound (0.00s)
+2026/09/08 03:27:13 INFO starting merge attempt module=pr-merger pr=102 auto_merge=true
+panic: REACHPROBE [recovered, repanicked]
+
+goroutine 138 [running]:
+testing.tRunner.func1.2({0x102d0f340, 0x102d70730})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x102d0f340?, 0x102d70730?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/github.(*prReviewer).Review(0x6cb4d280c3f0, {0x102d74c28, 0x102dcc860}, 0x3e7, {0x102aed88b, 0xe}, 0x0)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/github/pr_reviewer.go:110 +0xe34
+github.com/modu-ai/moai-adk/internal/github.TestReview_PRNotFound(0x6cb4d27befc8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/github/pr_reviewer_test.go:215 +0xb0
+testing.tRunner(0x6cb4d27befc8, 0x102d6f168)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/github	0.674s
+ok  	github.com/modu-ai/moai-adk/internal/github/workflow	0.337s
+FAIL

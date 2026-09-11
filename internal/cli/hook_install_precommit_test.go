@@ -653,3 +653,53 @@ func TestPreCommitHook_SubmoduleVetBlocks(t *testing.T) {
 		t.Errorf("expected 'module root: submod' in stderr, got:\n%s", stderr)
 	}
 }
+
+// TestPreCommitHook_OutsideAnyModuleSkips — card t554 / GH #1679 case T3: in a
+// repo whose root holds no go.mod, a staged .go file that belongs to no module
+// at all must be skipped rather than vetted from the repo root. The previous
+// fallback ran `go vet ./scripts` from a module-less root, which exits non-zero
+// with "cannot find main module" and was reported as a vet finding — the very
+// blanket-block SPEC-PRECOMMIT-VET-MONOREPO-001 set out to remove, narrowed to
+// files outside any module.
+func TestPreCommitHook_OutsideAnyModuleSkips(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	repo := gitInitRepo(t)
+	writeSubmoduleFixture(t, repo) // module at submod/; repo root has none
+	stageFile(t, repo, "scripts/tool.go", "package main\n\nfunc main() {}\n")
+
+	code, stderr := runPreCommitHook(t, repo, []string{"PATH=" + moduleShimPath(t)})
+	if code != 0 {
+		t.Fatalf("expected exit 0 (file outside any module is skipped), got %d\nstderr:\n%s", code, stderr)
+	}
+	if strings.Contains(stderr, "FAILED") {
+		t.Errorf("a module-less staged file must not emit FAILED, got:\n%s", stderr)
+	}
+}
+
+// TestPreCommitHook_RootModuleStillVets — the vacuous-green guard for the test
+// above: skipping must be conditional on there being no module, not on the
+// walk being bypassed. With a go.mod AT the repo root the same walk returns "."
+// and a real vet diagnostic must still block, naming that root.
+func TestPreCommitHook_RootModuleStillVets(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+	repo := gitInitRepo(t)
+	goMod := "module sample\n\ngo 1.21\n"
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+	stageFile(t, repo, "scripts/bad.go", vetBadGo)
+
+	code, stderr := runPreCommitHook(t, repo, []string{
+		"PATH=" + moduleShimPath(t), "GOTOOLCHAIN=local", "GOFLAGS=-mod=mod", "GOPROXY=off",
+	})
+	if code != 1 {
+		t.Fatalf("expected exit 1 (root-module vet still blocks), got %d\nstderr:\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "module root: .") {
+		t.Errorf("expected 'module root: .' in stderr, got:\n%s", stderr)
+	}
+}

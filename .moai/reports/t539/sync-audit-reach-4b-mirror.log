@@ -1,0 +1,30 @@
+--- FAIL: TestUpdateMirrorHeal_RestoresPathA (0.04s)
+panic: REACHPROBE42 [recovered, repanicked]
+
+goroutine 86 [running]:
+testing.tRunner.func1.2({0x108fa4d80, 0x1091e83c0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1974 +0x1a0
+testing.tRunner.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1977 +0x318
+panic({0x108fa4d80?, 0x1091e83c0?})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:860 +0x12c
+github.com/modu-ai/moai-adk/internal/cli.deployWithMirrorNotice(...)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/mirror_notice.go:42
+github.com/modu-ai/moai-adk/internal/cli.runTemplateSyncWithReporter.func4()
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_template_sync.go:341 +0x1ec
+github.com/modu-ai/moai-adk/internal/cli.runUpdateStages(0x2e55b276f548, {0x2e55b276f790?, 0x1, 0x1?})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_recovery_manifest.go:118 +0x80
+github.com/modu-ai/moai-adk/internal/cli.runTemplateSyncWithReporter(0x2e55b276fa58, {0x0, 0x0}, 0x1)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_template_sync.go:529 +0x1944
+github.com/modu-ai/moai-adk/internal/cli.runTemplateSyncAt(0x2e55b28ec6c8, {0x2e55b28c9500, 0x61})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_llm_preserve_test.go:166 +0x29c
+github.com/modu-ai/moai-adk/internal/cli.mirrorHealDeployedProject(0x2e55b28ec6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_mirror_heal_test.go:55 +0x98
+github.com/modu-ai/moai-adk/internal/cli.TestUpdateMirrorHeal_RestoresPathA(0x2e55b28ec6c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t539/internal/cli/update_mirror_heal_test.go:204 +0x28
+testing.tRunner(0x2e55b28ec6c8, 0x1091de510)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x3a8
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.916s
+FAIL

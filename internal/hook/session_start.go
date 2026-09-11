@@ -19,6 +19,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -129,6 +130,25 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		"cwd", input.CWD,
 		"project_dir", input.ProjectDir,
 	)
+	admissionRoot := input.ProjectDir
+	if admissionRoot == "" {
+		admissionRoot = input.CWD
+	}
+	if admissionRoot != "" {
+		admissionLock, lockErr := homestate.AcquireAdmissionLock(admissionRoot)
+		if lockErr != nil {
+			out := &HookOutput{StopReason: lockErr.Error()}
+			out.SetContinue(false)
+			return out, nil
+		}
+		defer func() { _ = admissionLock.Release() }()
+		if err := homestate.CheckRuntimeAdmission(admissionRoot); err != nil {
+			out := &HookOutput{StopReason: err.Error()}
+			out.SetContinue(false)
+			return out, nil
+		}
+	}
+	registerProfileLease(ctx, input)
 
 	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
 	// guard firing-liveness refresh.
@@ -552,6 +572,33 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
 
 	return out, nil
+}
+
+func registerProfileLease(ctx context.Context, input *HookInput) {
+	profilePath := os.Getenv("CLAUDE_CONFIG_DIR")
+	if profilePath == "" || input == nil {
+		return
+	}
+	store, err := homestate.OpenProfileLeases()
+	if err != nil {
+		slog.Warn("session_start: profile lease unavailable", "error", err)
+		return
+	}
+	defer func() { _ = store.Close() }()
+	pid := os.Getppid()
+	fingerprint, state := homestate.ProbeProcessIdentity(pid)
+	if state != homestate.ProcessIdentityLive {
+		fingerprint = ""
+	}
+	token := os.Getenv("MOAI_PROFILE_LEASE_TOKEN")
+	if token != "" && store.Enrich(ctx, token, input.SessionID, pid, fingerprint) == nil {
+		return
+	}
+	name := filepath.Base(profilePath)
+	token, err = store.CreateProvisional(ctx, homestate.ProfileLease{ProfileName: name, ProfilePath: profilePath, ProjectKey: homestate.ProjectKey(input.ProjectDir), PID: pid, ProcessFingerprint: fingerprint, SessionID: input.SessionID})
+	if err == nil {
+		_ = store.Enrich(ctx, token, input.SessionID, pid, fingerprint)
+	}
 }
 
 // getConfig safely retrieves the configuration, returning nil if unavailable.

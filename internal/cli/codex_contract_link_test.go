@@ -2,7 +2,7 @@ package cli
 
 // codex_contract_link_test.go — SPEC-CODEX-INIT-001 M5+M6 cells:
 // AC-CI-005 (link creation, 10), AC-CI-006 (three-run idempotency, 12),
-// AC-CI-007 (local-file reachability, 4).
+// AC-CI-007 (local-file separation, 4).
 //
 // Disciplines: fixture-specific EXPECTED BYTE SEQUENCES compared for FULL
 // equality on every cell that touches an existing file (partial-substring
@@ -10,7 +10,7 @@ package cli
 // never asked for); renames counted PER FILE (a cell writing both files
 // must rename twice); idempotency proven by 1↔2 AND 2↔3 byte comparisons
 // (a run that rewrites once and then stabilizes is not idempotent); the
-// local file's content reached by a closure WALK over executing imports,
+// local file isolation proven by a closure WALK over executing imports,
 // never by a filename grep.
 
 import (
@@ -22,6 +22,7 @@ import (
 )
 
 const codexSentinelLocal = "SENTINEL-LOCAL-7q7"
+const codexTestLocalImportDirective = "@AGENTS.local.md"
 
 // ─── fixtures — instruction files (acceptance common fixture table) ───────
 
@@ -116,7 +117,7 @@ func codexLinkFixtures() []codexLinkFixture {
 }
 
 // codexLayLinkFixture writes the fixture files into proj and returns the
-// CLAUDE.local.md bytes (nil when the fixture has none).
+// AGENTS.local.md bytes (nil when the fixture has none).
 func codexLayLinkFixture(t *testing.T, proj string, fx codexLinkFixture) []byte {
 	t.Helper()
 	for name, content := range map[string][]byte{
@@ -169,7 +170,7 @@ func TestCodexContractLinkCreation(t *testing.T) {
 				t.Errorf("CLAUDE.md renames = %d, want %d", got, fx.wantClaudeRenames)
 			}
 			if got := codexRenamesOf(rec, codexLocalInstructionName); got != 0 {
-				t.Errorf("CLAUDE.local.md renames = %d, want 0 — the local file is never written", got)
+				t.Errorf("AGENTS.local.md renames = %d, want 0 — the local file is never written", got)
 			}
 
 			// exact byte expectations for touched files
@@ -197,8 +198,8 @@ func TestCodexContractLinkCreation(t *testing.T) {
 				t.Errorf("executing @AGENTS.md imports = %d, want 1", got)
 			}
 			// no local file in the I-fixtures → nothing may reference it
-			if got := codexTestExecImports(t, filepath.Join(proj, codexAgentsRelPath), codexLinkLocalDirective); got != 0 {
-				t.Errorf("executing @CLAUDE.local.md imports = %d, want 0 (no local file exists)", got)
+			if got := codexTestExecImports(t, filepath.Join(proj, codexAgentsRelPath), codexTestLocalImportDirective); got != 0 {
+				t.Errorf("executing @AGENTS.local.md imports = %d, want 0", got)
 			}
 
 			// created AGENTS.md: non-empty with at least one non-space char
@@ -306,18 +307,16 @@ func TestCodexContractIdempotent(t *testing.T) {
 				if got := codexTestCountImportsInString(t, claude, codexLinkAgentsDirective); got != 1 {
 					t.Errorf("snapshot %d: executing @AGENTS.md imports = %d, want 1", i+1, got)
 				}
-				if s[codexLocalInstructionName] != "" {
-					agents := s[codexAgentsRelPath]
-					if got := codexTestCountImportsInString(t, agents, codexLinkLocalDirective); got != 1 {
-						t.Errorf("snapshot %d: executing @CLAUDE.local.md imports = %d, want 1", i+1, got)
-					}
+				agents := s[codexAgentsRelPath]
+				if got := codexTestCountImportsInString(t, agents, codexTestLocalImportDirective); got != 0 {
+					t.Errorf("snapshot %d: executing @AGENTS.local.md imports = %d, want 0", i+1, got)
 				}
 			}
 
 			// the local file itself is never rewritten
 			if fx.local != nil {
 				if s3[codexLocalInstructionName] != string(fx.local) {
-					t.Errorf("CLAUDE.local.md was rewritten across the runs")
+					t.Errorf("AGENTS.local.md was rewritten across the runs")
 				}
 			}
 		})
@@ -332,24 +331,20 @@ func codexRunContractSnap(t *testing.T, proj string, snap func() map[string]stri
 	return snap()
 }
 
-// ─── AC-CI-007 — local-file reachability (4 cells) ─────────────────────────
+// ─── AC-CI-007 — local-file separation (4 cells) ───────────────────────────
 
-// TestCodexLocalReachability: from EACH entry file, walk the transitive
-// closure of EXECUTING imports and collect contents. The sentinel must be
-// reachable from both entries; the only file CONTAINING it must be
-// CLAUDE.local.md itself (a copy-into-AGENTS.md implementation loads it
-// twice); exactly ONE directive in the whole closure may point at it
-// (counted on the directive-resolved absolute path); with no local file,
-// zero directives may point at it.
-func TestCodexLocalReachability(t *testing.T) {
+// TestCodexLocalSeparation: from EACH shared entry file, walk the transitive
+// closure of EXECUTING imports. Codex-only guidance must not be reachable and
+// no shared instruction file may point at AGENTS.local.md. The launcher test
+// separately proves that the same bytes reach Codex as developer_instructions.
+func TestCodexLocalSeparation(t *testing.T) {
 	type reachCase struct {
-		name        string
-		local       []byte
-		wantDirects int
+		name  string
+		local []byte
 	}
 	cases := []reachCase{
-		{name: "l1_local_present", local: []byte("local guidance " + codexSentinelLocal + "\n"), wantDirects: 1},
-		{name: "l2_local_absent", wantDirects: 0},
+		{name: "l1_local_present", local: []byte("local guidance " + codexSentinelLocal + "\n")},
+		{name: "l2_local_absent"},
 	}
 	for _, rc := range cases {
 		for _, entry := range []string{codexAgentsRelPath, codexClaudeRelPath} {
@@ -367,36 +362,31 @@ func TestCodexLocalReachability(t *testing.T) {
 
 				contents, directiveTargets := codexTestWalkClosure(t, proj, entry)
 
-				// sentinel reachable from this entry
+				// The local sentinel must not enter either shared closure.
 				reachable := false
-				containFiles := map[string]bool{}
-				for rel, content := range contents {
+				for _, content := range contents {
 					if strings.Contains(content, codexSentinelLocal) {
 						reachable = true
-						containFiles[rel] = true
 					}
 				}
-				if localBytes != nil && !reachable {
-					t.Errorf("entry %s: sentinel not reachable through executing imports", entry)
-				}
-				if localBytes != nil && len(containFiles) != 1 || (localBytes != nil && !containFiles[codexLocalInstructionName]) {
-					t.Errorf("entry %s: sentinel-carrying files = %v, want exactly {CLAUDE.local.md}", entry, containFiles)
+				if reachable {
+					t.Errorf("entry %s: Codex-only sentinel leaked into the shared import closure", entry)
 				}
 
 				// directive count toward the local file across the WHOLE closure
 				localAbs := filepath.Join(proj, codexLocalInstructionName)
-				if got := directiveTargets[localAbs]; got != rc.wantDirects {
-					t.Errorf("entry %s: directives pointing at %s = %d, want %d", entry, codexLocalInstructionName, got, rc.wantDirects)
+				if got := directiveTargets[localAbs]; got != 0 {
+					t.Errorf("entry %s: directives pointing at %s = %d, want 0", entry, codexLocalInstructionName, got)
 				}
 
 				// the local file is byte-untouched
 				if localBytes != nil {
 					got, rerr := os.ReadFile(localAbs)
 					if rerr != nil {
-						t.Fatalf("read CLAUDE.local.md: %v", rerr)
+						t.Fatalf("read AGENTS.local.md: %v", rerr)
 					}
 					if string(got) != string(localBytes) {
-						t.Errorf("CLAUDE.local.md changed across initialization")
+						t.Errorf("AGENTS.local.md changed across initialization")
 					}
 				}
 			})

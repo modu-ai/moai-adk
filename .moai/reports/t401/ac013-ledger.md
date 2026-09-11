@@ -118,6 +118,14 @@ no row uses a third ground.
 | 27 | `.claude/output-styles/moai/moai.md:579` | **conditioned** | Block = the `[HARD]` bullet itself. The S5 cost-ordering clause added by the AC-JFM-007 repair (`1fb802d09`) — it carries its own `interview.recommendation_mode` pull branch in the same block (form (a)). Surfaced by the post-merge re-sweep (28 rows at the merged tree `84e15d606+`): the sweep count moved 26 → 28 because this clause and the `doc-generation.md:373` candidate arrived after the last ledger revision (row 27 via this SPEC's own S5 repair, row 28 via the develop absorption merge). |
 | 28 | `.claude/skills/moai/workflows/project/doc-generation.md:373` | escalated | Block = the option-list line. A concrete option carrying a literal `(Recommended)` suffix (`Create SPEC (Recommended)`) arrived from the develop absorption merge — a rendering example in the project workflow, outside M1/M2's enumerated edit surfaces. The two-class contract (post-0.2.2) forbids the run phase from making a fresh `unconditioned-by-design` judgment, and conditioning it is an edit outside this SPEC's scope; raised to the lead as a blocker with the ledger row standing at `escalated` until adjudicated. |
 
+**Row 28 — adjudicated by the lead (2026-09-08), CLOSED.** Verdict: **leave it as-is; do not
+edit.** The line is someone else's text that arrived via the absorption merge, not this card's
+product — the post-0.2.2 prohibition on run-phase `unconditioned-by-design` judgments exists to
+stop *this card* from manufacturing new ones, not to require retroactive adjudication of
+pre-existing sentences the merge carried in. Disposition recorded as: **escalated · source =
+absorption merge · not this card's scope · lead ruling: keep as-is**. Any repair the row someday
+needs is a separate card; if drafted, the text goes through the lead.
+
 ## Escalation — row 20 (`harness.md:190`) — DISCHARGED
 
 **Outcome.** The operator approved **resolution 1** below. The M3 edit conditions `:190` and `:75`

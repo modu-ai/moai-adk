@@ -244,6 +244,7 @@ func TestReadSettingsLocalForLaunch_MissingFile(t *testing.T) {
 func TestReadSettingsLocalForLaunch_ValidFile(t *testing.T) {
 	origDir, _ := os.Getwd()
 	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatalf("chdir: %v", err)
 	}

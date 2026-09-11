@@ -70,7 +70,11 @@ var frozenTodoSurface = map[string][]string{
 //   - undone      — SPEC-TODO-DESTRUCTIVE-GUARD-001 REQ-TDG-001 (done's inverse)
 //   - history     — SPEC-TODO-ARCHIVE-QUERY-001 REQ-TAQ-001/006 (the archive
 //     read surface; read-only, LoadPure, flags: --limit)
-var permittedVerbAdditions = []string{"export-json", "undone", "history"}
+//   - landed      — SPEC-TODO-LANDING-EVIDENCE-001 REQ-TLE-007 (the recording
+//     verb; one locked write of one column, flags: --sha, --ref, --clear).
+//     It records EVIDENCE and transitions nothing — `done` stays the only way
+//     a card leaves the queue.
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit

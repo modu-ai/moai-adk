@@ -1,0 +1,63 @@
+package kanban
+
+// MUTANT C (temporary, never compiled in place): fail-CLOSED — an input that
+// cannot be resolved is reported temporary, the direction REQ-THG-004 forbids.
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+var TempRootsFn = defaultTempRoots
+
+func defaultTempRoots() []string {
+	return []string{os.TempDir(), "/tmp", "/var/folders"}
+}
+
+func TempOriginReason(base string) (reason string, isTemp bool) {
+	abs, err := filepath.Abs(base)
+	if err != nil {
+		return "unresolvable", true
+	}
+	if _, err := os.Lstat(abs); err != nil {
+		return "unresolvable", true
+	}
+	normalizedBase := normalizeForTempCompare(abs)
+	for _, root := range TempRootsFn() {
+		if strings.TrimSpace(root) == "" {
+			continue
+		}
+		rootAbs, err := filepath.Abs(root)
+		if err != nil {
+			continue
+		}
+		for _, anchor := range []string{normalizeForTempCompare(rootAbs), filepath.Clean(rootAbs)} {
+			if pathWithin(normalizedBase, anchor) {
+				return root, true
+			}
+		}
+	}
+	return "", false
+}
+
+func normalizeForTempCompare(path string) string {
+	if _, err := os.Lstat(path); err != nil {
+		return filepath.Clean(path)
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return filepath.Clean(path)
+}
+
+func pathWithin(p, dir string) bool {
+	rel, err := filepath.Rel(dir, p)
+	if err != nil {
+		return false
+	}
+	if rel == "." {
+		return true
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}

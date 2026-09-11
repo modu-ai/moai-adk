@@ -1,0 +1,14 @@
+diff --git a/internal/core/git/manager.go b/internal/core/git/manager.go
+index 75503e276..ec53936b5 100644
+--- a/internal/core/git/manager.go
++++ b/internal/core/git/manager.go
+@@ -106,7 +106,7 @@ func (m *gitManager) Status() (*GitStatus, error) {
+ 	// statusline calls Status on every render, so that lock collides with a
+ 	// concurrent add, commit or merge in the same worktree ("index.lock: File
+ 	// exists"). The flag changes no output, only that write.
+-	out, err := execGit(ctx, m.root, "--no-optional-locks", "status", "--porcelain", "--branch")
++	out, err := execGit(ctx, m.root, "status", "--porcelain", "--branch")
+ 	if err != nil {
+ 		return nil, fmt.Errorf("status: %w", err)
+ 	}
+EXIT=0

@@ -236,6 +236,18 @@ moai update --dry-run
 moai update --yes
 ```
 
+### 既存プロジェクトに Codex を追加
+
+再初期化せずに、claude のみのプロジェクトへ codex ハーネス配線を追加します:
+
+```bash
+moai tool enable codex
+```
+
+- `.codex/hooks.json`(ホワイトリストゲートを通過したフック描画)・`.codex/config.toml`(`[mcp_servers.moai]` + `[tui].status_line` — 自分で追加した項目は保持)・`.moai/state/codex-wiring.json`(信頼サイドカー)を作成または更新します
+- `.mcp.json` には触れず、再実行は冪等です — 配線済みなら何も書かず、再信頼ガイドも表示しません
+- `moai tool enable codex --dry-run` を実行すると、ファイルシステムを変更せずに配線計画だけを先に確認できます
+
 ## アップデート後の手順
 
 ### ステップ 1: バージョン確認

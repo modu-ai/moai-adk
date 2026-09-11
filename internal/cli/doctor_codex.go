@@ -11,7 +11,7 @@ package cli
 //
 // The check READS only. It never creates, repairs, or removes a .codex/ file,
 // and never touches the user-layer ~/.codex/config.toml: wiring creation is
-// the explicit `moai init --agent codex` opt-in (REQ-CW-009) and a user-owned
+// the explicit `moai init --llm codex` opt-in (REQ-CW-009) and a user-owned
 // table is the doctor's to report, never the writer's to repair (REQ-CW-005).
 
 import (
@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -49,11 +50,11 @@ const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
 // ONLY path that creates wiring — RefreshWiring is an existence gate that
 // creates nothing (REQ-CW-009), so an unwired project stays unwired until the
 // user opts in explicitly.
-const initCodexAdvice = "run moai init --agent codex"
+const initCodexAdvice = "run moai init --llm codex"
 
 // halfWiredSummary names the half-wired state: the project carries Codex
 // agent definitions but no wiring file. `moai init` deploys the definitions
-// with or without the --agent codex opt-in, so this is what a plain init
+// with or without the --llm codex opt-in, so this is what a plain init
 // leaves behind — which is why the state needed a name of its own rather
 // than being folded into "not wired" (SPEC-CODEX-PARTIAL-WIRING-001).
 const halfWiredSummary = "codex agent definitions present, no wiring files"
@@ -340,7 +341,7 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	check.Message = joinCodexSummaries(problems)
 	check.Detail = joinCodexDetails(problems, extraDetail)
 	if check.Detail == "" && verbose {
-		check.Detail = "advisory check — rerun `moai init --agent codex` to refresh the wiring"
+		check.Detail = "advisory check — rerun `moai init --llm codex` to refresh the wiring"
 	}
 	return check
 }
@@ -456,7 +457,7 @@ func inspectSkillMirror(root string) skillMirrorState {
 		}
 		// Stat follows the link, resolving the producer's RELATIVE link body
 		// against the mirror directory exactly as the OS does for Codex.
-		_, serr := os.Stat(entryPath)
+		_, serr := osStatFn(entryPath)
 		switch {
 		case serr == nil:
 		case errors.Is(serr, fs.ErrNotExist):
@@ -656,25 +657,68 @@ const (
 	codexPathRelative
 	// codexPathOddlyFormed is a backslash-bearing non-absolute fragment (a
 	// Windows-shaped separator in a non-absolute position, or a residual
-	// un-decoded TOML escape) or another user's "~user" home form.
+	// un-decoded TOML escape), a non-absolute declaration carrying a ".."
+	// segment, or another user's "~user" home form.
 	codexPathOddlyFormed
 )
 
 // classifyCodexSkillPath maps a declared path onto its shape. Ordering is
-// load-bearing: IsAbs runs before the backslash check (a native Windows
-// absolute stays absolute), and the home-relative forms are peeled off
-// before the residual "~"-prefixed shapes fall to oddly-formed.
+// load-bearing, and each step earns its position:
+//
+//	IsAbs → backslash → ".." segment → "~"/"~/" peel → residual "~" → relative
+//
+// The ".." segment check runs THIRD, ahead of the peel for the same reason the
+// backslash check does (card t582): "~/../../etc/x" carries no backslash, so it
+// was classified home-relative, and filepath.Join's internal Clean expanded it
+// to /etc/x — outside the user's home — where an absent target reached the
+// prune verb's deletion verdict. ANY ".." segment is refused, not only one that
+// escapes: the write side (upsertCodexSkillDisable) refuses the same segment
+// through hasCodexDotDotSegment, and one predicate cannot disagree with itself
+// at a boundary input.
+//
+// IsAbs stays FIRST so a native Windows absolute (C:\...) is classified by
+// what it is rather than by the separator it happens to carry.
+//
+// The backslash check runs SECOND — ahead of the "~/" peel — because the
+// refusal it performs must not depend on the shape of the declaration that
+// carries it (SPEC-CODEX-HOME-BACKSLASH-001). It previously ran last, so
+// stripping "~/" first routed a backslash-bearing home-relative declaration
+// into codexPathHomeRelative, where it was expanded, stat'ed, and reached
+// Eligible=true in the prune verb — a DELETION verdict on a registration the
+// user wrote by hand. The identical backslash in a relative declaration was
+// refused. That asymmetry was the defect; this ordering is the fix, and
+// TestCodexSkillPathBackslashSymmetry is what keeps it closed.
+//
+// [HARD] The check runs on the DECLARATION, never on the expansion. The
+// expanded home is legitimately backslash-bearing on Windows (C:\Users\x), so
+// a check moved below expandCodexHomeRelativePath would refuse every entry
+// there — the alternative repair, and the reason it was rejected.
 func classifyCodexSkillPath(p string) codexSkillPathShape {
 	if filepath.IsAbs(p) {
 		return codexPathAbsolute
 	}
+	if strings.ContainsRune(p, '\\') {
+		return codexPathOddlyFormed
+	}
+	if hasCodexDotDotSegment(p) {
+		return codexPathOddlyFormed
+	}
 	if p == "~" || strings.HasPrefix(p, "~/") {
 		return codexPathHomeRelative
 	}
-	if strings.HasPrefix(p, "~") || strings.ContainsRune(p, '\\') {
+	if strings.HasPrefix(p, "~") {
 		return codexPathOddlyFormed
 	}
 	return codexPathRelative
+}
+
+// hasCodexDotDotSegment reports whether a slash-form path carries a ".."
+// segment. It is the single predicate both sides consult: the read side on a
+// non-absolute declaration (backslashes are already refused there), the write
+// side after the host separator has been converted to '/'. A name that merely
+// starts with ".." ("..ok") is not a segment and is not refused.
+func hasCodexDotDotSegment(p string) bool {
+	return slices.Contains(strings.Split(p, "/"), "..")
 }
 
 // expandCodexHomeRelativePath expands a "~" or "~/"-prefixed declaration
@@ -830,7 +874,11 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 		var statPath string
 		switch classifyCodexSkillPath(e.Path) {
 		case codexPathAbsolute:
-			statPath = e.Path
+			// SPEC-CODEX-SKILL-PATH-READBACK-001: same one-line shape as the
+			// behaviorally-verified prune side — the declared config form is
+			// converted back to host form for the stat target only; the
+			// home-relative branch stays untouched (REQ-CSRB-002).
+			statPath = fromConfigPath(e.Path, configPathSeparator)
 		case codexPathHomeRelative:
 			expanded, ok := expandCodexHomeRelativePath(e.Path)
 			if !ok {
@@ -848,13 +896,13 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 			relativeCount++
 			continue
 		default:
-			// A backslash-bearing non-absolute fragment or a "~user" form:
+			// A backslash- or ".."-bearing non-absolute fragment, or a "~user" form:
 			// a declared shape this check cannot resolve here. Reported as
 			// its own classification, never counted missing.
 			oddlyFormed++
 			continue
 		}
-		_, serr := os.Stat(statPath)
+		_, serr := osStatFn(statPath)
 		switch {
 		case serr == nil:
 			// The path resolves. A DIRECTORY resolves too, and is likewise

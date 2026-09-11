@@ -47,16 +47,68 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      # Explicit main fetch (REQ-SLGB-008). Whether actions/checkout at
+      # Explicit integration-ref fetch (REQ-SLGB-008). Whether actions/checkout at
       # fetch-depth: 0 populates refs/remotes/origin/* is NOT a verified
       # assumption (SPEC-SPECLINT-GITBLIND-001 §2.3) — this repo integrates
       # through develop, so a checkout of a develop push holds no local main
       # either way, and the lint's base-ref chain needs one. Redundant when
       # checkout already fetched it, the fetch costs one command; missing, it
       # costs the lint its eyes again.
-      - name: Fetch main ref
-        run: git fetch origin main:main
-      - name: Run SPEC lint
+      - name: Fetch integration refs
+        run: git fetch origin main:refs/remotes/origin/main develop:refs/remotes/origin/develop
+      - name: Select SPEC lint policy
+        id: policy
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          strict=true
+          reason="default gate for main pushes and ordinary pull requests"
+
+          if [[ "$EVENT_NAME" == "pull_request" && "$HEAD_REF" == release/* ]]; then
+            if [[ "$BASE_REF" != "main" ]]; then
+              echo "::error::release snapshot PR must target main (got ${BASE_REF:-<empty>})"
+              exit 1
+            fi
+            develop_sha=$(git rev-parse origin/develop)
+            if [[ "$PR_HEAD_SHA" != "$develop_sha" ]]; then
+              echo "::error::release snapshot head $PR_HEAD_SHA does not match origin/develop $develop_sha"
+              exit 1
+            fi
+            strict=false
+            reason="release snapshot matches develop; report inherited warnings while blocking errors"
+          elif [[ "$EVENT_NAME" == "push" && "$REF_NAME" == "develop" ]]; then
+            if [[ -z "$EVENT_BEFORE" || "$EVENT_BEFORE" =~ ^0+$ ]]; then
+              reason="develop comparison base is unavailable; fail closed with strict lint"
+            else
+              changed_paths=$(git diff --name-only --no-renames "$EVENT_BEFORE" "$EVENT_SHA")
+              spec_changed=false
+              while IFS= read -r path; do
+                case "$path" in
+                  .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
+                esac
+              done <<< "$changed_paths"
+              if [[ "$spec_changed" == "true" ]]; then
+                strict=true
+                reason="develop push changes SPEC inputs or the spec linter"
+              else
+                strict=false
+                reason="develop push leaves SPEC inputs and the spec linter unchanged"
+              fi
+            fi
+          fi
+
+          echo "strict=$strict" >> "$GITHUB_OUTPUT"
+          echo "SPEC lint policy: strict=$strict ($reason)"
+      - name: Run baseline-gated SPEC lint
+        if: steps.policy.outputs.strict == 'true'
         # Invoke the freshly built binary directly via go run instead of
         # `make install` (which pollutes $GOPATH/bin and is unnecessary for
         # a one-shot lint invocation).
@@ -75,3 +127,10 @@ jobs:
         # the two flags gate the same dimension and the CLI rejects the pair
         # with exit 3; the flag itself is retained for non-CI callers.
         run: go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json
+      - name: Run error-only SPEC lint
+        if: steps.policy.outputs.strict == 'false'
+        # Existing corpus warnings remain visible, while any error still makes
+        # the command fail. The baseline gate remains mandatory whenever the
+        # inputs, the baseline file, or the implementation of the SPEC linter
+        # changed.
+        run: go run ./cmd/moai spec lint

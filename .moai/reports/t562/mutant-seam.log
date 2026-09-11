@@ -1,0 +1,7 @@
+# pre-mutant control (clean tree): card-authored added-osStatFn lines in doctor_codex.go
+count=0
+# post-mutant: an osStatFn line added to doctor_codex.go as a CARD-AUTHORED change
+		if _, mserr := osStatFn(statPath); mserr != nil { _ = mserr } // MUTANT-SEAM: card-authored osStatFn line
+added-osStatFn-line count=1
+verdict: pin FAILS iff count >= 1 -> FAILS (count=1) — mutant CAUGHT
+build check: build rc=0
