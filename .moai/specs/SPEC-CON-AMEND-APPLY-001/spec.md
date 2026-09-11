@@ -1,7 +1,7 @@
 ---
 id: SPEC-CON-AMEND-APPLY-001
 title: "Constitution amendment apply step: exact-once source replacement, line-scoped registry update, readable evolution log, and three-file atomic apply"
-version: "0.1.3"
+version: "0.1.4"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -11,7 +11,7 @@ phase: "v3.2.0 target"
 module: "internal/constitution, internal/cli"
 lifecycle: spec-anchored
 tags: "constitution, amendment, atomic-apply, evolution-log, rate-limiter, dry-run, registry-resolver, path-containment, t659"
-tier: M
+tier: L
 related_specs: [SPEC-V3R2-CON-002]
 ---
 
@@ -21,6 +21,7 @@ related_specs: [SPEC-V3R2-CON-002]
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.1.4 | 2026-09-11 | manager-spec | Tier raised from M to L by operator decision (`.moai/reports/t659/verdict.md` §13.3). This SPEC carries 21 requirements and 25 acceptance criteria; each count exceeds the Tier M ceiling of 16, and the tier ceilings apply to the two counts independently (`.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier). Under Tier L, 25 acceptance criteria equals the ceiling of 25, and 21 requirements are within it. Added the two Tier L artifacts: `design.md` (the design decisions already ruled, each with its ruling and the rejected alternatives the verdict records) and `research.md` (the codebase findings and measurement provenance they rest on). No requirement, acceptance criterion, mutant, ruling, or scope changed: counts stay 21 requirements, 25 acceptance criteria, and 29 mutants, and no ID was renumbered. |
 | 0.1.3 | 2026-09-11 | manager-spec | Lead ruling G7 (`.moai/reports/t659/verdict.md` §11, option A) applied: the same-root invariant of REQ-CAA-020 is enforced in full. New REQ-CAA-021 — one containment check (clean, make absolute, resolve symbolic links, compare against the resolved root at a path-separator boundary) applied to the registry path including relative environment values, every registry entry's `file:`, and the evolution-log path; refusal is a load error before any write. New AC-CAA-024 (relative environment escape, absolute `file:`, `file:` containing `..`, sibling-prefix `file:`, symlinked log, in-root control, and a CLI dry-run case) and AC-CAA-025 (real-registry `file:` shape copied into a `t.TempDir()` fixture, no regression). New mutants M-21 (check removed at the `file:` site; separately at the log site), M-22 (raw-string prefix test without a separator boundary; separately, without `filepath.Clean`), M-23 (no symbolic-link resolution), M-24 (candidate resolved, root not); M-20 extended to AC-CAA-024. REQ-CAA-020 now points at REQ-CAA-021; AC-CAA-023 asserts the offending path instead of the loader's present wording. Option B recorded as rejected in §C and §F. G7 removed from §G; no open question remains. IDs kept stable; new IDs appended. |
 | 0.1.2 | 2026-09-11 | manager-spec | Lead ruling G6 (`.moai/reports/t659/verdict.md` §9, option (ii)) applied. New REQ-CAA-020 — the registry, the source rule file, and the evolution log all come from inside `projectDir`; the registry loader's refusal of a registry path outside `projectDir` is the intended boundary, so a `CLAUDE_PROJECT_DIR` naming another tree stops `Execute` with a registry load error before any write (new AC-CAA-023, new mutant M-20). Option (i) — making the source and log paths follow the resolved root — recorded as rejected in §C, §D.2, and §F. AC-CAA-022 and AC-CAA-023 reconciled: the resolver chooses the path, the loader admits or refuses it. G6 removed from §G; one question surfaced while encoding it (G7) is recorded there. IDs kept stable; new IDs appended. |
 | 0.1.1 | 2026-09-11 | manager-spec | Lead rulings on the plan design gaps (`.moai/reports/t659/verdict.md` §8) applied. G1: REQ-CAA-009 amended — the fail-closed error names file path, line number, and key (new AC-CAA-018). G2: new REQ-CAA-016 — the new clause must occur 0 times in the source file before apply (AC-CAA-019). G3: new REQ-CAA-017 — `Execute` rejects `Before` ≠ current clause (AC-CAA-020). G4: REQ-CAA-010 amended to on-disk backups, REQ-CAA-011 amended with a restore seam, new REQ-CAA-018 — a failed restore keeps the backups and names them (AC-CAA-021). G5: non-dry-run CLI path recorded as Gap §E.4. Scope (a): new REQ-CAA-019 — one registry path resolver shared by CLI and `Execute` (AC-CAA-022); removed from exclusions. REQ-CAA-012 and REQ-CAA-015 amended for the new validations and the environment the resolver reads. Exclusions (b)(c)(d) recorded as follow-up card candidates. §G now holds no G1–G5 or (a) item. IDs kept stable; new IDs appended. |
@@ -209,7 +210,9 @@ All §7, §8, §9, and §11 items (Q1–Q5, G1–G7, scope addition (a)) are res
 
 ## §H Cross-References
 
-- `.moai/reports/t659/verdict.md` — repro evidence (§2), lead rulings (§7, §8, §9, §11), SPEC 0.1.2 check and lint (§10), follow-up candidates (§7.1, §8.1)
+- `design.md` — the design decisions of §C, each traced to its ruling and the rejected alternatives the verdict records
+- `research.md` — the codebase findings those decisions rest on, with measurement provenance
+- `.moai/reports/t659/verdict.md` — repro evidence (§2), lead rulings (§7, §8, §9, §11), SPEC 0.1.2 check and lint (§10), follow-up candidates (§7.1, §8.1), Tier L decision (§13.3)
 - `.moai/specs/SPEC-V3R2-CON-002/spec.md` — REQ-CON-002-004 (log fields), REQ-CON-002-011 (atomic apply), REQ-CON-002-031 (dry-run)
 - `internal/constitution/pipeline.go`, `evolution_log.go`, `amendment.go`, `loader.go`, `rate_limiter.go`, `human_oversight.go`
 - `internal/cli/constitution.go` — `newConstitutionAmendCmd`, `runConstitutionAmend`, `resolveRegistryPath`

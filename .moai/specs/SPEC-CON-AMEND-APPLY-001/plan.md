@@ -1,6 +1,6 @@
 # plan.md — SPEC-CON-AMEND-APPLY-001
 
-Card t659 · Tier M (3 artifacts + progress.md) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change).
+Card t659 · Tier L (5 artifacts + progress.md; raised from Tier M in revision 0.1.4, verdict §13.3) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change).
 
 ## §A Context
 
@@ -152,5 +152,6 @@ AC-CAA-017 (with mutant M-14); `go vet`, lint; `progress.md` §E.2 evidence.
 
 - `spec.md` §C (ruling map), §D (requirements), §E.4 (approved gap), §F (exclusions), §G (no open question)
 - `acceptance.md` §D (AC matrix), §D.2 (mutants)
+- `design.md` (design decisions and rejected alternatives), `research.md` (codebase findings and provenance)
 - `progress.md` (run-phase evidence skeleton)
 - `.moai/reports/t659/verdict.md` §7, §8, §9, §11
