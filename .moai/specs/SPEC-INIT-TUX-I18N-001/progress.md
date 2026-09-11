@@ -35,7 +35,56 @@ diff-exit=0
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Phase A (absorption-gate front, `internal/cli/wizard` only)
+
+Scope of this phase: M1 opening checks V-a~V-d, M1 wizard-side work, M3 wizard-side scaffolding. The `internal/cli` package compile/test slot was not granted, so no command in this phase compiled package `internal/cli`. Everything below that needs `internal/cli` (`schemaSelectOptions` shape change, M2, the downgrade-confirm pre-fix RED capture, the `internal/cli` part of the plan.md §C 2 baseline) is Phase B.
+
+#### Baseline (plan.md §C 1)
+
+```
+$ git rev-parse HEAD
+500a73d444a28c750c7ab085813c710a5bb96686
+$ git branch --show-current
+WT-init-tux-i18n
+```
+
+`BASELINE_SHA=500a73d444a28c750c7ab085813c710a5bb96686` (local develop `f1f034bb4` absorbed; t583 not yet absorbed — the post-absorption re-capture is plan.md §C 1's second capture).
+
+#### plan.md §C 2 — baseline selection (wizard package part only)
+
+```
+$ go test ./internal/cli/wizard/... -run 'Profile|Wizard|HuhTheme|UpdateVersion|TUI' -count=1 -v -timeout 300s
+exit=0 · `=== RUN` lines 20 (18 top-level + 2 subtests) · PASS lines 20 · FAIL/SKIP 0
+```
+
+Full output: `.moai/reports/t586/phase-a/baseline-wizard-tests.txt`. The `./internal/cli/` half of this command is a Gap until the slot is granted.
+
+#### plan.md §C 3 — RED ledger L1~L4 re-run (this tree)
+
+All four exit 0 with output identical to `acceptance.md` §D.3 (L1: 5 files `huh_theme.go`, `init.go`, `profile_setup.go`, `update.go`, `update_version.go`; L2: `init.go:651`, `update.go:179`; L3: `translations.go:18,19,542,543,549,550,556,557,563,564` + `wizard_test.go:283,284,289,290,298,1256,1257,1259,1260`; L4: `init.go:659`, `update.go:187`). Verbatim: `.moai/reports/t586/phase-a/red-ledger-l1-l4.txt`.
+
+#### plan.md §C 4 — pty preconditions
+
+```
+$ command -v timeout gtimeout tmux; tmux -V
+/opt/homebrew/bin/timeout
+/opt/homebrew/bin/gtimeout
+/opt/homebrew/bin/tmux
+tmux 3.6a
+```
+
+#### M1 opening checks V-a~V-d
+
+| Item | Closed | Command | Observed | Evidence |
+|---|---|---|---|---|
+| V-a | recorded (judgement at gate §C 6) | `grep -n 'var uiStrings' internal/cli/wizard/translations.go` | `540:var uiStrings = map[string]UIStrings{` exit 0 | `.moai/reports/t586/phase-a/va-uistrings.txt` |
+| V-b | **true** | `go test ./internal/cli/wizard/ -run 'TestProbeT586V[bc]' -count=1 -v` (throwaway probe) | ko key map changes the confirm help line: control `←/→ toggle • enter submit • y 예 • n 아니오` → with key map `←/→ 전환 • enter 제출 • y 예 • n 아니오`, frame 1 and frame 2 identical. The `y`/`n` entries read the button labels (`ConfirmYes`/`ConfirmNo`); key-map-only strings set on `Accept`/`Reject` (`KM-ACCEPT`/`KM-REJECT`) never render — huh v2 `Confirm.View` resets those two helps from `Affirmative`/`Negative` (`field_confirm.go:276`, `:282`). So the `design.md` §7 last row holds by construction | `.moai/reports/t586/phase-a/vb-vc-probe.txt`, probe source `probe-src-vb-vc.go.txt` |
+| V-c | **true** | same run | note `TitleFunc` bound to a non-`*WizardResult` struct, visibility as a closure: before `● ○ 1 / 2`, after answering the select (`res.First="yes"`, which reveals a conditional id) the same group re-renders `● ○ ○ 1 / 3` | same files |
+| V-d | **true** | `MOAI_T586_VD=1 go test ./internal/cli/wizard/ -run '^TestProbeT586Vd(Parent\|Child)$' -count=1 -v -timeout 300s` (throwaway probe) | parent built the child with `go test -c` into `t.TempDir()`, opened sentinel `moai-ptycap-sentinel-702d48a1`, ran the child under `MOAI_PTY_CAPTURE_SELFTEST=fail` with a 60 s context and `-test.timeout 30s`: child `--- FAIL: TestProbeT586VdChild`, `exit status 1`, child session `moai-ptycap-vdchild-b33421a3` absent afterwards, sentinel alive, before/after `moai-ptycap-` sets equal. `moai-ptycap-` sessions on the host before and after the run: 0 (`grep` exit 1 both times) | `.moai/reports/t586/phase-a/vd-probe.txt`, probe source `probe-src-vd.go.txt` |
+
+The throwaway probe files were deleted after export and are not committed. No V item closed false, so no dependent AC is held.
+
+_Phase A milestone work follows in the next entries._
 
 ## §E.3 Run-phase Audit-Ready Signal
 

@@ -1,0 +1,116 @@
+package wizard
+
+// PROBE (throwaway, card t586 Phase A): V-d — can a parent test run a
+// `go test -c` child that opens a moai-ptycap- tmux session and then fails,
+// read the child's FAIL, and observe zero surviving child sessions?
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+	"time"
+)
+
+func probeRand(t *testing.T) string {
+	t.Helper()
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	return hex.EncodeToString(b)
+}
+
+func probeTmux(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "tmux", args...).CombinedOutput()
+	return string(out), err
+}
+
+func probePtycapSessions(t *testing.T) []string {
+	t.Helper()
+	out, _ := probeTmux(t, "list-sessions", "-F", "#{session_name}")
+	var names []string
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "moai-ptycap-") {
+			names = append(names, l)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func probeOpen(t *testing.T, name string) {
+	t.Helper()
+	if out, err := probeTmux(t, "new-session", "-d", "-s", name, "-x", "80", "-y", "30", "sleep 120"); err != nil {
+		t.Fatalf("new-session %s: %v %s", name, err, out)
+	}
+	t.Cleanup(func() { _, _ = probeTmux(t, "kill-session", "-t", "="+name) })
+}
+
+func TestProbeT586VdChild(t *testing.T) {
+	if os.Getenv("MOAI_PTY_CAPTURE_SELFTEST") != "fail" {
+		t.Skip("child runs only under MOAI_PTY_CAPTURE_SELFTEST=fail")
+	}
+	name := "moai-ptycap-vdchild-" + probeRand(t)
+	probeOpen(t, name)
+	t.Logf("CHILD-SESSION %s", name)
+	t.Fatal("forced failure after opening the session")
+}
+
+func TestProbeT586VdParent(t *testing.T) {
+	if os.Getenv("MOAI_T586_VD") != "1" {
+		t.Skip("V-d probe parent runs only under MOAI_T586_VD=1")
+	}
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "wizard.test")
+	bctx, bcancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer bcancel()
+	if out, err := exec.CommandContext(bctx, "go", "test", "-c", "-o", bin, ".").CombinedOutput(); err != nil {
+		t.Fatalf("build child: %v\n%s", err, out)
+	}
+
+	sentinel := "moai-ptycap-sentinel-" + probeRand(t)
+	probeOpen(t, sentinel)
+	before := probePtycapSessions(t)
+	t.Logf("BEFORE %v", before)
+
+	cctx, ccancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer ccancel()
+	cmd := exec.CommandContext(cctx, bin, "-test.run", "^TestProbeT586VdChild$", "-test.v", "-test.timeout", "30s")
+	cmd.Env = append(os.Environ(), "MOAI_PTY_CAPTURE_SELFTEST=fail")
+	out, err := cmd.CombinedOutput()
+	t.Logf("CHILD exit err=%v\n%s", err, out)
+
+	after := probePtycapSessions(t)
+	t.Logf("AFTER %v", after)
+	childFailed := strings.Contains(string(out), "--- FAIL: TestProbeT586VdChild")
+	var childName string
+	for _, l := range strings.Split(string(out), "\n") {
+		if i := strings.Index(l, "CHILD-SESSION "); i >= 0 {
+			childName = strings.TrimSpace(l[i+len("CHILD-SESSION "):])
+		}
+	}
+	survived := false
+	sentinelAlive := false
+	for _, n := range after {
+		if n == childName {
+			survived = true
+		}
+		if n == sentinel {
+			sentinelAlive = true
+		}
+	}
+	t.Logf("VERDICT childFailed=%v childSession=%q childSessionSurvived=%v sentinelAlive=%v beforeEqualsAfter=%v",
+		childFailed, childName, survived, sentinelAlive, strings.Join(before, ",") == strings.Join(after, ","))
+	if !childFailed || childName == "" || survived || !sentinelAlive {
+		t.Fatal("V-d probe did not observe the expected shape")
+	}
+}

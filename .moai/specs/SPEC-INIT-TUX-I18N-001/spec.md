@@ -2,7 +2,7 @@
 id: SPEC-INIT-TUX-I18N-001
 title: "init/update/profile wizard TUX repair — v1 profile wizard absorbed into huh v2, layout repair, remaining English surfaces localized"
 version: "0.2.3"
-status: draft
+status: in-progress
 created: 2026-09-11
 updated: 2026-09-11
 author: manager-spec

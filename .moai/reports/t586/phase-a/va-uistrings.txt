@@ -1,0 +1,11 @@
+V-a — uiStrings table start line in this tree (record only; judgement deferred to the absorption-gate re-measure, plan.md §C 6)
+
+Tree: WT-init-tux-i18n HEAD 500a73d444a28c750c7ab085813c710a5bb96686
+
+$ grep -n 'var uiStrings' internal/cli/wizard/translations.go; echo "exit=$?"
+540:var uiStrings = map[string]UIStrings{
+exit=0
+
+Reading: this tree's value is 540 (same as the plan-phase measurement at 18144b7ac).
+The t583 lane-1 reported value 548 is a different tree (t583 not yet absorbed here);
+the cause of the difference is decided at the gate re-measure, not in Phase A.
