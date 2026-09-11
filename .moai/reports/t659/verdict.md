@@ -351,3 +351,20 @@ LINT_EXIT=0
 ```
 
 - 판정 바이너리 `v3.2.0-rc.7   moai_cp/20260910_130400-275-ged71054d3-dirty   built 2026-09-10T19:18:41Z`, `VERSION_EXIT=0`. 판정 트리 `564c370b5`. 기준 커밋 이후 이 브랜치의 커밋은 SPEC·판정서 문서뿐(Go 코드 변경 0, §10.2). `-dirty` 내용은 미관측(Gap).
+
+## 17. plan-audit 2회차 — FAIL 0.84 · 0.1.7 수정 · lint
+
+### 17.1 2회차 판정 (`plan-audit-iter2.md`, 감사 HEAD `0085766cd`, 커밋 `1fe4a0289`)
+
+- FAIL 0.84(Tier L 0.85). 1회차 D1–D16 전부 해결, MP 전부 통과. 새 결함 blocking N1(major, 숫자 단언이 임시 경로 숫자로 통과)·N2(darwin `/var` 링크)·N3(등록부 읽기 순서), optional N4–N6.
+
+### 17.2 0.1.7 (`183bba916`, manager-spec)
+
+- N1–N6 전부 반영(optional 포함 — 마지막 감사 전이라 한 번에). 새 REQ·AC 없음.
+- 레인 직접 확인: `grep -cE '^- \*\*REQ-CAA-[0-9]+' spec.md` → 21, `grep -c '^### AC-CAA-' acceptance.md` → 25, `grep -c '^| M-' acceptance.md` → 29, `version: "0.1.7"`, 부속 파일 `^status:` 0, `\p{Cf}` 0건.
+- 에이전트가 N4 명령에 `--first-parent` 를 더했다(흡수된 develop 개별 커밋 배제 목적, 에이전트 판독 — 실행 재현은 가드에 막혀 미관측). 3회차 감사가 판정할 항목.
+- 에이전트 보고: `Authored-By-Agent` 트레일러가 마지막 줄 `🗿 MoAI` 때문에 트레일러 블록으로 인식되지 않음. 이 커밋은 상태 전이가 없어 lint 영향 없음. 전이 커밋(draft → in-progress)에서는 트레일러를 마지막 문단에 둘 것.
+
+### 17.3 lint (`lint-0.1.7.txt`, 판정 바이너리 `lint-binary-0.1.7.txt`)
+
+- `/Users/goos/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001` → `0 error(s), 0 warning(s)`, `LINT_EXIT=0`. 판정 트리 `183bba916`, 바이너리 `ed71054d3-dirty`(`-dirty` 내용 미관측, Gap).
