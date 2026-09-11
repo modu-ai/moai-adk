@@ -1,7 +1,7 @@
 ---
 id: SPEC-INIT-TUX-I18N-001
 title: "init/update/profile wizard TUX repair — v1 profile wizard absorbed into huh v2, layout repair, remaining English surfaces localized"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -26,6 +26,7 @@ related_specs: [SPEC-CLI-TUI-MODERNIZE-001, SPEC-CLI-TUX-V3-002, SPEC-CLI-TUX-IN
 | 0.1.0 | 2026-09-11 | manager-spec | 최초 작성(카드 t586 plan 단계). 재현 판정과 리드·운영자 결정 D1~D6 을 요구사항으로 옮겼다. |
 | 0.2.0 | 2026-09-11 | manager-spec | 1회차 plan 감사 결함 D1~D17 반영. 리드 판정 Q1~Q4 로 미결 4건을 닫았다(init 은 프로필 위저드를 부르지 않음, 도움말은 키별 짧은 라벨, 다운그레이드 확인창 언어 우선순위, 프로필 위저드 단계 표시). SPEC-CLI-TUI-MODERNIZE-001 계약 인수를 명시했다(§A.6.1). 소스 스캔 가드 9건·v1 타입 노출·저장값 보존 4건을 조사와 요구에 넣었다. pty 판정 계약을 공허 초록이 불가능하도록 다시 썼다. t583 충돌 회피 전제를 lane-1 확정 범위로 바꾸고, t583 뒤 남는 그룹 재구성을 새 요구로 넣었다. REQ 18·AC 20 으로 Tier M 요구 상한(16)을 넘어 Tier L 로 올리고 `design.md`·`research.md` 를 보탰다. |
 | 0.2.1 | 2026-09-11 | manager-spec | 리드 판정 Q5 반영. REQ-ITI-017 제안(`agent_wiring`·`autonomy_tier` 를 `Agents & Autonomy` 한 그룹으로 묶어 init 위저드를 3페이지에서 2페이지로)을 확정했다. 페이지 수와 스테퍼 분모를 따로 판정하도록 AC 를 나눴다(AC-ITI-018 페이지 수, AC-ITI-021 분모). 그룹 라벨을 읽는 렌더 경로가 없음을 코드에서 재고, 번역 키를 두지 않는 판단을 AC-ITI-022 로 고정했다. `research.md` §13 의 실행 확인 4건을 `plan.md` M1 착수 검증 V-a~V-d 로 옮기고, 그 결과에 기대는 AC 에 선결 표시를 달았다. REQ 18·AC 22, Tier L 유지. |
+| 0.2.2 | 2026-09-11 | manager-spec | 2회차 plan 감사 결함 N1~N10 반영. 실제 HOME 무기록 판정을 트리 전체 매니페스트에서 코드로 도출한 감시 목록과 양성 대조군으로 바꿨다(N1). AC-ITI-003 pty 판정에서 단계 표시 줄 조건을 빼고 기준 문자열과 옵션 줄 4개로 도달성을 단정한다(N2). AC-ITI-010 에 양성 가드 성질 제거 뮤턴트 네 개(S2 양성 절·S3·S4·S6)를 더했다(N3). 부재 단정 세 곳(AC-ITI-004 (2)(3), AC-ITI-011 (1))에 같은 형태의 대조군을 붙였다(N4). tmux `-e` 로 변수마다 넘기는 자식 환경 정리 목록과 자식이 기록한 실효 환경 관측을 넣었다(N5). catppuccin 서술 정정(N6), REQ-ITI-017 을 State-driven 으로 고침(N7), tmux 부재 표현을 FAIL 로 통일(N8), t583 SPEC 부재 기록(N9), 세션 목록 비교를 `moai-ptycap-` 접두로 한정(N10). REQ 18·AC 22, Tier L 유지. |
 
 ## §A 배경
 
@@ -141,6 +142,8 @@ REQ-TUIM-041(두 팩토리에 같은 토큰-역할 배정)은 뒤집지 않는�
 
 카드 t583(lane-1, SPEC-INIT-QUIET-WIZARD-001, init 질문 18→4)이 같은 위저드 파일을 고친다. 아래 범위는 lane-1 이 확정해 리드에게 넘긴 목록이다(출처: t583 워크트리 `SPEC-INIT-QUIET-WIZARD-001/plan.md` §F.1, 기준 트리 `120436f58`). t583 은 아직 plan 단계이고 커밋되지 않았다. **줄 번호는 t583 병합·흡수 뒤 흡수 트리에서 다시 잰다.** 이 트리에서 함수 시작 줄(`InitQuestions` 296, `Page3Questions` 349, `ReconfigureQuestions` 268, `RunWithDefaults` 35, `buildFormGroups` 158, `stepperDenominator` 236, `saveAnswer` 397, `saveBoolAnswer` 467, `buildConfirmField` 487)은 목록과 일치함을 확인했다(`research.md` §6).
 
+`SPEC-INIT-QUIET-WIZARD-001` 은 t583 이 커밋되기 전이라 이 트리의 `.moai/specs/` 에 없다(HEAD `538b56f19` 에서 `ls -d .moai/specs/SPEC-INIT-QUIET-WIZARD-001` 종료 1, 대조군 `ls -d .moai/specs/SPEC-INIT-TUX-I18N-001` 종료 0, `research.md` §13). 예상된 상태다. 흡수 게이트에서 병합된 SPEC 경로를 다시 확인해 progress 기록에 적는다(`plan.md` §C 5).
+
 | 파일 | t583 이 고치는 범위 | t583 이 건드리지 않는 범위 |
 |---|---|---|
 | `internal/cli/wizard/questions.go` | `InitQuestions` 본문(296-303), `Page3Questions`(349-527)에서 11문항 리터럴과 딸린 주석 삭제, ID 로 고르는 작은 도우미 추가 | `DefaultQuestions`(48), `GitQuestions`(162), `ReconfigureQuestions`(268-289), `FilteredQuestions`·`TotalVisibleQuestions`·`QuestionByID`, 남는 `agent_wiring`·`autonomy_tier` 리터럴과 그룹 라벨 |
@@ -191,7 +194,7 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 - **REQ-ITI-014** (Ubiquitous): Every confirm field rendered by `internal/cli`, including the downgrade confirmation, **shall** render its first button at the same display column as its description line.
 - **REQ-ITI-015** (Ubiquitous): The init wizard, the reconfigure wizard and the profile wizard **shall** render no blank line between consecutive fields of a group and no empty card row below a select field's last option.
 - **REQ-ITI-016** (Event-driven): **When** a select field's options carry descriptions, the field **shall** render the descriptions in one column whose start position is computed from terminal display width, counting each East Asian wide character as two cells.
-- **REQ-ITI-017** (Ubiquitous): Once the card t583 question set is absorbed, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group labelled `Agents & Autonomy`, so that the init wizard renders exactly two pages; the init step indicator's denominator **shall** remain the number of visible init questions; no init question **shall** carry the group label `Quality & Workflow`; and no wizard screen **shall** render a question's group label, so the label carries no translation key.
+- **REQ-ITI-017** (State-driven): **While** the tree carries the card t583 init question set, the init question set **shall** place `agent_wiring` and `autonomy_tier` in one group labelled `Agents & Autonomy`, so that the init wizard renders exactly two pages; the init step indicator's denominator **shall** remain the number of visible init questions; no init question **shall** carry the group label `Quality & Workflow`; and no wizard screen **shall** render a question's group label, so the label carries no translation key.
 
 ### B.5 판정 하네스 (D6)
 
@@ -200,10 +203,10 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 ## §C 제약
 
 - **huh 포크·교체 금지(D3)**: `go.mod` 에 `replace` 지시나 vendor 사본을 추가하지 않는다. huh v2 공개 API 로 되는 조정만 한다.
-- **의존성**: 새 모듈을 추가하지 않는다. huh v1 import 가 0 이 된 뒤 `go mod tidy` 로 v1 모듈과 그것만 끌어오던 간접 의존성(`github.com/charmbracelet/bubbletea v1.3.10`, `github.com/charmbracelet/bubbles v1.0.0`, `github.com/catppuccin/go v0.3.0`, `go.mod:44-47`)이 빠지는 것은 허용한다. `github.com/charmbracelet/lipgloss`(v1, `go.mod:15`)는 다른 직접 소비자가 있어 남는다.
+- **의존성**: 새 모듈을 추가하지 않는다. huh v1 import 가 0 이 된 뒤 `go mod tidy` 로 v1 모듈과 그것만 끌어오던 간접 의존성 `github.com/charmbracelet/bubbletea v1.3.10`·`github.com/charmbracelet/bubbles v1.0.0`(`go.mod:46-47`)이 빠지는 것은 허용한다. `github.com/catppuccin/go`(`go.mod:44`)는 huh v2 도 요구하므로 tidy 뒤에도 남는다(모듈 그래프 `charm.land/huh/v2@v2.0.3 github.com/catppuccin/go@v0.2.0`, `research.md` §8.1). 남는 줄의 선택 버전은 tidy 를 실행하지 않아 확인하지 않았고, AC-ITI-004 (4) 가 tidy 결과를 커밋본과 대조한다. `github.com/charmbracelet/lipgloss`(v1, `go.mod:15`)는 다른 직접 소비자가 있어 남는다.
 - **import 방향**: `internal/cli` → `internal/cli/wizard` 한 방향을 유지한다. 위저드는 `cli` 를 import 하지 않으므로, 스키마 옵션 라벨은 `cli` 에서 풀어 버전 중립 목록으로 위저드에 인자로 넘긴다.
 - **채널 규율**: 요약·경고·확인 문구의 stdout/stderr 배분을 바꾸지 않는다(REQ-TUXIU-044 승계).
-- **테스트 격리**: `t.TempDir()` 만 쓴다. OTEL 환경 변수를 병렬 테스트에서 설정하지 않는다. pty 하네스는 자식 프로세스 환경으로만 HOME 을 바꾸고 `t.Setenv("HOME", …)` 을 쓰지 않는다.
+- **테스트 격리**: `t.TempDir()` 만 쓴다. OTEL 환경 변수를 병렬 테스트에서 설정하지 않는다. pty 하네스는 자식 프로세스 환경으로만 HOME 을 바꾸고 `t.Setenv("HOME", …)` 을 쓰지 않는다. 자식에게는 `acceptance.md` §B 의 자식 환경 정리 목록을 tmux `new-session -e VAR=value` 로 변수마다 넘긴다 — `HOME`·`MOAI_HOME` 은 사례의 임시 경로, `CLAUDE_CONFIG_DIR` 과 `MOAI_KANBAN` 접두 변수 전부는 빈 값. tmux 자식은 테스트 프로세스가 아니라 tmux 서버의 전역 환경을 물려받으므로 부모 쪽 `t.Setenv` 는 정리로 치지 않고, 정리가 닿았는지는 자식이 기록한 실효 환경으로만 판정한다. 인프로세스 골든(AC-ITI-012)은 같은 변수를 `t.Setenv` 로 두고(`HOME` 제외) 병렬로 돌리지 않는다. 실제 HOME 무기록은 트리 전체가 아니라 `acceptance.md` §B P8 감시 목록으로 판정한다.
 - **로컬 검증 범위**: 변경 패키지(`internal/cli`, `internal/cli/wizard`)만 로컬에서 돌리고, 전체 스위트 판정은 CI 에 맡긴다.
 - **크로스 플랫폼**: pty 하네스는 tmux 가 필요한 환경 게이트 테스트이므로 Windows 에서는 건너뛴다. 제품 코드는 `GOOS=windows GOARCH=amd64 go build ./...` 를 통과해야 한다.
 - **t583 게이트**: §A.7 [HARD] 규칙.

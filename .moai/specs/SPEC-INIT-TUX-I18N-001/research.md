@@ -6,6 +6,7 @@
 - 이전 조사 트리 `e7a7d4bb3` 와의 관계: `git diff --stat e7a7d4bb3 HEAD -- internal cmd pkg go.mod go.sum` 출력 없음(종료 0). 사이의 커밋 두 개(`d0ec7921f`, `18144b7ac`)는 SPEC 문서와 감사 기록뿐이다. 따라서 이전 조사 좌표는 이 트리에서도 유효하다.
 - 1회차 감사(`.moai/reports/t586/plan-audit.md`)가 인용한 좌표 가운데 이 SPEC 이 쓰는 것은 이 트리에서 다시 쟀다. 다시 재지 않은 것은 §13 에 적는다.
 - 명령은 모두 zsh 에서 실행했다. 글롭은 `git grep` 경로 인자로만 넘겨 셸 글롭 확장 실패(`no matches found`)를 피했다.
+- 3회차 개정 측정 트리: HEAD `538b56f1923c7b72e8dcb8379d55d05e4fadb1c5`(로컬 develop 흡수 뒤). `git diff --stat 18144b7aca714ea8924363b1eab4640cf101c6d0 HEAD -- internal cmd pkg go.mod go.sum` 출력은 파일 56개다. 이 SPEC 이 좌표를 인용하는 제품 파일 가운데 바뀐 것은 `internal/cli/update.go` 이고, 인용한 확인창 구간 `update.go:172-192`(제목 `:179`, `runProfileSetup` 호출 `:187`)와 `init.go:651`·`:659` 는 이 트리에서 다시 읽어 `acceptance.md` §D.3 L2·L4 원문과 같음을 확인했다. `update_wizard.go`·`update_tux.go` 도 바뀌었으나 SPEC 문서에 두 파일 이름이 없다(`grep -n -E 'update_wizard|update_tux' .moai/specs/SPEC-INIT-TUX-I18N-001/*.md` 종료 1). `go.mod` 은 바뀌지 않았다. §8.1, §14~§16 은 이 트리에서 쟀다.
 
 ## §1 v1 표면
 
@@ -208,6 +209,40 @@ $ grep -n 'huh\|bubbletea\|bubbles\|catppuccin\|lipgloss' go.mod
 
 추적 비테스트 Go 파일 가운데 `internal`·`cmd`·`pkg` 밖에 있는 것 12개(`git ls-files '*.go' | grep -v '_test\.go$' | grep -v -E '^(internal|cmd|pkg)/'`): `.moai/reports/` 아래 5개, `.moai/scripts/` 2개, `scripts/` 5개. AC-ITI-004 의 검색 범위에 포함된다.
 
+### §8.1 tidy 뒤 남는 간접 의존성 (3회차 개정)
+
+```
+$ go mod why -m github.com/catppuccin/go github.com/charmbracelet/bubbletea github.com/charmbracelet/bubbles
+# github.com/catppuccin/go
+github.com/modu-ai/moai-adk/internal/cli
+github.com/charmbracelet/huh
+github.com/catppuccin/go
+
+# github.com/charmbracelet/bubbletea
+github.com/modu-ai/moai-adk/internal/cli
+github.com/charmbracelet/huh
+github.com/charmbracelet/bubbletea
+
+# github.com/charmbracelet/bubbles
+github.com/modu-ai/moai-adk/internal/cli
+github.com/charmbracelet/huh
+github.com/charmbracelet/bubbles/filepicker
+why_exit=0
+$ go mod graph | grep -E '(github.com/catppuccin/go|github.com/charmbracelet/bubbletea@v1|github.com/charmbracelet/bubbles@v1)'
+github.com/modu-ai/moai-adk github.com/catppuccin/go@v0.3.0
+github.com/modu-ai/moai-adk github.com/charmbracelet/bubbles@v1.0.0
+github.com/modu-ai/moai-adk github.com/charmbracelet/bubbletea@v1.3.10
+charm.land/huh/v2@v2.0.3 github.com/catppuccin/go@v0.2.0
+github.com/charmbracelet/bubbles@v1.0.0 github.com/charmbracelet/bubbletea@v1.3.10
+github.com/charmbracelet/huh@v1.0.0 github.com/catppuccin/go@v0.3.0
+github.com/charmbracelet/huh@v1.0.0 github.com/charmbracelet/bubbletea@v1.3.6
+graph_exit=0
+```
+
+(그래프 출력에서 왼쪽이 `bubbles@v1.0.0`·`bubbletea@v1.3.10` 자신인 의존 줄은 뺐다. 오른쪽에 세 모듈이 오는 줄은 위 7줄이 전부다.)
+
+판독: 오른쪽에 bubbletea v1·bubbles v1 을 두는 모듈은 루트, huh v1, bubbles v1 뿐이라 huh v1 이 빠지면 둘도 빠진다. `go mod why` 는 가장 짧은 경로 하나만 보여 catppuccin 도 huh v1 경로로 나오지만, 그래프에는 `charm.land/huh/v2@v2.0.3` 이 catppuccin 을 요구하는 줄이 있다. 2회차 감사가 모듈 캐시에서 huh v2 의 import 를 확인했다(`charm.land/huh/v2@v2.0.3/theme.go:6`, 감사 E-3). 따라서 catppuccin 은 tidy 뒤에도 남는다. `go mod tidy` 는 작업 트리 `go.mod` 를 바꾸므로 실행하지 않았고, 남는 줄의 선택 버전은 확인하지 않았다.
+
 ## §9 교차 SPEC
 
 ```
@@ -246,3 +281,112 @@ $ grep -n 'AC-TUIM-02[6-9]' .moai/specs/SPEC-CLI-TUI-MODERNIZE-001/acceptance.md
 - 스테퍼 일반화(`design.md` §4)가 huh v2 `TitleFunc` 재계산 바인딩과 호환되는지는 실행으로 확인하지 않았다. → `plan.md` M1 V-c
 - `template.ModelAliasPickerValues()` 의 현재 값 목록은 읽지 않았다. AC-ITI-008 예외 목록은 값 대신 함수 이름으로 닫았다.
 - pty 하네스 설계(`design.md` §11)의 강제 실패 자식 실행 방식은 이 트리에서 시험하지 않았다. → `plan.md` M1 V-d
+- `SPEC-INIT-QUIET-WIZARD-001` 은 이 트리의 `.moai/specs/` 에 없다. HEAD `538b56f19` 에서 `ls -d .moai/specs/SPEC-INIT-QUIET-WIZARD-001` 은 `No such file or directory` 로 종료 1, 대조군 `ls -d .moai/specs/SPEC-INIT-TUX-I18N-001` 은 종료 0. t583 이 커밋되지 않았으므로 예상된 상태다. 흡수 게이트에서 병합된 경로를 다시 확인한다. → `plan.md` §C 5
+
+## §14 실제 HOME 감시 목록 도출 (3회차 개정)
+
+측정 트리 HEAD `538b56f19`. 2회차 감사는 실제 HOME 트리 전체 매니페스트가 이진 판정이 아니라고 봤다(`~/.moai` 파일 43,918개·8.4G, 5분 사이 63개 변동, 감사 E-9). 감시 대상을 이 SPEC 의 흐름이 실제 HOME 에서 쓸 수 있는 파일로 좁히려고, 흐름 파일에서 홈 쪽 쓰기 함수 호출을 찾고 호출 대상의 경로 계산을 읽었다.
+
+1단계 — 흐름 파일의 홈 쓰기 호출:
+
+```
+$ git grep -n -E 'profile\.WritePreferences\(|homestate\.EnsureProjectLayout\(|ApplyAutonomyTierBundle\(|ensureGlobalSettingsEnv\(|globalMoaiHooksDir\(|runShellEnvConfig\(|configureShellEnv\(|RecordLastUsedProfile\(|paths\.(UserSettingsFile|UserConfigSectionsDir|ProfilesDir|StateDir|CacheDir|ReleasesDir|WorktreesDir|GlmEnvFile)\(' -- internal/cli/init.go internal/cli/update.go internal/cli/update_version.go internal/cli/profile_setup.go internal/cli/profile.go internal/core/project/initializer.go ':!*_test.go'
+internal/cli/init.go:877:	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
+internal/cli/init.go:890:		if tierErr := project.ApplyAutonomyTierBundle(
+internal/cli/init.go:964:	if err := ensureGlobalSettingsEnv(); err != nil {
+internal/cli/profile_setup.go:489:	if err := profile.WritePreferences(profileName, prefs); err != nil {
+internal/cli/update.go:205:		return runShellEnvConfig(cmd)
+internal/cli/update.go:790:func runShellEnvConfig(cmd *cobra.Command) error {
+internal/cli/update.go:923:func globalMoaiHooksDir(homeDir string) string {
+internal/cli/update.go:931:func ensureGlobalSettingsEnv() error {
+internal/cli/update.go:940:	globalHooksDir := globalMoaiHooksDir(homeDir)
+internal/core/project/initializer.go:334:		if shellResult, err := i.configureShellEnv(); err != nil {
+internal/core/project/initializer.go:677:func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
+derive_exit=0
+```
+
+패턴에 넣은 `RecordLastUsedProfile(` 와 `paths.UserSettingsFile(` 계열은 이 여섯 파일에서 0건이다. 같은 패턴의 다른 항목이 11줄을 내므로 이 0건은 패턴이 파일을 읽지 못해서 생긴 것이 아니다.
+
+2단계 — 호출 대상의 경로 계산(비테스트 코드를 읽은 좌표):
+
+| 호출 | 경로 계산 | 감시 항목 |
+|---|---|---|
+| `profile_setup.go:489` `profile.WritePreferences` | `internal/profile/preferences.go:90-96` `GetPreferencesPath` → `GetBaseDir()`(`internal/profile/profile.go:55-65`, `os.UserHomeDir` 기준 `~/.moai/claude-profiles`, `MOAI_HOME` 을 보지 않음). 이름 있는 프로필은 `<기준>/<이름>/preferences.yaml`. `preferences.go:144-156` `migrateOldFile` 이 옛 `.preferences.yaml` 을 이름 바꿔 옮긴다 | W1, W2 |
+| `init.go:877` `homestate.EnsureProjectLayout` | `internal/homestate/paths.go:164-195`: `MOAI_HOME` 이 절대 경로이거나 프로젝트가 `os.TempDir()` 밖이면 `EnsureHomeLayout`(`:131-160`)과 `db/<키>`·`cache/search/<키>`·`run/<키>`(`:55-65`, `:112-126`). 프로젝트가 `os.TempDir()` 안이고 `MOAI_HOME` 이 없으면 `<프로젝트>/.moai/db/<키>`(`:57-58`). 키는 `ProjectKey`(`:18-34`, 정규화한 루트의 sha256 앞 4바이트) | W6 |
+| `init.go:889-897` `project.ApplyAutonomyTierBundle(…, filepath.Join(homeDir, ".claude", "settings.json"), …)` | `userHomeDirFn` → `paths.Home`(HOME 우선, `internal/paths/paths.go:50-58`) | W3 |
+| `init.go:964`, `update.go:931-958` `ensureGlobalSettingsEnv` | `update.go:940-943` `~/.claude/hooks/moai` 삭제, `:945` `~/.claude/settings.json` 을 읽고 필요하면 다시 씀 | W3, W4 |
+| `initializer.go:333-334` `configureShellEnv`, `update.go:205`·`:790-829` `runShellEnvConfig` | `internal/shell/detect.go:128-182` `selectConfigFile`: zsh `.zshenv`·`.zshrc`, bash `.profile`·`.bash_profile`·`.bashrc`, fish `.config/fish/config.fish`, 그 밖 `.profile`, Windows PowerShell 프로필 | W5 |
+
+뺀 것과 이유:
+
+- `profile.RecordLastUsedProfile`(`internal/profile/profile.go:526`) → `saveLaunchLedger`(`:658-690`)가 `claude-profiles/launch.yaml` 을 쓰지만 1단계 출력에 호출이 없다. 런처가 쓰는 기록이라 다른 세션이 쓴다.
+- `internal/config/resolver.go:313-334` `loadUserTier` 는 `~/.moai/settings.json`·`~/.moai/config/sections/` 를 읽기만 한다.
+- `internal/profile/sync.go:140-143` 은 프로젝트의 `sectionsDir` 에 쓴다. 실제 HOME 이 아니다.
+- `EnsureHomeLayout` 이 만드는 최상위 디렉터리 13개의 권한은 다른 세션의 같은 호출도 바꿀 수 있어 비교하지 않는다. 이 함수가 실제 HOME 에 닿으면 같은 호출이 곧이어 W6 키 항목을 만들므로 W6 로 잡는다.
+- Windows PowerShell 프로필은 pty 판정이 Windows 에서 건너뛰므로 뺐다.
+
+W2 는 이름마다 경로가 달라 `claude-profiles/*/` 한 단계 글롭으로 둔다(하위 트리는 걷지 않음). 운영자가 판정 도중 프로필을 저장하면 W2 가 달라져 FAIL 이 난다. 제품이 쓸 수 있는 파일이 실제로 바뀐 경우이므로 목록에서 빼지 않고, 실패 출력이 경로를 댄다.
+
+t583 대조: t583 워크트리의 커밋되지 않은 `SPEC-INIT-QUIET-WIZARD-001/plan.md`(M1 `init_home_guard_test.go` 항목, 이 조사에서 읽었을 때 62번째 줄)가 같은 방식의 8항목 목록(`~/.claude/settings.json` sha256, `~/.claude/hooks/moai` 존재, 셸 설정 파일 6개의 mtime·sha256)을 쓴다. 이 목록은 그 방식을 따르되 코드에서 다시 도출했다. 차이: `~/.zprofile` 은 `selectConfigFile` 이 돌려주지 않아 넣지 않았고, fish 설정·프로필 `preferences.yaml`·W6 키 항목을 더했다. t583 문서는 커밋되지 않았으므로 그 줄 번호를 검증된 좌표로 쓰지 않는다.
+
+## §15 자식 환경 정리 목록의 근거 (3회차 개정)
+
+```
+$ grep -n -E 'MOAI_KANBAN|MOAI_HOME|CLAUDE_CONFIG_DIR' internal/config/envkeys.go
+22:	EnvHome = "MOAI_HOME"
+182:	EnvMoaiKanban = "MOAI_KANBAN"
+187:	EnvMoaiKanbanSpec = "MOAI_KANBAN_SPEC"
+195:	EnvMoaiKanbanID = "MOAI_KANBAN_ID"
+205:	EnvMoaiKanbanLabel = "MOAI_KANBAN_LABEL"
+216:	EnvMoaiKanbanSettingsInjected = "MOAI_KANBAN_SETTINGS_INJECTED"
+222:	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
+235:	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+246:	EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"
+263:	EnvMoaiKanbanLeadName = "MOAI_KANBAN_LEAD_NAME"
+365:	EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
+$ grep -c -E '"MOAI_KANBAN' internal/config/envkeys.go
+9
+```
+
+게이트 재측정 명령은 위 `grep -c` 다(`plan.md` §C 6).
+
+빈 값을 읽는 방식: `MOAI_HOME` 은 비어 있지 않은 절대 경로일 때만 쓰인다(`internal/paths/paths.go:69`, `internal/homestate/paths.go:67-70`). `CLAUDE_CONFIG_DIR` 이 빈 값이면 원장 해석으로 넘어가고, 원장이 없으면 `default` 다(`internal/profile/profile.go:95-104`). `MOAI_KANBAN` 접두 변수를 읽는 비테스트 줄(`git grep -n -E 'Getenv\((config\.)?EnvMoaiKanban[A-Za-z]*\)' -- 'internal/*.go' ':!*_test.go'`, 20줄. 줄 수는 `grep -rn -E '<같은 패턴>' internal --include='*.go' | grep -v -c '_test\.go:'` 로 셌고 출력은 `20`)은 모두 빈 값 비교(`!= ""`, `== ""`, `== "1"`, `strings.TrimSpace`)이거나 값을 그대로 기록한다. 따라서 `-e VAR=`(빈 값)과 변수 없음은 이 코드에서 같게 읽히고, 실효 환경 관측은 `os.Getenv` 결과가 빈 문자열인지로 판정한다.
+
+```
+$ command -v tmux; tmux -V
+/opt/homebrew/bin/tmux
+tmux 3.6a
+$ man tmux | col -b   (new-session 절 발췌)
+     -e takes the form ‘VARIABLE=value’ and sets an environment
+     variable for the newly created session; it may be specified
+     multiple times.
+$ man tmux | col -b   (GLOBAL AND SESSION ENVIRONMENT 발췌)
+     When the server is started, tmux copies the environment into the global
+     environment; in addition, each session has a session environment.  When a
+     window is created, the session and global environments are merged.  If a
+     variable exists in both, the value from the session environment is used.
+     The result is the initial environment passed to the new process.
+```
+
+판독: 이미 떠 있는 tmux 서버의 전역 환경은 그 서버를 띄운 프로세스의 것이다. 테스트 프로세스가 자기 환경을 바꿔도 새 창의 자식에는 닿지 않고, 세션 환경(`-e`)으로 넘긴 값만 전역 값을 이긴다. 그래서 정리 목록은 변수마다 `-e` 로 넘긴다.
+
+공백: tmux 자식의 실효 환경을 실행으로 재지는 않았다(man 문서 판독). 그래서 AC 는 이 판독에 기대지 않고, 자식이 스스로 기록한 실효 환경과 카나리 값으로 판정한다(`acceptance.md` §B 실효 환경 관측).
+
+## §16 부재 단정의 대조군 측정 (3회차 개정)
+
+```
+$ git grep -l '"charm.land/huh/v2"' -- '*_test.go'
+internal/cli/wizard/unified_form_test.go
+c1_exit=0
+$ grep -c 'charm.land/huh/v2 ' go.mod
+1
+c2_exit=0
+$ git ls-files internal/cli/wizard/wizard.go
+internal/cli/wizard/wizard.go
+c3_exit=0
+$ git ls-files internal/cli/no_such_file_xyz.go
+(출력 없음)
+c3neg_exit=0
+```
+
+마지막 명령은 없는 경로에도 `git ls-files` 가 출력 0줄·종료 0 임을 보인다. AC-ITI-011 (1) 이 대조군 경로를 같은 호출에 넣는 이유다.

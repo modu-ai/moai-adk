@@ -173,10 +173,11 @@ t583 뒤 init 질문 4개는 라벨 기준으로 huh 그룹 3개(Basic 2 / Quali
 
 - **게이트 변수**: `MOAI_PTY_CAPTURE`(테스트 전용 상수로 한 곳에 둔다). 판정 문서 프로브의 `MOAI_T586_TTY` 는 카드 id 가 이름에 들어가 제품 테스트에 쓰지 않는다.
 - **자식**: `go test -c -o <t.TempDir()>/cli.test ./internal/cli` 로 빌드. 도우미 테스트는 `MOAI_PTY_CAPTURE_CHILD=<사례 이름>` 일 때만 실행되어 사례별 제품 경로를 부른다. 네트워크 이음새(`init_update_notice.go` 의 이음새들)는 도우미 안에서 막는다.
-- **세션**: `tmux new-session -d -s <이름> -x 80 -y 30 'env HOME=… TERM=xterm-256color <바이너리> -test.run …'`, 작업 디렉터리는 `-c <임시 디렉터리>`. 이름은 `moai-ptycap-<테스트명>-<난수>`. 생성 직후 `t.Cleanup(kill-session -t =<이름>)`.
+- **세션**: `tmux new-session -d -s <이름> -x 80 -y 30 -c <임시 디렉터리> -e HOME=<임시>/home -e MOAI_HOME=<임시>/moai-home -e CLAUDE_CONFIG_DIR= -e MOAI_KANBAN…=(접두 변수 9개 각각 빈 값) -e TERM=xterm-256color -e MOAI_PTY_ENV_CANARY=<난수> -e MOAI_PTY_ENV_OUT=<임시>/child-env.txt '<바이너리> -test.run …'`. `-e` 인자는 `acceptance.md` §B 자식 환경 정리 목록 한 곳에서 만든다. `-e` 를 쓰는 이유: tmux 는 서버를 띄울 때의 환경을 전역 환경으로 복사하고, 새 창의 초기 환경은 세션 환경과 전역 환경을 합친 것이다(tmux 3.6a man, GLOBAL AND SESSION ENVIRONMENT, `research.md` §15). 이미 떠 있는 서버에서는 테스트 프로세스의 환경이 자식에 닿지 않는다. 이름은 `moai-ptycap-<테스트명>-<난수>` 이고, 세션 이름은 이름 생성 함수 하나만 만든다. 생성 직후 `t.Cleanup(kill-session -t =<이름>)`.
 - **대기**: `capture-pane -p -t =<이름>` 을 100ms 간격으로 되풀이, 기준 문자열 발견 시 그 캡처를 판정 대상으로 쓴다. 기한 10초, 초과 시 마지막 캡처를 `t.Fatalf` 메시지에 담는다.
 - **키 입력**: `send-keys -t =<이름> <키>`. 입력 뒤 다음 기준 문자열을 다시 기다린다.
-- **HOME 감시**: `acceptance.md` §B P8. 매니페스트는 `filepath.WalkDir` + sha256, 크기 상한을 넘는 파일은 크기·수정 시각만.
+- **HOME 감시**: `acceptance.md` §B P8 감시 목록(W1~W6)만 비교한다. 목록은 테스트 전용 상수 한 곳에 두고 항목마다 쓰는 제품 함수를 주석으로 단다. 트리 전체를 `filepath.WalkDir` 로 해시하지 않는다 — 2회차 감사 측정에서 실제 `~/.moai` 는 파일 43,918개였고 5분 사이 63개가 다른 세션 때문에 바뀌어, 전후 비교가 수리와 무관하게 달라진다. 비교 함수는 루트 경로를 인자로 받아 AC-ITI-020 (4) 양성 대조군이 가짜 HOME 에서 같은 함수를 돈다.
+- **실효 환경 기록**: 자식 도우미가 제품 경로를 부르기 전에 정리 목록 변수를 `MOAI_PTY_ENV_OUT` 파일에 쓰고, 부모가 캡처를 판정하기 전에 읽어 `acceptance.md` §B 실효 환경 관측의 네 단정을 한다.
 - **자기 검증**: 강제 실패·강제 기한 초과 하위 테스트는 `MOAI_PTY_CAPTURE_SELFTEST=<fail|timeout>` 일 때만 실행되어, 부모 테스트가 자식 `go test` 로 돌려 결과와 잔존 세션을 검사한다(AC-ITI-020).
 
 ## §12 결정 요약

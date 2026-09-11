@@ -34,9 +34,9 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 1. `BASELINE_SHA=$(git rev-parse HEAD)` 를 첫 run 커밋 전에 잡아 progress 기록에 남긴다. t583 흡수 뒤에는 흡수 커밋에서 한 번 더 잡는다.
 2. `go test ./internal/cli/wizard/... ./internal/cli/ -run 'Profile|Wizard|HuhTheme|UpdateVersion|TUI' -count=1 -v` 기준선. 선택된 테스트 수가 0 이 아닌지 먼저 센다.
 3. `acceptance.md` §D.3 RED 원장 명령 4개를 다시 실행해 원문을 progress 기록에 붙인다.
-4. pty 조건(tmux, `TERM=xterm-256color`, 80×30) 확인: `command -v tmux; tmux -V`. tmux 가 없으면 pty AC 는 FAIL 이 아니라 **실행 불가 Gap** 으로 보고하고 run 을 멈춘다(판정은 나지 않는다).
-5. t583 병합 여부: `git merge-base --is-ancestor <리드가 보고한 t583 병합 SHA> HEAD`.
-6. 게이트 뒤 재측정: §A.7 의 줄 번호 목록을 흡수 트리에서 다시 grep 하고 progress 기록에 새 좌표를 적는다.
+4. pty 조건(tmux, `TERM=xterm-256color`, 80×30) 확인: `command -v tmux; tmux -V`. `MOAI_PTY_CAPTURE=1` 인데 tmux 가 없으면 pty 테스트는 FAIL 이다(`acceptance.md` §B P2). E1 표에도 FAIL 로 적고 SKIP 이나 Gap 으로 바꿔 적지 않으며, tmux 를 갖춘 뒤 다시 돌린다.
+5. t583 병합 여부: `git merge-base --is-ancestor <리드가 보고한 t583 병합 SHA> HEAD`. 흡수 트리에서 `ls -d .moai/specs/SPEC-INIT-QUIET-WIZARD-001`(대조군 `ls -d .moai/specs/SPEC-INIT-TUX-I18N-001`)로 병합된 SPEC 경로를 확인해 progress 기록에 적는다. plan 단계 트리에는 이 경로가 없다 — t583 이 커밋되지 않아 예상된 상태다(`spec.md` §A.7). 흡수 뒤에도 없으면 게이트를 열지 않고 리드에게 올린다.
+6. 게이트 뒤 재측정: §A.7 의 줄 번호 목록을 흡수 트리에서 다시 grep 하고 progress 기록에 새 좌표를 적는다. 같은 자리에서 `research.md` §14 감시 목록 도출 명령과 §15 `MOAI_KANBAN` 접두 변수 계수 명령을 다시 돌린다. 출력이 달라졌으면 `acceptance.md` §B 의 감시 목록·자식 환경 정리 목록을 고치고, 그 상수를 쓰는 AC-ITI-019·020 을 다시 판정한다.
 
 ## §D 제약 (위반 금지)
 
@@ -82,8 +82,8 @@ v1 프로필 위저드를 v2 위저드에 흡수하고, init·update 의 프로�
 
 #### M3 — 판정 발판 (pty 하네스 · 골든 헬퍼)
 
-- `acceptance.md` §B 계약을 따르는 pty 캡처 헬퍼를 새 테스트 파일로 만든다: 환경 변수 게이트, 고유 세션 이름, 세션 생성 직후 `t.Cleanup` 등록, 기준 문자열 대기와 기한 초과 FAIL, 임시 HOME·임시 cwd, 실제 HOME 감시 매니페스트.
-- AC-ITI-019·020 의 자기 검증(강제 실패·강제 기한 초과·센티널 세션 생존·tmux 부재)을 이 마일스톤에서 먼저 통과시킨다. 하네스가 믿을 만해진 뒤에만 다른 pty AC 를 쓴다.
+- `acceptance.md` §B 계약을 따르는 pty 캡처 헬퍼를 새 테스트 파일로 만든다: 환경 변수 게이트, `moai-ptycap-` 접두 이름 생성 함수 하나, 세션 생성 직후 `t.Cleanup` 등록, 기준 문자열 대기와 기한 초과 FAIL, 자식 환경 정리 목록의 `-e` 전달과 실효 환경 기록, 실제 HOME 감시 목록 비교(§B P8, 트리 매니페스트가 아님).
+- AC-ITI-019·020 의 자기 검증(강제 실패·강제 기한 초과·센티널 세션 생존·tmux 부재·실효 환경 관측·감시 목록 양성 대조군)을 이 마일스톤에서 먼저 통과시킨다. 하네스가 믿을 만해진 뒤에만 다른 pty AC 를 쓴다.
 - ANSI 제거·표시 폭 열 계산 헬퍼, `View()` 골든 비교 헬퍼를 새 테스트 파일로 만든다.
 - 다운그레이드 확인창(M2 전 v1 상태)의 수리 전 pty·골든 RED 를 떠서 `.moai/reports/t586/` 로 반출하고 **별도 커밋**한다.
 
