@@ -33,11 +33,144 @@ Card t659 · branch `WT-amend-apply` · worktree `.claude/worktrees/t659`
 - BASELINE_SHA = `fe8cc9875aea7bad57fe05a88a1b33f8d196fe53` — the HEAD before the first run-phase commit (plan.md §C.1); it is the merge that absorbed local develop `85868148c`, and `git diff --stat 7a6af9ea0 fe8cc9875 -- internal/constitution internal/cli/constitution*.go internal/spec/lint*.go` printed nothing (lead measurement relayed in the run dispatch)
 - pre-flight re-measure: every plan.md §C.1 expectation matched — `.moai/reports/t659/run/preflight.txt` (2 stub lines; 0 / 7 yaml tags; 1 resolver; 0 / 0 EvalSymlinks; 1 absolute-only check; 8 `LoadRegistry(` lines; real registry sha256 `f7707b1d…be21`, real log sha256 `f5735051…69f0`)
 
-_<remaining run-phase evidence pending>_
+- scope of verification: `go test ./internal/constitution/ -count=1`, anchored `internal/constitution` selectors, and `go test ./internal/spec/ -run '^TestLinter_AC08_DanglingRuleReference$' -count=1 -v`. **No `internal/cli` test was run** — the compile slot was not granted to this lane; every cell that needs one is marked `pending compile slot`, never PASS. `go vet ./internal/cli/` (allowed) type-checks the CLI code. All evidence files live under `.moai/reports/t659/run/` (tracked).
+
+### E.2.1 Run-phase commits (BASELINE_SHA..HEAD, first-parent)
+
+| Commit | Kind | Milestone |
+|---|---|---|
+| `32d946797` | chore — run entry, `status: draft → in-progress`, pre-flight | — |
+| `81c87c11b` | test — M1 baseline RED (7 top-level tests, all FAIL) | M1 |
+| `53ea919c9` | feat — M1 evolution-log writer/reader | M1 |
+| `3f9921a74` | test — M1 mutants (9 runs) | M1 |
+| `5b16cdd11` | test — M2–M6 Execute-level baseline RED (12 top-level tests) | M2–M6 |
+| `0b28804c7` | feat — M2 resolver + amend-path containment check (constitution) | M2 |
+| `299bae37d` | test — CLI tests before the CLI change (not run: compile slot) | M2/M6 |
+| `38928086f` | feat — M2 CLI uses the shared resolver and `LoadAmendRegistry` | M2 |
+| `e09700b23` | feat — M3 source/registry transforms | M3 |
+| `78a3dd926` | test — M4 seam tests before the seams (package test build fails: the non-discriminating RED) | M4 |
+| `1995d3427` | feat — M4 seams, backups, commit sequence | M4 |
+| `ff25d6745` | feat — M5 wiring into `Execute`, stub tests retired | M5 |
+| `e79b17147` | feat — M6 dry-run validation, fixture update | M6 |
+| `db6b70166` | test — M2–M6 mutants (29 runs) | M2–M6 |
+| (this commit) | chore — M7 isolation witness, M-14, vet/lint/coverage, this section | M7 |
+
+### E.2.2 RED-before-GREEN evidence (baseline-first ACs)
+
+| Evidence file | Tree it ran on | Content |
+|---|---|---|
+| `m1-baseline-red.txt` | `32d946797` (production = BASELINE) | 7 top-level RUN, all FAIL: writer emits `ruleid:`/`zonebefore: 1`; both-forms `RuleID = "B"`; `entries = 0` on markdown noise, the verbatim EVO-HRN-002 section, and the real log; no fail-closed error; `TestLoadEvolutionLogs` `RuleID mismatch: got ""` |
+| `m2-m6-baseline-red.txt` | `3f9921a74` (`pipeline.go`, `loader.go`, `internal/cli` = BASELINE) | 12 top-level RUN; RED cells fail on the stub error `updateSourceFile: not yet implemented`, on `dryRun=true: want an error, got nil`, on `gate doubles called 4 times, want 0`, on `want a registry load error, got nil`; the cells predicted GREEN are GREEN (AC-CAA-014 `valid`, AC-CAA-024 `in_root_control/*/dry_run` and `loader_unchanged` ×4, AC-CAA-025 `load`, `dry_run`) |
+| `m4-seams-red-compile.txt` | `e09700b23` | `p.rename undefined … p.restore undefined … undefined: restoreFile … [build failed]` — the non-discriminating RED acceptance.md records for AC-CAA-012/013/021 |
+| (commit `e79b17147` message) | the M6 production change with the old fixture | `TestPipeline_Execute_DryRun_Success` / `…CanaryUnavailable_Continues`: `amendment validation error: rule file …/dummy.md: stat …: no such file or directory` — observed, then the fixture was updated (plan.md §C.2) |
+
+### E.2.3 AC matrix (E1)
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-CAA-001 | PASS | `go test ./internal/constitution/ -run '^TestApply_ExactlyOnce_Success$' -count=1 -v` | `m5-green.txt`: `--- PASS: TestApply_ExactlyOnce_Success` |
+| AC-CAA-002 | PASS | `… -run '^TestApply_OccurrenceCount_Rejected$'` | `m5-green.txt`: PASS, subtests `zero`, `two` |
+| AC-CAA-003 | PASS | `… -run '^TestApply_NoWhitespaceNormalization$'` | `m5-green.txt`: PASS |
+| AC-CAA-004 | PASS | `… -run '^TestUpdateRegistryClause_SingleLineRoundTrip$'` | `m5-green.txt`: PASS |
+| AC-CAA-005 | PASS | `… -run '^TestApply_RegistryReparse_Rejects$'` | `m5-green.txt`: PASS, `continuation`, `no_clause_line`, `newline_clause` |
+| AC-CAA-006 | PASS | `… -run '^TestAppendEvolutionLog_SnakeCaseAndZoneNames$'` | `m1-green.txt`: PASS |
+| AC-CAA-007 | PASS | `… -run '^TestLoadEvolutionLogs_LegacyKeys$'` | `m1-green.txt`: PASS |
+| AC-CAA-008 | PASS | `… -run '^TestLoadEvolutionLogs$'` | `m1-green.txt`: PASS (3 subtests) |
+| AC-CAA-009 | PASS | `… -run '^TestLoadEvolutionLogs_MarkdownNoise$'` | `m1-green.txt`: PASS |
+| AC-CAA-010 | PASS | `… -run '^TestLoadEvolutionLogs_HumanFormat$'` | `m1-green.txt`: PASS, `verbatim_block`, `real_file_readonly`, `malformed_timestamp_fails_closed` |
+| AC-CAA-011 | PASS | `… -run '^TestRateLimiter_SeesHumanFormatEntry$'` | `m1-green.txt`: PASS |
+| AC-CAA-012 | PASS | `… -run '^TestApply_RenameFault_RestoresAll$'` | `m5-green.txt`: PASS, all six subtests |
+| AC-CAA-013 | PASS | `… -run '^TestApply_RenameOrder$'` | `m5-green.txt`: PASS |
+| AC-CAA-014 | PASS | `… -run '^TestPipeline_Execute_DryRun_Validates$'` | `m6-green.txt`: PASS, all six subtests |
+| AC-CAA-015 | pending compile slot | `unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR MOAI_CONSTITUTION_DRY_RUN && go test ./internal/cli/ -run '^TestConstitutionAmend_DryRun_SurfacesValidation$' -count=1 -v -timeout 600s` | not run (test committed in `299bae37d`; vet-clean) |
+| AC-CAA-016 | PASS | `/usr/bin/grep -rn 'not yet implemented' internal/constitution/pipeline.go internal/constitution/pipeline_test.go` | no output, exit 1; control `grep -c 'func (p \*Pipeline) Execute'` → `1`; stub-name grep → no output; each replacement test name → `1` |
+| AC-CAA-017 | PASS (constitution half) / pending compile slot (the AC-CAA-015 run) | `unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR && go test ./internal/constitution/ -count=1`; `CLAUDE_PROJECT_DIR=<worktree root> go test ./internal/constitution/ -count=1` | both `ok`; real registry `f7707b1d…be21` and real log `f5735051…69f0` unchanged before/after; `git status --porcelain -- .claude/rules .moai/research` empty; `internal/constitution/.moai` and `internal/cli/.moai` absent |
+| AC-CAA-018 | PASS | `… -run '^TestLoadEvolutionLogs_FailClosedErrorLocation$'` | `m1-green.txt`: PASS, `unparseable_timestamp`, `missing_timestamp` |
+| AC-CAA-019 | PASS | `… -run '^TestApply_NewClausePresent_Rejected$'` | `m5-green.txt`: PASS |
+| AC-CAA-020 | PASS | `… -run '^TestPipeline_Execute_StaleBefore_Rejected$'` | `m5-green.txt`: PASS, `dry_run`, `real` |
+| AC-CAA-021 | PASS | `… -run '^TestApply_RestoreFault_KeepsBackups$'` | `m5-green.txt`: PASS |
+| AC-CAA-022 | PASS (constitution) / pending compile slot (CLI) | `… -run '^TestExecute_UsesSharedRegistryResolver$'`; CLI `go test ./internal/cli/ -run '^TestResolveRegistryPath_MatchesExecute$' -count=1 -v -timeout 600s` | `m5-green.txt`: PASS; CLI not run |
+| AC-CAA-023 | PASS | `… -run '^TestExecute_RegistryOutsideProjectDir_Refused$'` | divergent rows PASS from M2 (`m2-constitution.txt`); all three rows PASS (`m5-green.txt`) |
+| AC-CAA-024 | PASS (constitution) / pending compile slot (CLI case) | `… -run '^TestExecute_ContainmentCheck_RefusesEscapes$'`; CLI `go test ./internal/cli/ -run '^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$' -count=1 -v -timeout 600s` | `m5-green.txt`: PASS, 0 skipped — every escape row (real + dry_run), `in_root_control` (plain, symlinked_root), `loader_unchanged` (4 cases); CLI not run |
+| AC-CAA-025 | PASS | `… -run '^TestExecute_RealRegistryShape_Admitted$'`; `go test ./internal/spec/ -run '^TestLinter_AC08_DanglingRuleReference$' -count=1 -v`; `git log --first-parent --no-merges --format=%H fe8cc9875aea7bad57fe05a88a1b33f8d196fe53..HEAD -- internal/spec/lint.go internal/spec/lint_test.go` | `load`, `dry_run`, `real` PASS; `--- PASS: TestLinter_AC08_DanglingRuleReference` (`m7-spec-preservation.txt`); log range prints nothing (control on `internal/constitution/pipeline.go` over the same range prints 4 commits) |
+
+### E.2.4 Mutant table (E2)
+
+Runner `.moai/reports/t659/run/mutate.py` (apply alone → run the killing selector → restore byte for byte → KILLED only when the selector reached its tests and failed); specs `mutants-m1.json`, `mutants-m2m6.json`, `mutants-m7.json`; per-mutant output in `.moai/reports/t659/run/mutants/`.
+
+| Mutant | Result | Named cells observed RED |
+|---|---|---|
+| M-1 | killed | AC-CAA-002 `two` |
+| M-2 | killed | AC-CAA-003 (`2` present, `0` absent in the path-stripped error) |
+| M-3a / M-3b | killed / killed | AC-CAA-004 |
+| M-4 | killed | AC-CAA-005 `continuation` |
+| M-5a | killed | AC-CAA-012 all five fault subtests |
+| M-5b (i) / (ii) | killed / killed | (i) `first_rename_applied`, `third_rename_applied`, `third_rename_log_absent`; (ii) `third_rename_log_absent` |
+| M-5c | killed | AC-CAA-013 |
+| M-6, M-7 | killed | AC-CAA-007; AC-CAA-008 |
+| M-8a / M-8b | killed / killed | AC-CAA-010 (a) + AC-CAA-011; AC-CAA-010 (c) + AC-CAA-018 `unparseable_timestamp` |
+| M-9 | killed | AC-CAA-006 |
+| M-10 | killed | AC-CAA-014 (b)–(e) dry-run |
+| M-11a / M-11b | killed / killed | AC-CAA-012 `no_fault_clean`; AC-CAA-014 `valid` snapshot |
+| M-12 | killed | AC-CAA-009 (extra-rule variant) |
+| M-13 | pending compile slot | AC-CAA-015 `two_occurrences` |
+| M-14 | killed | AC-CAA-017: package run FAILs with `CLAUDE_PROJECT_DIR` = repo root and PASSes scrubbed (`M-14-session-env.txt` vs `M-14-scrubbed-env.txt`) — the two runs disagree |
+| M-15 (i) / (ii) / (iii) | killed ×3 | AC-CAA-018 both subtests each |
+| M-16, M-17 | killed | AC-CAA-019; AC-CAA-020 |
+| M-18 (i) / (ii) | killed / killed | AC-CAA-021 |
+| M-19 | killed | AC-CAA-022; AC-CAA-023 `divergent_root_real`, `divergent_root_dry_run` |
+| M-20 (i) | killed (constitution cells) / pending compile slot (CLI cell) | `relative_env_escape` ×4, `symlinked_registry` ×2; CLI case not run |
+| M-20 (ii) | pending compile slot | AC-CAA-024 CLI case |
+| M-20 (iii) | killed | `loader_unchanged` `relative_registry`, `absolute_file`, `symlinked_registry` (also `absolute_escape`, which the moved check refuses first); internal/spec `TestLinter_AC08_DanglingRuleReference` |
+| M-20 (iv) | killed | `loader_unchanged/absolute_escape` |
+| M-21 file / log | killed / killed | `absolute_file` ×4, `dotdot_file`, `sibling_prefix_file`, `symlinked_file`; `symlinked_log` |
+| M-22 (i) / (ii) | killed / killed | `sibling_prefix_file`; `dotdot_file` |
+| M-23 (i) / (ii) / (iii) | killed ×3 | `symlinked_registry`; `symlinked_file`; `symlinked_log` (each also fails `in_root_control/symlinked_root`) |
+| M-24 | killed | `in_root_control/symlinked_root`; AC-CAA-025 `dry_run` |
+
+Counted: 39 mutant runs killed (38 distinct mutants or variants — M-20 (iii) ran against two selectors), 0 survived; pending compile slot: M-13, M-20 (ii), and the CLI cell of M-20 (i).
+
+### E.2.5 Quality (E3, E5) and isolation (E4)
+
+- `go vet ./internal/constitution/ ./internal/cli/` → exit 0, no output (`m7-vet.txt`, 0 bytes)
+- `golangci-lint run ./internal/constitution/...` → `0 issues.` (`m7-lint-constitution.txt`); the first run found 2 `unused` (the orphaned `fakeOversight`), removed in the M7 commit
+- `go test -cover ./internal/constitution/ -count=1` → `coverage: 88.1% of statements` (`m7-cover.txt`)
+- `GOOS=windows GOARCH=amd64 go vet ./internal/constitution/` and `GOOS=windows GOARCH=amd64 go build ./internal/cli/` → exit 0 (compile only; no Windows test run)
+- REQ-CAA-015 witness: see AC-CAA-017 row; the mutant runs (including M-14 under the session environment) left both real sha256 values unchanged
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-11
+run_commit_sha: pending-backfill        # the M7 commit carrying this block
+baseline_sha: fe8cc9875aea7bad57fe05a88a1b33f8d196fe53
+run_status: complete-except-compile-slot
+ac_pass_count: 21                      # ACs whose every cell is observed PASS
+ac_partial_pending_slot: [AC-CAA-017, AC-CAA-022, AC-CAA-024]   # constitution cells PASS, CLI cell pending
+ac_pending_slot: [AC-CAA-015]
+ac_fail_count: 0
+mutants_killed_runs: 39                # 38 distinct mutants/variants; M-20 (iii) ran against two selectors
+mutants_survived: 0
+mutants_pending_slot: [M-13, M-20-ii, M-20-i-cli-cell]
+preserve_list_post_run_count: "LoadRegistry unchanged (loader.go not in BASELINE..HEAD); filepath.IsAbs(cleanPath) count 1"
+l44_pre_commit_fetch: not-run           # lane does not fetch/push (lead batch push, CLAUDE.local.md §4.1)
+l44_post_push_fetch: not-applicable      # nothing pushed
+new_warnings_or_lints_introduced: 0     # golangci-lint ./internal/constitution/... 0 issues; internal/cli not linted
+cross_platform_build:
+  darwin_arm64_tests: pass
+  windows_amd64_vet_constitution: pass
+  windows_amd64_build_cli: pass
+total_run_phase_files: 15              # Go source and test files; evidence and SPEC records excluded
+m1_to_mN_commit_strategy: per-milestone commits, baseline RED commits ahead of each production change
+compile_slot_commands_pending:
+  - "unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR MOAI_CONSTITUTION_DRY_RUN && go test ./internal/cli/ -run '^TestConstitutionAmend_DryRun_SurfacesValidation$' -count=1 -v -timeout 600s"
+  - "go test ./internal/cli/ -run '^TestResolveRegistryPath_MatchesExecute$' -count=1 -v -timeout 600s"
+  - "go test ./internal/cli/ -run '^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$' -count=1 -v -timeout 600s"
+  - "go test ./internal/cli/ -run '^TestConstitution' -count=1 -timeout 600s   # existing constitution CLI tests re-run (plan.md M2 exit)"
+  - "baseline observation: the three CLI tests at 299bae37d (before 38928086f) — AC-CAA-024 CLI case predicted `clause mismatch`, AC-CAA-015 two_occurrences predicted success line"
+  - "mutants M-13, M-20 (ii), M-20 (i) CLI cell via mutate.py against internal/cli"
+  - "golangci-lint run ./internal/cli/..."
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

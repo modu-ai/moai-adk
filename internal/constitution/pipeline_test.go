@@ -8,12 +8,9 @@ import (
 	"testing"
 )
 
-// fakeOversight is a test double for the HumanOversight interface that
-// auto-approves every proposal. It lets non-dry-run Execute tests run without
-// blocking on os.Stdin (NewHumanOversight hardcodes os.Stdin as its reader).
-type fakeOversight struct{}
-
-func (fakeOversight) Approve(*AmendmentProposal, bool) (bool, error) { return true, nil }
+// Non-dry-run Execute tests approve through recordingGates (apply_test.go),
+// which replaced the former fakeOversight double together with the stub tests
+// that used it (SPEC-CON-AMEND-APPLY-001, plan.md §C.2).
 
 // rejectingOversight is a test double that always rejects (returns false, nil),
 // letting Execute tests exercise the "user rejected the amendment" return path.
