@@ -9,10 +9,8 @@ DOC="$ROOT/.claude/skills/moai/workflows/sync/quality-gates-quality.md"
 TMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 
-saved_args=("$@")
 set -- ""
 source "$HOOK"
-set -- "${saved_args[@]}"
 
 mkdir -p "$TMP_ROOT/kotlin"
 printf 'plugins { kotlin("jvm") version "2.0.0" }\n' > "$TMP_ROOT/kotlin/build.gradle.kts"
