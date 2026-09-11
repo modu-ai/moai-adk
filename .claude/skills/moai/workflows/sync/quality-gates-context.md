@@ -146,7 +146,7 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
   The status result records `after_tree_key`; "no changes" is valid only when
   the two keys are equal and no writer was attempted (see
   `.claude/rules/moai/workflow/read-only-status-contract.md`).
-- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`.
+- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`) and register the verification key from `.claude/rules/moai/workflow/verification-plan-contract.md`. Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale or key-mismatched snapshot is never cited as evidence; record the rerun reason and execute the command once for the new key.
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - In `auto`, `force`, and `project` modes only, auto-fix any fixable issues (lint auto-fix, format auto-fix). In `status`, report the diagnostic result without changing files.
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
@@ -162,7 +162,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 
 #### Step 0.1.1: Test Passage Verification
 
-- Run full test suite for detected project language
+- Run the full test suite for detected project language only when its exact verification key is absent; otherwise reuse the COMPLETE result and cite its owner/key.
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
   - Fix and retry (Recommended): Delegate to manager-develop subagent (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)

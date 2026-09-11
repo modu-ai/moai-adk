@@ -38,7 +38,7 @@ Check indicator files in priority order (first match wins):
 
 #### Step 0.5.2: Execute Diagnostics in Parallel
 
-Snapshot consumption: before launching, query the shared diagnostic snapshot with `moai verify check --key-current`. **Where** a fresh snapshot — key equality AND within the TTL — already covers one of the three categories below (recorded by the run-phase pre-review gate at run Phase 15, or by sync Phase 1 on the unchanged tree), consume the recorded result instead of re-executing that category; the quality report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence, and the freshness rule is what keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below and record the fresh result via `moai verify record`.
+Snapshot consumption: before launching, query the shared diagnostic snapshot with `moai verify check --key-current` and register the exact verification key from `.claude/rules/moai/workflow/verification-plan-contract.md`. **Where** a fresh snapshot — key equality AND within the TTL — already covers one of the three categories below (recorded by the run-phase pre-review gate at run Phase 15, or by sync Phase 1 on the unchanged tree), consume the recorded result instead of re-executing that category; the quality report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence, and the freshness rule is what keeps the attribution valid). A stale, incomplete, or key-mismatched snapshot is never cited: record the rerun reason and execute the check once for the new key.
 
 **Shared-snapshot wiring.** The snapshot is keyed by HEAD SHA (HEAD + porcelain-v2 + diff hash); a new commit invalidates the prior snapshot. Three sync-phase consumers — the `sync-auditor` Evidence cells, the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook, and the `.claude/workflows/sync-audit-4dim.js` 4-dimension judges — all consume this single snapshot keyed by HEAD SHA rather than each independently re-executing `go test` / `golangci-lint` / `go vet` / `go test -cover`. Concurrent recording requests for the SAME HEAD SHA are serialized via the per-key claim/lock mechanism (in-process mutex + cross-process `O_EXCL` claim-stamp with staleness reclaim), so exactly one consumer's recording per dimension lands and the rest read — last-writer-wins never silently drops a dimension.
 
@@ -53,6 +53,9 @@ Launch the test, linter, and type-check tasks through the shared bounded queue
 defined in `.claude/rules/moai/workflow/resource-budget-contract.md`. The
 three tasks may run simultaneously only when the recorded `max_concurrency`
 budget admits them; otherwise they remain queued with queue-wait evidence.
+Each task has one verification-plan owner and is skipped when an exact
+COMPLETE key is already available; duplicate commands with a different key
+must state the rerun reason.
 
 - Test Runner: Language-specific test command (pytest, npm test, go test, cargo test, etc.)
 - Linter: Language-specific lint command (ruff, eslint, golangci-lint, clippy, etc.)
@@ -329,8 +332,11 @@ Per-package fan-out (`FO-SYNC-3`, read-only drafting): **Where** the gaps span s
 #### Step 0.7.4: Verification
 
 After test generation:
-- Run the full test suite to ensure no regressions
-- Re-measure coverage to confirm improvement
+- If the writer generated tests, record the new tree key and run one
+  post-write test/coverage plan for that key; do not repeat the same command in
+  both the gate and this phase.
+- If no writer ran, reuse the exact COMPLETE test/coverage result and cite its
+  owner/key instead of re-running it.
 - Compare before/after coverage percentages
 
 Behavior:
