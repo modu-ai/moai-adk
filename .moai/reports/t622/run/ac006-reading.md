@@ -48,3 +48,21 @@ Noted residual (not a FAIL of this criterion): doc-execution line 6 still says t
 "for use in Phase 13"; after this edit no Phase 13 step reads `is_worktree_context`. The line is
 unchanged because its wording does not tie the flag to merging and line 8 directly below states it
 is not a merge condition.
+
+## Final-tree addendum (run-phase part 2)
+
+Read by: manager-develop (run-phase part 2, card t622) on the final tree (judging HEAD
+`35c0e30df`). The sections above were read at M1. Since then only M2 changed the delivery.md
+`#### Step 3.4` section; the doc-execution subsection is unchanged (`diff ac006-{local,template}-de.md
+p2-{local,template}-de.md` exit 0). The Step 3.4 change is exactly three lines
+(`p2-ac006-dl-m1-vs-final.diff`, identical for the template copy):
+
+| Changed sentence (final) | Q1: merge because of worktree context alone? | Q2: merge condition still `--auto-merge`? |
+|---|---|---|
+| "3. If all checks pass: Execute `gh pr merge --<merge_method> --delete-branch`" | No — a step inside the `--auto-merge` path; no worktree mention | Yes — unchanged trigger lines above it |
+| "`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` \| `merge` \| `rebase`; default `squash`)." | No — names the merge method source only | Yes — adds no trigger |
+| "3. If passing and mergeable: Execute `gh pr merge --<merge_method> --delete-branch`" | No — same as above | Yes |
+
+Result: every sentence of both sections still answers No / `--auto-merge`. Automatic detector on
+the final sections: dl-default `test -e` 0 / `test -s` 1, de-default grep exit 1
+(`p2-{local,template}-006-*`).

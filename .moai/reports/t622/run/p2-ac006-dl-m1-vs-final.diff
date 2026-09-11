@@ -1,0 +1,11 @@
+20c20
+< 3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+---
+> 3. If all checks pass: Execute `gh pr merge --<merge_method> --delete-branch`
+22a23,24
+> `<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
+> 
+33c35
+< 3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+---
+> 3. If passing and mergeable: Execute `gh pr merge --<merge_method> --delete-branch`
