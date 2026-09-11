@@ -1,6 +1,6 @@
 # design.md — SPEC-CON-AMEND-APPLY-001
 
-Tier L design artifact, added in revision 0.1.4 when the SPEC was raised from Tier M to Tier L (`.moai/reports/t659/verdict.md` §13.3). It records the architecture that the lead rulings already fixed: verdict §7 (Q1–Q5), §8 (G1–G5 and scope addition (a)), §9 (G6), §11 (G7), the two agent extensions the lead accepted in §12.5, and operator decision D4 on plan-audit iteration 1 (revision 0.1.6; `spec.md` §G). Revision 0.1.7 (plan-audit iteration 2) states where REQ-CAA-020 already puts the registry-path check — before the registry is read (§B, §C.2). **No decision is introduced here.** Where the SPEC's encoding of a ruling adds a detail the verdict does not state word for word, the section says so and names the requirement that carries it.
+Tier L design artifact, added in revision 0.1.4 when the SPEC was raised from Tier M to Tier L (`.moai/reports/t659/verdict.md` §13.3). It records the architecture that the lead rulings already fixed: verdict §7 (Q1–Q5), §8 (G1–G5 and scope addition (a)), §9 (G6), §11 (G7), the two agent extensions the lead accepted in §12.5, and operator decision D4 on plan-audit iteration 1 (revision 0.1.6; `spec.md` §G). Revision 0.1.7 (plan-audit iteration 2) states where REQ-CAA-020 already puts the registry-path check — before the registry is read (§B, §C.2). Revision 0.1.8 (plan-audit iteration 3 optional findings, applied by operator decision) records in §H.6 that the operator approved the backup-write and temporary-write Gap as a blank; no decision recorded here changes. **No decision is introduced here.** Where the SPEC's encoding of a ruling adds a detail the verdict does not state word for word, the section says so and names the requirement that carries it.
 
 Requirement wording lives in `spec.md` §D, verification in `acceptance.md`, milestone order in `plan.md` §F, and the codebase findings these decisions rest on in `research.md`. Function names, the exact shape of the two seams, the resolver's package home, and backup file naming are run-phase decisions (`spec.md` §E.1) and are not fixed here.
 
@@ -276,7 +276,7 @@ Temporary and backup files are created in the target's own directory, so each re
 ### H.6 Boundaries
 
 - Crash recovery across process death between renames is out of scope (`spec.md` §F).
-- A failed backup write or temporary write is not injected, so the restore it requires is unobserved; this Gap is recorded, not yet approved (`spec.md` §E.4).
+- A failed backup write or temporary write is not injected, so the restore it requires is unobserved; the operator approved this Gap as a blank — no seam is added — and the run-phase report carries it under Residual-risk (`spec.md` §E.4).
 - The single-writer lock is unchanged, and its cwd-relative default path is a recorded observation, not fixed. The lock serializes concurrent amenders; atomicity concerns one amender's three writes (`spec.md` §F).
 
 ## §I Dry-run runs the validation steps (Q4)

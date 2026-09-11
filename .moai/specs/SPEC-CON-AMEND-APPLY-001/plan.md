@@ -1,6 +1,6 @@
 # plan.md — SPEC-CON-AMEND-APPLY-001
 
-Card t659 · Tier L (5 artifacts + progress.md; raised from Tier M in revision 0.1.4, verdict §13.3) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change); revision 0.1.4 authored on `699bedd7c` (verdict additions and 0.1.3 lint evidence added, no code change); revision 0.1.5 authored on `54ca2e3b6` (verdict additions, the plan-audit iteration 1 report, and 0.1.4 lint evidence added, no code change); revision 0.1.6 authored on `193136a6a` (the 0.1.5 revision commit, no code change); revision 0.1.7 authored on `1fe4a0289` (verdict additions, the 0.1.6 lint evidence, and the plan-audit iteration 2 report added, no code change).
+Card t659 · Tier L (5 artifacts + progress.md; raised from Tier M in revision 0.1.4, verdict §13.3) · development mode per `.moai/config/sections/quality.yaml` (TDD: every milestone opens with a RED measurement). Code coordinates read at `034d55c56`; revision 0.1.1 authored on `ff11e752f` (verdict §8 added, no code change); revision 0.1.2 authored on `92c8c3f36` (verdict §9 added, no code change); revision 0.1.3 authored on `578afca87` (verdict §10–§11 and lint evidence added, no code change); revision 0.1.4 authored on `699bedd7c` (verdict additions and 0.1.3 lint evidence added, no code change); revision 0.1.5 authored on `54ca2e3b6` (verdict additions, the plan-audit iteration 1 report, and 0.1.4 lint evidence added, no code change); revision 0.1.6 authored on `193136a6a` (the 0.1.5 revision commit, no code change); revision 0.1.7 authored on `1fe4a0289` (verdict additions, the 0.1.6 lint evidence, and the plan-audit iteration 2 report added, no code change); revision 0.1.8 authored on `0c4d2e4e7` (verdict additions, the 0.1.7 lint evidence, and the plan-audit iteration 3 report added, no code change; plan-audit iteration 3 optional findings X1–X4 applied by operator decision without re-audit — here §C.1).
 
 ## §A Context
 
@@ -43,6 +43,8 @@ BASELINE_SHA=$(git rev-parse HEAD)   # before the first run-phase commit; record
 /usr/bin/grep -rn --include='*.go' 'LoadRegistry(' internal cmd pkg | /usr/bin/grep -v _test.go   # expect 8 lines (definition + 7 call sites) (D4 blast radius)
 shasum -a 256 .claude/rules/moai/core/zone-registry.md .moai/research/evolution-log.md   # record; AC-CAA-017 compares
 ```
+
+AC-CAA-025's preservation range from `BASELINE_SHA` (`git log --first-parent --no-merges`) does not list commits carried by a merge's second parent or edits made inside a merge commit; the test run itself (`TestLinter_AC08_DanglingRuleReference` passing) is the primary witness.
 
 Tool provenance (verification-claim-integrity §2.2): any `moai spec lint` result cited as evidence names the judging build's commit next to the tree HEAD.
 
