@@ -39,6 +39,10 @@ const (
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
 	DefaultGraphFreshnessUpdateBudgetMS = 2000
+	// DefaultSlotLeaseMaxDuration is the declared maximum duration a slot
+	// lease takes when the caller omits --max-duration. A chosen value, not a
+	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
+	DefaultSlotLeaseMaxDuration = "30m"
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -906,6 +910,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` anywhere under internal/template/templates/.
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
+		},
+		// The slot-lease guard ships inert: a project that never runs several
+		// sessions against one machine has nothing to serialize. The `moai
+		// slot` verbs work regardless. No resources ship by default — any
+		// shipped pattern would name some programming language's commands.
+		// Template neutrality: no `enabled: true` under
+		// internal/template/templates/.
+		SlotLease: SlotLeaseConfig{
+			Enabled:            false,
+			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
 		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
 		// and advisory always run; a maintainer opts into denial via local

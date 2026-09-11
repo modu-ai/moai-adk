@@ -698,9 +698,8 @@ type SettingsDriftGateConfig struct {
 // SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the
 // PreToolUse guard's deny layer only; DefaultMaxDuration is a duration string
 // parsed at use; Resources maps a resource name to its command patterns.
-//
-// M1 STATE: the schema is declared; the shipped default and the lenient
-// per-entry decoding of Resources land in M4.
+// Resource entries decode leniently (slot_lease_config.go) so one malformed
+// entry cannot turn the whole workflow section off.
 type SlotLeaseConfig struct {
 	Enabled            bool                               `yaml:"enabled"`
 	DefaultMaxDuration string                             `yaml:"default_max_duration"`
