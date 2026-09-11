@@ -50,8 +50,10 @@ type CachedEntry struct {
 type AuditCache interface {
 	// ComputeHash computes a combined SHA-256 hash of all plan artifacts in specDir.
 	//
-	// Hash algorithm: SHA-256 over whitespace-normalized content of each artifact file,
-	// sorted by filename, concatenated. OPEN QUESTION Q1 resolution: whitespace-insensitive.
+	// Hash algorithm: SHA-256 over the exact bytes of each artifact file, sorted by
+	// filename, concatenated. Markdown artifacts contain executable shell/YAML
+	// examples where whitespace and newlines can change behavior, so formatting
+	// normalization is intentionally not part of cache identity.
 	//
 	// Artifact files considered (in sorted order): acceptance.md, design.md,
 	// plan.md, research.md, spec.md, tasks.md. Missing files are silently
@@ -102,11 +104,10 @@ func NewInMemoryCache() *InMemoryCache {
 	return &InMemoryCache{entries: make(map[string]*CachedEntry)}
 }
 
-// ComputeHash computes a combined, whitespace-normalized SHA-256 hash
-// of the plan artifact files present in specDir.
+// ComputeHash computes a combined, byte-exact SHA-256 hash of the plan
+// artifact files present in specDir.
 //
 // Missing artifact files are silently skipped (only spec.md is required).
-// Content is whitespace-normalized before hashing (runs of whitespace → single space).
 func (c *InMemoryCache) ComputeHash(specDir string) (string, error) {
 	h := sha256.New()
 
@@ -119,20 +120,14 @@ func (c *InMemoryCache) ComputeHash(specDir string) (string, error) {
 			}
 			return "", fmt.Errorf("read %s: %w", name, err)
 		}
-		// Whitespace normalization: collapse runs of whitespace to a single space.
-		normalized := normalizeWhitespace(string(data))
-		// Include filename as separator to prevent hash collisions between files.
-		_, _ = fmt.Fprintf(h, "%s:%s\n", name, normalized)
+		// Include the path and exact bytes as separators to prevent collisions
+		// between adjacent files and to preserve executable whitespace semantics.
+		_, _ = fmt.Fprintf(h, "%s:%d\x00", name, len(data))
+		_, _ = h.Write(data)
+		_, _ = h.Write([]byte{0})
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}
-
-// normalizeWhitespace collapses any run of whitespace characters to a single space
-// and trims leading/trailing whitespace.
-func normalizeWhitespace(s string) string {
-	fields := strings.Fields(s)
-	return strings.Join(fields, " ")
 }
 
 // cacheKey returns the map key for (specID, hash).
