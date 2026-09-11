@@ -1,3 +1,8 @@
+---
+description: "Conditional routing of domain skills into agent spawns"
+paths: ".claude/agents/**,.claude/skills/**,.moai/config/sections/delegation.yaml"
+---
+
 # Skill Routing Protocol
 
 Canonical rule for dynamic skill chaining: how the orchestrator routes domain skills into agent spawns, and how agents load conditional skills on demand.

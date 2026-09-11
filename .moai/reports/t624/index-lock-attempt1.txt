@@ -1,0 +1,24 @@
+attempt 1 — commit of H01 reproduction evidence on WT-sync-gate-failstate (2026-09-10)
+
+command:
+git rev-parse --short HEAD && git branch --show-current && git status --short && git add <6 paths under .moai/reports/t624> && git commit -q -m "docs(t624): record H01 reproduction on develop before any fix" && ...
+
+exit code: 128
+
+full output:
+d5dc42959
+WT-sync-gate-failstate
+?? .moai/reports/t624/
+fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t624/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+
+Post-failure observations:
+- HEAD: d5dc42959 (unchanged) · MERGE_HEAD: absent (`git rev-parse -q --verify MERGE_HEAD` exit 1)
+- 17:41:22 `stat` on .git/worktrees/t624/index.lock → No such file or directory (already released)
+- staging (`git --no-optional-locks status --short`): all 6 evidence paths show `A ` — the `git add` step landed; the failure was the `git commit` step
+Reading: transient lock held by another short-lived process on this worktree index, released before the probe. Not removed by hand. Retry = attempt 2 of 3 (commit only; the staged set is already correct).

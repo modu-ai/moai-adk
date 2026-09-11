@@ -6,6 +6,18 @@ metadata:
   phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
 ---
 
+# Approved Plan Handoff
+
+The run phase receives an immutable handoff from plan containing
+`plan_artifact_hash`, `task_graph_id`, the approved scope, and the approval
+record. Before delegating implementation, the orchestrator recomputes the
+artifact hash and validates the task graph against the current tree. When the
+identity and scope are unchanged, this is an input-validation step: do not
+re-invoke `manager-spec` to repeat plan analysis or ask the same approval
+question. When the hash, scope, dependency set, or risk classification changes,
+record the mismatch and route only the affected portion back to planning for
+re-approval. The approval meaning is preserved in both paths.
+
 # Phase 11: Implementation (Mode-Dependent)
 
 **[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-develop) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See context-loading.md "Worktree Path Rules [HARD]" section.
@@ -68,6 +80,17 @@ Requirements:
 - Execute the complete RED-GREEN-REFACTOR cycle for each feature
 - Write tests before implementation (test-first discipline)
 - Ensure minimum 80% coverage per commit (85% recommended for new code)
+
+### TDD Result Classification (RED is not any failure)
+
+Record the semantic result of every TDD command using
+`.claude/rules/moai/workflow/tdd-result-contract.md`. A RED result is valid
+only when the new AC test reaches its intended assertion and the command's
+verbatim output proves that expected failure. Compile errors, test discovery
+errors, missing fixtures, tool failures, timeouts, and failures in existing
+tests are `TOOL_FAILURE` or `REGRESSION_FAILURE` and block the cycle. GREEN
+must rerun the new AC test plus the regression set; REFACTOR must preserve
+their PASS results.
 
 ### RED-stage Drafter Pool (read-only, conditional)
 
@@ -209,6 +232,19 @@ Mode-specific deployment:
 - CG mode: Leader performs evaluation inline
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
+
+#### Evidence and Decision Ownership
+
+The run-phase four-dimension result is an evidence bundle, not an unconditional
+sync decision. It MUST carry `tree_key`, the resolved AC set, rubric version,
+dimension evidence, and an `evidence_status` of `COMPLETE`, `INCOMPLETE`, or
+`CONTESTED`. Sync may reuse the bundle only when all three identity inputs
+(tree, AC, rubric) match and the status is `COMPLETE`. A changed tree, changed
+AC/rubric, `INCOMPLETE`, or `CONTESTED` finding forces the sync-phase decision
+owner to perform the missing review; the orchestrator records the reason for
+every reuse or re-execution. The sync-auditor/4dim binding predicate remains
+the owner of the sync verdict, while the run result remains attributable
+evidence.
 
 <!-- moai:evolvable-start id="gate-run-2" -->
 ## HUMAN GATE: Implementation Complete

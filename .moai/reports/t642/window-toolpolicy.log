@@ -1,0 +1,232 @@
+=== RUN   TestPermissionsRegionHasDirective
+=== PAUSE TestPermissionsRegionHasDirective
+=== RUN   TestRoundTripEquivalence_JSON
+=== PAUSE TestRoundTripEquivalence_JSON
+=== RUN   TestBuildInto_PreservesExistingFileMode
+=== PAUSE TestBuildInto_PreservesExistingFileMode
+=== RUN   TestDriftPrevention_YamlSettingsRoundTrip
+=== PAUSE TestDriftPrevention_YamlSettingsRoundTrip
+=== RUN   TestCodegenIdempotency
+=== PAUSE TestCodegenIdempotency
+=== RUN   TestCodegenPreservesNonPermissionsRegions
+=== PAUSE TestCodegenPreservesNonPermissionsRegions
+=== RUN   TestTemplateRoundTripEquivalence
+=== PAUSE TestTemplateRoundTripEquivalence
+=== RUN   TestTemplateDirectivePreserved
+=== PAUSE TestTemplateDirectivePreserved
+=== RUN   TestPermissionBlockNoTemplateSentinel
+=== PAUSE TestPermissionBlockNoTemplateSentinel
+=== RUN   TestEnvGatedSkipped
+=== PAUSE TestEnvGatedSkipped
+=== RUN   TestBuildIntoAutoDetectsKind
+=== PAUSE TestBuildIntoAutoDetectsKind
+=== RUN   TestLocatePermissionsRegion_HandlesBracesInStrings
+=== PAUSE TestLocatePermissionsRegion_HandlesBracesInStrings
+=== RUN   TestExtractPermissions_PreservesExtraKeys
+=== PAUSE TestExtractPermissions_PreservesExtraKeys
+=== RUN   TestCompatBaseline
+=== PAUSE TestCompatBaseline
+=== RUN   TestPathHelpers
+=== PAUSE TestPathHelpers
+=== RUN   TestLoadFromProjectDir
+=== PAUSE TestLoadFromProjectDir
+=== RUN   TestLoadFromProjectDir_MissingFile
+=== PAUSE TestLoadFromProjectDir_MissingFile
+=== RUN   TestDecisionFor
+=== PAUSE TestDecisionFor
+=== RUN   TestCountSpecifierByDecision
+=== PAUSE TestCountSpecifierByDecision
+=== RUN   TestEnsureNoCR
+=== PAUSE TestEnsureNoCR
+=== RUN   TestBuildPermissions_DuplicateSpecifiers
+=== PAUSE TestBuildPermissions_DuplicateSpecifiers
+=== RUN   TestBuildPermissions_UnknownDecision
+=== PAUSE TestBuildPermissions_UnknownDecision
+=== RUN   TestBuildInto_DefaultModeOverride
+=== PAUSE TestBuildInto_DefaultModeOverride
+=== RUN   TestBuildInto_UnknownTargetKind
+=== PAUSE TestBuildInto_UnknownTargetKind
+=== RUN   TestBuildInto_ReadError
+=== PAUSE TestBuildInto_ReadError
+=== RUN   TestRenderSettingsJSON_NoPermissions
+=== PAUSE TestRenderSettingsJSON_NoPermissions
+=== RUN   TestAssertPermissionBlockNoTemplate_Failure
+=== PAUSE TestAssertPermissionBlockNoTemplate_Failure
+=== RUN   TestSortedBySpecifier_IdempotentOrder
+=== PAUSE TestSortedBySpecifier_IdempotentOrder
+=== RUN   TestToolPolicyDrift_CommittedSettingsMatchYAML
+--- PASS: TestToolPolicyDrift_CommittedSettingsMatchYAML (0.00s)
+=== RUN   TestToolPolicyDrift_NoDuplicatesOrOverlap
+--- PASS: TestToolPolicyDrift_NoDuplicatesOrOverlap (0.00s)
+=== RUN   TestToolPolicyDrift_Mutation
+=== RUN   TestToolPolicyDrift_Mutation/settings_side_missing
+=== RUN   TestToolPolicyDrift_Mutation/yaml_side_flip
+=== RUN   TestToolPolicyDrift_Mutation/unmutated
+=== RUN   TestToolPolicyDrift_Mutation/duplicate_settings_allow
+=== RUN   TestToolPolicyDrift_Mutation/duplicate_settings_ask
+=== RUN   TestToolPolicyDrift_Mutation/duplicate_settings_deny
+=== RUN   TestToolPolicyDrift_Mutation/allow_deny_overlap
+--- PASS: TestToolPolicyDrift_Mutation (0.01s)
+    --- PASS: TestToolPolicyDrift_Mutation/settings_side_missing (0.00s)
+    --- PASS: TestToolPolicyDrift_Mutation/yaml_side_flip (0.00s)
+    --- PASS: TestToolPolicyDrift_Mutation/unmutated (0.00s)
+    --- PASS: TestToolPolicyDrift_Mutation/duplicate_settings_allow (0.00s)
+    --- PASS: TestToolPolicyDrift_Mutation/duplicate_settings_ask (0.00s)
+    --- PASS: TestToolPolicyDrift_Mutation/duplicate_settings_deny (0.00s)
+    --- PASS: TestToolPolicyDrift_Mutation/allow_deny_overlap (0.00s)
+=== RUN   TestToolPolicyDrift_FailClosed
+=== RUN   TestToolPolicyDrift_FailClosed/missing_yaml
+=== RUN   TestToolPolicyDrift_FailClosed/missing_settings
+=== RUN   TestToolPolicyDrift_FailClosed/malformed_yaml
+=== RUN   TestToolPolicyDrift_FailClosed/malformed_settings_json
+=== RUN   TestToolPolicyDrift_FailClosed/wrong_type_settings_list
+=== RUN   TestToolPolicyDrift_FailClosed/no_permissions_region
+=== RUN   TestToolPolicyDrift_FailClosed/empty_yaml_allow
+=== RUN   TestToolPolicyDrift_FailClosed/empty_yaml_deny
+=== RUN   TestToolPolicyDrift_FailClosed/empty_settings_allow
+=== RUN   TestToolPolicyDrift_FailClosed/empty_settings_deny
+--- PASS: TestToolPolicyDrift_FailClosed (0.01s)
+    --- PASS: TestToolPolicyDrift_FailClosed/missing_yaml (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/missing_settings (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/malformed_yaml (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/malformed_settings_json (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/wrong_type_settings_list (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/no_permissions_region (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/empty_yaml_allow (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/empty_yaml_deny (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/empty_settings_allow (0.00s)
+    --- PASS: TestToolPolicyDrift_FailClosed/empty_settings_deny (0.00s)
+=== RUN   TestLoad_Validates6FieldSchema
+=== PAUSE TestLoad_Validates6FieldSchema
+=== RUN   TestLoad_ValidMinimalEntry
+=== PAUSE TestLoad_ValidMinimalEntry
+=== RUN   TestSettingsSpecifier
+=== PAUSE TestSettingsSpecifier
+=== RUN   TestFilters
+=== PAUSE TestFilters
+=== RUN   TestRenderTierPermissions_ScopeSplit
+--- PASS: TestRenderTierPermissions_ScopeSplit (0.00s)
+=== RUN   TestRenderTierPermissions_DenyAskInvariantAcrossTiers
+--- PASS: TestRenderTierPermissions_DenyAskInvariantAcrossTiers (0.00s)
+=== RUN   TestRenderTierPermissions_SemiAutoDefaultMode
+--- PASS: TestRenderTierPermissions_SemiAutoDefaultMode (0.00s)
+=== RUN   TestRenderTierPermissions_Idempotent
+--- PASS: TestRenderTierPermissions_Idempotent (0.00s)
+=== CONT  TestPermissionsRegionHasDirective
+--- PASS: TestPermissionsRegionHasDirective (0.00s)
+=== CONT  TestLoadFromProjectDir_MissingFile
+=== CONT  TestTemplateDirectivePreserved
+=== CONT  TestTemplateRoundTripEquivalence
+=== CONT  TestDriftPrevention_YamlSettingsRoundTrip
+=== CONT  TestBuildInto_ReadError
+=== CONT  TestBuildInto_PreservesExistingFileMode
+=== RUN   TestBuildInto_PreservesExistingFileMode/default_0644
+=== CONT  TestLoadFromProjectDir
+=== PAUSE TestBuildInto_PreservesExistingFileMode/default_0644
+=== RUN   TestBuildInto_PreservesExistingFileMode/secret_0600
+=== CONT  TestCompatBaseline
+=== CONT  TestExtractPermissions_PreservesExtraKeys
+=== CONT  TestLocatePermissionsRegion_HandlesBracesInStrings
+=== CONT  TestBuildIntoAutoDetectsKind
+=== CONT  TestEnvGatedSkipped
+=== CONT  TestPermissionBlockNoTemplateSentinel
+=== CONT  TestRoundTripEquivalence_JSON
+=== CONT  TestLoad_Validates6FieldSchema
+--- PASS: TestBuildInto_ReadError (0.00s)
+=== CONT  TestLoad_ValidMinimalEntry
+=== CONT  TestSettingsSpecifier
+--- PASS: TestLocatePermissionsRegion_HandlesBracesInStrings (0.00s)
+=== RUN   TestSettingsSpecifier/Read
+--- PASS: TestExtractPermissions_PreservesExtraKeys (0.00s)
+=== CONT  TestPathHelpers
+=== PAUSE TestSettingsSpecifier/Read
+--- PASS: TestPathHelpers (0.00s)
+=== PAUSE TestBuildInto_PreservesExistingFileMode/secret_0600
+=== CONT  TestBuildPermissions_DuplicateSpecifiers
+=== RUN   TestSettingsSpecifier/Read#01
+=== PAUSE TestSettingsSpecifier/Read#01
+=== RUN   TestSettingsSpecifier/Bash(git_push:*)
+=== PAUSE TestSettingsSpecifier/Bash(git_push:*)
+=== CONT  TestBuildInto_DefaultModeOverride
+=== RUN   TestSettingsSpecifier/Bash(rm_-rf_/:*)
+=== PAUSE TestSettingsSpecifier/Bash(rm_-rf_/:*)
+=== RUN   TestSettingsSpecifier/mcp__example__tool
+=== PAUSE TestSettingsSpecifier/mcp__example__tool
+=== CONT  TestBuildPermissions_UnknownDecision
+=== CONT  TestSortedBySpecifier_IdempotentOrder
+=== CONT  TestBuildInto_UnknownTargetKind
+=== CONT  TestRenderSettingsJSON_NoPermissions
+=== CONT  TestCountSpecifierByDecision
+=== CONT  TestEnsureNoCR
+=== CONT  TestDecisionFor
+=== CONT  TestCodegenPreservesNonPermissionsRegions
+=== CONT  TestCodegenIdempotency
+=== CONT  TestAssertPermissionBlockNoTemplate_Failure
+=== CONT  TestBuildInto_PreservesExistingFileMode/default_0644
+=== CONT  TestFilters
+=== CONT  TestSettingsSpecifier/Read
+=== CONT  TestBuildInto_PreservesExistingFileMode/secret_0600
+--- PASS: TestBuildPermissions_DuplicateSpecifiers (0.00s)
+--- PASS: TestBuildPermissions_UnknownDecision (0.00s)
+--- PASS: TestPermissionBlockNoTemplateSentinel (0.00s)
+--- PASS: TestSortedBySpecifier_IdempotentOrder (0.00s)
+--- PASS: TestRenderSettingsJSON_NoPermissions (0.00s)
+--- PASS: TestCountSpecifierByDecision (0.00s)
+--- PASS: TestEnsureNoCR (0.00s)
+--- PASS: TestDecisionFor (0.00s)
+--- PASS: TestEnvGatedSkipped (0.00s)
+--- PASS: TestAssertPermissionBlockNoTemplate_Failure (0.00s)
+--- PASS: TestFilters (0.00s)
+--- PASS: TestTemplateRoundTripEquivalence (0.00s)
+=== CONT  TestSettingsSpecifier/Bash(git_push:*)
+=== CONT  TestSettingsSpecifier/mcp__example__tool
+=== CONT  TestSettingsSpecifier/Bash(rm_-rf_/:*)
+=== CONT  TestSettingsSpecifier/Read#01
+--- PASS: TestSettingsSpecifier (0.00s)
+    --- PASS: TestSettingsSpecifier/Read (0.00s)
+    --- PASS: TestSettingsSpecifier/Bash(git_push:*) (0.00s)
+    --- PASS: TestSettingsSpecifier/mcp__example__tool (0.00s)
+    --- PASS: TestSettingsSpecifier/Bash(rm_-rf_/:*) (0.00s)
+    --- PASS: TestSettingsSpecifier/Read#01 (0.00s)
+--- PASS: TestTemplateDirectivePreserved (0.00s)
+=== RUN   TestLoad_Validates6FieldSchema/missing_risk_tier
+=== PAUSE TestLoad_Validates6FieldSchema/missing_risk_tier
+=== RUN   TestLoad_Validates6FieldSchema/invalid_risk_tier_value
+=== PAUSE TestLoad_Validates6FieldSchema/invalid_risk_tier_value
+=== RUN   TestLoad_Validates6FieldSchema/invalid_decision_value
+=== PAUSE TestLoad_Validates6FieldSchema/invalid_decision_value
+=== RUN   TestLoad_Validates6FieldSchema/missing_tool
+=== PAUSE TestLoad_Validates6FieldSchema/missing_tool
+=== RUN   TestLoad_Validates6FieldSchema/missing_audit
+=== PAUSE TestLoad_Validates6FieldSchema/missing_audit
+=== RUN   TestLoad_Validates6FieldSchema/missing_owner_agent
+=== PAUSE TestLoad_Validates6FieldSchema/missing_owner_agent
+=== CONT  TestLoad_Validates6FieldSchema/missing_risk_tier
+--- PASS: TestLoadFromProjectDir_MissingFile (0.01s)
+=== CONT  TestLoad_Validates6FieldSchema/missing_tool
+=== CONT  TestLoad_Validates6FieldSchema/invalid_decision_value
+=== CONT  TestLoad_Validates6FieldSchema/invalid_risk_tier_value
+=== CONT  TestLoad_Validates6FieldSchema/missing_owner_agent
+=== CONT  TestLoad_Validates6FieldSchema/missing_audit
+--- PASS: TestDriftPrevention_YamlSettingsRoundTrip (0.01s)
+--- PASS: TestCompatBaseline (0.01s)
+--- PASS: TestLoad_ValidMinimalEntry (0.01s)
+--- PASS: TestBuildInto_UnknownTargetKind (0.01s)
+--- PASS: TestBuildInto_DefaultModeOverride (0.01s)
+--- PASS: TestLoadFromProjectDir (0.01s)
+--- PASS: TestRoundTripEquivalence_JSON (0.01s)
+--- PASS: TestBuildInto_PreservesExistingFileMode (0.00s)
+    --- PASS: TestBuildInto_PreservesExistingFileMode/secret_0600 (0.01s)
+    --- PASS: TestBuildInto_PreservesExistingFileMode/default_0644 (0.01s)
+--- PASS: TestCodegenPreservesNonPermissionsRegions (0.01s)
+--- PASS: TestLoad_Validates6FieldSchema (0.01s)
+    --- PASS: TestLoad_Validates6FieldSchema/missing_risk_tier (0.00s)
+    --- PASS: TestLoad_Validates6FieldSchema/missing_tool (0.00s)
+    --- PASS: TestLoad_Validates6FieldSchema/missing_owner_agent (0.00s)
+    --- PASS: TestLoad_Validates6FieldSchema/missing_audit (0.00s)
+    --- PASS: TestLoad_Validates6FieldSchema/invalid_decision_value (0.00s)
+    --- PASS: TestLoad_Validates6FieldSchema/invalid_risk_tier_value (0.00s)
+--- PASS: TestCodegenIdempotency (0.01s)
+--- PASS: TestBuildIntoAutoDetectsKind (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	0.425s

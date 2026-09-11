@@ -6,9 +6,9 @@ metadata:
   phase: "Phase 13~14: Git Delivery, Completion, and Auxiliary"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 13: Git Operations and Delivery
 
@@ -46,8 +46,12 @@ When both the canonical key and the legacy key are present, the canonical key wi
 
 **Tier-based Route gate** (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline): read the SPEC's `tier` field (S/M/L) and whether `--pr` was passed.
 
-- **Route A (Tier S/M default, no `--pr`)**: Agent: manager-docs subagent. manager-docs creates the single sync commit directly on `main` — no `manager-git` spawn, no feature branch, no PR.
-- **Route B (Tier L OR explicit `--pr`)**: Agent: manager-git subagent. manager-git creates the same single sync commit on the sync feature branch (`sync/SPEC-XXX` or `chore/SPEC-XXX-sync`), delivered via PR in Step 3.2.
+- **Route A (Tier S/M default, no `--pr`)**: manager-docs creates the sync
+  commit in the assigned worktree; `manager-git` owns the configured PR or
+  `WT-*` integration delivery. No phase agent pushes directly.
+- **Route B (Tier L OR explicit `--pr`)**: manager-git creates the same single
+  sync commit on the sync feature branch (`sync/SPEC-XXX` or
+  `chore/SPEC-XXX-sync`) and delivers it via PR in Step 3.2.
 
 Both routes:
 - Stage all changed document files, reports, README, docs/
@@ -147,20 +151,41 @@ go vet ./...
 go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # Check 3: golangci-lint (mirrors CI lint job)
-# Auto-detect if golangci-lint is available
-which golangci-lint && golangci-lint run --timeout=5m \
-  || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+# Tool absence is SKIPPED; an installed tool's non-zero status is FAIL.
+if ! command -v golangci-lint >/dev/null 2>&1; then
+  echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+elif golangci-lint run --timeout=5m; then
+  echo "PASS: golangci-lint"
+else
+  lint_status=$?
+  echo "FAIL: golangci-lint (exit ${lint_status})" >&2
+  exit "$lint_status"
+fi
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
 # Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
 # Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
 # example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
-GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64     ./<your-module>/ &
-GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64     ./<your-module>/ &
-GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64    ./<your-module>/ &
-GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64    ./<your-module>/ &
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
-wait
+declare -A build_pids=()
+GOOS=linux   GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64       ./<your-module>/ & build_pids[linux-amd64]=$!
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64       ./<your-module>/ & build_pids[linux-arm64]=$!
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64      ./<your-module>/ & build_pids[darwin-amd64]=$!
+GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64      ./<your-module>/ & build_pids[darwin-arm64]=$!
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ & build_pids[windows-amd64]=$!
+
+build_failed=0
+for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
+  if wait "${build_pids[$target]}"; then
+    echo "PASS: cross-build ${target}"
+  else
+    status=$?
+    echo "FAIL: cross-build ${target} (exit ${status})" >&2
+    build_failed=1
+  fi
+done
+if (( build_failed != 0 )); then
+  exit 1
+fi
 ```
 
 **Python project** (detected via `pyproject.toml`):
@@ -419,12 +444,18 @@ Tool: AskUserQuestion with options tailored to delivery result (single-phase con
 
 ## Graceful Exit
 
-When user aborts at any decision point:
+When the user aborts at any decision point, follow
+`.claude/rules/moai/workflow/graceful-exit-mutation-contract.md`:
 
-- No changes made to documents, Git history, or branch state
-- Project remains in current state
-- Display retry command: /moai sync [mode]
-- Exit with code 0
+- Capture `before_tree_key` and `after_tree_key`, then list changed paths and
+  applied/unapplied operations.
+- Say “no changes” only when the keys are equal and no mutation was observed.
+- If a writer ran, report partial changes and rollback status; claim restored
+  paths only after the post-rollback key is verified.
+- Always display the abort reason, evidence gaps, and retry command:
+  `/moai sync [mode]`.
+- Exit with code 0 only as the workflow's control-flow result; it never erases
+  a mutation report.
 
 ---
 

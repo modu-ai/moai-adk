@@ -18,22 +18,24 @@ Per the canonical agent catalog policy, the MoAI agent catalog consists of exact
 
 ## SPEC Phase Discipline
 
-> L2/L3 worktree usage is opt-in. Default flow executes all phases on main checkout with a feature branch. See `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary for L1/L2/L3 layer definitions.
+> Phase work is isolated through the launcher worktree. The shared primary
+> checkout is read-only for orchestration; integration happens in the named
+> local integration worktree. See `.claude/rules/moai/workflow/delivery-policy.md`.
 
 [ZONE:Frozen] [HARD] Every MoAI SPEC follows the three-phase lifecycle (plan → run → sync). How each phase transition is *triggered* depends on the **route** the SPEC takes. There are exactly TWO routes, and the route is determined by Tier (per § SPEC Complexity Tier) and the explicit `--pr` flag:
 
-- **Route A — Hybrid Trunk main-direct (default; Tier S / Tier M):** manager-develop commits and pushes directly to `main`; there is NO per-phase PR and NO per-phase branch. Phase transitions are triggered by commit / push events (Conventional-Commit subjects pushed to `main` + green CI), NOT by PR merges. This is the 1-person-OSS Hybrid Trunk policy (CLAUDE.md §5 + `manager-develop-prompt-template.md` §B9).
-- **Route B — PR route (Tier L OR explicit `--pr`):** `manager-git` creates a feature branch and opens a PR per phase (`gh pr create`); phase transitions are triggered by PR merges into `main`. This is the route the Late-Branch closure pattern (below) applies to.
+- **Route A — protected integration (default; Tier S / Tier M):** phase agents commit in an isolated worktree; `manager-git` integrates the branch locally and owns the final push. There is no phase-agent direct push. A normal change uses the PR route; an explicitly configured `WT-*` integration route may merge locally before the one manager-git push.
+- **Route B — PR route (Tier L OR explicit `--pr`):** `manager-git` creates a feature branch and opens a PR per phase (`gh pr create`); phase transitions are triggered by PR merges into `main`. Both routes are governed by `.claude/rules/moai/workflow/delivery-policy.md`.
 
 The route governs the trigger vocabulary in § Phase Transitions below (commit/push event vs PR merge). Neither route changes the phase *ordering* (plan → run → sync) or the *artifact* set (per Tier).
 
-**Route A — Hybrid Trunk main-direct (default, Tier S / M):**
+**Route A — WT integration (default, Tier S / M):**
 
 | Step | Location | Command | Branch | Merge strategy | Lifecycle event (trigger) |
 |------|----------|---------|--------|----------------|---------------------------|
-| 1 (plan) | main checkout | `/moai plan SPEC-XXX` | `main` (direct) | n/a (no PR) | plan-phase artifacts committed + pushed to `main` |
-| 2 (run)  | main checkout | `/moai run SPEC-XXX` | `main` (direct) | n/a (no PR) | run-phase commits pushed to `main` + tests green |
-| 3 (sync) | main checkout | `/moai sync SPEC-XXX` | `main` (direct) | n/a (no PR) | single sync commit pushed to `main` (carries `implemented → completed`) |
+| 1 (plan) | launcher worktree | `moai cc -w SPEC-XXX` then `/moai plan SPEC-XXX` | `WT-*` | local integration | plan artifacts committed; push deferred |
+| 2 (run)  | same card worktree | `/moai run SPEC-XXX` | `WT-*` | local integration | run commits tested; push deferred |
+| 3 (sync) | same card worktree | `/moai sync SPEC-XXX` | `WT-*` | local integration | sync commit tested; push deferred |
 
 **Route B — PR route (Tier L OR explicit `--pr`):**
 
@@ -47,19 +49,20 @@ The route governs the trigger vocabulary in § Phase Transitions below (commit/p
 \* Route B PR strategy is the configured `merge_method` (`git_strategy.<mode>.merge_method`; one of `squash` | `merge` | `rebase`), **default `squash`**. Squash remains the documented recommendation — one squash commit per phase yields clean, revertable SPEC history — and is the value applied when `merge_method` is absent or unset. The method is configurable (per the per-mode `merge_method` field) so that workflows such as gitflow `release/*` may opt into a merge commit; the FROZEN default and its rationale are unchanged. Route A has no PR and therefore no `merge_method` — it pushes directly to `main`. Step 4 (worktree cleanup) applies to Route B only when an L2 worktree was created.
 
 [ZONE:Frozen] [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
-- Step 2 (run) — **Route A** commits + pushes directly to `main` (no branch, no worktree). **Route B** SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if the user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness.
+- Step 1 (plan) MUST execute in the launcher worktree. Plan artifacts are
+  committed on `WT-*`; the integration owner records the local merge before
+  any push.
+- Step 2 (run) executes in the same card worktree and never changes the shared
+  checkout. A fresh card starts from the local integration branch through the
+  launcher; no ad-hoc branch switch or reset is permitted.
 - Step 3 (sync) — **Route A** emits the single sync commit directly on `main` (carrying the `implemented → completed` transition; see § Phase Transitions). **Route B** SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
-- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (the Late-Branch closure contract):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
+- Step 4 cleanup happens only after the local integration merge is verified and
+  the delivery owner has recorded the final push. The shared primary checkout
+  is never repaired by a branch switch or destructive reset. The launcher
+  registry is the source of truth for disposal.
 
-  ```bash
-  git checkout main
-  git fetch origin
-  git reset --hard origin/main
-  git pull origin main   # verify
-  ```
-
-  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
+  Any remote readback uses `git -C <integration-worktree>` and is performed by
+  `manager-git` after the final push.
 
 [SHOULD] Anti-patterns (advisory):
 - Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
@@ -163,7 +166,8 @@ Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigatio
 
 ## Plan Phase
 
-[ZONE:Frozen] [HARD] Execute in main checkout. NO worktree at this step. See § SPEC Phase Discipline (Step 1).
+[ZONE:Frozen] [HARD] Execute in the launcher worktree. Never switch the shared
+primary checkout. See § SPEC Phase Discipline (Step 1).
 
 Create comprehensive specification using EARS format.
 
@@ -189,7 +193,8 @@ Output:
 
 ## Run Phase
 
-[SHOULD] When the user has opted into a worktree, enter it with `moai cc -w SPEC-XXX` and execute there; otherwise execute on the `feat/SPEC-XXX` branch in the main checkout. See § SPEC Phase Discipline (Step 2). Worktree use is opt-in; the default is main checkout + feature branch.
+[HARD] Enter the card worktree with `moai cc -w SPEC-XXX` and execute there.
+The shared primary checkout is not an execution fallback.
 
 Implement specification using configured development methodology.
 
@@ -409,7 +414,7 @@ Two report streams exist for plan audits; they are distinct by design and mutual
 - **plan-phase review stream** — `plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration), exported by the plan-auditor to the card evidence path `.moai/reports/<card-id>/` (or `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card) per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). Iteration `N` follows the plan-auditor Retry Loop Contract (max 3). Consumed by the plan workflow's assembly/annotation cycle.
 - **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based, under the gitignored runtime record directory `.moai/reports/plan-audit/`. Written by the Phase 1 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
 
-Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
+Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**, resolved by `runtime.ResolveLatestPlanAudit`; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as exact bytes, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed and never supplies cache identity. A review file without hash/score/version metadata is a cache miss and requires a fresh audit.
 
 **Plan-artifact hash subject list (Go verbatim):** the hash subject set is the union `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The set is tier-conditional by construction via the "skip if missing" rule in `ComputeHash`: a Tier S directory (spec.md, plan.md) hashes only those present; a Tier M directory adds acceptance.md; a Tier L directory contributes design.md AND research.md as mechanical subjects (SPEC-AUDIT-SNAPSHOT-001 A1 Tier L extension — changes to design.md/research.md NOW mechanically invalidate a cached skip verdict, replacing the former "manual judgment input" treatment); a grandfathered V3R4 directory carrying tasks.md retains it as a subject (K-2 backward compat).
 
@@ -442,9 +447,16 @@ Sync to Cleanup (Route B only):
 
 ## Agent Teams Variant — Re-allowed (experimental)
 
-Agent Teams usage is ALLOWED as an experimental surface (operator decision): the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, and `agent-team` is selectable via an explicit `--team` / `--mode team` request (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). The Phase 4 decision tree still never auto-selects it.
+Agent Teams usage is an experimental surface gated by the current capability
+resolver (`.claude/rules/moai/workflow/team-capability-resolver.md`). The flag
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and an explicit `--team` / `--mode team`
+request are inputs, not proof; the Phase 4 tree never auto-selects it.
 
-Genealogy: agent-team was previously RETIRED (tombstone; `--team` emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode plan/run/fix/review skill files and the `workflow.yaml` team-config block were removed). The sentinel string is retained as documented history. Re-allow evidence: 5 named workers completed normally with result returns under the enabled flag.
+Genealogy: agent-team was previously RETIRED (tombstone; `--team` emitted
+`MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the former team-mode
+skill files and `workflow.yaml` team-config block were removed). The sentinel
+is historical; current availability and result-return reliability are decided
+by the resolver, not by this genealogy sentence.
 
 The default multi-agent surface remains:
 - Multi-domain research/review → fanout (parallel fan-out: 3-5 concurrent read-only `Agent()` in one turn — advisory band; hard bound is the runtime subagent cap, per orchestration-mode-selection.md §C.2).

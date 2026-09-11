@@ -1,0 +1,8 @@
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/D1
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S1
+--- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState (2.94s)
+    --- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/D1 (1.54s)
+    --- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S1 (1.41s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	3.514s

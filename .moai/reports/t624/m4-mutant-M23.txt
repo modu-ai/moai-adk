@@ -1,0 +1,32 @@
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA1
+    sync_gate_failstate_test.go:530: AC-005 TA1 [release-blocking]: stdout lacks "systemMessage"; stdout=""
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA2
+    sync_gate_failstate_test.go:532: AC-005 TA2 [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:532: AC-005 TA2 [regression-guard]: stdout is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA3
+    sync_gate_failstate_test.go:532: AC-005 TA3 [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:532: AC-005 TA3 [regression-guard]: stdout is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA4
+    sync_gate_failstate_test.go:532: AC-005 TA4 [release-blocking]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:532: AC-005 TA4 [release-blocking]: stdout is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-bare
+    sync_gate_failstate_test.go:532: AC-005 TA5-bare [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:532: AC-005 TA5-bare [regression-guard]: stdout is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-pass
+    sync_gate_failstate_test.go:532: AC-005 TA5-pass [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:532: AC-005 TA5-pass [regression-guard]: stdout is not a block; stdout=""
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB1
+=== RUN   TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB2
+--- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass (22.90s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA1 (1.35s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA2 (1.08s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA3 (1.43s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA4 (2.51s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-bare (7.75s)
+    --- FAIL: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TA5-pass (5.41s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB1 (1.88s)
+    --- PASS: TestSyncGateFailState_AC005_TornWriteNeverSilentPass/TB2 (1.50s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	23.502s
+FAIL

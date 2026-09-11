@@ -6,9 +6,9 @@ metadata:
   phase: "Phase 1: Pre-Sync Context and Deployment Readiness"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Sync Workflow Orchestration
 
@@ -45,10 +45,10 @@ full subcommand × mode matrix.
 
 ## Supported Modes
 
-- auto (default): Smart selective sync of changed files only. PR Ready conversion. Daily development workflow.
-- force: Complete regeneration of all documentation. Error recovery and major refactoring use case.
+- auto (default): Smart selective sync of changed files and their directly impacted docs/API surface. Its diagnostics and coverage stay within the changed package/import closure unless a recorded widening reason is approved. PR Ready conversion. Daily development workflow.
+- force: Complete regeneration of all documentation and full-repository diagnostics/coverage. Error recovery and major refactoring use case.
 - status: Read-only health check. Quick project health report with no changes.
-- project: Project-wide documentation updates. Milestone completion and periodic sync use case.
+- project: Project-wide documentation updates plus full-repository baseline diagnostics/coverage. Milestone completion and periodic sync use case.
 
 ### Project Mode Details (ENHANCED)
 
@@ -135,13 +135,20 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 - [ ] No HARD rule violations
 <!-- moai:evolvable-end -->
 
-Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. Catches lint/format/type errors early and auto-fixes them.
+Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before the full deployment readiness verification. In `auto`, `force`, and `project` modes it may catch and auto-fix lint/format/type errors early; `status` is governed by the read-only status contract and never enters a writer path.
 
 #### Step 0.0.1: Gate Execution
 
-- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`.
+- **Mode guard:** Resolve the mode before dispatch. For `status`, set
+  `read_only=true` and `writer_policy=deny`, capture `before_tree_key`, and
+  run only read-only diagnostics. Do not delegate a write-capable agent or
+  invoke auto-fix, tag insertion, generated-document writes, or Git writers.
+  The status result records `after_tree_key`; "no changes" is valid only when
+  the two keys are equal and no writer was attempted (see
+  `.claude/rules/moai/workflow/read-only-status-contract.md`).
+- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`) and register the verification key from `.claude/rules/moai/workflow/verification-plan-contract.md`. Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale or key-mismatched snapshot is never cited as evidence; record the rerun reason and execute the command once for the new key.
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
-- Auto-fix any fixable issues (lint auto-fix, format auto-fix)
+- In `auto`, `force`, and `project` modes only, auto-fix any fixable issues (lint auto-fix, format auto-fix). In `status`, report the diagnostic result without changing files.
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
   - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
   - Skip gate: Proceed to Phase 3 (errors will be caught later but at higher cost)
@@ -155,7 +162,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 
 #### Step 0.1.1: Test Passage Verification
 
-- Run full test suite for detected project language
+- Run the full test suite for detected project language only when its exact verification key is absent; otherwise reuse the COMPLETE result and cite its owner/key.
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
   - Fix and retry (Recommended): Delegate to manager-develop subagent (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)

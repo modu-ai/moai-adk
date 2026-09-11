@@ -1,0 +1,9 @@
+cmp_exit=0
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md:1
+.claude/skills/moai/workflows/sync/quality-gates-quality.md:1
+head_diff_exit=0
+tmpl_tail_diff_exit=0
+local_tail_diff_exit=0
+     162 /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/b52e4248-8fdc-495e-a9b7-7a549406366e/scratchpad/ac010-tmpl-tail.md
+     166 /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/b52e4248-8fdc-495e-a9b7-7a549406366e/scratchpad/ac010-local-tail.md
+     328 total

@@ -1,0 +1,234 @@
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum
+=== RUN   TestTemplate_NoBypassPermissionsDefault
+--- PASS: TestTemplate_NoBypassPermissionsDefault (0.00s)
+=== RUN   TestEmbeddedTemplates_NoSettingsJSON
+=== PAUSE TestEmbeddedTemplates_NoSettingsJSON
+=== RUN   TestDeployShellScriptPermissions
+--- PASS: TestDeployShellScriptPermissions (0.00s)
+=== RUN   TestReviewGatesRegisteredInTemplateSettings
+=== RUN   TestReviewGatesRegisteredInTemplateSettings/darwin
+=== RUN   TestReviewGatesRegisteredInTemplateSettings/linux
+=== RUN   TestReviewGatesRegisteredInTemplateSettings/windows
+--- PASS: TestReviewGatesRegisteredInTemplateSettings (0.00s)
+    --- PASS: TestReviewGatesRegisteredInTemplateSettings/darwin (0.00s)
+    --- PASS: TestReviewGatesRegisteredInTemplateSettings/linux (0.00s)
+    --- PASS: TestReviewGatesRegisteredInTemplateSettings/windows (0.00s)
+=== RUN   TestReviewGatesRegisteredInRepoSettings
+--- PASS: TestReviewGatesRegisteredInRepoSettings (0.00s)
+=== RUN   TestRenderedSettingsHasNoSecurityScanPostToolEntry
+=== PAUSE TestRenderedSettingsHasNoSecurityScanPostToolEntry
+=== RUN   TestSettingsTemplateGitModeGating
+=== RUN   TestSettingsTemplateGitModeGating/manual
+=== RUN   TestSettingsTemplateGitModeGating/personal
+=== RUN   TestSettingsTemplateGitModeGating/team
+--- PASS: TestSettingsTemplateGitModeGating (0.00s)
+    --- PASS: TestSettingsTemplateGitModeGating/manual (0.00s)
+    --- PASS: TestSettingsTemplateGitModeGating/personal (0.00s)
+    --- PASS: TestSettingsTemplateGitModeGating/team (0.00s)
+=== RUN   TestSettingsTemplateValidJSON
+=== RUN   TestSettingsTemplateValidJSON/darwin
+=== RUN   TestSettingsTemplateValidJSON/linux
+=== RUN   TestSettingsTemplateValidJSON/windows
+--- PASS: TestSettingsTemplateValidJSON (0.00s)
+    --- PASS: TestSettingsTemplateValidJSON/darwin (0.00s)
+    --- PASS: TestSettingsTemplateValidJSON/linux (0.00s)
+    --- PASS: TestSettingsTemplateValidJSON/windows (0.00s)
+=== RUN   TestSettingsTemplateSubprocessEnvScrubOSConditional
+=== RUN   TestSettingsTemplateSubprocessEnvScrubOSConditional/linux
+=== RUN   TestSettingsTemplateSubprocessEnvScrubOSConditional/darwin
+=== RUN   TestSettingsTemplateSubprocessEnvScrubOSConditional/windows
+--- PASS: TestSettingsTemplateSubprocessEnvScrubOSConditional (0.00s)
+    --- PASS: TestSettingsTemplateSubprocessEnvScrubOSConditional/linux (0.00s)
+    --- PASS: TestSettingsTemplateSubprocessEnvScrubOSConditional/darwin (0.00s)
+    --- PASS: TestSettingsTemplateSubprocessEnvScrubOSConditional/windows (0.00s)
+=== RUN   TestSettingsTemplateRequiredHooks
+--- PASS: TestSettingsTemplateRequiredHooks (0.00s)
+=== RUN   TestSettingsTemplateRequiredEnvVars
+--- PASS: TestSettingsTemplateRequiredEnvVars (0.00s)
+=== RUN   TestSettingsTemplateHookExecForm
+=== RUN   TestSettingsTemplateHookExecForm/darwin_renders_identical_exec_form
+=== RUN   TestSettingsTemplateHookExecForm/linux_renders_identical_exec_form
+=== RUN   TestSettingsTemplateHookExecForm/windows_renders_identical_exec_form
+=== RUN   TestSettingsTemplateHookExecForm/every_hook_entry_pairs_bash_with_args
+--- PASS: TestSettingsTemplateHookExecForm (0.00s)
+    --- PASS: TestSettingsTemplateHookExecForm/darwin_renders_identical_exec_form (0.00s)
+    --- PASS: TestSettingsTemplateHookExecForm/linux_renders_identical_exec_form (0.00s)
+    --- PASS: TestSettingsTemplateHookExecForm/windows_renders_identical_exec_form (0.00s)
+    --- PASS: TestSettingsTemplateHookExecForm/every_hook_entry_pairs_bash_with_args (0.00s)
+=== RUN   TestSettingsTemplateOutputStyle
+--- PASS: TestSettingsTemplateOutputStyle (0.00s)
+=== RUN   TestSettingsTemplateNoSandbox
+--- PASS: TestSettingsTemplateNoSandbox (0.00s)
+=== RUN   TestSettingsTemplateAttribution
+--- PASS: TestSettingsTemplateAttribution (0.00s)
+=== RUN   TestSettingsTemplateStatusLine
+--- PASS: TestSettingsTemplateStatusLine (0.00s)
+=== RUN   TestSettingsTemplatePermissions
+--- PASS: TestSettingsTemplatePermissions (0.00s)
+=== RUN   TestSettingsTemplateCleanupPeriod
+--- PASS: TestSettingsTemplateCleanupPeriod (0.00s)
+=== RUN   TestSettingsTemplateNewFields
+--- PASS: TestSettingsTemplateNewFields (0.00s)
+=== RUN   TestSettingsTemplateDefaultModelLever
+--- PASS: TestSettingsTemplateDefaultModelLever (0.00s)
+=== RUN   TestSettingsTemplateAllHookEvents
+=== PAUSE TestSettingsTemplateAllHookEvents
+=== RUN   TestSettingsTemplateNewHookStructure
+=== PAUSE TestSettingsTemplateNewHookStructure
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility
+=== PAUSE TestSettingsTemplateNewHooksPlatformCompatibility
+=== RUN   TestSettingsTemplateHookIfConditions
+=== PAUSE TestSettingsTemplateHookIfConditions
+=== RUN   TestSettingsTemplateHookEventCount
+=== PAUSE TestSettingsTemplateHookEventCount
+=== RUN   TestSettingsRenderWindowsPATH
+--- PASS: TestSettingsRenderWindowsPATH (0.00s)
+=== RUN   TestSettingsPreToolUseAgentMatcher
+=== PAUSE TestSettingsPreToolUseAgentMatcher
+=== RUN   TestSettingsPreToolUseAgentMatcherRedFixture
+=== PAUSE TestSettingsPreToolUseAgentMatcherRedFixture
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum
+=== CONT  TestSettingsTemplateNewHooksPlatformCompatibility
+=== CONT  TestEmbeddedTemplates_NoSettingsJSON
+=== CONT  TestSettingsPreToolUseAgentMatcherRedFixture
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md
+--- PASS: TestEmbeddedTemplates_NoSettingsJSON (0.00s)
+=== CONT  TestSettingsTemplateNewHookStructure
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md
+=== CONT  TestSettingsTemplateAllHookEvents
+=== CONT  TestRenderedSettingsHasNoSecurityScanPostToolEntry
+=== RUN   TestRenderedSettingsHasNoSecurityScanPostToolEntry/darwin
+=== CONT  TestSettingsPreToolUseAgentMatcher
+=== CONT  TestSettingsTemplateHookIfConditions
+=== CONT  TestSettingsTemplateHookEventCount
+--- PASS: TestSettingsPreToolUseAgentMatcherRedFixture (0.00s)
+=== PAUSE TestSettingsTemplateNewHooksPlatformCompatibility/darwin
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux
+=== PAUSE TestSettingsTemplateNewHooksPlatformCompatibility/linux
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows
+=== PAUSE TestSettingsTemplateNewHooksPlatformCompatibility/windows
+=== CONT  TestSettingsTemplateNewHooksPlatformCompatibility/darwin
+=== CONT  TestSettingsTemplateNewHooksPlatformCompatibility/windows
+=== CONT  TestSettingsTemplateNewHooksPlatformCompatibility/linux
+--- PASS: TestSettingsPreToolUseAgentMatcher (0.00s)
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md
+--- PASS: TestSettingsTemplateAllHookEvents (0.00s)
+=== RUN   TestSettingsTemplateNewHookStructure/SubagentStop
+=== PAUSE TestSettingsTemplateNewHookStructure/SubagentStop
+=== RUN   TestSettingsTemplateNewHookStructure/PostToolUseFailure
+=== PAUSE TestSettingsTemplateNewHookStructure/PostToolUseFailure
+=== RUN   TestSettingsTemplateNewHookStructure/SubagentStart
+=== PAUSE TestSettingsTemplateNewHookStructure/SubagentStart
+=== RUN   TestSettingsTemplateNewHookStructure/UserPromptSubmit
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin/SubagentStop
+--- PASS: TestSettingsTemplateHookIfConditions (0.00s)
+=== PAUSE TestSettingsTemplateNewHookStructure/UserPromptSubmit
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md
+--- PASS: TestSettingsTemplateHookEventCount (0.00s)
+=== RUN   TestRenderedSettingsHasNoSecurityScanPostToolEntry/linux
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows/SubagentStop
+=== RUN   TestSettingsTemplateNewHookStructure/TeammateIdle
+=== PAUSE TestSettingsTemplateNewHookStructure/TeammateIdle
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows/PostToolUseFailure
+=== RUN   TestSettingsTemplateNewHookStructure/TaskCompleted
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md
+=== PAUSE TestSettingsTemplateNewHookStructure/TaskCompleted
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows/SubagentStart
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin/PostToolUseFailure
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux/SubagentStop
+=== CONT  TestSettingsTemplateNewHookStructure/TaskCompleted
+=== CONT  TestSettingsTemplateNewHookStructure/TeammateIdle
+=== CONT  TestSettingsTemplateNewHookStructure/SubagentStop
+=== CONT  TestSettingsTemplateNewHookStructure/PostToolUseFailure
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux/PostToolUseFailure
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows/UserPromptSubmit
+=== CONT  TestSettingsTemplateNewHookStructure/UserPromptSubmit
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin/SubagentStart
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows/TeammateIdle
+=== CONT  TestSettingsTemplateNewHookStructure/SubagentStart
+=== RUN   TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md
+=== PAUSE TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux/SubagentStart
+--- PASS: TestSettingsTemplateNewHookStructure (0.00s)
+    --- PASS: TestSettingsTemplateNewHookStructure/TaskCompleted (0.00s)
+    --- PASS: TestSettingsTemplateNewHookStructure/TeammateIdle (0.00s)
+    --- PASS: TestSettingsTemplateNewHookStructure/SubagentStop (0.00s)
+    --- PASS: TestSettingsTemplateNewHookStructure/PostToolUseFailure (0.00s)
+    --- PASS: TestSettingsTemplateNewHookStructure/UserPromptSubmit (0.00s)
+    --- PASS: TestSettingsTemplateNewHookStructure/SubagentStart (0.00s)
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin/UserPromptSubmit
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/windows/TaskCompleted
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin/TeammateIdle
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/darwin/TaskCompleted
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md
+=== RUN   TestRenderedSettingsHasNoSecurityScanPostToolEntry/windows
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md
+=== CONT  TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux/UserPromptSubmit
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux/TeammateIdle
+=== RUN   TestSettingsTemplateNewHooksPlatformCompatibility/linux/TaskCompleted
+--- PASS: TestSettingsTemplateNewHooksPlatformCompatibility (0.00s)
+    --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows/SubagentStop (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows/PostToolUseFailure (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows/SubagentStart (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows/UserPromptSubmit (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows/TeammateIdle (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/windows/TaskCompleted (0.00s)
+    --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin/SubagentStop (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin/PostToolUseFailure (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin/SubagentStart (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin/UserPromptSubmit (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin/TeammateIdle (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/darwin/TaskCompleted (0.00s)
+    --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux/SubagentStop (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux/PostToolUseFailure (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux/SubagentStart (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux/UserPromptSubmit (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux/TeammateIdle (0.00s)
+        --- PASS: TestSettingsTemplateNewHooksPlatformCompatibility/linux/TaskCompleted (0.00s)
+--- PASS: TestAgentFrontmatter_PermissionModeStrictEnum (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-develop.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-lead.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/builder-harness.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/super-advisor.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-git.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/e2e-tester.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/sync-auditor.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-docs.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-design.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/plan-auditor.md (0.00s)
+    --- PASS: TestAgentFrontmatter_PermissionModeStrictEnum/.claude/agents/moai/manager-spec.md (0.00s)
+--- PASS: TestRenderedSettingsHasNoSecurityScanPostToolEntry (0.00s)
+    --- PASS: TestRenderedSettingsHasNoSecurityScanPostToolEntry/darwin (0.00s)
+    --- PASS: TestRenderedSettingsHasNoSecurityScanPostToolEntry/linux (0.00s)
+    --- PASS: TestRenderedSettingsHasNoSecurityScanPostToolEntry/windows (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.435s

@@ -1,0 +1,166 @@
+
+**Concurrent scheduling with the Phase 7-10 audit (A7 — SPEC-SYNC-PARALLEL-DOCS-001).** The Phase 9 MX Tag scan (existing `FO-SYNC-2` sharded structure, Step 0.6.2 below) launches CONCURRENTLY with the Phase 7 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after Phase 8 (Security) completes. The prior scheduling ran Phase 7 → Phase 8 → Phase 9 → Phase 10 strictly in sequence, which serialized the MX scan behind the full quality + security pipeline. A7 lifts that serialization for the MX scan: the orchestrator spawns the `FO-SYNC-2` MX shard fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the MX findings are ready by the time the audit returns. The MX scan is input-independent (SPEC-SYNC-PARALLEL-DOCS-001 A7): it reads git diff + source, NOT the concurrent audit's output; a shard that read "the audit's functionality score" to gate itself would create a hidden serial dependency that defeats the A7 concurrency.
+
+**[HARD] P1/P2 violations BLOCK sync, and halt BEFORE Phase 10 coverage (A7 — SPEC-SYNC-PARALLEL-DOCS-001).** If any P1 (missing @MX:ANCHOR on fan_in >= 3 function) or P2 (missing @MX:WARN on goroutine pattern) violations are found, sync is halted and the user must resolve them before proceeding. The P1/P2 gate fires BEFORE Phase 10 (Coverage Analysis) executes — eliminating the "30-min coverage then 1 missing tag aborts all" worst case, because the coverage command never runs when P1/P2 violations are present. The prior scheduling paid the full coverage cost before discovering the MX violation; A7 inverts the ordering so the cheap MX scan gates the expensive coverage run.
+
+**No-false-abort guard (SPEC-SYNC-PARALLEL-DOCS-001 A7).** When the concurrent MX scan detects ZERO P1/P2 violations (only P3/P4 advisory findings, or no findings), Phase 10 (Coverage Analysis) executes exactly as it does today — A7 introduces NO false aborts. The P3 (long exported function missing `@MX:NOTE`) and P4 (untested public function missing `@MX:TODO`) findings remain advisory and do NOT trigger the pre-coverage halt; Phase 10 coverage proceeds unchanged (EC-3 edge case).
+
+- P1 (Blocking): exported function with fan_in >= 3 missing @MX:ANCHOR
+- P2 (Blocking): goroutine/async pattern missing @MX:WARN
+- P3 (Advisory): long exported function missing @MX:NOTE — warning only, sync continues
+- P4 (Advisory): untested public function missing @MX:TODO — warning only, sync continues
+
+When P1/P2 violations are detected:
+1. Display full violation report with file:line references
+2. Show message: "Run /moai run to add missing tags, or use --skip-mx to bypass"
+3. Halt sync — do NOT proceed to Phase 10+
+
+Skip if `--skip-mx` flag is provided. When skipped, log: "MX validation skipped by user flag" in sync report.
+
+#### Step 0.6.1: Language Detection for Modified Files
+
+Detect languages present in modified files:
+
+| Language | Indicator Files | File Patterns | Comment Prefix |
+|----------|----------------|---------------|----------------|
+| Go | go.mod | *.go | `//` |
+| Python | pyproject.toml | *.py | `#` |
+| TypeScript | tsconfig.json | *.ts, *.tsx | `//` |
+| JavaScript | package.json | *.js, *.jsx | `//` |
+| Rust | Cargo.toml | *.rs | `//` |
+| Java | pom.xml | *.java | `//` |
+| Kotlin | build.gradle.kts | *.kt | `//` |
+| C# | .csproj | *.cs | `//` |
+| Ruby | Gemfile | *.rb | `#` |
+| PHP | composer.json | *.php | `//` |
+| Elixir | mix.exs | *.ex, *.exs | `#` |
+| C++ | CMakeLists.txt | *.cpp, *.h | `//` |
+| Scala | build.sbt | *.scala | `//` |
+| R | DESCRIPTION | *.R, *.r | `#` |
+| Flutter | pubspec.yaml | *.dart | `//` |
+| Swift | Package.swift | *.swift | `//` |
+
+#### Step 0.6.2: Scan Modified Files
+
+- Get list of files changed since last sync (git diff)
+- For each modified source file, check for @MX tags
+- Identify functions/code blocks that should have tags but don't
+
+Sharding (`FO-SYNC-2`, read-only): **Where** the modified files span several languages or packages, the orchestrator shall shard this scan — one read-only `Agent()` per shard in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), each returning its findings as text and writing nothing. A shard missing a required input returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) rather than prompting the user. Step 0.6.3 tag application stays single-writer, and the blocking P1/P2 determination above is made on the merged result so no shard can clear the gate alone. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the changeset sits in a single language and package, or the concurrency ceiling leaves no room to shard, the scan runs as one pass with identical output — no error, no warning.
+
+#### Step 0.6.3: Add Missing Tags (Language-Aware)
+
+For modified files missing @MX tags, use language-specific patterns:
+
+**Backend Languages (Go, Python, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions/methods with many callers
+2. **Language-specific WARN patterns**:
+   - Go: `go func`, `go ` (goroutines without context)
+   - Python: `async def`, `threading` (async/threading patterns)
+   - Rust: `async fn`, `unsafe ` (async/unsafe blocks)
+   - Java: `new Thread`, `Executor` (thread usage)
+   - Kotlin: `GlobalScope`, `runBlocking` (coroutine issues)
+   - C#: `Task.Run`, `Thread.` (async/threading)
+   - Ruby: `Thread.new` (thread creation)
+   - PHP: `async ` (async patterns)
+   - Elixir: `Task.async`, `spawn` (async/process)
+   - C++: `std::thread`, `new ` (thread/memory)
+   - Scala: `Future.`, `new Thread` (async/thread)
+3. **magic constants**: Add `@MX:NOTE` for unexplained values
+4. **missing tests**: Add `@MX:TODO` for untested public functions
+
+**Frontend Languages (TypeScript, JavaScript)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions with many callers
+2. **Promise chains**: Add `@MX:WARN` for Promise.all without error handling
+3. **async/await**: Add `@MX:WARN` for async functions without try/catch
+4. **magic constants**: Add `@MX:NOTE` for unexplained values
+5. **missing tests**: Add `@MX:TODO` for untested functions
+
+**Data Science Languages (R, Flutter/Dart)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions with many callers
+2. **Language-specific WARN patterns**:
+   - R: `parallel::` (parallel processing)
+   - Flutter: `Isolate.`, `Future.` (async/isolate patterns)
+3. **magic constants**: Add `@MX:NOTE` for unexplained values
+4. **missing tests**: Add `@MX:TODO` for untested functions
+
+**Mobile (Swift)**:
+1. **fan_in >= 3**: Add `@MX:ANCHOR` for functions with many callers
+2. **Swift-specific WARN**: `Task.`, `DispatchQueue` (async/concurrency)
+3. **magic constants**: Add `@MX:NOTE` for unexplained values
+4. **missing tests**: Add `@MX:TODO` for untested functions
+
+#### Step 0.6.4: Generate Tag Report
+
+Include in sync report:
+- Files scanned: N (by language)
+- Tags added: N (by type, by language)
+- Files requiring attention (high complexity, missing documentation)
+
+#### MX Tag Integration
+
+When MX tags are added during sync:
+- Changes are included in the same commit as documentation updates
+- Tag additions are noted in the PR description
+- Report summarizes tag changes by category
+
+Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
+
+### Phase 10: Coverage Analysis and Test Generation
+
+Purpose: Measure test coverage, identify gaps, and generate missing tests to meet coverage targets before documentation sync.
+
+#### Step 0.7.1: Coverage Measurement
+
+Agent: manager-develop subagent
+
+Measure current coverage using language-specific tools:
+- Go: `go test -coverprofile=coverage.out -covermode=atomic ./...` then `go tool cover -func=coverage.out`
+- Python: `pytest --cov --cov-report=json`
+- TypeScript/JavaScript: `vitest run --coverage` or `jest --coverage --json`
+- Rust: `cargo llvm-cov --json`
+
+Output: Overall coverage percentage, per-file coverage, per-function data.
+
+#### Step 0.7.2: Gap Analysis
+
+Agent: manager-develop subagent
+
+Identify files below the coverage target (from quality.yaml test_coverage_target, default 85%).
+
+Prioritize gaps by risk:
+- P1 (Critical): Public API functions, high fan_in (>=3), functions with @MX:ANCHOR
+- P2 (High): Business logic, error handling paths
+- P3 (Medium): Internal utilities, helper functions
+- P4 (Low): Generated code, configuration, trivial getters/setters
+
+#### Step 0.7.3: Test Generation
+
+Agent: manager-develop subagent
+
+Generate missing tests for P1 and P2 gaps:
+- Follow development_mode for test style (TDD: table-driven tests, DDD: characterization tests)
+- Include edge cases and error scenarios
+- Follow existing test patterns in the codebase
+- Respect file naming conventions (*_test.go, *.test.ts, test_*.py)
+
+Per-package fan-out (`FO-SYNC-3`, read-only drafting): **Where** the gaps span several independent packages, the orchestrator shall draft their tests in parallel — one read-only `Agent()` per package in a single turn, 3-5 concurrent per the fanout ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each drafter reads its package plus that package's gap list and returns test source as text; it writes no file and never prompts the user, returning a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) when an input is missing. The single `manager-develop` subagent applies the drafts and runs Step 0.7.4 — it remains the only writer, so two write-capable agents never run at once. The orchestrator launches the drafters itself — scaling, not subagent nesting. **Where** the gaps sit in one package, the existing serial path runs unchanged.
+
+#### Step 0.7.4: Verification
+
+After test generation:
+- Run the full test suite to ensure no regressions
+- Re-measure coverage to confirm improvement
+- Compare before/after coverage percentages
+
+Behavior:
+- If coverage target met: Proceed to Phase 1
+- If coverage target not met after test generation: Log remaining gaps and proceed (do not block pipeline)
+
+#### Step 0.7.5: Coverage Report
+
+Include in sync quality report:
+- Before/after coverage percentages
+- Tests generated (count and file list)
+- Remaining gaps if target not fully met
+- Coverage by package/module breakdown

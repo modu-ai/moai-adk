@@ -6,9 +6,9 @@ metadata:
   phase: "Phase 0: Context Loading and Mode Dispatch"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Run Workflow Orchestration
 
@@ -162,6 +162,15 @@ Before Phase 5, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
   - Started: {current timestamp}
   ```
 - The progress.md file persists across sessions and enables seamless resume after interruption.
+
+### Warm/Clear Handoff Decision
+
+Before a phase boundary or new spawn batch, choose `warm` or `clear` using
+`.claude/rules/moai/workflow/context-clear-policy.md`. A warm plan→run handoff
+requires the same approved `plan_artifact_hash` and `tree_key`; a clear path
+first persists `context_snapshot_id`, approval scope, pending tasks, and last
+evidence, then verifies those fields after reload. Record the decision and
+`clear_reason` in progress.md; a bare `/clear` does not prove continuity.
 
 ---
 

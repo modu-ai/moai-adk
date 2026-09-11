@@ -2,7 +2,9 @@
 name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
-  Invocation gate: invoked for PR creation only when the SPEC is Tier L or the operator selects `--pr`. Tier S/M defaults to the direct Route A owned by the phase agent; manager-git owns Route B branch, push, PR, merge, and release operations.
+  Invocation gate: owns every push and delivery decision. Tier S/M may use the
+  explicitly configured WT integration route, while normal changes and all
+  Tier L / `--pr` changes use a PR. Phase agents never push directly.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill

@@ -1,0 +1,41 @@
+M4 doc rows re-measured; HEAD 21216ae6f (+ uncommitted test-file edit only; doc/hook bytes unchanged since c0e56ab09 per git diff --stat)
+0
+011 scan TD exit=1
+0
+011 scan LD exit=1
+1
+011 deps_modified TD exit=0
+1
+011 deps_modified LD exit=0
+0
+011 only-check TD exit=1
+0
+011 only-check LD exit=1
+0
+011 audit-all TD exit=1
+0
+011 audit-all LD exit=1
+0
+011 manifest-audit TH exit=1
+0
+011 manifest-audit LH exit=1
+1
+012a TD exit=0
+1
+012a LD exit=0
+1
+012b TD exit=0
+1
+012b LD exit=0
+0
+009 SPEC- TD exit=1
+0
+009 SPEC- TH exit=1
+0
+009 L-18 jq TH exit=1
+0
+009 L-19 TD exit=1
+0
+009 L-19 TH exit=1
+009 SHA-scan TD exit=1
+009 SHA-scan TH exit=1

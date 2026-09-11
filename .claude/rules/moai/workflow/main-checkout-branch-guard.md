@@ -32,13 +32,12 @@ wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why
 
 ## Procedure — Isolate With a Worktree
 
-When work needs a different branch, create a worktree instead of switching:
+When work needs a different branch, use the launcher instead of switching:
 
 ```bash
-git worktree add -b <branch> <worktree-path> origin/main
+moai cc -w <name>
 git -C <worktree-path> add <paths>
 git -C <worktree-path> commit -m "<message>"
-git -C <worktree-path> push -u origin <branch>
 ```
 
 Drive the worktree with `git -C <path>` rather than `cd`. A `cd` inside a compound command changes the shell's working directory for that invocation only, which makes subsequent commands read the wrong tree if the pattern is copied without the `cd`.

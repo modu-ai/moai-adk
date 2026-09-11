@@ -1,0 +1,7 @@
+=== RUN   TestSyncGateFailState_AC001_FailureRedeliveredOnSameHead
+    sync_gate_failstate_test.go:332: AC-001 [release-blocking] call1 stdout (237 bytes)="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub=2; call2 stdout (237 bytes)="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub=4
+    sync_gate_failstate_test.go:340: AC-001 [release-blocking]: stub count after call 2 = 4, after call 1 = 2; want equal (no re-run)
+--- FAIL: TestSyncGateFailState_AC001_FailureRedeliveredOnSameHead (1.41s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.885s
+FAIL
