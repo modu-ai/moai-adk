@@ -289,3 +289,191 @@ $ git diff --stat e5a18feae..b36f50c4c -- internal/cli
 - 로그 별칭 경로가 나중에 레지스트리 경로와 다른 비교로 갈라지면 그 회귀를 잡을 테스트가 없다(D2).
 - 부재 파일의 별칭은 G-B를 통과하고 게이트 뒤에 거부된다. 쓰기는 없지만 승인 뒤 거부되는 경우가 남는다(§E.3 항목 1, 선언됨).
 - 이전 감사의 F2, F3, F7, F8, F9 잔여 위험은 그대로다.
+
+## Delta audit 2 (cff2348a8..3000b2c7c)
+
+- 감사자: sync-auditor (독립 평가, 평가 프로필 `default`, flat 가중 채점)
+- 측정 트리: `WT-amend-apply` HEAD `3000b2c7c`, 감사 시작 시 작업 트리 clean (`git status --porcelain` 무출력). 감사 중 이 트리의 작성자는 나 하나였고, 뮤턴트 복원 후에도 무출력이었다
+- 범위: 커밋 6개 — `37c9ad059`(verdict §18), `3949cdba4`(D1 + D2 `hardlink_log`), `1574bdfc5`(기록 + 가드 뮤턴트 재실행), `2160f06f4`(`case_variant_log`·`symlink_log`), `8790099c0`(progress §E.2 추가 기록), `3000b2c7c`(CHANGELOG 7 → 10). `internal/cli` 변경 0 (`git diff --stat cff2348a8..3000b2c7c -- internal/cli` 무출력)
+- 툴체인: go1.26.8 darwin/arm64, `golangci-lint has version 2.10.1`
+
+### 판정
+
+**PASS (권고).** D1과 D2는 닫혔다. blocking 결함은 없다. 새 결함 2건(D3, D4)은 모두 optional이며, 둘 다 수치나 문구가 실제보다 조금 넓게 적힌 경우다.
+
+| 차원 | 점수 | 판정 | 근거 요약 |
+|---|---|---|---|
+| Functionality (40%) | 95/100 | PASS | 별칭 테스트 서브테스트 14개 전부 PASS, SKIP 0. 패키지 `ok`. AC-CAA-025 보존 테스트 PASS |
+| Security (25%) | 91/100 | PASS | 레지스트리·로그 양쪽의 세 가지 별칭 형태가 모두 테스트로 거부 확인됨. 직접 돌린 로그 쪽·레지스트리 쪽 뮤턴트 3개 모두 kill |
+| Craft (20%) | 90/100 | PASS | 커버리지 88.4%, vet 0(darwin·windows), lint 0 issues, gofmt 무출력. 가드 뮤턴트 "10개" 가운데 2개는 같은 변이다(D3) |
+| Consistency (15%) | 89/100 | PASS | D1 주석이 코드와 일치. verdict §18은 인용한 커밋·수치가 모두 실측과 맞음. 대소문자 변형 서브테스트를 단수로 적은 한계 문구 2곳(D4) |
+
+가중 평균 92.1, 조화 평균 91.2.
+
+### 커밋별 확인
+
+**`37c9ad059` (verdict §18) — 기록은 정확하고, 리드가 정하지 않은 우선순위를 단정하지 않는다.**
+- 18.1에 인용된 커밋 12개(`54b298476` … `cff2348a8`)는 모두 존재하며, 제목이 본문의 설명과 맞는다(`git log --no-walk`로 확인).
+- "sync-audit PASS 88.2"는 첫 감사의 조화 평균 88.2와, "델타 감사 PASS 90.2"는 델타 감사의 조화 평균 90.2와 같다. "AC 25/25, 뮤턴트 42회 전부 잡힘"은 `.moai/reports/t659/run/slot/summary.md:40`("42 runs killed, 0 survived, 0 pending")과 맞는다.
+- 18.2 표: F2만 **High**로 적혀 있고, 나머지 8행은 모두 "미정"이며 레인 제안 등급은 괄호 안에 "레인 제안"으로 따로 표시했다. 이는 리드 지시("F2 High, 나머지는 미정 + 레인 제안")와 일치한다. 표 머리의 "이 카드에서 구현하지 않고 기록만 한다"도 같은 지시의 내용이다. 원래 감사는 F2를 Low로 매겼으므로 High는 리드의 재분류이고, §18은 이를 리드 결정으로 귀속한다. 리드 메시지 자체는 내가 볼 수 없으므로 Gap으로 남긴다.
+- 표의 결함 설명은 첫 감사의 F2·F3·F7·F8·F9 본문과 맞는다. 표가 새로 단 수치도 재측정했다. `structure.md:78`의 "13 non-test files"는 기준선 `fe8cc9875` 14개, HEAD 18개로 둘 다 맞지 않는다. MX WARN 후보 3개의 복잡도는 gocyclo 실측 `LoadRegistry` 18, `(*rateLimiter).Admit` 17, `Validate` 22로 표와 같다.
+- 사소한 점: F7 행에만 `file:line`이 없다(원 감사는 `apply_commit.go:51-63`). 결함으로 올리지 않는다.
+
+**`3949cdba4` (D1) — 주석만 바뀌었고, 새 문구는 사실이다.**
+- `git diff -U0 cff2348a8 3000b2c7c -- internal/constitution/pipeline.go`는 107행 주석 1줄을 주석 2줄로 바꾼 것뿐이다. 새 문구 "it needs only the three paths, which it stats, and reads or writes no file"는 `sameFile`(`pipeline.go:278-287`)이 `os.Stat`와 `filepath.Abs`만 부르는 것과 맞다. `pipeline.go` sha256 `aa2b1965…1737`은 progress에 적힌 값과 현재 트리 값이 같다. **D1은 닫혔다.**
+
+**`3949cdba4` / `2160f06f4` (D2) — 세 가지 로그 별칭 형태가 모두 테스트되고, 각 테스트가 판별력을 가진다.**
+- 새 서브테스트는 `hardlink_log`, `case_variant_log`, `symlink_log`(각각 dry_run·real)다(`apply_test.go:1302-1312`). 설정 단계 검증이 `aliasOfLog`에 따라 별칭을 제 대상(로그)의 바이트와 비교하므로(`apply_test.go:1326-1334`), 설정 실패가 거부로 위장할 수 없다. 단언은 레지스트리 별칭과 같다: G-B 메시지, 규칙 파일 경로, 게이트 호출 0회, 트리 불변, 락 해제(`apply_test.go:1341-1355`).
+- 이번 실행에서 서브테스트 14개가 모두 PASS했고 SKIP은 0이다. 대소문자 무시 파일시스템이며 심볼릭 링크 생성도 됐다.
+- **직접 돌린 뮤턴트(선택자 없이 패키지 전체)**, 러너 `.moai/reports/t659/run/mutate.py`, 사양 `/tmp/t659-audit2-spot.json`:
+  - S1-log-lstat(로그 절반만 `os.Lstat` + `os.SameFile`로 교체, 기록된 M-D2-loglstat과 같은 변이): **kill**. 실패한 서브테스트는 `symlink_log/{dry_run,real}` 둘뿐이다. 실패 사유는 G-B 메시지 부재(`the current clause occurs 0 time(s)`로 나중에 거부됨)와 게이트 4회 호출이다. 하드 링크·대소문자 변형은 Lstat로도 같은 파일로 판정되므로, 이 회귀를 잡는 것은 `symlink_log`뿐이라는 점도 함께 확인됐다.
+  - 복원: `pipeline.go` sha256 `aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737` 전후 동일, `git status --porcelain` 무출력.
+- 기록된 뮤턴트 증거는 `d2-red-mutant.txt`, `d2-red-mutant-d2b.txt`(M-D2-logabs → `hardlink_log`), `d2b-red-logabs-case.txt`(→ `case_variant_log`), `d2b-red-loglstat.txt`(→ `symlink_log`)이며, 각 파일에서 해당 서브테스트 둘이 같은 사유로 FAIL한다. 로그 쪽 세 형태가 각각 적어도 한 뮤턴트에서 RED로 관측됐다.
+- **D2는 닫혔다.** 이전 델타 감사에서 생존한 "로그 절반만 옛 비교로 되돌린" 변이는 이제 세 로그 서브테스트 모두에서 kill된다. progress의 `[SUPERSEDED …]` 문단은 처음 쓴 "레지스트리 쪽 테스트로 충분하다"는 논리가 틀렸음을 스스로 적고 있어, 기록 방식도 적절하다.
+
+**CHANGELOG 별칭 주장 — 레지스트리·로그 양쪽, 세 형태 모두 뒷받침된다.**
+- CHANGELOG(`CHANGELOG.md:12`)는 "a hard-link, case-variant, or symbolic-link alias of the registry or the log is rejected as well (`TestExecute_RuleFileAliasOfRegistryOrLog_Rejected`)"라고 적는다. 여섯 조합 모두에 서브테스트가 있고 이번 실행에서 PASS했다.
+- 로그 쪽 회귀를 잡는 근거: 위 S1과 기록된 M-D2-logabs·M-D2-logabs-case·M-D2-loglstat.
+- 레지스트리 쪽 회귀를 잡는 근거: 기록된 M-F1-samefile(`M-F1-samefile-f1-d2rerun.txt`, `sameFile`의 식별 분기 제거 → 별칭 서브테스트 8개 FAIL)은 공유 함수 안의 회귀만 다룬다. 호출부의 레지스트리 절반만 갈라지는 회귀는 기록된 뮤턴트가 없어서 직접 돌렸다.
+  - S2-reg-abs(레지스트리 절반만 `filepath.Abs` 문자열 비교로 교체, 로그 절반 유지): **kill**. `hardlink_registry`, `case_variant_registry`, `symlink_registry`가 각각 dry_run·real 모두 FAIL(서브테스트 6개)했다.
+  - S3-reg-lstat(레지스트리 절반만 `os.Lstat` 식별 비교로 교체): **kill**. `symlink_registry/{dry_run,real}`만 FAIL했다.
+  - 두 뮤턴트 모두 복원 후 sha256이 같다(위와 같은 값).
+- 따라서 이 주장은 이제 양쪽 절반, 세 형태 모두에 대해 테스트로 뒷받침된다.
+
+**`1574bdfc5` / `8790099c0` / `3000b2c7c` — 수치 대조.**
+- 커버리지 88.4%: 이번 실행, `cover-d2.txt`, `cover-d2b.txt`가 모두 `coverage: 88.4% of statements`다.
+- 가드 재실행 7개: `mutants-f1-d2rerun-summary.txt`의 KILLED 7행과 맞는다. M-F1-samefile은 `subtest_runs=10 subtest_fails=8`(`3949cdba4` 트리, 로그 별칭 서브테스트가 `hardlink_log` 하나였을 때)로, progress 표의 "1 / 11, 8 FAIL"과 같다.
+- GREEN: `d2b-green.txt`에서 `--- PASS` 15줄(최상위 1 + 서브테스트 14), SKIP 0으로 progress 서술과 맞는다.
+- **가드 뮤턴트 "10": 사양상 서로 다른 변이는 9개다(D3).** `mutants-guards-d2-d2brerun.json`의 M-D2-logabs와 `mutants-guards-d2b.json`의 M-D2-logabs-case는 `edits`가 바이트 단위로 같고(sha256 앞 12자리 `9b09a551a7b0`, 두 사양 모두), 다른 점은 선택자(`hardlink_log`와 `case_variant_log`)뿐이다. progress 표는 두 행 모두 "plain `filepath.Abs` equality"로 적어 같다는 사실을 드러내고 있다. 반면 CHANGELOG의 "plus 10 guard mutants killed"는 서로 다른 변이 10개로 읽힌다. 같은 줄의 다른 수치는 "42 mutant runs"라고 실행 단위로 적었다.
+
+### 회귀 확인
+
+- `go test ./internal/constitution/ -count=1 -cover` → `ok … 0.816s coverage: 88.4% of statements`
+- `go vet ./internal/constitution/` exit 0, `GOOS=windows GOARCH=amd64 go vet ./internal/constitution/` exit 0
+- `golangci-lint run ./internal/constitution/...` → `0 issues.`, `gofmt -l internal/constitution/` 무출력
+- `TestLinter_AC08_DanglingRuleReference` PASS (AC-CAA-025 보존)
+- `internal/cli` 테스트·전체 스위트·바이너리 빌드는 지시에 따라 실행하지 않았다. 델타가 `internal/cli`를 건드리지 않음은 확인했다.
+
+### 결함 상태
+
+| ID | 이전 | 현재 | 근거 |
+|---|---|---|---|
+| D1 | Low, optional | **닫힘** | `3949cdba4`, 주석만 변경, 문구가 `sameFile` 동작과 일치 |
+| D2 | Low, optional | **닫힘** | 로그 별칭 서브테스트 3종 × 2모드 PASS. 로그 쪽 뮤턴트(기록 3회 + 직접 1회) 모두 kill, 레지스트리 쪽 호출부 뮤턴트(직접 2회) 모두 kill |
+| F1, F4, F5, F6 | 닫힘 | 닫힘 | 델타가 되돌리지 않음(패키지·가드 테스트 PASS) |
+| F2, F3, F7, F8, F9 | optional | 변화 없음. verdict §18.2에 후속 후보로 기록(F2는 리드가 High로 지정) | 델타 범위 밖 |
+
+### 새 결함 (구조화 결함 목록)
+
+- **D3** [Low][optional][신뢰도 높음, 사양 파일 대조] `CHANGELOG.md:12` ("plus 10 guard mutants killed"), `.moai/specs/SPEC-CON-AMEND-APPLY-001/progress.md` §E.2 D2 completion ("10 guard mutants are killed on this tree") — M-D2-logabs와 M-D2-logabs-case는 같은 변이를 다른 선택자로 실행한 것이다. 서로 다른 가드 변이는 9개이고 kill된 실행은 10회다. 판별력 자체에는 문제가 없다(두 실행이 서로 다른 서브테스트의 RED를 보여 준다). 필요한 수정: CHANGELOG를 "10 guard mutant runs killed (9 distinct mutations)"처럼 실행 단위로 적거나, 수를 9로 적고 M-D2-logabs-case를 M-D2-logabs의 `case_variant_log` 선택자 재실행으로 표기한다.
+- **D4** [Info][optional][신뢰도 높음] `CHANGELOG.md:12` ("the case-variant alias test runs only on a case-insensitive filesystem"), `progress.md` §E.3 `residual_risk` 셋째 항목("Case-variant alias subtest depends on the temp filesystem") — 대소문자 변형 서브테스트는 이제 레지스트리와 로그 두 가지다. 뜻은 여전히 맞지만 단수 표현이라 로그 쪽 서브테스트도 같은 조건에서 SKIP된다는 점이 드러나지 않는다. `hardlink_*`, `symlink_*`도 플랫폼이 링크 생성을 거부하면 SKIP된다는 점은 테스트 코드에만 있다. 필요한 수정(선택): "the case-variant alias subtests (registry and log)"로 복수화한다.
+
+### 5-섹션 증거 (델타 2)
+
+#### Claim
+
+1. verdict §18은 리드 결정과 후속 후보를 정확히 기록하며, F2 High 외에는 우선순위를 단정하지 않는다.
+2. D1은 주석만 바꿨고 새 문구는 코드와 일치한다.
+3. D2가 닫혔다. 로그 쪽 세 별칭 형태 각각에 서브테스트가 있고, 로그 절반만 바꾼 회귀를 잡는다. 레지스트리 절반만 바꾼 회귀도 기존 서브테스트가 잡는다.
+4. CHANGELOG·progress의 커버리지와 재실행 수치는 증거와 맞는다. 가드 뮤턴트 "10"은 서로 다른 변이 9개를 실행 10회로 센 것이다(D3).
+5. 델타는 패키지 테스트, vet, lint, AC-CAA-025 보존 테스트를 깨지 않았고 `internal/cli`를 건드리지 않았다.
+
+#### Evidence
+
+```
+$ git diff --stat cff2348a8..3000b2c7c -- internal/cli
+(무출력)
+
+$ git diff -U0 cff2348a8 3000b2c7c -- internal/constitution/pipeline.go
+@@ -107 +107,2 @@
+-	// Layer 5 approval; it needs only the three paths, no file I/O.
++	// Layer 5 approval; it needs only the three paths, which it stats, and
++	// reads or writes no file.
+
+$ go test ./internal/constitution/ -run '^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$' -count=1 -v | grep -E '^(---|    ---|ok|FAIL)|SKIP'
+--- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected (0.03s)
+    --- PASS: …/hardlink_registry/dry_run (0.00s)
+    --- PASS: …/hardlink_registry/real (0.00s)
+    --- PASS: …/case_variant_registry/dry_run (0.00s)
+    --- PASS: …/case_variant_registry/real (0.00s)
+    --- PASS: …/symlink_registry/dry_run (0.00s)
+    --- PASS: …/symlink_registry/real (0.00s)
+    --- PASS: …/hardlink_log/dry_run (0.00s)
+    --- PASS: …/hardlink_log/real (0.00s)
+    --- PASS: …/case_variant_log/dry_run (0.00s)
+    --- PASS: …/case_variant_log/real (0.00s)
+    --- PASS: …/symlink_log/dry_run (0.00s)
+    --- PASS: …/symlink_log/real (0.00s)
+    --- PASS: …/absent_log_fallback/dry_run (0.00s)
+    --- PASS: …/absent_log_fallback/real (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.386s
+
+$ shasum -a 256 internal/constitution/pipeline.go      (뮤턴트 전)
+aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737  internal/constitution/pipeline.go
+$ python3 .moai/reports/t659/run/mutate.py /tmp/t659-audit2-spot.json S1-log-lstat S2-reg-abs S3-reg-lstat
+S1-log-lstat: KILLED exit=1 top_level_runs=129 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', '…/symlink_log/dry_run', '…/symlink_log/real']
+S2-reg-abs: KILLED exit=1 top_level_runs=129 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', '…/hardlink_registry/dry_run', '…/hardlink_registry/real', '…/case_variant_registry/dry_run', '…/case_variant_registry/real', '…/symlink_registry/dry_run', '…/symlink_registry/real']
+S3-reg-lstat: KILLED exit=1 top_level_runs=129 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', '…/symlink_registry/dry_run', '…/symlink_registry/real']
+$ grep -E 'apply_test.go:[0-9]+:' /tmp/t659-audit2-S1-log-lstat.txt     (임시 경로는 <tmp>로 축약)
+    apply_test.go:1346: error "amendment validation error: rule file <tmp>/rules/alias.md: the current clause occurs 0 time(s); want exactly one" lacks "is also the registry or the evolution log"
+    apply_test.go:1352: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+    (dry_run·real 각각 같은 두 줄)
+$ shasum -a 256 internal/constitution/pipeline.go      (복원 후)
+aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737  internal/constitution/pipeline.go
+$ git status --porcelain
+(무출력)
+
+$ (python: edits의 sha256 앞 12자리, 사양 파일별)
+mutants-guards-d2-d2brerun.json M-D2-logabs      9b09a551a7b0
+mutants-guards-d2b.json         M-D2-loglstat    ff597388c8d9
+mutants-guards-d2b.json         M-D2-logabs-case 9b09a551a7b0
+(mutants-guards-f1-d2rerun.json의 7개는 서로 모두 다름: a5b790a3eadd 1597078d925d 14c904d3069b 64794b0bd60e ca193b8fefec 16b9805e94bd 68e911d26ec3)
+
+$ go test ./internal/constitution/ -count=1 -cover
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.816s	coverage: 88.4% of statements
+$ go vet ./internal/constitution/; GOOS=windows GOARCH=amd64 go vet ./internal/constitution/
+vet_exit=0
+winvet_exit=0
+$ golangci-lint run ./internal/constitution/...
+0 issues.
+$ gofmt -l internal/constitution/
+(무출력)
+$ go test ./internal/spec/ -run '^TestLinter_AC08_DanglingRuleReference$' -count=1 -v
+--- PASS: TestLinter_AC08_DanglingRuleReference (0.44s)
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.809s
+
+$ git log --no-walk --format='%h %s' 54b298476 90ea2b26f 0893611ad 5801ebda0 128a5ea52 1f9946188 e5a18feae e8d16eaee 2496053a8 bca8cf96a b36f50c4c cff2348a8
+(12개 모두 존재, 제목이 §18.1 설명과 일치 — 예: 0893611ad "test(t659): G-B test asserts no gate call before the guard moves", 5801ebda0 "fix(t659): check the rule-file alias before the gates")
+$ grep -n '42' .moai/reports/t659/run/slot/summary.md
+40:… With the three CLI mutants above: 42 runs killed, 0 survived, 0 pending. …
+$ git ls-tree --name-only fe8cc9875 internal/constitution/ | grep -v _test.go | grep -c '\.go$'   → 14
+$ ls internal/constitution/*.go | grep -vc _test.go                                               → 18
+$ golangci-lint run --config /tmp/t659-audit2-gocyclo.yml ./internal/constitution/...   (gocyclo, min-complexity 15)
+loader.go:78:1: cyclomatic complexity 18 of func `LoadRegistry` is high (> 15) (gocyclo)
+rate_limiter.go:41:1: cyclomatic complexity 17 of func `(*rateLimiter).Admit` is high (> 15) (gocyclo)
+validator.go:173:1: cyclomatic complexity 22 of func `Validate` is high (> 15) (gocyclo)
+
+$ grep -c -- '--- PASS' .moai/reports/t659/run/guards/d2b-green.txt   → 15
+$ grep -c SKIP .moai/reports/t659/run/guards/d2b-green.txt             → 0
+```
+
+#### Baseline-attribution
+
+- 위 측정은 모두 이번 실행에서 트리 `3000b2c7c`를 대상으로 했으며, 출력은 붙인 그대로다(긴 테스트 이름만 `…/`로 줄였다).
+- 기록된 뮤턴트(M-D2-logabs, M-D2-logabs-case, M-D2-loglstat, 가드 재실행 7개)의 결과는 `.moai/reports/t659/run/guards/` 증거 파일을 인용했다. 기록 트리는 `3949cdba4`·`2160f06f4` 작업본이고, 그 뒤 `pipeline.go` sha256은 현재와 같다(`aa2b1965…1737`). 직접 실행한 뮤턴트는 3개(S1 로그 쪽, S2·S3 레지스트리 쪽)이며, 선택자 없이 패키지 전체로 돌렸다.
+- 뮤턴트 사양과 출력은 `/tmp/t659-audit2-spot.json`, `/tmp/t659-audit2-S*.txt`에 있다. 추적 경로로 내보내지 않았으므로 판정 근거는 위 Evidence 블록에 붙인 출력이다(잔여 위험 참고).
+- 사용한 도구는 설치된 `go`와 `golangci-lint`이며, 이 저장소의 `moai` 빌드는 쓰지 않았다(§2.2 대상 아님).
+
+#### Gaps
+
+- 리드가 F2를 High로 지정하고 나머지를 미정으로 둔 결정 메시지는 직접 보지 못했다. 이번 감사 지시에 적힌 요약과 대조했을 뿐이다.
+- `internal/cli` 테스트, 전체 스위트, 바이너리 빌드는 실행하지 않았다(지시).
+- Windows·대소문자 구분 파일시스템에서의 실행은 없다(windows vet 컴파일만). 그곳에서 `case_variant_*`가 SKIP되고 `symlink_*`가 권한에 따라 SKIP될 수 있는 경로는 관측하지 않았다. CI 몫이다.
+- 승인 대기 중 별칭 생성·제거(§E.3 항목 2)와 ENOENT가 아닌 Stat 오류의 폴백 경로는 이번에도 관측하지 않았다.
+- 트리에서 빌드한 바이너리로 `moai spec lint`를 돌리지 않았다(이전과 같은 §2.2 Gap).
+
+#### Residual-risk
+
+- 로그 쪽 대소문자 변형 테스트는 대소문자 구분 파일시스템에서 SKIP된다. 그런 환경에서만 생기는 로그 쪽 회귀가 있다면 그곳에서는 `hardlink_log`·`symlink_log`만 방어한다.
+- 직접 돌린 뮤턴트의 출력 파일은 `/tmp`에 있어 정리되면 사라진다. 이 보고서의 Evidence 블록이 그 출력의 사본이다.
+- 부재 파일의 별칭이 게이트 뒤에 거부되는 경우(§E.3 항목 1)와 이전 감사의 F2, F3, F7, F8, F9 잔여 위험은 그대로다. F2는 verdict §18.2에서 High 후속 후보로 넘어갔다.
