@@ -1269,3 +1269,87 @@ func TestExecute_RuleFileIsRegistryOrLog_Rejected(t *testing.T) {
 		}
 	}
 }
+
+// Sync-audit F1 — G-B decides by file identity when both paths exist, so an
+// alias of the registry is rejected before Layer 1 exactly like the registry
+// path itself: a hard link, a case-variant name on a case-insensitive
+// filesystem, and a symbolic link. absent_log_fallback pins the other branch:
+// a rule file naming an evolution log that does not exist yet is still
+// rejected by the cleaned-absolute-path comparison.
+func TestExecute_RuleFileAliasOfRegistryOrLog_Rejected(t *testing.T) {
+	const wantMsg = "is also the registry or the evolution log"
+	const aliasFile = "rules/alias.md"
+	cases := []struct {
+		name, entryFile string
+		withLog         bool
+		makeAlias       func(t *testing.T, prj project)
+	}{
+		{"hardlink_registry", aliasFile, true, func(t *testing.T, prj project) {
+			if err := os.Link(prj.registry, prj.rule); err != nil {
+				t.Skipf("platform refused a hard link (%v) — recorded as a Gap", err)
+			}
+		}},
+		{"case_variant_registry", ".claude/rules/moai/core/ZONE-REGISTRY.md", true, func(t *testing.T, _ project) {
+			skipUnlessCaseInsensitive(t)
+		}},
+		{"symlink_registry", aliasFile, true, func(t *testing.T, prj project) {
+			symlinkOrSkip(t, prj.registry, prj.rule)
+		}},
+		{"absent_log_fallback", ".moai/research/evolution-log.md", false, nil},
+	}
+	for _, tc := range cases {
+		for _, mode := range []struct {
+			name   string
+			dryRun bool
+		}{{"dry_run", true}, {"real", false}} {
+			t.Run(tc.name+"/"+mode.name, func(t *testing.T) {
+				isolateEnv(t)
+				dir := t.TempDir()
+				prj := buildProject(t, dir, standardEntries(tc.entryFile), tc.entryFile, "", tc.withLog)
+				if tc.makeAlias != nil {
+					tc.makeAlias(t, prj)
+					// Setup sanity, independent of sameFile: the alias must
+					// read back as the registry's bytes.
+					if readString(t, prj.rule) != readString(t, prj.registry) {
+						t.Fatalf("alias %s does not read as the registry", prj.rule)
+					}
+				} else if _, err := os.Stat(prj.rule); err == nil {
+					t.Fatalf("fallback fixture: %s exists, want it absent", prj.rule)
+				}
+				before := snapshotTree(t, dir)
+				p, gates, lockDir := newGatedPipeline(t)
+
+				_, err := p.Execute(proposal(fxBefore, fxAfter), dir, mode.dryRun)
+				if err == nil {
+					t.Fatal("Execute: want a rule-file-is-registry-or-log error, got nil")
+				}
+				if !strings.Contains(err.Error(), wantMsg) {
+					t.Errorf("error %q lacks %q", err, wantMsg)
+				}
+				if !containsPathForm(err.Error(), prj.rule) {
+					t.Errorf("error %q does not name the rule file %s", err, prj.rule)
+				}
+				if gates.calls != 0 {
+					t.Errorf("gate doubles called %d times, want 0 (the check runs before Layer 1)", gates.calls)
+				}
+				assertSameTree(t, tc.name+" "+mode.name, dir, before)
+				assertLockReleased(t, lockDir)
+			})
+		}
+	}
+}
+
+// skipUnlessCaseInsensitive skips the test when the temporary filesystem tells
+// a file name from its case-flipped form, since a case-variant alias cannot
+// exist there.
+func skipUnlessCaseInsensitive(t *testing.T) {
+	t.Helper()
+	probe := filepath.Join(t.TempDir(), "casefold-probe.txt")
+	if err := os.WriteFile(probe, []byte("probe"), 0o644); err != nil {
+		t.Fatalf("write probe: %v", err)
+	}
+	flipped := filepath.Join(filepath.Dir(probe), "CASEFOLD-PROBE.TXT")
+	if _, err := os.Stat(flipped); err != nil {
+		t.Skipf("temporary filesystem is case-sensitive (%v): a case-variant alias cannot exist here", err)
+	}
+}
