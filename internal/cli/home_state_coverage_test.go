@@ -688,3 +688,65 @@ func TestChangedProductionFilesRejectsDeletion(t *testing.T) {
 		t.Fatal("deleted production file accepted")
 	}
 }
+
+// resolveRepeatedly runs the change-set resolver the given number of times and
+// counts each distinct error message, so a caller can see whether the file a
+// refusal names depends on map iteration order.
+func resolveRepeatedly(t *testing.T, root string, runs int) map[string]int {
+	t.Helper()
+	seen := map[string]int{}
+	for range runs {
+		_, err := resolveHomeStateCoverageChangeSet(root)
+		if err == nil {
+			t.Fatal("change set accepted")
+		}
+		seen[err.Error()]++
+	}
+	return seen
+}
+
+func TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically(t *testing.T) {
+	root := committedCoverageRepo(t)
+	b := filepath.Join(root, "internal", "y", "b.go")
+	if err := os.MkdirAll(filepath.Dir(b), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(b, []byte("package y\nfunc B() int { return 1 }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitForCoverageTest(t, root, "add", "internal/y/b.go")
+	gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+	for rel, body := range map[string]string{
+		"internal/x/a.go": "package x\nfunc A() int { return 3 }\n",
+		"internal/y/b.go": "package y\nfunc B() int { return 2 }\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitForCoverageTest(t, root, "add", "internal")
+	gitForCoverageTest(t, root, "commit", "-qm", "fix: mutate two audited paths")
+	want := "audited production file changed after coverage tip: internal/x/a.go, internal/y/b.go"
+	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
+		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
+	}
+}
+
+func TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically(t *testing.T) {
+	root := committedCoverageRepo(t)
+	for _, name := range []string{"b.go", "c.go"} {
+		if err := os.WriteFile(filepath.Join(root, "internal", "x", name), []byte("package x\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gitForCoverageTest(t, root, "add", "internal/x/b.go", "internal/x/c.go")
+	gitForCoverageTest(t, root, "commit", "-qm", "chore: add unaudited files")
+	// A mode-only change lists both files in name-status but produces no hunk,
+	// so neither reaches the changed-line ranges.
+	gitForCoverageTest(t, root, "update-index", "--chmod=+x", "internal/x/b.go", "internal/x/c.go")
+	gitForCoverageTest(t, root, "commit", "-qm", homeStateCoverageRemediationCommitSubject)
+	want := "changed production file missing from diff: internal/x/b.go, internal/x/c.go"
+	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
+		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
+	}
+}
