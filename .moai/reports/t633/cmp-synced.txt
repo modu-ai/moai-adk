@@ -1,0 +1,6 @@
+IDENTICAL moai-domain-backend
+IDENTICAL moai-workflow-loop
+IDENTICAL moai-domain-frontend
+IDENTICAL moai-workflow-testing
+IDENTICAL moai-domain-html-report
+IDENTICAL cadence-bridge

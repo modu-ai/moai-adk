@@ -45,7 +45,7 @@ This skill is invocable via two equivalent routes:
 Both routes invoke this skill body unchanged. Behavioral equivalence is enforced by a CI audit
 that verifies this skill documents the `/moai run --mode loop` cross-reference.
 
-See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
+See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent + mode-axis contract.
 
 ## Relationship to the Pipeline-Level Agentic Completion Loop
 

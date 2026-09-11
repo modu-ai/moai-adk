@@ -20,7 +20,7 @@ Per the subcommand-classification contract:
 - The `pipeline` value is the only special case: passing `--mode pipeline` triggers
   `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
-See [Subcommand Classification matrix](../../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
+See [Subcommand Classification matrix](../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the
 full subcommand × mode matrix.
 
 ---
