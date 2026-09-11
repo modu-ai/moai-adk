@@ -1,7 +1,7 @@
 ---
 id: SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001
 title: "moai update 가 .claude/settings.json 의 템플릿 값 변경을 전달하도록 — 배포 직후 렌더 스냅숏을 3-way 병합 base 로"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-11
 updated: 2026-09-11
@@ -29,10 +29,15 @@ related_specs: ["SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001", "SPEC-UPDATE-MERGE-CON
   - REQ-USB-015 에서 함수 이름을 빼고 동작으로 적었다.
   - 형제 SPEC 과의 관계(D6)를 운영자 결정으로 확정하고 그 SPEC 을 함께 개정했다(§B.3).
 - 2026-09-11 — v0.3.0, 운영자 답변(리드 경유)을 반영했다.
-  - **D5 확정:** 정교화 규칙을 채택했다. 승격 규칙을 REQ-USB-005 에 덧붙이고 AC-USB-016 을 채택했다(§B.4).
+  - **D5 확정:** 정교화 규칙을 채택했다. 규칙을 REQ-USB-005 에 덧붙이고 AC-USB-016 을 채택했다(§B.4).
   - **F-05 보완 확정:** A1 범위 안의 보완으로 확정했다(§B.1).
   - **F-17:** 알려진 한계로 수용했다(§B.5, §E).
-  - 형제 SPEC 문구(D6)는 바꾸지 않았다.
+- 2026-09-11 — v0.4.0, plan-audit 2회차(FAIL 0.75, `.moai/reports/t656/plan-audit-iter2.md`)를 반영했다. 운영자가 한 번에 한해 연장을 승인한 최종 수정이다.
+  - REQ-USB-005 를 GEARS 문장 셋으로 다시 썼다(N-01).
+  - 남은 대기본의 판정 위치를 "흐름의 어느 단계도 살아 있는 settings.json 을 지우거나 다시 쓰기 전"으로 못박았다. 이전 배치("다음 흐름이 새 대기본을 기록하기 전")는 이것으로 대체된다(N-02, 운영자 지시).
+  - 정상 종료 판정 신호를 "병합의 보존 경로"로 정의했다(N-10).
+  - 중단 뒤 끼어든 쓰기의 결과를 알려진 한계로 기록했다(N-08).
+  - 두 시점 판정 설계를 "운영자 규칙의 구현 방식, 리드 수용"으로 기록했다(§B.4).
 
 ## §A 배경
 
@@ -68,11 +73,13 @@ related_specs: ["SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001", "SPEC-UPDATE-MERGE-CON
 
 배포 뒤 파일별 병합을 쓰는 곳은 두 군데다. 일반 update(`internal/cli/update_template_sync.go:544`)와 clean-reinstall(`internal/cli/update_clean_install.go:507`)이다.
 
-### §A.4 배포가 settings.json 을 쓰지 않는 경우
+### §A.4 배포가 settings.json 을 쓰지 않는 경우, 그리고 흐름 안의 첫 재기록
 
 init 은 강제 모드가 아닌 배포기를 쓴다(`internal/cli/init.go:821`). 이 배포기는 이미 있는 파일 가운데 매니페스트 기록이 없거나 사용자 소유로 기록된 것을 건너뛴다(`internal/template/deployer.go:239-255`). 따라서 `.claude/settings.json` 이 이미 있는 디렉터리에서 init 을 돌리면, 배포가 끝난 뒤 디스크에 있는 파일은 렌더가 아니라 사용자 파일이다. 그 파일을 base 로 삼으면 사용자가 고친 값이 모두 "아무도 바꾸지 않음"으로 읽혀 다음 update 에서 템플릿 값으로 덮인다. REQ-USB-016 이 이 경로를 막는다.
 
-update 경로는 사정이 다르다. 관리 경로 정리 단계가 살아 있는 `.claude/settings.json` 을 지우고(`internal/cli/update/deploy/deploy.go` `ManagedCleanTargets`), 강제 모드 배포가 렌더를 새로 쓴다. 정리 직전에는 사용자 파일이 실행 단위 백업 디렉터리의 `in-memory-backups/` 아래로 복사된다(`internal/cli/update_disk_backup.go:47-53`). 그래서 배포 뒤 병합 전에 update 가 중단되면 살아 있는 파일은 순수 렌더다.
+update 경로는 사정이 다르다. 관리 경로 정리 단계가 살아 있는 `.claude/settings.json` 을 지우고(`internal/cli/update_template_sync.go:329-337`), 강제 모드 배포가 렌더를 새로 쓴다(`:364`). 정리 직전에는 사용자 파일이 실행 단위 백업 디렉터리의 `in-memory-backups/` 아래로 복사된다(`internal/cli/update_disk_backup.go:47-53`). 그래서 배포 뒤 병합 전에 update 가 중단되면 살아 있는 파일은 순수 렌더다.
+
+`moai update` 명령 안에서 살아 있는 `.claude/settings.json` 을 가장 먼저 다시 쓸 수 있는 단계는 폐기 v2 deny 규칙 제거(`internal/cli/update.go:384`)다. 이 단계는 `--binary`·`--dry-run` 조기 반환(`update.go:330`, `:335-365`) 뒤, v2 분기(`:405` → clean-reinstall `:420`)와 템플릿 동기화(`:489`)보다 앞에 있다. 버전 일치로 동기화를 건너뛰는 두 지점(`update_template_sync.go:98-105`, `:641`)보다도 앞이다. init 에서 가장 먼저 쓰는 단계는 초기화 실행(`init.go:867`)이다.
 
 ### §A.5 선행 SPEC 과 이 SPEC 의 경계
 
@@ -127,11 +134,20 @@ A1 이 요구하는 두 시점("배포 직후 기록"과 "다음 update 의 base
 | 중단 뒤 복원이 사용자 파일을 되돌림 | 사용자 파일 | 이전 확정본 유지 |
 | init 이 파일을 실제로 씀 | 렌더(이후 자율성 번들이 고쳤을 수 있음) | 승격 |
 
+**판정 방식 — 두 시점.**
+
+- **정상적으로 끝난 흐름은 그 흐름 끝에서 판정한다.** 신호는 바이트 비교가 아니라 병합이 **보존 경로**를 탔는지다. 보존 경로란 흐름 이전 사용자 파일을 통째로 되돌려 쓰는 분기로, `merge.go:197-204`(배포 파일을 읽지 못함), `:217-225`(base 를 만들 수 없음), `:229-237`(병합 실패)이다. 사용자 파일이 렌더와 같아 병합을 건너뛴 경우(`:207`)는 보존 경로가 아니다. init 처럼 병합이 없는 흐름도 보존 경로를 타지 않은 것으로 본다.
+- **승격 판정 전에 중단된 흐름은 다음 흐름에서 판정한다.** 중단된 흐름은 대기본을 남긴다. 다음 흐름은 **그 흐름의 어느 단계도 살아 있는 `.claude/settings.json` 을 지우거나 다시 쓰기 전에** 살아 있는 파일을 남은 대기본과 비교한다. 바이트 동일하면 승격하고, 다르면 버린다.
+  - `moai update` 에서는 `--binary`·`--dry-run` 조기 반환 뒤, 폐기 v2 deny 규칙 제거(`update.go:384`) 앞이다.
+  - `moai init` 에서는 초기화 실행(`init.go:867`) 앞이다.
+  - 이 위치는 clean-reinstall 분기와 두 버전 일치 건너뛰기(§A.4)보다 앞이므로 한 곳이 모든 update 흐름을 덮는다. 배포 뒤나 백업 단계에서 판정하면 새 렌더나 이미 고쳐진 파일과 비교하게 된다.
+
 **결정 기록.**
 
-- 처음 고른 1회차 권고안 (a)의 목적은 이 규칙에서도 그대로 지켜진다. 그 목적은 새 템플릿 키가 사용자의 삭제로 잘못 읽히는 일을 절대 만들지 않는 것이다. 병합이 사용자 파일을 통째로 보존한 흐름에서 렌더를 승격하지 않으므로, 그 렌더가 새로 들인 키는 다음 update 에서 사용자 삭제로 읽히지 않는다.
+- 처음 고른 1회차 권고안 (a)의 목적은 새 템플릿 키가 사용자의 삭제로 잘못 읽히는 일을 절대 만들지 않는 것이다. 이 목적은 그대로 지켜진다. 병합이 사용자 파일을 통째로 보존한 흐름에서 렌더를 승격하지 않으므로, 그 렌더가 새로 들인 키는 다음 update 에서 사용자 삭제로 읽히지 않는다.
 - "배포 뒤 병합 전에 중단되면 이전 스냅숏을 유지한다"는 이전 설명은 틀린 전제에 기대고 있었다. 중단 시 살아 있는 파일을 사용자 파일로 보았지만, 실제로는 순수 렌더다. 그 설명은 이 규칙으로 대체되었다(운영자 결정 2026-09-11).
-- "중단 뒤 복원" 경우에서 `moai update --restore` 가 `.claude/settings.json` 을 실제로 되돌리는지는 확인되지 않았다. run 단계 M1 의 검증 항목으로 둔다(plan.md Decision D5).
+- **운영자 규칙의 구현 방식, 리드 수용 (2026-09-11).** 위의 두 시점 판정 설계는 운영자 규칙을 구현하는 방식이며, 리드가 수용했다. 중단된 흐름을 중단 시점에 판정하면 뒤이은 복원을 볼 수 없어, 운영자의 넷째와 다섯째 경우를 함께 성립시킬 수 없기 때문이다. 남은 대기본의 판정 위치는 plan-audit 2회차 N-02 에 따른 배치(흐름의 어느 단계도 살아 있는 파일을 지우거나 다시 쓰기 전)이며, 이전 배치("다음 흐름이 새 대기본을 기록하기 전")를 대체한다(운영자 지시 2026-09-11).
+- **복원 명령에 대한 판독.** `moai update --restore` 는 `RestoreFromBackupDir` 를 거쳐 `RestoreMoaiConfig` 만 두 번 부른다(`internal/cli/update/backup/restore_entry.go:47-79`). 감사 판독에 따르면 이 경로는 `.moai/config` 만 쓴다. 따라서 "중단 뒤 복원이 사용자 파일을 되돌림"은 사용자가 파일을 손으로 되돌린 경우에만 생길 수 있다. 실행으로 확인하지는 않았으며, run 단계 M1 의 검증 항목이다(plan.md Decision D5).
 
 ### §B.5 사용자가 지운 템플릿 키
 
@@ -147,7 +163,7 @@ A1 이 요구하는 두 시점("배포 직후 기록"과 "다음 update 의 base
 
 **REQ-USB-004** — **Where** settings.json 확정본이 존재하고 읽히며 JSON 객체로 해석되면, the update subsystem shall 그 확정본을 `.claude/settings.json` 3-way 병합의 base 로 쓴다.
 
-**REQ-USB-005** — The update subsystem shall 대기본을 승격을 거쳐서만 확정본으로 만들며, 한 흐름의 settings.json 병합 단계가 끝나기 전에는 그 흐름의 대기본으로 확정본을 바꾸지 않는다. 승격은 흐름이 끝났을 때 살아 있는 `.claude/settings.json` 이 그 흐름의 렌더를 반영하고 있을 때만 일어나며, 반영하고 있지 않으면 이전 확정본을 그대로 둔다. 정상적으로 끝난 흐름에서는 바이트 동일 여부가 아니라, 그 흐름의 배포가 렌더를 쓴 뒤 흐름 이전의 사용자 파일이 통째로 되돌려 쓰이지 않았는지로 반영 여부를 판정한다. 승격 판정 전에 중단된 흐름에서는 다음 흐름이 남은 대기본을 발견한 시점에 살아 있는 파일이 그 대기본과 같은지로 판정하며, 그 판정은 다음 흐름이 새 대기본을 기록하기 전에 끝낸다.
+**REQ-USB-005** — The update subsystem shall 확정본을 대기본의 승격으로만 바꾸며, 한 흐름의 대기본을 그 흐름의 settings.json 병합 단계가 끝나기 전에 승격하지 않는다. **When** 한 흐름이 정상적으로 끝나면, the update subsystem shall 그 흐름의 settings.json 병합이 흐름 이전의 사용자 파일을 통째로 되돌려 쓰는 보존 경로를 타지 않았을 때 그 흐름의 대기본을 승격하고, 보존 경로를 탔으면 그 대기본을 버린다. **When** 한 흐름이 이전 흐름이 남긴 대기본을 발견하면, the update subsystem shall 그 흐름의 어느 단계도 살아 있는 `.claude/settings.json` 을 지우거나 다시 쓰기 전에, 살아 있는 파일이 남은 대기본과 바이트 동일하면 남은 대기본을 승격하고 다르면 버린다.
 
 **REQ-USB-006** — **Where** 확정본 base 가 쓰이고 **When** 사용자가 바꾸지 않은 공유 leaf 의 값이 확정본과 새 렌더 사이에서 달라졌으면, the merge shall 새 렌더의 값을 기록한다.
 
@@ -186,6 +202,7 @@ A1 이 요구하는 두 시점("배포 직후 기록"과 "다음 update 의 base
 - **배열은 통째로 비교된다 (B1).** 사용자가 `permissions.allow` 에 한 줄만 더해도, 그 배열에 대한 템플릿의 이후 변경은 전부 "둘 다 바꿈"이 되어 도착하지 않는다. 사용자 배열이 남고 충돌만 보고된다.
 - **템플릿이 지운 키는 지워지지 않는다 (B1).** 확정본과 사용자 파일에는 있고 새 렌더에는 없는 키는 공용 엔진 규칙에 따라 사용자 쪽 값으로 남는다.
 - **사용자가 지운 템플릿 키는 이후 템플릿 수정을 받지 않는다 (A1+B1, 운영자 확인 2026-09-11).** 지금은 사용자가 지운 템플릿 키가 update 마다 다시 추가된다. 확정본 base 에서는 같은 상황이 사용자의 삭제로 읽혀 결과에 넣지 않으며, 그 키에 대한 이후 템플릿 수정도 도착하지 않는다(REQ-USB-012, §B.5).
+- **중단 뒤 끼어든 쓰기는 승격을 폐기로 바꾼다 (N-08, 안전한 쪽으로 벗어남).** 배포 뒤 병합 전에 중단된 흐름이 있고, 다음 흐름이 시작하기 전에 살아 있는 `.claude/settings.json` 에 어떤 쓰기든 일어나면 남은 대기본은 승격되지 않고 버려진다. 손 편집, Claude Code 의 프로젝트 설정 기록, `moai tool-policy build`, 자율성 번들이 그런 쓰기다. 운영자 규칙 문구(중단 시 살아 있는 파일은 순수 렌더이므로 승격)와 다른 결과다. 그러나 사용자 데이터는 잃지 않는다. 중단된 렌더의 템플릿 변경이 사용자 변경으로 읽혀, 같은 leaf 에 대한 이후 템플릿 변경이 충돌로 남을 뿐이다.
 - **기계가 바뀌면 렌더 값 변화가 템플릿 변경으로 읽힌다.** `env.PATH` 처럼 기계마다 달라지는 값은 사용자가 손대지 않았다면 새 렌더 값으로 바뀐다. 이것은 의도한 동작이다. 사용자가 직접 고친 값이면 충돌이 보고되고 사용자 값이 남는다.
 - **세 기록 지점 밖의 재기록.** `ApplyAutonomyTierBundle` 이나 권한 정책 생성처럼 흐름 밖에서 프로젝트 settings.json 을 다시 쓰는 작성자는 사용자 변경으로 올바르게 읽힌다. 다만 그런 작성자가 **지운** 키는 사용자의 삭제로 읽혀 복구되지 않는다.
 
@@ -227,18 +244,21 @@ A1 이 요구하는 두 시점("배포 직후 기록"과 "다음 update 의 base
 ## §H 교차 참조
 
 - `internal/cli/update/merge/base.go:29-34` — 한계를 스스로 적은 주석. `:53-60` 은 `templateManaged`, `:112-131` 은 `pruneToShared`
-- `internal/cli/update/merge/merge.go:173-258` — 배포 뒤 파일별 병합(base 유도 `:216-217`, 보존 폴백 `:229-236`, 충돌 출력 `:245-247`)
+- `internal/cli/update/merge/merge.go:173-258` — 배포 뒤 파일별 병합(보존 경로 `:197-204`, `:217-225`, `:229-237`, 동일 건너뛰기 `:207`, 충돌 출력 `:245-247`)
 - `internal/merge/strategies.go:360-467` — 공용 엔진의 맵 병합(공유 키 네 갈래 `:418-462`)
-- `internal/template/deployer.go:239-255` — 기존 파일 보호 건너뛰기, `internal/template/skill_mirror.go` `DeployResult.ProtectedSkips`
+- `internal/template/deployer.go:239-255` — 기존 파일 보호 건너뛰기
+- `internal/cli/update.go:330`, `:335-365` — `--binary`·`--dry-run` 조기 반환. `:384` 폐기 deny 규칙 제거, `:405`·`:420` v2 분기와 clean-reinstall, `:489` 템플릿 동기화
+- `internal/cli/update_template_sync.go:98-105`, `:641` — 버전 일치 건너뛰기. `:329-337` 정리, `:364` 배포, `:491` 백업 단계 읽기, `:495-547` Restore Settings
+- `internal/cli/update_clean_install.go:400` — 백업 읽기, `:459` 배포, `:507` 병합, `:531` 폐기 deny 규칙 제거
 - `internal/cli/init.go:821` — init 의 비강제 배포기, `:867` 초기화 실행, `:889-900` 자율성 단계 권한 번들
-- `internal/cli/update_template_sync.go:341-371` — 일반 update 의 Deploy Templates 단계, `:495-547` Restore Settings
-- `internal/cli/update_clean_install.go:459` — clean-reinstall 배포, `:507` 병합, `:531` 폐기 deny 규칙 제거
 - `internal/cli/update_disk_backup.go:47-53` — 정리 직전 사용자 파일의 디스크 백업 대상
+- `internal/cli/update/backup/restore_entry.go:47-79` — `RestoreFromBackupDir` 는 `RestoreMoaiConfig` 만 부름
 - `internal/cli/update/backup/snapshot.go:22` — sections 스냅숏 경로 상수, `:114` `HasSnapshot`
 - `.moai/specs/SPEC-UPDATE-MERGE-CONFLICT-BLIND-001/spec.md` REQ-UMC-010 — 2026-09-11 개정(§B.3)
-- `.moai/reports/t656/design-options.md`, `.moai/reports/t656/plan-audit-iter1.md`
+- `.moai/reports/t656/design-options.md`, `plan-audit-iter1.md`, `plan-audit-iter2.md`
 - **Gaps**
-  - 줄 인용은 모두 트리 `81c1d58f9` 에서 읽은 값이며, 코드 동작을 실행해 확인한 것은 없다.
+  - 줄 인용은 트리 `04a8ab731` 에서 읽었다. `81c1d58f9` 이후 `internal/` 변경이 없음을 `git diff --stat` 로 확인했다. 코드 동작을 실행해 확인한 것은 없다.
   - Claude Code 가 하위 디렉터리의 `.claude/settings.json` 을 설정으로 읽는지는 확인하지 않았다.
-  - `moai update --restore` 가 `.claude/settings.json` 을 되돌리는지는 확인하지 않았다(run 단계 M1 검증 항목).
+  - `RestoreMoaiConfig` 가 `.claude/settings.json` 을 쓰지 않는다는 판단은 감사 판독에 기댄 것이다. 직접 읽은 것은 `restore_entry.go:47-79` 까지다(run 단계 M1 검증 항목).
+  - `update.go:139-379` 사이에 프로젝트 settings.json 을 쓰는 다른 단계가 없다는 판단은 `update.go` 의 `settings.json` 토큰 grep(주석 두 줄만 적중)에 기댄 것이며, 호출되는 함수의 내부까지 따라가지는 않았다.
   - init 호출 지점까지 `DeployResult.ProtectedSkips` 가 전달되는지는 확인하지 않았다. `initializer.go:423-430` 은 거울 알림만 경고로 넘긴다.
