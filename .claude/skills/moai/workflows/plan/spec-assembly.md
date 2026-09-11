@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 9: Pre-Creation Validation Gate
 
