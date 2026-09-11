@@ -11,7 +11,7 @@ added_in: "v3.1"
 A **backlog queue** where you stack up what to do next, one line at a time. The kanban board's `backlog` column has no session assigned to it, so nobody pushes work into it on its own. Putting a card on the board is therefore always a human's judgment, and `/moai todo` is that window.
 
 {{< callout type="info" >}}
-**One-line summary**: `/moai todo` is "the line where you write down what's next". You add an item, view the list, clear what's done, and pick the one to start next. It is not a SPEC and not a plan — it only becomes a SPEC at the moment you pick it.
+**One-line summary**: `/moai todo` records what to work on next. You add an item, view the list, archive completed work, and pick the next card. Picking does not create a SPEC; the card class determines the workflow.
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -20,7 +20,7 @@ A **backlog queue** where you stack up what to do next, one line at a time. The 
 
 ## Overview
 
-A backlog item is **one line of intent**. Not a SPEC, not a plan, not an estimate. Only when a human picks the item and the lead session dispatches it to the `plan` session does it become a SPEC.
+A backlog item is **one line of intent**, not a SPEC or a plan. After a human picks it, Class A proceeds directly to close, Class B follows run → sync without a SPEC, and Class C follows plan → run → sync with SPEC authoring in plan.
 
 The queue is deliberately thin. It holds nothing that a SPEC, git history, or the board records better — only **what the human wants next**.
 
@@ -28,7 +28,10 @@ The queue is deliberately thin. It holds nothing that a SPEC, git history, or th
 flowchart TD
     Add["/moai todo description<br/>add an item"] --> Queue["backlog queue"]
     Queue --> Pick["via the lead question channel<br/>a human picks one"]
-    Pick --> Plan["dispatch to the plan session<br/>SPEC is authored there"]
+    Pick --> Class{"Card class"}
+    Class --> A["A: direct close"]
+    Class --> B["B: run → sync"]
+    Class --> Plan["C: plan → run → sync<br/>SPEC is authored in plan"]
     Plan --> Spec["SPEC ID recorded on the item"]
 ```
 
@@ -88,7 +91,7 @@ The queue is stored in one SQLite database at `~/.moai/db/<project-key>/todo/bac
 | `findings` | The records kept about **pairs** of cards. A relation belongs to the pair rather than to either card, which is why it lives here and not in an item. Always an array — a file written before this feature loads with an empty one, so "no findings" never has to be told apart from "no such feature". `source` is `mechanical` (a measured text similarity) or `agent` (a judgment written by a human or an agent). A finding leaves the file when its card does. |
 | `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item **leaves the live queue** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. `done` does not delete the card and its findings; it **archives** them: they stop appearing in `list` / `next` / `why` / `analyze`, and `moai todo undone <n>` restores both, at the position the card held. Discarding is different from archiving: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the live queue file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
 
-The file is written atomically (write to a temp file, then rename) so a crash mid-write cannot truncate the queue. A missing file is not an error but an **empty queue**, and a malformed file is reported and left untouched — the human intent stored here is the one value that cannot be regenerated.
+Changes commit in a SQLite transaction under the queue lock, using WAL mode. A missing queue is an **empty queue**; unreadable or malformed data is reported and left untouched. The console displays an unavailable state when it cannot read the queue, rather than presenting a zero count.
 
 ## Automatic analysis
 
@@ -115,8 +118,8 @@ You can also approve several cards at once — by pointing at the cards, or by s
 After a card is picked, it continues like this:
 
 1. The picked item is marked `picked` with one locked write: `moai todo next <n> [--spec <SPEC-ID>]`. When the identifier is already known, it is attached right here.
-2. It is handed to the `plan` session per the kanban dispatch protocol. The card enters the `plan` column, and SPEC authorship happens there, not here.
-3. When the id was not known at pick time, re-run `moai todo next <n> --spec <SPEC-ID>` once it is known to attach it. Nothing automates the later attachment — both the dispatch and this follow-up are instructions the lead session performs, not things the queue does on its own.
+2. Follow the kanban card class: A direct close, B run → sync without a SPEC, or C plan → run → sync with SPEC authoring in plan.
+3. For a card that requires a SPEC, re-run `moai todo next <n> --spec <SPEC-ID>` once its identifier is known. This attachment is explicit; a picked card may legitimately have no SPEC.
 
 ## Outside Kanban Mode
 

@@ -283,10 +283,8 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 		if _, _, err := runTodo(t, "add", "alpha work"); err != nil {
 			t.Fatalf("add: %v", err)
 		}
-		// Each scenario drops the tables FRESH: the first history read's
-		// engine open runs the DDL and recreates them (the store's universal
-		// open behavior — list would do the same), consuming the degraded
-		// shape for every later invocation. One surgery per invocation.
+		// Pure reads preserve this degraded shape. Drop once and verify both
+		// the lookup and listing disclose it without recreating schema.
 		dropArchiveTables := func() {
 			t.Helper()
 			db, err := sql.Open("sqlite", store.EnginePath())
@@ -315,13 +313,21 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 			t.Errorf("history t1 stderr = %q, want the store disclosure", errOut)
 		}
 
-		dropArchiveTables()
 		_, errOut, err = runTodo(t, "history")
 		if err != nil {
 			t.Fatalf("history (listing): %v (stderr %q)", err, errOut)
 		}
 		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
 			t.Errorf("history (listing) stderr = %q, want the store disclosure", errOut)
+		}
+		db, err := sql.Open("sqlite", store.EnginePath())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = db.Close() }()
+		var tables int
+		if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE name IN ('archived_items','archived_findings')`).Scan(&tables); err != nil || tables != 0 {
+			t.Fatalf("pure history recreated archive tables: count=%d err=%v", tables, err)
 		}
 	})
 

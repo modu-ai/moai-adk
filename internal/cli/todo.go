@@ -107,6 +107,13 @@ func newTodoStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
 }
 
+// Observational commands must not relocate a legacy queue while constructing
+// their store, before LoadPure even gets a chance to preserve it.
+func newTodoReadStore() *kanban.BacklogStore {
+	root := kanban.ResolveTodoQueueRoot(resolveProjectDir())
+	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+}
+
 // todoLandedRef is the single place the todo surface resolves the ref the
 // landing question is asked about, so the help text, the flag description, the
 // refusal, and the query itself can never name different refs.
@@ -115,7 +122,7 @@ func newTodoStore() *kanban.BacklogStore {
 // because the queue and the integration branch are properties of one
 // repository, not of whichever worktree the command happens to run in.
 func todoLandedRef() string {
-	return kanban.LandedRefFor(resolveTodoQueueRoot())
+	return kanban.LandedRefFor(kanban.ResolveTodoQueueRoot(resolveProjectDir()))
 }
 
 // todoLandedRefResolved is todoLandedRef with its provenance: which chain
@@ -124,7 +131,7 @@ func todoLandedRef() string {
 // own recorded default rather than through configuration is the exceptional
 // path, and a silent fallback is exactly how the wrong-ref answer hid.
 func todoLandedRefResolved() (string, kanban.LandedRefLevel) {
-	return kanban.LandedRefForWithLevel(resolveTodoQueueRoot())
+	return kanban.LandedRefForWithLevel(kanban.ResolveTodoQueueRoot(resolveProjectDir()))
 }
 
 // todoRefLevelSource names where a chain level's answer came from, for the
@@ -534,6 +541,9 @@ const todoListDefaultLimit = 20
 // structured record is the full read, and a bounded JSON would be the same
 // silent truncation.
 func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
+	if !jsonOutput && limit < 0 {
+		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
+	}
 	store := newTodoStore()
 	// REQ-BJD-002 — probed before the read, because Load adopts (see
 	// todo_disclosure.go). stderr only: stdout is what the foreman reads.
@@ -556,9 +566,6 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
 	}
-	if limit < 0 {
-		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
-	}
 	var visible []kanban.BacklogItem
 	dropped := 0
 	for _, it := range rec.Items {
@@ -576,7 +583,7 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 		shown = limit
 	}
 	for _, it := range visible[:shown] {
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, todoPRCell(it.Text))
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
 				continue
@@ -823,7 +830,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 						continue
 					}
 					queued++
-					_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, it.Text)
+					_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 				}
 				if queued == 0 {
 					_, _ = fmt.Fprintln(out, "queue is empty")
@@ -836,6 +843,9 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID == id {
+						if rec.Items[i].State == kanban.BacklogStateDropped {
+							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+						}
 						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
 							// Refused mutation: Mutate writes nothing, so the
 							// file stays byte-identical on a mismatch.
@@ -945,9 +955,9 @@ const todoTextPrefixMax = 40
 // multi-byte card texts (ko/ja/zh), and a byte slice could cut a character
 // mid-sequence. Truncated text is marked with a trailing ellipsis.
 func todoTextPrefix(text string) string {
-	runes := []rune(text)
+	runes := []rune(todoPRCell(text))
 	if len(runes) <= todoTextPrefixMax {
-		return text
+		return string(runes)
 	}
 	return string(runes[:todoTextPrefixMax]) + "..."
 }

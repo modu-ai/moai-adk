@@ -18,7 +18,9 @@
 package kanban
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -32,11 +34,15 @@ import (
 // backlogLockFileName names the lock artifact sibling to the backlog file.
 const backlogLockFileName = "backlog.lock"
 
+const backlogRetiredFileName = "backlog.relocated"
+
+var ErrBacklogRelocated = errors.New("backlog relocated; resolve the project queue again")
+
 // legacyBacklogLockFileName is the lock artifact name an earlier revision of
 // this store used. No code reads it anymore, but an install that lived
 // through the rename keeps a stale zero-byte artifact beside the live lock
 // (measured on the primary checkout: 0 B, three days older than backlog.lock).
-// NewBacklogStore sweeps it best-effort so the directory settles on one lock
+// The adopting open sweeps it best-effort so the directory settles on one lock
 // name instead of carrying two.
 const legacyBacklogLockFileName = "backlog.json.lock"
 
@@ -284,6 +290,23 @@ func (r *BacklogRecord) RestoreCard(id string) error {
 	sorted := append([]BacklogArchivedFinding(nil), entry.Findings...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
 	for _, af := range sorted {
+		deferred := false
+		if r.itemIndex(af.Finding.SubjectID) < 0 || r.itemIndex(af.Finding.RelatedID) < 0 {
+			// Keep a suspended relation with its still-archived endpoint; it
+			// becomes live only after both cards are restored.
+			for i := range r.Archived {
+				if i != at && af.Finding.Names(r.Archived[i].Item.ID) {
+					r.Archived[i].Findings = append(r.Archived[i].Findings, af)
+					deferred = true
+					break
+				}
+			}
+		}
+		if deferred {
+			continue
+		}
+		// Legacy records may already name a deleted endpoint. Preserve their
+		// evidence rather than silently deleting it during restoration.
 		r.Findings = insertBacklogFinding(r.Findings, af.Finding, af.Position)
 	}
 	r.Archived = append(r.Archived[:at:at], r.Archived[at+1:]...)
@@ -396,13 +419,9 @@ type BacklogStore struct {
 	path string
 }
 
-// NewBacklogStore returns a store over the backlog file at path. As a
-// best-effort side effect it removes a superseded legacy lock artifact
-// sitting beside the file (see legacyBacklogLockFileName); a failed removal
-// — permissions, a race with another process — is ignored, because the live
-// lock name and the store's correctness do not depend on it.
+// NewBacklogStore constructs a handle without touching operator files.
+// Legacy lock cleanup belongs to the adopting path, never a pure read.
 func NewBacklogStore(path string) *BacklogStore {
-	_ = os.Remove(filepath.Join(filepath.Dir(path), legacyBacklogLockFileName))
 	return &BacklogStore{path: path}
 }
 
@@ -421,7 +440,7 @@ func (s *BacklogStore) QueuedCount() int {
 	// which is where the queue lock is already in play.
 	layout := inspectBacklogLayout(s.path)
 	if layout.dbExists {
-		eng, err := openBacklogEngine(backlogSQLitePath(s.path))
+		eng, err := openBacklogReader(backlogSQLitePath(s.path))
 		if err != nil {
 			return 0
 		}
@@ -478,7 +497,7 @@ func BacklogCountsForRoot(root string) BacklogStateCounts {
 	path := BacklogPathForRoot(root)
 	layout := inspectBacklogLayout(path)
 	if layout.dbExists {
-		eng, err := openBacklogEngine(backlogSQLitePath(path))
+		eng, err := openBacklogReader(backlogSQLitePath(path))
 		if err != nil {
 			return BacklogStateCounts{}
 		}
@@ -571,7 +590,7 @@ func (s *BacklogStore) LoadPure() (*BacklogRecord, error) {
 		}
 		return loadLegacyBacklogJSON(s.path)
 	}
-	eng, err := openBacklogEngine(backlogSQLitePath(s.path))
+	eng, err := openBacklogReader(backlogSQLitePath(s.path))
 	if err != nil {
 		return nil, err
 	}
@@ -601,6 +620,7 @@ func (s *BacklogStore) load() (*BacklogRecord, error) {
 // for the migration's duration so concurrent factory lanes serialize on the
 // same artifact they always have (REQ-TOSQ-008).
 func (s *BacklogStore) openEngine(lockHeld bool) (*backlogEngine, error) {
+	_ = os.Remove(filepath.Join(filepath.Dir(s.path), legacyBacklogLockFileName))
 	switch layout := inspectBacklogLayout(s.path); {
 	case layout.dbExists && layout.jsonExists:
 		// State D — a database beside a backlog.json. The database is
@@ -654,6 +674,11 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	defer func() {
 		err = joinBacklogReleaseErr(err, lock.Release(), s.path)
 	}()
+	if target, readErr := os.ReadFile(filepath.Join(filepath.Dir(s.path), backlogRetiredFileName)); readErr == nil {
+		return fmt.Errorf("%w: %s", ErrBacklogRelocated, target)
+	} else if !os.IsNotExist(readErr) {
+		return readErr
+	}
 
 	eng, err := s.openEngine(true)
 	if err != nil {
@@ -666,13 +691,21 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	if err != nil {
 		return err
 	}
+	archiveBefore, err := json.Marshal(rec.Archived)
+	if err != nil {
+		return err
+	}
 	if err := mutate(rec); err != nil {
 		return fmt.Errorf("mutate backlog %s: mutation refused: %w", s.path, err)
 	}
 	// Re-normalize post-mutate: a callback may append or rewrite items, and
 	// the written high-water mark must clear every present id.
 	normalizeBacklogRecord(rec)
-	return eng.writeRecord(ctx, rec)
+	archiveAfter, err := json.Marshal(rec.Archived)
+	if err != nil {
+		return err
+	}
+	return eng.writeRecordArchive(ctx, rec, !bytes.Equal(archiveBefore, archiveAfter))
 }
 
 // joinBacklogReleaseErr folds a lock-release failure into the mutation's own
