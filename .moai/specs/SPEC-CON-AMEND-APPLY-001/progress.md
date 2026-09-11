@@ -299,7 +299,7 @@ Sync phase run by manager-docs on 2026-09-12 inside the card worktree (branch `W
 
 ```yaml
 sync_complete_at: 2026-09-12
-sync_commit_sha: pending-backfill        # the sync commit carrying this block; backfilled by the follow-up commit
+sync_commit_sha: 1f9946188b750bd2ae6dbca36a8c948c0bb741c9   # the sync commit carrying this block; backfilled by the follow-up commit
 sync_status: complete
 sync_agent: manager-docs
 sync_base_head: 128a5ea52c24b92f3e8e1e0bd7f1bb392e2e0086   # last run-phase commit (compile-slot record)
