@@ -704,6 +704,170 @@ Tool provenance (`verification-claim-integrity.md` §2.2): the lint ran on the i
 `v3.2.0-rc.7` build, commit `ed71054d3` with a dirty tree; `git merge-base --is-ancestor ed71054d3
 HEAD` exited 1. It is not a build made from this tree.
 
+### Fixture proof (M3)
+
+Taken 2026-09-11 from this worktree on branch `WT-secret-scan-refs`, HEAD `d22b4466b` (the M2
+commit), on two fresh throwaway fixture repositories outside this repository, `SP/m3/fx1` and
+`SP/m3/fx2`, where `SP` is the session scratchpad. `git version 2.50.1 (Apple Git-155)`. Each
+fixture: `git init -b main`, a fixture `user.name` and `user.email`, `commit.gpgsign=false`,
+`core.hooksPath=/dev/null`, read back with `git config --list --local`. `REGEX` is the scan regex
+as `review.md` writes it.
+
+How the worded procedure was run. Every command is the draft's command (§ Draft section wording
+(M2)) with three mechanical substitutions and no other change: `git` runs as `git -C <fixture
+root>`; a `.moai/state/` path in a git command's redirect is written with the fixture root in front,
+because the shell resolves a redirect; and the draft's `grep` and `find` run as `/usr/bin/grep` (BSD
+grep 2.6.0-FreeBSD) and `/usr/bin/find`, because both names resolve to shell functions in this
+session. The non-git steps ran from the fixture root with the draft's relative paths. Each review
+ran the whole draft sequence: tip recording, the which-step check (`test -e` on the store), the
+scan, the store replacement with `mv` after the scan exited 0, then all thirteen suppression
+commands. A `grep` exit of 1 is read as an empty result, per the draft; no command exited 2.
+
+Markers and values: PEM-style private-key header lines with distinct uppercase labels, and
+access-key-shaped values, each written by `printf` from fragments held only in `SP`. This record
+writes a label as `<LABEL>`, the listed value as `<listed value>`, and other values as
+`<near value>` and `<unlisted value>`; no value, fragment, fixture object name, or scan output line
+appears here. Every marker file was checked with `/usr/bin/grep -cE -- 'REGEX'` → `1` per marker
+line.
+
+#### AC-001 review sequence
+
+Fixture `SP/m3/fx1`; outputs in `SP/m3/`.
+
+| Step | Command (outline) | Exit | Reading |
+|---|---|---|---|
+| C0 | clean `keys.txt` committed on `main` | 0 | — |
+| cell B | `git log -p --all -G 'REGEX' > b.txt 2> b.err` | 0 | `wc -c` 0 and 0 |
+| R1 tip recording | `git for-each-ref --format='^%(objectname)' > <fx>/.moai/state/secrets-scan-tips.next` | 0 | 1 line |
+| R1 which step | `test -e <store>` | 1 | no store, so the full-history scan runs |
+| R1 scan | the draft's full-history scan line | 0 | 0 bytes; `mv` to the store, exit 0 |
+| R1 suppression | the thirteen draft commands | `grep -oE` 1, `grep -vwF` 1, findings `grep -F` 1, others 0 | findings 0 bytes |
+| S1 | branch `side` from C0 (`switch -c`); `SIDECELL` marker in `side.txt`, committed | 0 | `side.txt` absent on `main` (`test -e` exit 1) |
+| C1 | `HEADCELL` marker appended to `keys.txt` on `main`, committed | 0 | — |
+| construction (step 3) | `git merge-base --is-ancestor side HEAD` | 1 | — |
+| R2 tip recording, which step | as R1; `test -e <store>` | 0; 0 | the store read copied to `r2-tips-read.txt` (1 line) |
+| R2 scan | the draft's scan command line, with its `2>` redirect | 0 | output 624 bytes, error 0 bytes; `mv` exit 0 (store 2 lines) |
+| R2 suppression | the thirteen draft commands | all 0 | matches 2, distinct 2, paths 2, digests 2, kept 2, findings 2 lines |
+| C2 | clean `notes.txt` committed on `main` | 0 | — |
+| S2 | branch `side2` from C2; `LATECELL` marker in `late.txt`, committed | 0 | — |
+| construction (step 5) | `git merge-base --is-ancestor side2 HEAD` | 1 | — |
+| R3 | as R2 | scan 0; suppression all 0 | output 301 bytes, error 0 bytes; the store read 2 lines; distinct 1; findings 1 line; store 3 lines after `mv` |
+| R4 tip recording | as R1 | 0 | `cmp <store> <store>.next` exit 0 — no ref moved since R3 |
+| R4 | as R2 | scan 0; `grep -oE` 1, `grep -vwF` 1, `grep -F` 1, others 0 | output 0 bytes, error 0 bytes; findings 0 bytes |
+| construction (step 8), immediately before the counts | `git merge-base --is-ancestor side HEAD`; the same for `side2` | 1; 1 | no merge of `side` or `side2` at any point |
+| counts | `/usr/bin/grep -c '<LABEL>'` over `r2.txt` (HEADCELL, SIDECELL) and `r3.txt` (LATECELL, SIDECELL); `wc -c` over `b.txt` and `r4.txt` | 0 each | see below |
+
+| Cell | Required | Reading | Holds |
+|---|---|---|---|
+| B | 0 bytes | 0 bytes | yes |
+| H | R2 `HEADCELL` ≥ 1 | `1` | yes |
+| S | R2 `SIDECELL` ≥ 1 | `1` | yes |
+| T | R3 `LATECELL` ≥ 1 | `1` | yes |
+| N | R4 0 bytes | 0 bytes | yes |
+
+Informational: R3 `SIDECELL` `0` — the side branch's marker was reported once, in R2, and not again
+(REQ-002 does not require re-reporting). Context: R2 carries 2 lines matching `REGEX` and 2
+`^commit ` lines; R3 carries 1 and 1. Findings files: R2 `HEADCELL` 1 and `SIDECELL` 1; R3
+`LATECELL` 1.
+
+Predicate (`acceptance.md` §D.1): every cell of the required table holds, so none of the fail
+conditions — their exact complement — occurs. Each marker was reported in the scan where its commit
+first became reachable. Construction: every `is-ancestor` reading is exit 1, and R1-R4 each exited
+0, so no construction gap arose and no procedure-caused non-zero exit occurred (run caution N1).
+
+Result: **PASS**.
+
+#### AC-013 and AC-014 allowlist controls
+
+Fixture `SP/m3/fx2`; outputs in `SP/m3/`. The listed value is the value whose digest the draft
+lists.
+
+| Step | Command (outline) | Exit | Reading |
+|---|---|---|---|
+| C0 | clean `keys.txt` committed on `main`; `git log -p --all -G 'REGEX' > al-base.txt` | 0; 0 | 0 bytes |
+| R1 | the whole draft sequence (store absent, so the full-history scan) | tip recording 0, `test -e` 1, scan 0, `mv` 0; suppression: `grep -oE` 1, `grep -vwF` 1, `grep -F` 1, others 0 | output 0 bytes |
+| S1 | branch `side` from C0; `SIDECELL` marker in `side.txt`, committed | 0 | — |
+| C1 | new file `list.txt` on `main`, five adjacent lines: `LISTCELL <listed value>`, `NEARCELL <near value>` (the listed value with its last character changed), `OTHERCELL <unlisted value>`, `MIXCELL <listed value> <unlisted value>`, the `HEADCELL` marker; committed | 0 | `/usr/bin/grep -cE -- 'REGEX'` over the file → `5` |
+| construction | `git show HEAD --output=al-commit.txt`; `/usr/bin/grep -c '^@@'`; `/usr/bin/grep -c` for `LISTCELL`, `NEARCELL`, `OTHERCELL`, `MIXCELL` | 0 | `^@@` `1`; each label `1` (`HEADCELL` `1`; `^diff ` `1`) |
+| construction | `git merge-base --is-ancestor side HEAD` | 1 | — |
+| R2 tip recording, which step | as R1; `test -e <store>` | 0; 0 | — |
+| R2 scan | the draft's scan command line | 0 | output 750 bytes, error 0 bytes; `mv` exit 0 |
+| R2 suppression | the thirteen draft commands | all 0 | matches 7, distinct 6, paths 6, digests 6, table 6, kept 5, unsuppressed 5, findings 5 lines |
+| raw and findings | `cp <fx>/.moai/state/secrets-scan-output.txt al-raw.txt`; `cp <fx>/.moai/state/secrets-scan-findings.txt al-findings.txt` | 0 | 31 lines; 5 lines |
+| REGEX extracts | `/usr/bin/grep -E -- 'REGEX' al-raw.txt > al-raw-match.txt`; the same over `al-findings.txt` into `al-match-lines.txt` | 0; 0 | 6 lines; 5 lines |
+
+Supplementary, taken before the draft's `rm -r` step: `xargs cat` over the sorted path list
+reproduced `secrets-scan-distinct.txt` byte for byte (`cmp` exit 0), so `find` and `sort` ordered
+the split files as `split` wrote them; `cut -f2` of the table equals the distinct list (`cmp` exit
+0); exactly one table row carries the listed digest (`/usr/bin/grep -cwF` → `1`), and that row's value
+equals the listed value (`cmp` exit 0); the listed value appears `0` times in the unsuppressed list
+(`/usr/bin/grep -cxF`).
+
+| Label | `al-raw-match.txt` | `al-match-lines.txt` |
+|---|---|---|
+| `LISTCELL` | `1` | `0` |
+| `NEARCELL` | `1` | `1` |
+| `OTHERCELL` | `1` | `1` |
+| `MIXCELL` | `1` | `1` |
+| `HEADCELL` | `1` | `1` |
+| `SIDECELL` | `1` | `1` |
+
+AC-013 predicate (`acceptance.md` §D.13): the raw count of `LISTCELL` is ≥ 1 (`1`), so the listed
+value matched the regex and suppression was exercised; its findings count is `0`. Result: **PASS**.
+
+AC-014 predicate (`acceptance.md` §D.14): construction holds — one hunk and each of the four labels
+counted `1`; every negative label — `NEARCELL`, `OTHERCELL`, `MIXCELL`, `HEADCELL`, `SIDECELL` —
+counts ≥ 1 in both extracts. Result: **PASS**.
+
+#### Supplementary checks of new wording
+
+Both checks exercise draft wording outside the three criteria above; neither is a criterion.
+
+Missing-tip detection pair, on `SP/m3/fx2` after the allowlist run:
+
+| Step | Command (outline) | Exit | Reading |
+|---|---|---|---|
+| branch `gone` | a plain `gone.txt` committed on a new branch `gone`; its tip written by `git rev-parse refs/heads/gone > mt-gone.txt` | 0 | — |
+| R3 | tip recording; the scan command; `mv` | 0; 0; 0 | output 0 bytes; the stripped store holds the gone tip (`/usr/bin/grep -cxF -f mt-gone.txt` → `1`) |
+| remove | `git branch -D gone`; `git reflog expire --expire=now --all`; `git gc --prune=now --quiet` | 0; 0; 0 | — |
+| construction | `git cat-file --batch-check < mt-gone.txt` | 0 | one line ending ` missing` (`/usr/bin/grep -c` → `1`) |
+| L1 | `GONECELL` marker in `after.txt`, committed on a new branch `after` | 0 | — |
+| R4 | tip recording; the scan command | 0; 128 | output 0 bytes; error 59 bytes |
+| worded detection | the draft's `sed 's/^\^//'` line, then its `grep -F -f` line with output to `mt-detect.txt` | 0; 0 | 1 line; `bad object` `1`; the gone tip's name `1` (`/usr/bin/grep -cF -f mt-gone.txt`) |
+| handling | the draft's full-history scan in place of R4's scan; `mv` | 0; 0 | output 1055 bytes; `GONECELL` `1` |
+
+Merge-commit sentence, on the same fixture: a plain `mx.txt` committed on a new branch `mx`; on
+`main`, `git merge --no-ff --no-commit mx` (exit 0), the `MERGECELL` marker appended to `mx.txt`,
+staged, and committed as the merge; `git rev-list --parents -n 1 HEAD` → three fields, so the commit
+has two parents and only the merge's own change carries the marker.
+
+| Scan | Exit | `MERGECELL` |
+|---|---|---|
+| the draft's scan command, reading the store R4 recorded | 0 | `0` (0 bytes) |
+| the draft's full-history scan | 0 | `0` (1055 bytes) |
+| control: the full-history scan with `--diff-merges=first-parent` added | 0 | `1` |
+| control: the working-tree file `mx.txt` | — | `1` |
+
+The two zero counts are not an empty-command artefact: the same history read with first-parent
+merge diffs shows the marker. The sentence's example, a conflict resolution, was not built; the
+merge here carried an added line without a conflict.
+
+#### Gaps and residual risk in M3
+
+- One machine, one git build, macOS only; the draft's `grep` and `find` ran as the system binaries,
+  not as the session's shell functions. Linux and Windows are not exercised.
+- Only the PEM-header and access-key alternatives of `REGEX` were exercised; the token alternative
+  was not.
+- Only local branches were exercised; tags, remote-tracking refs, and stash entries were not. The
+  explicit full-scan flag, the working-tree step (the draft gives no command for it), a commit that
+  lands between the tip recording and the scan, and a repository using the SHA-256 object format
+  were not exercised.
+- AC-016's gap D19a stands: the pinned lines appearing in the section does not show that the
+  section prescribes no other timing for tip recording.
+- The fixture outputs stay in `SP`, a machine-local scratchpad; they carry credential-shaped lines
+  and are not exported. The counts, exit codes, and sizes above are the record; the raw files are a
+  known loss once the scratchpad is cleared.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
