@@ -38,7 +38,7 @@ Tier **M**. 운영 코드 변경은 한 서브시스템(`internal/cli/update` �
 
 ## §B Known Issues
 
-- **B1 — 같은 흐름 안의 덮어쓰기 (종결: 대기본·확정본 분리).** 뮤턴트 M-06c, M-06t, M-06t-w 로 반증한다.
+- **B1 — 같은 흐름 안의 덮어쓰기 (종결: 대기본·확정본 분리).** 뮤턴트 M-06c, M-06t, M-06t-w 로 반증한다. 구현 기록: 시접을 무상태 호출로 만들었기 때문에 M-06c·M-06t·M-D5e 는 한 코드 변이(대기본이 기록 직후 스스로 승격)로 합쳐졌다. clean-reinstall 배선 수준의 같은 결함은 run 단계에서 더한 M-06c-w 가 잡는다(acceptance.md §E).
 - **B2 — init 의 후속 재기록.** 대기본은 `ApplyAutonomyTierBundle` 보다 앞서 기록한다(REQ-USB-003).
 - **B3 — 승격 조건 (종결: D5 운영자 결정).** 중단 시 살아 있는 파일은 순수 렌더다(감사 F-07). 확정 규칙과 판정 위치는 §E Decision D5.
 - **B4 — 형제 SPEC (종결: D6 운영자 결정).**
@@ -150,6 +150,8 @@ go test -cover ./internal/cli/update/merge/ ./internal/cli/update/backup/
 
 병합은 늘 확정본 경로를 읽는다. 같은 흐름의 대기본은 병합 단계가 끝나기 전에는 확정본 자리에 오지 않는다. `MergeUserFiles` 의 시그니처와 base 주입 방식은 바뀌지 않는다.
 
+보존 경로 신호의 통로(감사 N3-03)는 형제 함수 `MergeUserFilesWithOutcome` 이다. 이 함수는 경로별 결과(`MergeOutcome`)를 돌려주고, 흐름 끝의 승격 판정은 그 결과에서 settings.json 이 보존 경로를 탔는지를 읽는다. `MergeUserFiles` 는 결과를 버리는 얇은 래퍼가 되어 시그니처가 그대로다. 아무것도 쓰기 전에 오류로 끝난 병합(매니페스트나 내장 FS 적재 실패)은 보존 경로가 아니다. 살아 있는 파일이 아직 렌더이므로 대기본을 승격한다.
+
 ### Decision D7 — "배포가 settings.json 을 실제로 썼는가"의 판정 근거 (REQ-USB-016)
 
 디스크의 현재 파일을 다시 읽는 방식은 금지한다. **근거 2(매니페스트 기록 + 해시)를 우선한다(감사 N-11).**
@@ -175,14 +177,16 @@ go test -cover ./internal/cli/update/merge/ ./internal/cli/update/backup/
 
 - ②는 세 흐름이 하나의 헬퍼를 부른다(fan_in 3). ①은 두 지점(update, init)이 하나의 판정 헬퍼를 부른다.
 - `runUpdateRestore` 는 렌더를 하지 않으므로 ①②③ 어느 지점도 아니다.
+- 표의 줄 번호는 구현 전 트리 기준이다. 구현 뒤 실제 위치(①②③ 여덟 곳)는 `progress.md` §E.2.8 표에 있다.
 
 ### Decision D8 — 흐름 시접과 관측 훅 (감사 F-02, N-05)
 
-"남은 대기본 판정 → (배포) → 대기본 기록 → 병합 → 승격 판정" 순서를 `internal/cli/update/merge` 또는 `internal/cli/update/backup` 의 작은 시접으로 뺀다.
+"남은 대기본 판정 → (배포) → 대기본 기록 → 병합 → 승격 판정" 순서를 `internal/cli/update/merge` 와 `internal/cli/update/backup` 의 작은 시접으로 뺀다.
 
-- 시접에는 테스트만 교체하는 **병합 직전 관측 훅**(패키지 수준 함수 변수)을 둔다. AC-USB-005 가 병합 직전의 확정본·대기본 바이트를 이 훅으로 관측한다.
-- init 은 `ApplyAutonomyTierBundle` 호출을 테스트가 교체할 수 있는 패키지 수준 함수 변수 뒤에 둔다(N-06). AC-USB-007 `init` 셀이 이것으로 번들의 재기록을 결정적으로 모사한다.
-- AC-USB-006·AC-USB-016 은 시접으로 사이클을 돌린다. 세 흐름의 배선과 판정 위치는 AC-USB-007 이 행동으로 확인한다.
+- 시접은 상태를 갖지 않는 호출 셋이다. `backup.JudgeLeftoverSettingsSnapshot`(①), `backup.StageDeployedSettingsSnapshot`(②), 그리고 ③인 `merge.MergeUserFilesAndSettleSnapshot` 이다. init 은 병합이 없어 ③으로 `backup.SettleSettingsSnapshot` 을 직접 부른다. 흐름 사이에 남는 상태는 디스크의 대기본과 병합 결과(D3 의 보존 경로 신호)뿐이다. 그래서 호출 순서는 시접이 아니라 각 흐름의 호출 지점이 정한다.
+- **병합 직전 관측 훅**(`preMergeSettingsSnapshotHook`)은 테스트만 교체하는 패키지 수준 함수 변수다. 이 훅은 M4 에서 한 번만 들이며, `internal/cli/update_settings_snapshot.go` 에 둔다. 흐름 쪽 래퍼 `mergeUserFilesSettlingSnapshot` 이 병합 직전에 이 훅을 부르고, 훅을 쓰는 곳은 AC-USB-005 하나다.
+- init 은 `ApplyAutonomyTierBundle` 호출을 같은 파일의 패키지 수준 함수 변수 `applyAutonomyTierBundleFn` 뒤에 둔다(N-06). AC-USB-007 `init` 셀이 이것으로 번들의 재기록을 결정적으로 모사한다.
+- AC-USB-006·AC-USB-016 은 시접 호출로 사이클을 돌리고 흐름 사이의 상태만 단정하므로 훅이 필요 없다. 세 흐름의 배선과 판정 위치는 AC-USB-007 이 행동으로 확인한다.
 
 ## §F Milestones (우선순위 순)
 
@@ -201,11 +205,12 @@ go test -cover ./internal/cli/update/merge/ ./internal/cli/update/backup/
   - 승격(실패 시 `settings-snapshot-promote-failed:` 경고)
   - 남은 대기본 판정·폐기
 - AC-USB-004, AC-USB-009, AC-USB-015 를 통과시킨다.
+- 구현 기록: AC-USB-014 와 AC-USB-008 `helper` 셀도 이 마일스톤의 backup 시험으로 통과했다(`progress.md` §E.2.4).
 
 ### M3 — 병합 base 선택, 흐름 시접, 승격 규칙 (Priority High · 슬롯 불필요)
 
-- `MergeUserFiles` 가 `.claude/settings.json` 에 한해 유효한 확정본을 base 로 쓰게 하고, 보존 경로 여부를 흐름 시접에 알린다(D2, D5 N-10).
-- 흐름 시접, 병합 직전 관측 훅, D5 두 시점 판정을 구현한다. 승격을 빈 동작으로 둔 시접에 대해 AC-USB-006·016 의 RED 를 먼저 관측한다.
+- 병합이 `.claude/settings.json` 에 한해 유효한 확정본을 base 로 쓰게 한다. 보존 경로 여부는 `MergeUserFilesWithOutcome` 의 경로별 결과로 흐름 시접에 알린다(D2, D3, D5 N-10).
+- 흐름 시접과 D5 두 시점 판정을 구현한다. 병합 직전 관측 훅은 이 마일스톤이 아니라 M4 에서 들인다. 승격을 빈 동작으로 둔 시접에 대해 AC-USB-006·016 의 RED 를 먼저 관측한다.
 - AC-USB-001, 002, 003, 004, 006, 008 `promote_failure`, 010, 011, 012, 013, 016 을 통과시킨다.
 - `base.go:29-34` 주석을 갱신하고 B5 의 @MX:NOTE 를 붙인다.
 
@@ -214,8 +219,8 @@ go test -cover ./internal/cli/update/merge/ ./internal/cli/update/backup/
 - 진입 전에 리드에게 `internal/cli` 슬롯을 요청한다.
 - D4 의 ① 판정 지점 두 곳, ② 기록 지점 세 곳, ③ 승격 지점 세 곳을 배선하고 D7 근거 2 를 연결한다.
 - **테스트 대역 확장(감사 F-10).** 배포기 대역에 배포 때 지정한 렌더 바이트를 `.claude/settings.json` 에 실제로 쓰고 매니페스트를 `TemplateManaged` 로 기록하는 필드를 더한다. 두 사이클 이상 clean-reinstall 을 돌리는 테스트를 쓴다면 `makeScenarioA` 의 v2 지문이 남아 있어야 하며, 2회차 출력에 `not a v2 project — no-op` 이 없음을 함께 단정한다.
-- **관측 훅 선언(감사 N-05, N-06).** D8 의 병합 직전 관측 훅과 init 자율성 번들 교체 변수를 이 마일스톤에서 들인다.
-- AC-USB-005, 007, 008, 014 를 통과시킨다.
+- **관측 훅 선언(감사 N-05, N-06, N3-04).** D8 의 병합 직전 관측 훅과 init 자율성 번들 교체 변수를 이 마일스톤에서 한 번만 들인다. 둘 다 `internal/cli/update_settings_snapshot.go` 에 둔다.
+- AC-USB-005, 007, 008(cli 셀)을 통과시킨다. AC-USB-014 는 M2 의 backup 시험으로 통과했고, init 흐름 안의 기록 위치는 AC-USB-007 `init` 이 확인한다.
 - `update_clean_install.go:394-397` 의 낡은 주석을 고친다.
 - 기존 `TestCleanReinstall_SettingsJSONUserKeysPreserved`, `TestCleanReinstall_MatchesNormalPathProtection`, `TestMergeUserFiles_*`(`update_merge_test.go`), `TestUpdateSubsystem_HomeSeamReach` 가 계속 통과하는지 확인한다.
 
@@ -241,7 +246,7 @@ AC-USB-015 의 저장소 위생 명령을 커밋 뒤에 실행한다.
 - 보존 경로를 탄 흐름에서 대기본을 승격하지 않는다(D5 경우 2).
 - 정상 종료 판정을 바이트 비교로 구현하지 않는다(M-D5c, M-D5i).
 - 중단된 흐름의 승격을 중단 시점에 결정하지 않는다(M-D5e).
-- 남은 대기본을 백업 단계, 배포 뒤, 새 대기본 기록 뒤에 판정하지 않는다(M-D5f, M-D5g, M-D5g-w).
+- 남은 대기본을 백업 단계, 배포 뒤, 새 대기본 기록 뒤, 폐기 deny 제거 뒤에 판정하지 않는다(M-D5f, M-D5g, M-D5g-wb, M-D5g-wd, M-D5g-s). init 에서는 `executor.Execute` 뒤에 판정하지 않는다(M-D5g-init).
 - 기존 sections 기록 자리에 settings.json 기록을 덧붙이지 않는다.
 - 배포 뒤 디스크 파일을 다시 읽어 대기본을 만들지 않는다(M-14).
 - `internal/merge` 에 settings.json 전용 분기를 넣지 않는다.
@@ -255,7 +260,7 @@ AC-USB-015 의 저장소 위생 명령을 커밋 뒤에 실행한다.
 | 세 지점이 부르는 대기본 기록 헬퍼 | `@MX:ANCHOR` + `@MX:REASON` | fan_in 3. 기록 시점이 계약이다 |
 | 남은 대기본 판정 헬퍼와 두 호출 지점 | `@MX:WARN` + `@MX:REASON` | 첫 재기록 뒤로 옮기면 "중단·복원 없음 → 승격"이 폐기로 바뀐다 |
 | 승격 판정 | `@MX:WARN` + `@MX:REASON` | 병합 전 승격이나 보존 흐름의 승격은 새 키를 사용자 삭제로 만든다 |
-| `MergeUserFiles` 의 확정본 base 선택과 보존 경로 신호 | `@MX:NOTE` | 확정본과 유도 base 폴백의 경계, 보존 경로 세 분기 |
+| `MergeUserFilesWithOutcome` 의 확정본 base 선택과 보존 경로 신호 | `@MX:NOTE` | 확정본과 유도 base 폴백의 경계, 보존 경로 세 분기 |
 | `base.go` 헤더 한계 주석, `update_clean_install.go:394-397` 주석 | 주석 갱신 | 한계가 확정본이 없는 경로로 좁아짐 |
 | `base_test.go` `TestMergeDropsTemplateAdditionInsideCarriedEventKey` | `@MX:NOTE` | 유도 경로 전용 특성화임을 명시 |
 

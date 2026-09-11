@@ -7,7 +7,7 @@
 - 선택자로 테스트를 돌릴 때는 걸린 테스트 수를 함께 센다. 출력에 `[no tests to run]` 이 있으면 통과가 아니라 **측정 불가**다.
 - 패키지 약칭: **merge** = `internal/cli/update/merge`, **backup** = `internal/cli/update/backup`, **cli** = `internal/cli`(리드 슬롯 승인 뒤에만 실행).
 - 경로 약칭: **확정본** = `.moai/cache/template-snapshot/claude/settings.json`, **대기본** = `.moai/cache/template-snapshot/claude/settings.json.pending`.
-- **관측 시점.** 흐름 안의 중간 상태는 plan.md Decision D8 의 병합 직전 관측 훅으로만 단정한다. 그 밖의 단정은 흐름과 흐름 **사이**(테스트가 흐름을 따로 호출하므로 관측 가능) 또는 흐름이 끝난 뒤의 상태만 본다.
+- **관측 시점.** 흐름 안의 중간 상태는 plan.md Decision D8 의 병합 직전 관측 훅(`preMergeSettingsSnapshotHook`)으로만 단정한다. 이 훅은 M4 에서 `internal/cli` 에 들이며, 쓰는 기준은 AC-USB-005 하나다. 그 밖의 단정은 흐름과 흐름 **사이**(테스트가 흐름을 따로 호출하므로 관측 가능) 또는 흐름이 끝난 뒤의 상태만 본다.
 
 ## §B 요구사항 ↔ 수용 기준
 
@@ -41,6 +41,14 @@
 | **RED-now** | 구현 전 트리에서 실패해야 한다. 이유를 칸에 적는다 |
 | **RED-stub** | 시접의 빈 구현에 대해 실패해야 한다 |
 | **guard** | 구현 전에도 통과한다. 깨뜨리면 안 되는 동작을 지키며, §E 뮤턴트로 반증 가능성을 확보한다 |
+| **stub-green** | 시접과 base 선택은 들어가 있고 승격만 비운 스텁에서 통과한다. 구현 전 트리에는 시접이 없어 돌지 않으므로 guard 가 아니다. 반증은 §E 뮤턴트가 맡는다(감사 N3-05) |
+
+**run 단계 관측 기록.** 아래 셀은 plan 단계 표기와 다른 방식으로 RED 를 관측했다. 예측 표기는 각 AC 에 그대로 두고 여기에 관측 방식을 적는다.
+
+- AC-USB-005, AC-USB-007 전 셀, AC-USB-008 `clean_reinstall`·`update_leftover_promote_failure` 는 RED-now 로 예측했다. 그러나 이 시험들은 배선과 함께만 생기는 시접(`preMergeSettingsSnapshotHook`, `applyAutonomyTierBundleFn`)을 쓰므로 구현 전 트리에서는 컴파일되지 않는다. RED 는 배선에서 생명주기 호출 여섯 개를 빼고 시접은 남긴 스텁에서, 값 단정으로 관측했다(`progress.md` §E.2.10 §2).
+- AC-USB-008 `helper`, AC-USB-014 `fresh_dir` 는 backup 의 빈 골격에 대해 관측했다(§E.2.4).
+- AC-USB-016 c6 은 흐름 스텁에서 통과했다. 이 셀은 병합 없이 `backup.SettleSettingsSnapshot` 을 직접 부르며, 그 RED 는 backup 골격의 `TestSettleSettingsSnapshot/not_preserved_promotes` 에서 관측했다(§E.2.4, §E.2.5).
+- 진짜 RED-now(구현 전 트리, 값 단정)로 관측한 셀은 AC-USB-001·003·012·013 이다(§E.2.2).
 
 ## §D 수용 기준 (Given-When-Then)
 
@@ -87,11 +95,12 @@
   - (iv) 결과 `.claude/settings.json` 은 `userOnly` 를 가지므로 `R` 과 다르다.
 - **RED 이유** — 지금은 대기본도 확정본 갱신도 없다.
 - **반증** — M-05, M-06c.
+- **관측(run 단계)** — M-05 는 (ii) 에서 RED 였다. (i) 은 배선 수준 변이 M-06c-w(기록 직후 대기본을 확정본으로 옮김)가 잡았다. 시접 수준의 M-06c 는 슬롯 전에 관측해 이 cli 시험에는 적용하지 않았다(§E, `progress.md` §E.2.7, §E.2.10).
 - **green 경로** — M4.
 
 ### AC-USB-006 — 두 사이클에서 한 흐름의 base 는 이전 흐름의 렌더다 (두 흐름 순서 모두) · **RED-stub**
 
-- 패키지·테스트: merge 또는 backup(시접이 사는 곳) · `TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender` (하위 테스트 `single_call_order`, `split_deploy_then_restore_order`)
+- 패키지·테스트: merge · `TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender` (하위 테스트 `single_call_order`, `split_deploy_then_restore_order`)
 - **Given** 1회차 렌더 `R1 = {"model":"sonnet","userOnly":false}` 와 사용자 파일 `{"model":"sonnet","userOnly":true}` 로 1회차가 병합 결과를 쓴다(D5 경우 1). 2회차 렌더는 `R2 = {"model":"haiku","userOnly":false,"newKey":1}` 이고, 사용자는 1회차 결과 파일을 편집하지 않는다.
   - `single_call_order` 는 clean-reinstall 처럼 배포·병합·승격을 한 번에 호출한다.
   - `split_deploy_then_restore_order` 는 일반 update 처럼 배포 단계 호출과 병합·승격 단계 호출을 따로 한다.
@@ -99,13 +108,14 @@
 - **Then** 2회차 뒤 `.claude/settings.json` 은 `model == "haiku"`, `newKey == 1`, `userOnly == true` 이고, 2회차 뒤 확정본은 `R2` 다.
 - **RED 이유** — 승격이 빈 구현이면 2회차가 유도 base 로 병합해 `model` 이 `sonnet` 으로 남는다.
 - **반증** — 각 하위 테스트에서 M-06c 와 M-06t 는 `newKey` 단정이 RED 여야 한다.
+- **관측(run 단계)** — 무상태 시접에서 M-06c·M-06t 는 한 코드 변이이며, 두 하위 테스트 모두 `newKey = <nil>, want 1` 로 RED 였다(`progress.md` §E.2.7).
 - **green 경로** — M3.
 
 ### AC-USB-007 — 배선: 기록·승격·남은 대기본 판정이 실제 흐름의 올바른 위치에서 실행된다 · **RED-now**
 
-- 패키지·테스트: cli(슬롯) · `TestSettingsSnapshot_WriteSites`
+- 패키지·테스트: cli(슬롯) · `TestSettingsSnapshot_WriteSites` (하위 테스트 6개), `TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute` (init 판정 위치의 소스 위치 대체)
 
-**공통 렌더.** `R1 = {"a":1}`, `R2 = {"a":2,"K":1}`, `R3 = {"a":3,"K":1,"L":1}`.
+**공통 렌더.** `R1 = {"a":1}`, `R2 = {"a":2,"K":1}`, `R3 = {"a":3,"K":1,"L":1}`. `update_leftover_version_skip` 셀은 `R2` 에 폐기 v2 deny 항목을 더한 `R2d = {"a":2,"K":1,"permissions":{"deny":["Write(./secrets/**)"]}}` 를 쓴다(감사 N3-02).
 
 | 하위 테스트 | Given | When | Then |
 |---|---|---|---|
@@ -113,30 +123,38 @@
 | `template_sync_backup_empty` | 백업 경로가 비는 조건(`configBackupPath == ""`), 확정본 `R1`, 사용자 파일 `R1`, 배포 렌더 `R2` | 템플릿 동기화 흐름 | 결과 `a == 2`, `K == 1`, 흐름 뒤 확정본 `R2` |
 | `template_sync_backup_filled` | 위와 같되 백업 경로가 차는 조건 | 템플릿 동기화 흐름 | 위와 같다 |
 | `update_leftover_abort` | 확정본 `R1`, 이전 흐름이 남긴 대기본 `R2`, 살아 있는 파일 `R2`(중단 모사), 배포 렌더 `R3` | `runUpdate` 경로(dry-run 아님, 버전 다름) | 결과 `a == 3`, `K == 1`, `L == 1`, 흐름 뒤 확정본 `R3` |
-| `update_leftover_version_skip` | 확정본 `R1`, 남은 대기본 `R2`, 살아 있는 파일 `R2`, 프로젝트 버전 = 패키지 버전 | `runUpdate` 경로(버전 일치로 동기화 건너뜀) | 반환 뒤 확정본 `R2`, 대기본 없음 |
+| `update_leftover_version_skip` | 확정본 `R1`, 남은 대기본 `R2d`, 살아 있는 파일 `R2d`, 프로젝트 버전 = 패키지 버전 | `runUpdate` 경로(버전 일치로 동기화 건너뜀) | 배포 호출 0회. 흐름 뒤 살아 있는 파일에서 폐기 항목이 빠져 있다(폐기 deny 제거가 판정 경계를 가르는지 확인하는 전제). 반환 뒤 확정본 `R2d`, 대기본 없음 |
 | `init` | 새 디렉터리(settings.json 없음), 배포 렌더 `R2`. 자율성 번들 호출을 plan.md D8 의 교체 변수로 바꿔 살아 있는 파일의 `a` 를 `9` 로 고치는 함수로 둔다(티어·게이트 환경과 무관) | init 흐름 | 흐름 뒤 확정본 바이트가 `R2` 이고, 살아 있는 파일은 `a == 9` 라 `R2` 와 다르다 |
 
 - **행동 검사를 세울 수 없는 흐름의 대체 기준.** 소스 위치 검사로 대신하되 조건을 조인다.
   - 기록 호출은 배포 호출의 성공 경로와 같은 블록 안의 무조건 문장이어야 한다.
   - 남은 대기본 판정 호출은 `runUpdate` 의 조기 반환 뒤, `stripRetiredV2DenyEntries(` 앞의 무조건 문장이어야 하고, `runInit` 에서는 `executor.Execute(` 앞이어야 한다.
   - 대체를 택한 사실과 이유를 `progress.md` §E.2 에 적는다. `update_leftover_*` 셀은 대체를 허용하지 않는다(판정 위치가 핵심이라서다).
+  - 구현 기록: init 의 남은 대기본 판정만 대체를 택했다(`TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute`). 기존 프로젝트에 남은 대기본을 두고 `runInit` 을 돌리려면 `--force` 재초기화가 필요한데, 이것은 settings.json 말고도 많은 파일을 다시 쓴다. 이유는 시험 주석과 `progress.md` §E.2.8 에 있다.
 - **RED 이유** — 기록·승격·판정이 어느 흐름에도 없다.
-- **반증** — M-07a~e, M-06t-w(`template_sync_*` 두 셀), M-D5g-w(`update_leftover_*` 두 셀).
+- **반증** — M-07a~e, M-06t-w(`template_sync_*` 두 셀), M-D5g-wb(`update_leftover_version_skip`), M-D5g-wd(`update_leftover_abort`, `update_leftover_version_skip`), M-D5g-s(`update_leftover_version_skip`), M-D5f(`update_leftover_abort`), M-D5g-init(init 소스 위치 대체). plan 단계의 M-D5g-w 한 줄은 감사 N3-01 에 따라 M-D5g-wb 와 M-D5g-wd 로 나눴다. 두 변이가 잡히는 셀이 다르기 때문이다. 관측은 모두 예측과 같았다(§E, `progress.md` §E.2.10).
 - **green 경로** — M4.
 
 ### AC-USB-008 — 대기본 기록·승격 실패는 흐름을 막지 않고 구별되는 경고를 남긴다 · **RED-now / RED-stub**
 
-- 패키지·테스트: cli(슬롯) · `TestSettingsSnapshot_WriteFailureDoesNotBlock` (하위 테스트 `clean_reinstall`, `helper`). 흐름 시접 패키지 · `TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock`.
+- 패키지·테스트(구현 위치):
+  - cli(슬롯) · `TestSettingsSnapshot_WriteFailureDoesNotBlock` (하위 테스트 `clean_reinstall`, `update_leftover_promote_failure`)
+  - backup · `TestStageDeployedSettingsSnapshot_WriteFailureDoesNotBlock` (`helper` 셀), `TestSettingsSnapshotPromoteFailureDoesNotBlock` (하위 테스트 `settle_at_flow_end`, `leftover_judgement`)
+  - merge · `TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock` (`promote_failure` 셀)
+  - plan 단계 표기는 `helper` 를 cli 하위 테스트로 적었다. 기록 헬퍼가 backup 에 있어 거기서 직접 부른다.
 
 | 셀 | Given | When | Then | 표기 |
 |---|---|---|---|---|
 | `clean_reinstall` | AC-USB-005 하네스, `.moai/cache/template-snapshot/claude` 자리에 일반 파일(대기본 기록 실패, sections 는 영향 없음) | `runCleanReinstall` | 반환 `nil`. `settings-snapshot-write-failed:` 로 시작하는 줄 정확히 1개. `Warning: template snapshot write failed:` 줄 0개. settings.json 은 폴백 병합 결과 | RED-now |
 | `helper` | 위와 같은 조건 | 세 흐름이 부르는 기록 헬퍼 직접 호출 | 위와 같은 문구 단정 | RED-now |
 | `promote_failure` | 흐름이 대기본 `R` 을 기록했고, 확정본 자리 `claude/settings.json` 이 비어 있지 않은 디렉터리여서 승격(교체)이 실패 | 흐름 시접으로 흐름을 끝냄(경우 1) | 반환 `nil`. `settings-snapshot-promote-failed:` 로 시작하는 줄 정확히 1개. `settings-snapshot-write-failed:` 줄 0개. 확정본 자리 디렉터리는 그대로 남음 | RED-stub |
+| `update_leftover_promote_failure` (감사 N3-06) | 남은 대기본 `R2`, 살아 있는 파일 `R2`(승격 조건 충족), 확정본 자리가 비어 있지 않은 디렉터리, 프로젝트 버전 = 패키지 버전 | `runUpdate` | 반환 `nil`. 표준 오류에 `settings-snapshot-promote-failed:` 로 시작하는 줄 정확히 1개. 확정본 자리 디렉터리는 그대로 남음 | RED-now(관측은 스텁, §C) |
+| `leftover_judgement` (backup, N3-06) | 위와 같은 조건 | 남은 대기본 판정 헬퍼 직접 호출 | 위와 같은 문구 단정. `settings-snapshot-write-failed:` 줄 0개 | RED-stub |
 
 - **REQ-USB-010 의 init·template_sync 적용 범위.** 세 흐름은 같은 기록 헬퍼와 같은 승격 원시 동작을 부르며, 그 호출 사실은 AC-USB-007 이 행동으로 확인한다. 이 둘의 조합을 init·template_sync 의 비차단 근거로 삼는다.
-- **반증** — M-08, M-08s, M-08p.
-- **green 경로** — M3(`promote_failure`), M4(나머지).
+- **반증** — M-08, M-08s, M-08p, M-08L.
+- **관측(run 단계)** — M-08 은 `clean_reinstall` 만 잡았다. 변이를 `update_clean_install.go` 호출 지점에 두었고, 기록 헬퍼는 반환값이 없어 `helper` 셀에는 닿지 않는다. `helper` 는 M-08s 가 잡는다. M-08p 는 `promote_failure` 와 backup 두 셀을 잡았다(`progress.md` §E.2.7, §E.2.10).
+- **green 경로** — M2·M3(backup·merge 셀), M4(cli 셀).
 
 ### AC-USB-009 — sections 스냅숏의 파일과 동작이 바뀌지 않는다 · guard
 
@@ -189,7 +207,8 @@
 
 ### AC-USB-014 — init 배포가 기존 settings.json 을 건너뛰면 대기본을 기록하지 않는다 · **RED-now**
 
-- 패키지·테스트: cli(슬롯) · `TestInitSettingsSnapshot_SkippedDeployRecordsNothing` (하위 테스트 `fresh_dir`, `untracked_existing`, `user_modified_existing`)
+- 패키지·테스트: backup · `TestInitSettingsSnapshot_SkippedDeployRecordsNothing` (하위 테스트 `fresh_dir`, `untracked_existing`, `user_modified_existing`)
+- 구현 기록: plan 단계 표기는 cli(슬롯)에서 init 흐름을 돌리는 것이었다. run 단계는 실제 비강제 배포기(`template.NewDeployer`)로 배포한 뒤 세 흐름이 부르는 기록 헬퍼를 부르는 backup 시험으로 구현했다(`progress.md` §E.2.4). init 흐름 안의 기록 위치는 AC-USB-007 `init` 이 확인한다.
 - **Given** init 배포 대역은 실제 비강제 배포기 규칙(`internal/template/deployer.go:239-255`)을 따르며 렌더 `R` 을 쓰려 한다.
   - `fresh_dir`: settings.json 이 없다.
   - `untracked_existing`: 매니페스트 기록이 없는 사용자 파일 `U` 가 있다.
@@ -219,7 +238,7 @@
 
 ### AC-USB-016 — 승격 규칙: 운영자 D5 의 다섯 결과와 판정 위치
 
-- 패키지·테스트: 흐름 시접이 사는 곳(merge 또는 backup) · `TestSettingsSnapshotFlow_PromotionRule` (하위 테스트 `c1` … `c8`, 번호는 plan.md Decision D5 경우 번호)
+- 패키지·테스트: merge · `TestSettingsSnapshotFlow_PromotionRule` (하위 테스트 `c1` … `c8`, 번호는 plan.md Decision D5 경우 번호)
 - **공통 Given.**
   - `R1 = {"a":1}` 이 확정본으로 있다.
   - 이번 흐름의 렌더는 `R2 = {"a":2,"K":1}` 이다.
@@ -229,11 +248,11 @@
 | 셀 | 운영자 결과 | 이번 흐름 조건 | Then — 이번 흐름 뒤 | Then — 다음 흐름 뒤 | 표기 |
 |---|---|---|---|---|---|
 | c1 | 병합이 결과를 씀 → 승격 | 사용자 `{"a":1,"u":1}`, 병합이 결과를 씀(살아 있는 파일 ≠ `R2` 바이트) | 확정본 `R2`, 대기본 없음 | — | RED-stub |
-| c2 | 병합 실패·통째 보존 → 이전 확정본 유지 | 사용자 파일 JSON 손상 `{"a":`, 병합이 보존 경로를 탐. 다음 흐름 전 사용자가 파일을 `{"a":1}` 로 고침 | 확정본 `R1`, 대기본 없음 | `a == 3`, `K == 1`, `L == 1` | 이번 흐름 뒤: RED-stub / 다음 흐름 뒤: guard |
+| c2 | 병합 실패·통째 보존 → 이전 확정본 유지 | 사용자 파일 JSON 손상 `{"a":`, 병합이 보존 경로를 탐. 다음 흐름 전 사용자가 파일을 `{"a":1}` 로 고침 | 확정본 `R1`, 대기본 없음 | `a == 3`, `K == 1`, `L == 1` | 이번 흐름 뒤: RED-stub(관측: 대기본 남음) / 다음 흐름 뒤: stub-green |
 | c3 | (병합 건너뜀) → 승격 | 사용자 파일이 `R2` 와 바이트 동일 | 확정본 `R2` | — | RED-stub |
 | c4 | 배포 뒤 병합 전 중단, 복원 없음 → 승격 | 배포 뒤 병합 전에 중단(살아 있는 파일 = `R2`, 대기본 `R2` 남음) | 확정본 `R1`, 대기본 `R2` | `a == 3`, `K == 1`, `L == 1`, 확정본 `R3` | RED-stub |
-| c5 | 중단 뒤 사용자 파일 복귀 → 이전 확정본 유지 | c4 처럼 중단한 뒤, 다음 흐름 전에 사용자 파일 `{"a":1}` 을 되돌려 씀(손 복원. 복원 명령은 settings.json 을 되돌리지 않는다는 판독이며 M1 이 관측) | 확정본 `R1`, 대기본 `R2` | `a == 3`, `K == 1`, `L == 1`, 확정본 `R3` | 다음 흐름 뒤: guard, 뮤턴트로 반증 |
-| c6 | init 이 파일을 씀 → 승격 | init 이 `R2` 를 씀, 이후 자율성 번들 모사가 `a` 를 `9` 로 고침 | 확정본 `R2` | — | RED-stub |
+| c5 | 중단 뒤 사용자 파일 복귀 → 이전 확정본 유지 | c4 처럼 중단한 뒤, 다음 흐름 전에 사용자 파일 `{"a":1}` 을 되돌려 씀(손 복원. 복원 명령은 settings.json 을 되돌리지 않는다는 판독이며 M1 이 관측) | 확정본 `R1`, 대기본 `R2` | `a == 3`, `K == 1`, `L == 1`, 확정본 `R3` | 이번 흐름 뒤: stub-green / 다음 흐름 뒤: 키 값 stub-green, 확정본 `R3` RED-stub(관측) |
+| c6 | init 이 파일을 씀 → 승격 | init 이 `R2` 를 씀, 이후 자율성 번들 모사가 `a` 를 `9` 로 고침 | 확정본 `R2` | — | RED-stub(관측: 흐름 스텁에서는 통과, RED 는 backup 골격 — §C) |
 | c8 | (사용자 파일 없음) → 승격 | update, 사용자 settings.json 이 원래 없음 | 확정본 `R2` | — | RED-stub |
 
 - D5 경우 7(init 이 기존 파일을 건너뜀)은 AC-USB-014 가 담당한다. 판정 위치의 실제 흐름 배선은 AC-USB-007 `update_leftover_*` 가 담당한다.
@@ -242,48 +261,59 @@
   - c2·c5: 올바른 규칙은 base `R1`, current `{"a":1}`, updated `R3` 이다. `a` 는 3, `K`·`L` 은 추가된다. base 가 `R2` 가 되는 뮤턴트에서는 `a` 가 충돌로 1 에 남고, `K` 는 base 에 있고 current 에 없어 사용자 삭제로 빠진다.
 - **반증**
 
-| 뮤턴트 | RED 가 나야 하는 셀 | 까닭 |
-|---|---|---|
-| M-D5a — 항상 승격 (리드 요구) | c2 다음 흐름, c5 다음 흐름 | base `R2` 가 되어 새 키 `K` 가 사용자 삭제로 읽혀 빠지고, `a` 가 1 로 남는다 |
-| M-D5b — 병합이 결과를 쓸 때만 승격 | c4 다음 흐름, c6, c8 | 병합이 없거나 중단된 흐름에서 승격하지 못해 base 가 `R1` 로 남는다(c4 `a == 2`) |
-| M-D5c — 정상 종료를 살아 있는 파일 = 렌더 바이트로 판정 | c1, c6 | 병합 결과와 번들이 고친 파일은 렌더와 바이트가 달라 승격되지 않는다 |
-| M-D5d — 남은 대기본을 판정 없이 버림 | c4 다음 흐름 | base 가 `R1` 로 남아 `a == 2` |
-| M-D5e — 중단 흐름을 중단 시점에 판정 | c5 다음 흐름 | 중단 시점의 살아 있는 파일은 `R2` 라 승격되고, 뒤이은 복귀를 보지 못한다 |
-| M-D5f — 새 대기본을 기록한 뒤 남은 대기본 판정 | c4 다음 흐름 | 새 대기본 `R3` 가 병합 전에 확정본이 되어 base = updated. `a` 가 2 로 남고 `L` 이 사용자 삭제로 빠진다 |
-| M-D5g — 남은 대기본을 흐름의 첫 재기록(배포) 뒤에 판정 | c4 다음 흐름 | 살아 있는 파일이 이미 `R3` 라 남은 `R2` 와 달라 버려지고, base 가 `R1` 로 남아 `a == 2` |
-| M-D5i — 정상 종료 보존 판정을 "살아 있는 파일 = 흐름 이전 사용자 파일" 바이트 비교로 구현 | c3 | 사용자 파일과 렌더가 같아 보존으로 오판하고 승격하지 않는다 |
+| 뮤턴트 | RED 가 나야 하는 셀(plan 예측) | 까닭 | 관측(run 단계, `progress.md` §E.2.7·§E.2.10) |
+|---|---|---|---|
+| M-D5a — 항상 승격 (리드 요구) | c2 다음 흐름, c5 다음 흐름 | base `R2` 가 되어 새 키 `K` 가 사용자 삭제로 읽혀 빠지고, `a` 가 1 로 남는다 | 예측과 같다(`a = 1`, `K = <nil>`) |
+| M-D5b — 병합이 결과를 쓸 때만 승격 | c4 다음 흐름, c6, c8 | 병합이 없거나 중단된 흐름에서 승격하지 못해 base 가 `R1` 로 남는다(c4 `a == 2`) | **예측과 다르다.** RED 는 c3·c8 이고 c4·c6 은 통과했다. 무상태 설계에서 c4 의 다음 흐름 승격은 남은 대기본 판정을 거치고, c6 은 병합 없이 승격 헬퍼를 직접 부르기 때문이다. 병합이 결과를 쓰지 않는 c3(바이트 동일로 건너뜀)와 c8(사용자 파일 없음)이 대신 잡는다. 뮤턴트는 어느 쪽이든 죽는다 |
+| M-D5c — 정상 종료를 살아 있는 파일 = 렌더 바이트로 판정 | c1, c6 | 병합 결과와 번들이 고친 파일은 렌더와 바이트가 달라 승격되지 않는다 | 예측과 같다. c4·c5 다음 흐름의 확정본 단정도 RED |
+| M-D5d — 남은 대기본을 판정 없이 버림 | c4 다음 흐름 | base 가 `R1` 로 남아 `a == 2` | 예측과 같다(`a = 2, want 3`) |
+| M-D5e — 중단 흐름을 중단 시점에 판정 | c5 다음 흐름 | 중단 시점의 살아 있는 파일은 `R2` 라 승격되고, 뒤이은 복귀를 보지 못한다 | 무상태 시접에서는 M-06c·M-06t 와 한 코드 변이(대기본이 기록 직후 스스로 승격)다. c5 다음 흐름을 포함해 c2·c4·c5 가 RED |
+| M-D5f — 새 대기본을 기록한 뒤 남은 대기본 판정 | c4 다음 흐름 | 새 대기본 `R3` 가 병합 전에 확정본이 되어 base = updated. `a` 가 2 로 남고 `L` 이 사용자 삭제로 빠진다 | 무상태 시접에는 판정 위치가 없다(순서는 호출 지점이 정한다). 그래서 호출 지점 변이로 관측했다. AC-USB-007 `update_leftover_abort` 가 `a = 2, want 3`, `L = <nil>` 로 RED |
+| M-D5g — 남은 대기본을 흐름의 첫 재기록(배포) 뒤에 판정 | c4 다음 흐름 | 살아 있는 파일이 이미 `R3` 라 남은 `R2` 와 달라 버려지고, base 가 `R1` 로 남아 `a == 2` | 같은 이유로 호출 지점 변이 M-D5g-wd 로 관측했다(§E) |
+| M-D5i — 정상 종료 보존 판정을 "살아 있는 파일 = 흐름 이전 사용자 파일" 바이트 비교로 구현 | c3 | 사용자 파일과 렌더가 같아 보존으로 오판하고 승격하지 않는다 | 예측과 같다 |
 
 ## §E 뮤턴트 표 (M5 에서 적용 → RED 관측 → 되돌림)
 
-| ID | 뮤턴트 | RED 가 나야 하는 기준 |
-|---|---|---|
-| M-01 | 확정본 분기를 지워 늘 유도 base 사용 | AC-001, AC-003, AC-012, AC-013 |
-| M-02 | 확정본이 있으면 새 렌더를 통째로 씀 | AC-002, AC-003 |
-| M-04 | 손상 확정본이면 병합이 오류 반환 | AC-004 |
-| M-05 | 대기본을 병합 뒤 파일 복사로 만듦 | AC-005 (ii) |
-| M-06c | clean-reinstall 형 순서에서 병합 전에 대기본을 확정본으로 승격 | AC-005 (i), AC-006 `single_call_order` |
-| M-06t | template_sync 형 순서(시접의 배포 단계 호출 안)에서 확정본을 새 렌더로 덮음 | AC-006 `split_deploy_then_restore_order` |
-| M-06t-w | 실제 Deploy Templates 단계에서 확정본을 직접 씀(대기본·시접 우회) | AC-007 `template_sync_backup_empty`, `template_sync_backup_filled` (`K` 가 사용자 삭제로 빠지고 `a` 가 1 로 남음) |
-| M-07a | init 의 기록을 `ApplyAutonomyTierBundle` 뒤로 옮김 | AC-007 `init` |
-| M-07b | template_sync 의 기록 삭제 | AC-007 `template_sync_*` |
-| M-07c | clean_reinstall 의 기록을 `stripRetiredV2DenyEntries` 뒤로 옮김 | AC-007 `clean_reinstall` |
-| M-07d | template_sync 의 기록을 `if configBackupPath != ""` 블록 안으로 옮김 | AC-007 `template_sync_backup_empty` |
-| M-07e | init 의 기록을 `executor.Execute` 오류 분기 안으로 옮김 | AC-007 `init` |
-| M-08 | 기록 실패를 흐름 오류로 반환 | AC-008 `clean_reinstall`, `helper` |
-| M-08s | settings 기록 실패 경고를 sections 경고 문구로 출력 | AC-008 문구 단정 |
-| M-08p | 승격 실패를 흐름 오류로 반환하거나 기록 실패 문구로 출력 | AC-008 `promote_failure` |
-| M-09 | `HasSnapshot` 이 스냅숏 루트 전체의 비어 있음 여부를 봄 | AC-009 셀 B |
-| M-11 | 확정본 base 를 모든 JSON 병합 대상에 적용 | AC-011 |
-| M-14 | 건너뜀과 무관하게 배포 뒤 디스크 파일을 읽어 대기본 기록 | AC-014 기존 파일 두 셀 |
-| M-D5a | 항상 승격 | AC-016 c2·c5 다음 흐름 |
-| M-D5b | 병합이 결과를 쓸 때만 승격 | AC-016 c4 다음 흐름·c6·c8 |
-| M-D5c | 정상 종료를 바이트 동일로 판정 | AC-016 c1·c6 |
-| M-D5d | 남은 대기본을 판정 없이 버림 | AC-016 c4 다음 흐름 |
-| M-D5e | 중단 흐름을 중단 시점에 판정 | AC-016 c5 다음 흐름 |
-| M-D5f | 새 대기본 기록 뒤 남은 대기본 판정 | AC-016 c4 다음 흐름 |
-| M-D5g | 남은 대기본을 첫 재기록(배포) 뒤에 판정 | AC-016 c4 다음 흐름 |
-| M-D5g-w | 실제 흐름에서 남은 대기본 판정을 백업 단계나 배포 뒤로 옮김 | AC-007 `update_leftover_abort`(`a == 2`), `update_leftover_version_skip`(판정이 실행되지 않아 확정본 `R1`) |
-| M-D5i | 정상 종료 보존 판정을 바이트 비교로 구현 | AC-016 c3 |
+"RED 가 나야 하는 기준"은 plan 단계 예측이며 고치지 않았다. "관측" 칸은 run 단계에서 실제로 RED 가 난 셀과 단정이다(`progress.md` §E.2.7 은 슬롯 없이, §E.2.10 은 리드 슬롯에서 관측했다). "(run 추가)" 줄은 plan 단계 표에 없던 뮤턴트다. 이 줄의 예측 칸에는 관측 전에 `.moai/reports/t656/run/slot-request.md` 에 적은 예측을 옮겼다.
+
+| ID | 뮤턴트 | RED 가 나야 하는 기준 | 관측 |
+|---|---|---|---|
+| M-01 | 확정본 분기를 지워 늘 유도 base 사용 | AC-001, AC-003, AC-012, AC-013 | 예측과 같다 |
+| M-02 | 확정본이 있으면 새 렌더를 통째로 씀 | AC-002, AC-003 | AC-002, AC-003 에 더해 AC-012, AC-013 도 RED |
+| M-04 | 손상 확정본이면 병합이 오류 반환 | AC-004 | AC-004 `unreadable_dir`·`invalid_json`·`json_array`·`json_null`. `absent` 는 통과가 맞다 |
+| M-05 | 대기본을 병합 뒤 파일 복사로 만듦 | AC-005 (ii) | 예측과 같다(`:296`) |
+| M-06c | clean-reinstall 형 순서에서 병합 전에 대기본을 확정본으로 승격 | AC-005 (i), AC-006 `single_call_order` | 무상태 시접에서 M-06t·M-D5e 와 한 코드 변이다. AC-006 두 하위 테스트, AC-016 c2·c4·c5, AC-008 `promote_failure` 가 RED. AC-005 (i) 은 cli 시험이라 슬롯 전 관측에서 돌리지 않았고, M-06c-w 가 잡는다 |
+| M-06c-w (run 추가) | clean_reinstall 배선에서 기록 직후 대기본을 확정본으로 옮김 | AC-005 (i) | 예측과 같다(`:293`) |
+| M-06t | template_sync 형 순서(시접의 배포 단계 호출 안)에서 확정본을 새 렌더로 덮음 | AC-006 `split_deploy_then_restore_order` | M-06c 와 같은 코드 변이로 RED |
+| M-06t-w | 실제 Deploy Templates 단계에서 확정본을 직접 씀(대기본·시접 우회) | AC-007 `template_sync_backup_empty`, `template_sync_backup_filled` (`K` 가 사용자 삭제로 빠지고 `a` 가 1 로 남음) | 두 셀이 살아 있는 파일 값 단정(`:354`, `a = 1`, `K = <nil>`)에서 RED 였다. 확정본 단정(`:355`)은 통과한다. 변이가 렌더를 곧바로 확정본에 쓰므로 틀린 base 는 병합 결과에만 드러난다 |
+| M-07a | init 의 기록을 `ApplyAutonomyTierBundle` 뒤로 옮김 | AC-007 `init` | 예측과 같다(`:450` 확정본 없음) |
+| M-07b | template_sync 의 기록 삭제 | AC-007 `template_sync_*` | 예측과 같다(`:355` 두 셀) |
+| M-07c | clean_reinstall 의 기록을 `stripRetiredV2DenyEntries` 뒤로 옮김 | AC-007 `clean_reinstall` | 예측과 같다(`:324`) |
+| M-07d | template_sync 의 기록을 `if configBackupPath != ""` 블록 안으로 옮김 | AC-007 `template_sync_backup_empty` | 셀은 같다. 적용한 변이는 ② 기록이 아니라 ③(병합·승격 호출 `mergeUserFilesSettlingSnapshot`)을 블록 안으로 옮긴 것이다. 구현에서 ② 기록은 Deploy Templates 단계에 있어 그 블록과 떨어져 있기 때문이다. RED 는 확정본 단정(`:355`)뿐이고 살아 있는 파일 값은 통과한다. 병합이 건너뛰어져 렌더가 그대로 살아 있기 때문이다. slot-request.md 는 `a == 1` 도 예측했으나 관측되지 않았다 |
+| M-07e | init 의 기록을 `executor.Execute` 오류 분기 안으로 옮김 | AC-007 `init` | 예측과 같다(`:450`) |
+| M-08 | 기록 실패를 흐름 오류로 반환 | AC-008 `clean_reinstall`, `helper` | `clean_reinstall` 만(`:511`). 변이를 cli 호출 지점에 두었고 기록 헬퍼는 반환값이 없어 `helper` 에는 닿지 않는다. `helper` 는 M-08s 가 잡는다 |
+| M-08L (run 추가, N3-06) | `runUpdate` 의 남은 대기본 판정 뒤 대기본이 남아 있으면 흐름 오류 반환 | AC-008 `update_leftover_promote_failure` | 예측과 같다(`:537`) |
+| M-08s | settings 기록 실패 경고를 sections 경고 문구로 출력 | AC-008 문구 단정 | AC-008 `helper`(prefix 줄 0개, sections 문구 출력) |
+| M-08p | 승격 실패를 흐름 오류로 반환하거나 기록 실패 문구로 출력 | AC-008 `promote_failure` | `promote_failure` 에 더해 backup 승격 실패 두 셀도 RED |
+| M-09 | `HasSnapshot` 이 스냅숏 루트 전체의 비어 있음 여부를 봄 | AC-009 셀 B | 예측과 같다. 셀 A 는 통과 |
+| M-11 | 확정본 base 를 모든 JSON 병합 대상에 적용 | AC-011 | 예측과 같다 |
+| M-14 | 건너뜀과 무관하게 배포 뒤 디스크 파일을 읽어 대기본 기록 | AC-014 기존 파일 두 셀 | 예측과 같다. 낡은 해시 단위 셀도 RED |
+| M-D5a | 항상 승격 | AC-016 c2·c5 다음 흐름 | 예측과 같다 |
+| M-D5b | 병합이 결과를 쓸 때만 승격 | AC-016 c4 다음 흐름·c6·c8 | **다르다.** c3·c8 이 RED, c4·c6 은 통과(까닭은 AC-USB-016 반증 표) |
+| M-D5c | 정상 종료를 바이트 동일로 판정 | AC-016 c1·c6 | 예측과 같다. c4·c5 다음 흐름 확정본도 RED |
+| M-D5d | 남은 대기본을 판정 없이 버림 | AC-016 c4 다음 흐름 | 예측과 같다 |
+| M-D5e | 중단 흐름을 중단 시점에 판정 | AC-016 c5 다음 흐름 | M-06c 와 같은 코드 변이로 RED(c5 다음 흐름 포함) |
+| M-D5f | 새 대기본 기록 뒤 남은 대기본 판정 | AC-016 c4 다음 흐름 | 호출 지점 변이로 관측했다. AC-007 `update_leftover_abort`(`:376`, `a = 2`, `L = <nil>`) |
+| M-D5g | 남은 대기본을 첫 재기록(배포) 뒤에 판정 | AC-016 c4 다음 흐름 | 호출 지점 변이 M-D5g-wd 와 같은 변이로 관측했다 |
+| ~~M-D5g-w~~ | 실제 흐름에서 남은 대기본 판정을 백업 단계나 배포 뒤로 옮김 | AC-007 `update_leftover_abort`(`a == 2`), `update_leftover_version_skip`(판정이 실행되지 않아 확정본 `R1`) | 감사 N3-01 에 따라 아래 두 줄로 나눴다. 두 위치가 잡히는 셀이 다르다 |
+| M-D5g-wb (N3-01) | 판정을 백업 단계(`case "Backup":` 머리)로 옮김 | AC-007 `update_leftover_version_skip` 만. `update_leftover_abort` 는 통과가 맞다(폐기 deny 제거가 `R2` 에는 아무것도 하지 않는다) | 예측과 같다(`:407` 확정본 `R1`, `:408` 대기본 남음) |
+| M-D5g-wd (N3-01) | 판정을 Deploy Templates 배포 뒤, 대기본 기록 직전으로 옮김 | AC-007 `update_leftover_abort`(`a == 2`), `update_leftover_version_skip`(확정본 `R1`) | 예측과 같다(`:376`, `:407`) |
+| M-D5g-s (run 추가, N3-02) | 판정을 폐기 deny 제거 뒤로 옮김 | AC-007 `update_leftover_version_skip`(벗겨진 살아 있는 파일 ≠ 남은 대기본 → 폐기, 확정본 `R1`) | 예측과 같다(`:407`). `update_leftover_abort` 는 통과 |
+| M-D5g-init (run 추가) | init 의 판정을 `executor.Execute` 뒤로 옮김 | AC-007 init 소스 위치 대체 검사 | 예측과 같다(`:483`) |
+| M-D5i | 정상 종료 보존 판정을 바이트 비교로 구현 | AC-016 c3 | 예측과 같다 |
+
+- **개수.** plan 단계 예측은 ID 27개였다. M-D5g-w 를 둘로 나누고 run 단계에서 네 개(M-06c-w, M-08L, M-D5g-s, M-D5g-init)를 더해 살아 있는 ID 는 32개다. 이 가운데 M-06c·M-06t·M-D5e 가 한 코드 변이이고 M-D5g 와 M-D5g-wd 가 한 코드 변이라, 적용한 코드 변이는 29개다(§E.2.7 14개, §E.2.10 15개). 29개 모두 RED 였고 생존은 0이다.
+- **선택자 계수.** cli GREEN 실행(§E.2.10 §1)은 top-level 4개와 하위 테스트 8개, `--- PASS` 12줄이다. slot-request.md 는 하위 테스트를 9개로 적었으나 목록의 행을 센 오기다. 표의 10행 가운데 2행은 하위 테스트가 없는 top-level 이다.
 
 각 관측은 명령, 출력 원문, 종료 코드, 트리 SHA(뮤턴트 적용 트리 포함)를 `progress.md` §E.2 에 남긴다.
 
@@ -301,7 +331,7 @@
 
 - AC-USB-001~016 이 모두 통과한다.
 - RED-now·RED-stub 셀(001, 003, 005, 006, 007, 008, 012, 013, 014, 016 의 표기 셀)의 구현 전 RED 관측이 네 요소로 `progress.md` §E.2 에 있다.
-- §E 뮤턴트 27개의 RED 관측이 `progress.md` §E.2 에 있다.
+- §E 뮤턴트의 RED 관측이 `progress.md` §E.2 에 있다. 대상은 살아 있는 ID 32개, 코드 변이로는 29개다. plan 단계에서는 27개로 적었고, 늘어난 까닭은 §E 의 개수 항목에 있다.
 - M1 의 복원 동작 확인 결과가 `progress.md` §E.2 에 있다.
 - `go test ./internal/cli/update/merge/... ./internal/cli/update/backup/...` 가 통과하고, `internal/cli` 영향 테스트가 슬롯 안에서 통과한다.
 - `golangci-lint run ./internal/cli/update/...` 가 깨끗하고, `GOOS=windows GOARCH=amd64 go build ./internal/cli/...` 가 성공한다.
