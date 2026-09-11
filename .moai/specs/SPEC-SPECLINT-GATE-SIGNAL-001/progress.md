@@ -627,7 +627,62 @@ M1 에서 pending 으로 남긴 AC-SLGS-002 mutation 절반은 M2 착지 후 관
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-09-11
+sync_commit_sha: pending-backfill (this commit cannot cite its own hash)
+
+**What was synced.** `spec.md` frontmatter transitioned `in-progress → completed` (`status:` + `updated:` only; body content untouched). `CHANGELOG.md` `[Unreleased] → Fixed` gained one entry describing the per-rule baseline ratchet, the mandatory-reason re-baseline procedure, the unchanged error-first ordering, the CI wiring change, and the M4 CC2X-ADOPT-001/002 relocation — no SPEC-internal chatter, no frozen counts. The docs-site CLI reference (`docs-site/content/{en,ko,ja,zh}/cli-reference/spec.md`) gained three rows (`--baseline`, `--update-baseline`, `--reason`) in the `moai spec lint` flag table across all four locales in this same commit, since that table already documented the command's flags and was otherwise silent on the new ones.
+
+**B12 self-test (run before drafting).**
+
+| # | Test | Command | Observed |
+|---|---|---|---|
+| 1 | Pre-emission grep | `grep -c 'SPEC-SPECLINT-GATE-SIGNAL-001' CHANGELOG.md` | `0`, rc=1 — no prior entry, emission proceeds |
+| 2 | AC count match | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-SPECLINT-GATE-SIGNAL-001/acceptance.md \| sort -u \| wc -l` | `12` (AC-SLGS-001..012, all live identifiers) — CHANGELOG entry states "12 acceptance criteria" |
+| 3 | File path verification | `ls internal/cli/spec_lint.go internal/spec/lint_baseline.go .github/workflows/spec-lint.yml .moai/spec-lint-baseline.json .moai/research/SPEC-V3R4-CC2X-ADOPT-001-research.md .moai/research/SPEC-V3R4-CC2X-ADOPT-002-research.md` | all 6 resolve (no `No such file or directory`); `.moai/specs/SPEC-V3R4-CC2X-ADOPT-00{1,2}/` confirmed absent by `ls` |
+
+**Verification commands run in this sync commit (this tree, this run).**
+
+```
+$ git diff --check
+(no output, exit 0)
+
+$ grep -c '^## \[Unreleased\]' CHANGELOG.md
+1
+
+$ go build -o <scratch>/moai-t525-sync ./cmd/moai; echo "exit=$?"
+exit=0
+
+$ <scratch>/moai-t525-sync spec lint --baseline .moai/spec-lint-baseline.json > .moai/reports/t525/sync/sync-gate.txt 2>&1; echo "exit=$?"
+exit=0
+
+$ tail -4 .moai/reports/t525/sync/sync-gate.txt
+0 error(s), 3133 warning(s)
+
+baseline: OK — .moai/spec-lint-baseline.json
+  inventory: 3133 warning(s) total (advisory included), 0 non-advisory tracked across 0 recorded rule(s)
+  recorded at: 4ac93f755 (2026-09-11)
+
+$ grep -c 'SPECLINT-GATE-SIGNAL-001' .moai/reports/t525/sync/sync-gate.txt
+8
+
+$ /usr/bin/grep -c '^ERROR' .moai/reports/t525/sync/sync-gate.txt
+0
+```
+
+(Full sync-gate output and the exit-code log are under `.moai/reports/t525/sync/`; counts above are measured values at this tree and are not frozen into any code path or doctrine — the same convention M1-M4 established, `REQ-SLGS-003`. The 8 hits are 7 `WARNING ModalityUnjudged` advisory findings + 1 `INFO OwnershipTransitionUnmeasured` finding against this SPEC's own `spec.md` — all pre-existing (the same 8 lines appear, same count, in the absorb-time control `.moai/reports/t525/absorb/lint-default.txt`) and none error-severity: this SPEC gained no error and no new finding from the sync edits.)
+
+**Kept visible from run-phase — not resolved by sync.**
+
+- **AC-SLGS-010 first-half caveat is a sync-auditor judgment item, not resolved here.** The run-phase record (§E.3) states plainly that whether M4's directory relocation counts as "(a)-axis warning-debt payment" depends on how the (a) axis's extension is read — as "the advisory reserve specifically" (M4's own defense) or as "the standing warning inventory as a whole" (the reading under which the caveat would fail). This sync commit does **not** adjudicate that reading; it is named here so the sync-auditor picks it up as an explicit open question rather than reading the run-phase PASS-WITH-CAVEAT as settled.
+- **AC-SLGS-011 log-half gap is lead-owned, not sync-owned.** The green-CI-run inventory line can only be read after this branch lands on `develop` and the `SPEC Lint` workflow runs on that push; this sync commit cannot produce that evidence from inside the card worktree. Carried forward unchanged from §E.3.
+- **Regression guard `TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule` was not re-run in this sync commit.** No new `internal/cli` test slot was opened for sync — the slot is queued with the lead (after lane-5 and lane-3) and will record the `--- PASS`/`--- FAIL` line counts for the selector when it runs.
+- **The local `develop` this branch absorbed (`81c1d58f9`) has since moved further ahead.** The integration window that merges this branch is expected to re-absorb and re-check the baseline against whatever tree that produces — this sync commit's baseline (`tree_sha: 4ac93f755`) and gate measurements are NOT re-attributed to a later merge tree.
+
+**Residual risk.**
+
+- The re-baseline procedure (`--update-baseline --reason`) is easy to invoke repeatedly; its only defense against becoming decorative is the mandatory, non-empty `--reason` and downstream audit attention (`spec.md` §4). This sync closes no new mitigation beyond what M2/M3.4 already built.
+- `"rules": {}` in the checked-in baseline is the strictest possible state (any future non-advisory warning is an immediate regression), which is by design but easy for a future reader to misread as "the baseline does nothing" — flagged in run-phase §E.2 M3's residual-risk section and repeated here because it is exactly the kind of misreading a sync-phase reader is positioned to make on first contact with the file.
 
 ## §F Phase 4 Mode Selection
 

@@ -2,7 +2,7 @@
 id: SPEC-SPECLINT-GATE-SIGNAL-001
 title: "SPEC Lint 게이트 재신호화 — 상시 적색 판정(M1)과 신규 적색 분리 기제(M2)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-07
 updated: 2026-09-11
 author: manager-spec
