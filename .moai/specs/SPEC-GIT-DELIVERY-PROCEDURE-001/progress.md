@@ -159,7 +159,33 @@ gaps: [ci-not-observed (branch unpushed), develop-not-absorbed (25 commits; rang
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-12
+sync_status: closed        # audit-ready -> closed; spec.md status implemented -> completed in this close commit
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own SHA; manager-docs backfills it in a follow-up commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption)
+sync_commits:
+  - 0dc007201   # sync step 1 — doc-execution.md:34 wording (later superseded by ae4861945), CHANGELOG [Unreleased] entry, status: implemented
+  - 50cebf3c2   # sync step 1 — AC-GDP-015 post-commit judge and progress record
+  - ae4861945   # sync-audit F1 fix — is_worktree_context wording in doc-execution.md:34 (both copies)
+  - c61405c8b   # AC-GDP-015 re-run after the F1 fix
+sync_audit:
+  iteration_1: FAIL 84   # .moai/reports/t622/sync-audit.md (F1 blocking; F2-F7 accepted as follow-ups/notes)
+  iteration_2: PASS 91   # .moai/reports/t622/sync-audit-iter2.md (delta audit: F1 resolved, no regression)
+lane_verdict: .moai/reports/t622/verdict.md   # lane recommendation PASS; final PASS/FAIL is the lead's
+changelog_entry_position: "[Unreleased] ### Changed, top entry (0dc007201)"
+b12_self_test_a: "pre-emission grep -c SPEC-GIT-DELIVERY-PROCEDURE-001 CHANGELOG.md -> 0 (sync step 1)"
+b12_self_test_b: "16 judged ACs per acceptance.md (sync step 1)"
+b12_self_test_c: "12 cited paths ls exit 0 (.moai/reports/t622/sync/changelog-path-check.txt)"
+frontmatter_status_transitions:
+  in_progress_to_implemented: 0dc007201
+  implemented_to_completed: this close commit (subject names SPEC-GIT-DELIVERY-PROCEDURE-001)
+known_placeholders:
+  - "§E.3 run_commit_sha: pending-backfill-run — owned by run-phase (manager-develop); left untouched by this close"
+  - "§E.4 sync_commit_sha: pending-backfill-sync — owned by manager-docs; backfilled after this close lands"
+token_accounting: not-measured   # moai tokens record writes a machine-local ledger from a session transcript; no CLI path writes progress.md §I (WriteSectionI has no non-test caller), so no §I section is written
+```
+
+**Attribution — what this close describes.** The close commit's tree carries the card's full content as of this commit on `WT-git-procedure-fixes` (parent `41067054d`). The instruction files (`.claude/`, `internal/`, `CHANGELOG.md`) last changed in `ae4861945`; the commits after it (`c61405c8b`, `947cc8439`, `41067054d`, and this close) touch only SPEC records and `.moai/reports/t622/` evidence. The measurements cited above were taken before the card absorbed local develop (card base `f1f034bb4`, the merge-base with local develop `ac6c42c2d` at close time). The range-based judges AC-GDP-014, AC-GDP-015, AC-GDP-016, AC-GDP-025, AC-GDP-030 and M5 are pre-merge judges: the lane re-measures them on the merge tree after absorbing local develop in the integration window, per `verdict.md` §4. This close therefore does **not** claim a post-absorb measurement.
 
 ## §F Phase 4 Mode Selection
 
