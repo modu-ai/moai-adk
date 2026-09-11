@@ -228,6 +228,21 @@ log_gate_event() {
         >> "$GATE_LOG_DIR/sync-quality-gate.log" 2>/dev/null || true
 }
 
+# consume_snapshot: query the shared diagnostic snapshot for this HEAD before
+# running the fast gate. The hook records only the outcome, never treats a
+# missing CLI or a failed query as a PASS.
+consume_snapshot() {
+    if ! command -v moai >/dev/null 2>&1; then
+        printf 'unavailable\n'
+        return 0
+    fi
+    if moai verify check --key-current >/dev/null 2>&1; then
+        printf 'hit\n'
+    else
+        printf 'miss\n'
+    fi
+}
+
 # emit_gate_notice <text>: a non-blocking notice. It carries only a systemMessage,
 # so repeated notices never count toward the runtime Stop-hook block cap.
 emit_gate_notice() {
@@ -377,8 +392,13 @@ if [ -n "$HEAD_SHA" ]; then
     else
         rm -f "$RETRY_FILE" 2>/dev/null || true
     fi
-    printf '%s running\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
+printf '%s running\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
 fi
+
+# The hook is a direct snapshot consumer. This query is intentionally after
+# the per-HEAD running record and before any compiler/vet/build command.
+SNAPSHOT_STATUS=$(consume_snapshot)
+log_gate_event "snapshot_status=$SNAPSHOT_STATUS"
 
 # Per-check result scratch dir.
 # GATE_TMPDIR (not TMPDIR): TMPDIR is the reserved POSIX temp-dir variable —
