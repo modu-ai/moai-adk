@@ -1,0 +1,18 @@
+findings=3336 severities=info=203,warning=3133 nonadvisory_warnings=0 errors=0
+DuplicateAcceptanceID_findings=0
+CoverageIncomplete: warning/adv=1=2010
+FrontmatterInvalid: warning/adv=1=14
+InvalidREQID: warning/adv=1=6
+LegacyEARSKeyword: warning/adv=1=48
+MissingExclusions: warning/adv=1=27
+ModalityMalformed: warning/adv=1=180
+ModalityUnjudged: warning/adv=1=514
+MovingRefUnpinned: warning/adv=1=116
+OwnershipTransitionInvalid: warning/adv=1=1
+OwnershipTransitionUnmeasured: info/adv=0=203
+REQTableRowsRejected: warning/adv=1=84
+StatusGitConsistency: warning/adv=1=18
+StatusTokenUnrecognized: warning/adv=1=7
+StatusTransitionInvalid: warning/adv=1=102
+SyncSHASlotFormat: warning/adv=1=6
+json_codes=15 source_codes=34 in_json_not_source=0 

@@ -1,0 +1,4 @@
+HEAD=4ac93f755bd65c8f08d0d78f5e6fb20a26ea7da0
+tree=8479fb2d7a4d45375a2d7e7ad98c0af0e2d3c468
+binary=go build -o <session scratch>/moai-t525-m34 ./cmd/moai at that HEAD (exit 0), invoked by path; installed moai not used
+note=binary built without Makefile LDFLAGS, so `version` prints v3.1.3 none/unknown; the build commit is this HEAD, not the version stamp

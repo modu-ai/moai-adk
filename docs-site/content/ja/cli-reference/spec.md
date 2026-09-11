@@ -58,6 +58,9 @@ moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 | `--sarif` | SARIF 2.1.0 形式で出力 |
 | `--strict` | 警告をエラーとして扱う |
 | `--format <fmt>` | 出力形式 (table) |
+| `--baseline <path>` | `--strict` の代わりにリポジトリにチェックインされたルール別ベースラインでゲートする — エラーは常に失敗、ルールの非advisory警告数は記録値を上回った場合のみブロックし、残存する警告総数は出力にそのまま表示される |
+| `--update-baseline` | `--baseline` ファイルを再計算して書き直す(`--reason` が必須) |
+| `--reason "<text>"` | `--update-baseline` が記録する必須の空でない理由 — 理由が空または未指定の場合は拒否される |
 
 | 引数の形 | 例 |
 |--------|------|

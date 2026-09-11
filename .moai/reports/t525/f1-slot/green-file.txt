@@ -1,0 +1,68 @@
+=== RUN   TestSpecLint_IDArg_ResolvesToSpecMD
+--- PASS: TestSpecLint_IDArg_ResolvesToSpecMD (0.25s)
+=== RUN   TestSpecLint_IDArg_EqualsPathForm
+--- PASS: TestSpecLint_IDArg_EqualsPathForm (0.70s)
+=== RUN   TestSpecLint_IDArg_FromSubdirectory
+--- PASS: TestSpecLint_IDArg_FromSubdirectory (0.26s)
+=== RUN   TestSpecLint_DirectoryArg
+--- PASS: TestSpecLint_DirectoryArg (0.46s)
+=== RUN   TestSpecLint_UnresolvableID_IsArgumentError
+--- PASS: TestSpecLint_UnresolvableID_IsArgumentError (0.00s)
+=== RUN   TestSpecLint_PathForm_Unchanged
+--- PASS: TestSpecLint_PathForm_Unchanged (0.33s)
+=== RUN   TestSpecLint_MissingPathArg_StillParseFailure
+--- PASS: TestSpecLint_MissingPathArg_StillParseFailure (0.01s)
+=== RUN   TestSpecLint_AnchorInvariant_SPEC_A_1
+--- PASS: TestSpecLint_AnchorInvariant_SPEC_A_1 (0.03s)
+=== RUN   TestSpecLintHelp_NamesThreeArgumentShapes
+--- PASS: TestSpecLintHelp_NamesThreeArgumentShapes (0.00s)
+=== RUN   TestSpecLint_MixedArgs
+--- PASS: TestSpecLint_MixedArgs (0.49s)
+=== RUN   TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule
+--- PASS: TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule (0.78s)
+=== RUN   TestSpecLintBaseline_UnchangedCorpusPassesAndPrintsWarningTotal
+--- PASS: TestSpecLintBaseline_UnchangedCorpusPassesAndPrintsWarningTotal (0.36s)
+=== RUN   TestSpecLintBaseline_DecreasePassesAndLeavesFileByteIdentical
+--- PASS: TestSpecLintBaseline_DecreasePassesAndLeavesFileByteIdentical (0.32s)
+=== RUN   TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason
+=== RUN   TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason/reason_omitted
+=== RUN   TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason/reason_empty
+=== RUN   TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason/reason_whitespace_only
+--- PASS: TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason (0.18s)
+    --- PASS: TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason/reason_omitted (0.00s)
+    --- PASS: TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason/reason_empty (0.00s)
+    --- PASS: TestSpecLintUpdateBaseline_RejectsMissingOrEmptyReason/reason_whitespace_only (0.00s)
+=== RUN   TestSpecLintUpdateBaseline_RecordsTreeSHADateAndReason
+--- PASS: TestSpecLintUpdateBaseline_RecordsTreeSHADateAndReason (0.17s)
+=== RUN   TestSpecLintBaseline_ErrorFailsRegardlessOfBaseline
+--- PASS: TestSpecLintBaseline_ErrorFailsRegardlessOfBaseline (0.62s)
+=== RUN   TestSpecLintBaseline_ErrorOutranksASimultaneousIncrease
+--- PASS: TestSpecLintBaseline_ErrorOutranksASimultaneousIncrease (0.30s)
+=== RUN   TestSpecLintUpdateBaseline_ErrorStillExitsOne
+--- PASS: TestSpecLintUpdateBaseline_ErrorStillExitsOne (0.16s)
+=== RUN   TestSpecLintBaseline_FlagContractRejections
+=== RUN   TestSpecLintBaseline_FlagContractRejections/missing_baseline_file_is_an_argument_error,_never_a_silent_fallback
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--reason_without_--update-baseline
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--update-baseline_without_--baseline
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--baseline_with_--json
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--baseline_with_--sarif
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--baseline_with_--strict
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--update-baseline_with_a_whitespace-only_--reason
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--json_with_--sarif
+--- PASS: TestSpecLintBaseline_FlagContractRejections (0.15s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/missing_baseline_file_is_an_argument_error,_never_a_silent_fallback (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--reason_without_--update-baseline (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--update-baseline_without_--baseline (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--json (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--sarif (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--strict (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--update-baseline_with_a_whitespace-only_--reason (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--json_with_--sarif (0.00s)
+=== RUN   TestSpecLintBaseline_RuleAbsentFromBaselineIsAnIncrease
+--- PASS: TestSpecLintBaseline_RuleAbsentFromBaselineIsAnIncrease (0.29s)
+=== RUN   TestSpecLint_DefaultAndStrictBehaviourUnchanged
+--- PASS: TestSpecLint_DefaultAndStrictBehaviourUnchanged (0.57s)
+=== RUN   TestSpecLintBaseline_CrossProcessBothDirections
+--- PASS: TestSpecLintBaseline_CrossProcessBothDirections (10.78s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	18.348s
