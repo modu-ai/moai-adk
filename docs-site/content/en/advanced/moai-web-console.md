@@ -170,16 +170,18 @@ What can be edited is fixed by a single source of truth, and the console writes 
 
 ## Security model
 
-**Loopback only.** The console binds to `127.0.0.1` alone. Another account on the same machine, or a remote host, cannot reach it.
+**Loopback only.** The console binds to `127.0.0.1` alone, so a remote host cannot reach it. Loopback is not divided by account, though: another account logged in to the same machine can connect to the port.
 
 **No database.** Nothing extra is started. Everything it reads and writes lives in files under the current project's `.moai/`.
 
-**No authentication.** Loopback-only is the premise, so there is no login or token layer.
+**No authentication.** There is no login or token layer. Binding to loopback keeps remote hosts out, but not other accounts on the same machine. On a shared machine, those accounts can reach the console while it is running.
 
 **No command execution.** The observation areas refuse any method other than GET, and no screen runs a command on the server. The console does not perform SPEC status transitions either — those belong to each phase's manager agent.
 
+**Host check on every request.** Every route, static files included, refuses any request — regardless of method — whose `Host` header is not a loopback name (`localhost`, `127.0.0.1`, `[::1]`, with or without a port) or has no `Host` header at all; the response is 403. Loopback binding alone does not stop DNS rebinding — a page on another site can make the browser connect to `127.0.0.1` while carrying the attacker's domain as `Host`, and the browser then lets that page read the response. The same-origin (`Sec-Fetch-Site`) check still applies only to state-changing requests.
+
 {{< callout type="info" >}}
-Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel.
+Loopback-only is what makes no-authentication acceptable. Exposing the console externally through a reverse proxy or a `0.0.0.0` bind is not supported. If you need to view it remotely, forward the local port over an SSH tunnel. An SSH tunnel still works with this check, since the browser still opens the console at a `localhost` address. That said, this was confirmed in a test setup that simulates port forwarding rather than a real SSH server, so treat it as expected behavior rather than a verified guarantee.
 {{< /callout >}}
 
 ## Four-locale interface

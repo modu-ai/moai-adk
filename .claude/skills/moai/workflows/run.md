@@ -24,9 +24,9 @@ triggers:
   phases: ["run"]
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
-<!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai run Phase <N> <enter|exit> -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 # Run Workflow Entry Router
 
@@ -188,13 +188,12 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
 | Iteration bound | [HARD] max 3 iterations; iteration 4 PROHIBITED; on iteration-3 fail the orchestrator runs an `AskUserQuestion` escalation (continue / revert+re-plan / abort) with no auto-resume | `ci-autofix-protocol.md` max-3 + `runtime-recovery-doctrine.md` §3 invariant 1 |
 | Semantic safety | [HARD] semantic failures NEVER auto-patched (the constitutional rule) | `ci-autofix-protocol.md` |
 | PATCH scope | [HARD] SPEC scope ONLY; MUST NOT touch `.env*` / credentials / CI watch infrastructure and workflow definitions / files outside plan.md §A EXTEND envelope (the constitutional rule/013) | `manager-develop-prompt-template.md` § cycle_type=autofix |
-| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+| Concurrency | the sub-agent patches code, so it is the only write-capable agent running; orchestrator work alongside it stays read-only, and foreground vs background is left to the runtime | `agent-common-protocol.md` § Background Agent Execution |
 | Flat hierarchy | spawned BY THE ORCHESTRATOR (not manager-develop — subagents cannot spawn subagents); blocker reports never direct user prompts | `agent-common-protocol.md` § User Interaction Boundary |
-| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+| Ledger | [HARD] each iteration appended to the `progress.md` Recursive Self-Diagnosis Log section, lettered per `spec-frontmatter-schema.md` § progress.md Section Map (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
 
 This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 5, sync-auditor Phase 19) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
 
 ## Routing Ledger Recording
 
 At run dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). As run-phase gates complete, it appends machine evidence via `moai harness ledger evidence` — a terminal gate exit (`--kind gate_exit --value 0 --terminal --ref "go test ./..."`) or a verify-log path (`--kind verify_path --ref <.moai/reports/<card-id>/... log>`). The `--ref` value is read later by a person auditing the ledger, not opened by the finalizer, so it names an **exported tracked file** — a scratch path recorded there resolves nowhere but the machine that wrote it. Outcome is finalized from that machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the run phase.
-

@@ -12,6 +12,10 @@ All phases execute sequentially. Each phase receives outputs from all previous p
 
 ## Phase 1: Plan Audit Gate
 
+Phase skip/resume decisions follow `.claude/rules/moai/workflow/phase-id-contract.md`.
+The headings below are display labels; the orchestrator records and compares
+canonical `phase_id` values and validates the phase DAG before jumping.
+
 **Purpose**: Mandatory independent audit of plan artifacts before any implementation begins.
 Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 1.
 Source: the plan audit gate contract.
@@ -42,8 +46,13 @@ single authoritative skip contract (the three conditions: verdict PASS, score
 Gate skip policy. This step CITES that contract — it MUST NOT restate a
 divergent condition set.
 
-Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and
-apply the canonical three-condition skip predicate. The Go helper
+Resolve the highest numbered
+`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md` through the single
+`runtime.ResolveLatestPlanAudit` lookup. The lookup must return the final
+plan-phase verdict, the plan-artifact hash, the score, and auditor version from
+that same review file. Apply the canonical three-condition skip predicate. The
+date-stamped `<SPEC-ID>-<YYYY-MM-DD>.md` file is history only: it is appended
+for observability and MUST NOT decide a cache hit. The Go helper
 `internal/runtime.SkipEligibleByScore(tier, score)` codifies condition 2
 (per-tier PASS threshold: S 0.75 / M 0.80 / L 0.85; the retired flat `≥ 0.90`
 predicate is NOT consulted).
@@ -70,7 +79,10 @@ Timeout: 60 seconds. On timeout, treat as INCONCLUSIVE (Step 4d).
 
 ### Step 4: Verdict Routing (4-Way Branch)
 
-Read the verdict from the report file produced by plan-auditor.
+Read the verdict from the review file produced by plan-auditor. If the
+iteration report is missing, malformed, or lacks the hash metadata, treat the
+lookup as a cache miss and execute a fresh audit; never promote the daily
+history file into a cache source.
 
 **4a. PASS**
 - Log: `[plan-audit] verdict=PASS, persisted to progress.md, proceeding to Phase 5`
@@ -432,11 +444,11 @@ Before Phase 11, determine the development methodology by reading `.moai/config/
 
 Steps:
 1. Load implementation plan from Phase 6 task decomposition
-2. Invoke sync-auditor to review the plan:
+2. Invoke `plan-auditor` to review the pre-implementation plan:
    - Identify missing edge cases in proposed test coverage
    - Flag security concerns in the implementation approach
    - Verify acceptance criteria are specific and testable
-3. sync-auditor produces contract proposal with:
+3. plan-auditor produces a contract proposal with:
    - Done criteria (specific test cases that must pass)
    - Edge cases identified for coverage
    - Hard thresholds (coverage %, performance targets, security requirements)
@@ -444,7 +456,7 @@ Steps:
 5. Maximum 2 negotiation rounds. If no agreement after 2 rounds, proceed with evaluator's recommendations as the contract.
 
 Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="sync-auditor")
+- Sub-agent mode: Agent(subagent_type="plan-auditor")
 - CG mode: Leader performs contract negotiation inline
 
 **Output**: `.moai/specs/SPEC-{ID}/contract.md`

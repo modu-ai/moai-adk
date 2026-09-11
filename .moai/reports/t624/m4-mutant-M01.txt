@@ -1,0 +1,19 @@
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F1
+    sync_gate_failstate_test.go:402: AC-004 F1 (a) [release-blocking]: flagged call carries "decision"; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F2
+    sync_gate_failstate_test.go:402: AC-004 F2 (a) [release-blocking]: flagged call carries "decision"; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F3
+    sync_gate_failstate_test.go:402: AC-004 F3 (a) [release-blocking]: flagged call carries "decision"; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F4
+    sync_gate_failstate_test.go:402: AC-004 F4 (a) [release-blocking]: flagged call carries "decision"; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/c
+--- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery (5.87s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F1 (1.33s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F2 (1.19s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F3 (1.16s)
+    --- FAIL: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/F4 (1.12s)
+    --- PASS: TestSyncGateFailState_AC004_StopHookActiveDefersRedelivery/c (1.07s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	6.514s
+FAIL

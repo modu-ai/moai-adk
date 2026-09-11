@@ -1,0 +1,3 @@
+source: ps-before-test.txt (ps -axo pid,args, ps_exit=0)
+cli_compile=0 cli_test_binary=0 go_cmd_cli=0 control_claude=20
+patterns: '/compile .*internal/cli( |$)' | 'cli\.test( |$)' | 'go (vet|test|build) .*internal/cli' | control '(^|/| )claude( |$)'

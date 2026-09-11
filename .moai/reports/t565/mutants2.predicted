@@ -1,0 +1,31 @@
+t565 round 2 mutant predictions — written before any round-2 mutant is applied
+Tree: round-2 parser (skip-empty anchor + 수용 기준/성공 기준/ac summary), uncommitted
+Selector for every mutant: go test -overlay <mutant> ./internal/spec -count=1 -run '^(TestT565|TestT528)' -v
+Tests not named under a mutant are predicted PASS.
+
+New mutants (lead ruling):
+M7 skip-empty removed (the non-empty check always true: first section-naming heading anchors)
+   FAIL TestT565AnchorSkipsEmptySection
+M8 added vocabulary removed (수용 기준, 성공 기준, ac summary deleted)
+   FAIL TestT565AnchorVocabulary: "## §D 수용 기준", "## §H. 성공 기준 (요약)", "## §H AC summary (full GWT in acceptance.md)"
+M9 all-empty fallback removed (return -1 instead of the first section-naming heading)
+   FAIL TestT565AnchorAllEmptySectionsStillAnchor
+
+Round-1 mutants re-applied to the round-2 parser (same sed edits):
+M1 negative exclusion disabled
+   FAIL TestT565AnchorSkipsOutOfScopeHeading/english, /korean
+   (TestT565AnchorSkipsEmptySection PASS: its "## §G. Out of Scope" carries no vocabulary)
+M2 file-name removal dropped
+   FAIL TestT565AnchorSkipsFileMentionOnlyHeading
+   (AC summary vocabulary case PASS: "ac summary" still matches)
+M3 round-1 vocabulary lines deleted (success criteria, ac matrix, 수락/인수/검수 기준)
+   FAIL TestT565AnchorVocabulary: 수락 기준, 인수 기준, 검수 기준, §F AC Matrix, §E Success Criteria, §E. Success criteria,
+        "## 3. 수락 기준 — acceptance.md (Tier M)" — 7 subtests; the three round-2 phrases PASS
+   (TestT565AnchorSkipsEmptySection PASS: §F Success Criteria is no longer vocabulary, §I anchors)
+M4 section end reverted to the old "##" prefix rule
+   FAIL TestT565SectionReadsItsOwnSubheadings, TestT565SectionEndsAtSameOrHigherLevel/h3-anchor, /h1-ends-h2
+M5 section end strict (level < anchor)
+   FAIL TestT565SectionReadsItsOwnSubheadings, TestT565SectionEndsAtSameOrHigherLevel/h3-anchor, TestT528SectionScopingInvariant
+   (TestT565AnchorSkipsEmptySection PASS: §F's section runs on into §I and collects AC-HDG-01)
+M6 file-name exclusion widened (a heading mentioning acceptance.md never anchors)
+   FAIL TestT565AnchorVocabulary: "## 3. 수락 기준 — acceptance.md (Tier M)", "## §H AC summary (full GWT in acceptance.md)" — 2 subtests

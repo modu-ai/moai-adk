@@ -1,0 +1,17 @@
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/a0
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/a50
+    sync_gate_failstate_test.go:564: AC-006 a50 [release-blocking]: stub invoked 2 time(s) on this call; want 0 (checks must not run)
+    sync_gate_failstate_test.go:564: AC-006 a50 [release-blocking]: stdout carries "decision"; want none; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/b61
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/b70
+=== RUN   TestSyncGateFailState_AC006_RunningRecordStaleWindow/b120
+--- FAIL: TestSyncGateFailState_AC006_RunningRecordStaleWindow (6.69s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/a0 (1.07s)
+    --- FAIL: TestSyncGateFailState_AC006_RunningRecordStaleWindow/a50 (1.13s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/b61 (1.25s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/b70 (1.52s)
+    --- PASS: TestSyncGateFailState_AC006_RunningRecordStaleWindow/b120 (1.72s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	7.345s
+FAIL

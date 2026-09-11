@@ -1,0 +1,31 @@
+attempt 1 — evidence commit on WT-root-rederive (inside integration window, 2026-09-10)
+
+command:
+git rev-parse --short HEAD && git branch --show-current && git status --short && git add <5 paths under .moai/reports/t549> && git commit -q -m "docs(t549): record integration window absorb and merged-tree re-measure" && ...
+
+exit code: 128
+
+full output:
+146622b4f
+WT-root-rederive
+ M .moai/reports/t549/verdict.md
+?? .moai/reports/t549/absorb-merge.txt
+?? .moai/reports/t549/merged-kanban.txt
+?? .moai/reports/t549/merged-web.txt
+?? .moai/reports/t549/window-acquire.txt
+fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t549/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+
+The failure came from `git add` (status had printed; no commit SHA line followed).
+Post-failure observations:
+- HEAD: 146622b4f (unchanged) · MERGE_HEAD: absent (`git rev-parse -q --verify MERGE_HEAD` exit 1)
+- staging: nothing staged (`git --no-optional-locks status --short` identical to pre-attempt listing)
+- 17:30:42 `stat` on .git/worktrees/t549/index.lock → present, 0 bytes, mtime 17:30:42 (same second as the probe)
+- 17:31:02 `stat` again → No such file or directory
+- running git processes at 17:31: only `git push origin develop` + `git remote-https … mo.ai.kr.git` (a different repository)
+Reading: transient lock held by another short-lived process on this worktree index, released within ~20s. Not removed by hand. Retry = attempt 2 of 3.

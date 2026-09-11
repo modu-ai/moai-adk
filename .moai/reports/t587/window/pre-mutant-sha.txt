@@ -1,0 +1,2 @@
+932754eb774f3fcf801e313041a4f3ca698247e5b8ae3598b38e5bde2526e359  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t587/internal/cli/update_archive.go
+c0d30be7c8f99b5b02ae85078caa47675dc172272b20acde1dd0c3c4e3df3a2c  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t587/internal/cli/update_wizard.go

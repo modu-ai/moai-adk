@@ -19,11 +19,13 @@ Proceed with standard sub-agent run phase in the current environment.
 No additional routing needed — CC/GLM/CG env is already configured by the Gate.
 
 **If execution_mode == "team":**
-The `team` execution mode is experimental (Agent Teams layer, re-allowed; flag
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). Run the team-orchestrated
-phase per `orchestration-mode-selection.md` §C.1 constraints (explicit-request
-only; one team per session; no nesting). The `active_mode` (cc / glm / cg) still
-selects the backend; the native `moai cg` teammate runtime is unaffected.
+Resolve the request through `.claude/rules/moai/workflow/team-capability-resolver.md`
+before spawning. An explicit request plus a passed current-runtime probe is
+required for `TEAM_AVAILABLE`; a failed or indeterminate probe returns
+`MODE_TEAM_UNAVAILABLE` with a blocker report. The historical retired sentinel
+and fallback are genealogy, not current capability evidence. The `active_mode`
+(cc / glm / cg) still selects the backend; native `moai cg` teammate runtime is
+unaffected.
 
 **If execution_mode == "sub-agent":**
 Proceed directly to Phase 5 (Strategy).
@@ -37,7 +39,8 @@ the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 
 # Mode Dispatch (team experimental)
 
-The `--mode team` dispatch value is experimental (re-allowed, operator decision):
+The `--mode team` dispatch value is experimental (explicit operator request),
+but its current availability is decided only by the team capability resolver:
 `agent-team` of the Phase
 0.95 catalog is selectable by explicit request
 (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1). Historical:

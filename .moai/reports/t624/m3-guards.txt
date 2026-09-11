@@ -1,0 +1,74 @@
+=== RUN   TestAC004_SyncGateAdvisoryAtFullyAutonomous
+=== RUN   TestAC004_SyncGateAdvisoryAtFullyAutonomous/fully-autonomous_→_advisory_only_(no_decision:block)
+=== RUN   TestAC004_SyncGateAdvisoryAtFullyAutonomous/semi-auto_→_retains_decision:block_(regression_guard)
+--- PASS: TestAC004_SyncGateAdvisoryAtFullyAutonomous (6.88s)
+    --- PASS: TestAC004_SyncGateAdvisoryAtFullyAutonomous/fully-autonomous_→_advisory_only_(no_decision:block) (3.20s)
+    --- PASS: TestAC004_SyncGateAdvisoryAtFullyAutonomous/semi-auto_→_retains_decision:block_(regression_guard) (3.68s)
+=== RUN   TestAC002_NonSyncHeadSkipsVetBuild
+--- PASS: TestAC002_NonSyncHeadSkipsVetBuild (2.51s)
+=== RUN   TestHookWrapperCopiesStayIdentical
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-agent-hook.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-task-completed.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-teammate-idle.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-session-start-compact.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/status-transition-ownership.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/sync-phase-quality-gate.sh
+--- PASS: TestHookWrapperCopiesStayIdentical (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-agent-hook.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-task-completed.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-teammate-idle.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-session-start-compact.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/status-transition-ownership.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/sync-phase-quality-gate.sh (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	10.572s
+=== RUN   TestTemplateNoInternalContentLeak
+--- PASS: TestTemplateNoInternalContentLeak (0.91s)
+=== RUN   TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput
+--- PASS: TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput (0.00s)
+=== RUN   TestTemplateNeutralityAudit
+=== PAUSE TestTemplateNeutralityAudit
+=== CONT  TestTemplateNeutralityAudit
+=== RUN   TestTemplateNeutralityAudit/C1-macos-bias-path
+=== PAUSE TestTemplateNeutralityAudit/C1-macos-bias-path
+=== RUN   TestTemplateNeutralityAudit/C2-bare-narrative-v3r
+=== PAUSE TestTemplateNeutralityAudit/C2-bare-narrative-v3r
+=== RUN   TestTemplateNeutralityAudit/C4-feedback-memory-ref
+=== PAUSE TestTemplateNeutralityAudit/C4-feedback-memory-ref
+=== RUN   TestTemplateNeutralityAudit/C5-claude-local-ref
+=== PAUSE TestTemplateNeutralityAudit/C5-claude-local-ref
+=== RUN   TestTemplateNeutralityAudit/C6-pr-number-ref
+=== PAUSE TestTemplateNeutralityAudit/C6-pr-number-ref
+=== RUN   TestTemplateNeutralityAudit/C9-natural-language-canonical-form
+=== PAUSE TestTemplateNeutralityAudit/C9-natural-language-canonical-form
+=== CONT  TestTemplateNeutralityAudit/C1-macos-bias-path
+=== CONT  TestTemplateNeutralityAudit/C5-claude-local-ref
+=== CONT  TestTemplateNeutralityAudit/C2-bare-narrative-v3r
+=== CONT  TestTemplateNeutralityAudit/C6-pr-number-ref
+=== CONT  TestTemplateNeutralityAudit/C9-natural-language-canonical-form
+=== CONT  TestTemplateNeutralityAudit/C4-feedback-memory-ref
+=== NAME  TestTemplateNeutralityAudit/C2-bare-narrative-v3r
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C2-bare-narrative-v3r file=.claude/rules/moai/core/moai-mcp-tools-catalogue.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C2-bare-narrative-v3r file=.claude/rules/moai/workflow/spec-workflow.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C2-bare-narrative-v3r file=.claude/agents/moai/manager-develop.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C2-bare-narrative-v3r file=.claude/rules/moai/core/verification-claim-integrity-detail.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C2-bare-narrative-v3r file=.claude/rules/moai/development/spec-frontmatter-schema.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C2-bare-narrative-v3r file=.claude/skills/moai-workflow-spec/references/reference.md (advisory — exceeds migration-matrix allow-list)
+=== NAME  TestTemplateNeutralityAudit/C4-feedback-memory-ref
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/output-styles/moai/moai.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/rules/moai/core/moai-constitution-detail.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/skills/moai-domain-design-dna/references/dna-schema.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/skills/moai-workflow-project/references/navigator.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/skills/moai-workflow-project/scripts/navigator-audit.sh (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/rules/moai/core/moai-constitution.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/rules/moai/workflow/moai-memory.md (advisory — exceeds migration-matrix allow-list)
+    template_neutrality_audit_test.go:379: TEMPLATE_NEUTRALITY_WARN: class=C4-feedback-memory-ref file=.claude/skills/moai-workflow-project/references/navigator-audit.md (advisory — exceeds migration-matrix allow-list)
+--- PASS: TestTemplateNeutralityAudit (0.00s)
+    --- PASS: TestTemplateNeutralityAudit/C5-claude-local-ref (0.07s)
+    --- PASS: TestTemplateNeutralityAudit/C9-natural-language-canonical-form (0.07s)
+    --- PASS: TestTemplateNeutralityAudit/C6-pr-number-ref (0.07s)
+    --- PASS: TestTemplateNeutralityAudit/C1-macos-bias-path (0.07s)
+    --- PASS: TestTemplateNeutralityAudit/C2-bare-narrative-v3r (0.14s)
+    --- PASS: TestTemplateNeutralityAudit/C4-feedback-memory-ref (0.20s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	1.626s

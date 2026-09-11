@@ -1,0 +1,17 @@
+=== RUN   TestT613LoopbackProbe
+    zz_t613_loopback_probe_test.go:12: PROBE host="127.0.0.1:3041" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="127.1.2.3:3041" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="127.255.255.254" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="[::ffff:127.0.0.1]:3041" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="::ffff:127.0.0.1" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="::1" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="[::1]" isLoopbackHost=true
+    zz_t613_loopback_probe_test.go:12: PROBE host="LOCALHOST" isLoopbackHost=false
+    zz_t613_loopback_probe_test.go:12: PROBE host="localhost." isLoopbackHost=false
+    zz_t613_loopback_probe_test.go:12: PROBE host="Localhost:3041" isLoopbackHost=false
+    zz_t613_loopback_probe_test.go:12: PROBE host="0.0.0.0" isLoopbackHost=false
+    zz_t613_loopback_probe_test.go:12: PROBE host="attacker.example.com" isLoopbackHost=false
+    zz_t613_loopback_probe_test.go:12: PROBE host="" isLoopbackHost=false
+--- PASS: TestT613LoopbackProbe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.833s

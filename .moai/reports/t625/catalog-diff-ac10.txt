@@ -1,0 +1,14 @@
+diff --git a/internal/template/catalog.yaml b/internal/template/catalog.yaml
+index aaa624a22..b63646f26 100644
+--- a/internal/template/catalog.yaml
++++ b/internal/template/catalog.yaml
+@@ -117,7 +117,7 @@ catalog:
+             - name: manager-develop
+               tier: core
+               path: templates/.claude/agents/moai/manager-develop.md
+-              hash: 5b559c54562bff290d493a7d6f464a0aa9e21e75fc8e75b44747a77ba6c41351
++              hash: b8fa8c95eb18654a65b5ce81bd605c4c6befda29cec263e56a906962a17eae82
+               version: 1.0.0
+             - name: manager-docs
+               tier: core
+EXIT=0
