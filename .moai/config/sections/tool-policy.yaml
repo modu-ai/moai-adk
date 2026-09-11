@@ -92,6 +92,40 @@ entries:
     owner_agent: orchestrator
     audit: "force-with-lease still rewrites history; destructive despite lease safety"
     source: ".claude/settings.json#permissions.deny"
+  # Global-option prefix forms. A Bash rule matches the command text literally
+  # up to its first `*`, so `git -C <path> push --force` (and -c / --git-dir /
+  # --work-tree) never matches `git push --force:*`. The mid-pattern `*` covers
+  # those forms, but only in this exact shape — measured on a live session:
+  #   - a trailing `:*` makes the middle `*` literal, so `git * push --force:*`
+  #     matches nothing and must not be used;
+  #   - a trailing ` *` (space) misses the bare command, because with two
+  #     wildcards the trailing one no longer matches empty text;
+  #   - `git * <subcommand> <flag>*` (no separator) denies both forms.
+  # Known residuals, NOT covered by any Bash rule: split or reordered flags,
+  # `+refspec` force pushes, quoted subcommands, shell wrapping, absolute-path
+  # git. These rules also deny a harmless command whose arguments contain the
+  # same space-preceded text (for example `--grep "via reset --hard"`).
+  - tool: "Bash"
+    args_pattern: "git * push --force*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "force-push behind a git global option (-C, -c, --git-dir, --work-tree)"
+    source: "global-option prefix form of git push --force:*"
+  - tool: "Bash"
+    args_pattern: "git * push -f*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "force-push (short flag) behind a git global option"
+    source: "global-option prefix form of git push -f:*"
+  - tool: "Bash"
+    args_pattern: "git * push --force-with-lease*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "force-with-lease behind a git global option"
+    source: "global-option prefix form of git push --force-with-lease:*"
 
   # --- §D.1b Filesystem-destroying (rm -rf on system roots) ---
   - tool: "Bash"
@@ -196,6 +230,29 @@ entries:
     owner_agent: orchestrator
     audit: "clean -fdx removes untracked + ignored (build artifacts, .env)"
     source: ".claude/settings.json#permissions.deny"
+  # Global-option prefix forms (see the §D.1a note on literal matching and
+  # the residuals no Bash rule covers).
+  - tool: "Bash"
+    args_pattern: "git * reset --hard*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "hard reset behind a git global option (-C, -c, --git-dir, --work-tree)"
+    source: "global-option prefix form of git reset --hard:*"
+  - tool: "Bash"
+    args_pattern: "git * clean -fd*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "clean -fd behind a git global option"
+    source: "global-option prefix form of git clean -fd:*"
+  - tool: "Bash"
+    args_pattern: "git * clean -fdx*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "clean -fdx behind a git global option"
+    source: "global-option prefix form of git clean -fdx:*"
 
   # --- §D.1e Disk format + system power ---
   - tool: "Bash"
@@ -361,6 +418,14 @@ entries:
     owner_agent: orchestrator
     audit: "interactive rebase rewrites history (destructive on shared branches)"
     source: ".claude/settings.json#permissions.deny"
+  # Global-option prefix form (see the §D.1a note on literal matching).
+  - tool: "Bash"
+    args_pattern: "git * rebase -i*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "interactive rebase behind a git global option (-C, -c, --git-dir, --work-tree)"
+    source: "global-option prefix form of git rebase -i:*"
 
   # --- §D.1g Secret-path deny (Read/Write/Edit/Grep/Glob on secrets + credentials) ---
   - tool: "Read"

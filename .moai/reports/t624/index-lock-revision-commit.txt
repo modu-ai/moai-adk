@@ -1,0 +1,14 @@
+commit of the round-2 SPEC revision on WT-sync-gate-failstate (2026-09-10) — lock contention record
+
+attempt 1 (18:28:55 probe): lock_present=no · head=ad0ad6f9b · branch WT-sync-gate-failstate · 3 SPEC files ` M`, index-lock-audit-commit-attempt1.txt `??`
+then `git add <3 SPEC files + record>` → exit 128:
+fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t624/index.lock': File exists.
+(standard git hint text followed)
+
+attempt 2 (18:29:18 probe): lock_present=no · head=ad0ad6f9b · MERGE_HEAD absent (exit 1) · same status listing
+then the same `git add` → exit 128, same message.
+Processes sampled in the same turn: `moai statusline` ×4 with four different parents (14540/cc-statusline.sh, 16215, 13726, 14070/cc-statusline.sh), all etime 00:00. None descended from this lane's session pid 22103 in that sample.
+
+Reading: the lock was absent at the probe and present milliseconds later, twice. HEAD never moved; the lock was never removed by hand. Lead's reading (hypothesis, holder not confirmed): the statusline path calls `git status --porcelain --branch` without `--no-optional-locks`; repair is tracked on a separate card.
+
+The commit was held back after attempt 2 because a further SPEC revision (torn-write rows, mtime Gap) was requested before re-audit; attempt 3 commits that combined revision, and per lead instruction a third lock failure leaves the work uncommitted in this worktree.

@@ -1,0 +1,50 @@
+=== RUN   TestCommittedCoverageChangeSetWorksInCleanRepositoryAndAfterUnrelatedCommit
+--- PASS: TestCommittedCoverageChangeSetWorksInCleanRepositoryAndAfterUnrelatedCommit (1.88s)
+=== RUN   TestCommittedCoverageChangeSetWorksAfterMergeCommit
+--- PASS: TestCommittedCoverageChangeSetWorksAfterMergeCommit (4.51s)
+=== RUN   TestCommittedCoverageChangeSetWorksCleanAfterRemediationCommit
+--- PASS: TestCommittedCoverageChangeSetWorksCleanAfterRemediationCommit (8.75s)
+=== RUN   TestCommittedCoverageChangeSetExcludesInterveningMergedProduction
+--- PASS: TestCommittedCoverageChangeSetExcludesInterveningMergedProduction (3.59s)
+=== RUN   TestCommittedCoverageChangeSetSupportsVersionedRemediationChain
+--- PASS: TestCommittedCoverageChangeSetSupportsVersionedRemediationChain (2.26s)
+=== RUN   TestCommittedCoverageChangeSetMergesDirtyProductionDiff
+--- PASS: TestCommittedCoverageChangeSetMergesDirtyProductionDiff (1.57s)
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/covered_path_changed_after_audited_tip
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_audit_marker
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/audit_marker_not_reachable_from_head
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/remediation_marker_is_not_a_descendant
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_remediation_marker
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/versioned_marker_skips_predecessor
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/certification_marker_skips_predecessor
+=== RUN   TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_certification_marker
+--- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence (8.96s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/covered_path_changed_after_audited_tip (1.60s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_audit_marker (1.09s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/audit_marker_not_reachable_from_head (0.86s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/remediation_marker_is_not_a_descendant (1.77s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_remediation_marker (0.89s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/versioned_marker_skips_predecessor (0.66s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/certification_marker_skips_predecessor (0.89s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsStaleOrAmbiguousEvidence/duplicate_certification_marker (1.20s)
+=== RUN   TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence
+=== RUN   TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence/marker_has_no_base_parent
+=== RUN   TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence/unreadable_untracked_production
+--- PASS: TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence (3.29s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence/marker_has_no_base_parent (0.42s)
+    --- PASS: TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence/unreadable_untracked_production (1.33s)
+=== RUN   TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+--- PASS: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (3.48s)
+=== RUN   TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition
+--- PASS: TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition (1.65s)
+=== RUN   TestChangedProductionFilesRejectsDeletion
+--- PASS: TestChangedProductionFilesRejectsDeletion (0.92s)
+=== RUN   TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically
+--- PASS: TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically (17.98s)
+=== RUN   TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically
+--- PASS: TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically (38.11s)
+=== RUN   TestAuditLagUsesBinlagSeam
+--- PASS: TestAuditLagUsesBinlagSeam (1.22s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	99.224s
