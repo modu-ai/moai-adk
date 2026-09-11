@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
@@ -864,6 +865,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// effects (acceptance.md §C).
 	flushUpdateNotice := startDeferredUpdateNotice(cmd)
 
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a
+	// .claude/settings.json staging copy an interrupted earlier flow left behind
+	// before executor.Execute — init's first step that can rewrite the file.
+	//
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
+	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
+	// would be discarded instead of promoted (plan.md B8)
+	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
 		// REQ-TUX2-015: re-running init on an initialized project without
@@ -874,6 +884,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 		return fmt.Errorf("initialization failed: %w", err)
 	}
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001/003/016): stage the
+	// settings.json render the deploy inside executor.Execute wrote — only when
+	// the manifest proves it wrote it (a skipped existing file records nothing)
+	// — before the autonomy tier bundle below can rewrite the file.
+	backup.StageDeployedSettingsSnapshot(opts.ProjectRoot, mgr, cmd.ErrOrStderr())
+
 	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
@@ -887,7 +903,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if tierErr := project.ApplyAutonomyTierBundle(
+		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
 			filepath.Join(homeDir, ".claude", "settings.json"),
 			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
@@ -898,6 +914,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		p.Warn("Failed to resolve home directory for autonomy tier bundle: %v", homeErr)
 	}
+
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): init has no merge,
+	// so it never takes a preserve path — the staged render (if any) becomes the
+	// canonical base the first update merges against.
+	backup.SettleSettingsSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
 	// in the exit summary panel — REQ-TUX2-013) and display the completion

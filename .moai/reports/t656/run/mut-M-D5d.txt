@@ -1,0 +1,20 @@
+=== RUN   TestSettingsSnapshotFlow_PromotionRule
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c1_merge_writes_result_promotes
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c2_preserve_path_keeps_prior_base
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c3_merge_skipped_identical_promotes
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c4_abort_without_revert_promotes_next_flow
+    settings_snapshot_flow_test.go:224: a = 2, want 3 (doc map[K:1 L:1 a:2])
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c5_abort_then_revert_keeps_prior_base
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c6_init_writes_promotes_despite_bundle_rewrite
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c8_update_without_user_file_promotes
+--- FAIL: TestSettingsSnapshotFlow_PromotionRule (2.34s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c1_merge_writes_result_promotes (0.58s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c2_preserve_path_keeps_prior_base (0.05s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c3_merge_skipped_identical_promotes (0.36s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c4_abort_without_revert_promotes_next_flow (0.34s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c5_abort_then_revert_keeps_prior_base (0.03s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c6_init_writes_promotes_despite_bundle_rewrite (0.36s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c8_update_without_user_file_promotes (0.62s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.897s
+FAIL
