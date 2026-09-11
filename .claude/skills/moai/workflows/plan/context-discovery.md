@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 2 / Phase 3: Context Discovery and Clarity Evaluation"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ## Phase Sequence
 
@@ -39,11 +40,18 @@ Tasks for the Explore subagent:
 
 Purpose: Evaluate how clearly the user's request is specified before beginning deep research. A vague request produces a weaker SPEC; this phase detects vagueness early and gathers missing context through a structured interview.
 
-**Skip conditions (any one is sufficient):**
+**Skip conditions (any one is sufficient, after completeness check):**
 - `--skip-interview` flag is present in $ARGUMENTS
 - Input matches `resume SPEC-XXX` pattern (resuming an existing draft)
-- Input contains 5 or more distinct technical keywords (e.g., framework names, file paths, function names, domain terms)
 - `interview.enabled: false` in `.moai/config/sections/interview.yaml`
+
+Five technical keywords alone are NOT a skip condition. Before skipping the
+interview on a clear request, evaluate the intent-completeness record: concrete
+scope, constraints/non-goals, acceptance or stopping condition, and
+authorization/ownership must each be present (or an explicit empty value must
+be recorded). A request with many framework names but no goal or stopping
+condition enters the interview; a short request that fills all four fields may
+skip it. Record the fields and the skip reason in the clarity evidence.
 
 **Clarity Scoring (1-10):**
 

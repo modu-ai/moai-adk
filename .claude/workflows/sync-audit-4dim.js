@@ -87,8 +87,9 @@ const CONTEXT_SCHEMA = {
       items: { type: 'string' },
     },
     test_command: { type: 'string', description: 'the command that runs this SPEC test suite' },
+    snapshot_evidence: { type: 'string', description: 'exact output of moai verify check --key-current, or an explicit unavailable/miss gap' },
   },
-  required: ['spec_id', 'acceptance_criteria', 'changed_files', 'test_command'],
+  required: ['spec_id', 'acceptance_criteria', 'changed_files', 'test_command', 'snapshot_evidence'],
   additionalProperties: false,
 }
 
@@ -141,13 +142,20 @@ phase('Context')
 const CONTEXT_PROMPT = `You are a read-only audit-context extractor. Do NOT modify any file.
 
 Analyze the SPEC "${SPEC_ID}" in this repository. Read its artifacts under .moai/specs/${SPEC_ID}/
-(spec.md, plan.md, acceptance.md, progress.md) using Read/Grep/Glob.
+(spec.md, plan.md, acceptance.md, progress.md) using Read/Grep/Glob and
+read-only Bash.
+
+Before returning, run `moai verify check --key-current` against the current
+tree. Include the exact command and verbatim output in `snapshot_evidence`;
+if the command is unavailable or misses, state that explicitly as an evidence
+gap rather than inferring a hit from a report path.
 
 Return the audit surface as an object with EXACTLY these fields:
 - spec_id: the SPEC id ("${SPEC_ID}")
 - acceptance_criteria: the list of acceptance-criterion statements (from acceptance.md, the SSOT)
 - changed_files: the list of repo-relative source paths this SPEC touches (from plan.md scope + git)
 - test_command: the single command that runs this SPEC's test suite (e.g. "go test ./internal/foo/...")
+- snapshot_evidence: the exact `moai verify check --key-current` command and output, or an explicit gap
 
 Report only what you can VERIFY from the artifacts. If a field cannot be determined, return it empty
 rather than guessing.`
@@ -165,6 +173,10 @@ Do NOT modify any file. You have Read/Grep/Glob and read-only Bash (test/lint/bu
 Audit context for the SPEC under review:
 ${JSON.stringify(context, null, 2)}
 
+The Context step's `snapshot_evidence` is the shared diagnostic baseline. Do
+not promote a missing, unavailable, or miss result to PASS; record an
+evidence_gap and run any dimension check needed for the current tree.
+
 Judge the "${dimension}" dimension of this SPEC's implementation. Score it 0..1 where:
   1.0 = flawless on this dimension, 0.0 = a hard failure on this dimension.
 
@@ -181,14 +193,19 @@ Dimension focus for "${dimension}":
 Return an object with EXACTLY: dimension, score (0..1), findings[{severity,summary,file,evidence}],
 evidence_gaps[]. If you cannot evaluate this dimension at all, return score as null (do NOT fabricate a score).`
 
-// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'), effort 'xhigh'. Each
-// call site inlines the read-only opts so the read-only contract is pinned to the JUDGE site itself.
+// Four judge agent calls in parallel — ALL read-only (agentType 'Explore'). The
+// orchestrator resolves the verify-judge effort profile through args; this
+// script clamps it to the supported runtime policy and never hardcodes xhigh.
 // Thunk order MUST match DIMENSIONS so judges[i] aligns with DIMENSIONS[i] in the Verdict phase.
+const allowedJudgeEfforts = new Set(['low', 'medium', 'high'])
+const requestedJudgeEffort = (args && typeof args.judge_effort === 'string') ? args.judge_effort : 'high'
+const JUDGE_EFFORT = allowedJudgeEfforts.has(requestedJudgeEffort) ? requestedJudgeEffort : 'high'
+
 const judges = await parallel([
-  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
-  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: 'xhigh', schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Functionality'), { label: 'judge:Functionality', phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Security'),      { label: 'judge:Security',      phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Craft'),         { label: 'judge:Craft',         phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
+  () => agent(JUDGE_PROMPT('Consistency'),   { label: 'judge:Consistency',   phase: 'Judge', agentType: 'Explore', effort: JUDGE_EFFORT, schema: JUDGE_SCHEMA }),
 ])
 
 // ---------------------------------------------------------------------------
