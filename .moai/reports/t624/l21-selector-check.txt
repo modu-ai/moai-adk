@@ -1,0 +1,24 @@
+t624 — NEW-2 check: does the L-21 selector (acceptance.md fenced "L-21 command") actually select tests?
+Measured 2026-09-10 in .claude/worktrees/t624, tree = HEAD 3f5dc3f8c + uncommitted SPEC revision (NEW-1..NEW-5 debt payment).
+Only `-list` was used: test names are enumerated, no test body runs.
+
+1) Selector as written in the fenced block (plain `|` inside the -run/-list regexp)
+command:
+go test ./internal/template/ -list 'TestTemplateNoInternalContentLeak|TestLeakClassNoDateShaInDefaultTier|TestC7PackageRestriction'
+exit: 0
+verbatim output:
+TestTemplateNoInternalContentLeak
+TestLeakClassNoDateShaInDefaultTier
+TestC7PackageRestriction
+ok  	github.com/modu-ai/moai-adk/internal/template	0.439s
+names listed: 3
+
+2) Control — the table-cell raw form (`\|`), i.e. what copying the old cell verbatim would run
+command:
+go test ./internal/template/ -list 'TestTemplateNoInternalContentLeak\|TestLeakClassNoDateShaInDefaultTier\|TestC7PackageRestriction'
+exit: 0
+verbatim output:
+ok  	github.com/modu-ai/moai-adk/internal/template	0.363s
+names listed: 0
+
+Reading: the control reproduces the vacuous-pass shape (0 tests selected, `ok`, exit 0); the fenced command selects all three named tests. The exit code alone cannot separate the two — only the listed names do, which is why the L-21 note requires the names to appear before the result is read.

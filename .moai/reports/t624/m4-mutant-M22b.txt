@@ -1,0 +1,19 @@
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/L1
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U1
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U2
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U3
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U4
+=== RUN   TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U5
+    sync_gate_failstate_test.go:456: AC-005 U5 run-and-block [regression-guard]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+    sync_gate_failstate_test.go:456: AC-005 U5 run-and-block [regression-guard]: stdout is not a block; stdout=""
+--- FAIL: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate (10.69s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/L1 (1.43s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U1 (2.20s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U2 (2.78s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U3 (1.95s)
+    --- PASS: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U4 (1.55s)
+    --- FAIL: TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate/U5 (0.78s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	11.350s
+FAIL

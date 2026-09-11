@@ -1,0 +1,70 @@
+M3 wording evidence — AC-009 / AC-010 / AC-011 / AC-012 rows
+Tree: worktree .claude/worktrees/t624, branch WT-sync-gate-failstate, HEAD edecbff54 + uncommitted M3 edits (measured before the M3 commit).
+Each row was run as its own plain Bash invocation; stdout and exit are transcribed verbatim from that invocation.
+Grep binary: /usr/bin/grep (explicit path, to avoid the shell grep wrapper).
+TD = internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md
+LD = .claude/skills/moai/workflows/sync/quality-gates-quality.md
+TH = internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh
+LH = .claude/hooks/moai/sync-phase-quality-gate.sh
+(TD/LD/TH/LH are abbreviations in this file only; every command was run with the literal path.)
+
+== AC-010 copy parity
+cmp TH LH                                                   -> (no output) exit=0
+grep -c "^Purpose: Ensure code has appropriate @MX annotations for AI agent context" TD -> 1 exit=0
+grep -c "^Purpose: Ensure code has appropriate @MX annotations for AI agent context" LD -> 1 exit=0
+sed '/<anchor>/q' TD > m3-through-anchor-template.txt       -> exit=0
+sed '/<anchor>/q' LD > m3-through-anchor-local.txt          -> exit=0
+cmp m3-through-anchor-template.txt m3-through-anchor-local.txt -> (no output) exit=0
+git show fa96fe644:TD > m3-base-fa96-template-doc.md        -> exit=0
+git show fa96fe644:LD > m3-base-fa96-local-doc.md           -> exit=0
+sed '1,/<anchor>/d' on TD, LD, and both base files -> four m3-after-anchor-*.txt, each exit=0
+diff m3-after-anchor-template-base.txt m3-after-anchor-template-cur.txt -> (no output) exit=0
+diff m3-after-anchor-local-base.txt m3-after-anchor-local-cur.txt       -> (no output) exit=0
+
+== AC-011 H03 wording (release-blocking)
+grep -c "dependency vulnerability scan runs automatically via the Stop hook" TD -> 0 exit=1
+grep -c "dependency vulnerability scan runs automatically via the Stop hook" LD -> 0 exit=1
+grep -c "deps_modified" TD                                   -> 1 exit=0
+grep -c "deps_modified" LD                                   -> 1 exit=0
+grep -c "only check for that drift" TD                       -> 0 exit=1
+grep -c "only check for that drift" LD                       -> 0 exit=1
+grep -c "Audit ALL of the following manifest files present at project root" TD -> 0 exit=1
+grep -c "Audit ALL of the following manifest files present at project root" LD -> 0 exit=1
+grep -c "manifest audit" TH                                  -> 0 exit=1
+grep -c "manifest audit" LH                                  -> 0 exit=1
+head -5 TH | grep -E 'manifest[ -]change'                    -> "# Purpose: Fast sync-phase quality gate (compile/vet checks + dependency manifest-change observation)" exit=0
+
+== AC-012 SX-R05 reconciliation
+(a) grep -c "sync-auditor FAIL" TD                           -> 1 exit=0
+(a) grep -c "sync-auditor FAIL" LD                           -> 1 exit=0
+(b) grep -n "HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores" TD
+    -> 71:- Security (25%): OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities — HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores  exit=0
+(b) same on LD -> identical line 71, exit=0
+(b) grep -nE 'sync-auditor FAIL|CRITICAL|HIGH' TD (identical output on LD, exit=0 both):
+    136:- Only CRITICAL findings block the sync pipeline
+    137:- HIGH findings are reported as warnings in PR description
+    148:**Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its CRITICAL-only stop gate below never clears an earlier sync-auditor FAIL — a HIGH finding that Phase 8 reports only as a warning still leaves a sync-auditor FAIL standing.
+    150:If CRITICAL findings exist:
+    156:If no CRITICAL findings: Proceed to Phase 9. Include any HIGH/MEDIUM findings in the sync report.
+Step 0.5.4 reference target: grep -nE '^#+ .*(Step 0\.5|0\.5\.4|Phase 8)' TD -> 60:#### Step 0.5.4: Deep Code Review with Auto-Fix (line 71 sits under it)
+
+== AC-009 template neutrality (template files)
+grep -c "SPEC-" TD                                           -> 0 exit=1
+grep -c "SPEC-" TH                                           -> 0 exit=1
+L-19 grep -cE '(^|[^A-Za-z0-9_])t[0-9]{2,4}([^A-Za-z0-9_]|$)|20[0-9]{2}-[0-9]{2}-[0-9]{2}' TD -> 0 exit=1
+L-19 same regex on TH                                        -> 0 exit=1
+SHA scan grep -nE '(^|[^0-9A-Za-z])[0-9a-f]{7,40}([^0-9A-Za-z]|$)' TD -> (no output) exit=1
+SHA scan same regex on TH                                    -> (no output) exit=1
+L-18 grep -cE '(^|[;&|(]|\$\(|(^|[^A-Za-z0-9_])(then|do)[[:space:]])[[:space:]]*jq([[:space:]]|$)' TH -> 0 exit=1
+
+== Hooks
+bash -n TH -> exit=0 ; bash -n LH -> exit=0 (observed inline, first verification call after cp)
+git diff edecbff54 -- TH LH > m3-hooks-diff.txt              -> exit=0
+grep -cE '^[-+][^-+#]' m3-hooks-diff.txt (changed non-comment lines) -> 0 exit=1
+git diff edecbff54 -- TD LD > m3-docs-diff.txt               -> exit=0
+
+== Tests (run after all M3 edits and the hook cp)
+unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ -run '^TestSyncGateFailState' -count=1 -v > m3-m1-selector.txt
+    -> exit=0; '^--- PASS: TestSyncGateFailState' count 13; '^--- (FAIL|SKIP)' count 0; 'no tests to run' count 0; tail "ok  github.com/modu-ai/moai-adk/internal/hook 119.508s"
+unset MOAI_SYNC_GATE_BLOCKING MOAI_AUTONOMY_TIER && go test ./internal/hook/ ./internal/template/ -run '^(TestHookWrapperCopiesStayIdentical|TestAC004_SyncGateAdvisoryAtFullyAutonomous|TestAC002_NonSyncHeadSkipsVetBuild|TestHookOfficialCompliance_AC002_SyncGateStopHookSpecificOutput|TestTemplateNoInternalContentLeak|TestTemplateNeutralityAudit)$' -count=1 -v > m3-guards.txt
+    -> exit=0; six '--- PASS:' lines, one per named guard; neutrality positive control '--- PASS: TestTemplateNeutralityAudit ' count 1; ok internal/hook 10.572s; ok internal/template 1.626s

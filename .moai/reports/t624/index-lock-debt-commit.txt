@@ -1,0 +1,24 @@
+commit of the PASS-with-debt payment (NEW-1..NEW-5 + provenance + L-21 selector check) on WT-sync-gate-failstate (2026-09-10) — lock contention record
+Retry discipline carried over from the lead's last instruction: at most 3 attempts, at least 30 s apart, HEAD re-read before each; the lock file is never removed by hand.
+
+attempt 1 (22:54:54 probe): lock_present=no · head=3f5dc3f8c · branch WT-sync-gate-failstate
+status before staging:
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/acceptance.md
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/plan.md
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/progress.md
+ M .moai/specs/SPEC-SYNC-GATE-FAILSTATE-001/spec.md
+?? .moai/reports/t624/l21-selector-check.txt
+then `git add <4 SPEC files + l21-selector-check.txt>` → exit 128:
+fatal: Unable to create '/Users/goos/MoAI/moai-adk-go/.git/worktrees/t624/index.lock': File exists.
+(standard git hint text followed)
+head_after=3f5dc3f8c (unchanged)
+
+Reading: same shape as every earlier contention in this worktree — lock absent at the probe, present milliseconds later at the first index write. No commit landed.
+
+attempt 2 (22:56:04 probe, 70 s after attempt 1; waited via a 35 s timer): lock_present=no · head=3f5dc3f8c
+status at the probe showed the 5 attempt-1 paths already staged (`A `/`M `) even though attempt 1's `git add` reported exit 128 — the same unexplained staging seen on the round-2 revision commit.
+then the chain ended `chain_exit=1` with no stderr and `head_after=3f5dc3f8c`.
+Discriminator:
+- this record file was still `??` afterwards → `git add` never ran; the chain short-circuited at the `[ ! -e .../index.lock ]` guard, i.e. the lock appeared between the printed probe and the guard test.
+- `git config --get core.hooksPath` → `/dev/null` → hooks are disabled, so a silent pre-commit rejection is ruled out.
+Counted as attempt 2 of 3 (blocked by the lock; no git write happened).
