@@ -30,12 +30,20 @@ func (erroringOversight) Approve(*AmendmentProposal, bool) (bool, error) {
 }
 
 // writeTestRegistry writes a zone-registry.md fixture containing one Frozen and
-// one Evolvable rule under projectDir so that LoadRegistry can parse it during
-// Execute integration tests. All paths stay under the caller's t.TempDir()
-// (CLAUDE.local.md §6 isolation). The referenced rule files do not need to
-// exist on disk: the loader marks missing files orphan (a warning, not fatal).
+// two Evolvable rules under projectDir so that LoadRegistry can parse it during
+// Execute integration tests, plus the dummy.md rule file every entry points at,
+// holding each clause exactly once: since SPEC-CON-AMEND-APPLY-001 REQ-CAA-012
+// a dry-run validates the rule file, so a missing one now fails (plan.md §C.2).
+// All paths stay under the caller's t.TempDir() (CLAUDE.local.md §6
+// isolation). It also sets both registry-resolution variables empty, so a
+// session-exported value cannot redirect the resolver (REQ-CAA-015).
 func writeTestRegistry(t *testing.T, projectDir string) {
 	t.Helper()
+	isolateEnv(t)
+	ruleBody := "# Dummy rules\n\nTRUST 5 framework\n\nNever use time predictions.\n\nUse canary evaluation.\n"
+	if err := os.WriteFile(filepath.Join(projectDir, "dummy.md"), []byte(ruleBody), 0o644); err != nil {
+		t.Fatalf("write dummy.md: %v", err)
+	}
 	registryDir := filepath.Join(projectDir, ".claude", "rules", "moai", "core")
 	if err := os.MkdirAll(registryDir, 0o755); err != nil {
 		t.Fatalf("mkdir registry dir: %v", err)

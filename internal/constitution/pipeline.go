@@ -153,16 +153,14 @@ func (p *Pipeline) Execute(proposal *AmendmentProposal, projectDir string, dryRu
 	proposal.ApprovedAt = time.Now()
 
 	// ===== Apply Amendment =====
-	if dryRun {
-		// Dry-run: only return log creation
-		log := p.createLogEntry(proposal, currentRule.Zone)
-		return log, nil
-	}
-
-	// Validate against the real bytes, then write the three files atomically.
+	// Validate against the real bytes in both modes, so a dry-run fails
+	// exactly where a real apply would (REQ-CAA-012); a dry-run writes nothing.
 	changes, log, err := p.prepareApply(proposal, currentRule, projectDir, registryPath, evolutionLogPath)
 	if err != nil {
 		return nil, fmt.Errorf("amendment validation error: %w", err)
+	}
+	if dryRun {
+		return log, nil
 	}
 	if err := p.commitChanges(changes); err != nil {
 		return nil, fmt.Errorf("amendment application error: %w", err)
