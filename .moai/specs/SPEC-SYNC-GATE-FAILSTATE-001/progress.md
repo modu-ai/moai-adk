@@ -671,7 +671,7 @@ Definition of Done (§D.17):
 ```yaml
 sync_complete_at: 2026-09-11
 sync_status: audit-ready
-sync_commit_sha: pending-backfill   # this commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 9af4acb92
 changelog_entry: |
   CHANGELOG.md [Unreleased] — new entry for SPEC-SYNC-GATE-FAILSTATE-001 under ### Fixed,
   pre-emission grep `grep -c 'SPEC-SYNC-GATE-FAILSTATE-001' CHANGELOG.md` = 0 (verified before
