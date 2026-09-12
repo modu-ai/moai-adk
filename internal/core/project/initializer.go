@@ -64,28 +64,6 @@ type InitOptions struct {
 	// changes go through reconfigure or the web console.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
-	// TodoEnabled mirrors wizard.WizardResult.TodoEnabled and persists to
-	// workflow.todo.enabled at init. nil means the question was never asked
-	// (--non-interactive), and an unasked question writes nothing: the config
-	// gate is default-ON, so absence already carries the right answer and
-	// emitting a key would be noise at best and an inversion at worst.
-	TodoEnabled *bool // workflow.todo.enabled
-
-	// FeedbackAutoSubmit mirrors wizard.WizardResult.FeedbackAutoSubmit and
-	// persists to feedback.auto_submit at init. nil means the question was
-	// never asked (--non-interactive), and an unasked question writes nothing:
-	// the shipped default is false, so absence already carries the cautious
-	// answer and emitting the key would only add noise.
-	FeedbackAutoSubmit *bool // feedback.auto_submit
-
-	// ProjectContinuation mirrors wizard.WizardResult.ProjectContinuation and
-	// persists to workflow.project.continuation at init
-	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010). Empty means the question
-	// was never asked (--non-interactive), and an unasked question writes
-	// nothing: the template already ships `continuation: card`, so restating it
-	// would only add a line that changes nothing.
-	ProjectContinuation string // workflow.project.continuation
-
 	// SPEC-WT-DOC-001 workflow toggle opt-in surface. The *Set trackers are
 	// false on the zero value so a non-interactive / flag-absent init leaves the
 	// deployed template default untouched (distributed default-off). An explicit
@@ -103,17 +81,7 @@ type InitOptions struct {
 	// downstream reader resolves empty → semi-auto.
 	AutonomyTier string // workflow.autonomy_tier
 
-	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
-	// AuditConfigSet is the opt-in tracker: true ONLY when the wizard ran and
-	// collected an audit selection. When false, writeWorkflowAuditYAML MUST NOT
-	// touch the deployed workflow.yaml (C6 opt-in-default-off).
-	AuditConfigSet    bool   // true only when the wizard collected an audit selection
-	AuditModel        string // audit.model: claude|codex|glm|multi
-	AuditGateClaude   string // audit.gates.claude: off|advisory|required
-	AuditGateCodex    string // audit.gates.codex: off|advisory|required
-	AuditGateGLM      string // audit.gates.glm: off|advisory|required
-	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
-	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
+	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -291,23 +259,6 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	if err := WriteWorkflowTogglesYAML(toggleSectionsDir, opts, result); err != nil {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow toggles: %s", err))
 		i.logger.Warn("workflow toggles write failed", "error", err)
-	}
-
-	// Step 3f (SPEC-INIT-WIZARD-REPAIR-001 REQ-008 / SPEC-MOAI-MCP-SERVER-001
-	// M4 REQ-MCP-015): persist the audit + codex review-gate selection into
-	// workflow.yaml immediately after Step 3d, on BOTH the deployer and the
-	// fallback path (the function carries its own fresh-file branch for the
-	// latter). AuditConfigSet=false leaves the deployed file byte-identical
-	// (C6 opt-in-default-off) — this invocation is the link that was missing,
-	// making the contract comments at initializer.go Step 3d and
-	// applyWizardPage3ToOpts true as written.
-	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err := writeWorkflowAuditYAML(toggleSectionsDir, opts, result); err != nil {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow audit: %s", err))
-		i.logger.Warn("workflow audit write failed", "error", err)
 	}
 
 	// Step 4: Create CLAUDE.md

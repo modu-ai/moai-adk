@@ -75,11 +75,9 @@ func TestRunInit_WorkflowToggleFlagsPersist(t *testing.T) {
 
 // TestRunInit_WorkflowToggleFlagsAbsentByteIdentical asserts AC-006: with
 // none of the four flags passed on a NON-INTERACTIVE run (the CI-relevant
-// path — AuditConfigSet stays false, so neither writer fires), the deployed
-// workflow.yaml is byte-identical to the template — no key synthesized, no
-// comment disturbed. (An interactive run legitimately writes the audit block
-// per chain ③ / AC-009; its toggle-key preservation is asserted separately
-// in the precedence test.)
+// path — every *Set tracker stays false, so the toggle writer does not fire),
+// the deployed workflow.yaml is byte-identical to the template — no key
+// synthesized, no comment disturbed.
 func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical(t *testing.T) {
 	_, workflowPath := runInitForWorkflow(t, nil, nil)
 
