@@ -149,6 +149,37 @@ go test ./internal/hook/ > .moai/reports/t604/hook-root-test.log 2>&1; echo "GO-
 
 **인용(본 레인 미측정, 리드 경유).** lane-4 가 `internal/hook` 전체에서 실패가 이 한 건뿐임을, lane-3·lane-7 이 base 에서도 이 테스트가 실패함을 각각 독립으로 실측했다고 보고되었다 — 즉 develop 선재 레드. 본 레인은 **이름 확정과 인과 독립성까지만 자체 측정**했고, base 대조는 이 세 관측의 인용으로 갈음한다(리드 승인). 인용은 인용으로 표시하며, 본 레인의 실측으로 계산하지 않는다.
 
+## 5.2 병합 트리 재측정 (통합 창, lane-10)
+
+창 확보(`moai integration acquire --name lane-10` → `acquired ... on develop`) 후 로컬 `develop`(`e9aedd128`, t603 착지본)을 흡수. **충돌 없음** — t603 은 `:574` 주변, 본 카드는 `99-127` + `144` 행이라 겹치지 않았고 `ort` 전략이 자동 병합했다. 병합 커밋 `63fa51cf3`.
+
+각 측정 직전 `uptime` 으로 부하를 확인했다(리드 게이트 30).
+
+| 측정 | 결과 |
+|---|---|
+| 로컬↔템플릿 미러 `diff -q` | IDENTICAL |
+| `bash -n` | SYNTAX-OK |
+| `bash .claude/hooks/tests/test-language-routing-contract.sh` | PASS, EXIT 0 |
+| 픽스처 A / B / C / D 종단 | kotlin / kotlin / **kotlin** / java |
+| `go test ./internal/template/...` | **EXIT 0** — ok 3패키지 (t603 이 추가한 `hook_cpp_gate_behavior_test.go` 포함) |
+| `go test ./internal/hook/` | **EXIT 0 — ok** (210.999s) |
+| `make build` | EXIT 0, catalog.yaml 드리프트 0 |
+
+### 새 사실 — §5.1 의 레드가 이번엔 재현되지 않았다
+
+§5.1 에서 부하 52.63 아래 측정했을 때 `TestSessionStart_DeferredScanDoesNotBlockReturn` 이 실패했으나, 병합 트리에서 부하 18.13 아래 재측정하니 **패키지 전체가 `ok`, EXIT 0** 이다. 같은 테스트가 두 조건에서 다른 결과를 냈다.
+
+두 가설이 남고, 본 레인은 **어느 쪽도 확정하지 않았다**:
+
+- (a) **부하 의존 flake.** 테스트 이름이 `DoesNotBlockReturn` 으로 반환 지연을 보는 성격이고, 실패 시점 부하는 52.63, 통과 시점은 18.13 이었다. 타이밍 단언이 부하에 밀렸을 수 있다.
+- (b) **t603 흡수가 고쳤다.** 병합으로 들어온 변경이 원인을 제거했을 수 있다.
+
+가르려면 동일 부하 조건에서 base(`eabce7444`)와 병합본(`63fa51cf3`)을 각각 재야 한다 — 본 카드 범위 밖이라 하지 않았다.
+
+**팀 차원의 함의.** lane-3·lane-7·lane-4 가 이 레드를 "develop 선재 레드"로 귀속했고 §5.1 은 그것을 인용했다. 그러나 부하가 낮을 때 통과한다면 **결정적 레드가 아니라 부하 유발 flake** 일 수 있고, 그렇다면 "base 에서도 실패" 라는 관측들 역시 높은 부하 아래에서 나왔을 가능성을 검토해야 한다. 본 레인의 이번 관측은 그 재검토를 요구하는 **반례 1건**이며, 판정이 아니다. 리드에게 별도 보고했다.
+
+본 카드의 판정에는 영향이 없다 — 병합 트리에서 관련 패키지가 모두 초록이므로 어느 가설이 맞든 본 카드는 레드를 들여오지 않았다.
+
 ## 6. Residual-risk
 
 - 픽스처가 4개뿐이다. 떠올리지 못한 배치가 더 있을 수 있다.
