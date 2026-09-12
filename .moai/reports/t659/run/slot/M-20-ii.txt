@@ -1,0 +1,11 @@
+# mutant M-20-ii: M-20 (ii): the CLI's registry validation reads the registry without the check while Execute keeps it
+# edits: [["internal/cli/constitution.go", "\tregistry, err := constitution.LoadAmendRegistry(registryPath, projectDir)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"registry load error: %w\", err)\n\t}\n\n\t// Print warnings", "\tregistry, err := constitution.LoadRegistry(registryPath, projectDir)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"registry load error: %w\", err)\n\t}\n\n\t// Print warnings"]]
+# $ go test ./internal/cli/ -run ^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$ -count=1 -v -timeout 600s
+# exit=1
+=== RUN   TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape
+    constitution_amend_apply_test.go:189: error "clause mismatch: --before differs from current clause\nCurrent: A different clause outside the root.\nInput: Keep every amendment small and reviewable." does not name the offending registry /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape4118393625/001/other/.claude/rules/moai/core/zone-registry.md
+    constitution_amend_apply_test.go:193: error "clause mismatch: --before differs from current clause\nCurrent: A different clause outside the root.\nInput: Keep every amendment small and reviewable." carries "clause mismatch" — the refusal did not come from the CLI's own registry validation
+--- FAIL: TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.930s
+FAIL

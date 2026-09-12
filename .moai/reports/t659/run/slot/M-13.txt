@@ -1,0 +1,12 @@
+# mutant M-13: CLI dry-run ignores the pipeline error and prints success
+# edits: [["internal/cli/constitution.go", "\tlog, err := pipeline.Execute(proposal, projectDir, dryRun)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"amendment failed: %w\", err)\n\t}\n", "\tlog, err := pipeline.Execute(proposal, projectDir, dryRun)\n\tif err != nil {\n\t\tif dryRun {\n\t\t\t_, _ = fmt.Fprintln(w, \"\\nDry-run success: files were not modified.\")\n\t\t\treturn nil\n\t\t}\n\t\treturn fmt.Errorf(\"amendment failed: %w\", err)\n\t}\n"]]
+# $ go test ./internal/cli/ -run ^TestConstitutionAmend_DryRun_SurfacesValidation$/^two_occurrences$ -count=1 -v -timeout 600s
+# exit=1
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences
+    constitution_amend_apply_test.go:121: runConstitutionAmend: want an error on a two-occurrence fixture, got nil
+--- FAIL: TestConstitutionAmend_DryRun_SurfacesValidation (0.00s)
+    --- FAIL: TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.000s
+FAIL

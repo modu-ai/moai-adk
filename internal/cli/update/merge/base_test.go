@@ -273,6 +273,9 @@ func TestMergeKeepsUserDeletionInCarriedEventKey(t *testing.T) {
 // classifies as "only user changed" and is dropped in silence. This test pins
 // the input state the Option B detector reports on; flipping THIS test is
 // explicitly out of scope (that would be Option A, rejected 2026-09-03).
+//
+// @MX:NOTE: [AUTO] derived-base characterization only — it calls deriveTemplateBase directly, so the
+// settings.json canonical snapshot base (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001) never applies here
 func TestMergeDropsTemplateAdditionInsideCarriedEventKey(t *testing.T) {
 	const userFile = `{
   "hooks": {

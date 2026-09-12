@@ -1,0 +1,10 @@
+=== RUN   TestSettingsSnapshot_WriteSites
+=== RUN   TestSettingsSnapshot_WriteSites/update_leftover_abort
+=== RUN   TestSettingsSnapshot_WriteSites/update_leftover_version_skip
+    update_settings_snapshot_test.go:407: canonical snapshot = {"a":1}, want {"a":2,"K":1,"permissions":{"deny":["Write(./secrets/**)"]}}
+--- FAIL: TestSettingsSnapshot_WriteSites (0.04s)
+    --- PASS: TestSettingsSnapshot_WriteSites/update_leftover_abort (0.04s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/update_leftover_version_skip (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.979s
+FAIL

@@ -1,0 +1,32 @@
+=== RUN   TestAppendEvolutionLog_SnakeCaseAndZoneNames
+--- PASS: TestAppendEvolutionLog_SnakeCaseAndZoneNames (0.00s)
+=== RUN   TestLoadEvolutionLogs_LegacyKeys
+--- PASS: TestLoadEvolutionLogs_LegacyKeys (0.00s)
+=== RUN   TestLoadEvolutionLogs_MarkdownNoise
+--- PASS: TestLoadEvolutionLogs_MarkdownNoise (0.00s)
+=== RUN   TestLoadEvolutionLogs_HumanFormat
+=== RUN   TestLoadEvolutionLogs_HumanFormat/verbatim_block
+=== RUN   TestLoadEvolutionLogs_HumanFormat/real_file_readonly
+=== RUN   TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed
+--- PASS: TestLoadEvolutionLogs_HumanFormat (0.00s)
+    --- PASS: TestLoadEvolutionLogs_HumanFormat/verbatim_block (0.00s)
+    --- PASS: TestLoadEvolutionLogs_HumanFormat/real_file_readonly (0.00s)
+    --- PASS: TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed (0.00s)
+=== RUN   TestRateLimiter_SeesHumanFormatEntry
+--- PASS: TestRateLimiter_SeesHumanFormatEntry (0.00s)
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp
+--- PASS: TestLoadEvolutionLogs_FailClosedErrorLocation (0.00s)
+    --- PASS: TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp (0.00s)
+    --- PASS: TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp (0.00s)
+=== RUN   TestLoadEvolutionLogs
+=== RUN   TestLoadEvolutionLogs/파일_없으면_빈_목록_반환
+=== RUN   TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱
+=== RUN   TestLoadEvolutionLogs/여러_엔트리_파싱
+--- PASS: TestLoadEvolutionLogs (0.00s)
+    --- PASS: TestLoadEvolutionLogs/파일_없으면_빈_목록_반환 (0.00s)
+    --- PASS: TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱 (0.00s)
+    --- PASS: TestLoadEvolutionLogs/여러_엔트리_파싱 (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.180s

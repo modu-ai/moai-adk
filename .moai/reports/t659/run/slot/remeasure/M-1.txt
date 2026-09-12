@@ -1,0 +1,14 @@
+# mutant M-1: replace every occurrence instead of requiring exactly one
+# edits: [["internal/constitution/apply_transform.go", "if n := countOccurrences(content, current); n != 1 {", "if n := countOccurrences(content, current); n == 0 {"], ["internal/constitution/apply_transform.go", "return bytes.Replace(content, []byte(current), []byte(next), 1), nil", "return bytes.Replace(content, []byte(current), []byte(next), -1), nil"]]
+# $ go test ./internal/constitution/ -run ^TestApply_OccurrenceCount_Rejected$ -count=1 -v
+# exit=1
+=== RUN   TestApply_OccurrenceCount_Rejected
+=== RUN   TestApply_OccurrenceCount_Rejected/zero
+=== RUN   TestApply_OccurrenceCount_Rejected/two
+    apply_test.go:385: Execute: want an occurrence error, got nil
+--- FAIL: TestApply_OccurrenceCount_Rejected (0.01s)
+    --- PASS: TestApply_OccurrenceCount_Rejected/zero (0.01s)
+    --- FAIL: TestApply_OccurrenceCount_Rejected/two (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.373s
+FAIL

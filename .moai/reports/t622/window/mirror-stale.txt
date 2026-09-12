@@ -1,0 +1,15 @@
+.claude/rules/moai/workflow/session-handoff.md
+.claude/rules/moai/workflow/spec-workflow.md
+.claude/rules/moai/workflow/worktree-integration.md
+internal/template/catalog.yaml
+internal/template/templates/.claude/hooks/moai/trace-ledger.sh
+internal/template/templates/.claude/output-styles/moai/moai.md
+internal/template/templates/.claude/rules/moai/workflow/session-handoff.md
+internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/rules/moai/workflow/trace-ledger-contract.md
+internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md
+internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md
+internal/template/templates/.claude/skills/moai/workflows/review.md
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md
+internal/template/templates/.moai/config/sections/harness.yaml

@@ -1,0 +1,10 @@
+# mutant M-18-i: on restore failure, delete the backups
+# edits: [["internal/constitution/apply_commit.go", "\t\tif rerr := p.restoreAll(changes); rerr != nil {\n\t\t\tremoveTemps(changes)\n", "\t\tif rerr := p.restoreAll(changes); rerr != nil {\n\t\t\tremoveTemps(changes)\n\t\t\tremoveBackups(changes)\n"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RestoreFault_KeepsBackups$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RestoreFault_KeepsBackups
+    apply_seams_test.go:198: backup files kept = 0 ([]), want 3
+--- FAIL: TestApply_RestoreFault_KeepsBackups (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.382s
+FAIL

@@ -1,0 +1,5 @@
+before-baseline (spec lint --baseline .moai/spec-lint-baseline.json): exit=0
+before-json (spec lint --json > before-lint.json, stderr 0 bytes): exit=0
+rebaseline (spec lint --baseline .moai/spec-lint-baseline.json --update-baseline --reason "..."): exit=0
+after-baseline (spec lint --baseline .moai/spec-lint-baseline.json, after re-baseline): exit=0
+after-edit-baseline (same command, after the progress.md §E.2/§E.3 edits): exit=0, baseline sha256 still e9124a70ec0cc3359917a78e39364f8f025a971a673294102342b7b2115455f6

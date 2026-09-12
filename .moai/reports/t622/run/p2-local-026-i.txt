@@ -1,0 +1,7 @@
+p2-local-skill.md:1
+p2-local-ref.md:1
+p2-local-sync.md:1
+p2-local-dl.md:7
+p2-local-sync-usage.md:1
+p2-local-hint.md:1
+p2-local-dl-next.md:1

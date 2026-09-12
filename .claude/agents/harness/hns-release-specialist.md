@@ -342,7 +342,7 @@ the only tree with `develop` checked out — and takes the integration lock like
 any other develop merge (`gitflow-lane-protocol.md` §2-3):
 
 ```bash
-moai integration acquire --name release        # before entering the tree
+moai integration acquire --name release        # before entering the tree; no --card: a release integration delivers no card
 # EnterWorktree(.claude/worktrees/develop)
 git fetch origin main
 git merge --no-ff origin/main

@@ -1,0 +1,31 @@
+RED evidence plan for the internal/cli test slot — card t525, F1 (NOT applied)
+
+Target test: TestSpecLintBaseline_FlagContractRejections — 8 subtests: the 7 baseline-flag
+rejections plus "--json with --sarif" (added with the widened scope). The selector below is
+the test name, so it covers the new case without change.
+
+Mutant (one line, internal/cli/spec_lint.go, the --strict branch of validateBaselineFlags):
+  from: return argumentError(stderr, "cannot use --baseline and --strict together: both gate on non-advisory warnings, and --baseline supersedes --strict for that purpose")
+  to:   return &exitCodeError{code: 3, msg: "cannot use --baseline and --strict together: both gate on non-advisory warnings, and --baseline supersedes --strict for that purpose"}
+This restores the pre-fix behaviour at one site: exit 3 kept, stderr write removed.
+
+RED command (mutant applied) and GREEN command (mutant reverted) — identical:
+  go test -count=1 -timeout 600s -run 'TestSpecLintBaseline_FlagContractRejections' -v ./internal/cli/
+
+Expected with the mutant:
+  --- FAIL: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--strict
+      message: "the rejection must be written to stderr; stderr is empty (the user sees nothing)"
+  --- PASS for the other 7 subtests; package FAIL, exit 1.
+Expected after reverting the mutant: 8 subtest PASS lines, exit 0.
+Selector check: count "--- PASS|--- FAIL" lines — 0 would mean the selector matched nothing;
+the subtest "--json_with_--sarif" must appear among them.
+
+Stronger optional RED (whole-site revert, compiles because the test never calls
+validateBaselineFlags directly):
+  git show cb1b9a16d:internal/cli/spec_lint.go > internal/cli/spec_lint.go
+  → expect all 8 subtests FAIL on "stderr is empty"; restore with
+  git show HEAD:internal/cli/spec_lint.go > internal/cli/spec_lint.go and confirm
+  git status --porcelain shows no modification.
+
+GREEN for the rest of the file after reverting:
+  go test -count=1 -timeout 600s -run 'TestSpecLint' -v ./internal/cli/

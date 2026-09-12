@@ -1,0 +1,49 @@
+package constitution
+
+// Temporary t659 probe (deleted before commit; copy kept under
+// .moai/reports/t659/tools/). Observes which YAML keys AmendmentLog actually
+// reads and writes, since the struct carries no yaml tags.
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+func TestT659ProbeEvolutionLogKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "evolution-log.md")
+	fixture := "# Evolution Log\n\n---\nid: LEARN-20260428-001\nrule_id: CONST-V3R2-008\nclause_before: \"Old clause\"\nclause_after: \"New clause\"\napproved_by: human\napproved_at: 2026-04-28T10:00:00Z\nrolled_back: false\n---\n"
+	if err := os.WriteFile(path, []byte(fixture), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	logs, err := LoadEvolutionLogs(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range logs {
+		t.Logf("READ id=%q ruleID=%q clauseBefore=%q approvedBy=%q approvedAtZero=%v", l.ID, l.RuleID, l.ClauseBefore, l.ApprovedBy, l.ApprovedAt.IsZero())
+	}
+
+	out := filepath.Join(dir, "appended.md")
+	entry := &AmendmentLog{
+		ID: "LEARN-20260911-001", RuleID: "CONST-V3R2-003", ClauseBefore: "a", ClauseAfter: "b",
+		ApprovedBy: "human", ApprovedAt: time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC),
+	}
+	if err := AppendEvolutionLog(out, entry); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("WRITTEN:\n%s", data)
+	back, err := LoadEvolutionLogs(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range back {
+		t.Logf("ROUNDTRIP id=%q ruleID=%q approvedAtZero=%v", l.ID, l.RuleID, l.ApprovedAt.IsZero())
+	}
+}

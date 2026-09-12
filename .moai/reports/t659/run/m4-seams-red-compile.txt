@@ -1,0 +1,9 @@
+# github.com/modu-ai/moai-adk/internal/constitution [github.com/modu-ai/moai-adk/internal/constitution.test]
+internal/constitution/apply_seams_test.go:103:6: p.rename undefined (type *Pipeline has no field or method rename)
+internal/constitution/apply_seams_test.go:130:5: p.rename undefined (type *Pipeline has no field or method rename)
+internal/constitution/apply_seams_test.go:151:4: p.rename undefined (type *Pipeline has no field or method rename)
+internal/constitution/apply_seams_test.go:179:4: p.rename undefined (type *Pipeline has no field or method rename)
+internal/constitution/apply_seams_test.go:181:4: p.restore undefined (type *Pipeline has no field or method restore)
+internal/constitution/apply_seams_test.go:186:10: undefined: restoreFile
+FAIL	github.com/modu-ai/moai-adk/internal/constitution [build failed]
+FAIL

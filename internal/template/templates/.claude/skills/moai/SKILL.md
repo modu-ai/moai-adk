@@ -137,7 +137,7 @@ For detailed orchestration: Read .claude/skills/moai/workflows/run.md
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
 Skills: moai-workflow-project (per delegation.yaml)
-Modes: auto, force, status, project. Flags: --merge, --skip-mx
+Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx
 For detailed orchestration: Read .claude/skills/moai/workflows/sync.md
 
 ### gate - Pre-Commit Quality Gate

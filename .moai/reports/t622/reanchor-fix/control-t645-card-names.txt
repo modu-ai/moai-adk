@@ -1,0 +1,8 @@
+.moai/reports/t645/cross-account-loopback-probe.txt
+.moai/reports/t645/hugo-build-window.txt
+.moai/reports/t645/hugo-build.txt
+.moai/reports/t645/verdict.md
+docs-site/content/en/advanced/moai-web-console.md
+docs-site/content/ja/advanced/moai-web-console.md
+docs-site/content/ko/advanced/moai-web-console.md
+docs-site/content/zh/advanced/moai-web-console.md

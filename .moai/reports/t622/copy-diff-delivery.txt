@@ -1,0 +1,2 @@
+ .../templates/.claude}/skills/moai/workflows/sync/delivery.md      | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)

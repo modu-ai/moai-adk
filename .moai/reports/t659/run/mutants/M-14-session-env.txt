@@ -1,0 +1,192 @@
+# mutant M-14: tests stop setting the registry variables themselves (isolateEnv becomes a no-op), so the shell's CLAUDE_PROJECT_DIR reaches the resolver; run with CLAUDE_PROJECT_DIR exported as the repository root
+# edits: [["internal/constitution/apply_test.go", "\tt.Setenv(\"MOAI_CONSTITUTION_REGISTRY\", \"\")\n\tt.Setenv(\"CLAUDE_PROJECT_DIR\", \"\")\n}", "\t_ = t\n}"]]
+# $ go test ./internal/constitution/ -count=1
+# exit=1
+--- FAIL: TestApply_RenameFault_RestoresAll (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/first_rename_applied (0.00s)
+        apply_seams_test.go:110: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllfirst_rename_applied2875704203/001" does not name the failed rename of /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllfirst_rename_applied2875704203/001/rules/target.md
+        apply_seams_test.go:113: rename seam called 0 times, want 1 (reachability)
+        apply_seams_test.go:116: rename-then-fail: the destination did not exist after the delegated rename
+    --- FAIL: TestApply_RenameFault_RestoresAll/second_rename (0.00s)
+        apply_seams_test.go:110: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllsecond_rename540223821/001" does not name the failed rename of /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllsecond_rename540223821/001/.claude/rules/moai/core/zone-registry.md
+        apply_seams_test.go:113: rename seam called 0 times, want 2 (reachability)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename (0.00s)
+        apply_seams_test.go:110: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename770951219/001" does not name the failed rename of /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename770951219/001/.moai/research/evolution-log.md
+        apply_seams_test.go:113: rename seam called 0 times, want 3 (reachability)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_applied (0.00s)
+        apply_seams_test.go:110: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_applied448410761/001" does not name the failed rename of /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_applied448410761/001/.moai/research/evolution-log.md
+        apply_seams_test.go:113: rename seam called 0 times, want 3 (reachability)
+        apply_seams_test.go:116: rename-then-fail: the destination did not exist after the delegated rename
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_log_absent (0.00s)
+        apply_seams_test.go:110: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_log_absent2866114978/001" does not name the failed rename of /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_log_absent2866114978/001/.moai/research/evolution-log.md
+        apply_seams_test.go:113: rename seam called 0 times, want 3 (reachability)
+        apply_seams_test.go:116: rename-then-fail: the destination did not exist after the delegated rename
+    --- FAIL: TestApply_RenameFault_RestoresAll/no_fault_clean (0.00s)
+        apply_seams_test.go:133: Execute: registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllno_fault_clean1629451422/001
+--- FAIL: TestApply_RenameOrder (0.00s)
+    apply_seams_test.go:154: Execute: registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameOrder3745418938/001
+--- FAIL: TestApply_RestoreFault_KeepsBackups (0.00s)
+    apply_seams_test.go:194: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RestoreFault_KeepsBackups995270392/001" does not name the failed restore step
+    apply_seams_test.go:198: backup files kept = 0 ([]), want 3
+--- FAIL: TestApply_ExactlyOnce_Success (0.00s)
+    apply_test.go:330: Execute: registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_ExactlyOnce_Success3733601747/001
+--- FAIL: TestApply_OccurrenceCount_Rejected (0.00s)
+    --- FAIL: TestApply_OccurrenceCount_Rejected/zero (0.00s)
+        apply_test.go:387: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedzero3089099802/001" does not name the rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedzero3089099802/001/rules/target.md
+        apply_test.go:389: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedzero3089099802/001" lacks the number 0 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+    --- FAIL: TestApply_OccurrenceCount_Rejected/two (0.00s)
+        apply_test.go:387: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedtwo1093890413/001" does not name the rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedtwo1093890413/001/rules/target.md
+        apply_test.go:389: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedtwo1093890413/001" lacks the number 2 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+--- FAIL: TestApply_NoWhitespaceNormalization (0.00s)
+    apply_test.go:412: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NoWhitespaceNormalization2969594368/001" does not name the rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NoWhitespaceNormalization2969594368/001/rules/target.md
+    apply_test.go:414: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NoWhitespaceNormalization2969594368/001" lacks the number 0 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+--- FAIL: TestUpdateRegistryClause_SingleLineRoundTrip (0.00s)
+    apply_test.go:427: Execute: registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateRegistryClause_SingleLineRoundTrip2169606047/001
+--- FAIL: TestApply_RegistryReparse_Rejects (0.01s)
+    --- FAIL: TestApply_RegistryReparse_Rejects/continuation (0.00s)
+        apply_test.go:491: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectscontinuation3259224646/001" does not name the registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectscontinuation3259224646/001/.claude/rules/moai/core/zone-registry.md
+    --- FAIL: TestApply_RegistryReparse_Rejects/no_clause_line (0.00s)
+        apply_test.go:491: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsno_clause_line2321942350/001" does not name the registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsno_clause_line2321942350/001/.claude/rules/moai/core/zone-registry.md
+    --- FAIL: TestApply_RegistryReparse_Rejects/newline_clause (0.00s)
+        apply_test.go:491: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsnewline_clause1982156882/001" does not name the registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsnewline_clause1982156882/001/.claude/rules/moai/core/zone-registry.md
+--- FAIL: TestApply_NewClausePresent_Rejected (0.00s)
+    --- FAIL: TestApply_NewClausePresent_Rejected/elsewhere (0.00s)
+        apply_test.go:519: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedelsewhere2675714786/001" does not name the rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedelsewhere2675714786/001/rules/target.md
+        apply_test.go:521: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedelsewhere2675714786/001" lacks the number 1 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+    --- FAIL: TestApply_NewClausePresent_Rejected/inside_current_clause (0.00s)
+        apply_test.go:519: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedinside_current_clause3671257380/001" does not name the rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedinside_current_clause3671257380/001/rules/target.md
+        apply_test.go:521: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedinside_current_clause3671257380/001" lacks the number 1 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+--- FAIL: TestPipeline_Execute_DryRun_Validates (0.02s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/valid (0.00s)
+        apply_test.go:601: dry-run on the valid fixture = (<nil>, registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesvalid1547470868/001), want a log entry and no error
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/two_occurrences (0.00s)
+        apply_test.go:610: dryRun=true: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatestwo_occurrences2251545935/001" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatestwo_occurrences2251545935/001/rules/target.md
+        apply_test.go:618: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatestwo_occurrences2251545935/001" lacks the number 2 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+        apply_test.go:610: dryRun=false: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatestwo_occurrences2251545935/003" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatestwo_occurrences2251545935/003/rules/target.md
+        apply_test.go:618: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatestwo_occurrences2251545935/003" lacks the number 2 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/registry_continuation (0.00s)
+        apply_test.go:610: dryRun=true: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesregistry_continuation3136401918/001" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesregistry_continuation3136401918/001/.claude/rules/moai/core/zone-registry.md
+        apply_test.go:610: dryRun=false: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesregistry_continuation3136401918/003" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesregistry_continuation3136401918/003/.claude/rules/moai/core/zone-registry.md
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/missing_rule_file (0.00s)
+        apply_test.go:610: dryRun=true: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesmissing_rule_file3646576701/001" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesmissing_rule_file3646576701/001/rules/target.md
+        apply_test.go:610: dryRun=false: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesmissing_rule_file3646576701/003" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesmissing_rule_file3646576701/003/rules/target.md
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/new_clause_present (0.00s)
+        apply_test.go:610: dryRun=true: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesnew_clause_present1559874051/001" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesnew_clause_present1559874051/001/rules/target.md
+        apply_test.go:618: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesnew_clause_present1559874051/001" lacks the number 1 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+        apply_test.go:610: dryRun=false: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesnew_clause_present1559874051/003" does not name /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesnew_clause_present1559874051/003/rules/target.md
+        apply_test.go:618: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesnew_clause_present1559874051/003" lacks the number 1 (path-stripped: "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir ")
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/stale_before (0.00s)
+        apply_test.go:615: dryRun=true: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesstale_before153876198/001" lacks "CONST-V3R6-789"
+        apply_test.go:615: dryRun=false: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesstale_before153876198/003" lacks "CONST-V3R6-789"
+--- FAIL: TestPipeline_Execute_StaleBefore_Rejected (0.00s)
+    --- FAIL: TestPipeline_Execute_StaleBefore_Rejected/dry_run (0.00s)
+        apply_test.go:647: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_StaleBefore_Rejecteddry_run3433790620/001" does not name the rule CONST-V3R6-789
+    --- FAIL: TestPipeline_Execute_StaleBefore_Rejected/real (0.00s)
+        apply_test.go:647: error "registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_StaleBefore_Rejectedreal1713716393/001" does not name the rule CONST-V3R6-789
+--- FAIL: TestExecute_RealRegistryShape_Admitted (0.02s)
+    --- FAIL: TestExecute_RealRegistryShape_Admitted/dry_run (0.00s)
+        apply_test.go:1124: Execute dry-run = (<nil>, registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RealRegistryShape_Admitteddry_run998185533/001/link), want a log entry and no error
+    --- FAIL: TestExecute_RealRegistryShape_Admitted/real (0.00s)
+        apply_test.go:1136: Execute = (<nil>, registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RealRegistryShape_Admittedreal382789352/001/link), want a log entry and no error
+
+=== Constitutional Amendment Proposal ===
+Rule ID: R
+
+--- Before ---
+a
+
++++ After +++
+b
+
+Evidence: demotion evidence
+
+승인하시겠습니까? (Y/N): 
+=== Constitutional Amendment Proposal ===
+Rule ID: R
+
+--- Before ---
+a
+
++++ After +++
+b
+
+승인하시겠습니까? (Y/N): 
+=== Constitutional Amendment Proposal ===
+Rule ID: R
+
+--- Before ---
+a
+
++++ After +++
+b
+
+승인하시겠습니까? (Y/N): Y 또는 N을 입력하세요.
+
+승인하시겠습니까? (Y/N): 
+=== Constitutional Amendment Proposal ===
+Rule ID: R1
+
+--- Before ---
+a
+
++++ After +++
+b
+
+--- Canary Evaluation ---
+Status: PASSED
+Score Before: 0.90
+Score After: 0.85
+Score Drop: 0.05
+Evaluated Specs: [SPEC-A SPEC-B]
+
+승인하시겠습니까? (Y/N): 
+=== Constitutional Amendment Proposal ===
+Rule ID: R2
+
+--- Before ---
+a
+
++++ After +++
+b
+
+--- Canary Evaluation ---
+Status: SKIPPED (insufficient SPECs)
+
+승인하시겠습니까? (Y/N): 
+=== Constitutional Amendment Proposal ===
+Rule ID: R3
+
+--- Before ---
+a
+
++++ After +++
+b
+
+--- Contradiction Detection ---
+[BLOCKING] X: blocks
+[WARNING] Y: warns
+
+승인하시겠습니까? (Y/N): 
+=== Constitutional Amendment Proposal ===
+Rule ID: R4
+
+--- Before ---
+a
+
++++ After +++
+b
+
+승인하시겠습니까? (Y/N): --- FAIL: TestPipeline_Execute_DryRun_Success (0.00s)
+    pipeline_test.go:100: Execute dry-run failed: registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Success260159214/001
+--- FAIL: TestPipeline_Execute_RuleNotFound (0.00s)
+    pipeline_test.go:130: Execute err = registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_RuleNotFound3986796687/001, want 'not found'
+--- FAIL: TestPipeline_Execute_CanaryUnavailable_Continues (0.00s)
+    pipeline_test.go:172: Execute canary-unavailable should continue: registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_CanaryUnavailable_Continues2257071710/001
+--- FAIL: TestPipeline_Execute_UserRejected (0.00s)
+    pipeline_test.go:199: Execute err = registry load error: registry path: path /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md (resolves to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.claude/rules/moai/core/zone-registry.md) is outside project dir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_UserRejected810536242/001, want 'user rejected'
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.700s
+FAIL

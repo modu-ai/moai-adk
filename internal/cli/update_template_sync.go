@@ -365,6 +365,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
 					return fmt.Errorf("deploy templates: %w", deployErr)
 				}
+				// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
+				// settings.json render this deploy wrote, before the Restore
+				// Settings merge rewrites the file. Best-effort: it only warns.
+				backup.StageDeployedSettingsSnapshot(projectRoot, mgr, errOut)
 				pl.Done("Templates deployed")
 				return nil
 			},
@@ -539,11 +543,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
 				}
 			}
-			// Merge user-customized files using 3-way merge engine
-			if len(mergeableBackups) > 0 {
-				if err := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
-					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
-				}
+			// Merge user-customized files using 3-way merge engine, then settle
+			// the staged settings.json render (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001
+			// REQ-USB-005). Deliberately outside the configBackupPath block and
+			// run even with no backups: the promotion decision belongs to every
+			// flow that deployed (plan.md D4 ③, M-07d).
+			if err := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); err != nil {
+				_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
 			}
 		default:
 			// Execute normal step under the recovery guard: a failure after the

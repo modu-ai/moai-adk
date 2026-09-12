@@ -1,0 +1,7 @@
+p2-template-skill.md:1
+p2-template-ref.md:1
+p2-template-sync.md:1
+p2-template-dl.md:7
+p2-template-sync-usage.md:1
+p2-template-hint.md:1
+p2-template-dl-next.md:1

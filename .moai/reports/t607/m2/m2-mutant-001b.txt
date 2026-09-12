@@ -1,0 +1,18 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/kanban/ -run '^TestSlotLease_ControlGroupTwoSessions$' -count=1 -v
+# exit: 1
+# tree: c331bc589 with one mutation: withSlotLeaseMutation(projectRoot, req.Resource, decide) -> decide() (the critical section bypassed, one line)
+# note: observed lease: acquired=2 refused=0 busy=0 other=0
+# ---
+=== RUN   TestSlotLease_ControlGroupTwoSessions
+=== RUN   TestSlotLease_ControlGroupTwoSessions/probe_then_start
+    slot_lease_cross_test.go:191: control: starts=2 (A: RESULT=started SESSION=lane-a | B: RESULT=started SESSION=lane-b)
+=== RUN   TestSlotLease_ControlGroupTwoSessions/lease
+    slot_lease_cross_test.go:215: lease: acquired=2 refused=0 busy=0 other=0 (A: RESULT=acquired SESSION=lane-a | B: RESULT=acquired SESSION=lane-b)
+    slot_lease_cross_test.go:223: lease: acquired=2 refused=0, want 1 and 1 — the record's read-modify-write is not serialized across processes
+--- FAIL: TestSlotLease_ControlGroupTwoSessions (0.05s)
+    --- PASS: TestSlotLease_ControlGroupTwoSessions/probe_then_start (0.02s)
+    --- FAIL: TestSlotLease_ControlGroupTwoSessions/lease (0.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.443s
+FAIL

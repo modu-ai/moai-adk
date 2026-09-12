@@ -1,0 +1,33 @@
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/valid
+--- PASS: TestConstitutionAmend_DryRun_SurfacesValidation (0.00s)
+    --- PASS: TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences (0.00s)
+    --- PASS: TestConstitutionAmend_DryRun_SurfacesValidation/valid (0.00s)
+=== RUN   TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape
+--- PASS: TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape (0.00s)
+=== RUN   TestConstitutionGuard_NoViolations
+--- PASS: TestConstitutionGuard_NoViolations (0.00s)
+=== RUN   TestConstitutionGuard_RegistryMissing
+--- PASS: TestConstitutionGuard_RegistryMissing (0.00s)
+=== RUN   TestConstitutionGuard_DetectsFrozenViolation
+--- PASS: TestConstitutionGuard_DetectsFrozenViolation (0.00s)
+=== RUN   TestConstitutionGuard_EvolvableViolationNotFatal
+--- PASS: TestConstitutionGuard_EvolvableViolationNotFatal (0.00s)
+=== RUN   TestConstitutionGuard_SubcommandExists
+--- PASS: TestConstitutionGuard_SubcommandExists (0.00s)
+=== RUN   TestConstitutionListAllEntries
+--- PASS: TestConstitutionListAllEntries (0.00s)
+=== RUN   TestConstitutionListFilterFrozen
+--- PASS: TestConstitutionListFilterFrozen (0.00s)
+=== RUN   TestConstitutionListFilterByFile
+--- PASS: TestConstitutionListFilterByFile (0.00s)
+=== RUN   TestConstitutionListJSON
+--- PASS: TestConstitutionListJSON (0.00s)
+=== RUN   TestConstitutionListRegistryMissing_FileNotFound
+--- PASS: TestConstitutionListRegistryMissing_FileNotFound (0.00s)
+=== RUN   TestConstitutionListRegistryMissing_PermissionDenied
+--- PASS: TestConstitutionListRegistryMissing_PermissionDenied (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.765s
+exit=0

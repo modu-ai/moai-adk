@@ -1,0 +1,21 @@
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run
+    apply_test.go:1264: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real
+    apply_test.go:1264: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run
+    apply_test.go:1264: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real
+    apply_test.go:1264: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real
+--- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected (0.04s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real (0.01s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run (0.01s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.527s
+FAIL

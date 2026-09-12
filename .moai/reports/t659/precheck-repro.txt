@@ -1,0 +1,10 @@
+slot pre-check before the t659-constitution-repro run
+2026-09-10T18:43:21Z
+ 3:43  up 2 days, 21:36, 18 users, load averages: 11.78 14.89 19.07
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1447)
+observer control - the ps process itself: 2
+go test/.test lines (zsh/python excluded): 3
+ 2144       00:01 go               go test ./internal/hook/ -run ^TestSyncGateFailState_AC015_NoticesNeverBlockOrConsumeCap$ -count=1 -v
+84852       02:23 go               go test -overlay /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/lint-ce
+85170       02:21 /var/folders/kt/ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build1609993300/b001/spec.test -test.paniconexit0 -test.count=1 -test.run

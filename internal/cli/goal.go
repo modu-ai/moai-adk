@@ -140,6 +140,19 @@ transcript becomes a model condition the orchestrator evaluates.`,
 			if len(args) == 0 {
 				return c.Help()
 			}
+			// A single word a user would type as a verb is not a condition.
+			// Only the bare form is checked: `goal arm <word>` states the
+			// intent explicitly, and a multi-word or prefixed condition never
+			// matches a listed word.
+			if len(args) == 1 {
+				word := strings.TrimSpace(args[0])
+				if strings.EqualFold(word, "help") {
+					return c.Help()
+				}
+				if verb, ok := misreadGoalVerb(c, word); ok {
+					return misreadGoalVerbError(word, verb)
+				}
+			}
 			return runGoalArm(c, args, sessionFlag, jsonOutput)
 		},
 	}
@@ -166,6 +179,7 @@ transcript becomes a model condition the orchestrator evaluates.`,
 	statusCmd := &cobra.Command{
 		Use:          "status",
 		Short:        "Print the active session's goal state",
+		SuggestFor:   []string{"show", "list", "info", "stat"},
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -177,6 +191,7 @@ transcript becomes a model condition the orchestrator evaluates.`,
 	clearCmd := &cobra.Command{
 		Use:          "clear",
 		Short:        "Clear the active session's goal",
+		SuggestFor:   []string{"cancel", "reset", "stop", "done"},
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -201,6 +216,33 @@ transcript becomes a model condition the orchestrator evaluates.`,
 
 	cmd.AddCommand(armCmd, statusCmd, clearCmd, renderCmd)
 	return cmd
+}
+
+// misreadGoalVerb reports the registered goal verb a single word was most
+// likely meant as, using each subcommand's SuggestFor list. The list is
+// explicit on purpose: conditions are free text, so a rule that refused
+// anything verb-shaped would throw away legitimate one-word conditions
+// such as `true` or `make`.
+func misreadGoalVerb(goalCmd *cobra.Command, word string) (string, bool) {
+	for _, sub := range goalCmd.Commands() {
+		for _, alias := range sub.SuggestFor {
+			if strings.EqualFold(word, alias) {
+				return sub.Name(), true
+			}
+		}
+	}
+	return "", false
+}
+
+// misreadGoalVerbError renders the refusal for a word read as a verb. It names
+// the verb that was probably meant and the cmd: prefix for the rare case where
+// the word really is the intended condition.
+func misreadGoalVerbError(word, verb string) error {
+	return fmt.Errorf(
+		"goal: %q is not a goal verb, so it would be armed as a condition. "+
+			"Did you mean \"moai goal %s\"? If %q really is the condition, "+
+			"declare it: moai goal \"cmd: %s\"",
+		word, verb, word, word)
 }
 
 // goalProjectRoot resolves the project root for goal state I/O (CLAUDE_PROJECT_DIR

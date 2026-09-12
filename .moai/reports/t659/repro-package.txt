@@ -1,0 +1,13 @@
+=== RUN   TestPipeline_Execute_DryRun_Success
+--- PASS: TestPipeline_Execute_DryRun_Success (0.00s)
+=== RUN   TestPipeline_Execute_NonDryRun_AmendmentStubError
+--- PASS: TestPipeline_Execute_NonDryRun_AmendmentStubError (0.00s)
+=== RUN   TestPipeline_applyAmendment_StubError
+--- PASS: TestPipeline_applyAmendment_StubError (0.00s)
+=== RUN   TestUpdateSourceFile_StubError
+--- PASS: TestUpdateSourceFile_StubError (0.00s)
+=== RUN   TestUpdateRegistryClause_StubError
+--- PASS: TestUpdateRegistryClause_StubError (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.357s
+EXIT=0

@@ -1,0 +1,28 @@
+SELFTEST	subcommand-classification-pipeline-vs-multi-agent
+SELFTEST	mode-dispatch-cross-reference
+.claude/skills/moai/workflows/fix.md:46	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/fix.md:58	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:46	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:58	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/loop.md:48	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:48	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/codemaps.md:43	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/codemaps.md:55	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/codemaps.md:43	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/codemaps.md:55	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/clean.md:44	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/clean.md:56	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/clean.md:44	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/clean.md:56	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/mx.md:61	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/mx.md:73	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/mx.md:61	MENTION	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/mx.md:73	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/project/mode-detection.md:24	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/project/mode-detection.md:23	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/sync/quality-gates-context.md:43	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md:43	MDLINK	FILE=OK	ANCHOR=MISSING	#subcommand-classification	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/run/context-loading.md:35	MENTION	FILE=OK	ANCHOR=OK	#mode-dispatch-cross-reference	-> .claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/run/context-loading.md:86	MDLINK	FILE=OK	ANCHOR=OK	#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md:35	MENTION	FILE=OK	ANCHOR=OK	#mode-dispatch-cross-reference	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md:86	MDLINK	FILE=OK	ANCHOR=OK	#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md

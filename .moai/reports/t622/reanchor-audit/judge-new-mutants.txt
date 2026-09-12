@@ -1,0 +1,8 @@
+mut-v-background.md: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+  session-count=1
+mut-vi-pipe.md: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+  session-count=1
+mut-vii-noabort.md: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+  session-count=1
+mut-viii-laneb-serial.md: fetch=1 revlist=1 joined=0 F=2 S=3 C=4 X=6 R=8 verdict=PASS
+  session-count=1

@@ -1,0 +1,8 @@
+=== RUN   TestSettingsSnapshot_WriteSites
+=== RUN   TestSettingsSnapshot_WriteSites/clean_reinstall
+    update_settings_snapshot_test.go:324: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+--- FAIL: TestSettingsSnapshot_WriteSites (0.02s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/clean_reinstall (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.084s
+FAIL
