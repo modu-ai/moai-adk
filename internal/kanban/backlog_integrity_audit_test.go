@@ -26,7 +26,7 @@ func TestAuditPureReadMutatesSchema(t *testing.T) {
 	if _, err = db.Exec("DROP TABLE archived_findings; DROP TABLE archived_items"); err != nil {
 		t.Fatal(err)
 	}
-	db.Close()
+	_ = db.Close()
 	before := InspectBacklogArchiveVouch(q).HasArchive
 	_, err = s.LoadPure()
 	if err != nil {
@@ -68,7 +68,7 @@ func TestAuditInterruptedMigrationShadowsLegacy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eng.close()
+	_ = eng.close()
 	if _, err := NewBacklogStore(q).LoadPure(); !IsBacklogCorrupt(err) {
 		t.Fatalf("pure interrupted read error=%v, want explicit refusal", err)
 	}
@@ -101,7 +101,7 @@ func TestAuditAddRewritesWholeArchive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer eng.close()
+	defer func() { _ = eng.close() }()
 	if _, err := eng.db.Exec("CREATE TABLE audit_count(n INTEGER); INSERT INTO audit_count VALUES(0); CREATE TRIGGER audit_archive_insert AFTER INSERT ON archived_items BEGIN UPDATE audit_count SET n=n+1; END; CREATE TRIGGER audit_archive_delete AFTER DELETE ON archived_items BEGIN UPDATE audit_count SET n=n+1; END;"); err != nil {
 		t.Fatal(err)
 	}
@@ -151,14 +151,18 @@ func TestAuditFutureSchemaMutatedBeforeRefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err = db.Exec("CREATE TABLE meta(key TEXT PRIMARY KEY,value TEXT); INSERT INTO meta VALUES('schema_version','999')"); err != nil {
 		t.Fatal(err)
 	}
 	var before, after int
-	db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table'").Scan(&before)
+	if err := db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table'").Scan(&before); err != nil {
+		t.Fatal(err)
+	}
 	_, openErr := openBacklogEngine(p)
-	db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table'").Scan(&after)
+	if err := db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table'").Scan(&after); err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("open error=%v; tables before=%d after=%d", openErr, before, after)
 	if openErr == nil {
 		t.Fatal("expected refusal")
@@ -243,12 +247,12 @@ func TestAuditReadSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.close()
+	defer func() { _ = reader.close() }()
 	writer, err := openBacklogEngine(s.EnginePath())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer writer.close()
+	defer func() { _ = writer.close() }()
 	stop := make(chan struct{})
 	writerErrors := make(chan error, 1)
 	var commits atomic.Int64
@@ -282,7 +286,7 @@ func TestAuditReadSnapshot(t *testing.T) {
 			}
 			_, err = tx.Exec("INSERT INTO archived_items(seq,id,text,added_at,spec_id,state,position,landing) SELECT seq,id,text,added_at,spec_id,state,seq-1,landing FROM items; DELETE FROM items")
 			if err != nil {
-				tx.Rollback()
+				_ = tx.Rollback()
 				writerErrors <- err
 				return
 			}
@@ -298,7 +302,7 @@ func TestAuditReadSnapshot(t *testing.T) {
 			}
 			_, err = tx.Exec("INSERT INTO items(seq,id,text,added_at,spec_id,state,landing) SELECT seq,id,text,added_at,spec_id,state,landing FROM archived_items; DELETE FROM archived_items")
 			if err != nil {
-				tx.Rollback()
+				_ = tx.Rollback()
 				writerErrors <- err
 				return
 			}

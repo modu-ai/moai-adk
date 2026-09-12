@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -160,8 +161,11 @@ func TestBacklogAdd_CreatesVersion1File(t *testing.T) {
 	if len(rec.Items) != 1 || rec.Items[0].ID != "t1" {
 		t.Fatalf("stored items = %+v, want exactly [t1]", rec.Items)
 	}
-	if rec.Items[0] != *item {
+	if !reflect.DeepEqual(rec.Items[0], *item) {
 		t.Fatalf("stored item %+v != issued item %+v", rec.Items[0], *item)
+	}
+	if rec.Items[0].CardUUID == nil || item.CardUUID == nil || *rec.Items[0].CardUUID != *item.CardUUID {
+		t.Fatalf("stored card_uuid %v != issued card_uuid %v", rec.Items[0].CardUUID, item.CardUUID)
 	}
 
 	// The physical artifact is the sibling database, and nothing else claims

@@ -544,11 +544,11 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 	if !jsonOutput && limit < 0 {
 		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
 	}
-	store := newTodoStore()
-	// REQ-BJD-002 — probed before the read, because Load adopts (see
-	// todo_disclosure.go). stderr only: stdout is what the foreman reads.
+	store := newTodoReadStore()
+	// REQ-BJD-002 — probed before the read. stderr only: stdout is what the
+	// foreman reads.
 	_ = discloseQueueLayout(cmd, "todo")
-	rec, err := store.Load()
+	rec, err := store.LoadPure()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 		return err

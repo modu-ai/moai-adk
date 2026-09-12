@@ -452,10 +452,12 @@ func TestTodoHistoryStatesWithheldCount(t *testing.T) {
 // way a wall-clock field is reproducible across processes); every golden
 // comparison applies the identical rule.
 var goldenRFC3339 = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z`)
+var goldenUUIDv7 = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}`)
 
 // normalizeGoldenTimestamps applies the capture-time normalization.
 func normalizeGoldenTimestamps(s string) string {
-	return goldenRFC3339.ReplaceAllString(s, "<RFC3339>")
+	s = goldenRFC3339.ReplaceAllString(s, "<RFC3339>")
+	return goldenUUIDv7.ReplaceAllString(s, "<UUIDv7>")
 }
 
 // goldenDir is the live-reader golden directory (AC-TAQ-011 clause 1 pins

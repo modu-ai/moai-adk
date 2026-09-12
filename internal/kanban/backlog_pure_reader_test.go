@@ -63,7 +63,7 @@ func TestPureBacklogReaderRejectsSQLWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.close()
+	defer func() { _ = reader.close() }()
 	if _, err := reader.db.Exec("DELETE FROM items"); err == nil {
 		t.Fatal("query-only connection accepted SQL write")
 	}
@@ -72,7 +72,7 @@ func TestPureBacklogReaderRejectsSQLWrites(t *testing.T) {
 func TestPureBacklogReaderNeverCreatesMissingDB(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "missing.db")
 	if reader, err := openBacklogReader(p); err == nil {
-		reader.close()
+		_ = reader.close()
 		t.Fatal("missing DB opened successfully")
 	}
 	if archiveTablesPresent(p) {
@@ -92,7 +92,7 @@ func TestPureBacklogReaderSeesCommittedWAL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer writer.close()
+	defer func() { _ = writer.close() }()
 	if _, err := writer.db.Exec("PRAGMA wal_autocheckpoint=0"); err != nil {
 		t.Fatal(err)
 	}

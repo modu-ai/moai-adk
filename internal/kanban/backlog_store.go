@@ -84,7 +84,8 @@ type BacklogItem struct {
 	// was recorded. Written ONLY through LandingEvidenceValue, so the
 	// encoder's refusals (a SHA without provenance, a provenance that is not
 	// `operator`) hold on every write rather than at each call site.
-	Landing *LandingEvidence `json:"landing,omitempty"`
+	Landing  *LandingEvidence `json:"landing,omitempty"`
+	CardUUID *string          `json:"card_uuid"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
@@ -202,11 +203,13 @@ type BacklogArchiveEntry struct {
 // enum, no listing filter, and no analysis input had to change for it
 // (spec.md §B.1).
 type BacklogRecord struct {
-	Version  int                   `json:"version"`
-	LastSeq  int                   `json:"last_seq"`
-	Items    []BacklogItem         `json:"items"`
-	Findings []BacklogFinding      `json:"findings"`
-	Archived []BacklogArchiveEntry `json:"archived"`
+	ProjectUUID *string               `json:"project_uuid"`
+	Version     int                   `json:"version"`
+	LastSeq     int                   `json:"last_seq"`
+	Items       []BacklogItem         `json:"items"`
+	Findings    []BacklogFinding      `json:"findings"`
+	Archived    []BacklogArchiveEntry `json:"archived"`
+	Runtime     TodoRuntime           `json:"runtime"`
 }
 
 // ArchivedIndex returns the index of id in the archive, or -1.
@@ -579,6 +582,7 @@ func (s *BacklogStore) Load() (*BacklogRecord, error) {
 // Load, by contrast, adopts: the `moai todo` verbs are where the one-time
 // cutover belongs, because that is where the queue lock is already in play.
 func (s *BacklogStore) LoadPure() (*BacklogRecord, error) {
+	// @MX:NOTE: [TID:PURE] A pure read projects nullable identities but never issues, stamps, or backfills them.
 	layout := inspectBacklogLayout(s.path)
 	if !layout.dbExists {
 		if !layout.jsonExists {
@@ -667,6 +671,8 @@ func (s *BacklogStore) migrateUnderLock(lockHeld bool) error {
 // than discarded: on Windows release removes the artifact, so a silent
 // release failure would block every later writer.
 func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
+	// @MX:WARN: [TID:TX] Identity schema, UUID backfill, and the card record must commit in one writer transaction.
+	// @MX:REASON: [TID:TX] MaxOpenConns(1) forbids e.db re-entry while that transaction is active; every identity query uses its *sql.Tx.
 	lock, err := s.acquireLock()
 	if err != nil {
 		return err
@@ -733,6 +739,7 @@ func joinBacklogReleaseErr(mutErr, relErr error, path string) error {
 // high-water mark inside the locked mutation, so a removed card's id is
 // never reused (REQ-TODO-008).
 func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
+	// @MX:NOTE: [TID:RETURN] Add reads back the committed row so its card_uuid is exactly the persisted identity.
 	var item BacklogItem
 	var pos int
 	err := s.Mutate(func(rec *BacklogRecord) error {
@@ -755,7 +762,17 @@ func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	return &item, pos, nil
+	record, err := s.LoadPure()
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range record.Items {
+		if record.Items[i].ID == item.ID {
+			persisted := record.Items[i]
+			return &persisted, pos, nil
+		}
+	}
+	return nil, 0, fmt.Errorf("added backlog item %s missing from committed record", item.ID)
 }
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying

@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -202,7 +203,7 @@ func TestTodoAddNearDuplicateRecordsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if rec.Items[0] != snapshot {
+	if !reflect.DeepEqual(rec.Items[0], snapshot) {
 		t.Errorf("the related card changed: %+v -> %+v", snapshot, rec.Items[0])
 	}
 	if rec.Items[1].Text != nearText {

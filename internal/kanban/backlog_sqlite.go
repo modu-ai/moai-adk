@@ -289,6 +289,12 @@ func openBacklogReader(dbPath string) (*backlogEngine, error) {
 	if err == nil && version != "" && version != backlogSchemaVersion {
 		err = fmt.Errorf("unsupported schema_version %q: %w", version, ErrBacklogCorrupt)
 	}
+	if err == nil {
+		_, err = e.runtimeVersion(ctx)
+	}
+	if err == nil {
+		_, err = e.identitySchemaPresent(ctx)
+	}
 	// Older releases published an empty DB before copying legacy records.
 	// Neither a pure read nor an adopting read may call that empty state real.
 	if err == nil && fileExists(strings.TrimSuffix(dbPath, ".db")+".json") {

@@ -55,13 +55,13 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	// Explicit deferred transaction preserves WAL reader/writer concurrency even
 	// though write transactions use the driver's immediate transaction mode.
 	if _, err := conn.ExecContext(ctx, "BEGIN DEFERRED"); err != nil {
 		return nil, err
 	}
-	defer conn.ExecContext(context.Background(), "ROLLBACK")
+	defer func() { _, _ = conn.ExecContext(context.Background(), "ROLLBACK") }()
 	snapshot := &backlogEngine{dbPath: e.dbPath, reader: conn}
 	return snapshot.readSnapshot(ctx)
 }
@@ -147,6 +147,14 @@ func (e *backlogEngine) readSnapshot(ctx context.Context) (*BacklogRecord, error
 		return nil, err
 	}
 	rec.LastSeq = lastSeq
+	if err := e.readRuntime(ctx, &rec.Runtime); err != nil {
+		return nil, err
+	}
+	identities, err := e.readIdentitySnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	identities.apply(rec)
 
 	normalizeBacklogRecord(rec)
 	return rec, nil
@@ -339,6 +347,9 @@ func (e *backlogEngine) writeRecordArchive(ctx context.Context, rec *BacklogReco
 			_ = tx.Rollback()
 		}
 	}()
+	if err = ensureRecordIdentities(ctx, tx, e.dbPath, rec); err != nil {
+		return err
+	}
 
 	if _, err = tx.ExecContext(ctx, `DELETE FROM items`); err != nil {
 		return mapBacklogEngineError(fmt.Sprintf("write backlog %s", e.dbPath), err)
@@ -559,9 +570,12 @@ func publishBacklogRecord(queuePath string, record *BacklogRecord, quarantine bo
 	if err != nil {
 		return err
 	}
-	defer eng.close()
+	defer func() { _ = eng.close() }()
 	ctx := context.Background()
 	if err := eng.writeRecord(ctx, record); err != nil {
+		return err
+	}
+	if err := eng.copyRuntime(ctx, record.Runtime); err != nil {
 		return err
 	}
 	readback, err := eng.readRecord(ctx)
@@ -680,6 +694,17 @@ func removeBacklogDBArtifacts(dbPath string) {
 // a spec id or reordering findings would pass a count check and lose operator
 // data silently.
 func assertBacklogParity(source, migrated *BacklogRecord) error {
+	wantRuntime, err := json.Marshal(source.Runtime)
+	if err != nil {
+		return err
+	}
+	gotRuntime, err := json.Marshal(migrated.Runtime)
+	if err != nil {
+		return err
+	}
+	if string(wantRuntime) != string(gotRuntime) {
+		return fmt.Errorf("runtime differs after migration")
+	}
 	if len(source.Items) != len(migrated.Items) {
 		return fmt.Errorf("item count %d != %d", len(source.Items), len(migrated.Items))
 	}
