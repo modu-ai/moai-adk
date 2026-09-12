@@ -363,3 +363,79 @@ Work the run phase deliberately did not do, because doing it would have crossed 
 `AssertFailWithoutTmux` 최소치 4→5 로 같은 커밋에서 고쳤다. 선택자 수 대조:
 `-list '^TestPtyCapture'` 6개 ↔ 게이트 실행 결과 6개(SKIP 1 · PASS 3 · FAIL 2).
 FAIL 2 는 이 사례와 M7 대기 중인 `TestPtyCapture_DowngradeConfirmButtonAlignment` 다.
+
+---
+
+## M4 — init·update 흐름에서 프로필 경로 제거 (2026-09-12, `WT-init-tux-i18n`)
+
+기준선 HEAD `e5f5692c6`. 커밋 둘: RED `f3fc13fae`, 수리 `312f30825`.
+
+### plan.md 좌표는 낡아 있었다 — 재측정
+
+`plan.md` §F M4 은 `init.go:647-663`, `update.go:174-192` 를 가리키지만 t583 흡수 전 좌표다.
+흡수 트리 `e5f5692c6` 에서 다시 쟀다(`git grep -n`):
+
+| 대상 | plan.md | 실측 `e5f5692c6` |
+|---|---|---|
+| init 확인창 제목 | 647-663 | `internal/cli/init.go:618` (호출 `:626`) |
+| update 확인창 제목 | 174-192 | `internal/cli/update.go:180` (호출 `:188`) |
+
+### 이음새
+
+`profile.go` 에 `runProfileSetupFn` 을 뒀다(`runWizardFn` 관용구와 같은 주입형 패키지 변수).
+두 **명시** 진입이 이 이음새를 지난다 — `profileSetupCmd.RunE` 와 `runProfileCmd` 의 `--setup`
+분기. `runProfileSetup` 자체는 건드리지 않았다(M5 의 대상).
+
+### 판정 (모두 이 실행, 이 트리, HEAD `312f30825`)
+
+| 항목 | 명령 | 결과 |
+|---|---|---|
+| AC-ITI-001 행동 | `go test -run 'TestInitUpdateEntry_NeverRunsProfileWizard'` | PASS (8 조합: stdin tty/pipe × init·init --non-interactive·update·update --yes) |
+| AC-ITI-001 소스 | `go test -run 'TestInitUpdateSource_CarriesNoProfileEntry'` | PASS (대조군 2개 포함) |
+| AC-ITI-002 | `go test -run 'TestInitInteractive_AsksConversationLanguageExactlyOnce'` | PASS (대화 언어 질문 1회·인덱스 0) |
+| AC-ITI-002 꼬리 | `go test -run 'TestProfileExplicitEntries_RunProfileWizardOnce'` | PASS (두 명시 진입 각 1회) |
+| AC-ITI-003 | `MOAI_PTY_CAPTURE=1 go test -run 'TestPtyCapture_InitFirstScreen'` | **RED→PASS** |
+| RED 원장 L2 | `git grep -n 'No profile found' -- '*.go' ':!*_test.go'` | 0행(exit 1) · 대조군 `Initialization cancelled` 1행(exit 0) |
+| RED 원장 L4 | `git grep -n 'runProfileSetup(' -- init.go update.go` | 0행(exit 1) · 대조군 profile.go 1행(exit 0) |
+| 패키지 전량 | `go test ./internal/cli/ -count=1 -timeout 1800s` | `ok … 1582.680s`, `--- FAIL` 0건 |
+
+선택자 수 대조: `-list` 4개 ↔ 최상위 PASS 4개. (600s 로는 이 패키지가 완주하지 못한다 —
+`panic: test timed out after 10m0s`. 1800s 로 다시 재서 통과.)
+
+### RED 는 겨눈 이유로 실패했다
+
+수리 전 `TestInitUpdateSource_CarriesNoProfileEntry` 가 4행 모두 "1건 잔존" 으로 FAIL 했고,
+대조군 2개는 통과했다 — 0 기대가 빈 읽기가 아님을 그 자리에서 세웠다.
+증거 `.moai/reports/t586/m4-ac001-ac002-red.txt`, `m4-red-ledger-l2-l4.txt`.
+
+행동 쪽 판정은 수리 전에는 **공허한 초록**이었다. 수리 전 프로필 블록은 `isatty` 로 막혀
+`go test` 에서 도달 불가이고, 그 호출은 이음새를 지나지도 않았다. 비공허성은 AC-ITI-002 가
+규정한 뮤턴트로 세웠다 — init 위저드 호출 **직전**에 `runProfileSetupFn(cmd, nil)` 을 되살린
+트리에서 `conversation_language questions issued in the whole run = 2, want 1` 로 FAIL 하고,
+이음새 카운터도 `calls = 1, want 0` 으로 FAIL 한다. 뮤턴트는 되돌렸다(sha256 대조로 확인).
+증거 `.moai/reports/t586/m4-ac002-mutant-red.txt`.
+
+두 판정이 서로 다른 모양을 잡는다: 이음새를 **지나는** 되살림은 카운터가, 이음새를 **우회한**
+직접 호출은 소스 스캔이 잡는다. 어느 하나만으로는 두 모양을 다 못 본다.
+
+### AC-ITI-003 첫 화면
+
+수리 뒤 캡처의 첫 화면이 `Select conversation language` + 옵션 4줄
+(`English`, `Korean (한국어)`, `Japanese (日本語)`, `Chinese (中文)`) 이고, `No profile found` 도
+`Yes`/`No` 버튼 줄도 없다. `Ctrl+C` 뒤 `Initialization cancelled.` 가 나온다. 즉 M4 뮤턴트
+(`false &&`)로 미리 본 초록을 실제 수리가 그대로 재현했다.
+캡처 `.moai/reports/t586/ac003-green-capture/init-first-screen{,-cancelled}.txt`.
+
+### 테스트 수 결합
+
+새 `TestPtyCapture_*` 를 **더하지 않았다**. `AssertSkipWithoutGate` 의 `^TestPtyCapture` 6,
+`AssertFailWithoutTmux` 의 `^TestPtyCapture_` 5 는 그대로 맞다(파일 스캔으로 확인:
+`TestPtyCaptureChild` + `TestPtyCapture_*` 5개 = 6).
+
+### 빌드·정적검사
+
+`go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
+`go vet ./internal/cli/...` exit 0 · `golangci-lint run ./internal/cli/...` `0 issues.`
+
+`huh`·`isatty` import 가 `init.go`·`update.go` 에서 쓰이지 않게 돼 함께 지웠다. `moaiHuhTheme`
+은 `profile_setup.go` 가 아직 쓰므로 남는다(M6 소관).
