@@ -871,6 +871,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: web auto-toggles default OFF.
 			// AutoCleanup and AutoMerge mutated true→false (sprawl mitigation,
 			// EnterWorktree-first policy). AutoCreate unchanged (already false).
+			// AutoMerge now has a reader (session-exit auto-merge,
+			// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-001) but stays default-OFF:
+			// the local dev repo's auto_merge: true is the operator's opt-in.
 			AutoCleanup:        false,
 			AutoCreate:         false,
 			AutoMerge:          false,
