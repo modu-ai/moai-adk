@@ -1,0 +1,10 @@
+# mutant M-12: pairwise --- split: always advance two delimiters
+# edits: [["internal/constitution/evolution_log_reader.go", "\t\t\ti += 2\n\t\t\tcontinue\n\t\t}\n\t\ti++\n\t}\n\treturn blocks", "\t\t\ti += 2\n\t\t\tcontinue\n\t\t}\n\t\ti += 2\n\t}\n\treturn blocks"]]
+# $ go test ./internal/constitution/ -run ^TestLoadEvolutionLogs_MarkdownNoise$ -count=1 -v
+# exit=1
+=== RUN   TestLoadEvolutionLogs_MarkdownNoise
+    evolution_log_reader_test.go:269: extraRule=true: entries = 0, want 2: []
+--- FAIL: TestLoadEvolutionLogs_MarkdownNoise (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.343s
+FAIL

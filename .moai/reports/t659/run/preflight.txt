@@ -1,0 +1,43 @@
+# t659 run-phase pre-flight (plan.md §C.1), measured before the first run-phase commit
+# tree: fe8cc9875aea7bad57fe05a88a1b33f8d196fe53 (branch WT-amend-apply), go1.26.8 darwin/arm64
+# Every command below ran as its own Bash call in this worktree; output transcribed verbatim.
+
+$ git rev-parse --short HEAD
+fe8cc9875
+$ git branch --show-current
+WT-amend-apply
+$ git rev-parse HEAD
+fe8cc9875aea7bad57fe05a88a1b33f8d196fe53
+BASELINE_SHA=fe8cc9875aea7bad57fe05a88a1b33f8d196fe53
+
+$ /usr/bin/grep -n 'not yet implemented' internal/constitution/pipeline.go     # expect 2 lines
+259:	return fmt.Errorf("updateSourceFile: not yet implemented (path=%s, anchor=%s)", filePath, anchor)
+266:	return fmt.Errorf("updateRegistryClause: not yet implemented (path=%s, rule=%s)", registryPath, ruleID)
+
+$ /usr/bin/grep -c 'yaml:"' internal/constitution/amendment.go                  # expect 0
+0
+$ /usr/bin/grep -c 'yaml:"' internal/constitution/loader.go                     # control: expect >0
+7
+$ /usr/bin/grep -n 'func resolveRegistryPath' internal/cli/constitution.go      # expect 1 line
+144:func resolveRegistryPath(cwd string) string {
+$ /usr/bin/grep -c 'EvalSymlinks' internal/constitution/loader.go internal/constitution/pipeline.go   # expect 0 each
+internal/constitution/loader.go:0
+internal/constitution/pipeline.go:0
+$ /usr/bin/grep -c 'filepath.IsAbs(cleanPath)' internal/constitution/loader.go  # expect 1
+1
+$ /usr/bin/grep -rn --include='*.go' 'LoadRegistry(' internal cmd pkg | /usr/bin/grep -v _test.go   # expect 8 lines
+internal/spec/lint.go:114:		reg, err := constitution.LoadRegistry(opts.RegistryPath, projectDir)
+internal/cli/constitution.go:70:	reg, err := constitution.LoadRegistry(registryPath, projectDir)
+internal/cli/constitution.go:160:	reg, err := constitution.LoadRegistry(registryPath, projectDir)
+internal/cli/constitution.go:511:	registry, err := constitution.LoadRegistry(registryPath, projectDir)
+internal/cli/doctor.go:683:	reg, err := constitution.LoadRegistry(registryPath, projectDir)
+internal/constitution/validator.go:183:	reg, err := LoadRegistry(opts.RegistryPath, opts.ProjectDir)
+internal/constitution/pipeline.go:67:	registry, err := LoadRegistry(registryPath, projectDir)
+internal/constitution/loader.go:78:func LoadRegistry(path, projectDir string) (*Registry, error) {
+(8 lines)
+
+$ shasum -a 256 .claude/rules/moai/core/zone-registry.md .moai/research/evolution-log.md
+f7707b1d4b4266fea8f02ecf20308bb673e9ceb3284f2306b9cecd188cf4be21  .claude/rules/moai/core/zone-registry.md
+f5735051294951389bb9a058e0ef5656bfe75d8efba49e7f8b5919c0d92469f0  .moai/research/evolution-log.md
+
+Result: every expectation of plan.md §C.1 matched; no mismatch, run-phase proceeds.

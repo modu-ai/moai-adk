@@ -1,0 +1,18 @@
+# D2 completion (card t659) — log-side alias mutants, measured 2026-09-12 in the WT-amend-apply worktree
+# base HEAD 1574bdfc5 + the case_variant_log / symlink_log subtests (working tree, before commit 1)
+# sha256 internal/constitution/pipeline.go before: aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737
+# sha256 internal/constitution/pipeline.go after:  aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737 (byte-exact restore)
+
+$ python3 .moai/reports/t659/run/mutate.py .moai/reports/t659/run/guards/mutants-guards-d2b.json M-D2-loglstat M-D2-logabs-case
+M-D2-loglstat: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_log/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_log/real']
+M-D2-logabs-case: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_log/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_log/real']
+
+$ python3 .moai/reports/t659/run/mutate.py .moai/reports/t659/run/guards/mutants-guards-d2-d2brerun.json M-D2-logabs
+M-D2-logabs: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_log/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_log/real']
+
+# Failure reason in every killed subtest (both modes): the error lacks "is also the registry or the evolution log"
+# (the run reached Layer 1 and failed later on "the current clause occurs 0 time(s)") and the gate doubles were
+# called 4 times instead of 0 — i.e. the G-B rejection did not fire. Full output: d2b-red-loglstat.txt,
+# d2b-red-logabs-case.txt, d2-red-mutant-d2b.txt.
+# Branches: case_variant_log and symlink_log both RAN here (no t.Skip): darwin temp filesystem is case-insensitive
+# and symbolic links were created. Green run: d2b-green.txt (15 PASS lines, 0 SKIP).

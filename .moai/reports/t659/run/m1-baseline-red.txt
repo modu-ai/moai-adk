@@ -1,0 +1,300 @@
+=== RUN   TestAppendEvolutionLog_SnakeCaseAndZoneNames
+    evolution_log_reader_test.go:171: zone Evolvable: written log lacks "rule_id:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Evolvable: written log lacks "approved_at:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Evolvable: written log lacks "zone_before: Evolvable":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Evolvable: written log lacks "zone_after: Evolvable":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:176: zone Evolvable: written log carries legacy key "ruleid:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:176: zone Evolvable: written log carries legacy key "approvedat:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:176: zone Evolvable: written log carries legacy key "zonebefore:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:180: zone Evolvable: written log carries an integer zone line:
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 1
+        zoneafter: 1
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Frozen: written log lacks "rule_id:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Frozen: written log lacks "approved_at:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Frozen: written log lacks "zone_before: Frozen":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:171: zone Frozen: written log lacks "zone_after: Frozen":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:176: zone Frozen: written log carries legacy key "ruleid:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:176: zone Frozen: written log carries legacy key "approvedat:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:176: zone Frozen: written log carries legacy key "zonebefore:":
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+    evolution_log_reader_test.go:180: zone Frozen: written log carries an integer zone line:
+        ---
+        id: LEARN-20260911-001
+        ruleid: CONST-V3R2-003
+        zonebefore: 0
+        zoneafter: 0
+        clausebefore: old clause
+        clauseafter: new clause
+        canaryverdict: skipped
+        contradictions: []
+        approvedby: human
+        approvedat: 2026-09-11T00:00:00Z
+        rolledback: false
+        rollbackreason: ""
+        rollbackat: null
+        ---
+--- FAIL: TestAppendEvolutionLog_SnakeCaseAndZoneNames (0.00s)
+=== RUN   TestLoadEvolutionLogs_LegacyKeys
+    evolution_log_reader_test.go:227: both-forms RuleID = "B", want A (snake_case wins)
+--- FAIL: TestLoadEvolutionLogs_LegacyKeys (0.00s)
+=== RUN   TestLoadEvolutionLogs_MarkdownNoise
+    evolution_log_reader_test.go:269: extraRule=false: entries = 0, want 2: []
+--- FAIL: TestLoadEvolutionLogs_MarkdownNoise (0.00s)
+=== RUN   TestLoadEvolutionLogs_HumanFormat
+=== RUN   TestLoadEvolutionLogs_HumanFormat/verbatim_block
+    evolution_log_reader_test.go:290: entries = 0, want 1: []
+=== RUN   TestLoadEvolutionLogs_HumanFormat/real_file_readonly
+    evolution_log_reader_test.go:325: real log: no entry with ID EVO-HRN-002 among 0 entries
+=== RUN   TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed
+    evolution_log_reader_test.go:332: LoadEvolutionLogs: want an error for an unparseable timestamp, got nil
+--- FAIL: TestLoadEvolutionLogs_HumanFormat (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/verbatim_block (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/real_file_readonly (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed (0.00s)
+=== RUN   TestRateLimiter_SeesHumanFormatEntry
+    evolution_log_reader_test.go:349: Admit at 2026-05-13T01:00Z = <nil>, want *ErrRateLimitExceeded (24h cooldown)
+--- FAIL: TestRateLimiter_SeesHumanFormatEntry (0.00s)
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp
+    evolution_log_reader_test.go:378: want an error, got nil
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp
+    evolution_log_reader_test.go:413: want an error, got nil
+--- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp (0.00s)
+=== RUN   TestLoadEvolutionLogs
+=== RUN   TestLoadEvolutionLogs/파일_없으면_빈_목록_반환
+=== RUN   TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱
+    evolution_log_test.go:58: RuleID mismatch: got "", want CONST-V3R2-008
+    evolution_log_test.go:61: ApprovedAt mismatch: got 0001-01-01 00:00:00 +0000 UTC, want 2026-04-28 10:00:00 +0000 UTC
+=== RUN   TestLoadEvolutionLogs/여러_엔트리_파싱
+    evolution_log_test.go:111: RuleIDs = "", ""; want CONST-V3R2-008, CONST-V3R2-009
+--- FAIL: TestLoadEvolutionLogs (0.00s)
+    --- PASS: TestLoadEvolutionLogs/파일_없으면_빈_목록_반환 (0.00s)
+    --- FAIL: TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱 (0.00s)
+    --- FAIL: TestLoadEvolutionLogs/여러_엔트리_파싱 (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.176s
+FAIL

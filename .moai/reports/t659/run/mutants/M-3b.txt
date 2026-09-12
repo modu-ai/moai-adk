@@ -1,0 +1,10 @@
+# mutant M-3b: interpolate the new clause into quotes without escaping
+# edits: [["internal/constitution/apply_transform.go", "return `\"` + strings.ReplaceAll(strings.ReplaceAll(s, `\\`, `\\\\`), `\"`, `\\\"`) + `\"`", "return `\"` + s + `\"`"]]
+# $ go test ./internal/constitution/ -run ^TestUpdateRegistryClause_SingleLineRoundTrip$ -count=1 -v
+# exit=1
+=== RUN   TestUpdateRegistryClause_SingleLineRoundTrip
+    apply_test.go:428: Execute: amendment validation error: registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateRegistryClause_SingleLineRoundTrip4115473015/001/.claude/rules/moai/core/zone-registry.md: the rewritten registry does not parse: yaml: line 16: mapping values are not allowed in this context
+--- FAIL: TestUpdateRegistryClause_SingleLineRoundTrip (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.365s
+FAIL
