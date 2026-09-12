@@ -551,3 +551,55 @@ pty 스위트)은 모두 슬롯 임대 지시 접수 **이전**에 실행됐고 
 m5-internal-cli-suite-timeout1800.txt로 보존돼 있다. 지시 접수 이후 이 레인의 남은 중실행은
 없으며, 재실행이 필요해지면 lane-local 바이너리로 `slot acquire --resource heavy-test`를
 선취한 뒤에 돌린다.
+
+## M6 — v1 퇴역과 모듈 정리 (2026-09-12, `WT-init-tux-i18n`)
+
+기준선 HEAD `c65e1d856`. 커밋 셋: RED `f95d7e931`, 수리 `bdd6b952e`, 마감(이 커밋).
+plan.md 좌표 `launcher.go:1094-1110` 은 내용으로 재탐색해 판독했다.
+
+### 삭제와 정리
+
+`huh_theme.go`·`huh_theme_test.go` 삭제. `profile_setup.go` 에서 `huhV1Options` 와
+huh v1 임포트 제거(어댑터 테스트 `TestHuhV1Options_PreservesLabelAndValue` 도 함께 은퇴).
+RED 단계에서 발견: `update/preview_tui.go:85` 주석이 삭제될 `cli.huhThemeIsDark` 를
+참조해 AC-ITI-011 (2) 를 계속 실패시키게 되므로 본문 수정 대상에 추가해 `wizard.wizardIsDark`
+만 남겼다. `go mod tidy` 는 huh v1 과 그 전이 의존성(bubbles/bubbletea v1, coninput,
+localereader, muesli/ansi, golang.org/x/sys 구행)을 떼어냈다.
+
+`launcher.go` 주석(내용으로 재탐색 — `runProfileSetup` 확인 문구 참조 블록, ~1094-1110)
+재독 판정: acceptEdits 확인 문구가 M5 의 v2 본문에서 그대로 나오므로 거짓이 된 부분 없음 —
+변경 없음. (블록 내 단락 중복은 기존 상태로, 이 SPEC 의 판정 대상이 아니다.)
+
+### AC-ITI-004 판정 (전 조항 PASS, 커밋 `bdd6b952e` 이후 측정)
+
+(1) huh v1 임포트 비테스트 0줄·exit 1(대조군 huh v2 다수) ✅ (2) 테스트 0줄·exit 1 ✅
+(3) go.mod huh v1 0, 대조군 huh v2 1 ✅ (4) `go mod tidy && git diff --exit-code go.mod
+go.sum` exit 0 ✅ (5) `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ✅ (6) 두 명시
+진입의 동일 이음새 도달 = `TestProfileExplicitEntries_RunProfileWizardOnce` PASS(M5의
+AC-ITI-007 테이블이 같은 사실을 행동으로도 재확인). 원문
+`.moai/reports/t586/m6-ac004-ac011-green.txt`.
+
+### AC-ITI-011 판정 (전 조항 PASS)
+
+(1) `git ls-files internal/cli/huh_theme.go internal/cli/huh_theme_test.go
+internal/cli/wizard/wizard.go` → 정확히 `internal/cli/wizard/wizard.go` 1줄 ✅
+(2) 테마 심볼 정규식 0줄·exit 1(대조군 `var wizardIsDark` 1줄) ✅
+(3) `wizardIsDark` 참/거짓 강제(패키지 변수만, 환경 변수 불볕)로 그린 downgrade confirm·
+프로필 첫 그룹의 ANSI 포함 골든 4개(`internal/cli/wizard/testdata/axis/`) — 두 축 문자열이
+서로 다름을 단정하고 각각 저장 골든과 일치. **잔여 위험**: 골든은 truecolor ANSI 시퀀스를
+포함하므로 색 프로파일 감지 환경(TERM 등)이 다른 곳에서 재실행하면 불일치할 수 있다 —
+절 (3)이 ANSI 포함 비교를 요구하는 귀결이다.
+
+### 슬롯 임대 중측정 (리드 프로토콜 준수)
+
+`/tmp/moai-lane2 slot acquire --resource heavy-test --max-duration 30m --name lane-2`
+→ 취득(da011b34-…, 2026-09-12T12:58:42Z까지). 임대 창 안: `go test ./internal/cli/
+-count=1 -timeout 2700s` → `ok 1077.913s`, `go test ./internal/cli/wizard/ -count=1
+-timeout 600s` → `ok 3.538s`. 완료 후 `slot release` → "released" 확인,
+`slot status` → "no slot leases recorded". 원문 m6-cli-remeasure.txt·
+m6-wizard-remeasure.txt·m6-slot-release.txt.
+
+### 빌드·정적검사 (tidy 이후)
+
+`go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
+`golangci-lint run ./internal/cli/...` `0 issues.` · AC-ITI-010 의 9가드 셀렉터 PASS.
