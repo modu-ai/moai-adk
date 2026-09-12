@@ -1,0 +1,7 @@
+=== RUN   TestCleanReinstall_SettingsSnapshotStagedBeforeMerge
+    update_settings_snapshot_test.go:293: (i) canonical at the pre-merge hook = "{\"a\":1,\"permissions\":{\"deny\":[\"Read(./.env)\"]}}", want the prior bytes
+    update_settings_snapshot_test.go:296: (ii) staging copy at the pre-merge hook = "", want the render "{\"a\":1,\"permissions\":{\"deny\":[\"Read(./.env)\"]}}"
+--- FAIL: TestCleanReinstall_SettingsSnapshotStagedBeforeMerge (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.988s
+FAIL

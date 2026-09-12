@@ -1,0 +1,107 @@
+=== moai-domain-backend
+78c78
+< Create a ServiceRegistry class that connects to Consul. Implement register_service method that registers a service with name, id, port, and health check endpoint. Implement discover_service method that queries healthy services and returns list of address:port strings.
+---
+> Create a ServiceRegistry class that connects to Consul. Implement register_service method that registers a service with name, id, port, and health check endpoint. Implement discover_service method that queries healthy services and returns list of adddess:port strings.
+139a140,143
+> ## Resources
+> 
+> For working code examples, see [examples.md](examples.md).
+> 
+140a145
+> Last Updated: 2026-01-11
+182a188,196
+> 
+> ## Refactor Notes
+> 
+> **Refactor scope** (deferred to future sub-SPEC):
+> - Narrow body to API design decision matrix (REST vs GraphQL vs tRPC vs gRPC)
+> - Extract language-specific implementation details into Level-3 modules
+> - Remove framework-specific content that duplicates language skill coverage
+> 
+> This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.
+=== moai-workflow-loop
+139c139
+< Check LSP server configuration in .moai/config/sections/lsp.yaml. Verify the language server is installed for your language. Check that MOAI_DISABLE_LSP_DIAGNOSTIC environment variable is not set.
+---
+> Check LSP server configuration in .lsp.json file. Verify the language server is installed for your language. Check that MOAI_DISABLE_LSP_DIAGNOSTIC environment variable is not set.
+163,164c163,164
+< - /moai:run: DDD implementation
+< - /moai:sync: Documentation sync
+---
+> - /moai:2-run: DDD implementation
+> - /moai:3-sync: Documentation sync
+186c186
+< The LSP hook is located at .claude/hooks/moai/handle-post-tool.sh.
+---
+> The LSP hook is located at .claude/hooks/moai/post_tool__lsp_diagnostic.
+188c188
+< The loop hook is located at .claude/hooks/moai/handle-stop.sh.
+---
+> The loop hook is located at .claude/hooks/moai/stop__loop_controller.
+196a197
+> Last Updated: 2026-01-11
+=== moai-domain-frontend
+115,116c115,116
+< - moai-ref-ui-polish - Component library integration
+< - moai-ref-ui-polish - UI/UX design principles
+---
+> - moai-library-shadcn - Component library integration
+> - moai-domain-uiux - UI/UX design principles
+150a151
+> Last Updated: 2026-03-28
+187a189,197
+> 
+> ## Refactor Notes
+> 
+> **Refactor scope** (deferred to future sub-SPEC):
+> - Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
+> - Extract framework-specific deep-dives into Level-3 modules
+> - Remove content that duplicates coverage in library and reference skills
+> 
+> This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.
+=== moai-workflow-testing
+85c85
+< See [TRUST 5 detailed dimensions and scoring](.claude/skills/moai-workflow-testing/references/trust5-framework.md) for full assessment rubric.
+---
+> See [TRUST 5 detailed dimensions and scoring](${CLAUDE_SKILL_DIR}/references/trust5-framework.md) for full assessment rubric.
+111c111
+< See [debugging/refactoring/performance step-by-step walkthroughs](.claude/skills/moai-workflow-testing/references/workflow-processes.md) for detailed process tables.
+---
+> See [debugging/refactoring/performance step-by-step walkthroughs](${CLAUDE_SKILL_DIR}/references/workflow-processes.md) for detailed process tables.
+132c132
+< See [PR review multi-agent architecture and output format](.claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md) for agent role detail and example output.
+---
+> See [PR review multi-agent architecture and output format](${CLAUDE_SKILL_DIR}/references/pr-review-multi-agent.md) for agent role detail and example output.
+138c138
+< See [multi-language toolchain reference](.claude/skills/moai-workflow-testing/references/multi-language-support.md) for per-language testing/lint/security/perf tool inventory.
+---
+> See [multi-language toolchain reference](${CLAUDE_SKILL_DIR}/references/multi-language-support.md) for per-language testing/lint/security/perf tool inventory.
+158c158
+< See [CI/CD integration patterns (GitHub Actions + Docker)](.claude/skills/moai-workflow-testing/references/integration-patterns.md) for job configuration walkthroughs.
+---
+> See [CI/CD integration patterns (GitHub Actions + Docker)](${CLAUDE_SKILL_DIR}/references/integration-patterns.md) for job configuration walkthroughs.
+162c162
+< Playwright patterns (Page Object Model, cross-browser, visual regression) and documentation-lookup integration. See [Playwright best practices](.claude/skills/moai-workflow-testing/references/playwright-best-practices.md).
+---
+> Playwright patterns (Page Object Model, cross-browser, visual regression) and documentation-lookup integration. See [Playwright best practices](${CLAUDE_SKILL_DIR}/references/playwright-best-practices.md).
+170c170
+< the [modules index](.claude/skills/moai-workflow-testing/modules/INDEX.md), or jump to a stage:
+---
+> the [modules index](${CLAUDE_SKILL_DIR}/modules/INDEX.md), or jump to a stage:
+172,175c172,175
+< - [AI-Powered Debugging](.claude/skills/moai-workflow-testing/modules/ai-debugging.md) — error classification + solution candidates
+< - [Smart Refactoring](.claude/skills/moai-workflow-testing/modules/smart-refactoring.md) — technical-debt analysis + safe transforms
+< - [Performance Optimization](.claude/skills/moai-workflow-testing/modules/performance-optimization.md) — profiling + bottleneck detection
+< - [Automated Code Review](.claude/skills/moai-workflow-testing/modules/automated-code-review.md) — TRUST 5 scoring + static analysis
+---
+> - [AI-Powered Debugging](${CLAUDE_SKILL_DIR}/modules/ai-debugging.md) — error classification + solution candidates
+> - [Smart Refactoring](${CLAUDE_SKILL_DIR}/modules/smart-refactoring.md) — technical-debt analysis + safe transforms
+> - [Performance Optimization](${CLAUDE_SKILL_DIR}/modules/performance-optimization.md) — profiling + bottleneck detection
+> - [Automated Code Review](${CLAUDE_SKILL_DIR}/modules/automated-code-review.md) — TRUST 5 scoring + static analysis
+184c184
+< - moai-domain-database / moai-domain-frontend / moai-domain-backend: Platform-specific testing
+---
+> - moai-platform-supabase / moai-platform-vercel / moai-platform-firebase-auth: Platform-specific testing
+189a190
+> Last Updated: 2026-07-10

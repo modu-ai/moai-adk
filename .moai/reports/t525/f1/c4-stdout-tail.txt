@@ -1,0 +1,5 @@
+0 error(s), 3133 warning(s)
+
+baseline: OK — .moai/spec-lint-baseline.json
+  inventory: 3133 warning(s) total (advisory included), 0 non-advisory tracked across 0 recorded rule(s)
+  recorded at: 4ac93f755 (2026-09-11)

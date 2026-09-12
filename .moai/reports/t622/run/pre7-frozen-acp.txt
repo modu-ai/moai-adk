@@ -1,0 +1,2 @@
+base-agent-common-protocol.md: 006=1 036=1 037=1 038=1 frozen-lines=17 
+base-agent-common-protocol-template.md: 006=1 036=1 037=1 038=1 frozen-lines=17 

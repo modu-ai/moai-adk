@@ -190,6 +190,16 @@ bind. Choosing (a) or (b) against the unadjudicated wording would fix a
 granularity the requirements layer never stated. Gate evidence: the adjudication
 and its reason, recorded at both requirements in `spec.md`.
 
+[HARD] **Premise re-measurement — also part of this gate (added 2026-09-11).**
+`SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001` (card t656) lands before M2.1 resumes
+(operator decision, 2026-09-11). Once it lands, `.claude/settings.json` is merged
+against a deploy-time snapshot base instead of the derived base, so the
+**only-template-changed** arm — and the both-changed arm — becomes reachable for
+that file. `spec.md` §A.6's premise that those arms cannot execute for a shared
+leaf must therefore be re-measured on the tree M2.1 resumes on, for
+`.claude/settings.json` and for the derived-base files separately, before any
+M2.1 design is chosen.
+
 `REQ-UMC-008`, `REQ-UMC-009`, `REQ-UMC-010`. Two candidate shapes, deliberately
 not chosen here — the choice is a decision for the orchestrator and the operator
 after both M1's and M2.0's evidence exist:

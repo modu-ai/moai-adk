@@ -6,6 +6,10 @@ on:
       - '.moai/specs/**'
       - 'internal/spec/**'
       - '.github/workflows/spec-lint.yml'
+      # The baseline file is this gate's own control surface (t525
+      # REQ-SLGS-010). Without this path a rebaseline commit that touched
+      # nothing else would change the verdict with no run to check it.
+      - '.moai/spec-lint-baseline.json'
   # develop is the integration branch under git-flow: lane work merges into it
   # directly, with no card PR to carry the pull_request trigger above. Without a
   # push trigger this lint never runs on the branch where SPECs actually land.
@@ -17,6 +21,7 @@ on:
       - '.moai/specs/**'
       - 'internal/spec/**'
       - '.github/workflows/spec-lint.yml'
+      - '.moai/spec-lint-baseline.json'
 
 permissions:
   contents: read
@@ -87,7 +92,7 @@ jobs:
               spec_changed=false
               while IFS= read -r path; do
                 case "$path" in
-                  .moai/specs/*|internal/spec/*) spec_changed=true ;;
+                  .moai/specs/*|internal/spec/*|.moai/spec-lint-baseline.json) spec_changed=true ;;
                 esac
               done <<< "$changed_paths"
               if [[ "$spec_changed" == "true" ]]; then
@@ -102,15 +107,30 @@ jobs:
 
           echo "strict=$strict" >> "$GITHUB_OUTPUT"
           echo "SPEC lint policy: strict=$strict ($reason)"
-      - name: Run strict SPEC lint
+      - name: Run baseline-gated SPEC lint
         if: steps.policy.outputs.strict == 'true'
         # Invoke the freshly built binary directly via go run instead of
         # `make install` (which pollutes $GOPATH/bin and is unnecessary for
         # a one-shot lint invocation).
-        run: go run ./cmd/moai spec lint --strict
+        #
+        # SPEC-SPECLINT-GATE-SIGNAL-001 (t525) REQ-SLGS-010: gate on the CHANGE,
+        # not on the standing inventory. `--strict` escalates every non-advisory
+        # warning, so a single standing one makes this gate permanently red and
+        # the person who broke something sees the same red as the person who
+        # changed nothing. `--baseline` fails only a rule that rose above its
+        # recorded count (naming the rule and its delta), always fails an error
+        # regardless of the baseline, and prints the warning inventory even
+        # while green — so the standing debt stays observable.
+        #
+        # The path is repo-root-relative: this job sets no working-directory, so
+        # it resolves against the checkout root. `--strict` is NOT passed here —
+        # the two flags gate the same dimension and the CLI rejects the pair
+        # with exit 3; the flag itself is retained for non-CI callers.
+        run: go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json
       - name: Run error-only SPEC lint
         if: steps.policy.outputs.strict == 'false'
         # Existing corpus warnings remain visible, while any error still makes
-        # the command fail. Strict mode remains mandatory whenever the inputs
-        # or implementation of the SPEC linter changed.
+        # the command fail. The baseline gate remains mandatory whenever the
+        # inputs, the baseline file, or the implementation of the SPEC linter
+        # changed.
         run: go run ./cmd/moai spec lint

@@ -16,6 +16,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -362,6 +363,25 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
 		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
+	}
+
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a
+	// .claude/settings.json staging copy an interrupted earlier flow left
+	// behind, comparing it with the live file BEFORE any step below can remove
+	// or rewrite that file. The deny-rule strip just below is the first such
+	// step; the clean-reinstall branch and both version-match skips come later,
+	// so this one point covers every update flow. After the --dry-run return,
+	// because a dry run must not change anything. Best-effort: it only warns.
+	//
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above stripRetiredV2DenyEntries
+	// @MX:REASON: below the strip, the deploy, or the backup step the live file may already be rewritten,
+	// so an abort with no revert would be discarded instead of promoted (plan.md B8, M-D5g-w)
+	{
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for settings snapshot: %w", err)
+		}
+		backup.JudgeLeftoverSettingsSnapshot(cwd, cmd.ErrOrStderr())
 	}
 
 	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The

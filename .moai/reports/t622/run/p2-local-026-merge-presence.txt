@@ -1,0 +1,4 @@
+p2-local-skill.md:1
+p2-local-sync.md:1
+p2-local-qgc-flags.md:1
+p2-local-dl.md:2

@@ -92,7 +92,7 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 ## Invocation Flow
 
 ```
-/moai sync [mode] [--pr] [--merge] [--skip-mx]
+/moai sync [mode] [--pr] [--auto-merge] [--skip-mx]
   ├── [trace] /moai sync Phase 1 enter
   │   Read workflows/sync/quality-gates-context.md  → HUMAN GATE 1 + Deployment Readiness
   ├── [trace] /moai sync Phase 7 enter
@@ -111,7 +111,7 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 
 **Modes**: `auto` (기본) | `force` | `status` | `project`
 
-**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
+**Flags**: `--pr` (PR 생성) | `--auto-merge` (auto-merge 옵트인) | `--merge` (deprecated alias of `--auto-merge`) | `--skip-mx` (MX 검증 스킵)
 
 **HUMAN GATEs**: GATE 1 (quality-gates-context.md §Phase 1) → GATE 2 (doc-execution.md §Step 1.6)
 

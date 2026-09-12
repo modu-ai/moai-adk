@@ -1,0 +1,3 @@
+file: .claude/commands/moai/sync.md
+file: .claude/skills/moai/workflows/sync.md
+file: .claude/rules/moai/core/agent-common-protocol.md

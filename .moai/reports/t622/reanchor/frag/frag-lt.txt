@@ -1,0 +1,9 @@
+skill L-vs-T exit=0
+ref L-vs-T exit=0
+qgc-args L-vs-T exit=0
+qgc-flags L-vs-T exit=0
+sync L-vs-T exit=0
+dl L-vs-T exit=0
+sync-usage L-vs-T exit=0
+hint L-vs-T exit=0
+dl-next L-vs-T exit=0
