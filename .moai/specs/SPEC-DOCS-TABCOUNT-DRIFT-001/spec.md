@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-TABCOUNT-DRIFT-001
 title: 설정 탭 수·이름이 문서마다 따로 세어지는 드리프트 차단
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-12
 updated: 2026-09-12
@@ -23,6 +23,7 @@ related_specs:
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
+| 0.2.0 | 2026-09-12 | manager-spec | plan-audit iter1 (FAIL 0.66) 수리. D1: 인수 판정을 창 기반 정규식에서 **정확 리터럴 집합**으로 옮겨 영어 `The nine settings tabs`(수사-명사 간격 10글자)를 구조적으로 포함 — base 실측 A군 4/4, 전체 20/20 적중. D2: 화이트리스트 **안**의 정당한 계수(`ja/advanced/moai-web-console.md:149`, codex 근거 문장)를 발견해 열거 §7-B 허용 목록으로 승격하고, AC 기대값을 "스윕 0건" 에서 "열거 집합 0매치" 로 바꿔 도달 불가능(red-forever)을 제거. D3: 변이 지점을 파일 부류 × 로케일 3종으로 넓히고 서브테스트 PASS 줄을 리터럴로 단정 + 읽은 파일 수 == 12 AC 신설. D4: 패리티 AC 에 README 4본 포함·고정 base `1d150a27d`·대조군(변경 0 ⇒ 측정 불가 = FAIL). D5: 스크린샷·hugo 를 **회귀 가드(RG)** 로 재분류. D6: D군 산문 4자리를 D9~D12 행으로 승격(열거 28 → **32**행). D7: `plan.md`·`acceptance.md` 의 `status:` 제거. D8: "서로 독립인 세 측정" → 원천 1 + 미러 1 + 일치 테스트 1 로 하향. D9/D10/D11: 낱말 축을 정규식이 아니라 리터럴로 닫는 근거 기록, 오탐 자리를 구절까지 고정, 열거 최신성에 검증 명령 부여. MP-7: 해소 마커 토큰 제거. |
 | 0.1.0 | 2026-09-12 | manager-spec | 초기 draft (카드 t530). base `1d150a27d` 에서 탭 수 14를 서로 독립인 세 측정으로 재도출하고, 손으로 적힌 자리 20곳(A군 4 오류 + B군 8 + C군 8)과 이름 드리프트 8곳(D군)을 전수 열거했다. 전수 목록은 `.moai/reports/t530/tab-count-sites.md`. 해법의 축은 "14로 고치기"가 아니라 "수를 없애고, 남는 자리는 기계가 지키게 하기". 스크린샷 재생성은 근거를 적어 별건으로 분리(§5). |
 
 ---
@@ -44,11 +45,17 @@ related_specs:
 
 base `1d150a27d`, 워크트리 `.claude/worktrees/t530` 에서 다시 쟀다. 카드가 들고 온 숫자를 그대로 옮기지 않았다.
 
-| 측정 | 명령 | 관측 |
-|---|---|---|
-| 1 | `sed -n '30,90p' internal/web/schemaform.go \| grep -c 'LabelKey:'` | `14` |
-| 2 | `grep -n -A 6 'var wantTabOrder' internal/web/tab_layout_test.go` | id 14개 |
-| 3 | `go test ./internal/web/ -run 'TestConsoleTabsOrder'` | `ok … 0.794s` |
+**정확히 말하면 원천 두 개와 그 둘의 일치를 확인하는 테스트 하나다 — "서로 독립인 세 측정" 이 아니다.**
+측정 3은 측정 1과 2를 비교하는 테스트 그 자체이고(`tab_layout_test.go` 가 `len(tabs) != len(wantTabOrder)` 를 단정한다),
+측정 2의 `wantTabOrder` 는 `consoleTabs()` 를 미러하도록 손으로 적은 리터럴이라 독립성이 약하다.
+실질은 **원천 1 + 미러 1 + 둘의 일치 테스트 1** 이다. 근거로 충분하되, 독립성을 부풀려 적지 않는다 —
+같은 사실을 여러 곳에서 따로 센 것처럼 보이게 하는 과장이야말로 이 카드가 다루는 결함이다.
+
+| 측정 | 성격 | 명령 | 관측 |
+|---|---|---|---|
+| 1 | 원천(구현) | `sed -n '30,90p' internal/web/schemaform.go \| grep -c 'LabelKey:'` | `14` |
+| 2 | 미러(테스트 리터럴) | `grep -n -A 6 'var wantTabOrder' internal/web/tab_layout_test.go` | id 14개 |
+| 3 | 1과 2의 일치 확인 | `go test ./internal/web/ -run 'TestConsoleTabsOrder'` | `ok … 0.794s` |
 
 **14 는 이 base 에서의 실측치이지 상수가 아니다.** 탭을 하나 추가하는 다른 카드가 값을 바꾸며,
 지난 드리프트(11 → 14)가 바로 그렇게 생겼다. 그래서 본 문서도 14를 정답으로 박지 않고,
@@ -74,13 +81,25 @@ D군(탭 **이름**이 한 칸 어긋나 있다)은 수 드리프트와 나란�
 이것이 이 카드가 "숫자 하나 고치기" 가 아닌 이유이고, 가드가 N1(수 0건)과 N2(이름 == 렌더 라벨) **두 갈래**여야 하는
 이유다. N1 만 두면 오늘의 결함은 지우면서 내일의 자리를 열어 둔 채 닫는 셈이 된다.
 
-### 1.3 두 가지 함정
+### 1.3 세 가지 함정 — 정규식 하나로는 판별되지 않는다
 
 - **숫자와 낱말이 섞여 있다.** `nine`, `fourteen`, `十四`, `九个`, `열네 개` 처럼 로케일마다 수사가 낱말로도 적힌다.
   숫자만 긁는 청소나 가드는 절반을 조용히 놓친다 — 지난 청소가 살아남은 경로가 이것으로 보인다.
-- **낱말로 긁으면 오탐이 난다.** `README.md:422` 의 `nine` 은 SVG 인포그래픽 형태 수이고 탭과 무관하다.
-  가드는 **수 + 탭 명사의 인접**으로 판별하고, 대상 파일을 명시 목록으로 한정해야 한다
-  (`ja/claude-code/extensibility/plugins.md:100` 의 `4 タブ` 는 Claude Code 플러그인 매니저 얘기다).
+- **낱말 사이에 수식어가 낀다.** 영어 A군 자리는 `The nine settings tabs` 로, 수사와 탭 명사 사이가 10글자다.
+  인접 창을 좁게 잡으면 이 자리를 **구조적으로 못 본다** — 좁히는 방향은 오탐을 줄이는 대신 어순 수식어가 낀
+  영어를 통째로 잃는다.
+- **넓히면 화이트리스트 안에서 오탐이 난다.** 정당한 비-설정탭 계수가 대상 파일 안에 실재한다:
+  `docs-site/content/ja/advanced/moai-web-console.md:149` 의 `2 つのタブを行き来し` 는 codex 패널의 존재 이유를
+  설명하며 **감사 탭과 MCP 탭 둘**을 센다. 파일 화이트리스트도 수-명사 인접도 이 줄을 걸러 내지 못한다.
+
+**결론 — 정규식 하나에 "무엇이 설정 탭 계수인가" 를 단독으로 맡기지 않는다.** 본 SPEC 은 판정을 두 층으로 나눈다.
+
+| 층 | 무엇을 판정하나 | 수단 | 오탐 가능성 |
+|---|---|---|---|
+| 인수(이 카드가 일을 했는가) | 열거된 20자리가 사라졌는가 | 열거에서 뽑은 **정확 리터럴 집합** (`.moai/reports/t530/count-literals.txt`) | 없음 — 실측한 문자열만 본다 |
+| 가드(앞으로 어긋나지 않는가) | 새 수·이름이 들어왔는가 | 숫자 인접 스윕 + **명시 허용 목록** + 이름 대조(N2) | 있음 — 허용 목록으로 닫고, 남는 방향은 §7 |
+
+인수 판정이 정규식에서 분리되므로, 가드의 창을 넓히거나 좁히는 조정이 이 카드의 합격 여부를 흔들지 않는다.
 
 ---
 
@@ -95,8 +114,11 @@ and whether the value appears as a digit or as a spelled-out word. The enumerati
 
 ### REQ-TCD-002 — 틀린 수의 제거 (Ubiquitous)
 
-The four `docs-site/content/<locale>/cli-reference/web.md` line-53 rows shall no longer state a settings
-tab count. The `/settings` row shall describe the endpoint without counting the tabs.
+All four `docs-site/content/<locale>/cli-reference/web.md` line-53 rows — ko, **en**, ja, zh — shall no
+longer state a settings tab count. The `/settings` row shall describe the endpoint without counting the
+tabs. Verification shall be per-locale against the enumerated literal of each site, never a window-based
+regex sweep: the en site reads `The nine settings tabs`, whose numeral and tab noun are ten characters
+apart, so a window narrow enough to suppress false positives cannot see it.
 
 ### REQ-TCD-003 — 수를 없앨 수 있는 자리는 없앤다 (Ubiquitous)
 
@@ -111,11 +133,15 @@ shall carry a guard test that reads `consoleTabs()` and fails when the documente
 
 ### REQ-TCD-005 — 가드의 판별력 (Event-driven)
 
-When the guard scans a document, it shall match a numeral only where it is adjacent to a tab noun
-(`tab` / `tabs` / `탭` / `タブ` / `标签页`), shall recognise both digit and spelled-out forms in all four
-locales, and shall restrict its scan to an explicit file list. The guard shall not flag
-`README.md:422` (`nine` forms), `README.md:418` (`Eleven ref skills`), or
-`docs-site/content/ja/claude-code/extensibility/plugins.md:100` (`4 タブ`, the Claude Code plugin manager).
+When the guard scans a document, it shall restrict its scan to an explicit 12-file list, shall match a
+numeral only where it is adjacent to a **word-bounded** tab noun (`\btabs?\b` / `탭` / `タブ` / `标签页`),
+and shall exempt only the entries of an explicit allowlist, each carrying a stated reason. The guard shall
+not flag `README.md:422` (`nine` SVG forms), `README.md:418` (`Eleven ref skills`),
+`README.md:698` (`selec**tab**le` — a substring, which is why the noun is word-bounded), or
+`docs-site/content/ja/claude-code/extensibility/plugins.md:100` (`4 タブ`, the Claude Code plugin manager,
+outside the file list). The allowlist shall carry the codex-panel rationale paragraph
+(`docs-site/content/<locale>/advanced/moai-web-console.md:149`), which counts the Audit and MCP tabs and
+is out of scope per §4.
 
 ### REQ-TCD-006 — 이름 정본 대조 (Ubiquitous)
 
@@ -220,8 +246,17 @@ t530 이 존재하는 이유가 그것이다. 본 SPEC 은 그 경계를 다시 
 
 ## 7. 잔여 위험
 
-- 가드의 대상 파일이 명시 목록이므로, **새 문서가 탭 수를 새로 적으면 잡히지 않는다.** 오탐을 없애기 위해 치른 값이며,
-  대안(전 문서 스캔)은 `plugins.md:100` 류를 계속 잡는다.
+- **화이트리스트 밖 방향** — 가드의 대상 파일이 명시 12파일 목록이므로, **새 문서가 탭 수를 새로 적으면 잡히지 않는다.**
+  오탐을 없애기 위해 치른 값이며, 대안(전 문서 스캔)은 `plugins.md:100` 류를 계속 잡는다.
+- **화이트리스트 안 방향 — 이쪽이 이 카드를 실제로 막았던 방향이다.** 대상 파일 안에도 정당한 비-설정탭 계수가 있다:
+  `…/advanced/moai-web-console.md:149` 의 codex 패널 근거 문장이 감사 탭·MCP 탭 **둘**을 센다. 파일 화이트리스트도
+  수-명사 인접도 이 줄을 거르지 못한다 — **두 장치가 동시에 실패한다.** 그래서 가드는 명시 허용 목록을 들고,
+  인수 판정은 정규식이 아니라 리터럴 집합으로 한다(§1.3 두 층 표). 남는 값: 허용된 줄에 언젠가 진짜 설정 탭 계수가
+  섞여 들어오면 가드가 침묵한다. 허용 항목이 4줄뿐이고 각 줄에 이유가 붙어 있어 사람이 검토할 수 있다는 것이 그 대가다.
+- **낱말 표기의 앞날** — 가드의 숫자 축은 `[0-9]+` 로 열려 있으나 낱말 축은 열 수 없다(로케일별 수사를 정규식으로
+  닫으면 `두 곳`·`two tabs`·`两个标签页` 같은 정당한 계수까지 걸린다 — 실측으로 확인했다). 따라서 **새로 쓰인**
+  낱말 표기 계수(`sixteen`, `열여섯`, `十六`)는 가드가 잡지 않는다. 이 축을 실제로 지키는 것은 N2(이름 대조)이며,
+  이름은 코드와 대조되므로 탭이 늘면 반드시 붉어진다.
 - D군 목록 밖 산문 4자리(`…:165` 의 `3rd Party LLM 탭`)는 가드가 보지 않는다. 같은 변경에서 손으로 고친다.
 - **`3rd Party LLM` 이 의도한 이름이었을 가능성.** 본 카드는 문서를 렌더 라벨(`GLM Settings` 계열)에 맞추기로 결정했다
   (`plan.md §C`, 2026-09-12). 만약 `3rd Party LLM` 쪽이 본래 의도한 이름이었다면, 그것을 바로잡는 일은

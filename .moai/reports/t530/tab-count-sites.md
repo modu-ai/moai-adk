@@ -88,7 +88,7 @@ run-phase 는 이 목록을 체크리스트로 소비한다. 목록이 불완전
 
 **총 20자리 / 12파일.** A군 4 + B군 8 + C군 8.
 
-## 6. D군 — 같은 결함의 두 번째 사례: 탭 **이름** 드리프트 (8자리)
+## 6. D군 — 같은 결함의 두 번째 사례: 탭 **이름** 드리프트 (12자리)
 
 수와 별개로, 탭 이름 목록도 손으로 적혀 있고 이미 한 칸 어긋나 있다.
 4번 탭의 실제 렌더 라벨은 `GLM Settings` / `GLM 설정` / `GLM設定` / `GLM设置`
@@ -104,20 +104,42 @@ run-phase 는 이 목록을 체크리스트로 소비한다. 목록이 불완전
 | D6 | `docs-site/content/en/advanced/moai-web-console.md` | 133 | `3rd Party LLM` |
 | D7 | `docs-site/content/ja/advanced/moai-web-console.md` | 133 | `サードパーティ LLM（3rd Party LLM）` |
 | D8 | `docs-site/content/zh/advanced/moai-web-console.md` | 133 | `第三方 LLM（3rd Party LLM）` |
+| D9 | `docs-site/content/ko/advanced/moai-web-console.md` | 165 | `서드파티 LLM 탭` (번호 목록 밖 산문) |
+| D10 | `docs-site/content/en/advanced/moai-web-console.md` | 165 | `The 3rd Party LLM tab` (번호 목록 밖 산문) |
+| D11 | `docs-site/content/ja/advanced/moai-web-console.md` | 165 | `サードパーティ LLM タブ` (번호 목록 밖 산문) |
+| D12 | `docs-site/content/zh/advanced/moai-web-console.md` | 165 | `第三方 LLM 标签页` (번호 목록 밖 산문) |
 
-목록 밖 산문에도 같은 이름이 4자리 더 있다 — `docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md:165`
-(`서드파티 LLM 탭` / `The 3rd Party LLM tab` / `サードパーティ LLM タブ` / `第三方 LLM 标签页`).
-목록과 함께 고쳐야 하며, 기계 가드는 목록만 본다(산문은 사람 손 몫 — `spec.md` §7 잔여 위험).
+D9~D12 는 번호 목록이 아니라 산문이라 **기계 가드(N2)가 보지 않는다** — 같은 변경에서 사람이 함께 고친다.
+표 행으로 올려 둔 이유가 그것이다: 행이 아니면 열거 계수에 들지 않아, 문단을 통째로 지워도 완전성 검사가 통과한다.
+실측(base `1d150a27d`): `grep -rn '3rd Party LLM\|서드파티 LLM\|サードパーティ LLM\|第三方 LLM'` 대상 8파일 → **12행**
+= D1~D12 와 같은 수.
 
 나머지 13개 이름은 렌더 라벨과 일치한다. 어느 쪽을 고쳐야 하는지(문서를 코드에 맞출 것인가,
 코드 라벨 자체가 틀렸는가)는 plan.md §C 에서 갈래 1(문서를 코드에 맞춘다)로 결정되었다 (2026-09-12).
 
 ## 7. 오탐 — 가드가 반드시 걸러야 할 자리
 
-수만 보고 긁는 가드는 아래를 잘못 잡는다. 그래서 가드는 **수 + 탭 명사** 를 붙여서 본다.
+두 부류로 나뉜다. **7-A 는 대상 파일 밖**이라 파일 목록으로 걸러지고, **7-B 는 대상 파일 안**이라 목록으로도
+수-명사 인접으로도 걸러지지 않는다 — 명시 허용 목록이 있어야 한다.
+
+### 7-B. 화이트리스트 **안**의 정당한 계수 — 허용 목록 항목 (1항목, 4로케일)
+
+| 파일 | 행 | 내용 | 왜 고칠 수 없나 |
+|---|---|---|---|
+| `docs-site/content/ja/advanced/moai-web-console.md` | 149 | `…2 つのタブを行き来し…` | codex 패널의 **존재 이유**를 설명하는 문장. 세는 대상이 설정 탭 총수가 아니라 **감사 탭과 MCP 탭 둘**이다. codex 패널 반경은 `spec.md §4`·§6 이 범위 밖으로 선언했다 |
+| `docs-site/content/ko/advanced/moai-web-console.md` | 149 | `…탭 두 곳을 오가며…` | 위와 같음. 현재 숫자 스윕에는 안 걸리지만(수사가 낱말) 같은 문단이다 |
+| `docs-site/content/en/advanced/moai-web-console.md` | 149 | `…visiting two tabs…` | 위와 같음 |
+| `docs-site/content/zh/advanced/moai-web-console.md` | 149 | `…在两个标签页之间来回翻…` | 위와 같음 |
+
+**식별 방법은 줄 번호가 아니라 내용이다** — 편집이 줄 번호를 움직인다. 가드는
+`advanced/moai-web-console.md` 안에서 `codex` 토큰을 포함하는 줄을 허용한다.
+실측(base `1d150a27d`): 낱말 경계를 붙인 숫자 스윕 15행 중 이 1행(ja:149)만 열거 밖이다.
+
+### 7-A. 대상 파일 밖 — 파일 목록으로 걸러진다
 
 | 파일 | 행 | 내용 | 왜 오탐인가 |
 |---|---|---|---|
+| `README.md` | 698 | `glm-5.3 stays selec**tab**le…` | 낱말 안의 `tab` 부분 문자열. 탭 명사에 **낱말 경계**(`\btabs?\b`)를 붙이면 사라진다(실측: 경계 없이 적중, 붙이면 무적중) |
 | `README.md` | 422 | `measured nine forms … all nine proved reproducible` | SVG 인포그래픽 형태 수. 탭과 무관 |
 | `README.ko.md` | 422 | `… 아홉 가지 형태를` | 위와 같음 |
 | `README.md` | 418 | `Eleven ref skills` | 스킬 수 |
@@ -137,17 +159,32 @@ t509 가 alt 텍스트에서 수를 없앴을 뿐 이미지는 그대로다. 재
 
 ## 재현 명령
 
+모든 수치는 base `1d150a27d` 에서 잰 것이다. 편집이 행 번호를 움직이므로, 위 표의 `행` 열은
+**그 base 에서의 위치**이며 그 뒤의 트리에서는 다시 재야 한다. 파일 경로는 움직이지 않으므로
+완전성 검사(AC-TCD-012)는 경로만 본다.
+
 ```bash
-# 기준값 (셋 다 돌려서 일치를 본다)
+# 1) 기준값 — 원천 1 + 미러 1 + 둘의 일치 테스트 1 (독립인 세 측정이 아니다)
 sed -n '30,90p' internal/web/schemaform.go | grep -c 'LabelKey:'
 grep -n -A 6 'var wantTabOrder' internal/web/tab_layout_test.go
 go test ./internal/web/ -run 'TestConsoleTabsOrder'
 
-# A~C군 재열거 (수 + 탭 명사 인접)
-grep -rnE '([0-9]+|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|九|十四|열네|아홉)[^.。]{0,4}(tabs?|개 탭|-탭|タブ|个标签页|标签页)' \
+# 2) A~C군 20자리 — 열거에서 뽑은 정확 리터럴 집합으로 센다 (창 너비 문제 없음, 오탐 없음)
+grep -rnF -f .moai/reports/t530/count-literals.txt \
   README.md README.ko.md README.ja.md README.zh.md \
-  docs-site/content/ko/cli-reference/web.md docs-site/content/en/cli-reference/web.md \
-  docs-site/content/ja/cli-reference/web.md docs-site/content/zh/cli-reference/web.md \
-  docs-site/content/ko/advanced/moai-web-console.md docs-site/content/en/advanced/moai-web-console.md \
-  docs-site/content/ja/advanced/moai-web-console.md docs-site/content/zh/advanced/moai-web-console.md
+  docs-site/content/{ko,en,ja,zh}/cli-reference/web.md \
+  docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md | wc -l
+# base 실측: 20 (= 위 A/B/C 표 20행과 집합 동일)
+
+# 3) 가드 층 숫자 스윕 — 낱말 경계 필수. base 실측 15행 = 열거 14 + 허용 1(ja:149)
+grep -rnE '[0-9]+[^.。]{0,12}(\btabs?\b|탭|タブ|标签页)' \
+  README.md README.ko.md README.ja.md README.zh.md \
+  docs-site/content/{ko,en,ja,zh}/cli-reference/web.md \
+  docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md
+
+# 4) D군 12자리
+grep -rn '3rd Party LLM\|서드파티 LLM\|サードパーティ LLM\|第三方 LLM' \
+  README.md README.ko.md README.ja.md README.zh.md \
+  docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md | wc -l
+# base 실측: 12
 ```
