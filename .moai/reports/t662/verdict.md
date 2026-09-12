@@ -143,7 +143,97 @@ min 434.93ms   max 646.52ms
 
 ---
 
-## 제안 (미실행 — 리드 판정 대기)
+## 수리 (리드 판정 ①+③ 채택, ② 분리 — 2026-09-12)
+
+리드 판정: ① 임계 이동 + ③ 별개 예산 단정을 이 카드에서, ② 동기작업 200ms 내역 분해는 별도 카드. [HARD] 조건으로 뮤턴트 증명 요구.
+
+변경: `internal/hook/session_start_parallel_test.go` **1파일, 테스트만**. 프로덕션 코드 변경 0건.
+
+### ① 임계 유도 — 500ms → 1s
+
+임계는 값이 아니라 **유도 과정**으로 남긴다. 판별해야 할 두 상태의 실측 거리:
+
+| 상태 | 실측 | n |
+|---|---|---|
+| 지연 동작 (정상) | 434.93 ~ 646.52ms | 160 |
+| 동기 실행 (결함) | 2,209.94ms | 1 (뮤턴트) |
+
+```
+하한  646.52ms × 1.5 = 969.8ms    정상 상태 최댓값 위 여유
+상한  2,000ms  ÷ 2   = 1,000ms    결함 상태와의 분리
+                     ─────────
+      교집합 [970ms, 1,000ms] → 반올림 값 1s
+```
+
+상한 산정에 뮤턴트 실측 2,209.94ms 가 아니라 **주입 블록 크기 2,000ms 를 썼다.** 실측 2,209.94ms 는 `2,000ms 블록 + 약 210ms 동기작업`이고 그 210ms 는 머신에 따라 변한다. 변하지 않는 하한(블록 크기)으로 상한을 잡는 쪽이 보수적이다.
+
+재유도하려면: 정상 상태 최댓값을 다시 재고(FAST/BLOCK 분해, 이 문서 (B) 절), 주입 블록 크기를 확인한 뒤 위 두 식에 넣는다.
+
+실패 메시지도 바꿨다. 1s 를 넘는 유일한 설명이 동기 실행이므로 이제 참인 진술이다:
+
+```
+Handle blocked %v (bound %v); the advisory scan ran on the synchronous path instead of being deferred
+```
+
+### ③ 별개 예산 단정 — TestSessionStart_HandleInputLagBudget
+
+지연 판별과 입력 지연 예산은 **다른 질문**이라 단정을 분리했다. 지연은 구조적 성질(임계 경로에서 돌았는가), 예산은 벽시계 성질(사용자가 얼마나 기다렸는가)이다.
+
+조건도 다르다. 예산 단정은 병리적 2초 블록이 아니라 **즉시 반환하는 drift fn**(정상 조건)에서 잰다 — join 기여 ≈ 0, 경과 = 순수 동기작업.
+
+```
+관측 최댓값 (FAST 조건)  539.75ms   n=300
+× 2.5                  = 1,349ms   → 1.5s
+```
+
+2.5배가 덮는 것은 이 측정이 **도달하지 못한 두 축**이다: CI 머신 등급(전부 이 darwin 개발 머신 수치), 실제 저장소의 스캔 비용(빈 `t.TempDir()` 기준). 둘 다 이 문서 Gaps 에 기재된 미검증 항목이며, 안전계수는 그 미검증을 값으로 환산한 것이다.
+
+**의도적으로 총량 회귀(gross-regression) 감시선이지 지연 SLO 가 아니다** — 중앙값 218ms 의 약 7배. 경합하는 머신에서 빡빡한 벽시계 예산을 거는 것이 바로 이 카드가 진단한 결함이다. 조이려면 위 두 축을 덮는 새 측정에서 재유도해야 하며, 그 단서를 주석에 남겼다.
+
+### [HARD] 뮤턴트 증명 — 통과가 아니라 RED 로
+
+임계 상향이 "고장난 테스트를 조용하게 만든 것"과 구분되려면, 스캔을 **실제로 동기 실행시킨 상태**에서 새 임계 아래 RED 여야 한다.
+
+뮤턴트 구성 — 프로덕션 코드를 건드리지 않는다. `main_test.go:47` 이 테스트 바이너리 전체에 `deferredScansAsync = false` 를 걸고, `session_start.go:354-360` 의 `else` 분기가 스캔을 INLINE 동기 실행한다. 따라서 `registerDeferredScanSeam(t)`(async=true 로 되돌리는 호출)를 빼면 결함 상태가 된다.
+
+```go
+-	completedCh := registerDeferredScanSeam(t)
++	completedCh := make(chan struct{}) // T662-MUTANT
+```
+
+결과 (`.moai/reports/t662/mutant-run.log`, 부하 8.56):
+
+```
+    session_start_parallel_test.go:115: Handle blocked 2.209937083s (bound 1s); the advisory scan ran on the synchronous path instead of being deferred
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (2.21s)
+FAIL	github.com/modu-ai/moai-adk/internal/hook	2.849s
+exit=1
+```
+
+**RED 확정. 임계 1s 대비 2.21배 초과** — 판별력이 보존된다. 덤으로 이 수치가 (B) 의 분해를 세 번째로 재확인한다: `2,000ms 주입 블록 + 약 210ms 동기작업 = 2,209.94ms`.
+
+뮤턴트는 되돌렸다 (`grep -c "T662-MUTANT" → 0`, `git diff --stat` = 1파일 92+/5−).
+
+### 수리 후 검증
+
+```
+$ go test ./internal/hook/ -run '<세 단정>' -count=3 -v      → PASS 9/9  (부하 8.17)
+$ go vet ./internal/hook/                                    → exit 0    (부하 9.69)
+$ go test ./internal/hook/ -count=1 -timeout 900s            → ok 173.947s (부하 9.69 → 20.45)
+```
+
+로그: `.moai/reports/t662/green-run.log`, `verify-pkg.log`.
+
+### 수리분 Gaps
+
+- **CI(리눅스)에서 돌리지 않았다.** 두 임계 모두 이 머신 측정에서 유도됐다. 다만 방향은 안전하다 — 종전 500ms 는 정상 중앙값의 1.1배였고 새 1s 는 4.4배, 예산 1.5s 는 중앙값의 약 7배다.
+- **1s 를 정상 상태에서 실제로 넘겨 보지 않았다.** 이 트리 관측 최댓값은 646.52ms 다. 더 느린 머신에서 정상 실행이 1s 를 넘길 가능성은 배제하지 못했다.
+- **`TestSessionStart_HandleInputLagBudget` 은 뮤턴트로 증명하지 않았다.** 총량 회귀 감시선이라 유의미한 뮤턴트는 동기작업을 7배로 늘리는 것인데, 그것을 위한 seam 이 없다. 이 단정의 판별력은 미검증이다.
+- **②(동기작업 200ms 내역 분해)는 하지 않았다** — 리드 판정대로 별도 카드.
+
+---
+
+## 초기 제안 (이하 원본 — 위 수리로 실행됨)
 
 이 카드는 "결함인지 예산이 얇은 것인지 가른다"였고 답은 **예산**이다. 다만 측정 과정에서 더 근본적인 것이 나왔다: **임계값이 잘못된 양을 재고 있다.**
 
