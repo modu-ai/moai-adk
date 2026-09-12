@@ -11,6 +11,7 @@ package worktree
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -44,79 +45,119 @@ func decodeReport(t *testing.T, out string) []staleCandidate {
 	return got
 }
 
-// TestClean_JSONWithoutStaleReportsAndMutatesNothing is the reported case:
-// `moai worktree clean --json`, no other flag.
-func TestClean_JSONWithoutStaleReportsAndMutatesNothing(t *testing.T) {
+// TestClean_JSONModesReportAndMutateNothing walks the three ways --json can
+// be reached. They share one body on purpose: the property under test is the
+// same in all three, and a per-mode copy is how the --stale branch came to be
+// the only one that honoured the flag.
+func TestClean_JSONModesReportAndMutateNothing(t *testing.T) {
+	cases := []struct {
+		name      string
+		flags     map[string]string
+		worktrees []git.Worktree
+		merged    bool
+		wantCount int
+	}{
+		{
+			// The reported case: `moai worktree clean --json`, no other flag.
+			name:  "json alone",
+			flags: map[string]string{"json": "true"},
+			worktrees: []git.Worktree{
+				{Path: "/wt/slug", Branch: "worktree-reaper"},
+				{Path: "/wt/other", Branch: "docs-refresh"},
+			},
+			wantCount: 2,
+		},
+		{
+			// --merged-only removes merged worktrees, and --json was ignored
+			// there too, so the inventory flag used to delete.
+			name:      "json with merged-only",
+			flags:     map[string]string{"json": "true", "merged-only": "true"},
+			worktrees: []git.Worktree{{Path: "/wt/merged", Branch: "WT-merged-card"}},
+			merged:    true,
+			wantCount: 1,
+		},
+		{
+			// The property the --stale branch already had: a report cannot
+			// delete because another flag asked it to.
+			name:      "json overrides yes",
+			flags:     map[string]string{"json": "true", "stale": "true", "yes": "true"},
+			worktrees: []git.Worktree{{Path: "/wt/removable", Branch: "WT-removable-card"}},
+			merged:    true,
+			wantCount: 1,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			removed, pruned := jsonModeEnv(t, tc.worktrees)
+			mockIsBranchMergedFunc = func(string, string) (bool, error) { return tc.merged, nil }
+
+			out, err := runStaleClean(t, tc.flags)
+			if err != nil {
+				t.Fatalf("runClean error: %v", err)
+			}
+
+			if *pruned != 0 {
+				t.Errorf("--json pruned %d time(s); the help calls this path inert", *pruned)
+			}
+			if len(*removed) != 0 {
+				t.Errorf("--json removed %v; it must remove nothing", *removed)
+			}
+			if strings.Contains(out, "Cleaned stale worktree references") {
+				t.Errorf("--json printed the human banner instead of an inventory:\n%s", out)
+			}
+			if got := decodeReport(t, out); len(got) != tc.wantCount {
+				t.Errorf("expected %d object(s) in the inventory, got %d:\n%s", tc.wantCount, len(got), out)
+			}
+		})
+	}
+}
+
+// TestClean_JSONReportsAnUnavailableWorktree is what dropping the prune buys:
+// a worktree whose directory is gone stays IN the inventory, with its state
+// undetermined and a keep_reason naming what could not be read. The prune used
+// to drop that entry before the report was built, so the operator saw nothing
+// where the interesting case was.
+func TestClean_JSONReportsAnUnavailableWorktree(t *testing.T) {
 	removed, pruned := jsonModeEnv(t, []git.Worktree{
-		{Path: "/wt/slug", Branch: "worktree-reaper"},
-		{Path: "/wt/other", Branch: "docs-refresh"},
+		{Path: "/wt/gone", Branch: "WT-vanished-card"},
+		{Path: "/wt/live", Branch: "docs-refresh"},
 	})
+	mockIsBranchMergedFunc = func(string, string) (bool, error) { return true, nil }
+	// The vanished tree's status call fails the way git does when the
+	// directory is no longer there; the live one answers normally.
+	gitWorktreeCmd = func(args ...string) (string, error) {
+		if len(args) >= 2 && args[0] == "-C" && args[1] == "/wt/gone" {
+			return "", errors.New("cannot chdir to '/wt/gone': No such file or directory")
+		}
+		return "", nil
+	}
 
 	out, err := runStaleClean(t, map[string]string{"json": "true"})
 	if err != nil {
 		t.Fatalf("runClean error: %v", err)
 	}
-
-	if *pruned != 0 {
-		t.Errorf("--json pruned %d time(s); the help calls this path inert", *pruned)
-	}
-	if len(*removed) != 0 {
-		t.Errorf("--json removed %v; it must remove nothing", *removed)
-	}
-	if strings.Contains(out, "Cleaned stale worktree references") {
-		t.Errorf("--json printed the human banner instead of an inventory:\n%s", out)
-	}
-	if got := decodeReport(t, out); len(got) != 2 {
-		t.Errorf("expected one object per registered worktree (2), got %d:\n%s", len(got), out)
-	}
-}
-
-// TestClean_JSONWithMergedOnlyReportsAndRemovesNothing covers the other
-// window: --merged-only removes merged worktrees, and --json was ignored there
-// too, so the inventory flag used to delete.
-func TestClean_JSONWithMergedOnlyReportsAndRemovesNothing(t *testing.T) {
-	removed, pruned := jsonModeEnv(t, []git.Worktree{
-		{Path: "/wt/merged", Branch: "WT-merged-card"},
-	})
-	mockIsBranchMergedFunc = func(string, string) (bool, error) { return true, nil }
-
-	out, err := runStaleClean(t, map[string]string{"json": "true", "merged-only": "true"})
-	if err != nil {
-		t.Fatalf("runClean error: %v", err)
+	if *pruned != 0 || len(*removed) != 0 {
+		t.Errorf("the report pruned %d time(s) and removed %v; it must do neither", *pruned, *removed)
 	}
 
-	if len(*removed) != 0 {
-		t.Errorf("--merged-only --json removed %v; --json removes nothing", *removed)
-	}
-	if *pruned != 0 {
-		t.Errorf("--merged-only --json pruned %d time(s)", *pruned)
-	}
-	if got := decodeReport(t, out); len(got) != 1 {
-		t.Errorf("expected the merged tree in the inventory, got %d objects:\n%s", len(got), out)
-	}
-}
-
-// TestClean_JSONOverridesYes keeps the property the --stale branch already
-// had: a report cannot delete because another flag asked it to.
-func TestClean_JSONOverridesYes(t *testing.T) {
-	removed, pruned := jsonModeEnv(t, []git.Worktree{
-		{Path: "/wt/removable", Branch: "WT-removable-card"},
-	})
-	mockIsBranchMergedFunc = func(string, string) (bool, error) { return true, nil }
-
-	out, err := runStaleClean(t, map[string]string{"json": "true", "stale": "true", "yes": "true"})
-	if err != nil {
-		t.Fatalf("runClean error: %v", err)
+	byPath := map[string]staleCandidate{}
+	for _, c := range decodeReport(t, out) {
+		byPath[c.Path] = c
 	}
 
-	if len(*removed) != 0 {
-		t.Errorf("--stale --yes --json removed %v; --json removes nothing", *removed)
+	gone, ok := byPath["/wt/gone"]
+	if !ok {
+		t.Fatalf("the unavailable worktree is missing from the inventory:\n%s", out)
 	}
-	if *pruned != 0 {
-		t.Errorf("--stale --yes --json pruned %d time(s)", *pruned)
+	if gone.Dirty != staleStateUndetermined {
+		t.Errorf("unavailable worktree reported dirty=%q, want %q", gone.Dirty, staleStateUndetermined)
 	}
-	if got := decodeReport(t, out); len(got) != 1 {
-		t.Errorf("expected one object, got %d:\n%s", len(got), out)
+	if gone.KeepReason == "" {
+		t.Error("unavailable worktree reported an empty keep_reason; the report must name what it could not read")
+	}
+	if _, ok := byPath["/wt/live"]; !ok {
+		t.Errorf("the reachable worktree vanished from the inventory:\n%s", out)
 	}
 }
 
