@@ -67,8 +67,11 @@ if [ -n "$STAGED_GO" ]; then
     # through, while one staged formatted and edited since was blocked. Both
     # verdicts described a version of the file that was not the one being
     # committed. 'git show ":$f"' reads exactly the bytes the commit carries.
-    # Staged bytes that do not parse stay unflagged as before -- gofmt's error
-    # goes to stderr and its stdout stays empty; go vet is what reports those.
+    # Staged bytes that do not parse are BLOCKED here, which they were not
+    # before: gofmt leaves stdout empty and exits non-zero, and the branch
+    # below reads that exit as a tool error rather than a pass. They used to
+    # fall through to go vet, which is skipped outside a Go module -- so in
+    # those environments nothing caught them at all.
     if command -v gofmt >/dev/null 2>&1; then
         # One scan, two outcomes per file, told apart by a line prefix: the
         # loop runs in a subshell and cannot hand variables back.
