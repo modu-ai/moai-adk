@@ -54,35 +54,15 @@ type InitOptions struct {
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
 
-	// Worktree advisory. Mirrors the wizard.WorktreeAutoCreate selection when
-	// the flag is absent (REQ-005 precedence). Persisted to
-	// workflow.worktree.auto_create at init ONLY when the WorktreeAutoCreateSet
-	// tracker fired (an explicit --worktree-auto-create flag,
-	// SPEC-INIT-WIZARD-REPAIR-001 REQ-006) — the wizard advisory alone is
-	// informational and leaves the deployed template default untouched.
+	// Worktree advisory. Persisted to workflow.worktree.auto_create at init
+	// ONLY when the WorktreeAutoCreateSet tracker fired — an explicit
+	// --worktree-auto-create flag (tracker-based write, REQ-006). With the
+	// flag absent the deployed template default stays untouched. The
+	// interactive paths that change it are the reconfigure step and the web
+	// console.
+	// @MX:NOTE: [AUTO] init records only the explicit flag tracker; interactive
+	// changes go through reconfigure or the web console.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
-
-	// TodoEnabled mirrors wizard.WizardResult.TodoEnabled and persists to
-	// workflow.todo.enabled at init. nil means the question was never asked
-	// (--non-interactive), and an unasked question writes nothing: the config
-	// gate is default-ON, so absence already carries the right answer and
-	// emitting a key would be noise at best and an inversion at worst.
-	TodoEnabled *bool // workflow.todo.enabled
-
-	// FeedbackAutoSubmit mirrors wizard.WizardResult.FeedbackAutoSubmit and
-	// persists to feedback.auto_submit at init. nil means the question was
-	// never asked (--non-interactive), and an unasked question writes nothing:
-	// the shipped default is false, so absence already carries the cautious
-	// answer and emitting the key would only add noise.
-	FeedbackAutoSubmit *bool // feedback.auto_submit
-
-	// ProjectContinuation mirrors wizard.WizardResult.ProjectContinuation and
-	// persists to workflow.project.continuation at init
-	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010). Empty means the question
-	// was never asked (--non-interactive), and an unasked question writes
-	// nothing: the template already ships `continuation: card`, so restating it
-	// would only add a line that changes nothing.
-	ProjectContinuation string // workflow.project.continuation
 
 	// SPEC-WT-DOC-001 workflow toggle opt-in surface. The *Set trackers are
 	// false on the zero value so a non-interactive / flag-absent init leaves the
@@ -101,17 +81,7 @@ type InitOptions struct {
 	// downstream reader resolves empty → semi-auto.
 	AutonomyTier string // workflow.autonomy_tier
 
-	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
-	// AuditConfigSet is the opt-in tracker: true ONLY when the wizard ran and
-	// collected an audit selection. When false, writeWorkflowAuditYAML MUST NOT
-	// touch the deployed workflow.yaml (C6 opt-in-default-off).
-	AuditConfigSet    bool   // true only when the wizard collected an audit selection
-	AuditModel        string // audit.model: claude|codex|glm|multi
-	AuditGateClaude   string // audit.gates.claude: off|advisory|required
-	AuditGateCodex    string // audit.gates.codex: off|advisory|required
-	AuditGateGLM      string // audit.gates.glm: off|advisory|required
-	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
-	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
+	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
 
 // InitResult summarizes the outcome of project initialization.
@@ -289,23 +259,6 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	if err := WriteWorkflowTogglesYAML(toggleSectionsDir, opts, result); err != nil {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow toggles: %s", err))
 		i.logger.Warn("workflow toggles write failed", "error", err)
-	}
-
-	// Step 3f (SPEC-INIT-WIZARD-REPAIR-001 REQ-008 / SPEC-MOAI-MCP-SERVER-001
-	// M4 REQ-MCP-015): persist the audit + codex review-gate selection into
-	// workflow.yaml immediately after Step 3d, on BOTH the deployer and the
-	// fallback path (the function carries its own fresh-file branch for the
-	// latter). AuditConfigSet=false leaves the deployed file byte-identical
-	// (C6 opt-in-default-off) — this invocation is the link that was missing,
-	// making the contract comments at initializer.go Step 3d and
-	// applyWizardPage3ToOpts true as written.
-	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err := writeWorkflowAuditYAML(toggleSectionsDir, opts, result); err != nil {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow audit: %s", err))
-		i.logger.Warn("workflow audit write failed", "error", err)
 	}
 
 	// Step 4: Create CLAUDE.md
@@ -671,11 +624,21 @@ func (i *projectInitializer) initManifest(root string, result *InitResult) error
 	return nil
 }
 
-// configureShellEnv sets up shell environment variables for Claude Code.
+// ConfigureShellEnvFn performs the Step 6 shell-config write. Production uses
+// defaultConfigureShellEnv; tests swap in a spy so they can observe that Step 6
+// was reached without writing the user's real shell rc files.
+//
+// @MX:NOTE: [AUTO] Step 6 shell-config write goes through this variable; the production default writes real rc files, tests swap in a counting spy.
+// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
+// @MX:WARN: [AUTO] Package-global seam swapped by tests; a test that swaps it must not call t.Parallel and must restore it with t.Cleanup.
+// @MX:REASON: The shell configurator resolves HOME directly, so a test that bypasses this seam (or leaves the real function in place) writes the developer's real home rc files.
+var ConfigureShellEnvFn = defaultConfigureShellEnv
+
+// defaultConfigureShellEnv sets up shell environment variables for Claude Code.
 // This adds CLAUDE_DISABLE_PATH_WARNING=1 and PATH entry to the appropriate
 // shell configuration file (.zshenv, .profile, or config.fish).
-func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
-	configurator := shell.NewEnvConfigurator(i.logger)
+func defaultConfigureShellEnv(logger *slog.Logger) (*shell.ConfigResult, error) {
+	configurator := shell.NewEnvConfigurator(logger)
 
 	return configurator.Configure(shell.ConfigOptions{
 		AddClaudeWarningDisable: true,
@@ -683,4 +646,10 @@ func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
 		AddGoBinPath:            true,
 		PreferLoginShell:        true,
 	})
+}
+
+// configureShellEnv runs the Step 6 shell-config write through the
+// ConfigureShellEnvFn seam.
+func (i *projectInitializer) configureShellEnv() (*shell.ConfigResult, error) {
+	return ConfigureShellEnvFn(i.logger)
 }

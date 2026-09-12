@@ -920,11 +920,19 @@ func TestGarbageCollectOrphanedTasks(t *testing.T) {
 				}
 			}
 
-			// Create task directories
+			// Create task directories. Age every one of them past the
+			// collector's staleness threshold so this table measures the
+			// team-directory discriminant alone; the age threshold itself is
+			// covered by TestGarbageCollectOrphanedTasks_KeepsFreshStandaloneTask
+			// and _CollectsStaleStandaloneTask.
+			aged := time.Now().Add(-48 * time.Hour)
 			for _, name := range tt.taskNames {
 				taskDir := filepath.Join(tasksDir, name)
 				if err := os.MkdirAll(taskDir, 0o755); err != nil {
 					t.Fatalf("failed to create task directory %s: %v", name, err)
+				}
+				if err := os.Chtimes(taskDir, aged, aged); err != nil {
+					t.Fatalf("failed to age task directory %s: %v", name, err)
 				}
 			}
 

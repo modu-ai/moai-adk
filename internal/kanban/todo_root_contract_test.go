@@ -32,37 +32,43 @@ func TestAdoptionLandsWhereConsumersRead(t *testing.T) {
 	}
 }
 
-// TestAdoptingAndPureResolversAgreeWhenAdoptionFails covers the branch decision
-// D-2 (REQ-WTQ-005) exists for, on the one path no earlier criterion exercised.
-// adoptLocalTodoQueue is best-effort; when it cannot write, the adopting path
-// must still resolve to the queue that holds the cards rather than report an
-// empty fallback while the console reports N.
-func TestAdoptingAndPureResolversAgreeWhenAdoptionFails(t *testing.T) {
+// TestBothEntryPointsServeTheCardsOnATemporaryBase covers what decision D-2
+// (REQ-WTQ-005) exists for: the console must not report an empty queue while
+// `moai todo` reports N.
+//
+// INTENTIONAL UPDATE (t621): the predecessor made adoptLocalTodoQueue's
+// best-effort write FAIL and then asserted the two resolvers returned the same
+// string. Both halves stopped carrying the claim. The function is gone, so its
+// blocker was inert; and the two resolvers now share one body, so comparing
+// their returns is a tautology — it would hold with every branch below it
+// deleted. The claim is therefore asserted where it can still fail: on what
+// each entry point READS. A temporary base keeps its queue project-local, so
+// this is the project-local half; the home half is the _NonTemp copy.
+func TestBothEntryPointsServeTheCardsOnATemporaryBase(t *testing.T) {
 	home, proj := t.TempDir(), t.TempDir()
 	orig := HomeDirFn
 	HomeDirFn = func() (string, error) { return home, nil }
 	defer func() { HomeDirFn = orig }()
 
 	seedLocalQueue(t, proj, 1)
-
-	// Make the fallback root unwritable by occupying its parent with a file:
-	// MkdirAll then fails and adoption returns having moved nothing.
-	fallback, _ := homeTodoQueueRoot(proj)
-	blocker := filepath.Dir(fallback)
-	if err := os.MkdirAll(filepath.Dir(blocker), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(blocker, []byte("not a directory"), 0o600); err != nil {
-		t.Fatal(err)
+	if reason, isTemp := TempOriginReason(proj); !isTemp {
+		t.Fatalf("precondition: this half needs a temporary base; %q classified non-temporary (reason %q)", proj, reason)
 	}
 
-	adopting := ResolveTodoQueueRootAdopting(proj)
-	pure := ResolveTodoQueueRoot(proj)
-	if adopting != pure {
-		t.Errorf("resolvers diverge when adoption fails: adopting=%s pure=%s", adopting, pure)
-	}
-	if _, err := os.Stat(BacklogPathForRoot(adopting)); err != nil {
-		t.Errorf("the adopting resolver points at no readable queue: %s (%v)",
-			BacklogPathForRoot(adopting), err)
+	for _, tc := range []struct {
+		name string
+		path string
+	}{
+		{"pure", BacklogPathForRoot(ResolveTodoQueueRoot(proj))},
+		{"adopting", BacklogPathForRootAdopting(ResolveTodoQueueRootAdopting(proj))},
+	} {
+		rec, err := NewBacklogStore(tc.path).LoadPure()
+		if err != nil || rec == nil {
+			t.Errorf("%s entry point reads no queue at %s (err %v)", tc.name, tc.path, err)
+			continue
+		}
+		if len(rec.Items) != 1 {
+			t.Errorf("%s entry point reads %d cards at %s, want 1", tc.name, len(rec.Items), tc.path)
+		}
 	}
 }

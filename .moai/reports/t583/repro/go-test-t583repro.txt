@@ -1,0 +1,33 @@
+=== RUN   TestT583Repro_F1_Narrow
+    t583_repro_test.go:138: after applyWizardPage3ToOpts: WorktreeAutoCreate=true WorktreeAutoCreateSet=false
+    t583_repro_test.go:151: F1 reproduced (narrow): wizard answered yes, workflow.yaml auto_create is not true
+--- FAIL: TestT583Repro_F1_Narrow (0.00s)
+=== RUN   TestT583Repro_F1_RunInit
+2026/09/10 23:19:24 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t583/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/09/10 23:19:25 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT583Repro_F1_RunInit1836631911/002/t583-proj/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+    t583_repro_test.go:161: deployed workflow.yaml line: "    # auto_create: read once (internal/cli/worktree_advisory.go) only to select"
+    t583_repro_test.go:161: deployed workflow.yaml line: "        auto_create: false"
+    t583_repro_test.go:165: F1 reproduced (runInit): wizard answered yes, deployed auto_create is not true
+    t583_repro_test.go:51: real-home guard: settings.json sha256 before=86e2d9b63abd4d027b4f65bcdc3b41e127b55c9d65c5c8061d17f36b247cc5eb after=86e2d9b63abd4d027b4f65bcdc3b41e127b55c9d65c5c8061d17f36b247cc5eb; hooks/moai before=false after=false
+--- FAIL: TestT583Repro_F1_RunInit (1.11s)
+=== RUN   TestT583Repro_F4_NonInteractive
+2026/09/10 23:19:25 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t583/internal/cli/.moai/config/sections
+    t583_repro_test.go:175: ensure-entry announcement on stdout: false
+    t583_repro_test.go:192: .mcp.json mcpServers keys: [moai context7]
+    t583_repro_test.go:51: real-home guard: settings.json sha256 before=86e2d9b63abd4d027b4f65bcdc3b41e127b55c9d65c5c8061d17f36b247cc5eb after=86e2d9b63abd4d027b4f65bcdc3b41e127b55c9d65c5c8061d17f36b247cc5eb; hooks/moai before=false after=false
+--- PASS: TestT583Repro_F4_NonInteractive (0.94s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.437s
+FAIL
