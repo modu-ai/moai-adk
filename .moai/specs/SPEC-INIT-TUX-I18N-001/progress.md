@@ -293,6 +293,29 @@ Host tmux at the end: `no server running on /private/tmp/tmux-501/default`. No b
 
 AC status after Stage B (this tree): AC-ITI-005 (4) GREEN (mech). AC-ITI-012 GREEN (golden, four cases, three mutants). AC-ITI-015 (a) RED captured pre-fix (v1, column 22) and still RED post-M2 (v2, column 21) — fix is M7. AC-ITI-019 now also asserted over cli's capture tests (SKIP ×5 ungated, FAIL ×4 without tmux). AC-ITI-013 remains M7 (the confirm surface already renders table labels only: `←/→ 전환 • enter 제출 • y 예 • n 아니오`).
 
+#### t583 absorb gate (lead-opened, 2026-09-12)
+
+The lead opened the t583 absorb gate after `origin/develop` advanced to `03a48b0df`. Verified before merging that `c2a9dbcc8` (the t583 tip) is an ancestor of `origin/develop` (`git merge-base --is-ancestor`, exit 0), and that local `develop` and `origin/develop` name the same commit (`git show-ref`).
+
+Merge commit `10ea337fe`, parents `4d985fe48` (this branch) and `03a48b0df` (develop). No conflicts; the merge committed cleanly.
+
+The concern the gate was opened for — t583 cut the wizard questions 16→4 and deleted `WizardResult` fields, which could collide with the option shapes and translation keys Stage B fixed — did not materialize at either the textual or the compile layer.
+
+| Check | Command | Exit | Observed | Evidence |
+|---|---|---|---|---|
+| file overlap | `git merge-base develop HEAD` → `CARD_BASE`, then `comm -12` of `git diff --name-only $CARD_BASE..HEAD` (report paths dropped) against `git diff --name-only eb50af5a8..03a48b0df` | 0 | card contributes 138 files (33 outside `.moai/reports/`); develop delta 2322 files; **intersection 0**. Control: the card-scope side is 33, not 0, so the empty intersection is a measurement rather than an empty operand | `.moai/reports/t586/absorb-t583/file-overlap.txt` (empty), `README.md` |
+| build, before | `go build ./...` (at `4d985fe48`, pre-merge) | 0 | no output | observed in-session; re-derivable at `4d985fe48` |
+| wizard, before | `go test ./internal/cli/wizard/` (at `4d985fe48`, pre-merge) | 0 | `ok … 3.399s` | observed in-session; re-derivable at `4d985fe48` |
+| build, after | `go build ./...` | 0 | no output | `.moai/reports/t586/absorb-t583/post-build.txt` |
+| vet, after | `go vet ./internal/cli/...` | 0 | no output | `post-vet.txt` |
+| wizard, after | `go test ./internal/cli/wizard/` | 0 | `ok … 3.130s` | `post-wizard.txt` |
+
+The before/after pair is what attributes the result: the absorb broke nothing. A deleted `WizardResult` field still referenced by Stage B code would have failed the build, and it did not.
+
+The overlap measurement takes its left edge from the merge-base with the absorbed ref, never a literal base SHA (`gitflow-lane-protocol.md` §8). Measured against the previous absorb pin `cd7dc491c` instead, the card reads as 56 files and the Phase A output (`internal/cli/ptycaptest/**`, `profile_questions.go`, `profile_translations.go`) falls outside the range — the same false narrowing that rule exists to prevent.
+
+Not established yet: a green build says the tree compiles, not that the goldens still match. The test-layer verdict for `internal/cli` — including the four `internal/cli/testdata/downgrade-confirm/*.golden` files — waits on the `internal/cli` slot. It will run the same selector range Stage B used (`'Profile\|Wizard\|HuhTheme\|UpdateVersion\|TUI'`), compared against the after-batch control (132 selected, RUN 224, PASS 224, FAIL 0, SKIP 0) rather than `baseline2` (129/217), which predates Stage B. The selected-name count and the top-level PASS count are compared to each other: a `-run` selector drops names that no longer exist without saying so, and t583 deleted wizard tests, so a count below 132 may be correct — it has to be attributed to t583's deletions, and a residue that is not is a defect.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
