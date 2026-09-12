@@ -495,9 +495,14 @@ func garbageCollectStaleTeams(homeDir string) {
 }
 
 // garbageCollectOrphanedTasks cleans up orphaned task directories under ~/.claude/tasks/
-// that have no corresponding team directory. Collects task directories left behind by
-// interrupted sessions or incomplete cleanup. Errors are logged and never returned.
+// that have no corresponding team directory AND have not been modified in more than
+// 24 hours. Collects task directories left behind by interrupted sessions or
+// incomplete cleanup, while leaving lists a concurrent session is still working on
+// — including lists this session does not own — untouched. A team directory that
+// cannot be stat'ed counts as present, not absent. Errors are logged and never returned.
 func garbageCollectOrphanedTasks(homeDir string) {
+	const staleDuration = 24 * time.Hour
+
 	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
 	teamsDir := filepath.Join(homeDir, ".claude", "teams")
 
@@ -512,19 +517,45 @@ func garbageCollectOrphanedTasks(homeDir string) {
 		return
 	}
 
+	cutoff := time.Now().Add(-staleDuration)
+
 	for _, entry := range taskEntries {
 		if !entry.IsDir() {
 			continue
 		}
 
-		// Check whether the corresponding team directory exists
+		// Check whether the corresponding team directory exists. Only a
+		// definite "does not exist" proves the task is orphaned; any other
+		// Stat error (a permission failure, say) leaves the question open,
+		// and an open question is never grounds for deleting data.
 		teamDir := filepath.Join(teamsDir, entry.Name())
-		if _, err := os.Stat(teamDir); err == nil {
-			// Team directory exists, so this is not an orphan — keep it
+		if _, err := os.Stat(teamDir); !os.IsNotExist(err) {
+			if err != nil {
+				slog.Warn("session_end: could not stat team directory for orphan GC; keeping task directory",
+					"path", teamDir,
+					"error", err,
+				)
+			}
 			continue
 		}
 
-		// No team directory, so remove the orphaned task directory
+		// A task directory with no team directory is only abandoned once it
+		// has also gone quiet. Without this the collector deletes lists a
+		// concurrent session created moments ago — including lists it does
+		// not own. Mirrors garbageCollectStaleTeams above.
+		info, err := entry.Info()
+		if err != nil {
+			slog.Warn("session_end: could not stat task directory for orphan GC; keeping it",
+				"name", entry.Name(),
+				"error", err,
+			)
+			continue
+		}
+		if !info.ModTime().Before(cutoff) {
+			continue
+		}
+
+		// No team directory and gone quiet, so remove the orphaned task directory
 		taskDir := filepath.Join(tasksDir, entry.Name())
 		if err := os.RemoveAll(taskDir); err != nil {
 			slog.Warn("session_end: could not remove orphaned task directory",
