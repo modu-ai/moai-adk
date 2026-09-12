@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "LegacyAppPathString": {
+      "type": "string"
+    },
+    "ThreadBackgroundTerminal": {
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "cpuPercent": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cwd": {
+          "$ref": "#/definitions/LegacyAppPathString"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "osPid": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "processId": {
+          "type": "string"
+        },
+        "rssKb": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "command",
+        "cwd",
+        "itemId",
+        "processId"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "#/definitions/ThreadBackgroundTerminal"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "description": "Opaque cursor to pass to the next call to continue after the last item. If None, there are no more items to return.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "ThreadBackgroundTerminalsListResponse",
+  "type": "object"
+}

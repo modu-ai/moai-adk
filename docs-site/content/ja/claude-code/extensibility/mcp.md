@@ -98,7 +98,7 @@ MCP サーバーを接続したり切断したりすると、コンテキスト�
 
 MoAI-ADK は MCP サーバーを **デフォルトではプロビジョニングしません**。代わりに外部資料が必要なときは、組み込みの `WebSearch` / `WebFetch` で公式ドキュメントとベストプラクティスを調べるフォールバック戦略を使います (`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy)。アーキテクチャや分析の品質が MCP の可用性に依存しないようにする設計です。
 
-一つの例外はバックエンドルーティングです。`moai glm` または `moai cg` の GLM パネルで実行するときは、Web 検索と Web 取得が組み込みツールの代わりに z.ai MCP ツールへルーティングされます (`.claude/rules/moai/core/glm-web-tooling.md`)。どのバックエンドでも検索・取得の能力自体は保たれ、経路だけが変わります。
+一つの例外はバックエンドルーティングです。`moai glm`で実行するときは、Web 検索と Web 取得が組み込みツールの代わりに z.ai MCP ツールへルーティングされます (`.claude/rules/moai/core/glm-web-tooling.md`)。どのバックエンドでも検索・取得の能力自体は保たれ、経路だけが変わります。
 
 ## 関連ドキュメント
 

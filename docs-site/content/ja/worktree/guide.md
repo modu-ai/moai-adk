@@ -59,7 +59,7 @@ MoAI-ADK はこの機能の上に SPEC 単位の隔離環境を載せます。SP
 
 | やりたいこと | 担当 |
 |-------------|------|
-| Worktree を作る · 入る | ランチャー `moai cc` · `moai glm` · `moai cg` の `-w` フラグ |
+| Worktree を作る · 入る | ランチャー `moai cc` · `moai glm` の `-w` フラグ |
 | Worktree の一覧を見る | `git worktree list` |
 | 同期 · 整理 · 復旧 · 状態ガード | `moai worktree` (エイリアス `moai wt`) のサブコマンド |
 
@@ -77,7 +77,6 @@ MoAI-ADK はこの機能の上に SPEC 単位の隔離環境を載せます。SP
 ```bash
 moai cc  -w [名前] [--spawn]
 moai glm -w [名前] [--spawn]
-moai cg  -w [名前] [--spawn]
 ```
 
 #### `-w` の値が解釈される仕組み
@@ -109,7 +108,7 @@ moai cc -w feat-auth
 moai glm -w feat-auth
 
 # 現在のセッションを保ったまま新しい tmux ウィンドウで GLM チームメイトを起動
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # 任意の場所にワークツリーを自分で作りたいときは git をそのまま使う
 git worktree add -b feature/SPEC-AUTH-001 \

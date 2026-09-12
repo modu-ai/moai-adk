@@ -72,7 +72,7 @@ moai profile delete old-profile
 ```bash
 moai cc -p work          # 用 work 配置文件运行 Claude
 moai glm -p cost-save    # 用 cost-save 配置文件运行 GLM
-moai cg -p team          # 用 team 配置文件运行 CG 模式
+moai cc -p team          # 使用 team 配置的 Claude 会话
 ```
 
 {{< callout type="info" >}}
@@ -145,7 +145,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 |------|------|
 | `moai cc` → `moai glm` | 自动注入 GLM 环境变量 |
 | `moai glm` → `moai cc` | 自动移除 GLM 环境变量 |
-| `moai cc` → `moai cg` | 仅向 tmux 会话注入 GLM env,Leader 保持 Claude |
 
 ## 相关文档
 

@@ -1,0 +1,7 @@
+# github.com/modu-ai/moai-adk/internal/codexapp [github.com/modu-ai/moai-adk/internal/codexapp.test]
+internal/codexapp/private_test.go:12:12: undefined: ValidatePrivatePath
+internal/codexapp/private_test.go:13:12: undefined: ValidatePrivatePath
+internal/codexapp/private_test.go:15:10: undefined: ValidatePrivatePath
+internal/codexapp/private_test.go:16:77: undefined: ValidatePrivatePath
+FAIL	github.com/modu-ai/moai-adk/internal/codexapp [build failed]
+FAIL

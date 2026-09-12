@@ -30,7 +30,7 @@ handoff:
 session:
   title: "moai session 세션 레지스트리"
 launchers:
-  title: "moai cc / cg / glm 런처"
+  title: "moai cc / glm 런처"
 worktree:
   title: "moai worktree 워크트리"
 "tool-policy":

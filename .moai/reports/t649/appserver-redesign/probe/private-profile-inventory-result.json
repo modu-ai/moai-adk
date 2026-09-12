@@ -1,0 +1,33 @@
+{
+  "codex_version": "0.154.0",
+  "events": [],
+  "errors": [],
+  "tool_calls": [],
+  "final_texts": [],
+  "flags": [
+    "approval_policy=\"never\"",
+    "sandbox_mode=\"read-only\"",
+    "web_search=\"disabled\"",
+    "features.shell_tool=false",
+    "features.codex_hooks=false",
+    "features.hooks=false",
+    "features.plugin_hooks=false",
+    "features.plugins=false",
+    "features.apps=false",
+    "features.view_image=false",
+    "features.multi_agent=false",
+    "features.multi_agent_v2=false",
+    "tools.update_plan.enabled=false",
+    "tools.experimental_request_user_input.enabled=false"
+  ],
+  "account_type": null,
+  "thread_started": true,
+  "servers": [],
+  "cursor_remaining": false,
+  "inference_started": false,
+  "success": true,
+  "stderr_excerpt": "",
+  "process_exit": -15,
+  "duration_seconds": 0.08,
+  "profile_removed": true
+}

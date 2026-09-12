@@ -1,0 +1,43 @@
+{
+  "exit_code": 1,
+  "elapsed_seconds": 2.6,
+  "timeout": false,
+  "group_cleanup_attempted": true,
+  "picker_command_sent": false,
+  "selection_sent": false,
+  "test_family_api_key_accepted": false,
+  "cleanup_errors": [
+    "signal_permission_denied"
+  ],
+  "prompt_categories": [],
+  "diagnostic_categories": [],
+  "error_categories": [
+    "400 Bad Request",
+    "API Error"
+  ],
+  "observed_model_ids": [
+    "claude-api",
+    "claude-code",
+    "gpt-6-astra"
+  ],
+  "picker_visible": false,
+  "picker_rows": [],
+  "selected_model_ids": [],
+  "selected_default": false,
+  "session_only_selection_confirmed": false,
+  "assistant_models": [
+    "<synthetic>"
+  ],
+  "tool_names": [],
+  "result_event_count": 1,
+  "marker_in_final_result": false,
+  "session_id": "4ce51aca-01bb-48f9-a09a-8c1ad5b5d835",
+  "result_subtypes": [
+    "success"
+  ],
+  "success": false,
+  "journey": "answer",
+  "mode": "gpt",
+  "requested_model": "gpt-6-astra",
+  "binary_sha256": "f51087e95a64f4c6055500577192a0f72e01f5dd29f6fc63f669e2ec08ebafdd"
+}

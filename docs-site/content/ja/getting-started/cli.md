@@ -19,7 +19,7 @@ moai --help
 
 | グループ | コマンド | 説明 |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | Claude Code セッションの開始 (バックエンド選択) |
+| **Launch** | `moai cc` · `moai glm` | Claude Code セッションの開始 (バックエンド選択) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | プロジェクトの初期化、アップデート、診断、状態照会 |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 設定、インベントリ、フック、ワークツリーなどのツール |
 
@@ -231,7 +231,6 @@ moai profile [COMMAND]
 ```bash
 moai cc -p work       # work プロファイルで Claude 実行
 moai glm -p cost-save # cost-save プロファイルで GLM 実行
-moai cg -p team       # team プロファイルで CG モード実行
 ```
 
 詳しい内容は [プロファイル管理](./profile) ページを参照してください。
@@ -326,33 +325,16 @@ git worktree list               # ワークツリーの一覧
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-Claude Code を開始しながらバックエンドを選択するランチコマンドです。3 つのコマンドすべて `-p <profile>` フラグでプロファイルを指定できます。`--` 以降の引数を Claude Code にそのまま渡すのは `moai cc` と `moai glm` のみ対応します (`moai cg` は非対応)。
+`moai cc` と `moai glm` は選択したバックエンドで Claude Code を起動します。旧 CG 設定は起動前に移行が必要です。
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| コマンド | リーダー | ワーカー | tmux 必須 | 用途 |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | いいえ | 最高品質 (単一バックエンド) |
-| `moai glm` | GLM | GLM | いいえ | コスト最適化 (GLM 単独) |
-| `moai cg` | Claude | GLM | 必須 | 品質 + コストのバランス (ハイブリッド) |
-
-`moai cg` は CG モード (Claude リーダー + GLM チームメイト) を有効化します。tmux セッション内で実行する必要があり、GLM 環境変数を tmux セッションに注入してリーダー画面は Claude API を使います。`moai cg` は設定後、現在の画面ですぐに Claude Code を実行するので、別途 `claude` を実行するステップは不要です。
-
-```bash
-# 1. GLM API キーの保存 (最初の 1 回)
-moai glm setup sk-your-glm-api-key
-
-# 2. CG モードの有効化 (tmux 内で実行 — Claude Code が現在の画面ですぐに開始される)
-moai cg
-```
-
-詳しい CG モードの案内は [紹介 — GLM でトークン節約](./introduction#glm-でトークン節約-5070) を参照してください。
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。 [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 
 ### ランチフラグ
 
@@ -372,7 +354,7 @@ moai cg
 | `-m, --model <model>` | モデル選択の上書き |
 | `--chrome` / `--no-chrome` | Chrome MCP のトグル |
 
-> `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` または `moai cg` でのみ対応します。
+> `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` でのみ対応します。
 
 ### moai glm 下位コマンド
 

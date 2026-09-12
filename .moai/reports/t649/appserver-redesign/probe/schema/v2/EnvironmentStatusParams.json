@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Parameters for reading the current status of one configured environment.",
+  "properties": {
+    "environmentId": {
+      "description": "Environment id to inspect.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "environmentId"
+  ],
+  "title": "EnvironmentStatusParams",
+  "type": "object"
+}

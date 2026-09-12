@@ -222,7 +222,7 @@ const (
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
 	// EnvMoaiKanbanBackend names the backend the launcher opened the session
-	// on: kanban.BackendClaude or kanban.BackendGLM.
+	// on: kanban.BackendClaude, kanban.BackendGLM, or kanban.BackendGPT.
 	//
 	// It exists because the backend is the one launch fact a session cannot
 	// observe for itself. Before this key the value reached the kanban record
@@ -233,6 +233,9 @@ const (
 	// from it would be a guess dressed as a measurement
 	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
 	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+
+	// EnvMoaiLaunchProvider records the gateway initial provider, never the current request route.
+	EnvMoaiLaunchProvider = "MOAI_LAUNCH_PROVIDER"
 
 	// EnvMoaiKanbanCard names the queue card the session is working, and is
 	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives

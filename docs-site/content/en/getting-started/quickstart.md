@@ -12,7 +12,7 @@ Before starting, the following should be done:
 
 - [x] MoAI-ADK installed ([Installation Guide](./installation))
 - [x] Initial setup completed ([Initial Setup](./init-wizard))
-- [ ] GLM API key acquired (optional — if you want to cut token costs with CG mode)
+- [ ] GLM API key (optional, for explicitly selected GLM sessions)
 
 ## Creating Your First Project
 

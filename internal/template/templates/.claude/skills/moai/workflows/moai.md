@@ -208,7 +208,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 
 ## Mode Selection (team experimental)
 
-The `--team` flag and `agent-team` are experimental (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). A `--team` request selects the Agent Teams layer subject to the §C.1 constraints; the native `moai cg` GLM teammate runtime is unaffected. Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode — the sentinel is retained as documented history.
+The `--team` flag and `agent-team` are experimental (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). A `--team` request selects the Agent Teams layer subject to the §C.1 constraints; retired CG routing does not verify mixed-provider teammate capability. Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode — the sentinel is retained as documented history.
 
 Mode selection:
 - `--team`: experimental — selects agent-team (Agent Teams; constraints per `orchestration-mode-selection.md` §C.1).
@@ -238,7 +238,7 @@ Mode selection:
    - If `--team` flag: experimental — select execution_mode="agent-team" (Agent Teams layer; constraints per `orchestration-mode-selection.md` §C.1)
    - If `--solo` flag: Skip the execution-shape question (auto-select execution_mode="sub-agent"); the Kickoff question still rides its own round
    - Otherwise (no flag):
-     - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
+     - Read .moai/config/sections/llm.yaml → team_mode (""/"claude" = cc, "glm" = glm); "cg" halts execution and requires explicit `moai migrate cg`
      - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
      - Merged AskUserQuestion (single call, with Step 11.3): Q1 Kickoff — run-phase entry (Recommended) / additional review / abort; Q2 execution shape — worktree+{mode} (Recommended if tmux available) | sub-agent
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
@@ -246,7 +246,6 @@ Mode selection:
    - See plan.md Decision Point 3.5 for full option details
 12. **Phase 3 (Harness Level Auto-Detection)**: Determine pipeline depth before Run
    - Load `.moai/config/sections/harness.yaml` (if not found, default to standard)
-   - CG mode: Always thorough (natural Generator-Evaluator split)
    - Solo/Team: Run Complexity Estimator:
      - Count distinct domains in SPEC requirements (domain_count)
      - Count total files to modify (file_count, from plan.md)

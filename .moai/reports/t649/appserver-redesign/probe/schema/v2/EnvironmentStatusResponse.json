@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "EnvironmentStatusKind": {
+      "description": "Current status observed by app-server without starting or recovering an environment.\n\nFor a currently ready remote environment, app-server asks the existing exec-server connection for `environment/status` without allowing recovery.",
+      "oneOf": [
+        {
+          "description": "The environment is local, or an already-connected remote exec-server answered `environment/status` over its existing initialized connection.",
+          "enum": [
+            "ready"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The configured environment has no ready connection and no observed connection failure. This includes lazy environments that have never been started and initial startup that has not finished.",
+          "enum": [
+            "pending"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "A connection attempt, prior connection, or fail-fast `environment/status` probe observed a failure. This does not promise the failure is terminal: later normal environment use may recover it. This call does not trigger recovery; `error` contains the observed reason.",
+          "enum": [
+            "disconnected"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "The requested environment id is not configured in app-server.",
+          "enum": [
+            "unknown"
+          ],
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "description": "Current status for the requested environment.",
+  "properties": {
+    "error": {
+      "description": "Human-readable detail for `disconnected` and `unknown`; omitted for other statuses.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentStatusKind"
+        }
+      ],
+      "description": "Current status observed without starting or recovering the environment."
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "EnvironmentStatusResponse",
+  "type": "object"
+}

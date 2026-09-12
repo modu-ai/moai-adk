@@ -23,7 +23,7 @@ The table below pairs the three representative levers that directly affect cost 
 
 | Lever | What it does | Representative document |
 |------|--------|----------|
-| **Model assignment** | Match the model and effort to the weight of the task | [Model Policy](/en/multi-llm/model-policy) · [CG Mode](/en/multi-llm/cg-mode) |
+| **Model assignment** | Match the model and effort to the weight of the task | [Model Policy](/en/multi-llm/model-policy) · [CG retirement and migration](/en/multi-llm/cg-mode/) |
 | **Autonomy tier** | Each tier sets a different cost-speed balance point (`MOAI_AUTONOMY_TIER`) | [Autonomy Tier](/en/advanced/autonomy-tier) |
 | **Prompt caching** | Read the prefix that matches the previous request from cache at a discount (this section) | [Prompt Caching](/en/cost-optimization/prompt-caching) |
 
@@ -68,7 +68,7 @@ If cost is your main concern, start with this section's document. If you are fir
 
 If you are curious about the two cost levers besides caching, continue with the documents below.
 
-- [Multi-LLM](/en/multi-llm) — task-appropriate model assignment and CG mode (a Claude leader plus GLM workers cuts implementation-heavy work by roughly 60–70%)
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [Model Policy](/en/multi-llm/model-policy) — per-agent model and effort assignment table
 - [Autonomy Tier](/en/advanced/autonomy-tier) — cost-speed trade-off per `MOAI_AUTONOMY_TIER`
 - [Tokenomics Overview](/en/advanced/tokenomics-overview) — the full picture of tokenomics' four-layer structure

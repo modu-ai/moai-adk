@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AwsCredentialType": {
+      "enum": [
+        "accessKeys",
+        "bedrockApiKey"
+      ],
+      "type": "string"
+    },
+    "BedrockAwsProfile": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "BedrockEnvironmentCredential": {
+      "properties": {
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/AwsCredentialType"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "environmentCredentials": {
+      "items": {
+        "$ref": "#/definitions/BedrockEnvironmentCredential"
+      },
+      "type": "array"
+    },
+    "profiles": {
+      "items": {
+        "$ref": "#/definitions/BedrockAwsProfile"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "environmentCredentials",
+    "profiles"
+  ],
+  "title": "BedrockDiscoverResponse",
+  "type": "object"
+}
