@@ -226,7 +226,11 @@ Examples:
   moai profile setup          # Configure default profile
   moai profile setup work     # Configure 'work' profile`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: runProfileSetup,
+	// Routed through the runProfileSetupFn seam (profile.go) so the explicit
+	// entry is countable alongside `moai profile --setup` (REQ-ITI-001).
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runProfileSetupFn(cmd, args)
+	},
 }
 
 func init() {

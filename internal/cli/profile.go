@@ -55,11 +55,20 @@ func init() {
 	rootCmd.AddCommand(profileCmd)
 }
 
+// runProfileSetupFn is the injectable profile-wizard seam. Both EXPLICIT
+// entries route through it — `moai profile setup [name]` (profileSetupCmd) and
+// `moai profile --setup` (below) — so a test can count how many times the
+// profile wizard runs. REQ-ITI-001 makes that count zero for the `moai init`
+// and `moai update` flows, which carry no profile entry at all.
+var runProfileSetupFn = func(cmd *cobra.Command, args []string) error {
+	return runProfileSetup(cmd, args)
+}
+
 // runProfileCmd handles 'moai profile' with optional --setup/-s flag.
 func runProfileCmd(cmd *cobra.Command, args []string) error {
 	setup, _ := cmd.Flags().GetBool("setup")
 	if setup {
-		return runProfileSetup(cmd, args)
+		return runProfileSetupFn(cmd, args)
 	}
 	return cmd.Help()
 }
