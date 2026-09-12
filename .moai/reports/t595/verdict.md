@@ -145,9 +145,20 @@ M1·M2 가 양방향으로 빨간불이므로 이 단정은 `os.Environ()` 동�
 
 출처 불명이며 이 런에서 만든 것이 아니다. 처분은 리드 몫.
 
-### 도구 결함 관측 (별건)
+### 도구 관측 (별건) — 설치본 지연, 미구현 아님
 
-독트린(`kanban-dispatch.md` § 무거운 실행 직렬화)이 지시하는 `moai slot acquire` 가 설치본에 없다 — `moai slot status` → `Unknown command "slot" for "moai"`. 바이너리 지연인지 미구현인지는 확인하지 않았다. 이 런은 레인이 단독이라 진행에 지장은 없었다.
+첫 관측은 `moai slot status` → `Unknown command "slot" for "moai"` 였고, 그때 나는 이를 "독트린이 지시하는 명령이 설치본에 없다"로만 적었다. 리드는 이를 **미구현**으로 판정했다(2026-09-12). 그 판정은 틀렸고, 아래가 실측이다.
+
+| 대상 | `slot status` | 관측 |
+|---|---|---|
+| `./bin/moai` (이 워크트리, `make build` 직후) | exit 0 | `no slot leases recorded` |
+| `~/go/bin/moai` (설치본) | 비정상 | `Unknown command "slot" for "moai".` |
+
+소스에도 있다 — `internal/cli/slot.go:84` `newSlotCmd()`, `:328` `rootCmd.AddCommand(newSlotCmd())`. 독트린 참조도 있다 — `.claude/rules/moai/workflow/kanban-dispatch.md:209`, 전용 룰 `.claude/rules/moai/workflow/resource-slot-lease.md`, `.claude/rules/local/gitflow-lane-protocol.md:100`. 기능 자체는 `SPEC-RESOURCE-SLOT-LEASE-001`(status: completed, 카드 t607)로 이미 착지해 있다.
+
+따라서 진단은 **바이너리 지연**이다: `~/go/bin/moai` 가 t607 착지 이전 빌드라 명령을 모른다. 첫 관측의 실수는 결론이 아니라 측정 대상이었다 — PATH 의 설치본 하나만 재고 "없다"로 적었고, 갓 빌드한 트리 사본을 대조하지 않았다. `CLAUDE.local.md` §11 이 경고하는 바로 그 축이다.
+
+교정: 무거운 실행 직렬화가 필요하면 `~/go/bin/moai` 를 `make install` 로 갱신하면 된다. 이 런은 레인 단독이라 슬롯이 필요 없었으므로 t595 절차에는 영향이 없다.
 
 ## Residual-risk
 
