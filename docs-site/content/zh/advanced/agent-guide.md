@@ -328,7 +328,7 @@ Claude Code 官方的 Sub-agent 系统是 MoAI-ADK 智能体结构的基石。
 
 - 历史情况：退役时期强制 `--team` 会提示 `MODE_TEAM_UNAVAILABLE` 并回退到 sub-agent 模式；该哨兵字符串保留为已文档化的历史。
 - 需要并行性的调研、审查任务用并行 sub-agent 扇出处理；顺序编码任务用 sub-agent 链处理。
-- 原生 Claude Code teammate 运行时（`moai cg` 的 GLM pane、`moai worktree --team`）与此无关，继续正常工作 — 从代币经济学的角度看，CG 模式的 Claude 领队 + GLM 工作者分工承担了这一角色。
+ CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ## 相关文档
 

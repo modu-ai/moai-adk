@@ -649,6 +649,9 @@ var glmEnvVarsToClean = []string{
 // This ensures that after --team mode, the leader returns to using Claude models
 // instead of continuing to use GLM from the tmux session-level env vars.
 func clearTmuxSessionEnv(ctx context.Context) {
+	if isGatewaySession() {
+		return
+	}
 	// Skip if not in tmux
 	if os.Getenv("TMUX") == "" {
 		return
@@ -685,6 +688,9 @@ func clearTmuxSessionEnv(ctx context.Context) {
 // All operations are best-effort. Errors are logged with slog.Warn and never
 // returned, following the SessionEnd convention of non-fatal cleanup.
 func cleanupGLMSettingsLocal(projectDir string) {
+	if isGatewaySession() {
+		return
+	}
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 
 	data, err := os.ReadFile(settingsPath)

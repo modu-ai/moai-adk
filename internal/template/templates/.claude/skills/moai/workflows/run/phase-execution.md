@@ -443,9 +443,7 @@ Steps:
 4. Record agreed contract in `.moai/specs/SPEC-{ID}/contract.md`
 5. Maximum 2 negotiation rounds. If no agreement after 2 rounds, proceed with evaluator's recommendations as the contract.
 
-Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="sync-auditor")
-- CG mode: Leader performs contract negotiation inline
+Independent contract review: Agent(subagent_type="sync-auditor"). A retired CG configuration never authorizes leader-inline review.
 
 **Output**: `.moai/specs/SPEC-{ID}/contract.md`
 

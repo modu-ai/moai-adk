@@ -64,7 +64,7 @@ MoAI-ADK는 워크트리를 SPEC 단위로 한 겹 더 감쌉니다. SPEC마다 
 
 | 하려는 일 | 담당 |
 |-----------|------|
-| Worktree 만들기 · 들어가기 | 런처 `moai cc` · `moai glm` · `moai cg` 의 `-w` 플래그 |
+| Worktree 만들기 · 들어가기 | 런처 `moai cc` · `moai glm` 의 `-w` 플래그 |
 | Worktree 목록 보기 | `git worktree list` |
 | 동기화 · 정리 · 복구 · 상태 가드 | `moai worktree` (별칭 `moai wt`) 하위 명령어 |
 
@@ -98,7 +98,6 @@ flowchart TD
 ```bash
 moai cc  -w [이름] [--spawn]
 moai glm -w [이름] [--spawn]
-moai cg  -w [이름] [--spawn]
 ```
 
 #### `-w` 값이 해석되는 방식
@@ -135,7 +134,7 @@ moai cc -w feat-auth
 moai glm -w feat-auth
 
 # 현재 세션 유지 + 새 tmux 창에 GLM 팀원 띄우기
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # 임의 위치에 워크트리를 직접 만들고 싶다면 git 을 그대로 사용
 git worktree add -b feature/SPEC-AUTH-001 \

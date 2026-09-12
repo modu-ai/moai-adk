@@ -1,0 +1,26 @@
+{
+  "gpt": {
+    "rows": [
+      "1.Default(recommended)Usethedefaultmodel(currentlygpt-6-astra[1m])",
+      "2.GPT-6AstraPROBECustommodel(gpt-6-astra)",
+      "❯3.GPTSolPROBE✔Custommodel(gpt-5.6-sol)"
+    ],
+    "selection_confirmed": true
+  },
+  "glm": {
+    "rows": [
+      "1.Default(recommended)Usethedefaultmodel(currentlyglm-5.3[1m])",
+      "2.GLM5.3PROBECustommodel(glm-5.3)",
+      "❯3.GLMFlashPROBE✔Custommodel(glm-5.3-flash)"
+    ],
+    "selection_confirmed": true
+  },
+  "cc": {
+    "rows": [
+      "1.Default(recommended)Usethedefaultmodel(currentlyOpus5(1Mcontext))·$5/$25perMtok",
+      "2.ClaudeOpusPROBECustommodel(claude-opus-5)",
+      "❯3.ClaudeSonnetPROBE✔Custommodel(claude-sonnet-5)"
+    ],
+    "selection_confirmed": true
+  }
+}

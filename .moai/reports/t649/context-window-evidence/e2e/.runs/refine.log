@@ -1,0 +1,10 @@
+{"model": "gpt-5.6-sol", "n": 921464, "event": "response.completed", "usage_input": 921535, "error": null, "needle": true}
+{"model": "gpt-5.6-sol", "n": 921696, "event": "response.completed", "usage_input": 921767, "error": null, "needle": true}
+{"model": "gpt-5.6-sol", "n": 921812, "event": "response.failed", "usage_input": null, "error": "context_length_exceeded", "needle": false}
+{"model": "gpt-5.6-sol", "n": 921754, "event": "response.completed", "usage_input": 921825, "error": null, "needle": true}
+{"model": "gpt-5.6-sol", "repeat_n": 921754, "event": "response.completed", "usage_input": 921825, "needle": true, "bracket_repetitions": [921754, 921812]}
+{"model": "gpt-6-astra", "n": 921500, "event": "response.completed", "usage_input": 921571, "error": null, "needle": true}
+{"model": "gpt-6-astra", "n": 921750, "event": "response.completed", "usage_input": 921821, "error": null, "needle": true}
+{"model": "gpt-6-astra", "n": 921875, "event": "response.failed", "usage_input": null, "error": "context_length_exceeded", "needle": false}
+{"model": "gpt-6-astra", "n": 921812, "event": "response.failed", "usage_input": null, "error": "context_length_exceeded", "needle": false}
+{"model": "gpt-6-astra", "repeat_n": 921750, "event": "response.completed", "usage_input": 921821, "needle": true, "bracket_repetitions": [921750, 921812]}

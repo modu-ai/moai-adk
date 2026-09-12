@@ -1,5 +1,8 @@
 package cli
 
+// Provider entry is covered by gateway_provider_contract_test.go. These tests
+// exercise shared profile/mode plumbing with its legacy execution test seam.
+
 import (
 	"encoding/json"
 	"os"
@@ -351,7 +354,7 @@ func TestUnifiedLaunch_Claude(t *testing.T) {
 		return nil
 	}
 
-	err := unifiedLaunch("myprofile", "claude", []string{"--bypass"})
+	err := unifiedLaunchWithGateway("myprofile", "claude", []string{"--bypass"}, nil)
 	if err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
@@ -386,7 +389,7 @@ func TestUnifiedLaunch_GLM(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunch("", "glm", nil)
+	err := unifiedLaunchWithGateway("", "glm", nil, nil)
 	if err != nil {
 		t.Fatalf("unifiedLaunch(glm) error: %v", err)
 	}
@@ -416,8 +419,8 @@ func TestUnifiedLaunch_CG_NoTmux(t *testing.T) {
 	if err == nil {
 		t.Fatal("CG mode without tmux should error")
 	}
-	if !strings.Contains(err.Error(), "tmux session") {
-		t.Errorf("error should mention tmux, got: %v", err)
+	if !strings.Contains(err.Error(), "is retired") {
+		t.Errorf("error should mention retirement, got: %v", err)
 	}
 }
 
@@ -444,8 +447,8 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
 	err := unifiedLaunch("", "claude_glm", nil)
-	if err != nil {
-		t.Fatalf("CG mode with MOAI_TEST_MODE=1 should not error, got: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "is retired") {
+		t.Fatalf("test mode must not reactivate retired CG, got: %v", err)
 	}
 }
 
@@ -772,7 +775,7 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunch("", "claude", nil)
+	err := unifiedLaunchWithGateway("", "claude", nil, nil)
 	if err == nil {
 		t.Fatal("unifiedLaunch should error when not in a MoAI project")
 	}
@@ -937,7 +940,7 @@ func TestUnifiedLaunch_GlobalLedgerDoesNotBleed(t *testing.T) {
 		return nil
 	}
 
-	if err := unifiedLaunch("", "claude", nil); err != nil {
+	if err := unifiedLaunchWithGateway("", "claude", nil, nil); err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
 

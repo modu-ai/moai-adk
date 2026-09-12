@@ -350,7 +350,7 @@ Plan 完了後 Run 開始前に、実行環境を自動検出しユーザーに�
 
 **検出項目:**
 1. tmux の可用性 (`$TMUX` 環境変数)
-2. 現在の LLM モード (`llm.yaml` の `team_mode`: cc/glm/cg)
+2. 現在の LLM モード (`llm.yaml` の `team_mode`: cc/glm)
 
 **tmux 使用可能時:**
 - Worktree + 現在のモード (推奨)
@@ -360,7 +360,7 @@ Plan 完了後 Run 開始前に、実行環境を自動検出しユーザーに�
 - Sub-agent Mode (推奨)
 
 {{< callout type="info" >}}
-Agent Teams 静的オーケストレーション階層 (Module 3) は引退しました。`--team` フラグと Team Mode オプションはもう提供されず、強制時は `MODE_TEAM_UNAVAILABLE` フォールバックで Sub-agent Mode に切り替わります。CG モード (Claude+GLM) は `moai cg` コマンドで進入します。
+Agent Teams 静的オーケストレーション階層 (Module 3) は引退しました。 `--team` フラグと Team Mode オプションはもう提供されず、強制時は `MODE_TEAM_UNAVAILABLE` フォールバックで Sub-agent Mode に切り替わります。 CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 {{< /callout >}}
 
 ## 実践例

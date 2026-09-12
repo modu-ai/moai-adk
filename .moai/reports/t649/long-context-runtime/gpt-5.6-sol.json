@@ -1,0 +1,54 @@
+{
+  "model": "gpt-5.6-sol",
+  "configured_window": 872000,
+  "repetitions": 800000,
+  "route": "official Codex App Server",
+  "text": [
+    "MAPLE71,OTTER83,CEDAR29"
+  ],
+  "usage": {
+    "total": {
+      "totalTokens": 1266220,
+      "inputTokens": 1266000,
+      "cachedInputTokens": 432768,
+      "cacheWriteInputTokens": 0,
+      "outputTokens": 220,
+      "reasoningOutputTokens": 190
+    },
+    "last": {
+      "totalTokens": 833127,
+      "inputTokens": 833112,
+      "cachedInputTokens": 432768,
+      "cacheWriteInputTokens": 0,
+      "outputTokens": 15,
+      "reasoningOutputTokens": 0
+    },
+    "modelContextWindow": 828400
+  },
+  "errors": [],
+  "account_type": "chatgpt",
+  "input_text_bytes": 1600100,
+  "segments": 2,
+  "status": "completed",
+  "first_turn_usage": {
+    "total": {
+      "totalTokens": 433093,
+      "inputTokens": 432888,
+      "cachedInputTokens": 0,
+      "cacheWriteInputTokens": 0,
+      "outputTokens": 205,
+      "reasoningOutputTokens": 190
+    },
+    "last": {
+      "totalTokens": 433093,
+      "inputTokens": 432888,
+      "cachedInputTokens": 0,
+      "cacheWriteInputTokens": 0,
+      "outputTokens": 205,
+      "reasoningOutputTokens": 190
+    },
+    "modelContextWindow": 828400
+  },
+  "success": true,
+  "elapsed_seconds": 36.53
+}

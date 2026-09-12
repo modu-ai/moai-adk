@@ -76,6 +76,9 @@ func formatTmuxGLMEnvSummary(n int) string {
 // @MX:ANCHOR: [AUTO] Entry point for GLM+team mode tmux environment variable injection in the SessionStart hook
 // @MX:REASON: Called directly from Handle; 3+ test cases in session_start_glm_tmux_test.go verify this
 func ensureTmuxGLMEnv(projectDir string) string {
+	if isGatewaySession() {
+		return ""
+	}
 	// 1. Check if inside a tmux session
 	if os.Getenv("TMUX") == "" {
 		return ""

@@ -124,7 +124,7 @@ In v3.1 the entry path of Kanban Mode is wired end to end. Each surface differs 
 
 ### Reachable from the command line today
 
-- **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>` it joins an already-open run as a companion session. The mixed-backend launcher `moai cg` refuses it with a sentinel.
+- **`-k` / `--kanban` launcher switch** — wired into both `moai cc` and `moai glm`. Passed bare (or with a SPEC identifier) it enters as the lead; passed as `-k --name <role>` it joins an already-open run as a companion session. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 - **`-f` / `--factory` launcher switch** — the dedicated Factory Mode entry. `moai cc -f N` announces the lead together with the launch commands for lanes `lane-1`…`lane-N`, and `moai cc -f lane-<n>` adds one lane at a time. Covered in the "Factory Mode" section below.
 - **Bootstrap notice** — when the lead session opens, the SessionStart hook prints the run identifier and the three companion launch commands (`moai cc -k --name plan` and so on) in the user's language. The notice reaching a companion announces which run it joined and the session name. Names are bare role names (`plan`, `run`, `sync`); if a live session already claims the same role name, the next number is attached (`plan-1`, `plan-2`, …). The notice also carries the recommended backend mix and the per-session concurrent-agent cap (10).
 - **Session record** — the entered session's role, backend, and target SPEC are recorded.
@@ -297,7 +297,7 @@ Completion is always judged on **evidence it read** — the card advances on the
 
 **When to use** — when advancing one SPEC (or several SPECs) simultaneously across multiple worktree sessions. When you need to track session lineage with the Origin-Trail Chain. When you want to drive one SPEC all the way to closure in one go. When many cards of the same shape have piled up and you want them split across parallel lanes, Factory Mode (`-f`) is that shape.
 
-**When not to use** — when you want a human to judge and review intermediate artifacts between phases (in this case, run the ordinary `plan → run → sync` turn by turn). Short work that finishes in a turn or two. When you need the mixed backend (`moai cg`).
+**When not to use** — when you want a human to judge and review intermediate artifacts between phases (in this case, run the ordinary `plan → run → sync` turn by turn). Short work that finishes in a turn or two. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ## Scope boundaries
 
@@ -305,7 +305,7 @@ This page states explicitly what it does not do:
 
 - **It is not a new subcommand** — `--kanban` is a launcher switch, not a chat command like `/moai kanban`.
 - **It does not skip human gates** — Implementation Kickoff Approval, the pre-implementation quality gate, and the documentation-scope gate all still fire. Even if the chain flows automatically, each gate requires human approval.
-- **Unsupported backend** — Kanban Mode is rejected by the mixed-backend launcher `moai cg`. `moai cg` runs the leader on one backend and teammates on another, which contradicts the chain's precondition of "one session / one backend / one chain." The session does not open, accompanied by a rejection sentinel.
+- CG is retired; use `moai migrate cg` to preview migration choices.
 
 ## Related docs
 

@@ -12,7 +12,7 @@ draft: false
 
 | やりたいこと | 使うコマンド |
 |-------------|-------------|
-| ワークツリーの中で作業を始める | `moai cc -w <name>` (または `moai glm -w` / `moai cg -w`) |
+| ワークツリーの中で作業を始める | `moai cc -w <name>` (または `moai glm -w` / `moai cc -w`) |
 | 現在のセッションは残したまま新しい tmux ウィンドウで開く | `moai cc -w <name> --spawn` |
 | ワークツリーの一覧を確認する | `git worktree list` |
 | ワークツリーを新しく作る | `moai cc -w <name>` (`.claude/worktrees/<name>/` を自動生成) または `git worktree add` |
@@ -162,7 +162,7 @@ moai worktree restore --snapshot <path>
 moai cc -w feat-auth
 
 # 現在のセッションを保ったまま新しい tmux ウィンドウで GLM チームメイトを起動
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # ワークツリーの一覧
 git worktree list
@@ -185,5 +185,5 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
 - [Git Worktree 概要](/ja/worktree/) — 概念とワークフロー
 - [完全ガイド](/ja/worktree/guide) — コマンド別の詳しい使い方
-- [CG モード](/ja/multi-llm/cg-mode) — Claude リーダー + GLM チームメイトのハイブリッド
+- [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 - [CLI 概要](/ja/getting-started/cli)

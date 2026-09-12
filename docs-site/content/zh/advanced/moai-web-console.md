@@ -138,7 +138,7 @@ SPEC 区域顶部是搜索框与 status 筛选标签。紧接着，两个警示�
 9. **代理（Agents）** — 各代理的配置文件与模型分配
 10. **报告（Report）** — 报告格式与输出偏好
 11. **MCP** — `moai mcp-server` 各工具的启用开关。可写工具带有区分标记
-12. **跨会话（Cross-Session）** — 会话间消息收发的接收姿态 (posture)：入站处理方式（`accept` · `hold` · `refuse`）、跨机发送隔离、保留对话的过期。编辑的是 `crosssession.yaml`，启动器从下一次 `moai cc`/`glm`/`cg` 执行起把该值注入会话 —— 已在运行的会话保持启动时的姿态
+12. **跨会话（Cross-Session）** — 会话间消息收发的接收姿态 (posture)：入站处理方式（`accept` · `hold` · `refuse`）、跨机发送隔离、保留对话的过期。编辑的是 `crosssession.yaml`，启动器从下一次 `moai cc`/`glm` 执行起把该值注入会话 —— 已在运行的会话保持启动时的姿态
 13. **反馈** — 反馈工作流提交 issue 的目标仓库，以及提交前的确认开关
 14. **质量门禁** — 提交时是否运行 heavy 门禁。运行器只在 `MOAI_PRECOMMIT=1` 下读取该取值
 

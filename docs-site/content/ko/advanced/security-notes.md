@@ -10,7 +10,7 @@ tags: ["security", "cwe", "audit"]
 
 ## 공격 표면 지도
 
-에이전트가 일하려면 세 가지가 오갑니다. (1) API 토큰과 OAuth 자격증명은 디스크 파일에 저장되고, (2) `moai cg` 같은 CG 모드(비용 절감을 위해 Claude 리더와 GLM 워커를 조합하는 구성)가 토큰을 tmux 세션 환경으로 넘길 때 프로세스 경계를 가로지르고, (3) `moai update`가 release 바이너리를 인터넷에서 내려받습니다. 권한을 넘기는 시스템이므로 이 세 지점이 곧 공격 표면입니다.
+에이전트가 일하려면 세 가지가 오갑니다. (1) API 토큰과 OAuth 자격증명은 디스크 파일에 저장되고, (2) GLM/tmux 자격증명 도우미가 토큰을 tmux 세션 환경으로 넘길 때 프로세스 경계를 가로지르고, (3) `moai update`가 release 바이너리를 인터넷에서 내려받습니다. 권한을 넘기는 시스템이므로 이 세 지점이 곧 공격 표면입니다.
 
 ```mermaid
 flowchart TD
@@ -44,11 +44,11 @@ v3.0.0부터 이 파일은 만들거나 갱신할 때마다 **`0o600`** (소유�
 
 ## 비밀은 가장 눈에 띄지 않는 길로 간다 — argv 노출 차단
 
-**CWE-214.** CG 모드가 GLM 토큰을 tmux 세션 환경 변수에 주입할 때, 이전에는 argv 채널(`tmux set-environment <KEY> <VALUE>`)을 썼습니다. argv는 생각보다 훨씬 넓게 관측됩니다 — `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 심지어 크래시 덤프까지 토큰을 평문으로 남깁니다. 토큰이 "잠깐" 드러나는 순간도, 그 로그가 모이는 시스템에서는 영구 기록이 됩니다.
+**CWE-214.** GLM/tmux 도우미가 GLM 토큰을 tmux 세션 환경 변수에 주입할 때, 이전에는 argv 채널(`tmux set-environment <KEY> <VALUE>`)을 썼습니다. argv는 생각보다 훨씬 넓게 관측됩니다 — `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 심지어 크래시 덤프까지 토큰을 평문으로 남깁니다. 토큰이 "잠깐" 드러나는 순간도, 그 로그가 모이는 시스템에서는 영구 기록이 됩니다.
 
 v3.0.0부터 토큰은 **source-file 채널**로 갑니다. (1) `~/.moai/run/` 아래 임시 파일을 `mkstemp`로 만들고(자동 `0o600`), (2) `set-environment` 한 줄을 그 파일에 쓰고, (3) `tmux source-file <tmp>`로 tmux가 파일을 읽어 환경에 주입한 뒤, (4) 주입 직후 파일을 `os.Remove`로 지웁니다. argv에는 임시 파일 경로만 남고 토큰 자체는 드러나지 않습니다. 구현은 `internal/tmux/session.go`의 `InjectSensitiveEnv`에 있고, `internal/hook/glm_tmux.go`의 `ensureTmuxGLMEnv`가 `ANTHROPIC_AUTH_TOKEN`만 이 sensitive 경로로 보냅니다.
 
-토큰이 아닌 값은 예외입니다. `CLAUDE_CONFIG_DIR`(디렉터리 경로), `ANTHROPIC_BASE_URL`(URL), `ANTHROPIC_DEFAULT_*_MODEL`(모델 이름)은 그대로 argv 경로를 씁니다 — 이 값들은 토큰이 아니며 누설 위험과 무관합니다. CG 모드 실행 중 토큰이 argv에 남지 않는지는 `ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'`으로 확인하고(0 매치가 정상), 임시 파일이 깔끔히 지워지는지는 `~/.moai/run/` 디렉터리가 비어 있는지로 확인합니다.
+토큰이 아닌 값은 예외입니다. `CLAUDE_CONFIG_DIR`(디렉터리 경로), `ANTHROPIC_BASE_URL`(URL), `ANTHROPIC_DEFAULT_*_MODEL`(모델 이름)은 그대로 argv 경로를 씁니다 — 이 값들은 토큰이 아니며 누설 위험과 무관합니다. GLM/tmux 자격증명 주입 중 토큰이 argv에 남지 않는지는 `ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'`으로 확인하고(0 매치가 정상), 임시 파일이 깔끔히 지워지는지는 `~/.moai/run/` 디렉터리가 비어 있는지로 확인합니다.
 
 ## 내려받는 코드는 반드시 진짜여야 한다 — 업데이트 무결성 강제
 
@@ -79,11 +79,11 @@ flowchart TD
 
 `0o600` 강제는 group-readable을 전제하는 워크플로우를 깰 수 있습니다 — 같은 프로젝트 디렉터리를 별도의 OS 사용자가 읽는 아주 드문 시나리오입니다. 체크섬 검증 강제는 네트워크가 불안정할 때 update를 거부하므로, 사용자가 직접 무결성을 검증한 뒤 수동 설치 스크립트(`curl -fsSL .../install.sh | bash`)로 넘어가야 할 수 있습니다. 이 트레이드오프는 의도한 것이며, 보안이 분명히 우선합니다.
 
-GLM 자격증명 원본 파일인 `~/.moai/.env.glm`의 권한은 사용자의 책임 영역입니다 — `moai glm` 명령이 자동으로 `0o600`을 부여하지만, 파일을 직접 다룰 때는 `600`인지 확인해야 합니다. 자세한 구조는 [CG 모드](/ko/multi-llm/cg-mode/) 문서를 참조하세요.
+GLM 자격증명 원본 파일인 `~/.moai/.env.glm`의 권한은 사용자의 책임 영역입니다 — `moai glm` 명령이 자동으로 `0o600`을 부여하지만, 파일을 직접 다룰 때는 `600`인지 확인해야 합니다. 자세한 구조는 [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/) 문서를 참조하세요.
 
 ## 내 환경에서 직접 확인하기
 
-다섯 지점을 한 번에 점검합니다. (1) `.claude/settings.local.json` 권한 — `stat -c '%a'`(Linux) 또는 `stat -f '%A'`(macOS)로 확인, 기대값 `600`. (2) CG 모드 실행 중 토큰 argv 노출 — `ps auxe | grep 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'`, 기대값 0 매치. (3) tmux sensitive 임시 디렉터리 — `~/.moai/run/`이 비어 있거나 stale 파일이 없어야 함. (4) update 체크섬 동작 — `moai update --check-only`로 release와 `checksums.txt` 정상 확인. (5) GLM 원본 파일 권한 — `~/.moai/.env.glm`이 `600`(파일이 있을 때). 다섯 항목이 모두 기대값과 맞으면 세 보호가 정상 작동하는 것입니다.
+다섯 지점을 한 번에 점검합니다. (1) `.claude/settings.local.json` 권한 — `stat -c '%a'`(Linux) 또는 `stat -f '%A'`(macOS)로 확인, 기대값 `600`. (2) GLM/tmux 자격증명 주입 중 토큰 argv 노출 — `ps auxe | grep 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'`, 기대값 0 매치. (3) tmux sensitive 임시 디렉터리 — `~/.moai/run/`이 비어 있거나 stale 파일이 없어야 함. (4) update 체크섬 동작 — `moai update --check-only`로 release와 `checksums.txt` 정상 확인. (5) GLM 원본 파일 권한 — `~/.moai/.env.glm`이 `600`(파일이 있을 때). 다섯 항목이 모두 기대값과 맞으면 세 보호가 정상 작동하는 것입니다.
 
 ## 참고자료
 
@@ -108,4 +108,4 @@ GLM 자격증명 원본 파일인 `~/.moai/.env.glm`의 권한은 사용자의 �
 
 - [settings.json 가이드](/ko/advanced/settings-json/) — `settings.local.json` 권한 섹션
 - [업데이트](/ko/cli-reference/update/) — checksum 검증 섹션
-- [CG 모드](/ko/multi-llm/cg-mode/) — tmux 환경 변수 주입 보안 모델
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)

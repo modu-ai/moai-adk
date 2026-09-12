@@ -542,7 +542,7 @@ The quality issues are reported to the user, and you are asked whether to retry 
 $ claude --kanban SPEC-AUTH-001
 ```
 
-The four human gates (implementation kickoff approval, the verify CRITICAL/HIGH decision, and two sync gates) still fire as-is. Kanban Mode does not "skip human gates"; it automates the "round-trip between phases". It is rejected by the mixed-backend launcher (`moai cg`), and it runs within a four-hour wall-clock ceiling. The detailed contract and the four-phase flow are covered in [Kanban Mode](/en/advanced/kanban-mode).
+The four human gates (implementation kickoff approval, the verify CRITICAL/HIGH decision, and two sync gates) still fire as-is. Kanban Mode does not "skip human gates"; it automates the "round-trip between phases". It runs within a four-hour wall-clock ceiling. The detailed contract and the four-phase flow are covered in [Kanban Mode](/en/advanced/kanban-mode).
 
 ## Related Documents
 
