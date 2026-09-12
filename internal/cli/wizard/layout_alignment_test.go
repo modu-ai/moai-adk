@@ -15,16 +15,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/ptycaptest"
 )
 
-// firstNonBlank returns the first line with visible content.
-func firstNonBlank(frame string) string {
-	for _, line := range strings.Split(frame, "\n") {
-		if strings.TrimSpace(line) != "" {
-			return line
-		}
-	}
-	return ""
-}
-
 // emptyCardRow reports whether a stripped line is an EMPTY CARD ROW: a
 // border glyph followed by spaces only (AC-ITI-016's defect shape).
 func emptyCardRow(line string) bool {

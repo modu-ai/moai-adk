@@ -54,9 +54,9 @@ func TestInitRegroup_TwoPages(t *testing.T) {
 			t.Fatalf("init set lacks %q", id)
 		}
 	}
-	if !(position["conversation_language"] < position["user_name"] &&
-		position["user_name"] < position["agent_wiring"] &&
-		position["agent_wiring"] < position["autonomy_tier"]) {
+	if position["conversation_language"] >= position["user_name"] ||
+		position["user_name"] >= position["agent_wiring"] ||
+		position["agent_wiring"] >= position["autonomy_tier"] {
 		t.Errorf("init order broken: %v", position)
 	}
 	for _, tc := range []struct{ id, want string }{
