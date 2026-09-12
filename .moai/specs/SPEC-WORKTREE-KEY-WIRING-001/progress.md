@@ -161,7 +161,7 @@ l44_post_push_fetch: not-applicable
 
 ```yaml
 sync_complete_at: "2026-09-12"
-sync_commit_sha: "pending-backfill-sync" # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: "313d7feb5" # backfilled; the sync commit itself is 313d7feb5 (docs ... 3-phase close, card t655)
 sync_status: completed
 b12_self_test_a: "grep -c 'SPEC-WORKTREE-KEY-WIRING-001' CHANGELOG.md -> 0 (pre-emission, before this commit's edit)"
 b12_self_test_b: >-
