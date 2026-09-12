@@ -145,20 +145,29 @@ func integrationFallbackWarning(branch string) string {
 }
 
 // worktreeForBranch returns the path of the worktree with branch checked out,
-// or the empty string when none does (a failed git call included). Records
-// arrive in blocks — `worktree <path>` / `HEAD <sha>` / `branch
-// refs/heads/<name>` / `bare` / `detached` — so each block's path is
-// remembered until its branch line answers the question. Paths are taken
-// whole from git's output and converted with filepath semantics, never split
-// on a separator: git prints forward slashes even on Windows, and the
-// recorded path should read like every other path this CLI writes.
+// or the empty string when none does (a failed git call included).
 func worktreeForBranch(branch string) string {
 	out, err := exec.Command("git", "worktree", "list", "--porcelain").Output()
 	if err != nil {
 		return ""
 	}
+	return worktreeForBranchFromList(string(out), branch)
+}
+
+// worktreeForBranchFromList parses `git worktree list --porcelain` output and
+// returns the path of the worktree holding branch, or "" when none does.
+// (Extracted from worktreeForBranch so a caller — the SPEC-WORKTREE-KEY-WIRING-001
+// tests — can resolve against a fixture repo other than the process cwd.)
+//
+// Records arrive in blocks — `worktree <path>` / `HEAD <sha>` / `branch
+// refs/heads/<name>` / `bare` / `detached` — so each block's path is
+// remembered until its branch line answers the question. Paths are taken
+// whole from git's output and converted with filepath semantics, never split
+// on a separator: git prints forward slashes even on Windows, and the
+// recorded path should read like every other path this CLI writes.
+func worktreeForBranchFromList(porcelain, branch string) string {
 	wtPath := ""
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(porcelain, "\n") {
 		switch {
 		case strings.HasPrefix(line, "worktree "):
 			wtPath = filepath.FromSlash(strings.TrimPrefix(line, "worktree "))
