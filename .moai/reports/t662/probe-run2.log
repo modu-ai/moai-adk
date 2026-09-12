@@ -1,0 +1,908 @@
+LOAD-BEFORE-FAST: 18:09  up 4 days, 12:02, 15 users, load averages: 7.95 8.99 10.49
+=== RUN   TestT662ProbeFast
+2026/09/12 18:09:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/001
+2026/09/12 18:09:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/004 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/003
+2026/09/12 18:09:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/006 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/005
+2026/09/12 18:09:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/008 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/007
+2026/09/12 18:09:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/010 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/009
+2026/09/12 18:09:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/012 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/011
+2026/09/12 18:09:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/014 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/013
+2026/09/12 18:09:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/016 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/015
+2026/09/12 18:09:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/018 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/017
+2026/09/12 18:09:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/020 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/019
+2026/09/12 18:09:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/022 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/021
+2026/09/12 18:09:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/024 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/023
+2026/09/12 18:09:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/026 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/025
+2026/09/12 18:09:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/028 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/027
+2026/09/12 18:09:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/030 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/029
+2026/09/12 18:09:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/032 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/031
+2026/09/12 18:09:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/034 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/033
+2026/09/12 18:09:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/036 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/035
+2026/09/12 18:09:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/038 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/037
+2026/09/12 18:09:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/040 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/039
+2026/09/12 18:09:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/042 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/041
+2026/09/12 18:09:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/044 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/043
+2026/09/12 18:09:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/046 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/045
+2026/09/12 18:09:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/048 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/047
+2026/09/12 18:09:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/050 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/049
+2026/09/12 18:09:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/052 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/051
+2026/09/12 18:09:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/054 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/053
+2026/09/12 18:09:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/056 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/055
+2026/09/12 18:09:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/058 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/057
+2026/09/12 18:09:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/060 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/059
+2026/09/12 18:09:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/062 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/061
+2026/09/12 18:09:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/064 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/063
+2026/09/12 18:09:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/066 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/065
+2026/09/12 18:09:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/068 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/067
+2026/09/12 18:09:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/070 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/069
+2026/09/12 18:09:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/072 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/071
+2026/09/12 18:09:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/074 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/073
+2026/09/12 18:09:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/076 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/075
+2026/09/12 18:09:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/078 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/077
+2026/09/12 18:09:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/080 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/079
+2026/09/12 18:09:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/082 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/081
+2026/09/12 18:09:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/084 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/083
+2026/09/12 18:09:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/086 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/085
+2026/09/12 18:09:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/088 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/087
+2026/09/12 18:09:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/090 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/089
+2026/09/12 18:09:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/092 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/091
+2026/09/12 18:09:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/094 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/093
+2026/09/12 18:09:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/096 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/095
+2026/09/12 18:09:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/098 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/097
+2026/09/12 18:09:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/100 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/099
+2026/09/12 18:09:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/102 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/101
+2026/09/12 18:09:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/104 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/103
+2026/09/12 18:09:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/106 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/105
+2026/09/12 18:09:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/108 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/107
+2026/09/12 18:09:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/110 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/109
+2026/09/12 18:09:42 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:42 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/112 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/111
+2026/09/12 18:09:42 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:42 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/114 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/113
+2026/09/12 18:09:42 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:42 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/116 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/115
+2026/09/12 18:09:42 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:42 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/118 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/117
+2026/09/12 18:09:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/120 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/119
+2026/09/12 18:09:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/122 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/121
+2026/09/12 18:09:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/124 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/123
+2026/09/12 18:09:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/126 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/125
+2026/09/12 18:09:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/128 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/127
+2026/09/12 18:09:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/130 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/129
+2026/09/12 18:09:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/132 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/131
+2026/09/12 18:09:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/134 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/133
+2026/09/12 18:09:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/136 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/135
+2026/09/12 18:09:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/138 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/137
+2026/09/12 18:09:45 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:45 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/140 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/139
+2026/09/12 18:09:45 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:45 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/142 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/141
+2026/09/12 18:09:45 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:45 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/144 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/143
+2026/09/12 18:09:45 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:45 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/146 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/145
+2026/09/12 18:09:46 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:46 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:46 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/148 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/147
+2026/09/12 18:09:46 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:46 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:46 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/150 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/149
+2026/09/12 18:09:46 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:46 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:46 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/152 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/151
+2026/09/12 18:09:46 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:46 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:46 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/154 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/153
+2026/09/12 18:09:47 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:47 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:47 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/156 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/155
+2026/09/12 18:09:47 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:47 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:47 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/158 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/157
+2026/09/12 18:09:47 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:47 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:47 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/160 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/159
+2026/09/12 18:09:47 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:47 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:47 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/162 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/161
+2026/09/12 18:09:48 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:48 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:48 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/164 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/163
+2026/09/12 18:09:48 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:48 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:48 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/166 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/165
+2026/09/12 18:09:48 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:48 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:49 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/168 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/167
+2026/09/12 18:09:49 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:49 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:49 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/170 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/169
+2026/09/12 18:09:49 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:49 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:49 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/172 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/171
+2026/09/12 18:09:49 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:49 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:49 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/174 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/173
+2026/09/12 18:09:50 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:50 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:50 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/176 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/175
+2026/09/12 18:09:50 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:50 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:50 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/178 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/177
+2026/09/12 18:09:50 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:50 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:50 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/180 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/179
+2026/09/12 18:09:51 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:51 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:51 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/182 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/181
+2026/09/12 18:09:51 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:51 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:51 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/184 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/183
+2026/09/12 18:09:51 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:51 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:51 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/186 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/185
+2026/09/12 18:09:51 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:51 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/188 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/187
+2026/09/12 18:09:52 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:52 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/190 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/189
+2026/09/12 18:09:52 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:52 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/192 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/191
+2026/09/12 18:09:52 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:52 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/194 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/193
+2026/09/12 18:09:52 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:52 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:53 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/196 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/195
+2026/09/12 18:09:53 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:53 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:53 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/198 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/197
+2026/09/12 18:09:53 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:53 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:53 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/200 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/199
+2026/09/12 18:09:53 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:53 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:53 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/202 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/201
+2026/09/12 18:09:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:54 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/204 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/203
+2026/09/12 18:09:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:54 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/206 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/205
+2026/09/12 18:09:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:54 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/208 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/207
+2026/09/12 18:09:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:54 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/210 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/209
+2026/09/12 18:09:55 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:55 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/212 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/211
+2026/09/12 18:09:55 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:55 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/214 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/213
+2026/09/12 18:09:55 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:55 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/216 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/215
+2026/09/12 18:09:55 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:55 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/218 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/217
+2026/09/12 18:09:56 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:56 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:56 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/220 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/219
+2026/09/12 18:09:56 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:56 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:56 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/222 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/221
+2026/09/12 18:09:56 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:56 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:56 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/224 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/223
+2026/09/12 18:09:56 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:56 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:56 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/226 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/225
+2026/09/12 18:09:57 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:57 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:57 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/228 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/227
+2026/09/12 18:09:57 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:57 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:57 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/230 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/229
+2026/09/12 18:09:58 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:58 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:58 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/232 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/231
+2026/09/12 18:09:58 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:58 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:58 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/234 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/233
+2026/09/12 18:09:58 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:58 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:58 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/236 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/235
+2026/09/12 18:09:59 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:59 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:59 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/238 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/237
+2026/09/12 18:09:59 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:59 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:59 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/240 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/239
+2026/09/12 18:09:59 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:09:59 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:09:59 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/242 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/241
+2026/09/12 18:10:00 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:00 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:00 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/244 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/243
+2026/09/12 18:10:00 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:00 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:00 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/246 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/245
+2026/09/12 18:10:00 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:00 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:00 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/248 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/247
+2026/09/12 18:10:00 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:00 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:00 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/250 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/249
+2026/09/12 18:10:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:01 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/252 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/251
+2026/09/12 18:10:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:01 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/254 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/253
+2026/09/12 18:10:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:01 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/256 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/255
+2026/09/12 18:10:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:01 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/258 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/257
+2026/09/12 18:10:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/260 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/259
+2026/09/12 18:10:02 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:02 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/262 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/261
+2026/09/12 18:10:02 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:02 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/264 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/263
+2026/09/12 18:10:02 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:02 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/266 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/265
+2026/09/12 18:10:02 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:02 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/268 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/267
+2026/09/12 18:10:03 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:03 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:03 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/270 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/269
+2026/09/12 18:10:03 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:03 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:03 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/272 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/271
+2026/09/12 18:10:03 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:03 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:03 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/274 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/273
+2026/09/12 18:10:04 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:04 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:04 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/276 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/275
+2026/09/12 18:10:04 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:04 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:04 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/278 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/277
+2026/09/12 18:10:04 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:04 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:04 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/280 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/279
+2026/09/12 18:10:04 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:04 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:05 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/282 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/281
+2026/09/12 18:10:05 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:05 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:05 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/284 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/283
+2026/09/12 18:10:05 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:05 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:05 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/286 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/285
+2026/09/12 18:10:05 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:05 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:05 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/288 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/287
+2026/09/12 18:10:06 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:06 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:06 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/290 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/289
+2026/09/12 18:10:06 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:06 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:06 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/292 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/291
+2026/09/12 18:10:06 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:06 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:06 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/294 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/293
+2026/09/12 18:10:07 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:07 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:07 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/296 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/295
+2026/09/12 18:10:07 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:07 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:07 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/298 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/297
+2026/09/12 18:10:07 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:07 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:08 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/300 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/299
+2026/09/12 18:10:08 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:08 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:08 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/302 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/301
+2026/09/12 18:10:08 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:08 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:08 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/304 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/303
+2026/09/12 18:10:08 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:08 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:08 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/306 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/305
+2026/09/12 18:10:08 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:08 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/308 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/307
+2026/09/12 18:10:09 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:09 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/310 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/309
+2026/09/12 18:10:09 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:09 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/312 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/311
+2026/09/12 18:10:09 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:09 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/314 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/313
+2026/09/12 18:10:09 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:09 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/316 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/315
+2026/09/12 18:10:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:10 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/318 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/317
+2026/09/12 18:10:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:10 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/320 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/319
+2026/09/12 18:10:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:10 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/322 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/321
+2026/09/12 18:10:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:10 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/324 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/323
+2026/09/12 18:10:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/326 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/325
+2026/09/12 18:10:11 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/328 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/327
+2026/09/12 18:10:11 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/330 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/329
+2026/09/12 18:10:11 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/332 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/331
+2026/09/12 18:10:11 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/334 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/333
+2026/09/12 18:10:12 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:12 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/336 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/335
+2026/09/12 18:10:12 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:12 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/338 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/337
+2026/09/12 18:10:12 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:12 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/340 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/339
+2026/09/12 18:10:12 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:12 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/342 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/341
+2026/09/12 18:10:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/344 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/343
+2026/09/12 18:10:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/346 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/345
+2026/09/12 18:10:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/348 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/347
+2026/09/12 18:10:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/350 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/349
+2026/09/12 18:10:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/352 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/351
+2026/09/12 18:10:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/354 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/353
+2026/09/12 18:10:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/356 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/355
+2026/09/12 18:10:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/358 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/357
+2026/09/12 18:10:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/360 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/359
+2026/09/12 18:10:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/362 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/361
+2026/09/12 18:10:15 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:15 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/364 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/363
+2026/09/12 18:10:15 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:15 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/366 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/365
+2026/09/12 18:10:15 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:15 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/368 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/367
+2026/09/12 18:10:15 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:15 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/370 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/369
+2026/09/12 18:10:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/372 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/371
+2026/09/12 18:10:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/374 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/373
+2026/09/12 18:10:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/376 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/375
+2026/09/12 18:10:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/378 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/377
+2026/09/12 18:10:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/380 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/379
+2026/09/12 18:10:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/382 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/381
+2026/09/12 18:10:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/384 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/383
+2026/09/12 18:10:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/386 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/385
+2026/09/12 18:10:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/388 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/387
+2026/09/12 18:10:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/390 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/389
+2026/09/12 18:10:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/392 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/391
+2026/09/12 18:10:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/394 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/393
+2026/09/12 18:10:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/396 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/395
+2026/09/12 18:10:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/398 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/397
+2026/09/12 18:10:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/400 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/399
+2026/09/12 18:10:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/402 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/401
+2026/09/12 18:10:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/404 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/403
+2026/09/12 18:10:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/406 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/405
+2026/09/12 18:10:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/408 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/407
+2026/09/12 18:10:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/410 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/409
+2026/09/12 18:10:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/412 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/411
+2026/09/12 18:10:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/414 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/413
+2026/09/12 18:10:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/416 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/415
+2026/09/12 18:10:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/418 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/417
+2026/09/12 18:10:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/420 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/419
+2026/09/12 18:10:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/422 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/421
+2026/09/12 18:10:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/424 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/423
+2026/09/12 18:10:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/426 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/425
+2026/09/12 18:10:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/428 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/427
+2026/09/12 18:10:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/430 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/429
+2026/09/12 18:10:22 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:22 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/432 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/431
+2026/09/12 18:10:22 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:22 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/434 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/433
+2026/09/12 18:10:22 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:22 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/436 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/435
+2026/09/12 18:10:22 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:22 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/438 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/437
+2026/09/12 18:10:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/440 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/439
+2026/09/12 18:10:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/442 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/441
+2026/09/12 18:10:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/444 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/443
+2026/09/12 18:10:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/446 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/445
+2026/09/12 18:10:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/448 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/447
+2026/09/12 18:10:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:24 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/450 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/449
+2026/09/12 18:10:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:24 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/452 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/451
+2026/09/12 18:10:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:24 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/454 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/453
+2026/09/12 18:10:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:25 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/456 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/455
+2026/09/12 18:10:25 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:25 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:25 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/458 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/457
+2026/09/12 18:10:25 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:25 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:25 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/460 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/459
+2026/09/12 18:10:25 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:25 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:25 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/462 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/461
+2026/09/12 18:10:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/464 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/463
+2026/09/12 18:10:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/466 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/465
+2026/09/12 18:10:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/468 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/467
+2026/09/12 18:10:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/470 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/469
+2026/09/12 18:10:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/472 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/471
+2026/09/12 18:10:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:27 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/474 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/473
+2026/09/12 18:10:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:27 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/476 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/475
+2026/09/12 18:10:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:27 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/478 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/477
+2026/09/12 18:10:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:27 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/480 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/479
+2026/09/12 18:10:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/482 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/481
+2026/09/12 18:10:28 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:28 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/484 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/483
+2026/09/12 18:10:28 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:28 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/486 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/485
+2026/09/12 18:10:28 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:28 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/488 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/487
+2026/09/12 18:10:28 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:28 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/490 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/489
+2026/09/12 18:10:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/492 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/491
+2026/09/12 18:10:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/494 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/493
+2026/09/12 18:10:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/496 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/495
+2026/09/12 18:10:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/498 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/497
+2026/09/12 18:10:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/500 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/499
+2026/09/12 18:10:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/502 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/501
+2026/09/12 18:10:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/504 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/503
+2026/09/12 18:10:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/506 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/505
+2026/09/12 18:10:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/508 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/507
+2026/09/12 18:10:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/510 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/509
+2026/09/12 18:10:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/512 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/511
+2026/09/12 18:10:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/514 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/513
+2026/09/12 18:10:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/516 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/515
+2026/09/12 18:10:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/518 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/517
+2026/09/12 18:10:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/520 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/519
+2026/09/12 18:10:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/522 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/521
+2026/09/12 18:10:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/524 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/523
+2026/09/12 18:10:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/526 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/525
+2026/09/12 18:10:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/528 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/527
+2026/09/12 18:10:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/530 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/529
+2026/09/12 18:10:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/532 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/531
+2026/09/12 18:10:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/534 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/533
+2026/09/12 18:10:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/536 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/535
+2026/09/12 18:10:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/538 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/537
+2026/09/12 18:10:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/540 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/539
+2026/09/12 18:10:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/542 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/541
+2026/09/12 18:10:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/544 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/543
+2026/09/12 18:10:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/546 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/545
+2026/09/12 18:10:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/548 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/547
+2026/09/12 18:10:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/550 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/549
+2026/09/12 18:10:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/552 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/551
+2026/09/12 18:10:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/554 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/553
+2026/09/12 18:10:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/556 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/555
+2026/09/12 18:10:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/558 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/557
+2026/09/12 18:10:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/560 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/559
+2026/09/12 18:10:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/562 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/561
+2026/09/12 18:10:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/564 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/563
+2026/09/12 18:10:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/566 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/565
+2026/09/12 18:10:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/568 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/567
+2026/09/12 18:10:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/570 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/569
+2026/09/12 18:10:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/572 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/571
+2026/09/12 18:10:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/574 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/573
+2026/09/12 18:10:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/576 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/575
+2026/09/12 18:10:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/578 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/577
+2026/09/12 18:10:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/580 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/579
+2026/09/12 18:10:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/582 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/581
+2026/09/12 18:10:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/584 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/583
+2026/09/12 18:10:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/586 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/585
+2026/09/12 18:10:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/588 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/587
+2026/09/12 18:10:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/590 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/589
+2026/09/12 18:10:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/592 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/591
+2026/09/12 18:10:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/594 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/593
+2026/09/12 18:10:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/596 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/595
+2026/09/12 18:10:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/598 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/597
+2026/09/12 18:10:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/600 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeFast974421045/599
+2026/09/12 18:10:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:41 INFO teammateMode updated mode=auto in_tmux=false
+T662 FAST   n=300 min=181.614583ms p50=218.392875ms p90=293.988042ms p99=444.395375ms max=539.745875ms mean=235.662741ms
+T662 FAST over-headroom(250ms): 78/300 = 26.0%  [PREDICTED red rate]
+--- PASS: TestT662ProbeFast (71.16s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	71.864s
+LOAD-AFTER-FAST: 18:10  up 4 days, 12:04, 15 users, load averages: 25.14 13.09 11.86
