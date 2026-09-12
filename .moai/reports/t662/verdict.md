@@ -250,3 +250,55 @@ $ go test ./internal/hook/ -count=1 -timeout 900s            → ok 173.947s (�
 입력 지연(input lag) 예산 자체가 지켜야 할 계약이라면, 그것은 **이름과 실패 메시지가 다른 별개의 단정**으로 세워야 하며 임계는 측정에서 유도해야 한다 — 지금처럼 지연 판별 단정에 얹어 두면 둘 다 제대로 못 한다.
 
 어느 쪽으로 갈지, 혹은 동기 작업 200ms 내역 분해를 먼저 할지 지시 주시면 이어가겠습니다.
+
+---
+
+## 병합 트리 재측정 (통합 창, 2026-09-12)
+
+창 지명을 받아 로컬 develop `2448be066` 을 흡수했다(흡수 커밋 `3066544e0`, 충돌 0). 그 트리에서 카드 4테스트를 재측정했고, **부하가 판정을 뒤집는 것을 실측했다.**
+
+### 1차 시도 — 고부하, 귀속 불가
+
+| 테스트 | 1회 | 2회 | 기준 |
+|---|---|---|---|
+| DeferredScanDoesNotBlockReturn | 7.61s | 2.58s | 1s |
+| HandleInputLagBudget | 9.23s | 8.30s | 1.5s |
+| JoinsWithinBound/slow | 1.09s | 4.21s | 250ms |
+
+`uptime` 실측: 1회차 load1 6.88→9.88, 2회차 20.37→14.76. 부하 출처는 `ps`/`pgrep` 로 확정했다 — 다른 레인 2곳이 `go test ./internal/cli/` 전량 수트를 동시 실행(pid 32776, 45579) + `find` CPU 50.7%.
+
+**같은 값이 3배씩 널뛰는 것은 경합의 서명이지 회귀의 서명이 아니다.** 고정 비용의 회귀라면 값이 일정해야 한다. 흡수분도 혐의에서 배제된다: `git diff 34fd38cf9 HEAD -- internal/hook/session_start.go` 의 변경은 `isGatewaySession()` 분기 3곳과 `isCGMode`→`hasLegacyCGConfiguration` 치환뿐으로, 전부 파일 읽기·문자열 검사다.
+
+이 시점에 병합을 중단하고 창을 반납했다. **RED 인 로컬 근거로 병합하면 이 카드가 존재하는 이유를 스스로 어긴다.**
+
+### 2차 — 조용한 구간, 전부 GREEN
+
+`uptime` 실측: 측정 전 load1 5.02 / load5 5.84, 측정 후 5.34 / 5.89. `pgrep -f 'go test .*internal/cli'` = 0.
+
+| 테스트 | 1회 | 2회 | 기준 |
+|---|---|---|---|
+| DeferredScanDoesNotBlockReturn | 0.46s | 0.46s | 1s |
+| HandleInputLagBudget | 0.19s | 0.19s | 1.5s |
+| SynchronousSideEffectsPreserved | 0.45s | 0.45s | — |
+| JoinsWithinBound/fast | 0.21s | 0.19s | 250ms |
+| JoinsWithinBound/slow | 0.45s | 0.44s | 250ms |
+
+두 독립 측정이 소수점 둘째 자리까지 일치한다 — 1차의 널뛰기와 대조된다. `go test ./internal/hook/... -count=1` 전량도 11개 하위 패키지 전부 `ok`.
+
+### 이 재측정이 남긴 관측 (t666 재료)
+
+같은 트리·같은 테스트가 load 5 에서 0.46s, load 14~20 에서 2.58~7.61s 다 — **16배**. 카드 본문이 "계측이 그 자체로 지연을 만들 수 있다"고 경고했는데, 실측은 그보다 넓다: 이 임계들은 머신 부하에 좌우되고, 그 좌우폭이 임계 자체보다 크다. t666 의 200ms 분해도 조용한 구간에서 재지 않으면 같은 함정에 빠진다.
+
+### 증거 경로
+
+| 파일 | 내용 |
+|---|---|
+| `merge-tree-remeasure.log` / `-2.log` | 1차 고부하 측정 2회 |
+| `quiet-remeasure-1.log` / `-2.log` | 2차 조용 구간 측정 2회 |
+| `quiet-pkg.log` | `./internal/hook/...` 전량 |
+| `load-quiet-before.txt` / `-after.txt` | 2차 측정 전후 `uptime` |
+
+### Gaps
+
+- 12건 사전귀속 측정은 이 파일에 없다 — 창 안에서 `merge --no-ff` 직전 순수 develop 을 기준선으로 재는 것이 리드 지시이며, 그 트리는 이 워크트리가 아니다.
+- CI(리눅스) 재측정은 여전히 미실시다. 이 카드의 모든 측정은 darwin 단일 머신이다.

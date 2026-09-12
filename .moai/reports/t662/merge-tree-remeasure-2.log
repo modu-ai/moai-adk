@@ -1,0 +1,31 @@
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/12 20:30:12 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2197920641/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2197920641/001
+2026/09/12 20:30:13 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/12 20:30:13 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:115: Handle blocked 2.582304s (bound 1s); the advisory scan ran on the synchronous path instead of being deferred
+2026/09/12 20:30:16 INFO session start (deferred): status drift detected count=99
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (10.29s)
+=== RUN   TestSessionStart_HandleInputLagBudget
+2026/09/12 20:30:21 INFO session started session_id=sess-input-lag-budget cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget173917509/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget173917509/001
+2026/09/12 20:30:29 WARN configuration not available, proceeding with defaults session_id=sess-input-lag-budget
+2026/09/12 20:30:29 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:192: SessionStart added 8.299558375s of input lag with a prompt advisory scan (budget 1.5s); the synchronous path regressed — see .moai/reports/t662/verdict.md for the derivation
+--- FAIL: TestSessionStart_HandleInputLagBudget (13.53s)
+=== RUN   TestSessionStart_DeferredScanJoinsWithinBound
+=== RUN   TestSessionStart_DeferredScanJoinsWithinBound/fast_scan_lands_advisory
+2026/09/12 20:30:35 INFO session started session_id=sess-join-fast cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanJoinsWithinBoundfast_scan_lands_ad1413877076/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanJoinsWithinBoundfast_scan_lands_ad1413877076/001
+2026/09/12 20:30:55 WARN configuration not available, proceeding with defaults session_id=sess-join-fast
+2026/09/12 20:30:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 20:30:55 INFO session start (deferred): status drift detected count=5
+=== RUN   TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory
+2026/09/12 20:30:58 INFO session started session_id=sess-join-slow cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanJoinsWithinBoundslow_scan_drops_ad841433565/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanJoinsWithinBoundslow_scan_drops_ad841433565/001
+2026/09/12 20:31:02 WARN configuration not available, proceeding with defaults session_id=sess-join-slow
+2026/09/12 20:31:02 INFO teammateMode updated mode=auto in_tmux=false
+    session_start_parallel_test.go:372: Handle blocked 4.213127834s; expected return near the 250ms bound
+2026/09/12 20:31:02 INFO session start (deferred): status drift detected count=5
+--- FAIL: TestSessionStart_DeferredScanJoinsWithinBound (30.53s)
+    --- PASS: TestSessionStart_DeferredScanJoinsWithinBound/fast_scan_lands_advisory (23.97s)
+    --- FAIL: TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory (6.56s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	54.900s
+FAIL
