@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/spf13/cobra"
 )
@@ -63,6 +64,24 @@ func init() {
 var runProfileSetupFn = func(cmd *cobra.Command, args []string) error {
 	return runProfileSetup(cmd, args)
 }
+
+// profileWizardRunner is the v2 profile-wizard seam (design.md §2.2): the
+// absorbed runProfileSetup hands it the initial values, the option lists, and
+// the initial locale, and receives the wizard's answers. Nil until the M5
+// absorption commit wires wizard.RunProfile as the default — the AC-ITI-006/007
+// tests gate on the routing being present before any caller could reach a nil
+// runner.
+var profileWizardRunner func(initial wizard.ProfileResult, opts wizard.ProfileOptions, locale string) (*wizard.ProfileResult, error)
+
+// enterSessionWorktreeFn and cleanupSessionWorktreeFn are the session-worktree
+// enter/cleanup seams (design.md §5, the runWizardFn idiom). The absorbed
+// runProfileSetup routes its auto-entry and its deferred disposal through them,
+// so the command-level test (AC-ITI-007) can observe the enter-before-read
+// ordering and the exactly-once cleanup with its clean-exit argument.
+var (
+	enterSessionWorktreeFn   = enterSessionWorktree
+	cleanupSessionWorktreeFn = cleanupSessionWorktree
+)
 
 // runProfileCmd handles 'moai profile' with optional --setup/-s flag.
 func runProfileCmd(cmd *cobra.Command, args []string) error {
