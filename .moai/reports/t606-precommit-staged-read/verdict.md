@@ -161,10 +161,46 @@ gofmt -l internal/cli/precommit_staged_read_e2e_test.go   출력 없음, exit 0
 go vet ./internal/cli/                                     vet_exit=0
 ```
 
+### 4.8 병합 트리 재측정 (창 1번차, 2026-09-12)
+
+로컬 develop `e16b0e9a3`(gateway t649 포함) 을 흡수해 병합 커밋 `070d8f2dc` 를 만들고, 그 트리에서 다시 쟀다. 부하 7.83.
+
+**CHANGELOG 충돌 1건.** 흡수 중 `### Fixed` 의 같은 자리에 t603 항목(develop)과 t606 항목(이 카드)이 각각 삽입돼 충돌했다. 내용이 겹치지 않는 순수 삽입이므로 **양쪽을 모두 보존**하고 마커만 제거했다(t603 먼저, t606 다음). 해소 후 마커 0건, 두 항목 모두 존재함을 grep 으로 확인했다.
+
+```
+make build                                            → 완료 (catalog.yaml 12899 bytes)
+go test ./internal/cli/... -count=1 -timeout 1800s    → exit 1
+  internal/cli                     FAIL  1228.721s
+  하위 16개 패키지                  전부 ok
+```
+
+**FAIL 3건은 이 카드와 무관하다 — gateway 계열이다.**
+
+```
+--- FAIL: TestCodexCommand_RegisteredInLaunchGroup
+    codex_launcher_test.go:236: launcher "cg" missing from the launchers section block
+--- FAIL: TestCharacterize_GLM_WarningPrintedToStderr
+--- FAIL: TestNoBareGLMEnvVarLiteralsInCLIProduction
+    glm_env_parity_test.go:115: internal/cli/gateway_prepare.go:26:254 / :383 / :427
+```
+
+t606 계열 FAIL 은 **0건**이다(`FAIL: TestPreCommit` / `TestPrecommit` / `TestStagedRead` grep 무적중).
+
+**귀속 — 잰 것.** 병합 트리가 develop 대비 바꾼 파일을 전수했더니(`diff --name-only e16b0e9a3 070d8f2dc`) 이 카드의 10개뿐이었다: 훅 두 사본 · e2e 시험 · CHANGELOG · verdict · run 로그 5. 실패가 지목한 `gateway_prepare.go` · `codex_launcher_test.go` · `glm_env_parity_test.go` 는 그 목록에 **없다**. 그 파일의 마지막 커밋은 `5575ba649 Merge App Server turn bridge and preserve gateway fixes (t649, t652)` 다.
+
+**"develop 단독도 red" — 리드가 정적으로 닫은 근거 (2026-09-12, 인용).** 이 카드가 직접 재지 못한 부분을 리드가 코드 판독으로 대신 세웠다:
+
+1. `launcher.go:135` 의 `cg` 는 `mode == cg` 비교이지 섹션 등록이 아니다 — 테스트가 요구하는 등록이 실제로 없다.
+2. `gateway_prepare.go:26` 에 베어 리터럴이 관측된다.
+3. 패리티 테스트는 `1444583bf`(t457) 이전부터 존재했고, 위반 코드는 `5575ba649`(t649/t652)에서 유입됐다 — **기존 테스트를 새 코드가 위반한 구조**다.
+
+수리는 이 카드 범위 밖이며 별도 카드 **t669**(lane-5 배차)가 가져갔다. 판정 A(병합 진행)는 리드의 것이다.
+
 ## 5. Gaps — 관측하지 않은 것
 
-- **`internal/cli` 패키지 전량**은 돌리지 않았다. 리드 실측으로 1582.68s 가 걸리며, 지시대로 병합 창에서 병합 트리로 한 번 잰다.
-- **develop 흡수 후 재측정**은 아직이다. 모든 측정은 base `eabce7444` 트리에서 냈다. 측정 도중 origin/develop 은 `eabce7444` → `b94cda51a` → `1d150a27d` 로 움직였다. 리드 판독으로 `1d150a27d` 는 `sync-phase-quality-gate.sh` 와 그 템플릿 미러만 건드려 pre-commit 훅은 무접촉이지만, 이는 판독이지 측정이 아니다.
+- ~~**`internal/cli` 패키지 전량**은 돌리지 않았다.~~ → §4.8 에서 병합 트리로 쟀다(1228.721s).
+- **develop `e16b0e9a3` 단독 트리**에서 위 red 3건을 직접 재지는 못했다. 워크트리 가드가 교차 트리 접근(`-C <develop트리>`)과 복합 명령을 모두 거부해 측정 경로가 없었다. §4.8 의 귀속은 diff 전수로 세운 것이고, "develop 단독도 red" 는 리드의 정적 판독이다 — 측정이 아니다.
+- ~~**develop 흡수 후 재측정**은 아직이다.~~ → §4.8 에서 `e16b0e9a3` 을 흡수해 병합 트리(`070d8f2dc`)에서 다시 쟀다. §1~§4.7 의 측정은 base `eabce7444` 트리의 것이며, 그 값을 병합 후 근거로 재사용하지 않는다.
 - **darwin 에서만** 실행했다. linux / windows 판정은 CI 몫이다.
 - **heavy gate(`moai gate`) 와 go vet 단계**는 재현·시험 모두에서 성공 대역에 두고 분리하지 않았다. 전체 게이트가 어떤 커밋을 허용한다는 주장은 하지 않는다.
 - **이 저장소에서 손으로 커밋해 본 종단 확인**은 하지 않았다. 시험이 진짜 git 저장소와 진짜 훅 본문으로 `git commit` 을 구동하므로 같은 경로를 지나지만, 이 저장소 자체에서의 확인은 아니다.
