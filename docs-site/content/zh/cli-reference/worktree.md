@@ -12,7 +12,7 @@ draft: false
 
 | 你想做的事 | 该用的命令 |
 |-----------|-------------|
-| 在工作树里开始工作 | `moai cc -w <name>` (或 `moai glm -w` / `moai cg -w`) |
+| 在工作树里开始工作 | `moai cc -w <name>` (或 `moai glm -w` / `moai cc -w`) |
 | 保留当前会话,在新 tmux 窗口中打开 | `moai cc -w <name> --spawn` |
 | 查看工作树列表 | `git worktree list` |
 | 新建工作树 | `moai cc -w <name>` (自动创建 `.claude/worktrees/<name>/`) 或 `git worktree add` |
@@ -162,7 +162,7 @@ moai worktree restore --snapshot <path>
 moai cc -w feat-auth
 
 # 保留当前会话,在新 tmux 窗口中启动 GLM 队友
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # 查看工作树列表
 git worktree list
@@ -185,5 +185,5 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
 - [Git Worktree 概述](/zh/worktree/) —— 概念与工作流
 - [完整指南](/zh/worktree/guide) —— 每条命令的详细用法
-- [CG 模式](/zh/multi-llm/cg-mode) —— Claude 领导 + GLM 队友混合
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 - [CLI 概览](/zh/getting-started/cli)

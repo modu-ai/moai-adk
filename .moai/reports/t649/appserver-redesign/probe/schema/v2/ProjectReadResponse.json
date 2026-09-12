@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AbsolutePathBuf": {
+      "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+      "type": "string"
+    },
+    "Project": {
+      "properties": {
+        "createdAt": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "recencyAt": {
+          "description": "Newest non-archived member thread's recency, in Unix seconds; null when none exist.",
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "roots": {
+          "items": {
+            "$ref": "#/definitions/ProjectRoot"
+          },
+          "type": "array"
+        },
+        "updatedAt": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "createdAt",
+        "id",
+        "metadata",
+        "name",
+        "position",
+        "roots",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "ProjectRoot": {
+      "properties": {
+        "path": {
+          "$ref": "#/definitions/AbsolutePathBuf"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "project": {
+      "$ref": "#/definitions/Project"
+    }
+  },
+  "required": [
+    "project"
+  ],
+  "title": "ProjectReadResponse",
+  "type": "object"
+}

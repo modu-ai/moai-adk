@@ -76,7 +76,7 @@ flowchart TD
 工作目录和绑定其上的 LLM 配置按树彻底分开。因此无论在哪个 worktree 中提交，
 其他 worktree 都能立刻识别该提交，分支不会互相缠绕。MoAI-ADK 在此之上叠加了
 把"进入哪个 worktree"和"以哪种 LLM 模式运行"一次性捆绑的启动器（`moai cc` ·
-`moai glm` · `moai cg`）。
+`moai glm`）。
 
 ## 核心工作流
 
@@ -126,7 +126,7 @@ flowchart TD
 #### 第 2 阶段：Implement (Terminals 2, 3, 4...)
 
 实现阶段虽然工作量大，但 SPEC 已经定好了方向，GLM 这类便宜的模型也足以胜任。
-进入工作树交给启动器（`moai cc`、`moai glm`、`moai cg`）的 `-w` 标志。指定名称
+进入工作树交给启动器（`moai cc`、`moai glm`）的 `-w` 标志。指定名称
 的工作树不存在时，它会当场创建：
 
 ```bash
@@ -148,7 +148,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **优点**：
 
 - 完全隔离的工作环境
-- GLM 成本高效（节省幅度请参考 [CG 模式](/zh/multi-llm/cg-mode)）
+- 明确选择后端：每个工作树可选择 `moai cc` 或 `moai glm`。
 - 无冲突的无限并行开发
 
 #### 第 3 阶段：Cleanup
@@ -166,7 +166,7 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch    # 清理 + 删除本
 | 你想做的事              | 命令                            | 使用示例                               |
 | ----------------------- | ------------------------------- | -------------------------------------- |
 | 创建 Worktree 并进入    | `moai cc -w <名称>`             | `moai glm -w SPEC-AUTH-001`            |
-| 保留会话，在新窗口中打开 | `moai cc -w <名称> --spawn` | `moai cg -w SPEC-AUTH-002 --spawn`     |
+| 保留会话，在新窗口中打开 | `moai cc -w <名称> --spawn` | `moai cc -w SPEC-AUTH-002 --spawn`     |
 | 查看 Worktree 列表      | `git worktree list`             | `git worktree list`                    |
 
 `moai worktree` 管理的是已经建好的工作树：
@@ -217,38 +217,9 @@ graph TD
 - 分支之间没有冲突地开展工作
 - 只有完成的 SPEC 才合并到 main
 
-### 2. LLM 独立性 (LLM Independence)
+### 2. LLM 独立性
 
-每个 Worktree 维持各自独立的 LLM 运行模式。如下所示，三个终端分别以
-`moai cc`（Claude 专用）、`moai glm`（GLM 专用）、`moai cg`（Claude 领队 +
-GLM 工作者混合）不同方式运行，互不干扰：
-
-```mermaid
-sequenceDiagram
-    participant T1 as Terminal 1<br/>Worktree 1
-    participant T2 as Terminal 2<br/>Worktree 2
-    participant T3 as Terminal 3<br/>Worktree 3
-    participant Main as Main Repository
-
-    T1->>T1: moai cc (Claude)
-    Note over T1: 用高推理模型<br/>执行计划
-
-    T2->>T2: moai glm
-    Note over T2: 用低成本模型<br/>执行实现
-
-    T3->>T3: moai cg
-    Note over T3: 用混合模式<br/>平衡质量与成本
-
-    par 并行工作
-        T1->>Main: Plan 工作
-        T2->>Main: Implement 工作
-        T3->>Main: Implement 工作
-    end
-
-    Main-->>T1: 只合并完成的 SPEC
-    Main-->>T2: 只合并完成的 SPEC
-    Main-->>T3: 只合并完成的 SPEC
-```
+每个工作树都可明确选择启动器：Claude 会话使用 `moai cc`，GLM 会话使用 `moai glm`。两者都不会重建已停用的混合角色。
 
 ### 3. 无限并行开发 (Unlimited Parallel)
 

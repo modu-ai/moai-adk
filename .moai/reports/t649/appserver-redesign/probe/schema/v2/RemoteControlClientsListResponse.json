@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "RemoteControlClient": {
+      "properties": {
+        "appVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "deviceModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "deviceType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "displayName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastSeenAt": {
+          "format": "int64",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "osVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "platform": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "clientId"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "#/definitions/RemoteControlClient"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "RemoteControlClientsListResponse",
+  "type": "object"
+}

@@ -1,0 +1,57 @@
+[
+  {
+    "file": "CLIProxyAPI-codex_claude_request.go",
+    "bytes": 29016,
+    "sha256": "7a28c6ebaa91bf3135084952499af936a0dba6b096972e75f5ee3761c79a41c3"
+  },
+  {
+    "file": "CLIProxyAPI-codex_claude_response.go",
+    "bytes": 35926,
+    "sha256": "9052c8278581ab4cfd3e77a3e725c028cf60ebf8f0cda56607a65c4326673752"
+  },
+  {
+    "file": "CLIProxyAPI-codex_executor_reasoning.go",
+    "bytes": 26572,
+    "sha256": "fce70d63f210c9443f875ec4b6301631b9721b820a9afededecfe99b3361699b"
+  },
+  {
+    "file": "CLIProxyAPI-codex_executor_reasoning_replay_cache_test.go",
+    "bytes": 52786,
+    "sha256": "82bac44ad6f6b2e7a46269b80a16ff7803ec31760578476d88ef91993add1e7b"
+  },
+  {
+    "file": "CLIProxyAPI-codex_executor_request.go",
+    "bytes": 18999,
+    "sha256": "fa09d533c7fe4d19dceaa96213024a16de77b30d0ff8d6880e0193103feebc72"
+  },
+  {
+    "file": "codex-client.rs",
+    "bytes": 107097,
+    "sha256": "e89c5f40c505157777641c494ed9399bf9f474d0f64a95809e5f6b10c5b74cc3"
+  },
+  {
+    "file": "codex-models.rs",
+    "bytes": 154029,
+    "sha256": "8cd6577e9df4cd9793530dcfe6d40dd43d4abe6b5075e1e826a6e6a71ce19c78"
+  },
+  {
+    "file": "installed-modelpicker-snippets.json",
+    "bytes": 13326,
+    "sha256": "5ac717af13850e51c36b4a51b09e81f5097954bc73773325e5129d644332c510"
+  },
+  {
+    "file": "litellm-transformation.py",
+    "bytes": 34091,
+    "sha256": "2104f838068fda3610dfb74cbcd8ea95867a3da54fefcb7458de748afeeaadd5"
+  },
+  {
+    "file": "official-modelpicker.txt",
+    "bytes": 3164,
+    "sha256": "8f17444468ab1e9d29c224d601990cd04a03b05e9d221f7abd45068062d4ba91"
+  },
+  {
+    "file": "picker_probe.py",
+    "bytes": 2507,
+    "sha256": "5695b33c40827172f61b4cef2f0cf617407f69ed9182ff5bb8499574ce830661"
+  }
+]

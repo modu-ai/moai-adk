@@ -1060,7 +1060,6 @@ harness:
   mode_defaults:
     solo: auto
     team: auto
-    cg: thorough
   auto_detection:
     enabled: true
     rules:

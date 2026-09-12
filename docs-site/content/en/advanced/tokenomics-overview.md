@@ -108,17 +108,19 @@ What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 ex
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
 - [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix
 
-## CG Mode (Cost Optimization)
+## CG retirement and migration
 
-`moai cg` is a hybrid mode combining a Claude leader with GLM workers. Strategy, planning, and audit are handled by Claude, while high-volume implementation work is handled by GLM. This yields a 60-70% cost reduction on implementation-heavy tasks.
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/)
 
-GLM-5.3 is a 1M-context single model, with z.ai implicit prompt caching applied automatically. z.ai has not published per-token pricing for it yet; the previous generation, GLM-5.2, was listed at $2 input / $8 output per 1M tokens. Under the flat-fee Coding Plan the per-token rate does not drive the bill. Although Claude Code reports `context_window_size` based on the Claude slot (so a GLM session's raw value may show ~180K), MoAI corrects it to 1M and operates at the 50% threshold. Trust the statusline CW% gauge. For details on CG mode and standalone GLM sessions (`moai glm`), see the [Multi-Model Audit](/en/advanced/multi-model-audit/) page.
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
+
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ## Verified Facts and Roadmap
 
 The implementation status of the content on this page is clearly distinguished.
 
-{{< icon check ok >}} **Implemented (shipped)** — all 4 layers (A/B/C/D), 3-tier model policy (profile matrix resolver), CG mode, verify-diet file-redirect contract, graceful-abort mechanism.
+{{< icon check ok >}} **Implemented (shipped)** — all 4 layers (A/B/C/D), 3-tier model policy (profile matrix resolver), verify-diet file-redirect contract, graceful-abort mechanism.
 
 {{< icon clock >}} **Design-stage (roadmap)** — the GLM backend effort overlay's wire effectiveness is a verification item requiring live GLM session outbound observation. The Profile Matrix page states this distinction explicitly.
 

@@ -234,9 +234,7 @@ Agent Teams usage is ALLOWED as an experimental surface (operator decision): the
 auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) remain prose-only SSOT in
 `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1 (no team auto-selection was reinstated).
 
-The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
-`moai cc -w <name> --spawn` teammate windows) is unaffected and sanctioned — see
-`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
+Native Claude Code Agent Teams remain experimental under the constraints above. Retired CG routing is not a capability guarantee for mixed-provider teammates; see `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration.
 
 ## Output Style Configuration
 

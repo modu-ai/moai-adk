@@ -226,3 +226,82 @@ live apply 의 자식 스위트 패턴(`TestHomeState.*`, `TestChangedProduction
 
 - binlag 검사는 줄 좌표 기반이다. 이번 수리는 `home_state_coverage.go` 를 바꾸지 않아 245/253 이 유지되지만, 앞으로 그 파일 245행 위를 고치는 변경은 다시 이 테스트를 빨갛게 만든다(설계상의 성질, 이 카드 범위 밖).
 - opt-in 뒤로 옮긴 테스트는 기본 실행에서 돌지 않으므로, 재인증 시점에 누군가 켜지 않으면 실제 저장소 커버리지 측정은 관측되지 않은 채 남는다. live apply 자체는 여전히 같은 측정을 실행한다.
+
+---
+
+## 병합 트리 재측정 (통합 창, lane-4)
+
+### Claim
+
+카드 t600(`WT-worktree-name-escape`)을 로컬 `develop` 흡수 후의 병합 트리에서 재측정했고,
+카드 범위(`internal/hook`) 전량이 초록이다.
+
+### Evidence
+
+흡수: `git merge develop --no-edit` → 충돌 0, 병합 커밋 `1b34ae84c`
+(흡수 대상은 로컬 `develop` `bf589ad9a`; 원격 `origin/develop` 는 `1d150a27d` 로 한 장 뒤였다.)
+
+| 검사 | 명령 | 결과 |
+|---|---|---|
+| 카드 범위 테스트 | `go test ./internal/hook/...` | `EXIT=0` — 11개 패키지 전부 `ok` |
+| 정적 분석 | `go vet ./internal/hook/...` | `VET_EXIT=0`, 출력 없음 |
+| 빌드 | `go build ./...` | `BUILD_EXIT=0`, 출력 없음 |
+
+부하: 테스트 시작 직전 `load1=7.57` (게이트 30 미만).
+
+로그 원본: `merge-hook-test.log`, `merge-hook-exit.txt`, `merge-vet.log`,
+`merge-vet-exit.txt`, `merge-build.log`, `merge-uptime-before.txt`.
+
+### `TestSessionStart_DeferredScanDoesNotBlockReturn` 관측 (리드 요청 항목 2)
+
+이름 실재 확인: `internal/hook/session_start_parallel_test.go:41`.
+
+관측 8건 — 빨강 1, 초록 7. 부하값을 함께 적는다.
+
+| # | 실행 형태 | load1 | 결과 |
+|---|---|---|---|
+| 0 | 패키지 전량 (`./internal/hook/...`) | 7.57 | 초록 |
+| 1 | 단독 선택자 `-run ... -v` | 14.30 | **빨강** |
+| 2 | 단독 선택자 (스윕 iter=1) | 14.08 | 초록 |
+| 3 | 단독 선택자 (스윕 iter=2) | 10.48 | 초록 |
+| 4 | 단독 선택자 (스윕 iter=3) | 10.14 | 초록 |
+| 5 | 단독 선택자 (스윕 iter=4) | 8.32 | 초록 |
+| 6 | 단독 선택자 (스윕 iter=5) | 7.03 | 초록 |
+| 7 | 단독 선택자 (스윕 iter=6) | 6.46 | 초록 |
+
+원본: `merge-deferredscan.log`(빨강 1건), `merge-deferredscan-loadsweep.txt`(6건).
+
+빨강의 기전은 로그에 그대로 찍혀 있다:
+
+```
+session_start_parallel_test.go:97: Handle blocked 763.17675ms waiting for
+advisory scan; expected deferred (non-blocking) return
+```
+
+테스트가 주입한 블록은 **2초**인데 관측된 지연은 **763ms** 다. 스캔이 동기로 돌았다면
+2초에 가까워야 하므로, 이 빨강은 "지연이 안 됐다"는 결함 신호가 **아니다** —
+`Handle` 의 나머지 동기 작업이 테스트의 500ms 예산을 넘긴 것이다.
+
+부하 단조 관계도 성립하지 않는다: 빨강은 load1 14.30, 바로 다음 초록은 14.08 이다.
+즉 이 테스트는 **500ms 예산 경계에서 흔들리는 타이밍 테스트**이고, 고부하가 흔들림의
+진폭을 키우는 조건이지 빨강을 결정하는 함수는 아니다. "develop 선재 레드" 로
+확정할 근거는 이 표본에 없다.
+
+### Baseline-attribution
+
+전부 이 트리(`1b34ae84c`, tree `4ff74e2ec`)에서 이 창 안에 실행한 결과다.
+병합 전 워크트리 측정치를 재사용한 것이 아니다.
+
+### Gaps
+
+- 전체 스위트(`go test ./...`)는 돌리지 않았다 — 로컬 금지 규율(CLAUDE.local.md §6).
+  전 패키지 판정은 CI 몫이며 원격 develop push 가 일으키는 실행에 맡긴다.
+- `golangci-lint` 는 이 재측정에서 돌리지 않았다(병합 전 `run6-lint.txt` 에 기록이 있다).
+- darwin/windows 매트릭스는 로컬에서 재현되지 않는다.
+
+### Residual-risk
+
+- `TestSessionStart_DeferredScanDoesNotBlockReturn` 의 500ms 예산은 앞으로도
+  고부하 구간에서 빨강을 낼 수 있다. 이 카드의 변경(`internal/hook/worktree_create.go`)과는
+  무관한 별개 축이며, 예산 조정 여부는 별도 카드 소관이다.
+

@@ -1,0 +1,31 @@
+{
+  "model": "gpt-5.6-sol",
+  "max_tokens": 1,
+  "system": [
+    {
+      "type": "text",
+      "text": "x-anthropic-billing-header: cc_version=2.1.268.e0e; cc_entrypoint=cli;"
+    },
+    {
+      "type": "text",
+      "text": "You are Claude Code, Anthropic's official CLI for Claude."
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hi",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "user_id": "{\"device_id\":\"fixture-device_id\",\"account_uuid\":\"\",\"session_id\":\"fixture-session_id\"}"
+  }
+}

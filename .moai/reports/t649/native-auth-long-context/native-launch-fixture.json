@@ -1,0 +1,56 @@
+{
+  "fixture": "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-native-auth-enb5s6x_",
+  "results": [
+    {
+      "command": [
+        "/tmp/moai-v3.2.0-rc.8-t649-native-auth-97684da3e8ce",
+        "cc",
+        "-p",
+        "mo.ai.kr",
+        "-f",
+        "lane-2"
+      ],
+      "exit": 0,
+      "capture": {
+        "args": [
+          "--no-chrome",
+          "--model",
+          "claude-opus-5[1m]",
+          "--name",
+          "lane-2",
+          "--settings",
+          "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-89749-1789199971069384000.json"
+        ],
+        "config_dir": "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-native-auth-enb5s6x_/home/.moai/claude-profiles/mo.ai.kr",
+        "base_url": null,
+        "auth_present": false
+      }
+    },
+    {
+      "command": [
+        "/tmp/moai-v3.2.0-rc.8-t649-native-auth-97684da3e8ce",
+        "glm",
+        "-p",
+        "mo.ai.kr",
+        "-f",
+        "lane-2"
+      ],
+      "exit": 0,
+      "capture": {
+        "args": [
+          "--no-chrome",
+          "--model",
+          "opus[1m]",
+          "--name",
+          "lane-2",
+          "--settings",
+          "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-90838-1789199972604692000.json"
+        ],
+        "config_dir": "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-native-auth-enb5s6x_/home/.moai/claude-profiles/mo.ai.kr",
+        "base_url": "https://api.z.ai/api/anthropic",
+        "auth_present": true
+      }
+    }
+  ],
+  "profile_state_unchanged": true
+}

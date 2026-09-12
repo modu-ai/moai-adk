@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/cli/agentlint"
@@ -24,7 +25,7 @@ that serves as the runtime backbone for the MoAI framework within Claude Code.
 It provides CLI tooling, configuration management, LSP integration,
 Git operations, quality gates, and autonomous development loop capabilities.
 
-Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
+Use 'moai cc', 'moai gpt', or 'moai glm' to launch Claude Code.`,
 	Version: version.GetVersion(),
 	Run: func(cmd *cobra.Command, args []string) {
 		uikit.PrintBanner(version.GetVersion())
@@ -44,16 +45,18 @@ Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
 // on that path is loadGLMConfig's nil-safe branch (glm.go), which falls back to
 // reading llm.yaml from disk — its documented live runtime path.
 var trivialCommands = map[string]bool{
-	"--version":  true,
-	"version":    true,
-	"-v":         true,
-	"help":       true,
-	"--help":     true,
-	"-h":         true,
-	"completion": true, // cobra built-in
-	"cc":         true, // launcher: exec's claude, discards the graph
-	"cg":         true, // launcher: exec's claude, discards the graph
-	"glm":        true, // launcher: exec's claude, discards the graph
+	"--version":        true,
+	"version":          true,
+	"-v":               true,
+	"help":             true,
+	"--help":           true,
+	"-h":               true,
+	"completion":       true, // cobra built-in
+	"cc":               true, // launcher: exec's claude, discards the graph
+	"cg":               true, // retired token: never initialize launch dependencies
+	"glm":              true, // launcher: exec's claude, discards the graph
+	"gpt":              true, // gateway launcher and private auth store use no dependency graph
+	"internal-gateway": true, // private child receives all handler configuration over stdin
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
@@ -68,6 +71,11 @@ var trivialCommands = map[string]bool{
 func Execute() error {
 	initConsole()
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "cg" {
+		// This pre-Cobra guard must render its own error: main only maps exit codes.
+		moaiErrorHandler(os.Stderr, fang.Styles{}, errCGRetired)
+		return errCGRetired
+	}
 	// Logging is configured here, for every subcommand and ahead of the branch
 	// below, so that both paths share one decision. configureLogging is the only
 	// place the CLI installs the default logger; InitDependencies deliberately
@@ -95,12 +103,16 @@ func executeRoot(ctx context.Context, cmd *cobra.Command) error {
 // isTrivialCommand checks whether the CLI args indicate a trivial subcommand
 // that does not require the full dependency graph.
 func isTrivialCommand(args []string) bool {
-	for _, arg := range args {
+	for i, arg := range args {
 		if strings.HasPrefix(arg, "-") {
 			if trivialCommands[arg] {
 				return true
 			}
 			continue
+		}
+		// CG migration must inspect raw YAML before typed dependency decoding.
+		if arg == "migrate" && i+1 < len(args) && args[i+1] == "cg" {
+			return true
 		}
 		// First non-flag arg is the subcommand
 		return trivialCommands[arg]
@@ -138,6 +150,18 @@ func init() {
 		worktree.WorktreeProvider = deps.GitWorktree
 		return nil
 	}
+
+	// Gateway commands remain closed for launch until verified transport binding.
+	gptServices := newGPTAuthServices(os.Stdout, installedGPTBroker{Out: os.Stdout})
+	gptServices.Launch = func(profile, mode string, args []string) error {
+		binding, err := newGPTGatewayBinding()
+		if err != nil {
+			return err
+		}
+		return unifiedLaunchWithGateway(profile, mode, args, binding)
+	}
+	rootCmd.AddCommand(newGPTCommand(gptServices))
+	rootCmd.AddCommand(newGatewayChildCommand(productionGatewayHandlerFactory))
 
 	// Register worktree subcommand tree
 	rootCmd.AddCommand(worktree.WorktreeCmd)

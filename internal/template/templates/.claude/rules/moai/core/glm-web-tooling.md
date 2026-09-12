@@ -5,7 +5,7 @@ paths: "**/glm-web-tooling.md"
 
 # GLM-Backend Web Tooling Routing — Canonical Rule
 
-This file is the **single source of truth** for how MoAI agents and the orchestrator perform web search, web fetch, and image reading when the session runs on the GLM backend (`moai glm`) or the GLM teammate panes of `moai cg`.
+This file is the **single source of truth** for how MoAI agents and the orchestrator perform web search, web fetch, and image reading when the session runs on the GLM backend (`moai glm`).
 
 > **Why this rule exists**: Under a GLM backend the built-in Claude Code `WebSearch` / `WebFetch` tools route through the z.ai Anthropic-compatible gateway, which intermittently returns HTTP 529 (overload). Reading an image file with the built-in `Read` tool likewise hits a known base64-encoding failure (HTTP 422) under GLM. z.ai ships dedicated MCP servers that run server-side and bypass these failure modes. Without this doctrine, agents silently fall back to the failing built-in tools and research/fetch/vision operations break.
 
@@ -17,12 +17,12 @@ Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settin
 
 [ZONE:Evolvable] [HARD] A session is **GLM-backed** when the `ANTHROPIC_BASE_URL` environment variable contains the substring `api.z.ai`. The canonical default value is `DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"` (defined in `internal/config/defaults.go`). Equivalently, the runtime mode is `LLMModeGLM`.
 
-Three launch modes must be distinguished:
+Distinguish the current session backend from retired configuration:
 
 | Launcher | Backend scope | Does this rule apply? |
 |----------|---------------|-----------------------|
 | `moai glm` | **Whole session** — orchestrator AND all teammates run on GLM | YES — applies to every agent and the orchestrator |
-| `moai cg` | **Hybrid** — Claude leader pane + GLM teammate panes. The leader pane has its GLM env stripped and runs the Claude backend; only the GLM teammate panes hit z.ai routing | YES for GLM teammate panes; NO for the leader pane (see cg-leader exception below) |
+| Legacy `team_mode: cg` | Launch blocked pending explicit migration | No live CG routing; see CG Retirement and Migration |
 | `moai cc` | Claude backend (no GLM env) | NO — built-in tools are the canonical path |
 
 ---
@@ -39,9 +39,9 @@ Three launch modes must be distinguished:
 
 [ZONE:Evolvable] [HARD] While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in `WebSearch` or `WebFetch`, nor `Read` on an image file. They SHALL route web search to `mcp__web_search_prime__webSearchPrime`, web fetch to `mcp__web_reader__webReader`, and image reading to a `mcp__zai-mcp-server__*` vision tool (default `analyze_image`).
 
-### cg-leader exception
+### Claude-backed sessions
 
-[ZONE:Evolvable] [HARD] Where the current pane is the `moai cg` **leader** pane (Claude backend, GLM env stripped), the HARD prohibition above does NOT apply — the built-in `WebSearch` / `WebFetch` / `Read` work normally there and are the canonical path. The HARD rule binds only `moai glm` whole-session contexts and `moai cg` GLM-teammate contexts.
+[ZONE:Evolvable] [HARD] The GLM prohibition does not apply to a Claude-backed session. Use the actual session backend to select tools; historical CG configuration is not evidence of a live leader/teammate routing split.
 
 ---
 
@@ -51,69 +51,27 @@ Claude Code versions before 2.1.246 sent the credential configured for a third-p
 
 ---
 
-## CG Mode (Claude + GLM teammates)
+## CG Retirement and Migration
 
-`moai cg` is the **hybrid** launcher named in the GLM-Backend Detection table above: the Claude leader pane keeps the Claude backend while GLM teammate panes route through z.ai. This section is the operational SSOT for how `moai cg` detects, configures, and recovers the hybrid mode. Only the CG operational mechanism is retained here; the retired static Agent Teams orchestration prose (team-spawn patterns, role assignments) is out of scope.
+`moai cg` is retired. It is not an alias for another launcher and cannot create a hybrid session. A stored `llm.team_mode: cg` is legacy data, not a provider selection. Launchers reject it before profile, worktree, tmux, or credential side effects, including continue/resume and explicit model requests.
 
-### Mechanism — tmux session-level environment isolation
+Preview the available role changes without writing configuration:
 
-The hybrid split relies on **tmux session-level environment variables**:
+```bash
+moai migrate cg
+```
 
-1. `moai cg` calls `tmux set-environment` to inject GLM env vars at the session level.
-2. The CURRENT pane (the leader) is NOT affected — it keeps the Claude backend.
-3. Only NEW panes inherit the session-level env vars.
-4. With `teammateMode: "tmux"` in `.claude/settings.local.json`, teammates spawn in new panes and inherit the GLM env.
-5. Result: leader = Claude API, teammates = z.ai GLM API.
+To explicitly remove automatic GLM teammate assignment:
 
-This is NOT headless mode — teammates run as full interactive Claude Code sessions in their own tmux panes (visible via `tmux list-panes`).
+```bash
+moai migrate cg --target claude-only --apply --accept-role-change
+```
 
-### LLM mode detection (`team_mode`)
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. The role change requires the user's explicit acceptance. It does not preserve the old Claude-leader/GLM-teammate split. Existing GLM model configuration, credential references, unknown fields, and comments are preserved; an exact private backup precedes the atomic update. Repeating the same target is unchanged; conflicting targets or ambiguous YAML fail without silently choosing a provider.
 
-Read `.moai/config/sections/llm.yaml` `team_mode` to detect the active execution flavor:
+The `claude-glm` target describes `claude` with `tmux/glm` teammate policy. Applying it and launching an already-saved hybrid policy both require verified native teammate routing, ownership, authentication, and lifetime support. That actual capability gate is currently closed. A user setting such as `verified: true` cannot bypass it. Do not advertise a successful mixed-provider replacement or infer cost savings from the retired CG implementation.
 
-| `team_mode` | Execution flavor | Leader | Teammates |
-|-------------|------------------|--------|-----------|
-| (empty) | Sub-agent | Current session | `Agent()` sub-agents (Claude) |
-| `cg` | CG Mode | Claude (this pane) | GLM (new tmux panes) |
-| `glm` | GLM-only | GLM | GLM |
-
-Detection steps: read `llm.yaml`; `cg` → activate CG mode (this section); `glm` → all-GLM mode; empty → sub-agent mode.
-
-> **Field disambiguation**: the `team_mode` field in `llm.yaml` (`cg` / `glm` / `""`) is SEPARATE from the `teammateMode` field in `.claude/settings.local.json` (`"tmux"` / `""` — tmux pane-display mode). Different location, different value set, different purpose (`internal/tmux/cg_detect.go` `IsCGMode` reads `team_mode == "cg"`).
-
-### Prerequisites
-
-1. Save the GLM API key once: `moai glm sk-your-glm-api-key` (or set `GLM_API_KEY`).
-2. Start a tmux session (required for CG mode): `tmux new -s moai`.
-3. Enable CG mode inside tmux: `moai cg`.
-4. Start Claude Code in the SAME pane: `claude` (starting it in a NEW pane would make the leader inherit GLM env).
-
-### tmux environment variables
-
-`moai cg` injects these into the tmux session (session-level, via `tmux set-environment` — not global):
-
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| `ANTHROPIC_AUTH_TOKEN` | GLM API key | z.ai authentication |
-| `ANTHROPIC_BASE_URL` | `https://api.z.ai/api/anthropic` | z.ai endpoint (the GLM-backed detection substring `api.z.ai`) |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `glm-5.3` | Opus model override |
-| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `glm-5.3` | Sonnet model override |
-| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `glm-5.3` | Haiku model override |
-| `ANTHROPIC_DEFAULT_FABLE_MODEL` | `glm-5.3` | Fable model override |
-
-### Error recovery
-
-| Failure | Recovery |
-|---------|----------|
-| Not in tmux | Error: "CG mode requires a tmux session" |
-| No API key | Error: "Run moai glm <api-key> first" |
-| Teammate spawn failure | Falls back to sub-agent mode |
-| tmux env injection failure | Fatal for CG mode (retry the tmux session) |
-| Quality gate failure | Leader creates a fix task or requests manual intervention |
-
-### Cleanup
-
-`moai cc` exits CG mode: removes GLM env from `settings.local.json`, unsets the tmux session GLM env vars, resets `team_mode` to empty in `llm.yaml`, and restores standard Claude-only operation.
+Native Claude Code Agent Teams remain a separately allowed experimental surface under their own constraints. Their availability does not verify mixed-provider teammate routing. Independent audit and contract review remain required; the former CG leader-inline exception does not apply.
 
 ---
 
@@ -167,11 +125,11 @@ Each tool-name argument registers the correct server: `vision` → `zai-mcp-serv
 
 ## Anti-Patterns
 
-- **AP-GWT-001 — Built-in WebSearch under GLM**: Calling `WebSearch` in a `moai glm` session or a `moai cg` GLM teammate pane. Routes through the 529-prone gateway. Use `mcp__web_search_prime__webSearchPrime`.
+- **AP-GWT-001 — Built-in WebSearch under GLM**: Calling `WebSearch` in a `moai glm` session. Routes through the 529-prone gateway. Use `mcp__web_search_prime__webSearchPrime`.
 - **AP-GWT-002 — Built-in WebFetch under GLM**: Calling `WebFetch` under a GLM backend. Use `mcp__web_reader__webReader`.
 - **AP-GWT-003 — Read-on-image under GLM**: Calling `Read` on an image file under a GLM backend. Triggers the base64→422 path. Use a `mcp__zai-mcp-server__*` vision tool with a local file path.
 - **AP-GWT-004 — Base64 image input**: Pasting an image / passing base64 to a vision tool instead of a local file path. The MCP expects a path.
-- **AP-GWT-005 — Applying the GLM prohibition to the cg leader pane**: Forcing the MCP tools on the `moai cg` leader pane, which runs the Claude backend and may use the built-in tools.
+- **AP-GWT-005 — Applying the GLM prohibition to a Claude-backed session**: Forcing GLM-specific MCP tools based only on legacy CG configuration. Determine the actual backend; legacy CG launch is blocked.
 - **AP-GWT-006 — Skipping ToolSearch preload**: Invoking a deferred z.ai MCP tool without a `ToolSearch(query: "select:...")` preload (unless the server entry has `alwaysLoad: true`).
 
 ---

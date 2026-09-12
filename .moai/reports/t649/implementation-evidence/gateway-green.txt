@@ -1,0 +1,6 @@
+ok  	github.com/modu-ai/moai-adk/internal/gateway	7.034s	coverage: 91.8% of statements
+ok  	github.com/modu-ai/moai-adk/internal/gateway/auth	3.459s	coverage: 88.1% of statements
+ok  	github.com/modu-ai/moai-adk/internal/gateway/conversation	0.746s	coverage: 75.5% of statements
+ok  	github.com/modu-ai/moai-adk/internal/gateway/opaque	1.580s	coverage: 95.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/gateway/receipt	2.454s	coverage: 88.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	2.373s	coverage: 91.4% of statements

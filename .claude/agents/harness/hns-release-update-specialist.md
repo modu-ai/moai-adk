@@ -3,7 +3,7 @@ name: hns-release-update-specialist
 description: >
   (dev-only) release-update harness specialist — Claude Code upstream change tracker for moai-adk-go maintainers. NOT distributed to user projects. Tracks new CC release notes since last analyzed version, classifies upstream changes by impact tier (Tier 1/2/3), cross-references official docs, generates update plan or umbrella SPEC directory, synchronizes docs-site 4-locale + README, and opens a PR via manager-git. Ported with structural fidelity from .claude/agents/local/release-update-specialist.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 
-tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep
+tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep, mcp__web_reader__webReader, mcp__web_search_prime__webSearchPrime
 effort: high
 model: opus
 ---
@@ -82,10 +82,12 @@ requesting the orchestrator to ask the user to paste `/release-notes` output
 **Option B — Cache file**: check `~/.claude/RELEASE_NOTES.md` or
 `~/.claude/release-notes.txt`; read directly if present and recent (mtime within 7 days).
 
-**Option C — WebFetch fallback**:
-- Primary (verified 2026-05-15): `https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md` via WebFetch — full changelog verbatim.
-- Secondary: `https://platform.claude.com/docs/en/release-notes/claude-code` via WebFetch.
-- Last resort: WebSearch `"Claude Code release notes" 2026 anthropics/claude-code`.
+**Option C — web fallback** (backend-routed exactly as Phase 3: under GLM substitute
+`mcp__web_reader__webReader` for WebFetch and `mcp__web_search_prime__webSearchPrime` for
+WebSearch — the built-ins are PROHIBITED there):
+- Primary (verified 2026-05-15): `https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md` — full changelog verbatim.
+- Secondary: `https://platform.claude.com/docs/en/release-notes/claude-code`.
+- Last resort: web search for `"Claude Code release notes" 2026 anthropics/claude-code`.
 
 [HARD] Subagent boundary: this specialist MUST NOT prompt the user directly
 (return a blocker report; the orchestrator owns the user-interaction channel). Return a
@@ -105,6 +107,14 @@ If no entries: emit "No new versions since vX.Y.Z" and stop.
 
 Output a structured Markdown table (Version | Category | Tier | Summary | Impact on moai-adk-go) plus `total_items`, `tier1_count`, `tier2_count`, `tier3_count`.
 
+> **Shell discipline when counting.** Derive each count with a plain, separate command — one
+> `grep -c` or one `awk` invocation per quantity. Do NOT assemble a compound `for` loop or a
+> runtime-generated `sed`/`awk` program to produce several counts at once: a sweep running inside
+> a worktree has that refused by the worktree guard ("too complex to verify that it stays inside
+> the worktree"), costing a refused-call retry every time. Observed on Claude Code 2.1.263,
+> 2.1.257, and 2.1.267 — the guard did not relax. Detail:
+> `.claude/rules/moai/workflow/worktree-integration.md` § Refused Commands in a Worktree-Isolated Session.
+
 > **Runner integration**: when the orchestrator wants the per-version impact
 > tables produced in parallel (read-only), it launches the Runner's research
 > sweep with `args.versionDeltas`. The Runner returns the aggregated impact
@@ -113,9 +123,20 @@ Output a structured Markdown table (Version | Category | Tier | Summary | Impact
 
 ### Phase 3 — Cross-Reference Official Docs
 
-[HARD] Execute ALL WebFetch calls in parallel (CLAUDE.md §1):
+[HARD] Execute ALL doc-fetch calls in parallel (CLAUDE.md §1). Which tool performs the fetch depends on the session backend:
+
+| Backend | Fetch tool |
+|---------|-----------|
+| Claude (`moai cc`, and the `moai cg` leader pane) | `WebFetch` |
+| GLM (`moai glm`, and `moai cg` GLM teammate panes) | `mcp__web_reader__webReader` — preload with `ToolSearch(query: "select:mcp__web_reader__webReader")` |
+
+Under a GLM backend the built-in `WebFetch` is PROHIBITED: it routes through the 529-prone
+z.ai gateway. SSOT: `.claude/rules/moai/core/glm-web-tooling.md` § HARD Routing Table
+(named anti-pattern AP-GWT-002).
+
+The URL set is identical on either backend:
 ```
-Parallel WebFetch (single message):
+Parallel fetch (single message):
   - https://docs.anthropic.com/en/docs/claude-code/hooks
   - https://docs.anthropic.com/en/docs/claude-code/sub-agents
   - https://docs.anthropic.com/en/docs/claude-code/skills
@@ -123,7 +144,7 @@ Parallel WebFetch (single message):
   - https://docs.anthropic.com/en/docs/claude-code/mcp
   - https://docs.anthropic.com/en/docs/claude-code/settings
 ```
-For each Tier 1/2 item: annotate with `doc_url` and `stable_signature`. WebFetch failure → note "doc unavailable at fetch time"; do not block.
+For each Tier 1/2 item: annotate with `doc_url` and `stable_signature`. A fetch failure on either backend → note "doc unavailable at fetch time"; do not block.
 
 ### Phase 4 — Generate Update Plan
 

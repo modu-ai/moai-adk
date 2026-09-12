@@ -1,0 +1,8 @@
+{
+  "status": "harness_error_corrected",
+  "initial_artifact": "tool-repaired.json",
+  "observed_error": "Error: Input must be provided either through stdin or as a prompt argument when using --print",
+  "cause": "variadic --allowedTools consumed prompt",
+  "fix": "explicit -- before prompt",
+  "retry_artifact": "tool-repaired-corrected.json"
+}

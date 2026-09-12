@@ -99,12 +99,28 @@ detect_languages() {
     has_suffix() {
         find "$root" -maxdepth 3 -type f -name "$1" -print -quit 2>/dev/null | grep -q .
     }
+    # Kotlin sources sit under the conventional Gradle layout
+    # (src/main/kotlin/<package>/…), deeper than has_suffix's shared bound, so
+    # they need a probe of their own. Without one the Kotlin branch rests
+    # entirely on the build script's wording, and a version-catalog script
+    # (`alias(libs.plugins.jvm)`) names no Kotlin token at all: the project then
+    # falls through to Java, the Java code-delta pattern misses every .kt file,
+    # and the gate exits silently without even a log line (card t604).
+    # Only *.kt counts — *.kts is the build DSL, and a Java Gradle project's
+    # build.gradle.kts must keep resolving to Java. Heavy directories are pruned
+    # instead of capping the depth, so package nesting and multi-module layouts
+    # are covered without guessing a bound.
+    has_kotlin_source() {
+        find "$root" \
+            \( -name .git -o -name build -o -name target -o -name node_modules \) -prune \
+            -o -type f -name '*.kt' -print -quit 2>/dev/null | grep -q .
+    }
 
     if [ -f "$root/go.mod" ] || has_suffix '*.go'; then add_language go; fi
     if [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ] || has_suffix '*.py'; then add_language python; fi
     if [ -f "$root/package.json" ] || has_suffix '*.js' || has_suffix '*.ts' || has_suffix '*.jsx' || has_suffix '*.tsx'; then add_language node; fi
     if [ -f "$root/Cargo.toml" ] || has_suffix '*.rs'; then add_language rust; fi
-    if { [ -f "$root/build.gradle.kts" ] && grep -Eiq 'kotlin\(|org\.jetbrains\.kotlin|kotlin-dsl' "$root/build.gradle.kts"; } || has_suffix '*.kt'; then
+    if { [ -f "$root/build.gradle.kts" ] && grep -Eiq 'kotlin\(|org\.jetbrains\.kotlin|kotlin-dsl|libs\.plugins\.kotlin' "$root/build.gradle.kts"; } || has_kotlin_source; then
         add_language kotlin
     elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ] || has_suffix '*.java'; then
         add_language java
@@ -141,7 +157,7 @@ code_delta_pattern() {
         node)     echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
         rust)     echo '\.rs$' ;;
         java)     echo '\.java$' ;;
-        kotlin)   echo '\.kt|\.kts$' ;;
+        kotlin)   echo '\.(kt|kts)$' ;;
         csharp)   echo '\.cs$' ;;
         ruby)     echo '\.rb$' ;;
         php)      echo '\.php$' ;;
@@ -571,7 +587,28 @@ case "$GATE_LANG" in
         ;;
     cpp)
         C1_LABEL="g++ syntax check"
-        run_step g++ c1 sh -c 'find . -name "*.cpp" -o -name "*.cc" -exec g++ -fsyntax-only -std=c++17 {} \; 2>&1' || true
+        # Three details here are load-bearing:
+        #   \( ... \)  groups the extension conditions so the shared -exec applies to
+        #              EVERY match. Ungrouped, `-name "*.cpp" -o -name "*.cc" -exec`
+        #              parses as `*.cpp -o ( *.cc -a -exec )`: a .cpp file satisfies
+        #              the first branch, short-circuits the -o, and never reaches the
+        #              compiler — and since the expression carries an action, find
+        #              adds no default -print either, so the check passes in silence.
+        #   {} +       propagates the compiler's exit status to find's own. The `\;`
+        #              form does NOT: find exits 0 even when every invocation failed,
+        #              so a real syntax error was recorded as c1=0 (a pass).
+        #   -print     records WHICH files were handed to the compiler, so a passing
+        #              run is distinguishable from one that checked nothing. Empty
+        #              output therefore means zero targets, reported as such below
+        #              rather than as a successful check.
+        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
+        # reads them — so the zero-target case is promoted to the audit log here. Without
+        # it, "checked nothing" and "checked everything and it passed" are both a silent
+        # c1=0, which is exactly how the original defect stayed invisible.
+        if grep -q '^0 C++ files checked' "$GATE_TMPDIR/c1.log" 2>/dev/null; then
+            log_gate_event "cpp_targets=0 (no *.cpp/*.cc compiled — not a passing check)"
+        fi
         ;;
     scala)
         C1_LABEL="scalac"
