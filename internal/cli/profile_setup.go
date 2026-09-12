@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/huh"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
@@ -121,9 +120,8 @@ func normalizeModelLegacy1M(m string) string {
 // console but the wizard has never offered one (it defaults to acceptEdits and
 // normalizes that back to "" on save).
 //
-// The list is version neutral ({Label, Value}, design.md §3): the v2 profile
-// wizard takes it as wizard.Option arguments, and the v1 form below converts
-// it with huhV1Options until the v2 absorption retires that form.
+// The list is version neutral ({Label, Value}, design.md §3): the absorbed v2
+// profile wizard takes it as wizard.Option arguments.
 //
 // @MX:NOTE: [AUTO] Single derivation site for every wizard select backed by the shared schema.
 func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []wizard.Option {
@@ -138,16 +136,6 @@ func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []wiz
 		opts = append(opts, wizard.Option{Label: optionLabelFor(t, d), Value: d.Value})
 	}
 	return opts
-}
-
-// huhV1Options converts a version-neutral option list to the huh v1 option
-// type the current profile form renders.
-func huhV1Options(opts []wizard.Option) []huh.Option[string] {
-	out := make([]huh.Option[string], 0, len(opts))
-	for _, o := range opts {
-		out = append(out, huh.NewOption(o.Label, o.Value))
-	}
-	return out
 }
 
 // readCurrentProjectConfig reads the current development_mode + git_convention

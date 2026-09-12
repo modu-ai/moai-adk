@@ -128,20 +128,6 @@ func TestProfileOptions_Labels(t *testing.T) {
 	}
 }
 
-// TestHuhV1Options_PreservesLabelAndValue — the v1 adapter keeps each
-// option's label and value in order.
-func TestHuhV1Options_PreservesLabelAndValue(t *testing.T) {
-	in := schemaSelectOptions(getProfileText("ko"), "model", true)
-	if len(in) < 2 {
-		t.Fatalf("schemaSelectOptions(model) returned %d options", len(in))
-	}
-	out := huhV1Options(in)
-	if len(out) != len(in) {
-		t.Fatalf("adapter returned %d options, want %d", len(out), len(in))
-	}
-	for i := range in {
-		if out[i].Key != in[i].Label || out[i].Value != in[i].Value {
-			t.Errorf("option %d = {%q, %q}, want {%q, %q}", i, out[i].Key, out[i].Value, in[i].Label, in[i].Value)
-		}
-	}
-}
+// TestHuhV1Options_PreservesLabelAndValue was removed with huhV1Options in
+// M6 (AC-ITI-004): the v1 adapter retired when huh_theme.go went away and the
+// absorbed v2 form became the only profile renderer.
