@@ -80,9 +80,37 @@ $ golangci-lint run ./internal/hook/...
 
 기존 테스트 `TestGarbageCollectStaleTeams_AlsoRemovesTaskDir` 의 셋업을 한 군데 고쳤다: "stale" 시나리오인데 짝 작업 디렉터리를 방금 만든 상태로 두고 있었다 — 그 모양이 정확히 이 결함이 삭제하던 대상이라, 작업 디렉터리도 같은 과거 시각으로 맞췄다. **단정문은 건드리지 않았다.**
 
+### E5 — 패키지 전체 수트 (귀속 포함)
+
+```
+$ go test ./internal/hook/ -count=1 2>&1 | grep -E '^(---|FAIL|ok)'
+--- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.62s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	277.881s
+```
+
+패키지는 붉다. 실패는 정확히 1건이고, 이 변경에 귀속되지 않는다 — 근거는 두 가지다.
+
+**(a) 도달 불가 (이 트리에서 직접 측정)**
+
+```
+$ grep -rn "garbageCollectStaleTeams\|newestActivity" internal/hook/ | grep -v "_test.go"
+internal/hook/session_end.go:86:	garbageCollectStaleTeams(homeDir)
+internal/hook/session_end.go:445:func newestActivity(root string) (time.Time, error)
+internal/hook/session_end.go:487:func garbageCollectStaleTeams(homeDir string)
+internal/hook/session_end.go:513,526:	newestActivity(...)
+```
+
+변경한 코드의 프로덕션 호출 지점은 `session_end.go:86` — `sessionEndHandler.Handle` 안, SessionEnd 이벤트 하나뿐이다. 실패한 테스트는 `session_start_parallel_test.go:41` 로 SessionStart 핸들러의 지연 drift 스캔을 검증하며, `driftCountFn` / `sessionStartDriftTimeout` 심(seam)과 2초 타이머·30초 타임박스에 의존하는 시간 민감 테스트다. 이 커밋이 건드린 파일은 `session_end.go` 와 그 테스트 2본뿐이고(`git show --stat HEAD`), session_start 계열 파일은 한 줄도 건드리지 않았다.
+
+**(b) 동료 세션 관측 (직접 측정 아님 — 인용으로 명시)**
+
+리드 경유로 전달된 관측: lane-4 가 같은 패키지 전체에서 실패가 이 테스트 1건뿐이라고 보고했고, lane-7 등이 기준 트리에서도 같은 테스트가 실패함을 각각 실측했다. **이 세션은 기준 트리 대조를 직접 수행하지 않았다** — (a) 가 이 세션이 직접 잰 근거이고, (b) 는 보강일 뿐이다.
+
 ## Gaps (관측하지 않은 것)
 
-- `internal/hook` 패키지 **전체** 수트: 다른 레인들이 같은 패키지를 동시에 돌려 경합이 걸린 상태라 이 세션에서 완주 결과를 관측하지 못했다. 관측한 것은 위 29건의 대상 선택 실행뿐이다. 전 패키지 판정은 CI 몫이다 (CLAUDE.local.md §4).
+- **기준 트리 `eabce7444` 에서 `TestSessionStart_DeferredScanDoesNotBlockReturn` 이 실패하는지 이 세션은 직접 재지 않았다.** 위 (b) 는 다른 세션의 관측을 인용한 것이다. 이 세션이 직접 잰 귀속 근거는 (a) 도달 불가뿐이다.
+- 그 테스트 자체의 원인(부하 중 시간 민감 테스트의 불안정인지 진짜 결함인지)은 이 카드의 범위 밖이고 판정하지 않았다.
 - 실제 `~/.claude/teams` · `~/.claude/tasks` 에서의 동작은 관측하지 않았다. 재현·검증 전부 `t.TempDir()` 임시 홈에서 수행했고 실제 경로는 읽기만 했다(현재 `~/.claude/teams` 는 비어 있음).
 - 다른 OS(linux/windows)에서의 동작은 관측하지 않았다. `chmod 000` 봉인 테스트는 root 실행 시 skip 하도록 했다.
 
