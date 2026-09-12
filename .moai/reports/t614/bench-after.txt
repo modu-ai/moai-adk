@@ -1,0 +1,18 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/modu-ai/moai-adk/internal/spec
+cpu: Apple M4 Max
+BenchmarkParseAcceptanceCriteria-16       	    3278	    380530 ns/op	  112174 B/op	    1168 allocs/op
+BenchmarkParseAcceptanceCriteria-16       	    3351	    357155 ns/op	  112015 B/op	    1168 allocs/op
+BenchmarkParseAcceptanceCriteria-16       	    3405	    354613 ns/op	  112067 B/op	    1168 allocs/op
+BenchmarkParseAcceptanceCriteria-16       	    3402	    362643 ns/op	  111872 B/op	    1168 allocs/op
+BenchmarkParseAcceptanceCriteria-16       	    3326	    367668 ns/op	  112123 B/op	    1168 allocs/op
+BenchmarkParseAcceptanceCriteria-16       	    3115	    372922 ns/op	  112103 B/op	    1168 allocs/op
+BenchmarkExtractRequirementMappings-16    	  656023	      1690 ns/op	     805 B/op	      11 allocs/op
+BenchmarkExtractRequirementMappings-16    	  705980	      1776 ns/op	     806 B/op	      11 allocs/op
+BenchmarkExtractRequirementMappings-16    	  671184	      1724 ns/op	     806 B/op	      11 allocs/op
+BenchmarkExtractRequirementMappings-16    	  724050	      1798 ns/op	     805 B/op	      11 allocs/op
+BenchmarkExtractRequirementMappings-16    	  706801	      1737 ns/op	     805 B/op	      11 allocs/op
+BenchmarkExtractRequirementMappings-16    	  712148	      1982 ns/op	     805 B/op	      11 allocs/op
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	16.199s

@@ -5,9 +5,7 @@ import (
 )
 
 // TestPage3QuestionsStructure verifies each page-3 Question entry has the
-// required fields, in the REQ-WIZ-005 order. The page-3 questions are
-// unconditional; claude_design_enabled (nested on design_enabled) is the only
-// one that still carries a Condition.
+// required fields, in order. Every page-3 question is unconditional.
 func TestPage3QuestionsStructure(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
@@ -23,22 +21,10 @@ func TestPage3QuestionsStructure(t *testing.T) {
 	}
 
 	want := []entry{
-		{"project_mode", QuestionTypeSelect, true, false},
-		{"worktree_auto_create", QuestionTypeConfirm, false, false},
-		{"todo_enabled", QuestionTypeConfirm, false, false},
-		{"feedback_auto_submit", QuestionTypeConfirm, false, false},
-		// SPEC-PROJECT-CONTINUATION-KEY-001: the /moai project completion
-		// selector, immediately before the audit block and ungated.
-		{"project_continuation", QuestionTypeSelect, true, false},
-		{"audit_model", QuestionTypeSelect, true, false},
-		{"audit_gate_claude", QuestionTypeSelect, true, false},
-		{"audit_gate_codex", QuestionTypeSelect, true, false},
-		{"audit_gate_glm", QuestionTypeSelect, true, false},
-		{"codex_audit_enabled", QuestionTypeConfirm, false, false},
-		// SPEC-INIT-HARNESS-PROMPT-001: the harness selector, immediately
-		// before mcp_provision (spec.md §4 D3) and ungated (plan.md §B B1).
+		// SPEC-INIT-QUIET-WIZARD-001: page 3 keeps only the harness selector
+		// ("Quality & Workflow") and the autonomy tier ("Autonomy"); both are
+		// ungated.
 		{"agent_wiring", QuestionTypeSelect, true, false},
-		{"mcp_provision", QuestionTypeConfirm, false, false},
 		{"autonomy_tier", QuestionTypeSelect, true, false},
 	}
 
@@ -77,8 +63,8 @@ func TestPage3VisibleWithoutBridge(t *testing.T) {
 	quick := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
 	visible := FilteredQuestions(all, quick)
 
-	if QuestionByID(visible, "project_mode") == nil {
-		t.Error(`page-3 question "project_mode" must be visible with no bridge answered`)
+	if QuestionByID(visible, "agent_wiring") == nil {
+		t.Error(`page-3 question "agent_wiring" must be visible with no bridge answered`)
 	}
 }
 
@@ -94,8 +80,8 @@ func TestPage3Questions_Ungated(t *testing.T) {
 	questions := Page3Questions(tmpDir)
 
 	visible := FilteredQuestions(questions, &WizardResult{DesignEnabled: true})
-	if QuestionByID(visible, "project_mode") == nil {
-		t.Error(`page-3 question "project_mode" must be visible`)
+	if QuestionByID(visible, "agent_wiring") == nil {
+		t.Error(`page-3 question "agent_wiring" must be visible`)
 	}
 
 	// Structural half: nothing on page 3 is gated.
@@ -116,44 +102,6 @@ func TestPage3Questions_NoConditional(t *testing.T) {
 		if q.Condition != nil {
 			t.Errorf("page-3 question %q carries a Condition — page 3 must have no conditional questions", q.ID)
 		}
-	}
-}
-
-// TestProjectModeQuestion verifies project_mode has exactly 2 options (personal/team).
-func TestProjectModeQuestion(t *testing.T) {
-	t.Parallel()
-	tmpDir := t.TempDir()
-	questions := Page3Questions(tmpDir)
-
-	q := QuestionByID(questions, "project_mode")
-	if q == nil {
-		t.Fatal("project_mode question not found")
-	}
-	if len(q.Options) != 2 {
-		t.Errorf("project_mode has %d options, want 2", len(q.Options))
-	}
-	// Verify values
-	values := make([]string, len(q.Options))
-	for i, o := range q.Options {
-		values[i] = o.Value
-	}
-	if values[0] != "personal" || values[1] != "team" {
-		t.Errorf("project_mode option values = %v, want [personal, team]", values)
-	}
-}
-
-// TestSaveAnswerPhase1 verifies saveAnswer stores the page-3 string field.
-// harness_profile is deliberately absent — its capture branch was removed with
-// the question (REQ-WIZ-012); the absence is asserted in
-// TestRemovedQuestionsHaveNoCaptureBranch.
-func TestSaveAnswerPhase1(t *testing.T) {
-	t.Parallel()
-	locale := ""
-	result := &WizardResult{}
-
-	saveAnswer("project_mode", "team", result, &locale)
-	if result.ProjectMode != "team" {
-		t.Errorf("ProjectMode = %q, want 'team'", result.ProjectMode)
 	}
 }
 
@@ -266,24 +214,21 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	all := InitQuestions(tmpDir)
 
 	// No mode is selected — page 3 no longer needs one.
-	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Quality & Workflow (12) + Autonomy (1) = 18.
-	// SPEC-INIT-HARNESS-PROMPT-001 added agent_wiring to Quality & Workflow.
-	// SPEC-PROJECT-CONTINUATION-KEY-001 added project_continuation (11 -> 12).
-	if got != 18 {
-		t.Errorf("TotalVisibleQuestions = %d, want 18 (3 Basic + 2 Model & Report + 12 Quality & Workflow + 1 Autonomy)", got)
+	// SPEC-INIT-QUIET-WIZARD-001: Basic (2) + Quality & Workflow (1) +
+	// Autonomy (1) = 4.
+	if got != 4 {
+		t.Errorf("TotalVisibleQuestions = %d, want 4 (2 Basic + 1 Quality & Workflow + 1 Autonomy)", got)
 	}
-	// Quality & Workflow page membership (M4 audit + worktree + Issue-3 confirm
-	// + the agent_wiring harness selector).
+	// Quality & Workflow page membership: the agent_wiring harness selector.
 	n := 0
 	for _, q := range FilteredQuestions(all, res) {
 		if q.Group == "Quality & Workflow" {
 			n++
 		}
 	}
-	if n != 12 {
-		t.Errorf("visible Quality & Workflow questions = %d, want 12", n)
+	if n != 1 {
+		t.Errorf("visible Quality & Workflow questions = %d, want 1", n)
 	}
 }

@@ -112,6 +112,20 @@ func (a *Acceptance) ValidateDepth() error {
 	return nil
 }
 
+// The 2-pass extraction patterns, compiled once at package init.
+// ExtractRequirementMappings runs once per acceptance line, so compiling them
+// inside the function re-paid regexp compilation on each call.
+// @MX:REASON: eliminates per-call regexp.MustCompile in the SPEC AC parsing hot path
+var (
+	// Pass 1: locate each `maps REQ-..., REQ-..., ...` section. The captured
+	// group covers a contiguous REQ list (optionally separated by commas and
+	// surrounding whitespace). Sections do not require enclosing parentheses
+	// because the legacy single-pass regex treated them as optional.
+	reqSectionPattern = regexp.MustCompile(`(?i)maps\s+(REQ-[A-Z0-9-]+(?:\s*,\s*REQ-[A-Z0-9-]+)*)`)
+	// Pass 2: enumerate every REQ-XXX identifier inside a located section.
+	reqEnumeratePattern = regexp.MustCompile(`REQ-([A-Z0-9-]+)`)
+)
+
 // ExtractRequirementMappings extracts (maps REQ-...) pattern from text.
 // Supports both single-REQ form `(maps REQ-X-001)` and comma-separated
 // multi-REQ form `(maps REQ-X-001, REQ-X-002, REQ-X-003)`. Both forms are
@@ -121,23 +135,15 @@ func (a *Acceptance) ValidateDepth() error {
 // silently dropped subsequent comma-listed REQs, causing false-positive
 // CoverageIncomplete findings on every multi-REQ mapping."
 func ExtractRequirementMappings(text string) []string {
-	// Pass 1: locate each `maps REQ-..., REQ-..., ...` section. The captured
-	// group covers a contiguous REQ list (optionally separated by commas and
-	// surrounding whitespace). Sections do not require enclosing parentheses
-	// because the legacy single-pass regex treated them as optional.
-	sectionPattern := regexp.MustCompile(`(?i)maps\s+(REQ-[A-Z0-9-]+(?:\s*,\s*REQ-[A-Z0-9-]+)*)`)
-	// Pass 2: enumerate every REQ-XXX identifier inside a located section.
-	reqPattern := regexp.MustCompile(`REQ-([A-Z0-9-]+)`)
-
 	var reqIDs []string
 	seen := make(map[string]bool)
 
-	sections := sectionPattern.FindAllStringSubmatch(text, -1)
+	sections := reqSectionPattern.FindAllStringSubmatch(text, -1)
 	for _, section := range sections {
 		if len(section) < 2 {
 			continue
 		}
-		reqMatches := reqPattern.FindAllStringSubmatch(section[1], -1)
+		reqMatches := reqEnumeratePattern.FindAllStringSubmatch(section[1], -1)
 		for _, match := range reqMatches {
 			if len(match) <= 1 {
 				continue

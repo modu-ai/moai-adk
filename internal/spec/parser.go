@@ -342,6 +342,19 @@ func autoWrapSingle(ac Acceptance) Acceptance {
 //	                              the requirement is what keeps prose bullets out.
 var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:\.[a-z]+)?)?)\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
 
+// The remaining fixed patterns parseSingleACLine applies to every acceptance
+// line. Compiling them inside the function re-paid regexp compilation per line,
+// which dominated the allocation profile of the SPEC audit path.
+// @MX:REASON: eliminates per-call regexp.MustCompile in the SPEC AC parsing hot path
+var (
+	// acReqRemoverPattern strips the `(maps REQ-...)` section once its IDs are extracted.
+	acReqRemoverPattern = regexp.MustCompile(`\(?\s*(?:maps|MAPS)\s+REQ-[A-Z0-9-]+\s*\)?`)
+	// The three EARS clause patterns.
+	acGivenPattern = regexp.MustCompile(`(?i)^Given\s+(.+?)(?:,\s*(?:When|then)|$)`)
+	acWhenPattern  = regexp.MustCompile(`(?i)^When\s+(.+?)(?:,\s*(?:Then|then)|$)`)
+	acThenPattern  = regexp.MustCompile(`(?i)^Then\s+(.+)`)
+)
+
 func parseSingleACLine(line string) *struct {
 	id     string
 	given  string
@@ -367,29 +380,25 @@ func parseSingleACLine(line string) *struct {
 	reqIDs := ExtractRequirementMappings(content)
 
 	// Remove REQ mapping part
-	reqRemover := regexp.MustCompile(`\(?\s*(?:maps|MAPS)\s+REQ-[A-Z0-9-]+\s*\)?`)
-	cleanContent := strings.TrimSpace(reqRemover.ReplaceAllString(content, ""))
+	cleanContent := strings.TrimSpace(acReqRemoverPattern.ReplaceAllString(content, ""))
 
 	// EARS pattern parsing: Given ... When ... Then ...
 	var given, when, then string
 
 	// Extract Given
-	givenRe := regexp.MustCompile(`(?i)^Given\s+(.+?)(?:,\s*(?:When|then)|$)`)
-	if match := givenRe.FindStringSubmatch(cleanContent); len(match) > 1 {
+	if match := acGivenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		given = "Given " + strings.TrimSpace(match[1])
 		cleanContent = strings.TrimSpace(cleanContent[len(match[0]):])
 	}
 
 	// Extract When
-	whenRe := regexp.MustCompile(`(?i)^When\s+(.+?)(?:,\s*(?:Then|then)|$)`)
-	if match := whenRe.FindStringSubmatch(cleanContent); len(match) > 1 {
+	if match := acWhenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		when = "When " + strings.TrimSpace(match[1])
 		cleanContent = strings.TrimSpace(cleanContent[len(match[0]):])
 	}
 
 	// Extract Then
-	thenRe := regexp.MustCompile(`(?i)^Then\s+(.+)`)
-	if match := thenRe.FindStringSubmatch(cleanContent); len(match) > 1 {
+	if match := acThenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		then = "Then " + strings.TrimSpace(match[1])
 	}
 
