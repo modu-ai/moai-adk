@@ -313,7 +313,12 @@ preserve_list_post_run_count: 0    # 통합 창 파일(integration_lock*.go, int
                                    # internal/hook/integration_lock_guard.go) 무변경 — AC-RSL-013
 l44_pre_commit_fetch: true         # 흡수 전 `git fetch origin develop`(2026-09-12T00:42Z)
 l44_post_push_fetch: n/a           # 이 카드는 push하지 않았다(리드 일괄 소관)
-new_warnings_or_lints_introduced: 0
+new_warnings_or_lints_introduced: 1   # 정정된 값. 이 줄은 원래 `0`이었고 그 값은 자기가 명시한
+                                      # baseline(HEAD 272521e45)에서 거짓이었다 — M5 `685fc3387`이
+                                      # 들여온 레드 1건(`TestShippedConfigKeysHaveReaders`)이 그 트리에
+                                      # 이미 있었다. 원래 0은 그 테스트를 선택하지 않는 `-run` 필터
+                                      # 아래에서 잰 값이다. 레드는 `714bf8a7e`에서 닫혔고, 그 뒤의
+                                      # 값은 0이다. 경위와 재측정 원문은 아래 「sync-audit 정정」 절
 cross_platform_build:
   darwin_arm64: pass               # `go build` 종료 코드 0 (M2·M4·M3에서 각각)
   windows_amd64: compile_only      # `GOOS=windows GOARCH=amd64 go build/vet` 종료 코드 0, 행동 관측 없음
@@ -413,6 +418,48 @@ m1_to_mN_commit_strategy: per-milestone   # 마일스톤마다 구현 커밋 + �
 
 - `internal/kanban/slot_lease.go`의 `ReadSlotLease`는 manager-docs 측정 기준 프로덕션 호출처가 **4개 함수에 걸쳐 5곳**이라 `@MX:ANCHOR` 기준(fan_in ≥ 3)을 넘는다. 그런데 이 파일은 이미 ANCHOR 3개를 달고 있고 `mx.yaml`의 `anchor_per_file` 상한이 3이다. 프로토콜은 자동 강등을 금지하므로 **적용하지 않고 기록만 한다** — 넷째 ANCHOR를 넣으려면 기존 셋 중 하나의 강등이 필요하고, 그 판단은 사람 몫이다.
 - `internal/cli/slot.go`에는 MX 태그가 없다. 태그를 넣으려면 컴파일 검사가 필요하고 지금의 슬롯 규칙이 그것을 금지한다.
+
+### 정정 — sync-audit F1·F2, 그리고 F3·F4 기록
+
+sync 감사(`.moai/reports/t607/sync-audit.md`, 커밋 `ece65109a`)가 79.5로 FAIL 판정하며 네 건을 지적했다. 아래는 그 네 건에 대한 처분이며, **원래 값을 조용히 덮지 않고 정정으로 남긴다**.
+
+#### F1 (차단) — 배포되는 `workflow.slot_lease` 키 둘이 분류되지 않았다
+
+M5(`685fc3387`)가 템플릿 `workflow.yaml`에 `slot_lease.enabled`와 `slot_lease.default_max_duration`을 실었는데, `internal/config/testdata/shipped_key_inventory.yaml`에 등재하지 않아 `TestShippedConfigKeysHaveReaders`가 그때부터 레드였다. 수리는 `714bf8a7e` — 목록에 두 항목을 넣었을 뿐 테스트를 약화하지 않았다. 삽입은 `workflow.project.continuation` 뒤 6줄이다.
+
+```yaml
+    - path: "workflow.slot_lease.default_max_duration"
+      class: W
+      evidence: reader
+    - path: "workflow.slot_lease.enabled"
+      class: W
+      evidence: reader
+```
+
+**지시와 다르게 넣은 곳이 하나 있다 — class.** 리드 지시는 "class **R**, 실제 리더가 있으므로"였으나, 이 목록 자신의 범례는 `R`을 리더가 없는 키(`'none' = R/D`)에 배정하고 리더가 있는 키를 `W=wire`로 둔다. 두 키에는 Go 프로덕션 리더가 있으므로(`LoadSlotLeaseDefaultMaxDuration`, `SlotLeaseConfig`) 범례를 따라 `W` / `evidence: reader`로 넣었다. 테스트는 `path` 멤버십만 검사하고 class 토큰은 검증하지 않으므로 어느 쪽이든 그린이지만, 문서로서 옳은 값은 `W`다. 리드가 `R`을 고수하면 한 줄 수정이다.
+
+#### F2 (차단) — run 신호의 `new_warnings_or_lints_introduced`
+
+위 §E.3 YAML의 그 줄은 원래 `0`이었고, 그 값은 **자기가 명시한 baseline(HEAD `272521e45`)에서 거짓**이었다. 그 트리에는 M5가 들여온 레드 1건이 이미 있었다. 원래 `0`은 `-run` 필터를 건 측정에서 나온 값이고, **그 필터가 실패하는 테스트를 선택하지 않았다** — 공허한 초록이다. 정정값은 `1`이며, `714bf8a7e` 이후의 값은 0이다.
+
+재측정은 **필터 없이 패키지 전체**로 했다(원문: `.moai/reports/t607/f1/`).
+
+| 명령 (전부 `-run` 필터 없음) | 종료 코드 | 관측 출력 |
+|---|---|---|
+| `go test ./internal/config/ -count=1` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/config	2.294s` |
+| `go test ./internal/kanban/ -count=1` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/kanban	163.808s` |
+| `go test ./internal/hook/ -count=1` | 0 | `ok  	github.com/modu-ai/moai-adk/internal/hook	181.435s` |
+| `go test ./internal/template/... -count=1` | 0 | `ok … internal/template 29.601s`, `ok … agentemit 0.736s`, `ok … commandemit 0.331s`, `? … scripts [no test files]` |
+
+측정 트리는 `714bf8a7e`이고, `internal/cli`는 다른 레인이 슬롯을 쥐고 있어 건드리지 않았다 — 실행 전에 `go list -test -deps ./internal/config/ | grep -c 'moai-adk/internal/cli$'` → `0`을 확인했다.
+
+#### F3 (기록만) — §E.3이 sync 종결 뒤에 쓰였다
+
+§E.3 본문은 `170988694`에서 작성됐고, 그 시점에 `11fa72743`이 이미 `status: completed`를 세운 뒤였다. 스키마의 SHA 자리표시자 backfill 면제는 **SHA 필드에만** 적용되므로 이 작성은 그 면제 밖이다. **영구 이탈로 기록한다 — 이력을 다시 쓰지 않는다.**
+
+#### F4 (기록만) — `acceptance.md:263`의 n-held 뮤턴트 기작이 틀렸다
+
+acceptance.md는 보유자 항(`n-held`)을 무효화하면 `allow-expired`로 새어 나간다고 예측하지만, 실제 관측은 **보유자가 빈 `guard-deny`**다. `Expired()`가 `!Held()`일 때 false를 돌려주기 때문에 만료 가지로 가지 않는다. 뮤턴트가 자기 행에서 실패한다는 사실(AC-RSL-011의 요구)은 그대로 성립하고, 틀린 것은 예측된 기작뿐이다. **acceptance.md는 고치지 않는다** — 여기에만 정정을 남긴다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
