@@ -521,7 +521,20 @@ residual_risk:
 
 sync 감사(`.moai/reports/t607/sync-audit.md`, 커밋 `ece65109a`)의 F2는 §E.3과 CHANGELOG를 함께 겨눴다. §E.3 쪽 처분은 manager-develop이 위 「정정」 절에 적었고, 여기에는 **CHANGELOG와 이 §E.4가 같은 모양으로 틀렸던 곳**만 적는다. 원래 문장을 지우지 않고 무엇이 틀렸는지 함께 남긴다.
 
-**무엇이 틀렸나.** 이 §E.4의 `ac_remeasured_here` 여덟 줄은 전부 `-run` 필터를 건 측정이다. 각 줄이 겨눈 AC에 대해서는 여전히 유효한 초록이지만, **패키지가 초록이라는 뜻은 아니다** — 그리고 `internal/config`는 실제로 레드였다. M5(`685fc3387`)가 템플릿에 실은 `workflow.slot_lease.enabled` / `.default_max_duration` 두 키가 `shipped_key_inventory.yaml`에 없어 `TestShippedConfigKeysHaveReaders`가 실패하고 있었고, 내 필터는 그 테스트를 선택하지 않았다. 필터 아래의 초록을 패키지 판정으로 읽을 수 있다고 전제한 것이 결함이다.
+**무엇이 틀렸나.** 이 §E.4의 `ac_remeasured_here` 항목 중 `-run` 필터를 건 테스트 실행은 **5건**이고, 그 5건의 초록은 각자 겨눈 AC에 대해서만 유효하며 **패키지가 초록이라는 뜻은 아니다** — 그리고 `internal/config`는 실제로 레드였다.
+
+> **정정 — 이 문단의 계수(sync-audit iter2 F8).** 이 자리에 원래 적혀 있던 문장은 「`ac_remeasured_here` **여덟 줄**은 **전부** `-run` 필터를 건 측정이다」였다. 두 수 모두 틀렸고, **세어 보지 않고 단언한 수**라는 점에서 F2가 닫으려던 것과 같은 결함이다(필터가 무엇을 골랐는지 세지 않고 초록을 읽은 것 → 항목이 몇 개인지 세지 않고 성격을 단언한 것).
+>
+> 감사자의 수를 그대로 받지 않고 이 파일에서 직접 다시 셌다(센 범위: `ac_remeasured_here` 키 줄 다음 줄부터 `ac_read_from_evidence_only` 블록 끝까지 — 이 문서의 해당 두 블록 전체). 결과는 감사자의 14 / 9 / 5와 **일치한다**:
+>
+> | 센 것 | 수 | 내역 |
+> |---|---|---|
+> | 두 블록의 총 항목 | 14 | `ac_remeasured_here` 9 + `ac_read_from_evidence_only` 5 |
+> | 이 단계에서 직접 측정한 항목 | 9 | `ac_remeasured_here` 전부 |
+> | 그중 `-run` 필터를 건 테스트 실행 | 5 | kanban 슬롯 / hook 가드 / config / IntegrationLock(kanban+hook) / template |
+> | 그중 테스트 실행이 아닌 것 | 4 | AC-013(c) `git merge-base`+`git diff` / AC-014(a)-(f) `grep`+`cmp` / AC-015 `grep` / `spec lint` |
+>
+> 원래 문장의 오류 방향은 보수적이다 — 필터 아래의 초록을 실제보다 **넓게** 의심했을 뿐이므로 없는 초록을 만들어내지 않는다. 그래도 고치는 이유는 수 자체가 근거 없이 적혔기 때문이다. M5(`685fc3387`)가 템플릿에 실은 `workflow.slot_lease.enabled` / `.default_max_duration` 두 키가 `shipped_key_inventory.yaml`에 없어 `TestShippedConfigKeysHaveReaders`가 실패하고 있었고, 내 필터는 그 테스트를 선택하지 않았다. 필터 아래의 초록을 패키지 판정으로 읽을 수 있다고 전제한 것이 결함이다.
 
 **CHANGELOG 문장.** 원래 문구는 “16 acceptance criteria (AC-RSL-001..016), **all PASS**”였다. 그 일괄 주장은 위 레드 때문에 작성 시점에 거짓이었다. 현재 문구는 일괄 통과를 주장하지 않는다 — 기준 수(16)는 유지하되 각 기준이 자기 증거에 걸려 있다고 말하고, **패키지 판정은 필터 없이 잰 것만** 트리(`714bf8a7e`)와 함께 나열하며, `internal/cli`는 그 목록에 없고 판정이 없다고 명시한다.
 
