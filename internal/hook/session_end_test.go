@@ -821,6 +821,12 @@ func TestGarbageCollectStaleTeams_AlsoRemovesTaskDir(t *testing.T) {
 	if err := os.MkdirAll(staleTaskDir, 0o755); err != nil {
 		t.Fatalf("failed to create stale task directory: %v", err)
 	}
+	// The task list must be stale too. A task directory written moments ago is
+	// evidence the team is still working, and the collector now keeps such a
+	// team — so leaving this fresh would describe a live team, not a stale one.
+	if err := os.Chtimes(staleTaskDir, staleTime, staleTime); err != nil {
+		t.Fatalf("failed to set stale task time: %v", err)
+	}
 
 	// Create fresh team/task directories
 	freshTeamDir := filepath.Join(teamsDir, "fresh-team")
