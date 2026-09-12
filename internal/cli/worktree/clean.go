@@ -57,17 +57,22 @@ func runClean(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--stale and --merged-only are mutually exclusive")
 	}
 
+	// REQ-WR-013: the reporting path removes nothing, so --json IS the command
+	// whenever it is given. It used to be read inside the --stale branch
+	// alone: `clean --json` fell through to the default prune and printed a
+	// "Cleaned stale worktree references" banner where an inventory was
+	// promised, and `--merged-only --json` removed merged worktrees while
+	// printing human text (#1704). An inventory that mutates on a flag
+	// combination is not an inventory, so the report also overrides --yes
+	// rather than combining with it.
+	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
+		base, _ := cmd.Flags().GetString("base")
+		return reportStaleWorktrees(cmd, base)
+	}
+
 	if stale {
 		base, _ := cmd.Flags().GetString("base")
 		apply, _ := cmd.Flags().GetBool("yes")
-		asJSON, _ := cmd.Flags().GetBool("json")
-		if asJSON {
-			// REQ-WR-013: the reporting path removes nothing. --json is a
-			// report, so it overrides --yes rather than combining with it —
-			// an inventory that could delete on a stray flag is not an
-			// inventory.
-			return reportStaleWorktrees(cmd, base)
-		}
 		return cleanStaleWorktrees(cmd, base, apply)
 	}
 
@@ -367,10 +372,13 @@ func isBaseBranch(branch, base string) bool {
 // removes nothing (REQ-WR-013). It covers EVERY non-protected registered
 // worktree — worktree-ness is a checkout property, not a branch-name one — so
 // the report reaches trees no branch-name glob would find.
+//
+// It does not prune. A prune drops administrative entries rather than
+// checkouts, but it is still a mutation, and this path is the one the help
+// calls inert (#1704). A worktree whose directory is already gone is reported
+// with undetermined state and a keep_reason naming what could not be read,
+// which tells the operator more than removing the entry silently did.
 func reportStaleWorktrees(cmd *cobra.Command, base string) error {
-	if err := WorktreeProvider.Prune(); err != nil {
-		return fmt.Errorf("prune worktrees: %w", err)
-	}
 	worktrees, err := WorktreeProvider.List()
 	if err != nil {
 		return fmt.Errorf("list worktrees: %w", err)
