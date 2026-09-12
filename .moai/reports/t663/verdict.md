@@ -100,7 +100,7 @@ exit=1
 
 | 항목 | 사유 |
 |---|---|
-| GNU gcc 툴체인에서의 헤더 반응 | 이 머신 `g++` 은 Apple clang 이다. 헤더 오탐 결론은 clang 관측이며, 리눅스 CI 의 GNU gcc 에서 같은지는 미측정 |
+| GNU gcc 툴체인에서의 헤더 반응 | 이 머신 `g++` 은 Apple clang 이다. 헤더 오탐 결론은 clang 관측이며, 리눅스 CI 의 GNU gcc 에서 같은지는 미측정. **이 측정은 별도 카드가 아니라 배치 push 후 CI 가 수행한다**(리드 판정 2026-09-12): `.github/workflows/ci.yml` 의 `test` 잡이 `ubuntu-latest`(`matrix.os`)에서 `go test ./...` 를 돌리고, 위 실행형 테스트 2본은 거기서 실제 GNU gcc 로 게이트를 돌린다. **단 skip 을 통과로 읽지 않는다** — `cppGateRequire` 는 `g++` 가 PATH 에 없으면 `t.Skip` 하므로, 러너에 g++ 이 없으면 초록이되 아무것도 재지 않은 것이다. CI 판독 시 이 두 테스트가 `--- SKIP` 이 아니라 실제로 실행됐는지 확인해야 이 Gap 이 닫힌다. |
 | `.hxx` / `.h` 확장자의 게이트 경유 동작 | 스캔에 넣지 않기로 했으므로 게이트를 통과하는 경로 자체가 없다. 도달성 대조(단독 g++)만 측정 |
 | `internal/cli` 전량 | 이 카드는 셸 훅과 템플릿 미러만 건드린다. 영향 패키지는 `internal/template` |
 | `GOOS=windows` 빌드 | 미실행. 게이트는 POSIX 셸 스크립트이고 테스트도 windows 를 skip 한다. 판정은 CI 몫 |
