@@ -118,6 +118,52 @@ Total `--- FAIL` lines: 1.
     session_start_parallel_test.go:97: Handle blocked 584.413667ms waiting for advisory scan; expected deferred (non-blocking) return
 ```
 
+### E7 — resumed-session same-load A/B (2026-09-12 18:37–18:42)
+
+The lead's 18:06 handoff WITHDREW the pre-existing-red attribution this verdict originally
+relied on: the three lanes' "confirmed develop red" observations of
+`TestSessionStart_DeferredScanDoesNotBlockReturn` were all taken under high load, lane-4
+measured red at load 14.30 and green at 14.08 (load is not monotonic), and the failure
+message is a 500ms budget overrun, not a deferral failure. That withdrawal removes ground 1
+of the attribution below. This section replaces the reasoning with same-load observation.
+
+All six measurements were taken in the resumed run, in this worktree, load 19.4–26.4
+throughout (one load window), each an env-scrubbed single invocation:
+
+| # | Tree | Selector set | Result |
+|---|------|--------------|--------|
+| 1 | HEAD 9233d3213 | 4 new tests + WriteFallback + SessionStart (-v) | 4 new PASS; SessionStart FAIL 572.99ms |
+| 2 | HEAD 9233d3213 | SessionStart only | PASS (ok 1.099s) |
+| 3 | HEAD 9233d3213 | same 5-selector battery | SessionStart FAIL 0.52s (exit 1) |
+| 4 | base eabce7444 | SessionStart only | PASS 0.44s (exit 0) |
+| 5 | base eabce7444 | WriteFallback + SessionStart (base-equivalent battery) | PASS 0.976s (exit 0) |
+| 6 | HEAD 9233d3213 | WriteFallback + SessionStart (base-equivalent battery) | PASS 1.005s (exit 0) |
+
+Rows 4–5 were measured with `internal/hook/pre_tool.go` and
+`internal/hook/pre_tool_security_test.go` checked out at `eabce7444`; restoration after
+each was verified by `git status --porcelain -- internal/hook/` printing nothing.
+
+Reading:
+
+- **The source change is not the trigger.** With the base-equivalent selector set the
+  changed tree passes (row 6) exactly as base does (row 5); with a single selector both
+  pass (rows 2, 4). The E6 attribution to a product-code regression does not survive.
+- **The trigger correlates with the added tests' composition, not their assertions.**
+  Every `TestCheckFileAccess_*` is `t.Parallel()`; the SessionStart test is sequential. Go
+  runs each parallel test's synchronous setup (t.TempDir + symlink creation) before the
+  sequential test, so the 3 added tests queue extra filesystem-setup work immediately
+  ahead of the 500ms budget measurement. Including them: 3/3 runs FAIL (rows 1, 3 and the
+  E6 full-package run). Excluding them: 4/4 PASS (rows 2, 5, 6).
+- This is consistent with lane-4's finding and does not contradict it: the flake exists
+  without t596 (red at load 14.30); the added parallel setups lower the failure threshold
+  under load (base passed at 0.44s; the failures landed at 0.52–0.58s against a 500ms
+  budget).
+
+Attribution status after E7: the E6 package-level FAIL is **not** attributed to the t596
+source change (rows 5→6). It is facilitated by the card's added parallel-test setups under
+high load — a test-composition effect on an already-marginal 500ms budget assertion, whose
+discrimination and repair belong to t662.
+
 ## Baseline-attribution
 
 Every measurement above was taken in this run, in the worktree
@@ -126,19 +172,22 @@ with the working-tree edits to `internal/hook/pre_tool.go` and
 `internal/hook/pre_tool_security_test.go` described in E3/E4. The RED measurement (E1)
 was taken on that same tree with the test file added and `pre_tool.go` unmodified.
 
-The one package failure is attributed as pre-existing on develop, on three grounds:
-its name matches the pre-existing red the lead named as independently confirmed by three
-lanes; its assertion is a wall-clock timing bound (584ms against a non-blocking
-expectation) measured on a machine whose load average was 26-31 throughout; and the
-change under test touches only `checkFileAccess` in the PreToolUse path, which the
-SessionStart deferred-scan handler does not call. This attribution rests on those three
-grounds and NOT on an independent re-measurement at the unmodified base commit — see Gaps.
+The one package failure was originally attributed as pre-existing on develop, on three
+grounds. **Ground 1 (name match with the lead-confirmed pre-existing red) is WITHDRAWN** —
+the lead's 18:06 handoff retracted that confirmation as a high-load artifact. Ground 3
+(no call path from the SessionStart deferred-scan handler to `checkFileAccess`) remains a
+reasoned argument. The attribution now rests on E7's direct same-load A/B (rows 5→6),
+which observes the failure absent with the base-equivalent selector set on the changed
+tree; E7 supersedes the withdrawn ground wherever the two disagree.
 
 ## Gaps
 
-- The pre-existing status of `TestSessionStart_DeferredScanDoesNotBlockReturn` was NOT
-  re-measured on a clean checkout of `eabce7444` in this run. It is reasoned, not observed
-  here.
+- The base tree was measured single-selector and 2-selector only (E7 rows 4–5). Base under
+  the full added-test storm is structurally unmeasurable — the 3 added tests do not exist
+  at base — so the composition effect's size at base cannot be quantified.
+- All E7 measurements share one load window (19.4–26.4) on one machine. The
+  load-independence of the composition effect is not established; t662 owns the
+  discrimination.
 - Cross-platform behavior is unobserved. `resolveThroughExistingParent` uses only
   `filepath` and `EvalSymlinks`, but Windows path semantics (drive roots, UNC paths) were
   not exercised. CI's windows matrix is the measuring instrument.
@@ -162,3 +211,8 @@ grounds and NOT on an independent re-measurement at the unmodified base commit �
 - The walk in `resolveThroughExistingParent` terminates at the filesystem root by
   `filepath.Dir` fixpoint. A path with an unusually deep non-existent tail costs one
   `EvalSymlinks` per level; unbounded in principle, bounded in practice by path length.
+- CI note for the integrator: the develop push's full-suite run may show
+  `internal/hook` red on `TestSessionStart_DeferredScanDoesNotBlockReturn` (E6, E7). Per
+  E7 that would be the known DeferredScan budget flake (t662) marginally facilitated by
+  this card's added parallel-test setups — not a regression in the source change. CI's
+  load profile differs from this machine's, so the failure may simply not occur there.
