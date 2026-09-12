@@ -169,6 +169,21 @@ a completion report. A disagreement between the two axes is itself the finding:
 registry-present with disk-absent is a dangling entry, and disk-present with
 registry-absent is a tree git no longer manages.
 
+## Disposition of the by-products (lead ruling, 2026-09-12)
+
+- Claim 4 filed as **modu-ai/moai-adk#1704**; body kept verbatim at
+  `issue-clean-json.md`.
+- Claim 7 filed as **modu-ai/moai-adk#1705**; body kept verbatim at
+  `issue-autocleanup-comment.md`.
+- Claims 5 and 6 (the sweeps' dirty guard cannot see unmerged commits) are a
+  separate card, **t673**, deliberately kept out of both issues.
+- Experiment trees `t567-a`, `t567-c`, `t567-d`, `t567-target` disposed here by
+  `git worktree remove` (exit 0 each, absence confirmed on disk). Their branches
+  were NOT deleted — `git worktree remove` leaves them, and nothing asked for
+  their removal. **`t567-b` is preserved to batch close**: it is the subject
+  left with no `ExitWorktree` on purpose, and whether it survives this session's
+  end is the one datum a single in-session run cannot otherwise produce.
+
 ## Next candidates (the card asks that they be named, not that they be chased)
 
 1. The Claude Code runtime's automatic cleanup of an unchanged
