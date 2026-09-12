@@ -329,3 +329,35 @@ _<pending sync-phase>_
 Work the run phase deliberately did not do, because doing it would have crossed an ownership boundary. Each line names the artifact, the edit, and why it waits.
 
 - **`research.md` §14 — correct the derivation command to `[Aa]pplyAutonomyTierBundle(Fn)?\(`.** t656 (`b5b5883e9`) put the call behind the test seam `applyAutonomyTierBundleFn`, so the recorded pattern's capital-`A` literal no longer matches it and the step-1 output dropped from 11 lines to 10. The producer and the watch list are unchanged — the call still stands at `internal/cli/init.go:873` and still writes the same `~/.claude/settings.json` — so W1-W6 and AC-ITI-019 need no revision. What is stale is the command, and only the command. Left to sync because run may not edit plan artifacts' body content. Without this line the next re-derivation drops the producer silently, which is the whole reason it is written down. Control pair and measurement: `.moai/reports/t586/absorb-t583/slot/c-recheck.md` § research.md §14.
+
+## AC-ITI-003 — pty 사례 착지 (수리 전 RED)
+
+`internal/cli/ptycap_child_test.go` 에 init 첫 화면 사례를 더했다. 자식 사례 `init-first-screen` 은
+`TestPtyCaptureChild` 의 switch 에 case 하나로 들어가고(`ptycaptest.ChildTestName` 이 패키지당 함수
+하나만 지목하므로 두 번째 자식 함수를 만들지 않는다), 실제 명령 경로를 cobra 순서 그대로
+(`validateInitFlags(initCmd, nil)` → `runInit(initCmd, nil)`) 돈다. 부모 테스트는
+`TestPtyCapture_InitFirstScreen` 이다.
+
+판정 순서는 §B P6 대로다. 기준 문자열 `Select conversation language` 가 뜬 화면을 잡고 →
+실효 환경 관측(`VerifyChildEnv`) → 반출 → 기준 문자열 줄과 옵션 줄 4개를 **먼저** 단정 →
+그 뒤에야 `No profile found` 부재와 `confirmButtonPairs` 버튼 줄 부재를 본다 → `Ctrl+C` →
+`Initialization cancelled.` 대기 → 세션 집합 비교. 실제 HOME 감시 비교는 `t.Cleanup` 이다.
+단계 표시 줄은 이 AC 에서 판정하지 않는다(`spec.md` §D, D4).
+
+**판정: FAIL(수리 전 RED).** REQ-ITI-001 이 `runInit` 의 프로필 확인창을 지우기 전까지(plan.md M4)
+확인창이 화면을 잡고 있어 첫 기준 문자열이 기한 안에 나타나지 않는다. 이 RED 는 AC 가 겨누는
+결함 그 자체를 찍었다 — 마지막 캡처에 `No profile found. Set up profile preferences now?` 와
+`Yes     No` 버튼 줄이 함께 있다. 증거 `.moai/reports/t586/ac003-init-first-screen-red.txt`.
+
+**도달성(공허한 초록 아님).** 부재 단정이 "코드가 아예 안 돌아서" 통과하는 것이 아님을 M4 뮤턴트로
+보였다. `init.go` 의 프로필 블록 조건을 `false` 로 만든 트리에서 같은 테스트가 PASS 하고, 캡처에
+기준 문자열·옵션 줄 4개·`Initialization cancelled.` 가 모두 있다. 뮤턴트는 되돌렸다(`git status`
+에서 `internal/cli/init.go` 는 미수정). 증거
+`.moai/reports/t586/ac003-init-first-screen-m4mutant-green{,-cancelled,-log}.txt`.
+그 캡처에는 `● ○ ○ ○ 1 / 4` 스테퍼 줄이 80×30 에서 보인다 — D4 관측 기록일 뿐 이 AC 의 판정 근거가
+아니다.
+
+**테스트 수 결합.** 새 `TestPtyCapture_*` 하나가 늘어 `AssertSkipWithoutGate` 최소치 5→6,
+`AssertFailWithoutTmux` 최소치 4→5 로 같은 커밋에서 고쳤다. 선택자 수 대조:
+`-list '^TestPtyCapture'` 6개 ↔ 게이트 실행 결과 6개(SKIP 1 · PASS 3 · FAIL 2).
+FAIL 2 는 이 사례와 M7 대기 중인 `TestPtyCapture_DowngradeConfirmButtonAlignment` 다.

@@ -34,6 +34,18 @@ const (
 	// for, so isVersionDowngrade holds and the confirmation renders.
 	ptycapDowngradeCurrent = "v9.9.9"
 	ptycapDowngradeTarget  = "v1.0.0"
+
+	// ptycapCaseInitFirstScreen runs the real `moai init` command path
+	// (validateInitFlags + runInit on the package-level initCmd, no flag set)
+	// in the case working directory on the TTY.
+	ptycapCaseInitFirstScreen = "init-first-screen"
+
+	// ptycapInitLangAnchor is the title of the first init wizard question
+	// (wizard.InitQuestions). Reaching it proves the run passed the profile
+	// block of runInit and entered the wizard block.
+	ptycapInitLangAnchor = "Select conversation language"
+	// ptycapInitCancelAnchor is what runInit prints on wizard.ErrCancelled.
+	ptycapInitCancelAnchor = "Initialization cancelled."
 )
 
 // ptycapNoNetwork refuses every request: the child never reaches a server.
@@ -79,6 +91,19 @@ func TestPtyCaptureChild(t *testing.T) {
 		cmd.SetOut(os.Stdout)
 		err := runVersionBranch(cmd, ptycapDowngradeTarget)
 		t.Logf("runVersionBranch returned: %v", err)
+	case ptycapCaseInitFirstScreen:
+		// The real command path, in cobra's own order: initCmd is the
+		// package-level command with every init flag registered and none set,
+		// so this is plain `moai init` in the case working directory. No
+		// further network seam is reached before the wizard — the deferred
+		// update notice is already stubbed above, and everything runInit does
+		// in front of the wizard (git lookup, remote detection, profile read)
+		// is local.
+		if err := validateInitFlags(initCmd, nil); err != nil {
+			t.Fatalf("validateInitFlags: %v", err)
+		}
+		err := runInit(initCmd, nil)
+		t.Logf("runInit returned: %v", err)
 	default:
 		t.Fatalf("unknown child case %q", name)
 	}
@@ -234,16 +259,75 @@ func TestPtyCapture_DowngradeConfirmButtonAlignment(t *testing.T) {
 	}
 }
 
+// TestPtyCapture_InitFirstScreen — AC-ITI-003 on the real TTY: `moai init` in
+// a profile-less temp HOME and an empty working directory reaches the
+// conversation-language question with no profile confirmation in front of it,
+// and Ctrl+C ends the run with the cancel line.
+//
+// The absence assertions are not read alone: the anchor and the four option
+// lines are required first, so "No profile found" being absent means the run
+// passed the profile block (init.go runInit) and rendered the wizard, not that
+// neither ever ran.
+//
+// Red until REQ-ITI-001 removes the profile confirmation from runInit
+// (plan.md M4). Until then the confirm holds the screen and the first anchor
+// never appears within the deadline.
+func TestPtyCapture_InitFirstScreen(t *testing.T) {
+	ptycaptest.Gate(t)
+	bin := ptycaptest.BuildChild(t, ".")
+	c := ptycaptest.NewCase(t, "")
+	checkHome := ptycaptest.WatchRealHome(t, c.Dir)
+	t.Cleanup(checkHome)
+
+	sentinel := ptycaptest.OpenSentinel(t)
+	before := ptycaptest.ListSessions(t)
+	if !slices.Contains(before, sentinel) {
+		t.Fatalf("sentinel %s not listed before the run: %v", sentinel, before)
+	}
+
+	s := ptycaptest.Start(t, c, bin, ptycapCaseInitFirstScreen)
+	frame := s.WaitFor(ptycapInitLangAnchor, ptycaptest.AnchorTimeout)
+	ptycaptest.VerifyChildEnv(t, c)
+	ptycaptest.Export(t, "init-first-screen", frame)
+
+	// Positive existence first (acceptance.md §B P6): the anchor line and the
+	// four option lines of the conversation-language question.
+	ptycaptest.RequireLines(t, frame, ptycapInitLangAnchor,
+		"English", "Korean (한국어)", "Japanese (日本語)", "Chinese (中文)")
+
+	// Only then the absences.
+	if strings.Contains(frame, "No profile found") {
+		t.Errorf("the first screen still carries the profile confirmation; frame:\n%s", frame)
+	}
+	for i, l := range strings.Split(ptycaptest.StripANSI(frame), "\n") {
+		for _, p := range confirmButtonPairs {
+			if strings.Contains(l, p[0]) && strings.Contains(l, p[1]) {
+				t.Errorf("line %d %q is a %s / %s confirm button line", i, l, p[0], p[1])
+			}
+		}
+	}
+
+	s.SendKeys("C-c")
+	cancelled := s.WaitFor(ptycapInitCancelAnchor, ptycaptest.AnchorTimeout)
+	ptycaptest.Export(t, "init-first-screen-cancelled", cancelled)
+	s.Close()
+
+	after := ptycaptest.ListSessions(t)
+	if strings.Join(before, ",") != strings.Join(after, ",") {
+		t.Errorf("moai-ptycap- session set changed: before=%v after=%v", before, after)
+	}
+}
+
 // TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a) over this package's capture
 // tests (the child plus the TestPtyCapture_* set).
 func TestPtyCapture_SkipWithoutGate(t *testing.T) {
 	ptycaptest.Gate(t)
-	ptycaptest.AssertSkipWithoutGate(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture", 5)
+	ptycaptest.AssertSkipWithoutGate(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture", 6)
 }
 
 // TestPtyCapture_FailWithoutTmux — AC-ITI-019 (b) over this package's
 // TestPtyCapture_* tests.
 func TestPtyCapture_FailWithoutTmux(t *testing.T) {
 	ptycaptest.Gate(t)
-	ptycaptest.AssertFailWithoutTmux(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture_", 4)
+	ptycaptest.AssertFailWithoutTmux(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture_", 5)
 }
