@@ -182,7 +182,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeadSessionName(leadName)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -198,7 +198,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
 		defer exportKanbanLaunchFacts(entry.Spec, backend)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -220,7 +220,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			var leadName string
 			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 			defer exportLeadSessionName(leadName)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -233,7 +233,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, backend)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
