@@ -603,3 +603,80 @@ m6-wizard-remeasure.txt·m6-slot-release.txt.
 
 `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
 `golangci-lint run ./internal/cli/...` `0 issues.` · AC-ITI-010 의 9가드 셀렉터 PASS.
+
+## M7 — 레이아웃·도움말·그룹 (2026-09-12, `WT-init-tux-i18n`)
+
+기준선 HEAD `5403cdeb8`. 커밋: RED/가드 `b7b9d2ab6`, 수리 `5e716116b`(REQ-ITI-017),
+구현 `7b5d056ca`(REQ-ITI-012~016 + 문자열 통합), 마감(이 커밋). 모든 좌표는 내용으로
+재탐색했다(wizard.go:290 단순 연결, launcher.go는 M6에서 판정 완료).
+
+### REQ-ITI-014 — 확인 버튼 좌측 정렬 (AC-ITI-015 PASS)
+
+`buildConfirmField` 과 다운그레이드 헬퍼에 `WithButtonAlignment(lipgloss.Left)`.
+추가 측정: huh 기본 버튼 스타일의 좌측 패딩 2칸이 라벨을 설명 열(2)보다 4로 밀었으므로
+테마에서 `PaddingLeft(0)` 으로 덮어 라벨 열을 설명 열과 맞췄다. 두 표면(다운그레이드
+확인창, 위저드 확인형 픽스처) 모두 버튼 라벨 시작 열 == 설명 첫 글자 열. 골든
+`testdata/axis/confirm-alignment-downgrade.golden`. **게이트 켠 pty:
+`TestPtyCapture_DowngradeConfirmButtonAlignment` 이 GREEN 으로 전환 — 잔여 FAIL 0건.**
+
+### REQ-ITI-015 — 필드 구분자·선택 높이 (AC-ITI-016 PASS)
+
+테마 `FieldSeparator` 를 개행 1개로 축소(필드 사이 빈 줄 0), `NoteTitle` 마진 제거(콘텐츠
+영역 갭 프리), 선택 높이 산정 — huh v2 의 `Height(n)` 은 필드 총높이(제목+설명+옵션)라서
+옵션 수만 넣으면 옵션이 잘린다(측정: 언어 4옵션이 1개로 렌더). OptionsFunc 경로(init)는
+`selectHeight(q)` 로 제목 1+설명 줄 수+옵션 수를 계산하고, 비동적 경로(프로필)는 Height
+미호출로 huh 자체 정확 산정을 쓴다. 판정: init 첫 페이지·프로필 전 그룹의 콘텐츠 접두사에
+모든 필드 앵커가 연속 존재하고 빈 카드 행 0.
+
+### REQ-ITI-016 — 설명 열 정렬 (AC-ITI-017 PASS + 뮤턴트 2건 BITES)
+
+`wizard.go:290` 의 단순 연결을 `alignOptionLabels` 로 대체 — 라벨을 표시 폭(runewidth,
+전각 2칸)으로 재폭측정해 최대 폭(80 컷오프)까지 패딩한 뒤 설명을 붙인다. init·프로필
+conversation_language 옵션 4줄의 설명 시작 표시 열이 동일함을 판정. 뮤턴트 2건 — 룬 수
+패딩, 바이트 수 패딩 — 모두 이 검사가 FAIL 했다(m7-ac017-mutants.txt, BITES yes ×2).
+
+### REQ-ITI-012 — 키별 도움말 라벨 (AC-ITI-013 M7 몫 PASS)
+
+`buildUnifiedForm` 에 `WithKeyMap(localizedKeyMap(locale))` 을 걸어 init·reconfigure
+표면의 도움말 줄을 로케일화했다(프로필·다운그레이드는 기존 적용). 4표면 × 4로케일:
+위저드 패키지 12골든(help-surfaces/, ko·ja·zh 도움말 줄에 영어 동작 라벨 부재 단정) +
+프로필 표면 4골든은 cli 의 AC-ITI-008 몫과 NoEnglishLeak 이 판정. HelpSelect/HelpInput
+삭제는 M8 몫이라 손대지 않았다.
+
+### REQ-ITI-017 — 그룹 재구성 (AC-ITI-018/021/022 PASS + 독립성 뮤턴트 2건)
+
+`questions.go` 두 리터럴의 `Group` 을 `Agents & Autonomy` 로 — init 페이지 3→2, 분모 4
+불변. 영향 갱신: agent_wiring_question_test 단정, 패키지 주석, expansion/
+question_removal/restructure 테스트의 구조 단정, M5 AC-ITI-009 init 대조군.
+독립성 뮤턴트: (a) 그룹 분리 → 018 FAIL(3 groups)·021 PASS, (b) 무조건 질문 추가 → 021
+FAIL(분모 5)·018 PASS. 두 번째 그룹 회귀 골든(testdata/axis/init-regroup-second-group,
+끝이 3 / 4) 커밋 — 두 뮤턴트 모두에서 변하므로 어느 쪽 증거로도 세지 않는다.
+원문 m7-ac018-ac021-mutants.txt.
+
+### AC-ITI-022 판독 주의
+
+`.Group` 읽기 허용 범위는 design.md §9 측정 시점(읽는 줄이 buildFormGroups 2줄뿐) 이후
+M5 흡수로 buildProfileForm 의 묶기 비교·대입 2줄이 같은 성질로 추가됐다. 가드는 이 두
+분할 지점의 묶기 비교/대입만 허용한다(라벨 렌더 금지라는 성질은 센티널+번역 키 부재
+단정이 그대로 수행).
+
+### 문자열 통합
+
+`helpActionLabels`·`downgradeConfirmTexts`·`profileQuestionTexts` 를 translations.go 로
+이동(profile_translations.go 삭제, LocalizeProfileQuestion 은 profile_questions.go 로).
+이 이동이 만든 추적-작업트리 불일치 1건(삭제 미스테이지)을 TestVersionStampRegistry 의
+judged/handed 갭이 정확히 잡았다 — 레지스트리 설계대로의 동작이며 커밋으로 해소.
+
+### 슬롯 임대 중측정 (리드 프로토콜 준수)
+
+acquire(da011b34-…, 14:24:59Z까지) → wizard ok 3.8s·internal/cli ok 990.931s → release
+확인. 이전 600s 무-flarge 실행은 -timeout 누락 아티팩트였다. pty 스위트도 임대 창 안에서
+실행(ok 28.311s, 잔여 FAIL 0). 원문 m7-remeasure-slot-leased.txt(1차: 축 골든 스테일
+FAIL로 중단 — 골든 재생성 후 재실행)·m7-cli-remeasure.txt(3건 FAIL — 골든 2세트 스테일+
+레지스트리 갭, 모두 해소)·m7-pty-capture-suite.txt·m7-final-cli-suite.txt
+(ok 990.931s)·m7-slot-release2.txt.
+
+### 빌드·정적검사
+
+`go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
+`golangci-lint run ./internal/cli/...` `0 issues.`
