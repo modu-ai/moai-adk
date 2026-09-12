@@ -1,0 +1,67 @@
+{
+  "script": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t601/.moai/reports/t601/base/sync-phase-quality-gate.sh",
+  "P0_control_pass": {
+    "first": {
+      "exit": 0,
+      "stdout": "",
+      "checks_ran": true,
+      "record": "07b3cceaa5071c18456d06402c7b9c59659da608 pass"
+    },
+    "second": {
+      "exit": 0,
+      "stdout": "",
+      "checks_ran": false,
+      "record": "07b3cceaa5071c18456d06402c7b9c59659da608 pass"
+    }
+  },
+  "P1_fail_recall": {
+    "first": {
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+      "checks_ran": true,
+      "record": "3b3ccd7243e2ed08048e707915d7e0eb5b1a2578 fail"
+    },
+    "second": {
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+      "checks_ran": false,
+      "record": "3b3ccd7243e2ed08048e707915d7e0eb5b1a2578 fail"
+    },
+    "third": {
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+      "checks_ran": false,
+      "record": "3b3ccd7243e2ed08048e707915d7e0eb5b1a2578 fail"
+    },
+    "stdout_identical_1_2": true,
+    "stdout_identical_1_3": true
+  },
+  "P2a_interrupted_fresh": {
+    "exit": 0,
+    "stdout": "{\"systemMessage\":\"sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last.\"}",
+    "checks_ran": false,
+    "record": "9c8acc147a1ded6492cbdb03c505d145dc5a35bb running"
+  },
+  "P2b_interrupted_stale": {
+    "exit": 0,
+    "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+    "checks_ran": true,
+    "record": "e72c4c4a8de7bcc085bb22efdd79da485bd0c85e fail"
+  },
+  "P3_fixed_same_head": {
+    "failing": {
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+      "checks_ran": true,
+      "record": "572547531314103711038bd0f07d9968ea558035 fail"
+    },
+    "after_fix": {
+      "exit": 0,
+      "stdout": "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=7 go build=7 deps_modified=1). Detail: .moai/logs/sync-quality-gate.log\"}",
+      "checks_ran": false,
+      "record": "572547531314103711038bd0f07d9968ea558035 fail"
+    },
+    "head_unchanged": true,
+    "stale_block_redelivered": true
+  }
+}

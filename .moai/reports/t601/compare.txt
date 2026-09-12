@@ -1,0 +1,14 @@
+cell                                           pre-fix   post-fix  want(post)
+P0 control: 2nd call re-ran checks             False     False     False  OK
+P1 fail->recall: 2nd call re-ran checks        False     False     False  OK
+P1 fail->recall: stdout byte-identical         True      True      True  OK
+P2a interrupted fresh: re-ran checks           False     False     False  OK
+P2b interrupted stale: re-ran checks           True      True      True  OK
+P3 repaired tree: re-ran checks                False     True      True  OK
+P3 repaired tree: stale block re-delivered     True      False     False  OK
+P3 repaired tree: HEAD unchanged               True      True      True  OK
+
+P3 post-fix stdout: ''
+P3 post-fix record: b1fbb1459059ead3639aa7cea7bb22fa2040f9d0 pass 858cd981e004419237d543b424bf233276f3a6f2a8d3110998b5eead8fd8d6a8
+P1 post-fix record: 747980169f7bf0cba056d3674e5dfa80a404079c fail e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+P1 pre-fix  record: 3b3ccd7243e2ed08048e707915d7e0eb5b1a2578 fail
