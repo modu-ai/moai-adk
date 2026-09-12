@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/cli/ -run '^TestSlotCLI_' -count=1 -v -timeout 600s
+# exit: 1
+# tree: NOT an M1-window measurement. internal/cli was never compiled during M1 (the lead's heavy-test slot constraint). This file is a byte-identical copy of m3/m3-cli-red.txt (cmp -> exit 0) - see that file's header for its provenance.
+# note: filed under m1-red/ because it is the RED of the M1-authored cli tests; it was captured in the M3 window
+# ---
 === RUN   TestSlotCLI_AcquireJSONFields
     slot_test.go:107: no `moai slot` command registered on the root command
 --- FAIL: TestSlotCLI_AcquireJSONFields (0.00s)

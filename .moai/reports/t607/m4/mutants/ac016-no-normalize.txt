@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/hook/ -run '^TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary$' -count=1 -v
+# exit: 1
+# tree: dff5dee4a (M4 implementation commit), with one mutation applied by m4_mutants.py: root normalization removed (root, err := hookRoot, error(nil))
+# runner: .moai/reports/t607/m4/m4_mutants.py (cp backup -> substitute -> run -> cp restore -> filecmp); restored_cmp_equal=True per mutants/summary.tsv
+# ---
 === RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary
 === RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny
     slot_lease_guard_test.go:441: hook root in a linked worktree: decision = "", want deny — the guard read the worktree's empty state instead of the primary's record

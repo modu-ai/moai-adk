@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/kanban/ -run '^TestSlotLease_ControlGroupTwoSessions$' -count=1 -v
+# exit: 1
+# tree: c331bc589 with one mutation: withSlotLeaseMutation(projectRoot, req.Resource, decide) -> decide() (the critical section bypassed, one line)
+# note: observed lease: acquired=2 refused=0 busy=0 other=0
+# ---
 === RUN   TestSlotLease_ControlGroupTwoSessions
 === RUN   TestSlotLease_ControlGroupTwoSessions/probe_then_start
     slot_lease_cross_test.go:191: control: starts=2 (A: RESULT=started SESSION=lane-a | B: RESULT=started SESSION=lane-b)

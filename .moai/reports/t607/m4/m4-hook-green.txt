@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1 -v
+# exit: 0
+# tree: dff5dee4a (M4 implementation commit)
+# note: ok github.com/modu-ai/moai-adk/internal/hook 9.434s
+# ---
 === RUN   TestSlotLeaseGuard_DenyMatrix
 === RUN   TestSlotLeaseGuard_DenyMatrix/base
 === RUN   TestSlotLeaseGuard_DenyMatrix/n-enabled

@@ -1,1 +1,7 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/config/ -count=1
+# exit: 0
+# tree: 714bf8a7e (sync-audit F1 repair commit)
+# note: full package, no -run filter. Slot discipline checked first: go list -test -deps ./internal/config/ | grep -c 'moai-adk/internal/cli$' -> 0
+# ---
 ok  	github.com/modu-ai/moai-adk/internal/config	2.294s

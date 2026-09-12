@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/cli/ -run '^TestSlotCLI_' -count=1 -v -timeout 600s
+# exit: 1
+# tree: the M3 window's pre-implementation working tree (internal/cli/slot.go did not exist yet). The last commit before the M3 window was 2e743c0d6 and the run predates the M3 commit 10b022b59, but I did not record the exact tree at the moment of the run.
+# note: assertion-RED - all 7 fail with 'no `moai slot` command registered on the root command'
+# ---
 === RUN   TestSlotCLI_AcquireJSONFields
     slot_test.go:107: no `moai slot` command registered on the root command
 --- FAIL: TestSlotCLI_AcquireJSONFields (0.00s)

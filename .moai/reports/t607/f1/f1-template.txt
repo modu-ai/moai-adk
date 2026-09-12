@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/template/... -count=1
+# exit: 0
+# tree: 714bf8a7e (sync-audit F1 repair commit)
+# note: full packages, no -run filter
+# ---
 ok  	github.com/modu-ai/moai-adk/internal/template	29.601s
 ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.736s
 ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.331s

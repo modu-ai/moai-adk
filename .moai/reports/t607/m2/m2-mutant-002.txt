@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/kanban/ -run '^TestSlotLeaseBusy_IsNotHeld$' -count=1 -v
+# exit: 1
+# tree: c331bc589 with one mutation: the busy path wrapped in ErrSlotLeaseHeld
+# note: restored afterwards; git diff --exit-code -- internal/kanban/slot_lease.go -> exit 0
+# ---
 === RUN   TestSlotLeaseBusy_IsNotHeld
 === RUN   TestSlotLeaseBusy_IsNotHeld/acquire_busy
     slot_lease_test.go:315: acquire under a contended mutation lock: err = slot lease: resource held by another session (waited 1.65s): kanban board lock held, want the busy sentinel

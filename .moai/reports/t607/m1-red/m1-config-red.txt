@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/config/ -run '^(TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v
+# exit: 1
+# tree: the M1 working tree, committed as f20d07c48 - the run predates that commit, so no commit pins the exact bytes measured
+# note: assertion-RED
+# ---
 === RUN   TestDefaults_SlotLeaseDisabled
     workflow_slot_lease_test.go:43: Workflow.SlotLease.DefaultMaxDuration = "", want a duration string equal to 30m
 --- FAIL: TestDefaults_SlotLeaseDisabled (0.00s)

@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/cli/ -run '^TestSlotCLI_' -count=1 -v -timeout 600s
+# exit: 0
+# tree: 10b022b59 (M3 commit)
+# note: 11 --- PASS; measured inside the granted heavy-test slot
+# ---
 === RUN   TestSlotCLI_HeldAndBusyCarryDistinctExitCodes
 --- PASS: TestSlotCLI_HeldAndBusyCarryDistinctExitCodes (0.02s)
 === RUN   TestSlotCLI_StatusStatesAndList

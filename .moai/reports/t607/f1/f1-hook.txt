@@ -1,1 +1,7 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/hook/ -count=1
+# exit: 0
+# tree: 714bf8a7e (sync-audit F1 repair commit)
+# note: full package, no -run filter
+# ---
 ok  	github.com/modu-ai/moai-adk/internal/hook	181.435s

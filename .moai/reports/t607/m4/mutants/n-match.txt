@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/hook/ -run '^TestSlotLeaseGuard_DenyMatrix$' -count=1 -v
+# exit: 1
+# tree: dff5dee4a (M4 implementation commit), with one mutation applied by m4_mutants.py: pattern check deleted
+# runner: .moai/reports/t607/m4/m4_mutants.py (cp backup -> substitute -> run -> cp restore -> filecmp); restored_cmp_equal=True per mutants/summary.tsv
+# ---
 === RUN   TestSlotLeaseGuard_DenyMatrix
 === RUN   TestSlotLeaseGuard_DenyMatrix/base
 === RUN   TestSlotLeaseGuard_DenyMatrix/n-enabled

@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/template/ -run 'TestTemplateNeutralityAudit$|TestTemplateNoInternalContentLeak$|TestRuleProvenance|TestRuleTemplateMirror' -count=1 -v
+# exit: 0
+# tree: the M6 working tree, committed as e78fd0ee6 - the run predates that commit
+# note: five named tests --- PASS
+# ---
 === RUN   TestTemplateNoInternalContentLeak
 --- PASS: TestTemplateNoInternalContentLeak (0.55s)
 === RUN   TestRuleProvenanceAudit

@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/cli/ -run '^(TestSessionPIDStamp_|TestSlotCLI_|TestRootCmd_|TestIntegration)' -count=1 -v -timeout 600s
+# exit: 0
+# tree: 10b022b59 (M3 commit)
+# note: --- PASS 37, --- FAIL 0; measured inside the granted heavy-test slot
+# ---
 === RUN   TestIntegrationStatus_FreeWindow
 --- PASS: TestIntegrationStatus_FreeWindow (0.00s)
 === RUN   TestIntegration_AcquireStatusRelease

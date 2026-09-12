@@ -1,3 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak$|TestRuleProvenanceAudit$' -count=1 -v
+# exit: 1
+# tree: the M5 working tree (committed as 685fc3387) with one mutation: the line 'Origin: SPEC-RESOURCE-SLOT-LEASE-001 (card t607, 2026-09-12).' appended to the new rule file
+# note: restored from a scratch backup afterwards; cmp -> exit 0 against both the template file and its byte-identical local mirror
+# ---
 --- FAIL: TestTemplateNoInternalContentLeak (0.62s)
     internal_content_leak_test.go:1611: template internal-content leak detected (1 occurrences, mode=narrow):
     internal_content_leak_test.go:1621:   [1] templates/.claude/rules/moai/workflow/resource-slot-lease.md | class=C1-spec-id-prefix | match=SPEC-RESOURCE-SLOT-LEASE-001
