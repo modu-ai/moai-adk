@@ -1,0 +1,76 @@
+=== RUN   TestSettingsSnapshotPaths
+--- PASS: TestSettingsSnapshotPaths (0.00s)
+=== RUN   TestLoadSettingsSnapshot_Validity
+=== RUN   TestLoadSettingsSnapshot_Validity/object
+    settings_snapshot_test.go:117: LoadSettingsSnapshot ok = false, want true
+=== RUN   TestLoadSettingsSnapshot_Validity/absent
+=== RUN   TestLoadSettingsSnapshot_Validity/directory
+=== RUN   TestLoadSettingsSnapshot_Validity/invalid_json
+=== RUN   TestLoadSettingsSnapshot_Validity/array
+=== RUN   TestLoadSettingsSnapshot_Validity/null
+--- FAIL: TestLoadSettingsSnapshot_Validity (0.01s)
+    --- FAIL: TestLoadSettingsSnapshot_Validity/object (0.00s)
+    --- PASS: TestLoadSettingsSnapshot_Validity/absent (0.00s)
+    --- PASS: TestLoadSettingsSnapshot_Validity/directory (0.00s)
+    --- PASS: TestLoadSettingsSnapshot_Validity/invalid_json (0.00s)
+    --- PASS: TestLoadSettingsSnapshot_Validity/array (0.00s)
+    --- PASS: TestLoadSettingsSnapshot_Validity/null (0.00s)
+=== RUN   TestStageDeployedSettingsSnapshot_RecordsRenderWithoutTouchingCanonical
+    settings_snapshot_test.go:137: .moai/cache/template-snapshot/claude/settings.json.pending is absent, want {"a":2}
+--- FAIL: TestStageDeployedSettingsSnapshot_RecordsRenderWithoutTouchingCanonical (0.00s)
+=== RUN   TestStageDeployedSettingsSnapshot_StaleManifestHashRecordsNothing
+--- PASS: TestStageDeployedSettingsSnapshot_StaleManifestHashRecordsNothing (0.00s)
+=== RUN   TestInitSettingsSnapshot_SkippedDeployRecordsNothing
+=== RUN   TestInitSettingsSnapshot_SkippedDeployRecordsNothing/fresh_dir
+    settings_snapshot_test.go:199: .moai/cache/template-snapshot/claude/settings.json is absent, want {"a":2,"K":1}
+=== RUN   TestInitSettingsSnapshot_SkippedDeployRecordsNothing/untracked_existing
+=== RUN   TestInitSettingsSnapshot_SkippedDeployRecordsNothing/user_modified_existing
+--- FAIL: TestInitSettingsSnapshot_SkippedDeployRecordsNothing (0.00s)
+    --- FAIL: TestInitSettingsSnapshot_SkippedDeployRecordsNothing/fresh_dir (0.00s)
+    --- PASS: TestInitSettingsSnapshot_SkippedDeployRecordsNothing/untracked_existing (0.00s)
+    --- PASS: TestInitSettingsSnapshot_SkippedDeployRecordsNothing/user_modified_existing (0.00s)
+=== RUN   TestStageDeployedSettingsSnapshot_WriteFailureDoesNotBlock
+    settings_snapshot_test.go:223: "settings-snapshot-write-failed:" lines = 0, want 1:
+--- FAIL: TestStageDeployedSettingsSnapshot_WriteFailureDoesNotBlock (0.00s)
+=== RUN   TestSettleSettingsSnapshot
+=== RUN   TestSettleSettingsSnapshot/not_preserved_promotes
+    settings_snapshot_test.go:251: .moai/cache/template-snapshot/claude/settings.json = {"a":1}, want {"a":2}
+    settings_snapshot_test.go:252: .moai/cache/template-snapshot/claude/settings.json.pending exists, want absent
+=== RUN   TestSettleSettingsSnapshot/preserved_discards
+    settings_snapshot_test.go:260: .moai/cache/template-snapshot/claude/settings.json.pending exists, want absent
+=== RUN   TestSettleSettingsSnapshot/no_pending_is_noop
+--- FAIL: TestSettleSettingsSnapshot (0.01s)
+    --- FAIL: TestSettleSettingsSnapshot/not_preserved_promotes (0.00s)
+    --- FAIL: TestSettleSettingsSnapshot/preserved_discards (0.00s)
+    --- PASS: TestSettleSettingsSnapshot/no_pending_is_noop (0.01s)
+=== RUN   TestJudgeLeftoverSettingsSnapshot
+=== RUN   TestJudgeLeftoverSettingsSnapshot/live_equals_leftover_promotes
+    settings_snapshot_test.go:291: .moai/cache/template-snapshot/claude/settings.json = {"a":1}, want {"a":2}
+    settings_snapshot_test.go:292: .moai/cache/template-snapshot/claude/settings.json.pending exists, want absent
+=== RUN   TestJudgeLeftoverSettingsSnapshot/live_differs_discards
+    settings_snapshot_test.go:292: .moai/cache/template-snapshot/claude/settings.json.pending exists, want absent
+=== RUN   TestJudgeLeftoverSettingsSnapshot/live_absent_discards
+    settings_snapshot_test.go:292: .moai/cache/template-snapshot/claude/settings.json.pending exists, want absent
+=== RUN   TestJudgeLeftoverSettingsSnapshot/no_leftover_is_noop
+--- FAIL: TestJudgeLeftoverSettingsSnapshot (0.01s)
+    --- FAIL: TestJudgeLeftoverSettingsSnapshot/live_equals_leftover_promotes (0.00s)
+    --- FAIL: TestJudgeLeftoverSettingsSnapshot/live_differs_discards (0.00s)
+    --- FAIL: TestJudgeLeftoverSettingsSnapshot/live_absent_discards (0.00s)
+    --- PASS: TestJudgeLeftoverSettingsSnapshot/no_leftover_is_noop (0.00s)
+=== RUN   TestSettingsSnapshotPromoteFailureDoesNotBlock
+=== RUN   TestSettingsSnapshotPromoteFailureDoesNotBlock/settle_at_flow_end
+    settings_snapshot_test.go:328: "settings-snapshot-promote-failed:" lines = 0, want 1:
+=== RUN   TestSettingsSnapshotPromoteFailureDoesNotBlock/leftover_judgement
+    settings_snapshot_test.go:328: "settings-snapshot-promote-failed:" lines = 0, want 1:
+--- FAIL: TestSettingsSnapshotPromoteFailureDoesNotBlock (0.00s)
+    --- FAIL: TestSettingsSnapshotPromoteFailureDoesNotBlock/settle_at_flow_end (0.00s)
+    --- FAIL: TestSettingsSnapshotPromoteFailureDoesNotBlock/leftover_judgement (0.00s)
+=== RUN   TestSectionsSnapshot_UnaffectedBySettingsSubpath
+=== RUN   TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_A_same_sections_tree
+=== RUN   TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_B_settings_only_is_not_a_sections_snapshot
+--- PASS: TestSectionsSnapshot_UnaffectedBySettingsSubpath (0.03s)
+    --- PASS: TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_A_same_sections_tree (0.01s)
+    --- PASS: TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_B_settings_only_is_not_a_sections_snapshot (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	0.536s
+FAIL

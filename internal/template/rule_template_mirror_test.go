@@ -68,6 +68,11 @@ var workflowOptMirroredPaths = []string{
 	// the template mirror is held sanitized for neutral distribution. Byte-parity
 	// cannot hold; doctrine parity is enforced by TestSanitizedPairParity and
 	// mirror cleanliness by TestTemplateNoInternalContentLeak.
+	// resource-slot-lease.md — the slot-lease rule ships identically to both
+	// trees: it names no SPEC, card, date or SHA, so no sanitization is needed
+	// and byte-parity is the right invariant. Enrolled at creation so a future
+	// single-tree edit is caught at CI rather than after a release.
+	".claude/rules/moai/workflow/resource-slot-lease.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",

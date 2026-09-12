@@ -1,0 +1,72 @@
+[
+  {
+    "id": "M-F1-samefile",
+    "desc": "F1 identity branch removed: sameFile ignores the Stat results and falls straight to the filepath.Abs comparison (the pre-F1 behavior)",
+    "edits": [
+      ["internal/constitution/pipeline.go", "\tif errA == nil && errB == nil {\n\t\treturn os.SameFile(infoA, infoB)\n\t}\n", "\t_, _ = infoA, infoB\n"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-F1-samefile-f1.txt"
+  },
+  {
+    "id": "M-F1-fallback",
+    "desc": "F1 fallback dropped: when either path cannot be stat'ed sameFile returns false instead of comparing absolute paths; run only absent_log_fallback",
+    "edits": [
+      ["internal/constitution/pipeline.go", "\t\treturn os.SameFile(infoA, infoB)\n\t}\n", "\t\treturn os.SameFile(infoA, infoB)\n\t}\n\treturn false\n"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$/^absent_log_fallback$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-F1-fallback-f1.txt"
+  },
+  {
+    "id": "M-GA",
+    "desc": "G-A removed: Execute no longer rejects an empty After before the gates (re-run after the F1 sameFile change)",
+    "edits": [
+      ["internal/constitution/pipeline.go", "\tif proposal.After == \"\" {\n\t\treturn nil, fmt.Errorf(\"proposal for rule %s: After is empty\", proposal.RuleID)\n\t}\n", ""]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_EmptyAfter_Rejected$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GA-f1.txt"
+  },
+  {
+    "id": "M-GB",
+    "desc": "G-B removed: the rule-file-is-registry-or-log check never fires (re-run after the F1 sameFile change)",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if false {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-f1.txt"
+  },
+  {
+    "id": "M-GB-reg",
+    "desc": "G-B registry half dropped: only the evolution-log half remains; run only the registry subtests (re-run after F1)",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if sameFile(rulePath, evolutionLogPath) {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^registry$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-reg-f1.txt"
+  },
+  {
+    "id": "M-GB-log",
+    "desc": "G-B evolution-log half dropped: only the registry half remains; run only the evolution_log subtests (re-run after F1)",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if sameFile(rulePath, registryPath) {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^evolution_log$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-log-f1.txt"
+  },
+  {
+    "id": "M-GB-always",
+    "desc": "G-B over-broad: the check fires for every rule file; run only the distinct_control subtests (re-run after F1)",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if true {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^distinct_control$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-always-f1.txt"
+  }
+]

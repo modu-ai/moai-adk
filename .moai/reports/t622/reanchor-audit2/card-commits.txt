@@ -1,0 +1,24 @@
+33e0dac9c docs(SPEC-GIT-DELIVERY-PROCEDURE-001): repair re-anchor audit findings D1-D6 (t622, 0.2.6)
+f2fa64e08 docs(t622): limited plan-audit of SPEC re-anchor delta (FAIL 0.75)
+bca80d7c5 docs(SPEC-GIT-DELIVERY-PROCEDURE-001): re-anchor plan artifacts after develop absorb (t622, 0.2.5)
+b24f2e184 docs(t622): record re-absorb of develop f1f034bb4 and second mirror baseline
+1f3adf5ee docs(t622): re-measure scope citations and mirror baseline after develop absorb
+b25d1ba6e docs(SPEC-GIT-DELIVERY-PROCEDURE-001): record run-phase mode selection
+7f5a4420f docs(t622): lane reproduction of pre-kickoff fixes N2 and N3
+ccfe3005e feat(SPEC-GIT-DELIVERY-PROCEDURE-001): apply pre-kickoff fixes N1-N3
+06c243b49 docs(t622): reduced plan-audit iteration 3 verdict for SPEC-GIT-DELIVERY-PROCEDURE-001
+ba62ff218 docs(t622): lane reproduction of reduced audit iteration 2 detector fixes
+8cf5aaf06 feat(SPEC-GIT-DELIVERY-PROCEDURE-001): targeted detector fixes for reduced audit iteration 2
+0af445525 docs(t622): reduced plan-audit iteration 2 verdict for SPEC-GIT-DELIVERY-PROCEDURE-001
+3512b9f75 feat(SPEC-GIT-DELIVERY-PROCEDURE-001): complete revision 0.2.2 consumer scope
+ea09ca650 wip(t622): preserve partial 0.2.2 revision of SPEC-GIT-DELIVERY-PROCEDURE-001
+caa601d7c feat(SPEC-GIT-DELIVERY-PROCEDURE-001): define sync merge flag semantics
+eea2be13b docs(t622): reduced plan-audit iteration 1 verdict for SPEC-GIT-DELIVERY-PROCEDURE-001
+24e20ec50 feat(SPEC-GIT-DELIVERY-PROCEDURE-001): reduce to mechanical repairs after split
+87988e946 feat(SPEC-GIT-DELIVERY-PROCEDURE-001): apply operator decisions B1-B3
+880c0c702 feat(SPEC-GIT-DELIVERY-PROCEDURE-001): apply operator decisions and audit iteration 2 fixes
+fb05946db docs(t622): plan-audit iteration 2 verdict for SPEC-GIT-DELIVERY-PROCEDURE-001
+02aca7afe feat(SPEC-GIT-DELIVERY-PROCEDURE-001): revise plan artifacts for plan-audit iteration 1
+647460835 docs(t622): plan-audit iteration 1 verdict for SPEC-GIT-DELIVERY-PROCEDURE-001
+538684c47 feat(SPEC-GIT-DELIVERY-PROCEDURE-001): plan-phase artifacts (M, 3 artifacts)
+a52865a22 docs(t622): record develop reproduction of AC-01, AC-11 and SX-R04 before planning

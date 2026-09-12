@@ -1,0 +1,10 @@
+# mutant M-20-iii-spec: M-20 (iii), internal/spec half: the AC-CAA-025 preservation run
+# edits: [["internal/constitution/registry_path.go", "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n", ""], ["internal/constitution/registry_path.go", "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {", "\t\tif err := error(nil); err != nil {"], ["internal/constitution/loader.go", "\tcleanProjectDir := filepath.Clean(projectDir)\n", "\tcleanProjectDir := filepath.Clean(projectDir)\n\tif err := checkContained(projectDir, path); err != nil {\n\t\treturn nil, err\n\t}\n"], ["internal/constitution/loader.go", "\t\treg.lookup[rule.ID] = len(reg.Entries)", "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, rule.File)); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\treg.lookup[rule.ID] = len(reg.Entries)"]]
+# $ go test ./internal/spec/ -run ^TestLinter_AC08_DanglingRuleReference$ -count=1 -v
+# exit=1
+=== RUN   TestLinter_AC08_DanglingRuleReference
+    lint_test.go:231: expected DanglingRuleReference finding, got: [{testdata/dangling-rule/spec.md 1 info OwnershipTransitionUnmeasured SPEC SPEC-V3R2-TST-006 transition "(none)" → "draft" expected owner "manager-spec" but commit 03146d1ae33fa3374133e27d39b6b133c014e893 (feat(spec): SPEC-V3R2-SPC-003 — moai spec lint CLI (Wave 5) (#745)) has no Authored-By-Agent trailer — ownership transition unmeasured false}]
+--- FAIL: TestLinter_AC08_DanglingRuleReference (0.50s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.862s
+FAIL

@@ -1,6 +1,6 @@
 # MoAI-ADK Integration Module
 
-Purpose: Detailed integration patterns for moai-worktree with MoAI-ADK Plan-Run-Sync workflow including plan phase automation, DDD integration, and cleanup workflows.
+Purpose: Detailed integration patterns for the moai-workflow-worktree skill with MoAI-ADK Plan-Run-Sync workflow including plan phase automation, DDD integration, and cleanup workflows.
 
 Version: 1.0.0
 
@@ -107,14 +107,9 @@ Sync Workflow:
 5. Update registry with sync timestamp
 6. Continue with documentation sync
 
-Conflict Resolution Options:
-- auto-resolve: Automatically resolve simple conflicts using configured strategy
-- interactive: Prompt for manual resolution of each conflict
-- abort: Cancel sync and preserve current state
-
-Include/Exclude Patterns:
-- Use --include to sync only specific directories like src/ or docs/
-- Use --exclude to skip directories like node_modules/ or build/
+Conflict Resolution:
+- When sync stops on a conflict, resolve it with ordinary git inside the worktree (git status, edit, git add, git commit), then rerun moai worktree sync
+- Choose the integration style with --strategy merge (default) or --strategy rebase, and the base branch with --base
 
 ### Documentation Generation
 
@@ -212,11 +207,11 @@ Worktree Already Exists:
 
 Uncommitted Changes:
 - Error: Worktree has uncommitted changes during sync
-- Resolution: Commit changes first or use --force flag
+- Resolution: Commit or stash the changes inside the worktree first, then rerun sync
 
 Merge Conflicts:
 - Error: Conflicts detected during sync operation
-- Resolution: Use --interactive for manual resolution or --auto-resolve
+- Resolution: Resolve the conflicts with ordinary git inside the worktree, then rerun sync
 
 Registry Corruption:
 - Error: Registry file is invalid or inaccessible

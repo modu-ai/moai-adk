@@ -1,0 +1,3 @@
+< description: Synchronize documentation, codemaps, and create pull request
+---
+> description: {{if eq .ConversationLanguage "ko"}}문서, 코드맵 동기화 및 풀 리퀘스트 생성{{else if eq .ConversationLanguage "ja"}}ドキュメント、コードマップの同期とプルリクエスト作成{{else if eq .ConversationLanguage "zh"}}同步文档、代码映射并创建拉取请求{{else}}Synchronize documentation, codemaps, and create pull request{{end}}

@@ -16,6 +16,14 @@ var _ = filepath.Join // referenced by LoadEvolutionLogs path construction
 
 // LoadEvolutionLogs loads the log list from the evolution-log.md file.
 // Returns empty list and nil error if the file doesn't exist.
+//
+// Reads machine entries (---delimited, snake_case or legacy keys) and
+// human-format fenced yaml entries alike; returns an error naming the file,
+// line, key, and entry id when a recognized entry has no parseable approval
+// timestamp (SPEC-CON-AMEND-APPLY-001 REQ-CAA-006 … REQ-CAA-009).
+//
+// @MX:ANCHOR: [AUTO] evolution-log read contract shared by the rate limiter and MarkRolledBack
+// @MX:REASON: production fan_in 2 (rateLimiter.Admit, MarkRolledBack; the apply step calls parseEvolutionLog directly), below the >= 3 threshold — kept as ANCHOR pending a demotion decision; a reader that drops entries silently blinds the Layer 4 gate
 func LoadEvolutionLogs(path string) ([]AmendmentLog, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -24,29 +32,16 @@ func LoadEvolutionLogs(path string) ([]AmendmentLog, error) {
 		}
 		return nil, fmt.Errorf("error reading evolution-log.md: %w", err)
 	}
+	return parseEvolutionLog(path, string(data))
+}
 
-	// Extract YAML frontmatter from markdown
-	entries := strings.Split(string(data), "---")
-	var logs []AmendmentLog
-
-	for i := 1; i < len(entries); i += 2 {
-		if i+1 >= len(entries) {
-			break
-		}
-		yamlBlock := entries[i]
-
-		var log AmendmentLog
-		if err := yaml.Unmarshal([]byte(yamlBlock), &log); err != nil {
-			// Ignore parsing errors and proceed to next entry
-			continue
-		}
-
-		if log.ID != "" {
-			logs = append(logs, log)
-		}
+// formatLogEntry renders one machine entry: --- delimiter + snake_case YAML + ---.
+func formatLogEntry(log *AmendmentLog) (string, error) {
+	yamlData, err := yaml.Marshal(log)
+	if err != nil {
+		return "", fmt.Errorf("YAML marshaling error: %w", err)
 	}
-
-	return logs, nil
+	return fmt.Sprintf("---\n%s---\n", string(yamlData)), nil
 }
 
 // AppendEvolutionLog appends a new log to the evolution-log.md file.
@@ -57,10 +52,9 @@ func AppendEvolutionLog(path string, log *AmendmentLog) error {
 		return fmt.Errorf("amendment log validation error: %w", err)
 	}
 
-	// Generate YAML frontmatter
-	yamlData, err := yaml.Marshal(log)
+	entry, err := formatLogEntry(log)
 	if err != nil {
-		return fmt.Errorf("YAML marshaling error: %w", err)
+		return err
 	}
 
 	// Open file (write-only, create, append)
@@ -70,8 +64,6 @@ func AppendEvolutionLog(path string, log *AmendmentLog) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	// Write entry: --- delimiter + YAML + ---
-	entry := fmt.Sprintf("---\n%s---\n", string(yamlData))
 	if _, err := f.WriteString(entry); err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}

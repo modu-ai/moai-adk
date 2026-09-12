@@ -114,20 +114,34 @@ func currentBranch() string {
 // The caller fallback is deliberate and NOT that defect: when no integration
 // branch is configured, the caller's tree genuinely is the tree being
 // integrated, so the caller's branch and cwd stay correct there.
-func resolveIntegrationTarget(explicitBranch, configuredBranch string) (branch, worktree string) {
+//
+// source names the tier that won (card t637). It is decided here, from the
+// same trimmed values that decide the branch, so the recorded provenance can
+// never disagree with the recorded branch.
+func resolveIntegrationTarget(explicitBranch, configuredBranch string) (branch, worktree, source string) {
 	target := strings.TrimSpace(explicitBranch)
+	source = kanban.BranchSourceFlag
 	if target == "" {
-		target = strings.TrimSpace(configuredBranch)
+		target, source = strings.TrimSpace(configuredBranch), kanban.BranchSourceConfig
 	}
 	if target != "" {
 		// An honest unknown beats a confidently wrong path: no worktree has
 		// the branch checked out, so the record carries an empty worktree for
 		// a human to read as "not provisioned yet" rather than a path that
 		// names some unrelated tree.
-		return target, worktreeForBranch(target)
+		return target, worktreeForBranch(target), source
 	}
 	wt, _ := os.Getwd()
-	return currentBranch(), wt
+	return currentBranch(), wt, kanban.BranchSourceCaller
+}
+
+// integrationFallbackWarning is the one-line standard-error warning for a
+// git-flow project whose develop branch is empty (card t637): the window was
+// recorded against the caller's own branch, which is the integration target
+// only if the caller happens to be standing in it. The prefix is the
+// integration-lock family's, shared with the guard's advisory lines.
+func integrationFallbackWarning(branch string) string {
+	return fmt.Sprintf("[moai:integration-lock] warning: git-flow project with no develop branch configured; the window was recorded against the caller's branch %q. Set git_strategy.manual.develop_branch, or pass --branch <integration-target>.", branch)
 }
 
 // worktreeForBranch returns the path of the worktree with branch checked out,
@@ -210,8 +224,19 @@ func newIntegrationStatusCmd() *cobra.Command {
 			if lock.SessionName != "" {
 				holder = fmt.Sprintf("%s (%s, pid %d)", lock.SessionName, lock.SessionID, lock.PID)
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window: %s\n  holder:   %s\n  branch:   %s\n  worktree: %s\n  since:    %s\n",
-				state, holder, lock.Branch, lock.Worktree, lock.AcquiredAt)
+			// Card t637: the card and the branch's provenance are printed only
+			// when recorded, so a record without them — every record written
+			// before they existed — keeps today's exact text shape.
+			card := ""
+			if lock.Card != "" {
+				card = fmt.Sprintf("  card:     %s\n", lock.Card)
+			}
+			branch := lock.Branch
+			if lock.BranchSource != "" {
+				branch = fmt.Sprintf("%s (source: %s)", lock.Branch, lock.BranchSource)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window: %s\n  holder:   %s\n%s  branch:   %s\n  worktree: %s\n  since:    %s\n",
+				state, holder, card, branch, lock.Worktree, lock.AcquiredAt)
 			return nil
 		},
 	}
@@ -243,7 +268,11 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				return driftErr
 			}
 
-			branch, wt := resolveIntegrationTarget(branchFlag, config.LoadGitFlowDevelopBranch(root))
+			// One read of the git strategy answers both questions: the develop
+			// branch that drives resolution, and whether the project is
+			// git-flow at all — the latter only decides the warning below.
+			gitFlow := config.LoadGitFlowIntegrationConfig(root)
+			branch, wt, source := resolveIntegrationTarget(branchFlag, gitFlow.DevelopBranch)
 			// The pid recorded is the OWNING SESSION's, never this process's.
 			// This command exits the moment it returns, so its own pid is dead
 			// before any reader probes it — recording it made every window read
@@ -253,13 +282,14 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// rather than "two lanes merge at once".
 			ownerPID, _ := session.ResolveOwnerPID()
 			replaced, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
-				SessionID:   sessionID,
-				SessionName: nameFlag,
-				PID:         ownerPID,
-				PIDSource:   kanban.PIDSourceSessionOwner,
-				Branch:      branch,
-				Worktree:    wt,
-				Card:        cardFlag,
+				SessionID:    sessionID,
+				SessionName:  nameFlag,
+				PID:          ownerPID,
+				PIDSource:    kanban.PIDSourceSessionOwner,
+				Branch:       branch,
+				BranchSource: source,
+				Worktree:     wt,
+				Card:         cardFlag,
 				// Recorded only when a refusal was actually bypassed; the
 				// precondition resolves that, so the flag alone does not stamp
 				// the record.
@@ -267,7 +297,17 @@ func newIntegrationAcquireCmd() *cobra.Command {
 				SettingsDriftPreserved: settingsDriftBypassPreservedPath(drift),
 			}, force)
 			if err != nil {
+				// A refused acquire recorded nothing, so there is no
+				// fallback to warn about.
 				return err
+			}
+			// Warn-only (card t637): a git-flow project whose develop branch
+			// is empty fell back to the caller's tree silently. The window is
+			// already recorded; the warning neither refuses nor changes
+			// stdout, and it goes to the error writer so --json stays one
+			// parseable object.
+			if source == kanban.BranchSourceCaller && gitFlow.IsGitFlow() {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationFallbackWarning(branch))
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
@@ -289,7 +329,7 @@ func newIntegrationAcquireCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session id to record as holder (default: this session)")
 	cmd.Flags().StringVar(&nameFlag, "name", "", "Human-facing lane name recorded alongside the id")
-	cmd.Flags().StringVar(&branchFlag, "branch", "", "Branch being integrated (default: the configured git-flow develop branch, else the current branch)")
+	cmd.Flags().StringVar(&branchFlag, "branch", "", "The integration target branch the merge lands on, not the card branch being merged (default: the configured git-flow develop branch, else the current branch)")
 	cmd.Flags().StringVar(&cardFlag, "card", "", "Card id this integration belongs to")
 	cmd.Flags().BoolVar(&force, "force", false, "Take the window over from a live holder (recorded, never silent)")
 	cmd.Flags().BoolVar(&allowSettingsDrift, "allow-settings-drift", false, "Record the window despite a refused settings-drift verdict (recorded in the lock, never silent). Deliberately separate from --force, which is a different decision")

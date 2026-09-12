@@ -1,0 +1,1 @@
+cannot use --baseline and --strict together: both gate on non-advisory warnings, and --baseline supersedes --strict for that purpose

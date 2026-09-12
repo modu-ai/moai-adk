@@ -1,0 +1,13 @@
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock/update_leftover_promote_failure
+    update_settings_snapshot_test.go:537: runUpdate returned mutant M-08L, want nil
+        out:
+        Current version   moai-adk dev
+        
+        err:
+        settings-snapshot-promote-failed: rename /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockupdate_leftover_pr3982199332/002/.moai/cache/template-snapshot/claude/settings.json.pending /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockupdate_leftover_pr3982199332/002/.moai/cache/template-snapshot/claude/settings.json: file exists
+--- FAIL: TestSettingsSnapshot_WriteFailureDoesNotBlock (0.00s)
+    --- FAIL: TestSettingsSnapshot_WriteFailureDoesNotBlock/update_leftover_promote_failure (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.943s
+FAIL

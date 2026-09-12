@@ -1,0 +1,52 @@
+[
+  {
+    "id": "M-GA",
+    "desc": "G-A removed: Execute no longer rejects an empty After before the gates",
+    "edits": [
+      ["internal/constitution/pipeline.go", "\tif proposal.After == \"\" {\n\t\treturn nil, fmt.Errorf(\"proposal for rule %s: After is empty\", proposal.RuleID)\n\t}\n", ""]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_EmptyAfter_Rejected$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GA.txt"
+  },
+  {
+    "id": "M-GB",
+    "desc": "G-B removed: the rule-file-is-registry-or-log check never fires",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(source.path, registry.path) || sameFile(source.path, logFile.path) {", "if false {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB.txt"
+  },
+  {
+    "id": "M-GB-reg",
+    "desc": "G-B registry half dropped: only the evolution-log half remains; run only the registry subtests",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(source.path, registry.path) || sameFile(source.path, logFile.path) {", "if sameFile(source.path, logFile.path) {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^registry$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-reg.txt"
+  },
+  {
+    "id": "M-GB-log",
+    "desc": "G-B evolution-log half dropped: only the registry half remains; run only the evolution_log subtests",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(source.path, registry.path) || sameFile(source.path, logFile.path) {", "if sameFile(source.path, registry.path) {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^evolution_log$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-log.txt"
+  },
+  {
+    "id": "M-GB-always",
+    "desc": "G-B over-broad: the check fires for every rule file; run only the distinct_control subtests",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(source.path, registry.path) || sameFile(source.path, logFile.path) {", "if true {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^distinct_control$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/M-GB-always.txt"
+  }
+]

@@ -1,0 +1,2 @@
+.claude/rules/moai/core/agent-common-protocol.md:17:[ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md:17:[ZONE:Frozen] [HARD] Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.

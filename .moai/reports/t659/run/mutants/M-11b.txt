@@ -1,0 +1,22 @@
+# mutant M-11b: dry-run performs the real apply
+# edits: [["internal/constitution/pipeline.go", "\tif dryRun {\n\t\treturn log, nil\n\t}\n", "\tif dryRun {\n\t\t_ = p.commitChanges(changes)\n\t\treturn log, nil\n\t}\n"]]
+# $ go test ./internal/constitution/ -run ^TestPipeline_Execute_DryRun_Validates$ -count=1 -v
+# exit=1
+=== RUN   TestPipeline_Execute_DryRun_Validates
+=== RUN   TestPipeline_Execute_DryRun_Validates/valid
+    apply_test.go:622: valid dry-run: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_DryRun_Validatesvalid2413636226/001 changed: [changed .claude/rules/moai/core/zone-registry.md changed .moai/research/evolution-log.md changed rules/target.md]
+=== RUN   TestPipeline_Execute_DryRun_Validates/two_occurrences
+=== RUN   TestPipeline_Execute_DryRun_Validates/registry_continuation
+=== RUN   TestPipeline_Execute_DryRun_Validates/missing_rule_file
+=== RUN   TestPipeline_Execute_DryRun_Validates/new_clause_present
+=== RUN   TestPipeline_Execute_DryRun_Validates/stale_before
+--- FAIL: TestPipeline_Execute_DryRun_Validates (0.03s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/valid (0.01s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/two_occurrences (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/registry_continuation (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/missing_rule_file (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/new_clause_present (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/stale_before (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.399s
+FAIL

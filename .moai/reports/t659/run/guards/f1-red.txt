@@ -1,0 +1,34 @@
+# card t659 F1 RED — new test on the pre-fix tree (HEAD e8d16eaee + the test only; sameFile still compares filepath.Abs strings)
+# $ go test ./internal/constitution/ -run '^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$' -count=1 -v
+# exit=1
+# Every alias subtest fails on the missing G-B rejection (err == nil), not on setup:
+# the setup-sanity Fatalf lines (alias read-back, skip probes) never fire, and
+# case_variant_registry ran (the temp filesystem is case-insensitive here).
+# absent_log_fallback passes on both trees: it pins the Abs-fallback branch, not the fix.
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/dry_run
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/real
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/dry_run
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/real
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/dry_run
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/real
+    apply_test.go:1324: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real
+--- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected (0.02s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/real (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/real (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/real (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.442s
+FAIL

@@ -1,0 +1,268 @@
+diff --git a/internal/template/templates/.claude/hooks/moai/trace-ledger.sh b/internal/template/templates/.claude/hooks/moai/trace-ledger.sh
+new file mode 100755
+index 000000000..7a390ba84
+--- /dev/null
++++ b/internal/template/templates/.claude/hooks/moai/trace-ledger.sh
+@@ -0,0 +1,87 @@
++#!/usr/bin/env bash
++# Record and summarize executable workflow trace evidence.
++#
++# The workflow comments are activation hints only. This helper is the evidence
++# surface: one validated JSON object per append, never a prose trace claim.
++set -euo pipefail
++
++usage() {
++  cat >&2 <<'USAGE'
++usage:
++  trace-ledger.sh record <ledger> <stage> <event> <parent_id> <input_hash> <cohort> <cache_hit> <retry_cause> <duration_ms>
++  trace-ledger.sh summary <ledger>
++USAGE
++}
++
++fail() {
++  printf 'trace-ledger: %s\n' "$1" >&2
++  exit 2
++}
++
++safe_token() {
++  case "$1" in
++    ''|*[!A-Za-z0-9_.:/-]*) return 1 ;;
++    *) return 0 ;;
++  esac
++}
++
++record() {
++  [[ $# -eq 9 ]] || { usage; exit 2; }
++  local ledger=$1 stage=$2 event=$3 parent_id=$4 input_hash=$5 cohort=$6 cache_hit=$7 retry_cause=$8 duration_ms=$9
++
++  [[ -n "$ledger" ]] || fail 'ledger path is required'
++  safe_token "$stage" || fail 'stage contains an unsupported character'
++  case "$event" in stage_start|stage_end|tool_start|tool_end) ;; *) fail 'event must be stage_start, stage_end, tool_start, or tool_end' ;; esac
++  safe_token "$parent_id" || fail 'parent_id contains an unsupported character'
++  safe_token "$input_hash" || fail 'input_hash contains an unsupported character'
++  safe_token "$cohort" || fail 'cohort contains an unsupported character'
++  case "$cache_hit" in hit|miss|unknown) ;; *) fail 'cache_hit must be hit, miss, or unknown' ;; esac
++  safe_token "$retry_cause" || fail 'retry_cause contains an unsupported character'
++  [[ "$duration_ms" =~ ^[0-9]+$ ]] || fail 'duration_ms must be a non-negative integer'
++
++  local parent_dir
++  parent_dir=$(dirname "$ledger")
++  umask 077
++  mkdir -p "$parent_dir"
++  printf '{"schema_version":1,"ts":"%s","stage":"%s","event":"%s","parent_id":"%s","input_hash":"%s","cohort":"%s","cache_hit":"%s","retry_cause":"%s","duration_ms":%s}\n' \
++    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$stage" "$event" "$parent_id" "$input_hash" "$cohort" "$cache_hit" "$retry_cause" "$duration_ms" >> "$ledger"
++}
++
++summary() {
++  [[ $# -eq 1 ]] || { usage; exit 2; }
++  local ledger=$1
++  [[ -f "$ledger" ]] || fail "ledger not found: $ledger"
++  command -v jq >/dev/null 2>&1 || fail 'summary requires jq'
++  jq -s '
++    . as $all
++    | ($all | map(select(.event == "tool_end" and (.duration_ms | type == "number")))) as $tools
++    | ($tools | sort_by(.duration_ms)) as $sorted
++    | {
++        schema_version: 1,
++        records: ($all | length),
++        calls: ($tools | length),
++        p50_duration_ms: (if ($sorted | length) == 0 then null else $sorted[(((($sorted | length) * 0.50) | ceil) - 1)].duration_ms end),
++        p95_duration_ms: (if ($sorted | length) == 0 then null else $sorted[(((($sorted | length) * 0.95) | ceil) - 1)].duration_ms end),
++        cache_hits: ($all | map(select(.cache_hit == "hit")) | length),
++        cache_misses: ($all | map(select(.cache_hit == "miss")) | length),
++        retries: ($all | map(select(.retry_cause != "none" and .retry_cause != "")) | length),
++        cohorts: ($all | map(.cohort) | unique)
++      }
++  ' "$ledger"
++}
++
++[[ $# -ge 1 ]] || { usage; exit 2; }
++case "$1" in
++  record)
++    shift
++    record "$@"
++    ;;
++  summary)
++    shift
++    summary "$@"
++    ;;
++  *)
++    usage
++    exit 2
++    ;;
++esac
+diff --git a/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md b/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+index ac052ff24..87cf5acd7 100644
+--- a/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
++++ b/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+@@ -409,7 +409,7 @@ Two report streams exist for plan audits; they are distinct by design and mutual
+ - **plan-phase review stream** — `plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration), exported by the plan-auditor to the card evidence path `.moai/reports/<card-id>/` (or `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card) per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). Iteration `N` follows the plan-auditor Retry Loop Contract (max 3). Consumed by the plan workflow's assembly/annotation cycle.
+ - **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based, under the gitignored runtime record directory `.moai/reports/plan-audit/`. Written by the Phase 1 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
+ 
+-Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
++Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**, resolved by `runtime.ResolveLatestPlanAudit`; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as exact bytes, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed and never supplies cache identity. A review file without hash/score/version metadata is a cache miss and requires a fresh audit.
+ 
+ **Plan-artifact hash subject list (Go verbatim):** the hash subject set is the union `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The set is tier-conditional by construction via the "skip if missing" rule in `ComputeHash`: a Tier S directory (spec.md, plan.md) hashes only those present; a Tier M directory adds acceptance.md; a Tier L directory contributes design.md AND research.md as mechanical subjects (SPEC-AUDIT-SNAPSHOT-001 A1 Tier L extension — changes to design.md/research.md NOW mechanically invalidate a cached skip verdict, replacing the former "manual judgment input" treatment); a grandfathered V3R4 directory carrying tasks.md retains it as a subject (K-2 backward compat).
+ 
+diff --git a/internal/template/templates/.claude/rules/moai/workflow/trace-ledger-contract.md b/internal/template/templates/.claude/rules/moai/workflow/trace-ledger-contract.md
+new file mode 100644
+index 000000000..9e140a9d2
+--- /dev/null
++++ b/internal/template/templates/.claude/rules/moai/workflow/trace-ledger-contract.md
+@@ -0,0 +1,40 @@
++---
++description: "Executable workflow trace evidence and performance summary contract"
++paths:
++  - ".claude/skills/moai/workflows/project*.md"
++  - ".claude/skills/moai/workflows/project/**"
++  - ".claude/skills/moai/workflows/plan*.md"
++  - ".claude/skills/moai/workflows/plan/**"
++  - ".claude/skills/moai/workflows/run*.md"
++  - ".claude/skills/moai/workflows/run/**"
++  - ".claude/skills/moai/workflows/sync*.md"
++  - ".claude/skills/moai/workflows/sync/**"
++  - ".claude/hooks/moai/trace-ledger.sh"
++---
++
++# Workflow trace ledger contract
++
++`TRACE PROBE` comments in workflow documents are activation hints only. A
++comment, a pseudocode line, or an empty file is not execution evidence. When
++`MOAI_TRACE_PHASES=1` is enabled, the orchestrator MUST append the corresponding
++event through `.claude/hooks/moai/trace-ledger.sh record` to
++`.moai/state/workflow-trace.jsonl`; when the flag is off, no trace is claimed.
++
++Each JSONL row is append-only and contains:
++
++- `stage` and `event` (`stage_start`, `stage_end`, `tool_start`, or `tool_end`)
++- `parent_id` for the session/agent parent that owns the event
++- `input_hash` for the exact routing or verification input
++- `cohort` for the comparable S/M/L, cold/warm, or injected-failure cohort
++- `cache_hit` (`hit`, `miss`, or `unknown`)
++- `retry_cause` (`none` when no retry occurred)
++- `duration_ms` measured by the caller, never invented from a comment
++
++The helper rejects unsafe field values and non-numeric durations. The
++`summary` command counts `tool_end` calls and calculates p50/p95 from recorded
++durations, plus cache, retry, and observed-cohort counts. Compare S/M/L and
++cold/warm or injected-failure cohorts only when their rows carry the same input
++and cohort identity; missing rows remain an observation gap, not a zero-cost
++result. Routing
++decisions remain in `.moai/state/routing-ledger.jsonl`; this ledger adds
++execution timing and trace identity without changing that schema.
+diff --git a/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md b/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+index 59222eefa..743225a3f 100644
+--- a/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
++++ b/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+@@ -6,8 +6,9 @@ metadata:
+   phase: "Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
+ ---
+ 
+-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
++<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
++<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
++<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+ 
+ ### Phase 9: Pre-Creation Validation Gate
+ 
+@@ -28,7 +29,12 @@ Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
+ 
+ ### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
+ 
+-[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
++[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST
++resolve the final Tier (S, M, or L). It first consumes the interview's
++`provisional_tier`; it asks this question only when the tier was absent,
++ambiguous, or changed by research. This drives the artifact set, the
++manager-develop delegation prompt template applicability, and the plan-auditor
++PASS threshold.
+ 
+ Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
+ 
+@@ -167,7 +173,10 @@ Skip conditions:
+ 
+ Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
+ - `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
+-- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
++- `standard`/`thorough`: blocking retry loop using the tier-resolved ceiling
++  from `.moai/config/sections/harness.yaml` (`S=1`, `M=2`, `L=3`); the
++  `remaining_attempts` counter is owned by the orchestrator and is consumed by
++  every reviewer invocation, including cross-validation.
+ 
+ #### Parallel Review Lenses (read-only, conditional)
+ 
+@@ -246,8 +255,8 @@ Present the full defect history to the user:
+ 
+ Harness configuration reference (harness.yaml):
+ - `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
+-- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
+-- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
++- `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
++- `thorough`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true, cross_validate_with_evaluator_active: true
+ 
+ For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
+ 
+diff --git a/internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md b/internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md
+index 770ca9302..44c2bb62e 100644
+--- a/internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md
++++ b/internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md
+@@ -6,8 +6,9 @@ metadata:
+   phase: "Phase 6/3.1/3.3/3.5/3.7/4: Documentation Generation and Completion"
+ ---
+ 
+-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
++<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
++<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
++<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+ 
+ ## Phase 6: Documentation Generation
+ 
+@@ -36,7 +37,8 @@ Activation: Controlled by harness.yaml `plan_audit.enabled` setting.
+ 
+ - `minimal`: Skip this phase
+ - `standard`: Run plan-auditor once (default)
+-- `thorough`: Run plan-auditor + cross-validate with sync-auditor
++- `thorough`: Run plan-auditor + an independent plan-auditor re-review;
++  `sync-auditor` remains post-implementation only
+ 
+ Skip Conditions:
+ - harness.yaml `plan_audit.enabled: false`
+@@ -46,13 +48,13 @@ Skip Conditions:
+ 
+ Agent: plan-auditor subagent
+ 
+-Delegation pattern: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 1."
++Delegation pattern: "Use the plan-auditor subagent with input_type=project to audit product.md, structure.md, and tech.md at .moai/project/ — iteration 1."
+ 
+ Do NOT pass the analysis reasoning or interview context to plan-auditor. The agent enforces context isolation (M1) and will ignore injected reasoning. Pass only the document directory path.
+ 
+ #### Step 3.1.2: Read Verdict
+ 
+-After plan-auditor completes, read the report at `.moai/reports/plan-audit/PROJECT-review-1.md`.
++After plan-auditor completes, read the report at `.moai/reports/PROJECT-review-1.md`.
+ 
+ Extract the verdict line: `Verdict: PASS | FAIL`
+ 
+diff --git a/internal/template/templates/.moai/config/sections/harness.yaml b/internal/template/templates/.moai/config/sections/harness.yaml
+index 988a04a2e..02cca91f7 100644
+--- a/internal/template/templates/.moai/config/sections/harness.yaml
++++ b/internal/template/templates/.moai/config/sections/harness.yaml
+@@ -66,6 +66,16 @@ harness:
+     enforce_gate_on_spec_creation: true  # [HARD] Blocks SPEC creation outside /moai plan
+     rationale: "prevent scope-creep SPEC generation"
+ 
++  # Per-Tier plan-auditor retry ceiling SSOT.
++  # The plan-auditor agent body consults the Tier-resolved value from this map
++  # INSTEAD of a hard-coded `max_iterations: 3` literal; the literal is a
++  # consumer-side fallback, NOT the SSOT. Backward compat: when `tier:` is
++  # absent from a SPEC's frontmatter, the Tier L value (3) is used.
++  plan_audit_tier_ceilings:
++    S: 1   # Tier S (≤300 LOC, <5 files): single-pass audit, no iteration 2+
++    M: 2   # Tier M (300-1000 LOC, 5-15 files): up to two spawns
++    L: 3   # Tier L (>1000 LOC or constitutional): up to three spawns (legacy behavior)
++
+   # Level definitions
+   levels:
+     minimal:

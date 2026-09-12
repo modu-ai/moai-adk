@@ -1,0 +1,8 @@
+.claude/agents/moai/manager-git.md
+.claude/rules/moai/core/agent-common-protocol.md
+.claude/skills/moai/workflows/sync.md
+.claude/skills/moai/workflows/sync/delivery.md
+.claude/skills/moai/workflows/sync/doc-execution.md
+.claude/skills/moai/workflows/sync/quality-gates-context.md
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/sync.md

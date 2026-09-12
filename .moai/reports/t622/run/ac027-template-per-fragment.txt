@@ -1,0 +1,9 @@
+  skill no-merge-lines=0
+  ref no-merge-lines=0
+  qgc-args no-merge-lines=0
+  qgc-flags no-merge-lines=0
+  sync no-merge-lines=0
+  dl no-merge-lines=1
+  sync-usage no-merge-lines=0
+  hint no-merge-lines=0
+  dl-next no-merge-lines=0

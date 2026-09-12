@@ -1,0 +1,9 @@
+ac026-base-local-skill.md:0
+ac026-base-local-ref.md:0
+ac026-base-local-qgc-args.md:0
+ac026-base-local-qgc-flags.md:0
+ac026-base-local-sync.md:0
+ac026-base-local-dl.md:0
+ac026-base-local-sync-usage.md:0
+ac026-base-local-hint.md:0
+ac026-base-local-dl-next.md:0

@@ -1,0 +1,20 @@
+=== RUN   TestSpecLintBaseline_FlagContractRejections
+=== RUN   TestSpecLintBaseline_FlagContractRejections/missing_baseline_file_is_an_argument_error,_never_a_silent_fallback
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--reason_without_--update-baseline
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--update-baseline_without_--baseline
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--baseline_with_--json
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--baseline_with_--sarif
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--baseline_with_--strict
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--update-baseline_with_a_whitespace-only_--reason
+=== RUN   TestSpecLintBaseline_FlagContractRejections/--json_with_--sarif
+--- PASS: TestSpecLintBaseline_FlagContractRejections (0.18s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/missing_baseline_file_is_an_argument_error,_never_a_silent_fallback (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--reason_without_--update-baseline (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--update-baseline_without_--baseline (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--json (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--sarif (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--baseline_with_--strict (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--update-baseline_with_a_whitespace-only_--reason (0.00s)
+    --- PASS: TestSpecLintBaseline_FlagContractRejections/--json_with_--sarif (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.275s

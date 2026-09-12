@@ -44,11 +44,11 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 > **[HARD] 창의 생존 판정은 세션 프로세스에 묶여 있다 — 카드 t298.** `acquire`가 남기는 pid는 그 명령을 실행한 짧은 CLI 프로세스가 아니라 **그것을 실행한 세션**의 것이다. 그래서 창은 `acquire`가 반환한 뒤에도 계속 held로 읽히고, 풀리는 길은 셋뿐이다 — 홀더 세션이 죽거나, 홀더가 스스로 `release` 하거나, 다른 레인이 기록을 남기는 `--force`로 가져가거나.
 > 소유자를 판별하지 못한 채 잡힌 창은 pid 0으로 기록되고 **살아 있는 것으로** 읽힌다. 확실하지 않을 때 창을 비우는 쪽이 두 레인이 함께 머지하는 사고로 이어지므로, 판정은 늘 "살아 있다" 쪽으로 기운다.
-> **수정 이전에 잡힌 창은 여전히 인수 가능하게 읽힌다** — 옛 기록에는 세션 앵커가 없다. 업그레이드 시점에 창을 쥐고 있던 레인은 `moai integration acquire`를 한 번 더 실행해 재획득한다.
+> **수정 이전에 잡힌 창은 여전히 인수 가능하게 읽힌다** — 옛 기록에는 세션 앵커가 없다. 업그레이드 시점에 창을 쥐고 있던 레인은 `moai integration acquire --name <lane> --card <card-id>`를 한 번 더 실행해 재획득한다.
 > 이 기록이 레인을 기계적으로 갈라놓지는 않는다. `acquire` 자체가 읽고-고치고-쓰는 과정을 갈라 세우지 않으므로, 같은 순간에 두 레인이 잡으러 들어오면 둘 다 잡았다고 믿을 수 있다. 이것은 조율 신호이지 권한 경계가 아니며, **리드 공지가 여전히 첫 번째 층**이고 이 기록은 그 아래 기계 층이다.
 
 ```bash
-moai integration acquire --name <lane>   # 통합 워크트리에 들어가기 전
+moai integration acquire --name <lane> --card <card-id>   # 통합 워크트리에 들어가기 전
 moai integration status                  # 누가 쥐고 있는지
 moai integration release                 # 완료 보고를 보낸 뒤
 ```
@@ -97,6 +97,7 @@ git branch --show-current
 
 - **`go test ./...` 를 로컬에서 돌리지 않는다.** 레인 여럿이 동시에 돌려 load 413까지 치솟고 머신을 마비시킨 사고가 있다(2026-08-15).
 - **백그라운드 부하를 만들지 않는다.** 경합이 필요한 검증이라면 부하는 정리 보장이 있어야 한다 — 테스트 프레임워크 cleanup 훅에 등록된 kill이거나, 밖에서 프로세스를 묶는 `timeout` 래퍼. 뒤에 붙인 `kill`은 정리가 아니다(도달하지 못하는 줄이다).
+- **무거운 실행이 겹칠 자리에서는 자원 임대를 먼저 잡는다.** `moai slot acquire --resource <이름> --max-duration <상한>` → 실행 → `moai slot release --resource <이름>`. 보유자는 `moai slot status`로 읽는다. 통합 창(`moai integration`)과 기록·락·설정 키가 **분리돼 있다** — 병합 대기와 무거운 실행 대기가 서로를 막지 않게 하려는 것이다. 상한은 보유자 자신의 선언이라, 해제를 잊어도 상한까지만 묶인다(그 뒤에는 다른 레인이 `--force` 없이 인수한다). 매칭 명령을 거부하는 PreToolUse 가드는 **선택형이고 기본 꺼짐**(`workflow.slot_lease.enabled`)이며, 세 동작은 그 값과 무관하게 돈다. 표면 전체는 `.claude/rules/moai/workflow/resource-slot-lease.md`.
 - **[HARD] 「이 카드가 무엇을 바꿨는가」는 흡수한 ref 와의 merge-base 부터 잰다 — 리터럴 base SHA 로 재지 않는다.** "Go 변경 없음", "템플릿 변경 없음", "이 경로만" 같은 범위 판정식의 왼쪽 끝은 읽는 시점에 `CARD_BASE=$(git merge-base develop HEAD)` 로 다시 구하고, 값을 핀하지 않는다. 대조군은 `git diff --name-only "$CARD_BASE"..HEAD | wc -l`(1 이상이어야 함), 프로브는 같은 범위에 pathspec 을 붙인 형태다. 대조군이 0 이면 "변경 없음"이 아니라 "측정 불가"로 보고한다.
   - 이유: 흡수하는 순간 리터럴 핀 범위에 다른 카드의 커밋이 들어온다. 로컬 develop 이 원격보다 앞서 있으면 `origin/develop` 기준 merge-base 도 흡수 전 분기점에 머물러 같은 오탐을 낸다. 실측(2026-09-10, `.moai/reports/t543/verdict.md`): 로컬 develop 을 흡수한 뒤 리터럴 핀과 `origin/develop` 기준은 모두 Go 51개를 냈고, `develop` 기준만 카드 자기 기여(파일 4, Go 0)를 냈다. 이 재현이 이 규율의 대조군이다.
   - 원칙은 "흡수한 바로 그 ref"다. 이 저장소 절차의 흡수 대상은 로컬 `develop`(§11, `CLAUDE.local.md` §4.1)이라 기본값이 `develop` 이다. 원격 develop 을 흡수하는 절차라면 ref 는 `origin/develop` 이 된다. develop 이 흡수 뒤 더 앞서가도 merge-base 는 마지막으로 흡수한 develop 커밋에 머물러 계속 옳다.

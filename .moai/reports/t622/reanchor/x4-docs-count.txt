@@ -1,0 +1,8 @@
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/core-concepts/what-is-moai-adk.md:1
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/workflow-commands/moai-sync.md:5
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/core-concepts/what-is-moai-adk.md:1
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:6
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/core-concepts/what-is-moai-adk.md:1
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/workflow-commands/moai-sync.md:4
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/core-concepts/what-is-moai-adk.md:1
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:9

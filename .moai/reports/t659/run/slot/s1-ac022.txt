@@ -1,0 +1,5 @@
+=== RUN   TestResolveRegistryPath_MatchesExecute
+--- PASS: TestResolveRegistryPath_MatchesExecute (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.765s
+exit=0

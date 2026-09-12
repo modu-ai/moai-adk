@@ -3,7 +3,6 @@
 Purpose: Detailed registry structure, atomic operations, concurrent access protection, and validation patterns for worktree metadata management.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -267,5 +266,4 @@ Migration Steps:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: Registry architecture with schema, operations, and validation patterns

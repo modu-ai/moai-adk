@@ -1,0 +1,8 @@
+internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md:0
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md:0
+internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md:0
+internal/template/templates/.claude/skills/moai/SKILL.md:0
+internal/template/templates/.claude/skills/moai/references/reference.md:0
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md:0
+internal/template/templates/.claude/skills/moai/workflows/sync.md:0
+internal/template/templates/.claude/commands/moai/sync.md.tmpl:0

@@ -490,14 +490,15 @@ The full refusal reads:
 
 > This session is isolated in the worktree `<worktree-path>`, but this command is too complex to verify that it stays inside the worktree.
 
-**This table is a record of what has been seen, not a specification.** It is explicitly non-exhaustive, and two observations do not establish a general rule — the trigger condition was never narrowed, so do not infer from it that "complex commands are refused", and do not infer a tokenization mechanism from the shape of these cases.
+**This table is a record of what has been seen, not a specification.** It is explicitly non-exhaustive, and a handful of observations do not establish a general rule — the trigger condition was never narrowed, so do not infer from it that "complex commands are refused", and do not infer a tokenization mechanism from the shape of these cases.
 
 | Observed trigger | Provenance | Notes |
 |---|---|---|
 | A quoted-delimiter heredoc (`<<'EOF'`) whose **body contains braces wrapping quoted key/value pairs** — a JSON line, for example | **First-hand** — measured by paired probes in a worktree-isolated session | Body size, pipes, backticks, and command substitution are **not** the trigger: a body of roughly 6.7 KB of prose was accepted, a ten-character JSON line in the same position was refused, and a command substitution in the body was folded correctly and passed |
 | **Several mutation steps bundled into one compound command** | **Second-hand** — reported by another working lane, not measured here | Recorded because it carried the same refusal sentence; it has not been reproduced by the session that wrote this section |
+| A heredoc whose **body names a git subcommand** — prose such as `run git merge --no-ff <sha>` or `git checkout -b <branch>` fed to a non-git command | **First-hand** — measured by paired probes in a worktree-isolated session | Refused with the variant sentence `… this command names git in a form too complex to verify …`. The same heredoc without git text passed, and the same git text passed when carried as a double-quoted argument or read from a file (`--stdin < <file>`) |
 
-**Gap**: the boundary between an accepted and a refused command is unmeasured in both rows. Anything outside these two observations is unknown, not permitted.
+**Gap**: the boundary between an accepted and a refused command is unmeasured in every row. Anything outside these observations is unknown, not permitted.
 
 ### Why the two heredoc delimiter forms differ
 

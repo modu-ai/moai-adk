@@ -1,0 +1,17 @@
+# mutant M-7: drop the snake_case rule_id key on the read side
+# edits: [["internal/constitution/evolution_log_reader.go", "\"rule_id\", \"ruleid\", \"const_registry_entry\"", "\"ruleid\", \"const_registry_entry\""]]
+# $ go test ./internal/constitution/ -run ^TestLoadEvolutionLogs$ -count=1 -v
+# exit=1
+=== RUN   TestLoadEvolutionLogs
+=== RUN   TestLoadEvolutionLogs/파일_없으면_빈_목록_반환
+=== RUN   TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱
+    evolution_log_test.go:58: RuleID mismatch: got "", want CONST-V3R2-008
+=== RUN   TestLoadEvolutionLogs/여러_엔트리_파싱
+    evolution_log_test.go:111: RuleIDs = "", ""; want CONST-V3R2-008, CONST-V3R2-009
+--- FAIL: TestLoadEvolutionLogs (0.00s)
+    --- PASS: TestLoadEvolutionLogs/파일_없으면_빈_목록_반환 (0.00s)
+    --- FAIL: TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱 (0.00s)
+    --- FAIL: TestLoadEvolutionLogs/여러_엔트리_파싱 (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.363s
+FAIL

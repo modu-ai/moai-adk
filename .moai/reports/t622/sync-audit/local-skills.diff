@@ -1,0 +1,154 @@
+diff --git a/.claude/commands/moai/sync.md b/.claude/commands/moai/sync.md
+index f7581b5d0..b368fb882 100644
+--- a/.claude/commands/moai/sync.md
++++ b/.claude/commands/moai/sync.md
+@@ -1,6 +1,6 @@
+ ---
+ description: Synchronize documentation, codemaps, and create pull request
+-argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"
++argument-hint: "[SPEC-XXX] [--auto-merge] [--skip-mx]"
+ allowed-tools: Skill
+ ---
+ 
+diff --git a/.claude/skills/moai/SKILL.md b/.claude/skills/moai/SKILL.md
+index f8756e44f..47051d24b 100644
+--- a/.claude/skills/moai/SKILL.md
++++ b/.claude/skills/moai/SKILL.md
+@@ -137,7 +137,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
+ Purpose: Synchronize documentation with code changes and prepare pull requests.
+ Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
+ Skills: moai-workflow-project (per delegation.yaml)
+-Modes: auto, force, status, project. Flags: --merge, --skip-mx
++Modes: auto, force, status, project. Flags: --auto-merge, --merge (deprecated alias of --auto-merge), --skip-mx
+ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
+ 
+ ### gate - Pre-Commit Quality Gate
+diff --git a/.claude/skills/moai/references/reference.md b/.claude/skills/moai/references/reference.md
+index 63f4a9cc3..02f320ba7 100644
+--- a/.claude/skills/moai/references/reference.md
++++ b/.claude/skills/moai/references/reference.md
+@@ -158,7 +158,7 @@ Propagation Method:
+ ### Sync Flags
+ 
+ - Modes (positional): auto (default), force, status, project
+-- --merge: Auto-merge PR and clean up branch after sync
++- --auto-merge: Opt in to auto-merge the PR and clean up the branch after sync
+ - --skip-mx: Skip MX tag validation during sync
+ 
+ ### Fix Flags
+diff --git a/.claude/skills/moai/workflows/sync.md b/.claude/skills/moai/workflows/sync.md
+index aeddd59aa..c7a70187f 100644
+--- a/.claude/skills/moai/workflows/sync.md
++++ b/.claude/skills/moai/workflows/sync.md
+@@ -92,7 +92,7 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
+ ## Invocation Flow
+ 
+ ```
+-/moai sync [mode] [--pr] [--merge] [--skip-mx]
++/moai sync [mode] [--pr] [--auto-merge] [--skip-mx]
+   ├── [trace] /moai sync Phase 1 enter
+   │   Read workflows/sync/quality-gates-context.md  → HUMAN GATE 1 + Deployment Readiness
+   ├── [trace] /moai sync Phase 7 enter
+@@ -111,7 +111,7 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
+ 
+ **Modes**: `auto` (기본) | `force` | `status` | `project`
+ 
+-**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
++**Flags**: `--pr` (PR 생성) | `--auto-merge` (auto-merge 옵트인) | `--merge` (deprecated alias of `--auto-merge`) | `--skip-mx` (MX 검증 스킵)
+ 
+ **HUMAN GATEs**: GATE 1 (quality-gates-context.md §Phase 1) → GATE 2 (doc-execution.md §Step 1.6)
+ 
+diff --git a/.claude/skills/moai/workflows/sync/delivery.md b/.claude/skills/moai/workflows/sync/delivery.md
+index 22d29d4a8..95cbce5cd 100644
+--- a/.claude/skills/moai/workflows/sync/delivery.md
++++ b/.claude/skills/moai/workflows/sync/delivery.md
+@@ -358,26 +358,35 @@ Only applies when a PR was created in Step 3.2.
+ 
+ ##### Auto-Merge Trigger Conditions
+ 
++Merging is opt-in. The single criterion is the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge; worktree context alone never triggers a merge.
++
+ Auto-merge trigger conditions:
+-- `is_worktree_context == true` AND `--no-merge` flag NOT set
+-- OR `--merge` flag explicitly set (deprecated, logged as warning)
++- `--auto-merge` flag set
++- OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
++
++Mode conditions (same as `manager-git.md` § PR Auto-Merge):
++- In team mode, `--auto-merge` merges only after all approvals are obtained.
++- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
+ 
+ When auto-merge is triggered:
+ 1. Verify all CI/CD checks pass (gh pr checks)
+ 2. Verify zero merge conflicts (gh pr view --json mergeable)
+-3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
++3. If all checks pass: Execute `gh pr merge --<merge_method> --delete-branch`
+ 4. If checks fail: Report error with recovery command, do NOT merge
+ 
++`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
++
+ ##### Flag Behavior
+ 
+-- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged.
+-- `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
++- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions above.
++- `--merge`: deprecated alias of `--auto-merge` (logs a warning).
++- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default.
+ 
+ ##### Auto-Merge Execution
+ 
+ 1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
+ 2. Check merge conflicts via `gh pr view --json mergeable`
+-3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
++3. If passing and mergeable: Execute `gh pr merge --<merge_method> --delete-branch`
+ 4. Checkout target branch, fetch latest
+ 5. Verify local is synchronized with remote
+ 
+@@ -426,7 +435,7 @@ Tool: AskUserQuestion with options tailored to delivery result (single-phase con
+ 
+ **If PR was created (github-flow feature branch, or a git-flow PR route):**
+ - Review PR on GitHub (Recommended)
+-- Auto-Merge PR (/moai sync --merge)
++- Auto-Merge PR (/moai sync --auto-merge)
+ - Create Next SPEC (/moai plan)
+ - Start New Session (/clear)
+ 
+diff --git a/.claude/skills/moai/workflows/sync/doc-execution.md b/.claude/skills/moai/workflows/sync/doc-execution.md
+index 3353dd8ae..c2b5c0aba 100644
+--- a/.claude/skills/moai/workflows/sync/doc-execution.md
++++ b/.claude/skills/moai/workflows/sync/doc-execution.md
+@@ -31,9 +31,9 @@ metadata:
+ Detect if the current session is running within a MoAI worktree:
+ - Check if current git directory path contains `/.moai/worktrees/` component
+ - OR check if `.moai/worktrees/registry.json` has an active entry for current SPEC-ID
+-- Store result as `is_worktree_context` boolean for use in Phase 13
++- Store result as `is_worktree_context` boolean as informational context only; no later phase reads it
+ 
+-This affects auto-merge behavior: worktree contexts default to auto-merge.
++This does not decide auto-merge: the PR merges only on the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge, never on worktree context alone.
+ 
+ #### Step 1.3: Project Status Verification
+ 
+diff --git a/.claude/skills/moai/workflows/sync/quality-gates-context.md b/.claude/skills/moai/workflows/sync/quality-gates-context.md
+index 2fe47b91e..f52494ec3 100644
+--- a/.claude/skills/moai/workflows/sync/quality-gates-context.md
++++ b/.claude/skills/moai/workflows/sync/quality-gates-context.md
+@@ -27,7 +27,7 @@ Synchronize documentation with code changes, verify project quality, and finaliz
+ - $ARGUMENTS: Mode and optional path
+   - Mode: auto (default), force, status, project
+   - Path: Optional synchronization target path (e.g., src/auth/)
+-  - Flag: --merge
++  - Flag: --auto-merge
+ 
+ ## Mode Flag Compatibility
+ 
+@@ -98,7 +98,8 @@ The `project` mode performs comprehensive project-wide synchronization:
+ ## Supported Flags
+ 
+ - --pr: Push branch and create/update PR on GitHub after sync. When used, automatically returns to base branch (main/develop) after PR creation (Step 3.3.5).
+-- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
++- --auto-merge: After sync, auto-merge PR and clean up branch (opt-in; merge conditions per `manager-git.md` § PR Auto-Merge). Worktree/branch environment is auto-detected from git context.
++- --merge: deprecated alias of --auto-merge (logs a warning).
+ - --skip-mx: Skip MX tag validation and annotation during sync.
+ 
+ ## Context Loading

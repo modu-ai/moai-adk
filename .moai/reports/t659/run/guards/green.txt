@@ -1,0 +1,22 @@
+=== RUN   TestExecute_EmptyAfter_Rejected
+=== RUN   TestExecute_EmptyAfter_Rejected/dry_run
+=== RUN   TestExecute_EmptyAfter_Rejected/real
+--- PASS: TestExecute_EmptyAfter_Rejected (0.01s)
+    --- PASS: TestExecute_EmptyAfter_Rejected/dry_run (0.01s)
+    --- PASS: TestExecute_EmptyAfter_Rejected/real (0.01s)
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real
+--- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected (0.03s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.489s

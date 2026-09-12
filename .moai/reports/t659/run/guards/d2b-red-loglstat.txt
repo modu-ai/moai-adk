@@ -1,0 +1,17 @@
+# mutant M-D2-loglstat: Delta-audit D2 completion: only the log half of the G-B condition replaced by an inline os.Lstat identity check (Lstat both, os.SameFile, fall back to filepath.Abs equality on error) - catches hard links and case variants, misses symbolic links; run only the symlink_log subtests
+# edits: [["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if sameFile(rulePath, registryPath) || func() bool { ia, errA := os.Lstat(rulePath); ib, errB := os.Lstat(evolutionLogPath); if errA == nil && errB == nil { return os.SameFile(ia, ib) }; a, errA := filepath.Abs(rulePath); b, errB := filepath.Abs(evolutionLogPath); return errA == nil && errB == nil && a == b }() {"]]
+# $ go test ./internal/constitution/ -run ^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$/^symlink_log$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_log/dry_run
+    apply_test.go:1346: error "amendment validation error: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileAliasOfRegistryOrLog_Rejectedsymlink_logdr1024041079/001/rules/alias.md: the current clause occurs 0 time(s); want exactly one" lacks "is also the registry or the evolution log"
+    apply_test.go:1352: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_log/real
+    apply_test.go:1346: error "amendment validation error: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileAliasOfRegistryOrLog_Rejectedsymlink_logre1689774954/001/rules/alias.md: the current clause occurs 0 time(s); want exactly one" lacks "is also the registry or the evolution log"
+    apply_test.go:1352: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+--- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected (0.01s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_log/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_log/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.365s
+FAIL

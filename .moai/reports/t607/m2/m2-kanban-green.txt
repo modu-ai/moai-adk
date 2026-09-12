@@ -1,0 +1,90 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -v
+# exit: 0
+# tree: c331bc589 (M2, after writeSlotLease took over its own mkdir)
+# note: --- PASS 40, --- FAIL 0
+# ---
+=== RUN   TestSlotLease_ControlGroupTwoSessions
+=== RUN   TestSlotLease_ControlGroupTwoSessions/probe_then_start
+    slot_lease_cross_test.go:191: control: starts=2 (A: RESULT=started SESSION=lane-a | B: RESULT=started SESSION=lane-b)
+=== RUN   TestSlotLease_ControlGroupTwoSessions/lease
+    slot_lease_cross_test.go:215: lease: acquired=1 refused=1 busy=0 other=0 (A: RESULT=acquired SESSION=lane-a | B: RESULT=held SESSION=lane-b)
+--- PASS: TestSlotLease_ControlGroupTwoSessions (0.56s)
+    --- PASS: TestSlotLease_ControlGroupTwoSessions/probe_then_start (0.03s)
+    --- PASS: TestSlotLease_ControlGroupTwoSessions/lease (0.53s)
+=== RUN   TestSlotLeaseHelperProcess
+--- PASS: TestSlotLeaseHelperProcess (0.00s)
+=== RUN   TestSlotLease_RecordsAllFields
+=== RUN   TestSlotLease_RecordsAllFields/all_fields
+=== RUN   TestSlotLease_RecordsAllFields/omitted_name_and_command_recorded_empty
+--- PASS: TestSlotLease_RecordsAllFields (0.00s)
+    --- PASS: TestSlotLease_RecordsAllFields/all_fields (0.00s)
+    --- PASS: TestSlotLease_RecordsAllFields/omitted_name_and_command_recorded_empty (0.00s)
+=== RUN   TestSlotLease_RefusesLiveForeignHolderWritesNothing
+--- PASS: TestSlotLease_RefusesLiveForeignHolderWritesNothing (0.00s)
+=== RUN   TestSlotLeaseBusy_IsNotHeld
+=== RUN   TestSlotLeaseBusy_IsNotHeld/acquire_busy
+=== RUN   TestSlotLeaseBusy_IsNotHeld/release_busy
+=== RUN   TestSlotLeaseBusy_IsNotHeld/held_is_not_busy
+--- PASS: TestSlotLeaseBusy_IsNotHeld (3.33s)
+    --- PASS: TestSlotLeaseBusy_IsNotHeld/acquire_busy (1.67s)
+    --- PASS: TestSlotLeaseBusy_IsNotHeld/release_busy (1.66s)
+    --- PASS: TestSlotLeaseBusy_IsNotHeld/held_is_not_busy (0.00s)
+=== RUN   TestSlotLease_Liveness
+=== RUN   TestSlotLease_Liveness/stale_takeover
+=== RUN   TestSlotLease_Liveness/live_refused
+=== RUN   TestSlotLease_Liveness/pid_zero_live
+--- PASS: TestSlotLease_Liveness (0.01s)
+    --- PASS: TestSlotLease_Liveness/stale_takeover (0.01s)
+    --- PASS: TestSlotLease_Liveness/live_refused (0.00s)
+    --- PASS: TestSlotLease_Liveness/pid_zero_live (0.00s)
+=== RUN   TestSlotLease_DeclaredBound
+=== RUN   TestSlotLease_DeclaredBound/expired_takeover
+=== RUN   TestSlotLease_DeclaredBound/not_expired_refused
+=== RUN   TestSlotLease_DeclaredBound/holder_reacquire_restarts_bound
+=== RUN   TestSlotLease_DeclaredBound/invalid_bound_rejected
+--- PASS: TestSlotLease_DeclaredBound (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/expired_takeover (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/not_expired_refused (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/holder_reacquire_restarts_bound (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/invalid_bound_rejected (0.00s)
+=== RUN   TestSlotLease_ForceRecordsDisplaced
+--- PASS: TestSlotLease_ForceRecordsDisplaced (0.00s)
+=== RUN   TestSlotLease_Release
+=== RUN   TestSlotLease_Release/foreign_refused
+=== RUN   TestSlotLease_Release/holder_releases
+=== RUN   TestSlotLease_Release/empty_release_is_error
+--- PASS: TestSlotLease_Release (0.00s)
+    --- PASS: TestSlotLease_Release/foreign_refused (0.00s)
+    --- PASS: TestSlotLease_Release/holder_releases (0.00s)
+    --- PASS: TestSlotLease_Release/empty_release_is_error (0.00s)
+=== RUN   TestSlotLease_RejectsInvalidResourceNames
+--- PASS: TestSlotLease_RejectsInvalidResourceNames (0.00s)
+=== RUN   TestSlotLease_SeparateFromIntegrationWindow
+=== RUN   TestSlotLease_SeparateFromIntegrationWindow/slot_acquire_creates_no_integration_files
+=== RUN   TestSlotLease_SeparateFromIntegrationWindow/integration_acquire_creates_no_slot_dir
+--- PASS: TestSlotLease_SeparateFromIntegrationWindow (0.00s)
+    --- PASS: TestSlotLease_SeparateFromIntegrationWindow/slot_acquire_creates_no_integration_files (0.00s)
+    --- PASS: TestSlotLease_SeparateFromIntegrationWindow/integration_acquire_creates_no_slot_dir (0.00s)
+=== RUN   TestSlotLease_UnreadableRecordAndInputEdges
+=== RUN   TestSlotLease_UnreadableRecordAndInputEdges/corrupt_record_is_not_free
+=== RUN   TestSlotLease_UnreadableRecordAndInputEdges/force_clears_corrupt_record
+=== RUN   TestSlotLease_UnreadableRecordAndInputEdges/forced_foreign_release_is_audited_as_force
+=== RUN   TestSlotLease_UnreadableRecordAndInputEdges/input_edges
+--- PASS: TestSlotLease_UnreadableRecordAndInputEdges (0.00s)
+    --- PASS: TestSlotLease_UnreadableRecordAndInputEdges/corrupt_record_is_not_free (0.00s)
+    --- PASS: TestSlotLease_UnreadableRecordAndInputEdges/force_clears_corrupt_record (0.00s)
+    --- PASS: TestSlotLease_UnreadableRecordAndInputEdges/forced_foreign_release_is_audited_as_force (0.00s)
+    --- PASS: TestSlotLease_UnreadableRecordAndInputEdges/input_edges (0.00s)
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/primary
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/primary_subdir
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/linked_worktree
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/not_a_repository
+--- PASS: TestResolveSlotLeaseRoot_NormalizesToPrimary (0.55s)
+    --- PASS: TestResolveSlotLeaseRoot_NormalizesToPrimary/primary (0.03s)
+    --- PASS: TestResolveSlotLeaseRoot_NormalizesToPrimary/primary_subdir (0.03s)
+    --- PASS: TestResolveSlotLeaseRoot_NormalizesToPrimary/linked_worktree (0.05s)
+    --- PASS: TestResolveSlotLeaseRoot_NormalizesToPrimary/not_a_repository (0.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	4.686s

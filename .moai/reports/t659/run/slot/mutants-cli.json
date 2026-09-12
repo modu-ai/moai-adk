@@ -1,0 +1,32 @@
+[
+  {
+    "id": "M-13",
+    "desc": "CLI dry-run ignores the pipeline error and prints success",
+    "edits": [
+      ["internal/cli/constitution.go", "\tlog, err := pipeline.Execute(proposal, projectDir, dryRun)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"amendment failed: %w\", err)\n\t}\n", "\tlog, err := pipeline.Execute(proposal, projectDir, dryRun)\n\tif err != nil {\n\t\tif dryRun {\n\t\t\t_, _ = fmt.Fprintln(w, \"\\nDry-run success: files were not modified.\")\n\t\t\treturn nil\n\t\t}\n\t\treturn fmt.Errorf(\"amendment failed: %w\", err)\n\t}\n"]
+    ],
+    "run": ["test", "./internal/cli/", "-run", "^TestConstitutionAmend_DryRun_SurfacesValidation$/^two_occurrences$", "-count=1", "-v", "-timeout", "600s"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/slot/M-13.txt"
+  },
+  {
+    "id": "M-20-i-cli",
+    "desc": "M-20 (i), CLI cell: remove the amend path's registry-path containment check (Execute and CLI alike, shared LoadAmendRegistry)",
+    "edits": [
+      ["internal/constitution/registry_path.go", "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n", ""]
+    ],
+    "run": ["test", "./internal/cli/", "-run", "^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$", "-count=1", "-v", "-timeout", "600s"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/slot/M-20-i-cli.txt"
+  },
+  {
+    "id": "M-20-ii",
+    "desc": "M-20 (ii): the CLI's registry validation reads the registry without the check while Execute keeps it",
+    "edits": [
+      ["internal/cli/constitution.go", "\tregistry, err := constitution.LoadAmendRegistry(registryPath, projectDir)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"registry load error: %w\", err)\n\t}\n\n\t// Print warnings", "\tregistry, err := constitution.LoadRegistry(registryPath, projectDir)\n\tif err != nil {\n\t\treturn fmt.Errorf(\"registry load error: %w\", err)\n\t}\n\n\t// Print warnings"]
+    ],
+    "run": ["test", "./internal/cli/", "-run", "^TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape$", "-count=1", "-v", "-timeout", "600s"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/slot/M-20-ii.txt"
+  }
+]

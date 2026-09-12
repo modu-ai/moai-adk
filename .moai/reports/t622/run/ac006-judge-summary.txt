@@ -1,0 +1,2 @@
+local: dl-s=0 de-s=0 dl-default test-e=0 test-s=1 de-default grep-exit=1 source=ac006-local-dl.md:2 ac006-local-de.md:1 
+template: dl-s=0 de-s=0 dl-default test-e=0 test-s=1 de-default grep-exit=1 source=ac006-template-dl.md:2 ac006-template-de.md:1 

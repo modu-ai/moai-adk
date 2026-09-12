@@ -1,0 +1,3 @@
+FAIL TestRuleTemplateMirrorDrift
+FAIL TestRuleTemplateMirrorDrift/spec-workflow.md
+FAIL TestSanitizedPairParity/agent-common-protocol.md

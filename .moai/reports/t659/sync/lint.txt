@@ -1,0 +1,16 @@
+# moai spec lint after the t659 sync commits
+
+tree HEAD: d26cf19bce32d204e6bc9594cb8b7a83981916c3 (sync commit 1f9946188 + backfill commit d26cf19bc)
+judging build: ~/go/bin/moai v3.2.0-rc.7, commit ed71054d3 — a strict ancestor of the tree (`git merge-base --is-ancestor ed71054d3 HEAD` → exit 0)
+provenance gap: `git diff --stat ed71054d3 HEAD -- internal/spec` lists internal/spec/parser.go and internal/spec/lint_coverage_sibling.go as changed after the judging build, so any rule change they carry did not run here; not re-run with a tree-built binary (building cmd/moai compiles internal/cli, whose slot was returned)
+
+$ ~/go/bin/moai spec lint SPEC-CON-AMEND-APPLY-001
+✓ No findings — all SPEC documents are valid
+LINT_EXIT=0
+
+$ ~/go/bin/moai spec lint --json SPEC-CON-AMEND-APPLY-001
+[]
+LINT_JSON_EXIT=0
+
+control: `~/go/bin/moai spec lint SPEC-DOES-NOT-EXIST-999` prints "spec lint: no SPEC document found ..." — the SPEC above was found and linted.
+note: the 0.1.8 plan-phase record (.moai/reports/t659/lint-0.1.8.txt) carried one INFO OwnershipTransitionUnmeasured on the (none) → draft transition; the latest transition is now in-progress → completed on 1f9946188, whose `Authored-By-Agent: manager-docs` matches the matrix owner, so no finding is emitted.

@@ -1,0 +1,22 @@
+=== RUN   TestSettingsSnapshot_WriteSites
+=== RUN   TestSettingsSnapshot_WriteSites/template_sync_backup_empty
+2026/09/12 03:58:32 WARN config sections directory not found, using defaults path=.moai/config/sections
+    update_settings_snapshot_test.go:354: live a = 1, want 2 (doc {
+          "a": 1
+        })
+    update_settings_snapshot_test.go:354: live K = <nil>, want 1 (doc {
+          "a": 1
+        })
+=== RUN   TestSettingsSnapshot_WriteSites/template_sync_backup_filled
+    update_settings_snapshot_test.go:354: live a = 1, want 2 (doc {
+          "a": 1
+        })
+    update_settings_snapshot_test.go:354: live K = <nil>, want 1 (doc {
+          "a": 1
+        })
+--- FAIL: TestSettingsSnapshot_WriteSites (0.08s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/template_sync_backup_empty (0.04s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/template_sync_backup_filled (0.04s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.027s
+FAIL

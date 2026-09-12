@@ -1,0 +1,228 @@
+---
+description: >
+  Common execution patterns, flag reference, legacy command mapping,
+  and resume patterns used across all MoAI workflows. Provides context
+  propagation guidance and team execution patterns.
+  Use when needing execution patterns, flag details, or configuration reference.
+user-invocable: false
+metadata:
+  version: "2.5.0"
+  category: "foundation"
+  status: "active"
+  updated: "2026-02-22"
+  tags: "reference, patterns, flags, configuration, legacy, resume, context"
+
+# MoAI Extension: Progressive Disclosure
+progressive_disclosure:
+  enabled: true
+  level1_tokens: 100
+  level2_tokens: 5000
+
+# MoAI Extension: Triggers
+triggers:
+  keywords: ["reference", "pattern", "flag", "config", "resume", "legacy", "mapping"]
+  agents: ["manager-spec", "manager-develop", "manager-docs", "manager-git"]
+  phases: ["plan", "run", "sync"]
+---
+
+# MoAI Skill Reference
+
+Common patterns, flag reference, and legacy command mapping used across all MoAI workflows.
+
+For configuration file paths, see: CLAUDE.md Section 9
+For error handling delegation, see: CLAUDE.md Section 11
+For development mode details, see: .claude/rules/moai/workflow/spec-workflow.md (Run Phase section)
+
+---
+
+## Execution Patterns
+
+### Parallel Execution Pattern
+
+When multiple operations are independent, invoke them in a single response. Claude Code automatically runs multiple Agent() calls in parallel (up to 10 concurrent).
+
+Use Cases:
+
+- Exploration Phase: Launch codebase analysis, documentation research, and quality assessment simultaneously via separate Agent() calls
+- Diagnostic Scan: Run LSP diagnostics, AST-grep analysis, and linter checks in parallel
+- Multi-file Generation: Generate product.md, structure.md, and tech.md simultaneously when analysis is complete
+
+Implementation:
+
+- Include multiple Agent() calls in the same response message
+- Each Agent() targets a different subagent or a different scope within the same agent
+- Results are collected when all parallel tasks complete
+- Maximum 10 concurrent Agent() calls for optimal throughput
+
+### Sequential Execution Pattern
+
+When operations have dependencies, chain them sequentially. Each Agent() call receives context from the previous phase results.
+
+Use Cases:
+
+- DDD/TDD Workflow: Phase 5 (planning) feeds Phase 11 (implementation) feeds Phase 13 (quality validation)
+- SPEC Creation: Explore agent results feed into manager-spec agent for document generation
+- Release Pipeline: Quality gates must pass before version selection, which must complete before tagging
+
+### Hybrid Execution Pattern
+
+Combine parallel and sequential patterns within a single workflow.
+
+Use Cases:
+
+- Fix Workflow: Parallel diagnostic scan (LSP + linters + AST-grep), then sequential fix application based on combined results
+- MoAI Workflow: Parallel exploration phase, then sequential SPEC generation and DDD/TDD implementation
+
+### Team Execution Pattern
+
+When team mode is enabled, use Agent Teams for persistent parallel coordination.
+
+Use Cases:
+
+- Plan Phase: Parallel read-only exploration via the Explore subagent + per-spawn Agent(general-purpose) with domain instructions (the archived researcher/analyst/architect agents are retired)
+- Run Phase: Sequential implementation via manager-develop (write fan-out stays foreground-sequential; the archived backend-dev/frontend-dev/tester agents are retired) with file ownership boundaries
+- Debug Phase: Competing hypothesis investigation team
+
+Implementation:
+
+- Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
+- TaskList for self-coordinated work distribution
+- Team cleanup is automatic on session exit; no explicit teardown call is needed
+
+---
+
+## Resume Pattern
+
+When a workflow is interrupted or needs to continue from a previous session, use the --resume flag.
+
+Behavior:
+
+- Read existing SPEC document from .moai/specs/SPEC-XXX/
+- Determine last completed phase from SPEC status markers
+- Skip completed phases and resume from the next pending phase
+- Preserve all prior analysis, decisions, and generated artifacts
+
+Applicable Workflows:
+
+- plan --resume SPEC-XXX: Resume SPEC creation from last checkpoint
+- run --resume SPEC-XXX: Resume DDD/TDD implementation from last completed task
+- moai --resume SPEC-XXX: Resume full autonomous workflow from last phase
+- fix --resume: Resume fix cycle from last diagnostic state
+
+---
+
+## Context Propagation Between Phases
+
+Each phase must pass results forward to the next phase to avoid redundant analysis.
+
+Required Context Elements:
+
+- Exploration Results: File paths, architecture patterns, technology stack, dependency map
+- SPEC Data: Requirements list, acceptance criteria, technical approach, scope boundaries
+- Implementation Results: Files modified, tests created, coverage metrics, remaining tasks
+- Quality Results: Test pass/fail counts, lint errors, type check results, security findings
+- Implementation Divergence: Planned vs actual files, additional features, scope changes, new dependencies
+- Git State: Current branch, commit count since last tag, tag history
+
+Propagation Method:
+
+- Include a structured summary of previous phase outputs in the Agent() prompt
+- Reference specific file paths rather than inline large content blocks
+- Use SPEC document as the canonical source of truth across phases
+- Pass implementation divergence report from run phase to sync phase for SPEC/project document updates
+
+---
+
+## Flag Reference
+
+### Global Flags (Available Across All Workflows)
+
+- --resume [ID]: Resume workflow from last checkpoint (SPEC-ID or snapshot ID)
+- --seq: Force sequential execution instead of parallel where applicable
+- --team: Force Agent Teams mode for parallel execution
+- --solo: Force sub-agent mode (single agent per phase)
+
+### Plan Flags
+
+- (retired) --worktree: plan no longer creates a workspace — enter one first with `moai cc -w <name>`
+- --branch: Create a feature branch for the SPEC (default branch naming: feature/SPEC-XXX)
+- --resume SPEC-XXX: Resume an interrupted plan session
+- --team: experimental — selects Agent Teams agent-team (re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Parallel Agent(general-purpose) fan-out remains the default exploration pattern.
+
+### Run Flags
+
+- --resume SPEC-XXX: Resume DDD/TDD implementation from last completed task
+- --team: Force team-based implementation (backend-dev + frontend-dev + tester)
+- --review: Enable post-implementation review loop
+
+### Sync Flags
+
+- Modes (positional): auto (default), force, status, project
+- --merge: Auto-merge PR and clean up branch after sync
+- --skip-mx: Skip MX tag validation during sync
+
+### Fix Flags
+
+- --dry: Preview detected issues without applying fixes
+- --level N: Control fix depth (Level 1: auto-fixable, Level 2: simple logic, Level 3: complex, Level 4: architectural)
+- --security: Include security issues in scan
+- --sequential: Run diagnostics sequentially instead of in parallel
+- --resume: Resume fix cycle from last diagnostic state
+- --team: Force competing hypothesis investigation team
+
+### Loop Flags
+
+- --max N: Maximum iteration count (default: 100)
+- --auto-fix: Enable automatic fix application for Level 1-2 issues
+- --seq: Force sequential diagnostics
+
+### MX Flags
+
+- --all: Scan entire codebase (not just modified files)
+- --dry: Preview tag changes without applying
+- --priority P1-P4: Filter by priority level
+- --force: Overwrite existing tags
+- --team: Force parallel scan by language
+
+### Review Flags
+
+- --staged: Review staged changes only
+- --branch: Compare against specified branch
+- --security: Focus on security review
+- --team: Force parallel multi-perspective review team
+
+### Clean Flags
+
+- --dry: Preview dead code without removing
+- --safe-only: Only remove confirmed dead code
+- --file PATH: Target specific file for analysis
+
+### MoAI (Default) Flags
+
+- --loop: Enable iterative fixing during run phase
+- --max N: Maximum fix iterations when --loop is active
+- --branch: Create feature branch before implementation
+- --pr: Create pull request after completion
+
+---
+
+## Legacy Command Mapping
+
+Previous /moai:X-Y command format mapped to new /moai subcommand format:
+
+- /moai project maps to /moai project
+- /moai plan maps to /moai plan
+- /moai run maps to /moai run
+- /moai sync maps to /moai sync
+- /moai feedback maps to /moai feedback
+- /moai:fix maps to /moai fix
+- /moai:loop maps to /moai loop
+- /moai:moai maps to /moai (default autonomous workflow)
+- /moai:review maps to /moai review
+- /moai:clean maps to /moai clean
+- /moai:codemaps maps to /moai codemaps
+- /moai:mx maps to /moai mx
+
+---
+
+Version: 2.5.0

@@ -1,0 +1,30 @@
+=== RUN   TestPipeline_Execute_DryRun_Validates
+=== RUN   TestPipeline_Execute_DryRun_Validates/valid
+=== RUN   TestPipeline_Execute_DryRun_Validates/two_occurrences
+=== RUN   TestPipeline_Execute_DryRun_Validates/registry_continuation
+=== RUN   TestPipeline_Execute_DryRun_Validates/missing_rule_file
+=== RUN   TestPipeline_Execute_DryRun_Validates/new_clause_present
+=== RUN   TestPipeline_Execute_DryRun_Validates/stale_before
+--- PASS: TestPipeline_Execute_DryRun_Validates (0.03s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/valid (0.01s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/two_occurrences (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/registry_continuation (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/missing_rule_file (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/new_clause_present (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/stale_before (0.00s)
+=== RUN   TestPipeline_Execute_DryRun_Success
+--- PASS: TestPipeline_Execute_DryRun_Success (0.00s)
+=== RUN   TestPipeline_Execute_RuleNotFound
+--- PASS: TestPipeline_Execute_RuleNotFound (0.00s)
+=== RUN   TestPipeline_Execute_FrozenGuard_Rejects
+--- PASS: TestPipeline_Execute_FrozenGuard_Rejects (0.00s)
+=== RUN   TestPipeline_Execute_CanaryUnavailable_Continues
+--- PASS: TestPipeline_Execute_CanaryUnavailable_Continues (0.00s)
+=== RUN   TestPipeline_Execute_UserRejected
+--- PASS: TestPipeline_Execute_UserRejected (0.00s)
+=== RUN   TestPipeline_Execute_HumanOversightError
+--- PASS: TestPipeline_Execute_HumanOversightError (0.00s)
+=== RUN   TestPipeline_Execute_LockBusy
+--- PASS: TestPipeline_Execute_LockBusy (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.263s

@@ -1,0 +1,4 @@
+=== RUN   TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule
+--- PASS: TestSpecLintBaseline_InjectedWarningTurnsRedAndNamesTheRule (0.52s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.453s

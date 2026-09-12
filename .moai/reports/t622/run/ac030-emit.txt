@@ -1,0 +1,2 @@
+COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.331s

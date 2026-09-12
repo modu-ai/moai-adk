@@ -1,0 +1,143 @@
+=== RUN   TestRuleTemplateMirrorDrift
+=== PAUSE TestRuleTemplateMirrorDrift
+=== RUN   TestSanitizedPairParity
+=== PAUSE TestSanitizedPairParity
+=== CONT  TestRuleTemplateMirrorDrift
+=== CONT  TestSanitizedPairParity
+=== RUN   TestRuleTemplateMirrorDrift/hooks-system.md
+=== PAUSE TestRuleTemplateMirrorDrift/hooks-system.md
+=== RUN   TestSanitizedPairParity/manager-develop-prompt-template.md
+=== PAUSE TestSanitizedPairParity/manager-develop-prompt-template.md
+=== RUN   TestSanitizedPairParity/agent-common-protocol.md
+=== PAUSE TestSanitizedPairParity/agent-common-protocol.md
+=== RUN   TestRuleTemplateMirrorDrift/spec-workflow.md
+=== PAUSE TestRuleTemplateMirrorDrift/spec-workflow.md
+=== RUN   TestSanitizedPairParity/verification-batch-pattern.md
+=== RUN   TestRuleTemplateMirrorDrift/session-handoff.md
+=== PAUSE TestRuleTemplateMirrorDrift/session-handoff.md
+=== PAUSE TestSanitizedPairParity/verification-batch-pattern.md
+=== RUN   TestRuleTemplateMirrorDrift/worktree-integration.md
+=== PAUSE TestRuleTemplateMirrorDrift/worktree-integration.md
+=== RUN   TestSanitizedPairParity/plan-auditor.md
+=== RUN   TestRuleTemplateMirrorDrift/session-handoff-examples.md
+=== PAUSE TestSanitizedPairParity/plan-auditor.md
+=== PAUSE TestRuleTemplateMirrorDrift/session-handoff-examples.md
+=== RUN   TestSanitizedPairParity/askuser-protocol.md
+=== PAUSE TestSanitizedPairParity/askuser-protocol.md
+=== RUN   TestRuleTemplateMirrorDrift/model-policy.md
+=== RUN   TestSanitizedPairParity/verification-claim-integrity.md
+=== PAUSE TestRuleTemplateMirrorDrift/model-policy.md
+=== PAUSE TestSanitizedPairParity/verification-claim-integrity.md
+=== RUN   TestRuleTemplateMirrorDrift/default.md
+=== PAUSE TestRuleTemplateMirrorDrift/default.md
+=== RUN   TestSanitizedPairParity/runtime-recovery-doctrine.md
+=== PAUSE TestSanitizedPairParity/runtime-recovery-doctrine.md
+=== RUN   TestRuleTemplateMirrorDrift/frontend.md
+=== PAUSE TestRuleTemplateMirrorDrift/frontend.md
+=== CONT  TestRuleTemplateMirrorDrift/hooks-system.md
+=== CONT  TestRuleTemplateMirrorDrift/model-policy.md
+=== CONT  TestRuleTemplateMirrorDrift/worktree-integration.md
+=== CONT  TestRuleTemplateMirrorDrift/session-handoff.md
+=== CONT  TestRuleTemplateMirrorDrift/session-handoff-examples.md
+=== CONT  TestRuleTemplateMirrorDrift/frontend.md
+=== CONT  TestRuleTemplateMirrorDrift/default.md
+=== RUN   TestSanitizedPairParity/zone-registry.md
+=== PAUSE TestSanitizedPairParity/zone-registry.md
+=== RUN   TestSanitizedPairParity/main-checkout-branch-guard.md
+=== CONT  TestRuleTemplateMirrorDrift/spec-workflow.md
+=== PAUSE TestSanitizedPairParity/main-checkout-branch-guard.md
+=== CONT  TestSanitizedPairParity/manager-develop-prompt-template.md
+=== CONT  TestSanitizedPairParity/verification-claim-integrity.md
+=== CONT  TestSanitizedPairParity/zone-registry.md
+=== CONT  TestSanitizedPairParity/plan-auditor.md
+=== CONT  TestSanitizedPairParity/main-checkout-branch-guard.md
+=== CONT  TestSanitizedPairParity/runtime-recovery-doctrine.md
+=== CONT  TestSanitizedPairParity/verification-batch-pattern.md
+=== CONT  TestSanitizedPairParity/askuser-protocol.md
+=== CONT  TestSanitizedPairParity/agent-common-protocol.md
+=== NAME  TestRuleTemplateMirrorDrift/spec-workflow.md
+    rule_template_mirror_test.go:169: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/rules/moai/workflow/spec-workflow.md differs from its mirror at /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t622/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md (source 38565 bytes, mirror 40124 bytes); run 'cp /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t622/.claude/rules/moai/workflow/spec-workflow.md /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t622/internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md' and stage both files
+--- FAIL: TestRuleTemplateMirrorDrift (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/model-policy.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/worktree-integration.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/session-handoff-examples.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/hooks-system.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/session-handoff.md (0.00s)
+    --- FAIL: TestRuleTemplateMirrorDrift/spec-workflow.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/default.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/frontend.md (0.00s)
+=== NAME  TestSanitizedPairParity/verification-batch-pattern.md
+    sanitized_pair_parity_test.go:194: .claude/rules/moai/workflow/verification-batch-pattern.md: normalized diff — 4 local-only, 4 template-only, ~4 reword pairs, net one-sided=0 (tolerance 4)
+    sanitized_pair_parity_test.go:220: .claude/rules/moai/workflow/verification-batch-pattern.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/main-checkout-branch-guard.md
+    sanitized_pair_parity_test.go:194: .claude/rules/moai/workflow/main-checkout-branch-guard.md: normalized diff — 4 local-only, 3 template-only, ~3 reword pairs, net one-sided=1 (tolerance 4)
+    sanitized_pair_parity_test.go:220: .claude/rules/moai/workflow/main-checkout-branch-guard.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/manager-develop-prompt-template.md
+    sanitized_pair_parity_test.go:194: .claude/rules/moai/development/manager-develop-prompt-template.md: normalized diff — 1 local-only, 1 template-only, ~1 reword pairs, net one-sided=0 (tolerance 4)
+    sanitized_pair_parity_test.go:220: .claude/rules/moai/development/manager-develop-prompt-template.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/runtime-recovery-doctrine.md
+    sanitized_pair_parity_test.go:185: .claude/rules/moai/workflow/runtime-recovery-doctrine.md: token-only divergence — normalized doctrine identical (84 content lines)
+=== NAME  TestSanitizedPairParity/verification-claim-integrity.md
+    sanitized_pair_parity_test.go:194: .claude/rules/moai/core/verification-claim-integrity.md: normalized diff — 10 local-only, 10 template-only, ~10 reword pairs, net one-sided=0 (tolerance 4)
+    sanitized_pair_parity_test.go:220: .claude/rules/moai/core/verification-claim-integrity.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/agent-common-protocol.md
+    sanitized_pair_parity_test.go:194: .claude/rules/moai/core/agent-common-protocol.md: normalized diff — 16 local-only, 5 template-only, ~5 reword pairs, net one-sided=11 (tolerance 4)
+    sanitized_pair_parity_test.go:201: SANITIZED_PAIR_PARITY_DRIFT: .claude/rules/moai/core/agent-common-protocol.md carries 11 content line(s) of doctrine present in the LOCAL copy but ABSENT from the template mirror (beyond the 4-line reword tolerance). Users receive stale doctrine. Propagate the change to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t622/internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md (sanitized per §25), or if the omission is intentional, remove this file from sanitizedPairPaths with a documented reason.
+        First local-only normalized lines:
+            [ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()` (manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify shared working-tree files, the orchestrator MUST execute the following two-lane batch and surface any divergence to the user.
+            The lanes have one deliberate dependency boundary:
+            * **Lane A (ordered):** `git fetch origin main` MUST finish and its exit status be observed before `git rev-list --count --left-right origin/main...HEAD` starts. The divergence count is only attributable to the ref that the completed fetch installed; never run these two commands as one parallel batch or as a shell line whose completion cannot be distinguished.
+            * **Lane B (independent):** `moai session list --json --filter-spec=<<SPEC-ID>>` may run concurrently with Lane A's fetch because it does not read `origin/main`. Its result is joined with Lane A after both lanes complete.
+            # Lane A — ordered; wait for fetch completion before reading origin/main.
+            fetch_status=$?
+            if [ "$fetch_status" -ne 0 ]; then
+              printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+              exit "$fetch_status"
+            fi
+            # Lane B — can be started while Lane A is fetching, then joined before the
+            # divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
+            The orchestrator MUST retain the fetch completion status (and, where the
+            runner exposes it, the fetched-ref timestamp) beside the divergence output.
+            This prevents a delayed or failed fetch from being mistaken for a current
+            `origin/main` baseline.
+=== NAME  TestSanitizedPairParity/askuser-protocol.md
+    sanitized_pair_parity_test.go:185: .claude/rules/moai/core/askuser-protocol.md: token-only divergence — normalized doctrine identical (226 content lines)
+=== NAME  TestSanitizedPairParity/zone-registry.md
+    sanitized_pair_parity_test.go:185: .claude/rules/moai/core/zone-registry.md: token-only divergence — normalized doctrine identical (802 content lines)
+=== NAME  TestSanitizedPairParity/plan-auditor.md
+    sanitized_pair_parity_test.go:194: .claude/agents/moai/plan-auditor.md: normalized diff — 20 local-only, 3 template-only, ~3 reword pairs, net one-sided=17 (tolerance 4)
+    sanitized_pair_parity_test.go:201: SANITIZED_PAIR_PARITY_DRIFT: .claude/agents/moai/plan-auditor.md carries 17 content line(s) of doctrine present in the LOCAL copy but ABSENT from the template mirror (beyond the 4-line reword tolerance). Users receive stale doctrine. Propagate the change to /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t622/internal/template/templates/.claude/agents/moai/plan-auditor.md (sanitized per §25), or if the omission is intentional, remove this file from sanitizedPairPaths with a documented reason.
+        First local-only normalized lines:
+            Plan Artifact Hash: {SHA-256 of the exact plan-artifact subject set}
+            Auditor Version: plan-auditor/v{version}
+            This agent is invoked by the orchestrator up to a Tier-resolved number of times per SPEC. The Tier-resolved ceiling is the SSOT at `.moai/config/sections/harness.yaml` → `harness.plan_audit_tier_ceilings` (S=1, M=2, L=3; <SPEC-ID> A6). The agent consults the SPEC's `tier:` frontmatter field, reads the matching ceiling from `plan_audit_tier_ceilings`, and bounds its iteration count accordingly. Where `tier:` is absent, the Tier L value (3) is used — pre-A6 SPECs see no behavior change. The former `max_iterations: 3` literal below is now a consumer-side reference value (the Tier L ceiling), NOT the SSOT; the SSOT is the `plan_audit_tier_ceilings` map.
+            **Ceiling bounds ITERATION COUNT, NOT verdict.** A Tier S SPEC still receives a full adversarial review on iteration 1 — the ceiling only prevents iteration 2+. The verdict authority stays with this agent; a lower ceiling never permits an orchestrator self-assessment to substitute for an auditor verdict (anti-pattern AP-SPD-004 in `<SPEC-ID>/plan.md` §G).
+            This agent receives a typed input: `input_type=spec` (the default for a SPEC)
+            or `input_type=project`, plus the absolute input directory. The caller MUST
+            pass the type; the auditor must not infer a SPEC from a directory name.
+            For `input_type=project`, the required input set is `.moai/project/product.md`,
+            `.moai/project/structure.md`, and `.moai/project/tech.md`. The project rubric
+            checks goal/audience completeness, structure-to-code consistency, and
+            technology/tooling reproducibility. Its report is written to
+            `.moai/reports/PROJECT-review-<N>.md` and does not require `spec.md` or
+            acceptance.md.
+            For `input_type=spec`, the input directory is the SPEC directory (for example,
+            `.moai/specs/<SPEC-ID>/`).
+            If a typed SPEC input does not exist or `spec.md` is not found, the agent
+            returns: `AUDIT BLOCKED: spec.md not found at {path}`. If a typed project input
+            does not contain all three required project documents, it returns
+            `AUDIT BLOCKED: project document set incomplete at {path}`. Neither failure may
+            silently fall back to the other input type.
+--- FAIL: TestSanitizedPairParity (0.00s)
+    --- PASS: TestSanitizedPairParity/verification-batch-pattern.md (0.00s)
+    --- PASS: TestSanitizedPairParity/main-checkout-branch-guard.md (0.00s)
+    --- PASS: TestSanitizedPairParity/manager-develop-prompt-template.md (0.00s)
+    --- PASS: TestSanitizedPairParity/runtime-recovery-doctrine.md (0.01s)
+    --- PASS: TestSanitizedPairParity/verification-claim-integrity.md (0.01s)
+    --- FAIL: TestSanitizedPairParity/agent-common-protocol.md (0.01s)
+    --- PASS: TestSanitizedPairParity/askuser-protocol.md (0.01s)
+    --- PASS: TestSanitizedPairParity/zone-registry.md (0.01s)
+    --- FAIL: TestSanitizedPairParity/plan-auditor.md (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.458s
+FAIL

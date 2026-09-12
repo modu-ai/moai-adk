@@ -1,0 +1,7 @@
+DIFFER fix.md
+DIFFER loop.md
+IDENTICAL codemaps.md
+DIFFER clean.md
+DIFFER mx.md
+DIFFER project/mode-detection.md
+DIFFER sync/quality-gates-context.md

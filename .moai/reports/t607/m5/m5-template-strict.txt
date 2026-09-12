@@ -1,0 +1,9 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak$' -count=1 -v
+# exit: 0
+# tree: the M5 working tree, committed as 685fc3387 - the run predates that commit
+# ---
+=== RUN   TestTemplateNoInternalContentLeak
+--- PASS: TestTemplateNoInternalContentLeak (0.70s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.946s

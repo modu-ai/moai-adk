@@ -22,8 +22,9 @@ import (
 // fingerprint-valid cache silently masks the file value (observed when
 // Workflow gained AgentStopGuard: an old-binary cache served enabled=false
 // over an enabled:true workflow.yaml). Bumped to 3 when Workflow gained
-// SettingsDriftGate, for exactly that reason.
-const configCacheSchemaVersion = 3
+// SettingsDriftGate, and to 4 when Workflow gained SlotLease, for exactly that
+// reason.
+const configCacheSchemaVersion = 4
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

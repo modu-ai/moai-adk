@@ -60,6 +60,9 @@ moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 | `--sarif` | SARIF 2.1.0 형식 출력 |
 | `--strict` | 경고를 오류로 처리 |
 | `--format <fmt>` | 출력 형식 (table) |
+| `--baseline <path>` | `--strict` 대신 저장소에 체크인된 규칙별 기준선으로 게이트한다 — 오류는 항상 실패, 규칙의 비-advisory 경고 수는 기록된 값보다 늘어났을 때만 차단하며, 남아 있는 경고 총수는 출력에 그대로 표시된다 |
+| `--update-baseline` | `--baseline` 파일을 재계산해 다시 쓴다(`--reason` 필수) |
+| `--reason "<text>"` | `--update-baseline` 이 기록하는 비어 있지 않은 필수 사유 — 없거나 빈 사유는 거절된다 |
 
 | 인자 형태 | 예 |
 |--------|------|

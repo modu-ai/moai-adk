@@ -1,0 +1,15 @@
+# mutant M-17: remove the Execute Before check (the CLI check stays)
+# edits: [["internal/constitution/pipeline.go", "\tif proposal.Before != currentRule.Clause {", "\tif false && proposal.Before != currentRule.Clause {"]]
+# $ go test ./internal/constitution/ -run ^TestPipeline_Execute_StaleBefore_Rejected$ -count=1 -v
+# exit=1
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected/dry_run
+    apply_test.go:645: Execute: want a stale-Before error, got nil
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected/real
+    apply_test.go:645: Execute: want a stale-Before error, got nil
+--- FAIL: TestPipeline_Execute_StaleBefore_Rejected (0.01s)
+    --- FAIL: TestPipeline_Execute_StaleBefore_Rejected/dry_run (0.00s)
+    --- FAIL: TestPipeline_Execute_StaleBefore_Rejected/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.568s
+FAIL

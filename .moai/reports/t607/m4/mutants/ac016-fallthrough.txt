@@ -1,0 +1,19 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/hook/ -run '^TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary$' -count=1 -v
+# exit: 1
+# tree: dff5dee4a (M4 implementation commit), with one mutation applied by m4_mutants.py: normalization failure falls through to the unnormalized root
+# runner: .moai/reports/t607/m4/m4_mutants.py (cp backup -> substitute -> run -> cp restore -> filecmp); restored_cmp_equal=True per mutants/summary.tsv
+# ---
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git
+    slot_lease_guard_test.go:464: no advisory for an unresolvable root; got ""
+    slot_lease_guard_test.go:470: last audit under the unnormalized hook root = ("allow-unheld", "", present=true), want a fail-open line
+--- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary (0.57s)
+    --- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny (0.04s)
+    --- PASS: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny (0.04s)
+    --- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	1.205s
+FAIL

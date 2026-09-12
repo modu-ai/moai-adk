@@ -1,0 +1,2 @@
+.claude/rules/moai/core/agent-common-protocol.md:1
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md:1

@@ -1,0 +1,2 @@
+local: mg-test-s=0 028a mg=1 dl=1 028b test-e=0 test-s=1 mode-lines=14 029a mg=1 dl=1 029b test-e=0 test-s=1
+template: mg-test-s=0 028a mg=1 dl=1 028b test-e=0 test-s=1 mode-lines=14 029a mg=1 dl=1 029b test-e=0 test-s=1

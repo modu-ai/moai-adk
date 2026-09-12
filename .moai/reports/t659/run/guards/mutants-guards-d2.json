@@ -1,0 +1,12 @@
+[
+  {
+    "id": "M-D2-logabs",
+    "desc": "Delta-audit D2: only the log half of the G-B condition reverted to the pre-F1 comparison (filepath.Abs string equality instead of sameFile); run only the hardlink_log subtests",
+    "edits": [
+      ["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if sameFile(rulePath, registryPath) || func() bool { a, errA := filepath.Abs(rulePath); b, errB := filepath.Abs(evolutionLogPath); return errA == nil && errB == nil && a == b }() {"]
+    ],
+    "run": ["test", "./internal/constitution/", "-run", "^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$/^hardlink_log$", "-count=1", "-v"],
+    "expect_runs": 1,
+    "out": ".moai/reports/t659/run/guards/d2-red-mutant.txt"
+  }
+]

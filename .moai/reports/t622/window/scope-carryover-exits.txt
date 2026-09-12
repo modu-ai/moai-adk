@@ -1,0 +1,4 @@
+card-range-names recheck cmp exit=0
+scope-vs-pre-absorb test-e exit=0
+scope-vs-pre-absorb test-s exit=1 (expect 1)
+positive control: paths changed 0f7d52dd6..HEAD (absorb delta): 176

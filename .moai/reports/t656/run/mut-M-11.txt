@@ -1,0 +1,33 @@
+--- FAIL: TestMergeUserFiles_SnapshotBaseScopedToSettingsJSON (3.63s)
+    settings_snapshot_base_test.go:233: .mcp.json result changed by snapshots:
+        with:    {
+          "env": {
+            "PATH": "/new"
+          },
+          "permissions": {
+            "deny": [
+              "A",
+              "B"
+            ]
+          },
+          "statusLine": {
+            "command": "new"
+          }
+        }
+        without: {
+          "env": {
+            "PATH": "/old"
+          },
+          "permissions": {
+            "deny": [
+              "A"
+            ]
+          },
+          "statusLine": {
+            "command": "old"
+          }
+        }
+    settings_snapshot_base_test.go:236: .mcp.json statusLine.command = new, want old (derived base)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	4.240s
+FAIL

@@ -1,0 +1,28 @@
+=== RUN   TestLoadGitFlowDevelopBranch
+=== RUN   TestLoadGitFlowDevelopBranch/git-flow_develop_branch_flows_through
+=== RUN   TestLoadGitFlowDevelopBranch/develop_branch_under_github-flow_is_not_an_integration_branch
+=== RUN   TestLoadGitFlowDevelopBranch/a_git-flow-shaped_personal_profile_does_not_qualify
+=== RUN   TestLoadGitFlowDevelopBranch/empty_develop_branch_yields_the_neutral_value
+=== RUN   TestLoadGitFlowDevelopBranch/missing_mode_has_no_active_profile
+=== RUN   TestLoadGitFlowDevelopBranch/missing_file_yields_the_neutral_value
+--- PASS: TestLoadGitFlowDevelopBranch (0.01s)
+    --- PASS: TestLoadGitFlowDevelopBranch/git-flow_develop_branch_flows_through (0.00s)
+    --- PASS: TestLoadGitFlowDevelopBranch/develop_branch_under_github-flow_is_not_an_integration_branch (0.00s)
+    --- PASS: TestLoadGitFlowDevelopBranch/a_git-flow-shaped_personal_profile_does_not_qualify (0.00s)
+    --- PASS: TestLoadGitFlowDevelopBranch/empty_develop_branch_yields_the_neutral_value (0.00s)
+    --- PASS: TestLoadGitFlowDevelopBranch/missing_mode_has_no_active_profile (0.00s)
+    --- PASS: TestLoadGitFlowDevelopBranch/missing_file_yields_the_neutral_value (0.00s)
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/a_manual_git-flow_with_develop_set
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/b_manual_git-flow_with_develop_empty
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/c_manual_github-flow
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/d_personal_git-flow
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/e_no_file
+--- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/a_manual_git-flow_with_develop_set (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/b_manual_git-flow_with_develop_empty (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/c_manual_github-flow (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/d_personal_git-flow (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/e_no_file (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.394s

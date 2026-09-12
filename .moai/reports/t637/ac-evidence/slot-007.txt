@@ -1,0 +1,59 @@
+=== RUN   TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree
+--- PASS: TestIntegrationAcquire_NonGitFlowFallsBackToCallerTree (0.50s)
+=== RUN   TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn
+--- PASS: TestIntegrationAcquire_GitHubFlowEmptyDevelopDoesNotWarn (0.49s)
+=== RUN   TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn
+--- PASS: TestIntegrationAcquire_NonManualModeGitFlowDoesNotWarn (0.50s)
+=== RUN   TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn
+2026/09/12 04:08:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn192784211/001/.moai/config/sections
+--- PASS: TestIntegrationAcquire_NoConfigCallerFallbackDoesNotWarn (0.51s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.791s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	2.363s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	1.839s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	1.992s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	2.631s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	0.326s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	2.761s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	2.891s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	1.064s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	0.179s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	2.195s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	0.862s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	3.140s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	2.492s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	0.656s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.510s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	3.166s [no tests to run]

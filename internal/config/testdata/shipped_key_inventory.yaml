@@ -2889,6 +2889,12 @@
 - path: "workflow.project.continuation"
   class: P
   evidence: .claude/skills/moai/workflows/project/doc-generation.md
+- path: "workflow.slot_lease.default_max_duration"
+  class: W
+  evidence: reader
+- path: "workflow.slot_lease.enabled"
+  class: W
+  evidence: reader
 - path: "workflow.token_budget.plan"
   class: W
   evidence: reader

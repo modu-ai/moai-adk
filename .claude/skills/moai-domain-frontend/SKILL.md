@@ -112,8 +112,8 @@ Import cva and VariantProps from class-variance-authority. Define buttonVariants
 ## Works Well With
 
 - moai-domain-backend - Full-stack development
-- moai-library-shadcn - Component library integration
-- moai-domain-uiux - UI/UX design principles
+- moai-ref-ui-polish - Component library integration
+- moai-ref-ui-polish - UI/UX design principles
 - `.claude/rules/moai/languages/typescript.md` - TypeScript patterns (auto-loaded via paths frontmatter)
 - moai-workflow-testing - Frontend testing
 
@@ -148,7 +148,6 @@ Official documentation:
 ---
 
 Version: 2.1.0
-Last Updated: 2026-03-28
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
@@ -186,12 +185,3 @@ Last Updated: 2026-03-28
 - [ ] Components under 300 lines or decomposed with clear sub-component boundaries
 
 <!-- moai:evolvable-end -->
-
-## Refactor Notes
-
-**Refactor scope** (deferred to future sub-SPEC):
-- Reduce body to routing/delegation content pointing at moai-ref-react-patterns and moai-library-nextra
-- Extract framework-specific deep-dives into Level-3 modules
-- Remove content that duplicates coverage in library and reference skills
-
-This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.
