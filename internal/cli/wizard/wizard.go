@@ -429,24 +429,11 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.GitLabUsername = value
 	case "gitlab_token":
 		result.GitLabToken = value
-	// Page-3 field (REQ-IWE-001). harness_profile is no longer asked
-	// (REQ-WIZ-012), so it has no capture branch.
-	case "project_mode":
-		result.ProjectMode = value
+	// Page-3 field. harness_profile (REQ-WIZ-012) and the eleven page-3
+	// questions removed by SPEC-INIT-QUIET-WIZARD-001 are no longer asked, so
+	// they have no capture branch.
 	case "autonomy_tier":
 		result.AutonomyTier = value
-	// SPEC-PROJECT-CONTINUATION-KEY-001 (REQ-PCK-010): the /moai project
-	// completion selection, persisted to workflow.project.continuation.
-	case "project_continuation":
-		result.ProjectContinuation = value
-	case "audit_model":
-		result.AuditModel = value
-	case "audit_gate_claude":
-		result.AuditGateClaude = value
-	case "audit_gate_codex":
-		result.AuditGateCodex = value
-	case "audit_gate_glm":
-		result.AuditGateGLM = value
 	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-002): the harness selection, read
 	// downstream by resolveAgentWiringWithWizard.
 	case "agent_wiring":
@@ -457,31 +444,16 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 
 // saveBoolAnswer stores a boolean answer in the result.
 //
-// The four former page-3 confirm questions (lsp_enabled, enforce_quality,
-// design_enabled, claude_design_enabled) are no longer asked — fixed at their
-// shipped true defaults (removed 2026-08-03). Their capture branches are gone
-// (M3 invariant: a removed question stores nothing). No page-3 boolean
-// question remains interactive, so this is now a no-op for the init/update
-// set; it is still wired through buildConfirmField for any future confirm
-// question and is exercised by the removal tests.
-func saveBoolAnswer(id string, value bool, result *WizardResult) {
-	switch id {
-	case "worktree_auto_create":
-		result.WorktreeAutoCreate = value
-	case "codex_audit_enabled":
-		result.CodexAuditEnabled = value
-	case "mcp_provision":
-		result.MCPProvision = value
-	case "todo_enabled":
-		// Recorded as an explicit answer either way: reaching this branch means
-		// the question was asked, which is precisely what nil does not mean.
-		result.TodoEnabled = &value
-	case "feedback_auto_submit":
-		// Pointer for the same reason as todo_enabled: reaching this branch
-		// means the question was asked, which nil does not mean.
-		result.FeedbackAutoSubmit = &value
-	}
-}
+// No confirm question remains in the init or reconfigure set: the four former
+// page-3 confirms (lsp_enabled, enforce_quality, design_enabled,
+// claude_design_enabled) are fixed at their shipped true defaults (removed
+// 2026-08-03), and the five remaining confirms (worktree auto-creation,
+// backlog queue, feedback auto-submit, codex review gate, MCP provisioning)
+// were removed by SPEC-INIT-QUIET-WIZARD-001. A removed question stores
+// nothing (M3 invariant), so this is a no-op; it stays wired through
+// buildConfirmField for any future confirm question and is exercised by the
+// removal tests.
+func saveBoolAnswer(id string, value bool, result *WizardResult) {}
 
 // buildConfirmField creates a huh.Confirm field for a boolean question.
 func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.Confirm {

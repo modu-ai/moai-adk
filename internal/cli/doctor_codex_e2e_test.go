@@ -51,7 +51,7 @@ func pinInitHome(t *testing.T) string {
 // Wiring" judgment passes clean. The sanity leg (assertCodexArtifacts) runs
 // FIRST so a silently-unwired init cannot vacuously pass the OK assertion.
 func TestRunInit_ThenDoctorCodexWiringHealthy(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex", MCPProvision: true}
+	wiz := &wizard.WizardResult{AgentWiring: "codex"}
 	homeDir := pinInitHome(t)
 
 	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
@@ -83,7 +83,7 @@ func TestRunInit_ThenDoctorCodexWiringHealthy(t *testing.T) {
 // a Warn. The sanity leg asserts the wiring artifacts really are absent, so
 // the OK cannot pass by way of a silent wiring failure.
 func TestRunInit_ClaudeOnlyThenDoctorStaysSilent(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "claude", MCPProvision: true}
+	wiz := &wizard.WizardResult{AgentWiring: "claude"}
 	homeDir := pinInitHome(t)
 
 	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)

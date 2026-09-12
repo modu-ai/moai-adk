@@ -17,8 +17,48 @@ var removedInM3 = []string{
 	"lsp_enabled", "enforce_quality", "design_enabled", "claude_design_enabled",
 }
 
+// removedQuietInit are the eleven page-3-only questions the quiet init wizard
+// stops asking (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-002/013). No other caller
+// reaches them, so they leave no definition, translation, or capture branch
+// behind — the same removal invariant removedInM3 pins.
+var removedQuietInit = []string{
+	"project_mode", "worktree_auto_create", "todo_enabled", "feedback_auto_submit",
+	"project_continuation", "audit_model", "audit_gate_claude", "audit_gate_codex",
+	"audit_gate_glm", "codex_audit_enabled", "mcp_provision",
+}
+
+// sharedInitRemovedIDs are the three DefaultQuestions entries the quiet init
+// wizard no longer asks but the reconfigure path still does (spec.md §2.3 D1).
+var sharedInitRemovedIDs = []string{"project_name", "model_policy", "report_format"}
+
+// TestInitQuestions_QuietSet pins AC-IQW-001: the init set is exactly the four
+// kept questions, in order, each keeping its current group label.
+func TestInitQuestions_QuietSet(t *testing.T) {
+	t.Parallel()
+	questions := InitQuestions(t.TempDir())
+
+	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier"}
+	wantGroups := []string{"Basic", "Basic", "Quality & Workflow", "Autonomy"}
+
+	if len(questions) != len(wantIDs) {
+		got := make([]string, 0, len(questions))
+		for i := range questions {
+			got = append(got, questions[i].ID)
+		}
+		t.Fatalf("InitQuestions returned %d questions %v, want %d %v", len(questions), got, len(wantIDs), wantIDs)
+	}
+	for i := range wantIDs {
+		if questions[i].ID != wantIDs[i] {
+			t.Errorf("InitQuestions[%d].ID = %q, want %q", i, questions[i].ID, wantIDs[i])
+		}
+		if questions[i].Group != wantGroups[i] {
+			t.Errorf("InitQuestions[%d] (%s) Group = %q, want %q", i, questions[i].ID, questions[i].Group, wantGroups[i])
+		}
+	}
+}
+
 // TestRemovedQuestionsAbsentFromInitSet pins the question-absence half of
-// AC-WIZ-008 and AC-WIZ-009.
+// AC-WIZ-008 and AC-WIZ-009, and of AC-IQW-002 for the quiet init set.
 func TestRemovedQuestionsAbsentFromInitSet(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -31,10 +71,27 @@ func TestRemovedQuestionsAbsentFromInitSet(t *testing.T) {
 			t.Errorf("%q must not be asked on the reconfigure path either", id)
 		}
 	}
+
+	// AC-IQW-002: the eleven page-3-only questions are gone from both sets.
+	for _, id := range removedQuietInit {
+		if QuestionByID(InitQuestions(root), id) != nil {
+			t.Errorf("%q must not be asked by the quiet init wizard", id)
+		}
+		if QuestionByID(ReconfigureQuestions(root), id) != nil {
+			t.Errorf("%q must not reach the reconfigure path", id)
+		}
+	}
+	// The three shared questions are gone from init only.
+	for _, id := range sharedInitRemovedIDs {
+		if QuestionByID(InitQuestions(root), id) != nil {
+			t.Errorf("%q must not be asked by the quiet init wizard", id)
+		}
+	}
 }
 
 // TestRemovedQuestionsHaveNoOrphanTranslations pins the C15/C16 half of
-// AC-WIZ-011: a removed question leaves no ko/ja/zh entry behind.
+// AC-WIZ-011: a removed question leaves no ko/ja/zh entry behind. AC-IQW-002
+// extends it to the eleven page-3-only questions of the quiet init wizard.
 func TestRemovedQuestionsHaveNoOrphanTranslations(t *testing.T) {
 	t.Parallel()
 	for _, locale := range localizableLocales {
@@ -47,6 +104,40 @@ func TestRemovedQuestionsHaveNoOrphanTranslations(t *testing.T) {
 				t.Errorf("locale %q: orphan translation entry for removed question %q", locale, id)
 			}
 		}
+		for _, id := range removedQuietInit {
+			if _, exists := langTrans[id]; exists {
+				t.Errorf("locale %q: orphan translation entry for removed question %q", locale, id)
+			}
+		}
+	}
+}
+
+// TestSharedQuestionsRetainedForReconfigure pins the D1 split (AC-IQW-002):
+// project_name, model_policy, and report_format leave the init set but stay in
+// ReconfigureQuestions with their translations, and their answers still
+// capture on the result.
+func TestSharedQuestionsRetainedForReconfigure(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	reconf := ReconfigureQuestions(root)
+	for _, id := range sharedInitRemovedIDs {
+		if QuestionByID(reconf, id) == nil {
+			t.Errorf("%q must stay in ReconfigureQuestions (D1)", id)
+		}
+		for _, locale := range localizableLocales {
+			if _, ok := translations[locale][id]; !ok {
+				t.Errorf("locale %q: %q translation must stay for the reconfigure path", locale, id)
+			}
+		}
+	}
+
+	locale := ""
+	r := &WizardResult{}
+	saveAnswer("project_name", "reconf-proj", r, &locale)
+	saveAnswer("model_policy", "low", r, &locale)
+	saveAnswer("report_format", "md", r, &locale)
+	if r.ProjectName != "reconf-proj" || r.ModelPolicy != "low" || r.ReportFormat != "md" {
+		t.Errorf("shared capture branches must survive for reconfigure; result = %+v", *r)
 	}
 }
 
@@ -67,11 +158,23 @@ func TestRemovedQuestionsHaveNoCaptureBranch(t *testing.T) {
 		t.Error("saveBoolAnswer still captures coverage_exemptions_enabled — the case must be gone")
 	}
 
-	// Retained capture branches must survive.
+	// Retained capture branches must survive (the kept init questions).
 	kept := &WizardResult{}
-	saveAnswer("project_mode", "team", kept, &locale)
-	if kept.ProjectMode != "team" {
-		t.Error("project_mode capture branch was removed by mistake")
+	saveAnswer("agent_wiring", "both", kept, &locale)
+	saveAnswer("autonomy_tier", "automatic", kept, &locale)
+	if kept.AgentWiring != "both" || kept.AutonomyTier != "automatic" {
+		t.Errorf("a kept capture branch was removed by mistake; result = %+v", *kept)
+	}
+
+	// AC-IQW-002: the eleven quiet-init removals capture nothing through either
+	// handler — no result field changes at all.
+	for _, id := range removedQuietInit {
+		r := &WizardResult{}
+		saveAnswer(id, "team", r, &locale)
+		saveBoolAnswer(id, true, r)
+		if *r != (WizardResult{}) {
+			t.Errorf("%s capture branch must be gone (SPEC-INIT-QUIET-WIZARD-001); result = %+v", id, *r)
+		}
 	}
 	// The four newly-removed page-3 confirms must NOT capture (M3 invariant
 	// extended to lsp_enabled/enforce_quality/design_enabled/claude_design_enabled).

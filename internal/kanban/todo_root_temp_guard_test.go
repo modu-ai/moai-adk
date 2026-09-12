@@ -15,6 +15,7 @@ package kanban
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -50,11 +51,12 @@ func declareNonTemporary(t *testing.T) {
 // TestTodoQueueRoot_TempOriginRefusesHomeQueue — AC-THG-001.
 //
 // The Given splits in two because the contamination path is only REACHED when
-// the base carries a project-local queue: adoptLocalTodoQueue returns early
-// when there is no local file, so branch (a) alone could report "no home
-// directory was created" without the guard having done anything. Branch (b)
-// walks the path that actually creates one, which is what makes the zero a
-// result rather than a coincidence.
+// the base carries a queue to carry over: the adoption stops early when there
+// is no file to move (this was adoptLocalTodoQueue's own early return until
+// t621 retired it, and is resolveStateDir's candidate scan since), so branch
+// (a) alone could report "no home directory was created" without the guard
+// having done anything. Branch (b) walks the path that actually creates one,
+// which is what makes the zero a result rather than a coincidence.
 func TestTodoQueueRoot_TempOriginRefusesHomeQueue(t *testing.T) {
 	t.Run("no local queue: both resolvers return the launch base", func(t *testing.T) {
 		dir := t.TempDir() // not a git repository, and under os.TempDir() by construction
@@ -187,21 +189,40 @@ func TestTodoQueueRoot_NonTempNonGitKeepsHomeFallback(t *testing.T) {
 		t.Fatalf("the injected root set did not take: base %q still classifies temporary (reason %q)", dir, reason)
 	}
 
-	want := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
-	if got := ResolveTodoQueueRoot(dir); got != want {
-		t.Errorf("pure resolver = %q, want the home fallback %q — the documented \"exactly one queue\" availability was withdrawn", got, want)
+	// INTENTIONAL UPDATE (t621): the criterion is that a non-git base KEEPS
+	// its home queue — the guard's trigger is a temporary origin, never the
+	// absence of git. That is a claim about where the QUEUE lives, and it was
+	// asserted through the resolver's root value, which has since stopped
+	// tracking it: a root under ~/.moai is re-keyed by the layer below, so
+	// naming one placed the queue at ~/.moai/db/<key>-<hash>/todo — still in
+	// the home, but forked away from the ~/.moai/db/<key>/todo that every
+	// anchor-based surface reads. The assertions below test the criterion on
+	// the queue path itself, where it is now decided.
+	assertHomeQueue := func(label, root string) {
+		t.Helper()
+		queue := BacklogPathForRoot(root)
+		if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+			t.Errorf("%s resolver's queue = %q, want it under the home directory %q — "+
+				"the documented \"exactly one queue\" availability was withdrawn", label, queue, home)
+		}
+		if strings.HasPrefix(queue, dir+string(filepath.Separator)) {
+			t.Errorf("%s resolver's queue = %q is project-local; the guard must not fire on a non-temporary base",
+				label, queue)
+		}
 	}
+	assertHomeQueue("pure", ResolveTodoQueueRoot(dir))
 
-	// The adopting path's adopt-not-shadow migration is unchanged too.
-	local := seedLocalQueue(t, dir, 2)
-	if got := ResolveTodoQueueRootAdopting(dir); got != want {
-		t.Fatalf("adopting resolver = %q, want the home fallback %q", got, want)
+	// The adopting path's adopt-not-shadow migration is unchanged too: the
+	// cards seeded before it runs are the cards it surfaces afterwards.
+	seedLocalQueue(t, dir, 2)
+	adopting := ResolveTodoQueueRootAdopting(dir)
+	assertHomeQueue("adopting", adopting)
+	rec, err := NewBacklogStore(BacklogPathForRootAdopting(adopting)).Load()
+	if err != nil {
+		t.Fatalf("load through the adopting root: %v", err)
 	}
-	if _, err := os.Stat(BacklogPathForRoot(want)); err != nil {
-		t.Errorf("adoption did not land where consumers read: %s (%v)", BacklogPathForRoot(want), err)
-	}
-	if _, err := os.Stat(local); !os.IsNotExist(err) {
-		t.Errorf("local queue still at %q after adoption (stat err = %v)", local, err)
+	if len(rec.Items) != 2 {
+		t.Errorf("the adopting resolver surfaces %d cards, want the 2 that were already queued", len(rec.Items))
 	}
 }
 
