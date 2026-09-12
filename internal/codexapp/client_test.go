@@ -371,3 +371,38 @@ func TestLifetimeCancellation(t *testing.T) {
 	}
 	c.Close()
 }
+
+func TestDiscardRequestPreservesOtherIDsAndRejectsReplay(t *testing.T) {
+	c := helper(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := c.Call(ctx, "server", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	event := <-c.Events()
+	if err := c.DiscardRequest(json.RawMessage(`"foreign"`)); err == nil {
+		t.Fatal("unknown discard accepted")
+	}
+	if err := c.DiscardRequest(json.RawMessage(`null`)); err == nil {
+		t.Fatal("invalid discard accepted")
+	}
+	if err := c.Respond(ctx, event.ID, map[string]bool{"success": true}); err != nil {
+		t.Fatal("foreign discard consumed owned request", err)
+	}
+	if event := <-c.Events(); event.Method != "responded" {
+		t.Fatal(event)
+	}
+	if err := c.Call(ctx, "server", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	event = <-c.Events()
+	if err := c.DiscardRequest(event.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.DiscardRequest(event.ID); err == nil {
+		t.Fatal("discard replay accepted")
+	}
+	if err := c.Respond(ctx, event.ID, nil); err == nil {
+		t.Fatal("discarded request answered")
+	}
+}

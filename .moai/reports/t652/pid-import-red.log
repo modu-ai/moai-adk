@@ -1,0 +1,8 @@
+--- FAIL: TestSupervisorExecRegressionSupervisorSurvivesActualExecAndStopsAfterParentExit (3.08s)
+    supervisor_exec_test.go:93: reaped parent identity=indeterminate fingerprint="" signal=os: process already finished matchesESRCH=false matchesProcessDone=true
+    supervisor_exec_test.go:104: child listener survived parent exit
+--- FAIL: TestSupervisorParentProcessDeath (1.01s)
+    supervisor_test.go:271: parent death not observed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway	4.407s
+FAIL

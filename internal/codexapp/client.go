@@ -401,3 +401,20 @@ func (c *Client) Respond(ctx context.Context, id json.RawMessage, result any) er
 	}
 	return c.send(ctx, Message{ID: id, Result: b})
 }
+
+// DiscardRequest retires an already-delivered server request without sending a
+// result. Only the trusted owner of a canceled/failed turn may call it. It does
+// not cancel any client RPC or remove another server request's registration.
+func (c *Client) DiscardRequest(id json.RawMessage) error {
+	key, err := idKey(id)
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.requests[key] {
+		return ErrProtocol
+	}
+	delete(c.requests, key)
+	return nil
+}
