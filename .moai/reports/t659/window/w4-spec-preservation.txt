@@ -1,0 +1,5 @@
+=== RUN   TestLinter_AC08_DanglingRuleReference
+--- PASS: TestLinter_AC08_DanglingRuleReference (0.64s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	1.018s
+exit=0

@@ -1,0 +1,646 @@
+[
+ {
+  "id": "M-1",
+  "desc": "replace every occurrence instead of requiring exactly one",
+  "edits": [
+   [
+    "internal/constitution/apply_transform.go",
+    "if n := countOccurrences(content, current); n != 1 {",
+    "if n := countOccurrences(content, current); n == 0 {"
+   ],
+   [
+    "internal/constitution/apply_transform.go",
+    "return bytes.Replace(content, []byte(current), []byte(next), 1), nil",
+    "return bytes.Replace(content, []byte(current), []byte(next), -1), nil"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_OccurrenceCount_Rejected$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-1.txt"
+ },
+ {
+  "id": "M-2",
+  "desc": "normalize whitespace before counting the current clause",
+  "edits": [
+   [
+    "internal/constitution/apply_transform.go",
+    "if n := countOccurrences(content, current); n != 1 {",
+    "if n := countOccurrences([]byte(strings.Join(strings.Fields(string(content)), \" \")), current); n != 1 {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_NoWhitespaceNormalization$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-2.txt"
+ },
+ {
+  "id": "M-3a",
+  "desc": "re-serialize the parsed registry instead of rewriting one line",
+  "edits": [
+   [
+    "internal/constitution/apply_transform.go",
+    "\trewritten := text[:start] + strings.Join(lines, \"\") + text[start+len(fence):]",
+    "\tvar reser []rawEntry\n\t_ = yaml.Unmarshal([]byte(fence), &reser)\n\tfor i := range reser {\n\t\tif reser[i].ID == ruleID {\n\t\t\treser[i].Clause = next\n\t\t}\n\t}\n\tout, _ := yaml.Marshal(reser)\n\trewritten := text[:start] + \"\\n\" + string(out) + text[start+len(fence):]"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestUpdateRegistryClause_SingleLineRoundTrip$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-3a.txt"
+ },
+ {
+  "id": "M-3b",
+  "desc": "interpolate the new clause into quotes without escaping",
+  "edits": [
+   [
+    "internal/constitution/apply_transform.go",
+    "return `\"` + strings.ReplaceAll(strings.ReplaceAll(s, `\\`, `\\\\`), `\"`, `\\\"`) + `\"`",
+    "return `\"` + s + `\"`"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestUpdateRegistryClause_SingleLineRoundTrip$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-3b.txt"
+ },
+ {
+  "id": "M-4",
+  "desc": "skip the re-parse check",
+  "edits": [
+   [
+    "internal/constitution/apply_transform.go",
+    "\tafter, err := decodeRegistryEntries(rewritten)",
+    "\treturn []byte(rewritten), nil\n\tafter, err := decodeRegistryEntries(rewritten)"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RegistryReparse_Rejects$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-4.txt"
+ },
+ {
+  "id": "M-5a",
+  "desc": "remove the restore call on rename failure",
+  "edits": [
+   [
+    "internal/constitution/apply_commit.go",
+    "if rerr := p.restoreAll(changes); rerr != nil {",
+    "if rerr := error(nil); rerr != nil {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RenameFault_RestoresAll$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-5a.txt"
+ },
+ {
+  "id": "M-5b-i",
+  "desc": "restore only the files whose forward rename reported success",
+  "edits": [
+   [
+    "internal/constitution/apply_commit.go",
+    "\tfor _, c := range changes {\n\t\tif err := restore(c.path, c.oldData, c.existed); err != nil {",
+    "\tfor _, c := range changes {\n\t\tif c.temp != \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tif err := restore(c.path, c.oldData, c.existed); err != nil {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RenameFault_RestoresAll$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-5b-i.txt"
+ },
+ {
+  "id": "M-5b-ii",
+  "desc": "restore bytes but skip removing a file recorded absent",
+  "edits": [
+   [
+    "internal/constitution/apply_commit.go",
+    "\t\tif err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {\n\t\t\treturn err\n\t\t}\n\t\treturn nil",
+    "\t\treturn nil"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RenameFault_RestoresAll$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-5b-ii.txt"
+ },
+ {
+  "id": "M-5c",
+  "desc": "rename the log before the registry",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "return []*fileChange{source, registry, logFile}, log, nil",
+    "return []*fileChange{source, logFile, registry}, log, nil"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RenameOrder$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-5c.txt"
+ },
+ {
+  "id": "M-10",
+  "desc": "dry-run skips the apply validation (the pre-SPEC behaviour)",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "\tchanges, log, err := p.prepareApply(",
+    "\tif dryRun {\n\t\treturn p.createLogEntry(proposal, currentRule.Zone), nil\n\t}\n\tchanges, log, err := p.prepareApply("
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestPipeline_Execute_DryRun_Validates$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-10.txt"
+ },
+ {
+  "id": "M-11a",
+  "desc": "leave the backup files after a successful apply",
+  "edits": [
+   [
+    "internal/constitution/apply_commit.go",
+    "\tremoveBackups(changes)\n\treturn nil\n}",
+    "\treturn nil\n}"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RenameFault_RestoresAll$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-11a.txt"
+ },
+ {
+  "id": "M-11b",
+  "desc": "dry-run performs the real apply",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "\tif dryRun {\n\t\treturn log, nil\n\t}\n",
+    "\tif dryRun {\n\t\t_ = p.commitChanges(changes)\n\t\treturn log, nil\n\t}\n"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestPipeline_Execute_DryRun_Validates$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-11b.txt"
+ },
+ {
+  "id": "M-16",
+  "desc": "allow a pre-existing occurrence of the new clause",
+  "edits": [
+   [
+    "internal/constitution/apply_transform.go",
+    "if n := countOccurrences(content, next); n != 0 {",
+    "if n := countOccurrences(content, next); n < 0 {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_NewClausePresent_Rejected$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-16.txt"
+ },
+ {
+  "id": "M-17",
+  "desc": "remove the Execute Before check (the CLI check stays)",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "\tif proposal.Before != currentRule.Clause {",
+    "\tif false && proposal.Before != currentRule.Clause {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestPipeline_Execute_StaleBefore_Rejected$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-17.txt"
+ },
+ {
+  "id": "M-18-i",
+  "desc": "on restore failure, delete the backups",
+  "edits": [
+   [
+    "internal/constitution/apply_commit.go",
+    "\t\tif rerr := p.restoreAll(changes); rerr != nil {\n\t\t\tremoveTemps(changes)\n",
+    "\t\tif rerr := p.restoreAll(changes); rerr != nil {\n\t\t\tremoveTemps(changes)\n\t\t\tremoveBackups(changes)\n"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RestoreFault_KeepsBackups$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-18-i.txt"
+ },
+ {
+  "id": "M-18-ii",
+  "desc": "on restore failure, omit the backup paths from the error",
+  "edits": [
+   [
+    "internal/constitution/apply_commit.go",
+    "\tvar backups []string\n\tfor _, c := range changes {\n\t\tif c.backup != \"\" {\n\t\t\tbackups = append(backups, c.backup)\n\t\t}\n\t}\n\treturn fmt.Errorf(\"%s; pre-apply backups kept for manual recovery: %s\",\n\t\tstrings.Join(failed, \"; \"), strings.Join(backups, \", \"))",
+    "\treturn fmt.Errorf(\"%s; pre-apply backups kept for manual recovery\", strings.Join(failed, \"; \"))"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestApply_RestoreFault_KeepsBackups$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-18-ii.txt"
+ },
+ {
+  "id": "M-19",
+  "desc": "Execute keeps its own projectDir join instead of the shared resolver",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "\tregistryPath := ResolveRegistryPath(projectDir)",
+    "\tregistryPath := filepath.Join(projectDir, \".claude\", \"rules\", \"moai\", \"core\", \"zone-registry.md\")"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^(TestExecute_UsesSharedRegistryResolver|TestExecute_RegistryOutsideProjectDir_Refused)$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 2,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-19.txt"
+ },
+ {
+  "id": "M-20-i",
+  "desc": "remove the amend path's containment check at the registry-path site (Execute and CLI alike); the loader keeps its absolute-only refusal",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n",
+    ""
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-20-i.txt"
+ },
+ {
+  "id": "M-20-iii",
+  "desc": "move the check into LoadRegistry (registry path + every joined file:) \u2014 the placement D4 excludes; constitution half",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n",
+    ""
+   ],
+   [
+    "internal/constitution/registry_path.go",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {",
+    "\t\tif err := error(nil); err != nil {"
+   ],
+   [
+    "internal/constitution/loader.go",
+    "\tcleanProjectDir := filepath.Clean(projectDir)\n",
+    "\tcleanProjectDir := filepath.Clean(projectDir)\n\tif err := checkContained(projectDir, path); err != nil {\n\t\treturn nil, err\n\t}\n"
+   ],
+   [
+    "internal/constitution/loader.go",
+    "\t\treg.lookup[rule.ID] = len(reg.Entries)",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, rule.File)); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\treg.lookup[rule.ID] = len(reg.Entries)"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-20-iii.txt"
+ },
+ {
+  "id": "M-20-iii-spec",
+  "desc": "M-20 (iii), internal/spec half: the AC-CAA-025 preservation run",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n",
+    ""
+   ],
+   [
+    "internal/constitution/registry_path.go",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {",
+    "\t\tif err := error(nil); err != nil {"
+   ],
+   [
+    "internal/constitution/loader.go",
+    "\tcleanProjectDir := filepath.Clean(projectDir)\n",
+    "\tcleanProjectDir := filepath.Clean(projectDir)\n\tif err := checkContained(projectDir, path); err != nil {\n\t\treturn nil, err\n\t}\n"
+   ],
+   [
+    "internal/constitution/loader.go",
+    "\t\treg.lookup[rule.ID] = len(reg.Entries)",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, rule.File)); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\treg.lookup[rule.ID] = len(reg.Entries)"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/spec/",
+   "-run",
+   "^TestLinter_AC08_DanglingRuleReference$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-20-iii-spec.txt"
+ },
+ {
+  "id": "M-20-iv",
+  "desc": "remove LoadRegistry's present refusal of an absolute registry path outside projectDir",
+  "edits": [
+   [
+    "internal/constitution/loader.go",
+    "\tif filepath.IsAbs(cleanPath) {",
+    "\tif false && filepath.IsAbs(cleanPath) {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-20-iv.txt"
+ },
+ {
+  "id": "M-21-file",
+  "desc": "remove the containment check's call on each entry's joined file:",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {",
+    "\t\tif err := error(nil); err != nil {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-21-file.txt"
+ },
+ {
+  "id": "M-21-log",
+  "desc": "remove the containment check's call on the evolution-log path",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "\tif err := checkContained(projectDir, evolutionLogPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"evolution log load error: %w\", err)\n\t}\n",
+    ""
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-21-log.txt"
+ },
+ {
+  "id": "M-22-i",
+  "desc": "plain string prefix test on the cleaned, resolved paths (no separator boundary)",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\trel, err := filepath.Rel(root, p)\n\tif err != nil || filepath.IsAbs(rel) {\n\t\treturn false\n\t}\n\treturn rel != \"..\" && !strings.HasPrefix(rel, \"..\"+string(filepath.Separator))",
+    "\treturn strings.HasPrefix(p, root)"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-22-i.txt"
+ },
+ {
+  "id": "M-22-ii",
+  "desc": "file: site compares the uncleaned concatenation root+sep+file against the unresolved projectDir with a plain prefix test",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {\n\t\t\treturn nil, fmt.Errorf(\"rule %s file: %w\", e.ID, err)\n\t\t}",
+    "\t\tif cand := projectDir + string(filepath.Separator) + e.File; !strings.HasPrefix(cand, projectDir) {\n\t\t\treturn nil, fmt.Errorf(\"rule %s file: %s is outside\", e.ID, cand)\n\t\t}"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-22-ii.txt"
+ },
+ {
+  "id": "M-23-i",
+  "desc": "no symbolic-link resolution on the registry-path candidate (root still resolved)",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\tif err := checkContained(projectDir, registryPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"registry path: %w\", err)\n\t}\n",
+    "\tif root, _ := resolveExisting(projectDir); true {\n\t\tif abs, _ := filepath.Abs(registryPath); !isWithin(root, abs) {\n\t\t\treturn nil, fmt.Errorf(\"registry path: %s is outside\", abs)\n\t\t}\n\t}\n"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-23-i.txt"
+ },
+ {
+  "id": "M-23-ii",
+  "desc": "no symbolic-link resolution on each entry's joined file: (root still resolved)",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\t\tif err := checkContained(projectDir, ruleFilePath(projectDir, e.File)); err != nil {\n\t\t\treturn nil, fmt.Errorf(\"rule %s file: %w\", e.ID, err)\n\t\t}",
+    "\t\tif root, _ := resolveExisting(projectDir); true {\n\t\t\tif abs, _ := filepath.Abs(ruleFilePath(projectDir, e.File)); !isWithin(root, abs) {\n\t\t\t\treturn nil, fmt.Errorf(\"rule %s file: %s is outside\", e.ID, abs)\n\t\t\t}\n\t\t}"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-23-ii.txt"
+ },
+ {
+  "id": "M-23-iii",
+  "desc": "no symbolic-link resolution on the evolution-log path (root still resolved)",
+  "edits": [
+   [
+    "internal/constitution/pipeline.go",
+    "\tif err := checkContained(projectDir, evolutionLogPath); err != nil {\n\t\treturn nil, fmt.Errorf(\"evolution log load error: %w\", err)\n\t}\n",
+    "\tif root, _ := resolveExisting(projectDir); !isWithin(root, evolutionLogPath) {\n\t\treturn nil, fmt.Errorf(\"evolution log load error: %s is outside\", evolutionLogPath)\n\t}\n"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestExecute_ContainmentCheck_RefusesEscapes$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-23-iii.txt"
+ },
+ {
+  "id": "M-24",
+  "desc": "resolve symbolic links on the candidate but not on projectDir",
+  "edits": [
+   [
+    "internal/constitution/registry_path.go",
+    "\troot, err := resolveExisting(projectDir)",
+    "\troot, err := filepath.Abs(projectDir)"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^(TestExecute_ContainmentCheck_RefusesEscapes|TestExecute_RealRegistryShape_Admitted)$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 2,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-24.txt"
+ }
+]

@@ -1,0 +1,142 @@
+=== RUN   TestApply_RenameFault_RestoresAll
+=== RUN   TestApply_RenameFault_RestoresAll/first_rename_applied
+=== RUN   TestApply_RenameFault_RestoresAll/second_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_applied
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_log_absent
+=== RUN   TestApply_RenameFault_RestoresAll/no_fault_clean
+--- PASS: TestApply_RenameFault_RestoresAll (0.05s)
+    --- PASS: TestApply_RenameFault_RestoresAll/first_rename_applied (0.00s)
+    --- PASS: TestApply_RenameFault_RestoresAll/second_rename (0.00s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename_applied (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename_log_absent (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/no_fault_clean (0.02s)
+=== RUN   TestApply_RenameOrder
+--- PASS: TestApply_RenameOrder (0.01s)
+=== RUN   TestApply_RestoreFault_KeepsBackups
+--- PASS: TestApply_RestoreFault_KeepsBackups (0.00s)
+=== RUN   TestApply_ExactlyOnce_Success
+--- PASS: TestApply_ExactlyOnce_Success (0.00s)
+=== RUN   TestApply_OccurrenceCount_Rejected
+=== RUN   TestApply_OccurrenceCount_Rejected/zero
+=== RUN   TestApply_OccurrenceCount_Rejected/two
+--- PASS: TestApply_OccurrenceCount_Rejected (0.01s)
+    --- PASS: TestApply_OccurrenceCount_Rejected/zero (0.00s)
+    --- PASS: TestApply_OccurrenceCount_Rejected/two (0.00s)
+=== RUN   TestApply_NoWhitespaceNormalization
+--- PASS: TestApply_NoWhitespaceNormalization (0.00s)
+=== RUN   TestUpdateRegistryClause_SingleLineRoundTrip
+--- PASS: TestUpdateRegistryClause_SingleLineRoundTrip (0.00s)
+=== RUN   TestApply_RegistryReparse_Rejects
+=== RUN   TestApply_RegistryReparse_Rejects/continuation
+=== RUN   TestApply_RegistryReparse_Rejects/no_clause_line
+=== RUN   TestApply_RegistryReparse_Rejects/newline_clause
+--- PASS: TestApply_RegistryReparse_Rejects (0.01s)
+    --- PASS: TestApply_RegistryReparse_Rejects/continuation (0.00s)
+    --- PASS: TestApply_RegistryReparse_Rejects/no_clause_line (0.00s)
+    --- PASS: TestApply_RegistryReparse_Rejects/newline_clause (0.00s)
+=== RUN   TestApply_NewClausePresent_Rejected
+=== RUN   TestApply_NewClausePresent_Rejected/elsewhere
+=== RUN   TestApply_NewClausePresent_Rejected/inside_current_clause
+--- PASS: TestApply_NewClausePresent_Rejected (0.01s)
+    --- PASS: TestApply_NewClausePresent_Rejected/elsewhere (0.00s)
+    --- PASS: TestApply_NewClausePresent_Rejected/inside_current_clause (0.00s)
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected/dry_run
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected/real
+--- PASS: TestPipeline_Execute_StaleBefore_Rejected (0.01s)
+    --- PASS: TestPipeline_Execute_StaleBefore_Rejected/dry_run (0.00s)
+    --- PASS: TestPipeline_Execute_StaleBefore_Rejected/real (0.00s)
+=== RUN   TestExecute_UsesSharedRegistryResolver
+--- PASS: TestExecute_UsesSharedRegistryResolver (0.01s)
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_real
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_dry_run
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/same_root_control
+--- PASS: TestExecute_RegistryOutsideProjectDir_Refused (0.01s)
+    --- PASS: TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_real (0.00s)
+    --- PASS: TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_dry_run (0.00s)
+    --- PASS: TestExecute_RegistryOutsideProjectDir_Refused/same_root_control (0.00s)
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/real
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/relative_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/symlinked_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_escape
+--- PASS: TestExecute_ContainmentCheck_RefusesEscapes (0.29s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape (0.02s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/dry_run (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file (0.05s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/dry_run (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/dry_run (0.02s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file (0.03s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/dry_run (0.02s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file (0.04s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/real (0.03s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/dry_run (0.02s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry (0.02s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/dry_run (0.01s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file (0.07s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/real (0.07s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/dry_run (0.01s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/dry_run (0.01s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control (0.03s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/dry_run (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/real (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged (0.02s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/relative_registry (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_file (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/symlinked_registry (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_escape (0.01s)
+=== RUN   TestExecute_RealRegistryShape_Admitted
+=== RUN   TestExecute_RealRegistryShape_Admitted/load
+=== RUN   TestExecute_RealRegistryShape_Admitted/dry_run
+=== RUN   TestExecute_RealRegistryShape_Admitted/real
+--- PASS: TestExecute_RealRegistryShape_Admitted (0.04s)
+    --- PASS: TestExecute_RealRegistryShape_Admitted/load (0.01s)
+    --- PASS: TestExecute_RealRegistryShape_Admitted/dry_run (0.02s)
+    --- PASS: TestExecute_RealRegistryShape_Admitted/real (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.651s

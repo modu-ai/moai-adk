@@ -1,0 +1,2 @@
+f7707b1d4b4266fea8f02ecf20308bb673e9ceb3284f2306b9cecd188cf4be21  .claude/rules/moai/core/zone-registry.md
+f5735051294951389bb9a058e0ef5656bfe75d8efba49e7f8b5919c0d92469f0  .moai/research/evolution-log.md

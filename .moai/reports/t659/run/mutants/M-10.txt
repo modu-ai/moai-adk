@@ -1,0 +1,25 @@
+# mutant M-10: dry-run skips the apply validation (the pre-SPEC behaviour)
+# edits: [["internal/constitution/pipeline.go", "\tchanges, log, err := p.prepareApply(", "\tif dryRun {\n\t\treturn p.createLogEntry(proposal, currentRule.Zone), nil\n\t}\n\tchanges, log, err := p.prepareApply("]]
+# $ go test ./internal/constitution/ -run ^TestPipeline_Execute_DryRun_Validates$ -count=1 -v
+# exit=1
+=== RUN   TestPipeline_Execute_DryRun_Validates
+=== RUN   TestPipeline_Execute_DryRun_Validates/valid
+=== RUN   TestPipeline_Execute_DryRun_Validates/two_occurrences
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/registry_continuation
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/missing_rule_file
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/new_clause_present
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/stale_before
+--- FAIL: TestPipeline_Execute_DryRun_Validates (0.03s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/valid (0.01s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/two_occurrences (0.00s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/registry_continuation (0.01s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/missing_rule_file (0.00s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/new_clause_present (0.00s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/stale_before (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.418s
+FAIL

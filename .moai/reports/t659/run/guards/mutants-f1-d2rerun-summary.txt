@@ -1,0 +1,9 @@
+# guard mutant re-run against 3949cdba4 (spec mutants-guards-f1-d2rerun.json, runner mutate.py); derived mechanically from each out file
+# pipeline.go sha256 after the re-run: aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737 (= pre-run)
+M-F1-samefile: KILLED exit=1 top_level_runs=1 subtest_runs=10 subtest_fails=8 out=.moai/reports/t659/run/guards/M-F1-samefile-f1-d2rerun.txt
+M-F1-fallback: KILLED exit=1 top_level_runs=1 subtest_runs=2 subtest_fails=2 out=.moai/reports/t659/run/guards/M-F1-fallback-f1-d2rerun.txt
+M-GA: KILLED exit=1 top_level_runs=1 subtest_runs=2 subtest_fails=2 out=.moai/reports/t659/run/guards/M-GA-f1-d2rerun.txt
+M-GB: KILLED exit=1 top_level_runs=1 subtest_runs=6 subtest_fails=4 out=.moai/reports/t659/run/guards/M-GB-f1-d2rerun.txt
+M-GB-reg: KILLED exit=1 top_level_runs=1 subtest_runs=2 subtest_fails=2 out=.moai/reports/t659/run/guards/M-GB-reg-f1-d2rerun.txt
+M-GB-log: KILLED exit=1 top_level_runs=1 subtest_runs=2 subtest_fails=2 out=.moai/reports/t659/run/guards/M-GB-log-f1-d2rerun.txt
+M-GB-always: KILLED exit=1 top_level_runs=1 subtest_runs=2 subtest_fails=2 out=.moai/reports/t659/run/guards/M-GB-always-f1-d2rerun.txt

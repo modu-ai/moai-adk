@@ -1,0 +1,19 @@
+# mutant M-GA: G-A removed: Execute no longer rejects an empty After before the gates
+# edits: [["internal/constitution/pipeline.go", "\tif proposal.After == \"\" {\n\t\treturn nil, fmt.Errorf(\"proposal for rule %s: After is empty\", proposal.RuleID)\n\t}\n", ""]]
+# $ go test ./internal/constitution/ -run ^TestExecute_EmptyAfter_Rejected$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_EmptyAfter_Rejected
+=== RUN   TestExecute_EmptyAfter_Rejected/dry_run
+    apply_test.go:1195: error "amendment validation error: evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_EmptyAfter_Rejecteddry_run3297026722/001/.moai/research/evolution-log.md: clause is empty" lacks "After is empty"
+    apply_test.go:1198: error "amendment validation error: evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_EmptyAfter_Rejecteddry_run3297026722/001/.moai/research/evolution-log.md: clause is empty" does not name the rule CONST-V3R6-789
+    apply_test.go:1201: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_EmptyAfter_Rejected/real
+    apply_test.go:1195: error "amendment validation error: evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_EmptyAfter_Rejectedreal2232173380/001/.moai/research/evolution-log.md: clause is empty" lacks "After is empty"
+    apply_test.go:1198: error "amendment validation error: evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_EmptyAfter_Rejectedreal2232173380/001/.moai/research/evolution-log.md: clause is empty" does not name the rule CONST-V3R6-789
+    apply_test.go:1201: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+--- FAIL: TestExecute_EmptyAfter_Rejected (0.07s)
+    --- FAIL: TestExecute_EmptyAfter_Rejected/dry_run (0.06s)
+    --- FAIL: TestExecute_EmptyAfter_Rejected/real (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.514s
+FAIL
