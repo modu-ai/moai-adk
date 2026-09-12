@@ -178,6 +178,97 @@ Lead check item answered by measurement, not by reading (SLOT-27/27b): mutant C 
 
 Instrument defect found and corrected in the same run: the first mutant-C selector named `TestInitAgentFlagBothWiresCodexArtifacts`, which does not exist. `go test -run` silently ignores a non-existent name when other names in the alternation match, and prints `no tests to run` only when nothing matches at all — so the miss was invisible in the output and was caught by comparing the PASS count (4) with the selector count (5). The real names were resolved with `git grep '^func Test' -- internal/cli/init_agent_flag_test.go` and re-run as SLOT-27b. Future mutant selectors verify name existence before the run.
 
+M6 addendum — the AC checks §E.3 first reported as Gaps, now measured (lane, 2026-09-12, tree HEAD `4079087ab`, card base `ee99507fbe3b4a22c6a0a74815723d222dfdc04d`). The §E.3 matrix rows for AC-IQW-005, 012 and 013 are superseded by this block.
+
+AC-IQW-012 — worktree wiring prose consolidated:
+
+```
+$ git grep -nE 'worktree_auto_create|WorktreeAutoCreate' -- internal/cli/wizard internal/cli/init.go ':!*_test.go'   → ac012-exit=1 (0 hits)
+$ git grep -cE 'worktree_auto_create|WorktreeAutoCreate' 120436f58 -- internal/cli/wizard internal/cli/init.go ':!*_test.go'   → control: init.go:2, questions.go:2, translations.go:3, types.go:1, wizard.go:2 (10 hits)
+$ sed -n '/Worktree advisory/,/WorktreeAutoCreate bool/p' internal/core/project/initializer.go | awk 'tolower($0) ~ /wizard/ {c++} END {print "wizard-mentions=" c+0}'   → wizard-mentions=0 (range 9 lines, so the sed range is not empty)
+$ git show 120436f58:… | same awk   → control-wizard-mentions=2
+```
+
+AC-IQW-013 — dead writers gone, retained items present:
+
+```
+$ git grep -nE 'writeWorkflowAuditYAML|writeWorkflowTodoYAML|writeFeedbackAutoSubmitYAML|writeWorkflowProjectContinuationYAML|AuditConfigSet' -- internal ':!*_test.go'   → deleted-exit=1 (0 hits)
+$ git grep -cE 'writeWorkflowAuditYAML|AuditConfigSet' 120436f58 -- internal/core/project/initializer.go   → control 5
+$ git grep -nE 'func writeProjectModeYAML|func WriteWorkflowTogglesYAML|func provisionMCPEntryUnlessDeclined|opts\.MCPProvision' -- internal ':!*_test.go'   → kept-exit=0, 7 lines: provisionMCPEntryUnlessDeclined (init.go:254), the interactive write (init.go:721), the read (init.go:968), two comment lines, writeProjectModeYAML (initializer_expansion.go:54), WriteWorkflowTogglesYAML (initializer_workflow_toggles.go:38)
+$ go vet ./internal/cli/... ./internal/core/project/...   → 0 (also covered by the AC-IQW-014 module-wide vet above)
+```
+
+AC-IQW-005 — home-safety checklist sweep (the guard tests themselves ran at SLOT-7: `test-exit=0`, PASS 2, `no tests to run` 0, `ac005.txt`):
+
+```
+$ git diff --name-only --diff-filter=A develop...HEAD -- 'internal/cli/*_test.go'   → added-committed-exit=0; init_home_guard_test.go, init_quiet_wizard_test.go, init_shell_seam_test.go
+$ git ls-files --others --exclude-standard -- 'internal/cli/*_test.go'   → added-uncommitted-exit=0, 0 lines (all three are committed now)
+$ git grep --untracked -lE 'runInit[A-Za-z]*\(|prepareSafeInitHome\(' -- 'internal/cli/*_test.go' | sort   → 17 caller files
+$ wc -l < ac005-targets.txt   → 3 (the three planned files; ≥ 3 satisfied)
+$ comm -12 ac005-targets.txt ac005-reach.txt | wc -l   → 3 — equals the target count, so the searcher reads every target and the next line's 0 is a verdict rather than a vacuous pass
+$ comm -12 ac005-targets.txt ac005-forbidden.txt   → no output; | wc -l → 0   (forbidden-file control: 180 files in internal/cli carry one of the tokens, so the pattern matches)
+$ git grep -c 't.Setenv("HOME"' 120436f58 -- internal/cli/init_agent_wizard_test.go   → 7 (pattern control)
+$ git grep --untracked -c 'bash_profile' -- internal/cli/init_home_guard_test.go   → 1 (the sixth rc file is in the comparison list)
+```
+
+Mutant F (AC-IQW-005's required record — a fourth init execution test file outside the three planned ones, sweep-only, never compiled or run, deleted after the sweep, never committed):
+
+- **First attempt was too weak and is recorded as such.** The file called nothing: it carried `_ = runInit` without parentheses, so the discriminant `runInit[A-Za-z]*\(` did not match it. The sweep was unchanged — targets 3, forbidden intersection 0 — which looks identical to a clean tree. This is the documented limitation of the discriminant (acceptance.md AC-IQW-005, third note: the discriminant is the NAME OF AN INIT-EXECUTING CALL, so a file that executes init through some other spelling escapes the sweep), observed here rather than merely read.
+- **Corrected mutant** (`internal/cli/init_quiet_wizard_mcp_test.go`, `t.Setenv("HOME", t.TempDir())` plus a real `runInit(nil, nil)` call) turned the sweep RED as specified: uncommitted-added list gained the file, the added∩caller intersection became `init_home_guard_test.go, init_quiet_wizard_mcp_test.go, init_quiet_wizard_test.go, init_shell_seam_test.go`, the target count went `3 → 4`, and the forbidden intersection went `0 → 1`, printing `internal/cli/init_quiet_wizard_mcp_test.go`.
+- After `rm`, `git status --short` shows only the foreign ` M .moai/config/sections/workflow.yaml` and the clean sweep's forbidden intersection is 0 again.
+
+AC-IQW-010 body-preservation half (the execution half ran at SLOT-18 and SLOT-21):
+
+```
+$ diff codex-absence-base.txt codex-absence-head.txt      → codex-absence-diff-exit=0
+$ diff byte-identical-base.txt byte-identical-head.txt    → byte-identical-diff-exit=0
+$ wc -l codex-absence-base.txt byte-identical-base.txt    → 20 and 12 (both base extracts non-empty)
+```
+
+AC-IQW-011 — the cli half ran inside SLOT-18 (`TestRunInit_QuietWizardFlagsStillPersist` and `TestRunInit_WorkflowToggleFlagsPersist`, both PASS there, on the pre-M5 tree). The core half, run here on the current tree (SLOT-28; the lead waived the slot for `internal/core/project` because it does not link the root `internal/cli`, keeping the fingerprint duty):
+
+```
+$ go test ./internal/core/project/... -run 'TestWriteProjectModeYAML|TestWriteWorkflowTogglesYAML' -count=1 -v   → test-exit=0, `--- PASS:` 8, `no tests to run` 0   (ac011-core.txt)
+   fingerprints: sha-diff-exit=0, mtime-diff-exit=0, hooks-diff-exit=0 → home-diff-exit=0   (home-SLOT-28-*)
+```
+
+AC-IQW-014 remainder measured after §E.3 was written:
+
+```
+$ go test ./internal/cli/wizard/... -count=1   → test-exit=0, `ok … 3.104s`   (m6-wizard-full.txt)
+$ go test ./internal/core/project/... -cover -count=1   → cover-exit=0, `coverage: 88.8% of statements` (target 85%)   (m6-cover-project.txt)
+```
+
+SLOT-29 — `internal/cli` coverage (lead-granted; pre-run `ps` 0 go processes and load 6.20 after waiting out a foreign `go test ./internal/hook/` run and a load spike to 12.33; no other go command during the run; tree HEAD `4079087ab`):
+
+```
+$ go test ./internal/cli -cover -count=1 -timeout 1500s   → cover-exit=1, 955.796s   (m6-cover-cli.txt)
+  coverage: 82.4% of statements
+  --- FAIL: 4 — TestHomeStateChangedSurfaceCoverageConsumesFreshProfile, TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite, TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition, TestAuditLagUsesBinlagSeam
+  fingerprints: sha-diff-exit=0, mtime-diff-exit=0, hooks-diff-exit=0 → home-diff-exit=0   (home-SLOT-29-*)
+```
+
+Two findings, neither resolved by this card:
+
+1. **`internal/cli` coverage is 82.4%, below the 85% target** (`.moai/config/sections/quality.yaml` `test_coverage_target: 85`). This is a package-wide figure for a package far larger than this card's scope, and no baseline for the same package on the card base tree was measured, so this run does not establish whether the card moved the number in either direction. Reported to the lead as a number, not as a disposition; the lead owns what happens next.
+2. **The same four tests fail as in SLOT-19**, byte-for-byte the same family (home-state coverage + binlag). The attribution recorded at SLOT-19 stands: the card's diff touches none of their files, and develop's `5b7927b15` (t600) and `92494400f` (t606) fix exactly this family and are not yet absorbed. The merge-tree re-measure in the integration window is what settles it. The nested `coverage: 14.7% of statements in ./internal/cli, ./internal/homestate, ./internal/hook/handoff, ./internal/hook, ./internal/kanban` line in the output belongs to the bounded sub-suite those failing tests run themselves, not to this invocation.
+
+SLOT-30 — the base-tree control the lead ordered so the 82.4% figure can be attributed (card base `ee99507fbe3b4a22c6a0a74815723d222dfdc04d` extracted with `git archive | tar -x` into the session scratchpad; pre-run `ps` 0, load 4.91; no other go command during the run):
+
+```
+$ (in the extracted base tree) go test ./internal/cli -cover -count=1 -timeout 1500s   → base-cover-exit=1, 949.992s   (m6-cover-cli-base.txt)
+  coverage: 82.3% of statements
+  --- FAIL: 10
+  fingerprints: sha-diff-exit=0, mtime-diff-exit=0, hooks-diff-exit=0 → home-diff-exit=0   (home-SLOT-30-*)
+```
+
+**Attribution verdict: the card did not lower coverage.** base 82.3% → card 82.4%, a change of +0.1pp. The 85% target is missed on both trees, so the miss is a pre-existing package-level state rather than something this card introduced; raising it is out of this card's scope and belongs to a follow-up (lead ruling, 2026-09-12).
+
+Two limits of this control, stated rather than smoothed over:
+
+1. **The base tree is not a git repository.** `git archive` extracts a tree without `.git`, so every test that reads repository history fails there for an environmental reason. That is why the base run shows 10 failures against the card tree's 4: the extra six (`TestBuildIdentity_VersionDerivationUnchanged`, `TestBuildIdentity_IsMonotoneAcrossAnAncestorRelation`, `TestPreCommitLegacyNoRecord`, `TestHomeStateValidationCommandWrappersAndHelperFailures`, `TestTodoHistoryNeverPrompts`, `TestVersionStampRegistry`) are artifacts of the missing repository, not base-tree defects. The failure sets are therefore NOT directly comparable, and the coverage figures carry whatever small difference those six failing-vs-passing tests make.
+2. **What the control does establish**: all four of the card tree's failures — `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile`, `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite`, `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition`, `TestAuditLagUsesBinlagSeam` — also fail on the base tree. The SLOT-19/SLOT-29 known-red attribution, until now a reading of which files the diff touches, is now a measurement: those four are red without any of this card's changes present.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

@@ -448,8 +448,9 @@ command grep -cE '^\| SLOT-.*home-diff-exit=[1-9]' .moai/specs/SPEC-INIT-QUIET-W
     - 실행 관측 (`internal/cli`): 헬퍼는 시접을 바꾸기 전에, 현재 값이 테스트 패키지 초기화 때 잡아 둔 원래 값과 같은 함수인지 `reflect` 함수 포인터로 단언하고 다르면 `t.Fatal` 한다(design.md §5 4번). 주 관측 테스트를 `-count=2` 로 돌리면 둘째 회차의 이 단언이 첫 회차의 원복을 실행으로 확인한다.
   - 선택자가 테스트를 실제로 골랐다(스윕 확인).
   - 뮤턴트 3종이 판정을 RED 로 만든 출력이 progress.md §E.2 에 있다. 뮤턴트는 커밋하지 않는다. 셋 모두 남는 값이 스파이라 실제 셸 설정 파일에 쓰지 않으므로 plan.md §D 의 금지 뮤턴트에 해당하지 않는다.
-    - 뮤턴트 C1 — `internal/core/project` 게이트 테스트에서 되돌리는 대입(`t.Cleanup` 등록)을 지운다. 기대: 그 파일의 대입 줄 수가 뮤턴트 전보다 1 줄어들고, `-count=2` 실행에서 `--- FAIL: TestConfigureShellEnvFn_DefaultIsProductionFunc` 가 1줄 이상. 하위 테스트마다 바꿔 끼우는 구현이면 줄어든 뒤에도 2 이상이 남아 텍스트 관측은 RED 가 되지 않을 수 있으므로, 이 뮤턴트의 판정은 실행 RED 로 한다.
-    - 뮤턴트 C2 — `internal/cli` 헬퍼에서 되돌리는 대입을 지운다. 기대: 텍스트 관측 RED, `-count=2` 실행에서 `--- FAIL: TestRunInit_ShellConfigStepReachedViaSeam` 1줄(둘째 회차 진입 단언).
+    - 뮤턴트 C1 — `internal/core/project` 게이트 테스트에서 되돌리는 대입을 담은 `t.Cleanup` 등록 줄을 `_ = origSeam`(그 파일이 원래 값을 담아 둔 변수 이름을 그대로 쓴다) 로 바꾼다. 원복만 사라지고 잡아 둔 변수는 계속 쓰이므로 파일은 컴파일된다. 기대: 그 파일의 대입 줄 수가 뮤턴트 전보다 1 줄어들고, `-count=2` 실행에서 `--- FAIL: TestConfigureShellEnvFn_DefaultIsProductionFunc` 가 1줄 이상. 하위 테스트마다 바꿔 끼우는 구현이면 줄어든 뒤에도 2 이상이 남아 텍스트 관측은 RED 가 되지 않을 수 있으므로, 이 뮤턴트의 판정은 실행 RED 로 한다.
+    - 뮤턴트 C2 — `internal/cli` 헬퍼에서 되돌리는 대입을 담은 줄을 같은 방식으로 `_ = origSeam` 로 바꾼다. 기대: 텍스트 관측 RED, `-count=2` 실행에서 `--- FAIL: TestRunInit_ShellConfigStepReachedViaSeam` 1줄(둘째 회차 진입 단언).
+    - C1·C2 를 줄 삭제가 아니라 `_ = origSeam` 치환으로 적는 이유: 되돌리는 줄을 그냥 지우면 원래 값을 잡아 둔 변수가 쓰이지 않아 Go 가 `declared and not used: origSeam` 으로 컴파일을 거부하고, 그러면 테스트가 하나도 돌지 않아 실행 RED 대신 도구 실패가 나온다(이 카드에서 실측 — progress.md §E.2 의 SLOT-12 가 `[build failed]`, 치환 형태인 SLOT-12R 이 기대한 실행 RED).
     - 뮤턴트 D — 대입 파일이 아닌 주 관측 테스트 파일에서, 그 테스트 첫 줄에 `t.Parallel()` 을 넣는다. 기대: 텍스트 관측은 통과하고(대입 파일이 아니므로), 실행은 `can not use t.Parallel` panic 으로 실패한다. 대입 파일 안에 넣은 변형은 텍스트 관측의 `parallel-exit` 가 잡는다.
 
 ```bash
