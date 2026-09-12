@@ -23,6 +23,7 @@ const (
 	AuthOAuthPassthrough AuthMethod = "oauth-passthrough"
 	AuthAPIKey           AuthMethod = "api-key"
 	AuthPKCE             AuthMethod = "pkce"
+	AuthAppServer        AuthMethod = "app-server-managed"
 	AuthExistingGLM      AuthMethod = "existing-glm"
 )
 

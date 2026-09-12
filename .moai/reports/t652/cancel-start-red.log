@@ -1,0 +1,5 @@
+--- FAIL: TestCancelBeforeTurnStartReplyInterruptsAllocatedTurn (0.09s)
+    engine_test.go:271: allocated turn not interrupted []
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	0.778s
+FAIL

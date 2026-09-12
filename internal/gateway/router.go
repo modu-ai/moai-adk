@@ -18,6 +18,7 @@ type RoutedRequest struct {
 	Headers    http.Header
 	Credential CredentialRef
 	Generation uint64
+	Managed    *ManagedGrant
 }
 
 // Adapter sends to its configured provider endpoint only. It returns the upstream

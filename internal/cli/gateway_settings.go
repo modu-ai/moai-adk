@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/gateway"
 )
 
@@ -22,7 +23,7 @@ func cleanupGatewaySettings(path string) error {
 				delete(env, key)
 			}
 			if backup != "" {
-				env["ANTHROPIC_AUTH_TOKEN"] = backup
+				env[config.EnvAnthropicAuthToken] = backup
 			}
 			if len(env) == 0 {
 				delete(doc, "env")

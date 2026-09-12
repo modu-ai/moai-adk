@@ -23,7 +23,7 @@ type gatewayPrepareInput struct {
 
 // gatewayScrubKeys returns fresh storage: callers cannot change future launches.
 func gatewayScrubKeys() []string {
-	return []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_FABLE_MODEL", "MOAI_BACKUP_AUTH_TOKEN", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "API_TIMEOUT_MS", "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "CLAUDE_CODE_MAX_CONTEXT_TOKENS", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "CLAUDE_CODE_TEAMMATE_DISPLAY", "MOAI_STATUSLINE_CONTEXT_SIZE"}
+	return []string{config.EnvAnthropicAuthToken, config.EnvAnthropicBaseURL, config.EnvAnthropicDefaultOpusModel, config.EnvAnthropicDefaultSonnetModel, config.EnvAnthropicDefaultHaikuModel, config.EnvAnthropicDefaultFableModel, "MOAI_BACKUP_AUTH_TOKEN", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "API_TIMEOUT_MS", "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "CLAUDE_CODE_MAX_CONTEXT_TOKENS", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "CLAUDE_CODE_TEAMMATE_DISPLAY", "MOAI_STATUSLINE_CONTEXT_SIZE"}
 }
 
 // @MX:WARN: [AUTO] Launch mode, exact model and inherited environment are separate trust boundaries.
@@ -84,7 +84,7 @@ func prepareGatewayLaunch(in gatewayPrepareInput) (gateway.LaunchPlan, error) {
 	if err != nil {
 		return gateway.LaunchPlan{}, err
 	}
-	scrub := map[string]bool{"Z_AI_API_KEY": true, "ANTHROPIC_API_KEY": true, "ANTHROPIC_CUSTOM_HEADERS": true, "ANTHROPIC_MODEL": true, "CLAUDE_CODE_SUBAGENT_MODEL": true, "CLAUDE_CODE_DISABLE_1M_CONTEXT": true, config.EnvMoaiLaunchProvider: true}
+	scrub := map[string]bool{"Z_AI_API_KEY": true, config.EnvAnthropicAPIKey: true, "ANTHROPIC_CUSTOM_HEADERS": true, config.EnvAnthropicModel: true, "CLAUDE_CODE_SUBAGENT_MODEL": true, "CLAUDE_CODE_DISABLE_1M_CONTEXT": true, config.EnvMoaiLaunchProvider: true}
 	for _, k := range gatewayScrubKeys() {
 		scrub[k] = true
 	}

@@ -15,6 +15,7 @@ import (
 // ServerConfig has no implicit session-auth header or body-size default. The
 // launcher chooses the transport header only after its authentication gate.
 type ServerConfig struct {
+	ManagedAuthority  *AppServerAuthority
 	SessionHeader     string
 	SessionToken      string
 	MaxBodyBytes      int64
@@ -24,6 +25,7 @@ type ServerConfig struct {
 }
 
 type Server struct {
+	managedAuthority  *AppServerAuthority
 	sessionHeader     string
 	tokenHash         [32]byte
 	maxBodyBytes      int64
@@ -49,7 +51,7 @@ func NewServer(c ServerConfig) (*Server, error) {
 	if strings.ContainsAny(c.SessionToken, "\r\n") {
 		return nil, errors.New("invalid gateway session token")
 	}
-	s := &Server{sessionHeader: http.CanonicalHeaderKey(c.SessionHeader), tokenHash: sha256.Sum256([]byte(c.SessionToken)), maxBodyBytes: c.MaxBodyBytes, catalog: c.Catalog, resolveCredential: c.ResolveCredential, adapters: make(map[ProviderID]Adapter, len(c.Adapters))}
+	s := &Server{managedAuthority: c.ManagedAuthority, sessionHeader: http.CanonicalHeaderKey(c.SessionHeader), tokenHash: sha256.Sum256([]byte(c.SessionToken)), maxBodyBytes: c.MaxBodyBytes, catalog: c.Catalog, resolveCredential: c.ResolveCredential, adapters: make(map[ProviderID]Adapter, len(c.Adapters))}
 	for id, a := range c.Adapters {
 		s.adapters[id] = a
 	}
@@ -108,7 +110,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeCount(w, entry, payload)
 		return
 	}
-	ref, generation, err := s.credential(r.Context(), entry, r.Header)
+	var ref CredentialRef
+	var generation uint64
+	var managed *ManagedGrant
+	if entry.AuthMethod == AuthAppServer {
+		managed, err = s.managedAuthority.Authorize(r.Context(), entry)
+	} else {
+		ref, generation, err = s.credential(r.Context(), entry, r.Header)
+	}
 	if err != nil {
 		writeError(w, 401, "authentication_error")
 		return
@@ -126,8 +135,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 408, "timeout_error")
 		return
 	}
-	current, err := ref.Generation()
-	if err != nil || current != generation {
+	if managed != nil {
+		err = s.managedAuthority.Check(r.Context(), managed)
+	} else {
+		var current uint64
+		current, err = ref.Generation()
+		if err == nil && current != generation {
+			err = ErrManagedAuthority
+		}
+	}
+	if err != nil {
 		writeError(w, 401, "authentication_error")
 		return
 	}
@@ -139,7 +156,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	response, err := adapter.Send(r.Context(), RoutedRequest{Entry: entry, Body: body, Headers: headers, Credential: ref, Generation: generation})
+	response, err := adapter.Send(r.Context(), RoutedRequest{Entry: entry, Body: body, Headers: headers, Credential: ref, Generation: generation, Managed: managed})
 	if err != nil || response == nil || response.Body == nil {
 		if response != nil && response.Body != nil {
 			_ = response.Body.Close()

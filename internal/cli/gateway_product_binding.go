@@ -268,7 +268,7 @@ func marshalGatewayPrivatePayloadWithConversation(token string, models []gateway
 }
 
 func gatewayChildEnvironment(inherited []string) []string {
-	scrub := map[string]bool{"Z_AI_API_KEY": true, "OPENAI_API_KEY": true, "ANTHROPIC_API_KEY": true, "CODEX_HOME": true}
+	scrub := map[string]bool{"Z_AI_API_KEY": true, "OPENAI_API_KEY": true, config.EnvAnthropicAPIKey: true, "CODEX_HOME": true}
 	for _, key := range gatewayScrubKeys() {
 		scrub[key] = true
 	}
