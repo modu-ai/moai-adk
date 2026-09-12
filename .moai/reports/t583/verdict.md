@@ -272,7 +272,9 @@ acceptance.md AC-IQW-016 은 뮤턴트 C1·C2 를 "원복 대입을 **삭제**�
 
 그래서 관측은 컴파일되는 형태(`_ = origSeam`)로 다시 잡았다 — SLOT-12R·SLOT-13 이며, 둘 다 round 2 에서 기대한 실행 RED 를 냈다. SLOT-12 와 SLOT-12R 의 차이가 이 정정의 근거다.
 
-**정정은 아직 반영되지 않았다.** acceptance.md 본문 수정은 manager-spec 소관이고(§ 소관 경계), sync 단계의 manager-docs 는 SPEC 본문을 고치지 않는다. 이 절이 정정 내용과 근거를 기록하고, 문구 반영은 manager-spec 재위임으로 남긴다.
+**정정은 이미 반영됐다 — 커밋 `1c16e4227`.** manager-spec 재위임으로 acceptance.md:451-453 을 고쳤다: C1·C2 를 "줄 삭제"에서 "`_ = origSeam` 치환"으로 바꾸고, 그렇게 적는 이유(그냥 지우면 잡아 둔 변수가 쓰이지 않아 Go 가 컴파일을 거부하고 도구 실패가 된다)를 SLOT-12 vs SLOT-12R 근거와 함께 한 줄 추가했다. 기존 기대치(대입 줄 수 1 감소, C1 판정은 실행 RED, C2 는 텍스트+실행 RED, 뮤턴트 미커밋)는 전부 그대로다.
+
+**[정정 기록]** 이 절의 종전 문장은 "정정은 아직 반영되지 않았다. 문구 반영은 manager-spec 재위임으로 남긴다" 였다. 이는 거짓이었다 — sync 를 수행한 manager-docs 가 acceptance.md 본문을 읽지 않고 progress.md §E.2 에 남아 있던 **정정 이전에 작성된 sync 의무 문장**을 근거로 판단한 결과다. 레인이 sync 커밋 직후 `sed -n '451,453p' acceptance.md` 와 `git log -1 -- acceptance.md`(→ `1c16e4227`)로 실물을 확인해 이 문장과 §10.6 (e) 를 정정했다. 교훈: 부채 해소 여부는 그 부채를 기록한 문서가 아니라 **부채의 대상 파일**에서 확인한다.
 
 ### 10.4 `init_workflow_wiring_test.go` — 주석만 바뀐 편집
 
@@ -303,7 +305,7 @@ plan.md:179 는 `TestRunInit_WorkflowToggleFlagsAbsentByteIdentical`(`init_workf
 - **(b) 대화형 경로 판별력 상실.** 대화형 MCP 기본값이 true 가 되면서 `internal/cli/init_agent_wizard_test.go:139`·`:159`("both 가 거절을 이긴다")는 대화형 경로에서 더 이상 판별하지 않는다 — 거절을 표현할 수단이 없어졌다. 두 단언은 여전히 통과하지만 이름이 주장하는 것을 재지 않는다.
 - **(c) 기지 레드 4건, 병합 트리 재측정 대기.** `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile`, `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite`, `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition`, `TestAuditLagUsesBinlagSeam`. base 트리에서도 같이 실패하므로 카드 귀속이 아니고, develop 의 `5b7927b15`(t600)·`92494400f`(t606)가 이 계열을 고친다. **귀속됐을 뿐 해소되지는 않았다** — 통합 창의 병합 트리 재측정이 판정한다.
 - **(d) 미관측 Gap 은 통과가 아니다.** progress.md §E.3 Gaps 1~10 은 관측되지 않은 항목이며, 특히 AC-IQW-012·AC-IQW-013 은 이 카드가 수행한 **제거**를 단언하는 AC다. 그쪽 회귀는 실제로 돌린 어떤 검사에도 잡히지 않는다.
-- **(e) AC-IQW-016 문구 부채 미해소(§10.3).** acceptance.md 본문은 여전히 "삭제" 문구를 담고 있고, 반영은 manager-spec 재위임으로 남는다.
+- ~~**(e) AC-IQW-016 문구 부채 미해소(§10.3).**~~ **해소됨** — 커밋 `1c16e4227` 에서 acceptance.md:451-453 이 `_ = origSeam` 치환 형태로 고쳐졌다. 종전 이 항목의 서술은 대상 파일을 읽지 않고 progress.md 의 옛 의무 문장을 근거로 쓴 것이며, §10.3 의 [정정 기록] 에 경위를 남겼다.
 
 ### 10.7 이 절이 재지 않은 것 (Gaps)
 
