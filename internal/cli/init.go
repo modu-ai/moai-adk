@@ -11,8 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
@@ -611,24 +609,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// "moai profile setup" and stored in ~/.moai/claude-profiles/<name>/preferences.yaml.
 	profileName := profile.GetCurrentName()
 
-	// Auto-prompt profile setup if no profile exists yet
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) && !profile.IsSetup(profileName) {
-		var wantSetup bool
-		confirm := huh.NewConfirm().
-			Title("No profile found. Set up profile preferences now?").
-			Description("Configure your name, language, and model preferences.").
-			Value(&wantSetup)
-		// Wrap the standalone confirm in a themed form: field.Run() cannot take a
-		// theme, so the MoAI-branded dark-readable theme is applied at the form
-		// level (parity with the wizard fix for the other huh surfaces).
-		confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
-		if err := confirmForm.Run(); err == nil && wantSetup {
-			if err := runProfileSetup(cmd, nil); err != nil {
-				p.Warn("profile setup failed: %v", err)
-			}
-		}
-	}
-
+	// REQ-ITI-001: `moai init` carries NO profile entry — no confirmation, no
+	// profile wizard, whatever stdin and the flags are. A missing profile just
+	// leaves the preference values empty, and the init wizard asks the
+	// conversation language once as its first question (REQ-ITI-002). The
+	// profile wizard starts only from `moai profile setup` / `--setup`.
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		p.Warn("failed to read profile preferences: %v", err)

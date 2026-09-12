@@ -1,0 +1,60 @@
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/init/stdin=tty
+2026/09/12 16:57:05 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/09/12 16:57:05 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path="/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestInitUpdateEntry_NeverRunsProfileWizardinitstdin=tty3588583504/002/profile-path-proj/.moai/config/sections/sunset.yaml" advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/init/stdin=pipe
+2026/09/12 16:57:05 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/init_--non-interactive/stdin=tty
+2026/09/12 16:57:06 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/init_--non-interactive/stdin=pipe
+2026/09/12 16:57:06 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/update/stdin=tty
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/update/stdin=pipe
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/update_--yes/stdin=tty
+=== RUN   TestInitUpdateEntry_NeverRunsProfileWizard/update_--yes/stdin=pipe
+--- PASS: TestInitUpdateEntry_NeverRunsProfileWizard (1.94s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/init/stdin=tty (0.52s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/init/stdin=pipe (0.49s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/init_--non-interactive/stdin=tty (0.47s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/init_--non-interactive/stdin=pipe (0.45s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/update/stdin=tty (0.00s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/update/stdin=pipe (0.00s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/update_--yes/stdin=tty (0.00s)
+    --- PASS: TestInitUpdateEntry_NeverRunsProfileWizard/update_--yes/stdin=pipe (0.00s)
+=== RUN   TestInitUpdateSource_CarriesNoProfileEntry
+--- PASS: TestInitUpdateSource_CarriesNoProfileEntry (0.00s)
+=== RUN   TestInitInteractive_AsksConversationLanguageExactlyOnce
+2026/09/12 16:57:06 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestInitInteractive_AsksConversationLanguageExactlyOnce (0.43s)
+=== RUN   TestProfileExplicitEntries_RunProfileWizardOnce
+=== RUN   TestProfileExplicitEntries_RunProfileWizardOnce/moai_profile_setup
+=== RUN   TestProfileExplicitEntries_RunProfileWizardOnce/moai_profile_--setup
+--- PASS: TestProfileExplicitEntries_RunProfileWizardOnce (0.00s)
+    --- PASS: TestProfileExplicitEntries_RunProfileWizardOnce/moai_profile_setup (0.00s)
+    --- PASS: TestProfileExplicitEntries_RunProfileWizardOnce/moai_profile_--setup (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.532s
