@@ -216,19 +216,20 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// No mode is selected — page 3 no longer needs one.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// SPEC-INIT-QUIET-WIZARD-001: Basic (2) + Quality & Workflow (1) +
-	// Autonomy (1) = 4.
+	// SPEC-INIT-QUIET-WIZARD-001: Basic (2) + Agents & Autonomy (2) = 4
+	// (Q5 regroup).
 	if got != 4 {
-		t.Errorf("TotalVisibleQuestions = %d, want 4 (2 Basic + 1 Quality & Workflow + 1 Autonomy)", got)
+		t.Errorf("TotalVisibleQuestions = %d, want 4 (2 Basic + 2 Agents & Autonomy)", got)
 	}
-	// Quality & Workflow page membership: the agent_wiring harness selector.
+	// Agents & Autonomy page membership: the agent_wiring harness selector and
+	// the autonomy-tier selector.
 	n := 0
 	for _, q := range FilteredQuestions(all, res) {
-		if q.Group == "Quality & Workflow" {
+		if q.Group == "Agents & Autonomy" {
 			n++
 		}
 	}
-	if n != 1 {
-		t.Errorf("visible Quality & Workflow questions = %d, want 1", n)
+	if n != 2 {
+		t.Errorf("visible Agents & Autonomy questions = %d, want 2", n)
 	}
 }

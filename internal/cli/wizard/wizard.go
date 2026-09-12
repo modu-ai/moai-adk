@@ -33,8 +33,8 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 // retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
 // sees the same three pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
-	// The full 3-page init set (Basic / Model & Report / Quality & Workflow).
-	// Page 3 is unconditional — every user sees it
+	// The full 2-page init set (Basic / Agents & Autonomy), the Q5 regroup.
+	// Both pages are unconditional — every user sees them
 	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
 	questions := InitQuestions(projectRoot)
 

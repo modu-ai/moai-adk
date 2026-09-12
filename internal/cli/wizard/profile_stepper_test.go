@@ -91,9 +91,9 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 	}
 
 	// Init control (the same rule with init's own visible N): InitQuestions —
-	// what `moai init` runs — renders three pages, Basic (conversation_language
-	// + user_name, first at 1), then one question per page at positions 3 and
-	// 4; N = 4.
+	// what `moai init` runs — renders two pages after the Q5 regroup, Basic
+	// (conversation_language + user_name, first at 1) and Agents & Autonomy
+	// (agent_wiring + autonomy_tier, first at 3); N = 4.
 	result := &WizardResult{}
 	initForm := buildUnifiedForm(InitQuestions("/tmp/stepper-control"), result, "")
 	id := ptycaptest.NewFormDriver(t, initForm)
@@ -102,8 +102,7 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 		first     int
 	}{
 		{questions: 2, first: 1},
-		{questions: 1, first: 3},
-		{questions: 1, first: 4},
+		{questions: 2, first: 3},
 	}
 	for _, g := range initGroups {
 		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 4)

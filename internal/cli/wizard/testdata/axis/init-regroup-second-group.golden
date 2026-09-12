@@ -1,0 +1,28 @@
+  ● ● ● ○ 3 / 4                                                                 
+                                                                                
+                                                                                
+┃ Select the agent harness to wire                                              
+┃ Which LLM harness MoAI wires for this project. 'claude' is the recommended    
+┃ default; the --llm flag overrides this answer.                                
+┃ ▸ Claude (Recommended) - Wire the Claude side only (.mcp.json provisioning)   
+┃   Codex - Wire the .codex/ hook layer + MCP config; skips .mcp.json           
+┃   provisioning                                                                
+┃   Both - Wire both harnesses; forces .mcp.json provisioning on                
+┃                                                                               
+┃                                                                               
+┃                                                                               
+                                                                                
+  Select autonomy tier                                                          
+  Controls how many turns the session runs without prompting. 'semi-auto' is the
+  recommended default.                                                          
+  ▸ Semi-auto (Recommended) - Prompt before each non-trivial action             
+    Automatic - Run milestones autonomously; prompt at gates                    
+    Fully-autonomous - Requires sandbox proof (Docker/gVisor/etc.)              
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+↑ up • ↓ down • / filter • shift+tab back • enter select

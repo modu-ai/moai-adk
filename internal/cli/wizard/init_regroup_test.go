@@ -40,15 +40,33 @@ func TestInitRegroup_TwoPages(t *testing.T) {
 	if len(groups) != 2 {
 		t.Fatalf("init groups = %d, want exactly 2", len(groups))
 	}
-	if questions[0].ID != "conversation_language" || questions[1].ID != "user_name" {
-		t.Errorf("first group must open with conversation_language, user_name; got %q, %q", questions[0].ID, questions[1].ID)
+
+	// Membership + relative order (index-independent: the AC-ITI-021 denominator
+	// mutant inserts an extra question right after user_name, and this AC must
+	// still PASS under it). conversation_language + user_name open the set,
+	// agent_wiring + autonomy_tier close it, all four in this relative order.
+	position := map[string]int{}
+	for i := range questions {
+		position[questions[i].ID] = i
 	}
-	if questions[2].ID != "agent_wiring" || questions[3].ID != "autonomy_tier" {
-		t.Errorf("last group must carry agent_wiring, autonomy_tier in order; got %q, %q", questions[2].ID, questions[3].ID)
+	for _, id := range []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier"} {
+		if _, ok := position[id]; !ok {
+			t.Fatalf("init set lacks %q", id)
+		}
 	}
-	for i := 2; i <= 3; i++ {
-		if questions[i].Group != "Agents & Autonomy" {
-			t.Errorf("%s Group = %q, want %q", questions[i].ID, questions[i].Group, "Agents & Autonomy")
+	if !(position["conversation_language"] < position["user_name"] &&
+		position["user_name"] < position["agent_wiring"] &&
+		position["agent_wiring"] < position["autonomy_tier"]) {
+		t.Errorf("init order broken: %v", position)
+	}
+	for _, tc := range []struct{ id, want string }{
+		{"conversation_language", "Basic"},
+		{"user_name", "Basic"},
+		{"agent_wiring", "Agents & Autonomy"},
+		{"autonomy_tier", "Agents & Autonomy"},
+	} {
+		if got := questions[position[tc.id]].Group; got != tc.want {
+			t.Errorf("%s Group = %q, want %q", tc.id, got, tc.want)
 		}
 	}
 	for i := range questions {
@@ -197,5 +215,28 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 				t.Errorf("%s:%d renders or reads .Group outside the partition sites: %q", name, i+1, trimmed)
 			}
 		}
+	}
+}
+
+// TestInitRegroup_SecondGroupGolden is the regression guard AC-ITI-021 asks
+// for: the regrouped second page (two question titles, stepper ending
+// "3 / 4"). It changes under BOTH mutants (group split, extra question), so
+// it is a regression guard only — never counted as evidence for either
+// property.
+func TestInitRegroup_SecondGroupGolden(t *testing.T) {
+	result := &WizardResult{}
+	form := buildUnifiedForm(InitQuestions("/tmp/init-regroup-golden"), result, "")
+	d := ptycaptest.NewFormDriver(t, form)
+	d.Enter() // conversation_language
+	d.Enter() // user_name -> Agents & Autonomy page
+	frame := ptycaptest.StripANSI(d.View())
+	if err := ptycaptest.CompareGolden("testdata/axis", "init-regroup-second-group", frame, *updateAxisGolden); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		d.Enter()
+	}
+	if form.State != huh.StateCompleted {
+		t.Fatalf("init form must complete, state=%v", form.State)
 	}
 }
