@@ -1,18 +1,17 @@
 ---
-title: moai cc / cg / glm 런처
+title: moai cc / glm 런처
 weight: 15
 draft: false
 ---
 
-`moai cc`, `moai cg`, `moai glm` 은 Claude Code를 서로 다른 백엔드 구성으로 실행하는 세 가지 런처입니다. 세 명령 모두 설정을 조정한 뒤 `exec` 로 현재 프로세스를 Claude Code로 대체합니다. 어떤 모델이 어떤 일을 맡느냐가 곧 비용을 결정하므로, 런처 선택이 비용을 줄이는 첫 단추입니다.
+`moai cc`와 `moai glm`은 선택한 백엔드로 Claude Code를 실행합니다. 기존 CG 설정은 실행 전에 이전해야 합니다.
 
-## 세 런처 비교
+## 런처 비교
 
 | 런처 | 백엔드 | 용도 |
 |------|--------|------|
 | `moai cc` | Claude 전용 | 표준 실행 — 모든 에이전트가 Claude 모델 사용 |
 | `moai glm` | GLM 전용 | 모든 에이전트가 Z.AI 프록시 경유 GLM 모델 사용 |
-| `moai cg` | Claude + GLM 하이브리드 | 리더는 Claude, 팀원은 GLM (60-70% 비용 절감) |
 
 ## moai cc — Claude 백엔드
 
@@ -37,9 +36,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-f lane-<n>` | 레인 하나(`lane-<n>`)만 추가로 띄워 실행 중인 팩토리의 리드 소켓에 연결. 번호가 살아 있는 세션과 겹치면 다음 빈 번호로 붙음. `moai glm -f lane-<n>` 도 GLM 백엔드에서 같게 동작 |
 | `-k <N>` / `-k <N> --name lane-<i>` | v1.2.0 통합 형태로 지금도 유효 — `-k <N>` 은 레인 N개 런의 리드, `-k <N> --name lane-<i>` 는 그중 레인 `<i>`. N 없이 `-k --name lane-<i>` 만 쓰면 기본 8레인 |
 
-{{< callout type="info" >}}
-`-k` 는 칸반 체인 토큰이고, `-f` 는 **팩토리 모드** (Factory Mode) 전용 진입 토큰입니다. `-k` 하나가 세 모양으로 해석되는 것은 그대로입니다 — 인자 없음·SPEC-ID는 칸반 리드, `--name <역할>`은 칸반 동반, 숫자는 레인 런. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k` 와 `-f` 를 함께 쓰면 에러입니다. 혼합 백엔드 런처 `moai cg` 는 두 모드를 모두 거부합니다(팩토리 쪽 거부 신호는 `FACTORY_MODE_UNSUPPORTED_BACKEND`). 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)와 [manager-lead 리드 코디네이터](/ko/advanced/manager-lead)를 참고하세요.
-{{< /callout >}}
+{{< callout type="info" >}} `-k` 는 칸반 체인 토큰이고, `-f` 는 **팩토리 모드** (Factory Mode) 전용 진입 토큰입니다. `-k` 하나가 세 모양으로 해석되는 것은 그대로입니다 — 인자 없음·SPEC-ID는 칸반 리드, `--name <역할>`은 칸반 동반, 숫자는 레인 런. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k` 와 `-f` 를 함께 쓰면 에러입니다. 자세한 계약은 [칸반 모드](/ko/advanced/kanban-mode)와 [manager-lead 리드 코디네이터](/ko/advanced/manager-lead)를 참고하세요. {{< /callout >}}
 
 카드가 도는 방식은 칸반과 다릅니다. 칸반에서는 카드 하나가 `plan → run → sync` 열을 옮겨 다니지만, 팩토리에서는 카드 하나가 통째로 레인 하나에 들어가 그 레인 안에서 세 단계를 순서대로 지나갑니다. 단계마다 그 세션이 `Agent()` 서브에이전트를 띄우며, 쓰기 작업을 맡는 스폰은 `isolation: "worktree"` 로 격리합니다. 레인 하나가 동시에 띄울 수 있는 서브에이전트는 최대 10개이고, 런처가 레인·동반 세션에 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 로 이 값을 심어 두므로 레인 N개가 머신 용량을 나눠 쓰는 구조는 운영자의 자제가 아니라 설정으로 보장됩니다. 레인은 한꺼번에 켜지 마세요 — 첫 레인을 먼저 올리고, 실제로 출력이 나오기 시작한 것을 확인한 뒤에 나머지를 띄웁니다.
 
@@ -64,40 +61,34 @@ moai glm status            # 자격증명 상태 확인
 | `moai glm status` | 현재 GLM 자격증명 상태 표시 |
 
 {{< callout type="warning" >}}
-GLM은 `auto` 권한 모드를 지원하지 않습니다 (서드파티 제공자). `auto` 가 필요하면 `moai cc` 또는 `moai cg` 를 사용하세요. 또한 Z.AI는 동시 요청 한도가 낮으므로(유료 티어 1-3 in-flight), 다중 에이전트 병렬 실행은 `moai cg` 하이브리드 모드가 더 안정적입니다.
+GLM은 `auto` 권한 모드를 지원하지 않습니다. 이 모드는 사용 조건을 충족하는 Claude 세션에서 선택하세요. 폐기된 CG는 동시 실행의 대안이 아닙니다.
 {{< /callout >}}
 
-## moai cg — Claude + GLM 하이브리드
+## CG 폐기와 설정 이전
+
+Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다. [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/) CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 ```bash
-moai cg [-p profile]
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-CG는 "Claude + GLM"의 약자로, 비용 최적화 팀 구성입니다.
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
-- **리더** (현재 tmux pane): Claude 모델 사용 (opus/sonnet)
-- **팀원** (새 tmux pane): Z.AI 프록시 경유 GLM 모델 사용
-
-실행하면 먼저 tmux 세션을 검증합니다. 이어서 리더 pane에서는 GLM 환경을 제거해 Claude로 두고, tmux 세션 쪽에는 GLM 환경을 주입해 팀원이 GLM을 쓰게 한 뒤, `teammateMode=tmux` 와 `team_mode: cg` 를 설정합니다.
-
-**전제 조건**:
-
-1. `moai glm setup <api-key>` 로 GLM API 키 설정
-2. pane 단위 환경 격리를 위한 tmux 세션 내부 실행
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ## 프로필 (`-p` 플래그)
 
-세 런처 모두 `-p <name>` 으로 명명된 프로필을 지정하면 `CLAUDE_CONFIG_DIR` 이 `~/.moai/claude-profiles/<name>/` 로 설정됩니다. 여러 계정·설정 세트를 분리해 운용할 때 사용합니다.
+두 런처 모두 `-p <name>` 으로 명명된 프로필을 지정하면 `CLAUDE_CONFIG_DIR` 이 `~/.moai/claude-profiles/<name>/` 로 설정됩니다. 여러 계정·설정 세트를 분리해 운용할 때 사용합니다.
 
 ## 격리 worktree (`-w` 플래그)
 
-세 런처 모두 `-w [name]` 으로 격리된 git worktree 안에서 세션을 시작할 수 있습니다. `cd` 로 디렉터리를 옮기고 다시 실행하던 두 단계가 한 명령으로 줄어듭니다.
+두 런처 모두 `-w [name]` 으로 격리된 git worktree 안에서 세션을 시작할 수 있습니다. `cd` 로 디렉터리를 옮기고 다시 실행하던 두 단계가 한 명령으로 줄어듭니다.
 
 ```bash
 moai cc -w feat-login    # .claude/worktrees/feat-login/ 에서 시작
 moai cc -w               # 이름 자동 생성
 moai glm -w feat-login   # GLM 백엔드도 동일
-moai cg -w feat-login    # 하이브리드도 동일
 ```
 
 동작 규칙:
@@ -114,7 +105,7 @@ moai cg -w feat-login    # 하이브리드도 동일
 
 ## 관련 문서
 
-- [CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode)
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [프로필 관리](/ko/cli-reference/profile)
 - [보안 노트](/ko/advanced/security-notes) — GLM 자격증명 경로 보안 모델
 - [CLI 개요](/ko/getting-started/cli)

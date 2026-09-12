@@ -119,7 +119,7 @@ This command changes nothing — it exposes exactly the values the orchestrator 
 
 {{< icon warning warn >}} **Honesty notice**: the GLM backend effort overlay is **implemented + wired**, but wire effectiveness (live effectiveness) is pending empirical verification — it is not described as "behavior guaranteed".
 
-On the GLM backend (`moai glm` / `moai cg` GLM panes), an overlay is applied on top of the profile matrix:
+On the GLM backend (`moai glm`), an overlay is applied on top of the profile matrix:
 
 - Model slot mapping: `fable` → `glm-5.3-flash` (Fable slot, `ANTHROPIC_DEFAULT_FABLE_MODEL`). This slot is a GLM environment binding, independent of the profile matrix — it stays wired even though no matrix cell selects Fable.
 - Claude's 5-step effort collapses onto z.ai's reasoning ceiling. GLM-5.3 reasons **always** — disabling reasoning is not supported, and a request asking for it fails — so the control is a single 3-level `reasoning_effort` (low / high / max):

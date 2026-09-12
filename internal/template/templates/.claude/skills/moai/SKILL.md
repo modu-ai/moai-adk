@@ -317,7 +317,7 @@ Retired-flag message (`--worktree`):
 
 격리된 공간에서 작업하려면 먼저 들어간 뒤 plan 을 실행하세요:
   moai cc -w <이름>              (그 자리에서 진입)
-  moai cg -w <이름> --spawn      (새 tmux 창, 현재 세션 유지)
+  moai cc -w <이름> --spawn      (새 Claude 세션을 tmux 창으로 열고 현재 세션 유지)
   /moai plan "<설명>"
 ```
 

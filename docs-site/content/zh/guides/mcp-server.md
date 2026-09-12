@@ -194,7 +194,7 @@ CLI 仅在 MCP 工具不在 `tools:` 列表中，或在主会话中 CLI 形态�
 
 ### GLM (z.ai)
 
-在 GLM 会话（`moai glm` 或 `moai cg` 的 GLM 面板）中运行时，网络搜索和网络查询会路由到 z.ai MCP 工具，而非内置的 `WebSearch` / `WebFetch`。认证从 `~/.moai/.env.glm` 读取。
+在 GLM 会话（`moai glm`）中运行时，网络搜索和网络查询会路由到 z.ai MCP 工具，而非内置的 `WebSearch` / `WebFetch`。认证从 `~/.moai/.env.glm` 读取。
 
 z.ai MCP 服务器（`zai-mcp-server`、`web_search_prime`、`web_reader`）默认禁用，在 GLM 会话中用 `moai glm tools enable` 开启。GLM 会话中的路由规则请参考[多 LLM 后端](/zh/multi-llm/)。
 

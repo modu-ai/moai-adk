@@ -26,12 +26,6 @@ import (
 // unifiedLaunchFunc is the function used by unifiedLaunch. Override in tests.
 var unifiedLaunchFunc = unifiedLaunchDefault
 
-// newDetectorFn constructs the tmux detector used by applyCGMode. It is a
-// package-level seam so tests can inject a fake detector (e.g. to simulate the
-// REQ-CGH-008 tmux-present-but-unavailable state: InTmuxSession()==true while
-// IsAvailable()==false). Production code uses the real SystemDetector.
-var newDetectorFn = func() tmux.Detector { return tmux.NewDetector() }
-
 // recordLastProfileFn is the seam unifiedLaunchDefault uses to write the launch
 // ledger. It exists so a ledger-write failure can be injected directly
 // (SPEC-PROFILE-MEMORY-001 REQ-PM-014). The alternative — provoking a real
@@ -47,10 +41,8 @@ var recordLastProfileFn = profile.RecordLastUsedProfileForProject
 // on (SPEC-PROFILE-MEMORY-001 AC-PM-010c / AC-PM-018).
 var launcherStderr io.Writer = os.Stderr
 
-// injectTmuxSessionEnvFn is the seam applyCGMode uses to inject GLM credentials
-// into the tmux session env. It exists so the REQ-CGH-002 ordering invariant
-// (leader-cred strip BEFORE injection) can be tested by forcing an injection
-// failure. Production code uses the real injectTmuxSessionEnv.
+// injectTmuxSessionEnvFn retains the old CG injection boundary for retirement
+// regression counters. Retired entry points never call it.
 var injectTmuxSessionEnvFn = injectTmuxSessionEnv
 
 // unifiedLaunch delegates to unifiedLaunchFunc for testability.
@@ -117,7 +109,7 @@ func warnFreshProfile(w io.Writer, profileName string) {
 			"  persists for this profile.\n", profileName)
 }
 
-// unifiedLaunchDefault centralizes launch logic for all modes (claude, glm, claude_glm).
+// unifiedLaunchDefault centralizes launch logic for supported modes (claude, glm, gpt).
 //
 // @MX:ANCHOR: [AUTO] step order is load-bearing: root → resolve → mode → EnsureDir → record → exec
 // @MX:REASON: [AUTO] fan_in=3 (runCC/runCG/runGLM via unifiedLaunch). Two orderings are contracts, not
@@ -128,8 +120,27 @@ func warnFreshProfile(w io.Writer, profileName string) {
 // originalProfile; they diverge only when originalProfile is "", where no record happens, so the recorded
 // name always matches the created directory.
 func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) error {
+	return unifiedLaunchDefaultWithFactory(profileName, modeOverride, extraArgs, newNativeGatewayBinding)
+}
+
+func unifiedLaunchDefaultWithFactory(profileName, modeOverride string, extraArgs []string, _ func(string) (*gatewayLaunchBinding, error)) error {
+	// Only moai gpt opts into the gateway through its explicit launch binding.
+	// Claude and GLM retain their existing profile, authentication and MCP state.
+	return unifiedLaunchWithGateway(profileName, modeOverride, extraArgs, nil)
+}
+
+func unifiedLaunchWithGateway(profileName, modeOverride string, extraArgs []string, binding *gatewayLaunchBinding) error {
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
+	if mode == "cg" || mode == "claude_glm" {
+		return errCGRetired
+	}
+	if binding != nil && binding.Mode != mode {
+		return errors.New("gateway launcher mode mismatch")
+	}
+	if mode == "gpt" && binding == nil {
+		return errors.New("GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login")
+	}
 
 	// 2. Find project root. This precedes resolution because the fallback is
 	// now project-scoped and therefore needs the root. A failure here aborts
@@ -138,6 +149,10 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	root, err := findProjectRootFn()
 	if err != nil {
 		return fmt.Errorf("find project root: %w", err)
+	}
+
+	if err := guardCGLaunchAt(root, mode); err != nil {
+		return err
 	}
 
 	// 3. Resolve last-used-profile fallback for bare launches (no -p flag).
@@ -154,20 +169,23 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 		profileName = resolved
 	}
 
-	// 4. Apply mode-specific env setup
-	switch mode {
-	case "glm":
-		if err := applyGLMMode(root, profileName); err != nil {
+	// 4. Gateway launch owns its child environment and never mutates tmux.
+	if binding != nil {
+		if err := cleanupGatewaySettings(filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)); err != nil {
 			return err
 		}
-	case "claude_glm":
-		if err := applyCGMode(root, profileName); err != nil {
-			return err
+	} else {
+		switch mode {
+		case "glm":
+			if err := applyGLMMode(root, profileName); err != nil {
+				return err
+			}
+		default: // "claude" and any unknown mode
+			if err := applyCCMode(root); err != nil {
+				return err
+			}
 		}
-	default: // "claude" and any unknown mode
-		if err := applyCCMode(root); err != nil {
-			return err
-		}
+
 	}
 
 	// 4.5. Materialize the profile directory the launch will actually use, and
@@ -206,7 +224,7 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	}
 
 	// 5.5. Translate the user's crosssession.yaml into an injected --settings
-	// file. Covers every launcher (cc / glm / cg all funnel through here).
+	// file. Covers every launcher (cc / glm / gpt all funnel through here).
 	// No-ops when the operator supplied --settings themselves — which also
 	// covers the kanban/factory branches, whose args already carry the injected
 	// flag by the time they reach this funnel. Fail-open: an unreadable config
@@ -214,6 +232,9 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	extraArgs = appendCrossSessionSettings(root, extraArgs)
 
 	// 6. Launch claude
+	if binding != nil {
+		return launchClaudeWithGateway(profileName, extraArgs, binding)
+	}
 	return launchClaude(profileName, extraArgs)
 }
 
@@ -269,7 +290,7 @@ func applyGLMMode(root, profileName string) error {
 	// already sets env for the current process which syscall.Exec inherits into
 	// `claude`. Writing to settings.local.json (as previous behavior) would leak
 	// GLM env to subsequent `claude` invocations after `moai glm` exits.
-	// Tmux team panes still receive env via injectTmuxSessionEnv below (moai cg path).
+	// Legacy tmux cleanup below remains separate from gateway child preparation.
 
 	if err := persistTeamMode(root, "glm"); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to persist team mode: %v\n", err)
@@ -287,89 +308,9 @@ func applyGLMMode(root, profileName string) error {
 	return nil
 }
 
-// applyCGMode prepares the environment for Claude + GLM hybrid mode.
-func applyCGMode(root, profileName string) error {
-	glmConfig, err := loadGLMConfig(root)
-	if err != nil {
-		return fmt.Errorf("load GLM config: %w", err)
-	}
-
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		return fmt.Errorf("GLM API key not found\n\n"+
-			"Set up your API key first, then enable CG mode:\n"+
-			"  1. moai glm setup <api-key>   (saves key to ~/.moai/.env.glm)\n"+
-			"  2. moai cg                     (enable hybrid mode)\n\n"+
-			"Or set the %s environment variable", glmConfig.EnvVar)
-	}
-
-	settingsPath := filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)
-	detector := newDetectorFn()
-	inTmux := detector.InTmuxSession()
-
-	if !inTmux && os.Getenv(config.EnvTestMode) != "1" {
-		return fmt.Errorf("CG mode requires a tmux session.\n\n" +
-			"Claude Code itself supports iTerm2 split panes natively (v2.1.186+),\n" +
-			"but moai cg injects GLM credentials into teammate panes via tmux\n" +
-			"session-level env (set-environment). iTerm2 has no session-level env,\n" +
-			"so Leader=Claude / Teammates=GLM isolation requires tmux.\n\n" +
-			"  - This pane (lead): uses Claude API\n" +
-			"  - New panes (teammates): inherit GLM env for Z.AI API\n\n" +
-			"Start a tmux session first:\n" +
-			"  tmux new -s moai\n" +
-			"  moai cg\n\n" +
-			"Or use 'moai glm' for all-GLM mode (no tmux required)")
-	}
-
-	// REQ-CGH-008: in a tmux session, the tmux binary must actually be available.
-	// A tmux-present-but-binary-missing state (e.g. TMUX env inherited but tmux not
-	// on PATH) yields a clear "tmux not installed" error rather than the misleading
-	// "restart your tmux session" message emitted on injection failure below.
-	if inTmux && !detector.IsAvailable() {
-		return fmt.Errorf("tmux is not installed or not executable.\n\n" +
-			"CG mode injects GLM credentials into the tmux session env, which " +
-			"requires the tmux binary on PATH.\n\n" +
-			"Install tmux first:\n" +
-			"  macOS:  brew install tmux\n" +
-			"  Debian: sudo apt-get install tmux\n\n" +
-			"Then start a session and re-run:\n" +
-			"  tmux new -s moai\n" +
-			"  moai cg")
-	}
-
-	// REQ-CGH-002 + REQ-CGH-003: strip stale GLM credentials from the leader config
-	// AND set teammateMode=tmux in a SINGLE locked+atomic read-modify-write, BEFORE
-	// the failure-prone tmux injection below. This guarantees a tmux-injection
-	// failure cannot leave stale GLM credentials in the leader's env block, and no
-	// intermediate file state exists where teammateMode is absent.
-	if err := mutateSettingsLocal(settingsPath, stripGLMCredsAndSetTeammateMode); err != nil {
-		return fmt.Errorf("clean up GLM env for CG mode: %w", err)
-	}
-
-	if inTmux {
-		if err := injectTmuxSessionEnvFn(glmConfig, apiKey); err != nil {
-			return fmt.Errorf("failed to inject GLM env into tmux session: %w\n"+
-				"CG mode relies on tmux session env for teammate isolation.\n"+
-				"Try restarting your tmux session", err)
-		}
-
-		if profileName != "" && profileName != "default" && !isTestEnvironment() {
-			profileDir := profile.GetProfileDir(profileName)
-			if profileDir != "" {
-				tmuxCmd := exec.Command("tmux", "set-environment", "CLAUDE_CONFIG_DIR", profileDir)
-				_ = tmuxCmd.Run()
-			}
-		}
-	}
-
-	if err := persistTeamMode(root, "cg"); err != nil {
-		return fmt.Errorf("persist team mode: %w", err)
-	}
-
-	fmt.Fprintln(os.Stderr, "CG mode: Lead (Claude) + Teammates (GLM)")
-	fmt.Fprintln(os.Stderr, "Launching Claude Code...")
-	return nil
-}
+// applyCGMode retains an explicit error for legacy internal callers. It performs
+// no credential lookup, settings mutation, tmux injection, or launch.
+func applyCGMode(_, _ string) error { return errCGRetired }
 
 // --- Mode Helpers (moved from cc.go) ---
 
@@ -632,6 +573,10 @@ func launchClaude(profileName string, extraArgs []string) error {
 // syscall.Exec. profileName may be empty for the default profile. extraArgs
 // are additional CLI args to pass through to claude.
 func launchClaudeDefault(profileName string, extraArgs []string) error {
+	return launchClaudeWithGateway(profileName, extraArgs, nil)
+}
+
+func launchClaudeWithGateway(profileName string, extraArgs []string, binding *gatewayLaunchBinding) error {
 	// 1. Profile setup
 	if profileName != "" && profileName != "default" {
 		if err := profile.EnsureDir(profileName); err != nil {
@@ -684,9 +629,14 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	model := settings["DO_CLAUDE_MODEL"]
 
 	// 5. Parse extra args (overrides)
+	explicitModel := ""
 	var passThrough []string
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
+		if arg == "--" {
+			passThrough = append(passThrough, extraArgs[i:]...)
+			break
+		}
 		switch arg {
 		case "--chrome":
 			chrome = true
@@ -704,11 +654,15 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		case "--model", "-m":
 			if i+1 < len(extraArgs) {
 				model = extraArgs[i+1]
+				explicitModel = model
 				i++
 			}
 		default:
 			// Handle --permission-mode=value form
-			if strings.HasPrefix(arg, "--permission-mode=") {
+			if strings.HasPrefix(arg, "--model=") {
+				model = strings.TrimPrefix(arg, "--model=")
+				explicitModel = model
+			} else if strings.HasPrefix(arg, "--permission-mode=") {
 				permMode = strings.TrimPrefix(arg, "--permission-mode=")
 			} else {
 				passThrough = append(passThrough, arg)
@@ -738,7 +692,9 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	if root, err := findProjectRoot(); err == nil {
 		glmBackend, glmModels, glmTierEffort = resolveGLMBackendForLaunch(root)
 	}
-	model = resolveMainSessionModel(model, glmBackend)
+	if binding == nil {
+		model = resolveMainSessionModel(model, glmBackend)
+	}
 
 	// 6b. An empty model is only worth surfacing when the user explicitly
 	// targeted a named profile (via -p or a project-scoped binding) that then
@@ -789,37 +745,14 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		profileLeaseEnv = "MOAI_PROFILE_LEASE_TOKEN=" + token
 	}
 
-	// 7. Execute with --continue fallback
-	if cont {
-		tryCmd := exec.Command(claudeBin, buildArgs(true)[1:]...)
-		tryCmd.Stdin = os.Stdin
-		tryCmd.Stdout = os.Stdout
-		tryCmd.Stderr = os.Stderr
-		if profileLeaseEnv != "" {
-			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
-		}
-		err := tryCmd.Run()
-		if err == nil {
-			return nil
-		}
-		var ee *exec.ExitError
-		if errors.As(err, &ee) && ee.ExitCode() == 1 {
-			fmt.Fprintln(os.Stderr, "No previous session found, starting new session...")
-		} else {
-			// StatusDetail, not %w: claude exiting 2+ would otherwise be
-			// mistaken for an intentional ExitCoder at the cmd/moai seam and
-			// exit silently with claude's raw code (t130).
-			return fmt.Errorf("resume session failed: %s", execerr.StatusDetail(err))
-		}
-	}
-
 	// NOTE: On POSIX, execOrSpawnClaude replaces the current process entirely
 	// (syscall.Exec); no defer() functions run after that point. On Windows it
 	// spawns a child and exits with the child's code (syscall.Exec is POSIX-only
 	// — REQ-CGH-001). Ensure all cleanup and setup is complete before calling.
 	effectiveEffort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
 	var launchEnv []string
-	if glmBackend {
+	// Every gateway launcher hosts Claude Code; request adapters own provider effort policy.
+	if glmBackend && binding == nil {
 		// GLM backend: z.ai honors reasoning_effort, NOT Claude's 5-step effort.
 		// Derive ANTHROPIC_REASONING_EFFORT from the effective effort and strip the
 		// inert CLAUDE_CODE_EFFORT_LEVEL so a web-set effort reaches z.ai.
@@ -840,13 +773,83 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// exists for the resolving session, raise the runtime Stop-hook block cap so
 	// the infinite loop persists. Best-effort + fail-open (never blocks launch).
 	launchEnv = injectStopHookBlockCapForGoal(context.Background(), launchEnv, launchProjectRoot(), resolveLaunchSessionID(""))
+
+	if profileLeaseEnv != "" {
+		launchEnv = append(launchEnv, profileLeaseEnv)
+	}
+	if binding != nil {
+		if binding.Prepare == nil {
+			return errors.New("gateway launch preparation unavailable")
+		}
+		prepared, stop, err := binding.Prepare(gatewayLaunchRequest{
+			Mode: binding.Mode, ExplicitModel: explicitModel, ClaudeDefault: settings["DO_CLAUDE_MODEL"],
+			Inherited: launchEnv, Args: passThrough, ProfileName: profileName,
+			CWD: currentLaunchCWD(), Project: launchProjectRoot(),
+			SecureStorage:     os.Getenv("CLAUDE_SECURE_STORAGE_CONFIG_DIR"),
+			OriginalConfig:    os.Getenv("CLAUDE_CONFIG_DIR"),
+			SecureStorageSet:  envKeyPresent("CLAUDE_SECURE_STORAGE_CONFIG_DIR"),
+			OriginalConfigSet: envKeyPresent("CLAUDE_CONFIG_DIR"), Continue: cont,
+		})
+		if stop != nil {
+			defer stop()
+		}
+		if err != nil {
+			return err
+		}
+		model, launchEnv = prepared.InitialModel, prepared.ChildEnv
+		if prepared.Args != nil {
+			passThrough = prepared.Args
+			for _, arg := range prepared.Args {
+				if arg == "--resume" {
+					cont = false
+					break
+				}
+			}
+		}
+		if prepared.ChildSettings != "" {
+			passThrough, err = replaceGatewaySettingsArgs(passThrough, prepared.ChildSettings)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// 7. Execute with --continue fallback
+	if cont {
+		tryCmd := exec.Command(claudeBin, buildArgs(true)[1:]...)
+		tryCmd.Stdin = os.Stdin
+		tryCmd.Stdout = os.Stdout
+		tryCmd.Stderr = os.Stderr
+		if profileLeaseEnv != "" {
+			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
+		}
+		var err error
+		if binding != nil {
+			tryCmd.Env = launchEnv
+		}
+		if binding != nil && binding.Continue != nil {
+			err = binding.Continue(claudeBin, buildArgs(true), launchEnv)
+		} else {
+			err = tryCmd.Run()
+		}
+		if err == nil {
+			return nil
+		}
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && ee.ExitCode() == 1 {
+			fmt.Fprintln(os.Stderr, "No previous session found, starting new session...")
+		} else {
+			// StatusDetail, not %w: claude exiting 2+ would otherwise be
+			// mistaken for an intentional ExitCoder at the cmd/moai seam and
+			// exit silently with claude's raw code (t130).
+			return fmt.Errorf("resume session failed: %s", execerr.StatusDetail(err))
+		}
+	}
+
 	// SPEC-CHAIN-CORE-001 REQ-CHAIN-005 (Path A): record the worktree spawn
 	// boundary on the chain ledger and hand the node ID to the child
 	// environment. Fail-open — never blocks the launch (card t242).
 	launchEnv = injectChainNodeForLaunch(passThrough, launchEnv, os.Stderr)
-	if profileLeaseEnv != "" {
-		launchEnv = append(launchEnv, profileLeaseEnv)
-	}
 	return execOrSpawnClaudeFunc(claudeBin, buildArgs(false), launchEnv)
 }
 
@@ -867,7 +870,7 @@ func parseProfileFlag(args []string) (string, []string, error) {
 		}
 		if args[i] == "--profile" || args[i] == "-p" {
 			if i+1 >= len(args) || args[i+1] == "" || strings.HasPrefix(args[i+1], "-") {
-				return "", nil, fmt.Errorf("flag %s requires a profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc -p default", args[i])
+				return "", nil, fmt.Errorf("flag %s requires a profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cc -p work\n  moai cc -p default", args[i])
 			}
 			profileName = args[i+1]
 			i++
@@ -877,14 +880,14 @@ func parseProfileFlag(args []string) (string, []string, error) {
 		if strings.HasPrefix(args[i], "--profile=") {
 			profileName = strings.TrimPrefix(args[i], "--profile=")
 			if profileName == "" {
-				return "", nil, fmt.Errorf("flag --profile= requires a non-empty profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc --profile=default")
+				return "", nil, fmt.Errorf("flag --profile= requires a non-empty profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cc -p work\n  moai cc --profile=default")
 			}
 			continue
 		}
 		if strings.HasPrefix(args[i], "-p=") {
 			profileName = strings.TrimPrefix(args[i], "-p=")
 			if profileName == "" {
-				return "", nil, fmt.Errorf("flag -p= requires a non-empty profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cg -p work\n  moai cc -p=default")
+				return "", nil, fmt.Errorf("flag -p= requires a non-empty profile name\n\nUsage:\n  moai <command> -p <profile-name>\n\nExamples:\n  moai cc -p work\n  moai cc -p=default")
 			}
 			continue
 		}

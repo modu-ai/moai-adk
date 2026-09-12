@@ -1,0 +1,28 @@
+{
+  "command": [
+    "/tmp/moai-v3.2.0-rc.8-t649-gpt-bearer-8ef05e22f982",
+    "gpt",
+    "-p",
+    "mo.ai.kr",
+    "--model",
+    "gpt-5.6-sol",
+    "--permission-mode",
+    "default",
+    "--settings",
+    "{\"disableAllHooks\":true}",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--tools",
+    ""
+  ],
+  "api_key_prompt": false,
+  "context_warning": false,
+  "login_prompt": false,
+  "reply_seen": true,
+  "scope": "Actual Claude interactive UI and one synthetic GPT subscription answer; no tools/hooks",
+  "input_sent": true,
+  "success": true,
+  "elapsed_seconds": 12.45,
+  "other_prompt_categories": []
+}

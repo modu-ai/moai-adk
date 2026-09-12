@@ -55,7 +55,7 @@ source_session_id: <not-available — environment-fallback, next session will ba
 
 [New Terminal — START IN WORKTREE]
 $ moai cc -w ~/.moai/worktrees/<project>/SPEC-MYPROJ-001
-   # (launcher -w accepts L2 absolute paths; or moai glm -w ... | moai cg -w ...)
+   # (launcher -w accepts L2 absolute paths; or moai glm -w ...)
 
 ultrathink. SPEC-MYPROJ-001 Epic N 진입.
 applied lessons: <lesson-id-1>, <lesson-id-2>.
@@ -166,7 +166,7 @@ Block 0 is **prepended** before Block 1. Two forms exist; pick by **where the wo
 
 ```
 [New Terminal — START IN WORKTREE]
-$ moai cc -w <worktree-name>     # or: moai glm -w <name> | moai cg -w <name>
+$ moai cc -w <worktree-name>     # or: moai glm -w <name>
    └─ Claude Code session starts here (cwd = .claude/worktrees/<name>/)
 ```
 
@@ -176,7 +176,7 @@ $ moai cc -w <worktree-name>     # or: moai glm -w <name> | moai cg -w <name>
 
 ```
 [New Terminal — START IN WORKTREE]
-$ moai cc -w <worktree-absolute-path>     # or: moai glm -w <abs-path> | moai cg -w <abs-path>
+$ moai cc -w <worktree-absolute-path>     # or: moai glm -w <abs-path>
    └─ Claude Code session starts here (cwd = the L2 worktree at the given absolute path)
 ```
 
@@ -204,7 +204,7 @@ The new-terminal Block 0 above is a cold-start path. Claude Code 2.1.169+ ships 
 
 Advanced launchers (use only when user explicitly requests, NOT auto-surfaced in Block 0):
 - `moai cc --bypass` — sandboxed-only execution (testing scenarios)
-- `moai cg` — Claude leader + GLM teammates parallel mode (requires `tmux new-session -s <name>` first; pair with `--team`)
+- Legacy CG configuration — stop and preview with `moai migrate cg`; do not substitute a launcher or assume mixed-role teammate support.
 
 ### Updated Block 4 (Preconditions)
 

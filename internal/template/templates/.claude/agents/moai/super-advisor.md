@@ -68,19 +68,17 @@ prescription, then either re-seeds the executor with the prescription or escalat
 user via `AskUserQuestion`. The prescription is **advisory** — the orchestrator remains the
 decision owner and may override it with justification.
 
-## GLM Carve-out + CG Leader-Review Absorption
+## GLM Carve-out and Independent Advice
 
-super-advisor natively captures two concerns from the superseded advisor-rung design:
+super-advisor retains provider-aware advice without replacing an independent audit:
 
-- **GLM carve-out**: under `moai glm` / `moai cg` GLM panes, super-advisor's
+- **GLM carve-out**: under `moai glm`, super-advisor's
   Opus injection does NOT apply (the session runs on GLM models). The spawn falls back to
   the session's effective GLM reasoning model (glm-5.3) with the resolved effort preserved
   (the profile-matrix row, not a fixed `xhigh`).
   This is the natural consequence of `model: inherit` — the runtime resolves the session
   model.
-- **CG leader-review-as-advisor**: the CG-mode leader (Claude orchestrator)
-  consults super-advisor as a peer reviewer when a GLM teammate's output is suspect. The
-  consultation surface is identical; only the model backing changes.
+- **Independent advice**: the orchestrator may consult super-advisor about uncertain results. This advisory consultation does not replace sync-auditor evaluation or reactivate retired CG roles.
 
 ## Output Contract
 

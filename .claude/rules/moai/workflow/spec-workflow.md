@@ -238,7 +238,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Methodology delegation (team mode experimental)
 
-The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). The native `moai cg` teammate runtime is unaffected.
+The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). Native Agent Teams remain experimental; retired CG routing does not establish mixed-provider teammate capability.
 
 ### MX Tag Integration
 
@@ -451,7 +451,4 @@ The default multi-agent surface remains:
 - Coding-heavy implementation → serial (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
 - High-volume mechanical transformation → sweep (dynamic-workflow fan-out).
 
-The native Claude Code teammate runtime is UNAFFECTED and sanctioned: `moai cg` GLM teammate
-panes, `moai cc -w <name> --spawn` teammate windows, the `~/.claude/teams/` registry, and
-`teammateMode` launcher handling remain supported (see
-`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
+Native Claude Code Agent Teams remain experimental under the enabled flag and the constraints above. The `~/.claude/teams/` registry is runtime-owned. Retired CG routing is not an active teammate mode; mixed-provider roles require the verified capability described in `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration.

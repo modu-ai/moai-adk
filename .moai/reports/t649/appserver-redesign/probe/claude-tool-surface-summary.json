@@ -1,0 +1,30 @@
+{
+  "request_count": 2,
+  "first_tool_count": 12,
+  "second_tool_count": 13,
+  "added_tools": [
+    "mcp__fixture__echo"
+  ],
+  "removed_tools": [],
+  "changed_existing_tools": [],
+  "second_tool_references": [
+    "mcp__fixture__echo"
+  ],
+  "fixture_schema": {
+    "name": "mcp__fixture__echo",
+    "defer_loading": true,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "marker": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "marker"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "success": true
+}

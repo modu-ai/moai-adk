@@ -8,7 +8,6 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics -->
 
-![CG 模式结构](/images/sections/multi-llm-zh.png)
 
 MoAI-ADK 除 Claude API 外，还支持 **z.ai GLM** 作为备选 AI 后端。这不是
 便利功能，而是真正落实 v3.0 三大核心中成本层面的 **代币经济学** (Token
@@ -40,35 +39,29 @@ GLM (Generative Language Model) 是 z.ai 提供的 AI 模型服务，与 Claude 
 
 > 同时提供免费模型：GLM-4.7-Flash、GLM-4.5-Flash。完整价格请参考 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing)。
 
-## 3 种运行模式
+## 运行模式
 
-MoAI-ADK 提供 3 种 LLM 运行模式。按"要优化什么"来选择即可：
+MoAI-ADK 提供 Claude 和 GLM 启动器。按"要优化什么"来选择即可：
 
 | 命令 | 领队 | 工作者 | 需要 tmux | 成本节省 | 用途 |
 |--------|------|------|----------|----------|------|
 | `moai cc` | Claude | Claude | 否 | - | 最高质量、复杂任务 |
 | `moai glm` | GLM | GLM | 推荐 | ~70% | 成本优化 |
-| `moai cg` | Claude | GLM | **必需** | **~60%** | 质量 + 成本平衡 |
 
 ```mermaid
 graph TD
     A["MoAI 编排器"] --> B{"选择运行模式"}
     B -->|"moai cc"| C["Claude Only<br/>最高质量"]
     B -->|"moai glm"| D["GLM Only<br/>节省成本"]
-    B -->|"moai cg"| E["CG 混合<br/>平衡"]
 
     C --> F["领队: Claude<br/>工作者: Claude"]
     D --> G["领队: GLM<br/>工作者: GLM"]
-    E --> H["领队: Claude<br/>工作者: GLM"]
 
     style C fill:#7C3AED,color:#fff
     style D fill:#059669,color:#fff
-    style E fill:#D97706,color:#fff
 ```
 
-CG 模式是代币经济学的代表性案例。战略、计划、审计等推理质量至关重要的
-工作由 Claude 领队负责，大批量实现等以工作量为主的任务由 GLM 工作者承担。
-以实现为主的工作可节省约 60-70% 成本。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
 ### 快速开始
 
@@ -79,10 +72,9 @@ moai glm sk-your-glm-api-key
 # 2. 选择模式
 moai cc            # Claude 专用
 moai glm           # GLM 专用
-moai cg            # CG 混合（需要 tmux）
 ```
 
 ## 下一步
 
-- [CG 模式 (Claude + GLM)](/zh/multi-llm/cg-mode) —— tmux 隔离架构详解
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 - [模型策略](/zh/multi-llm/model-policy) —— 各代理的模型分配表

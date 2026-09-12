@@ -2,7 +2,7 @@
 title: Prompt Caching — Cost Savings and the Break-Even
 weight: 30
 draft: false
-description: "How prompt caching cuts token cost. A beginner-level guide covering the 0.1x read / 1.25x write break-even, the 5-minute lifetime, and how the autonomy tier (MOAI_AUTONOMY_TIER) and CG mode affect cost and speed."
+description: "How prompt caching cuts token cost. A beginner-level guide covering the 0.1x read / 1.25x write break-even, the 5-minute lifetime, and how the autonomy tier (MOAI_AUTONOMY_TIER) affects cost and speed."
 ---
 
 # Prompt Caching — Cost Savings and the Break-Even
@@ -261,17 +261,13 @@ survives, the bigger the gain, so keep that front portion from shaking.
    cache. If only short cleanup remains, finishing while keeping the cache is
    cheaper than starting a large task carrying stale context.
 
-## Saving more with CG mode
+## CG retirement and migration
 
-If caching is the axis of "reusing the same content cheaply," **CG mode** is
-the axis of "using the expensive model less." It splits the tmux session so
-the leader runs Claude and implementation workers run the cheaper GLM (z.ai
-backend), cutting cost by roughly **60-70%** on implementation-heavy work.
-The two axes do not overlap — under CG mode, each backend handles its own
-caching (Claude with prompt caching, GLM with content-similarity-based
-implicit caching).
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/)
 
-For the detailed structure and switching commands, see [CG Mode](/en/multi-llm/cg-mode).
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
+
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ## Cost monitoring
 
@@ -307,7 +303,7 @@ the one-time slow, expensive penalty.
 
 - [Prompt Caching](/en/claude-code/context-memory/prompt-caching) — how it works, prefix matching, context management (context-management perspective)
 - [Context Window](/en/claude-code/context-memory/context-window) — context window sizes and per-model differences
-- [CG Mode](/en/multi-llm/cg-mode) — cut cost 60-70% with the Claude + GLM hybrid
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [Model Policy](/en/multi-llm/model-policy) — per-agent model injection and drift prevention
 
 ## Sources (official documentation)
