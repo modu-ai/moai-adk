@@ -312,7 +312,7 @@ sync 단계는 2026-09-12에 manager-docs가 카드 워크트리(`.claude/worktr
 
 ```yaml
 sync_complete_at: 2026-09-12
-sync_commit_sha: pending-backfill-sync   # 이 블록을 실은 sync 커밋. 커밋은 자기 해시를 인용할 수 없어 다음 커밋에서 채운다
+sync_commit_sha: 11fa72743ca714aaaf8778f19f7ae249e476f391   # 이 블록을 실은 sync 커밋. 커밋은 자기 해시를 인용할 수 없어 이 값만 다음 커밋에서 채웠다
 sync_status: complete
 sync_agent: manager-docs
 sync_base_head: 9c288daa9248091cfd6be65f5ef8e165285abd21   # 흡수 병합 커밋(로컬 develop 8d42587e6 흡수) — sync 진입 시점 HEAD
