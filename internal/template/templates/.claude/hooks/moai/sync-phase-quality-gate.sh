@@ -617,13 +617,25 @@ case "$GATE_LANG" in
         #              run is distinguishable from one that checked nothing. Empty
         #              output therefore means zero targets, reported as such below
         #              rather than as a successful check.
-        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        #   *.cxx      is scanned alongside *.cpp and *.cc: all three are ordinary
+        #              translation units, and code_delta_pattern already classifies a
+        #              .cxx change as C++ — so without it the gate declared the change
+        #              C++ and then compiled nothing.
+        #   headers    (.h/.hpp/.hxx) are deliberately NOT scanned, even though
+        #              code_delta_pattern accepts them. Measured with this toolchain:
+        #              a self-contained header passes -fsyntax-only cleanly, but a
+        #              header written to be included AFTER another one — an ordinary
+        #              C++ idiom — fails standalone ("error: unknown type name"), so
+        #              scanning headers converts a correct project into a gate
+        #              failure. The residual asymmetry is recorded rather than traded
+        #              for false positives; see .moai/reports/t663/verdict.md.
+        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
         # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
         # reads them — so the zero-target case is promoted to the audit log here. Without
         # it, "checked nothing" and "checked everything and it passed" are both a silent
         # c1=0, which is exactly how the original defect stayed invisible.
         if grep -q '^0 C++ files checked' "$GATE_TMPDIR/c1.log" 2>/dev/null; then
-            log_gate_event "cpp_targets=0 (no *.cpp/*.cc compiled — not a passing check)"
+            log_gate_event "cpp_targets=0 (no *.cpp/*.cc/*.cxx compiled — not a passing check)"
         fi
         ;;
     scala)

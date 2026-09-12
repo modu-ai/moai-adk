@@ -184,3 +184,41 @@ func TestSyncGateCpp_LocalAndTemplateCopiesIdentical(t *testing.T) {
 		t.Error("sync-phase-quality-gate.sh differs between the local and template copies; edit both together")
 	}
 }
+
+// --- card t663: the scanned-extension set ---
+
+// code_delta_pattern classifies a .cxx change as C++, but the gate's find only
+// looked for *.cpp and *.cc — so the gate declared the change C++ and then
+// compiled nothing, which is the asymmetry this case closes. It mirrors
+// TestSyncGateCpp_BrokenCcBlocks exactly, because the defect is per-extension:
+// passing for .cc says nothing about .cxx.
+func TestSyncGateCpp_BrokenCxxBlocks(t *testing.T) {
+	cppGateRequire(t)
+	out := cppGateRunFixture(t, map[string]string{
+		"CMakeLists.txt": cmakeFile,
+		"bad.cxx":        brokenCPP,
+	})
+	if !strings.Contains(out, `"decision":"block"`) {
+		t.Errorf("SYNC_GATE_CPP_INERT: a broken .cxx did not block the gate.\ngate output: %q", out)
+	}
+}
+
+// The deliberate other half of t663: headers are NOT scanned, even though
+// code_delta_pattern accepts .h/.hpp/.hxx.
+//
+// The fixture is a header that is CORRECT in its project and cannot compile
+// alone — it names a type an earlier include provides, which is an ordinary C++
+// idiom. Scanning headers standalone turns such a project into a gate failure,
+// so this case fails the moment a header extension is added to the find. It is
+// the false-positive guard for that decision, not a claim that headers carry no
+// risk of their own.
+func TestSyncGateCpp_ContextDependentHeaderDoesNotBlock(t *testing.T) {
+	cppGateRequire(t)
+	out := cppGateRunFixture(t, map[string]string{
+		"CMakeLists.txt": cmakeFile,
+		"fragment.hpp":   "void use(MyType *p);\n",
+	})
+	if strings.Contains(out, `"decision":"block"`) {
+		t.Errorf("a header that is only valid when included after another must not block the gate.\ngate output: %q", out)
+	}
+}
