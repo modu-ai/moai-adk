@@ -276,6 +276,30 @@ AC-RSL-014 뮤턴트 짝(둘 다 백업에서 `cp`로 복구하고 `cmp` 종료 
 
 **cli 슬롯 대기 — `make build`.** `make build`는 `go build ./cmd/moai`를 포함해 `internal/cli`를 링크하므로 heavy-test 슬롯이 필요하다. 리드 지시대로 스스로 돌리지 않고 멈춰 요청한다. 슬롯을 받으면 실행할 것: `make build` → 종료 코드 0(AC-RSL-014(i)). 그 전까지 임베드된 템플릿은 이 커밋의 소스보다 낡은 상태다.
 
+### M6 — 레인 문서 반영 (게이트 열림 가지)
+
+게이트 판정(이 워크트리에서 직접, 2026-09-12T00:42Z): `git merge-base --is-ancestor WT-acquire-branch-record develop` → **종료 코드 0**. 그 시점 `WT-acquire-branch-record` = `3262fa9be`, `develop` = `origin/develop` = `30cf7f422`. 따라서 AC-RSL-015의 **열림 가지**로 판정한다(0.2.0 작성 시점의 닫힘 판정은 t637이 develop에 들어오면서 뒤집혔다).
+
+편집한 파일 셋(각각 최소 한 문단):
+- `.claude/rules/moai/workflow/kanban-dispatch.md` — 「검증 부하는 레인-로컬」절 안에 `### Serializing a heavy run across lanes` 추가.
+- `internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` — 같은 문단(배포판도 같은 텍스트; 언어 명령·SPEC ID·날짜·SHA 없음).
+- `.claude/rules/local/gitflow-lane-protocol.md` §8 — 한국어 한 항목. 이 파일은 로컬 전용이라 템플릿 미러를 만들지 않았다(지시대로).
+
+내용은 세 가지만 말한다: 세 동작(`moai slot acquire|status|release`)과 상한의 의미, 통합 창과의 분리, 가드가 선택형이며 기본 꺼짐이라는 것. 나머지는 `resource-slot-lease.md`로 넘긴다(SPEC 본문을 옮겨 적지 않는다).
+
+AC-RSL-015 열림 가지 판정:
+
+| 파일 | 명령 | 결과 |
+|---|---|---|
+| 로컬 kanban-dispatch | `/usr/bin/grep -c 'moai slot' .claude/rules/moai/workflow/kanban-dispatch.md` | `1`, 종료 코드 0 |
+| 템플릿 kanban-dispatch | 같은 명령, `internal/template/templates/...` | `1`, 종료 코드 0 |
+| gitflow-lane-protocol | 같은 명령, `.claude/rules/local/gitflow-lane-protocol.md` | `1`, 종료 코드 0 |
+| 템플릿판 유출·중립성 | `go test ./internal/template/ -run 'TestTemplateNeutralityAudit$\|TestTemplateNoInternalContentLeak$\|TestRuleProvenance\|TestRuleTemplateMirror' -count=1 -v` | 종료 코드 0, 다섯 테스트 `--- PASS`(`.moai/reports/t607/m6/m6-template-green.txt`) |
+
+(`grep -c`는 줄 수를 센다 — 한 줄에 `moai slot`이 두 번 나와도 1이다. 기준은 1 이상.)
+
+기타: `go test ./internal/template/... -count=1` → 네 패키지 `ok`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<run 단계 대기>_
