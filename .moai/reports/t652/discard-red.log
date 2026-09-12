@@ -1,0 +1,7 @@
+# github.com/modu-ai/moai-adk/internal/codexapp [github.com/modu-ai/moai-adk/internal/codexapp.test]
+internal/codexapp/client_test.go:383:14: c.DiscardRequest undefined (type *Client has no field or method DiscardRequest)
+internal/codexapp/client_test.go:386:14: c.DiscardRequest undefined (type *Client has no field or method DiscardRequest)
+internal/codexapp/client_test.go:396:14: c.DiscardRequest undefined (type *Client has no field or method DiscardRequest)
+internal/codexapp/client_test.go:399:14: c.DiscardRequest undefined (type *Client has no field or method DiscardRequest)
+FAIL	github.com/modu-ai/moai-adk/internal/codexapp [build failed]
+FAIL

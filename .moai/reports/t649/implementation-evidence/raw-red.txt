@@ -1,0 +1,6 @@
+=== RUN   TestReasoningCarrierPreservesOriginalItemBytes
+    reasoning_roundtrip_test.go:138: opaque item bytes were reserialized
+--- FAIL: TestReasoningCarrierPreservesOriginalItemBytes (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	0.332s
+FAIL

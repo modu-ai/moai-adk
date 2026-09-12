@@ -9,9 +9,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// TestCGCommandRegistered verifies that the cg command is correctly registered
+// TestCGLegacyDiagnosticBoundary verifies the unregistered cg diagnostic boundary
 // on the root command.
-func TestCGCommandRegistered(t *testing.T) {
+func TestCGLegacyDiagnosticBoundary(t *testing.T) {
 	// Verify cgCmd has the correct Use field
 	if !strings.HasPrefix(cgCmd.Use, "cg") {
 		t.Errorf("cgCmd.Use should start with 'cg', got %q", cgCmd.Use)
@@ -26,7 +26,7 @@ func TestCGCommandRegistered(t *testing.T) {
 	// Verify glmCmd does NOT have a --hybrid flag anymore
 	glmFlag := glmCmd.Flags().Lookup("hybrid")
 	if glmFlag != nil {
-		t.Error("glmCmd should NOT have a --hybrid flag (use 'moai cg' instead)")
+		t.Error("glmCmd should NOT have a --hybrid flag (explicit teammate migration is required)")
 	}
 }
 

@@ -329,7 +329,7 @@ Claude Code の公式 Sub-agent システムは MoAI-ADK エージェント構�
 
 - 歴史的経緯: 引退時代には `--team` を強制すると `MODE_TEAM_UNAVAILABLE` を通知して sub-agent モードへフォールバックしました。このセンチネルは文書化された履歴として残ります。
 - 並列性が必要な調査・レビュー作業は並列 sub-agent ファンアウトで、順次のコーディング作業は sub-agent チェーンで処理します。
-- ネイティブの Claude Code teammate ランタイム (`moai cg` の GLM ペイン、`moai worktree --team`) はこれとは別に引き続き動作します — トークノミクスの観点では、CG モードの Claude リーダー + GLM ワーカーの分業がこの役割を担います。
+ CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 
 ## 関連ドキュメント
 

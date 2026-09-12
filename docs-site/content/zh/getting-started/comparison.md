@@ -39,7 +39,7 @@ Claude Code 单独并不坏。相反,MoAI-ADK 不替代 Claude Code,而是**包�
 
 {{< icon target >}} **Claude Code 单独 / 通用包装器** — 模型自己定步骤,用户监控成本。单价低但步骤多,账单还是会很大。
 
-{{< icon target primary >}} **MoAI-ADK** — 区分成本的不是单价,而是**分配**。在 DeepSWE 基准中,Opus 5 的最低推理比 Sonnet 5 的最高推理得分更高,每个任务成本是 1/16。重试循环消耗账单,不是令牌单价。所以为每个任务分配合适的模型和推理深度,减少上下文,在预算超标前停止。`moai cg` 的 Claude+GLM 混合模式在实现为主的工作中带来 60-70% 成本节省。
+{{< icon target primary >}} **MoAI-ADK** — 区分成本的不是单价,而是**分配**。 在 DeepSWE 基准中,Opus 5 的最低推理比 Sonnet 5 的最高推理得分更高,每个任务成本是 1/16。 重试循环消耗账单,不是令牌单价。 所以为每个任务分配合适的模型和推理深度,减少上下文,在预算超标前停止。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 [Tokenomics 概述](/zh/advanced/tokenomics-overview/) 和 [成本优化](/zh/cost-optimization/) 中详细讨论。
 

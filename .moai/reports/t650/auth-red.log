@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/codexapp [github.com/modu-ai/moai-adk/internal/codexapp.test]
+internal/codexapp/client_test.go:119:17: c.Initialize undefined (type *Client has no field or method Initialize)
+internal/codexapp/client_test.go:122:25: undefined: LoginMode
+internal/codexapp/client_test.go:122:35: undefined: LoginBrowser
+internal/codexapp/client_test.go:122:49: undefined: LoginDevice
+internal/codexapp/client_test.go:122:62: undefined: LoginAPIKey
+internal/codexapp/client_test.go:124:14: undefined: LoginAPIKey
+internal/codexapp/client_test.go:127:15: c.Login undefined (type *Client has no field or method Login)
+internal/codexapp/client_test.go:132:17: c.Login undefined (type *Client has no field or method Login)
+internal/codexapp/client_test.go:132:28: undefined: LoginMode
+internal/codexapp/client_test.go:135:17: c.Account undefined (type *Client has no field or method Account)
+internal/codexapp/client_test.go:135:17: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/codexapp [build failed]
+FAIL

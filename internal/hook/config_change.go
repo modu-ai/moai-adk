@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -42,6 +43,34 @@ func NewConfigChangeHandler() Handler {
 // interface.
 func (h *configChangeHandler) waitGroup() *sync.WaitGroup {
 	return &h.wg
+}
+
+// joinAsync implements asyncJoiner: it waits for the handler's in-flight
+// side-effect goroutine, bounded by timeout, and reports whether the budget
+// was exhausted.
+//
+// Handle deliberately returns before that goroutine finishes, which is correct
+// while a long-lived process remains to run it. A `moai hook <event>` process
+// is not long-lived: it exits as soon as Dispatch returns, and the goroutine
+// dies mid-debounce with its verdict unwritten. This method is the barrier the
+// one-shot entrypoint crosses so the verdict actually gets produced; the
+// teardown caller is registry.Shutdown.
+func (h *configChangeHandler) joinAsync(timeout time.Duration) error {
+	done := make(chan struct{})
+	// The WaitGroup is joined on a helper goroutine rather than inline,
+	// because sync.WaitGroup.Wait cannot itself be bounded. On the timeout
+	// branch this helper is abandoned, which is safe: it holds no lock, writes
+	// nothing, and the process is exiting.
+	go func() {
+		h.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("config_change: async side effect still running after %s", timeout)
+	}
 }
 
 // EventType returns EventConfigChange.
@@ -116,6 +145,7 @@ func (h *configChangeHandler) runReload(ctx context.Context, input *HookInput) {
 			"error", err,
 			"action", "old settings retained",
 		)
+		appendConfigChangeAudit(input, configChangeResultRejected, err.Error())
 		return
 	}
 
@@ -127,11 +157,13 @@ func (h *configChangeHandler) runReload(ctx context.Context, input *HookInput) {
 				"error", err,
 				"action", "old settings retained",
 			)
+			appendConfigChangeAudit(input, configChangeResultRejected, err.Error())
 			return
 		}
 		slog.Info("config reloaded via RT-005 manager (async)",
 			"path", input.ConfigFilePath,
 		)
+		appendConfigChangeAudit(input, configChangeResultReloaded, "rt005-manager")
 		return
 	}
 
@@ -149,6 +181,70 @@ func (h *configChangeHandler) runReload(ctx context.Context, input *HookInput) {
 	slog.Info("config reloaded successfully (async)",
 		"path", input.ConfigFilePath,
 	)
+	appendConfigChangeAudit(input, configChangeResultReloaded, "fallback")
+}
+
+// configChangeAuditRelPath is the durable record of what the async reload
+// pipeline actually decided, relative to the project root.
+//
+// The slog calls in runReload cannot serve as that record on the path that
+// matters. resolveLoggingDecision (internal/cli/logging.go) routes EVERY record
+// emitted under `moai hook` to io.Discard, unconditionally — stdout carries the
+// hook's JSON contract and stderr is read by the Claude Code runtime, so a
+// stray record would corrupt the exchange, and MOAI_LOG_LEVEL does not re-open
+// the carve-out. A validation verdict reached inside a one-shot hook process is
+// therefore invisible unless it is written somewhere of its own.
+//
+// The file is that somewhere, modeled on the sibling advisory logs
+// (branchGuardAuditRelPath, preEditAdvisoryLogRelPath).
+const configChangeAuditRelPath = ".moai/logs/config-change-audit.log"
+
+// The two terminal outcomes of the async reload pipeline, recorded verbatim in
+// the audit line's result field so a reader can grep one without matching the
+// other.
+const (
+	configChangeResultRejected = "rejected"
+	configChangeResultReloaded = "reloaded"
+)
+
+// appendConfigChangeAudit appends one structured line recording how the async
+// reload pipeline ended. Both outcomes are recorded, not only the rejection:
+// an audit trail that logs failures alone cannot distinguish "the config was
+// fine" from "the check never ran", which is precisely the ambiguity this file
+// exists to remove.
+//
+// Every error is swallowed. The audit trail is observability, and losing it
+// must never disturb the hook's own outcome — the handler has already decided
+// by the time this is called.
+func appendConfigChangeAudit(input *HookInput, result, detail string) {
+	projectDir := resolveProjectRootFromInputOrEnv(input, "config_change")
+	if projectDir == "" {
+		return
+	}
+	sessionID := ""
+	configPath := ""
+	source := ""
+	if input != nil {
+		sessionID = input.SessionID
+		configPath = input.ConfigFilePath
+		source = input.ConfigSource
+		if source == "" {
+			source = input.ConfigurationSource
+		}
+	}
+
+	entry := fmt.Sprintf("[%s] session=%s path=%s source=%s result=%s detail=%q\n",
+		time.Now().UTC().Format(time.RFC3339), sessionID, configPath, source, result, detail)
+	logPath := filepath.Join(projectDir, configChangeAuditRelPath)
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return
+	}
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.WriteString(entry)
 }
 
 // validateConfig checks that a config file is valid YAML.

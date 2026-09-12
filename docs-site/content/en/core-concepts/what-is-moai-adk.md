@@ -33,7 +33,7 @@ The value of v3.0 comes down to three core concerns.
 
 ### Tokenomics (Token Economics)
 
-Intelligent resource allocation that maximizes quality per cost. This core concern consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, **CG mode** that combines a Claude leader with GLM workers to cut implementation cost by 60-70%, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
+Intelligent resource allocation that maximizes quality per cost. This core concern consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
 
 ### Agentic Loop Engineering
 
@@ -362,7 +362,7 @@ The Plan-phase artifacts are independently audited by the **plan-auditor**, and 
 
 #### The Execution-Mode Selection Gate
 
-At the transition from Plan to Run, MoAI automatically detects the current execution environment (cc/glm/cg) and shows a selection UI the user can confirm or change.
+At the transition from Plan to Run, MoAI automatically detects the current execution environment (cc/glm) and shows a selection UI the user can confirm or change.
 
 ```mermaid
 flowchart TD
@@ -370,7 +370,6 @@ flowchart TD
     B --> C{"Mode selection UI"}
     C -->|"CC"| D["Claude-only execution"]
     C -->|"GLM"| E["GLM-only execution"]
-    C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
 This gate ensures the correct execution mode is used regardless of environment state, preventing mode mismatches during implementation.
@@ -429,47 +428,15 @@ The MoAI orchestrator analyzes task complexity and selects the execution shape.
 | **Parallel sub-agents** | 3-5 read-only agents fanned out concurrently | Parallel analysis: research, review, audits |
 | **Dynamic workflows** | A script orchestrates many agents | Large-scale sweeps, cross-checked research |
 
-{{< callout type="info" >}}
-**Changed in v3.0**: The old Agent Teams static-orchestration layer has been retired. Forcing `--team` falls back to sub-agent mode. However, Claude Code's native teammate runtime — the tmux split panes of `moai cg` — is unaffected. The team-mode quality hooks (TeammateIdle's LSP gate verification, TaskCompleted's SPEC-reference checks) are also preserved along with the native teammate runtime.
-{{< /callout >}}
+{{< callout type="info" >}} **Changed in v3.0**: The old Agent Teams static-orchestration layer has been retired. Forcing `--team` falls back to sub-agent mode. The team-mode quality hooks (TeammateIdle's LSP gate verification, TaskCompleted's SPEC-reference checks) are also preserved along with the native teammate runtime. {{< /callout >}} CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
-### CG Mode (Claude + GLM Hybrid)
+### CG retirement and migration
 
-The practical tool of the Tokenomics core concern. A hybrid mode where the Leader uses the **Claude API** and the Workers use the **GLM API**, implemented via tmux session-level environment-variable isolation. Claude handles strategy, planning, and audits; GLM handles bulk implementation — cutting costs 60-70% on implementation-heavy work.
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (current tmux pane, Claude API)                      │
-│  - Orchestrates with /moai commands after activating moai cg │
-│  - Handles the plan, quality, and sync phases                │
-│  - No GLM env → uses the Claude API                          │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (new tmux panes)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (new tmux panes, GLM API)                         │
-│  - Inherit the tmux session env → use the GLM API            │
-│  - Execute implementation work in the run phase              │
-│  - Communicate with the leader via SendMessage               │
-└─────────────────────────────────────────────────────────────┘
-```
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
 
-```bash
-# 1. Save the GLM API key (once)
-moai glm setup sk-your-glm-api-key
-
-# 2. Activate CG mode (run inside a tmux session — Claude Code starts automatically)
-moai cg
-
-# 3. Run the workflow
-/moai "task description"
-```
-
-| Command | Leader | Workers | tmux required | Cost savings | Use case |
-|--------|--------|---------|----------|----------|----------|
-| `moai cc` | Claude | Claude | No | - | Complex work, highest quality |
-| `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
-| `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ### The Autonomous Development Loop (Ralph Engine)
 

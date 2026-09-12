@@ -107,84 +107,13 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 // GLM model overrides to settings.local.json. CG mode uses tmux session-level env vars
 // instead. This is the intended behavior.
 func TestCGCmd_DoesNotAddModelOverridesToSettings(t *testing.T) {
-	// Set GLM_API_KEY env var
-	t.Setenv("GLM_API_KEY", "test-api-key-for-cg-test")
-	t.Setenv("MOAI_TEST_MODE", "1") // Skip tmux requirement
-
-	// Create temp project
-	tmpDir := t.TempDir()
-	moaiDir := filepath.Join(tmpDir, ".moai")
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-		t.Fatal(err)
+	root := t.TempDir()
+	t.Chdir(root)
+	if err := runCG(cgCmd, nil); err != errCGRetired {
+		t.Fatalf("retired: %v", err)
 	}
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	origFn := findProjectRootFn
-	findProjectRootFn = func() (string, error) { return tmpDir, nil }
-	defer func() { findProjectRootFn = origFn }()
-
-	// Change to temp dir
-	origDir, _ := os.Getwd()
-	defer func() { _ = os.Chdir(origDir) }()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatal(err)
-	}
-
-	// Override launchClaude to skip actual exec
-	origLaunch := launchClaudeFunc
-	defer func() { launchClaudeFunc = origLaunch }()
-	launchClaudeFunc = func(profile string, args []string) error {
-		return nil
-	}
-
-	// Run 'moai cg'
-	buf := new(bytes.Buffer)
-	cgCmd.SetOut(buf)
-	cgCmd.SetErr(buf)
-
-	err := cgCmd.RunE(cgCmd, []string{})
-	if err != nil {
-		t.Fatalf("moai cg should not error in test mode, got: %v", err)
-	}
-
-	// Verify settings.local.json was created
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("settings.local.json should be created: %v", err)
-	}
-
-	content := string(data)
-
-	// CG mode should NOT have GLM model overrides in settings.local.json
-	// because they're set at tmux session level instead
-	if strings.Contains(content, "ANTHROPIC_DEFAULT_OPUS_MODEL") {
-		t.Error("settings.local.json should NOT contain ANTHROPIC_DEFAULT_OPUS_MODEL in CG mode (uses tmux env)")
-	}
-	if strings.Contains(content, "ANTHROPIC_DEFAULT_SONNET_MODEL") {
-		t.Error("settings.local.json should NOT contain ANTHROPIC_DEFAULT_SONNET_MODEL in CG mode (uses tmux env)")
-	}
-	if strings.Contains(content, "ANTHROPIC_DEFAULT_HAIKU_MODEL") {
-		t.Error("settings.local.json should NOT contain ANTHROPIC_DEFAULT_HAIKU_MODEL in CG mode (uses tmux env)")
-	}
-
-	// CG mode should have teammateMode set to tmux (native key)
-	if !strings.Contains(content, "\"teammateMode\"") {
-		t.Error("settings.local.json should contain teammateMode in CG mode")
-	}
-	if !strings.Contains(content, "\"tmux\"") {
-		t.Error("teammateMode should be set to \"tmux\" in CG mode")
-	}
-
-	// CG mode should NOT have GLM auth vars in settings.local.json
-	if strings.Contains(content, "ANTHROPIC_AUTH_TOKEN") {
-		t.Error("settings.local.json should NOT contain ANTHROPIC_AUTH_TOKEN in CG mode (uses tmux env)")
-	}
-	if strings.Contains(content, "ANTHROPIC_BASE_URL") {
-		t.Error("settings.local.json should NOT contain ANTHROPIC_BASE_URL in CG mode (uses tmux env)")
+	if _, err := os.Stat(filepath.Join(root, ".claude", "settings.local.json")); !os.IsNotExist(err) {
+		t.Fatal("retired CG created settings")
 	}
 }
 

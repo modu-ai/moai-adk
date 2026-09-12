@@ -10,20 +10,19 @@ metadata:
 
 When the run phase is invoked from plan.md Decision Point 3.5 or moai.md step 11.5, the gate passes these parameters:
 - `execution_mode`: worktree | team | sub-agent
-- `active_mode`: cc | glm | cg
+- `active_mode`: cc | glm; legacy cg is rejected before dispatch
 - `tmux_available`: true | false
 
 **If execution_mode == "worktree":**
 This run invocation is already inside the isolated tmux session and worktree.
 Proceed with standard sub-agent run phase in the current environment.
-No additional routing needed — CC/GLM/CG env is already configured by the Gate.
+The explicitly selected supported launcher prepares the environment. Legacy CG configuration must stop at the migration guard before this branch; do not infer or replace mixed roles.
 
 **If execution_mode == "team":**
 The `team` execution mode is experimental (Agent Teams layer, re-allowed; flag
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on). Run the team-orchestrated
 phase per `orchestration-mode-selection.md` §C.1 constraints (explicit-request
-only; one team per session; no nesting). The `active_mode` (cc / glm / cg) still
-selects the backend; the native `moai cg` teammate runtime is unaffected.
+only; one team per session; no nesting). The explicit supported launcher selects the session backend. A stored `team_mode: cg` blocks execution pending `moai migrate cg`; it must not fall back to a different provider.
 
 **If execution_mode == "sub-agent":**
 Proceed directly to Phase 5 (Strategy).
@@ -45,8 +44,7 @@ the retired era emitted the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per
 `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and fell
 back to `autopilot` with a `[mode-auto-downgrade]` info log — the sentinel is
 retained as documented history.
-The native Claude Code teammate runtime (`moai cg` GLM panes, `moai cc -w <name>
---spawn` teammate windows) is unaffected and sanctioned.
+Native Claude Code Agent Teams remain experimental. Their availability does not verify mixed-provider roles or bypass the legacy CG migration gate.
 
 All worktree path rules from context-loading.md "Worktree Path Rules [HARD] (All
 Modes)" continue to apply to every execution mode.

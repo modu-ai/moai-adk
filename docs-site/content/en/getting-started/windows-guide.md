@@ -8,7 +8,7 @@ This page collects the environment requirements and common pitfalls you should k
 
 MoAI-ADK is a single Go binary, so it runs on Windows directly. But the shell scripts, path separators, and character encoding that **Claude Code** drives follow the Linux/macOS conventions. So under the Windows command prompt (cmd.exe) or legacy PowerShell 5.x, paths drift and hook scripts fail more often than not. WSL brings a full Linux environment inside Windows, which closes that gap in one step.
 
-This page walks through WSL installation, opening a project, and (optionally) configuring CG mode as a single flow. If you already use WSL, you can jump straight to [Step 2](#step-2--install-moai-adk-inside-wsl).
+This page walks through WSL installation, opening a project, and (optionally) migrating old CG configuration as a single flow. If you already use WSL, you can jump straight to [Step 2](#step-2--install-moai-adk-inside-wsl).
 
 ```mermaid
 flowchart TD
@@ -103,22 +103,13 @@ VS Code integration is three steps.
 
 You can now run `moai init` from the WSL terminal to initialize a project, then start a Claude Code session inside VS Code. The VS Code terminal opens as a WSL shell, so you can use the `moai` command and Claude Code together in a single window without opening a separate terminal.
 
-## Step 4 — (Optional) CG mode and tmux
+## CG retirement and migration
 
-[CG mode](/en/multi-llm/cg-mode) (Claude leader + GLM teammates) requires tmux. Under WSL, install it with a single command.
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
 
-```bash
-# Ubuntu/Debian
-sudo apt install tmux
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
-# Start a tmux session
-tmux new -s moai
-
-# Run CG mode
-moai cg
-```
-
-Without tmux, `moai cg` fails immediately — CG mode injects GLM environment variables inside a tmux session and opens multiple panes, which is its structure.
+[CG retirement and migration](/en/multi-llm/cg-mode/)
 
 ## Non-ASCII username path errors
 
@@ -158,11 +149,10 @@ The most recommended approach is to work inside the WSL installed in [Step 1](#s
 | Korean-path handling failure | Korean username | See [Non-ASCII username path errors](#non-ascii-username-path-errors) above |
 | Permission denied | Install script permissions | Run `chmod +x install.sh` and retry |
 | Git commands fail | Git for Windows not installed | Install [Git for Windows](https://gitforwindows.org/) |
-| tmux missing | CG mode cannot run | `sudo apt install tmux` (in WSL) |
 
 ## Next steps
 
 - [Installation](/en/getting-started/installation) — Detailed installation guide
 - [Initial Setup](/en/getting-started/init-wizard) — Project initialization
-- [CG Mode](/en/multi-llm/cg-mode) — Claude + GLM hybrid mode
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [moai-adk on GitHub](https://github.com/modu-ai/moai-adk) — Source code and issue tracker

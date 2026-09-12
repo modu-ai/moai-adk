@@ -1,0 +1,49 @@
+{
+  "source_session_id": "01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+  "observed_session_current": "01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+  "user_decision": "Codex App Server 중심 전면 재설계, HTML 보고 후 카드 발행 및 구현",
+  "preserved_requirements": [
+    "Claude Code 화면과 제공자별 /model 구분",
+    "GPT 구독과 API 키 경로 모두 지원",
+    "Windows 검증은 GitHub CI",
+    "원격 push·PR·병합·워크트리 제거 별도 지시"
+  ],
+  "installed_codex": "0.154.0",
+  "reference_codex_source": "5a9eb14",
+  "gateway_branch": "WT-unified-gateway",
+  "gateway_head": "81c1d58f9",
+  "existing_worktree_dirty": true,
+  "direct_backend_subagent_fix": "최소 패치와 패키지 테스트 증거 보존, 미설치",
+  "report_state": "HTML 실증 결과 갱신, canonical SPEC 0.11.0 반영",
+  "cards_issued": [
+    "t650",
+    "t651",
+    "t652",
+    "t653",
+    "t654"
+  ],
+  "implementation_started": "t652",
+  "hybrid_tool_decision": {
+    "status": "approved",
+    "user_text": "ToolSearch 유지·발견한 도구만 공통 통로 사용",
+    "source_session_id": "01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "initial_tools": "native schemas",
+    "newly_discovered_tools": "validated dispatcher",
+    "tool_search": "enabled",
+    "verification": "registry six negative groups and independent code audit PASS; actual Claude product integration pending"
+  },
+  "previous_observed_session_current": "cf1d7aa8-9d2f-491f-a48c-27e8d717276a",
+  "local_commits": {
+    "t650": "dad5e9a9ebfc55e5862ddb43ffc797c51788775f",
+    "t651": "28b9988d76c349eae7f32c846195af821f318a2c",
+    "t652_preserved_baseline": "342efdcfd44ada42dad495682455c3e9019510c6"
+  },
+  "api_output_policy": {
+    "status": "approved",
+    "user_text": "API도 App Server 출력 정책 사용",
+    "source_session_id": "01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "transport": "official App Server for chatgpt and apiKey",
+    "limits": "server generation policy; local output bytes and cancellation; no equivalent max_tokens guarantee",
+    "automatic_billing_fallback": false
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "command": [
+    "/Users/goos/go/bin/moai",
+    "gpt",
+    "-p",
+    "mo.ai.kr",
+    "--model",
+    "gpt-5.6-sol",
+    "--effort",
+    "low",
+    "--print",
+    "--verbose",
+    "--output-format",
+    "stream-json",
+    "--max-turns",
+    "3",
+    "--settings",
+    "{\"disableAllHooks\":true}",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--tools",
+    "ListAgents",
+    "--",
+    "Use ListAgents now. Do not send any messages. Say FOUND if a peer named lead exists, otherwise MISSING."
+  ],
+  "exit_code": 0,
+  "stderr": "Profile: mo.ai.kr\n[claude-code:unrecognized_model] {\"model\":\"gpt-5.6-sol\",\"query_source\":\"generate_session_title\"}\n",
+  "tool_calls": [
+    {
+      "name": "ListAgents",
+      "input": {}
+    }
+  ],
+  "listings": [
+    "This session is mo-ai-kr-2b [d0aee1] — the name other sessions use to message it (it is not listed below; a message to it would be a message to yourself).\n\nPeer sessions (6):\n  lane-5 [318726]  ·  interactive  ·  busy  ·  started 2d ago\n  lane-1 [7160f3]  ·  interactive  ·  busy  ·  started 2d ago\n  lead [a250a7]  ·  interactive  ·  busy  ·  started 2d ago\n  lane-3 [abe6c3]  ·  interactive  ·  idle  ·  started 2d ago\n  lane-4 [a9a13f]  ·  interactive  ·  busy  ·  started 2d ago\n  lane-2 [e1c6c9]  ·  interactive  ·  busy  ·  started 27m ago"
+  ],
+  "results": [
+    {
+      "is_error": false,
+      "subtype": "success",
+      "result": "FOUND",
+      "num_turns": 2,
+      "permission_denials": []
+    }
+  ],
+  "lead_seen": true
+}
