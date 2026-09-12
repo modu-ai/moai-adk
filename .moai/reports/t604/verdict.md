@@ -122,10 +122,32 @@ go test ./internal/template/...                         → ok (template 34.3s, 
 
 ## 5. Gaps (명시적 미검증)
 
-- **`go test ./internal/hook/...` 의 FAIL 1건이 미귀속이다.** 출력을 `tail -10` 으로 잘라 실패 패키지를 못 봤고, `echo $?` 는 파이프 때문에 tail 의 종료코드를 찍어 판정 근거가 되지 못한다(둘 다 계측 결함). 보인 하위 9개는 전부 ok. 제 변경은 Go 코드 0줄이라 인과가 없어 보이나 **재측정 전에는 선재 레드라고 부르지 않는다.** 머신 부하 홀드(리드 지시)로 재실행 보류 중 — 해제 시 패키지 특정 + base 대조 측정 예정.
+- ~~`go test ./internal/hook/...` 의 FAIL 1건이 미귀속이다.~~ → **§5.1 에서 해소.** 최초 측정 때 `tail -10` 이 실패 패키지 이름을 잘랐고 `echo $?` 가 파이프 때문에 tail 의 종료코드(0)를 찍었다 — 둘 다 계측 결함이었고, 그 상태의 출력으로는 어느 쪽으로도 판정할 수 없었다.
 - shellcheck 미설치(`command not found`)라 정적 검사를 돌리지 못했다.
 - 멀티모듈 배치, `settings.gradle.kts` 기반 구성, 나머지 15개 언어의 감지 경로는 측정하지 않았다.
 - 로그의 `kotlinc=0` 이 "검사 통과"인지 "도구 부재 스킵"인지 분해하지 않았다. 이번 판정 축(언어 감지)에는 영향이 없다.
+
+## 5.1 `internal/hook` 레드 귀속 (홀드 해제 후 재측정)
+
+부하 해제 뒤 `uptime` 확인(1분 14.69 < 30) 후 루트 패키지만 직렬로 재측정. 이번에는 출력을 파일로 받고 종료코드를 **파이프 밖에서** 읽었다.
+
+```
+go test ./internal/hook/ > .moai/reports/t604/hook-root-test.log 2>&1; echo "GO-TEST-EXIT=$?"
+→ GO-TEST-EXIT=1
+→ --- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.58s)
+→ FAIL   github.com/modu-ai/moai-adk/internal/hook   280.974s
+```
+
+**Claim.** 이 레드는 이번 카드의 변경과 인과가 없다.
+
+**Evidence (본 레인 자체 측정).**
+
+1. 실패는 **한 건뿐**이다 — 로그에 `--- FAIL` 줄이 하나다.
+2. 실패 테스트의 소재는 `internal/hook/session_start_parallel_test.go` (대상 `session_start.go`) 이다 — `grep -rln` 으로 확정.
+3. 이번 변경 대상 심볼(`sync-phase-quality-gate` / `detect_languages` / `code_delta_pattern`)을 참조하는 `internal/hook/*.go` 는 5개이고 — `stopchain_ac004_006b_test.go`, `stopchain_trim_test.go`, `sync_gate_failstate_test.go`, `user_decision_capture.go`, `wrapper_copies_contract_test.go` — **전부 통과했다**. 실패 파일은 이 목록에 없다(참조 0건).
+4. 특히 `wrapper_copies_contract_test.go`(로컬↔템플릿 사본 계약)와 `sync_gate_failstate_test.go` 가 초록인 것은, 템플릿 미러 반영이 계약을 깨지 않았다는 **적극적 근거**이기도 하다.
+
+**인용(본 레인 미측정, 리드 경유).** lane-4 가 `internal/hook` 전체에서 실패가 이 한 건뿐임을, lane-3·lane-7 이 base 에서도 이 테스트가 실패함을 각각 독립으로 실측했다고 보고되었다 — 즉 develop 선재 레드. 본 레인은 **이름 확정과 인과 독립성까지만 자체 측정**했고, base 대조는 이 세 관측의 인용으로 갈음한다(리드 승인). 인용은 인용으로 표시하며, 본 레인의 실측으로 계산하지 않는다.
 
 ## 6. Residual-risk
 
