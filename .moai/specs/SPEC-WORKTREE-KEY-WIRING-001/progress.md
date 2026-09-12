@@ -159,4 +159,47 @@ l44_post_push_fetch: not-applicable
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-09-12"
+sync_commit_sha: "pending-backfill-sync" # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: completed
+b12_self_test_a: "grep -c 'SPEC-WORKTREE-KEY-WIRING-001' CHANGELOG.md -> 0 (pre-emission, before this commit's edit)"
+b12_self_test_b: >-
+  grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u -> 15 tokens
+  (AC-WKW-001..014 live + AC-WBG-009, an external cross-reference to a prior
+  SPEC's criterion, not an AC of this SPEC); the 14 live ACs equal the count
+  the CHANGELOG entry cites ("14 acceptance criteria (AC-WKW-001..014)")
+b12_self_test_c: >-
+  ls internal/cli/session_worktree_automerge.go internal/cli/worktree_advisory.go
+  internal/cli/init.go internal/cli/profile_setup.go internal/cli/web.go
+  internal/config/types.go internal/config/defaults.go
+  internal/config/testdata/shipped_key_inventory.yaml
+  internal/template/templates/.moai/config/sections/workflow.yaml -> all resolve
+changelog_entry_position: "Unreleased > Added, first bullet (above the SPEC-RESOURCE-SLOT-LEASE-001 entry)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status only; updated already reads the sync date 2026-09-12, this commit)"
+  plan_md: "stateless on the status axis — carries no frontmatter, no transition"
+  acceptance_md: "stateless on the status axis — carries no frontmatter, no transition"
+  progress_md: "not a status-bearing artifact — this §E.4 block is the sync signal"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+Docs-site scope decision: `grep -rn 'auto_merge\|auto_create\|auto-merge\|auto-create'
+docs-site/content` matched only UNRELATED features — `/moai sync`'s PR auto-merge
+(moai-sync.md ×4 locales), `/moai feedback`'s issue auto-creation, and one passing
+mention of `workflow.worktree.auto_cleanup` in the sync page. No page documents
+the `workflow.worktree.auto_merge` / `auto_create` keys or the session-exit
+auto-merge behavior (all 4 worktree page sets included in the sweep), so NO
+docs-site change ships with this card; the new capability is off by default, so
+pages describing default behavior are not stale. README (4 locales): `grep
+'auto_merge\|auto_create\|auto-merge\|auto-create'` → no matches, no change.
+
+MX tag validation (sync sub-step): the run phase already carries
+`@MX:ANCHOR` + `@MX:REASON` on `sessionExitAutoMerge`
+(`internal/cli/session_worktree_automerge.go:147-148`) — fan_in=3 (init.go,
+profile_setup.go, web.go), so the ANCHOR is mandatory and present. All other new
+functions in the file are unexported; no goroutine or complexity>=15 pattern
+introduced. No MX annotation change made by this sync commit.
+

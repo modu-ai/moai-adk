@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-KEY-WIRING-001
 title: "wire workflow.worktree auto_merge to a real local merge reader; re-scope auto_create honestly"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-12
 updated: 2026-09-12
 author: manager-spec
