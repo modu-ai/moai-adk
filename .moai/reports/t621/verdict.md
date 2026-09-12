@@ -167,6 +167,51 @@ the REPAIRED tree and 3/3 on the UNREPAIRED tree (same worktree, only
 `todo_root.go` swapped — and that file is the change's entire production
 surface). Pre-existing on `9935e4e3e`.
 
+## Integration window (absorb `origin/develop` `03a48b0df`)
+
+Absorbed without conflict as `9379c7821`; the absorb touched no file under
+`internal/kanban`, `internal/statusline` or `internal/web`.
+
+**The window caught a sibling miss.** `internal/cli` had been deferred out of the
+pre-window verification for load reasons, and it carries three MIRROR tests that
+pinned the same home-fallback root value:
+
+| test (`internal/cli/todo_queue_root_test.go`) | replaced by |
+|---|---|
+| `TestResolveTodoQueueRoot_FallbackNoGit` | base as the root; queue under `home`, not under `dir`. Its own doc comment already named the correct target (`~/.moai/db/<project-key>/todo`) — the assertion had drifted off it |
+| `TestTodoQueue_FallbackAdoptsExistingLocalQueue` | base as the root + queue under `home`; the adopt-not-shadow criterion stays on the cards (3 items, states, `last_seq` 7, and the re-run's stability, now compared against the first run's root) |
+| `TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp` | the subject is identified by the queue being under the stubbed home rather than by a root spelled inside it |
+
+Selector accounting, `internal/cli`, 24 names: before 20 PASS + 1 SKIP + 3 FAIL;
+after **23 PASS + 1 SKIP + 0 FAIL**. Every name is accounted for, so no selector
+name was silently dropped.
+
+**Home-pollution canary, widened.** The one SKIP is
+`TestAxisACanaryHomeSweep_TodoFamily`, gated behind
+`MOAI_AXIS_A_CANARY_SWEEP=1`. Run explicitly, because this card changes where
+the home queue resolves: 253 todo tests under a canary HOME, 0 directories
+created. But it swept only `.moai/todo` — the LEGACY name this repair stops
+using — so for this change its zero was structural. It now sweeps `.moai/db` as
+well, and that arm was proved able to fail: seeding one directory there before
+the sweep turns the green red, naming that path. The control was removed after
+the measurement; the file's final diff carries no seeding code.
+
+### Merge-tree re-measurement
+
+| check | result |
+|---|---|
+| `go build ./...` | clean |
+| `go vet` — kanban, cli, web, statusline | clean |
+| `gofmt -l` — kanban, cli | empty |
+| `go test ./internal/kanban/` | ok (165.5s) |
+| `go test ./internal/cli/ -run <24-name queue-root selector>` | ok — 23 PASS, 1 SKIP, 0 FAIL |
+| `MOAI_AXIS_A_CANARY_SWEEP=1` canary sweep | PASS — 253 tests, 0 under `.moai/todo` or `.moai/db` |
+| `go test ./internal/template/...` | ok ×3 (incl. `TestCatalogHashCoversSkillSubfiles`, `TestManifestHashFormat`) |
+| `go test ./internal/web/ ./internal/statusline/` | ok, ok |
+
+`internal/cli` full-suite is left to CI per the lead's load instruction (lane-1
+had just hit a 25-minute timeout on it at load 18–23).
+
 ## Residues
 
 - `pathInsideTempDir` is now reached only from tests. It is kept because t549's
