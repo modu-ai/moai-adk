@@ -439,3 +439,106 @@ FAIL 2 는 이 사례와 M7 대기 중인 `TestPtyCapture_DowngradeConfirmButton
 
 `huh`·`isatty` import 가 `init.go`·`update.go` 에서 쓰이지 않게 돼 함께 지웠다. `moaiHuhTheme`
 은 `profile_setup.go` 가 아직 쓰므로 남는다(M6 소관).
+
+## M5 — 흡수 배선과 스테퍼 (2026-09-12, `WT-init-tux-i18n`)
+
+기준선 HEAD `7fc66fc72`. 커밋 넷: RED `293f1373f`, 수리 `244f3db38`, 골든 `f39fd1844`,
+가드 재조준 `fa07e3352`. plan.md 좌표는 재측정 없이 design.md §2.2/§4/§5/§10 과
+acceptance.md 본문을 직접 판든했다(M4 교훈).
+
+### 이음새와 흡수 구조
+
+`profile.go` 에 시음새 셋을 뒀다 — `profileWizardRunner`(design.md §2.2, 초기값·옵션·로케일 →
+응답), `enterSessionWorktreeFn`/`cleanupSessionWorktreeFn`(§5, runWizardFn 관용구).
+`runProfileSetup` 은 v2 폼을 `wizard.RunProfile` 로 실행하고, `errors.Is(err,
+wizard.ErrCancelled)` 로 취소를 판별해 `선택된 로케일`의 `SetupCancelled` 문구를 stdout 에 쓰고
+nil 을 돌려준다(취소 로케일 = 답한 언어 → 저장값 → en). 저장 이하는 v1 과 동일한 순서
+(acceptEdits 정규화 → WritePreferences → SyncToProjectConfig(nil 세그먼트) →
+persistProjectConfig(devMode, "") → 저장 문구·요약)이며 `@MX:NOTE`/`@MX:REASON` 은
+normalizeModel 에서 새 바인딩 지점 `initialProfileResult` 로 옮겼다.
+
+스테퍼는 design.md §4 대로 `questionVisibility`(가시성 판정 클로저) + 바인딩 대상으로
+일반화했고 init 은 `wizardResultVisibility` 얇은 감싸개로 문자열을 유지한다(AC-ITI-009
+init 대조군 통과). 프로필 폼의 표시기는 **그룹 타이틀**으로 넣었다 — huh v2 가 그룹
+뷰포트를 focused 필드 위치로 스크롤해 콘텐츠 내 note 행을 잘라버리는 것을 formDriver 로
+측정했고(plan.md §G D4 와 같은 현상군), 헤더는 뷰포트 밖에서 렌더링돼 잘리지 않는다.
+문자열은 두 쪽 모두 `tui.Stepper(k, N, nil)`.
+
+### AC-ITI-006 — 보존 표 테스트 (9사례 전부 PASS)
+
+`go test -run 'TestProfileSetupAbsorbed_PreservationTable' -count=1` → `ok`. RED 는
+`293f1373f` 에서 라우팅 게이트로 세웠다(19 하위 테스트 전부 "does not route through
+profileWizardRunner(" 로 실패, `.moai/reports/t586/m5-ac006-ac007-red.txt`). 수리 전
+(6)(7) 사례는 실제로 FAIL 했다 — config manager 의 `Save()` 가 무관한 섹션 쓰기마다
+git-convention.yaml 을 partial-override 확장으로 재작성하기 때문(2줄 시드가 11줄로 확장되는
+것을 프로브로 측정). 수리는 ConfigManager.Save 에 git-strategy 선례(SPEC-GITSTRATEGY-SAVE-
+ISOLATION-001)와 같은 git_convention dirty/absent 격리를 더한 것 — **범위 주의**:
+plan.md M5 의 파일 목록(profile_setup.go, wizard.go)을 넘어 internal/config/manager.go 를
+만졌고, fan_in 12 함수다. 리드 재판정 대상.
+
+### AC-ITI-007 — 명령 수준 이음새 계약 (8조합 전부 PASS)
+
+setup·--setup 두 진입 × (a)취소 (b)오류 (c)성공(이름 없음/work). (a) nil 오류 + ko
+`설정이 취소되었습니다.` 출력 + 프로필 파일 부재, (b) non-nil 오류 + 파일 부재, (c) 저장
+문구·요약 출력 + preferences.yaml 생성. 정리 이음새는 실행당 정확히 1번, clean-exit 인자는
+(a)(c) 참·(b) 거짓. 진입-선행-읽기는 enter 이음새가 쓴 센티넬 preferences 파일이 캡처된
+초깃값으로 흘러드는 것으로 증명(c 성공 사례).
+
+### AC-ITI-008 — 로케일 골든 (ko/ja/zh PASS) + 집합 E 판정
+
+`TestProfileWizardGolden_LocaleFrames` PASS(골든 `internal/cli/testdata/profilewizard/
+groups-{ko,ja,zh}.golden`, RED 원문 `.moai/reports/t586/m5-ac008-red.txt`),
+`TestProfileWizardGolden_NoEnglishLeak` PASS. 폼은 실행 초기 로케일로 구성한다 — huh v2 의
+키맵과 옵션 목록은 폼당 정적이라 언어를 폼 안에서 바꾸는 구성은 도달 불가다(제목·설명은
+로케일 포인터로 폼 안에서 재렌더링된다). **집합 E 해석(판정 기록)**: E 는 "대상 로케일
+렌더링이 en과 다른" 텍스트의 en값 — 실제 번역된 문자열만 누설 판정 대상으로 삼는다.
+로케일 불변 렌더링(스키마의 빈 옵션 리터럴 "(runtime default)"/"(project default)",
+번역표가 en 텍스트를 그대로 지닌 model_policy 3개 라벨)은 모든 로케일에서 자기 자신을
+그릴 뿐 English 누설이 아니며, 이를 X에 하나씩 적는 것은 SPEC이 번역을 제공하지 않은
+텍스트를 위해 닫힌 목록을 넓히는 일이다. 리드가 (A)엄격 독해(전부 결함→번역 추가)를
+택하려면 model_policy 라벨 번역 + settings 빈 라벨 현지화가 후속 작업이다.
+
+### AC-ITI-009 — 스테퍼 형식 (프로필 + init 대조군 PASS)
+
+`TestProfileWizardStepper_SameFormatAsInit` PASS. 프로필: N=10, 페이지 첫 줄이
+`<k> / 10`(k=1,2,3,6,10)로 끝나고 ●/○ 합이 10. init 대조군: `InitQuestions` 기준 N=4,
+페이지 첫 줄 k=1,3,4 — plan.md의 "N은 보이는 init 질문 수"대로 실제 init 세트(퇴고한
+4문항)를 썼다. 행 우측 패딩은 TrimRight 후 접미 판정.
+
+### AC-ITI-010 — 가드 재조준 9건 + 뮤턴트 10건 전부 BITES
+
+재조준된 9개 가드 셀렉터 실행: `=== RUN` 최상위 9개, 전부 `--- PASS`. 뮤턴트(양성 7:
+S1 모델정책 질문 삭제, S2 호출줄 삭제, S3 정규화 비교 삭제, S4 인라인 리터럴, S5
+development_mode 삭제, S6 effort_level 삭제, S9 nil 세그먼트 대입 삭제 / 음성 3: S7
+`ID: "statusline_theme"` v2형 추가, S2 yaml.Marshal 호출 추가, S8 StatuslineTheme 대입
+추가) 10건 전부 해당 가드가 실패했다. 원문 `.moai/reports/t586/m5-ac010-mutants.txt`
+(BITES: yes ×10). 뮤턴트 적용·복원은 cp 백업 + cmp 검증으로 했고 git 명령은 일절 없다.
+복원 후 제품 파일은 HEAD와 byte-identical(`git diff --stat` 공집합).
+
+### pty 스위트 (게이트 켬)
+
+`MOAI_PTY_CAPTURE=1 go test -run 'TestPtyCapture'` → Localized·InitFirstScreen·
+SkipWithoutGate·FailWithoutTmux PASS, **잔여 FAIL은 정확히 1개** —
+`TestPtyCapture_DowngradeConfirmButtonAlignment`(M7 소관, RED 유지가 M5의 의무였다).
+새 `TestPtyCapture_*` 를 더하지 않았다: `AssertSkipWithoutGate` 6 / `AssertFailWithoutTmux`
+5 그대로.
+
+### 빌드·정적검사·커버리지
+
+`go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
+`golangci-lint run ./internal/cli/...` `0 issues.` · `go vet` 문제 없음 ·
+`go test -cover ./internal/cli/wizard/` `coverage: 93.0% of statements`(하한 85% 이상,
+M4 종료 시 93.2% 대비 -0.2p). 전량 스위트 `go test ./internal/cli/ -count=1
+-timeout 1800s` 결과는 `.moai/reports/t586/m5-internal-cli-suite.txt`.
+
+### 남긴 관찰 (M7/M8 소관 이하 — 수리하지 않음)
+
+1. huh v2의 Eval(제목 비동기 적용)은 프로그램 드라이버에서 적용이 한 번 유실되면 해당
+   페이지 표시기가 빈 채로 남는다 — 프로필 표시기를 그룹 타이틀로 옮겨 회피했고, init 쪽은
+   기존 반응형 노트가 그대로다(기존 테스트 전부 통과).
+2. 프로필 옵션 라벨은 실행 초기 로케일로 고정된다(M1 설계대로). 새 프로필(en 초기)이 폼
+   안에서 ko를 골랐을 때 이후 그룹의 제목·설명·도움말… 중 제목·설명만 재현역화되고 옵션
+   라벨은 초기 로케일에 머문다. REQ-ITI-007 전항을 충족하려면 옵션 데이터의 로케일별
+   전달이 필요하다 — design.md §3 기각 사항과 맞물려 있어 설계 변경 몫이다.
+3. model_policy 3개 라벨과 스키마 빈 옵션 리터럴은 번역표가 en 텍스트를 지닌다(현지화
+   없음). AC-ITI-008 판독 (B)에서는 허용, (A)에서는 번역 추가가 필요 — 위 판정 기록 참조.
