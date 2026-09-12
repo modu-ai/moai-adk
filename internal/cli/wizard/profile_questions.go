@@ -94,8 +94,7 @@ func ProfileQuestionIDs() []string {
 // table, whose option lists are copies of the caller's lists, and whose
 // defaults are the caller's initial values.
 //
-// @MX:NOTE: [AUTO] Not wired yet — the cli profile setup still runs its own
-// form; the v2 absorption (design.md §2.2) routes it through this set.
+// @MX:NOTE: [AUTO] Wired by the M5 absorption — RunProfile (profile_wizard.go) drives this set as one multi-group form, and the cli runner seam (profileWizardRunner) is its only caller.
 func ProfileQuestions(opts ProfileOptions, initial ProfileResult) []Question {
 	en := profileQuestionTexts["en"]
 	qs := make([]Question, len(profileQuestionTable))

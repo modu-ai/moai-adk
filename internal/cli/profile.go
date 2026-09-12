@@ -67,11 +67,11 @@ var runProfileSetupFn = func(cmd *cobra.Command, args []string) error {
 
 // profileWizardRunner is the v2 profile-wizard seam (design.md §2.2): the
 // absorbed runProfileSetup hands it the initial values, the option lists, and
-// the initial locale, and receives the wizard's answers. Nil until the M5
-// absorption commit wires wizard.RunProfile as the default — the AC-ITI-006/007
-// tests gate on the routing being present before any caller could reach a nil
-// runner.
-var profileWizardRunner func(initial wizard.ProfileResult, opts wizard.ProfileOptions, locale string) (*wizard.ProfileResult, error)
+// the initial locale, and receives the wizard's answers. The default
+// implementation is the wizard package's absorbed profile form.
+var profileWizardRunner = func(initial wizard.ProfileResult, opts wizard.ProfileOptions, locale string) (*wizard.ProfileResult, error) {
+	return wizard.RunProfile(opts, initial, locale)
+}
 
 // enterSessionWorktreeFn and cleanupSessionWorktreeFn are the session-worktree
 // enter/cleanup seams (design.md §5, the runWizardFn idiom). The absorbed

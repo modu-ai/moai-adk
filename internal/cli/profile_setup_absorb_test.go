@@ -172,11 +172,11 @@ type absorbRun struct {
 // (profileSetupCmd.RunE) or "profile" (runProfileCmd --setup); name is the
 // profile-name argument ("" = none). withSentinel makes the worktree-enter
 // seam write a sentinel preferences file first, so the read-after-enter
-// ordering is observable through the captured initial values.
+// ordering is observable through the captured initial values. Callers
+// isolate the profile store BEFORE seeding stored preferences.
 func runAbsorbedSetup(t *testing.T, entry, name string, withSentinel bool, answersFn func(cap *runnerCapture) (*wizard.ProfileResult, error)) *absorbRun {
 	t.Helper()
 	requireAbsorbedRouting(t)
-	isolateProfileStore(t)
 
 	run := &absorbRun{}
 	profileName := name
@@ -223,9 +223,7 @@ func runAbsorbedSetup(t *testing.T, entry, name string, withSentinel bool, answe
 		args = []string{name}
 	}
 	if entry == "profile" {
-		if err := cmd.Flags().BoolP("setup", "s", true, ""); err != nil {
-			t.Fatalf("set --setup flag: %v", err)
-		}
+		cmd.Flags().BoolP("setup", "s", true, "")
 		run.err = runProfileCmd(cmd, args)
 		return run
 	}
@@ -255,15 +253,16 @@ func absorbAnswers() wizard.ProfileResult {
 // snapshots the pre-save file bytes; the cases that promise byte identity
 // assert against the snapshot.
 func TestProfileSetupAbsorbed_PreservationTable(t *testing.T) {
-	// A canonical id from the alias table is a stored value the picker no
-	// longer offers — the deprecated-id shape case (1) must normalize.
+	// A superseded canonical id (SPEC-INIT-TUX-I18N-001: the ids in
+	// ModelDeprecatedCanonicalIDs) is a stored value the picker no longer
+	// offers — the deprecated-id shape case (1) must normalize.
 	var deprecatedModel string
-	for id := range template.ModelAliasTable {
+	for id := range template.ModelDeprecatedCanonicalIDs {
 		deprecatedModel = id
 		break
 	}
 	if deprecatedModel == "" {
-		t.Fatal("template.ModelAliasTable carries no canonical ids; case (1) cannot seed a deprecated model")
+		t.Fatal("template.ModelDeprecatedCanonicalIDs carries no entries; case (1) cannot seed a deprecated model")
 	}
 
 	for _, tc := range []struct {
@@ -496,6 +495,7 @@ func TestProfileSetupAbsorbed_PreservationTable(t *testing.T) {
 func TestProfileSetupAbsorbed_SavePersistsAcrossSurfaces(t *testing.T) {
 	t.Run("project_cwd_persists_all_surfaces", func(t *testing.T) {
 		root := seedAbsorbProject(t)
+		isolateProfileStore(t)
 		run := runAbsorbedSetup(t, "setup", "", false, func(_ *runnerCapture) (*wizard.ProfileResult, error) {
 			a := absorbAnswers()
 			return &a, nil
@@ -547,6 +547,7 @@ func TestProfileSetupAbsorbed_SavePersistsAcrossSurfaces(t *testing.T) {
 
 	t.Run("outside_project_only_preferences_yaml", func(t *testing.T) {
 		root := seedBareDir(t)
+		isolateProfileStore(t)
 		run := runAbsorbedSetup(t, "setup", "", false, func(_ *runnerCapture) (*wizard.ProfileResult, error) {
 			a := absorbAnswers()
 			return &a, nil
@@ -654,6 +655,7 @@ func TestProfileSetup_CommandContractOverSeams(t *testing.T) {
 		} {
 			t.Run(entry+"/"+tc.name, func(t *testing.T) {
 				seedBareDir(t)
+				isolateProfileStore(t)
 				run := runAbsorbedSetup(t, entry, tc.profileName, tc.withSentinel, tc.answersFn)
 
 				if tc.wantErr && run.err == nil {

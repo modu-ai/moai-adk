@@ -254,19 +254,43 @@ func visibleQuestionIndex(questions []Question, result *WizardResult, id string)
 	return idx
 }
 
-// stepperNote renders the live step indicator above each group (AC-CLI-TUI-007
-// succession). The huh v2 eval mechanism re-computes TitleFunc whenever the
-// bound result struct changes (hashstructure deep-hash), so numerator and
-// denominator both track conditional-question visibility as answers land.
+// questionVisibility carries the live stepper arithmetic behind closures so
+// the stepper does not name a result type (design.md §4): count returns how
+// many questions are currently visible; index returns the 1-based position of
+// the question with the given ID among the visible ones.
+type questionVisibility struct {
+	count func() int
+	index func(id string) int
+}
+
+// wizardResultVisibility adapts the init wizard's *WizardResult to the
+// generalized stepper — the thin wrapper design.md §4 names, so the init
+// wizard's rendered stepper strings stay byte-identical (AC-ITI-009's init
+// control group).
+func wizardResultVisibility(questions []Question, result *WizardResult) questionVisibility {
+	return questionVisibility{
+		count: func() int { return stepperDenominator(questions, result) },
+		index: func(id string) int { return visibleQuestionIndex(questions, result, id) },
+	}
+}
+
+// stepperNote renders the live step indicator above each init-wizard group
+// (AC-CLI-TUI-007 succession): the generalized stepper bound to *WizardResult
+// through wizardResultVisibility.
 func stepperNote(questions []Question, first *Question, result *WizardResult) *huh.Note {
-	id := first.ID
+	return genericStepperNote(first.ID, result, wizardResultVisibility(questions, result))
+}
+
+// genericStepperNote renders the step indicator for any binding target. The
+// huh v2 eval mechanism re-computes TitleFunc whenever the bound value
+// changes (hashstructure deep-hash), so numerator and denominator both track
+// visibility as answers land. The string itself is tui.Stepper(k, N, nil) for
+// every wizard — profile and init render the same format (design.md §4,
+// REQ-ITI-008).
+func genericStepperNote(id string, bind any, vis questionVisibility) *huh.Note {
 	return huh.NewNote().TitleFunc(func() string {
-		return tui.Stepper(
-			visibleQuestionIndex(questions, result, id),
-			stepperDenominator(questions, result),
-			nil,
-		)
-	}, result)
+		return tui.Stepper(vis.index(id), vis.count(), nil)
+	}, bind)
 }
 
 // buildSelectField creates a huh.Select field for a select-type question.

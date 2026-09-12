@@ -57,7 +57,7 @@ func profileModelPolicyOptions(t profileSetupText) []wizard.Option {
 // bridge. The wizard package receives the lists as arguments, so it never
 // resolves schema labels itself.
 //
-// @MX:NOTE: [AUTO] Not wired yet — the profile setup flow still runs its own form until the v2 absorption (plan.md M5) passes these lists to wizard.ProfileQuestions.
+// @MX:NOTE: [AUTO] Wired by the M5 absorption — runProfileSetup builds these lists in the run's initial locale and hands them to the profileWizardRunner seam.
 func buildProfileOptions(t profileSetupText) wizard.ProfileOptions {
 	return wizard.ProfileOptions{
 		Language:        profileLanguageOptions(),
