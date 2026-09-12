@@ -15,8 +15,6 @@ type OptionTranslation struct {
 
 // UIStrings holds translated UI strings.
 type UIStrings struct {
-	HelpSelect    string
-	HelpInput     string
 	ErrorRequired string
 	// ConfirmYes / ConfirmNo localize the huh Confirm affirmative/negative
 	// button labels. huh v2's Confirm exposes only static Affirmative/Negative
@@ -42,14 +40,6 @@ var translations = map[string]map[string]QuestionTranslation{
 		"project_name": {
 			Title:       "프로젝트 이름 입력",
 			Description: "프로젝트의 이름입니다.",
-		},
-		"development_mode": {
-			Title:       "개발 방법론 선택",
-			Description: "구현 시 사용할 개발 워크플로우 사이클을 설정합니다.",
-			Options: []OptionTranslation{
-				{Label: "TDD (권장)", Desc: "테스트 주도 개발: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "도메인 주도 개발: ANALYZE-PRESERVE-IMPROVE"},
-			},
 		},
 		"report_format": {
 			Title:       "리포트 형식 선택",
@@ -137,14 +127,6 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "プロジェクト名を入力",
 			Description: "プロジェクトの名前です。",
 		},
-		"development_mode": {
-			Title:       "開発方法論を選択",
-			Description: "実装時に使用する開発ワークフローサイクルを制御します。",
-			Options: []OptionTranslation{
-				{Label: "TDD (推奨)", Desc: "テスト駆動開発: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "ドメイン駆動開発: ANALYZE-PRESERVE-IMPROVE"},
-			},
-		},
 		"report_format": {
 			Title:       "レポート形式を選択",
 			Description: "レポートをHTML+Markdownで生成するか、Markdownのみで生成するかを設定します。",
@@ -231,14 +213,6 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "输入项目名称",
 			Description: "项目的名称。",
 		},
-		"development_mode": {
-			Title:       "选择开发方法论",
-			Description: "控制实施期间使用的开发工作流程周期。",
-			Options: []OptionTranslation{
-				{Label: "TDD (推荐)", Desc: "测试驱动开发: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "领域驱动开发: ANALYZE-PRESERVE-IMPROVE"},
-			},
-		},
 		"report_format": {
 			Title:       "选择报告格式",
 			Description: "控制报告生成为HTML+Markdown还是仅Markdown。",
@@ -317,29 +291,21 @@ var translations = map[string]map[string]QuestionTranslation{
 // uiStrings maps language code to UI strings.
 var uiStrings = map[string]UIStrings{
 	"en": {
-		HelpSelect:    "Use arrow keys to navigate, Enter to select, Esc to cancel",
-		HelpInput:     "Type your answer, Enter to confirm, Esc to cancel",
 		ErrorRequired: "This field is required",
 		ConfirmYes:    "Yes",
 		ConfirmNo:     "No",
 	},
 	"ko": {
-		HelpSelect:    "방향키로 이동, Enter로 선택, Esc로 취소",
-		HelpInput:     "답변 입력 후 Enter로 확인, Esc로 취소",
 		ErrorRequired: "필수 입력 항목입니다",
 		ConfirmYes:    "예",
 		ConfirmNo:     "아니오",
 	},
 	"ja": {
-		HelpSelect:    "矢印キーで移動、Enterで選択、Escでキャンセル",
-		HelpInput:     "入力してEnterで確定、Escでキャンセル",
 		ErrorRequired: "この項目は必須です",
 		ConfirmYes:    "はい",
 		ConfirmNo:     "いいえ",
 	},
 	"zh": {
-		HelpSelect:    "使用方向键导航，Enter选择，Esc取消",
-		HelpInput:     "输入答案，Enter确认，Esc取消",
 		ErrorRequired: "此字段为必填项",
 		ConfirmYes:    "是",
 		ConfirmNo:     "否",
@@ -505,4 +471,3 @@ var profileQuestionTexts = map[string]map[string]QuestionTranslation{
 		"development_mode":      {Title: "开发方法论", Description: "写入 quality.yaml 的项目开发方法论。留空则保留项目默认值。"},
 	},
 }
-

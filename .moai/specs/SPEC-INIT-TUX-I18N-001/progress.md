@@ -318,7 +318,55 @@ Not established yet: a green build says the tree compiles, not that the goldens 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- **run_complete_at**: 2026-09-13 (KST)
+- **run_commit_sha**: 마감 커밋으로 확정 — 아래 계보의 마지막 HEAD. (진행 중 측정 관계상
+  본 문서를 포함한 마감 커밋 SHA는 §E.2 각 M 섹션과 git log로 대조할 것)
+- **run_status**: 모든 마일스톤(M1~M8) 착지 완료. AC 22개 전부 PASS. 리드 게이트 체크
+  대기 — 게이트 PASS 시 런 페이즈 종료(프론트매터 상태 전이는 리드/싱크 소관).
+
+### 런 계보 (브랜치 WT-init-tux-i18n, 단일 워크트리, 미푸시)
+
+- M1 `4d985fe48` 옵션 모양·프로필 질문 세트 → M2 `799b6a2f5` v2 다운그레이드 확인창·로케일
+  체인 → M3 하네스(ptycaptest)·`10ea337fe` t583 흡수 → M4 RED `f3fc13fae`·수리
+  `312f30825`·기록 `7fc66fc72`(init·update 프로필 경로 제거) → M5 RED `293f1373f`·흡수
+  `244f3db38`·골든 `f39fd1844`·가드 `fa07e3352`·기록 `96f61b1c4`(AC-ITI-006/007/008/009/
+  010) → M6 RED `f95d7e931`·퇴역 `bdd6b952e`·기록 `5403cdeb8`(huh v1 퇴역·tidy·
+  git_convention 격리) → M7 가드 `b7b9d2ab6`·재구성 `5e716116b`·구현 `7b5d056ca`·기록
+  `bfaeaf5ee`(REQ-ITI-012~017) → M8 RESIDUE `621c13c3b`·키 정리(이 커밋).
+
+### AC 매트릭스 요지 (상세 판정은 §E.2 각 M 섹션 + m5-*/m6-*/m7-*/m8-* 원문)
+
+- AC-ITI-001/002 (M4) · 003 (M4 pty) · 004 (M6 전 6조항) · 005 (M1/M5) · 006 (M5 9사례) ·
+  007 (M5 8조합) · 008 (M5 ko/ja/zh 골든+누설) · 009 (M5 프로필+init 대조군) · 010 (M5
+  가드 9건+뮤턴트 10건) · 011 (M6 전 3조항, 축 골든 4개) · 012 (M2 4사례) · 013 (M7 골든
+  12+프로필 4, ko/ja/zh 영어 동작 라벨 부재; HelpSelect/HelpInput grep 0줄은 M8 완료) ·
+  014 (M8 스윕+동등성+뮤턴트 2건) · 015 (M7 버튼 열 정렬, 스탠딩 레드 종결) · 016 (M7 빈
+  줄·빈 카드 행 0) · 017 (M7 표시 폭 열 정렬+뮤턴트 2건) · 018/021/022 (M7 재구성 3판정+
+  독립성 뮤턴트 2건) — 전부 PASS.
+- 스탠딩 레드 `TestPtyCapture_DowngradeConfirmButtonAlignment` 은 M7에서 종결, M8 마감
+  게이트 pty 재실행에서도 PASS(잔여 FAIL 0).
+
+### pty 캡처 반출 위치
+
+`.moai/reports/t586/` — m5-pty-capture-suite.txt·m7-pty-capture-suite.txt·
+m8-pty-capture-suite.txt(마감), ac003-green-capture/(M4), ptycap-all·stage-b(M3).
+
+### 싱크(또는 오퍼레이터) 이관 잔여 — §E.4 carried 목록 외 추가
+
+1. **REQ-ITI-007 옵션 라벨 잔여**: 폼 안 언어 변경 시 제목·설명·도움말은 재현역화되나
+   옵션 라벨은 실행 초기 로케일 고정(design §3 기각 사항과 동인). 로케일 불변 렌더링
+   3종(model_policy 라벨 2종 en 텍스트, 스키마 빈 옵션 리터럴 "(runtime default)"/
+   "(project default)")도 같은 뿌리 — 오퍼레이터 보고 항목(리드 경유).
+2. **AC-ITI-011 (3) 축 골든의 TERM 민감**: truecolor ANSI 시퀀스를 포함하므로 색 프로파일
+   감지 환경이 다른 재실행은 불일치할 수 있음(절 (3)이 ANSI 포함 비교를 요구하는 귀결).
+3. **AC-ITI-022 .Group 허용 범위 갱신**: M5 흡수로 buildProfileForm의 묶기 비교/대입 2줄이
+   추가됨 — 가드 허용 집합에 반영했고 design §9의 측정 문단은 싱크에서 이 2줄을 포함해
+   갱신할 수 있다.
+
+### 리드 재판정 완료 사항
+
+ConfigManager.Save git_convention 격리(승인), 집합 E 판독 (B)(동의), bash 뮤턴트
+스크립트 자진 보고(수용) — §E.2 M5/M7 섹션 참조.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -680,3 +728,45 @@ FAIL로 중단 — 골든 재생성 후 재실행)·m7-cli-remeasure.txt(3건 FA
 
 `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
 `golangci-lint run ./internal/cli/...` `0 issues.`
+
+## M8 — 키 정리와 판정 마감 (2026-09-13, `WT-init-tux-i18n`)
+
+기준선 HEAD `bfaeaf5ee`. 커밋: RESIDUE 0 수리 `621c13c3b`(lint 스코프 ./internal/cli/... 로
+발견된 QF1001·미사용 firstNonBlank — 리드 게이트 지적), M8 구현(이 커밋).
+
+### 키 정리 (REQ-ITI-013)
+
+AC-ITI-014 스윕이 지목한 읽히지 않는 키 삭제 — profileSetupText 11필드(LangGroupTitle,
+IdentityTitle, LanguagesTitle, ModelSettingsTitle, DisplayTitle,
+StatuslineSegmentsTitle/Desc, ThemeMoaiDark/Light, SummaryStatuslineTheme,
+MigrationNoticeStatuslineTheme; 각 4개 로케일 시드 동반)와 UIStrings 의
+HelpSelect/HelpInput(문장형 도움말 — M7 의 키별 라벨로 대체됨), 그 서테스트 2개
+(TestGetProfileText_MigrationNoticeFields, TestGetUIStrings 의 HelpSelect/HelpInput
+단정부), 죽은 이니셜 테이블 development_mode 3블록(고아 — reconfigure 세트에도 없음).
+
+### AC-ITI-014 판정 (PASS + 뮤턴트 2건 BITES)
+
+참조 스윕: profileSetupText 전 필드가 비테스트 코드에서 셀렉터 참조됨 ✓, 위저드 번역
+테이블의 모든 키가 translations.go 밖 비테스트 코드에서 참조됨 ✓(고아 development_mode
+3블록은 스윕이 지목해 삭제). 로케일 동등성: ko/ja/zh 키 집합 == 질문 집합(en은 리터럴
+자체가 소스) ✓. 뮤턴트: 미참조 키 심기 → 스윕 FAIL, ja/git_provider 키 삭제 → 동등성
+FAIL(m8-ac014-mutants.txt; 첫 시도의 심기 실패로 BITES NO 한 행은 무효 시도 기록, 재실행
+BITES yes).
+
+### 골든 확정 · pty 캡처
+
+AC-ITI-008 프로필 로케일 골든, AC-ITI-011 (3) 축 골든, AC-ITI-013 help-surfaces 12골든,
+AC-ITI-015 confirm-alignment 골든, AC-ITI-021 두 번째 그룹 골든 — 전부 최종 렌더에 맞춰
+확정. 게이트 켠 pty: internal/cli `ok 28.884s` + wizard `ok 4.186s` — 잔여 FAIL 0
+(버튼 정렬 스탠딩 레드는 M7에서 종결).
+
+### 슬롯 임대 마감 측정 (리드 프로토콜 준수)
+
+acquire(da011b34-…, 15:51:45Z까지) → 임대 창 안: 게이트 pty 양 패키지 ok, wizard ok
+3.942s, internal/cli `ok 992.844s`(--- FAIL 0) → release 확인. 원문
+m8-pty-capture-suite.txt·m8-wizard-suite.txt·m8-final-cli-suite.txt·m8-slot-release.txt.
+
+### 빌드·정적검사
+
+`go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 ·
+`golangci-lint run ./internal/cli/...` `0 issues.`(스코프: 하위 패키지 포함 — 리드 지시)
