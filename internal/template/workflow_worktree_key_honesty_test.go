@@ -18,6 +18,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,15 +38,46 @@ var worktreeToggles = map[string]string{
 // unreadClaims are the phrasings the template uses to call a key inert.
 var unreadClaims = []string{"not read", "reserved"}
 
-// commentLines returns the `#` comment lines of a YAML document.
-func commentLines(content string) []string {
-	var out []string
+// keySection matches the start of a per-key comment clause, `# auto_cleanup:`.
+var keySection = regexp.MustCompile(`^#\s*([a-z_]+):`)
+
+// goFile matches a source path named inside a comment.
+var goFile = regexp.MustCompile(`[\w./-]+\.go`)
+
+// commentSections groups the `#` comment lines of a YAML document into the
+// clause each one belongs to: a clause starts at a `# <key>:` line and runs
+// until the next such line or the end of the comment block. The claim about a
+// key spans more than the line that names it — `auto_cleanup`'s names its two
+// reader files on the lines after — so a per-line reading would miss half of
+// what the file asserts.
+func commentSections(content string) map[string][]string {
+	sections := map[string][]string{}
+	current := ""
 	for _, line := range strings.Split(content, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
-			out = append(out, line)
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "#") {
+			current = ""
+			continue
+		}
+		if match := keySection.FindStringSubmatch(trimmed); match != nil {
+			current = match[1]
+		}
+		if current != "" {
+			sections[current] = append(sections[current], trimmed)
 		}
 	}
-	return out
+	return sections
+}
+
+// namedGoFiles returns the base names of the source files a clause names.
+func namedGoFiles(lines []string) map[string]bool {
+	named := map[string]bool{}
+	for _, line := range lines {
+		for _, match := range goFile.FindAllString(line, -1) {
+			named[filepath.Base(match)] = true
+		}
+	}
+	return named
 }
 
 // fieldReaders returns the `internal/` source lines that READ
@@ -104,45 +136,76 @@ func TestWorkflowTemplate_WorktreeToggleReaderClaimsAreTrue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile(%s) error: %v", workflowTemplatePath, err)
 	}
-	comments := commentLines(string(data))
+	sections := commentSections(string(data))
 
 	for key, field := range worktreeToggles {
 		readers := fieldReaders(t, field)
+		clause, mentioned := sections[key]
 
-		var claimed []string
-		var mentioned bool
-		for _, line := range comments {
-			if !strings.Contains(line, key) {
-				continue
-			}
-			mentioned = true
+		claimedUnread := false
+		for _, line := range clause {
 			lower := strings.ToLower(line)
 			for _, claim := range unreadClaims {
 				if strings.Contains(lower, claim) {
-					claimed = append(claimed, strings.TrimSpace(line))
+					claimedUnread = true
 				}
 			}
 		}
 
-		switch {
-		case len(readers) > 0 && len(claimed) > 0:
+		if len(readers) == 0 {
+			if !claimedUnread {
+				t.Errorf(
+					"%s: no production line reads it, and the shipped %s does not say so. "+
+						"An inert key that reads as live invites the user to set it and wait",
+					key, workflowTemplatePath,
+				)
+			}
+			continue
+		}
+
+		if !mentioned {
 			t.Errorf(
-				"%s: the shipped %s calls %q unread (%q), but %d production line(s) read it: %v. "+
-					"auto_cleanup gates a `git worktree remove`, so a wrong claim here loses work",
-				key, workflowTemplatePath, key, claimed, len(readers), readers,
-			)
-		case len(readers) > 0 && !mentioned:
-			t.Errorf(
-				"%s: %d production line(s) read it (%v) and the shipped %s never mentions the key. "+
+				"%s: %d production line(s) read it (%v) and the shipped %s has no clause for the key. "+
 					"A toggle that acts must say so where the user sets it",
 				key, len(readers), readers, workflowTemplatePath,
 			)
-		case len(readers) == 0 && len(claimed) == 0:
+			continue
+		}
+		if claimedUnread {
 			t.Errorf(
-				"%s: no production line reads it, and the shipped %s does not say so. "+
-					"An inert key that reads as live invites the user to set it and wait",
-				key, workflowTemplatePath,
+				"%s: the shipped %s calls it unread (%q), but %d production line(s) read it: %v. "+
+					"auto_cleanup gates a `git worktree remove`, so a wrong claim here loses work",
+				key, workflowTemplatePath, clause, len(readers), readers,
 			)
+			continue
+		}
+
+		// Every reading file has to be named, and every named file has to
+		// read: the clause for auto_cleanup names two paths, and losing
+		// either one would leave the file describing a reader that is gone
+		// while the remaining one keeps the claim technically alive.
+		readingFiles := map[string]bool{}
+		for _, reader := range readers {
+			readingFiles[filepath.Base(strings.SplitN(reader, ":", 2)[0])] = true
+		}
+		named := namedGoFiles(clause)
+		for file := range readingFiles {
+			if !named[file] {
+				t.Errorf(
+					"%s: %s reads the field but the shipped %s clause does not name it (%q). "+
+						"The reader list in the comment is what the user checks the key against",
+					key, file, workflowTemplatePath, clause,
+				)
+			}
+		}
+		for file := range named {
+			if !readingFiles[file] {
+				t.Errorf(
+					"%s: the shipped %s names %s as a reader, but nothing there reads the field. "+
+						"Readers found: %v",
+					key, workflowTemplatePath, file, readers,
+				)
+			}
 		}
 	}
 }
