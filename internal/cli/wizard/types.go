@@ -38,59 +38,21 @@ type WizardResult struct {
 	GitLabUsername    string // GitLab username (for personal/team modes with gitlab provider)
 	GitLabToken       string // GitLab personal access token (optional)
 
-	// Page-3 fields ("Quality & Workflow"). Only project_mode is still asked;
-	// the four booleans are fixed at their shipped defaults and no longer
-	// prompted (removed 2026-08-03) — seeded by RunWithDefaults /
-	// RunWithLocale. The two mode-flag fields that formerly gated them are
-	// retired (REQ-WIZ-018).
-	ProjectMode               string // project.mode: personal, team (B1) — asked
-	LSPEnabled                bool   // lsp.enabled: true (fixed default, no longer asked)
-	EnforceQuality            bool   // quality.enforce_quality: true (fixed default, no longer asked)
-	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled: false (fixed default)
-	DesignEnabled             bool   // design.enabled: true (fixed default, no longer asked)
-	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (fixed default, no longer asked)
-
-	// Worktree advisory. Wizard-collected;
-	// seeded false when the question is skipped (--non-interactive).
-	WorktreeAutoCreate bool // workflow.worktree.auto_create
-
-	// TodoEnabled is the workflow.todo.enabled answer. It is a pointer, unlike
-	// its Page-3 neighbours, because the underlying config gate is default-ON
-	// and absence must stay distinguishable from a "no": nil means the question
-	// was never asked (--non-interactive), and an unasked question writes
-	// nothing rather than falling through a zero value into `enabled: false`.
-	TodoEnabled *bool // workflow.todo.enabled
-
-	// FeedbackAutoSubmit is the feedback.auto_submit answer. Like TodoEnabled
-	// it is a pointer so that "never asked" (--non-interactive) stays
-	// distinguishable from an explicit "no": an unasked question writes
-	// nothing rather than restating the shipped default in every project.
-	FeedbackAutoSubmit *bool // feedback.auto_submit
-
-	// ProjectContinuation (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010): the
-	// /moai project Phase 14 completion selection, reusing the
-	// config.ProjectContinuation* enum. A plain string, not a pointer: the
-	// default is a NAMED token of the domain (card), so "" and "card" carry the
-	// same meaning to the resolver, and "" additionally means the wizard did not
-	// reach the question (--non-interactive) — which the writer reads as "write
-	// nothing".
-	ProjectContinuation string // workflow.project.continuation: none|card|pipeline
+	// Page-3 fixed defaults. None of these is asked: the four booleans are
+	// fixed at their shipped defaults (removed 2026-08-03) and seeded by
+	// RunWithDefaults / RunWithLocale. The two mode-flag fields that formerly
+	// gated them are retired (REQ-WIZ-018), and the page-3 questions removed by
+	// SPEC-INIT-QUIET-WIZARD-001 carry no result field.
+	LSPEnabled                bool // lsp.enabled: true (fixed default, no longer asked)
+	EnforceQuality            bool // quality.enforce_quality: true (fixed default, no longer asked)
+	CoverageExemptionsEnabled bool // quality.coverage_exemptions.enabled: false (fixed default)
+	DesignEnabled             bool // design.enabled: true (fixed default, no longer asked)
+	ClaudeDesignEnabled       bool // design.claude_design.enabled: true (fixed default, no longer asked)
 
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).
 	AutonomyTier string // workflow.autonomy_tier
-
-	// M4 audit + MCP opt-in selection (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 /
-	// AC-MCP-020). Reuses the M3 typed-config vocabulary (config.AuditModel* /
-	// AuditGate*). Empty strings mean "wizard did not run"; the init writer
-	// treats the whole block as opt-in via AuditConfigSet.
-	AuditModel        string // audit.model: claude|codex|glm|multi
-	AuditGateClaude   string // audit.gates.claude: off|advisory|required
-	AuditGateCodex    string // audit.gates.codex: off|advisory|required
-	AuditGateGLM      string // audit.gates.glm: off|advisory|required
-	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
-	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 
 	// AgentWiring (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-001/002): the
 	// interactive LLM-harness selection, reusing the --llm closed set
