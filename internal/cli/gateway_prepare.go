@@ -23,7 +23,7 @@ type gatewayPrepareInput struct {
 
 // gatewayScrubKeys returns fresh storage: callers cannot change future launches.
 func gatewayScrubKeys() []string {
-	return []string{config.EnvAnthropicAuthToken, config.EnvAnthropicBaseURL, config.EnvAnthropicDefaultOpusModel, config.EnvAnthropicDefaultSonnetModel, config.EnvAnthropicDefaultHaikuModel, config.EnvAnthropicDefaultFableModel, "MOAI_BACKUP_AUTH_TOKEN", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS", "API_TIMEOUT_MS", "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "CLAUDE_CODE_MAX_CONTEXT_TOKENS", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "CLAUDE_CODE_TEAMMATE_DISPLAY", "MOAI_STATUSLINE_CONTEXT_SIZE"}
+	return []string{config.EnvAnthropicAuthToken, config.EnvAnthropicBaseURL, config.EnvAnthropicDefaultOpusModel, config.EnvAnthropicDefaultSonnetModel, config.EnvAnthropicDefaultHaikuModel, config.EnvAnthropicDefaultFableModel, "MOAI_BACKUP_AUTH_TOKEN", config.EnvClaudeCodeDisableExperimentalBetas, "API_TIMEOUT_MS", "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "CLAUDE_CODE_MAX_CONTEXT_TOKENS", config.EnvClaudeCodeDisableNonessentialTraffic, config.EnvClaudeCodeTeammateDisplay, "MOAI_STATUSLINE_CONTEXT_SIZE"}
 }
 
 // @MX:WARN: [AUTO] Launch mode, exact model and inherited environment are separate trust boundaries.
