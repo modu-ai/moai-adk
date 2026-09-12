@@ -32,9 +32,14 @@ workflow:
     # three auto-* toggles default false — the EnterWorktree-first policy.
     # auto_create: read once (internal/cli/worktree_advisory.go) only to select
     # advisory wording; it does not gate worktree creation.
-    # auto_merge / auto_cleanup: declared but not read — no code path consumes
-    # them (reserved). Kept aligned with defaults.go so the shipped file does
-    # not state the opposite of the recorded policy.
+    # auto_cleanup: READ, and it gates removal. Both auto-cleanup paths
+    # (internal/cli/session_worktree.go cleanupSessionWorktree and
+    # session_worktree_prmerge.go prMergeCleanup) check it immediately before
+    # a `git worktree remove`, so turning it on lets those sweeps delete
+    # worktree directories.
+    # auto_merge: declared but not read — no code path consumes it (reserved).
+    # Kept aligned with defaults.go so the shipped file does not state the
+    # opposite of the recorded policy.
     worktree:
         auto_create: false
         auto_merge: false
