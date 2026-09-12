@@ -140,7 +140,7 @@ the integration verdict surface (lane doctrine — lanes do not push).
 run_status: complete
 run_complete_at: 2026-09-12
 run_commit_sha: "390d71753" # M4 commit carrying the implementation; M5 evidence commit backfills its own SHA below
-run_final_commit_sha: "pending-backfill-m5" # this §E.2-carrying commit cannot cite its own SHA
+run_final_commit_sha: "33c4c35e8" # M5 evidence commit (backfilled per the D3 placeholder exemption)
 ac_pass_count: 14
 ac_fail_count: 0
 preserve_list_post_run_count: 5 # session_name_pattern + tmux_preferred inventory rows, internal/github/pr_merger.go, git-strategy.yaml.tmpl (no develop_branch mirror), git_strategy.worktree_root — all verified untouched in the base..HEAD diff
