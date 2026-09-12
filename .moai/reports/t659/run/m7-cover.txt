@@ -1,0 +1,1 @@
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.802s	coverage: 88.1% of statements

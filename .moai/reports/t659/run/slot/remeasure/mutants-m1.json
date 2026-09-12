@@ -1,0 +1,241 @@
+[
+ {
+  "id": "M-6",
+  "desc": "drop the legacy concatenated-key aliases",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"rule_id\", \"ruleid\", \"const_registry_entry\"",
+    "\"rule_id\", \"const_registry_entry\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"approved_at\", \"approvedat\", \"timestamp\"",
+    "\"approved_at\", \"timestamp\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"zone_before\", \"zonebefore\", \"zone\"",
+    "\"zone_before\", \"zone\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"zone_after\", \"zoneafter\", \"zone\"",
+    "\"zone_after\", \"zone\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"approved_by\", \"approvedby\", \"approver\"",
+    "\"approved_by\", \"approver\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"canary_verdict\", \"canaryverdict\"",
+    "\"canary_verdict\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"clause_before\", \"clausebefore\"",
+    "\"clause_before\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"clause_after\", \"clauseafter\"",
+    "\"clause_after\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"rolled_back\", \"rolledback\"",
+    "\"rolled_back\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"rollback_reason\", \"rollbackreason\"",
+    "\"rollback_reason\""
+   ],
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"rollback_at\", \"rollbackat\"",
+    "\"rollback_at\""
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestLoadEvolutionLogs_LegacyKeys$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-6.txt"
+ },
+ {
+  "id": "M-7",
+  "desc": "drop the snake_case rule_id key on the read side",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\"rule_id\", \"ruleid\", \"const_registry_entry\"",
+    "\"ruleid\", \"const_registry_entry\""
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestLoadEvolutionLogs$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-7.txt"
+ },
+ {
+  "id": "M-8a",
+  "desc": "ignore fenced yaml blocks (human format)",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "info == \"yaml\" || info == \"yml\" {",
+    "false && (info == \"yaml\" || info == \"yml\") {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^(TestLoadEvolutionLogs_HumanFormat|TestRateLimiter_SeesHumanFormatEntry)$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 2,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-8a.txt"
+ },
+ {
+  "id": "M-8b",
+  "desc": "treat an unparseable human timestamp as zero time instead of an error",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "if f.value.Kind != yaml.ScalarNode || !parsed {",
+    "if false && (f.value.Kind != yaml.ScalarNode || !parsed) {"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^(TestLoadEvolutionLogs_HumanFormat|TestLoadEvolutionLogs_FailClosedErrorLocation)$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 2,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-8b.txt"
+ },
+ {
+  "id": "M-9",
+  "desc": "serialize zone as an integer",
+  "edits": [
+   [
+    "internal/constitution/zone.go",
+    "return z.String(), nil",
+    "return uint8(z), nil"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestAppendEvolutionLog_SnakeCaseAndZoneNames$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-9.txt"
+ },
+ {
+  "id": "M-12",
+  "desc": "pairwise --- split: always advance two delimiters",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "\t\t\ti += 2\n\t\t\tcontinue\n\t\t}\n\t\ti++\n\t}\n\treturn blocks",
+    "\t\t\ti += 2\n\t\t\tcontinue\n\t\t}\n\t\ti += 2\n\t}\n\treturn blocks"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestLoadEvolutionLogs_MarkdownNoise$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-12.txt"
+ },
+ {
+  "id": "M-15i",
+  "desc": "M-15 variant (i): drop the line number from the fail-closed error",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "return fmt.Errorf(\"evolution log %s: line %d: key %s: entry %s: %s\",\n\t\td.path, line, key, d.id, fmt.Sprintf(format, args...))",
+    "return fmt.Errorf(\"evolution log %s: key %s: entry %s: %s\",\n\t\td.path, key, d.id, fmt.Sprintf(format, args...))"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestLoadEvolutionLogs_FailClosedErrorLocation$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-15i.txt"
+ },
+ {
+  "id": "M-15ii",
+  "desc": "M-15 variant (ii): drop the key from the fail-closed error",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "return fmt.Errorf(\"evolution log %s: line %d: key %s: entry %s: %s\",\n\t\td.path, line, key, d.id, fmt.Sprintf(format, args...))",
+    "return fmt.Errorf(\"evolution log %s: line %d: entry %s: %s\",\n\t\td.path, line, d.id, fmt.Sprintf(format, args...))"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestLoadEvolutionLogs_FailClosedErrorLocation$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-15ii.txt"
+ },
+ {
+  "id": "M-15iii",
+  "desc": "M-15 variant (iii): report the block-relative line instead of the file line",
+  "edits": [
+   [
+    "internal/constitution/evolution_log_reader.go",
+    "return d.block.firstLine + n.Line - 1",
+    "return n.Line"
+   ]
+  ],
+  "run": [
+   "test",
+   "./internal/constitution/",
+   "-run",
+   "^TestLoadEvolutionLogs_FailClosedErrorLocation$",
+   "-count=1",
+   "-v"
+  ],
+  "expect_runs": 1,
+  "out": ".moai/reports/t659/run/slot/remeasure/M-15iii.txt"
+ }
+]

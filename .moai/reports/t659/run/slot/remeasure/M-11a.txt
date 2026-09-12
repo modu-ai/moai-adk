@@ -1,0 +1,24 @@
+# mutant M-11a: leave the backup files after a successful apply
+# edits: [["internal/constitution/apply_commit.go", "\tremoveBackups(changes)\n\treturn nil\n}", "\treturn nil\n}"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RenameFault_RestoresAll$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RenameFault_RestoresAll
+=== RUN   TestApply_RenameFault_RestoresAll/first_rename_applied
+=== RUN   TestApply_RenameFault_RestoresAll/second_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_applied
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_log_absent
+=== RUN   TestApply_RenameFault_RestoresAll/no_fault_clean
+    apply_seams_test.go:139: path set changed after a clean apply:
+        before [. .claude .claude/rules .claude/rules/moai .claude/rules/moai/core .claude/rules/moai/core/zone-registry.md .moai .moai/research .moai/research/evolution-log.md rules rules/other.md rules/target.md]
+        after  [. .claude .claude/rules .claude/rules/moai .claude/rules/moai/core .claude/rules/moai/core/.zone-registry.md.amend-bak-1995095895 .claude/rules/moai/core/zone-registry.md .moai .moai/research .moai/research/.evolution-log.md.amend-bak-2746980608 .moai/research/evolution-log.md rules rules/.target.md.amend-bak-127132293 rules/other.md rules/target.md]
+--- FAIL: TestApply_RenameFault_RestoresAll (0.09s)
+    --- PASS: TestApply_RenameFault_RestoresAll/first_rename_applied (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/second_rename (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename_applied (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename_log_absent (0.05s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/no_fault_clean (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.455s
+FAIL

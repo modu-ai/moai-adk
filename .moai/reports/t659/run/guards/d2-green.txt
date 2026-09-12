@@ -1,0 +1,27 @@
+# real code: pipeline.go sha256 aa2b196530102c6e0fbc973e404e4d653f76dc1a229b0c8e1a80847b9d771737, apply_test.go sha256 9eba5497634350b7b7a93667fa682816749a7e6bf6b03224a10a1e5d251cf427 (HEAD 37c9ad059 + the D1/D2 edits of commit 1)
+# $ go test ./internal/constitution/ -run ^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$ -count=1 -v
+# exit=0
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/dry_run
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/real
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/dry_run
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/real
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/dry_run
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/real
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_log/dry_run
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_log/real
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real
+--- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected (0.03s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/dry_run (0.01s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/real (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/real (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/real (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_log/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_log/real (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.396s

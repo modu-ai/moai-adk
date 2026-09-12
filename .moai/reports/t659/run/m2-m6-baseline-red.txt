@@ -1,0 +1,188 @@
+=== RUN   TestApply_ExactlyOnce_Success
+    apply_test.go:331: Execute: amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_ExactlyOnce_Success3166912907/001/rules/target.md, anchor=#fixture)
+--- FAIL: TestApply_ExactlyOnce_Success (0.00s)
+=== RUN   TestApply_OccurrenceCount_Rejected
+=== RUN   TestApply_OccurrenceCount_Rejected/zero
+    apply_test.go:390: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedzero2653834135/001/rules/target.md, anchor=#fixture)" lacks the number 0 (path-stripped: "amendment application error: source file update error: updateSourceFile: not yet implemented (path=, anchor=#fixture)")
+=== RUN   TestApply_OccurrenceCount_Rejected/two
+    apply_test.go:390: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_OccurrenceCount_Rejectedtwo1365259406/001/rules/target.md, anchor=#fixture)" lacks the number 2 (path-stripped: "amendment application error: source file update error: updateSourceFile: not yet implemented (path=, anchor=#fixture)")
+--- FAIL: TestApply_OccurrenceCount_Rejected (0.00s)
+    --- FAIL: TestApply_OccurrenceCount_Rejected/zero (0.00s)
+    --- FAIL: TestApply_OccurrenceCount_Rejected/two (0.00s)
+=== RUN   TestApply_NoWhitespaceNormalization
+    apply_test.go:415: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NoWhitespaceNormalization2412841968/001/rules/target.md, anchor=#fixture)" lacks the number 0 (path-stripped: "amendment application error: source file update error: updateSourceFile: not yet implemented (path=, anchor=#fixture)")
+--- FAIL: TestApply_NoWhitespaceNormalization (0.00s)
+=== RUN   TestUpdateRegistryClause_SingleLineRoundTrip
+    apply_test.go:428: Execute: amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateRegistryClause_SingleLineRoundTrip3344014296/001/rules/target.md, anchor=#fixture)
+--- FAIL: TestUpdateRegistryClause_SingleLineRoundTrip (0.00s)
+=== RUN   TestApply_RegistryReparse_Rejects
+=== RUN   TestApply_RegistryReparse_Rejects/continuation
+    apply_test.go:492: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectscontinuation1080767646/001/rules/target.md, anchor=#fixture)" does not name the registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectscontinuation1080767646/001/.claude/rules/moai/core/zone-registry.md
+=== RUN   TestApply_RegistryReparse_Rejects/no_clause_line
+    apply_test.go:492: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsno_clause_line1801647519/001/rules/target.md, anchor=#fixture)" does not name the registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsno_clause_line1801647519/001/.claude/rules/moai/core/zone-registry.md
+=== RUN   TestApply_RegistryReparse_Rejects/newline_clause
+    apply_test.go:492: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsnewline_clause3129876851/001/rules/target.md, anchor=#fixture)" does not name the registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RegistryReparse_Rejectsnewline_clause3129876851/001/.claude/rules/moai/core/zone-registry.md
+--- FAIL: TestApply_RegistryReparse_Rejects (0.02s)
+    --- FAIL: TestApply_RegistryReparse_Rejects/continuation (0.00s)
+    --- FAIL: TestApply_RegistryReparse_Rejects/no_clause_line (0.01s)
+    --- FAIL: TestApply_RegistryReparse_Rejects/newline_clause (0.01s)
+=== RUN   TestApply_NewClausePresent_Rejected
+=== RUN   TestApply_NewClausePresent_Rejected/elsewhere
+    apply_test.go:522: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedelsewhere3556162015/001/rules/target.md, anchor=#fixture)" lacks the number 1 (path-stripped: "amendment application error: source file update error: updateSourceFile: not yet implemented (path=, anchor=#fixture)")
+=== RUN   TestApply_NewClausePresent_Rejected/inside_current_clause
+    apply_test.go:522: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_NewClausePresent_Rejectedinside_current_clause1167254376/001/rules/target.md, anchor=#fixture)" lacks the number 1 (path-stripped: "amendment application error: source file update error: updateSourceFile: not yet implemented (path=, anchor=#fixture)")
+--- FAIL: TestApply_NewClausePresent_Rejected (0.02s)
+    --- FAIL: TestApply_NewClausePresent_Rejected/elsewhere (0.01s)
+    --- FAIL: TestApply_NewClausePresent_Rejected/inside_current_clause (0.01s)
+=== RUN   TestPipeline_Execute_DryRun_Validates
+=== RUN   TestPipeline_Execute_DryRun_Validates/valid
+=== RUN   TestPipeline_Execute_DryRun_Validates/two_occurrences
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/registry_continuation
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/missing_rule_file
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/new_clause_present
+    apply_test.go:606: dryRun=true: want an error, got nil
+=== RUN   TestPipeline_Execute_DryRun_Validates/stale_before
+    apply_test.go:606: dryRun=true: want an error, got nil
+--- FAIL: TestPipeline_Execute_DryRun_Validates (0.04s)
+    --- PASS: TestPipeline_Execute_DryRun_Validates/valid (0.02s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/two_occurrences (0.00s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/registry_continuation (0.00s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/missing_rule_file (0.00s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/new_clause_present (0.00s)
+    --- FAIL: TestPipeline_Execute_DryRun_Validates/stale_before (0.00s)
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected/dry_run
+    apply_test.go:645: Execute: want a stale-Before error, got nil
+=== RUN   TestPipeline_Execute_StaleBefore_Rejected/real
+    apply_test.go:648: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPipeline_Execute_StaleBefore_Rejectedreal1409771643/001/rules/target.md, anchor=#fixture)" does not name the rule CONST-V3R6-789
+    apply_test.go:651: gate doubles called 4 times, want 0 (check runs before Layer 1)
+--- FAIL: TestPipeline_Execute_StaleBefore_Rejected (0.01s)
+    --- FAIL: TestPipeline_Execute_StaleBefore_Rejected/dry_run (0.00s)
+    --- FAIL: TestPipeline_Execute_StaleBefore_Rejected/real (0.00s)
+=== RUN   TestExecute_UsesSharedRegistryResolver
+    apply_test.go:682: Execute: amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_UsesSharedRegistryResolver566459238/001/rules/target.md, anchor=#fixture)
+--- FAIL: TestExecute_UsesSharedRegistryResolver (0.00s)
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_real
+    apply_test.go:722: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RegistryOutsideProjectDir_Refuseddivergent_root_rea4245304010/001/rules/target.md, anchor=#fixture)" does not name the offending registry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RegistryOutsideProjectDir_Refuseddivergent_root_rea4245304010/002/.claude/rules/moai/core/zone-registry.md
+    apply_test.go:725: gate doubles called 4 times, want 0
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_dry_run
+    apply_test.go:718: Execute: want a registry load error, got nil
+=== RUN   TestExecute_RegistryOutsideProjectDir_Refused/same_root_control
+    apply_test.go:740: Execute: amendment application error: source file update error: updateSourceFile: not yet implemented (path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RegistryOutsideProjectDir_Refusedsame_root_control2283667016/001/rules/target.md, anchor=#fixture)
+--- FAIL: TestExecute_RegistryOutsideProjectDir_Refused (0.01s)
+    --- FAIL: TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_real (0.01s)
+    --- FAIL: TestExecute_RegistryOutsideProjectDir_Refused/divergent_root_dry_run (0.00s)
+    --- FAIL: TestExecute_RegistryOutsideProjectDir_Refused/same_root_control (0.00s)
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/real
+    apply_test.go:878: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesrelative_env_escape2491525536/001/root/rules/target.md, anchor=#fixture)" does not name the offending path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesrelative_env_escape2491525536/001/other/.claude/rules/moai/core/zone-registry.md
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/real
+    apply_test.go:878: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesrelative_env_escape1659837841/001/root/rules/target.md, anchor=#fixture)" does not name the offending path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesrelative_env_escape1659837841/001/other/.claude/rules/moai/core/zone-registry.md
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/real
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/real
+    apply_test.go:878: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesabsolute_filenon_ta2029527146/001/root/rules/target.md, anchor=#fixture)" does not name the offending path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesabsolute_filenon_ta2029527146/001/outside/rule.md
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/real
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/real
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/real
+    apply_test.go:878: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapessymlinked_registryr136394733/001/root/rules/target.md, anchor=#fixture)" does not name the offending path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapessymlinked_registryr136394733/001/root/linkdir/zone-registry.md
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/real
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/real
+    apply_test.go:878: error "amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapessymlinked_logreal874364724/001/root/rules/target.md, anchor=#fixture)" does not name the offending path /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapessymlinked_logreal874364724/001/root/.moai/research/evolution-log.md
+    apply_test.go:881: gate doubles called 4 times, want 0
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/dry_run
+    apply_test.go:875: Execute: want a containment refusal, got nil
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/real
+    apply_test.go:916: Execute = (<nil>, amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesin_root_controlplai3960703895/001/root/rules/target.md, anchor=#fixture)), want a log entry and no error
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/real
+    apply_test.go:916: Execute = (<nil>, amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_ContainmentCheck_RefusesEscapesin_root_controlsyml783589554/001/link/rules/target.md, anchor=#fixture)), want a log entry and no error
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/dry_run
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/relative_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_file
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/symlinked_registry
+=== RUN   TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_escape
+--- FAIL: TestExecute_ContainmentCheck_RefusesEscapes (0.08s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape (0.02s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/registry_var/dry_run (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/relative_env_escape/project_dir_var/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/target/dry_run (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/absolute_file/non_target/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/dotdot_file/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/sibling_prefix_file/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_registry/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_file/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/real (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/symlinked_log/dry_run (0.00s)
+    --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control (0.01s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/plain/dry_run (0.00s)
+        --- FAIL: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/real (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/in_root_control/symlinked_root/dry_run (0.00s)
+    --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged (0.01s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/relative_registry (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_file (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/symlinked_registry (0.00s)
+        --- PASS: TestExecute_ContainmentCheck_RefusesEscapes/loader_unchanged/absolute_escape (0.00s)
+=== RUN   TestExecute_RealRegistryShape_Admitted
+=== RUN   TestExecute_RealRegistryShape_Admitted/load
+=== RUN   TestExecute_RealRegistryShape_Admitted/dry_run
+=== RUN   TestExecute_RealRegistryShape_Admitted/real
+    apply_test.go:1135: Execute = (<nil>, amendment application error: source file update error: updateSourceFile: not yet implemented (path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RealRegistryShape_Admittedreal2697184149/001/link/.claude/rules/moai/core/moai-constitution.md, anchor=#response-language)), want a log entry and no error
+--- FAIL: TestExecute_RealRegistryShape_Admitted (0.02s)
+    --- PASS: TestExecute_RealRegistryShape_Admitted/load (0.01s)
+    --- PASS: TestExecute_RealRegistryShape_Admitted/dry_run (0.01s)
+    --- FAIL: TestExecute_RealRegistryShape_Admitted/real (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.574s
+FAIL

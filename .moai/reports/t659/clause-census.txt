@@ -1,0 +1,13 @@
+registry_entries 101
+buckets {'missing_file': 0, 'clause_0': 4, 'clause_1': 97, 'clause_2plus': 0}
+anchor_slug_found 97
+clause_2plus_ids []
+clause_0_ids ['CONST-V3R2-021', 'CONST-V3R2-022', 'CONST-V3R2-023', 'CONST-V3R2-024']
+normalized_count CONST-V3R2-021 0 '[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + '
+normalized_count CONST-V3R2-022 0 '[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + '
+normalized_count CONST-V3R2-023 0 '[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + '
+normalized_count CONST-V3R2-024 0 '[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + '
+evolution_log_dash_split_parts 14
+odd_segments_with_top_level_id_key 0
+odd_segment_heads ['', '|', '|', '--|', '', '-|\n| 0.1.0 | 2026-05-13 | SPEC', '_End of evolution log._']
+EXIT=0

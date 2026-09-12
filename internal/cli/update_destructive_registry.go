@@ -42,16 +42,18 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 12 (file, function) rows
-// covering 22 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 13 (file, function) rows
+// covering 23 call sites, matching the source scan the drift guard performs.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
-// The exempt rows rest on two materially different grounds — same-call rewind
-// (BackupMoaiConfig, backupUserOwnedNamespace) versus retention pruning of
-// moai-authored backup directories (CleanupOldBackups) — and must not be
-// collapsed into one reason: the pruning row destroys restore points from
-// PREVIOUS runs, so it is exempt from the user-data protection set without
-// being harmless to the recovery contract.
+// The exempt rows rest on three materially different grounds — same-call rewind
+// (BackupMoaiConfig, backupUserOwnedNamespace), retention pruning of
+// moai-authored backup directories (CleanupOldBackups), and cache-base
+// replacement (promoteSettingsSnapshot) — and must not be collapsed into one
+// reason: the pruning row destroys restore points from PREVIOUS runs, so it is
+// exempt from the user-data protection set without being harmless to the
+// recovery contract, while the cache-base row replaces only moai's own record
+// of a template render.
 var destructiveTargetRegistry = []destructiveSite{
 	{
 		File: "internal/cli/update/deploy/deploy.go", Function: "backupThenRemove", Sites: 3,
@@ -107,6 +109,20 @@ var destructiveTargetRegistry = []destructiveSite{
 			"itself under a declared retention policy. Exempt from the user-data protection set; not " +
 			"harmless to the recovery contract, since a sufficiently old restore point can be rotated " +
 			"out by a later run.",
+	},
+	{
+		File: "internal/cli/update/backup/settings_snapshot.go", Function: "promoteSettingsSnapshot", Sites: 1,
+		Exemption: "Cache-base replacement — neither operand of the rename is user data. The source is " +
+			"the staging copy (.moai/cache/template-snapshot/claude/settings.json.pending) this same " +
+			"flow's deploy wrote, and its content survives the move rather than being destroyed. The " +
+			"destination it overwrites is the canonical merge base left by a PREVIOUS flow: moai's own " +
+			"record of a template render under .moai/cache/, never the user's .claude/settings.json — " +
+			"which this call does not touch. Losing that record costs the next update its stored base " +
+			"and nothing else; SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-009 has the merge fall " +
+			"back to the derived base when it is absent, without failing the update. Exempt on the " +
+			"ground that the bytes replaced are moai-authored cache, which is materially distinct from " +
+			"the same-call rewind rows (BackupMoaiConfig, backupUserOwnedNamespace) and from retention " +
+			"pruning of restore points (CleanupOldBackups).",
 	},
 	{
 		File: "internal/cli/update_clean_install.go", Function: "runCleanReinstall", Sites: 1,

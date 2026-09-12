@@ -1,0 +1,16 @@
+# mutant M-4: skip the re-parse check
+# edits: [["internal/constitution/apply_transform.go", "\tafter, err := decodeRegistryEntries(rewritten)", "\treturn []byte(rewritten), nil\n\tafter, err := decodeRegistryEntries(rewritten)"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RegistryReparse_Rejects$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RegistryReparse_Rejects
+=== RUN   TestApply_RegistryReparse_Rejects/continuation
+    apply_test.go:489: Execute: want a registry error, got nil
+=== RUN   TestApply_RegistryReparse_Rejects/no_clause_line
+=== RUN   TestApply_RegistryReparse_Rejects/newline_clause
+--- FAIL: TestApply_RegistryReparse_Rejects (0.01s)
+    --- FAIL: TestApply_RegistryReparse_Rejects/continuation (0.00s)
+    --- PASS: TestApply_RegistryReparse_Rejects/no_clause_line (0.00s)
+    --- PASS: TestApply_RegistryReparse_Rejects/newline_clause (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.366s
+FAIL

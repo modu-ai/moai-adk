@@ -1,0 +1,15 @@
+# mutant M-GB-always: G-B over-broad: the check fires for every rule file; run only the distinct_control subtests (re-run after F1)
+# edits: [["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if true {"]]
+# $ go test ./internal/constitution/ -run ^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^distinct_control$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run
+    apply_test.go:1246: Execute on a distinct rule file: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileIsRegistryOrLog_Rejecteddistinct_controldr2830297255/001/rules/target.md: is also the registry or the evolution log
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real
+    apply_test.go:1246: Execute on a distinct rule file: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileIsRegistryOrLog_Rejecteddistinct_controlre2927766862/001/rules/target.md: is also the registry or the evolution log
+--- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected (0.00s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.363s
+FAIL

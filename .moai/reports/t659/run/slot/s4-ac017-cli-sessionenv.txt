@@ -1,0 +1,9 @@
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences
+=== RUN   TestConstitutionAmend_DryRun_SurfacesValidation/valid
+--- PASS: TestConstitutionAmend_DryRun_SurfacesValidation (0.01s)
+    --- PASS: TestConstitutionAmend_DryRun_SurfacesValidation/two_occurrences (0.00s)
+    --- PASS: TestConstitutionAmend_DryRun_SurfacesValidation/valid (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.797s
+exit=0

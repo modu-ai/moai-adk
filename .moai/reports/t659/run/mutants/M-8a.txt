@@ -1,0 +1,21 @@
+# mutant M-8a: ignore fenced yaml blocks (human format)
+# edits: [["internal/constitution/evolution_log_reader.go", "info == \"yaml\" || info == \"yml\" {", "false && (info == \"yaml\" || info == \"yml\") {"]]
+# $ go test ./internal/constitution/ -run ^(TestLoadEvolutionLogs_HumanFormat|TestRateLimiter_SeesHumanFormatEntry)$ -count=1 -v
+# exit=1
+=== RUN   TestLoadEvolutionLogs_HumanFormat
+=== RUN   TestLoadEvolutionLogs_HumanFormat/verbatim_block
+    evolution_log_reader_test.go:290: entries = 0, want 1: []
+=== RUN   TestLoadEvolutionLogs_HumanFormat/real_file_readonly
+    evolution_log_reader_test.go:325: real log: no entry with ID EVO-HRN-002 among 0 entries
+=== RUN   TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed
+    evolution_log_reader_test.go:332: LoadEvolutionLogs: want an error for an unparseable timestamp, got nil
+--- FAIL: TestLoadEvolutionLogs_HumanFormat (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/verbatim_block (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/real_file_readonly (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed (0.00s)
+=== RUN   TestRateLimiter_SeesHumanFormatEntry
+    evolution_log_reader_test.go:349: Admit at 2026-05-13T01:00Z = <nil>, want *ErrRateLimitExceeded (24h cooldown)
+--- FAIL: TestRateLimiter_SeesHumanFormatEntry (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	5.045s
+FAIL
