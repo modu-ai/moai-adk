@@ -302,7 +302,117 @@ AC-RSL-015 열림 가지 판정:
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<run 단계 대기>_
+```yaml
+run_complete_at: 2026-09-12
+run_commit_sha: e78fd0ee6          # M6, run 단계의 마지막 구현 커밋 (tree 05380b5c7)
+run_status: complete
+ac_pass_count: 16                  # AC-RSL-001..016. 단, AC-RSL-014의 (i) make build는
+                                   # run 단계에서 열려 있었고 오케스트레이터가 나중에 닫았다(아래 Gaps)
+ac_fail_count: 0
+preserve_list_post_run_count: 0    # 통합 창 파일(integration_lock*.go, internal/cli/integration.go,
+                                   # internal/hook/integration_lock_guard.go) 무변경 — AC-RSL-013
+l44_pre_commit_fetch: true         # 흡수 전 `git fetch origin develop`(2026-09-12T00:42Z)
+l44_post_push_fetch: n/a           # 이 카드는 push하지 않았다(리드 일괄 소관)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass               # `go build` 종료 코드 0 (M2·M4·M3에서 각각)
+  windows_amd64: compile_only      # `GOOS=windows GOARCH=amd64 go build/vet` 종료 코드 0, 행동 관측 없음
+total_run_phase_files: 66          # `git diff --name-only $(git merge-base develop HEAD)..HEAD | wc -l`
+                                   # → 66 (HEAD 272521e45, 이번 실행 측정). CHANGELOG.md와 §E.4는
+                                   # sync 소관이고 plan 산출물 4개도 이 수에 들어 있다
+m1_to_mN_commit_strategy: per-milestone   # 마일스톤마다 구현 커밋 + 증거 커밋, 모두 미푸시
+```
+
+### 마일스톤별 완료와 커밋
+
+| 마일스톤 | 커밋 | tree | 내용 |
+|---|---|---|---|
+| M1 | `f20d07c48` | `d6cbdb2d5` | RED 테스트와 API 스텁, SPEC `draft → in-progress` |
+| M2 | `28d58376b` | `1085ce0c1` | 임대 핵심(internal/kanban) |
+| M2 수리 | `c331bc589` | `2c7fa687e` | 기록 쓰기 함수가 자기 디렉터리 생성(001b 뮤턴트를 임계 구역만 겨누게 하려고) |
+| M2 증거 | `a5efb58f6` | `8b119f022` | GREEN·뮤턴트 출력 반출 |
+| M4 | `dff5dee4a` | `f8dfe5023` | 설정 키 + PreToolUse 가드 배선 |
+| M4 증거 | `2e743c0d6` | `01cd51bc2` | 뮤턴트 표, 복구 증명, 회귀 |
+| M3 | `10b022b59` | `749991f03` | CLI `moai slot acquire\|status\|release` |
+| M5 | `685fc3387` | `1910c230a` | 템플릿 `slot_lease` 블록 + 규칙 + 로컬 미러 |
+| M6 | `e78fd0ee6` | `05380b5c7` | 레인 문서 3종(게이트 열림 가지) |
+
+순서는 M1 → M2 → M4 → M3 → M5 → M6이었다. M3을 M4 뒤로 미룬 것은 리드의 heavy-test 슬롯 제약 때문이고(그 사이 `internal/cli`를 컴파일하지 않았다), 기록은 §E.2 M3 절에 있다. 흡수 병합 둘(`93fac8401` develop `30cf7f422`, 그리고 sync 직전의 `9c288daa9` develop `8d42587e6`)은 마일스톤이 아니다. run 진행 기록 커밋 `62696ce1c`는 오케스트레이터가 남겼다.
+
+### AC → 증거 (run 종료 시점)
+
+| AC | 뒤집은 마일스톤 | 증거 경로 |
+|---|---|---|
+| AC-RSL-001a/001b | M2 | `.moai/reports/t607/m2/m2-kanban-green.txt`, `m2-mutant-001b.txt`, `m2-mutant-001b-restored.txt` |
+| AC-RSL-002 | M2 | `m2-kanban-green.txt`, 뮤턴트 `m2-mutant-002.txt` |
+| AC-RSL-003a/003b | M2 | `m2-kanban-green.txt` |
+| AC-RSL-003c | M3 | `.moai/reports/t607/m3/m3-cli-green.txt`(빌드 종료 코드는 §E.2 M3 절) |
+| AC-RSL-004 | M2 | `m2-kanban-green.txt` |
+| AC-RSL-005 | M2 | `m2-kanban-green.txt`, 뮤턴트 `m2-mutant-005.txt` |
+| AC-RSL-006 | M2 | `m2-kanban-green.txt`, 뮤턴트 `m2-mutant-006.txt` |
+| AC-RSL-007 | M2, M3 | `m2-kanban-green.txt`, `m3-cli-green.txt` |
+| AC-RSL-008 / 009 | M2 | `m2-kanban-green.txt` |
+| AC-RSL-010 | M4 | `.moai/reports/t607/m4/m4-hook-green.txt`, `m4-config-green.txt` |
+| AC-RSL-011 | M4 | `m4-hook-green.txt` + 뮤턴트 표 `.moai/reports/t607/m4/mutants/`(행별 파일 + `summary.tsv`) |
+| AC-RSL-012 | M4 | `m4-hook-green.txt`, `.moai/reports/t607/m3/m3-config-green.txt`(관대한 디코딩) |
+| AC-RSL-013 | M2-M5 | `m2-kanban-green.txt`(분리 테스트), 통합 창 파일 무변경 |
+| AC-RSL-014 | M5 | `.moai/reports/t607/m5/`(`m5-template-green.txt`, `m5-template-strict.txt`, `m5-mutant-leak.txt`, `tool-tokens.txt`) — (i)만 예외, Gaps 참조 |
+| AC-RSL-015 | M6 | `.moai/reports/t607/m6/m6-template-green.txt` + §E.2 M6 절의 `grep -c 'moai slot'` 세 판정 |
+| AC-RSL-016 | M4 | `m4-hook-green.txt`, 뮤턴트 `mutants/ac016-no-normalize.txt`, `mutants/ac016-fallthrough.txt` |
+
+### run 단계 명령 (선행 측정 인용 — 이번 절에서 재실행하지 않았다)
+
+아래는 §E.2에 이미 기록된 측정이며, 각 행의 트리에서 잰 값이다. 이 절은 그것을 옮겨 적을 뿐 새로 재지 않았다.
+
+| 명령 | 종료 코드 | 측정 트리 |
+|---|---|---|
+| `go test ./internal/kanban/ -run '^(TestSlotLease\|TestResolveSlotLeaseRoot)' -count=1 -v` | 0 (`--- PASS` 40) | `c331bc589` |
+| `go test ./internal/kanban/ -skip '^(TestSlotLease\|TestResolveSlotLeaseRoot)' -count=1` | 0 (`ok … 153.868s`) | `28d58376b` 작업 트리 |
+| `go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1 -v` | 0 (`ok … 9.434s`) | `dff5dee4a` |
+| `go test ./internal/hook/ -run 'IntegrationLock\|BranchGuard\|PreTool\|SlotLease' -count=1 -v` | 0 (`--- PASS` 306, `--- FAIL` 0) | `dff5dee4a` |
+| `go test ./internal/config/ -count=1` | 0 (`ok … 3.204s`) | `dff5dee4a` |
+| `go test ./internal/cli/ -run '^TestSlotCLI_' -count=1 -v -timeout 600s` | 0 (`--- PASS` 11) | `10b022b59` (슬롯 보유 중) |
+| `go test ./internal/cli/ -run '^(TestSessionPIDStamp_\|TestSlotCLI_\|TestRootCmd_\|TestIntegration)' -count=1 -v -timeout 600s` | 0 (`--- PASS` 37) | `10b022b59` (슬롯 보유 중) |
+| `go test ./internal/template/... -count=1` | 0 (네 패키지 `ok`) | `685fc3387`, `e78fd0ee6` |
+| `go build ./...` / `GOOS=windows GOARCH=amd64 go build ./...` | 0 / 0 | `10b022b59` (슬롯 보유 중) |
+| `GOOS=windows GOARCH=amd64 go vet ./internal/kanban/ ./internal/hook/ ./internal/config/` | 0 | `dff5dee4a` |
+| `golangci-lint run ./internal/cli/ ./internal/config/... ./internal/hook/... ./internal/kanban/...` | 0 (`0 issues.`) | `10b022b59` (슬롯 보유 중) |
+| `golangci-lint run --timeout=5m ./internal/template/...` | 0 (`0 issues.`) | `685fc3387` |
+
+커버리지(같은 선행 측정): `slot_lease.go` 86.2%, `slot_lease_guard.go` 94.4%, `slot_lease_config.go` 100%, `slot.go` 95.7%.
+
+### 뮤턴트와 복구 증명
+
+| 뮤턴트 | 겨눈 AC | 실패 관측 | 복구 증명 |
+|---|---|---|---|
+| 임계 구역 우회(`decide()` 직접 호출) | AC-RSL-001b | `lease: acquired=2 refused=0`, 종료 코드 1 | 되돌린 뒤 같은 명령 종료 코드 0(`m2-mutant-001b-restored.txt`), `git diff --exit-code --stat -- internal/kanban/slot_lease.go` 종료 코드 0 |
+| busy를 held로 감쌈 | AC-RSL-002 | `acquire_busy`·`release_busy` 실패, 종료 코드 1 | 같은 `git diff --exit-code` 0 |
+| `Stale()`이 pid를 보지 않음 | AC-RSL-005 | `stale_takeover` 실패 | 같음 |
+| 만료 가지 무효화(`false &&`) | AC-RSL-006 | `expired_takeover` 실패 | 같음 |
+| 가드 복합 조건 8종(설정·패턴·따옴표·세션·생존·만료·보유자·첫 자원만) | AC-RSL-011 | 각 뮤턴트가 자기 행에서만 실패(`mutants/*.txt`, `summary.tsv`) | 실행기가 매번 백업에서 `cp` 복구 + `filecmp` 동일(`restored_cmp_equal=True` 전부), 실행 뒤 `cmp` 0과 `git diff --quiet -- internal/hook/slot_lease_guard.go` 0 |
+| 루트 정규화 제거 / 정규화 실패 시 비정규화 루트 사용 | AC-RSL-016 | 각각 `wt-deny`+`no-git`, `no-git` 실패 | 같은 실행기·같은 복구 증명 |
+| 규칙 파일에 내부 토큰 한 줄 / 템플릿 자리표시자를 언어 명령으로 | AC-RSL-014 | 유출 테스트 종료 코드 1(`class=C1-spec-id-prefix`), 토큰 판정 종료 코드 0 적중 | 백업에서 `cp` 뒤 `cmp` 0, 템플릿·로컬 미러 `cmp` 0 |
+
+첫 시도에서 만료 뮤턴트를 가지 삭제로 만들었을 때는 `now`가 쓰이지 않아 컴파일이 실패했고(FAIL 행 0), 그 실행은 아무것도 재지 않았으므로 판정에 쓰지 않았다. `summary.tsv`에 두 줄이 모두 남아 있다.
+
+### Gaps (미검증 — 이 단계에서 관측하지 못한 것)
+
+- **`go test ./internal/cli/` 전체 패키지 판정 없음.** M3에서 `-timeout 600s`로 돌렸을 때 `panic: test timed out after 10m0s`, 그때 돌던 테스트는 `TestSyncGitSpecStatuses_NoSpecIDsInGitLog (0s)`, 결과 `FAIL … 600.769s`(`.moai/reports/t607/m3/m3-cli-full-suite-excerpt.txt`). 시한 전 실패는 내가 만든 `TestSessionPIDStamp_NotSetFromHooks` 하나뿐이었고 M3에서 고쳤다. 이 머신의 패키지 크기 문제인지 그 테스트가 멈춘 것인지는 가리지 못했다 — **전체 판정은 develop push가 일으키는 CI 몫이다.**
+- **t656 계열 기존 레드 `TestDestructiveTargetRegistry_CoversAllSites`** 는 흡수한 develop에서 온 기존 상태이며 **t607에 귀속되지 않는다.** 이 카드는 그 등록부를 건드리지 않았다.
+- **AC-RSL-014(i) `make build`** 는 내가 재지 않았다. **오케스트레이터가 슬롯을 받아 HEAD `9c288daa9`에서 실행해 종료 코드 0을 관측했고, 직후 `git status --short`가 비어 있었다.** 이 측정의 주체는 오케스트레이터이며 이 절은 그 보고를 인용한다.
+- **Windows 행동 관측 없음.** 아래 잔여 위험 참조.
+
+### Residual risk (관측했음에도 남는 것)
+
+- **Windows는 컴파일 검증까지다.** `GOOS=windows` 빌드·vet은 0이지만, 자원별 변경 락의 원자적 생성 기반과 잔재 정리는 Windows에서 **행동으로 관측된 적이 없다**. 첫 관측은 CI의 Windows 경로다.
+- **가드는 어디에서도 켜져 있지 않다.** `workflow.slot_lease.enabled`는 템플릿과 기본값 모두 거짓이고 로컬 설정도 켜지 않았다. 즉 **실제 명령을 거부한 deny가 아직 한 번도 없다** — 거부 경로의 증거는 전부 단위 테스트다.
+- **가드가 꺼져 있는 동안 임대는 권고다.** 획득 없이 무거운 명령을 시작하는 두 세션은 여전히 겹친다. 이 SPEC이 닫은 것은 획득하는 세션 사이의 경합과 "보유 중인데 건너뛴" 경로다.
+- **감사 로그에 회전이 없다.** `.moai/logs/slot-lease-audit.jsonl`은 단조 증가하며 크기 상한도 회전도 없다. 가드가 켜진 프로젝트에서는 매 매칭 호출마다 한 줄이 붙는다.
+
+### MX 태그 기록 (코드는 고치지 않았다)
+
+- `internal/kanban/slot_lease.go`의 `ReadSlotLease`는 manager-docs 측정 기준 프로덕션 호출처가 **4개 함수에 걸쳐 5곳**이라 `@MX:ANCHOR` 기준(fan_in ≥ 3)을 넘는다. 그런데 이 파일은 이미 ANCHOR 3개를 달고 있고 `mx.yaml`의 `anchor_per_file` 상한이 3이다. 프로토콜은 자동 강등을 금지하므로 **적용하지 않고 기록만 한다** — 넷째 ANCHOR를 넣으려면 기존 셋 중 하나의 강등이 필요하고, 그 판단은 사람 몫이다.
+- `internal/cli/slot.go`에는 MX 태그가 없다. 태그를 넣으려면 컴파일 검사가 필요하고 지금의 슬롯 규칙이 그것을 금지한다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
