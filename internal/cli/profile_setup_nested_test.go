@@ -18,26 +18,47 @@ import (
 // internal/settings/nested_test.go, which the web console also depends on.
 
 // TestTUINestedConfigNoParallelWriter pins the AP-2 invariant that survived the
-// widget removal: profile_setup.go must never grow a parallel yaml.Marshal /
-// os.WriteFile config writer. It must reach project config only through the
-// config-manager seam (persistProjectConfig). Comment lines are excluded so
-// doctrine prose ("no direct yaml.Marshal/os.WriteFile") does not false-positive.
+// widget removal: the profile save path must never grow a parallel
+// yaml.Marshal / os.WriteFile config writer. It must reach project config only
+// through the config-manager seam (persistProjectConfig). Comment lines are
+// excluded so doctrine prose ("no direct yaml.Marshal/os.WriteFile") does not
+// false-positive. Re-aimed per design.md §10 (AC-ITI-010 S2): the negative
+// half scans BOTH profile_setup.go (where the save path stays) AND the
+// absorbed wizard's new file, and the positive half pins the seam CALL line —
+// not the definition — so deleting the call alone fails this guard.
 func TestTUINestedConfigNoParallelWriter(t *testing.T) {
 	t.Parallel()
+	for _, name := range []string{"profile_setup.go", "wizard/profile_wizard.go"} {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		codeLines := nonCommentLines(string(data))
+		if strings.Contains(codeLines, "yaml.Marshal") {
+			t.Errorf("%s must NOT call yaml.Marshal directly (AP-2 — use the shared config-manager seam)", name)
+		}
+		if strings.Contains(codeLines, "os.WriteFile") {
+			t.Errorf("%s must NOT call os.WriteFile directly for config persistence (AP-2)", name)
+		}
+	}
+
+	// The surviving project-config write must still go through the seam, and
+	// the baseline is the CALL line, not the definition: a non-comment line
+	// carrying persistProjectConfig( that is not the func definition must
+	// exist (AC-ITI-010 (2) — the definition alone satisfies nothing).
 	data, err := os.ReadFile("profile_setup.go")
 	if err != nil {
 		t.Fatalf("read profile_setup.go: %v", err)
 	}
-	codeLines := nonCommentLines(string(data))
-	if strings.Contains(codeLines, "yaml.Marshal") {
-		t.Error("profile_setup.go must NOT call yaml.Marshal directly (AP-2 — use the shared config-manager seam)")
+	callLines := 0
+	for _, line := range strings.Split(nonCommentLines(string(data)), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "persistProjectConfig(") && !strings.HasPrefix(trimmed, "func persistProjectConfig(") {
+			callLines++
+		}
 	}
-	if strings.Contains(codeLines, "os.WriteFile") {
-		t.Error("profile_setup.go must NOT call os.WriteFile directly for config persistence (AP-2)")
-	}
-	// The surviving project-config write must still go through the seam.
-	if !strings.Contains(codeLines, "persistProjectConfig") {
-		t.Error("profile_setup.go must drive the config-manager write seam (persistProjectConfig)")
+	if callLines == 0 {
+		t.Error("profile_setup.go must drive the config-manager write seam (persistProjectConfig call line, not just the definition)")
 	}
 }
 
@@ -114,16 +135,19 @@ func TestTUIEmptyLabelsSchemaSourced(t *testing.T) {
 		}
 	}
 
-	data, err := os.ReadFile("profile_setup.go")
+	// model_policy is CLI-only (no schema field). Its empty option still reads
+	// the schema accessor — which currently returns "" because the field was
+	// removed from the schema, so the option renders with a blank label. That
+	// blank label is a pre-existing defect of the CLI-only field, out of scope
+	// here; the guard below only pins that the option builder has not swapped
+	// in an inline literal instead. Re-aimed per design.md §10 (AC-ITI-010
+	// S4): the option lists moved to profile_options.go, so the scan target
+	// moved with them.
+	optionsSrc, err := os.ReadFile("profile_options.go")
 	if err != nil {
-		t.Fatalf("read profile_setup.go: %v", err)
+		t.Fatalf("read profile_options.go: %v", err)
 	}
-	// model_policy is CLI-only (no schema field). Its empty option still reads the
-	// schema accessor — which currently returns "" because the field was removed
-	// from the schema, so the option renders with a blank label. That blank label is
-	// a pre-existing defect of the CLI-only field, out of scope here; the guard below
-	// only pins that the wizard has not swapped in an inline literal instead.
-	if marker := `settings.EmptyLabelFor("model_policy")`; !strings.Contains(string(data), marker) {
-		t.Errorf("profile_setup.go must source empty label from schema for model_policy (expected %s)", marker)
+	if marker := `settings.EmptyLabelFor("model_policy")`; !strings.Contains(string(optionsSrc), marker) {
+		t.Errorf("profile_options.go must source empty label from schema for model_policy (expected %s)", marker)
 	}
 }
