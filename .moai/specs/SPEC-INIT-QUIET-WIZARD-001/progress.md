@@ -92,6 +92,13 @@ Slot table (AC-IQW-015). Every `go test` call against `./internal/cli` or `./int
 | SLOT-19 | 2026-09-12 | whole package, lead-approved exception (WizardResult field removal is package-wide); same tree as SLOT-18; pre-run `ps` 0, load 5.36, no other go command during the run: `go test ./internal/cli -count=1 -timeout 1500s -v` | 1 — `--- PASS:` 3578, `--- SKIP:` 24, `--- FAIL:` 4, `FAIL … 858.367s` (`m4-cli-full.txt`). Failing tests: `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile`, `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite`, `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition` ("audited production file changed after coverage tip: internal/cli/launcher.go" / `internal/hook/session_end.go`), `TestAuditLagUsesBinlagSeam` (line-pinned sweep: "baseline hit home_state_coverage.go:251/243 MISSING … NEW ancestry hit :245/:253"). Attribution (comparison, not a re-measurement): the uncommitted diff touches none of `home_state_coverage*`, `launcher.go`, `session_end.go`, `mcp_build_identity*`, `binlag`; `git log HEAD..develop` on those files lists `5b7927b15` (t600, "stop home-state coverage tests from reading live history") and `92494400f` (t606) — develop fixes for exactly this family, absent from this branch. Treated as base-tree known-red pending the merge-tree re-measure in the integration window; not measured on the develop tree. Lead accepted this attribution (2026-09-12) and waived a develop-tree measurement in favour of the merge-tree re-measure | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | sha-diff-exit=0, mtime-diff-exit=0, hooks-diff-exit=0 → home-diff-exit=0 |
 | SLOT-20 | 2026-09-12 | M5 verification, tree HEAD `17b52894d` + uncommitted M5 change (2 modified, 1 production + 5 test files deleted); the lead waived the slot for this package (it does not link the root `internal/cli`) but kept the fingerprint duty; pre-run `ps` 0 go processes, load 4.38: `go test ./internal/core/project/... -count=1 -v` | 0 (`--- PASS:` 105, `--- FAIL`/`--- SKIP` 0, `no tests to run` 0, `no test files` 0, `ok … 1.616s`; `m5-project-full.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | sha-diff-exit=0, mtime-diff-exit=0, hooks-diff-exit=0 → home-diff-exit=0 |
 | SLOT-21 | 2026-09-12 | M5 cli-side check, same tree; pre-run `ps` 0, load 6.85: `go test ./internal/cli -run '^(TestRunInit_WorkflowToggleFlagsAbsentByteIdentical\|TestRunInit_FlagAbsentNonInteractivePreservesCodexAbsence\|TestRunInit_WorktreeAutoCreateFlagBeatsWizard\|TestRunInit_CallsMCPProvisioning)$' -count=1 -timeout 600s -v` | 0 (`--- PASS:` 4, `--- FAIL`/`--- SKIP` 0, `no tests to run` 0, `ok … 2.410s`; `m5-cli-selected.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | sha-diff-exit=0, mtime-diff-exit=0, hooks-diff-exit=0 → home-diff-exit=0 |
+| SLOT-22 | 2026-09-12 | M6 AC-IQW-007b mutant A, tree HEAD `e334bd1c0` + `opts.ProjectMode = "team"` inserted in the interactive block of `init.go`; pre-run `ps` 0, load 5.42: `go test ./internal/cli -run '^TestRunInit_QuietWizardUnsetResolvesToDefaults$' -count=1 -timeout 600s -v` | 1 — expected RED: `--- FAIL:` 1, `init_quiet_wizard_test.go:367: removed keys did not resolve to their defaults (1 findings)` (`ac007b-a.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
+| SLOT-23 | 2026-09-12 | M6 mutant B: `opts.WorktreeAutoCreate, opts.WorktreeAutoCreateSet = true, true` in the same block (mutant A reverted first, `cmp` exit 0), same command | 1 — expected RED: `--- FAIL:` 1, same defaults message (`ac007b-b.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
+| SLOT-24 | 2026-09-12 | both mutants reverted by backup `cp` (`cmp` exit 0, `git diff --quiet -- internal/cli/init.go` → `reverted-exit=0`), same command | 0 (`--- PASS:` 1, `no tests to run` 0; `ac007b-revert.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
+| SLOT-25 | 2026-09-12 | AC-IQW-016 closing two-run observation: `go test ./internal/core/project/... -run '^(TestInitializer_ShellConfigSeamGate\|TestConfigureShellEnvFn_DefaultIsProductionFunc)$' -count=2 -v` | 0 (`--- PASS:` 4, `no tests to run` 0; `ac016-project-final.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
+| SLOT-26 | 2026-09-12 | AC-IQW-016: `go test ./internal/cli -run '^TestRunInit_ShellConfigStepReachedViaSeam$' -count=2 -timeout 600s -v` | 0 (`--- PASS:` 2, `no tests to run` 0; `ac016-cli-final.txt`) | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
+| SLOT-27 | 2026-09-12 | M6 mutant C (lead-approved, measures the lead's check item): the `case agentWiringBoth: mcpDeclined = false` arm deleted from `init.go` (`go vet` exit 0): `go test ./internal/cli -run '^(TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning\|TestInitAgentFlagBothWiresCodexArtifacts\|TestRunInit_WizardBothForcesProvisioningOverDecline\|TestRunInit_FlagAbsentNonInteractivePreservesCodexAbsence\|TestRunInit_CallsMCPProvisioning)$' -count=1 -timeout 600s -v` | 0 — mutant SURVIVED: `--- PASS:` 4, `--- FAIL` 0, `no tests to run` 0 (`mutant-c.txt`). Selector defect found and corrected below: `TestInitAgentFlagBothWiresCodexArtifacts` does not exist, and a non-existent name is silently ignored (only an all-miss prints `no tests to run`), so this run swept 4 of the 5 intended names | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
+| SLOT-27b | 2026-09-12 | mutant C still applied, selector corrected to the names that exist (`git grep '^func Test'` on `init_agent_flag_test.go`): `go test ./internal/cli -run '^(TestRunInit_AgentBothWiresBothSides\|TestRunInit_AgentCodexWiresAndSkipsMCPProvisioning\|TestRunInit_CodexProvisioningDeclineIsolated\|TestRunInit_AgentAbsentLeavesNoCodexFiles\|TestRunInit_AgentClaudeLeavesNoCodexFiles)$' -count=1 -timeout 600s -v` | 0 — mutant SURVIVED again: `--- PASS:` 5, `--- FAIL` 0, `no tests to run` 0 (`mutant-c2.txt`). Reverted by backup `cp`, `cmp` exit 0, `git diff --quiet` → `reverted-exit=0` | sha 7, mtime 6 | 0/0 (sha), 0/0 (mtime) | home-diff-exit=0 |
 SLOT-6 is the first slot that runs an init execution test through the new home-safety helper; its home-diff-exit=0 is the first runtime confirmation that the helper plus seam spy leave the real home untouched on this machine. Behavioral RED for M1 (mutants A, B, C1, C2, D) is still owed and needs further internal/cli and internal/core/project slots.
 
 Fingerprint form deviation (recorded, not hidden). The worktree-isolation guard refused AC-IQW-015's reference fingerprint command as a single invocation ("too complex to verify that it stays inside the worktree"), so each fingerprint is taken as three plain commands, byte-identical before and after except `before`/`after` in the file names: (A) `shasum -a 256 "$HOME/.claude/settings.json" "$HOME/.zshenv" "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.profile" "$HOME/.bashrc" "$HOME/.bash_profile" > home-SLOT-<n>-<phase>-sha.out 2> …-sha.err`; (B) `stat -f '%N mtime=%m' "$HOME/.zshenv" "$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.profile" "$HOME/.bashrc" "$HOME/.bash_profile" > …-mtime.out 2> …-mtime.err`; (C) `ls -d "$HOME/.claude/hooks/moai" > …-hooks.out 2> …-hooks.err`. The 8 AC items are covered: settings.json sha256 (A), hooks/moai presence (C), six rc files sha256 (A) and mtime (B). All seven files existed and `hooks/moai` was absent at SLOT-1 (checked with `ls -ld` first), so (C) exits 1 by design with a fixed "No such file" message on stderr; for (C) the comparison is `diff` of the two `.err` files instead of the zero-byte rule. Expected line counts in this form: sha 7, mtime 6. The per-slot `home-diff-exit` above is 0 only when all three diffs are 0.
@@ -116,9 +123,159 @@ Shell-rc hypothesis measured (SLOT-20, 2026-09-12). The plan-phase hypothesis re
 
 M6 check item (lead, 2026-09-12): with the interactive MCP default now true, `init_agent_wizard_test.go:139` and `:159` ("both beats a decline") no longer discriminate on the interactive path — a decline can no longer be expressed there, so the `case agentWiringBoth` forcing branch in `init.go` is only meaningful on the non-interactive `--llm both` path. M6 must find (or record the absence of) a test that discriminates that branch on the non-interactive path, e.g. a mutant that removes the forcing and observes a red.
 
+M6 closing evidence, no slot required (lane, 2026-09-12, tree HEAD `e334bd1c0`, card base `git merge-base develop HEAD` = `ee99507fbe3b4a22c6a0a74815723d222dfdc04d`).
+
+AC-IQW-001/002/003, measured before the M6 slots:
+
+```
+$ go test ./internal/cli/wizard/... -run '^TestInitQuestions_QuietSet$' -count=1 -v   → test-exit=0, PASS 1, no tests to run 0   (ac001.txt)
+$ go test ./internal/cli/wizard/... -run '^(TestRemovedQuestionsAbsentFromInitSet|TestRemovedQuestionsHaveNoOrphanTranslations|TestRemovedQuestionsHaveNoCaptureBranch|TestSharedQuestionsRetainedForReconfigure)$' -count=1 -v   → test-exit=0, PASS 4, no tests to run 0   (ac002.txt)
+$ git grep -nE '"(project_mode|…|mcp_provision)"' -- internal/cli/wizard ':!*_test.go'   → exit=1 (0 hits)
+$ git grep -cE '"(project_mode|…|mcp_provision)"' 120436f58 -- internal/cli/wizard ':!*_test.go'   → questions.go:11, translations.go:33, wizard.go:11 (control, 55 hits)
+$ go test ./internal/cli/wizard/... -run '^(TestReconfigureQuestionsOrder|TestQuestionOrder)$' -count=1 -v   → test-exit=0, PASS 2, no tests to run 0   (ac003.txt)
+$ diff reconf-base.txt reconf-head.txt   → diff-exit=0 (base body 52 lines)
+$ git diff --name-only develop...HEAD | wc -l   → 49 (card-scope control)
+$ git diff --quiet develop...HEAD -- internal/cli/update_wizard.go   → 0
+$ git diff --quiet HEAD -- internal/cli/update_wizard.go   → 0
+```
+
+AC-IQW-016 closing text sweep (same tree):
+
+```
+$ git grep --untracked -lE 'ConfigureShellEnvFn[[:space:]]*=[^=]' -- 'internal/cli/*_test.go' 'internal/core/project/*_test.go'
+internal/cli/init_home_guard_test.go
+internal/core/project/initializer_shell_seam_test.go        → sweep-exit=0, 2 files (cli 1, core/project 1)
+$ … --all-match -e '<swap>' -e 't\.Parallel\('   → parallel-exit=1 (no swapping file calls t.Parallel)
+$ … --all-match -e '<swap>' -e 't\.Cleanup\(' | wc -l   → 2
+$ … --all-match -e '<swap>' -e 't\.Setenv\(' | wc -l   → 2
+$ git grep --untracked -cE '<swap>' -- …   → init_home_guard_test.go:2, initializer_shell_seam_test.go:2
+```
+
+D17 debt evidence (the plan-audit PASS-with-debt condition — no new init execution test in a pre-existing `internal/cli` test file):
+
+```
+$ git diff develop...HEAD -- 'internal/cli/*_test.go' ':!internal/cli/init_home_guard_test.go' ':!internal/cli/init_quiet_wizard_test.go' ':!internal/cli/init_shell_seam_test.go' ':!internal/cli/wizard/*' > d17-existing-cli-tests.txt   (562 lines)
+$ command grep -cE '^\+func Test' d17-existing-cli-tests.txt   → 0 (d17-added-exit=1)
+$ command grep -cE '^\+func Test' d17-cli-test-diff.txt        → 11 (control: the same pattern over the unrestricted cli test diff)
+$ git diff develop...HEAD --diff-filter=A --name-only -- 'internal/cli/*_test.go'
+internal/cli/init_home_guard_test.go
+internal/cli/init_quiet_wizard_test.go
+internal/cli/init_shell_seam_test.go   (the three files this card added; every new test lives in one of them)
+```
+
+AC-IQW-014 quality gate (same tree):
+
+```
+$ go vet ./...                              → vet-exit=0, output 0 bytes      (m6-vet.txt)
+$ go build ./...                            → build-exit=0                    (m6-build.txt)
+$ GOOS=windows GOARCH=amd64 go build ./...  → winbuild-exit=0                 (m6-winbuild.txt)
+$ golangci-lint run ./internal/cli/... ./internal/core/project/...  → lint-exit=0, "0 issues."  (m6-lint.txt)
+```
+
+AC-IQW-007b verdict: mutants A and B each turned `TestRunInit_QuietWizardUnsetResolvesToDefaults` red for the stated reason and the reverted tree passed again (SLOT-22/23/24). Together with AC-IQW-007a's in-file negative control, these are the failure evidence standing in for the RED-now cells AC-IQW-006 and AC-IQW-008 could not have (lead ruling, above).
+
+Lead check item answered by measurement, not by reading (SLOT-27/27b): mutant C deleted the `case agentWiringBoth: mcpDeclined = false` arm and **no test failed** — 4 PASS on the first selector and 5 PASS on the corrected one. No test discriminates the non-interactive `--llm both` forcing branch. Per the lead's instruction this card writes no new test for it; it is recorded as a follow-up candidate and carried into the sync Residual-risk.
+
+Instrument defect found and corrected in the same run: the first mutant-C selector named `TestInitAgentFlagBothWiresCodexArtifacts`, which does not exist. `go test -run` silently ignores a non-existent name when other names in the alternation match, and prints `no tests to run` only when nothing matches at all — so the miss was invisible in the output and was caught by comparing the PASS count (4) with the selector count (5). The real names were resolved with `git grep '^func Test' -- internal/cli/init_agent_flag_test.go` and re-run as SLOT-27b. Future mutant selectors verify name existence before the run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-09-12
+run_commit_sha: pending-backfill          # this M6 commit cannot cite its own hash
+run_head_before_m6: e334bd1c0
+card: t583
+branch: WT-init-quiet-wizard
+card_base: ee99507fbe3b4a22c6a0a74815723d222dfdc04d   # git merge-base develop HEAD
+ac_total: 17                              # AC-IQW-001..016, 007 split a/b
+ac_pass_count: 8
+ac_pass_with_debt_count: 7
+ac_gap_count: 2                           # AC-IQW-012, AC-IQW-013 — not measured in run phase
+ac_fail_count: 0
+cross_platform_build:
+  darwin_native: exit 0                   # go build ./... (m6-build.txt)
+  windows_amd64: exit 0                   # GOOS=windows GOARCH=amd64 go build ./... (m6-winbuild.txt)
+  vet: exit 0                             # go vet ./... (m6-vet.txt, 0 bytes)
+new_warnings_or_lints_introduced: 0       # golangci-lint ./internal/cli/... ./internal/core/project/... → "0 issues." (m6-lint.txt)
+known_red: SLOT-19 FAIL 4                 # base-tree known-red; see § Known red below
+slot_declarations: 29                     # rows beginning "| SLOT-"
+slot_fingerprint_sets: 27                 # home-SLOT-*-after-*.out sets
+slot_home_diff_exit_0_rows: 27
+slot_home_diff_exit_nonzero_rows: 0
+l44_pre_commit_fetch: not performed       # no push in this card; integration-window duty
+l44_post_push_fetch: not performed        # lane does not push (lead batch-push)
+preserve_list_post_run_count: not measured
+total_run_phase_files: 49                 # git diff --name-only develop...HEAD | wc -l, measured at HEAD e334bd1c0
+m1_to_mN_commit_strategy: one commit per milestone (M1 seam + M1 mutant evidence + M2 + M3/M4 + M5 + M6 docs), no amend, no force-push, unpushed
+```
+
+### Per-AC verdict matrix
+
+Every row names the command that decided it and the evidence file under `.moai/state/verify/t583/` (slot rows in §E.2 carry the verbatim output). Rows marked **Gap** were not measured in the run phase and are NOT reported as passes.
+
+| AC | Verdict | Deciding command | Evidence |
+|---|---|---|---|
+| AC-IQW-001 | PASS | `go test ./internal/cli/wizard/... -run '^TestInitQuestions_QuietSet$' -count=1 -v` → exit 0, PASS 1, `no tests to run` 0 | `ac001.txt` |
+| AC-IQW-002 | PASS | `go test ./internal/cli/wizard/... -run '^(TestRemovedQuestionsAbsentFromInitSet\|…)$' -count=1 -v` → exit 0, PASS 4; `git grep -nE '"(project_mode\|…\|mcp_provision)"' -- internal/cli/wizard ':!*_test.go'` → exit 1 (0 hits) with the `120436f58` control at 55 hits | `ac002.txt` |
+| AC-IQW-003 | PASS | `go test … -run '^(TestReconfigureQuestionsOrder\|TestQuestionOrder)$'` → exit 0, PASS 2; `diff reconf-base.txt reconf-head.txt` → 0 (base 52 lines); card-scope control 49 files; `git diff --quiet develop...HEAD -- internal/cli/update_wizard.go` → 0 and `git diff --quiet HEAD -- …` → 0 | `ac003.txt`, `reconf-base.txt`, `reconf-head.txt` |
+| AC-IQW-004 | PASS | Primary SLOT-6 `-run '^TestRunInit_ShellConfigStepReachedViaSeam$'` → exit 0, PASS 1; gate SLOT-1 `./internal/core/project/...` → exit 0, PASS 2; `diff ac004-body-base.txt ac004-body-head.txt` → 0 (base 4 lines); mutants A/B RED (SLOT-9/10) and revert PASS (SLOT-11); mutant E `body-diff-exit=1` | `ac004-primary.txt`, `ac004-gate.txt`, `ac004-mutant-a.txt`, `ac004-mutant-b.txt`, `ac004-revert.txt`, `ac004-mutant-e-diff.txt` |
+| AC-IQW-005 | PASS-WITH-DEBT | Guard half measured: SLOT-7 `-run '^(TestHomeGuard_RejectsPathInsideRealHome\|TestHomeGuard_AcceptsTempDir)$'` → exit 0, PASS 2. **Gap**: the target-list sweep (`ac005-targets.txt` / reach control / forbidden-token intersection) and mutant F were not run in the run phase; no `ac005-*` sweep artifacts exist | `ac005.txt` (guard half only) |
+| AC-IQW-006 | PASS-WITH-DEBT | **No RED-now cell** — lead ruling recorded in §E.2 (a compiling test cannot reproduce the predicted red once injected results carry zero values; forcing it would be a fake RED). Substitute failure evidence: AC-IQW-007a in-file negative control + AC-IQW-007b mutants A/B. GREEN observed at SLOT-18 (`TestRunInit_QuietWizardUnsetResolvesToDefaults` among 30 top-level PASS) and again at SLOT-24 | `m4-green-selected.txt`, `ac007b-revert.txt` |
+| AC-IQW-007a | PASS | SLOT-17 and SLOT-18 both PASS `TestRunInit_QuietWizardObserverDetectsNonDefault`; the observer is the in-file negative control standing in for AC-IQW-006/008 | `m2-red.txt`, `m4-green-selected.txt` |
+| AC-IQW-007b | PASS | Mutant A (`opts.ProjectMode = "team"`) SLOT-22 → exit 1, FAIL 1 (`removed keys did not resolve to their defaults (1 findings)`); mutant B (`WorktreeAutoCreate…= true, true`) SLOT-23 → exit 1, FAIL 1; revert SLOT-24 → exit 0, PASS 1, `reverted-exit=0` | `ac007b-a.txt`, `ac007b-b.txt`, `ac007b-revert.txt` |
+| AC-IQW-008 | PASS-WITH-DEBT | **No RED-now cell** — same lead ruling as AC-IQW-006; substitute evidence is AC-IQW-007a (in-file negative control) and AC-IQW-007b (M6 mutants). GREEN at SLOT-17 and SLOT-18 for `TestRunInit_QuietWizardSectionFilesMatchNonInteractive` | `m2-red.txt`, `m4-green-selected.txt` |
+| AC-IQW-009 | PASS | Genuine RED→GREEN: SLOT-17 `TestRunInit_QuietWizardProvisionsMCPByDefault/claude` FAIL (`harness claude: provisioning announcement present = false, want true`) with `/codex` and `/both` PASS; SLOT-18 all three subtests PASS | `m2-red.txt`, `m4-green-selected.txt` |
+| AC-IQW-010 | PASS-WITH-DEBT | Test half measured: SLOT-18 and SLOT-21 both PASS `TestRunInit_FlagAbsentNonInteractivePreservesCodexAbsence` and `TestRunInit_WorkflowToggleFlagsAbsentByteIdentical`. **Gap**: the two body-extraction diffs (`codex-absence-*`, `byte-identical-*`) were not run; no such artifacts exist | `m4-green-selected.txt`, `m5-cli-selected.txt` |
+| AC-IQW-011 | PASS-WITH-DEBT | cli half measured: SLOT-18 PASS for `TestRunInit_QuietWizardFlagsStillPersist` and `TestRunInit_WorkflowToggleFlagsPersist`. **Gap**: the `./internal/core/project/...` half (`ac011-core.txt`, `TestWriteProjectModeYAML\|TestWriteWorkflowTogglesYAML`) was not run as its own slot | `m4-green-selected.txt` |
+| AC-IQW-012 | **Gap** | Not measured. The AC's four commands (`git grep -nE 'worktree_auto_create\|WorktreeAutoCreate' …`, its `120436f58` control, and the two `Worktree advisory` comment sweeps) were not run in the run phase and no output is recorded in §E.2 | none |
+| AC-IQW-013 | **Gap** (partial) | Not measured except the static check: `go vet ./...` → exit 0 (`m6-vet.txt`). The deleted-symbol grep, its control, and the retained-symbol grep were not run and no output is recorded in §E.2 | `m6-vet.txt` (vet only) |
+| AC-IQW-014 | PASS-WITH-DEBT | `go vet ./...` exit 0; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run ./internal/cli/... ./internal/core/project/...` exit 0, "0 issues."; `./internal/core/project/...` full package SLOT-20 → exit 0, 105 PASS, 0 SKIP, 0 `no test files`. Debt: `./internal/cli` full package SLOT-19 → exit 1 with FAIL 4 (§ Known red below). **Gap**: `./internal/cli/wizard/...` was never run as a whole package | `m6-vet.txt`, `m6-build.txt`, `m6-winbuild.txt`, `m6-lint.txt`, `m5-project-full.txt`, `m4-cli-full.txt` |
+| AC-IQW-015 | PASS-WITH-DEBT | Per slot: all 27 executed slots record the three-command fingerprint with `sha` 7 lines, `mtime` 6 lines, `.err` 0/0, and `home-diff-exit=0`; no slot records a non-zero value. Closing tally: declarations 29, fingerprint sets 27, `home-diff-exit=0` rows 27, non-zero rows 0. The 29-vs-27 difference is SLOT-4 and SLOT-5, declared then not executed (the SLOT-3 package build failure) and re-declared as SLOT-7 and SLOT-8 — so the literal three-way equality the AC states does not hold, and the AC passes only with that stated deviation | `home-SLOT-*-{before,after}-{sha,mtime,hooks}.{out,err}` |
+| AC-IQW-016 | PASS | Text sweep: 2 swapping files (cli 1, core/project 1), `parallel-exit=1`, `t.Setenv` intersection 2, `t.Cleanup` intersection 2, per-file assignment count 2 each. Execution: SLOT-25 `./internal/core/project/... -count=2` → exit 0, PASS 4; SLOT-26 `./internal/cli -count=2` → exit 0, PASS 2. Mutants: C1 (SLOT-12R) RED on round 2, C2 (SLOT-13) RED on round 2, D (SLOT-14) panic `can not use t.Parallel`; reverts SLOT-15/16 PASS | `ac016-project-final.txt`, `ac016-cli-final.txt`, `ac016-mutant-c1.txt`, `ac016-mutant-c2.txt`, `ac016-mutant-d.txt` |
+
+Fingerprint-form deviation (three plain commands instead of the AC's single reference invocation, forced by the worktree-isolation guard) is recorded in §E.2 and applies to every slot row above.
+
+### Milestone summary
+
+| Milestone | Commit | Content |
+|---|---|---|
+| M1 | `9fc4bded0` | shell-config seam, spy observation, home-safety helper; `draft → in-progress` landed here |
+| M1 (evidence) | `87ed4cb7e` | mutant RED slot records SLOT-9..SLOT-16 |
+| M2 | `82fc81b69` | RED init-execution tests for the quiet wizard (`internal/cli/init_quiet_wizard_test.go`, 5 tests) |
+| M3+M4 | `17b52894d` | init wizard cut to four questions; interactive MCP provisioning default-on |
+| M5 | `e334bd1c0` | removal of the config writers the quiet wizard left without a producer |
+| M6 | this commit | closing evidence (SLOT-22..27b, D17 debt evidence, quality gate) and this §E.3 signal |
+
+### Known red (SLOT-19, base-tree)
+
+`go test ./internal/cli -count=1 -timeout 1500s -v` at the M3/M4 tree → exit 1, `--- PASS:` 3578, `--- SKIP:` 24, `--- FAIL:` 4 (`m4-cli-full.txt`). The four are `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile`, `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite`, `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition`, and `TestAuditLagUsesBinlagSeam` — the home-state-coverage plus binlag family.
+
+Attribution (a comparison, not a re-measurement): the card's diff touches none of `home_state_coverage*`, `launcher.go`, `session_end.go`, `mcp_build_identity*`, or `binlag`; `git log HEAD..develop` on those files lists `5b7927b15` (t600, "stop home-state coverage tests from reading live history") and `92494400f` (t606) — develop fixes for exactly that family, absent from this branch. The lead accepted this attribution on 2026-09-12 and waived a develop-tree measurement. **What settles it is the merge-tree re-measure in the integration window**, not this record: until those four run green on the tree that absorbs `develop`, the red is attributed but not resolved.
+
+### Gaps (explicitly unobserved in the run phase)
+
+1. **AC-IQW-012** — not measured at all (four commands, zero output recorded).
+2. **AC-IQW-013** — only `go vet` measured; the deleted-symbol grep, its `120436f58` control, and the retained-symbol grep were not run.
+3. **AC-IQW-005 sweep half** — target-list construction, reach control, forbidden-token intersection, and mutant F were not run; only the two guard tests were.
+4. **AC-IQW-010 body-preservation half** — the two `git show 120436f58:… | sed` extractions and their diffs were not run.
+5. **AC-IQW-011 core half** — `./internal/core/project/... -run 'TestWriteProjectModeYAML|TestWriteWorkflowTogglesYAML'` was never declared as a slot.
+6. **AC-IQW-014 wizard package** — `go test ./internal/cli/wizard/... -count=1` (whole package) was never run; only `-run`-selected subsets were.
+7. **AC-IQW-015 closing tally** — the AC's three-way equality does not hold literally (29 / 27 / 27); the difference is explained above but the AC text has no clause for a declared-then-unexecuted slot.
+8. **Coverage** — no `go test -cover` measurement was taken for `internal/cli/wizard` or `internal/core/project`, so acceptance.md §4's 85% target is unverified for this card.
+9. **SLOT-19 on the develop tree** — not measured (lead waiver); the merge-tree re-measure is owed.
+10. **`moai spec lint` build coordinate** — the §E.1 gap stands: the exit-0 lint verdict came from the installed `v3.2.0-rc.7` build, which is neither an ancestor nor a descendant of this tree. No lint verdict in this card is attributed to a build made from this tree.
+
+### Residual risk (what could still be wrong despite what was observed)
+
+- **(a) Mutant C survived.** Deleting the `case agentWiringBoth: mcpDeclined = false` arm from `init.go` produced no failure — 4 PASS on the first selector (SLOT-27) and 5 PASS on the corrected one (SLOT-27b). No test discriminates the non-interactive `--llm both` forcing branch. Per the lead's instruction this card wrote no test for it; it is carried as a follow-up candidate.
+- **(b) Interactive-path discrimination loss.** With the interactive MCP default now true, `init_agent_wizard_test.go:139` and `:159` ("both beats a decline") no longer discriminate on the interactive path — a decline can no longer be expressed there. Those two assertions still pass but no longer test what their names claim.
+- **(c) AC-IQW-016 wording debt (owed in THIS card's sync).** acceptance.md AC-IQW-016 describes mutants C1 and C2 as "delete the restoring assignment"; applied literally Go rejects the file (`declared and not used: origSeam`, SLOT-12) and no execution RED is observable. The observations were taken with the compiling form (`_ = origSeam`). manager-spec must reword C1 and C2 to the compiling form during sync.
+- **(d) Instrument fragility in mutant selectors.** `go test -run` silently ignores a non-existent name when other names in the alternation match; the first mutant-C selector named a test that does not exist and the miss was invisible in the output, caught only by comparing PASS count against selector count. Any future mutant run that does not verify name existence can report a silent partial sweep.
+- **(e) Text-observation blind spots in AC-IQW-016.** The `t.Cleanup(` text check is satisfied by any `t.Cleanup` in the same file, and `-count=2` observes that restoration happened, not that it was registered via `t.Cleanup`. A test-function-tail restore would pass both and skip restoration on `t.Fatal`. Code review backs this.
+- **(f) The shell-rc measurement is post-M5 only.** SLOT-20's unchanged rc fingerprints measure the tree *after* M5 removed the dead writers; it does not establish what the pre-M5 tree did on a machine whose rc files lack the configured lines.
+- **(g) Already-configured machine.** `internal/shell/config.go:93,:167` skip writing when the line already exists, so an unchanged home fingerprint is weak evidence of no leak on this machine; the seam's effect rests on AC-IQW-004's spy call counts, not on the fingerprints.
+- **(h) Unmeasured Gaps above.** Items 1-8 of the Gaps list are unobserved, not passing: AC-IQW-012 and AC-IQW-013 in particular assert removals this card performed, so a regression there would be invisible to every check that did run.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
