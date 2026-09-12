@@ -204,9 +204,7 @@ Steps:
    - Maximum 3 fix-evaluate cycles
    - After 3 FAIL cycles: Present findings to user via AskUserQuestion
 
-Mode-specific deployment:
-- Sub-agent mode: Agent(subagent_type="sync-auditor")
-- CG mode: Leader performs evaluation inline
+Independent evaluation: Agent(subagent_type="sync-auditor"). A retired CG configuration never authorizes leader self-evaluation.
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
 

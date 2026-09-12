@@ -807,6 +807,9 @@ type settingsLocalJSON struct {
 // ~/.moai/.env.glm and injects it along with ANTHROPIC_BASE_URL.
 // Returns a status message if credentials were injected, empty string otherwise.
 func ensureGLMCredentials(projectDir string) string {
+	if isGatewaySession() {
+		return ""
+	}
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 
 	data, err := os.ReadFile(settingsPath)
@@ -823,10 +826,9 @@ func ensureGLMCredentials(projectDir string) string {
 		return ""
 	}
 
-	// Skip auto-injection in CG mode: CG mode intentionally removes AUTH_TOKEN
-	// from settings.local.json so the leader uses Claude OAuth. Teammates get
-	// GLM credentials via tmux session env instead.
-	if isCGMode(projectDir) {
+	// Unmigrated or ambiguous legacy configuration must never trigger automatic
+	// credential injection. This is a data guard, not a live CG provider mode.
+	if hasLegacyCGConfiguration(projectDir) {
 		return ""
 	}
 
@@ -971,16 +973,17 @@ func maybeDeclareGLMContextWindow(env map[string]string) {
 	}
 }
 
-// isCGMode checks if the project is running in CG (Claude+GLM hybrid) mode
-// by reading team_mode from llm.yaml.
-func isCGMode(projectDir string) bool {
-	llmPath := filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml")
-	data, err := os.ReadFile(llmPath)
-	if err != nil {
+// hasLegacyCGConfiguration blocks automatic credential injection for legacy or
+// ambiguous raw configuration. It does not activate a provider or tmux mode.
+func hasLegacyCGConfiguration(projectDir string) bool {
+	data, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml"))
+	if os.IsNotExist(err) {
 		return false
 	}
-	// Simple check: look for "team_mode: cg" in the file
-	return strings.Contains(string(data), "team_mode: cg")
+	if err != nil {
+		return true
+	}
+	return config.GuardLegacyCG(data) != nil
 }
 
 // ensureTeammateMode detects whether the session runs inside tmux and
@@ -1022,6 +1025,9 @@ func ensureTeammateMode(projectDir string) string {
 	if inTmux {
 		desired = "tmux"
 	}
+	if isGatewaySession() {
+		desired = "in-process"
+	}
 
 	if current == desired {
 		return desired // Already correct, skip write.
@@ -1031,7 +1037,7 @@ func ensureTeammateMode(projectDir string) string {
 	raw["teammateMode"] = modeJSON
 
 	// Clean up legacy env var if present.
-	if envRaw, ok := raw["env"]; ok {
+	if envRaw, ok := raw["env"]; ok && !isGatewaySession() {
 		var env map[string]string
 		if err := json.Unmarshal(envRaw, &env); err == nil {
 			if _, legacy := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; legacy {

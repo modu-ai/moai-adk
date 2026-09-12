@@ -14,7 +14,7 @@ MoAI-ADK의 개발 사이클은 "쓰고, 돌리고, 맺는" 세 마당으로 이
 
 - [x] MoAI-ADK 설치 ([설치 가이드](/ko/getting-started/installation))
 - [x] 초기 설정 완료 ([초기 설정](/ko/getting-started/init-wizard))
-- [ ] GLM API 키 획득 (선택 — CG 모드로 토큰 비용을 절감하려는 경우)
+- [ ] GLM API 키 (선택, GLM 세션을 명시적으로 사용할 때)
 
 ## 1단계 — 프로젝트 초기화
 

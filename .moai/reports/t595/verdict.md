@@ -167,7 +167,92 @@ M1·M2 가 양방향으로 빨간불이므로 이 단정은 `os.Environ()` 동�
 
 교정: 무거운 실행 직렬화가 필요하면 `~/go/bin/moai` 를 `make install` 로 갱신하면 된다. 이 런은 레인 단독이라 슬롯이 필요 없었으므로 t595 절차에는 영향이 없다.
 
+## 병합 (2026-09-12, 통합 창 lane-7)
+
+리드 지명으로 창을 받아 로컬 develop `5ddccacc9` 를 흡수했다. 기준은 `eabce7444` 였으므로 35커밋을 흡수한다.
+
+### 리드 판정 — A안 (2026-09-12)
+
+흡수 전 정적 정찰에서 t649(`ce79ef7ca`, GPT 게이트웨이)와 **의미 충돌**을 발견해 창 진입 전에 보고했다. t649 는 백엔드 분기를 `if glmBackend && binding == nil / else` 로 바꿔, t595 가 겨냥한 else 갈래가 이제 평문 Claude 와 **모든 게이트웨이 바인딩**을 함께 덮는다. 그리고 t649 는 그 갈래의 env 주입을 단정하는 테스트를 함께 실었다 — `TestGatewayEffortUsesClaudeSettingsDespiteStoredGLMMode`(claude/gpt/glm 3모드).
+
+세 선택지를 올렸고 리드가 **A안**을 택했다(2026-09-12): 게이트웨이에는 env 주입을 남기고 평문 Claude 경로에서만 제거한다.
+
+- 채택 근거: 운영자의 긴급 대상은 일반 `moai cc` 세션의 `/effort` 무력화이며, A가 그것을 즉시 던진다.
+- B안(t649 단정을 settings payload 로 겨냥 이동)은 **타 카드의 테스트**를 창 안에서 고치는 사안이고 어댑터 실측이 선행돼야 해 창 밖 소관으로 분류됐다.
+- C안(어댑터가 주입된 settings 를 읽게 개조)은 t649 소관의 큰 변경으로 범위 밖이다.
+- 게이트웨이 반쪽은 후속 카드 **t668** 로 발행됐다.
+
+### 충돌 해결
+
+| 파일 | 해결 |
+|---|---|
+| `internal/cli/launcher.go` | 분기를 **3갈래**로: GLM(`glmBackend && binding == nil`) / 게이트웨이(`binding != nil`, `buildEnvForLaunch` 유지) / 평문 Claude(`buildEnvForClaudeLaunch`). `effectiveEffort` 는 앞의 두 갈래가 모두 쓰므로 develop 처럼 분기 바깥에서 선언 |
+| `internal/cli/cc.go` (2곳) | develop 의 `backend` 변수(t649) + 내 `profileName` 인자 **조합** |
+| `internal/cli/glm.go`, `launcher_test.go`, 템플릿 룰 미러 | 자동 병합 |
+
+### [중요] 자동 병합이 삼킨 것 — 복원 항목
+
+**`launcher_test.go` 는 충돌 없이 자동 병합됐고, 그 과정에서 내 삭제가 조용히 적용됐다.** A안은 `buildEnvForLaunch` 를 게이트웨이 갈래에서 계속 쓰므로 이는 **살아 있는 함수의 테스트가 사라진 상태**다. 빌드도 테스트도 초록이라 diff 를 읽지 않으면 드러나지 않는다.
+
+흡수 **전** 정적 정찰에서 이 손실을 예측해 두었기에 잡았다. 복원 목록:
+
+| 복원 대상 | 위치 | 성격 |
+|---|---|---|
+| `buildEnvForLaunch()` | `internal/cli/launcher.go` | b0bf31c4e 가 삭제했던 함수. A안에서 게이트웨이 갈래가 사용 |
+| `TestBuildEnvForLaunch` | `internal/cli/launcher_test.go` | 상동 |
+| `TestBuildEnvForLaunch_EmptyEffort` | `internal/cli/mcp_doctor_coverage_test.go` | 상동 |
+| `TestBuildEnvForLaunch_AddsNewEntry` | 같음 | 상동 |
+| `TestBuildEnvForLaunch_ReplacesExisting` | 같음 | 상동 |
+| `TestBuildEnvForLaunch_PreservesOtherVars` | 같음 | 상동 |
+
+복원하며 **주석 하나를 정정했다**: develop 판 `buildEnvForLaunch` 의 `@MX:NOTE` 는 자신을 "Effort injection point (Claude backend)" 라고 적는데, A안에서 그 함수는 게이트웨이 갈래 전용이 되므로 거짓이다. `(gateway backend)` 로 고치고, 평문 Claude 는 settings payload 로 옮겨갔다는 설명을 함께 달았다. 스테일한 주장을 그대로 되살리지 않기 위한 것이다.
+
+### blockcap 주석 재작성 (before / after)
+
+`internal/cli/launcher_blockcap_infinite_test.go` `TestACFM023c_KanbanEnvReachesChildEnvironment` 의 근거 주석은 A안에서 거짓이 된다. 단정 자체는 그대로 두고 근거만 고쳤다.
+
+- **before**: "The Claude path no longer wraps os.Environ() at all — ... the drop hazard this AC guards therefore survives only in the GLM wrapper"
+- **after**: "The PLAIN Claude path no longer wraps os.Environ() at all — ... Two wrappers still filter the inherited environment and so still carry the drop hazard: buildEnvForGLMLaunch, and buildEnvForLaunch on the gateway branch"
+
+## 병합 트리 재측정 (2026-09-12)
+
+전부 병합 트리(`WT-effort-env-pin`, MERGE_HEAD `5ddccacc9`)에서 실행했다. **이전 런(기준 `eabce7444`)의 수치와 비교하지 않는다** — 트리가 35커밋 다르고 아래 사전 귀속 red 12건이 섞이므로 두 수치는 같은 것을 재고 있지 않다.
+
+| 검증 | exit | 관측 | 비고 |
+|---|---|---|---|
+| `go build ./internal/cli/...` | 0 | 출력 없음 | |
+| `go vet ./internal/cli/...` | 0 | 출력 없음 | |
+| **조건1** `-run TestGatewayEffortUsesClaudeSettingsDespiteStoredGLMMode` | 0 | `--- PASS` + 서브테스트 claude/gpt/glm 3건 전부 PASS | A안 구현 확인. 최우선 측정 |
+| **조건2** 뮤턴트 M1 (scrub) | 1 | `--- FAIL: TestClaudeLaunchEnvPreservesInheritedEffort` | 분기 로직 전환 후에도 유효 |
+| **조건2** 뮤턴트 M2 (pin) | 1 | 같음 | 복원 후 md5 `1875d88ce974f301417aa5c522c660bc` 동일 |
+| `go test ./internal/cli/...` | 1 | `internal/cli` 1435.427s, 하위 16패키지 전부 `ok`. FAIL 은 **사전 귀속 12건뿐** | load 10.31 시점 |
+| `go test ./internal/template/...` | 0 | `template 37.358s` / `agentemit 0.904s` / `commandemit 1.214s` | load 8.25 시점 |
+| `golangci-lint run ./internal/cli/...` | 1 | 31 issues (errcheck 30 / staticcheck 1) | 사전 귀속 — 아래 |
+
+### 사전 귀속 red 12건 — 실측으로 확정
+
+리드는 gateway 계열 3건을 사전 귀속으로 통보했으나, 병합 트리 전량 측정에서 실제 FAIL 은 **12건**이었다. 통보를 전제로 받지 않고 순수 develop 에서 직접 쟀다.
+
+측정: develop 워크트리, HEAD `5ddccacc9`, 추적 파일 수정 0 확인 후
+`go test ./internal/cli/ -count=1 -v -timeout 20m -run '<12개 이름>'` → exit 1, `=== RUN` 14행, `--- PASS` 2, `--- FAIL` 12.
+
+RUN 이 14인 것은 선택자 접두사가 `TestRunDoctor_VerboseMode` 와 `_WithFixFlag` 를 추가로 집었기 때문이며 그 둘은 PASS 다. 겨냥한 12개 이름은 이름별로 대조해 전부 실행·전부 FAIL 임을 확인했다.
+
+| 계열 | 테스트 | 귀속 |
+|---|---|---|
+| gateway (리드 통보분) | `TestCodexCommand_RegisteredInLaunchGroup`, `TestCharacterize_GLM_WarningPrintedToStderr`, `TestNoBareGLMEnvVarLiteralsInCLIProduction` | develop 소관, 카드 t669 |
+| doctor (통보 밖, 내가 발견) | `TestRunDoctor_{WithExport,WithFix,Verbose,AllFlags,VerboseAndDetail,ExportMode}`, `TestDoctorCmd_{Execution,ExportFlag,VerboseExecution}` | develop 소관, 카드 **t675**(이 측정으로 발행) |
+
+doctor 9건은 전부 `runDoctor error: doctor: 1 check(s) failed` 이고, 병합 트리에서 빌드한 바이너리로 doctor 를 직접 돌린 결과 실패 검사는 `Agent Emit Embed`("moai embeds stale agent-emit artifacts (11/11 compared): manager-lead.toml, super-advisor.toml, sync-auditor.toml")와 `Harness 5-Layer` 다. 동시에 병합 트리의 `make agents-emit-check` 는 exit 0 이다 — 즉 어긋난 것은 소스 축이 아니라 **임베드 축**이다. 둘이 동시에 참인 기전은 확정하지 못했다(가설: doctor 의 비교 기준이 로컬 도그푸드 사본 C1 이라 의도된 C1↔C2 분기에서 항상 실패한다 — **미측정 가설**이며 t675 소관).
+
+린트 31건도 같은 방식으로 귀속을 세웠다: 지적 위치가 전부 내가 건드리지 않은 게이트웨이·migrate 파일이었고, 순수 develop 워크트리에서 `golangci-lint run ./internal/cli/...` 를 돌려 **동일하게 31 issues (errcheck 30 / staticcheck 1)** 를 관측했다. 내 병합이 늘린 것이 아니다.
+
+"내 변경과 무관"은 파일명 추정이 아니라 이 두 측정이 근거다. 12건 중 하나라도 순수 develop 에서 GREEN 이었다면 그것은 내 소관이었고, 그 경우 중단·보고가 사전 합의된 판정식이었다.
+
 ## Residual-risk
+
+- **[A안 잔여] 게이트웨이 세션은 여전히 `/effort`·`/model` 중 effort 변경이 막힌다.** A안이 `binding != nil` 갈래에 `CLAUDE_CODE_EFFORT_LEVEL` 주입을 남겼기 때문이며, 그 변수는 Claude Code 가 세션 중 변경을 거부하는 override 다. 즉 t595 가 고친 결함은 **평문 Claude 경로에서만** 사라졌고, `moai gpt` 및 게이트웨이 바인딩을 타는 launch 에서는 그대로 남아 있다. 후속 카드 **t668** 소관. 이것은 "게이트웨이 경로가 이 결함에서 면제된다"는 뜻이 **아니다** — 같은 기전이 같은 증상을 낸다.
+- 게이트웨이 effort 경로에 대한 내 정적 관측(어댑터가 env 가 아니라 요청 본문에서 effort 를 읽는다 — `internal/gateway/translate/native_policy.go:47-55`, `:139`)은 **부분 판독이며 측정이 아니다.** t668 에서 확인할 가설로만 취급한다.
 
 - 운영자가 직접 `--settings`를 넘긴 경우 effort 주입이 빠진다(`operatorSuppliedSettings` 분기). 의도된 동작이며 운영자 의사 우선이지만, 그 경로에서는 프로필 effort가 적용되지 않는다.
 - `--settings`는 Claude Code 우선순위에서 사용자 settings보다 위다. 따라서 `/effort`가 "새 세션 기본값"으로 저장한 값은 다음 기동에서 다시 주입 payload에 눌린다. 카드가 목표한 **세션 중** 변경은 성립하지만, "저장한 기본값이 다음 세션까지 간다"는 기대는 성립하지 않는다. 리드 판정(2026-09-12): 기재는 승인, t595 범위 밖 — 별도 카드로 발행.

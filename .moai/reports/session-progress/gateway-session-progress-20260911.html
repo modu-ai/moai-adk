@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게이트웨이 SPEC 세션 진행 보고</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;
+  --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --sans:"Pretendard",system-ui,-apple-system,sans-serif;--serif:"Pretendard",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.7;font-size:15px}
+main{max-width:var(--max-width);margin:0 auto;padding:40px 16px 80px}
+h1{font-size:28px;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:20px;margin:44px 0 10px;padding-top:8px;border-top:var(--border)}
+h3{font-size:16px;margin:24px 0 8px}
+.sub{color:var(--g500);margin:0 0 24px}
+.lead{background:var(--g100);border-left:4px solid var(--clay);padding:12px 16px;border-radius:var(--radius-row);margin:10px 0 16px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:14px 16px}
+.card .k{font-size:12px;color:var(--g500)}
+.card .v{font-size:24px;font-weight:700;margin-top:2px}
+.card .n{font-size:12px;color:var(--g700)}
+table{width:100%;border-collapse:collapse;background:var(--paper);border:var(--border);border-radius:var(--radius-panel);overflow:hidden;margin:10px 0 6px;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--g100);text-align:left;vertical-align:top}
+th{background:var(--g100);font-weight:600}
+.tw{overflow-x:auto}
+code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--oat)}
+.bad{background:#F4D9CF}.ok{background:#DCE5D0}.wait{background:var(--g100)}
+.callout{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:12px 16px;margin:14px 0}
+.callout.warn{border-color:var(--clay)}
+ul{padding-left:20px}li{margin:3px 0}
+svg text{font-family:var(--sans)}
+pre.mermaid{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:14px;overflow-x:auto;font-size:12px}
+.small{font-size:12.5px;color:var(--g700)}
+@media print{body{background:#fff}pre.mermaid{display:none}}
+</style>
+</head>
+<body>
+<main>
+
+<h1>게이트웨이 SPEC 세션 진행 보고</h1>
+<p class="sub">SPEC-MOAI-GATEWAY-001 · 세션 <code>25b43a41</code> · 워크트리 <code>WT-unified-gateway</code> @ <code>ed71054d3</code> · 작성 2026-09-11 10:55 KST</p>
+
+<div class="lead">
+이 세션의 목표는 <code>moai cc</code>·<code>moai gpt</code>·<code>moai glm</code>이 함께 쓰는 로컬 게이트웨이의 계획서(SPEC)를 만들고, 계획 감사를 통과시킨 뒤 <strong>구현 착수 승인 직전에서 멈추는 것</strong>입니다. 현재 SPEC은 0.6.0입니다. 방금 끝난 5차 감사도 <strong>FAIL 0.83</strong>(기준 0.85)이라, 승인된 반복을 모두 쓴 상태에서 운영자 결정을 기다립니다.
+</div>
+
+<div class="cards">
+  <div class="card"><div class="k">현재 SPEC 버전</div><div class="v">0.6.0</div><div class="n">요구사항 24 · 수용 기준 24 · 286,400B</div></div>
+  <div class="card"><div class="k">계획 감사</div><div class="v">5 FAIL</div><div class="n">0.70 → 0.80 → 0.84 → 0.80 → 0.83</div></div>
+  <div class="card"><div class="k">세션 경과</div><div class="v">20.6시간</div><div class="n">14:18 시작 → 10:55 기준</div></div>
+  <div class="card"><div class="k">한도 대기</div><div class="v">약 10.9시간</div><div class="n">사용량 한도로 에이전트 3회 중단</div></div>
+</div>
+
+<h2>1. 지금까지 한 일</h2>
+<div class="lead">SPEC(계획서)은 "무엇을, 어떤 조건에서 완료로 볼지"를 적은 문서입니다. 계획 감사 (plan audit)는 독립 에이전트가 그 문서의 빈틈을 찾아 점수를 매기는 단계입니다. 이 세션에서는 작성 → 감사 → 수정을 다섯 바퀴 돌았습니다.</div>
+
+<div class="tw"><table>
+<tr><th>시각 (KST)</th><th>한 일</th><th>결과</th></tr>
+<tr><td>09-10 14:18</td><td>세션 시작, 기반 브랜치 결정(develop)</td><td>질문 1</td></tr>
+<tr><td>14:21–14:27</td><td>계획 단계 병렬 조사 스크립트(FO-PLAN-1) 실행</td><td><span class="tag ok">병렬 조사 사용</span></td></tr>
+<tr><td>14:35–15:02</td><td>SPEC 최초 작성 → 1차 감사</td><td><span class="tag bad">FAIL 0.70</span></td></tr>
+<tr><td>15:01–16:22</td><td>이름(gateway) 결정, GPT 인증·Windows 등 결정 질문 4회, 2차 감사</td><td><span class="tag bad">FAIL 0.80</span></td></tr>
+<tr><td>16:22–18:17</td><td>수정 에이전트에 보낸 정정 메시지 6건이 반영되지 않음 → 중단 후 재지시, 픽스처 보정</td><td>재작업</td></tr>
+<tr><td>18:23–18:39</td><td>3차 감사</td><td><span class="tag bad">FAIL 0.84</span> · 반복 상한 3회 도달</td></tr>
+<tr><td>18:44</td><td>운영자가 상한 예외 1회 허용(tmux 방향·백로그 카드 3장 결정)</td><td>질문 7</td></tr>
+<tr><td>20:35–20:37</td><td>0.4.0 수정 에이전트가 쓰기 전에 사용량 한도로 중단</td><td><span class="tag wait">한도 대기 → 22:00</span></td></tr>
+<tr><td>22:06–22:34</td><td>0.4.0 수정 재지시·완료</td><td>0.4.0</td></tr>
+<tr><td>22:26–22:57</td><td>사용자 질문(같은 세션 <code>/model</code> 전환 가능?)에 실측 2회</td><td><span class="tag ok">클라이언트 수준 전환 가능 확인</span></td></tr>
+<tr><td>22:59–23:35</td><td>실측 반영 결정 2건 → 요구사항 상한(25/25) 충돌로 1회 막힘 → 합치기로 재지시 → 쓰기 완료 직후 한도로 중단</td><td>0.5.0 · <span class="tag wait">한도 대기 → 03:03</span></td></tr>
+<tr><td>09-11 03:06–03:32</td><td>4차 감사</td><td><span class="tag bad">FAIL 0.80 · 중단 신호</span></td></tr>
+<tr><td>03:33–03:50</td><td>범위 나누기·결정 9 유지·teammate in-process 결정, develop 261커밋 앞당기기(낡은 잠금 파일 처리)</td><td>질문 3</td></tr>
+<tr><td>03:51–04:21</td><td>핵심 SPEC 0.6.0으로 분할 수정</td><td>0.6.0</td></tr>
+<tr><td>04:22–04:36</td><td>5차 감사가 한도로 중단(보고서 미작성)</td><td><span class="tag wait">한도 대기 → 10:35</span></td></tr>
+<tr><td>10:35–10:47</td><td>5차 감사 재실행, develop +65커밋 영향 확인(줄 번호만 밀림)</td><td><span class="tag bad">FAIL 0.83 · 차단 3건</span></td></tr>
+</table></div>
+<p class="small">시각 근거: 세션 대화 기록의 에이전트 호출·완료 알림 타임스탬프, 감사 보고서 파일 시각. 16:22–18:17 구간의 사유는 압축 전 세션 요약에 기록된 내용입니다.</p>
+
+<h3>시간이 어디에 쓰였나</h3>
+<svg viewBox="0 0 840 120" width="100%" role="img" aria-label="세션 시간 구성: 작업과 한도 대기">
+  <rect x="20" y="30" width="246" height="34" fill="#D97757"/>
+  <rect x="266" y="30" width="55" height="34" fill="#D1CFC5"/>
+  <rect x="321" y="30" width="62" height="34" fill="#D97757"/>
+  <rect x="383" y="30" width="136" height="34" fill="#D1CFC5"/>
+  <rect x="519" y="30" width="61" height="34" fill="#D97757"/>
+  <rect x="580" y="30" width="234" height="34" fill="#D1CFC5"/>
+  <rect x="814" y="30" width="8" height="34" fill="#D97757"/>
+  <text x="20" y="22" font-size="11" fill="#3D3D3A">14:18</text>
+  <text x="252" y="22" font-size="11" fill="#3D3D3A">20:37</text>
+  <text x="370" y="22" font-size="11" fill="#3D3D3A">23:35</text>
+  <text x="506" y="22" font-size="11" fill="#3D3D3A">03:03</text>
+  <text x="566" y="22" font-size="11" fill="#3D3D3A">04:36</text>
+  <text x="790" y="22" font-size="11" fill="#3D3D3A">10:35</text>
+  <text x="120" y="52" font-size="12" fill="#fff">작업 6.3h</text>
+  <text x="420" y="52" font-size="12" fill="#3D3D3A">대기 3.5h</text>
+  <text x="660" y="52" font-size="12" fill="#3D3D3A">대기 6.0h</text>
+  <rect x="20" y="84" width="14" height="14" fill="#D97757"/><text x="40" y="96" font-size="12" fill="#3D3D3A">작업(사용자 응답 대기 포함) 약 9.7h</text>
+  <rect x="300" y="84" width="14" height="14" fill="#D1CFC5"/><text x="320" y="96" font-size="12" fill="#3D3D3A">사용량 한도로 인한 대기 약 10.9h (전체의 53%)</text>
+</svg>
+
+<h3>감사 점수 추이</h3>
+<svg viewBox="0 0 840 200" width="100%" role="img" aria-label="계획 감사 점수: 0.70, 0.80, 0.84, 0.80, 0.83, 기준 0.85">
+  <line x1="60" y1="170" x2="820" y2="170" stroke="#D1CFC5"/>
+  <line x1="60" y1="31" x2="820" y2="31" stroke="#788C5D" stroke-dasharray="6 4"/>
+  <text x="742" y="24" font-size="12" fill="#788C5D">통과 기준 0.85</text>
+  <rect x="100" y="115" width="80" height="55" fill="#D97757"/><text x="118" y="108" font-size="13">0.70</text><text x="112" y="188" font-size="12" fill="#3D3D3A">1차</text>
+  <rect x="240" y="60" width="80" height="110" fill="#D97757"/><text x="258" y="53" font-size="13">0.80</text><text x="252" y="188" font-size="12" fill="#3D3D3A">2차</text>
+  <rect x="380" y="38" width="80" height="132" fill="#D97757"/><text x="398" y="31" font-size="13">0.84</text><text x="392" y="188" font-size="12" fill="#3D3D3A">3차</text>
+  <rect x="520" y="60" width="80" height="110" fill="#B85C3E"/><text x="538" y="53" font-size="13">0.80</text><text x="512" y="188" font-size="12" fill="#3D3D3A">4차(하락)</text>
+  <rect x="660" y="44" width="80" height="126" fill="#D97757"/><text x="678" y="37" font-size="13">0.83</text><text x="672" y="188" font-size="12" fill="#3D3D3A">5차</text>
+</svg>
+
+<h2>2. 5차 감사 결과 (방금 도착)</h2>
+<div class="lead">점수는 0.80에서 0.83으로 올랐지만 기준에 0.02 모자랍니다. 범위 나누기 자체는 깔끔하다는 판정을 받았고, 확인 요청 인식 기준의 M1 게이트도 진짜 관문으로 인정됐습니다. 남은 차단 결함 3건은 모두 "tmux에 남은 GLM 키"와 "핵심만 먼저 출시할 때의 동작"에 몰려 있습니다.</div>
+
+<div class="tw"><table>
+<tr><th>결함</th><th>무엇이 문제인가</th><th>제가 확인한 것</th><th>운영자 결정</th></tr>
+<tr><td><strong>G5-B1</strong><br>(치명)</td><td>SPEC은 tmux에 남은 옛 GLM 키가 Claude 자식 프로세스에 "닿지 않는다"고 적었지만(<code>design.md:618-619</code>), 보장하는 장치가 없습니다. 그러면 옛 <code>moai glm</code> 키가 남은 창에서 게이트웨이 <code>moai cc</code>를 켰을 때 <code>opus</code>·<code>sonnet</code>·<code>haiku</code> 요청이 Z.AI 유료 호출로 갈 수 있습니다.</td><td>런처가 자식 환경을 <code>os.Environ()</code>에서 만들고(<code>launcher.go:837</code>), <code>buildEnvForLaunch</code>는 effort 키 하나만 바꿔 나머지를 그대로 넘깁니다(<code>:1180-1200</code>). tmux 키가 새 창에 들어간다는 부분은 감사의 추론이고 실행해 보지는 않았습니다.</td><td>불필요(자식 환경에서 GLM 키 제거 + 수용 기준 변형 추가). 대안으로 tmux 정리를 되살리려면 결정 12 수정이 필요</td></tr>
+<tr><td><strong>G5-B2</strong></td><td>핵심만 먼저 출시할 때의 동작이 적혀 있지 않습니다. 기본 프로필에서 <code>/model gpt-5.6-sol</code>을 한 번 고르면 Claude Code가 기본값으로 저장하고, 다음 <code>moai cc</code>가 GPT로 시작하면서 provider는 <code>claude</code>로 기록됩니다.</td><td>실측 1에서 <code>/model &lt;id&gt;</code>가 기본값을 저장하는 것은 확인했습니다. 결정 10("언제나 <code>--model</code>")이 picker 형제로 옮겨 가면서 핵심에 빈틈이 생긴 것입니다.</td><td><strong>필요:</strong> 핵심 출시를 picker 형제 SPEC에 묶을지, 적힌 잔여 위험으로 받아들일지</td></tr>
+<tr><td><strong>G5-B3</strong></td><td><code>REQ-MG-022</code>는 in-process 제한이 tmux 창 우회를 "막는다"고 하지만, <code>teammateMode</code>는 공유 파일이라 게이트웨이가 아닌 세션이 다시 <code>tmux</code>로 바꿀 수 있습니다(SPEC 스스로 <code>design.md:611-615</code>에 기록).</td><td>0.6.0 작성 에이전트가 넘긴 잔여 위험 3번과 같은 지점입니다.</td><td><strong>필요:</strong> 문구만 고칠지, 세션마다 <code>--teammate-mode in-process</code> 플래그를 넘길지</td></tr>
+</table></div>
+<p class="small">감사가 권한 길: 범위를 좁힌 수정 1회 + G5-B1~B3만 보는 재감사(새 번호 없이 가능). 조건부 통과(B1을 M7 진입 게이트로)는 B1에 권하지 않았고, 추가 분할은 권하지 않았습니다. 이번 감사는 Claude 단독이었고 codex·GLM 교차 감사는 돌지 않았습니다. 보고서: <code>.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-iter5.md</code></p>
+
+<h2>3. 이 세션에서 남은 계획</h2>
+<div class="lead">승인받은 반복(5차)이 끝났으므로 다음 걸음은 운영자 결정입니다. 어느 길이든 이 세션은 <strong>구현 착수 승인 질문 앞에서 멈추고</strong>, push·PR·병합·워크트리 삭제는 별도 지시 없이 하지 않습니다.</div>
+
+<pre class="mermaid">
+flowchart TD
+  A[5차 감사 FAIL 0.83] --> B{운영자 결정}
+  B -->|좁힌 수정 + 재감사 허용| C[결정 2건 받기: B2 출시 연결, B3 문구 또는 플래그]
+  C --> D[워크트리 앞당기기 + 인용 줄 번호 보정]
+  D --> E[SPEC 0.7.0: G5-B1~B3 수정]
+  E --> F[6차 감사: B1~B3만]
+  F -->|PASS| G[구현 착수 승인 질문 후 멈춤]
+  F -->|FAIL| H[인계 후 중단]
+  B -->|조건부 통과| G
+  B -->|여기서 멈춤| H
+  G --> I[세션 마무리: 형제 SPEC 카드 제안, 교훈 기록, 인계 블록]
+  H --> I
+</pre>
+<noscript><p>흐름: 5차 감사가 FAIL이라 운영자 결정을 받습니다. 좁힌 수정과 재감사를 허용하면 B2·B3 결정을 받고, 워크트리를 앞당겨 인용을 맞춘 뒤 0.7.0을 쓰고 B1~B3만 재감사합니다. PASS면 구현 착수 승인 질문에서 멈추고, FAIL이거나 여기서 멈추기로 하면 인계합니다. 어느 경우든 형제 SPEC 카드 제안·교훈 기록·인계 블록으로 마칩니다.</p></noscript>
+
+<div class="tw"><table>
+<tr><th>#</th><th>남은 일</th><th>조건</th><th>상태</th></tr>
+<tr><td>1</td><td>진행 방식 결정: 좁힌 수정 + 재감사 / 조건부 통과 / 여기서 멈춤</td><td>—</td><td><span class="tag wait">결정 대기</span></td></tr>
+<tr><td>2</td><td>B2(핵심 출시를 picker 형제에 묶을지)·B3(문구 수정 또는 세션별 플래그) 결정</td><td>수정을 고를 때</td><td>대기</td></tr>
+<tr><td>3</td><td>워크트리를 develop로 앞당기고 인용 줄 번호 보정(<code>session_end.go</code> +1/+5, <code>ci.yml</code> +2)</td><td>수정을 고를 때</td><td>대기</td></tr>
+<tr><td>4</td><td>SPEC 0.7.0 작성(B1: 자식 환경에서 GLM 키 제거와 수용 기준 변형, B2·B3 반영, <code>research.md:917</code> 낡은 포인터)</td><td>수정을 고를 때</td><td>대기</td></tr>
+<tr><td>5</td><td>6차 감사(B1~B3 한정) → PASS면 구현 착수 승인 질문 후 멈춤</td><td>수정을 고를 때</td><td>대기</td></tr>
+<tr><td>6</td><td>형제 SPEC 두 건(PICKER-001, TEAMMATE-001) 백로그 카드 제안 — 추가는 승인 후</td><td>공통</td><td>대기</td></tr>
+<tr><td>7</td><td>교훈 기록: 실측은 원본 본문 캡처, 낡은 잠금 파일 처리, 감사 상한 도달 시 범위 축소 먼저 제안, 지시문과 상한 충돌</td><td>세션 끝</td><td>대기</td></tr>
+<tr><td>8</td><td>인계 블록 저장(<code>moai handoff save</code>)과 화면 출력</td><td>세션 끝</td><td>대기</td></tr>
+</table></div>
+<p class="small">이 세션 범위 밖: <code>/moai run</code> 실행(승인 후), push·PR·병합·워크트리 삭제(별도 지시 필요), 형제 SPEC 두 건과 GPT 인증·cg 철거 SPEC의 작성.</p>
+
+<h2>4. 왜 이렇게 느렸나</h2>
+<div class="lead">가장 큰 원인은 두 가지입니다. 사용량 한도로 멈춘 시간이 전체의 절반을 넘었고, SPEC이 너무 커서 감사가 다섯 번 연속 떨어졌습니다. 그 위에 제 지시 실수가 재작업을 몇 번 더 만들었습니다.</div>
+
+<h3>원인 1 — 사용량 한도 대기 (약 10.9시간)</h3>
+<p>에이전트 세 개가 도중에 한도에 걸렸고, 풀릴 때까지 아무 일도 진행되지 않았습니다.</p>
+<div class="tw"><table>
+<tr><th>멈춘 에이전트</th><th>멈춘 시각</th><th>재개</th><th>대기</th></tr>
+<tr><td>0.4.0 수정</td><td>20:37</td><td>22:00</td><td>1.4h</td></tr>
+<tr><td>0.5.0 수정(쓰기는 끝냄)</td><td>23:35</td><td>03:03</td><td>3.5h</td></tr>
+<tr><td>5차 감사</td><td>04:36</td><td>10:35</td><td>6.0h</td></tr>
+</table></div>
+<p>에이전트 하나가 많이 씁니다. 압축 이후 측정값은 다음과 같습니다.</p>
+<div class="tw"><table>
+<tr><th>에이전트</th><th>토큰</th><th>시간</th></tr>
+<tr><td>0.6.0 분할 수정</td><td>약 61만</td><td>29분</td></tr>
+<tr><td>4차 감사</td><td>약 44만</td><td>26분</td></tr>
+<tr><td>5차 감사(재실행)</td><td>약 37만</td><td>12분</td></tr>
+<tr><td>상한에 막힌 수정</td><td>약 32만</td><td>3분</td></tr>
+</table></div>
+<p>계획서가 커질수록(184KB → 286KB) 에이전트가 읽어야 할 양도 늘었습니다.</p>
+<div class="callout">예를 들면 이렇습니다. 0.6.0 수정 에이전트는 SPEC 여섯 파일과 4차 감사 보고서, 코드 인용 줄을 읽고 다시 썼습니다. 이렇게 에이전트 하나가 한도의 큰 몫을 한 번에 쓰니, 비슷한 에이전트 두세 개면 한도에 닿습니다.</div>
+
+<h3>원인 2 — 감사 반복 5회</h3>
+<p>SPEC은 Tier L 상한인 요구사항 25개·수용 기준 25개에 꽉 차 있었습니다. 고칠 때마다 새 틈이 생겨 점수가 0.80~0.84에서 맴돌았습니다. 규칙은 계획 감사를 SPEC당 3회로 제한하고, 점수가 떨어지면 범위 축소를 제안하라고 합니다(<code>spec-workflow.md:160</code>).</p>
+<ul>
+<li>3차 FAIL(0.84)에서 상한에 닿았을 때, 저는 범위 축소를 먼저 제안하지 않고 예외 1회를 요청했습니다. SPEC 스스로 <code>plan.md</code> §I에 "범위가 더 늘어날 여지는 없다"고 적어 둔 상태였습니다.</li>
+<li>결국 4차에서 점수가 떨어진 뒤에야 범위를 나눴습니다. 3차 직후 나눴다면 4차 감사·0.5.0 반영 구간(약 3시간 작업과 두 번의 한도 대기)을 줄일 수 있었습니다.</li>
+<li>5차의 차단 3건 중 G5-B2는 나누면서 생긴 틈입니다. picker 쪽으로 옮긴 결정 10이 핵심의 출시 동작을 받치고 있었는데, 그 연결을 분할 지시문에서 짚지 못했습니다.</li>
+</ul>
+
+<h3>원인 3 — 제 지시 실수로 생긴 재작업</h3>
+<div class="tw"><table>
+<tr><th>실수</th><th>결과</th></tr>
+<tr><td>작업 중인 에이전트에 보낸 정정 메시지 6건이 반영되지 않음</td><td>중단 후 재지시(16:22–18:17)</td></tr>
+<tr><td>지시문에 코드와 다른 전제 두 건(<code>removeGLMEnv</code> 범위, <code>ensureTmuxGLMEnv</code>가 저절로 멈춘다는 가정)</td><td>정정 사이클</td></tr>
+<tr><td>"새 요구사항 번호로 추가"라고 지시해 25/25 상한과 충돌</td><td>에이전트가 멈춤, 질문 1회 추가</td></tr>
+<tr><td>실측 mock이 <code>stream</code>을 참/거짓으로만 기록하고 억제 플래그를 켠 채 실행</td><td>4차 감사 차단 결함 G4-B2</td></tr>
+<tr><td>감사 도중 develop이 261커밋 앞서 있었음</td><td>기준 커밋 질문 1회, 앞당기기 중 낡은 잠금 파일 처리</td></tr>
+<tr><td>분할 지시문에서 결정 10을 옮기면 핵심 출시 동작이 빈다는 점을 짚지 못함</td><td>5차 감사 차단 결함 G5-B2</td></tr>
+</table></div>
+
+<h3>원인 4 — 순서대로만 할 수 있는 결정 질문 12회</h3>
+<p>사용자 결정이 필요한 질문을 12번 했습니다. 대부분은 제품 방향 결정이라 필요했지만, 두 번(상한 처리, 기준 커밋)은 제 실수나 늦은 확인에서 생겼습니다.</p>
+
+<h2>5. 병렬·서브에이전트 분산을 했어야 했나 — 지침 점검</h2>
+<div class="lead">서브에이전트 분산 (fan-out)은 서로 기다릴 필요 없는 일을 여러 에이전트에 동시에 맡기는 방식입니다. 지침은 분산을 허용하는 곳과 금지하는 곳을 나눠 둡니다. 이번 세션을 그 기준으로 점검했습니다.</div>
+
+<div class="tw"><table>
+<tr><th>지침</th><th>내용</th><th>이번 세션</th><th>판정</th></tr>
+<tr><td><code>plan.md</code> FO-PLAN-1</td><td>계획 단계 조사(Phase 2·6)는 병렬 조사 스크립트로 분산</td><td>14:21에 실행, 14:27 완료</td><td><span class="tag ok">지킴</span></td></tr>
+<tr><td><code>agent-common-protocol.md</code> 동시 실행</td><td>쓰기 에이전트 둘을 동시에 돌리지 않음. 감사 중인 트리는 쓰는 주체가 하나</td><td>SPEC 수정·감사를 한 번에 하나씩 실행</td><td><span class="tag ok">지킴</span> · 여기는 분산 불가</td></tr>
+<tr><td><code>spec-workflow.md:160</code></td><td>감사 최대 3회, 점수 하락 시 중단 신호와 범위 축소 제안</td><td>3회 도달 시 예외 요청, 축소는 4차 하락 후</td><td><span class="tag bad">늦게 적용</span></td></tr>
+<tr><td><code>orchestration-mode-selection.md</code> §B</td><td>코딩·문서 수정 중심 작업은 순차가 기본, 여러 영역 조사는 분산</td><td>SPEC 수정은 순차</td><td><span class="tag ok">지킴</span></td></tr>
+<tr><td>§C.2 · <code>cache-aware-execution.md</code></td><td>분산 3~5개 권고, 같은 종류는 하나 먼저 띄운 뒤 나머지</td><td>분산 대상 자체가 적었음</td><td>해당 적음</td></tr>
+<tr><td>시스템 지시 · Workflow 도구</td><td>대규모 워크플로는 사용자 명시 요청이나 스킬 지시가 있을 때만</td><td>스킬이 지시한 FO-PLAN-1만 사용</td><td><span class="tag ok">지킴</span></td></tr>
+</table></div>
+
+<h3>분산했으면 빨라졌을 곳 (놓친 기회)</h3>
+<ul>
+<li><strong>실측 1·2를 동시에:</strong> 두 실측은 서로 독립이었습니다. mock 두 개와 tmux 세션 두 개로 동시에 돌렸거나, 처음부터 한 번에 설계(원본 요청 본문 캡처, 억제 플래그 없음)했다면 약 15분과 G4-B2 결함을 줄일 수 있었습니다.</li>
+<li><strong>에이전트가 쓰는 동안 읽기 전용 확인을 병행:</strong> 수정 에이전트가 30분 동안 쓰는 사이, 코드 인용 확인이나 develop 동기화 확인을 미리 해 둘 수 있었습니다. 261커밋 앞선 사실도 감사 전에 알았을 겁니다.</li>
+<li><strong>코드 인용 검증을 가벼운 읽기 전용 에이전트에:</strong> 무거운 모델 한 에이전트가 문서와 코드를 모두 읽는 대신, 인용 확인만 가벼운 탐색 에이전트에 나눌 수 있었습니다.</li>
+</ul>
+
+<div class="callout warn">
+<strong>하지만 분산으로 해결되지 않는 부분이 더 큽니다.</strong> 느려진 시간의 절반 이상은 사용량 한도였습니다. 에이전트를 동시에 더 띄우면 같은 시간에 쓰는 토큰이 늘어 한도에 <em>더 빨리</em> 닿습니다. 또 SPEC 수정은 쓰는 주체가 하나여야 하고, 감사는 수정이 끝나야 시작할 수 있는 순차 관문입니다. 그래서 가장 효과가 큰 처방은 분산이 아니라 다음 두 가지입니다.
+<ul>
+<li>감사가 상한에 닿는 시점(3차)에 범위를 먼저 나누기 — 처음부터 Tier L 하나 대신 작은 SPEC 여러 개로 설계하기</li>
+<li>실측을 처음부터 증거가 충분하게 설계하기(원본 본문, 실제 조건)</li>
+</ul>
+</div>
+
+<h2>6. 직접 확인해 볼 것</h2>
+<ul>
+<li>5차 감사 보고서: <code>.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-iter5.md</code></li>
+<li>4차 감사 보고서: <code>.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-iter4.md</code></li>
+<li>SPEC 0.6.0 HISTORY: <code>.moai/specs/SPEC-MOAI-GATEWAY-001/spec.md</code> 229행 부근</li>
+<li>G5-B1 근거 코드: <code>internal/cli/launcher.go:837</code>, <code>:1180-1200</code></li>
+<li>실측 증거: <code>.moai/state/verify/25b43a41-c0ac-4110-9dad-f3983da6a527/gwprobe/README.md</code>, <code>gwprobe2/README.md</code></li>
+</ul>
+
+<h2>7. 확인하지 못한 것</h2>
+<ul>
+<li>압축 전 구간 에이전트들의 토큰 사용량(1~3차 감사, 최초 작성)은 기록을 찾지 못해 수치로 넣지 않았습니다.</li>
+<li>사용자 응답을 기다린 시간은 따로 떼어 재지 않았습니다. "작업" 구간에 포함돼 있습니다.</li>
+<li>G5-B1의 "tmux에 남은 키가 새 창의 환경으로 들어간다"는 부분은 실행해 보지 않았습니다.</li>
+<li>5차 감사는 Claude 단독이었고, 이전 HISTORY 항목이 바이트 단위로 그대로인지는 SPEC 폴더가 git에 없어 확인할 수 없습니다.</li>
+</ul>
+
+</main>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({startOnLoad:true,theme:"base",themeVariables:{primaryColor:"#FAF9F5",primaryTextColor:"#141413",primaryBorderColor:"#D97757",lineColor:"#87867F",secondaryColor:"#E3DACC",tertiaryColor:"#F0EEE6"}});
+</script>
+</body>
+</html>

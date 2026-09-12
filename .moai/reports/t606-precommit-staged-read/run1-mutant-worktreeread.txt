@@ -1,0 +1,23 @@
+=== RUN   TestPrecommitStagedUnformattedWorktreeFormattedBlocks
+    precommit_staged_read_e2e_test.go:121: commit succeeded although the staged bytes need formatting (the hook read the working file):
+        [main (root-commit) 5ff8d69] t606 fixture
+         1 file changed, 5 insertions(+)
+         create mode 100644 main.go
+--- FAIL: TestPrecommitStagedUnformattedWorktreeFormattedBlocks (0.62s)
+=== RUN   TestPrecommitStagedFormattedWorktreeUnformattedAllows
+    precommit_staged_read_e2e_test.go:135: commit blocked although the staged bytes are formatted (the hook read the working file):
+        
+        [pre-commit] FAILED: the following staged files need formatting (checked against the staged bytes, not the working tree):
+        main.go
+        [pre-commit] Hint: gofmt -w <files> && git add <files>
+        [pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit
+--- FAIL: TestPrecommitStagedFormattedWorktreeUnformattedAllows (0.41s)
+=== RUN   TestPrecommitStagedFormattedNoDivergenceAllows
+--- PASS: TestPrecommitStagedFormattedNoDivergenceAllows (0.44s)
+=== RUN   TestPrecommitStagedGofmtToolFailureBlocks
+--- PASS: TestPrecommitStagedGofmtToolFailureBlocks (0.55s)
+=== RUN   TestPrecommitStagedUnformattedNoDivergenceBlocks
+--- PASS: TestPrecommitStagedUnformattedNoDivergenceBlocks (0.42s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.504s
+FAIL

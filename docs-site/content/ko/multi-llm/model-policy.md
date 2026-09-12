@@ -131,11 +131,7 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 |---------|------|--------|-----|
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-> `Explore`는 디스크에 에이전트 파일이 없어 frontmatter로 effort를 고정할 수 없습니다.
-> 대신 매트릭스가 `sonnet / low`를 부름 시점 기본값으로 기록하고, 이 값은 부름
-> 프롬프트에 그대로 적힙니다. Agent Teams 정적 계층(정적 role profile)은 v3.0에서
-> 물러났고, 그 자리는 sub-agent 병렬 실행과 동적 워크플로우가 채웠습니다. `moai cg`의
-> teammate 런타임(tmux pane)은 그대로 남아 있습니다.
+> `Explore`는 디스크에 에이전트 파일이 없어 frontmatter로 effort를 고정할 수 없습니다. 대신 매트릭스가 `sonnet / low`를 부름 시점 기본값으로 기록하고, 이 값은 부름 프롬프트에 그대로 적힙니다. Agent Teams 정적 계층(정적 role profile)은 v3.0에서 물러났고, 그 자리는 sub-agent 병렬 실행과 동적 워크플로우가 채웠습니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 > **Haiku 제거** (v3.0): 예전 Haiku 슬롯(문서화 · MX 태깅 · Git 절차)은 더 낮은 모델
 > 클래스가 아니라 더 낮은 추론 깊이로 바뀌었습니다. 비용은 모델을 갈아 끼워서가
@@ -235,7 +231,7 @@ flowchart TD
 
 ### GLM 백엔드의 reasoning 상한
 
-GLM 백엔드(`moai glm` 전환, `moai cg`의 GLM 패널)에서는 effort가 Claude의 5단 어휘를
+GLM 백엔드(`moai glm` 전환)에서는 effort가 Claude의 5단 어휘를
 그대로 쓰지 못합니다. GLM-5.3은 **항상 추론합니다** — reasoning을 끄는 것은 지원되지
 않고, 끄기를 요청하는 호출은 실패합니다. 조절 축은 세 단계 `reasoning_effort`
 (low / high / max) 하나이고, Claude effort는 그 위로 모아집니다.
@@ -379,6 +375,6 @@ moai init my-project --model-policy low     # 과제당 최저 비용
 ## 다음 단계
 
 - [프로필 매트릭스](/ko/advanced/profile-matrix/) — 36개 셀의 배치 근거(판단 가중 정책)와 리졸버 우선순위 상세
-- [CG 모드](/ko/multi-llm/cg-mode) — Claude 리더 + GLM 워커 하이브리드로 비용 절감
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [자율성 티어](/ko/advanced/autonomy-tier/) — `MOAI_AUTONOMY_TIER` 비용·속도 트레이드오프
 - [CLI 레퍼런스](/ko/getting-started/cli) — `moai init`, `moai update`, `moai model profile` 상세

@@ -117,17 +117,30 @@ func TestWorktreeCreateHandler_ActiveCreator(t *testing.T) {
 }
 
 // TestWorktreeCreateHandler_ReusesExistingDirectory verifies idempotency: an
-// existing directory at the target path is echoed back without a second git
-// worktree add (git would refuse the duplicate path).
+// existing REGISTERED worktree at the target path is echoed back without a
+// second git worktree add (git would refuse the duplicate path).
+//
+// The tree is created through the handler rather than with a bare MkdirAll:
+// since t600 the reuse branch requires a worktree git knows about, because
+// reuse keyed on "a directory exists here" returned the primary checkout for
+// the name "../.." and any squatting plain directory for an ordinary name.
 func TestWorktreeCreateHandler_ReusesExistingDirectory(t *testing.T) {
 	repo := initWorktreeTestRepo(t)
 
+	h := NewWorktreeCreateHandler()
+	created, err := h.Handle(context.Background(), &HookInput{
+		SessionID:    "sess-wt-2-setup",
+		WorktreeName: "leftover",
+		CWD:          repo,
+	})
+	if err != nil {
+		t.Fatalf("setup Handle: %v", err)
+	}
 	existing := filepath.Join(repo, ".claude", "worktrees", "leftover")
-	if err := os.MkdirAll(existing, 0o755); err != nil {
-		t.Fatal(err)
+	if created.WorktreePath != existing {
+		t.Fatalf("setup WorktreePath = %q, want %q", created.WorktreePath, existing)
 	}
 
-	h := NewWorktreeCreateHandler()
 	got, err := h.Handle(context.Background(), &HookInput{
 		SessionID:    "sess-wt-2",
 		WorktreeName: "leftover",

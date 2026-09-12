@@ -485,7 +485,7 @@ Purpose: After SPEC creation, detect execution environment and present optimal i
 Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
 - `""` (empty) or `"cc"`: CC mode (Claude-only)
 - `"glm"`: GLM mode (GLM-only)
-- `"cg"`: CG mode (Claude Leader + GLM Workers)
+- `"cg"`: legacy configuration; stop execution-mode selection and show `moai migrate cg`. Do not activate or silently replace mixed roles.
 
 **Step 2: Detect tmux availability**
 Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
@@ -498,7 +498,6 @@ When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to ac
 - Option 1 (Recommended): Worktree + {active_mode}
   - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
   - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
-  - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
 - Option 2: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks. (Agent Teams in-process mode retired.)
 
 When tmux is NOT available: AskUserQuestion with 1 option:
@@ -507,8 +506,8 @@ When tmux is NOT available: AskUserQuestion with 1 option:
 **Step 4: Execute selected mode**
 - **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 - **Isolated-workspace mode**: tell the user to enter a workspace and run there —
-  `moai cc -w <name>` in place, or `moai cg -w <name> --spawn` for a teammate
-  window that leaves this session running. Plan does not create the workspace.
+  `moai cc -w <name>` in place, or `moai cc -w <name> --spawn` for a separate
+  Claude session window that leaves this session running. Neither command preserves legacy CG mixed roles. Plan does not create the workspace.
 
 **Step 5: Gate result passing**
 - Pass the selected execution mode to the run workflow

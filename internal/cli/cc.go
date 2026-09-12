@@ -123,6 +123,10 @@ func init() {
 
 // runCC switches the LLM backend to Claude, then launches Claude Code.
 func runCC(cmd *cobra.Command, args []string) error {
+	return runClaudeEntry(cmd, args, "cc", "claude", kanban.BackendClaude, unifiedLaunch)
+}
+
+func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backend string, launch func(string, string, []string) error) error {
 	for _, arg := range args {
 		if arg == "--help" || arg == "-h" {
 			return cmd.Help()
@@ -132,12 +136,16 @@ func runCC(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if err := guardCGLaunchMode(mode); err != nil {
+		return err
+	}
+
 	// --spawn re-issues this same command in a new tmux window instead of
 	// replacing the current process. It runs before any settings mutation so a
 	// failed spawn leaves the environment untouched; the spawned `moai cc`
 	// performs the mutations itself.
 	if spawnArgs, spawn := stripSpawnFlag(args); spawn {
-		return spawnLaunch(cmd.OutOrStdout(), "cc", spawnArgs)
+		return spawnLaunch(cmd.OutOrStdout(), commandName, spawnArgs)
 	}
 
 	profileName, filteredArgs, err := parseProfileFlag(args)
@@ -169,8 +177,8 @@ func runCC(cmd *cobra.Command, args []string) error {
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
 		defer restoreFactory()
-		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendClaude, entry.Spec)
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
+		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec)
+		defer exportKanbanLaunchFacts(entry.Spec, backend)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeadSessionName(leadName)()
@@ -189,7 +197,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
+		defer exportKanbanLaunchFacts(entry.Spec, backend)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -206,7 +214,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 			// companion commands the SessionStart notice prints on one run.
 			leadLabel, _ := parseLeadLabel(filteredArgs)
 			defer enterKanbanMode(entry.Spec, leadLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
+			defer exportKanbanLaunchFacts(entry.Spec, backend)()
 			// A lead launched bare has only an AI-generated title, which claude
 			// discards on /clear; naming it explicitly is what survives.
 			var leadName string
@@ -224,7 +232,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
-			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
+			defer exportKanbanLaunchFacts(entry.Spec, backend)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -248,5 +256,5 @@ func runCC(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
-	return unifiedLaunch(profileName, "claude", filteredArgs)
+	return launch(profileName, mode, filteredArgs)
 }

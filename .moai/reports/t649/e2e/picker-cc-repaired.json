@@ -1,0 +1,54 @@
+{
+  "exit_code": -9,
+  "elapsed_seconds": 21.85,
+  "timeout": true,
+  "group_cleanup_attempted": true,
+  "picker_command_sent": true,
+  "selection_sent": true,
+  "test_family_api_key_accepted": false,
+  "cleanup_errors": [],
+  "prompt_categories": [],
+  "diagnostic_categories": [],
+  "error_categories": [],
+  "observed_model_ids": [
+    "claude-opus-5",
+    "claude-opus-5Custommodel",
+    "claude-sonnet-5"
+  ],
+  "picker_visible": true,
+  "picker_rows": [
+    {
+      "default": true,
+      "model_ids": []
+    },
+    {
+      "default": false,
+      "model_ids": [
+        "claude-opus-5"
+      ]
+    },
+    {
+      "default": false,
+      "model_ids": [
+        "claude-sonnet-5"
+      ]
+    }
+  ],
+  "selected_model_ids": [
+    "claude-opus-5"
+  ],
+  "selected_default": false,
+  "session_only_selection_confirmed": true,
+  "assistant_models": [],
+  "tool_names": [],
+  "result_event_count": 0,
+  "marker_in_final_result": false,
+  "session_id": null,
+  "result_subtypes": [],
+  "success": true,
+  "journey": "picker",
+  "mode": "cc",
+  "requested_model": "claude-sonnet-5",
+  "binary_sha256": "5b259dbbaee35c325d3ff8dd959d7192ff9a6ba91edb2dabab5a18bbc8a792d7",
+  "picker_exact_allowlist": true
+}

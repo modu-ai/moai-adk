@@ -106,7 +106,7 @@ Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) fo
 
 ### §C.1 Agent Teams (`agent-team`) — footnote surface (experimental, re-allowed)
 
-**`agent-team` — re-allowed as experimental** (operator decision). The flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, making the native teammate runtime a sanctioned orchestration surface: spawn teammates with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session), shared TaskList coordination, `moai cg` GLM teammate panes, `moai cc -w <name> --spawn` teammate windows, `~/.claude/teams/` registry.
+**`agent-team` — re-allowed as experimental** (operator decision). The flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in `.claude/settings.json` and the distributed template, making the native teammate runtime a sanctioned orchestration surface: spawn teammates with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session), shared TaskList coordination, `~/.claude/teams/` registry.
 
 **Selection rule unchanged**: the Phase 4 decision tree never auto-selects `agent-team` — an explicit operator request (`--team` / `--mode team` / `Team` scale label) selects it; Tier L coordination auto-routing still targets `manager-lead`; multi-domain research routes to `fanout`; coding-heavy work to `serial`; high-volume mechanical transformation to `sweep`.
 
@@ -120,7 +120,7 @@ Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) fo
 - `/model` IS inherited from the leader by default since CC 2.1.234 (the former Default teammate model `/config` setting was removed; a spawn-named model overrides; effort inheritance unchanged since v2.1.186)
 - Team state `~/.claude/teams/{name}` and `~/.claude/tasks/{name}` is runtime-managed — never hand-edit
 - Defining a subagent as a teammate skips `skills:` / `mcpServers:` frontmatter (loaded from project/user settings instead)
-- GLM inheritance (load-bearing for cost): whether teammates inherit the lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — `moai cg`'s tmux env injection is a separate path and does not answer it; measure before relying on GLM-billed teammates
+- GLM inheritance (load-bearing for cost): whether teammates inherit the lead's `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` is not officially documented — the retired CG tmux mechanism does not verify native mixed-provider routing; that capability must pass its actual gate before relying on GLM-billed teammates
 - Background subagents (the non-teammate path) have the Task tool family stripped from their schema (measured: TaskCreate/TaskUpdate/TaskList/TaskGet and ToolSearch absent from an unnamed background subagent; SendMessage present) — teammates reportedly regain the Task tool, so Task-based coordination is a teammate-path capability
 
 ### §C.2 `fanout` compound preference — three concurrency limits (SSOT)

@@ -119,7 +119,7 @@ moai model profile --json   # 机器可读
 
 {{< icon warning warn >}} **诚实声明**: GLM 后端的 effort 覆盖层处于**已实现 + 已接线**状态，但 wire 有效性(实时有效性)尚待实证 — 不表述为"行为保证"。
 
-在 GLM 后端(`moai glm` / `moai cg` 的 GLM 面板)上，会在配置矩阵之上应用一层覆盖:
+在 GLM 后端(`moai glm`)上，会在配置矩阵之上应用一层覆盖:
 
 - 模型槽位映射: `fable` → `glm-5.3-flash`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)。该槽位是 GLM 环境绑定，与配置矩阵无关 — 即使没有任何矩阵格子选择 Fable，它仍保持接线状态。
 - Claude 的 5 级 effort collapse 到 z.ai 的 reasoning 上限上。GLM-5.3 **始终推理** — 不支持关闭 reasoning，请求关闭会直接失败 — 所以调节轴只有三档 `reasoning_effort`(low / high / max):
