@@ -106,6 +106,28 @@ workflow:
     multi:
         review_gate:
             enabled: false
+    # slot_lease: leases on named heavy resources, so two sessions sharing one
+    # machine do not start the same heavy work at once. The
+    # `moai slot acquire|status|release` verbs work whatever `enabled` says;
+    # `enabled` gates ONLY the PreToolUse guard that refuses a matching command
+    # while ANOTHER live session holds the resource. Ships OFF, and with no
+    # resources: every pattern below is yours to write, because a shipped one
+    # would name some language's commands.
+    #
+    # default_max_duration is the bound an acquire declares when
+    # --max-duration is omitted. Past it the lease reads expired and another
+    # session may take it over without --force, so size it to the work.
+    #
+    # resources maps a resource name (a-z, 0-9, '-') to the RE2 patterns that
+    # attribute a Bash command to it, matched with quoted spans removed:
+    #     resources:
+    #         <resource-name>:
+    #             commands:
+    #                 - '<command-regex>'
+    slot_lease:
+        enabled: false
+        default_max_duration: 30m
+        resources: {}
     # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
     # DEFAULTS. This block is the SSOT for workflow agent() model/effort
     # defaults; per-script literals in .claude/workflows/*.js override it.

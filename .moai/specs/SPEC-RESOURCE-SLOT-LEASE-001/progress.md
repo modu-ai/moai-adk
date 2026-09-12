@@ -243,6 +243,39 @@ GREEN(트리 = M3 커밋):
 미완(Gap):
 - **전체 cli 패키지는 끝까지 돌지 못했다.** `go test ./internal/cli/ -count=1 -timeout 600s` → `panic: test timed out after 10m0s`, 그때 돌던 테스트 `TestSyncGitSpecStatuses_NoSpecIDsInGitLog (0s)`, `FAIL ... 600.769s`. 시한 전에 실패한 테스트는 위 4번 하나뿐이었고 이미 고쳤다(`m3-cli-full-suite-excerpt.txt`). 10분 안에 끝나지 않는 것이 이 머신의 패키지 크기 문제인지, 그 테스트가 멈춘 것인지는 가리지 못했다. 전체 판정은 develop push 뒤 CI 몫이다.
 
+### 흡수 — develop `30cf7f422`
+
+리드가 전달한 게이트 측정을 이 워크트리에서 다시 쟀다(2026-09-12T00:42Z): `git fetch origin develop` 뒤 `git rev-parse --short origin/develop` → `30cf7f422`, `git rev-parse --short develop` → `30cf7f422`, `git merge-base --is-ancestor WT-acquire-branch-record develop` → 종료 코드 0, 같은 명령의 `origin/develop` 판정 → 종료 코드 0, `git rev-parse --short WT-acquire-branch-record` → `3262fa9be`. **게이트 열림**(t637 착지).
+
+흡수: `git merge --no-ff develop` → 종료 코드 0, 충돌 없음. 병합 커밋 `93fac8401`, 1844 파일 / +67129 / −2220.
+
+### M5 — 템플릿 배포와 로컬 사본 (internal/template)
+
+- 변경: 템플릿 `workflow.yaml`에 `slot_lease` 블록(`enabled: false`, `default_max_duration: 30m`, `resources: {}` + 언어를 가리키지 않는 `<resource-name>`/`<command-regex>` 주석). 새 규칙 `internal/template/templates/.claude/rules/moai/workflow/resource-slot-lease.md`(`paths:`로 설정 파일과 자신에게만 범위 지정 — 항상 로드되는 표면이 아니므로 `rule-authoring.md`의 진술 의무는 발동하지 않는다). 로컬 사본 `.claude/rules/moai/workflow/resource-slot-lease.md`는 `cp` 후 `cmp` 종료 코드 0(바이트 동일). 미러 파리티 허용목록(`internal/template/rule_template_mirror_test.go`)에 이 규칙을 등록해 한쪽만 고치는 편집이 CI에서 잡히게 했다. 로컬 `.moai/config/sections/workflow.yaml`은 건드리지 않았다(기본값이 이미 꺼짐이고, 켜는 것은 운영자 결정).
+- N3 반영: 언어 도구 토큰 45개를 `.moai/reports/t607/m5/tool-tokens.txt`(한 줄 한 토큰)에 두고 판정은 `grep -f` 단일 호출로 바꿨다 — 인수 기준 본문의 `<TOOL_TOKENS>` 치환이 더 이상 필요 없다.
+
+AC-RSL-014 판정(모든 명령은 워크트리 루트에서 실행):
+
+| 항목 | 명령 | 결과 |
+|---|---|---|
+| (a) 키와 기본값 | `/usr/bin/grep -n -A2 'slot_lease:' internal/template/templates/.moai/config/sections/workflow.yaml` | 종료 코드 0, `127:    slot_lease:` / `128-        enabled: false` / `129-        default_max_duration: 30m` |
+| (b) 자리표시자 구조 | `/usr/bin/grep -c -E 'resources: \{\}\|<command-regex>' <같은 파일>` | `2`, 종료 코드 0(기준 2 이상) |
+| (c) 설정에 언어 토큰 없음 | `/usr/bin/grep -nwiE -f .moai/reports/t607/m5/tool-tokens.txt <같은 파일>` | 출력 없음, 종료 코드 1 |
+| (d) 규칙에 언어 토큰 없음 | 같은 명령, 대상 `internal/template/templates/.claude/rules/moai/workflow/resource-slot-lease.md` | 출력 없음, 종료 코드 1 |
+| (e) 양성 대조 | 규칙을 스크래치로 복사하고 끝에 `pytest` 한 줄을 붙인 뒤 (d)와 같은 명령 | `53:pytest`, 종료 코드 0 — 목록은 무력하지 않다. 원본 미변경 |
+| (f) 내부 토큰 없음 | `/usr/bin/grep -rnE 'SPEC-[A-Z]\|\bt[0-9]{3}\b\|20[0-9]{2}-[0-9]{2}-[0-9]{2}' <규칙>` | 출력 없음, 종료 코드 1 |
+| (g) 중립성·유출·출처 | `go test ./internal/template/ -run 'TestTemplateNeutralityAudit$\|TestTemplateNoInternalContentLeak$\|TestRuleProvenance' -count=1 -v` | 종료 코드 0, 이름 댄 네 테스트 모두 `--- PASS`(`.moai/reports/t607/m5/m5-template-green.txt`) |
+| (h) strict 유출 | `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak$' -count=1 -v` | 종료 코드 0, `--- PASS`(`m5-template-strict.txt`) |
+| (i) `make build` | — | **미실행. cli 슬롯 대기**(아래) |
+
+AC-RSL-014 뮤턴트 짝(둘 다 백업에서 `cp`로 복구하고 `cmp` 종료 코드 0으로 확인):
+- 새 규칙 파일 끝에 `Origin: SPEC-RESOURCE-SLOT-LEASE-001 (card t607, 2026-09-12).` 한 줄 → `go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak$|TestRuleProvenanceAudit$'` 종료 코드 1, `[1] templates/.claude/rules/moai/workflow/resource-slot-lease.md | class=C1-spec-id-prefix | match=SPEC-RESOURCE-SLOT-LEASE-001`(`m5-mutant-leak.txt`).
+- 템플릿 자리표시자 `'<command-regex>'` → `'go test'` → (c) 판정이 `126:    #                 - 'go test'`로 적중, 종료 코드 0(원래는 종료 코드 1). 복구 뒤 다시 종료 코드 1.
+
+기타: `go test ./internal/template/... -count=1` → 네 패키지 `ok`(미러 허용목록 등록 후 재실행 포함), `golangci-lint run --timeout=5m ./internal/template/...` → `0 issues.`
+
+**cli 슬롯 대기 — `make build`.** `make build`는 `go build ./cmd/moai`를 포함해 `internal/cli`를 링크하므로 heavy-test 슬롯이 필요하다. 리드 지시대로 스스로 돌리지 않고 멈춰 요청한다. 슬롯을 받으면 실행할 것: `make build` → 종료 코드 0(AC-RSL-014(i)). 그 전까지 임베드된 템플릿은 이 커밋의 소스보다 낡은 상태다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<run 단계 대기>_

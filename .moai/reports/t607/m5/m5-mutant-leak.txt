@@ -1,0 +1,8 @@
+--- FAIL: TestTemplateNoInternalContentLeak (0.62s)
+    internal_content_leak_test.go:1611: template internal-content leak detected (1 occurrences, mode=narrow):
+    internal_content_leak_test.go:1621:   [1] templates/.claude/rules/moai/workflow/resource-slot-lease.md | class=C1-spec-id-prefix | match=SPEC-RESOURCE-SLOT-LEASE-001
+    internal_content_leak_test.go:1632:   full listing: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-template-leak-2703613363.log
+    internal_content_leak_test.go:1638: Remediation: apply substitution dictionary at .moai/specs/SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001/design.md §B (or its rule-mirror at .claude/rules/ if/when promoted). Cross-reference CLAUDE.local.md §25 doctrine.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	1.182s
+FAIL

@@ -1,0 +1,46 @@
+go test
+go build
+pytest
+unittest
+tox
+npm
+npx
+yarn
+pnpm
+jest
+vitest
+mocha
+tsc
+cargo
+rustc
+mvn
+maven
+junit
+gradle
+kotlinc
+dotnet
+msbuild
+xunit
+nunit
+rspec
+rake
+bundle exec
+minitest
+phpunit
+composer
+pest
+mix test
+exunit
+ctest
+cmake
+make test
+gtest
+sbt
+scalatest
+rscript
+testthat
+flutter
+dart
+swift test
+xcodebuild
+swiftpm
