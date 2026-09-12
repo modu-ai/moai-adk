@@ -323,3 +323,9 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+### Carried sync obligations
+
+Work the run phase deliberately did not do, because doing it would have crossed an ownership boundary. Each line names the artifact, the edit, and why it waits.
+
+- **`research.md` §14 — correct the derivation command to `[Aa]pplyAutonomyTierBundle(Fn)?\(`.** t656 (`b5b5883e9`) put the call behind the test seam `applyAutonomyTierBundleFn`, so the recorded pattern's capital-`A` literal no longer matches it and the step-1 output dropped from 11 lines to 10. The producer and the watch list are unchanged — the call still stands at `internal/cli/init.go:873` and still writes the same `~/.claude/settings.json` — so W1-W6 and AC-ITI-019 need no revision. What is stale is the command, and only the command. Left to sync because run may not edit plan artifacts' body content. Without this line the next re-derivation drops the producer silently, which is the whole reason it is written down. Control pair and measurement: `.moai/reports/t586/absorb-t583/slot/c-recheck.md` § research.md §14.
