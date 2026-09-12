@@ -1,0 +1,20 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/kanban/ -run '^TestSlotLease_DeclaredBound$' -count=1 -v
+# exit: 1
+# tree: c331bc589 with one mutation: the Expired branch removed from the decision table
+# note: restored afterwards; git diff --exit-code -- internal/kanban/slot_lease.go -> exit 0
+# ---
+=== RUN   TestSlotLease_DeclaredBound
+=== RUN   TestSlotLease_DeclaredBound/expired_takeover
+    slot_lease_test.go:439: acquire over an expired live owner without --force: slot lease: resource held by another session: lane-s-1 holds "demo" (session s-1, pid 73603) since 2026-09-11T17:27:48Z, bound ends 2026-09-11T18:27:48Z
+=== RUN   TestSlotLease_DeclaredBound/not_expired_refused
+=== RUN   TestSlotLease_DeclaredBound/holder_reacquire_restarts_bound
+=== RUN   TestSlotLease_DeclaredBound/invalid_bound_rejected
+--- FAIL: TestSlotLease_DeclaredBound (0.01s)
+    --- FAIL: TestSlotLease_DeclaredBound/expired_takeover (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/not_expired_refused (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/holder_reacquire_restarts_bound (0.00s)
+    --- PASS: TestSlotLease_DeclaredBound/invalid_bound_rejected (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.442s
+FAIL

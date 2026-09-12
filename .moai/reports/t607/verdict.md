@@ -1,0 +1,73 @@
+# t607 판정 기록 — 무거운 테스트 실행 슬롯
+
+## 1. 방향 결정 (plan 진입 전)
+
+- **결정**: B안 — 운영자 결정, 리드가 전달
+- **수신**: 2026-09-12T00:10+0900, 리드 세션(`lead`)의 cross-session 메시지. /clear로 유실된 결정을 다시 전달받은 것이다
+- **기록한 곳**: lane-10, 워크트리 `.claude/worktrees/t607`, 브랜치 `WT-heavy-test-slot`, 기록 시점 HEAD `85868148c`
+
+### 결정 내용 (리드 메시지 요지)
+
+| 항목 | 결정 |
+|---|---|
+| 표면 | 범용 자원 임대 명령 — `moai slot acquire\|status\|release --resource <name>` 류 |
+| 강제 | 선택형 PreToolUse 가드, 기본값 꺼짐 |
+| 배포 범위 | 템플릿과 바이너리로 배포한다(로컬 전용이 아니다). 기본값은 꺼짐, 템플릿 문서는 최소화 |
+| 기록 필드 | 자원명 · 보유 세션 id/이름 · pid(스테일 판정용) · 명령 · 시작 시각 · 선언 상한 |
+| 대조군 | 필수. 표면 없음 → 두 세션 동시 시작 성공 / 표면 있음 → 한쪽 거절. 테스트로 재현한다 |
+| 재사용 경계 | kanban acquire/release/stale 코드 방식만 재사용한다. 통합 창(`moai integration`)과는 분리한다 |
+| 문서 편집 | `kanban-dispatch.md`, `gitflow-lane-protocol.md`는 t637(`WT-acquire-branch-record`)이 develop에 병합된 뒤에 고친다 |
+| 착수 순서 | 로컬 develop `eb50af5a8` 흡수 → manager-spec으로 SPEC 작성 |
+
+### 기각된 안
+
+- A안(로컬 규칙만): 채택하지 않았다.
+- C안(`moai integration` 확장): 채택하지 않았다. 사전 판단 근거는 가드가 `git merge`만 잡는다는 점, 기록 필드가 병합 대상 전용이라는 점, 창이 하나뿐이라 병합 대기와 테스트 대기가 서로를 막는다는 점이다.
+
+### 사전 판단 때 밝힌 공백 (그대로 이어진다)
+
+- lane-10 자기 슬롯에서 본 충돌 대상 `internal/cli/ptycaptest`는 `internal/cli`를 import하지 않는다. 그래서 무거운 패키지끼리 실제로 충돌한 장면은 직접 재현하지 못했다.
+- 직접 관측한 증거는 확인 후 시작 사이의 경합뿐이다. `ps`로 비어 있음을 확인한 직후 다른 `go test`가 시작됐다.
+
+## 2. t637 병합 상태 (문서 편집 보류 조건)
+
+측정 명령: `git merge-base --is-ancestor WT-acquire-branch-record develop` / `... origin/develop`
+2026-09-12T00:10+0900 기준 두 명령 모두 rc=1이었다. `f680dab46`은 `eb50af5a8`의 조상이 아니므로 문서 편집은 보류한다.
+
+## 3. plan 단계 결과
+
+| 단계 | 커밋 | 결과 |
+|---|---|---|
+| SPEC 초안 v0.1.0 | `1a178c174` | `SPEC-RESOURCE-SLOT-LEASE-001`, Tier M, REQ 16 / AC 16 |
+| plan-audit 1회차 | `e50cfea93` | FAIL 0.78 — 막는 결함 D1–D6 (`plan-audit-iter1.md`) |
+| SPEC 수리 v0.2.0 | `e79d6761f` | D1–D12 전부 반영 |
+| plan-audit 2회차 | `759009244` | **PASS 0.90**, 막는 결함 없음 (`plan-audit-iter2.md`) |
+
+run 단계로 넘길 선택 사항(2회차 N1–N4): N1은 CLI도 가드와 같은 루트 해석 함수를 쓰게 할 것(D1의 거울상), N2는 AC-RSL-003c 분류, N3은 `<TOOL_TOKENS>`를 파일로 빼 `grep -f`로 돌릴 것, N4는 no-git 행의 감사 로그 경로 명시다.
+
+다음 관문은 Implementation Kickoff Approval이다. 승인 전에는 run에 들어가지 않는다. t637 게이트는 이 기록 시점에도 rc=1이다.
+
+## 4. Implementation Kickoff Approval
+
+- **승인**: 2026-09-12T03:53+0900. lane-10 세션에서 운영자가 `AskUserQuestion`으로 직접 답했다. 선택지는 「승인, 반자율 진행 (권장)」이었다.
+- **진행 방식**: 반자율이다. M1이 끝났을 때와 M4가 끝났을 때 운영자에게 결과를 보이고 멈춘다. push는 하지 않는다(리드 일괄).
+- **run 착수 전 트리**: 카드 HEAD `394869320`. 흡수할 로컬 develop은 `ac6c42c2d`이다. t637 게이트는 rc=1이므로 M6은 닫힌 채로 시작한다.
+- 이 기록은 run 단계의 어떤 명령보다 먼저 커밋한다.
+
+## 5. run 단계 진행 상황 (2026-09-12)
+
+| 마일스톤 | 커밋 | 상태 |
+|---|---|---|
+| M1 RED | `f20d07c48` | 끝. 실패는 전부 동작 기준(assertion-RED) |
+| M2 임대 코어 | `28d58376b` · `c331bc589` · `a5efb58f6` | 끝. 대조군 `starts=2` / `acquired=1 refused=1` |
+| M4 설정·가드 | `dff5dee4a` · `2e743c0d6` | 끝. 뮤턴트 표 전 항목 각자 실패 |
+| M3 CLI | `10b022b59` | 끝. `TestSlotCLI_` 11 PASS (슬롯 안에서 측정) |
+| develop 흡수 | `93fac8401` | develop `30cf7f422`, 충돌 없음 |
+| M5 템플릿 | `685fc3387` | `make build` 제외 끝 |
+| M6 레인 문서 | `e78fd0ee6` | 끝. t637 병합으로 게이트 열림(rc=0, 자체 재측정) |
+
+**남은 작업 하나**: `make build`. `internal/cli`를 링크하므로 heavy-test 슬롯이 필요하다. 리드가 1회 승인했고 대기열은 lane-2(dr0912) → lane-1(SLOT-21) → lane-10이다. 창을 받으면 그 시점의 로컬 develop tip(리드 통지 기준 `d67196740`, t659 병합·미푸시)을 먼저 흡수한다.
+
+**귀속하지 않는 red**: `TestDestructiveTargetRegistry_CoversAllSites`는 t656 회귀로 현재 develop에 있는 known-red이며 lane-2가 dr0912로 수리 중이다. 흡수 뒤 보이더라도 t607 귀속이 아니다.
+
+**유지되는 Gap**: `go test ./internal/cli/` 전체 패키지 판정은 없다(600초 초과). 판정은 develop push CI 몫이며, 로컬 전체 실행은 리드 규칙상 하지 않는다.

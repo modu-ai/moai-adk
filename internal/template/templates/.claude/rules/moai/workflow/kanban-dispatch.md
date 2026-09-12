@@ -204,6 +204,12 @@ The lead dispatches this rather than assuming it: each instruction names the wor
 
 **A verification recipe that spawns processes is itself a hazard, and gets reviewed as one.** The fault belongs to the dispatcher who wrote and approved the recipe, not to the lane that ran it as given.
 
+### Serializing a heavy run across lanes
+
+Where two lanes would otherwise start the same heavy verification at once, a lane takes a lease on a named resource first: `moai slot acquire --resource <name> --max-duration <bound>`, and `moai slot release --resource <name>` when the run ends. `moai slot status` says who holds it. This is the same record-and-liveness shape as the integration window, kept deliberately separate from it — its own record, its own lock, its own config key — because a merge window and a heavy-run window are different resources and one window for both makes each wait on the other.
+
+The bound is the holder's own declaration: past it another lane may take the resource over without `--force`, so a forgotten release costs the bound and not the batch. A PreToolUse guard that refuses a matching command while another live session holds the resource exists, and is **opt-in and off by default** (`workflow.slot_lease.enabled`); the verbs work whatever that flag says. Full surface: `.claude/rules/moai/workflow/resource-slot-lease.md`.
+
 ### The env-isolated verification form
 
 [HARD] Inside a worktree, an environment-scrubbed verification runs as one compound `unset … && <command>` invocation:
