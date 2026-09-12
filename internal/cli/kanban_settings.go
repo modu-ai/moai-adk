@@ -66,15 +66,19 @@ func operatorSuppliedSettings(args []string) bool {
 //
 // The signal env var is set via os.Setenv (restored on cleanup) so it reaches
 // the child process through os.Environ(), matching the enterKanbanMode pattern.
-func prepareKanbanSettings(args []string) (flag []string, cleanup func()) {
+func prepareKanbanSettings(profileName string, args []string) (flag []string, cleanup func()) {
 	if operatorSuppliedSettings(args) {
 		return nil, func() {}
 	}
 
 	// The kanban payload: the user's cross-session preferences overlaid with
-	// the dispatch-required accept. An unreadable config degrades to the
-	// accept-only payload (fail-open — same as before the merge existed).
-	payload := crossSessionSettingsPayload(crossSessionConfigRootFn())
+	// the profile's launch effort and the dispatch-required accept. An
+	// unreadable config degrades to the accept-only payload (fail-open — same
+	// as before the merge existed). The effort rides here rather than in
+	// CLAUDE_CODE_EFFORT_LEVEL for the reason launch_effort_settings.go gives:
+	// the env var refuses an in-session /effort or /model change, so a lane
+	// could never raise its own effort mid-card.
+	payload := applyLaunchEffort(crossSessionSettingsPayload(crossSessionConfigRootFn()), profileName)
 	payload["crossSessionInbound"] = "accept"
 
 	path, err := writeTransientSettingsFile(payload, "moai-kanban")

@@ -252,7 +252,13 @@ func TestACFM023c_KanbanEnvReachesChildEnvironment(t *testing.T) {
 	t.Setenv(config.EnvMoaiKanban, "1")
 	t.Setenv(config.EnvMoaiKanbanSpec, "SPEC-PLACEHOLDER")
 
-	launchEnv := buildEnvForLaunch("high", os.Environ())
+	// The Claude path no longer wraps os.Environ() at all — card t595 removed the
+	// CLAUDE_CODE_EFFORT_LEVEL injection, because that variable is an override
+	// Claude Code refuses to let /effort or /model change mid-session. The
+	// drop hazard this AC guards therefore survives only in the GLM wrapper,
+	// which still filters the inherited environment, so the assertion follows it
+	// there rather than becoming a tautology over os.Environ().
+	launchEnv := buildEnvForGLMLaunch(config.GLMModels{}, "", "high", os.Environ())
 
 	for _, want := range []string{
 		config.EnvMoaiKanban + "=1",
