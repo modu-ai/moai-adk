@@ -156,7 +156,14 @@ M1·M2 가 양방향으로 빨간불이므로 이 단정은 `os.Environ()` 동�
 
 소스에도 있다 — `internal/cli/slot.go:84` `newSlotCmd()`, `:328` `rootCmd.AddCommand(newSlotCmd())`. 독트린 참조도 있다 — `.claude/rules/moai/workflow/kanban-dispatch.md:209`, 전용 룰 `.claude/rules/moai/workflow/resource-slot-lease.md`, `.claude/rules/local/gitflow-lane-protocol.md:100`. 기능 자체는 `SPEC-RESOURCE-SLOT-LEASE-001`(status: completed, 카드 t607)로 이미 착지해 있다.
 
-따라서 진단은 **바이너리 지연**이다: `~/go/bin/moai` 가 t607 착지 이전 빌드라 명령을 모른다. 첫 관측의 실수는 결론이 아니라 측정 대상이었다 — PATH 의 설치본 하나만 재고 "없다"로 적었고, 갓 빌드한 트리 사본을 대조하지 않았다. `CLAUDE.local.md` §11 이 경고하는 바로 그 축이다.
+진단은 단순한 "낡은 빌드"보다 한 칸 더 구체적이다 — **브랜치 계열 차이**다. 객체 존재 확인(`cat-file -e`)을 이 런에서 양쪽 ref 에 직접 돌렸다:
+
+- `develop:internal/cli/slot.go` → exit 0 (존재)
+- `main:internal/cli/slot.go` → exit 128, `exists on disk, but not in 'main'`
+
+즉 t607 은 develop 에 착지했고 main 에는 아직 없다. `~/go/bin/moai` 를 포함한 main 계열 빌드는 **릴리스 전까지 이 명령을 갖지 않는 것이 정상**이며, 고장이 아니다. 무거운 실행 직렬화가 필요하면 develop 계열 사본(`./bin/moai`)을 쓰거나 `make install` 로 갱신한다.
+
+첫 관측의 실수는 결론이 아니라 측정 대상이었다 — PATH 의 설치본 하나만 재고 "없다"로 적었고, 갓 빌드한 트리 사본을 대조하지 않았다. 같은 이름의 바이너리가 트리마다 다른 시점·다른 계열의 빌드라는 것이 이 축의 함정이며, `CLAUDE.local.md` §11 이 경고하는 바로 그 지점이다.
 
 교정: 무거운 실행 직렬화가 필요하면 `~/go/bin/moai` 를 `make install` 로 갱신하면 된다. 이 런은 레인 단독이라 슬롯이 필요 없었으므로 t595 절차에는 영향이 없다.
 
