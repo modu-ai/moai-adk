@@ -587,7 +587,28 @@ case "$GATE_LANG" in
         ;;
     cpp)
         C1_LABEL="g++ syntax check"
-        run_step g++ c1 sh -c 'find . -name "*.cpp" -o -name "*.cc" -exec g++ -fsyntax-only -std=c++17 {} \; 2>&1' || true
+        # Three details here are load-bearing:
+        #   \( ... \)  groups the extension conditions so the shared -exec applies to
+        #              EVERY match. Ungrouped, `-name "*.cpp" -o -name "*.cc" -exec`
+        #              parses as `*.cpp -o ( *.cc -a -exec )`: a .cpp file satisfies
+        #              the first branch, short-circuits the -o, and never reaches the
+        #              compiler — and since the expression carries an action, find
+        #              adds no default -print either, so the check passes in silence.
+        #   {} +       propagates the compiler's exit status to find's own. The `\;`
+        #              form does NOT: find exits 0 even when every invocation failed,
+        #              so a real syntax error was recorded as c1=0 (a pass).
+        #   -print     records WHICH files were handed to the compiler, so a passing
+        #              run is distinguishable from one that checked nothing. Empty
+        #              output therefore means zero targets, reported as such below
+        #              rather than as a successful check.
+        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
+        # reads them — so the zero-target case is promoted to the audit log here. Without
+        # it, "checked nothing" and "checked everything and it passed" are both a silent
+        # c1=0, which is exactly how the original defect stayed invisible.
+        if grep -q '^0 C++ files checked' "$GATE_TMPDIR/c1.log" 2>/dev/null; then
+            log_gate_event "cpp_targets=0 (no *.cpp/*.cc compiled — not a passing check)"
+        fi
         ;;
     scala)
         C1_LABEL="scalac"
