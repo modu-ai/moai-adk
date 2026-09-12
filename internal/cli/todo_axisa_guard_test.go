@@ -120,11 +120,22 @@ func TestAxisACanaryHomeSweep_TodoFamily(t *testing.T) {
 		t.Fatalf("sweep matched 0 tests — selector drift; a zero swept set asserts nothing")
 	}
 
-	if entries, readErr := os.ReadDir(filepath.Join(canary, ".moai", "todo")); readErr == nil && len(entries) > 0 {
-		t.Fatalf("canary HOME polluted: %d entr(ies) under %s — the guarded family regressed",
-			len(entries), filepath.Join(canary, ".moai", "todo"))
+	// BOTH home queue locations are swept (t621). `.moai/todo/<key>` is the
+	// legacy fallback root; `.moai/db/<key>/todo` is where the queue actually
+	// resolves since the home-state migration. Reading only the first would
+	// have made this verdict structurally zero for any family that no longer
+	// touches that name — a canary that cannot be polluted asserts nothing.
+	//
+	// The `.moai/db` arm was verified to be able to FAIL: seeding one directory
+	// there before the sweep turns this green red, naming that path (t621).
+	for _, sub := range [][]string{{".moai", "todo"}, {".moai", "db"}} {
+		swept := filepath.Join(append([]string{canary}, sub...)...)
+		if entries, readErr := os.ReadDir(swept); readErr == nil && len(entries) > 0 {
+			t.Fatalf("canary HOME polluted: %d entr(ies) under %s — the guarded family regressed",
+				len(entries), swept)
+		}
 	}
-	t.Logf("sweep verdict: %d todo tests ran under canary HOME %s — 0 directories created under .moai/todo", passes, canary)
+	t.Logf("sweep verdict: %d todo tests ran under canary HOME %s — 0 directories created under .moai/todo or .moai/db", passes, canary)
 }
 
 // tailLines returns at most n trailing lines of s, for bounded failure logs.
