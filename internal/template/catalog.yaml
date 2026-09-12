@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: c4cf9e707ae480e0d9313b22557d05904689e88d7ab55914f692617f6835ed60
+              hash: da9fc299f82ab9305fe008e52ad07a6619f37ffa0ccd39e3a567ecbbbb3e6418
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -21,7 +21,7 @@ catalog:
             - name: moai-foundation-quality
               tier: core
               path: templates/.claude/skills/moai-foundation-quality/
-              hash: 13421862623adc9836326beb57b1a7d26af46b88b9535bca084d1d39f2bd0b7d
+              hash: e74e7e3c857797c939de0a4cc584f5642f32f62a4c782fee2cec40e1d1b7a63d
               version: 1.0.0
             - name: moai-foundation-thinking
               tier: core
@@ -91,7 +91,7 @@ catalog:
             - name: moai-workflow-worktree
               tier: core
               path: templates/.claude/skills/moai-workflow-worktree/
-              hash: 2be9294169fc7b6e4183325080aae08fc38216fb5e5e9534d49a7dea9f25a2fd
+              hash: 27d71d161af2c0b4cbcf561e9c77f100fd9de6b11884bd178eb661f440903b7d
               version: 1.0.0
             - name: moai-domain-html-report
               tier: core
@@ -112,7 +112,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f
+              hash: 403a73a1e221ed784f3b5ceb4422583762ef2dae99b6877bc46c7a0cbd284081
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: a5d6809ef6131ffb22342a51297906ff0670128d5c3335183e9e7c1b66a7305e
+              hash: 58857c27bb71f2a7a5093af7f268af0e64f50e174c5c4e220c761c3e969b0bb0
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -147,7 +147,7 @@ catalog:
             - name: super-advisor
               tier: core
               path: templates/.claude/agents/moai/super-advisor.md
-              hash: e47c17c3753b4bc85243b462c491dfef72b2bdf9918f947fdc5fcc5bd35ada1e
+              hash: 529819c72e932597cf367ac158f7f138751f8d3cef833941955b09bb05db386e
               version: 1.0.0
             - name: manager-design
               tier: core
