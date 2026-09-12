@@ -476,7 +476,7 @@ sync_base_head: 9c288daa9248091cfd6be65f5ef8e165285abd21   # 흡수 병합 커�
 sync_binary: "bin/moai — moai_cp/20260910_130400-752-g9c288daa9, built 2026-09-12T00:59:04Z. 이 트리에서 빌드한 바이너리를 경로로 불렀다(설치본 아님, verification-claim-integrity §2.2)"
 changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, 첫 항목"
 b12_self_test_a: "grep -c 'SPEC-RESOURCE-SLOT-LEASE-001' CHANGELOG.md → 0 (방출 전). 중복 없음 — 방출 후 1"
-b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 16 (AC-RSL-001 … AC-RSL-016). 0이 아니므로 공허하지 않다. CHANGELOG 항목도 16을 말한다"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 16 (AC-RSL-001 … AC-RSL-016). 0이 아니므로 공허하지 않다. CHANGELOG 항목도 16을 말한다 — 다만 수를 말할 뿐 일괄 통과를 주장하지 않는다(F2 정정 뒤 문구)"
 b12_self_test_c: "CHANGELOG이 인용하는 18개 경로를 ls로 확인 → 종료 코드 0, 전부 존재"
 frontmatter_status_transitions:
   spec_md: "status: in-progress → completed, 단일 sync 커밋에서. updated는 이미 2026-09-12(= sync 날짜)라 값이 바뀌지 않았다 — 다른 프론트매터 필드와 본문은 한 줄도 건드리지 않았다. 3-phase 종결에서 implemented는 통과 상태이며 별도 커밋을 만들지 않는다"
@@ -490,7 +490,7 @@ mx_validation:
 ac_remeasured_here:                       # 이 단계에서 직접 실행해 관측한 것
   - "AC-RSL-001a/001b·002·004·005·006·007·008·009 + 013(a) — go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -v → 종료 코드 0, --- PASS 40, --- FAIL 0, ok 4.814s. 대조군 두 갈래가 이 트리에서 그대로 재현됐다: control `starts=2 (A: RESULT=started | B: RESULT=started)`, lease `acquired=1 refused=1 busy=0 other=0 (A: RESULT=acquired | B: RESULT=held)`. 뮤턴트(001b `acquired=2`)는 M2에서 관측한 기록을 읽었다 — 이 단계에서 뮤턴트를 다시 심지 않았다"
   - "AC-RSL-010·011·012·016 — go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1 -v → 종료 코드 0, --- PASS 29, --- FAIL 0, ok 9.584s"
-  - "AC-RSL-010·012(설정 측) — go test ./internal/config/ -run '^(TestLoadSlotLeaseDefaultMaxDuration|TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v → 종료 코드 0, --- PASS 12, --- FAIL 0, ok 0.404s"
+  - "AC-RSL-010·012(설정 측) — go test ./internal/config/ -run '^(TestLoadSlotLeaseDefaultMaxDuration|TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v → 종료 코드 0, --- PASS 12, --- FAIL 0, ok 0.404s. **이 줄은 그대로 두되 아래 「정정 — sync-audit F1/F2가 §E.4에 남긴 것」을 함께 읽는다**: 이 필터는 당시 이미 실패하던 `TestShippedConfigKeysHaveReaders`를 선택하지 않았고, 그래서 이 초록은 해당 AC에 대한 초록일 뿐 패키지 초록이 아니다"
   - "AC-RSL-013(b) — go test ./internal/kanban/ -run 'IntegrationLock' → 종료 코드 0, --- PASS 17 / FAIL 0; go test ./internal/hook/ -run 'IntegrationLock' → 종료 코드 0, --- PASS 14 / FAIL 0. 스윕 수가 0이 아니다"
   - "AC-RSL-013(c) 병합 전 판정 — CARD_BASE=$(git merge-base develop HEAD) → 8d42587e695aee97cb4454e5efa564cd613343d3. 대조군 `git diff --name-only $CARD_BASE..HEAD | wc -l` → 65(1 이상). 프로브 `... -- internal/cli/integration.go internal/hook/integration_lock_guard.go` → 출력 없음. 이 판정은 병합 전에만 유효하며, 병합 뒤 근거는 병합 트리와 카드 tip 트리의 동일성이다"
   - "AC-RSL-014 (a)-(f) — (a) slot_lease: / enabled: false / default_max_duration: 30m 세 줄 적중, (b) 자리표시자 계수 2(기준 2 이상), (c)·(d) 언어 토큰 grep -nwiE -f tool-tokens.txt 두 파일 모두 출력 없음·종료 코드 1, (f) 내부 토큰(SPEC-·t###·날짜) 출력 없음·종료 코드 1. 미러 바이트 동일성 `cmp` 종료 코드 0. (e) 양성 대조는 M5에서 관측한 기록을 읽었다"
@@ -516,3 +516,23 @@ residual_risk:
   - "`moai slot`은 자문 표면이다. 가드가 꺼져 있으면 임대를 잡지 않고 무거운 명령을 그냥 돌리는 것을 막는 것은 없다 — 상호 배제는 임대를 거치는 호출자들 사이에서만 성립한다"
   - "감사 로그(`.moai/logs/slot-lease-audit.jsonl`)에 회전이나 상한이 없다. 무한히 자란다"
 ```
+
+### 정정 — sync-audit F1/F2가 §E.4에 남긴 것
+
+sync 감사(`.moai/reports/t607/sync-audit.md`, 커밋 `ece65109a`)의 F2는 §E.3과 CHANGELOG를 함께 겨눴다. §E.3 쪽 처분은 manager-develop이 위 「정정」 절에 적었고, 여기에는 **CHANGELOG와 이 §E.4가 같은 모양으로 틀렸던 곳**만 적는다. 원래 문장을 지우지 않고 무엇이 틀렸는지 함께 남긴다.
+
+**무엇이 틀렸나.** 이 §E.4의 `ac_remeasured_here` 여덟 줄은 전부 `-run` 필터를 건 측정이다. 각 줄이 겨눈 AC에 대해서는 여전히 유효한 초록이지만, **패키지가 초록이라는 뜻은 아니다** — 그리고 `internal/config`는 실제로 레드였다. M5(`685fc3387`)가 템플릿에 실은 `workflow.slot_lease.enabled` / `.default_max_duration` 두 키가 `shipped_key_inventory.yaml`에 없어 `TestShippedConfigKeysHaveReaders`가 실패하고 있었고, 내 필터는 그 테스트를 선택하지 않았다. 필터 아래의 초록을 패키지 판정으로 읽을 수 있다고 전제한 것이 결함이다.
+
+**CHANGELOG 문장.** 원래 문구는 “16 acceptance criteria (AC-RSL-001..016), **all PASS**”였다. 그 일괄 주장은 위 레드 때문에 작성 시점에 거짓이었다. 현재 문구는 일괄 통과를 주장하지 않는다 — 기준 수(16)는 유지하되 각 기준이 자기 증거에 걸려 있다고 말하고, **패키지 판정은 필터 없이 잰 것만** 트리(`714bf8a7e`)와 함께 나열하며, `internal/cli`는 그 목록에 없고 판정이 없다고 명시한다.
+
+**재측정(내가 직접 관측한 것).** 레드는 `714bf8a7e`에서 닫혔다. 현재 HEAD `b9b5c0a4a`에서 필터 없이 다시 쟀다:
+
+```text
+$ go test ./internal/config/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/config	1.628s
+EXIT=0
+```
+
+나머지 세 패키지(kanban·hook·template)의 필터 없는 판정은 manager-develop이 `714bf8a7e`에서 잰 것이며 원문은 `.moai/reports/t607/f1/`에 있다 — 이 단계에서 내가 다시 돌리지 않았고, 따라서 그 세 줄은 **읽은 값**이지 내가 관측한 값이 아니다.
+
+**바뀌지 않은 것.** `go test ./internal/cli/` 전체 패키지는 여전히 판정이 없다(600초 초과). F1 수리는 `internal/config`의 레드를 닫았을 뿐 cli 공백을 건드리지 않는다 — 그 판정은 develop push가 일으키는 CI 몫이라는 gaps 첫 줄은 그대로 유효하다. AC-RSL-014(i) `make build`와 M3 증거를 읽기만 했다는 두 gaps 줄도 그대로다.
