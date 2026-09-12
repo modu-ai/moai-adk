@@ -1,0 +1,230 @@
+---
+id: SPEC-DOCS-TABCOUNT-DRIFT-001
+title: 설정 탭 수·이름이 문서마다 따로 세어지는 드리프트 차단
+version: "0.1.0"
+status: draft
+created: 2026-09-12
+updated: 2026-09-12
+author: manager-spec
+priority: P2
+phase: "v3.1.4 target"
+module: "README.{md,ko,ja,zh}, docs-site/content/{ko,en,ja,zh}/{cli-reference/web.md,advanced/moai-web-console.md}, internal/web"
+lifecycle: spec-anchored
+tags: "docs, docs-site, readme, i18n, drift, web-console, guard, t530"
+tier: M
+related_specs:
+  - SPEC-WEB-CODEX-PANEL-001
+  - SPEC-PRECOMMIT-GATE-SCOPE-001
+---
+
+# SPEC-DOCS-TABCOUNT-DRIFT-001 — 설정 탭 수·이름 드리프트 차단
+
+## HISTORY
+
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 0.1.0 | 2026-09-12 | manager-spec | 초기 draft (카드 t530). base `1d150a27d` 에서 탭 수 14를 서로 독립인 세 측정으로 재도출하고, 손으로 적힌 자리 20곳(A군 4 오류 + B군 8 + C군 8)과 이름 드리프트 8곳(D군)을 전수 열거했다. 전수 목록은 `.moai/reports/t530/tab-count-sites.md`. 해법의 축은 "14로 고치기"가 아니라 "수를 없애고, 남는 자리는 기계가 지키게 하기". 스크린샷 재생성은 근거를 적어 별건으로 분리(§5). |
+
+---
+
+## 1. Goal
+
+`moai web` 설정 화면의 탭 수와 탭 이름은 코드(`internal/web/schemaform.go` 의 `consoleTabs()`)가 정하는 **하나의 사실**인데,
+지금은 12개 문서에서 20자리에 걸쳐 **각각 따로 세어져** 손으로 적혀 있다. 그 결과 4자리는 이미 틀렸고(9라고 적혀 있다),
+탭 **이름**도 한 칸 어긋나 있다. 본 SPEC 은 개별 숫자를 고치는 것이 목표가 아니다 — **같은 사실이 여러 문서에서
+독립적으로 세어지는 구조 자체를 없애는 것**이 목표다.
+
+세 갈래로 처리한다.
+
+1. **수를 지운다.** 탭을 세는 대신 이름을 부르거나 "아래 목록" 으로 가리킬 수 있는 자리는 수를 제거한다. 지워진 수는 다시 어긋날 수 없다.
+2. **남는 자리는 기계가 지킨다.** 수 또는 이름을 남겨야 하는 자리에는 `consoleTabs()` 를 읽어 문서와 대조하는 가드 테스트를 둔다.
+3. **4로케일을 한 변경으로 묶는다.** 한 로케일만 고치는 것은 새 드리프트를 만드는 일이다.
+
+### 1.1 배경 — 실측
+
+base `1d150a27d`, 워크트리 `.claude/worktrees/t530` 에서 다시 쟀다. 카드가 들고 온 숫자를 그대로 옮기지 않았다.
+
+| 측정 | 명령 | 관측 |
+|---|---|---|
+| 1 | `sed -n '30,90p' internal/web/schemaform.go \| grep -c 'LabelKey:'` | `14` |
+| 2 | `grep -n -A 6 'var wantTabOrder' internal/web/tab_layout_test.go` | id 14개 |
+| 3 | `go test ./internal/web/ -run 'TestConsoleTabsOrder'` | `ok … 0.794s` |
+
+**14 는 이 base 에서의 실측치이지 상수가 아니다.** 탭을 하나 추가하는 다른 카드가 값을 바꾸며,
+지난 드리프트(11 → 14)가 바로 그렇게 생겼다. 그래서 본 문서도 14를 정답으로 박지 않고,
+독자가 **다시 재는 방법**을 §1.1 의 표로 남긴다.
+
+손으로 적힌 자리의 전수 목록 — 파일·행·로케일·숫자/낱말 표기 — 은 `.moai/reports/t530/tab-count-sites.md` 에 있다.
+요약: A군 4자리(9라고 적힘, 전부 `cli-reference/web.md:53`), B군 8자리(14, `advanced/moai-web-console.md`),
+C군 8자리(14, README 4본 × 2), D군 8자리(탭 **이름** 드리프트).
+
+### 1.2 핵심 발견 — 이름 드리프트는 수 드리프트에 관한 증거다
+
+D군(탭 **이름**이 한 칸 어긋나 있다)은 수 드리프트와 나란히 놓인 두 번째 결함이 **아니다.**
+수 드리프트가 어떻게 닫혀야 하는지를 말해 주는 **증거**다.
+
+논증은 세 걸음이다.
+
+1. 자리별 처분을 끝까지 해 보니 **20자리가 전부 removable 이었다**(`plan.md §B`). 수를 지울 수 없는 자리는 없다.
+2. 수를 지우면 그 자리의 정보는 사라지지 않고 **이름이 대신 진다** — README:414 는 이미 이름 14개를 적고 있고,
+   `advanced/moai-web-console.md:128` 바로 아래에도 이름 목록이 있다. 이름은 지울 수 있는 정보가 아니다.
+3. 그러므로 수만 고치는 수정은 결함을 **닫지 않고 이름 쪽으로 옮긴다.** 그리고 D군은 그 이동이
+   **이미 한 번 일어났음을** 보여 준다 — 수(14)는 맞는데 이름은 어긋나 있는 상태가 지금 트리의 실물이다.
+
+이것이 이 카드가 "숫자 하나 고치기" 가 아닌 이유이고, 가드가 N1(수 0건)과 N2(이름 == 렌더 라벨) **두 갈래**여야 하는
+이유다. N1 만 두면 오늘의 결함은 지우면서 내일의 자리를 열어 둔 채 닫는 셈이 된다.
+
+### 1.3 두 가지 함정
+
+- **숫자와 낱말이 섞여 있다.** `nine`, `fourteen`, `十四`, `九个`, `열네 개` 처럼 로케일마다 수사가 낱말로도 적힌다.
+  숫자만 긁는 청소나 가드는 절반을 조용히 놓친다 — 지난 청소가 살아남은 경로가 이것으로 보인다.
+- **낱말로 긁으면 오탐이 난다.** `README.md:422` 의 `nine` 은 SVG 인포그래픽 형태 수이고 탭과 무관하다.
+  가드는 **수 + 탭 명사의 인접**으로 판별하고, 대상 파일을 명시 목록으로 한정해야 한다
+  (`ja/claude-code/extensibility/plugins.md:100` 의 `4 タブ` 는 Claude Code 플러그인 매니저 얘기다).
+
+---
+
+## 2. Requirements (GEARS)
+
+### REQ-TCD-001 — 열거 산출물 (Ubiquitous)
+
+The card artifact set shall contain an exhaustive enumeration of every location where the settings tab
+count or the settings tab name list is written by hand, naming for each: file path, line number, locale,
+and whether the value appears as a digit or as a spelled-out word. The enumeration shall live at
+`.moai/reports/t530/tab-count-sites.md` as a durable artifact, not merely as a step someone performed.
+
+### REQ-TCD-002 — 틀린 수의 제거 (Ubiquitous)
+
+The four `docs-site/content/<locale>/cli-reference/web.md` line-53 rows shall no longer state a settings
+tab count. The `/settings` row shall describe the endpoint without counting the tabs.
+
+### REQ-TCD-003 — 수를 없앨 수 있는 자리는 없앤다 (Ubiquitous)
+
+Where a page can name the tabs or point at an adjacent list instead of counting them, the document shall
+name or point rather than count. Each of the 20 enumerated sites shall be recorded in `plan.md` as either
+`removable` or `must-stay`, with the reason stated per site.
+
+### REQ-TCD-004 — 남는 수와 이름은 기계가 지킨다 (Where 절)
+
+Where a settings tab count or tab name list remains written in a document after REQ-TCD-003, the repository
+shall carry a guard test that reads `consoleTabs()` and fails when the documented value diverges from it.
+
+### REQ-TCD-005 — 가드의 판별력 (Event-driven)
+
+When the guard scans a document, it shall match a numeral only where it is adjacent to a tab noun
+(`tab` / `tabs` / `탭` / `タブ` / `标签页`), shall recognise both digit and spelled-out forms in all four
+locales, and shall restrict its scan to an explicit file list. The guard shall not flag
+`README.md:422` (`nine` forms), `README.md:418` (`Eleven ref skills`), or
+`docs-site/content/ja/claude-code/extensibility/plugins.md:100` (`4 タブ`, the Claude Code plugin manager).
+
+### REQ-TCD-006 — 이름 정본 대조 (Ubiquitous)
+
+The documented tab name list shall equal the labels the console actually renders
+(`internal/web/assets/i18n.js`, with `schemaform.go` `Baseline` as fallback), in the order `consoleTabs()`
+returns them. The guard shall assert this equality for the enumerated list sites.
+
+### REQ-TCD-007 — 4로케일 동시성 (State-driven)
+
+While any one of the ko / en / ja / zh copies of a page is changed, the other three copies of that page
+shall be changed in the same commit. A locale left behind is itself a new drift.
+
+### REQ-TCD-008 — 수를 되살리지 않는다 (Unwanted)
+
+The change shall not reintroduce a hand-written settings tab count anywhere the guard does not cover, and
+shall not "fix" a site by writing `14` where the number can be removed instead.
+
+### REQ-TCD-009 — 스크린샷 분리 (Ubiquitous)
+
+The card shall not regenerate `assets/images/moai-web-settings.png`. The decision and its reasons shall be
+recorded in this document (§5), and the missing regeneration procedure shall be raised as a separate card
+request rather than folded in silently.
+
+---
+
+## 3. Success criteria
+
+- `docs-site` 4로케일 `cli-reference/web.md` 에 탭 수가 없다.
+- 남은 수·이름 자리를 `consoleTabs()` 와 대조하는 가드 테스트가 존재하고 통과한다.
+- 가드를 일부러 깨뜨리면(문서의 수/이름을 한 글자 바꾸면) 실패한다 — 공허한 초록이 아님을 보인다.
+- 오탐 목록 3자리에 대해 가드가 침묵한다.
+- 12개 문서의 로케일 패리티가 유지된다.
+- `hugo` 빌드가 경고 없이 통과한다.
+
+기계적으로 확인 가능한 형태(명령 + 기대 출력)는 `acceptance.md` 에 있다.
+
+---
+
+## 4. 경계 — t509 와의 관계
+
+카드 t509 의 반경은 웹 콘솔의 **codex 패널**이었고, `cli-reference` 는 그 밖이었다. 그 경계는 옳았고,
+t530 이 존재하는 이유가 그것이다. 본 SPEC 은 그 경계를 다시 다투지 않으며 codex 패널로 넓히지 않는다.
+`advanced/moai-web-console.md:137` 의 `codex 설정 12개` 는 codex 패널 내부 사실이므로 **본 SPEC 범위 밖**이다.
+
+---
+
+## 5. 스크린샷 범위 판단 (결정 기록)
+
+**결정: 본 카드에 넣지 않는다. 별건 카드 2장으로 분리한다.**
+
+관측 사실:
+
+- `assets/images/moai-web-settings.png` 는 README 4본의 411행에서 참조되며 11탭 시절 이미지다.
+- t509 가 alt 텍스트에서 수를 제거했으나(`.moai/reports/oss-docs-v311/drafts/README.ko.md:372` 의 `10개 설정 탭` → 현행 alt 는 수 없음) 이미지 자체는 그대로다.
+- 재생성 절차는 저장소 어디에도 기록되어 있지 않다(`moai-web-settings` 를 참조하는 문서 어디에도 캡처 방법이 없다).
+
+근거:
+
+1. **산출물 종류가 다르다.** 나머지는 텍스트이고 명령 한 줄로 검증되지만, 이미지는 콘솔을 띄우고 사람이 캡처해야 하며
+   기계적 AC 를 붙일 수 없다. 한 카드에 섞으면 본 카드의 acceptance 가 산문 단정으로 내려앉는다.
+2. **절차의 부재가 별개의 결함이다.** 절차가 없으면 이번에 한 번 다시 찍어도 다음에 또 같은 자리에서 낡는다.
+   고쳐야 할 것은 이미지가 아니라 절차의 부재이며, 그것은 자기 카드를 가질 값어치가 있다.
+3. **가시성.** 조용히 접으면 "이미지는 여전히 낡았다" 는 사실이 카드 마감과 함께 사라진다.
+
+후속 카드 제안(리드가 큐에 올릴 것):
+
+- `[t530-후속-1]` `moai web` 설정 화면 스크린샷 재생성 절차 기록 — 어떤 창 크기·로케일·프로파일로 찍는지, 어디에 두는지.
+- `[t530-후속-2]` 위 절차로 `assets/images/moai-web-settings.png` 재촬영(현행 14탭).
+
+---
+
+## 6. Out of Scope
+
+본 SPEC 은 문서의 사실 정합성만 다룬다. 다음은 **명시적으로 범위 밖**이다.
+
+### Out of Scope — 코드 동작
+
+- `consoleTabs()` 에 탭을 더하거나 빼지 않는다. 탭 구성은 이 카드가 건드리는 대상이 아니라 **읽는 대상**이다.
+- 콘솔 UI·CSS·라우팅을 수정하지 않는다.
+
+### Out of Scope — codex 패널 (t509 반경)
+
+- `advanced/moai-web-console.md:137` 의 codex 설정 개수(12) 는 다루지 않는다.
+- codex 탭의 읽기 전용 성격을 설명하는 문단을 재작성하지 않는다.
+
+### Out of Scope — 스크린샷
+
+- `assets/images/moai-web-settings.png` 를 다시 찍지 않는다(§5 근거).
+- 스크린샷 재생성 절차 문서를 이 카드에서 쓰지 않는다 — 후속 카드 소관.
+
+### Out of Scope — 다른 수의 드리프트
+
+- 스킬 수(`Eleven ref skills`), 에이전트 수(12), statusline 키 수(16), 칸반 용어 수(9) 등 같은 형태의 다른 손 계수는
+  본 카드에서 손대지 않는다. 같은 병이지만 반경을 넓히면 이 카드가 전수 문서 감사로 변한다.
+
+### Out of Scope — 문서 전반 재작성
+
+- 대상 12파일의 문장 구조·어조를 재작성하지 않는다. 수·이름과 그 수를 담고 있던 최소 구절만 고친다.
+- 템플릿 미러(`internal/template/templates/**`) 는 대상이 아니다 — README 와 docs-site 는 템플릿에 미러되지 않는다.
+
+---
+
+## 7. 잔여 위험
+
+- 가드의 대상 파일이 명시 목록이므로, **새 문서가 탭 수를 새로 적으면 잡히지 않는다.** 오탐을 없애기 위해 치른 값이며,
+  대안(전 문서 스캔)은 `plugins.md:100` 류를 계속 잡는다.
+- D군 목록 밖 산문 4자리(`…:165` 의 `3rd Party LLM 탭`)는 가드가 보지 않는다. 같은 변경에서 손으로 고친다.
+- **`3rd Party LLM` 이 의도한 이름이었을 가능성.** 본 카드는 문서를 렌더 라벨(`GLM Settings` 계열)에 맞추기로 결정했다
+  (`plan.md §C`, 2026-09-12). 만약 `3rd Party LLM` 쪽이 본래 의도한 이름이었다면, 그것을 바로잡는 일은
+  `internal/web/assets/i18n.js` 의 4로케일 값(`:229`, `:1096`, `:1852`, `:2608`)을 고치는 **콘솔 변경**이며
+  본 카드 범위 밖이다(§6 Out of Scope — 코드 동작). 그때는 문서가 아니라 코드를 고치는 별건 카드를 세우고,
+  본 카드가 넣은 N2 가드가 그 변경을 자동으로 잡아 문서 쪽 12자리를 함께 고치라고 알려 준다.
