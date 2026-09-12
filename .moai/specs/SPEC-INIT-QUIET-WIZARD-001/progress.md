@@ -274,7 +274,7 @@ Two limits of this control, stated rather than smoothed over:
 ```yaml
 run_status: audit-ready
 run_complete_at: 2026-09-12
-run_commit_sha: pending-backfill          # this M6 commit cannot cite its own hash
+run_commit_sha: 4079087ab                 # backfilled in the sync commit; the M6 commit could not cite its own hash
 run_head_before_m6: e334bd1c0
 card: t583
 branch: WT-init-quiet-wizard
@@ -370,7 +370,37 @@ Attribution (a comparison, not a re-measurement): the card's diff touches none o
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-12
+sync_commit_sha: pending-backfill         # this sync commit cannot cite its own hash
+sync_head_before: 1c16e4227
+card: t583
+branch: WT-init-quiet-wizard
+b12_self_test_a: pass                     # grep -c 'SPEC-INIT-QUIET-WIZARD-001' CHANGELOG.md → 0 before emission (no duplicate entry)
+b12_self_test_b: pass                     # acceptance.md distinct AC identifiers → 16 (non-zero); CHANGELOG states 16 and notes §E.3's 17 counts AC-IQW-007 split a/b
+b12_self_test_c: pass                     # every path named in the CHANGELOG entry verified with ls: questions.go, types.go, wizard.go, translations.go, init.go, initializer.go, update_wizard.go present; initializer_audit.go absent as claimed (deleted by M5)
+changelog_entry_position: "[Unreleased] → ### Changed (new subsection, first entry)"
+frontmatter_status_transitions:
+  spec_md: in-progress → completed        # this commit; updated: → 2026-09-12
+  plan_md: not applicable                 # stateless on the status axis (spec-frontmatter-schema.md § Artifact Statelessness)
+  acceptance_md: not applicable           # same
+  design_md: not applicable               # same
+  research_md: not applicable             # same
+docs_sync:
+  readme_4_locale: not performed          # README{,.ko,.ja,.zh}.md:288 falsified (model policy no longer asked at init) — handed to a follow-up docs card
+  docs_site_4_locale: not performed       # docs-site/content/{en,ko,ja,zh}/getting-started/init-wizard.md falsified (fixed 3-page flow) — same follow-up
+  rationale: ".moai/reports/t583/verdict.md §10.5 — pre-existing drift entanglement, non-parallel locale structure, unverified docs-site Vercel binding on develop (CLAUDE.local.md §4.1)"
+mx_tag_validation: performed as a sync sub-step
+  # @MX:NOTE + @MX:SPEC annotations landed with the implementation (e.g. questions.go InitQuestions);
+  # no missing-annotation repair was needed in this commit and none was added.
+spec_body_modified: false                 # spec.md §A-§H, plan.md, acceptance.md, design.md, research.md bodies untouched
+verification_re_executed: none            # every figure cited in §10 of the verdict is an §E.2/§E.3 quotation; no lead-granted test slot was held by this sync step
+open_debt:
+  - "acceptance.md AC-IQW-016 mutant C1/C2 wording still reads 'delete the restoring assignment'; the compiling form (`_ = origSeam`) is what was observed. Reword is manager-spec's, not manager-docs'. Evidence: verdict.md §10.3, SLOT-12 vs SLOT-12R."
+  - "User documentation (8 files, 4 locales × 2 surfaces) still describes the previous question set. Evidence: verdict.md §10.5."
+  - "Four known-red internal/cli tests are attributed to develop fixes not yet absorbed; the merge-tree re-measure in the integration window settles them. Evidence: §E.3 § Known red, verdict.md §10.6(c)."
+```
 
 ## §F Phase 4 Mode Selection
 

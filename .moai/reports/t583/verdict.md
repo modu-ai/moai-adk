@@ -245,3 +245,68 @@ plan 시점 관측(2026-09-11, HEAD `120436f58`): 대조군 명령의 파이프 
 | `update_wizard.go:133-373` (verdict.md:161) | 함수 끝 `373` | 함수 끝 **`382`** | 끝 줄 이동(t587 +13/−4) |
 
 SPEC 문서는 고치지 않는다(리드 지시). `update.go` 경로는 이 SPEC 범위 밖이라 797행 이동이 요구·AC 판정에 영향을 주지 않는다. run 위임문에는 흡수 뒤 좌표를 싣는다.
+
+---
+
+## 10. run·sync 단계 기록 (2026-09-12)
+
+plan 단계 판정서(§1~§9)에 run 과 sync 에서 새로 관측된 것을 잇는다. 수치는 모두 `.moai/specs/SPEC-INIT-QUIET-WIZARD-001/progress.md` §E.2·§E.3 에 기록된 실측이며, 이 절은 인용한다. 재측정하지 않았다.
+
+### 10.1 커버리지 — 세 줄
+
+1. **실측**: `internal/cli` 커버리지는 카드 트리에서 **82.4%**(SLOT-29, `go test ./internal/cli -cover -count=1 -timeout 1500s`, tree HEAD `4079087ab`, `m6-cover-cli.txt`), 카드 base 트리에서 **82.3%**(SLOT-30, base `ee99507fbe3b4a22c6a0a74815723d222dfdc04d`, `m6-cover-cli-base.txt`) 였다. 차이는 **+0.1pp** 다.
+2. **대조군의 한계 — 유효숫자를 주장하지 않는다**: base 트리는 `git archive | tar -x` 로 추출해 `.git` 이 없다. 저장소 이력을 읽는 테스트가 환경 때문에 실패하므로 base 의 실패 6건(`TestBuildIdentity_VersionDerivationUnchanged`, `TestBuildIdentity_IsMonotoneAcrossAnAncestorRelation`, `TestPreCommitLegacyNoRecord`, `TestHomeStateValidationCommandWrappersAndHelperFailures`, `TestTodoHistoryNeverPrompts`, `TestVersionStampRegistry`)은 base 트리의 결함이 아니라 추출 방식의 산물이다. **두 실패 집합은 직접 비교 대상이 아니고**, 커버리지 수치도 그 6건이 실패냐 통과냐에 따라 조금 움직인다. 그래서 `+0.1pp` 에 유효숫자를 주장하지 않는다 — 이 대조군이 세우는 것은 "카드가 커버리지를 **낮추지 않았다**" 까지다.
+3. **85% 목표는 양쪽 트리 모두에서 미달이다**(`.moai/config/sections/quality.yaml` `test_coverage_target: 85`). 카드가 만든 상태가 아니라 패키지 수준의 선재 상태이며, 끌어올리는 일은 이 카드 범위 밖이다 — 후속 후보다(리드 판정, 2026-09-12).
+
+### 10.2 뮤턴트 F 의 한계 — 판별식이 호출 모양을 본다
+
+AC-IQW-005 스윕의 판별식은 `runInit[A-Za-z]*\(|prepareSafeInitHome\(` 로, **호출 모양의 텍스트**를 찾는다. 그래서 호출 없이 쓴 우회는 스윕을 빠져나가며 겉보기에 생존자로 읽힌다.
+
+이 카드에서 실제로 관측했다(progress.md §E.2 뮤턴트 F 항목). 첫 시도는 `_ = runInit` 을 괄호 없이 담아 판별식에 걸리지 않았고, 스윕 결과는 targets 3 · 금지 토큰 교집합 0 — **깨끗한 트리와 완전히 같은 출력**이었다. 고친 뮤턴트(실제 `runInit(nil, nil)` 호출 포함)는 targets `3 → 4`, 금지 토큰 교집합 `0 → 1` 로 제대로 빨개졌다.
+
+읽는 법: 이 스윕의 0 은 "init 을 실행하는 파일이 없다"가 아니라 **"init 을 이 이름으로 호출하는 파일이 없다"** 이다. 다른 철자로 init 을 실행하는 파일은 보이지 않는다.
+
+### 10.3 AC-IQW-016 문구 정정 — 왜 필요한가
+
+acceptance.md AC-IQW-016 은 뮤턴트 C1·C2 를 "원복 대입을 **삭제**한다"로 적었다. 문자 그대로 적용하면 Go 가 파일을 거부한다 — `declared and not used: origSeam`, `[build failed]`, 테스트는 한 줄도 실행되지 않는다(SLOT-12). 이것은 **실행 RED 가 아니라 도구 실패**이고, 도구 실패는 가드가 살아 있다는 증거가 되지 못한다. 둘은 관측적으로 구분돼야 한다.
+
+그래서 관측은 컴파일되는 형태(`_ = origSeam`)로 다시 잡았다 — SLOT-12R·SLOT-13 이며, 둘 다 round 2 에서 기대한 실행 RED 를 냈다. SLOT-12 와 SLOT-12R 의 차이가 이 정정의 근거다.
+
+**정정은 아직 반영되지 않았다.** acceptance.md 본문 수정은 manager-spec 소관이고(§ 소관 경계), sync 단계의 manager-docs 는 SPEC 본문을 고치지 않는다. 이 절이 정정 내용과 근거를 기록하고, 문구 반영은 manager-spec 재위임으로 남긴다.
+
+### 10.4 `init_workflow_wiring_test.go` — 주석만 바뀐 편집
+
+plan.md:179 는 `TestRunInit_WorkflowToggleFlagsAbsentByteIdentical`(`init_workflow_wiring_test.go:83`)을 **변경 금지**로 적었다(AC-IQW-010). 이 카드는 그 함수의 **앞 주석**을 고쳤다 — 본문은 건드리지 않았다.
+
+근거는 AC-IQW-010 의 본문 추출 비교다: `sed -n '/^func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical/,/^}/p'` 로 base(`120436f58`)와 head 에서 각각 뽑아 `diff` → `byte-identical-diff-exit=0`, base 추출 12줄(progress.md §E.2 AC-IQW-010 본문 보존 절). 즉 함수 본문은 바이트 동일하고, 바뀐 것은 추출 범위 **밖**의 주석이다.
+
+리드가 이 편집을 받아들였다(2026-09-12). 같은 파일의 다른 편집(`TestRunInit_WorktreeAutoCreateFlagBeatsWizard` 의 `wizard.WizardResult{WorktreeAutoCreate: false}` → `{}`)은 plan.md:178 이 명시한 "제거된 필드 참조 제거"라 변경 금지 대상이 아니다.
+
+### 10.5 문서 영향 — 이 커밋에서 고치지 않았다
+
+이 카드는 사용자 문서를 거짓으로 만든다. 고치지 않은 채 넘기므로 무엇이 왜 그런지 적는다.
+
+- **README 4 로케일** — `README.md:288`, `README.ko.md:288`, `README.zh.md:288`, `README.ja.md:288` 이 대화형 위저드가 "모델 정책을 고른다"고 적는다. `model_policy` 는 이제 init 에서 묻지 않는다(`DefaultQuestions` 에 남아 reconfigure 경로 전용).
+- **docs-site 4 로케일** — `docs-site/content/{en,ko,ja,zh}/getting-started/init-wizard.md`(각 235줄)이 고정 3-페이지 흐름과 페이지별 질문표를 서술한다. 4 로케일 모두 `3-페이지|3-page|Page 3|LSP` 계열 적중 4건.
+
+고치지 않은 이유 셋:
+
+1. **이 페이지는 이 카드 이전에 이미 낡아 있다.** Page 3 으로 적힌 질문들(LSP·품질 게이트·디자인)은 2026-08-03 에 이미 질문에서 빠졌다(`internal/cli/wizard/types.go` 주석). 지금 고치면 이 카드가 만들지 않은 드리프트까지 같은 diff 에 들어가 귀속이 불가능해진다.
+2. **4 로케일이 구조적으로 평행하지 않다.** en 은 `Page 1/2/3` 골격, ko 는 `1단계/2단계` 골격에 산문 해설이 붙은 다른 편집 체제다. 미러 번역이 아니라 로케일마다 새로 쓰는 저작 작업이다.
+3. **docs-site 의 Vercel 바인딩이 미검증이다.** `develop` 에 docs-site 변경이 들어갈 때 프리뷰/프로덕션 배포가 어떻게 반응하는지 확인되지 않았고, 저장소 규율은 docs-site 를 만지는 카드가 이 점을 별도로 확인하도록 요구한다(CLAUDE.local.md §4.1). 이 레인은 그 확인을 수행할 수 없다.
+
+**처분은 리드 몫이다.** 위 8개 파일을 범위로 하는 별도 문서 카드를 제안한다. CHANGELOG 항목에도 미갱신 사실을 적었다.
+
+### 10.6 잔여 위험
+
+- **(a) 뮤턴트 C 생존 — 판별하는 테스트가 없다.** `init.go` 에서 `case agentWiringBoth: mcpDeclined = false` 분기를 지워도 실패가 나지 않았다(SLOT-27 4 PASS, 교정 선택자 SLOT-27b 5 PASS). 비대화형 `--llm both` 강제 분기를 판별하는 테스트가 없다. 리드 지시에 따라 이 카드는 그 테스트를 쓰지 않았다 — 후속 후보다.
+- **(b) 대화형 경로 판별력 상실.** 대화형 MCP 기본값이 true 가 되면서 `internal/cli/init_agent_wizard_test.go:139`·`:159`("both 가 거절을 이긴다")는 대화형 경로에서 더 이상 판별하지 않는다 — 거절을 표현할 수단이 없어졌다. 두 단언은 여전히 통과하지만 이름이 주장하는 것을 재지 않는다.
+- **(c) 기지 레드 4건, 병합 트리 재측정 대기.** `TestHomeStateChangedSurfaceCoverageConsumesFreshProfile`, `TestHomeStateChangedSurfaceCoverageRunsBoundedFocusedSuite`, `TestChangedProductionFilesDerivesCurrentHeadDiffAndPlatformDisposition`, `TestAuditLagUsesBinlagSeam`. base 트리에서도 같이 실패하므로 카드 귀속이 아니고, develop 의 `5b7927b15`(t600)·`92494400f`(t606)가 이 계열을 고친다. **귀속됐을 뿐 해소되지는 않았다** — 통합 창의 병합 트리 재측정이 판정한다.
+- **(d) 미관측 Gap 은 통과가 아니다.** progress.md §E.3 Gaps 1~10 은 관측되지 않은 항목이며, 특히 AC-IQW-012·AC-IQW-013 은 이 카드가 수행한 **제거**를 단언하는 AC다. 그쪽 회귀는 실제로 돌린 어떤 검사에도 잡히지 않는다.
+- **(e) AC-IQW-016 문구 부채 미해소(§10.3).** acceptance.md 본문은 여전히 "삭제" 문구를 담고 있고, 반영은 manager-spec 재위임으로 남는다.
+
+### 10.7 이 절이 재지 않은 것 (Gaps)
+
+- 커버리지·슬롯·뮤턴트 수치를 **재측정하지 않았다**. 전부 progress.md §E.2·§E.3 인용이며, 이 sync 단계에서 `go test` 를 돌린 적이 없다(레인에 슬롯이 없다).
+- 문서 영향은 **정적 grep 으로만** 판정했다(README 4건, docs-site 4건). 렌더된 페이지나 hugo 빌드로 확인하지 않았다.
+- SPEC 본문(spec.md §A~§H, plan.md, acceptance.md, design.md, research.md)은 이 커밋에서 **고치지 않았다**. spec.md 프런트매터의 `status`·`updated` 두 필드만 3단계 마감으로 갱신했다.

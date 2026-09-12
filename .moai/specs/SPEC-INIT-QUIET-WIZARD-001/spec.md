@@ -2,7 +2,7 @@
 id: SPEC-INIT-QUIET-WIZARD-001
 title: "moai init 위저드 정온화 — 질문 18개를 4개로"
 version: "0.1.4"
-status: in-progress
+status: completed
 created: 2026-09-11
 updated: 2026-09-12
 author: GOOS
