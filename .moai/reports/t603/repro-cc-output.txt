@@ -1,0 +1,4 @@
+./bad.cc:1:14: error: invalid use of 'this' outside of a non-static member function
+    1 | int main() { this is not valid c++ ; }
+      |              ^
+1 error generated.
