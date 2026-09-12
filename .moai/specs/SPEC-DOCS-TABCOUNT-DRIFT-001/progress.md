@@ -37,6 +37,36 @@
 - **넓힌 정규식의 새 미열거 적중**: 낱말 축을 열면 `ko:149 탭 두 곳`·`en:149 two tabs`·`zh:149 两个标签页` 가 모두 적중함을
   실측했다. 이 때문에 낱말 축은 정규식에 넣지 않기로 했고(`plan.md §A.4`), 그 결정의 대가는 `spec.md §7` 에 적었다.
 
+### plan-audit iter2 (FAIL 0.775) 수리 라운드 — 재측정 기록
+
+감사 보고: `.moai/reports/t530/plan-audit-iter2.md`(iter1 보고 `plan-audit.md` 는 보존). HEAD `28c1ea062`.
+왼쪽 끝은 `git merge-base develop HEAD` = `1d150a27d4c5cdeedb37df19b7a4a025e5dd2c09`(측정 시점 값).
+
+| 측정 | 명령 | 관측 |
+|---|---|---|
+| **낱말 축 원시 스윕** | 로케일별 수사 클래스 + 낱말 경계 탭 명사, 대상 12파일 | **8행** |
+| − 서수 접두(`第`) 제외 | 같은 스윕에서 `第[一二三四五六七八九十]` 치환 후 재적용 | **7행** (`zh/advanced/…:165` 의 `第三方` 빠짐 — 단독 검증도 `0`) |
+| − `codex` 허용 규칙(**파일 범위 포함**) | `grep -vE '^docs-site/content/[a-z]+/advanced/moai-web-console\.md:[0-9]+:.*codex'` | **6행 = A2·A4·B4·C1·C2·C4**, 허용되지 않은 오탐 **0** |
+| 같은 규칙을 **파일 범위 없이** 적용 | `grep -v 'codex'` | **3행** — README 3자리가 함께 면제된다(파일 범위가 필수인 이유) |
+| 허용 규칙의 면제 표면 | `grep -ci codex` × 4 console 파일 | 각 **4**, 합계 **16줄** (규칙 수 1 과 다른 값) |
+| merge-base | `git merge-base develop HEAD` | `1d150a27d4c5…` |
+| 좁힌 pathspec, 카드 기여 | `git diff --name-only <merge-base> -- <12파일>` | **0** → 측정 불가 = AC-TCD-010 FAIL (붉은 이유가 "이 카드가 아직 안 고쳤다" 로 바뀜) |
+| 좁힌 pathspec, develop 쪽 churn | `git diff --name-only <merge-base> develop -- <12파일>` | **8파일** — 흡수 전에는 보이고 흡수 후 merge-base 전진으로 사라지는 값 |
+| 넓은 pathspec 대비(이전 판의 결함) | `git diff --name-only 1d150a27d develop -- <README 4본> docs-site/content` | **155파일**, `1d150a27d..develop` **40커밋** |
+| 스크린샷 | `git diff --quiet <merge-base> -- assets/images/` | 종료코드 `0` (무변경) |
+| 열거 행/경로(같은 영역) | `grep '^| [ABCD][0-9]'` → 행 수 / 그 행에서 뽑은 경로 수 | **32행 / 12경로**, 누락 0 |
+| 구조 불변식 | REQ / AC / RG / `### Out of Scope —` 계수 | **9 / 12 / 3 / 5**, `status:` 는 `spec.md` 에만, clarification 토큰 0 |
+
+**Gap(이 라운드에서 관측하지 못한 것)**:
+
+- **가드는 여전히 없다.** AC-TCD-004~009·012 의 가드 쪽 단정은 명세 수준 논증이며, 낱말 축·서수 제외·파일 범위
+  허용 규칙은 **shell 재현**으로만 확인했다. Go 구현이 같은 집합을 내는지는 M1 에서 확인해야 결론이 확정된다.
+- **병합 후 거동은 시뮬레이션이다.** develop 을 실제로 흡수하지 않았다(감사 트리를 변형하지 않는다는 같은 이유).
+  "흡수 후 merge-base 가 전진해 남의 커밋이 범위에서 빠진다" 는 git 의 성질이지 이 트리에서 관측한 사실이 아니다.
+- **hugo 는 이번에도 실행하지 않았다**(RG-TCD-002).
+- **낱말 수사 클래스의 완전성은 미확인.** 오늘 0 오탐을 낸 클래스가 앞으로 들어올 표기까지 덮는다는 보장은 없다 —
+  `spec.md §7` 의 유지 비용 항목이 이 미확인을 가리킨다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
