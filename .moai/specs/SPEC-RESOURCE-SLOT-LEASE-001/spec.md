@@ -2,7 +2,7 @@
 id: SPEC-RESOURCE-SLOT-LEASE-001
 title: "Resource slot lease: atomic acquire/status/release for a named heavy resource, plus an opt-in PreToolUse guard (card t607)"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-12
 updated: 2026-09-12
 author: manager-spec

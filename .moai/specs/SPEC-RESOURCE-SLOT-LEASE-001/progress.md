@@ -306,4 +306,56 @@ _<run 단계 대기>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<sync 단계 대기>_
+sync 단계는 2026-09-12에 manager-docs가 카드 워크트리(`.claude/worktrees/t607`, 브랜치 `WT-heavy-test-slot`, 기준 HEAD `9c288daa9`) 안에서 수행했다. git-flow 저장소이므로 PR은 없다 — 병합은 리드가 지명하는 통합 창에서 레인이 로컬 develop으로 한다. 이 단계에서 push도 병합도 하지 않았다.
+
+**리드 제약(heavy-test 슬롯 반납 상태)이 sync 측정 범위를 정했다.** `internal/cli`를 컴파일·링크하는 명령은 하나도 돌리지 않았다. 돌린 패키지 넷은 모두 `go list -test -deps <pkg> | grep -c 'moai-adk/internal/cli$'` → `0`(kanban 0, hook 0, config 0, template 0)을 먼저 확인했다. 따라서 M3(CLI) 근거는 **이 단계에서 재측정하지 않고 M3 증거 파일을 읽었다**. 어느 AC를 직접 쟀고 어느 AC를 읽었는지는 아래 표에 나눠 적는다.
+
+```yaml
+sync_complete_at: 2026-09-12
+sync_commit_sha: pending-backfill-sync   # 이 블록을 실은 sync 커밋. 커밋은 자기 해시를 인용할 수 없어 다음 커밋에서 채운다
+sync_status: complete
+sync_agent: manager-docs
+sync_base_head: 9c288daa9248091cfd6be65f5ef8e165285abd21   # 흡수 병합 커밋(로컬 develop 8d42587e6 흡수) — sync 진입 시점 HEAD
+sync_binary: "bin/moai — moai_cp/20260910_130400-752-g9c288daa9, built 2026-09-12T00:59:04Z. 이 트리에서 빌드한 바이너리를 경로로 불렀다(설치본 아님, verification-claim-integrity §2.2)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, 첫 항목"
+b12_self_test_a: "grep -c 'SPEC-RESOURCE-SLOT-LEASE-001' CHANGELOG.md → 0 (방출 전). 중복 없음 — 방출 후 1"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 16 (AC-RSL-001 … AC-RSL-016). 0이 아니므로 공허하지 않다. CHANGELOG 항목도 16을 말한다"
+b12_self_test_c: "CHANGELOG이 인용하는 18개 경로를 ls로 확인 → 종료 코드 0, 전부 존재"
+frontmatter_status_transitions:
+  spec_md: "status: in-progress → completed, 단일 sync 커밋에서. updated는 이미 2026-09-12(= sync 날짜)라 값이 바뀌지 않았다 — 다른 프론트매터 필드와 본문은 한 줄도 건드리지 않았다. 3-phase 종결에서 implemented는 통과 상태이며 별도 커밋을 만들지 않는다"
+  sibling_artifacts: "plan.md·acceptance.md는 status 필드가 없다(상태 축에서 무상태 — spec-frontmatter-schema.md § Artifact Statelessness). 두 파일의 updated도 이미 2026-09-12라 편집이 필요 없었고, 실제로 편집하지 않았다. progress.md는 프론트매터가 없고 단계를 본문(§E.1-§E.4)으로 기록한다"
+docs_decision: "README·docs-site 모두 변경하지 않는다. 근거는 측정이다 — 가장 가까운 형제 표면인 `moai integration`(같은 성격의 레인 조율 verb + 선택형 PreToolUse 가드)은 README.md·README.ko.md에서 grep -c 0회이고 docs-site/content에도 페이지가 없다(grep -rl 'moai integration' docs-site/content → 출력 없음). README의 CLI verb 표는 사용자용 verb만 싣고 레인 조율 verb는 싣지 않는 관례이며, docs-site utility-commands는 `/moai` 슬래시 명령을 다룬다. `moai slot` 페이지를 새로 만드는 것은 형제와의 정합이 아니라 새 선례이고 4-locale 의무(ko/en/ja/zh)를 부른다 — 이 카드 범위 밖이므로 착수하지 않는다. 이 표면의 배포 문서는 템플릿 규칙 `resource-slot-lease.md`(+ 바이트 동일 로컬 미러)와 kanban-dispatch / gitflow-lane-protocol 문단이며, 그 존재와 중립성은 AC-RSL-014·015가 이미 게이트한다"
+mx_validation:
+  present_and_remeasured: "@MX 태그 8줄(ANCHOR 4 + REASON 4). internal/kanban/slot_lease.go 3 ANCHOR(ValidateSlotResourceName, ResolveSlotLeaseRoot, AcquireSlotLease) + internal/hook/slot_lease_guard.go 1 ANCHOR(checkSlotLease). fan_in을 주장하는 REASON은 하나뿐이고(ValidateSlotResourceName 'fan_in >= 3') 재측정값 7로 참이다. 나머지 세 REASON은 구조 근거를 말할 뿐 fan_in을 주장하지 않는다"
+  fan_in_measured: "prod 호출 지점(테스트·정의 제외) — ValidateSlotResourceName 7, ReadSlotLease 5, ResolveSlotLeaseRoot 2, AcquireSlotLease 1, ReleaseSlotLease 1, checkSlotLease 1"
+  finding_reported_not_edited: "ReadSlotLease는 prod 호출 5곳(cli/slot.go ×2, slot_lease.go의 Acquire·Release, hook 가드) 4개 함수에서 불리므로 fan_in >= 3 ANCHOR 대상이다. 태그를 붙이지 않았다 — slot_lease.go의 ANCHOR가 이미 3개로 mx.yaml `anchor_per_file: 3` 상한에 걸려 있고, 상한 초과 시 규정된 조치는 '가장 낮은 fan_in을 NOTE로 강등'인데 프로토콜은 ANCHOR 자동 삭제·강등을 금지하고 보고만 허용한다. 두 규칙을 동시에 지키는 행동은 보고뿐이다. 리드 판단 대상"
+  not_measured: "internal/cli/slot.go의 @MX 태그는 0개이고 이번 단계에서 추가하지 않았다. 그 파일의 주석 편집은 gofmt·컴파일 확인을 요구하는데 `go build ./internal/cli/`가 곧 슬롯 위반이다. 같은 이유로 새 prod 함수의 gocyclo(>=15 → @MX:WARN 후보)는 어느 패키지에서도 재측정하지 않았다"
+ac_remeasured_here:                       # 이 단계에서 직접 실행해 관측한 것
+  - "AC-RSL-001a/001b·002·004·005·006·007·008·009 + 013(a) — go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -v → 종료 코드 0, --- PASS 40, --- FAIL 0, ok 4.814s. 대조군 두 갈래가 이 트리에서 그대로 재현됐다: control `starts=2 (A: RESULT=started | B: RESULT=started)`, lease `acquired=1 refused=1 busy=0 other=0 (A: RESULT=acquired | B: RESULT=held)`. 뮤턴트(001b `acquired=2`)는 M2에서 관측한 기록을 읽었다 — 이 단계에서 뮤턴트를 다시 심지 않았다"
+  - "AC-RSL-010·011·012·016 — go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1 -v → 종료 코드 0, --- PASS 29, --- FAIL 0, ok 9.584s"
+  - "AC-RSL-010·012(설정 측) — go test ./internal/config/ -run '^(TestLoadSlotLeaseDefaultMaxDuration|TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v → 종료 코드 0, --- PASS 12, --- FAIL 0, ok 0.404s"
+  - "AC-RSL-013(b) — go test ./internal/kanban/ -run 'IntegrationLock' → 종료 코드 0, --- PASS 17 / FAIL 0; go test ./internal/hook/ -run 'IntegrationLock' → 종료 코드 0, --- PASS 14 / FAIL 0. 스윕 수가 0이 아니다"
+  - "AC-RSL-013(c) 병합 전 판정 — CARD_BASE=$(git merge-base develop HEAD) → 8d42587e695aee97cb4454e5efa564cd613343d3. 대조군 `git diff --name-only $CARD_BASE..HEAD | wc -l` → 65(1 이상). 프로브 `... -- internal/cli/integration.go internal/hook/integration_lock_guard.go` → 출력 없음. 이 판정은 병합 전에만 유효하며, 병합 뒤 근거는 병합 트리와 카드 tip 트리의 동일성이다"
+  - "AC-RSL-014 (a)-(f) — (a) slot_lease: / enabled: false / default_max_duration: 30m 세 줄 적중, (b) 자리표시자 계수 2(기준 2 이상), (c)·(d) 언어 토큰 grep -nwiE -f tool-tokens.txt 두 파일 모두 출력 없음·종료 코드 1, (f) 내부 토큰(SPEC-·t###·날짜) 출력 없음·종료 코드 1. 미러 바이트 동일성 `cmp` 종료 코드 0. (e) 양성 대조는 M5에서 관측한 기록을 읽었다"
+  - "AC-RSL-014 (g)(h) — go test ./internal/template/ -run 'TestTemplateNeutralityAudit$|TestTemplateNoInternalContentLeak$|TestRuleProvenance|TestRuleTemplateMirror' -count=1 -v → 종료 코드 0, --- PASS 20, --- FAIL 0, ok 1.234s"
+  - "AC-RSL-015 열림 가지 — 세 파일 grep -c 'moai slot' → 각각 1(기준 1 이상): .claude/rules/moai/workflow/kanban-dispatch.md, 같은 경로의 템플릿판, .claude/rules/local/gitflow-lane-protocol.md"
+  - "SPEC lint — ./bin/moai spec lint --strict .moai/specs/SPEC-RESOURCE-SLOT-LEASE-001 → `✓ No findings — all SPEC documents are valid`. 트리에서 빌드한 바이너리(g9c288daa9)로 쟀다"
+ac_read_from_evidence_only:               # 이 단계에서 재측정하지 않고 증거 파일을 읽은 것
+  - "AC-RSL-003(c) 및 CLI 표면 전부 — M3 근거는 `.moai/reports/t607/m3/{m3-cli-red,m3-cli-green,m3-cli-targeted}.txt`와 §E.2 M3 절에만 있다. 슬롯 반납 상태라 `TestSlotCLI_` 11개를 다시 돌리지 않았다"
+  - "AC-RSL-001b 뮤턴트·AC-RSL-005/006 뮤턴트 짝 — `.moai/reports/t607/m2/m2-mutant-*.txt`"
+  - "AC-RSL-011·016 뮤턴트 표 10행 — `.moai/reports/t607/m4/mutants/*.txt` + `summary.tsv`"
+  - "AC-RSL-014(e) 양성 대조와 (i) `make build` — 아래 gaps 참조"
+  - "커버리지 수치(slot_lease.go 86.2%, slot_lease_guard.go 94.4%, slot_lease_config.go 100%, slot.go 95.7%) — 전부 §E.2의 run 단계 측정이며 이 단계에서 다시 재지 않았다"
+gaps:                                     # run 단계에서 그대로 이월. 덮지 않는다
+  - "`go test ./internal/cli/` 전체 패키지 판정은 **없다**. M3에서 600초를 넘겨 `panic: test timed out after 10m0s`로 끊겼고, 그때 돌던 테스트는 `TestSyncGitSpecStatuses_NoSpecIDsInGitLog`였다. 시한 전 실패는 하나뿐이었고 그것은 수리됐다. 시한 초과가 이 머신의 패키지 크기 탓인지 특정 테스트가 멈춘 것인지는 가리지 못했다. 전체 판정은 develop push가 일으키는 CI 몫이다"
+  - "`TestDestructiveTargetRegistry_CoversAllSites`는 t656 회귀로 develop에 있던 known-red이며 dr0912가 수리해 흡수한 `8d42587e6`에 포함돼 있다. **t607 귀속이 아니다**"
+  - "AC-RSL-014(i) `make build` 종료 코드 0은 오케스트레이터가 부여받은 슬롯 안에서 HEAD `9c288daa9`에서 쟀고, 직후 `git status --short`가 비어 있었다. **manager-docs가 직접 관측한 값이 아니다** — 이 단계에서는 슬롯이 반납돼 재측정할 수 없다"
+known_limits_stated_in_changelog:
+  - "`resources:` 값 자체가 맵이 아니면(스칼라나 목록) 관대한 디코딩이 닿지 않는다. 항목별 `UnmarshalYAML`은 맵 **안의** 항목만 구제하므로, 바깥 값의 타입 오류는 여전히 workflow 섹션 전체를 기본값(= `enabled: false`)으로 떨어뜨린다 — 가드가 조용히 꺼진다"
+  - "잘못된 항목의 `Invalid` 표시는 `yaml:\"-\"`라 직렬화되지 않는다(internal/config/types.go). 설정을 YAML로 다시 써 내보내는 경로를 지나면 그 표시는 사라지고, 가드의 fail-open 보고가 근거를 잃는다"
+residual_risk:
+  - "Windows는 이 머신에서 실행 판정이 없다. `GOOS=windows go build`/`go vet`(kanban·hook·config·cli)은 종료 코드 0이지만 컴파일까지다. Windows 잔재 정리 경로(`slot_lease_mutation_windows.go`)의 실행 판정은 CI 몫이다"
+  - "가드는 이 저장소에서 켜져 있지 않다. 로컬 `.moai/config/sections/workflow.yaml`은 건드리지 않았고 템플릿 기본값도 꺼짐이다 — 즉 배포 경로에서 deny 층이 실제 사용자 명령을 거절하는 장면은 아직 아무도 관측하지 않았다"
+  - "`moai slot`은 자문 표면이다. 가드가 꺼져 있으면 임대를 잡지 않고 무거운 명령을 그냥 돌리는 것을 막는 것은 없다 — 상호 배제는 임대를 거치는 호출자들 사이에서만 성립한다"
+  - "감사 로그(`.moai/logs/slot-lease-audit.jsonl`)에 회전이나 상한이 없다. 무한히 자란다"
+```
