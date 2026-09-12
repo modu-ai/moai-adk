@@ -18,10 +18,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/ptycaptest"
 )
 
-// profileStepperOptions builds the option rows the selects render; the labels
-// are irrelevant to the stepper rule under test.
+// profileStepperOptions builds the option rows the selects render, mirroring
+// the real conversation_language shape (4 native-name rows) so the layout
+// walk covers real option-list geometry; the labels are otherwise irrelevant
+// to the stepper rule under test.
 func profileStepperOptions() ProfileOptions {
-	lang := []Option{{Label: "English", Value: "en", Desc: "English"}}
+	lang := []Option{
+		{Label: "English", Value: "en", Desc: "English"},
+		{Label: "Korean (한국어)", Value: "ko", Desc: "한국어"},
+		{Label: "Japanese (日本語)", Value: "ja", Desc: "日本語"},
+		{Label: "Chinese (中文)", Value: "zh", Desc: "中文"},
+	}
 	return ProfileOptions{
 		Language:        lang,
 		Model:           []Option{{Label: "(runtime default)", Value: ""}, {Label: "opus[1m]", Value: "opus[1m]"}},

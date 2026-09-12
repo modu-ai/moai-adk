@@ -29,33 +29,27 @@
                                                                                 
                                                                                 
                                                                                 
-                                                                                
-                                                                                
-                                                                                
 
 shift+tab 戻る • enter 次へ
 ● ● ● ○ ○ ○ ○ ○ ○ ○ 3 / 10
 ┃ Gitコミットメッセージ言語                                                     
 ┃ コミットメッセージに使用する言語です。                                        
-┃ ▸ English - English                                                           
-┃   Korean (한국어) - 한국어                                                    
+┃ ▸ English           - English                                                 
+┃   Korean (한국어)   - 한국어                                                  
 ┃   Japanese (日本語) - 日本語                                                  
-┃   Chinese (中文) - 中文                                                       
-                                                                                
+┃   Chinese (中文)    - 中文                                                    
   コードコメント言語                                                            
   コードコメントに使用する言語です。                                            
-  ▸ English - English                                                           
-    Korean (한국어) - 한국어                                                    
+  ▸ English           - English                                                 
+    Korean (한국어)   - 한국어                                                  
     Japanese (日本語) - 日本語                                                  
-    Chinese (中文) - 中文                                                       
-                                                                                
+    Chinese (中文)    - 中文                                                    
   ドキュメント言語                                                              
   ドキュメントファイルに使用する言語です。                                      
-  ▸ English - English                                                           
-    Korean (한국어) - 한국어                                                    
+  ▸ English           - English                                                 
+    Korean (한국어)   - 한국어                                                  
     Japanese (日本語) - 日本語                                                  
-    Chinese (中文) - 中文                                                       
-                                                                                
+    Chinese (中文)    - 中文                                                    
                                                                                 
                                                                                 
                                                                                 
@@ -78,14 +72,12 @@ shift+tab 戻る • enter 次へ
 ┃ ▸ opus[1m] (Opus 5 + 1Mコンテキスト)                                          
 ┃   sonnet[1m] (Sonnet 5 + 1Mコンテキスト)                                      
 ┃   haiku (Haiku 4.5、最速)                                                     
-                                                                                
   エージェントモデルポリシー                                                    
   各エージェントに最適なモデルを割り当て、トークン消費を制御します。            
                                                                                 
   ▸ High - Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows)           
     Medium - Opus 5 (high~low) + Sonnet (low, docs/single-shot rows)            
     Low - Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)           
-                                                                                
   セッション推論レベル                                                          
   このプロファイルで起動する Claude セッションの推論深度です。xhigh/max         
   は対応モデル（Opus 5、Sonnet 5、Opus 4.7                                      
@@ -97,7 +89,6 @@ shift+tab 戻る • enter 次へ
   ▸ high - 深い推論                                                             
     xhigh - 拡張推論 (セッション専用、エージェントマトリクスは high を使用)     
     max - 最大推論                                                              
-                                                                                
   権限モード                                                                    
   Claudeがアクション実行前に権限を要求する方法を制御します。                    
   ▸ 編集を自動承認 (acceptEdits) - ファイル編集を自動承認、コマンドのみ確認     
@@ -114,9 +105,6 @@ shift+tab 戻る • enter 次へ
 ┃   (project default)                                                           
 ┃   ddd - ドメイン駆動開発 (ANALYZE-PRESERVE-IMPROVE)                           
 ┃ ▸ tdd - テスト駆動開発 (RED-GREEN-REFACTOR)                                   
-                                                                                
-                                                                                
-                                                                                
                                                                                 
                                                                                 
                                                                                 

@@ -114,3 +114,18 @@ func ProfileQuestions(opts ProfileOptions, initial ProfileResult) []Question {
 	}
 	return qs
 }
+
+// LocalizeProfileQuestion returns a copy of a profile question with its title
+// and description in the given locale. Every other field (id, group, options,
+// default) is carried over unchanged. An unknown locale, an empty locale, and
+// an id absent from the profile table all return the question as given.
+func LocalizeProfileQuestion(q *Question, locale string) Question {
+	localized := *q
+	tr, ok := profileQuestionTexts[locale][q.ID]
+	if !ok {
+		return localized
+	}
+	localized.Title = tr.Title
+	localized.Description = tr.Description
+	return localized
+}

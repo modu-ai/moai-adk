@@ -8,6 +8,7 @@ import (
 
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -145,6 +146,7 @@ func buildUnifiedForm(questions []Question, result *WizardResult, locale string)
 	groups := buildFormGroups(questions, result, &currentLocale)
 	return huh.NewForm(groups...).
 		WithTheme(newMoAIWizardTheme()).
+		WithKeyMap(localizedKeyMap(locale)).
 		WithAccessible(false)
 }
 
@@ -293,6 +295,58 @@ func genericStepperNote(id string, bind any, vis questionVisibility) *huh.Note {
 	}, bind)
 }
 
+// optionColumnWidthCap caps the option-label padding target so the aligned
+// description column never exceeds a standard terminal's usable width
+// (design.md §8: "터미널 폭을 넘지 않게 자름").
+const optionColumnWidthCap = 80
+
+// selectFieldUsableWidth is the content width a select field wraps its
+// description at, after the card border and padding (measured on the 80-col
+// form: content spans columns 2-77).
+const selectFieldUsableWidth = 76
+
+// selectHeight computes the TOTAL field height (title + wrapped description
+// + every option row) for a select whose OptionsFunc carries the dynamic
+// option set. huh v2 subtracts the title/description rows from this value to
+// size the option viewport, so passing the exact total renders every option
+// with no blank card rows (REQ-ITI-015, AC-ITI-016). The description wrap is
+// recomputed at the usable width so a long description never hides options.
+func selectHeight(q *Question) int {
+	descLines := lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(q.Description))
+	return 1 + descLines + len(q.Options)
+}
+
+// alignOptionLabels renders one option per label/desc pair with the
+// DESCRIPTION column aligned: every label is padded — by DISPLAY width (East
+// Asian wide runes count 2, via go-runewidth), never by runes or bytes — to
+// the widest label in the set (capped at optionColumnWidthCap), then the
+// description follows after " - ". This replaces the wizard.go:290 simple
+// label+" - "+desc concat (design.md §8, REQ-ITI-016/AC-ITI-017).
+func alignOptionLabels(opts []Option) []huh.Option[string] {
+	maxW := 0
+	for _, o := range opts {
+		if w := runewidth.StringWidth(o.Label); w > maxW {
+			maxW = w
+		}
+	}
+	if maxW > optionColumnWidthCap {
+		maxW = optionColumnWidthCap
+	}
+	out := make([]huh.Option[string], len(opts))
+	for i, o := range opts {
+		pad := maxW - runewidth.StringWidth(o.Label)
+		if pad < 0 {
+			pad = 0
+		}
+		key := o.Label + strings.Repeat(" ", pad)
+		if o.Desc != "" {
+			key += " - " + o.Desc
+		}
+		out[i] = huh.NewOption(key, o.Value)
+	}
+	return out
+}
+
 // buildSelectField creates a huh.Select field for a select-type question.
 func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Select[string] {
 	var selected string
@@ -304,18 +358,11 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 
 	// optionsFn re-derives the localized huh options from the current locale.
 	// It is used two ways below: once eagerly to seed the materialized option
-	// set (Options), and again as the reactive OptionsFunc.
+	// set (Options), and again as the reactive OptionsFunc. The description
+	// column is aligned by display width (AC-ITI-017).
 	optionsFn := func() []huh.Option[string] {
 		lq := GetLocalizedQuestion(q, *locale)
-		opts := make([]huh.Option[string], len(lq.Options))
-		for i, opt := range lq.Options {
-			key := opt.Label
-			if opt.Desc != "" {
-				key = opt.Label + " - " + opt.Desc
-			}
-			opts[i] = huh.NewOption(key, opt.Value)
-		}
-		return opts
+		return alignOptionLabels(lq.Options)
 	}
 
 	// Seed the materialized option set (Options) with the build-time locale AND
@@ -343,6 +390,7 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 		}, locale).
 		Options(optionsFn()...).
 		OptionsFunc(optionsFn, locale).
+		Height(selectHeight(q)).
 		Value(&selected)
 
 	// Wire up value storage (huh runs Validate on field completion/blur).
@@ -504,6 +552,7 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 		}, locale).
 		Affirmative(ui.ConfirmYes).
 		Negative(ui.ConfirmNo).
+		WithButtonAlignment(lipgloss.Left).
 		Value(&value)
 
 	qID := q.ID
@@ -550,7 +599,7 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 	t.Focused.Base = t.Focused.Base.BorderForeground(fg(c.Border))
 	t.Focused.Card = t.Focused.Base
 	t.Focused.Title = t.Focused.Title.Foreground(fg(c.Primary)).Bold(true)
-	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(fg(c.Primary)).Bold(true).MarginBottom(1)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(fg(c.Primary)).Bold(true)
 	t.Focused.Description = t.Focused.Description.Foreground(fg(c.Body))
 	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(fg(c.Error))
 	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(fg(c.Error))
@@ -572,6 +621,13 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 	t.Focused.BlurredButton = t.Focused.BlurredButton.
 		Foreground(fg(c.Text)).
 		Background(fg(c.ButtonBlurredBg))
+	// REQ-ITI-014: huh's default button style pads the label 2 columns left,
+	// which pushed the confirm button's LABEL to column 4 while the question
+	// description starts at column 2 (AC-ITI-015). Dropping the left padding
+	// puts the label on the description's column; WithButtonAlignment(Left)
+	// (set on each confirm field) handles the rest.
+	t.Focused.FocusedButton = t.Focused.FocusedButton.PaddingLeft(0)
+	t.Focused.BlurredButton = t.Focused.BlurredButton.PaddingLeft(0)
 	t.Focused.Next = t.Focused.FocusedButton
 
 	t.Blurred = t.Focused
@@ -582,6 +638,11 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 
 	t.Group.Title = t.Focused.Title
 	t.Group.Description = t.Focused.Description
+
+	// REQ-ITI-015: huh's default FieldSeparator renders a BLANK line between
+	// consecutive fields; a single newline joins them directly (AC-ITI-016 —
+	// pre-fix the init first page carried 4 empty card rows).
+	t.FieldSeparator = lipgloss.NewStyle().SetString("\n")
 
 	return t
 }

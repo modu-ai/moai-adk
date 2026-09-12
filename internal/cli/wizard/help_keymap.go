@@ -1,24 +1,13 @@
 package wizard
 
+// The wizard's help-line mechanics: huh's default key map relabelled per
+// locale. The LABEL TABLE (helpActionLabels) lives in translations.go with
+// the other wizard string tables.
+
 import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/huh/v2"
 )
-
-// helpActionLabels maps the English help action strings of huh's default key
-// map to each locale (design.md §7). The en column is the identity so every
-// locale carries the same action set. Key names (enter, ↑, …) are never
-// translated; only the action after them is.
-var helpActionLabels = map[string]map[string]string{
-	"en": {"next": "next", "submit": "submit", "back": "back", "select": "select", "up": "up", "down": "down",
-		"filter": "filter", "set filter": "set filter", "clear filter": "clear filter", "toggle": "toggle", "complete": "complete"},
-	"ko": {"next": "다음", "submit": "제출", "back": "이전", "select": "선택", "up": "위", "down": "아래",
-		"filter": "검색", "set filter": "검색 적용", "clear filter": "검색 해제", "toggle": "전환", "complete": "자동 완성"},
-	"ja": {"next": "次へ", "submit": "送信", "back": "戻る", "select": "選択", "up": "上", "down": "下",
-		"filter": "絞り込み", "set filter": "絞り込み確定", "clear filter": "絞り込み解除", "toggle": "切替", "complete": "補完"},
-	"zh": {"next": "下一步", "submit": "提交", "back": "返回", "select": "选择", "up": "上", "down": "下",
-		"filter": "筛选", "set filter": "应用筛选", "clear filter": "清除筛选", "toggle": "切换", "complete": "补全"},
-}
 
 // localizedKeyMap returns huh's default key map with the help action of every
 // binding listed in helpActionLabels relabelled for locale; the bound keys and

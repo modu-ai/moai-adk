@@ -110,17 +110,10 @@ func buildProfileField(q *Question, result *ProfileResult, locale *string) huh.F
 }
 
 // profileHuhOptions converts a version-neutral option list to huh options,
-// composing the same "Label - Desc" row text the init wizard's selects render.
+// aligning the DESCRIPTION column by display width — the same row shape the
+// init wizard's selects render (design.md §8, AC-ITI-017).
 func profileHuhOptions(opts []Option) []huh.Option[string] {
-	out := make([]huh.Option[string], len(opts))
-	for i, o := range opts {
-		key := o.Label
-		if o.Desc != "" {
-			key = o.Label + " - " + o.Desc
-		}
-		out[i] = huh.NewOption(key, o.Value)
-	}
-	return out
+	return alignOptionLabels(opts)
 }
 
 // buildProfileSelectField creates the huh v2 select for one profile question.
@@ -139,6 +132,9 @@ func buildProfileSelectField(q *Question, result *ProfileResult, locale *string)
 		}, locale).
 		Options(profileHuhOptions(q.Options)...).
 		Value(&selected)
+	// No explicit Height: without OptionsFunc the huh viewport sizes itself to
+	// the option count exactly, so every option renders and no empty card rows
+	// appear (AC-ITI-016).
 
 	// Wire up value storage (huh runs Validate on field completion/blur).
 	sel.Validate(func(val string) error {

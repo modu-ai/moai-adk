@@ -29,33 +29,27 @@
                                                                                 
                                                                                 
                                                                                 
-                                                                                
-                                                                                
-                                                                                
 
 shift+tab 이전 • enter 다음
 ● ● ● ○ ○ ○ ○ ○ ○ ○ 3 / 10
 ┃ Git 커밋 메시지 언어                                                          
 ┃ 커밋 메시지에 사용할 언어입니다.                                              
-┃ ▸ English - English                                                           
-┃   Korean (한국어) - 한국어                                                    
+┃ ▸ English           - English                                                 
+┃   Korean (한국어)   - 한국어                                                  
 ┃   Japanese (日本語) - 日本語                                                  
-┃   Chinese (中文) - 中文                                                       
-                                                                                
+┃   Chinese (中文)    - 中文                                                    
   코드 주석 언어                                                                
   코드 주석에 사용할 언어입니다.                                                
-  ▸ English - English                                                           
-    Korean (한국어) - 한국어                                                    
+  ▸ English           - English                                                 
+    Korean (한국어)   - 한국어                                                  
     Japanese (日本語) - 日本語                                                  
-    Chinese (中文) - 中文                                                       
-                                                                                
+    Chinese (中文)    - 中文                                                    
   문서 언어                                                                     
   문서 파일에 사용할 언어입니다.                                                
-  ▸ English - English                                                           
-    Korean (한국어) - 한국어                                                    
+  ▸ English           - English                                                 
+    Korean (한국어)   - 한국어                                                  
     Japanese (日本語) - 日本語                                                  
-    Chinese (中文) - 中文                                                       
-                                                                                
+    Chinese (中文)    - 中文                                                    
                                                                                 
                                                                                 
                                                                                 
@@ -78,14 +72,12 @@ shift+tab 이전 • enter 다음
 ┃ ▸ opus[1m] (Opus 5 + 1M 컨텍스트)                                             
 ┃   sonnet[1m] (Sonnet 5 + 1M 컨텍스트)                                         
 ┃   haiku (Haiku 4.5, 최고 속도)                                                
-                                                                                
   에이전트 모델 정책                                                            
   각 에이전트에 최적 모델을 할당하여 토큰 소비를 제어합니다.                    
                                                                                 
   ▸ High - Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows)           
     Medium - Opus 5 (high~low) + Sonnet (low, docs/single-shot rows)            
     Low - Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)           
-                                                                                
   세션 추론 강도                                                                
   이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 
   모델(Opus 5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는    
@@ -96,7 +88,6 @@ shift+tab 이전 • enter 다음
   ▸ high - 심층 추론                                                            
     xhigh - 확장 추론 (세션 전용, 에이전트 매트릭스는 high 사용)                
     max - 최대 추론                                                             
-                                                                                
   권한 모드                                                                     
   Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다.                      
   ▸ 자동 편집 수락 (acceptEdits) - 파일 편집 자동 수락, 명령어만 확인           
@@ -113,9 +104,6 @@ shift+tab 이전 • enter 다음
 ┃   (project default)                                                           
 ┃   ddd - 도메인 주도 개발 (ANALYZE-PRESERVE-IMPROVE)                           
 ┃ ▸ tdd - 테스트 주도 개발 (RED-GREEN-REFACTOR)                                 
-                                                                                
-                                                                                
-                                                                                
                                                                                 
                                                                                 
                                                                                 
