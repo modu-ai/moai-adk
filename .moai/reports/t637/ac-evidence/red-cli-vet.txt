@@ -1,0 +1,12 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/integration_target_test.go:371:11: lock.BranchSource undefined (type *kanban.IntegrationLock has no field or method BranchSource)
+internal/cli/integration_target_test.go:371:34: undefined: kanban.BranchSourceFlag
+internal/cli/integration_target_test.go:372:49: lock.BranchSource undefined (type *kanban.IntegrationLock has no field or method BranchSource)
+internal/cli/integration_target_test.go:372:70: undefined: kanban.BranchSourceFlag
+internal/cli/integration_target_test.go:391:11: lock.BranchSource undefined (type *kanban.IntegrationLock has no field or method BranchSource)
+internal/cli/integration_target_test.go:391:34: undefined: kanban.BranchSourceConfig
+internal/cli/integration_target_test.go:392:130: lock.BranchSource undefined (type *kanban.IntegrationLock has no field or method BranchSource)
+internal/cli/integration_target_test.go:392:151: undefined: kanban.BranchSourceConfig
+internal/cli/integration_target_test.go:409:11: lock.BranchSource undefined (type *kanban.IntegrationLock has no field or method BranchSource)
+internal/cli/integration_target_test.go:409:34: undefined: kanban.BranchSourceConfig
+internal/cli/integration_target_test.go:409:34: too many errors

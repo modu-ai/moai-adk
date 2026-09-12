@@ -32,18 +32,52 @@ const gitFlowWorkflow = "git-flow"
 // Callers that already hold a loaded *Config should read
 // cfg.GitStrategy.ActiveModeProfile() directly instead of re-reading the file.
 func LoadGitFlowDevelopBranch(projectRoot string) string {
+	return LoadGitFlowIntegrationConfig(projectRoot).DevelopBranch
+}
+
+// GitFlowIntegrationConfig separates "is this project git-flow" from "what is
+// its develop branch" (card t637). LoadGitFlowDevelopBranch answers "" alike
+// for a non-git-flow project, a git-flow project whose develop_branch is
+// empty, and an absent or unreadable file; the acquire warning must tell the
+// second case from the other two.
+type GitFlowIntegrationConfig struct {
+	// Manual reports that the git strategy mode is manual.
+	Manual bool
+	// GitFlowWorkflow reports that the ACTIVE mode profile's workflow is
+	// git-flow.
+	GitFlowWorkflow bool
+	// DevelopBranch is the trimmed develop branch, non-empty only when the
+	// project is git-flow (both halves above hold).
+	DevelopBranch string
+}
+
+// IsGitFlow reports whether the project's git strategy is git-flow: manual
+// mode AND an active profile whose workflow is git-flow. An absent or
+// unreadable file is not git-flow — neither half holds.
+func (c GitFlowIntegrationConfig) IsGitFlow() bool {
+	return c.Manual && c.GitFlowWorkflow
+}
+
+// LoadGitFlowIntegrationConfig reads the git strategy once and reports both
+// halves of the git-flow predicate plus the develop branch it gates. Every
+// failure path — missing file, unparseable file — yields the zero value.
+func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	wrapper := &gitStrategyFileWrapper{}
 	loaded, err := loadYAMLFile(dir, "git-strategy.yaml", wrapper)
 	if err != nil || !loaded {
-		return ""
+		return GitFlowIntegrationConfig{}
 	}
 	profile, ok := wrapper.GitStrategy.ActiveModeProfile()
 	// The mode check is not redundant with the profile check: develop_branch is
 	// a manual-mode key by contract, so a personal/team profile that happens to
 	// carry a git-flow workflow and a develop_branch does not qualify.
-	if !ok || wrapper.GitStrategy.Mode != "manual" || profile.Workflow != gitFlowWorkflow {
-		return ""
+	cfg := GitFlowIntegrationConfig{
+		Manual:          wrapper.GitStrategy.Mode == "manual",
+		GitFlowWorkflow: ok && profile.Workflow == gitFlowWorkflow,
 	}
-	return strings.TrimSpace(profile.DevelopBranch)
+	if cfg.Manual && cfg.GitFlowWorkflow {
+		cfg.DevelopBranch = strings.TrimSpace(profile.DevelopBranch)
+	}
+	return cfg
 }

@@ -44,11 +44,11 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 > **[HARD] 창의 생존 판정은 세션 프로세스에 묶여 있다 — 카드 t298.** `acquire`가 남기는 pid는 그 명령을 실행한 짧은 CLI 프로세스가 아니라 **그것을 실행한 세션**의 것이다. 그래서 창은 `acquire`가 반환한 뒤에도 계속 held로 읽히고, 풀리는 길은 셋뿐이다 — 홀더 세션이 죽거나, 홀더가 스스로 `release` 하거나, 다른 레인이 기록을 남기는 `--force`로 가져가거나.
 > 소유자를 판별하지 못한 채 잡힌 창은 pid 0으로 기록되고 **살아 있는 것으로** 읽힌다. 확실하지 않을 때 창을 비우는 쪽이 두 레인이 함께 머지하는 사고로 이어지므로, 판정은 늘 "살아 있다" 쪽으로 기운다.
-> **수정 이전에 잡힌 창은 여전히 인수 가능하게 읽힌다** — 옛 기록에는 세션 앵커가 없다. 업그레이드 시점에 창을 쥐고 있던 레인은 `moai integration acquire`를 한 번 더 실행해 재획득한다.
+> **수정 이전에 잡힌 창은 여전히 인수 가능하게 읽힌다** — 옛 기록에는 세션 앵커가 없다. 업그레이드 시점에 창을 쥐고 있던 레인은 `moai integration acquire --name <lane> --card <card-id>`를 한 번 더 실행해 재획득한다.
 > 이 기록이 레인을 기계적으로 갈라놓지는 않는다. `acquire` 자체가 읽고-고치고-쓰는 과정을 갈라 세우지 않으므로, 같은 순간에 두 레인이 잡으러 들어오면 둘 다 잡았다고 믿을 수 있다. 이것은 조율 신호이지 권한 경계가 아니며, **리드 공지가 여전히 첫 번째 층**이고 이 기록은 그 아래 기계 층이다.
 
 ```bash
-moai integration acquire --name <lane>   # 통합 워크트리에 들어가기 전
+moai integration acquire --name <lane> --card <card-id>   # 통합 워크트리에 들어가기 전
 moai integration status                  # 누가 쥐고 있는지
 moai integration release                 # 완료 보고를 보낸 뒤
 ```

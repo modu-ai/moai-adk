@@ -1,0 +1,13 @@
+block-local.md                           fetch=1 revlist=1 joined=0 J=0 F=2 S=3 C=4 X=6 R=8 order=PASS shape=PASS
+block-template.md                        fetch=1 revlist=1 joined=0 J=0 F=2 S=3 C=4 X=6 R=8 order=PASS shape=PASS
+mut-i-old.md                             fetch=1 revlist=1 joined=0 J=0 F=2 S=0 C=0 X=0 R=5 order=FAIL shape=FAIL
+mut-ii-joined.md                         fetch=1 revlist=1 joined=1 J=2 F=0 S=0 C=4 X=6 R=2 order=PASS shape=FAIL
+mut-iii-nostatus.md                      fetch=1 revlist=1 joined=0 J=0 F=2 S=0 C=0 X=0 R=3 order=FAIL shape=FAIL
+mut-iv-reorder.md                        fetch=1 revlist=1 joined=0 J=0 F=3 S=4 C=5 X=7 R=2 order=FAIL shape=FAIL
+mut-v-background.md                      fetch=1 revlist=1 joined=0 J=0 F=0 S=0 C=4 X=6 R=8 order=FAIL shape=FAIL
+mut-vi-pipe.md                           fetch=1 revlist=1 joined=0 J=0 F=0 S=0 C=4 X=6 R=8 order=FAIL shape=FAIL
+mut-vii-noabort.md                       fetch=1 revlist=1 joined=0 J=0 F=2 S=3 C=4 X=0 R=8 order=PASS shape=FAIL
+mut-viii-laneb-serial.md                 fetch=1 revlist=1 joined=0 J=0 F=2 S=3 C=4 X=6 R=8 order=PASS shape=PASS
+mut-ix-block.md                          fetch=1 revlist=1 joined=0 J=0 F=2 S=3 C=4 X=6 R=8 order=PASS shape=PASS
+probe-joined-andand.md                   fetch=1 revlist=1 joined=1 J=2 F=0 S=0 C=0 X=0 R=2 order=PASS shape=FAIL
+probe-joined-background.md               fetch=1 revlist=1 joined=1 J=0 F=0 S=0 C=0 X=0 R=2 order=FAIL shape=FAIL

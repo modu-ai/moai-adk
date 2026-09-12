@@ -1,0 +1,4 @@
+7a8,10
+> < - Store result as `is_worktree_context` boolean as for use in Phase 13; no later phase reads it
+> ---
+> > - Store result as `is_worktree_context` boolean as informational context only; no later phase reads it

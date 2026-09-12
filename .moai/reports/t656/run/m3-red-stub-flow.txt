@@ -1,0 +1,39 @@
+=== RUN   TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender
+=== RUN   TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender/single_call_order
+    settings_snapshot_flow_test.go:167: model = sonnet, want haiku
+    settings_snapshot_flow_test.go:175: canonical snapshot unreadable (open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRendersingle_c3755341911/001/.moai/cache/template-snapshot/claude/settings.json: no such file or directory), want {"model":"haiku","userOnly":false,"newKey":1}
+=== RUN   TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender/split_deploy_then_restore_order
+    settings_snapshot_flow_test.go:167: model = sonnet, want haiku
+    settings_snapshot_flow_test.go:175: canonical snapshot unreadable (open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRendersplit_de3898893321/001/.moai/cache/template-snapshot/claude/settings.json: no such file or directory), want {"model":"haiku","userOnly":false,"newKey":1}
+--- FAIL: TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender (0.01s)
+    --- FAIL: TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender/single_call_order (0.01s)
+    --- FAIL: TestSettingsSnapshotFlow_TwoCycles_BaseIsPreviousRender/split_deploy_then_restore_order (0.01s)
+=== RUN   TestSettingsSnapshotFlow_PromotionRule
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c1_merge_writes_result_promotes
+    settings_snapshot_flow_test.go:199: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+    settings_snapshot_flow_test.go:200: staging copy still present, want none
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c2_preserve_path_keeps_prior_base
+    settings_snapshot_flow_test.go:206: staging copy still present, want none
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c3_merge_skipped_identical_promotes
+    settings_snapshot_flow_test.go:215: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c4_abort_without_revert_promotes_next_flow
+    settings_snapshot_flow_test.go:225: canonical snapshot = {"a":2,"K":1}, want {"a":3,"K":1,"L":1}
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c5_abort_then_revert_keeps_prior_base
+    settings_snapshot_flow_test.go:236: canonical snapshot = {"a":1}, want {"a":3,"K":1,"L":1}
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c6_init_writes_promotes_despite_bundle_rewrite
+=== RUN   TestSettingsSnapshotFlow_PromotionRule/c8_update_without_user_file_promotes
+    settings_snapshot_flow_test.go:249: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+--- FAIL: TestSettingsSnapshotFlow_PromotionRule (0.03s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c1_merge_writes_result_promotes (0.00s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c2_preserve_path_keeps_prior_base (0.00s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c3_merge_skipped_identical_promotes (0.00s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c4_abort_without_revert_promotes_next_flow (0.00s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c5_abort_then_revert_keeps_prior_base (0.00s)
+    --- PASS: TestSettingsSnapshotFlow_PromotionRule/c6_init_writes_promotes_despite_bundle_rewrite (0.00s)
+    --- FAIL: TestSettingsSnapshotFlow_PromotionRule/c8_update_without_user_file_promotes (0.00s)
+=== RUN   TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock
+    settings_snapshot_flow_test.go:265: promote-failed lines = 0, want 1:
+--- FAIL: TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.899s
+FAIL

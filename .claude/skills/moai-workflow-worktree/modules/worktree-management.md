@@ -3,7 +3,6 @@
 Purpose: Core architecture and management patterns for Git worktree operations including registry management, lifecycle control, and resource optimization.
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -213,5 +212,4 @@ Resource Optimization (resource-optimization.md):
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 Module: Worktree management overview with progressive disclosure to sub-modules

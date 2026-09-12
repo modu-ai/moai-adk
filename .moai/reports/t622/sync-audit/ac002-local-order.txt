@@ -1,0 +1,1 @@
+.moai/reports/t622/sync-audit/ac002-local-block.md fetch=1 revlist=1 joined=0 J=0 F=2 S=3 C=4 X=6 R=8 order=PASS shape=PASS

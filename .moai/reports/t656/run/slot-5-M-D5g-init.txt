@@ -1,0 +1,6 @@
+=== RUN   TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute
+    update_settings_snapshot_test.go:483: the leftover judgement (offset 17355) runs after executor.Execute (offset 16435)
+--- FAIL: TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.969s
+FAIL

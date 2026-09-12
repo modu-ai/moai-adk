@@ -1,0 +1,8 @@
+go test exit: exit=0
+pass count: 19
+fail count: 0
+new-fail test-e exit=0
+new-fail test-s exit=1 (expect 1)
+lost-pass test-e exit=0
+lost-pass test-s exit=1 (expect 1)
+sorted sets diff exit=1

@@ -1,0 +1,1 @@
+[moai:integration-lock] warning: git-flow project with no develop branch configured; the window was recorded against the caller's branch "WT-a". Set git_strategy.manual.develop_branch, or pass --branch <integration-target>.

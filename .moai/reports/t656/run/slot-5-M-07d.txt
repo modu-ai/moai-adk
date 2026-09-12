@@ -1,0 +1,9 @@
+=== RUN   TestSettingsSnapshot_WriteSites
+=== RUN   TestSettingsSnapshot_WriteSites/template_sync_backup_empty
+2026/09/12 04:00:17 WARN config sections directory not found, using defaults path=.moai/config/sections
+    update_settings_snapshot_test.go:355: canonical snapshot = {"a":1}, want {"a":2,"K":1}
+--- FAIL: TestSettingsSnapshot_WriteSites (0.03s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/template_sync_backup_empty (0.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.982s
+FAIL

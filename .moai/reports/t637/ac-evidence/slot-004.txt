@@ -1,0 +1,54 @@
+=== RUN   TestIntegrationAcquire_RecordsBranchSource
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/config
+--- PASS: TestIntegrationAcquire_RecordsBranchSource (0.53s)
+    --- PASS: TestIntegrationAcquire_RecordsBranchSource/config (0.53s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.902s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	0.516s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	0.348s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	2.565s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	0.185s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	1.413s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	2.062s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	0.643s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	2.967s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	2.204s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	2.766s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	2.411s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	1.936s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	1.547s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	1.691s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	3.141s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	3.163s [no tests to run]

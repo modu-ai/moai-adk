@@ -9,6 +9,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,6 +41,28 @@ func runIntegration(t *testing.T, root string, args ...string) (string, error) {
 	walk(cmd, func(c *cobra.Command) { c.SilenceUsage = true; c.SilenceErrors = true })
 	err := cmd.Execute()
 	return out.String(), err
+}
+
+// runIntegrationStreams is runIntegration with standard output and standard
+// error captured in SEPARATE buffers (card t637). runIntegration merges the
+// two, so it cannot tell a warning written to the error writer from one
+// written to the result channel; every assertion about where the acquire
+// warning lands goes through this helper instead.
+func runIntegrationStreams(t *testing.T, root string, args ...string) (stdout, stderr string, err error) {
+	t.Helper()
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+
+	cmd := newIntegrationCmd()
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs(args)
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+	walk(cmd, func(c *cobra.Command) { c.SilenceUsage = true; c.SilenceErrors = true })
+	err = cmd.Execute()
+	return out.String(), errOut.String(), err
 }
 
 func walk(cmd *cobra.Command, fn func(*cobra.Command)) {
@@ -155,5 +178,128 @@ func TestIntegrationRelease_EmptyIsReported(t *testing.T) {
 	}
 	if !kanban.IsIntegrationLockNotHeld(err) {
 		t.Errorf("error is not the not-held sentinel: %v", err)
+	}
+}
+
+// --- card t637: the card and the branch's provenance in text status ---
+
+// A record carrying a card prints it, so a reader of text status can tell
+// WHICH card is being integrated without asking for JSON.
+func TestIntegrationStatus_ShowsCardLine(t *testing.T) {
+	root := t.TempDir()
+	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+		SessionID: "sess-abc123",
+		Branch:    "fixture-integration",
+		Worktree:  "/tmp/integration-tree",
+		Card:      "t-fixture",
+	}, false); err != nil {
+		t.Fatalf("seed lock: %v", err)
+	}
+
+	out, err := runIntegration(t, root, "status")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !strings.Contains(out, "\n  card:     t-fixture\n") {
+		t.Errorf("status does not print the recorded card as its own line:\n%s", out)
+	}
+}
+
+// A card-less record keeps today's text shape: no empty `card:` line.
+func TestIntegrationStatus_NoCardPrintsNoCardLine(t *testing.T) {
+	root := t.TempDir()
+	if _, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
+		SessionID: "sess-abc123",
+		Branch:    "fixture-integration",
+		Worktree:  "/tmp/integration-tree",
+	}, false); err != nil {
+		t.Fatalf("seed lock: %v", err)
+	}
+
+	out, err := runIntegration(t, root, "status")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if strings.Contains(out, "card:") {
+		t.Errorf("a card-less record printed a card line:\n%s", out)
+	}
+}
+
+// A record written before branch_source existed is read as it always was:
+// the branch line keeps today's exact shape, the JSON lock object gains no
+// synthetic key, and reading it does not rewrite it.
+func TestIntegrationStatus_OldRecordKeepsTodaysBranchLine(t *testing.T) {
+	root := t.TempDir()
+	lockFile := filepath.Join(root, ".moai", "state", kanban.IntegrationLockFileName)
+	if err := os.MkdirAll(filepath.Dir(lockFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Hand-written in the pre-t637 shape: no branch_source key at all.
+	old := `{
+  "session_id": "sess-old",
+  "session_name": "lane-old",
+  "pid": 0,
+  "branch": "fixture-integration",
+  "worktree": "/tmp/integration-tree",
+  "acquired_at": "2026-01-01T00:00:00Z"
+}
+`
+	if err := os.WriteFile(lockFile, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runIntegration(t, root, "status")
+	if err != nil {
+		t.Fatalf("status on an old record: %v", err)
+	}
+	if !strings.Contains(out, "\n  branch:   fixture-integration\n") {
+		t.Errorf("old record's branch line is not today's exact line:\n%s", out)
+	}
+	if strings.Contains(out, "(source:") {
+		t.Errorf("old record printed a provenance annotation it never recorded:\n%s", out)
+	}
+
+	jsonOut, err := runIntegration(t, root, "status", "--json")
+	if err != nil {
+		t.Fatalf("status --json on an old record: %v", err)
+	}
+	var status struct {
+		Lock map[string]any `json:"lock"`
+	}
+	if err := json.Unmarshal([]byte(jsonOut), &status); err != nil {
+		t.Fatalf("status --json is not valid JSON (%v): %s", err, jsonOut)
+	}
+	if _, ok := status.Lock["branch_source"]; ok {
+		t.Errorf("JSON lock object of an old record carries a branch_source key: %s", jsonOut)
+	}
+
+	after, err := os.ReadFile(lockFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != old {
+		t.Errorf("reading an old record rewrote it:\nbefore:\n%s\nafter:\n%s", old, after)
+	}
+}
+
+// The --branch value is the integration TARGET — the branch the merge lands
+// on — and the help must say so. "Branch being integrated" reads as the card
+// branch being merged, and a lane following that reading records the window
+// against its own card tree.
+func TestIntegrationAcquire_BranchFlagHelpNamesTheTarget(t *testing.T) {
+	flag := newIntegrationAcquireCmd().Flags().Lookup("branch")
+	if flag == nil {
+		t.Fatal("acquire has no --branch flag")
+	}
+	if !strings.Contains(flag.Usage, "integration target") {
+		t.Errorf("--branch help does not name the integration target: %q", flag.Usage)
+	}
+	if strings.Contains(flag.Usage, "Branch being integrated") {
+		t.Errorf("--branch help still describes the value as the branch being integrated: %q", flag.Usage)
+	}
+	for _, want := range []string{"configured git-flow develop branch", "current branch"} {
+		if !strings.Contains(flag.Usage, want) {
+			t.Errorf("--branch help no longer names the default resolution (%q missing): %q", want, flag.Usage)
+		}
 	}
 }
