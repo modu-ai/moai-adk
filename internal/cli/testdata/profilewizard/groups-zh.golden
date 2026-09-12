@@ -1,0 +1,144 @@
+● ● ○ ○ ○ ○ ○ ○ ○ ○ 2 / 10
+┃ 用户名                                                                        
+┃ 配置文件中显示的名称。按Enter跳过。                                           
+┃ >                                                                             
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+shift+tab 返回 • enter 下一步
+● ● ● ○ ○ ○ ○ ○ ○ ○ 3 / 10
+┃ Git提交消息语言                                                               
+┃ 提交消息使用的语言。                                                          
+┃ ▸ English - English                                                           
+┃   Korean (한국어) - 한국어                                                    
+┃   Japanese (日本語) - 日本語                                                  
+┃   Chinese (中文) - 中文                                                       
+                                                                                
+  代码注释语言                                                                  
+  代码注释使用的语言。                                                          
+  ▸ English - English                                                           
+    Korean (한국어) - 한국어                                                    
+    Japanese (日本語) - 日本語                                                  
+    Chinese (中文) - 中文                                                       
+                                                                                
+  文档语言                                                                      
+  文档文件使用的语言。                                                          
+  ▸ English - English                                                           
+    Korean (한국어) - 한국어                                                    
+    Japanese (日本語) - 日本語                                                  
+    Chinese (中文) - 中文                                                       
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+↑ 上 • ↓ 下 • / 筛选 • shift+tab 返回 • enter 选择
+● ● ● ● ● ● ○ ○ ○ ○ 6 / 10
+┃ 默认模型覆盖                                                                  
+┃ 使用此配置文件启动时覆盖模型。                                                
+┃   (project default)                                                           
+┃   fable[1m] (Fable 5 + 1M 上下文)                                             
+┃ ▸ opus[1m] (Opus 5 + 1M 上下文)                                               
+┃   sonnet[1m] (Sonnet 5 + 1M 上下文)                                           
+┃   haiku (Haiku 4.5，最快)                                                     
+                                                                                
+  代理模型策略                                                                  
+  通过为每个代理分配最优模型来控制token消耗。                                   
+                                                                                
+  ▸ High - Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows)           
+    Medium - Opus 5 (high~low) + Sonnet (low, docs/single-shot rows)            
+    Low - Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)           
+                                                                                
+  会话推理强度                                                                  
+  使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus
+  5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。          
+    (runtime default)                                                           
+    low - 最快，简略推理                                                        
+    medium - 均衡                                                               
+  ▸ high - 深度推理                                                             
+    xhigh - 扩展推理 (仅会话；代理矩阵改用 high)                                
+    max - 最大推理                                                              
+                                                                                
+  权限模式                                                                      
+  控制Claude在执行操作前如何请求权限。                                          
+  ▸ 自动接受编辑 (acceptEdits) - 自动接受文件编辑，仅确认命令                   
+    自动模式 (auto) - 分类器把关自动批准。需要 Max/Team/Enterprise/API 计划 +   
+    Sonnet 5+。不支持时会产生运行时错误。                                       
+    请求权限 (default) - 每次文件编辑和命令都需确认                             
+    计划模式 (plan) - 只读探索和规划                                            
+    跳过权限 (bypassPermissions) - 跳过所有检查（仅限隔离环境）                 
+
+↑ 上 • ↓ 下 • / 筛选 • shift+tab 返回 • enter 选择
+● ● ● ● ● ● ● ● ● ● 10 / 10
+┃ 开发方法论                                                                    
+┃ 写入 quality.yaml 的项目开发方法论。留空则保留项目默认值。                    
+┃   (project default)                                                           
+┃   ddd - 领域驱动开发 (ANALYZE-PRESERVE-IMPROVE)                               
+┃ ▸ tdd - 测试驱动开发 (RED-GREEN-REFACTOR)                                     
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+
+↑ 上 • ↓ 下 • / 筛选 • shift+tab 返回 • enter 提交

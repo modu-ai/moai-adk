@@ -40,6 +40,24 @@ func localizedKeyMap(locale string) *huh.KeyMap {
 	return km
 }
 
+// HelpActionLabels returns the en help-line action labels for locale — the
+// identity for en itself, the localized labels for ko/ja/zh, and nothing for
+// an unknown locale. Exported for the profile golden test's closed-exception
+// assertion (AC-ITI-008): the en values are the strings that must not leak
+// onto a localized screen.
+func HelpActionLabels(locale string) []string {
+	labels, ok := helpActionLabels[locale]
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(labels))
+	for _, action := range []string{"next", "submit", "back", "select", "up", "down",
+		"filter", "set filter", "clear filter", "toggle", "complete"} {
+		out = append(out, labels[action])
+	}
+	return out
+}
+
 // keyMapBindings lists every binding of km that carries help text.
 func keyMapBindings(km *huh.KeyMap) []*key.Binding {
 	return []*key.Binding{

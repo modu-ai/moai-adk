@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"charm.land/huh/v2"
+
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // RunProfile runs the absorbed profile wizard (design.md §2.2): the ten
@@ -17,20 +19,30 @@ import (
 // returned alongside the error, so the caller can name the locale the user had
 // reached when the run ended (design.md §5).
 func RunProfile(opts ProfileOptions, initial ProfileResult, locale string) (*ProfileResult, error) {
-	questions := ProfileQuestions(opts, initial)
 	result := initial
-	cur := locale
-	form := buildProfileForm(questions, &result, &cur)
+	form := NewProfileForm(opts, initial, locale)
 	if err := form.Run(); err != nil {
 		return &result, mapFormErr(err)
 	}
 	return &result, nil
 }
 
+// NewProfileForm builds the absorbed profile wizard's form without running
+// it: the ten profile questions partitioned by group, each group led by the
+// shared step indicator, the help line from the localized key map. RunProfile
+// is the runner; this constructor exists so the rendering can be judged from
+// the cli package, where the option-label bridge lives (AC-ITI-008 goldens).
+func NewProfileForm(opts ProfileOptions, initial ProfileResult, locale string) *huh.Form {
+	questions := ProfileQuestions(opts, initial)
+	result := initial
+	cur := locale
+	return buildProfileForm(questions, &result, &cur)
+}
+
 // buildProfileForm assembles the profile form: the question set partitioned
 // into huh groups by the question Group labels (design.md §2.2 —
 // conversation_language alone on the first page so its answer is saved before
-// the next group renders), each group led by the shared step indicator.
+// the next group renders), each group headed by the shared step indicator.
 func buildProfileForm(questions []Question, result *ProfileResult, locale *string) *huh.Form {
 	vis := profileVisibility(questions)
 	var groups []*huh.Group
@@ -41,12 +53,20 @@ func buildProfileForm(questions []Question, result *ProfileResult, locale *strin
 		if len(pending) == 0 {
 			return
 		}
-		fields := make([]huh.Field, 0, len(pending)+1)
-		fields = append(fields, genericStepperNote(pending[0].ID, result, vis))
+		fields := make([]huh.Field, 0, len(pending))
 		for _, q := range pending {
 			fields = append(fields, buildProfileField(q, result, locale))
 		}
-		groups = append(groups, huh.NewGroup(fields...))
+		// The step indicator rides the GROUP TITLE, not an in-content note:
+		// huh v2 scrolls each group's viewport so the focused field sits at
+		// the top, which cuts in-content note rows above the focused field
+		// (measured with the formDriver — the same phenomenon class as
+		// plan.md §G D4), while the group header renders outside the
+		// viewport and cannot be scrolled away. The string is the same
+		// tui.Stepper(k, N, nil) the init wizard renders (design.md §4,
+		// REQ-ITI-008).
+		indicator := tui.Stepper(vis.index(pending[0].ID), vis.count(), nil)
+		groups = append(groups, huh.NewGroup(fields...).Title(indicator))
 		pending = nil
 	}
 

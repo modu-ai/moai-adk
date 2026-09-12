@@ -23,7 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
-var updateDowngradeGolden = flag.Bool("update-golden", false, "rewrite the downgrade confirm goldens under testdata/downgrade-confirm")
+var updateViewGoldens = flag.Bool("update-golden", false, "rewrite the downgrade confirm goldens under testdata/downgrade-confirm")
 
 const downgradeGoldenDir = "testdata/downgrade-confirm"
 
@@ -167,7 +167,7 @@ func TestUpdateVersionDowngradeConfirm_Localized(t *testing.T) {
 					}
 				}
 			}
-			if err := ptycaptest.CompareGolden(downgradeGoldenDir, tc.name, view, *updateDowngradeGolden); err != nil {
+			if err := ptycaptest.CompareGolden(downgradeGoldenDir, tc.name, view, *updateViewGoldens); err != nil {
 				t.Error(err)
 			}
 		})

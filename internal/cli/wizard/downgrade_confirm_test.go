@@ -72,7 +72,7 @@ func TestDowngradeConfirmTexts_FourLocales(t *testing.T) {
 // labels from ConfirmYes/ConfirmNo, and no English action label left.
 func TestNewDowngradeConfirmForm_KoRender(t *testing.T) {
 	var v bool
-	view := ptycaptest.StripANSI(newFormDriver(t, NewDowngradeConfirmForm("ko", "v9.9.9", "v1.0.0", &v)).view())
+	view := ptycaptest.StripANSI(newFormDriver(t, NewDowngradeConfirmForm("ko", "v9.9.9", "v1.0.0", &v)).View())
 	ui := GetUIStrings("ko")
 	ptycaptest.RequireLines(t, view, "v9.9.9 → v1.0.0")
 	for _, want := range []string{ui.ConfirmYes, ui.ConfirmNo, "전환", "제출"} {
@@ -91,7 +91,7 @@ func TestNewDowngradeConfirmForm_KoRender(t *testing.T) {
 // the table renders the English text, buttons, and help.
 func TestNewDowngradeConfirmForm_UnknownLocaleRendersEnglish(t *testing.T) {
 	var v bool
-	view := ptycaptest.StripANSI(newFormDriver(t, NewDowngradeConfirmForm("fr", "v9.9.9", "v1.0.0", &v)).view())
+	view := ptycaptest.StripANSI(newFormDriver(t, NewDowngradeConfirmForm("fr", "v9.9.9", "v1.0.0", &v)).View())
 	ptycaptest.RequireLines(t, view, "Downgrade v9.9.9 → v1.0.0?", "The requested tag is older than the running version.")
 	for _, want := range []string{"Yes", "No", "toggle", "submit"} {
 		if !strings.Contains(view, want) {
