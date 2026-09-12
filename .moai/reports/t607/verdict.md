@@ -53,3 +53,21 @@ run 단계로 넘길 선택 사항(2회차 N1–N4): N1은 CLI도 가드와 같�
 - **진행 방식**: 반자율이다. M1이 끝났을 때와 M4가 끝났을 때 운영자에게 결과를 보이고 멈춘다. push는 하지 않는다(리드 일괄).
 - **run 착수 전 트리**: 카드 HEAD `394869320`. 흡수할 로컬 develop은 `ac6c42c2d`이다. t637 게이트는 rc=1이므로 M6은 닫힌 채로 시작한다.
 - 이 기록은 run 단계의 어떤 명령보다 먼저 커밋한다.
+
+## 5. run 단계 진행 상황 (2026-09-12)
+
+| 마일스톤 | 커밋 | 상태 |
+|---|---|---|
+| M1 RED | `f20d07c48` | 끝. 실패는 전부 동작 기준(assertion-RED) |
+| M2 임대 코어 | `28d58376b` · `c331bc589` · `a5efb58f6` | 끝. 대조군 `starts=2` / `acquired=1 refused=1` |
+| M4 설정·가드 | `dff5dee4a` · `2e743c0d6` | 끝. 뮤턴트 표 전 항목 각자 실패 |
+| M3 CLI | `10b022b59` | 끝. `TestSlotCLI_` 11 PASS (슬롯 안에서 측정) |
+| develop 흡수 | `93fac8401` | develop `30cf7f422`, 충돌 없음 |
+| M5 템플릿 | `685fc3387` | `make build` 제외 끝 |
+| M6 레인 문서 | `e78fd0ee6` | 끝. t637 병합으로 게이트 열림(rc=0, 자체 재측정) |
+
+**남은 작업 하나**: `make build`. `internal/cli`를 링크하므로 heavy-test 슬롯이 필요하다. 리드가 1회 승인했고 대기열은 lane-2(dr0912) → lane-1(SLOT-21) → lane-10이다. 창을 받으면 그 시점의 로컬 develop tip(리드 통지 기준 `d67196740`, t659 병합·미푸시)을 먼저 흡수한다.
+
+**귀속하지 않는 red**: `TestDestructiveTargetRegistry_CoversAllSites`는 t656 회귀로 현재 develop에 있는 known-red이며 lane-2가 dr0912로 수리 중이다. 흡수 뒤 보이더라도 t607 귀속이 아니다.
+
+**유지되는 Gap**: `go test ./internal/cli/` 전체 패키지 판정은 없다(600초 초과). 판정은 develop push CI 몫이며, 로컬 전체 실행은 리드 규칙상 하지 않는다.
