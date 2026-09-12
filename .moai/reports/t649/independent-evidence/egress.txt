@@ -1,0 +1,7 @@
+=== RUN   TestAuditNativeEgressPreservesOpaqueItemBytes
+    t649_audit_overlay_test.go:17: observed subscription request: {"input":[{"content":[{"text":"hello","type":"input_text"}],"role":"user"},{"type":"reasoning","id":"rs_audit","summary":[],"encrypted_content":"synthetic_cipher"},{"content":[{"text":"answer","type":"output_text"}],"role":"assistant"},{"content":[{"text":"continue","type":"input_text"}],"role":"user"}],"model":"gpt-5.6-sol","store":false,"stream":true}
+    t649_audit_overlay_test.go:18: opaque item original bytes lost at subscription egress
+--- FAIL: TestAuditNativeEgressPreservesOpaqueItemBytes (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway	0.423s
+FAIL

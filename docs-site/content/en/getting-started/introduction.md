@@ -7,7 +7,7 @@ description: "Introduces MoAI-ADK — an Agentic Development Kit wrapping Claude
 
 MoAI-ADK is an Agentic Development Kit that wraps Claude Code around three things: **cost (tokenomics)**, **self-improvement (agentic loop engineering)**, and **quality control (agentic harness)**. It delivers the same quality of code for fewer tokens. Declare a completion condition and the loop works on its own, and the observations piled up along the way become raw material for harness learning. "Done" is judged by evidence, through the SPEC 3-phase lifecycle and the TRUST 5 gates. Model selection, reasoning depth, and context usage are all managed by the system. It is written in Go and ships as a single binary, so it runs immediately with no dependencies.
 
-This page introduces what MoAI-ADK is and why it is shaped the way it is, in one flow. It covers which problem each of the three pillars answers, where terms like SPEC · TRUST 5 · CG mode stand inside that picture, and where to go when starting out. Installation and running your first project are left to the [Installation](/en/getting-started/installation) and [Quick Start](/en/getting-started/quickstart) pages — here we focus on the "why."
+This page introduces what MoAI-ADK is and why it is shaped the way it is, in one flow. It covers which problem each of the three pillars answers, where terms like SPEC · TRUST 5 stand inside that picture, and where to go when starting out. Installation and running your first project are left to the [Installation](/en/getting-started/installation) and [Quick Start](/en/getting-started/quickstart) pages — here we focus on the "why."
 
 
 ## Notation
@@ -30,7 +30,7 @@ MoAI-ADK is an Agentic Development Kit that wraps Claude Code around **three pil
 
 ### Cost — tokenomics
 
-The same quality for fewer tokens. Cost is decided not by unit price but by **model assignment** — in the DeepSWE benchmark, Opus at its lowest reasoning outscored Sonnet at its highest while costing one sixteenth as much. The 3-tier model policy · CG mode · prompt caching · Token Circuit Breaker put the budget under the system's management.
+The same quality for fewer tokens. Cost is decided not by unit price but by **model assignment** — in the DeepSWE benchmark, Opus at its lowest reasoning outscored Sonnet at its highest while costing one sixteenth as much. The 3-tier model policy · prompt caching · Token Circuit Breaker put the budget under the system's management.
 
 ### Self-improvement — agentic loop engineering
 
@@ -161,8 +161,7 @@ Natural-language requests go through **Analyze-First** routing. Whatever languag
 /moai run SPEC-AUTH-001 --solo    # force sequential sub-agents
 ```
 
-{{< callout type="info" >}}
-**v3.0 change**: the former Agent Teams static-orchestration layer was retired. Forcing `--team` falls back to sub-agent mode. Claude Code's native teammate runtime (the tmux split panes of `moai cg`) is preserved.
+{{< callout type="info" >}} **v3.0 change**: the former Agent Teams static-orchestration layer was retired. Forcing `--team` falls back to sub-agent mode. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 {{< /callout >}}
 
 ### SPEC-First workflow
@@ -245,19 +244,13 @@ MoAI-ADK's Ralph-Loop Style LSP integration works like this:
 Ralph-Loop Style LSP integration automates the quality gates of the development workflow, keeping code quality high without a person touching it each time.
 {{< /callout >}}
 
-## Save tokens with CG mode (50-70%)
+## CG retirement and migration
 
-{{< callout type="info" >}}
-**A practical tool for cost (tokenomics):** z.ai GLM is an AI backend fully compatible with Claude Code. In **CG mode** (`moai cg`, tmux required), a Claude leader handles orchestration, architecture decisions, and code review, while GLM teammates work in parallel on implementation, tests, and documentation — saving **50-70% of tokens** on implementation-heavy work. For work that needs deep reasoning, like architecture design or security review, use Claude only (`moai cc`).
+It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/) CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
-```bash
-moai cc            # Claude only
-moai glm           # GLM only
-moai cg            # CG hybrid (Claude leader + GLM teammates, tmux required)
-```
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
 
-If you do not have a GLM account, sign up at [z.ai signup (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU). Rewards through the signup link go to **MoAI open-source development**. For the detailed architecture and model policy, see the [Multi-LLM](/en/multi-llm/) section.
-{{< /callout >}}
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ## Self-improvement — the loop works on its own and the harness learns
 
@@ -279,7 +272,7 @@ To start with MoAI-ADK, follow this order:
 | Advantage | Description |
 |------|------|
 | **Quality assurance** | Consistent quality maintained by the TRUST 5 framework |
-| **Token efficiency** | Cost managed by the system via model policy + CG mode + Token Circuit Breaker |
+| **Token efficiency** | Cost managed by the system via model policy + Token Circuit Breaker |
 | **Higher productivity** | Shorter development time through AI-agent automation |
 | **Extensible** | Flexible extension with a modular architecture and the harness builder |
 | **Multilingual** | 4 languages supported |

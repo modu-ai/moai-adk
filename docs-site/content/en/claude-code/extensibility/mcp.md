@@ -143,7 +143,7 @@ Connecting or disconnecting an MCP server changes the set of tool definitions pl
 
 MoAI-ADK **does not provision MCP servers by default**. Instead, when external material is needed, it uses a fallback strategy of looking up official documentation and best practices with the built-in `WebSearch` / `WebFetch` (`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy). This is a design intended to keep architecture and analysis quality from depending on MCP availability.
 
-One exception is backend routing. When running in the GLM panes of `moai glm` or `moai cg`, web search and web fetch are routed to the z.ai MCP tools instead of the built-in tools (`.claude/rules/moai/core/glm-web-tooling.md`). Whatever the backend, the search/fetch capability itself is preserved — only the path changes.
+One exception is backend routing. When running in `moai glm` sessions, web search and web fetch are routed to the z.ai MCP tools instead of the built-in tools (`.claude/rules/moai/core/glm-web-tooling.md`). Whatever the backend, the search/fetch capability itself is preserved — only the path changes.
 
 ## Related Documents
 

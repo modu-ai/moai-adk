@@ -1,0 +1,71 @@
+{
+  "body_limit_bytes": 16777216,
+  "duration_seconds": 22.329832209,
+  "event": "response.completed",
+  "events": 19,
+  "http_status": 200,
+  "model": "gpt-5.6-sol",
+  "needle_recall": true,
+  "output": "MAPLE71,OTTER83,CEDAR29",
+  "repetitions": 921754,
+  "request_bytes": 1843903,
+  "response_status": "completed",
+  "route": "subscription",
+  "stream_read_ok": true,
+  "timeout": false,
+  "timeout_seconds": 150,
+  "truncation": "server default, three-position recall checked",
+  "unit": " x",
+  "usage": {
+    "attribution": {
+      "items": {
+        "msg_06928538c9263e7d016aa4c13d400887d09ea74dd9819a5e3d": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "content": [
+            {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0,
+              "input_tokens": 921802,
+              "output_tokens": 0
+            }
+          ],
+          "input_tokens": 921802,
+          "output_tokens": 0
+        },
+        "msg_06928538c9263e7d016aa4c15185a887d0a0bcd86105ebd41d": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "content": [
+            {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0,
+              "input_tokens": 2,
+              "output_tokens": 15
+            }
+          ],
+          "input_tokens": 2,
+          "output_tokens": 15
+        }
+      },
+      "request_fields": {
+        "instructions": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "input_tokens": 21,
+          "output_tokens": 0
+        }
+      }
+    },
+    "input_tokens": 921825,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 15,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 921840
+  }
+}

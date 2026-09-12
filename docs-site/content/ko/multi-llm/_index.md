@@ -2,7 +2,7 @@
 title: 멀티 LLM
 weight: 60
 draft: false
-description: 다중 모델·다중 제공자 라우팅 — 모델 라인업, 추론 깊이(effort), 프로필 매트릭스, CG 모드, 모델 정책
+description: 다중 모델·다중 제공자 라우팅 — 모델 라인업, 추론 깊이(effort), 프로필 매트릭스, 모델 정책
 ---
 
 {{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 토크노믹스
@@ -132,10 +132,8 @@ flowchart TD
     D --> E{"실행 모드가 정하는 제공자"}
     E -->|"moai cc"| F["Claude API만"]
     E -->|"moai glm"| G["GLM API만<br/>z.ai 백엔드"]
-    E -->|"moai cg"| H["리더 Claude · 워커 GLM"]
     F --> I["에이전트 실행"]
     G --> I
-    H --> I
 
     style A fill:#cc785c,color:#fff
     style I fill:#059669,color:#fff
@@ -147,7 +145,6 @@ flowchart TD
 API 외에 **z.ai GLM** (Generative Language Model)도 대안 백엔드로 씁니다. 코드를
 고칠 필요 없이 환경 변수만 바꾸면 Claude Code와 호환되어 그대로 돌아갑니다.
 
-![CG 모드 구조](/images/sections/multi-llm-ko.png)
 
 GLM으로 갈아탈 때 Claude 티어마다 대응하는 GLM 모델이 배정됩니다. Claude
 Code의 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 주입되는 짝은 이렇습니다.
@@ -160,22 +157,16 @@ Code의 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 주입되는 짝은 이렇�
 
 > `glm-5.3-flash`가 기본 모델이다. glm-5.3은 어느 티어 슬롯에서든 여전히 선택할 수 있다 — `llm.yaml`(`llm.glm.models.*`)에서 슬롯을 지정하면 기존 동작(1M 컨텍스트, 표준 effort 모아짐) 그대로 로드된다.
 
-### 세 가지 실행 모드
+### 실행 모드
 
-무엇을 우선할지에 따라 세 모드 가운데 고르면 됩니다.
+Claude 또는 GLM 런처를 명시적으로 선택합니다.
 
 | 명령어 | 리더 | 워커 | tmux 필요 | 비용 절감 | 용도 |
 |--------|------|------|----------|----------|------|
 | `moai cc` | Claude | Claude | 아니오 | — | 최고 품질, 복잡한 작업 |
 | `moai glm` | GLM | GLM | 권장 | ~70% | 비용 최적화 |
-| `moai cg` | Claude | GLM | **필수** | **~60%** | 품질 + 비용 균형 |
 
-그 가운데 **CG 모드** (Claude + GLM)가 다중 제공자 라우팅의 대표 사례입니다.
-전략·계획·감사처럼 추론 품질이 중요한 일은 Claude 리더가 맡고, 대량 구현처럼
-물량이 중요한 일은 GLM 워커가 맡습니다. tmux 세션 단위로 환경 변수를 갈라
-놓아 이 배분을 한 세션 안에서 그대로 실행합니다. 구현 중심 작업이라면 비용을
-약 60-70% 줄일 수 있습니다. 자세한 아키텍처와 설정 절차는
-[CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode)에서 다룹니다.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다. [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 
 ```bash
 # 1. GLM API 키 저장 (최초 1회)
@@ -184,7 +175,6 @@ moai glm setup sk-your-glm-api-key
 # 2. 모드 선택
 moai cc            # Claude 전용
 moai glm           # GLM 전용
-moai cg            # CG 하이브리드 (tmux 필요)
 ```
 
 ## 모델 정책: 부를 때마다 모델을 확인한다
@@ -205,7 +195,7 @@ MoAI-ADK는 에이전트를 부를 때마다 해당 모델을 spawn 호출에 �
 
 ## 이 섹션의 문서
 
-- [CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode) — tmux 격리 아키텍처, GLM 설정 절차, 리더/워커 비용 분배
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [모델 정책](/ko/multi-llm/model-policy) — 3단계 정책 개요, 33개 셀 배정표, 에이전트별 모델
 - [프로필 매트릭스](/ko/advanced/profile-matrix) — 매트릭스가 푸는 문제와 셀 해부 (이 섹션으로 이동 예정)
 

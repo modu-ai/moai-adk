@@ -1,0 +1,35 @@
+SOURCE https://code.claude.com/docs/en/settings-reference#modelpicker
+​modelPicker
+List the models the /model picker offers, in the order you write them and under labels you choose, so the picker lists the models your organization runs, after the built-in lineup or instead of it. Each row’s model is taken verbatim, so it accepts anything --model accepts: an alias such as opus, an Anthropic model ID, or a provider-format ID for Amazon Bedrock, Google Cloud’s Agent Platform, Microsoft Foundry, or an LLM gateway. Requires Claude Code v2.1.242 or later.
+
+Scope: User or managed. Claude Code reads the key from managed settings, --settings, and user settings, and ignores it in project and local settings so a repository you clone can’t relabel the picker. The highest of those three that sets the key supplies the whole lineup, and Claude Code never combines lineups from two sources.
+Type: object with an options array of rows and an optional replaceBuiltInOptions Boolean
+Default: unset, so the picker shows the built-in lineup
+
+This example adds two Bedrock deployments after the built-in lineup, under names your team recognizes:
+managed-settings.json{
+  "modelPicker": {
+    "options": [
+      { "model": "us.anthropic.claude-opus-4-8", "label": "Opus (production)" },
+      {
+        "model": "us.anthropic.claude-sonnet-4-6",
+        "label": "Sonnet (production)",
+        "description": "Day-to-day work"
+      }
+    ]
+  }
+}
+
+
+
+​Fields for modelPicker
+The key takes two fields, one for the rows themselves and one for whether they replace the built-in lineup or add to it.
+FieldTypeWhat it doesoptionsarray of rows, each with a required model and an optional label and descriptionThe rows the picker shows, in this order, except that a grayed-out row moves to the bottom. Without a label, Claude Code titles the row with the built-in name for a model it knows, or the model ID otherwise, and without a description it writes a generic second linereplaceBuiltInOptionsBoolean, default falseSet it to true to show only these rows, Default, and a row for the model the session is already using. Leave it unset to add these rows after the built-in lineup
+With replaceBuiltInOptions on, Claude Code hides every other row: the built-in lineup, the rows it adds for availableModels entries, the models gateway discovery found, and ANTHROPIC_CUSTOM_MODEL_OPTION. With it off, Claude Code skips a listed model that the built-in lineup already covers. A label changes what the picker shows, not which model Claude Code runs.
+An availableModels allowlist still applies to these rows. Before you add a listed model to the allowlist, read Merge behavior: a specific model ID narrows its family’s wildcard entry. Claude Code also checks each row against the session before it shows the picker:
+
+Dropped: a row Claude Code can’t serve, such as a retired model or a model your organization has no access to
+Grayed out: a row you can’t select yet, shown with the reason
+No row survives: Claude Code keeps the built-in lineup, filtered by the allowlist as usual
+
+Claude Code drops a row it can’t parse and keeps the rest. See Fix a broken settings file.

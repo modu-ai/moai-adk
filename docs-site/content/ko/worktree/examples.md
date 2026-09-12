@@ -119,7 +119,7 @@ Phase 3: IMPROVE
 왜 구현 단계에서 모델을 GLM으로 바꿀까요? 구현은 토큰을 많이 쓰지만
 한 단계 한 단계의 추론 깊이는 계획만큼 깊지 않아도 됩니다. 그래서 비용이
 낮은 모델로 돌려도 품질을 크게 떨어뜨리지 않으면서 비용을 아낄 수 있습니다.
-이 절감 효과와 그 근거는 [CG 모드](/ko/multi-llm/cg-mode)에 정리되어 있습니다.
+[CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/) — CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 ## Step 3 — 같은 워크트리에서 문서화하기
 
@@ -551,8 +551,7 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # - GLM 사용으로 비용 절감
 ```
 
-구현 세션을 GLM으로 돌린 덕에 비용이 눈에 띄게 줄었습니다. 절감 폭과 그
-근거는 [CG 모드](/ko/multi-llm/cg-mode)에 정리되어 있습니다.
+이 예시는 독립적인 GLM 세션을 사용합니다. 기존 Claude 리더·GLM 팀원 혼합 역할의 이전은 [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)을 확인하세요.
 
 ---
 

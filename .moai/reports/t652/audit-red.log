@@ -1,0 +1,13 @@
+=== RUN   TestAuditRealTransportEOFWakesBridge
+    audit_external_test.go:24: Step err=Codex App Server EOF transport err=Codex App Server EOF elapsed=196.292875ms done=false
+--- PASS: TestAuditRealTransportEOFWakesBridge (0.63s)
+=== RUN   TestAuditCancelBeforeRealStartReplyInterruptsTurn
+    audit_external_test.go:58: Step err=context canceled transport err=<nil> interrupt observed=false
+    audit_external_test.go:59: allocated turn was not interrupted after late turn/start reply
+--- FAIL: TestAuditCancelBeforeRealStartReplyInterruptsTurn (1.11s)
+=== RUN   TestAuditCanceledRPCDoesNotExhaustSharedTransport
+    audit_external_test.go:91: conversation a failed after earlier canceled calls: context deadline exceeded; transport=context deadline exceeded
+--- FAIL: TestAuditCanceledRPCDoesNotExhaustSharedTransport (5.20s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	7.212s
+FAIL

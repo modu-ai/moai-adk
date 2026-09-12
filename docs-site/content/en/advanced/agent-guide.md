@@ -328,7 +328,7 @@ The Agent Teams static orchestration layer from earlier versions (the `workflow.
 
 - Historical: during the retirement era, forcing `--team` announced `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the sentinel string survives as documented history.
 - Research and review work that needs parallelism is handled with parallel sub-agent fan-out; sequential coding work is handled with a sub-agent chain.
-- The native Claude Code teammate runtime (the GLM panes of `moai cg`, `moai worktree --team`) continues to operate independently of this — from a tokenomics standpoint, CG mode's Claude-leader + GLM-worker division of labor takes over this role.
+ CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ## Related Documents
 

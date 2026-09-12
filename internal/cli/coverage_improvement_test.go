@@ -1894,7 +1894,7 @@ func TestRunCG_NoProjectRoot(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no project root")
 	}
-	if !strings.Contains(err.Error(), "find project root") {
+	if !strings.Contains(err.Error(), "is retired") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -1934,7 +1934,7 @@ func TestRunCG_NoAPIKey(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no API key")
 	}
-	if !strings.Contains(err.Error(), "GLM API key not found") {
+	if !strings.Contains(err.Error(), "is retired") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -4209,7 +4209,9 @@ func TestRunCC_WithTeamModeMessage(t *testing.T) {
 	}
 
 	// Create LLM config with team_mode
-	llmYAML := "llm:\n  team_mode: cg\n"
+	// CG is retired and is rejected before launch. This characterization covers
+	// the still-supported GLM team-mode cleanup performed by `moai cc`.
+	llmYAML := "llm:\n  team_mode: glm\n"
 	if err := os.WriteFile(filepath.Join(moaiDir, "llm.yaml"), []byte(llmYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}

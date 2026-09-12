@@ -194,7 +194,7 @@ CLI는 MCP 도구가 `tools:` 목록에 없거나, 메인 세션에서 CLI 형�
 
 ### GLM (z.ai)
 
-GLM 세션(`moai glm` 또는 `moai cg`의 GLM 패널)에서 실행하면, 웹 검색과 웹 조회가 내장 `WebSearch` / `WebFetch` 대신 z.ai MCP 도구로 라우팅됩니다. 인증은 `~/.moai/.env.glm`에서 읽어옵니다.
+GLM 세션(`moai glm`)에서 실행하면, 웹 검색과 웹 조회가 내장 `WebSearch` / `WebFetch` 대신 z.ai MCP 도구로 라우팅됩니다. 인증은 `~/.moai/.env.glm`에서 읽어옵니다.
 
 z.ai MCP 서버(`zai-mcp-server`, `web_search_prime`, `web_reader`)는 기본으로 비활성이며, GLM 세션에서 `moai glm tools enable`로 켭니다. GLM 세션에서의 라우팅 규칙은 [다중 LLM 백엔드](/ko/multi-llm/)를 참조하세요.
 

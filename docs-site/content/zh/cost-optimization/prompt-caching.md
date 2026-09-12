@@ -2,7 +2,7 @@
 title: 提示缓存 —— 成本节约与盈亏平衡
 weight: 30
 draft: false
-description: "梳理提示缓存如何降低代币成本：读取 0.1 倍 · 写入 1.25 倍的盈亏平衡、5 分钟寿命、自主级别 (MOAI_AUTONOMY_TIER) 与 CG 模式对成本·速度的影响，以入门水准逐一讲解。"
+description: "梳理提示缓存如何降低代币成本：读取 0.1 倍 · 写入 1.25 倍的盈亏平衡、5 分钟寿命、自主级别 (MOAI_AUTONOMY_TIER)对成本·速度的影响，以入门水准逐一讲解。"
 ---
 
 # 提示缓存 —— 成本节约与盈亏平衡
@@ -168,11 +168,13 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 4. **`/compact` 放在自然的关口**： 在工作与工作之间有意义的边界执行。若走错了路，能回退到已缓存回合的 **`/rewind`** 比整体重新摘要的 `/compact` 更便宜。
 5. **`/clear` 只在真正需要时用**： `/clear` 会把温热的缓存整个丢掉。剩下的收尾工作不长的话，保持缓存直接收尾，比背着旧上下文开始大工作更便宜。
 
-## 用 CG 模式再省一步
+## CG 停用与配置迁移
 
-如果说缓存是"把同样的内容便宜地再用一遍"这一轴，**CG 模式** (CG Mode) 就是"少用贵模型"这一轴。它把 tmux 会话切分开，领队用 Claude、实现工作者用便宜的 GLM（z.ai 后端），在实现为主的工作上**把成本降低约 60-70%**。两条轴互不重叠 —— CG 模式下各后端的缓存由各后端自行处理（Claude 用提示缓存，GLM 用基于内容相似度的隐式缓存）。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
-详细结构与切换命令请看[CG 模式](/zh/multi-llm/cg-mode)。
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
+
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ## 成本监控
 
@@ -197,7 +199,7 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 
 - [提示缓存](/zh/claude-code/context-memory/prompt-caching) —— 运作原理、前缀匹配、上下文管理（上下文管理视角）
 - [上下文窗口](/zh/claude-code/context-memory/context-window) —— 上下文窗口大小与各模型差异
-- [CG 模式](/zh/multi-llm/cg-mode) —— Claude + GLM 混合，成本降低 60-70%
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 - [模型策略](/zh/multi-llm/model-policy) —— 逐智能体的模型注入与漂移防范
 
 ## 来源（官方文档）

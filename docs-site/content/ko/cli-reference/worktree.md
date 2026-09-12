@@ -14,7 +14,7 @@ SPEC 단위 작업을 main 체크아웃에서 동시에 진행하면 서로의 �
 
 | 하려는 일 | 쓰는 명령어 |
 |-----------|-------------|
-| 워크트리 안에서 작업 시작 | `moai cc -w <name>` (또는 `moai glm -w` / `moai cg -w`) |
+| 워크트리 안에서 작업 시작 | `moai cc -w <name>` (또는 `moai glm -w` / `moai cc -w`) |
 | 현재 세션은 두고 새 tmux 창에서 열기 | `moai cc -w <name> --spawn` |
 | 워크트리 목록 확인 | `git worktree list` |
 | 워크트리 새로 만들기 | `moai cc -w <name>` (`.claude/worktrees/<name>/` 자동 생성) 또는 `git worktree add` |
@@ -164,7 +164,7 @@ moai worktree restore --snapshot <path>
 moai cc -w feat-auth
 
 # 현재 세션은 유지한 채 새 tmux 창에서 GLM 팀원 띄우기
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # 워크트리 목록
 git worktree list
@@ -187,5 +187,5 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
 - [Git Worktree 개요](/ko/worktree/) — 개념과 워크플로우
 - [완벽 가이드](/ko/worktree/guide) — 명령어별 상세 사용법
-- [CG 모드](/ko/multi-llm/cg-mode) — Claude 리더 + GLM 팀원 하이브리드
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [CLI 개요](/ko/getting-started/cli)

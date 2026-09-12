@@ -1,0 +1,15 @@
+{
+  "head": "81c1d58f9",
+  "branch": "WT-unified-gateway",
+  "captured_utc": "2026-09-12T01:15:12.456064+00:00",
+  "sha256": {
+    "internal/gateway/translate/request.go": "6d45565633c069853b3a4af1180791a9668395d806ab0b6c8c189edb8aa31398",
+    "internal/gateway/translate/response.go": "dccd3c5291e45fcdf844d86098d50125fbb335c70790745dc354b153f1817497",
+    "internal/gateway/translate/stream.go": "830c019518e5a4601ff9823807614a8a61476a1af38d79b3eea46a902fcb1377",
+    "internal/gateway/translate/receipt_history.go": "d03a02457bdffcbaaa25cfe598b7f7e3aa3a73e51853e17d08dd22965528f746",
+    "internal/gateway/openai.go": "4984961804400146be8400a10673b8f018dd25cdae614c204731f2113fead1cc",
+    "internal/cli/gateway_prepare.go": "8e3807e11690165a204fc96348b2a6aafca7f46b11db7e3928c0bbb1eaeb08bf",
+    "internal/cli/gateway_session.go": "d7ccea7023b6ec7dedf660e4cfe0815fd8bbf2415017f76370e36cb491e6ed5d",
+    "internal/cli/gateway_factory.go": "b215c64dea88b93741cdc717179f6e61e38b638d0cb6bfea09ae7a515b682ba4"
+  }
+}

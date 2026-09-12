@@ -1,0 +1,5 @@
+--- FAIL: TestProfileLeaseIsCloseOnExec (0.00s)
+    profile_unix_test.go:22: profile lease descriptor leaks across exec
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/codexapp	0.387s
+FAIL

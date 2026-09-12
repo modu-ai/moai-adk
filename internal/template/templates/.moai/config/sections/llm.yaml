@@ -22,7 +22,7 @@ llm:
   # top-column name "max" is still READ as an alias for "high", but is never
   # written back.
   #
-  # Under a GLM backend (team_mode: glm/cg), z.ai exposes a 3-level
+  # Under a GLM backend (team_mode: glm), z.ai exposes a 3-level
   # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — reasoning
   # cannot be disabled). The agent effort from the profile column above
   # collapses onto it:

@@ -12,7 +12,7 @@ draft: false
 
 | What you want to do | Command to use |
 |-----------|-------------|
-| Start working inside a worktree | `moai cc -w <name>` (or `moai glm -w` / `moai cg -w`) |
+| Start working inside a worktree | `moai cc -w <name>` (or `moai glm -w` / `moai cc -w`) |
 | Open one in a new tmux window while keeping the current session | `moai cc -w <name> --spawn` |
 | List worktrees | `git worktree list` |
 | Create a new worktree | `moai cc -w <name>` (creates `.claude/worktrees/<name>/` automatically) or `git worktree add` |
@@ -162,7 +162,7 @@ Runs `git restore --source=<snapshot HEAD> --staged --worktree :/` to roll track
 moai cc -w feat-auth
 
 # Spawn a GLM teammate in a new tmux window while keeping the current session
-moai cg -w feat-auth --spawn
+moai cc -w feat-auth --spawn
 
 # List worktrees
 git worktree list
@@ -185,5 +185,5 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch
 
 - [Git Worktree Overview](/en/worktree/) — concepts and workflows
 - [Complete Guide](/en/worktree/guide) — detailed usage per command
-- [CG Mode](/en/multi-llm/cg-mode) — Claude leader + GLM teammate hybrid
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [CLI Overview](/en/getting-started/cli)

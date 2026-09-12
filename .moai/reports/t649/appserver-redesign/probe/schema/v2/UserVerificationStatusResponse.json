@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "UserVerificationUnavailableReason": {
+      "enum": [
+        "credentialMissing",
+        "biometricsUnavailable",
+        "providerUnavailable"
+      ],
+      "type": "string"
+    }
+  },
+  "description": "Local readiness only; this neither prompts nor queries server registration.",
+  "properties": {
+    "credentialId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "unavailableMessage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "unavailableReason": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/UserVerificationUnavailableReason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "title": "UserVerificationStatusResponse",
+  "type": "object"
+}

@@ -17,11 +17,11 @@ import (
 	"time"
 )
 
-// Session backends a kanban chain can run on. A mixed-backend session is not a
-// kanban session, so no third value exists.
+// Session initial backends; request-level model switches do not rewrite history.
 const (
 	BackendClaude = "claude"
 	BackendGLM    = "glm"
+	BackendGPT    = "gpt"
 )
 
 // Rung is the rigor rung a verify result self-labels with. It is orthogonal to
@@ -74,7 +74,7 @@ type Record struct {
 	// role. omitempty keeps pre-existing records byte-identical on rewrite.
 	Role string `json:"role,omitempty"`
 
-	// Backend is BackendClaude or BackendGLM.
+	// Backend is the initial BackendClaude, BackendGLM, or BackendGPT.
 	Backend string `json:"backend"`
 
 	// EnteredAt is the RFC3339 instant the session entered Kanban Mode.
