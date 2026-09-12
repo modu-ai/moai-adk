@@ -105,26 +105,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
 			},
 		},
-		"project_mode": {
-			Title:       "프로젝트 모드 선택",
-			Description: "협업 설정을 제어합니다. 솔로 개발자는 'personal'이 권장 기본값입니다.",
-			Options: []OptionTranslation{
-				{Label: "Personal (권장)", Desc: "솔로 개발자 — 팀 조율 오버헤드 없음"},
-				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
-			},
-		},
-		"worktree_auto_create": {
-			Title:       "워크트리 자동 생성을 활성화할까요?",
-			Description: "활성화하면 moai init / moai profile / moai web이 자동으로 워크트리에 진입합니다. 기본은 비활성화입니다(솔로 개발자 권장).",
-		},
-		"todo_enabled": {
-			Title:       "백로그 큐(todo)를 사용할까요?",
-			Description: "사용하지 않으면 백로그 안내가 먼저 뜨지 않습니다 — 세션 시작 시 대기 카드 요약도, 상태줄 TODO 표시도 없습니다. `moai todo` 명령과 직접 부른 `/moai todo` 는 어느 쪽이든 그대로 동작합니다.",
-		},
-		"feedback_auto_submit": {
-			Title:       "확인 절차 없이 피드백을 제출할까요?",
-			Description: "끄면(기본값) 피드백 워크플로가 마스킹된 제목과 본문을 보여주고 공개 이슈를 열기 전에 한 번 묻습니다. 켜면 그 확인 단계를 건너뜁니다.",
-		},
 		"autonomy_tier": {
 			Title:       "자율성 등급 선택",
 			Description: "프롬프트 없이 세션이 몇 턴까지 실행될지 제어합니다. 'semi-auto'가 권장 기본값입니다.",
@@ -134,56 +114,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "샌드박스 증명 필요 (Docker/gVisor 등)"},
 			},
 		},
-		"project_continuation": {
-			Title:       "/moai project 완료 방식",
-			Description: "실행이 첫 기능 백로그 카드를 발급할지, 그리고 권장 다음 단계가 세션을 어디까지 끌고 갈지 정합니다. 기본값은 'card'입니다.",
-			Options: []OptionTranslation{
-				{Label: "None", Desc: "카드를 발급하지 않고 Create SPEC 을 권장"},
-				{Label: "Card", Desc: "카드를 발급하고 /moai plan 에서 멈춤"},
-				{Label: "Pipeline", Desc: "카드를 발급하고 킥오프 게이트까지 이어감"},
-			},
-		},
-		"audit_model": {
-			Title:       "감사 모델 선택",
-			Description: "활성 감사 백엔드. 'claude'가 배포 기본값입니다.",
-			Options: []OptionTranslation{
-				{Label: "Claude", Desc: "기본 앵커 판정"},
-				{Label: "Codex", Desc: "Codex JSON-RPC 검토자"},
-				{Label: "GLM", Desc: "GLM (z.ai) 검토자"},
-				{Label: "Multi", Desc: "다중 검토자 수렴 (지연됨)"},
-			},
-		},
-		"audit_gate_claude": {
-			Title:       "Claude 감사 게이트",
-			Description: "Claude 앵커 판정의 게이트.",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Claude 감사자 비활성화"},
-				{Label: "Advisory", Desc: "실행하되 차단 안 함"},
-				{Label: "Required", Desc: "실패 시 수렴 차단"},
-			},
-		},
-		"audit_gate_codex": {
-			Title:       "Codex 감사 게이트",
-			Description: "Codex 검토자의 게이트.",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Codex 감사자 비활성화"},
-				{Label: "Advisory", Desc: "실행하되 차단 안 함"},
-				{Label: "Required", Desc: "실패 시 수렴 차단"},
-			},
-		},
-		"audit_gate_glm": {
-			Title:       "GLM 감사 게이트",
-			Description: "GLM 검토자의 게이트. 기본 'advisory' — GLM 키가 없어도 차단하지 않습니다.",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "GLM 감사자 비활성화"},
-				{Label: "Advisory", Desc: "실행하되 차단 안 함"},
-				{Label: "Required", Desc: "실패 시 수렴 차단"},
-			},
-		},
-		"codex_audit_enabled": {
-			Title:       "Codex 검토 게이트 Stop 훅을 활성화할까요?",
-			Description: "기본 비활성화. 활성화하면 Stop 훅이 미커밋 변경 사항에 대해 codex를 실행합니다.",
-		},
 		"agent_wiring": {
 			Title:       "연결할 에이전트 하니스 선택",
 			Description: "이 프로젝트에 MoAI가 연결할 LLM 하니스입니다. 'claude'가 권장 기본값이며, --llm 플래그가 이 답변보다 우선합니다.",
@@ -192,10 +122,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Codex", Desc: ".codex/ 훅 계층과 MCP 설정을 연결하고 .mcp.json 프로비저닝은 건너뜁니다"},
 				{Label: "Both", Desc: "두 하니스를 모두 연결하고 .mcp.json 프로비저닝을 강제로 켭니다"},
 			},
-		},
-		"mcp_provision": {
-			Title:       "moai MCP 서버를 프로비저닝할까요?",
-			Description: "기본 활성화. 건너뛰려면 아니요를 선택하세요.",
 		},
 	},
 	"ja": {
@@ -273,26 +199,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
 			},
 		},
-		"project_mode": {
-			Title:       "プロジェクトモードを選択",
-			Description: "コラボレーション設定を制御します。ソロ開発者には 'personal' が推奨デフォルトです。",
-			Options: []OptionTranslation{
-				{Label: "Personal (推奨)", Desc: "ソロ開発者 — チーム調整のオーバーヘッドなし"},
-				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
-			},
-		},
-		"worktree_auto_create": {
-			Title:       "ワークツリー自動作成を有効にしますか?",
-			Description: "有効にすると、moai init / moai profile / moai web が自動的にワークツリーに入ります。既定は無効です(ソロ開発者推奨)。",
-		},
-		"todo_enabled": {
-			Title:       "バックログキュー(todo)を使いますか?",
-			Description: "無効にすると、バックログの案内が出なくなります — セッション開始時の待機カード要約も、ステータスラインの TODO 表示もありません。`moai todo` コマンドと明示的な `/moai todo` はどちらの設定でもそのまま動きます。",
-		},
-		"feedback_auto_submit": {
-			Title:       "確認なしでフィードバックを送信しますか?",
-			Description: "無効(既定)の場合、フィードバックワークフローはマスク済みのタイトルと本文を表示し、公開 issue を作成する前に一度確認します。有効にするとその確認を省略します。",
-		},
 		"autonomy_tier": {
 			Title:       "自律レベルを選択",
 			Description: "プロンプトなしでセッションが何ターン実行するかを制御します。'semi-auto' が推奨デフォルトです。",
@@ -302,56 +208,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "サンドボックス証明が必要 (Docker/gVisor 等)"},
 			},
 		},
-		"project_continuation": {
-			Title:       "/moai project の完了方法",
-			Description: "実行が最初の機能のバックログカードを発行するか、そして推奨される次の一手がセッションをどこまで進めるかを決めます。既定値は 'card' です。",
-			Options: []OptionTranslation{
-				{Label: "None", Desc: "カードを発行せず Create SPEC を推奨"},
-				{Label: "Card", Desc: "カードを発行し /moai plan で止まる"},
-				{Label: "Pipeline", Desc: "カードを発行しキックオフゲートまで進む"},
-			},
-		},
-		"audit_model": {
-			Title:       "監査モデルを選択",
-			Description: "アクティブな監査バックエンド。'claude' が配布デフォルトです。",
-			Options: []OptionTranslation{
-				{Label: "Claude", Desc: "デフォルト アンカー評決"},
-				{Label: "Codex", Desc: "Codex JSON-RPC レビューア"},
-				{Label: "GLM", Desc: "GLM (z.ai) レビューア"},
-				{Label: "Multi", Desc: "マルチレビューアー収束 (延期)"},
-			},
-		},
-		"audit_gate_claude": {
-			Title:       "Claude 監査ゲート",
-			Description: "Claude アンカー評決のゲート。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Claude 監査を無効化"},
-				{Label: "Advisory", Desc: "実行するがブロックしない"},
-				{Label: "Required", Desc: "失敗時収束ブロック"},
-			},
-		},
-		"audit_gate_codex": {
-			Title:       "Codex 監査ゲート",
-			Description: "Codex レビューアのゲート。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "Codex 監査を無効化"},
-				{Label: "Advisory", Desc: "実行するがブロックしない"},
-				{Label: "Required", Desc: "失敗時収束ブロック"},
-			},
-		},
-		"audit_gate_glm": {
-			Title:       "GLM 監査ゲート",
-			Description: "GLM レビューアのゲート。デフォルト 'advisory' — GLM キーがなくてもブロックしません。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "GLM 監査を無効化"},
-				{Label: "Advisory", Desc: "実行するがブロックしない"},
-				{Label: "Required", Desc: "失敗時収束ブロック"},
-			},
-		},
-		"codex_audit_enabled": {
-			Title:       "Codex レビューゲート Stop フックを有効にしますか?",
-			Description: "デフォルト無効。有効化すると Stop フックが未コミット変更に codex を実行します。",
-		},
 		"agent_wiring": {
 			Title:       "接続するエージェントハーネスを選択",
 			Description: "このプロジェクトで MoAI が接続する LLM ハーネスです。'claude' が推奨デフォルトで、--llm フラグがこの回答より優先されます。",
@@ -360,10 +216,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Codex", Desc: ".codex/ フック層と MCP 設定を接続し、.mcp.json のプロビジョニングはスキップ"},
 				{Label: "Both", Desc: "両方のハーネスを接続し、.mcp.json のプロビジョニングを強制的に有効化"},
 			},
-		},
-		"mcp_provision": {
-			Title:       "moai MCP サーバーをプロビジョニングしますか?",
-			Description: "デフォルト有効。スキップする場合はいいえを選択してください。",
 		},
 	},
 	"zh": {
@@ -441,26 +293,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
 			},
 		},
-		"project_mode": {
-			Title:       "选择项目模式",
-			Description: "控制协作设置。单人开发者推荐使用 'personal' 默认值。",
-			Options: []OptionTranslation{
-				{Label: "Personal (推荐)", Desc: "单人开发者 — 无团队协调开销"},
-				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
-			},
-		},
-		"worktree_auto_create": {
-			Title:       "是否启用工作树自动创建?",
-			Description: "启用后,moai init / moai profile / moai web 会自动进入工作树。默认关闭(推荐单人开发者)。",
-		},
-		"todo_enabled": {
-			Title:       "是否使用待办队列(todo)?",
-			Description: "关闭后将不再主动提示待办内容 — 会话开始时不显示等待卡片数量,状态栏也不显示 TODO。无论开关如何,`moai todo` 命令和显式调用的 `/moai todo` 都照常工作。",
-		},
-		"feedback_auto_submit": {
-			Title:       "是否跳过确认直接提交反馈?",
-			Description: "关闭时(默认),反馈流程会先展示脱敏后的标题与正文,并在创建公开 issue 前询问一次。开启后将跳过该确认步骤。",
-		},
 		"autonomy_tier": {
 			Title:       "选择自主等级",
 			Description: "控制会话在不提示的情况下运行多少轮。'semi-auto' 是推荐默认值。",
@@ -470,56 +302,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "需要沙箱证明 (Docker/gVisor 等)"},
 			},
 		},
-		"project_continuation": {
-			Title:       "/moai project 的收尾方式",
-			Description: "决定本次运行是否发出首个功能的待办卡片，以及推荐的下一步把会话带到哪一步。默认值为 'card'。",
-			Options: []OptionTranslation{
-				{Label: "None", Desc: "不发卡片，推荐 Create SPEC"},
-				{Label: "Card", Desc: "发出卡片，停在 /moai plan"},
-				{Label: "Pipeline", Desc: "发出卡片，继续到启动关卡"},
-			},
-		},
-		"audit_model": {
-			Title:       "选择审计模型",
-			Description: "活跃的审计后端。'claude' 是锁定分发默认值。",
-			Options: []OptionTranslation{
-				{Label: "Claude", Desc: "默认锚定裁决"},
-				{Label: "Codex", Desc: "Codex JSON-RPC 审查者"},
-				{Label: "GLM", Desc: "GLM (z.ai) 审查者"},
-				{Label: "Multi", Desc: "多审查者收敛(延期)"},
-			},
-		},
-		"audit_gate_claude": {
-			Title:       "Claude 审计关卡",
-			Description: "Claude 锚定裁决的关卡。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "禁用 Claude 审计者"},
-				{Label: "Advisory", Desc: "运行但不阻塞"},
-				{Label: "Required", Desc: "失败阻塞收敛"},
-			},
-		},
-		"audit_gate_codex": {
-			Title:       "Codex 审计关卡",
-			Description: "Codex 审查者的关卡。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "禁用 Codex 审计者"},
-				{Label: "Advisory", Desc: "运行但不阻塞"},
-				{Label: "Required", Desc: "失败阻塞收敛"},
-			},
-		},
-		"audit_gate_glm": {
-			Title:       "GLM 审计关卡",
-			Description: "GLM 审查者的关卡。默认 'advisory' — 缺少 GLM key 不会阻塞(失败开放)。",
-			Options: []OptionTranslation{
-				{Label: "Off", Desc: "禁用 GLM 审计者"},
-				{Label: "Advisory", Desc: "运行但不阻塞"},
-				{Label: "Required", Desc: "失败阻塞收敛"},
-			},
-		},
-		"codex_audit_enabled": {
-			Title:       "是否启用 Codex 审查关卡 Stop 钩子?",
-			Description: "默认关闭。启用后 Stop 钩子对未提交变更运行 codex。",
-		},
 		"agent_wiring": {
 			Title:       "选择要接入的代理框架",
 			Description: "MoAI 为本项目接入的 LLM 框架。'claude' 是推荐默认值，--llm 参数优先于此答案。",
@@ -528,10 +310,6 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Codex", Desc: "接入 .codex/ 钩子层与 MCP 配置，跳过 .mcp.json 供应"},
 				{Label: "Both", Desc: "同时接入两侧框架，并强制开启 .mcp.json 供应"},
 			},
-		},
-		"mcp_provision": {
-			Title:       "是否供应 moai MCP 服务器?",
-			Description: "默认开启。如需跳过请选择否。",
 		},
 	},
 }
