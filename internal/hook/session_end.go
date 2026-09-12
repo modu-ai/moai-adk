@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -430,9 +431,59 @@ func cleanupCurrentSessionTeam(sessionID, homeDir string) {
 	}
 }
 
-// garbageCollectStaleTeams removes team directories that have not been
-// modified in more than 24 hours. This catches teams left behind by
-// interrupted sessions. Errors are logged and never returned.
+// newestActivity reports the most recent modification time anywhere under
+// root, including root itself.
+//
+// A directory's own mtime advances only when an entry is created, removed, or
+// renamed inside it — never when an existing file is rewritten in place. A team
+// whose config.json is updated over and over therefore keeps the mtime it was
+// born with, so the directory clock on its own reads a busy tree as silent.
+// Walking the tree measures what actually happened in it.
+//
+// An unreadable entry makes the answer incomplete rather than old, and is
+// returned as an error: an open question is never grounds for deleting data.
+func newestActivity(root string) (time.Time, error) {
+	info, err := os.Stat(root)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	newest := info.ModTime()
+	var walkErr error
+	err = filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil {
+			walkErr = err
+			return nil
+		}
+		entryInfo, err := d.Info()
+		if err != nil {
+			walkErr = err
+			return nil
+		}
+		if entryInfo.ModTime().After(newest) {
+			newest = entryInfo.ModTime()
+		}
+		return nil
+	})
+	if err != nil {
+		return time.Time{}, err
+	}
+	if walkErr != nil {
+		return time.Time{}, walkErr
+	}
+	return newest, nil
+}
+
+// garbageCollectStaleTeams removes team directories that have gone completely
+// quiet for more than 24 hours, catching teams left behind by interrupted
+// sessions.
+//
+// Quiet is measured across the team directory's contents AND its matching task
+// directory's contents, not from the team directory's own inode clock: that
+// clock stops advancing while a live team rewrites its files in place, and
+// reading it as an age deletes a running team's data along with the task list
+// it is still working on — including a team this session does not own. Anything
+// that cannot be measured is kept. Errors are logged and never returned.
 func garbageCollectStaleTeams(homeDir string) {
 	const staleDuration = 24 * time.Hour
 
@@ -456,40 +507,62 @@ func garbageCollectStaleTeams(homeDir string) {
 			continue
 		}
 
-		info, err := entry.Info()
+		teamDir := filepath.Join(teamsDir, entry.Name())
+		taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
+
+		newest, err := newestActivity(teamDir)
 		if err != nil {
-			slog.Warn("session_end: could not stat team directory",
-				"name", entry.Name(),
+			if !os.IsNotExist(err) {
+				slog.Warn("session_end: could not measure team directory activity; keeping it",
+					"path", teamDir,
+					"error", err,
+				)
+			}
+			continue
+		}
+
+		// The task list is part of the same team's activity: a lead that is
+		// only writing tasks is still working.
+		taskNewest, err := newestActivity(taskDir)
+		switch {
+		case err == nil:
+			if taskNewest.After(newest) {
+				newest = taskNewest
+			}
+		case !os.IsNotExist(err):
+			slog.Warn("session_end: could not measure task directory activity; keeping the team",
+				"path", taskDir,
 				"error", err,
 			)
 			continue
 		}
 
-		if info.ModTime().Before(cutoff) {
-			teamDir := filepath.Join(teamsDir, entry.Name())
-			if err := os.RemoveAll(teamDir); err != nil {
-				slog.Warn("session_end: could not remove stale team directory",
-					"path", teamDir,
-					"error", err,
-				)
-			} else {
-				slog.Info("session_end: removed stale team directory",
-					"path", teamDir,
-					"age", time.Since(info.ModTime()).Round(time.Minute),
-				)
-				// Also remove the corresponding task directory when a stale team directory is successfully deleted
-				taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
-				if err := os.RemoveAll(taskDir); err != nil {
-					slog.Warn("session_end: could not remove stale task directory",
-						"path", taskDir,
-						"error", err,
-					)
-				} else {
-					slog.Info("session_end: removed stale task directory",
-						"path", taskDir,
-					)
-				}
-			}
+		if !newest.Before(cutoff) {
+			continue
+		}
+
+		if err := os.RemoveAll(teamDir); err != nil {
+			slog.Warn("session_end: could not remove stale team directory",
+				"path", teamDir,
+				"error", err,
+			)
+			continue
+		}
+		slog.Info("session_end: removed stale team directory",
+			"path", teamDir,
+			"age", time.Since(newest).Round(time.Minute),
+		)
+
+		// Also remove the corresponding task directory when a stale team directory is successfully deleted
+		if err := os.RemoveAll(taskDir); err != nil {
+			slog.Warn("session_end: could not remove stale task directory",
+				"path", taskDir,
+				"error", err,
+			)
+		} else {
+			slog.Info("session_end: removed stale task directory",
+				"path", taskDir,
+			)
 		}
 	}
 }
