@@ -225,3 +225,13 @@ scan done   (no MATCH line emitted)
   established, `settings.local.json` sets `defaultMode:
   "bypassPermissions"`, which disables the prompt layer `ask` feeds. A
   restored `ask` list does not by itself restore the protection.
+- **`moai todo pr` reads this card as `landed` while E3 is not.** Measured
+  in this run: `moai todo pr t576` prints the `landed` column for t576,
+  yet `git merge-base --is-ancestor 1b0cd7097 develop` exits non-zero and
+  `git rev-list --count --left-right develop...HEAD` reports `30 1` — the
+  E3 commit is outside `develop`. The `landed` predicate resolves on the
+  card's earliest delivering branch (E1, which develop does contain) and
+  carries no notion of a card whose work landed in parts, so a card with
+  an outstanding branch reads clean. Anyone gating a `done` transition on
+  that column alone would close this card with E3 unmerged; the
+  ancestor check per branch is the predicate that separates the two.
