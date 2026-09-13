@@ -1,0 +1,17 @@
+=== RUN   TestPtyCaptureChild
+    ptycap_child_test.go:61: runs only inside a pty capture session
+--- SKIP: TestPtyCaptureChild (0.00s)
+=== RUN   TestPtyCapture_DowngradeConfirmLocalized
+    ptycap_child_test.go:189: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_DowngradeConfirmLocalized (0.00s)
+=== RUN   TestPtyCapture_DowngradeConfirmButtonAlignment
+    ptycap_child_test.go:221: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_DowngradeConfirmButtonAlignment (0.00s)
+=== RUN   TestPtyCapture_SkipWithoutGate
+    ptycap_child_test.go:240: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_SkipWithoutGate (0.00s)
+=== RUN   TestPtyCapture_FailWithoutTmux
+    ptycap_child_test.go:247: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_FailWithoutTmux (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.204s

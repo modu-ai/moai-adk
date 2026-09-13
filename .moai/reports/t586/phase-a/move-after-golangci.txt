@@ -1,0 +1,4 @@
+# tree: HEAD 4061b6bda + uncommitted move (committed next as commit B)
+# cmd: golangci-lint run ./internal/cli/wizard/... ./internal/cli/ptycaptest/...
+0 issues.
+# exit=0

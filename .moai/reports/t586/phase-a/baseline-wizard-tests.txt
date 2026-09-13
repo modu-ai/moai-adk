@@ -1,0 +1,48 @@
+=== RUN   TestWizardResultDefaultsPrePopulated
+=== PAUSE TestWizardResultDefaultsPrePopulated
+=== RUN   TestAuditGateQuestions_DefaultProfile
+=== PAUSE TestAuditGateQuestions_DefaultProfile
+=== RUN   TestModelPolicyDescsAgreeWithProfileMatrix
+=== PAUSE TestModelPolicyDescsAgreeWithProfileMatrix
+=== RUN   TestInitWizardQuestionSetHasNoGitCredentialQuestions
+--- PASS: TestInitWizardQuestionSetHasNoGitCredentialQuestions (0.00s)
+=== RUN   TestWizardQuestionTranslationCompleteness
+--- PASS: TestWizardQuestionTranslationCompleteness (0.00s)
+=== RUN   TestWizardResult
+--- PASS: TestWizardResult (0.00s)
+=== RUN   TestWizardResultGitLabFields
+--- PASS: TestWizardResultGitLabFields (0.00s)
+=== RUN   TestReportFormatInWizard
+--- PASS: TestReportFormatInWizard (0.00s)
+=== RUN   TestNewMoAIWizardTheme_ReturnsNonNil
+--- PASS: TestNewMoAIWizardTheme_ReturnsNonNil (0.00s)
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_dark
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_light
+--- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument (0.00s)
+    --- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_dark (0.00s)
+    --- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_light (0.00s)
+=== RUN   TestCharacterize_WizardTheme_SelectedPrefix
+--- PASS: TestCharacterize_WizardTheme_SelectedPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_UnselectedPrefix
+--- PASS: TestCharacterize_WizardTheme_UnselectedPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_SelectSelectorPrefix
+--- PASS: TestCharacterize_WizardTheme_SelectSelectorPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_BlurredInheritsFromFocused
+--- PASS: TestCharacterize_WizardTheme_BlurredInheritsFromFocused (0.00s)
+=== RUN   TestCharacterize_WizardColors_PrimaryIsCoral
+--- PASS: TestCharacterize_WizardColors_PrimaryIsCoral (0.00s)
+=== RUN   TestCharacterize_WizardColors_NoTerracottaOrPurple
+--- PASS: TestCharacterize_WizardColors_NoTerracottaOrPurple (0.00s)
+=== RUN   TestCharacterize_WizardTheme_UsesDeepTealForTitle
+--- PASS: TestCharacterize_WizardTheme_UsesDeepTealForTitle (0.00s)
+=== RUN   TestCharacterize_WizardTokens_PrimaryIsCoral
+--- PASS: TestCharacterize_WizardTokens_PrimaryIsCoral (0.00s)
+=== CONT  TestWizardResultDefaultsPrePopulated
+--- PASS: TestWizardResultDefaultsPrePopulated (0.00s)
+=== CONT  TestAuditGateQuestions_DefaultProfile
+=== CONT  TestModelPolicyDescsAgreeWithProfileMatrix
+--- PASS: TestAuditGateQuestions_DefaultProfile (0.00s)
+--- PASS: TestModelPolicyDescsAgreeWithProfileMatrix (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.379s
