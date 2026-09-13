@@ -728,16 +728,128 @@ ok  	github.com/modu-ai/moai-adk/internal/web	0.704s
   한정했고 `go test ./...` 는 돌리지 않았으나, 이 수치들의 벽시계 시간은 부하의 함수이지 코드의 함수가 아니다
   — 판정은 PASS/FAIL 이고 소요 시간을 근거로 쓰지 않는다.
 
+### M6 — 빌드·패리티 검증 (Low)
+
+M1~M5 가 남긴 세 자리(AC-TCD-011 / RG-TCD-002 / RG-TCD-003)를 재고, plan §M6 이 요구한 패리티 두 축을 잰다.
+측정 트리는 `dd66526ff`(M5 커밋), 워킹 트리는 측정 시작·종료 모두 `git status --short` 무출력이다.
+
+#### AC-TCD-011 — 열거 산출물이 최신이다 (경로 축)
+
+acceptance.md §AC-TCD-011 의 When 블록을 축어로 실행:
+
+```bash
+grep '^| [ABCD][0-9]' .moai/reports/t530/tab-count-sites.md > /tmp/t530-rows.txt
+wc -l < /tmp/t530-rows.txt
+grep -oE '`[^`]+\.md`' /tmp/t530-rows.txt | tr -d '`' | sort -u > /tmp/t530-paths.txt
+wc -l < /tmp/t530-paths.txt
+while read -r f; do test -f "$f" || echo "MISSING $f"; done < /tmp/t530-paths.txt
+```
+
+```
+rows=      32
+paths=      12
+--- missing ---
+--- end (empty=all exist) ---
+```
+
+행 32 · 경로 12 · `MISSING` 0건 — Then 의 세 조건이 모두 성립한다. **PASS.**
+`MISSING` 줄이 하나도 없다는 것은 12경로가 전부 이 트리에 실재한다는 관측이며, 빈 출력을 통과로 읽지 않도록
+종료 표식(`--- end (empty=all exist) ---`)을 함께 찍어 명령이 실제로 끝까지 돌았음을 남긴다.
+
+#### RG-TCD-003 — 열거 산출물이 줄어들지 않는다
+
+```bash
+grep -c '^| [ABCD][0-9]' .moai/reports/t530/tab-count-sites.md
+```
+
+```
+32
+```
+
+기준은 `32 이상`이고 실측 32 — **유지.** AC-TCD-011 의 행 수와 같은 영역·같은 셀렉터에서 나온 값이므로
+두 수치는 독립 관측이 아니라 같은 관측의 두 인용이다. 그렇게 적는다.
+
+#### RG-TCD-002 — docs-site 빌드 경고 0
+
+빌드 산출물이 트리를 더럽히지 않는지부터 확인했다 — `git check-ignore -v docs-site/public` 가
+`docs-site/.gitignore:2:public/` 를 반환하고, 루트 `.gitignore:341-343` 이 `public/` · `resources/_gen/` ·
+`.hugo_build.lock` 를 덮는다. 그 뒤 실행:
+
+```bash
+cd docs-site && hugo --gc --minify > /tmp/t530-hugo.log 2>&1
+```
+
+```
+exit=0
+warn/error count=0
+hugo v0.160.1+extended+withdeploy darwin/arm64
+
+              │ KO  │ EN  │ JA  │ ZH
+──────────────┼─────┼─────┼─────┼─────
+ Pages        │ 187 │ 185 │ 185 │ 185
+ Non-page     │  12 │  12 │  12 │  12
+ files        │     │     │     │
+ Static files │ 265 │ 265 │ 265 │ 265
+ Aliases      │   6 │   5 │   5 │   5
+
+Total in 2706 ms
+```
+
+`grep -ciE 'warn|error'` 가 `0`, exit `0` — **유지.** 빌드 직후 `git status --short` 도 무출력이라
+산출물 유출도 없다. 이 카드가 경고를 **만들지 않았음**을 본 것이지, 빌드가 원래 초록이었다는 사실을
+이 카드의 공으로 적지 않는다.
+
+#### 로케일 존재·섹션 수 패리티
+
+카드가 만진 docs-site 8본은 두 문서 × 4로케일이다. 로케일마다 파일 존재와 heading 계수를 함께 잰다:
+
+| 문서 | ko | en | ja | zh |
+|---|---|---|---|---|
+| `cli-reference/web.md` | 7 / h2 7 / h3 0 | 7 / h2 7 / h3 0 | 7 / h2 7 / h3 0 | 7 / h2 7 / h3 0 |
+| `advanced/moai-web-console.md` | 18 / h2 13 / h3 4 | 18 / h2 13 / h3 4 | 18 / h2 13 / h3 4 | 18 / h2 13 / h3 4 |
+
+8본 전부 `exists=yes`, 문서별로 4로케일의 전체 heading 수·h2 수·h3 수가 모두 일치한다. **PASS.**
+
+#### README 4본 heading 패리티
+
+| 파일 | 전체 heading | h2 | h3 |
+|---|---|---|---|
+| `README.md` | 80 | 12 | 63 |
+| `README.ko.md` | 80 | 12 | 63 |
+| `README.ja.md` | 80 | 12 | 63 |
+| `README.zh.md` | 80 | 12 | 63 |
+
+네 본이 세 계수 모두 동일하다. **PASS.**
+
+#### 무회귀
+
+| 명령 | 관측 |
+|---|---|
+| `go test -count=1 ./internal/web/ -run 'TestDocsTabContract'` | `ok  github.com/modu-ai/moai-adk/internal/web  0.688s` |
+| `go test -count=1 ./internal/web/` | `ok  github.com/modu-ai/moai-adk/internal/web  15.114s` |
+
+#### Gap — M6 이 관측하지 못한 것
+
+- **heading 계수는 구조 패리티이지 내용 패리티가 아니다.** 네 로케일의 heading **수**가 같음을 쟀을 뿐,
+  같은 자리에 같은 뜻의 제목이 있는지는 재지 않았다. 계수가 같으면서 순서가 어긋난 상태는 이 측정이 통과시킨다.
+- **hugo 무경고는 이 로컬 hugo 버전(0.160.1)의 관측이다.** Vercel 빌드가 쓰는 버전과 같다는 것은 재지 않았다.
+- **docs-site Vercel 바인딩 미검증** — 이 카드의 docs-site 변경이 develop 착지 시 프리뷰/프로덕션 배포에
+  어떻게 반응하는지는 재지 않았다(CLAUDE.local.md §4.1 의 미검증 항목). 리드 판단 사항으로 남긴다.
+- **M5 의 Gap 3건은 그대로 남는다** — D9~D12 산문 4자리 가드 밖, `names` 층 현지어 축 미개방,
+  열거되지 않은 새 수사 표기. M6 은 그 어느 것도 닫지 않았다.
+- **후속 카드 2건 미발행** — plan §M6 의 둘째 항목(스크린샷 절차·재촬영)은 카드 요청으로 리드에게 올린다.
+  이 카드가 만들지 않는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-09-13
-run_commit_sha: pending-backfill-run   # 이 커밋은 자기 해시를 인용할 수 없다 — 후속 커밋에서 채운다
-run_status: complete                    # M1~M5 종료. M6(열거표 계수 + hugo)은 sync 전 잔여 마일스톤
-ac_pass_count: 11                       # AC-TCD-001~010, 012
+run_commit_sha: dd66526ff              # M5 커밋. M6 커밋은 자기 해시를 인용할 수 없어 sync 커밋이 backfill 한다
+run_status: complete                    # M1~M6 종료
+ac_pass_count: 12                       # AC-TCD-001~012 전부
 ac_fail_count: 0
-ac_pending_count: 1                     # AC-TCD-011 — M6 소관
-rg_maintained: 1                        # RG-TCD-001 유지. RG-TCD-002 / 003 은 M6 소관 (미측정)
+ac_pending_count: 0                     # AC-TCD-011 은 M6 에서 측정 완료 (행 32 / 경로 12 / MISSING 0)
+rg_maintained: 3                        # RG-TCD-001 스크린샷 미변경 / 002 hugo 경고 0 / 003 열거 32행
 preserve_list_post_run_count: 0         # PRESERVE 목록 침범 0 — 기존 Go 소스(schemaform.go / tab_layout_test.go),
                                         # 스크린샷, 범위 밖 로케일 이름 8자리 전부 미변경
 l44_pre_commit_fetch: "git fetch origin develop → rc=0 (M5 커밋 직전)"
