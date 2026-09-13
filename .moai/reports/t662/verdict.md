@@ -302,3 +302,55 @@ $ go test ./internal/hook/ -count=1 -timeout 900s            → ok 173.947s (�
 
 - 12건 사전귀속 측정은 이 파일에 없다 — 창 안에서 `merge --no-ff` 직전 순수 develop 을 기준선으로 재는 것이 리드 지시이며, 그 트리는 이 워크트리가 아니다.
 - CI(리눅스) 재측정은 여전히 미실시다. 이 카드의 모든 측정은 darwin 단일 머신이다.
+
+---
+
+## 통합 창 — 사전귀속 측정과 병합 (2026-09-13)
+
+창 지명을 다시 받아(선두 재배정) 로컬 develop `55b757ff2` 를 재흡수했다(흡수 커밋 `0490519eb`, 충돌 0 — t665 는 `internal/cli` 만 건드려 이 카드의 `internal/hook` 과 겹치지 않는다).
+
+### 최종 병합 트리 재측정 — GREEN 5/5
+
+`uptime` 실측: 측정 전 load1 10.02 / load5 10.77, 측정 후 9.70 / 10.69.
+
+| 테스트 | 최종(load 10.0) | 조용(load 5.02) | 기준 |
+|---|---|---|---|
+| DeferredScanDoesNotBlockReturn | 0.46s | 0.46s | 1s |
+| HandleInputLagBudget | 0.23s | 0.19s | 1.5s |
+| SynchronousSideEffectsPreserved | 0.49s | 0.45s | — |
+| JoinsWithinBound/fast | 0.19s | 0.21s | 250ms |
+| JoinsWithinBound/slow | 0.44s | 0.45s | 250ms |
+
+**load 10 과 load 5 의 값이 사실상 같다.** 이는 1차 RED 의 원인을 한 번 더 좁힌다 — 범인은 load average 라는 숫자 자체가 아니라 **무거운 테스트 수트끼리의 경합**이다. 1차 때는 `internal/cli` 전량 수트 2건이 동시에 돌고 있었고, 이번에는 `go test` 프로세스가 0건이었다(load 10 은 데스크톱 앱·세션 프로세스 몫).
+
+### 사전귀속 측정 — 순수 develop `55b757ff2`, 12/12 RED
+
+`merge --no-ff` **직전**, develop 워크트리의 순수 develop 에서 측정했다(귀속 기준선은 이 카드의 흡수 트리가 아니라 그 순간의 develop 이다).
+
+```
+-run 'TestCodexCommand_RegisteredInLaunchGroup|TestCharacterize_GLM_WarningPrintedToStderr|TestNoBareGLMEnvVarLiteralsInCLIProduction|TestRunDoctor_|TestDoctorCmd_'
+→ exit 1, --- FAIL 12 / --- PASS 18
+```
+
+RED 12건: `TestCodexCommand_RegisteredInLaunchGroup`, `TestCharacterize_GLM_WarningPrintedToStderr`, `TestNoBareGLMEnvVarLiteralsInCLIProduction` (gateway 3 → t669), `TestRunDoctor_{WithExport,WithFix,Verbose,AllFlags,VerboseAndDetail,ExportMode}`, `TestDoctorCmd_{Execution,ExportFlag,VerboseExecution}` (doctor 9 → t675).
+
+12/12 이므로 리드 프로토콜대로 **사전귀속으로 분류하고 이 카드의 판정에서 제외**한다. 하나라도 GREEN 이었다면 중단·보고였다.
+
+### 병합
+
+| 항목 | 값 |
+|---|---|
+| 병합 SHA | `57c0c504f` |
+| 병합 전 develop | `55b757ff2` |
+| 카드 브랜치 HEAD | `0490519eb` |
+| 트리 동일성 | `git rev-parse 57c0c504f^{tree}` = `git rev-parse 0490519eb^{tree}` = `9dd6206bb…` |
+
+트리 동일성이 성립하므로 흡수 트리에서의 GREEN 측정이 병합 커밋의 근거로 그대로 선다 — 병합 후 재측정을 별도로 돌릴 필요가 없다.
+
+### 증거 경로 (추가분)
+
+| 파일 | 내용 |
+|---|---|
+| `final-remeasure-1.log` | 최종 병합 트리 카드 4테스트 |
+| `load-final-before.txt` / `-after.txt` | 최종 측정 전후 `uptime` |
+| `preattrib-develop-55b757ff2.log` | 순수 develop 12건 사전귀속 측정 |
