@@ -167,7 +167,7 @@ For detailed orchestration: Read .claude/skills/moai/workflows/goal.md
 
 Purpose: Hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
 Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo` (list). CLI only: `moai todo next` (print queued cards; `moai todo next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai todo done <n>` (remove).
-State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` at the former project-local path is an export or a legacy leftover, never the queue; the read verbs say so on stderr when one is present.
+State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` beside an existing database is an export or a legacy leftover; the read verbs report that distinction. Before migration, a legacy JSON-only queue remains readable.
 The pick is the operator's: never preselect, never reorder by inferred priority, never auto-populate from TODO comments or issues.
 Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai todo` or `/moai todo "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — `moai todo` stays registered and every verb keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
 For detailed orchestration: Read .claude/skills/moai/workflows/todo.md
@@ -317,7 +317,7 @@ Retired-flag message (`--worktree`):
 
 격리된 공간에서 작업하려면 먼저 들어간 뒤 plan 을 실행하세요:
   moai cc -w <이름>              (그 자리에서 진입)
-  moai cg -w <이름> --spawn      (새 tmux 창, 현재 세션 유지)
+  moai cc -w <이름> --spawn      (새 Claude 세션을 tmux 창으로 열고 현재 세션 유지)
   /moai plan "<설명>"
 ```
 

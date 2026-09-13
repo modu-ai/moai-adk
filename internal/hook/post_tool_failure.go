@@ -29,9 +29,21 @@ const (
 	// ExitError indicates a non-zero exit code.
 	ExitError ErrorCategory = "ExitError"
 
+	// WorktreeGuardRefusal indicates the worktree-isolation guard refused the
+	// command, so it never executed (card t529).
+	WorktreeGuardRefusal ErrorCategory = "WorktreeGuardRefusal"
+
 	// UnknownFailure indicates an unclassified failure.
 	UnknownFailure ErrorCategory = "UnknownFailure"
 )
+
+// worktreeGuardAnchor is the token the worktree-isolation guard's refusal is
+// recognised by. The guard belongs to the Claude Code runtime, not to this
+// codebase, so this string is an observed dependency on upstream wording rather
+// than a contract we control — worktree_guard_refusal_test.go is where that
+// dependency is pinned, and where the choice of this token over the refusal's
+// later clauses is argued.
+const worktreeGuardAnchor = "isolated in the worktree"
 
 // postToolUseFailureHandler processes PostToolUseFailure events.
 // It classifies errors by signature and provides actionable messages.
@@ -131,6 +143,17 @@ func rawErrorExcerpt(input *HookInput) string {
 func (h *postToolUseFailureHandler) classifyError(input *HookInput) ErrorCategory {
 	errorText := strings.ToLower(classificationText(input))
 
+	// Card t529 — FIRST, ahead of every branch below. Two reasons, and the
+	// ordering is load-bearing for both. (1) The OOM branch matches the bare
+	// substring "137", and this repository names worktrees after card ids, so a
+	// refusal raised inside .claude/worktrees/t137 would classify as OOMKilled
+	// from anywhere after it. (2) A guard refusal means the command never ran,
+	// which is a different claim from any failure below — those describe how a
+	// command that DID run went wrong.
+	if strings.Contains(errorText, worktreeGuardAnchor) {
+		return WorktreeGuardRefusal
+	}
+
 	// Check for timeout (exit code 124 or "timeout" in error message)
 	if strings.Contains(errorText, "timeout") || strings.Contains(errorText, "context deadline exceeded") {
 		return TimeoutError
@@ -185,6 +208,14 @@ func (h *postToolUseFailureHandler) formatMessage(category ErrorCategory, input 
 
 	case ExitError:
 		return "ExitError: Tool exited with non-zero status. Check tool logs for details."
+
+	case WorktreeGuardRefusal:
+		// Card t529: the refusal itself is not the hazard — an audit that
+		// degrades from measuring to source-reading and still reports PASS is.
+		// So the message states the evidentiary consequence, not just the cause.
+		return "WorktreeGuardRefusal: the worktree-isolation guard refused this command, so it did not run. " +
+			"Re-issue it from inside this session's own worktree, without the cross-tree redirect. " +
+			"Any verification that rested on this command is a gap, not a pass — record it in the Gaps section instead of reporting the check as passed."
 
 	default:
 		// REQ-HFC-005: never emit a content-free UnknownFailure when raw error

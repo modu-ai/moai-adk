@@ -16,16 +16,50 @@ STAGED_GO="$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || t
 
 # --- Fast subset: gofmt + go vet on staged Go files (sub-second; skipped when none staged) ---
 if [ -n "$STAGED_GO" ]; then
-    # gofmt format check. Skipped when gofmt is not on PATH (non-Go environment).
+    # gofmt format check on the STAGED bytes. Skipped when gofmt is not on
+    # PATH (non-Go environment).
+    #
+    # Why the index and not the file on disk: 'gofmt -l "$f"' reads the working
+    # tree, so a file staged unformatted and then fixed in the tree was let
+    # through, while one staged formatted and edited since was blocked. Both
+    # verdicts described a version of the file that was not the one being
+    # committed. 'git show ":$f"' reads exactly the bytes the commit carries.
+    # Staged bytes that do not parse are BLOCKED here, which they were not
+    # before: gofmt leaves stdout empty and exits non-zero, and the branch
+    # below reads that exit as a tool error rather than a pass. They used to
+    # fall through to go vet, which is skipped outside a Go module -- so in
+    # those environments nothing caught them at all.
     if command -v gofmt >/dev/null 2>&1; then
-        NEED_FMT="$(
+        # One scan, two outcomes per file, told apart by a line prefix: the
+        # loop runs in a subshell and cannot hand variables back.
+        FMT_SCAN="$(
             printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                 [ -n "$f" ] || continue
-                gofmt -l "$f" 2>/dev/null || true
+                if _out="$(git show ":$f" 2>/dev/null | gofmt -l /dev/stdin 2>/dev/null)"; then
+                    if [ -n "$_out" ]; then
+                        printf 'fmt %s\n' "$f"
+                    fi
+                else
+                    printf 'err %s\n' "$f"
+                fi
             done
         )"
+        FMT_ERR="$(printf '%s\n' "$FMT_SCAN" | sed -n 's/^err //p')"
+        NEED_FMT="$(printf '%s\n' "$FMT_SCAN" | sed -n 's/^fmt //p')"
+
+        # A non-zero gofmt exit is a tool error, never a pass. Deciding on an
+        # empty stdout alone would let a gofmt that could not run at all --
+        # /dev/stdin missing, input unreadable, staged bytes that do not parse
+        # -- report a clean gate, and a gate that passes silently is worse
+        # than no gate: nobody trusts an absent one, everybody trusts a green.
+        if [ -n "$FMT_ERR" ]; then
+            printf '\n[pre-commit] FAILED: gofmt could not check the staged bytes of:\n%s\n' "$FMT_ERR" >&2
+            printf '[pre-commit] Cause: the staged content does not parse, or gofmt could not read it.\n' >&2
+            printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
+            exit 1
+        fi
         if [ -n "$NEED_FMT" ]; then
-            printf '\n[pre-commit] FAILED: the following staged files need formatting:\n%s\n' "$NEED_FMT" >&2
+            printf '\n[pre-commit] FAILED: the following staged files need formatting (checked against the staged bytes, not the working tree):\n%s\n' "$NEED_FMT" >&2
             printf '[pre-commit] Hint: gofmt -w <files> && git add <files>\n' >&2
             printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
             exit 1
@@ -103,7 +137,7 @@ if [ -n "$STAGED_GO" ]; then
             [ -n "$PKGS" ] || continue
             # shellcheck disable=SC2086
             if ! ( cd "$_mr" && go vet $BT_TAGS $PKGS >/dev/null 2>&1 ); then
-                printf '\n[pre-commit] FAILED: go vet reported issues in the staged packages (module root: %s).\n' "$_mr" >&2
+                printf '\n[pre-commit] FAILED: go vet reported issues in the packages holding your staged files (module root: %s; vetted in the working tree, not the index).\n' "$_mr" >&2
                 printf '[pre-commit] Hint: cd %s && go vet %s\n' "$_mr" "$(printf '%s' "$PKGS" | tr '\n' ' ')" >&2
                 printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
                 exit 1

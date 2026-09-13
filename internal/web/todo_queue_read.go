@@ -4,7 +4,7 @@
 // (`kanban.ResolveTodoQueueRoot`, `kanban.NewBacklogStore`,
 // `kanban.BacklogPathForRoot`, `kanban.BacklogItem`); `todo_queue_read_test.go`
 // asserts that mechanically. The view model calls readTodoQueue and never the
-// store, so the queue's storage — a JSON file today, under review — is swapped
+// store, so the queue's SQLite storage and legacy read-through are swapped
 // by changing this function and nothing else.
 //
 // Deliberately ONE function, not a layer: no interface, no factory, no plugin
@@ -26,14 +26,18 @@ import (
 // takes no lock — lock-guarded writes and id issuance belong to
 // SPEC-KANBAN-TODO-CLI-001, and the console is a consumer.
 //
-// Every failure mode — an absent file, an empty file, malformed JSON — yields
-// an empty queue rather than an error (REQ-WTQ-006). All three states are
+// An absent queue is empty; a failed read is unavailable, never a zero count.
+// The view receives no raw error text. All three states are
 // returned, none filtered out (resolved decision G-5); ordering is the store's.
 func readTodoQueue(projectRoot string) TodoVM {
 	root := kanban.ResolveTodoQueueRoot(projectRoot)
 	vm := TodoVM{Root: root}
 	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
-	if err != nil || rec == nil {
+	if err != nil {
+		vm.Unavailable = true
+		return vm
+	}
+	if rec == nil {
 		return vm
 	}
 	for _, it := range rec.Items {

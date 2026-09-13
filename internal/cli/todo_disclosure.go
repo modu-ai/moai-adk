@@ -54,5 +54,5 @@ func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.
 // the quarantine, which renames the very file this line reports.
 func discloseQueueLayout(cmd *cobra.Command, verb string) error {
 	return discloseNonAuthoritativeBacklogJSON(cmd.ErrOrStderr(), verb,
-		kanban.InspectBacklogArchiveVouch(newTodoStore().Path()))
+		kanban.InspectBacklogArchiveVouch(newTodoReadStore().Path()))
 }

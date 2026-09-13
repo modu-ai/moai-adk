@@ -1,0 +1,7 @@
+=== RUN   TestAuditCancelBeforeRealStartReplyInterruptsTurn
+    lifecycle_subprocess_test.go:134: Step err=context canceled transport err=<nil> interrupt observed=false
+    lifecycle_subprocess_test.go:136: allocated turn was not interrupted after late turn/start reply
+--- FAIL: TestAuditCancelBeforeRealStartReplyInterruptsTurn (7.03s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	7.255s
+FAIL

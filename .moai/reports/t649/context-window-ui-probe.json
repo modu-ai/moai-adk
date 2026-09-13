@@ -1,0 +1,51 @@
+{
+  "configured_window": 920000,
+  "model": "gpt-5.6-sol",
+  "observed_lines": [
+    "\u26f6\u26f6\u26f6\u26f6\u26f6\u26f6\u26f6\u26f6\u26f6\u26f618.7k/920ktokens(2%)"
+  ],
+  "context_display_seen": true,
+  "errors": [],
+  "cleanup_errors": [],
+  "scope": "UI context display only; no inference request",
+  "normalized_window_matches": [
+    "920ktokensSkills\u00b7/skillsBuilt-in\u251cdataviz:~480tokens\u251cclaude-api:~360tokens\u251cupdate-config:~240tokens\u251ccode-review:~150token"
+  ],
+  "safe_summary": {
+    "exit_code": -9,
+    "elapsed_seconds": 19.79,
+    "timeout": true,
+    "group_cleanup_attempted": true,
+    "picker_command_sent": true,
+    "selection_sent": false,
+    "interactive_prompt_sent": false,
+    "test_family_api_key_accepted": true,
+    "cleanup_errors": [],
+    "prompt_categories": [
+      "Do you want to use this API key?"
+    ],
+    "diagnostic_categories": [],
+    "error_categories": [],
+    "observed_model_ids": [
+      "claude-api",
+      "gpt-5.6-sol"
+    ],
+    "picker_visible": false,
+    "picker_rows": [],
+    "selected_model_ids": [],
+    "selected_default": false,
+    "session_only_selection_confirmed": false,
+    "assistant_models": [],
+    "tool_names": [],
+    "result_event_count": 0,
+    "marker_in_final_result": false,
+    "session_id": null,
+    "result_subtypes": [],
+    "success": false
+  },
+  "context_lines": [
+    "CLAUDE_CODE_DISABLE_1M_CONTEXT is set, but the 200K limit isn't enforced for gpt-5.6-sol, so this session can grow past it. To enforce it, set CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000 (or the autoCompactWindow setting) or update to a Claude Code version that recognizes gpt-5.6-sol.",
+    "\u276f /context",
+    "\u23bfContextUsage"
+  ]
+}

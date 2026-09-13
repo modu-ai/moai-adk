@@ -1,0 +1,18 @@
+go test ./internal/gateway/translate -run TestSubscriptionReceiptModelSwitchPreservesSourceBindings -count=1
+undefined: NewGPTSubscriptionReceiptHistory
+FAIL github.com/modu-ai/moai-adk/internal/gateway/translate [build failed]
+
+go test ./internal/cli -run '^TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory$' -count=1
+--- FAIL: TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory (0.05s)
+    gateway_factory_test.go:578: model switch status=400 body={"error":{"message":"Bad Request","type":"invalid_request_error"},"type":"error"}
+FAIL github.com/modu-ai/moai-adk/internal/cli 1.055s
+
+go test ./internal/gateway/translate -run TestSubscriptionReceiptModelSwitchPreservesSourceBindings -count=1
+--- FAIL: TestSubscriptionReceiptModelSwitchPreservesSourceBindings (0.05s)
+    receipt_switch_test.go:78: cross-domain empty candidate hid required opaque receipt
+FAIL github.com/modu-ai/moai-adk/internal/gateway/translate 0.405s
+
+go test ./internal/gateway -run TestOpenAIHistoryErrorGuidesRecoveryWithoutExposingDetails -count=1
+undefined: openAITranslationError
+undefined: translate.HistoryReplayError
+FAIL github.com/modu-ai/moai-adk/internal/gateway [build failed]

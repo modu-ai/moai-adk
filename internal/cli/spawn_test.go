@@ -201,15 +201,15 @@ func TestSpawnLaunchOpensWindow(t *testing.T) {
 	cap := withSpawnStubs(t, true, "%7", nil)
 
 	var out bytes.Buffer
-	if err := spawnLaunch(&out, "cg", []string{"-w", "feat-auth"}); err != nil {
+	if err := spawnLaunch(&out, "cc", []string{"-w", "feat-auth"}); err != nil {
 		t.Fatalf("spawnLaunch() error = %v, want nil", err)
 	}
 
 	if cap.calls != 1 {
 		t.Fatalf("tmux spawn calls = %d, want 1", cap.calls)
 	}
-	if cap.command != "moai cg -w feat-auth" {
-		t.Errorf("command = %q, want %q", cap.command, "moai cg -w feat-auth")
+	if cap.command != "moai cc -w feat-auth" {
+		t.Errorf("command = %q, want %q", cap.command, "moai cc -w feat-auth")
 	}
 	if cap.cwd != tmpRoot {
 		t.Errorf("cwd = %q, want project root %q", cap.cwd, tmpRoot)

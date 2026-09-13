@@ -1,0 +1,382 @@
+=== RUN   TestCodexCommand_RegisteredInLaunchGroup
+    codex_launcher_test.go:236: launcher "cg" missing from the launchers section block (block commands: [cc gpt glm codex web statusline])
+--- FAIL: TestCodexCommand_RegisteredInLaunchGroup (0.00s)
+=== RUN   TestRunDoctor_WithExport
+    coverage_improvement_test.go:715: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithExport (15.76s)
+=== RUN   TestRunDoctor_WithFix
+    coverage_improvement_test.go:737: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithFix (15.71s)
+=== RUN   TestRunDoctor_WithCheckFilter
+--- PASS: TestRunDoctor_WithCheckFilter (0.00s)
+=== RUN   TestRunDoctor_Verbose
+    coverage_improvement_test.go:777: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_Verbose (15.87s)
+=== RUN   TestRunDoctor_ExportToFile
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+--- PASS: TestRunDoctor_ExportToFile (0.39s)
+=== RUN   TestRunDoctor_WithFixFlag
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+--- PASS: TestRunDoctor_WithFixFlag (15.81s)
+=== RUN   TestRunDoctor_VerboseMode
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+--- PASS: TestRunDoctor_VerboseMode (15.19s)
+=== RUN   TestRunDoctor_FilterCheck
+  ○ MoAI Version
+  ✓ MoAI Version
+--- PASS: TestRunDoctor_FilterCheck (0.00s)
+=== RUN   TestRunDoctor_AllFlags
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✗ Error: moai embeds stale agent-emit artifacts (11/11 compared): manager-docs.toml, manager-git.toml, manager-lead.toml, plan-auditor.toml, super-advisor.toml, sync-auditor.toml
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+    coverage_improvement_test.go:4930: unexpected error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_AllFlags (15.20s)
+=== RUN   TestRunDoctor_VerboseAndDetail
+    coverage_improvement_test.go:5754: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_VerboseAndDetail (16.46s)
+=== RUN   TestRunDoctor_FixMode
+--- PASS: TestRunDoctor_FixMode (16.16s)
+=== RUN   TestRunDoctor_ExportMode
+    coverage_improvement_test.go:5804: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_ExportMode (16.13s)
+=== RUN   TestRunDoctor_CheckFilterGoRuntime
+--- PASS: TestRunDoctor_CheckFilterGoRuntime (0.00s)
+=== RUN   TestRunDoctor_FixFlag
+--- PASS: TestRunDoctor_FixFlag (15.07s)
+=== RUN   TestRunDoctor_CheckFilter
+--- PASS: TestRunDoctor_CheckFilter (0.00s)
+=== RUN   TestDoctorCmd_Exists
+--- PASS: TestDoctorCmd_Exists (0.00s)
+=== RUN   TestDoctorCmd_Use
+--- PASS: TestDoctorCmd_Use (0.00s)
+=== RUN   TestDoctorCmd_Short
+--- PASS: TestDoctorCmd_Short (0.00s)
+=== RUN   TestDoctorCmd_Long
+--- PASS: TestDoctorCmd_Long (0.00s)
+=== RUN   TestDoctorCmd_IsSubcommandOfRoot
+--- PASS: TestDoctorCmd_IsSubcommandOfRoot (0.00s)
+=== RUN   TestDoctorCmd_HasFlags
+--- PASS: TestDoctorCmd_HasFlags (0.00s)
+=== RUN   TestDoctorCmd_VerboseShortFlag
+--- PASS: TestDoctorCmd_VerboseShortFlag (0.00s)
+=== RUN   TestDoctorCmd_Execution
+    doctor_test.go:76: doctor command RunE error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_Execution (15.75s)
+=== RUN   TestDoctorCmd_HelpOutput
+--- PASS: TestDoctorCmd_HelpOutput (0.00s)
+=== RUN   TestNoBareGLMEnvVarLiteralsInCLIProduction
+=== PAUSE TestNoBareGLMEnvVarLiteralsInCLIProduction
+=== RUN   TestCharacterize_GLM_WarningPrintedToStderr
+    glm_new_test.go:954: stderr should mention 'moai cg' as alternative, got: "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:\n  - Main session context window: 1M (glm-5.3, glm-5.3-flash)\n  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)\nMixed Claude/GLM teammate roles require verified teammate routing support.\n"
+--- FAIL: TestCharacterize_GLM_WarningPrintedToStderr (0.00s)
+=== RUN   TestDoctorCmd_ExportFlag
+    integration_test.go:176: doctor --export error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_ExportFlag (16.06s)
+=== RUN   TestDoctorCmd_VerboseExecution
+    integration_test.go:202: doctor --verbose error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_VerboseExecution (15.83s)
+=== RUN   TestRunDoctor_FixWithFailures
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+--- PASS: TestRunDoctor_FixWithFailures (15.09s)
+=== CONT  TestNoBareGLMEnvVarLiteralsInCLIProduction
+    glm_env_parity_test.go:115: bare GLM env-var string literal(s) found in production CLI source (must reference config.EnvClaudeCode* constants instead):
+          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop/internal/cli/gateway_prepare.go:26:254
+          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop/internal/cli/gateway_prepare.go:26:383
+          /Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop/internal/cli/gateway_prepare.go:26:427
+--- FAIL: TestNoBareGLMEnvVarLiteralsInCLIProduction (0.10s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	221.622s
+FAIL

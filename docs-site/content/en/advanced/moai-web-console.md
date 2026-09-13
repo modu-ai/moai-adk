@@ -91,11 +91,11 @@ The backlog queue `moai todo` writes gets its own address. The screen lists **ev
 
 It only reads. Adding, picking and dropping stay with `moai todo`; the console never writes to the queue and never takes its lock. Opening the page in a linked worktree shows the **primary checkout's** queue, not an empty one — the queue is one channel per repository, and the header carries the directory it resolved to so you can see which file you are looking at.
 
-An absent, empty or unreadable queue file renders an empty-state line at 200, not an error page.
+A missing queue or a valid queue with no cards renders an empty-state line at HTTP 200. An unreadable queue also returns HTTP 200, but displays an unavailable notice without zero counts. Raw storage errors are not displayed.
 
 ## Live updates — send a signal, then re-fetch
 
-The observation areas refresh themselves when files change. The server holds an SSE (Server-Sent Events — the standard for streaming one-way events from server to browser) stream open at `GET /events`, watches under `.moai/`, and emits changes coalesced into 250-millisecond batches.
+The observation areas refresh when watched files change. The server holds an SSE stream open at `GET /events`, watches the project paths and resolved home directories listed below, and coalesces file events into 250-millisecond batches.
 
 The key property is that **the event carries no data**. The server sends only the name of the area that changed; the browser takes that signal, re-fetches the current page and swaps the body. The truth about rendering stays in exactly one place — the server — so the screen and the files can never tell different stories.
 
@@ -105,12 +105,12 @@ The key property is that **the event carries no data**. The server sends only th
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/todo` |
+| `kanban` | `.moai/state/todo`, the resolved home Todo directory (`~/.moai/db/<project-key>/todo`), and the resolved Factory directory |
 | `config` | `.moai/config/sections` |
 
 Only the `config` event is handled differently. If the screen changed underneath you while you were editing settings, the values you were typing would disappear — so instead of refreshing, it raises a banner saying the config files changed.
 
-A lost connection does not fail silently. The appbar indicator flips to the disconnected state, and if the browser's reconnection attempts fail three times it falls back to polling every 30 seconds. The indicator keeps showing that polling is what is happening.
+Directories absent at startup are retried every second. Registering a newly created directory sends a refresh signal, including when the SSE connection is healthy. A lost connection changes the appbar indicator to disconnected; after three failed reconnection attempts, the browser falls back to polling every 30 seconds.
 
 ## Never write down what it does not know
 
@@ -138,7 +138,7 @@ Choosing Settings in the rail unfolds the tabs below as a vertical list.
 9. **Agents** — per-agent profile and model assignment
 10. **Report** — report format and output preferences
 11. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
-12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
+12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
 13. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
 14. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
 

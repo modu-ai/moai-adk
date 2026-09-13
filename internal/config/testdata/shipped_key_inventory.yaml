@@ -2953,9 +2953,8 @@
   class: W
   evidence: reader
 - path: "workflow.worktree.auto_merge"
-  class: D
-  evidence: none
-  deprecate_after: "v3.1.0"
+  class: W
+  evidence: reader
 - path: "workflow.worktree.session_name_pattern"
   class: D
   evidence: none

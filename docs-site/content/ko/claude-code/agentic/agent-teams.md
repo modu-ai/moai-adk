@@ -14,9 +14,7 @@ description: "여러 Claude Code 세션이 공유 작업 목록으로 협업하�
 **한 줄 요약**: 한 세션이 팀 리더(team lead)가 되어 작업을 분배하고 결과를 종합하며, 나머지 동료(teammate)는 저마다 독립된 컨텍스트 윈도우에서 일하면서 공유 작업 목록과 직접 메시징으로 서로 조율합니다.
 {{< /callout >}}
 
-{{< callout type="warning" >}}
-**"에이전트 팀" 두 가지를 구분하세요.** 이 페이지가 다루는 것은 **Claude Code 네이티브 에이전트 팀 런타임** (tmux/iTerm2 페인, 공유 작업 목록, 환경 변수 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`)으로, 살아 있으며 `moai cg` 하이브리드 모드가 그대로 활용합니다. 반면 MoAI의 **정적 agent-team 오케스트레이션 계층** (옛 `workflow.team.*` 설정, `--team` 강제 플래그)은 **은퇴**했습니다. `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`과 함께 서브에이전트 모드로 폴백합니다. 즉 네이티브 런타임은 살아 있고, MoAI 자체 오케스트레이션의 정적 팀 계층만 사라진 것입니다.
-{{< /callout >}}
+Claude Code의 네이티브 팀원 런타임과 MoAI에서 폐기한 정적 Agent Teams 오케스트레이션은 별개입니다. 이 페이지의 네이티브 API 설명이 폐기된 CG 런처의 사용 가능 여부를 뜻하지는 않습니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 ## 에이전트 팀이란
 
@@ -189,19 +187,19 @@ Claude Code v2.1.234부터 동료는 기본적으로 리더의 `/model` 선택�
 
 팀 정리는 언제나 리더가 맡습니다. 작업이 끝나면 리더에게 정리를 요청하되, 실행 중인 동료가 남아 있으면 정리가 실패하므로 먼저 종료시켜야 합니다.
 
-## MoAI CG 모드와 어떻게 맞물리는가
+## CG 폐기와 설정 이전
 
-MoAI-ADK는 이 네이티브 팀 런타임 위에 **CG 모드** (`moai cg`, Claude + GLM 하이브리드)를 얹어 비용을 최적화합니다. 리더는 Claude로 전략·계획·감사를 조율하고, 동료는 tmux 세션 단위로 환경을 격리해 GLM 환경을 상속받으며 대량 구현 작업을 맡습니다. "누가 무엇을 하는가"라는 팀 구조 질문에 "어떤 모델이 얼마짜리 일을 하는가"라는 토크노믹스(tokenomics) 답을 결합한 것으로, 구현 중심 SPEC·코드 생성·테스트 작성처럼 토큰 소비가 큰 작업에서 **60-70% 비용을 줄입니다**.
+Claude Code의 네이티브 팀원 런타임과 MoAI에서 폐기한 정적 Agent Teams 오케스트레이션은 별개입니다. 이 페이지의 네이티브 API 설명이 폐기된 CG 런처의 사용 가능 여부를 뜻하지는 않습니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
-한 가지 구분해 둘 것이 있습니다. MoAI-ADK는 자체 워크플로우 오케스트레이션에서는 정적 에이전트 팀 계층을 은퇴시키고 순차 서브에이전트와 동적 워크플로우를 기본으로 삼지만, 이 페이지에서 다룬 Claude Code의 네이티브 팀 런타임(tmux 페인, 공유 작업 목록)은 CG 모드가 그대로 씁니다. 즉 "팀"이라는 실행 형태는 살아 있고, 그 용도가 협업 조율에서 비용 라우팅으로 옮겨간 셈입니다.
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
-CG 모드의 설정과 운영 방법은 별도 문서에서 자세히 다룹니다.
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ## 관련 문서
 
 - [서브에이전트](/ko/claude-code/agentic/sub-agents)
 - [다이내믹 워크플로우](/ko/claude-code/agentic/workflows)
-- [CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode)
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 
 ## 참고 자료
 

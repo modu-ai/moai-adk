@@ -77,7 +77,7 @@ moai cc -f lane-1             # 레인 하나, 각자 별도 터미널에서
 moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 ```
 
-레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이 형태는 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 번호는 풀려서 다시 쓰인다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
+레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이 형태는 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 번호는 풀려서 다시 쓰인다. 레인 소유권은 `~/.moai/db/<project-key>/factory/factory.db`에 기록한다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로만 남긴다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고는 팩토리 모드를 거부한다.
 
 > 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -180,7 +180,7 @@ moai-adk는 Claude Code를 바깥에서 감싸는 하네스다. Claude Code를 �
 | **자율 + 진짜 경계** | `/moai goal`이 완료 조건을 선언하면 세션이 조건을 채울 때까지 알아서 일한다. 다만 턴 한도(기본 30), 정체 가드, 벽시계 예산, 사전 승인 게이트라는 네 개의 하드 경계가 묶여 있어 무한 루프에 빠지지 않는다. |
 | **병렬 안전** | SPEC마다 독립된 작업 트리를 주고, 브랜치 상태 가드가 주 체크아웃에서 실수로 브랜치를 바꾸는 것을 막으며, 쓰기 에이전트를 띄우기 전에 원격과의 간격을 검사한다. 두 개의 쓰기 에이전트가 동시에 돌지 않는다. |
 | **장기 지속** | `/clear`를 넘어도 작업이 이어진다. 진행 상태는 `progress.md`에, 핸드오프 메시지는 메모리에, 라우팅 결정은 결정 메모리에 남는다. 다음 세션은 맨땅이 아니라 지난 세션이 배운 지점에서 시작한다. |
-| **비용 효율** | 작업 단계와 SPEC 크기에 맞춰 모델과 추론 깊이를 선언적으로 배정한다. Claude 리더 + GLM 워커의 CG 모드는 구현 중심 작업에서 60–70% 비용을 줄인다. 프롬프트 캐시를 재사용하고 긴 출력은 디스크로 흘려보내 컨텍스트를 가볍게 유지한다. |
+| **비용 효율** | 작업 단계와 SPEC 크기에 맞춰 모델과 추론 깊이를 선언적으로 배정한다. 프롬프트 캐시를 재사용하고 긴 출력은 디스크로 흘려보내 컨텍스트를 가볍게 유지한다. |
 | **16가지 프로그래밍 언어 동등 지원** | Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift — 16가지 프로그래밍 언어를 한 집단으로 묶어 마커 기반 자동 감지로 처리한다. 어느 하나가 우대를 받지 않는다. |
 | **자가 개선** | 되풀이되는 실패 패턴을 관측하면 규칙 변경 제안으로 올린다. 몰래 적용하지 않고 승인을 받아 반영한다. 라우팅 결정과 게이트 증거가 결정 메모리에 쌓여 다음 실행의 재료가 된다. |
 | **모국어 친화** | 한국어·일본어·중국어·영어 네 로케일을 같은 PR에서 다루고, 번역투를 금지하며 모국어 글말을 따로 둔다. 모국어를 쓰는 사용자에게 영어를 강제하지 않는다. |
@@ -311,7 +311,7 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 - **Git** — 모든 플랫폼에서 필수
 - **Claude Code** — moai-adk는 Claude Code를 위한 하네스다
-- **권장**: `gh` CLI(PR 자동화), `tmux`(CG 모드), 사용 언어의 린트/테스트 툴체인(예: `golangci-lint`)
+- **권장**: `gh` CLI(PR 자동화), `tmux`(작업트리 창), 사용 언어의 린트/테스트 툴체인(예: `golangci-lint`)
 
 ---
 
@@ -365,13 +365,18 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
-### CG 모드 — Claude 리더 + GLM 워커
+### CG 폐기와 설정 이전
 
-Claude가 전략·계획·감사를 맡고 GLM이 대량 구현을 맡는다. tmux 세션 단위 환경 격리로 둘을 잇고, 구현 중심 작업에서 60–70% 비용을 줄인다.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
 
-<p align="center">
-  <img src="./assets/images/cg-mode-infographic-ko.png" alt="CG 모드 — Claude 리더 + GLM 워커 하이브리드" width="85%">
-</p>
+```bash
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
+```
+
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
+
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ### 16가지 프로그래밍 언어 동등 지원
 
@@ -564,18 +569,18 @@ moai cc -w feature-billing --spawn   # billing은 새 창에서, 현재 세션 �
 
 SPEC마다 독립된 작업 트리를 주어 두 에이전트가 서로 밟지 않게 한다. 브랜치 상태 가드가 주 체크아웃에서 실수로 브랜치를 바꾸는 것을 막는다.
 
-### 비용 줄이기 (CG 모드)
+### CG 폐기와 설정 이전
+
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
 
 ```bash
-moai glm sk-your-glm-api-key   # 키 한 번 저장
-moai cg                        # Claude 리더 + GLM 워커 하이브리드 진입
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-```text
-/moai run SPEC-DATA-001        # 구현 중심 작업 → GLM 워커가 대량 구현 담당
-```
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
-CG 모드는 Claude 리더가 전략·계획·감사를 맡고 GLM 워커가 대량 구현을 맡는다. 구현 중심 작업에서 60–70% 비용을 줄인다. 하네스·SPEC 워크플로우·품질 게이트는 세 모드 모두에서 동일하게 돈다.
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ### 버그 자동으로 잡기 (loop)
 
@@ -638,7 +643,7 @@ v3.1.1에서 손댈 만한 단면이 넷 늘었다.
 | `.claude/settings.json` | 템플릿에서 렌더 — 프로젝트 공유 설정 | 포함 |
 | `.claude/settings.local.json` | 런타임 관리 — 머신별 값(tmux pane ID · API 토큰 · 절대 경로) | **절대 포함 않음** |
 
-`settings.local.json`은 `moai glm`, `moai cc`, `moai cg`가 런타임에 고치고 SessionStart 훅이 환경을 채운다. 실수로 커밋했으면 `git rm --cached .claude/settings.local.json`으로 뺀다.
+`settings.local.json`은 `moai glm`, `moai cc`가 런타임에 고치고 SessionStart 훅이 환경을 채운다. 실수로 커밋했으면 `git rm --cached .claude/settings.local.json`으로 뺀다.
 
 ---
 
@@ -676,13 +681,12 @@ v3.1.1에서 손댈 만한 단면이 넷 늘었다.
 
 ### Claude + GLM
 
-z.ai GLM을 Claude Code의 대체 백엔드로 쓴다. 환경변수만 바꾸면 코드는 그대로다. 세 실행 모드가 있다.
+z.ai GLM을 Claude Code의 대체 백엔드로 쓴다. 환경변수만 바꾸면 코드는 그대로다.
 
 | 커맨드 | 리더 | 워커 | tmux | 비용 절감 |
 |---|---|---|---|---|
 | `moai cc` | Claude | Claude | 필요 없음 | — |
 | `moai glm` | GLM | GLM | 권장 | 약 70% |
-| `moai cg` | Claude | GLM | 필수 | 약 60% |
 
 GLM Coding Plan은 월 $10부터다. glm-5.3-flash(기본값), glm-5.3, glm-4.7, glm-4.5-air와 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)을 쓸 수 있다.
 
@@ -715,7 +719,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 (전체 49개) |
 | [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초 · 컨텍스트/메모리 · 에이전틱 · 확장성 |
-| [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드와 모델 정책 |
+| [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 설정 이전과 모델 정책 |
 | [비용 최적화](https://adk.mo.ai.kr/ko/cost-optimization) | 프롬프트 캐싱 전략과 토큰 비용 절감 |
 | [가이드](https://adk.mo.ai.kr/ko/guides) | CI 자율화 · multi-LLM CI 등 실전 운영 레시피 |
 | [Git Worktree](https://adk.mo.ai.kr/ko/worktree) | 병렬 SPEC 개발을 위한 worktree 가이드 |
@@ -735,7 +739,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
 | `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
-| `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 세션 |
+| `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
 | `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
@@ -785,7 +789,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 
 ### GLM 없이 Claude만 쓸 수 있나?
 
-된다. `moai cc`가 Claude 전용 세션을 띄운다. CG 모드(`moai cg`, Claude 리더 + GLM 워커)와 GLM 전용(`moai glm`)은 비용 절감 옵션이고, 하네스·SPEC 워크플로우·품질 게이트는 세 모드 모두에서 동일하게 돈다.
+됩니다. `moai cc`로 GLM 없이 Claude 세션을 실행할 수 있습니다. 기존 CG 설정이 남은 프로젝트만 먼저 설정을 이전해야 합니다.
 
 ### 기존 프로젝트에서도 쓸 수 있나?
 

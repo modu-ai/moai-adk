@@ -1,0 +1,489 @@
+LOAD-BEFORE-BLOCK: 18:10  up 4 days, 12:04, 15 users, load averages: 23.23 13.09 11.88
+=== RUN   TestT662ProbeBlock
+2026/09/12 18:10:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/001
+2026/09/12 18:10:52 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:52 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:52 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/004 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/003
+2026/09/12 18:10:52 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:52 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:52 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:52 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/006 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/005
+2026/09/12 18:10:53 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:53 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:53 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:53 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/008 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/007
+2026/09/12 18:10:53 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:53 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:53 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:53 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/010 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/009
+2026/09/12 18:10:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:54 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:54 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/012 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/011
+2026/09/12 18:10:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:54 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:54 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/014 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/013
+2026/09/12 18:10:54 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:54 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:55 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:55 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/016 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/015
+2026/09/12 18:10:55 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:55 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:55 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/018 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/017
+2026/09/12 18:10:55 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:55 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:56 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:56 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/020 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/019
+2026/09/12 18:10:56 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:56 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:56 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:56 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/022 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/021
+2026/09/12 18:10:56 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:56 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:57 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:57 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/024 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/023
+2026/09/12 18:10:57 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:57 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:57 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:57 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/026 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/025
+2026/09/12 18:10:57 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:57 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:57 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:57 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/028 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/027
+2026/09/12 18:10:58 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:58 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:58 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:58 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/030 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/029
+2026/09/12 18:10:58 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:58 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:58 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:58 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/032 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/031
+2026/09/12 18:10:59 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:59 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:59 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:59 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/034 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/033
+2026/09/12 18:10:59 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:59 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:10:59 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:10:59 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/036 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/035
+2026/09/12 18:10:59 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:10:59 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:00 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:00 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/038 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/037
+2026/09/12 18:11:00 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:00 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:00 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:00 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/040 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/039
+2026/09/12 18:11:00 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:00 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:01 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:01 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/042 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/041
+2026/09/12 18:11:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:01 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:01 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/044 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/043
+2026/09/12 18:11:01 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:01 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:02 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/046 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/045
+2026/09/12 18:11:02 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:02 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:02 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:02 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/048 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/047
+2026/09/12 18:11:02 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:02 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:03 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:03 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/050 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/049
+2026/09/12 18:11:03 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:03 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:03 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:03 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/052 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/051
+2026/09/12 18:11:03 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:03 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:03 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:03 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/054 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/053
+2026/09/12 18:11:04 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:04 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:04 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:04 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/056 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/055
+2026/09/12 18:11:04 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:04 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:04 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:04 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/058 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/057
+2026/09/12 18:11:05 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:05 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:05 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:05 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/060 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/059
+2026/09/12 18:11:05 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:05 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:05 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:05 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/062 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/061
+2026/09/12 18:11:05 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:05 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:06 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:06 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/064 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/063
+2026/09/12 18:11:06 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:06 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:06 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:06 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/066 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/065
+2026/09/12 18:11:06 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:06 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:07 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:07 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/068 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/067
+2026/09/12 18:11:07 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:07 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:07 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:07 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/070 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/069
+2026/09/12 18:11:07 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:07 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:08 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:08 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/072 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/071
+2026/09/12 18:11:08 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:08 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:08 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:08 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/074 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/073
+2026/09/12 18:11:08 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:08 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:09 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/076 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/075
+2026/09/12 18:11:09 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:09 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:09 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/078 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/077
+2026/09/12 18:11:09 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:09 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:09 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:09 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/080 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/079
+2026/09/12 18:11:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:10 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:10 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/082 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/081
+2026/09/12 18:11:10 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:10 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:10 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:10 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/084 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/083
+2026/09/12 18:11:11 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:11 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/086 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/085
+2026/09/12 18:11:11 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:11 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:11 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:11 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/088 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/087
+2026/09/12 18:11:12 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:12 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:12 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/090 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/089
+2026/09/12 18:11:12 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:12 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:12 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:12 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/092 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/091
+2026/09/12 18:11:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:13 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/094 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/093
+2026/09/12 18:11:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:13 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:13 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/096 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/095
+2026/09/12 18:11:13 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:13 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:14 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/098 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/097
+2026/09/12 18:11:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:14 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:14 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/100 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/099
+2026/09/12 18:11:14 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:14 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:15 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:15 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/102 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/101
+2026/09/12 18:11:15 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:15 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:15 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/104 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/103
+2026/09/12 18:11:15 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:15 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:16 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/106 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/105
+2026/09/12 18:11:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:16 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:16 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/108 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/107
+2026/09/12 18:11:16 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:16 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:17 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/110 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/109
+2026/09/12 18:11:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:17 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:17 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/112 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/111
+2026/09/12 18:11:17 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:17 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:18 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/114 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/113
+2026/09/12 18:11:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:18 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:18 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/116 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/115
+2026/09/12 18:11:18 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:18 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:19 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/118 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/117
+2026/09/12 18:11:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:19 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:19 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/120 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/119
+2026/09/12 18:11:19 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:19 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:20 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/122 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/121
+2026/09/12 18:11:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:20 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/124 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/123
+2026/09/12 18:11:20 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:20 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:20 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:20 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/126 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/125
+2026/09/12 18:11:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:21 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/128 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/127
+2026/09/12 18:11:21 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:21 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:21 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/130 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/129
+2026/09/12 18:11:22 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:22 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:22 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/132 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/131
+2026/09/12 18:11:22 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:22 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:22 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:22 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/134 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/133
+2026/09/12 18:11:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:23 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/136 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/135
+2026/09/12 18:11:23 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:23 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:23 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:23 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/138 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/137
+2026/09/12 18:11:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:24 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:24 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/140 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/139
+2026/09/12 18:11:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:24 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:24 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/142 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/141
+2026/09/12 18:11:24 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:24 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:25 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:25 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/144 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/143
+2026/09/12 18:11:25 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:25 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:25 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:25 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/146 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/145
+2026/09/12 18:11:25 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:25 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:26 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/148 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/147
+2026/09/12 18:11:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:26 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:26 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/150 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/149
+2026/09/12 18:11:26 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:26 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:27 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:27 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/152 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/151
+2026/09/12 18:11:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:27 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:27 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/154 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/153
+2026/09/12 18:11:27 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:27 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:28 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/156 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/155
+2026/09/12 18:11:28 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:28 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:28 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:28 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/158 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/157
+2026/09/12 18:11:28 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:28 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:29 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/160 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/159
+2026/09/12 18:11:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:29 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:29 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/162 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/161
+2026/09/12 18:11:29 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:29 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:30 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/164 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/163
+2026/09/12 18:11:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:30 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:30 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/166 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/165
+2026/09/12 18:11:30 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:31 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/168 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/167
+2026/09/12 18:11:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:31 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/170 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/169
+2026/09/12 18:11:31 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:31 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:31 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/172 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/171
+2026/09/12 18:11:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:32 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/174 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/173
+2026/09/12 18:11:32 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:32 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:32 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/176 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/175
+2026/09/12 18:11:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:33 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/178 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/177
+2026/09/12 18:11:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:33 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:33 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/180 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/179
+2026/09/12 18:11:33 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:34 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/182 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/181
+2026/09/12 18:11:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:34 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:34 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/184 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/183
+2026/09/12 18:11:34 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:34 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:35 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/186 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/185
+2026/09/12 18:11:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:35 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:35 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/188 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/187
+2026/09/12 18:11:35 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:35 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:36 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/190 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/189
+2026/09/12 18:11:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:36 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/192 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/191
+2026/09/12 18:11:36 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:36 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:36 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:36 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/194 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/193
+2026/09/12 18:11:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:37 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/196 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/195
+2026/09/12 18:11:37 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:37 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:37 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:37 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/198 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/197
+2026/09/12 18:11:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:38 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/200 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/199
+2026/09/12 18:11:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:38 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:38 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/202 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/201
+2026/09/12 18:11:38 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:38 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:39 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/204 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/203
+2026/09/12 18:11:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:39 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:39 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/206 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/205
+2026/09/12 18:11:39 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:39 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:40 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/208 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/207
+2026/09/12 18:11:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:40 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:40 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/210 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/209
+2026/09/12 18:11:40 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:40 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:41 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/212 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/211
+2026/09/12 18:11:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:41 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:41 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/214 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/213
+2026/09/12 18:11:41 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:41 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:42 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/216 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/215
+2026/09/12 18:11:42 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:42 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:42 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/218 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/217
+2026/09/12 18:11:42 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:42 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:42 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:42 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/220 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/219
+2026/09/12 18:11:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:43 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/222 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/221
+2026/09/12 18:11:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:43 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:43 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/224 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/223
+2026/09/12 18:11:43 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:44 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/226 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/225
+2026/09/12 18:11:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:44 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:44 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/228 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/227
+2026/09/12 18:11:44 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:44 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:45 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/230 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/229
+2026/09/12 18:11:45 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:45 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:45 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/232 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/231
+2026/09/12 18:11:45 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:45 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:45 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:45 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/234 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/233
+2026/09/12 18:11:46 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:46 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:46 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:46 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/236 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/235
+2026/09/12 18:11:46 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:46 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:46 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:46 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/238 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/237
+2026/09/12 18:11:47 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:47 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:47 INFO session start (deferred): status drift detected count=7
+2026/09/12 18:11:47 INFO session started session_id=t662-probe cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/240 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT662ProbeBlock3378851817/239
+2026/09/12 18:11:47 WARN configuration not available, proceeding with defaults session_id=t662-probe
+2026/09/12 18:11:47 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:11:47 INFO session start (deferred): status drift detected count=7
+T662 BLOCK  n=120 min=434.930292ms p50=458.308667ms p90=485.750667ms p99=546.3455ms max=646.522791ms mean=464.110518ms
+T662 BLOCK over-500ms-budget: 4/120 = 3.3%  [OBSERVED red rate]
+T662 joinBound=250ms testBudget=500ms effectiveSyncHeadroom=250ms
+--- PASS: TestT662ProbeBlock (55.84s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	56.336s
+LOAD-AFTER-BLOCK: 18:11  up 4 days, 12:05, 15 users, load averages: 14.64 12.36 11.68

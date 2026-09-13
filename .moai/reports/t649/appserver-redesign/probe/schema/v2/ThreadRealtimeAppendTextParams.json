@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ConversationTextRole": {
+      "enum": [
+        "user",
+        "developer",
+        "assistant"
+      ],
+      "type": "string"
+    }
+  },
+  "description": "EXPERIMENTAL - append text input to thread realtime.",
+  "properties": {
+    "role": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ConversationTextRole"
+        }
+      ],
+      "default": "user"
+    },
+    "text": {
+      "type": "string"
+    },
+    "threadId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "text",
+    "threadId"
+  ],
+  "title": "ThreadRealtimeAppendTextParams",
+  "type": "object"
+}

@@ -141,12 +141,7 @@ table.
 |---------|------|--------|-----|
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-> `Explore` has no agent file on disk, so its effort cannot be pinned in
-> frontmatter. Instead the matrix records `sonnet / low` as the call-time
-> default, and that value is written verbatim into the spawn prompt. The Agent
-> Teams static layer (static role profiles) was retired in v3.0, and its place
-> was taken by parallel sub-agent execution and dynamic workflows. The `moai cg`
-> teammate runtime (tmux panes) remains in place.
+> `Explore` has no agent file on disk, so its effort cannot be pinned in frontmatter. Instead the matrix records `sonnet / low` as the call-time default, and that value is written verbatim into the spawn prompt. The Agent Teams static layer (static role profiles) was retired in v3.0, and its place was taken by parallel sub-agent execution and dynamic workflows. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 > **Haiku removal** (v3.0): the former Haiku slots (documentation · MX tagging ·
 > Git procedures) were replaced not by a lower model class but by lower
@@ -255,7 +250,7 @@ flowchart TD
 
 ### The GLM backend's reasoning ceiling
 
-On the GLM backend (`moai glm`, or the GLM panes of `moai cg`), effort cannot
+On the GLM backend (`moai glm`), effort cannot
 use Claude's 5-step vocabulary as-is. GLM-5.3 reasons **always** — disabling
 reasoning is not supported, and a request asking for it fails. The control is a
 single 3-level `reasoning_effort` (low / high / max), and Claude effort
@@ -410,6 +405,6 @@ agent catalog, so unknown names are rejected.
 ## Next steps
 
 - [Profile Matrix](/en/advanced/profile-matrix/) — the placement basis for the 36 cells (judgment-weighted policy) and resolver precedence in detail
-- [CG Mode](/en/multi-llm/cg-mode) — cut costs with the Claude leader + GLM worker hybrid
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [Autonomy Tier](/en/advanced/autonomy-tier/) — the `MOAI_AUTONOMY_TIER` cost/speed trade-off
 - [CLI Reference](/en/getting-started/cli) — moai init, moai update, moai model profile in detail

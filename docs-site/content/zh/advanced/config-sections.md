@@ -219,7 +219,7 @@ workflow:
 
 ## crosssession.yaml — 会话间消息
 
-决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` · `moai cg` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。
+决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。
 
 ```yaml
 crosssession:

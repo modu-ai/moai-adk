@@ -1,0 +1,37 @@
+[
+  {
+    "id": "t650",
+    "text": "[GATEWAY-APPSERVER-20260912/AS-1] 공식 Codex App Server 기반·인증·실행 격리. 기존 RPC 계층 재사용, Codex 0.154.0 설치 스키마와 공식 문서 대조, managed 브라우저/기기 코드 및 API 키 모드, 계정·과금 경로 표시, 사용자 설정 상속 차단, native 도구·hook·MCP 격리 음성 검증. 공식 기준 https://learn.chatgpt.com/docs/app-server . 설계 및 인수조건: .moai/reports/t649/appserver-redesign/appserver-redesign-report.md 와 acceptance-proposal.md. 기존 t649의 후속 추적 작업이며 미커밋 의존 코드의 출처와 작업 소유권을 보존한다. Claude Code 화면 및 /model 유지. 구독은 공식 App Server managed auth 사용, MoAI의 직접 구독 backend 호출·토큰 읽기를 실행 경로에서 대체. 완료 주장은 카드별 실제 명령·출력·기준 SHA·Gaps로 증명. push·PR·병합·워크트리 제거는 별도 지시. source_session_id=01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "added_at": "2026-09-12T04:38:44Z",
+    "spec_id": null,
+    "state": "queued"
+  },
+  {
+    "id": "t651",
+    "text": "[GATEWAY-APPSERVER-20260912/AS-2] Claude 도구 연결과 ToolSearch 후속 요청. AS-1 선행. 최초 deferred 전체 schema 등록 우선, 이름 역매핑, tool_reference와 등록 schema 결속, ToolSearch→참조→도구→결과→후속 답변. dispatcher 대안은 동등 비교 없이 자동 채택 금지. 공식 기준 https://learn.chatgpt.com/docs/app-server . 설계 및 인수조건: .moai/reports/t649/appserver-redesign/appserver-redesign-report.md 와 acceptance-proposal.md. 기존 t649의 후속 추적 작업이며 미커밋 의존 코드의 출처와 작업 소유권을 보존한다. Claude Code 화면 및 /model 유지. 구독은 공식 App Server managed auth 사용, MoAI의 직접 구독 backend 호출·토큰 읽기를 실행 경로에서 대체. 완료 주장은 카드별 실제 명령·출력·기준 SHA·Gaps로 증명. push·PR·병합·워크트리 제거는 별도 지시. source_session_id=01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "added_at": "2026-09-12T04:38:45Z",
+    "spec_id": null,
+    "state": "queued"
+  },
+  {
+    "id": "t652",
+    "text": "[GATEWAY-APPSERVER-20260912/AS-3] HTTP 요청 사이의 turn 유지·취소·강제 종료 복구. AS-2 선행. thread/turn/call 및 소유권 매핑, pending RPC 유지, 중복·변조·다른 대화 결과 차단, 제한된 버퍼와 backpressure, interrupt와 자식 정리, crash 이후 임의 도구 재실행 금지. 공식 기준 https://learn.chatgpt.com/docs/app-server . 설계 및 인수조건: .moai/reports/t649/appserver-redesign/appserver-redesign-report.md 와 acceptance-proposal.md. 기존 t649의 후속 추적 작업이며 미커밋 의존 코드의 출처와 작업 소유권을 보존한다. Claude Code 화면 및 /model 유지. 구독은 공식 App Server managed auth 사용, MoAI의 직접 구독 backend 호출·토큰 읽기를 실행 경로에서 대체. 완료 주장은 카드별 실제 명령·출력·기준 SHA·Gaps로 증명. push·PR·병합·워크트리 제거는 별도 지시. source_session_id=01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "added_at": "2026-09-12T04:38:45Z",
+    "spec_id": null,
+    "state": "queued"
+  },
+  {
+    "id": "t653",
+    "text": "[GATEWAY-APPSERVER-20260912/AS-4] 대화 재개·서브에이전트·압축·모델 전환. AS-3 선행. thread resume/fork, prefix 정합성, 실제 Claude Agent 식별, GPT 모델 변경, 압축 중복 방지, 기존 대화 보존과 명시적 전환 안내. 불안정 thread/resume.history 사용 금지. 공식 기준 https://learn.chatgpt.com/docs/app-server . 설계 및 인수조건: .moai/reports/t649/appserver-redesign/appserver-redesign-report.md 와 acceptance-proposal.md. 기존 t649의 후속 추적 작업이며 미커밋 의존 코드의 출처와 작업 소유권을 보존한다. Claude Code 화면 및 /model 유지. 구독은 공식 App Server managed auth 사용, MoAI의 직접 구독 backend 호출·토큰 읽기를 실행 경로에서 대체. 완료 주장은 카드별 실제 명령·출력·기준 SHA·Gaps로 증명. push·PR·병합·워크트리 제거는 별도 지시. source_session_id=01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "added_at": "2026-09-12T04:38:46Z",
+    "spec_id": null,
+    "state": "queued"
+  },
+  {
+    "id": "t654",
+    "text": "[GATEWAY-APPSERVER-20260912/AS-5] 세 launcher 통합·context 실증·로컬 배포 판정. AS-4 선행. cc Claude/glm GLM/gpt GPT 전용 picker, 구독/API 별도 검증, 실제 Claude PTY 도구검색·서브에이전트·재개·모델전환, 경로별 context 실증, Windows GitHub CI. 검증 성공 후 rc.8 로컬 배포; API 과금 자동전환 금지. 공식 기준 https://learn.chatgpt.com/docs/app-server . 설계 및 인수조건: .moai/reports/t649/appserver-redesign/appserver-redesign-report.md 와 acceptance-proposal.md. 기존 t649의 후속 추적 작업이며 미커밋 의존 코드의 출처와 작업 소유권을 보존한다. Claude Code 화면 및 /model 유지. 구독은 공식 App Server managed auth 사용, MoAI의 직접 구독 backend 호출·토큰 읽기를 실행 경로에서 대체. 완료 주장은 카드별 실제 명령·출력·기준 SHA·Gaps로 증명. push·PR·병합·워크트리 제거는 별도 지시. source_session_id=01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
+    "added_at": "2026-09-12T04:38:46Z",
+    "spec_id": null,
+    "state": "queued"
+  }
+]

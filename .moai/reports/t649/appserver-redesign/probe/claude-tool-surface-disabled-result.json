@@ -1,0 +1,680 @@
+{
+  "claude_version": "2.1.269",
+  "requests": [
+    {
+      "path": "/v1/messages?beta=true",
+      "tools": [
+        {
+          "name": "Agent",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "description": {
+                "description": "A short (3-5 word) description of the task",
+                "type": "string"
+              },
+              "prompt": {
+                "description": "The task for the agent to perform",
+                "type": "string"
+              },
+              "subagent_type": {
+                "description": "The type of specialized agent to use for this task",
+                "type": "string"
+              },
+              "model": {
+                "description": "Optional model override for this agent. Takes precedence over the agent definition's model frontmatter and the configured default subagent model. If omitted, uses the agent definition's model, else the default (inherits from the parent unless a default subagent model is configured). Ignored for subagent_type: \"fork\" \u2014 forks always inherit the parent model.",
+                "type": "string",
+                "enum": [
+                  "sonnet",
+                  "opus",
+                  "haiku",
+                  "fable"
+                ]
+              },
+              "run_in_background": {
+                "description": "Agents run in the background by default; you will be notified when one completes. Set to false only when your very next action depends on this agent's result and nothing else could usefully happen while it runs \u2014 otherwise leave it in the background so the user can hand you other work.",
+                "type": "boolean"
+              },
+              "isolation": {
+                "description": "Isolation mode. \"worktree\" creates a temporary git worktree so the agent works on an isolated copy of the repo. \"remote\" launches the agent in a remote cloud environment (always runs in background; availability is gated).",
+                "type": "string",
+                "enum": [
+                  "worktree",
+                  "remote"
+                ]
+              }
+            },
+            "required": [
+              "description",
+              "prompt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "Bash",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "command": {
+                "description": "The command to execute",
+                "type": "string"
+              },
+              "timeout": {
+                "description": "Optional timeout in milliseconds (max 600000)",
+                "type": "number"
+              },
+              "description": {
+                "description": "Clear, concise description of what this command does in active voice. Never use words like \"complex\" or \"risk\" in the description - just describe what it does.\n\nSay what the command does in plain words: do not echo the command's text, its flags, or file paths - the user reads this description, often without seeing the command.\n\nFor simple commands (git, npm, standard CLI tools), keep it brief (5-10 words):\n- ls \u2192 \"List files in current directory\"\n- git status \u2192 \"Show working tree status\"\n- npm install \u2192 \"Install package dependencies\"\n\nFor commands that are harder to parse at a glance (piped commands, obscure flags, etc.), add enough context to clarify what it does:\n- find . -name \"*.tmp\" -exec rm {} \\; \u2192 \"Find and delete all .tmp files recursively\"\n- git reset --hard origin/main \u2192 \"Discard all local changes and match remote main\"\n- curl -s url | jq '.data[]' \u2192 \"Fetch JSON from URL and extract data array elements\"",
+                "type": "string"
+              },
+              "run_in_background": {
+                "description": "Set to true to run this command in the background.",
+                "type": "boolean"
+              },
+              "dangerouslyDisableSandbox": {
+                "description": "Set this to true to dangerously override sandbox mode and run commands without sandboxing.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "command"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "CronCreate",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "cron": {
+                "description": "Standard 5-field cron expression in local time: \"M H DoM Mon DoW\" (e.g. \"*/5 * * * *\" = every 5 minutes, \"30 14 28 2 *\" = Feb 28 at 2:30pm local once).",
+                "type": "string"
+              },
+              "prompt": {
+                "description": "The prompt to enqueue at each fire time.",
+                "type": "string"
+              },
+              "recurring": {
+                "description": "true (default) = fire on every cron match until deleted or auto-expired after 7 days. false = fire once at the next match, then auto-delete. Use false for \"remind me at X\" one-shot requests with pinned minute/hour/dom/month.",
+                "type": "boolean"
+              },
+              "durable": {
+                "description": "true = persist to .claude/scheduled_tasks.json and survive restarts. false (default) = in-memory only, dies when this Claude session ends. Use true only when the user asks the task to survive across sessions.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "cron",
+              "prompt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "CronDelete",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "Job ID returned by CronCreate.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "CronList",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "Edit",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "description": "The absolute path to the file to modify",
+                "type": "string"
+              },
+              "old_string": {
+                "description": "The text to replace",
+                "type": "string"
+              },
+              "new_string": {
+                "description": "The text to replace it with (must be different from old_string)",
+                "type": "string"
+              },
+              "replace_all": {
+                "description": "Replace all occurrences of old_string (default false)",
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "file_path",
+              "old_string",
+              "new_string"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "EnterWorktree",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Optional name for a new worktree. Each \"/\"-separated segment may contain only letters, digits, dots, underscores, and dashes; max 64 chars total. A random name is generated if not provided. Mutually exclusive with `path`.",
+                "type": "string"
+              },
+              "path": {
+                "description": "Path to an existing worktree to switch into instead of creating a new one. Must appear in `git worktree list` for the current repo \u2014 or, on first entry from the launch directory, for a repo nested inside it (multi-repo workspace). Mutually exclusive with `name`.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "ExitWorktree",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "action": {
+                "description": "\"keep\" leaves the worktree and branch on disk; \"remove\" deletes both.",
+                "type": "string",
+                "enum": [
+                  "keep",
+                  "remove"
+                ]
+              },
+              "discard_changes": {
+                "description": "Required true when action is \"remove\" and the worktree has uncommitted files or unmerged commits. The tool will refuse and list them otherwise.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "ListAgents",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "channel": {
+                "description": "Not available in this build; leave unset.",
+                "type": "string",
+                "maxLength": 256
+              },
+              "q": {
+                "description": "Not available in this build; leave unset.",
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "NotebookEdit",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "notebook_path": {
+                "description": "The absolute path to the Jupyter notebook file to edit (must be absolute, not relative)",
+                "type": "string"
+              },
+              "cell_id": {
+                "description": "The ID of the cell to edit. When inserting a new cell, the new cell will be inserted after the cell with this ID, or at the beginning if not specified.",
+                "type": "string"
+              },
+              "new_source": {
+                "description": "The new source for the cell",
+                "type": "string"
+              },
+              "cell_type": {
+                "description": "The type of the cell (code or markdown). If not specified, it defaults to the current cell type. If using edit_mode=insert, this is required.",
+                "type": "string",
+                "enum": [
+                  "code",
+                  "markdown"
+                ]
+              },
+              "edit_mode": {
+                "description": "The type of edit to make (replace, insert, delete). Defaults to replace.",
+                "type": "string",
+                "enum": [
+                  "replace",
+                  "insert",
+                  "delete"
+                ]
+              }
+            },
+            "required": [
+              "notebook_path",
+              "new_source"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "Read",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "description": "The absolute path to the file to read",
+                "type": "string"
+              },
+              "offset": {
+                "description": "The line number to start reading from. Only provide if the file is too large to read at once",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "limit": {
+                "description": "The number of lines to read. Only provide if the file is too large to read at once.",
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "pages": {
+                "description": "Page range for PDF files (e.g., \"1-5\", \"3\", \"10-20\"). Only applicable to PDF files. Maximum 20 pages per request.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "file_path"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "ReportFindings",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "level": {
+                "description": "Effort level the review ran at",
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              },
+              "findings": {
+                "description": "Verified findings, most-severe first; empty if none survived",
+                "maxItems": 32,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "description": "Repo-relative path of the file the finding is in",
+                      "type": "string"
+                    },
+                    "line": {
+                      "description": "1-indexed line the finding anchors to",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "summary": {
+                      "description": "One-sentence statement of the defect",
+                      "type": "string"
+                    },
+                    "short_summary": {
+                      "description": "Compressed label for compact UI (\u226460 chars): the claim alone, no rationale or consequence clause",
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    "failure_scenario": {
+                      "description": "Concrete inputs/state \u2192 wrong output/crash",
+                      "type": "string"
+                    },
+                    "category": {
+                      "description": "Short kebab-case slug of the finding type, e.g. \"correctness\", \"simplification\", \"efficiency\", \"test-coverage\"",
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "verdict": {
+                      "description": "Set when a verify pass ran; absent on inline-only reviews",
+                      "type": "string",
+                      "enum": [
+                        "CONFIRMED",
+                        "PLAUSIBLE"
+                      ]
+                    },
+                    "outcome": {
+                      "description": "Set ONLY when re-reporting after applying fixes: what happened to this finding",
+                      "type": "string",
+                      "enum": [
+                        "fixed",
+                        "skipped",
+                        "no_change_needed"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "file",
+                    "summary",
+                    "failure_scenario"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "findings"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "ScheduleWakeup",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "delaySeconds": {
+                "description": "Seconds from now to wake up. Clamped to [60, 3600] by the runtime. Required unless `stop` is true.",
+                "type": "number"
+              },
+              "reason": {
+                "description": "One short sentence explaining the chosen delay. Goes to telemetry and is shown to the user. Be specific. Required unless `stop` is true.",
+                "type": "string"
+              },
+              "prompt": {
+                "description": "The /loop input to fire on wake-up. Pass the same /loop input verbatim each turn so the next firing re-enters the skill and continues the loop. For autonomous /loop (no user prompt), pass the literal sentinel `<<autonomous-loop-dynamic>>` instead (the dynamic-pacing variant, not the CronCreate-mode `<<autonomous-loop>>`). Required unless `stop` is true.",
+                "type": "string"
+              },
+              "stop": {
+                "description": "Set to true to end the dynamic loop immediately instead of scheduling another wakeup. When true, all other fields are ignored and no further wakeups fire.",
+                "type": "boolean"
+              },
+              "noop": {
+                "description": "true = nothing changed (you checked and there is nothing to report). false = something happened worth keeping (edited a file, posted a message, advanced state, surfaced a finding). Consecutive noop:true ticks are collapsed in the user's terminal view and tracked as a streak. Required unless `stop` is true.",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "SendMessage",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "to": {
+                "description": "Recipient: a name from ListAgents (append its \" [ref]\" only when a listing or an error shows one), a teammate name, \"main\", or a background agent's agentId",
+                "type": "string",
+                "allOf": [
+                  {
+                    "pattern": "^[^\\n\\r]*$"
+                  },
+                  {
+                    "pattern": "^[\\s\\S]{0,300}$"
+                  }
+                ]
+              },
+              "summary": {
+                "description": "A 5-10 word label for your own transcript row (not transmitted \u2014 the recipient previews the first line of `message`). Truncated to 200 characters rather than rejected.",
+                "type": "string",
+                "maxLength": 200
+              },
+              "message": {
+                "default": "",
+                "description": "Plain text message content. The recipient's human sees only the FIRST LINE as a one-line preview until they expand it, so make the first line a clear, self-contained sentence saying what this is about \u2014 not a greeting, preamble, or bare @-mention.",
+                "type": "string"
+              },
+              "notify_when_idle": {
+                "description": "Ask a session ON THIS MACHINE to send you ONE notice when it next goes idle (finishes its turn with nothing queued) or exits \u2014 opt-in, one-shot, no polling. With a message: deliver it now AND subscribe. Without a message (omit it): a pure subscription that costs the other session nothing.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "to",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "Skill",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "skill": {
+                "description": "The name of a skill from the available-skills list. Do not guess names.",
+                "type": "string"
+              },
+              "args": {
+                "description": "Optional arguments for the skill",
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "TaskOutput",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "task_id": {
+                "description": "The task ID to get output from",
+                "type": "string"
+              },
+              "block": {
+                "description": "Whether to wait for completion",
+                "default": true,
+                "type": "boolean"
+              },
+              "timeout": {
+                "description": "Max wait time in ms",
+                "default": 30000,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              }
+            },
+            "required": [
+              "task_id",
+              "block",
+              "timeout"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "TaskStop",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "task_id": {
+                "description": "The ID of the background task to stop. Agent-team teammates and named background agents are also accepted by agent ID or name.",
+                "type": "string"
+              },
+              "shell_id": {
+                "description": "Deprecated: use task_id instead",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "WebFetch",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "url": {
+                "description": "The URL to fetch content from",
+                "type": "string",
+                "format": "uri"
+              },
+              "prompt": {
+                "description": "The prompt to run on the fetched content",
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "prompt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "WebSearch",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "query": {
+                "description": "The search query to use",
+                "type": "string",
+                "minLength": 2
+              },
+              "allowed_domains": {
+                "description": "Only include search results from these domains",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "blocked_domains": {
+                "description": "Never include search results from these domains",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "query"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "Workflow",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "script": {
+                "description": "Self-contained workflow script. Must begin with `export const meta = { name, description, phases }` (pure literal, no computed values) followed by the script body using agent()/parallel()/pipeline()/phase().",
+                "type": "string",
+                "maxLength": 524288
+              },
+              "name": {
+                "description": "Name of a predefined workflow (built-in or from .claude/workflows/). Resolves to a self-contained script.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Ignored \u2014 set the workflow description in the script's `meta` block.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Ignored \u2014 set the workflow title in the script's `meta` block.",
+                "type": "string"
+              },
+              "args": {
+                "description": "Optional input value exposed to the script as the global `args`, verbatim. Pass arrays/objects as actual JSON values, NOT as a JSON-encoded string \u2014 a stringified list breaks `args.filter`/`args.map` in the script. Use for parameterized named workflows (e.g. a research question)."
+              },
+              "scriptPath": {
+                "description": "Path to a workflow script file on disk. Every Workflow invocation persists its script under the session directory and returns the path in the tool result. To iterate, edit that file with Write/Edit and re-invoke Workflow with the same `scriptPath` instead of re-sending the full script. Takes precedence over `script` and `name`.",
+                "type": "string"
+              },
+              "resumeFromRunId": {
+                "description": "Run ID of a prior Workflow invocation to resume from. Completed agent() calls with unchanged (prompt, opts) return their cached results instantly; only edited or new calls re-run. Same-session only. Stop the prior run first (TaskStop) before resuming.",
+                "type": "string",
+                "pattern": "^wf_[a-z0-9-]{6,}$"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "Write",
+          "input_schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "file_path": {
+                "description": "The absolute path to the file to write (must be absolute, not relative)",
+                "type": "string"
+              },
+              "content": {
+                "description": "The content to write to the file",
+                "type": "string"
+              }
+            },
+            "required": [
+              "file_path",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        },
+        {
+          "name": "mcp__fixture__echo",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "marker": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "marker"
+            ],
+            "additionalProperties": false
+          }
+        }
+      ],
+      "tool_references": []
+    }
+  ],
+  "errors": [],
+  "exit_code": 0,
+  "final_marker_seen": true,
+  "duration_seconds": 0.35,
+  "success": true
+}

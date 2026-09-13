@@ -1,0 +1,6 @@
+iter=1 load1=14.08 exit=0 (no-block-line)
+iter=2 load1=10.48 exit=0 (no-block-line)
+iter=3 load1=10.14 exit=0 (no-block-line)
+iter=4 load1=8.32 exit=0 (no-block-line)
+iter=5 load1=7.03 exit=0 (no-block-line)
+iter=6 load1=6.46 exit=0 (no-block-line)

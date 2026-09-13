@@ -77,7 +77,7 @@ moai cc -f lane-1             # a lane, in its own terminal
 moai glm -f lane-3            # …and one lane on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db`; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
+Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db`; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -180,7 +180,7 @@ This identity organizes into three keys: **cost** (tokenomics — the same quali
 | **Autonomy with real boundaries** | Declare a completion condition with `/moai goal` and the session works on its own until it holds. Four hard boundaries are attached — a turn limit (default 30), a stagnation guard, a wall-clock budget, and pre-approval gates — so it cannot fall into an infinite loop. |
 | **Parallel-safe** | Every SPEC gets its own working tree, a branch-state guard blocks accidental branch switches in the primary checkout, and the gap against the remote is checked before spawning write agents. Two write-capable agents never run at the same time. |
 | **Long-horizon continuity** | Work survives `/clear`. Progress stays in `progress.md`, handoff messages in memory, routing decisions in decision memory. The next session starts from what the last one learned, not from bare ground. |
-| **Cost-efficient** | Models and reasoning depth are assigned declaratively, matched to work phase and SPEC size. CG mode (Claude leader + GLM workers) cuts 60–70% of cost on implementation-heavy work. Prompt caches are reused and long output is spilled to disk to keep the context light. |
+| **Cost-efficient** | Models and reasoning depth are assigned declaratively, matched to work phase and SPEC size. Prompt caches are reused and long output is spilled to disk to keep the context light. |
 | **Equal support for 16 programming languages** | Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift — sixteen programming languages handled as one set via marker-based auto-detection. None receives preferential treatment. |
 | **Self-improving** | Recurring failure patterns observed in the wild rise as proposed rule changes. Nothing is applied silently — approval comes first. Routing decisions and gate evidence accumulate in decision memory as material for the next run. |
 | **Native-language friendly** | Korean, Japanese, Chinese, and English locales are maintained in the same PR, translationese is banned, and each language gets its own native prose. Users are never forced into English. |
@@ -311,7 +311,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 - **Git** — required on all platforms
 - **Claude Code** — moai-adk is a harness for Claude Code
-- **Recommended**: `gh` CLI (PR automation), `tmux` (CG mode), your language's lint/test toolchain (e.g. `golangci-lint`)
+- **Recommended**: `gh` CLI (PR automation), `tmux` (worktree windows), your language's lint/test toolchain (e.g. `golangci-lint`)
 
 ---
 
@@ -365,13 +365,18 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
-### CG mode — Claude leader + GLM workers
+### CG retirement and migration
 
-Claude owns strategy, planning, and audits; GLM carries bulk implementation. The two are wired through tmux session-level environment isolation, cutting 60–70% of cost on implementation-heavy work.
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
 
-<p align="center">
-  <img src="./assets/images/cg-mode-infographic-en.png" alt="CG Mode — Claude leader + GLM worker hybrid" width="85%">
-</p>
+```bash
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
+```
+
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
+
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ### Equal support for 16 programming languages
 
@@ -564,18 +569,18 @@ moai cc -w feature-billing --spawn   # billing in a new window, current session 
 
 Each SPEC gets its own working tree so two agents never step on each other. The branch-state guard blocks accidental branch switches in the primary checkout.
 
-### Cut costs (CG mode)
+### CG retirement and migration
+
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session.
 
 ```bash
-moai glm sk-your-glm-api-key   # save the key once
-moai cg                        # enter CG mode (Claude leader + GLM workers)
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-```text
-/moai run SPEC-DATA-001        # implementation-heavy work → GLM workers carry the bulk
-```
+This writes `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, and `llm.gateway.teammate_provider: inherit`. It removes the old hybrid role assignment; it does not preserve a Claude leader with GLM teammate panes.
 
-CG mode puts a Claude leader over strategy, planning, and audits while GLM workers carry bulk implementation — a 60–70% cost cut on implementation-heavy work. The harness, SPEC workflow, and quality gates behave identically across all three modes.
+The `claude-glm` target describes a Claude leader with GLM teammates in tmux. Its apply and launch paths are currently unavailable because the TEAMMATE integration gate has not passed. Preview is available. Installing tmux or setting `verified: true` does not open this gate.
 
 ### Auto-fix bugs (loop)
 
@@ -638,7 +643,7 @@ Assignment follows work phase (plan / run / sync) and SPEC size (Tier S / M / L)
 | `.claude/settings.json` | Rendered from template — project-shared settings | Included |
 | `.claude/settings.local.json` | Runtime-managed — per-machine values (tmux pane IDs · API tokens · absolute paths) | **Never included** |
 
-`settings.local.json` is modified at runtime by `moai glm`, `moai cc`, and `moai cg`, and the SessionStart hook fills the environment. If accidentally committed, remove it with `git rm --cached .claude/settings.local.json`.
+`settings.local.json` is modified at runtime by `moai glm` and `moai cc`, and the SessionStart hook fills the environment. If accidentally committed, remove it with `git rm --cached .claude/settings.local.json`.
 
 ---
 
@@ -676,13 +681,12 @@ All four locales are maintained in the same PR, with a 4-locale parity check bou
 
 ### Claude + GLM
 
-z.ai GLM serves as an alternative backend for Claude Code. Switching is environment-variable only — the code stays the same. Three execution modes exist.
+z.ai GLM serves as an alternative backend for Claude Code. Switching is environment-variable only — the code stays the same.
 
 | Command | Leader | Workers | tmux | Cost saving |
 |---|---|---|---|---|
 | `moai cc` | Claude | Claude | not required | — |
 | `moai glm` | GLM | GLM | recommended | ~70% |
-| `moai cg` | Claude | GLM | **required** | ~60% |
 
 The GLM Coding Plan starts at $10/month. glm-5.3-flash (the default), glm-5.3, glm-4.7, glm-4.5-air, and free models (GLM-4.7-Flash, GLM-4.5-Flash) are available.
 
@@ -715,7 +719,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | Every `moai` binary command (49 total) |
 | [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code integration — basics, context·memory, agentic, extensibility |
-| [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode and model policy |
+| [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG migration and model policy |
 | [Cost Optimization](https://adk.mo.ai.kr/en/cost-optimization) | Prompt caching strategies and token cost reduction |
 | [Guides](https://adk.mo.ai.kr/en/guides) | CI automation, multi-LLM CI, and other operational recipes |
 | [Git Worktree](https://adk.mo.ai.kr/en/worktree) | Worktree guide for parallel SPEC development |
@@ -735,7 +739,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai status` | Project status summary (Git branch, quality metrics) |
 | `moai update` | Update to latest version (pre-deletion backup · auto-rollback supported) |
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
-| `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid sessions |
+| `moai cc` / `moai glm` | Claude-only / GLM-only sessions |
 | `moai codex [cli\|status\|app]` | Codex launcher — called with no verb it launches the Codex CLI; `status` prints the readiness readout and starts nothing |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
@@ -785,7 +789,7 @@ The first value is the currently installed moai-adk version; the arrow indicates
 
 ### Can I use Claude only, without GLM?
 
-Yes. `moai cc` launches a Claude-only session. CG mode (`moai cg`, Claude leader + GLM workers) and GLM-only (`moai glm`) are cost-saving options; the harness, SPEC workflow, and quality gates behave identically across all three modes.
+Yes. `moai cc` starts a Claude session without requiring GLM. Only projects retaining legacy CG configuration require migration first.
 
 ### Does it work on existing projects?
 

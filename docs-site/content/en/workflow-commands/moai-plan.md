@@ -349,7 +349,7 @@ After Plan completes and before Run begins, it auto-detects the execution enviro
 
 **Detected items:**
 1. tmux availability (the `$TMUX` environment variable)
-2. Current LLM mode (`team_mode` in `llm.yaml`: cc/glm/cg)
+2. Current LLM mode (`team_mode` in `llm.yaml`: cc/glm)
 
 **When tmux is available:**
 - Worktree + current mode (recommended)
@@ -359,7 +359,7 @@ After Plan completes and before Run begins, it auto-detects the execution enviro
 - Sub-agent Mode (recommended)
 
 {{< callout type="info" >}}
-The Agent Teams static-orchestration layer (Module 3) was retired. The `--team` flag and the Team Mode option are no longer provided, and forcing them falls back to Sub-agent Mode via `MODE_TEAM_UNAVAILABLE`. CG mode (Claude+GLM) is entered with the `moai cg` command.
+The Agent Teams static-orchestration layer (Module 3) was retired. The `--team` flag and the Team Mode option are no longer provided, and forcing them falls back to Sub-agent Mode via `MODE_TEAM_UNAVAILABLE`. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 {{< /callout >}}
 
 ## A practical example

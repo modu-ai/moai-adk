@@ -146,7 +146,7 @@ I **MUST** run every technical claim through the official documentation via WebS
 3. Cite the source right in the lesson: `Source: {official URL} (fetched YYYY-MM-DD)`
 4. If the fetch comes back empty or fails:
    - Try an alternate official URL (version-specific docs, the project's repo README, etc.)
-   - Under a GLM backend — `moai glm` / `moai cg` GLM panes — use `mcp__web_reader__webReader` instead of `WebFetch`, and `mcp__web_search_prime__webSearchPrime` instead of `WebSearch`, per `.claude/rules/moai/core/glm-web-tooling.md`
+   - Under a GLM backend — `moai glm` — use `mcp__web_reader__webReader` instead of `WebFetch`, and `mcp__web_search_prime__webSearchPrime` instead of `WebSearch`, per `.claude/rules/moai/core/glm-web-tooling.md`
    - And I'll flag the uncertainty out loud: "Based on [official URL] as of [date]. Double-check it for your version."
 5. **Never** deliver technical claims from memory alone on library/framework topics
 
