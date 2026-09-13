@@ -123,7 +123,7 @@ func init() {
 	// Validates the 3-value closed set fail-loud in validateInitFlags; help
 	// names all 3 tiers so the selector OFFERS them (does not pre-pick
 	// fully-autonomous).
-	initCmd.Flags().String("autonomy-tier", "", "Autonomy tier: semi-auto, automatic, or fully-autonomous (default: semi-auto)")
+	initCmd.Flags().String("autonomy-tier", "", "Session permission mode: accept edits on (semi-auto, default), auto mode (automatic), or bypass permissions (fully-autonomous; requires sandbox proof). Writes user-scope defaultMode: acceptEdits for the default")
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the LLM harness selector. Closed
 	// set {claude, codex, both} validated fail-loud in validateInitFlags;
@@ -856,8 +856,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the initializer returns. Paths are resolved here and passed in (no new
 	// global state); the USER-scope write inside the bundle is a key-scoped
 	// splice limited to the permissions block (spec.md §4 lead ruling). The
-	// call is best-effort: semi-auto/unset produces zero delta and a failure
-	// warns without failing the init.
+	// call is best-effort: semi-auto/unset produces the bounded delta (the
+	// USER-scope acceptEdits record only, SPEC-AUT-PERMMODES-001 REQ-004) and
+	// a failure warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
 		if tierErr := applyAutonomyTierBundleFn(
