@@ -68,3 +68,12 @@ Two-input adjudication per plan.md §F M0 / §H Resolution Record row 3. Verdict
 - Scoped lint delta: `golangci-lint run --new-from-rev=7a7a08f20 internal/gateway/... internal/cli/...` → `0 issues.`, exit 0. (Pre-existing repo-wide lint red, 997 findings on t707's measurement, is t671's scope — 0 NEW issues on this branch's delta.)
 - Cross-build: `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
 - Note: t707's verdict signature detail observed — `Manager.Fork` returns named `(d Descriptor, err error)`; symbol identity unchanged.
+
+## §E.2 — M2 Validator Characterization Lock (2026-09-14)
+
+- New test file: `internal/gateway/translate/receipt_history_wedge_policy_test.go` (+195, test-only; reuses t672 package-local fixture helpers). Commit `f50120ddd` (parent `6085fb131`).
+- Matrix: 6 groups — trailing-unpublished chain rejection (golden), tail-re-rooted acceptance, 4 rejection-class cells (mid-drop/foreign-item/stripped-reasoning/lineage-miss, golden bodies), exact-retry acceptance, truncated-fork acceptance, `HistoryReplayError.Error()` full-literal byte-identical goldens (3 causes + zero-value default).
+- GREEN-at-arrival (verbatim in agent report): `go test ./internal/gateway/translate/ -run 'TestWedgePolicy' -count=1 -v` → 6/6 PASS; affected packages `translate` + `receipt` → ok/ok. `go vet ./internal/gateway/...` → exit 0.
+- PRESERVE zero-diff: only the new test file changed; all plan.md §D production files untouched (AC-EVR-011 inputs intact).
+- Deviation notes: (1) foreign-item cell initially classified CauseLineage on an empty store — fixture corrected to publish the real conversation first (validator behaved as documented; not a SPEC defect). (2) Public-content-changed shape covered by t707's `TestReplayRoundTripStillRejectsTampering` (no duplicate golden cell added — flagged for orchestrator). (3) E8 RED n/a by design (GREEN-at-arrival).
+- Gaps: no local full-suite run (CI owns it); coverage measured at a later milestone over the card's whole diff.
