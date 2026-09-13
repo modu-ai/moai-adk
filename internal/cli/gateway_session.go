@@ -184,6 +184,9 @@ func prepareGatewayConversation(in gatewayLaunchRequest, families *conversation.
 	if families == nil || in.CWD == "" || in.Project == "" {
 		return conversation.Descriptor{}, errors.New("gateway conversation bootstrap unavailable")
 	}
+	if err := repairGatewayEnvelope(in, families); err != nil {
+		return conversation.Descriptor{}, err
+	}
 	if in.Continue {
 		d, err := families.Continue(context.Background(), in.Project)
 		if err != nil {
@@ -229,6 +232,7 @@ func gatewayConversationPassthrough(args []string) []string {
 		case "--resume":
 			i++
 		case "--fork-session":
+		case repairGatewayEnvelopeFlag:
 		case "--session-id":
 			i++
 		default:
