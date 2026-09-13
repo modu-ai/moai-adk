@@ -32,7 +32,7 @@ func TestOpenAISubscriptionMediaBoundary(t *testing.T) {
 func TestOpenAISubscriptionAbsentMediaStrictSSE(t *testing.T) {
 	store, ref, gen := oaiStore(t)
 	for _, valid := range []bool{true, false} {
-		tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+		tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header()["Content-Type"] = nil
 			w.WriteHeader(200)
 			if !valid {
@@ -70,7 +70,7 @@ func TestOpenAISubscriptionAbsentMediaStrictSSE(t *testing.T) {
 		if !valid && readErr == nil {
 			t.Fatal("arbitrary response admitted")
 		}
-		if calls.Load() != 1 {
+		if served.Load() != 1 {
 			t.Fatal("unexpected retry")
 		}
 	}
@@ -78,7 +78,7 @@ func TestOpenAISubscriptionAbsentMediaStrictSSE(t *testing.T) {
 
 func TestOpenAISubscriptionNonStreamCollectsSSE(t *testing.T) {
 	store, ref, gen := oaiStore(t)
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Errorf("invalid outgoing JSON: %v", err)
@@ -105,15 +105,15 @@ func TestOpenAISubscriptionNonStreamCollectsSSE(t *testing.T) {
 	if r.StatusCode != http.StatusOK || !strings.Contains(body, `"stop_reason":"end_turn"`) || strings.Contains(body, "event:") {
 		t.Fatalf("non-stream subscription response was not collected: %d %s", r.StatusCode, body)
 	}
-	if calls.Load() != 1 {
-		t.Fatalf("unexpected upstream calls: %d", calls.Load())
+	if served.Load() != 1 {
+		t.Fatalf("unexpected upstream serves: %d", served.Load())
 	}
 }
 
 func TestOpenAISubscriptionOutputPolicyWireAndValidation(t *testing.T) {
 	store, ref, gen := oaiStore(t)
 	for _, method := range []AuthMethod{AuthPKCE, AuthAPIKey} {
-		tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+		tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 			var body map[string]json.RawMessage
 			if json.NewDecoder(r.Body).Decode(&body) != nil {
 				t.Error("invalid outgoing JSON")
@@ -152,7 +152,7 @@ func TestOpenAISubscriptionOutputPolicyWireAndValidation(t *testing.T) {
 		}
 		r, e := a.Send(context.Background(), q)
 		oaiRead(t, r, e)
-		if calls.Load() != 1 {
+		if served.Load() != 1 {
 			t.Fatal("valid request not sent once")
 		}
 		for _, value := range []string{"0", "-1", "1.5", `"10"`, "null", "9223372036854775808", "1e100"} {
@@ -175,7 +175,7 @@ func TestOpenAISubscriptionOutputPolicyWireAndValidation(t *testing.T) {
 				t.Fatal(cerr)
 			}
 		}
-		if calls.Load() != 1 {
+		if served.Load() != 1 {
 			t.Fatal("invalid input reached external transport")
 		}
 	}

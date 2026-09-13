@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
@@ -198,6 +199,9 @@ func TestAgentFMDescriptionAbsentGraceful(t *testing.T) {
 // renderAgentFMBody renders GET / with the given project root + returns the body.
 func renderAgentFMBody(t *testing.T, root string) string {
 	t.Helper()
+	// Pin a clean launcher env: MOAI_LAUNCH_PROVIDER folds a gateway backend
+	// into every render (t840), and the session running this suite may carry it.
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
 	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
 		return profile.ProfilePreferences{}, nil

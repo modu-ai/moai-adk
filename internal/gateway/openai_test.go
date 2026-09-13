@@ -29,20 +29,27 @@ func oaiEntry(method AuthMethod) ModelEntry {
 }
 func oaiTLS(t *testing.T, h http.HandlerFunc) (*http.Transport, *atomic.Int32) {
 	t.Helper()
-	srv := httptest.NewTLSServer(h)
+	// The returned counter is a server-side hit count, not a TLS dial count:
+	// under -race a first-send attempt can fail at the transport layer after
+	// the handler already served it, and upstreamSend re-drives the handler
+	// per retry. Dials count those retries; a dropped egress attempt never
+	// reaches this handler at all (CI race job 34765755281).
+	served := &atomic.Int32{}
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served.Add(1)
+		h(w, r)
+	}))
 	t.Cleanup(srv.Close)
 	tr := srv.Client().Transport.(*http.Transport).Clone()
 	tr.Proxy = nil
-	calls := &atomic.Int32{}
 	cfg := tr.TLSClientConfig.Clone()
 	tr.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
-		calls.Add(1)
 		if address != "api.openai.com:443" && address != "chatgpt.com:443" {
 			return nil, errors.New("foreign endpoint")
 		}
 		return (&tls.Dialer{Config: cfg}).DialContext(ctx, "tcp", srv.Listener.Addr().String())
 	}
-	return tr, calls
+	return tr, served
 }
 func oaiConfig(tr *http.Transport) OpenAIConfig {
 	return OpenAIConfig{Transport: tr, Limits: translate.Limits{MaxBodyBytes: 1 << 20, MaxOutputBytes: 1 << 20, MaxEventBytes: 1 << 16}, MeasureInput: func(ModelEntry, []byte) (int64, error) { return 1, nil }, SendOptions: auth.SendOptions{WriteTimeout: time.Second, PollInterval: 5 * time.Millisecond, MaxBodyBytes: 1 << 20}}
@@ -76,18 +83,22 @@ func oaiRead(t *testing.T, r *http.Response, e error) string {
 }
 func TestOpenAIAPIKeyEndpointAndPublicResponse(t *testing.T) {
 	seen := make(chan *http.Request, 1)
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, _ := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		var v map[string]any
 		_ = json.Unmarshal(b, &v)
 		if v["model"] != "gpt-5.6-sol" || v["max_output_tokens"] != float64(10) || v["store"] != false || v["truncation"] != "disabled" {
 			t.Error("translation", string(b))
 		}
-		seen <- r
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := io.WriteString(w, oaiOutput); err != nil {
-			t.Error(err)
+		// A retried attempt re-enters this handler while the first capture is
+		// still buffered; a blocking send wedges cleanup until the package
+		// timeout (CI race job 34765755281). First capture wins.
+		select {
+		case seen <- r:
+		default:
 		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, oaiOutput) // abandoned retries legitimately fail the write
 	})
 	a, e := NewOpenAIAdapter(oaiConfig(tr))
 	if e != nil {
@@ -101,12 +112,12 @@ func TestOpenAIAPIKeyEndpointAndPublicResponse(t *testing.T) {
 		t.Fatal(body)
 	}
 	got := <-seen
-	if got.Host != "api.openai.com" || got.URL.Path != "/v1/responses" || got.Header.Get("Authorization") != "Bearer synthetic-api-secret" || got.Header.Get("X-Api-Key") != "" || calls.Load() != 1 {
+	if got.Host != "api.openai.com" || got.URL.Path != "/v1/responses" || got.Header.Get("Authorization") != "Bearer synthetic-api-secret" || got.Header.Get("X-Api-Key") != "" {
 		t.Fatal("endpoint/header boundary")
 	}
 }
 func TestOpenAILocalRejectionsNeverSend(t *testing.T) {
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected send") })
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected send") })
 	for _, kind := range []string{"policy", "measurement absent", "measurement error", "context absent", "context overflow", "wrong provider", "changed generation", "stream capability", "tool capability", "unknown auth", "subscription absent"} {
 		cfg := oaiConfig(tr)
 		q := oaiRequest(t)
@@ -146,14 +157,14 @@ func TestOpenAILocalRejectionsNeverSend(t *testing.T) {
 			t.Fatal(kind, r.StatusCode, body)
 		}
 	}
-	if calls.Load() != 0 {
-		t.Fatal(calls.Load())
+	if served.Load() != 0 {
+		t.Fatal(served.Load())
 	}
 }
 func TestOpenAIStatusAndNoRedirect(t *testing.T) {
 	for _, status := range []int{401, 429, 302, 503} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
-			tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+			tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Retry-After", "12")
 				w.Header().Set("Location", "https://foreign.invalid/steal")
 				w.WriteHeader(status)
@@ -165,17 +176,17 @@ func TestOpenAIStatusAndNoRedirect(t *testing.T) {
 			r, e := a.Send(context.Background(), oaiRequest(t))
 			body := oaiRead(t, r, e)
 			want := status
-			wantCalls := int32(1)
+			wantServed := int32(1)
 			if status == 302 {
 				want = 502
 			}
 			if status >= 500 && status <= 599 {
 				// 5xx is retryable at the pre-stream boundary (t697): the
-				// always-failing stub exhausts the bounded attempts.
-				wantCalls = 3
+				// always-failing stub serves every bounded attempt.
+				wantServed = 3
 			}
-			if r.StatusCode != want || strings.Contains(body, "secret") || r.Header.Get("Location") != "" || calls.Load() != wantCalls {
-				t.Fatal(r.StatusCode, body, calls.Load())
+			if r.StatusCode != want || strings.Contains(body, "secret") || r.Header.Get("Location") != "" || served.Load() != wantServed {
+				t.Fatal(r.StatusCode, body, served.Load())
 			}
 			if (status == 429 || status == 503) && r.Header.Get("Retry-After") != "12" {
 				t.Fatal("retry-after lost")
@@ -216,7 +227,7 @@ func oaiStore(t *testing.T) (*auth.Store, CredentialRef, uint64) {
 func TestOpenAISubscriptionUsesStoreAuthorizedBoundary(t *testing.T) {
 	s, ref, gen := oaiStore(t)
 	seen := make(chan string, 1)
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]json.RawMessage
 		if json.NewDecoder(r.Body).Decode(&body) != nil {
 			t.Error("request JSON")
@@ -224,11 +235,18 @@ func TestOpenAISubscriptionUsesStoreAuthorizedBoundary(t *testing.T) {
 		if _, present := body["truncation"]; present {
 			t.Error("subscription gained unverified truncation field")
 		}
-		seen <- r.Host + r.URL.Path + " " + r.Header.Get("ChatGPT-Account-Id")
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := io.WriteString(w, oaiOutput); err != nil {
-			t.Error(err)
+		// A retried attempt re-enters this handler while the first capture is
+		// still buffered; a blocking send here wedges the handler goroutine and
+		// httptest.Server.Close in cleanup until the package timeout (CI race
+		// job 34765755281). First capture wins; excess ones are dropped.
+		select {
+		case seen <- r.Host + r.URL.Path + " " + r.Header.Get("ChatGPT-Account-Id"):
+		default:
 		}
+		w.Header().Set("Content-Type", "application/json")
+		// An abandoned retry's connection is already torn down, so its write
+		// legitimately fails; response delivery is not what this test asserts.
+		_, _ = io.WriteString(w, oaiOutput)
 	})
 	cfg := oaiConfig(tr)
 	cfg.Subscription = s
@@ -239,12 +257,13 @@ func TestOpenAISubscriptionUsesStoreAuthorizedBoundary(t *testing.T) {
 	if got := <-seen; got != "chatgpt.com/backend-api/codex/responses synthetic-account" {
 		t.Fatal(got)
 	}
+	servedBeforeLogout := served.Load()
 	if _, e = s.Logout(context.Background()); e != nil {
 		t.Fatal(e)
 	}
 	r, e = a.Send(context.Background(), q)
 	_ = oaiRead(t, r, e)
-	if r.StatusCode != 401 || calls.Load() != 1 {
+	if r.StatusCode != 401 || served.Load() != servedBeforeLogout {
 		t.Fatal("logout crossed boundary")
 	}
 }
@@ -294,7 +313,7 @@ func TestOpenAIStreamEOFAndCloseJoin(t *testing.T) {
 func TestOpenAISubscriptionRejectsDifferentStore(t *testing.T) {
 	s, _, _ := oaiStore(t)
 	_, ref, gen := oaiStore(t)
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := io.WriteString(w, oaiOutput); err != nil {
 			t.Error(err)
@@ -305,8 +324,8 @@ func TestOpenAISubscriptionRejectsDifferentStore(t *testing.T) {
 	a, _ := NewOpenAIAdapter(cfg)
 	r, e := a.Send(context.Background(), RoutedRequest{Entry: oaiEntry(AuthPKCE), Body: []byte(oaiInput), Credential: ref, Generation: gen})
 	_ = oaiRead(t, r, e)
-	if r.StatusCode != 401 || calls.Load() != 0 {
-		t.Fatalf("foreign store accepted: status=%d calls=%d", r.StatusCode, calls.Load())
+	if r.StatusCode != 401 || served.Load() != 0 {
+		t.Fatalf("foreign store accepted: status=%d served=%d", r.StatusCode, served.Load())
 	}
 }
 
@@ -326,7 +345,7 @@ func (r *oaiChangingRef) Apply(q *http.Request) error {
 	return nil
 }
 func TestOpenAIRechecksGenerationAndDestinationAfterApply(t *testing.T) {
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected send") })
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected send") })
 	a, _ := NewOpenAIAdapter(oaiConfig(tr))
 	for _, mutate := range []bool{false, true} {
 		q := oaiRequest(t)
@@ -337,13 +356,13 @@ func TestOpenAIRechecksGenerationAndDestinationAfterApply(t *testing.T) {
 			t.Fatal(r.StatusCode)
 		}
 	}
-	if calls.Load() != 0 {
-		t.Fatal(calls.Load())
+	if served.Load() != 0 {
+		t.Fatal(served.Load())
 	}
 }
 
 func TestOpenAIErrorStatusSurvivesServer(t *testing.T) {
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("local policy reached upstream") })
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("local policy reached upstream") })
 	a, _ := NewOpenAIAdapter(oaiConfig(tr))
 	q := oaiRequest(t)
 	catalog, e := NewCatalog([]ModelEntry{q.Entry})
@@ -359,7 +378,7 @@ func TestOpenAIErrorStatusSurvivesServer(t *testing.T) {
 	req.Header.Set("X-Session", "synthetic-session")
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
-	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "invalid_request_error") || calls.Load() != 0 {
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), "invalid_request_error") || served.Load() != 0 {
 		t.Fatal(rec.Code, rec.Body.String())
 	}
 }
