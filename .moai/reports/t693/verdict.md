@@ -110,5 +110,5 @@ ok  	github.com/modu-ai/moai-adk/internal/gateway	1.698s
 ## 5. Residual-risk (잔여 위험)
 
 - race 잡의 502 flaky는 재발할 수 있다. 재발 시 이번 커밋의 실패 메시지(`body=` 포함)가 원인 단서를 제공한다. 재발 패턴이 워처 cancel로 확정되면 그때 제품 경로(예: Status 일시 오류의 재시도 허용)를 근거와 함께 수리하는 후속 카드가 권장된다.
-- `TestAppServerSubprocessHTTPToolContinuation`은 이 머신에서 재현되는 별개 환경 관측치다(본 카드 범위 밖).
+- `TestAppServerSubprocessHTTPToolContinuation`은 이 머신에서 재현되는 별개 환경 관측치다(본 카드 범위 밖). **develop 선재 귀속(2026-09-13, 리드 확인 요청 1):** 흡수 트리(`48fc4cd66` = develop `bf27af2cb` + 본 카드 4커밋)에서 `go test -count=1 -run TestAppServerSubprocessHTTPToolContinuation ./internal/gateway/` 재현되고(0.42s, `appserver_integration_test.go:71: App Server start failed`), 카드 변경 파일 집합(`git diff --name-only bf27af2cb..HEAD` 16건)에 appserver 관련 파일은 0건이다. 즉 develop에 존재하는 머신 국소(환경 의존) 실패로, CI(ubuntu)에서는 녹색이다. 신규 카드 발행 여부는 리드 판정.
 - gofmt 대상 4파일은 t649 증거물이라 앞으로도 압축 스타일로 추가 작성될 경우 같은 적색이 재발할 수 있다(작성 측 규율 필요).
