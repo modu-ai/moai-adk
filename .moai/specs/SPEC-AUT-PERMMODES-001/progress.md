@@ -56,6 +56,62 @@ Since the silent-ignore caveat below binds PROJECT scope (`.claude/settings.json
 
 **Pre-flight baselines (this run, HEAD 162b6ef92):** `go build ./...` → BUILD_OK; `GOOS=windows GOARCH=amd64 go build ./...` → WIN_BUILD_OK; `golangci-lint run --timeout=2m ./internal/...` → 328 pre-existing issues (errcheck 296 / staticcheck 30 / unused 2), exit 0; affected-package tests (`./internal/cli/wizard/... ./internal/config/... ./internal/core/project/...`) all `ok`.
 
+### M2 — Question options + bundle mapping (2026-09-13, commit 1c30ff881)
+
+**RED evidence (E8, captured BEFORE the implementation fix, this run, tree @ e8deabc21):**
+
+`go test ./internal/config/ ./internal/core/project/ ./internal/cli/wizard/ -run 'TestTierDefaultMode|TestApplyAutonomyTierBundle_SemiAutoIsBoundedDelta|TestApplyAutonomyTierBundle_EmptyIsBoundedDelta|TestAutonomyTierQuestion_FullyAutonomousNotRecommended'` → exit 1, verbatim failures:
+
+```
+--- FAIL: TestTierDefaultMode_Mapping (0.00s)
+    autonomy_tiers_test.go:104: TierDefaultMode("semi-auto") = "default", want "acceptEdits"
+--- FAIL: TestApplyAutonomyTierBundle_SemiAutoIsBoundedDelta (0.00s)
+    autonomy_bundle_test.go:123: read .../home/.claude/settings.json: no such file or directory
+--- FAIL: TestApplyAutonomyTierBundle_EmptyIsBoundedDelta (0.00s)
+    autonomy_bundle_test.go:151: read .../home/.claude/settings.json: no such file or directory
+--- FAIL: TestAutonomyTierQuestion_FullyAutonomousNotRecommended (0.00s)
+    autonomy_test.go:66: option "semi-auto" label must carry the CC permission-mode vocabulary "Accept edits on" (REQ-001): "Semi-auto (Recommended)"
+    autonomy_test.go:66: option "automatic" label must carry the CC permission-mode vocabulary "Auto mode" (REQ-001): "Automatic"
+    autonomy_test.go:66: option "fully-autonomous" label must carry the CC permission-mode vocabulary "Bypass permissions" (REQ-001): "Fully-autonomous"
+```
+
+`go test ./internal/cli/ -run 'TestRunInit_SemiAutoAndEmptyAreBoundedDelta' -count=1` → exit 1, verbatim:
+
+```
+--- FAIL: TestRunInit_SemiAutoAndEmptyAreBoundedDelta (1.06s)
+    init_autonomy_wiring_test.go:214: empty selection must write USER settings.json (bounded delta requires the defaultMode record); got no file
+    init_autonomy_wiring_test.go:214: semi-auto selection must write USER settings.json (bounded delta requires the defaultMode record); got no file
+```
+
+Full verbatim outputs preserved at `.moai/state/verify/t584/t584-red-part1.txt` and `t584-red-part2.txt`. One extra RED surface surfaced during GREEN: `TestInitRegroup_SecondGroupGolden` (wizard golden) pinned the old labels — regenerated with `-update-golden` (diff shows exactly the intended re-render; 6 lines changed).
+
+**GREEN evidence (this run, tree @ 1c30ff881):**
+
+- `go test ./internal/cli/wizard/... ./internal/config/... ./internal/core/project/...` → exit 0 (all `ok`); evidence: `.moai/state/verify/t584/t584-green-part1b.txt`.
+- `go test ./internal/cli/ -run 'TestRunInit_|TestApplyAutonomy|TestInitFlag|AutonomyTier|Autonomy' -count=1 -timeout 10m` → exit 0, `ok github.com/modu-ai/moai-adk/internal/cli 20.989s`; evidence: `.moai/state/verify/t584/t584-green-cli-targeted.txt`.
+
+**E2 builds (post-change, tree @ 1c30ff881):** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+
+**AC-011 real-binary evidence:** `./bin/moai init --help` (binary from `make build` @ this tree, Commit=e8deabc21 build-time stamp, source content = M2 tree) prints verbatim:
+
+```
+--autonomy-tier          Session permission mode: accept edits on (semi-auto, default), auto mode (automatic), or bypass permissions (fully-autonomous; requires sandbox proof). Writes user-scope defaultMode: acceptEdits for the default
+```
+
+**AC-012 real go doc evidence:** `go doc -all ./internal/config` shows `TierDefaultMode` godoc stating the new mapping (`semi-auto → "acceptEdits"` / `automatic → "auto"` / `fully-autonomous → "bypassPermissions"` + unknown→`"default"` MOST-restrictive fail-safe); `go doc -all ./internal/core/project` shows `ApplyAutonomyTierBundle` godoc stating the re-scoped REQ-004 bounded-delta invariant. (Both quoted in full above the commit; captured this run.)
+
+**REQ-007 / make build evidence:** `make build` → exit 0 (`catalog.yaml updated successfully (12899 bytes)`); binary embed check: `strings bin/moai | grep -c "accepts six values"` → 1; `grep -c "exactly four values"` → 0.
+
+**E5 lint (changed packages):** `golangci-lint run --timeout=2m ./internal/cli/... ./internal/config/... ./internal/core/project/...` → 38 issues (errcheck 36 / staticcheck 2), ALL pre-existing: zero findings name any file changed by this card (checked by grep against the changed-file list; evidence `.moai/state/verify/t584/t584-lint.txt`).
+
+**E4 subagent-boundary grep:** `git diff --name-only | grep '\.go$' | xargs grep -n 'AskUserQuestion\|mcp__askuser' | grep -v "_test.go" | grep -v "// "` → no output (0 matches in changed files). The package-wide grep hits are pre-existing guidance text in untouched files (`harness.go`, `pr_watch_cmd.go`, `agentlint/`, `harness/`).
+
+**E3 coverage:** `go test -cover ./internal/cli/wizard/ ./internal/config/ ./internal/core/project/` → wizard 93.6% / config 82.0% / core/project 88.8%. Touched-code coverage (`go tool cover -func`, config package): every `autonomy_tiers.go` function 100% except `AppendDowngradeAdvisory` 72.7% (pre-existing error-branch shape, untouched). Gap: the config PACKAGE figure 82.0% sits below the 85% target and was NOT measured at baseline in this run — the delta attribution (pre-existing vs new) is unmeasured; the card's config diff touches only `TierDefaultMode` (100% covered) and doc comments.
+
+**Downgrade advisory (plan §E5):** `TestRunInit_FlagFullyAutonomousWithoutProofDowngrades` green in the targeted run — the advisory still lands in `.moai/logs/autonomy-downgrade.log` naming the fully-autonomous→automatic downgrade.
+
+**M3 full-package verdict (internal/cli, this run):** `go test ./internal/cli/ -count=1 -timeout 35m` → `ok github.com/modu-ai/moai-adk/internal/cli 1262.131s`, wrapper exit 0; evidence exported to `.moai/state/verify/t584/t584-green-cli-full.txt`. Attribution caveat: the run launched at 18:36 against the tree as of commit 1c30ff881 and compiled its test binary before the subsequent comment-only edit to `internal/config/autonomy_tiers.go` landed (doc comment re-scope, zero behavior delta; that file's package re-verified green separately at `t584-config-postfix.txt`, exit 0, 2.830s).
+
 ## §F Phase 4 Mode Selection
 
 - Input parameters: tier M · scope ~8-10 files (wizard questions/translations, config tiers, core/project bundle, cli init flag help, IAM reference doc) · domains 4 (Go cli, Go config, Go core, template docs) · language mix Go + markdown · concurrency benefit LOW (coding-heavy) · Agent Teams prereqs: not requested.
@@ -65,7 +121,28 @@ Since the silent-ignore caveat below binds PROJECT scope (`.claude/settings.json
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-14
+run_commit_sha: 1c30ff881  # M2 mapping+labels commit (M1 e8deabc21, M3 signal commit follows)
+run_status: complete
+ac_pass_count: 12
+ac_fail_count: 0
+preserve_list_post_run_count: 5  # REQ-006 downgrade regression set: FullyAutonomousDowngradedWithoutProof, FullyAutonomousWithProofDeploysBypass, FlagFullyAutonomousWithoutProofDowngrades, AppendDowngradeAdvisory, FullyAutonomousNotRecommended — all green, zero-delta trio re-scoped (not deleted)
+l44_pre_commit_fetch: not-run  # worktree card on WT-autonomy-perm-modes; lead ordered base refresh via local develop merge instead
+l44_post_push_fetch: not-run  # lanes never push (git-flow 2026-09-02)
+new_warnings_or_lints_introduced: 0  # E5: 38 findings in changed packages are all pre-existing; zero name changed files
+cross_platform_build:
+  darwin_arm64: pass  # go build ./... exit 0 (pre-flight + post-change)
+  windows_amd64: pass  # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 14  # 12 code/test/doc files + spec.md frontmatter + progress.md
+m1_to_mN_commit_strategy: per-milestone (M1 e8deabc21 evidence+status flip; M2 1c30ff881 mapping+labels+tests atomic with RED captured pre-fix; M3 signal+comment re-scope)
+m1_scope_finding: "NO blocker — bundle writes defaultMode to USER scope only (init.go:863 userSettingsPath=~/.claude/settings.json; tier_render.go); project-scope silent-ignore caveat does not apply"
+coverage_note: "wizard 93.6% / core/project 88.8% / config 82.0% (package figure below 85% target; touched functions 100% — TierDefaultMode; config package baseline not measured this run = Gap)"
+gaps:
+  - config package-level coverage baseline not measured (delta attribution pre-existing vs new unmeasured)
+  - full internal/cli run compiled before the M3 comment-only edit (doc comment; config package re-verified separately)
+  - AC-011 verified from bin/moai built via make build (real --help), not from ~/go/bin installed binary
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

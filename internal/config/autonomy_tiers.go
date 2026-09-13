@@ -53,8 +53,10 @@ func ValidateAutonomyTierSelection(value string) (string, error) {
 
 // ResolveEffectiveTier resolves a PERSISTED tier selection to the effective
 // canonical tier. A persisted unset or whitespace-only selection resolves to
-// semi-auto (REQ-007 / AC-007 — a session that does not opt in pays zero
-// behavior delta). Non-empty values are returned verbatim after normalization;
+// semi-auto (REQ-007 / AC-007 of SPEC-AUTONOMY-TIERS-001, as re-scoped by
+// SPEC-AUT-PERMMODES-001 REQ-004 — a session that does not opt in pays the
+// bounded delta: the USER-scope acceptEdits record only). Non-empty values are
+// returned verbatim after normalization;
 // they are NOT re-validated here (the selector validated at write time, and the
 // env-key wins per STOPCHAIN-TRIM's canonical-source rule).
 func ResolveEffectiveTier(persistedTier string) string {
