@@ -105,14 +105,32 @@ func TestT565AnchorAllEmptySectionsStillAnchor(t *testing.T) {
 	}
 }
 
+// SPEC-AC-ANCHOR-SCOPE-001 (REQ-ACAS-001) supersedes the vocabulary-only
+// narrowness this test asserted: a heading outside the vocabulary whose section
+// holds AC-shaped declarations (the bullet + AC-…: colon form) now anchors —
+// this fixture IS the narrow-axis defect shape the SPEC measures on the live
+// corpus (SPEC-AC-COLLECTOR-ANCHOR-001 and 13 sibling files). The bound that
+// survives is the declaration shape, not the vocabulary: see
+// TestT565AnchorVocabularyIsNotWide_ColonlessProse.
 func TestT565AnchorVocabularyIsNotWide(t *testing.T) {
 	md := "# Fixture\n\n## 7. Review Criteria\n\n" + t565DecoyAC
+	ids := t528RootIDs(t, md)
+	if !t528Has(ids, "AC-HDG-09") {
+		t.Errorf("a declaration-bearing non-vocabulary section was not anchored (REQ-ACAS-001); got ids %v", ids)
+	}
+}
+
+// The surviving narrowness (SPEC-AC-ANCHOR-SCOPE-001 REQ-ACAS-004): a heading
+// outside the vocabulary whose section only MENTIONS an AC id — no AC-…: colon
+// form — still never anchors, and the section-not-found error stands.
+func TestT565AnchorVocabularyIsNotWide_ColonlessProse(t *testing.T) {
+	md := "# Fixture\n\n## 7. Review Criteria\n\n- AC-HDG-09 was discussed in review\n"
 	criteria, errs := ParseAcceptanceCriteria(md, false)
 	if len(criteria) != 0 {
-		t.Errorf("a heading outside the vocabulary anchored the section; got %+v", criteria)
+		t.Errorf("a colon-less AC mention anchored the section; got %+v", criteria)
 	}
 	if len(errs) == 0 {
-		t.Errorf("expected the section-not-found error for a heading outside the vocabulary; got none")
+		t.Errorf("expected the section-not-found error for a colon-less mention; got none")
 	}
 }
 
