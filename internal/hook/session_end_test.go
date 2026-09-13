@@ -1026,6 +1026,119 @@ func TestCleanupBogusRootDir_IgnoresFile(t *testing.T) {
 	}
 }
 
+// TestCleanupBogusRootDir_PreservesUnmarkedUserDir verifies that a "{}"
+// directory holding only user data (no .claude/agent-memory marker) is
+// preserved: without the MoAI-generated evidence, provenance is unknown and
+// the whole directory must NOT be deleted.
+func TestCleanupBogusRootDir_PreservesUnmarkedUserDir(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	userFile := filepath.Join(bogusDir, "user-data.txt")
+	if err := os.MkdirAll(bogusDir, 0o755); err != nil {
+		t.Fatalf("setup: create bogus dir: %v", err)
+	}
+	if err := os.WriteFile(userFile, []byte("user data"), 0o644); err != nil {
+		t.Fatalf("setup: create user file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); os.IsNotExist(err) {
+		t.Error("unmarked {} directory should have been preserved")
+	}
+	if _, err := os.Stat(userFile); os.IsNotExist(err) {
+		t.Error("user file inside unmarked {} directory should have been preserved")
+	}
+}
+
+// TestCleanupBogusRootDir_RemovesMarkedResidue verifies that a "{}" directory
+// carrying the MoAI agent-memory evidence signature is cleaned: the residue
+// subtree is removed and, once empty, the "{}" and "{}"/.claude shells go too.
+func TestCleanupBogusRootDir_RemovesMarkedResidue(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	residueFile := filepath.Join(bogusDir, ".claude", "agent-memory", "expert-backend", "memory.md")
+	if err := os.MkdirAll(filepath.Dir(residueFile), 0o755); err != nil {
+		t.Fatalf("setup: create residue dirs: %v", err)
+	}
+	if err := os.WriteFile(residueFile, []byte("data"), 0o644); err != nil {
+		t.Fatalf("setup: create residue file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); !os.IsNotExist(err) {
+		t.Error("fully-residue {} directory (and its empty shells) should have been removed")
+	}
+}
+
+// TestCleanupBogusRootDir_MixedContentRemovesResidueOnly verifies the critical
+// preservation case: a "{}" directory holding BOTH the MoAI residue marker AND
+// user content gets only its residue subtree removed — user files and
+// unrelated directories survive, and "{}" itself stays.
+func TestCleanupBogusRootDir_MixedContentRemovesResidueOnly(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	residueFile := filepath.Join(bogusDir, ".claude", "agent-memory", "expert-backend", "memory.md")
+	userFile := filepath.Join(bogusDir, "user-data.txt")
+	notesDir := filepath.Join(bogusDir, "notes")
+	if err := os.MkdirAll(filepath.Dir(residueFile), 0o755); err != nil {
+		t.Fatalf("setup: create residue dirs: %v", err)
+	}
+	if err := os.MkdirAll(notesDir, 0o755); err != nil {
+		t.Fatalf("setup: create notes dir: %v", err)
+	}
+	if err := os.WriteFile(residueFile, []byte("data"), 0o644); err != nil {
+		t.Fatalf("setup: create residue file: %v", err)
+	}
+	if err := os.WriteFile(userFile, []byte("user data"), 0o644); err != nil {
+		t.Fatalf("setup: create user file: %v", err)
+	}
+	notesFile := filepath.Join(notesDir, "todo.md")
+	if err := os.WriteFile(notesFile, []byte("note"), 0o644); err != nil {
+		t.Fatalf("setup: create notes file: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(filepath.Join(bogusDir, ".claude", "agent-memory")); !os.IsNotExist(err) {
+		t.Error("marked residue subtree (.claude/agent-memory) should have been removed")
+	}
+	if _, err := os.Stat(userFile); os.IsNotExist(err) {
+		t.Error("user-data.txt should have been preserved")
+	}
+	if _, err := os.Stat(notesFile); os.IsNotExist(err) {
+		t.Error("notes/ directory content should have been preserved")
+	}
+	if _, err := os.Stat(bogusDir); os.IsNotExist(err) {
+		t.Error("{} directory with non-residue content should have been preserved")
+	}
+}
+
+// TestCleanupBogusRootDir_EmptyDirPreserved verifies that an empty "{}"
+// directory carries no MoAI evidence, fails the residue gate, and is preserved.
+func TestCleanupBogusRootDir_EmptyDirPreserved(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	bogusDir := filepath.Join(projectDir, "{}")
+	if err := os.MkdirAll(bogusDir, 0o755); err != nil {
+		t.Fatalf("setup: create bogus dir: %v", err)
+	}
+
+	cleanupBogusRootDir(projectDir)
+
+	if _, err := os.Stat(bogusDir); os.IsNotExist(err) {
+		t.Error("empty {} directory without residue evidence should have been preserved")
+	}
+}
+
 // TestCleanupBogusRootDir_IgnoresSymlink verifies that a symlink named "{}"
 // is not followed or removed (symlink attack prevention).
 func TestCleanupBogusRootDir_IgnoresSymlink(t *testing.T) {
